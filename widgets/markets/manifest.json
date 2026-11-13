@@ -5,7 +5,7 @@
     "order": {"symbol": "symbol", "range": "range"},
     "report": {
       "symbol": {"type": "text:20", "follows": "symbol", "rest": ""},
-      "range": {"type": "enum:1d|5d|1mo|3mo|6mo|1y|5y", "follows": ["symbol", "range"]}
+      "range": {"type": "enum:1d|5d|1mo|3mo|6mo|1y|5y", "follows": ["symbol", "range"], "rest": "1d"}
     }
   },
   "version": "0.1.0",

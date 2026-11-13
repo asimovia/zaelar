@@ -172,7 +172,8 @@ export function render(el, data, ctx){
 // quote on screen ("" = none) and the period its chart covers.
 function reportShown(ctx, d){
   if(!ctx || typeof ctx.state !== "function") return;
+  // the period is always said (an empty card rests on the default one); its values are the server's own list (`ranges`)
   const shown = {symbol: String(d.symbol || "").slice(0, 20)};
-  if(d.symbol && /^(1d|5d|1mo|3mo|6mo|1y|5y)$/.test(String(d.range || ""))) shown.range = d.range;
+  if((Array.isArray(d.ranges) ? d.ranges : []).includes(d.range)) shown.range = d.range;
   try{ Promise.resolve(ctx.state(shown, {applied: true})).catch(()=>{}); }catch(_){}
 }

@@ -85,3 +85,19 @@ def test_the_rendered_chart_says_its_quote_and_period_through_the_door(mk, card_
     after = state_render.clause("markets", dev=a)                       # the dust settles (step-5 audit P1-1)
     settle(card_page, "markets")
     assert state_render.clause("markets", dev=a) == after, "a previous paint spoke after the last one"
+
+
+def test_an_empty_card_is_at_rest_and_the_periods_have_one_source(mk, card_page):
+    """Step-5 audit P3: an empty card read `range=?` (the period was not said without a quote); and the period list was
+    copied three times — the server's `RANGES`, the manifest's enum, a regex in the card — so a new period would be
+    refused at the door and read `?` for good. The card says the period from the server's own list, and the manifest's
+    enum is checked against it."""
+    data, on = mk
+    a, b = PAIRS[0]
+    on(a, b)
+    store.save("markets", {**data._seed()})
+    mount(card_page, "markets", {**data.view_data(), "_rev": state.stamp("markets")}, a)
+    settle(card_page, "markets")
+    assert state_render.clause("markets", dev=a).endswith(": at rest"), state_render.clause("markets", dev=a)
+    man = json.loads((ENGINE / "widgets/markets/manifest.json").read_text())
+    assert state_decl.type_of(man["state"]["report"]["range"])[1] == tuple(data.RANGES), "the periods drifted"
