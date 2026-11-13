@@ -55,6 +55,12 @@ async def run(uid: str) -> dict:
     if ex.refused:
         circuit.settle(row=uid, verdict="cannot", outcome=ex.refused[:300])
         return {"ok": False, "error": ex.refused}
+    from nucleo.turn import brief as _tb
+    from nucleo.workers import exit_slots         # a doubt on his channel is asked as WHICH, never as a blind yes (N1)
+    if ex.slots.get("channel") == "unknown" and (two := exit_slots.channel_choices(_tb.revived(art.get("reading")), payload)):
+        from i18n import langs
+        q = langs.current_language().send_channel_which.format(his=two[0].capitalize(), other=two[1].capitalize())
+        return {"ok": False, "asked": _question(uid, art, "channel", "channel", q, two), "row": uid}
     if ex.question:
         from nucleo import consent
         ask_id = _question(uid, art, "consent", "", ex.question, consent=consent.ASK_CONSENT)

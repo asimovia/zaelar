@@ -204,14 +204,14 @@ def from_verdict(wid: str, act: str, said: str, model_text: str, *, reading=None
 
 
 def by_verdict(brief, *, said: str, model_text: str, escalate_req: dict, worker_acted: dict, replacing: bool = False,
-               emit=None, on_missing: str = "ask", asked_line: str = "") -> tuple[str, str]:
+               emit=None, on_missing: str = "ask", asked_line: str = "", floor: float | None = None) -> tuple[str, str]:
     """THE reading of the turn's close and of its escalation: the send the brief identified becomes a send task unless
     the turn already retained one (the model called the door), addressed a live worker (his answer or words reached
     it, and nothing replaces it), or the brief names no send. `(uid, how)` as `from_verdict`, or ("", "")."""
     try:
         if (escalate_req or {}).get("send_task") or ((worker_acted or {}).get("v") and not replacing):
             return "", ""
-        wid, act = identified(brief)
+        wid, act = identified(brief, floor)
         if not wid:
             return "", ""
         from nucleo.turn import brief as _tb

@@ -268,3 +268,36 @@ def test_a_new_order_for_the_same_act_replaces_the_row_that_waited(world, lang, 
     assert ts.task_get(first)["state"] == "cancelled", "the row that waited is replaced, never a second task beside it"
     assert [r["id"] for r in _rows() if r["state"] in ("waiting", "running", "done")] == [second]
     assert any(str(e["label"]).startswith("🔁 send task") and e.get("superseded") == [first] for e in world["events"])
+
+
+@pytest.mark.parametrize("answer, channel, choice", [("sí", "whatsapp", None), ("por telegram", "telegram", 1),
+                                                     ("whatsapp", "whatsapp", 0)])
+def test_a_doubt_on_his_channel_is_asked_which_and_his_answer_sends_once(world, monkeypatch, answer, channel, choice):
+    """V2-893 L3 (audit L3b N1): the call carries telegram, his reading says whatsapp at 0.7 — the exit asks WHICH channel,
+    naming both, and his answer («sí» to the one he said, or the channel he names) sends ONCE by it; it never asks again."""
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "es")
+    w = WORDS["es"]
+    _say(w["full"])
+    reading = {"result": {"message_channel": {"choice": "whatsapp", "confidence": 0.7}}, "open_ids": [WID],
+               "judged": w["full"]}
+    uid = send_task.commission(WID, ACT, {"contact": "Raquel", "text": w["text"], "channel": "telegram"}, w["full"],
+                               reading=reading)
+    asks = _asks(world)
+    assert world["sent"] == [] and len(asks) == 1, "a doubt on the channel left without asking"
+    assert "Whatsapp" in asks[0]["text"] and "Telegram" in asks[0]["text"], asks[0]["text"]
+    entry = asker.artefact(uid)
+    _say(answer)
+    assert send_task_answer.answered(uid, entry, answer, choice)["ok"]
+    assert len(world["sent"]) == 1 and world["sent"][0]["payload"]["channel"] == channel, world["sent"]
+    assert len(_asks(world)) == 1, "his answer was asked again"
+
+
+def test_a_worker_channel_written_as_platform_that_matches_his_reading_asks_nothing(world, monkeypatch):
+    """Audit L3b N2: `platform: whatsapp` with his reading `whatsapp` is HIS channel, never a doubt."""
+    from nucleo.turn import brief as tb
+    from nucleo.workers import exit_slots
+    turn = tb.revived({"result": {"message_channel": {"choice": "whatsapp", "confidence": 0.7}}, "judged": "x"})
+    out = exit_slots.Reading({"contact": "Raquel", "platform": "whatsapp"})
+    ctx = {"row_call": False, "wid": WID, "act": ACT, "turn": turn, "emit": lambda *a: None, "tainted": False, "said": "x"}
+    exit_slots._reading(ctx, out, "channel", "channel")
+    assert out.sources["channel"] == "reading", out.sources
