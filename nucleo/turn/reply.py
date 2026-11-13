@@ -233,8 +233,8 @@ def owed(outcomes: list[Outcome], said: str, prior: str = "") -> list[tuple[Outc
     for o in outcomes:
         if reply_news.silent(o, outcomes, said, prior):
             continue
-        value = _value(o.verdict)
-        if value in ALWAYS_SAID or (value == V.MET.name and (o.said or o.object and not _already_said(o, said))):
+        value, news = _value(o.verdict), o.object and not _already_said(o, said)   # «awaiting»: asked, by its object (A6)
+        if value in ALWAYS_SAID or value == V.MET.name and (o.said or news) or o.reason == "awaiting" and news:
             text = line(o)
             if text and text not in (t for _o, t in lines):
                 lines.append((o, text))
@@ -296,4 +296,4 @@ async def after_acts(tasks, said: str, send, speech, timeout: float = WAIT_S, *,
                 + await _receipts.player(said) + await _receipts.blocked_channel()
                 + await _acts_asked.owed(tasks)    # V2-854 F4: several asked, one done — the rest is said undone
                 + _unserved.outcomes(tasks, model_calls, said=said, quiet=quiet, held=held))   # a claim nobody ran
-    return speak(outcomes, said, send, speech, prior) if outcomes else said
+    return speak(_receipts.unconfirmed(outcomes, _trace()), said, send, speech, prior) if outcomes else said

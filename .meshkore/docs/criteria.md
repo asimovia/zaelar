@@ -231,8 +231,8 @@ below is the first kind, or it names the mechanism that replaced the second.
   its values normalised as the row keeps them — and `nucleo/circuit/spec.render` reads it (`circuit/card_call.py`). — since 2026-11-11
   (V2-886 fila 5) · nodes 2.1695 · `nucleo/circuit/spec.py`, `widgets/agenda/spec_call.py`. Where the app declares
   `state`, a clause names `report.<field>` and is read from what its surface REPORTS on the screen it lives on, never
-  from the order (`nucleo/circuit/reported.py`): a field the surface has not acked WAITS (the op's ending and the bare
-  «done» leave it); nothing acked within `PENDING_S`, or no surface at all, settles `unverifiable` with the reason
+  from the order (`nucleo/circuit/reported.py`): a field the surface has not acked WAITS (the op's ending leaves it, and
+  the mouth names it as asked — «On it: «title»», a bare ack «asked» — never «Done», `reply_receipts.unconfirmed`); nothing acked within `PENDING_S`, or no surface at all, settles `unverifiable` with the reason
   `no_ack` — asked, never done nor failed, no spoken correction; an acked contrary report is unmet only at
   `INLINE_GRACE_S`, and not corrected again when the app's own late tell said it. — since 2026-11-13 (V2-884 1b, A6) ·
   nodes 4.411, 4.520.
