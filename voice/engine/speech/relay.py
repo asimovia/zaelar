@@ -6,7 +6,10 @@ Child metrics keep their plugin `label`, so each one is billed to the plugin tha
 """
 from __future__ import annotations
 
+from loguru import logger
+
 _STATE: dict[str, dict] = {}
+_UNKNOWN: set[str] = set()
 
 
 def track(family: str, pairs) -> None:
@@ -28,13 +31,41 @@ def track(family: str, pairs) -> None:
                else st["cause"].__setitem__(_n, _describe(err)))
 
 
-def note(family: str, inst, err) -> None:
+def note(family: str, inst, err, *, cut: bool = False) -> None:
     """An exception the adapter caught from `inst` (P1-2): a raw one (a refused socket, a 402 at the handshake) never
-    reaches the plugin's `error` event. Kept only when the event left nothing more precise for this episode."""
+    reaches the plugin's `error` event. Kept only when the event left nothing more precise for this episode. `cut`:
+    it had already spoken part of the sentence, which LiveKit does not redo (the stand-in starts at the next one)."""
     st = _STATE.get(family) or {}
     name = st.get("insts", {}).get(id(inst))
     if name and not st["cause"].get(name):
         st["cause"][name] = _describe(err)
+    if name and cut:
+        st.setdefault("cut", set()).add(name)
+
+
+_WORDS = {"stt": ("🙉", "👂", "hearing", "hear"), "tts": ("🔇", "🔊", "speaking", "speak")}
+
+
+def switched(family: str, names: list, i: int, available: bool, up: list, note) -> None:
+    """The one door for both families' availability events (`names` and `up` in the adapter's order): who serves now,
+    and the alert — with the cause, the sentence it cut, or that nothing is left."""
+    down_icon, back_icon, serving, verb = _WORDS[family]
+    if available:
+        if i == 0:
+            set_active(family, names[0])
+            take_cause(family, names[0])
+            note(f"{back_icon} {family.upper()} «{names[0]}» is back", provider=names[0])
+        return
+    cause = take_cause(family, names[i]) or "no error reported"
+    cut = names[i] in (_STATE.get(family) or {}).get("cut", ())
+    (_STATE.get(family) or {}).get("cut", set()).discard(names[i])
+    nxt = next((names[j] for j, ok in enumerate(up) if ok and j != i), "")
+    if nxt and active(family, names[0]) == names[i]:
+        set_active(family, nxt)
+    tail = f"{serving} with «{nxt}»" if nxt else f"nothing left that can {verb}"
+    note(f"{down_icon} {family.upper()} «{names[i]}» failed ({cause}) — {tail}"
+         + (" from the next sentence; this one was cut" if cut else ""), provider=names[i], stand_in=nxt, cause=cause,
+         **({"truncated": True} if cut else {}), **({} if nxt else {"none_left": True}))
 
 
 def name_of(family: str, inst) -> str:
@@ -72,7 +103,11 @@ def provider_for(family: str, metric, default: str) -> str:
     if isinstance(named := getattr(metric, "provider", None), str) and named:
         return named
     st = _STATE.get(family) or {}
-    return st.get("labels", {}).get(str(getattr(metric, "label", "") or "")) or st.get("active") or default
+    label = str(getattr(metric, "label", "") or "")
+    if st and label and label not in st["labels"] and label not in _UNKNOWN:
+        _UNKNOWN.add(label)
+        logger.debug(f"relay: a {family} metric from an unknown plugin «{label}» — billed to the one serving")
+    return st.get("labels", {}).get(label) or st.get("active") or default
 
 
 def forget(family: str) -> None:

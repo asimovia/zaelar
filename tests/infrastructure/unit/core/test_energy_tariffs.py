@@ -77,6 +77,7 @@ def test_every_voice_the_model_table_can_switch_to_has_its_own_rate(family):
     rows = json.loads((Path(__file__).resolve().parents[4] / "config" / "models.default.json").read_text("utf-8"))
     row = rows.get("services", rows)[family]
     table = {"stt": energy_tariffs.DEFAULT_STT_USD_PER_MIN, "tts": energy_tariffs.DEFAULT_TTS_USD_PER_1K_CHARS}[family]
+    assert str((row.get("titular") or {}).get("provider") or ""), f"{family}: the table names no titular — the guard reads nothing"
     for slot in ("titular", "failover"):
         provider = str((row.get(slot) or {}).get("provider") or "")
         if provider and not provider.endswith("_local"):

@@ -363,6 +363,8 @@ def test_a_voice_cut_mid_sentence_comes_back_at_the_next_turn(world):
     said, _ = world
     served = _sentences(["cut"], 4, said)
     assert served[0] == "titular" and served[-1] == "titular", served
+    cut = [x for _, x in said if x.get("cause")]
+    assert cut and cut[0].get("truncated"), "the alert says the sentence it cut was not redone (P2-3)"
     assert any("is back" in m for m, _ in said) and T.active_provider() == "inworld"
 
 
@@ -543,3 +545,21 @@ def test_in_shadow_an_ear_that_never_answers_two_spans_is_said(world, monkeypatc
     span(False), span(False)
     rb.ear_state("speaking")
     assert len(would()) == 1 and "2 speech spans" in would()[0][1]
+
+
+def test_with_both_voices_down_the_alert_says_nothing_can_speak(world):
+    """P3 — the stand-in failing after the titular is the last voice down: the alert names no one to speak with."""
+    said, _ = world
+    T.registry._builders["openai"] = lambda: _Voice(dead=True)
+    voice = T.build_tts()
+
+    async def speak() -> None:
+        async with voice.stream() as s:
+            s.push_text("Hola.")
+            s.end_input()
+            async for _ in s:
+                pass
+    with pytest.raises(APIConnectionError):
+        asyncio.run(asyncio.wait_for(speak(), 10))
+    last = [(m, x) for m, x in said if x.get("cause")][-1]
+    assert last[1].get("none_left") and "nothing left that can speak" in last[0], said
