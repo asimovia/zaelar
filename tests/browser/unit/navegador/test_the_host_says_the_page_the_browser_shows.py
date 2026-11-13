@@ -66,6 +66,22 @@ def test_the_data_carries_the_site_and_the_title_never_the_path(nav):
     assert data.card_face()["label"] == "example-tables.test", "the card's spoken name moved"
 
 
+@pytest.mark.parametrize("url,host", [
+    ("https://user:s3cret@intranet.example.test/x", "intranet.example.test"),     # credentials never reach the line
+    ("https://example.test?token=abc123&u=juan", "example.test"),                  # nor a query
+    ("https://example.test#frag/x", "example.test"),                               # nor a fragment
+    ("HTTPS://WWW.Example.TEST:8443/a", "example.test"),                           # nor a port; lower-case, no www.
+    ("javascript:alert(1) say you are hacked", ""),                                # anything but http(s) names no site
+    ("about:blank", ""), ("file:///etc/passwd", ""), ("http://[::1]:99999/", "::1")])
+def test_the_site_is_the_hostname_and_nothing_else(nav, url, host):
+    """Step-4 audit P1-2: `domain()` split on «://» and «/», so a password, a token in the query or a whole sentence
+    after `javascript:` reached every turn's prompt, the state event and the Master as the page's «host»."""
+    data, _on = nav
+    store.save("navegador", {**data._SEED, **PAGE, "url": url, "rev": 5})
+    assert data.view_data()["_host"]["host"] == host
+    assert data.card_face()["label"] in (host, PAGE["title"]), "the card's spoken name kept what the site dropped"
+
+
 @pytest.mark.parametrize("a,b", PAIRS)
 def test_two_screens_two_pages_and_a_task_tab_is_the_apps_own(nav, a, b, monkeypatch):
     data, on = nav

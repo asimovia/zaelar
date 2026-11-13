@@ -202,8 +202,14 @@ def card_face(instance: str = "") -> dict:
 
 
 def domain(url) -> str:
-    """The site a URL is on (no `www.`); with the title, a HOST fact (`_host`, V2-884 C7) the card never writes."""
-    host = str(url or "").strip().split("://", 1)[-1].split("/", 1)[0].strip()
+    """The site a URL is on — the hostname only (no user, password, port, query or fragment; lower-case, no `www.`),
+    "" for anything but http(s). With the title, a HOST fact (`_host`, V2-884 C7) the card never writes."""
+    from urllib.parse import urlsplit
+    try:
+        u = urlsplit(str(url or "").strip())
+        host = (u.hostname or "") if u.scheme.lower() in ("http", "https") else ""
+    except ValueError:                       # a malformed address (a bad port, a bracket) names no site
+        host = ""
     return host[4:] if host.startswith("www.") else host
 
 
