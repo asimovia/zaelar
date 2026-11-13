@@ -177,16 +177,15 @@ def _verify_save(memory, step: dict) -> tuple[bool, str]:
 def _brain_view(q: str) -> tuple[str, bool]:
     """Reconstruye LO QUE VERÍA EL FLASHBRAIN para el turno `q` (fidelidad al camino real de lectura, V2-013):
     bloque cacheado (ESTADO + perfil durable salient + CORTO entero, `memory_cache._compose`) + recall semántico
-    SOLO si el gate `needs_recall` dispara (`compose_recall`). Es exactamente lo que el cerebro tiene en el prompt
+    (`compose_recall`): since V2-903 no word table gates it — the recall starts beside the brief on every turn. Es exactamente lo que el cerebro tiene en el prompt
     — sin LLM en la lectura. Devuelve (texto_normalizado, recall_disparado)."""
     from nucleo.flash import memory_cache as _mc
-    from nucleo.flash import recall_heuristics as _rh
     from nucleo.turn.prompt import recall as _p
     try:
         block, _op = _mc._compose()
     except Exception:
         block = ""
-    fired = _rh.needs_recall(q)
+    fired = bool((q or "").strip())
     recall = ""
     if fired:
         try:
@@ -972,7 +971,7 @@ def emit_catalog() -> str:
         f"(`python -m tests.memory.e2e.bot.runner --corpus {_ACTIVE} --catalog`). NO editar a mano.",
         "> Cada **save/extract** dice qué dice el operador y qué debe extraerse, descartarse o actualizarse. Cada **query**",
         "> simula una pregunta como la haría el FlashBrain y qué datos debe devolver la lectura DIRECTA (sin LLM):",
-        "> ESTADO + perfil durable + CORTO (cacheado) y, si el gate `needs_recall` dispara, el recall del LARGO.",
+        "> ESTADO + perfil durable + CORTO (cacheado) y el recall del LARGO (sin compuerta de palabras desde V2-903).",
         "",
         f"**Total de casos definidos:** {len(CASES)} (objetivo 1000, en tandas de 10).",
         "",

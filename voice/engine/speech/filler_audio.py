@@ -349,14 +349,44 @@ async def settle_brief(brief, max_s: float = 0.35) -> bool:
     return ev.is_set()
 
 
-async def decide_and_arm(brain, text: str = "", messages: list | None = None, brief=None, typed: bool = False) -> str:
-    """The pipeline's one call (V2-863): wait for the turn's brief, bounded (`settle_brief`), then decide the cover
-    (`arm`). Fired at the eager end of turn the brief has usually landed; fired at admission it lands ~250 ms later.
-    A TYPED turn waits for nothing: it gets no cover (`arm`)."""
-    if typed:
-        return arm(brain, text, messages=messages, brief=brief, typed=True)
-    await settle_brief(brief)
-    return arm(brain, text, messages=messages, brief=brief)
+def cover_the_turn(brain, text: str = "", messages: list | None = None, brief=None, typed: bool = False,
+                   still_silent=None) -> str:
+    """The pipeline's one call, and it never waits (V2-903): the model call opens right after it. A brief that has
+    landed (fired at the eager end of turn, the usual case) decides the cover NOW (`arm`), with its phrase promised to
+    the model. A brief still in flight no longer holds the model call back (it cost up to 350 ms): the model is told
+    a cover MAY sound (`MAY_COVER_NOTE`, no phrase), and the cover is decided the moment the brief lands, bounded by
+    `settle_brief`, only while the turn is `still_silent()`. A typed turn, a half sentence, a fast engine and a
+    stranded cover arm nothing, as before. Returns the phrase armed now, or ""."""
+    ev = brief.get("event") if isinstance(brief, dict) else None
+    if typed or ev is None or ev.is_set() or _dangling_fragment(text) or answering_fast() or stranded():
+        return arm(brain, text, messages=messages, brief=brief, typed=typed)
+    global _arm
+    _arm = None
+    if messages and isinstance(messages[-1], dict) and messages[-1].get("role") == "user":
+        messages[-1] = {**messages[-1], "content": str(messages[-1].get("content") or "") + MAY_COVER_NOTE}
+
+    async def _when_the_brief_lands() -> None:
+        await settle_brief(brief)
+        if still_silent is None or still_silent():
+            arm(brain, text, brief=brief)
+
+    try:
+        _ARMING.add(t := asyncio.get_running_loop().create_task(_when_the_brief_lands(), name="filler-arm"))
+        t.add_done_callback(_ARMING.discard)
+    except RuntimeError as e:             # no loop (a sync caller): no cover rather than a wait
+        from loguru import logger
+        logger.debug(f"filler: the late cover has no loop to wait on — {e!r}")
+    return ""
+
+
+#: The arms decided after the model call opened — referenced until they finish (a bare task can be collected).
+_ARMING: set = set()
+#: What the model is told when a cover may sound and its phrase is not known yet (V2-903). No phrase to continue:
+#: it must not open with a wait or an acknowledgement of its own, and stand alone. A cover that sounded and is echoed
+#: anyway is cut by `EchoCut` (V2-864).
+MAY_COVER_NOTE = ("\n\n[SISTEMA] Antes de tu respuesta puede sonar ya en tu voz una breve espera. Tu primera frase "
+                  "NUNCA empieza por otra espera ni por un acuse («dame un momento», «déjame mirar», «vale», "
+                  "«claro»): empieza por lo que tienes que decir, y se entiende igual sola.")
 
 
 def arm(brain, text: str = "", messages: list | None = None, brief=None, typed: bool = False) -> str:
