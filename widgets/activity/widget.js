@@ -72,7 +72,7 @@ async function stopSensors() {
 // Started ONLY for an activity he began: his tap here, or — in the phone app — his request, which is the app
 // he carries with him. A desktop browser never starts reading because a request was made elsewhere.
 async function ensureSensors(d, ctx) {
-  if (S.session || S.starting) return;
+  if (S.session || S.starting || S.failedFor === d) return;   // a failure is not retried for the same data
   if (d.owner && d.owner !== S.owner) return;
   S.starting = true;
   try {
@@ -85,9 +85,9 @@ async function ensureSensors(d, ctx) {
     const sensors = ["location", "heart_rate", "altitude", "motion_activity"].filter(has);
     const r = await dev.activity({ sensors: sensors.length ? sensors : ["location"], label: d.label || "", kind: d.kind },
       (sample) => S.queue.push(sample));
-    if (r.error) { S.error = r.error; return; }
-    S.session = r;
-    S.flush = setInterval(flush, 5000);
+    if (r.error) { S.error = r.error; S.failedFor = d; } else { S.session = r; S.flush = setInterval(flush, 5000); }
+    S.starting = false;
+    if (S.repaint) S.repaint();                       // the session started or failed: the card says so now
   } finally { S.starting = false; S.tapped = false; }
 }
 
@@ -162,6 +162,8 @@ export function render(el, data, ctx) {
     return;
   }
 
+  S.repaint = () => { if (el.isConnected && S.drawn === d) render(el, d, ctx); };
+  S.drawn = d;
   ensureSensors(d, ctx);
   const hr = txt("div", "ac-hr");
   hr.appendChild(txt("b", null, d.heart_rate != null ? String(d.heart_rate) : dash));
@@ -176,10 +178,11 @@ export function render(el, data, ctx) {
   grid.appendChild(fig(d.climb_m ? d.climb_m + " m" : dash, tt("climb", null, "Climb")));
   el.appendChild(grid);
   el.appendChild(routeSvg(d.route || []));
-  const where = d.owner && d.owner === S.owner
-    ? (S.session && S.session.background ? tt("here_locked", null, "Recording on this phone — it keeps going with the screen locked.")
+  // «recording here» only with a live sensor session: a claim with no session reads nothing (V2-884 step-5 audit P2-2)
+  const where = d.owner && d.owner === S.owner && S.session
+    ? (S.session.background ? tt("here_locked", null, "Recording on this phone — it keeps going with the screen locked.")
       : tt("here", null, "Recording on this screen — keep it open."))
-    : d.owner ? tt("elsewhere", null, "Recording on your other screen.")
+    : d.owner && d.owner !== S.owner ? tt("elsewhere", null, "Recording on your other screen.")
       : S.error ? tt("no_sensors", { why: S.error }, "This screen cannot read the sensors ({why}).")
         : tt("waiting", null, "Waiting for the screen that records it.");
   el.appendChild(txt("div", "ac-note", where));
@@ -195,10 +198,12 @@ export function render(el, data, ctx) {
 }
 
 // V2-884 — what the card SHOWS, said through the host's one door after every paint with the revision it applied:
-// whether an activity runs, which, and whether THIS screen is the one reading the sensors.
+// whether an activity runs, which, and WHERE it is recorded as the card paints it: here (a live sensor session on this
+// screen), elsewhere (another screen claimed it), none (nobody reads the sensors yet, or this screen cannot).
 function reportShown(ctx, d) {
   if (!ctx || typeof ctx.state !== "function") return;
   const on = d.status === "running", kind = ["cycling", "running", "walking", "driving"].includes(d.kind) ? d.kind : "";
-  const shown = { phase: on ? "running" : "idle", kind: on && kind ? kind : "none", recording: !!(on && d.owner && d.owner === S.owner) };
-  try { Promise.resolve(ctx.state(shown, { applied: true })).catch(() => {}); } catch (_) {}
+  const recorder = !on ? "none" : d.owner && d.owner === S.owner && S.session ? "here" : d.owner && d.owner !== S.owner ? "elsewhere" : "none";
+  try { Promise.resolve(ctx.state({ phase: on ? "running" : "idle", kind: on && kind ? kind : "none", recorder },
+    { applied: true, of: d })).catch(() => {}); } catch (_) {}
 }
