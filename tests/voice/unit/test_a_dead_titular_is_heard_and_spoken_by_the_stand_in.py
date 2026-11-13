@@ -563,3 +563,49 @@ def test_with_both_voices_down_the_alert_says_nothing_can_speak(world):
         asyncio.run(asyncio.wait_for(speak(), 10))
     last = [(m, x) for m, x in said if x.get("cause")][-1]
     assert last[1].get("none_left") and "nothing left that can speak" in last[0], said
+
+
+# ── the shadow never harms (P2-A) ─────────────────────────────────────────────────────────────────────────────────
+def _broken_events() -> list:
+    return [e for e in EMITTED if e[0] == "provider" and e[2].get("extra", {}).get("bound_broken")]
+
+
+@pytest.mark.parametrize("how", ["watcher_raises", "declared_null"])
+def test_a_broken_watcher_never_takes_the_titular_down(world, monkeypatch, how):
+    """Measured before: `_late` raising in SHADOW marked the titular down and the stand-in spoke. A watcher that fails
+    is said once and stops watching that stream; the titular speaks on."""
+    said, _ = world
+    rb = _bound(monkeypatch, mode="shadow", tts_first_byte_s=0.3)
+    monkeypatch.setattr(rb, "_BROKEN", set())
+    if how == "watcher_raises":
+        def _boom(*a, **k):
+            raise AttributeError("'_FallbackStream' object has no attribute '_input_ch'")
+        monkeypatch.setattr(rb, "_late", _boom)
+    else:
+        monkeypatch.setattr(rb, "policy", lambda: rb.Bound(mode="shadow", tts_first_byte_s=None))
+    voice = T._with_failover([("inworld", _slow_titular(0.5)), ("openai", _StandIn())])
+
+    async def speak() -> int:
+        got = 0
+        async with voice.stream() as s:
+            s.push_text("Una frase entera. ")
+            s.end_input()
+            async for ev in s:
+                got += ev.frame.data.tobytes().count(_T)
+        return got
+    assert asyncio.run(asyncio.wait_for(speak(), 10)) > 0 and not _alerts(said), said
+    assert len(_broken_events()) == 1 and T.active_provider() == "inworld"
+
+
+def test_a_broken_ear_watcher_never_breaks_the_sessions_handler(world, monkeypatch):
+    rb = _bound(monkeypatch)
+    monkeypatch.setattr(rb, "_BROKEN", set())
+
+    def _boom():
+        raise OSError("resources file vanished")
+    monkeypatch.setattr(rb, "policy", _boom)
+    monkeypatch.setattr(rb, "_EAR", rb._Ear(pending=[(0.0, 0.1)]))
+    rb.ear_state("speaking")
+    rb.ear_state("listening")
+    rb.ear_heard()
+    assert len(_broken_events()) == 2, "once per place, never raised into the handler"
