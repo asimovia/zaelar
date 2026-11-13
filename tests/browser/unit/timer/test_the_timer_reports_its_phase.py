@@ -16,7 +16,7 @@ import pytest
 
 from voice import screens
 from widgets import state, state_decl, state_render, store
-from tests.browser.unit.widgets.state_card import card_page, deliver, mount, posts, settle  # noqa: F401
+from tests.browser.unit.widgets.state_card import card_page, deliver, mount, posts, push, settle  # noqa: F401
 
 ENGINE = pathlib.Path(__file__).resolve().parents[4]
 PAIRS = [("desktop:aaa", "mobile:bbb"), ("desktop:aaa", "desktop:bbb")]
@@ -86,3 +86,24 @@ def test_the_rendered_countdown_says_finished_when_it_reaches_zero(timer, card_p
     after = state_render.clause("timer", dev=a)                       # the dust settles (step-5 audit P1-1)
     settle(card_page, "timer")
     assert state_render.clause("timer", dev=a) == after, "a previous paint spoke after the last one"
+
+
+def test_a_voice_pause_or_cancel_lands_on_the_card(timer, card_page):
+    """Step-5 audit P3 (a real card bug the report exposed): a voice `pause` reached the screen as `running: false` and the
+    card restored `running: true` from its own localStorage copy and kept counting — the line said `phase=running`,
+    which was TRUE of the screen. The store is the truth: the pushed order wins."""
+    data, on = timer
+    a, b = PAIRS[0]
+    on(a, b)
+    mount(card_page, "timer", {**data.view_data(), "_rev": state.stamp("timer")}, a)
+    settle(card_page, "timer")
+    assert state_render.clause("timer", dev=a).endswith(': phase=running, label="pasta"')
+    data.apply_action("pause", {})
+    push(card_page, {**data.view_data(), "_rev": state.stamp("timer")})
+    settle(card_page, "timer")
+    assert state_render.clause("timer", dev=a).endswith(': phase=paused, label="pasta"'), state_render.clause("timer", dev=a)
+    data.apply_action("reset", {})
+    push(card_page, {**data.view_data(), "_rev": state.stamp("timer")})
+    settle(card_page, "timer")
+    assert state_render.clause("timer", dev=a).endswith(': label="pasta"') or \
+        state_render.clause("timer", dev=a).endswith(": at rest"), state_render.clause("timer", dev=a)
