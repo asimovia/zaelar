@@ -62,6 +62,56 @@ def svc():
         return None
 
 
+def _push(s, m: dict, cal: str) -> tuple[dict | None, str]:
+    """Create `m` on Google: (the row to store, "") when it took it, (None, why) when it refused."""
+    if isinstance(m.get("repeat"), dict):
+        # V2-769 — a SERIES goes up as ONE recurring event (RRULE), and stays OUR row: Google hands back its
+        # instances one by one (`singleEvents`), and the sync drops the ones whose master is `googleSeriesId` here —
+        # otherwise his Tuesdays would come back as forty loose rows.
+        from . import recur
+        res = s.create_event({**m, "rrule": recur.to_rrule(m["repeat"])}, cal)
+        if not res.get("ok"):
+            return None, f"refused: {str(res.get('error') or '')[:160]}"
+        m["googleSeriesId"] = res["meeting"].get("googleId") or ""
+        m["googleCalendarId"] = res["meeting"].get("googleCalendarId") or cal
+        m["googleReminders"] = res["meeting"].get("googleReminders") or ""
+        return m, ""
+    res = s.create_event(m, cal)
+    if not res.get("ok"):
+        return None, f"refused: {str(res.get('error') or '')[:160]}"
+    enriched = res["meeting"]
+    # V2-722 — `created` TRAVELS WITH THE ROW, like the reminder does: it is the only thing that tells a row this
+    # engine just wrote from one that has been in his calendar for weeks, and Google's answer does not carry it.
+    # Measured 2026-09-18: 0 of his 71 meetings had one, so `errands/verify.meeting_exists` could only answer False.
+    for k in ("reminder_id", "remindAt", "remindAsked", "created"):
+        if k in m:
+            enriched[k] = m[k]
+    return enriched, ""
+
+
+def repush(s, db: dict, limit: int = 5) -> bool:
+    """V2-880 — a row Google refused while connected stays LOCAL, marked `mirrorPending`, and the connect-time
+    migration never runs again: it diverged for good. Each sync pass offers the FUTURE ones to Google again, a few
+    at a time; a past one is history and stays local. True when a row went up."""
+    today, rows, moved = _time.strftime("%Y-%m-%d"), db.get("meetings", []), False
+    cal = (db.get("google") or {}).get("defaultCalendarId") or ""
+    for i, m in enumerate(rows):
+        if limit <= 0:
+            break
+        if not m.get("mirrorPending") or str(m.get("date") or "") < today:
+            continue
+        limit -= 1
+        try:
+            pushed, _why = _push(s, dict(m), m.get("googleCalendarId") or cal)
+        except Exception as e:  # noqa: BLE001 — it stays pending for the next pass
+            logger.debug(f"agenda: re-push of {m.get('title')!r} failed: {e!r}")
+            continue
+        if pushed is not None:
+            pushed.pop("mirrorPending", None)
+            rows[i], moved = pushed, True
+    return moved
+
+
 def commit_meeting(db: dict, m: dict, status: dict | None = None, calendar_id: str = "") -> dict:
     """Append a NEW meeting to `db['meetings']`, creating it on Google Calendar FIRST when connected — the
     operator's own acceptance test is "I dictate it, and within seconds it's in the real Google Calendar", so
@@ -93,46 +143,18 @@ def commit_meeting(db: dict, m: dict, status: dict | None = None, calendar_id: s
         try:
             if s.connected():
                 st["reason"] = "error: no answer"
-                default_cal = calendar_id or (db.get("google") or {}).get("defaultCalendarId") or ""
-                if isinstance(m.get("repeat"), dict):
-                    # V2-769 — a SERIES goes up as ONE recurring event (RRULE), and stays OUR row: Google hands
-                    # back its instances one by one (`singleEvents`), and the sync drops the ones whose master
-                    # is `googleSeriesId` here — otherwise his Tuesdays would come back as forty loose rows.
-                    from . import recur
-                    res = s.create_event({**m, "rrule": recur.to_rrule(m["repeat"])}, default_cal)
-                    if res.get("ok"):
-                        m["googleSeriesId"] = res["meeting"].get("googleId") or ""
-                        m["googleCalendarId"] = res["meeting"].get("googleCalendarId") or default_cal
-                        m["googleReminders"] = res["meeting"].get("googleReminders") or ""
-                        st.update(mirrored=True, reason="")
-                    else:
-                        st["reason"] = f"refused: {str(res.get('error') or '')[:160]}"
-                    db.setdefault("meetings", []).append(m)
-                    return m
-                res = s.create_event(m, default_cal)
-                if res.get("ok"):
-                    enriched = res["meeting"]
-                    # V2-722 — `created` TRAVELS WITH THE ROW, like the reminder does. The stamp above is
-                    # the only thing that distinguishes a row this engine just wrote from one that has been
-                    # in his calendar for weeks, and Google's answer does not carry it: this loop copied
-                    # two fields and dropped it, so for a CONNECTED operator — which is the only kind that
-                    # reaches this branch — the V2-692 stamp never survived the write. Measured 2026-09-18:
-                    # 0 of his 71 meetings had one, so `errands/verify.meeting_exists` could only ever
-                    # answer False and no errand could close by being ACHIEVED — every one of them ran to
-                    # its deadline and died «abandoned» a day later. Two were still showing as running on
-                    # his process bar twelve hours after the meeting they announced had happened.
-                    for k in ("reminder_id", "remindAt", "remindAsked", "created"):
-                        if k in m:
-                            enriched[k] = m[k]
-                    m = enriched
+                pushed, why = _push(s, m, calendar_id or (db.get("google") or {}).get("defaultCalendarId") or "")
+                if pushed is not None:
+                    m = pushed
                     st.update(mirrored=True, reason="")
                 else:
-                    st["reason"] = f"refused: {str(res.get('error') or '')[:160]}"
+                    st["reason"] = why
         except Exception as e:  # noqa: BLE001
             st["reason"] = f"error: {str(e)[:160]}"
+    if not st.get("mirrored") and st.get("reason") != "not_connected":
+        m["mirrorPending"] = True   # connected, and Google did not take it: the sync pass pushes it again (V2-880)
     db.setdefault("meetings", []).append(m)
     return m
-
 
 
 def patch_google(m: dict) -> None:
@@ -305,6 +327,8 @@ def tick(ctx) -> None:
         res = s.merge(db, pulled)
         if not res.get("ok"):
             return
+        if repush(s, db):                                  # what Google refused before, offered again (V2-880)
+            res["changed"] = True
         if res.get("new_ids"):
             # A freshly-synced Google event gets Zaelar's own SPOKEN reminder, same ~2h-before policy as a
             # locally-dictated appointment — Google's own notification is a different, silent channel.
