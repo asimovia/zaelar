@@ -493,6 +493,18 @@ def typed_line(text: str, within_s: float = 45.0, now: float | None = None) -> b
     return bool(line) and line in typed and was_typed(within_s, now)
 
 
+#: A TYPED line driven down the VOICE path (V2-903, the text harness's `voice_path`): admitted as typed — it is
+#: directed and complete — but answered as spoken: the cover is decided and the mouth keeps the voice window, so a
+#: text turn exercises what only the microphone used to (the early brief, the cover's wait, the word hold).
+import contextvars as _cv
+VOICE_DRILL: _cv.ContextVar = _cv.ContextVar("zaelar_voice_drill", default=False)
+
+
+def answered_as_typed(text: str) -> bool:
+    """Does this turn's REPLY behave as a typed one (no cover, no voice window)? A typed line, unless it is a drill."""
+    return typed_line(text) and not VOICE_DRILL.get()
+
+
 def was_typed(within_s: float = 45.0, now: float | None = None) -> bool:
     """Was the turn being handled right now a TYPED one? Time-bounded so a chat message from minutes ago
     never re-classifies a later spoken turn."""

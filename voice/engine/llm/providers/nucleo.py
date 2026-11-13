@@ -145,7 +145,10 @@ def _spawn(coro, label: str):
 
 @registry.register("nucleo")
 def build(model: str = "") -> llm.LLM:
-    return NucleoLLM()
+    brain = NucleoLLM()
+    from nucleo.turn import brief_turn as _bt
+    _bt.bind(brain)     # V2-903: the eager end of turn asks its brief with THIS session's state (`live_context`)
+    return brain
 
 
 class NucleoLLM(llm.LLM):

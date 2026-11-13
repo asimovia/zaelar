@@ -47,3 +47,11 @@ async def drive(brain, text: str) -> str:
     finally:
         proactive._TURN_SPEAKER.reset(token)
     return "".join(turn._said).strip()
+
+
+def take_cover() -> str:
+    """The cover a typed line run down the voice path armed (V2-903 harness), taken: no LiveKit node consumes it on this
+    channel, and left armed it would sound on the next spoken turn. "" when none."""
+    from voice.engine.speech import filler_audio as _fa
+    armed, _fa._arm = _fa._arm, None
+    return str(armed[3]) if armed else ""
