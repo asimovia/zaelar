@@ -30,7 +30,7 @@ function injectStyles(){
   /* V2-644 — the report reads like PAPER: a white page on the desk, whatever the theme. The page keeps the
      .hbd-sheet class so every content selector below still applies; colors inside are fixed light-scheme. */
   .hbd-focus{background:color-mix(in srgb,#F2CE6B 38%,transparent);border-radius:4px;box-shadow:0 0 0 4px color-mix(in srgb,#F2CE6B 38%,transparent)}
-  .hbd-scroll{flex:1 1 auto;min-height:0;overflow:auto;background:var(--hb-bg-soft,#eceef1);padding:16px 14px 22px}
+  .hbd-scroll{position:relative;flex:1 1 auto;min-height:0;overflow:auto;background:var(--hb-bg-soft,#eceef1);padding:16px 14px 22px}
   .hbd-sheet{max-width:760px;margin:0 auto;background:#fff;color:#111827;border-radius:6px;
              box-shadow:0 1px 3px rgba(15,23,42,.16),0 10px 30px rgba(15,23,42,.10);
              padding:30px 36px 40px;font-size:14px;line-height:1.66}
@@ -306,9 +306,10 @@ function reportShown(root, d, ctx){
   const say = (applied) => {
     const scroll = root.querySelector(".hbd-scroll"), mark = root.querySelector(".hbd-focus");
     const top = scroll ? scroll.scrollTop + 16 : 0;
-    const heads = scroll ? [...scroll.querySelectorAll("h1,h2,h3,h4")].filter(h => h.offsetTop <= top) : [];
-    const inView = mark && scroll && mark.offsetTop >= scroll.scrollTop - 4 && mark.offsetTop <= top + scroll.clientHeight;
-    const at = mark && (applied || inView) ? mark : heads.pop();       // the paint scrolls to the mark it just drew
+    const all = scroll ? [...scroll.querySelectorAll("h1,h2,h3,h4")] : [];
+    const above = all.filter(h => h.offsetTop <= top);              // the last heading above the top, else the first one
+    const head = above.pop() || all.find(h => scroll && h.offsetTop < scroll.scrollTop + scroll.clientHeight);
+    const at = mark && applied ? mark : head;          // the paint scrolls to the mark it drew; then his scroll speaks
     const title = root.querySelector(".hbd-blank, .hbd-making") ? "" : String(d.title || "").trim().slice(0, 60);
     try{ Promise.resolve(ctx.state({title, at: at ? String(at.textContent || "").trim().slice(0, 40) : ""},
       {of: d, ...(applied ? {applied: true} : {})})).catch(()=>{}); }catch(_){}
