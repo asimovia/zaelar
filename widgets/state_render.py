@@ -12,7 +12,8 @@ identifiers (the legend, `LEGEND`, sits in the cached part of the prompt):
     youtube: state unreported
 
 `at rest` only with a valid report; no valid report is `state unreported` — the brain can tell «not sounding» from «I
-don't know», and no order is rendered as a state.
+don't know», and no order is rendered as a state. Bounded: one line per app ≤ `CLAUSE_MAX` (at most `MAX_SURFACES`
+screens, this turn's first; fields cut before facts), all of them ≤ `TOTAL_MAX` (`lines`).
 """
 from __future__ import annotations
 
@@ -24,6 +25,8 @@ from widgets import state, state_decl as decl
 
 PENDING_S = 5.0
 CLAUSE_MAX = 160
+TOTAL_MAX = 700
+MAX_SURFACES = 2
 
 LEGEND = ("App state lines (`app@screen: …`) are each app's own REPORT of what it shows now, never what was ordered: "
           "`name` true · `!name` false · `name=?` unknown · `name=?ordered` asked, not confirmed yet · `at rest` "
@@ -44,30 +47,32 @@ def _open_on(app: str, dev: str) -> bool:
     return any(decl.base(w) == app for w in listed)
 
 
-def _field(spec, held, moved: dict, now: float):
+def _field(spec, held, moved: dict, now: float) -> tuple[str, object]:
+    """`("known", value)`, `("pending", None)` or `("unknown", None)` — the mark is never a value (a title «?»)."""
     if held is None:
-        return "?"
+        return "unknown", None
     value, ack = held
     key, _inv = decl.follows(spec)
     ch = moved.get(key) if key else None
     if ch and not (ack and ack[0] == ch[0] and ack[1] >= ch[1]):
-        return "?ordered" if now - ch[2] < PENDING_S else "?"
-    return value
+        return ("pending", None) if now - ch[2] < PENDING_S else ("unknown", None)
+    return "known", value
 
 
-def _facts(app: str, inst: str, st: dict, fields: dict) -> list[str]:
+def _facts(app: str, inst: str, st: dict, known: dict) -> list[str]:
     names = decl.facts_declared(st)
-    if not names or any(v in ("?", "?ordered") for v in fields.values()):
+    if not names or len(known) < len(decl.report_fields(st)):
         return []
     try:
         import importlib
         from widgets import store
         fn = getattr(importlib.import_module(f"widgets.{app}.data"), "facts", None)
-        if not callable(fn):
+        disk = state.disk_id(inst)
+        if not callable(fn) or not store.exists(disk):          # never a store it would have to create
             return []
-        data = store.load(inst, {})
+        data = store.load(disk, {})
         order = {n: decl.order_value(data, p) for n, p in (st.get("order") or {}).items()}
-        got = fn(order, dict(fields)) or {}
+        got = fn(order, dict(known)) or {}
         return [n for n in names if got.get(n) is True]
     except Exception as e:  # noqa: BLE001 — a fact it cannot derive is not said
         logger.debug(f"state_render: facts of {app} unreadable ({e!r})")
@@ -75,21 +80,27 @@ def _facts(app: str, inst: str, st: dict, fields: dict) -> list[str]:
 
 
 def read(app, instance=None, dev=None) -> dict:
-    """`{declared, surfaces: [{dev, visible, fields, facts}]}` — only the screens that count now."""
+    """`{declared, surfaces: [{dev, instance, visible, fields, pending, unknown, facts}]}` — only the screens that count
+    now; `fields` holds known values only, the marks are lists of names (plain JSON for a worker)."""
     from voice import screens
     app = decl.base(app)
     st = decl.of(app)
     spec = decl.report_fields(st)
     if not spec:
         return {"declared": False, "surfaces": []}
-    lives = screens.playing_on(app)
+    lives, here = screens.playing_on(app), screens.current()
     now, out = time.time(), []
     for inst, d, snap in state.snapshots(app, instance):
         if (lives and d != lives) or (dev and d != dev) or not _open_on(app, d):
             continue
         moved = state.changed(inst)
-        fields = {f: _field(s, snap["fields"].get(f), moved, now) for f, s in spec.items()}
-        out.append({"dev": d, "visible": snap["visible"], "fields": fields, "facts": _facts(app, inst, st, fields)})
+        marks = {f: _field(s, snap["fields"].get(f), moved, now) for f, s in spec.items()}
+        known = {f: v for f, (m, v) in marks.items() if m == "known"}
+        out.append({"dev": d, "instance": inst, "visible": snap["visible"], "fields": known,
+                    "pending": [f for f, (m, _v) in marks.items() if m == "pending"],
+                    "unknown": [f for f, (m, _v) in marks.items() if m == "unknown"],
+                    "facts": _facts(app, inst, st, known)})
+    out.sort(key=lambda s: s["dev"] != here)                   # this turn's screen first
     return {"declared": True, "surfaces": out}
 
 
@@ -102,23 +113,42 @@ def _quote(v) -> str:
     return '"' + decl.clean(v).replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
-def _bits(spec: dict, fields: dict) -> list[str]:
+def _bits(spec: dict, s: dict) -> list[str]:
     bits = []
-    for f, s in spec.items():
-        v, kind = fields[f], decl.type_of(s)[0]
-        if v in ("?", "?ordered"):
-            bits.append(f"{f}={v}")
-        elif isinstance(s, dict) and "rest" in s and v == s["rest"]:
+    for f, sp in spec.items():
+        kind = decl.type_of(sp)[0]
+        if f in s["pending"]:
+            bits.append(f"{f}=?ordered")
+        elif f in s["unknown"]:
+            bits.append(f"{f}=?")
+        elif isinstance(sp, dict) and "rest" in sp and s["fields"][f] == sp["rest"]:
             continue
         elif kind == "bool":
-            bits.append(f if v else f"!{f}")
+            bits.append(f if s["fields"][f] else f"!{f}")
         else:
+            v = s["fields"][f]
             bits.append(f"{f}={_quote(v) if kind == 'text' else v}")
     return bits
 
 
+def _fit(head: str, bits: list[str], facts: list[str], room: int) -> str:
+    """One surface in `room` characters: fields cut first (marked «…»), then facts, then the head itself."""
+    cut = False
+    while True:
+        tail = f" · facts: {', '.join(facts)}" if facts else ""
+        line = f"{head}: {', '.join(bits + ['…'] * cut) or 'at rest'}{tail}"
+        if len(line) <= room:
+            return line
+        if bits:
+            bits, cut = bits[:-1], True
+        elif facts:
+            facts = facts[:-1]
+        else:
+            return line[:max(0, room - 1)] + "…"
+
+
 def clause(app, dev=None) -> str:
-    """The app's one state line for the prompt, "" when it declares no state. Facts are the last thing cut."""
+    """The app's one state line for the prompt, "" when it declares no state. ≤ `CLAUSE_MAX` whatever it holds."""
     from voice import screens
     app = decl.base(app)
     r = read(app, dev=dev)
@@ -126,15 +156,31 @@ def clause(app, dev=None) -> str:
         return ""
     if not r["surfaces"]:
         return f"{app}: state unreported"
-    spec, lines = decl.report_fields(decl.of(app)), []
-    for s in r["surfaces"]:
-        head = f"{app}@{screens.surface(s['dev']) or s['dev']}" + ("" if s["visible"] else "(hidden)")
-        tail = f" · facts: {', '.join(s['facts'])}" if s["facts"] else ""
-        bits, cut = _bits(spec, s["fields"]), False
-        while bits and len(f"{head}: {', '.join(bits + ['…'] * cut)}{tail}") > CLAUSE_MAX:
-            bits, cut = bits[:-1], True
-        lines.append(f"{head}: {', '.join(bits + ['…'] * cut) or 'at rest'}{tail}")
-    return "; ".join(lines)
+    spec, shown = decl.report_fields(decl.of(app)), r["surfaces"][:MAX_SURFACES]
+    more = len(r["surfaces"]) - len(shown)
+    extra = f"; +{more} more" if more else ""
+    room = (CLAUSE_MAX - len(extra) - 2 * (len(shown) - 1)) // len(shown)
+    parts = []
+    for s in shown:
+        inst = s["instance"] if s["instance"] != app else app
+        head = f"{inst}@{screens.surface(s['dev']) or s['dev']}" + ("" if s["visible"] else "(hidden)")
+        parts.append(_fit(head, _bits(spec, s), list(s["facts"]), room))
+    return "; ".join(parts) + extra
+
+
+def lines(apps) -> list[str]:
+    """The state lines of the open apps, in order, together ≤ `TOTAL_MAX` (what does not fit is counted, not cut)."""
+    out, used, left = [], 0, 0
+    for a in apps:
+        c = clause(a)
+        if not c:
+            continue
+        if used + len(c) + 3 > TOTAL_MAX:
+            left += 1
+            continue
+        out.append(f"- {c}")
+        used += len(c) + 3
+    return out + ([f"- (+{left} more apps not shown)"] if left else [])
 
 
 def any_declared(catalogue) -> bool:

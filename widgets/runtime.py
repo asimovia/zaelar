@@ -74,6 +74,7 @@ def invalidate() -> None:
     is visible IMMEDIATELY (same tick) without waiting for the next mtime-triggered reload."""
     _cache["sig"] = None
     _index["sig"] = None
+    __import__("widgets.state_decl", fromlist=["x"]).forget_cache()   # V2-884: a manifest's state is read again
 
 
 def _norm(s: str) -> str:

@@ -7,12 +7,20 @@ value; it only says what a value may be.
 """
 from __future__ import annotations
 
+import time
 import unicodedata
+
+from loguru import logger
 
 #: The longest text a report field may carry, and an id.
 TEXT_MAX = 60
 ID_MAX = 40
 _ID_CHARS = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.:-")
+#: A field, order, fact name or enum value: it reaches the prompt unquoted, so it is an identifier.
+_NAME_CHARS = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_")
+#: `store.save` asks every app whether it declares a state: answered from here for `_TTL` (and on `runtime.invalidate`).
+_TTL = 5.0
+_CACHE: dict[str, tuple] = {}
 
 
 def base(app) -> str:
@@ -21,9 +29,32 @@ def base(app) -> str:
 
 def of(app) -> dict:
     """The app's declared `state` block, {} when it declares none."""
+    a, now = base(app), time.monotonic()
+    hit = _CACHE.get(a)
+    if hit and now - hit[0] < _TTL:
+        return hit[1]
     from widgets import runtime
-    st = (runtime.get(base(app)) or {}).get("state")
-    return st if isinstance(st, dict) else {}
+    st = (runtime.get(a) or {}).get("state")
+    _CACHE[a] = (now, st if isinstance(st, dict) else {})
+    return _CACHE[a][1]
+
+
+def forget_cache() -> None:
+    _CACHE.clear()
+
+
+def declared_order(app) -> dict:
+    """{order name: store path} of an app, {} when it declares none or its manifest cannot be read."""
+    try:
+        order = of(app).get("order")
+    except Exception as e:  # noqa: BLE001 — a manifest it cannot read declares nothing
+        logger.debug(f"state_decl: {app} unreadable ({e!r})")
+        return {}
+    return order if isinstance(order, dict) else {}
+
+
+def is_name(s) -> bool:
+    return isinstance(s, str) and 0 < len(s) <= ID_MAX and set(s) <= _NAME_CHARS
 
 
 def report_fields(st: dict) -> dict:
@@ -52,8 +83,8 @@ def type_of(spec) -> tuple:
             return "id", ID_MAX
         if kind == "text":
             return "text", min(int(arg), TEXT_MAX)
-    except ValueError:
-        pass
+    except ValueError as e:
+        logger.debug(f"state_decl: type «{t}» does not parse ({e!r})")
     return "", None
 
 
@@ -107,8 +138,14 @@ def problem(man: dict) -> str | None:
     order = st.get("order") or {}
     if not isinstance(order, dict) or not all(isinstance(v, str) and v for v in order.values()):
         return "state.order maps a name to a key the handlers write"
+    names = list(order) + list(report_fields(st)) + facts_declared(st)
+    if (bad := next((n for n in names if not is_name(n)), None)) is not None:
+        return f"state: «{str(bad)[:40]}» is not a name ([A-Za-z0-9_], ≤ {ID_MAX})"
     for name, spec in report_fields(st).items():
-        if not type_of(spec)[0]:
+        kind, arg = type_of(spec)
+        if kind == "enum" and not all(is_name(v) for v in arg):
+            return f"state.report.{name}: enum values are names ([A-Za-z0-9_])"
+        if not kind:
             return f"state.report.{name}: type must be bool, int:lo-hi, enum:a|b, id or text:N"
         key, _inv = follows(spec)
         if key and key not in order:
