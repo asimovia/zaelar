@@ -31,3 +31,11 @@ def test_static_needs_its_reason_and_stands_alone():
     assert "static" in state_decl.problem({"state": {"static": "x"}}), "a bare static passed"
     assert "static" in state_decl.problem({"state": {"static": 1}})
     assert state_decl.problem({"state": {"static": "a long enough reason", "report": {}}}) is not None
+
+
+def test_static_is_for_a_face_no_order_can_move():
+    """Step-5 audit P2-4: the timer's manifest (four actions, a live countdown) with `{"static": "aaaaaaaaaaaa"}` passed —
+    the cheapest way through a REQUIRED state. `static` is accepted only for an app that declares no actions."""
+    man = json.loads((ENGINE / "widgets/timer/manifest.json").read_text())
+    err = state_decl.problem({**man, "state": {"static": "aaaaaaaaaaaa — nothing to see"}})
+    assert err and "actions" in err, err
