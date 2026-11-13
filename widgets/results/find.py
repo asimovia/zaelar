@@ -116,8 +116,8 @@ def prompt_digest(sheet=None) -> str:
         bloques = []
         for sid in todas:
             d = _d.view_data(sid)
-            t = str(d.get("title") or "").strip() or "(sin título)"
-            bloques.append(f"── HOJA «{t}» ──\n" + _digest.one(d))
+            t = str(d.get("title") or "").strip() or "(sin título)"        # headed by the id its state line says
+            bloques.append(f"── HOJA «{t}» ({_d.WIDGET_ID}{'::' + sid if sid else ''}) ──\n" + _digest.one(d))
         return "\n".join(bloques)
     return _digest.one(_d.view_data(todas[0]))
 

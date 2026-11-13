@@ -139,3 +139,16 @@ def test_a_record_whose_row_is_gone_is_reported_as_the_list_it_paints(sheet, car
     mount(card_page, "results", data, a, instance=INST)
     sent = posts(card_page)
     assert sent and sent[-1]["patch"] == {"tab": "results", "selected": ""}, f"the order was reported as painted: {sent}"
+
+
+def test_the_digest_names_each_sheet_by_the_id_its_state_line_says(sheet):
+    """Step-3 audit P2-3: with two sheets the state line says `results::s1@computer: tab=sources` and the digest headed
+    each block `── HOJA «title» ──` — the brain could not join them. The block header carries the same id."""
+    r, on = sheet
+    on(*PAIRS[0])
+    assert r.apply_action("present", {"sheet": "s2", "items": [{"title": "Otra mesa", "price": "9 €"}]})["ok"]
+    from widgets.results import find
+    text = find.prompt_digest()
+    _say(PAIRS[0][0], 1, tab="sources", selected="")
+    assert f"({INST}) ──" in text and "(results::s2) ──" in text, text[:300]
+    assert state_render.clause("results", dev=PAIRS[0][0]).startswith(f"{INST}@")
