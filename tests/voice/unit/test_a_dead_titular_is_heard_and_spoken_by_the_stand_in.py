@@ -116,6 +116,22 @@ def _meter(adapter, sink: list):
     adapter.on("metrics_collected", lambda m: sink.append(m))
 
 
+def _bill_in_the_body(m) -> None:
+    """The real seam (P1-1): the voice process turns the metric into fields (`child_session._metric_fields`, where the
+    adapter lives) and the BODY replays them (`remote_session.handle`), with none of the voice process's state."""
+    from voice import remote_session
+    from voice.engine.pipeline import child_session
+    fields = child_session._metric_fields(m)
+    held, session = dict(relay._STATE), remote_session._M["session"]
+    relay._STATE.clear()                                 # the body never built the adapter
+    remote_session._M["session"] = object()              # a session the body saw start
+    try:
+        remote_session.handle({"k": "metrics", **fields})
+    finally:
+        relay._STATE.update(held)
+        remote_session._M["session"] = session
+
+
 def test_a_dead_voice_is_spoken_by_the_stand_in_and_the_switch_says_why(world):
     said, billed = world
     voice = T.build_tts()
@@ -139,7 +155,7 @@ def test_a_dead_voice_is_spoken_by_the_stand_in_and_the_switch_says_why(world):
         "a switch must name the titular's error — never a silent mask"
     for m in metrics:
         if isinstance(m, TTSMetrics) and m.characters_count:
-            metrics_tap.on_metrics(type("Ev", (), {"metrics": m})(), lambda *a, **k: None)
+            _bill_in_the_body(m)
     assert ("tts", "openai") in billed and ("tts", "inworld") not in billed, \
         "the stand-in's characters are billed at the stand-in's rate"
 
@@ -172,7 +188,7 @@ def test_a_dead_ear_is_heard_by_the_stand_in_and_the_switch_says_why(world):
         "a switch must name the titular's error — a socket closed on silence must not pass for an outage"
     for m in metrics:
         if isinstance(m, STTMetrics):
-            metrics_tap.on_metrics(type("Ev", (), {"metrics": m})(), lambda *a, **k: None)
+            _bill_in_the_body(m)
     assert ("stt", "openai") in billed and ("stt", "deepgram") not in billed, \
         "the stand-in's audio is billed at the stand-in's rate, not the titular's"
 
@@ -184,8 +200,27 @@ def test_an_unused_relay_bills_and_labels_the_titular(world, monkeypatch):
     voice = T.build_tts()
     m = TTSMetrics(label=voice._tts_instances[0].label, request_id="r", timestamp=0.0, ttfb=0.1, duration=0.2,
                    audio_duration=0.2, cancelled=False, characters_count=12, streamed=False)
-    metrics_tap.on_metrics(type("Ev", (), {"metrics": m})(), lambda *a, **k: None)
+    _bill_in_the_body(m)
     assert billed == [("tts", "inworld")] and T.active_provider() == "inworld"
+
+
+def test_the_titulars_own_probe_is_billed_to_the_titular_while_the_stand_in_serves(world):
+    """P2-1 — the label, not who is serving: with the stand-in active, a metric the TITULAR produced (its recovery
+    probe) is the titular's; two providers on one plugin class cannot be told apart, so it falls to the one serving."""
+    _, billed = world
+    voice = T.build_tts()
+    relay.set_active("tts", "openai")
+    titular = voice._tts_instances[0]
+
+    def metric(label):
+        return TTSMetrics(label=label, request_id="r", timestamp=0.0, ttfb=0.1, duration=0.2, audio_duration=0.2,
+                          cancelled=False, characters_count=12, streamed=False)
+    _bill_in_the_body(metric(titular.label))
+    assert billed == [("tts", "inworld")]
+    relay.track("tts", [("inworld", titular), ("elevenlabs", titular)])   # one class, two names: the label clashes
+    relay.set_active("tts", "elevenlabs")
+    _bill_in_the_body(metric(titular.label))
+    assert billed[-1] == ("tts", "elevenlabs")
 
 
 # ── the relay unused: nothing held back ───────────────────────────────────────────────────────────────────────────

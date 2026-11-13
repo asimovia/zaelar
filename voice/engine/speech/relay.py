@@ -49,7 +49,9 @@ def active(family: str, default: str) -> str:
 
 
 def provider_for(family: str, metric, default: str) -> str:
-    """The provider that produced `metric`: by its plugin label, else the one serving now, else `default`."""
+    """Who produced `metric`: as named where it was made (the voice process), its plugin label, who serves, `default`."""
+    if isinstance(named := getattr(metric, "provider", None), str) and named:
+        return named
     st = _STATE.get(family) or {}
     return st.get("labels", {}).get(str(getattr(metric, "label", "") or "")) or st.get("active") or default
 
