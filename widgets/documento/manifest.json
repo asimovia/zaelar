@@ -1,6 +1,13 @@
 {
   "id": "documento",
   "screens": "shared",
+  "state": {
+    "order": {"doc": "rev", "focus": "focus"},
+    "report": {
+      "title": {"type": "text:60", "follows": "doc", "rest": ""},
+      "at": {"type": "text:40", "follows": ["doc", "focus"], "rest": ""}
+    }
+  },
   "version": "0.2.0",
   "owner": "Zaelar",
   "created": "2026-09-02",
