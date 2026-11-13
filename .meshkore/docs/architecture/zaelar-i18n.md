@@ -50,7 +50,7 @@ i18n/genesis/<code>/                      the languages the repo SHIPS: en (= th
 - **Declared exceptions** (safety- and routing-critical, each with its own tests): the regex safety/routing guards —
   `voice/attention.py` (STOP), `nucleo/flash/router_guards.py`, `nucleo/memory_agent/lang_marks.py`,
   `nucleo/flash/segmenter.py`, `search/category_words.py`,
-  `nucleo/flash/outgoing_lang.py`, `voice/engine/speech/say_numbers.py` — and the model-facing prompt prose
+  `nucleo/flash/spoken_lang.py`, `voice/engine/speech/say_numbers.py` — and the model-facing prompt prose
   (`nucleo/workers/prompts/`), which no operator reads. A non-preset language
   falls back to the model for what those accelerate.
 

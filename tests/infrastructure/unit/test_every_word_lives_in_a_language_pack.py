@@ -19,7 +19,7 @@ ENGINE = Path(__file__).resolve().parents[3]
 
 #: path → how many tables it still carries. Only goes DOWN.
 DECLARED = {
-    "nucleo/flash/outgoing_lang.py": 1,
+    "nucleo/flash/spoken_lang.py": 1,
     "voice/engine/speech/say_numbers.py": 1,
     "widgets/results/digest.py": 1,        # the sheet digest is written for the model, in one language with its header
 }

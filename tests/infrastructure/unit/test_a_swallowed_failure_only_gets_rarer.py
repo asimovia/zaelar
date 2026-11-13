@@ -341,7 +341,7 @@ PER_FILE: dict[str, int] = {
     'nucleo/flash/memory_cache.py': 5,
     'nucleo/flash/music_flow.py': 2,
     'nucleo/flash/op_receipt.py': 5,
-    'nucleo/flash/outgoing_lang.py': 1,
+    'nucleo/flash/spoken_lang.py': 1,
     'nucleo/flash/payload_fill.py': 10,
     'nucleo/flash/post_stream_lanes.py': 3,
     'nucleo/flash/post_stream_settle.py': 4,

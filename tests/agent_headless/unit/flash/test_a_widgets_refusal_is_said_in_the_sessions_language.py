@@ -4,7 +4,7 @@ Measured in `la-cola-de-video-con-palabras-imprecisas__us` (2026-10-10): two rep
 gate flagged them. Two causes, one per half of the sentence:
 
   · the WIDGET's refusal is authored in Spanish (the manifests' language), and the reply door
-    (`outgoing_lang.said_in_session_language`) could not tell — «No encuentro ese vídeo en la lista» carried one
+    (`spoken_lang.said_in_session_language`) could not tell — «No encuentro ese vídeo en la lista» carried one
     marker («la») and the door needs two, so it was left alone;
   · the text channel's own wrapper, when the model had spoken over a failed op, was a Spanish literal
     («No he podido: …») instead of the language table's `widget_data_failed`.
@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import pytest
 
-from nucleo.flash import outgoing_lang as ol
+from nucleo.flash import spoken_lang as ol
 
 
 @pytest.fixture

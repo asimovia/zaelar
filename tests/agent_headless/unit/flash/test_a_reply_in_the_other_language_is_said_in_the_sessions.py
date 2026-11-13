@@ -2,11 +2,11 @@
 
 Measured in `knows-who-i-am-without-being-told-again__us` (2026-10-10): «I'm in Madrid btw» and the English session
 answered «¡Perfecto, Madrid apuntado! Te busco una receta…», and the worker's spoken notice came in Spanish too.
-The door that already held outgoing messages (`outgoing_lang`, demo pass 106) now holds the reply and the notice.
+The door that already held outgoing messages (then `outgoing_lang`, demo pass 106; now `spoken_lang`, the mouth only — V2-903) now holds the reply and the notice.
 """
 import asyncio
 
-from nucleo.flash import outgoing_lang as ol
+from nucleo.flash import spoken_lang as ol
 
 
 def _run(coro):

@@ -74,7 +74,7 @@ def generic(wid: str) -> str:
 
 
 def foreign(text: str) -> bool:
-    from nucleo.flash import outgoing_lang as _ol
+    from nucleo.flash import spoken_lang as _ol
     return _ol.foreign_to_session(text)
 
 
@@ -87,7 +87,7 @@ async def said(wid: str, res: dict, *, generic_line: bool = True) -> str:
     if line and foreign(line):
         try:
             from i18n import langs as _lg
-            from nucleo.flash import outgoing_lang as _ol
+            from nucleo.flash import spoken_lang as _ol
             t = await _ol._translate(line, _lg.spec(_code()).name)
             line = t if t and not foreign(t) else ""
         except Exception:  # noqa: BLE001

@@ -29,7 +29,7 @@ def in_language(text: str, code: str, *, strict: bool = False) -> bool:
     `strict` asks it to READ as his language (the status line: an engine phase «entrando en ebay.es» says nothing an
     English ear should hear); without it, not reading as the other product language is enough (the step line, which
     translates our own phases itself)."""
-    from nucleo.flash import outgoing_lang as _ol
+    from nucleo.flash import spoken_lang as _ol
     lang = _ol.language_of(text)
     code = str(code or "en")[:2]
     if code == "es":
