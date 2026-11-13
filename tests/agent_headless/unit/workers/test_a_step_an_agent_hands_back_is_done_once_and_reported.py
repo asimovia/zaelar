@@ -90,6 +90,8 @@ def test_what_cannot_be_checked_by_its_shape_is_dropped_wherever_the_handoff_sit
     assert "url" not in h and "domain" not in h and "phone" not in h
     assert h["prefilled"] == ["date"] and h["form_asks"] == [{"name": "ok_name", "required": False}]
     assert h["report_as"] == ["booked"] and mesh_handoff.open_question(h) is None   # no checked domain: nothing to open
+    plain = mesh_handoff.of({"handoff": {"bookingUrl": "http://www.casa.example/reserves", "clientAction": "x"}})
+    assert plain["url"] == "https://www.casa.example/reserves" and plain["domain"] == "www.casa.example"   # never in clear
 
 
 def test_his_data_goes_to_the_page_only_on_his_yes_asked_by_code_on_his_row(net, monkeypatch):

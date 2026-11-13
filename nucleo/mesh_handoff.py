@@ -1,7 +1,7 @@
 """nucleo/mesh_handoff.py — an agent that cannot do it itself HANDS IT BACK: «your agent should do it».
 
 The `handoff` is a STRANGER's DATA, for any agent the Oracle returns: `of` keeps what can be checked, CHECKED by shape
-(an `https` link and its domain, an E.164 phone, plain field names and outcomes) and fences its prose under
+(a web link, given in its `https` form, and its domain, an E.164 phone, plain field names and outcomes) and fences its prose under
 `agent_says`; its VALUES are dropped — a form is filled from his order. Before his data goes to that page, code asks him
 on his row naming the domain (`open_question`). The step stays on its thread (no other step of the order while it is
 unreported); `report` answers in the agent's own `reportOutcome` shape.
@@ -22,8 +22,10 @@ NEXT = ("The agent cannot finish this and HANDS IT BACK (`handed_back`). Everyth
 
 
 def _https(url) -> str:
-    u = urllib.parse.urlsplit(str(url or ""))
-    return u.hostname if u.scheme == "https" and u.hostname else ""
+    """The link in its `https` form (his data never travels in clear: a site that still links `http` is asked over
+    `https`, where most redirect anyway), or "" when it is not a web link with a host (`javascript:`, a bare word)."""
+    u = urllib.parse.urlsplit(str(url or "").strip())
+    return u._replace(scheme="https").geturl() if u.scheme in ("http", "https") and u.hostname else ""
 
 
 def _name(v, n: int) -> str:
@@ -47,9 +49,10 @@ def of(data) -> dict | None:
     if h is None:
         return None
     from nucleo import untrusted
-    domain, phone = _https(h.get("bookingUrl")), str(h.get("phone") or "")
+    url, phone = _https(h.get("bookingUrl")), str(h.get("phone") or "")
+    domain = urllib.parse.urlsplit(url).hostname if url else ""
     report = h.get("reportOutcome") if isinstance(h.get("reportOutcome"), dict) else {}
-    out = {"url": h["bookingUrl"] if domain else None, "domain": domain or None,
+    out = {"url": url or None, "domain": domain or None,
            "phone": phone if phone[:1] == "+" and phone[1:].isdigit() and 8 <= len(phone) <= 16 else None,
            "prefilled": [n for n in (_name(x, 40) for x in h.get("prefilledFields") or []) if n],
            "form_asks": [{"name": _name(f.get("name"), 40), "required": bool(f.get("required"))}
