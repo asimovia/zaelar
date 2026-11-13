@@ -18,7 +18,7 @@ import pytest
 
 from voice import screens
 from widgets import state, state_decl, state_render, store
-from tests.browser.unit.widgets.state_card import card_page, click, deliver, mount, posts, push  # noqa: F401
+from tests.browser.unit.widgets.state_card import card_page, click, deliver, mount, posts, push, settle  # noqa: F401
 
 ENGINE = pathlib.Path(__file__).resolve().parents[4]
 PAIRS = [("desktop:aaa", "mobile:bbb"), ("desktop:aaa", "desktop:bbb")]
@@ -123,6 +123,10 @@ def test_the_rendered_sheet_says_its_tab_and_record_through_the_door(sheet, card
     deliver("results", sent)
     assert state_render.clause("results", dev=a).endswith(f': selected="{ROWS[1]["title"]}"'), \
         state_render.clause("results", dev=a)
+    after = state_render.clause("results", dev=a)                       # the dust settles (step-5 audit P1-1)
+    settle(card_page, "results")
+    assert state_render.clause("results", dev=a) == after, "a previous paint spoke after the last one"
+
 
 
 def test_a_record_whose_row_is_gone_is_reported_as_the_list_it_paints(sheet, card_page):

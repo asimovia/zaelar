@@ -17,7 +17,7 @@ import pytest
 
 from voice import screens
 from widgets import state, state_decl, state_render, store
-from tests.browser.unit.widgets.state_card import card_page, click, deliver, mount, posts, push  # noqa: F401
+from tests.browser.unit.widgets.state_card import card_page, click, deliver, mount, posts, push, settle  # noqa: F401
 
 ENGINE = pathlib.Path(__file__).resolve().parents[4]
 PAIRS = [("desktop:aaa", "mobile:bbb"), ("desktop:aaa", "desktop:bbb")]
@@ -89,3 +89,6 @@ def test_the_rendered_map_says_its_pins_pick_and_zoom_through_the_door(mapa, car
     push(card_page, {**data.view_data(), "_rev": state.stamp("map")})
     deliver("map", posts(card_page))
     assert f'selected="Casa Lumbre", zoom={z0 + 1}' in state_render.clause("map", dev=a), state_render.clause("map", dev=a)
+    after = state_render.clause("map", dev=a)                       # the dust settles (step-5 audit P1-1)
+    settle(card_page, "map")
+    assert state_render.clause("map", dev=a) == after, "a previous paint spoke after the last one"

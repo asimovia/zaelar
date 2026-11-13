@@ -18,7 +18,7 @@ import pytest
 
 from voice import screens
 from widgets import state, state_decl, state_render, store
-from tests.browser.unit.widgets.state_card import card_page, deliver, mount, posts, push  # noqa: F401
+from tests.browser.unit.widgets.state_card import card_page, deliver, mount, posts, push, settle  # noqa: F401
 
 ENGINE = pathlib.Path(__file__).resolve().parents[4]
 PAIRS = [("desktop:aaa", "mobile:bbb"), ("desktop:aaa", "desktop:bbb")]
@@ -108,6 +108,10 @@ def test_the_rendered_card_says_which_thread_is_open_through_the_door(msg, card_
     push(card_page, {**data.view_data(), "_rev": state.stamp("mensajeria")})
     deliver("mensajeria", posts(card_page))
     assert state_render.clause("mensajeria", dev=a).endswith(": at rest"), state_render.clause("mensajeria", dev=a)
+    after = state_render.clause("mensajeria", dev=a)                       # the dust settles (step-5 audit P1-1)
+    settle(card_page, "mensajeria")
+    assert state_render.clause("mensajeria", dev=a) == after, "a previous paint spoke after the last one"
+
 
 
 def test_opening_a_letter_is_pending_on_its_second_key(msg):

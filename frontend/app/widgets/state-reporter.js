@@ -51,6 +51,7 @@ export function stateReporter(baseId, instance, opts = {}) {
   let mount = _newMount(), n = 0, full = true, timer = null, seen = null, ack = null, waiters = [];
   let dead = false, flying = false, again = false, lastFacts = null, retaken = false, hand = false;
   const last = {}, pending = {}, forgot = new Set(), hostKeys = new Set();
+  let drawn = null;                                      // the data object the host last handed the card
 
   const body = (beacon) => {
     n += 1;
@@ -102,6 +103,9 @@ export function stateReporter(baseId, instance, opts = {}) {
     // `{forget: [names]}` = fields it can no longer vouch for. Resolves to the engine's facts for this screen.
     report(patch, o = {}) {
       if (dead) return Promise.resolve(null);
+      // `{of: data}` = said for THAT data: a timer or an observer a previous paint left armed speaks for data the
+      // screen no longer shows, and must not land acked at the new revision (V2-884 step-5 audit P1-1)
+      if (o.of && drawn && o.of !== drawn) return Promise.resolve(lastFacts);
       let changed = false;
       for (const k of o.forget || []) {
         if (!o.host && hostKeys.has(k)) continue;         // nor can the card make the host's fact forgotten
@@ -123,8 +127,9 @@ export function stateReporter(baseId, instance, opts = {}) {
     // The host: a data push carried revision `rev` ({epoch, rev}); the card has not applied it yet. `host` = the
     // fields the HOST shows from that data (`_host`, C7: a third-party page's address and title, every declared key
     // present): said by the host itself, never acking a revision for the card.
-    seen(rev, host) {
+    seen(rev, host, data) {
       if (rev && rev.epoch && Number.isInteger(rev.rev)) seen = rev;
+      if (data && typeof data === "object") drawn = data;
       if (host && typeof host === "object") {
         Object.keys(host).forEach((k) => hostKeys.add(k));
         rep.report(host, { host: true });
@@ -150,4 +155,4 @@ export function mountState(w, baseId, id, data, opts) {
   return w._rep;
 }
 // A host's one line per data push: the reporter learns the revision it brings and the host's own facts in it.
-export function refreshed(w, data) { if (w && w._rep) w._rep.seen(data && data._rev, data && data._host); }
+export function refreshed(w, data) { if (w && w._rep) w._rep.seen(data && data._rev, data && data._host, data); }

@@ -17,7 +17,7 @@ import pytest
 
 from voice import screens
 from widgets import state, state_decl, state_render, store
-from tests.browser.unit.widgets.state_card import card_page, deliver, mount, posts, push  # noqa: F401
+from tests.browser.unit.widgets.state_card import card_page, deliver, mount, posts, push, settle  # noqa: F401
 
 ENGINE = pathlib.Path(__file__).resolve().parents[4]
 PAIRS = [("desktop:aaa", "mobile:bbb"), ("desktop:aaa", "desktop:bbb")]
@@ -87,3 +87,21 @@ def test_the_rendered_sheet_says_the_passage_marked_and_the_one_he_scrolls_to(do
     deliver("documento", sent)
     assert state_render.clause("documento", dev=a).endswith(': title="Receta de prueba", at="Amasado"'), \
         f"his scroll was not said: {sent}"
+
+
+def test_a_new_document_right_after_a_scroll_reads_the_new_one_after_the_dust_settles(doc, card_page):
+    """Step-5 audit P2-1: a scroll armed a 300 ms report closed over the OLD document; a `show` within that window was
+    then overwritten by the old title, acked at the new revision. The paint clears it, and a report said for data the
+    screen no longer shows is dropped."""
+    data, on = doc
+    a, b = PAIRS[0]
+    on(a, b)
+    mount(card_page, "documento", {**data.view_data(), "_rev": state.stamp("documento")}, a)
+    settle(card_page, "documento")
+    card_page.evaluate("() => { const s = document.querySelector('.hbd-scroll'); s.scrollTop = 400; }")   # his hand
+    card_page.wait_for_timeout(50)
+    data.apply_action("show", {"title": "Informe Beta", "body": "# Informe Beta\n\nTexto."})
+    push(card_page, {**data.view_data(), "_rev": state.stamp("documento")})
+    settle(card_page, "documento")
+    line = state_render.clause("documento", dev=a)
+    assert ': title="Informe Beta"' in line and "Receta" not in line, line

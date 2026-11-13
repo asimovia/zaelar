@@ -21,7 +21,7 @@ import pytest
 
 from voice import screens
 from widgets import state, state_decl, state_render, store
-from tests.browser.unit.widgets.state_card import card_page, deliver, mount, posts, push  # noqa: F401
+from tests.browser.unit.widgets.state_card import card_page, deliver, mount, posts, push, settle  # noqa: F401
 
 ENGINE = pathlib.Path(__file__).resolve().parents[4]
 PAIRS = [("desktop:aaa", "mobile:bbb"), ("desktop:aaa", "desktop:bbb")]
@@ -150,6 +150,10 @@ def test_the_host_says_the_page_and_the_card_cannot(nav, card_page):
     deliver("navegador", posts(card_page))
     assert state_render.clause("navegador", dev=a).endswith(': host="another.test", title="Another"'), \
         state_render.clause("navegador", dev=a)
+    after = state_render.clause("navegador", dev=a)                       # the dust settles (step-5 audit P1-1)
+    settle(card_page, "navegador")
+    assert state_render.clause("navegador", dev=a) == after, "a previous paint spoke after the last one"
+
 
 
 def test_a_page_title_is_capped_and_stored_only_through_the_masking_door(nav, monkeypatch):

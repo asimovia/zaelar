@@ -16,7 +16,7 @@ import pytest
 
 from voice import screens
 from widgets import state, state_decl, state_render, store
-from tests.browser.unit.widgets.state_card import card_page, deliver, mount, posts, push  # noqa: F401
+from tests.browser.unit.widgets.state_card import card_page, deliver, mount, posts, push, settle  # noqa: F401
 
 ENGINE = pathlib.Path(__file__).resolve().parents[4]
 PAIRS = [("desktop:aaa", "mobile:bbb"), ("desktop:aaa", "desktop:bbb")]
@@ -102,3 +102,6 @@ def test_the_rendered_card_says_who_is_open_through_the_door(ct, card_page):
     assert sent and sent[-1]["full"] and sent[-1]["ack"] == pushed["_rev"] and sent[-1]["patch"] == {"selected": TOMAS}
     deliver("contactos", sent)
     assert state_render.clause("contactos", dev=a).endswith(f': selected="{TOMAS}"')
+    after = state_render.clause("contactos", dev=a)                       # the dust settles (step-5 audit P1-1)
+    settle(card_page, "contactos")
+    assert state_render.clause("contactos", dev=a) == after, "a previous paint spoke after the last one"
