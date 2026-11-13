@@ -1,0 +1,124 @@
+{
+  "id": "nutrition",
+  "screens": "shared",
+  "state": {
+    "order": {"screen": "view.screen", "day": "view.day", "meal": "view.meal"},
+    "report": {
+      "screen": {"type": "enum:today|weight|coach|evaluation|profile", "follows": "screen", "rest": "today"},
+      "day": {"type": "text:10", "follows": "day", "rest": ""},
+      "meal": {"type": "text:40", "follows": "meal", "rest": ""},
+      "pending": {"type": "int:0-50", "rest": 0}
+    }
+  },
+  "version": "0.1.0",
+  "owner": "Zaelar",
+  "licence": "SUL-1.0",
+  "title": "Nutrition",
+  "description": "What he eats, by photo or by saying it: each meal with calories, protein, carbs, fat and a 1-5 quality score; the day's balance against targets from his profile, a 0-100 day score, and his weight log with its chart.",
+  "whenToUse": "He logs a meal, asks his calories or macros, or logs his weight.",
+  "keywords": [
+    "nutrition",
+    "nutrición",
+    "calories",
+    "calorías",
+    "kcal",
+    "macros",
+    "protein",
+    "proteína",
+    "diet",
+    "dieta",
+    "meal log",
+    "what I ate",
+    "lo que he comido",
+    "weigh-in",
+    "body weight",
+    "báscula",
+    "me he pesado"
+  ],
+  "entry": "widget.js",
+  "name": "Nutrition",
+  "aliases": [
+    "Nutrition",
+    "Nutrición",
+    "my meals",
+    "mis comidas",
+    "my weight",
+    "mi peso"
+  ],
+  "security": "standard",
+  "uploads": true,
+  "size": {"w": 460, "h": 620},
+  "min": {"w": 300, "h": 360},
+  "usage": "«I had two eggs and toast» → `log_meal` with his words in `text`; numbers he gives go in the fields. «I weigh 78.4» → `log_weight`. «show my weight» → `show` screen weight. A meal he names (the toast) is `meal_id`.",
+  "actions": {
+    "log_meal": {
+      "desc": "Log a meal he ate: his words (or a photo the card uploaded); estimated into calories and macros, or saved for him to fill if no estimate is possible.",
+      "how": "`text` = his own words, untouched (portions, preparation, brand). `eaten_at` local `YYYY-MM-DDTHH:MM` only if he said when. Only if he GAVE numbers: `calories`, `protein_g`, `carbs_g`, `fat_g`, `fiber_g`, `grams`.",
+      "payload": {"text": "two fried eggs and a slice of wholegrain toast", "eaten_at": "2026-11-13T09:30", "calories": 0},
+      "done_when": {"widget": "nutrition", "collection": "meals", "expect": "added"},
+      "effects": ["present.mount"]
+    },
+    "retry_meal": {
+      "desc": "Estimate again a meal whose estimate failed, from its saved photo and words.",
+      "payload": {"meal_id": "m12"},
+      "ref": "meal_id"
+    },
+    "refine_meal": {
+      "desc": "Add a detail to a logged meal (it was half, it was fried, the brand) and estimate it again; or move it to another time.",
+      "how": "`text` = only the new detail in his words; `eaten_at` local `YYYY-MM-DDTHH:MM` when he corrects the time.",
+      "payload": {"meal_id": "m12", "text": "I only ate half", "eaten_at": "2026-11-13T14:00"},
+      "ref": "meal_id"
+    },
+    "edit_meal": {
+      "desc": "Correct a meal by hand: its name, calories, macros, grams, quality score 1-5 or time.",
+      "how": "Send only the fields he corrects. A corrected meal counts as done.",
+      "payload": {"meal_id": "m12", "description": "Lentil stew", "calories": 520, "protein_g": 28},
+      "ref": "meal_id"
+    },
+    "delete_meal": {
+      "desc": "Remove a logged meal (it goes to the bin; `restore` brings it back).",
+      "payload": {"meal_id": "m12"},
+      "ref": "meal_id"
+    },
+    "log_weight": {
+      "desc": "Log a body measurement: weight in kg, and optionally body fat %, muscle mass kg, waist cm.",
+      "how": "`measured_at` local `YYYY-MM-DDTHH:MM` only if he said when. The latest weight becomes his profile weight.",
+      "payload": {"weight_kg": 78.4, "body_fat_pct": 16.5, "muscle_mass_kg": 35.2, "waist_cm": 84},
+      "done_when": {"widget": "nutrition", "collection": "body", "expect": "added"}
+    },
+    "edit_weight": {
+      "desc": "Correct a body measurement already logged (its value or its date).",
+      "payload": {"entry_id": "b4", "weight_kg": 78.1, "measured_at": "2026-11-12T08:00"},
+      "ref": "entry_id"
+    },
+    "delete_weight": {
+      "desc": "Remove a body measurement (it goes to the bin; `restore` brings it back).",
+      "payload": {"entry_id": "b4"},
+      "ref": "entry_id"
+    },
+    "restore": {
+      "desc": "Bring back the last removed meal or measurement, or the one named by id.",
+      "payload": {"id": "m12"}
+    },
+    "set_profile": {
+      "desc": "Set what his daily targets come from: weight, height, age, sex, goal (gain, lose, maintain), surplus %, protein g per kg, or a fixed calorie or protein target.",
+      "how": "Only the fields he states. `goal`: gain|lose|maintain; `sex`: male|female|unknown. A field sent empty goes back to the formula.",
+      "payload": {"weight_kg": 78, "height_cm": 180, "age": 41, "sex": "male", "goal": "lose", "surplus_pct": 15, "protein_per_kg": 2.0, "target_calories": null}
+    },
+    "evaluate_week": {
+      "desc": "Evaluate how he has eaten over the last days: a 0-100 score, strengths, issues and up to four small recommendations.",
+      "payload": {"days": 7}
+    },
+    "coach_menu": {
+      "desc": "Recommend what to order from photos of a restaurant menu the card uploaded, given what he has eaten today and his targets.",
+      "payload": {"photos": ["up_ab12cd_menu.jpg"], "context_text": "I trained this morning"},
+      "internal": true
+    },
+    "show": {
+      "desc": "Show a screen of the card: today (meals and balance), weight, coach, evaluation or profile; a past day; or one meal's detail.",
+      "how": "`screen`: today|weight|coach|evaluation|profile. `day`: `YYYY-MM-DD` or `today`. `meal_id` opens that meal.",
+      "payload": {"screen": "weight", "day": "2026-11-12", "meal_id": "m12"},
+      "ref": "meal_id"
+    }
+  }
+}
