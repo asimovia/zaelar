@@ -738,7 +738,7 @@
  "mobile.empty_hint": "«Play some music», «show me a video about…», «what's the weather». Whatever opens shows up here, full screen.",
  "mobile.empty_title": "Talk to zaelar",
  "mobile.home": "Home",
- "mobile.home_screen": "the phone's home: greeting, next events, what is playing; not an app",
+ "screen.phone_home": "the phone's home (greeting, next events and what is playing — not an app)",
  "mobile.home_count": "{n} open",
  "mobile.prev_card": "Previous app",
  "mobile.prev_card@app": "Previous view",

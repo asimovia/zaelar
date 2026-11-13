@@ -27,7 +27,7 @@ def named_wall_tab(text: str) -> str:
     The name resolver names the tab, and an unnegated open/show order asks for it — every tab alike. V2-903 a6
     (phone, 14:38): the catalogue used to open on its NAME alone, and «…o los widgets en pantalla», a cut tail of a
     close sentence, opened the wall. A noun is not an order; a question with no open verb («¿qué widgets tengo?»)
-    goes to the action map's seeds or the model, whose `show_panel` and the brief-read backstop serve it."""
+    goes to the action map's seeds (ES+EN, the custom tab included) or to the model's `show_panel`."""
     try:
         from nucleo.flash import router_guards as _rg
         from nucleo.flash.negation import unnegated_match

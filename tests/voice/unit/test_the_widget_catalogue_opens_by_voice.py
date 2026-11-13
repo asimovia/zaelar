@@ -125,6 +125,23 @@ def test_the_seed_packs_carry_the_phrases_and_they_execute(lang, phrase):
     assert executor.validate(hit["action"]) == "", "the executor refuses the apps tab"
 
 
+@pytest.mark.parametrize("lang,phrase,tab", [
+    ("es", "quiero ver las apps", "apps"), ("es", "ponme la lista de apps", "apps"), ("es", "llevame a las apps", "apps"),
+    ("es", "dime que widgets tengo disponibles", "apps"), ("es", "que apps tengo customizadas", "apps-custom"),
+    ("es", "abreme mis widgets personalizados", "apps-custom"),
+    ("en", "bring up the apps", "apps"), ("en", "i want to see the apps", "apps"),
+    ("en", "open my custom widgets", "apps-custom"), ("en", "what custom apps do i have", "apps-custom"),
+])
+def test_what_the_lane_no_longer_takes_is_seeded_in_both_languages(lang, phrase, tab):
+    """V2-903 a6: the lane needs an open order now, and its verb grammar is Spanish — what it took on the noun alone,
+    and every English phrase, is DATA in the action map's seeds (custom tab included), never a new regex."""
+    pack = json.loads((ENGINE / f"i18n/genesis/{lang}/actionmap.json").read_text(encoding="utf-8"))
+    hit = next((e for e in pack["entries"] if e.get("phrase") == phrase), None)
+    assert hit and hit["action"] == {"do": "show_panel", "tab": tab, "action": "open"}, (lang, phrase)
+    assert executor.validate(hit["action"]) == ""
+    assert pack["version"] >= 19, "new seeds under an old version reach no existing install"
+
+
 def test_the_packs_were_versioned_so_existing_installs_import_them():
     """A pack only re-imports on a version bump (`store.seed`) — new phrases in an old version reach nobody."""
     for lang in ("es", "en"):

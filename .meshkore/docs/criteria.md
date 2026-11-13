@@ -425,7 +425,10 @@ below is the first kind, or it names the mechanism that replaced the second.
   what enters in its place leaves the machine or deletes. (5) HOLDING a call that LEAVES reads the LICENCE (holding
   sends nothing; the worst case is a question — battery C9); holding a reversible call reads VETO. (6) Binding an answer
   or choosing a card or row goes by IDENTITY — the id of the row that asked, the card from the same key as the act —
-  never by a bar; two candidates → ASK_WHICH. The id, never text: the one asker notes each question it puts to him
+  never by a bar; two candidates → ASK_WHICH, and ONE waiting row is never asked «which of these tasks?» — its own
+  question is put again (REASK). A turn the brief reads as a SURE order on the screen that picks no row surely is not
+  an answer: nothing binds; a pick of a row at the licence, or the model's `answer_worker`, beside it is still a doubt
+  and is asked, never dropped (V2-903 a5, node 2.1746). The id, never text: the one asker notes each question it puts to him
   (`circuit.asked_last`), and the identity advances only on a NEW reply of ours (a dropped fragment or a barge-in never
   spends it); with several rows waiting the row that asked ALONE among those still waiting binds, before any pick (a
   pick of another row is asked); a row our «which?» named is identified as a ROW — a row with candidates is asked its

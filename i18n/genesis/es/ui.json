@@ -738,7 +738,7 @@
  "mobile.empty_hint": "«Ponme música», «pon un vídeo de tal cosa», «qué tiempo hace». Lo que abra aparece aquí a pantalla completa.",
  "mobile.empty_title": "Habla con zaelar",
  "mobile.home": "Inicio",
- "mobile.home_screen": "el inicio del teléfono: saludo, próximas citas, lo que suena; no es una app",
+ "screen.phone_home": "el inicio del teléfono (saludo, próximas citas y lo que suena — no es una app)",
  "mobile.home_count": "{n} abiertas",
  "mobile.prev_card": "App anterior",
  "mobile.prev_card@app": "Vista anterior",

@@ -40,8 +40,9 @@ def order_is_inside(brief, widget_id: str = "") -> bool:
         # that is NOT a close («quita el vídeo», canvas = neither) leaves the order inside.
         if name == "close" and _canvas_leans_close(brief):
             return False
-        # V2-903 a4: a WHOLE-screen close names no card — no in-card act takes its place («…libera la pantalla»)
-        return not _canvas_leans_close(brief) if not widget_id else _da._base_of(owner) == _da._base_of(widget_id)
+        # V2-903 a4: a WHOLE-screen close («…libera la pantalla») names no app, so no in-card act takes its place — only
+        # when the brief READS that he named none (`names_a_card = nothing`): «ya la puedes cerrar» names one thing
+        return not _names_nothing(brief) if not widget_id else _da._base_of(owner) == _da._base_of(widget_id)
     except Exception:  # noqa: BLE001
         return False
 
@@ -54,6 +55,13 @@ def _canvas_leans_close(brief) -> bool:
         return bool(info) and str(verb or "") == "close"
     except Exception:  # noqa: BLE001
         return False
+
+
+def _names_nothing(brief) -> bool:
+    """The brief reads that his sentence names no app — nothing at all, or everything on screen at once (V2-903 a4)."""
+    from nucleo.turn import brief_screen as _bs, verdicts as _v
+    choice, info = _v.read(brief, _bs.NAMES_KEY, "")
+    return bool(info) and str(choice or "") == "nothing" and _canvas_leans_close(brief)
 
 
 def _action_sure(brief, floor: float = 0.8) -> bool:

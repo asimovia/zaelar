@@ -45,8 +45,25 @@ def test_two_rows_are_still_asked_which():
     {_tb.TARGET_KEY: ("musica:pause", 0.9)},                   # «para la música» / «pause the music»
 ])
 def test_a_sure_screen_order_is_not_the_rows_answer(order):
-    how, asks = bind.bind(_brief(order), model_answered=True, asks=[ROW, OTHER])
+    """No pick of a row, and the model did not answer one: the order on screen is the turn — nothing is bound."""
+    how, asks = bind.bind(_brief(order), model_answered=False, asks=[ROW, OTHER])
     assert (how, asks) == (bind.NOTHING, []), how
+
+
+def test_a_doubt_beside_a_screen_order_is_asked_never_dropped():
+    """Audit P2-2: «sí, y cierra la música» with an unsure pick — the row is asked, never left waiting in silence; and
+    the model's own `answer_worker` beside a screen order is asked too."""
+    b = _brief({bind.KEY: ("a-1" + bind.PICK + "0", 0.55), _tb.CANVAS_KEY: ("close", 0.9)})
+    assert bind.bind(b, model_answered=False, asks=[ROW, OTHER]) == (bind.REASK, [ROW])
+    how, asks = bind.bind(_brief({_tb.CANVAS_KEY: ("close", 0.95)}), model_answered=True, asks=[ROW])
+    assert (how, asks) == (bind.REASK, [ROW])
+
+
+@pytest.mark.parametrize("model", [True, False])
+def test_a_none_under_the_veto_with_one_row_is_never_which_of_these(model):
+    """Audit P2-1: `none` at 0.7 — a doubt — with ONE row waiting asked «¿para cuál de estas tareas?» over one."""
+    how, asks = bind.bind(_brief({bind.KEY: ("none", 0.7)}), model_answered=model, asks=[ROW])
+    assert how != bind.ASK_WHICH, how
 
 
 def test_a_sure_pick_of_the_row_still_binds_with_a_screen_word():
@@ -54,3 +71,9 @@ def test_a_sure_pick_of_the_row_still_binds_with_a_screen_word():
     b = _brief({bind.KEY: ("a-1" + bind.PICK + "1", 0.95), _tb.CANVAS_KEY: ("close", 0.9)})
     how, asks = bind.bind(b, model_answered=True, asks=[ROW])
     assert how == bind.ANSWER and asks[0]["ask_id"] == "a-1" and asks[0]["choice"] == 1
+
+
+def test_a_none_beside_a_sure_screen_order_asks_nothing():
+    """Audit P2-1: `none` at 0.7 is no pick of a row — with a sure screen order it is the screen's turn, not «which?»."""
+    b = _brief({bind.KEY: ("none", 0.7), _tb.CANVAS_KEY: ("close", 0.95)})
+    assert bind.bind(b, model_answered=False, asks=[ROW, OTHER]) == (bind.NOTHING, [])
