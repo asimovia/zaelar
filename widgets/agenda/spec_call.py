@@ -20,7 +20,7 @@ def spec_call(action: str, payload: dict) -> tuple[str, dict]:
         if isinstance(p.get(k), str) and p[k].strip():
             p[k] = _resolve_time(p[k])
     at = str(p.get("newTime") or p.get("startTime") or "")
-    for k in ("date", "newDate"):
+    for k in ("date", "newDate") + (("from",) if action == "cancel_meeting" else ()):   # there `from` is a DAY
         if isinstance(p.get(k), str) and p[k].strip():
             p[k] = _resolve_date(p[k], at=at)
     return action, p

@@ -156,3 +156,42 @@ def test_he_can_name_the_mail_rung_for_one_call(ag, monkeypatch):
     monkeypatch.setattr(invite, "_mail_invitation", lambda m, g, n: sent.append(g) or {"ok": True, "invited": g["emails"]})
     ag.apply_action("invite", {"who": "rowan@example.com", "meeting": "Kickoff", "via": "email"})
     assert sent and not any(c[0] == "invite" for c in cal.calls), cal.calls
+
+
+# ── a refused mirror is offered to Google again (V2-880 follow-up) ──────────────────────────────────────────
+
+def test_a_refused_row_goes_up_on_a_later_sync_pass_and_a_past_one_stays_local(ag, monkeypatch):
+    """A row Google refused while connected stayed LOCAL for good: the connect-time migration never runs again. It
+    is marked `mirrorPending`, and each sync pass offers the future ones again; a past one is history."""
+    from widgets import store
+    from widgets.agenda import gcal
+    cal = _Cal(create={"ok": False, "error": "503 backend"})
+    _use(monkeypatch, cal)
+    ag.apply_action("add_meeting", {"title": "Dentist", "date": AHEAD, "startTime": "10:00"})
+    db = store.load("agenda", {})
+    db["meetings"].append({"title": "Old visit", "date": "2020-01-02", "startTime": "09:00", "mirrorPending": True})
+    assert [m.get("mirrorPending") for m in db["meetings"]] == [True, True]
+    cal._create = {"ok": True, "meeting": {}}                    # Google answers again
+    assert gcal.repush(cal, db) is True
+    up = next(m for m in db["meetings"] if m["title"] == "Dentist")
+    assert up.get("googleId") == "g1" and "mirrorPending" not in up and up.get("created"), up
+    old = next(m for m in db["meetings"] if m["title"] == "Old visit")
+    assert old.get("mirrorPending") and not old.get("googleId"), "a past row is not pushed"
+    assert gcal.repush(cal, db) is False, "nothing left to offer"
+
+
+def test_a_row_written_with_no_calendar_is_not_pending(ag, monkeypatch):
+    _use(monkeypatch, _Cal(connected=False))
+    ag.apply_action("add_meeting", {"title": "Walk", "date": AHEAD, "startTime": "19:00"})
+    assert not _rows("Walk")[0].get("mirrorPending"), "with nothing connected there is nothing to mirror"
+
+
+def test_a_cancel_from_a_spoken_day_renders_the_day():
+    """V2-880: the end state of «cancel X from Monday» compared the row's dates with the word «lunes»."""
+    from widgets.agenda.spec_call import spec_call
+    _a, p = spec_call("cancel_meeting", {"title": "Gym", "from": "2026-12-01"})
+    assert p["from"] == "2026-12-01"
+    _a, p = spec_call("cancel_meeting", {"title": "Gym", "from": "mañana"})
+    assert len(p["from"]) == 10 and p["from"][4] == "-", p
+    _a, p = spec_call("find_free", {"from": "15:00"})
+    assert p["from"] == "15:00", "elsewhere `from` is an hour, never read as a day"
