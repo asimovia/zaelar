@@ -69,7 +69,8 @@
     "`tts_first_byte_s` after the sentence reached it, or no sentence sent `tts_ready_s` after one was ready (a hung",
     "handshake) → down, no retry. Ear: `stt_strikes` speech spans in a row of ≥ `stt_span_s` with no STT event within",
     "`stt_answer_s`. `mode` is `shadow` (a `provider` event «would switch», nothing changes) until the fleet's p99.9 TTFB",
-    "is measured — the rule is bound ≥ 1.5 × p99.9; `armed` makes the voice switch (the ear stays shadow)."
+    "is measured — the rule is bound ≥ 1.5 × p99.9; `armed` makes the voice switch (the ear stays shadow), at most",
+    "`armed_jumps` times within `armed_window_s` (then it only says so); a probe of a titular already down is always bounded."
   ],
   "worker_nice": 10,
   "admit_free_ratio": 0.2,
@@ -107,5 +108,5 @@
   "shed_recover_ratio": 1.15,
   "pressure_band_ratio": 2.0,
   "embed_budget_ms": 300,
-  "relay_bound": {"mode": "shadow", "tts_first_byte_s": 2.0, "tts_ready_s": 3.0, "stt_span_s": 0.6, "stt_answer_s": 2.5, "stt_strikes": 2}
+  "relay_bound": {"mode": "shadow", "tts_first_byte_s": 2.0, "tts_ready_s": 3.0, "stt_span_s": 0.6, "stt_answer_s": 2.5, "stt_strikes": 2, "armed_jumps": 3, "armed_window_s": 600}
 }

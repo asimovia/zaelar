@@ -26,6 +26,8 @@ class Bound:
     stt_span_s: float = 0.6
     stt_answer_s: float = 2.5
     stt_strikes: int = 2
+    armed_jumps: int = 3                 # armed: this many switches within `armed_window_s`, then it only says so
+    armed_window_s: float = 600.0
 
 
 @dataclasses.dataclass
@@ -38,12 +40,28 @@ class _Ear:
 
 _EAR = _Ear()
 _BROKEN: set = set()
+_JUMPS: list = []                         # when the armed bound switched, for its cooldown
 
 
 def policy() -> Bound:
+    return _policy(int(time.monotonic() // 30))     # read from disk at most every 30 s, not per stream or VAD edge
+
+
+@functools.lru_cache(maxsize=1)
+def _policy(_bucket: int) -> Bound:
     from nucleo.workers import envelope       # reads the declared files; an unreadable one is said there
     declared = envelope.policy().get("relay_bound") or {}
     return Bound(**{f.name: declared[f.name] for f in dataclasses.fields(Bound) if f.name in declared})
+
+
+def _cooling(pol: Bound) -> bool:
+    """Armed and already switched `armed_jumps` times within the window: a titular that flaps is not switched again."""
+    now = time.monotonic()
+    _JUMPS[:] = [t for t in _JUMPS if now - t < float(pol.armed_window_s)]
+    if len(_JUMPS) >= int(pol.armed_jumps):
+        return True
+    _JUMPS.append(now)
+    return False
 
 
 def _off(where: str, e: Exception) -> None:
@@ -96,9 +114,10 @@ def _two_sentences(text: str) -> bool:
     return len(tokenize.blingfire.SentenceTokenizer(retain_format=True).tokenize(text)) > 1
 
 
-async def first_audio(gen, outer, provider: str):
+async def first_audio(gen, outer, provider: str, *, probe: bool = False):
     """`gen`'s audio, watched until its first frame. Armed: a late titular is closed and raised as a timeout (the
-    adapter marks it down and the stand-in speaks the same text); shadow: said once, and nothing changes."""
+    adapter marks it down and the stand-in speaks the same text); shadow: said once, and nothing changes. A `probe`
+    of a titular already down is always bounded and never said: a hung probe would hold the next one off for minutes."""
     from livekit.agents import APITimeoutError
     clock, said = {}, False
     try:
@@ -120,8 +139,8 @@ async def first_audio(gen, outer, provider: str):
             if not why:
                 continue
             said = True
-            if pol.mode != "armed":
-                _say("tts", provider, why)
+            if not probe and (pol.mode != "armed" or _cooling(pol)):
+                _say("tts", provider, why + ("" if pol.mode != "armed" else " — armed, cooling down after switching"))
                 continue
             nxt.cancel()
             await asyncio.wait({nxt})               # the attempt closes; the timeout below is the verdict
@@ -130,7 +149,7 @@ async def first_audio(gen, outer, provider: str):
             return                                  # the titular ended without a frame: LiveKit's own «no audio» follows
         yield nxt.result()
         gap = {"said": said, "last": time.perf_counter(), "seen": _text_len(outer)}
-        watch = None if said else asyncio.create_task(_mid_answer(outer, pol, provider, gap))
+        watch = None if said or probe else asyncio.create_task(_mid_answer(outer, pol, provider, gap))
         try:
             async for audio in gen:
                 gap.update(last=time.perf_counter(), seen=_text_len(outer), pending=0.0)
@@ -171,9 +190,16 @@ async def _mid_answer(outer, pol: Bound, provider: str, gap: dict) -> None:
 
 @_fenced
 def ear_heard() -> None:
-    """Any STT event (an interim counts): the ear answered."""
-    _EAR.heard_at = time.monotonic()
-    _judge(_EAR.heard_at)
+    """Any STT event (an interim counts): the ear answered. Spans already due are judged BEFORE this one counts."""
+    now = time.monotonic()
+    _judge(now)
+    _EAR.heard_at = now
+
+
+@_fenced
+def ear_reset() -> None:
+    """A session ended: its spans and strikes are not the next session's."""
+    _EAR.start, _EAR.strikes, _EAR.pending = 0.0, 0, []
 
 
 @_fenced

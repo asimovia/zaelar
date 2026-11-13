@@ -6,6 +6,8 @@ Child metrics keep their plugin `label`, so each one is billed to the plugin tha
 """
 from __future__ import annotations
 
+import os
+
 from loguru import logger
 
 _STATE: dict[str, dict] = {}
@@ -78,6 +80,9 @@ def _describe(err) -> str:
     e = getattr(err, "error", err)
     code = getattr(e, "status_code", None)
     code = code if code not in (None, -1) else getattr(e, "status", None)        # aiohttp names it `status`
+    os_err = getattr(e, "os_error", None) or (e if isinstance(e, OSError) else None)
+    if getattr(os_err, "errno", None):                 # a socket error: what happened, never the endpoint it named
+        return f"{type(e).__name__}: {os.strerror(os_err.errno)}"
     text = str(getattr(e, "message", "") or e or "").strip().replace("\n", " ")
     text = (text.split(":")[0] if type(e).__name__ == "APIError" else text)[:160]
     return f"{type(e).__name__}{f' {code}' if code not in (None, -1) else ''}: {text}" if text else type(e).__name__
