@@ -15,6 +15,8 @@ from loguru import logger
 #: The longest text a report field may carry, and an id.
 TEXT_MAX = 60
 ID_MAX = 40
+#: A static face (`{"static": "<why>"}`) says why it has nothing to report, in at least this many characters.
+STATIC_WHY = 12
 _ID_CHARS = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.:-")
 #: A field, order, fact name or enum value: it reaches the prompt unquoted, so it is an identifier.
 _NAME_CHARS = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_")
@@ -140,8 +142,11 @@ def problem(man: dict) -> str | None:
     st = (man or {}).get("state")
     if st is None:
         return None
+    if isinstance(st, dict) and set(st) == {"static"}:      # a face nothing moves, and WHY — never a silent omission
+        ok = isinstance(st["static"], str) and len(st["static"].strip()) >= STATIC_WHY
+        return None if ok else f"state.static says why the face never changes (≥ {STATIC_WHY} characters)"
     if not isinstance(st, dict) or not report_fields(st):
-        return "state must be an object with a non-empty `report`"
+        return "state must be an object with a non-empty `report`, or `static` with its reason"
     order = st.get("order") or {}
     if not isinstance(order, dict) or not all(isinstance(v, str) and v for v in order.values()):
         return "state.order maps a name to a key the handlers write"

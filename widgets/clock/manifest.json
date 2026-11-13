@@ -1,6 +1,7 @@
 {
   "id": "clock",
   "screens": "shared",
+  "state": {"static": "it shows the current time and date, which every turn already carries; nothing he or an order does changes its face"},
   "version": "0.1.0",
   "owner": "Zaelar",
   "licence": "SUL-1.0",

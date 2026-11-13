@@ -98,7 +98,7 @@ def stamp(cid) -> dict:
 def served(app, q, data):
     """`data` stamped with the revision a surface acks (`_rev`) for an app that declares a state; an instance acks ITS."""
     inst, store = f"{app}::{str(q).removeprefix(app + '::')}", __import__("widgets.store", fromlist=["x"])
-    if not (isinstance(data, dict) and decl.of(app)):
+    if not (isinstance(data, dict) and decl.report_fields(decl.of(app))):   # a static face has nothing to ack
         return data
     host = [f for f, sp in decl.report_fields(decl.of(app)).items() if isinstance(sp, dict) and sp.get("by") == "host"]
     out = {**data, "_rev": stamp(inst if q and store.has_state(disk_id(inst)) else app)}
