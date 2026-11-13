@@ -51,34 +51,24 @@ def _a_show_view(action, payload) -> dict:
     return {"ok": True, "result": result, **out}
 
 
-# The ONE resolver of «which conversation» an `open` by `n` or `name` means. The card's answering veto
-# (`answers._open`, run BEFORE the order is queued) and the action itself both ask it: demo pass on b136, E2 — the
-# action knew the mail the archive had just found, the veto did not, so «open it» (`name="<sender>"`) was refused
-# before the action that would have opened it ever ran.
+_NOT_FOUND = "no encuentro ese chat — vuelve a llamar a open con el `n` de la lista o con `name` tal como aparece en ella"
+
+
 def resolve_ref(db: dict, n, name):
-    """The conversation `n` (a row of the list on screen) or `name` (the list, the conversations held, then what
-    the card last found) points at, or None."""
-    if n is not None:
-        # `n` addresses the LIST on screen and nothing else — a number has no meaning for a conversation
-        # that is not in it, and guessing one would open the wrong chat.
-        return next((c for c in _d._group_chats(_d._visible_items(db)) if c.get("n") == n), None)
-    if not name:
-        return None
-    match = _d._find_chat_by_name(db, name)
-    if match is not None:
-        return match
-    # A name sharing a word with what the archive last found means that mail (its thread is named by an address,
-    # so no chat name matches).
+    """The ONE resolver the veto (`answers._open`) and the action both ask (demo b136, E2: the veto did not know the
+    last find): `n` on the list; `name` on the list, the chats held, then the last find by a shared word; neither →
+    the last find («open it»)."""
     lf = _d.last_found(db)
-    if lf:
+    if n is not None:      # `n` addresses the LIST on screen and nothing else: never guess a conversation outside it
+        return next((c for c in _d._group_chats(_d._visible_items(db)) if c.get("n") == n), None)
+    match = _d._find_chat_by_name(db, name) if name else None
+    if match is None and lf:
         import re as _re
         from ..views.thread import _norm_txt
-        said = set(_re.findall(r"[^\W_]{4,}", _norm_txt(name)))
-        known = set(_re.findall(r"[^\W_]{4,}", _norm_txt(" ".join(
-            str(lf.get(k) or "") for k in ("name", "chatId", "subject")))))
-        if said & known:
-            return {"platform": lf["platform"], "chatId": lf["chatId"]}
-    return None
+        words = lambda t: set(_re.findall(r"[^\W_]{4,}", _norm_txt(t)))  # noqa: E731
+        if not name or words(name) & words(" ".join(str(lf.get(k) or "") for k in ("name", "chatId", "subject"))):
+            match = {"platform": lf["platform"], "chatId": lf["chatId"]}
+    return match
 
 
 # Open/close a chat thread: pure navigation by click or voice (N = the CHAT `n`; see _group_chats), or by NAME
@@ -86,19 +76,11 @@ def resolve_ref(db: dict, n, name):
 def _a_open(action, payload) -> dict:
     n, name = _d._open_ref(payload)
     db = _d.load_db()
-    # «open it» right after an archive search is the mail it found, not the inbox's first row.
-    _lf = _d.last_found(db)
-    if _lf and n is None and not name and payload.get("chatId") is None:
-        payload = {**payload, "platform": _lf["platform"], "chatId": _lf["chatId"]}
     # V2-624 — a DIRECT identity (platform + chatId), the address an activity-view row carries. Only a
     # conversation we actually hold: opening an arbitrary identity would paint an empty thread.
     if payload.get("platform") and payload.get("chatId") is not None and n is None and not name:
         from .. import thread as _th
         key_ = (payload.get("platform"), payload.get("chatId"))
-        if _d.await_found(db, *key_):
-            db["active_chat"] = {"platform": key_[0], "chatId": key_[1]}
-            _d.store.save(_d.WIDGET_ID, db)
-            return _d.view_data()
         if _th.window(db, *key_) or any(
                 (it.get("platform"), str(it.get("chatId"))) == (key_[0], str(key_[1]))
                 for it in db.get("items", [])):
@@ -128,12 +110,9 @@ def _a_open(action, payload) -> dict:
             _d.store.save(_d.WIDGET_ID, db)
             return _d.view_data()
         return {"ok": False, "error": "no tengo esa conversación guardada", **_d.view_data()}
-    match = resolve_ref(db, n, name)
+    match = resolve_ref(db, n, name)      # «open it» right after an archive search is the mail it found
     if match is None and (n is not None or name):
-        return {"ok": False,
-                "error": "no encuentro ese chat — vuelve a llamar a open con el `n` de la lista o con "
-                         "`name` tal como aparece en ella",
-                **_d.view_data()}
+        return {"ok": False, "error": _NOT_FOUND, **_d.view_data()}
     if match:
         db["active_chat"] = {"platform": match["platform"], "chatId": match["chatId"]}
         _d.await_found(db, match["platform"], match["chatId"])   # the found mail not held yet: asked back, kept open
