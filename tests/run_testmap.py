@@ -6485,6 +6485,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/browser/unit/activity/test_the_activity_reports_which_screen_records.py"]},
         {"id": "4.521", "title": "A number in the passage he names is its IDENTITY, never noise: `goto «Paso 2»` marked «Paso 1» (the matcher dropped tokens under four letters). The numbers a target names — a digit, a digit with its ordinal mark, a spoken number from the one shared table (`refs.number_words`) — must all be carried by the block (`numbers_said.numbers_in`), on the exact-phrase path too («step 12» is not «step 120»); a number no block carries is not found. ES + EN; disarmed → red",
             "ch": UNIT, "paths": ["tests/browser/unit/documento/test_a_passage_is_found_by_its_number.py"]},
+        {"id": "4.523", "title": "Every app says what its face shows — `state` is REQUIRED (V2-884 C8 step 6): every shipped manifest declares a valid one; the gate refuses a manifest without it with a sentence that says what to declare (order · report · facts, or `static` with its reason); the generator's contract (create and modify prompts), widgets/AGENTS.md and the new-widget checklist teach it, `by: host` and no `adopt` on a shared app included; an app on disk that predates the rule is named loud once by the catalogue, never skipped in silence; disarmed → red",
+            "ch": UNIT, "paths": ["tests/browser/unit/widgets/test_every_app_declares_its_state.py"]},
     ]},
     {"id": "5", "name": "CONECTORES", "nodes": [
         # V2-559 — el operador siguió la guía, creó la contraseña de aplicación y pegó el ENLACE de esa

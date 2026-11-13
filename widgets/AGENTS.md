@@ -197,6 +197,16 @@ widgets feel polished and consistent with the rest. These are HARD rules — fol
   does the moving: a widget never detects other screens itself. Policy: `widgets/screen_policy.py`. Before calling it
   done: `python -m tests.widget_harness --two-screens <id>` (a desktop and a phone browser) and the operator's manual pass
   (`--manual <id>`) — `.meshkore/docs/ops/zaelar-two-screen-test.md`.
+- **Declare `"state"` in `manifest.json`** (V2-884 — REQUIRED, the gate rejects a manifest without it): what the card's
+  face SHOWS, as its surface reports it per screen — the brain reads that, never the last order. `"order"` names the
+  store keys your handlers write (what was asked); `"report"` declares the fields the card says, each typed (`bool`,
+  `int:lo-hi`, `enum:a|b`, `id`, `text:N` ≤ 60), with `follows` (the order key or keys it confirms: `?ordered` until that
+  screen drew it) and `rest` (left out of the line when at rest); optional `"facts"` are derived by `facts(order,
+  report)` in `data.py`. In `widget.js`, after every paint: `ctx.state({...}, {applied: true})`; a change by his hand
+  that does not re-render (scroll, zoom) calls it without `applied`. Report what was PAINTED, never the stored order. A
+  face nothing moves: `"state": {"static": "<why>"}`. A third party's page the host shows (address, title) is
+  `"by": "host"` — said by the host from `_host`, never by the card. Never `"adopt"` on a `"shared"` app. Mechanism:
+  `widgets/state.py` · `state_decl.py` · `state_render.py`; references: `agenda`, `timer`, `navegador`.
 - **Self-contained**: no external libraries, no CDN, no network from `widget.js`. The imports from outside your folder are the app shell's icon set, written exactly `import * as I from "/frontend/app/lib/icons.js";`, and its bar, `import { bar, tips } from "/frontend/app/lib/toolbar.js";` (any other spelling is refused by the gate) — use its glyphs instead of drawing your own, and its bar instead of a toolbar of your own. Inject your `<style>` once (id-guarded).
 - **Security**: any web/3rd-party/user text → build DOM with `textContent` (NEVER `innerHTML` for untrusted data).
 - **Class names must not collide with `frontend/app/styles.css`'s global classes** (checked by the generator's
