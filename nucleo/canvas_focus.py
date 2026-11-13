@@ -98,9 +98,10 @@ def phone_front() -> str | None:
     try:
         from memory import api as memapi
         from voice import screens
-        if screens.surface(screens.current()) != "phone":
+        st = memapi.state() or {}      # a phone whose deck sends no `front` (an old tab mid-deploy) is read as before
+        if screens.surface(screens.current()) != "phone" or not st.get("front_reported"):
             return None
-        return str((memapi.state() or {}).get("maximized_widget") or "").strip().lower()
+        return str(st.get("maximized_widget") or "").strip().lower()
     except Exception as e:  # noqa: BLE001 — unknown: the desktop's reading, as before
         return __import__("loguru").logger.debug(f"canvas_focus: the turn's screen is unread: {e!r}")
 

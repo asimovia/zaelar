@@ -148,7 +148,9 @@ def prompt_lines(now: float | None = None) -> list[str]:
     """
     out: list[str] = []
     for g in open_goals(now):
-        if g["kind"] == KIND_WIDGET_CONTENT and g.get("last") is False:
+        # V2-903: only an EMPTY sheet is «VACÍA» — one that is full but not in front (`off_screen`: a phone's app behind
+        # the front one, a desktop's minimised sheet) is delivered content, and saying otherwise is the false line.
+        if g["kind"] == KIND_WIDGET_CONTENT and g.get("last") is False and g.get("why") == "empty":
             out.append(f"OBJETIVO ABIERTO (arnés): «{g['text'][:120]}» → la hoja `{g['target']}` sigue VACÍA. "
                        "No digas que está hecho ni «aquí lo tienes» hasta que el contenido esté cargado: "
                        "entrégalo con widget_data show/append, o escala con superficie documento.")

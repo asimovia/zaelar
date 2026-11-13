@@ -48,3 +48,21 @@ def test_a_collection_declared_from_the_view_is_read_from_the_view(monkeypatch):
     monkeypatch.setattr(truth, "widget_view", lambda wid: {"things": [{"id": "1", "title": "One"}, {"id": "2", "title": "Two"}]})
     assert [r["id"] for r in rows.select("demo", "things", {"title~": "two"})] == ["2"]
     assert rows.ops_for("demo", "things") == ("list",)
+
+
+def test_a_full_sheet_out_of_sight_is_never_called_empty(docked, monkeypatch):
+    """V2-903 (phone UI audit P1): a phone's apps behind the front one are «minimized», so a FULL sheet behind it was
+    told to the model as «sigue VACÍA — no digas que está hecho» for the goal's 5 minutes. The line is for an EMPTY
+    sheet; content out of sight is delivered content."""
+    from nucleo import truth
+    from nucleo.circuit import harness
+    full = {"kind": harness.KIND_WIDGET_CONTENT, "target": "results", "text": "find flats in Lisbon", "checks": 0}
+    monkeypatch.setattr(truth, "widget_view", lambda wid: {"empty": False})
+    asyncio.run(harness.verify(full))
+    empty = {"kind": harness.KIND_WIDGET_CONTENT, "target": "agenda", "text": "show my week", "checks": 0}
+    monkeypatch.setattr(truth, "widget_view", lambda wid: {"empty": True})
+    asyncio.run(harness.verify(empty))
+    assert (full["why"], empty["why"]) == ("off_screen", "empty")
+    monkeypatch.setattr(harness, "open_goals", lambda now=None: [full, empty])
+    lines = harness.prompt_lines()
+    assert len(lines) == 1 and "`agenda`" in lines[0] and "`results`" not in lines[0], lines
