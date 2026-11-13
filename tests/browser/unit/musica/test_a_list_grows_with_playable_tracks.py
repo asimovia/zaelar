@@ -48,10 +48,18 @@ class _Fake(mb.MusicProvider):
     def now_playing(self): return None
 
 
+EMITTED: list = []
+
+
 @pytest.fixture(autouse=True)
 def _isolate(monkeypatch, tmp_path):
     import widgets.store as store
+    from bus import sse
     from connectors.spotify import auth
+    # what the card's acts say on the bus, kept off the durable log («database is locked» under load): the stream's
+    # ONE gate (`bus.sse.publish`), so no emitter — `observer.emit` or one that builds its own event — reaches it
+    EMITTED.clear()
+    monkeypatch.setattr(sse, "publish", lambda ev, *a, **k: EMITTED.append(ev))
     monkeypatch.setattr(store, "_path", lambda wid: str(tmp_path / f"{wid}.json"))
     monkeypatch.setattr(store, "_legacy_path", lambda wid: str(tmp_path / f"{wid}_legacy.json"))
     monkeypatch.setattr(auth, "status", lambda: {"logged_in": False, "can_connect": True})
