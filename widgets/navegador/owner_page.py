@@ -293,7 +293,7 @@ async def _goto(url: str, push: bool = True, query: str = "") -> None:
         await _o._dismiss_overlays(page)                    # close cookie banners that block the website
         await _o.asyncio.sleep(0.35)                     # let the above-the-fold render before the screenshot
     except Exception as e:
-        _o._write(loading=False, error=f"No pude abrir la página: {_o._brief(e, 200)}")
+        _o._write(loading=False, error=f"No pude abrir la página: {_o._brief(e, 200)}", rev=_o._bump_rev())   # a fresh outcome (V2-880)
         _o._emit("nav_error", url, error=str(e)[:200])
         return
     if push:

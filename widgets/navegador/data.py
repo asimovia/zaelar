@@ -9,7 +9,7 @@ from .. import store
 WID = "navegador"
 _SEED = {
     "mode": "blank", "url": "", "title": "Navegador",
-    "rev": 0, "loading": False, "error": "",
+    "rev": 0, "loading": False, "error": "", "failed": "",
     "can_back": False, "can_forward": False, "youtube_id": "", "youtube_title": "",
     # `updated` is written by the OWNER on every state save (owner.py); seeding it keeps view_data's SHAPE
     # identical whether the browser has run yet or not — the golden was captured from a live store and the
@@ -105,6 +105,8 @@ def view_data(q: str = "") -> dict:
     try:
         db = store.load(WID, dict(_SEED))
         # a store written before a key existed still answers it: a key MISSING from the view reads «unverifiable»
+        if str(db.get("error") or "").strip() and not db.get("failed"):   # an older store kept a page's failure in `error`
+            db["failed"], db["error"] = db["error"], ""
         return {**_SEED, **db, "empty": not str(db.get("url") or "")}     # V2-776 L2
     except Exception as e:
         return {**_SEED, "error": f"no data: {e}"}

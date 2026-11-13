@@ -117,6 +117,8 @@ def _read() -> dict:
 def _write(**changes) -> None:
     """The ONLY state write point → store.save emits the SSE refresh for the open card."""
     db = _read()
+    if "error" in changes:   # a page that failed is an OUTCOME (`failed`); `error` is the reader's «cannot read» (V2-880)
+        changes["failed"] = changes.pop("error")
     db.update(changes)
     db["updated"] = _now()
     db["can_back"] = _idx > 0

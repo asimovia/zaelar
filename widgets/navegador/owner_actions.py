@@ -272,7 +272,7 @@ async def _youtube(q: str, url: str) -> None:
         await _o.asyncio.sleep(0.5)
         html = await page.content()
     except Exception as e:
-        _o._write(loading=False, error=f"No pude buscar en YouTube: {str(e)[:160]}")
+        _o._write(loading=False, error=f"No pude buscar en YouTube: {str(e)[:160]}", rev=_o._bump_rev())   # a fresh outcome
         return
     m = _o._YT_ID_RE.search(html)
     if m:
