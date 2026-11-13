@@ -98,13 +98,31 @@ export function render(root, data, ctx) {
   const wrap = el("div", "fts");
   root.appendChild(wrap);
 
+  const say = reporter(ctx, d);
   if (!d.connected) {
     wrap.appendChild(connectPanel(d, act, ctx));
+    say("", true);
     return;
   }
 
   wrap.appendChild(toolbar(d, act, ctx));
-  wrap.appendChild(gallery(d, act));
+  wrap.appendChild(gallery(d, act, say));
+}
+
+// V2-884 — what the gallery SHOWS, said through the host's one door after every paint (with the revision it applied)
+// and as HE scrolls: the filter on it ("" = none), how many photos it holds and the year at the top of what he sees.
+function reporter(ctx, d) {
+  let timer = null, owed = false;           // an applied report is owed until sent: a scroll never cancels it
+  const f = d.active_filter || {}, items = d.items || [];
+  return (year, applied) => {
+    if (!ctx || typeof ctx.state !== "function") return;
+    clearTimeout(timer); owed = owed || applied;
+    timer = setTimeout(() => { try {
+      Promise.resolve(ctx.state({ filter: String(f.query || f.label || "").slice(0, 40), shown: Math.min(items.length, 9999),
+        year: String(year || "").slice(0, 10) }, owed ? { applied: true } : {})).catch(() => {});
+      owed = false;
+    } catch (_) {} }, owed ? 0 : 300);
+  };
 }
 
 // Not linked yet: the account is connected in the ⚙ Conectores section (the one door, 2026-10-04) — this
@@ -161,7 +179,7 @@ function toolbar(d, act, ctx) {
   bar.append(lead, tray); return hbBar(bar, { more: tt("more", null, "Más") });   // V2-882: the search leads, the rest steps aside
 }
 
-function gallery(d, act) {
+function gallery(d, act, say) {
   const wrap = el("div", "fts-scroll");
   const items = d.items || [];
   if (d.session_pending) {
@@ -169,6 +187,7 @@ function gallery(d, act) {
   }
   if (!items.length) {
     wrap.appendChild(el("div", "fts-note", d.session_pending ? "" : tt("empty", null, "Todavía no hay fotos importadas.")));
+    say("", true);
     return wrap;
   }
 
@@ -213,7 +232,10 @@ function gallery(d, act) {
     }
     // Bottom sentinel: real infinite scroll, not a silent truncation.
     if (d.has_more && viewTop + viewH >= layout.total - viewH) act("more", {});
+    const top = layout.rows.filter((r) => r.type === "header" && r.top <= viewTop + 8).pop() || layout.rows[0];
+    say(top && top.year !== "?" ? top.year : "", !said); said = true;
   };
+  let said = false;
 
   wrap.addEventListener("scroll", () => requestAnimationFrame(paint));
   const ro = new ResizeObserver(() => recompute());
