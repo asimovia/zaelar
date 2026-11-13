@@ -189,7 +189,7 @@ VETO_SURE = 0.85
 
 def vetoes(brief, wid: str, model_action: str, verdict_action: str) -> str:
     """The event a SURE verdict vetoes the model's call on the same card with, or "": a question over a WRITE (full19
-    C2) and a lens over a state change (full52 V5). Never raises."""
+    C2), a lens over a state change (full52 V5), and a lens that answers over one that answers nothing. Never raises."""
     try:
         from nucleo.flash import data_ops as _do, direct_action as _da
         from widgets import effects as _fx
@@ -199,6 +199,8 @@ def vetoes(brief, wid: str, model_action: str, verdict_action: str) -> str:
             return "❓ la pregunta gana a la escritura — corre el veredicto"
         if _do.is_view_op(wid, verdict_action) and not _do.is_view_op(wid, model_action):
             return "👁 la vista segura gana a un cambio de estado — corre el veredicto"
+        if _fx.carries(wid, verdict_action, _fx.OUTPUT_ANSWER) and not _fx.carries(wid, model_action, _fx.OUTPUT_ANSWER):
+            return "👁 a lens that answers beats a lens that answers nothing — the verdict runs"   # demo C2
     except Exception as e:  # noqa: BLE001
         logger.debug(f"acts.card: veto unreadable ({e}) — the model's call runs")
     return ""
