@@ -64,3 +64,31 @@ def test_a_backdrop_that_could_not_be_copied_is_said_not_announced(tmp_path, mon
                                        "w": 3000, "h": 1694}], "i": 0})
     got = img.apply_action("wallpaper", {"item": 1})
     assert got["ok"] and "blocked.example" in got.get("warning", ""), got
+
+
+def test_the_picture_he_named_leads_one_a_little_bigger(tmp_path, monkeypatch):
+    """Demo sandbox 2026-11-13, B2 on b137: «find me the wallpaper cosmic eye in the sky by tyler young» — the sort by
+    area alone put a 1920x1200 «Cosmic Nebula … by Tyler Young» before the 1920x1084 «Helix Nebula HD - Cosmic Eye in
+    the Sky», and «set the first one» set the wrong one. Among desk-sized pictures the title that carries more of his
+    search leads; a thumbnail of it does not. Disarm: drop the title term from the sort key → red."""
+    from widgets import store
+    monkeypatch.setattr(store, "DATA_DIR", str(tmp_path))
+    from widgets.imagenes import data as img
+    pics = [{"url": "https://x/a.jpg", "title": "Cosmic Nebula: HD Sci-Fi Wallpaper by Tyler Young", "w": 1920, "h": 1200},
+            {"url": "https://x/b.jpg", "title": "Helix Nebula HD - Cosmic Eye in the Sky by Tyler Young", "w": 1920, "h": 1084},
+            {"url": "https://x/c.jpg", "title": "Helix Nebula HD - Cosmic Eye in the Sky by Tyler Young (thumb)", "w": 350, "h": 219},
+            {"url": "https://x/d.jpg", "title": "Some space wallpaper", "w": 2560, "h": 1600}]
+
+    async def images(q, n):
+        return {"items": pics, "source": "google"}
+    import search.browser as bs
+    monkeypatch.setattr(bs, "images", images)
+
+    async def brain_action(wid, act, payload):
+        return img.apply_action(act, payload)
+    import widgets.server_api as sa
+    monkeypatch.setattr(sa, "brain_action", brain_action)
+    from nucleo.flash import image_turn as it
+    asyncio.run(it.execute("Cosmic Eye in the Sky by Tyler Young Helix Nebula wallpaper", 6))
+    got = [i["url"] for i in store.load("imagenes", {})["items"]]
+    assert got[:2] == ["https://x/b.jpg", "https://x/a.jpg"] and "https://x/c.jpg" not in got[:2], got

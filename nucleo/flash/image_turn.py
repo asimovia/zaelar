@@ -55,6 +55,11 @@ def request_from(tool_calls: list) -> dict:
 _WALLPAPER_INTENT_RE = re.compile(r"fondo de (?:escritorio|pantalla)|wallpaper|\bde fondo\b", re.I)
 
 
+def _asked_words(text: str) -> set[str]:
+    from widgets import textmatch as _tm
+    return {t for t in _tm.fold(text).split(" ") if len(t) > 2 and t not in _tm._GENERIC}
+
+
 async def _fetchable_first(items: list, budget_s: float = 3.0) -> list:
     """`items` with the pictures `desktop_props.fetchable` can download first, order otherwise kept. Out of time
     or out of luck, the order stays as it was."""
@@ -109,8 +114,12 @@ async def execute(query: str, n: int = DEFAULT_N, more: bool = False) -> dict:
             if len(big) >= 3:
                 items = big
             # A desktop is LANDSCAPE: a phone wallpaper (800x1422) stretched across it came first on area alone in
-            # the demo pass of 2026-09-28 (B2) — blurred and cropped. Wider-than-tall first, then the biggest.
-            items.sort(key=lambda it: (int(it.get("w") or 0) <= int(it.get("h") or 0),
+            # the demo pass of 2026-09-28 (B2) — blurred and cropped. Wider-than-tall first, a desk-sized one before a
+            # thumbnail, then the one whose title carries MORE of what he asked for, then the biggest (demo sandbox
+            # 2026-11-13, B2: a 1920x1200 «Cosmic Nebula» led the «Cosmic Eye in the Sky» he named, 1920x1084).
+            asked = _asked_words(q)
+            items.sort(key=lambda it: (int(it.get("w") or 0) <= int(it.get("h") or 0), int(it.get("w") or 0) < 1600,
+                                       -len(asked & _asked_words(str(it.get("title") or ""))),
                                        -(int(it.get("w") or 0) * int(it.get("h") or 0))))
             # …and one that can BECOME the backdrop before one that cannot (full17 B2: the first nebula's site
             # answers 403 to a download, and «set the first one» left the desk bare). Asked at once, bounded.

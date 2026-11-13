@@ -4233,7 +4233,7 @@ DOMAINS: list[dict] = [
         {"id": "2.110", "title": "The listing pass does not repeat a promise already spoken — rows that landed are told, spaced",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/flash/test_a_listing_pass_does_not_repeat_the_promise.py"]},
-        {"id": "2.109", "title": "A wallpaper search puts landscape pictures first — a phone wallpaper is not a desktop",
+        {"id": "2.109", "title": "A wallpaper search puts landscape pictures first — a phone wallpaper is not a desktop; among desk-sized ones the title that carries more of his search leads, before area (demo B2 b137)",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/flash/test_a_wallpaper_is_landscape_first.py"]},
         {"id": "2.108", "title": "A person the operator names reaches the turn: the directory rows his sentence names ride the prompt (platforms only)",
