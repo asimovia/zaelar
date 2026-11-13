@@ -6319,7 +6319,7 @@ DOMAINS: list[dict] = [
         {"id": "4.499", "title": "The rest of the apps fit the hand (V2-876 T5): the messages header is one row with its "
                                   "channels and plug folded into ⋯, Images never repeats its name, unconnected Photos has "
                                   "one primary action, a blank Document offers the request that fills it, the contact "
-                                  "groups wear one icon style, a shelf is named in his language whatever the server sent",
+                                  "groups wear one icon style, a shelf is named in his language whatever the server sent; the browser card draws the main tab's capture and never waits forever without saying why (V2-877 #10)",
             "ch": UNIT, "paths": ["tests/browser/unit/phone_apps/test_the_rest_fits_the_hand.py"]},
         {"id": "4.464", "title": "The clock fills its page with no frame of its own and names the screen's zone (a zone "
                                   "the engine sends wins) (V2-877 #12)",

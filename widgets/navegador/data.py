@@ -8,7 +8,7 @@ from .. import store
 
 WID = "navegador"
 _SEED = {
-    "mode": "blank", "url": "", "title": "Navegador",
+    "mode": "blank", "url": "", "title": "",   # the chrome shows the translated name
     "rev": 0, "loading": False, "error": "", "failed": "",
     "can_back": False, "can_forward": False, "youtube_id": "", "youtube_title": "",
     # `updated` is written by the OWNER on every state save (owner.py); seeding it keeps view_data's SHAPE
