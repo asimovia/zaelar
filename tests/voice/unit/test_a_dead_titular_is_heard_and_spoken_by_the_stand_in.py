@@ -454,7 +454,7 @@ def test_the_real_plugins_refusal_is_named_in_the_switch(world, case):
 # ── a titular that HANGS (P1-4) ───────────────────────────────────────────────────────────────────────────────────
 def _bound(monkeypatch, **kw):
     from voice.engine.speech import relay_bound
-    pol = {**relay_bound._DEFAULTS, **kw}
+    pol = dataclasses.replace(relay_bound.Bound(), **kw)
     monkeypatch.setattr(relay_bound, "policy", lambda: pol)
     return relay_bound
 
@@ -527,7 +527,7 @@ def test_in_shadow_a_late_titular_is_said_and_still_speaks(world, monkeypatch, d
 def test_in_shadow_an_ear_that_never_answers_two_spans_is_said(world, monkeypatch):
     import time
     rb = _bound(monkeypatch, stt_span_s=0.01, stt_answer_s=0.02, stt_strikes=2)
-    monkeypatch.setattr(rb, "_EAR", {"start": 0.0, "heard_at": 0.0, "strikes": 0, "pending": []})
+    monkeypatch.setattr(rb, "_EAR", rb._Ear())
 
     def span(heard: bool) -> None:
         rb.ear_state("speaking")
