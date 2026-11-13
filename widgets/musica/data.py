@@ -200,7 +200,7 @@ def _find_or_create_playlist(db: dict, name: str) -> "tuple[dict, bool]":
 # name is re-exported here, where the siblings, the runtime and the tests look for it.
 from .now_playing import (  # noqa: E402,F401
     _NP_FRESH_S, _current_track_from_live, _fresh_now_playing, _live_fields, _now_playing, _np_last,
-    _read_now_playing, _spotify_status)
+    _read_now_playing, _spotify_status, surface_acts)
 from .tracks import (  # noqa: E402,F401
     _ARTIST_TITLE_SEP, _YT_TAG_RE, _clean_yt_title, _closest_playlist, _find_playlist, _resolve_track_index,
     _split_artist_title, _track_from_payload, _track_from_resolved, _track_query, _yt_display)
