@@ -216,8 +216,11 @@ def test_a_queue_step_attests_the_item_change_so_the_completion_may_fire(action)
 
 
 def test_a_step_that_attests_nothing_is_still_refused_under_a_sure_end_state():
-    why = _spec.gate_completion(_end_brief("youtube:volume_up", 0.60, "youtube:playing_id", 0.77), "youtube", "volume_up")
+    why = _spec.gate_completion(_end_brief("youtube:captions_on", 0.60, "youtube:playing_id", 0.77), "youtube", "captions_on")
     assert "attests nothing" in why
+    # V2-884 1b: the volume now attests what the player reports — another end state than the phrase's, still refused
+    why = _spec.gate_completion(_end_brief("youtube:volume_up", 0.60, "youtube:playing_id", 0.77), "youtube", "volume_up")
+    assert "attests «youtube:volume»" in why
 
 
 def test_disarm_a_queue_step_with_no_declared_end_state_is_refused_again():

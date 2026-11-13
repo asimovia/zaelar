@@ -9,7 +9,8 @@ and a failed start could never read unmet.
 So the field a clause names must be a top-level key of the app's view, as its `golden.json` pins it
 (`tests/widget_harness.py`: the SHAPE of `view_data()`, checked against the live view). Row clauses read the app's
 stored collections (`widgets/rows.py`), not its view, and a clause with `absent_is` declares what absence means —
-both are judged elsewhere.
+both are judged elsewhere. A `report.<field>` clause reads what the app's surface REPORTS (V2-884): it must name a
+field the app's `state.report` declares.
 """
 from __future__ import annotations
 
@@ -41,12 +42,21 @@ def _declared():
                     yield wid, name, c
 
 
+def _reported(wid: str) -> dict:
+    st = json.loads((WIDGETS / wid / "manifest.json").read_text(encoding="utf-8")).get("state") or {}
+    return st.get("report") if isinstance(st.get("report"), dict) else {}
+
+
 def test_every_end_state_clause_names_a_field_or_collection_of_its_apps_view():
     bad = []
     for wid, action, c in _declared():
         target = str(c.get("widget") or wid).split("::", 1)[0]
         if c.get("desktop") or c.get("canvas") or target != wid or c.get("collection") or "absent_is" in c:
             continue                                   # another kind of truth, rows, or a declared absence
+        if str(c.get("field") or "").startswith("report."):
+            if str(c["field"])[len("report."):] not in _reported(wid):
+                bad.append(f"{wid}:{action} → «{c['field']}» (not in its declared report)")
+            continue
         golden_p = WIDGETS / wid / "golden.json"
         if not golden_p.exists():
             continue

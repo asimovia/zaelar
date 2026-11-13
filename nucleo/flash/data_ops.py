@@ -373,6 +373,8 @@ def _write_ending(_row: str, wid: str, action_name: str, res, _spec_entry, _atte
         _leaves = _fx.leaves(wid, action_name)
         _circuit.settle(row=_row, verdict="unverifiable" if _leaves else "undeclared",
                         outcome=_fx.unattestable(wid, action_name) if _leaves else "")
+    elif _attested is None and _spec_entry.get("awaiting"):
+        return                          # V2-884 A6: the app has not confirmed it yet — the circuit's pulse settles it
     elif _attested is not False:
         _circuit.settle(_spec_entry, row=_row, verdict=_circuit.verdict.from_attest(_attested).name)
     elif _spec_entry is not None and _unchanged(_spec_entry):   # a replay, not a failure: the circuit leaves it

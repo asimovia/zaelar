@@ -158,8 +158,8 @@ def target_of(done_when) -> str:
         if c.get("canvas"):
             return f"canvas:{str(c['canvas']).split('::', 1)[0]}"
         wid = str(c.get("widget") or "").split("::", 1)[0].strip().lower()
-        if wid and c.get("field"):
-            return f"{wid}:{c['field']}"
+        if wid and c.get("field"):   # a reported field names what is true, like a stored one (V2-884)
+            return f"{wid}:{str(c['field']).removeprefix('report.')}"
         if wid:
             coll = str(c.get("collection") or "").strip()
             return f"{wid}:{coll}" if coll else wid
@@ -375,7 +375,7 @@ def attest(e: dict | None, *, now: float | None = None) -> bool | None:
     """Read the spec against the product now: True met (closed), False unmet (stays open), None unreadable."""
     if not e:
         return None
-    from nucleo.circuit import verify as _verify
+    from nucleo.circuit import reported as _reported, verify as _verify
     e["checks"] = int(e.get("checks") or 0) + 1
     try:
         out = True if e.get("existing") else None if e.get("met_at_birth") else _verify.check(e.get("done_when"), now)
@@ -390,9 +390,9 @@ def attest(e: dict | None, *, now: float | None = None) -> bool | None:
         if e.get("last_seen") != "unmet" or e.get("last_missing") != missing:
             _emit("❌ spec: sin cumplir todavía", e, missing=missing, checks=e["checks"])
         e["last_missing"] = missing
-    elif e.get("last_seen") != "unreadable":
+    elif not _reported.mark(e, out) and e.get("last_seen") != "unreadable":   # V2-884 A6: a wait is not unreadable
         _emit("🫥 spec: no verificable — la app no lo declara", e)
-    e["last_seen"] = {True: "met", False: "unmet"}.get(out, "unreadable")
+    e["last_seen"] = {True: "met", False: "unmet"}.get(out) or e.get("awaiting") or "unreadable"
     if e.get("task_id"):
         persist(e["task_id"], e)
     return out

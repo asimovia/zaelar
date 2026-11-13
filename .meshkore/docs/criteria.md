@@ -229,7 +229,13 @@ below is the first kind, or it names the mechanism that replaced the second.
 - **CRIT-C4f · An action's end state is rendered over what the card STORES**, never over the call's raw words: a card's
   data module may declare `spec_call(action, payload) → (action, payload)` — the act whose end state the call owes and
   its values normalised as the row keeps them — and `nucleo/circuit/spec.render` reads it (`circuit/card_call.py`). — since 2026-11-11
-  (V2-886 fila 5) · nodes 2.1695 · `nucleo/circuit/spec.py`, `widgets/agenda/spec_call.py`.
+  (V2-886 fila 5) · nodes 2.1695 · `nucleo/circuit/spec.py`, `widgets/agenda/spec_call.py`. Where the app declares
+  `state`, a clause names `report.<field>` and is read from what its surface REPORTS on the screen it lives on, never
+  from the order (`nucleo/circuit/reported.py`): a field the surface has not acked WAITS (the op's ending and the bare
+  «done» leave it); nothing acked within `PENDING_S`, or no surface at all, settles `unverifiable` with the reason
+  `no_ack` — asked, never done nor failed, no spoken correction; an acked contrary report is unmet only at
+  `INLINE_GRACE_S`, and not corrected again when the app's own late tell said it. — since 2026-11-13 (V2-884 1b, A6) ·
+  nodes 4.411, 4.520.
 - **CRIT-C4b · A worker never deletes a card.** Deleting is a confirmed act (`pending_confirm`, the UI's Yes/No);
   the first verb of a request names its act, so a build that mentions deleting its own entries builds. — since
   2026-10-09 · nodes 2.246.
@@ -378,7 +384,7 @@ below is the first kind, or it names the mechanism that replaced the second.
   outcome on our side (never stale, never another actor's), every field it names is a value of the view; an unmet end
   state runs the app's declared `on_unmet` steps (bounded) before it is said; a named source is honoured for that call.
   Reviewed across every app at once. The end state is read from what the card REPORTS — what the page's player says
-  it plays (`musica.here`, `youtube.playing_id`), the period the chart shows, what the screen's canvas holds after a
+  it plays (`musica.here`, YouTube's `report.playing_id` through the state door), the period the chart shows, what the screen's canvas holds after a
   close, minimise or full screen — never from the order sent; a refused song is skipped by our own pick and never
   said to sound; an action that names no value it needs is refused with its field (V2-873). — since 2026-11-08 ·
   nodes 4.395, 4.396, 4.408, 5.74, 5.75, 4.440, 4.441, 4.411, 4.218, 2.1661 ·
