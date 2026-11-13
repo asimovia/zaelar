@@ -16,6 +16,8 @@
 //   · a snapshot on `visibilitychange`, with `sendBeacon` on hide/`pagehide` (marked not visible), and on every
 //     reopening of the event stream (`snapshotAll`, called by `services/sse.js`);
 //   · a mount replaced by a newer tab that becomes visible again takes the screen back with a new mount (A3);
+//   · `{hand: true}` says his hand was on the app's own control for this change — the only report the engine may
+//     adopt as his order (an autoplay start or a browser's own revert never carries it);
 //   · the answer carries the engine's facts for this screen: `report` resolves to them.
 // `dispose()` ends the mount: nothing is sent after it. Nothing here knows a card's fields.
 // ============================================================================
@@ -47,8 +49,8 @@ export function stateReporter(baseId, instance, opts = {}) {
   const post = opts.fetch || ((u, init) => fetch(u, init));
   const url = `/widgets/${baseId}/state`;
   let mount = _newMount(), n = 0, full = true, timer = null, seen = null, ack = null, waiters = [];
-  let dead = false, flying = false, again = false, lastFacts = null, retaken = false;
-  const last = {}, pending = {};
+  let dead = false, flying = false, again = false, lastFacts = null, retaken = false, hand = false;
+  const last = {}, pending = {}, forgot = new Set();
 
   const body = (beacon) => {
     n += 1;
@@ -56,7 +58,9 @@ export function stateReporter(baseId, instance, opts = {}) {
     for (const k of Object.keys(pending)) delete pending[k];
     const b = { instance: instance || baseId, dev, mount, n, full, ack, patch,
                 visible: !beacon && (typeof document === "undefined" || document.visibilityState !== "hidden") };
-    full = false;
+    if (hand) b.hand = true;                             // his hand was on the app's own control (V2-884 1b)
+    if (forgot.size) { b.forget = [...forgot]; forgot.clear(); }   // apart from the patch: a new value never hides it
+    full = false; hand = false;
     return b;
   };
   const settle = (facts) => { if (facts) lastFacts = facts; const w = waiters; waiters = []; w.forEach((f) => f(facts)); };
@@ -97,12 +101,13 @@ export function stateReporter(baseId, instance, opts = {}) {
     report(patch, o = {}) {
       if (dead) return Promise.resolve(null);
       let changed = false;
-      for (const k of o.forget || []) { if (k in last) { delete last[k]; pending[k] = null; changed = true; } }
+      for (const k of o.forget || []) { if (k in last) { delete last[k]; delete pending[k]; forgot.add(k); changed = true; } }
       for (const [k, v] of Object.entries(patch || {})) {
         if (v === undefined || v === null || last[k] === v) continue;
         last[k] = v; pending[k] = v; changed = true;
       }
       if (o.applied && seen) { ack = seen; full = true; changed = true; }
+      if (o.hand && changed) hand = true;
       if (!changed && !full) return Promise.resolve(lastFacts);
       const p = new Promise((res) => waiters.push(res));
       schedule();

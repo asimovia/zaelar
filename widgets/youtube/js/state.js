@@ -37,5 +37,5 @@ export const Y = {
   // V2-884 1a — the ctx of the last render (the player's events have none of their own; a new ctx = a new mount),
   // the facts the engine answered, the revision whose ack is pending and whether it waits for the current player.
   // What was already REPORTED is the mount's memory (the host's reporter), never this module's.
-  ctx: null, facts: [], revSeen: "", ackTimer: null, ackWaits: false, paintHint: null, armUnlock: null,
+  ctx: null, facts: [], revSeen: "", ackTimer: null, ackWaits: false, paintHint: null, armUnlock: null, handAt: 0,
 };

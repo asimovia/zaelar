@@ -151,14 +151,20 @@ def report(app, body: dict) -> tuple[int, dict]:
             clean[name] = v              # None = the surface can no longer vouch for it: forgotten
         else:
             refused.append(str(name)[:40])
+    # fields the surface can no longer vouch for (a rebuilt player): said APART from the patch, applied before it, so a
+    # first value of the new player in the same report never hides the forgetting (V2-884 1b audit)
+    forgot = [f for f in (body.get("forget") or []) if isinstance(f, str) and f in fields]
     ack, key = _ack(body), (app, instance, dev)
     with _LOCK:
         cur0 = _SNAP.get(key)
     from widgets import state_adopt                      # his hand on the app's own control (C10 A1), per mount
     settled, adopt = state_adopt.settle(app, instance, clean, ack,
-                                        cur0.get("settle", {}) if cur0 and cur0["mount"] == mount else {})
+                                        cur0.get("settle", {}) if cur0 and cur0["mount"] == mount else {},
+                                        hand=body.get("hand") is True, full=full, forgot=forgot)
     with _LOCK:
         cur = _SNAP.get(key)
+        if cur is not cur0:                   # another report of this screen landed meanwhile: it settled first
+            settled, adopt = (cur or {}).get("settle", {}), []
         if mount in _GONE.get(key, ()):
             return _refused(409, "a newer mount of this screen replaced this one")
         if cur is None and sum(1 for k in _SNAP if k[0] == app and k[2] == dev) >= MAX_INSTANCES:
@@ -171,6 +177,8 @@ def report(app, body: dict) -> tuple[int, dict]:
             _GONE[key] = (_GONE.get(key, []) + [cur["mount"]])[-8:]
         same = bool(cur) and cur["mount"] == mount
         keep = dict(cur["fields"]) if same and not full else {}   # full = everything
+        for f in forgot:
+            keep.pop(f, None)
         moved = {k: v for k, v in clean.items() if (keep.get(k) or (None,))[0] != v or k not in keep}
         keep.update({k: (v, ack) for k, v in clean.items() if v is not None})
         for k in [k for k, v in clean.items() if v is None]:
@@ -183,7 +191,9 @@ def report(app, body: dict) -> tuple[int, dict]:
     with _LOCK:
         was, _HELD[key] = _HELD.get(key, []), list(facts)
     return 200, {"ok": True, "facts": facts, **({"refused": refused} if refused else {}),
-                 "_on": [f for f in facts if f not in was], "_off": [f for f in was if f not in facts], "_adopt": adopt}
+                 "_on": [f for f in facts if f not in was], "_off": [f for f in was if f not in facts],
+                 "_adopt": [(a, p, key) for a, p in adopt]}
+
 
 
 def tells(app, on, off) -> tuple[list[str], bool]:

@@ -48,74 +48,144 @@ def player(monkeypatch, tmp_path):
     screens._reset_for_tests()
 
 
-_N = {"n": 0}
+class Surface:
+    """The client as it is: a patch carries the LAST revision the card applied (never the current one by itself);
+    `applied()` acks what it has rendered; `hand=True` = the player had his hand. Everything goes through the real
+    route (`state_api.widget_state`), so an adoption runs as his click would."""
 
+    def __init__(self, mount="m1"):
+        self.mount, self.n, self.ack, self.first = mount, 0, None, True
 
-def _say(patch, *, ack=None, mount="m1", full=False):
-    """A report through the real route (`state_api.widget_state`): the adoption, if any, runs as his click would."""
-    from widgets import state_api
-    _N["n"] += 1
-    body = {"dev": A, "mount": mount, "n": _N["n"], "full": full or _N["n"] == 1, "patch": patch,
-            "ack": ack if ack is not None else state.stamp("youtube")}
-    r = asyncio.run(state_api.widget_state("youtube", body))
-    return r.status_code, json.loads(r.body)
+    def applied(self, patch=None, hand=False):
+        self.ack = state.stamp("youtube")
+        return self.say(patch or {}, hand=hand, full=True)
 
-
-@pytest.fixture(autouse=True)
-def _fresh_n():
-    _N["n"] = 0
+    def say(self, patch, *, hand=False, full=False, ack="keep"):
+        from widgets import state_api
+        self.n += 1
+        body = {"dev": A, "mount": self.mount, "n": self.n, "full": full or self.first, "patch": patch,
+                "ack": self.ack if ack == "keep" else ack, **({"hand": True} if hand else {})}
+        self.first = False
+        r = asyncio.run(state_api.widget_state("youtube", body))
+        return r.status_code, json.loads(r.body)
 
 
 def _order():
     return yt._load()
 
 
+AGREED_SOUND = {"playing": True, "playing_id": V1, "muted": False, "volume": 70}
+
+
 def test_the_autoplay_start_is_never_adopted(player):
-    _say({"playing": True, "playing_id": V1, "muted": True, "volume": 70})
-    _say({"muted": True})
+    s = Surface()
+    s.applied({"playing": True, "playing_id": V1, "muted": True, "volume": 70})
+    s.say({"muted": True})
     assert _order()["muted"] is False and _order()["mute_kept"] is False, "a blocked start was taken for his mute"
     assert yt.apply_action("captions_on", {})["audio_blocked"] is True, "the block is a fact, not an order"
 
 
+def test_a_rebuilt_player_starting_muted_is_never_adopted_even_after_an_agreement(player):
+    """Audit P1-1: «pon el vídeo de X» finds nothing (or the same video) — the card rebuilds the SAME player, which
+    starts muted (`mute=1`). The client forgets what the old player said; the door starts the agreement over."""
+    s = Surface()
+    s.applied(dict(AGREED_SOUND))                                                    # agreed: sound
+    s.say({"playing": False, "playing_id": None, "muted": None, "volume": None})     # the rebuild forgets
+    s.say({"muted": True, "volume": 70}, hand=True)                                  # the new player's muted start
+    assert _order()["muted"] is False and _order()["mute_kept"] is False, \
+        "the rebuilt player's muted start was adopted: every next video would start silent"
+
+
 def test_his_hand_after_the_player_confirmed_is_adopted_as_his_button(player):
     seen = player
-    _say({"playing": True, "playing_id": V1, "muted": False, "volume": 70})       # agreed: the player has sound
-    _say({"muted": True})                                                          # he taps the player's speaker
+    s = Surface()
+    s.applied(dict(AGREED_SOUND))
+    s.say({"muted": True}, hand=True)                                                # he taps the player's speaker
     assert _order()["muted"] is True and _order()["mute_kept"] is True, "his mute by hand was not the card's"
     assert any(k == "widget" and lb == "action" and x.get("adopted") and x.get("src") == "user" for k, lb, x in seen)
     yt.apply_action("load", {"videoId": V2})
     assert _order()["muted"] is True, "his hand's mute did not survive the next video, as his button's does"
 
 
-def test_his_hand_on_the_volume_is_adopted(player):
-    _say({"playing": True, "playing_id": V1, "muted": False, "volume": 70})
-    _say({"volume": 35})
-    assert _order()["volume"] == 35
+def test_a_browser_that_reverts_the_sound_on_its_own_is_not_his_hand(player):
+    s = Surface()
+    s.applied(dict(AGREED_SOUND))
+    s.say({"muted": True})                                       # no hand: the browser took the sound back
+    assert _order()["muted"] is False and _order()["mute_kept"] is False
+    assert yt.apply_action("captions_on", {})["audio_blocked"] is True, "a revert by the browser is a block"
+
+
+def test_a_volume_drag_adopts_where_his_hand_stops(player):
+    s = Surface()
+    s.applied(dict(AGREED_SOUND))
+    for v in (65, 60, 50, 40, 30):                                # the drag: reports with the ack it had
+        s.say({"volume": v}, hand=True)
+    assert _order()["volume"] == 65                               # the first step is taken at once…
+    s.applied({"volume": 30}, hand=True)                          # …and the settled report brings where he stopped
+    assert _order()["volume"] == 30, "a drag left the card at its first intermediate value"
+    s.applied({"volume": 30})
+    s.say({"volume": 30})
+    assert _order()["volume"] == 30
+
+
+def test_a_voice_order_that_changes_nothing_still_starts_the_agreement_over(player):
+    """Audit P2-1: agreed on muted; his hand's unmute report is late; he says «silencia» (already muted: the value does
+    not move, the command does); the late report must not undo the order."""
+    db = _order(); db["muted"] = True; store.save("youtube", db)
+    s = Surface()
+    s.applied({**AGREED_SOUND, "muted": True})
+    yt.apply_action("mute", {})                                   # same value, a new command
+    s.say({"muted": False}, hand=True)                            # the late report of his hand
+    assert _order()["muted"] is True, "a late report undid a voice order that left the value as it was"
 
 
 def test_a_voice_order_the_player_did_not_obey_is_never_undone(player):
-    _say({"playing": True, "playing_id": V1, "muted": False, "volume": 70})       # agreed on «sound»
-    before = state.stamp("youtube")
-    yt.apply_action("mute", {})                                                    # he says «silencia»
-    _say({"muted": False}, ack=before)              # the player has not applied it yet: a late report, old ack
+    s = Surface()
+    s.applied(dict(AGREED_SOUND))                                 # agreed on «sound»
+    yt.apply_action("mute", {})                                   # he says «silencia»
+    s.say({"muted": False}, hand=True)                            # a report from before it applied it
     assert _order()["muted"] is True, "a late report undid his voice order"
-    _say({"muted": False})                          # it acks the current order and still sounds: contradicted
+    s.applied({"muted": False}, hand=True)                        # it acks the order and still sounds
     assert _order()["muted"] is True, "an order the player did not obey was adopted back (undone in silence)"
 
 
 def test_another_video_starts_the_agreement_over(player):
-    _say({"playing": True, "playing_id": V1, "muted": False, "volume": 70})       # agreed on V1
-    db = _order()
-    db.update(videoId=V2)
-    store.save("youtube", db)                                                      # another video, sound still ordered
-    _say({"muted": True})                                                          # its autoplay start
+    s = Surface()
+    s.applied(dict(AGREED_SOUND))                                 # agreed on V1
+    db = _order(); db.update(videoId=V2); store.save("youtube", db)
+    s.say({"muted": True}, hand=True)
     assert _order()["muted"] is False, "an agreement on the old video adopted the new one's muted start"
 
 
 def test_a_new_mount_is_unsettled_until_it_agrees(player):
-    _say({"playing": True, "playing_id": V1, "muted": False, "volume": 70})       # agreed on m1
-    _say({"playing": True, "muted": True, "volume": 70}, mount="m2", full=True)    # a reload that starts muted
+    Surface("m1").applied(dict(AGREED_SOUND))
+    Surface("m2").applied({**AGREED_SOUND, "muted": True}, hand=True)   # a reload that starts muted
     assert _order()["muted"] is False, "a new mount inherited the old one's agreement"
+
+
+def test_a_report_from_before_a_restart_settles_nothing(player):
+    old = {"epoch": "an-engine-before-the-restart", "rev": 999}
+    s = Surface()
+    s.say(dict(AGREED_SOUND), ack=old)
+    s.say({"muted": True}, hand=True, ack=old)
+    assert _order()["muted"] is False, "a report acking a previous engine adopted"
+
+
+def test_an_adoption_the_app_refused_is_not_lost(player, monkeypatch):
+    from widgets import server_api
+    real = server_api._dispatch
+    calls = {"n": 0}
+
+    async def _refuse_once(wid, action, payload):
+        calls["n"] += 1
+        return {"ok": False, "error": "busy"} if calls["n"] == 1 else await real(wid, action, payload)
+    monkeypatch.setattr(server_api, "_dispatch", _refuse_once)
+    s = Surface()
+    s.applied(dict(AGREED_SOUND))
+    s.say({"muted": True}, hand=True)
+    assert _order()["muted"] is False and calls["n"] == 1
+    s.say({"volume": 70, "muted": True}, hand=True)               # the next report of the same hand
+    assert _order()["muted"] is True, "his hand was lost because the first adoption failed"
 
 
 def test_adopt_is_declared_with_its_guards():
@@ -127,13 +197,16 @@ def test_adopt_is_declared_with_its_guards():
     not_internal["actions"]["player_adopt"]["internal"] = False
     assert "INTERNAL" in state_decl.problem(not_internal)
     bad_on = json.loads(json.dumps(man))
-    bad_on["state"]["report"]["muted"]["settle_on"] = "nope"
+    bad_on["state"]["report"]["muted"]["settle_on"] = ["video", "nope"]
     assert "settle_on" in state_decl.problem(bad_on)
 
 
-def test_a_report_from_before_a_restart_settles_nothing(player):
-    """A page that outlived the engine acks the OLD epoch: it may agree and then move, and still adopts nothing."""
-    old = {"epoch": "an-engine-before-the-restart", "rev": 999}
-    _say({"playing": True, "playing_id": V1, "muted": False, "volume": 70}, ack=old)
-    _say({"muted": True}, ack=old)
-    assert _order()["muted"] is False, "a report acking a previous engine adopted"
+
+def test_an_order_written_without_a_command_still_starts_the_agreement_over(player):
+    """The order key moved by a writer that bumps no command (another door, a migration): the agreement was given to
+    the OLD order, so a report that still has the old value is contradicted, never adopted back."""
+    s = Surface()
+    s.applied(dict(AGREED_SOUND))
+    db = _order(); db["muted"] = True; store.save("youtube", db)          # muted, with no command
+    s.applied({"muted": False}, hand=True)
+    assert _order()["muted"] is True, "an agreement given to the old order adopted the new one back"

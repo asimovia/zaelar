@@ -59,7 +59,8 @@ await sleep(150);
 check("a value already said is not said again (the mount remembers it)", posts.length === 3);
 
 await a.report({}, { forget: ["volume"] });
-check("a field it can no longer vouch for goes as null", posts[3].b.patch.volume === null, JSON.stringify(posts[3].b));
+check("a field it can no longer vouch for is said apart from the patch",
+  JSON.stringify(posts[3].b.forget) === '["volume"]' && !("volume" in posts[3].b.patch), JSON.stringify(posts[3].b));
 
 a.dispose();
 const late = await a.report({ playing: false });

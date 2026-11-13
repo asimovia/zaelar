@@ -234,7 +234,7 @@ def test_another_video_forgets_the_old_player_and_waits_for_the_new_one(_page):
     _remount(_page, _data(videoId=_V2, title="Otro", cmd_seq=2, _rev={"epoch": "e1", "rev": 8}))
     _page.wait_for_timeout(1900)                         # the new player is slow: nothing acks rev 8 meanwhile
     after = _posts(_page)[n0:]
-    assert any(b["patch"].get("playing") is False and b["patch"].get("muted", "gone") is None for b in after), after
+    assert any(b["patch"].get("playing") is False and "muted" in (b.get("forget") or []) for b in after), after
     assert not any(b["ack"] and b["ack"]["rev"] == 8 for b in after), "rev 8 acked with the OLD player's state"
     _player_says(_page, True, vid=_V2, until="() => window.__posts.some(b => b.ack && b.ack.rev === 8)")
     acked = next(b for b in _posts(_page) if b["ack"] and b["ack"]["rev"] == 8)
@@ -313,6 +313,70 @@ def test_the_card_the_reporter_and_the_door_together(_page, monkeypatch):
         _page.wait_for_timeout(1800)                           # the ack after the player spoke and settled
         assert any(b.get("ack") and b.get("full") for b in seen), seen
         assert state_render.read("youtube")["surfaces"][0]["pending"] == [], "an applied revision stayed pending"
+    finally:
+        _page.unroute("**/widgets/youtube/state")
+        state._reset_for_tests()
+        screens._reset_for_tests()
+
+
+def test_the_clients_own_sequence_adopts_his_hand_and_never_a_rebuilt_players_muted_start(_page, monkeypatch):
+    """V2-884 1b, audit P1-1/P2-3: the real card, the real reporter and the real route (`state_api.widget_state`, the
+    adoption included). Agreed on sound → «pon el vídeo de X» finds the same video (a spinner, then the SAME player,
+    rebuilt, starting muted) → nothing is adopted; then his tap inside the player (it takes the focus) and its mute →
+    adopted as his."""
+    import asyncio
+    from server import canvas_api
+    from voice import screens
+    from widgets import state, state_api
+    state._reset_for_tests()
+    screens._reset_for_tests()
+    screens.attach("desktop:aaa")
+    monkeypatch.setattr(canvas_api, "_BY_DEV", {"desktop:aaa": {"open": ["youtube"]}})
+    screens.note_playing("youtube", "desktop:aaa")
+    yt.apply_action("load", {"videoId": _V1})
+
+    import concurrent.futures
+    pool = concurrent.futures.ThreadPoolExecutor(1)              # the route has its own loop; Playwright's is busy
+
+    def _door(route):
+        body = json.loads(route.request.post_data or "{}")
+        r = pool.submit(lambda: asyncio.run(state_api.widget_state("youtube", body))).result()
+        route.fulfill(status=r.status_code, content_type="application/json", body=r.body.decode())
+
+    def _push(**over):
+        d = {**yt.view_data(), **over, "_rev": state.stamp("youtube")}
+        _page.evaluate("(d) => { window.__rep.seen(d._rev); window.__mod.render(document.getElementById('w'), d, window.__ctx); }", d)
+
+    def _player(muted, state_=1):
+        _page.evaluate("""([vid, m, st]) => window.postMessage(JSON.stringify({event: 'infoDelivery', id: 'hb-youtube',
+                          info: {muted: m, volume: 70, playerState: st, videoData: {video_id: vid}}}), '*')""",
+                       [_V1, muted, state_])
+    _page.route("**/widgets/youtube/state", _door)
+    try:
+        _page.goto(_page._hb_origin)
+        _page.set_content("<div id='w' style='width:660px'></div>")
+        _page.evaluate("() => { window.__calls = []; window.__posts = []; window.__facts = []; window.__realDoor = true; }")
+        _page.evaluate(_NEW_MOUNT)
+        _page.evaluate("async (src) => { window.__mod = await import(src); }", _page._hb_url)
+        _push()
+        _player(False)
+        _page.wait_for_timeout(1900)                               # its ack, after the player spoke and settled
+        assert yt.view_data()["muted"] is False
+        _page.evaluate("() => { const f = document.querySelector('.hb-yt-frame iframe'); f.tabIndex = 0; f.focus(); }")
+        _player(False)                                              # his hand was on it a moment ago…
+        _push(loading=True, loading_query="X")                      # …then «pon el vídeo de X»: the player is destroyed
+        _push(loading=False, loading_query="")                      # the SAME video, a new player starting muted
+        _player(True)
+        _page.wait_for_timeout(1900)
+        assert yt.view_data()["muted"] is False and yt.view_data()["mute_kept"] is False, \
+            "the rebuilt player's muted start was adopted as his mute"
+        _player(False)                                              # applyState gives it sound: agreed again
+        _page.wait_for_timeout(1900)
+        _page.evaluate("() => { const f = document.querySelector('.hb-yt-frame iframe'); f.tabIndex = 0; f.focus(); }")
+        _player(True)                                               # his tap on the player's speaker
+        _page.wait_for_timeout(600)
+        assert yt.view_data()["muted"] is True and yt.view_data()["mute_kept"] is True, \
+            "his hand on the player's own control was not adopted as his mute"
     finally:
         _page.unroute("**/widgets/youtube/state")
         state._reset_for_tests()
