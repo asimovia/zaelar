@@ -121,9 +121,9 @@ check("both host files import the one reporter",
   && /import \{ mountState \} from "\.\.\/\.\.\/\.\.\/app\/widgets\/state-reporter\.js/.test(DECK));
 check("the event stream's reopening calls snapshotAll",
   /sweepOnReopen\(_opens, snapshotAll\)/.test(readFileSync(join(ENGINE, "frontend/app/services/sse.js"), "utf8")));
-check("a refresh tells the reporter the revision it brings",
-  /_rep\.seen\(data\._rev\)/.test(DESKTOP.slice(DESKTOP.indexOf("async refreshData")))
-  && /_rep\.seen\(data\._rev\)/.test(DECK.slice(DECK.indexOf("async refreshData"))));
+check("a refresh tells the reporter the revision it brings and the host's own facts (C7)",
+  /_rep\.seen\(data\._rev, data\._host\)/.test(DESKTOP.slice(DESKTOP.indexOf("async refreshData")))
+  && /_rep\.seen\(data\._rev, data\._host\)/.test(DECK.slice(DECK.indexOf("async refreshData"))));
 
 if (failures) { console.log(`\n${failures} failure(s)`); process.exit(1); }
 console.log("\nall ok");

@@ -50,9 +50,17 @@ def disk_id(cid) -> str:
 
 
 def _instance_ok(app: str, instance: str) -> bool:
-    """The app itself, or an instance of it the store already holds — never a name the client made up."""
+    """The app itself, or an instance of it the store already holds or the app says it holds (`instance_exists` in its
+    data module: the browser's task tabs live outside the store) — never a name the client made up."""
     from widgets import store
-    return instance == app or (decl.base(instance) == app and "::" in instance and store.exists(disk_id(instance)))
+    if instance == app or decl.base(instance) != app or "::" not in instance:
+        return instance == app
+    try:
+        hook = getattr(__import__(f"widgets.{app}.data", fromlist=["x"]), "instance_exists", None)
+        return store.exists(disk_id(instance)) or (callable(hook) and hook(instance.split("::", 1)[1]) is True)
+    except Exception as e:  # noqa: BLE001 — an app that cannot answer holds no such instance
+        logger.debug(f"state: {app} cannot say whether {instance} exists ({e!r})")
+        return False
 
 
 def seed(cid, path) -> None:

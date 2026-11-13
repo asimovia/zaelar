@@ -55,14 +55,14 @@ def mount(page, app: str, data: dict, dev: str, instance: str = "") -> None:
     page.set_content("<div id='w' style='width:900px;height:700px'></div>")
     page.evaluate(_NEW_MOUNT, [app, dev, instance or app])
     page.evaluate("""async ([src, d]) => { const mod = await import(src); window.__mod = mod;
-                       window.__rep.seen(d._rev); mod.render(document.getElementById('w'), d, window.__ctx); }""",
+                       window.__rep.seen(d._rev, d._host); mod.render(document.getElementById('w'), d, window.__ctx); }""",
                   [f"{page._hb_origin}/widgets/{app}/widget.js", data])
     page.wait_for_timeout(200)
 
 
 def push(page, data: dict) -> None:
     """A data push, as the host does it: the reporter is told the revision, then the card renders."""
-    page.evaluate("(d) => { window.__rep.seen(d._rev); window.__mod.render(document.getElementById('w'), d, window.__ctx); }",
+    page.evaluate("(d) => { window.__rep.seen(d._rev, d._host); window.__mod.render(document.getElementById('w'), d, window.__ctx); }",
                   data)
     page.wait_for_timeout(200)
 
