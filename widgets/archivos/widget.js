@@ -84,4 +84,15 @@ export function render(root, data, ctx) {
     act("sync_providers", {});
   }
   if (!d.providers_stale) root._arxProvAsked = false;
+  reportShown(ctx, d, ui, onTorrents);
+}
+
+// V2-884 — what the card SHOWS, said through the host's one door after every paint with the revision it applied: the
+// section, the folder it stands in ("" = the top) and the file open in its viewer by his double-click ("" = none).
+function reportShown(ctx, d, ui, onTorrents) {
+  if (!ctx || typeof ctx.state !== "function") return;
+  const trail = Array.isArray(d.trail) ? d.trail : [], last = trail[trail.length - 1] || {};
+  const shown = { section: onTorrents ? "torrents" : "biblioteca", folder: onTorrents ? "" : String(last.name || "").slice(0, 40),
+                  open: ui.preview && !onTorrents ? String(ui.preview.name || "").slice(0, 40) : "" };
+  try { Promise.resolve(ctx.state(shown, { applied: true })).catch(() => {}); } catch (_) {}
 }
