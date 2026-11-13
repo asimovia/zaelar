@@ -84,8 +84,7 @@ def _platform_states() -> str:
             "starting": "arrancando", "connecting": "esperando que escanees el QR", "connected": "conectado",
             "error": "NO conectado (el último intento de conexión falló; se reconecta desde el widget)"}
     lines = []
-    for pl, label, on in (("whatsapp", "WhatsApp", wa_on), ("telegram", "Telegram", tg_on),
-                          ("email", "Email", em_on)):
+    for pl, label, on in (("whatsapp", "WhatsApp", wa_on), ("telegram", "Telegram", tg_on), ("email", "Email", em_on)):
         st = (plats.get(pl) or {}).get("status", "off") if on else "off"
         lines.append(f"{label}: {hint.get(st, st) if on else 'SIN conectar'}.{_email_backlog() if pl == 'email' and on and st == 'connected' else ''}")
     # ⚠️ SCOPED to messaging, and the scope is the whole point (V2-686). Written when this was the only
@@ -112,7 +111,8 @@ def _platform_states() -> str:
         "incluidas TUS propias frases: el operador puede haberlo conectado o desconectado hace un momento " \
         "desde el widget. Si aquí pone «conectado», ESTÁ conectado aunque acabes de decir lo contrario — " \
         "no vuelvas a negar la conexión; y si pone NO conectado, jamás afirmes que sí.] " \
-        + " ".join(lines) + tail
+        + " ".join(lines) + tail + (" [TEXTO PARA OTRA PERSONA (V2-903): lo que él te dicta para otra persona va con "
+                                    "sus palabras, sin traducir; lo que redactas tú, en el idioma de la sesión.]")
 
 
 def _pro_state() -> str:
