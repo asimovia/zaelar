@@ -167,6 +167,22 @@ def test_a_stream_is_done_when_its_src_changed_and_it_plays(action):
     assert verify.check(dw) is True
 
 
+@pytest.mark.parametrize("action", ["play_local", "play_torrent"])
+def test_a_stream_is_never_met_by_the_report_of_the_player_before_it(action):
+    """Players audit P2-2: the embed was sounding (`playing` reported) and `play_local` changed `src` — the act read met
+    at once, before our <video> existed: `playing` only waited on `paused`. It waits on the new source too."""
+    s = Surface()
+    _playing(s)
+    dw = copy.deepcopy(_MANIFEST["actions"][action]["done_when"])
+    baseline.snapshot(dw)
+    db = yt._load()
+    db.update(src="/api/library/stream/a.mp4", source="local", videoId="", paused=False)
+    store.save("youtube", db)
+    assert verify.check(dw) is None and reported.awaiting(dw) == reported.PENDING, "the old player's word is not it"
+    s.applied(playing=True)
+    assert verify.check(dw) is True
+
+
 def test_with_no_surface_reporting_the_act_reads_no_ack():
     """The text channel, a sandbox with no player, a screen gone: nothing reports the app — never done, never failed."""
     dw = _dw("play")
