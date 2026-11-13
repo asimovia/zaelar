@@ -10,6 +10,7 @@ from __future__ import annotations
 from loguru import logger
 
 from voice.engine.pipeline import agent as _ag
+from voice.engine.speech import relay_bound as _relay_bound
 
 
 #: The states whose trace is safe to read from `trace.active()` (see `agent.py::entrypoint`), named by the state machine.
@@ -285,6 +286,7 @@ def on_state_change(state: "_ag.State", *, _ONSET_MAX_S, _STATE_TRACE_SAFE, _air
 def _on_user_state(ev, *, _busy, _emit, _onset, sm) -> None:
     sm.on_user_state(ev.new_state)
     new = getattr(ev.new_state, "value", ev.new_state)
+    _relay_bound.ear_state(str(new))          # V2-896 P1-4: a span the ear never answered
     was_bot_speaking = _busy["bot"]
     _busy["user"] = (new == "speaking")
     # VOICE OBSERVABILITY: his VAD edges and barge-in, so «noise cut speech» can be diagnosed.
@@ -472,6 +474,7 @@ def _on_item(ev, *, _emit, speech_id: str | None = None, surfaced: bool | None =
 
 
 def _on_transcript(ev, *, _emit, _wake) -> None:
+    _relay_bound.ear_heard()
     if ev.is_final:
         _wake["last_user_final"] = _ag.time.time()
         # → observer/SSE: the chat wall + the front-end voice-command fast path.

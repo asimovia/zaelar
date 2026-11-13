@@ -26,6 +26,7 @@ from voice.engine.pipeline import metrics_tap
 from voice.engine.speech import relay, stt as S, tts as T
 
 RATE = 24000
+EMITTED: list = []
 _PCM = (b"\x10\x27" * (RATE // 5))          # 200 ms of a constant, recognisable sample
 
 
@@ -93,6 +94,9 @@ def world(monkeypatch):
     said: list = []
     billed: list = []
     monkeypatch.setattr(relay, "_STATE", {})
+    EMITTED.clear()                                      # what the body's observer says, kept off the durable log
+    import voice.observer
+    monkeypatch.setattr(voice.observer, "emit", lambda kind, label, **kw: EMITTED.append((kind, label, kw)))
     for fam, titular in ((S, "deepgram"), (T, "inworld")):
         monkeypatch.setattr(fam.registry, "_builders", dict(fam.registry._builders))
         monkeypatch.setattr(fam, "_note", lambda msg, _fam=fam, **extra: said.append((msg, extra)))
@@ -388,13 +392,15 @@ def test_a_cause_is_one_episodes_and_never_carries_the_spoken_words(world):
     assert _alerts(said) and all("Una frase" not in c for c in _alerts(said)), _alerts(said)
 
 
-def _real_inworld_against(handler) -> list:
+def _real_inworld_against(handler) -> dict:
     """The REAL Inworld plugin, pointed at a local server, as the titular; the stand-in a double."""
+    import time
+
     import aiohttp
     from aiohttp import web
     from livekit.plugins import inworld
 
-    said: list = []
+    out = {"stand_in_audio": 0, "s": 0.0}
 
     async def run() -> None:
         port = 9                                        # discard port: refused on loopback
@@ -411,15 +417,21 @@ def _real_inworld_against(handler) -> list:
             titular = inworld.TTS(api_key="x", base_url=f"http://127.0.0.1:{port}/", ws_url=f"ws://127.0.0.1:{port}/",
                                   http_session=http)
             voice = T._with_failover([("inworld", titular), ("openai", _StandIn())])
+            t0 = time.perf_counter()
             async with voice.stream() as s:
                 s.push_text("Hola, sigo aquí. ")
                 s.end_input()
-                async for _ in s:
-                    pass
+                async for ev in s:
+                    out["stand_in_audio"] += ev.frame.data.tobytes().count(_B)
+            out["s"] = time.perf_counter() - t0
+            await voice.aclose()                         # cancels the probe of the hung titular
         if runner is not None:
-            await runner.cleanup()
+            try:
+                await asyncio.wait_for(runner.cleanup(), 2)
+            except asyncio.TimeoutError:                 # a handler that hangs on purpose
+                pass
     asyncio.run(asyncio.wait_for(run(), 15))
-    return said
+    return out
 
 
 @pytest.mark.parametrize("case", ["refused", "handshake_402"])
@@ -435,3 +447,99 @@ def test_the_real_plugins_refusal_is_named_in_the_switch(world, case):
     causes = _alerts(said)
     assert causes and "no error reported" not in causes[0], said
     assert ("402" in causes[0]) if case == "handshake_402" else ("onnect" in causes[0]), causes
+
+
+# ── a titular that HANGS (P1-4) ───────────────────────────────────────────────────────────────────────────────────
+def _bound(monkeypatch, **kw):
+    from voice.engine.speech import relay_bound
+    pol = {**relay_bound._DEFAULTS, **kw}
+    monkeypatch.setattr(relay_bound, "policy", lambda: pol)
+    return relay_bound
+
+
+async def _mute_ws(req):
+    from aiohttp import web
+    ws = web.WebSocketResponse()
+    await ws.prepare(req)
+    async for _ in ws:                                   # accepts every message, answers none
+        pass
+    return ws
+
+
+async def _hung_upgrade(_req):
+    await asyncio.sleep(3600)
+
+
+@pytest.mark.parametrize("handler,clock", [(_mute_ws, "no first audio"), (_hung_upgrade, "no sentence sent")])
+def test_an_armed_bound_switches_a_hung_titular_once_without_a_retry(world, monkeypatch, handler, clock):
+    """The REAL plugin against a socket that accepts and stays mute (measured before: 140 s, two 70 s attempts on the
+    same socket) and against an upgrade that never answers (up to the HTTP client's 300 s)."""
+    said, _ = world
+    _bound(monkeypatch, mode="armed", tts_first_byte_s=0.4, tts_ready_s=0.4)
+    out = _real_inworld_against(handler)
+    causes = _alerts(said)
+    assert out["stand_in_audio"] > 0 and out["s"] < 3.0, out
+    assert causes and clock in causes[0] and "APITimeoutError" in causes[0], causes
+
+
+def _slow_titular(delay: float) -> list:
+    class _Slow(lk_tts.SynthesizeStream):
+        async def _run(self, out) -> None:
+            out.initialize(request_id="r", sample_rate=RATE, num_channels=1, mime_type="audio/pcm", stream=True)
+            out.start_segment(segment_id="s")
+            async for d in self._input_ch:
+                if isinstance(d, str) and d.strip():
+                    self._mark_started()
+                    await asyncio.sleep(delay)
+                    out.push(_T * (RATE // 10))
+                    out.flush()
+            out.end_segment()
+
+    class _SlowVoice(_ScriptedVoice):
+        def stream(self, *, conn_options=lk_tts.tts.DEFAULT_API_CONNECT_OPTIONS):
+            return _Slow(tts=self, conn_options=conn_options)
+    return _SlowVoice([])
+
+
+@pytest.mark.parametrize("delay,says", [(0.6, True), (0.05, False)])
+def test_in_shadow_a_late_titular_is_said_and_still_speaks(world, monkeypatch, delay, says):
+    said, _ = world
+    _bound(monkeypatch, mode="shadow", tts_first_byte_s=0.3, tts_ready_s=5.0)
+    voice = T._with_failover([("inworld", _slow_titular(delay)), ("openai", _StandIn())])
+
+    async def speak() -> int:
+        got = 0
+        async with voice.stream() as s:
+            s.push_text("Una frase entera. ")
+            s.end_input()
+            async for ev in s:
+                got += ev.frame.data.tobytes().count(_T)
+        return got
+    assert asyncio.run(asyncio.wait_for(speak(), 10)) > 0, "the titular still speaks in shadow"
+    would = [e for e in EMITTED if e[0] == "provider" and e[2].get("extra", {}).get("would_switch")]
+    assert bool(would) is says and not _alerts(said), (would, said)
+    if says:
+        assert "no first audio 0.3 s" in would[0][1]
+
+
+def test_in_shadow_an_ear_that_never_answers_two_spans_is_said(world, monkeypatch):
+    import time
+    rb = _bound(monkeypatch, stt_span_s=0.01, stt_answer_s=0.02, stt_strikes=2)
+    monkeypatch.setattr(rb, "_EAR", {"start": 0.0, "heard_at": 0.0, "strikes": 0, "pending": []})
+
+    def span(heard: bool) -> None:
+        rb.ear_state("speaking")
+        time.sleep(0.02)
+        if heard:
+            rb.ear_heard()
+        rb.ear_state("listening")
+        time.sleep(0.04)
+
+    def would() -> list:
+        return [e for e in EMITTED if e[0] == "provider" and e[2].get("extra", {}).get("cat") == "stt"]
+    span(True), span(False), span(True), span(False)
+    rb.ear_state("speaking")
+    assert not would(), "a word between two silent spans resets the count"
+    span(False), span(False)
+    rb.ear_state("speaking")
+    assert len(would()) == 1 and "2 speech spans" in would()[0][1]

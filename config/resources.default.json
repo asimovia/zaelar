@@ -63,7 +63,13 @@
     "where a reading names no band).",
     "`embed_budget_ms`: how long a recall waits for a LOCAL embedding (a model on this machine, which pages in from",
     "swap on a host short of memory) before it reads the lexical channel alone; a remote embedder keeps the turn's own",
-    "recall budget (ZAELAR_RECALL_BUDGET_MS)."
+    "recall budget (ZAELAR_RECALL_BUDGET_MS).",
+    "THE RELAY'S BOUND ON A HUNG PROVIDER (V2-896 P1-4, `voice/engine/speech/relay_bound.py`). A provider that fails switches",
+    "to its stand-in on its own; one that HANGS never raises. Voice (titular only, until its first audio): no audio",
+    "`tts_first_byte_s` after the sentence reached it, or no sentence sent `tts_ready_s` after one was ready (a hung",
+    "handshake) → down, no retry. Ear: `stt_strikes` speech spans in a row of ≥ `stt_span_s` with no STT event within",
+    "`stt_answer_s`. `mode` is `shadow` (a `provider` event «would switch», nothing changes) until the fleet's p99.9 TTFB",
+    "is measured — the rule is bound ≥ 1.5 × p99.9; `armed` makes the voice switch (the ear stays shadow)."
   ],
   "worker_nice": 10,
   "admit_free_ratio": 0.2,
@@ -100,5 +106,6 @@
   "shed_ladder": ["hold_workers", "pause_newest_worker", "pause_background", "close_browser", "trim_caches"],
   "shed_recover_ratio": 1.15,
   "pressure_band_ratio": 2.0,
-  "embed_budget_ms": 300
+  "embed_budget_ms": 300,
+  "relay_bound": {"mode": "shadow", "tts_first_byte_s": 2.0, "tts_ready_s": 3.0, "stt_span_s": 0.6, "stt_answer_s": 2.5, "stt_strikes": 2}
 }

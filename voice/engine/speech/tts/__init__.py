@@ -145,9 +145,13 @@ def _with_failover(pairs):
                 self._probe_the_fallen()
 
         async def _try_synthesize(self, *, tts, input_ch, conn_options, recovering=False):
+            gen = super()._try_synthesize(tts=tts, input_ch=input_ch, conn_options=conn_options, recovering=recovering)
+            ours = self._fallback_adapter._tts_instances
+            if not recovering and tts is ours[0] and len(ours) > 1:     # P1-4: a titular that hangs is bounded
+                from .. import relay_bound
+                gen = relay_bound.first_audio(gen, self, relay.name_of("tts", tts))
             try:
-                async for audio in super()._try_synthesize(tts=tts, input_ch=input_ch, conn_options=conn_options,
-                                                           recovering=recovering):
+                async for audio in gen:
                     yield audio
             except Exception as e:  # noqa: BLE001 — recorded for the switch alert (P1-2), then the adapter's
                 if not recovering:
