@@ -155,7 +155,10 @@ the goal, and size is only its symptom:
   the measured number with the cause written beside it; nobody trims comments or golfs code to save a handful of
   lines. What the alarm asks for is a structural answer when a file or package grows by a lot: split it into a
   folder of cohesive files, delete what the new mechanism superseded, and never pile unrelated code into the
-  nearest large file.
+  nearest large file. **A size ceiling is a guide, never a gate on a correct fix:** offset what costs nothing
+  (code the fix made dead, a duplicated helper, a split by domain), then raise the ceiling in the same commit by
+  what remains, with its cause beside it. What stays a rule is the written cause and watching the TREND: a package
+  that rises batch after batch is due a split, not another raise.
 - **What only ever shrinks is different:** product regexes and word tables (node 7.73), the dependency-direction
   inventory (7.32) and the swallowed-failure count. Those measure a CLASS of defect, so growing them is the
   defect itself.
