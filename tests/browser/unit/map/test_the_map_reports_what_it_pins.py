@@ -92,3 +92,18 @@ def test_the_rendered_map_says_its_pins_pick_and_zoom_through_the_door(mapa, car
     after = state_render.clause("map", dev=a)                       # the dust settles (step-5 audit P1-1)
     settle(card_page, "map")
     assert state_render.clause("map", dev=a) == after, "a previous paint spoke after the last one"
+
+
+def test_a_resized_card_says_the_zoom_it_refitted(mapa, card_page):
+    """Step-5 audit P3: with the camera at home, a resized card refits the zoom on relayout and the line kept the old
+    one. The observer's relayout says it."""
+    data, on = mapa
+    a, b = PAIRS[0]
+    on(a, b)
+    mount(card_page, "map", {**data.view_data(), "_rev": state.stamp("map")}, a)
+    settle(card_page, "map")
+    z0 = state_render.read("map", dev=a)["surfaces"][0]["fields"]["zoom"]
+    card_page.evaluate("() => { document.getElementById('w').style.width = '240px'; document.getElementById('w').style.height = '200px'; }")
+    settle(card_page, "map")
+    z1 = state_render.read("map", dev=a)["surfaces"][0]["fields"]["zoom"]
+    assert z1 < z0, f"a narrower card refits the zoom and the line kept {z0}: {z1}"
