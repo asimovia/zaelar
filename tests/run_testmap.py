@@ -5625,7 +5625,7 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/browser/unit/agenda/test_a_calendar_that_refuses_is_an_offer_not_a_silence.py"]},
         {"id": "4.401", "title": "(apps principles, operator 2026-11-08) The files card: a cloud provider is a preference (the library serves this call, his choice is kept), each move declares its end state",
             "ch": UNIT, "paths": ["tests/browser/unit/archivos/test_a_cloud_provider_is_a_preference_and_each_move_declares_its_end_state.py"]},
-        {"id": "4.402", "title": "(apps principles, operator 2026-11-08) Contacts: a source that is down is an offer of the linked ones, and each write declares its end state",
+        {"id": "4.402", "title": "(apps principles, operator 2026-11-08) Contacts: a source that is down is an offer of the linked ones, and each write declares its end state (his sync: `sync.lastManual`, never the hourly pass)",
             "ch": UNIT, "paths": ["tests/browser/unit/contactos/test_a_source_that_is_down_is_an_offer_and_the_end_state_is_declared.py"]},
         {"id": "4.403", "title": "(apps principles, operator 2026-11-08) The document sheet's end states are this call's outcome (rev, saved_at, focus always a value)",
             "ch": UNIT, "paths": ["tests/browser/unit/documento/test_the_sheets_end_states_are_this_calls_outcome.py"]},

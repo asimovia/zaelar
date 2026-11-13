@@ -98,3 +98,15 @@ def test_create_group_is_done_when_the_group_exists(cd):
     assert check(dw) is False
     cd.apply_action("create_group", {"name": "Padres del colegio"})
     assert check(dw) is True
+
+
+def test_his_sync_is_done_when_his_sync_ran_not_when_the_automatic_one_did(cd, monkeypatch):
+    """V2-880 follow-up: `sync.last` moves with the hourly sync too, so «sync my contacts» could read done because
+    the automatic pass happened to run. HIS sync stamps `sync.lastManual`, and that is the end state."""
+    from widgets.contactos import gcontacts
+    monkeypatch.setattr(gcontacts, "sync", lambda db, **kw: {"ok": True, "added": 0})
+    dw, check = _check("sync_contacts", {})
+    db = cd.load_db(); db.setdefault("sync", {})["last"] = 1.0e9; cd.store.save(cd.WIDGET_ID, db)   # the hourly pass
+    assert check(dw) is False, "the automatic pass is not his sync"
+    assert cd.apply_action("sync_contacts", {})["ok"] is True
+    assert check(dw) is True

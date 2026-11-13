@@ -206,7 +206,8 @@
       "desc": "SINCRONIZA el directorio con Google Contacts («sincroniza mis contactos», «trae la agenda de Google», «importa mis contactos»). Trae lo que falta y, si la conexión lo permite, manda también lo que el operador ha cambiado aquí. NUNCA pisa un dato que él haya escrito. Devuelve cuántos ha añadido, completado y enviado. Si la cuenta no está conectada devuelve el error que lo dice: díselo y NO lo reintentes hasta que él la conecte.",
       "payload": {
         "provider": "opcional: google (el único hoy)"
-      }
+      },
+      "done_when": {"widget": "contactos", "field": "sync.lastManual", "expect": "changed"}
     },
     "import_google": {
       "desc": "ALIAS de sync_contacts, por compatibilidad. Usa sync_contacts.", "internal": true,

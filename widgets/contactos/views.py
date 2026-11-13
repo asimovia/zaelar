@@ -1,6 +1,8 @@
 """The contacts card's VIEW and SYNC actions — show, sources, members, auto-sync (split from `actions.py`)."""
 from __future__ import annotations
 
+import time
+
 from . import data as _d
 
 
@@ -136,6 +138,7 @@ def _a_sync_contacts(action, payload, q, db, contacts, now) -> dict:
         tail = (f" Puedo traerlos de {', '.join(sources._LABEL.get(a, a) for a in alts)}, que sí está conectado: "
                 f"dime si quieres.") if alts else ""
         return {**_d.view_data(q), "ok": False, "error": why, "offer": alts, "message": f"{why}.{tail}"}
+    db.setdefault("sync", {})["lastManual"] = time.time()   # HIS sync — the auto one moves `last` too (V2-880)
     _d.store.save(_d.WIDGET_ID, db)
     d = _d.view_data(q)
     d.update({"ok": True, "result": res})
