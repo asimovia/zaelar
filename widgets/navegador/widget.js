@@ -127,7 +127,7 @@ function renderTask(root, data, ctx){
     img.src = "/widgets/navegador/asset/" + data.shot + "?v=" + (data.shot_rev || 0);
     view.appendChild(img);
   } else {
-    view.appendChild(el("div", "hb-navt-ph", tt("opening_tab", null, "abriendo pestaña…")));
+    view.appendChild(el("div", "hb-navt-ph", waiting(data)));
   }
   root.appendChild(view);
   if(data.url || data.page_title) root.appendChild(el("div", "hb-navt-urlline", data.page_title || data.url));
@@ -177,10 +177,20 @@ function renderTask(root, data, ctx){
 
 }
 
+// V2-877 #10 — a card with no capture says WHY instead of «opening the tab…» forever: the page that failed, a task
+// that ended without one, or — the main tab — nothing open yet, and the request that fills it.
+function waiting(d){
+  if(d.failed) return tt("page_failed", null, "No se pudo abrir la página.");
+  if(["done", "failed", "cancelled"].includes(d.status)) return tt("no_capture", null, "Esta pestaña no dejó captura.");
+  if(d.kind !== "task" && !d.loading && !d.url) return tt("blank_hint", null, "Nada abierto. Pídeme que abra una página o que busque algo.");
+  return tt("opening_tab", null, "abriendo pestaña…");
+}
+
 // SINGLE FORMAT: vertical card (mini-browser + feed), one per tab/task. There is no large view anymore — if you want
 // to drive/watch the real browser, look at the real Chrome WINDOW; the card is the monitor + feed.
 export function render(root, data, ctx){
   injectStyles();
   _T = (ctx && typeof ctx.t === "function") ? ctx.t : null;
-  renderTask(root, data || {}, ctx);
+  const d = data || {};   // the MAIN tab (browse_web) is drawn by the same card: its capture is shot.png at `rev`
+  renderTask(root, d.kind === "task" ? d : {...d, shot: "shot.png", shot_rev: d.rev || 0}, ctx);
 }

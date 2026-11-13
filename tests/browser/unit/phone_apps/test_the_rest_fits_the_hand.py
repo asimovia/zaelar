@@ -91,3 +91,25 @@ def test_a_shelf_is_named_in_his_language_whatever_the_server_called_it():
         text = pg.inner_text("#host")
         assert "Documents" in text and "Video" in text, text
         assert "Documentos" not in text and "Vídeo" not in text, text
+
+
+@pytest.mark.parametrize("data,want", [
+    ({"mode": "blank", "url": "", "rev": 0}, "Pídeme que abra una página"),            # nothing open: the request
+    ({"mode": "page", "url": "https://a.example", "rev": 0, "failed": "x"}, "No se pudo abrir"),
+    ({"kind": "task", "status": "failed", "shot_rev": 0}, "no dejó captura"),
+    ({"mode": "page", "url": "https://a.example", "rev": 0, "loading": True}, "abriendo pestaña"),
+])
+def test_the_browser_never_waits_forever_without_saying_why(data, want):
+    """V2-877 #10: the browser card said «opening the tab…» forever — the main tab's capture was never drawn
+    (`shot.png` at `rev`) and every card without one showed the loader, whatever its state."""
+    with phone("navegador") as pg:
+        pg.evaluate("(d) => window.__render(d)", data)
+        pg.wait_for_timeout(100)
+        assert want in pg.inner_text(".hb-navt-view"), pg.inner_text(".hb-navt-view")
+
+
+def test_the_main_tab_draws_its_own_capture():
+    with phone("navegador") as pg:
+        pg.evaluate("window.__render({mode: 'page', url: 'https://a.example', rev: 3})")
+        pg.wait_for_timeout(100)
+        assert "shot.png?v=3" in (pg.get_attribute(".hb-navt-img", "src") or "")
