@@ -225,7 +225,7 @@ def for_prompt(open_ids=None, recent_ids=None, query: str = "", stats: dict | No
             lines += _on_screen_lines(wid, w)
 
     # Live items + coach: only for open widgets; TODAY's agenda with the card closed too (V2-668b) — `_live_lines`.
-    lines += _live_lines(cat, opened)
+    lines += _live_lines(cat, opened, _named(picked))
 
     # HIDDEN CATALOG (V2-085): the list above is a top-K, not the inventory. Saying this matters for two opposite
     # and real reasons: without the notice, the model denies capabilities that do exist when we merely did not list
@@ -399,7 +399,7 @@ def for_prompt_split(open_ids=None, recent_ids=None, query: str = "", stats: dic
             state.append(f"  [{wid}] regla del operador: {_rule[:120]}")
         if widl in opened:
             state += _on_screen_lines(wid, w)
-    state += _live_lines([p["w"] for p in picked], opened)
+    state += _live_lines([p["w"] for p in picked], opened, _named(picked))
     if stats is not None:
         stats.update(sel_stats)
         stats["sz_widgets"] = sum(len(x) + 1 for x in shelf) + sum(len(x) + 1 for x in state)
@@ -407,12 +407,18 @@ def for_prompt_split(open_ids=None, recent_ids=None, query: str = "", stats: dic
     return "\n".join(shelf), "\n".join(head + state).strip()
 
 
-def _live_lines(cat: list[dict], opened: set[str]) -> list[str]:
+def _named(picked) -> list[str]:
+    """The apps this turn names (an open one the phrase also names, or one named and not open)."""
+    from . import selection
+    return [str(p["w"].get("id") or "") for p in picked if p.get("named") or p.get("reason") == selection.NAMED]
+
+
+def _live_lines(cat: list[dict], opened: set[str], named=()) -> list[str]:
     """Live items of the OPEN cards and the agenda's context — the per-turn tail `for_prompt` writes (V2-889)."""
     from . import refs, state_render
     lines: list[str] = []
     # V2-884: the ONE state line of each open app that declares one, digest or not — its report, never its order
-    states = state_render.lines([w.get("id") for w in cat if str(w.get("id") or "").strip().lower() in opened])
+    states = state_render.lines([w.get("id") for w in cat if str(w.get("id") or "").strip().lower() in opened], named)
     if states:                  # the legend reads the marks: a block that is only `state unreported` has none to read
         lines += [""] + [state_render.LEGEND] * any(not s.endswith(": state unreported") for s in states) + states
     item_lines: list[str] = []

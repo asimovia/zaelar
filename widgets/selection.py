@@ -104,7 +104,11 @@ def candidates(query: str = "", open_ids=None, recent_ids=None, *,
             ranked = []
         n_ranked = len(ranked)
         for _score, w in ranked:
-            _take(str(w.get("id") or "").strip().lower(), NAMED)
+            wid = str(w.get("id") or "").strip().lower()
+            if not _take(wid, NAMED):                 # already in as OPEN: the turn names it too (its state line leads)
+                for p in picked:
+                    if str(p["w"].get("id") or "").strip().lower() == wid:
+                        p["named"] = True
 
     # 3) RECENTLY USED (MRU) — continuity across turns even if already closed.
     for wid in recent[:MAX_RECENT]:
