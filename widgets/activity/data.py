@@ -10,22 +10,25 @@ from a screen that does not own the activity is refused; a reading we do not hav
 from __future__ import annotations
 
 import json
+import logging
 import math
 import time
 from pathlib import Path
-
-from loguru import logger
 
 from .. import store
 
 WID = "activity"
 DB_VERSION = 1
 # The kinds of activity are DECLARED in the manifest (`kinds`), the one place the card and the catalogue read.
+logger = logging.getLogger(__name__)   # stdlib only: the widget contract (`make test-widgets`)
 KINDS = json.loads((Path(__file__).with_name("manifest.json")).read_text())["kinds"]
 TRACK_MAX = 20_000          # ~5.5 h at 1 Hz
 HISTORY_MAX = 30
 ROUTE_POINTS = 300          # what the view sends to draw the route
 HR_RECENT_S = 15            # a heart rate older than this is not "now"
+HR_SPARK_S = 600            # the live heart-rate sparkline: the last ten minutes …
+HR_SPARK_POINTS = 60        # … in at most this many points
+WEEK_S = 8 * 86_400         # the summaries the 7-day distance bars need (one day of slack for the person's time zone)
 MIN_STEP_M = 2.0            # GPS jitter under this is not distance
 MAX_ACCURACY_M = 50.0       # a fix worse than this does not count for distance
 
@@ -90,11 +93,24 @@ def _figures(cur: dict, now: float) -> dict:
         "heart_rate": last_hr[1] if last_hr and now - last_hr[0] <= HR_RECENT_S else None,
         "hr_avg": round(sum(hrs) / len(hrs)) if hrs else None,
         "hr_max": max(hrs) if hrs else None,
-        "climb_m": round(cur["climb_m"]),
+        "climb_m": round(cur["climb_m"]) if cur["last_alt"] is not None else None,   # no barometer: no climb, not 0
         "moving": cur["last_mode"],
         "has_location": bool(cur["track"]),
         "has_heart_rate": bool(cur["hr"]),
     }
+
+
+def _hr_recent(hr: list, now: float) -> list:
+    """The last minutes of heart rate as [[t_ms, bpm]], averaged into at most HR_SPARK_POINTS buckets."""
+    pts = [p for p in hr if now - p[0] <= HR_SPARK_S]
+    if not pts:
+        return []
+    step = max(1, math.ceil(len(pts) / HR_SPARK_POINTS))
+    out = []
+    for i in range(0, len(pts), step):
+        chunk = pts[i:i + step]
+        out.append([int(chunk[-1][0] * 1000), round(sum(b for _, b in chunk) / len(chunk))])
+    return out
 
 
 def _route(track: list) -> list:
@@ -109,13 +125,24 @@ def view_data(q: str = "") -> dict:
     try:
         db = _load()
         cur, now = db.get("current"), time.time()
-        out = {"status": db.get("status", "idle"), "history": (db.get("history") or [])[:5]}
+        hist = db.get("history") or []
+        # `days`: what the 7-day distance bars need (start, distance) — the card buckets them by ITS local day
+        days = [[h["started_at"], h["distance_m"]] for h in hist
+                if isinstance(h.get("started_at"), (int, float)) and now * 1000 - h["started_at"] <= WEEK_S * 1000
+                and isinstance(h.get("distance_m"), (int, float))]
+        out = {"status": db.get("status", "idle"), "history": hist[:5], "days": days}
         if cur:
             out.update({"kind": cur["kind"], "label": cur["label"], "started_at": int(cur["started_at"] * 1000),
-                        "owner": cur["owner"], "route": _route(cur["track"]), **_figures(cur, now)})
+                        "owner": cur["owner"], "route": _route(cur["track"]), "hr_recent": _hr_recent(cur["hr"], now),
+                        **_figures(cur, now)})
         return out
     except Exception as e:  # noqa: BLE001 — a broken store is an empty card that says so, never a dead turn
-        return {"status": "idle", "history": [], "error": str(e)[:120]}
+        return {"status": "idle", "history": [], "days": [], "error": str(e)[:120]}
+
+
+#: The short words a payload carries for a kind (EN + ES) — the kinds themselves are the manifest's.
+_WORDS = {"run": "running", "correr": "running", "walk": "walking", "caminar": "walking", "paseo": "walking",
+          "ride": "cycling", "bike": "cycling", "bici": "cycling", "cycle": "cycling", "drive": "driving", "conducir": "driving"}
 
 
 def _a_start(action: str, p: dict) -> dict:
@@ -123,9 +150,10 @@ def _a_start(action: str, p: dict) -> dict:
     if db.get("status") == "running" and db.get("current"):
         cur = db["current"]
         return {"ok": True, "already": True, "kind": cur["kind"], "status": "running"}
-    kind = str(p.get("kind") or "cycling").lower()
-    if kind not in KINDS:
-        return {"ok": False, "error": f"unknown kind '{kind}'", "kinds": list(KINDS)}
+    said = str(p.get("kind") or p.get("type") or p.get("activity") or "").strip().lower()   # measured: `{"type": "walk"}`
+    kind = said if said in KINDS else _WORDS.get(said, "")
+    if not kind:   # never a default: an unnamed or unknown kind is asked, not recorded as a ride
+        return {"ok": False, "error": f"unknown kind '{said}'" if said else "kind_required", "kinds": list(KINDS)}
     db["current"], db["status"] = _new(kind, str(p.get("label") or "")[:40]), "running"
     _save(db)
     return {"ok": True, "status": "running", "kind": kind}
@@ -138,7 +166,8 @@ def _a_stop(action: str, p: dict) -> dict:
         return {"ok": True, "status": "idle", "note": "no activity was running"}
     f = _figures(cur, time.time())
     summary = {"kind": cur["kind"], "label": cur["label"], "started_at": int(cur["started_at"] * 1000),
-               "elapsed_s": f["elapsed_s"], "distance_m": f["distance_m"], "avg_speed_kmh": f["avg_speed_kmh"],
+               "elapsed_s": f["elapsed_s"], "distance_m": f["distance_m"] if f["has_location"] else None,
+               "avg_speed_kmh": f["avg_speed_kmh"],
                "hr_avg": f["hr_avg"], "hr_max": f["hr_max"], "climb_m": f["climb_m"]}
     db["history"] = ([summary] + (db.get("history") or []))[:HISTORY_MAX]
     db["current"], db["status"] = None, "idle"
@@ -185,22 +214,32 @@ ACTIONS = dict(start=_a_start, stop=_a_stop, claim=_a_claim, samples=_a_samples)
 
 
 def apply_action(action: str, payload: dict) -> dict:
-    fn = ACTIONS.get(action)
+    fn = ACTIONS.get(action) if isinstance(action, str) else None
     if not fn:
-        return {"ok": False, "error": f"unknown action '{action}'", "actions": sorted(ACTIONS)}
+        return {"ok": False, "error": "unknown_action", "action": action, "actions": sorted(ACTIONS)}
     try:
         return fn(action, payload if isinstance(payload, dict) else {})
     except Exception as e:  # noqa: BLE001
         return {"ok": False, "error": str(e)[:120]}
 
 
+def _summary_line(h: dict) -> str:
+    when = time.strftime("%Y-%m-%d", time.localtime((h.get("started_at") or 0) / 1000))
+    dist = f"{h['distance_m'] / 1000:.1f} km" if isinstance(h.get("distance_m"), (int, float)) else "no distance"
+    hr = f", avg heart rate {h['hr_avg']}" if h.get("hr_avg") else ""
+    return f"{h.get('kind')} {when} {dist} in {int(h.get('elapsed_s') or 0) // 60} min{hr}"
+
+
 def prompt_digest() -> str:
-    """With the card open: the running activity's figures, so «what's my heart rate?» needs no round trip."""
+    """With the card open: the running activity's figures, so «what's my heart rate?» / «how far have I gone?» need no
+    round trip; at rest, the last activities, so «what did I do yesterday?» needs none either."""
     try:
         v = view_data()
         if v.get("status") != "running":
-            return ""
-        bits = [f"{v['kind']} running for {v['elapsed_s'] // 60} min", f"{v['distance_m'] / 1000:.1f} km"]
+            last = [_summary_line(h) for h in (v.get("history") or [])[:3]]
+            return ("Activity on screen: nothing recording. Last: " + "; ".join(last) + ".") if last else ""
+        bits = [f"{v['kind']} running for {v['elapsed_s'] // 60} min",
+                f"{v['distance_m'] / 1000:.1f} km" if v.get("has_location") else "no GPS fix yet"]
         if v.get("heart_rate") is not None:
             bits.append(f"heart rate {v['heart_rate']} bpm now (avg {v['hr_avg']}, max {v['hr_max']})")
         elif v.get("has_heart_rate"):
@@ -211,5 +250,5 @@ def prompt_digest() -> str:
             bits.append(f"{v['speed_kmh']} km/h")
         return "Activity on screen: " + ", ".join(bits) + "."
     except Exception as e:  # noqa: BLE001 — a broken digest leaves the turn without the figures, never broken
-        logger.warning(f"activity: prompt_digest failed: {e}")
+        logger.warning("activity: prompt_digest failed: %s", e)
         return ""
