@@ -7949,6 +7949,8 @@ DOMAINS: list[dict] = [
             "tests/infrastructure/unit/core/test_egress_callers_keep_the_family_and_the_price.py"]},
         {"id": "8.23", "title": "Tarifas: el precio SIGUE al proveedor que corre", "ch": UNIT, "paths": [
             "tests/infrastructure/unit/core/test_energy_tariffs.py"]},
+        {"id": "8.27", "title": "The shared zaelar.db is put in WAL once, on the main thread, before any writer thread — at boot (`nucleo/workspace.db_wal`) and for the suite (`conftest.py`): a NEW file switched by three connections at once fails at once («database is locked»)",
+            "ch": UNIT, "paths": ["tests/infrastructure/unit/core/test_the_shared_db_is_in_wal_before_any_writer.py"]},
         # V2-767 — el otro lado del 8.20: no basta con que nadie gaste FUERA del contador, hace falta
         # que dentro se cobre un precio que alguien haya elegido. `deepseek-flash` (titular de 5 piezas)
         # no tenía fila y facturaba al catch-all punitivo; `deepseek-v4-pro` llevaba un precio 4,7×

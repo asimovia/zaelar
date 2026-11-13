@@ -81,3 +81,20 @@ def ensure() -> Path:
         except Exception:      # noqa: BLE001 — see the docstring: booting beats persisting
             pass
     return base
+
+
+def db_wal() -> Path:
+    """Put the shared `zaelar.db` in WAL once, on the main thread, before any writer thread. On a NEW file, openers
+    switching it at the same moment fail at once («database is locked»: the busy timeout does not cover the switch;
+    218 of 400 three-way opens). Never stops the boot: a file that cannot be opened is said, its openers say it too."""
+    import sqlite3
+    from contextlib import closing
+    p = Path(os.getenv("ZAELAR_DB") or (root() / "memory" / "_data" / "zaelar.db"))
+    try:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with closing(sqlite3.connect(str(p), timeout=5.0)) as c:
+            c.execute("PRAGMA journal_mode=WAL")
+    except Exception as e:  # noqa: BLE001 — see the docstring: booting beats persisting
+        from loguru import logger
+        logger.warning(f"workspace: {p} could not be put in WAL at boot ({type(e).__name__}: {e})")
+    return p

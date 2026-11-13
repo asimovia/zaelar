@@ -187,6 +187,13 @@ try:
     _real_db = _Path(__file__).resolve().parent / "memory" / "_data" / "zaelar.db"
     if not os.getenv("ZAELAR_DB") or _Path(os.environ["ZAELAR_DB"]).resolve() == _real_db:
         os.environ["ZAELAR_DB"] = str(_Path(tempfile.mkdtemp(prefix="zaelar-test-db-")) / "zaelar.db")
+    # The suite's db in WAL ONCE, here, before any test makes the product start a writer thread: three connections
+    # switching a NEW file at once fail at once («database is locked» in the setup of whichever test came second).
+    # The product does the same at boot (`nucleo/workspace.db_wal`); inline here, since nothing is imported yet.
+    import sqlite3 as _sqlite3
+    _wal = _sqlite3.connect(os.environ["ZAELAR_DB"], timeout=5.0)
+    _wal.execute("PRAGMA journal_mode=WAL")
+    _wal.close()
 except Exception:                                  # never let the harness's own guard stop the suite
     pass
 
