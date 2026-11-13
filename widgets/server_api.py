@@ -11,7 +11,7 @@ from fastapi import APIRouter, File, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from loguru import logger
 
-from . import runtime, state, state_decl, store
+from . import runtime, state, store
 from .about import router as _about_router
 from .client_files import router as _client_router
 from .reading import router as _reading_router
@@ -280,9 +280,7 @@ async def widget_data(wid: str, q: str = ""):
     res = await _run_widget(wid, "view_data", call)
     if res is _MISSING:
         return JSONResponse({"error": "no data module"}, status_code=404)
-    inst = f"{wid}::{str(q).removeprefix(wid + '::')}"            # an instance (`results::x`) acks ITS revision
-    cid = inst if q and store.exists(state.disk_id(inst)) else wid
-    return JSONResponse({**res, "_rev": state.stamp(cid)} if isinstance(res, dict) and state_decl.of(wid) else res)  # V2-884
+    return JSONResponse(state.served(wid, q, res))                 # V2-884: the revision a surface acks
 
 
 def _answer_backed(wid: str, action: str, payload: dict):

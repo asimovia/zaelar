@@ -53,7 +53,7 @@ def _task_view(t: dict) -> dict:
     a surface for it.
     """
     return {
-        "_host": _host(t.get("url"), t.get("page_title")),
+        "_host": {"host": domain(t.get("url"))[:40], "title": str(t.get("page_title") or "").strip()[:60]},
         "kind": "task",
         # `title` drives the card's HEADER (`live_title` in the manifest): what is being searched for, not the
         # name of the piece. With several browsers open, all of them called «Navegador», the header identified
@@ -110,7 +110,7 @@ def view_data(q: str = "") -> dict:
         if str(db.get("error") or "").strip() and not db.get("failed"):   # an older store kept a page's failure in `error`
             db["failed"], db["error"] = db["error"], ""
         return {**_SEED, **db, "empty": not str(db.get("url") or ""),     # V2-776 L2
-                "_host": _host(db.get("url"), db.get("title"))}
+                "_host": {"host": domain(db.get("url"))[:40], "title": str(db.get("title") or "").strip()[:60]}}
     except Exception as e:
         return {**_SEED, "error": f"no data: {e}"}
 
@@ -202,14 +202,9 @@ def card_face(instance: str = "") -> dict:
 
 
 def domain(url) -> str:
-    """The site a URL is on, as he names it: the host without `www.` (an empty tab: "")."""
+    """The site a URL is on (no `www.`); with the title, a HOST fact (`_host`, V2-884 C7) the card never writes."""
     host = str(url or "").strip().split("://", 1)[-1].split("/", 1)[0].strip()
     return host[4:] if host.startswith("www.") else host
-
-
-def _host(url, title) -> dict:
-    """The page's site and title, said by the HOST that renders it, never by the card (V2-884 C7, `by: "host"`)."""
-    return {"host": domain(url)[:40], "title": str(title or "").strip()[:60]}
 
 
 def instance_exists(name: str) -> bool:

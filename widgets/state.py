@@ -95,6 +95,13 @@ def stamp(cid) -> dict:
     return {"epoch": boot_id(), "rev": store.revision(str(cid or ""))}
 
 
+def served(app, q, data):
+    """`data` stamped with the revision a surface acks (`_rev`) for an app that declares a state; an instance acks ITS."""
+    inst, store = f"{app}::{str(q).removeprefix(app + '::')}", __import__("widgets.store", fromlist=["x"])
+    ok = isinstance(data, dict) and decl.of(app)
+    return {**data, "_rev": stamp(inst if q and store.exists(disk_id(inst)) else app)} if ok else data
+
+
 def note_save(widget_id, data) -> None:
     """`store.save` saved a REAL change of `widget_id`: note which declared order keys moved, at which revision."""
     cid = str(widget_id or "")
