@@ -6398,6 +6398,8 @@ DOMAINS: list[dict] = [
                                   "funnel; a call that fills either is the handler's; an act with no `fills` is judged "
                                   "by all its slots as before",
             "ch": UNIT, "paths": ["tests/browser/unit/map/test_a_show_that_fills_only_its_modifiers_is_not_done.py"]},
+        {"id": "4.514", "title": "The map says what each screen pins, which place is picked and how close he looks (V2-884 C8 step 5): `places`, `selected` (by name, following both the set and the pick) and `zoom` (his hand on +/−) after every paint; `show`/`select` are `?ordered` on each screen until it acks; two screen pairs; disarmed → red",
+            "ch": UNIT, "paths": ["tests/browser/unit/map/test_the_map_reports_what_it_pins.py"]},
         {"id": "4.477", "title": "«Those» on the map are the SHEET's rows (V2-879 O1): `rows` (numbers, titles, \"all\") "
                                   "resolve from the sheet's own data with each row's link; rows over an empty sheet "
                                   "paint nothing and say its search is still going; the model's own places over a sheet "
