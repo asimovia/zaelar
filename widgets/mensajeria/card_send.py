@@ -19,6 +19,7 @@ import logging
 
 from . import data as _d
 from . import sent as _sent
+from .words import say as _say
 
 logger = logging.getLogger("zaelar.mensajeria.card_send")
 
@@ -47,17 +48,17 @@ def check(db: dict, payload: dict) -> tuple[dict | None, dict | None]:
     target = _target(db, payload)
     if target is None:
         return None, {"ok": False, "error": "no_target",
-                      "message": "No sé a qué conversación va: ábrela y vuelve a enviarlo."}
+                      "message": _say("no_conversation", "I don't know which conversation it goes to: open it and send it again.")}
     text = str(payload.get("text") or "")
     files = _d._media.local_paths(_d.store.data_dir(_d.WIDGET_ID), payload.get("files"))
     if not text.strip() and not files:
-        return None, {"ok": False, "error": "empty", "message": "No hay nada escrito que enviar."}
+        return None, {"ok": False, "error": "empty", "message": _say("nothing_written", "There is nothing written to send.")}
     platform = str(target.get("platform") or "")
     status = str(((db.get("platforms") or {}).get(platform) or {}).get("status") or "off")
     if status != "connected":
-        label = {"whatsapp": "WhatsApp", "telegram": "Telegram", "email": "El correo"}.get(platform, platform)
+        label = {"whatsapp": "WhatsApp", "telegram": "Telegram"}.get(platform) or (_say("email_channel", "Email") if platform == "email" else platform)
         return None, {"ok": False, "error": "not_connected",
-                      "message": f"{label} no está conectado ahora mismo, así que no se ha enviado."}
+                      "message": _say("not_connected_now", "{channel} is not connected right now, so nothing was sent.", channel=label)}
     return target, None
 
 

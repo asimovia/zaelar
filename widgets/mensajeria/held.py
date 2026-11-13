@@ -25,6 +25,8 @@ import time
 import unicodedata
 from datetime import datetime
 
+from .words import say as _say
+
 logger = logging.getLogger("zaelar.mensajeria.held")
 
 #: The furthest ahead a send may be scheduled. A bound on a consequence, not a judgement: an order parked for
@@ -101,10 +103,10 @@ def cancel(db: dict, *, ref: str = "", contact: str = "", now: float | None = No
                                        for f in ("name", "to", "chatId") if _fold(o.get(f)))]
     elif len(rows) > 1:
         return {"ok": False, "error": "which_scheduled",
-                "message": "Hay varios envíos programados: dime cuál cancelo.",
+                "message": _say("several_scheduled", "There are several scheduled sends: tell me which one to cancel."),
                 "scheduled": [str(o.get("name") or o.get("to") or "") for o in rows]}
     if not rows:
-        return {"ok": False, "error": "nothing_scheduled", "message": "No hay ningún envío programado que cancelar."}
+        return {"ok": False, "error": "nothing_scheduled", "message": _say("nothing_scheduled", "There is no scheduled send to cancel.")}
     gone = {id(o) for o in rows}
     for q in ("pending_send", "pending_reply"):
         db[q] = [o for o in (db.get(q) or []) if id(o) not in gone]

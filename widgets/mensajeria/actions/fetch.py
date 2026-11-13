@@ -6,6 +6,7 @@ Every module-level name of `data` is read through it (`_d.<name>`), so a patch o
 from __future__ import annotations
 
 from .. import data as _d
+from ..words import say as _say
 
 
 # PULL through the connector on demand (V2-624): a platform-wide fetch the connector serves against its real
@@ -92,7 +93,7 @@ def _a_unread(action, payload) -> dict:
     db = _d.load_db()
     m = _d._outbound._message_ref(db, payload)
     if not m or not m.get("messageId"):
-        return {"ok": False, "error": "no_message", "message": "Dime qué mensaje dejo sin leer."}
+        return {"ok": False, "error": "no_message", "message": _say("which_unread", "Tell me which message to leave unread.")}
     # The message's time anchors WhatsApp's «mark as unread»; only carried when there is one.
     db.setdefault("pending_unread", []).append({**_d._key(m), **({"ts": m["ts"]} if m.get("ts") else {})})
     _d.store.save(_d.WIDGET_ID, db)
