@@ -24,7 +24,8 @@ def snapshot(done_when) -> None:
     for c in clauses:
         expect = str(c.get("expect") or "").lower()
         if expect == "changed" and "baseline" not in c:
-            c["baseline"] = _verify.current_value(c)
+            from nucleo.circuit import reported as _reported   # a report: its value at birth, else the order key
+            c["baseline"] = _reported.baseline(c) if _reported.field_of(c) else _verify.current_value(c)
         elif expect == "added" and "baseline_ids" not in c:
             ids = row_ids(c)
             if ids is not None:

@@ -178,12 +178,13 @@ export function buildFrame(data, ctx, loading, isStream, src, id){
     if(!data.paused && !halted(ctx)){ try{ video.play().catch(function(){}); }catch(_){} }
     const c1 = ctx;
     video.addEventListener("ended", function(){ try{ c1.action("ended"); }catch(_){} });
-    // V2-873 — our own <video> reports what it plays too, as the embed does (`player_state`)
-    video.addEventListener("playing", function(){ if(Y.ytState) Y.ytState(true, ""); });
-    video.addEventListener("pause", function(){ if(Y.ytState) Y.ytState(false, ""); });
-    // V2-884 1a — our own <video> reports its sound and volume too
-    video.addEventListener("volumechange", function(){
-      reportState({muted: !!video.muted, volume: Math.round((video.volume || 0) * 100)}); });
+    // V2-884 1b — our own <video> says the embed's fields (it has no video id): all once it can (`loadedmetadata`: a
+    // stream left paused speaks too, so its ack comes), then each change.
+    const sound = () => ({muted: !!video.muted, volume: Math.round((video.volume || 0) * 100)});
+    video.addEventListener("loadedmetadata", () => reportState({playing: !video.paused && !video.ended, ...sound()}));
+    video.addEventListener("playing", () => reportState({playing: true}));
+    video.addEventListener("pause", () => reportState({playing: false}));
+    video.addEventListener("volumechange", () => reportState(sound()));
     frame.appendChild(video);
   } else if(id){
     iframe = document.createElement("iframe");
@@ -237,15 +238,12 @@ export function bindReporters(data, ctx, id, PL){
   // candidate, and a late onError for an already-replaced video must not be attributed to its successor.
   Y.ytError = (code) => { if(ctx && ctx.action) ctx.action("player_error",
       {code: String(code == null ? "unknown" : code), videoId: id || ""}); };
+  // V2-884 — whether the embed plays, and WHICH video it delivered: said through the state door (the end states read
+  // that report); the reporter says a value once, however often the player repeats it.
   Y.ytState = (playing, vid) => {
-    if(!ctx || !ctx.action || !(data.videoId || data.src)) return;
-    // V2-884 1a — whether it plays, and WHICH video (an id; a stream of ours has none to say)
-    const shown = vid || data.videoId || "";
+    if(!ctx || !data.videoId) return;
+    const shown = vid || data.videoId;
     reportState(Object.assign({playing: !!playing}, /^[A-Za-z0-9_-]{1,40}$/.test(shown) ? {playing_id: shown} : {}));
-    const key = (vid || data.videoId || data.src) + "|" + playing;
-    if(key === Y.stateSent) return;              // the player repeats its state several times a second
-    Y.stateSent = key;
-    ctx.action("player_state", {playing: !!playing, videoId: vid || data.videoId});
   };
   Y.ytQuality = (levels, vid) => {
     if(ctx && ctx.action) ctx.action("player_quality", {levels: Array.isArray(levels) ? levels : [], videoId: vid || ""});

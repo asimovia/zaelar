@@ -44,6 +44,11 @@ def test_the_scripted_actions_declare_their_end_state():
 def test_a_field_clause_names_a_field_of_the_view(seeded, wid, action, clause):
     if verify.kind_of(clause) != "field":
         return
+    from nucleo.circuit import reported
+    if reported.field_of(clause):   # V2-884: what the app REPORTS — a field its declared report names
+        from widgets import state_decl
+        assert reported.field_of(clause) in state_decl.report_fields(state_decl.of(wid)), f"{wid}:{action} → {clause}"
+        return
     view = importlib.import_module(f"widgets.{wid}.data").view_data()
     head = str(clause["field"]).split(".", 1)[0]
     assert head in view or "absent_is" in clause, f"{wid}:{action} reads «{head}», which {wid}'s view does not have"

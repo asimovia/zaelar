@@ -55,6 +55,10 @@ class Verdict:
             "⏭ veredicto: no se juzga (cancelada o relevada)"),
 )
 
+#: Why a verdict was reached, when the reason changes what may be said (V2-884 A6): the row's outcome, which the next
+#: turns read in the record — `no_ack` is an act the app never confirmed: asked, never said as done nor as failed.
+REASONS = {"no_ack": "pedido; la app no ha confirmado que ocurriera"}
+
 ALL: dict[str, Verdict] = {v.name: v for v in (STARTED, MET, UNDECLARED, UNVERIFIABLE, UNMET, CANNOT, ASKED, SKIPPED)}
 
 #: What older rows and records still carry, read as the one vocabulary (a stored row outlives a release).

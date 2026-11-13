@@ -22,6 +22,7 @@ V2-776 L1 — clause kinds beyond rows (the row grammar alone reached 3 of ~18 w
     {"widget": "documento", "field": "focus", "has": "proof of work"}  …contains (folded)
     {"widget": "youtube", "field": "videoId", "expect": "changed"}     …differs from `baseline` (taken at birth)
     {"widget": "results", "field": "view", "is": "detail", "absent_is": "list"}   a key the view omits until set
+    {"widget": "youtube", "field": "report.playing", "is": "true"}    what the app REPORTS it shows (`reported.py`)
     {"desktop": "wallpaper", "has": "orion"} / {"desktop": "wallpaper", "expect": "changed"}
     {"canvas": "results", "expect": "visible" | "minimized" | "maximized" | "closed"}
 
@@ -36,6 +37,7 @@ from __future__ import annotations
 
 from loguru import logger
 from nucleo.circuit import baseline as _baseline
+from nucleo.circuit import reported as _reported
 
 #: Operators a clause may use. Anything else is a condition this engine cannot check, and a condition it
 #: cannot check must READ as unverifiable (None), never as failure.
@@ -90,6 +92,8 @@ def current_value(clause: dict):
     from nucleo import truth as _truth
     k = kind_of(clause)
     if k == "field":
+        if _reported.field_of(clause):
+            return _reported.value(clause)    # V2-884: the surface's report, never the order the store holds
         wid, path = str(clause.get("widget") or ""), str(clause.get("field") or "")
         cur = _truth.widget_field(wid, path)
         if cur is None and "absent_is" in clause and _truth.widget_view(wid) is not None:
@@ -148,14 +152,10 @@ def card_on_screen(wid: str) -> bool | None:
 def _canvas(clause: dict) -> bool | None:
     from nucleo import truth as _truth
     state = _truth.canvas_state(str(clause.get("canvas") or ""))
-    if state is None:
-        return None
     want = str(clause.get("expect") or "visible").strip().lower()
-    if want not in _truth.CANVAS_STATES:
+    if state is None or want not in _truth.CANVAS_STATES:
         return None
-    if want == "visible":
-        return state in ("visible", "maximized")
-    return state == want
+    return state in ("visible", "maximized") if want == "visible" else state == want
 
 
 def check_clause(clause: dict, now: float | None = None) -> bool | None:

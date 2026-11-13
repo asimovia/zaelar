@@ -79,6 +79,9 @@ def tick(now: float | None = None) -> list[dict]:
                 settle(e, verdict="met", now=now)
                 if not e.get("task_id") and _fx.leaves(str(e.get("widget") or ""), str(e.get("action") or "")):
                     _say_now(e, "", fact=SENT, verdict="met")   # a worker's errand speaks through its own `close`   # V2-850: the mouth said «started»; the echo is «sent»
+            elif out is None and e.get("awaiting") == "no_ack" and not e.get("task_id") and _no_ack_due(e, now):
+                settle(e, verdict="unverifiable", outcome=_verdict.REASONS["no_ack"], now=now)
+                closed.append(e)              # V2-884 A6: asked, never confirmed by the app — not done, not failed
             elif out is False and not e.get("task_id") and now - float(e.get("born") or now) >= INLINE_GRACE_S:
                 if _fx.leaves(str(e.get("widget") or ""), str(e.get("action") or "")):
                     _settle_unconfirmed_send(e, now)
@@ -90,6 +93,12 @@ def tick(now: float | None = None) -> list[dict]:
         except Exception as ex:  # noqa: BLE001
             logger.debug(f"circuit: attest skipped ({ex})")
     return closed
+
+
+def _no_ack_due(e: dict, now: float) -> bool:
+    """The app had its ack window (`state_render.PENDING_S`) from the act's birth and confirmed nothing."""
+    from widgets.state_render import PENDING_S
+    return now - float(e.get("born") or now) >= PENDING_S
 
 
 #: The row states a task ENDS in — the store's own (`memory.tasks_store.DONE_STATES`), never a second copy.
@@ -217,6 +226,18 @@ def _say_now(e: dict, missing: str, *, fact: str = "", verdict: str = "unmet") -
     return True
 
 
+def _told_by_the_app(e: dict) -> bool:
+    """The card itself reported, after this act was born, that it did not happen, and that tell stands (a withdrawn
+    one does not count): he heard the truth from it — a blocked sound, a refused video — so the circuit's correction
+    would be the same fact said twice (V2-884: the end states read the report the tell is derived from)."""
+    try:
+        from widgets import late_report
+        return bool(e.get("widget")) and late_report.falsified_since(str(e["widget"]), float(e.get("born") or 0))
+    except Exception as ex:  # noqa: BLE001 — unreadable: the correction is said as before
+        logger.debug(f"circuit: late tell unread ({ex})")
+        return False
+
+
 def _made_good_later(e: dict) -> bool:
     """A later write of the SAME card action landed after this one was born — the retry that made it good (refactor2710-99:
     «I couldn't set that Wednesday reminder» said after the reminder was set by the next attempt). Said on the timeline."""
@@ -306,6 +327,8 @@ def _settle_unmet_inline(e: dict, now: float) -> None:
         return                               # the op was refused and the turn's own mouth said why
     if _made_good_later(e):
         return                               # a later write of the same card action landed: nothing left to correct
+    if _told_by_the_app(e):
+        return                               # the app's own late tell already said it (`late_report`): said once
     _say_now(e, missing)                     # he ordered it and it did not happen: said NOW, on its row
 
 

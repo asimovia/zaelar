@@ -180,15 +180,16 @@ def end_state_unmet(cards: set[str] | None = None, turn: str = "") -> dict | Non
     """The first end state still owed on `cards` (any card when None) that reads NOT met now. With `turn`, only the end
     states born in THAT turn (the spec's trace): one another request left open is its business (demo sandbox
     2026-10-28, C2/C3) — matched by identity, never by comparing his sentence with the spec's copy of it."""
-    from nucleo.circuit import spec, verify
+    from nucleo.circuit import reported, spec, verify
     for e in spec.open_specs():
         card = str(e.get("target") or "").split(":", 1)[0]
         if card in ("", "desktop", "canvas") or (cards is not None and card not in cards):
             continue
         if turn and str(e.get("trace") or "") != turn:
             continue
-        if verify.check(e.get("done_when")) is False:
-            return e
+        out = verify.check(e.get("done_when"))
+        if out is False or (out is None and reported.awaiting(e.get("done_when"))):
+            return e                         # contrary, or the app has not confirmed it yet (V2-884 A6): not «done»
     return None
 
 

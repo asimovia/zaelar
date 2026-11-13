@@ -50,24 +50,6 @@ def player_adopt(action, p, db) -> dict:
     return {"ok": True, "adopted": order}
 
 
-def player_state(action, p, db) -> dict:
-    """Internal, fired by widget.js from the embedded player's own `onStateChange` (V2-873): WHICH video the player
-    plays (`playing_id`) and WHETHER it plays (`playing`). The end states of every start and of pause read these —
-    `videoId`/`paused` are the ORDER, and a «Hecho» was said over a video the player never changed. A report about
-    another video than the current one is stale."""
-    vid = str(p.get("videoId") or "").strip()[:20]
-    if vid and vid != str(db.get("videoId") or ""):
-        return {"ok": True, "stale": True}
-    playing = str(p.get("playing")).strip().lower() in ("true", "1", "yes")
-    was = (str(db.get("playing_id") or ""), bool(db.get("playing")))
-    if playing:   # a stream of ours (library, torrent) has no videoId: its source names it
-        db["playing_id"] = vid or str(db.get("videoId") or db.get("src") or "")
-    db["playing"] = playing
-    if (str(db.get("playing_id") or ""), playing) != was:
-        store.save(WID, db)
-    return {"ok": True, "playing": playing, "playing_id": str(db.get("playing_id") or "")}
-
-
 def facts(order: dict, report: dict) -> dict:
     """The derived facts the manifest declares, from what was ORDERED and what the surface REPORTS (V2-884 C1)."""
     playing, muted = report.get("playing") is True, report.get("muted")

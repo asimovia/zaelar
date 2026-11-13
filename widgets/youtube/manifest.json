@@ -89,9 +89,9 @@
       },
       "done_when": {
         "all": [
-          {"widget": "youtube", "field": "playing_id", "expect": "changed"},
+          {"widget": "youtube", "field": "report.playing_id", "expect": "changed"},
           {"widget": "youtube", "field": "player_error", "expect": "absent"},
-          {"widget": "youtube", "field": "playing", "is": "true"}
+          {"widget": "youtube", "field": "report.playing", "is": "true"}
         ]
       }
     },
@@ -127,9 +127,9 @@
       "activation": true,
       "done_when": {
         "all": [
-          {"widget": "youtube", "field": "playing_id", "expect": "changed"},
+          {"widget": "youtube", "field": "report.playing_id", "expect": "changed"},
           {"widget": "youtube", "field": "player_error", "expect": "absent"},
-          {"widget": "youtube", "field": "playing", "is": "true"}
+          {"widget": "youtube", "field": "report.playing", "is": "true"}
         ]
       }
     },
@@ -141,9 +141,9 @@
       "repeatable": true,
       "done_when": {
         "all": [
-          {"widget": "youtube", "field": "playing_id", "expect": "changed"},
+          {"widget": "youtube", "field": "report.playing_id", "expect": "changed"},
           {"widget": "youtube", "field": "player_error", "expect": "absent"},
-          {"widget": "youtube", "field": "playing", "is": "true"}
+          {"widget": "youtube", "field": "report.playing", "is": "true"}
         ]
       }
     },
@@ -154,7 +154,7 @@
       "done_when": {
         "all": [
           {"widget": "youtube", "field": "player_error", "expect": "absent"},
-          {"widget": "youtube", "field": "playing", "is": "true"}
+          {"widget": "youtube", "field": "report.playing", "is": "true"}
         ]
       }
     },
@@ -230,7 +230,7 @@
       "payload": {},
       "sensitivity": "routine",
       "activation": true,
-      "done_when": {"widget": "youtube", "field": "playing", "is": "true"}
+      "done_when": {"widget": "youtube", "field": "report.playing", "is": "true"}
     },
     "pause": {
       "desc": "PARA el vídeo y lo deja cargado: congelado en pantalla, listo para seguir con play. «Vale, para el vídeo», «páralo», «páralo un momento», «detenlo», «pausa» — «para» es el verbo, no la preposición",
@@ -239,17 +239,19 @@
       "activation": true,
       "done_when": {
         "widget": "youtube",
-        "field": "playing",
+        "field": "report.playing",
         "is": "false"
       }
     },
     "mute": {
       "desc": "silencia el audio",
-      "payload": {}
+      "payload": {},
+      "done_when": {"widget": "youtube", "field": "report.muted", "is": "true"}
     },
     "unmute": {
       "desc": "quita el silencio (vuelve a oírse)",
-      "payload": {}
+      "payload": {},
+      "done_when": {"widget": "youtube", "field": "report.muted", "is": "false"}
     },
     "captions_on": {
       "desc": "activa los subtítulos del vídeo (la pista por defecto del reproductor)",
@@ -262,18 +264,21 @@
     "volume_up": {
       "desc": "sube el volumen",
       "payload": {},
-      "repeatable": true
+      "repeatable": true,
+      "done_when": {"widget": "youtube", "field": "report.volume", "expect": "changed"}
     },
     "volume_down": {
       "desc": "baja el volumen",
       "payload": {},
-      "repeatable": true
+      "repeatable": true,
+      "done_when": {"widget": "youtube", "field": "report.volume", "expect": "changed"}
     },
     "set_volume": {
       "desc": "pone el volumen a un nivel concreto (0-100)",
       "payload": {
         "level": "0-100"
-      }
+      },
+      "done_when": {"widget": "youtube", "field": "report.volume", "is": "{level}"}
     },
     "restart": {
       "desc": "reproduce OTRA VEZ el mismo vídeo desde el segundo 0 y sigue sonando («ponlo otra vez desde el principio», «repítelo»). No para nada y no cambia de pantalla",
@@ -410,14 +415,6 @@
         "value": "the value his hand set"
       }
     },
-    "player_state": {
-      "desc": "Internal: the embedded player reports which video it plays and whether it plays (its own onStateChange); the end states read it",
-      "internal": true,
-      "payload": {
-        "playing": "true | false, as the player reports it",
-        "videoId": "id the report belongs to (optional)"
-      }
-    },
     "play_local": {
       "desc": "reproduce un vídeo que ya está en la biblioteca del agente (por su ruta)",
       "payload": {
@@ -427,7 +424,7 @@
       "done_when": {
         "all": [
           {"widget": "youtube", "field": "src", "expect": "changed"},
-          {"widget": "youtube", "field": "paused", "is": "false"}
+          {"widget": "youtube", "field": "report.playing", "is": "true"}
         ]
       }
     },
@@ -443,7 +440,7 @@
       "done_when": {
         "all": [
           {"widget": "youtube", "field": "src", "expect": "changed"},
-          {"widget": "youtube", "field": "paused", "is": "false"}
+          {"widget": "youtube", "field": "report.playing", "is": "true"}
         ]
       }
     },
@@ -454,9 +451,9 @@
       },
       "done_when": {
         "all": [
-          {"widget": "youtube", "field": "playing_id", "expect": "changed"},
+          {"widget": "youtube", "field": "report.playing_id", "expect": "changed"},
           {"widget": "youtube", "field": "player_error", "expect": "absent"},
-          {"widget": "youtube", "field": "playing", "is": "true"}
+          {"widget": "youtube", "field": "report.playing", "is": "true"}
         ]
       }
     },
