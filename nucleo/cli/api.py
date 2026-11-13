@@ -53,7 +53,7 @@ def _wall(role: str, text: str) -> None:
 async def say(text: str = Body(..., embed=True), session: str = Body("default", embed=True),
               ingest: bool = Body(True, embed=True), prompt: bool = Body(False, embed=True),
               model: str = Body("", embed=True), execute: bool = Body(False, embed=True),
-              dev: str = Body("", embed=True), voice: bool = Body(False, embed=True)) -> dict:
+              dev: str = Body("", embed=True)) -> dict:
     """Inject a text turn into FlashBrain and return its response, action, and timings (test channel).
     `model` (optional) forces another fast model for A/B testing. `execute` (V2-049) REALLY EXECUTES worker
     actions (escalation/injection/response/stop) → end-to-end testing of web tasks by text, without voice."""
@@ -85,8 +85,7 @@ async def say(text: str = Body(..., embed=True), session: str = Body("default", 
         from voice import screens as _screens
         _screens.begin_turn(dev)
         _screens.ORIGIN.set(_screens.clean(dev))
-    # `voice` (V2-903): the line runs down the microphone's path — the eager brief, the cover, the word hold.
-    res = await run_turn(text, sid=session, ingest=ingest, model=model, execute=execute, voice_path=voice)
+    res = await run_turn(text, sid=session, ingest=ingest, model=model, execute=execute)
     # `reply` is a LIST of sentences (a turn may say several). Join them instead of calling `str()`: stringifying
     # the list would render `['I will look for them now.']` on the wall, including brackets and quotes.
     _reply = res.get("reply")

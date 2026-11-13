@@ -16,7 +16,6 @@ what the turn left behind: the model's calls (`brain._turn_calls`), the canvas e
 """
 from __future__ import annotations
 
-import asyncio
 import time
 
 from loguru import logger
@@ -108,24 +107,11 @@ def _action(decision: dict, events: list[dict], ledger: list[dict], tags: list[d
     return "chat"
 
 
-def _voice_path(events: list) -> dict:
-    """What the voice path did on this turn: the early brief reused or asked again (and what moved), the cover."""
-    early = next(({**e, **(e.get("extra") or {})} for e in events
-                  if e.get("early_brief") or (e.get("extra") or {}).get("early_brief")), {})
-    from voice import typed_turn
-    return {"early_brief": early.get("early_brief") or "none", "moved": early.get("moved") or [],
-            "cover": typed_turn.take_cover()}
-
-
 async def run_turn(text: str, *, sid: str = "default", ingest: bool = True, model: str = "",
-                   execute: bool = False, lists: bool = True, voice_path: bool = False,
-                   eager_lead_s: float = 0.3) -> dict:
+                   execute: bool = False, lists: bool = True) -> dict:
     """One typed turn through the voice turn. Same signature as the text channel always had; `model` and `lists` are
     accepted for its callers: the model is the routing's (`config/v2.py`), and `lists=False` (a list's own step) keeps
-    the task-list door shut so a step never opens another list. `voice_path` (V2-903) drives the line down the
-    MICROPHONE's path: the ear's eager end of turn fires the brief and the recall `eager_lead_s` before the turn is
-    confirmed, and the reply is answered as spoken (the cover decided, the voice window kept) — what only a live
-    voice turn exercised. The result's `voice_path` says what the early brief became."""
+    the task-list door shut so a step never opens another list."""
     from voice import attention, observer, typed_turn
     text = (text or "").strip()
     if not text:
@@ -141,18 +127,11 @@ async def run_turn(text: str, *, sid: str = "default", ingest: bool = True, mode
         logger.info(f"cli.turn: model override {model!r} ignored — the voice turn takes its model from the routing")
     policy = (consequence.recorded(closed=() if lists else ("tasks.intake",)) if execute
               else consequence.dry_turn(ingest=ingest))
-    drill = attention.VOICE_DRILL.set(bool(voice_path))
     try:
-        if voice_path:
-            from nucleo.turn import brief_turn
-            brief_turn.fire_early(text, brain=brain)
-            await asyncio.sleep(max(0.0, float(eager_lead_s)))
         with policy as ledger:
             reply = await typed_turn.drive(brain, text)
     except Exception as e:  # noqa: BLE001 — the channel reports a failed turn, it never raises
         return {"ok": False, "error": f"{type(e).__name__}: {e}"[:300]}
-    finally:
-        attention.VOICE_DRILL.reset(drill)
     events = [dict(e) for e in observer._events[n0:]]
     calls = [dict(c) for c in (getattr(brain, "_turn_calls", None) or [])]
     tags = _tags(events)
@@ -163,13 +142,11 @@ async def run_turn(text: str, *, sid: str = "default", ingest: bool = True, mode
     action = _action(decision, events, ledger, tags, calls)
     if brain._turn_failed:            # the model did not answer: reported as the failure it is (CRIT-M4)
         return {"ok": False, "error": brain._turn_failed, "spec": getattr(brain, "_turn_failed_spec", ""),
-                "reply": reply, "action": action, "tool_calls": calls, "consequences": ledger,
-                **({"voice_path": _voice_path(events)} if voice_path else {})}
+                "reply": reply, "action": action, "tool_calls": calls, "consequences": ledger}
     secret = next(({"n": e.get("n"), "labels": e.get("labels")} for e in events
                    if e.get("kind") == "secret" and e.get("label") in ("saved", "no_vault")), None)
     return {"ok": True, "reply": reply, "action": action, "tool_calls": calls, "tags": tags,
             **({"secret": secret} if secret else {}),
             "consequences": ledger, "decision": decision, "channel": "pipeline",
-            **({"voice_path": _voice_path(events)} if voice_path else {}),
             "timings": {"total_ms": round((time.time() - t0) * 1000, 1)},
             "trace": next((e.get("trace") for e in reversed(events) if e.get("trace")), "")}
