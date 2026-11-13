@@ -247,3 +247,21 @@ def test_the_pipeline_hands_one_decision_to_the_calls_the_words_and_the_tags():
     src = open("nucleo/turn/pipeline.py", encoding="utf-8").read()
     assert "_decision.gate(_tx.on_tool_call)" in src and "_decision.tags(_tx.tag_emit)" in src and "_decision=_decision" in src
     assert "decision=_decision" in open("nucleo/turn/pipeline_stream.py", encoding="utf-8").read()
+
+
+def test_a_stream_that_is_cut_or_fails_drops_what_waited_and_says_so():
+    """L2 P3-1: a barge-in or an error skips `settle` — what waited in the queue never runs, and the drop is said (the
+    cut's own event carries the count; a failure says it here)."""
+    brief = _brief(ready=False)
+    d, hold, call, tag, _sent, ran, tags, _req = _turn(brief)
+    call("reply_message", {"text": "Sí"})
+    tag("show", {"id": "mensajeria"})
+    events = []
+    assert FP.drop_held(hold, lambda *a, **k: events.append(k.get("extra")), "error") == 2
+    assert ran == [] and tags == [] and d.cut and d.queue == [] and events[0]["dropped"] == 2
+    assert FP.drop_held(hold) == 0, "a queue is dropped once"
+    _land(brief, "handle_inline", 0.95, 0.0)                    # the brief lands: a late call would now run at once
+    time.sleep(0.05)
+    call("show_widget", {"widget_id": "agenda"})                # the `finally` fires a late call after the cut
+    tag("show", {"id": "agenda"})
+    assert ran == [] and tags == [], "a call after the cut ran (audit L3 P2-2)"

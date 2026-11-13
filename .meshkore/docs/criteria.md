@@ -426,8 +426,23 @@ below is the first kind, or it names the mechanism that replaced the second.
   call is awaited inside the stream, and a call leaked as JSON text crosses the same gate; a tag leaves as DECLARED —
   its owner in `voice/tag_protocol.json`, a card's manifest or a connector catalog's `tags` (`nucleo/flash/tag_effects`),
   never a list in the router; words already said are never routed after them. Declared exceptions, measured: annulling an
-  escalation stays at the licence (11/11 escalated orders); canvas verdicts keep node 2.930. The inventory, one row per
-  reader with the rule that applies, is V2-893's table. — since 2026-11-12 · nodes 2.1736, 2.1737, 3.175 ·
+  escalation stays at the licence (11/11 escalated orders); canvas verdicts keep node 2.930. Substitution (V2-893 L3):
+  where what enters LEAVES or DELETES the verdict reads VETO through `verdicts.substitutes` (a doubt below is recorded
+  and the model's call runs); a REVERSIBLE act in a call's place (a draft for a reply) keeps the act floor. A send that
+  an app call's substitution (`run_ordered`, `_verdict_instead`) puts in the model's place is born ASKING his yes on its
+  row (`substitution.in_the_models_place`, rule 2) when the act declares its slots and none lacks — so the declared
+  exception, the ordered send the model only drafted (bench E3: order 1.00, `forward` 0.79), substitutes under an order
+  sure at VETO and asks before it leaves. In the band the turn has ONE owner: when the model's escalation is the turn's,
+  the close opens no send task. Measured conduct that changed: a removal is vetoed from 0.85 (was 0.9);
+  `picture_by_verdict` replaces the model's tool from 0.85 (was 0.9); a sensitive act the verdict disagrees with below
+  VETO runs as the model called it when what would enter leaves or deletes (a reversible one enters at the act floor,
+  or he is asked); the model's own channel is replaced only at VETO, and a reading below VETO naming another channel is
+  asked as WHICH channel — his answer («sí» to the one he said, or the one he names) becomes the row's reading and the
+  send leaves once; a send task in the escalation's place needs VETO (below it the model's worker runs). Declared debt
+  (owner: V2-893, the next batch): the birth question is lost for a leaving act with no declared slots (the worker
+  route), after a slot question his answer fills, through `take_call`, and for a send task in the escalation's place
+  run with no question (`at_escalation`, `how == "run"`); #34, #36, #37 (`_looked`), #44 still substitute below VETO. The inventory, one row per
+  reader with the rule that applies, is V2-893's table. — since 2026-11-12 · nodes 2.1736, 2.1737, 2.1738, 3.175 ·
   `nucleo/turn/verdicts.py`, `nucleo/turn/brief_doors.py`, `nucleo/turn/route_by_verdict.py`.
 - **CRIT-K3 · The verdict's action lands on the LIVE card**, never a bare phantom; with several cards of one type
   «close» goes to the one his last turn touched; «it» / «that» is the card his last turn acted on. — since

@@ -242,6 +242,9 @@ def commission(wid: str, action: str, payload: dict | None, said: str, *, readin
         _emit(emit, "❓ send task: one slot has no value — asked on its row", q, {"cat": "flash", "task_id": uid,
               "slot": slot, "ask_id": ask_id})
         return uid
+    from nucleo.request import substitution
+    if substitution.active():                  # in the model's call's place: born asking (CRIT-K2b, rule 2)
+        return substitution.ask_first(uid, art, wid, action)
     _said_started(uid, wid, action, art)
     _schedule(uid)
     return uid

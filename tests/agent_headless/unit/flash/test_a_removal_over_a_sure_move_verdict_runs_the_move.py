@@ -39,7 +39,7 @@ def test_with_nothing_to_fill_the_card_asks_instead_of_removing(queue):
 
 
 @pytest.mark.parametrize("answers, said", [
-    ({"screen_action": ("youtube:move", 0.85)}, SAID),           # under the bar: CRIT-K2, the model's call stands
+    ({"screen_action": ("youtube:move", 0.84)}, SAID),           # under VETO: a doubt, the model's call stands (K2b R4)
     ({"screen_action": ("youtube:clear_list", 1.0)}, SAID),      # the verdict is a removal itself
     ({"screen_action": ("youtube:remove", 1.0)}, SAID),          # the verdict agrees
     ({"screen_action": ("youtube:move", 1.0)}, "quita el penúltimo y pon el primero al final"),   # he said «quita»

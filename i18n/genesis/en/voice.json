@@ -290,6 +290,7 @@
  "worker_confirm_widget": "The background task wants to do «{action}» on «{widget}», and it can't be undone. Is that OK?",
  "worker_confirm_generic": "The background task wants to run «{action}». Is that OK?",
  "worker_confirm_on_behalf": "The background task wants to do «{action}» with «{who}» on your behalf, and you didn't ask me for that. Shall I?",
+ "send_channel_which": "Shall I send it by {his}, as you said, or by {other}?",
  "worker_confirm_tainted": "The background task read text written by others (the web or messages) and now wants to do «{action}» toward «{target}». Shall I?",
  "worker_confirm_rule": "The background task suggests saving a rule for you: «{rule}». Shall I save it?",
  "nav_form_on_behalf": "it sends your details to «{site}», and you didn't ask me for that",
