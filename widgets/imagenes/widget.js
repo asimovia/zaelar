@@ -107,7 +107,7 @@ export function render(el, data, ctx){
   const named = cur.title || d.title || d.query; if(named) hd.appendChild(txt("b", null, String(named)));   // its own name is the chrome's (V2-876)
   if(items.length) hd.appendChild(txt("span","imgcount", `${i+1} / ${items.length}`));
   el.appendChild(hd);
-  reportShown(ctx, items.length ? i + 1 : 0, items.length ? String(cur.title || "") : "", !!(d.auto && items.length > 1));
+  reportShown(ctx, items.length ? i + 1 : 0, items.length ? String(named || "") : "", !!el._hbImgAuto);   // as painted, as armed
 
   // ── source line: where this exact picture came from ───────────────────────────────────────────
   // The operator asked for the source to be visible ("including the source itself"). It names the SITE

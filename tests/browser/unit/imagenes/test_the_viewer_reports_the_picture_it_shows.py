@@ -87,3 +87,19 @@ def test_the_rendered_viewer_says_its_picture_through_the_door(viewer, card_page
     after = state_render.clause("imagenes", dev=a)                       # the dust settles (step-5 audit P1-1)
     settle(card_page, "imagenes")
     assert state_render.clause("imagenes", dev=a) == after, "a previous paint spoke after the last one"
+
+
+def test_the_slideshow_is_what_this_screen_runs(viewer, card_page):
+    """Step-5 audit P3: `slideshow` said the ORDER (`auto`), but the next shot is armed only while the agent runs — with
+    it stopped the line said `slideshow` over a still picture. The card says what it armed."""
+    data, on = viewer
+    a, b = PAIRS[0]
+    on(a, b)
+    db = data._load(); db.update(auto=True, every_s=30); store.save("imagenes", db)
+    mount(card_page, "imagenes", {**data.view_data(), "_rev": state.stamp("imagenes")}, a)
+    settle(card_page, "imagenes")
+    assert state_render.clause("imagenes", dev=a).endswith(", slideshow"), state_render.clause("imagenes", dev=a)
+    card_page.evaluate("() => { window.__ctx.running = false; }")                    # the agent stopped
+    push(card_page, {**data.view_data(), "_rev": state.stamp("imagenes")})
+    settle(card_page, "imagenes")
+    assert "slideshow" not in state_render.clause("imagenes", dev=a), state_render.clause("imagenes", dev=a)
