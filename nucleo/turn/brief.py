@@ -206,18 +206,25 @@ def _worker_state() -> tuple[bool, list]:
 
 def ask_for_turn(operator_text: str, *, running_goals=None, last_reply: str = "", turn_id=None):
     """Fire the brief for a live voice turn, reading the screen and worker state itself. `operator_text` must be the
-    ADMITTED sentence. Never raises: no state reads as nothing open."""
-    if (pre := _bt.prefired(operator_text)) is not None:
-        return pre
+    ADMITTED sentence. One fired before admission is reused only if asked with this same state (V2-903). Never
+    raises: no state reads as nothing open."""
     try:
         from memory import api as _memapi
         open_ids = list((_memapi.state() or {}).get("open_widgets") or [])
     except Exception:  # noqa: BLE001
         open_ids = []
     has_workers, open_asks = _worker_state()
-    return ask(operator_text, open_ids=open_ids, running_goals=running_goals, has_workers=has_workers,
-               ask_pending=bool(open_asks), open_asks=open_asks, last_reply=last_reply, turn_id=turn_id,
-               threads=_threads())
+    threads = _threads()
+    asked_with = _bt.fingerprint(last_reply=last_reply, running_goals=running_goals, open_ids=open_ids,
+                                 has_workers=has_workers, open_asks=open_asks, threads=threads)
+    if (pre := _bt.prefired(operator_text, asked_with, turn_id=turn_id)) is not None:
+        return pre
+    handle = ask(operator_text, open_ids=open_ids, running_goals=running_goals, has_workers=has_workers,
+                 ask_pending=bool(open_asks), open_asks=open_asks, last_reply=last_reply, turn_id=turn_id,
+                 threads=threads)
+    if isinstance(handle, dict):
+        handle["asked_with"] = asked_with
+    return handle
 
 
 def _threads() -> list:

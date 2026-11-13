@@ -113,7 +113,7 @@ async def run(self, motor) -> None:
     # V2-851 F5 — the turn's mouth, its tag buffer and its tool rounds live in `nucleo/turn/pipeline_state.py`.
     m = _state.open_the_mouth(
         self, motor, brain=brain, attention=attention, first_turn=first_turn, emit=emit,
-        FastClient=FastClient, spec=spec, t0=t0, speech=speech, strip_tags=strip_tags, typed=attention.typed_line(text),
+        FastClient=FastClient, spec=spec, t0=t0, speech=speech, strip_tags=strip_tags, typed=attention.answered_as_typed(text),
     )
     send, take, speak, spoken = m.send, m.take, m.speak, m.spoken
 
@@ -189,7 +189,7 @@ async def run(self, motor) -> None:
     try:
         _filler_audio = motor._filler_audio_mod()
         if _filler_audio.enabled() and not first_turn:
-            await _filler_audio.decide_and_arm(brain, text, messages=messages, brief=_brief, typed=attention.typed_line(text))  # V2-640/726/863 · A7: no cover on text
+            await _filler_audio.decide_and_arm(brain, text, messages=messages, brief=_brief, typed=attention.answered_as_typed(text))  # V2-640/726/863 · A7: no cover on text
     except Exception:
         pass
     self._phase = "generando la respuesta"
