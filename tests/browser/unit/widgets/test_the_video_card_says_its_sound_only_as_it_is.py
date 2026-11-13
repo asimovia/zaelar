@@ -27,4 +27,4 @@ def test_a_sound_claim_follows_the_cards_returned_state():
 def test_the_card_returns_the_state_the_claim_is_read_from():
     """The claim has something to follow: every player op returns `muted` and `audio_blocked` (`helpers._bump`)."""
     src = (_MANIFEST.parent / "helpers.py").read_text(encoding="utf-8")
-    assert '"muted": db.get("muted")' in src and '"audio_blocked": bool(db.get("audio_blocked"))' in src
+    assert '"muted": db.get("muted")' in src and '"audio_blocked": _blocked_now()' in src

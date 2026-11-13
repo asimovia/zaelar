@@ -88,8 +88,8 @@ def _a_mute(action, p, db) -> dict:
 
 
 def _a_unmute(action, p, db) -> dict:
-    # V2-791 — this is what was ORDERED; whether the browser let the player obey is the player's own report
-    # (`player_audio` → `audio_blocked`), never assumed from here.
+    # V2-791 — this is what was ORDERED; whether the browser let the player obey is the surface's report and the
+    # fact `audio_blocked` derived from it (V2-884 1a), never assumed from here.
     db["muted"] = False
     _d._sound.kept_mute(db, False)
     return _d._bump(db, "unmute")

@@ -161,15 +161,9 @@ def prompt_digest() -> str:
     if db.get("videoId") and str(db.get("channel") or "").strip():
         # V2-791 — and WHEN it was published: «is this today's?» is answered from here, never from the title
         pub = str(db.get("published") or "").strip()
-        # V2-886 fila 6: ONE line, one state — the loaded video and whether it plays were two lines, and the model
-        # fused «en pausa» with the loaded title into «está en pausa: suena X».
-        _st = _sound.state_line(db).removeprefix("ESTADO DEL REPRODUCTOR: ")
-        lines.append(f"EN EL REPRODUCTOR ({_st}): «{str(db.get('title') or '')[:70]}» — canal «{str(db['channel'])[:40]}»"
+        # V2-884 1a: what is LOADED, never whether it plays or sounds — that is the app's reported state line
+        lines.append(f"EN EL REPRODUCTOR: «{str(db.get('title') or '')[:70]}» — canal «{str(db['channel'])[:40]}»"
                      + (f" — publicado «{pub[:30]}»" if pub else ""))
-    elif (_state := _sound.state_line(db)):
-        lines.append(_state)
-    if (_snd := _sound.digest_line(db)):
-        lines.append(_snd)
     res = db.get("search_results") or []
     if not res:
         if lines and db.get("list"):          # a digest replaces the items line in the brief: keep the queue
@@ -318,3 +312,6 @@ def apply_action(action: str, payload: dict = None) -> dict:
         return r
 
     return {"ok": False, "error": "unknown_action", "action": action}
+
+
+facts = _sound.facts   # V2-884: the derived facts its manifest declares (`widgets/state_render`)

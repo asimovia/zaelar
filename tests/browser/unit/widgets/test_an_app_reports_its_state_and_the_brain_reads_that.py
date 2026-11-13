@@ -199,9 +199,9 @@ def test_the_state_lines_live_in_the_turns_state_and_the_shelf_does_not_move(pro
     shelf1, now1 = brief.for_prompt_split(["probe"], [])
     _snap(n=2, full=False, playing=False, title="Another")
     shelf2, now2 = brief.for_prompt_split(["probe"], [])
-    assert shelf1 == shelf2 and state_render.LEGEND in shelf1, "the cached shelf moved with a report"
-    assert f"- {state_render.clause('probe')}" in now2 and now1 != now2
-    assert "probe@" not in shelf1
+    assert shelf1 == shelf2, "the cached shelf moved with a report"
+    assert f"{state_render.LEGEND}\n- {state_render.clause('probe')}" in now2 and now1 != now2
+    assert "probe@" not in shelf1 and state_render.LEGEND not in shelf1
 
 
 def test_the_worker_and_the_turn_read_the_same_state(probe):
