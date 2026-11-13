@@ -96,9 +96,12 @@ def tick(now: float | None = None) -> list[dict]:
 
 
 def _no_ack_due(e: dict, now: float) -> bool:
-    """The app had its ack window (`state_render.PENDING_S`) from the act's birth and confirmed nothing."""
+    """The app had its ack window (`state_render.PENDING_S`) from the act's birth and confirmed nothing, and its screen
+    has said NOTHING since (a screen that speaks may still ack: it gets `INLINE_GRACE_S`, never a raised window)."""
+    from nucleo.circuit import reported
     from widgets.state_render import PENDING_S
-    return now - float(e.get("born") or now) >= PENDING_S
+    age = now - float(e.get("born") or now)
+    return age >= PENDING_S and (age >= INLINE_GRACE_S or not reported.spoke_since(e.get("done_when"), e.get("born")))
 
 
 #: The row states a task ENDS in — the store's own (`memory.tasks_store.DONE_STATES`), never a second copy.

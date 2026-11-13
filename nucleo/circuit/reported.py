@@ -101,3 +101,12 @@ def wait(clauses: list) -> str:
     if PENDING in marks:
         return PENDING
     return NO_ACK if UNKNOWN in marks else ""
+
+
+def spoke_since(done_when, t: float) -> bool:
+    """The app's surface said anything at or after `t` (the order's birth): it lives, and its ack may still come — a
+    start whose player speaks at 3 s acks at ~4.5 s, close to `PENDING_S` (players audit P2-5)."""
+    from nucleo.circuit import verify
+    from widgets import state
+    apps = {str(c.get("widget") or "") for c in verify._clauses(done_when)[1] if field_of(c)}
+    return any(float(snap.get("at") or 0) >= float(t or 0) for a in apps for _i, _d, snap in state.snapshots(a))
