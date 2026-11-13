@@ -262,21 +262,21 @@ def test_an_unused_relay_holds_no_audio_back(world):
     want = 7 * (RATE * 30 // 1000)
 
     async def first_sentence() -> int:
-        got = 0
+        import time
+        arrivals: list = []                              # (when, samples of the first sentence)
         async with voice.stream() as s:
-            s.push_text("Una frase entera.")
-            it = s.__aiter__()
-            try:
-                while got < want:
-                    ev = await asyncio.wait_for(it.__anext__(), 0.5)
+            async def consume() -> None:
+                async for ev in s:
                     raw = ev.frame.data.tobytes()
-                    got += sum(1 for i in range(0, len(raw), 2) if raw[i] == 1)
-            except asyncio.TimeoutError:
-                pass
+                    arrivals.append((time.perf_counter(), sum(1 for i in range(0, len(raw), 2) if raw[i] == 1)))
+            reader = asyncio.create_task(consume())
+            s.push_text("Una frase entera.")
+            await asyncio.sleep(0.3)                     # the brain is still writing the next sentence
+            second_at = time.perf_counter()
+            s.push_text("Otra.")
             s.end_input()
-            async for _ in s:
-                pass
-        return got
+            await reader
+        return sum(n for t, n in arrivals if t < second_at)
 
     got = asyncio.run(asyncio.wait_for(first_sentence(), 10))
     assert got >= want, f"the session got {got} of {want} samples of the first sentence — the relay held its tail"
