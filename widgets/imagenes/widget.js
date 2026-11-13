@@ -107,6 +107,7 @@ export function render(el, data, ctx){
   const named = cur.title || d.title || d.query; if(named) hd.appendChild(txt("b", null, String(named)));   // its own name is the chrome's (V2-876)
   if(items.length) hd.appendChild(txt("span","imgcount", `${i+1} / ${items.length}`));
   el.appendChild(hd);
+  reportShown(ctx, items.length ? i + 1 : 0, items.length ? String(cur.title || "") : "", !!(d.auto && items.length > 1));
 
   // ── source line: where this exact picture came from ───────────────────────────────────────────
   // The operator asked for the source to be visible ("including the source itself"). It names the SITE
@@ -235,4 +236,12 @@ export function render(el, data, ctx){
       try{ ctx.action(act); }catch(_){}
     };
   }
+}
+
+// V2-884 — what the viewer SHOWS, said through the host's one door on every paint with the revision it applied: which
+// picture of the set (1-based, 0 = none), its title, and whether the slideshow runs on this screen.
+function reportShown(ctx, shown, title, slideshow){
+  if(!ctx || typeof ctx.state !== "function") return;
+  try{ Promise.resolve(ctx.state({shown: Math.min(shown, 999), title: title.slice(0, 40), slideshow},
+    {applied: true})).catch(()=>{}); }catch(_){}
 }

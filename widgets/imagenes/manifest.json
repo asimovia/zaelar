@@ -1,6 +1,14 @@
 {
   "id": "imagenes",
   "screens": "shared",
+  "state": {
+    "order": {"set": "set_seq", "i": "i", "auto": "auto"},
+    "report": {
+      "shown": {"type": "int:0-999", "follows": ["set", "i"], "rest": 0},
+      "title": {"type": "text:40", "follows": ["set", "i"], "rest": ""},
+      "slideshow": {"type": "bool", "follows": "auto", "rest": false}
+    }
+  },
   "fill": {
     "tool": "show_images",
     "filled_by": "items"
