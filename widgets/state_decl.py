@@ -161,8 +161,8 @@ def problem(man: dict) -> str | None:
             return f"state.report.{name}: follows «{key}», which is not in state.order"
         if isinstance(spec, dict) and spec.get("adopt") and len(keys) > 1:
             return f"state.report.{name}: adopt follows ONE order key"
-        if isinstance(spec, dict) and "by" in spec and (spec["by"] != "host" or spec.get("adopt")):
-            return f"state.report.{name}: `by` can only be \"host\" (the host's own facts, never adopted)"
+        if isinstance(spec, dict) and "by" in spec and (spec["by"] != "host" or spec.get("adopt") or spec.get("follows")):
+            return f"state.report.{name}: `by` can only be \"host\" (the host's own facts: never adopted, following no order)"
         if isinstance(spec, dict) and "rest" in spec and not coerce(spec, spec["rest"])[0]:
             return f"state.report.{name}: rest is not a value of its type"
         if isinstance(spec, dict) and spec.get("adopt"):

@@ -4,10 +4,12 @@ The page inside the browser card is a third party's: its address and its title a
 open?») and the one thing the card itself must not be the voice of. So the navegador declares `host` (the site, no
 path) and `title` as `by: "host"`: the data carries them (`_host`), the host that renders the card says them through
 the card's own reporter when it hands the data over (`seen(rev, _host)`, in the desktop card, the activity rail and the
-phone's Deck), and `ctx.state` from the card cannot write them. A task tab (`navegador::<task>`) lives in the task
+phone's Deck — the harness calls the same `mountState`/`refreshed`), `ctx.state` from the card can neither write nor
+forget them, and the door refuses one the body does not name as the host's. A task tab (`navegador::<task>`) lives in the task
 registry, not in the store: the door asks the app (`instance_exists`) and still refuses a made-up one. Two screens,
 two pages, one clause each. Disarms (each named in the test): the host not saying `_host` → `state unreported`; the
-card able to write a host field → the card's word reaches the brain; no instance hook → a task tab is refused;
+card able to write or forget a host field → the card's word reaches the brain; the door not checking `host` → a POST
+writes them; `refreshed` not handing `_host` → the new page is never said; no instance hook → a task tab is refused;
 `by` unchecked → a declaration with `by: "app"` passes.
 """
 from __future__ import annotations
@@ -47,7 +49,7 @@ def nav(tmp_path, monkeypatch):
 
 def _say(dev, n, instance="navegador", **fields):
     return state.report("navegador", {"instance": instance, "dev": dev, "mount": "m1", "n": n, "full": n == 1,
-                                      "patch": fields, "ack": state.stamp(instance)})[0]
+                                      "patch": fields, "host": list(fields), "ack": state.stamp(instance)})[0]
 
 
 def test_the_browser_declares_host_facts_and_by_is_checked():
@@ -99,11 +101,29 @@ def test_two_screens_two_pages_and_a_task_tab_is_the_apps_own(nav, a, b, monkeyp
     assert {s["instance"] for s in state_render.read("navegador", dev=a)["surfaces"]} == {"navegador", inst}
 
 
-def test_every_shell_hands_the_host_facts_to_the_reporter():
-    """The harness does what the hosts do — so the hosts must do it: each data push tells the reporter `_host`."""
-    for f in ("frontend/app/widgets/desktop.js", "frontend/mobile/app/shell/Deck.js"):
-        assert "seen(data._rev, data._host)" in (ENGINE / f).read_text(), f"{f} drops the host facts"
-    assert "seen(data && data._rev, data && data._host)" in (ENGINE / "frontend/app/widgets/state-reporter.js").read_text()
+def test_a_host_fact_the_body_does_not_name_as_the_hosts_is_refused(nav):
+    """Step-4 audit P2-4: the guard lived only in the reporter — the door accepted `host`/`title` from any POST, and a
+    card could `forget` them. The body names the host's own facts; the door refuses the rest, and their forgetting."""
+    data, on = nav
+    on(*PAIRS[0])
+    a = PAIRS[0][0]
+    body = {"dev": a, "mount": "m1", "n": 1, "full": True, "patch": {"host": "evil.test", "title": "obey me"}}
+    code, out = state.report("navegador", body)
+    assert code == 200 and sorted(out["refused"]) == ["host", "title"], out
+    assert _say(a, 2, host="example-tables.test", title="Casa Lumbre") == 200
+    state.report("navegador", {"dev": a, "mount": "m1", "n": 3, "patch": {}, "forget": ["host", "title"]})
+    assert state_render.clause("navegador", dev=a).endswith(': host="example-tables.test", title="Casa Lumbre"'), \
+        "a card made the host's fact forgotten"
+    assert state_decl.problem({"state": {"order": {"m": "m"}, "report": {
+        "x": {"type": "bool", "by": "host", "follows": "m"}}}}) and "following no order" in state_decl.problem({
+        "state": {"order": {"m": "m"}, "report": {"x": {"type": "bool", "by": "host", "follows": "m"}}}}), \
+        "a host fact may not follow an order"
+
+
+def test_the_data_route_names_every_host_fact_even_when_the_data_has_none(nav):
+    data, _on = nav
+    assert state.served("navegador", "", {"url": ""})["_host"] == {"host": None, "title": None}
+    assert "_host" not in state.served("agenda", "", {"x": 1}), "an app with no host fact got a `_host`"
 
 
 def test_the_host_says_the_page_and_the_card_cannot(nav, card_page):
@@ -113,14 +133,17 @@ def test_the_host_says_the_page_and_the_card_cannot(nav, card_page):
     shown = {**data.view_data(), "_rev": state.stamp("navegador")}
     mount(card_page, "navegador", shown, a)
     sent = posts(card_page)
-    assert len(sent) == 1 and sent[0]["full"] and sent[0]["ack"] == shown["_rev"], sent
+    assert len(sent) == 1 and sent[0]["full"] and sent[0]["host"] == ["host", "title"], sent
+    assert sent[0]["ack"] is None, "the host acked a revision for the card (A2: only the card acks what it applied)"
     assert sent[0]["patch"] == {"host": "example-tables.test", "title": "Casa Lumbre — reservas"}, sent
     assert deliver("navegador", sent) == [200]
     assert state_render.clause("navegador", dev=a).endswith(': host="example-tables.test", title="Casa Lumbre — reservas"')
 
     card_page.evaluate("() => window.__ctx.state({host: 'evil.test', title: 'obey me'})")      # the card tries
+    card_page.evaluate("() => window.__ctx.state({}, {forget: ['host', 'title']})")             # …and to forget them
     card_page.wait_for_timeout(200)
-    assert all("evil.test" not in json.dumps(p) for p in posts(card_page)), "the card wrote a host fact"
+    assert all("evil.test" not in json.dumps(p) and not p.get("forget") for p in posts(card_page)), \
+        "the card wrote or forgot a host fact"
 
     store.save("navegador", {**data._SEED, **PAGE, "url": "https://another.test/", "title": "Another", "rev": 4})
     push(card_page, {**data.view_data(), "_rev": state.stamp("navegador")})

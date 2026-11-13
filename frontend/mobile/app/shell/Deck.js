@@ -46,7 +46,7 @@
 import { t as tr } from "../../../app/core/i18n.js?v=1";
 import { noteSent } from "../../../app/services/feedback-sent-note.js?v=1";
 import * as store from "../../../app/core/store.js?v=2";
-import { mountState } from "../../../app/widgets/state-reporter.js?v=1";
+import { mountState, refreshed } from "../../../app/widgets/state-reporter.js?v=1";
 // V2-792 — the screens service, loaded on first use (same as the desktop host: a host imports no service statically).
 const _screens = () => import("../../../app/services/screens.js?v=1");
 const _device = () => import("../../../app/services/api.js?v=2").then((m) => m.DEVICE).catch(() => "");
@@ -343,7 +343,7 @@ export class Deck {
       if (sig === w._dataSig) return;                 // nothing changed → no re-render, no flicker
       w._dataSig = sig;
       w._data = data;
-      if (w._rep) w._rep.seen(data._rev, data._host);            // V2-884: the revision this render brings
+      refreshed(w, data);            // V2-884: the revision this render brings
       w._mod.render(w.body, data, w._ctx);
       this._applyTitle(w, data);
       this._paint();                                  // fresh data can flip the producing badge (V2-092)

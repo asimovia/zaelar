@@ -98,8 +98,13 @@ def stamp(cid) -> dict:
 def served(app, q, data):
     """`data` stamped with the revision a surface acks (`_rev`) for an app that declares a state; an instance acks ITS."""
     inst, store = f"{app}::{str(q).removeprefix(app + '::')}", __import__("widgets.store", fromlist=["x"])
-    ok = isinstance(data, dict) and decl.of(app)
-    return {**data, "_rev": stamp(inst if q and store.has_state(disk_id(inst)) else app)} if ok else data
+    if not (isinstance(data, dict) and decl.of(app)):
+        return data
+    host = [f for f, sp in decl.report_fields(decl.of(app)).items() if isinstance(sp, dict) and sp.get("by") == "host"]
+    out = {**data, "_rev": stamp(inst if q and store.has_state(disk_id(inst)) else app)}
+    if host:                                # every host fact the app declares, so the reporter knows them all
+        out["_host"] = {f: ((data.get("_host") or {}) if isinstance(data.get("_host"), dict) else {}).get(f) for f in host}
+    return out
 
 
 def note_save(widget_id, data) -> None:
@@ -160,15 +165,18 @@ def report(app, body: dict) -> tuple[int, dict]:
     patch = body.get("patch") if isinstance(body.get("patch"), dict) else {}
     clean: dict = {}
     refused: list[str] = []          # a field that is not what it declares is dropped, never the whole report
-    for name, value in patch.items():
-        ok, v = (False, None) if name not in fields else (True, None) if value is None else decl.coerce(fields[name], value)
+    named = set(body.get("host") or []) if isinstance(body.get("host"), list) else set()
+    host_only = {f for f, sp in fields.items() if isinstance(sp, dict) and sp.get("by") == "host" and f not in named}
+    for name, value in patch.items():       # a host fact the body does not name as the host's is the card's: refused
+        ok, v = (False, None) if name not in fields or name in host_only else (True, None) if value is None \
+            else decl.coerce(fields[name], value)
         if ok:
             clean[name] = v              # None = the surface can no longer vouch for it: forgotten
         else:
             refused.append(str(name)[:40])
     # fields the surface can no longer vouch for (a rebuilt player): said APART from the patch, applied before it, so a
     # first value of the new player in the same report never hides the forgetting (V2-884 1b audit)
-    forgot = [f for f in (body.get("forget") or []) if isinstance(f, str) and f in fields]
+    forgot = [f for f in (body.get("forget") or []) if isinstance(f, str) and f in fields and f not in host_only]
     ack, key = _ack(body), (app, instance, dev)
     with _LOCK:
         cur0 = _SNAP.get(key)
