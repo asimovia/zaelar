@@ -126,6 +126,7 @@ export function render(el, data, ctx){
     const tbody = el2("div","agbody tasks");
     renderTasks(tbody, data, ctx, S, redraw);
     el.appendChild(tbody);
+    reportFace(ctx, S, []);
     return;                       // the calendar's toolbar, views and overlays belong to the other half
   }
 
@@ -316,4 +317,15 @@ export function render(el, data, ctx){
       raf(()=>{ try{ scroller.scrollTop = target; }catch(_){} });
     }
   }
+  reportFace(ctx, S, dates);
+}
+
+// V2-884 — what the card SHOWS, said through the host's one door after every paint, with the revision it applied:
+// the face (a lens of the calendar, or his task lists) and the date it stands on (a day, a week's first day, a month).
+function reportFace(ctx, S, dates){
+  if(!ctx || typeof ctx.state !== "function") return;
+  const view = S.sec === "tasks" ? "tasks" : S.view;
+  const shown = view === "day" ? S.anchor : view === "week" ? (dates[0] || S.anchor)
+              : view === "month" ? String(S.anchor).slice(0, 7) : "";
+  try{ Promise.resolve(ctx.state({view, date_shown: String(shown || "")}, {applied: true})).catch(()=>{}); }catch(_){}
 }
