@@ -423,11 +423,11 @@ export class Deck {
   _reportOpen() {
     clearTimeout(this._openTimer);
     this._openTimer = setTimeout(async () => {
-      const dev = await _device();
+      const dev = await _device(), front = this.at >= 0 ? (this.order[this.at] || "") : "";   // V2-903: "" = home
       const by = this._by || {}; this._by = {};        // V2-807 T-15: the causes of the changes in this report
       try {
         fetch("/api/canvas/state", { method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ open: this.list(), dev, by }) });
+          body: JSON.stringify({ open: this.list(), front, dev, by }) });
       } catch (_) {}
     }, 250);
   }
@@ -451,7 +451,7 @@ export class Deck {
       if (dir) el.classList.add(dir < 0 ? "enter-r" : "enter-l");
       requestAnimationFrame(() => { el.classList.remove("enter-l", "enter-r"); });
     }
-    this._paint();
+    this._paint(); this._reportOpen();               // V2-903: a page change changes the app in front — say it
   }
 
   _paint() {

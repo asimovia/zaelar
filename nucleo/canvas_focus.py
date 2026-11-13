@@ -93,6 +93,18 @@ def note(kind: str, label: str, role: str = "", extra: dict | None = None) -> No
         pass
 
 
+def phone_front() -> str | None:
+    """V2-903: None off a phone; on the phone this turn runs on, the app IN FRONT («» on its home) — a deck shows one."""
+    try:
+        from memory import api as memapi
+        from voice import screens
+        if screens.surface(screens.current()) != "phone":
+            return None
+        return str((memapi.state() or {}).get("maximized_widget") or "").strip().lower()
+    except Exception as e:  # noqa: BLE001 — unknown: the desktop's reading, as before
+        return __import__("loguru").logger.debug(f"canvas_focus: the turn's screen is unread: {e!r}")
+
+
 def last_turn_card(open_ids: list[str]) -> str:
     """The card the previous turn acted on, among the cards open NOW — or "" when none of them is one."""
     with _lock:

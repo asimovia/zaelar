@@ -93,6 +93,8 @@ def _card_in_front() -> str:
         return ""
     if len(ids) == 1:
         return ids[0]
+    if __import__("nucleo.canvas_focus", fromlist=["x"]).phone_front() is not None:   # V2-903: a phone's front is above;
+        return ""                       # the canvas layout below is the DESKTOP's geometry, never what the phone shows
     # Several open: «that» is what his LAST TURN acted on (demo pass 2026-09-28, V3 — see `canvas_focus`), never a
     # card that arrived on its own meanwhile. Minimised cards aside, like below. None of them → the canvas stack.
     try:

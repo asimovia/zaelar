@@ -23,6 +23,10 @@ def _open_widget_ids() -> set[str]:
 def screen_line() -> str:
     """The screen, read ONCE per turn from the canvas's report (`state.open_widgets`); empty says so (2026-09-19)."""
     ids = [str(w).strip() for w in (__import__("memory.api", fromlist=["x"]).state().get("open_widgets") or [])]
+    if (front := __import__("nucleo.canvas_focus", fromlist=["x"]).phone_front()) is not None:   # V2-903: ONE app
+        behind = [i for i in ids if i and i != front][:12]
+        return ("En pantalla (teléfono): " + (f"«{front}» delante" if front else "su INICIO (no es una app)")
+                + (f"; detrás: {', '.join(behind)}" if behind else "") + ".")
     return "En pantalla: " + (", ".join([i for i in ids if i][:12]) or "nada (pantalla VACÍA)") + "."
 
 
