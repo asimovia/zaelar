@@ -102,13 +102,17 @@ def test_the_screen_line_names_the_front_app_first(on, monkeypatch, lang):
     from memory import api as memory
     from nucleo.turn.prompt import live_state
     monkeypatch.setattr(langs, "current_code", lambda: lang)
+    monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
     memory.set_state({"open_widgets": ["agenda", "musica", "youtube"], "maximized_widget": "musica",
                       "minimized_widgets": ["agenda", "youtube"]})
     on(PHONE)
     line = live_state.screen_line()
     assert "«musica» delante" in line and line.index("musica") < line.index("agenda"), line
     memory.set_state({"maximized_widget": ""})
-    assert "INICIO" in live_state.screen_line() and "VACÍA" not in live_state.screen_line()
+    from i18n import runtime
+    home = live_state.screen_line()       # a2b: his home is a named screen, in his language, never «VACÍA»
+    assert runtime.text("mobile.home_screen", code=lang) in home and "VACÍA" not in home, home
+    assert ("próximas citas" if lang == "es" else "next events") in home, home
     on(DESK)
     assert live_state.screen_line() == "En pantalla: agenda, musica, youtube."
 
