@@ -104,4 +104,24 @@ def test_a_new_document_right_after_a_scroll_reads_the_new_one_after_the_dust_se
     push(card_page, {**data.view_data(), "_rev": state.stamp("documento")})
     settle(card_page, "documento")
     line = state_render.clause("documento", dev=a)
-    assert ': title="Informe Beta"' in line and "Receta" not in line, line
+    assert line.endswith(': title="Informe Beta", at="Informe Beta"'), line
+
+
+def test_the_marked_passage_is_on_screen_and_the_heading_is_measured_from_the_page(doc, card_page):
+    """Step-5 audit P3: `.hbd-scroll` was not positioned, so `offsetTop` carried the header's height — a `goto` scrolled
+    the mark ~67 px ABOVE the view while the line said it was there, and a heading 2 px from the top read as the one
+    before. Measured from the page itself, the mark is in view and the heading is the right one."""
+    data, on = doc
+    a, b = PAIRS[0]
+    on(a, b)
+    data.apply_action("goto", {"text": "Horneado"})
+    mount(card_page, "documento", {**data.view_data(), "_rev": state.stamp("documento")}, a)
+    settle(card_page, "documento")
+    inside = card_page.evaluate("""() => { const s = document.querySelector('.hbd-scroll').getBoundingClientRect();
+        const m = document.querySelector('.hbd-focus').getBoundingClientRect(); return m.top >= s.top - 1 && m.top < s.bottom; }""")
+    assert inside, "the marked passage was scrolled out of view"
+    card_page.evaluate("""() => { const s = document.querySelector('.hbd-scroll');
+        const h = [...s.querySelectorAll('h2')].find(x => x.textContent.includes('Amasado'));
+        s.scrollTop = h.offsetTop - 8; }""")                                          # «Amasado» just below the top
+    settle(card_page, "documento")
+    assert state_render.clause("documento", dev=a).endswith(', at="Amasado"'), state_render.clause("documento", dev=a)
