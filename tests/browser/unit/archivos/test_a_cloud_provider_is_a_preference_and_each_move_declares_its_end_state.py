@@ -97,6 +97,24 @@ def test_a_connected_cloud_provider_is_still_served_by_the_cloud(data, monkeypat
     assert out["ok"] and "fallback_from" not in out and data.view_data()["provider"] == "gdrive"
 
 
+def test_a_call_that_names_its_place_is_served_there_and_his_choice_stays(data, monkeypatch):
+    """V2-880 follow-up: «búscalo en Drive» with the library on screen (or the reverse) could only search where the card
+    was. A call names its place for THAT call; the next move without one goes back to his choice."""
+    from library import index
+    assert index.save_text("informe anual", "texto")["ok"]
+    _saved_cloud_then_disconnected(data, monkeypatch, _Svc(connected=True))     # his choice: Drive, reachable
+    out = data.apply_action("search_files", {"query": "informe", "provider": "local"})
+    assert out["ok"] and [m["name"] for m in out["matches"]] == ["informe anual.md"], out
+    assert data.view_data()["provider"] == "local", "the card shows where it searched"
+    data.apply_action("search_files", {"query": "contrato"})
+    assert data.view_data()["provider"] == "gdrive", "the next move goes back to HIS choice"
+    data.apply_action("set_provider", {"provider": "local"})
+    out = data.apply_action("search_files", {"query": "contrato", "provider": "gdrive"})
+    assert out["ok"] and data.view_data()["provider"] == "gdrive"
+    data.apply_action("search_files", {"query": "informe"})
+    assert data.view_data()["provider"] == "local", "…whichever way round"
+
+
 # ── the end states ─────────────────────────────────────────────────────────────────────────────────────────
 def test_every_declared_end_state_reads_a_field_or_a_declared_collection(data):
     m = _manifest()

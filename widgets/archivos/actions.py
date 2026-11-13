@@ -114,8 +114,13 @@ def _nav(act: str, payload: dict) -> dict:
     db = _begin(act)
     if act in ("open_file", "open_folder"):
         payload = _named_entry(db, act, payload or {})
-    pref = db.get("preferred_provider") or db.get("provider") or "local"   # his choice, even while it is unreachable
+    mine = db.get("preferred_provider") or db.get("provider") or "local"   # his choice, even while it is unreachable
+    # V2-880 — a call may NAME its place («búscalo en Drive»): served there this once, and his choice stays his.
+    pref = _d._text((payload or {}).get("provider"), 40).lower() or mine
     if pref == "local":
+        db["provider"] = "local"
+        if mine != "local":
+            db["preferred_provider"] = mine
         return _handle_local_nav(db, act, payload)
     svc = _d._svc()
     if svc is not None:
@@ -123,6 +128,8 @@ def _nav(act: str, payload: dict) -> dict:
         if db.get("connected"):
             db["provider"] = pref
             db.pop("preferred_provider", None)        # his choice is reachable again: it is what the card shows
+            if pref != mine:
+                db["preferred_provider"] = mine
             return _handle_cloud_nav(db, svc, act, payload)
     db["provider"] = pref
     # The saved cloud provider is a PREFERENCE, never a gate: with no connector (or nothing connected) the library is
