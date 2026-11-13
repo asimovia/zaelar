@@ -5,6 +5,7 @@
 # net when the backend is not alive. This module is pure stdlib and NEVER crashes, per widget contract.
 #
 from .. import store
+from ..say import say
 
 WID = "navegador"
 _SEED = {
@@ -118,7 +119,7 @@ def apply_action(action: str, payload: dict | None = None) -> dict:
     touching anything. Do not write the store; the owner is the only writer."""
     data = view_data()
     if action in ("open", "search", "youtube", "back", "forward", "reload", "scroll", "click", "type", "press"):
-        out = {**data, "ok": False, "error": "El navegador no está activo ahora mismo."}
+        out = {**data, "ok": False, "error": say("navegador", "not_running", "The browser isn't running right now.")}
         link = _link_for(action, payload or {})
         # Principle 1: a browser that is down is not a dead stop. What needs his choice goes in the reply as an
         # OFFER — the page itself, to open in his own browser, or the same action again once it is back.

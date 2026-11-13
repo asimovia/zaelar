@@ -79,7 +79,8 @@ def test_play_local_says_it_is_unplayable_and_offers_the_download(lib):
 
 def test_play_local_on_a_missing_file_says_so(lib):
     r = sources.play_local({}, "video/nope.mp4")
-    assert r["ok"] is False and "biblioteca" in r["error"]
+    from widgets.say import say
+    assert r["ok"] is False and r["error"] == say("youtube", "say_not_in_library", "")
 
 
 # ── 3 · the torrent tool reached FROM the player (the operator's requirement) ───────────────────────────────

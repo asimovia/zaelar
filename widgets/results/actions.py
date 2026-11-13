@@ -11,6 +11,7 @@ from nucleo.turn import first_rows_notice as _first_rows
 from search import candidacy as _cand
 
 from . import category_gate as _gate
+from widgets.say import say
 
 from . import data as _d
 from . import find as _find
@@ -237,7 +238,7 @@ def _a_tab(action, payload, sheet) -> dict:
         return _a_process_panel(sheet)
     if tab not in _d._TABS:
         return {"ok": False,
-                "error": f"pestaña «{tab}» desconocida (results · summary · sources · criteria)"}
+                "error": f"unknown tab «{tab}» (results · summary · sources · criteria)"}
     data = _d.view_data(sheet)
     data["tab"] = tab
     data.pop("process_opened", None)
@@ -387,7 +388,7 @@ def _a_auth_done(action, payload, sheet) -> dict:
     if not tid:
         tid = str((_d._browser({}, sheet) or {}).get("task_id") or "")
     if not tid:
-        return {"ok": False, "error": "no hay ningún navegador esperando un inicio de sesión en esta hoja"}
+        return {"ok": False, "error": say("results", "no_login_waiting", "no browser on this sheet is waiting for a sign-in")}
     try:
         from widgets import supervisor
         queued = bool(supervisor.enqueue("navegador", "auth_done", {"task_id": tid}))

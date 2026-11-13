@@ -407,16 +407,6 @@ def _the_landed_writes_ring_is_empty():
 # otherwise govern every test after it — the same contamination the per-test config pins exist to prevent. Only a
 # module that is already imported is reset, so a test that never touches rules pays nothing.
 @_pytest5.fixture(autouse=True)
-def _no_row_asked_him_before_the_test():
-    """V2-893 L4 — which rows asked him since his last turn is process state (`circuit.asked_last`): a test that asked
-    never lends its identity to the next one."""
-    mod = _sys5.modules.get("nucleo.circuit.asked_last")
-    if mod is not None:
-        mod.reset()
-    yield
-
-
-@_pytest5.fixture(autouse=True)
 def _the_rules_table_starts_empty():
     store = _sys5.modules.get("rules.store")
     if store is not None:

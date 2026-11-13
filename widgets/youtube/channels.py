@@ -21,6 +21,7 @@ import urllib.request
 from .. import store
 
 from . import channel_fetch as _f   # fetching + parsing; read through the module so a patch governs
+from widgets.say import say
 
 WID = "youtube"
 
@@ -201,10 +202,10 @@ def _unfollowed(db: dict, name: str) -> dict:
     """The row to open for a channel he does NOT follow — resolved by name on the public channel search, never stored
     (following stays his explicit act; live 2026-10-28: «show me the channel of SpaceX» → «No sigo ese canal») — or an error row."""
     if not name:
-        return {"ok": False, "error": "no_channel", "message": "Dime qué canal."}
+        return {"ok": False, "error": "no_channel", "message": say("youtube", "say_which_channel", "Tell me which channel.")}
     hit = find(name)
     if not hit.get("id"):
-        return {"ok": False, "error": "not_found", "channel": name, "message": "No encuentro ese canal en YouTube.",
+        return {"ok": False, "error": "not_found", "channel": name, "message": say("youtube", "say_channel_not_found", "I can't find that channel on YouTube."),
                 "channels": [c.get("name") for c in db.get("channels") or []]}
     return {"name": hit.get("title") or name, "id": hit["id"], "meta": {k: hit[k] for k in ("handle", "avatar", "subscribers") if hit.get(k)}}
 
@@ -250,7 +251,7 @@ def apply(action: str, p: dict, db: dict) -> "dict | None":
         if not ch.get("id") and not _resolve(ch):
             store.save(WID, db)
             return {"ok": False, "error": "not_found", "channel": ch.get("name"),
-                    "message": "No encuentro ese canal en YouTube."}
+                    "message": say("youtube", "say_channel_not_found", "I can't find that channel on YouTube.")}
         tab = str(p.get("tab") or "").strip().lower()
         db["channel_view"] = {"id": ch["id"], "name": ch.get("name") or "",
                               "tab": tab if tab in _f.TABS else "", "limit": _PAGE,
@@ -270,7 +271,7 @@ def apply(action: str, p: dict, db: dict) -> "dict | None":
         view = db.get("channel_view") or {}
         cid = str(view.get("id") or "")
         if not cid:
-            return {"ok": False, "error": "no_channel_open", "message": "No hay ningún canal abierto."}
+            return {"ok": False, "error": "no_channel_open", "message": say("youtube", "say_no_channel_open", "No channel is open.")}
         now = int(time.time())
         cache = _load_cache(cid)
         try:
@@ -313,7 +314,7 @@ def apply(action: str, p: dict, db: dict) -> "dict | None":
             view["rev"] = int(time.time() * 1000)
             store.save(WID, db)
             return {"ok": False, "error": "fetch_failed", "detail": str(e)[:120],
-                    "message": "YouTube no me ha contestado; enseño lo que ya tenía."}
+                    "message": say("youtube", "say_youtube_silent", "YouTube didn't answer; I'm showing what I already had.")}
         _save_cache(cid, cache)
         view["rev"] = int(time.time() * 1000)
         db["channel_view"] = view

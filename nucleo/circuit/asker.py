@@ -168,8 +168,6 @@ def ask(uid: str, entry: dict, *, bus_id: str = "") -> str:
     """Record the question `entry` ({ask_id, question, retained, options, session, …}) on row `uid`: the artefact
     keeps it, the row waits for his answer, and the question goes on screen. Returns its `ask_id`."""
     ask_id = str(entry.get("ask_id") or "")
-    from nucleo.circuit import asked_last   # the row that asked him, by id, for his next turn (K2b R6)
-    asked_last.note(ask_id)
     entry.setdefault("created", time.time())
     entry.setdefault("state", "pending")
     keep(uid, entry)

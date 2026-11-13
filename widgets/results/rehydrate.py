@@ -18,6 +18,7 @@ from __future__ import annotations
 from . import lifecycle as _lifecycle
 from .sheet_names import instance_id, sheet_key
 from widgets import store
+from widgets.say import say
 
 #: Slots written back onto the sheet, in the order `view_data` expects to find them. `result` carries the
 #: sheet minus the three below (see `kept_result`), so it is spread first and they are laid on top.
@@ -37,7 +38,7 @@ def sheet_from_task(task_id: str) -> dict:
     """
     tid = str(task_id or "").strip()
     if not tid:
-        return {"ok": False, "error": "sin tarea"}
+        return {"ok": False, "error": "no task"}
     if store.exists(sheet_key(tid)):
         data = _lifecycle.view_data(tid)
         return {"ok": True, "instance": instance_id(tid), "rebuilt": False,
@@ -47,7 +48,7 @@ def sheet_from_task(task_id: str) -> dict:
     if not parts.get("result"):
         # Nothing was ever kept for this task: an errand with no sheet, or one that closed before V2-728.
         # Saying so is the point — an empty sheet would look like a report that came back with nothing.
-        return {"ok": False, "error": "esta tarea no guardó resultados"}
+        return {"ok": False, "error": say("results", "job_kept_nothing", "this job kept no results")}
     data = dict(parts["result"])
     for slot in _SLOTS:
         if parts.get(slot):

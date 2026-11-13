@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from nucleo.workers.progress import say as _say
 from widgets.navegador import owner as _o
+from widgets.say import say
 
 
 async def _automate(goal: str, plan: str = "", task_id: str = "") -> None:
@@ -225,7 +226,7 @@ async def _click(x: float, y: float) -> None:
         await page.mouse.click(x, y)
         await _o.asyncio.sleep(0.6)                       # let a navigating click settle
     except Exception as e:
-        _o._write(loading=False, error=f"No pude hacer clic: {_o._brief(e, 160)}")
+        _o._write(loading=False, error=say("navegador", "click_failed_why", "Couldn't click: {why}", why=_o._brief(e, 160)))
         return
     if page.url and (not _o._hist or page.url != _o._hist[_o._idx if 0 <= _o._idx < len(_o._hist) else -1]):
         _o._hist = _o._hist[:_o._idx + 1] + [page.url]          # a click that navigated pushes to history
@@ -272,7 +273,7 @@ async def _youtube(q: str, url: str) -> None:
         await _o.asyncio.sleep(0.5)
         html = await page.content()
     except Exception as e:
-        _o._write(loading=False, error=f"No pude buscar en YouTube: {str(e)[:160]}", rev=_o._bump_rev())   # a fresh outcome
+        _o._write(loading=False, error=say("navegador", "youtube_failed_why", "Couldn't search YouTube: {why}", why=str(e)[:160]), rev=_o._bump_rev())   # a fresh outcome
         return
     m = _o._YT_ID_RE.search(html)
     if m:

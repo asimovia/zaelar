@@ -16,6 +16,7 @@ again" from "nothing changed" and the second request is silently ignored.
 from __future__ import annotations
 
 import os
+from widgets.say import say
 
 PREFIX = "local:"
 
@@ -54,7 +55,7 @@ def play(db: dict, track: dict) -> dict:
     rel = rel_of(track)
     rec = index.entry_for(rel) if rel else None
     if not rec or not rec.get("playable"):
-        return {"ok": False, "message": "", "reason": "ese fichero ya no está en tu biblioteca"}
+        return {"ok": False, "message": "", "reason": say("musica", "say_file_gone", "that file is no longer in your library")}
     cur = dict(db.get("local") or {})
     db["local"] = {
         "src": rec["url"],

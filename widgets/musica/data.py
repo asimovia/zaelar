@@ -22,6 +22,7 @@ import unicodedata
 
 from .. import store
 from . import local_audio as _local   # V2-638: a track that is a FILE in the agent's own library
+from widgets.say import say  # noqa: F401 — the card's answers in his language (`_d.say`)
 
 WID = "musica"
 

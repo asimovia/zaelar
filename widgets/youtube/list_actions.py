@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from . import data as _d
 from widgets import result_refs as _rr
+from widgets.say import say
 
 
 def _a_remove(action, p, db) -> dict:
@@ -22,7 +23,7 @@ def _a_remove(action, p, db) -> dict:
     idx = _d._resolve_item(lst, p.get("item"))
     if idx is None:
         return {"ok": False, "error": "item_not_found", "item": p.get("item"),
-                "message": "No encuentro ese vídeo en la lista."}
+                "message": say("youtube", "say_not_in_list", "I can't find that video in the list.")}
     removed = lst.pop(idx)
     pos = int(db.get("pos", -1))
     # Keep `pos` meaning "last played": removing an earlier item shifts everything one left, and removing
@@ -42,7 +43,7 @@ def _a_move(action, p, db) -> dict:
     idx = _mv.resolve_item(lst, p.get("item"), db)
     if idx is None:
         return {"ok": False, "error": "item_not_found", "item": p.get("item"),
-                "message": "No encuentro ese vídeo en la lista."}
+                "message": say("youtube", "say_not_in_list", "I can't find that video in the list.")}
     # «put X before Y» names the OTHER video, not a slot (video-queue use case, 2026-10-11): the anchor is resolved
     # like `item`, and the slot is computed after X leaves the list — the model had to do that arithmetic before.
     side = "before" if str(p.get("before") or "").strip() else ("after" if str(p.get("after") or "").strip() else "")
@@ -50,9 +51,9 @@ def _a_move(action, p, db) -> dict:
         anchor = _mv.resolve_item(lst, p.get(side), db)
         if anchor is None:
             return {"ok": False, "error": "item_not_found", "item": p.get(side),
-                    "message": "No encuentro ese vídeo en la lista."}
+                    "message": say("youtube", "say_not_in_list", "I can't find that video in the list.")}
         if anchor == idx:
-            return {"ok": False, "error": "same_item", "message": "Es el mismo vídeo: dime cuál va delante de cuál."}
+            return {"ok": False, "error": "same_item", "message": say("youtube", "say_same_video", "It's the same video: tell me which goes before which.")}
         to = (anchor - 1 if anchor > idx else anchor) + (1 if side == "after" else 0)
     else:
         to, given = _mv.destination(p, len(lst))        # `to` or `position`; a number, an ordinal or an end

@@ -120,7 +120,7 @@ def held(measured: dict, reply: str, said: str) -> str:
             # ONE row per intention (A6): a send of this card already waiting on its row takes this question too
             from nucleo.request import send_task_anchor
             if (ask_id := send_task_anchor.to_waiting(wid, said, q)):
-                return "" if ask_id == send_task_anchor.SEVERAL else ask_id
+                return ask_id
             if (ask_id := send_task_words.hold(wid, leaves, said, q, brief=None)):
                 return ask_id
         row = model.opened(wid, acts[0], text=said)

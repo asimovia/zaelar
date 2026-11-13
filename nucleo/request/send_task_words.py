@@ -248,12 +248,12 @@ def new_send(brief, said: str, asks) -> bool:
             return False                     # his words name nobody: this may well be an answer
         from nucleo.acts.message_names import TOK, fold
         from nucleo.circuit import asker
-        from nucleo.request import one_row
-        his = set(TOK.findall(fold(said)))   # his words vs the PEOPLE the waiting send is about, never its text (K2b R6)
+        his = set(TOK.findall(fold(said)))
         for a in asks or []:
-            uid = str(a.get("task_id") or "")
-            if (asker.artefact(uid).get("retained") or {}).get("kind") == KIND and his & one_row.people(uid):
-                return False                 # a send to the person his words name waits: this may be its answer
+            ret = asker.artefact(str(a.get("task_id") or "")).get("retained") or {}
+            if ret.get("kind") == KIND and his & set(TOK.findall(fold(" ".join(
+                    str(v) for v in dict(ret.get("payload") or {}).values() if isinstance(v, str))))):
+                return False                 # a send to someone his words name waits: this may be its answer
         return True
     except Exception as e:  # noqa: BLE001
         note(e)

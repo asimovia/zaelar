@@ -8,6 +8,7 @@
 import time
 
 from .. import store
+from widgets.say import say
 
 WID = "youtube"
 
@@ -166,7 +167,7 @@ def apply(action: str, p: dict, db: dict) -> "dict | None":
     if action == "follow_channel":
         ch = str(p.get("channel") or p.get("name") or p.get("item") or "").strip()[:120]
         if not ch:
-            return {"ok": False, "error": "no_channel", "message": "Dime qué canal sigo."}
+            return {"ok": False, "error": "no_channel", "message": say("youtube", "say_which_channel_follow", "Tell me which channel to follow.")}
         if _find_channel(db, ch) is not None:
             return {"ok": True, "already": True, "channel": ch,
                     "channels": [c.get("name") for c in db.get("channels") or []]}
@@ -190,7 +191,7 @@ def apply(action: str, p: dict, db: dict) -> "dict | None":
         if hit is None:
             return {"ok": False, "error": "not_followed", "channel": ch,
                     "channels": [c.get("name") for c in db.get("channels") or []],
-                    "message": "No sigo ese canal."}
+                    "message": say("youtube", "say_not_following", "I don't follow that channel.")}
         db["channels"].remove(hit)
         store.save(WID, db)
         return {"ok": True, "channel": hit.get("name"),
@@ -223,7 +224,7 @@ def apply(action: str, p: dict, db: dict) -> "dict | None":
         if not mine:
             store.save(WID, db)
             return {"ok": False, "error": "no_video", "channel": ch,
-                    "message": "No encontré vídeos recientes de ese canal."}
+                    "message": say("youtube", "say_no_recent", "I couldn't find recent videos from that channel.")}
         count = _fill_list(db, mine[:n])
         store.save(WID, db)
         out = {"ok": True, "channel": ch, "count": count, "titles": [r["title"] for r in db["list"]], "videos": _dated(db["list"])}
@@ -235,7 +236,7 @@ def apply(action: str, p: dict, db: dict) -> "dict | None":
         hist = db.get("history") or []
         if not hist:
             return {"ok": False, "error": "no_history",
-                    "message": "Todavía no he reproducido ningún vídeo, así que no hay historial."}
+                    "message": say("youtube", "say_no_history", "I haven't played any video yet, so there's no history.")}
         q = str(p.get("query") or p.get("q") or "").strip()
         rows = hist
         if q:                                            # «el que vi de cocina» — search HIS history, not the net
@@ -243,7 +244,7 @@ def apply(action: str, p: dict, db: dict) -> "dict | None":
             rows = [h for h in hist if nq in _norm(" ".join([h.get("title") or "", h.get("channel") or ""]))]
             if not rows:
                 return {"ok": False, "error": "no_match", "query": q,
-                        "message": "No encuentro nada así en el historial."}
+                        "message": say("youtube", "say_not_in_history", "I can't find anything like that in the history.")}
         try:
             n = max(1, min(int(p.get("n") or 10), 25))
         except (TypeError, ValueError):
@@ -268,10 +269,10 @@ def apply(action: str, p: dict, db: dict) -> "dict | None":
         lst = db.get("list") or []
         if not lst:
             return {"ok": False, "error": "empty_list",
-                    "message": "La lista está vacía, no hay nada que guardar."}
+                    "message": say("youtube", "say_list_empty_nothing_to_save", "The list is empty; there's nothing to save.")}
         name = str(p.get("name") or p.get("title") or p.get("item") or db.get("list_name") or "").strip()[:80]
         if not name:
-            return {"ok": False, "error": "no_name", "message": "Dime con qué nombre la guardo."}
+            return {"ok": False, "error": "no_name", "message": say("youtube", "say_which_name", "Tell me what name to save it under.")}
         lists = db.setdefault("lists", [])
         prev = _find_list(db, name)
         if prev is not None:
@@ -288,7 +289,7 @@ def apply(action: str, p: dict, db: dict) -> "dict | None":
         hit = _find_list(db, name)
         if hit is None:
             return {"ok": False, "error": "no_list", "name": name, "lists": names,
-                    "message": ("No tengo ninguna lista guardada con ese nombre." if names
+                    "message": (say("youtube", "say_no_list_named", "I have no saved list with that name.") if names
                                 else "Todavía no has guardado ninguna lista.")}
         # Opening REPLACES the queue and does not start playback (V2-366: only an explicit play starts a video).
         count = _fill_list(db, hit.get("items") or [])
@@ -303,7 +304,7 @@ def apply(action: str, p: dict, db: dict) -> "dict | None":
         if hit is None:
             return {"ok": False, "error": "no_list", "name": name,
                     "lists": [L.get("name") for L in db.get("lists") or []],
-                    "message": "No tengo ninguna lista guardada con ese nombre."}
+                    "message": say("youtube", "say_no_list_named", "I have no saved list with that name.")}
         db["lists"].remove(hit)
         store.save(WID, db)
         return {"ok": True, "name": hit.get("name"), "lists": [L.get("name") for L in db["lists"]]}

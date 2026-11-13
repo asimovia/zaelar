@@ -30,18 +30,8 @@ def test_the_brief_asks_it_only_while_a_task_waits():
     assert bind.SEVERAL not in brief.build("Pérez", open_asks=[A1])[bind.KEY]["criteria"], "one question: no doubt"
 
 
-def _asked(ask_id: str) -> None:
-    from nucleo.circuit import asked_last          # V2-893 L4 (K2b R6): with two waiting, a pick binds the row that asked
-    asked_last.reset()
-    asked_last.note(ask_id)
-    asked_last.turn_began()
-
-
 def test_a_sure_verdict_binds_its_own_task_not_the_oldest(monkeypatch):
     _verdict(monkeypatch, "a-new", 0.6)
-    __import__("nucleo.circuit.asked_last", fromlist=["x"]).reset()
-    assert bind.bind({}, asks=[A1, A2]) == (bind.ASK_WHICH, [A1, A2]), "two waiting: a pick needs identity"
-    _asked("a-new")
     assert bind.bind({}, asks=[A1, A2]) == (bind.ANSWER, [A2])
 
 
@@ -121,7 +111,6 @@ def test_a_verdict_binding_alone_reads_the_act_floor(monkeypatch):
     _verdict(monkeypatch, "a-new", 0.55)
     assert bind.bind({}, asks=[A1, A2]) == (bind.ASK_WHICH, [A1, A2]), "0.55 alone bound a task"
     _verdict(monkeypatch, "a-new", 0.65)
-    _asked("a-new")
     assert bind.bind({}, asks=[A1, A2]) == (bind.ANSWER, [A2])
 
 

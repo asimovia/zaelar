@@ -203,6 +203,6 @@ def apply_action(action: str, payload: dict | None = None) -> dict:
     sheet = _safe_sheet(payload.get("sheet") or payload.get("q"))
     handler = ACTIONS.get(action) if isinstance(action, str) else None
     if handler is None:
-        return {"ok": False, "error": f"acción «{action}» no soportada (present · append · clear · choose · detail · "
+        return {"ok": False, "error": f"action «{action}» not supported (present · append · clear · choose · detail · "
                                       f"list · tab · sources · progress · criteria · auth_done)"}
     return handler(action, payload, sheet)

@@ -57,7 +57,8 @@ def test_all_results_blocked_is_said_honestly_not_as_a_worse_search(sandbox):
     yt.apply_action("block_channel", {"channel": "Motor Clasico"})
     r = yt.apply_action("search", {"query": "coches"})
     assert r["ok"] is False and r["error"] == "all_blocked" and r["blocked_out"] == 2
-    assert "bloqueados" in r["message"]
+    from widgets.say import say
+    assert r["message"] == say("youtube", "say_all_blocked", "")   # in his language (V2-877 #10)
 
 
 def test_load_by_name_skips_a_blocked_top_hit(sandbox):

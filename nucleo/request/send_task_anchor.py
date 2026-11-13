@@ -18,11 +18,6 @@ from __future__ import annotations
 from nucleo.request import base, note
 
 
-#: `to_waiting`'s answer when several sends of the card wait and nothing identifies one: no row is opened for it (a
-#: third row would be the class A6 closed) — his answer is bound, or asked which, by `worker_api_bind`.
-SEVERAL = "several"
-
-
 def _waiting_sends(wid: str) -> list[tuple[str, dict]]:
     """`(row, ask artefact)` of this card's send tasks still waiting for his answer, newest first."""
     from nucleo.circuit import asker
@@ -51,15 +46,9 @@ def to_waiting(wid: str, said: str, question: str, *, emit=None) -> str:
         if not rows:
             return ""
         named = str(people[0].get("name") or "") if word and len(people) == 1 else ""
-        from nucleo.circuit import asked_last          # by IDENTITY (K2b R6), never «the newest»: the one row
-        by_name = [(u, a) for u, a in rows             # declaring the candidate he names, else the row that asked
-                   if named and fold(named) in {fold(c) for c in (a.get("retained") or {}).get("candidates") or []}]
-        waiting = [{"ask_id": a.get("ask_id")} for _u, a in rows]   # him ALONE, else the only one waiting
-        uid, ask = by_name[0] if len(by_name) == 1 else next(
-            ((u, a) for u, a in rows if asked_last.asked({"ask_id": a.get("ask_id")}, waiting)),
-            rows[0] if len(rows) == 1 else (None, None))
-        if uid is None:
-            return SEVERAL              # several of this card's sends wait and nothing names one: no row is guessed
+        uid, ask = next(((u, a) for u, a in rows
+                         if named and fold(named) in {fold(c) for c in (a.get("retained") or {}).get("candidates") or []}),
+                        rows[0])
         art = send_task.artefact(uid)
         filled = ""
         ret = ask.get("retained") or {}

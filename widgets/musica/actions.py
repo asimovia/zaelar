@@ -86,11 +86,11 @@ def _a_add_tracks(action: str, p: dict) -> dict:
     from . import curated as _curated
     ref = str(p.get("playlist") or p.get("name") or p.get("id") or "").strip()
     if not ref:
-        return {"ok": False, "error": "playlist_missing", "message": "Falta el nombre de la lista."}
+        return {"ok": False, "error": "playlist_missing", "message": _d.say("musica", "say_list_needs_name", "The list needs a name.")}
     tracks, resolved = _curated.resolve(p.get("tracks") if p.get("tracks") is not None else p.get("songs"))
     if not tracks:
         return {"ok": False, "error": "no_tracks", "playlist": ref,
-                "message": "No me has dado ninguna canción para la lista."}
+                "message": _d.say("musica", "say_list_needs_songs", "You haven't given me any song for the list.")}
     db = _d._load_db()
     pl, created = _d._find_or_create_playlist(db, ref)
     have = pl.setdefault("tracks", [])
@@ -309,7 +309,7 @@ def _a_play_local(action: str, p: dict) -> dict:
     db = _d._load_db()
     t = _d._local.track_from_library(str(p.get("path") or p.get("file") or ""))
     if t is None:
-        return {"ok": False, "error": "no encuentro ese audio en tu biblioteca (o no se puede reproducir)"}
+        return {"ok": False, "error": _d.say("musica", "say_not_in_library", "I can't find that audio in your library (or it can't be played)")}
     r = _d._play_track(t, db)
     if r.get("ok"):
         _d._push_recent(db, t)
@@ -331,7 +331,7 @@ def _a_seek(action: str, p: dict) -> dict:
     try:
         secs = float(to if to is not None else by)
     except (TypeError, ValueError):
-        return {"ok": False, "error": "bad_position", "message": "Dime a qué punto de la canción voy."}
+        return {"ok": False, "error": "bad_position", "message": _d.say("musica", "say_where_to_seek", "Tell me which point of the song to go to.")}
     relative = to is None
     db = _d._load_db()
     loc = dict(db.get("local") or {})
