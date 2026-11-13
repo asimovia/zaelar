@@ -24,9 +24,13 @@ _NEW_MOUNT = """async ([app, dev, inst]) => {
   const stub = async (u, init) => { window.__posts.push(JSON.parse(init.body));
       return {status: 200, json: async () => ({ok: true, facts: []})}; };
   window.__R = R; window.__w = {}; window.__opts = {device: dev, fetch: stub}; window.__app = [app, inst];
-  window.__ctx = { action: () => Promise.resolve(null), state: (p, o) => window.__w._rep.report(p, o), close() {},
+  window.__ctx = { action: (n, p) => window.__hbActs ? window.__hbAct(app, n, p || {}) : Promise.resolve(null),
+                   state: (p, o) => window.__w._rep.report(p, o), close() {},
                    top() {}, scroll() {}, openConnector() {}, lang: 'es', running: true, t: null,
-                   device: async () => ({ details: async () => ({ sensors: {} }), activity: async () => ({ error: 'none' }) }) };
+                   device: async () => ({ details: async () => (window.__hbDev || { sensors: {} }),
+                     activity: async () => { await new Promise((r) => setTimeout(r, window.__hbSessionDelay || 0));
+                       return window.__hbSession ? { stop: async () => {}, background: false }
+                                                 : { error: window.__hbDevError || 'none' }; } }) };
 }"""
 
 
@@ -43,17 +47,31 @@ def card_page():
             b = pw.chromium.launch()
             pg = b.new_page(viewport={"width": 1280, "height": 900})
             pg._hb_origin = f"http://127.0.0.1:{port}"
+            pg.expose_function("__hbAct", _act)          # `ctx.action` to the app's real door, when a test asks for it
             yield pg
             b.close()
     finally:
         srv.terminate(); srv.wait(timeout=10)
 
 
-def mount(page, app: str, data: dict, dev: str, instance: str = "") -> None:
+def _act(app: str, name: str, payload: dict):
+    """The app's own `apply_action`, as the host's action route reaches it (JSON in, JSON out)."""
+    import importlib
+    import json
+    out = importlib.import_module(f"widgets.{app}.data").apply_action(name, payload or {})
+    return json.loads(json.dumps(out, default=str))
+
+
+def mount(page, app: str, data: dict, dev: str, instance: str = "", act: bool = False, device: dict | None = None,
+          session: bool = False, device_error: str = "", session_delay: int = 0) -> None:
     """A fresh mount of `app` (or its `instance`) on screen `dev`, rendered with `data` (whose `_rev` the host tells
-    the reporter)."""
+    the reporter). `act` routes `ctx.action` to the app's real `apply_action`; `device` is what the stand-in
+    `ctx.device().details()` answers, `session` makes its `activity()` start one (else it fails with `device_error`),
+    `session_delay` ms later."""
     page.goto(f"{page._hb_origin}/widgets/{app}/")
     page.set_content("<div id='w' style='width:900px;height:700px'></div>")
+    page.evaluate("([a, d, s, e, w]) => { window.__hbActs = a; window.__hbDev = d; window.__hbSession = s;"
+                  " window.__hbDevError = e; window.__hbSessionDelay = w; }", [act, device, session, device_error, session_delay])
     page.evaluate(_NEW_MOUNT, [app, dev, instance or app])
     page.evaluate("""async ([src, d]) => { const mod = await import(src); window.__mod = mod;   // as the shells mount
                        window.__R.mountState(window.__w, window.__app[0], window.__app[1], d, window.__opts);

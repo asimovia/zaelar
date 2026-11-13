@@ -6,7 +6,7 @@
     "report": {
       "phase": {"type": "enum:idle|running", "follows": "status", "rest": "idle"},
       "kind": {"type": "enum:none|cycling|running|walking|driving", "follows": "status", "rest": "none"},
-      "recording": {"type": "bool", "rest": false}
+      "recorder": {"type": "enum:none|here|elsewhere", "follows": "status", "rest": "none"}
     }
   },
   "version": "0.1.0",
