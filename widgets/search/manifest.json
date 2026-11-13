@@ -1,6 +1,7 @@
 {
   "id": "search",
   "screens": "shared",
+  "state": {"static": "a transient view of a search the engine itself runs: it paints the engine's own data, and nothing he or an order changes on its face"},
   "version": "0.1.0",
   "owner": "Zaelar",
   "licence": "SUL-1.0",
