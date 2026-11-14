@@ -113,3 +113,28 @@ def test_an_artist_he_names_is_her_songs_not_a_podcast_called_like_her(words):
                      shows=[{"name": "Madonna", "owner": "Pop Talks", "uri": "spotify:show:3", "source": "spotify"}])
     got = find_media(words, catalogue=lambda q: answer)
     assert got["candidates"][0]["kind"] == "track" and M.named_whole(words, got["candidates"]) is None
+
+
+@pytest.mark.parametrize("kind,words,answer", [
+    ("track", "Madonna", _answer(tracks=[{"title": "Frozen", "artist": "Madonna", "uri": "spotify:track:1", "source": "spotify"}],
+                                 shows=[{"name": "Madonna", "owner": "Pop Talks", "uri": "spotify:show:3", "source": "spotify"}])),
+    ("track", "Bad Bunny", _answer(tracks=[{"title": "Tití Me Preguntó", "artist": "Bad Bunny", "uri": "spotify:track:2", "source": "spotify"}],
+                                   playlists=[{"name": "Bad Bunny", "owner": "fan", "uri": "spotify:playlist:4", "source": "spotify"}])),
+    ("show", "Elena Lostalé", _answer(tracks=[{"title": "Elena", "artist": "Otro", "uri": "spotify:track:5", "source": "spotify"}],
+                                      shows=[{"name": "Sueñacuentos", "owner": "Elena Lostalé", "uri": "spotify:show:9", "source": "spotify"}])),
+])
+def test_a_creator_he_names_fits_her_work_on_its_owner_alone_for_every_kind(kind, words, answer):
+    """Every kind, not one artist: a work BY the creator he names fits his words on its owner — the artist's songs over a
+    list or podcast called like her, the host's show over a song that only shares a word. Disarm: drop the owner-alone
+    term of `_fit` → red."""
+    got = find_media(words, catalogue=lambda q: answer)
+    top = got["candidates"][0]
+    assert top["kind"] == kind and top["fit"] == 1.0, got["candidates"]
+
+
+def test_a_channel_he_names_fits_its_videos(monkeypatch):
+    from search import video
+    vids = [{"videoId": "a" * 11, "title": "Kurzgesagt fan reacts", "channel": "Some Fan"},
+            {"videoId": "b" * 11, "title": "The Immune System Explained", "channel": "Kurzgesagt"}]
+    monkeypatch.setattr(video, "find_videos", lambda q, n=5, **k: list(vids))
+    assert find_media("Kurzgesagt", kind="video")["candidates"][0]["video_id"] == "b" * 11
