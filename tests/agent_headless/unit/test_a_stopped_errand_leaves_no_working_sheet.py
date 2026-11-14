@@ -30,7 +30,8 @@ def _wire(monkeypatch, items):
     monkeypatch.setattr(dispatch, "sheet_of", lambda rec: "48ac70-3")
     from widgets.results import data as _sheet
     monkeypatch.setattr(_sheet, "view_data", lambda sid="": {"items": items})
-    monkeypatch.setattr("voice.observer.emit", lambda kind, label, **k: events.append((kind, label, k.get("extra"))))
+    monkeypatch.setattr("voice.observer.emit", lambda kind, label, **k: events.append(
+        (kind, label, {f: v for f, v in (k.get("extra") or {}).items() if f != "seq"})))   # seq: node 4.540
     return closed_sheet, events
 
 
