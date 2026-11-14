@@ -29,8 +29,10 @@ LAYOUTS = ("windows", "deck")
 #: front (focused, on top, in view) · visible (in view, not front: windows) · behind (covered) · min → rank in view
 VIS = {"front": 0, "visible": 1, "behind": 2, "min": 3}
 CLOSED_S = 60.0
-#: A bound on what one screen may report (a crowd of windows is cut, never stored whole).
+#: A bound on what one screen's document holds: a crowd of windows is CUT to the top MAX_OPEN by layer (the app in
+#: front always kept) and the document says how many it left out (`truncated`); past MAX_ROWS the report is refused.
 MAX_OPEN = 24
+MAX_ROWS = 200
 MAX_HOLDS = 8
 _ID_MAX = 80
 
@@ -49,6 +51,7 @@ class Doc:
     open: tuple = ()
     closed: tuple = ()
     unknown: bool = False
+    truncated: int = 0
 
 
 _LOCK = threading.Lock()
@@ -69,9 +72,9 @@ def _shape(doc) -> tuple[dict | None, str]:
     if layout not in LAYOUTS:
         return None, "layout"
     if doc.get("unknown") is True:          # the host does not know yet what it shows (its restore is running)
-        return {"layout": layout, "front": "", "home": {}, "panel": "", "open": (), "unknown": True}, ""
+        return {"layout": layout, "front": "", "home": {}, "panel": "", "open": (), "unknown": True, "truncated": 0}, ""
     rows = doc.get("open")
-    if not isinstance(rows, list) or len(rows) > MAX_OPEN:
+    if not isinstance(rows, list) or len(rows) > MAX_ROWS:
         return None, "open"
     open_, seen = [], set()
     for i, r in enumerate(rows):
@@ -94,12 +97,20 @@ def _shape(doc) -> tuple[dict | None, str]:
         return None, "front"
     if layout == "deck" and any(r["vis"] == "visible" for r in open_):
         return None, "visible_on_deck"      # a deck shows one app at a time: the rest are behind
+    cut, cut_ids = max(0, len(open_) - MAX_OPEN), set()
+    if cut:                                 # the top of the screen stays true; the front is never the one left out
+        keep = open_[:MAX_OPEN]
+        if fronts and all(r["id"] != fronts[0] for r in keep):
+            keep = keep[:-1] + [r for r in open_ if r["id"] == fronts[0]]
+        cut_ids = {r["id"] for r in open_} - {r["id"] for r in keep}
+        open_ = keep
     home = doc.get("home") if isinstance(doc.get("home"), dict) else {}
     holds = home.get("holds") if isinstance(home.get("holds"), list) else []
     return {"layout": layout, "front": fronts[0] if fronts else "",
             "home": {"shown": home.get("shown") is True,
                      "holds": [h for h in (_clean_id(x) for x in holds[:MAX_HOLDS]) if h]},
-            "panel": _clean_id(doc.get("panel")), "open": tuple(open_), "unknown": False}, ""
+            "panel": _clean_id(doc.get("panel")), "open": tuple(open_), "unknown": False, "truncated": cut,
+            "_cut": cut_ids}, ""
 
 
 def write(dev, mount, n, doc, *, by: str = "") -> tuple[bool, str]:
@@ -112,6 +123,7 @@ def write(dev, mount, n, doc, *, by: str = "") -> tuple[bool, str]:
     facts, why = _shape(doc)
     if facts is None:
         return False, why
+    cut = facts.pop("_cut", set())          # still on screen, only left out of the document: never «closed»
     now = time.time()
     with _LOCK:
         cur = _DOCS.get(dev)
@@ -122,7 +134,7 @@ def write(dev, mount, n, doc, *, by: str = "") -> tuple[bool, str]:
         if cur and cur.mount != mount:
             _GONE[dev] = (_GONE.get(dev, []) + [cur.mount])[-8:]
         before = {r["id"] for r in cur.open} if cur else set()
-        after = {r["id"] for r in facts["open"]}
+        after = {r["id"] for r in facts["open"]} | cut
         closed = [c for c in (cur.closed if cur else ()) if now - c["at"] < CLOSED_S and c["id"] not in after]
         if not facts["unknown"]:             # an unknown report closes nothing: it does not say what left
             closed += [{"id": cid, "at": now, "by": str(by or "")[:20]} for cid in sorted(before - after)]
@@ -213,17 +225,20 @@ def drift(dev, legacy: dict) -> list[dict]:
         if old != new:
             rows.append({"what": what, "legacy": old, "doc": new})
 
-    _cmp("open", sorted({_base(w) for w in legacy.get("open_widgets") or [] if _base(w)}),
-         sorted({_base(r["id"]) for r in d.open}))
+    if not d.truncated:                     # a cut document does not list every app: its open/min are not compared
+        _cmp("open", sorted({_base(w) for w in legacy.get("open_widgets") or [] if _base(w)}),
+             sorted({_base(r["id"]) for r in d.open}))
     if d.layout == "deck":
         _cmp("front", _base(legacy.get("maximized_widget")) if legacy.get("front_reported") else None, _base(d.front))
-        _cmp("min", sorted({_base(w) for w in legacy.get("minimized_widgets") or []}),
-             sorted({_base(r["id"]) for r in d.open if r["vis"] != "front"} - {_base(d.front)}))
+        if not d.truncated:
+            _cmp("min", sorted({_base(w) for w in legacy.get("minimized_widgets") or []}),
+                 sorted({_base(r["id"]) for r in d.open if r["vis"] != "front"} - {_base(d.front)}))
     else:
         _cmp("max", _base(legacy.get("maximized_widget")),
              next((_base(r["id"]) for r in d.open if r.get("max")), ""))   # the browser's full screen is no legacy fact
-        _cmp("min", sorted({_base(w) for w in legacy.get("minimized_widgets") or []}),
-             sorted({_base(r["id"]) for r in d.open if r["vis"] == "min"}))
+        if not d.truncated:
+            _cmp("min", sorted({_base(w) for w in legacy.get("minimized_widgets") or []}),
+                 sorted({_base(r["id"]) for r in d.open if r["vis"] == "min"}))
     return rows
 
 
