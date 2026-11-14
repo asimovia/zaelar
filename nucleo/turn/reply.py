@@ -1,12 +1,10 @@
 """The mouth speaks the verdict (refactor2710-03).
 
-An ACTING turn's last words are composed from what its acts ENDED in, never repaired from what the model said. Each
-act reports a verdict (`started · met · unmet · unverifiable · undeclared · cannot · asked · skipped`, the one
-enumeration of `nucleo/circuit/verdict.py`) and the object it reached; this module turns that into ONE line, from
-the i18n bundles (`reply_<verdict>`), and says it after the words that already streamed.
-
-The rules, in order: a CONVERSING turn keeps the model's words; `started` adds nothing (the act is under way);
-`met` names its object only when the words did not (compared with the object the act returned, never a table of
+An ACTING turn's last words are composed from what its acts ENDED in, never repaired from what the model said. Each act
+reports a verdict (`started · met · unmet · unverifiable · undeclared · cannot · asked · skipped`, the one enumeration of
+`nucleo/circuit/verdict.py`) and the object it reached; this module turns that into ONE line, from the i18n bundles
+(`reply_<verdict>`), said after the words that already streamed. A CONVERSING turn keeps the model's words; `started` adds
+nothing; `met` names its object only when the words did not (compared with the object the act returned, never a table of
 words — «Done.» alone is never the line); `unmet`, `cannot` and `asked` are always said, facts the model could not know.
 
 Every line leaves one event (`brain` · «🗣 reply: the verdict's line») carrying `{verdict, key, object}`.
@@ -18,6 +16,7 @@ from dataclasses import dataclass
 
 from loguru import logger
 
+from i18n import langs as _langs
 from nucleo.circuit import verdict as V
 from nucleo.turn import reply_news
 from voice import trace as _voice_trace
@@ -43,9 +42,8 @@ class Outcome:
 
 
 def owes_an_act(brief) -> str:
-    """"escalate" | "order" | "" — the turn's brief says, at its confidence, that this turn owed an act (CRIT-K1: a
-    verdict decides whether an act was owed, never our own words). "" when the brief does not say so: nothing is
-    invented then, the model's turn stands."""
+    """"escalate" | "order" | "" — the turn's brief says, at its confidence, that this turn owed an act (CRIT-K1: a verdict
+    decides it, never our own words). "" when the brief does not say so: nothing is invented, the model's turn stands."""
     try:
         if _voice_trace.is_kickoff():      # OUR turn (the session's greeting) answers no order of his
             return ""
@@ -93,8 +91,8 @@ def object_of(res) -> str:
 
 
 def of_op(card: str, action: str, res) -> Outcome:
-    """The verdict of ONE data-op, read from its result through the receipt (`op_receipt`): refused → `unmet` with
-    the sentence the card may say; plainly landed → `met` with its object; anything else is still `started`."""
+    """The verdict of ONE data-op through the receipt (`op_receipt`): refused → `unmet` with the sentence the card may say;
+    plainly landed → `met` with its object; anything else is still `started`."""
     from nucleo.flash import op_receipt, refusal_line
     if op_receipt.failed(res):   # V2-851 F2: a refusal's ONE line is this mouth's — the card's `say`, or the generic
         reason = refusal_line.speakable(card, res).strip()
@@ -128,9 +126,8 @@ async def of_ops(tasks, timeout: float = WAIT_S) -> list[Outcome]:
     return out
 
 
-#: Verdicts an act DECLARED during the turn without a data-op behind it (a canvas exit that found nothing, a question
-#: the act asks), keyed by the turn's trace: the act runs inside the stream's pump task, and a ContextVar set there
-#: never reaches the task that closes the turn.
+#: Verdicts an act DECLARED during the turn without a data-op behind it (a canvas exit that found nothing, a question the act
+#: asks), by the turn's trace: the act runs in the stream's pump task, and a ContextVar set there never reaches the closer.
 _NOTED: dict[str, list[Outcome]] = {}
 
 
@@ -170,8 +167,7 @@ def asked() -> bool:
 
 
 def _notice_moved(said: str) -> list[Outcome]:
-    """A notice this turn MOVED to ring soon today is `met` at the hour the live job rings, read back from the
-    schedule (`notice_readback`) — "" when the words already said that hour."""
+    """A notice this turn MOVED to ring soon today is `met` at the hour the live job rings (`notice_readback`)."""
     try:
         from nucleo.flash import notice_readback
         text = notice_readback.moved_line(said)
@@ -226,19 +222,23 @@ def _already_said(outcome: Outcome, said: str) -> bool:
 
 
 def owed(outcomes: list[Outcome], said: str, prior: str = "") -> list[tuple[Outcome, str]]:
-    """The lines owed after `said`, one per outcome that must be said, in the order the acts ran — minus the ones that
-    are not news (`reply_news.silent`: its door told it, a card's own sentence or our PREVIOUS reply `prior` named the
-    object, or an unspoken refusal beside an op on that card that landed)."""
+    """The lines owed after `said`, one per outcome that must be said, in the order the acts ran — minus the ones that are not
+    news (`reply_news.silent`: its door told it, a card's own sentence or our PREVIOUS reply named the object, or an unspoken
+    refusal beside an op on that card that landed)."""
     lines: list[tuple[Outcome, str]] = []
     for o in outcomes:
         if reply_news.silent(o, outcomes, said, prior):
             continue
         value, news = _value(o.verdict), o.object and not _already_said(o, said)   # «awaiting»: asked, by its object (A6)
         if value in ALWAYS_SAID or value == V.MET.name and (o.said or news) or o.reason == "awaiting" and news:
-            text = line(o)
+            text = _named(o) if o.reason == "awaiting" and said.strip() else line(o)
             if text and text not in (t for _o, t in lines):
                 lines.append((o, text))
     return lines
+
+
+def _named(o: Outcome) -> str:   # the words already started it: the object alone, never a 2nd start line (2026-11-14)
+    return (str(_langs.words("reply_started_named", default="") or "").format(object=o.object).strip() if o.object else "") or line(o)
 
 
 def _emit(o: Outcome, text: str) -> None:
