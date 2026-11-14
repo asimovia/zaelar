@@ -7,8 +7,12 @@ and nothing outside imports a2a except through this module.
 from __future__ import annotations
 
 from .agent import A2AAgent
+from .events import attach_bus
+from .grants import Grant, contact_audience
 from .identity import Identity
 from .items import Item, ItemRegistry, default_items
+from .jobs import Jobs
+from .server_api import WAKE_PATH, WakeGate, status_allowed
 from .transport.fake import FakeNetwork
 
 
@@ -23,4 +27,5 @@ def from_network(me: Identity | None = None, base: str | None = None, **kw) -> A
     return A2AAgent(me, HttpMailbox(http), HttpDirectory(http), HttpLive(http), **kw)
 
 
-__all__ = ["A2AAgent", "FakeNetwork", "Identity", "Item", "ItemRegistry", "default_items", "from_network"]
+__all__ = ["A2AAgent", "FakeNetwork", "Grant", "Identity", "Item", "ItemRegistry", "Jobs", "WAKE_PATH", "WakeGate",
+           "attach_bus", "contact_audience", "default_items", "from_network", "status_allowed"]

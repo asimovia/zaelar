@@ -25,7 +25,7 @@ _SKIP = (".venv", ".claude/", "node_modules", "__pycache__", "TMP")
 
 # Families that the viewer renders as chips (frontend/app/components/DebugPanel.js::CATS). The backend cannot
 # invent a family that the UI does not offer: it would be an event unreachable from the filter.
-CATS = {"flash", "worker", "memory", "widget", "system", "pulse"}
+CATS = {"flash", "worker", "memory", "widget", "system", "pulse", "a2a"}
 
 
 def _emitted_kinds() -> dict[str, set[str]]:

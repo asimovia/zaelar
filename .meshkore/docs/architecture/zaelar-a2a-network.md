@@ -245,6 +245,14 @@ DID: `🤝 Marta · request · out`. Free text that came from outside is a **bou
 | «what was refused?» | `op∈denied,dropped,msg_blocked` | the reason, never the content |
 | «what does A2A cost today?» | `family=a2a` + `beat` | pulls · heartbeats · model calls (must read 0) |
 
+**Engine wiring (V2-866, post-clean).** The sink is attached at boot by `server/a2a_api.start()` — only when the
+`a2a` config section says `enabled` (default OFF: no key read, no thread, no traffic, both routes 404). Rows reach the
+viewer as kind `a2a` (`voice/observer.py::_CAT` → family `a2a`, on by default in the viewer's filters) stamped with
+piece `a_mail` (the architecture map), and `debug-detail.js` shows `op · dir · peer · item · verbs · reason · n`.
+Grants are rules rows (`gate`/`a2a`, scope `subject:<cid>/a2a/<item>`, `server/a2a_wiring.RulesGrantStore`), so the
+policy seam reads his standing rules through `consent.decide_act` (class `a2a.<verb>`, channel = item). A grant
+row is code-applied only: it never enters the prompt.
+
 **The console half.** The operator console shows the SAME rows by `rel`, `cid` and `op`, with a per-agent A2A
 summary (relationships, scopes granted, envelopes in/out today, drops) — one datum, two views; a row added here is
 added there in the same change (the private counterpart of V2-866 carries that task).

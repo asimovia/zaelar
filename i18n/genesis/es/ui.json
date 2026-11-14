@@ -544,6 +544,7 @@
  "debug.cat_memory": "Memoria",
  "debug.cat_other": "Sin clasificar",
  "debug.cat_pulse": "Pulso",
+ "debug.cat_a2a": "Red A2A",
  "debug.cat_system": "Sistema/Código",
  "debug.cat_system_title": "Eventos internos/perf (llamadas, callbacks, ciclos) — muchísimos",
  "debug.cat_widget": "Widgets",
