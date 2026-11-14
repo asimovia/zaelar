@@ -156,8 +156,9 @@ async def audio(request):
         s = LIVE["session"]
         if "output" in body:
             s.output.set_audio_enabled(bool(body["output"]))
-        if "input" in body:
-            s.input.set_audio_enabled(bool(body["input"]))
+        if "input" in body:                    # the ear's whole effect, as in the embedded session
+            from .agent_events import set_ear
+            set_ear(s, bool(body["input"]))
     await _on_session_loop(_do)
     return web.json_response({"ok": True})
 

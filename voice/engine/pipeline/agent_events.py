@@ -128,6 +128,54 @@ def _on_data(packet, *, _emit, _json, _wake, session) -> None:
         _ag.logger.warning("chat-text data handler: %s", e)
 
 
+#: LiveKit's push-to-talk commit: how long to wait for the STT's final, and how much silence flushes it.
+COMMIT_TRANSCRIPT_S, COMMIT_FLUSH_S = 2.0, 2.0
+#: A VAD inference queued before the close may still say «speaking» after it; the silence is re-asserted past it.
+_SILENCE_RECHECK_S = (0.25, 0.75, 1.5, 3.0)
+
+
+def set_ear(session, enabled: bool, *, _emit=None) -> None:
+    """THE input lever's effect on a live session — one body for the embedded session and the voice process (the
+    body's RemoteSession only carries the lever there: `/voice/audio`). Audio after a close never reaches the STT.
+
+    CLOSING: what was already heard counts as said — LiveKit's push-to-talk commit flushes the STT and its final
+    becomes the turn (nothing heard → no turn). The user is silent by construction, so his silence is re-asserted past
+    a late VAD inference: one queued before the close cleared it and every reply then waited for a silence no frame
+    could bring (audit 2026-11-14, failure 12: replies synthesised, never spoken, until the mic reopened).
+    OPENING: the uncommitted leftover is cleared, so nothing heard before is glued to the next sentence (failure 15)."""
+    if not hasattr(session, "commit_user_turn"):              # the body's RemoteSession: the voice process applies it
+        session.input.set_audio_enabled(bool(enabled))
+        return
+    was = bool(getattr(session.input, "audio_enabled", True))
+    session.input.set_audio_enabled(bool(enabled))
+    if bool(enabled) == was:
+        return
+    say = _emit or (lambda *a, **k: None)
+    try:
+        if enabled:
+            session.clear_user_turn()
+            return
+        fut = session.commit_user_turn(transcript_timeout=COMMIT_TRANSCRIPT_S, stt_flush_duration=COMMIT_FLUSH_S)
+        fut.add_done_callback(lambda f: say("mic", "🎤⃠ heard before the close — committed" if not f.cancelled()
+                                            and not f.exception() and f.result() else
+                                            "🎤⃠ nothing heard before the close — dropped", role="system",
+                                            text=("" if f.cancelled() or f.exception() else str(f.result() or ""))[:200]))
+        loop = _ag.asyncio.get_running_loop()
+        for d in _SILENCE_RECHECK_S:
+            loop.call_later(d, _silent_while_closed, session)
+    except Exception as e:  # noqa: BLE001 — a session not started yet has no turn to commit or clear
+        _ag.logger.debug("ear %s: %r", "open" if enabled else "close", e)
+
+
+def _silent_while_closed(session) -> None:
+    """While the input is closed his silence holds (LiveKit's `_user_silence_event`, which every reply waits for)."""
+    act = getattr(session, "_activity", None)
+    ev = getattr(act, "_user_silence_event", None)
+    if ev is not None and not session.input.audio_enabled and not ev.is_set():
+        ev.set()
+        _ag.logger.info("ear closed: a late VAD inference held the replies — his silence re-asserted")
+
+
 def open_mic_door(*, session, _emit=None):
     """V2-831 T-18 — installs THE input door: `voice/mic_input.py` decides whether audio may reach the STT, this
     hands it the session's audio INPUT (disabled, the room input drops every frame before VAD and STT). Called
@@ -137,10 +185,12 @@ def open_mic_door(*, session, _emit=None):
     loop = _ag.asyncio._get_running_loop()   # None outside a loop, without raising
 
     def _set(enabled: bool) -> None:
+        if not enabled:
+            mic_input.note_closed_on_words()      # the turn its commit makes was heard BEFORE the close
         if loop is None or loop.is_closed() or _ag.asyncio._get_running_loop() is loop:
-            session.input.set_audio_enabled(bool(enabled))
+            set_ear(session, bool(enabled), _emit=_emit)
         else:
-            loop.call_soon_threadsafe(session.input.set_audio_enabled, bool(enabled))
+            loop.call_soon_threadsafe(lambda: set_ear(session, bool(enabled), _emit=_emit))
 
     mic_input.use_input(_set)
     session.on("close", lambda _ev=None: mic_input.clear_input(_set))

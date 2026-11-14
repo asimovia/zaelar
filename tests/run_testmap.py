@@ -2078,6 +2078,12 @@ DOMAINS: list[dict] = [
                                  "answers no brief verdict (`interrupt`), a typed hard interrupt cuts the speech sounding, "
                                  "a stop that cut our speech is the voice's, a stop pauses every app reporting `playing`",
             "ch": UNIT, "paths": ["tests/voice/unit/test_stopping_and_closing_by_text_always_work.py"]},
+        # Audit 2026-11-14, class C (failures 12, 13, 15): the mic used as push-to-talk lost the sentence at the close,
+        # glued the leftover to the next one, and a mid-sentence close left every reply waiting for a silence. es/en.
+        {"id": "3.233", "title": "Closing the mic keeps what was heard: every closed state of the lever commits the heard "
+                                 "words (that one turn passes the switch, nothing after it), an open clears the leftover, "
+                                 "and his silence holds while closed so the agent still speaks",
+            "ch": UNIT, "paths": ["tests/voice/unit/test_closing_the_mic_keeps_what_was_heard.py"]},
         # V2-831 T-02 — the hard close answered without the model and left no trace in the dialog window, so «i said
         # all» was read as a question about the previous errand. Its line and receipt now enter the window and
         # `_last_reply`, like a model turn's. Disarmed → red.
