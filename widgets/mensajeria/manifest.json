@@ -75,6 +75,7 @@
   "actions": {
     "show_view": {
       "desc": "FILTRA lo que se ve por CANAL y PERIODO y CONTESTA («¿tengo whatsapps nuevos?», «do I have new WhatsApp messages?», «show me only today's emails»): platform email|whatsapp|telegram + window_h en horas (24 = hoy). 'all' vuelve a la LISTA PRINCIPAL unificada (y cierra el chat abierto). Devuelve los chats que casan en `result.chats` para que respondas con sus nombres. Es obligatoria para eso — mostrar el widget de nuevo NO cambia la vista. `window_h` (HORAS) fija el CRITERIO de esa vista: enseña las CONVERSACIONES con actividad en esa ventana (72 = últimos 3 días; 0 lo quita) — queda fijado por plataforma hasta cambiarlo, y devuelve las que casan en `result.activity`",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {
         "platform": "string ('all' = lista principal | whatsapp | telegram | email)",
         "window_h": "number opcional (horas de la ventana de actividad; 72 = 3 días; 0 = quitar el criterio)"
@@ -100,6 +101,7 @@
     },
     "close": {
       "desc": "Cierra el chat abierto y VUELVE a la lista de chats",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {},
       "safe": true,
       "view": true,
@@ -405,6 +407,7 @@
     },
     "peek": {
       "desc": "LEE una conversación entera (hasta 40 mensajes guardados) y te la DEVUELVE para que TÚ la resumas, la analices o extraigas lo relevante («resume el grupo del viaje», «la esencia de esos correos») — sin abrir nada en pantalla y sin tocar la memoria. Si necesita más pasado: open + load_more primero",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {
         "name": "string opcional (el chat/grupo tal como aparece; sin él usa la conversación abierta)",
         "limit": "int opcional (máx 40)"
@@ -442,6 +445,7 @@
     },
     "search_archive": {
       "desc": "BUSCA en el ARCHIVO PERMANENTE de comunicaciones (todas las plataformas, entradas Y salidas — no caduca nunca) y DEVUELVE las coincidencias con su fecha para que TÚ contestes («¿cuándo me escribió el colegio?»; «¿le llegué a contestar?» → check_reply:true, que dice si hubo respuesta nuestra y cuándo). Una pregunta sobre mensajes PASADOS se contesta con esto, nunca de memoria",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {
         "q": "string opcional (texto a buscar)",
         "sender": "string opcional (remitente, subcadena)",
@@ -460,6 +464,7 @@
     },
     "mail_folder": {
       "desc": "Abre una CARPETA del correo como un cliente de correo: «enséñame los enviados», «abre la papelera», «enséñame promociones».",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "how": "`folder` = inbox | flagged | drafts | sent | archive | all | junk | trash o una carpeta suya; `category` = una categoría de la bandeja SOLO si `result.categories` la trae. Devuelve `result.messages` y los no leídos reales en `result.unread`.",
       "payload": {
         "folder": "string (inbox | drafts | sent | … | nombre de carpeta)",
@@ -493,6 +498,7 @@
     },
     "mail_open": {
       "desc": "Abre un mensaje de la carpeta de correo en pantalla por su `uid` (lo usa la propia app al tocar una fila). Para «ábrelo» tras hablar de un correo usa `open`.",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "internal": true,
       "payload": {
         "uid": "string",
@@ -504,6 +510,7 @@
     },
     "mail_back": {
       "desc": "Desde un correo o un borrador abierto, VUELVE a la lista de su carpeta («vuelve a la bandeja», «atrás»)",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {},
       "safe": true,
       "view": true,
@@ -511,6 +518,7 @@
     },
     "open_draft": {
       "desc": "Abre un BORRADOR que está a medias ocupando toda la app: «abre el borrador», «enséñame el correo que tenía pendiente para X». Sin `contact` abre el más reciente.",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "how": "La app enseña destinatario, asunto, texto y los botones Enviar / Guardar / Descartar.",
       "row_verb": true,
       "payload": {
@@ -523,6 +531,7 @@
     },
     "save_draft": {
       "desc": "Guarda los cambios de un borrador SIN enviarlo (texto; y en un mensaje nuevo, destinatario y asunto). Lo usa el botón «Guardar» del borrador abierto.",
+      "instant": "internal: the card's own bookkeeping, never an act he is told is done",
       "internal": true,
       "payload": {
         "key": "string (la clave del borrador)",
@@ -547,6 +556,7 @@
     },
     "compose": {
       "desc": "El botón «Enviar» de la pantalla de borrador (y «Guardar» de un correo nuevo aún sin guardar). Por voz usa `draft` / `send_draft`.",
+      "instant": "internal: the card's own bookkeeping, never an act he is told is done",
       "how": "Escribe lo que hay en pantalla en el borrador (`key`, o uno nuevo para `to`) y con `send: true` lo ENVÍA.",
       "internal": true,
       "payload": {

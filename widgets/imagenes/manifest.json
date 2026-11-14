@@ -74,6 +74,7 @@
     },
     "add": {
       "desc": "añade más fotos a las que ya están, sin perderlas",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {
         "items": "lista de {url, thumb, title, site, page, w, h}"
       },
@@ -94,11 +95,13 @@
     },
     "next": {
       "desc": "pasa a la foto siguiente",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {},
       "view": true
     },
     "previous": {
       "desc": "vuelve a la foto anterior",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {},
       "view": true
     },

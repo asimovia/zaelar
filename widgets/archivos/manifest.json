@@ -61,11 +61,13 @@
   "actions": {
     "sync_providers": {
       "desc": "refresca qué servicios de archivos en la nube están registrados/conectados, para la fila de iconos",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {},
       "view": true
     },
     "refresh": {
       "desc": "vuelve a leer lo que hay en la carpeta actual (o repite la búsqueda si hay una)",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {},
       "view": true
     },
@@ -84,11 +86,13 @@
     },
     "go_up": {
       "desc": "sube a la carpeta de arriba",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {},
       "view": true
     },
     "go_home": {
       "desc": "vuelve a la raíz del proveedor actual",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {},
       "view": true
     },
@@ -107,11 +111,13 @@
     },
     "clear_search": {
       "desc": "quita la búsqueda y vuelve a enseñar la carpeta donde estaba",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {},
       "view": true
     },
     "open_file": {
       "desc": "abre un archivo: si es local y reproducible, lo abre en su reproductor o lo enseña aquí; si es de la nube, devuelve su ficha y su enlace web",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {
         "fileId": "id del archivo (local: su ruta dentro de la biblioteca; nube: su id o nombre)"
       },
@@ -136,6 +142,7 @@
     },
     "reveal_local_file": {
       "desc": "enseña dónde está un archivo LOCAL en el disco de este ordenador (self-host) en vez de descargar una segunda copia; en la nube no existe",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {
         "fileId": "el archivo cuya carpeta se quiere ver"
       },
@@ -207,6 +214,7 @@
     },
     "show_section": {
       "desc": "CAMBIA de sección o de pestaña SIN tocar nada: «enséñame los torrents», «qué se está descargando», «las semillas», «vuelve a la biblioteca»",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {
         "section": "biblioteca (mis archivos, la biblioteca, las carpetas) | torrents (torrent, descargas, las descargas, semillas, catálogo de torrents)",
         "tab": "catalogo (catálogo, dashboard, resultados, buscador) | descargas (descargando, en curso, bajando) | semillas (seeds, compartiendo, terminadas)"
@@ -215,6 +223,7 @@
     },
     "torrent_search": {
       "desc": "BUSCA TORRENTS en la red y enseña el CATÁLOGO sin descargar: «búscame torrents de X», «tráeme un magnet de X», «pelis de esas que se descargan»",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {
         "query": "qué buscar: título de la peli, serie, disco, programa…"
       },
@@ -222,6 +231,7 @@
     },
     "torrent_download": {
       "desc": "DESCARGA uno del catálogo de torrents por número o título («bájate la segunda», «la de 1080p») o un enlace magnet concreto",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {
         "item": "número o parte del título del catálogo",
         "magnet": "opcional: un enlace magnet:?… concreto en vez de uno del catálogo"
@@ -231,6 +241,7 @@
     },
     "torrent_open": {
       "desc": "REPRODUCE una descarga de torrent: el vídeo va al reproductor, el audio (ya terminado) a la música",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {
         "id": "el id de la descarga"
       },

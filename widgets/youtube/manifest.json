@@ -202,6 +202,7 @@
     },
     "suggest": {
       "desc": "llena/refresca la pantalla de INICIO con sugerencias: los vídeos recientes de las suscripciones de su cuenta conectada, con sus canales bloqueados ya filtrados. Úsala cuando pida sugerencias o que le llene el inicio",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {
         "platform": "string opcional (youtube)"
       },
@@ -291,6 +292,7 @@
     },
     "show_history": {
       "desc": "llena la lista con el HISTORIAL de vídeos que ha reproducido de verdad (lo más reciente primero); con 'query' busca dentro del historial en vez de en la red",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {
         "query": "texto a buscar en el historial (opcional)",
         "n": "cuántos, 1-25 (opcional, por defecto 10)"
@@ -394,6 +396,7 @@
     },
     "player_error": {
       "desc": "Internal: the embedded player reports it cannot play the current video (onError). Fired by the widget itself, not by voice.",
+      "instant": "internal: the card's own bookkeeping, never an act he is told is done",
       "internal": true,
       "payload": {
         "code": "error code from the IFrame API (e.g. 150 = embedding disabled)"
@@ -401,6 +404,7 @@
     },
     "player_quality": {
       "desc": "Internal: the embedded player reports which quality levels the current video actually has (IFrame API). Fired by the widget itself, not by voice — it is the only moment a video's definition is knowable.",
+      "instant": "internal: the card's own bookkeeping, never an act he is told is done",
       "internal": true,
       "payload": {
         "levels": "list of YouTube quality level names, e.g. [\"medium\",\"hd720\"]",
@@ -409,6 +413,7 @@
     },
     "player_adopt": {
       "desc": "Internal: his hand on the player's own control after it confirmed the order — the card follows.",
+      "instant": "internal: the card's own bookkeeping, never an act he is told is done",
       "internal": true,
       "payload": {
         "order": "muted | volume",
@@ -475,6 +480,7 @@
     },
     "show_tab": {
       "desc": "CAMBIA de pantalla dentro del reproductor SIN tocar lo que suena. «vuelve al catálogo», «al inicio del widget de vídeo», «al dashboard», «enséñame la lista» → tab inicio; y player, cola, listas, subs",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {
         "tab": "inicio (home, dashboard, catálogo, la lista de resultados, el catálogo de vídeos, search, search results, results, list of videos, list, the list, video list) | player (reproductor, la pantalla del vídeo) | cola (queue, lista de reproducción) | listas (guardadas, mis listas) | subs (suscripciones, canales)"
       },

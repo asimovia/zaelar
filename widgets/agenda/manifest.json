@@ -121,6 +121,7 @@
     },
     "find_free": {
       "desc": "FINDS FREE TIME on a day or across days («find me a free 45 minutes tomorrow afternoon», «five free days in her vacation», «¿cuándo puedo verle?»): returns it and books NOTHING",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {
         "date": "«mañana», a weekday or YYYY-MM-DD",
         "duration_min": "minutes needed",
@@ -226,6 +227,7 @@
     },
     "open_meeting": {
       "desc": "ABRE LA FICHA de una cita en pantalla, en su día («ábreme la cita del dentista», «enséñame el piano del martes», «qué pone en la reunión de mañana»). Solo muestra: no cambia nada",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "ref": "title",
       "view": true,
       "payload": {
@@ -236,6 +238,7 @@
     },
     "close_meeting": {
       "desc": "CIERRA LA FICHA de la cita abierta y deja la agenda donde estaba («cierra la ficha», «vale, quítala de la pantalla»). No borra nada ni cierra la agenda",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "view": true,
       "payload": {}
     },
@@ -296,6 +299,7 @@
     },
     "show_day": {
       "desc": "CAMBIA EL DÍA O LA VISTA que se está viendo en la agenda («muéstrame mañana», «el jueves», «la semana», «el mes», «la lista»). No modifica ningún dato: solo mueve lo que se ve. Es obligatoria para eso — mostrar el widget de nuevo lo abre siempre por HOY",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {
         "day": "«hoy», «mañana», «pasado mañana», un día de la semana, YYYY-MM-DD, o «semana»/«mes»/«lista» para esas vistas (también valen las claves view/mode/vista)"
       },
@@ -529,6 +533,7 @@
     "show_tasks": {
       "positional": true,
       "desc": "ABRE la sección de TAREAS de la app, y en la lista que él nombre («ábreme las tareas», «enséñame la lista de la compra», «la lista 3»). No cambia ningún dato: solo mueve lo que se ve. Es obligatoria para eso — mostrar el widget lo abre siempre por la AGENDA",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {
         "list": "número o nombre de la lista; sin él, la sección de tareas con la que estuviera"
       },
