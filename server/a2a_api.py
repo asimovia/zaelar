@@ -113,12 +113,28 @@ def _off() -> JSONResponse:
     return JSONResponse({"error": "not found"}, status_code=404)
 
 
+def wake_exempt(request) -> bool:
+    """The ONE admission exemption (`server/api_guard.py`, `server/ingress.py`): shape only, see `a2a.wake_exempt`."""
+    import a2a
+    return a2a.wake_exempt(request.url.path, request.method, request.headers.get("content-length"),
+                           _state["jobs"] is not None and enabled())
+
+
 @router.post("/api/a2a/wake")
 async def wake(request: Request):
-    if _state["jobs"] is None:
+    if _state["jobs"] is None or _state["gate"] is None:
         return _off()
-    body = (await request.body()).decode("utf-8", "replace")
-    code, out = _state["gate"].handle(_state["jobs"], dict(request.headers), body)
+    if not _state["gate"].server_pub:
+        return JSONResponse({"error": "wake unavailable"}, status_code=503)
+    import a2a
+    raw = b""
+    async for chunk in request.stream():
+        raw += chunk
+        if len(raw) > a2a.server_api.WAKE_MAX_BYTES:
+            return JSONResponse({"error": "too large"}, status_code=413)
+    body = raw.decode("utf-8", "replace")
+    code, out = _state["gate"].handle(_state["jobs"], dict(request.headers), body,
+                                      source=(request.client.host if request.client else "") or "")
     return JSONResponse(out, status_code=code)
 
 

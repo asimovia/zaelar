@@ -102,6 +102,32 @@ op's own fields below. `tests/a2a/unit/test_events.py` asserts this table equals
 | `error` | `where` · `exc_class` |
 <!-- OPS:END -->
 
+## The wake push: the one route reachable from outside
+
+The network signs a tiny "you have mail" push to `POST /api/a2a/wake`. Every other `/api/*` route refuses a
+peer that is not this machine (`server/api_guard.py`) and, on a session-routed deployment, a request without a
+session (`server/ingress.py`). Both gates carry ONE exemption, `a2a.wake_exempt`, which only checks shape:
+
+- the raw path is exactly `/api/a2a/wake` (no prefix match, trailing slash, dot segments or encoded variants),
+- the method is `POST`, A2A is on (agent built), and
+- a declared `Content-Length` of at most 256 bytes (a chunked body with no length is not exempt).
+
+The exemption trusts nothing. The handler is the gate:
+
+| step | answer |
+|---|---|
+| A2A off | 404 (and not exempt: the guards refuse it first) |
+| network key not pinned at boot | 503, no crypto, no pull |
+| body over 256 bytes while reading | 413 |
+| > 6 attempts per source or > 60 in all per 60 s (checked before any crypto) | 429 |
+| `MeshKore-Sig` missing, not by the pinned network key, stale, replayed nonce, or body not `{kind: mail|live}` | 401, no pull |
+| verified, a pull ran < 5 s ago | 202 `{coalesced: true}`, no pull |
+| verified | 202, one pull |
+
+A wake never carries content: it only advances the next pull, which goes out with this engine's own credentials.
+`status`, `network` and `cards/*` stay owner-only. Tests: `tests/a2a/unit/test_wake_admission.py` (includes the
+disarm: without the signature check a forged wake pulls).
+
 ## Env
 
 `A2A_API_BASE` (default `https://api.meshkore.com`) · `A2A_STATE_DIR` (default `<workspace>/.meshkore/credentials/a2a`) ·
