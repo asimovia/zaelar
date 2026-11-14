@@ -146,6 +146,8 @@ class _Audio:
 class RemoteSession:
     """The slice of LiveKit's `AgentSession` the session handlers use, answered by the voice process."""
 
+    CUTS_IN_VOICE_PROCESS = True    # the speech in course lives there: a typed line's cut rides its `/voice/reply`
+
     def __init__(self, client: ChildClient) -> None:
         self.client = client
         self.output = _Audio(client, "output")
