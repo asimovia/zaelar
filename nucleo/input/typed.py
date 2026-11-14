@@ -86,6 +86,11 @@ def min_voice_s() -> float:
         return MIN_VOICE_S
 
 
+def note_typed_cut(now: float | None = None) -> None:
+    """A typed line cut our speech (CRIT-V21): like his voice resuming, it supersedes a reply still being composed."""
+    _state["typed_cut"] = _now(now)
+
+
 def resumed_since(since: float | None, now: float | None = None) -> bool:
     """V2-888 — he started talking AFTER `since` and has voiced at least `min_voice_s()`: the reply composed from
     `since` answers a sentence he went on with. Structural, like `_extends`, for an ear that gives every segment
@@ -93,6 +98,8 @@ def resumed_since(since: float | None, now: float | None = None) -> bool:
     turn) is never superseded by the microphone."""
     if not since:
         return False
+    if _state.get("typed_cut", 0.0) > since:
+        return True                    # a line he typed over this reply's composition: the same net as his voice
     t, on = _now(now), _state["last_onset"]
     if on <= since:
         return False
@@ -101,4 +108,4 @@ def resumed_since(since: float | None, now: float | None = None) -> bool:
 
 
 def reset() -> None:
-    _state.update(onset=0.0, end=0.0, speaking=False, committed=0.0, last_onset=0.0)
+    _state.update(onset=0.0, end=0.0, speaking=False, committed=0.0, last_onset=0.0, typed_cut=0.0)

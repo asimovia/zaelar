@@ -522,3 +522,16 @@ def test_the_admission_door_starts_its_trace_fresh_before_the_brief(monkeypatch)
                                                   brain=SimpleNamespace(_last_reply="", _acc_gen=0),
                                                   first_turn=False, text="cierra todo"))
     assert not seen["stale"]
+
+
+def test_a_typed_line_supersedes_a_reply_still_composing(_not_held):
+    """Two lines typed in a row: the second cuts the first while it composes — its words are owed to the next turn by
+    the SAME net as his voice (`typed.resumed_since` → `resume_cut` → `stt.unanswered_by`)."""
+    from nucleo.input import typed as _order
+    _order.reset()
+    mark = _order.mark()
+    assert not _order.resumed_since(mark)
+    _type("y pon música", _Session([]))
+    assert _order.resumed_since(mark)
+    assert not _order.resumed_since(_order.mark())          # the second line's own reply is not superseded
+    _order.reset()

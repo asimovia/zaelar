@@ -150,19 +150,38 @@ def apply_input() -> bool | None:
 # ── what was heard before the close is said (audit 2026-11-14, failures 13/15) ─────────────────────────────────
 # Closing the input commits the words already heard (`agent_events.set_ear`); that ONE turn reaches the gate after the
 # switch closed and is not swallowed. Audio after the close never reaches the STT, so nothing else can ride this.
-#: The commit's own bound: the STT's final (2 s) after its flush, plus the turn's way to this gate.
-CLOSE_COMMIT_S = 6.0
+#: The commit's own bound: the STT's final (4 s) after its flush, plus the turn's way to this gate.
+CLOSE_COMMIT_S = 8.0
 _closed_on = {"at": 0.0}
 
 
+def note_ear(enabled: bool, now: float | None = None) -> None:
+    """The lever APPLIED: a close opens the window of the turn its commit makes, an open ends it."""
+    _closed_on["at"] = 0.0 if enabled else (time.time() if now is None else now)
+
+
 def note_closed_on_words(now: float | None = None) -> None:
-    _closed_on["at"] = time.time() if now is None else now
+    note_ear(False, now)
 
 
 def _heard_before_close(now: float | None = None) -> bool:
-    """ONE-SHOT: is the turn at the gate the one the close committed?"""
-    at, _closed_on["at"] = _closed_on["at"], 0.0
+    """A LICENCE PER WINDOW, never a one-shot: every invocation of the model for that turn (preemptive drafts LiveKit
+    discards, a second final) asks this gate, and each must pass while the input has stayed closed since that close and
+    for `CLOSE_COMMIT_S` (audit of 072fc6da7, P1-B). Safe for the same reason as the commit: closed, nothing new
+    reaches the STT."""
+    at = _closed_on["at"]
     return bool(at) and 0.0 <= (time.time() if now is None else now) - at <= CLOSE_COMMIT_S
+
+
+def undouble(text: str) -> str:
+    """A slow ear's final appended to the interim the commit already promoted reads «X X»: the turn is X. Structural
+    (the same words twice in a row), only for the turn the close committed."""
+    words = str(text or "").split()
+    half = len(words) // 2
+    norm = [w.strip(".,;:!?¿¡«»\"'").casefold() for w in words]
+    if half and len(words) % 2 == 0 and _heard_before_close() and norm[:half] == norm[half:]:
+        return " ".join(words[:half])
+    return text
 
 
 def blocks_turn(text: str) -> bool:
@@ -171,8 +190,11 @@ def blocks_turn(text: str) -> bool:
     exemption, consumed one-shot (`attention.consume_typed`) — the mic is closed IN ORDER to type. Firing at all
     means audio reached the STT with the switch closed, so the event carries the TEXT: it is the evidence."""
     from voice import attention
-    if attention.consume_typed() or not is_muted() or _heard_before_close():
+    if attention.consume_typed():
         return False
+    from nucleo import runstate
+    if not runstate.stopped() and (not is_muted() or _heard_before_close()):
+        return False                          # ⏻ swallows even what was heard before it: a stop is a stop
     _say("🎤⃠ turno DESCARTADO — el micrófono está cerrado", text=(text or "")[:200], role="user",
          extra={"muted": True, "src": snapshot().get("source") or ""})
     return True

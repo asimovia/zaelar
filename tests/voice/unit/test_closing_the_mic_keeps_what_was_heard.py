@@ -70,16 +70,40 @@ def _run(coro):
 
 
 # ── the close commits what was heard; the open clears the leftover ─────────────────────────────────────────────────
-def test_a_close_commits_what_was_heard_and_an_open_clears_the_leftover():
+def test_a_close_commits_what_was_heard_and_an_open_leaves_that_commit_alone():
     async def go():
         s, said = _Session(), []
         agent_events.set_ear(s, False, _emit=lambda *a, **k: said.append((a[1], k.get("text"))))
         await _settle()
-        assert s.input.audio_enabled is False and s.log == [("commit", 2.0, 2.0)]
+        assert s.input.audio_enabled is False and s.log == [("commit", 4.0, 2.0)]
         assert said == [("🎤⃠ heard before the close — committed", "abre la agenda")]
         agent_events.set_ear(s, False)                       # the beat re-asserting it: no second commit
         agent_events.set_ear(s, True)
-        assert s.input.audio_enabled is True and s.log[-1] == ("clear",) and len(s.log) == 2
+        assert s.input.audio_enabled is True and s.log == [("commit", 4.0, 2.0)], "a heard commit was cleared"
+    _run(go())
+
+
+def test_reopening_while_the_commit_runs_never_clears_it():
+    """P1-A: reopen at 0.5 s, before the STT's final — clearing lost «abre la agenda» or split the next sentence."""
+    async def go():
+        s = _Session()
+        pending = asyncio.get_running_loop().create_future()
+        s.commit_user_turn = lambda **k: (s.log.append(("commit",)), pending)[1]
+        agent_events.set_ear(s, False)
+        agent_events.set_ear(s, True)
+        assert ("clear",) not in s.log
+        pending.set_result("abre la agenda")
+    _run(go())
+
+
+def test_an_open_after_a_close_that_heard_nothing_clears_the_leftover():
+    """Failure 15: the only close that can leave a leftover is one whose commit found nothing."""
+    async def go():
+        s = _Session(heard="")
+        agent_events.set_ear(s, False)
+        await _settle()
+        agent_events.set_ear(s, True)
+        assert s.log[-1] == ("clear",)
     _run(go())
 
 
@@ -128,10 +152,9 @@ def test_every_closed_state_commits_through_the_same_door(how):
         agent_events.open_mic_door(session=s)
         _close(how)
         await _settle()
-        assert s.log == [("commit", 2.0, 2.0)], how
-        if how == "mic":                                     # …and the turn it commits passes the closed switch, once
+        assert s.log == [("commit", 4.0, 2.0)], how
+        if how == "mic":                                     # …and the turn it commits passes the closed switch
             assert mic_input.blocks_turn("abre la agenda") is False
-            assert mic_input.blocks_turn("abre la agenda") is True
         mic_input.reset()
     _run(go())
 
@@ -155,7 +178,7 @@ def test_the_voice_process_applies_the_same_door(monkeypatch):
         await child.audio(SimpleNamespace(headers={body_link.HEADER: "tok"}, json=_json))
         await _settle()
     _run(go())
-    assert live.log == [("commit", 2.0, 2.0)]
+    assert live.log == [("commit", 4.0, 2.0)]
 
 
 # ── the agent still speaks with the mic closed (failure 12) ────────────────────────────────────────────────────────
@@ -191,16 +214,39 @@ def test_disarmed_without_the_silence_guard_the_replies_wait_again(monkeypatch):
 
 # ── his rule: only the turn the close committed passes the closed switch ───────────────────────────────────────────
 @pytest.mark.parametrize("heard", ["ábreme el mensaje de Laura, por favor", "open the message from Laura, please"])
-def test_the_committed_turn_passes_once_and_audio_after_the_close_never_does(heard):
+def test_the_committed_turn_passes_every_invocation_of_its_window(heard):
+    """P1-B: preemptive drafts and a second final each ask the gate — all pass while the input stays closed."""
     mic_input.set_muted(True, source="test")
-    mic_input.note_closed_on_words()
-    assert mic_input.blocks_turn(heard) is False             # heard BEFORE the close: said
-    assert mic_input.blocks_turn(heard) is True              # anything else with the switch closed: swallowed
+    mic_input.note_ear(False)
+    assert [mic_input.blocks_turn(heard) for _ in range(3)] == [False, False, False]
+    mic_input.note_ear(True)                                 # reopened: the window is over
+    mic_input.set_muted(True, source="test")
+    assert mic_input.blocks_turn(heard) is True
+
+
+def test_a_stop_swallows_what_was_heard_before_it(monkeypatch):
+    """P2-2: ⏻ mid-sentence commits through the same door, and a stop is a stop — nothing acts."""
+    from nucleo import runstate
+    monkeypatch.setattr(runstate, "stopped", lambda: True)
+    mic_input.note_ear(False)
+    assert mic_input.blocks_turn("abre la agenda") is True
+
+
+@pytest.mark.parametrize("said,turn", [("abre la agenda abre la agenda", "abre la agenda"),
+                                       ("Open the agenda. open the agenda", "Open the agenda."),
+                                       ("no no", "no"), ("abre la agenda", "abre la agenda"),
+                                       ("para para la música", "para para la música")])
+def test_a_late_final_glued_to_the_committed_interim_is_one_sentence(said, turn):
+    """P2-1: a final after the commit's timeout is appended to the interim it promoted."""
+    mic_input.note_ear(False)
+    assert mic_input.undouble(said) == turn
+    mic_input.note_ear(True)
+    assert mic_input.undouble("abre la agenda abre la agenda") == "abre la agenda abre la agenda"
 
 
 def test_a_stale_close_licenses_nothing():
     mic_input.set_muted(True, source="test")
-    mic_input.note_closed_on_words(now=1.0)
+    mic_input.note_ear(False, now=1.0)
     assert mic_input.blocks_turn("abre la agenda") is True
 
 
@@ -214,5 +260,34 @@ def test_disarmed_without_the_mark_the_heard_sentence_is_swallowed(monkeypatch):
     """RED proof: the gate no longer knows the close committed it → the sentence dies at the switch (failure 13)."""
     monkeypatch.setattr(mic_input, "_heard_before_close", lambda now=None: False)
     mic_input.set_muted(True, source="test")
-    mic_input.note_closed_on_words()
+    mic_input.note_ear(False)
     assert mic_input.blocks_turn("open the message from Laura") is True
+
+
+# ── the LiveKit contract the ear relies on, pinned against the INSTALLED package ──────────────────────────────────────
+def test_the_installed_livekit_keeps_what_the_ear_uses():
+    """P2-3: `commit_user_turn(transcript_timeout, stt_flush_duration)`, `clear_user_turn`, the input's `audio_enabled`,
+    and the private `AgentSession._activity` / `AgentActivity._user_silence_event` (an `asyncio.Event`). A LiveKit that
+    drops one fails HERE, not silently in his session."""
+    import inspect
+
+    from livekit.agents.voice import agent_activity, agent_session, io
+    params = inspect.signature(agent_session.AgentSession.commit_user_turn).parameters
+    assert {"transcript_timeout", "stt_flush_duration"} <= set(params)
+    assert callable(agent_session.AgentSession.clear_user_turn)
+    assert isinstance(inspect.getattr_static(io.AgentInput, "audio_enabled"), property)
+    assert "self._activity" in inspect.getsource(agent_session.AgentSession.__init__)
+    init = inspect.getsource(agent_activity.AgentActivity.__init__)
+    assert "self._user_silence_event: asyncio.Event = asyncio.Event()" in init
+    assert "_user_silence_event.wait()" in inspect.getsource(agent_activity.AgentActivity)
+
+
+def test_a_missing_silence_event_is_said_once(caplog):
+    s = _Session()
+    s._activity = SimpleNamespace()
+    s.input.audio_enabled = False
+    agent_events._SILENCE_UNREADABLE.clear()
+    with caplog.at_level("WARNING"):
+        agent_events._silent_while_closed(s)
+        agent_events._silent_while_closed(s)
+    assert sum("_user_silence_event" in r.getMessage() for r in caplog.records) == 1
