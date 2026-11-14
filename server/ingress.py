@@ -112,6 +112,7 @@ def decide(
     target: str | None,
     mine: str | None,
     peer_loopback: bool = False,
+    wake_exempt: bool = False,
 ) -> tuple[str, str]:
     """Pure admission decision → `(action, reason)`. `reason` is a stable, non-sensitive slug: it
     goes to logs and to the client, and it must never carry a token, a path or an internal URL.
@@ -132,6 +133,11 @@ def decide(
 
     if is_own_worker_door(path, peer_loopback):
         return SERVE, "own_worker_door"
+
+    # The network's signed wake push carries no session and never can (`a2a.wake_exempt`: exact path, POST,
+    # A2A on, tiny body). Served here unverified on purpose: the handler's signature check is the gate.
+    if wake_exempt:
+        return SERVE, "a2a_wake"
 
     # A process that cannot ask "whose session is this?" cannot answer an account request either. This
     # used to serve the request; a missing environment variable was silently the most permissive
@@ -257,7 +263,8 @@ def install(app) -> None:
 
         outcome: str | None = None
         target: str | None = None
-        if token and resolver_url and mine and not is_own_worker_door(path, peer_loopback):
+        if token and resolver_url and mine and not is_own_worker_door(path, peer_loopback) \
+                and not api_guard._wake_exempt(request):
             outcome, target = await ar.resolve_session_machine(
                 token, control_plane_url=resolver_url
             )
@@ -270,6 +277,7 @@ def install(app) -> None:
             target=target,
             mine=mine,
             peer_loopback=peer_loopback,
+            wake_exempt=api_guard._wake_exempt(request),
         )
 
         if action == SERVE:

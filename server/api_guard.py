@@ -71,10 +71,17 @@ def _is_loopback(peer: str) -> bool:
 
 
 def decide(*, path: str, method: str, peer: str, host: str, origin: str, fetch_site: str,
-           token_given: str, token_set: str, cloud: bool, forwarded_host: str = "") -> tuple[bool, str]:
-    """`(allowed, reason)` for one request. `reason` is a stable slug, never a header value."""
+           token_given: str, token_set: str, cloud: bool, forwarded_host: str = "",
+           wake_exempt: bool = False) -> tuple[bool, str]:
+    """`(allowed, reason)` for one request. `reason` is a stable slug, never a header value.
+
+    `wake_exempt` (`a2a.wake_exempt`: exact `POST /api/a2a/wake`, A2A on, tiny body) is the one route a peer off
+    this machine may reach: the network's signed wake push. Admitting it trusts nothing — the handler verifies
+    the network key's signature and only ever triggers a pull."""
     if not guarded(path, method):
         return True, "not_api"
+    if wake_exempt:
+        return True, "a2a_wake"
     mutating = method.upper() in MUTATING
     if cloud:
         if not mutating:
@@ -104,6 +111,16 @@ def decide(*, path: str, method: str, peer: str, host: str, origin: str, fetch_s
     return True, "local"
 
 
+def _wake_exempt(request) -> bool:
+    try:
+        from server import a2a_api
+        return a2a_api.wake_exempt(request)
+    except Exception as exc:  # noqa: BLE001 — unknown: not exempt
+        from loguru import logger
+        logger.debug("api guard: wake exemption unknown ({!r}); not exempt", exc)
+        return False
+
+
 def install(app) -> None:
     """Mount the guard. Added after ingress, so it is the OUTER middleware: a refusal costs no session lookup."""
     @app.middleware("http")
@@ -122,7 +139,8 @@ def install(app) -> None:
             host=request.headers.get("host") or "", origin=request.headers.get("origin") or "",
             fetch_site=request.headers.get("sec-fetch-site") or "",
             token_given=request.headers.get(TOKEN_HEADER) or "", token_set=(os.getenv(TOKEN_ENV) or "").strip(),
-            cloud=cloud, forwarded_host=request.headers.get("x-forwarded-host") or "")
+            cloud=cloud, forwarded_host=request.headers.get("x-forwarded-host") or "",
+            wake_exempt=_wake_exempt(request))
         if ok:
             return await call_next(request)
         from loguru import logger

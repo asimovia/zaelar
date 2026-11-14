@@ -14,7 +14,7 @@ from .grants import Grant, contact_audience
 from .identity import Identity
 from .items import Item, ItemRegistry, declare_manifest, default_items
 from .jobs import Jobs
-from .server_api import WAKE_PATH, WakeGate, status_allowed
+from .server_api import WAKE_PATH, WakeGate, status_allowed, wake_exempt
 from .transport.fake import FakeNetwork
 
 
@@ -77,5 +77,5 @@ def contact_block(cid: str) -> dict | None:
         return None
 
 
-__all__ = ["contact_block", "accepted", "declare_manifest", "runtime", "runtime_jobs", "set_runtime", "A2AAgent", "FakeNetwork", "Grant", "Identity", "Item", "ItemRegistry", "Jobs", "WAKE_PATH", "WakeGate",
+__all__ = ["contact_block", "accepted", "declare_manifest", "runtime", "runtime_jobs", "set_runtime", "A2AAgent", "FakeNetwork", "Grant", "Identity", "Item", "ItemRegistry", "Jobs", "WAKE_PATH", "WakeGate", "wake_exempt",
            "attach_bus", "contact_audience", "default_items", "from_network", "status_allowed"]
