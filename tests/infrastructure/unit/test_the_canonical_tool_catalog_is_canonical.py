@@ -40,7 +40,7 @@ def _documented() -> set[str]:
     for line in src[start:end].split("\n"):
         if not line.startswith("| `"):
             continue
-        hit = re.findall(r"`([a-z_]+)`", line)
+        hit = re.findall(r"`([a-z][a-z0-9_]*)`", line)   # tool names may hold digits (a2a_*)
         if hit:
             names.add(hit[0])
     return names
