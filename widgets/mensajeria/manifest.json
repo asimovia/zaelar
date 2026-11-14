@@ -91,8 +91,9 @@
       "payload": {
         "name": "string opcional (nombre del chat/persona tal como aparece)",
         "n": "int opcional (número del chat en la lista)",
-        "platform": "string opcional: el canal SOLO si él lo nombra (whatsapp/telegram/email)"
+        "platform": "whatsapp | telegram | email — SOLO si él nombra el canal"
       },
+      "how": "«el whatsapp de Anna» / «Anna's email»: el canal que él NOMBRA va en `platform`; sin canal dicho, ninguno",
       "done_when": {"all": [{"widget": "mensajeria", "field": "report.thread_open", "has": "{name}"},
                             {"widget": "mensajeria", "field": "report.thread_open", "has": "{platform?}"}]},
       "safe": true,
