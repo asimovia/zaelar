@@ -4,9 +4,10 @@ import { createEffect, untrack } from "../../../app/core/reactive.js?v=2";
 import * as store from "../../../app/core/store.js?v=2";
 import { appsOpen, setAppsOpen } from "./AppsPane.js?v=2";
 
-export const PAGES = [[store.chatOpen, store.setChatOpen], [store.mobileMenuOpen, store.setMobileMenuOpen],
-  [store.mobileSettingsOpen, store.setMobileSettingsOpen], [store.mobileFeedbackOpen, store.setMobileFeedbackOpen],
-  [appsOpen, setAppsOpen]];
+// Each page: [is open, set open, the surface it is (`mobile-surfaces.js` id — the screen document's `panel`)].
+export const PAGES = [[store.chatOpen, store.setChatOpen, "chat"], [store.mobileMenuOpen, store.setMobileMenuOpen, "menu"],
+  [store.mobileSettingsOpen, store.setMobileSettingsOpen, "settings"], [store.mobileFeedbackOpen, store.setMobileFeedbackOpen, "feedback"],
+  [appsOpen, setAppsOpen, "apps"]];
 
 export function onePageAtATime() {
   for (const [get] of PAGES) createEffect(() => { if (get()) untrack(() => PAGES.forEach(([g, set]) => { if (g !== get && g()) set(false); })); });

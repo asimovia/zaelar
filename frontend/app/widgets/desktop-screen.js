@@ -7,11 +7,12 @@
 //             maximised / full-screen card covers or another card covers whole, else `visible`; the activity rail's
 //             card above the orb is always `visible`;
 //   · flags — `max` while maximised in the app (`_restore` is its marker), `fs` while in the browser's full screen;
-//   · a desk has no home: the bare desk is `front: ""`.
+//   · a desk has no home: the bare desk is `front: ""`; `panel` is the native surface open over it (`screen-panel.js`).
 // Every change the desk announces (`hb:canvas-changed`: a show, close, minimise, maximise, focus by his hand) is
 // reported; `services/sse.js` answers each order through `screen-order.js`.
 // ============================================================================
 import { screenReporter } from "./screen-reporter.js?v=1";
+import { panelOf, watchPanel, DESKTOP_PANELS } from "./screen-panel.js?v=1";
 
 const _z = (c) => parseInt(c && c.style && c.style.zIndex, 10) || 0;
 const _covers = (a, b) => a.left <= b.left + 1 && a.top <= b.top + 1 && a.right >= b.right - 1 && a.bottom >= b.bottom - 1;
@@ -42,7 +43,7 @@ export function desktopAdapter(desk) {
     layer: (id) => { const k = stack().indexOf(id); return k >= 0 ? k : desk.wins.size; },
     flags: (id) => { const c = card(id); return { max: !!(c && c._restore), fs: !!c && document.fullscreenElement === c }; },
     home: () => ({ shown: false, holds: [] }),
-    panel: () => "",
+    panel: () => panelOf(DESKTOP_PANELS),
   };
 }
 
@@ -52,5 +53,6 @@ export function desktopScreen(desk, opts = {}) {
   const rep = screenReporter(adapter, { device: opts.device || (() => import("../services/api.js?v=2").then((m) => m.DEVICE)), ...opts });
   const cause = () => { const by = Object.values(desk._by || {}); return by.includes("hand") ? "hand" : by[0] || ""; };
   try { document.addEventListener("hb:canvas-changed", () => rep.changed(cause())); } catch (_) {}
+  watchPanel(DESKTOP_PANELS, () => rep.changed());   // a panel opened or closed over the canvas (T9)
   return { adapter, rep };
 }
