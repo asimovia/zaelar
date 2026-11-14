@@ -7,7 +7,9 @@ every `from server.voice_api import …` keep working.
 """
 from __future__ import annotations
 
+import asyncio
 import os
+import threading
 import time
 
 from fastapi import APIRouter
@@ -168,7 +170,9 @@ def _counts(payload: dict) -> bool:
         for cid in gone:                     # V2-884: an app closed on this screen — its report stops speaking for it
             __import__("widgets.state", fromlist=["x"]).forget(cid, dev, instance=str(cid))
         act = _screens.current()
-        return not act or act == dev
+        if counted := (not act or act == dev):   # V2-907 T10: does the screen's own document agree, once it landed?
+            _drift_later(dev)
+        return counted
     # A report with no `dev` is a tab older than V2-792: the voice holder's sid decides, as it did before.
     try:
         from server import livekit_api as _lk
@@ -207,9 +211,43 @@ def _adopt(dev: str) -> None:
         logger.debug(f"canvas: could not adopt the canvas of {dev}: {e!r}")
 
 
+#: How long after a counted legacy report its screen's own document may still be on the way (both are debounced
+#: by the host, on separate timers): the comparison waits this long so a drift is a disagreement, not a race.
+DRIFT_GRACE_S = 1.0
+
+
+def drift_check(dev: str, at: str) -> int:
+    """V2-907 T10 (shadow) — compare the legacy canvas state (`memory.state()`) with screen `dev`'s document and emit
+    `screen/drift {dev, at, what, legacy, doc}` for each fact that differs (`widgets/screen_doc.drift`). `at` = when:
+    `report` (a counted legacy report) or `turn` (a turn started there). A measure only: nothing reads it to decide."""
+    from memory import api as memory
+    from widgets import screen_doc
+    try:
+        rows = screen_doc.drift(dev, memory.state() or {})
+    except Exception as e:  # noqa: BLE001 — a measure that cannot read says so and never breaks the report or the turn
+        logger.debug(f"canvas: drift of {dev} not measured: {e!r}")
+        return -1
+    for r in rows:
+        emit("screen", "drift", text=f"{r['what']}: {r['legacy']} ≠ {r['doc']}", extra={"dev": dev, "at": at, **r})
+    return len(rows)
+
+
+def _drift_later(dev: str) -> None:
+    try:
+        asyncio.get_running_loop().call_later(DRIFT_GRACE_S, drift_check, dev, "report")
+    except RuntimeError:                     # called outside the server's loop (a direct call): measured now
+        drift_check(dev, "report")
+
+
+def _drift_on_turn(dev: str) -> None:
+    # off the event gate: `begin_turn` runs while a transcript event is being stamped
+    threading.Thread(target=drift_check, args=(dev, "turn"), daemon=True, name="screen-drift").start()
+
+
 def _install_adopt() -> None:
     from voice import screens as _screens
     _screens.on_active_change(_adopt)
+    _screens.on_turn(_drift_on_turn)
 
 
 _install_adopt()
