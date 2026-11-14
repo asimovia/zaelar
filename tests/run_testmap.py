@@ -2565,6 +2565,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/browser/unit/widgets/test_every_action_says_how_its_done_is_checked.py"]},
         {"id": "4.536", "title": "One document per screen (V2-907 T1, `widgets/screen_doc.py`): each `dev` keeps its own host facts (layout, front, open with layer/vis, home, panel); `n` going back is refused, a new mount replaces and the old never writes again, `v` moves with the content, `closed` kept 60 s; a screen never reported or no longer open is UNKNOWN, never empty; a malformed document is refused whole; disarmed (no `n` check) → red",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/screen/test_one_document_per_screen.py"]},
+        {"id": "4.537", "title": "A stage of the one screen state is OFF until switched (V2-907 T2, `widgets/screen_switch.stage`): `read`/`confirm`/`direct` default off in `config/v2` `screen`, the config turns one on, `ZAELAR_SCREEN_<NAME>=0` only forces OFF, an unknown name or an unreadable store is off; disarmed (always True) → red",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/screen/test_a_stage_is_off_until_switched.py"]},
         {"id": "4.534", "title": "`mensajeria:open` takes the channel he NAMES (`platform` bounds the name's resolution; none named: "
                                  "what is on screen first still wins) and declares its end state over the thread the card reports open",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_open_takes_the_channel_he_names.py"]},
