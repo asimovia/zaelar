@@ -78,11 +78,11 @@ async def handled(brain, text: str, emit, *, first_turn: bool, t_entry: float, w
                 "pre_ms": round((time.time() - t_entry) * 1000, 1), "src": "actionmap"})
     from nucleo.flash import bulk_close as _bulk0, dialog as _dialog0
     from i18n import langs as _lg0
-    # The map ACTED; say so in the window, or the next turn reads this order as unanswered and redoes it —
-    # «Close the music player» (map, silent) then «Find me a free slot…» → «closing the player now» and the
-    # player reopened (demo run, 2026-09-26). A bulk close records ITS receipt, the line he hears, so «i said all»
-    # finds the close it repairs (V2-831 T-02b, the same door as the hard interrupt).
-    _receipt0 = _bulk0.take_receipt()
+    # The map ACTED; say so in the window, or the next turn reads this order as unanswered and redoes it — «Close the music
+    # player» (map, silent) then «Find me a free slot…» → «closing the player now» and the player reopened (demo run,
+    # 2026-09-26). A bulk close records ITS receipt, the line he hears, so «i said all» finds the close it repairs (V2-831 T-02b).
+    from nucleo.acts import self_controls as _sc0          # a chooser opened says so, never «Done.» (2026-11-14)
+    _receipt0 = _bulk0.take_receipt() or (_sc0.said((_amap_hit.get("action") or {}).get("act")) if (_amap_hit.get("action") or {}).get("do") == "controls" else "")
     _dialog0.record_turn_without_model(brain, text, _receipt0, cap=window_max)
     try:
         # Conv buffer (mirror of the provider's post-reply write): the NEXT turn — and a worker's

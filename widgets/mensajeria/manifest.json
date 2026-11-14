@@ -89,8 +89,11 @@
       "desc": "Abre un CHAT concreto por `name` («abre el chat de Jose Vicente») o por `n`. «Ábrelo / open it» tras hablar de UN correo o mensaje es ESTE, con `name` = quien lo mandó, no la bandeja (show_view)",
       "payload": {
         "name": "string opcional (nombre del chat/persona tal como aparece)",
-        "n": "int opcional (número del chat en la lista)"
+        "n": "int opcional (número del chat en la lista)",
+        "platform": "string opcional: el canal SOLO si él lo nombra (whatsapp/telegram/email)"
       },
+      "done_when": {"all": [{"widget": "mensajeria", "field": "report.thread_open", "has": "{name}"},
+                            {"widget": "mensajeria", "field": "report.thread_open", "has": "{platform?}"}]},
       "safe": true,
       "view": true,
       "worker": false

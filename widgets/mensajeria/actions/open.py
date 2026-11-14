@@ -54,14 +54,14 @@ def _a_show_view(action, payload) -> dict:
 _NOT_FOUND = "no encuentro ese chat — vuelve a llamar a open con el `n` de la lista o con `name` tal como aparece en ella"
 
 
-def resolve_ref(db: dict, n, name):
+def resolve_ref(db: dict, n, name, platform: str = ""):
     """The ONE resolver the veto (`answers._open`) and the action both ask (demo b136, E2: the veto did not know the
     last find): `n` on the list; `name` on the list, the chats held, then the last find by a shared word; neither →
     the last find («open it»)."""
     lf = _d.last_found(db)
     if n is not None:      # `n` addresses the LIST on screen and nothing else: never guess a conversation outside it
         return next((c for c in _d._group_chats(_d._visible_items(db)) if c.get("n") == n), None)
-    match = _d._find_chat_by_name(db, name) if name else None
+    match = _d._find_chat_by_name(db, name, platform) if name else None
     if match is None and lf:
         import re as _re
         from ..views.thread import _norm_txt
@@ -110,7 +110,7 @@ def _a_open(action, payload) -> dict:
             _d.store.save(_d.WIDGET_ID, db)
             return _d.view_data()
         return {"ok": False, "error": "no tengo esa conversación guardada", **_d.view_data()}
-    match = resolve_ref(db, n, name)      # «open it» right after an archive search is the mail it found
+    match = resolve_ref(db, n, name, _d._PLAT_ALIASES.get(str(payload.get("platform") or "").strip().lower(), ""))
     if match is None and (n is not None or name):
         return {"ok": False, "error": _NOT_FOUND, **_d.view_data()}
     if match:

@@ -227,6 +227,11 @@
  "done_not_on_card": "It isn't on the app yet, so it's not done.",
  "done_asked": "Asked — the app hasn't confirmed it yet.",
  "done_just_started": "I'm on it — it isn't done yet.",
+ "controls_said": {
+  "voice_settings": "I've opened the voice settings: pick the one you want there.",
+  "voice_list": "Here are the voices I have: pick the one you want.",
+  "language": "The system language can't be changed once it is set."
+ },
  "data_ack": "Done.",
  "data_done_count": "Done — {n} items.",
  "data_ack_went_ahead": "I've gone ahead and done it, as you asked.",

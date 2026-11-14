@@ -1,10 +1,9 @@
 """The tool catalogue as a dict: tool name → the door that runs it (refactor2710-05 T-01).
 
-`_on_tool_call` used to be one `if name == …: … elif …` chain of 32 arms. Each arm is now a function here, named as
-the tool the model calls, and `CATALOG` is built from those functions — the names are not written twice, and the
-model's tool list (`router.tools`) is checked against it (`test_the_tool_catalog_is_a_dict`). An arm takes the call's
-`args` and `c`, the turn's context (every keyword `_on_tool_call` receives, read as `c.<name>`); a module-level name
-of `nucleo/flash/tool_executor_calls.py` is read through `_x`, looked up at call time, so a patch there still governs.
+`_on_tool_call` used to be one `if name == …: … elif …` chain of 32 arms. Each arm is now a function here, named as the tool
+the model calls, and `CATALOG` is built from them — the names are not written twice, and the model's tool list (`router.tools`)
+is checked against it (`test_the_tool_catalog_is_a_dict`). An arm takes the call's `args` and `c`, the turn's context (every
+keyword `_on_tool_call` receives, as `c.<name>`); a name of `tool_executor_calls.py` is read through `_x` at call time.
 """
 from __future__ import annotations
 
@@ -175,9 +174,7 @@ def fullscreen_widget(args: dict, c) -> None:
 
 
 def arrange_canvas(args: dict, c) -> None:
-    _x = _calls()
-    # V2-778 F1 — the body lives in `nucleo/flash/tool_executor_calls.py`; this branch passes what it reads.
-    return _x._t_arrange_canvas(_tool_fired=c._tool_fired, acted=c.acted, emit=c.emit)
+    return _calls()._t_arrange_canvas(_tool_fired=c._tool_fired, acted=c.acted, emit=c.emit)   # V2-778 F1: body there
 
 
 def agent_controls(args: dict, c) -> None:
@@ -188,6 +185,7 @@ def agent_controls(args: dict, c) -> None:
     if self_controls.apply(args.get("act"), c.emit, src="flash", said=c.operator_text or c.text):
         c._tool_fired.add("agent_controls")
         c.acted["widget"] = True     # a UI act: the turn is never mute about it and never escalates it
+        c.acted.update({"act_line": line} if (line := self_controls.said(args.get("act"))) else {})   # a chooser opened is said as one, never «Done.»
 
 
 def reply_message(args: dict, c) -> None:

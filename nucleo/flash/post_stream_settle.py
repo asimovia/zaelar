@@ -266,7 +266,7 @@ async def settle_what_is_pending(*, _ans, _ask_waiting, _auth_pending, _brief, _
             _lg_ack = _langs.current_language()
             spoken_text = (_rg_show2.show_ack(_lg_ack, str(acted.get("widget_id") or ""),
                                               chose=str(acted.get("show_chose") or ""))
-                           if acted.get("widget_id") else _pst_receipt.voice_ack(_lg_ack.data_ack))   # a close is not an open (S4)
+                           if acted.get("widget_id") else _pst_receipt.voice_ack(acted.get("act_line", _lg_ack.data_ack)))   # a close is not an open (S4); a chooser opened says so
         except Exception:
             spoken_text = "Aquí lo tienes."
         send(speech.sanitize(spoken_text, drop_metadata=False))

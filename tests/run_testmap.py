@@ -2555,6 +2555,9 @@ DOMAINS: list[dict] = [
         {"id": "4.237", "title": "«Open it» after an archive search opens the mail it found, and the digest says it is on "
                                  "the card",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_open_it_opens_what_the_archive_found.py"]},
+        {"id": "4.534", "title": "`mensajeria:open` takes the channel he NAMES (`platform` bounds the name's resolution; none named: "
+                                 "what is on screen first still wins) and declares its end state over the thread the card reports open",
+            "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_open_takes_the_channel_he_names.py"]},
         {"id": "4.531", "title": "The mail card's answering veto and its `open` resolve a conversation alike, and the "
                                  "found mail an empty thread does not hold is asked back and kept open while it arrives",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_the_open_veto_and_the_action_resolve_alike.py"]},

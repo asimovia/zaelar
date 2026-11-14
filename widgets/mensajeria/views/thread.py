@@ -39,9 +39,9 @@ def _known_chats(db: dict) -> list:
     return out
 
 
-def _find_chat_by_name(db: dict, name: str):
-    """Resolve a spoken chat name against the pending list FIRST and the conversations we hold second. Order
-    matters: what is on screen wins over what is merely remembered."""
+def _find_chat_by_name(db: dict, name: str, platform: str = ""):
+    """Resolve a spoken chat name against the pending list FIRST and the conversations we hold second (what is on screen wins
+    over what is remembered). A channel he NAMED (`platform`) bounds both (2026-11-14: her MESSAGE opened her mail)."""
     want = _norm_txt(name)
     if not want:
         return None
@@ -49,8 +49,8 @@ def _find_chat_by_name(db: dict, name: str):
     from .. import names as _names
     # The names he SEES are the names he says (V2-819): the pools are named by the same resolver as the card.
     for pool in (_names.rows(_group_chats(_d._visible_items(db))), _names.rows(_known_chats(db))):
-        hit = next((c for c in pool
-                    if want in _norm_txt(c.get("name")) or _norm_txt(c.get("name")) in want), None)
+        hit = next((c for c in pool if (not platform or c.get("platform") == platform)
+                    and (want in _norm_txt(c.get("name")) or _norm_txt(c.get("name")) in want)), None)
         if hit is not None:
             return hit
     return None
