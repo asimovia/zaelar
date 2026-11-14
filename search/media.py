@@ -70,11 +70,11 @@ def name_fit(query: str, name: str) -> float:
     return round(2 * precision * recall / (precision + recall), 3)
 
 
-def _fit(query: str, name: str, owner: str, by_owner: bool = False) -> float:
-    """`by_owner` (a song): its owner ALONE fits too — «Madonna»'s songs scored 0.4, a podcast «Madonna» 1.0 and won (2026-11-14)."""
+def _fit(query: str, name: str, owner: str) -> float:
+    """A work of the creator he named fits on its owner ALONE, any kind: «Madonna»'s songs lost to a podcast «Madonna» (2026-11-14)."""
     fit = name_fit(query, name)
     if owner:
-        fit = max(fit, name_fit(query, f"{name} {owner}"), name_fit(query, f"{owner} {name}"), name_fit(query, owner) * by_owner)
+        fit = max(fit, name_fit(query, f"{name} {owner}"), name_fit(query, f"{owner} {name}"), name_fit(query, owner))
     return round(fit, 3)
 
 
@@ -83,7 +83,7 @@ def _candidate(kind: str, item: dict, query: str, owner_key: str) -> dict:
     owner = str(item.get(owner_key) or "")
     return {"kind": kind, "name": name, "owner": owner, "source": str(item.get("source") or ""),
             "uri": str(item.get("uri") or ""), "video_id": str(item.get("videoId") or item.get("video_id") or ""),
-            "fit": _fit(query, name, owner, kind == "track"), "item": item}
+            "fit": _fit(query, name, owner), "item": item}
 
 
 def rank(query: str, answer: dict) -> list[dict]:
