@@ -5,7 +5,8 @@
 // `/api/screen/report`. Measured here with a stub `fetch` and a stub document: the shape the engine's door takes
 // (`widgets/screen_doc.write`), `n` going forward within a mount, changes coalesced, the same document not said
 // twice, an order's answer flushed AT ONCE (no debounce: the engine is waiting on it), a lost answer said again,
-// one POST in flight, a replaced mount taking the screen back, the beacon on `pagehide`, and `reportAll`.
+// one POST in flight, a lost report tried again with backoff (V2-907 A2), a replaced mount taking the screen back,
+// the beacon on `pagehide`, and `reportAll`.
 // Run: node tests/browser/unit/screen/test_the_reporter_sends_one_document.mjs  (SCREEN_REPORTER=<path> for a disarm)
 // ============================================================================
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -118,6 +119,22 @@ check("a reopened event stream says it all again", posts.length === p0 + 2, Stri
 
 r.dispose(); r.changed("hand"); r.ack(49, true, "done"); await sleep(DEBOUNCE_MS + 30);
 check("a disposed host reports nothing more", posts.length === p0 + 2);
+
+// a lost REPORT (no order answer in it) is tried again, each wait twice the last, RETRIES times, then left for the
+// next change — the engine's copy of the screen does not stay stale because the one POST that said it was lost
+{
+  const tries = []; const real = globalThis.setTimeout;
+  const f2 = async (url, init) => { tries.push({ t: Date.now(), b: JSON.parse(init.body) }); return { status: 503 }; };
+  globalThis.setTimeout = (fn, ms, ...a) => real(fn, Math.max(0, (ms || 0) / 50), ...a);   // 1 s + 2 s + 4 s → 140 ms
+  const lost = screenReporter(adapter, { fetch: f2, device: "desktop:ccc" });
+  await new Promise((r) => real(r, 500));
+  globalThis.setTimeout = real;
+  const gaps = tries.slice(1).map((x, i) => x.t - tries[i].t);
+  check("a lost report with no answer in it is tried again, 3 times, each wait longer than the last",
+    tries.length === 4 && gaps[1] > gaps[0] && gaps[2] > gaps[1] && tries.every((x) => x.b.doc.layout === "windows")
+    && tries.every((x, i) => !i || x.b.n > tries[i - 1].b.n), JSON.stringify({ n: tries.length, gaps }));
+  lost.dispose();
+}
 
 // a deck: the home in view, nothing in front
 const deck = screenReporter({ layout: "deck", list: () => ["musica"], vis: () => "behind",
