@@ -49,3 +49,39 @@ def test_a_month_word_with_no_day_next_to_it_is_not_a_date():
 def test_a_single_day_keeps_its_own_record():
     out = query.read_query("What do I have on 2026-09-30?")
     assert "Periodo" not in out and "ZAELAR weekly review" in out
+
+
+# Desktop, 2026-11-14: «semana que viene, ¿qué tengo que hacer?» resolved no date and matched no row, so the read
+# answered nothing and the reply was built from today's summary («solo veo las citas de hoy»). A question that places
+# no day and names nothing the calendar holds is handed the coming days, dated, to the end of next month; the turn
+# places the period against them and its dated day list (CRIT-C4e). No period word is read by the door.
+# Disarm: `_coming` returning "" → red.
+_SOON = [
+    {"id": "p", "title": "Notario", "date": "2026-11-02", "startTime": "09:00"},
+    {"id": "t", "title": "Fútbol", "date": "2026-11-14", "startTime": "12:00"},
+    {"id": "w", "title": "Dentist", "date": "2026-11-18", "startTime": "10:00"},
+    {"id": "m", "title": "Cena de empresa", "date": "2026-12-12", "startTime": "21:00"},
+    {"id": "f", "title": "Reyes", "date": "2027-01-06", "startTime": "10:00"},
+]
+
+
+@pytest.mark.parametrize("question", [
+    "semana que viene, ¿qué tengo que hacer?", "¿qué tengo este fin de semana?", "¿y el mes que viene?",
+    "what do I have next week?", "anything on this weekend?", "and next month?",
+])
+def test_a_period_he_names_by_words_is_read_as_the_coming_days(monkeypatch, question):
+    monkeypatch.setattr(agenda_data, "load_db", lambda: {"meetings": [dict(m) for m in _SOON]})
+    monkeypatch.setattr(query, "_today", lambda: "2026-11-14")
+    out = query.read_query(question)
+    assert "Periodo 2026-11-14 → 2026-12-31" in out, out
+    assert "Dentist" in out and "Cena de empresa" in out and "Fútbol" in out
+    assert "Notario" not in out and "Reyes" not in out, "a day outside the coming period leaked in"
+    free = out.split("Días SIN ninguna cita con hora")[1].split("\n")[0]
+    assert "2026-11-17" in free and "2026-11-18" not in free
+
+
+def test_a_subject_it_holds_still_answers_with_its_row(monkeypatch):
+    monkeypatch.setattr(agenda_data, "load_db", lambda: {"meetings": [dict(m) for m in _SOON]})
+    monkeypatch.setattr(query, "_today", lambda: "2026-11-14")
+    out = query.read_query("¿cuándo fue lo del notario?")
+    assert "Notario" in out and "Periodo" not in out

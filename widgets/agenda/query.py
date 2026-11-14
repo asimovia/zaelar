@@ -1,18 +1,13 @@
 """query.py — the agenda ANSWERING A QUESTION, instead of handing over its first page (V2-704).
 
-`data.prompt_digest()` is the always-on summary: it rides every turn's prompt while the card is open, so it is
-bounded to the next twelve appointments and ends in «… y N citas más». That is right for what it is and wrong
-for a question — «¿a qué hora es lo del dentista?» about the fifty-fifth appointment gets a block that does not
-contain it, and a model reading a block whose first lines claim to be the agenda will say there is no such
-appointment. Exactly the shape of the contacts incident this batch is named after: a summary answering as if it
-were the record.
+`data.prompt_digest()` is the always-on summary: it rides every turn's prompt while the card is open, so it is bounded
+to the next twelve appointments and ends in «… y N citas más». Right for what it is, wrong for a question — «¿a qué hora
+es lo del dentista?» about the fifty-fifth appointment gets a block that does not contain it, and a model reading a block
+whose first lines claim to be the agenda says there is no such appointment: a summary answering as if it were the record.
 
-So a QUESTION gets its own door: the rows that MATCH it, wherever they are in the calendar, with the fields the
-digest trims. The seam is `data.read_query(question)`, declared in `nucleo/flash/widget_read.py` and generic —
-nothing there knows this module exists.
-
-Written as its own file rather than inside `data.py` because that file is already over the architecture
-ratchet's ceiling, and the standing instruction is to extract, never to grow it.
+So a QUESTION gets its own door: the rows that MATCH it, wherever they are in the calendar, with the fields the digest
+trims. The seam is `data.read_query(question)`, declared in `nucleo/flash/widget_read.py` and generic — nothing there
+knows this module exists. Its own file because `data.py` is over the architecture ratchet's ceiling (extract, never grow).
 """
 from __future__ import annotations
 
@@ -140,6 +135,18 @@ def _period_record(meets: list[dict], days: list[str]) -> str:
     return "\n".join(lines)
 
 
+def _coming(meets: list[dict], terms: list[str]) -> str:
+    """No day placed and no row named: TIME this door cannot place («la semana que viene», «this weekend»). The coming
+    days to the end of next month, dated; the turn places the period on them as on its day list (CRIT-C4e), no word
+    read here. Desktop, 2026-11-14: «semana que viene, ¿qué tengo que hacer?» was answered from today's summary."""
+    import datetime as _dt
+    today = _dt.date.fromisoformat(_today())
+    last = ((today.replace(day=1) + _dt.timedelta(days=62)).replace(day=1) - _dt.timedelta(days=1)).isoformat()
+    said = ", ".join(f"«{t}»" for t in terms)
+    return (f"Ninguna cita del calendario entero lleva {said}; si pregunta por un periodo, sitúalo en estas fechas:\n"
+            if said else "") + _period_record(meets, _span([today.isoformat(), last]))
+
+
 def _on_day(m: dict, day: str) -> bool:
     if isinstance(m.get("repeat"), dict):
         from . import recur
@@ -148,15 +155,10 @@ def _on_day(m: dict, day: str) -> bool:
 
 
 def _hits(terms: list[str], hay: str) -> int:
-    """How many of the question's words this appointment carries.
-
-    Not plain containment: the operator and his calendar do not always speak the same language. His calendar
-    holds «Dentist» (Google, in English) and he asks «¿a qué hora es lo del dentista?» — a substring test finds
-    nothing and the answer becomes «no tienes nada del dentista», which is false and sounds certain. A shared
-    five-letter prefix covers that whole family (dentist/dentista, doctor/doctora, meeting/meetings,
-    reunion/reuniones) without inventing a stemmer per language, and five is long enough that it does not start
-    matching unrelated words.
-    """
+    """How many of the question's words this appointment carries. Not plain containment: his calendar holds «Dentist»
+    (Google, in English) and he asks «¿a qué hora es lo del dentista?» — a substring test said «no tienes nada del
+    dentista», false and certain. A shared five-letter prefix covers that family (dentist/dentista, meeting/meetings,
+    reunion/reuniones) without a stemmer per language, and five is long enough not to match unrelated words."""
     n = 0
     words = hay.split()
     for t in terms:
@@ -210,12 +212,9 @@ def _today() -> str:
 
 
 def read_query(question: str) -> str:
-    """The appointments this question is about, wherever they sit in the calendar. "" when it names none.
-
-    Deliberately searches the WHOLE calendar, past included: «¿cuándo fue lo del notario?» is a question about
-    the agenda whether or not the date has gone by, and the summary — which only ever looks forward — is
-    precisely what cannot answer it.
-    """
+    """The appointments this question is about, wherever they sit in the calendar. "" when it names none. The WHOLE
+    calendar, past included: «¿cuándo fue lo del notario?» is about the agenda whether or not the date has gone by,
+    and the summary — which only ever looks forward — is precisely what cannot answer it."""
     terms = _terms(question)
     days = _dates_in(question)
     if not terms and not days:
@@ -251,7 +250,7 @@ def read_query(question: str) -> str:
         if hits:
             scored.append((hits, str(m.get("date") or ""), str(m.get("startTime") or ""), m))
     if not scored:
-        return ""
+        return _coming(meets, terms)
     scored.sort(key=lambda t: (-t[0], t[1], t[2]))
     # THE SAME APPOINTMENT TWICE IS ONE APPOINTMENT, and saying how many copies there are beats repeating it.
     # The operator's calendar holds seven identical «renovar el seguro del coche» and five «Dentist» at the same
