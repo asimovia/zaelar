@@ -11,6 +11,10 @@
   "version": "0.3.0",
   "owner": "Zaelar",
   "licence": "SUL-1.0",
+  "shareable": [
+    {"id": "calendar", "kind": "calendar", "schema": "calendar.freebusy/1", "verbs": ["see"], "projections": ["freebusy"]},
+    {"id": "agenda.list", "kind": "collection", "schema": "agenda.list/1", "verbs": ["see"], "projections": ["items"]}
+  ],
   "connector_families": [
     "agenda"
   ],

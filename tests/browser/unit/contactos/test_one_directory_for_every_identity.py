@@ -43,6 +43,8 @@ def _manifest():
 def test_every_capability_EXISTS_in_the_manifest_or_the_model_cannot_choose_it(ct):
     m = _manifest()
     assert set(m["actions"]) == {"add_contact", "update_contact", "remove_contact", "set_favorite",
+                                 # V2-866 F3 — the card's A2A buttons (`internal`: never named to the model).
+                                 "a2a_request", "a2a_accept", "a2a_decline", "a2a_grant", "a2a_revoke",
                                  "link_contact", "show_view", "show_contact",
                                  # V2-683 — by WHICH channel this person is written to, and which is his.
                                  "set_channel",

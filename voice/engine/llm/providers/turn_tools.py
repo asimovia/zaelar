@@ -64,11 +64,13 @@ async def choose_the_tools(*, _router, brain, emit, first_turn, had_pending_conf
         _has_video1 = _rt_cap.get("youtube") is not None
     except Exception:
         _has_video1 = True
+    from nucleo.flash.tools_a2a import live as _a2a_live   # V2-866 F3: A2A on + an accepted contact
     _tool_ctx = _router.tool_context(confirm_pending=had_pending_confirm, auth_pending=_auth_pending,
                                      has_workers=_has_workers, ask_pending=_ask_pending,
                                      cluster_widget_open=_cluster_open, messaging_on=_msg_on,
                                      has_vault=_has_vault1, has_video_widget=_has_video1,
-                                     cluster_connected=_cluster_conn, has_pending=_pending_work.has_rows())
+                                     cluster_connected=_cluster_conn, has_pending=_pending_work.has_rows(),
+                                     a2a_live=_a2a_live())
     _turn_tools = _router.tools(_tool_ctx)
     # KICKOFF = saludo PURO, sin tools (fix 2026-07-19): el texto del kickoff ("Salúdame en 1-2 frases, cálido y
     # breve…") lo interpretaba el modelo como `set_style_directive` → guardaba una regla y respondía "Hecho." en

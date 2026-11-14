@@ -294,3 +294,6 @@ CATALOG = {f.__name__: f for f in (
     cluster_send, set_cluster_objective, send_to_worker, stop_worker, answer_worker, cancel_scheduled,
     agent_controls,
 )}
+
+from nucleo.flash.tools_a2a import DOORS as _A2A_DOORS  # noqa: E402 — V2-866 F3: their doors beside their schemas
+CATALOG.update(_A2A_DOORS)

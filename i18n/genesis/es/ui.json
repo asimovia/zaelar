@@ -2720,5 +2720,21 @@
  "widgets.contactos.say_source_not_connected": "{source} no está conectado todavía — conéctalo y vuelve a pedírmelo.",
  "widgets.producers.say_agent_stopped": "El agente está parado. Enciéndelo (⏻) para volver a reproducir.",
  "widgets.musica.say_not_in_library": "no encuentro ese audio en tu biblioteca (o no se puede reproducir)",
- "widgets.musica.say_file_gone": "ese fichero ya no está en tu biblioteca"
+ "widgets.musica.say_file_gone": "ese fichero ya no está en tu biblioteca",
+ "a2a.accept": "Aceptar",
+ "a2a.card_propose": "{name} tiene agente en la red. ¿Conectar?",
+ "a2a.card_request": "{name} quiere conectar su agente con el tuyo",
+ "a2a.connect": "Conectar agente",
+ "a2a.decline": "Rechazar",
+ "a2a.grants": "Lo que compartes",
+ "a2a.message": "Mensaje del agente de {name}",
+ "a2a.network": "Red",
+ "a2a.no": "No",
+ "a2a.none": "Nadie todavía",
+ "a2a.pending": "Solicitudes pendientes",
+ "a2a.recent": "Actividad reciente",
+ "a2a.relationships": "Agentes conectados",
+ "a2a.share": "Compartir",
+ "a2a.stop_sharing": "Dejar de compartir",
+ "a2a.yes": "Sí"
 }

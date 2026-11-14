@@ -9,6 +9,7 @@ which the engine calls at boot (post-clean wiring). Emission never raises (I6).
 """
 from __future__ import annotations
 
+import collections
 import re
 import time
 from typing import Callable
@@ -57,6 +58,7 @@ _HEX = re.compile(r"\b[0-9a-f]{32,}\b")
 _DID = re.compile(r"did:key:[A-Za-z0-9+/=_-]{20,}")
 
 _sinks: list[Callable[[dict], None]] = []
+_recent: "collections.deque[dict]" = collections.deque(maxlen=200)   # the last rows, for the Network view and voice
 _label_names: dict[str, str] = {}      # cid → display name, for labels
 
 
@@ -121,6 +123,7 @@ def emit(op: str, *, peer: str = "", rel: str = "", cid: str = "", dir: str = ""
                "dir": dir, "ok": bool(ok), "ms": round(ms, 1) if ms is not None else None, "trace": trace,
                "agent": short(me), "ts": time.time(),
                "label": f"🤝 {who} · {op}" + (f" · {dir}" if dir else ""), **extra}
+        _recent.append(row)
         for s in list(_sinks):
             try:
                 s(row)
@@ -131,6 +134,12 @@ def emit(op: str, *, peer: str = "", rel: str = "", cid: str = "", dir: str = ""
         raise                                                # a programming error: tests must see it
     except Exception:
         return None
+
+
+def recent(cid: str = "", limit: int = 20) -> list[dict]:
+    """The latest rows of this process, newest first (optionally one contact's)."""
+    rows = [r for r in reversed(_recent) if not cid or r.get("cid") == cid]
+    return rows[:max(0, limit)]
 
 
 def name_contact(cid: str, name: str) -> None:

@@ -770,3 +770,7 @@ TOOLS: list[dict] = [
         },
     },
 ]
+
+# V2-866 F3: the A2A tools — schemas beside their bodies, offered only by state (`router._SITUATIONAL`).
+from nucleo.flash.tools_a2a import SCHEMAS as _A2A_SCHEMAS  # noqa: E402
+TOOLS += _A2A_SCHEMAS

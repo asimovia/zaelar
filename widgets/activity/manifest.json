@@ -12,6 +12,10 @@
   "version": "0.1.0",
   "owner": "Zaelar",
   "licence": "SUL-1.0",
+  "shareable": [
+    {"id": "activity.history", "kind": "widget-data", "schema": "activity.summary/1", "verbs": ["see"], "projections": ["summary"]},
+    {"id": "activity.live", "kind": "stream", "schema": "activity.sample/1", "verbs": ["subscribe"], "projections": []}
+  ],
   "title": "Activity",
   "description": "A ride, a run, a walk or a drive the person starts: live heart rate from their own strap or watch, distance, speed, time and climb, the route drawn as it grows. In the phone app it keeps recording with the screen locked; every screen shows the same activity live.",
   "whenToUse": "A ride, run or walk he records: heart rate, distance.",

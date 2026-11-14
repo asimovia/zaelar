@@ -119,3 +119,21 @@ def default_items(busy: Callable[[str, str], list] | None = None,
                      {"default": lambda _a: dict(public_profile() if public_profile else {})}))
     reg.declare(Item("activity.live", "stream", "activity", "activity.sample/1", ("subscribe",)))
     return reg
+
+
+def declare_manifest(reg: ItemRegistry, widget_id: str, entries, readers: dict[str, Reader]) -> list[str]:
+    """A widget manifest's `shareable` list → declared items. Each entry is `{id, kind, schema, verbs, projections}`;
+    a projection is served only if the engine has a reader for `<widget>:<projection>` (no reader → not served, the
+    peer gets `unknown_item`). A bad or never-shareable entry is skipped, never raised: one manifest cannot stop the
+    others. Returns the ids declared."""
+    out = []
+    for e in entries if isinstance(entries, list) else []:
+        try:
+            projections = {p: readers[f"{widget_id}:{p}"] for p in e.get("projections") or []
+                           if f"{widget_id}:{p}" in readers}
+            reg.declare(Item(str(e["id"]), str(e["kind"]), widget_id, str(e.get("schema") or ""),
+                             tuple(e.get("verbs") or ()), projections))
+            out.append(str(e["id"]))
+        except (KeyError, TypeError, ValueError, AttributeError):
+            continue
+    return out
