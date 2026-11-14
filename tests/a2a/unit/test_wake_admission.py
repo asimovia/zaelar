@@ -46,7 +46,7 @@ class Clock:
 @pytest.fixture
 def engine(monkeypatch):
     """The real api_guard + ingress middlewares around the real a2a router, A2A switched on over fakes."""
-    from server import a2a_api, api_guard, ingress
+    from server import a2a_api, api_guard, ingress, operator_gate
     key, jobs, clock = Identity.generate(), FakeJobs(), Clock()
     saved = dict(a2a_api._state)
     a2a_api._state.update(agent=jobs.agent, jobs=jobs, gate=WakeGate(key.pub_b64, clock=clock), cards=None)
@@ -54,6 +54,7 @@ def engine(monkeypatch):
     app = FastAPI()
     app.include_router(a2a_api.router)
     ingress.install(app)
+    operator_gate.install(app)                              # the same three gates, in the app's own order
     api_guard.install(app)
     yield app, key, jobs, clock
     a2a_api._state.clear()
@@ -152,17 +153,124 @@ def test_no_pinned_key_is_503_without_any_work(engine):
     assert jobs.pulls == 0 and jobs.agent.rows == []
 
 
-def test_rate_limit_per_source_and_verified_wakes_coalesce():
+def test_failed_attempts_are_budgeted_and_never_lock_a_verified_wake_out():
+    """Behind a proxy every caller has the same peer address: junk from it must not refuse the network's wake."""
     key, jobs, clock = Identity.generate(), FakeJobs(), Clock()
     gate = WakeGate(key.pub_b64, clock=clock)
     codes = [gate.handle(jobs, {}, BODY, source="1.2.3.4")[0] for _ in range(sapi.WAKE_PER_SOURCE + 2)]
     assert codes[:sapi.WAKE_PER_SOURCE] == [401] * sapi.WAKE_PER_SOURCE and codes[-2:] == [429, 429]
-    assert gate.handle(jobs, _signed(key, clock), BODY, source="5.6.7.8")[0] == 202       # another source
-    assert gate.handle(jobs, _signed(key, clock), BODY, source="5.6.7.8") == (202, {"coalesced": True})
+    assert len(jobs.agent.rows) == sapi.WAKE_PER_SOURCE                   # over the budget: no event either
+    for i in range(sapi.WAKE_GLOBAL * 2):                                 # and the global budget, from many sources
+        gate.handle(jobs, {}, BODY, source=f"10.0.{i}.1")
+    assert sum(1 for op, kw in jobs.agent.rows if not kw.get("sig_ok")) == sapi.WAKE_GLOBAL
+    assert gate.handle(jobs, _signed(key, clock), BODY, source="1.2.3.4")[0] == 202       # same source, both budgets spent
+    assert gate.handle(jobs, _signed(key, clock), BODY, source="1.2.3.4") == (202, {"coalesced": True})
     assert jobs.pulls == 1
-    clock.t += sapi.WAKE_WINDOW_S + 1
-    assert gate.handle(jobs, _signed(key, clock), BODY, source="1.2.3.4")[0] == 202       # window passed
+    clock.t += sapi.WAKE_COALESCE_S + 1
+    assert gate.handle(jobs, _signed(key, clock), BODY, source="1.2.3.4")[0] == 202
     assert jobs.pulls == 2
+
+
+def _junk(key, clock, nonce):
+    """A header that names the pinned key and a fresh ts but carries no valid signature: anyone can send it."""
+    return {"MeshKore-Sig": f"v1 {key.pub_b64} {int(clock())} {nonce} AAAA"}
+
+
+def test_a_flood_of_unsigned_requests_never_reopens_a_replay():
+    key, jobs, clock = Identity.generate(), FakeJobs(), Clock()
+    gate = WakeGate(key.pub_b64, clock=clock)
+    good = _signed(key, clock)
+    assert gate.handle(jobs, good, BODY, source="net")[0] == 202
+    for i in range(6000):                                                 # past the old 5000-entry clear
+        gate.handle(jobs, _junk(key, clock, f"n{i}"), BODY, source=f"s{i}")
+    assert len(gate._nonces) == 1                                         # junk nonces are never stored
+    clock.t += sapi.WAKE_COALESCE_S + 1
+    assert gate.handle(jobs, good, BODY, source="net")[0] in (401, 429) and jobs.pulls == 1
+    later = _signed(key, clock)                                           # nor can junk burn a nonce ahead of its owner
+    gate.handle(jobs, _junk(key, clock, later["MeshKore-Sig"].split()[3]), BODY, source="x")
+    assert gate.handle(jobs, later, BODY, source="net")[0] == 202 and jobs.pulls == 2
+
+
+def test_the_nonce_window_forgets_only_what_can_no_longer_verify_and_refuses_when_full():
+    from a2a.identity import SIG_SKEW_S, BadSignature, NonceWindow
+    clock = Clock()
+    w = NonceWindow(clock=clock, cap=3)
+    for i in range(3):
+        w.remember(f"n{i}", int(clock()))
+    with pytest.raises(BadSignature):
+        w.remember("n3", int(clock()))                                    # full: refused, never cleared
+    assert "n0" in w and len(w) == 3
+    clock.t += SIG_SKEW_S + 1                                             # those signatures are stale now anyway
+    w.remember("n4", int(clock()))
+    assert len(w) == 1 and "n0" not in w
+    key, jobs = Identity.generate(), FakeJobs()
+    gate = WakeGate(key.pub_b64, clock=clock)
+    for i in range(50):                                                   # verified wakes over hours stay bounded
+        assert gate.handle(jobs, _signed(key, clock), BODY, source="net")[0] == 202
+        clock.t += SIG_SKEW_S
+    assert len(gate._nonces) <= 2
+
+
+def test_disarm_recording_the_nonce_before_the_signature_lets_junk_burn_it(monkeypatch):
+    """Proves the flood test bites on the order (verify, then record): with the old order junk fills the store and
+    burns the nonce of a wake that has not arrived yet."""
+    import a2a.identity as ident
+
+    def junk_then_real() -> tuple[int, int]:
+        key, jobs, clock = Identity.generate(), FakeJobs(), Clock()
+        gate = WakeGate(key.pub_b64, clock=clock)
+        real = _signed(key, clock)
+        gate.handle(jobs, _junk(key, clock, real["MeshKore-Sig"].split()[3]), BODY, source="x")
+        return len(gate._nonces), gate.handle(jobs, real, BODY, source="net")[0]
+    assert junk_then_real() == (0, 202)
+
+    def record_first(header, method, path, body, expected_pub_b64=None, now=None, seen_nonces=None):
+        nonce = (header or "").split()[3]
+        if nonce in seen_nonces:
+            raise ident.BadSignature("replayed nonce")
+        seen_nonces.remember(nonce, now)
+        return ident.verify_mk_sig(header, method, path, body, expected_pub_b64=expected_pub_b64, now=now)
+    monkeypatch.setattr(sapi, "verify_mk_sig", record_first)
+    assert junk_then_real() == (1, 401)
+
+
+def test_the_key_is_pinned_only_over_tls_and_only_if_it_is_a_key():
+    from types import SimpleNamespace as NS
+    from server import a2a_api
+
+    def agent(base, answer):
+        def server_key():
+            if isinstance(answer, Exception):
+                raise answer
+            return answer
+        return NS(mailbox=NS(http=NS(base=base), server_key=server_key))
+    pub = Identity.generate().pub_b64
+    assert a2a_api._pin(agent("https://net.example", {"pubkey": pub})) == pub
+    assert a2a_api._pin(agent("http://127.0.0.1:8787", {"pubkey": pub})) == pub      # the lab, on this machine
+    assert a2a_api._pin(agent("http://net.example", {"pubkey": pub})) is None        # plain http: never pinned
+    assert a2a_api._pin(agent("https://net.example", {"pubkey": "short"})) is None
+    assert a2a_api._pin(agent("https://net.example", {"pubkey": None})) is None
+    assert a2a_api._pin(agent("https://net.example", {})) is None
+    assert a2a_api._pin(agent("https://net.example", RuntimeError("down"))) is None
+
+
+def test_two_pulls_never_run_at_once(tmp_path):
+    import threading
+    import a2a
+    agent = a2a.A2AAgent(Identity.generate(), None, state_dir=tmp_path)
+    inside, overlap = [], []
+
+    def one(reason):
+        inside.append(1)
+        overlap.append(len(inside))
+        threading.Event().wait(0.02)
+        inside.pop()
+        return 0
+    agent._pull = one
+    ts = [threading.Thread(target=agent.pull, args=("wake",)) for _ in range(6)]
+    [t.start() for t in ts]
+    [t.join() for t in ts]
+    assert overlap == [1] * 6
 
 
 def test_disarm_without_the_signature_check_a_forged_wake_would_pull(monkeypatch):

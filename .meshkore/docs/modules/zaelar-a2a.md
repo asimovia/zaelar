@@ -108,25 +108,33 @@ The network signs a tiny "you have mail" push to `POST /api/a2a/wake`. Every oth
 peer that is not this machine (`server/api_guard.py`) and, on a session-routed deployment, a request without a
 session (`server/ingress.py`). Both gates carry ONE exemption, `a2a.wake_exempt`, which only checks shape:
 
-- the raw path is exactly `/api/a2a/wake` (no prefix match, trailing slash, dot segments or encoded variants),
+- the path the router dispatches on is exactly `/api/a2a/wake` (no prefix match, trailing slash or dot segments;
+  the gates and the router read the same decoded path, so an encoded spelling reaches this handler or none),
 - the method is `POST`, A2A is on (agent built), and
 - a declared `Content-Length` of at most 256 bytes (a chunked body with no length is not exempt).
 
-The exemption trusts nothing. The handler is the gate:
+The same predicate lets it through `server/operator_gate.py` (a wake is nobody's click, and an unsigned one must
+not cost a peer-process lookup). The exemption trusts nothing. The handler is the gate:
 
 | step | answer |
 |---|---|
 | A2A off | 404 (and not exempt: the guards refuse it first) |
 | network key not pinned at boot | 503, no crypto, no pull |
 | body over 256 bytes while reading | 413 |
-| > 6 attempts per source or > 60 in all per 60 s (checked before any crypto) | 429 |
-| `MeshKore-Sig` missing, not by the pinned network key, stale, replayed nonce, or body not `{kind: mail|live}` | 401, no pull |
+| `MeshKore-Sig` missing, not by the pinned network key, stale, replayed nonce, or body not `{kind: mail|live}` | 401 and one event, while within the failure budget (6 per source, 60 in all per 60 s); past it 429 and no event |
 | verified, a pull ran < 5 s ago | 202 `{coalesced: true}`, no pull |
-| verified | 202, one pull |
+| verified | 202, one pull (off the event loop; pulls are serialised with the cadence thread) |
+
+The signature is checked first and only failures are budgeted: behind a proxy every caller shares one peer
+address, so a limit applied before the check would let anyone refuse the network's own wake. A nonce is stored
+only after its signature verified (`identity.NonceWindow`), for as long as its timestamp can still pass the skew
+check; the store is never cleared wholesale, and at its cap a new signature is refused. The key is pinned once at
+boot from `A2A_API_BASE`, only over `https` (or from this machine) and only if it is a 32-byte key; otherwise
+nothing is pinned and every wake answers 503 until the next start.
 
 A wake never carries content: it only advances the next pull, which goes out with this engine's own credentials.
 `status`, `network` and `cards/*` stay owner-only. Tests: `tests/a2a/unit/test_wake_admission.py` (includes the
-disarm: without the signature check a forged wake pulls).
+disarms: without the signature check a forged wake pulls; with the nonce recorded before the check, junk burns it).
 
 ## Env
 

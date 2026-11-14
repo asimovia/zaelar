@@ -182,7 +182,7 @@ def verify(did_or_pub: str | bytes, data: bytes, sig_b64: str) -> None:
 
 
 def verify_mk_sig(header: str | None, method: str, path: str, body: str, expected_pub_b64: str | None = None,
-                  now: int | None = None, seen_nonces: set | None = None) -> str:
+                  now: int | None = None, seen_nonces=None) -> str:
     """Check a MeshKore-Sig header; returns the signer's pubkey (b64). `expected_pub_b64` pins the signer (the wake
     push must come from the network's key). Raises BadSignature."""
     parts = (header or "").split()
@@ -197,9 +197,36 @@ def verify_mk_sig(header: str | None, method: str, path: str, body: str, expecte
         raise BadSignature("bad ts") from None
     if abs((int(time.time()) if now is None else now) - ts) > SIG_SKEW_S:
         raise BadSignature("stale signature")
-    if seen_nonces is not None:
-        if nonce in seen_nonces:
-            raise BadSignature("replayed nonce")
-        seen_nonces.add(nonce)
+    if seen_nonces is not None and nonce in seen_nonces:
+        raise BadSignature("replayed nonce")
     verify(pub, mk_canonical(method, path, body, ts, nonce), sig)
+    if seen_nonces is not None:                  # recorded only once the signature held: junk never fills the store
+        remember = getattr(seen_nonces, "remember", None)
+        remember(nonce, ts) if remember else seen_nonces.add(nonce)
     return pub
+
+
+class NonceWindow:
+    """The nonces of VERIFIED signatures, each kept exactly as long as its timestamp can still pass the skew check
+    (`ts + SIG_SKEW_S`). Never cleared wholesale: at `cap` live entries a new signature is refused instead."""
+
+    def __init__(self, clock=time.time, cap: int = 4096):
+        self._by_nonce: dict[str, int] = {}
+        self._clock, self._cap = clock, cap
+
+    def _prune(self) -> None:
+        cut = int(self._clock()) - SIG_SKEW_S
+        for n in [n for n, ts in self._by_nonce.items() if ts < cut]:
+            del self._by_nonce[n]
+
+    def __contains__(self, nonce: str) -> bool:
+        return nonce in self._by_nonce
+
+    def __len__(self) -> int:
+        return len(self._by_nonce)
+
+    def remember(self, nonce: str, ts: int) -> None:
+        self._prune()
+        if len(self._by_nonce) >= self._cap:
+            raise BadSignature("nonce window full")
+        self._by_nonce[nonce] = int(ts)

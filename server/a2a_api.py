@@ -50,6 +50,24 @@ def build():
     return agent, a2a.Jobs(agent, contacts=w.contacts)
 
 
+def _pin(agent) -> str | None:
+    """The network key, read once at boot over TLS (or from this machine: the lab). Anything else — a plain-http
+    base, a failed read, a value that is not a 32-byte key — pins nothing, and every wake is refused (503)."""
+    from urllib.parse import urlparse
+    from a2a.identity import b64d
+    try:
+        u = urlparse(str(getattr(agent.mailbox.http, "base", "") or ""))
+        if u.scheme != "https" and (u.hostname or "") not in ("127.0.0.1", "::1", "localhost"):
+            raise ValueError("base is not https")
+        key = agent.mailbox.server_key().get("pubkey")
+        if not isinstance(key, str) or len(b64d(key)) != 32:
+            raise ValueError("not an Ed25519 public key")
+        return key
+    except Exception as e:                                  # noqa: BLE001 — unpinned: every wake is refused
+        logger.warning(f"a2a: network key not pinned ({type(e).__name__}); wake pushes are refused")
+        return None
+
+
 def start() -> bool:
     """Idempotent; never raises; does nothing while A2A is off."""
     if _state["thread"] is not None or not enabled():
@@ -58,11 +76,7 @@ def start() -> bool:
         import a2a
         a2a.attach_bus()
         agent, jobs = build()
-        try:
-            key = agent.mailbox.server_key().get("pubkey")
-        except Exception as e:                              # noqa: BLE001 — unpinned: every wake is refused
-            logger.warning(f"a2a: network key not pinned ({type(e).__name__}); wake pushes are refused")
-            key = None
+        key = _pin(agent)
         _state.update(agent=agent, jobs=jobs, gate=a2a.WakeGate(key))
         a2a.set_runtime(agent, jobs)
         import bus
@@ -133,8 +147,9 @@ async def wake(request: Request):
         if len(raw) > a2a.server_api.WAKE_MAX_BYTES:
             return JSONResponse({"error": "too large"}, status_code=413)
     body = raw.decode("utf-8", "replace")
-    code, out = _state["gate"].handle(_state["jobs"], dict(request.headers), body,
-                                      source=(request.client.host if request.client else "") or "")
+    import asyncio                                           # off the loop: a verified wake pulls over the network
+    code, out = await asyncio.to_thread(_state["gate"].handle, _state["jobs"], dict(request.headers), body,
+                                        source=(request.client.host if request.client else "") or "")
     return JSONResponse(out, status_code=code)
 
 
