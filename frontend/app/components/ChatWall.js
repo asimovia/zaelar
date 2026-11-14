@@ -28,6 +28,7 @@ import { groupGoogle } from "./ConnectorWizard.js?v=6";
 import { ProcessEntry } from "./ProcessEntry.js?v=1";
 import { AskWall, placeAsks } from "./TaskAsk.js?v=1";
 import { chatRefView } from "./ChatRef.js?v=1";
+import * as a2a from "./A2AView.js?v=1";
 
 // V2-561/V2-526 — stable family order, matching connectors/registry.py's descriptors() order; any family
 // not listed (a catalog-only wishlist family) sorted after, alphabetically, so one nobody expects does not
@@ -42,7 +43,7 @@ const SEND_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" st
 // V2-621 — the ONE map from a tab id to its label key: the header's standing name (`.cw-tabname`) and each
 // tab button's own label read the same entry, so they cannot drift apart.
 const TAB_LABEL = { chat: "chat.tabChat", procesos: "chat.tabTasks",
-                    clusters: "chat.tabClusters", conectores: "chat.tabConnectors", apps: "chat.tabApps" };
+                    clusters: "chat.tabClusters", red: "a2a.network", conectores: "chat.tabConnectors", apps: "chat.tabApps" };
 // V2-728 — the FOUR sub-tabs of «Procesos», in the order the operator reads them: what is happening now, what
 // is over, what repeats, what is waiting for its moment. Same ONE-map rule as TAB_LABEL above: the button,
 // the empty state and the fetch all key off this, so they cannot drift.
@@ -608,6 +609,7 @@ export function ChatWall() {
         h("button", { class: () => "cw-tab" + (store.chatTab() === "chat" ? " on" : ""), title: () => t("chat.tabChat"), onClick: () => store.setChatTab("chat") }, raw(MESSAGE_SQUARE_ICON), h("span", { class: "cw-tab-label" }, () => t("chat.tabChat"))),
         h("button", { class: () => "cw-tab" + (store.chatTab() === "procesos" ? " on" : ""), title: () => t("chat.tabTasks"), onClick: () => store.setChatTab("procesos") }, raw(ACTIVITY_ICON), h("span", { class: "cw-tab-label" }, () => t("chat.tabTasks"))),
         h("button", { class: () => "cw-tab" + (store.chatTab() === "clusters" ? " on" : ""), title: () => t("chat.tabClusters"), onClick: () => store.setChatTab("clusters") }, raw(SERVER_ICON), h("span", { class: "cw-tab-label" }, () => t("chat.tabClusters"))),
+        () => (a2a.on() ? h("button", { class: () => "cw-tab" + (store.chatTab() === "red" ? " on" : ""), title: () => t("a2a.network"), onClick: () => store.setChatTab("red") }, raw(SERVER_ICON), h("span", { class: "cw-tab-label" }, () => t("a2a.network"))) : null),
         h("button", { class: () => "cw-tab" + (store.chatTab() === "conectores" ? " on" : ""), title: () => t("chat.tabConnectors"), onClick: () => store.setChatTab("conectores") }, raw(LINK_ICON), h("span", { class: "cw-tab-label" }, () => t("chat.tabConnectors"))),
         h("button", { class: () => "cw-tab" + (store.chatTab() === "apps" ? " on" : ""), title: () => t("chat.tabApps"), onClick: () => store.setChatTab("apps") }, raw(WIDGETS_ICON), h("span", { class: "cw-tab-label" }, () => t("chat.tabApps"))),
       ),
@@ -662,6 +664,7 @@ export function ChatWall() {
     // CONECTORES (V2-561, implementing V2-526) — every connector by category: built (live, from the
     // registry) grouped with the wishlist (planned/not-possible, from the catalog). No new widget, no new
     // orb entry — this tab IS the "browse and ask" surface the design doc calls for.
+    h("div", { class: "cw-red" }, h("div", { class: "cl-list" }, () => (a2a.on() ? a2a.networkBody() : null))),   // V2-866 — off: no tab, no body
     h("div", { class: "cw-conn" },
       h("div", { class: "cl-list" }, () => connFamilySections()),
     ),
@@ -700,6 +703,7 @@ export function ChatWall() {
     if (t === "procesos") { store.fetchTasks(); store.fetchTaskScope(store.taskScope()); }
     else if (t === "clusters") store.fetchClusters();
     else if (t === "conectores") refreshConnectors();
+    else if (t === "red") a2a.refresh();
     else if (t === "apps") refreshApps();
   });
   // When live processes change (a task finishes) while we are viewing “Processes”, refresh the history so
@@ -965,7 +969,8 @@ export function ChatWall() {
       // so with nothing restored (a fresh session, or a reset) it is never drawn at all.
       if (restoredLeft > 0 && i === restoredLeft) rows.push(h("div", { class: "cw-earlier" }, _whenLabel()));
       if (m && m.trace) lastRow.set(m.trace, rows.length + 1);   // every branch below pushes exactly one row
-      if (m.role === "ref") { rows.push(chatRefView(m)); return; }   // V2-862: an errand's reference box
+      if (m.role === "ref") { rows.push(chatRefView(m)); return; }
+      if (m.role === "a2a") { rows.push(a2a.a2aChatView(m)); return; }   // V2-866: a consent card or a contact's message   // V2-862: an errand's reference box
       const cls =m.role === "peer" ? "peer" : m.role === "agent" ? "agent" : m.role === "sys" ? "sys" : "you";
       const bubble = h("div", { class: "cw-msg " + cls });
       if (m.role === "peer" && (m.dir === "in" || m.dir === "out")) {
@@ -1040,5 +1045,6 @@ export function ChatWall() {
     if (inputEl && store.chatTab() === "chat") inputEl.focus();
   });
 
+  a2a.refresh();   // V2-866 — is A2A on? (its route 404s while off, and the Network tab stays undrawn)
   return wall;
 }

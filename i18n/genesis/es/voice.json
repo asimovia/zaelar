@@ -810,6 +810,8 @@
  "a2a_no_agent": "{name} todavía no tiene agente en la red.",
  "a2a_not_connected": "{name} no está conectado con tu agente.",
  "a2a_requested": "He pedido conectar con el agente de {name}. Responderá desde su lado.",
+ "a2a_send_held": "Me pediste que te preguntara antes de escribir al agente de {name}, así que no lo he mandado.",
+ "a2a_send_refused": "Tu regla dice que no escriba al agente de {name}, así que no lo he hecho.",
  "a2a_sent": "Enviado al agente de {name}.",
  "a2a_shared": "Ya compartes {item} con {name}.",
  "a2a_sharing_line": "Con {name}: {items}.",

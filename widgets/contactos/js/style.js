@@ -211,6 +211,7 @@ export const CSS = `
   /* V2-854 F5 — his groups, aliases and agents: the same chips and rows, no new colour. A learned alias is a
      dimmer chip; a native group is a chip that FILLS when the person is in it. */
   .hb-contactos .cttag.learned{opacity:.6}
+  .hb-contactos .cttag.ctnet{border-color:var(--hb-accent,#2b6cff);color:var(--hb-accent,#2b6cff)} .hb-contactos .ctnet-pending{border-style:dashed}
   .hb-contactos .cttag.ctnat{cursor:pointer;background:none;font-family:inherit}
   .hb-contactos .cttag.ctnat.on{background:var(--hb-accent,#3D6FE0);border-color:var(--hb-accent,#3D6FE0);color:var(--canvas,#101216)}
   .hb-contactos .cttag.ctnat[disabled]{cursor:default}
