@@ -50,8 +50,12 @@ def test_with_words_out_the_round_is_said_in_its_turn_never_detached(monkeypatch
     assert sent == [" I couldn't reach the music catalogue."] and out == "I couldn't reach the music catalogue."
 
 
-@pytest.mark.parametrize("model,expected", [("SKIP", []), ("I couldn't reach the music catalogue right now.", ["I couldn't reach the music catalogue right now."])])
+@pytest.mark.parametrize("model,expected", [("SKIP", ["canned"]), ("", ["canned"]),
+                                            ("I couldn't reach the music catalogue right now.", ["I couldn't reach the music catalogue right now."])])
 def test_with_nothing_said_the_pass_is_the_answer(monkeypatch, model, expected):
+    """SKIP keeps what was said — with nothing said it would end the turn mute (desktop, 2026-11-14: «ponme música de
+    madonna» → `needs_app`, the pass said SKIP over an empty reply). The connector's own line is said instead.
+    Disarm: the SKIP branch returning "" whatever was said → the two first cases go back to silence."""
     from nucleo.flash import follow_up_pass
 
     async def _stream(client, sys2, user, spec, mt, what):
@@ -92,3 +96,34 @@ def test_a_failed_control_is_said_with_the_connectors_line_never_judged(monkeypa
     asyncio.run(music_outcome.say(lang_lock="", asked="x", said="Done.", res=res, spec=None,
                                   emit=lambda *a, **k: None, send=sent.append, speech=SimpleNamespace(sanitize=lambda s, **k: s)))
     assert sent == [" «Camaretas» está usando Spotify ahora mismo."], sent
+
+
+@pytest.mark.parametrize("code", ["en", "es"])
+def test_with_nothing_said_and_no_line_the_turn_still_speaks(monkeypatch, code):
+    from i18n import langs
+    from nucleo.flash import follow_up_pass
+    monkeypatch.setattr(langs, "current_code", lambda: code)
+
+    async def _stream(client, sys2, user, spec, mt, what):
+        yield "SKIP"
+    monkeypatch.setattr(follow_up_pass, "measured", _stream)
+    sent: list = []
+    res = SimpleNamespace(ok=False, reason="error", provider="youtube", extra={}, message="")
+    asyncio.run(music_outcome.say(lang_lock="", asked="x", said="", res=res, spec=None, emit=lambda *a, **k: None,
+                                  send=sent.append, speech=SimpleNamespace(sanitize=lambda s, **k: s)))
+    assert sent == [langs.words("music.outcome_fallback", code=code)] and sent[0]
+
+
+@pytest.mark.parametrize("code", ["en", "es"])
+def test_a_whole_that_needs_its_app_also_offers_this_screens_player(monkeypatch, code):
+    """«abre la app» was the ONLY way out of `needs_app` while YouTube was registered (desktop, 2026-11-14). With a
+    page player connected the facts offer it too. Disarm: `_options("needs_app")` → ["open_app"] → red."""
+    from i18n import langs
+    from connectors.music import registry
+    monkeypatch.setattr(langs, "current_code", lambda: code)
+    monkeypatch.setattr(registry, "available", lambda: [SimpleNamespace(plays_in_page=True, plays_elsewhere=False)])
+    w = langs.words("music", code=code)
+    sys2 = music_outcome.system("LOCK", "pon Madonna", "", _res("needs_app"))
+    assert w["outcome_options"]["open_app"] in sys2 and w["outcome_options"]["page"] in sys2
+    monkeypatch.setattr(registry, "available", lambda: [])
+    assert w["outcome_options"]["page"] not in music_outcome.system("LOCK", "pon Madonna", "", _res("needs_app"))

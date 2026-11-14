@@ -490,7 +490,8 @@
    "another": "look for another version",
    "more_words": "a few more words from the song",
    "open_app": "open the music app on this device and ask again",
-   "take_over": "take control: play it here and stop it on the other device (the music card's button, or ask for it)"
+   "take_over": "take control: play it here and stop it on the other device (the music card's button, or ask for it)",
+   "page": "play it on this screen's own player (YouTube), looked up by its name"
   },
   "outcome_labels": {
    "tried": "looked up",
@@ -504,7 +505,8 @@
    "playlist": "a playlist",
    "album": "an album",
    "track": "a song"
-  }
+  },
+  "outcome_fallback": "I couldn't put it on."
  },
  "agenda": {
   "plan": {

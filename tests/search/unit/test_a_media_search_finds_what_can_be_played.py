@@ -101,3 +101,15 @@ def test_a_caller_that_only_asks_which_whole_pays_no_video_lookup(monkeypatch):
     monkeypatch.setattr(video, "find_videos", lambda q, n=5, **k: asked.append(q) or [])
     find_media("x", catalogue=lambda q: _answer(), video=False)
     assert asked == []
+
+
+@pytest.mark.parametrize("words", ["Madonna", "música de Madonna", "music by Madonna"])
+def test_an_artist_he_names_is_her_songs_not_a_podcast_called_like_her(words):
+    """Desktop, 2026-11-14: «Madonna» scored a podcast named «Madonna» 1.0 and her songs 0.4–0.5 (the title diluted the
+    artist), so the podcast was the whole his words named. A song BY the artist he named fits his words on its owner
+    alone. Disarm: `_fit(..., by_owner=False)` for songs → the podcast is named → red."""
+    answer = _answer(tracks=[{"title": "La Isla Bonita", "artist": "Madonna", "uri": "spotify:track:1", "source": "spotify"},
+                             {"title": "Like a Prayer", "artist": "Madonna", "uri": "spotify:track:2", "source": "spotify"}],
+                     shows=[{"name": "Madonna", "owner": "Pop Talks", "uri": "spotify:show:3", "source": "spotify"}])
+    got = find_media(words, catalogue=lambda q: answer)
+    assert got["candidates"][0]["kind"] == "track" and M.named_whole(words, got["candidates"]) is None

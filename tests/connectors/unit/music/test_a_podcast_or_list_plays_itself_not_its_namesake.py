@@ -196,3 +196,38 @@ def test_the_phone_turn_replayed_is_worded_from_what_was_found_never_the_cards_n
     w = langs.words("music", default={})
     assert "«Sueñacuentos»" in facts and w["outcome_reasons"]["needs_app"] in facts
     assert w["outcome_options"]["open_app"] in facts and "Better With Time" not in facts
+
+
+# ── desktop, 2026-11-14: «ponme música de madonna» found a PODCAST called «Madonna», `needs_app`, and nothing sounded ──
+
+MADONNA_SHOW = {"id": "shm", "uri": "spotify:show:shm", "name": "Madonna", "publisher": "Pop Talks",
+                "total_episodes": 12, "images": []}
+MADONNA_SONGS = [{"id": "m1", "uri": "spotify:track:m1", "name": "La Isla Bonita", "artists": [{"name": "Madonna"}]},
+                 {"id": "m2", "uri": "spotify:track:m2", "name": "Like a Prayer", "artists": [{"name": "Madonna"}]}]
+
+
+@pytest.mark.parametrize("words", ["Madonna", "música de Madonna", "music by Madonna"])
+def test_an_artist_he_names_plays_her_songs_not_a_podcast_called_like_her(world, words):
+    """Disarm: `_fit` without the owner-alone reading → the podcast fits 1.0 against 0.4 and wins → `needs_app`."""
+    calls, answer = world
+    answer["shows"]["items"], answer["playlists"]["items"], answer["albums"]["items"] = [MADONNA_SHOW], [], []
+    answer["tracks"]["items"] = list(MADONNA_SONGS)
+    r = music.control("play", words)
+    assert r.ok and not r.extra.get("named"), r
+    assert calls["looked"] and "Madonna" in calls["looked"][0], "her song sounded on this screen's player"
+
+
+def test_a_namesake_song_still_never_replaces_the_podcast(world):
+    calls, _ = world                          # «Sueña» (Luis Miguel) shares no word with «Sueñacuentos»: fit 0
+    r = music.control("play", "Sueñacuentos")
+    assert not r.ok and r.reason == "needs_app" and calls["looked"] == []
+
+
+@pytest.mark.parametrize("words", ["Sueñacuentos", "Sueñacuentos podcast"])
+def test_a_provider_he_names_takes_his_words_over_a_whole_of_another_provider(world, words):
+    """«ponlo por YouTube» / «put it on YouTube»: the Spotify podcast his words name cannot sound here; the provider he
+    NAMED is obeyed with his words as he said them — never the namesake song the catalogue would identify them as.
+    Disarm: `elsewhere` → False in `_play` → `needs_app` again."""
+    calls, _ = world
+    r = music.control("play", words, prefer="youtube")
+    assert r.ok and r.reason != "needs_app" and calls["looked"] == [words], r
