@@ -26,7 +26,7 @@ async def open_the_turn(self, motor) -> dict | None:
     except Exception:
         emit = lambda *a, **k: None
 
-    text = motor._last_user_text(self._chat_ctx)
+    text = __import__("voice.mic_input", fromlist=["x"]).undouble(motor._last_user_text(self._chat_ctx))   # «X X» = X
     if not text:
         emit("brain", "⚠️ Nucleo triggered but no user text in context")
         return None
