@@ -34,7 +34,7 @@ function dayLabel(iso) {
 export function HomeToday() {
   const el = document.createElement("section");
   el.className = "zm-today";
-  let at = 0, ups = [];
+  let at = 0, ups = [], holds = ["greeting"];         // the names of the lines drawn (V2-907: the screen document)
   const row = (cls, main, side, open) => {
     const b = document.createElement("button");
     b.className = "zm-today-row " + cls;
@@ -60,6 +60,7 @@ export function HomeToday() {
       const what = [np.title, np.artist].filter(Boolean).join(" · ") || playing.titleEl.textContent;
       out.push(row("play", what, "♪ " + t("mobile.producing"), () => deck._goTo(deck.order.indexOf(playing.id || ""), 0)));
     }
+    holds = ["greeting", ...(ups.length ? ["next_events"] : []), ...(playing ? ["now_playing"] : [])];
     el.replaceChildren(...out);
   };
   const refresh = (deck) => {
@@ -69,5 +70,5 @@ export function HomeToday() {
     fetch("/widgets/agenda/data", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null))
       .then((d) => { ups = nextUp(d, new Date()); draw(deck); }).catch(() => {});
   };
-  return { el, refresh };
+  return { el, refresh, holds: () => holds };
 }
