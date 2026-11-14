@@ -18,6 +18,7 @@ import * as screens from "./screens.js?v=1";
 import * as asks from "../core/asks.js?v=1";
 import { wirePresence, presenceEvent, onStreamOpen, onStreamError, syncRunState } from "./presence.js?v=1";
 import { snapshotAll } from "../widgets/state-reporter.js?v=1";
+import { orderAck, reportAll } from "../widgets/screen-order.js?v=1";
 
 
 // V2-464 — SHOWCASE mode: ?showcase=1 in the URL. The use-case recorder (recorder.py) uses it to keep the chat
@@ -105,7 +106,7 @@ export function openSSE(desktop, { wake = false } = {}) {
     // V2-825 F5 — and the screen adopts the engine's list of cards: an orphan the engine cannot name goes.
     sweepOnReopen(_opens, () => desktop && desktop.reconcile && desktop.reconcile());
     sweepOnReopen(_opens, () => syncRunState(store));   // the ⏻ it slept through: the server's, not the last it heard
-    sweepOnReopen(_opens, snapshotAll);                 // V2-884: every card says again what it shows (a restart forgot)
+    sweepOnReopen(_opens, () => { snapshotAll(); reportAll(); });   // V2-884/V2-907: cards and screens say it all again
   };
   es.onmessage = ev => {
     let d; try { d = JSON.parse(ev.data); } catch (_) { return; }
@@ -193,14 +194,14 @@ export function routeEvent(desktop, d) {
       // it the same way. The missing rule concerns the report, not the event: **a report of what already happened
       // is not an order**, and the sender is precisely the one who has nothing to do with it.
       // V2-807 T-15: the canvas's own report is `user` (his hand) or `client[:cause]` (our client code).
-      const _eco = d.src === "user" || /^client(:|$)/.test(String(d.src || ""));
+      const _eco = d.src === "user" || /^client(:|$)/.test(String(d.src || "")), _ack = orderAck(desktop, d);   // V2-907: the answer
       if (d.label === "show" && d.id && !_eco) {
         // A worker-commissioned card opens WITHOUT taking focus: session 6d19df41, the ghost
         // "Scarborough" errand's `documento` sheet came to the front over the operator's email
         // flow ("why are you open the documents right now? I said open my email"). What the
         // operator is looking at is his; background work opens visibly beside it, never over it.
         const _bg = /^worker:/.test(d.src || "");
-        desktop.show(d.id, { data: d.data, background: _bg, by: "engine" });   // brain shows it (with pushed data, if any)
+        _ack(desktop.show(d.id, { data: d.data, background: _bg, by: "engine" }));   // brain shows it (with pushed data, if any)
         if (d.moved) screensBring(d.id);   // V2-792: «ponlo en el ordenador» — the other screens let it go
         // V2-464 — in showcase, each opening rearranges the grid automatically, so an unattended recording
         // remains aligned without hands. Showcase only: auto-arrangement would move things for a normal operator.
@@ -222,15 +223,15 @@ export function routeEvent(desktop, d) {
         store.setChatTab("chat"); store.setChatOpen(true);
       }
       else if (d.label === "confirm-cancel" && d.id) { desktop.hideConfirm(d.id); store.setWidgetConfirm(null); }   // resolved/cancelled elsewhere (voice/timeout)
-      else if (d.label === "close" && !_eco) d.id ? desktop.close(d.id, { by: "engine" }) : desktop.closeAll({ by: "engine" });
+      else if (d.label === "close" && !_eco) _ack(d.id ? desktop.close(d.id, { by: "engine" }) : desktop.closeAll({ by: "engine" }));
       else if (d.label === "arrange") desktop.arrange && desktop.arrange();       // V2-464: rejilla alineada (showcase/API)
-      else if (d.label === "move" && d.id) desktop.move(d.id, d.where);            // reposition on the canvas (left/right/…)
-      else if (d.label === "resize" && d.id) desktop.resize(d.id, d.data);          // resize a widget (HERMES-ONLY)
+      else if (d.label === "move" && d.id) _ack(desktop.move(d.id, d.where));            // reposition on the canvas (left/right/…)
+      else if (d.label === "resize" && d.id) _ack(desktop.resize(d.id, d.data));         // resize a widget (HERMES-ONLY)
       // V2-759: `on` carries the DIRECTION (true enters, false leaves, absent = the old toggle). Leaving needs no
       // id — «sal de pantalla completa» names no card, and the desktop knows which one covers the screen.
       else if (d.label === "fullscreen" && (d.id || d.on === false))
-        desktop.fullscreen(d.id || "", d.on === true ? true : (d.on === false ? false : undefined));
-      else if (d.label === "minimize" && d.id) desktop.shrink(d.id);                // V2-635: one honest step down
+        _ack(desktop.fullscreen(d.id || "", d.on === true ? true : (d.on === false ? false : undefined)));
+      else if (d.label === "minimize" && d.id) _ack(desktop.shrink(d.id));               // V2-635: one honest step down
       // A widget's STORED data changed (its own ctx.action, or Hermes via [[widget.data]]) — widgets/store.py is
       // the single choke point that emits this. No polling anywhere: re-fetch + re-render ONLY if that widget
       // happens to be open right now; otherwise there's nothing on screen to update.
