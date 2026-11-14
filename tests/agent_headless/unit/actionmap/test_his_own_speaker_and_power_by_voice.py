@@ -215,3 +215,23 @@ def test_the_first_run_greeting_offers_a_new_name_and_a_voice_with_the_name_slot
         assert "masculina o femenina" not in introduction.block(greeting_prompt(langs.spec("es"))), "told once"
     finally:
         attention._state["assistant_name"] = before
+
+
+# ── a chooser opened is said as one, never «Done.» ─────────────────────────────────────────────────────────
+# Desktop, 2026-11-14: «quiero una voz nativa de España» → `agent_controls voice_settings`, a silent model, and the
+# turn's ack said «Hecho.» over a panel that only waits for HIM to pick. The act says its own sentence.
+# Disarm: `self_controls.said` → "" → the ack is «Hecho.»/«Done.» again.
+@pytest.mark.parametrize("lang,phrase,act", [
+    ("es", "porque hablas como un americano, quiero una voz nativa de España", "voice_settings"),
+    ("en", "you sound American, I want a native British voice", "voice_settings"),
+    ("es", "¿qué voces tienes?", "voice_list"),
+    ("en", "which voices do you have?", "voice_list"),
+])
+def test_a_chooser_opened_is_said_as_one_never_done(johnny, lang, phrase, act):
+    from i18n import langs
+    case = _case(f"ctl-said-{lang}-{act}", lang, phrase, f"controls:{act}",
+                 model={"say": "", "tools": [{"name": "agent_controls", "args": {"act": act}}]})
+    out = H.run_case(case)
+    line = langs.words(f"controls_said.{act}", code=lang)
+    assert line and line in out.reply, (out.reply, line)
+    assert langs.words("data_ack", code=lang) not in out.reply

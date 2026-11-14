@@ -118,7 +118,7 @@ def _open(payload: dict) -> dict | None:
     if n is None and not name:
         return None
     from .actions.open import _NOT_FOUND, resolve_ref    # the action's own resolver: never refuse what it opens
-    hit = resolve_ref(_d.load_db(), n, name)
+    hit = resolve_ref(_d.load_db(), n, name, _d._PLAT_ALIASES.get(str(payload.get("platform") or "").strip().lower(), ""))
     if hit is None:
         return {"ok": False, "error": _NOT_FOUND}
     return {"result": {"opened": hit.get("name"), "platform": hit.get("platform")}}
