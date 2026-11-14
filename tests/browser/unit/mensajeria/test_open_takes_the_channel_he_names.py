@@ -61,3 +61,20 @@ def test_open_declares_its_end_state_over_what_the_card_reports():
     assert {"widget": "mensajeria", "field": "report.thread_open", "has": "Anna"} in clauses
     assert {"widget": "mensajeria", "field": "report.thread_open", "has": "whatsapp"} in clauses
     assert spec.render("mensajeria", "open", {"n": 2}) is None, "by number: nothing named to check, unverifiable"
+
+
+def test_the_model_is_shown_the_channel_field_with_the_apps_own_channels():
+    """Sandbox 2026-11-14, ES and EN: «abre el whatsapp de Anna» / «open Anna's whatsapp» → `open {name: Anna}` → her
+    mail. The field existed, but an on-screen card shows the model only the keys of acts that declare `how`, and `open`
+    declared none — the model never saw `platform`. Now `open` declares it, and its channels are the app's own
+    (`data._PLATFORMS`), never a list written twice. Disarm: drop `how` from `open` → `platform` vanishes → red."""
+    import json
+    from pathlib import Path
+    from widgets import brief
+    from widgets.mensajeria import data
+    man = json.loads((Path(data.__file__).parent / "manifest.json").read_text(encoding="utf-8"))
+    acts = man["actions"]
+    line = brief._payload_keys(acts)
+    assert "open: name·n·platform" in line, line
+    said = {c.strip() for c in acts["open"]["payload"]["platform"].split("—")[0].split("|")}
+    assert said == set(data._PLATFORMS), (said, data._PLATFORMS)
