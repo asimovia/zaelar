@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "a2a",
+  "label": "A2A · your agent reaches your friends' agents",
+  "description": "The a2a/ library (V2-866): identity and envelope, relationships, generic grants, handlers, transports, jobs, observability and the two-plató run",
+  "domain_ids": ["6"],
+  "requirements": ["python"],
+  "steps": [
+    {"id": "6.A1", "label": "Envelope: signed, E2E sealed, replay/skew/size refused", "kind": "unit"},
+    {"id": "6.A2", "label": "Relationships: the handshake state machine survives a restart", "kind": "unit"},
+    {"id": "6.A3", "label": "Grants: items x audience x verbs x expiry, default deny", "kind": "unit"},
+    {"id": "6.A4", "label": "Inbound gate: strangers dropped unread, queries answered by grant", "kind": "unit"},
+    {"id": "6.A5", "label": "Discovery: mutual match proposes, only a yes sends", "kind": "unit"},
+    {"id": "6.A6", "label": "HTTP clients against the MeshKore contracts", "kind": "unit"},
+    {"id": "6.A7", "label": "Cadence, the power switch and the wake gate", "kind": "unit"},
+    {"id": "6.A8", "label": "Observability: one table, no leaks", "kind": "unit"},
+    {"id": "6.A9", "label": "Two-plato run: discover to revoke, zero model calls", "kind": "e2e"}
+  ]
+}
