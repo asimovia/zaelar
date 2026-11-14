@@ -251,7 +251,7 @@ def _names_musica_pause(monkeypatch):
     async def _pause(text, key):
         return "musica:pause", {"used": True, "confidence": 0.52}
     monkeypatch.setattr(brief, "verdict_before_the_turn", _pause)
-    monkeypatch.setattr(hard_turn, "pause_what_sounds", lambda text, emit: _nothing())
+    monkeypatch.setattr(hard_turn, "stop_what_runs", lambda text, emit: _nothing())
 
 
 async def _nothing():
@@ -311,7 +311,7 @@ def test_disarmed_without_the_cut_the_stop_goes_to_the_app_act_again(_names_musi
 
 # ── A3 · a stop pauses whatever is SOUNDING ────────────────────────────────────────────────────────────────────────
 OWN_PLAYER = {"id": "mi_radio", "actions": {"pause": {}},
-              "state": {"report": {"playing": {"type": "bool"}}}}
+              "state": {"report": {"playing": {"type": "bool", "stop": {"act": "pause", "when": True}}}}}
 
 
 @pytest.fixture
@@ -342,7 +342,7 @@ def test_a_stop_pauses_every_app_that_reports_it_is_playing(_sounding, said):
     rest, events = _stop(said)
     assert rest is None
     assert sorted(_sounding) == [("mi_radio", "pause"), ("youtube", "pause")]
-    assert any(e[1] == "⏸ stop: paused what was sounding" for e in events)
+    assert any(e[1] == "⏸ stop: stopped what was running" for e in events)
 
 
 def test_a_stop_about_an_errand_pauses_nothing(_sounding, monkeypatch):
@@ -352,6 +352,124 @@ def test_a_stop_about_an_errand_pauses_nothing(_sounding, monkeypatch):
 
 def test_disarmed_without_the_pause_the_video_plays_on(_sounding, monkeypatch):
     """RED proof: the lane no longer pauses what sounds → «para todo» leaves the video playing, as in failure 1."""
-    monkeypatch.setattr(hard_turn, "pause_what_sounds", lambda text, emit: _nothing())
+    monkeypatch.setattr(hard_turn, "stop_what_runs", lambda text, emit: _nothing())
     _stop("para todo")
     assert _sounding == []
+
+
+# ── every app that DECLARES a running state is stopped — parametrized over the catalogue, so a new one is covered ───
+def _declared_stops():
+    from widgets import runtime, state_decl
+    return [(m["id"], f, st) for m in runtime.catalog()
+            for f, spec in state_decl.report_fields(m.get("state") or {}).items() if (st := state_decl.stop_of(spec))]
+
+
+def test_the_players_declare_what_a_stop_ends():
+    assert {a for a, _f, _s in _declared_stops()} >= {"youtube", "musica"}
+
+
+@pytest.mark.parametrize("app,field,stop", _declared_stops(), ids=lambda v: v if isinstance(v, str) else "")
+def test_a_stop_ends_every_app_running_its_declared_state(monkeypatch, app, field, stop):
+    from widgets import server_api, state_render
+    act, when = stop
+    monkeypatch.setattr(state_render, "read", lambda a, *x, **k: {"declared": True, "surfaces": [
+        {"instance": a, "dev": "desktop", "fields": {field: when}}] if a == app else []})
+    done: list = []
+
+    async def _action(wid, action, payload):
+        done.append((wid, action))
+        return {"ok": True}
+    monkeypatch.setattr(server_api, "brain_action", _action)
+    events, emit = _collect()
+    assert asyncio.run(hard_turn.stop_what_runs("para todo", emit)) == [app]
+    assert done == [(app, act)]
+
+
+@pytest.mark.parametrize("stop", [{"act": "no_such_act", "when": True}, {"act": "pause", "when": "yes"}, {"when": True}])
+def test_a_stop_that_names_no_act_of_the_app_or_a_value_of_another_type_is_refused(stop):
+    from widgets import state_decl
+    man = {"id": "x", "actions": {"pause": {}},
+           "state": {"order": {"p": "p"}, "report": {"playing": {"type": "bool", "follows": "p", "stop": stop}}}}
+    assert "stop is" in (state_decl.problem(man) or "")
+    man["state"]["report"]["playing"]["stop"] = {"act": "pause", "when": True}
+    assert state_decl.problem(man) is None
+
+
+# ── a turn never reads another turn's verdict — over EVERY store that keeps one by trace ───────────────────────────
+def _stores():
+    from nucleo.acts import canvas_turn
+    from nucleo.flash import capability_gap
+    from nucleo.turn import brief_turn
+    return {
+        "canvas_turn": (lambda t: canvas_turn._reads.setdefault(t, {}).update(canvas=("neither", 0.94)),
+                        lambda t: canvas_turn._reads.get(t)),
+        "brief_turn": (lambda t: brief_turn._BY_TRACE.__setitem__(t, {"judged": "earlier line"}),
+                       lambda t: brief_turn._BY_TRACE.get(t)),
+        "capability_gap": (lambda t: capability_gap.remember({"judged": "earlier line"}, t),
+                           lambda t: capability_gap.brief_of(t)),
+    }
+
+
+def test_every_by_trace_verdict_store_is_turn_scoped():
+    stores = _stores()
+    assert len(trace.TURN_SCOPED) >= len(stores)
+
+
+@pytest.mark.parametrize("store", ["canvas_turn", "brief_turn", "capability_gap"])
+def test_a_new_turn_on_a_used_trace_starts_with_none_of_its_verdicts(store):
+    write, read = _stores()[store]
+    tid = trace.begin("búscame vídeos del apolo 11", origin="turno")
+    write(tid)
+    assert read(tid)
+    trace.new_turn_on(tid)                                  # «cierra todo» adopts that trace
+    assert not read(tid), f"{store} kept an earlier turn's verdict"
+
+
+def test_the_turn_admission_starts_its_trace_fresh_and_a_prefired_brief_joins_it(monkeypatch):
+    from nucleo.flash import capability_gap
+    from nucleo.turn import brief, brief_turn
+    tid = trace.begin("cierra todo", origin="turno")
+    _stores()["canvas_turn"][0](tid)
+    pre = {"judged": "cierra todo"}
+    monkeypatch.setattr(brief_turn, "prefired", lambda text: pre)
+    trace.new_turn_on(tid)
+    got = brief.ask_for_turn("cierra todo", turn_id="t-2")
+    assert got is pre and pre["turn_id"] == "t-2"
+    assert brief_turn.of_this_turn() is pre and capability_gap.brief_of(tid) is pre
+    assert not _stores()["canvas_turn"][1](tid)
+
+
+def test_disarmed_without_the_registry_a_stale_verdict_survives_the_new_turn(monkeypatch):
+    """RED proof: no store registered → the earlier line's `canvas=neither 0.94` is still there for the new turn."""
+    monkeypatch.setattr(trace, "TURN_SCOPED", [])
+    write, read = _stores()["canvas_turn"]
+    tid = trace.begin("x", origin="turno")
+    write(tid)
+    trace.new_turn_on(tid)
+    assert read(tid)
+
+
+class _Asked(Exception):
+    pass
+
+
+def test_the_admission_door_starts_its_trace_fresh_before_the_brief(monkeypatch):
+    """The wiring: `admit_the_turn` forgets the trace's verdicts BEFORE it fires (or reuses) the turn's brief."""
+    from nucleo.input import stt
+    from nucleo.turn import brief, pipeline_admit
+    monkeypatch.setattr(stt, "whole_turn", lambda brain, text: text)
+    tid = trace.begin("búscame vídeos del apolo 11", origin="turno")
+    write, read = _stores()["canvas_turn"]
+    write(tid)
+    seen = {}
+
+    def _ask(text, **k):
+        seen["stale"] = read(tid)
+        raise _Asked
+    monkeypatch.setattr(brief, "ask_for_turn", _ask)
+    motor = SimpleNamespace(_show_target=SimpleNamespace(_running_goals=lambda: []))
+    with pytest.raises(_Asked):
+        asyncio.run(pipeline_admit.admit_the_turn(motor=motor, attention=attention, emit=lambda *a, **k: None,
+                                                  brain=SimpleNamespace(_last_reply="", _acc_gen=0),
+                                                  first_turn=False, text="cierra todo"))
+    assert not seen["stale"]

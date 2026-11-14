@@ -126,6 +126,7 @@ def missing(brief) -> bool:
 _LOCK = threading.Lock()
 _BY_TRACE: dict[str, tuple[float, object]] = {}
 _MAX_REMEMBERED = 32
+__import__("voice.trace", fromlist=["x"]).turn_scoped(lambda tid: _BY_TRACE.pop(tid, None))   # one turn's verdict
 
 
 def remember(handle, trace: str = "") -> None:

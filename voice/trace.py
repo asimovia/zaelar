@@ -190,6 +190,25 @@ def his_turn_at(tid) -> float:
     return at if origin in ("turno", "ui") else 0.0
 
 
+#: The stores that keep ONE turn's verdicts by trace (the brief's handle, its reads, its capability verdict) register how
+#: to forget a trace; a turn starts on its trace with none of them (`new_turn_on`, at admission). A trace an earlier
+#: turn used — a spoken chain, its grace, a fragment — is then never read with that turn's verdicts (audit 2026-11-14,
+#: failure 2: «cierra todo» judged by an earlier line's `canvas=neither 0.94`).
+TURN_SCOPED: list = []
+
+
+def turn_scoped(forget):
+    """Register `forget(tid)` of a by-trace verdict store (decorator-friendly: returns it)."""
+    TURN_SCOPED.append(forget)
+    return forget
+
+
+def new_turn_on(tid) -> None:
+    """A turn begins on `tid`: every turn-scoped store forgets what an earlier turn left under it."""
+    for forget in list(TURN_SCOPED):
+        forget(str(tid or ""))
+
+
 def first_his_turn_since(at: float) -> str:
     """The first stimulus HE originated that began at or after `at` ("" when none has yet)."""
     born = [(t, tid) for tid, (origin, t) in list(_BORN.items()) if origin in ("turno", "ui") and t >= at]

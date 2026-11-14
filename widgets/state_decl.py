@@ -139,6 +139,14 @@ def order_value(data, path: str):
     return cur
 
 
+def stop_of(spec) -> tuple[str, object] | None:
+    """`(act, when)` when a reported field declares what his STOP ends (`"stop": {"act": "pause", "when": true}`): the
+    field at `when` means it runs, `act` (one of the app's declared actions) ends it. Read by the stop lane
+    (`nucleo/flash/hard_turn`) for every app, so an app that declares it is stopped with no code of ours."""
+    stop = spec.get("stop") if isinstance(spec, dict) else None
+    return (str(stop["act"]), stop.get("when")) if isinstance(stop, dict) and stop.get("act") else None
+
+
 def problem(man: dict) -> str | None:
     """Why a manifest's `state` block is wrong or missing, or None. REQUIRED since V2-884 C8 step 6: every app says what
     its face shows, or that nothing moves it — a missing block can no longer mean «not migrated yet»."""
@@ -173,6 +181,9 @@ def problem(man: dict) -> str | None:
             return f"state.report.{name}: adopt follows ONE order key"
         if isinstance(spec, dict) and "by" in spec and (spec["by"] != "host" or spec.get("adopt") or spec.get("follows")):
             return f"state.report.{name}: `by` can only be \"host\" (the host's own facts: never adopted, following no order)"
+        if isinstance(spec, dict) and "stop" in spec and (not (st_ := stop_of(spec)) or st_[0] not in (man.get("actions") or {})
+                                                          or not coerce(spec, st_[1])[0]):
+            return f"state.report.{name}: stop is {{act: one of its actions, when: a value of its type}}"
         if isinstance(spec, dict) and "rest" in spec and not coerce(spec, spec["rest"])[0]:
             return f"state.report.{name}: rest is not a value of its type"
         if isinstance(spec, dict) and spec.get("adopt"):

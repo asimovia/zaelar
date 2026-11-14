@@ -118,41 +118,42 @@ def _over_our_speech() -> bool:
     return proactive.turn_cut_our_speech()
 
 
-def _sounding() -> list[tuple[str, str]]:
-    """[(app, instance)] of every app that DECLARES a `pause` act and REPORTS `playing` on a screen that counts now
-    (V2-884, `widgets/state_render.read`) — read from the manifests, so a user's own player is paused too."""
+def _running() -> list[tuple[str, str]]:
+    """[(instance, act)] of every field an app REPORTS at the value its manifest declares as running (`stop`, V2-884
+    state), on a screen that counts now — read from every manifest, so an app that declares it is stopped with no code
+    of ours (a player sounding, a user's own radio)."""
     from widgets import runtime, state_decl, state_render
     out = []
     for man in runtime.catalog():
         app = str(man.get("id") or "")
-        if not app or "pause" not in (man.get("actions") or {}) \
-                or "playing" not in state_decl.report_fields(man.get("state") or {}):
-            continue
-        for s in state_render.read(app)["surfaces"]:
-            if s["fields"].get("playing") is True and (app, s["instance"]) not in out:
-                out.append((app, s["instance"]))
+        stops = {f: st for f, spec in state_decl.report_fields(man.get("state") or {}).items()
+                 if (st := state_decl.stop_of(spec))}
+        for s in state_render.read(app)["surfaces"] if app and stops else []:
+            for f, (act, when) in stops.items():
+                if f in s["fields"] and s["fields"][f] == when and (s["instance"], act) not in out:
+                    out.append((s["instance"], act))
     return out
 
 
-async def pause_what_sounds(text: str, emit) -> list[str]:
-    """A stop pauses whatever SOUNDS, through each app's own `pause` (audit 2026-11-14, failure 1: «para todo» over a
-    YouTube video did nothing — this lane knew an errand or Spotify only). Returns the instances paused."""
+async def stop_what_runs(text: str, emit) -> list[str]:
+    """A stop ends whatever RUNS, through each app's own declared act (audit 2026-11-14, failure 1: «para todo» over a
+    YouTube video did nothing — this lane knew an errand or Spotify only). Returns the instances it stopped."""
     try:
-        sounding = _sounding()
-    except Exception as e:                     # noqa: BLE001 — an unreadable state pauses nothing, said
+        running = _running()
+    except Exception as e:                     # noqa: BLE001 — an unreadable state stops nothing, said
         emit("brain", "⚠️ stop: app state unreadable", text=f"{type(e).__name__}: {e}"[:160], role="system")
         return []
     from widgets import server_api
-    paused = []
-    for app, inst in sounding:
-        got = await server_api.brain_action(inst, "pause", {})
+    stopped = []
+    for inst, act in running:
+        got = await server_api.brain_action(inst, act, {})
         if isinstance(got, dict) and not got.get("error"):
-            paused.append(inst)
-    if sounding:
-        emit("brain", "⏸ stop: paused what was sounding", text=",".join(paused) or text[:80], role="system",
-             extra={"cat": "flash", "reason": "hard_interrupt_pause", "sounding": [i for _a, i in sounding],
-                    "paused": paused})
-    return paused
+            stopped.append(inst)
+    if running:
+        emit("brain", "⏸ stop: stopped what was running", text=",".join(stopped) or text[:80], role="system",
+             extra={"cat": "flash", "reason": "hard_interrupt_stop", "running": [f"{i}:{a}" for i, a in running],
+                    "stopped": stopped})
+    return stopped
 
 
 async def handle(text: str, hard: str, emit, brain=None) -> str | None:
@@ -190,7 +191,7 @@ async def handle(text: str, hard: str, emit, brain=None) -> str | None:
                          role="system", extra={"reason": "hard_interrupt"})
             except Exception:                  # noqa: BLE001
                 pass
-            await pause_what_sounds(text, emit)   # …and every app that reports it is playing (V2-884)
+            await stop_what_runs(text, emit)   # …and every app that reports a declared `stop` (V2-884)
     if worker_stop:
         return text                            # the turn runs, untouched — the model owns this one
 

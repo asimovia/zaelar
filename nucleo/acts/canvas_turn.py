@@ -29,6 +29,13 @@ _reads: dict[str, dict] = {}
 _READS_KEPT = 64
 
 
+def _forget_reads(tid: str) -> None:
+    _reads.pop(tid, None)
+
+
+__import__("voice.trace", fromlist=["x"]).turn_scoped(_forget_reads)   # a turn never reads another turn's verdict
+
+
 def _trace_of(ex: dict) -> str:
     """The event's trace: the caller's own, else the stimulus in flight (the observer stamps the same one)."""
     if ex.get("trace"):

@@ -20,6 +20,8 @@ async def admit_the_turn(*, motor, attention, brain, emit, first_turn, text) -> 
         from nucleo.turn import turn_marks
         from voice import trace as _trace
         turn_marks.cut(_trace.current(), _judged, text)   # V2-844: an errand named by the tail is about the whole
+    from voice import trace as _trace_nt
+    _trace_nt.new_turn_on(_trace_nt.current())   # the verdicts kept by trace are this turn's from here on
     _brief = canvas_h = _turn_brief.ask_for_turn(
         _judged, running_goals=motor._show_target._running_goals(),
         last_reply=getattr(brain, "_last_reply", "") or "",
