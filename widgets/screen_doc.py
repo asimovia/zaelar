@@ -10,7 +10,9 @@ joined at render time by `(app, instance, dev)`.
     `v` (it moves when the stored content differs). A malformed document is refused whole, never stored half.
   · THE READER (`read`, `open_ids`, `front`, `vis`, `screens_of`) — validity is judged when READING: a document counts
     only while its screen is open (`voice.screens.is_open`). No document is UNKNOWN (`None`), never an empty screen:
-    every caller must tell «nothing is open» from «I don't know».
+    every caller must tell «nothing is open» from «I don't know». A host still bringing its saved apps back (a reload's
+    restore) reports `{layout, unknown: true}`: its new mount is registered and its screen reads UNKNOWN until the
+    restore settles, never as the empty screen it shows for that instant.
   · `closed` — the apps a report took off the screen, each with when and who, kept `CLOSED_S`.
 
 Process memory: a restart empties it and every screen is unknown until its mount's first report.
@@ -46,6 +48,7 @@ class Doc:
     panel: str = ""
     open: tuple = ()
     closed: tuple = ()
+    unknown: bool = False
 
 
 _LOCK = threading.Lock()
@@ -65,6 +68,8 @@ def _shape(doc) -> tuple[dict | None, str]:
     layout = doc.get("layout")
     if layout not in LAYOUTS:
         return None, "layout"
+    if doc.get("unknown") is True:          # the host does not know yet what it shows (its restore is running)
+        return {"layout": layout, "front": "", "home": {}, "panel": "", "open": (), "unknown": True}, ""
     rows = doc.get("open")
     if not isinstance(rows, list) or len(rows) > MAX_OPEN:
         return None, "open"
@@ -94,7 +99,7 @@ def _shape(doc) -> tuple[dict | None, str]:
     return {"layout": layout, "front": fronts[0] if fronts else "",
             "home": {"shown": home.get("shown") is True,
                      "holds": [h for h in (_clean_id(x) for x in holds[:MAX_HOLDS]) if h]},
-            "panel": _clean_id(doc.get("panel")), "open": tuple(open_)}, ""
+            "panel": _clean_id(doc.get("panel")), "open": tuple(open_), "unknown": False}, ""
 
 
 def write(dev, mount, n, doc, *, by: str = "") -> tuple[bool, str]:
@@ -119,7 +124,8 @@ def write(dev, mount, n, doc, *, by: str = "") -> tuple[bool, str]:
         before = {r["id"] for r in cur.open} if cur else set()
         after = {r["id"] for r in facts["open"]}
         closed = [c for c in (cur.closed if cur else ()) if now - c["at"] < CLOSED_S and c["id"] not in after]
-        closed += [{"id": cid, "at": now, "by": str(by or "")[:20]} for cid in sorted(before - after)]
+        if not facts["unknown"]:             # an unknown report closes nothing: it does not say what left
+            closed += [{"id": cid, "at": now, "by": str(by or "")[:20]} for cid in sorted(before - after)]
         same = bool(cur) and all(getattr(cur, k) == v for k, v in facts.items())
         v = (cur.v if cur else 0) + (0 if same else 1)
         _DOCS[dev] = Doc(dev=dev, mount=mount, n=n, v=v, at=now, closed=tuple(closed), **facts)
@@ -139,7 +145,7 @@ def version(dev) -> int:
 
 def _valid(d: Doc | None) -> Doc | None:
     from voice import screens
-    if d is None or not screens.is_open(d.dev):
+    if d is None or d.unknown or not screens.is_open(d.dev):
         return None
     now = time.time()
     closed = tuple(c for c in d.closed if now - c["at"] < CLOSED_S)

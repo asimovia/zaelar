@@ -8,7 +8,7 @@
 // The deck reports through the shared `widgets/screen-reporter.js` on every `_reportOpen` (a show, close, page,
 // home); `services/sse.js` answers each order through `widgets/screen-order.js`, as on the desktop.
 // ============================================================================
-import { screenReporter } from "../../../app/widgets/screen-reporter.js?v=1";
+import { screenReporter, watchRestore } from "../../../app/widgets/screen-reporter.js?v=1";
 import { panelOf, pagePanels, watchPanel } from "../../../app/widgets/screen-panel.js?v=1";
 
 // The page open over the deck (V2-907 T9). `pages.js` is read once the shell has loaded: it imports the apps page,
@@ -36,5 +36,6 @@ export function deckScreen(deck, opts = {}) {
   import("./pages.js?v=1").then((m) => { PANELS = pagePanels(m.PAGES); watchPanel(PANELS, () => rep.changed()); rep.changed(); })
     .catch(() => {});
   const changed = () => { const by = Object.values(deck._by || {}); rep.changed(by.includes("hand") ? "hand" : by[0] || ""); };
+  adapter.restoring = watchRestore(deck, () => rep.changed("restore"));   // a reload: unknown until restored
   return { adapter, rep, changed };
 }
