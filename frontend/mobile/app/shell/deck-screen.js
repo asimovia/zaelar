@@ -9,6 +9,11 @@
 // home); `services/sse.js` answers each order through `widgets/screen-order.js`, as on the desktop.
 // ============================================================================
 import { screenReporter } from "../../../app/widgets/screen-reporter.js?v=1";
+import { panelOf, pagePanels, watchPanel } from "../../../app/widgets/screen-panel.js?v=1";
+
+// The page open over the deck (V2-907 T9). `pages.js` is read once the shell has loaded: it imports the apps page,
+// which reaches this module through the deck, so a static import would read it mid-evaluation.
+let PANELS = [];
 
 export function deckAdapter(deck) {
   const front = () => (deck.at >= 0 ? deck.order[deck.at] || "" : "");
@@ -20,7 +25,7 @@ export function deckAdapter(deck) {
     layer: (id) => (id === front() ? 0 : rest().indexOf(id) + (front() ? 1 : 0)),
     home: () => ({ shown: deck.at === -1,
                    holds: [...((deck._today && deck._today.holds && deck._today.holds()) || []), ...(deck.order.length ? ["apps"] : [])] }),
-    panel: () => "",
+    panel: () => panelOf(PANELS),
   };
 }
 
@@ -28,6 +33,8 @@ export function deckAdapter(deck) {
 export function deckScreen(deck, opts = {}) {
   const adapter = deckAdapter(deck);
   const rep = screenReporter(adapter, { device: opts.device || (() => import("../../../app/services/api.js?v=2").then((m) => m.DEVICE)), ...opts });
+  import("./pages.js?v=1").then((m) => { PANELS = pagePanels(m.PAGES); watchPanel(PANELS, () => rep.changed()); rep.changed(); })
+    .catch(() => {});
   const changed = () => { const by = Object.values(deck._by || {}); rep.changed(by.includes("hand") ? "hand" : by[0] || ""); };
   return { adapter, rep, changed };
 }
