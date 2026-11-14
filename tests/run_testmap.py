@@ -2563,6 +2563,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_open_it_opens_what_the_archive_found.py"]},
         {"id": "4.535", "title": "Every action of every card says how its «done» is checked — a `done_when` or an explicit `instant` with its reason; the undeclared ones found 2026-11-14 are a list that only shrinks",
             "ch": UNIT, "paths": ["tests/browser/unit/widgets/test_every_action_says_how_its_done_is_checked.py"]},
+        {"id": "4.536", "title": "One document per screen (V2-907 T1, `widgets/screen_doc.py`): each `dev` keeps its own host facts (layout, front, open with layer/vis, home, panel); `n` going back is refused, a new mount replaces and the old never writes again, `v` moves with the content, `closed` kept 60 s; a screen never reported or no longer open is UNKNOWN, never empty; a malformed document is refused whole; disarmed (no `n` check) → red",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/screen/test_one_document_per_screen.py"]},
         {"id": "4.534", "title": "`mensajeria:open` takes the channel he NAMES (`platform` bounds the name's resolution; none named: "
                                  "what is on screen first still wins) and declares its end state over the thread the card reports open",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_open_takes_the_channel_he_names.py"]},
