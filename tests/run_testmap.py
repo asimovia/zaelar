@@ -5238,6 +5238,13 @@ DOMAINS: list[dict] = [
                                 "0.6) completes nothing, a 0.55 correction relaunches nothing (2026-11-12)",
             "ch": UNIT,
             "paths": ["tests/voice/unit/test_the_verdict_completes_the_model.py"]},
+        {"id": "2.1748", "title": "A model call that fills none of its act's slots is not the valid call that runs over a disagreeing verdict "
+                                 "(demo sandbox b140 F2, 2026-11-14, EN): `documento:show {\"goto\": …}` over a sure `documento:goto` — a key "
+                                 "naming an action of the same card never folds into another action's text field (parametrized over every "
+                                 "declared text field × sibling action), and the folded call that fills no slot yields to the verdict, which "
+                                 "goes to the section he named; disarmed either half, the document is replaced",
+            "ch": UNIT,
+            "paths": ["tests/voice/unit/test_a_call_that_fills_no_slot_is_not_a_valid_call.py"]},
         {"id": "2.72", "title": "«Páralo, y vuelve al inicio» ES una orden sobre el reproductor — la "
                                 "gramática de cerrar propone, el veredicto de pantalla decide, y el "
                                 "descriptor que lo hace enrutable llega ENTERO a la pregunta",
