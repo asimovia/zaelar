@@ -97,13 +97,23 @@ async def say_receipt(emit, brain=None) -> str:
         return line
 
 
-async def names_an_act_on_screen(text: str, emit) -> bool:
+async def names_an_act_on_screen(text: str, emit, *, stopped=()) -> bool:
     """A stop that NAMES an activity on a card («Stop showing me the Social tab») is an order about that card: the
-    brief's `screen_action` verdict decides it, never the sentence's shape (CRIT-W10)."""
+    brief's `screen_action` verdict decides it, never the sentence's shape (CRIT-W10). Except the act an app DECLARES
+    its stop with (`state.report.<f>.stop`) when the lane just did it or the app's state says nothing runs: that act is
+    served or empty, and the stop ends here (audit 2026-11-14, failure 8: «para» → `musica:pause` 0.52 with no music
+    playing went to the model, which said «Parado.» behind the story it had not stopped)."""
     try:
         from nucleo.turn import brief
         choice, info = await brief.verdict_before_the_turn(text, brief.TARGET_KEY)
         if not (info and info.get("used") and choice and choice != "none"):
+            return False
+        app, _, act = str(choice).partition(":")
+        marks = [m for a, _i, x, m in _states() if a == app and x == act]
+        if marks and (app in stopped or all(m == "off" for m in marks)):
+            emit("brain", "✋ stop: its app act is already served or nothing runs — the stop ends here",
+                 text=f"{choice} ← {text[:120]}", role="system",
+                 extra={"cat": "flash", "reason": "stop_act_served", "verdict": choice})
             return False
         emit("brain", "✋ el stop nombra una acción de una app — sigue el turno", text=f"{choice} ← {text[:120]}",
              role="system", extra={"cat": "flash", "reason": "stop_names_an_act", "verdict": choice})
@@ -113,15 +123,10 @@ async def names_an_act_on_screen(text: str, emit) -> bool:
         return False
 
 
-def _over_our_speech() -> bool:
-    from voice import proactive                # never raises: an unreadable cut is «not over our speech»
-    return proactive.turn_cut_our_speech()
-
-
-def _running() -> list[tuple[str, str]]:
-    """[(instance, act)] of every field an app REPORTS at the value its manifest declares as running (`stop`, V2-884
-    state), on a screen that counts now — read from every manifest, so an app that declares it is stopped with no code
-    of ours (a player sounding, a user's own radio)."""
+def _states() -> list[tuple[str, str, str, str]]:
+    """[(app, instance, act, mark)] of every field an app's manifest declares a stop for (`stop`, V2-884 state), on a
+    screen that counts now — read from every manifest, so an app that declares it is stopped with no code of ours.
+    `mark`: «on» at the declared value, «unsure» when pending or unknown (an order not acked yet), «off» otherwise."""
     from widgets import runtime, state_decl, state_render
     out = []
     for man in runtime.catalog():
@@ -130,28 +135,30 @@ def _running() -> list[tuple[str, str]]:
                  if (st := state_decl.stop_of(spec))}
         for s in state_render.read(app)["surfaces"] if app and stops else []:
             for f, (act, when) in stops.items():
-                if f in s["fields"] and s["fields"][f] == when and (s["instance"], act) not in out:
-                    out.append((s["instance"], act))
+                mark = ("on" if s["fields"].get(f, object()) == when else "off") if f in s["fields"] else "unsure"
+                out.append((app, s["instance"], act, mark))
     return out
 
 
 async def stop_what_runs(text: str, emit) -> list[str]:
-    """A stop ends whatever RUNS, through each app's own declared act (audit 2026-11-14, failure 1: «para todo» over a
-    YouTube video did nothing — this lane knew an errand or Spotify only). Returns the instances it stopped."""
+    """A stop ends whatever RUNS — or may (pending, unknown: the act is idempotent) — through each app's own declared
+    act (audit 2026-11-14, failure 1: «para todo» over a YouTube video did nothing; this lane knew an errand or Spotify
+    only). It pauses a video even when the sentence names another card: pausing is cheap and undone by «play».
+    Returns the APPS it stopped (a refusal is not a stop)."""
     try:
-        running = _running()
+        running = list(dict.fromkeys((a, i, x) for a, i, x, m in _states() if m != "off"))
     except Exception as e:                     # noqa: BLE001 — an unreadable state stops nothing, said
         emit("brain", "⚠️ stop: app state unreadable", text=f"{type(e).__name__}: {e}"[:160], role="system")
         return []
     from widgets import server_api
     stopped = []
-    for inst, act in running:
+    for app, inst, act in running:
         got = await server_api.brain_action(inst, act, {})
-        if isinstance(got, dict) and not got.get("error"):
-            stopped.append(inst)
+        if isinstance(got, dict) and not got.get("error") and got.get("ok") is not False and app not in stopped:
+            stopped.append(app)
     if running:
         emit("brain", "⏸ stop: stopped what was running", text=",".join(stopped) or text[:80], role="system",
-             extra={"cat": "flash", "reason": "hard_interrupt_stop", "running": [f"{i}:{a}" for i, a in running],
+             extra={"cat": "flash", "reason": "hard_interrupt_stop", "running": [f"{i}:{x}" for _a, i, x in running],
                     "stopped": stopped})
     return stopped
 
@@ -176,10 +183,14 @@ async def handle(text: str, hard: str, emit, brain=None) -> str | None:
     # 1 · A short STOP with live workers and words about WORK is not silence — it is «stop the errand». The
     #     turn continues so the model can call `stop_worker` (or the stop verdict decides, post-stream).
     worker_stop = is_worker_stop(text, hard)
+    stopped: list = []
     if hard == "stop":
-        # 2 · MUSIC. Deterministic and off-loop: the live `music.playing`/`music.search` rail says whether
-        #     something is sounding (µs, in RAM). Stopping a WORKER wins; otherwise stop the music.
-        if not worker_stop:
+        # 2 · WHAT RUNS. LiveKit's barge-in cuts ZAELAR's voice, never a player. Stopping a WORKER wins — unless the stop
+        #     is TOTAL («para todo»), which ends the errand AND what runs (audit 2026-11-14, P2-1). The live
+        #     `music.playing`/`music.search` rail says whether Spotify sounds (µs, in RAM); every app that declares a
+        #     `stop` in its state is ended through its own act (`stop_what_runs`).
+        from voice import interrupt_grammar as _grammar
+        if not worker_stop or _grammar.stop_scope(text) == "all":
             try:
                 from nucleo import rails as _rails0
                 if _rails0.get("music.playing") or _rails0.get("music.search"):
@@ -191,7 +202,7 @@ async def handle(text: str, hard: str, emit, brain=None) -> str | None:
                          role="system", extra={"reason": "hard_interrupt"})
             except Exception:                  # noqa: BLE001
                 pass
-            await stop_what_runs(text, emit)   # …and every app that reports a declared `stop` (V2-884)
+            stopped = await stop_what_runs(text, emit)
     if worker_stop:
         return text                            # the turn runs, untouched — the model owns this one
 
@@ -225,9 +236,7 @@ async def handle(text: str, hard: str, emit, brain=None) -> str | None:
     # «Stop showing me the Social tab» — and, with a remainder too, «perfect, that works. now can you stop it?», which
     # kept only «perfect» while the trailer played on (V2-834 T25). The price, declared: every stop with a remainder
     # now waits for the brief's early `screen_action` verdict before it goes on (S1 audit H11).
-    # …unless it CUT OUR SPEECH: then it is about that speech (audit 2026-11-14, failure 8: «para» over a story went to
-    # `musica:pause` 0.52 with nothing playing, and «Parado.» queued behind the story).
-    if hard == "stop" and not _over_our_speech() and await names_an_act_on_screen(text, emit):
+    if hard == "stop" and await names_an_act_on_screen(text, emit, stopped=stopped):
         return text
     if not rest:
         return None                            # 'stop' → our speech was cut (barge-in or the typed door); no reply

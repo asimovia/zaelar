@@ -209,12 +209,6 @@ def new_turn_on(tid) -> None:
         forget(str(tid or ""))
 
 
-def first_his_turn_since(at: float) -> str:
-    """The first stimulus HE originated that began at or after `at` ("" when none has yet)."""
-    born = [(t, tid) for tid, (origin, t) in list(_BORN.items()) if origin in ("turno", "ui") and t >= at]
-    return min(born)[1] if born else ""
-
-
 def his_turn_after(tid) -> bool:
     """Has HE begun a turn since `tid` began? A line owed to `tid` is late once he has moved on (V2-831 audit A3).
     An unknown `tid` (no trace, or one evicted from the bounded record) is never called late: there is nothing to

@@ -166,6 +166,10 @@ def close_scope(text: str) -> str:   # «all» when the close QUANTIFIES the can
     return "all" if _closes_the_whole_canvas(_norm(text), quantified=True) else ""
 
 
+def stop_scope(text: str) -> str:    # «all» when the stop QUANTIFIES («para todo», «stop everything»), "" otherwise
+    return "all" if _quantifies_the_canvas(_norm(text)) else ""
+
+
 def hard_interrupt(text: str) -> str | None:
     """Detects a hard STOP that is ALWAYS executed immediately (bypasses the attention gate):
       - 'close'  → close ALL widgets ("close the widgets / close everything").

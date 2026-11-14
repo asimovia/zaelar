@@ -33,7 +33,6 @@ def _clean(monkeypatch):
     attention.reset()
     done_ops.reset()
     bulk_close.reset()
-    proactive._cut_at[0] = 0.0
     monkeypatch.setattr(proactive, "_bot_probe", None)
     trace.adopt("")
     from memory import api as memory
@@ -41,7 +40,6 @@ def _clean(monkeypatch):
     yield
     attention.reset()
     bulk_close.reset()
-    proactive._cut_at[0] = 0.0
     trace.adopt("")
 
 
@@ -151,30 +149,33 @@ def test_disarmed_a_typed_line_read_as_speech_adopts_the_fragments_trace_again(m
         acc_mod.set_judge(None)
 
 
-# ── A2 · a typed hard interrupt cuts the speech sounding now ───────────────────────────────────────────────────────
+# ── A2 · a typed line barges in like a spoken one (CRIT-V21) ───────────────────────────────────────────────────────
 class _Speech:
-    def __init__(self):
-        self.interrupted = False
-        self.allow_interruptions = True
+    def __init__(self, *, done=False, interruptible=True, boom=False):
+        self.interrupted, self.allow_interruptions, self._done, self._boom = False, interruptible, done, boom
 
     def done(self):
-        return False
+        return self._done
 
     def interrupt(self):
+        if self._boom:
+            raise RuntimeError("speech handle gone")
         self.interrupted = True
 
 
 class _Session:
     """The live AgentSession's slice the typed door uses."""
-    def __init__(self, log):
-        self.current_speech, self.log = _Speech(), log
+    def __init__(self, log, speech=None):
+        self.current_speech, self.log = speech if speech is not None else _Speech(), log
 
     def generate_reply(self, user_input="", **kw):
-        self.log.append(("reply", user_input, self.current_speech.interrupted, kw))
+        self.log.append(("reply", user_input, bool(self.current_speech and self.current_speech.interrupted), kw))
 
 
 class _Remote:
     """The body's RemoteSession: no speech of its own, the voice process cuts it."""
+    CUTS_IN_VOICE_PROCESS = True
+
     def __init__(self, log):
         self.log = log
 
@@ -182,76 +183,106 @@ class _Remote:
         self.log.append(("reply", user_input, kw))
 
 
-def _type(line, session_cls, *, speaking=True):
+@pytest.fixture
+def _not_held(monkeypatch):
+    from nucleo.input import typed as _order
+    monkeypatch.setattr(_order, "must_wait", lambda *a, **k: False)
+
+
+def _type(line, session):
     from voice.engine.pipeline import agent_events
-    proactive.register_bot_probe(lambda: speaking)
+    events = []
+    agent_events.receive_typed(line, _emit=lambda *a, **k: events.append(a[:2]), session=session)
+    return events
+
+
+LINES = ["para", "stop", "cierra todo", "close all", "para el cuento", "stop the story", "cuéntame otro",
+         "tell me another one"]
+
+
+@pytest.mark.parametrize("line", LINES)
+def test_any_typed_line_cuts_the_speech_in_course_then_runs(_not_held, line):
+    """Whatever the line (a stop, a close, an order), whatever the speech's state (generating, paused, sounding)."""
     log: list = []
-    session = session_cls(log)
-    agent_events.receive_typed(line, _emit=lambda *a, **k: None, session=session)
-    return session, log
+    _type(line, _Session(log))
+    assert log == [("reply", line, True, {})], f"{line!r} queued behind our speech"
+    log = []
+    _type(line, _Remote(log))
+    assert log == [("reply", line, {"cut_speech": True})]       # remote: always, the voice process cuts what is there
 
 
-@pytest.mark.parametrize("line", ["para", "para ya", "stop", "Stop it.", "cierra todo", "close all"])
-def test_a_typed_hard_interrupt_cuts_the_speech_before_its_turn_is_queued(monkeypatch, line):
-    from nucleo.input import typed as _order
-    monkeypatch.setattr(_order, "must_wait", lambda *a, **k: False)
-    session, log = _type(line, _Session)
-    assert session.current_speech.interrupted, f"{line!r} queued behind the speech"
-    assert log == [("reply", line, True, {})]                   # cut first, then his turn — never its own reply
-    assert proactive._cut_at[0] > 0
-    _, log = _type(line, _Remote)
-    assert log == [("reply", line, {"cut_speech": True})]       # the body asks the voice process to cut it
+@pytest.mark.parametrize("speech", [None, _Speech(done=True), _Speech(interruptible=False)])
+def test_nothing_in_course_or_an_uninterruptible_speech_is_not_cut(_not_held, speech):
+    log: list = []
+    session = _Session(log, speech)
+    session.current_speech = speech
+    _type("para", session)
+    assert log and log[-1][1] == "para" and not (speech and speech.interrupted)
 
 
-@pytest.mark.parametrize("line,speaking", [("cuéntame más", True), ("tell me more", True), ("para", False),
-                                           ("stop", False)])
-def test_any_other_line_or_a_silent_agent_cuts_nothing(monkeypatch, line, speaking):
-    from nucleo.input import typed as _order
-    monkeypatch.setattr(_order, "must_wait", lambda *a, **k: False)
-    session, log = _type(line, _Session, speaking=speaking)
-    assert not session.current_speech.interrupted and log == [("reply", line, False, {})]
-    assert proactive._cut_at[0] == 0.0
-
-
-def test_disarmed_without_the_door_reading_the_stop_the_typed_stop_queues_again(monkeypatch):
-    """RED proof: the typed door no longer reads the grammar → «para» waits behind the story, as in the session."""
-    from nucleo.input import typed as _order
+def test_a_line_held_behind_his_own_spoken_sentence_cuts_nothing(_not_held):
+    """CRIT-V20's order: the line waited for HIS sentence begun before it; it queues behind it, it does not barge in."""
     from voice.engine.pipeline import agent_events
-    monkeypatch.setattr(_order, "must_wait", lambda *a, **k: False)
-    monkeypatch.setattr(agent_events, "_cuts_our_speech", lambda txt: False)
-    session, log = _type("para", _Session)
-    assert not session.current_speech.interrupted and log == [("reply", "para", False, {})]
+    log: list = []
+    asyncio.run(agent_events._typed_after_voice("y pon música", 0.0, _emit=lambda *a, **k: None, session=_Session(log)))
+    assert log == [("reply", "y pon música", False, {})]
 
 
-def test_the_voice_process_cuts_then_queues_in_one_request(monkeypatch):
-    """`/voice/reply` with `cut`: the speech sounding now is interrupted on the session loop, then the reply queued."""
+def test_a_cut_that_fails_never_drops_the_line(_not_held):
+    log: list = []
+    events = _type("para", _Session(log, _Speech(boom=True)))
+    assert log and log[-1][1] == "para" and ("alert", "typed line: the speech in course was not cut") in events
+
+
+def test_disarmed_without_the_cut_the_typed_stop_queues_behind_the_story(_not_held, monkeypatch):
+    """RED proof: the door no longer cuts → «para» waits behind the story, as in failure 8."""
+    from voice.engine.pipeline import agent_events
+    monkeypatch.setattr(agent_events, "cut_current_speech", lambda session: False)
+    log: list = []
+    _type("para", _Session(log))
+    assert log == [("reply", "para", False, {})]
+
+
+@pytest.mark.parametrize("speech", [_Speech(), _Speech(boom=True)])
+def test_the_voice_process_cuts_then_queues_in_one_request(monkeypatch, speech):
+    """`/voice/reply` with `cut`: the speech in course is interrupted on the session loop, then the reply queued — even
+    when the cut itself fails."""
     from voice.engine.pipeline import body_link, child
     log: list = []
-    live = _Session(log)
+    live = _Session(log, speech)
     monkeypatch.setenv(body_link.TOKEN_ENV, "tok")
     monkeypatch.setitem(child.LIVE, "session", live)
 
-    async def _run(cut):
+    async def _run():
         monkeypatch.setitem(child.LIVE, "loop", asyncio.get_running_loop())
 
         async def _json():
-            return {"text": "para", **({"cut": True} if cut else {})}
-        req = SimpleNamespace(headers={body_link.HEADER: "tok"}, json=_json)
-        await child.reply(req)
-    asyncio.run(_run(True))
-    assert live.current_speech.interrupted and log[-1][:3] == ("reply", "para", True)
-    live.current_speech = _Speech()
-    asyncio.run(_run(False))
-    assert not live.current_speech.interrupted
+            return {"text": "para", "cut": True}
+        await child.reply(SimpleNamespace(headers={body_link.HEADER: "tok"}, json=_json))
+    asyncio.run(_run())
+    assert log and log[-1][1] == "para" and live.current_speech.interrupted is not speech._boom
 
 
-# ── A2 · a stop that cut our speech is about our speech ────────────────────────────────────────────────────────────
-@pytest.fixture
-def _names_musica_pause(monkeypatch):
-    async def _pause(text, key):
-        return "musica:pause", {"used": True, "confidence": 0.52}
-    monkeypatch.setattr(brief, "verdict_before_the_turn", _pause)
-    monkeypatch.setattr(hard_turn, "stop_what_runs", lambda text, emit: _nothing())
+# ── A stop with an app act: the act wins, unless the lane served it or nothing runs (P1, failure 8) ─────────────────
+def _verdict(monkeypatch, choice, conf=0.9):
+    async def _v(text, key):
+        return choice, {"used": True, "confidence": conf}
+    monkeypatch.setattr(brief, "verdict_before_the_turn", _v)
+
+
+def _state(monkeypatch, playing):
+    """musica's declared `playing` as reported now: True, False, or None (the field not known)."""
+    from widgets import server_api, state_render
+    fields = {} if playing is None else {"playing": playing}
+    monkeypatch.setattr(state_render, "read", lambda app, *a, **k: {"declared": True, "surfaces": [
+        {"instance": app, "dev": "desktop", "fields": dict(fields)}] if app == "musica" else []})
+    done: list = []
+
+    async def _action(wid, action, payload):
+        done.append((wid, action))
+        return {"ok": True}
+    monkeypatch.setattr(server_api, "brain_action", _action)
+    return done
 
 
 async def _nothing():
@@ -263,50 +294,73 @@ def _stop(said):
     return asyncio.run(hard_turn.handle(said, "stop", emit)), events
 
 
-@pytest.mark.parametrize("said,typed", [("para", True), ("stop", True), ("para", False), ("stop", False)])
-def test_a_stop_that_cut_our_speech_ends_there(_names_musica_pause, said, typed):
-    """Typed: the typed door noted the cut. Spoken: the barge-in did. Then his turn is born."""
+@pytest.mark.parametrize("typed", [True, False])
+@pytest.mark.parametrize("said,choice", [("Stop showing me the Social tab", "mensajeria:mail_sort"),
+                                         ("stop it", "activity:stop"),
+                                         ("para eso, ábreme la agenda", "agenda:open")])
+def test_a_stop_that_names_another_act_goes_on_whole(monkeypatch, said, choice, typed):
+    """CRIT-W10 / V2-834 T25: said over our speech or not, typed or spoken — the act he names wins."""
+    _state(monkeypatch, False)
+    _verdict(monkeypatch, choice)
     if typed:
         attention.note_typed(text=said)
-    proactive.note_speech_cut()
-    trace.begin(said, origin="turno")
     rest, events = _stop(said)
-    assert rest is None, f"{said!r} handed to the brief's app act over our speech"
-    assert not any("nombra una acción" in e[1] for e in events)
+    assert rest == said and any("nombra una acción" in e[1] for e in events)
 
 
-def test_with_nothing_spoken_over_the_stop_the_brief_still_names_the_act(_names_musica_pause):
-    """CRIT-W10 / V2-834 T25 stay: «stop it» with nothing of ours sounding goes on to the card act."""
-    trace.begin("stop it", origin="turno")
-    rest, _ = _stop("stop it")
-    assert rest == "stop it"
+@pytest.mark.parametrize("typed", [True, False])
+@pytest.mark.parametrize("said", ["para", "stop"])
+def test_the_pause_of_an_app_where_nothing_plays_is_empty_and_the_stop_ends(monkeypatch, said, typed):
+    """Failure 8: «para» → `musica:pause` 0.52 with the music NOT playing went to the model («Parado.»)."""
+    _state(monkeypatch, False)
+    _verdict(monkeypatch, "musica:pause", 0.52)
+    if typed:
+        attention.note_typed(text=said)
+    rest, events = _stop(said)
+    assert rest is None and any("already served" in e[1] for e in events)
 
 
-def test_the_cut_belongs_to_the_first_turn_after_it_only(_names_musica_pause):
-    """A barge-in that became another turn does not make a later stop «about our speech»."""
-    proactive.note_speech_cut()
-    trace.begin("vale, sigue", origin="turno")
-    trace.begin("para", origin="turno")
-    assert not proactive.turn_cut_our_speech()
+def test_the_pause_the_lane_just_did_is_served_and_the_stop_ends(monkeypatch):
+    done = _state(monkeypatch, True)
+    _verdict(monkeypatch, "musica:pause")
+    assert _stop("stop")[0] is None and done == [("musica", "pause")]
+
+
+def test_disarmed_without_the_declared_state_the_empty_pause_goes_to_the_model_again(monkeypatch):
+    """RED proof: the filter reads no declared state → failure 8 again."""
+    _state(monkeypatch, False)
+    _verdict(monkeypatch, "musica:pause", 0.52)
+    monkeypatch.setattr(hard_turn, "_states", lambda: [])
     assert _stop("para")[0] == "para"
 
 
-def test_a_spoken_barge_in_notes_the_cut():
-    from voice.engine.pipeline import agent_events
-    busy = {"bot": True, "user": False}
-    ev = SimpleNamespace(new_state="speaking")
-    agent_events._on_user_state(ev, _busy=busy, _emit=lambda *a, **k: None, _onset={},
-                                sm=SimpleNamespace(on_user_state=lambda s: None))
-    trace.begin("para", origin="turno")
-    assert proactive.turn_cut_our_speech()
+def test_a_playing_not_yet_known_is_paused_too(monkeypatch):
+    """P2-2: «ponme un vídeo» then «para» 2 s later — the order is not acked yet; the pause is idempotent."""
+    done = _state(monkeypatch, None)
+    _verdict(monkeypatch, "none")
+    _stop("para")
+    assert done == [("musica", "pause")]
 
 
-def test_disarmed_without_the_cut_the_stop_goes_to_the_app_act_again(_names_musica_pause, monkeypatch):
-    """RED proof: the stop lane no longer asks whether it cut our speech → `musica:pause` 0.52 takes it, as in failure 8."""
-    monkeypatch.setattr(hard_turn, "_over_our_speech", lambda: False)
-    proactive.note_speech_cut()
-    trace.begin("para", origin="turno")
-    assert _stop("para")[0] == "para"
+def test_a_refusal_is_not_a_stop(monkeypatch):
+    from widgets import server_api
+    _state(monkeypatch, True)
+
+    async def _refuse(wid, action, payload):
+        return {"ok": False, "message": "nothing_playing"}
+    monkeypatch.setattr(server_api, "brain_action", _refuse)
+    events, emit = _collect()
+    assert asyncio.run(hard_turn.stop_what_runs("para", emit)) == []
+
+
+@pytest.mark.parametrize("said,paused", [("para todo", True), ("stop everything", True), ("para eso", False)])
+def test_a_total_stop_beside_an_errand_also_ends_what_runs(monkeypatch, said, paused):
+    """P2-1: a live errand + a video + «para todo» → the errand's turn goes on AND the video stops; «para eso» is the
+    errand's alone."""
+    done = _state(monkeypatch, True)
+    monkeypatch.setattr(hard_turn, "is_worker_stop", lambda text, hard: True)
+    assert _stop(said)[0] == said
+    assert (done == [("musica", "pause")]) is paused
 
 
 # ── A3 · a stop pauses whatever is SOUNDING ────────────────────────────────────────────────────────────────────────
@@ -343,11 +397,6 @@ def test_a_stop_pauses_every_app_that_reports_it_is_playing(_sounding, said):
     assert rest is None
     assert sorted(_sounding) == [("mi_radio", "pause"), ("youtube", "pause")]
     assert any(e[1] == "⏸ stop: stopped what was running" for e in events)
-
-
-def test_a_stop_about_an_errand_pauses_nothing(_sounding, monkeypatch):
-    monkeypatch.setattr(hard_turn, "is_worker_stop", lambda text, hard: True)
-    assert _stop("para eso")[0] == "para eso" and _sounding == []
 
 
 def test_disarmed_without_the_pause_the_video_plays_on(_sounding, monkeypatch):

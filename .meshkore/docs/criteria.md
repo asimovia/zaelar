@@ -74,6 +74,14 @@ below is the first kind, or it names the mechanism that replaced the second.
   the act to his resumption), never undone. Structural, never a reading of his words (V2-888). — since 2026-11-11,
   counted 2026-11-12 · nodes 3.188 ·
   `nucleo/input/typed.py`, `nucleo/turn/resume_cut.py`.
+- **CRIT-V21 · A typed line barges in like a spoken one.** Any line he types while our speech is in course — generating,
+  paused or sounding — cuts it (the in-process session, or the voice process in the same request that queues the line),
+  then his turn runs; only a line that waited for HIS spoken sentence begun before it (CRIT-V20's order) queues behind
+  that one instead. A hard close or stop never answers another turn's verdict: every store that keeps a turn's verdict
+  by trace is turn-scoped (`voice.trace.turn_scoped`, forgotten at admission), and a stop ends what each app DECLARES
+  running (`state.report.<f>.stop`; pending or unknown too, and even when the sentence names another card: a
+  pause is cheap and undone by «play»), its own act served or empty when the lane did it or nothing runs. — since
+  2026-11-14 · nodes 3.232 · `voice/engine/pipeline/agent_events.py`, `nucleo/flash/hard_turn.py`, `voice/trace.py`.
 - **CRIT-V8 · The assistant's own name changes by a verdict, never by a regex, and fails CLOSED** (absent or
   unsure → no rename). The brief's `identity_change` decides, sure at 0.85, and the new name is the model's declared
   `set_style_directive.name` — nothing is read from his words; a rename takes one model turn

@@ -266,7 +266,8 @@ def _route_typed(txt: str, *, _emit, session) -> None:
 
 
 def cut_current_speech(session) -> bool:
-    """Interrupt the speech sounding now — only that one: a reply queued behind it (this line's own) stays queued."""
+    """Interrupt the speech in course — generating, paused or sounding; only that one: a reply queued behind it (the
+    line's own) stays queued."""
     speech = getattr(session, "current_speech", None)
     if speech is None or speech.done() or speech.interrupted or not speech.allow_interruptions:
         return False
@@ -274,33 +275,26 @@ def cut_current_speech(session) -> bool:
     return True
 
 
-def _cuts_our_speech(txt: str) -> bool:
-    """A typed HARD interrupt (stop or close) while we speak cuts the speech, as his voice would by barge-in (audit
-    2026-11-14: «para» queued behind a story; a close's receipt sounded 35 s late). Any other line still waits."""
-    try:
-        from voice import attention, proactive
-        if not (proactive.bot_speaking() and attention.hard_interrupt(txt)):
-            return False
-        proactive.note_speech_cut()
-        return True
-    except Exception as e:  # noqa: BLE001 — unreadable: the line queues, as before
-        _ag.logger.debug("typed stop not read: %r", e)
-        return False
-
-
-def _inject_typed(txt: str, *, _emit, session) -> None:
+def _inject_typed(txt: str, *, _emit, session, cut: bool = True) -> None:
+    """A typed line is his turn like a spoken one, through the same barge-in: it cuts the speech in course, whatever its
+    state, then its own reply is queued (audit 2026-11-14, failures 8 and 9 — «para» typed over a story queued behind
+    it; a close's receipt sounded 35 s late). `cut=False` only for a line that waited for HIS spoken sentence begun
+    before it (`nucleo.input.typed`): that one queues behind his own order, it does not barge into ours."""
+    remote = bool(getattr(session, "CUTS_IN_VOICE_PROCESS", False))   # the body's RemoteSession
+    if cut and not remote:
+        try:
+            if cut_current_speech(session):
+                _emit("vad", "✂️ typed line — cuts the speech in course", text=txt[:80], role="user",
+                      extra={"over_agent": True, "typed": True})
+        except Exception as e:  # noqa: BLE001 — a cut that fails never drops his line
+            _emit("alert", "typed line: the speech in course was not cut", text=f"{e!r}"[:160])
     # generate_reply() is SYNC (returns a SpeechHandle and schedules the reply itself); calling it
     # directly (wrapping in create_task raised "a coroutine was expected"). (fix 2026-07-07)
     try:
-        if _cuts_our_speech(txt):
-            _emit("vad", "✂️ typed hard interrupt — cuts the speech", text=txt[:80], role="user",
-                  extra={"over_agent": True, "typed": True})
-            if hasattr(session, "current_speech"):       # the live AgentSession, on its own loop
-                cut_current_speech(session)
-            else:                                        # the body's RemoteSession: the voice process cuts it
-                session.generate_reply(user_input=txt, cut_speech=True)   # right before it queues this reply
-                return
-        session.generate_reply(user_input=txt)
+        if cut and remote:
+            session.generate_reply(user_input=txt, cut_speech=True)   # cut, then queue: one request
+        else:
+            session.generate_reply(user_input=txt)
     except Exception as ge:
         _emit("alert", "chat/paste generate_reply falló", text=str(ge)[:160])
         _ag.logger.warning("chat-text generate_reply failed: %s", ge)
@@ -313,7 +307,7 @@ async def _typed_after_voice(txt: str, since: float, *, _emit, session) -> None:
         await _ag.asyncio.sleep(0.1)
     _emit("brain", "▶️ texto en cola tras la voz", text=txt, role="system",
           extra={"cat": "flash", "held_ms": round((_ag.time.monotonic() - since) * 1000)})
-    _inject_typed(txt, _emit=_emit, session=session)
+    _inject_typed(txt, _emit=_emit, session=session, cut=False)
 
 
 def on_state_change(state: "_ag.State", *, _ONSET_MAX_S, _STATE_TRACE_SAFE, _air, _busy, _emit, _onset) -> None:
@@ -380,8 +374,6 @@ def _on_user_state(ev, *, _busy, _emit, _onset, sm) -> None:
             # V2-661: `edge` holds the orb's ring while his voice is ACTIVE and re-arms it after (sse.js).
             _emit("vad", "✂️ barge-in — voz pisa la locución (LiveKit corta el TTS)",
                   role="user", extra={"over_agent": True, "edge": "on", **({"trace": _tid} if _tid else {})})
-            from voice import proactive as _pro_cut
-            _pro_cut.note_speech_cut()
         else:
             _emit("vad", "🎤 voz detectada (VAD)", role="user", extra={"over_agent": False, "edge": "on"})
         # V2-660 — the window measures his SILENCE, which ends HERE, not at the STT's final.
