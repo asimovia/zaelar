@@ -243,6 +243,7 @@
  "op_failed": "I couldn't get that done.",
  "op_unknown": "I started it, but I couldn't confirm it went through.",
  "reply_started": "On it: {object}.",
+ "reply_started_named": "It's {object}.",
  "reply_met": "Done: {object}.",
  "reply_unmet": "I couldn't get that done: {reason}",
  "reply_unverifiable": "Done: {object}, though I couldn't check it on screen.",

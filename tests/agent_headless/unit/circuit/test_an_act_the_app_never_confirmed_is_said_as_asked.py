@@ -252,3 +252,17 @@ def test_the_turns_closing_lines_go_through_the_wait(world, monkeypatch):
     speech = type("S", (), {"sanitize": staticmethod(lambda t, **k: t)})
     asyncio.run(reply.after_acts([], "", sent.append, speech))
     assert sent == [reply._lang().reply_started.format(object="«uno»")], f"said as done: {sent}"
+
+
+@pytest.mark.parametrize("code,said", [("es", "Ahora mismo te lo pongo."), ("en", "Putting it on now.")])
+def test_words_that_already_started_it_get_the_object_alone_never_a_second_start(monkeypatch, code, said):
+    """Desktop, 2026-11-14: «ponme un vídeo de eso» → «Ahora mismo te lo pongo. Me pongo con ello: «…».» — two start
+    lines. With the model's words already out, an act still awaiting its app names its object and nothing more; with
+    no words, the start line stays. Disarm: `owed` calling `line(o)` for every awaiting act → the start line again."""
+    from i18n import langs
+    from nucleo.turn import reply
+    monkeypatch.setattr(langs, "current_code", lambda: code)
+    o = reply.Outcome(verdict.STARTED.name, "youtube", "load", object="«Apollo 11»", reason="awaiting")
+    want = langs.words("reply_started_named", code=code).format(object="«Apollo 11»")
+    assert [t for _o, t in reply.owed([o], said)] == [want] and want
+    assert [t for _o, t in reply.owed([o], "")] == [langs.words("reply_started", code=code).format(object="«Apollo 11»")]

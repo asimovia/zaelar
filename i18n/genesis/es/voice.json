@@ -243,6 +243,7 @@
  "op_failed": "No he podido completarlo.",
  "op_unknown": "Lo he lanzado, pero no he podido confirmar que quedara hecho.",
  "reply_started": "Me pongo con ello: {object}.",
+ "reply_started_named": "Es {object}.",
  "reply_met": "Hecho: {object}.",
  "reply_unmet": "No he podido hacerlo: {reason}",
  "reply_unverifiable": "Hecho: {object}, aunque no he podido comprobarlo en pantalla.",
