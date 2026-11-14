@@ -312,8 +312,21 @@ def _fold_text_field(widget_id: str, action: str, declared: dict, pl: dict) -> d
         field = ""
     if not field or str(pl.get(field) if pl.get(field) is not None else "").strip():
         return {}
-    loose = [k for k, v in pl.items() if k not in declared and isinstance(v, str) and v.strip()]
+    loose = [k for k, v in pl.items() if k not in declared and isinstance(v, str) and v.strip()
+             and not _names_an_action(widget_id, k)]
     return {field: pl[loose[0]]} if len(loose) == 1 else {}
+
+
+def _names_an_action(widget_id: str, key: str) -> bool:
+    """A key NAMING an action of the same card is that action's word (`show {"goto": …}`), never another's text."""
+    from . import runtime
+    return str(key) in ((runtime.get(str(widget_id or "").strip().lower()) or {}).get("actions") or {})
+
+
+def fills_no_slot(widget_id: str, action: str, payload: dict | None) -> bool:
+    """The call, its synonyms folded, carries keys and fills none of its act's slots: `unfilled`, asked before the act."""
+    from .empty_act import what_it_fills
+    return unfilled(widget_id, action, what_it_fills(_spec(widget_id, action)), fold_aliases(widget_id, action, payload)) is not None
 
 
 def _filled(value) -> bool:

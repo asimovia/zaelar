@@ -318,7 +318,7 @@ def _apply_widget_data(wid: str, action_name: str, payload: dict, ref: str='', *
 def _handle_widget_data_tool(args: dict, *, _apply_widget_data, _brief, _frontend, _identify, _repeat_repair, _say, _tag_emit, acted, brain, clarify, deduped, emit, escalate_req, text) -> None:
     """Tool `widget_data` (V2-026, the main data-op path): the card and the row he names resolved to REAL ids,
     then `_apply_widget_data`; an ambiguous or missing row is asked, never guessed."""
-    from widgets import refs, runtime
+    from widgets import contract as _ct, refs, runtime
     wid = (args.get("widget_id") or "").strip().lower()
     action_name = (args.get("action") or "").strip()
     ref = (args.get("item") or "").strip()
@@ -418,8 +418,8 @@ def _handle_widget_data_tool(args: dict, *, _apply_widget_data, _brief, _fronten
                                                 present=_txw._cvis.present, apply_widget_data=_apply_widget_data,
                                                 widget_id=_cd["card"], instead_of=action_name, require_order=False)
 
-        if _looked and _verdict_runs():
-            emit("brain", "⚖️ el modelo solo miró (o repitió la vista) — completa el veredicto", role="system",
+        if (_looked or _ct.fills_no_slot(_cd["card"], action_name, res.payload)) and _verdict_runs():
+            emit("brain", "⚖️ el modelo solo miró, repitió la vista o no llenó ningún hueco — completa el veredicto", role="system",
                  text=_dis_t, extra=_dis_x)
             acted["widget"] = True
             return
