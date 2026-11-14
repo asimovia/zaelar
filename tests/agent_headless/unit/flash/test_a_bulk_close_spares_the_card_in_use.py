@@ -36,7 +36,7 @@ def _collect():
     events: list[tuple] = []
 
     def emit(kind, action, text=None, role=None, extra=None):
-        events.append((kind, action, dict(extra or {})))
+        events.append((kind, action, {k: v for k, v in (extra or {}).items() if k != "seq"}))   # seq: node 4.540
     return events, emit
 
 

@@ -24,6 +24,8 @@ The device id is the frontend's `api.js::DEVICE`: `<desktop|mobile>:<id>`, stabl
 from __future__ import annotations
 
 import contextvars
+import functools
+import json
 import os
 import threading
 import time
@@ -366,6 +368,27 @@ def origin_of(ev: dict) -> str:
         if o:
             return o
     return current()
+
+
+@functools.lru_cache(maxsize=1)
+def _origin_scoped() -> dict:
+    """`voice/event_scope.json` — the server's copy of `event-scope.js`'s ORIGIN_SCOPED (node 4.540 keeps them equal)."""
+    path = os.path.join(os.path.dirname(__file__), "event_scope.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            return dict(json.load(f)["origin_scoped"])
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        logger.warning(f"screens: event scope unreadable, every event read as all-screens ({e!r})")
+        return {}
+
+
+def scope_of(kind, label="") -> str:
+    """`origin` (applied on the screen that asked) or `all` — the frontend's `scopeOf`, read on the server so an order
+    knows which screens must answer it (V2-907 §3.2)."""
+    rule = _origin_scoped().get(str(kind or ""))
+    if not rule:
+        return "all"
+    return "origin" if rule == "*" or str(label or "") in rule else "all"
 
 
 def stamp(ev: dict) -> dict:

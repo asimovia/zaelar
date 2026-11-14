@@ -25,7 +25,8 @@ def stream(monkeypatch):
 
 
 def _sink(out):
-    return lambda kind, label, extra=None, **k: out.append((kind, label, dict(extra or {})))
+    # the ledger's `seq` on every emitted op is pinned by node 4.540, not here
+    return lambda kind, label, extra=None, **k: out.append((kind, label, {f: v for f, v in (extra or {}).items() if f != "seq"}))
 
 
 def test_a_vetoed_show_never_reaches_the_canvas_and_the_door_says_so(stream):

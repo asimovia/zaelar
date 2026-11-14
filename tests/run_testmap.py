@@ -2571,6 +2571,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/screen/test_an_order_is_pending_until_its_screen_answers.py"]},
         {"id": "4.539", "title": "A screen's document has ONE writer, its report door (V2-907 T4, `POST /api/screen/report`): it writes `screen_doc`, hands the acks to `screen_orders`, emits `screen/report` only when the document moved or an order was answered, refuses a stale or malformed report whole (its acks too); a structural scan finds no other caller of `screen_doc.write`; disarmed (a second writer in a temp module) → red",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/screen/test_the_report_door_is_the_only_writer.py"]},
+        {"id": "4.540", "title": "Every canvas order carries a `seq` and waits for its screens (V2-907 T5, `nucleo/acts/canvas.apply` → `widgets/screen_orders.issue`): an op `event-scope.js` scopes to its origin targets the asking screen, a global op every open screen whose document lists the card, a close of all every screen with something open; the server's scope table (`voice/event_scope.json`, read by `voice.screens.scope_of`) equals the frontend's; disarmed (no `issue` for `close`) → red",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/screen/test_every_canvas_order_carries_a_seq.py"]},
         {"id": "4.534", "title": "`mensajeria:open` takes the channel he NAMES (`platform` bounds the name's resolution; none named: "
                                  "what is on screen first still wins) and declares its end state over the thread the card reports open",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_open_takes_the_channel_he_names.py"]},

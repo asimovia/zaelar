@@ -1,0 +1,8 @@
+{
+  "_doc": "Which screen an event is for — the server's copy of ORIGIN_SCOPED in frontend/app/services/event-scope.js (V2-792), read by voice.screens.scope_of. `origin` = applied on the screen that asked; every kind or label not listed is applied on every screen. Kept equal to the frontend table by node 4.540 (V2-907 T5).",
+  "origin_scoped": {
+    "widget": ["show", "create", "fullscreen", "move", "resize", "arrange", "minimize"],
+    "panel": "*",
+    "controls": "*"
+  }
+}
