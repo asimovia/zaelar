@@ -3,9 +3,12 @@
 The door stores the document (`widgets/screen_doc.write`), hands the answers it carries to the order ledger
 (`widgets/screen_orders.ack`) and emits `screen/report` only when the document moved or an order was answered. A
 refused report (`n` back, a replaced mount, a malformed document) is refused whole, its answers too. No other product
-code calls `screen_doc.write`: a structural scan over every product file keeps it so.
+code calls `screen_doc.write`: a structural scan over every product file keeps it so — by the AST (a call, or a
+reference that could be called later, to `write` or the store `_DOCS`/`_GONE` through any name the module was bound
+to) AND by the text (V2-907 A6: a file that names `screen_doc` together with `write` or `_DOCS` is named, so
+`__import__`, `importlib` and a `getattr` alias cannot slip past the AST).
 
-Disarm: a second writer in a temporary product module → the scan names it → red.
+Disarm: a second writer in a temporary product module, in each bypass form → the scan names it → red.
 """
 from __future__ import annotations
 
@@ -13,6 +16,7 @@ import ast
 import asyncio
 import json
 import pathlib
+import re
 import subprocess
 
 import pytest
@@ -68,8 +72,14 @@ def test_a_refused_report_is_refused_whole(door):
     assert code == 400 and sd.open_ids(DESK) == ["agenda"]
 
 
+#: The store's writer and its private state: no product module but the door may name them beside `screen_doc`.
+_STORE = ("write", "_DOCS", "_GONE")
+_TEXT = re.compile(r"\b(?:write|_DOCS|_GONE)\b")
+
+
 def _writers() -> list[str]:
-    """Every product module that calls `screen_doc.write`, through any name it bound the module or the function to."""
+    """Every product module that reaches `screen_doc.write` or its store, through any name it bound the module or the
+    function to (AST), or that names `screen_doc` beside `write` / `_DOCS` / `_GONE` anywhere in its text."""
     out = subprocess.run(["git", "ls-files", "-co", "--exclude-standard", "*.py"], cwd=ROOT, capture_output=True,
                          text=True).stdout.split()
     found = []
@@ -79,19 +89,20 @@ def _writers() -> list[str]:
         src = (ROOT / rel).read_text(encoding="utf-8", errors="replace")
         if "screen_doc" not in src:
             continue
+        if _TEXT.search(src):
+            found.append(rel)
         tree = ast.parse(src)
         mods, fns = {"screen_doc"}, set()
         for n in ast.walk(tree):
             if isinstance(n, ast.ImportFrom) and n.module == "widgets":
                 mods |= {a.asname or a.name for a in n.names if a.name == "screen_doc"}
             if isinstance(n, ast.ImportFrom) and n.module == "widgets.screen_doc":
-                fns |= {a.asname or a.name for a in n.names if a.name == "write"}
+                fns |= {a.asname or a.name for a in n.names if a.name in _STORE}
             if isinstance(n, ast.Import):
                 mods |= {a.asname or a.name for a in n.names if a.name == "widgets.screen_doc"}
         for n in ast.walk(tree):
-            f = getattr(n, "func", None) if isinstance(n, ast.Call) else None
-            if (isinstance(f, ast.Attribute) and f.attr == "write" and ast.unparse(f.value) in mods) or \
-                    (isinstance(f, ast.Name) and f.id in fns):
+            if (isinstance(n, ast.Attribute) and n.attr in _STORE and ast.unparse(n.value) in mods) or \
+                    (isinstance(n, ast.Name) and n.id in fns):
                 found.append(rel)
     return sorted(set(found))
 
@@ -100,11 +111,21 @@ def test_the_report_door_is_the_only_writer():
     assert _writers() == ["server/canvas_api.py"]
 
 
-def test_disarmed_a_second_writer_is_named():
+_BYPASSES = {
+    "alias_call": "from widgets import screen_doc as sd\n\n\ndef sneak():\n    sd.write('x', 'm', 1, {})\n",
+    "dunder_import": "def sneak():\n    __import__('widgets.screen_doc', fromlist=['x']).write('x', 'm', 1, {})\n",
+    "bound_later": "from widgets import screen_doc\n\nw = screen_doc.write\n\n\ndef sneak():\n    w('x', 'm', 1, {})\n",
+    "importlib": "import importlib\n\n\ndef sneak():\n    importlib.import_module('widgets.screen_doc').write('x', 'm', 1, {})\n",
+    "the_store": "from widgets import screen_doc\n\n\ndef sneak():\n    screen_doc._DOCS['x'] = None\n",
+    "getattr": "import importlib\n\nm = importlib.import_module('widgets.' + 'screen_doc')\nw = getattr(m, 'write')\n",
+}
+
+
+@pytest.mark.parametrize("form", sorted(_BYPASSES))
+def test_disarmed_a_second_writer_is_named(form):
     tmp = ROOT / "widgets" / "_v907_disarm_writer.py"
     try:
-        tmp.write_text("from widgets import screen_doc as sd\n\n\ndef sneak():\n    sd.write('x', 'm', 1, {})\n",
-                       encoding="utf-8")
+        tmp.write_text(_BYPASSES[form], encoding="utf-8")
         assert tmp.exists()
         with pytest.raises(AssertionError):
             test_the_report_door_is_the_only_writer()
