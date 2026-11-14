@@ -24,8 +24,8 @@ from dataclasses import dataclass, field, replace
 from loguru import logger
 
 LAYOUTS = ("windows", "deck")
-#: front = focused, on top and in view · visible = in view, not front (windows) · behind = covered · min = minimised
-VIS = ("front", "visible", "behind", "min")
+#: front (focused, on top, in view) · visible (in view, not front: windows) · behind (covered) · min → rank in view
+VIS = {"front": 0, "visible": 1, "behind": 2, "min": 3}
 CLOSED_S = 60.0
 #: A bound on what one screen may report (a crowd of windows is cut, never stored whole).
 MAX_OPEN = 24
