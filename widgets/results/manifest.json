@@ -213,6 +213,7 @@
     },
     "scroll": {
       "desc": "Desplaza la hoja («haz scroll», «baja», «sube», «al principio», «al final») — mueve la vista, no cambia nada.",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {
         "where": "down | up | top | bottom (o en palabras: baja/sube/al principio/al final)"
       },

@@ -158,6 +158,7 @@
     },
     "show_view": {
       "desc": "CAMBIA LO QUE SE VE en el directorio y CONTESTA la consulta («mi restaurante favorito en Barcelona», «los fontaneros de Soria», «mis contactos de Telegram», «las empresas de Madrid»): filtra por tipo, plataforma, grupo, ciudad, favoritos o texto y devuelve los que casan. Es obligatoria para eso — mostrar el widget de nuevo NO filtra, enseña todo",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {
         "group": "grupo/etiqueta («restaurantes», «fontaneros») (opcional)",
         "kind": "person | company | place | group | agent — «enséñame mis empresas» es kind:company, «mis grupos» es kind:group (opcional)",
@@ -174,6 +175,7 @@
     },
     "show_contact": {
       "desc": "abre la FICHA de un contacto concreto: sus datos, sus etiquetas y su gente o sitios conectados",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {
         "contactId": "string"
       },
@@ -201,6 +203,7 @@
     },
     "show_contact_members": {
       "desc": "ENSEÑA QUIÉN ESTÁ en un grupo («quién está en el grupo de la familia», «los miembros del cluster commons»). Solo vale para entradas de tipo grupo. Un canal de difusión no puede enumerar a nadie y lo dice en vez de contestar «ninguno»",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {
         "contactId": "string (el grupo)"
       },
@@ -215,6 +218,7 @@
     },
     "import_google": {
       "desc": "ALIAS de sync_contacts, por compatibilidad. Usa sync_contacts.", "internal": true,
+      "instant": "internal: the card's own bookkeeping, never an act he is told is done",
       "payload": {
         "provider": "opcional: google (el único hoy)"
       }
@@ -246,6 +250,7 @@
     },
     "show_sources": {
       "desc": "ABRE la pantalla de FUENTES Y SINCRONIZACIÓN del directorio («¿de dónde vienen mis contactos?», «enséñame la sincronización de contactos»): qué fuentes existen, cuáles están enlazadas y el interruptor de sincronización de cada una. Devuelve el estado de todas para que contestes sin inventarte ninguna. CONECTAR una fuente NO es esto: es show_panel(panel='conectores', connector=…)",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {},
       "view": true
     },
@@ -291,6 +296,7 @@
     },
     "message_group": {
       "desc": "interno: lo dispara la propia app cuando él pulsa «Mandar mensaje» o «WhatsApp: crear» en uno de sus grupos — escribe su orden en la conversación, nunca envía; nunca una orden de voz, no invocar",
+      "instant": "internal: the card's own bookkeeping, never an act he is told is done",
       "internal": true,
       "worker": false,
       "confirm": false,

@@ -42,6 +42,7 @@
   "actions": {
     "refresh": {
       "desc": "vuelve a leer la galería (o comprueba si el selector de Google ya ha terminado)",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {},
       "view": true
     },

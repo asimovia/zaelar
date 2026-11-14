@@ -165,6 +165,7 @@
     },
     "open_view": {
       "desc": "cambia la cara de la app: la canción que suena (now), la biblioteca (library), la cola (queue), una lista (playlist), un artista o un álbum del catálogo (artist/album) o las fuentes (connect)",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {
         "kind": "now|library|queue|playlist|artist|album|search|connect|home",
         "id": "id de la lista (playlist) o del artista/álbum si se conoce",
@@ -174,6 +175,7 @@
     },
     "back": {
       "desc": "vuelve a la vista Home",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {},
       "view": true
     },
@@ -328,6 +330,7 @@
     },
     "search": {
       "desc": "busca en el catálogo canciones, artistas, álbumes, listas y podcasts, enseña los resultados y devuelve candidates con su uri",
+      "instant": "a view: the op only moves what the card shows, and its answer is that screen",
       "payload": {
         "query": "lo que busca"
       },
@@ -367,11 +370,13 @@
     },
     "ended": {
       "desc": "interno: lo dispara el propio reproductor al terminar una canción para avanzar la cola — nunca una orden de voz, no invocar",
+      "instant": "internal: the card's own bookkeeping, never an act he is told is done",
       "internal": true,
       "payload": {}
     },
     "enrich_art": {
       "desc": "interno: lo dispara la propia app para pedir la portada de una canción sin foto — nunca una orden de voz, no invocar",
+      "instant": "internal: the card's own bookkeeping, never an act he is told is done",
       "internal": true,
       "payload": {
         "title": "SOLO el título",
@@ -380,6 +385,7 @@
     },
     "played": {
       "desc": "interno: lo dispara la propia app al ver sonar una canción, para Recientes — nunca una orden de voz, no invocar",
+      "instant": "internal: the card's own bookkeeping, never an act he is told is done",
       "internal": true,
       "payload": {
         "title": "título",
@@ -390,6 +396,7 @@
     },
     "player_error": {
       "desc": "Internal: the page player refused the song (IFrame API onError); the card's own report, never voice",
+      "instant": "internal: the card's own bookkeeping, never an act he is told is done",
       "internal": true,
       "payload": {
         "code": "the onError code (101/150 = embedding refused)",
