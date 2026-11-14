@@ -8,7 +8,7 @@ later; the paste's turn was cancelled, the voice turn answered both from the win
 lost. Twice in a row.
 
 What waits is HIS order, not ours: a typed line sent while the agent speaks cuts that speech like a spoken barge-in
-(CRIT-V21, 2026-11-14); only the line held behind his own spoken sentence queues without cutting it.
+(CRIT-V22, 2026-11-14); only the line held behind his own spoken sentence queues without cutting it.
 
 The rule is chronological, not a priority between channels: while an utterance that began before the text is still
 open (no user turn committed since its onset), the text waits; when the voice turn commits, the text is scheduled
@@ -87,7 +87,7 @@ def min_voice_s() -> float:
 
 
 def note_typed_cut(now: float | None = None) -> None:
-    """A typed line cut our speech (CRIT-V21): like his voice resuming, it supersedes a reply still being composed."""
+    """A typed line cut our speech (CRIT-V22): like his voice resuming, it supersedes a reply still being composed."""
     _state["typed_cut"] = _now(now)
 
 

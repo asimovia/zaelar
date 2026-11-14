@@ -431,6 +431,35 @@ def _the_rules_table_starts_empty():
     yield
 
 
+@_pytest5.fixture(autouse=True)
+def _no_app_state_block_is_remembered_across_tests():
+    """V2-884 — `widgets.state_decl` answers «what does this app declare it shows» from a 5 s cache. A test that served
+    a stand-in catalog (an app with no `state` block) left `{}` cached for the real one, and the next test that read
+    the real manifest inside those 5 s saw an app declaring nothing — red only in a folder run, green alone."""
+    mod = _sys5.modules.get("widgets.state_decl")
+    if mod is not None:
+        mod.forget_cache()
+    yield
+    mod = _sys5.modules.get("widgets.state_decl")
+    if mod is not None:
+        mod.forget_cache()
+
+
+@_pytest5.fixture(autouse=True)
+def _no_canvas_report_outlives_its_test():
+    """The canvas's last report of open cards with their full ids (`canvas_state._last_inst`, read by
+    `voice_api.open_instances`) is PROCESS state: a test that drove the real canvas door left its cards «on screen», and a
+    later fast close of a card that report did not list declined («known not on screen») — red only in a folder run."""
+    def _clear():
+        mod = _sys5.modules.get("server.canvas_api")
+        fn = getattr(mod, "canvas_state", None) if mod is not None else None
+        if fn is not None and hasattr(fn, "_last_inst"):
+            fn._last_inst = []
+    _clear()
+    yield
+    _clear()
+
+
 # THE MEMORY STATE ROW COMES OUT OF EACH TEST AS IT WENT IN (2026-10-26).
 #
 # `memory.state` is ONE row in the session's single test database, and it carries the canvas report the brain reads

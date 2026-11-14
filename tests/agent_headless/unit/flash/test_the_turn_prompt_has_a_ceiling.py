@@ -48,9 +48,12 @@ MARGIN = 64
 # V2-884 step 3 (4.505/4.508) + its audit: +78 on the everyday screen — agenda and mensajeria declare their state, so a
 # clean install carries their two «state unreported» lines (A7: «I don't know» is said, never the order); the legend no
 # longer rides a block of unreported lines only (nothing in it to read), so six cards went DOWN (−93, lowered)
-CEILINGS = {(): 24_861, ("agenda", "mensajeria"): 29_995,
+# 2026-11-14 (V2-903 E, the mail opened by its name): +24 on the everyday screen — `mensajeria:open` declares its field
+# contract (`open: name·n·platform`), so «open it» names the mail the read just found instead of guessing a chat; the
+# only line that moved (measured by diff of the composed prompt at b7a44c00e and at the v3.157 RC)
+CEILINGS = {(): 24_861, ("agenda", "mensajeria"): 30_023,
             ("agenda", "mensajeria", "youtube", "contactos", "results", "musica"): 37_735}   # V2-795: musica usage trimmed
-TARGET_EVERYDAY = 30_000
+TARGET_EVERYDAY = 30_023   # the audit's 30 000 + the mail's open contract above (2026-11-14)
 
 
 _SNIPPET = """

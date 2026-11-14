@@ -55,7 +55,7 @@ def ask(t: dict, uid: str, rec=None) -> str:
     """Put the exchange's next pending question on row `uid` through THE asker — through the live worker's own record
     when there is one (its session parks and is resumed with what comes of his answer). Returns the ask id."""
     q = (t.get("pending") or [])[0]
-    ask_id = f"{t['id']}:{q['id']}:{int(time.time() * 1000)}"
+    ask_id = f"{t['id']}:{q['id']}:{max(int(time.time() * 1000), int(str(t.get('asking') or '0').rsplit(':', 1)[-1]) + 1)}"
     t.update(row=uid, asking=ask_id)
     dialog.save(t)
     opts, remote = [c["label"] for c in q["choices"]], {"thread": t["id"], "question": q["id"]}

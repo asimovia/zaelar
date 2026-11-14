@@ -74,7 +74,7 @@ below is the first kind, or it names the mechanism that replaced the second.
   the act to his resumption), never undone. Structural, never a reading of his words (V2-888). — since 2026-11-11,
   counted 2026-11-12 · nodes 3.188 ·
   `nucleo/input/typed.py`, `nucleo/turn/resume_cut.py`.
-- **CRIT-V21 · A typed line barges in like a spoken one.** Any line he types while our speech is in course — generating,
+- **CRIT-V22 · A typed line barges in like a spoken one.** Any line he types while our speech is in course — generating,
   paused or sounding — cuts it (the in-process session, or the voice process in the same request that queues the line),
   then his turn runs; only a line that waited for HIS spoken sentence begun before it (CRIT-V20's order) queues behind
   that one instead. A hard close or stop never answers another turn's verdict: every store that keeps a turn's verdict

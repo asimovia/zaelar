@@ -149,7 +149,7 @@ def test_disarmed_a_typed_line_read_as_speech_adopts_the_fragments_trace_again(m
         acc_mod.set_judge(None)
 
 
-# ── A2 · a typed line barges in like a spoken one (CRIT-V21) ───────────────────────────────────────────────────────
+# ── A2 · a typed line barges in like a spoken one (CRIT-V22) ───────────────────────────────────────────────────────
 class _Speech:
     def __init__(self, *, done=False, interruptible=True, boom=False):
         self.interrupted, self.allow_interruptions, self._done, self._boom = False, interruptible, done, boom
