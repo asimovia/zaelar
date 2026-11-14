@@ -13,6 +13,8 @@ Never declarable: episodic memory, the diary, vault/secrets, connector credentia
 """
 from __future__ import annotations
 
+from loguru import logger
+
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
@@ -134,6 +136,7 @@ def declare_manifest(reg: ItemRegistry, widget_id: str, entries, readers: dict[s
             reg.declare(Item(str(e["id"]), str(e["kind"]), widget_id, str(e.get("schema") or ""),
                              tuple(e.get("verbs") or ()), projections))
             out.append(str(e["id"]))
-        except (KeyError, TypeError, ValueError, AttributeError):
+        except (KeyError, TypeError, ValueError, AttributeError) as exc:
+            logger.debug("a2a: a2a/items.py:declare_manifest failed: {!r}", exc)
             continue
     return out

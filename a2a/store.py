@@ -2,6 +2,8 @@
 it survives restarts without a migration and stays independent of the engine's stores."""
 from __future__ import annotations
 
+from loguru import logger
+
 import json
 import os
 import tempfile
@@ -47,6 +49,7 @@ class JsonDoc:
             except BaseException:
                 try:
                     os.unlink(tmp)
-                except FileNotFoundError:
+                except FileNotFoundError as exc:
+                    logger.debug("a2a: a2a/store.py:save failed: {!r}", exc)
                     pass
                 raise
