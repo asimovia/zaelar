@@ -297,12 +297,19 @@ def open_screens() -> list[dict]:
 
 
 _listeners: list = []
+_turn_listeners: list = []
 
 
 def on_active_change(fn) -> None:
     """`fn(dev)` runs when a turn starts on a different screen than the last one (the canvas adopts that screen's)."""
     if fn not in _listeners:
         _listeners.append(fn)
+
+
+def on_turn(fn) -> None:
+    """`fn(dev)` runs at the start of EVERY turn from a named screen (V2-907 T10: the screen document's drift check)."""
+    if fn not in _turn_listeners:
+        _turn_listeners.append(fn)
 
 
 def begin_turn(dev, trace: str = "") -> None:
@@ -320,12 +327,11 @@ def begin_turn(dev, trace: str = "") -> None:
             _traces.move_to_end(str(trace))
             while len(_traces) > _CAP:
                 _traces.popitem(last=False)
-    if moved:
-        for fn in list(_listeners):
-            try:
-                fn(d)
-            except Exception as e:  # noqa: BLE001 — a listener never stops the turn from starting
-                logger.debug(f"screens: active-change listener failed: {e!r}")
+    for fn in list(_listeners) * moved + list(_turn_listeners):
+        try:
+            fn(d)
+        except Exception as e:  # noqa: BLE001 — a listener never stops the turn from starting
+            logger.debug(f"screens: turn listener failed: {e!r}")
 
 
 def note_task(task_id, dev) -> None:

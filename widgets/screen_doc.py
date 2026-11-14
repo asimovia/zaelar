@@ -187,6 +187,39 @@ def screens_of(cid) -> list[str]:
     return [d.dev for d in docs if (v := _valid(d)) and any(r["id"] == cid for r in v.open)]
 
 
+def _base(cid) -> str:
+    return str(cid or "").split("::", 1)[0].strip().lower()
+
+
+def drift(dev, legacy: dict) -> list[dict]:
+    """Where the LEGACY canvas state (`memory.state()`: `open_widgets`, `maximized_widget`, `minimized_widgets`,
+    `front_reported`) differs from screen `dev`'s document, in the legacy store's own terms (base ids): one row
+    `{what, legacy, doc}` per fact that differs — `open`, `front` (a deck's app in front), `max` (a desk's maximised
+    card), `min` (a desk's minimised cards; a deck's cards behind). `[]` when they agree or the document is unknown
+    (no document is not a drift: there is nothing to compare). Shadow (V2-907 T10): a measure, read by no decision."""
+    d = read(dev)
+    if d is None or not isinstance(legacy, dict):
+        return []
+    rows: list[dict] = []
+
+    def _cmp(what: str, old, new) -> None:
+        if old != new:
+            rows.append({"what": what, "legacy": old, "doc": new})
+
+    _cmp("open", sorted({_base(w) for w in legacy.get("open_widgets") or [] if _base(w)}),
+         sorted({_base(r["id"]) for r in d.open}))
+    if d.layout == "deck":
+        _cmp("front", _base(legacy.get("maximized_widget")) if legacy.get("front_reported") else None, _base(d.front))
+        _cmp("min", sorted({_base(w) for w in legacy.get("minimized_widgets") or []}),
+             sorted({_base(r["id"]) for r in d.open if r["vis"] != "front"} - {_base(d.front)}))
+    else:
+        _cmp("max", _base(legacy.get("maximized_widget")),
+             next((_base(r["id"]) for r in d.open if r.get("max") or r.get("fs")), ""))
+        _cmp("min", sorted({_base(w) for w in legacy.get("minimized_widgets") or []}),
+             sorted({_base(r["id"]) for r in d.open if r["vis"] == "min"}))
+    return rows
+
+
 def _reset_for_tests() -> None:
     with _LOCK:
         _DOCS.clear()
