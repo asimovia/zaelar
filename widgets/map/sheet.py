@@ -18,7 +18,6 @@ is. Pure reads; never writes the sheet.
 """
 from __future__ import annotations
 
-import re
 import time
 
 from loguru import logger
@@ -146,7 +145,7 @@ def _names_he_ended(said: str) -> set[tuple]:
     """Every run of his words that ENDS where his phrase pauses (a comma, a filler word, the end): «…mount baldy and
     the getty on a map» → «getty», «mount baldy», «baldy», …; «those coffee shops» → «shops», «coffee shops», never «coffee»."""
     out: set[tuple] = set()
-    for piece in re.split(r"[,;:.!?¿¡()\[\]\n]+", str(said or "")):
+    for piece in "".join("\n" if c in ",;:.!?¿¡()[]" else c for c in str(said or "")).split("\n"):
         run: list[str] = []
         for t in _tm.fold(piece).split(" ") + [""]:          # the trailing "" ends the last run
             if t and t not in _tm._GENERIC:

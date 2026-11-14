@@ -4,7 +4,6 @@ dispatcher's live record of a REPORT errand (V2-644).
 """
 from __future__ import annotations
 
-import re
 
 #: The process view keeps the same bounds as the results sheet's live view (`widgets/results/live.py`).
 _MAX_PHASES = 40
@@ -75,20 +74,20 @@ def _blocks(body: str) -> list:
     return out
 
 
-_JOINED = re.compile(r"(?<=\w)[-\u2010\u2011](?=\w)")   # a hyphen joining two letters, never a spaced dash
+_HYPHENS = "-\u2010\u2011"   # a hyphen joining two letters, never a spaced dash
 
 
 def _flat(text: str) -> str:
     """Lowercase, a hyphen between two letters read as a space: «proof-of-work» and «proof of work» are one wording."""
-    return _JOINED.sub(" ", str(text or "").lower())
+    s = str(text or "").lower()
+    return "".join(" " if c in _HYPHENS and 0 < i < len(s) - 1 and s[i - 1].isalnum() and s[i + 1].isalnum() else c for i, c in enumerate(s))
 
 
 def _best_block(body: str, query: str) -> str:
-    """The block that best matches: an exact phrase wins; else most query words, a heading winning a tie. A NUMBER the
-    query names is the passage's identity — only a block that carries it can match («Paso 2» never lands on «Paso 1»,
-    «step 12» never on «step 120»), and no such block is no match rather than the nearest words. A word counts where a
-    word of the block BEGINS with its stem («work» is in «proof-of-work», never in «network»), and both sides read a
-    hyphen between letters as a space, so a passage is found by its body however he joins the compound."""
+    """The block that best matches: an exact phrase wins; else most query words, a heading winning a tie. A NUMBER the query
+    names is the passage's identity — only a block that carries it can match («Paso 2» never lands on «Paso 1», «step 12»
+    never on «step 120»). A word counts where a word of the block BEGINS with its stem («work» is in «proof-of-work», never
+    in «network»), both sides reading a hyphen between letters as a space."""
     from widgets.numbers_said import numbers_in
     q = _flat(str(query or "").strip())
     if not q:
@@ -102,10 +101,10 @@ def _best_block(body: str, query: str) -> str:
     words = {w for w in words if len(w) >= 4 and w not in _STOP}
     if not words:
         return next((b.lstrip("# ").strip() for b in blocks if b.startswith("#")), "") if nums else ""
-    stems = [re.compile(r"\b" + re.escape(w[:6])) for w in words]   # a stem: «colonies» finds «Colonies»
-    best, score = "", 0.0
+    stems, best, score = [w[:6] for w in words], "", 0.0   # a stem: «colonies» finds «Colonies»
     for i, b in enumerate(blocks):
-        n = sum(1 for st in stems if st.search(_flat(b)))
+        toks = "".join(c if c.isalnum() else " " for c in _flat(b)).split()   # its words, at every non-letter
+        n = sum(1 for st in stems if any(t.startswith(st) for t in toks))
         sc = n + (0.5 if b.startswith("#") else 0) - i * 1e-4
         if n and sc > score:
             best, score = b.lstrip("# ").strip(), sc
@@ -115,7 +114,8 @@ def _best_block(body: str, query: str) -> str:
 def lead(block: str) -> str:
     """What a reader calls the passage `goto` landed on: its heading, its bold lead («The proposal»), or its first words."""
     t = str(block or "").strip()
-    m = re.match(r"(?:#+\s*)?(?:\*\*|__)(.+?)(?:\*\*|__)", t)
-    name = m.group(1) if m else t.lstrip("# ")
-    name = " ".join(re.sub(r"[*_`~>#\[\]]+", "", name).split())
+    rest = s[2:] if (s := t.lstrip("#").lstrip())[:2] in ("**", "__") else ""
+    m = rest[:end] if (end := min([i for i in (rest.find("**", 1), rest.find("__", 1)) if i > 0] or [0])) and "\n" not in rest[:end] else ""   # a bold lead
+    name = m or t.lstrip("# ")
+    name = " ".join("".join(c for c in name if c not in "*_`~>#[]").split())
     return (name if m or len(name) <= 60 else name[:60].rsplit(" ", 1)[0] + "…").rstrip(".:;, ")
