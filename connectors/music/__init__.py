@@ -196,7 +196,6 @@ def _start(prov: "MusicProvider", dev: "dict | None", screen: str, query: str, r
                     prov.pause()                 # a device that starts late must not sound under the page player
                 except Exception as _e:  # noqa: BLE001
                     logger.debug("_start: degraded, carrying on without it: %s", _e)
-                    pass
                 prov, dev, res = alt, None, run(alt, "")
     if res.ok:
         _after_start(prov, dev, screen, query, res)
@@ -474,12 +473,13 @@ def _play(query: str, uri: str, prefer: str = "", kind: str = "") -> MusicResult
 
         found = _found(query) if (query and not uri) else {}
         whole = _named_whole(query, kind, found) if found else None
-        if whole is not None:
+        elsewhere = whole is not None and bool(prefer) and str(whole.get("uri") or "").split(":", 1)[0] != prefer  # he NAMED another provider («ponlo por YouTube», 2026-11-14): his words go there as said
+        if whole is not None and not elsewhere:
             res = _play_whole(whole)
             res.extra = {**(res.extra or {}), **_found_extra(query, found, str(whole.get("uri") or ""))}
             return res
 
-        look_up, facts = _identify(query) if (query and not uri and getattr(prov, "plays_in_page", False)) else (query, {})
+        look_up, facts = _identify(query) if (query and not uri and not elsewhere and getattr(prov, "plays_in_page", False)) else (query, {})
 
         def run(p, dev_id):
             return p.play(query=look_up, uri=uri, device=dev_id) if dev_id else p.play(query=look_up, uri=uri)

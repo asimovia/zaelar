@@ -1,15 +1,12 @@
 """nucleo/flash/music_outcome.py — the turn words what the music act really did (V2-833 F3).
 
-Measured 2026-11-01 on a hosted engine: the model said «te la pongo» and the engine then appended a canned line from
-the connector — «No he dado con esa canción. ¿Me dices el artista…?» — ten times, while the real cause was ours (the
-catalogue lookup came back empty without saying why) and Spotify was connected the whole time. Two contradicting
-sentences per turn, and the operator blamed for our failure.
+Measured 2026-11-01 on a hosted engine: «te la pongo», then the connector's canned «No he dado con esa canción. ¿Me dices el
+artista…?» ten times, while the cause was ours (an empty lookup that said not why) and Spotify was connected.
 
 The mechanism: a failed music act hands its FACTS (what was asked, what was said, why it ended — unreachable · no
 track · no source — what was looked up and by whom, and the options this install really has) to the same follow-up
-pass that confirms or corrects first words (`follow_up_pass`): SKIP when what was said still holds, else one or two
-spoken sentences in his language. Its instructions are language data (`music.outcome_*` in the voice pack). No
-sentence is canned here, and none asks him for details unless the facts say the catalogue answered and found nothing.
+pass that confirms or corrects first words (`follow_up_pass`): SKIP when what was said still holds (and something
+was), else one or two spoken sentences in his language. Its instructions are language data (`music.outcome_*`).
 """
 from __future__ import annotations
 
@@ -22,10 +19,11 @@ _CONTROLS = {"pause", "stop", "resume", "next", "previous", "volume_up", "volume
 
 def _options(reason: str) -> list[str]:
     """The options this install really has for this outcome (keys of `music.outcome_options`)."""
-    connectable = False
+    connectable = page = False
     try:
         from connectors.music import registry
         connectable = not any(getattr(p, "plays_elsewhere", False) for p in registry.available())
+        page = any(getattr(p, "plays_in_page", False) for p in registry.available())
     except Exception as e:  # noqa: BLE001 — unknown: the account option is not offered
         logger.debug(f"music outcome: sources unreadable: {e!r}")
     if reason == "no_track":
@@ -33,14 +31,13 @@ def _options(reason: str) -> list[str]:
     if reason == "elsewhere":          # the account sounds on somebody else's device: taking it is his choice
         return ["take_over"]
     if reason == "needs_app":          # found, and only its provider's own app can sound it here (V2-860 T4.1)
-        return ["open_app"]
+        return ["open_app"] + (["page"] if page else [])   # or this screen's own player, by name (2026-11-14)
     return ["retry"] + (["connect"] if connectable else [])
 
 
 def _found_as(w: dict, res, extra: dict) -> str:
-    """« (a podcast, Spotify)» — WHAT kind of thing was found and WHERE, from the act's own facts (its uri's kind, the
-    provider that answered). Without them the pass guessed: a podcast was worded «the album», Spotify «the music app»
-    (V2-860, measured on the text channel 2026-11-08). The kind's word is language data (`music.outcome_kinds`)."""
+    """« (a podcast, Spotify)» — WHAT was found and WHERE, from the act's own facts (its uri's kind, the provider that
+    answered); without them a podcast was worded «the album» (V2-860, 2026-11-08). Words: `music.outcome_kinds`."""
     uri = str(extra.get("named_uri") or "")
     kind = str(extra.get("named") or (uri.split(":")[1] if uri.count(":") >= 2 else ""))
     word = str((w.get("outcome_kinds") or {}).get(kind) or "")
@@ -76,9 +73,8 @@ async def say(*, lang_lock: str, asked: str, said: str, res, spec, emit, send, s
     if str(getattr(res, "reason", "") or "") == "superseded":
         return ""                      # a newer request of his replaced it: that one speaks, this one is not news
     if str(getattr(res, "action", "") or "") in _CONTROLS and str(getattr(res, "message", "") or "").strip():
-        # A CONTROL that did not happen is a fact with its own sentence (the connector's, in his language): it is
-        # said, never judged. A model asked «is what you said still true?» answered SKIP over «Done — moving to the
-        # next one» when the skip had been refused (live 2026-11-08).
+        # A CONTROL that did not happen is a fact with its own sentence (the connector's): said, never judged — a model
+        # answered SKIP over «Done — moving to the next one» when the skip had been refused (live 2026-11-08).
         text = speech.sanitize(str(res.message), drop_metadata=False).strip()
         emit("brain", "🎵 music outcome → the connector's line", role="system", text=str(getattr(res, "reason", ""))[:40],
              extra={"cat": "flash", "reason": getattr(res, "reason", ""), "provider": getattr(res, "provider", "")})
@@ -92,6 +88,10 @@ async def say(*, lang_lock: str, asked: str, said: str, res, spec, emit, send, s
     out = "".join([d async for d in follow_up_pass.measured(FastClient(), sys2, asked, spec, 160, "music outcome")])
     text = speech.sanitize(out, drop_metadata=False).strip()
     if not text or text.upper().startswith("SKIP"):
-        return ""
+        from i18n import langs as _langs  # SKIP keeps what was said; over NOTHING it ended the turn mute (2026-11-14)
+        text = "" if (said or "").strip() else (speech.sanitize(str(getattr(res, "message", "") or ""), drop_metadata=False).strip()
+                                                or str(_langs.words("music.outcome_fallback", default="") or ""))
+        if not text:
+            return ""
     send((" " if said and not said[-1:].isspace() else "") + text)
     return text

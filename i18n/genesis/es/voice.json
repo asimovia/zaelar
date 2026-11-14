@@ -497,7 +497,8 @@
    "another": "buscar otra versión",
    "more_words": "unas palabras más de la canción",
    "open_app": "abrir la app de música en este dispositivo y pedírmelo otra vez",
-   "take_over": "tomar el control: que suene aquí y se corte en el otro dispositivo (el botón de la app de música, o pedírselo)"
+   "take_over": "tomar el control: que suene aquí y se corte en el otro dispositivo (el botón de la app de música, o pedírselo)",
+   "page": "ponerlo en el reproductor de esta pantalla (YouTube), buscándolo por su nombre"
   },
   "outcome_labels": {
    "tried": "buscado",
@@ -511,7 +512,8 @@
    "playlist": "una lista",
    "album": "un álbum",
    "track": "una canción"
-  }
+  },
+  "outcome_fallback": "No he podido ponerlo."
  },
  "agenda": {
   "plan": {

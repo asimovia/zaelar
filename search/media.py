@@ -70,10 +70,11 @@ def name_fit(query: str, name: str) -> float:
     return round(2 * precision * recall / (precision + recall), 3)
 
 
-def _fit(query: str, name: str, owner: str) -> float:
+def _fit(query: str, name: str, owner: str, by_owner: bool = False) -> float:
+    """`by_owner` (a song): its owner ALONE fits too — «Madonna»'s songs scored 0.4, a podcast «Madonna» 1.0 and won (2026-11-14)."""
     fit = name_fit(query, name)
     if owner:
-        fit = max(fit, name_fit(query, f"{name} {owner}"), name_fit(query, f"{owner} {name}"))
+        fit = max(fit, name_fit(query, f"{name} {owner}"), name_fit(query, f"{owner} {name}"), name_fit(query, owner) * by_owner)
     return round(fit, 3)
 
 
@@ -82,7 +83,7 @@ def _candidate(kind: str, item: dict, query: str, owner_key: str) -> dict:
     owner = str(item.get(owner_key) or "")
     return {"kind": kind, "name": name, "owner": owner, "source": str(item.get("source") or ""),
             "uri": str(item.get("uri") or ""), "video_id": str(item.get("videoId") or item.get("video_id") or ""),
-            "fit": _fit(query, name, owner), "item": item}
+            "fit": _fit(query, name, owner, kind == "track"), "item": item}
 
 
 def rank(query: str, answer: dict) -> list[dict]:
@@ -122,8 +123,7 @@ def named_whole(query: str, candidates: list[dict], kind: str = "") -> "dict | N
 def _videos(query: str, k: int) -> list[dict]:
     from .video import find_videos
     hits = find_videos(query, k) or []
-    return sorted((_candidate("video", {**h, "source": "youtube"}, query, "channel") for h in hits if isinstance(h, dict)),
-                  key=lambda c: -c["fit"])
+    return sorted((_candidate("video", {**h, "source": "youtube"}, query, "channel") for h in hits if isinstance(h, dict)), key=lambda c: -c["fit"])
 
 
 def find_media(query: str, kind: str = "music", k: int = 6, *, catalogue=None, video: bool = True) -> dict:
