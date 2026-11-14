@@ -2567,6 +2567,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/screen/test_one_document_per_screen.py"]},
         {"id": "4.537", "title": "A stage of the one screen state is OFF until switched (V2-907 T2, `widgets/screen_switch.stage`): `read`/`confirm`/`direct` default off in `config/v2` `screen`, the config turns one on, `ZAELAR_SCREEN_<NAME>=0` only forces OFF, an unknown name or an unreadable store is off; disarmed (always True) → red",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/screen/test_a_stage_is_off_until_switched.py"]},
+        {"id": "4.538", "title": "A canvas order is pending until its screen answers (V2-907 T3, `widgets/screen_orders.py`): `issue` gives a `seq`, a target's ack confirms, `not_open`/`already_*` is a noop, `refused` is refused, no answer within V2-884's `PENDING_S` (shared) is unconfirmed, nobody to answer is unconfirmed, two targets need two acks and a stranger cannot answer; disarmed (resolve at issue) → red",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/screen/test_an_order_is_pending_until_its_screen_answers.py"]},
         {"id": "4.534", "title": "`mensajeria:open` takes the channel he NAMES (`platform` bounds the name's resolution; none named: "
                                  "what is on screen first still wins) and declares its end state over the thread the card reports open",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_open_takes_the_channel_he_names.py"]},
