@@ -2071,6 +2071,13 @@ DOMAINS: list[dict] = [
         {"id": "3.148", "title": "«Close all» closes all: an explicit total spares no app, a close with no total still "
                                  "spares the one in use (V2-831 T-02)", "ch": UNIT,
             "paths": ["tests/agent_headless/unit/flash/test_an_explicit_close_all_spares_nothing.py"]},
+        # Audit 2026-11-14, class A (failures 1, 2, 8, 9): typed «cierra todo» vetoed by an earlier line's verdict (the
+        # typed lines shared a spoken fragment's trace), typed «para» queued behind a story, «para todo» left a video
+        # playing, a close's receipt 35 s late. Typed and spoken, es/en; each mechanism disarmed → red.
+        {"id": "3.232", "title": "Stopping and closing by TEXT always work: a typed line opens its own trace, the hard close "
+                                 "answers no brief verdict (`interrupt`), a typed hard interrupt cuts the speech sounding, "
+                                 "a stop that cut our speech is the voice's, a stop pauses every app reporting `playing`",
+            "ch": UNIT, "paths": ["tests/voice/unit/test_stopping_and_closing_by_text_always_work.py"]},
         # V2-831 T-02 — the hard close answered without the model and left no trace in the dialog window, so «i said
         # all» was read as a question about the previous errand. Its line and receipt now enter the window and
         # `_last_reply`, like a model turn's. Disarmed → red.

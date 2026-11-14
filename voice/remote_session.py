@@ -171,10 +171,14 @@ class RemoteSession:
         asyncio.get_running_loop().create_task(_play())
         return handle
 
-    def generate_reply(self, user_input: str = "", allow_interruptions: bool = True, **_kw) -> None:
+    def generate_reply(self, user_input: str = "", allow_interruptions: bool = True, cut_speech: bool = False,
+                       **_kw) -> None:
+        """`cut_speech`: the voice process interrupts the speech sounding now, then queues this reply — one request,
+        so the cut can never land on the reply it precedes (`agent_events._inject_typed`)."""
         from voice import screens
         self.client.post_soon("/voice/reply", {"text": user_input, "origin": screens.ORIGIN.get(),
                                                "allow_interruptions": allow_interruptions,
+                                               **({"cut": True} if cut_speech else {}),
                                                "env": self.client.env_diff()})
 
     def clear_user_turn(self) -> None:

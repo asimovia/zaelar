@@ -90,6 +90,29 @@ def hushed() -> bool:
     return (time.monotonic() - _hushed_at[0]) < _HUSH_S
 
 
+# A STOP OVER OUR SPEECH IS ABOUT OUR SPEECH (audit 2026-11-14, failure 8): his barge-in, or a hard interrupt typed while
+# we speak, cut it; the stop lane must not hand that turn to an app act (`hard_turn`). It is owned by the FIRST turn of
+# his born after the cut, within `CUT_TO_TURN_S` (a stop's words + the endpointing's 3 s hold + a second of STT).
+CUT_TO_TURN_S = 8.0
+_cut_at = [0.0]
+
+
+def note_speech_cut(now: float | None = None) -> None:
+    """His voice (barge-in) or his typed hard interrupt cut the speech that was sounding."""
+    _cut_at[0] = time.time() if now is None else now
+
+
+def turn_cut_our_speech(tid: str | None = None) -> bool:
+    """Did the turn `tid` (default: the one in flight) begin by cutting our speech?"""
+    try:
+        from voice import trace
+        tid = trace.current() if tid is None else str(tid or "")
+        at, born = _cut_at[0], trace.his_turn_at(tid)
+        return bool(at and born) and 0.0 <= born - at <= CUT_TO_TURN_S and trace.first_his_turn_since(at) == tid
+    except Exception as e:  # noqa: BLE001 — unreadable: the stop is judged as before
+        return bool(logger.debug(f"proactive: speech cut unreadable — {e!r}"))
+
+
 def register_bot_probe(fn) -> None:
     """The live session registers whether the BOT is speaking (TTS in progress) RIGHT NOW — distinct from the busy
     probe (bot OR user) because `nucleo.py::_maybe_close_flow` (2026-08-16) specifically needs to know whether ITS

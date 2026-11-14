@@ -113,6 +113,48 @@ async def names_an_act_on_screen(text: str, emit) -> bool:
         return False
 
 
+def _over_our_speech() -> bool:
+    from voice import proactive                # never raises: an unreadable cut is «not over our speech»
+    return proactive.turn_cut_our_speech()
+
+
+def _sounding() -> list[tuple[str, str]]:
+    """[(app, instance)] of every app that DECLARES a `pause` act and REPORTS `playing` on a screen that counts now
+    (V2-884, `widgets/state_render.read`) — read from the manifests, so a user's own player is paused too."""
+    from widgets import runtime, state_decl, state_render
+    out = []
+    for man in runtime.catalog():
+        app = str(man.get("id") or "")
+        if not app or "pause" not in (man.get("actions") or {}) \
+                or "playing" not in state_decl.report_fields(man.get("state") or {}):
+            continue
+        for s in state_render.read(app)["surfaces"]:
+            if s["fields"].get("playing") is True and (app, s["instance"]) not in out:
+                out.append((app, s["instance"]))
+    return out
+
+
+async def pause_what_sounds(text: str, emit) -> list[str]:
+    """A stop pauses whatever SOUNDS, through each app's own `pause` (audit 2026-11-14, failure 1: «para todo» over a
+    YouTube video did nothing — this lane knew an errand or Spotify only). Returns the instances paused."""
+    try:
+        sounding = _sounding()
+    except Exception as e:                     # noqa: BLE001 — an unreadable state pauses nothing, said
+        emit("brain", "⚠️ stop: app state unreadable", text=f"{type(e).__name__}: {e}"[:160], role="system")
+        return []
+    from widgets import server_api
+    paused = []
+    for app, inst in sounding:
+        got = await server_api.brain_action(inst, "pause", {})
+        if isinstance(got, dict) and not got.get("error"):
+            paused.append(inst)
+    if sounding:
+        emit("brain", "⏸ stop: paused what was sounding", text=",".join(paused) or text[:80], role="system",
+             extra={"cat": "flash", "reason": "hard_interrupt_pause", "sounding": [i for _a, i in sounding],
+                    "paused": paused})
+    return paused
+
+
 async def handle(text: str, hard: str, emit, brain=None) -> str | None:
     """Resolve a hard interrupt. Returns the text the turn should go on with, or None to end the turn.
 
@@ -148,6 +190,7 @@ async def handle(text: str, hard: str, emit, brain=None) -> str | None:
                          role="system", extra={"reason": "hard_interrupt"})
             except Exception:                  # noqa: BLE001
                 pass
+            await pause_what_sounds(text, emit)   # …and every app that reports it is playing (V2-884)
     if worker_stop:
         return text                            # the turn runs, untouched — the model owns this one
 
@@ -164,7 +207,9 @@ async def handle(text: str, hard: str, emit, brain=None) -> str | None:
         if not scope:                          # the grammar read no total: the closed question, off the voice loop
             every = await asyncio.to_thread(_bulk.closes_every_card, text, _bulk._open_instances())
             scope = "all" if every else ("some" if every is not None else "")
-        _bulk.close_all(emit, src="flash", text=text, scope=scope)
+        # The seeded grammar decided it: `interrupt`, never the model's branch, so no brief verdict can veto it (audit
+        # 2026-11-14, failure 2: an earlier line's `canvas=neither 0.94` vetoed «cierra todo» — nothing closed, silence).
+        _bulk.close_all(emit, src="interrupt", text=text, scope=scope)
         line = await say_receipt(emit, brain)  # V2-812 T-04: never a close in silence
         try:                                   # V2-831 T-02: …and never one the conversation does not hold
             _dialog.record_turn_without_model(brain, text, line)
@@ -179,10 +224,12 @@ async def handle(text: str, hard: str, emit, brain=None) -> str | None:
     # «Stop showing me the Social tab» — and, with a remainder too, «perfect, that works. now can you stop it?», which
     # kept only «perfect» while the trailer played on (V2-834 T25). The price, declared: every stop with a remainder
     # now waits for the brief's early `screen_action` verdict before it goes on (S1 audit H11).
-    if hard == "stop" and await names_an_act_on_screen(text, emit):
+    # …unless it CUT OUR SPEECH: then it is about that speech (audit 2026-11-14, failure 8: «para» over a story went to
+    # `musica:pause` 0.52 with nothing playing, and «Parado.» queued behind the story).
+    if hard == "stop" and not _over_our_speech() and await names_an_act_on_screen(text, emit):
         return text
     if not rest:
-        return None                            # 'stop' → the barge-in already cut the TTS; we do not reply
+        return None                            # 'stop' → our speech was cut (barge-in or the typed door); no reply
 
     emit("ambient", ("✋ cierre hecho · sigue el resto de la orden"
                      if hard == "close" else "✋ stop hecho · sigue el resto de la orden"),

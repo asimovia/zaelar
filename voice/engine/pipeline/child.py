@@ -134,6 +134,9 @@ async def reply(request):
     async def _do():
         tok = CHILD_ORIGIN.set(str(body.get("origin") or ""))
         try:
+            if body.get("cut"):                # a typed hard interrupt: the speech sounding now stops first
+                from .agent_events import cut_current_speech
+                cut_current_speech(LIVE["session"])
             LIVE["session"].generate_reply(user_input=text,
                                            allow_interruptions=bool(body.get("allow_interruptions", True)))
         finally:
