@@ -277,6 +277,30 @@ def _live_canvas_instances() -> list:
     return seen
 
 
+@router.post("/api/screen/report")
+async def screen_report(payload: dict):
+    """The ONE door of a screen's document (V2-907 §3.2): `{dev, mount, n, doc, acks, by}`. The document is written
+    here and nowhere else (`widgets/screen_doc.write`); the orders it answers go to the ledger
+    (`widgets/screen_orders.ack`). A refused report is refused whole, its answers too. `screen/report` is emitted only
+    when the document moved or an order was answered. Shadow: nothing reads the document for a decision yet."""
+    from voice import screens
+    from widgets import screen_doc, screen_orders
+    p = payload if isinstance(payload, dict) else {}
+    dev = screens.clean(p.get("dev"))
+    was = screen_doc.version(dev)
+    stored, why = screen_doc.write(dev, p.get("mount"), p.get("n"), p.get("doc"), by=p.get("by") or "")
+    if not stored:
+        return JSONResponse({"ok": False, "error": why}, status_code=409 if why in ("n_back", "replaced") else 400)
+    taken = screen_orders.ack(dev, p.get("acks"))
+    v = screen_doc.version(dev)
+    if v != was or taken:
+        d = screen_doc.read(dev)
+        emit("screen", "report", text=f"v{v} · front {(d.front if d else '') or '-'}",
+             extra={"dev": dev, "v": v, "acks": taken, "by": str(p.get("by") or "")[:20],
+                    **({"layout": d.layout, "front": d.front, "open": [r["id"] for r in d.open]} if d else {})})
+    return JSONResponse({"ok": True, "v": v, "acks": taken})
+
+
 @router.post("/api/canvas/reconcile")
 async def canvas_reconcile(payload: dict):
     """The screen's drift from the engine's list, as the browser reconciled it on reconnect (V2-825 F5)."""
