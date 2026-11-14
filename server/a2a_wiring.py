@@ -104,3 +104,48 @@ def scan_outbound(text: str) -> str | None:
     from connectors.meshkore import security
     _clean, reason = security.scan_outbound(text)
     return reason
+
+
+# ── widget-declared items (V2-866 F3 item 6) ────────────────────────────────────────────────────────────────────
+# A widget declares WHAT it shares in its manifest (`shareable`); the engine holds HOW each projection is read,
+# keyed `<widget>:<projection>`. A projection with no reader here is not served (the peer gets `unknown_item`).
+
+def _agenda_items(args: dict) -> list[dict]:
+    """One task list's items — title and done/todo only (no dates, no notes leave)."""
+    from widgets.agenda import data as agenda_data, task_read
+    rows = task_read.items(agenda_data.load_db(), str(args.get("list") or task_read.GENERAL))
+    return [{"title": r["title"], "done": r["status"] == "done"} for r in rows][:100]
+
+
+def _activity_summary(_args: dict) -> list[dict]:
+    """The last activities: kind, day, distance, minutes, average heart rate — never the route."""
+    from widgets.activity import data as act
+    out = []
+    for h in (act.view_data().get("history") or [])[:5]:
+        out.append({"kind": h.get("kind"), "started_at": h.get("started_at"), "distance_m": h.get("distance_m"),
+                    "elapsed_s": h.get("elapsed_s"), "hr_avg": h.get("hr_avg")})
+    return out
+
+
+def _freebusy_reader(args: dict) -> list[dict]:
+    return busy(str(args.get("from", "")), str(args.get("to", "")))
+
+
+READERS = {"agenda:freebusy": _freebusy_reader, "agenda:items": _agenda_items,
+           "activity:summary": _activity_summary}
+
+
+def declare_widget_items(reg) -> list[str]:
+    """Every built-in widget manifest's `shareable` entries → items of `reg` (overrides a default of the same id)."""
+    import json
+    from pathlib import Path
+    out = []
+    root = Path(__file__).resolve().parents[1] / "widgets"
+    for man in sorted(root.glob("*/manifest.json")):
+        try:
+            entries = json.loads(man.read_text(encoding="utf-8")).get("shareable")
+        except (OSError, ValueError):
+            continue
+        if entries:
+            out += a2a.declare_manifest(reg, man.parent.name, entries, READERS)
+    return out

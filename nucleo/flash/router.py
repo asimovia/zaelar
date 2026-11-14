@@ -82,7 +82,7 @@ FAMILIES: dict[str, tuple[str, ...]] = {
     "widgets":   ("show_widget", "close_widget", "widget_data", "delete_widget", "restore_widget", "confirm_widget_delete",
                   "fullscreen_widget", "manage_widget_alias", "show_panel", "arrange_canvas"),
     "workers":   ("send_to_worker", "stop_worker", "answer_worker", "resume_task"),
-    "cluster":   ("connect_cluster", "set_cluster_objective", "cluster_send"),
+    "cluster":   ("connect_cluster", "set_cluster_objective", "cluster_send"), "a2a": ("a2a_send", "a2a_connect", "a2a_grant", "a2a_read"),
     "messaging": ("reply_message",),
     "media":     ("play_music", "play_video", "show_images"),
     "web":       ("web_search", "search_listings", "authenticate_web", "login_done"),
@@ -117,6 +117,7 @@ _SITUATIONAL = {
     "authenticate_web":      lambda ctx: ctx.get("allow_auth", True),        # a window can reach him (`browser_window.reach`)
     # `cluster_send` IS situational, but based on REAL STATE: without a connected cluster there is nobody to write to.
     "cluster_send":          lambda ctx: ctx.get("cluster_connected", False),
+    **{n: (lambda ctx: ctx.get("a2a_live", False)) for n in FAMILIES["a2a"]},   # V2-866: A2A on + a contact accepted
     # V2-086: `connect_cluster`/`set_cluster_objective` are NO LONGER gated. The V2-064 gate (the
     # `cluster-registro` widget being open) made the capability UNDISCOVERABLE: connecting a new cluster required
     # knowing in advance that a widget had to be opened first (it no longer exists: the network is a NATIVE surface).
@@ -163,7 +164,7 @@ def tool_context(*, open_widgets=None, has_catalog: bool = True,
                  cluster_widget_open: bool = True, messaging_on: bool = True,
                  has_vault: bool = True, has_video_widget: bool = True, has_image_widget: bool = True,
                  cluster_connected: bool = False, has_pending: bool = False,
-                 allow_auth: bool | None = None, has_scheduled: bool | None = None) -> dict:
+                 allow_auth: bool | None = None, has_scheduled: bool | None = None, a2a_live: bool = False) -> dict:
     """Builds the `tools()` `context` from inexpensive state signals. `has_widgets` = a widget catalog exists
     (there is always one today) OR one is open. `has_workers` = live Brain Workers exist (→ send/stop_worker).
     `ask_pending` = a worker awaits a response (→ answer_worker). `messaging_on`/`has_vault`/`has_video_widget`
@@ -180,7 +181,7 @@ def tool_context(*, open_widgets=None, has_catalog: bool = True,
             "has_vault": bool(has_vault), "has_video_widget": bool(has_video_widget),
             "has_image_widget": bool(has_image_widget),
             "cluster_connected": bool(cluster_connected), "has_pending": bool(has_pending),
-            "has_scheduled": any_scheduled() if has_scheduled is None else bool(has_scheduled)}
+            "has_scheduled": any_scheduled() if has_scheduled is None else bool(has_scheduled), "a2a_live": bool(a2a_live)}
 
 
 def tools_report(offered: list[dict]) -> dict:

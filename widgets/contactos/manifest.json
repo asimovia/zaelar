@@ -133,6 +133,11 @@
       },
       "done_when": {"widget": "contactos", "collection": "contacts", "where": {"id": "{contactId}"}, "with": {"platform": "{platform}"}, "expect": "present"}
     },
+    "a2a_request": {"desc": "internal: the contact card's Ask-to-connect button (A2A network)", "instant": "the op answers the relationship state the agent now holds", "payload": {"contactId": "string"}, "internal": true},
+    "a2a_accept": {"desc": "internal: the contact card's Accept button (A2A network)", "instant": "the op answers the relationship state the agent now holds", "payload": {"contactId": "string"}, "internal": true},
+    "a2a_decline": {"desc": "internal: the contact card's Decline button (A2A network)", "instant": "the op answers the relationship state the agent now holds", "payload": {"contactId": "string"}, "internal": true},
+    "a2a_grant": {"desc": "internal: the contact card's Share button (A2A network)", "instant": "the op answers the relationship state the agent now holds", "payload": {"contactId": "string", "item": "string", "verbs": "list", "ttl_s": "int"}, "internal": true},
+    "a2a_revoke": {"desc": "internal: the contact card's Stop sharing button (A2A network)", "instant": "the op answers the relationship state the agent now holds", "payload": {"contactId": "string", "item": "string"}, "internal": true},
     "set_favorite": {
       "desc": "marca o desmarca un contacto como favorito («mi restaurante favorito»)",
       "payload": {

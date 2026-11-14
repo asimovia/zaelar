@@ -804,5 +804,17 @@
  "apps": {
   "photos_offer": "Google Photos isn't connected. I can connect it in Connectors, show you the images saved on this computer, or open your images folder in Files. Which would you like?",
   "files_cloud_fallback": "«{provider}» isn't connected, so this is your local library. Connect it in Connectors to go back to it."
- }
+ },
+ "a2a_connected": "Connected: {names}.",
+ "a2a_failed": "That didn't go through on the network.",
+ "a2a_inbox_empty": "No messages from your friends' agents.",
+ "a2a_inbox_line": "{name} says: {text}",
+ "a2a_no_agent": "{name} has no agent on the network yet.",
+ "a2a_not_connected": "{name} isn't connected with your agent.",
+ "a2a_requested": "I've asked {name}'s agent to connect. They'll answer on their side.",
+ "a2a_sent": "Sent to {name}'s agent.",
+ "a2a_shared": "Now sharing {item} with {name}.",
+ "a2a_sharing_line": "With {name}: {items}.",
+ "a2a_sharing_none": "You're not sharing anything right now.",
+ "a2a_unshared": "Stopped sharing {item} with {name}."
 }

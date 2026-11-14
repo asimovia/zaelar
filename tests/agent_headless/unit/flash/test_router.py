@@ -11,7 +11,8 @@ def test_tools_are_openai_functions():
                      "recall", "read_widget", "reopen_task", "resume_task",
                      "reveal_secret", "play_music", "play_video", "show_images", "reply_message", "connect_cluster",
                      "cluster_send", "set_cluster_objective", "send_to_worker", "stop_worker", "answer_worker",
-                     "cancel_scheduled", "agent_controls"}
+                     "cancel_scheduled", "agent_controls",
+                     "a2a_send", "a2a_connect", "a2a_grant", "a2a_read"}
     for t in router.tools():
         assert t["type"] == "function"
         assert "parameters" in t["function"]
@@ -144,7 +145,10 @@ def test_tools_report_is_observable():
 # the last one being the wording that sent one-step orders to 50-60 s workers, V2-776 E). Ceiling unchanged.
 # `agent_controls` (his own 🔊 / ⏻ by voice, +276) was PAID for by compaction: connect_cluster's parameter glosses and
 # set_cluster_objective's `peer` lost their repetitions («ver arriba», «sácalo de ahí», «por defecto»). Ceiling unchanged.
-MAX_CATALOG_CHARS = 23_600
+# +2_050 2026-11-14 V2-866 F3: the four A2A tools (a2a_send/connect/grant/read). Measured in the full catalogue, but
+# state-gated (`a2a_live`: A2A on AND an accepted contact): a turn without that state is offered none of them, so the
+# default turn pays 0 of it (`test_a2a_tools_are_offered_only_with_an_accepted_contact`).
+MAX_CATALOG_CHARS = 25_650
 
 
 # ── "muéstrame una foto de X" must NOT be described in words (real incident 2026-08-03) ─────────────────────
@@ -537,3 +541,12 @@ def test_web_search_answers_both_halves_of_a_two_part_question():
     back with half the answer, for two rounds in a row (one half each time)."""
     d = _desc("web_search").lower()
     assert "dos datos" in d and "misma `query`" in d
+
+
+def test_a2a_tools_are_offered_only_with_an_accepted_contact():
+    """V2-866 F3: zero prompt cost until the owner has an accepted A2A contact."""
+    names = ("a2a_send", "a2a_connect", "a2a_grant", "a2a_read")
+    off = {t["function"]["name"] for t in router.tools(router.tool_context())}
+    on = {t["function"]["name"] for t in router.tools(router.tool_context(a2a_live=True))}
+    assert not off & set(names)
+    assert set(names) <= on

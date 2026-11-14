@@ -802,5 +802,17 @@
  "apps": {
   "photos_offer": "Google Photos no está conectado. Puedo conectarlo en Conectores, enseñarte las imágenes guardadas en este equipo, o abrir tu carpeta de imágenes en Archivos. ¿Qué prefieres?",
   "files_cloud_fallback": "«{provider}» no está conectado, así que te enseño tu biblioteca local. Para volver a ese servicio, conéctalo en Conectores."
- }
+ },
+ "a2a_connected": "Conectados: {names}.",
+ "a2a_failed": "No ha salido por la red.",
+ "a2a_inbox_empty": "No hay mensajes de los agentes de tus amigos.",
+ "a2a_inbox_line": "{name} dice: {text}",
+ "a2a_no_agent": "{name} todavía no tiene agente en la red.",
+ "a2a_not_connected": "{name} no está conectado con tu agente.",
+ "a2a_requested": "He pedido conectar con el agente de {name}. Responderá desde su lado.",
+ "a2a_sent": "Enviado al agente de {name}.",
+ "a2a_shared": "Ya compartes {item} con {name}.",
+ "a2a_sharing_line": "Con {name}: {items}.",
+ "a2a_sharing_none": "Ahora mismo no compartes nada.",
+ "a2a_unshared": "Has dejado de compartir {item} con {name}."
 }

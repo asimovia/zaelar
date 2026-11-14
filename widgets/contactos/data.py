@@ -263,6 +263,8 @@ from .views import (  # noqa: E402,F401
 # `apply_action` is a table lookup; the contract gate reads the table's keys (`widgets/validator._table_actions`).
 
 
+from . import a2a_actions as _a2a  # noqa: E402 — V2-866 F3: the card's A2A buttons + the `contact.saved` publish
+
 ACTIONS = {
     "add_contact": _a_add_contact,
     "update_contact": _a_update_contact,
@@ -290,6 +292,11 @@ ACTIONS = {
     "set_auto": _a_set_auto,
     "sync_contacts": _a_sync_contacts,
     "import_google": _a_sync_contacts,
+    "a2a_request": _a2a.ACTIONS["a2a_request"],
+    "a2a_accept": _a2a.ACTIONS["a2a_accept"],
+    "a2a_decline": _a2a.ACTIONS["a2a_decline"],
+    "a2a_grant": _a2a.ACTIONS["a2a_grant"],
+    "a2a_revoke": _a2a.ACTIONS["a2a_revoke"],
 }
 
 
@@ -304,7 +311,7 @@ def apply_action(action: str, payload: dict | None = None) -> dict:
     handler = ACTIONS.get(action) if isinstance(action, str) else None
     if handler is None:
         return {"ok": False, "error": f"acción desconocida: {action}"}
-    return handler(action, payload, q, db, contacts, now)
+    return _a2a.after(action, payload, handler(action, payload, q, db, contacts, now))
 
 
 #: The GOOGLE merge lives in `gcontacts.py`, beside the who-wins-a-conflict rule (V2-714); aliased for callers.

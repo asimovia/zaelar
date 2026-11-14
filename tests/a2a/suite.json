@@ -14,6 +14,7 @@
     {"id": "6.A6", "label": "HTTP clients against the MeshKore contracts", "kind": "unit"},
     {"id": "6.A7", "label": "Cadence, the power switch and the wake gate", "kind": "unit"},
     {"id": "6.A8", "label": "Observability: one table, no leaks", "kind": "unit"},
-    {"id": "6.A9", "label": "Two-plato run: discover to revoke, zero model calls", "kind": "e2e"}
+    {"id": "6.A9", "label": "Two-plato run: discover to revoke, zero model calls", "kind": "e2e"},
+    {"id": "6.A10", "label": "Owner surfaces: manifest items, consent cards, turn tools, contact hook", "kind": "unit"}
   ]
 }

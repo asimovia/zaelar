@@ -2720,5 +2720,21 @@
  "widgets.contactos.say_source_not_connected": "{source} isn't connected yet — connect it and ask me again.",
  "widgets.producers.say_agent_stopped": "The agent is stopped. Switch it on (⏻) to play again.",
  "widgets.musica.say_not_in_library": "I can't find that audio in your library (or it can't be played)",
- "widgets.musica.say_file_gone": "that file is no longer in your library"
+ "widgets.musica.say_file_gone": "that file is no longer in your library",
+ "a2a.accept": "Accept",
+ "a2a.card_propose": "{name} has an agent on the network. Connect?",
+ "a2a.card_request": "{name} wants to connect their agent with yours",
+ "a2a.connect": "Connect agent",
+ "a2a.decline": "Decline",
+ "a2a.grants": "What you share",
+ "a2a.message": "Message from {name}'s agent",
+ "a2a.network": "Network",
+ "a2a.no": "No",
+ "a2a.none": "Nobody yet",
+ "a2a.pending": "Pending requests",
+ "a2a.recent": "Recent activity",
+ "a2a.relationships": "Connected agents",
+ "a2a.share": "Share",
+ "a2a.stop_sharing": "Stop sharing",
+ "a2a.yes": "Yes"
 }

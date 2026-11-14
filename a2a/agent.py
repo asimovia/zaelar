@@ -177,6 +177,18 @@ class A2AAgent:
                                           "matched_by": matched_by}, trace=trace)
         return r.status
 
+    def connect_contact(self, contact: dict, trace: str = "owner") -> str:
+        """The owner asks to connect with one of his contacts (`{cid, name, emails, phones}`): its hashes are looked
+        up and the request goes to the matched agent. `no_match` when that person has no agent on the network."""
+        from .discovery import hashes_for
+        hs = hashes_for(contact.get("emails", ()), contact.get("phones", ()), "")
+        found = self.directory.lookup(list(hs)) if hs and self.directory else []
+        m = next((m for m in found if m.get("did") and m.get("did") != self.me.did), None)
+        if m is None:
+            return "no_match"
+        return self.connect(m["did"], contact_id=str(contact.get("cid") or ""), name=str(contact.get("name") or ""),
+                            matched_by=hs.get(m.get("hash"), ""), agent_id=m.get("agent_id", ""), trace=trace)
+
     def _on_accepted(self, r, crossing: bool = False):
         if not r.contact_id:
             r.contact_id = "a2a:" + short(r.did)
@@ -369,6 +381,20 @@ class A2AAgent:
             pass
         self.emit("pull", n=len(mail), cursor_from=start, cursor_to=self.rels.cursor, reason=reason, ms=ms)
         return len(mail)
+
+    def sharing(self, who: str | None = None) -> list[dict]:
+        """What the owner shares, per accepted contact: `[{cid, name, items:[{item, verbs, expires_at}], recent}]` —
+        «¿qué estoy compartiendo?» is read from the grants and the event log, never from a model."""
+        out = []
+        for r in self.rels.all():
+            if r.status != "accepted" or (who and who not in (r.did, r.contact_id)):
+                continue
+            items = [{"item": g.item, "verbs": list(g.verbs), "expires_at": g.expires_at}
+                     for g in self.grants.for_audience(contact_audience(r.contact_id))]
+            last = [{"op": e["op"], "dir": e.get("dir", ""), "ts": e.get("ts")}
+                    for e in events.recent(r.contact_id, 5)]
+            out.append({"cid": r.contact_id, "name": r.name, "items": items, "recent": last})
+        return out
 
     def inbox(self, who: str | None = None) -> list[dict]:
         rows = self.state["inbox"]

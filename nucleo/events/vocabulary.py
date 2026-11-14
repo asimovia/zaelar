@@ -90,6 +90,13 @@ TYPES: tuple[EventType, ...] = (
     EventType("web.commit", OUT, "a click that commits him on a website (a booking, an order)", level="sensitive"),
     EventType("payment.authorize", OUT, "money leaves his accounts", level="critical"),
     EventType("account.disconnect", OUT, "one of his connected accounts is disconnected", level="sensitive"),
+    # ── leaves: his items, to an accepted contact's agent (V2-866; the channel is the item, the subject the contact) ──
+    EventType("a2a.see", OUT, "a contact's agent reads one of his shared items (free/busy, a list, a summary)",
+              level="standard"),
+    EventType("a2a.subscribe", OUT, "a contact's agent follows a live share of his (an activity)", level="sensitive"),
+    EventType("a2a.append", OUT, "a contact's agent writes to him (a message)", level="standard"),
+    EventType("a2a.edit", OUT, "a contact's agent edits an item he shares", level="sensitive"),
+    EventType("a2a.copy", OUT, "a contact's agent keeps a copy of an item he shares", level="sensitive"),
     # ── leaves: an errand ──
     EventType("errand.mesh_serve", OUT, "an errand's request goes to an agent of the network that serves it",
               level="standard"),
