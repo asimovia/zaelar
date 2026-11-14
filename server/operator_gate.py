@@ -109,6 +109,8 @@ def install(app) -> None:
             return await call_next(request)
         if not _routed(request):                  # no such route: the router's own 404, not a 403 that says it exists
             return await call_next(request)
+        if api_guard._wake_exempt(request):       # the signed wake push is nobody's click: its handler is the gate,
+            return await call_next(request)       # and an unsigned one must not cost a peer-process lookup
         peer = (request.client.host if request.client else "") or ""
         cloud = _cloud()
         in_process = (peer, api_guard._hostname(request.headers.get("host") or "")) == api_guard._IN_PROCESS

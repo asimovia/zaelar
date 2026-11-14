@@ -10,6 +10,7 @@ from loguru import logger
 
 import json
 import secrets
+import threading
 import time
 from pathlib import Path
 from typing import Callable
@@ -49,6 +50,7 @@ class A2AAgent:
                             {"inbox": [], "answers": {}, "proposed": {}, "never": [], "out_shares": {},
                              "in_shares": {}, "shared_with_me": {}, "published": []})
         self.empty_pulls: list[float] = []
+        self._pull_lock = threading.Lock()                 # the cadence thread and a wake never pull at once
 
     # ── helpers ───────────────────────────────────────────────────────────────────────────────────────────────
     @property
@@ -361,6 +363,10 @@ class A2AAgent:
 
     # ── pull ──────────────────────────────────────────────────────────────────────────────────────────────────
     def pull(self, reason: str = "idle") -> int:
+        with self._pull_lock:                              # two pulls from one cursor would dispatch the same mail twice
+            return self._pull(reason)
+
+    def _pull(self, reason: str) -> int:
         from .handlers import dispatch
         t0 = time.monotonic()
         start = self.rels.cursor

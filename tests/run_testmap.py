@@ -6856,6 +6856,8 @@ DOMAINS: list[dict] = [
             "paths": ["tests/a2a/e2e/test_two_platos.py"]},
         {"id": "6.13", "title": "A2A owner surfaces: widget-declared items, durable consent cards, state-gated turn tools, contact block + saved hook (V2-866 F3)",
             "ch": UNIT, "paths": ["tests/a2a/unit/test_surfaces.py"]},
+        {"id": "6.14", "title": "A2A wake admission: the one route reachable from outside, signature first, nonces of verified wakes only (V2-866)",
+            "ch": UNIT, "paths": ["tests/a2a/unit/test_wake_admission.py"]},
         {"id": "6.4", "title": "Conversación con peer (comportamiento)", "ch": PEER, "live": True,
             "cmd": "./.venv/bin/python tests/cluster/e2e/run_cluster_suite.py"},
     ]},
