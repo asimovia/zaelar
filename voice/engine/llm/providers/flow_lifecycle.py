@@ -57,15 +57,22 @@ def _begin_or_adopt_trace(brain: "NucleoLLM", text: str, first_turn: bool) -> No
     prepared by V2-095, not a guess-and-check patch.
 
     Separate function (not inline in `_run_inner`) so it can be tested WITHOUT a real LiveKit stream — see
-    `tests/voice/unit/providers/test_nucleo_trace_merge.py`."""
+    `tests/voice/unit/providers/test_nucleo_trace_merge.py`. A TYPED line is complete (`nucleo.input`): it adopts no
+    chain and opens its own trace (audit 2026-11-14: six typed lines shared a spoken fragment's, and «close all» was
+    judged by an earlier line's verdict); the spoken chain keeps its id for the fragment still to come."""
+    from nucleo import input as _input
     from voice import trace as _trace
+    spoken = not _input.of_turn(text).complete
+    pending = getattr(brain, "_acc", None) is not None and brain._acc.pending() and brain._acc_trace_id
     if first_turn:
         _trace.begin(text, origin="kickoff")
-    elif getattr(brain, "_acc", None) is not None and brain._acc.pending() and brain._acc_trace_id:
+    elif spoken and pending:
         _trace.adopt(brain._acc_trace_id)
-    elif (_g := getattr(brain, "_chain_grace", ("", 0.0)))[0] and (time.time() - _g[1]) <= _CHAIN_GRACE_S:
+    elif spoken and (_g := getattr(brain, "_chain_grace", ("", 0.0)))[0] and (time.time() - _g[1]) <= _CHAIN_GRACE_S:
         brain._acc_trace_id = _g[0]
         _trace.adopt(_g[0])
+    elif pending:
+        _trace.begin(text, origin="turno")     # a typed line beside an unfinished spoken one: each keeps its own
     else:
         brain._acc_trace_id = _trace.begin(text, origin="turno")
     try:    # V2-831 T-23 — the speech this generation produces belongs to THIS turn, wherever its playout ends
