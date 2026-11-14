@@ -54,6 +54,7 @@ const _sensors = () => import("../../../app/services/device.js?v=1");   // V2-87
 import { createEffect } from "../../../app/core/reactive.js?v=2";
 import { paintPips, wirePipDrag } from "./pips.js?v=1";
 import { HomeToday } from "./HomeToday.js?v=1";
+import { deckScreen } from "./deck-screen.js?v=1";
 
 const CARD_ANIM_MS = 260;
 const EDGE_PX = 22;          // a one-finger swipe that starts this close to a screen edge always pages
@@ -222,7 +223,7 @@ export class Deck {
     this._home = null;
     this._wireGestures();
     this._mountHome();
-    this._watchDoors();
+    this._watchDoors(); this._screen = deckScreen(this);   // V2-907: the screen's one document (adapter)
   }
 
   // ── THE ONE DOOR a native surface opens a card through (V2-823): `hb:open-card`, the same document event the
@@ -420,7 +421,7 @@ export class Deck {
   // by _persist(). Debounced, because _persist fires in bursts while a deck is being restored. No `layout` key:
   // there is no geometry in a deck, and sending a fake one would poison the desktop's safety net for the same
   // account (the server keeps ONE last-known layout per install).
-  _reportOpen() {
+  _reportOpen() { if (this._screen) this._screen.changed();   // V2-907: the screen document says it too
     clearTimeout(this._openTimer);
     this._openTimer = setTimeout(async () => {
       const dev = await _device(), front = this.at >= 0 ? (this.order[this.at] || "") : "";   // V2-903: "" = home
