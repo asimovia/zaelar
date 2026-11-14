@@ -128,6 +128,15 @@ def write(dev, mount, n, doc, *, by: str = "") -> tuple[bool, str]:
     return True, ""
 
 
+def version(dev) -> int:
+    """The stored `v` of screen `dev` (0 = never reported), valid or not — the report door's change detector, never a
+    reader of what is on screen (that is `read`)."""
+    from voice import screens
+    with _LOCK:
+        d = _DOCS.get(screens.clean(dev))
+    return d.v if d else 0
+
+
 def _valid(d: Doc | None) -> Doc | None:
     from voice import screens
     if d is None or not screens.is_open(d.dev):

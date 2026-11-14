@@ -2569,6 +2569,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/screen/test_a_stage_is_off_until_switched.py"]},
         {"id": "4.538", "title": "A canvas order is pending until its screen answers (V2-907 T3, `widgets/screen_orders.py`): `issue` gives a `seq`, a target's ack confirms, `not_open`/`already_*` is a noop, `refused` is refused, no answer within V2-884's `PENDING_S` (shared) is unconfirmed, nobody to answer is unconfirmed, two targets need two acks and a stranger cannot answer; disarmed (resolve at issue) → red",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/screen/test_an_order_is_pending_until_its_screen_answers.py"]},
+        {"id": "4.539", "title": "A screen's document has ONE writer, its report door (V2-907 T4, `POST /api/screen/report`): it writes `screen_doc`, hands the acks to `screen_orders`, emits `screen/report` only when the document moved or an order was answered, refuses a stale or malformed report whole (its acks too); a structural scan finds no other caller of `screen_doc.write`; disarmed (a second writer in a temp module) → red",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/screen/test_the_report_door_is_the_only_writer.py"]},
         {"id": "4.534", "title": "`mensajeria:open` takes the channel he NAMES (`platform` bounds the name's resolution; none named: "
                                  "what is on screen first still wins) and declares its end state over the thread the card reports open",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_open_takes_the_channel_he_names.py"]},
