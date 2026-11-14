@@ -159,6 +159,12 @@ the goal, and size is only its symptom:
   (code the fix made dead, a duplicated helper, a split by domain), then raise the ceiling in the same commit by
   what remains, with its cause beside it. What stays a rule is the written cause and watching the TREND: a package
   that rises batch after batch is due a split, not another raise.
+- **The structural decision is taken BEFORE the change, not after the overflow.** A change that lands 10, 50 or
+  100 lines over a ceiling is normal: raise it with the cause and move on. The moment to reconsider structure is
+  when a change is about to START on a file or package that is ALREADY past its guide: first ask whether it needs
+  to be split into modules, restructured, or replaced by an external library's function — and do that first, as
+  its own commit, before the change lands on it. Raising, again, a ceiling that was already exceeded is how the
+  giant files came back; that is the one raise to avoid. Staying close to the limits is the goal, not hitting them.
 - **What only ever shrinks is different:** product regexes and word tables (node 7.73), the dependency-direction
   inventory (7.32) and the swallowed-failure count. Those measure a CLASS of defect, so growing them is the
   defect itself.
