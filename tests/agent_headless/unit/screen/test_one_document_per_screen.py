@@ -76,6 +76,17 @@ def test_unknown_is_not_empty(sd):
     assert sd.read(PHONE) is None and sd.screens_of("musica") == []
 
 
+
+def test_a_host_still_restoring_is_unknown_and_closes_nothing(sd):
+    """V2-907 A1: a reload's first report, sent while the host brings its saved apps back, says `unknown`."""
+    sd.write(DESK, "k1", 4, _win(("youtube", "front"), ("agenda", "visible")))
+    assert sd.write(DESK, "k2", 1, {"layout": "windows", "unknown": True}) == (True, "")
+    assert sd.read(DESK) is None and sd.open_ids(DESK) is None and sd.screens_of("youtube") == []
+    assert sd.write(DESK, "k1", 5, _win()) == (False, "replaced")       # the new mount is registered
+    assert sd.write(DESK, "k2", 2, _win(("youtube", "front"), ("agenda", "visible")))[0]
+    d = sd.read(DESK)
+    assert [r["id"] for r in d.open] == ["youtube", "agenda"] and d.closed == ()
+
 def test_v_moves_only_with_the_content_and_closed_is_kept(sd, monkeypatch):
     sd.write(DESK, "k1", 1, _win(("youtube", "front"), ("agenda", "behind")))
     sd.write(DESK, "k1", 2, _win(("youtube", "front"), ("agenda", "behind")))

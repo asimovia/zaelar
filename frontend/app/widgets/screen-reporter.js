@@ -3,7 +3,8 @@
 //
 // Both hosts (the desktop's windows and the phone's deck) build the same document from an ADAPTER they implement:
 //   { layout: "windows"|"deck", list() → ids, vis(id) → front|visible|behind|min, layer(id) → 0 = on top,
-//     home() → {shown, holds: [names]}, panel() → native surface open or "", flags(id) → {max, fs} (optional) }
+//     home() → {shown, holds: [names]}, panel() → native surface open or "", flags(id) → {max, fs} (optional),
+//     restoring() → true while the host is still bringing its saved apps back (optional, `watchRestore`) }
 // and hand it to this module, which POSTs `{dev, mount, n, doc, acks, by}` to `/api/screen/report` — the one door
 // of the screen's document on the engine (`widgets/screen_doc.write`). Nothing here knows a card.
 //
@@ -12,6 +13,7 @@
 //     the document whole even if nothing changed;
 //   · a change (`changed(by)`) is coalesced for `DEBOUNCE_MS`; the same document twice is not said again;
 //   · an ORDER's answer (`ack(seq, ok, why)`) is flushed AT ONCE, never debounced: the engine waits on it;
+//   · while the host restores (a reload), the document says `unknown: true` — never the empty screen of that instant;
 //   · one POST in flight; a lost or refused POST keeps its answers for the next one; a mount the engine says was
 //     replaced takes the screen back with a new mount while the tab is in view.
 // ============================================================================
@@ -34,6 +36,26 @@ if (typeof document !== "undefined" && document.addEventListener && !globalThis.
 export function reportAll() { for (const r of _live) r.snapshot(false); }
 
 const _newMount = () => Math.random().toString(36).slice(2, 12);
+//: A restore that never settles stops holding the screen unknown after this long: what it shows by then is the truth.
+export const RESTORE_MAX_MS = 15000;
+
+// The host's `restore()` (its saved apps coming back after a reload) is watched: `() => busy`, and `settled()` runs
+// once it ends (or after RESTORE_MAX_MS). Wraps the instance's method, so the host's own code is unchanged.
+export function watchRestore(host, settled) {
+  let busy = false;
+  const orig = host && typeof host.restore === "function" ? host.restore : null;
+  if (!orig) return () => false;
+  const done = () => { if (busy) { busy = false; settled(); } };
+  host.restore = function (...a) {
+    busy = true;
+    const cap = setTimeout(done, RESTORE_MAX_MS);
+    let p;
+    try { p = orig.apply(this, a); } catch (e) { clearTimeout(cap); done(); throw e; }
+    Promise.resolve(p).catch(() => {}).then(() => { clearTimeout(cap); done(); });
+    return p;
+  };
+  return () => busy;
+}
 
 export function screenReporter(adapter, opts = {}) {
   const post = opts.fetch || ((u, init) => fetch(u, init));
@@ -45,6 +67,7 @@ export function screenReporter(adapter, opts = {}) {
   let last = "", acks = [], by = "", fails = 0;
 
   const doc = () => {
+    if (adapter.restoring && adapter.restoring()) return { layout: adapter.layout, unknown: true };
     const ids = [...(adapter.list() || [])];
     const open = ids.map((id, i) => {
       const layer = adapter.layer ? adapter.layer(id) : i;

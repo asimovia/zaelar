@@ -11,7 +11,7 @@
 // Every change the desk announces (`hb:canvas-changed`: a show, close, minimise, maximise, focus by his hand) is
 // reported; `services/sse.js` answers each order through `screen-order.js`.
 // ============================================================================
-import { screenReporter } from "./screen-reporter.js?v=1";
+import { screenReporter, watchRestore } from "./screen-reporter.js?v=1";
 import { panelOf, watchPanel, DESKTOP_PANELS } from "./screen-panel.js?v=1";
 
 const _z = (c) => parseInt(c && c.style && c.style.zIndex, 10) || 0;
@@ -54,5 +54,6 @@ export function desktopScreen(desk, opts = {}) {
   const cause = () => { const by = Object.values(desk._by || {}); return by.includes("hand") ? "hand" : by[0] || ""; };
   try { document.addEventListener("hb:canvas-changed", () => rep.changed(cause())); } catch (_) {}
   watchPanel(DESKTOP_PANELS, () => rep.changed());   // a panel opened or closed over the canvas (T9)
+  adapter.restoring = watchRestore(desk, () => rep.changed("restore"));   // a reload: unknown until restored
   return { adapter, rep };
 }
