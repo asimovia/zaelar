@@ -5,7 +5,7 @@
     "order": {"video": "yt.videoId", "paused": "yt.paused", "muted": "yt.muted", "volume": "yt.volume", "cmd": "yt.cmd_seq",
               "refused": "yt.player_error", "file": "local.src", "file_paused": "local.paused"},
     "report": {
-      "playing": {"type": "bool", "follows": ["!paused", "video", "!file_paused", "file"]},
+      "playing": {"type": "bool", "follows": ["!paused", "video", "!file_paused", "file"], "stop": {"act": "pause", "when": true}},
       "playing_id": {"type": "id", "follows": "video"},
       "muted": {"type": "bool", "follows": "muted"},
       "volume": {"type": "int:0-100", "follows": "volume"}

@@ -208,7 +208,7 @@ def ask_for_turn(operator_text: str, *, running_goals=None, last_reply: str = ""
     """Fire the brief for a live voice turn, reading the screen and worker state itself. `operator_text` must be the
     ADMITTED sentence. Never raises: no state reads as nothing open."""
     if (pre := _bt.prefired(operator_text)) is not None:
-        return pre
+        return _bt.stamp(pre, turn_id=turn_id, open_ids=pre.get("open_ids"))   # joined to THIS turn's trace
     try:
         from memory import api as _memapi
         open_ids = list((_memapi.state() or {}).get("open_widgets") or [])

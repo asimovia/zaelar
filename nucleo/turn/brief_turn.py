@@ -112,6 +112,7 @@ def stamp(handle, *, turn_id=None, open_ids=None):
 
 #: The turn's brief by trace, for readers no caller hands it to (a canvas close, the errand portal). Bounded.
 _BY_TRACE: dict = {}
+__import__("voice.trace", fromlist=["x"]).turn_scoped(lambda tid: _BY_TRACE.pop(tid, None))   # one turn's brief
 
 
 def remember_for_the_turn(handle) -> None:

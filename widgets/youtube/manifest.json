@@ -4,7 +4,7 @@
   "state": {
     "order": {"video": "videoId", "stream": "src", "paused": "paused", "muted": "muted", "volume": "volume", "cmd": "cmd_seq"},
     "report": {
-      "playing": {"type": "bool", "follows": ["!paused", "video", "stream"]},
+      "playing": {"type": "bool", "follows": ["!paused", "video", "stream"], "stop": {"act": "pause", "when": true}},
       "playing_id": {"type": "id", "follows": "video"},
       "muted": {"type": "bool", "follows": "muted", "adopt": "player_adopt", "settle_on": ["video", "cmd"]},
       "volume": {"type": "int:0-100", "follows": "volume", "adopt": "player_adopt", "settle_on": ["video", "cmd"]},
