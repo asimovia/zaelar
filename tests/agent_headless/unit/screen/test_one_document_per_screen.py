@@ -132,3 +132,43 @@ def test_disarmed_n_check_turns_red(sd):
         src.write_text(orig, encoding="utf-8")
         shutil.rmtree(src.parent / "__pycache__", ignore_errors=True)
         importlib.reload(sd)
+
+
+def _crowd(n: int, front_at: int) -> dict:
+    return {"layout": "windows", "open": [{"id": f"results::c{i}", "layer": i, "vis": "front" if i == front_at else
+                                           "min"} for i in range(n)]}
+
+
+def test_a_crowd_of_windows_is_cut_to_the_top_and_says_so(sd):
+    """V2-907 A7: more than MAX_OPEN windows keep the top MAX_OPEN by layer, the front always, and `truncated: n`."""
+    n = sd.MAX_OPEN + 6
+    assert sd.write(DESK, "k1", 1, _crowd(n, front_at=n - 1)) == (True, "")
+    d = sd.read(DESK)
+    ids = [r["id"] for r in d.open]
+    assert len(ids) == sd.MAX_OPEN and d.truncated == 6 and d.front == f"results::c{n - 1}" and ids[-1] == d.front
+    assert ids[:-1] == [f"results::c{i}" for i in range(sd.MAX_OPEN - 1)]
+    assert sd.write(DESK, "k1", 2, _crowd(n, front_at=0))[0]           # the same crowd, another front
+    d = sd.read(DESK)
+    assert d.front == "results::c0" and d.closed == ()                 # an app only left out is never «closed»
+    assert sd.drift(DESK, {"open_widgets": ["results"], "maximized_widget": "", "minimized_widgets": []}) == []
+    assert sd.write(DESK, "k1", 3, _crowd(sd.MAX_ROWS + 1, front_at=0)) == (False, "open")   # past the hard bound
+
+
+def test_disarmed_a_crowd_refused_whole_turns_red(sd):
+    """Disarm: the crowd refused whole (the old bound) — the cut test must fail."""
+    import importlib
+    src = ROOT / "widgets" / "screen_doc.py"
+    orig = src.read_text(encoding="utf-8")
+    guard = "len(rows) > MAX_ROWS:"
+    assert orig.count(guard) == 1, "the disarm no longer matches screen_doc.py"
+    try:
+        src.write_text(orig.replace(guard, "len(rows) > MAX_OPEN:"), encoding="utf-8")
+        shutil.rmtree(src.parent / "__pycache__", ignore_errors=True)
+        assert guard not in src.read_text(encoding="utf-8")
+        importlib.reload(sd)
+        with pytest.raises(AssertionError):
+            test_a_crowd_of_windows_is_cut_to_the_top_and_says_so(sd)
+    finally:
+        src.write_text(orig, encoding="utf-8")
+        shutil.rmtree(src.parent / "__pycache__", ignore_errors=True)
+        importlib.reload(sd)
