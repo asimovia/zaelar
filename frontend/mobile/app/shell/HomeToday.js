@@ -60,8 +60,10 @@ export function HomeToday() {
       const what = [np.title, np.artist].filter(Boolean).join(" · ") || playing.titleEl.textContent;
       out.push(row("play", what, "♪ " + t("mobile.producing"), () => deck._goTo(deck.order.indexOf(playing.id || ""), 0)));
     }
+    const was = holds.join();
     holds = ["greeting", ...(ups.length ? ["next_events"] : []), ...(playing ? ["now_playing"] : [])];
     el.replaceChildren(...out);
+    if (holds.join() !== was && deck._screen) deck._screen.changed();   // V2-907 A3: a late redraw is said too
   };
   const refresh = (deck) => {
     draw(deck);

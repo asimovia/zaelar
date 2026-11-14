@@ -2585,6 +2585,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/screen/test_a_drift_is_an_event.py"]},
         {"id": "4.546", "title": "A reloaded screen is UNKNOWN until its saved apps are back, never an empty screen (V2-907 A1): while the host's `restore()` runs (`screen-reporter.watchRestore`, on the desk and the deck) its reports say `{layout, unknown: true}`, which `widgets/screen_doc.write` stores as the new mount with no document to read and nothing closed; the first full report lists every saved app; disarmed (the reporter ignores the restore) → red",
             "ch": UNIT, "paths": ["tests/browser/unit/screen/test_a_reload_is_unknown_until_restored.py"]},
+        {"id": "4.547", "title": "A line the phone's home draws after its own fetch reaches the screen document (V2-907 A3, `HomeToday.js`): the home on screen before the agenda's data arrives, the late «next appointments» line makes the deck report again, and its last document's `home.holds` equals what the home drew; disarmed (the redraw does not tell the deck's screen) → red",
+            "ch": UNIT, "paths": ["tests/browser/unit/mobile/test_a_late_home_line_is_reported.py"]},
         {"id": "4.534", "title": "`mensajeria:open` takes the channel he NAMES (`platform` bounds the name's resolution; none named: "
                                  "what is on screen first still wins) and declares its end state over the thread the card reports open",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_open_takes_the_channel_he_names.py"]},
