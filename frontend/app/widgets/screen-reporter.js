@@ -14,7 +14,8 @@
 //   · a change (`changed(by)`) is coalesced for `DEBOUNCE_MS`; the same document twice is not said again;
 //   · an ORDER's answer (`ack(seq, ok, why)`) is flushed AT ONCE, never debounced: the engine waits on it;
 //   · while the host restores (a reload), the document says `unknown: true` — never the empty screen of that instant;
-//   · one POST in flight; a lost or refused POST keeps its answers for the next one; a mount the engine says was
+//   · one POST in flight; a lost or refused POST keeps its answers for the next one; a lost one (no answer, 429,
+//     5xx) is tried again up to RETRIES times, each wait twice the last; a mount the engine says was
 //     replaced takes the screen back with a new mount while the tab is in view.
 // ============================================================================
 
@@ -35,6 +36,8 @@ if (typeof document !== "undefined" && document.addEventListener && !globalThis.
 // The event stream reopened (a reconnect, an engine restart that forgot every screen): every host says it all again.
 export function reportAll() { for (const r of _live) r.snapshot(false); }
 
+// A POST the engine never answered, or answered as unable to take it now: the same report is tried again (backoff).
+const _lost = (status) => status === 0 || status === 429 || status >= 500;
 const _newMount = () => Math.random().toString(36).slice(2, 12);
 //: A restore that never settles stops holding the screen unknown after this long: what it shows by then is the truth.
 export const RESTORE_MAX_MS = 15000;
@@ -115,7 +118,7 @@ export function screenReporter(adapter, opts = {}) {
       acks = b.acks.concat(acks); last = ""; force = true;  // a lost answer is said again, never dropped
       if (fails++ < RETRIES) {
         if (status === 409 && !_hidden()) { mount = _newMount(); n = 0; again = true; }   // replaced: take it back
-        else if (acks.length) timer = setTimeout(() => send(false), DEBOUNCE_MS * 4);
+        else if (acks.length || _lost(status)) timer = setTimeout(() => send(false), DEBOUNCE_MS * 4 * 2 ** (fails - 1));
       }
     }
     if (again && !dead) { again = false; send(false); }

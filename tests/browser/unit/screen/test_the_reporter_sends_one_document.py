@@ -53,3 +53,15 @@ def test_disarm_an_answer_that_waits_for_the_window_turns_it_red(tmp_path):
     mutated.write_text(src.replace(old, "acks.push({ seq, ok: WHY[w], why: w });\n      schedule();"), encoding="utf-8")
     r = _run(mutated)
     assert r.returncode != 0 and "FAIL an order's answer is flushed at once" in r.stdout, r.stdout
+
+
+@needs_node
+def test_disarm_a_lost_report_that_is_not_tried_again_turns_it_red(tmp_path):
+    """V2-907 A2: a lost POST with no order answer in it was never retried — the screen's document stayed stale."""
+    src = REPORTER.read_text(encoding="utf-8")
+    old = "else if (acks.length || _lost(status)) timer"
+    assert src.count(old) == 1, "disarm did not land"
+    mutated = tmp_path / "screen-reporter.js"
+    mutated.write_text(src.replace(old, "else if (acks.length) timer"), encoding="utf-8")
+    r = _run(mutated)
+    assert r.returncode != 0 and "FAIL a lost report with no answer in it is tried again" in r.stdout, r.stdout
