@@ -20,6 +20,7 @@ import { bestSpot, overlaps as _overlaps } from "./placement.js?v=1";
 import { t as tr } from "../core/i18n.js?v=1";
 import * as store from "../core/store.js?v=2";
 import { mountState, refreshed } from "./state-reporter.js?v=1";
+import { desktopScreen } from "./desktop-screen.js?v=1";
 // V2-792 — services load on first use: a host imports none statically (tests mount it with its core imports stubbed).
 const _screens = () => import("../services/screens.js?v=1");
 const _sensors = () => import("../services/device.js?v=1");   // V2-870 P2: ctx.device — the screen's sensors
@@ -322,7 +323,7 @@ export class Desktop {
     // V2-538 — the DOCKED widget rail owns the left edge: when it folds/unfolds (or appears with the first
     // card) it announces the new footprint and any card left under it gets shoved out. Widgets never overlap
     // the bar; they simply have less horizontal room while it is open (operator, 2026-09-01).
-    this._watchCanvas();
+    this._watchCanvas(); this._screen = desktopScreen(this);   // V2-907: the screen's one document (adapter)
     this.restore();                                        // bring back the user's desktop (open widgets + positions)
   }
 
