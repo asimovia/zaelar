@@ -210,6 +210,13 @@ _DEFAULTS: dict[str, dict] = {
     "actionmap": {
         "enabled": True,
     },
+    # V2-907 — the stages of the one screen state, read only through `widgets.screen_switch.stage(name)` (env
+    # `ZAELAR_SCREEN_<NAME>=0` forces a stage OFF and is checked first). OFF = every reader and receipt as before.
+    "screen": {
+        "read": False,             # readers answer from the screen's document (phase B)
+        "confirm": False,          # a canvas order is done when its screen acks it (phase C)
+        "direct": False,           # a simple order over the app in front acts without the model (phase D)
+    },
     # V2-870 — the person's yes to sending their conversation (voice, text, the context of an answer) to the AI
     # services this agent uses. Asked by the native phone app before its first turn (App Review 5.1.2(i)) and
     # withdrawable from its Settings; one answer per engine, so every device of this agent shares it.
