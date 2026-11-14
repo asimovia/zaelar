@@ -54,6 +54,7 @@ const CATS = [
   { key: "flash", label: "FlashBrain" },       // the turno: transcripts, decisión, búsqueda, Susurro
   { key: "worker", label: "Brain Workers" },   // trabajo async + the Chromium interno that abren for navegar
   { key: "memory", label: "Memory" },
+  { key: "a2a", label: "A2A" },                // V2-866: the agent-to-agent network, one row per step
   { key: "widget", label: "Widgets" },         // TODA orden contra the canvas (show/close/move/data-op/tap)
   { key: "system", label: "System/Code" },
   // Pulse (V2-043): the LATIDO of the loop orquestador (~1 Hz, “PULSE·tick”). OFF by defecto — ensucia the log muy
@@ -68,7 +69,7 @@ const ALWAYS_KINDS = new Set(["error", "alert"]);
 // V2-089: each categoría of the filtro mapea a su clave i18n (la `key` sigue siendo the valor comparado en código).
 const CAT_LABEL_KEY = {
   worker: "debug.cat_worker", memory: "debug.cat_memory", flash: "debug.cat_flash",
-  widget: "debug.cat_widget", system: "debug.cat_system", pulse: "debug.cat_pulse",
+  widget: "debug.cat_widget", a2a: "debug.cat_a2a", system: "debug.cat_system", pulse: "debug.cat_pulse",
 };
 
 // Cabecera FIJA of columnas (2026-08-09, operator request: “no se ve claro qué es each columna”). Mismo
@@ -221,7 +222,7 @@ export function DebugPanel() {
   //
   // Se persisten the APAGADOS, no the encendidos: un kind NUEVO (el that estrene a capacidad futura) nace
   // VISIBLE en vez of desaparecer by a lista old of the localStorage. Shift+click = only ese tipo.
-  const DEFAULT_ON_CATS = new Set(["flash", "worker", "memory", "widget"]);
+  const DEFAULT_ON_CATS = new Set(["flash", "worker", "memory", "widget", "a2a"]);
   const hiddenKinds = new Set((() => {
     try { const s = JSON.parse(localStorage.getItem("hb_dbg_kinds_off_v2") || "null"); if (Array.isArray(s)) return s; } catch {}
     return null;   // null = aún without decidir: the valores by defecto se aplican al llegar the catálogo

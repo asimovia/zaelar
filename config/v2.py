@@ -210,6 +210,13 @@ _DEFAULTS: dict[str, dict] = {
     "actionmap": {
         "enabled": True,
     },
+    # V2-866 — the agent-to-agent network (`a2a/`). OFF = no key read, no route answers, no network traffic at all.
+    # `public_profile` is what the `profile` item shows a contact he granted it to (nothing by default).
+    "a2a": {
+        "enabled": False,
+        "display_name": "",
+        "public_profile": {},
+    },
     # V2-907 — the stages of the one screen state, read only through `widgets.screen_switch.stage(name)` (env
     # `ZAELAR_SCREEN_<NAME>=0` forces a stage OFF and is checked first). OFF = every reader and receipt as before.
     "screen": {

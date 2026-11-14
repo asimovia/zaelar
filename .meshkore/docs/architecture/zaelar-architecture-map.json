@@ -311,6 +311,20 @@
    ]
   },
   {
+   "id": "a_mail",
+   "zone": "peers",
+   "name": "A2A · agent-to-agent mail",
+   "paths": [
+    "a2a",
+    "server/a2a_api.py",
+    "server/a2a_wiring.py"
+   ],
+   "emits": [
+    "a2a"
+   ],
+   "_doc": "Your agent reaches your friends' agents (V2-866): a mailbox pulled on a cadence or on a signed wake push, discovery by hash with a mutual match, relationships, grants as rules rows, queries and live shares. All code, no model call; off until switched on."
+  },
+  {
    "id": "f_ear",
    "zone": "flash",
    "name": "Ear",

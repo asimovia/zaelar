@@ -225,6 +225,12 @@ def guardians(app, first_lifespan_entry: bool) -> None:
         offhost.start()
     except Exception as e:
         logger.warning(f"off-host summary start failed (voice/chat unaffected): {e}")
+    # V2-866: the A2A network's jobs — a no-op (no key read, no traffic) until he switches A2A on.
+    try:
+        from server import a2a_api
+        a2a_api.start()
+    except Exception as e:
+        logger.warning(f"a2a start failed (voice/chat unaffected): {e}")
 
 
 async def start(app, first_lifespan_entry: bool) -> None:

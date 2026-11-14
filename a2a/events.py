@@ -4,7 +4,7 @@ Row shape: ``{kind: "a2a", family: "a2a", op, rel, cid, peer, dir, ok, ms, trace
 Guards applied to every row (I10, the privacy half): `peer` is the first 8 chars of the peer key, never a full
 peer DID; no field may hold a 64/32-hex hash, a signature or an outside text longer than EXCERPT.
 
-Sinks: tests and the lab add their own with `add_sink`; the engine sink (the bus) is attached by `attach_bus()`,
+Sinks: tests and the lab add their own with `add_sink`; the engine sink (the observability stream) is attached by `attach_bus()`,
 which the engine calls at boot (post-clean wiring). Emission never raises (I6).
 """
 from __future__ import annotations
@@ -70,13 +70,15 @@ def remove_sink(fn: Callable[[dict], None]) -> None:
 
 
 def attach_bus() -> None:
-    """Route rows to the engine bus (topic `obs.a2a`). Called by the engine at boot; idempotent."""
+    """Route rows to the engine's observability stream (kind `a2a`, family `a2a`, piece `a_mail`) — the one stream
+    the local viewer and the bus log read. Called by the engine at boot; idempotent."""
     if any(getattr(s, "_a2a_bus", False) for s in _sinks):
         return
 
     def _bus(row: dict) -> None:
-        import bus
-        bus.emit_sync("obs.a2a", row)
+        from voice import observer
+        extra = {k: v for k, v in row.items() if k not in ("kind", "label")}
+        observer.emit("a2a", row.get("label") or row.get("op", ""), extra=extra, piece="a_mail")
     _bus._a2a_bus = True  # type: ignore[attr-defined]
     _sinks.append(_bus)
 
