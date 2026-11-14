@@ -201,7 +201,8 @@ def drift(dev, legacy: dict) -> list[dict]:
     """Where the LEGACY canvas state (`memory.state()`: `open_widgets`, `maximized_widget`, `minimized_widgets`,
     `front_reported`) differs from screen `dev`'s document, in the legacy store's own terms (base ids): one row
     `{what, legacy, doc}` per fact that differs — `open`, `front` (a deck's app in front), `max` (a desk's maximised
-    card), `min` (a desk's minimised cards; a deck's cards behind). `[]` when they agree or the document is unknown
+    card — `max` only: the legacy store never knew the browser's own full screen, `fs`), `min` (a desk's minimised
+    cards; a deck's cards behind). `[]` when they agree or the document is unknown
     (no document is not a drift: there is nothing to compare). Shadow (V2-907 T10): a measure, read by no decision."""
     d = read(dev)
     if d is None or not isinstance(legacy, dict):
@@ -220,7 +221,7 @@ def drift(dev, legacy: dict) -> list[dict]:
              sorted({_base(r["id"]) for r in d.open if r["vis"] != "front"} - {_base(d.front)}))
     else:
         _cmp("max", _base(legacy.get("maximized_widget")),
-             next((_base(r["id"]) for r in d.open if r.get("max") or r.get("fs")), ""))
+             next((_base(r["id"]) for r in d.open if r.get("max")), ""))   # the browser's full screen is no legacy fact
         _cmp("min", sorted({_base(w) for w in legacy.get("minimized_widgets") or []}),
              sorted({_base(r["id"]) for r in d.open if r["vis"] == "min"}))
     return rows

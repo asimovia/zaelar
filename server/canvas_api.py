@@ -184,6 +184,26 @@ def _counts(payload: dict) -> bool:
     return True
 
 
+def _legacy_of(rep: dict) -> tuple[dict, list]:
+    """`(answers, instances)`: the legacy canvas answers one screen's last legacy report gives (`open_widgets`,
+    `maximized_widget`, `minimized_widgets`, `front_reported` — what `_adopt` puts in the memory state) and its
+    full instance ids."""
+    inst = [str(w) for w in rep.get("open") or [] if str(w or "").strip()]
+    seen = []
+    for w in inst:
+        b = w.split("::", 1)[0].strip().lower()
+        if b and b not in seen:
+            seen.append(b)
+    layout = rep.get("layout") if isinstance(rep.get("layout"), list) else []
+    maxw = next((str(it.get("id") or "").split("::", 1)[0].lower() for it in layout
+                 if isinstance(it, dict) and it.get("max")), "")
+    minw = [str(it.get("id") or "").split("::", 1)[0].lower() for it in layout if isinstance(it, dict) and it.get("min")]
+    if "front" in rep:
+        maxw, minw = _front_of(rep, seen)
+    return {"open_widgets": seen, "maximized_widget": maxw, "minimized_widgets": minw,
+            "front_reported": "front" in rep}, inst
+
+
 def _adopt(dev: str) -> None:
     """A turn started on `dev`: its last reported canvas becomes the brain's, silently (no show/close audit — the
     operator did not open or close anything, he only spoke to another screen)."""
@@ -191,22 +211,9 @@ def _adopt(dev: str) -> None:
     if not rep:
         return
     try:
-        inst = [str(w) for w in rep.get("open") or [] if str(w or "").strip()]
-        seen = []
-        for w in inst:
-            b = w.split("::", 1)[0].strip().lower()
-            if b and b not in seen:
-                seen.append(b)
-        canvas_state._last_inst = inst
+        answers, canvas_state._last_inst = _legacy_of(rep)
         from memory import api as memory
-        layout = rep.get("layout") if isinstance(rep.get("layout"), list) else []
-        maxw = next((str(it.get("id") or "").split("::", 1)[0].lower() for it in layout
-                     if isinstance(it, dict) and it.get("max")), "")
-        minw = [str(it.get("id") or "").split("::", 1)[0].lower() for it in layout if isinstance(it, dict) and it.get("min")]
-        if "front" in rep:
-            maxw, minw = _front_of(rep, seen)
-        memory.set_state({"open_widgets": seen, "maximized_widget": maxw, "minimized_widgets": minw,
-                          "front_reported": "front" in rep})
+        memory.set_state(answers)
     except Exception as e:  # noqa: BLE001 — the brain keeps the previous canvas rather than none
         logger.debug(f"canvas: could not adopt the canvas of {dev}: {e!r}")
 
@@ -214,19 +221,36 @@ def _adopt(dev: str) -> None:
 #: How long after a counted legacy report its screen's own document may still be on the way (both are debounced
 #: by the host, on separate timers): the comparison waits this long so a drift is a disagreement, not a race.
 DRIFT_GRACE_S = 1.0
+#: dev → the drift rows last said for that screen: a drift is an event when it CHANGES, not at every report and turn.
+_DRIFT_SAID: dict = {}
 
 
 def drift_check(dev: str, at: str) -> int:
-    """V2-907 T10 (shadow) — compare the legacy canvas state (`memory.state()`) with screen `dev`'s document and emit
-    `screen/drift {dev, at, what, legacy, doc}` for each fact that differs (`widgets/screen_doc.drift`). `at` = when:
-    `report` (a counted legacy report) or `turn` (a turn started there). A measure only: nothing reads it to decide."""
+    """V2-907 T10 (shadow) — compare the legacy canvas answers with screen `dev`'s document and emit
+    `screen/drift {dev, at, what, legacy, doc, cause}` for each fact that differs (`widgets/screen_doc.drift`). `at` =
+    when: `report` (a counted legacy report) or `turn` (a turn started there). Measured only while `dev` is the screen
+    of the turn (else the global answers are another screen's) and only for a screen that sent a legacy report.
+    `cause` says which legacy answer disagrees: `legacy_report` — the screen's own last legacy report (`_BY_DEV`, the
+    two host readers disagree); `legacy_store` — that report agrees but the memory state the brain reads does not.
+    Said once per change of the screen's set of rows. Returns how many rows it emitted. Nothing reads it to decide."""
     from memory import api as memory
+    from voice import screens as _screens
     from widgets import screen_doc
+    rep = _BY_DEV.get(dev)
+    if _screens.current() != dev or not rep:
+        return 0
     try:
-        rows = screen_doc.drift(dev, memory.state() or {})
+        rows = [{**r, "cause": "legacy_report"} for r in screen_doc.drift(dev, _legacy_of(rep)[0])]
+        said = {r["what"] for r in rows}
+        rows += [{**r, "cause": "legacy_store"} for r in screen_doc.drift(dev, memory.state() or {})
+                 if r["what"] not in said]
     except Exception as e:  # noqa: BLE001 — a measure that cannot read says so and never breaks the report or the turn
         logger.debug(f"canvas: drift of {dev} not measured: {e!r}")
         return -1
+    key = repr(sorted(repr(sorted(r.items())) for r in rows))
+    if _DRIFT_SAID.get(dev) == key:
+        return 0
+    _DRIFT_SAID[dev] = key
     for r in rows:
         emit("screen", "drift", text=f"{r['what']}: {r['legacy']} ≠ {r['doc']}", extra={"dev": dev, "at": at, **r})
     return len(rows)
