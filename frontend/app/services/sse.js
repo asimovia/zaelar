@@ -19,6 +19,7 @@ import * as asks from "../core/asks.js?v=1";
 import { wirePresence, presenceEvent, onStreamOpen, onStreamError, syncRunState } from "./presence.js?v=1";
 import { snapshotAll } from "../widgets/state-reporter.js?v=1";
 import { orderAck, reportAll } from "../widgets/screen-order.js?v=1";
+import { a2aEvent } from "../components/A2AView.js?v=1";
 
 
 // V2-464 — SHOWCASE mode: ?showcase=1 in the URL. The use-case recorder (recorder.py) uses it to keep the chat
@@ -455,6 +456,8 @@ export function routeEvent(desktop, d) {
       // The server's own HEARTBEAT (nucleo/pulse/loop.py, bridged in server/__init__.py) → one beat of the orb's ECG.
       // At rest it marks the real rhythm (only checking crons/processes); tasks and turns speed it up (Ecg.js).
       store.pushPulse({ kind: "tick", n: d.n });
+    } else if (d.kind === "brain" && field(d, "cat") === "a2a" && field(d, "card")) {   // V2-866: a card or a contact's message
+      a2aEvent(d);
     } else if (d.kind === "brain" && d.wall) {
       // V2-461: the TEXT channel (probe / `POST /api/flash/say`) is also VISIBLE. It is the same conversation,
       // so it goes to the same place: voice is transcribed to the wall, the chat widget writes to it, and

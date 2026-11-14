@@ -184,6 +184,8 @@ export function relationPick(c, data, act){
 }
 
 export function detailPeople(box, el, data, ctx, c, redraw, act){
+  const net=(data.a2a||{})[String(c.id)];   // V2-866 — his agent on the A2A network: connected / pending
+  if(net==="accepted"||net==="pending") box.appendChild(el2("span","cttag ctnet ctnet-"+net,tt("a2a_"+net, null, net)));
   detailAliases(box, c, redraw, act);
   if(Array.isArray(data.groupRows)) detailGroups(box, data, c, redraw, act);
   if(AGENT_HOLDERS.includes(kindOf(c))) detailAgents(box, c, redraw, act);

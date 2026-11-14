@@ -111,3 +111,29 @@ def test_the_consent_classes_are_declared():
     from nucleo.events import vocabulary as v
     for verb in a2a.items.VERBS:
         assert v.declared(f"a2a.{verb}")
+
+
+def test_a2a_send_crosses_the_one_consent_door_with_the_contact_as_subject(live, monkeypatch):
+    """T583 · `a2a_send` asks `consent.decide_act("messaging.send_new@a2a", subject=cid)`: «never» refuses, «ask»
+    holds it unsent, a clear verdict sends. Disarm: skip the door → the refused message reaches Marta."""
+    from nucleo import consent
+    from nucleo.flash import tools_a2a as t
+    a, b = live
+    seen = []
+
+    def door(cls, **k):
+        seen.append((cls, k.get("channel"), k.get("subject")))
+        return {"verdict": verdict[0]}
+    monkeypatch.setattr(consent, "decide_act", door)
+    verdict = [consent.REFUSE]
+    out = t.run("a2a_send", {"to": "Marta", "text": "no"}, lambda *a, **k: None)
+    assert out == {"ok": False, "error": "refused"} and seen[-1] == ("messaging.send_new", "a2a", "marta")
+    assert t.line("a2a_send", out, {"to": "Marta"}, _Say()) == "a2a_send_refused"
+    verdict = [consent.ASK_CONSENT]
+    assert t.run("a2a_send", {"to": "Marta", "text": "wait"}, lambda *a, **k: None)["error"] == "held"
+    b.pull()
+    assert b.inbox() == []
+    verdict = [consent.RUN]
+    assert t.run("a2a_send", {"to": "Marta", "text": "ok"}, lambda *a, **k: None)["ok"]
+    b.pull()
+    assert [m["text"] for m in b.inbox()] == ["ok"]

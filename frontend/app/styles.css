@@ -314,9 +314,9 @@ body.chatdock-r .statuspanel{right:calc(18px + var(--chatdock-r))}
 /* V2-761 — too narrow even for the name beside the icons: the name goes, the icons tighten; no tab hides. */
 .chatwall.cw-tight .cw-tabname{display:none}
 .chatwall.cw-tight .cw-tab{padding:var(--sp-2) 5px}
-.cw-tasks,.cw-clusters,.cw-conn,.cw-apps{flex:1 1 auto;min-height:0;flex-direction:column;overflow:hidden}
+.cw-tasks,.cw-clusters,.cw-red,.cw-conn,.cw-apps{flex:1 1 auto;min-height:0;flex-direction:column;overflow:hidden}
 /* only the active tab's panel is shown (all hidden by default) */
-.chatwall .cw-list,.chatwall .cw-tasks,.chatwall .cw-clusters,.chatwall .cw-conn,.chatwall .cw-apps,.chatwall .cw-input{display:none}
+.chatwall .cw-list,.chatwall .cw-tasks,.chatwall .cw-clusters,.chatwall .cw-red,.chatwall .cw-conn,.chatwall .cw-apps,.chatwall .cw-input{display:none}
 .chatwall .cw-wconfirm{display:none}
 .chatwall.tab-chat .cw-wconfirm{display:block}
 /* V2-851 — the open questions of waiting tasks sit between the conversation and the composer (TaskAsk.js) */
@@ -328,6 +328,7 @@ body.chatdock-r .statuspanel{right:calc(18px + var(--chatdock-r))}
 .chatwall.tab-chat .cw-input{display:flex}
 .chatwall.tab-procesos .cw-tasks{display:flex}
 .chatwall.tab-clusters .cw-clusters{display:flex}
+.chatwall.tab-red .cw-red{display:flex}
 .chatwall.tab-conectores .cw-conn{display:flex}
 .chatwall.tab-apps .cw-apps{display:flex}
 /* V2-761 — Apps: the widget catalogue. A compact grid of small tiles (as many columns as fit), a thumbnail box
@@ -1844,3 +1845,13 @@ body.dbg-open .orbwrap{left:calc(50% - var(--dbg-w) / 2)}
   .dsx-scroll{padding:var(--sp-4)}
   .dsx-add{flex-direction:column}
 }
+
+/* V2-866 — A2A: a friend's agent speaks as DATA (dashed, apart from the agent's own lines); consent cards; the Network tab */
+.cw-msg.a2a{align-self:flex-start;background:var(--hb-bg-soft);border:1px dashed var(--hb-line-strong);color:var(--hb-ink)}
+.cw-msg.a2a-card{border:1px solid var(--hb-accent)}
+.a2a-note,.a2a-done{font-size:.8em;color:var(--hb-muted);margin-top:4px}
+.cw-red .cl-list{flex:1 1 auto;min-height:0;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:10px}
+.a2a-sec{display:flex;flex-direction:column;gap:6px}
+.a2a-rel,.a2a-share,.a2a-ev{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:space-between}
+.a2a-name{font-weight:600}
+.a2a-chip{display:inline-flex;gap:4px;align-items:center;border:1px solid var(--hb-line);border-radius:999px;padding:1px 4px 1px 9px}

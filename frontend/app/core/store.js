@@ -728,7 +728,7 @@ const _TAB_ALIAS = { tareas: ["procesos", "live"], tasks: ["procesos", "live"], 
 // «apps» or «widgets» indifferently; both words, and the custom sub-tab by name, land here.
 const _APPS_ALIAS = { apps: "system", app: "system", widgets: "system", aplicaciones: "system",
                       "apps-custom": "custom", custom: "custom" };
-const _TABS = ["chat", "procesos", "clusters", "conectores", "apps"];
+const _TABS = ["chat", "procesos", "clusters", "red", "conectores", "apps"];   // red = the A2A Network (V2-866)
 const [appsScope, setAppsScope] = createSignal("system");      // "system" | "custom"
 export { appsScope, setAppsScope };
 export const setChatTab = (tab) => {

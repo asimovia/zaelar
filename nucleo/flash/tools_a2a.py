@@ -59,6 +59,24 @@ def _peer(agent, who: str):
     return pre[0] if len(pre) == 1 else None
 
 
+SEND_CLASS = "messaging.send_new@a2a"
+
+
+def _send_verdict(rel) -> str | None:
+    """T583 · a message to a friend's agent crosses the ONE consent door (`consent.decide_act`), with the contact as
+    the subject so his rule for that person outranks the channel's. His spoken order is the mandate (`his_yes`); his
+    standing «never» refuses and his «ask» holds it unsent. None = it may leave. Unreadable → held (fail closed)."""
+    from nucleo import consent
+    try:
+        cls, _, channel = SEND_CLASS.partition("@")
+        v = consent.decide_act(cls, channel=channel, his_yes=True, subject=str(rel.contact_id or ""))
+    except Exception:                                       # noqa: BLE001
+        return "held"
+    if not consent.asks(v):
+        return None
+    return "refused" if v.get("verdict") == consent.REFUSE else "held"
+
+
 def run(name: str, args: dict, emit) -> dict:
     """One tool call → `{ok, ...}`; the line he hears is the model's, built from this result."""
     import a2a
@@ -91,7 +109,8 @@ def run(name: str, args: dict, emit) -> dict:
             if r is None:
                 return {"ok": False, "error": "not_connected", "to": who}
             if name == "a2a_send":
-                out = {"ok": bool(agent.send(r.did, str(args.get("text") or "")))}
+                held = _send_verdict(r)
+                out = {"ok": False, "error": held} if held else {"ok": bool(agent.send(r.did, str(args.get("text") or "")))}
             elif args.get("stop"):
                 out = {"ok": True, "revoked": agent.revoke(r.did, str(args.get("item") or ""))}
             else:
@@ -115,6 +134,8 @@ def line(name: str, out: dict, args: dict, say) -> str:
     if not out.get("ok"):
         if out.get("error") in ("not_connected", "unknown_contact"):
             return t("a2a_not_connected", name=who)
+        if out.get("error") in ("refused", "held"):
+            return t(f"a2a_send_{out['error']}", name=who)
         return t("a2a_failed")
     if name == "a2a_send":
         return t("a2a_sent", name=who)

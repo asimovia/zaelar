@@ -126,6 +126,17 @@ def _reach(c: dict) -> list[dict]:
         return [ch for ch in (c.get("channels") or []) if ch.get("platform")]
 
 
+def _a2a_status() -> dict:
+    """{contact id: "accepted"|"pending"|…} of every A2A relationship; {} while A2A is off. Never raises."""
+    try:
+        import a2a
+        agent = a2a.runtime()
+        return {r.contact_id: r.status for r in agent.rels.all() if r.contact_id} if agent else {}
+    except Exception as _e:                                 # noqa: BLE001 — a badge never breaks the card
+        __import__("loguru").logger.debug(f"contactos: a2a badges unread — {type(_e).__name__}: {_e}")
+        return {}
+
+
 def _public(c: dict) -> dict:
     """The compact row an action RESULT carries back to the brain — enough to answer by voice, never the
     whole record (the full data travels in view_data, and a result is read inside a prompt)."""
@@ -196,6 +207,7 @@ def view_data(q: str = "") -> dict:
         "hidden_rows": [c for c in (db.get("contacts") or []) if c.get("hidden")],
         "hidden_count": sum(1 for c in (db.get("contacts") or []) if c.get("hidden")),
         "count": len(contacts),
+        "a2a": _a2a_status(),     # V2-866: contact id → connected/pending, empty while A2A is off (the card's badge)
         "view": _fresh_view(db),
         # The subheader strip and the connectors screen: which sources exist, are linked, and can sync (V2-699).
         "providers": gcontacts.providers(),

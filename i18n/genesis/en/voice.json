@@ -812,6 +812,8 @@
  "a2a_no_agent": "{name} has no agent on the network yet.",
  "a2a_not_connected": "{name} isn't connected with your agent.",
  "a2a_requested": "I've asked {name}'s agent to connect. They'll answer on their side.",
+ "a2a_send_held": "You asked me to check before messaging {name}'s agent, so it's not sent.",
+ "a2a_send_refused": "Your rule says not to message {name}'s agent, so I didn't.",
  "a2a_sent": "Sent to {name}'s agent.",
  "a2a_shared": "Now sharing {item} with {name}.",
  "a2a_sharing_line": "With {name}: {items}.",
