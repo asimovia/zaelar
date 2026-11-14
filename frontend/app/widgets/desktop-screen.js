@@ -2,7 +2,8 @@
 // desktop-screen.js — the windowed desk's ADAPTER for its one screen document (V2-907 T7, §3.1).
 //
 // Read from the desk as it is drawn, never from what was asked of it:
-//   · layer — z order, top first (`style.zIndex`, the one `_bringFront` writes; then the time it last came forward);
+//   · layer — the card in the browser's full screen first (it covers everything, whatever its z), then z order, top
+//             first (`style.zIndex`, the one `_bringFront` writes; then the time it last came forward);
 //   · vis   — `min` for a card in the rail (`hb-minned`), `front` for the top card on screen, `behind` for one a
 //             maximised / full-screen card covers or another card covers whole, else `visible`; the activity rail's
 //             card above the orb is always `visible`;
@@ -19,8 +20,9 @@ const _covers = (a, b) => a.left <= b.left + 1 && a.top <= b.top + 1 && a.right 
 
 export function desktopAdapter(desk) {
   const card = (id) => { const w = desk.wins.get(id); return w && w.card; };
+  const _fs = (id) => (document.fullscreenElement && card(id) === document.fullscreenElement ? 1 : 0);
   const stack = () => [...desk.wins.keys()].filter((id) => card(id))
-    .sort((x, y) => (_z(card(y)) - _z(card(x))) || ((card(y)._t || 0) - (card(x)._t || 0)));
+    .sort((x, y) => (_fs(y) - _fs(x)) || (_z(card(y)) - _z(card(x))) || ((card(y)._t || 0) - (card(x)._t || 0)));
   const full = (c) => !!c && (c._restore || document.fullscreenElement === c
     || c.classList.contains("hb-cinema") || c.classList.contains("hb-fullwide"));
   const vis = (id) => {
@@ -54,6 +56,8 @@ export function desktopScreen(desk, opts = {}) {
   const cause = () => { const by = Object.values(desk._by || {}); return by.includes("hand") ? "hand" : by[0] || ""; };
   try { document.addEventListener("hb:canvas-changed", () => rep.changed(cause())); } catch (_) {}
   watchPanel(DESKTOP_PANELS, () => rep.changed());   // a panel opened or closed over the canvas (T9)
+  // The browser's own full screen comes and goes without the desk announcing it (Escape leaves it by itself).
+  try { document.addEventListener("fullscreenchange", () => rep.changed()); } catch (_) {}
   adapter.restoring = watchRestore(desk, () => rep.changed("restore"));   // a reload: unknown until restored
   return { adapter, rep };
 }

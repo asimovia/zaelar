@@ -2587,6 +2587,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/browser/unit/screen/test_a_reload_is_unknown_until_restored.py"]},
         {"id": "4.547", "title": "A line the phone's home draws after its own fetch reaches the screen document (V2-907 A3, `HomeToday.js`): the home on screen before the agenda's data arrives, the late «next appointments» line makes the deck report again, and its last document's `home.holds` equals what the home drew; disarmed (the redraw does not tell the deck's screen) → red",
             "ch": UNIT, "paths": ["tests/browser/unit/mobile/test_a_late_home_line_is_reported.py"]},
+        {"id": "4.548", "title": "The browser's own full screen is in the desk's screen document (V2-907 A4, `desktop-screen.js`): a card below the top of z entering it (`requestFullscreen`, in a window that does not resize for it) is reported at once as `front`, layer 0, `fs: true`, the rest `behind`; leaving it the way Escape does is reported too, the top of z front again; disarmed (no `fullscreenchange` listener; the full-screen card not ranked first) → red",
+            "ch": UNIT, "paths": ["tests/browser/unit/screen/test_a_full_screen_card_is_in_front.py"]},
         {"id": "4.534", "title": "`mensajeria:open` takes the channel he NAMES (`platform` bounds the name's resolution; none named: "
                                  "what is on screen first still wins) and declares its end state over the thread the card reports open",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_open_takes_the_channel_he_names.py"]},
