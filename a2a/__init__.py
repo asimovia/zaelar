@@ -6,6 +6,8 @@ and nothing outside imports a2a except through this module.
 """
 from __future__ import annotations
 
+from loguru import logger
+
 from .agent import A2AAgent
 from .events import attach_bus
 from .grants import Grant, contact_audience
@@ -52,7 +54,8 @@ def accepted() -> list:
         return []
     try:
         return [r for r in agent.rels.all() if r.status == "accepted"]
-    except Exception:                                       # noqa: BLE001 — an unreadable store offers nothing
+    except Exception as exc:                                       # noqa: BLE001 — an unreadable store offers nothing
+        logger.debug("a2a: a2a/__init__.py:accepted failed: {!r}", exc)
         return []
 
 
@@ -69,7 +72,8 @@ def contact_block(cid: str) -> dict | None:
                   for g in agent.grants.for_audience(contact_audience(r.contact_id))]
         from .identity import short
         return {"did": short(r.did), "status": r.status, "grants": grants, "since": r.since}
-    except Exception:                                       # noqa: BLE001
+    except Exception as exc:                                       # noqa: BLE001
+        logger.debug("a2a: a2a/__init__.py:contact_block failed: {!r}", exc)
         return None
 
 

@@ -27,7 +27,8 @@ def enabled() -> bool:
     try:
         from config import v2
         return bool(v2.get("a2a").get("enabled"))
-    except Exception:                                       # noqa: BLE001 — an unreadable config is OFF
+    except Exception as exc:                                       # noqa: BLE001 — an unreadable config is OFF
+        logger.debug("a2a: server/a2a_api.py:enabled failed: {!r}", exc)
         return False
 
 
@@ -91,7 +92,8 @@ def stop() -> None:
         import bus
         a2a.set_runtime(None, None)
         bus.remove_sink(_on_bus)
-    except Exception:                                       # noqa: BLE001
+    except Exception as exc:                                       # noqa: BLE001
+        logger.debug("a2a: server/a2a_api.py:stop failed: {!r}", exc)
         pass
 
 

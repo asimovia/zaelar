@@ -7,6 +7,8 @@ relationships (`a2a_connect` against the contacts directory) — a name the mode
 «¿qué estoy compartiendo?» is `a2a_read` with `what=sharing`: grants + the event log, read by code."""
 from __future__ import annotations
 
+from loguru import logger
+
 import unicodedata
 
 NAMES = ("a2a_send", "a2a_connect", "a2a_grant", "a2a_read")
@@ -40,7 +42,8 @@ def live() -> bool:
     try:
         import a2a
         return bool(a2a.accepted())
-    except Exception:                                       # noqa: BLE001
+    except Exception as exc:                                       # noqa: BLE001
+        logger.debug("a2a: nucleo/flash/tools_a2a.py:live failed: {!r}", exc)
         return False
 
 
@@ -128,7 +131,8 @@ def line(name: str, out: dict, args: dict, say) -> str:
     def t(key: str, **kw) -> str:
         try:
             return str(getattr(say, key)).format(**kw)
-        except Exception:                                   # noqa: BLE001
+        except Exception as exc:                                   # noqa: BLE001
+            logger.debug("a2a: nucleo/flash/tools_a2a.py:t failed: {!r}", exc)
             return ""
     who = str(args.get("to") or "")
     if not out.get("ok"):

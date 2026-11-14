@@ -32,7 +32,8 @@ class RulesGrantStore:
                 continue
             try:
                 out.append(a2a.Grant(**r["value"]))
-            except (TypeError, KeyError):
+            except (TypeError, KeyError) as exc:
+                logger.debug("a2a: server/a2a_wiring.py:list failed: {!r}", exc)
                 continue
         return out
 
@@ -71,7 +72,8 @@ def busy(frm: str, to: str) -> list[dict]:
     try:
         d0 = _dt.date.fromisoformat(str(frm)[:10])
         d1 = _dt.date.fromisoformat(str(to or frm)[:10])
-    except ValueError:
+    except ValueError as exc:
+        logger.debug("a2a: server/a2a_wiring.py:busy failed: {!r}", exc)
         return []
     meetings = agenda_data.load_db().get("meetings") or []
     out = []
@@ -144,7 +146,8 @@ def declare_widget_items(reg) -> list[str]:
     for man in sorted(root.glob("*/manifest.json")):
         try:
             entries = json.loads(man.read_text(encoding="utf-8")).get("shareable")
-        except (OSError, ValueError):
+        except (OSError, ValueError) as exc:
+            logger.debug("a2a: server/a2a_wiring.py:declare_widget_items failed: {!r}", exc)
             continue
         if entries:
             out += a2a.declare_manifest(reg, man.parent.name, entries, READERS)

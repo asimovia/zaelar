@@ -9,6 +9,8 @@ which the engine calls at boot (post-clean wiring). Emission never raises (I6).
 """
 from __future__ import annotations
 
+from loguru import logger
+
 import collections
 import re
 import time
@@ -127,12 +129,14 @@ def emit(op: str, *, peer: str = "", rel: str = "", cid: str = "", dir: str = ""
         for s in list(_sinks):
             try:
                 s(row)
-            except Exception:
+            except Exception as exc:
+                logger.debug("a2a: a2a/events.py:emit failed: {!r}", exc)
                 pass
         return row
     except KeyError:
         raise                                                # a programming error: tests must see it
-    except Exception:
+    except Exception as exc:
+        logger.debug("a2a: a2a/events.py:emit failed: {!r}", exc)
         return None
 
 

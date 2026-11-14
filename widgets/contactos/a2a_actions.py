@@ -5,6 +5,8 @@
 while A2A is off every one answers `a2a_off` and touches nothing."""
 from __future__ import annotations
 
+from loguru import logger
+
 def _contact_row(c: dict) -> dict:
     from . import model
     return {"cid": str(c["id"]), "name": str(c.get("name") or ""), "emails": model.values(c, "emails"),
@@ -57,6 +59,7 @@ def after(action: str, payload: dict, out: dict) -> dict:
             block = a2a.contact_block(cid)
             if block:
                 contact["a2a"] = block
-    except Exception:                                       # noqa: BLE001
+    except Exception as exc:                                       # noqa: BLE001
+        logger.debug("a2a: widgets/contactos/a2a_actions.py:after failed: {!r}", exc)
         pass
     return out

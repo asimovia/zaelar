@@ -6,6 +6,8 @@ reaches a prompt from here. Every step emits exactly one row (I10, `events.OPS`)
 """
 from __future__ import annotations
 
+from loguru import logger
+
 import json
 import secrets
 import time
@@ -314,7 +316,8 @@ class A2AAgent:
             if sh["did"] == r.did and (item == "*" or sh["item"] == item or ":" in item):
                 try:
                     self.live.close(sid, sh["push"])
-                except (TransportError, AttributeError):
+                except (TransportError, AttributeError) as exc:
+                    logger.debug("a2a: a2a/agent.py:_close_shares failed: {!r}", exc)
                     pass
                 self.state["out_shares"].pop(sid, None)
                 self._save()
@@ -347,7 +350,8 @@ class A2AAgent:
         for s in page.get("samples", []):
             try:
                 body = json.loads(self.me.open(sh["did"], s["body"]["sealed"], salt=share_id))
-            except Exception:
+            except Exception as exc:
+                logger.debug("a2a: a2a/agent.py:live_read failed: {!r}", exc)
                 continue
             out.append({"seq": s["seq"], "ts": s.get("ts"), "body": body})
         sh["cursor"] = page.get("cursor", sh.get("cursor", 0))
@@ -377,7 +381,8 @@ class A2AAgent:
             self.rels.set_cursor(m.seq)
         try:
             self.mailbox.ack(self.rels.cursor)
-        except TransportError:
+        except TransportError as exc:
+            logger.debug("a2a: a2a/agent.py:pull failed: {!r}", exc)
             pass
         self.emit("pull", n=len(mail), cursor_from=start, cursor_to=self.rels.cursor, reason=reason, ms=ms)
         return len(mail)
