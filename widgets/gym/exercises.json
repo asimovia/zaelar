@@ -1,0 +1,558 @@
+{
+ "_source": "Images: yuhonas/free-exercise-db (Unlicense, see img/LICENSE.md); names: Zaelar.",
+ "exercises": {
+  "arnold-press": {
+   "name": {
+    "en": "Arnold press",
+    "es": "Press Arnold"
+   },
+   "image": ""
+  },
+  "barbell-back-squat": {
+   "name": {
+    "en": "Barbell back squat",
+    "es": "Sentadilla trasera con barra"
+   },
+   "image": ""
+  },
+  "barbell-bench": {
+   "name": {
+    "en": "Barbell bench press",
+    "es": "Press banca con barra"
+   },
+   "image": ""
+  },
+  "barbell-bench-heavy": {
+   "name": {
+    "en": "Heavy barbell bench press",
+    "es": "Press banca con barra pesado"
+   },
+   "image": ""
+  },
+  "barbell-good-morning": {
+   "name": {
+    "en": "Barbell good mornings",
+    "es": "Buenos días con barra"
+   },
+   "image": ""
+  },
+  "barbell-incline": {
+   "name": {
+    "en": "Incline barbell press",
+    "es": "Press inclinado con barra"
+   },
+   "image": ""
+  },
+  "barbell-military-press": {
+   "name": {
+    "en": "Barbell military press",
+    "es": "Press militar con barra"
+   },
+   "image": ""
+  },
+  "barbell-rdl": {
+   "name": {
+    "en": "Barbell Romanian deadlift",
+    "es": "Peso muerto rumano con barra"
+   },
+   "image": ""
+  },
+  "barbell-row": {
+   "name": {
+    "en": "Barbell row",
+    "es": "Remo con barra"
+   },
+   "image": ""
+  },
+  "barbell-shrugs": {
+   "name": {
+    "en": "Barbell shrugs",
+    "es": "Encogimientos con barra"
+   },
+   "image": ""
+  },
+  "barbell-squat": {
+   "name": {
+    "en": "Barbell squat",
+    "es": "Sentadilla con barra"
+   },
+   "image": ""
+  },
+  "barbell-t-bar-row": {
+   "name": {
+    "en": "Barbell T-bar row",
+    "es": "Remo barra T"
+   },
+   "image": ""
+  },
+  "bench-dips": {
+   "name": {
+    "en": "Bench dips",
+    "es": "Fondos en banco"
+   },
+   "image": ""
+  },
+  "bench-step-ups": {
+   "name": {
+    "en": "Bench step-ups",
+    "es": "Step-ups en banco"
+   },
+   "image": ""
+  },
+  "cable-crossover": {
+   "name": {
+    "en": "Cable crossover",
+    "es": "Cruce de poleas"
+   },
+   "image": ""
+  },
+  "cable-curl": {
+   "name": {
+    "en": "Cable curl",
+    "es": "Curl en polea"
+   },
+   "image": ""
+  },
+  "cable-row": {
+   "name": {
+    "en": "Heavy cable row",
+    "es": "Remo polea pesado"
+   },
+   "image": "Seated_Cable_Rows.jpg"
+  },
+  "chest-supported-row": {
+   "name": {
+    "en": "Chest-supported dumbbell row",
+    "es": "Remo apoyado en banco mancuernas"
+   },
+   "image": "Bent_Over_Two-Dumbbell_Row.jpg"
+  },
+  "close-grip-pulldown": {
+   "name": {
+    "en": "Close-grip pulldown",
+    "es": "Jalón agarre cerrado"
+   },
+   "image": ""
+  },
+  "close-grip-pulldown-heavy": {
+   "name": {
+    "en": "Heavy close-grip pulldown",
+    "es": "Jalón agarre cerrado pesado"
+   },
+   "image": ""
+  },
+  "db-bench": {
+   "name": {
+    "en": "Dumbbell bench press",
+    "es": "Press banca mancuernas"
+   },
+   "image": "Dumbbell_Bench_Press.jpg"
+  },
+  "db-bench-heavy": {
+   "name": {
+    "en": "Heavy dumbbell bench press",
+    "es": "Press banca mancuernas pesado"
+   },
+   "image": "Dumbbell_Bench_Press.jpg"
+  },
+  "db-bulgarian-split-squat": {
+   "name": {
+    "en": "Dumbbell Bulgarian split squat",
+    "es": "Sentadilla búlgara mancuernas"
+   },
+   "image": ""
+  },
+  "db-curl": {
+   "name": {
+    "en": "Dumbbell biceps curl",
+    "es": "Curl bíceps mancuernas"
+   },
+   "image": "Dumbbell_Bicep_Curl.jpg"
+  },
+  "db-floor-press": {
+   "name": {
+    "en": "Dumbbell floor press",
+    "es": "Floor press mancuernas"
+   },
+   "image": ""
+  },
+  "db-flyes": {
+   "name": {
+    "en": "Dumbbell flyes",
+    "es": "Aperturas mancuernas"
+   },
+   "image": ""
+  },
+  "db-push-press": {
+   "name": {
+    "en": "Dumbbell push press",
+    "es": "Push press mancuernas"
+   },
+   "image": ""
+  },
+  "db-shoulder-press": {
+   "name": {
+    "en": "Seated dumbbell shoulder press",
+    "es": "Press hombro mancuernas sentado"
+   },
+   "image": "Dumbbell_Shoulder_Press.jpg"
+  },
+  "db-shrugs": {
+   "name": {
+    "en": "Dumbbell shrugs",
+    "es": "Encogimientos mancuernas"
+   },
+   "image": "Dumbbell_Shrug.jpg"
+  },
+  "db-skullcrusher": {
+   "name": {
+    "en": "Dumbbell skull crushers",
+    "es": "Press francés mancuernas"
+   },
+   "image": ""
+  },
+  "db-static-lunges": {
+   "name": {
+    "en": "Static dumbbell lunges",
+    "es": "Zancadas estáticas mancuernas"
+   },
+   "image": ""
+  },
+  "db-supinated-curl": {
+   "name": {
+    "en": "Supinated dumbbell curl",
+    "es": "Curl supino mancuernas"
+   },
+   "image": ""
+  },
+  "db-swing": {
+   "name": {
+    "en": "Dumbbell swing",
+    "es": "Swing con mancuerna"
+   },
+   "image": ""
+  },
+  "dead-bug": {
+   "name": {
+    "en": "Dead bug",
+    "es": "Dead bug"
+   },
+   "image": ""
+  },
+  "ez-bar-curl": {
+   "name": {
+    "en": "EZ-bar curl",
+    "es": "Curl barra Z"
+   },
+   "image": ""
+  },
+  "farmer-carry": {
+   "name": {
+    "en": "Farmer carry",
+    "es": "Paseo del granjero"
+   },
+   "image": "Farmers_Walk.jpg"
+  },
+  "goblet-squat": {
+   "name": {
+    "en": "Goblet squat",
+    "es": "Sentadilla goblet"
+   },
+   "image": "Goblet_Squat.jpg"
+  },
+  "hack-squat": {
+   "name": {
+    "en": "Hack squat",
+    "es": "Sentadilla hack"
+   },
+   "image": ""
+  },
+  "hammer-curl": {
+   "name": {
+    "en": "Hammer curl",
+    "es": "Curl martillo"
+   },
+   "image": "Hammer_Curls.jpg"
+  },
+  "hollow-hold": {
+   "name": {
+    "en": "Hollow hold",
+    "es": "Hollow hold"
+   },
+   "image": ""
+  },
+  "incline-db": {
+   "name": {
+    "en": "Incline dumbbell press",
+    "es": "Press inclinado mancuernas"
+   },
+   "image": "Incline_Dumbbell_Press.jpg"
+  },
+  "incline-pushups": {
+   "name": {
+    "en": "Incline push-ups (bench)",
+    "es": "Flexiones inclinadas (banco)"
+   },
+   "image": ""
+  },
+  "inverted-row-trx": {
+   "name": {
+    "en": "Inverted row (TRX)",
+    "es": "Remo invertido (TRX)"
+   },
+   "image": ""
+  },
+  "jump-squat": {
+   "name": {
+    "en": "Jump squats",
+    "es": "Sentadilla con salto"
+   },
+   "image": ""
+  },
+  "kb-deadlift": {
+   "name": {
+    "en": "Kettlebell deadlift",
+    "es": "Peso muerto con kettlebell"
+   },
+   "image": ""
+  },
+  "kb-hip-thrust": {
+   "name": {
+    "en": "Kettlebell hip thrust",
+    "es": "Hip thrust con kettlebell"
+   },
+   "image": ""
+  },
+  "kb-squat": {
+   "name": {
+    "en": "Kettlebell squat",
+    "es": "Sentadilla con kettlebell"
+   },
+   "image": ""
+  },
+  "kb-swing": {
+   "name": {
+    "en": "Kettlebell swing",
+    "es": "Swing con kettlebell"
+   },
+   "image": "One-Arm_Kettlebell_Swings.jpg"
+  },
+  "kb-trap-walk": {
+   "name": {
+    "en": "Kettlebell trap walk",
+    "es": "Caminata trapecio con kettlebells"
+   },
+   "image": ""
+  },
+  "lat-pulldown": {
+   "name": {
+    "en": "Lat pulldown",
+    "es": "Jalón al pecho polea"
+   },
+   "image": "Wide-Grip_Lat_Pulldown.jpg"
+  },
+  "leg-curl-seat": {
+   "name": {
+    "en": "Seated leg curl",
+    "es": "Curl femoral sentado"
+   },
+   "image": "Seated_Leg_Curl.jpg"
+  },
+  "leg-press": {
+   "name": {
+    "en": "Incline leg press",
+    "es": "Prensa inclinada"
+   },
+   "image": "Leg_Press.jpg"
+  },
+  "lying-leg-curl": {
+   "name": {
+    "en": "Lying leg curl",
+    "es": "Curl femoral tumbado"
+   },
+   "image": ""
+  },
+  "machine-chest": {
+   "name": {
+    "en": "Machine chest press",
+    "es": "Press pectoral máquina"
+   },
+   "image": "Machine_Bench_Press.jpg"
+  },
+  "machine-incline": {
+   "name": {
+    "en": "Incline machine press",
+    "es": "Press inclinado máquina"
+   },
+   "image": ""
+  },
+  "machine-preacher-curl": {
+   "name": {
+    "en": "Machine preacher curl",
+    "es": "Curl predicador máquina"
+   },
+   "image": ""
+  },
+  "machine-shoulder-press": {
+   "name": {
+    "en": "Machine shoulder press",
+    "es": "Press hombro máquina"
+   },
+   "image": ""
+  },
+  "machine-shrugs": {
+   "name": {
+    "en": "Machine shrugs",
+    "es": "Encogimientos en máquina"
+   },
+   "image": ""
+  },
+  "neutral-pullup": {
+   "name": {
+    "en": "Neutral-grip pull-up",
+    "es": "Dominada agarre neutro"
+   },
+   "image": ""
+  },
+  "one-arm-db-row": {
+   "name": {
+    "en": "One-arm dumbbell row",
+    "es": "Remo mancuerna a una mano"
+   },
+   "image": ""
+  },
+  "pendlay-row": {
+   "name": {
+    "en": "Barbell Pendlay row",
+    "es": "Remo Pendlay con barra"
+   },
+   "image": ""
+  },
+  "plank": {
+   "name": {
+    "en": "Front plank",
+    "es": "Plancha frontal"
+   },
+   "image": "Plank.jpg"
+  },
+  "pullup-assisted": {
+   "name": {
+    "en": "Assisted pull-ups",
+    "es": "Dominadas asistidas"
+   },
+   "image": "Pullups.jpg"
+  },
+  "pushups": {
+   "name": {
+    "en": "Push-ups",
+    "es": "Flexiones"
+   },
+   "image": "Pushups.jpg"
+  },
+  "rdl-db": {
+   "name": {
+    "en": "Dumbbell Romanian deadlift",
+    "es": "Peso muerto rumano mancuernas"
+   },
+   "image": "Stiff-Legged_Dumbbell_Deadlift.jpg"
+  },
+  "ring-rows": {
+   "name": {
+    "en": "Ring rows / TRX rows",
+    "es": "Remo en anillas / TRX"
+   },
+   "image": "Inverted_Row.jpg"
+  },
+  "rope-pushdown": {
+   "name": {
+    "en": "Rope triceps pushdown",
+    "es": "Tríceps polea cuerda"
+   },
+   "image": "Triceps_Pushdown.jpg"
+  },
+  "seated-row": {
+   "name": {
+    "en": "Seated cable row",
+    "es": "Remo sentado polea"
+   },
+   "image": "Seated_Cable_Rows.jpg"
+  },
+  "shoulder-press": {
+   "name": {
+    "en": "Seated shoulder press",
+    "es": "Press hombro sentado"
+   },
+   "image": "Dumbbell_Shoulder_Press.jpg"
+  },
+  "sled-push": {
+   "name": {
+    "en": "Sled push",
+    "es": "Empuje de trineo"
+   },
+   "image": ""
+  },
+  "supine-pulldown": {
+   "name": {
+    "en": "Underhand pulldown",
+    "es": "Jalón agarre supino"
+   },
+   "image": ""
+  },
+  "t-bar-row-machine": {
+   "name": {
+    "en": "T-bar row machine",
+    "es": "Remo T máquina"
+   },
+   "image": ""
+  },
+  "thrusters": {
+   "name": {
+    "en": "Dumbbell thrusters",
+    "es": "Thrusters mancuernas"
+   },
+   "image": ""
+  },
+  "trx-row": {
+   "name": {
+    "en": "TRX row",
+    "es": "Remo TRX"
+   },
+   "image": ""
+  },
+  "walking-lunges": {
+   "name": {
+    "en": "Walking lunges",
+    "es": "Zancadas caminando"
+   },
+   "image": "Dumbbell_Lunges.jpg"
+  },
+  "wall-ball": {
+   "name": {
+    "en": "Wall ball",
+    "es": "Wall ball"
+   },
+   "image": ""
+  },
+  "weighted-pulldown": {
+   "name": {
+    "en": "Heavy pulldown",
+    "es": "Jalón pesado"
+   },
+   "image": "Close-Grip_Front_Lat_Pulldown.jpg"
+  },
+  "weighted-pullup": {
+   "name": {
+    "en": "Weighted pull-ups",
+    "es": "Dominadas lastradas"
+   },
+   "image": ""
+  },
+  "weighted-step-ups": {
+   "name": {
+    "en": "Weighted step-ups",
+    "es": "Step-ups con peso"
+   },
+   "image": ""
+  }
+ }
+}

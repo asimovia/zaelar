@@ -1,0 +1,193 @@
+{
+  "id": "gym",
+  "screens": "shared",
+  "state": {
+    "order": {"view": "view.n", "session": "live.rev"},
+    "report": {
+      "view": {"type": "enum:onboarding|home|preview|session|calendar|muscles|config|planner|program|summary|exercise|log", "follows": "view", "rest": "home"},
+      "phase": {"type": "enum:idle|exercise|rest|timed|finished", "follows": "session", "rest": "idle"},
+      "block": {"type": "int:0-200", "follows": "session", "rest": 0},
+      "set": {"type": "int:0-50", "follows": "session", "rest": 0},
+      "exercise": {"type": "text:60", "follows": "session", "rest": ""}
+    }
+  },
+  "version": "0.1.0",
+  "owner": "Zaelar",
+  "licence": "SUL-1.0",
+  "title": "Gym",
+  "description": "Guided strength sessions from a versioned training plan: today's day, a block timer, sets with reps, weight and RIR, rests, alternatives, a calendar of workouts and a muscle-recovery map.",
+  "whenToUse": "Strength training: today's workout, a guided gym session, sets and weights, muscle recovery.",
+  "keywords": [
+    "gym",
+    "gimnasio",
+    "pesas",
+    "weights",
+    "strength training",
+    "fuerza",
+    "sets",
+    "reps",
+    "repeticiones",
+    "musculación",
+    "entrenamiento de fuerza",
+    "rutina de gimnasio",
+    "workout plan",
+    "recuperación muscular",
+    "muscle recovery"
+  ],
+  "entry": "widget.js",
+  "name": "Gym",
+  "aliases": [
+    "Gym",
+    "Gimnasio",
+    "my gym",
+    "mi gimnasio",
+    "pesas",
+    "my workout plan"
+  ],
+  "security": "standard",
+  "size": {
+    "w": 460,
+    "h": 620
+  },
+  "min": {
+    "w": 320,
+    "h": 420
+  },
+  "usage": "Strength training. «Let's train» is `start_session` (today's day of the plan); during it «done» is `set_done` (say reps/weight if different), «next»/«start now» is `next`, «skip it» is `skip_exercise`, «another exercise» is `suggest_alternative` then `use_alternative`, «I'm done» is `finish` (or `end_early` before the last block). A workout done elsewhere is `log_workout` with its exercises and sets.",
+  "actions": {
+    "select_program": {
+      "desc": "Choose the training program to follow; the first choice (or a different program) opens a new version of the plan.",
+      "payload": {"program": "functional-hypertrophy"},
+      "done_when": {"widget": "gym", "field": "status", "is": "ready"}
+    },
+    "configure": {
+      "desc": "Set the gym's equipment, the free-text preferences the trainer must respect (style, exercises to avoid) and the person's age (for heart-rate zones).",
+      "how": "equipment: a list of what the gym has among dumbbells, barbells, squat_rack, adjustable_bench, leg_machines, cables, cardio, functional, pullup_bar (or an object of booleans); only the fields he names change",
+      "payload": {"equipment": ["dumbbells", "cables"], "preferences": "no barbell squats, knee issue", "age": 45}
+    },
+    "open_view": {
+      "desc": "Show a screen of the gym widget: home, preview (today's workout before starting), calendar, muscles (recovery map), config, planner, program, summary of a session, exercise history, log.",
+      "how": "summary takes `sessionId`; exercise takes `exercise` (its key)",
+      "payload": {"view": "muscles"},
+      "view": true
+    },
+    "start_session": {
+      "desc": "Start the guided session of today's workout (the plan's day), or of another day of the program; an unfinished session resumes instead.",
+      "how": "`day` only when he names another day of the program (push, legs, back, fullbody, upper-heavy)",
+      "payload": {"day": "legs"},
+      "done_when": {"widget": "gym", "field": "status", "is": "session"},
+      "effects": ["present.mount"]
+    },
+    "set_values": {
+      "desc": "Change the weight, reps or RIR shown for the current set before it is done.",
+      "how": "absolute `weight_kg`/`reps`/`rir`, or a step with `weight_delta`/`reps_delta`",
+      "payload": {"weight_kg": 22.5, "reps": 10}
+    },
+    "set_done": {
+      "desc": "Record the current set as done (with the weight and reps on screen, or the ones he says) and start the rest or the next exercise.",
+      "how": "pass `reps`, `weight_kg` or `rir` only when he says them; otherwise the values on screen are used",
+      "payload": {"reps": 10, "weight_kg": 20}
+    },
+    "next": {
+      "desc": "Start now: end the current rest, or leave the running timed block (warm-up, stretch, transition) for the next one.",
+      "payload": {},
+      "repeatable": true
+    },
+    "undo_set": {
+      "desc": "Undo the last recorded set of the session and go back to it.",
+      "payload": {}
+    },
+    "skip_exercise": {
+      "desc": "Skip the current exercise or block; it is recorded as not done and the session moves on.",
+      "payload": {}
+    },
+    "pause_timer": {
+      "desc": "Pause the running timer (rest or timed block).",
+      "payload": {}
+    },
+    "resume_timer": {
+      "desc": "Resume the paused timer.",
+      "payload": {}
+    },
+    "adjust_rest": {
+      "desc": "Add or take seconds from the running timer (rest or timed block).",
+      "payload": {"seconds": 15},
+      "repeatable": true
+    },
+    "suggest_alternative": {
+      "desc": "Show a substitute for the current exercise or cardio block; asked again, it shows another one.",
+      "payload": {},
+      "repeatable": true
+    },
+    "use_alternative": {
+      "desc": "Replace the current block with the alternative on screen.",
+      "payload": {}
+    },
+    "close_alternatives": {
+      "desc": "Close the alternatives without changing the exercise.",
+      "payload": {}
+    },
+    "end_early": {
+      "desc": "End the session now and keep what was done as a partial workout.",
+      "payload": {},
+      "done_when": {"widget": "gym", "field": "status", "is": "ready"}
+    },
+    "finish": {
+      "desc": "Save the session as complete.",
+      "payload": {},
+      "done_when": {"widget": "gym", "field": "status", "is": "ready"}
+    },
+    "abort": {
+      "desc": "Discard the whole session in progress and every set recorded in it.",
+      "payload": {},
+      "confirm": true,
+      "confirm_q": "Discard the whole workout in progress and its sets? This cannot be undone.",
+      "done_when": {"widget": "gym", "field": "status", "is": "ready"}
+    },
+    "delete_session": {
+      "desc": "Delete one recorded workout and its sets.",
+      "payload": {"sessionId": "12"},
+      "confirm": true,
+      "confirm_q": "Delete the workout «{item}» and its sets? This cannot be undone."
+    },
+    "delete_day": {
+      "desc": "Delete every workout recorded on a date.",
+      "payload": {"date": "2026-11-12"},
+      "confirm": true,
+      "confirm_q": "Delete every workout of that day? This cannot be undone."
+    },
+    "log_workout": {
+      "desc": "Record a workout done without the guided session: its date, day and exercises with their sets.",
+      "how": "exercises: [{name, sets:[{reps, weight_kg}]}] or the short form {name, sets: 4, reps: 10, weight_kg: 20}; date YYYY-MM-DD («yesterday» resolved), default today; day_key the main group (push, pull, back, legs, fullbody, upper-heavy)",
+      "payload": {"date": "2026-11-12", "day_key": "push", "exercises": [{"name": "Dumbbell bench press", "sets": 4, "reps": 10, "weight_kg": 20}]}
+    },
+    "edit_session": {
+      "desc": "Correct a recorded workout: change, add or delete sets or exercises, named E1, E2… (and E1.1 for a set) as on its summary.",
+      "how": "ops: [{op: replace_exercise|delete_exercise|edit_set|delete_set|add_set|add_exercise, exercise_index (1 = E1), set_index (0-based), reps, weight_kg, name, sets:[{reps, weight_kg}]}]",
+      "payload": {"sessionId": "12", "ops": [{"op": "edit_set", "exercise_index": 1, "set_index": 0, "reps": 12}]}
+    },
+    "adjust_today": {
+      "desc": "Ask the trainer to reshape today's workout from an instruction (shorter, other muscle groups).",
+      "payload": {"instruction": "30 minutes only"}
+    },
+    "refresh_plan": {
+      "desc": "Ask the trainer for the plan of the next days from the recent workouts and recovery.",
+      "payload": {}
+    },
+    "claim": {
+      "desc": "The screen that drives the session claims it: it reads the heart-rate strap, beeps and keeps the screen awake (sent by the widget itself).",
+      "payload": {"owner": "screen-token"},
+      "internal": true
+    },
+    "timer_done": {
+      "desc": "A screen saw the timer reach zero for the block and set it shows (sent by the widget itself).",
+      "payload": {"i": 3, "set": 1, "resting": true},
+      "internal": true
+    },
+    "hr": {
+      "desc": "The latest heart rate from the strap of the screen that drives the session (sent by the widget itself).",
+      "payload": {"owner": "screen-token", "bpm": 120},
+      "internal": true
+    }
+  }
+}

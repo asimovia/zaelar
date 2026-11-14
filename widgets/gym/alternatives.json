@@ -1,0 +1,774 @@
+{
+ "exercise": {
+  "goblet-squat": [
+   {
+    "key": "kb-squat",
+    "name": {
+     "en": "Kettlebell squat",
+     "es": "Sentadilla con kettlebell"
+    },
+    "sets": 4,
+    "reps": "12",
+    "rest_sec": 90,
+    "weight_initial_kg": 20
+   },
+   {
+    "key": "barbell-back-squat",
+    "name": {
+     "en": "Barbell back squat",
+     "es": "Sentadilla trasera con barra"
+    },
+    "sets": 4,
+    "reps": "10",
+    "rest_sec": 120,
+    "weight_initial_kg": 40
+   },
+   {
+    "key": "db-bulgarian-split-squat",
+    "name": {
+     "en": "Dumbbell Bulgarian split squat",
+     "es": "Sentadilla búlgara mancuernas"
+    },
+    "sets": 3,
+    "reps": {
+     "en": "10 each leg",
+     "es": "10 cada pierna"
+    },
+    "rest_sec": 75,
+    "weight_initial_kg": 12
+   }
+  ],
+  "leg-press": [
+   {
+    "key": "hack-squat",
+    "name": {
+     "en": "Hack squat",
+     "es": "Sentadilla hack"
+    },
+    "sets": 4,
+    "reps": "12",
+    "rest_sec": 90,
+    "weight_initial_kg": 80
+   },
+   {
+    "key": "barbell-squat",
+    "name": {
+     "en": "Barbell squat",
+     "es": "Sentadilla con barra"
+    },
+    "sets": 4,
+    "reps": "8-10",
+    "rest_sec": 120,
+    "weight_initial_kg": 50
+   }
+  ],
+  "rdl-db": [
+   {
+    "key": "barbell-rdl",
+    "name": {
+     "en": "Barbell Romanian deadlift",
+     "es": "Peso muerto rumano con barra"
+    },
+    "sets": 4,
+    "reps": "10",
+    "rest_sec": 90,
+    "weight_initial_kg": 50
+   },
+   {
+    "key": "kb-deadlift",
+    "name": {
+     "en": "Kettlebell deadlift",
+     "es": "Peso muerto con kettlebell"
+    },
+    "sets": 4,
+    "reps": "12",
+    "rest_sec": 75,
+    "weight_initial_kg": 24
+   }
+  ],
+  "walking-lunges": [
+   {
+    "key": "bench-step-ups",
+    "name": {
+     "en": "Bench step-ups",
+     "es": "Step-ups en banco"
+    },
+    "sets": 3,
+    "reps": {
+     "en": "12 each side",
+     "es": "12 cada lado"
+    },
+    "rest_sec": 75,
+    "weight_initial_kg": 12
+   },
+   {
+    "key": "db-static-lunges",
+    "name": {
+     "en": "Static dumbbell lunges",
+     "es": "Zancadas estáticas mancuernas"
+    },
+    "sets": 3,
+    "reps": {
+     "en": "12 each side",
+     "es": "12 cada lado"
+    },
+    "rest_sec": 60,
+    "weight_initial_kg": 12
+   }
+  ],
+  "leg-curl-seat": [
+   {
+    "key": "lying-leg-curl",
+    "name": {
+     "en": "Lying leg curl",
+     "es": "Curl femoral tumbado"
+    },
+    "sets": 3,
+    "reps": "12",
+    "rest_sec": 60,
+    "weight_initial_kg": 35
+   },
+   {
+    "key": "barbell-good-morning",
+    "name": {
+     "en": "Barbell good mornings",
+     "es": "Buenos días con barra"
+    },
+    "sets": 3,
+    "reps": "10",
+    "rest_sec": 75,
+    "weight_initial_kg": 30
+   }
+  ],
+  "db-bench": [
+   {
+    "key": "barbell-bench",
+    "name": {
+     "en": "Barbell bench press",
+     "es": "Press banca con barra"
+    },
+    "sets": 4,
+    "reps": "8",
+    "rest_sec": 90,
+    "weight_initial_kg": 50
+   },
+   {
+    "key": "machine-chest",
+    "name": {
+     "en": "Machine chest press",
+     "es": "Press pectoral máquina"
+    },
+    "sets": 4,
+    "reps": "10-12",
+    "rest_sec": 75,
+    "weight_initial_kg": 50
+   }
+  ],
+  "incline-db": [
+   {
+    "key": "barbell-incline",
+    "name": {
+     "en": "Incline barbell press",
+     "es": "Press inclinado con barra"
+    },
+    "sets": 3,
+    "reps": "8-10",
+    "rest_sec": 90,
+    "weight_initial_kg": 40
+   },
+   {
+    "key": "machine-incline",
+    "name": {
+     "en": "Incline machine press",
+     "es": "Press inclinado máquina"
+    },
+    "sets": 3,
+    "reps": "10-12",
+    "rest_sec": 75,
+    "weight_initial_kg": 40
+   }
+  ],
+  "machine-chest": [
+   {
+    "key": "db-flyes",
+    "name": {
+     "en": "Dumbbell flyes",
+     "es": "Aperturas mancuernas"
+    },
+    "sets": 3,
+    "reps": "12",
+    "rest_sec": 60,
+    "weight_initial_kg": 10
+   },
+   {
+    "key": "cable-crossover",
+    "name": {
+     "en": "Cable crossover",
+     "es": "Cruce de poleas"
+    },
+    "sets": 3,
+    "reps": "12-15",
+    "rest_sec": 60,
+    "weight_initial_kg": 12
+   }
+  ],
+  "db-shoulder-press": [
+   {
+    "key": "barbell-military-press",
+    "name": {
+     "en": "Barbell military press",
+     "es": "Press militar con barra"
+    },
+    "sets": 4,
+    "reps": "8",
+    "rest_sec": 90,
+    "weight_initial_kg": 30
+   },
+   {
+    "key": "machine-shoulder-press",
+    "name": {
+     "en": "Machine shoulder press",
+     "es": "Press hombro máquina"
+    },
+    "sets": 4,
+    "reps": "10-12",
+    "rest_sec": 75,
+    "weight_initial_kg": 35
+   }
+  ],
+  "rope-pushdown": [
+   {
+    "key": "db-skullcrusher",
+    "name": {
+     "en": "Dumbbell skull crushers",
+     "es": "Press francés mancuernas"
+    },
+    "sets": 3,
+    "reps": "12",
+    "rest_sec": 60,
+    "weight_initial_kg": 12
+   },
+   {
+    "key": "bench-dips",
+    "name": {
+     "en": "Bench dips",
+     "es": "Fondos en banco"
+    },
+    "sets": 3,
+    "reps": "12-15",
+    "rest_sec": 60
+   }
+  ],
+  "lat-pulldown": [
+   {
+    "key": "pullup-assisted",
+    "name": {
+     "en": "Assisted pull-ups",
+     "es": "Dominadas asistidas"
+    },
+    "sets": 4,
+    "reps": "8",
+    "rest_sec": 90
+   },
+   {
+    "key": "supine-pulldown",
+    "name": {
+     "en": "Underhand pulldown",
+     "es": "Jalón agarre supino"
+    },
+    "sets": 4,
+    "reps": "10",
+    "rest_sec": 90,
+    "weight_initial_kg": 50
+   },
+   {
+    "key": "neutral-pullup",
+    "name": {
+     "en": "Neutral-grip pull-up",
+     "es": "Dominada agarre neutro"
+    },
+    "sets": 4,
+    "reps": "6-8",
+    "rest_sec": 90
+   }
+  ],
+  "seated-row": [
+   {
+    "key": "barbell-row",
+    "name": {
+     "en": "Barbell row",
+     "es": "Remo con barra"
+    },
+    "sets": 4,
+    "reps": "10",
+    "rest_sec": 90,
+    "weight_initial_kg": 40
+   },
+   {
+    "key": "t-bar-row-machine",
+    "name": {
+     "en": "T-bar row machine",
+     "es": "Remo T máquina"
+    },
+    "sets": 4,
+    "reps": "10",
+    "rest_sec": 75,
+    "weight_initial_kg": 40
+   }
+  ],
+  "chest-supported-row": [
+   {
+    "key": "one-arm-db-row",
+    "name": {
+     "en": "One-arm dumbbell row",
+     "es": "Remo mancuerna a una mano"
+    },
+    "sets": 3,
+    "reps": {
+     "en": "12 each side",
+     "es": "12 cada lado"
+    },
+    "rest_sec": 75,
+    "weight_initial_kg": 22
+   },
+   {
+    "key": "pendlay-row",
+    "name": {
+     "en": "Barbell Pendlay row",
+     "es": "Remo Pendlay con barra"
+    },
+    "sets": 3,
+    "reps": "8",
+    "rest_sec": 90,
+    "weight_initial_kg": 40
+   }
+  ],
+  "pullup-assisted": [
+   {
+    "key": "close-grip-pulldown",
+    "name": {
+     "en": "Close-grip pulldown",
+     "es": "Jalón agarre cerrado"
+    },
+    "sets": 3,
+    "reps": "10",
+    "rest_sec": 75,
+    "weight_initial_kg": 50
+   },
+   {
+    "key": "inverted-row-trx",
+    "name": {
+     "en": "Inverted row (TRX)",
+     "es": "Remo invertido (TRX)"
+    },
+    "sets": 3,
+    "reps": "12",
+    "rest_sec": 60
+   }
+  ],
+  "db-curl": [
+   {
+    "key": "ez-bar-curl",
+    "name": {
+     "en": "EZ-bar curl",
+     "es": "Curl barra Z"
+    },
+    "sets": 3,
+    "reps": "10",
+    "rest_sec": 60,
+    "weight_initial_kg": 20
+   },
+   {
+    "key": "machine-preacher-curl",
+    "name": {
+     "en": "Machine preacher curl",
+     "es": "Curl predicador máquina"
+    },
+    "sets": 3,
+    "reps": "12",
+    "rest_sec": 60,
+    "weight_initial_kg": 20
+   }
+  ],
+  "farmer-carry": [
+   {
+    "key": "kb-trap-walk",
+    "name": {
+     "en": "Kettlebell trap walk",
+     "es": "Caminata trapecio con kettlebells"
+    },
+    "sets": 3,
+    "reps": "40 m",
+    "rest_sec": 75,
+    "weight_initial_kg": 24
+   },
+   {
+    "key": "db-shrugs",
+    "name": {
+     "en": "Dumbbell shrugs",
+     "es": "Encogimientos mancuernas"
+    },
+    "sets": 3,
+    "reps": "15",
+    "rest_sec": 60,
+    "weight_initial_kg": 24
+   }
+  ],
+  "thrusters": [
+   {
+    "key": "db-push-press",
+    "name": {
+     "en": "Dumbbell push press",
+     "es": "Push press mancuernas"
+    },
+    "sets": 4,
+    "reps": "10",
+    "rest_sec": 75,
+    "weight_initial_kg": 14
+   },
+   {
+    "key": "wall-ball",
+    "name": {
+     "en": "Wall ball",
+     "es": "Wall ball"
+    },
+    "sets": 4,
+    "reps": "15",
+    "rest_sec": 60,
+    "weight_initial_kg": 9
+   }
+  ],
+  "kb-swing": [
+   {
+    "key": "db-swing",
+    "name": {
+     "en": "Dumbbell swing",
+     "es": "Swing con mancuerna"
+    },
+    "sets": 4,
+    "reps": "15",
+    "rest_sec": 60,
+    "weight_initial_kg": 16
+   },
+   {
+    "key": "kb-hip-thrust",
+    "name": {
+     "en": "Kettlebell hip thrust",
+     "es": "Hip thrust con kettlebell"
+    },
+    "sets": 4,
+    "reps": "12",
+    "rest_sec": 60,
+    "weight_initial_kg": 24
+   }
+  ],
+  "pushups": [
+   {
+    "key": "machine-chest",
+    "name": {
+     "en": "Machine chest press",
+     "es": "Press pectoral máquina"
+    },
+    "sets": 4,
+    "reps": "12",
+    "rest_sec": 60,
+    "weight_initial_kg": 40
+   },
+   {
+    "key": "incline-pushups",
+    "name": {
+     "en": "Incline push-ups (bench)",
+     "es": "Flexiones inclinadas (banco)"
+    },
+    "sets": 4,
+    "reps": "15",
+    "rest_sec": 60
+   }
+  ],
+  "ring-rows": [
+   {
+    "key": "trx-row",
+    "name": {
+     "en": "TRX row",
+     "es": "Remo TRX"
+    },
+    "sets": 4,
+    "reps": "12",
+    "rest_sec": 60
+   },
+   {
+    "key": "chest-supported-row",
+    "name": {
+     "en": "Chest-supported dumbbell row",
+     "es": "Remo mancuernas pecho apoyado"
+    },
+    "sets": 4,
+    "reps": "12",
+    "rest_sec": 60,
+    "weight_initial_kg": 16
+   }
+  ],
+  "sled-push": [
+   {
+    "key": "jump-squat",
+    "name": {
+     "en": "Jump squats",
+     "es": "Sentadilla con salto"
+    },
+    "sets": 6,
+    "reps": "10",
+    "rest_sec": 60
+   },
+   {
+    "key": "weighted-step-ups",
+    "name": {
+     "en": "Weighted step-ups",
+     "es": "Step-ups con peso"
+    },
+    "sets": 6,
+    "reps": {
+     "en": "10 each side",
+     "es": "10 cada lado"
+    },
+    "rest_sec": 60,
+    "weight_initial_kg": 12
+   }
+  ],
+  "db-bench-heavy": [
+   {
+    "key": "barbell-bench-heavy",
+    "name": {
+     "en": "Heavy barbell bench press",
+     "es": "Press banca con barra pesado"
+    },
+    "sets": 5,
+    "reps": "5",
+    "rest_sec": 120,
+    "weight_initial_kg": 60
+   },
+   {
+    "key": "db-floor-press",
+    "name": {
+     "en": "Dumbbell floor press",
+     "es": "Floor press mancuernas"
+    },
+    "sets": 5,
+    "reps": "6",
+    "rest_sec": 120,
+    "weight_initial_kg": 22
+   }
+  ],
+  "weighted-pulldown": [
+   {
+    "key": "weighted-pullup",
+    "name": {
+     "en": "Weighted pull-ups",
+     "es": "Dominadas lastradas"
+    },
+    "sets": 5,
+    "reps": "6",
+    "rest_sec": 120
+   },
+   {
+    "key": "close-grip-pulldown-heavy",
+    "name": {
+     "en": "Heavy close-grip pulldown",
+     "es": "Jalón agarre cerrado pesado"
+    },
+    "sets": 5,
+    "reps": "8",
+    "rest_sec": 105,
+    "weight_initial_kg": 65
+   }
+  ],
+  "shoulder-press": [
+   {
+    "key": "barbell-military-press",
+    "name": {
+     "en": "Barbell military press",
+     "es": "Press militar con barra"
+    },
+    "sets": 4,
+    "reps": "8",
+    "rest_sec": 90,
+    "weight_initial_kg": 30
+   },
+   {
+    "key": "arnold-press",
+    "name": {
+     "en": "Arnold press",
+     "es": "Press Arnold"
+    },
+    "sets": 4,
+    "reps": "8",
+    "rest_sec": 90,
+    "weight_initial_kg": 16
+   }
+  ],
+  "cable-row": [
+   {
+    "key": "barbell-t-bar-row",
+    "name": {
+     "en": "Barbell T-bar row",
+     "es": "Remo barra T"
+    },
+    "sets": 4,
+    "reps": "8",
+    "rest_sec": 90,
+    "weight_initial_kg": 50
+   },
+   {
+    "key": "pendlay-row",
+    "name": {
+     "en": "Pendlay row",
+     "es": "Remo Pendlay"
+    },
+    "sets": 4,
+    "reps": "8",
+    "rest_sec": 90,
+    "weight_initial_kg": 50
+   }
+  ],
+  "db-shrugs": [
+   {
+    "key": "barbell-shrugs",
+    "name": {
+     "en": "Barbell shrugs",
+     "es": "Encogimientos con barra"
+    },
+    "sets": 4,
+    "reps": "12",
+    "rest_sec": 60,
+    "weight_initial_kg": 60
+   },
+   {
+    "key": "machine-shrugs",
+    "name": {
+     "en": "Machine shrugs",
+     "es": "Encogimientos en máquina"
+    },
+    "sets": 4,
+    "reps": "12",
+    "rest_sec": 60,
+    "weight_initial_kg": 50
+   }
+  ],
+  "hammer-curl": [
+   {
+    "key": "db-supinated-curl",
+    "name": {
+     "en": "Supinated dumbbell curl",
+     "es": "Curl supino mancuernas"
+    },
+    "sets": 3,
+    "reps": "10",
+    "rest_sec": 60,
+    "weight_initial_kg": 12
+   },
+   {
+    "key": "cable-curl",
+    "name": {
+     "en": "Cable curl",
+     "es": "Curl en polea"
+    },
+    "sets": 3,
+    "reps": "12",
+    "rest_sec": 60,
+    "weight_initial_kg": 18
+   }
+  ],
+  "plank": [
+   {
+    "key": "hollow-hold",
+    "name": {
+     "en": "Hollow hold",
+     "es": "Hollow hold"
+    },
+    "sets": 3,
+    "reps": "30s",
+    "rest_sec": 30
+   },
+   {
+    "key": "dead-bug",
+    "name": {
+     "en": "Dead bug",
+     "es": "Dead bug"
+    },
+    "sets": 3,
+    "reps": {
+     "en": "10 each side",
+     "es": "10 cada lado"
+    },
+    "rest_sec": 30
+   }
+  ]
+ },
+ "cardio": [
+  {
+   "key": "bike-warmup",
+   "name": {
+    "en": "Bike warm-up",
+    "es": "Calentamiento bici"
+   },
+   "duration_sec": 300,
+   "cue": "5/10 RPE"
+  },
+  {
+   "key": "row-warmup",
+   "name": {
+    "en": "Rowing warm-up",
+    "es": "Calentamiento remo"
+   },
+   "duration_sec": 300,
+   "cue": {
+    "en": "easy technique",
+    "es": "técnica suave"
+   }
+  },
+  {
+   "key": "jump-rope",
+   "name": {
+    "en": "Jump rope",
+    "es": "Salto comba"
+   },
+   "duration_sec": 180,
+   "cue": {
+    "en": "steady pace",
+    "es": "ritmo constante"
+   }
+  },
+  {
+   "key": "air-bike",
+   "name": {
+    "en": "Air bike",
+    "es": "Air bike"
+   },
+   "duration_sec": 300,
+   "cue": "6/10 RPE"
+  },
+  {
+   "key": "easy-burpees",
+   "name": {
+    "en": "Easy burpees",
+    "es": "Burpees suaves"
+   },
+   "duration_sec": 120,
+   "cue": {
+    "en": "moderate",
+    "es": "moderado"
+   }
+  },
+  {
+   "key": "incline-walk",
+   "name": {
+    "en": "Incline treadmill walk",
+    "es": "Cinta caminar inclinada"
+   },
+   "duration_sec": 360,
+   "cue": {
+    "en": "12% incline",
+    "es": "12% de inclinación"
+   }
+  }
+ ]
+}
