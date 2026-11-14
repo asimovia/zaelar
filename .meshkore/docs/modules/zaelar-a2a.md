@@ -40,6 +40,18 @@ other item with `ItemRegistry.declare(Item(...))`; a grant may name an item id o
 (`kind:widget-data,widget:activity`, `schema:activity.route/1`, `*`). The engine replaces `JsonGrantStore` with an
 adapter over the rules table and points `Grants.policy` at the consent gate.
 
+## Engine surfaces (F3)
+
+| piece | where | what |
+|---|---|---|
+| runtime holder | `a2a.set_runtime` / `runtime()` / `accepted()` | the running agent, reached by the turn and widgets without importing `server/` |
+| consent cards | `server/a2a_cards.py` | `asker` keeps `request`/`propose` as durable cards; `POST /api/a2a/cards/{id} {yes}` answers; a message → one chat line |
+| Network read | `GET /api/a2a/network` | relationships + grants, pending cards, recent rows (`events.recent`), declared items |
+| turn tools | `nucleo/flash/tools_a2a.py` | `a2a_send · a2a_connect · a2a_grant · a2a_read`, offered only with `a2a_live` (on + an accepted contact); lines from `voice.a2a_*` |
+| widget items | manifest `shareable: [{id, kind, schema, verbs, projections}]` | readers keyed `<widget>:<projection>` in `server/a2a_wiring.READERS`; no reader → not served |
+| contacts | `widgets/contactos/a2a_actions.py` | `contact.saved` bus topic → `Jobs.contact_event`; `a2a` block on a contact; internal actions `a2a_request · a2a_accept · a2a_decline · a2a_grant · a2a_revoke` |
+| consent classes | `nucleo/events/vocabulary.py` | `a2a.see · subscribe · append · edit · copy` |
+
 ## Cadence
 
 | job | when |
@@ -97,4 +109,4 @@ op's own fields below. `tests/a2a/unit/test_events.py` asserts this table equals
 
 ## Tests
 
-`./.venv/bin/python -m pytest tests/a2a -q` — unit nodes 6.A1–6.A8 and the two-plató run 6.A9 (`tests/a2a/suite.json`).
+`./.venv/bin/python -m pytest tests/a2a -q` — unit nodes 6.A1–6.A8, the two-plató run 6.A9 and the owner surfaces 6.A10 (`tests/a2a/suite.json`).
