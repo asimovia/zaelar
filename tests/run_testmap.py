@@ -5339,11 +5339,12 @@ DOMAINS: list[dict] = [
                                  "by the window · the leave rule's reading alone) 3 reds each",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/workers/test_a_send_tasks_exit_door_reads_the_rows_own_words.py"]},
-        {"id": "2.1751", "title": "A stage of the programme (`shadow`, `own`) is off until its config turns it on; the env "
-                                 "`ZAELAR_PLAY_<NAME>=0` only forces it off; an unknown name and an unreadable store are off — "
-                                 "disarmed (`stage` returns True) 1 red",
+        {"id": "2.1751", "title": "A stage of the programme (`shadow`, `own`) is on by default and off when the stored config "
+                                 "says false; the env `ZAELAR_PLAY_<NAME>=0` forces it off over a stored true and the default, "
+                                 "and no env value forces on a stage the store turned off; an unknown name and an unreadable "
+                                 "store are off — disarmed (`stage` always on / ignores the env) 2 red",
             "ch": UNIT,
-            "paths": ["tests/agent_headless/unit/play/test_a_play_stage_is_off_until_switched.py"]},
+            "paths": ["tests/agent_headless/unit/play/test_a_play_stage_is_on_unless_switched_off.py"]},
         {"id": "2.72", "title": "«Páralo, y vuelve al inicio» ES una orden sobre el reproductor — la "
                                 "gramática de cerrar propone, el veredicto de pantalla decide, y el "
                                 "descriptor que lo hace enrutable llega ENTERO a la pregunta",
