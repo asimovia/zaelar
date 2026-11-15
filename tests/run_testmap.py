@@ -5305,6 +5305,14 @@ DOMAINS: list[dict] = [
                                  "claim is not named · the return is not reported) 2 reds",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/play/test_the_shadow_names_an_outcome_claimed_before_the_end.py"]},
+        {"id": "2.1754", "title": "The route of a turn is recorded beside what it did (`nucleo/play/route_shadow.py`, stage "
+                                 "`shadow`): one `play/route` event carries where the request should go and where the path "
+                                 "took it; a `play/route_drift` when they differ or a sure order ends with nothing run, no "
+                                 "errand and no question; every declared action called and run agrees unless its class is the "
+                                 "worker's; with the stage off nothing is recorded, garbage never raises, and the close of the "
+                                 "turn calls it — disarmed (`unserved` always False · the close drops the call) 2 reds",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/play/test_the_route_of_a_turn_is_recorded_beside_what_it_did.py"]},
         {"id": "2.1751", "title": "A stage of the programme (`shadow`, `own`) is off until its config turns it on; the env "
                                  "`ZAELAR_PLAY_<NAME>=0` only forces it off; an unknown name and an unreadable store are off — "
                                  "disarmed (`stage` returns True) 1 red",

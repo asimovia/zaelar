@@ -225,6 +225,9 @@ async def close_the_turn(*, motor, send, _acc_ms, _amap_ms, _brief, _busy_at_sta
     except Exception:
         pass
 
+    from nucleo.play import route_shadow as _play_route   # V2-909: where the request should go, beside where it went (shadow)
+    _play_route.closed(brief=_brief, calls=getattr(brain, "_turn_calls", None), ops=data_done.get("ops"),
+                       escalate_req=escalate_req, acted_elsewhere=_acted_elsewhere, emit=emit)
     # V2-851 F5 — the errands the close launches (the commission, the rest of the sentence, his spec to its sheet, our
     # own question kept) live in `nucleo/turn/pipeline_errands.py`.
     _blk = await _errands.launch_the_errands(
