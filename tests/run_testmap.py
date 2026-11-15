@@ -5333,6 +5333,13 @@ DOMAINS: list[dict] = [
                                  "the chain reports the row it opened (`_opened`) — disarmed (no `HELD` return) 4 reds",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/turn/test_a_turn_that_holds_its_send_task_opens_no_second_row.py"]},
+        {"id": "2.1760", "title": "A name under a key the action does not declare is the row it names "
+                                 "(`payload_ref`): after the id field and `name`/`contact`, the ONE text under an "
+                                 "undeclared key; two name nothing, non-strings are ignored, a creation points at no row; "
+                                 "`set_favorite {contacto: <name>}` on a closed unnamed card resolves to that contact and "
+                                 "is no misroute, a real loose pronoun still is — disarmed (payload spec unreadable) 2 reds",
+            "ch": UNIT,
+            "paths": ["tests/browser/unit/contactos/test_a_name_under_an_undeclared_key_is_the_reference.py"]},
         {"id": "2.1759", "title": "A task's exit door asks a card act with the act's OWN question "
                                  "(`on_his_behalf.question` → `confirm_gate.own_question`): a send whose recipient the "
                                  "agent picked is asked who/app/draft in ES and EN, with no act id and no word for our "
