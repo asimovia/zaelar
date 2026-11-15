@@ -99,6 +99,7 @@ def outcomes(tasks, model_calls, *, said: str, quiet: bool, held: bool = False, 
     try:
         from i18n import langs
         from nucleo.circuit import verdict as V
+        from nucleo.play import shadow as _play
         from nucleo.turn import reply as _reply
         if held or _reply.asked() or _ended_asking(said):
             return []
@@ -112,6 +113,7 @@ def outcomes(tasks, model_calls, *, said: str, quiet: bool, held: bool = False, 
                 for card, action in missed:
                     line = tpl.format(cards=card_receipt.card_name(card))
                     out.append(_reply.Outcome(V.UNMET.name, card, action, reason=line, said=line))
+                    _play.line(card, action, V.UNMET.name)      # shadow: an outcome claimed for a live programme
             return out
         if quiet and not any(isinstance(c, dict) and c.get("name") for c in model_calls or ()):
             if brief is None:

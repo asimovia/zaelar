@@ -19,6 +19,4 @@ Stages (`switch.stage`): `shadow` records the programme beside today's path; `ow
 """
 from __future__ import annotations
 
-from .state import ENDS, FIRST, LAST, STEPS, Move, advance, due, new, needs_consent, say
-
-__all__ = ["ENDS", "FIRST", "LAST", "STEPS", "Move", "advance", "due", "new", "needs_consent", "say"]
+from .state import ENDS, FIRST, LAST, STEPS, Move, advance, due, new, needs_consent, say  # noqa: F401 — the package's API
