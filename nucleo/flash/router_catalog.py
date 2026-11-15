@@ -421,11 +421,11 @@ TOOLS: list[dict] = [
         "function": {
             "name": "reply_message",
             "description": (
-                "Responde un mensaje del buzón de MENSAJERÍA del operador ('responde a…', 'dile que…'). `n` = el "
-                "número del CHAT en la lista de mensajería de tu estado; con una conversación ABIERTA, omítelo y "
-                "va a esa conversación. `text` = la respuesta redactada en su nombre. No envía a la brava: se "
-                "pide confirmación antes de mandarlo. Solo para RESPONDER a algo del buzón. Si no está claro "
-                "cuál, pregunta."
+                "Responde un mensaje del buzón de MENSAJERÍA ('responde a…', 'contéstale que…'). "
+                "`n` = el número del CHAT en la lista de mensajería; con una conversación ABIERTA, "
+                "omítelo y va a esa conversación. `text` = la respuesta en su nombre. Solo para "
+                "RESPONDER a algo del buzón: escribir a una persona que él NOMBRA ('dile a X que…') es "
+                "`send_to` de mensajería. Si no está claro cuál, pregunta."
             ),
             "parameters": {
                 "type": "object",
