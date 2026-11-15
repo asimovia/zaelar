@@ -7,6 +7,8 @@ and calls each one only in its step, in the table's order, each under the step's
     answer(state, slot) → {"slots": {...}} (his answer)  or  None (he said no)
     consent(state)  → "yes" | "no" | "change"
     execute(state)  → {"ok": True, ...} | {"ok": False, "error": ...}     (the executor's own return)
+                      {"parked": True}: the executor waits on him (its own question); the walk stops here, with
+                      no report, and a later `run` over the same state goes on from this step
     look(state)     → True (the declared end state is there) | False | None (it could not be read)
     say(kind, value, state)                                                (the ONE mouth of this programme)
 
@@ -58,7 +60,8 @@ async def run(state: dict, hands, *, clock=time.monotonic, on_move=None) -> dict
             if on_move and kind == "report":
                 on_move("report", state)
 
-    move("start")
+    if state["step"] == _st.FIRST:
+        move("start")
     asked = ""
     while state["step"] != _st.LAST:
         step = state["step"]
@@ -90,6 +93,8 @@ async def run(state: dict, hands, *, clock=time.monotonic, on_move=None) -> dict
         elif step == "executing":
             await speak("announce")
             got, bad = await _call(hands.execute, limits.get(step), state)
+            if isinstance(got, dict) and got.get("parked"):
+                return state
             ok = isinstance(got, dict) and got.get("ok") is not False and not got.get("error")
             move("timeout" if bad == "timeout" else "returned" if ok and not bad else "error")
         elif step == "executed":

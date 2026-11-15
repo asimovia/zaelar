@@ -5313,6 +5313,15 @@ DOMAINS: list[dict] = [
                                  "turn calls it — disarmed (`unserved` always False · the close drops the call) 2 reds",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/play/test_the_route_of_a_turn_is_recorded_beside_what_it_did.py"]},
+        {"id": "2.1755", "title": "With the stage `own` on, the programme walks a send as the owner of its row "
+                                 "(`nucleo/play/send.py`): the card's run, then the look at the end state only once it "
+                                 "returned, one settle and ONE report; the exit door asking parks the walk and his yes "
+                                 "goes on from that step; a refusal or a raise fails unlooked; an echo that never lands "
+                                 "ends unverified and the circuit keeps the row; no line of a turn claims an outcome "
+                                 "for a live walk; one walk per row; `_schedule` hands the row over only with the stage "
+                                 "on — disarmed (live walks ignored · the look settles blind · the stage ignored) 3 reds",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/play/test_the_programme_walks_a_send_as_its_owner.py"]},
         {"id": "2.1751", "title": "A stage of the programme (`shadow`, `own`) is off until its config turns it on; the env "
                                  "`ZAELAR_PLAY_<NAME>=0` only forces it off; an unknown name and an unreadable store are off — "
                                  "disarmed (`stage` returns True) 1 red",
