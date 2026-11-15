@@ -39,8 +39,9 @@ def test_widget_fallback_emits_show(monkeypatch):
     import widgets.runtime as rt
     monkeypatch.setattr(rt, "identify_named", lambda text, **context: "agenda")
     events = []
-    nucleo._widget_fallback("enséñame la agenda", lambda kind, action, extra=None: events.append((action, extra)),
-                            brief=_brief("show"))
+    # the ledger's `seq` on every emitted op is pinned by node 4.540, not here
+    nucleo._widget_fallback("enséñame la agenda", lambda kind, action, extra=None: events.append(
+        (action, {f: v for f, v in (extra or {}).items() if f != "seq"})), brief=_brief("show"))
     # V2-039: widget events carry provenance (`src`) — the provider fallback marks them as 'flash'.
     # V2-723: …and the REASON that spent this presentation, because an anonymous show is an effect nobody
     # authorized. The fallback's reason is the operator's own order in this turn.
@@ -49,6 +50,6 @@ def test_widget_fallback_emits_show(monkeypatch):
 
 def test_widget_fallback_close_all(monkeypatch):
     events = []
-    nucleo._widget_fallback("cierra todos los widgets", lambda kind, action, extra=None: events.append((action, extra)),
-                            brief=_brief("close"))
+    nucleo._widget_fallback("cierra todos los widgets", lambda kind, action, extra=None: events.append(
+        (action, {f: v for f, v in (extra or {}).items() if f != "seq"})), brief=_brief("close"))   # seq: node 4.540
     assert ("close", {"src": "flash"}) in events

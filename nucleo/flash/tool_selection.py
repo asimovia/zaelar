@@ -96,7 +96,7 @@ _HINTS: dict[str, tuple[str, ...]] = {
               "saved", "quality", "subtitles", "captions", "preference", "preferences"),
     "workers": ("para", "paralo", "cancela", "cancelalo", "detente", "worker", "tarea", "proceso", "busqueda",
                 "informe", "responde", "contesta", "stop", "task"),
-    "cluster": ("cluster", "meshkore", "peer", "agente", "invitacion", "commons", "conecta"),
+    "cluster": ("cluster", "meshkore", "peer", "agente", "invitacion", "commons", "conecta"), "a2a": ("a2a", "agente", "agent", "amigo", "amigos", "friend", "friends", "comparte", "compartir", "share", "sharing"),  # V2-866 F3: a friend's agent — the tool-name word the family ratchet demands, and the nouns and sharing verbs its descriptions use
     # Spanish-only seeds until V2-548: `reply_message` was lost by «reply to the message from Claudia» and by
     # «show me my messages», while the Spanish forms worked. The operator writes in English often enough that
     # the very turn that exposed the photo gap was «show me a ferrari f40 picture» — the same night.

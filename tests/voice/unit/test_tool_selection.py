@@ -77,7 +77,7 @@ def test_a_trim_offers_no_second_trip(trimming_on):
     sel, _ = ts.select(FULL, turn_text="hola")
     assert "need_capability" not in _names(sel) and len(sel) < len(FULL)
     sel2, _ = ts.select(FULL, turn_text="hola",
-                        force={"widgets", "media", "workers", "cluster", "messaging"})
+                        force={"widgets", "media", "workers", "cluster", "messaging", "a2a"})
     assert len(sel2) == len(FULL)
 
 
