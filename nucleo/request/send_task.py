@@ -27,6 +27,7 @@ from a stranger — the protection that matters (`exit_slots`, `exit_gate.gate`)
 """
 from __future__ import annotations
 
+from nucleo.play import shadow as _play
 from nucleo.request import base, event as _emit, note, send_task_who
 
 #: The retained kind on the row's `ask` artefact: his answer fills a slot of THIS task (`inline_ask.rerun`).
@@ -233,6 +234,7 @@ def commission(wid: str, action: str, payload: dict | None, said: str, *, readin
     cands: list = []
     if not slot and (who := send_task_who.which(art, said)):   # his word reaches several alike: ONE «which?»
         slot, key, cands = who
+    _play.commissioned(uid, art, slot)
     if slot:
         q = " ".join(str(asked_line or "").split()) or (
             send_task_who.which_line(send_task_who.said_word(art, slot, said), cands) if cands else _missing_line(art, slot))

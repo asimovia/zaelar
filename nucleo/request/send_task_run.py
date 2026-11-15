@@ -12,6 +12,7 @@ from types import SimpleNamespace
 
 from loguru import logger
 
+from nucleo.play import shadow as _play
 from nucleo.request import note
 from nucleo.request.send_task import _question, _words_of, artefact
 
@@ -53,6 +54,7 @@ async def run(uid: str) -> dict:
         circuit.settle(row=uid, verdict="cannot", outcome=f"{wid}:{action} crosses no declared exit")
         return {"ok": False, "error": "no exit"}
     if ex.refused:
+        _play.door(uid, "refused")
         circuit.settle(row=uid, verdict="cannot", outcome=ex.refused[:300])
         return {"ok": False, "error": ex.refused}
     from nucleo.turn import brief as _tb
@@ -60,14 +62,18 @@ async def run(uid: str) -> dict:
     if ex.slots.get("channel") == "unknown" and (two := exit_slots.channel_choices(_tb.revived(art.get("reading")), payload)):
         from i18n import langs
         q = langs.current_language().send_channel_which.format(his=two[0].capitalize(), other=two[1].capitalize())
+        _play.door(uid, "asked", art)
         return {"ok": False, "asked": _question(uid, art, "channel", "channel", q, two), "row": uid}
     if ex.question:
         from nucleo import consent
+        _play.door(uid, "asked", art)
         ask_id = _question(uid, art, "consent", "", ex.question, consent=consent.ASK_CONSENT)
         return {"ok": False, "asked": ask_id, "row": uid}
     inner = ex.payload.get("payload") if isinstance(ex.payload, dict) and isinstance(ex.payload.get("payload"), dict) \
         else payload
     ledger.resumed(uid)
+    _play.door(uid, "passed", art)
     from nucleo.flash import data_ops
     res = await data_ops.dispatch_and_report(wid, action, inner, row=uid, text=_words_of(uid))
+    _play.returned(uid, res)
     return res if isinstance(res, dict) else {"ok": True, "result": res}

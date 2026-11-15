@@ -5296,6 +5296,15 @@ DOMAINS: list[dict] = [
                                  "the same programme — disarmed (the look runs before the executor) 2 reds",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/play/test_the_driver_calls_each_hand_in_its_step.py"]},
+        {"id": "2.1753", "title": "The shadow records the programme beside the send path and changes nothing (`nucleo/play/shadow.py`, "
+                                 "stage `shadow`): the task's birth, the exit door, the card's return and the row's ending are "
+                                 "events of the table; an outcome claimed while the send is still out is exactly one `play/drift`, "
+                                 "the same send in order drifts nothing; the exit door asking where the programme owed no question "
+                                 "is a drift; every declared leaving action runs to its end; with the stage off nothing is recorded "
+                                 "and no report raises; the real `send_task_run.run` and `unserved.outcomes` feed it — disarmed (the "
+                                 "claim is not named · the return is not reported) 2 reds",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/play/test_the_shadow_names_an_outcome_claimed_before_the_end.py"]},
         {"id": "2.1751", "title": "A stage of the programme (`shadow`, `own`) is off until its config turns it on; the env "
                                  "`ZAELAR_PLAY_<NAME>=0` only forces it off; an unknown name and an unreadable store are off — "
                                  "disarmed (`stage` returns True) 1 red",
