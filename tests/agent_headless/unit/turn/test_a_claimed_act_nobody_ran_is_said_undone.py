@@ -56,6 +56,7 @@ def turn(monkeypatch):
     monkeypatch.setattr("widgets.effects.carries", lambda card, action, effect: False)
     reply._NOTED.clear()
     reply._ASKED.clear()
+    unserved._WAITING.clear()
     return v
 
 
@@ -248,3 +249,14 @@ def test_the_turn_hands_the_mouth_the_models_calls_and_whether_any_door_ran():
     kw = {k.arg: ast.unparse(k.value) for k in calls[0].keywords}
     assert {"model_calls", "quiet", "held"} <= set(kw), kw
     assert "_turn_calls" in kw["model_calls"], kw["model_calls"]
+
+
+def test_a_turn_whose_words_wait_behind_an_act_is_not_a_silent_one(turn):
+    """The hold deferred the model's words to the turn's end: nothing is said undone over an answer still to come."""
+    turn.update({**ORDER, tb.CATALOG_KEY: ("agenda", {"confidence": 0.9})})
+    unserved.waiting()
+    _t, out = _say("", calls=[], quiet=True)
+    assert out == [], out
+    unserved._WAITING.clear()
+    _t, out = _say("", calls=[], quiet=True)
+    assert out, "with no words waiting the silent turn is said undone"

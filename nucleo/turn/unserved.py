@@ -39,6 +39,24 @@ from loguru import logger
 _QUESTION_MARKS = "?？؟"
 
 
+#: Turns whose model words WAIT behind an act (the hold deferred them to the turn's end), by trace: such a turn has
+#: said nothing YET and is not a silent one.
+_WAITING: dict[str, bool] = {}
+
+
+def waiting(text: str = "") -> str:
+    """Record that this turn's words wait; returns them (the hold keeps what it defers)."""
+    from nucleo.turn import reply
+    _WAITING[reply._trace()] = True
+    if len(_WAITING) > 32: _WAITING.pop(next(iter(_WAITING)))   # noqa: E701 — a bounded record of recent turns
+    return text
+
+
+def words_waiting() -> bool:
+    from nucleo.turn import reply
+    return reply._trace() in _WAITING
+
+
 def _ended_asking(said: str) -> str:
     last = str(said or "").rstrip().rstrip("»\"'”)")[-1:]
     return bool(last) and last in _QUESTION_MARKS      # a turn that said nothing asked nothing
@@ -156,8 +174,8 @@ def outcomes(tasks, model_calls, *, said: str, quiet: bool, held: bool = False, 
         from nucleo.circuit import verdict as V
         from nucleo.play import shadow as _play
         from nucleo.turn import reply as _reply
-        if held or _reply.asked() or _ended_asking(said):
-            return []
+        if held or _reply.asked() or _ended_asking(said) or (words_waiting() and not str(said or "").strip()):
+            return []      # …or the model's words WAIT behind an act (the hold's deferred words): they are its answer
         lang = langs.current_language()
         out: list = []
         missed = _own_rows_out(calls_not_run(model_calls, tasks))

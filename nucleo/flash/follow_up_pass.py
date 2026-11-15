@@ -154,7 +154,7 @@ class Hold:
         if text and not any(_card(w) == self.card for w, _a in ran_ops or ()):
             # no op of the stream touched the held card: its answer comes later (the verdict's completion), so these
             # words were written before any data — they wait for the turn's end (`flush`), pass 9 C2
-            self.deferred = text
+            self.deferred = __import__("nucleo.turn.unserved", fromlist=["x"]).waiting(text)   # not a silent turn
             emit("brain", "⏳ held words wait — the card's answer has not run yet", role="system", text=text[:160],
                  extra={"cat": "flash", "card": self.card})
         elif text and (_unrun_model_card(model_calls, ran_ops) == self.card
