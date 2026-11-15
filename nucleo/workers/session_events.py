@@ -29,6 +29,7 @@ def _on_event(self, ev) -> None:
     if ev.type == "spawned":
         rec.native_sid = d.get("native_session_id") or rec.native_sid
         self._model = d.get("model") or self._model
+        self._provider = d.get("provider") or getattr(self, "_provider", "")
         _row_learns_its_session(rec, getattr(self._spec, "cwd", "") or "")
         self._emit_meta_row()                              # V2-048: fila "worker · <backend>" con modelo + capa
     elif ev.type == "phase":
@@ -100,6 +101,7 @@ def _on_event(self, ev) -> None:
                 pass
         self._model = d.get("model") or self._model
         self._base_url = d.get("base_url") or self._base_url
+        self._provider = d.get("provider") or getattr(self, "_provider", "")
         # THE NUMBER THAT PREDICTS DEATH (incident 2026-08-18): `ctx_tokens` is the LAST request's size, unlike the
         # accumulated `_usage_partial`. Past the budget the still-alive worker gets ONE turn to deliver what it has.
         rec.real_model = d.get("real_model") or rec.real_model
@@ -119,6 +121,7 @@ def _on_event(self, ev) -> None:
         self._model = d.get("model") or self._model
         rec.real_model = d.get("real_model") or rec.real_model
         self._base_url = d.get("base_url") or self._base_url
+        self._provider = d.get("provider") or getattr(self, "_provider", "")
         self._bus("worker.result", {"id": rec.task_id, "ok": rec.ok})
     elif ev.type == "say":
         # (if a backend emits it explicitly) → the loop reports it; here it only goes to the bus.

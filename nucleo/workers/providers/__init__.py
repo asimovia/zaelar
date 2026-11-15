@@ -45,7 +45,13 @@ KNOWN: list[dict] = [
 
 def _known_from_table() -> list[dict]:
     from config import models as _tabla
-    return _tabla.chain_for("brain_worker", names=("z.ai", "deepseek"))
+    # The table's optional `lead` (a Claude subscription token) goes first; like every rung it only joins the chain
+    # where its credential resolves, so without it the chain is the titular and its stand-in, as always.
+    return _tabla.chain_for("brain_worker", names=("z.ai", "deepseek"), lead_name=SUBSCRIPTION_TIER)
+
+
+#: The visible name of the Claude-subscription rung, in every alert, panel row and worker event.
+SUBSCRIPTION_TIER = "claude-subscription"
 
 
 KNOWN = _known_from_table()
@@ -115,6 +121,7 @@ def chain() -> list[dict]:
                 tiers.append({"name": head.split("//")[-1].split("/")[0], "base_url": head,
                               "env": ["Z_AI_API_KEY"], "plan": "configurado a mano"})
         tiers += known
+        tiers.sort(key=lambda t: not t.get("lead"))  # the table's `lead` precedes even the configured head
         tiers.append(dict(LICENSE_TIER))
 
     model = (cfg.get("model") or "").strip()
@@ -171,7 +178,7 @@ def _with_measured_traits(tier: dict) -> dict:
 #: Facts about what a provider CAN DO, as opposed to which one we prefer. These travel with the endpoint; the
 #: order does not. Kept as a list rather than "copy everything missing" so that adding a catalogue key is a
 #: deliberate act: silently inheriting `plan` or `model` would override what the operator chose on purpose.
-_MEASURED_TRAITS = ("vision", "fast_model")
+_MEASURED_TRAITS = ("vision", "fast_model", "auth")
 
 
 def pick() -> dict | None:
@@ -222,6 +229,14 @@ def env_for_worker() -> dict:
     # monitor search). Three retries still ride out a blip; a dead tier is handed on in seconds.
     # EGRESS: a mediated deployment hands the worker egress's address and its own credential, never a provider key.
     from nucleo.energy import egress as llm_egress
+    if t.get("auth") == "oauth" and not llm_egress.mediated():
+        # A subscription token is the CLI's own login, not an endpoint key: it travels as such and the CLI talks to
+        # its provider itself. Behind mediated egress it never reaches this process (egress holds it and swaps the
+        # account's credential for it), so that case takes the ordinary route below.
+        out = {"CLAUDE_CODE_OAUTH_TOKEN": tok, "CLAUDE_CODE_MAX_RETRIES": "3"}
+        out.update(slot_env(t))
+        out.update(vision_env(t))
+        return out
     base, tok = llm_egress.route_url(t["base_url"], tok)
     out = {"ANTHROPIC_BASE_URL": base, "ANTHROPIC_AUTH_TOKEN": tok, "CLAUDE_CODE_MAX_RETRIES": "3"}
     out.update(slot_env(t))
@@ -272,7 +287,8 @@ def vision_env(tier: dict | None) -> dict:
     return {}
 
 from nucleo.workers.providers.classify import (  # noqa: E402,F401
-    _RESET_RE, _ZAI_CODE_RE, _WINDOW_RE, _EXHAUSTED_RE, _CONTEXT_RE, is_context_overflow, _DEPLETED_RE, is_depleted,
+    _RESET_RE, _CLAUDE_RESET_RE, _ZAI_CODE_RE, _WINDOW_RE, _EXHAUSTED_RE, _CONTEXT_RE, is_context_overflow,
+    _DEPLETED_RE, is_depleted,
     _BROKEN_RE, is_broken_request, classify_failure, _TOOL_LIMIT_RE, classify_tool_failure)
 from nucleo.workers.providers.health import (  # noqa: E402,F401
     note_tool_blindness, _reset_epoch, note_failure, _serving, status, clear, exhausted_until, exhausted_reason)
