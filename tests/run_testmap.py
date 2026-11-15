@@ -5322,6 +5322,14 @@ DOMAINS: list[dict] = [
                                  "on — disarmed (live walks ignored · the look settles blind · the stage ignored) 3 reds",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/play/test_the_programme_walks_a_send_as_its_owner.py"]},
+        {"id": "2.1756", "title": "A turn that already holds its send task (the model called the leaving act: "
+                                 "`escalate_req[\"send_task\"]`) opens no second row and no worker at its close: "
+                                 "`send_task_turn.at_close` answers `HELD`, so the close chain of `pipeline_errands.py` "
+                                 "(run from its own `if` node on a real brief handle) never reaches `ask_outside_door.claimed` "
+                                 "— a message ES and a calendar invite EN; the same brief with no held task still launches — "
+                                 "disarmed (no `HELD` return) 4 reds",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/turn/test_a_turn_that_holds_its_send_task_opens_no_second_row.py"]},
         {"id": "2.1751", "title": "A stage of the programme (`shadow`, `own`) is off until its config turns it on; the env "
                                  "`ZAELAR_PLAY_<NAME>=0` only forces it off; an unknown name and an unreadable store are off — "
                                  "disarmed (`stage` returns True) 1 red",
