@@ -95,7 +95,7 @@ def test_an_unreadable_own_question_still_asks_with_the_on_behalf_line(monkeypat
 
     def boom(*a, **k):
         raise RuntimeError("unreadable")
-    monkeypatch.setattr(confirm_gate, "own_question", boom)
+    monkeypatch.setattr(on_his_behalf, "ACT_QUESTION", boom)
     q = on_his_behalf.question("mensajeria", "send_to", {"contact": "Odile Varga", "text": "x"})
     assert q.startswith(langs.current_language().worker_confirm_on_behalf.split("«")[0]), q
 
@@ -135,3 +135,16 @@ def test_disarmed_a_door_without_the_acts_own_question_reads_the_on_behalf_line(
     monkeypatch.setattr(confirm_gate, "own_question", lambda *a, **k: "")
     with pytest.raises(AssertionError):
         test_a_send_whose_recipient_the_agent_picked_is_asked_with_the_send_sentence(world, monkeypatch, lang)
+
+
+def test_a_manifest_question_fills_its_placeholders_from_the_payload_and_a_hole_is_no_question():
+    q = confirm_gate.own_question("agenda", "invite", {"who": "Odile Varga", "meeting": "Budget review"})
+    assert "Odile Varga" in q and "Budget review" in q and "{" not in q, q
+    assert confirm_gate.own_question("agenda", "invite", {"who": "Odile Varga"}) == ""
+    assert "{" not in confirm_gate._human_confirm_question("agenda", "invite", {"who": "Odile Varga"})
+
+
+def test_the_lower_layer_reads_the_question_through_the_seam_the_gate_registers():
+    assert on_his_behalf.ACT_QUESTION is confirm_gate.own_question
+    src = open(on_his_behalf.__file__, encoding="utf-8").read()
+    assert "voice.engine" not in src, "the lower layer never reaches into the motor's internals"
