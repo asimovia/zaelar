@@ -5330,6 +5330,14 @@ DOMAINS: list[dict] = [
                                  "disarmed (no `HELD` return) 4 reds",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/turn/test_a_turn_that_holds_its_send_task_opens_no_second_row.py"]},
+        {"id": "2.1759", "title": "A task's exit door asks a card act with the act's OWN question "
+                                 "(`on_his_behalf.question` → `confirm_gate.own_question`): a send whose recipient the "
+                                 "agent picked is asked who/app/draft in ES and EN, with no act id and no word for our "
+                                 "machinery; an act that declares none (and an unreadable one) keeps the on-behalf line; "
+                                 "the turn's gate is `own_question` else `_from_desc` for every declared action — "
+                                 "disarmed (`own_question` answers '') 2 reds",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/workers/test_a_tasks_exit_door_asks_with_the_acts_own_question.py"]},
         {"id": "2.1758", "title": "A pending order wakes every polling connector, only while its link is up: the "
                                  "shared `ingest.nap` returns the moment an inbox it is handed holds an order and sleeps "
                                  "the whole interval on an empty tuple; WhatsApp and Telegram hand it their send/reply/"

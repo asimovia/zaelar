@@ -167,6 +167,13 @@ def _human_confirm_question(wid: str, action: str, payload: dict) -> str:
     MANIFEST — qué HACE la acción (`desc`) y sobre QUÉ item (etiqueta resuelta) — para que el operador vea si es
     MÁS de lo que pidió (p.ej. un PROYECTO entero en vez de una tarea). Genérico: sirve a cualquier widget. Fallback
     prudente si no hay manifest/desc."""
+    return own_question(wid, action, payload) or _from_desc(wid, action, payload)
+
+
+def own_question(wid: str, action: str, payload: dict) -> str:
+    """The act's OWN question to him — one composed here from what leaves (who, by which app, the draft) or the
+    manifest's `confirm_q` — '' when the act declares none. Every door that asks him about a card act asks with it
+    (the turn's gate, a task's exit door): one sentence per act, whoever is asking."""
     sp = _say()
     # V2-693 — DELETING A RANGE OF THE AGENDA. Same reason as the two messaging branches below: the question
     # has to expose the REAL SCOPE, and here the scope is a NUMBER. Measured 2026-09-14: he asked to clear
@@ -230,20 +237,17 @@ def _human_confirm_question(wid: str, action: str, payload: dict) -> str:
             who=str(p.get("contact") or p.get("to") or "").strip() or "?",
             note=sp.forward_confirm_note.format(note=(note[:180] + "…") if len(note) > 180 else note) if note else "")
 
-    desc = ""
     human = ""
     label = ""
     try:
         from widgets import refs, runtime
         spec = ((runtime.get(wid) or {}).get("actions") or {}).get(action) or {}
         human = _confirm_q(wid, action, spec)
-        desc = str(spec.get("desc") or "").strip().rstrip(".")
         field = refs.id_field_for_action(wid, action)
         if field:
             label = refs.label_for(wid, field, (payload or {}).get(field, ""))
     except Exception:
         pass
-    tail = sp.data_confirm_item.format(item=label) if label else ""
     # `confirm_q` MANDA: es la pregunta escrita PARA EL OPERADOR (2026-08-15, sesión 319252e7). El `desc` del
     # manifest es la descripción de la tool, o sea texto escrito PARA EL MODELO — y leerlo en voz alta es un error
     # de categoría que el operador oyó entero: «VACÍA la agenda entera de una vez: descarta todas las tareas…
@@ -256,8 +260,24 @@ def _human_confirm_question(wid: str, action: str, payload: dict) -> str:
         if "{item}" in human:
             q = human.replace(" «{item}»", f" «{label}»" if label else "").replace("{item}", label)
         else:
-            q = f"{human}{tail}"
+            q = human + (sp.data_confirm_item.format(item=label) if label else "")
         return q if "?" in q else sp.data_confirm_needs_q.format(q=q)
+    return ""
+
+
+def _from_desc(wid: str, action: str, payload: dict) -> str:
+    """The last resort for an act with no question of its own: the first sentence of its `desc`, else its id."""
+    sp = _say()
+    desc = tail = ""
+    try:
+        from widgets import refs, runtime
+        spec = ((runtime.get(wid) or {}).get("actions") or {}).get(action) or {}
+        desc = str(spec.get("desc") or "").strip().rstrip(".")
+        field = refs.id_field_for_action(wid, action)
+        label = refs.label_for(wid, field, (payload or {}).get(field, "")) if field else ""
+        tail = sp.data_confirm_item.format(item=label) if label else ""
+    except Exception:
+        pass
     if desc:
         # Sin `confirm_q`, se cita SOLO la primera frase del desc: la guía de uso («Úsala cuando…») vive a partir
         # del primer punto y no es asunto del operador. Mejor que la jerga cruda de 2026-07-15 («¿Confirmas
