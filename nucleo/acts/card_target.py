@@ -119,7 +119,8 @@ def which_card(widget_id: str, action: str, *, open_ids=(), brief=None, payload=
 
 def payload_ref(widget_id: str, action: str, payload, *, named_only: bool = False) -> str:
     """The row a call names in its PAYLOAD: the action's declared id field, else a `name`/`contact` given in
-    its place (demo pass 102: `add_phone {name: "Rowan", …}` with `contactId` declared). "" for an action with
+    its place (demo pass 102: `add_phone {name: "Rowan", …}` with `contactId` declared), else the one text under
+    an undeclared key. "" for an action with
     no id field — a creation's name is the new row, not a reference. `named_only`: "" when the id field is set."""
     from widgets import refs as _refs
     if not isinstance(payload, dict):
@@ -130,7 +131,17 @@ def payload_ref(widget_id: str, action: str, payload, *, named_only: bool = Fals
     for k in (field, "name", "contact"):
         if str(payload.get(k) or "").strip():
             return str(payload.get(k)).strip()
-    return ""
+    # …else the ONE text the call carries under a key the action does not declare: with the id field empty there is
+    # nothing else that text can be (measured: `set_favorite {contacto: "<name>", favorite: true}` read as a loose
+    # pronoun and went to a worker). Two such texts name nothing.
+    try:
+        from nucleo.flash import payload_fill as _pf
+        declared = set(_pf._payload_spec((widget_id or "").strip().lower(), (action or "").strip()))
+    except Exception as e:  # noqa: BLE001 — an unreadable manifest names no row
+        __import__("loguru").logger.debug(f"card_target: payload spec unread ({e!r})")
+        return ""
+    loose = [str(v).strip() for k, v in payload.items() if k not in declared and isinstance(v, str) and v.strip()]
+    return loose[0] if len(loose) == 1 else ""
 
 
 def absent_widget_misroute(widget_id: str, action: str, item: str, *,
