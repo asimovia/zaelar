@@ -843,6 +843,11 @@ Flash keeps the conversation; the row is what both brains read.
   call opened the row during the stream; `send_task_turn.at_close` answers `HELD`, so no later branch of the close
   (`ask_outside_door.claimed`) opens a second row or a worker for the same send. — since 2026-11-15 · nodes 2.1756 ·
   `nucleo/request/send_task_turn.py`.
+- **CRIT-T2j · A send task's exit door reads the row's own words.** A record that keeps its words (`own_words`:
+  the send task's row) is read by them alone — a person or a text he said for ANOTHER order is not his word for this
+  one, and is asked; where the act declares its recipient slot, the slot's source decides the question (`agent` →
+  asked), and the leave rule decides only for an act that declares none. — since 2026-11-15 · nodes 2.1757 ·
+  `nucleo/workers/exit_gate.py`, `nucleo/request/send_task_run.py`.
 - **CRIT-T2f · A send reaches whom he named, or asks ONE «which?».** A person slot whose value — his word or the
   model's pick from it — reaches several people alike (no one leads by `clear_margin`) is one question on the send's
   row with them as candidates, before anything runs; a row-reference act (`reply {n}`, a bare reply reaching nobody)

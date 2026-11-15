@@ -28,7 +28,7 @@ def _rec(uid: str, art: dict):
                            trace_id=str(row.get("trace_id") or ""), surface=str(row.get("surface") or ""),
                            sheet=str(row.get("sheet") or ""), mandate={}, reading=art.get("reading"),
                            playbook_chosen=PLAYBOOK, done_when=dict(e.get("done_when") or {}),
-                           heard=[w for w in (art.get("heard") or [_words_of(uid)]) if w])
+                           heard=[w for w in (art.get("heard") or [_words_of(uid)]) if w], own_words=True)
 
 
 

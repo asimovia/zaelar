@@ -5330,6 +5330,15 @@ DOMAINS: list[dict] = [
                                  "disarmed (no `HELD` return) 4 reds",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/turn/test_a_turn_that_holds_its_send_task_opens_no_second_row.py"]},
+        {"id": "2.1757", "title": "A send task's exit door reads the row's OWN words (`own_words`): a person he named "
+                                 "for ANOTHER order a minute ago, still in the ring, is `recipient: agent` and ONE "
+                                 "question — WhatsApp ES, email EN, a forward EN; his answer naming her on the row "
+                                 "passes; a worker's record still reads the window; the row's words as a string are one "
+                                 "sentence; where the act declares its recipient slot that slot's source decides, and "
+                                 "`agenda:invite` (none declared) still asks by the leave rule — disarmed (the row read "
+                                 "by the window · the leave rule's reading alone) 3 reds each",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/workers/test_a_send_tasks_exit_door_reads_the_rows_own_words.py"]},
         {"id": "2.1751", "title": "A stage of the programme (`shadow`, `own`) is off until its config turns it on; the env "
                                  "`ZAELAR_PLAY_<NAME>=0` only forces it off; an unknown name and an unreadable store are off — "
                                  "disarmed (`stage` returns True) 1 red",
