@@ -278,6 +278,9 @@ def _said_started(uid: str, wid: str, action: str, art: dict) -> None:
 
 def _schedule(uid: str) -> None:
     """Run the task off the turn's stream (the mouth never waits for a connector)."""
+    from nucleo.play import send as _own
+    if _own.enabled():           # V2-909: the programme walks the row — same door, same card, one report
+        return _own.start(uid)
     import asyncio
     from nucleo.request.send_task_run import run
     try:
