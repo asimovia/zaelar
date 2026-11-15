@@ -5273,6 +5273,34 @@ DOMAINS: list[dict] = [
                                  "goes to the section he named; disarmed either half, the document is replaced",
             "ch": UNIT,
             "paths": ["tests/voice/unit/test_a_call_that_fills_no_slot_is_not_a_valid_call.py"]},
+        # V2-909 — the one programme of a declared action, built beside today's path (stages `shadow`/`own` OFF).
+        {"id": "2.1749", "title": "The programme of a declared action is linear and its order is data (`nucleo/play/table.json`): every "
+                                 "step × every event moves only where the table says and a refused event changes nothing; the end "
+                                 "state is read only after the executor returned; a leaving action asks when the agent chose a slot "
+                                 "and an action that declares confirm never executes before his yes; every waiting step has a "
+                                 "deadline that ends it; each line is said in its own step and once, an outcome only once it exists "
+                                 "— disarmed (an undeclared event is accepted) 2 reds",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/play/test_a_programme_refuses_an_event_out_of_step.py"]},
+        {"id": "2.1750", "title": "Every request has ONE destination — the conversation, the programme or a worker "
+                                 "(`nucleo/play/route.py`) — and over every action every shipped widget declares it is the one "
+                                 "today's router gives (`route_by_verdict.stays_home`, `effects.leaves`, `actions.classify`); every "
+                                 "declared action has a programme read from its manifest and a leaving one is never done on its "
+                                 "return alone — disarmed (the router always answers the programme) 2 reds",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/play/test_every_request_has_one_destination.py"]},
+        {"id": "2.1752", "title": "The driver walks a programme to its report and calls each hand only in its step "
+                                 "(`nucleo/play/run.py`): resolve, his consent when owed, the executor, the look at the end state, "
+                                 "ONE report; his no executes nothing; a failed or raising executor is never followed by a look; an "
+                                 "executor that does not return ends unverified; a missing slot is asked once and his answer resumes "
+                                 "the same programme — disarmed (the look runs before the executor) 2 reds",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/play/test_the_driver_calls_each_hand_in_its_step.py"]},
+        {"id": "2.1751", "title": "A stage of the programme (`shadow`, `own`) is off until its config turns it on; the env "
+                                 "`ZAELAR_PLAY_<NAME>=0` only forces it off; an unknown name and an unreadable store are off — "
+                                 "disarmed (`stage` returns True) 1 red",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/play/test_a_play_stage_is_off_until_switched.py"]},
         {"id": "2.72", "title": "«Páralo, y vuelve al inicio» ES una orden sobre el reproductor — la "
                                 "gramática de cerrar propone, el veredicto de pantalla decide, y el "
                                 "descriptor que lo hace enrutable llega ENTERO a la pregunta",

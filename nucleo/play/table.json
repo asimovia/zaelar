@@ -1,0 +1,29 @@
+{
+  "moves": {
+    "understood": {"start": "resolving", "cancel": "cancelled"},
+    "resolving":  {"missing": "asking", "resolved": "confirming", "fail": "failed", "cancel": "cancelled", "timeout": "failed"},
+    "asking":     {"answer": "resolving", "no": "cancelled", "cancel": "cancelled", "timeout": "cancelled"},
+    "confirming": {"yes": "executing", "no": "cancelled", "change": "resolving", "cancel": "cancelled", "timeout": "cancelled"},
+    "executing":  {"returned": "executed", "error": "failed", "timeout": "unverified"},
+    "executed":   {"check": "verifying"},
+    "verifying":  {"landed": "done", "absent": "failed", "unreadable": "unverified", "timeout": "unverified"},
+    "done":       {"report": "reported"},
+    "failed":     {"report": "reported"},
+    "unverified": {"report": "reported"},
+    "cancelled":  {"report": "reported"},
+    "reported":   {}
+  },
+  "first": "understood",
+  "ends": ["done", "failed", "unverified", "cancelled"],
+  "last": "reported",
+  "passes": {"confirming": "executing"},
+  "retries": {"verifying": {"event": "absent", "times": 1}},
+  "deadline_s": {"resolving": 8, "asking": 120, "confirming": 120, "executing": 30, "verifying": 4},
+  "says": {
+    "ask": ["asking"],
+    "confirm": ["confirming"],
+    "announce": ["executing", "executed", "verifying"],
+    "report": ["done", "failed", "unverified", "cancelled"]
+  },
+  "asks_consent": ["agent", "stranger", "unknown"]
+}

@@ -224,6 +224,12 @@ _DEFAULTS: dict[str, dict] = {
         "confirm": False,          # a canvas order is done when its screen acks it (phase C)
         "direct": False,           # a simple order over the app in front acts without the model (phase D)
     },
+    # V2-909 — the stages of the one programme of a declared action, read only through `nucleo.play.switch.stage(name)`
+    # (env `ZAELAR_PLAY_<NAME>=0` forces a stage OFF and is checked first). OFF = every action runs as before.
+    "play": {
+        "shadow": False,           # the programme records its steps beside today's path
+        "own": False,              # the programme is the path of a declared action
+    },
     # V2-870 — the person's yes to sending their conversation (voice, text, the context of an answer) to the AI
     # services this agent uses. Asked by the native phone app before its first turn (App Review 5.1.2(i)) and
     # withdrawable from its Settings; one answer per engine, so every device of this agent shares it.
