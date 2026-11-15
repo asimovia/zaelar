@@ -116,25 +116,26 @@ async def launch_the_errands(*, motor, send, speech, emit, brain, _brief, _op_te
                                                     else "") or _op_text)   # no judged text yet: his own words
         # V2-851 F2c — a question about a door's act that no door asked is counted (never repaired)
         from nucleo.request import ask_outside_door as _aod
-        if await _send_turn.at_close(_brief, _op_text, spoken_text, escalate_req, worker_acted, emit, _escalate_mod):
+        if (_opened := await _send_turn.at_close(_brief, _op_text, spoken_text, escalate_req, worker_acted, emit,
+                                                 _escalate_mod)):
             pass                                               # the send task owns the request's row now
         elif (_asked_out := _aod.measure(_brief, spoken_text, did_act=False, asked_which=_which, emit=emit)):
-            _aod.held(_asked_out, spoken_text, _op_text)   # F2d — and it is durable: the row waits on it
+            _opened = _aod.held(_asked_out, spoken_text, _op_text) or True   # F2d — durable: the row waits on it
         elif escalate_req["v"] is None:                    # a sure leaving act its words claimed: it is a task
-            await _aod.claimed(_brief, spoken_text, _op_text, emit=emit)
+            _opened = await _aod.claimed(_brief, spoken_text, _op_text, emit=emit)
     else:
         # A2 (2026-11-12): the turn ACTED, but not the order the brief surely read — the model served it with another
         # tool (a view, a read, another card's act). The order opens ITS row: a send task, a card act completed, or ONE
         # fact question — read off the verdicts and the acts that ran, never off his words.
         from nucleo.flash import canvas_visibility as _cvis
-        _order.open_the_order(_brief, said=_op_text, reply=spoken_text, ops=ops,
+        _opened = _order.open_the_order(_brief, said=_op_text, reply=spoken_text, ops=ops,
                               model_calls=getattr(brain, "_turn_calls", None) or (), escalate_req=escalate_req,
                               worker_acted=worker_acted, emit=emit, present=_cvis.present,
                               apply_widget_data=_apply_widget_data)
     _ending.close_turn()               # the endings a view held are written now, unless the row waits on our question
     if (_each := _sbe.each_line(spoken_text, _op_text)):      # one sentence about several errands: each one said (2.643)
         send(speech.sanitize(_each, drop_metadata=False))
-    return {}
+    return {"opened": bool(_opened)}     # the close gave the request a row (a send task, a question, a worker)
 
 
 def _launch_the_rest(*, motor, emit, _router, _op_text, _escalate_mod, _prev_pending, escalate_req, req, spoken_text,

@@ -65,12 +65,15 @@ def world(monkeypatch):
 def _close_chain():
     """The product's close chain — the `if` whose test awaits `at_close` — as an async function of its names."""
     tree = ast.parse((ROOT / "nucleo/turn/pipeline_errands.py").read_text(encoding="utf-8"))
-    node = next(n for n in ast.walk(tree) if isinstance(n, ast.If) and isinstance(n.test, ast.Await)
-                and getattr(n.test.value.func, "attr", "") == "at_close")
+    def awaited(test):     # `if await at_close(...)` or `if (_opened := await at_close(...))`
+        return test.value if isinstance(test, ast.NamedExpr) else test
+    node = next(n for n in ast.walk(tree) if isinstance(n, ast.If) and isinstance(awaited(n.test), ast.Await)
+                and getattr(awaited(n.test).value.func, "attr", "") == "at_close")
     used = {n.id for n in ast.walk(node) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)}
     names = sorted(used - {n.id for n in ast.walk(node) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store)})
     fn = ast.AsyncFunctionDef(name="close", args=ast.arguments(posonlyargs=[], args=[ast.arg(a) for a in names],
-                              kwonlyargs=[], kw_defaults=[], defaults=[]), body=[node], decorator_list=[], returns=None,
+                              kwonlyargs=[], kw_defaults=[], defaults=[]),
+                              body=[node, ast.Return(ast.Name("_opened", ast.Load()))], decorator_list=[], returns=None,
                               type_params=[])
     mod = ast.fix_missing_locations(ast.Module(body=[fn], type_ignores=[]))
     scope: dict = {}
@@ -84,7 +87,7 @@ def _run_close(world, v: dict, escalate_req: dict):
              "spoken_text": v["reply"], "escalate_req": escalate_req, "worker_acted": {"v": None},
              "emit": lambda *a, **k: None, "_escalate_mod": world.mod, "_which": False}
     assert set(names) <= set(bound), f"the close chain reads names this test does not bind: {set(names) - set(bound)}"
-    asyncio.run(close(**{n: bound[n] for n in names}))
+    return asyncio.run(close(**{n: bound[n] for n in names}))
 
 
 @pytest.mark.parametrize("variant", sorted(VARIANTS))
@@ -101,10 +104,11 @@ def test_at_close_answers_held_and_opens_nothing_for_a_turn_that_holds_its_send_
 @pytest.mark.parametrize("variant", sorted(VARIANTS))
 def test_the_close_chain_opens_no_second_row_for_a_held_send(world, variant):
     v = VARIANTS[variant]
-    _run_close(world, v, {"v": None})          # control: the same brief with no held task — `claimed` launches
+    opened = _run_close(world, v, {"v": None})          # control: no held task — `claimed` launches
     assert world.tasks == [tuple(v["act"].split(":"))], "the control never reached `claimed`: the test proves nothing"
+    assert opened, "the row `claimed` opened is not reported as opened at the close"
     world.tasks.clear()
     world.verdicts.clear()
-    _run_close(world, v, {"v": None, "send_task": True})
+    assert _run_close(world, v, {"v": None, "send_task": True}) == send_task_turn.HELD, "the held row is not reported"
     assert world.tasks == [], "a turn that held its send task opened a second row at its close"
     assert world.workers == [] and world.verdicts == [], "the held send was commissioned again"

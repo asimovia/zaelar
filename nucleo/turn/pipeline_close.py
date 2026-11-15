@@ -225,9 +225,6 @@ async def close_the_turn(*, motor, send, _acc_ms, _amap_ms, _brief, _busy_at_sta
     except Exception:
         pass
 
-    from nucleo.play import route_shadow as _play_route   # V2-909: where the request should go, beside where it went (shadow)
-    _play_route.closed(brief=_brief, calls=getattr(brain, "_turn_calls", None), ops=data_done.get("ops"),
-                       escalate_req=escalate_req, acted_elsewhere=_acted_elsewhere, emit=emit)
     # V2-851 F5 — the errands the close launches (the commission, the rest of the sentence, his spec to its sheet, our
     # own question kept) live in `nucleo/turn/pipeline_errands.py`.
     _blk = await _errands.launch_the_errands(
@@ -236,6 +233,11 @@ async def close_the_turn(*, motor, send, _acc_ms, _amap_ms, _brief, _busy_at_sta
         _acted_elsewhere=_acted_elsewhere, acted=acted, escalate_req=escalate_req, spoken_text=spoken_text,
         worker_acted=worker_acted, ops=data_done.get("ops") or (), _apply_widget_data=_apply_widget_data,
     )
+    # V2-909: where the request should go, beside where it went (shadow) — read once the close has opened its rows
+    from nucleo.play import route_shadow as _play_route
+    _play_route.closed(brief=_brief, calls=getattr(brain, "_turn_calls", None), ops=data_done.get("ops"),
+                       escalate_req=escalate_req, acted_elsewhere=_acted_elsewhere,
+                       opened=bool((_blk or {}).get("opened")), said=spoken_text, emit=emit)
     # V2-889 F2 — the turn is over: `turn.closed`, which the whisperer reads on its own thread (shadow)
     return _whisper.turn_closed(brief=_brief, text=_op_text or text, reply=spoken_text, started_at=t0)
 

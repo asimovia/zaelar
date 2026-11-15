@@ -4,8 +4,8 @@ At the close of a turn the facts are all there: the calls the model made, the tu
 a sure errand, an order, a canvas verb), the declared actions its doors ran and whether an errand was launched. From
 the first three `route.destination` says conversation, programme or worker; the last two say what the path did. One
 `play/route` event carries both. It is a `route_drift` when they differ, and when a sure order that names no canvas
-verb ended with no declared action run, no errand and no question asked — the turn did something else and nothing
-serves what he ordered.
+verb ended with no declared action run, no errand, no row opened at its close and no question asked — by a door or
+in its own words — the turn did something else and nothing serves what he ordered.
 
 Records only: nothing here changes a turn, and nothing raises into one.
 """
@@ -71,15 +71,17 @@ def read(*, brief, calls, ops, escalated: bool, send_task: bool, acted_elsewhere
             "named": [f"{w}:{a}" for w, a in named], "ran": [f"{w}:{a}" for w, a in ran]}
 
 
-def closed(*, brief, calls, ops, escalate_req, acted_elsewhere: bool, emit=None) -> dict | None:
+def closed(*, brief, calls, ops, escalate_req, acted_elsewhere: bool, opened: bool = False, said: str = "",
+           emit=None) -> dict | None:
     """The turn closed: record where its request should go and where it went. None with the stage off."""
     try:
         if not _switch.stage("shadow"):
             return None
+        from nucleo.request import ends_asking
         from nucleo.turn import reply
         rec = read(brief=brief, calls=calls, ops=ops, escalated=(escalate_req or {}).get("v") is not None,
                    send_task=bool((escalate_req or {}).get("send_task")), acted_elsewhere=bool(acted_elsewhere),
-                   asked=reply.asked())
+                   asked=bool(opened) or reply.asked() or ends_asking(said))
         from voice import observer
         drift = not rec["agree"] or rec["unserved"]
         observer.emit("play", "route_drift" if drift else "route", role="system",
