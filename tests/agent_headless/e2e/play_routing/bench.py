@@ -89,6 +89,8 @@ class Timeline:
         if not self.path.exists():
             return []
         out = []
+        if self.path.stat().st_size < mark:          # a reset rotated the log: the window starts over
+            mark = 0
         with self.path.open("rb") as f:
             f.seek(mark)
             for line in f:
@@ -108,7 +110,20 @@ def _steps(evs: list[dict], seen: set) -> tuple[list[dict], set]:
     return (own or mine), new_ids
 
 
-def _check(chk: dict, before: dict, after: dict, row: dict) -> tuple[bool, str]:
+def _check(chk: dict, before: dict, after: dict, row: dict, contacts=()) -> tuple[bool, str]:
+    if "shape_in" in chk:
+        return row.get("shape") in chk["shape_in"], f"shape={row.get('shape')} (want one of {chk['shape_in']})"
+    if "sends" in chk:
+        q = chk["sends"]
+        per = row.get("turn_sends") or []
+        chats = [c for t in per for c in t] if q.get("turn", "all") == "all" else (per[q["turn"] - 1] if len(per) >= q["turn"] else [])
+        if "to" in q:
+            want = _chat_of(q["to"], contacts)
+            n, who = sum(1 for c in chats if c == want), q["to"]
+        else:
+            want = _chat_of(q["not_to"], contacts)
+            n, who = sum(1 for c in chats if c != want), "anyone but " + q["not_to"]
+        return n == q["eq"], f"turn {q.get('turn', 'all')} sends to {who}: {n} (want {q['eq']})"
     if chk.get("ran_empty"):
         ran = (row.get("route") or {}).get("ran") or []
         return (not ran), f"ran={ran}"
@@ -173,56 +188,112 @@ def _sent_rows(data: dict) -> int:
 
 def _widgets_of(case: dict) -> list[str]:
     out = {c["widget"] for c in case.get("checks") or () if c.get("widget")}
-    if case.get("send") or case.get("errand"):
+    if case.get("send") or case.get("errand") or case.get("turns"):
         out.add("mensajeria")
     return sorted(out)
 
 
-def run_case(eng, tl: Timeline, case: dict, seen: set, stop_line: str, double=None) -> dict:
+def _chat_of(name: str, contacts: list[dict]) -> str:
+    c = next((c for c in contacts if c.get("name") == name), None)
+    return (str(c.get("phone") or "").lstrip("+") + "@s.whatsapp.net") if c else ""
+
+
+def _shape(row: dict, evs: list[dict]) -> str:
+    """What the engine did with an order it could not complete as said: `ask` (the row waits on a question),
+    `question` (the turn's reply asks), `failed` (the row ended failed/cannot), `sent`, or `statement`."""
+    if any(e.get("kind") == "ask" or "exit door: ask" in str(e.get("label")) for e in evs):
+        return "ask"
+    if row.get("reply_kind") == "question":
+        return "question"
+    if row.get("double_sends"):
+        return "sent"
+    if row.get("walk_outcome") in ("failed", "cancelled") or any(s.startswith("failed") for s in row.get("settle") or ()):
+        return "failed"
+    return "statement"
+
+
+def _isolate(eng, session: str) -> dict:
+    """After a row: its waiting tasks are cancelled through the cancel button's route, then the engine's hard reset
+    (work killed, a new session, a blank canvas) and the probe window's reset — the next row starts from nothing."""
+    cancelled = []
+    code, body = eng.get("/api/tasks?scope=live&all=1")
+    for t in (body or {}).get("tasks") or [] if isinstance(body, dict) else []:
+        tid = str(t.get("id") or "")
+        if tid and str(t.get("state") or "") not in ("done", "failed", "cancelled", "unverified"):
+            c, _ = eng.post(f"/api/tasks/{tid}/cancel", {}, timeout=30)
+            cancelled.append(f"{tid}:{c}")
+    hard, _ = eng.post("/reset/hard", {}, timeout=60)
+    soft, _ = eng.post("/api/flash/reset", {"session": session}, timeout=60)
+    return {"cancelled": cancelled, "reset_hard": hard, "reset_window": soft}
+
+
+def _await_turn(tl: Timeline, mark: int, trace, seen: set, *, send: bool, double) -> tuple:
+    """Wait for the turn's `play/route`, then for a send row born in it to report or park on a question."""
+    route, walk = None, []
+    deadline = time.time() + (45 if send else 8)
+    quiet_after = time.time() + 5 + (4 if double is not None else 0)
+    while time.time() < deadline:
+        evs = tl.since(mark)                             # this turn's events only
+        route = next((e for e in evs if e.get("kind") == "play" and e.get("label") in ("route", "route_drift")
+                      and (not trace or e.get("trace") == trace)), route)
+        walk = [e for e in evs if e.get("kind") == "play" and e.get("label") == "step"
+                and e.get("task_id") and e.get("task_id") not in seen]
+        if route is not None:
+            if not send and not walk:
+                break
+            if any(e.get("step") == TABLE["last"] for e in walk):
+                break
+            if walk and any(e.get("kind") == "ask" or "exit door: ask" in str(e.get("label")) for e in evs):
+                break
+            if not walk and time.time() > quiet_after:
+                break
+        time.sleep(0.5)
+    return route
+
+
+def run_case(eng, tl: Timeline, case: dict, seen: set, stop_line: str, double=None, contacts=()) -> dict:
     session = f"pr-{case['id']}-{int(time.time())}"
     for pre in case.get("pre") or ():
         eng.post("/api/flash/say", {"text": pre, "session": session, "execute": True}, timeout=120)
     widgets = _widgets_of(case)
     before = {w: eng.get(f"/widgets/{w}/data")[1] for w in widgets}
     mark = tl.mark()
-    n_sent = len(double.sent) if double is not None else 0
-    t0 = time.time()
-    code, res = eng.post("/api/flash/say", {"text": case["text"], "session": session, "execute": True}, timeout=150)
-    secs = round(time.time() - t0, 2)
-    res = res if isinstance(res, dict) else {"reply": str(res)}
-    trace = res.get("trace")
-    route, walk, new_ids = None, [], set()
-    deadline = time.time() + (45 if case.get("send") else 8)
-    quiet_after = time.time() + 5
-    while time.time() < deadline:
-        evs = tl.since(mark)
-        route = next((e for e in evs if e.get("kind") == "play" and e.get("label") in ("route", "route_drift")
-                      and (not trace or e.get("trace") == trace)), None)
-        walk, new_ids = _steps(evs, seen)
-        if route is not None:
-            if not case.get("send"):
-                break
-            if any(e.get("step") == TABLE["last"] for e in walk):
-                break
-            if not walk and time.time() > quiet_after + (4 if double is not None else 0):
-                break
-        time.sleep(0.5)
-    time.sleep(1.0 if not case.get("send") else 0)
+    texts = case.get("turns") or [case["text"]]
+    send = bool(case.get("send") or case.get("turns"))
+    turns, n0 = [], (len(double.sent) if double is not None else 0)
+    for text in texts:
+        n_sent = len(double.sent) if double is not None else 0
+        turn_mark = tl.mark()
+        t0 = time.time()
+        code, res = eng.post("/api/flash/say", {"text": text, "session": session, "execute": True}, timeout=150)
+        secs = round(time.time() - t0, 2)
+        res = res if isinstance(res, dict) else {"reply": str(res)}
+        route = _await_turn(tl, turn_mark, res.get("trace"), seen, send=send, double=double)
+        if send and double is not None:
+            time.sleep(2.0)                                      # a settled row's echo reaches the outbox
+        turns.append({"text": text, "http": code, "trace": res.get("trace"), "secs": secs, "res": res,
+                      "route": {k: route.get(k) for k in ("label", "dest", "legacy", "agree", "unserved", "named",
+                                                          "ran")} if route else None,
+                      "sends": double.sends_since(n_sent) if double is not None else []})
+    if not send:
+        time.sleep(1.0)
     evs = tl.since(mark)
     walk, new_ids = _steps(evs, seen)
     seen |= new_ids
-    rec = {k: route.get(k) for k in ("label", "dest", "legacy", "agree", "unserved", "named", "ran")} if route else None
-    if case.get("send") and double is not None:
-        time.sleep(2.0)                                          # a settled row's echo reaches the outbox
     after = {w: eng.get(f"/widgets/{w}/data")[1] for w in widgets}
+    last = turns[-1]
+    res, rec = last["res"], last["route"]
     stop_reply = None
     if case.get("errand"):
         sc, sr = eng.post("/api/flash/say", {"text": stop_line, "session": session, "execute": True}, timeout=120)
         stop_reply = (sr or {}).get("reply") if isinstance(sr, dict) else str(sr)
     row = {
         "id": case["id"], "cls": case["cls"], "group": case.get("group"), "note": case.get("note"),
-        "text": case["text"], "expect_dest": case["dest"], "expect_ran": case.get("ran"),
-        "http": code, "trace": trace, "secs": secs, "reply": res.get("reply"), "reply_kind": reply_kind(res.get("reply")),
+        "text": " ⏎ ".join(texts), "expect_dest": case.get("dest"), "expect_ran": case.get("ran"),
+        "http": last["http"], "trace": last["trace"], "secs": round(sum(t["secs"] for t in turns), 2),
+        "reply": res.get("reply"), "reply_kind": reply_kind(res.get("reply")),
+        "replies": [t["res"].get("reply") for t in turns],
+        "turn_routes": [t["route"] for t in turns],
         "tool_calls": [c.get("name") + (":" + str((c.get("args") or {}).get("widget_id")) + ":" +
                                         str((c.get("args") or {}).get("action")) if c.get("name") == "widget_data" else "")
                        for c in res.get("tool_calls") or [] if isinstance(c, dict)],
@@ -233,7 +304,8 @@ def run_case(eng, tl: Timeline, case: dict, seen: set, stop_line: str, double=No
         "walk_events": [e.get("event") for e in walk],
         "walk_outcome": next((e.get("outcome") for e in reversed(walk) if e.get("outcome")), None),
         "stop_reply": stop_reply,
-        "double_sends": double.sends_since(n_sent) if double is not None else [],
+        "double_sends": double.sends_since(n0) if double is not None else [],
+        "turn_sends": [[s["chatId"] for s in t["sends"]] for t in turns],
         "opener": ("verdict" if any("the send the verdict identified" in str(e.get("label")) for e in evs)
                    else "model" if any("an act that leaves is a task" in str(e.get("label")) for e in evs) else None),
         "end_state_read": _end_state_read(evs),
@@ -241,10 +313,11 @@ def run_case(eng, tl: Timeline, case: dict, seen: set, stop_line: str, double=No
                    if e.get("kind") == "task_progress" and e.get("writer") == "settle"][:3],
     }
     row["claims_without_act"] = bool(rec and rec.get("unserved") and not rec.get("ran"))
+    row["shape"] = _shape(row, evs)
     fails = []
     if rec is None:
         fails.append("no play/route event for the turn")
-    elif rec.get("dest") != case["dest"]:
+    elif case.get("dest") and rec.get("dest") != case["dest"]:
         fails.append(f"dest {rec.get('dest')} ≠ {case['dest']}")
     if case.get("legacy") and rec is not None and rec.get("legacy") != case["legacy"]:
         fails.append(f"legacy {rec.get('legacy')} ≠ {case['legacy']}")
@@ -252,16 +325,19 @@ def run_case(eng, tl: Timeline, case: dict, seen: set, stop_line: str, double=No
         fails.append(f"ran {rec.get('ran')} has none of {case['ran']}")
     checks = []
     for chk in case.get("checks") or ():
-        ok, what = _check(chk, before, after, row)
+        ok, what = _check(chk, before, after, row, contacts)
         checks.append({"ok": ok, "what": what})
         if not ok:
             fails.append("check: " + what)
     row["checks"], row["fails"], row["pass"] = checks, fails, not fails
     row["trace_lines"] = [
         f"{e.get('rel_ms', 0):>8} {e.get('kind')}/{e.get('label')} {str(e.get('text') or '')[:80]}"
-        for e in evs if e.get("kind") in ("play", "task_state") or (
-            e.get("kind") == "brain" and any(w in str(e.get("label")) for w in ("send task", "show_panel", "escalat")))
-    ][:40]
+        for e in evs if e.get("kind") in ("play", "task_state", "ask") or (
+            e.get("kind") == "task" and "door" in str(e.get("label"))) or (
+            e.get("kind") == "brain" and any(w in str(e.get("label")) for w in ("send task", "show_panel", "escalat",
+                                                                                 "verdict identified", "leaves is a task")))
+    ][:50]
+    row["isolation"] = _isolate(eng, session)
     return row
 
 
@@ -273,7 +349,7 @@ def _cell(v) -> str:
 
 
 def markdown(rows: list[dict], sameness: dict) -> str:
-    out = ["| id | expect | dest | legacy | agree | unserved | named | ran | walk | opener | end_state | double | checks | claims w/o act | s | pass | reply |",
+    out = ["| id | expect | dest | legacy | agree | unserved | named | ran | walk | opener | end_state | shape · sends per turn | checks | claims w/o act | s | pass | reply |",
            "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for r in rows:
         rt = r.get("route") or {}
@@ -281,7 +357,9 @@ def markdown(rows: list[dict], sameness: dict) -> str:
             r["id"], r["expect_dest"], rt.get("dest"), rt.get("legacy"), rt.get("agree"), rt.get("unserved"),
             ",".join(rt.get("named") or []), ",".join(rt.get("ran") or []),
             "→".join(r.get("walk_events") or []) + (f" [{r.get('walk_outcome')}]" if r.get("walk_outcome") else ""),
-            r.get("opener") or "", "; ".join(r.get("end_state_read") or []) or ("not asked" if r.get("walk_events") else ""), len(r.get("double_sends") or []),
+            r.get("opener") or "", "; ".join(r.get("end_state_read") or []) or ("not asked" if r.get("walk_events") else ""),
+            f"{r.get('shape')} · " + " / ".join(",".join(c.split("@")[0][-2:] for c in t) or "0"
+                                                for t in r.get("turn_sends") or []),
             "; ".join(("✓ " if c["ok"] else "✗ ") + c["what"] for c in r.get("checks") or []),
             "⚑" if r.get("claims_without_act") else "", r["secs"], "PASS" if r["pass"] else "MISS",
             (r.get("reply") or "")[:140])) + " |")
@@ -355,11 +433,11 @@ def main(argv=None) -> int:
             eng.post("/widgets/contactos/action", {"action": "add_contact", "payload": c})
         tl, seen = Timeline(ws / "logs" / "timeline-latest.jsonl"), set()
         for case in cases:
-            row = run_case(eng, tl, case, seen, spec.get("stop", ""), double)
+            row = run_case(eng, tl, case, seen, spec.get("stop", ""), double, spec.get("seed_contacts") or [])
             rows.append(row)
             rt = row.get("route") or {}
             print(f"{row['id']:>3} {'PASS' if row['pass'] else 'MISS'} dest={rt.get('dest')} legacy={rt.get('legacy')} "
-                  f"ran={rt.get('ran')} opener={row['opener']} double={len(row['double_sends'])} {'⚑claims_without_act ' if row['claims_without_act'] else ''}walk={'→'.join(row['walk_events'])} {row['secs']}s · {(row['reply'] or '')[:90]!r}"
+                  f"ran={rt.get('ran')} opener={row['opener']} shape={row['shape']} sends={row['turn_sends']} {'⚑claims_without_act ' if row['claims_without_act'] else ''}walk={'→'.join(row['walk_events'])} {row['secs']}s · {(row['reply'] or '')[:90]!r}"
                   + (f"  ✗ {row['fails']}" if row["fails"] else ""), flush=True)
     finally:
         if eng is not None:
