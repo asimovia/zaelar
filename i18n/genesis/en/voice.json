@@ -755,6 +755,10 @@
   "send_task_head": "THE SEND — its data are on your row (do NOT look for them in the inbox; reading others' messages taints your session and the exit then asks him):",
   "send_task_slot": "  · {slot}: {value} ({source})",
   "send_task_do": "Checkpoint 1 is already closed by your row (playbook «message», end state recorded). Send in ONE act: write `send.json` with {call} and run `python -m nucleo.cli.bridge act widget_data @send.json`; a slot marked «compose» is yours to write from his request — never ask him for what he already said. Then `python -m nucleo.cli.bridge act verify`.",
+  "his_words_head": "HIS WORDS (verbatim — the request above is the turn's paraphrase; these are what he said):",
+  "first_act_head": "YOUR FIRST STEP — the turn already identified the act: widget «{widget}», action «{action}». Its declared fields:",
+  "first_act_field": "  · {field}: {desc}",
+  "first_act_do": "Run it FIRST, before any search: write `step.json` with {call} (each value from his words; a field you cannot fill from them is a question to him, not a search) and run `python -m nucleo.cli.bridge act widget_data @step.json`. Only if the widget refuses it, look further.",
   "goal_head": "GOAL (keep to it to the letter):",
   "catalog_unknown": "No family «{name}». The families are: {names}.",
   "family_text": {
