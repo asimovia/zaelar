@@ -6168,7 +6168,7 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/browser/unit/widgets/test_a_card_uploads_only_where_its_manifest_allows.py"]},
         {"id": "4.259", "title": "«Abre el chat de Marta» is her conversation, not the wall; a surface/card tie is ambiguous",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_a_conversation_is_not_the_wall.py"]},
-        {"id": "4.260", "title": "A reply inside an open conversation needs no number, by voice and by text",
+        {"id": "4.260", "title": "A reply inside an open conversation needs no number, by voice and by text; the voice tool sends writing to a person he NAMES to messaging `send_to` and no longer offers «dile que…»",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_a_reply_inside_an_open_conversation_needs_no_number.py"]},
         {"id": "4.261", "title": "The Energy gauge learns the balance from the lease and goes down with its local spend",
             "ch": UNIT, "paths": ["tests/infrastructure/unit/core/test_the_gauge_learns_the_balance_from_the_lease.py"]},
