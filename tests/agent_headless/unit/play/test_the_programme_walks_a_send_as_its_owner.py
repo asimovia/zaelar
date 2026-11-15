@@ -4,13 +4,13 @@ The walk passes the same doors as the path without the stage: the card's run (th
 once the card returned — the look at the row's declared end state, then the one writer settles the row, then ONE
 report by the circuit's out-of-turn mouth. When the exit door asks him, the walk parks and his yes walks it on from
 the same step. A card that refuses or raises ends `failed` and is never looked at; an echo that does not land in the
-look's time ends `unverified` and leaves the row to the circuit; a row someone else settled is not told twice. While a
+look's time — which outlasts the window the circuit owes an end state — ends `unverified` and leaves the row to the circuit; a row someone else settled is not told twice. While a
 walk is out, no line of a turn may claim an outcome for its act (`live`, read by `unserved.outcomes`). One walk per
 row at a time; a walk that breaks leaves nothing live. `send_task._schedule` hands the row to the walk only with the
 stage on. The driver parks on `{"parked": True}` and resumes at that step.
 
-Disarm: the unserved line ignores live walks; the look settles without the end state; `_schedule` ignores the stage
-→ three reds.
+Disarm: the unserved line ignores live walks; the look settles without the end state; the look's time back under the
+circuit's window; `_schedule` ignores the stage → four reds.
 """
 from __future__ import annotations
 
@@ -147,6 +147,13 @@ def test_an_echo_that_does_not_land_in_the_look_time_ends_unverified_and_the_cir
     assert end["outcome"] == "unverified"
     assert "settle" not in eng.names() and "say" not in eng.names()
     assert not eng.entry.get("reported")
+
+
+def test_the_look_outlasts_the_window_the_circuit_owes_an_end_state():
+    """The card returns when the send is queued; the circuit owes its end state for `INLINE_GRACE_S` and reads it every
+    `CHECK_EVERY_S`. A shorter look ends `unverified` on a send that lands, and the sent line is left to nobody."""
+    from nucleo import circuit
+    assert float(st._TABLE["deadline_s"]["verifying"]) >= circuit.INLINE_GRACE_S + circuit.CHECK_EVERY_S
 
 
 def test_a_row_someone_else_settled_is_done_and_the_walk_says_nothing(eng):
@@ -286,7 +293,7 @@ def _disarm(path, old, new, module, *tests):
 
 def test_disarmed_the_walk_and_its_doors_turn_red():
     """Disarm: (a) `_own_rows_out` keeps every missed act; (b) the look settles without the end state;
-    (c) `_schedule` ignores the stage."""
+    (c) the look's time back to 4 s; (d) `_schedule` ignores the stage."""
     from nucleo.request import send_task
     from nucleo.turn import unserved
 
@@ -311,6 +318,8 @@ def test_disarmed_the_walk_and_its_doors_turn_red():
             case(test_no_line_of_the_turn_claims_an_outcome_for_a_live_walk))
     _disarm("nucleo/play/send.py", "            if spec.attest(e) is True:\n", "            if True:\n", send,
             case(test_an_echo_that_does_not_land_in_the_look_time_ends_unverified_and_the_circuit_keeps_the_row))
+    _disarm("nucleo/play/table.json", '"verifying": 26}', '"verifying": 4}', st,
+            test_the_look_outlasts_the_window_the_circuit_owes_an_end_state)
     _disarm("nucleo/request/send_task.py",
             "    if _own.enabled():           # V2-909: the programme walks the row — same door, same card, one report\n"
             "        return _own.start(uid)\n", "", send_task,

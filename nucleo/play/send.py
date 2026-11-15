@@ -5,9 +5,9 @@ With the stage on, a send task that may run is walked by the driver (`run.run`) 
   · resolve — the slots the row retained, with where each came from (`send_task.artefact`);
   · execute — the task's one act, unchanged: the exit door, then the card's door (`send_task_run.run`). The door is
     still the one place that asks for his consent; when it asks, the walk parks on the row and his yes walks it on;
-  · look    — the row's declared end state, read at once after the card returned, for a bounded time; when it is
-    there the row is settled by the one writer (`circuit.settle`). When it is not there yet, the walk ends
-    `unverified` and the circuit keeps the row, as it does without the stage;
+  · look    — the row's declared end state, read from the card's return (the send is only QUEUED then) for as long
+    as the circuit owes it; when it is there the row is settled by the one writer (`circuit.settle`). When the
+    circuit ends the row first, the walk ends `unverified` and says nothing: whoever settled it said its line;
   · say     — ONE report: the sent line, by the circuit's own out-of-turn mouth, only when the look found it. A
     failure is told by the card's failure path and an unconfirmed send by the circuit's; the walk repeats neither.
 
