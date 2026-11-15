@@ -179,9 +179,9 @@ async def _run_session(task: "Task") -> None:
         if trusted and not _dev:
             from nucleo.workers.prompts.surfaces import trusted_blocks
             prompt += trusted_blocks(getattr(rec, "surface", ""))
-            from nucleo.request import send_task_words as _send_task   # a send row: its slots are the worker's data
-            if (_sb := _send_task.brief_block(str(getattr(rec, "uid", "") or ""))):
-                prompt += "\n\n" + _sb
+            from nucleo.workers.prompts import first_act   # his words + the act the turn identified (a send's slots)
+            prompt = "\n\n".join(p for p in (prompt, first_act.block(str(getattr(rec, "uid", "") or ""), task.context,
+                                                                       rec.reading)) if p)
         prompt = __import__("nucleo.workers.handoff", fromlist=["x"]).with_worker_brief(prompt, task.context)  # V2-877
         if resume and (kind == "web" and trusted):
             prompt = ("REANUDAS una gestión que YA empezaste (no arranques de cero): la pestaña sigue donde la "
