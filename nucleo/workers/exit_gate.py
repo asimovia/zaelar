@@ -217,11 +217,7 @@ def gate(rec, payload: dict) -> Exit:
     unnamed = got.sources["recipient"] == "agent" if "recipient" in got.sources else mode == _wa.CONFIRM
     if not q and (unnamed or "unknown" in got.sources.values()):
         # the leave rule's question: a recipient his words do not name (with the taint: one only a stranger named)
-        try:
-            from i18n import langs as _lg
-            q = _lg.current_language().worker_confirm_on_behalf.format(action=act, who=who)
-        except Exception:  # noqa: BLE001
-            q = f"{act} · {who}?"
+        q = _ob.question(wid, act, inner)
     return Exit(out, question=q, released=got.released, slots=dict(got.sources))
 
 

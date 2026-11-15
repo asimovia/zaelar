@@ -190,11 +190,25 @@ def worker_question(rec, action: str, payload) -> str:
     _emit("task", "🛑 acto en su nombre que él no pidió — se le pregunta",
           f"{wid}:{act} → {', '.join(who) or '∅'}", {"id": str(getattr(rec, "task_id", "")), "widget": wid,
                                                        "action": act, "who": who[:4], "said": len(said)})
+    return question(wid, act, inner)
+
+
+def question(wid: str, act: str, inner: dict) -> str:
+    """The question for an act that reaches somebody he did not name: the act's OWN sentence — what leaves, to whom,
+    by which app, as every other door asks it — and the on-behalf line only for an act that declares none."""
+    try:
+        from voice.engine.llm.providers import confirm_gate
+        if (q := confirm_gate.own_question(wid, act, inner)):
+            return q
+    except Exception as e:  # noqa: BLE001 — unread: the on-behalf line still asks
+        from loguru import logger
+        logger.debug(f"on_his_behalf: the act's own question unread ({e!r})")
+    who = shown_who(wid, act, inner) or wid
     try:
         from i18n import langs as _lg
-        return _lg.current_language().worker_confirm_on_behalf.format(action=act, who=shown_who(wid, act, inner) or wid)
+        return _lg.current_language().worker_confirm_on_behalf.format(action=act, who=who)
     except Exception:  # noqa: BLE001
-        return f"{act} · {shown_who(wid, act, inner) or wid}?"
+        return f"{act} · {who}?"
 
 
 # ── the browser: a form that hands his identity to a site ───────────────────────────────────────────────
