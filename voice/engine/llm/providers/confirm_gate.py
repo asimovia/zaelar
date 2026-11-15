@@ -45,6 +45,10 @@ the shipped Castilian is the DEFAULT rather than the only thing there is.
 """
 from __future__ import annotations
 
+from string import Formatter
+
+from loguru import logger
+
 
 def _similar_pending(req: str, pendings: list[dict]) -> bool:
     """Is `req` the errand one of `pendings` already is? The flow door's own yardstick (V2-844 F2: one measure for «the
@@ -254,6 +258,13 @@ def own_question(wid: str, action: str, payload: dict) -> str:
     # **Úsala cuando el operador pida** dejarla vacía «del todo»/«por completo»…». Le estábamos recitando nuestras
     # instrucciones internas y pidiéndole que dijera «sí» a eso.
     if human:
+        # the manifest's other placeholders are the call's own payload keys; a sentence with a hole is no question
+        for key in {k for _l, k, _s, _c in Formatter().parse(human) if k}:
+            if key != "item":
+                val = str((payload or {}).get(key) or "").strip()
+                if not val:
+                    return ""
+                human = human.replace("{" + key + "}", val)
         # `{item}` deja que el autor del widget coloque el elemento DONDE suena bien al oído, en vez de pegarlo
         # al final: «¿Congelo el proyecto «Reddit» entero?» en vez de «…entero. («Reddit»)». Si no hay item
         # resuelto, la frase se queda sin él antes que decir «el proyecto «»».
@@ -276,8 +287,8 @@ def _from_desc(wid: str, action: str, payload: dict) -> str:
         field = refs.id_field_for_action(wid, action)
         label = refs.label_for(wid, field, (payload or {}).get(field, "")) if field else ""
         tail = sp.data_confirm_item.format(item=label) if label else ""
-    except Exception:
-        pass
+    except Exception as e:  # noqa: BLE001 — an unreadable manifest asks with the act's id
+        logger.debug(f"confirm_gate: {wid}:{action} description unread ({e!r})")
     if desc:
         # Sin `confirm_q`, se cita SOLO la primera frase del desc: la guía de uso («Úsala cuando…») vive a partir
         # del primer punto y no es asunto del operador. Mejor que la jerga cruda de 2026-07-15 («¿Confirmas
@@ -322,3 +333,8 @@ def decide(wid: str, action: str, payload: dict, order: str = "") -> dict:
         return {"kind": "empty", "sentence": q, "wid": wid, "action": action}
     return {"kind": "ask", "question": q, "wid": wid, "action": action,
             "op": {"action": action, "payload": payload or {}}}
+
+
+# The act's own question is every door's: the lower layer that asks on his behalf reads it through this seam.
+from nucleo import on_his_behalf as _ob  # noqa: E402
+_ob.ACT_QUESTION = own_question
