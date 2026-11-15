@@ -10,6 +10,11 @@ from __future__ import annotations
 from nucleo.request import base, note
 
 
+#: What `at_close` answers for a turn whose send task was opened before the close: it owns the request's row, so no
+#: later branch of the close opens a second row or a worker for the same send.
+HELD = "held"
+
+
 def identified(brief, floor: float | None = None) -> tuple[str, str]:
     """The send the turn's brief surely identifies: `(card, leaving act)` — the `screen_action` verdict naming an act
     that leaves, else the `end_state` verdict naming a card's `<collection>` that a leaving act's declared end state
@@ -84,6 +89,8 @@ async def at_close(brief, said: str, spoken_text: str, escalate_req: dict, worke
     from nucleo.turn import brief as _tb, brief_doors
     if escalate_req.get("v") is not None:
         return ""            # the model's escalation owns the turn (`at_escalation` did not take it): ONE owner
+    if escalate_req.get("send_task"):
+        return HELD          # the turn already holds its send task (the model's call, his answer): ONE row per send
     esc, esc_info = _tb.read(brief, _tb.ESCALATE_KEY, "")
     uid, how = _stw.by_verdict(brief, said=said, model_text=spoken_text, escalate_req=escalate_req,
                                worker_acted=worker_acted, emit=emit,

@@ -839,6 +839,10 @@ Flash keeps the conversation; the row is what both brains read.
   2026-11-12 · nodes 2.1657, 2.1629, 2.1619, 2.1140, 2.1731 · `nucleo/request/send_task.py`, `nucleo/flash/tool_executor_widget_calls.py`,
   `nucleo/request/ask_outside_door.py`, `nucleo/request/inline_ask.py`, `nucleo/workers/exit_slots.py`,
   `nucleo/workers/exit_gate.py`.
+- **CRIT-T2i · A turn that already holds its send task opens no second row at its close.** The model's leaving
+  call opened the row during the stream; `send_task_turn.at_close` answers `HELD`, so no later branch of the close
+  (`ask_outside_door.claimed`) opens a second row or a worker for the same send. — since 2026-11-15 · nodes 2.1756 ·
+  `nucleo/request/send_task_turn.py`.
 - **CRIT-T2f · A send reaches whom he named, or asks ONE «which?».** A person slot whose value — his word or the
   model's pick from it — reaches several people alike (no one leads by `clear_margin`) is one question on the send's
   row with them as candidates, before anything runs; a row-reference act (`reply {n}`, a bare reply reaching nobody)
