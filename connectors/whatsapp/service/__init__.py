@@ -124,7 +124,9 @@ async def _loop() -> None:
                     await retry_held(0.0)              # nothing is sent while down; an expired hold is still said
         except Exception as e:
             logger.debug(f"WhatsApp tick: {e}")
-        await asyncio.sleep(config.poll_interval())
+        # An order he is waiting on (a send, a reply, older messages) wakes the tick; the interval is for the inbox.
+        # Only while connected: a queue nothing drains would wake every nap.
+        await ingest.nap(config.poll_interval(), (_send_inbox, _reply_inbox, _history_inbox) if connected else ())
 
 
 def start() -> None:

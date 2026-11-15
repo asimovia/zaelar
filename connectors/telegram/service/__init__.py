@@ -203,7 +203,9 @@ async def _loop() -> None:
     _set_status("connected", None)
     # Telethon dispatches updates only while the loop runs; this batching task coexists with that delivery.
     while True:
-        await asyncio.sleep(config.batch_interval())
+        # An order he is waiting on wakes the tick; only while connected (a queue nothing drains would wake every nap).
+        await ingest.nap(config.batch_interval(), (_send_inbox, _reply_inbox, _history_inbox, _fetch_inbox)
+                         if _client.is_connected() else ())
         if not _client.is_connected():
             try:
                 await _client.connect()

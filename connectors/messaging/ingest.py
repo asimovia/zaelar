@@ -198,6 +198,22 @@ class _PlatformInbox:
             pass
 
 
+NAP_STEP_S = 0.5
+
+
+async def nap(total: float, inboxes) -> None:
+    """A polling connector's sleep between ticks, cut short the moment one of `inboxes` holds an order: a queued send,
+    reply or history fetch is the operator waiting, and it must not wait out the interval. One seam for every
+    connector — the interval stays each connector's, the wake is the same."""
+    import asyncio
+    loop = asyncio.get_running_loop()
+    end = loop.time() + max(0.0, float(total))
+    while loop.time() < end:
+        if any(i is not None and i.pending() for i in inboxes):
+            return
+        await asyncio.sleep(min(NAP_STEP_S, max(0.0, end - loop.time())))
+
+
 def publish_archive(key: dict) -> None:
     """Widget asks to ARCHIVE in the real app (V2-543): {platform, chatId, messageId, senderId}. That platform's
     connector (email today) drains it and moves the mail out of the inbox for real."""
