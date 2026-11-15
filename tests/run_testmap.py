@@ -5330,6 +5330,13 @@ DOMAINS: list[dict] = [
                                  "disarmed (no `HELD` return) 4 reds",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/turn/test_a_turn_that_holds_its_send_task_opens_no_second_row.py"]},
+        {"id": "2.1758", "title": "A pending order wakes every polling connector, only while its link is up: the "
+                                 "shared `ingest.nap` returns the moment an inbox it is handed holds an order and sleeps "
+                                 "the whole interval on an empty tuple; WhatsApp and Telegram hand it their send/reply/"
+                                 "history inboxes only while connected, email naps on it — disarmed (the nap blind to "
+                                 "its inboxes) 1 red",
+            "ch": UNIT,
+            "paths": ["tests/connectors/unit/test_a_pending_order_wakes_every_polling_connector.py"]},
         {"id": "2.1757", "title": "A send task's exit door reads the row's OWN words (`own_words`): a person he named "
                                  "for ANOTHER order a minute ago, still in the ring, is `recipient: agent` and ONE "
                                  "question — WhatsApp ES, email EN, a forward EN; his answer naming her on the row "

@@ -298,15 +298,9 @@ async def _serve_demands(mb) -> None:
 
 
 async def _nap(total: float) -> None:
-    """Sleep until the next poll — or until an ON-DEMAND order arrives (demo pass 31, E2: «did inworld send me
-    something?» asked the mailbox for the receipt, «open it» came 14 s later, and the mail landed 3 s after that:
-    the history order had waited out the 20 s poll). A send, a history or a fetch order is the operator waiting."""
-    loop = asyncio.get_running_loop()
-    end = loop.time() + max(0.0, float(total))
-    while loop.time() < end:
-        if any(i is not None and i.pending() for i in _on_demand()):
-            return
-        await asyncio.sleep(min(_NAP_STEP_S, max(0.0, end - loop.time())))
+    """Sleep until the next poll — or until an ON-DEMAND order arrives (demo pass 31, E2: the history order had waited
+    out the 20 s poll). A send, a history or a fetch order is the operator waiting. The wake is the shared one."""
+    await ingest.nap(total, _on_demand())
 
 
 def start() -> None:
