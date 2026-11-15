@@ -151,6 +151,8 @@ async def _closing(self, rec) -> None:
             extra["model"] = rec.real_model or self._model
             if rec.real_model and self._model and rec.real_model != self._model:
                 extra["model_requested"] = self._model
+        if getattr(self, "_provider", ""):
+            extra["provider"] = self._provider      # WHO served it: after a relay, the tier of THIS session
         if rec.ctx_tokens:
             extra["ctx_tokens"] = rec.ctx_tokens
         lbl = ""

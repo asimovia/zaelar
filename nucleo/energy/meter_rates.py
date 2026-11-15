@@ -46,6 +46,10 @@ _MODEL_RATES: dict[str, tuple[float, float]] = {
     "glm-5.3": (1.40, 4.40),
     "glm-5.2": (1.40, 4.40),
     "kimi-k2.6": (0.95, 4.00),
+    # The Brain Worker's optional Claude-subscription rung (`brain_worker.lead`). A subscription has no per-token
+    # price; the lease estimate rates it like the plan rung it precedes, so a relay does not change its scale.
+    "claude-opus-5-5": (1.40, 4.40),
+    "claude-sonnet-5-5": (1.40, 4.40),
     # (A repeated key keeps the LAST value: a stale `deepseek-v4-pro` here once voided the good row above.)
 }
 
@@ -60,6 +64,8 @@ _CACHED_READ_RATES_USD: dict[str, float] = {
     "grok-4.6": 0.30,
     "glm-5.2": 0.26,           # Z.AI's published cached-input price
     "glm-5.3": 0.26,           # 2026-08-14: inherits 5.2's until Z.AI publishes its own
+    "claude-opus-5-5": 0.26,   # the subscription rung, rated like the plan rung (see _MODEL_RATES)
+    "claude-sonnet-5-5": 0.26,
     # DeepSeek, confirmed on its pricing page 2026-09-25, PEAK tier. The hit is ~50x cheaper than fresh input, so
     # the 25% fallback over-charged it ~12x — and the hit is what grows most in a long session.
     "deepseek-flash": 0.006,

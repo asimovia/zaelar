@@ -18,7 +18,7 @@
 // ~70 líneas of state that se podía desincronizar of the realidad —y that ya falló dos veces— for resolver un
 // problema that the orden inverso simplemente NO TIENE.
 // ============================================================================
-import { h, raw } from "../core/dom.js?v=2"; import { stampTitle } from "./debug-stamp.js?v=1"; import { detailMeta, detailText } from "./debug-detail.js?v=1";
+import { h, raw } from "../core/dom.js?v=2"; import { stampTitle } from "./debug-stamp.js?v=1"; import { detailMeta, detailText } from "./debug-detail.js?v=2";
 import { createEffect } from "../core/reactive.js?v=2";
 import * as store from "../core/store.js?v=2";
 import { startDebugBus, onDebug, debugBuffer, clearDebugBuffer } from "../services/debugbus.js?v=2";

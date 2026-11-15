@@ -46,6 +46,13 @@ def failover(name: str) -> dict | None:
     return dict(f) if f else None
 
 
+def lead(name: str) -> dict | None:
+    """The OPTIONAL rung ahead of the titular (the third rung the table's rule 1 allows). It is listed, not
+    enabled: like every rung it only joins a chain where its own credential resolves."""
+    r = service(name).get("lead")
+    return dict(r) if r else None
+
+
 def rungs(name: str) -> list[dict]:
     """Primary + backup, in order, skipping any that do not exist. **At most TWO**—operator rule: one
     failover per service, because a chain of four cannot be reasoned about or debugged."""
@@ -56,22 +63,30 @@ def rungs(name: str) -> list[dict]:
     return [r for r in out if r.get("provider")]
 
 
-def chain_for(name: str, *, names: tuple[str, str] = ("", "")) -> list[dict]:
+def chain_for(name: str, *, names: tuple[str, ...] = ("", ""), lead_name: str = "") -> list[dict]:
     """Los escalones en la forma que consumen `provider_chain` y `workers/providers`.
 
     `names` da el nombre visible de cada escalón (el que sale en los avisos y en el panel); sin él se compone
-    del proveedor, que es lo bastante claro para los servicios de una sola fila.
+    del proveedor, que es lo bastante claro para los servicios de una sola fila. `lead_name` pone delante el
+    escalón opcional `lead` (si la tabla lo tiene) con ese nombre; sin él la cadena es la de siempre.
     """
     out = []
-    for i, r in enumerate(rungs(name)):
+    rows = rungs(name)
+    if lead_name and lead(name):
+        rows = [lead(name)] + rows
+        names = (lead_name, *names)
+    has_lead = len(rows) > len(rungs(name))
+    for i, r in enumerate(rows):
         etiqueta = (names[i] if i < len(names) and names[i] else r.get("provider") or "")
         fila = {"name": etiqueta, "base_url": r.get("base_url") or "",
                 "model": r.get("model") or "", "provider": r.get("provider") or ""}
         if r.get("key_env"):
             fila["env"] = [r["key_env"]]
-        for k in ("vision", "fast_model"):       # measured traits of THIS rung (V2-831 T-25: the CLI's fast slot)
+        for k in ("vision", "fast_model", "auth"):   # measured traits of THIS rung (V2-831 T-25: the CLI's fast slot)
             if k in r:
                 fila[k] = r[k]
+        if has_lead and i == 0:
+            fila["lead"] = True                  # goes ahead of whatever endpoint the deployment configured
         out.append(fila)
     return out
 

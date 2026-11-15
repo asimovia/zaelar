@@ -60,6 +60,7 @@ class WorkerSession(SessionNotes):
         self._cost = None                  # USD cost of `result` → final-row text (informational, NOT used for
                                             # used for Energy — see energy_meter.report_worker_usage docstring)
         self._base_url = ""                # actual endpoint of the tier serving the session (energy_meter, 2026-08-05)
+        self._provider = ""                # the NAME of that tier (`providers.chain()`), on the start and end rows
         self._started_at = time.time()     # to measure the worker's FIRST output (its TTFT) — see _emit_note
         self._first_output_at = 0.0
         # V2-241 — correction ran ONCE per session (V2-211); the measured worker hit the gate THREE times and died

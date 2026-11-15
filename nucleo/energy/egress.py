@@ -48,6 +48,8 @@ _PROVIDER_BY_HOST = (
     # memory_writer/memory_rem rows): without this entry the `X-Zaelar-Provider` header goes out EMPTY on every
     # mediated memory write and the gateway falls back to its own default provider.
     ("api.openai.com", "openai"),
+    # The Brain Worker's optional Claude-subscription rung (`brain_worker.lead` in the model table).
+    ("api.anthropic.com", "anthropic"),
     # V2-809 — the chat's image reader (`image_reader` in the model table) speaks Gemini's OpenAI-compatible API.
     ("generativelanguage.googleapis.com", "gemini"),
 )
@@ -179,6 +181,9 @@ def task_header_env(base_url: str, task_id: str) -> dict:
 _UPSTREAMS: tuple[tuple[str, str], ...] = (
     ("zai_anthropic", "https://api.z.ai/api/anthropic"),
     ("deepseek_anthropic", "https://api.deepseek.com/anthropic"),
+    # The Brain Worker's Claude-subscription rung: egress holds the subscription token and decides which accounts
+    # it serves; the process only ever presents its own credential.
+    ("claude_subscription", "https://api.anthropic.com"),
     ("zai", "https://api.z.ai/api/paas/v4"),
     ("openai", "https://api.openai.com/v1"),
     ("gemini", "https://generativelanguage.googleapis.com/v1beta"),
@@ -242,6 +247,12 @@ def route_url(url: str, key: str) -> tuple[str, str]:
     token, so the provider answers 401: a visible failure, never a call paid with a master key."""
     if is_local_endpoint(url) or not mediated():
         return url, key
+    here = root()
+    if here and (url or "").strip().startswith(f"{here}/p/"):
+        # Already egress's own address for a family (a deployment that names the family in its config): it is
+        # routed, with this process's credential, and nothing else to translate.
+        _record((url.strip()[len(here) + 3:].split("/") or [""])[0], "/", ok=bool(credential()))
+        return url.strip(), credential()
     name, base = upstream_of(url)
     if not name:
         logger.error(f"llm_egress: {url.split('?')[0][:80]} is not a family egress carries — the call is not routed")

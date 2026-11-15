@@ -49,6 +49,9 @@ def _reset_epoch(text: str) -> float:
 
     Una hora SUELTA se resuelve sobre HOY; si ya pasó, es de mañana (a las 23:50 un «reset at 00:30» no es de hace
     23 horas). Sin esto, una hora del mismo día se leía como medianoche pasada y el cooldown nacía vencido."""
+    claude = _claude_reset_epoch(text or "")
+    if claude:
+        return claude
     m = _p._RESET_RE.search(text or "")
     if not m:
         return 0.0
@@ -82,6 +85,43 @@ def _reset_epoch(text: str) -> float:
                              hm.tm_hour, hm.tm_min, hm.tm_sec, 0, 0, -1))
         return stamp if stamp > time.time() else stamp + 86400.0
     return 0.0
+
+
+def _claude_reset_epoch(text: str, now: float | None = None) -> float:
+    """The reset a Claude subscription states (see `_CLAUDE_RESET_RE`), as an epoch; 0.0 when it states none.
+
+    The CLI writes the hour in the zone it names in brackets, or in its own clock when it names none. A bare hour
+    already past today is tomorrow's; a dated one already past this year is next year's."""
+    m = _p._CLAUDE_RESET_RE.search(text or "")
+    if not m:
+        return 0.0
+    if m.group("epoch"):
+        return float(m.group("epoch"))
+    from datetime import datetime, timedelta
+    zone = None
+    if m.group("tz"):
+        try:
+            from zoneinfo import ZoneInfo
+            zone = ZoneInfo("UTC" if m.group("tz").upper() == "UTC" else m.group("tz"))
+        except Exception:  # noqa: BLE001 — an unknown zone reads as the machine's own clock
+            zone = None
+    current = datetime.fromtimestamp(time.time() if now is None else now, tz=zone)
+    hour = int(m.group("h")) % 12 + (12 if m.group("ap").lower() == "pm" else 0)
+    minute = int(m.group("m") or 0)
+    try:
+        if m.group("mon"):
+            month = datetime.strptime(m.group("mon").title(), "%b").month
+            stamp = current.replace(month=month, day=int(m.group("day")), hour=hour, minute=minute,
+                                    second=0, microsecond=0)
+            if stamp < current:
+                stamp = stamp.replace(year=stamp.year + 1)
+        else:
+            stamp = current.replace(hour=hour, minute=minute, second=0, microsecond=0)
+            if stamp <= current:
+                stamp += timedelta(days=1)
+    except ValueError:
+        return 0.0
+    return stamp.timestamp()
 
 
 def note_failure(text: str, tier: dict | None = None) -> dict | None:

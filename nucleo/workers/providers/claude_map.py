@@ -24,7 +24,8 @@ def _map(self, obj: dict):
         self._native_sid = obj.get("session_id") or ""
         self._turn_from = time.monotonic()        # the first turn is timed from the session's start
         self._model = self._model or obj.get("model") or ""   # init trae el modelo RESUELTO (si spec venía vacío)
-        yield self._ev("spawned", native_session_id=self._native_sid, model=self._model)
+        yield self._ev("spawned", native_session_id=self._native_sid, model=self._model,
+                       provider=(getattr(self, "_tier", None) or {}).get("name", ""))
         return
     if t == "assistant":
         # PROGRESS (§v2·E·Q3): each tool_use → a coarse `rec.phase` AND a rich `step` (V2-048): WHERE + WHAT
@@ -49,6 +50,7 @@ def _map(self, obj: dict):
                            real_model=getattr(self, "_real_model", ""),
                            ctx_tokens=getattr(self, "_ctx_tokens", 0),
                            base_url=(getattr(self, "_tier", None) or {}).get("base_url", ""),
+                           provider=(getattr(self, "_tier", None) or {}).get("name", ""),
                            **_turn_facts(self, msg))
         for block in (msg.get("content") or []):
             if not isinstance(block, dict):
@@ -132,7 +134,8 @@ def _map(self, obj: dict):
         yield self._ev("result", summary=str(summary), ok=bool(ok), usage=usage,
                        cost=obj.get("total_cost_usd"), model=self._model,
                        real_model=getattr(self, "_real_model", ""),
-                       base_url=(getattr(self, "_tier", None) or {}).get("base_url", ""))
+                       base_url=(getattr(self, "_tier", None) or {}).get("base_url", ""),
+                       provider=(getattr(self, "_tier", None) or {}).get("name", ""))
         yield self._ev("done")
         self._done = True
         return

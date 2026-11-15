@@ -50,6 +50,7 @@ class SessionNotes:
             model = self._model or self._spec.model or "(def)"
             emit("worker_start", f"worker · {rec.backend or self._b.name}", text=rec.goal[:120],
                  extra={"id": rec.task_id, "model": model, "layer": rec.kind,
+                        "provider": getattr(self, "_provider", "") or "",
                         "prompt_chars": int(getattr(self, "_prompt_chars", 0) or 0)})
         except Exception:
             pass

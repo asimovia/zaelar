@@ -8,7 +8,7 @@
     "gitignored and does not travel — and every fresh install booted with something else.",
     "",
     "RULES THAT GOVERN THIS TABLE (all of them the operator's):",
-    "  1. A titular, ONE stand-in, and AT MOST a third rung (reiterated 2026-09-10). Never more than three",
+    "  1. A titular, ONE stand-in, and AT MOST a third rung (reiterated 2026-09-10) — the optional `lead`. Never more than three",
     "     levels anywhere — a fourth cannot be reasoned about, configured or debugged; if you find one, trim it.",
     "  2. DeepSeek through its DIRECT provider is the titular of everything that is not the Brain Worker or a",
     "     MEMORY service. The memory services (heart, REM, embeddings) run on OpenAI DIRECT as titular",
@@ -46,6 +46,16 @@
     },
     "brain_worker": {
       "label": "Brain Worker / SlowBrain — the one that browses and executes",
+      "lead": {
+        "provider": "claude_code",
+        "model": "claude-sonnet-5-5",
+        "fast_model": "claude-sonnet-5-5",
+        "base_url": "https://api.anthropic.com",
+        "key_env": "CLAUDE_SUBSCRIPTION_OAUTH_TOKEN",
+        "auth": "oauth",
+        "vision": true
+      },
+      "lead_why": "OPTIONAL rung AHEAD of the titular: Claude itself, on a Claude subscription's long-lived OAuth token (`claude setup-token`), never a per-token API key. It exists ONLY where its credential resolves, so a deployment that sets nothing behaves exactly as before. Its own variable name on purpose: `CLAUDE_CODE_OAUTH_TOKEN` in someone's shell must not silently move their workers onto their subscription. Direct, the CLI receives the token as `CLAUDE_CODE_OAUTH_TOKEN`; behind mediated egress the Machine never holds it (egress swaps the account's credential for it). MEASURED 2026-11-16 through a token-injecting proxy: `claude -p` with `ANTHROPIC_BASE_URL` at the proxy answered 200 on claude-opus-5-5 and claude-sonnet-5-5; a raw call with no Claude Code system prompt answered 429, so only the CLI can drive this rung. The CLI's fast slot names the main model on purpose: left unset it would fall to the provider's small default, a model retired by this table's owner. `vision: true` measured the same day (a #008030 square read back as «Green»). Subscription limits (5-hour and weekly windows) are shared with the subscriber's own Claude Code use; the CLI says «resets <time>» and the chain parks the rung until then and relays to the titular.",
       "titular": {
         "provider": "claude_code",
         "model": "glm-5.3",

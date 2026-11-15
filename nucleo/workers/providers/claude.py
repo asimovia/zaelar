@@ -82,7 +82,7 @@ _STREAM_LIMIT = int(os.getenv("WORKER_STREAM_LIMIT", str(16 * 1024 * 1024)))
 # whole, plus the process basics the CLI needs and the ONE credential its tier resolved; no other API key.
 _DEV_ENV_KEEP = ("PATH", "HOME", "TMPDIR", "LANG", "LC_ALL", "TERM", "SHELL", "USER", "LOGNAME",
                  "PYTHONPATH", "ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_MODEL",
-                 "ANTHROPIC_CUSTOM_HEADERS",
+                 "ANTHROPIC_CUSTOM_HEADERS", "CLAUDE_CODE_OAUTH_TOKEN",
                  "NO_PROXY", "HTTP_PROXY", "HTTPS_PROXY")
 
 
