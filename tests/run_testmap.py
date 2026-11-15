@@ -5308,9 +5308,12 @@ DOMAINS: list[dict] = [
         {"id": "2.1754", "title": "The route of a turn is recorded beside what it did (`nucleo/play/route_shadow.py`, stage "
                                  "`shadow`): one `play/route` event carries where the request should go and where the path "
                                  "took it; a `play/route_drift` when they differ or a sure order ends with nothing run, no "
-                                 "errand and no question; every declared action called and run agrees unless its class is the "
+                                 "errand and no question; a row opened at the close (`opened`) or a reply ending on a question "
+                                 "is asked, and the record is read after the close's errands with `opened` and `said`; every "
+                                 "declared action called and run agrees unless its class is the "
                                  "worker's; with the stage off nothing is recorded, garbage never raises, and the close of the "
-                                 "turn calls it — disarmed (`unserved` always False · the close drops the call) 2 reds",
+                                 "turn calls it — disarmed (`unserved` always False · the close drops the call · `asked` "
+                                 "blind to `opened`/`said`) 2+2 reds",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/play/test_the_route_of_a_turn_is_recorded_beside_what_it_did.py"]},
         {"id": "2.1755", "title": "With the stage `own` on, the programme walks a send as the owner of its row "
@@ -5326,8 +5329,8 @@ DOMAINS: list[dict] = [
                                  "`escalate_req[\"send_task\"]`) opens no second row and no worker at its close: "
                                  "`send_task_turn.at_close` answers `HELD`, so the close chain of `pipeline_errands.py` "
                                  "(run from its own `if` node on a real brief handle) never reaches `ask_outside_door.claimed` "
-                                 "— a message ES and a calendar invite EN; the same brief with no held task still launches — "
-                                 "disarmed (no `HELD` return) 4 reds",
+                                 "— a message ES and a calendar invite EN; the same brief with no held task still launches, and "
+                                 "the chain reports the row it opened (`_opened`) — disarmed (no `HELD` return) 4 reds",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/turn/test_a_turn_that_holds_its_send_task_opens_no_second_row.py"]},
         {"id": "2.1759", "title": "A task's exit door asks a card act with the act's OWN question "

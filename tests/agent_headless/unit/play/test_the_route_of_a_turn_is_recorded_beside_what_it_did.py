@@ -7,7 +7,8 @@ and no question is unserved — also a drift. Parametrized over every action eve
 doors also ran agrees exactly when its class is not the worker's. With the stage off nothing is recorded, garbage
 never raises, and `pipeline_close` calls it.
 
-Disarm: `unserved` is always False, and `pipeline_close` drops the call → red.
+Disarm: `unserved` is always False, and `pipeline_close` drops the call → red; `opened` and the reply's own question
+ignored (`asked=reply.asked()`) → red.
 """
 from __future__ import annotations
 
@@ -26,7 +27,8 @@ ACTS = sorted((m["id"], a) for m in runtime.catalog() for a, s in (m.get("action
 IDS = [f"{w}:{a}" for w, a in ACTS]
 SEND = {"name": "widget_data", "args": {"widget_id": "mensajeria", "action": "send_to"}}
 CLOSE_CALL = ("    _play_route.closed(brief=_brief, calls=getattr(brain, \"_turn_calls\", None), ops=data_done.get(\"ops\"),\n"
-              "                       escalate_req=escalate_req, acted_elsewhere=_acted_elsewhere, emit=emit)\n")
+              "                       escalate_req=escalate_req, acted_elsewhere=_acted_elsewhere,\n"
+              "                       opened=bool((_blk or {}).get(\"opened\")), said=spoken_text, emit=emit)\n")
 
 
 def _spec(wid, action):
@@ -58,9 +60,9 @@ def turn(monkeypatch):
     return t
 
 
-def _close(calls=(), ops=(), escalate_req=None, acted_elsewhere=False):
+def _close(calls=(), ops=(), escalate_req=None, acted_elsewhere=False, **kw):
     return route_shadow.closed(brief={"x": 1}, calls=list(calls), ops=list(ops), escalate_req=escalate_req,
-                               acted_elsewhere=acted_elsewhere)
+                               acted_elsewhere=acted_elsewhere, **kw)
 
 
 def test_a_card_call_the_path_commissioned_as_a_send_task_agrees_on_the_programme(turn):
@@ -112,6 +114,25 @@ def test_the_same_order_answered_with_a_question_or_acted_elsewhere_is_served(tu
     assert [label for _, label, _ in turn.seen] == ["route", "route"]
 
 
+def test_a_sure_order_whose_close_opened_its_row_is_served(turn):
+    turn.set(sure_order=True)
+    assert _close(calls=[{"name": "show_panel", "args": {}}], opened=True)["unserved"] is False
+    assert _close(calls=[{"name": "show_panel", "args": {}}], opened=False)["unserved"] is True
+    assert [label for _, label, _ in turn.seen] == ["route", "route_drift"]
+
+
+@pytest.mark.parametrize("said", ["¿A qué número se lo mando?", "Which Quinn do you mean?»", "Which one? "])
+def test_a_sure_order_whose_reply_ends_asking_is_served(turn, said):
+    turn.set(sure_order=True)
+    assert _close(calls=[{"name": "show_panel", "args": {}}], said=said)["unserved"] is False
+
+
+@pytest.mark.parametrize("said", ["Done.", "Hecho, ¿vale? Ya está.", ""])
+def test_a_sure_order_whose_reply_does_not_end_asking_stays_unserved(turn, said):
+    turn.set(sure_order=True)
+    assert _close(calls=[{"name": "show_panel", "args": {}}], said=said)["unserved"] is True
+
+
 @pytest.mark.parametrize("wid,action", ACTS, ids=IDS)
 def test_every_declared_action_called_and_run_agrees_unless_its_class_is_the_worker(turn, wid, action):
     rec = _close(calls=[{"name": "widget_data", "args": {"widget_id": wid, "action": action}}], ops=[(wid, action)])
@@ -138,6 +159,16 @@ def test_the_close_of_the_turn_records_its_route():
     assert "_play_route.closed(" in src
 
 
+def test_the_route_is_read_after_the_close_opened_its_rows_and_carries_what_it_said():
+    """After `launch_the_errands` (a send task it opens sets `send_task`, so the record reads `play`), with `opened`
+    and `said` — and `launch_the_errands` reports the row it opened."""
+    src = (ROOT / "nucleo" / "turn" / "pipeline_close.py").read_text(encoding="utf-8")
+    assert CLOSE_CALL in src
+    assert src.index("_errands.launch_the_errands(") < src.index("_play_route.closed(")
+    errands = (ROOT / "nucleo" / "turn" / "pipeline_errands.py").read_text(encoding="utf-8")
+    assert 'return {"opened": bool(_opened)}' in errands
+
+
 def test_disarmed_a_record_that_never_names_an_unserved_order_and_a_close_that_drops_it_turn_red(turn):
     """Disarm: `unserved = False` in `read`; and `pipeline_close` drops the `_play_route.closed(` call."""
     src, close = ROOT / "nucleo" / "play" / "route_shadow.py", ROOT / "nucleo" / "turn" / "pipeline_close.py"
@@ -162,4 +193,26 @@ def test_disarmed_a_record_that_never_names_an_unserved_order_and_a_close_that_d
         close.write_text(orig_close, encoding="utf-8")
         for p in (src, close):
             shutil.rmtree(p.parent / "__pycache__", ignore_errors=True)
+        importlib.reload(route_shadow)
+
+
+def test_disarmed_a_record_that_ignores_the_row_opened_and_the_reply_that_asked_turns_red(turn):
+    """Disarm: `asked` reads only the doors' question (`reply.asked()`), not `opened` nor the reply's own question."""
+    src = ROOT / "nucleo" / "play" / "route_shadow.py"
+    orig = src.read_text(encoding="utf-8")
+    line = "asked=bool(opened) or reply.asked() or ends_asking(said))"
+    assert line in orig, "the disarm no longer matches the product"
+    try:
+        src.write_text(orig.replace(line, "asked=reply.asked())"), encoding="utf-8")
+        shutil.rmtree(src.parent / "__pycache__", ignore_errors=True)
+        assert line not in src.read_text(encoding="utf-8")
+        importlib.reload(route_shadow)
+        turn.set(sure_order=True)        # the fixture patched the old module object; patch the reloaded one
+        with pytest.raises(AssertionError):
+            test_a_sure_order_whose_close_opened_its_row_is_served(turn)
+        with pytest.raises(AssertionError):
+            test_a_sure_order_whose_reply_ends_asking_is_served(turn, "Which Quinn do you mean?")
+    finally:
+        src.write_text(orig, encoding="utf-8")
+        shutil.rmtree(src.parent / "__pycache__", ignore_errors=True)
         importlib.reload(route_shadow)
