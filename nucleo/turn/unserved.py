@@ -9,7 +9,7 @@ Measured in the use-case battery of 2026-11-06, in both languages and on several
 - «Exit full screen.» over an empty canvas → ZERO calls, «but I've cleared it, so you're at an empty canvas now».
 
 The class: the mouth composes the turn's line from the verdicts of the acts that RAN (`reply.after_acts`), so an act
-that never reached a door has no verdict and nothing corrects the words that narrated it. Two readers close it, both
+that never reached a door has no verdict and nothing corrects the words that narrated it. Three readers close it, all
 read off what the turn already paid for, never off the words:
 
 1. **A model call nobody ran.** A `widget_data` call the model made whose card no op and no card act of the turn
@@ -21,7 +21,13 @@ read off what the turn already paid for, never off the words:
    turn's doors ran nothing, and the turn did not end asking him: `unmet`, nothing was done. A comment («note that I'm
    celiac» reads `comment`), a question, or any call at all keeps the model's words alone.
 
-Both lines are the verdict's (`reply_not_run`, `reply_nothing_done`), always said after the model's words — a fact
+3. **A sure order served on ANOTHER card.** The same sure order names ONE card (`catalog_widget`, or the card of
+   `screen_action`); the model did call something, but no call of the turn addresses that card and no door touched
+   it, and no data-op ran at all — it opened a panel, showed another card — and the turn did not end asking: `unmet`, nothing was done there.
+   Measured in a sandbox with no channel connected: «write to <name> on whatsapp: …» → `show_panel` (the connectors)
+   and «Done.» (1 of 12, V2-909 F1).
+
+The lines are the verdict's (`reply_not_run`, `reply_nothing_done`), always said after the model's words — a fact
 the model could not know, never a re-run and never a sentence about how to behave.
 """
 from __future__ import annotations
@@ -34,7 +40,8 @@ _QUESTION_MARKS = "?？؟"
 
 
 def _ended_asking(said: str) -> str:
-    return str(said or "").rstrip().rstrip("»\"'”)")[-1:] in _QUESTION_MARKS
+    last = str(said or "").rstrip().rstrip("»\"'”)")[-1:]
+    return bool(last) and last in _QUESTION_MARKS      # a turn that said nothing asked nothing
 
 
 def _cards_that_acted(tasks) -> set[str]:
@@ -92,6 +99,43 @@ def order_unserved(brief) -> bool:
         return False
 
 
+def ordered_card(brief) -> str:
+    """The base id of the ONE card a sure order aims at (`catalog_widget`, else the card of `screen_action`); '' when
+    it names none, or the canvas."""
+    try:
+        from nucleo.request import base
+        from nucleo.turn import brief as tb, verdicts
+        for key in (tb.CATALOG_KEY, tb.TARGET_KEY):
+            choice, info = verdicts.read(brief, key, None)
+            card = base(str(choice or "").partition(":")[0])
+            if info and card not in ("", "none", "neither"):
+                return card
+    except Exception as e:  # noqa: BLE001 — unread names no card: nothing is said
+        logger.debug(f"unserved: the ordered card was not read — {e!r}")
+    return ""
+
+
+def _addresses(call, card: str) -> bool:
+    """Does this model call address `card` — by any argument naming it, or as the tool that drives it?"""
+    from nucleo.acts.media import CARD_OF_TOOL
+    from nucleo.request import base
+    if not isinstance(call, dict):
+        return False
+    if CARD_OF_TOOL.get(call.get("name")) == card:
+        return True
+    args = call.get("args") if isinstance(call.get("args"), dict) else {}
+    return any(isinstance(v, str) and base(v) == card for v in args.values())
+
+
+def served_elsewhere(brief, tasks, model_calls) -> bool:
+    """A sure order names ONE card, no data-op ran this turn (what the model did was show or open something), and
+    neither a call of the model nor a door of the turn touched that card. A turn that WROTE somewhere else served the
+    order its own way: its doors' verdicts speak for it."""
+    if tasks or not order_unserved(brief) or not (card := ordered_card(brief)):
+        return False
+    return card not in _cards_that_acted(tasks) and not any(_addresses(c, card) for c in model_calls or ())
+
+
 def _own_rows_out(missed) -> list:
     """Minus the acts a programme is walking right now (V2-909, stage `own`): the row has no outcome yet, so «that was
     not done» is not a fact of this turn — its one report comes when the walk ends."""
@@ -126,10 +170,11 @@ def outcomes(tasks, model_calls, *, said: str, quiet: bool, held: bool = False, 
                     out.append(_reply.Outcome(V.UNMET.name, card, action, reason=line, said=line))
                     _play.line(card, action, V.UNMET.name)      # shadow: an outcome claimed for a live programme
             return out
-        if quiet and not any(isinstance(c, dict) and c.get("name") for c in model_calls or ()):
-            if brief is None:
-                from nucleo.turn import brief_turn
-                brief = brief_turn.of_this_turn()
+        if brief is None:
+            from nucleo.turn import brief_turn
+            brief = brief_turn.of_this_turn()
+        called = any(isinstance(c, dict) and c.get("name") for c in model_calls or ())
+        if (quiet and not called) or (called and served_elsewhere(brief, tasks, model_calls)):
             if order_unserved(brief):
                 line = str(getattr(lang, "reply_nothing_done", "") or "")
                 if line:
