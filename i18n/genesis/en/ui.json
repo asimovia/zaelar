@@ -1311,6 +1311,7 @@
  "widgets.mensajeria.clear_criteria": "Clear the criterion (back to the pending view)",
  "widgets.mensajeria.compose_ph": "Type your reply… (or say it out loud and it lands here)",
  "widgets.mensajeria.confirm.compose": "Shall I send that email?",
+ "widgets.mensajeria.confirm.create_group": "Shall I create the group “{name}” with {members}?",
  "widgets.mensajeria.confirm.discard_draft": "Shall I discard that draft? It is deleted and nothing is sent.",
  "widgets.mensajeria.confirm.clear_signature": "Shall I delete your whole email signature?",
  "widgets.mensajeria.confirm.reply": "Shall I send that reply on its own channel?",

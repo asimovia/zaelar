@@ -124,7 +124,9 @@ def bind(brief, *, model_answered: bool = False, asks=None) -> tuple[str, list]:
             return _which(asks)
         if str(choice) != NONE and ask_id not in by_id and conf >= floor:
             return NOTHING, []
-        return _which(asks)
+        if model_answered and len(asks) == 1 and ask_id in by_id and not asks[0].get("candidates"):
+            return ANSWER, asks      # the model routed it and the reader, however unsure, names the same ONE row —
+        return _which(asks)          # as with no verdict at all; two readers that agree are not a doubt
     except Exception:  # noqa: BLE001 — a classifier may never break a turn; nothing is bound blind
         return NOTHING, []
 

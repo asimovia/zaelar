@@ -92,7 +92,8 @@ def _his_words(ctx: dict, out: Reading, slot: str, key: str) -> None:
     # «Raquel Salinas» into «nombre» («te dije su nombre y su apellido»). A name he never said is the agent's and is
     # asked as such; the card asks «which one» among the people the name reaches.
     v = out.inner.get(key)
-    his = isinstance(v, str) and v.strip() and message.is_his(v, [ctx["said"]])
+    each = [x for x in v if str(x or "").strip()] if isinstance(v, (list, tuple)) else [v]   # several people: every one
+    his = bool(each) and all(isinstance(x, str) and x.strip() and message.is_his(x, [ctx["said"]]) for x in each)
     out.sources[slot] = "his" if his else _own(ctx, v)
 
 

@@ -261,7 +261,8 @@ def own_question(wid: str, action: str, payload: dict) -> str:
         # the manifest's other placeholders are the call's own payload keys; a sentence with a hole is no question
         for key in {k for _l, k, _s, _c in Formatter().parse(human) if k}:
             if key != "item":
-                val = str((payload or {}).get(key) or "").strip()
+                val = (payload or {}).get(key) or ""
+                val = ", ".join(str(x) for x in val) if isinstance(val, (list, tuple)) else str(val).strip()
                 if not val:
                     return ""
                 human = human.replace("{" + key + "}", val)
