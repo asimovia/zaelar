@@ -172,9 +172,11 @@ def gate(rec, payload: dict) -> Exit:
         _emit("🚫 the act would refuse this call — nothing is asked", f"{wid}:{act} · {why}"[:200],
               {"id": str(getattr(rec, "task_id", "")), "exit": f"{wid}:{act}", "error": str(no.get("error") or "")})
         return Exit(payload, refused=f"{wid}:{act} would be refused ({no.get('error') or 'refused'}): {why}")
-    # His turns since the errand began, plus the words the row itself kept (a send task runs before the turn that
-    # commissioned it has recorded his sentence, so the ring alone may not hold them yet).
-    said = " ".join([*_ob.errand_words(rec), *(getattr(rec, "heard", None) or [])])
+    # His words FOR THIS REQUEST: a record that keeps them itself (`own_words`, a send task's row) by them alone — what
+    # he said for ANOTHER order is asked; any other record, his turns since the errand began plus the words it kept.
+    heard = getattr(rec, "heard", None) or []
+    heard = [heard] if isinstance(heard, str) else list(heard)
+    said = " ".join(heard if (heard and getattr(rec, "own_words", False)) else [*_ob.errand_words(rec), *heard])
     from nucleo.turn import brief as _tb   # the commissioning turn's reading (V2-852), its doors awaited by `cross`
     turn = _tb.revived(getattr(rec, "reading", None))
     from nucleo.acts import card, message
@@ -210,7 +212,10 @@ def gate(rec, payload: dict) -> Exit:
         not got.sources or "stranger" in got.sources.values())
     mode = message.asked_if_leaving(_wa.FAST, None, wid, act, payload=inner, said=said, stranger=stranger)
     q = taint_question(rec, "message", act, who, channel) if stranger else ""
-    if not q and (mode == _wa.CONFIRM or "unknown" in got.sources.values()):   # an unread slot asks (K2b R1)
+    # ONE reading of «did he name this person»: a declared recipient slot's source decides (`agent`: nobody he named
+    # for THIS request); the leave rule's reading only where none is declared. An unread slot asks (K2b R1).
+    unnamed = got.sources["recipient"] == "agent" if "recipient" in got.sources else mode == _wa.CONFIRM
+    if not q and (unnamed or "unknown" in got.sources.values()):
         # the leave rule's question: a recipient his words do not name (with the taint: one only a stranger named)
         try:
             from i18n import langs as _lg
