@@ -756,7 +756,7 @@
   "his_words_head": "SUS PALABRAS (literales — la petición de arriba es la paráfrasis del turno; esto es lo que dijo):",
   "first_act_head": "TU PRIMER PASO — el turno ya identificó el acto: widget «{widget}», acción «{action}». Sus campos declarados:",
   "first_act_field": "  · {field}: {desc}",
-  "first_act_do": "Ejecútalo PRIMERO, antes de buscar nada: escribe `step.json` con {call} (cada valor sale de sus palabras; un campo que no puedas rellenar con ellas es una pregunta para él, no una búsqueda) y ejecuta `python -m nucleo.cli.bridge act widget_data @step.json`. Solo si el widget lo rechaza, busca más.",
+  "first_act_do": "Ejecútalo PRIMERO, antes de buscar nada: escribe `step.json` con {call} (cada valor sale de sus palabras) y ejecuta `python -m nucleo.cli.bridge act widget_data @step.json`. Solo si el widget lo rechaza, busca más.",
   "goal_head": "OBJETIVO (respétalo al pie de la letra):",
   "catalog_unknown": "No hay familia «{name}». Las familias son: {names}.",
   "family_text": {
