@@ -47,9 +47,22 @@ class _Lifecycle:
             self._mailbox_sub = bus.subscribe(ingest.TOPIC_MAILBOX)
         if self._failed_sub is None:
             self._failed_sub = bus.subscribe(ingest.TOPIC_SEND_FAILED)
+        self._report_switched_off()
         if self._task is None or self._task.done():
             self._task = asyncio.create_task(self._consume())
         logger.info("mensajeria owner started (triage in widget; stateless connectors)")
+
+    def _report_switched_off(self) -> None:
+        """A connector whose switch is off never starts, so it never reports: its link state is known from the switch
+        and written here, by the store's one writer — «nothing is connected» is then a fact, never a guess."""
+        try:
+            from config import connectors as _switch
+            from connectors.messaging import store as _msgstore
+            for platform in _msgstore.PLATFORMS:
+                if not _switch.enabled(platform):
+                    _msgstore.set_platform_status(platform, "off", None, None)
+        except Exception as e:  # noqa: BLE001 — unreported is «unknown»: the usual choice stands
+            logger.debug(f"mensajeria owner: switched-off links not reported ({e!r})")
 
     async def stop(self) -> None:
         if self._task:

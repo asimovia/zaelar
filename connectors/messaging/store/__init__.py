@@ -104,10 +104,11 @@ def set_platform_status(platform: str, status: str, qr=None, detail=None) -> dic
     it below the loader / in the error card. Does not touch other platforms or the item list."""
     db = load()
     cur = (db.get("platforms") or {}).get(platform) or {}
-    if cur.get("status") == status and cur.get("qr") == qr and cur.get("detail") == detail:
+    if cur.get("status") == status and cur.get("qr") == qr and cur.get("detail") == detail and cur.get("reported"):
         return db      # NO real change (e.g. "Waiting for scan" poll repeats same state) -> do not re-save:
                        # bumping `updated` every second would defeat widgets/store.py's change-gate and flood SSE.
-    db["platforms"][platform] = {"status": status, "qr": qr, "detail": detail}
+    # `reported`: the connector itself said this — a resting «off» nobody reported is unknown, not down
+    db["platforms"][platform] = {"status": status, "qr": qr, "detail": detail, "reported": True}
     db["updated"] = _now()
     return save(db)
 

@@ -94,8 +94,10 @@ def _takes_kw(fn, name: str) -> bool:
 
 def connected_platforms(db: dict | None = None) -> set[str] | None:
     """The platforms whose link is up, as this card's store reflects it (`platforms[p].status`). None when that is
-    UNKNOWN: unreadable, or no link reports up at all — the store's resting value («off» everywhere) is what a card
-    whose connectors have not reported looks like, and a guess of «all down» would refuse sends that can leave."""
+    UNKNOWN: unreadable, or no link is up and some connector has not REPORTED yet — the store's resting value («off»)
+    is what a connector that has not spoken looks like, and a guess of «all down» would refuse sends that can leave.
+    An empty set is KNOWN: every connector reported its state (`reported`, written with each report) and none is
+    connected — an order queued there would wait on a loop that never drains it."""
     try:
         if db is None:
             from .. import data as _d
@@ -104,7 +106,9 @@ def connected_platforms(db: dict | None = None) -> set[str] | None:
         if not isinstance(plats, dict):
             return None
         up = {p for p in PLATFORMS if str((plats.get(p) or {}).get("status") or "") == "connected"}
-        return up or None
+        if up:
+            return up
+        return set() if all((plats.get(p) or {}).get("reported") for p in PLATFORMS) else None
     except Exception as e:  # noqa: BLE001 — unknown is not «down»: the usual choice stands
         import logging
         logging.getLogger("zaelar.widgets.mensajeria").debug(f"targets: link state unreadable: {e!r}")
@@ -243,10 +247,11 @@ def resolve_target(payload: dict | None = None) -> dict:
     up = connected_platforms()
     takes = _takes_kw(d.channel_for, "connected")
     ch = d.channel_for(c, want, **({"connected": up} if takes and not want else {}))
-    if want and ch and up is not None and want not in up:
-        # He NAMED a channel whose link is down: nothing leaves, and the reply OFFERS the contact's channels that are
-        # up — never a resend through one of them on his behalf (a send to a third party crosses his consent).
-        return channel_down(c.get("name") or who, want, alternatives(c, up, d, but=want))
+    if ch and up is not None and (down := str(ch.get("platform") or "").strip().lower()) not in up:
+        # The channel he named — or the only one the choice leaves — has its link down: nothing leaves, and the reply
+        # OFFERS the contact's channels that are up — never a resend through one of them on his behalf (a send to a
+        # third party crosses his consent).
+        return channel_down(c.get("name") or who, down, alternatives(c, up, d, but=down))
     if not ch:
         have = [str(x.get("platform")) for x in d.channels(c)]
         name = c.get("name") or who
