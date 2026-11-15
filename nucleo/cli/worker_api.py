@@ -101,7 +101,12 @@ async def _one_act(rec, action: str, payload: dict) -> dict:
     if pol == DENY:
         return {"ok": False, "denied": True, "error": deny_reason(action, payload)}
 
+    from nucleo.workers import missing_datum       # a datum only he gives: the one question, nothing else
+    if (_held := missing_datum.held(rec, action)):
+        return {"ok": False, "denied": True, "error": _held}
+
     if action == "ask_user":
+        missing_datum.clear(rec)
         q = (payload or {}).get("question") or (payload or {}).get("text") or ""
         opts = (payload or {}).get("options")
         if isinstance((payload or {}).get("remote"), dict):     # an exchange with a network agent: its text, not ours
@@ -140,7 +145,12 @@ async def _one_act(rec, action: str, payload: dict) -> dict:
         return {"ok": False, "error": _why}
     from nucleo.workers import taint as _taint      # a stranger's text this act renders marks THIS session (§4a)
     with _taint.during(rec, source=str((payload or {}).get("tool") or action)):
-        return await _exec_allow(action, payload or {}, rec)
+        res = await _exec_allow(action, payload or {}, rec)
+    if action == "widget_data":
+        if res.get("ok") is not False:
+            missing_datum.clear(rec)
+        res = missing_datum.on_refusal(rec, payload or {}, res)
+    return res
 
 
 @router.post("/api/worker/say")
