@@ -18,7 +18,7 @@
   "last": "reported",
   "passes": {"confirming": "executing"},
   "retries": {"verifying": {"event": "absent", "times": 1}},
-  "deadline_s": {"resolving": 8, "asking": 120, "confirming": 120, "executing": 30, "verifying": 4},
+  "deadline_s": {"resolving": 8, "asking": 120, "confirming": 120, "executing": 30, "verifying": 26},
   "says": {
     "ask": ["asking"],
     "confirm": ["confirming"],
