@@ -306,6 +306,13 @@
         "members": "lista de nombres de contactos",
         "text": "opcional: primer mensaje"
       },
+      "on_his_behalf": "members",
+      "slots": {
+        "recipient": {"key": "members", "from": "his_words"},
+        "channel": {"key": "platform", "from": "reading"},
+        "text": {"key": "text", "from": "composed"}
+      },
+      "confirm_q": "¿Creo el grupo «{name}» con {members}?",
       "confirm": false,
       "effects": [
         "present.mount",

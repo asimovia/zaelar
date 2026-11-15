@@ -5333,6 +5333,22 @@ DOMAINS: list[dict] = [
                                  "the chain reports the row it opened (`_opened`) — disarmed (no `HELD` return) 4 reds",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/turn/test_a_turn_that_holds_its_send_task_opens_no_second_row.py"]},
+        {"id": "2.1762", "title": "The model answering the ONE waiting row and the binding reader naming that same row, at "
+                                 "any confidence, bind it (`worker_api_bind.bind`: ANSWER, as with no verdict at all); a "
+                                 "`none`, two rows, a row with candidates, or no answer from the model keep what they did "
+                                 "— disarmed (the module re-read without that branch) the unsure pick is asked again",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/turn/test_two_readers_that_name_the_one_waiting_row_bind_it.py"]},
+        {"id": "2.1761", "title": "A group he ordered with the members he named leaves a task's exit door unasked: "
+                                 "`mensajeria:create_group` declares its slots (recipient ← `members` by his words, channel "
+                                 "← `platform` by the reading, text composed) and its own sentence in ES and EN; a LIST "
+                                 "recipient is his only when every member is (`exit_slots._his_words`), a list placeholder "
+                                 "reads as the names joined (`confirm_gate.own_question`); full or first names pass, a "
+                                 "tainted session with his channel read passes, one member he never named is asked with "
+                                 "the act's own sentence (no act id, no on-behalf words), a group with no name falls to "
+                                 "the on-behalf line — disarmed (a list read as the agent's) the named group is asked",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/workers/test_a_group_he_ordered_leaves_without_an_on_behalf_question.py"]},
         {"id": "2.1760", "title": "A name under a key the action does not declare is the row it names "
                                  "(`payload_ref`): after the id field and `name`/`contact`, the ONE text under an "
                                  "undeclared key; two name nothing, non-strings are ignored, a creation points at no row; "

@@ -1311,6 +1311,7 @@
  "widgets.mensajeria.clear_criteria": "Quitar el criterio (volver a la vista de pendientes)",
  "widgets.mensajeria.compose_ph": "Escribe tu respuesta… (o dila por voz y aparecerá aquí)",
  "widgets.mensajeria.confirm.compose": "¿Envío ese correo?",
+ "widgets.mensajeria.confirm.create_group": "¿Creo el grupo «{name}» con {members}?",
  "widgets.mensajeria.confirm.discard_draft": "¿Descarto ese borrador? Se borra y no se envía.",
  "widgets.mensajeria.confirm.clear_signature": "¿Borro tu firma de correo entera?",
  "widgets.mensajeria.confirm.reply": "¿Envío esa respuesta por su propio canal?",
