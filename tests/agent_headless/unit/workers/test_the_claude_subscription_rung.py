@@ -182,3 +182,21 @@ def test_every_worker_event_names_the_tier_and_the_real_model(monkeypatch):
     assert s._provider == SUB
     call = next(x for k, x in rows if k == "model_call")
     assert call["provider"] == SUB and call["model"] == "claude-sonnet-5-5"
+
+
+# ── a hand-configured tier on the same URL is NOT the subscription rung ───────────────────────────────────────
+def test_a_hand_made_tier_on_the_same_url_keeps_its_key_and_its_endpoint(monkeypatch):
+    """`code_agent.providers` naming api.anthropic.com with an API key: no oauth, no inherited fast slot."""
+    _cfg(monkeypatch, providers=[{"name": "mine", "base_url": "https://api.anthropic.com", "env": ["MY_ANTHROPIC_KEY"],
+                                  "model": "claude-opus-5-5"}])
+    monkeypatch.setenv("MY_ANTHROPIC_KEY", "sk-ant-api-test")
+    env = prov.env_for_worker()
+    assert env["ANTHROPIC_BASE_URL"] == "https://api.anthropic.com" and env["ANTHROPIC_AUTH_TOKEN"] == "sk-ant-api-test"
+    assert "CLAUDE_CODE_OAUTH_TOKEN" not in env and "ANTHROPIC_SMALL_FAST_MODEL" not in env
+
+
+def test_a_head_configured_on_that_url_stays_in_the_chain_without_the_subscription_token(monkeypatch):
+    _cfg(monkeypatch, base_url="https://api.anthropic.com", model="claude-opus-5-5")
+    _keys(monkeypatch, sub=False)
+    assert [t["name"] for t in prov.chain()] == ["api.anthropic.com", "z.ai", "deepseek", "licencia-claude"]
+    assert "auth" not in prov.chain()[0]
