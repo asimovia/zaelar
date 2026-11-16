@@ -35,7 +35,7 @@ import time
 
 from loguru import logger
 from nucleo.circuit import baseline as _baseline
-from nucleo.circuit import continuation as _cont, spec_when as _sw
+from nucleo.circuit import continuation as _cont
 
 TEMPLATE_KEY = "done_when"          # in a manifest action spec
 END_KEY = "end_state"               # the brief question
@@ -87,7 +87,7 @@ def _fill(node, payload: dict):
         return out
     if isinstance(node, list):
         out = []
-        for v in _sw.kept_all(node, payload, _PLACEHOLDER):   # a CONDITIONAL clause goes when its field came empty
+        for v in node:
             got = _fill(v, payload)
             if got is None and v is not None:
                 return None

@@ -58,11 +58,12 @@ async def run_listener(stop: "asyncio.Event | None" = None) -> None:
                 _unborn(ctx)
                 logger.info(f"dispatch: escalada RECHAZADA (agente parado): {request[:80]}")
                 continue
-            # DEDUP at the source of truth (2026-07-15): a live session already on this request gets it INJECTED as a
-            # refinement, never a 2nd worker (the two «creating a widget…» bug).
+            # DEDUP in the FUENTE DE VERDAD (§session 2026-07-15): if already there is a session live atendiendo this same
+            # request, NO abrimos a 2º worker (the bug of the two «creando a widget…»). Se INYECTA como
+            # refinamiento (the generador of widgets, build atomico, it ignora with gracia; a worker live it aprovecha).
             # V2-851 F2e — an ANSWERED question's task names its row by identity (`answers`): never a refinement of
-            # another errand, never a parked one, never a continuation of an ended one; nor a sibling of its turn.
-            _bound, _sib = bool(ctx.get("answers")), __import__("nucleo.dispatch.siblings", fromlist=["x"]).same_turn
+            # another errand, never a parked one, never a continuation of an ended one.
+            _bound = bool(ctx.get("answers"))
             dup, _ev = ("", {}) if _bound else _d.dedup_scan(
                 request, kind if kind != "generic" else _d._kind_of(ctx.get("errand_kind")))
             # `by` now comes from the deciding loop instead of being assumed here: a same-widget hit used to
@@ -84,7 +85,6 @@ async def run_listener(stop: "asyncio.Event | None" = None) -> None:
                         # «separate» — the same confusion as the mute miss, one layer in. Recorded, not
                         # changed: the fail-open stays, an unreachable judge must never block an errand.
                         _model = f"error:{type(e).__name__}"
-            dup = "" if dup and _sib(ctx, dup) else dup
             from nucleo.acts import surface_owner as _own
             dup and _own.dispatcher_said(ctx, request, dup, _dup_by)   # V2-844 F0: does it agree with the flow door?
             if dup:
@@ -124,7 +124,7 @@ async def run_listener(stop: "asyncio.Event | None" = None) -> None:
                             pdup = await asyncio.to_thread(_d.about_a_live_errand, request, _parked) or None
                         except Exception:  # noqa: BLE001 — fail-open, like the live half
                             pdup = None
-                if pdup and not _sib(ctx, pdup):
+                if pdup:
                     _own.dispatcher_said(ctx, request, pdup, "parked")
                     question = _absorb_into(pdup, request, key, ctx)
                     try:

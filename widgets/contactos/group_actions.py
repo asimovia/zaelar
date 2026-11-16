@@ -30,18 +30,12 @@ def _a_create_group(action, payload, q, db, contacts, now) -> dict:
     name = _d.re.sub(r"\s+", " ", str(payload.get("name") or payload.get("group") or "")).strip()
     if not name:
         return {"ok": False, "error": "create_group necesita el nombre del grupo (`name`)", "missing": "name"}
-    people, unresolved = _people_of(db, payload)
-    if unresolved:                      # nobody is left out in silence: the group waits for who they are
-        return _unresolved(db, "create_group", unresolved)
     g, created = _d._groups.create(db, name)
-    added = [c for c in people if _d._groups.set_member(g, c, True)]
+    added = [c for c in _contacts_of(db, payload) if _d._groups.set_member(g, c, True)]
     for c in added:
         _d._touch(c, now)
     _d.store.save(_d.WIDGET_ID, db)
-    out = _group_result(db, q, g, created=created, added=[_d._public(c) for c in added])
-    # the answer NAMES whom it put in (the turn's receipt reads `title` and `added`): a «Ana» that matched one Ana of
-    # two is said, so he sees which one it was
-    return {**out, "title": name, "added": [str(c.get("name") or "") for c in added]}
+    return _group_result(db, q, g, created=created, added=[_d._public(c) for c in added])
 
 
 def _a_rename_group(action, payload, q, db, contacts, now) -> dict:
@@ -79,49 +73,15 @@ def _a_delete_group(action, payload, q, db, contacts, now) -> dict:
     return d
 
 
-def _people_of(db, payload) -> tuple[list[dict], list[str]]:
-    """(the contacts the call names, the names it gave that reach nobody or several). An id is exact; a NAME is the
-    one contact that carries all its words (folded: accents, case and trailing punctuation do not count)."""
+def _contacts_of(db, payload) -> list[dict]:
     ids = payload.get("contactIds")
     ids = (list(ids) if isinstance(ids, (list, tuple)) else str(ids or "").split(",")) + [payload.get("contactId")]
-    out, unresolved = [], []
+    out = []
     for cid in ids:
-        ref = str(cid or "").strip()
-        if not ref:
-            continue
-        c = _d._find(db, ref) or _by_name(db, ref)
-        if c is None:
-            unresolved.append(ref)
-        elif c not in out:
+        c = _d._find(db, str(cid or "").strip())
+        if c is not None and c not in out:
             out.append(c)
-    return out, unresolved
-
-
-def _fold(text: str) -> list[str]:
-    import unicodedata
-    plain = "".join(ch for ch in unicodedata.normalize("NFKD", str(text or "")) if not unicodedata.combining(ch))
-    return [t.strip(".,;:!?¡¿«»\"'()") for t in plain.lower().split() if t.strip(".,;:!?¡¿«»\"'()")]
-
-
-def _by_name(db, name: str):
-    """A member given by NAME (a group of his people asked for by voice): the one contact it names, else nobody —
-    a name that reaches several is not guessed (the refusal names it, `_unresolved`)."""
-    want = _fold(name)
-    if not want:
-        return None
-    rows = [c for c in db.get("contacts", []) if all(t in _fold(c.get("name")) for t in want)]
-    exact = [c for c in rows if _fold(c.get("name")) == want]
-    pick = exact if exact else rows
-    return pick[0] if len(pick) == 1 else None
-
-
-def _unresolved(db, action: str, names: list[str]) -> dict:
-    """A refusal that NAMES who could not be found or is ambiguous, with the candidates each one reaches."""
-    cands = {n: [str(c.get("name") or "") for c in db.get("contacts", [])
-                 if all(t in _fold(c.get("name")) for t in _fold(n))][:5] for n in names}
-    said = "; ".join(f"«{n}»" + (f" → {', '.join(v)}" if v else "") for n, v in cands.items())
-    return {"ok": False, "error": f"{action}: no encuentro con certeza a {said} — di cuál, o añádelo primero",
-            "field": "contactIds", "names": names, "options": [x for v in cands.values() for x in v]}
+    return out
 
 
 def _a_add_to_group(action, payload, q, db, contacts, now) -> dict:
@@ -129,9 +89,7 @@ def _a_add_to_group(action, payload, q, db, contacts, now) -> dict:
     g = _group_of(db, payload)
     if not g:
         return _no_group(db, payload)
-    people, unresolved = _people_of(db, payload)
-    if unresolved:                      # in or out, a name that reaches nobody or several is said, never skipped
-        return _unresolved(db, "add_to_group", unresolved)
+    people = _contacts_of(db, payload)
     if not people:
         return {"ok": False, "error": "add_to_group necesita a quién: `contactId` o `contactIds`"}
     on = not _d._truthy(payload.get("remove"), default=False)

@@ -72,21 +72,10 @@ def hold(wid: str, leaves: list, said: str, question: str, *, brief=None) -> str
     card's acts declare no slots (the caller keeps its utterance)."""
     from nucleo.workers import exit_slots
     from widgets import effects
-    # The turn's reading of WHICH act (`screen_action`, at any confidence): on another card, our question is a
-    # clarification between cards («in Messages or in Contacts?»), never a send of this one (measured: it opened
-    # `send_to` and his answer resumed a worker); on an act of this card that leaves, that act is the one asked about.
-    if brief is None:
-        from nucleo.turn import brief_turn
-        brief = brief_turn.of_this_turn()
-    from nucleo.turn import brief as _tb, verdicts
-    named, _info = verdicts.read(brief, _tb.TARGET_KEY, None, min_confidence=0.0) if brief is not None else (None, None)
-    n_wid, _sep, n_act = str(named or "").partition(":")
-    if n_wid and base(n_wid) not in (base(wid), "none", "neither"):
-        return ""
     acts = effects._manifest(base(wid)).get("actions") or {}
-    # the card's PRIMARY act first (`leaves` is alphabetical: «¿a cuál Raquel?» once opened a `forward` with nothing
-    # to forward, multi-turn bench 2026-11-12) — after the act the turn's reading named, when it is one that leaves
-    ordered = sorted(leaves, key=lambda a: (a != n_act, not bool((acts.get(a) or {}).get("primary"))))
+    # the card's PRIMARY act first: `leaves` is alphabetical, and «¿a cuál Raquel?» once opened a `forward` with
+    # nothing to forward (multi-turn bench 2026-11-12) because «forward» sorts before «send_to»
+    ordered = sorted(leaves, key=lambda a: not bool((acts.get(a) or {}).get("primary")))
     act = next((a for a in ordered if any(d.get("from") == "his_words"
                                            for d in exit_slots.declared(base(wid), a).values())), "")
     if not act:
@@ -95,7 +84,7 @@ def hold(wid: str, leaves: list, said: str, question: str, *, brief=None) -> str
     who_key = next(str(d.get("key") or s) for s, d in exit_slots.declared(base(wid), act).items()
                    if d.get("from") == "his_words")
     payload = {who_key: word} if word and len(rows) == 1 else {}
-    uid = retain(wid, act, payload, said, reading=(_tb.carried(brief) or None) if brief is not None else None)
+    uid = retain(wid, act, payload, said, reading=brief)
     if not uid:
         return ""
     art = artefact(uid)

@@ -28,12 +28,6 @@ def _optional(desc) -> bool:
     return any(m in d for m in _OPTIONAL_MARKS)
 
 
-def declared_optional(desc) -> bool:
-    """The field's declaration says it may be left out: `_optional`'s marks, or a description that OPENS with the word
-    (`"opcional: primer mensaje"`). One reader for the doors that must not ask for an optional field."""
-    return _optional(desc) or str(desc or "").lower().lstrip().startswith(("opcional", "optional"))
-
-
 def _base_of(widget_id: str) -> str:
     from nucleo.turn import brief as _tb
     return _tb._base_of(widget_id)

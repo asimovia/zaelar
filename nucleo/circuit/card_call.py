@@ -13,14 +13,9 @@ def card_call(wid: str, action: str, payload: dict | None) -> tuple[str, dict]:
     the row keeps them («jueves» → the date, «8 pm» → 20:00). Measured 2026-11-11: an end state rendered from his raw
     words was compared with the normalised row, so a move that landed was judged unmet and said back as a failure.
     No hook, or an unreadable one: the call as given."""
-    base = str(wid or "").split("::", 1)[0].strip().lower()
-    try:   # the card's door folds the declared synonyms first (`members` → `contactIds`): the end state reads that
-        from widgets import contract
-        payload = contract.fold_aliases(base, str(action or ""), dict(payload or {}))
-    except Exception as e:  # noqa: BLE001
-        logger.debug(f"spec: {wid} aliases unread ({e!r})")
     try:
         import importlib
+        base = str(wid or "").split("::", 1)[0].strip().lower()
         hook = getattr(importlib.import_module(f"widgets.{base}.data"), "spec_call", None)
         if callable(hook):
             a, p = hook(str(action or ""), dict(payload or {}))

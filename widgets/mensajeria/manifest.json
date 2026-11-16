@@ -212,7 +212,6 @@
         "channel": "opcional con contact: whatsapp | telegram | email"
       },
       "types": {"reply_all": "bool"},
-      "done_when": {"widget": "mensajeria", "field": "draft", "expect": "changed"},
       "effects": [
         "present.mount"
       ]
@@ -308,10 +307,9 @@
         "members": "lista de nombres de contactos",
         "text": "opcional: primer mensaje"
       },
-      "without_channel": {"act": "contactos:create_group", "keys": {"members": "contactIds", "name": "name"}},
       "on_his_behalf": "members",
       "slots": {
-        "recipient": {"key": "members", "from": "his_words", "many": true},
+        "recipient": {"key": "members", "from": "his_words"},
         "channel": {"key": "platform", "from": "reading"},
         "text": {"key": "text", "from": "composed"}
       },
