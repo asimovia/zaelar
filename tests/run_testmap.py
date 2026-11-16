@@ -5339,7 +5339,7 @@ DOMAINS: list[dict] = [
                                  "— disarmed (the module re-read without that branch) the unsure pick is asked again",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/turn/test_two_readers_that_name_the_one_waiting_row_bind_it.py"]},
-        {"id": "2.1763", "title": "The Brain Worker's optional Claude-subscription rung (V2-910) goes ahead of the titular "
+        {"id": "2.1763", "title": "The Brain Worker's optional Claude-subscription rung (V2-913) goes ahead of the titular "
                                  "only where its own credential resolves, is handed to the CLI as its login (direct) or "
                                  "routed with the process's own credential (mediated), parks until the reset a 5-hour or "
                                  "weekly window states and relays to the titular, and every worker event names it",
