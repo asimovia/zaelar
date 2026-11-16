@@ -9,7 +9,7 @@ change in the local MIRROR (deletes the appointment from the calendar), and veri
     python -m nucleo.cli.widget card agenda                      # its CARD: actions + their fields, no data
     python -m nucleo.cli.widget read agenda                      # READ the widget: manifest + data + ITEMS with their ids
     python -m nucleo.cli.widget data agenda drop '{"itemId":"m_itv_23jul"}'   # DATA-OP (uses REAL ids from `read`)
-    python -m nucleo.cli.widget data contactos create_group name="cena" contactIds='["c1","c2"]'  # FIELDS as args
+    python -m nucleo.cli.widget data contactos create_group name='cena' contactIds='c1,c2'  # FIELDS as args (text)
     python -m nucleo.cli.widget data results present @informe.json           # LARGE PAYLOAD: from a file
     python -m nucleo.cli.widget rows agenda list '{"collection":"meetings","where":{"date<":"2026-09-16"}}'
     python -m nucleo.cli.widget rows agenda delete '{"collection":"meetings","where":{"title~":"crypto"}}'
@@ -168,18 +168,23 @@ def _declared_payload(wid: str, action: str) -> dict:
 
 def _field_args(wid: str, action: str, args: list[str]):
     """`key=value` arguments naming the action's DECLARED fields → its payload, so an act is ONE command (no file to
-    write first: measured, every act with a payload cost the worker two model turns, Write then Bash). A value that
-    reads as JSON (a list, an object, a number, true/false/null) is that value; anything else is the text as given.
-    None when an argument is not `field=value` over a declared field (the JSON and bare-sentence paths then apply)."""
-    fields = set((_declared_payload(wid, action).get("payload") or {}))
+    write first: measured, every act with a payload cost the worker two model turns, Write then Bash). A value is
+    the TEXT as given — a phone number, «true», «$50» stay text — unless the field DECLARES a list or an object
+    (its manifest value is one), when it is read as JSON. None when an argument is not `field=value` over a declared
+    field (the JSON and bare-sentence paths then apply)."""
+    spec = _declared_payload(wid, action).get("payload") or {}
     out = {}
     for a in args:
         key, sep, val = str(a).partition("=")
-        if not sep or key not in fields:
+        if not sep or key not in spec:
             return None
-        try:
-            out[key] = json.loads(val) if val[:1] in "[{-0123456789" or val in ("true", "false", "null") else val
-        except ValueError:
+        if isinstance(spec[key], (list, dict)):
+            try:
+                out[key] = json.loads(val)
+            except ValueError:
+                print(f"`{key}` is a list: write it as JSON, e.g. {key}='[\"a\", \"b\"]'")
+                return None
+        else:
             out[key] = val
     return out or None
 
