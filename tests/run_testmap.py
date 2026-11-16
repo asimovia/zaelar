@@ -5359,10 +5359,8 @@ DOMAINS: list[dict] = [
         {"id": "2.1763", "title": "The Brain Worker's optional Claude-subscription rung (V2-913) goes ahead of the titular "
                                  "only where its own credential resolves, is handed to the CLI as its login (direct) or "
                                  "routed with the process's own credential (mediated), parks until the reset a 5-hour or "
-                                 "weekly window states and relays to the titular, and every worker event names it",
-            "ch": UNIT,
-            "paths": ["tests/agent_headless/unit/workers/test_the_claude_subscription_rung.py"]},
-        {"id": "2.1780", "title": "Every account of a mediated deployment gets the Claude-subscription rung by default (V2-913): "
+                                 "weekly window states and relays to the titular, and every worker event names it; "
+                                 "every account of a mediated deployment gets it by default (was node 2.1780): "
                                  "behind mediated egress the rung runs with the process's own egress credential, no "
                                  "hand-made code_agent.providers and never the token; outside mediated egress that credential "
                                  "creates nothing; the main model and a cheaper fast slot come from the table",
@@ -5390,8 +5388,7 @@ DOMAINS: list[dict] = [
                                  "row (never a worker, never a row waiting on no question); a slot with no send line asks by "
                                  "its declared label",
             "ch": UNIT,
-            "paths": ["tests/agent_headless/unit/turn/test_a_complete_leaving_call_runs_on_its_row.py",
-                      "tests/agent_headless/unit/turn/test_a_leaving_act_is_read_by_its_declaration.py"]},
+            "paths": ["tests/agent_headless/unit/turn/test_a_complete_leaving_call_runs_on_its_row.py"]},
         {"id": "2.1784", "title": "Every order a widget queues to a connector has a receipt, and the receipt is the end state "
                                  "(V2-919 M3): the group order opens its outbox row by ref, named by the group; the "
                                  "connector's chat row carrying the order's ref settles it sent, msg.send_failed settles it "
