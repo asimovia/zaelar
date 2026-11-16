@@ -124,13 +124,12 @@ def act_block(reading: dict | None, context: dict | None = None, trace: str = ""
 
 def required(wid: str, act: str, fields: dict) -> list[str]:
     """The fields the command shows as placeholders: the ones the action needs. An optional one (its description says
-    so, `payload_fill._optional` or a leading «opcional/optional») or a declared non-text one (a boolean the widget
+    so, `payload_fill.declared_optional`) or a declared non-text one (a boolean the widget
     door converts) is listed above, never put in the command — a placeholder invites a value his words never gave."""
     from nucleo.flash import payload_fill
     from widgets import field_types
     typed = {k for k, t in field_types.declared(payload_fill._base_of(wid), act).items() if t == field_types.BOOL}
-    return [k for k, d in fields.items() if k not in typed and not payload_fill._optional(d)
-            and not str(d or "").lower().lstrip().startswith(("opcional", "optional"))][:_FIELDS_SHOWN]
+    return [k for k, d in fields.items() if k not in typed and not payload_fill.declared_optional(d)][:_FIELDS_SHOWN]
 
 
 def parts(uid: str, context: dict | None, reading: dict | None, trace: str = "", seen: str = "") -> list[str]:

@@ -149,6 +149,7 @@
  "mesh_open_link": "Shall I open {domain} with your details to finish it?",
  "send_missing_text": "What should I tell {who}?",
  "send_missing_recipient": "Who should I send it to?",
+ "send_missing_field": "I need one more thing to do it: {field}.",
  "send_which_recipient": "Which {who}? I have {names}.",
  "act_needs_facts": "To do that on {card} I still need: {facts}. What should it be?",
  "answer_which_task": "Which of these tasks is your answer for: {among}?",

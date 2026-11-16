@@ -120,11 +120,25 @@ def answered(uid: str, entry: dict, text: str, choice: int | None = None) -> dic
     _end_state(uid, str(art.get("widget") or ""), str(art.get("action") or ""), art.get("payload") or {},
                _words_of(uid))
     nxt, nkey = missing(art)
-    if nxt:
+    if nxt and str(((art.get("slots") or {}).get(nxt) or {}).get("rule") or "") == "composed":
         # He answered WHICH person and the words still lack: his sentence most likely carried them (the model never
         # extracted them). A question about what he said is not legitimate — a Brain Worker composes the words from
         # his request on THIS row (the person already his, the end state on the row) and sends through the exit door.
         return {"ok": True, "row": uid, "worker": _worker(uid, art, ask_id, value, choice=choice)}
+    return _go_on(uid, art)
+
+
+def _go_on(uid: str, art: dict) -> dict:
+    """After a slot was filled on this row: the next declared field that still lacks is asked the same way, on the
+    same row (V2-919 M2); with nothing lacking the task runs."""
+    from nucleo.request import inline_ask
+    nxt, nkey = missing(art)
+    if nxt:
+        from nucleo.request.send_task import _missing_line, _said_asked
+        q = _missing_line(art, nxt)
+        ask_id = _question(uid, art, nxt, nkey, q)
+        _said_asked(str(art.get("widget") or ""), str(art.get("action") or ""), q)
+        return {"ok": True, "row": uid, "asked": ask_id}
     from nucleo.circuit import ledger
     ledger.resumed(uid)
     inline_ask.resuming(uid, {"widget": art.get("widget"), "action": art.get("action"), "candidates": []})
@@ -207,12 +221,7 @@ def take_call(wid: str, action: str, payload: dict | None, said: str) -> str:
                     d["source"] = HIS
             _keep(uid, keep)
             _end_state(uid, wid, action, merged, said)
-            if missing(keep)[0]:
-                return uid
-            from nucleo.circuit import ledger
-            ledger.resumed(uid)
-            inline_ask.resuming(uid, {"widget": wid, "action": action, "candidates": []})
-            _schedule(uid)
+            _go_on(uid, keep)    # missing re-read AFTER the merge: a row never waits on a question nobody asked
             return uid
     except Exception as e:  # noqa: BLE001
         note(e)

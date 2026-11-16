@@ -149,6 +149,7 @@
  "mesh_open_link": "¿Abro {domain} con tus datos para terminarlo?",
  "send_missing_text": "¿Qué le digo a {who}?",
  "send_missing_recipient": "¿A quién se lo mando?",
+ "send_missing_field": "Me falta un dato para hacerlo: {field}.",
  "send_which_recipient": "¿A qué {who}? Tengo a {names}.",
  "act_needs_facts": "Para hacerlo en {card} me falta: {facts}. ¿Me lo dices?",
  "answer_which_task": "¿Para cuál de estas tareas es tu respuesta: {among}?",

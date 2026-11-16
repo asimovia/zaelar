@@ -29,14 +29,12 @@ from __future__ import annotations
 
 from nucleo.play import shadow as _play
 from nucleo.request import base, event as _emit, note, send_task_who
+from nucleo.request.send_task_fields import _missing_line, required   # what a retained act lacks, by its declaration
 
 #: The retained kind on the row's `ask` artefact: his answer fills a slot of THIS task (`inline_ask.rerun`).
 KIND = "send"
 #: The row artefact that holds the retained act and its slots: {widget, action, payload, slots: {slot: {key, source}}}.
 SLOT = "send"
-#: The source rules whose slot must carry a value before the act can run (a person, the words); `reading` (the
-#: channel) and `card`/`held` are optional — the card decides the rest.
-REQUIRED_RULES = ("his_words", "composed")
 #: Slot sources (the exit door's vocabulary, `nucleo/workers/exit_slots.py`).
 HIS, READING, AGENT, NONE = "his", "reading", "agent", "none"
 
@@ -109,9 +107,10 @@ def _reading_names(reading, value) -> bool:
 
 
 def missing(art: dict) -> tuple[str, str]:
-    """The first required slot with no value: `(slot, payload key)`, or `("", "")` when the act may run."""
+    """The first required slot with no value: `(slot, payload key)`, or `("", "")` when the act may run. Required is
+    what the action DECLARES (`required`), never the shape of a send."""
     for slot, d in (art.get("slots") or {}).items():
-        if str(d.get("rule") or "") in REQUIRED_RULES and str(d.get("source") or NONE) == NONE:
+        if str(d.get("source") or NONE) == NONE and required(art, slot):
             return slot, str(d.get("key") or slot)
     return "", ""
 
@@ -201,24 +200,6 @@ def _question(uid: str, art: dict, slot: str, key: str, question: str = "", cand
                           "candidates": cands}}
     ledger.store().task_patch(uid, session_id=session)
     return asker.ask(uid, entry)
-
-
-def _missing_line(art: dict, slot: str) -> str:
-    """The question for a slot with no value, from the language table (`send_missing_<slot>`), the person named."""
-    who = ""
-    try:
-        from nucleo import on_his_behalf as _ob
-        who = ", ".join(_ob.who_of(str(art.get("widget") or ""), str(art.get("action") or ""), art.get("payload")))
-    except Exception as e:  # noqa: BLE001
-        note(e)
-    try:
-        from i18n import langs
-        tpl = str(getattr(langs.current_language(), f"send_missing_{slot}", "") or "")
-        if tpl:
-            return tpl.format(who=who or "?")
-    except Exception as e:  # noqa: BLE001
-        note(e)
-    return f"{slot}? ({who})"
 
 
 def commission(wid: str, action: str, payload: dict | None, said: str, *, reading=None, emit=None,

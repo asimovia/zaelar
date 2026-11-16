@@ -5380,6 +5380,16 @@ DOMAINS: list[dict] = [
                                  "several people are his only when every one is; the card rule reads a blank list as no value",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/turn/test_a_leaving_act_is_read_by_its_declaration.py"]},
+        {"id": "2.1783", "title": "What a retained leaving act lacks is what the action DECLARES (V2-919 M2): a field its "
+                                 "payload marks optional is never asked (one reader of both spellings, "
+                                 "payload_fill.declared_optional), the person always is; a complete call (a list of people he "
+                                 "named, a name, a channel — es, en, one person and two) runs on its row with no question and no "
+                                 "worker; the list in his answer, or in the answering turn's own call, fills the row that waited "
+                                 "and it runs; another field that lacks is asked by its declared label on the same row, never "
+                                 "handed to a worker",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/turn/test_a_complete_leaving_call_runs_on_its_row.py",
+                      "tests/agent_headless/unit/turn/test_a_leaving_act_is_read_by_its_declaration.py"]},
         {"id": "2.1761", "title": "A group he ordered with the members he named leaves a task's exit door unasked: "
                                  "`mensajeria:create_group` declares its slots (recipient ← `members` by his words, channel "
                                  "← `platform` by the reading, text composed) and its own sentence in ES and EN; a LIST "

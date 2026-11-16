@@ -90,3 +90,28 @@ def test_the_group_card_reads_his_answer_as_items(monkeypatch):
     groups._a_create_group("create_group", {"platform": "whatsapp", "name": "Viaje", "members": ["Ana y Luis"]})
     groups._a_create_group("create_group", {"platform": "whatsapp", "name": "Trip", "members": "Ana and Luis"})
     assert seen == [["Ana", "Luis"], ["Ana", "Luis"]]
+
+
+@pytest.mark.parametrize("wid,act,slot,key", SLOTS, ids=[f"{w}:{a}:{s}" for w, a, s, _k in SLOTS])
+def test_a_field_declared_optional_is_never_the_missing_one(wid, act, slot, key):
+    """M2: what lacks is what the action DECLARES — a field its payload marks optional is never asked; the person a
+    leaving act reaches always is (a held draft never leaves on a row with nobody named)."""
+    from nucleo.flash import payload_fill
+    from nucleo.request import send_task
+    art = {"widget": wid, "action": act, "payload": {},
+           "slots": send_task.sources(wid, act, {}, "")}
+    rule = art["slots"][slot]["rule"]
+    desc = payload_fill._payload_spec(wid, act).get(key)
+    want = rule == "his_words" or (desc is not None and not payload_fill.declared_optional(desc))
+    assert send_task.required(art, slot) is want, (wid, act, slot, key, rule, desc)
+    if payload_fill.declared_optional(desc) and rule != "his_words":
+        only = {**art, "slots": {slot: art["slots"][slot]}}
+        assert send_task.missing(only) == ("", ""), (wid, act, slot)
+
+
+def test_the_two_spellings_of_optional_are_one_reading():
+    from nucleo.flash import payload_fill
+    for d in ("opcional: primer mensaje", "(opcional) asunto", "Optional: the subject", "string (optional)"):
+        assert payload_fill.declared_optional(d), d
+    for d in ("string (lo que hay que decirle)", "nombre del grupo", "lista de nombres de contactos", ""):
+        assert not payload_fill.declared_optional(d), d
