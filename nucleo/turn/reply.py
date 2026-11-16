@@ -294,7 +294,6 @@ async def after_acts(tasks, said: str, send, speech, timeout: float = WAIT_S, *,
     outcomes = (await __import__("nucleo.acts.correction_undo", fromlist=["x"]).complete(tasks)   # first: joins `tasks`
                 + taken() + _notice_moved(said) + _errands_that_died(said) + (await of_ops(tasks, timeout) if tasks else [])
                 + await _receipts.player(said) + await _receipts.blocked_channel()
-                + await _acts_asked.owed(tasks)    # V2-854 F4: several asked, one done — the rest is said undone
-                + await __import__("nucleo.turn.items_asked", fromlist=["x"]).owed(tasks, model_calls)   # …or entries
+                + await _acts_asked.owed(tasks, model_calls)   # several acts or entries asked, one done: said undone
                 + _unserved.outcomes(tasks, model_calls, said=said, quiet=quiet, held=held))   # a claim nobody ran
     return speak(_receipts.unconfirmed(outcomes, _trace()), said, send, speech, prior) if outcomes else said

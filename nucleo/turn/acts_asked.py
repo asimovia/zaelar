@@ -50,9 +50,10 @@ def question(_ctx=None) -> dict:
 WAIT_S = 1.0
 
 
-async def owed(tasks=(), *, brief=None) -> list:
+async def owed(tasks=(), model_calls=None, *, brief=None) -> list:
     """`left_undone`, after waiting off the loop (at most `WAIT_S`) for the verdict a model call fired. It never fires
-    one itself: a turn that called nothing reads «not sure», and nothing is said."""
+    one itself: a turn that called nothing reads «not sure», and nothing is said. The same trip answers how many
+    ENTRIES he named (`items_asked`, read against the model's calls): its outcome rides this one."""
     try:
         from nucleo.turn import brief_doors, brief_turn
         brief = brief if brief is not None else brief_turn.of_this_turn()
@@ -60,7 +61,8 @@ async def owed(tasks=(), *, brief=None) -> list:
             await brief_doors.landed(brief, "call", WAIT_S, ask=False)
     except Exception as e:  # noqa: BLE001 — unread is «not sure»: nothing is said
         logger.debug(f"acts_asked: not awaited — {e!r}")
-    return left_undone(tasks, brief=brief)
+    from nucleo.turn import items_asked
+    return left_undone(tasks, brief=brief) + items_asked.left_undone(tasks, model_calls, brief=brief)
 
 
 def several(brief) -> bool:

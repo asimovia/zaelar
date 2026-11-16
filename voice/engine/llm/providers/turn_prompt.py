@@ -125,11 +125,9 @@ async def compose_the_prompt(*, brain, emit, operator_text, self, text) -> dict:
     # V2-889: cached prefix first, THIS turn's state last (its own system message); `system` stays whole for readers
     messages = [{"role": "system", "content": (_ss := _prompt_mod.split_state(system))[0]}]
     _dialog.drain_spoken(brain._window)      # what we said on our own since the last turn (a list's end, a report)
-    from nucleo.flash import prior_line as _prior_line
-    _prior_line.snapshot(brain, brain._window)   # the line this turn answers, frozen before the reply streams
-    from nucleo.turn import owed_words as _owed     # a turn cut before its first word: its sentence rides this one
-    _win, _mine = _owed.as_one_message(_dialog.prune_window(brain._window)[-_p._WINDOW_MAX:],   # twins collapsed
-                                       text, getattr(brain, "_judged_turn", None))
+    __import__("nucleo.flash.prior_line", fromlist=["x"]).snapshot(brain, brain._window)   # the line this turn answers
+    _win, _mine = __import__("nucleo.turn.owed_words", fromlist=["x"]).for_model(   # a cut turn's sentence rides this one
+        brain, _dialog.prune_window(brain._window)[-_p._WINDOW_MAX:], text)          # twins collapsed (anti-degeneration)
     messages += _win + [{"role": "system", "content": _ss[1]}] * bool(_ss[1]) + [{"role": "user", "content": _mine}]
     _out = locals()
     return {k: _out[k] for k in ('FastClient', '_dialog', '_escalate_mod', '_frontend', '_prompt_mod', '_router', 'messages', 'spec', 'system', 'timings') if k in _out}

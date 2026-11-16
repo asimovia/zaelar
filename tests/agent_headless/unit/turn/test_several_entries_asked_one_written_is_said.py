@@ -108,22 +108,21 @@ def test_the_line_is_an_unmet_verdict_always_said(turn):
 
 
 def test_disarmed_the_reply_stops_reading_the_entries_and_done_stands_alone(turn, monkeypatch):
-    """The disarm: take the reader out of the reply's sum and the half-done turn goes back to saying nothing."""
-    src = pathlib.Path(reply.__file__)
+    """The disarm: take the reading out of the call door's sum and the half-done turn goes back to saying nothing."""
+    from nucleo.turn import acts_asked
+    src = pathlib.Path(acts_asked.__file__)
     original = src.read_text(encoding="utf-8")
-    wired = '                + await __import__("nucleo.turn.items_asked", fromlist=["x"]).owed(tasks, model_calls)'
-    assert wired in original, "the reply no longer reads `items_asked` where this disarm expects it"
+    wired = " + items_asked.left_undone(tasks, model_calls, brief=brief)"
+    assert wired in original, "the call door no longer reads `items_asked` where this disarm expects it"
     try:
-        src.write_text(original.replace(wired, "                + []"), encoding="utf-8")
-        mutated = importlib.reload(reply)
-        out: list = []
-        asyncio.run(mutated.after_acts([("agenda::add_meeting", _Done(OK))], "", out.append, SP,
-                                       model_calls=ONE_MEETING))
+        src.write_text(original.replace(wired, ""), encoding="utf-8")
+        importlib.reload(acts_asked)
+        _t, out = _say([("agenda::add_meeting", _Done(OK))], ONE_MEETING)
         assert not out, "the mutation did not land: the line is still said"
     finally:
         src.write_text(original, encoding="utf-8")
-        for pyc in (src.parent / "__pycache__").glob("reply.*.pyc"):
+        for pyc in (src.parent / "__pycache__").glob("acts_asked.*.pyc"):
             pyc.unlink()
-        importlib.reload(reply)
+        importlib.reload(acts_asked)
     _t, out = _say([("agenda::add_meeting", _Done(OK))], ONE_MEETING)
     assert out, "restored: the line is said again"

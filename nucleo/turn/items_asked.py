@@ -38,7 +38,8 @@ CRITERIA = {
 
 
 def question(_ctx=None) -> dict:
-    """Asked at the CALL door (`brief_doors.DOORS["call"]`), in the same trip as `acts_asked`."""
+    """Asked at the CALL door (`brief_doors.DOORS["call"]`), in the same trip as `acts_asked`, whose `owed` waits for
+    that trip and reads both."""
     return {"instructions": INSTRUCTIONS, "criteria": dict(CRITERIA)}
 
 
@@ -92,17 +93,3 @@ def left_undone(tasks=(), model_calls=None, *, brief=None) -> list:
     except Exception as e:  # noqa: BLE001 — never takes the reply down
         logger.debug(f"items_asked: not read — {e!r}")
         return []
-
-
-async def owed(tasks=(), model_calls=None, *, brief=None) -> list:
-    """`left_undone`, after waiting off the loop for the verdict the model call fired (the door `acts_asked` waits on:
-    one trip, both answers). It never fires one itself."""
-    if len(list(tasks or ())) != 1 or not one_single_call(model_calls):
-        return []
-    try:
-        from nucleo.turn import acts_asked, brief_doors, brief_turn
-        brief = brief if brief is not None else brief_turn.of_this_turn()
-        await brief_doors.landed(brief, "call", acts_asked.WAIT_S, ask=False)
-    except Exception as e:  # noqa: BLE001 — unread is «not sure»: nothing is said
-        logger.debug(f"items_asked: not awaited — {e!r}")
-    return left_undone(tasks, model_calls, brief=brief)

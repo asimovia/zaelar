@@ -68,9 +68,13 @@ def test_the_chain_of_cuts_is_what_the_brain_remembers():
 
 
 def test_the_prompt_builder_hands_the_model_the_merged_message():
+    """The builder asks `for_model` with the brain, and the brain's own judgement is what merges."""
     src = (pathlib.Path(owed_words.__file__).resolve().parents[2]
            / "voice/engine/llm/providers/turn_prompt.py").read_text(encoding="utf-8")
-    assert "_owed.as_one_message(" in src and '{"role": "user", "content": _mine}' in src
+    assert '"nucleo.turn.owed_words"' in src and ".for_model(" in src and '{"role": "user", "content": _mine}' in src
+    brain = types.SimpleNamespace(_judged_turn=(C, f"{A} {B} {C}"))
+    _win, mine = owed_words.for_model(brain, _window(A, B), C)
+    assert A in mine and B in mine and mine.endswith(C)
 
 
 def test_disarmed_the_model_gets_only_the_last_line_again():

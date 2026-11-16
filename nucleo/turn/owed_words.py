@@ -46,3 +46,8 @@ def as_one_message(window: list[dict], text: str, judged) -> tuple[list[dict], s
     except Exception as e:  # noqa: BLE001 — a prompt may never break on its own bookkeeping
         logger.debug(f"owed_words: not merged — {e!r}")
         return window, text
+
+
+def for_model(brain, window: list[dict], text: str) -> tuple[list[dict], str]:
+    """`as_one_message` with what this brain's admission judged (`stt.whole_turn`)."""
+    return as_one_message(window, text, getattr(brain, "_judged_turn", None))
