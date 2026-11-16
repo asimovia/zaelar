@@ -27,6 +27,8 @@ TRANSCRIPT_KEPT = 400
 FLUSH_EVERY = 20
 #: How much of one event's text the transcript keeps.
 EVENT_CHARS = 400
+#: How long one of his lines waits on the row for a worker: older, it is his past, not an instruction (marked expired).
+SAID_MAX_AGE_S = 1800
 
 
 def _store():
@@ -51,16 +53,18 @@ def said(uid: str, text: str, source: str = "operator") -> None:
         _note("his line", e)
 
 
-def take(uid: str, served: list[dict]) -> list[dict]:
-    """Mark his pending lines delivered; return those the RAM queue did not serve (they outlived a restart)."""
+def take(uid: str, served: list[dict], *, now: float | None = None) -> list[dict]:
+    """Mark his pending lines delivered; return those the RAM queue did not serve (they outlived a restart) and that
+    are younger than `SAID_MAX_AGE_S` — an older one is marked delivered unserved, never handed to a later worker."""
     if not uid:
         return []
     try:
         ts = _store()
         rows = list(ts.artifact_get(uid, SAID_SLOT) or [])
         texts = {str(s.get("text") or "") for s in served}
+        cut = (time.time() if now is None else now) - SAID_MAX_AGE_S
         extra = [{"text": r["text"], "source": r.get("source", "operator")} for r in rows
-                 if not r.get("delivered") and str(r.get("text") or "") not in texts]
+                 if not r.get("delivered") and str(r.get("text") or "") not in texts and float(r.get("at") or 0) >= cut]
         if any(not r.get("delivered") for r in rows):
             ts.artifact_put(uid, SAID_SLOT, [{**r, "delivered": True} for r in rows])
         return extra
@@ -75,6 +79,8 @@ def heard(rec, ev) -> None:
         d = getattr(ev, "data", None) or {}
         text = str(d.get("text") or d.get("label") or " ".join(
             str(d.get(k) or "") for k in ("action", "target") if d.get(k)) or "")
+        if not text.strip():
+            return                      # usage, progress, spawned: nothing to read, and they would spend the bound
         rec.transcript.append({"at": time.time(), "type": str(getattr(ev, "type", "") or ""),
                                "text": text[:EVENT_CHARS]})
         if len(rec.transcript) >= FLUSH_EVERY:
@@ -93,7 +99,9 @@ def flush(rec) -> None:
         ts = _store()
         rows = list(ts.artifact_get(uid, TRANSCRIPT_SLOT) or [])
         ts.artifact_put(uid, TRANSCRIPT_SLOT, (rows + buf)[-TRANSCRIPT_KEPT:])
-        rec.transcript.clear()
+        if (ts.artifact_get(uid, TRANSCRIPT_SLOT) or [None])[-1] != buf[-1]:
+            raise OSError("the row did not take the events")   # the store swallows its own failure: read it back
+        del rec.transcript[:len(buf)]                           # only what reached the row leaves the buffer
     except Exception as e:  # noqa: BLE001
         _note("transcript", e)
 
