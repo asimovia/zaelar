@@ -198,3 +198,14 @@ def test_a_person_still_lacking_after_an_answer_is_asked_never_composed(world, m
     got = send_task_answer.answered(uid, asker.artefact(uid), "running late")
     assert got.get("asked") and "worker" not in got and world["ran"] == []
     assert asker.artefact(uid)["retained"]["slot"] == "contact" and len(_rows()) == 1
+
+
+@pytest.mark.parametrize("lang", ["es", "en"])
+def test_a_call_with_the_people_as_one_text_runs_with_them_as_one_item(world, lang, monkeypatch):
+    monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
+    said, _members, name = WORDS[lang]["two"]
+    _say(said)
+    who = "Ana Prat y Luis Gil" if lang == "es" else "Ana Prat and Luis Gil"
+    uid = send_task.commission(WID, ACT, {"name": name, "platform": "whatsapp", "members": who}, said, reading=READING)
+    assert world["ran"] == [uid] and _asks(world) == []
+    assert send_task.artefact(uid)["payload"]["members"] == [who]

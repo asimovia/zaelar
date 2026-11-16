@@ -142,6 +142,8 @@ def retain(wid: str, action: str, payload: dict | None, said: str, *, reading=No
     except Exception as e:  # noqa: BLE001
         note(e)
         payload = dict(payload or {})
+    from widgets import field_types
+    payload = field_types.as_declared(base(wid), action, payload)   # a text for a list field is its one item
     from nucleo.request import model
     uid = model.opened(wid, action, text=said)
     if not uid:

@@ -179,13 +179,16 @@ def _spec_of(uid: str) -> dict | None:
 
 
 def _folded(wid: str, action: str, payload: dict | None) -> dict:
-    """The call's payload under the card's own keys (`contract.fold_aliases`, as `send_task.retain` keeps it)."""
+    """The call's payload under the card's own keys and shapes (`contract.fold_aliases`, `field_types.as_declared`,
+    as `send_task.retain` keeps it)."""
+    from widgets import field_types
     try:
         from widgets import contract
-        return contract.fold_aliases(base(wid), action, dict(payload or {}))
+        folded = contract.fold_aliases(base(wid), action, dict(payload or {}))
     except Exception as e:  # noqa: BLE001
         note(e)
-        return dict(payload or {})
+        folded = dict(payload or {})
+    return field_types.as_declared(base(wid), action, folded)
 
 
 def take_call(wid: str, action: str, payload: dict | None, said: str) -> str:

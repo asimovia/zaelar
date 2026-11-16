@@ -36,7 +36,7 @@ SLOTS = _leaving_slots()
 def _values(kind: str) -> tuple[list, list]:
     """(values of the declared kind, values that are NOT — blank or the wrong kind)."""
     if kind == "list":
-        return [["Ana"], ["Ana", "Luis"], [{"id": "c1", "name": "Ana"}]], [[], [""], ["  "], "Ana", None, 3]
+        return [["Ana"], ["Ana", "Luis"], [{"id": "c1", "name": "Ana"}], "Ana y Luis"], [[], [""], ["  "], "", None, 3]
     if kind == "bool":
         return [True, False, "true", "no"], [None, "maybe", ["x"]]
     return ["Ana", "whatsapp", 3], ["", "   ", None, [], ["Ana"], {"x": 1}, True]
@@ -116,3 +116,14 @@ def test_the_two_spellings_of_optional_are_one_reading():
         assert payload_fill.declared_optional(d), d
     for d in ("string (lo que hay que decirle)", "nombre del grupo", "lista de nombres de contactos", ""):
         assert not payload_fill.declared_optional(d), d
+
+
+def test_a_text_for_a_list_field_is_kept_as_its_one_item():
+    """5 (audit): the model sometimes sends «Ana y Luis» for a list field; it fills the field as ONE item, kept as
+    `[text]` on the row — the card splits it. A list for a text field still fills nothing."""
+    from nucleo.request import send_task_answer
+    from widgets import field_types
+    assert field_types.as_declared("mensajeria", "create_group", {"members": "Ana y Luis"})["members"] == ["Ana y Luis"]
+    assert field_types.as_declared("mensajeria", "send_to", {"contact": "Ana"})["contact"] == "Ana"
+    assert send_task_answer._folded("mensajeria", "create_group", {"members": "Ana y Luis"})["members"] == ["Ana y Luis"]
+    assert not field_types.filled("mensajeria", "send_to", "contact", ["Ana"])
