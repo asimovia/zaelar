@@ -42,7 +42,8 @@ def policy() -> dict:
     try:
         from nucleo.workers import envelope
         pol = envelope.policy()
-    except Exception:  # noqa: BLE001 — an unreadable policy keeps the declared defaults
+    except Exception as e:  # noqa: BLE001 — an unreadable policy keeps the declared defaults
+        log.warning("voice_rooms: policy unreadable, declared defaults kept (%r)", e)
         pol = {}
     return {k: float(pol.get(k, v)) for k, v in _DEFAULTS.items()}
 
@@ -67,7 +68,8 @@ def _voice():
     try:
         from voice import child_process
         return child_process.current()
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001 — no voice process to read: nothing to close or cure
+        log.debug("voice_rooms: voice process not readable (%r)", e)
         return None
 
 
