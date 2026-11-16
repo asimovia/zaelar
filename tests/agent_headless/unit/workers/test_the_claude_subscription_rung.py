@@ -12,7 +12,11 @@ resolves. Pinned here:
     the chain relays to the titular;
   · THE ATTRIBUTION: every worker event names the tier that served it, by name, with the real model.
 
-Disarm: drop `lead_name=` in `providers._known_from_table` → order cases red; drop the `tiers.sort` → the configured
+  · EVERY ACCOUNT: behind mediated egress the rung runs with the process's own egress credential, so it is in every
+    account's chain without a hand-made `code_agent.providers`; outside mediated egress that credential creates nothing.
+
+Disarm: drop the `oauth` branch of `providers._credential` → the every-account case red; drop its `mediated()` check →
+the self-host case red; drop `lead_name=` in `providers._known_from_table` → order cases red; drop the `tiers.sort` → the configured
 head wins, red; drop the `hit your` branch of `_WINDOW_RE` → the limit is not a quota, no relay, red; drop `provider=`
 from the `usage` event in `claude_map` → the attribution case red.
 """
@@ -70,7 +74,8 @@ def test_the_subscription_goes_first_even_ahead_of_the_configured_head(monkeypat
     _keys(monkeypatch)
     tiers = prov.chain()
     assert [t["name"] for t in tiers] == [SUB, "z.ai", "deepseek", "licencia-claude"]
-    assert [t["model"] for t in tiers[:3]] == ["claude-sonnet-5-5", "glm-5.3", "deepseek-v4-pro"]
+    assert [t["model"] for t in tiers[:3]] == ["claude-opus-5-5", "glm-5.3", "deepseek-v4-pro"]
+    assert tiers[0]["fast_model"] == "claude-sonnet-5-5", "a cheaper fast slot, never a retired small model"
     assert prov.pick()["name"] == SUB and prov.relayed()
 
 
@@ -89,7 +94,7 @@ def test_direct_the_token_is_the_clis_login_and_no_endpoint_is_redirected(monkey
     env = prov.env_for_worker()
     assert env["CLAUDE_CODE_OAUTH_TOKEN"] == "sk-ant-oat01-test"
     assert "ANTHROPIC_BASE_URL" not in env and "ANTHROPIC_AUTH_TOKEN" not in env
-    assert env["ANTHROPIC_DEFAULT_SONNET_MODEL"] == "claude-sonnet-5-5"
+    assert env["ANTHROPIC_DEFAULT_SONNET_MODEL"] == env["ANTHROPIC_DEFAULT_OPUS_MODEL"] == "claude-opus-5-5"
     assert env["ANTHROPIC_SMALL_FAST_MODEL"] == "claude-sonnet-5-5", "the fast slot never falls to a default"
     assert "ZAELAR_NAV_VISION" not in env, "Claude reads images: the browser keeps its screenshots"
 
@@ -112,6 +117,28 @@ def test_behind_egress_the_process_presents_its_own_credential_never_a_token(mon
     assert env["ANTHROPIC_BASE_URL"] == "https://egress.test/p/claude_subscription"
     assert env["ANTHROPIC_AUTH_TOKEN"] == "account-cred"
     assert "CLAUDE_CODE_OAUTH_TOKEN" not in env
+
+
+def test_behind_egress_every_account_gets_the_rung_by_default_with_its_own_credential(monkeypatch):
+    """No hand-made `code_agent.providers`, no token in the process: the table's rung, routed to egress's family."""
+    _mediated(monkeypatch)
+    _cfg(monkeypatch)
+    monkeypatch.setenv("Z_AI_API_KEY", "account-cred")
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "account-cred")
+    tiers = prov.chain()
+    assert [t["name"] for t in tiers][:3] == [SUB, "z.ai", "deepseek"]
+    env = prov.env_for_worker()
+    assert env["ANTHROPIC_BASE_URL"] == "https://egress.test/p/claude_subscription"
+    assert env["ANTHROPIC_AUTH_TOKEN"] == "account-cred" and "CLAUDE_CODE_OAUTH_TOKEN" not in env
+    assert env["ANTHROPIC_DEFAULT_OPUS_MODEL"] == "claude-opus-5-5"
+
+
+def test_the_egress_credential_never_creates_the_rung_outside_mediated_egress(monkeypatch):
+    """Self-host: an egress-looking credential in the environment is not the subscription's."""
+    _cfg(monkeypatch)
+    _keys(monkeypatch, sub=False)
+    monkeypatch.setenv("CONTROL_PLANE_SERVICE_TOKEN", "account-cred")
+    assert SUB not in [t["name"] for t in prov.chain()]
 
 
 def test_behind_egress_the_providers_own_base_routes_to_the_subscription_family(monkeypatch):

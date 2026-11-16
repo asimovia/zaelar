@@ -87,16 +87,16 @@ def hardware() -> dict:
     return hw
 
 
-def _in_container() -> bool:
+_RUNTIME_ENV, _RUNTIME_FILES = ("FLY_MACHINE_ID", "KUBERNETES_SERVICE_HOST", "container"), ("/.dockerenv", "/run/.containerenv", "/.fly/init")
+
+
+def _in_container() -> bool:  # a Firecracker microVM has no /.dockerenv and a bare cgroup: its env/init say it
     try:
-        if os.path.exists("/.dockerenv"):
-            return True
         cg = Path("/proc/1/cgroup")
-        if cg.exists() and any(m in cg.read_text() for m in ("docker", "kubepods", "containerd")):
-            return True
+        return bool(any((os.getenv(v) or "").strip() for v in _RUNTIME_ENV) or any(os.path.exists(f) for f in _RUNTIME_FILES)
+                    or (cg.exists() and any(m in cg.read_text() for m in ("docker", "kubepods", "containerd"))))
     except Exception:
-        pass
-    return False
+        return False
 
 
 # ── Ollama (local service + models) ───────────────────────────────────────────────────────────────────────

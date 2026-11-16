@@ -31,18 +31,6 @@ import time
 
 from loguru import logger
 
-# KNOWN Anthropic-compatible endpoints (drive Claude Code via `ANTHROPIC_BASE_URL`). A tier joins the chain only if
-# its env var has a value, so listing it activates nothing. Adding one = one line.
-KNOWN: list[dict] = [
-    # ⚠️ `vision: False` — MEASURED 2026-08-27, against the provider's claim: the gateway passes an image URL the
-    # model cannot fetch; `glm-5.3` says so, `glm-4.6`/`4.5v`/`4.6v` confabulate (pure red → "Orange", blue →
-    # "Teal"). Z.ai's native `paas/v4` vision answers `1113 Insufficient balance` (a different wallet). The
-    # browser's vision path (V2-049) sends a screenshot per action, so `vision_env()` sets `ZAELAR_NAV_VISION=0`
-    # and the worker goes DOM. V2-500: `config/models.default.json` decides who and which model; one holder + ONE
-    # failover (Z.AI coding plan, DeepSeek Anthropic endpoint); both `vision: False`, measured.
-]
-
-
 def _known_from_table() -> list[dict]:
     from config import models as _tabla
     # The table's optional `lead` goes first, and like every rung only where its own credential resolves.
@@ -53,6 +41,8 @@ def _known_from_table() -> list[dict]:
 SUBSCRIPTION_TIER = "claude-subscription"
 
 
+# KNOWN Anthropic-compatible rungs, from `config/models.default.json` (V2-500): a rung joins only where its credential
+# resolves. GLM and DeepSeek are `vision: False`, MEASURED 2026-08-27 (older GLM vision models confabulate colours) → the worker goes DOM.
 KNOWN = _known_from_table()
 
 # Escalón final SOLO LOCAL: sin base_url el CLI usa la licencia con la que el operador ya está logueado. No
@@ -89,6 +79,16 @@ def _is_container() -> bool:
         return bool(doctor.hardware().get("container"))
     except Exception:
         return False
+
+
+def _credential(tier: dict) -> str:
+    """The rung's credential, or "" (no rung). A subscription rung (`auth: oauth`) behind mediated egress holds no token
+    by design (egress does): there it runs with the process's own egress credential and egress decides whom it serves."""
+    tok = (tier.get("api_key") or "").strip() or _token_for(tier)
+    if tok or tier.get("auth") != "oauth":
+        return tok
+    from nucleo.energy import egress as llm_egress
+    return llm_egress.credential() if llm_egress.mediated() else ""
 
 
 def chain() -> list[dict]:
@@ -130,7 +130,7 @@ def chain() -> list[dict]:
     for t in tiers:
         if t.get("local_only") and container:
             continue                                # en cloud no hay licencia de navegador
-        if t.get("base_url") and not _token_for(t) and not (t.get("api_key") or "").strip():
+        if t.get("base_url") and not _credential(t):
             continue                                # sin credencial no es un escalón, es un espejismo
         # The model is TIED to its tier: inheriting `glm-5.2` on the licence killed the first relay instantly.
         # No declared model → "" and each provider uses its default.
@@ -219,10 +219,7 @@ def env_for_worker() -> dict:
 
     Sustituye a `v2.external_worker_env()` como fuente única: mismo contrato, pero eligiendo escalón sano."""
     t = pick()
-    if not t or not t.get("base_url"):
-        return {}
-    tok = (t.get("api_key") or "").strip() or _token_for(t)
-    if not tok:
+    if not t or not t.get("base_url") or not (tok := _credential(t)):
         return {}
     # The CLI's own default is ten retries with backoff: against a spent quota (a `429` that will not clear for
     # hours) that is ~3 minutes before the worker gives up and the chain can relay (measured 2026-09-28, the demo's
