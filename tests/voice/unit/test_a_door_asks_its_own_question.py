@@ -78,7 +78,7 @@ def test_a_model_call_fires_the_call_door_once_and_merges_into_the_brief(wire):
     call("set_timer", {})            # a second call of the same turn: the door already fired
     _door(h, "call")
     assert ran == ["set_timer", "set_timer"]
-    assert [c["questions"] for c in wire.calls[1:]] == [{acts_asked.KEY}], wire.calls
+    assert [c["questions"] for c in wire.calls[1:]] == [{acts_asked.KEY, "items_asked"}], wire.calls   # one trip
     assert acts_asked.several(h), "the door's verdict reads through the same handle"
     assert wire.calls[1]["state"] == h["judged"], "the door asks about the sentence the brief judged"
 

@@ -25,7 +25,9 @@ from loguru import logger
 #: the reader stays the one place that names the key and words the question, as in `brief.QUESTIONS`.
 DOORS = dict(
     # a model call was made: whether his words asked for several acts (read when the turn's doors ran exactly one)
-    call=(("nucleo.turn.acts_asked", "KEY", lambda m, _c: m.question()),),
+    # …and whether they named several new entries (read when the model made exactly one call)
+    call=(("nucleo.turn.acts_asked", "KEY", lambda m, _c: m.question()),
+          ("nucleo.turn.items_asked", "KEY", lambda m, _c: m.question())),
     # an errand is launched: its consent class, its kind of worker, a capability no card declares
     portal=(("nucleo.acts.errand", "CLASS_KEY", lambda m, _c: m.class_question()),
             ("nucleo.request.kind", "KEY", lambda m, _c: m.question()),

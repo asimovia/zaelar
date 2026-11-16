@@ -52,9 +52,9 @@ def test_a_waiting_task_adds_only_the_answer_binding():
 
 
 def test_no_door_question_rides_the_turn_trip_in_any_context():
-    """The seven questions a single door reads are asked at that door (`brief_doors.DOORS`), never per turn."""
+    """The questions a single door reads are asked at that door (`brief_doors.DOORS`), never per turn."""
     doors = set(brief_doors.keys())
-    assert doors == {"acts_asked", "errand_class", "errand_kind", "capability_gap", "message_channel",
+    assert doors == {"acts_asked", "items_asked", "errand_class", "errand_kind", "capability_gap", "message_channel",
                      "identity_change", "correction_kind"}
     for kw in ({}, {"open_ids": ["agenda", "mensajeria"]}, {"has_workers": True, "running_goals": ["x"]}):
         assert not _asked(**kw) & doors

@@ -90,7 +90,7 @@ def test_the_whole_brief_is_one_call(wire, monkeypatch):
     # class and kind at the portal, his channel at the exit, the acts he asked at a call, a rename at its call
     from nucleo.turn import brief_doors as _doors
     assert not asked & set(_doors.keys()), asked & set(_doors.keys())
-    assert {_gap.KEY, _errand.CLASS_KEY, "errand_kind", "message_channel", "acts_asked",
+    assert {_gap.KEY, _errand.CLASS_KEY, "errand_kind", "message_channel", "acts_asked", "items_asked",
             "identity_change", "correction_kind"} == set(_doors.keys())   # + the kind of a correction, at its act
 
 
