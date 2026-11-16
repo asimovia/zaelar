@@ -12,16 +12,46 @@ from widgets.navegador import launch_env as _launch_env, owner as _o
 from widgets.say import say
 
 
+# Google/YouTube consent in the EU and Wallapop's: cookies that avoid the wall (best effort). A local persistent
+# profile also keeps a banner once accepted; a remote context starts blank every time, so it gets these on each lease.
+_CONSENT_COOKIES = [
+    {"name": "SOCS", "value": "CAI", "domain": ".youtube.com", "path": "/"},
+    {"name": "SOCS", "value": "CAI", "domain": ".google.com", "path": "/"},
+    {"name": "CONSENT", "value": "YES+", "domain": ".youtube.com", "path": "/"},
+    {"name": "CONSENT", "value": "YES+", "domain": ".google.com", "path": "/"},
+    # Wallapop: OptanonConsent (OneTrust) + its own EU consent cookie
+    {"name": "OptanonConsent",
+     "value": "isGpcEnabled=0&datestamp=Tue+Jul+2026+12%3A00%3A00+GMT%2B0200&version=6.29.0&isIABGlobal=false&hosts=&consentId=&interactionCount=1&landingPath=NotLandingPage&groups=C0001%3A1%2CC0002%3A1%2CC0003%3A1%2CC0004%3A1%2CC0005%3A1",
+     "domain": ".wallapop.com", "path": "/"},
+    {"name": "euconsent-v2",
+     "value": "CQ...",  # placeholder — auto-click is the real mechanism
+     "domain": ".wallapop.com", "path": "/"},
+    # Wallapop: accepted-banner marker (covers its own system when OneTrust is absent)
+    {"name": "wp_consent", "value": "1", "domain": ".wallapop.com", "path": "/"},
+    {"name": "_consent", "value": "1", "domain": ".wallapop.com", "path": "/"},
+    {"name": "user_consent", "value": "true", "domain": ".wallapop.com", "path": "/"},
+    {"name": "cookie_consent", "value": "accepted", "domain": ".wallapop.com", "path": "/"},
+]
+
+
 async def _ensure_page():
     """ONE real window (headed) with a PERSISTENT PROFILE and lazy startup. Reuses any existing window/tab (never opens
     one window per request → no desktop clutter). Isolated profile: does not touch your Chrome or your 9222/9200
     browser (own process and instance). If the real window fails (no display), degrades to headless so the widget is
     not left dead. Lazy Playwright import: if the dependency is missing, only this widget degrades."""
+    from nucleo import remote_browser as _remote
+    if _remote.is_remote():
+        _remote.touch()
+        if _o._context is not None and not _remote.alive(_o._browser):
+            # The remote browser ended (lease over, Machine gone): its context and tabs went with it.
+            _o._context = _o._page = _o._browser = None
     if _o._page is not None and not _o._page.is_closed():
         return _o._page
     from playwright.async_api import async_playwright
     if _o._pw is None:
         _o._pw = await async_playwright().start()
+    if _o._context is None and _remote.is_remote():
+        await _connect_remote()
     if _o._context is None:
         # OPTIONAL debugging port chosen by env — NEVER yours (9222/9200). Empty = Playwright internal pipe
         # (zero ports, zero collisions). If you want to attach, set NAVEGADOR_REMOTE_PORT to a different port.
@@ -87,24 +117,7 @@ async def _ensure_page():
         # Google/YouTube consent in the EU: cookies that avoid the wall (best effort). With the persistent profile,
         # once a banner is accepted it is also saved → it stops appearing on subsequent visits.
         try:
-            await _o._context.add_cookies([
-                {"name": "SOCS", "value": "CAI", "domain": ".youtube.com", "path": "/"},
-                {"name": "SOCS", "value": "CAI", "domain": ".google.com", "path": "/"},
-                {"name": "CONSENT", "value": "YES+", "domain": ".youtube.com", "path": "/"},
-                {"name": "CONSENT", "value": "YES+", "domain": ".google.com", "path": "/"},
-                # Wallapop: OptanonConsent (OneTrust) + its own EU consent cookie
-                {"name": "OptanonConsent",
-                 "value": "isGpcEnabled=0&datestamp=Tue+Jul+2026+12%3A00%3A00+GMT%2B0200&version=6.29.0&isIABGlobal=false&hosts=&consentId=&interactionCount=1&landingPath=NotLandingPage&groups=C0001%3A1%2CC0002%3A1%2CC0003%3A1%2CC0004%3A1%2CC0005%3A1",
-                 "domain": ".wallapop.com", "path": "/"},
-                {"name": "euconsent-v2",
-                 "value": "CQ...",  # placeholder — auto-click is the real mechanism
-                 "domain": ".wallapop.com", "path": "/"},
-                # Wallapop: accepted-banner marker (covers its own system when OneTrust is absent)
-                {"name": "wp_consent", "value": "1", "domain": ".wallapop.com", "path": "/"},
-                {"name": "_consent", "value": "1", "domain": ".wallapop.com", "path": "/"},
-                {"name": "user_consent", "value": "true", "domain": ".wallapop.com", "path": "/"},
-                {"name": "cookie_consent", "value": "accepted", "domain": ".wallapop.com", "path": "/"},
-            ])
+            await _o._context.add_cookies(_CONSENT_COOKIES)
         except Exception:
             pass
         await _apply_imported_sessions(_o._context)      # V2-575 P3: a session his daemon handed over survives relaunches
@@ -112,8 +125,35 @@ async def _ensure_page():
     _o._page = _o._context.pages[0] if _o._context.pages else await _o._context.new_page()
     # V2-835 — the label says what WAS launched, not what was wanted: a headed launch with no screen falls back to
     # headless above, and a «real window» label then promised him a window nobody could see.
-    _o._emit("launched", f"navegador {'ventana real' if _o._headed else 'headless'} · perfil persistente")
+    if not _remote.is_remote():                          # a remote one said what it is in `_connect_remote`
+        _o._emit("launched", f"navegador {'ventana real' if _o._headed else 'headless'} · perfil persistente")
     return _o._page
+
+
+async def _connect_remote() -> None:
+    """Remote mode (`nucleo/remote_browser.py`): a fresh context on a browser reached over CDP. No Chromium is
+    launched here, and a failure is the seam's NAMED error — never a fall back to a local launch. The context gets
+    what a local one gets that does not depend on a profile on disk: viewport, locale, zone, UA, the navigation
+    outcome, the stealth script, timeouts, the consent cookies and the sessions his daemon handed over."""
+    from nucleo import remote_browser as _remote
+    browser = await _remote.connect(_o._pw)
+    _loc, _tz = _o._browser_locale()
+    ctx = await browser.new_context(viewport=_o.VIEWPORT, locale=_loc, timezone_id=_tz, user_agent=_o._UA)
+    _o._browser, _o._context, _o._headed = browser, ctx, False
+    from widgets.navegador import page_outcome as _po
+    _po.attach(ctx)
+    try:
+        await ctx.add_init_script(_launch_env.stealth_js())
+    except Exception:
+        pass
+    ctx.set_default_navigation_timeout(_o._NAV_TIMEOUT)
+    ctx.set_default_timeout(_o._NAV_TIMEOUT)
+    try:
+        await ctx.add_cookies(_CONSENT_COOKIES)
+    except Exception:
+        pass
+    await _apply_imported_sessions(ctx)
+    _o._emit("launched", "navegador remoto · perfil en blanco")
 
 
 async def _egress_args() -> list[str]:
