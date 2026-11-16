@@ -23,8 +23,10 @@ FORBIDDEN_PREFIXES = ("nucleo.flash", "voice", "widgets", "server", "memory", "c
 #: `connectors.outcome` (V2-833 F0): the one door every provider call reports through — a leaf (its only reach, the
 #: observer, is lazy), so the service's own provider calls are seen like every other.
 ALLOWED_LEAVES = {"connectors.outcome"}
+# `nucleo.remote_browser` (V2-918): which browser the search Chromium is — launched or reached over CDP; a leaf (stdlib,
+# httpx imported lazily), the same seam the navigator asks.
 ALLOWED_NUCLEO = {"nucleo.errors", "nucleo.workspace", "nucleo.energy.meter", "nucleo.energy.lease",
-                  "nucleo.energy.egress"}
+                  "nucleo.energy.egress", "nucleo.remote_browser"}
 
 
 def _imports(path: Path):

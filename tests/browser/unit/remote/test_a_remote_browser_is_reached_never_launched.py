@@ -1,4 +1,4 @@
-"""A remote browser is REACHED over CDP, never launched (V2-914).
+"""A remote browser is REACHED over CDP, never launched (V2-918).
 
 `nucleo/remote_browser.py` is the one seam every browser consumer asks first. With nothing configured it says
 `local` and both consumers launch their own Chromium as before. With a fixed CDP endpoint or a leased one:
