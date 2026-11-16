@@ -102,11 +102,14 @@ def answered(uid: str, entry: dict, text: str, choice: int | None = None) -> dic
         " ".join(str(text or "").split())
     if not (key and value):
         return {"ok": False, "row": uid, "unclear": True}
-    if not inline_ask.take(ask_id):
-        return {"ok": True, "row": uid, "already": True}
     art = artefact(uid)
     from widgets import field_types   # a field declared a list takes his answer as its item (the card splits it)
-    listed = field_types.declared(base(str(art.get("widget") or "")), str(art.get("action") or "")).get(key) == field_types.LIST
+    wid_, act_ = base(str(art.get("widget") or "")), str(art.get("action") or "")
+    listed = field_types.declared(wid_, act_).get(key) == field_types.LIST
+    if listed and field_types.filled(wid_, act_, key, (art.get("payload") or {}).get(key)):
+        return {"ok": False, "row": uid, "unclear": True}   # an answer NEVER replaces a list that already has people
+    if not inline_ask.take(ask_id):
+        return {"ok": True, "row": uid, "already": True}
     art.setdefault("payload", {})[key] = [value] if listed else value
     (art.setdefault("slots", {}).setdefault(slot or key, {"key": key, "rule": ""}))["source"] = HIS
     if key == "channel" and cands:    # his answer to «which channel?» IS his reading of it: the exit never doubts it again
