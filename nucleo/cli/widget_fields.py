@@ -1,43 +1,43 @@
 """nucleo/cli/widget_fields.py — a widget act's payload from `field=value` arguments (one command, one model turn).
 
-Split from `cli/widget.py` (its file ceiling). `spec` is the action's DECLARED payload (`{field: description}`).
+ONE rule, no guessing (three rounds of a value read two ways said the form itself was ambiguous):
+  · `field=value` — the value is ALWAYS literal text, as given: empty, `[ ] milk`, `true`, `{ok}` included;
+  · `field:=<json>` — the only explicitly typed value (a list, a number, true/false/null, an object);
+  · a non-text field the action DECLARES (`types`) is converted once by the widget door (`widgets.field_types`).
+A field the action does not declare, or one given twice, is a refusal — and a refusal ENDS the command (rc≠0): it never
+falls through to the bare-sentence or JSON paths (measured: `add_list name=[casa]` then created the list «name=[casa]»).
 """
 from __future__ import annotations
 
 import json
+import re
+
+#: An argument that IS a field assignment: `ident=…` or `ident:=…` — on a line with one, there is no bare sentence.
+_ASSIGN = re.compile(r"^[A-Za-z_][\w.-]*:?=")
 
 
-def payload(spec: dict, args: list[str], types: dict | None = None):
-    """`field=value` arguments naming the action's DECLARED fields → its payload, so an act is ONE command (no file to
-    write first: measured, every act with a payload cost the worker two model turns, Write then Bash).
+def is_field_args(args: list[str]) -> bool:
+    return any(_ASSIGN.match(str(a)) for a in args)
 
-    `field=value` is TEXT, as given (a phone number, «$50» stay text); a field the action declares as a list or an
-    object (its manifest value is one) is read as JSON; a declared boolean (`types`) goes as text and the widget door
-    converts it once (`widgets.field_types`). `field:=<json>` is an explicitly typed value. Never guessed: a field
-    given twice, or an untyped `field=` whose text IS a JSON literal (true / false / null / a list / an object), is
-    refused with the way to write it — measured, `contactIds='["c1","c2"]'` became a text the card split by commas
-    and the group was created with no one in it. None (said why) when an argument is not over a declared field."""
-    types = types or {}
+
+def payload(spec: dict, args: list[str]) -> tuple[dict, str]:
+    """`(payload, "")`, or `({}, why)` — the why is what the worker reads to write it right."""
     out: dict = {}
     for a in args:
-        key, sep, val = str(a).partition("=")
+        if not _ASSIGN.match(str(a)):
+            return {}, f"`{a}` is not `field=value`: on a line of fields every argument is one"
+        key, _sep, val = str(a).partition("=")
         typed = key.endswith(":")
         key = key[:-1] if typed else key
-        if not sep or key not in spec:
-            return None
+        if key not in spec:
+            return {}, f"`{key}` is not a field of this action: {', '.join(spec) or 'it declares none'}"
         if key in out:
-            print(f"`{key}` is given twice: give it once")
-            return None
-        if typed or isinstance(spec[key], (list, dict)):
+            return {}, f"`{key}` is given twice: give it once"
+        if typed:
             try:
                 out[key] = json.loads(val)
             except ValueError:
-                print(f"`{key}` takes JSON: e.g. {key}:='[\"a\", \"b\"]' or {key}:=true")
-                return None
-            continue
-        if key not in types and (val.strip() in ("true", "false", "null") or val.lstrip()[:1] in "[{"):
-            print(f"`{key}={val[:40]}` is ambiguous: `{key}:={val[:40]}` sends that JSON value, "
-                  f"`{key}:='\"{val[:40]}\"'` sends it as text")
-            return None
-        out[key] = val
-    return out or None
+                return {}, f"`{key}:=` takes JSON, e.g. {key}:='[\"a\", \"b\"]', {key}:=true, {key}:=3"
+        else:
+            out[key] = val
+    return out, ""

@@ -101,7 +101,7 @@
         "remind": "cuándo suena el aviso si él lo pide distinto del de por defecto: YYYY-MM-DD (a la hora de la cita, o 09:00 si es de todo el día), YYYY-MM-DD HH:MM, o «el día antes» (opcional)",
         "calendar": "en cuál de sus calendarios de Google va, si lo nombra («el del trabajo») — solo para esta cita (opcional; sin él, el calendario por defecto)"
       },
-      "types": {"allDay": "bool", "meet": "bool"},
+      "types": {"allDay": "bool", "all_day": "bool", "meet": "bool"},
       "done_when": {
         "all": [
           {
@@ -400,7 +400,7 @@
         "days": "días de la semana (si es weekly)",
         "until": "YYYY-MM-DD — hasta cuándo se repite"
       },
-      "types": {"meet": "bool"},
+      "types": {"meet": "bool", "allDay": "bool", "all_day": "bool"},
       "done_when": {
         "all": [
           {
