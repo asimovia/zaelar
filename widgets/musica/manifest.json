@@ -155,6 +155,7 @@
         "from": "opcional: título o nº de la canción por la que empezar",
         "shuffle": "opcional: true para mezclar el orden"
       },
+      "types": {"shuffle": "bool"},
       "sensitivity": "routine",
       "activation": true,
       "done_when": {
@@ -288,7 +289,8 @@
       "payload": {
         "level": 70,
         "mute": "opcional: true silencia, false devuelve el volumen de antes"
-      }
+      },
+      "types": {"mute": "bool"}
     },
     "queue": {
       "desc": "añade una canción al final de la cola de reproducción",
@@ -319,6 +321,7 @@
       "payload": {
         "on": "true para activarlo, false para quitarlo"
       },
+      "types": {"on": "bool"},
       "sensitivity": "routine"
     },
     "repeat": {

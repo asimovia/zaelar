@@ -43,16 +43,18 @@ def lang(request, monkeypatch):
     return request.param
 
 
-@pytest.mark.parametrize("choice,fields", [("contactos:create_group", ("name", "contactIds")),
+@pytest.mark.parametrize("choice,fields", [("contactos:create_group", ("name",)),            # contactIds is optional
                                            ("contactos:rename_group", ("groupId", "name"))])
 def test_a_sure_identified_act_is_the_first_step_with_its_declared_fields(lang, choice, fields):
     out = first_act.block("", _one(SAID[lang]), _reading(choice, 0.95))
     assert f"«{SAID[lang]}»" in out, "his words ride verbatim"
     wid, act = choice.split(":")
     cmd = shlex.split(out.split("`python -m nucleo.cli.widget data ")[1].split("`")[0])
-    assert cmd == [wid, act, *(f"{f}=<…>" for f in fields)], "ONE command, every declared field an argument"
+    assert cmd == [wid, act, *(f"{f}=<…>" for f in fields)], "ONE command, the REQUIRED fields as arguments"
     for f in fields:
         assert f"· {f}:" in out
+    if act == "create_group":
+        assert "· contactIds:" in out, "an optional field is listed, never a placeholder"
 
 
 def test_a_doubtful_verdict_or_an_undeclared_action_hands_over_no_act(lang, monkeypatch):

@@ -96,10 +96,11 @@ def words(key: str) -> str:
 def command(wid: str, act: str, payload: dict) -> str:
     """The ONE shell command that runs the act: its fields as `key=value` arguments (`cli.widget data`), so the
     worker spends one model turn per act, not a Write and then a Bash. Every value is SINGLE-quoted — the shell
-    expands nothing inside (`$50`, backticks), a `'` is written `'\\''` — and a non-text value is its JSON."""
+    expands nothing inside (`$50`, backticks), a `'` is written `'\\''` — and a non-text value is `key:=<its JSON>`."""
     def arg(k, v):
-        text = v if isinstance(v, str) else json.dumps(v, ensure_ascii=False)
-        return f"{k}='" + text.replace("'", "'\\''") + "'"
+        if isinstance(v, str):
+            return f"{k}='" + v.replace("'", "'\\''") + "'"
+        return f"{k}:='" + json.dumps(v, ensure_ascii=False).replace("'", "'\\''") + "'"   # typed: its JSON
     return " ".join(["python -m nucleo.cli.widget data", wid, act, *(arg(k, v) for k, v in payload.items())])
 
 
@@ -117,7 +118,18 @@ def act_block(reading: dict | None, context: dict | None = None, trace: str = ""
     if len(fields) > len(shown):
         rows.append(f"  · +{len(fields) - len(shown)}: `cli.widget card {wid}`")
     return "\n".join([head.format(widget=wid, action=act), *rows,
-                      do.format(command=command(wid, act, {k: "<…>" for k, _v in shown}))])
+                      do.format(command=command(wid, act, {k: "<…>" for k in required(wid, act, fields)}))])
+
+
+def required(wid: str, act: str, fields: dict) -> list[str]:
+    """The fields the command shows as placeholders: the ones the action needs. An optional one (its description says
+    so, `payload_fill._optional` or a leading «opcional/optional») or a declared non-text one (a boolean the widget
+    door converts) is listed above, never put in the command — a placeholder invites a value his words never gave."""
+    from nucleo.flash import payload_fill
+    from widgets import field_types
+    typed = field_types.declared(payload_fill._base_of(wid), act)
+    return [k for k, d in fields.items() if k not in typed and not payload_fill._optional(d)
+            and not str(d or "").lower().lstrip().startswith(("opcional", "optional"))][:_FIELDS_SHOWN]
 
 
 #: Reading order of the handoff's blocks (the priority order, what is dropped last first, is `parts`').
