@@ -108,6 +108,9 @@ async def _one_act(rec, action: str, payload: dict) -> dict:
     if action == "state":           # the brief's state block, fresh: channels, open widgets, tasks, clusters
         from nucleo.workers import state_now
         return {"ok": True, "result": state_now.snapshot(str(getattr(rec, "uid", "") or ""))}
+    if action == "card":            # a widget's declared actions and fields, without its data
+        from nucleo.workers import widget_card
+        return widget_card.card(str((payload or {}).get("id") or (payload or {}).get("widget_id") or ""))
     if action == "ask_user":
         missing_datum.clear(rec)
         q = (payload or {}).get("question") or (payload or {}).get("text") or ""

@@ -6,6 +6,7 @@ talks over HTTP to the live server (`/api/worker/act`), using the session id + t
 actions: after doing something in the real world (cancelling an appointment on a website), the worker REFLECTS the
 change in the local MIRROR (deletes the appointment from the calendar), and verifies it.
 
+    python -m nucleo.cli.widget card agenda                      # its CARD: actions + their fields, no data
     python -m nucleo.cli.widget read agenda                      # READ the widget: manifest + data + ITEMS with their ids
     python -m nucleo.cli.widget data agenda drop '{"itemId":"m_itv_23jul"}'   # DATA-OP (uses REAL ids from `read`)
     python -m nucleo.cli.widget data results present @informe.json           # LARGE PAYLOAD: from a file
@@ -214,6 +215,11 @@ def main(argv: list[str]) -> int:
     if cmd in _AYUDA:
         print(__doc__)
         return 0
+    if cmd == "card":
+        if len(argv) < 3:
+            print("uso: python -m nucleo.cli.widget card <widget_id>")
+            return 2
+        return _report(_act("card", {"id": argv[2]}))
     if cmd == "read":
         if len(argv) < 3:
             print("uso: python -m nucleo.cli.widget read <widget_id>")
@@ -258,7 +264,7 @@ def main(argv: list[str]) -> int:
     # …and a verb that does not exist SAYS which ones do, instead of leaving the asker to guess. It is the same
     # courtesy as `nav_cli._hint_for`: an error that does not show the way costs another full round.
     print(f"comando desconocido: {cmd}\n"
-          f"verbos: read <widget> · data <widget> <accion> [payload|@fichero|-] · "
+          f"verbos: card <widget> · read <widget> · data <widget> <accion> [payload|@fichero|-] · "
           f"rows <widget> <list|put|patch|delete> [payload] · show <widget> · close <widget>\n"
           f"ayuda:  python -m nucleo.cli.widget --help")
     return 2
