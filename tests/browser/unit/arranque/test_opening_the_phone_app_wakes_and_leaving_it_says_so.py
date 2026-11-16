@@ -24,7 +24,7 @@ T0 = 1_800_000_000_000
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")
-@pytest.mark.parametrize("mode", ["app", "pwa", "tab"])
+@pytest.mark.parametrize("mode", ["app", "pwa", "tab", "desk"])
 def test_the_foreground_is_a_gesture_in_the_app_and_only_there(mode):
     r = subprocess.run(["node", str(SCRIPT), mode], capture_output=True, text=True, timeout=60)
     assert r.returncode == 0, (r.stdout or "") + (r.stderr or "")
@@ -98,3 +98,32 @@ def test_a_voice_session_open_is_not_someone_gone(screens, monkeypatch):
     assert idle_stop._left() is not None
     monkeypatch.setattr(screens, "has_session", lambda: True)
     assert idle_stop._left() is None, "he put the phone in his pocket with the voice on: the whole window holds"
+
+
+def test_a_screen_that_is_on_again_cancels_the_leave_even_before_its_beat(screens):
+    screens.attach("mobile:aa")
+    screens.left("mobile:aa")
+    assert screens.last_left_ms() is not None
+    screens.beat("mobile:aa", visible=True)          # hide → show in a hurry: the plain visible beat is enough
+    assert screens.last_left_ms() is None
+
+
+def test_a_voice_session_that_ends_after_he_left_restarts_the_short_window(screens):
+    import time
+    screens.attach("mobile:aa")
+    screens.left("mobile:aa")
+    left = screens.last_left_ms()
+    screens.register_typed(lambda *a: None)
+    time.sleep(0.02)
+    screens.clear_typed()
+    assert screens.last_left_ms() > left, "the room dropped just now: he gets the short window from this moment"
+
+
+def test_the_pulse_hands_the_leave_to_the_decision_and_the_shell_sends_it():
+    """The wiring the unit calls above do not cross: the pulse's check passes the leave on, and the stream's wiring
+    gives presence the sender whose body says `left`."""
+    from pathlib import Path
+    assert "left_ms=_left()" in Path("nucleo/idle_stop.py").read_text(encoding="utf-8")
+    assert "left: screensLeft" in Path("frontend/app/services/sse.js").read_text(encoding="utf-8")
+    api = Path("frontend/app/services/api.js").read_text(encoding="utf-8")
+    assert 'visible: false, left: true' in api[api.index("export const screensLeft"):][:300]

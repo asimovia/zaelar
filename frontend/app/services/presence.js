@@ -38,6 +38,8 @@ export const TAB_SLEEP_MIN = 10;
 //: How often a visible, connected, awake tab tells the engine a person is there.
 export const PRESENCE_BEAT_MS = 60000;
 const BACKOFF_FIRST_MS = 2000, BACKOFF_CAP_MS = 60000;
+//: How long after the phone app came to the front a goodnight still in flight is answered by waking.
+const JUST_OPENED_MS = 10000;
 
 /** Whether a closed stream may be reopened now, and after how long. Pure: everything comes in as arguments.
  *  `sleepMin` 0 turns the sleep off (input never goes stale); a hidden or sleeping tab never reconnects. */
@@ -70,15 +72,28 @@ export function openedByPerson({ wasDiscarded = false, navType = "" } = {}) {
 /** Whether this page runs as the app on his phone rather than as a browser tab: the native companion marks the root
  *  `in-app`; a page installed on the home screen runs standalone (`navigator.standalone` on iOS, the display mode
  *  elsewhere). Pure: the shell hands the three readings in. */
-export function installedApp({ inApp = false, standalone = false, displayStandalone = false } = {}) {
-  return !!(inApp || standalone || displayStandalone);
+export function installedApp({ inApp = false, standalone = false, displayStandalone = false, coarse = false } = {}) {
+  // A standalone display alone is not a phone: a desktop window of the page (an installed desktop app, a browser's
+  // app window) is standalone too, and there being covered or uncovered is not a person. A phone has a coarse pointer.
+  return !!(inApp || standalone || (displayStandalone && coarse));
+}
+
+/** Whether something this page plays is sounding right now: a person who put the phone away with music on is still
+ *  being served, so that is not leaving. Pure: the shell hands in the page's media elements. */
+export function soundingNow(media = []) {
+  return Array.from(media || []).some((m) => m && !m.paused && !m.ended && !m.muted);
+}
+
+function _soundingNow() {
+  try { return soundingNow(document.querySelectorAll("audio, video")); } catch (_) { return false; }
 }
 
 function _appNow() {
   try {
     return installedApp({ inApp: document.documentElement.classList.contains("in-app"),
                           standalone: navigator.standalone === true,
-                          displayStandalone: matchMedia("(display-mode: standalone)").matches });
+                          displayStandalone: matchMedia("(display-mode: standalone)").matches,
+                          coarse: matchMedia("(pointer: coarse)").matches });
   } catch (_) { return false; }
 }
 
@@ -153,7 +168,9 @@ export function wirePresence(h) {
     document.addEventListener("visibilitychange", () => {
       if (_appNow()) {                       // the phone app: coming to the foreground is the gesture, leaving is said
         if (_visible()) input();
-        else if (!_p.asleep) { try { _p.h && _p.h.left && _p.h.left(); } catch (_) {} }   // asleep, a tab sends nothing
+        else if (!_p.asleep && !_soundingNow()) {       // asleep, a tab sends nothing; with music on he has not left
+          try { _p.h && _p.h.left && _p.h.left(); } catch (_) {}
+        }
       }
       _beat();
       if (_visible() && !_p.asleep) { try { _p.h && _p.h.comeBack && _p.h.comeBack(); } catch (_) {} }
@@ -165,7 +182,12 @@ export function wirePresence(h) {
 export function presenceEvent(d) {
   if (!d) return;
   if (d.kind === "session" && d.tab_sleep_min !== undefined && Number(d.tab_sleep_min) >= 0) _p.sleepMin = Number(d.tab_sleep_min);
-  else if (d.kind === "session" && d.label === "engine.sleep") sleep("engine");
+  else if (d.kind === "session" && d.label === "engine.sleep") {
+    sleep("engine");
+    // The phone app he has JUST brought to the front can still receive the goodnight the engine sent while the page
+    // was frozen in the background: he is here, so it wakes at once instead of showing a veil to press.
+    if (_appNow() && _visible() && Date.now() - _p.lastGesture < JUST_OPENED_MS) wake();
+  }
   else if (d.kind === "transcript" && d.role === "user") _p.lastInput = _p.lastGesture = Date.now();
 }
 
