@@ -95,13 +95,13 @@ def _worst(monkeypatch):
     return {"said": "y" * 600, "heard": "y" * 600}, _reading("agenda:update_task", 0.97)
 
 
-@pytest.mark.parametrize("name", ["hotel", "document", "message"])
+@pytest.mark.parametrize("name", ["document", "message"])
 def test_the_live_brief_stays_under_the_ceiling(lang, monkeypatch, name):
     """Audit #3/4: the ceiling is measured on what the dispatcher SENDS (`first_act.live`), worst case."""
     from tests.agent_headless.unit.workers import test_a_worker_brief_is_its_playbook_and_headlines as T
     ctx, rd = _worst(monkeypatch)
     _pb, base = T._compose(name, T.SAMPLES[name][lang])
-    out = first_act.live(base, "", "", ctx, rd)
+    out = first_act.fit(first_act.live(base, "", "", ctx, rd))
     assert len(out) <= PROMPT_CEILING_CHARS, (name, len(out))
     if name != "hotel":
         assert "agenda update_task" in out, "a brief with room keeps the act"
@@ -143,3 +143,54 @@ def test_the_dispatch_door_sends_the_handoff(monkeypatch):
     finally:
         dispatch._SESSIONS.pop("d1", None)
     assert "cli.widget data contactos create_group" in seen.get("prompt", "")
+
+
+# ── the WHOLE brief as sent, worst case (second audit C) ────────────────────────────────────────────────────────
+def _full(monkeypatch, lang, name, *, memory=2000, recent=1200):
+    from nucleo.workers.prompts import build, catalog, context, web
+    from tests.agent_headless.unit.workers import test_a_worker_brief_is_its_playbook_and_headlines as T
+    lines = "\n".join(f"he: línea {i} " + "z" * 60 for i in range(recent // 70))
+    for mod in (context, build, web):
+        monkeypatch.setattr(mod, "_recent_conversation_block", lambda *a, **k: lines)
+    ctx, rd = _worst(monkeypatch)
+    req = T.SAMPLES[name][lang]
+    mem = "\n".join(f"- dato {i} " + "m" * 60 for i in range(memory // 70))
+    if name == "hotel":
+        _pb, base = "errand", web._web_prompt(req, mem, T._research_brief(), playbook="errand")
+    else:
+        _pb, base = "x", build._build_prompt(req, mem, True, None)
+    out = first_act.live(base, "", "", ctx, rd)
+    if name == "hotel":     # a research errand: the direction note rides (`dispatch.session`, `_brief_bg`)
+        return catalog, first_act.fit(out + "\n\nNOTA: " + "n" * 150)
+    from nucleo.workers.handoff import with_worker_brief   # a relay: its brief rides in front
+    return catalog, first_act.fit(with_worker_brief(out, {"worker_brief": "RESUME this errand: " + "r" * 400}))
+
+
+@pytest.mark.parametrize("name", ["hotel", "document", "message"])
+def test_the_whole_sent_brief_stays_under_the_ceiling_with_memory_and_conversation_full(lang, monkeypatch, name):
+    catalog, out = _full(monkeypatch, lang, name)
+    assert len(out) <= PROMPT_CEILING_CHARS, (name, len(out))
+    assert catalog.words("request_head" if name != "hotel" else "goal_head") in out, "the request is never dropped"
+    if name != "hotel":
+        assert "agenda update_task" in out, "the act is the LAST thing given up"
+        assert catalog.words("context_head") in out, "with room, the memory context stays (trimmed, not dropped)"
+
+
+def test_the_drop_order_is_explicit_not_greedy(lang):
+    """Measured: the greedy budget dropped the act and kept his words. Here his words go before the act."""
+    words_b = f"{first_act.words('his_words_head')}\n«" + "w" * 50 + "»"
+    act_b = f"{first_act.words('first_act_head').format(widget='agenda', action='add')}\n  · title: x\ndo it"
+    prompt = "BASE " + "b" * 200 + "\n\n" + words_b + "\n\n" + act_b
+    out = first_act.fit(prompt, ceiling=len(prompt) - 10)
+    assert act_b in out and words_b not in out and out.startswith("BASE")
+
+
+def test_his_sentence_rides_once_when_the_request_is_his_sentence(lang):
+    base = f"{first_act.words('his_words_head')[:0]}REQUEST:\n{SAID[lang]}"
+    assert f"«{SAID[lang]}»" not in first_act.block("", _one(SAID[lang]), {}, seen=base)
+
+
+def test_disarmed_without_fit_the_full_hotel_brief_goes_over(lang, monkeypatch):
+    monkeypatch.setattr(first_act, "fit", lambda prompt, ceiling=None: prompt)
+    _c, out = _full(monkeypatch, lang, "hotel")
+    assert len(out) > PROMPT_CEILING_CHARS

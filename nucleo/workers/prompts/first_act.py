@@ -132,40 +132,75 @@ def required(wid: str, act: str, fields: dict) -> list[str]:
             and not str(d or "").lower().lstrip().startswith(("opcional", "optional"))][:_FIELDS_SHOWN]
 
 
-#: Reading order of the handoff's blocks (the priority order, what is dropped last first, is `parts`').
-_READING = ("words", "state", "act")
-
-
-def parts(uid: str, context: dict | None, reading: dict | None, trace: str = "") -> list[tuple[str, str]]:
-    """The handoff's blocks in PRIORITY order, `(kind, text)`: the send row's block or the identified action's, his
-    words (once — not when the recent conversation carries them), the state now (`state_now`, refreshed by
-    `act state`). Empty blocks left out."""
-    from nucleo.request import send_task_words as _send_task
-    out = [("act", (_send_task.brief_block(uid) if uid else "") or act_block(reading, context, trace))]
+def parts(uid: str, context: dict | None, reading: dict | None, trace: str = "", seen: str = "") -> list[str]:
+    """The handoff's blocks in reading order: his words (once — not when the prompt it joins, `seen`, or the recent
+    conversation already carries them), the state now (`state_now`, refreshed by `act state`), the send row's block
+    or the identified action's. Empty blocks left out."""
+    out = []
     said = his_words(context)
-    if said and not _already_heard(said) and (head := words("his_words_head")):
-        out.append(("words", f"{head}\n«{said}»"))
+    fold = lambda t: " ".join(str(t or "").lower().split())   # noqa: E731
+    if said and fold(said) not in fold(seen) and not _already_heard(said) and (head := words("his_words_head")):
+        out.append(f"{head}\n«{said}»")
     from nucleo.workers import state_now
-    out.append(("state", state_now.block(uid)))
-    return [(k, t) for k, t in out if t]
+    out.append(state_now.block(uid))
+    from nucleo.request import send_task_words as _send_task
+    out.append((_send_task.brief_block(uid) if uid else "") or act_block(reading, context, trace))
+    return [p for p in out if p]
 
 
-def block(uid: str, context: dict | None, reading: dict | None, trace: str = "", budget: int | None = None) -> str:
-    """The handoff in reading order (his words, the state, the act). With a `budget`, a block that does not fit is
-    dropped, lowest priority first — the ceiling holds by construction."""
-    kept, used = {}, 0
-    for kind, text in parts(uid, context, reading, trace):
-        if budget is None or used + len(text) + 2 <= budget:
-            kept[kind] = text
-            used += len(text) + 2
-    return "\n\n".join(kept[k] for k in _READING if k in kept)
+def block(uid: str, context: dict | None, reading: dict | None, trace: str = "", seen: str = "") -> str:
+    """The handoff, in reading order (`parts`)."""
+    return "\n\n".join(parts(uid, context, reading, trace, seen))
 
 
 def live(prompt: str, surface: str, uid: str, context: dict | None, reading: dict | None, trace: str = "") -> str:
-    """A trusted worker's brief as it LEAVES the dispatcher: the composed prompt, the surface's trusted blocks, the
-    handoff — one function, so the ceiling test measures exactly what the worker reads."""
-    from nucleo.workers.prompts.catalog import PROMPT_CEILING_CHARS
+    """A trusted worker's brief as composed: the prompt, the surface's trusted blocks, the handoff. The ceiling is
+    held by `fit`, over the brief exactly as it is SENT (after the relay's and the resume's additions)."""
     from nucleo.workers.prompts.surfaces import trusted_blocks
     base = prompt + trusted_blocks(surface)
-    tail = block(uid, context, reading, trace, budget=PROMPT_CEILING_CHARS - len(base) - 2)
-    return "\n\n".join(p for p in (base, tail) if p)
+    return "\n\n".join(p for p in (base, block(uid, context, reading, trace, seen=base)) if p)
+
+
+def _drop_order() -> tuple[tuple[str, str], ...]:
+    """What `fit` gives up first, by the head its block opens with: `(head, how)` — `drop` removes the block, `trim`
+    removes its lines one by one (the conversation's OLDEST first, the memory's last). The identified act is last."""
+    return (("state_now.head", "drop"), ("his_words_head", "drop"), ("recent_head", "trim_old"),
+            ("context_head", "trim_new"), ("first_act_head", "drop"), ("send_task_head", "drop"))
+
+
+def _span(text: str, head: str) -> tuple[int, int]:
+    """`(start, end)` of the block that opens with `head` (up to the next blank line), or (-1, -1)."""
+    i = text.find(head)
+    while i > 0 and text[i - 2:i] != "\n\n":         # a block's head opens it: the same words inside one are not it
+        i = text.find(head, i + 1)
+    if i < 0:
+        return -1, -1
+    j = text.find("\n\n", i)
+    return i, (len(text) if j < 0 else j)
+
+
+def fit(prompt: str, ceiling: int | None = None) -> str:
+    """The brief as SENT, under `PROMPT_CEILING_CHARS` by construction: while over, give up what `_drop_order` says,
+    in that order — the state, his words, the conversation (oldest turns first), the memory context, and only then
+    the identified act. A brief whose base alone is over is returned as it is (the ceiling test names it)."""
+    from nucleo.workers.prompts import catalog
+    cap = catalog.PROMPT_CEILING_CHARS if ceiling is None else ceiling
+    for key, how in _drop_order():
+        if len(prompt) <= cap:
+            break
+        head = words(key).split("{", 1)[0]      # a head with a placeholder is matched by its fixed opening
+        start, end = _span(prompt, head) if head else (-1, -1)
+        if start < 0:
+            continue
+        if how == "drop":
+            prompt = (prompt[:start].rstrip("\n") + ("\n\n" if end < len(prompt) else "") + prompt[end:].lstrip("\n")
+                      ).strip("\n")
+            continue
+        lines = prompt[start:end].split("\n")
+        body = lines[1:]
+        while body and len(prompt) - sum(len(x) + 1 for x in lines[1:]) + sum(len(x) + 1 for x in body) > cap:
+            body = body[1:] if how == "trim_old" else body[:-1]
+        kept = "\n".join([lines[0], *body]) if body else ""
+        prompt = (prompt[:start] + kept + prompt[end:]) if kept else \
+            (prompt[:start].rstrip("\n") + ("\n\n" if end < len(prompt) else "") + prompt[end:].lstrip("\n"))
+    return prompt
