@@ -4,7 +4,10 @@ Measured: a worker whose card refused its act for a missing name went on to ~20 
 minutes. Now the refusal names the datum and the bridge holds the row: only the question to him (which parks the
 session), a card's read or the act again pass; a search is refused with the datum it lacks. The hold clears when the
 act runs or the question is asked. No counter: the twentieth search is refused for the same reason as the first.
-Variants: two cards that declare the field; three refusals that declare none (they hold nothing).
+Variants: two cards that declare the cause; three refusals that declare none (they hold nothing); and through the
+REAL door (`_one_act` → `brain_action`, no stub): a not-found on `agenda:update_task` (which `action_shape` gives a
+`field` hint) holds nothing, a nameless `contactos:create_group` holds; his yes that runs a retained act clears it;
+an empty question does not; a session close does.
 """
 from __future__ import annotations
 
@@ -46,7 +49,7 @@ def _act(rec, action, payload):
 
 @pytest.mark.parametrize("call,refusal", [
     ({"widget_id": "contactos", "action": "create_group", "payload": {}},
-     {"ok": False, "error": "create_group needs the group's name", "field": "name"}),       # the card declares it
+     {"ok": False, "error": "create_group needs the group's name", "missing": "name"}),     # the card declares it
     ({"widget_id": "contactos", "action": "rename_group", "payload": {"name": "cena"}},
      {"ok": False, "error": "selector_missing", "field": "groupId"}),                      # the refusal names it
 ])
@@ -79,7 +82,7 @@ def test_a_refusal_that_declares_no_field_holds_nothing(rec, monkeypatch, refusa
 def test_a_question_to_a_network_agent_does_not_answer_the_hold(rec, monkeypatch):
     from nucleo import mesh_jobs
     monkeypatch.setattr(mesh_jobs, "ask_for_worker", lambda rec, thread: "")
-    _card(monkeypatch, lambda a, p: {"ok": False, "error": "x", "field": "name"} if a == "widget_data" else {"ok": True})
+    _card(monkeypatch, lambda a, p: {"ok": False, "error": "x", "missing": "name"} if a == "widget_data" else {"ok": True})
     _act(rec, "widget_data", {"widget_id": "contactos", "action": "create_group", "payload": {}})
     _act(rec, "ask_user", {"question": "q", "remote": {"thread": "t"}})
     assert rec.missing_datum, "only his question answers it"
@@ -91,7 +94,7 @@ def test_the_hold_rides_on_the_row_across_a_restart(rec, monkeypatch, tmp_path):
     memdb.reset_db()
     try:
         rec.uid = "row-7"
-        _card(monkeypatch, lambda a, p: {"ok": False, "error": "x", "field": "name"} if a == "widget_data"
+        _card(monkeypatch, lambda a, p: {"ok": False, "error": "x", "missing": "name"} if a == "widget_data"
               else {"ok": True})
         _act(rec, "widget_data", {"widget_id": "contactos", "action": "create_group", "payload": {}})
         again = SessionRecord(task_id="8", goal="x")
@@ -103,7 +106,7 @@ def test_the_hold_rides_on_the_row_across_a_restart(rec, monkeypatch, tmp_path):
 
 def test_the_act_that_runs_clears_the_hold(rec, monkeypatch):
     _card(monkeypatch, lambda a, p: ({"ok": True} if (p.get("payload") or {}).get("name")
-                                     else {"ok": False, "error": "needs name", "field": "name"}))
+                                     else {"ok": False, "error": "needs name", "missing": "name"}))
     _act(rec, "widget_data", {"widget_id": "contactos", "action": "create_group", "payload": {}})
     assert rec.missing_datum
     assert _act(rec, "widget_data", {"widget_id": "contactos", "action": "create_group",
@@ -114,7 +117,7 @@ def test_the_act_that_runs_clears_the_hold(rec, monkeypatch):
 def test_disarmed_without_the_hold_the_search_goes_on(rec, monkeypatch):
     """RED proof: with the hold disarmed the worker's chained searches run after the refusal (the measured class)."""
     monkeypatch.setattr(missing_datum, "held", lambda rec, action: "")
-    _card(monkeypatch, lambda a, p: {"ok": False, "error": "x", "field": "name"} if a == "widget_data"
+    _card(monkeypatch, lambda a, p: {"ok": False, "error": "x", "missing": "name"} if a == "widget_data"
           else {"ok": True})
     _act(rec, "widget_data", {"widget_id": "contactos", "action": "create_group", "payload": {}})
     assert _act(rec, "use_tool", {"tool": "web_search"})["ok"]
@@ -126,4 +129,57 @@ def test_the_contacts_card_declares_the_missing_name():
 
     from widgets.server_api import brain_action
     res = _a.run(brain_action("contactos", "create_group", {}))
-    assert res.get("ok") is False and res.get("field") == "name"
+    assert res.get("ok") is False and res.get("missing") == "name"
+
+
+# ── through the real door: no stub between the worker and the card (second audit A) ──────────────────────────────
+def _real(rec, action, payload):
+    return asyncio.run(worker_api._one_act(rec, action, payload))
+
+
+def test_a_not_found_through_the_real_door_holds_nothing():
+    rec = SessionRecord(task_id="r1", goal="x")
+    got = _real(rec, "widget_data", {"widget_id": "agenda", "action": "update_task",
+                                     "payload": {"task": "no-such-task-xyz", "status": "done"}})
+    assert got["ok"] is False and got.get("field"), "the shape hint is there…"
+    assert not rec.missing_datum, "…and it is not a cause"
+
+
+def test_a_nameless_group_through_the_real_door_holds_the_row():
+    rec = SessionRecord(task_id="r2", goal="x")
+    got = _real(rec, "widget_data", {"widget_id": "contactos", "action": "create_group", "payload": {}})
+    assert got["missing"] == ["name"] and rec.missing_datum
+    assert _real(rec, "use_tool", {"tool": "web_search", "query": "q"}).get("denied")
+    ok = _real(rec, "widget_data", {"widget_id": "contactos", "action": "create_group", "payload": {"name": "cena"}})
+    assert ok["ok"] and not rec.missing_datum, "the act that runs clears it"
+
+
+def test_an_empty_question_does_not_clear_the_hold(rec, monkeypatch):
+    _card(monkeypatch, lambda a, p: {"ok": False, "error": "x", "missing": "name"} if a == "widget_data"
+          else {"ok": True})
+    _act(rec, "widget_data", {"widget_id": "contactos", "action": "create_group", "payload": {}})
+    _act(rec, "ask_user", {"question": "  "})
+    assert rec.missing_datum
+
+
+def test_his_yes_that_runs_the_retained_act_clears_the_hold(rec):
+    missing_datum._write(rec, {"widget": "contactos", "action": "create_group", "fields": ["name"]})
+    out = missing_datum.after(rec, "widget_data", {"widget_id": "contactos", "action": "create_group",
+                                                   "payload": {"name": "cena"}}, {"ok": True})
+    assert out["ok"] and not rec.missing_datum
+    import inspect
+
+    from nucleo.cli import worker_api_answer
+    assert "missing_datum.after(" in inspect.getsource(worker_api_answer.answer)
+
+
+def test_a_session_close_clears_the_hold(rec):
+    from types import SimpleNamespace
+
+    from nucleo.workers import session_finish
+    missing_datum._write(rec, {"widget": "contactos", "action": "create_group", "fields": ["name"]})
+    try:
+        asyncio.run(session_finish._closing(SimpleNamespace(_rec=rec, _usage={}, _usage_partial={}), rec))
+    except Exception:  # noqa: BLE001 — the rest of the close is not this test's; the clear runs first
+        pass
+    assert not rec.missing_datum

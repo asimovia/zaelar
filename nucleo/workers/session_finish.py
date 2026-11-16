@@ -121,8 +121,9 @@ async def _ending(self, rec) -> None:
 
 
 async def _closing(self, rec) -> None:
-    from nucleo.workers import task_record     # what is left of its transcript, on the row (closed or parked)
+    from nucleo.workers import missing_datum, task_record   # its transcript on the row; a hold ends with its session
     task_record.flush(rec)
+    missing_datum.clear(rec)
     # TOKENS ARE ALWAYS CHARGED, even when CANCELLED (2026-08-13): inside the UI-only `cancelled` `if`, a worker
     # killed by budget was metered at ZERO (704 s, 256 steps, ~$0.20 → 0 Energy). Two concerns, separated.
     u = self._usage or self._usage_partial or {}

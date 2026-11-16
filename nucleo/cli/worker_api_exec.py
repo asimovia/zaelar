@@ -193,7 +193,7 @@ async def _exec_allow(action: str, payload: dict, rec) -> dict:
             if isinstance(res, dict) and res.get("error"):
                 # V2-707 F1 — a refusal carries its diagnostic half: a message with no way out stops a worker.
                 out = {"ok": False, "error": str(res.get("error"))}
-                for k in ("detail", "message", "options", "names", "n", "collection", "field",
+                for k in ("detail", "message", "options", "names", "n", "collection", "field", "missing",
                           "collections", "needs_confirm", "payload"):   # payload: the declared shape (V2-860 T2.7)
                     if res.get(k) not in (None, "", [], {}):
                         out[k] = res[k]

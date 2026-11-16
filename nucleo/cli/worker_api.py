@@ -120,7 +120,8 @@ async def _one_act(rec, action: str, payload: dict) -> dict:
             return {"ok": bool(corr), "status": "pending", "corr_id": corr} if corr else {"ok": False,
                     "error": "no open exchange of this task asks anything"}
         corr = _register_ask(rec, str(q), options=opts if isinstance(opts, list) else None)
-        missing_datum.clear(rec)                   # asked HIM, and the ask is on the row: the hold is answered
+        if str(q).strip():
+            missing_datum.clear(rec)               # asked HIM, and the ask is on the row: the hold is answered
         return {"ok": True, "status": "pending", "corr_id": corr}
 
     from nucleo import on_his_behalf as _behalf      # an act in his name he never asked for is a question
@@ -152,11 +153,7 @@ async def _one_act(rec, action: str, payload: dict) -> dict:
     from nucleo.workers import taint as _taint      # a stranger's text this act renders marks THIS session (§4a)
     with _taint.during(rec, source=str((payload or {}).get("tool") or action)):
         res = await _exec_allow(action, payload or {}, rec)
-    if action == "widget_data":
-        if res.get("ok") is not False:
-            missing_datum.clear(rec)
-        res = missing_datum.on_refusal(rec, payload or {}, res)
-    return res
+    return missing_datum.after(rec, action, payload or {}, res)
 
 
 @router.post("/api/worker/say")
