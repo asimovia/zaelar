@@ -28,6 +28,12 @@ def _optional(desc) -> bool:
     return any(m in d for m in _OPTIONAL_MARKS)
 
 
+def declared_optional(desc) -> bool:
+    """Does this payload description declare its field optional — the mark anywhere, «(opcional)», or the description
+    LEADING with it, «opcional: …»? The one reading of «may be left out» for whoever decides what a call lacks."""
+    return _optional(desc) or str(desc or "").lower().lstrip().startswith(tuple(m.strip("()") for m in _OPTIONAL_MARKS))
+
+
 def _base_of(widget_id: str) -> str:
     from nucleo.turn import brief as _tb
     return _tb._base_of(widget_id)

@@ -307,6 +307,7 @@ class LangSpec:
     #: A send task that lacks ONE slot asks for it on its row (`nucleo/request/send_task`): the words, the person.
     send_missing_text: str = ""
     send_missing_recipient: str = ""
+    send_missing_field: str = ""      # a declared field of the act with no value: {field} is its declared label
     #: …and a person his word reaches several of alike is ONE «which?» naming them (`send_task_who.which`).
     send_which_recipient: str = ""
     #: An act of a card the brief ordered and the turn served with another tool asks ONE question for the facts it
