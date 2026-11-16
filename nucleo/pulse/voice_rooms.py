@@ -35,7 +35,7 @@ import time
 log = logging.getLogger(__name__)
 
 _DEFAULTS = {"room_close_wait_s": 5.0, "room_owed_s": 30.0, "rooms_unserved_cure": 2.0, "room_cure_cooldown_s": 120.0}
-_state: dict = {"minted": {}, "resumed_at": 0.0, "last_cure": 0.0, "busy": None}
+_state: dict = dict(minted={}, resumed_at=0.0, last_cure=0.0, busy=None)   # a state record
 
 
 def policy() -> dict:
@@ -48,15 +48,12 @@ def policy() -> dict:
     return {k: float(pol.get(k, v)) for k, v in _DEFAULTS.items()}
 
 
-#: What the voice owed and did not do is a `voice_fault` (never hidden in the engine's viewer nor in the Master); the
-#: routine close before a sleep is the heartbeat's own `homeostasis`.
-_FAULTS = frozenset({"voice_room_survived_freeze", "voice_rooms_unserved", "voice_room_cure"})
-
-
-def _emit(step: str, text: str = "", **extra) -> None:
+def _emit(step: str, text: str = "", *, fault: bool = False, **extra) -> None:
+    """`fault`: what the voice owed and did not do — a `voice_fault` (never hidden in the engine's viewer nor in the
+    Master); the routine close before a sleep is the heartbeat's own `homeostasis`."""
     try:
         from voice import observer
-        observer.emit("voice_fault" if step in _FAULTS else "homeostasis", step, text,
+        observer.emit("voice_fault" if fault else "homeostasis", step, text,
                       extra={"cat": "voice", "kind_diag": step, **extra})
     except Exception as e:  # noqa: BLE001 — the guarantee never dies of its own report
         log.warning("voice_rooms: %s not emitted (%r)", step, e)
@@ -137,7 +134,7 @@ async def after_resume(app, recycle_fn) -> str:
     room = live_room(v)
     if not room:
         return "ok"
-    _emit("voice_room_survived_freeze", f"a room was live across the freeze ({room[-12:]})", room=room[-12:])
+    _emit("voice_room_survived_freeze", f"a room was live across the freeze ({room[-12:]})", fault=True, room=room[-12:])
     if await close_live("resumed", v) == "closed":
         return "closed"
     await _cure(app, recycle_fn, "a room that crossed the freeze did not close")
@@ -170,7 +167,7 @@ def unserved(now: float | None = None, owed_s: float | None = None) -> list[str]
 
 async def _cure(app, recycle_fn, why: str) -> bool:
     _state["last_cure"] = time.time()
-    _emit("voice_room_cure", why, why=why)
+    _emit("voice_room_cure", why, fault=True, why=why)
     try:
         return bool(await recycle_fn(app))
     except Exception as e:  # noqa: BLE001
@@ -192,7 +189,7 @@ async def check_owed(app, recycle_fn, now: float | None = None) -> str:
     held = has_listener()
     _emit("voice_rooms_unserved", f"{len(late)} rooms asked for, no agent joined"
           + (" — a live room with a person in it is not cut" if held else ""),
-          rooms=len(late), live_room=live_room()[-12:], held=held)
+          fault=True, rooms=len(late), live_room=live_room()[-12:], held=held)
     if held:                                       # a conversation going on elsewhere is never the price of the cure
         return "held"
     await _cure(app, recycle_fn, f"{len(late)} rooms without the agent")
