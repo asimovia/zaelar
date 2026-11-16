@@ -363,9 +363,8 @@ async def _dispatch(wid: str, action: str, payload: dict):
     # BEFORE the guard: a synonym must not look like a missing field. `fold_aliases` renames what the
     # model spelled its own way onto the keys the manifest declares, so the contract judges the call the
     # operator actually made (V2-705 — a `send_to` carrying `message` instead of `text` lost the message).
-    payload = contract.fold_aliases(wid, action, payload)
     from . import field_types   # …and a declared non-text field is converted ONCE, for every caller («false» is false)
-    payload = field_types.coerce(wid, action, payload)
+    payload = field_types.coerce(wid, action, contract.fold_aliases(wid, action, payload))
     from . import text_home   # V2-807 T-09: a held message's text written on another card lands on its row
     if (home := text_home.route(wid, action, payload)) is not None:
         text_home.record(home); return await _dispatch(home["widget"], home["action"], home["payload"])  # noqa: E702

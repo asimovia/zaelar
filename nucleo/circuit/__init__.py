@@ -404,9 +404,12 @@ def close(rec, relay_cap: int) -> str:
         return _close(rec, relay_cap)
     except Exception as e:  # noqa: BLE001
         logger.warning(f"circuit: could not judge the ending of {getattr(rec, 'task_id', '?')}: {e}")
+        # the verdict it returns is the one the row and the memory gate read: «done» only for what the worker said
+        # it delivered, a failure stays one (`undeclared`'s own words are «It is done.»)
+        v = "undeclared" if bool(getattr(rec, "ok", False)) else "unmet"
         if not str(getattr(rec, "verdict", "") or ""):
-            rec.verdict = "undeclared"   # the verdict it returns is the one the row and the memory gate read
-        return "undeclared"
+            rec.verdict = v
+        return v
 
 
 #: The task artefact slot that records his «no» to the act a task asked about (V2-857).

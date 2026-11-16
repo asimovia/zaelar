@@ -205,6 +205,7 @@ async def _deliver(rec: "SessionRecord") -> None:
         from nucleo.workers import spoken_delivery as _sd
         _line = await _sd.line(rec.goal, summary, ok=rec.ok, verdict=str(getattr(rec, "verdict", "") or "")) or summary
         _row = str(getattr(rec, "uid", "") or rec.task_id)     # the ROW, never the boot-local number (V2-852 I1)
-        await _notices.notify("zaelar", _line, kind="done", key=f"notice:{_row}", task_id=_row)
+        # one notice per CLOSE, not per row: a row parked for a quota and then delivered by its next worker has two
+        await _notices.notify("zaelar", _line, kind="done", key=f"notice:{_row}:{rec.task_id}", task_id=_row)
     except Exception as e:  # noqa: BLE001
         logger.warning(f"worker[{rec.task_id}]: entrega proactiva falló: {e}")
