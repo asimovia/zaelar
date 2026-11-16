@@ -149,6 +149,13 @@ def would_refuse(action: str, payload: dict) -> dict | None:
     """The refusal a send WOULD get, read before the confirmation is asked (`widgets.contract.would_refuse`): a reply
     whose number answers nothing, a draft that is not there. None when the act can run."""
     p = dict(payload or {})
+    # the channel the call NAMES is down (known, not guessed: `connected_platforms` is None while unreported) — said
+    # before anything is promised or queued; the card's own refusal, with the contact's channels that are up
+    from ..outbound import targets
+    named = str(p.get("channel") or p.get("platform") or "").strip().lower()
+    up = targets.connected_platforms() if named in targets._LABEL else None
+    if up is not None and named not in up:
+        return targets.channel_down(str(p.get("contact") or p.get("name") or "").strip() or "?", named, [])
     if action == "send_draft" and not _card_send_of(p):
         return draft_named(_d.load_db(), p)[4]
     if action == "reply" and not any(str(p.get(k) or "").strip() for k in ("contact", "to")):

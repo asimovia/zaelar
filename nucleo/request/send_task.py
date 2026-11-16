@@ -28,7 +28,7 @@ from a stranger — the protection that matters (`exit_slots`, `exit_gate.gate`)
 from __future__ import annotations
 
 from nucleo.play import shadow as _play
-from nucleo.request.slot_values import _each, filled, takes_many  # noqa: F401 — read here by name
+from nucleo.request.slot_values import _each, end_names, filled, takes_many  # noqa: F401 — read here by name
 from nucleo.request import base, event as _emit, note, send_task_who
 
 #: The retained kind on the row's `ask` artefact: his answer fills a slot of THIS task (`inline_ask.rerun`).
@@ -108,11 +108,9 @@ def _reading_names(reading, value) -> bool:
 
 
 def missing(art: dict) -> tuple[str, str]:
-    """The first required slot with no value: `(slot, payload key)`, or `("", "")` when the act may run. A slot whose
-    payload field the action declares OPTIONAL is not asked for (`create_group`'s first message) — unless the act's
-    declared end state names it (`send_draft`'s `{contact}`: without it the act cannot be judged, so it is asked)."""
+    """The first required slot with no value, `(slot, key)` or `("", "")`; a field declared OPTIONAL is not asked unless
+    the act's declared end state names it (`send_draft`'s `{contact}`: without it the act cannot be judged)."""
     from nucleo.flash import payload_fill
-    from nucleo.request.slot_values import end_names
     wid, act = str(art.get("widget") or ""), str(art.get("action") or "")
     decl = payload_fill._payload_spec(wid, act)
     for slot, d in (art.get("slots") or {}).items():
@@ -252,7 +250,9 @@ def commission(wid: str, action: str, payload: dict | None, said: str, *, readin
         _emit(emit, "❓ send task: one slot has no value — asked on its row", q, {"cat": "flash", "task_id": uid,
               "slot": slot, "ask_id": ask_id})
         return uid
-    from nucleo.request import substitution
+    from nucleo.request import dry_refusal, substitution   # the card's dry refusal (a channel down): said NOW
+    if dry_refusal.said(uid, wid, action, art):
+        return uid
     if substitution.active():                  # in the model's call's place: born asking (CRIT-K2b, rule 2)
         return substitution.ask_first(uid, art, wid, action)
     _said_started(uid, wid, action, art)
