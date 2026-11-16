@@ -106,7 +106,7 @@ def answered(uid: str, entry: dict, text: str, choice: int | None = None) -> dic
     from widgets import field_types   # a field declared a list takes his answer as its item (the card splits it)
     wid_, act_ = base(str(art.get("widget") or "")), str(art.get("action") or "")
     listed = field_types.declared(wid_, act_).get(key) == field_types.LIST
-    if listed and field_types.filled(wid_, act_, key, (art.get("payload") or {}).get(key)):
+    if field_types.keeps(wid_, act_, key, (art.get("payload") or {}).get(key)):
         return {"ok": False, "row": uid, "unclear": True}   # an answer NEVER replaces a list that already has people
     if not inline_ask.take(ask_id):
         return {"ok": True, "row": uid, "already": True}
@@ -218,12 +218,16 @@ def take_call(wid: str, action: str, payload: dict | None, said: str) -> str:
                        answered_at=time.time())
             asker.keep(uid, art)
             from widgets import field_types   # a value merges only into a field of ITS declared kind (V2-919 M1)
-            merged = {**dict(keep.get("payload") or {}),
-                      **{k: v for k, v in dict(payload or {}).items() if field_types.filled(base(wid), action, k, v)}}
+            held = dict(keep.get("payload") or {})   # …and never over a list the row already holds (`keeps`)
+            merged = {**held, **{k: v for k, v in dict(payload or {}).items()
+                                 if field_types.filled(base(wid), action, k, v)
+                                 and not field_types.keeps(base(wid), action, k, held.get(k))}}
+            before = dict(keep.get("slots") or {})
             keep.update(payload=merged, slots=sources(wid, action, merged, said, reading=keep.get("reading")))
             keep.setdefault("heard", []).append(said)
-            for s, d in keep["slots"].items():   # what he already gave this task stays his
-                if d["source"] == AGENT and str((artefact(uid).get("slots") or {}).get(s, {}).get("source")) == HIS:
+            for s, d in keep["slots"].items():   # what he already gave this task stays his — if the call left it as it was
+                k = str(d.get("key") or s)
+                if d["source"] == AGENT and str((before.get(s) or {}).get("source")) == HIS and merged.get(k) == held.get(k):
                     d["source"] = HIS
             _keep(uid, keep)
             _end_state(uid, wid, action, merged, said)

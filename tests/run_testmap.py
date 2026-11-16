@@ -5413,7 +5413,9 @@ DOMAINS: list[dict] = [
         {"id": "2.1786", "title": "A list field and a channel field keep the shape and the key their action declares through "
                                  "every question (V2-919 audit): «which one?» is never asked about one name of a declared "
                                  "list — its ambiguity is the widget's to refuse — and an answer never replaces a list that "
-                                 "already has people (no order leaves with the list cut down; es, en); «which channel?» is "
+                                 "already has people — nor does the answering turn's own call (take_call: a shorter list, one name as text, "
+                                 "someone new), and a slot the call just changed is not kept his (no order leaves with the "
+                                 "list cut down; es, en); «which channel?» is "
                                  "asked and answered under the channel slot's DECLARED key, never a literal",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/turn/test_a_list_and_a_channel_keep_their_declared_shape.py"]},
