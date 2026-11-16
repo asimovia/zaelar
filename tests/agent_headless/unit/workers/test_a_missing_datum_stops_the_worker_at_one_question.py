@@ -183,3 +183,27 @@ def test_a_session_close_clears_the_hold(rec):
     except Exception:  # noqa: BLE001 — the rest of the close is not this test's; the clear runs first
         pass
     assert not rec.missing_datum
+
+
+# ── third audit ──────────────────────────────────────────────────────────────────────────────────────────────────
+def test_a_datum_under_another_key_through_the_real_door_holds_nothing():
+    """`cancel_meeting {meeting: "x"}` is refused for its empty `title`, but the worker HAS the datum (wrong key)."""
+    rec = SessionRecord(task_id="r3", goal="x")
+    got = _real(rec, "widget_data", {"widget_id": "agenda", "action": "cancel_meeting",
+                                     "payload": {"meeting": "dentista"}})
+    assert got["ok"] is False and not rec.missing_datum, got
+
+
+def test_a_blank_question_registers_no_ask_and_parks_nothing(monkeypatch):
+    rec = SessionRecord(task_id="r4", goal="x")
+    asked = []
+    monkeypatch.setattr(worker_api, "_register_ask", lambda *a, **k: asked.append(a) or "corr")
+    got = _real(rec, "ask_user", {"question": "   "})
+    assert got["ok"] is False and not asked and not rec.parked
+
+
+def test_the_hold_names_the_real_interpreter():
+    from nucleo.workers.providers.claude import bridge_python
+    rec = SessionRecord(task_id="r5", goal="x")
+    missing_datum._write(rec, {"widget": "contactos", "action": "create_group", "fields": ["name"]})
+    assert f"{bridge_python()} -m nucleo.cli.bridge ask" in missing_datum.reason(rec)
