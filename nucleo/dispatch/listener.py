@@ -61,16 +61,15 @@ async def run_listener(stop: "asyncio.Event | None" = None) -> None:
             # DEDUP at the source of truth (2026-07-15): a live session already on this request gets it INJECTED as a
             # refinement, never a 2nd worker (the two «creating a widget…» bug).
             # V2-851 F2e — an ANSWERED question's task names its row by identity (`answers`): never a refinement of
-            # another errand, never a parked one, never a continuation of an ended one.
-            _bound = bool(ctx.get("answers"))       # …and one of SEVERAL errands of his turn (`part`) is never folded:
-            _own_part = _bound or ctx.get("part") is not None
-            dup, _ev = ("", {}) if _own_part else _d.dedup_scan(
+            # another errand, never a parked one, never a continuation of an ended one; nor a sibling of its turn.
+            _bound, _sib = bool(ctx.get("answers")), __import__("nucleo.dispatch.siblings", fromlist=["x"]).same_turn
+            dup, _ev = ("", {}) if _bound else _d.dedup_scan(
                 request, kind if kind != "generic" else _d._kind_of(ctx.get("errand_kind")))
             # `by` now comes from the deciding loop instead of being assumed here: a same-widget hit used to
             # be filed as «containment», which is a number it never computed.
             _dup_by = _ev.get("by") or ""
             _model = "skipped"          # the second half only runs with something live to compare against
-            if not dup and not _own_part:
+            if not dup and not _bound:
                 # SECOND HALF OF THE DEDUP, off-loop: «is this an errand at all?» (`about_a_live_errand`). Only
                 # with something live; in a thread because `chat_sync` is synchronous.
                 _live = _d._live_errands()
@@ -85,6 +84,7 @@ async def run_listener(stop: "asyncio.Event | None" = None) -> None:
                         # «separate» — the same confusion as the mute miss, one layer in. Recorded, not
                         # changed: the fail-open stays, an unreachable judge must never block an errand.
                         _model = f"error:{type(e).__name__}"
+            dup = "" if dup and _sib(ctx, dup) else dup
             from nucleo.acts import surface_owner as _own
             dup and _own.dispatcher_said(ctx, request, dup, _dup_by)   # V2-844 F0: does it agree with the flow door?
             if dup:
@@ -113,7 +113,7 @@ async def run_listener(stop: "asyncio.Event | None" = None) -> None:
             # are popped, so each repeat opened another task — four errands, one intention. Same yardstick over
             # `parked_errands()`; a hit is folded in (`absorb_refinement`) and the brain repeats the QUESTION. A
             # `confirmed` relaunch is never compared: it IS the parked errand coming back.
-            if not (ctx.get("confirmed") or _own_part):
+            if not (ctx.get("confirmed") or _bound):
                 _parked = _d.parked_errands()
                 pdup = None
                 if _parked:
@@ -124,7 +124,7 @@ async def run_listener(stop: "asyncio.Event | None" = None) -> None:
                             pdup = await asyncio.to_thread(_d.about_a_live_errand, request, _parked) or None
                         except Exception:  # noqa: BLE001 — fail-open, like the live half
                             pdup = None
-                if pdup:
+                if pdup and not _sib(ctx, pdup):
                     _own.dispatcher_said(ctx, request, pdup, "parked")
                     question = _absorb_into(pdup, request, key, ctx)
                     try:
