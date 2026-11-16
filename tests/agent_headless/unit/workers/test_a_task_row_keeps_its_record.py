@@ -180,7 +180,7 @@ def _deliver_quiet(monkeypatch):
 
 @pytest.mark.parametrize("ok,status,handoff,notices_expected", [
     (True, "done", "", ["notice:row-5:5"]),          # a success: the delivery line
-    (False, "error", "", []),                      # a failure: the death's question alone (ended.py)
+    (False, "error", "", ["notice:row-5:5"]),       # a failure WITH a report: its delivery line, no death question
     (False, "relevada", "x", ["notice:row-5:5"]),    # a relay is not a death
 ])
 def test_a_close_is_told_once(monkeypatch, ok, status, handoff, notices_expected):
@@ -190,18 +190,26 @@ def test_a_close_is_told_once(monkeypatch, ok, status, handoff, notices_expected
     rec.ok, rec.status, rec.handoff, rec.result_summary = ok, status, handoff, "No encontré el contacto."
     asyncio.run(session_finish._deliver(rec))
     assert told == notices_expected
-    assert task_record.owes_death_notice(rec) is (not ok and not handoff)
+    assert task_record.owes_death_notice(rec) is False, "a close with something to say is told by its line"
+    rec.result_summary = ""
+    assert task_record.owes_death_notice(rec) is (not ok and not handoff), "with nothing to say: the death's question"
 
 
 def test_disarmed_two_speakers_tell_a_failure_twice(monkeypatch):
-    """RED proof: with the shared predicate disarmed, the delivery speaks a failure the death also tells."""
-    from nucleo.workers import session_finish
-    monkeypatch.setattr(task_record, "owes_death_notice", lambda rec: False)
+    """RED proof: with the predicate disarmed (the pre-fix «any failure»), a failure with a report is told twice."""
+    import time
+
+    from nucleo.events import task_event
+    from nucleo.workers import ended, session_finish
+    monkeypatch.setattr(task_record, "owes_death_notice", lambda rec: not rec.ok)
     told = _deliver_quiet(monkeypatch)
+    monkeypatch.setattr(task_event, "told", lambda matter, **k: told.append(k.get("key")))
+    monkeypatch.setattr(ended, "_bound", lambda: None)
     rec = _rec()
-    rec.ok, rec.status, rec.result_summary = False, "error", "No encontré el contacto."
+    rec.ok, rec.status, rec.result_summary, rec.started = False, "error", "No encontré el contacto.", time.time()
     asyncio.run(session_finish._deliver(rec))
-    assert told == ["notice:row-5:5"]
+    ended._remember_ended(rec)
+    assert len(told) == 2
 
 
 # ── exactly one notice, across the conversation's rotation (audit B1) ────────────────────────────────────────

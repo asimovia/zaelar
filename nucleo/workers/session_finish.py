@@ -1,5 +1,5 @@
 """How a worker session ENDS: relay, restart, the harness verdict, the delivery through voice and UI (ONE
-notice per close: a death's question owns a failure, `task_record.owes_death_notice`). Part of nucleo.workers.session (names through _s)."""
+notice per close: a failure with nothing to say is the death's question, `task_record.owes_death_notice`). Part of nucleo.workers.session (names through _s)."""
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -197,9 +197,6 @@ async def _deliver(rec: "SessionRecord") -> None:
         return
     # MEMORY: written once, by the row's close (`ledger.remembered`), through the one gate (`writer.admits`): two
     # writers with two rules wrote a failure there and only success here.
-    from nucleo.workers import task_record     # ONE notice per close: a death's question carries the why
-    if task_record.owes_death_notice(rec):
-        return
     try:
         from nucleo.pulse import notices as _notices     # V2-796: voice when he is there, his phone when not, once
         from nucleo.workers import spoken_delivery as _sd

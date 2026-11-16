@@ -31,7 +31,7 @@ def parked(monkeypatch):
 
 def _ended(goal):
     rec = SessionRecord(task_id=f"e{abs(hash(goal)) % 999}", goal=goal, kind="research")
-    rec.status, rec.ok, rec.result_summary = "error", False, "quota"
+    rec.status, rec.ok, rec.result_summary = "error", False, ""   # a death with nothing to say: its question
     ended._remember_ended(rec)
     return [n for n in task_event.drain() if "died" in n]
 

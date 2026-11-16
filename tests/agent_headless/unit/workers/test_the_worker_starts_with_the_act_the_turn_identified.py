@@ -161,7 +161,8 @@ def _full(monkeypatch, lang, name, *, memory=2000, recent=1200):
         _pb, base = "x", build._build_prompt(req, mem, True, None)
     out = first_act.live(base, "", "", ctx, rd)
     if name == "hotel":     # a research errand: the direction note rides (`dispatch.session`, `_brief_bg`)
-        return catalog, first_act.fit(out + "\n\nNOTA: " + "n" * 150)
+        return catalog, first_act.fit(out + "\n\nNOTA: la dirección de esta investigación llega en breve; empieza ya "
+                                            "y aplícala al llegar.")      # the note as `dispatch.session` writes it
     from nucleo.workers.handoff import with_worker_brief   # a relay: its brief rides in front
     return catalog, first_act.fit(with_worker_brief(out, {"worker_brief": "RESUME this errand: " + "r" * 400}))
 

@@ -157,9 +157,14 @@ def block(uid: str, context: dict | None, reading: dict | None, trace: str = "",
 def live(prompt: str, surface: str, uid: str, context: dict | None, reading: dict | None, trace: str = "") -> str:
     """A trusted worker's brief as composed: the prompt, the surface's trusted blocks, the handoff. The ceiling is
     held by `fit`, over the brief exactly as it is SENT (after the relay's and the resume's additions)."""
+    from nucleo.workers.prompts import catalog
     from nucleo.workers.prompts.surfaces import trusted_blocks
     base = prompt + trusted_blocks(surface)
-    return "\n\n".join(p for p in (base, block(uid, context, reading, trace, seen=base)) if p)
+    tail = block(uid, context, reading, trace, seen=base)
+    if tail:     # composed after the interpreter pass: its commands get the real interpreter here, like the rest
+        from nucleo.workers.providers import claude as _c
+        tail = catalog.with_py(tail, _c.bridge_python())
+    return "\n\n".join(p for p in (base, tail) if p)
 
 
 def _drop_order() -> tuple[tuple[str, str], ...]:
@@ -189,7 +194,8 @@ def fit(prompt: str, ceiling: int | None = None) -> str:
     for key, how in _drop_order():
         if len(prompt) <= cap:
             break
-        head = words(key).split("{", 1)[0]      # a head with a placeholder is matched by its fixed opening
+        head = words(key).split("{", 1)[0].split("`", 1)[0]   # matched by its fixed opening (no placeholder, no
+        #                                                        command the interpreter pass may have rewritten)
         start, end = _span(prompt, head) if head else (-1, -1)
         if start < 0:
             continue
