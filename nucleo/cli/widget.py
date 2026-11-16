@@ -169,8 +169,11 @@ def _declared_payload(wid: str, action: str) -> dict:
 def _field_args(wid: str, action: str, args: list[str]):
     """`field=value` arguments over the action's declared fields → its payload (`widget_fields.payload`)."""
     from nucleo.cli.widget_fields import payload
-    spec = _declared_payload(wid, action)
-    return payload(spec.get("payload") or {}, args, spec.get("types") or {})
+    got, why = payload(_declared_payload(wid, action).get("payload") or {}, args)
+    if why:
+        print(why)
+        return None
+    return got
 
 
 def _list_key(wid: str, action: str) -> str:
@@ -261,7 +264,11 @@ def main(argv: list[str]) -> int:
             print("uso: python -m nucleo.cli.widget data <widget_id> <action> [campo=valor … | payload-json | @fichero.json]")
             return 2
         wid, action = argv[2], argv[3]
-        if (fields := _field_args(wid, action, argv[4:])) is not None:     # `name="…" items='[…]'`: one command
+        from nucleo.cli import widget_fields
+        if widget_fields.is_field_args(argv[4:]):       # a line of `field=value`: that path ALONE, never a fallback
+            fields = _field_args(wid, action, argv[4:])
+            if fields is None:
+                return 2
             return _report(_act("widget_data", {"widget_id": wid, "action": action, "payload": fields}))
         raw = argv[4] if len(argv) >= 5 else ""
         bare = _bare_text_payload(wid, action, raw)

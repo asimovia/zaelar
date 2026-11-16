@@ -1,10 +1,11 @@
-"""An act with a payload is ONE model turn: its declared fields go as `key=value` arguments of one command.
+"""An act with a payload is ONE model turn: its declared fields go as arguments of one command, read ONE way.
 
-Measured: every act with a payload cost the worker two model turns — Write `step.json`, then Bash the bridge with
-`@step.json` — because the brief forbade JSON on the command line (shell quoting broke it). `cli.widget data <widget>
-<action> field=value …` builds the payload from the action's DECLARED fields, and the brief renders that one command
-with each value single-quoted (the shell expands nothing). Variants: text with quotes, `$`, backticks and
-backslashes; digits and «true» that stay text; a field declared as a list; an undeclared key (the JSON path).
+Measured: every act with a payload cost the worker two model turns — Write `step.json`, then Bash the bridge. The rule
+of `cli.widget data <widget> <action> …` (third audit: three rounds of a value read two ways): `field=value` is ALWAYS
+literal text (empty, `[ ] milk`, `true`, `{ok}` included), `field:=<json>` is the only typed value, a non-text field
+the action declares is converted by the widget door (`widgets.field_types`). A refusal ends the command with rc≠0 and
+never falls to another path. Property: every command `first_act.command` renders is accepted and arrives identical,
+for every declared action of every widget, through bash.
 """
 from __future__ import annotations
 
@@ -69,13 +70,81 @@ def test_disarmed_without_field_arguments_the_act_needs_a_file_first(monkeypatch
     assert not sent or sent[0].get("payload") != {"name": "cena"}
 
 
-@pytest.mark.parametrize("args", [["name=a", "name=b"], ["name=a", "contactIds=true"], ["name=a", 'contactIds=["c1"]'],
-                                  ["name=a", "contactIds={}"], ["name=a", "contactIds=null"]])
-def test_an_ambiguous_or_repeated_argument_is_refused_never_guessed(args, capsys):
-    """Second audit B: a repeated field is not «the last one», and an untyped JSON literal is not read as text."""
-    assert cli_widget._field_args("contactos", "create_group", args) is None
-    said = capsys.readouterr().out
-    assert ":=" in said or "twice" in said, said
+@pytest.mark.parametrize("value", ["", "[ ] comprar leche", "true", "{ok}", "null", "[URGENTE] llama a casa", "34666"])
+def test_a_field_value_is_always_literal_text(value):
+    """Third audit B1: `relation=` clears, `body='[ ] milk'` is a checkbox line, `text='true'` is the word."""
+    assert cli_widget._field_args("contactos", "set_alias", ["contactId=c3", f"relation={value}"]) == {
+        "contactId": "c3", "relation": value}
+
+
+@pytest.mark.parametrize("args", [["name=a", "name=b"], ["colour=red"], ["name=a", "loose words"],
+                                  ["name:=not json"]])
+def test_a_refusal_ends_the_command_and_never_falls_to_another_path(args, monkeypatch, capsys):
+    sent = []
+    monkeypatch.setattr(cli_widget, "_act", lambda action, payload: sent.append(payload) or {"ok": True})
+    monkeypatch.setattr(cli_widget, "_report", lambda res: 0)
+    rc = cli_widget.main(["widget", "data", "agenda", "add_list", *args] if args == ["name:=not json"]
+                         else ["widget", "data", "contactos", "create_group", *args])
+    assert rc != 0 and sent == [], (rc, sent)
+    assert capsys.readouterr().out.strip(), "the refusal says how to write it"
+
+
+def _bash_argv(cmd: str) -> list[str]:
+    head = "python -m nucleo.cli.widget data "
+    script = 'f(){ for a in "$@"; do printf "%s\\0" "$a"; done; }; f ' + cmd[len(head):]
+    return subprocess.run(["bash", "-c", script], capture_output=True, text=True).stdout.split("\0")[:-1]
+
+
+_ADVERSE = ["", "[ ] x", "true", "{ok}", "Ana's $50 `x` \\ \"q\"", "null", "a=b"]
+
+
+def _actions():
+    from widgets import runtime
+    for w in runtime.catalog():
+        wid = str(w.get("id") or "")
+        for act, spec in ((runtime.get(wid) or {}).get("actions") or {}).items():
+            if isinstance(spec, dict) and isinstance(spec.get("payload"), dict) and spec["payload"]:
+                yield wid, act, spec["payload"]
+
+
+def test_every_rendered_command_is_accepted_and_arrives_identical_for_every_action():
+    """Property (third audit): what the brief renders, the bridge reads back unchanged — all widgets, all actions."""
+    n = 0
+    for wid, act, spec in _actions():
+        for i, v in enumerate(_ADVERSE):
+            payload = {k: (v if (j + i) % 3 else ["x", v]) for j, k in enumerate(spec)}   # text and typed lists
+            argv = _bash_argv(first_act.command(wid, act, payload))
+            assert argv[:2] == [wid, act]
+            assert cli_widget._field_args(wid, act, argv[2:]) == payload, (wid, act, payload)
+        n += 1
+    assert n > 150, n
+
+
+# ── a typed field that arrives null or empty is ABSENT (third audit B2) ──────────────────────────────────────────
+@pytest.mark.parametrize("value", [None, "", "  "])
+def test_a_null_or_empty_typed_field_is_absent_and_the_handler_decides(value):
+    from widgets import field_types
+    assert "favorite" not in field_types.coerce("contactos", "set_favorite", {"contactId": "c1", "favorite": value})
+    assert field_types.coerce("contactos", "set_favorite", {"contactId": "c1", "favorite": "false"})["favorite"] is False
+
+
+@pytest.mark.parametrize("value", [None, ""])
+def test_set_favorite_with_null_still_stars_through_the_real_door(value):
+    """`set_favorite {favorite: null}` once UNSTARRED (null read as false); omitted means star, so null does too."""
+    a = _brain("contactos", "add_contact", {"name": f"Estrella {value!r}"})
+    from widgets.contactos import data as ct
+    cid = next(c["id"] for c in ct.store.load(ct.WIDGET_ID).get("contacts", []) if c.get("name") == f"Estrella {value!r}")
+    _brain("contactos", "set_favorite", {"contactId": cid, "favorite": value})
+    c = next(c for c in ct.store.load(ct.WIDGET_ID).get("contacts", []) if c["id"] == cid)
+    assert c.get("favorite") is True, (a, c)
+
+
+def test_the_all_day_alias_false_is_false_through_the_real_door():
+    from widgets.agenda import data as agenda
+    _brain("agenda", "add_meeting", {"title": "Alias false", "date": "2031-05-06", "startTime": "11:00",
+                                     "all_day": "false"})
+    m = next(m for m in agenda.load_db().get("meetings", []) if m.get("title") == "Alias false")
+    assert not m.get("allDay") and m.get("startTime") == "11:00", m
 
 
 def _brain(wid, act, payload):
@@ -122,3 +191,4 @@ def test_disarmed_without_the_door_conversion_false_is_true(monkeypatch):
     _brain("agenda", "add_meeting", {"title": "Disarmed", "date": "2031-04-09", "startTime": "10:00", "allDay": "false"})
     m = next(m for m in agenda.load_db().get("meetings", []) if m.get("title") == "Disarmed")
     assert m.get("allDay")
+
