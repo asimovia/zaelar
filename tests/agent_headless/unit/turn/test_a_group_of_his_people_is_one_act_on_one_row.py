@@ -207,7 +207,7 @@ def test_a_name_without_its_accent_or_with_a_full_stop_is_found(people):
     assert len((res.get("result") or res).get("added") or []) == 2, res
 
 
-def _turn_call(monkeypatch, brief):
+def _turn_call(monkeypatch, brief, text="crea un grupo cena con Ana y Luis"):
     """The turn's real data-op door (`tool_executor_widget_calls._apply_widget_data`) with the card licence open."""
     from types import SimpleNamespace
 
@@ -222,15 +222,17 @@ def _turn_call(monkeypatch, brief):
                           _apply_widget_data=lambda w, a, p: ran.append((w, a, p)), _brief=brief, _frontend=None,
                           _request_data_confirm=None, _spawn=None, _tag_emit=lambda *a, **k: None, _turn_op_tasks=[],
                           acted={}, brain=SimpleNamespace(), data_done={}, deduped={}, emit=lambda *a, **k: None,
-                          escalate_req={"v": None}, text="crea un grupo cena con Ana y Luis")
+                          escalate_req={"v": None}, text=text)
     return ran, tasks
 
 
-def test_the_turn_door_runs_the_twin_only_when_the_reading_says_no_channel(monkeypatch):
+def test_the_turn_door_runs_the_twin_only_when_no_channel_is_named(monkeypatch):
     ran, tasks = _turn_call(monkeypatch, _NONE)
     assert ran == [("contactos", "create_group", {"contactIds": ["Ana", "Luis"], "name": "cena"})] and not tasks
+    ran, tasks = _turn_call(monkeypatch, None, text="crea un grupo de WhatsApp cena con Ana y Luis")
+    assert not ran and tasks, "he named the channel: the leaving act keeps its route"
     ran, tasks = _turn_call(monkeypatch, None)
-    assert not ran and tasks, "no reading: the leaving act keeps its route"
+    assert ran and not tasks, "no channel named anywhere: the group is of his contacts"
 
 
 def test_disarmed_without_the_twin_the_group_goes_to_messaging(monkeypatch):
