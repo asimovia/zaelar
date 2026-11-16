@@ -2,7 +2,8 @@
 
   · `POST /api/chat`           — a typed line from ANY screen, into the one conversation.
   · `POST /api/screens/beat`   — a screen says whether it is visible (sent on `visibilitychange`), and, with
-                                 `present`, that a person is connected there (`presence.js`, once a minute).
+                                 `present`, that a person is connected there (`presence.js`, once a minute), or,
+                                 with `left`, that the app on his phone was put away.
   · `POST /api/screens/bring`  — «bring it here»: a card that plays on one screen at a time moves to this one.
   · `GET  /api/screens`        — which screens are open, which holds the voice, which one is active.
 """
@@ -49,7 +50,9 @@ def beat(payload: dict = Body(...)) -> dict:
     dev = (payload or {}).get("dev")
     visible = (payload or {}).get("visible")
     screens.beat(dev, visible=visible if isinstance(visible, bool) else None)
-    if (payload or {}).get("touched"):
+    if (payload or {}).get("left") and visible is False:
+        screens.left(dev)             # the phone app went to the background or was closed: the person left
+    elif (payload or {}).get("touched"):
         screens.touched(dev)
     elif (payload or {}).get("present") and visible is True:
         screens.present(dev)          # a visible tab with its stream open: a connected person (nucleo/idle_stop.py)

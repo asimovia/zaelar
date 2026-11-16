@@ -68,6 +68,10 @@ _input = {"at": 0.0}
 #: never speaks. The idle stop reads `last_presence_ms` = the later of this and his input (`nucleo/idle_stop.py`).
 _presence = {"at": 0.0}
 
+#: When the person LEFT: the app on his phone said it went to the background or was closed (`left`), and no other
+#: screen of his was on. Later presence is later than this, so it only speaks while nobody has come back.
+_left = {"at": 0.0}
+
 #: Where each one-screen card plays right now (`youtube` → its screen) and how to tell which cards are one-screen.
 #: The policy is the WIDGET's (`widgets/screen_policy.py`); this module only asks, through a registered predicate,
 #: so the voice layer imports nothing from the widgets.
@@ -235,6 +239,29 @@ def present(dev) -> None:
         e = _entry(d, now)
         e["seen_at"] = now
         e["visible"] = True
+
+
+def left(dev) -> None:
+    """The app on a phone says the person left it (`frontend/app/services/presence.js`: it went to the background or
+    was closed). The screen is hidden from now; and when no OTHER screen of his is open and visible, nobody is there —
+    the idle stop then counts its short window from this moment instead of waiting the whole one (`nucleo/idle_stop`)."""
+    d = clean(dev)
+    if not d:
+        return
+    now = time.time()
+    with _mx:
+        e = _entry(d, now)
+        e["seen_at"] = now
+        e["visible"] = False
+        others = any(k != d and o.get("visible") and _is_open(o, now) for k, o in _screens.items())
+    if not others:
+        _left["at"] = now
+
+
+def last_left_ms() -> int | None:
+    """When the person left with no other screen on (epoch ms) — only while nobody has been present since; else None."""
+    at = _left["at"]
+    return round(at * 1000) if at and at >= max(_input["at"], _presence["at"]) else None
 
 
 def last_presence_ms() -> int | None:
@@ -528,6 +555,7 @@ def _reset_for_tests() -> None:
         _holder["dev"], _holder["ts"] = "", 0.0
         _last["dev"] = ""
     _typed["fn"] = None
+    _left["at"] = 0.0
     _WAITING["at"] = 0.0
     _input["at"] = 0.0
     _presence["at"] = 0.0

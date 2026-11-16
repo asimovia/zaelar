@@ -23,6 +23,13 @@
 // himself (`openedByPerson`). Never while hidden or asleep. The idle stop keeps the engine up for its whole window
 // after the last beat (`nucleo/idle_stop.py`).
 //
+// THE PHONE APP IS THE EXCEPTION (operator, 2026-11-16): the app on his phone — the native companion (`in-app` on the
+// root, set by its own glue) or the page installed on the home screen (a standalone display) — shows a page only when
+// he opens it or comes back to it; there is no tab the system brings forward behind his back. So there, coming to the
+// foreground IS the gesture: it counts as input, it wakes a sleeping tab and, through the tab's `wake=1`, a sleeping
+// engine, with nothing to press. And leaving it says so (`h.left`), so the engine sleeps soon after instead of
+// waiting its whole window for someone who put the phone away. A browser tab keeps the rule above.
+//
 // No imports on purpose: the decision is driven by a node test, and the shell hands in what it needs.
 // ============================================================================
 
@@ -58,6 +65,21 @@ export function beatDue({ visible, open, asleep, lastGestureMs = 0, nowMs = 0, s
 export function openedByPerson({ wasDiscarded = false, navType = "" } = {}) {
   if (wasDiscarded) return false;
   return !navType || navType === "navigate" || navType === "reload";
+}
+
+/** Whether this page runs as the app on his phone rather than as a browser tab: the native companion marks the root
+ *  `in-app`; a page installed on the home screen runs standalone (`navigator.standalone` on iOS, the display mode
+ *  elsewhere). Pure: the shell hands the three readings in. */
+export function installedApp({ inApp = false, standalone = false, displayStandalone = false } = {}) {
+  return !!(inApp || standalone || displayStandalone);
+}
+
+function _appNow() {
+  try {
+    return installedApp({ inApp: document.documentElement.classList.contains("in-app"),
+                          standalone: navigator.standalone === true,
+                          displayStandalone: matchMedia("(display-mode: standalone)").matches });
+  } catch (_) { return false; }
 }
 
 /** The server's ⏻ truth (`GET /api/run`), REFLECTED and never propagated: a tab that slept or sat hidden missed the
@@ -119,6 +141,7 @@ export function wirePresence(h) {
     if (u.searchParams.has("wake")) { u.searchParams.delete("wake"); history.replaceState(history.state, "", u.pathname + u.search + u.hash); }
   } catch (_) {}
   const input = () => { _p.lastInput = _p.lastGesture = Date.now(); if (_p.asleep) wake(); };
+  if (_appNow()) _p.lastGesture = _p.lastInput = Date.now();   // the app was opened: however the page was loaded, he did it
   for (const ev of ["pointerdown", "keydown"]) window.addEventListener(ev, input, { capture: true, passive: true });
   const iv = setInterval(() => { if (!_p.asleep && sleepDue({ lastInputMs: _p.lastInput, nowMs: Date.now(), sleepMin: _p.sleepMin })) sleep(); }, 30000);
   if (iv && iv.unref) iv.unref();   // a node harness that mounts sse.js must still exit; a browser returns a number
@@ -128,6 +151,10 @@ export function wirePresence(h) {
   // does read the ⏻ again (`h.comeBack`, a background request a hosted edge answers without waking anything).
   try {
     document.addEventListener("visibilitychange", () => {
+      if (_appNow()) {                       // the phone app: coming to the foreground is the gesture, leaving is said
+        if (_visible()) input();
+        else if (!_p.asleep) { try { _p.h && _p.h.left && _p.h.left(); } catch (_) {} }   // asleep, a tab sends nothing
+      }
       _beat();
       if (_visible() && !_p.asleep) { try { _p.h && _p.h.comeBack && _p.h.comeBack(); } catch (_) {} }
     });

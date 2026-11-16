@@ -6428,6 +6428,13 @@ DOMAINS: list[dict] = [
         # 2026-11-16 — disarmed: «the app in front» put back in brief_screen → red; an allowlist row that matches nothing → red.
         {"id": "4.552", "title": "The model never hears «app» for a widget (INI-068 F5, V2-923: «open activity» → «the activity app is open»): every string of voice.json, every manifest's model-facing text and the string literals of the model-facing modules say «widget»; «app» stays only for Zaelar, a provider's own app and the user's words, on an allowlist that can only shrink",
             "ch": UNIT, "paths": ["tests/browser/unit/i18n/test_the_model_never_hears_app_for_a_widget.py"]},
+        {"id": "4.553", "title": "Opening the app on his phone wakes the agent and leaving it says so (V2-924): in the "
+                                 "native companion or a page installed on the home screen, coming to the foreground is "
+                                 "the gesture — it counts as input, wakes a sleeping tab and reopens its stream with "
+                                 "wake=1; putting it away says the person left, and the idle stop counts its short window "
+                                 "from that moment unless another screen is on, a voice session is open, a worker runs or "
+                                 "a notice is due; a browser tab coming to the foreground is still not a person",
+            "ch": UNIT, "paths": ["tests/browser/unit/arranque/test_opening_the_phone_app_wakes_and_leaving_it_says_so.py"]},
         {"id": "4.318", "title": "After a reconnect the screen adopts the engine's list of cards: an orphan it cannot "
                                  "name goes, an unlisted app closes, a listed one opens beside, and the drift is a "
                                  "widget/reconcile event (V2-825 F5, refactor2710-04 T-04) — RENDERED",

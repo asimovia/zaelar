@@ -20,7 +20,9 @@ VISIBLE tab whose stream is open: it says so with a beat every minute (`frontend
 the server records as `screens.present()`. A stream open alone never is — a reconnecting tab is a request, not a
 person — and a tab with no input for `tab_sleep_min` stops beating and closes its stream. Until someone is present
 after boot (or after a resume) the window is the short `wake_grace_min`: an engine woken by a request that brought
-nobody stops again in about a minute instead of a full window. Workers and due notices keep their veto in both.
+nobody stops again in about a minute instead of a full window. The same short window runs from the moment the person
+LEFT — the app on his phone said it was put away and no other screen of his is on (`screens.left`) — unless a voice
+session is open. Workers and due notices keep their veto in all three.
 
 HOW IT STOPS, AND THE RESUME. Once this decides, `nucleo/suspend.py` carries the stop out: the wake report first,
 the goodnight on every open stream, then the deployment's sleep endpoint (suspend this host) or the server's own clean
@@ -79,18 +81,26 @@ def tab_sleep_min() -> float:
 
 def decide(now_ms: int, last_real_ms: int | None, started_ms: int, workers_active: bool,
            next_due_s: float | None, window_ms: int, *, last_presence_ms: int | None = None,
-           grace_ms: int = 0) -> str | None:
+           grace_ms: int = 0, left_ms: int | None = None) -> str | None:
     """Why the engine should stop now, or None. Pure — the clock and every reading come in as arguments.
 
     `last_presence_ms` is the last moment a person was present (input, or a visible connected screen's beat); nothing
     else is presence. Until one lands after `started_ms` (the boot or the last resume), the window is `grace_ms`
     counted from that start alone (`last_real_ms` is not read: a boot moves it with nobody there); after it, the full
-    window from the latest activity of either kind."""
+    window from the latest activity of either kind.
+
+    `left_ms` is the moment the person LEFT with no other screen on (`screens.last_left_ms`: the app on his phone was
+    put away, and nobody has been present since). From then the window is the short `grace_ms` again, counted from
+    the later of that moment and the last real activity — he said he is gone, so the engine does not wait a whole
+    window for him. The caller passes None while a voice session is open: someone listening is not gone."""
     if window_ms <= 0:
         return None
     present = last_presence_ms is not None and last_presence_ms >= started_ms
+    gone = left_ms is not None and left_ms >= max(last_presence_ms or 0, started_ms)
     if not present and 0 < grace_ms < window_ms:
         quiet_ms, win, what = now_ms - started_ms, grace_ms, "nobody present since boot or resume"
+    elif gone and 0 < grace_ms < window_ms:
+        quiet_ms, win, what = now_ms - max(left_ms, last_real_ms or 0), grace_ms, "the person left and nobody came back"
     else:
         quiet_ms = now_ms - max(last_real_ms or 0, last_presence_ms or 0, started_ms)
         win, what = window_ms, "no real activity and nobody present"
@@ -139,6 +149,17 @@ def _last_presence() -> int | None:
         return None
 
 
+def _left() -> int | None:
+    """When the person left with no other screen on — None while a voice session is open (someone listening is not
+    gone) or when it cannot be read (the whole window holds)."""
+    try:
+        from voice import screens
+        return None if screens.has_session() else screens.last_left_ms()
+    except Exception as e:  # noqa: BLE001 — unreadable: nobody counted as gone, the full window holds
+        logger.warning(f"idle stop: whether the person left is unreadable, the full window holds: {e!r}")
+        return None
+
+
 def maybe_stop(now: float | None = None) -> bool:
     """One pulse's check, called after `note_tick`. True when it started a stop, or carried one out."""
     window = window_min() * 60_000
@@ -151,5 +172,5 @@ def maybe_stop(now: float | None = None) -> bool:
     now_ms = round(now * 1000)
     last, workers, nxt = _readings(now)
     why = decide(now_ms, last, _since_ms(), workers, nxt, window, last_presence_ms=_last_presence(),
-                 grace_ms=round(wake_grace_min() * 60_000))
+                 grace_ms=round(wake_grace_min() * 60_000), left_ms=_left())
     return suspend.begin(why) if why else False

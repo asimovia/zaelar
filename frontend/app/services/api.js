@@ -161,6 +161,11 @@ export const screensBeat = (visible, touched = false) => {
 export const screensPresent = () => {
   try { postJSON("/api/screens/beat", { dev: DEVICE, visible: true, present: true }).catch(() => {}); } catch (_) {}
 };
+// The phone app went to the background or was closed: the person left (services/presence.js). `keepalive` lets the
+// request outlive a page that is being put away.
+export const screensLeft = () => {
+  try { postJSON("/api/screens/beat", { dev: DEVICE, visible: false, left: true }, { keepalive: true }).catch(() => {}); } catch (_) {}
+};
 // «Bring it here»: this screen just opened a card that plays on one screen at a time; the others let it go.
 export const screensBring = (id) => postJSON("/api/screens/bring", { id, dev: DEVICE }).then(json).catch(() => ({}));
 
