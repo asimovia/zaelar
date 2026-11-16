@@ -265,7 +265,7 @@ def test_remember_external_never_touches_identity_or_state(fresh_db):
 
 def test_remember_external_never_writes_a_result_by_default(fresh_db):
     """The pill grammar decides the kind: no kind is a fact, and a worker's own «result» is a request until the
-    circuit's verdict writes one (`writer.result`, V2-825 F1)."""
+    circuit's verdict writes one (`writer.admits`, V2-825 F1)."""
     from nucleo import memory_agent
 
     async def run():

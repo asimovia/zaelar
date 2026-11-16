@@ -404,6 +404,8 @@ def close(rec, relay_cap: int) -> str:
         return _close(rec, relay_cap)
     except Exception as e:  # noqa: BLE001
         logger.warning(f"circuit: could not judge the ending of {getattr(rec, 'task_id', '?')}: {e}")
+        if not str(getattr(rec, "verdict", "") or ""):
+            rec.verdict = "undeclared"   # the verdict it returns is the one the row and the memory gate read
         return "undeclared"
 
 

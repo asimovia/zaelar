@@ -57,8 +57,8 @@ def test_each_written_pill_says_its_kind(events):
 
 def test_the_result_door_reports_its_verdict(events):
     async def go():
-        return [await writer.result("Found three carpenters.", task_id="t1", verdict="unmet"),
-                await writer.result("Found three carpenters.", task_id="t2", verdict="met")]
+        return [writer.admits("t1", "unmet", "Found three carpenters.")[1] == "",
+                writer.admits("t2", "met", "Found three carpenters.")[1] == ""]
     assert _run(go) == [False, True]
     door = [e for e in events if e.get("task_id") in ("t1", "t2")]
     assert [(e["task_id"], e["verdict"], e["accepted"]) for e in door] == [("t1", "unmet", False), ("t2", "met", True)]
