@@ -23,7 +23,7 @@ _DENY_TOOLS = {"authenticate_web", "login_done", "confirm_widget_delete", "set_s
 #: Flash's `cluster_send`. Deleted rather than built: a second door for the same act is the parallel rail F0 measured.
 _KNOWN_ACTS = ("ask_user", "decide", "use_tool", "read_widget", "show_widget", "close_widget", "widget_data",
                "schedule", "schedules", "unschedule", "not_mine", "mesh_serve", "rules", "propose_rule",
-               "file_put", "files", "verify", "state")
+               "file_put", "files", "verify", "state", "card")
 
 def deny_reason(action: str, payload: dict) -> str:
     """Why the request is denied, IN TERMS THE WORKER CAN CORRECT.
@@ -111,7 +111,7 @@ def classify_act(action: str, payload: dict) -> str:
         if tool in _DENY_TOOLS:
             return DENY
         return ALLOW if tool in _PRESTABLE_TOOLS else DENY
-    if a in ("read_widget", "show_widget", "close_widget", "state"):   # `state`: names only, read from their owners
+    if a in ("read_widget", "show_widget", "close_widget", "state", "card"):   # state/card: declarations, no data
         return ALLOW
     if a == "widget_data":
         # THE GENERIC DATA DOOR IS OPEN TO THE WORKER IT WAS BUILT FOR (V2-710 T0.2). `widgets/rows.py`

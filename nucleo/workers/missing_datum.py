@@ -12,8 +12,8 @@ from __future__ import annotations
 
 from loguru import logger
 
-#: What a held row still lets through: the one question, a read (a card, the state), and the act again.
-_PASSES = ("ask_user", "read_widget", "widget_data", "state")
+#: What a held row still lets through: the one question, a read (a widget, its card, the state), the act again.
+_PASSES = ("ask_user", "read_widget", "widget_data", "state", "card")
 
 #: How a manifest marks a field the act may go without (the word, anywhere in its description).
 _OPTIONAL = ("opcional", "optional")
