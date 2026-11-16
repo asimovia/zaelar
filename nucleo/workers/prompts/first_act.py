@@ -69,11 +69,14 @@ def act_block(reading: dict | None) -> str:
 
 
 def block(uid: str, context: dict | None, reading: dict | None) -> str:
-    """Everything the handoff hands over: his words, then the send row's block or the identified action's."""
+    """Everything the handoff hands over: his words, the state around the task now (`state_now`, refreshed by
+    `act state`), then the send row's block or the identified action's."""
     parts = []
     said = his_words(context)
     if said and (head := words("his_words_head")):
         parts.append(f"{head}\n«{said}»")
+    from nucleo.workers import state_now
+    parts.append(state_now.block(uid))
     from nucleo.request import send_task_words as _send_task
     act = _send_task.brief_block(uid) if uid else ""
     parts.append(act or act_block(reading))

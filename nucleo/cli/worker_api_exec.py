@@ -49,6 +49,9 @@ async def _exec_allow(action: str, payload: dict, rec) -> dict:
     payload = payload or {}
     if action == "not_mine":
         return _not_mine(payload, rec)
+    if action == "state":           # the brief's state block, fresh: channels, open widgets, tasks, clusters
+        from nucleo.workers import state_now
+        return {"ok": True, "result": state_now.snapshot(str(getattr(rec, "uid", "") or ""))}
     if action == "decide":
         # V2-726 A1 — the bounded-decision door for a headless worker, through this already-audited bridge.
         # In a thread: `decide` is a blocking round trip and this is a coroutine (V2-726 F2).

@@ -41,7 +41,9 @@ def test_a_sure_identified_act_is_the_first_step_with_its_declared_fields(lang, 
         assert f"· {f}:" in out
 
 
-def test_a_doubtful_verdict_or_an_undeclared_action_hands_over_no_act(lang):
+def test_a_doubtful_verdict_or_an_undeclared_action_hands_over_no_act(lang, monkeypatch):
+    from nucleo.workers import state_now
+    monkeypatch.setattr(state_now, "block", lambda own="": "")
     assert first_act.act_block(_reading("contactos:create_group", 0.2)) == ""
     assert first_act.act_block(_reading("contactos:no_such_action", 0.99)) == ""
     assert first_act.act_block({}) == ""

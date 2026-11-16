@@ -757,6 +757,13 @@
   "first_act_head": "TU PRIMER PASO — el turno ya identificó el acto: widget «{widget}», acción «{action}». Sus campos declarados:",
   "first_act_field": "  · {field}: {desc}",
   "first_act_do": "Ejecútalo PRIMERO, antes de buscar nada: escribe `step.json` con {call} (cada valor sale de sus palabras) y ejecuta `python -m nucleo.cli.bridge act widget_data @step.json`. Solo si el widget lo rechaza, busca más.",
+  "state_now": {
+   "head": "ESTADO AHORA (solo nombres; `python -m nucleo.cli.bridge act state` lo vuelve a leer, fresco):",
+   "channels": "sus canales: {list}",
+   "widgets": "widgets abiertos: {list}",
+   "tasks": "sus otras tareas en curso: {list}",
+   "clusters": "sus clusters de MeshKore: {list}"
+  },
   "goal_head": "OBJETIVO (respétalo al pie de la letra):",
   "catalog_unknown": "No hay familia «{name}». Las familias son: {names}.",
   "family_text": {
