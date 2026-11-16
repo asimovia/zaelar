@@ -44,13 +44,12 @@
 .pb-step.swap{opacity:0}
 .pb-slow{opacity:.5;font-size:12px}
 @media (prefers-reduced-motion:reduce){.pb-ring{animation:none}}
-/* A PHONE HELD UPRIGHT (operator, 2026-11-16: «el texto siempre tiene que estar en la parte de abajo… no puede quedar
-   una cosa encima de la otra»): the words live in a band at the foot of the screen and the drawing in the screen above
+/* THE WORDS GO UNDER THE DRAWING, ON EVERY SCREEN (operator, 2026-11-16: «los textos… tanto en mobile como en desktop,
+   tienen que ir abajo del todo»): they live in a band at the foot of the screen and the drawing in the screen above
    it — `CAPTION_BAND` (132px) and the centre in components/boot-anim.js::placement are these same numbers. */
-@media (orientation:portrait){
-  .pb-ring{top:calc((100% - 132px) * .5)}
-  .pb-cap{top:auto;bottom:0;height:132px;justify-content:center;box-sizing:border-box;
-    padding:0 24px calc(env(safe-area-inset-bottom, 0px) + 10px)}
+.pb-ring{top:calc((100% - 132px) * .5)}
+.pb-cap{top:auto;bottom:0;height:132px;justify-content:center;box-sizing:border-box;
+  padding:0 24px calc(env(safe-area-inset-bottom, 0px) + 10px)}
 }
 
 /* ── Language onboarding (V2-101): first-run blocking modal, ABOVE the boot veil (100010) so it follows it —
@@ -166,6 +165,15 @@
 .zv-zs span:nth-child(1){transform:translate(-18px,-4px)}.zv-zs span:nth-child(2){transform:translate(2px,-26px)}.zv-zs span:nth-child(3){transform:translate(26px,-56px)}}
 body:has(.zv.on.sleep,.zv.on.moved) #desk{transform:none;z-index:100900}
 .zv-box{width:min(420px,100%);text-align:center}
+/* STOPPED COVERS THE WHOLE WIDTH (operator, 2026-11-16: «el chat queda exento de ese overlay… el usuario puede seguir
+   clicando»). The veil lives inside #desk, which ends where a docked chat begins, so the chat column kept its light and
+   its clicks. While the agent is stopped or in transit the chat wears the SAME shade (a layer over it that takes the
+   clicks), and the veil's box is centred in the window, not in what is left of it beside the chat. The bottom rail and
+   the top bar stay above it on purpose: the ⏻ is there. Asleep and «moved» were already black over everything. */
+body:has(.zv.on.off,.zv.on.pausing,.zv.on.starting) .chatwall::after{content:"";position:absolute;inset:0;z-index:60;
+  background:rgba(6,8,14,.72)}
+body:has(.zv.on.off,.zv.on.pausing,.zv.on.starting) .zv-box{
+  transform:translateX(calc((var(--chatdock-r, 0px) - var(--chatdock-l, 0px)) / 2))}
 .zv-mark{font-size:2.25rem;line-height:1;opacity:.85;margin-bottom:14px}
 .zv-mark:empty{display:none}
 .zv-title{margin:0 0 10px;font-size:1.125rem;font-weight:700;color:#f2f4ff}

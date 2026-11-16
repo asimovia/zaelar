@@ -144,7 +144,7 @@
         var r = host.getBoundingClientRect();
         return { w: r.width, h: r.height, dpr: Math.min(window.devicePixelRatio || 1, 2) };
       };
-      var w = new Worker("/static/app/core/boot-worker.js?v=1", { type: "module" });
+      var w = new Worker("/static/app/core/boot-worker.js?v=2", { type: "module" });
       var shown = 0, onDone = null, dead = false;
       var fail = function () {                 // the worker could not run: the page draws it instead (BootOverlay)
         if (dead) return;

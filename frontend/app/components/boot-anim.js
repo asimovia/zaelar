@@ -84,13 +84,13 @@ export function parentOf(pts, order) {
 /** The brain's outline at angle `a`, as a fraction of its radii: a folded rim (gyri), slightly fuller at the front. */
 export function brainEdge(a) { return 1 + 0.05 * Math.sin(a * 7 + 0.6) + 0.035 * Math.sin(a * 13 + 2.1) + 0.04 * Math.cos(a); }
 
-/** The band a PORTRAIT screen keeps free at its foot for the loader's words (`.pb-cap` in core/shared-surfaces.css):
- *  on a phone held upright the words go under the drawing, never over it. Landscape keeps none. */
+/** The band every screen keeps free at its foot for the loader's words (`.pb-cap` in core/shared-surfaces.css): the
+ *  words go under the drawing, never over it — upright or lying down, phone or desktop. */
 export const CAPTION_BAND = 132;
 /** Where the brain sits: its centre and the box it may fill. Pure — the test and both hosts (page, worker) read it. */
 export function placement(W, H) {
-  const portrait = H > W * 1.15, band = portrait ? CAPTION_BAND : 0, free = Math.max(1, H - band);
-  return { portrait, band, cx: W / 2, cy: portrait ? free * 0.5 : H * 0.46, free };
+  const portrait = H > W * 1.15, band = CAPTION_BAND, free = Math.max(1, H - band);
+  return { portrait, band, cx: W / 2, cy: free * 0.5, free };
 }
 
 /** A token's colour from the page, or its fallback (a worker has no page: the host hands the colours in). */
@@ -150,9 +150,9 @@ export function startBootAnim(canvas, { onProgress, env } = {}) {
     canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     // The long axis follows the screen (a brain lying down on a desk, standing up on a phone) and both radii keep a
-    // margin inside the screen — the old disk spilled past a 390 px phone's edges. Upright, the brain lives in the
-    // screen ABOVE the caption band: its lowest fold ends before the words begin.
-    const long = Math.min(span * 1.45, (portrait ? st.free * 0.40 : W * 0.42)), short = Math.min(long * 0.74, (portrait ? W : H) * 0.40);
+    // margin inside the screen — the old disk spilled past a 390 px phone's edges. The brain lives in the screen
+    // ABOVE the caption band: its lowest fold ends before the words begin.
+    const long = Math.min(span * 1.45, (portrait ? st.free * 0.40 : W * 0.42)), short = Math.min(long * 0.74, (portrait ? W : st.free) * 0.40);
     const [rx, ry] = portrait ? [short, long] : [long, short];
     for (const n of nodes) {
       // the fissure was cut at sin(a)≈0; on a standing brain it has to run vertically, so the angle turns a quarter

@@ -6439,9 +6439,14 @@ DOMAINS: list[dict] = [
                                  "it (V2-925): preboot.js starts the brain in a worker on an OffscreenCanvas before any "
                                  "module exists, it keeps growing while the page's thread is busy, the animation runs "
                                  "with no page at all (everything comes in as its env), BootOverlay drives that one "
-                                 "animation; on a screen held upright the words live in a band at the foot and the brain "
-                                 "above it, a wide screen keeps them where they were — RENDERED",
+                                 "animation; on EVERY screen (phone or desktop, upright or wide) the words live in a band at the "
+                                 "foot and the brain above it — RENDERED",
             "ch": UNIT, "paths": ["tests/browser/unit/arranque/test_the_loader_draws_on_its_own_thread_and_the_words_sit_under_it.py"]},
+        {"id": "4.555", "title": "A stopped agent shades the whole width (V2-926): while the agent is stopped or in transit "
+                                 "the docked chat wears the veil's own shade and takes no click, and the veil's box is "
+                                 "centred in the window; the bottom rail stays usable; asleep and «moved» are black over "
+                                 "the chat itself — RENDERED",
+            "ch": UNIT, "paths": ["tests/browser/unit/arranque/test_a_stopped_agent_shades_the_whole_width.py"]},
         {"id": "4.318", "title": "After a reconnect the screen adopts the engine's list of cards: an orphan it cannot "
                                  "name goes, an unlisted app closes, a listed one opens beside, and the drift is a "
                                  "widget/reconcile event (V2-825 F5, refactor2710-04 T-04) — RENDERED",

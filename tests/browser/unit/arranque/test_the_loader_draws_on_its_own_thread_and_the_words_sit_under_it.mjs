@@ -2,7 +2,7 @@
 // test_the_loader_draws_on_its_own_thread_and_the_words_sit_under_it.mjs
 //
 // The loader's animation must be able to run where there is NO page: no window, no document, no layout — a worker.
-// Everything it needs comes in as `env`. And on a screen held upright the brain lives above the band the words use.
+// Everything it needs comes in as `env`. And on every screen the brain lives above the band the words use.
 //
 // Run: node tests/browser/unit/arranque/test_the_loader_draws_on_its_own_thread_and_the_words_sit_under_it.mjs
 // ============================================================================
@@ -18,8 +18,8 @@ assert.equal(phone.portrait, true);
 assert.equal(phone.band, A.CAPTION_BAND, "upright: a band at the foot is kept for the words");
 assert.ok(phone.cy < (844 - A.CAPTION_BAND) * 0.55 && phone.cy > (844 - A.CAPTION_BAND) * 0.45, "the brain is centred in the screen ABOVE the band");
 assert.equal(desk.portrait, false);
-assert.equal(desk.band, 0, "landscape keeps none");
-assert.equal(desk.cy, 800 * 0.46, "…and the brain stays where it was");
+assert.equal(desk.band, A.CAPTION_BAND, "a wide screen keeps the same band: the words go under the drawing everywhere");
+assert.equal(desk.cy, (800 - A.CAPTION_BAND) * 0.5, "…and the brain is centred in the screen above it");
 
 // ── it runs with nothing but its env ──
 const calls = { frames: 0, fills: 0, maxY: 0 };
@@ -46,4 +46,11 @@ assert.ok(calls.maxY <= 844 - A.CAPTION_BAND + 2, `nothing is drawn inside the w
 assert.equal(typeof resized, "function", "a new size reaches it through the env");
 ctrl.destroy();
 assert.equal(offCalled, true);
+
+// …and the same on a wide screen: nothing is drawn inside the band there either
+calls.maxY = 0; frame = null; now = 0;
+const wide = A.startBootAnim({ width: 0, height: 0, getContext: () => ctx }, { env: { ...env, size: () => ({ w: 1280, h: 800, dpr: 1 }) } });
+for (let i = 0; i < 600 && frame; i++) { now += 16; const f = frame; frame = null; f(now); }
+assert.ok(calls.maxY <= 800 - A.CAPTION_BAND + 2, `a wide screen: lowest ${calls.maxY} vs ${800 - A.CAPTION_BAND}`);
+wide.destroy();
 console.log("ok");

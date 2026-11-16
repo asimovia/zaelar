@@ -12,7 +12,7 @@
 // completes it is `store.bootReady`: then the rest develops within GROW.FINISH_S and the veil lifts.
 import { createEffect } from "../core/reactive.js?v=2";
 import * as store from "../core/store.js?v=2";
-import { startBootAnim, STAGE_READY, BURST_MS } from "./boot-anim.js?v=5";
+import { startBootAnim, STAGE_READY, BURST_MS } from "./boot-anim.js?v=6";
 
 /** bootPhase → stage. Exported for the test. */
 export const PHASE_STAGE = { encendiendo: 2, voz: 3, memoria: 4, reflejo: 5 };

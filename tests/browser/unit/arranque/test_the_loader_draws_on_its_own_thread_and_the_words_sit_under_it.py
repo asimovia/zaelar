@@ -5,7 +5,8 @@ stood still at times, with its words on top of the drawing. The brain was drawn 
 that is busy loading the whole agent while the loader is on screen — and it only started once the module graph had
 loaded. Now `core/preboot.js` starts it on the first byte in a worker (`core/boot-worker.js`, an OffscreenCanvas), where
 it moves at its own pace; `components/boot-anim.js` takes everything it needs as an `env`, so it runs with no page at
-all; and on a screen held upright the words live in a band at the foot (`CAPTION_BAND`) and the brain above it.
+all; and on EVERY screen — phone or desktop, upright or wide — the words live in a band at the foot (`CAPTION_BAND`)
+and the brain above it.
 
 Disarmed (seen red): the worker start cut from `preboot.js` → nothing grows before the modules; `placement` keeping no
 band → the brain is drawn into the words' band.
@@ -95,9 +96,11 @@ def test_the_brain_grows_before_any_module_of_the_agent_has_loaded(page_factory)
     pg.close()
 
 
-@pytest.mark.parametrize("viewport", [(390, 844), (360, 640), (430, 932)])
-def test_on_a_phone_held_upright_the_words_are_at_the_foot_under_the_drawing(page_factory, viewport):
-    pg = page_factory("/mobile/index.html", viewport)
+@pytest.mark.parametrize("shell, viewport", [("/mobile/index.html", (390, 844)), ("/mobile/index.html", (360, 640)),
+                                             ("/mobile/index.html", (430, 932)), ("/index.html", (1280, 800)),
+                                             ("/index.html", (1920, 1080)), ("/mobile/index.html", (844, 390))])
+def test_the_words_are_at_the_foot_under_the_drawing_on_every_screen(page_factory, shell, viewport):
+    pg = page_factory(shell, viewport)
     until_sync(lambda: pg.evaluate("() => !!document.querySelector('#preboot .pb-title')?.textContent"),
                "the loader's words", timeout_s=6)
     box = pg.evaluate("""() => { const c = document.querySelector('#preboot .pb-cap').getBoundingClientRect();
@@ -108,12 +111,4 @@ def test_on_a_phone_held_upright_the_words_are_at_the_foot_under_the_drawing(pag
     assert box["capTop"] == pytest.approx(box["h"] - 132, abs=1), box
     assert box["titleTop"] >= box["capTop"], box
     assert box["ring"] == pytest.approx((box["h"] - 132) / 2, abs=2), f"the drawing is centred in the screen above the band: {box}"
-    pg.close()
-
-
-def test_a_wide_screen_keeps_the_words_where_they_were(page_factory):
-    pg = page_factory("/index.html", (1280, 800))
-    until_sync(lambda: pg.evaluate("() => !!document.querySelector('#preboot .pb-cap')"), "the loader's words", timeout_s=6)
-    top = pg.evaluate("() => document.querySelector('#preboot .pb-cap').getBoundingClientRect().top")
-    assert top == pytest.approx(800 * 0.46 + 60, abs=2), top
     pg.close()

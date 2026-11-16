@@ -8,7 +8,7 @@
 // Messages in:  {t:"start", canvas, size:{w,h,dpr}, colors, reduced} · {t:"size", size} · {t:"stage", n} ·
 //               {t:"finish"} · {t:"destroy"}
 // Messages out: {t:"p", p} (the share grown, 0..1) · {t:"done"} (the growth completed after `finish`)
-import { startBootAnim } from "../components/boot-anim.js?v=5";
+import { startBootAnim } from "../components/boot-anim.js?v=6";
 
 let ctrl = null, size = { w: 0, h: 0, dpr: 1 }, resized = null;
 const raf = typeof self.requestAnimationFrame === "function"
