@@ -167,26 +167,9 @@ def _declared_payload(wid: str, action: str) -> dict:
 
 
 def _field_args(wid: str, action: str, args: list[str]):
-    """`key=value` arguments naming the action's DECLARED fields → its payload, so an act is ONE command (no file to
-    write first: measured, every act with a payload cost the worker two model turns, Write then Bash). A value is
-    the TEXT as given — a phone number, «true», «$50» stay text — unless the field DECLARES a list or an object
-    (its manifest value is one), when it is read as JSON. None when an argument is not `field=value` over a declared
-    field (the JSON and bare-sentence paths then apply)."""
-    spec = _declared_payload(wid, action).get("payload") or {}
-    out = {}
-    for a in args:
-        key, sep, val = str(a).partition("=")
-        if not sep or key not in spec:
-            return None
-        if isinstance(spec[key], (list, dict)):
-            try:
-                out[key] = json.loads(val)
-            except ValueError:
-                print(f"`{key}` is a list: write it as JSON, e.g. {key}='[\"a\", \"b\"]'")
-                return None
-        else:
-            out[key] = val
-    return out or None
+    """`field=value` arguments over the action's declared fields → its payload (`widget_fields.payload`)."""
+    from nucleo.cli.widget_fields import payload
+    return payload(_declared_payload(wid, action).get("payload") or {}, args)
 
 
 def _list_key(wid: str, action: str) -> str:
