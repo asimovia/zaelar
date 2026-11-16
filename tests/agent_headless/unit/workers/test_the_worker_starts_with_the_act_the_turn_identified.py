@@ -101,7 +101,7 @@ def test_the_live_brief_stays_under_the_ceiling(lang, monkeypatch, name):
     from tests.agent_headless.unit.workers import test_a_worker_brief_is_its_playbook_and_headlines as T
     ctx, rd = _worst(monkeypatch)
     _pb, base = T._compose(name, T.SAMPLES[name][lang])
-    out = first_act.fit(first_act.live(base, "", "", ctx, rd))
+    out = first_act.fit(first_act.live(base, "", ctx, rd))
     assert len(out) <= PROMPT_CEILING_CHARS, (name, len(out))
     if name != "hotel":
         assert "agenda update_task" in out, "a brief with room keeps the act"
@@ -159,7 +159,7 @@ def _full(monkeypatch, lang, name, *, memory=2000, recent=1200):
         _pb, base = "errand", web._web_prompt(req, mem, T._research_brief(), playbook="errand")
     else:
         _pb, base = "x", build._build_prompt(req, mem, True, None)
-    out = first_act.live(base, "", "", ctx, rd)
+    out = first_act.live(base, "", ctx, rd)
     if name == "hotel":     # a research errand: the direction note rides (`dispatch.session`, `_brief_bg`)
         return catalog, first_act.fit(out + "\n\nNOTA: la dirección de esta investigación llega en breve; empieza ya "
                                             "y aplícala al llegar.")      # the note as `dispatch.session` writes it
