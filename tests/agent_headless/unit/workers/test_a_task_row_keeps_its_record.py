@@ -147,3 +147,27 @@ def test_disarmed_two_speakers_tell_a_failure_twice(monkeypatch):
     rec.ok, rec.status, rec.result_summary = False, "error", "No encontré el contacto."
     asyncio.run(session_finish._deliver(rec))
     assert told == ["notice:row-5"]
+
+
+# ── exactly one notice, across the conversation's rotation (audit B1) ────────────────────────────────────────
+@pytest.mark.parametrize("ok,status,summary,expected", [
+    (True, "done", "Grupo creado.", 1), (False, "error", "No encontré el contacto.", 1),
+    (False, "error", "", 1), (False, "cancelled", "", 0)])          # his cancel: he already knows
+@pytest.mark.parametrize("rotated", [False, True])
+def test_a_close_emits_exactly_one_notice_in_total(monkeypatch, ok, status, summary, expected, rotated):
+    """Every notice a close can emit, counted: the delivery line AND the death's question, through the real
+    ending path — including an errand born before the observability conversation rotated (`_POOL.since`)."""
+    import time
+
+    from nucleo.events import task_event
+    from nucleo.workers import ended, session_finish
+    told = _deliver_quiet(monkeypatch)
+    monkeypatch.setattr(task_event, "told", lambda matter, **k: told.append(k.get("key")))
+    monkeypatch.setattr(ended, "_bound", lambda: None)
+    monkeypatch.setitem(ended._POOL, "since", time.time() + (3600 if rotated else -3600))
+    rec = _rec()
+    rec.ok, rec.status, rec.result_summary, rec.started = ok, status, summary, time.time()
+    if status != "cancelled" and summary:
+        asyncio.run(session_finish._deliver(rec))         # `_ending` delivers only a summary that is not a cancel
+    ended._remember_ended(rec)
+    assert len(told) == expected, told
