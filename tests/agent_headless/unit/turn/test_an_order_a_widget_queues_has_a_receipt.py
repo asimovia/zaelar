@@ -8,6 +8,7 @@ already existed for sends (`sent.outbox_open` on the order, `outbox_settle` on t
   · the group order opens its outbox row by its `ref`, named by the group;
   · the connector's success (the new group's chat row carrying the order's `ref`) settles it `sent`, its failure
     (`msg.send_failed`) settles it `failed` with the reason — through the owner, the one writer of the card's store;
+    both connectors' drains are exercised with a client double, and a bridge that returns no group id is a failure;
   · the action's end state is that row: met by the success only, never by the queue nor by the failure;
   · with a readable end state the retained act crosses the exit door and reaches the widget's door: checkpoint 1 is
     closed by the rule that already exists, not relaxed (a `message` with no end state is still refused);
@@ -103,15 +104,69 @@ def test_a_chat_row_with_no_order_settles_nothing(card):
     assert [r["state"] for r in _outbox(card) if r["ref"] == got["result"]["ref"]] == ["queued"]
 
 
-def test_both_connectors_echo_the_orders_ref():
-    """The two connectors that create groups hand the new chat row back with the order's ref (read from source:
-    their drains need a live account)."""
-    import inspect
-    from connectors.telegram import service as tg
+class _Inbox:
+    def __init__(self, orders):
+        self.orders = list(orders)
+
+    def drain(self):
+        out, self.orders = self.orders, []
+        return out
+
+
+def _echoes(monkeypatch):
+    from connectors.messaging import ingest
+    got = {"chats": [], "failed": []}
+    monkeypatch.setattr(ingest, "publish_chats", lambda platform, chats, **kw: got["chats"].extend(chats))
+    monkeypatch.setattr(ingest, "publish_send_failed", lambda order, reason: got["failed"].append((order["ref"], reason)))
+    return got
+
+
+ORDER = {"platform": "x", "ref": "ref-7", "name": "Viaje", "members": [{"to": "34600", "chatId": "34600@s.whatsapp.net"}],
+         "text": "", "attachments": []}
+
+
+@pytest.mark.parametrize("gid,ok", [("120363@g.us", True), ("", False)])
+def test_whatsapp_echoes_the_orders_ref_and_no_group_id_is_a_failure(monkeypatch, gid, ok):
+    from connectors.whatsapp import client
     from connectors.whatsapp import service as wa
-    for fn in (tg._drain_groups, wa._drain_groups):
-        src = inspect.getsource(fn)
-        assert '"ref": str(order.get("ref") or "")' in src and "publish_send_failed(order" in src, fn
+    from connectors.whatsapp.service import directory
+    got = _echoes(monkeypatch)
+    monkeypatch.setattr(wa, "_group_inbox", _Inbox([dict(ORDER)]))
+    monkeypatch.setattr(wa, "_note", lambda *a, **k: None)
+
+    async def _create(name, members):
+        return {"id": gid}
+    monkeypatch.setattr(client, "create_group", _create)
+    asyncio.run(directory._drain_groups())
+    if ok:
+        assert [c.get("ref") for c in got["chats"]] == ["ref-7"] and got["failed"] == []
+    else:
+        assert got["chats"] == [] and [r for r, _w in got["failed"]] == ["ref-7"], "no group id back is no group"
+
+
+@pytest.mark.parametrize("fails", [False, True])
+def test_telegram_echoes_the_orders_ref_or_its_failure(monkeypatch, fails):
+    import telethon.utils
+    from connectors.telegram import service as tg
+    got = _echoes(monkeypatch)
+    monkeypatch.setattr(tg, "_group_inbox", _Inbox([dict(ORDER, members=[{"to": "@ana", "chatId": ""}])]))
+    monkeypatch.setattr(tg, "_note", lambda *a, **k: None)
+    monkeypatch.setattr(telethon.utils, "get_peer_id", lambda ch: -100123)
+
+    class _Client:
+        async def __call__(self, req):
+            if fails:
+                raise RuntimeError("USER_PRIVACY_RESTRICTED")
+            return type("R", (), {"chats": [object()]})()
+
+        async def get_input_entity(self, ref):
+            return ref
+    monkeypatch.setattr(tg, "_client", _Client())
+    asyncio.run(tg._drain_groups())
+    if fails:
+        assert got["chats"] == [] and [r for r, _w in got["failed"]] == ["ref-7"]
+    else:
+        assert [c.get("ref") for c in got["chats"]] == ["ref-7"] and got["failed"] == []
 
 
 def test_every_leaving_action_declares_a_readable_end_state_or_why_not():

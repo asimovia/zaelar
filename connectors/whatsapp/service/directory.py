@@ -187,6 +187,11 @@ async def _drain_groups() -> None:
             _svc._note(f"[SISTEMA] No pude crear el grupo de WhatsApp «{name}» ({e}). Díselo al operador.")
             continue
         gid = str((got or {}).get("id") or "")
+        if not gid:      # no group id back is no group: the order's receipt says it failed, never that it left
+            logger.warning(f"WhatsApp: el puente no devolvió el id del grupo {name}")
+            ingest.publish_send_failed(order, "the bridge returned no group id")
+            _svc._note(f"[SISTEMA] No pude crear el grupo de WhatsApp «{name}». Díselo al operador.")
+            continue
         logger.info(f"WhatsApp: grupo creado {gid} con {len(members)} miembro(s)")
         ingest.publish_chats(PLATFORM, [{"chatId": gid, "name": name, "kind": "group", "ts": time.time(),
                                          "preview": "", "ref": str(order.get("ref") or "")}])   # the order's echo
