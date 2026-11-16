@@ -148,6 +148,7 @@ class OrchestratorLoop(workers.WorkersPulse, flows.FlowsPulse, due.DuePulse):
         await self._maybe_spark(now)
         await self._maybe_consolidate(now)
         self._close_idle_session()
+        self._supervise_voice_rooms(now)
         self._maybe_idle_stop(now)
         _emit("loop.tick", {"ts": now, "n": self._ticks, "ms": round((time.monotonic() - _t0) * 1000)})
 
@@ -192,6 +193,15 @@ class OrchestratorLoop(workers.WorkersPulse, flows.FlowsPulse, due.DuePulse):
             idle_stop.note_tick(now, mono, self.tick_s)
         except Exception as e:  # noqa: BLE001
             logger.debug(f"loop: resume check failed: {e!r}")
+
+    def _supervise_voice_rooms(self, now: float) -> None:
+        """V2-910 — a room that crossed a freeze is closed, and rooms the token door minted without an agent get the
+        voice recycled (`nucleo/pulse/voice_rooms.py`). Never awaited here: the work runs as one task of its own."""
+        try:
+            from nucleo.pulse import homeostasis, voice_recycle, voice_rooms
+            voice_rooms.tick(voice_recycle.app(), homeostasis.recycle_voice, now)
+        except Exception as e:  # noqa: BLE001 — the pulse goes on; the next beat checks again
+            logger.debug(f"loop: voice rooms check skipped: {e!r}")
 
     def _maybe_idle_stop(self, now: float) -> None:
         """Offers the pulse to the idle stop (`nucleo/idle_stop.py`): off unless the deployment sets

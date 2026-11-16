@@ -39,3 +39,20 @@ export const gesture = () => { _s.denied = false; };
 try {
   for (const ev of ["pointerdown", "keydown"]) window.addEventListener(ev, gesture, { capture: true, passive: true });
 } catch (_) {}
+
+// WHERE HE ALLOWS IT (2026-11-16). Once the system has refused the microphone and no longer asks, the page cannot ask
+// again: the only way out is a setting he changes himself. One sentence per kind of surface says where, and the native
+// app opens its own settings page (`app-settings:`, which the iOS shell hands to the system: any URL outside the app's
+// origin opens outside the WebView). Read from the page itself: the native shell marks <html class="in-app"
+// data-platform="ios|android"> before any script runs (mobile-app/www/in-app.js).
+/** `{ key, open }`: the i18n key of the sentence, and the URL to open ('' when the surface has none). */
+export function settingsHint(doc = globalThis.document, nav = globalThis.navigator) {
+  const root = doc && doc.documentElement;
+  const inApp = !!(root && root.classList && root.classList.contains("in-app"));
+  const platform = (root && root.getAttribute && root.getAttribute("data-platform")) || "";
+  if (inApp && platform === "ios") return { key: "voice.mic_allow_app_ios", open: "app-settings:" };
+  if (inApp) return { key: "voice.mic_allow_app_android", open: "" };
+  const ua = String((nav && nav.userAgent) || "");
+  if (/iPhone|iPad|iPod/.test(ua)) return { key: "voice.mic_allow_ios_safari", open: "" };
+  return { key: "voice.mic_allow_browser", open: "" };
+}

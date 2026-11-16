@@ -64,7 +64,8 @@ const CATS = [
 ];
 // Tipos that arrancan ENCENDIDOS aunque su familia venga apagada by defecto: un error invisible es the peor modo
 // of fallo posible. The operador puede apagarlos, pero tiene that ser a decisión suya, no a omisión.
-const ALWAYS_KINDS = new Set(["error", "alert"]);
+// `voice_fault` (V2-910): the voice did not do what it owed (a room across a freeze, rooms with no agent).
+const ALWAYS_KINDS = new Set(["error", "alert", "voice_fault"]);
 
 // V2-089: each categoría of the filtro mapea a su clave i18n (la `key` sigue siendo the valor comparado en código).
 const CAT_LABEL_KEY = {

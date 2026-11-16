@@ -134,6 +134,10 @@ async def _recycle_livekit(app) -> bool:
     return ok
 
 
+#: The voice recycle, for the pieces that decide on their own that the voice needs one (V2-910 `voice_rooms`).
+recycle_voice = _recycle_livekit
+
+
 def _rotate_log(path: str, *, keep: int = _LOG_KEEP) -> None:
     """Rotate by rename (the next append recreates the file) and keep the newest `keep` rotated copies."""
     try:

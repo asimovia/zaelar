@@ -240,12 +240,14 @@ export const [audioBlocked, setAudioBlocked] = createSignal(false);
 // (a mute does not explain a revoked permission). Conditions in WHILE_SPEAKING only count while the engine says
 // the agent is speaking — a remote track the browser flags as muted between utterances is just silence.
 // `blocked` is not stored here: it IS `audioBlocked`, the SDK's own verdict, read directly so there is one door.
+// `no_agent` (2026-11-16) is not the device: it is the far end of the same wire — rooms asked for and none joined by
+// the agent. To the person it is the same fact («nobody hears me»), so it paints the mic, and no mute explains it.
 export const DEVICE_PROBLEMS = {
-  mic: ["permission_denied", "no_device", "capture_error", "track_ended", "track_muted"],
+  mic: ["permission_denied", "no_device", "capture_error", "track_ended", "track_muted", "no_agent"],
   spk: ["blocked", "track_ended", "element_error", "paused", "context_interrupted", "no_output", "sink_lost",
         "silent_while_speaking", "remote_muted"],
 };
-const _SURVIVES_MUTE = { mic: ["permission_denied", "no_device"], spk: [] };
+const _SURVIVES_MUTE = { mic: ["permission_denied", "no_device", "no_agent"], spk: [] };
 const _WHILE_SPEAKING = ["remote_muted"];
 export const [deviceConds, setDeviceConds] = createSignal({ mic: {}, spk: {} });
 export const deviceHealth = (device) => {

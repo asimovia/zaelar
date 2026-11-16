@@ -355,6 +355,8 @@ def _started(ev: dict) -> None:
     _ae.open_mic_door(session=remote, _emit=_obs())
     screens.register_typed(typed)
     on_session_alive()
+    from nucleo.pulse import voice_rooms
+    voice_rooms.note_served(room)               # V2-910: the room the token door minted got its agent
     try:
         from observability import identity
         _M["id_token"] = identity.voice_connected()

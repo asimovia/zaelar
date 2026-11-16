@@ -22,6 +22,7 @@ import { ProcessCount } from "../../../app/components/ProcessCount.js?v=1";
 import * as consent from "./ai-consent.js?v=1";   // V2-870: in the app the voice asks first
 import { appsOpen, setAppsOpen } from "./AppsPane.js?v=2";
 import { APPS_ICON } from "../../../app/lib/icons.js?v=2";
+import { problemTitleKey } from "../../../app/services/device-health.js?v=1";
 
 const SW = `viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`;
 const MIC_ON  = `<svg ${SW}><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>`;
@@ -122,7 +123,9 @@ export function DockBar() {
     // ── RIGHT of the orb: the microphone (privacy, one tap) and everything else ──
     h("div", { class: "zm-side" },
       h("button", {
-        class: () => cls(store.agentLive() && !store.micMuted()),
+        // 2026-11-16 — `problem`: no usable microphone (permission, device, a dead track, no agent in the room). RED and
+        // slashed, never the grey of his own mute; a tap recovers it (`session.recoverMic`) instead of toggling.
+        class: () => cls(store.agentLive() && !store.micMuted()) + (store.micHealth().ok ? "" : " problem"),
         // `data-ctl="mic"` is what the CAPTURE GLOW is scoped to, the same marker the desktop orb bar uses.
         // Without it the glow rule could only key off `.zm-ic.on`, which is ALSO the chat and dashboards
         // buttons — three buttons carrying a filter meant for one (2026-09-20 review).
@@ -131,14 +134,23 @@ export function DockBar() {
         // the REAL mic RMS through a CSS custom property, so it costs no re-render. With the mic muted or the agent
         // stopped there is no effect, because there is no level — the meter can only move when we are truly hearing.
         style: { "--vu": () => (store.agentLive() && !store.micMuted() ? String(Math.min(1, store.micLevel() * 6)) : "0") },
-        "aria-label": () => (store.micMuted() ? t("camera.mic_unmute") : t("camera.mic_mute")),
+        "aria-label": () => (!store.micHealth().ok ? t(problemTitleKey("mic", store.micHealth().reason))
+                             : store.micMuted() ? t("camera.mic_unmute") : t("camera.mic_mute")),
         // Opening the mic by hand brings the voice to this surface (session.openMicHere); closing it is local.
         onClick: () => {
+          if (!store.micHealth().ok && session.recoverMic) {
+            api.uiEvent("mobile:mic", { state: "recover", reason: store.micHealth().reason });
+            consent.gate(() => session.recoverMic("dock")); return;
+          }
           if (store.micMuted() && session.openMicHere) consent.gate(() => session.openMicHere("dock"));
           else mic.toggle("dock");
           api.uiEvent("mobile:mic", { state: store.micMuted() ? "muted" : "unmuted" });
         },
-      }, () => raw(store.micMuted() ? MIC_OFF : MIC_ON)),
+      }, () => raw(!store.micHealth().ok || store.micMuted() ? MIC_OFF : MIC_ON)),
+      // What the red mic means, in one line over the dock: the desktop draws `micBlocked` under its orb, the phone
+      // drew it nowhere — «the agent is not available» and «allow the microphone in Settings» never reached the person.
+      h("div", { class: () => "zm-micnote" + (store.micBlocked().show ? " show" : ""), role: "status" },
+        () => store.micBlocked().msg),
 
       // THE SPEAKER, back in the dock (operator, 2026-10-24). Opening it by hand brings the voice here, like the mic.
       h("button", {
