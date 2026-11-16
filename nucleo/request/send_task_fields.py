@@ -25,9 +25,13 @@ def required(art: dict, slot: str) -> bool:
         return True
     if rule != TEXT_RULE:
         return False
-    from nucleo.flash import payload_fill
-    pl = payload_fill._payload_spec(base(str(art.get("widget") or "")), str(art.get("action") or ""))
-    return not payload_fill.declared_optional(pl.get(str(d.get("key") or slot)))
+    try:
+        from nucleo.flash import payload_fill
+        pl = payload_fill._payload_spec(base(str(art.get("widget") or "")), str(art.get("action") or ""))
+        return not payload_fill.declared_optional(pl.get(str(d.get("key") or slot)))
+    except Exception as e:  # noqa: BLE001 — an unread declaration fails toward ASKING, never toward sending
+        note(e)
+        return True
 
 
 def _missing_line(art: dict, slot: str) -> str:
