@@ -177,11 +177,9 @@ async def _run_session(task: "Task") -> None:
             prompt = _d._build_prompt(req, ctx, trusted, brief, playbook=_pb)
         # V2-644 (a REPORT flips the delivery contract) + V2-661 (his FILES): a trusted worker's blocks, in one place.
         if trusted and not _dev:
-            from nucleo.workers.prompts.surfaces import trusted_blocks
-            prompt += trusted_blocks(getattr(rec, "surface", ""))
-            from nucleo.workers.prompts import first_act   # his words + the act the turn identified (a send's slots)
-            prompt = "\n\n".join(p for p in (prompt, first_act.block(str(getattr(rec, "uid", "") or ""), task.context,
-                                                                       rec.reading)) if p)
+            from nucleo.workers.prompts import first_act   # + his words, the state, the act the turn identified
+            prompt = first_act.live(prompt, getattr(rec, "surface", ""), str(getattr(rec, "uid", "") or ""),
+                                    task.context, rec.reading, str(getattr(rec, "trace_id", "") or ""))
         prompt = __import__("nucleo.workers.handoff", fromlist=["x"]).with_worker_brief(prompt, task.context)  # V2-877
         if resume and (kind == "web" and trusted):
             prompt = ("REANUDAS una gestión que YA empezaste (no arranques de cero): la pestaña sigue donde la "
