@@ -11,9 +11,11 @@ from nucleo.workers import providers as _p
 # The provider states its reset as a date, a date+time, or ONLY a time (a same-day 5 h window). Reading only the
 # date made the time-only case a past epoch → 30 min floor → 7 h of 429s, one worker at a time (e2e, 2026-08-10).
 # V2-309: `6:10am` (1 digit + suffix) did not match either; 1-2 digits and an optional am/pm are accepted.
+# V2-913: the Claude CLI's own form comes first — «resets 3pm», «resets Nov 20, 3pm (Europe/Madrid)».
 _RESET_RE = re.compile(
     r"reset(?:s|ting)?(?:\s+(?:at|on|in))?\s*[:\s]\s*"
-    r"(\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}(?::\d{2})?)?|\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm)?)", re.I)
+    r"((?:[a-z]{3}\s+\d{1,2},?\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm)\b(?:\s*\([\w/+:-]+\))?|"
+    r"\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}(?::\d{2})?)?|\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm)?)", re.I)
 
 
 _ZAI_CODE_RE = re.compile(r"\[1[23]\d\d\]")
@@ -30,13 +32,6 @@ _WINDOW_RE = re.compile(
     # «5-hour limit reached ∙ resets 9:30pm», «Claude AI usage limit reached|1794790200».
     r"(?:you(?:'|’)ve\s+)?hit your (?:[\w-]+ )?limit|\b\d+-hour limit", re.I)
 
-
-# The reset a Claude subscription states, as the CLI formats it (en-US, its machine's clock): a bare hour
-# («resets 3pm», «resets 9:30pm»), a date beyond 24 h («resets Nov 20, 3pm»), an optional zone in brackets
-# («(Europe/Madrid)»), or the older epoch suffix («usage limit reached|1794790200»).
-_CLAUDE_RESET_RE = re.compile(
-    r"resets\s+(?:(?P<mon>[A-Z][a-z]{2})\s+(?P<day>\d{1,2}),?\s+)?(?P<h>\d{1,2})(?::(?P<m>\d{2}))?\s*(?P<ap>am|pm)\b"
-    r"(?:\s*\((?P<tz>[\w/+:-]+)\))?|limit reached\|(?P<epoch>\d{10})", re.I)
 
 
 # Señales de CUOTA/PLAN agotado, más específicas que el `credit` genérico de `llm_health` (que también pilla un
