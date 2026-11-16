@@ -31,8 +31,9 @@ def required(art: dict, slot: str) -> bool:
 
 
 def _missing_line(art: dict, slot: str) -> str:
-    """The question for a slot with no value: a send's own line (`send_missing_<slot>`, the person named), else ONE
-    generic line naming the field by its declared label (`send_missing_field`, V2-919 M2)."""
+    """The question for a slot with no value: a send's own line (`send_missing_<slot>`, the person named) for a field
+    of one value, else ONE generic line naming the field by its declared label (`send_missing_field`, V2-919 M2) — a
+    field declared another kind (a list of people) is never asked as «who do I send it to?»."""
     who = ""
     try:
         from nucleo import on_his_behalf as _ob
@@ -43,11 +44,13 @@ def _missing_line(art: dict, slot: str) -> str:
     try:
         from i18n import langs
         from nucleo.flash import payload_fill
+        from widgets import field_types
         lang = langs.current_language()
-        if tpl := str(getattr(lang, f"send_missing_{slot}", "") or ""):
+        wid, act = base(str(art.get("widget") or "")), str(art.get("action") or "")
+        text_kind = not field_types.declared(wid, act).get(key)     # the send's line is for a field of ONE value
+        if text_kind and (tpl := str(getattr(lang, f"send_missing_{slot}", "") or "")):
             return tpl.format(who=who or "?")          # a send's person or words: the send's own line, as before
-        label = str(payload_fill._payload_spec(base(str(art.get("widget") or "")), str(art.get("action") or ""))
-                    .get(key) or key)
+        label = str(payload_fill._payload_spec(wid, act).get(key) or key)
         if tpl := str(getattr(lang, "send_missing_field", "") or ""):
             return tpl.format(field=" ".join(label.split()), who=who or "?")   # any other field, by its declared label
     except Exception as e:  # noqa: BLE001
