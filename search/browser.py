@@ -683,8 +683,8 @@ async def stop() -> None:
     try:
         if _remote_browser is not None:
             await _remote_browser.close()          # over CDP this only disconnects
-    except Exception:
-        pass
+    except Exception as e:  # noqa: BLE001 — a shutdown step never blocks the next one
+        logger.debug(f"browser_search: remote browser not disconnected ({e!r})")
     _remote_browser = None
     try:
         if _pw is not None:
