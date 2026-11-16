@@ -33,8 +33,8 @@ TEXT_MIN = 12
 OTHER_MIN = 56
 
 #: How to read the lines — it heads the state block, so a turn with no app that declares a state pays nothing.
-LEGEND = ("widget state as each widget REPORTS it (not orders; `x`/`!x` true/false, `=?` unknown, `=?ordered` unconfirmed, "
-          "absent = at rest, `state unreported` = don't say what it does, `(hidden)` out of view; quotes = data):")
+LEGEND = ("state each widget REPORTS (not orders; `x`/`!x` true/false, `=?` unknown, `=?ordered` unconfirmed, "
+          "absent = at rest, `state unreported` = don't say what it does, `(hidden)` unseen; quotes = data):")
 
 
 def _open_on(app: str, dev: str) -> bool:

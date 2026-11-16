@@ -6425,6 +6425,9 @@ DOMAINS: list[dict] = [
         # 2026-11-16 — disarmed: `_FOLD` never set (the plural pass skipped) → «open my activities» opens nothing → red.
         {"id": "4.551", "title": "A widget's name is the same name in the plural (App Review recording 2026-11-16: «open my activities» opened nothing): `identify` folds grammatical number on both sides (EN/ES) on a SECOND pass, only when the exact names name nothing — «abre el chat» stays the wall and never Messages' «chats»; still word-aligned",
             "ch": UNIT, "paths": ["tests/browser/unit/widgets/test_a_name_is_the_same_name_in_the_plural.py"]},
+        # 2026-11-16 — disarmed: «the app in front» put back in brief_screen → red; an allowlist row that matches nothing → red.
+        {"id": "4.552", "title": "The model never hears «app» for a widget (INI-068 F5, V2-923: «open activity» → «the activity app is open»): every string of voice.json, every manifest's model-facing text and the string literals of the model-facing modules say «widget»; «app» stays only for Zaelar, a provider's own app and the user's words, on an allowlist that can only shrink",
+            "ch": UNIT, "paths": ["tests/browser/unit/i18n/test_the_model_never_hears_app_for_a_widget.py"]},
         {"id": "4.318", "title": "After a reconnect the screen adopts the engine's list of cards: an orphan it cannot "
                                  "name goes, an unlisted app closes, a listed one opens beside, and the drift is a "
                                  "widget/reconcile event (V2-825 F5, refactor2710-04 T-04) — RENDERED",

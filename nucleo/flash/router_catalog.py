@@ -340,7 +340,7 @@ TOOLS: list[dict] = [
             # and the marketplace→escalate boundary (bug from confusing fact lookup with store navigation).
             "description": (
                 "Un dato factual del mundo que cambia y no tienes (precio, tiempo, resultado, noticia, cotización): "
-                "vuelve en este turno y lo dices tú, sin widget. DOS datos en una pregunta: la MISMA `query`. Solo TEXTO "
+                "vuelve en este turno y lo dices tú. DOS datos en una pregunta: la MISMA `query`. Solo TEXTO "
                 "(VER una foto es show_images). NUNCA datos PROPIOS del operador (agenda, mensajes, ficheros: "
                 "read_widget/tu ESTADO) ni la hora/fecha LOCALES (ESTADO); la hora de OTRO sitio SÍ, nunca a ojo. "
                 "No es para ANUNCIOS en venta/alquiler (search_listings), ni un INFORME a fondo ni HACER algo en una "
@@ -375,7 +375,7 @@ TOOLS: list[dict] = [
                 "Consulta tu memoria sobre el OPERADOR y su vida (gustos, familia, planes, lo que te contó hace "
                 "días u HOY antes de esta ventana, literal) cuando la necesitas para responder o preparar algo y no "
                 "está en tu ESTADO ni en la ventana. Vuelve en este "
-                "turno, sin widget ni espera. `query` = qué necesitas recordar, autocontenido. No es para datos del "
+                "turno, sin esperar. `query` = qué necesitas recordar, autocontenido. No es para datos del "
                 "mundo (web_search) ni lo que GUARDA un widget —citas, contactos, ficheros— (read_widget). Jamás digas "
                 "«memoria» ni «base de datos»: hablas como quien simplemente se acuerda."
             ),
@@ -444,7 +444,7 @@ TOOLS: list[dict] = [
         "function": {
             "name": "delete_widget",
             "description": (
-                "Borra un widget PARA SIEMPRE (cerrarlo es [[close:id]]). Abre una confirmación en el widget y el "
+                "Borra un widget PARA SIEMPRE (cerrarlo es [[close:id]]). Abre una confirmación y el "
                 "borrado solo ocurre si el operador confirma; en el mismo turno di una pregunta corta de "
                 "confirmación. Es cosa tuya, no la escales."
             ),
