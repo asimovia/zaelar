@@ -465,6 +465,10 @@ def remembered(rec, *, state: str = "done", outcome: str = "") -> None:
     name = title or goal
     if not name:
         return
+    from nucleo.memory_agent import writer as _mw    # THE one gate: only a delivered verdict is remembered
+    v, why = _mw.admits(uid, str(getattr(rec, "verdict", "") or ""), name)
+    if why:
+        return
     verb = {"done": "terminó", "failed": "falló", "cancelled": "se canceló"}.get(state, "terminó")
     when = time.strftime("%Y-%m-%d", time.localtime())
     line = f"[task:{uid}] El encargo «{name[:160]}» {verb} el {when}."
@@ -476,9 +480,9 @@ def remembered(rec, *, state: str = "done", outcome: str = "") -> None:
         line += f" Lo pidió así: «{goal[:200]}»."
     try:
         from memory import api as _memory
-        _memory.write(line, kind="event", level="mid", importance=0.55,
+        _memory.write(line, kind=_mw.RESULT, level="mid", importance=0.55,
                       supersedes=_memory.task_trace_ids(uid) or None,
-                      meta={"source": "task", "task_id": uid,
+                      meta={"source": "task", "task_id": uid, "verdict": v,
                             "task_kind": str(getattr(rec, "kind", "") or ""), "task_state": state})
     except Exception:  # noqa: BLE001 — a commission that finished is not undone by a memory that did not
         return

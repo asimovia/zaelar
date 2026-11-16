@@ -149,17 +149,17 @@ def test_an_old_distilled_result_is_relabelled_a_request_and_a_circuit_result_is
 @pytest.mark.parametrize("verdict, kept", [("met", True), ("undeclared", True), ("unverifiable", True),
                                            ("unmet", False), ("gave_up", False)])
 def test_a_finished_worker_writes_its_result_only_through_the_door(fresh_db, monkeypatch, verdict, kept):
-    """`workers/session.py` delivers a successful errand: its pill goes through `writer.result`, so a worker that
-    SAID it was done while the circuit judged it unmet leaves no `result` behind."""
+    """A closed errand's pill is written ONCE, by the row's close (`ledger.remembered`), through the one gate
+    (`writer.admits`, 2.1775): a worker that SAID it was done while the circuit judged it unmet leaves no `result`."""
     from types import SimpleNamespace
-    from nucleo.workers import session
-    monkeypatch.setattr(session, "operator_safe_summary", lambda s: s)
-    rec = SimpleNamespace(task_id=f"w-{verdict}", kind="web", goal="carpinteros en Soria", ok=True,
-                          verdict=verdict, result_summary="tres carpinteros en Soria")
+    from nucleo.circuit import ledger
+    rec = SimpleNamespace(task_id=f"w-{verdict}", uid=f"row-{verdict}", kind="web", goal="carpinteros en Soria",
+                          title="Carpinteros en Soria", ok=True, verdict=verdict,
+                          result_summary="tres carpinteros en Soria")
 
     async def scenario():
         await memapi.start()
-        await session._deliver(rec)
+        ledger.remembered(rec, state="done", outcome=rec.result_summary)
         await memqueue.get_queue().join()
         await memapi.stop()
     asyncio.run(scenario())

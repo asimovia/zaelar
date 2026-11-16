@@ -34,6 +34,7 @@ class Rec:
         self.uid, self.status, self.goal, self.kind, self.ok = uid, status, goal, kind, ok
         self.title, self.sheet, self.trace_id, self.waiting_on = goal, "", "", ""
         self.started, self.result_summary = time.time(), ""
+        self.verdict = "met" if ok else ""       # the circuit's verdict: the one memory gate reads it (2.1775)
 
 
 @pytest.fixture(autouse=True)

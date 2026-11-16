@@ -7,6 +7,7 @@ import asyncio
 import time
 
 from nucleo.workers import session as _s
+from nucleo.workers import task_record as _record
 
 
 def _row_learns_its_session(rec, cwd: str) -> None:
@@ -25,6 +26,7 @@ def _row_learns_its_session(rec, cwd: str) -> None:
 
 def _on_event(self, ev) -> None:
     rec = self._rec
+    _record.heard(rec, ev)                                 # the worker's transcript, on its row
     d = ev.data or {}
     if ev.type == "spawned":
         rec.native_sid = d.get("native_session_id") or rec.native_sid
