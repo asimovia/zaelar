@@ -119,7 +119,8 @@ def _claude_reset_epoch(text: str, now: float | None = None) -> float:
             stamp = current.replace(hour=hour, minute=minute, second=0, microsecond=0)
             if stamp <= current:
                 stamp += timedelta(days=1)
-    except ValueError:
+    except ValueError as e:              # «resets Feb 30» or an hour past 12: a reset we cannot place
+        logger.debug(f"claude reset not placed in {text[:80]!r}: {e}")
         return 0.0
     return stamp.timestamp()
 

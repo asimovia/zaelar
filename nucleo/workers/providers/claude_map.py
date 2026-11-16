@@ -24,8 +24,7 @@ def _map(self, obj: dict):
         self._native_sid = obj.get("session_id") or ""
         self._turn_from = time.monotonic()        # the first turn is timed from the session's start
         self._model = self._model or obj.get("model") or ""   # init trae el modelo RESUELTO (si spec venía vacío)
-        yield self._ev("spawned", native_session_id=self._native_sid, model=self._model,
-                       provider=(getattr(self, "_tier", None) or {}).get("name", ""))
+        yield self._ev("spawned", native_session_id=self._native_sid, model=self._model, **_served(self))
         return
     if t == "assistant":
         # PROGRESS (§v2·E·Q3): each tool_use → a coarse `rec.phase` AND a rich `step` (V2-048): WHERE + WHAT
@@ -49,9 +48,7 @@ def _map(self, obj: dict):
             yield self._ev("usage", usage=msg["usage"], model=self._model,
                            real_model=getattr(self, "_real_model", ""),
                            ctx_tokens=getattr(self, "_ctx_tokens", 0),
-                           base_url=(getattr(self, "_tier", None) or {}).get("base_url", ""),
-                           provider=(getattr(self, "_tier", None) or {}).get("name", ""),
-                           **_turn_facts(self, msg))
+                           **_served(self), **_turn_facts(self, msg))
         for block in (msg.get("content") or []):
             if not isinstance(block, dict):
                 continue
@@ -134,11 +131,17 @@ def _map(self, obj: dict):
         yield self._ev("result", summary=str(summary), ok=bool(ok), usage=usage,
                        cost=obj.get("total_cost_usd"), model=self._model,
                        real_model=getattr(self, "_real_model", ""),
-                       base_url=(getattr(self, "_tier", None) or {}).get("base_url", ""),
-                       provider=(getattr(self, "_tier", None) or {}).get("name", ""))
+                       **_served(self))
         yield self._ev("done")
         self._done = True
         return
+
+
+def _served(self) -> dict:
+    """WHO serves this session: the tier's endpoint and its name in the chain, on every event that reports work.
+    After a relay it is THIS session's tier, never the chain head."""
+    tier = getattr(self, "_tier", None) or {}
+    return {"base_url": tier.get("base_url", ""), "provider": tier.get("name", "")}
 
 
 def _turn_facts(self, msg: dict) -> dict:
