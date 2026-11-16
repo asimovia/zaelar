@@ -53,8 +53,10 @@ def _a_create_group(action, payload) -> dict:
     platform = _d._PLAT_ALIASES.get(raw, raw)
     name = str(payload.get("name") or payload.get("title") or "").strip()
     members = payload.get("members") or payload.get("contacts") or []
-    if isinstance(members, str):
-        members = [m.strip() for m in members.replace(" y ", ",").replace(" and ", ",").split(",") if m.strip()]
+    # a text names several people, whole or as one item of the list (his answer to «with whom?» is one item)
+    members = [m.strip() if isinstance(m, str) else m for x in ([members] if isinstance(members, str) else members)
+               for m in (x.replace(" y ", ",").replace(" and ", ",").split(",") if isinstance(x, str) else [x])
+               if not isinstance(m, str) or m.strip()]
     if platform not in _GROUP_PLATFORMS:
         return {"ok": False, "error": "create_group necesita `platform`: 'whatsapp' o 'telegram'"}
     if not name or not (members or payload.get("group")):

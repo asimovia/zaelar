@@ -8,6 +8,11 @@ declares the fields that are not text (`"types": {"allDay": "bool"}`), and the o
 cannot read as the declared type is left as it came, for the card's own refusal to say so. A typed field that arrives
 null or empty is an ABSENT field — removed, so the handler decides as it did when it was omitted (`set_favorite` with
 no `favorite` stars, `set_flag` with no `on` sets): only an explicit `false`/`0`/`no` is false.
+
+The same declaration says when a value FILLS its field (`filled`, V2-919 M1): a field declared `list` holds at least one
+non-blank item, a `bool` holds a value that reads as one, and an undeclared field is text — a non-blank string (a
+number the card reads, such as a list position, counts). A value of the wrong kind fills nothing: it is asked, never
+sent. Every reader of «does this slot have a value» on a leaving act crosses this one function.
 """
 from __future__ import annotations
 
@@ -23,6 +28,30 @@ def declared(wid: str, action: str) -> dict:
     except Exception as e:  # noqa: BLE001 — an unread declaration converts nothing
         logger.debug(f"field_types: {wid}:{action} unread ({e!r})")
         return {}
+
+
+#: The kinds a manifest's `types` may declare. `bool` is converted at the widget door (`coerce`); `list` is read only
+#: (`filled`) — the card turns its items into what it needs.
+BOOL, LIST = "bool", "list"
+
+
+def filled(wid: str, action: str, key: str, value) -> bool:
+    """Does `value` fill the field `key` of this action, read by the field's DECLARED kind (`types`)?"""
+    kind = declared(wid, action).get(str(key or ""), "")
+    if kind == LIST:
+        return isinstance(value, (list, tuple)) and any(_item(x) for x in value)
+    if kind == BOOL:
+        return isinstance(as_bool(value), bool) if value is not None else False
+    if isinstance(value, bool) or value is None:
+        return False
+    if isinstance(value, (int, float)):
+        return True
+    return isinstance(value, str) and bool(value.strip())
+
+
+def _item(x) -> bool:
+    """One item of a list field: a non-blank text, or a row the card names (a contact by its id)."""
+    return (isinstance(x, str) and bool(x.strip())) or (isinstance(x, dict) and bool(x))
 
 
 def as_bool(value):
@@ -44,7 +73,7 @@ def coerce(wid: str, action: str, payload):
         return payload
     out = dict(payload)
     for key, kind in types.items():
-        if key not in out or kind != "bool":
+        if key not in out or kind != BOOL:
             continue
         if out[key] is None or (isinstance(out[key], str) and not out[key].strip()):
             out.pop(key)                       # null / empty: absent — the handler's own default, as when omitted

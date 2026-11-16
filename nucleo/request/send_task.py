@@ -73,16 +73,17 @@ def sources(wid: str, action: str, payload: dict, said: str, *, reading=None) ->
     """`{slot: {key, source}}` for the act's declared slots over this payload: where each value came from, read by the
     same mechanisms the exit door uses (`message.is_his`, the turn's channel reading, `his_text`)."""
     from nucleo.workers import exit_slots
+    from widgets import field_types
     out: dict = {}
     for slot, d in exit_slots.declared(base(wid), action).items():
         key, rule = str(d.get("key") or slot), str(d.get("from") or "")
         v = payload.get(key)
-        has = isinstance(v, str) and bool(v.strip())
-        if not has:
+        if not field_types.filled(base(wid), action, key, v):   # by the field's declared kind (V2-919 M1)
             src = NONE
-        elif rule == "his_words":
+        elif rule == "his_words":     # several people are his only when EVERY one is (`exit_slots._his_words`)
             from nucleo.acts import message
-            src = HIS if message.is_his(v, [said]) else AGENT
+            each = [x for x in v if str(x or "").strip()] if isinstance(v, (list, tuple)) else [v]
+            src = HIS if all(isinstance(x, str) and message.is_his(x, [said]) for x in each) else AGENT
         elif rule == "reading":
             src = READING if (_reading_names(reading, v) or his_text(v, said)) else AGENT
         elif rule == "composed":

@@ -134,7 +134,9 @@ def _named_by_reading(turn, value) -> bool:
 
 
 def _card(ctx: dict, out: Reading, slot: str, key: str) -> None:
-    out.sources[slot] = "card" if str(out.inner.get(key) or "").strip() or ctx["row_call"] else "none"
+    from widgets import field_types     # by the field's declared kind: an empty list is no value (V2-919 M1)
+    has = field_types.filled(str(ctx["wid"]).split("::", 1)[0], ctx["act"], key, out.inner.get(key))
+    out.sources[slot] = "card" if has or ctx["row_call"] else "none"
 
 
 def _composed(ctx: dict, out: Reading, slot: str, key: str) -> None:

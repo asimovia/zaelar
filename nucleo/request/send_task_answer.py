@@ -105,7 +105,9 @@ def answered(uid: str, entry: dict, text: str, choice: int | None = None) -> dic
     if not inline_ask.take(ask_id):
         return {"ok": True, "row": uid, "already": True}
     art = artefact(uid)
-    art.setdefault("payload", {})[key] = value
+    from widgets import field_types   # a field declared a list takes his answer as its item (the card splits it)
+    listed = field_types.declared(base(str(art.get("widget") or "")), str(art.get("action") or "")).get(key) == field_types.LIST
+    art.setdefault("payload", {})[key] = [value] if listed else value
     (art.setdefault("slots", {}).setdefault(slot or key, {"key": key, "rule": ""}))["source"] = HIS
     if key == "channel" and cands:    # his answer to «which channel?» IS his reading of it: the exit never doubts it again
         from nucleo.acts import message_channel
@@ -195,8 +197,9 @@ def take_call(wid: str, action: str, payload: dict | None, said: str) -> str:
             art.update(state="answered", answer=str(dict(payload or {}).get(ret.get("slot")) or ""),
                        answered_at=time.time())
             asker.keep(uid, art)
+            from widgets import field_types   # a value merges only into a field of ITS declared kind (V2-919 M1)
             merged = {**dict(keep.get("payload") or {}),
-                      **{k: v for k, v in dict(payload or {}).items() if isinstance(v, str) and v.strip()}}
+                      **{k: v for k, v in dict(payload or {}).items() if field_types.filled(base(wid), action, k, v)}}
             keep.update(payload=merged, slots=sources(wid, action, merged, said, reading=keep.get("reading")))
             keep.setdefault("heard", []).append(said)
             for s, d in keep["slots"].items():   # what he already gave this task stays his

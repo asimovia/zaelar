@@ -5373,6 +5373,13 @@ DOMAINS: list[dict] = [
                                  "doctor.hardware() say container, and the worker chain then never ends in the local licence",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/workers/test_a_microvm_never_offers_the_local_licence.py"]},
+        {"id": "2.1782", "title": "A leaving act's slot is read by the field's DECLARED kind (V2-919 M1): one reader "
+                                 "(widgets.field_types.filled) for every leaving action and every declared slot — a field "
+                                 "declared a list is filled by one non-blank item, a boolean by a value that reads as one, any "
+                                 "other by non-blank text or a number; the wrong kind fills nothing (asked, never sent); "
+                                 "several people are his only when every one is; the card rule reads a blank list as no value",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/turn/test_a_leaving_act_is_read_by_its_declaration.py"]},
         {"id": "2.1761", "title": "A group he ordered with the members he named leaves a task's exit door unasked: "
                                  "`mensajeria:create_group` declares its slots (recipient ← `members` by his words, channel "
                                  "← `platform` by the reading, text composed) and its own sentence in ES and EN; a LIST "
