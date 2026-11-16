@@ -5400,6 +5400,13 @@ DOMAINS: list[dict] = [
                                  "done_when_unreadable that does not claim the connector reports it",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/turn/test_an_order_a_widget_queues_has_a_receipt.py"]},
+        {"id": "2.1785", "title": "The set-aside group series' measured regressions stay closed (V2-919 fences): a held draft "
+                                 "whose call names nobody asks «to whom» on its row and sends nothing (the person a leaving "
+                                 "act reaches is required whatever the payload declares; es, en); compose keeps its "
+                                 "done_when_unreadable and a retained compose is refused at checkpoint 1 — nothing reaches the "
+                                 "widget's door, with or without send: true",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/turn/test_the_set_aside_regressions_stay_closed.py"]},
         {"id": "2.1761", "title": "A group he ordered with the members he named leaves a task's exit door unasked: "
                                  "`mensajeria:create_group` declares its slots (recipient ← `members` by his words, channel "
                                  "← `platform` by the reading, text composed) and its own sentence in ES and EN; a LIST "
