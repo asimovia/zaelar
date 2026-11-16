@@ -46,3 +46,17 @@ def _observe(task_id: str, verdict: str, why: str) -> None:
     except Exception as e:  # noqa: BLE001 — observability NEVER breaks the memory
         from loguru import logger
         logger.debug(f"memory_agent.writer: result-door event not emitted: {e}")
+
+
+async def result_of_a_rowless_session(rec, summary: str) -> bool:
+    """A delivered outcome of a worker session with NO task row (`ledger.remembered` writes the rest), through the one
+    gate: a `result` pill stamped with its verdict, or nothing. True when queued."""
+    task_id = str(getattr(rec, "task_id", "") or "")
+    text = f"[tarea {getattr(rec, 'kind', '')}] {getattr(rec, 'goal', '')} → {str(summary or '')[:600]}".strip()
+    v, why = admits(task_id, str(getattr(rec, "verdict", "") or ""), str(summary or "").strip())
+    if why:
+        return False
+    from nucleo.memory_agent.external import remember
+    await remember({"text": text, "kind": RESULT, "level": "mid", "importance": 0.5,
+                    "meta": {"source": f"worker:{task_id}", "verdict": v}})
+    return True

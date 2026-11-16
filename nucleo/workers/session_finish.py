@@ -195,8 +195,11 @@ async def _deliver(rec: "SessionRecord") -> None:
     summary = _s.operator_safe_summary(rec.result_summary)
     if not summary:
         return
-    # MEMORY: written once, by the row's close (`ledger.remembered`), through the one gate (`writer.admits`): two
-    # writers with two rules wrote a failure there and only success here.
+    # MEMORY: written once, through the one gate (`writer.admits`) — by the row's close (`ledger.remembered`), or HERE
+    # for a session that has no row to close (its close has nothing to write it on): never both, never a failure.
+    if rec.ok and not str(getattr(rec, "uid", "") or ""):
+        from nucleo.memory_agent import writer as _mw
+        await _mw.result_of_a_rowless_session(rec, summary)
     try:
         from nucleo.pulse import notices as _notices     # V2-796: voice when he is there, his phone when not, once
         from nucleo.workers import spoken_delivery as _sd
