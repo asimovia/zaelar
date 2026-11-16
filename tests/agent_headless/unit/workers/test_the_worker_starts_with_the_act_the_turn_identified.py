@@ -214,3 +214,47 @@ def test_an_act_the_turn_ran_is_seen_behind_many_later_ops(lang, monkeypatch):
         {"wid": "agenda", "action": "add_task", "trace": "turn-x"} for _ in range(20)]
     monkeypatch.setattr(done_ops, "recent", lambda within_s=0, limit=8: book[-int(limit):])
     assert first_act.ran_in_the_turn("contactos", "create_group", _reading("contactos:create_group", 0.97, "turn-9"))
+
+
+# ── fourth audit: the send row's block is not new, and is never cut ─────────────────────────────────────────────
+_SEND_ART = {"widget": "mensajeria", "action": "send_to", "payload": {"contact": "Ana"},
+             "slots": {"recipient": {"key": "contact", "source": "his"}, "text": {"key": "text", "rule": "composed"}}}
+
+
+def test_the_send_rows_block_rides_through_the_real_door_even_over_the_ceiling(monkeypatch):
+    """v3.159 sent it whatever the size; `fit` cut it (measured: memory 3 539 + 8 lines → 16 379 without it)."""
+    from nucleo import dispatch
+    from nucleo.dispatch import confirm, session_steps
+    from nucleo.request import send_task_words
+    from nucleo.workers.session_record import SessionRecord
+    seen = {}
+
+    async def _deliver(**kw):
+        seen["prompt"] = kw["prompt"]
+        return {}
+
+    async def _no_gate(*a, **k):
+        return False
+
+    async def _memory(req, kind):
+        return "\n".join(f"- dato {i} " + "m" * 70 for i in range(120))       # ~9k: the brief goes over
+    monkeypatch.setattr(session_steps, "run_it_to_its_delivery", _deliver)
+    monkeypatch.setattr(confirm, "unlicensed_gate", _no_gate)
+    monkeypatch.setattr(dispatch, "_task_row", lambda *a, **k: None)
+    monkeypatch.setattr(dispatch, "sync_state", lambda *a, **k: None)
+    monkeypatch.setattr(dispatch, "_compose_context", _memory)
+    monkeypatch.setattr(send_task_words, "artefact", lambda uid: _SEND_ART)
+    task = dispatch.Task(id="s1", request="text Ana that I'm late", kind="generic", trusted=True,
+                         context={"errand_kind": {"choice": "generic", "confidence": 0.95},
+                                  "errand_class": {"choice": "none", "confidence": 0.95}, "playbook": "message"})
+    rec = SessionRecord(task_id="s1", goal="text Ana that I'm late", kind="generic")
+    rec.uid = "row-s1"
+    dispatch._SESSIONS["s1"] = rec
+    try:
+        asyncio.run(dispatch._run_session(task))
+    finally:
+        dispatch._SESSIONS.pop("s1", None)
+    out = seen.get("prompt", "")
+    assert len(out) > PROMPT_CEILING_CHARS, "the case is over the ceiling"
+    assert first_act.words("send_task_head") in out, "the send row's block is never cut"
+    assert "dato 119 " in out, "nor the memory"

@@ -192,3 +192,34 @@ def test_disarmed_without_the_door_conversion_false_is_true(monkeypatch):
     m = next(m for m in agenda.load_db().get("meetings", []) if m.get("title") == "Disarmed")
     assert m.get("allDay")
 
+
+
+# ── fourth audit: the send row's ONE command names only declared fields ─────────────────────────────────────────
+@pytest.mark.parametrize("payload", [
+    {"to": "Ana", "message": "llego tarde", "contact": "Ana", "text": "llego tarde"},     # aliases kept by fold_aliases
+    {"contact": "Ana", "item": "3", "widget_id": "mensajeria"},                            # extra keys
+    {"contact": "Ana's $50 `x`", "text": "[URGENTE] true {ok}"},
+])
+def test_the_send_rows_command_is_accepted_and_names_only_declared_fields(monkeypatch, payload):
+    from nucleo.flash import payload_fill
+    from nucleo.request import send_task_words
+    monkeypatch.setattr(send_task_words, "artefact", lambda uid: {
+        "widget": "mensajeria", "action": "send_to", "payload": payload,
+        "slots": {"recipient": {"key": "contact", "source": "his"}, "text": {"key": "text", "rule": "composed"}}})
+    out = send_task_words.brief_block("row-1")
+    cmd = out.split("`python -m nucleo.cli.widget data ")[1].split("`;")[0].split("`.")[0]
+    cmd = "python -m nucleo.cli.widget data " + cmd.rstrip("`")
+    argv = _bash_argv(cmd)
+    got = cli_widget._field_args("mensajeria", "send_to", argv[2:])
+    declared = payload_fill._payload_spec("mensajeria", "send_to")
+    assert got is not None and set(got) <= set(declared), (cmd, got)
+    assert all(got[k] == v for k, v in payload.items() if k in got), (got, payload)
+
+
+def test_update_meeting_declares_the_field_it_types():
+    from widgets import field_types, runtime
+    for wid in ("agenda", "contactos", "mensajeria", "musica", "youtube"):
+        for act, spec in (runtime.get(wid).get("actions") or {}).items():
+            undeclared = [k for k in field_types.declared(wid, act) if k not in (spec.get("payload") or {})
+                          and k != "all_day"]                       # `all_day` is a typed ALIAS of `allDay`
+            assert not undeclared, (wid, act, undeclared)
