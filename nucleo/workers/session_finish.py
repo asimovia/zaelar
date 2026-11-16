@@ -1,5 +1,5 @@
-"""How a worker session ENDS: relay, restart, the harness verdict, the delivery through voice and UI, and the
-result pill through `writer.result` (only a delivered verdict). Part of nucleo.workers.session (names through _s)."""
+"""How a worker session ENDS: relay, restart, the harness verdict, the delivery through voice and UI (ONE
+notice per close: a death's question owns a failure, `task_record.owes_death_notice`). Part of nucleo.workers.session (names through _s)."""
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -121,6 +121,8 @@ async def _ending(self, rec) -> None:
 
 
 async def _closing(self, rec) -> None:
+    from nucleo.workers import task_record     # what is left of its transcript, on the row (closed or parked)
+    task_record.flush(rec)
     # TOKENS ARE ALWAYS CHARGED, even when CANCELLED (2026-08-13): inside the UI-only `cancelled` `if`, a worker
     # killed by budget was metered at ZERO (704 s, 256 steps, ~$0.20 → 0 Energy). Two concerns, separated.
     u = self._usage or self._usage_partial or {}
@@ -192,15 +194,11 @@ async def _deliver(rec: "SessionRecord") -> None:
     summary = _s.operator_safe_summary(rec.result_summary)
     if not summary:
         return
-    # MEMORY: only SUCCESS is remembered (2026-07-14 audit: FAILED tasks wrote noise pills like «I could not complete
-    # the task»). Provenance in `meta.source`. A RESULT pill goes through the one door: the circuit's `met` verdict.
-    if rec.ok:
-        try:
-            from nucleo.memory_agent import writer as _mw
-            await _mw.result(f"[tarea {rec.kind}] {rec.goal} → {summary[:600]}", task_id=rec.task_id,
-                             verdict=str(getattr(rec, "verdict", "") or ""))
-        except Exception:
-            pass
+    # MEMORY: written once, by the row's close (`ledger.remembered`), through the one gate (`writer.admits`): two
+    # writers with two rules wrote a failure there and only success here.
+    from nucleo.workers import task_record     # ONE notice per close: a death's question carries the why
+    if task_record.owes_death_notice(rec):
+        return
     try:
         from nucleo.pulse import notices as _notices     # V2-796: voice when he is there, his phone when not, once
         from nucleo.workers import spoken_delivery as _sd

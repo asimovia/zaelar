@@ -83,6 +83,7 @@ class SessionRecord:
     # whoever detects the cause (the stall watchdog, the generator), copied into the durable row on close.
     error_class: str = ""
     injects: list = field(default_factory=list)     # [Inject]
+    transcript: list = field(default_factory=list)  # its events, buffered until `task_record.flush` writes them
     paused: bool = False           # V2-065: SIGSTOP'd (⏻ del operador) — sigue "running" para el registro, pero
                                     # frozen; do not confuse with status=cancelled (that is irreversible)
     # ── STRUCTURED worker observability (V2-059): `plan` (`hbnote plan "a|b|c"`), `done` (`--done N`), `pct`

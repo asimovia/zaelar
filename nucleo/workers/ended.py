@@ -175,22 +175,18 @@ def _remember_ended(rec, resuming: bool = False) -> None:
     # V2-222 — a real DEATH is PUSHED: harness on `hotel-under-15-days`, a system note is said next turn 3/3, a
     # prompt state line 0/13. The state line stays as context; the order goes by the route that arrives.
     try:
-        if (str(rec.status or "") != "cancelled" and not bool(rec.ok)
-                and not str(getattr(rec, "handoff", "") or "")       # V2-238: a relayed errand has not died
-                and not _parked(rec.goal)):                           # …nor one parked for the quota's reset
+        from nucleo.workers.task_record import owes_death_notice   # ONE notice per close (2.1775)
+        if owes_death_notice(rec):
             from nucleo.events import task_event      # a task matter, on its row (V2-851 F4)
+            from nucleo.workers.handoff import operator_safe_summary
             _g = (rec.goal or "the background task").strip()[:70]
-            task_event.told(f"The background task «{_g}» died without a result and will not retry by itself. "
+            _why = operator_safe_summary(str(rec.result_summary or ""))[:200]   # the ONE notice carries the why
+            task_event.told(f"The background task «{_g}» died without a result"
+                            + (f" ({_why})" if _why else "") + " and will not retry by itself. "
                             "Retry it, try another way, or leave it?", task_id=str(getattr(rec, "uid", "") or ""),
                             key=f"death:{rec.task_id}", goal=_g, ok=False, ask=True)
     except Exception:  # noqa: BLE001
         pass
-
-
-def _parked(goal: str) -> bool:
-    """Parked to resume at the quota's reset (`quota_wait`): «it will not be retried» would be false."""
-    from .quota_wait import is_parked
-    return is_parked(goal)
 
 
 def recently_ended_sessions(now: float | None = None, limit: int = 3) -> list[dict]:

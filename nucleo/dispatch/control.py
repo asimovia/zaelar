@@ -45,6 +45,8 @@ async def inject(which: str, message: str) -> list[str]:
                 from nucleo.workers.session import Inject
                 r.injects.append(Inject(text=message, ts=_d.time.time()))
             done.append(tid)
+            from nucleo.workers import task_record     # his line on the ROW: it outlives the RAM queue
+            task_record.said(str(getattr(r, "uid", "") or ""), message)
             _d._sheets.recheck_rows(getattr(r, "sheet", ""), message, relayed=True)   # V2-782 T3.3: our words, not his
         except Exception as e:  # noqa: BLE001
             logger.warning(f"dispatch: inject a {tid} falló: {e}")
@@ -62,7 +64,8 @@ def take_pending_injects(tid) -> list[dict]:
         if inj.state == "pending":
             inj.state = "delivered"
             out.append({"text": inj.text, "source": getattr(inj, "source", "operator")})   # its author (V2-886 fila 9)
-    return out
+    from nucleo.workers import task_record       # …and his lines that outlived the RAM queue (a restart, a resume)
+    return out + task_record.take(str(getattr(r, "uid", "") or ""), out)
 
 
 # ── MATAR (with cortesia) ─────────────────────────────────────────────────────────────────────────────────
