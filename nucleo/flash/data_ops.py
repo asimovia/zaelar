@@ -154,7 +154,11 @@ async def say_refusal_instead(tasks, data_done: dict, send, speech) -> str:
     try:
         from nucleo.workers import spoken_delivery as _sd
         from voice.observer import emit
-        said = await _sd.line(why[0], why[1], ok=False) or _failed_line()
+        # The reason is the card's `error`, written for the MODEL: the composer is handed it without its code-shaped
+        # words, and a line that still names one (a field, an action) is not said — the plain line is.
+        said = await _sd.line(why[0], _rline.without_code(why[1]), ok=False) or _failed_line()
+        if _rline.codey(said):
+            said = _failed_line()
         emit("brain", "🚫 «hecho» retirado: todas las ops del turno se rechazaron — se dice el motivo", role="system",
              text=f"{why[0]}: {why[1][:140]}", extra={"cat": "flash", "id": why[0], "is_error": True})
     except Exception:  # noqa: BLE001
