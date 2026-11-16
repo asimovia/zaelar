@@ -736,9 +736,9 @@
   "families": {
    "search": "Zaelar's search (`act use_tool \"<what>\"`); music, podcasts and video: the `musica`/`youtube` apps, never the web.",
    "browser": "drive the operator's real browser (look, click, type, navigate, visit, extract) and its method.",
-   "mesh": "what NOTHING of ours covers (an image, a transcript…): `python -m nucleo.cli.mesh find \"<the errand>\"`.",
+   "mesh": "what NOTHING of ours covers (an image, a transcript…): `cli.mesh find \"<the errand>\"`.",
    "sites": "trusted sites per category in his country (shopping, travel, second-hand…).",
-   "messaging": "his WhatsApp, Telegram and email: `python -m nucleo.cli.widget read mensajeria` says what is connected and pending.",
+   "messaging": "his WhatsApp, Telegram and email (which are connected: `act state`).",
    "widgets": "read and operate an app of his canvas (agenda, lists, results, documento…) through its declared actions.",
    "results": "the results sheet's full contract: what an item is, filling it while you work, sources, summary, rejected, breadth.",
    "library": "where his files live and how to save one.",

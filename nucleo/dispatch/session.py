@@ -191,10 +191,8 @@ async def _run_session(task: "Task") -> None:
             prompt = resume["rebrief"] if resume.get("native_sid") else f"{resume['rebrief']}\n\n{prompt}"
         if _brief_bg is not None:
             # V2-301 — the compositor continues pensando: the worker starts YA and the address le arrives inyectada.
-            prompt += ("\n\nNOTA (dirección en camino): la DIRECCIÓN detallada de esta investigación — criterios "
-                       "duros y blandos, amplitud mínima y baremo — se está componiendo y te llegará como "
-                       "instrucción nueva en un momento. NO la esperes parado: haz ya los primeros pasos (PASO 0, "
-                       "abrir el sitio, la primera búsqueda) y aplícala en cuanto llegue.")
+            prompt += ("\n\nNOTA: la DIRECCIÓN de esta investigación (criterios, amplitud, baremo) te llegará en un "
+                       "momento como instrucción nueva. No la esperes: empieza ya y aplícala cuando llegue.")
             _d._attach_brief_followup(_brief_bg, key=key, rec=rec, req=req, kind0=kind)
         # V2-778 F1 — running the session to its delivery lives in `nucleo/dispatch/session_steps.py`.
         _blk = await _dss.run_it_to_its_delivery(
@@ -206,7 +204,7 @@ async def _run_session(task: "Task") -> None:
             key=key,
             kind=kind,
             nav_tid=nav_tid,
-            prompt=prompt,
+            prompt=__import__("nucleo.workers.prompts.first_act", fromlist=["x"]).fit(prompt),   # as SENT
             rec=rec,
             req=req,
             resume=resume,

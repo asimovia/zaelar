@@ -734,9 +734,9 @@
   "families": {
    "search": "el buscador de Zaelar (`act use_tool \"<qué>\"`); música, podcasts y vídeo: apps `musica`/`youtube`, nunca la web.",
    "browser": "conducir el navegador real del operador (look, click, type, navigate, visit, extract) y su método.",
-   "mesh": "lo que NADA nuestro cubre (una imagen, transcribir…): `python -m nucleo.cli.mesh find \"<el encargo>\"`.",
+   "mesh": "lo que NADA nuestro cubre (una imagen, transcribir…): `cli.mesh find \"<el encargo>\"`.",
    "sites": "sitios de confianza por categoría en su país (compras, viajes, segunda mano…).",
-   "messaging": "su WhatsApp, Telegram y correo: `python -m nucleo.cli.widget read mensajeria` dice qué está conectado y qué hay pendiente.",
+   "messaging": "su WhatsApp, Telegram y correo (cuáles están conectados: `act state`).",
    "widgets": "leer y operar una app de su lienzo (agenda, listas, resultados, documento…) por sus acciones declaradas.",
    "results": "el contrato entero de la hoja de resultados: qué es un item, llenarla mientras trabajas, fuentes, sumario, descartados, amplitud.",
    "library": "dónde viven sus archivos y cómo guardar uno.",
