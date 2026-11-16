@@ -8,8 +8,6 @@ and the one call that runs it (generalising the send row's block). Variants: two
 """
 from __future__ import annotations
 
-import json
-
 import pytest
 
 from nucleo.workers.prompts import first_act
@@ -35,8 +33,9 @@ def test_a_sure_identified_act_is_the_first_step_with_its_declared_fields(lang, 
     out = first_act.block("", {"said": said[lang]}, _reading(choice, 0.95))
     assert f"«{said[lang]}»" in out, "his words ride verbatim"
     wid, act = choice.split(":")
-    call = json.loads(out.split("`step.json` ")[1].split(" (")[0].split(" ", 1)[1])
-    assert call == {"widget_id": wid, "action": act, "payload": {f: "<…>" for f in fields}}
+    import shlex
+    cmd = shlex.split(out.split("`python -m nucleo.cli.widget data ")[1].split("`")[0])
+    assert cmd == [wid, act, *(f"{f}=<…>" for f in fields)], "ONE command, every declared field an argument"
     for f in fields:
         assert f"· {f}:" in out
 
