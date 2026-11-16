@@ -38,8 +38,8 @@ BOOL, LIST = "bool", "list"
 def filled(wid: str, action: str, key: str, value) -> bool:
     """Does `value` fill the field `key` of this action, read by the field's DECLARED kind (`types`)?"""
     kind = declared(wid, action).get(str(key or ""), "")
-    if kind == LIST:
-        return isinstance(value, (list, tuple)) and any(_item(x) for x in value)
+    if kind == LIST:      # a non-blank text is ONE item (the card splits the names it carries)
+        return (isinstance(value, (list, tuple)) and any(_item(x) for x in value)) or _item(value) and isinstance(value, str)
     if kind == BOOL:
         return isinstance(as_bool(value), bool) if value is not None else False
     if isinstance(value, bool) or value is None:
@@ -47,6 +47,18 @@ def filled(wid: str, action: str, key: str, value) -> bool:
     if isinstance(value, (int, float)):
         return True
     return isinstance(value, str) and bool(value.strip())
+
+
+def as_declared(wid: str, action: str, payload):
+    """The payload with every field declared a list holding a list: a non-blank text becomes its one item (a new
+    dict; the caller's is untouched). What the hand-off keeps on a row is the declared shape, never the call's."""
+    if not isinstance(payload, dict):
+        return payload
+    out = dict(payload)
+    for key, kind in declared(wid, action).items():
+        if kind == LIST and isinstance(out.get(key), str) and out[key].strip():
+            out[key] = [out[key].strip()]
+    return out
 
 
 def _item(x) -> bool:
