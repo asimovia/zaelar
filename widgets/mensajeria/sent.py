@@ -73,7 +73,7 @@ _OUTBOX_MAX = 40
 
 
 def outbox_queue(db: dict, ref: str, platform: str, chat_id, key: str, text: str, *, name: str = "",
-                 contact_id: str = "", not_before: float = 0.0) -> dict:
+                 contact_id: str = "", not_before: float = 0.0, kind: str = "") -> dict:
     """Record a send the card just made. `key` is the composer's own conversation key, so the card finds its row.
 
     The row also names WHO the order was for (`name`, `contactId`): it is the record of OUR order, so the end state
@@ -84,20 +84,24 @@ def outbox_queue(db: dict, ref: str, platform: str, chat_id, key: str, text: str
            "text": str(text or "")[:4000], "state": "queued", "reason": "", "at": time.time()}
     if not_before:
         row["not_before"] = float(not_before)      # a held send is not «unconfirmed» before it was due to leave
+    if kind:
+        row["kind"] = str(kind)    # an order that is not a message to a person names its class (V2-919): `group`
     rows = [r for r in (db.get("outbox") or []) if isinstance(r, dict) and r.get("ref") != row["ref"]]
     db["outbox"] = (rows + [row])[-_OUTBOX_MAX:]
     return row
 
 
-def outbox_open(db: dict, ref: str, target: dict, text: str, *, not_before: float = 0.0) -> None:
+def outbox_open(db: dict, ref: str, target: dict, text: str, *, not_before: float = 0.0, kind: str = "") -> None:
     """Open the outbox row of an order queued by an action (not the card's own Send, which opens its row with its
-    composer key first): a row that already exists for `ref` is kept as it is."""
+    composer key first): a row that already exists for `ref` is kept as it is. `kind` is declared by the action that
+    opens it when its order is not a message to a person (a `group`): an end state names the class it is the
+    receipt of, so a group named like a person never settles that person's send."""
     if not ref or any(isinstance(r, dict) and r.get("ref") == str(ref) for r in db.get("outbox") or []):
         return
     t = target if isinstance(target, dict) else {}
     outbox_queue(db, ref, str(t.get("platform") or ""), t.get("chatId") or t.get("to") or "", "", text,
                  name=str(t.get("name") or t.get("chatName") or t.get("from") or ""),
-                 contact_id=str(t.get("contactId") or ""), not_before=not_before)
+                 contact_id=str(t.get("contactId") or ""), not_before=not_before, kind=kind)
 
 
 def outbox_settle(db: dict, ref, ok: bool, reason: str = "", *, retried: bool = False) -> bool:
