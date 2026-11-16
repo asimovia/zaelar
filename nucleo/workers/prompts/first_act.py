@@ -57,6 +57,17 @@ def words(key: str) -> str:
     return catalog.words(key)
 
 
+def command(wid: str, act: str, payload: dict) -> str:
+    """The ONE shell command that runs the act: its fields as `key=value` arguments (`cli.widget data`), so the
+    worker spends one model turn per act, not a Write and then a Bash. A text value is double-quoted, any other
+    value is its JSON single-quoted."""
+    def arg(k, v):
+        if isinstance(v, str):
+            return f'{k}="' + "".join("\\" + c if c in '\\"$`' else c for c in v) + '"'
+        return f"{k}='" + json.dumps(v, ensure_ascii=False).replace("'", "'\\''") + "'"
+    return " ".join(["python -m nucleo.cli.widget data", wid, act, *(arg(k, v) for k, v in payload.items())])
+
+
 def act_block(reading: dict | None) -> str:
     """The identified action as the worker's first step: its fields and the one call ('' when none is identified)."""
     wid, act, fields = identified(reading)
@@ -64,8 +75,8 @@ def act_block(reading: dict | None) -> str:
     if not (wid and head and line and do):
         return ""
     rows = [line.format(field=k, desc=str(v or "").replace("\n", " ")[:_FIELD_CAP]) for k, v in fields.items()]
-    call = json.dumps({"widget_id": wid, "action": act, "payload": {k: "<…>" for k in fields}}, ensure_ascii=False)
-    return "\n".join([head.format(widget=wid, action=act), *rows, do.format(call=call)])
+    return "\n".join([head.format(widget=wid, action=act), *rows,
+                      do.format(command=command(wid, act, {k: "<…>" for k in fields}))])
 
 
 def block(uid: str, context: dict | None, reading: dict | None) -> str:
