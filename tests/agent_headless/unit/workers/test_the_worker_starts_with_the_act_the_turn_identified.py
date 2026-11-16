@@ -168,13 +168,22 @@ def _full(monkeypatch, lang, name, *, memory=2000, recent=1200):
 
 
 @pytest.mark.parametrize("name", ["hotel", "document", "message"])
-def test_the_whole_sent_brief_stays_under_the_ceiling_with_memory_and_conversation_full(lang, monkeypatch, name):
+def test_fit_cuts_only_the_new_blocks_never_his_memory_or_conversation(lang, monkeypatch, name):
+    """Third audit C: the brief as sent keeps its memory and conversation WHOLE, as before this batch; only the
+    handoff's own blocks yield to the ceiling, each one said as an event. A base over by itself is sent as it was."""
+    events = []
+    from voice import observer
+    monkeypatch.setattr(observer, "emit", lambda *a, **k: events.append((a, k)))
     catalog, out = _full(monkeypatch, lang, name)
-    assert len(out) <= PROMPT_CEILING_CHARS, (name, len(out))
-    assert catalog.words("request_head" if name != "hotel" else "goal_head") in out, "the request is never dropped"
+    mem = "\n".join(f"- dato {i} " + "m" * 60 for i in range(2000 // 70))
+    assert mem in out, "the memory context rides whole"
+    assert "he: línea 16 " + "z" * 60 in out and "he: línea 0 " + "z" * 60 in out, "the conversation rides whole"
+    assert catalog.words("request_head" if name != "hotel" else "goal_head") in out
     if name != "hotel":
-        assert "agenda update_task" in out, "the act is the LAST thing given up"
-        assert catalog.words("context_head") in out, "with room, the memory context stays (trimmed, not dropped)"
+        assert "agenda update_task" in out and len(out) <= PROMPT_CEILING_CHARS, "with room, the act stays"
+    else:
+        assert "agenda update_task" not in out and any("left out" in str(e[0]) for e in events), \
+            "no room: the act left out, and SAID"
 
 
 def test_the_drop_order_is_explicit_not_greedy(lang):
@@ -191,9 +200,10 @@ def test_his_sentence_rides_once_when_the_request_is_his_sentence(lang):
     assert f"«{SAID[lang]}»" not in first_act.block("", _one(SAID[lang]), {}, seen=base)
 
 
-def test_disarmed_without_fit_the_full_hotel_brief_goes_over(lang, monkeypatch):
+def test_disarmed_without_fit_the_document_brief_goes_over(lang, monkeypatch):
+    """RED proof: with `fit` disarmed, a full document brief plus a long state and act goes over the ceiling."""
     monkeypatch.setattr(first_act, "fit", lambda prompt, ceiling=None: prompt)
-    _c, out = _full(monkeypatch, lang, "hotel")
+    _c, out = _full(monkeypatch, lang, "document", memory=3200, recent=1200)
     assert len(out) > PROMPT_CEILING_CHARS
 
 
