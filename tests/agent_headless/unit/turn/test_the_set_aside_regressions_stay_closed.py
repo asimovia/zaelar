@@ -109,9 +109,11 @@ def test_an_unread_declaration_fails_toward_asking(monkeypatch):
     assert send_task_fields.required(art, "text") is True
 
 
-@pytest.mark.xfail(strict=True, reason="OPEN CLASS (V2-919 audit): `take_call` fills a waiting send row from the "
-                   "answering turn's call whatever that turn IS — a question about a held draft that names its addressee "
-                   "fills the person and the draft leaves. Unchanged from main; recorded, not fixed in this pass.")
+@pytest.mark.xfail(strict=True, reason="OPEN CLASS (B8 of the release's debugging list, V2-919 audit): the exit door "
+                   "does not ask about a held draft whose send nobody surely ordered, and does not remember his yes. A held "
+                   "slot that was NOT released reads `agent` (never `unknown`), which asks nothing when the person is his; "
+                   "in a real turn the card licence (at=GATE) runs first with the brief, so the exposure is a doubtful or "
+                   "missing verdict. The same class keeps re-asking after his yes to the door's own question.")
 @pytest.mark.parametrize("lang", ["es", "en"])
 def test_a_question_about_a_held_draft_answered_by_the_models_call_sends_nothing(world, lang, monkeypatch):
     """The answering turn's own call (`take_call`) on a QUESTION about the draft that names its addressee — the path
