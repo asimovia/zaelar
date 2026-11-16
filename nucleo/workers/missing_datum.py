@@ -17,8 +17,6 @@ from __future__ import annotations
 
 from loguru import logger
 
-#: What a held row still lets through: the one question, a read (a widget, its card, the state), the act again.
-_PASSES = ("ask_user", "read_widget", "widget_data", "state", "card")
 SLOT = "missing_datum"
 
 
@@ -111,7 +109,8 @@ def reason(rec) -> str:
 
 def held(rec, action: str) -> str:
     """The refusal for an act a held row does not let through, or ''."""
-    if action in _PASSES or not _current(rec):
+    # what a held row still lets through: the one question, a read (a widget, its card, the state), the act again
+    if action in ("ask_user", "read_widget", "widget_data", "state", "card") or not _current(rec):
         return ""
     return reason(rec)
 
