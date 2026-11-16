@@ -167,11 +167,11 @@ def live(prompt: str, surface: str, uid: str, context: dict | None, reading: dic
     return "\n\n".join(p for p in (base, tail) if p)
 
 
-def _drop_order() -> tuple[tuple[str, str], ...]:
-    """What `fit` gives up first, by the head its block opens with: `(head, how)` — `drop` removes the block, `trim`
-    removes its lines one by one (the conversation's OLDEST first, the memory's last). The identified act is last."""
-    return (("state_now.head", "drop"), ("his_words_head", "drop"), ("recent_head", "trim_old"),
-            ("context_head", "trim_new"), ("first_act_head", "drop"), ("send_task_head", "drop"))
+def _drop_order() -> tuple[str, ...]:
+    """What `fit` may give up, in order, by the head its block opens with: ONLY the blocks this handoff adds — the
+    state, his words, then the identified act (or the send row's) last. The memory context and the conversation are
+    never cut by it: they ride as they always did."""
+    return ("state_now.head", "his_words_head", "first_act_head", "send_task_head")
 
 
 def _span(text: str, head: str) -> tuple[int, int]:
@@ -185,13 +185,25 @@ def _span(text: str, head: str) -> tuple[int, int]:
     return i, (len(text) if j < 0 else j)
 
 
+def _said_dropped(key: str, size: int, total: int, cap: int) -> None:
+    """A handoff block that did not fit is an EVENT, never a silence."""
+    try:
+        from voice.observer import emit
+        emit("brain", "handoff block left out: over the brief's ceiling", role="system",
+             text=f"{key} ({size} chars) — brief {total} > {cap}",
+             extra={"cat": "worker", "block": key, "chars": size, "brief_chars": total, "ceiling": cap})
+    except Exception as e:  # noqa: BLE001 — the log line below still says it
+        _note("the drop event", e)
+    logger.info(f"first_act: {key} left out of the brief ({size} chars; {total} > {cap})")
+
+
 def fit(prompt: str, ceiling: int | None = None) -> str:
-    """The brief as SENT, under `PROMPT_CEILING_CHARS` by construction: while over, give up what `_drop_order` says,
-    in that order — the state, his words, the conversation (oldest turns first), the memory context, and only then
-    the identified act. A brief whose base alone is over is returned as it is (the ceiling test names it)."""
+    """The brief as SENT: while over `PROMPT_CEILING_CHARS`, the blocks this handoff ADDED go, in `_drop_order` —
+    each one said as an event. Nothing that was in the brief before the handoff is touched: a base that is over by
+    itself (the hotel's, its memory, its conversation) is sent as it was, and the ceiling keeps measuring that base."""
     from nucleo.workers.prompts import catalog
     cap = catalog.PROMPT_CEILING_CHARS if ceiling is None else ceiling
-    for key, how in _drop_order():
+    for key in _drop_order():
         if len(prompt) <= cap:
             break
         head = words(key).split("{", 1)[0].split("`", 1)[0]   # matched by its fixed opening (no placeholder, no
@@ -199,15 +211,7 @@ def fit(prompt: str, ceiling: int | None = None) -> str:
         start, end = _span(prompt, head) if head else (-1, -1)
         if start < 0:
             continue
-        if how == "drop":
-            prompt = (prompt[:start].rstrip("\n") + ("\n\n" if end < len(prompt) else "") + prompt[end:].lstrip("\n")
-                      ).strip("\n")
-            continue
-        lines = prompt[start:end].split("\n")
-        body = lines[1:]
-        while body and len(prompt) - sum(len(x) + 1 for x in lines[1:]) + sum(len(x) + 1 for x in body) > cap:
-            body = body[1:] if how == "trim_old" else body[:-1]
-        kept = "\n".join([lines[0], *body]) if body else ""
-        prompt = (prompt[:start] + kept + prompt[end:]) if kept else \
-            (prompt[:start].rstrip("\n") + ("\n\n" if end < len(prompt) else "") + prompt[end:].lstrip("\n"))
+        _said_dropped(key, end - start, len(prompt), cap)
+        prompt = (prompt[:start].rstrip("\n") + ("\n\n" if end < len(prompt) else "") + prompt[end:].lstrip("\n")
+                  ).strip("\n")
     return prompt
