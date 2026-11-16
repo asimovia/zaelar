@@ -29,7 +29,7 @@ def _a_create_group(action, payload, q, db, contacts, now) -> dict:
     """«Créame un grupo con los padres del colegio» — a group of his, optionally with its first members."""
     name = _d.re.sub(r"\s+", " ", str(payload.get("name") or payload.get("group") or "")).strip()
     if not name:
-        return {"ok": False, "error": "create_group necesita el nombre del grupo (`name`)"}
+        return {"ok": False, "error": "create_group necesita el nombre del grupo (`name`)", "field": "name"}
     g, created = _d._groups.create(db, name)
     added = [c for c in _contacts_of(db, payload) if _d._groups.set_member(g, c, True)]
     for c in added:

@@ -112,7 +112,6 @@ async def _one_act(rec, action: str, payload: dict) -> dict:
         from nucleo.workers import widget_card
         return widget_card.card(str((payload or {}).get("id") or (payload or {}).get("widget_id") or ""))
     if action == "ask_user":
-        missing_datum.clear(rec)
         q = (payload or {}).get("question") or (payload or {}).get("text") or ""
         opts = (payload or {}).get("options")
         if isinstance((payload or {}).get("remote"), dict):     # an exchange with a network agent: its text, not ours
@@ -121,6 +120,7 @@ async def _one_act(rec, action: str, payload: dict) -> dict:
             return {"ok": bool(corr), "status": "pending", "corr_id": corr} if corr else {"ok": False,
                     "error": "no open exchange of this task asks anything"}
         corr = _register_ask(rec, str(q), options=opts if isinstance(opts, list) else None)
+        missing_datum.clear(rec)                   # asked HIM, and the ask is on the row: the hold is answered
         return {"ok": True, "status": "pending", "corr_id": corr}
 
     from nucleo import on_his_behalf as _behalf      # an act in his name he never asked for is a question
