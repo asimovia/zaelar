@@ -149,6 +149,8 @@ def _remember_ended(rec, resuming: bool = False) -> None:
     """
     if resuming:
         return
+    from nucleo.workers import task_record   # the death's ONE notice: before the pool's fence, which only bounds
+    task_record.tell_death(rec)              # the snapshot (an errand older than the conversation still died)
     _bound()
     if float(getattr(rec, "started", None) or _POOL["since"]) < _POOL["since"]:
         return          # V2-879 O2: born in a conversation that was cleaned — its end is not this one's to reopen
@@ -170,21 +172,6 @@ def _remember_ended(rec, resuming: bool = False) -> None:
         for k in [k for k, v in _ENDED_SESSIONS.items()
                   if time.time() - float(v.get("at") or 0) > _window(v)]:
             _ENDED_SESSIONS.pop(k, None)
-    except Exception:  # noqa: BLE001
-        pass
-    # V2-222 — a real DEATH is PUSHED: harness on `hotel-under-15-days`, a system note is said next turn 3/3, a
-    # prompt state line 0/13. The state line stays as context; the order goes by the route that arrives.
-    try:
-        from nucleo.workers.task_record import owes_death_notice   # ONE notice per close (2.1775)
-        if owes_death_notice(rec):
-            from nucleo.events import task_event      # a task matter, on its row (V2-851 F4)
-            from nucleo.workers.handoff import operator_safe_summary
-            _g = (rec.goal or "the background task").strip()[:70]
-            _why = operator_safe_summary(str(rec.result_summary or ""))[:200]   # the ONE notice carries the why
-            task_event.told(f"The background task «{_g}» died without a result"
-                            + (f" ({_why})" if _why else "") + " and will not retry by itself. "
-                            "Retry it, try another way, or leave it?", task_id=str(getattr(rec, "uid", "") or ""),
-                            key=f"death:{rec.task_id}", goal=_g, ok=False, ask=True)
     except Exception:  # noqa: BLE001
         pass
 

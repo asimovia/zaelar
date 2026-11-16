@@ -107,3 +107,21 @@ def owes_death_notice(rec) -> bool:
     return (str(getattr(rec, "status", "") or "") != "cancelled" and not bool(getattr(rec, "ok", False))
             and not str(getattr(rec, "handoff", "") or "")       # V2-238: a relayed errand has not died
             and not is_parked(getattr(rec, "goal", "")))         # …nor one parked for the quota's reset
+
+
+def tell_death(rec) -> None:
+    """The death's question, the ONE notice of a failed close (V2-222: a real death is PUSHED). Called by the ending's
+    snapshot (`ended._remember_ended`) for every close that does not continue, before any fence of its own."""
+    if not owes_death_notice(rec):
+        return
+    try:
+        from nucleo.events import task_event      # a task matter, on its row (V2-851 F4)
+        from nucleo.workers.handoff import operator_safe_summary
+        goal = (getattr(rec, "goal", "") or "the background task").strip()[:70]
+        why = operator_safe_summary(str(getattr(rec, "result_summary", "") or ""))[:200]
+        task_event.told(f"The background task «{goal}» died without a result" + (f" ({why})" if why else "")
+                        + " and will not retry by itself. Retry it, try another way, or leave it?",
+                        task_id=str(getattr(rec, "uid", "") or ""), key=f"death:{rec.task_id}", goal=goal, ok=False,
+                        ask=True)
+    except Exception as e:  # noqa: BLE001 — the row still holds the failure
+        _note("the death's notice", e)
