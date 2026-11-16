@@ -177,9 +177,11 @@ async def _run_session(task: "Task") -> None:
             prompt = _d._build_prompt(req, ctx, trusted, brief, playbook=_pb)
         # V2-644 (a REPORT flips the delivery contract) + V2-661 (his FILES): a trusted worker's blocks, in one place.
         if trusted and not _dev:
+            from nucleo.workers.prompts.surfaces import trusted_blocks
+            prompt += trusted_blocks(getattr(rec, "surface", ""))
             from nucleo.workers.prompts import first_act   # + his words, the state, the act the turn identified
-            prompt = first_act.live(prompt, getattr(rec, "surface", ""), str(getattr(rec, "uid", "") or ""),
-                                    task.context, rec.reading, str(getattr(rec, "trace_id", "") or ""))
+            prompt = first_act.live(prompt, str(getattr(rec, "uid", "") or ""), task.context, rec.reading,
+                                    str(getattr(rec, "trace_id", "") or ""))
         prompt = __import__("nucleo.workers.handoff", fromlist=["x"]).with_worker_brief(prompt, task.context)  # V2-877
         if resume and (kind == "web" and trusted):
             prompt = ("REANUDAS una gestión que YA empezaste (no arranques de cero): la pestaña sigue donde la "
@@ -191,7 +193,10 @@ async def _run_session(task: "Task") -> None:
             prompt = resume["rebrief"] if resume.get("native_sid") else f"{resume['rebrief']}\n\n{prompt}"
         if _brief_bg is not None:
             # V2-301 — the compositor continues pensando: the worker starts YA and the address le arrives inyectada.
-            prompt += "\n\nNOTA: la dirección de esta investigación llega en breve; empieza ya y aplícala al llegar."
+            prompt += ("\n\nNOTA (dirección en camino): la DIRECCIÓN detallada de esta investigación — criterios "
+                       "duros y blandos, amplitud mínima y baremo — se está componiendo y te llegará como "
+                       "instrucción nueva en un momento. NO la esperes parado: haz ya los primeros pasos (PASO 0, "
+                       "abrir el sitio, la primera búsqueda) y aplícala en cuanto llegue.")
             _d._attach_brief_followup(_brief_bg, key=key, rec=rec, req=req, kind0=kind)
         # V2-778 F1 — running the session to its delivery lives in `nucleo/dispatch/session_steps.py`.
         _blk = await _dss.run_it_to_its_delivery(
