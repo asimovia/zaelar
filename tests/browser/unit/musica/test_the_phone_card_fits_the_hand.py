@@ -207,6 +207,24 @@ def test_an_unknown_artist_prints_nothing_and_a_long_title_keeps_its_end(phone):
     assert geo["inside"] and geo["cut"], "the ellipsis is in the MIDDLE: the head is cut, the end stays on screen"
 
 
+@pytest.mark.parametrize("title, tail", [
+    ("Relaxing Jazz for Work and Study - Autumn Jazz & Chill", "Jazz & Chill"),       # by letters: «azz & Chill»
+    ("Canción del mariachi con un título larguísimo", "larguísimo"),
+    ("Bohemian Rhapsody (Remastered 2011)", "2011)"),
+    ("Supercalifragilisticexpialidocious", "alidocious"),                             # one word: nowhere to break
+])
+def test_the_end_of_a_long_title_starts_at_a_word(phone, title, tail):
+    """Measured on a phone (2026-11-16): the end that stays on screen was counted in letters, so it began inside a
+    word and the title read as cut in half. It now starts at the nearest word; a single long word keeps the count."""
+    d = _data(view={"kind": "now", "id": ""})
+    d["recent"] = [dict(d["recent"][0], title=title)] + d["recent"][1:] if d.get("recent") else d.get("recent")
+    d["yt"] = {**d["yt"], "title": title}
+    _mount(phone, d)
+    got = phone.evaluate("""() => ({tail: document.querySelector('.hb-mus2-nowtt').textContent,
+                                    whole: document.querySelector('.hb-mus2-nowt').textContent})""")
+    assert got["whole"] == title and got["tail"] == tail, got
+
+
 # ── the queue, search and home ─────────────────────────────────────────────────────────────────────────────
 
 def test_the_queue_is_a_page_not_a_sheet_over_the_art(phone):

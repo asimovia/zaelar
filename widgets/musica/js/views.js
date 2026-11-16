@@ -84,8 +84,16 @@ export function nowView(el, data, ctx, opts){
 }
 
 // A long media title truncates in the MIDDLE (V2-876 rule 4): two inline spans, the head ellipsizes on the phone.
+// The end that stays starts at a WORD: a tail counted in letters began inside one («…azz & Chill»).
+export function tailStart(text){
+  if(text.length <= 18) return text.length;
+  const cut = text.length - Math.min(10, Math.floor(text.length / 3));
+  for(let i = cut; i >= text.length - 16 && i > 0; i--) if(/\s/.test(text[i - 1])) return i;   // back to a word start
+  const next = text.indexOf(" ", cut);                                                          // or on to the next one
+  return (next > 0 && text.length - next - 1 >= 3) ? next + 1 : cut;
+}
 function midTitle(text){
-  const t = h("div", "hb-mus2-nowt"), cut = text.length > 18 ? text.length - Math.min(10, Math.floor(text.length / 3)) : text.length;
+  const t = h("div", "hb-mus2-nowt"), cut = tailStart(text);
   t.append(h("span", "hb-mus2-nowth", text.slice(0, cut)), h("span", "hb-mus2-nowtt", text.slice(cut))); t.title = text;
   return t;
 }
