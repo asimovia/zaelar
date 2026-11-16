@@ -574,8 +574,8 @@ def note_unheld(text: str, dev, now: float | None = None) -> bool:
         from voice.observer import emit
         emit("brain", "📭 typed line waiting — no session holds the voice", text=str(text or "")[:160], role="system",
              extra={"cat": "flash", "dev": clean(dev), "waiting": True})
-    except Exception:  # noqa: BLE001 — the trace never decides the answer
-        pass
+    except Exception as e:  # noqa: BLE001 — the trace never decides the answer
+        logger.debug(f"screens: unheld line not traced: {e!r}")
     return True
 
 

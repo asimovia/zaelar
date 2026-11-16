@@ -1103,7 +1103,6 @@ export async function reconnect() {
 // never says whether anything received a line, so typed text no longer rides it at all: the outbox below sends
 // over HTTP and keeps each line until the engine answers that it has it.
 // THE OUTBOX (operator, 2026-11-08) — every typed line is kept until the engine has it; see `outbox.js`.
-// «No session» to a page holding a room = the agent LEFT it (2026-11-16): `voice-arrival.noSession` asks for a new one.
 const _outbox = createOutbox({ storage: localStorage, send: (t) => api.chatText(t), onNoSession: arrival.noSession(
   () => ({ started, starting, watching: !!_agentWatch, agent: arrival.agentPresent(room) }), () => start(), () => reconnect(), api.clientLog) });
 const _drainOutbox = () => _outbox.drain();
