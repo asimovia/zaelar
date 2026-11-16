@@ -46,8 +46,8 @@ def codey(text: str) -> bool:
 def without_code(text: str) -> str:
     """`text` with its code-shaped words taken out, for a composer that must not learn them: a field or an action
     name it never read is one it cannot say."""
-    s = re.sub(r"`[^`]*`|[{}`]|\b[a-z]+_[a-z_]+\b", " ", _QUOTED_FIELD.sub("", str(text or "")))
-    return " ".join(s.split()).strip(" :;,—-")
+    s = " ".join(_QUOTED_FIELD.sub("", str(text or "")).split("`")[::2])      # what sits between backticks goes
+    return " ".join(_CODEY.sub(" ", s).split()).strip(" :;,—-")
 
 
 def speakable(wid: str, res: dict) -> str:
