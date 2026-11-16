@@ -11,8 +11,11 @@ from __future__ import annotations
 
 from loguru import logger
 
-#: How many other tasks the brief names: the rest are a refresh away.
+#: How many other tasks, open widgets and clusters the brief names, and its whole block's ceiling: the rest is a
+#: refresh away (`act state`), so the live brief stays under `catalog.PROMPT_CEILING_CHARS`.
 _TASKS_SHOWN = 3
+_NAMES_SHOWN = 6
+BLOCK_CAP = 420
 
 
 def _note(what: str, e: Exception) -> None:
@@ -57,7 +60,7 @@ def tasks(own: str = "") -> list[dict]:
         st = str(r.get("state") or "")
         if st == "waiting" and str(r.get("waiting_for") or "") == waits.USER_ANSWER:
             st = "waiting_him"
-        out.append({"id": str(r.get("id") or ""), "title": str(r.get("title") or r.get("goal") or "")[:50],
+        out.append({"id": str(r.get("id") or ""), "title": str(r.get("title") or r.get("goal") or "")[:40],
                     "state": st})
     return out
 
@@ -77,8 +80,14 @@ def snapshot(own: str = "") -> dict:
     return {"channels": channels(), "widgets": widgets(), "tasks": tasks(own), "clusters": clusters()}
 
 
+def _names(items: list[str]) -> str:
+    shown = items[:_NAMES_SHOWN]
+    return ", ".join(shown) + (f" +{len(items) - len(shown)}" if len(items) > len(shown) else "")
+
+
 def block(own: str = "") -> str:
-    """The brief's lines (session language): one line per fact that has something to say; '' when none has."""
+    """The brief's lines (session language): one line per fact that has something to say, cut at `BLOCK_CAP`;
+    '' when none has."""
     from nucleo.workers.prompts import catalog
     w = lambda k: catalog.words(f"state_now.{k}")   # noqa: E731
     snap = snapshot(own)
@@ -86,14 +95,15 @@ def block(own: str = "") -> str:
     if snap["channels"]:
         lines.append(w("channels").format(list=", ".join(f"{p} ({s})" for p, s in snap["channels"].items())))
     if snap["widgets"]:
-        lines.append(w("widgets").format(list=", ".join(snap["widgets"])))
+        lines.append(w("widgets").format(list=_names(snap["widgets"])))
     if snap["tasks"]:
         shown = snap["tasks"][:_TASKS_SHOWN]
         more = len(snap["tasks"]) - len(shown)
-        lines.append(w("tasks").format(list="; ".join(f"«{t['title']}» ({t['state']})" for t in shown)
+        lines.append(w("tasks").format(list="; ".join(f"«{t['title'][:40]}» ({t['state']})" for t in shown)
                                        + (f" +{more}" if more > 0 else "")))
     if snap["clusters"]:
-        lines.append(w("clusters").format(list=", ".join(
-            f"{c['name']} ({'connected' if c['connected'] else 'disconnected'})" for c in snap["clusters"])))
+        lines.append(w("clusters").format(list=_names(
+            [f"{c['name']} ({'connected' if c['connected'] else 'disconnected'})" for c in snap["clusters"]])))
     head = w("head")
-    return "\n".join([head, *[f"  · {x}" for x in lines]]) if lines and head and all(lines) else ""
+    out = "\n".join([head, *[f"  · {x}" for x in lines]]) if lines and head and all(lines) else ""
+    return out if len(out) <= BLOCK_CAP else out[:BLOCK_CAP - 1].rstrip() + "…"
