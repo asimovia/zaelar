@@ -652,7 +652,11 @@ below is the first kind, or it names the mechanism that replaced the second.
   grace is said as unconfirmed, never as failed. No connector tells the model a send happened — the echo settles the
   row and the mouth says the verdict. A send the card REFUSES never left: its row ends `unmet`, the mouth says the
   card's sentence once and no model runs again to correct it (V2-851 F2, door test at `data_ops.dispatch_and_report`).
-  — since 2026-11-04 · nodes 2.1008 · `nucleo/circuit/verify.py`, `nucleo/circuit/baseline.py`,
+  **Every order a widget queues to a connector has a receipt, and the receipt is its end state** (V2-919 M3): the
+  order opens its outbox row by `ref`, the connector's echo bound to that `ref` settles it `sent` and its failure
+  (`msg.send_failed`) `failed` with the reason; «the connector reports it» is a readable receipt, never a
+  `done_when_unreadable` reason — and checkpoint 1 is never relaxed for an act with no readable end state.
+  — since 2026-11-04 (the receipt rule 2026-11-16, node 2.1784) · nodes 2.1008, 2.1784 · `nucleo/circuit/verify.py`, `nucleo/circuit/baseline.py`,
   `nucleo/circuit/__init__.py::tick`, `nucleo/flash/data_ops.py`, `nucleo/turn/reply.py::of_op`, `widgets/effects.py`.
 - **CRIT-E9d · A send reaches the person his words name, or it asks.** When a call names nobody (`reply {n}`), the card
   answers who it reaches (`recipients_of`, read by `on_his_behalf.who_of`); a person his words do not name, and not
@@ -838,7 +842,14 @@ Flash keeps the conversation; the row is what both brains read.
   the row of that act and person that still waited. — since 2026-11-06, the question's half
   2026-11-12 · nodes 2.1657, 2.1629, 2.1619, 2.1140, 2.1731 · `nucleo/request/send_task.py`, `nucleo/flash/tool_executor_widget_calls.py`,
   `nucleo/request/ask_outside_door.py`, `nucleo/request/inline_ask.py`, `nucleo/workers/exit_slots.py`,
-  `nucleo/workers/exit_gate.py`.
+  `nucleo/workers/exit_gate.py`. **A slot is read by what the act DECLARES, not by the shape of a send** (V2-919): a
+  value fills its field by the field's declared kind (`types`: a `list` by one non-blank item, a `bool` by a value that
+  reads as one, any other by non-blank text or a number; the wrong kind fills nothing — `widgets/field_types.filled`,
+  the one reader); a slot is required when the action's payload does not declare its field optional
+  (`payload_fill.declared_optional`, both spellings), the person always; a field that lacks is asked by its declared
+  label on the row (`send_missing_field`, a send's person and words keep their own lines), and after an answer the
+  next declared field that lacks is asked on the SAME row — only a text he did not dictate goes to a worker. —
+  since 2026-11-16 · nodes 2.1782, 2.1783, 2.1785 · `nucleo/request/send_task_fields.py`, `widgets/field_types.py`.
 - **CRIT-T2i · A turn that already holds its send task opens no second row at its close.** The model's leaving
   call opened the row during the stream; `send_task_turn.at_close` answers `HELD`, so no later branch of the close
   (`ask_outside_door.claimed`) opens a second row or a worker for the same send. — since 2026-11-15 · nodes 2.1756 ·
