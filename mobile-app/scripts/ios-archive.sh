@@ -2,7 +2,7 @@
 # Archive a store build and export the .ipa (V2-870). Nothing is sent to Apple here — see ios-upload.sh.
 #
 #   APPLE_TEAM_ID=ABCDE12345 ZAELAR_ORIGIN=https://engine.example.org ZAELAR_ALLOW_NAVIGATION=signin.example.org \
-#   [ZAELAR_APP_LINKS_HOST=engine.example.org] [ZAELAR_SIGN=manual] ./scripts/ios-archive.sh [--dry-run]
+#   [ZAELAR_APP_LINKS_HOST=engine.example.org[,signin.example.org]] [ZAELAR_SIGN=manual] ./scripts/ios-archive.sh [--dry-run]
 #
 # Needs a PAID Apple Developer team (App Store distribution and Associated Domains are refused to a personal team).
 # Two ways to sign:
@@ -10,8 +10,9 @@
 #     path to the .p8 — names only) with a role that may use cloud-managed distribution certificates;
 #   · ZAELAR_SIGN=manual: the certificate, its key and the «Zaelar App Store» profile made in the developer portal and
 #     saved in ZAELAR_SIGN_DIR (scripts/manual-signing.sh) — archived with Apple Distribution from the start.
-# ZAELAR_APP_LINKS_HOST is optional: with it the Associated Domains entitlement is signed in (the App ID must have the
-# capability); without it the build carries no entitlements file.
+# ZAELAR_APP_LINKS_HOST is optional (one host or a comma-separated list): with it the Associated Domains entitlement
+# is signed in (the App ID must have the capability, and a manual profile must be regenerated after enabling it);
+# without it the build carries no entitlements file.
 # Output: build/Zaelar.xcarchive and build/ipa/App.ipa. --dry-run checks the inputs and prints the commands only.
 set -eu
 cd "$(dirname "$0")/.."
@@ -36,8 +37,15 @@ run sh scripts/version.sh
 run npx cap sync ios
 mkdir -p build
 if [ -n "${ZAELAR_APP_LINKS_HOST:-}" ]; then
+  DOMAINS=""   # awk -v turns the \t and \n below into tabs and newlines
+  for h in $(echo "$ZAELAR_APP_LINKS_HOST" | tr ',' ' '); do
+    case "$h" in *[!A-Za-z0-9.-]*) fail "ZAELAR_APP_LINKS_HOST: '$h' is not a bare host name";; esac
+    [ -z "$DOMAINS" ] || DOMAINS="$DOMAINS\n"
+    DOMAINS="$DOMAINS\t\t<string>applinks:$h</string>\n\t\t<string>webcredentials:$h</string>"
+  done
   echo "+ render ios/App/App/App.entitlements (applinks/webcredentials: $ZAELAR_APP_LINKS_HOST)"
-  [ "$DRY" = 1 ] || sed "s/__APP_LINKS_HOST__/$ZAELAR_APP_LINKS_HOST/g" ios/App/App/App.entitlements.template > ios/App/App/App.entitlements
+  [ "$DRY" = 1 ] || awk -v d="$DOMAINS" '/<!--ASSOCIATED_DOMAINS-->/ { print d; next } { print }' \
+    ios/App/App/App.entitlements.template > ios/App/App/App.entitlements
   ENT_SETTING="CODE_SIGN_ENTITLEMENTS=App/App.entitlements"
 fi
 

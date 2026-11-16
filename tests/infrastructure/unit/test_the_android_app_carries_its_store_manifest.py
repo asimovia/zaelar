@@ -64,3 +64,18 @@ def test_the_glue_is_injected_on_the_engine_origin_only() -> None:
     plugin = (ANDROID / "app/src/main/java/com/zaelar/app/InAppPlugin.java").read_text()
     assert 'asset("public/in-app.js")' in plugin
     assert "Collections.singleton(origin)" in plugin, "the glue must never run on another site the WebView opens"
+
+
+def test_saved_passwords_are_claimed_only_for_the_configured_hosts() -> None:
+    meta = {m.get(f"{NS}name"): m.get(f"{NS}resource") for m in _manifest().iter("meta-data")}
+    assert meta.get("asset_statements") == "@string/asset_statements"
+    gradle = APP_GRADLE.read_text()
+    assert "resValue 'string', 'asset_statements', assetStatements" in gradle
+    assert "System.getenv('ZAELAR_APP_LINKS_HOST')" in gradle   # unset: an empty list, nothing is claimed
+
+
+def test_only_a_gateway_status_brings_up_the_retry_page() -> None:
+    java = ANDROID / "app" / "src" / "main" / "java" / "com" / "zaelar" / "app"
+    client = (java / "GatewayErrorWebViewClient.java").read_text()
+    assert re.search(r"status == 502 \|\| status == 503 \|\| status == 504", client)
+    assert "new GatewayErrorWebViewClient(bridge)" in (java / "MainActivity.java").read_text()

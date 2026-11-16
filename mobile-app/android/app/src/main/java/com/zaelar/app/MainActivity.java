@@ -16,6 +16,8 @@ import com.getcapacitor.BridgeActivity;
  * of `ios/App/App/MainViewController.swift` + `AppDelegate.swift`. Native code here is limited to the phone's hands:
  *
  *   · {@link InAppPlugin} injects the app's own glue (`www/in-app.js`) at document start, on the engine's origin only;
+ *   · {@link GatewayErrorWebViewClient} shows the bundled retry page only when the engine is not answering yet (no
+ *     answer, or a 502/503/504), never over a page the engine meant to show;
  *   · {@link ExternalWindowChromeClient} sends every new window (`window.open`, `target="_blank"`) to the system
  *     browser, as WKWebView does on iOS — the shell relies on it for the account page;
  *   · the WebView sits between the system bars and above the keyboard (Android 15 draws apps edge-to-edge, and the
@@ -41,6 +43,7 @@ public class MainActivity extends BridgeActivity {
         settings.setSupportMultipleWindows(true);
         settings.setJavaScriptCanOpenWindowsAutomatically(true);
         webView.setWebChromeClient(new ExternalWindowChromeClient(bridge));
+        bridge.setWebViewClient(new GatewayErrorWebViewClient(bridge));
 
         // Edge-to-edge on every Android version (15 imposes it anyway), so the insets below are the same everywhere.
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);

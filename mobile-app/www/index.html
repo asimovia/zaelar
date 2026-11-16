@@ -5,7 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <title>Zaelar</title>
 <!-- Bundled page, shown only when the engine's origin cannot be loaded (Capacitor `server.errorPath`).
-     No words beyond the name: user-facing text lives in the engine's i18n packs, which are unreachable here. -->
+     No words beyond the name: user-facing text lives in the engine's i18n packs, which are unreachable here.
+
+     It retries on its own while the app is in the foreground — an engine that is still starting answers a few seconds
+     later, and nobody should have to keep tapping ↻ for it. The wait grows (2 s, 4 s, 8 s, 15 s, then every 30 s) and
+     the count survives the reloads of this page (each failed attempt brings the app back here). Going to the
+     background stops the timer; coming back, or a tap on ↻, tries at once. -->
 <style>
   html, body { margin: 0; height: 100%; background: #0a0f16; color: #e6edf6;
     font-family: -apple-system, system-ui, sans-serif; }
@@ -13,13 +18,65 @@
   h1 { font-weight: 300; letter-spacing: .32em; font-size: 28px; margin: 0; }
   button { background: none; border: 1px solid #2a3646; color: #9fb3c8; border-radius: 999px;
     width: 56px; height: 56px; font-size: 26px; }
+  button.busy span { display: inline-block; animation: spin 1.2s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { button.busy span { animation: none; opacity: .5; } }
 </style>
 <script src="origin.js"></script>
 </head>
 <body>
 <main>
   <h1>ZAELAR</h1>
-  <button aria-label="Retry" onclick="location.replace((window.ZAELAR_ORIGIN || '') + '/m')">↻</button>
+  <button id="retry" aria-label="Retry"><span>↻</span></button>
 </main>
+<script>
+(function () {
+  var target = (window.ZAELAR_ORIGIN || '') + '/m';
+  var WAITS = [2000, 4000, 8000, 15000, 30000];   // ms before attempt 1, 2, 3, 4, and every one after
+  var FRESH_MS = 90000;                           // a failure older than this starts a new series
+  var KEY = 'zaelar.retry';
+  var btn = document.getElementById('retry');
+  var timer = null;
+
+  function load() { try { return JSON.parse(sessionStorage.getItem(KEY)) || {}; } catch (_) { return {}; } }
+  function save(s) { try { sessionStorage.setItem(KEY, JSON.stringify(s)); } catch (_) { /* best effort */ } }
+
+  var state = load();
+  if (!state.at || Date.now() - state.at > FRESH_MS) state = { n: 0 };
+
+  // Only an https engine is probed: this page is served from the app's own secure scheme, which may not fetch a
+  // plain-http engine (mixed content). A local http engine is opened straight away instead.
+  var canProbe = /^https:/.test(target) || location.protocol === 'http:';
+
+  function go() {
+    clearTimeout(timer);
+    timer = null;
+    btn.classList.add('busy');
+    state.n += 1;
+    state.at = Date.now();
+    save(state);
+    if (!canProbe) { location.replace(target); return; }
+    // An opaque answer (any HTTP status) means the origin is reachable: open it. A network error means it is not:
+    // stay here and wait, without a reload that would only bring this page back.
+    fetch(target, { mode: 'no-cors', cache: 'no-store' })
+      .then(function () { location.replace(target); })
+      .catch(function () { btn.classList.remove('busy'); schedule(); });
+  }
+
+  function schedule() {
+    clearTimeout(timer);
+    timer = null;
+    if (document.visibilityState !== 'visible') return;
+    timer = setTimeout(go, WAITS[Math.min(state.n, WAITS.length - 1)]);
+  }
+
+  btn.addEventListener('click', go);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') go();
+    else { clearTimeout(timer); timer = null; }
+  });
+  schedule();
+})();
+</script>
 </body>
 </html>

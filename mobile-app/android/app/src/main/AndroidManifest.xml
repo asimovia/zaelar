@@ -9,6 +9,11 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
+        <!-- Digital Asset Links from the app's side (generated in app/build.gradle from ZAELAR_APP_LINKS_HOST): with the
+             site's /.well-known/assetlinks.json naming this app, Android offers the password saved for that site
+             inside the app. Without the variable the list is empty and nothing is claimed. -->
+        <meta-data android:name="asset_statements" android:resource="@string/asset_statements" />
+
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation"
             android:name=".MainActivity"

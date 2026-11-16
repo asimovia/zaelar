@@ -80,8 +80,12 @@ def test_the_privacy_manifest_declares_no_tracking_and_the_store_labels() -> Non
 
 def test_the_entitlements_are_a_template_without_push_yet() -> None:
     e = _plist(ENTITLEMENTS)
-    assert e["com.apple.developer.associated-domains"] == ["applinks:__APP_LINKS_HOST__",
-                                                           "webcredentials:__APP_LINKS_HOST__"]
+    # The hosts are deployment data: the template carries a marker, the archive script writes one applinks: and one
+    # webcredentials: line per host of ZAELAR_APP_LINKS_HOST in its place.
+    assert e["com.apple.developer.associated-domains"] == []
+    assert "<!--ASSOCIATED_DOMAINS-->" in ENTITLEMENTS.read_text()
+    script = (APP.parent.parent / "scripts" / "ios-archive.sh").read_text()
+    assert "<string>applinks:$h</string>" in script and "<string>webcredentials:$h</string>" in script
     assert "aps-environment" not in e, "native push brings its own entitlement with its own step"
 
 

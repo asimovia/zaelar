@@ -26,7 +26,7 @@ target (device family `1,2`), with the shell it gets (`/m` or the desktop `/`) s
 | Plugins: Keyboard (`resize: native`, dark keys, no form accessory bar), Haptics, App, Geolocation, and the app's own `ZaelarDevice` (`DevicePlugin.swift`: device capabilities + an activity session — location with the screen locked, Bluetooth heart rate, motion activity, altitude; `docs/modules/zaelar-device-bridge.md`) | Voice v1: the LiveKit WebRTC client inside the WebView, foreground only |
 | Permission sentences (EN + ES `InfoPlist.strings`) for microphone, location, Bluetooth and motion; iOS asks on first use, never at launch (no camera: nothing uses it). Background modes: `location`, `bluetooth-central`, only used inside an activity the person starts | Safe-area layout (`viewport-fit=cover` + `env(safe-area-inset-*)`) |
 | `www/in-app.js`, the app's glue (below); light status bar; portrait on iPhone | Sign-in, session, i18n strings — all served by the engine |
-| `www/index.html`, shown only when the origin cannot be loaded, with a retry button | |
+| `www/index.html`, shown only when the origin cannot be loaded (or answers 502/503/504): it retries on its own while the app is in the foreground (2 s, 4 s, 8 s, 15 s, then every 30 s), and at once on ↻ or on coming back to the foreground | |
 
 Capacitor's own WebView setup already provides what in-WebView voice needs: inline media playback, no user gesture
 required for playback, no scroll bounce, and microphone/motion permission granted to the page (the system asks the
@@ -128,7 +128,7 @@ Xcode 26.6, iPhone 17 Pro simulator (iOS 26.5):
 - the shell renders with the dock where a native tab bar sits and a light status bar; the chat is a full screen and,
   with the keyboard up, keeps its header and puts the composer on the keys;
 - a typed line reaches the engine and the WebView joins the LiveKit room (WebRTC works in WKWebView);
-- a sign-in page on another host renders in-page when listed in `ZAELAR_ALLOW_NAVIGATION`;
+- a sign-in page on another host renders in-page when listed in `ZAELAR_ALLOW_NAVIGATION`; every path of the origin's own host stays in-app (it is always in the list);
 - location: the system dialog shows the app's sentence and a fix comes back from the plugin.
 
 Not verifiable in the simulator: the microphone, the audio route and haptics — real-device steps.
@@ -163,7 +163,8 @@ The shell behaves differently only where `inNativeApp()` (`frontend/app/core/nat
 | `ios/App/App.xcodeproj` | iPhone only for 1.0 (`TARGETED_DEVICE_FAMILY = 1`; iPad later, same target), iOS 16+, `MARKETING_VERSION`/`CURRENT_PROJECT_VERSION` stamped by `scripts/version.sh` |
 | `scripts/version.sh` (run by `npm run sync`) | version = `package.json` `version`; build = the engine's `update/BUILD` (`IOS_BUILD=127.1` for a second upload on the same engine build) |
 | `ios/App/App/PrivacyInfo.xcprivacy` | no tracking; the store labels' data types (email, name, precise location, contacts, audio, user content, customer support, search history, user id, product interaction, diagnostics), all linked, for app functionality; required-reason API: UserDefaults (CA92.1) (Capacitor's frameworks ship their own manifests) |
-| `ios/App/App/App.entitlements.template` | Associated Domains (`applinks:` + `webcredentials:`) for `ZAELAR_APP_LINKS_HOST`, rendered only for a store build; the host must serve `/.well-known/apple-app-site-association` (not built yet). No push entitlement yet. |
+| `ios/App/App/App.entitlements.template` | Associated Domains (`applinks:` + `webcredentials:`) for each host in `ZAELAR_APP_LINKS_HOST` (comma-separated), rendered only for a store build; every host must serve `/.well-known/apple-app-site-association` listing the app (`TEAMID.com.zaelar.app`) under `webcredentials`, and the App ID needs the Associated Domains capability (regenerate a manual profile after enabling it). No push entitlement yet. |
+| `ios/App/App/NavigationFilter.swift` | in front of Capacitor's navigation delegate: a load superseded by another (`NSURLErrorCancelled`) or stopped by policy is not shown as an error; a main-frame 502/503/504 shows the retry page. Everything else is passed on untouched | `GatewayErrorWebViewClient.java` |
 | `scripts/icons.py` (`npm run icons`) | `AppIcon.appiconset` (1024 opaque + iOS 18 dark/tinted) and the launch mark, from the designed mark: `python scripts/icons.py --source brand/icon-source.png` (`brand/logo.svg` rendered at 1024 px on transparent, the mark at 700 px). With no `--source` it draws the PWA silhouette from `frontend/mobile/icons/generate.py`'s geometry |
 | `Base.lproj/LaunchScreen.storyboard` | the dark background with the mark centred, no text |
 | `scripts/ios-archive.sh` (`npm run ios:archive`) | `xcodebuild archive` (generic iOS, automatic signing, `-allowProvisioningUpdates`, team `APPLE_TEAM_ID`) + `-exportArchive` (app-store-connect) → `build/ipa/App.ipa` |
@@ -210,6 +211,8 @@ template says 35), Java 21. What the native side adds, file by file
 |---|---|---|
 | `InAppPlugin.java` | injects `www/in-app.js` at document start on the engine's origin only (`WebViewCompat.addDocumentStartJavaScript`; it passes `ZAELAR_APP_PLATFORM`, since it runs before Capacitor's bridge); a plugin because plugins load before the first page. Hosts in `ZAELAR_ALLOW_NAVIGATION` get a marker answering `Capacitor.isNativePlatform()` — on iOS they get Capacitor's whole bridge, on Android only the engine's origin does, and a site such as the sign-in page uses that answer to drop its cookie bar | the `WKUserScript` in `MainViewController.swift` |
 | `ExternalWindowChromeClient.java` | Capacitor's chrome client (microphone and location prompts) + every new window (`window.open`, `target="_blank"`, also `window.open("")` whose location is set later) goes to the system browser — the account page, never inside the app | WKWebView's default for a new window |
+| `GatewayErrorWebViewClient.java` | Capacitor's WebView client, but only a main-frame 502/503/504 (or no answer at all) brings up the retry page; any other HTTP status is shown as the engine sent it | `NavigationFilter.swift` |
+| `app/build.gradle` + `AndroidManifest.xml` (`asset_statements`) | the app's side of Digital Asset Links for each host in `ZAELAR_APP_LINKS_HOST`, so Android offers the password saved for that site; the site's `/.well-known/assetlinks.json` must name `com.zaelar.app` with the SHA-256 of Play's app signing key (`delegate_permission/common.get_login_creds`) | `webcredentials:` in `App.entitlements.template` |
 | `MainActivity.java` | edge-to-edge on every version; the WebView between the system bars and above the keyboard (an Android WebView reads `env(safe-area-inset-*)` as 0, so the margins are native); light bar icons on the dark background; Back = the WebView's history, then the app to the background (the App plugin's own handler, which stops at the start, is off) | `contentInset: never`, Keyboard `resize: native`, light status bar |
 
 - **Voice**: WebRTC inside the WebView. Chromium switches the audio to communication mode (echo cancellation,

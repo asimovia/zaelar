@@ -4,12 +4,22 @@ import WebKit
 
 /// Capacitor's bridge view controller plus the app's own glue script (`www/in-app.js`, bundled as `public/in-app.js`),
 /// injected at document start into every main-frame page. The script acts only on the configured server's origin,
-/// which it receives here as `ZAELAR_APP_ORIGIN`.
+/// which it receives here as `ZAELAR_APP_ORIGIN`. It also puts `NavigationFilter` in front of Capacitor's navigation
+/// delegate, so a superseded load or an engine that is still starting are handled as such.
 class MainViewController: CAPBridgeViewController {
+
+    private var navigationFilter: NavigationFilter?   // the WebView holds its navigation delegate weakly
 
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
         bridge?.registerPluginInstance(DevicePlugin())   // the device bridge (V2-890): sensors for the shell
+        // capacitorDidLoad runs inside loadView, before the first page is requested: no load escapes the filter.
+        // At this point the WebView's navigation delegate is still Capacitor's handler (set in prepareWebView).
+        if let handler = webView?.navigationDelegate as? WebViewDelegationHandler {
+            let filter = NavigationFilter(inner: handler, errorURL: bridge?.config.errorPathURL)
+            navigationFilter = filter
+            webView?.navigationDelegate = filter
+        }
         guard let url = Bundle.main.url(forResource: "in-app", withExtension: "js", subdirectory: "public"),
               let glue = try? String(contentsOf: url, encoding: .utf8) else {
             NSLog("[zaelar] in-app.js missing from the bundle")

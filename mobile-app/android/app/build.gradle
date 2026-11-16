@@ -17,6 +17,17 @@ def appVersionCode = versionCodeFromEnv ? versionCodeFromEnv.toInteger() : (engi
 // build is left unsigned and Play refuses it — never signed with a debug key.
 def uploadKeystore = System.getenv('ANDROID_UPLOAD_KEYSTORE')
 
+// Hosts whose saved passwords the app may offer (the Android half of iOS's webcredentials, scripts/ios-archive.sh):
+// ZAELAR_APP_LINKS_HOST, one host or a comma-separated list. Each host must serve /.well-known/assetlinks.json naming
+// this app and the SHA-256 of Play's app signing key. Unset: an empty list, nothing is claimed.
+def appLinksHosts = (System.getenv('ZAELAR_APP_LINKS_HOST') ?: '').split(',').collect { it.trim() }.findAll { it }
+appLinksHosts.each { h ->
+    if (!(h ==~ /[A-Za-z0-9.-]+/)) throw new GradleException("ZAELAR_APP_LINKS_HOST: '${h}' is not a bare host name")
+}
+def assetStatements = '[' + appLinksHosts.collect { h ->
+    '{\\"include\\": \\"https://' + h + '/.well-known/assetlinks.json\\"}'
+}.join(', ') + ']'
+
 android {
     namespace "com.zaelar.app"
     compileSdk rootProject.ext.compileSdkVersion
@@ -26,6 +37,7 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode appVersionCode
         versionName appVersion
+        resValue 'string', 'asset_statements', assetStatements
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
