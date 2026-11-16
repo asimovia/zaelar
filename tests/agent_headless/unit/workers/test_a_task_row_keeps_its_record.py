@@ -71,12 +71,65 @@ def test_the_worker_transcript_is_written_on_the_row_bounded(fresh_db):
     assert [e["text"] for e in stored][-1] == f"search q{task_record.FLUSH_EVERY + 4}" and not rec.transcript
 
 
-def test_the_close_flushes_what_is_left():
-    import inspect
+def test_the_real_event_door_records_and_skips_what_has_no_text(fresh_db):
+    """Audit #12 + note 9: through `session_events._on_event` itself; a usage or progress event spends no row."""
+    from nucleo.workers import session_events
+    rec = _rec()
+    door = SimpleNamespace(_rec=rec)
+    session_events._on_event(door, SimpleNamespace(type="unseen", data={"text": "read the agenda"}))
+    task_record.heard(rec, SimpleNamespace(type="usage", data={"input_tokens": 9}))
+    task_record.heard(rec, SimpleNamespace(type="progress", data={}))
+    assert [e["text"] for e in rec.transcript] == ["read the agenda"]
 
-    from nucleo.workers import session_events, session_finish
-    assert "task_record.flush(rec)" in inspect.getsource(session_finish._closing)
-    assert "_record.heard(rec, ev)" in inspect.getsource(session_events._on_event)
+
+def test_a_write_that_did_not_land_keeps_the_buffer(fresh_db, monkeypatch):
+    from nucleo.circuit import ledger
+    rec = _rec()
+    task_record.heard(rec, SimpleNamespace(type="step", data={"text": "x"}))
+    monkeypatch.setattr(ledger.store(), "artifact_put", lambda *a, **k: None)   # the store swallows its failure
+    task_record.flush(rec)
+    assert len(rec.transcript) == 1, "nothing reached the row: nothing left the buffer"
+
+
+def test_the_close_flushes_what_is_left(fresh_db):
+    """Through the real `_closing`: what is buffered reaches the row when the session closes."""
+    from nucleo.workers import session_finish
+    rec = _rec()
+    task_record.heard(rec, SimpleNamespace(type="step", data={"text": "last step"}))
+    door = SimpleNamespace(_rec=rec, _usage={}, _usage_partial={})
+    try:
+        asyncio.run(session_finish._closing(door, rec))
+    except Exception:  # noqa: BLE001 — the rest of the close is not this test's; the flush runs first
+        pass
+    from nucleo.circuit import ledger
+    assert [e["text"] for e in ledger.store().artifact_get("row-5", task_record.TRANSCRIPT_SLOT)] == ["last step"]
+
+
+def test_a_line_served_while_the_inject_yields_is_served_once(fresh_db, monkeypatch):
+    """Audit #8: the RAM queue may be served by a bridge call while `inject` awaits the backend."""
+    from nucleo.dispatch import control
+    from nucleo.workers.session import Inject
+    rec = _rec()
+    seen = []
+
+    class _Session:
+        async def inject(self, text):
+            rec.injects.append(Inject(text=text, ts=0.0))
+            seen.extend(control.take_pending_injects("5"))     # a bridge call lands in the middle
+    rec.session = _Session()
+    monkeypatch.setattr(control._d, "_SESSIONS", {"5": rec}, raising=False)
+    monkeypatch.setattr(control._d, "resolve_sessions", lambda which: ["5"], raising=False)
+    monkeypatch.setattr(control._d._sheets, "recheck_rows", lambda *a, **k: None, raising=False)
+    asyncio.run(control.inject("5", "y también Marta"))
+    seen.extend(control.take_pending_injects("5"))
+    assert [s["text"] for s in seen] == ["y también Marta"]
+
+
+def test_an_old_undelivered_line_is_not_handed_to_a_later_worker(fresh_db):
+    import time
+    task_record.said("row-5", "lo de ayer")
+    assert task_record.take("row-5", [], now=time.time() + task_record.SAID_MAX_AGE_S + 1) == []
+    assert task_record.take("row-5", []) == [], "marked, never served later"
 
 
 # ── one memory gate ──────────────────────────────────────────────────────────────────────────────────────────

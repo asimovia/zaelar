@@ -38,6 +38,8 @@ async def inject(which: str, message: str) -> list[str]:
         if not r:
             continue
         try:
+            from nucleo.workers import task_record     # his line on the ROW first: the RAM queue may be served while
+            task_record.said(str(getattr(r, "uid", "") or ""), message)   # we yield, and the row must know it then
             if r.session:
                 await r.session.inject(message)
             else:
@@ -45,8 +47,6 @@ async def inject(which: str, message: str) -> list[str]:
                 from nucleo.workers.session import Inject
                 r.injects.append(Inject(text=message, ts=_d.time.time()))
             done.append(tid)
-            from nucleo.workers import task_record     # his line on the ROW: it outlives the RAM queue
-            task_record.said(str(getattr(r, "uid", "") or ""), message)
             _d._sheets.recheck_rows(getattr(r, "sheet", ""), message, relayed=True)   # V2-782 T3.3: our words, not his
         except Exception as e:  # noqa: BLE001
             logger.warning(f"dispatch: inject a {tid} falló: {e}")
