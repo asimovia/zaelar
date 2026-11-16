@@ -257,6 +257,13 @@ def _unstring_lists(declared: dict, pl: dict) -> dict:
     return out
 
 
+def synonyms(key: str) -> set[str]:
+    """`key` and every synonym the contract declares for it, either way round (`channel` ↔ `platform`, `via`, …)."""
+    keys = {str(key or ""), *_ALIASES.get(str(key or ""), ())}
+    keys |= {k for k, alts in _ALIASES.items() if keys & set(alts)}
+    return keys | {a for k in list(keys) for a in _ALIASES.get(k, ())}
+
+
 def fold_aliases(widget_id: str, action: str, payload: dict | None) -> dict:
     """The same call with the model's synonyms renamed to the keys the manifest declares — and a declared list
     that arrived as JSON text, decoded (`_unstring_lists`). Never raises, never invents a field, never overwrites

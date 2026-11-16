@@ -32,17 +32,12 @@ def _channel_said(wid: str, action: str, raw: dict, folded: dict, reading) -> bo
     from nucleo.request import base
     from nucleo.request.send_task import filled
     from nucleo.workers import exit_slots
-    try:
-        from widgets.contract import _ALIASES
-    except Exception:  # noqa: BLE001
-        _ALIASES = {}
+    from widgets.contract import synonyms
     slots = exit_slots.declared(base(wid), action)
     for _slot, d in slots.items():
         key = str(d.get("key") or "")
-        if d.get("from") == "reading":   # the key and every synonym the contract declares for it, either way round
-            keys = {key, *_ALIASES.get(key, ())}
-            keys |= {k for k, alts in _ALIASES.items() if keys & set(alts)} | {a for k in list(keys)
-                                                                               for a in _ALIASES.get(k, ())}
+        if d.get("from") == "reading":   # the key and every synonym the contract declares for it
+            keys = synonyms(key)
         else:
             keys = {key} if d.get("from") == "composed" else set()
         if any(filled(p.get(k)) for p in (raw, folded) for k in keys):
