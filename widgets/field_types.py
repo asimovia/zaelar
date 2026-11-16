@@ -49,6 +49,13 @@ def filled(wid: str, action: str, key: str, value) -> bool:
     return isinstance(value, str) and bool(value.strip())
 
 
+def keeps(wid: str, action: str, key: str, held) -> bool:
+    """Is the value a row already HOLDS for this field beyond replacing? A field declared a list that already has
+    people is never replaced by anything that arrives later — his answer, nor the answering turn's own call: the one
+    rule both of them read (V2-919 audit)."""
+    return declared(wid, action).get(str(key or "")) == LIST and filled(wid, action, key, held)
+
+
 def as_declared(wid: str, action: str, payload):
     """The payload with every field declared a list holding a list: a non-blank text becomes its one item (a new
     dict; the caller's is untouched). What the hand-off keeps on a row is the declared shape, never the call's."""

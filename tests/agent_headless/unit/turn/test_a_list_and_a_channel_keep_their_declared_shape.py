@@ -152,3 +152,39 @@ async def _coro(v):
 
 def _async(v):
     return _coro(v)
+
+
+@pytest.mark.parametrize("call_members", [["Luis Gil"], "Luis Gil", ["Luis Gil", "Marta Ruiz"], ["Marta Ruiz"]],
+                         ids=["a shorter list", "one name as text", "a list with someone new", "another person"])
+def test_the_answering_turns_call_never_replaces_the_list_the_row_holds(world, call_members, monkeypatch):
+    """Second audit: the row holds `members: [Luis Gil, Raquel Lozoya]` and waits on «which channel?»; the answering
+    turn's call carries the channel AND another members value — the merge used to replace the list and the group left
+    without Raquel, unasked. The same rule as an answer: a list that already has people is replaced by nothing."""
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "es")
+    said = "crea un grupo con Luis Gil y Raquel Lozoya que se llame Viaje"
+    _say(said)
+    held = ["Luis Gil", "Raquel Lozoya"]
+    uid = send_task.retain(WID, "create_group", {"name": "Viaje", "members": held, "platform": "whatsapp"}, said)
+    send_task._question(uid, send_task.artefact(uid), "channel", "platform", "¿Por WhatsApp o por Telegram?",
+                        ["telegram", "whatsapp"])
+    _say("por telegram")
+    assert send_task_answer.take_call(WID, "create_group", {"name": "Viaje", "platform": "telegram",
+                                                           "members": call_members}, "por telegram") == uid
+    art = send_task.artefact(uid)
+    assert art["payload"]["members"] == held and art["payload"]["platform"] == "telegram"
+    for order in world["sent"]:
+        assert order["payload"]["members"] == held, "no order ever leaves with the list the row held replaced"
+
+
+def test_a_slot_the_call_just_changed_is_not_kept_his(world, monkeypatch):
+    """«What he already gave stays his» holds only for a value the call left as it was."""
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "en")
+    said = "send Marta Ruiz a message"
+    _say(said)
+    uid = send_task.retain(WID, "send_to", {"contact": "Marta Ruiz"}, said)
+    assert send_task.artefact(uid)["slots"]["recipient"]["source"] == "his"
+    send_task._question(uid, send_task.artefact(uid), "text", "text", "What should I tell her?")
+    _say("running late")
+    send_task_answer.take_call(WID, "send_to", {"contact": "Quinn Xavier", "text": "running late"}, "running late")
+    art = send_task.artefact(uid)
+    assert art["payload"]["contact"] == "Quinn Xavier" and art["slots"]["recipient"]["source"] != "his"
