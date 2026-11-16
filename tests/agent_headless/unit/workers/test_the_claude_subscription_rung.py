@@ -1,4 +1,4 @@
-"""The Brain Worker's optional Claude-subscription rung (`brain_worker.lead` in the model table, V2-910).
+"""The Brain Worker's optional Claude-subscription rung (`brain_worker.lead` in the model table, V2-913).
 
 Claude itself, on a subscription's long-lived OAuth token, goes AHEAD of the titular — but only where its credential
 resolves. Pinned here:
