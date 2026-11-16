@@ -88,10 +88,8 @@ def _reset_epoch(text: str) -> float:
 
 
 def _claude_reset_epoch(text: str, now: float | None = None) -> float:
-    """The reset a Claude subscription states (see `_CLAUDE_RESET_RE`), as an epoch; 0.0 when it states none.
-
-    The CLI writes the hour in the zone it names in brackets, or in its own clock when it names none. A bare hour
-    already past today is tomorrow's; a dated one already past this year is next year's."""
+    """The reset a Claude subscription states (`_CLAUDE_RESET_RE`) as an epoch, 0.0 when none: in the bracketed zone
+    or the CLI's own clock; a bare hour already past is tomorrow's, a past date next year's."""
     m = _p._CLAUDE_RESET_RE.search(text or "")
     if not m:
         return 0.0

@@ -138,8 +138,7 @@ def _map(self, obj: dict):
 
 
 def _served(self) -> dict:
-    """WHO serves this session: the tier's endpoint and its name in the chain, on every event that reports work.
-    After a relay it is THIS session's tier, never the chain head."""
+    """WHO serves this session (its tier's endpoint and chain name) — after a relay, THIS session's tier."""
     tier = getattr(self, "_tier", None) or {}
     return {"base_url": tier.get("base_url", ""), "provider": tier.get("name", "")}
 

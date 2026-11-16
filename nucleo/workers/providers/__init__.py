@@ -230,9 +230,8 @@ def env_for_worker() -> dict:
     # EGRESS: a mediated deployment hands the worker egress's address and its own credential, never a provider key.
     from nucleo.energy import egress as llm_egress
     if t.get("auth") == "oauth" and not llm_egress.mediated():
-        # A subscription token is the CLI's own login, not an endpoint key: it travels as such and the CLI talks to
-        # its provider itself. Behind mediated egress it never reaches this process (egress holds it and swaps the
-        # account's credential for it), so that case takes the ordinary route below.
+        # A subscription token is the CLI's own login, not an endpoint key: it travels as such. Behind mediated egress
+        # it never reaches this process (egress swaps the account's credential for it): the ordinary route below.
         out = {"CLAUDE_CODE_OAUTH_TOKEN": tok, "CLAUDE_CODE_MAX_RETRIES": "3"}
         out.update(slot_env(t))
         out.update(vision_env(t))
