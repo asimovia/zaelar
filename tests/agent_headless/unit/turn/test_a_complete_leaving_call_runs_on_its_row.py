@@ -115,6 +115,11 @@ def test_the_list_in_his_answer_fills_the_row_that_waited(world, lang, monkeypat
     assert world["ran"] == [] and len(_asks(world)) == 1 and _asks(world)[0]["task_id"] == uid
     entry = asker.artefact(uid)
     assert entry["retained"]["slot"] == "members"
+    from i18n import langs
+    from nucleo.flash import payload_fill
+    label = " ".join(payload_fill._payload_spec(WID, ACT)["members"].split())
+    assert _asks(world)[0]["text"] == langs.spec(lang).send_missing_field.format(field=label, who="?"), \
+        "a list of people is asked by its declared label, never with a send's «who do I send it to?»"
     _say(w["who"])
     got = send_task_answer.answered(uid, entry, w["who"])
     assert got["ok"] and "worker" not in got and world["ran"] == [uid]
