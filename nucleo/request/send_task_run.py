@@ -28,8 +28,21 @@ def _rec(uid: str, art: dict):
                            trace_id=str(row.get("trace_id") or ""), surface=str(row.get("surface") or ""),
                            sheet=str(row.get("sheet") or ""), mandate={}, reading=art.get("reading"),
                            playbook_chosen=PLAYBOOK, done_when=dict(e.get("done_when") or {}),
+                           unreadable_end=_unreadable(str(art.get("widget") or ""), str(art.get("action") or "")),
                            heard=[w for w in (art.get("heard") or [_words_of(uid)]) if w], own_words=True)
 
+
+
+def _unreadable(wid: str, action: str) -> bool:
+    """The card declares this act's landing unreadable (`done_when_unreadable`): its own report is the end state."""
+    try:
+        from nucleo.request import base
+        from widgets import runtime
+        spec = ((runtime.get(base(wid)) or {}).get("actions") or {}).get(action) or {}
+        return bool(str(spec.get("done_when_unreadable") or "").strip()) if isinstance(spec, dict) else False
+    except Exception as e:  # noqa: BLE001
+        note(e)
+        return False
 
 
 async def run(uid: str) -> dict:

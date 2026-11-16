@@ -132,7 +132,10 @@ def checkpoint_one(rec) -> str:
     if not name:
         return ("checkpoint 1 is not closed: name the playbook this task is (`python -m nucleo.cli.report playbook "
                 "<name>`) and record your goal (`report goal`) before anything leaves the machine")
-    if name == MESSAGE and not (dict(getattr(rec, "done_when", None) or {}) or _durable(rec)[1]):
+    # an act that declares its landing UNREADABLE (`done_when_unreadable`: the connector reports it) has its end state
+    # declared too — `create_group` with a channel was refused here for want of one it can never have
+    if name == MESSAGE and not (dict(getattr(rec, "done_when", None) or {}) or _durable(rec)[1]
+                                or getattr(rec, "unreadable_end", False)):
         return ("checkpoint 1 is not closed: a message's end state goes on the row first (`report goal` — the "
                 "message to that person appears as sent on its app)")
     return ""
