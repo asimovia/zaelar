@@ -200,6 +200,9 @@ _ALIASES: dict[str, tuple[str, ...]] = {
     # `name` (demo run 2026-09-26: {"name": "Oscar", "platform": "telegram"} was refused «no recipient»)
     "contact": ("to", "recipient", "person", "who", "para", "destinatario", "name"),
     "channel": ("platform", "via", "canal"),
+    # replay over 65c0f7e63: `contactos:create_group {members: ["Ana", "Luis"]}` made an EMPTY group, `done/met` — the
+    # same concept the messaging act spells `members`
+    "contactIds": ("members", "people", "contacts"),
     "title": ("name", "label", "summary", "titulo", "título"),
     "name": ("title", "label", "nombre"),
     "query": ("q", "search", "term", "busqueda", "búsqueda"),

@@ -275,7 +275,7 @@
         "name": "el nombre del grupo tal y como lo dice",
         "contactIds": "opcional: los contactos que van dentro"
       },
-      "done_when": {"widget": "contactos", "collection": "groups", "where": {"name~": "{name}"}, "expect": "present"}
+      "done_when": {"all": [{"widget": "contactos", "collection": "groups", "where": {"name~": "{name}"}, "expect": "present"}, {"when": "{contactIds}", "widget": "contactos", "collection": "contacts", "where": {"groups~": "{name}"}, "count": {"min": 1}}]}
     },
     "rename_group": {
       "desc": "cambia el nombre de un grupo suyo (los de serie no se renombran)",
