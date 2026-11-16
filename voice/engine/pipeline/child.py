@@ -71,6 +71,24 @@ async def _on_session_loop(coro_fn):
     return await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(coro_fn(), loop))
 
 
+def has_listener(ctx) -> bool:
+    """Is a person in the session's room: the room connected and a remote participant that is not an agent? A context
+    that cannot be read counts as listened to — this guard only ever refuses a room it can SEE is empty."""
+    room = getattr(ctx, "room", None)
+    if room is None:
+        return True
+    try:
+        from livekit import rtc
+        if not room.isconnected():
+            return False
+        agent_kind = rtc.ParticipantKind.PARTICIPANT_KIND_AGENT
+        return any(getattr(p, "kind", None) != agent_kind and not str(getattr(p, "identity", "")).startswith("agent-")
+                   for p in room.remote_participants.values())
+    except Exception as _swallowed:  # noqa: BLE001
+        logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
+        return True
+
+
 def _deny():
     return web.json_response({"ok": False, "error": "forbidden"}, status=403)
 
@@ -94,6 +112,11 @@ async def say(request):
     await resp.prepare(request)
     if not text or LIVE.get("session") is None:
         await resp.write(json.dumps({"id": "", "done": True, "error": "no_session"}).encode() + b"\n")
+        return resp
+    if not has_listener(LIVE.get("ctx")):
+        # V2-910 — never speak into a room nobody is in: the speech would be «said» (and billed, and counted as
+        # heard) into a dead room while the person hears nothing.
+        await resp.write(json.dumps({"id": "", "done": True, "error": "no_listener"}).encode() + b"\n")
         return resp
     alias, t0 = str(body.get("alias") or ""), time.perf_counter()
     got: dict = {}
@@ -212,6 +235,7 @@ async def status(request):
     link = body_link.get()
     return web.json_response({"ok": True, "pid": os.getpid(), "rss_mb": rss_mb(), "nice": _nice(),
                               "live": LIVE.get("session") is not None, "room": LIVE.get("room", ""),
+                              "listener": LIVE.get("session") is not None and has_listener(LIVE.get("ctx")),
                               "sessions": LIVE.get("sessions", 0), "link": dict(link.stats),
                               "worker_id": _SERVER.get("id", "")})
 

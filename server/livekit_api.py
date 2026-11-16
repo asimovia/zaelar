@@ -179,13 +179,25 @@ def livekit_config() -> dict:
     }
 
 
+def _owed(room: str) -> None:
+    """V2-910 — every room minted here is owed its agent (`nucleo/pulse/voice_rooms.py` counts the ones never joined)."""
+    try:
+        from nucleo.pulse import voice_rooms
+        voice_rooms.note_minted(room)
+    except Exception as e:  # noqa: BLE001 — the count is a guard, never a reason to refuse a room
+        logger.debug(f"owed room not noted: {e!r}")
+
+
 def _token_from_egress(identity: str, name: str) -> JSONResponse:
     import httpx
     try:
         from nucleo.energy import egress as llm_egress
         r = httpx.post(f"{llm_egress.root()}/livekit/token", json={"identity": identity, "name": name},
                        headers={"Authorization": f"Bearer {llm_egress.credential()}"}, timeout=10.0)
-        return JSONResponse(r.json(), status_code=r.status_code)
+        body = r.json()
+        if r.status_code == 200 and isinstance(body, dict):
+            _owed(str(body.get("room") or ""))
+        return JSONResponse(body, status_code=r.status_code)
     except Exception as e:  # noqa: BLE001 — the browser gets a visible failure, never a token we could not sign
         return JSONResponse({"error": "token_unavailable", "detail": str(e)[:160]}, status_code=502)
 
@@ -247,4 +259,5 @@ def token(identity: str = "operator", name: str = "You", pending: int = 0) -> JS
         tok = tok.with_room_config(api.RoomConfiguration(
             agents=[api.RoomAgentDispatch(agent_name=dispatch_agent_name())]))
     jwt = tok.to_jwt()
+    _owed(room)
     return JSONResponse({"token": jwt, "url": SETTINGS.livekit_url, "room": room})

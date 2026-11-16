@@ -40,6 +40,7 @@ import { MIC_MODES as _MIC_MODES, defaultMicMode, captureConstraints } from "./m
 import * as micDenial from "./mic-denial.js?v=1";
 import * as arrival from "./voice-arrival.js?v=1";   // V2-873: «ready» only with the agent in the room
 import { createMicDevice } from "./mic-device.js?v=1";   // 2026-11-11: a closed mic hands the device back
+import { createMicRecover } from "./mic-recover.js?v=1";   // V2-910: the red mic's tap
 
 let room = null, stream = null, videoEl = null, botAudioEl = null;
 let started = false, starting = false;
@@ -271,7 +272,11 @@ let _agentWatch = null;
 function _noAgent(retry) {
   store.setConnState(t("voice.agent_starting"));
   if (retry.arm(() => start())) return;
+  // 2026-11-16 — past the bound the person is TOLD, on the mic itself (red, slashed, a tap asks for a new room),
+  // never left to a caption only the desktop draws. The engine counts the unserved rooms on its own side.
+  health.setCondition("mic", "no_agent", true, `${retry.tries} rooms without the agent`);
   store.setMicBlocked({ show: true, msg: t("voice.agent_unavailable") });
+  try { api.clientLog("🤖 agent unavailable", { text: `${retry.tries} rooms, no agent`, state: "agent_unavailable" }); } catch (_) {}
   if (!_everBooted) _unblockBoot(false);
 }
 // Advance the boot phase ONLY during the very first boot (later reconnects never touch the splash). Ignores
@@ -372,7 +377,26 @@ const _micDevice = createMicDevice({
     audio.rebindMic(fresh);
     health.watchMicTrack(tr);
   },
-  log: (what, e) => { try { api.clientLog("🎙️ mic " + what, { text: e ? String(e.name || e) : what, state: what }); } catch (_) {} },
+  log: (what, e) => {
+    if (e && what === "reopen_failed") health.micCaptureResult(e);   // a refused retake is the mic's health, not a log
+    try { api.clientLog("🎙️ mic " + what, { text: e ? String(e.name || e) : what, state: what }); } catch (_) {}
+  },
+});
+// 2026-11-16 — the SYSTEM lost the capture track (`device-health.onMicLost`): take the device again, while his mic is
+// open and a real capture backs the session. Bounded inside `mic-device.revive`; past the bound the icon stays red
+// and his tap (`recoverMic`) gets one more try.
+function _reviveMic(why, opts) {
+  if (!started || !stream || stream.__silent || mic.muted()) return Promise.resolve(false);
+  const g = _gen;
+  return _micDevice.revive(() => g !== _gen || mic.muted(), opts).then((ok) => {
+    try { api.clientLog(ok ? "🎙️ mic revived" : "🎙️ mic not revived", { text: String(why), state: ok ? "revived" : "revive_failed" }); } catch (_) {}
+    return ok;
+  });
+}
+// V2-910 — the red mic's tap (`mic-recover.js`): this engine hands in what it owns.
+export const recoverMic = createMicRecover({
+  started: () => started, start: () => start(), stop: () => stop(), revive: (why, o) => _reviveMic(why, o),
+  resetRetries: () => { _agentRetry.reset(); _startingRetry.reset(); },
 });
 function _applyMicTransport(want) {
   const off = want || _tapParked;
@@ -764,6 +788,7 @@ export async function start() {
       if (!arrival.agentPresent(room)) return;
       if (_agentWatch) { _agentWatch(); _agentWatch = null; }
       _agentRetry.reset();
+      health.setCondition("mic", "no_agent", false, "agent joined");
       try { api.clientLog("🤖 agent in the room", { text: String((p && p.identity) || ""), state: "agent_joined" }); } catch (_) {}
     });
     // Debug-bus contract messages (topic "vl2", voice/engine/pipeline/instrument.py). During the FIRST boot the
@@ -935,6 +960,7 @@ function _applyPark() {
 // V2-788 — device health. Recovery re-runs the existing unlock (startAudio + re-play) and resumes the analyser
 // context, from inside the gesture; the silence detector reads the RECEIVED remote audio's energy.
 function _installHealth() {
+  health.onMicLost((why) => { _reviveMic(why); });
   health.install({
     recover: () => { const c = audio.context(); if (c && c.state === "suspended" && c.resume) c.resume().catch(() => {}); return unlockAudio(); },
     level: () => audio.level(audio.botAnalyser()),

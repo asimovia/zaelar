@@ -38,7 +38,7 @@ const _ICON = { mic: "🎤", spk: "🔈" };
 const _TITLE_KEYS = {
   mic: { permission_denied: "orb.mic_problem_permission", no_device: "orb.mic_problem_no_device",
          capture_error: "orb.mic_problem_capture", track_ended: "orb.mic_problem_track_ended",
-         track_muted: "orb.mic_problem_track_muted" },
+         track_muted: "orb.mic_problem_track_muted", no_agent: "orb.mic_problem_no_agent" },
   spk: { blocked: "orb.spk_problem_blocked", track_ended: "orb.spk_problem_track_ended",
          element_error: "orb.spk_problem_element_error", paused: "orb.spk_problem_paused",
          context_interrupted: "orb.spk_problem_interrupted", no_output: "orb.spk_problem_no_output",
@@ -105,16 +105,54 @@ export function micCaptureResult(err) {
 
 // The captured track. `mute` on a LOCAL track is the SOURCE going silent (OS privacy switch, another app taking
 // the device) — not our mute, which flips `enabled` and fires nothing. A new track starts clean.
-let _micTrack = null;
-export function watchMicTrack(track) {
+//
+// 2026-11-16 — A DEAD TRACK IS TAKEN AGAIN, NOT ONLY PAINTED. iOS ends (or mutes and never unmutes) the capture track
+// when it interrupts the audio session (a call, Siri, another app, the app coming back from the background); the page
+// went on publishing a dead track and nobody asked for the microphone again — a session stayed deaf for nine minutes
+// with the condition sitting in the store. So a track that ENDS, or stays muted by its source for `MUTE_GRACE_MS`, is
+// LOST, and the lost hook (`onMicLost`, installed by the session engine) takes the device again. The same check runs
+// when the page comes back to the front and when the audio context leaves an interruption: iOS ends the track while
+// the page is frozen and the event may never be delivered.
+export const MUTE_GRACE_MS = 1500;
+let _micTrack = null, _onLost = null, _muteTimer = null;
+const _setT = (fn, ms) => setTimeout(fn, ms), _clearT = (t) => clearTimeout(t);
+/** The session engine's reaction to a lost capture track: `fn(why)` takes the device again. */
+export function onMicLost(fn) { _onLost = typeof fn === "function" ? fn : null; }
+function _lost(why) {
+  if (!_onLost) return;
+  note("mic", "lost", why + ":" + Date.now(), String((_micTrack && _micTrack.label) || "").slice(0, 80));
+  try { _onLost(why); } catch (_) {}
+}
+/** Is the watched capture track dead (ended, or muted by its source)? Asked on visibility and context changes. */
+export function micTrackDead() {
+  const tr = _micTrack;
+  return !!tr && (tr.readyState === "ended" || !!tr.muted);
+}
+export function checkMicAlive(why) { if (micTrackDead()) _lost(why); }
+export function watchMicTrack(track, { setT = _setT, clearT = _clearT } = {}) {
   if (!track || track === _micTrack) return;
   _micTrack = track;
+  if (_muteTimer) { clearT(_muteTimer); _muteTimer = null; }
   setCondition("mic", "track_ended", false, "new track");
   setCondition("mic", "track_muted", !!track.muted, track.muted ? "born muted by its source" : "new track");
   const label = () => String(track.label || "").slice(0, 80);
-  track.addEventListener("ended", () => { if (_micTrack === track) setCondition("mic", "track_ended", true, label()); });
-  track.addEventListener("mute", () => { if (_micTrack === track) setCondition("mic", "track_muted", true, label()); });
-  track.addEventListener("unmute", () => { if (_micTrack === track) setCondition("mic", "track_muted", false, label()); });
+  track.addEventListener("ended", () => {
+    if (_micTrack !== track) return;
+    setCondition("mic", "track_ended", true, label());
+    _lost("track_ended");
+  });
+  track.addEventListener("mute", () => {
+    if (_micTrack !== track) return;
+    setCondition("mic", "track_muted", true, label());
+    if (_muteTimer) clearT(_muteTimer);
+    _muteTimer = setT(() => { _muteTimer = null; if (_micTrack === track && track.muted) _lost("track_muted"); },
+                      MUTE_GRACE_MS);
+  });
+  track.addEventListener("unmute", () => {
+    if (_micTrack !== track) return;
+    if (_muteTimer) { clearT(_muteTimer); _muteTimer = null; }
+    setCondition("mic", "track_muted", false, label());
+  });
 }
 
 // The permission, where the browser exposes it, with its live onchange: a revocation mid-session is reported
@@ -178,6 +216,7 @@ export function watchAudioContext(ctx) {
   const apply = () => {
     note("spk", "context", ctx.state);
     setCondition("spk", "context_interrupted", ctx.state === "interrupted", "AudioContext=" + ctx.state);
+    if (ctx.state === "running") checkMicAlive("context_running");   // out of an interruption: is the mic still ours?
   };
   apply();
   try { ctx.addEventListener("statechange", apply); } catch (_) {}
@@ -238,6 +277,10 @@ export function install({ recover, level, ctxState, nav = globalThis.navigator }
   watchMicPermission(nav);
   try { nav.mediaDevices.addEventListener("devicechange", () => checkDevices(nav)); } catch (_) {}
   checkDevices(nav);
+  try {
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkMicAlive("visible"); });
+    window.addEventListener("pageshow", () => checkMicAlive("pageshow"));
+  } catch (_) {}
   if (level && ctxState) setInterval(() => { try { tickSilence({ now: Date.now(), level: level(), ctxState: ctxState() }); } catch (_) {} }, 250);
   // RECOVERY must run inside the gesture's call stack, so it hangs off pointerdown, and only does anything while
   // the speaker actually has a problem.

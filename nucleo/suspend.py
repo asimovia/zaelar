@@ -120,6 +120,11 @@ def _on_resume(wall: float, gap_s: float = 0.0) -> None:
     except Exception as e:  # noqa: BLE001
         logger.warning(f"idle stop: voice clock not told of the freeze: {e!r}")
     try:
+        from nucleo.pulse import voice_rooms
+        voice_rooms.note_resumed(wall)                 # V2-910: the next beat checks for a room that crossed the freeze
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"idle stop: the voice rooms were not told of the resume: {e!r}")
+    try:
         from nucleo.pulse import wake
         wake.note_changed()
     except Exception as e:  # noqa: BLE001 — the next schedule change marks it again
@@ -173,6 +178,7 @@ async def _go_to_sleep() -> None:
             return
         _say_goodnight()
         await asyncio.sleep(SLEEP_FLUSH_S)              # one beat for `engine.sleep` to reach the open streams
+        await _close_voice_rooms()                      # V2-910: no voice room crosses the freeze
         endpoint, token = sleep_url()
         if not endpoint:
             _exit()
@@ -195,6 +201,16 @@ async def _go_to_sleep() -> None:
     except Exception as e:  # noqa: BLE001 — a stop that broke falls back to the clean exit on the next beat
         logger.warning(f"idle stop: the sleep sequence failed: {e!r}")
         _state["exit_pending"] = True
+
+
+async def _close_voice_rooms() -> None:
+    """A room left open across a suspension wakes as a LiveKit job the server already ended, and the worker that
+    reports it is never dispatched again (`nucleo/pulse/voice_rooms.py`). Closed here, before the host freezes."""
+    try:
+        from nucleo.pulse import voice_rooms
+        await voice_rooms.before_sleep()
+    except Exception as e:  # noqa: BLE001 — the resume check closes it then
+        logger.warning(f"idle stop: the voice room was not closed before the sleep: {e!r}")
 
 
 async def _flush_wake() -> bool:

@@ -66,6 +66,11 @@ def use_app(app) -> None:
     _app["app"] = app
 
 
+def app():
+    """The app handed over by `use_app` (None before the boot did)."""
+    return _app["app"]
+
+
 def starting() -> bool:
     """V2-873 — this process embeds a voice worker that is not REGISTERED with LiveKit yet. A room made now is never
     dispatched an agent (the server dispatches a room when it is born, to the workers registered then), so the token

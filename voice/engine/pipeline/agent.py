@@ -447,6 +447,8 @@ async def entrypoint(ctx: JobContext) -> None:
     _screens_door.register_typed(_typed_from_screen)   # the typed door opens on a STARTED session (see open_typed_door)
     from .session_health import on_session_alive
     on_session_alive()   # a session that just STARTED supersedes any recorded death
+    from nucleo.pulse import voice_rooms as _voice_rooms
+    _voice_rooms.note_served(ctx.room.name)   # V2-910: the room the token door minted got its agent
 
     # BOOT SEQUENCE — the ordered backend milestones go over the "vl2" channel and the frontend's «Colmena»
     # splash lights one cluster per phase. The heavy startup cost (mic permission, room connect, Whisper
