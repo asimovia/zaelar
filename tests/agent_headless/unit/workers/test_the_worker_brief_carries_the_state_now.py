@@ -52,7 +52,7 @@ def test_the_state_act_returns_the_snapshot_fresh(world, monkeypatch):
     from nucleo.workers.session import SessionRecord
     assert worker_api.classify_act("state", {}) == worker_api.ALLOW
     rec = SessionRecord(task_id="1", goal="x")
-    got = asyncio.run(worker_api._exec_allow("state", {}, rec))
+    got = asyncio.run(worker_api._one_act(rec, "state", {}))
     assert got["ok"] and set(got["result"]) == {"channels", "widgets", "tasks", "clusters"}
     assert got["result"]["widgets"] == ["agenda", "contactos"]
 
