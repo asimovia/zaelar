@@ -10,21 +10,25 @@ falls through to the bare-sentence or JSON paths (measured: `add_list name=[casa
 from __future__ import annotations
 
 import json
-import re
 
-#: An argument that IS a field assignment: `ident=…` or `ident:=…` — on a line with one, there is no bare sentence.
-_ASSIGN = re.compile(r"^[A-Za-z_][\w.-]*:?=")
+
+def _assigns(arg: str) -> bool:
+    """`ident=…` or `ident:=…`: an argument that IS a field assignment (structure, no pattern)."""
+    head, sep, _rest = str(arg).partition("=")
+    head = head[:-1] if head.endswith(":") else head
+    return bool(sep) and head.replace("-", "_").replace(".", "_").isidentifier()
 
 
 def is_field_args(args: list[str]) -> bool:
-    return any(_ASSIGN.match(str(a)) for a in args)
+    """On a line with one field assignment, there is no bare sentence."""
+    return any(_assigns(a) for a in args)
 
 
 def payload(spec: dict, args: list[str]) -> tuple[dict, str]:
     """`(payload, "")`, or `({}, why)` — the why is what the worker reads to write it right."""
     out: dict = {}
     for a in args:
-        if not _ASSIGN.match(str(a)):
+        if not _assigns(a):
             return {}, f"`{a}` is not `field=value`: on a line of fields every argument is one"
         key, _sep, val = str(a).partition("=")
         typed = key.endswith(":")

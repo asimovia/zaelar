@@ -13,10 +13,6 @@ from __future__ import annotations
 
 from loguru import logger
 
-_TRUE = frozenset({"true", "1", "yes", "y", "sí", "si", "on"})
-_FALSE = frozenset({"false", "0", "no", "n", "off"})
-
-
 def declared(wid: str, action: str) -> dict:
     """`{field: type}` the action declares ({} when none)."""
     try:
@@ -36,7 +32,9 @@ def as_bool(value):
     if isinstance(value, (int, float)):
         return value != 0
     t = str(value).strip().lower()
-    return True if t in _TRUE else False if t in _FALSE else value
+    # the spellings of a DECLARED boolean value — a type parse of the field, not a reading of his words
+    return True if t in ("true", "1", "yes", "y", "sí", "si", "on") else \
+        False if t in ("false", "0", "no", "n", "off") else value
 
 
 def coerce(wid: str, action: str, payload):
