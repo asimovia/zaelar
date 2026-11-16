@@ -28,7 +28,7 @@ from a stranger — the protection that matters (`exit_slots`, `exit_gate.gate`)
 from __future__ import annotations
 
 from nucleo.play import shadow as _play
-from nucleo.request.slot_values import _each, filled  # noqa: F401 — `filled` is read here by name
+from nucleo.request.slot_values import _each, filled, takes_many  # noqa: F401 — read here by name
 from nucleo.request import base, event as _emit, note, send_task_who
 
 #: The retained kind on the row's `ask` artefact: his answer fills a slot of THIS task (`inline_ask.rerun`).
@@ -78,7 +78,7 @@ def sources(wid: str, action: str, payload: dict, said: str, *, reading=None) ->
     for slot, d in exit_slots.declared(base(wid), action).items():
         key, rule = str(d.get("key") or slot), str(d.get("from") or "")
         v = payload.get(key)
-        if not filled(v):
+        if not filled(v, many=takes_many(wid, action, key, d)):
             src = NONE
         elif rule == "his_words":           # several people: his only when EVERY one is (as the exit door reads it)
             from nucleo.acts import message
@@ -109,13 +109,16 @@ def _reading_names(reading, value) -> bool:
 
 def missing(art: dict) -> tuple[str, str]:
     """The first required slot with no value: `(slot, payload key)`, or `("", "")` when the act may run. A slot whose
-    payload field the action declares OPTIONAL is never asked for (`create_group`'s first message)."""
+    payload field the action declares OPTIONAL is not asked for (`create_group`'s first message) — unless the act's
+    declared end state names it (`send_draft`'s `{contact}`: without it the act cannot be judged, so it is asked)."""
     from nucleo.flash import payload_fill
-    spec = payload_fill._payload_spec(str(art.get("widget") or ""), str(art.get("action") or ""))
+    from nucleo.request.slot_values import end_names
+    wid, act = str(art.get("widget") or ""), str(art.get("action") or "")
+    decl = payload_fill._payload_spec(wid, act)
     for slot, d in (art.get("slots") or {}).items():
         key = str(d.get("key") or slot)
         if str(d.get("rule") or "") in REQUIRED_RULES and str(d.get("source") or NONE) == NONE \
-                and not payload_fill.declared_optional(spec.get(key)):
+                and (not payload_fill.declared_optional(decl.get(key)) or end_names(wid, act, key)):
             return slot, key
     return "", ""
 
