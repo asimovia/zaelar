@@ -1,6 +1,6 @@
 # Remote browser — one seam between "launch a Chromium" and "reach one over CDP"
 
-`nucleo/remote_browser.py` · criterion CRIT-R41 · test node 4.550 · V2-914 (2026-11-16)
+`nucleo/remote_browser.py` · criterion CRIT-R41 · test node 4.550 · V2-918 (2026-11-16)
 
 ## What it is
 

@@ -12,8 +12,7 @@ from widgets.navegador import launch_env as _launch_env, owner as _o
 from widgets.say import say
 
 
-# Google/YouTube consent in the EU and Wallapop's: cookies that avoid the wall (best effort). A local persistent
-# profile also keeps a banner once accepted; a remote context starts blank every time, so it gets these on each lease.
+# Consent cookies that avoid the EU wall on Google/YouTube and Wallapop (best effort).
 _CONSENT_COOKIES = [
     {"name": "SOCS", "value": "CAI", "domain": ".youtube.com", "path": "/"},
     {"name": "SOCS", "value": "CAI", "domain": ".google.com", "path": "/"},
@@ -42,8 +41,7 @@ async def _ensure_page():
     from nucleo import remote_browser as _remote
     if _remote.is_remote():
         _remote.touch()
-        if _o._context is not None and not _remote.alive(_o._browser):
-            # The remote browser ended (lease over, Machine gone): its context and tabs went with it.
+        if _o._context is not None and not _remote.alive(_o._browser):   # it ended: its context and tabs went with it
             _o._context = _o._page = _o._browser = None
     if _o._page is not None and not _o._page.is_closed():
         return _o._page
@@ -106,21 +104,7 @@ async def _ensure_page():
                     _o.logger.warning(f"navegador: headless también falló ({_o._brief(e, 100)})")
                     raise
         _o._browser = None                               # the persistent context IS the browser (no separate object)
-        from widgets.navegador import page_outcome as _po   # V2-837 G6: every navigation's status, time, size, wall
-        _po.attach(_o._context)
-        try:
-            await _o._context.add_init_script(_launch_env.stealth_js())   # stealth: browse like a human, not like a scraper
-        except Exception:
-            pass
-        _o._context.set_default_navigation_timeout(_o._NAV_TIMEOUT)
-        _o._context.set_default_timeout(_o._NAV_TIMEOUT)
-        # Google/YouTube consent in the EU: cookies that avoid the wall (best effort). With the persistent profile,
-        # once a banner is accepted it is also saved → it stops appearing on subsequent visits.
-        try:
-            await _o._context.add_cookies(_CONSENT_COOKIES)
-        except Exception:
-            pass
-        await _apply_imported_sessions(_o._context)      # V2-575 P3: a session his daemon handed over survives relaunches
+        await _prepare_context(_o._context)
     # ONE tab: reuse the one the persistent context already brings instead of opening another → no extra tabs.
     _o._page = _o._context.pages[0] if _o._context.pages else await _o._context.new_page()
     # V2-835 — the label says what WAS launched, not what was wanted: a headed launch with no screen falls back to
@@ -130,20 +114,14 @@ async def _ensure_page():
     return _o._page
 
 
-async def _connect_remote() -> None:
-    """Remote mode (`nucleo/remote_browser.py`): a fresh context on a browser reached over CDP. No Chromium is
-    launched here, and a failure is the seam's NAMED error — never a fall back to a local launch. The context gets
-    what a local one gets that does not depend on a profile on disk: viewport, locale, zone, UA, the navigation
-    outcome, the stealth script, timeouts, the consent cookies and the sessions his daemon handed over."""
-    from nucleo import remote_browser as _remote
-    browser = await _remote.connect(_o._pw)
-    _loc, _tz = _o._browser_locale()
-    ctx = await browser.new_context(viewport=_o.VIEWPORT, locale=_loc, timezone_id=_tz, user_agent=_o._UA)
-    _o._browser, _o._context, _o._headed = browser, ctx, False
+async def _prepare_context(ctx) -> None:
+    """What every context gets, launched or remote (V2-918): the navigation outcome (V2-837 G6), the stealth script,
+    timeouts, the consent cookies (a persistent profile also keeps a banner once accepted) and the sessions his
+    daemon handed over (V2-575 P3)."""
     from widgets.navegador import page_outcome as _po
     _po.attach(ctx)
     try:
-        await ctx.add_init_script(_launch_env.stealth_js())
+        await ctx.add_init_script(_launch_env.stealth_js())   # stealth: browse like a human, not like a scraper
     except Exception:
         pass
     ctx.set_default_navigation_timeout(_o._NAV_TIMEOUT)
@@ -153,6 +131,17 @@ async def _connect_remote() -> None:
     except Exception:
         pass
     await _apply_imported_sessions(ctx)
+
+
+async def _connect_remote() -> None:
+    """Remote mode (`nucleo/remote_browser.py`): a fresh context on a browser reached over CDP — nothing launched, a
+    failure is the seam's named error, never a local fallback."""
+    from nucleo import remote_browser as _remote
+    browser = await _remote.connect(_o._pw)
+    _loc, _tz = _o._browser_locale()
+    ctx = await browser.new_context(viewport=_o.VIEWPORT, locale=_loc, timezone_id=_tz, user_agent=_o._UA)
+    _o._browser, _o._context, _o._headed = browser, ctx, False
+    await _prepare_context(ctx)
     _o._emit("launched", "navegador remoto · perfil en blanco")
 
 
