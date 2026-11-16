@@ -15,7 +15,17 @@ from nucleo.cli.worker_policy import _KNOWN_ACTS
 
 
 def _executed() -> set[str]:
-    tree = ast.parse(inspect.getsource(worker_api_exec._exec_allow))
+    """The acts with a branch: in the executor, or answered at the bridge's door itself (`worker_api._one_act`:
+    `state` and `card`, the reads that carry no data of a widget's)."""
+    from nucleo.cli import worker_api
+    out: set[str] = set()
+    for fn in (worker_api_exec._exec_allow, worker_api._one_act):
+        out |= _branches(fn)
+    return out
+
+
+def _branches(fn) -> set[str]:
+    tree = ast.parse(inspect.getsource(fn))
     out: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Compare) and isinstance(node.left, ast.Name) and node.left.id == "action":

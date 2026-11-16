@@ -149,7 +149,9 @@ def test_el_aviso_de_MUERTE_no_se_empuja_sobre_un_relevo():
     import inspect
 
     from nucleo import dispatch
-    src = inspect.getsource(dispatch._remember_ended)
+    from nucleo.workers import task_record     # the death's notice moved to its one predicate (2.1775)
+    assert "task_record.tell_death(rec)" in inspect.getsource(dispatch._remember_ended)
+    src = inspect.getsource(task_record.owes_death_notice)
     assert 'getattr(rec, "handoff", "")' in src, "el aviso de muerte de V2-222 se empuja también sobre un relevo"
 
 

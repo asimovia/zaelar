@@ -191,8 +191,7 @@ async def _run_session(task: "Task") -> None:
             prompt = resume["rebrief"] if resume.get("native_sid") else f"{resume['rebrief']}\n\n{prompt}"
         if _brief_bg is not None:
             # V2-301 — the compositor continues pensando: the worker starts YA and the address le arrives inyectada.
-            prompt += ("\n\nNOTA: la DIRECCIÓN de esta investigación (criterios, amplitud, baremo) te llegará en un "
-                       "momento como instrucción nueva. No la esperes: empieza ya y aplícala cuando llegue.")
+            prompt += "\n\nNOTA: la dirección de esta investigación llega en breve; empieza ya y aplícala al llegar."
             _d._attach_brief_followup(_brief_bg, key=key, rec=rec, req=req, kind0=kind)
         # V2-778 F1 — running the session to its delivery lives in `nucleo/dispatch/session_steps.py`.
         _blk = await _dss.run_it_to_its_delivery(

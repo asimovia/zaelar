@@ -111,12 +111,15 @@ def flush(rec) -> None:
 
 def owes_death_notice(rec) -> bool:
     """A close whose ONE notice is the death's question (retry / another way / leave it, `ended._remember_ended`): a
-    failure that was not his cancel, not a relay and not parked for a quota's reset. The delivery line
-    (`session_finish._deliver`) stays silent for it, so a failure is told once (`notice:<row>` and `death:<id>` both
+    failure that was not his cancel, not a relay, not parked for a quota's reset — and that has NOTHING to say. A
+    failure with a report is told by the delivery line (`session_finish._deliver`, composed from what it found or
+    why it stopped); one with none by the death's question. Either way once (`notice:<row>` and `death:<id>` both
     spoke before)."""
+    from nucleo.workers.handoff import operator_safe_summary
     from nucleo.workers.quota_wait import is_parked
     return (str(getattr(rec, "status", "") or "") != "cancelled" and not bool(getattr(rec, "ok", False))
             and not str(getattr(rec, "handoff", "") or "")       # V2-238: a relayed errand has not died
+            and not operator_safe_summary(str(getattr(rec, "result_summary", "") or "")).strip()
             and not is_parked(getattr(rec, "goal", "")))         # …nor one parked for the quota's reset
 
 
