@@ -112,7 +112,7 @@ def answered(uid: str, entry: dict, text: str, choice: int | None = None) -> dic
         return {"ok": True, "row": uid, "already": True}
     art.setdefault("payload", {})[key] = [value] if listed else value
     (art.setdefault("slots", {}).setdefault(slot or key, {"key": key, "rule": ""}))["source"] = HIS
-    if key == "channel" and cands:    # his answer to «which channel?» IS his reading of it: the exit never doubts it again
+    if (slot or key) == "channel" and cands:   # his answer to «which channel?» IS his reading of it: never doubted again
         from nucleo.acts import message_channel
         art["reading"] = rd = art.get("reading") if isinstance(art.get("reading"), dict) else {}
         rd.setdefault("result", {})[message_channel.KEY] = {"choice": value.strip().lower(), "confidence": 1.0, "probs": {}}

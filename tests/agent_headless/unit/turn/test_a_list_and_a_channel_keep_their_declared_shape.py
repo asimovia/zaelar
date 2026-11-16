@@ -102,3 +102,53 @@ def test_an_answer_never_replaces_a_list_that_already_has_people(world, monkeypa
     got = send_task_answer.answered(uid, asker.artefact(uid), "Raquel Jofre", choice=1)
     assert got.get("unclear") and world["sent"] == []
     assert send_task.artefact(uid)["payload"]["members"] == ["Raquel Salvador", "Marta Ruiz"]
+
+
+def _channel_actions() -> list[tuple[str, str]]:
+    from nucleo.workers import exit_slots
+    from widgets import effects, runtime
+    out = []
+    for w in runtime.catalog():
+        wid = str(w.get("id") or "")
+        for act, s in ((runtime.get(wid) or {}).get("actions") or {}).items():
+            if isinstance(s, dict) and effects.leaves(wid, act) and "channel" in exit_slots.declared(wid, act):
+                out.append((wid, act))
+    return out
+
+
+CHANNEL_ACTS = _channel_actions()
+
+
+def test_the_channel_sweep_covers_an_action_whose_key_is_not_the_slots_name():
+    from nucleo.workers import exit_slots
+    assert any(exit_slots.declared(w, a)["channel"]["key"] != "channel" for w, a in CHANNEL_ACTS)
+
+
+@pytest.mark.parametrize("wid,act", CHANNEL_ACTS, ids=[f"{w}:{a}" for w, a in CHANNEL_ACTS])
+def test_which_channel_is_answered_under_the_declared_key_and_no_other(world, wid, act, monkeypatch):
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "en")
+    from nucleo.workers import exit_gate, exit_slots
+    key = exit_slots.declared(wid, act)["channel"]["key"]
+    said = "by telegram"
+    _say(said)
+    uid = send_task.retain(wid, act, {key: "whatsapp"}, said)
+    monkeypatch.setattr(exit_gate, "cross", lambda *a, **k: _async(exit_gate.Exit(a[2], slots={"channel": "unknown"})))
+    monkeypatch.setattr(exit_slots, "channel_choices", lambda turn, payload: ["telegram", "whatsapp"])
+    got = asyncio.run(send_task_run.run(uid))
+    assert got.get("asked"), got
+    entry = asker.artefact(uid)
+    assert entry["retained"]["slot"] == key
+    send_task_answer.answered(uid, entry, "telegram", choice=0)
+    payload = send_task.artefact(uid)["payload"]
+    assert payload[key] == "telegram"
+    assert [k for k, v in payload.items() if v in ("telegram", "whatsapp") and k != key] == [], payload
+    reading = (send_task.artefact(uid).get("reading") or {}).get("result") or {}
+    assert reading["message_channel"]["choice"] == "telegram", "his answer is his reading: the exit never doubts it"
+
+
+async def _coro(v):
+    return v
+
+
+def _async(v):
+    return _coro(v)
