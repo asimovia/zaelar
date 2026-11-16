@@ -266,13 +266,19 @@ that silences one handler's emit turns (a) red (the disarm); (d) no row contains
 
 ## 9 · Status (what exists; nothing below is live until this table says so)
 
+Updated 2026-11-16. Everything engine-side ships OFF (`a2a.enabled: false`).
+
 | capability | state |
 |---|---|
-| Ed25519 identity | exists (`connectors/meshkore/identity.py`), not yet used for signing |
-| `a2a/` library (offline, fake transport) | **planned** F1 |
-| people directory · mailbox · roster · wake (server side) | **planned** — contract MK-1…MK-9, built in the MeshKore repo |
-| three discovery triggers, proposal card, handshake, scopes | **planned** F1–F3 |
-| free/busy · public profile · favourites | **planned** F4 (favourites blocked on INI-026 A4) |
-| external lane | **designed** F7, not scheduled |
-| observability table above | **planned** T590, with F1 (the fake transport already emits) |
+| network identity (`did:key`, MeshKore-Sig, X25519 E2E) | **built**, `a2a/identity.py` |
+| `a2a/` library (envelope, relationships, generic grants, handlers, transports, jobs, CLI) | **built**, `tests/a2a` green |
+| engine wiring (routes, jobs thread, family `a2a`, grants as rules rows, `consent.decide_act`) | **built**, nodes 6.10–6.12 |
+| owner surfaces (consent cards, turn tools gated on `a2a_live`, `shareable` manifests, Network tab, contact badge) | **built**, nodes 6.13 + frontend render test |
+| signed wake admission (exact path, signature first, refused-only rate limit) | **built**, node 6.14 |
+| people directory · mailbox · roster · presence · handles · wake · live share · blobs (server side) | **deployed** (MK-1…4, 6, 7, 8, 10, 11) |
+| live smoke, two throwaway agents, every step of §2–§4 | **green** 2026-11-15 |
+| live samples produced by the phone · stream drawn by the receiver's widget | **not built** |
+| standing `ask` → spoken question → yes sends | **wired, not exercised** by a use case |
+| free/busy · public profile · favourites (F4) | partial — items declared; favourites blocked |
+| external lane | **designed** F7, closed server-side, not scheduled |
 | verified live between two real owners | **no** |
