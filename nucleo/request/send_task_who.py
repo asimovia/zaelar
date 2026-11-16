@@ -106,9 +106,11 @@ def which(art: dict, said: str) -> tuple[str, str, list[str]] | None:
         payload = dict(art.get("payload") or {})
         text = str(payload.get(str((slots.get(TEXT) or {}).get("key") or TEXT)) or "")
         chan = str(payload.get(str((slots.get(CHANNEL) or {}).get("key") or CHANNEL)) or "")
+        from widgets import field_types
+        kinds = field_types.declared(base(str(art.get("widget") or "")), str(art.get("action") or ""))
         for slot, d in slots.items():
-            if str(d.get("rule") or "") != "his_words":
-                continue
+            if str(d.get("rule") or "") != "his_words" or kinds.get(str(d.get("key") or slot)):
+                continue      # «which one?» is for ONE person; a declared list's ambiguity is the widget's to refuse
             plat = chan.strip().lower()
             # the value itself reaching several alike (his «Raquel», as the card's own usage asks the model to pass
             # it) — or, when the value is the agent's pick, the word of his it was picked from
