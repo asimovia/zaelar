@@ -92,13 +92,18 @@ class _Apply:
 
     def _apply_chats(self) -> None:
         """One page of a platform's chat list. An error is kept on the index, so the list can say why it is
-        short instead of looking like an account with no conversations."""
+        short instead of looking like an account with no conversations. A row the connector made FOR an order of
+        this card (a group it created) carries the order's `ref`: that is the order's echo, and it settles the
+        order's outbox row (V2-919 M3) — its failure arrives as `msg.send_failed`, settled the same way."""
         for ev in self._drain(self._chats_sub):
             platform = (ev or {}).get("platform")
             if platform:
                 msgstore.add_chats(platform, ev)
                 if ev.get("error"):
                     logger.warning(f"mensajeria: {platform} chat list page failed: {ev['error']}")
+                for row in ev.get("chats") or []:
+                    if isinstance(row, dict) and row.get("ref"):
+                        _f._settle(row["ref"], True)
 
     def _apply_mailbox(self) -> None:
         """A mail folder page, or one message read whole, for the email section (mailbox.py)."""

@@ -320,7 +320,7 @@
         "present.mount",
         "external.send"
       ],
-      "done_when_unreadable": "no collection of this app lists the groups it created; the connector reports the creation itself"
+      "done_when": {"widget": "mensajeria", "collection": "outbox", "where": {"name": "{name}", "state": "sent"}, "expect": "added"}
     },
     "forward": {
       "ref": "from",

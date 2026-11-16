@@ -189,7 +189,7 @@ async def _drain_groups() -> None:
         gid = str((got or {}).get("id") or "")
         logger.info(f"WhatsApp: grupo creado {gid} con {len(members)} miembro(s)")
         ingest.publish_chats(PLATFORM, [{"chatId": gid, "name": name, "kind": "group", "ts": time.time(),
-                                         "preview": ""}])
+                                         "preview": "", "ref": str(order.get("ref") or "")}])   # the order's echo
         text, files = str(order.get("text") or "").strip(), order.get("attachments") or []
         if gid and (text or files):
             try:

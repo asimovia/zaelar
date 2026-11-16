@@ -84,6 +84,8 @@ def _a_create_group(action, payload) -> dict:
     files = _d._media.local_paths(_d.store.data_dir(_d.WIDGET_ID), payload.get("files"))
     order = {"platform": platform, "ref": _d._outbound.new_ref(), "name": name, "members": resolved,
              "text": str(payload.get("text") or "").strip(), "attachments": files}
+    from .. import sent as _sent    # the order's receipt: its outbox row, settled by the connector (V2-919 M3)
+    _sent.outbox_open(db, order["ref"], {"platform": platform, "name": name}, order["text"])
     db.setdefault("pending_group", []).append(order)
     _d.store.save(_d.WIDGET_ID, db)
     return {"ok": True, "result": {"platform": platform, "name": name, "members": [m["name"] for m in resolved],
