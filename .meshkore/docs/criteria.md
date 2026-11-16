@@ -845,10 +845,11 @@ Flash keeps the conversation; the row is what both brains read.
   `nucleo/workers/exit_gate.py`. **A slot is read by what the act DECLARES, not by the shape of a send** (V2-919): a
   value fills its field by the field's declared kind (`types`: a `list` by one non-blank item, a `bool` by a value that
   reads as one, any other by non-blank text or a number; the wrong kind fills nothing — `widgets/field_types.filled`,
-  the one reader); a slot is required when the action's payload does not declare its field optional
-  (`payload_fill.declared_optional`, both spellings), the person always; a field that lacks is asked by its declared
-  label on the row (`send_missing_field`, a send's person and words keep their own lines), and after an answer the
-  next declared field that lacks is asked on the SAME row — only a text he did not dictate goes to a worker. —
+  the one reader); the hand-off requires only what the exit door judges — the person, always, and a composed text
+  unless the action declares it optional (`payload_fill.declared_optional`, both spellings) — every other field is the
+  widget's to know and to refuse; a slot with no send line of its own asks by its declared label
+  (`send_missing_field`), and after an answer or a merge whatever still lacks is asked on the SAME row — only a text he
+  did not dictate goes to a worker. —
   since 2026-11-16 · nodes 2.1782, 2.1783, 2.1785 · `nucleo/request/send_task_fields.py`, `widgets/field_types.py`.
 - **CRIT-T2i · A turn that already holds its send task opens no second row at its close.** The model's leaving
   call opened the row during the stream; `send_task_turn.at_close` answers `HELD`, so no later branch of the close
