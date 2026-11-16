@@ -67,7 +67,12 @@ def test_only_the_main_document_counts():
 
 def test_it_is_wired_where_the_context_is_born_and_every_screenshot_row_takes_it():
     src = (ROOT / "widgets/navegador/owner_page.py").read_text(encoding="utf-8")
-    assert "_po.attach(_o._context)" in src, "one listener on the context covers every tab and every navigation"
+    # 2026-11-16 (V2-918): the listener is attached in `_prepare_context`, the ONE preparation both a launched and a
+    # remote context go through — so the check is that it is there AND that both births call it.
+    prep = next(n for n in ast.walk(ast.parse(src)) if isinstance(n, ast.AsyncFunctionDef) and n.name == "_prepare_context")
+    assert "_po.attach(ctx)" in ast.unparse(prep), "one listener on the context covers every tab and every navigation"
+    assert "await _prepare_context(_o._context)" in src, "the launched context goes through the one preparation"
+    assert "await _prepare_context(ctx)" in src, "the remote context goes through the one preparation"
     missing = []
     for p in (ROOT / "widgets/navegador").rglob("*.py"):
         for n in ast.walk(ast.parse(p.read_text(encoding="utf-8"))):
