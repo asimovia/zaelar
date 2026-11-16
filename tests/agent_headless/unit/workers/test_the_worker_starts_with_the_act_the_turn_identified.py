@@ -194,3 +194,12 @@ def test_disarmed_without_fit_the_full_hotel_brief_goes_over(lang, monkeypatch):
     monkeypatch.setattr(first_act, "fit", lambda prompt, ceiling=None: prompt)
     _c, out = _full(monkeypatch, lang, "hotel")
     assert len(out) > PROMPT_CEILING_CHARS
+
+
+def test_an_act_the_turn_ran_is_seen_behind_many_later_ops(lang, monkeypatch):
+    """Second audit minor: the ledger was read through its last 8 only."""
+    from nucleo import done_ops
+    book = [{"wid": "contactos", "action": "create_group", "trace": "turn-9"}] + [
+        {"wid": "agenda", "action": "add_task", "trace": "turn-x"} for _ in range(20)]
+    monkeypatch.setattr(done_ops, "recent", lambda within_s=0, limit=8: book[-int(limit):])
+    assert first_act.ran_in_the_turn("contactos", "create_group", _reading("contactos:create_group", 0.97, "turn-9"))

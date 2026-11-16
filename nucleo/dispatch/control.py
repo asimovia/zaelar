@@ -32,6 +32,7 @@ def _schedule_auto_resume(req: str) -> None:
 async def inject(which: str, message: str) -> list[str]:
     """Inject `message` into the session(s) `which` resolves to; returns the injected tids (V2-029, §v3·G)."""
     tids = _d.resolve_sessions(which)
+    message = str(message or "").strip()     # one spelling for the RAM queue and the row (their dedupe compares it)
     done = []
     for tid in tids:
         r = _d._SESSIONS.get(tid)

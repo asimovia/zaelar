@@ -179,9 +179,9 @@ def _deliver_quiet(monkeypatch):
 
 
 @pytest.mark.parametrize("ok,status,handoff,notices_expected", [
-    (True, "done", "", ["notice:row-5"]),          # a success: the delivery line
+    (True, "done", "", ["notice:row-5:5"]),          # a success: the delivery line
     (False, "error", "", []),                      # a failure: the death's question alone (ended.py)
-    (False, "relevada", "x", ["notice:row-5"]),    # a relay is not a death
+    (False, "relevada", "x", ["notice:row-5:5"]),    # a relay is not a death
 ])
 def test_a_close_is_told_once(monkeypatch, ok, status, handoff, notices_expected):
     from nucleo.workers import session_finish
@@ -201,7 +201,7 @@ def test_disarmed_two_speakers_tell_a_failure_twice(monkeypatch):
     rec = _rec()
     rec.ok, rec.status, rec.result_summary = False, "error", "No encontré el contacto."
     asyncio.run(session_finish._deliver(rec))
-    assert told == ["notice:row-5"]
+    assert told == ["notice:row-5:5"]
 
 
 # ── exactly one notice, across the conversation's rotation (audit B1) ────────────────────────────────────────
@@ -234,3 +234,50 @@ def test_an_ending_whose_judge_raised_is_still_remembered(monkeypatch):
     monkeypatch.setattr(circuit, "_close", lambda rec, cap: (_ for _ in ()).throw(RuntimeError("boom")))
     rec = _rec()
     assert circuit.close(rec, 1) == "undeclared" and rec.verdict == "undeclared"
+
+
+# ── second audit, minors ─────────────────────────────────────────────────────────────────────────────────────────
+def test_an_expired_line_is_marked_expired_not_delivered(fresh_db):
+    import time
+    from nucleo.circuit import ledger
+    task_record.said("row-5", "lo de ayer")
+    task_record.take("row-5", [], now=time.time() + task_record.SAID_MAX_AGE_S + 1)
+    row = ledger.store().artifact_get("row-5", task_record.SAID_SLOT)[0]
+    assert row["expired"] is True
+
+
+def test_the_transcript_buffer_is_bounded_when_the_store_keeps_failing(monkeypatch):
+    rec = _rec(uid="")                      # no row: nothing is ever written, the buffer only bounds itself
+    for i in range(task_record.TRANSCRIPT_KEPT + 50):
+        task_record.heard(rec, SimpleNamespace(type="step", data={"text": f"s{i}"}))
+    assert len(rec.transcript) <= task_record.TRANSCRIPT_KEPT
+
+
+def test_a_line_ending_in_a_space_is_served_once(fresh_db, monkeypatch):
+    from nucleo.dispatch import control
+    rec = _rec()
+    monkeypatch.setattr(control._d, "_SESSIONS", {"5": rec}, raising=False)
+    monkeypatch.setattr(control._d, "resolve_sessions", lambda which: ["5"], raising=False)
+    monkeypatch.setattr(control._d._sheets, "recheck_rows", lambda *a, **k: None, raising=False)
+    asyncio.run(control.inject("5", "y Marta  "))
+    assert [s["text"] for s in control.take_pending_injects("5")] == ["y Marta"]
+    assert control.take_pending_injects("5") == []
+
+
+def test_a_failure_whose_judge_raised_is_not_called_done(monkeypatch):
+    from nucleo import circuit
+    monkeypatch.setattr(circuit, "_close", lambda rec, cap: (_ for _ in ()).throw(RuntimeError("boom")))
+    rec = _rec()
+    rec.ok = False
+    assert circuit.close(rec, 1) == "unmet" and rec.verdict == "unmet"
+
+
+def test_two_closes_of_one_row_are_two_notices(monkeypatch):
+    """A row parked for a quota, then delivered by its next worker: the second notice is not a duplicate."""
+    from nucleo.workers import session_finish
+    told = _deliver_quiet(monkeypatch)
+    for tid in ("5", "6"):
+        rec = _rec()
+        rec.task_id, rec.ok, rec.status, rec.result_summary = tid, True, "done", "Hecho."
+        asyncio.run(session_finish._deliver(rec))
+    assert len(set(told)) == 2, told

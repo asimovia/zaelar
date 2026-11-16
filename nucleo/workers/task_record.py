@@ -65,8 +65,10 @@ def take(uid: str, served: list[dict], *, now: float | None = None) -> list[dict
         cut = (time.time() if now is None else now) - SAID_MAX_AGE_S
         extra = [{"text": r["text"], "source": r.get("source", "operator")} for r in rows
                  if not r.get("delivered") and str(r.get("text") or "") not in texts and float(r.get("at") or 0) >= cut]
-        if any(not r.get("delivered") for r in rows):
-            ts.artifact_put(uid, SAID_SLOT, [{**r, "delivered": True} for r in rows])
+        if any(not r.get("delivered") for r in rows):     # an old line is marked EXPIRED, never «delivered»
+            ts.artifact_put(uid, SAID_SLOT, [r if r.get("delivered") else
+                                             {**r, "delivered": True, **({} if float(r.get("at") or 0) >= cut
+                                                                         else {"expired": True})} for r in rows])
         return extra
     except Exception as e:  # noqa: BLE001
         _note("delivery mark", e)
@@ -83,6 +85,7 @@ def heard(rec, ev) -> None:
             return                      # usage, progress, spawned: nothing to read, and they would spend the bound
         rec.transcript.append({"at": time.time(), "type": str(getattr(ev, "type", "") or ""),
                                "text": text[:EVENT_CHARS]})
+        del rec.transcript[:-TRANSCRIPT_KEPT]          # a store that keeps failing never grows the buffer unbounded
         if len(rec.transcript) >= FLUSH_EVERY:
             flush(rec)
     except Exception as e:  # noqa: BLE001 — the transcript never breaks the worker it records

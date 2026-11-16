@@ -24,4 +24,5 @@ def test_the_delivery_line_is_keyed_by_the_row(fresh_db, monkeypatch):
     monkeypatch.setattr(notices, "notify", notify)
     live, done = asyncio.run(_commission(monkeypatch, "find me a quiet café to work from in Lyon"))
     uid = done[0]["id"]
-    assert (f"notice:{uid}", uid) in keys, keys
+    # by its ROW, and one per close of that row (a parked close and the next worker's delivery are two notices)
+    assert any(str(k).startswith(f"notice:{uid}:") and t == uid for k, t in keys), keys

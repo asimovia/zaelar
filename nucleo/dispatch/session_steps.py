@@ -158,8 +158,11 @@ async def run_it_to_its_delivery(*, _dev, _dev_settings_path, _wd, brief, escala
                 except Exception:
                     pass
         if kind == "web" and trusted:
-            _ds._d._leave_resume(rec, nav_tid=nav_tid, resume=resume, req=req, key=key,
-                          brief=bool((brief or {}).get("goal")), prev_count=_prev_count)
+            try:            # inside the `finally`: a raise here skipped the ending's snapshot and its ONE notice
+                _ds._d._leave_resume(rec, nav_tid=nav_tid, resume=resume, req=req, key=key,
+                                     brief=bool((brief or {}).get("goal")), prev_count=_prev_count)
+            except Exception as e:  # noqa: BLE001
+                _ds._d.logger.warning(f"dispatch: the resume note of {key} was not left — {type(e).__name__}: {e}")
         try:
             if key.isdigit():
                 escalate.finish(int(key), rec.result_summary if rec.ok else "")

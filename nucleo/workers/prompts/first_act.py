@@ -61,7 +61,8 @@ def ran_in_the_turn(wid: str, act: str, reading: dict | None, trace: str = "") -
         from nucleo.flash import payload_fill
         base = payload_fill._base_of(wid)
         return any(str(d.get("trace") or "") in traces and d.get("action") == act
-                   and payload_fill._base_of(str(d.get("wid") or "")) == base for d in done_ops.recent())
+                   and payload_fill._base_of(str(d.get("wid") or "")) == base
+                   for d in done_ops.recent(limit=done_ops._MAX))             # the whole book, not its last 8
     except Exception as e:  # noqa: BLE001
         _note("the turn's ops", e)
         return False
