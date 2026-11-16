@@ -58,19 +58,19 @@ async def run_listener(stop: "asyncio.Event | None" = None) -> None:
                 _unborn(ctx)
                 logger.info(f"dispatch: escalada RECHAZADA (agente parado): {request[:80]}")
                 continue
-            # DEDUP in the FUENTE DE VERDAD (§session 2026-07-15): if already there is a session live atendiendo this same
-            # request, NO abrimos a 2º worker (the bug of the two «creando a widget…»). Se INYECTA como
-            # refinamiento (the generador of widgets, build atomico, it ignora with gracia; a worker live it aprovecha).
+            # DEDUP at the source of truth (2026-07-15): a live session already on this request gets it INJECTED as a
+            # refinement, never a 2nd worker (the two «creating a widget…» bug).
             # V2-851 F2e — an ANSWERED question's task names its row by identity (`answers`): never a refinement of
             # another errand, never a parked one, never a continuation of an ended one.
-            _bound = bool(ctx.get("answers"))
-            dup, _ev = ("", {}) if _bound else _d.dedup_scan(
+            _bound = bool(ctx.get("answers"))       # …and one of SEVERAL errands of his turn (`part`) is never folded:
+            _own_part = _bound or ctx.get("part") is not None
+            dup, _ev = ("", {}) if _own_part else _d.dedup_scan(
                 request, kind if kind != "generic" else _d._kind_of(ctx.get("errand_kind")))
             # `by` now comes from the deciding loop instead of being assumed here: a same-widget hit used to
             # be filed as «containment», which is a number it never computed.
             _dup_by = _ev.get("by") or ""
             _model = "skipped"          # the second half only runs with something live to compare against
-            if not dup and not _bound:
+            if not dup and not _own_part:
                 # SECOND HALF OF THE DEDUP, off-loop: «is this an errand at all?» (`about_a_live_errand`). Only
                 # with something live; in a thread because `chat_sync` is synchronous.
                 _live = _d._live_errands()
@@ -113,7 +113,7 @@ async def run_listener(stop: "asyncio.Event | None" = None) -> None:
             # are popped, so each repeat opened another task — four errands, one intention. Same yardstick over
             # `parked_errands()`; a hit is folded in (`absorb_refinement`) and the brain repeats the QUESTION. A
             # `confirmed` relaunch is never compared: it IS the parked errand coming back.
-            if not (ctx.get("confirmed") or _bound):
+            if not (ctx.get("confirmed") or _own_part):
                 _parked = _d.parked_errands()
                 pdup = None
                 if _parked:
