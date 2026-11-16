@@ -286,7 +286,7 @@ def vision_env(tier: dict | None) -> dict:
     return {}
 
 from nucleo.workers.providers.classify import (  # noqa: E402,F401
-    _RESET_RE, _CLAUDE_RESET_RE, _ZAI_CODE_RE, _WINDOW_RE, _EXHAUSTED_RE, _CONTEXT_RE, is_context_overflow,
+    _RESET_RE, _ZAI_CODE_RE, _WINDOW_RE, _EXHAUSTED_RE, _CONTEXT_RE, is_context_overflow,
     _DEPLETED_RE, is_depleted,
     _BROKEN_RE, is_broken_request, classify_failure, _TOOL_LIMIT_RE, classify_tool_failure)
 from nucleo.workers.providers.health import (  # noqa: E402,F401

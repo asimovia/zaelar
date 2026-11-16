@@ -88,29 +88,33 @@ def _reset_epoch(text: str) -> float:
 
 
 def _claude_reset_epoch(text: str, now: float | None = None) -> float:
-    """The reset a Claude subscription states (`_CLAUDE_RESET_RE`) as an epoch, 0.0 when none: in the bracketed zone
-    or the CLI's own clock; a bare hour already past is tomorrow's, a past date next year's."""
-    m = _p._CLAUDE_RESET_RE.search(text or "")
-    if not m:
-        return 0.0
-    if m.group("epoch"):
-        return float(m.group("epoch"))
+    """The reset the Claude CLI states (`_RESET_RE`'s am/pm form, «limit reached|<epoch>») as an epoch, 0.0 if none:
+    in the bracketed zone or the CLI's clock; a bare hour already past is tomorrow's, a past date next year's."""
+    epoch = (text or "").partition("limit reached|")[2][:10]
+    if len(epoch) == 10 and epoch.isdigit():
+        return float(epoch)
+    m = _p._RESET_RE.search(text or "")
+    raw, _, tz = (m.group(1) if m else "").partition("(")
+    words = raw.replace(",", " ").split()
+    if not words or words[-1][-2:].lower() not in ("am", "pm"):
+        return 0.0                       # not the CLI's am/pm form: the generic reader owns it
     from datetime import datetime, timedelta
-    zone = None
-    if m.group("tz"):
+    zone, tz = None, tz.strip(" )")
+    if tz:
         try:
             from zoneinfo import ZoneInfo
-            zone = ZoneInfo("UTC" if m.group("tz").upper() == "UTC" else m.group("tz"))
+            zone = ZoneInfo("UTC" if tz.upper() == "UTC" else tz)
         except Exception:  # noqa: BLE001 — an unknown zone reads as the machine's own clock
             zone = None
     current = datetime.fromtimestamp(time.time() if now is None else now, tz=zone)
-    hour = int(m.group("h")) % 12 + (12 if m.group("ap").lower() == "pm" else 0)
-    minute = int(m.group("m") or 0)
+    dated = words[0][:1].isalpha()
+    clock = "".join(words[2:] if dated else words)
     try:
-        if m.group("mon"):
-            month = datetime.strptime(m.group("mon").title(), "%b").month
-            stamp = current.replace(month=month, day=int(m.group("day")), hour=hour, minute=minute,
-                                    second=0, microsecond=0)
+        h, _, mi = clock[:-2].partition(":")
+        hour, minute = int(h) % 12 + (12 if clock[-2:].lower() == "pm" else 0), int(mi or 0)
+        if dated:
+            month = datetime.strptime(words[0].title(), "%b").month
+            stamp = current.replace(month=month, day=int(words[1]), hour=hour, minute=minute, second=0, microsecond=0)
             if stamp < current:
                 stamp = stamp.replace(year=stamp.year + 1)
         else:
