@@ -17,8 +17,7 @@ logger = logging.getLogger(__name__)
 LEASE_TTL_S = 600          # renewed only while used: a lease nobody uses lapses on its own
 RENEW_AT = 0.5             # renew when less than this fraction is left AND it was used since the last renewal
 CONNECT_TIMEOUT_MS = 20_000
-LEASE_PATH = "/browser/lease"
-RENEW_PATH = "/browser/renew"
+LEASE_PATH, RENEW_PATH = "/browser/lease", "/browser/renew"
 
 
 class RemoteBrowserUnavailable(RuntimeError):
@@ -109,5 +108,6 @@ async def connect(pw):
 def alive(browser) -> bool:
     try:
         return browser is not None and browser.is_connected()
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001 — an unreadable handle is a dead one: the caller reconnects
+        logger.debug(f"remote browser: connection state unreadable ({e!r})")
         return False
