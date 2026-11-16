@@ -55,9 +55,9 @@ def test_a_message_to_the_other_person_is_red_even_when_the_right_one_also_went(
     wrong = {"name": "widget_data", "args": {"widget_id": "mensajeria", "action": "send_to",
                                              "payload": {"contact": "Raquel Salinas Ortega", "text": "llego tarde"}}}
     reply = {"name": "reply_message", "args": {"n": 1, "text": "llego tarde"}}
-    assert pt.message_failures([right], ["lozoya", "tarde"], ["salvador"]) == []
-    assert pt.message_failures([wrong, right], ["lozoya", "tarde"], ["salvador"]) == ["a message act went to 'salvador'"]
-    assert pt.message_failures([reply], ["lozoya", "tarde"], ["salvador"]), "a reply to an inbox row is a send act"
+    assert pt.message_failures([right], ["lozoya", "tarde"], ["salinas"]) == []
+    assert pt.message_failures([wrong, right], ["lozoya", "tarde"], ["salinas"]) == ["a message act went to 'salinas'"]
+    assert pt.message_failures([reply], ["lozoya", "tarde"], ["salinas"]), "a reply to an inbox row is a send act"
     assert pt.message_failures([], ["lozoya"], ())
 
 
@@ -82,6 +82,6 @@ def test_a_send_row_waiting_on_its_which_question_sent_nothing():
               "went": True}
     wrong_call = {"name": "widget_data", "args": {"widget_id": "mensajeria", "action": "send_to",
                                                   "payload": {"contact": "Raquel Salinas Ortega", "text": "llego tarde"}}}
-    assert pt.message_failures([wrong_call], ["lozoya", "tarde"], ["salvador"], rows=[asked, filled]) == []
+    assert pt.message_failures([wrong_call], ["lozoya", "tarde"], ["salinas"], rows=[asked, filled]) == []
     assert pt.message_failures([], ["lozoya"], (), rows=[asked]), "a row still asking is no send"
     assert pt.two_raquels()["contacts"][2]["channels"][0]["last_seen"] > 0

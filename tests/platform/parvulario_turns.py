@@ -45,10 +45,10 @@ CASES = [
     #     first turn; the judge reads who each send ROW went to: none may go to the other Raquel.
     ("cual-es", "es", "answer to «¿cuál?»", {"directory": "two_raquels"},
      ["Mándale un whatsapp a Raquel diciéndole que llego tarde", "A Raquel Lozoya"],
-     {"sent": ["lozoya", "tarde"], "not_sent": ["salvador"]}),
+     {"sent": ["lozoya", "tarde"], "not_sent": ["salinas"]}),
     ("cual-en", "en", "answer to «which one?»", {"directory": "two_raquels"},
      ["Send Raquel a WhatsApp saying I'm running late", "Raquel Lozoya"],
-     {"sent": ["lozoya", "late"], "not_sent": ["salvador"]}),
+     {"sent": ["lozoya", "late"], "not_sent": ["salinas"]}),
     # 2 · «no, la otra» — the first turn moved the 10:00, the second says it was the 17:00 one
     ("otra-es", "es", "correction «no, la otra»",
      {"open": ["agenda"], "agenda": [{"title": "Reunión con Marta", "day": "+1", "start": "10:00", "end": "11:00"},
