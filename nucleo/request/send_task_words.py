@@ -123,9 +123,12 @@ def brief_block(uid: str) -> str:
                            "payload": {**payload, **{str(d.get("key") or s): "<…>" for s, d in art["slots"].items()
                                                      if not payload.get(str(d.get("key") or s))}}},
                           ensure_ascii=False)
+        from nucleo.flash import payload_fill
         from nucleo.workers.prompts.first_act import command
-        return "\n".join([head, *rows, do.format(call=call, command=command(
-            str(art.get("widget") or ""), str(art.get("action") or ""), json.loads(call)["payload"]))])
+        wid, act = str(art.get("widget") or ""), str(art.get("action") or "")
+        declared = payload_fill._payload_spec(wid, act)     # the ONE command names only fields the action declares:
+        fields = {k: v for k, v in json.loads(call)["payload"].items() if k in declared}   # (a kept alias is refused)
+        return "\n".join([head, *rows, do.format(call=call, command=command(wid, act, fields))])
     except Exception as e:  # noqa: BLE001
         note(e)
         return ""

@@ -169,9 +169,9 @@ def live(prompt: str, surface: str, uid: str, context: dict | None, reading: dic
 
 def _drop_order() -> tuple[str, ...]:
     """What `fit` may give up, in order, by the head its block opens with: ONLY the blocks this handoff adds — the
-    state, his words, then the identified act (or the send row's) last. The memory context and the conversation are
-    never cut by it: they ride as they always did."""
-    return ("state_now.head", "his_words_head", "first_act_head", "send_task_head")
+    state, his words, then the identified act last. The memory context, the conversation and the send row's block
+    (sent before this handoff existed) are never cut by it: they ride as they always did."""
+    return ("state_now.head", "his_words_head", "first_act_head")   # the send row's block is NOT new: never cut
 
 
 def _span(text: str, head: str) -> tuple[int, int]:
