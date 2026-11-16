@@ -86,6 +86,20 @@ def _with_items(res: dict, p: dict, db: dict) -> dict:
     return {**res, "added": added} if items else res
 
 
+def _list_for_task(db: dict, raw) -> tuple:
+    """`(list, why, made)` for a task: the list it names, or — a list he NAMES that does not exist yet — that list made
+    (the card declares it: two items for a list not yet made lost the second to «list not found», replay over
+    65c0f7e63). A NUMBER that names nothing never makes one."""
+    lst, why = _task_read.pick_list(db, raw)
+    want = _task_read._norm(raw)
+    near = [l for l in _task_read.lists(db) if want and (want in _task_read._norm(l["name"]))]
+    if lst or not want or str(raw).strip().isdigit() or near:    # a list it COULD be is his question, never a new one
+        return lst, why, False
+    got = apply("add_list", {"name": str(raw).strip()}, db)
+    made = next((l for l in _task_read.lists(db) if l["id"] == got.get("list")), None) if got.get("ok") else None
+    return (made, why, True) if made else (None, why, False)
+
+
 def apply(action: str, payload: dict, db: dict) -> dict:
     """Run one task/list action against `db` IN PLACE. Returns `{ok: True, …}` or a refusal the model can
     act on; the caller persists only on success. Never raises."""
@@ -156,7 +170,7 @@ def apply(action: str, payload: dict, db: dict) -> dict:
             return {"ok": False,
                     "error": "no me ha llegado la tarea — vuelve a llamar a add_task con `title` (y `list` "
                              "si va a una lista suya, `date`/`time` si tiene día u hora)"}
-        lst, why = _task_read.pick_list(db, p.get("list") or p.get("listId"))
+        lst, why, made = _list_for_task(db, p.get("list") or p.get("listId"))
         if not lst:
             return {"ok": False, "error": why}
         _task_read.migrate(db)
@@ -168,8 +182,8 @@ def apply(action: str, payload: dict, db: dict) -> dict:
         db.setdefault("tasks", []).append(t)
         # V2-769 — `revert` names the call that takes this row back out: the turn layer runs it when the
         # whole sentence arrives and this write turns out to have come from a piece of it.
-        return {"ok": True, "task": tid, "list": lst["id"], "no": len(_task_read.items(db, lst["id"])),
-                "revert": {"action": "delete_task", "payload": {"taskId": tid}}}
+        return {"ok": True, "task": tid, "list": lst["id"], "no": len(_task_read.items(db, lst["id"])), "title": title,
+                "list_created": made, "revert": {"action": "delete_task", "payload": {"taskId": tid}}}
 
     if act in ("update_task", "delete_task", "done", "drop", "snooze", "not_now"):
         lst, why = _task_read.pick_list(db, p.get("list") or p.get("listId"))

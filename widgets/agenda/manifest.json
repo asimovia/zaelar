@@ -315,7 +315,7 @@
     },
     "add_task": {
       "positional": true,
-      "desc": "apunta una TAREA del operador (no una cita, no un proceso tuyo): algo que él tiene que hacer. Sin `list` va a la lista «General»; con `list` (número o nombre) va a esa. `date`/`time` solo si los dice — una tarea sin hora es normal y no se planifica sola. Una tarea NO se repite: si algo va «todos los jueves de 15:30 a 16:15» es una CITA que se repite (add_meeting con repeat), aunque él la llame tarea",
+      "desc": "apunta una TAREA del operador (no una cita, no un proceso tuyo): algo que él tiene que hacer. Sin `list` va a la lista «General»; con `list` (número o nombre) va a esa; una lista NOMBRADA que aún no existe se crea. `date`/`time` solo si los dice — una tarea sin hora es normal y no se planifica sola. Una tarea NO se repite: si algo va «todos los jueves de 15:30 a 16:15» es una CITA que se repite (add_meeting con repeat), aunque él la llame tarea",
       "payload": {
         "title": "string — lo que hay que hacer, tal como lo dijo",
         "list": "número o nombre de la lista («2», «la compra»); sin él, General",

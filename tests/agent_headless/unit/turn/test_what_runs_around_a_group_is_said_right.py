@@ -94,3 +94,81 @@ def test_items_land_in_the_list_and_the_act_declares_its_end_state(world):
     titles = [t.get("title") for t in db.get("tasks", []) if str(t.get("list") or t.get("listId") or "") == str(lid)]
     assert {"leche", "pan"} <= set(titles), (lid, titles)
     assert spec.template_of("agenda", "add_list"), "a declared end state: «done» only with its check"
+
+
+# ── replay over 65c0f7e63 ────────────────────────────────────────────────────────────────────────────────────────
+def _people(world):
+    from widgets.contactos import data as cd
+    for n in ("Ana Ruiz", "Luis Mora", "Marta Gil"):
+        cd.apply_action("add_contact", {"name": n, "phone": "+34600000002"})
+
+
+def test_a_group_asked_with_members_under_their_synonym_gets_them_through_the_real_door(world):
+    """`contactos:create_group {members: [...]}` made an EMPTY group judged `met`: `members` is a declared synonym."""
+    from widgets.server_api import brain_action
+    _people(world)
+    res = asyncio.run(brain_action("contactos", "create_group", {"name": "cena", "members": ["Ana", "Luis"]}))
+    assert res.get("added") == ["Ana Ruiz", "Luis Mora"], res
+
+
+def test_an_empty_group_where_people_were_named_is_not_met(world):
+    from nucleo.circuit import spec, verify
+    from widgets.contactos import data as cd
+    _people(world)
+    cd.apply_action("create_group", {"name": "vacío"})                       # the group exists, nobody in it
+    unmet = spec.render("contactos", "create_group", {"name": "vacío", "members": ["Ana"]})
+    assert verify.check(unmet) is False, "a group asked WITH people and holding none is not done"
+    cd.apply_action("create_group", {"name": "lleno", "contactIds": ["Ana"]})
+    assert verify.check(spec.render("contactos", "create_group", {"name": "lleno", "members": ["Ana"]})) is True
+    assert verify.check(spec.render("contactos", "create_group", {"name": "vacío"})) is True, "asked with nobody"
+
+
+def test_disarmed_without_the_synonym_the_group_is_made_empty(world, monkeypatch):
+    from widgets import contract
+    monkeypatch.setitem(contract._ALIASES, "contactIds", ())
+    from widgets.server_api import brain_action
+    _people(world)
+    res = asyncio.run(brain_action("contactos", "create_group", {"name": "cena2", "members": ["Ana", "Luis"]}))
+    assert res.get("added") == [], "RED proof: `members` unread, nobody added"
+
+
+@pytest.mark.parametrize("said,twin", [("se llama Pádel, con Marta y Luis", True),
+                                       ("crea un grupo de WhatsApp familia con Ana", False),
+                                       ("hazme un grupo de telegram con Luis", False)])
+def test_with_his_words_naming_no_channel_the_group_is_of_his_contacts(said, twin):
+    from nucleo.request import channel_twin
+    got = channel_twin.twin("mensajeria", "create_group", {"members": ["Marta", "Luis"], "name": "Pádel"},
+                            {"result": {}}, said)
+    assert bool(got) is twin, got
+
+
+def test_our_clarifying_question_closes_when_the_act_it_asked_about_runs(world, monkeypatch):
+    from nucleo.request import ask_outside_door, clarified
+    from nucleo.turn import brief_turn
+    from memory import tasks_store as ts
+    monkeypatch.setattr(brief_turn, "of_this_turn", lambda: _brief(screen_action=("contactos:create_group", 0.6)))
+    _say("crea un grupo")
+    ask = ask_outside_door.held({"widget": "mensajeria", "leaves": ["create_group"], "actions": ["create_group"]},
+                                "¿Un grupo de contactos o de mensajería?", "crea un grupo")
+    assert ask
+    rows = [r for r in _rows() if r.get("state") == "waiting"]
+    assert clarified.answered("mensajeria", "contactos") == 1
+    assert ts.task_get(str(rows[0]["id"]))["state"] == "done"
+
+
+def test_a_task_for_a_list_he_names_that_does_not_exist_makes_it_and_loses_nothing(world):
+    from widgets.agenda import data as agenda
+    from widgets.server_api import brain_action
+    a = asyncio.run(brain_action("agenda", "add_task", {"title": "Leche", "list": "Compra"}))
+    b = asyncio.run(brain_action("agenda", "add_task", {"title": "Pan", "list": "Compra"}))
+    assert a.get("list_created") and a.get("ok") is not False and b.get("ok") is not False, (a, b)
+    db = agenda.load_db()
+    lid = a["list"]
+    assert {t["title"] for t in db.get("tasks", []) if t.get("listId") == lid} == {"Leche", "Pan"}
+    assert asyncio.run(brain_action("agenda", "add_task", {"title": "x", "list": "7"})).get("ok") is False, \
+        "a list NUMBER that does not exist is never made"
+
+
+def test_a_draft_declares_its_end_state():
+    from nucleo.circuit import spec
+    assert spec.render("mensajeria", "draft", {"text": "llego tarde", "contact": "Ana"}), "«done» only with its check"
