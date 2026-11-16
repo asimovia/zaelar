@@ -38,7 +38,10 @@ def _a_create_group(action, payload, q, db, contacts, now) -> dict:
     for c in added:
         _d._touch(c, now)
     _d.store.save(_d.WIDGET_ID, db)
-    return _group_result(db, q, g, created=created, added=[_d._public(c) for c in added])
+    out = _group_result(db, q, g, created=created, added=[_d._public(c) for c in added])
+    # the answer NAMES whom it put in (the turn's receipt reads `title` and `added`): a «Ana» that matched one Ana of
+    # two is said, so he sees which one it was
+    return {**out, "title": name, "added": [str(c.get("name") or "") for c in added]}
 
 
 def _a_rename_group(action, payload, q, db, contacts, now) -> dict:

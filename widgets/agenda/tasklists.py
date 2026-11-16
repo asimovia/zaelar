@@ -73,6 +73,19 @@ def _to_trash(db: dict, kind: str, rows: list, label: str, list_row: dict | None
 
 # ── writing ────────────────────────────────────────────────────────────────────────────────────────────
 
+def _with_items(res: dict, p: dict, db: dict) -> dict:
+    """`add_list` with `items`: each one goes INTO the list through `add_task` (measured: «añade a la lista de la
+    compra leche y pan» created the list empty and said «done»). The titles it added ride on the answer."""
+    items = p.get("items")
+    items = [items] if isinstance(items, str) else items if isinstance(items, (list, tuple)) else []
+    added = []
+    for it in items:
+        title = str(it or "").strip()
+        if title and apply("add_task", {"title": title, "list": res["list"]}, db).get("ok") is not False:
+            added.append(title)
+    return {**res, "added": added} if items else res
+
+
 def apply(action: str, payload: dict, db: dict) -> dict:
     """Run one task/list action against `db` IN PLACE. Returns `{ok: True, …}` or a refusal the model can
     act on; the caller persists only on success. Never raises."""
@@ -87,13 +100,13 @@ def apply(action: str, payload: dict, db: dict) -> dict:
         _task_read.migrate(db)                                   # …before reading the array: it may create it
         if any(_task_read._norm(l.get("name")) == _task_read._norm(name) for l in db["taskLists"]):
             hit = next(l for l in _task_read.lists(db) if _task_read._norm(l["name"]) == _task_read._norm(name))
-            return {"ok": True, "list": hit["id"], "listNo": hit["no"], "existed": True}
+            return _with_items({"ok": True, "list": hit["id"], "listNo": hit["no"], "existed": True}, p, db)
         lid = _task_read._slug(name, "tl_") or f"tl_{int(time.time()) % 1000000}"
         taken = {str(l.get("id")) for l in db["taskLists"]}
         if lid in taken:
             lid = f"{lid}_{int(time.time()) % 100000}"
         db["taskLists"].append({"id": lid, "name": name, "createdAt": _today()})
-        return {"ok": True, "list": lid, "listNo": len(db["taskLists"]), "created": True}
+        return _with_items({"ok": True, "list": lid, "listNo": len(db["taskLists"]), "created": True}, p, db)
 
     if act in ("rename_list", "clear_list", "delete_list"):
         raw = p.get("list") or p.get("name") or p.get("listId")
