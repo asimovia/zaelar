@@ -110,6 +110,11 @@ def _browser_prewarm_from_config() -> bool:
 
 async def _warm_browser() -> None:
     try:
+        from nucleo import remote_browser
+        if remote_browser.is_remote():
+            # A remote browser is leased per use: warming it at boot would take one for every boot of this host.
+            _emit_prewarm("browser", 0, "chromium", note="remote browser: leased at first use")
+            return
         if not _browser_prewarm_from_config():
             _emit_prewarm("browser", 0, "chromium", note="skipped by policy: starts at first use")
             return
