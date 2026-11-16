@@ -308,6 +308,7 @@
         "text": "opcional: primer mensaje"
       },
       "on_his_behalf": "members",
+      "types": {"members": "list"},
       "slots": {
         "recipient": {"key": "members", "from": "his_words"},
         "channel": {"key": "platform", "from": "reading"},
