@@ -315,7 +315,7 @@
     },
     "add_task": {
       "positional": true,
-      "desc": "apunta una TAREA del operador (no una cita, no un proceso tuyo): algo que él tiene que hacer. Sin `list` va a la lista «General»; con `list` (número o nombre) va a esa; una lista NOMBRADA que aún no existe se crea. `date`/`time` solo si los dice — una tarea sin hora es normal y no se planifica sola. Una tarea NO se repite: si algo va «todos los jueves de 15:30 a 16:15» es una CITA que se repite (add_meeting con repeat), aunque él la llame tarea",
+      "desc": "apunta una TAREA del operador (no una cita, no un proceso tuyo): algo que él tiene que hacer. Sin `list` va a la lista «General»; con `list` (número o nombre) va a esa. `date`/`time` solo si los dice — una tarea sin hora es normal y no se planifica sola. Una tarea NO se repite: si algo va «todos los jueves de 15:30 a 16:15» es una CITA que se repite (add_meeting con repeat), aunque él la llame tarea",
       "payload": {
         "title": "string — lo que hay que hacer, tal como lo dijo",
         "list": "número o nombre de la lista («2», «la compra»); sin él, General",
@@ -504,12 +504,10 @@
       "confirm": false
     },
     "add_list": {
-      "desc": "CREA una lista de tareas nueva («hazme una lista de la compra», «una lista para el viaje»). Queda numerada y con su propio identificador; si ya existe una con ese nombre, devuelve esa. Con `items`, apunta en ella lo que él diga («añade a la lista de la compra leche y pan»)",
+      "desc": "CREA una lista de tareas nueva («hazme una lista de la compra», «una lista para el viaje»). Queda numerada y con su propio identificador; si ya existe una con ese nombre, devuelve esa",
       "payload": {
-        "name": "cómo la llama él: «la compra», «casa», «viaje a Roma»",
-        "items": ["opcional: cada cosa que apuntar en ella, tal como la dice"]
+        "name": "cómo la llama él: «la compra», «casa», «viaje a Roma»"
       },
-      "done_when": {"all": [{"widget": "agenda", "collection": "taskLists", "where": {"name~": "{name}"}, "expect": "present"}]},
       "confirm": false
     },
     "rename_list": {

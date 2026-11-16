@@ -28,7 +28,6 @@ from a stranger — the protection that matters (`exit_slots`, `exit_gate.gate`)
 from __future__ import annotations
 
 from nucleo.play import shadow as _play
-from nucleo.request.slot_values import _each, end_names, filled, takes_many  # noqa: F401 — read here by name
 from nucleo.request import base, event as _emit, note, send_task_who
 
 #: The retained kind on the row's `ask` artefact: his answer fills a slot of THIS task (`inline_ask.rerun`).
@@ -78,15 +77,16 @@ def sources(wid: str, action: str, payload: dict, said: str, *, reading=None) ->
     for slot, d in exit_slots.declared(base(wid), action).items():
         key, rule = str(d.get("key") or slot), str(d.get("from") or "")
         v = payload.get(key)
-        if not filled(v, many=takes_many(wid, action, key, d)):
+        has = isinstance(v, str) and bool(v.strip())
+        if not has:
             src = NONE
-        elif rule == "his_words":           # several people: his only when EVERY one is (as the exit door reads it)
+        elif rule == "his_words":
             from nucleo.acts import message
-            src = HIS if all(isinstance(x, str) and message.is_his(x, [said]) for x in _each(v)) else AGENT
+            src = HIS if message.is_his(v, [said]) else AGENT
         elif rule == "reading":
             src = READING if (_reading_names(reading, v) or his_text(v, said)) else AGENT
         elif rule == "composed":
-            src = HIS if his_text(" ".join(map(str, _each(v))), said) else AGENT
+            src = HIS if his_text(v, said) else AGENT
         else:
             src = "card"
         out[slot] = {"key": key, "rule": rule, "source": src}
@@ -108,16 +108,10 @@ def _reading_names(reading, value) -> bool:
 
 
 def missing(art: dict) -> tuple[str, str]:
-    """The first required slot with no value, `(slot, key)` or `("", "")`; a field declared OPTIONAL is not asked unless
-    the act's declared end state names it (`send_draft`'s `{contact}`: without it the act cannot be judged)."""
-    from nucleo.flash import payload_fill
-    wid, act = str(art.get("widget") or ""), str(art.get("action") or "")
-    decl = payload_fill._payload_spec(wid, act)
+    """The first required slot with no value: `(slot, payload key)`, or `("", "")` when the act may run."""
     for slot, d in (art.get("slots") or {}).items():
-        key = str(d.get("key") or slot)
-        if str(d.get("rule") or "") in REQUIRED_RULES and str(d.get("source") or NONE) == NONE \
-                and (not payload_fill.declared_optional(decl.get(key)) or end_names(wid, act, key)):
-            return slot, key
+        if str(d.get("rule") or "") in REQUIRED_RULES and str(d.get("source") or NONE) == NONE:
+            return slot, str(d.get("key") or slot)
     return "", ""
 
 
@@ -250,9 +244,7 @@ def commission(wid: str, action: str, payload: dict | None, said: str, *, readin
         _emit(emit, "❓ send task: one slot has no value — asked on its row", q, {"cat": "flash", "task_id": uid,
               "slot": slot, "ask_id": ask_id})
         return uid
-    from nucleo.request import dry_refusal, substitution   # the card's dry refusal (a channel down): said NOW
-    if dry_refusal.said(uid, wid, action, art):
-        return uid
+    from nucleo.request import substitution
     if substitution.active():                  # in the model's call's place: born asking (CRIT-K2b, rule 2)
         return substitution.ask_first(uid, art, wid, action)
     _said_started(uid, wid, action, art)

@@ -200,9 +200,6 @@ _ALIASES: dict[str, tuple[str, ...]] = {
     # `name` (demo run 2026-09-26: {"name": "Oscar", "platform": "telegram"} was refused «no recipient»)
     "contact": ("to", "recipient", "person", "who", "para", "destinatario", "name"),
     "channel": ("platform", "via", "canal"),
-    # replay over 65c0f7e63: `contactos:create_group {members: ["Ana", "Luis"]}` made an EMPTY group, `done/met` — the
-    # same concept the messaging act spells `members`
-    "contactIds": ("members", "people", "contacts"),
     "title": ("name", "label", "summary", "titulo", "título"),
     "name": ("title", "label", "nombre"),
     "query": ("q", "search", "term", "busqueda", "búsqueda"),
@@ -258,13 +255,6 @@ def _unstring_lists(declared: dict, pl: dict) -> dict:
         if isinstance(parsed, list):
             out[key] = parsed
     return out
-
-
-def synonyms(key: str) -> set[str]:
-    """`key` and every synonym the contract declares for it, either way round (`channel` ↔ `platform`, `via`, …)."""
-    keys = {str(key or ""), *_ALIASES.get(str(key or ""), ())}
-    keys |= {k for k, alts in _ALIASES.items() if keys & set(alts)}
-    return keys | {a for k in list(keys) for a in _ALIASES.get(k, ())}
 
 
 def fold_aliases(widget_id: str, action: str, payload: dict | None) -> dict:
