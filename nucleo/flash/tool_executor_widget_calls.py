@@ -225,6 +225,12 @@ def _apply_widget_data(wid: str, action_name: str, payload: dict, ref: str='', *
     # only to be drafted. Both leaving (the verdict `send_to`, the model `reply`) → the task below decides.
     if _verdict_instead(wid, action_name, payload, _brief, text, emit, acted, _apply_widget_data, leaving=True):
         return
+    if (_twin := __import__("nucleo.request.channel_twin", fromlist=["x"]).twin(wid, action_name, payload,
+                                                                               _reading_of(_brief))):
+        emit("brain", "📇 no channel named: the act its card declares for that", text=f"{wid}:{action_name} → "
+             f"{_twin[0]}:{_twin[1]}", role="system", extra={"cat": "flash", "from": f"{wid}:{action_name}",
+                                                            "to": f"{_twin[0]}:{_twin[1]}"})
+        return _apply_widget_data(_twin[0], _twin[1], _twin[2])
     if _leaving_is_a_task(wid, action_name, text, escalate_req, emit, payload=payload, brief=_brief):   # V2-852 M2
         return
     action_name, payload = _txw._row_lens.retarget(wid, action_name, _txw._said_day.payload(wid, action_name, payload, text), text)   # the day he said; the row he named, on ITS day (pass 140)

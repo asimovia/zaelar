@@ -78,10 +78,22 @@ def _contacts_of(db, payload) -> list[dict]:
     ids = (list(ids) if isinstance(ids, (list, tuple)) else str(ids or "").split(",")) + [payload.get("contactId")]
     out = []
     for cid in ids:
-        c = _d._find(db, str(cid or "").strip())
+        c = _d._find(db, str(cid or "").strip()) or _by_name(db, str(cid or "").strip())
         if c is not None and c not in out:
             out.append(c)
     return out
+
+
+def _by_name(db, name: str):
+    """A member given by NAME (a group of his people asked for by voice): the one contact it names, else nobody —
+    a name that reaches several is not guessed (the card's question names them)."""
+    if not name:
+        return None
+    want = name.lower().split()
+    rows = [c for c in db.get("contacts", []) if all(t in str(c.get("name") or "").lower().split() for t in want)]
+    exact = [c for c in rows if str(c.get("name") or "").lower().split() == want]
+    pick = exact if exact else rows
+    return pick[0] if len(pick) == 1 else None
 
 
 def _a_add_to_group(action, payload, q, db, contacts, now) -> dict:
