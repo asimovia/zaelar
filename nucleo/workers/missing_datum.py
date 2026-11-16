@@ -60,10 +60,22 @@ def on_refusal(rec, call: dict, res: dict) -> dict:
     act = str(call.get("action") or "").strip()
     field = cause(res)
     sent = call.get("payload") if isinstance(call.get("payload"), dict) else {}
-    if not (wid and act and field) or sent.get(field) not in (None, "", [], {}):
+    if not (wid and act and field) or sent.get(field) not in (None, "", [], {}) or _under_another_key(wid, act, sent):
         return res
     _write(rec, {"widget": wid, "action": act, "fields": [field]})
     return {**res, "missing": [field], "error": f"{res.get('error') or ''} — {reason(rec)}".strip(" —")}
+
+
+def _under_another_key(wid: str, act: str, sent: dict) -> bool:
+    """The call carried a value under a key the action does not declare: the datum came, on the WRONG key — the
+    worker can fix that from the refusal; it is not a datum only he can give (`cancel_meeting {meeting: "x"}`)."""
+    try:
+        from nucleo.flash import payload_fill
+        declared = set(payload_fill._payload_spec(wid, act))
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"missing_datum: {wid}:{act} unread ({e!r})")
+        return False
+    return bool(declared) and any(k not in declared and v not in (None, "", [], {}) for k, v in sent.items())
 
 
 def cause(res: dict) -> str:
@@ -91,9 +103,10 @@ def reason(rec) -> str:
     m = _current(rec)
     if not m:
         return ""
+    from nucleo.workers.providers.claude import bridge_python
     return (f"`{m['widget']}:{m['action']}` lacks {', '.join(m['fields'])} — a datum only he can give. Ask him ONE "
-            f"question now (`python -m nucleo.cli.bridge ask \"…\"`): that ends your turn and his answer resumes it. "
-            f"Searching does not find what he did not say.")
+            f"question now (`{bridge_python()} -m nucleo.cli.bridge ask \"…\"`): that ends your turn and his answer "
+            f"resumes it. Searching does not find what he did not say.")
 
 
 def held(rec, action: str) -> str:

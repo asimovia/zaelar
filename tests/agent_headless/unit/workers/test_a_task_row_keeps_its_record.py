@@ -162,9 +162,15 @@ def test_the_delivery_writes_no_memory_of_its_own(monkeypatch):
     asyncio.run(session_finish._deliver(rec))
 
 
+class _Told(list):
+    """The notice keys, with each close's instant read as `<close>` so a test names the key's SHAPE."""
+    def append(self, key):
+        super().append(__import__("re").sub(r"^(notice:[^:]+):\d+$", r"\1:<close>", str(key)))
+
+
 # ── one notice per close ─────────────────────────────────────────────────────────────────────────────────────
 def _deliver_quiet(monkeypatch):
-    told = []
+    told = _Told()
     from nucleo.pulse import notices
     from nucleo.workers import spoken_delivery
 
@@ -179,9 +185,9 @@ def _deliver_quiet(monkeypatch):
 
 
 @pytest.mark.parametrize("ok,status,handoff,notices_expected", [
-    (True, "done", "", ["notice:row-5:5"]),          # a success: the delivery line
-    (False, "error", "", ["notice:row-5:5"]),       # a failure WITH a report: its delivery line, no death question
-    (False, "relevada", "x", ["notice:row-5:5"]),    # a relay is not a death
+    (True, "done", "", ["notice:row-5:<close>"]),          # a success: the delivery line
+    (False, "error", "", ["notice:row-5:<close>"]),       # a failure WITH a report: its delivery line, no death question
+    (False, "relevada", "x", ["notice:row-5:<close>"]),    # a relay is not a death
 ])
 def test_a_close_is_told_once(monkeypatch, ok, status, handoff, notices_expected):
     from nucleo.workers import session_finish
@@ -284,8 +290,14 @@ def test_two_closes_of_one_row_are_two_notices(monkeypatch):
     """A row parked for a quota, then delivered by its next worker: the second notice is not a duplicate."""
     from nucleo.workers import session_finish
     told = _deliver_quiet(monkeypatch)
-    for tid in ("5", "6"):
+    keys = []
+    from nucleo.pulse import notices
+
+    async def _notify(*a, **k):
+        keys.append(k.get("key"))
+    monkeypatch.setattr(notices, "notify", _notify)
+    for started in (1000.0, 2000.0):          # the same boot-local worker number after a restart: "5" twice
         rec = _rec()
-        rec.task_id, rec.ok, rec.status, rec.result_summary = tid, True, "done", "Hecho."
+        rec.task_id, rec.ok, rec.status, rec.result_summary, rec.started = "5", True, "done", "Hecho.", started
         asyncio.run(session_finish._deliver(rec))
-    assert len(set(told)) == 2, told
+    assert len(set(keys)) == 2, keys
