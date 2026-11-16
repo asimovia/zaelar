@@ -212,6 +212,7 @@
         "channel": "opcional con contact: whatsapp | telegram | email"
       },
       "types": {"reply_all": "bool"},
+      "done_when": {"widget": "mensajeria", "field": "draft", "expect": "changed"},
       "effects": [
         "present.mount"
       ]
