@@ -5390,6 +5390,16 @@ DOMAINS: list[dict] = [
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/turn/test_a_complete_leaving_call_runs_on_its_row.py",
                       "tests/agent_headless/unit/turn/test_a_leaving_act_is_read_by_its_declaration.py"]},
+        {"id": "2.1784", "title": "Every order a widget queues to a connector has a receipt, and the receipt is the end state "
+                                 "(V2-919 M3): the group order opens its outbox row by ref, named by the group; the "
+                                 "connector's chat row carrying the order's ref settles it sent, msg.send_failed settles it "
+                                 "failed with the reason, a late echo never turns a failure into a success; create_group's "
+                                 "done_when is that row (met by the success only); the retained group crosses the exit door "
+                                 "by that end state and reaches the widget's door — a message with no end state is still "
+                                 "refused (checkpoint 1 not relaxed); every leaving action declares done_when or a "
+                                 "done_when_unreadable that does not claim the connector reports it",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/turn/test_an_order_a_widget_queues_has_a_receipt.py"]},
         {"id": "2.1761", "title": "A group he ordered with the members he named leaves a task's exit door unasked: "
                                  "`mensajeria:create_group` declares its slots (recipient ← `members` by his words, channel "
                                  "← `platform` by the reading, text composed) and its own sentence in ES and EN; a LIST "

@@ -57,7 +57,7 @@ async def _drain_groups() -> None:
         gid = utils.get_peer_id(channel)
         logger.info(f"Telegram: grupo creado {gid} con {len(peers)} miembro(s)")
         ingest.publish_chats("telegram", [{"chatId": str(gid), "name": name, "kind": "group",
-                                            "ts": time.time(), "preview": ""}])
+                                            "ts": time.time(), "preview": "", "ref": str(order.get("ref") or "")}])
         text, files = str(order.get("text") or "").strip(), order.get("attachments") or []
         if text or files:
             try:

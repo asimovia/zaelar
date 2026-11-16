@@ -25,7 +25,7 @@ _UNDECLARED: dict[str, set[str]] = {
     "fotos": {"label_batch"},
     "imagenes": {"slideshow_stop", "clear", "wallpaper_clear"},
     "map": {"clear"},
-    "mensajeria": {"read", "unread", "readchat", "dismiss", "clear", "archive", "trash", "hide", "unhide", "draft", "cancel_send", "create_group", "set_notify", "load_more", "chats_more", "set_media_days", "set_signature", "set_signature_line", "clear_signature", "fetch_now", "set_autoresponder", "clear_autoresponder", "chat_digest", "mail_sort", "mail_more", "discard_draft"},
+    "mensajeria": {"read", "unread", "readchat", "dismiss", "clear", "archive", "trash", "hide", "unhide", "draft", "cancel_send", "set_notify", "load_more", "chats_more", "set_media_days", "set_signature", "set_signature_line", "clear_signature", "fetch_now", "set_autoresponder", "clear_autoresponder", "chat_digest", "mail_sort", "mail_more", "discard_draft"},
     "musica": {"favorite_current", "remove_from_playlist", "rename_playlist", "delete_playlist", "move_track", "release", "next", "seek", "previous", "volume_up", "volume_down", "set_volume", "queue", "queue_remove", "queue_move", "queue_clear", "shuffle", "repeat", "refresh"},
     "navegador": {"close", "scroll", "click", "type", "press", "automate"},
     "results": {"present", "append", "sources", "rejected", "progress", "criteria", "auth_done"},
