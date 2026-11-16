@@ -117,7 +117,7 @@ class A2AAgent:
                 index[h] = (c, how)
         try:
             found = self.directory.lookup(list(index)) if index else []
-        except TransportError as e:
+        except TransportError:
             self.emit("discover", ok=False, trigger=trigger, hashes=len(index), matches=0)
             return []
         now = self.clock()
