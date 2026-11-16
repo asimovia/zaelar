@@ -147,8 +147,8 @@ def test_a_list_placeholder_reads_as_the_names_joined(monkeypatch):
 
 def test_the_group_declares_its_slots():
     assert exit_slots.declared("mensajeria", "create_group") == {
-        "recipient": {"key": "members", "from": "his_words"}, "channel": {"key": "platform", "from": "reading"},
-        "text": {"key": "text", "from": "composed"}}
+        "recipient": {"key": "members", "from": "his_words", "many": True},   # several people (2.1776)
+        "channel": {"key": "platform", "from": "reading"}, "text": {"key": "text", "from": "composed"}}
 
 
 @pytest.mark.parametrize("lang", sorted(WORDS))
