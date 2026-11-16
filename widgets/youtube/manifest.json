@@ -441,6 +441,7 @@
         "keep": "opcional: true si además lo quiere guardar aunque no sea reproducible",
         "id": "opcional: el id de una descarga que ya está en curso en el widget Descargas, para reproducirla aquí sin volver a buscarla"
       },
+      "types": {"keep": "bool"},
       "view": true,
       "done_when": {
         "all": [

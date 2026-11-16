@@ -169,7 +169,8 @@ def _declared_payload(wid: str, action: str) -> dict:
 def _field_args(wid: str, action: str, args: list[str]):
     """`field=value` arguments over the action's declared fields → its payload (`widget_fields.payload`)."""
     from nucleo.cli.widget_fields import payload
-    return payload(_declared_payload(wid, action).get("payload") or {}, args)
+    spec = _declared_payload(wid, action)
+    return payload(spec.get("payload") or {}, args, spec.get("types") or {})
 
 
 def _list_key(wid: str, action: str) -> str:

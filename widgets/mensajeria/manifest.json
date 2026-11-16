@@ -211,6 +211,7 @@
         "subject": "opcional, solo email nuevo: el asunto",
         "channel": "opcional con contact: whatsapp | telegram | email"
       },
+      "types": {"reply_all": "bool"},
       "effects": [
         "present.mount"
       ]
@@ -355,6 +356,7 @@
         "highlight": "string opcional (direct|important|all) — qué sale en el RESUMEN",
         "speak": "bool opcional (false = avisos solo por nota/pantalla, nunca por voz)"
       },
+      "types": {"speak": "bool"},
       "safe": true,
       "usage": "«Avísame cada vez que llegue un mensaje» → set_notify {platform:'email', notify:'all'}. «De Telegram avísame solo de mensajes directos» → {platform:'telegram', notify:'direct'}. «Que WhatsApp no me interrumpa hablando» → {platform:'whatsapp', speak:false}. «Enséñame también lo importante en la lista principal» → {platform:'email', highlight:'important'}. Para silenciar UN chat concreto usa hide, no esto.",
       "worker": false
@@ -431,6 +433,7 @@
         "hours": "string opcional (franja «HH:MM-HH:MM»)",
         "enabled": "bool opcional (false = dejar configurado pero apagado)"
       },
+      "types": {"enabled": "bool"},
       "confirm": true,
       "confirm_q": "¿Activo el autorrespondedor con ese mensaje? Contestará él solo en tu nombre.",
       "fans_out": true,
@@ -464,6 +467,7 @@
         "check_reply": "bool opcional: comprueba si el mensaje encontrado tuvo respuesta nuestra",
         "limit": "int opcional (máx 20)"
       },
+      "types": {"check_reply": "bool"},
       "safe": true,
       "view": true,
       "effects": [
@@ -575,6 +579,7 @@
         "send": "opcional: true = enviar ya",
         "channel": "opcional (email por defecto)"
       },
+      "types": {"send": "bool"},
       "confirm": true,
       "confirm_q": "¿Envío ese correo?",
       "consent_class": "messaging.send_new",
