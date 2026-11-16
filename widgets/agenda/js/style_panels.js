@@ -270,6 +270,10 @@ export const CSS_PANELS = `\
     .hb-agenda .agt{flex-direction:column}
     .hb-agenda .agt-side{flex:0 0 auto;max-height:168px}
     .hb-agenda .agt-main{min-height:240px}
+    /* The list's NAME keeps the first line to itself: beside its identifier and three actions it shrank to nothing
+       on a phone, and the identifier read as the name. The identifier and the actions take the line below. */
+    .hb-agenda .agt-head{flex-wrap:wrap;row-gap:6px;padding-top:8px;padding-bottom:8px}
+    .hb-agenda .agt-head .agt-title,.hb-agenda .agt-head > .agt-in{flex:1 1 calc(100% - 40px)}
   }
   /* A narrow app: the month's hours go, the arrows close ranks. The BAND's steps are the house bar's (V2-882). */
   @container (max-width:560px){ .hb-agenda .agmev .agmh{display:none} .hb-agenda .agsecb{padding:7px 9px}

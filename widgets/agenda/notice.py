@@ -106,10 +106,35 @@ def schedule(create, data: dict) -> tuple[dict, str]:
     return create(prompt_for({"commitment": d.get("commitment") or raw}), b["at"], name=name), b["verdict"]
 
 
+#: The hour a notice rings when its slots give a day and no hour — the card's own rule for an all-day item.
+DAY_HOUR = "09:00"
+
+
+def in_the_cards_shape(payload: dict) -> dict:
+    """The notice's slots, read from the shape every other write of this card takes (`date` + `time`, `title`).
+
+    Measured 2026-11-16: «Remind me tomorrow at 8am to water the plants» → `add_reminder {title, date, time}` — the
+    slots `add_meeting` and `add_task` declare — and the door refused it for a missing `notice_at`. A day and an
+    hour ARE the instant; a title IS what to tell him. Slots only: a payload with neither day nor hour still asks."""
+    p = dict(payload) if isinstance(payload, dict) else {}
+    if not (p.get("notice_at") or p.get("before")):
+        day = str(p.get("date") or p.get("day") or "").strip()
+        hour = str(p.get("time") or p.get("startTime") or p.get("at") or "").strip()
+        if day or hour:
+            from . import when as _when
+            hh = _when._resolve_time(hour, DAY_HOUR)
+            p["notice_at"] = f"{_when._resolve_date(day, hh)} {hh}"
+    if not str(p.get("commitment") or p.get("prompt") or "").strip():
+        what = str(p.get("title") or p.get("text") or p.get("what") or "").strip()
+        if what:
+            p["commitment"] = what
+    return p
+
+
 def _a_add_reminder(action, payload, db, _extra) -> dict:
     """The agenda's `add_reminder`: a notice with no appointment, its moment in `notice_at` (or `before` +
-    `commitment_at`). No moment → `asked`, never guessed from words."""
-    p = payload if isinstance(payload, dict) else {}
+    `commitment_at`, or the card's own `date` + `time`). No moment → `asked`, never guessed from words."""
+    p = in_the_cards_shape(payload)
     if not (p.get("notice_at") or p.get("before")):
         return {"ok": False, "verdict": "asked", "error": "no moment to ring at: notice_at is missing"}
     from nucleo.pulse import scheduler as _sched

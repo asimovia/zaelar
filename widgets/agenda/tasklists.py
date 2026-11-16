@@ -71,6 +71,18 @@ def _to_trash(db: dict, kind: str, rows: list, label: str, list_row: dict | None
 # ── resolving what he NAMED ────────────────────────────────────────────────────────────────────────────
 
 
+def _rows_named(raw) -> list[str]:
+    """The rows a list is born with: a list of titles (or of `{title}` rows); one string is one row per line."""
+    if isinstance(raw, str):
+        raw = raw.splitlines()
+    out: list[str] = []
+    for r in raw if isinstance(raw, (list, tuple)) else ():
+        t = str((r.get("title") or r.get("name") or "") if isinstance(r, dict) else (r or "")).strip()
+        if t and t not in out:
+            out.append(t[:200])
+    return out[:100]
+
+
 # ── writing ────────────────────────────────────────────────────────────────────────────────────────────
 
 def apply(action: str, payload: dict, db: dict) -> dict:
@@ -87,13 +99,25 @@ def apply(action: str, payload: dict, db: dict) -> dict:
         _task_read.migrate(db)                                   # …before reading the array: it may create it
         if any(_task_read._norm(l.get("name")) == _task_read._norm(name) for l in db["taskLists"]):
             hit = next(l for l in _task_read.lists(db) if _task_read._norm(l["name"]) == _task_read._norm(name))
-            return {"ok": True, "list": hit["id"], "listNo": hit["no"], "existed": True}
-        lid = _task_read._slug(name, "tl_") or f"tl_{int(time.time()) % 1000000}"
-        taken = {str(l.get("id")) for l in db["taskLists"]}
-        if lid in taken:
-            lid = f"{lid}_{int(time.time()) % 100000}"
-        db["taskLists"].append({"id": lid, "name": name, "createdAt": _today()})
-        return {"ok": True, "list": lid, "listNo": len(db["taskLists"]), "created": True}
+            out = {"ok": True, "list": hit["id"], "listNo": hit["no"], "existed": True}
+        else:
+            lid = _task_read._slug(name, "tl_") or f"tl_{int(time.time()) % 1000000}"
+            taken = {str(l.get("id")) for l in db["taskLists"]}
+            if lid in taken:
+                lid = f"{lid}_{int(time.time()) % 100000}"
+            db["taskLists"].append({"id": lid, "name": name, "createdAt": _today()})
+            out = {"ok": True, "list": lid, "listNo": len(db["taskLists"]), "created": True}
+        # A list asked for WITH what goes in it is one order: its rows land in the same write, through the one
+        # `add_task` door, skipping a row the list already has (asked twice is not two rows).
+        have = {_task_read._norm(t["title"]) for t in _task_read.items(db, out["list"])}
+        added = []
+        for title in _rows_named(p.get("items") if "items" in p else p.get("tasks")):
+            if _task_read._norm(title) in have:
+                continue
+            if apply("add_task", {"title": title, "list": out["list"]}, db).get("ok"):
+                have.add(_task_read._norm(title))
+                added.append(title)
+        return {**out, "rows": added} if added else out
 
     if act in ("rename_list", "clear_list", "delete_list"):
         raw = p.get("list") or p.get("name") or p.get("listId")
