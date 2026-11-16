@@ -93,7 +93,11 @@ STATE = """() => {
   if (!h) return { gone: true };
   const c = h.querySelector('canvas'); let lit = 0;
   if (c && c.width) {
-    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    // The loader draws in a worker on a canvas handed over to it, so the page cannot ask that canvas for its
+    // pixels; what it shows is copied onto a scratch canvas and read there — the picture as the browser has it.
+    const t = document.createElement('canvas'); t.width = c.width; t.height = c.height;
+    const x = t.getContext('2d'); x.drawImage(c, 0, 0);
+    const d = x.getImageData(0, 0, t.width, t.height).data;
     for (let i = 0; i < d.length; i += 16) if (Math.max(d[i], d[i + 1], d[i + 2]) > 150) lit++;
   }
   return { gone: false, now: Number(h.getAttribute('aria-valuenow') || -1), stage: h.dataset.stage, lit,

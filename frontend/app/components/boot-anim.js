@@ -18,6 +18,12 @@
 // develops very fast (`GROW.FINISH_S`) before the veil lifts. A real phase may pull the growth forward (`setStage`
 // raises a floor it catches up to), always at a bounded rate so it never lands as a batch.
 //
+// IT RUNS OFF THE PAGE'S THREAD (operator, 2026-11-16: «a trompicones… debería moverse con fluidez, como un gif»): the
+// page that shows this loader is busy loading the whole agent, and a canvas drawn on that same thread stalls with it.
+// So the animation takes its surroundings as an `env` (size, colours, frame clock) and `core/boot-worker.js` runs it
+// in a worker on an OffscreenCanvas, started by `core/preboot.js` on the first byte; `pageEnv` is the same thing on
+// the page, for a browser without that.
+//
 // Pure <canvas>, no deps; colours from the --hb-* tokens; honours prefers-reduced-motion (no spin, drift or sparks;
 // the growth itself is the progress and stays).
 // Contract: startBootAnim(canvas, { onProgress }) → { setStage(n), finish(onDone), shown(), destroy() }.
@@ -78,8 +84,23 @@ export function parentOf(pts, order) {
 /** The brain's outline at angle `a`, as a fraction of its radii: a folded rim (gyri), slightly fuller at the front. */
 export function brainEdge(a) { return 1 + 0.05 * Math.sin(a * 7 + 0.6) + 0.035 * Math.sin(a * 13 + 2.1) + 0.04 * Math.cos(a); }
 
-function toRGB(name, fallback) {
-  const s = (getComputedStyle(document.documentElement).getPropertyValue(name) || "").trim() || fallback;
+/** The band a PORTRAIT screen keeps free at its foot for the loader's words (`.pb-cap` in core/shared-surfaces.css):
+ *  on a phone held upright the words go under the drawing, never over it. Landscape keeps none. */
+export const CAPTION_BAND = 132;
+/** Where the brain sits: its centre and the box it may fill. Pure — the test and both hosts (page, worker) read it. */
+export function placement(W, H) {
+  const portrait = H > W * 1.15, band = portrait ? CAPTION_BAND : 0, free = Math.max(1, H - band);
+  return { portrait, band, cx: W / 2, cy: portrait ? free * 0.5 : H * 0.46, free };
+}
+
+/** A token's colour from the page, or its fallback (a worker has no page: the host hands the colours in). */
+export function tokenRGB(name, fallback) {
+  let s = fallback;
+  try { s = (getComputedStyle(document.documentElement).getPropertyValue(name) || "").trim() || fallback; } catch (_) { /* no page */ }
+  return toRGB(s);
+}
+
+function toRGB(s) {
   let m = s.match(/^#([0-9a-f]{3})$/i);
   if (m) return [m[1][0], m[1][1], m[1][2]].map((c) => parseInt(c + c, 16));
   m = s.match(/^#([0-9a-f]{6})$/i);
@@ -91,11 +112,23 @@ const rgba = ([r, g, b], a) => `rgba(${r | 0},${g | 0},${b | 0},${a})`;
 const lerp = (a, b, t) => a + (b - a) * t;
 const lerpRGB = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
 
-export function startBootAnim(canvas, { onProgress } = {}) {
+/** What the animation needs from wherever it runs. On the page these are the page's own; in a worker (`core/
+ *  boot-worker.js`) the page hands them in, because a worker has no document, no window and no layout. */
+export function pageEnv(canvas) {
+  return {
+    reduced: !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches),
+    colors: { accent: tokenRGB("--hb-accent", "#3D6FE0"), accent2: tokenRGB("--hb-accent2", "#8B5CF6"), bg: tokenRGB("--hb-bg", "#0d1622") },
+    size: () => { const r = canvas.getBoundingClientRect(); return { w: r.width, h: r.height, dpr: Math.min(window.devicePixelRatio || 1, 2) }; },
+    onResize: (fn) => { window.addEventListener("resize", fn); return () => window.removeEventListener("resize", fn); },
+    raf: (fn) => requestAnimationFrame(fn), caf: (id) => cancelAnimationFrame(id),
+  };
+}
+
+export function startBootAnim(canvas, { onProgress, env } = {}) {
   const ctx = canvas.getContext("2d");
-  const reduced = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-  const accent = toRGB("--hb-accent", "#3D6FE0"), accent2 = toRGB("--hb-accent2", "#8B5CF6");
-  const bg = toRGB("--hb-bg", "#0d1622");
+  const E = env || pageEnv(canvas);
+  const reduced = !!E.reduced;
+  const { accent, accent2, bg } = E.colors;
   let W = 0, H = 0, cx = 0, cy = 0, span = 0, raf = 0, t0 = 0, lastT = 0, igniteAcc = 0;
   let p = 0, floor = STAGE_FLOOR[0], stage = 0, finishing = false, onDone = null, reported = -1;
   const nodes = [], pulses = [];
@@ -110,14 +143,16 @@ export function startBootAnim(canvas, { onProgress } = {}) {
   let ordered = false, tree = [], trunk = new Set();
 
   function layout() {
-    const r = canvas.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2);
-    W = r.width; H = r.height; cx = W / 2; cy = H * 0.46; span = Math.min(W, H) * 0.34;
+    const sz = E.size(), dpr = sz.dpr || 1;
+    W = sz.w; H = sz.h;
+    const st = placement(W, H), portrait = st.portrait;
+    cx = st.cx; cy = st.cy; span = Math.min(W, st.free) * 0.34;
     canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     // The long axis follows the screen (a brain lying down on a desk, standing up on a phone) and both radii keep a
-    // margin inside the screen — the old disk spilled past a 390 px phone's edges.
-    const portrait = H > W * 1.15;
-    const long = Math.min(span * 1.45, (portrait ? H * 0.34 : W * 0.42)), short = Math.min(long * 0.74, (portrait ? W : H) * 0.40);
+    // margin inside the screen — the old disk spilled past a 390 px phone's edges. Upright, the brain lives in the
+    // screen ABOVE the caption band: its lowest fold ends before the words begin.
+    const long = Math.min(span * 1.45, (portrait ? st.free * 0.40 : W * 0.42)), short = Math.min(long * 0.74, (portrait ? W : H) * 0.40);
     const [rx, ry] = portrait ? [short, long] : [long, short];
     for (const n of nodes) {
       // the fissure was cut at sin(a)≈0; on a standing brain it has to run vertically, so the angle turns a quarter
@@ -271,17 +306,16 @@ export function startBootAnim(canvas, { onProgress } = {}) {
     }
 
     if (finishing && p >= 1 && onDone) { const f = onDone; onDone = null; f(); }
-    raf = requestAnimationFrame(frame);
+    raf = E.raf(frame);
   }
 
-  const onResize = () => layout();
   layout();
-  window.addEventListener("resize", onResize);
-  raf = requestAnimationFrame(frame);
+  const offResize = E.onResize(() => layout());
+  raf = E.raf(frame);
   return {
     setStage, finish,
     /** 0..1 — the share of the mesh grown so far: what the progress bar reports. */
     shown: () => p,
-    destroy() { cancelAnimationFrame(raf); window.removeEventListener("resize", onResize); },
+    destroy() { E.caf(raf); if (offResize) offResize(); },
   };
 }

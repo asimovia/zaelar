@@ -122,6 +122,68 @@
       .catch(function () { phase = "wake"; });
   } catch (_) { /* a probe that cannot run must not stop the narration */ }
 
+  // ── THE DRAWING, ON ITS OWN THREAD, FROM THE FIRST BYTE ─────────────────────────────────────────────────────────
+  // The brain used to start when the module graph had loaded (BootOverlay), seconds later, and on the page's own
+  // thread, so it stuttered exactly while the page was busy loading the agent. Here it starts NOW, in a worker, on a
+  // canvas handed over to it: it moves at its own pace whatever the page does. BootOverlay finds this controller and
+  // drives it (stages, finish); where a browser has no OffscreenCanvas or module workers, nothing is set and
+  // BootOverlay draws on the page as before.
+  (function () {
+    try {
+      var c = document.createElement("canvas");
+      if (!window.Worker || !c.transferControlToOffscreen) return;
+      c.className = "boot-canvas";
+      host.insertBefore(c, host.firstChild);
+      var rgb = function (name, fb) {
+        var v = "";
+        try { v = (getComputedStyle(document.documentElement).getPropertyValue(name) || "").trim(); } catch (_) {}
+        var m = /^#([0-9a-f]{6})$/i.exec(v || fb) || /^#([0-9a-f]{6})$/i.exec(fb);
+        return [0, 2, 4].map(function (i) { return parseInt(m[1].slice(i, i + 2), 16); });
+      };
+      var size = function () {
+        var r = host.getBoundingClientRect();
+        return { w: r.width, h: r.height, dpr: Math.min(window.devicePixelRatio || 1, 2) };
+      };
+      var w = new Worker("/static/app/core/boot-worker.js?v=1", { type: "module" });
+      var shown = 0, onDone = null, dead = false;
+      var fail = function () {                 // the worker could not run: the page draws it instead (BootOverlay)
+        if (dead) return;
+        dead = true;
+        try { w.terminate(); } catch (_) {}
+        try { c.remove(); } catch (_) {}
+        host.classList.remove("anim");
+        delete window.__zaelarBootAnim;
+      };
+      w.onerror = fail;
+      w.onmessage = function (e) {
+        var m = e.data || {};
+        if (m.t === "p") {                                               // it draws: the HTML ring steps aside
+          shown = m.p; host.classList.add("anim");
+          var api = window.__zaelarBootAnim;
+          if (api && api.onProgress) api.onProgress(m.p);
+        }
+        else if (m.t === "done" && onDone) { var f = onDone; onDone = null; f(); }
+      };
+      var off = c.transferControlToOffscreen();
+      w.postMessage({ t: "start", canvas: off, size: size(),
+                      reduced: !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches),
+                      colors: { accent: rgb("--hb-accent", "#3D6FE0"), accent2: rgb("--hb-accent2", "#8B5CF6"), bg: rgb("--hb-bg", "#0d1622") } }, [off]);
+      var onResize = function () { if (!dead) w.postMessage({ t: "size", size: size() }); };
+      window.addEventListener("resize", onResize);
+      window.__zaelarBootAnim = {
+        setStage: function (n) { if (!dead) w.postMessage({ t: "stage", n: n }); },
+        finish: function (cb) {
+          if (dead) { if (cb) cb(); return; }
+          onDone = cb; w.postMessage({ t: "finish" });
+          setTimeout(function () { if (onDone) { var f = onDone; onDone = null; f(); } }, 700);   // never waits on a worker that went quiet
+        },
+        shown: function () { return shown; },
+        onProgress: null,
+        destroy: function () { dead = true; window.removeEventListener("resize", onResize); try { w.postMessage({ t: "destroy" }); } catch (_) {} },
+      };
+    } catch (_) { /* no worker, no handover: BootOverlay draws on the page */ }
+  })();
+
   // BootOverlay calls this on `store.bootReady`: the narration stops and says so while the neurons burst.
   window.__zaelarBoot = {
     finish: function () {

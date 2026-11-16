@@ -44,6 +44,14 @@
 .pb-step.swap{opacity:0}
 .pb-slow{opacity:.5;font-size:12px}
 @media (prefers-reduced-motion:reduce){.pb-ring{animation:none}}
+/* A PHONE HELD UPRIGHT (operator, 2026-11-16: «el texto siempre tiene que estar en la parte de abajo… no puede quedar
+   una cosa encima de la otra»): the words live in a band at the foot of the screen and the drawing in the screen above
+   it — `CAPTION_BAND` (132px) and the centre in components/boot-anim.js::placement are these same numbers. */
+@media (orientation:portrait){
+  .pb-ring{top:calc((100% - 132px) * .5)}
+  .pb-cap{top:auto;bottom:0;height:132px;justify-content:center;box-sizing:border-box;
+    padding:0 24px calc(env(safe-area-inset-bottom, 0px) + 10px)}
+}
 
 /* ── Language onboarding (V2-101): first-run blocking modal, ABOVE the boot veil (100010) so it follows it —
    two veils in a row, never one rebuilt. `.open` shows it; `.gone` (set once the "ready" SSE phase lands)

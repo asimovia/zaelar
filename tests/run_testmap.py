@@ -6435,6 +6435,13 @@ DOMAINS: list[dict] = [
                                  "from that moment unless another screen is on, a voice session is open, a worker runs or "
                                  "a notice is due; a browser tab coming to the foreground is still not a person",
             "ch": UNIT, "paths": ["tests/browser/unit/arranque/test_opening_the_phone_app_wakes_and_leaving_it_says_so.py"]},
+        {"id": "4.554", "title": "The loader draws on its own thread from the first byte, and on a phone the words sit under "
+                                 "it (V2-925): preboot.js starts the brain in a worker on an OffscreenCanvas before any "
+                                 "module exists, it keeps growing while the page's thread is busy, the animation runs "
+                                 "with no page at all (everything comes in as its env), BootOverlay drives that one "
+                                 "animation; on a screen held upright the words live in a band at the foot and the brain "
+                                 "above it, a wide screen keeps them where they were — RENDERED",
+            "ch": UNIT, "paths": ["tests/browser/unit/arranque/test_the_loader_draws_on_its_own_thread_and_the_words_sit_under_it.py"]},
         {"id": "4.318", "title": "After a reconnect the screen adopts the engine's list of cards: an orphan it cannot "
                                  "name goes, an unlisted app closes, a listed one opens beside, and the drift is a "
                                  "widget/reconcile event (V2-825 F5, refactor2710-04 T-04) — RENDERED",

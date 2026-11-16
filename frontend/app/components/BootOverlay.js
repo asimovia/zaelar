@@ -12,7 +12,7 @@
 // completes it is `store.bootReady`: then the rest develops within GROW.FINISH_S and the veil lifts.
 import { createEffect } from "../core/reactive.js?v=2";
 import * as store from "../core/store.js?v=2";
-import { startBootAnim, STAGE_READY, BURST_MS } from "./boot-anim.js?v=4";
+import { startBootAnim, STAGE_READY, BURST_MS } from "./boot-anim.js?v=5";
 
 /** bootPhase → stage. Exported for the test. */
 export const PHASE_STAGE = { encendiendo: 2, voz: 3, memoria: 4, reflejo: 5 };
@@ -26,14 +26,21 @@ export function BootOverlay() {
   host.setAttribute("role", "progressbar");
   host.setAttribute("aria-valuemin", "0");
   host.setAttribute("aria-valuemax", "100");
-  const canvas = document.createElement("canvas");
-  canvas.className = "boot-canvas";
-  host.prepend(canvas);
   const report = (f) => host.setAttribute("aria-valuenow", String(Math.round(f * 100)));
+  // The drawing already runs on its own thread since the first byte (`core/preboot.js` → `core/boot-worker.js`): this
+  // component only DRIVES it. Without that (no OffscreenCanvas, no module worker) it draws here, on the page.
+  const offPage = (typeof window !== "undefined" && window.__zaelarBootAnim) || null;
+  let canvas = null;
+  if (!offPage) {
+    canvas = document.createElement("canvas");
+    canvas.className = "boot-canvas";
+    host.prepend(canvas);
+  }
 
   // Start once the host is laid out (a canvas measured before mount is 0×0).
   requestAnimationFrame(() => {
-    const ctrl = startBootAnim(canvas, { onProgress: report });
+    const ctrl = offPage || startBootAnim(canvas, { onProgress: report });
+    if (offPage) offPage.onProgress = report;
     host.classList.add("anim");      // the canvas draws the ring now; the HTML one steps aside
     ctrl.setStage(Math.max(2, Number(host.dataset.stage) || 0));
     report(ctrl.shown());
