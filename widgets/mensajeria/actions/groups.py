@@ -58,10 +58,10 @@ def _a_create_group(action, payload) -> dict:
                for m in (x.replace(" y ", ",").replace(" and ", ",").split(",") if isinstance(x, str) else [x])
                if not isinstance(m, str) or m.strip()]
     if platform not in _GROUP_PLATFORMS:
-        return {"ok": False, "error": "create_group necesita `platform`: 'whatsapp' o 'telegram'"}
+        return {"ok": False, "error": "create_group necesita `platform`: 'whatsapp' o 'telegram'", "missing": "platform"}
     if not name or not (members or payload.get("group")):
         return {"ok": False, "error": "create_group necesita `name` (cómo se llama el grupo) y `members` "
-                                      "(los nombres de las personas)"}
+                                      "(los nombres de las personas)", "missing": "name" if not name else "members"}
     resolved, problems = [], []
     for who in _by_id(members, payload)[:50]:
         if isinstance(who, dict):         # a directory row named by its id: its own channel, never its name again

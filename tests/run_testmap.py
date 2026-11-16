@@ -5380,13 +5380,15 @@ DOMAINS: list[dict] = [
                                  "several people are his only when every one is; the card rule reads a blank list as no value",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/turn/test_a_leaving_act_is_read_by_its_declaration.py"]},
-        {"id": "2.1783", "title": "What a retained leaving act lacks is what the action DECLARES (V2-919 M2): a field its "
-                                 "payload marks optional is never asked (one reader of both spellings, "
-                                 "payload_fill.declared_optional), the person always is; a complete call (a list of people he "
-                                 "named, a name, a channel — es, en, one person and two) runs on its row with no question and no "
-                                 "worker; the list in his answer, or in the answering turn's own call, fills the row that waited "
-                                 "and it runs; another field that lacks is asked by its declared label on the same row, never "
-                                 "handed to a worker",
+        {"id": "2.1783", "title": "The hand-off of a leaving act requires only what the exit door judges (V2-919 M2): the "
+                                 "person it reaches always, a composed text unless the action declares it optional (one "
+                                 "reader of both spellings, payload_fill.declared_optional); every other field is the "
+                                 "widget's to know — never a new question here; a complete call (a list of people he named, "
+                                 "a name, a channel — es, en, one person and two) runs on its row with no question and no "
+                                 "worker; the list in his answer, or in the answering turn's own call, fills the row that "
+                                 "waited and it runs; a merge or an answer that leaves the person lacking asks it on the same "
+                                 "row (never a worker, never a row waiting on no question); a slot with no send line asks by "
+                                 "its declared label",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/turn/test_a_complete_leaving_call_runs_on_its_row.py",
                       "tests/agent_headless/unit/turn/test_a_leaving_act_is_read_by_its_declaration.py"]},

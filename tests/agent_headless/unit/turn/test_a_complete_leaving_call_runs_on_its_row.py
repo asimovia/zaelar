@@ -8,11 +8,11 @@ hand-off asked the send's question about a recipient (the list read as empty) an
   · a field the action declares optional (`text` of a group) is never asked;
   · the list arriving in his ANSWER fills that field on the SAME row, as an item the card splits, and the row runs;
     so does the answering turn's own call carrying the list;
-  · another declared field that lacks (the channel) is asked by its declared label on the same row, never handed to
-    a worker; his answer fills it and the row runs.
+  · the hand-off asks only what the exit door judges (the person, a text it must carry): a field the widget knows
+    (the channel) is never a new question here; a slot with no send line of its own asks by its declared label.
 
 Disarmed (seen red): `send_task.required` back to the send's rules → the optional text is asked; `_go_on` back to the
-worker → the second field opens a worker.
+worker → his answer that completes the person opens a worker.
 """
 from __future__ import annotations
 
@@ -136,31 +136,65 @@ def test_the_answering_turns_call_with_the_list_fills_the_row(world, lang, monke
 
 
 @pytest.mark.parametrize("lang", ["es", "en"])
-def test_another_declared_field_is_asked_by_its_label_on_the_same_row(world, lang, monkeypatch):
+def test_a_field_the_exit_door_does_not_judge_is_never_asked_in_the_hand_off(world, lang, monkeypatch):
+    """The channel of a group is the widget's to know: a call without it runs, and the widget refuses it if it must."""
     monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
     w = WORDS[lang]
     _say(w["nochan"])
     uid = send_task.commission(WID, ACT, {"name": "Cena", "members": ["Ana Prat"]}, w["nochan"])
-    asks = _asks(world)
-    assert world["ran"] == [] and len(asks) == 1
-    from i18n import langs
-    from nucleo.flash import payload_fill
-    label = payload_fill._payload_spec(WID, ACT)["platform"]
-    assert asks[0]["text"] == langs.spec(lang).send_missing_field.format(field=label, who="Ana Prat")
-    entry = asker.artefact(uid)
-    assert entry["retained"]["slot"] == "platform"
-    got = send_task_answer.answered(uid, entry, "whatsapp")
-    assert got["ok"] and "worker" not in got and world["ran"] == [uid] and len(_rows()) == 1
+    assert world["ran"] == [uid] and _asks(world) == [] and len(_rows()) == 1
 
 
-def test_a_second_field_that_lacks_after_an_answer_is_asked_not_composed(world, monkeypatch):
+def test_an_answer_that_completes_the_person_runs_the_row_with_no_worker(world, monkeypatch):
     monkeypatch.setenv("ZAELAR_LANGUAGE", "en")
-    said = "make a group called Dinner"
+    said = "make a WhatsApp group called Dinner"
     _say(said)
-    uid = send_task.commission(WID, ACT, {"name": "Dinner"}, said)
+    uid = send_task.commission(WID, ACT, {"name": "Dinner", "platform": "whatsapp"}, said, reading=READING)
     first = asker.artefact(uid)
     assert first["retained"]["slot"] == "members"
     got = send_task_answer.answered(uid, first, "Ana Prat")
+    assert got["ok"] and "worker" not in got and world["ran"] == [uid] and len(_rows()) == 1
+
+
+def test_a_slot_with_no_line_of_its_own_is_asked_by_its_declared_label(monkeypatch):
+    """A3: only a send's person and words have their own line; any other slot asks ONE generic line naming the field
+    by its declared label — never a raw `slot? (who)`."""
+    from i18n import langs
+    from nucleo.flash import payload_fill
+    from nucleo.request import send_task_fields
+    for lang in ("es", "en"):
+        monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
+        art = {"widget": "mensajeria", "action": "send_draft", "payload": {"contact": "Ana Prat"},
+               "slots": {"draft": {"key": "key", "rule": "held", "source": "none"}}}
+        label = " ".join(str(payload_fill._payload_spec("mensajeria", "send_draft")["key"]).split())
+        assert send_task_fields._missing_line(art, "draft") == \
+            langs.spec(lang).send_missing_field.format(field=label, who="Ana Prat")
+
+
+@pytest.mark.parametrize("lang", ["es", "en"])
+def test_a_merge_that_leaves_a_slot_lacking_asks_it_on_the_same_row(world, lang, monkeypatch):
+    """`take_call` re-reads what lacks AFTER the merge: the answering turn's call names the person, the text still
+    lacks — the row asks for it, never waits on a question nobody asked (es, en; a send, not a group)."""
+    monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
+    said = "mándale un mensaje" if lang == "es" else "send a message"
+    _say(said)
+    uid = send_task.commission(WID, "send_to", {}, said)
+    assert asker.artefact(uid)["retained"]["slot"] == "contact"
+    _say("a Ana Prat" if lang == "es" else "to Ana Prat")
+    assert send_task_answer.take_call(WID, "send_to", {"contact": "Ana Prat"}, "Ana Prat") == uid
+    entry = asker.artefact(uid)
+    assert entry["retained"]["slot"] == "text" and entry.get("state") != "answered", "a NEW question on the row"
+    assert world["ran"] == [] and len(_rows()) == 1
+
+
+def test_a_person_still_lacking_after_an_answer_is_asked_never_composed(world, monkeypatch):
+    """A worker composes only a TEXT he did not dictate; a person that still lacks after an answer is asked on the
+    same row (a worker never picks whom an act reaches)."""
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "en")
+    said = "send a message"
+    _say(said)
+    uid = send_task.retain(WID, "send_to", {}, said)
+    send_task._question(uid, send_task.artefact(uid), "text", "text")
+    got = send_task_answer.answered(uid, asker.artefact(uid), "running late")
     assert got.get("asked") and "worker" not in got and world["ran"] == []
-    assert asker.artefact(uid)["retained"]["slot"] == "platform", "the next declared field, on the same row"
-    assert len(_rows()) == 1
+    assert asker.artefact(uid)["retained"]["slot"] == "contact" and len(_rows()) == 1
