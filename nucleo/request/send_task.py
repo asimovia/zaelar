@@ -28,6 +28,7 @@ from a stranger — the protection that matters (`exit_slots`, `exit_gate.gate`)
 from __future__ import annotations
 
 from nucleo.play import shadow as _play
+from nucleo.request.slot_values import _each, filled  # noqa: F401 — `filled` is read here by name
 from nucleo.request import base, event as _emit, note, send_task_who
 
 #: The retained kind on the row's `ask` artefact: his answer fills a slot of THIS task (`inline_ask.rerun`).
@@ -77,16 +78,15 @@ def sources(wid: str, action: str, payload: dict, said: str, *, reading=None) ->
     for slot, d in exit_slots.declared(base(wid), action).items():
         key, rule = str(d.get("key") or slot), str(d.get("from") or "")
         v = payload.get(key)
-        has = isinstance(v, str) and bool(v.strip())
-        if not has:
+        if not filled(v):
             src = NONE
-        elif rule == "his_words":
+        elif rule == "his_words":           # several people: his only when EVERY one is (as the exit door reads it)
             from nucleo.acts import message
-            src = HIS if message.is_his(v, [said]) else AGENT
+            src = HIS if all(isinstance(x, str) and message.is_his(x, [said]) for x in _each(v)) else AGENT
         elif rule == "reading":
             src = READING if (_reading_names(reading, v) or his_text(v, said)) else AGENT
         elif rule == "composed":
-            src = HIS if his_text(v, said) else AGENT
+            src = HIS if his_text(" ".join(map(str, _each(v))), said) else AGENT
         else:
             src = "card"
         out[slot] = {"key": key, "rule": rule, "source": src}
@@ -108,10 +108,15 @@ def _reading_names(reading, value) -> bool:
 
 
 def missing(art: dict) -> tuple[str, str]:
-    """The first required slot with no value: `(slot, payload key)`, or `("", "")` when the act may run."""
+    """The first required slot with no value: `(slot, payload key)`, or `("", "")` when the act may run. A slot whose
+    payload field the action declares OPTIONAL is never asked for (`create_group`'s first message)."""
+    from nucleo.flash import payload_fill
+    spec = payload_fill._payload_spec(str(art.get("widget") or ""), str(art.get("action") or ""))
     for slot, d in (art.get("slots") or {}).items():
-        if str(d.get("rule") or "") in REQUIRED_RULES and str(d.get("source") or NONE) == NONE:
-            return slot, str(d.get("key") or slot)
+        key = str(d.get("key") or slot)
+        if str(d.get("rule") or "") in REQUIRED_RULES and str(d.get("source") or NONE) == NONE \
+                and not payload_fill.declared_optional(spec.get(key)):
+            return slot, key
     return "", ""
 
 

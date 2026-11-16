@@ -129,8 +129,8 @@ def required(wid: str, act: str, fields: dict) -> list[str]:
     from nucleo.flash import payload_fill
     from widgets import field_types
     typed = field_types.declared(payload_fill._base_of(wid), act)
-    return [k for k, d in fields.items() if k not in typed and not payload_fill._optional(d)
-            and not str(d or "").lower().lstrip().startswith(("opcional", "optional"))][:_FIELDS_SHOWN]
+    return [k for k, d in fields.items()
+            if k not in typed and not payload_fill.declared_optional(d)][:_FIELDS_SHOWN]
 
 
 def parts(uid: str, context: dict | None, reading: dict | None, trace: str = "", seen: str = "") -> list[str]:
