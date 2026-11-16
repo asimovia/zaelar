@@ -225,11 +225,12 @@ def _apply_widget_data(wid: str, action_name: str, payload: dict, ref: str='', *
     # only to be drafted. Both leaving (the verdict `send_to`, the model `reply`) → the task below decides.
     if _verdict_instead(wid, action_name, payload, _brief, text, emit, acted, _apply_widget_data, leaving=True):
         return
-    if (_twin := __import__("nucleo.request.channel_twin", fromlist=["x"]).twin(wid, action_name, payload, _brief)):
+    if (_twin := __import__("nucleo.request.channel_twin", fromlist=["x"]).twin(wid, action_name, payload, _brief, text)):
         emit("brain", "📇 no channel named: the act its card declares for that", text=f"{wid}:{action_name} → "
              f"{_twin[0]}:{_twin[1]}", role="system", extra={"cat": "flash", "from": f"{wid}:{action_name}",
                                                             "to": f"{_twin[0]}:{_twin[1]}"})
         __import__("nucleo.turn.rerouted", fromlist=["x"]).note(wid, action_name)   # its card answers for it
+        __import__("nucleo.request.clarified", fromlist=["x"]).answered(wid, _twin[0])   # our question about it closes
         return _apply_widget_data(_twin[0], _twin[1], _twin[2])
     if _leaving_is_a_task(wid, action_name, text, escalate_req, emit, payload=payload, brief=_brief):   # V2-852 M2
         return
