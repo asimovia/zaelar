@@ -12,9 +12,16 @@
 // No imports on purpose: the session engine hands in how to acquire and adopt a stream, and a node test drives it.
 // ============================================================================
 
+// REVIVE (2026-11-16). The system can take the device too: iOS ends the capture track when it interrupts the audio
+// session, and the page kept publishing a dead track. `revive()` is the same reacquire for a track the SYSTEM lost
+// (the mic stays open: he never closed it), bounded — `REVIVE_MAX` tries in `REVIVE_WINDOW_MS` — so a device that
+// keeps dying is left red for his tap instead of being asked for in a loop.
+export const REVIVE_MAX = 3;
+export const REVIVE_WINDOW_MS = 60000;
+
 /** `acquire()` → a fresh MediaStream; `adopt(stream)` swaps it into the session; `log(what, err)` is the audit. */
-export function createMicDevice({ acquire, adopt, log = () => {} }) {
-  let released = false, pending = null;
+export function createMicDevice({ acquire, adopt, log = () => {}, now = () => Date.now() }) {
+  let released = false, pending = null, revives = [];
   return {
     released: () => released,
     /** A new capture (a session start) owns the device again. */
@@ -29,6 +36,16 @@ export function createMicDevice({ acquire, adopt, log = () => {} }) {
     },
     /** Ask for the device again and adopt it. `isStale()` is read once the browser answered: a session stopped, or
      *  the mic closed again, meanwhile — the fresh stream is closed at once and the device stays released. */
+    /** The system lost the track: take the device again (bounded). `force` = his tap, which always gets a try. */
+    revive(isStale = () => false, { force = false } = {}) {
+      const t = now();
+      revives = revives.filter((at) => t - at < REVIVE_WINDOW_MS);
+      if (!force && revives.length >= REVIVE_MAX) { log("revive_bounded"); return Promise.resolve(false); }
+      revives.push(t);
+      released = true;
+      log("revive");
+      return this.reacquire(isStale);
+    },
     reacquire(isStale = () => false) {
       if (!released) return Promise.resolve(false);
       if (pending) return pending;

@@ -114,6 +114,19 @@ body {
    one shell can read the other without learning a second vocabulary. */
 .zm-ic.on { color: var(--hb-accent); }
 .zm-ic.off { color: var(--hb-muted-2); }
+/* 2026-11-16 — NO USABLE MICROPHONE: red, slashed glyph (DockBar.js), red disc that pulses. Never the grey of his own
+   mute. A tap recovers it; the line above the dock (.zm-micnote) says why in words. */
+.zm-ic.problem, .zm-ic.problem.on, .zm-ic.problem.off { color: var(--hb-risk);
+  background: color-mix(in srgb, var(--hb-risk) 22%, transparent); box-shadow: 0 0 0 2px var(--hb-risk);
+  animation: zm-mic-fault 1.4s ease-in-out infinite; }
+.zm-ic.problem svg path:last-child { stroke-width: 2.6; }
+@keyframes zm-mic-fault { 0%, 100% { box-shadow: 0 0 0 2px var(--hb-risk); }
+  50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--hb-risk) 35%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .zm-ic.problem { animation: none; } }
+.zm-micnote { position: fixed; left: 16px; right: 16px; bottom: calc(var(--dock-h, 76px) + 8px); z-index: 30;
+  padding: 8px 12px; border-radius: 12px; background: var(--hb-risk); color: #fff; font: 600 13px/1.35 var(--sans);
+  text-align: center; opacity: 0; pointer-events: none; transition: opacity .2s; }
+.zm-micnote.show { opacity: 1; }
 .zm-ic:active { transform: scale(.92); background: var(--hb-bubble); }
 
 /* ⏻ IN THE CENTRE SLOT — what a STOPPED agent looks like. It is alone there on purpose: with the agent stopped

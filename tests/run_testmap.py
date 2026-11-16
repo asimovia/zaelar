@@ -2319,6 +2319,23 @@ DOMAINS: list[dict] = [
                                  "client event, clears by itself — and a deliberate mute is not red",
             "ch": UNIT,
             "paths": ["tests/browser/unit/voice/test_a_device_problem_turns_its_icon_red.py"]},
+        # V2-910 — the system can take the microphone from a live session (iOS ends or mutes the capture track on an
+        # audio interruption) and the page went on publishing a dead track; the phone's dock drew no fault at all.
+        {"id": "3.234", "title": "A capture track the system ends (or mutes past its grace, or found dead on return to "
+                                 "the front) is taken again and swapped into the publication, bounded; a mic with no "
+                                 "usable microphone (permission, device, dead track, no agent in the room) is RED and "
+                                 "SLASHED on both shells, its tap recovers it, and a refused permission says in one "
+                                 "sentence where to allow it — the iOS app opens its settings (V2-910)",
+            "ch": UNIT,
+            "paths": ["tests/browser/unit/voice/test_a_dead_mic_is_taken_again.py"]},
+        # V2-910 — a host suspended with a voice room open woke with a LiveKit job the server had ended; the worker
+        # re-registered, reported it, was dropped, and looped — rooms asked for after the resume never got an agent.
+        {"id": "3.235", "title": "No voice room outlives a freeze: the sleep closes the live room before the host is "
+                                 "suspended, a room still live on a resume is closed (or the voice recycled), rooms the "
+                                 "token door minted and no agent joined get the voice recycled unless a person is in "
+                                 "the live room, and the voice never speaks into an empty room (V2-910)",
+            "ch": UNIT,
+            "paths": ["tests/voice/unit/test_no_voice_room_outlives_a_freeze.py"]},
         {"id": "3.120", "title": "A word table never turns an empty promise into a worker — both channels (V2-802 T-07, CRIT-K1; A7: never at all — the promise lane's word tables, its window lookback and the hand-back reader of our own reply went, an errand opens by the model's call or a verdict at the act floor; an act is owed (`reply.owes_an_act`), routed (`route_by_verdict`: the licence holds only a model call that LEAVES — C9's band —, words and calls that stay are never overruled under the floor), bound to a waiting task by the verdict alone (the model's own `answer_worker` is completed at the licence, K2), claimed as a send (the order AND the act at the floor, and a reading that backs a send) or shown at ONE floor, `verdicts.act_floor` = `consent.intent_act_at`; disarmed (the `_wt == \"go\"` branch back, or `owes_an_act` at the licence) → red)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_word_table_never_overrules_a_confident_inline.py"]},
         # V2-807 T-16 — a request for a capability no card declares is answered «not yet» at the errand portal (the
