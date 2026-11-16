@@ -63,7 +63,8 @@ async def run(uid: str) -> dict:
         from i18n import langs
         q = langs.current_language().send_channel_which.format(his=two[0].capitalize(), other=two[1].capitalize())
         _play.door(uid, "asked", art)
-        return {"ok": False, "asked": _question(uid, art, "channel", "channel", q, two), "row": uid}
+        key = str(((art.get("slots") or {}).get("channel") or {}).get("key") or "channel")   # the DECLARED key
+        return {"ok": False, "asked": _question(uid, art, "channel", key, q, two), "row": uid}
     if ex.question:
         from nucleo import consent
         _play.door(uid, "asked", art)
