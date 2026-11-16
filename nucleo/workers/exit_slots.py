@@ -16,7 +16,8 @@ a new card that leaves needs no new code here:
     name he never said is asked on his behalf, never rewritten (V2-887);
   · `reading`   — the commissioning turn's reading names it (`message_channel.his_channel`): his sure reading
     replaces the call's own;
-  · `held`      — the row he saw and surely ordered (`message.confirmed`): his order over it is the yes;
+  · `held`      — the row he saw and surely ordered (`message.confirmed`): his order over it is the yes; with no
+    sure order the slot is `unknown` and the exit asks;
   · `card`      — the card itself answers it (a list number the card turns into a person): read, never rewritten;
   · `composed`  — the worker writes it (a body): read, never rewritten.
 
@@ -155,11 +156,19 @@ def _held(ctx: dict, out: Reading, slot: str, key: str) -> None:
     worker, whose turn is not the task's — the order that turn recorded over the same row."""
     from nucleo.acts import message
     wid, act, inner, turn = ctx["wid"], ctx["act"], out.inner, ctx["turn"]
-    if (turn is not None and message.confirmed(wid, act, inner, turn)) or message.confirmed(wid, act, inner, None):
+    # The commissioning turn's order covers the row as HE completed it: a value a later turn's call put on the row
+    # was never part of what he ordered (`order_void`, set by the hand-off), so that order is not read again.
+    if getattr(ctx["rec"], "order_void", False):
+        turn = None
+    if (turn is not None and message.confirmed(wid, act, inner, turn)) or (
+            not getattr(ctx["rec"], "order_void", False) and message.confirmed(wid, act, inner, None)):
         out.released = True
         out.sources[slot] = "held"
     else:
-        out.sources[slot] = _own(ctx, inner.get(key) or inner.get("contact"))
+        # A held row nobody surely ordered to deliver is UNREAD, not the agent's own: the exit asks (the taint's
+        # question when a stranger's text was read). It read `agent`, which asks nothing when the person is his.
+        own = _own(ctx, inner.get(key) or inner.get("contact"))
+        out.sources[slot] = "unknown" if own == "agent" else own
 
 
 #: The closed table of source rules a manifest's `slots` may name, keyed by each rule's own function name and IN ORDER:

@@ -28,7 +28,25 @@ def _rec(uid: str, art: dict):
                            trace_id=str(row.get("trace_id") or ""), surface=str(row.get("surface") or ""),
                            sheet=str(row.get("sheet") or ""), mandate={}, reading=art.get("reading"),
                            playbook_chosen=PLAYBOOK, done_when=dict(e.get("done_when") or {}),
-                           heard=[w for w in (art.get("heard") or [_words_of(uid)]) if w], own_words=True)
+                           heard=[w for w in (art.get("heard") or [_words_of(uid)]) if w], own_words=True,
+                           order_void=bool(art.get("order_void")))
+
+
+def stamp(payload: dict | None) -> str:
+    """What his yes was said about: the act's payload as it stood, order-free. A payload that changed since is another
+    act and is asked again."""
+    import hashlib
+    import json
+    return hashlib.sha256(json.dumps(payload or {}, sort_keys=True, ensure_ascii=False, default=str).encode()).hexdigest()[:16]
+
+
+def consented(uid: str) -> None:
+    """His yes to the exit door's question about this row's act: kept on the row with what it was said about, so the
+    door's same question is the one he answered when the act crosses it again (as a worker's retained act does)."""
+    from nucleo.request.send_task import _keep
+    art = artefact(uid)
+    art["consented"] = stamp(art.get("payload"))
+    _keep(uid, art)
 
 
 
@@ -65,7 +83,7 @@ async def run(uid: str) -> dict:
         _play.door(uid, "asked", art)
         key = str(((art.get("slots") or {}).get("channel") or {}).get("key") or "channel")   # the DECLARED key
         return {"ok": False, "asked": _question(uid, art, "channel", key, q, two), "row": uid}
-    if ex.question:
+    if ex.question and art.get("consented") != stamp(payload):   # his yes about THIS payload answered it already
         from nucleo import consent
         _play.door(uid, "asked", art)
         ask_id = _question(uid, art, "consent", "", ex.question, consent=consent.ASK_CONSENT)

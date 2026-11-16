@@ -82,8 +82,10 @@ def answered(uid: str, entry: dict, text: str, choice: int | None = None) -> dic
         if said != "yes":
             circuit.settle(row=uid, state="cancelled", outcome="he did not confirm it")
             return {"ok": False, "row": uid}
+        from nucleo.request.send_task_run import consented
         from nucleo.workers import taint
         taint.cleared(_rec(uid, artefact(uid)))
+        consented(uid)          # his yes answers the door's question about THIS payload: it is not asked again
         _schedule(uid)
         return {"ok": True, "row": uid}
     key, slot = str(retained.get("slot") or ""), str(retained.get("slot_name") or "")
@@ -229,6 +231,8 @@ def take_call(wid: str, action: str, payload: dict | None, said: str) -> str:
                 k = str(d.get("key") or s)
                 if d["source"] == AGENT and str((before.get(s) or {}).get("source")) == HIS and merged.get(k) == held.get(k):
                     d["source"] = HIS
+            if merged != held:    # a value the answering turn's CALL put on the row is not part of what he ordered:
+                keep["order_void"] = True     # his order over a held row is not read for it — the exit asks
             _keep(uid, keep)
             _end_state(uid, wid, action, merged, said)
             _go_on(uid, keep)    # missing re-read AFTER the merge: a row never waits on a question nobody asked

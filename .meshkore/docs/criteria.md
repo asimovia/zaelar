@@ -279,6 +279,13 @@ below is the first kind, or it names the mechanism that replaced the second.
   only. A pending confirmation lives in the conversation (voice or the chat's Yes/No resolve the same row), never
   also on the card; the confirmed act owes its declared end state (`send_draft.done_when`: a sent row for that
   recipient), so «confirmed» and «done» are judged apart. — since 2026-10-26 · nodes 2.806, 2.807 · `widgets/mensajeria/held.py`, `nucleo/consent.decide`.
+- **CRIT-C9b · A held row nobody surely ordered is asked at the exit, and his yes is kept.** A declared `held` slot
+  that his order did not release reads `unknown` at the exit door (`stranger` after a stranger's text), so the act's own
+  question is asked; the commissioning turn's order covers the row as his answers completed it and is void for a value
+  a later turn's call put on it (`order_void`). His yes to the door's question is kept on the row with the payload it
+  was said about (`send_task_run.consented`): the act runs once, the question he answered is not asked again, a payload
+  changed since is. — since 2026-11-16 · node 2.1787 · `nucleo/workers/exit_slots.py`, `nucleo/request/send_task_run.py`,
+  `nucleo/request/send_task_answer.py`.
 - **CRIT-C10 · Every act that reaches the real world reads ONE door, and his rules override its defaults.** A widget's
   act through `frontend.action_verdict`; a cluster message, an errand's reply and a worker's click through
   `consent.decide_act(class, channel)` — `messaging.send_new@<channel>`, `web.commit`, `payment.authorize`, defaults

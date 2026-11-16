@@ -5403,10 +5403,18 @@ DOMAINS: list[dict] = [
                                  "whose call names nobody asks «to whom» on its row and sends nothing (the person a leaving "
                                  "act reaches is required whatever the payload declares; es, en); compose keeps its "
                                  "done_when_unreadable and a retained compose is refused at checkpoint 1 — nothing reaches the "
-                                 "widget's door, with or without send: true; an unread payload declaration fails toward asking; OPEN (xfail strict): a "
-                                 "question about a held draft answered by the model's own call (take_call) still sends it",
+                                 "widget's door, with or without send: true; an unread payload declaration fails toward asking; a "
+                                 "question about a held draft answered by the model's own call (take_call) sends nothing",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/turn/test_the_set_aside_regressions_stay_closed.py"]},
+        {"id": "2.1787", "title": "The exit door asks about a held row nobody surely ordered to deliver, and keeps his yes "
+                                 "(V2-922): an unreleased `held` slot reads unknown (stranger when tainted), never the "
+                                 "agent's own, so the act's own question is asked; the commissioning turn's order covers the "
+                                 "row as HIS answers completed it and is void for a value a later turn's call added; his yes "
+                                 "to the door's question is kept on the row, stamped with the payload it was said about — the "
+                                 "act runs once, the same question never returns, a changed payload is asked (es, en)",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/turn/test_the_exit_door_asks_about_an_unordered_held_row_and_keeps_his_yes.py"]},
         {"id": "2.1786", "title": "A list field and a channel field keep the shape and the key their action declares through "
                                  "every question (V2-919 audit): «which one?» is never asked about one name of a declared "
                                  "list — its ambiguity is the widget's to refuse — and an answer never replaces a list that "
