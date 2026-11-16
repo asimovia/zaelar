@@ -504,10 +504,12 @@
       "confirm": false
     },
     "add_list": {
-      "desc": "CREA una lista de tareas nueva («hazme una lista de la compra», «una lista para el viaje»). Queda numerada y con su propio identificador; si ya existe una con ese nombre, devuelve esa",
+      "desc": "CREA una lista de tareas nueva («hazme una lista de la compra», «una lista para el viaje»). Queda numerada y con su propio identificador; si ya existe una con ese nombre, devuelve esa. Con `items`, apunta en ella lo que él diga («añade a la lista de la compra leche y pan»)",
       "payload": {
-        "name": "cómo la llama él: «la compra», «casa», «viaje a Roma»"
+        "name": "cómo la llama él: «la compra», «casa», «viaje a Roma»",
+        "items": ["opcional: cada cosa que apuntar en ella, tal como la dice"]
       },
+      "done_when": {"all": [{"widget": "agenda", "collection": "taskLists", "where": {"name~": "{name}"}, "expect": "present"}]},
       "confirm": false
     },
     "rename_list": {
