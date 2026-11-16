@@ -395,6 +395,7 @@
         "category": "trabajo | personal | salud | social | viaje | …",
         "notes": "detalles",
         "newTitle": "el título NUEVO al renombrarla",
+        "allDay": "true si pasa a ser de todo el día (opcional)",
         "meet": "true si la cita lleva videollamada de Google Meet — se crea el enlace con la cita y se ve en la app (solo si el calendario de Google está conectado)",
         "repeat": "weekly | daily | monthly | none",
         "days": "días de la semana (si es weekly)",
