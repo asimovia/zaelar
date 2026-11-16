@@ -212,3 +212,26 @@ def test_the_retained_group_crosses_the_exit_door_by_its_end_state(card, monkeyp
     model._TURN.set(None)
     untrusted.reset()
     his_words.reset()
+
+
+@pytest.mark.parametrize("act,payload", [("send_to", {"contact": "Rowan", "text": "hi"}),
+                                         ("forward", {"contact": "Rowan", "text": "fyi", "from": "Ana"}),
+                                         ("send_draft", {"contact": "Rowan"})])
+def test_a_group_row_and_a_send_row_never_answer_for_each_other(card, act, payload):
+    """The receipt names its class: a group called like a person never settles that person's send, and her send never
+    settles a group of her name (the class is declared by whoever opens the row, never inferred)."""
+    md = card
+    from widgets.mensajeria import sent as _sent
+    send_dw = spec.render("mensajeria", act, payload)
+    group_dw = spec.render("mensajeria", "create_group", {"platform": "whatsapp", "name": "Rowan", "members": ["Ana"]})
+    ref = md.apply_action("create_group", {"platform": "whatsapp", "name": "Rowan", "members": ["Ana Prat"]})["result"]["ref"]
+    _owner_applies("_apply_chats", [{"platform": "whatsapp", "chats": [{"chatId": "g@g.us", "name": "Rowan", "ref": ref}]}])
+    assert verify.check(group_dw) is True
+    assert verify.check(send_dw) is False, "the group's receipt is not a message to Rowan"
+    db = md.load_db()
+    _sent.outbox_queue(db, "ref-send", "whatsapp", "34600@s.whatsapp.net", "", "hi", name="Rowan")
+    _sent.outbox_settle(db, "ref-send", True)
+    md.store.save(md.WIDGET_ID, db)
+    assert verify.check(send_dw) is True
+    group_dw2 = spec.render("mensajeria", "create_group", {"platform": "whatsapp", "name": "Rowan", "members": ["Ana"]})
+    assert verify.check(group_dw2) is False, "her message is not a new group of her name"

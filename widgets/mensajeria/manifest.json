@@ -237,6 +237,7 @@
             "collection": "outbox",
             "where": {
               "name|contactId|chatId~": "{contact}",
+              "kind!": "group",
               "state": "sent"
             },
             "expect": "added"
@@ -294,6 +295,7 @@
         "where": {
           "name|contactId|chatId~": "{contact}",
           "platform": "{channel?}",
+          "kind!": "group",
           "state": "sent"
         },
         "expect": "added"
@@ -320,7 +322,7 @@
         "present.mount",
         "external.send"
       ],
-      "done_when": {"widget": "mensajeria", "collection": "outbox", "where": {"name": "{name}", "state": "sent"}, "expect": "added"}
+      "done_when": {"widget": "mensajeria", "collection": "outbox", "where": {"name": "{name}", "kind": "group", "state": "sent"}, "expect": "added"}
     },
     "forward": {
       "ref": "from",
@@ -344,6 +346,7 @@
         "where": {
           "name|contactId|chatId~": "{contact}",
           "platform": "{channel?}",
+          "kind!": "group",
           "state": "sent"
         },
         "expect": "added"
