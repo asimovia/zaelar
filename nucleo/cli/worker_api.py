@@ -105,6 +105,9 @@ async def _one_act(rec, action: str, payload: dict) -> dict:
     if (_held := missing_datum.held(rec, action)):
         return {"ok": False, "denied": True, "error": _held}
 
+    if action == "state":           # the brief's state block, fresh: channels, open widgets, tasks, clusters
+        from nucleo.workers import state_now
+        return {"ok": True, "result": state_now.snapshot(str(getattr(rec, "uid", "") or ""))}
     if action == "ask_user":
         missing_datum.clear(rec)
         q = (payload or {}).get("question") or (payload or {}).get("text") or ""
