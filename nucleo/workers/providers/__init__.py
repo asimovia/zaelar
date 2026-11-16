@@ -45,8 +45,7 @@ KNOWN: list[dict] = [
 
 def _known_from_table() -> list[dict]:
     from config import models as _tabla
-    # The table's optional `lead` (a Claude subscription token) goes first; like every rung it only joins the chain
-    # where its credential resolves, so without it the chain is the titular and its stand-in, as always.
+    # The table's optional `lead` goes first, and like every rung only where its own credential resolves.
     return _tabla.chain_for("brain_worker", names=("z.ai", "deepseek"), lead_name=SUBSCRIPTION_TIER)
 
 
@@ -113,7 +112,7 @@ def chain() -> list[dict]:
         head = (cfg.get("base_url") or "").strip()
         known = [dict(k) for k in KNOWN]
         if head:                                    # el configurado manda, esté o no en el catálogo
-            match = next((k for k in known if k["base_url"] == head), None)
+            match = next((k for k in known if k["base_url"] == head and not k.get("lead")), None)
             if match:
                 known.remove(match)
                 tiers.append(match)
@@ -164,7 +163,8 @@ def _with_measured_traits(tier: dict) -> dict:
     `base_url` first — the endpoint IS the identity, a renamed copy is still the same provider — and by name
     as a fallback.
     """
-    known = next((k for k in KNOWN if k.get("base_url") and k["base_url"] == (tier.get("base_url") or "")), None)
+    base = tier.get("base_url") or ""        # the subscription rung (`lead`) is declared, never matched by URL
+    known = next((k for k in KNOWN if base and k.get("base_url") == base and not k.get("lead")), None)
     if known is None:
         known = next((k for k in KNOWN if k.get("name") == tier.get("name")), None)
     if known is None:
@@ -178,7 +178,7 @@ def _with_measured_traits(tier: dict) -> dict:
 #: Facts about what a provider CAN DO, as opposed to which one we prefer. These travel with the endpoint; the
 #: order does not. Kept as a list rather than "copy everything missing" so that adding a catalogue key is a
 #: deliberate act: silently inheriting `plan` or `model` would override what the operator chose on purpose.
-_MEASURED_TRAITS = ("vision", "fast_model", "auth")
+_MEASURED_TRAITS = ("vision", "fast_model")
 
 
 def pick() -> dict | None:
