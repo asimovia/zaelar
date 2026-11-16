@@ -158,6 +158,8 @@ async def answer(corr_id: str, text: str, *, resume: bool = True, choice: int | 
             else:
                 with _taint.during(rec, source=str(retained["action"])):
                     e["result"] = await _m._exec_allow(retained["action"], payload, rec)
+                from nucleo.workers import missing_datum     # his yes ran it: the hold reads it as the bridge does
+                e["result"] = missing_datum.after(rec, str(retained["action"]), payload, e["result"])
             from nucleo.workers import task_files      # his yes ran it: its artefact on the task, at the door
             task_files.record(rec, str(retained["action"]), payload, e["result"])
             task_files.said(rec, str(retained["action"]), payload, e["result"])
