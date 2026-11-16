@@ -190,7 +190,7 @@ def test_the_lines_keep_their_budget(probe):
             assert _snap(app=f"share{i}", dev=d, **big)[0] == 200
     got = state_render.lines([f"share{i}" for i in range(6)] + ["probe"])
     assert all(len(ln) <= state_render.CLAUSE_MAX + 2 for ln in got), [len(ln) for ln in got]
-    assert sum(len(ln) + 1 for ln in got) <= state_render.TOTAL_MAX + 40 and got[-1].endswith("more apps not shown)")
+    assert sum(len(ln) + 1 for ln in got) <= state_render.TOTAL_MAX + 40 and got[-1].endswith("more widgets not shown)")
     assert "facts:" in got[0], "the facts were cut before the fields"
 
 

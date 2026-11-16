@@ -81,7 +81,7 @@ _METHOD_BLOCK = (
     "características y enlaces. El operador mira una pantalla: algo que solo se DICE por voz es una entrega a "
     "medias y se pierde en cuanto acaba la frase. **NUNCA escribas un widget nuevo para PRESENTAR datos** — esta "
     "hoja ya existe y sirve para cualquier tema; programar un componente solo se justifica si el operador pidió "
-    "FUNCIONALIDAD que no existe y que él maneja (un juego, un contador, una mini-app). Hazlo con la superficie "
+    "FUNCIONALIDAD que no existe y que él maneja (un juego, un contador, un mini-widget). Hazlo con la superficie "
     "genérica de presentación: "
     "`python -m nucleo.cli.widget read results` (te devuelve su contrato y la forma EXACTA del payload) → "
     "entrégalo en DOS pasos, que es la ÚNICA forma probada que pasa los guardas:\n"
@@ -111,7 +111,7 @@ _METHOD_BLOCK = (
     "Forma: {\"all\":[{\"widget\":\"agenda\",\"collection\":\"meetings\",\"where\":{\"title~\":\"X\"},"
     "\"expect\":\"present|absent\"}]} o {\"widget\":W,\"field\":\"campo\",\"is\"|\"has\":\"x\"} o "
     "{\"desktop\":\"wallpaper\",\"expect\":\"changed\"} — «where» es la misma expresión que `hbwidget rows`, "
-    "y las colecciones y sus campos te los da `hbwidget read <widget>`. Si el objetivo nombra una APP, lo entregas EN esa app con sus acciones declaradas (`hbwidget read <widget>` te da su contrato) y, si son varios elementos, a tandas a medida que los tienes, para que él lo vea crecer.")
+    "y las colecciones y sus campos te los da `hbwidget read <widget>`. Si el objetivo nombra un WIDGET, lo entregas EN ese widget con sus acciones declaradas (`hbwidget read <widget>` te da su contrato) y, si son varios elementos, a tandas a medida que los tienes, para que él lo vea crecer.")
 
 
 # V2-167 · the browser is the LAST resort: a booking site fights a driven Chromium (Booking's anti-bot wall, Google's

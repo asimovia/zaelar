@@ -55,6 +55,7 @@ import { createEffect } from "../../../app/core/reactive.js?v=2";
 import { paintPips, wirePipDrag } from "./pips.js?v=1";
 import { HomeToday } from "./HomeToday.js?v=1";
 import { deckScreen } from "./deck-screen.js?v=1";
+import { frontDoor } from "../../../app/widgets/card-front.js?v=1";
 
 const CARD_ANIM_MS = 260;
 const EDGE_PX = 22;          // a one-finger swipe that starts this close to a screen edge always pages
@@ -252,6 +253,9 @@ export class Deck {
   _noteBy(id, by) { const b = String(id || "").split("::")[0].trim().toLowerCase(); if (b) (this._by || (this._by = {}))[b] = String(by || "code"); }
   async show(rawId, { q = "", data: providedData = null, background = false, by = "code" } = {}) {
     this._noteBy(rawId, this._restoring ? "restore" : by);
+    // A card that comes to the FRONT tells the shell (2026-11-16): a page over the deck (the chat, the menu…) gives
+    // way, or «open activity» opens the widget BEHIND the full-screen chat and the person never sees it.
+    if (!background && !this._restoring) frontDoor(rawId, by);
     // `background` (worker-commissioned shows, see app/services/sse.js): the card is mounted and
     // queued in the deck, but the visible card stays where the operator left it — same rule as
     // desktop, where background work opens beside, never over. Session 6d19df41.
@@ -326,7 +330,7 @@ export class Deck {
 
   // Already full screen. The contract method exists so «put it full screen» resolves to something true:
   // bring that card to the front.
-  fullscreen(id) { const i = this.order.indexOf(id); if (i >= 0) this._goTo(i, 0); }
+  fullscreen(id) { const i = this.order.indexOf(id); if (i >= 0) { frontDoor(id, "code"); this._goTo(i, 0); } }
   // V2-635 — the canvas `minimize` order («minimise those while you work», «go to the home»): on the phone the one
   // honest step down from a full-screen card is the HOME — the card stays open, as a tile, and stops covering the
   // screen. Native fullscreen, if the browser is in it, is left as well.

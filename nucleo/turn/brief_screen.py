@@ -48,16 +48,16 @@ def target_question(open_ids) -> dict | None:
     instructions = TARGET_INSTRUCTIONS
     if focus:   # the lead names whose app it is; the two counterweights hold on the phone too (V2-903 audit P2-5)
         on_phone = bool(front) and focus.split("::", 1)[0] == front
-        instructions += ((f" He is on his PHONE: «{focus}» is the app in front; the others are hidden behind it. An order "
-                          f"that points at what is on screen without naming an app («pause», «close it», «the next "
+        instructions += ((f" He is on his PHONE: «{focus}» is the widget in front; the others are hidden behind it. An order "
+                          f"that points at what is on screen without naming a widget («pause», «close it», «the next "
                           f"one») goes to «{focus}» when it can do it.") if on_phone else
                          (f" His previous turn acted on «{focus}». An order that points at something ALREADY on "
                           f"screen without naming it («it», «that», «this one», «the most important one», «pause») "
-                          f"continues on that app when it can do it.")) + (
+                          f"continues on that widget when it can do it.")) + (
                          f" An order that names a kind of thing (a song, a video, an email, a result, the calendar) goes "
-                         f"to the app that holds that kind. An order that asks for NEW content («show me a red car», "
-                         f"«find flights») is NOT continued by this: the {'app in front' if on_phone else 'previous turn'} "
-                         f"never makes a search or a new lookup land on its app — judge such an order exactly as if "
+                         f"to the widget that holds that kind. An order that asks for NEW content («show me a red car», "
+                         f"«find flights») is NOT continued by this: the {'widget in front' if on_phone else 'previous turn'} "
+                         f"never makes a search or a new lookup land on its widget — judge such an order exactly as if "
                          f"nothing had been acted on.")
     return {"instructions": instructions, "criteria": criteria}
 
@@ -100,8 +100,8 @@ def _possible_now(widget_id: str, action: str) -> bool:
 #: V2-773 — «which card would carry it out or answer it», not «which card he names»: on ten sentences the cards read
 #: 0.97-1.0 and the errands stayed none (0.63-0.86), where «Message Rowan on Telegram» had read none 0.63.
 CATALOG_INSTRUCTIONS = (
-    "The operator gives an order with no app of ours on screen. Which widget of the catalogue would CARRY IT "
-    "OUT or ANSWER it — the app whose declared actions do what he asks (send a message, add or move an "
+    "The operator gives an order with no widget of ours on screen. Which widget of the catalogue would CARRY IT "
+    "OUT or ANSWER it — the widget whose declared actions do what he asks (send a message, add or move an "
     "appointment, play a song, show photos) or whose content holds the answer (his calendar, his contacts, his "
     "files)? Answer 'none' when the order needs the outside world (the web, a booking at an external site, "
     "products, a trip) or fits no widget.")
@@ -144,12 +144,12 @@ def names_question(open_ids) -> dict | None:
     if not ids:
         return None
     labels = ", ".join(_card_label(w) for w in ids[:MAX_OPEN_CARDS])
-    return {"instructions": f"The apps on screen are: {labels}. What does the operator's sentence name as the thing to act on?",
-            "criteria": {"on_screen": "at least one thing he names is an app on screen — by its name, by what it shows, "
+    return {"instructions": f"The widgets on screen are: {labels}. What does the operator's sentence name as the thing to act on?",
+            "criteria": {"on_screen": "at least one thing he names is a widget on screen — by its name, by what it shows, "
                                       "or by a pronoun pointing at it («close it», «quita eso», «the video») — even "
                                       "when he ALSO names something that is not",
-                         NAMES_ELSEWHERE: "NOTHING he names is one of those cards: only things such as a period of "
-                                          "time, a plan, a task, an event, a message, a person, another app",
+                         NAMES_ELSEWHERE: "NOTHING he names is one of those widgets: only things such as a period of "
+                                          "time, a plan, a task, an event, a message, a person, another widget",
                          "nothing": "no object at all, or everything on screen at once"}}
 
 
@@ -164,7 +164,7 @@ def names_elsewhere(handle, *, against_a_call: bool = False) -> bool:
 
 
 #: ONE closed question, asked only when the names verdict would stop a sure close: one candidate per card on screen.
-CLOSE_PICK = {"named": "he names this app to close (any word for it, any language)", "not_named": "he does not"}
+CLOSE_PICK = {"named": "he names this widget to close (any word for it, any language)", "not_named": "he does not"}
 
 
 def named_to_close(handle) -> list[str]:
@@ -199,7 +199,7 @@ def _close_picks(judged, open_ids) -> list[str]:
     from nucleo.turn import verdicts
     said, ids = str(judged or "").strip()[:300], [str(w) for w in open_ids or [] if str(w)]
     try:
-        qs = {f"card_{n}": {"instructions": f"APP ON SCREEN: «{_card_label(w)}». Does he name THIS app to close?",
+        qs = {f"card_{n}": {"instructions": f"WIDGET ON SCREEN: «{_card_label(w)}». Does he name THIS widget to close?",
                             "criteria": dict(CLOSE_PICK)} for n, w in enumerate(ids[:MAX_OPEN_CARDS], 1)} if said else {}
         got = __import__("nucleo.jev", fromlist=["x"]).choose_many_sync(f"The operator said «{said}».", qs, question_id="close_pick") if qs else {}
     except Exception as e:  # noqa: BLE001 — unaskable: the names verdict stands

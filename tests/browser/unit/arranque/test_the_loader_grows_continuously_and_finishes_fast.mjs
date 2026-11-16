@@ -1,9 +1,10 @@
 // ============================================================================
 // test_the_loader_grows_continuously_and_finishes_fast.mjs — the boot loader's growth schedule (node 4.492).
 //
-// The operator (2026-11-12): the mesh must compose itself little by little — one neuron at the top, another at the
-// bottom, one on the left, two at the top… — at a steady cadence, never in two or three batches tied to the boot
-// phases; and when the boot is ready the rest develops very fast and the loader hands over.
+// The operator (2026-11-12): the mesh must compose itself little by little at a steady cadence, never in two or three
+// batches tied to the boot phases; and when the boot is ready the rest develops very fast and the loader hands over.
+// 2026-11-16: it is a BRAIN that builds itself FROM THE CENTRE OUTWARDS, slower — every neuron joins through a synapse
+// from an older one (`parentOf`).
 // Drives the pure `growStep` / `growthOrder` of frontend/app/components/boot-anim.js frame by frame.
 //
 // Run: node tests/browser/unit/arranque/test_the_loader_grows_continuously_and_finishes_fast.mjs [path-to-boot-anim]
@@ -14,7 +15,7 @@ import path from "node:path";
 
 const src = process.argv[2] ? pathToFileURL(path.resolve(process.argv[2])).href
                             : new URL("../../../../frontend/app/components/boot-anim.js", import.meta.url).href;
-const { growStep, growthOrder, GROW, STAGE_FLOOR } = await import(src);
+const { growStep, growthOrder, parentOf, GROW, STAGE_FLOOR } = await import(src);
 
 const N = 240, DT = 1 / 60;
 /** Run the schedule: stage changes at the given seconds, ready at `readyAt`. Returns the node count per frame. */
@@ -41,7 +42,8 @@ function run({ until, stages = { 0: 2 }, readyAt = Infinity }) {
   assert.ok(at(0.5) >= 1 && at(0.5) <= 20, `the first half second shows a few neurons, not a block: ${at(0.5)}`);
   assert.ok(at(2) > at(1) && at(3) > at(2) && at(4) > at(3) && at(5) > at(4),
     `with no new phase the mesh still grows every second: ${[1, 2, 3, 4, 5].map(at)}`);
-  assert.ok(at(5) >= 0.3 * N, `the first seconds compose a good part of the mesh: ${at(5)}`);
+  assert.ok(at(5) >= 0.15 * N, `the first seconds compose a good part of the mesh: ${at(5)}`);
+  assert.ok(at(5) <= 0.4 * N, `slower (2026-11-16): five seconds are not most of the brain: ${at(5)}`);
   const distinct = new Set(c.map((x) => x.n)).size;
   assert.ok(distinct >= 150, `the mesh grows one neuron at a time (distinct counts ${distinct})`);
   assert.ok(Math.max(...c.map((x) => x.n)) < N, "only ready completes the mesh");
@@ -59,13 +61,13 @@ for (const readyAt of [0.4, 3, 12, 40]) {
   if (before) assert.ok(before.p < 1, "complete before ready");
 }
 
-// ── 3. the order: every neuron once, the fronts take turns (top, bottom, left…) in short runs ─────────────────
+// ── 3. the order: every neuron once, from the centre outwards, every side at once; each joins through an older one ──
 {
   let seed = 7;
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
   const pts = Array.from({ length: N }, () => {
     const a = rnd() * Math.PI * 2, r = 0.14 + 0.86 * Math.sqrt(rnd());
-    return { x: 640 + Math.cos(a) * r * 400, y: 368 + Math.sin(a) * r * 280 };
+    return { x: 640 + Math.cos(a) * r * 400, y: 368 + Math.sin(a) * r * 280, rim: Math.hypot(Math.cos(a) * 400, Math.sin(a) * 280) };
   });
   const order = growthOrder(pts, 640, 368, rnd);
   assert.equal(order.length, N);
@@ -73,12 +75,13 @@ for (const readyAt of [0.4, 3, 12, 40]) {
   const region = (i) => Math.round(Math.atan2(pts[i].y - 368, pts[i].x - 640) / (Math.PI / 3));
   const first = order.slice(0, 24).map(region);
   assert.ok(new Set(first).size >= 4, `the first neurons come from several sides: ${first}`);
-  let run1 = 1, longest = 1;
-  for (let k = 1; k < 120; k++) { run1 = region(order[k]) === region(order[k - 1]) ? run1 + 1 : 1; longest = Math.max(longest, run1); }
-  assert.ok(longest <= 6, `one side grew ${longest} neurons in a row: the fronts must take turns`);
-  const d = (i) => Math.hypot(pts[i].x - 640, pts[i].y - 368);
-  const inner = order.slice(0, 30).reduce((s, i) => s + d(i), 0) / 30, outer = order.slice(-30).reduce((s, i) => s + d(i), 0) / 30;
-  assert.ok(inner < outer * 0.7, `the mesh grows outwards from the ring (${inner.toFixed(0)} vs ${outer.toFixed(0)})`);
+  const depth = (i) => Math.hypot(pts[i].x - 640, pts[i].y - 368) / pts[i].rim;
+  // a wavefront: split the order in tenths, each tenth sits deeper than the one before
+  const tenth = (k) => order.slice(k * N / 10, (k + 1) * N / 10).reduce((s, i) => s + depth(i), 0) / (N / 10);
+  for (let k = 1; k < 10; k++) assert.ok(tenth(k) > tenth(k - 1), `the brain grows from the centre outwards (tenth ${k})`);
+  const edges = parentOf(pts, order), rank = new Map(order.map((i, k) => [i, k]));
+  assert.equal(edges.length, N - 1, "every neuron but the first joins through one synapse");
+  for (const [p, c] of edges) assert.ok(rank.get(p) < rank.get(c), "a neuron joins through an OLDER one");
 }
 
 console.log("ok");

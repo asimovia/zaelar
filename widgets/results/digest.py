@@ -92,7 +92,7 @@ def head(data: dict) -> str:
             L.append(row)
     out = "\n".join(L)
     if len(out) > _MAX_HEAD_CHARS:
-        tail = _t("rest", "\n  (…the rest, on the app)")
+        tail = _t("rest", "\n  (…the rest, on the widget)")
         out = out[:_MAX_HEAD_CHARS - len(tail)].rsplit("\n", 1)[0] + tail
     return out
 
@@ -124,7 +124,7 @@ def one(data: dict) -> str:
     if con_enlace:
         cuantos = (_t("links_all", "ALL these results carry") if con_enlace == len(items)
                    else _t("links_some", "{n} of the {total} results carry", n=con_enlace, total=len(items)))
-        lines.append(_t("links", "[{who} their LINK saved in the app. If he asks for the link or the listing, do NOT search again: tell him which one it is and open its app.]", who=cuantos))
+        lines.append(_t("links", "[{who} their LINK saved in the widget. If he asks for the link or the listing, do NOT search again: tell him which one it is and open its widget.]", who=cuantos))
     # V2-782 — a criterion NO row can show is said missing, so the turn does not offer bare names as meeting it.
     from search.candidacy import unshown_criteria as _unshown
     _gap = _unshown(items, data.get("criteria") or {})

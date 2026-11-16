@@ -19,6 +19,8 @@ from pathlib import Path
 
 FRONTEND = Path(__file__).resolve().parents[4] / "frontend" / "app"
 CHATWALL = (FRONTEND / "components" / "ChatWall.js").read_text(encoding="utf-8")
+# 2026-11-16 — the list itself is shared by both shells (the desktop tab and the phone's ☰ → Connectors page).
+CONNLIST = (FRONTEND / "components" / "ConnectorsList.js").read_text(encoding="utf-8")
 STORE = (FRONTEND / "core" / "store.js").read_text(encoding="utf-8")
 CONFIG_PANEL = (FRONTEND / "components" / "ConfigPanel.js").read_text(encoding="utf-8")
 API_JS = (FRONTEND / "services" / "api.js").read_text(encoding="utf-8")
@@ -46,13 +48,14 @@ def test_the_conectores_panel_has_a_css_rule_that_shows_it():
 
 def test_entering_the_tab_refreshes_both_live_and_wishlist_data():
     assert 'else if (t === "conectores") refreshConnectors();' in CHATWALL
-    assert "api.getConnectors()" in CHATWALL and "api.getConnectorCatalog()" in CHATWALL
+    assert "const refreshConnectors = connList.refresh;" in CHATWALL
+    assert "api.getConnectors()" in CONNLIST and "api.getConnectorCatalog()" in CONNLIST
 
 
 def test_families_render_in_a_stable_order_with_unknown_families_after_the_known_ones():
     # «google» leads since 4042dfcb: Gmail, Calendar and Drive connect as ONE row, the first thing he can connect.
     assert ('CONN_FAMILY_ORDER = ["google", "mensajeria", "musica", "fotos", "archivos", "video", "agenda", "contactos", '
-            '"infra"]' in CHATWALL)
+            '"infra"]' in CONNLIST)
 
 
 # ── backend service functions the tab depends on ────────────────────────────────────────────────────────
@@ -78,21 +81,21 @@ def test_store_exposes_the_config_initial_tab_signal():
 
 # ── "Lo quiero" carries the manifest id, never lets the operator type free text ─────────────────────────
 def test_lo_quiero_uses_the_shared_feedback_service_not_an_inline_fetch():
-    assert "feedbackApi.sendFeedback" in CHATWALL
-    assert 'fetch("/api/feedback"' not in CHATWALL, "must reuse services/feedback-api.js, not a second door"
+    assert "feedbackApi.sendFeedback" in CONNLIST
+    assert 'fetch("/api/feedback"' not in CONNLIST, "must reuse services/feedback-api.js, not a second door"
 
 
 def test_the_wishlist_request_carries_the_manifest_id_deterministically():
     """No existing structured `subject` field exists in the feedback pipeline (it forwards to a separate
     control-plane deployment outside this pass's scope) — the id travels as a fixed, code-written prefix in
     `message` instead of anything the operator typed. `m.id` must appear in the string the code BUILDS."""
-    branch = CHATWALL.split("const requestConnector")[1].split("\n\n")[0]
+    branch = CONNLIST.split("const requestConnector")[1].split("\n\n")[0]
     assert "m.id" in branch and "m.label" in branch
     assert "connRequested().has(m.id)" in branch, "must not re-send once already requested this session"
 
 
 def test_a_not_possible_entry_offers_no_button():
-    branch = CHATWALL.split("const connWishRow")[1].split("\n\n")[0]
+    branch = CONNLIST.split("const connWishRow")[1].split("\n\n")[0]
     assert "impossible ? null" in branch
 
 

@@ -13,7 +13,7 @@ logger = logging.getLogger("zaelar.circuit.spec")
 #: The shape of a row's end state, with placeholders and no value a worker could copy as its own (V2-852 T10). Read by
 #: the goal door's help and by the worker's playbook (checkpoint 1), so the brief shows the shape the row takes and not
 #: only the prose it is judged by — measured 2026-11-06, every first `report goal` of eleven errands was prose.
-SHAPE = ('{"all": [{"widget": "<card your work fills>", "collection": "<its collection>", '
+SHAPE = ('{"all": [{"widget": "<widget your work fills>", "collection": "<its collection>", '
          '"where": {"<field>~": "<what he asked for>"}, "count": {"min": <n>}}]}')
 
 
@@ -21,7 +21,7 @@ def said_of(base: str) -> str:
     """One card's sentence: unknown, declares nothing, or its collections with their declared fields."""
     from widgets import rows as _rows, runtime as _rt
     if _rt.get(base) is None:
-        return f"«{base}» is not an app"
+        return f"«{base}» is not a widget"
     cols = _rows.declared(base)
     if not cols:
         return f"«{base}» declares no collection a row clause can read"

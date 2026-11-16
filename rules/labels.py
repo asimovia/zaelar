@@ -85,7 +85,7 @@ def human(scope: str) -> str:
         return " · ".join(x for x in (who, where, doing) if x)
     if sc.startswith("widget:"):
         wid, _, act = sc[len("widget:"):].partition("/")
-        card = _widget(wid) or _t("rules.scope.card", "An app")
+        card = _widget(wid) or _t("rules.scope.card", "A widget")
         doing = _t(f"rules.scope.a.{act}") if act else ""
         return f"{card} · {doing}" if doing else card
     segs = sc.split("/")

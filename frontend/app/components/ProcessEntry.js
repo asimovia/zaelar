@@ -26,6 +26,7 @@ import * as api from "../services/api.js?v=2";
 const _recs = new Map();      // key → the last record read (so a rebuilt row paints at once, then refreshes)
 const _open = new Set();      // keys he expanded — his choice survives the list being rebuilt
 const _cancelling = new Set(); // row ids whose cancel he pressed — the control stays spent across rebuilds
+const CANCEL_WAIT_MS = 12000, CANCEL_SETTLE_MS = 8000;   // the engine's answer; the row leaving the board after a yes
 let _watching = false, _timer = null;
 
 // The i18n seam, same shape as the widgets': the key, else the literal fallback (a render outside the engine).
@@ -212,8 +213,14 @@ function actsOf(node, more){
     if(_cancelling.has(id)) return;
     _cancelling.add(id);
     _repaint(id);
-    const r = await api.taskCancel(id);
+    // BOUNDED (2026-11-16, a phone showed «Cancelando…» for good over a process that kept running): a request that
+    // never comes back, or a yes after which the row is still on the live board, gives the button back — «cancelling»
+    // is a wait with an end, never a state the screen can be left in. The outcome is logged so the next one is seen.
+    const r = await Promise.race([api.taskCancel(id),
+      new Promise(res => setTimeout(() => res({ ok: false, timeout: true }), CANCEL_WAIT_MS))]);
+    try{ api.uiEvent("process:cancel", { task: id, ok: !!(r && r.ok), state: (r && r.state) || "", timeout: !!(r && r.timeout) }); }catch(_){}
     if(!r || !r.ok) _cancelling.delete(id);
+    else setTimeout(() => { if(_cancelling.delete(id)) _repaint(id); }, CANCEL_SETTLE_MS);
     _repaint(id);
     try{ store.reconcileTasksSoon(); }catch(_){}
   });

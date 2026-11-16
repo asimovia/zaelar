@@ -1,4 +1,4 @@
-"""Every shell surface on the phone is a full-screen PAGE, and the dock has six targets (V2-876 D-A, D-C, D-D).
+"""Every shell surface on the phone is a full-screen PAGE, and the dock has three controls a side (V2-876 D-A, D-C, D-D; 2026-11-16).
 
 The operator, looking at the store screenshots (2026-11-11): «no ocupan full screen, queda vacío por arriba y parece un
 contenido que sube desde abajo y se puede minimizar». So: chat, menu, apps, settings, feedback and the AI-services
@@ -40,9 +40,10 @@ SETUP = """
   const { Deck } = await import('/frontend/mobile/app/shell/Deck.js?v=5');
   window.__deck = new Deck(stage);
   const { MOBILE_SURFACES } = await import('/frontend/mobile/app/shell/mobile-surfaces.js?v=4');
-  for (const id of ['dock', 'chat', 'menu', 'apps', 'settings', 'feedback', 'ai-consent'])
+  for (const id of ['dock', 'chat', 'menu', 'apps', 'settings', 'feedback', 'connectors', 'ai-consent'])
     document.body.append(MOBILE_SURFACES.find(s => s.id === id).comp());
   window.__apps = await import('/frontend/mobile/app/shell/AppsPane.js?v=2');
+  window.__conn = await import('/frontend/mobile/app/shell/ConnectorsSheet.js?v=1');
   window.__consent = await import('/frontend/mobile/app/shell/ai-consent.js?v=1');
   const store = window.__store;
   window.__pages = await import('/frontend/mobile/app/shell/pages.js?v=1');
@@ -61,6 +62,7 @@ OPENERS = {
     "settings": "s => s.setMobileSettingsOpen(true)",
     "feedback": "s => s.setMobileFeedbackOpen(true)",
     "consent": "s => window.__consent.setSheetOpen(true)",
+    "connectors": "s => window.__conn.setConnectorsOpen(true)",
 }
 
 
@@ -73,7 +75,7 @@ def phone():
 
 def _only(pg, name):
     pg.evaluate("""() => { const s = window.__store; s.setChatOpen(false); s.setMobileMenuOpen(false);
-        s.setMobileSettingsOpen(false); s.setMobileFeedbackOpen(false); window.__apps.setAppsOpen(false);
+        s.setMobileSettingsOpen(false); s.setMobileFeedbackOpen(false); window.__conn.setConnectorsOpen(false); window.__apps.setAppsOpen(false);
         window.__consent.setSheetOpen(false); }""")
     pg.evaluate(f"() => ({OPENERS[name]})(window.__store)")
     pg.wait_for_timeout(260)
@@ -164,7 +166,9 @@ def test_an_account_is_never_asked_its_email_in_feedback(phone):
     phone.evaluate("() => window.__store.setCloudProfile(true)")
 
 
-def test_the_dock_is_six_targets_of_44(phone):
+def test_the_dock_is_three_a_side_of_44(phone):
+    """2026-11-16: the wake word came back to the dock — three controls each side of the orb (menu · chat · widgets |
+    mic · speaker · wake word), seven visible targets with the orb."""
     _only(phone, "chat")
     phone.evaluate("() => window.__store.setChatOpen(false)")
     d = phone.evaluate("""() => { const d = document.querySelector('.zm-dock');
@@ -172,9 +176,9 @@ def test_the_dock_is_six_targets_of_44(phone):
         return {n: vis.length, sizes: vis.map(b => { const r = b.getBoundingClientRect(); return [r.width, r.height]; }),
                 sides: [...d.querySelectorAll('.zm-side')].map(s => s.querySelectorAll('button').length),
                 apps: !!d.querySelector('[data-ctl="apps"]')}; }""")
-    assert d["n"] == 6, d
+    assert d["n"] == 7, d
     assert all(w >= 44 and h >= 44 for w, h in d["sizes"]), d
-    assert d["sides"] == [3, 2] and d["apps"], d
+    assert d["sides"] == [3, 3] and d["apps"], d
 
 
 def test_every_dock_glyph_is_drawn_at_its_size(phone):
@@ -230,3 +234,42 @@ def test_typing_in_the_chat_page_lays_it_over_the_keyboard(phone):
 
 def test_no_script_error(phone):
     assert not phone._errors, phone._errors
+
+
+# ── 2026-11-16 (App Review recording) ────────────────────────────────────────────────────────────────────────────
+def test_a_widget_opened_over_the_chat_comes_to_the_front(phone):
+    """«open activity» with the chat full screen opened the widget BEHIND it: the agent said «it's open» over a screen
+    that showed none of it. A card brought to the front (card-front.js) closes every page over the deck."""
+    for page in ("chat", "menu", "apps"):
+        _only(phone, page)
+        phone.evaluate("() => window.__deck.show('timer', { by: 'code' })")
+        phone.wait_for_timeout(200)
+        st = phone.evaluate("""() => ({chat: window.__store.chatOpen(), menu: window.__store.mobileMenuOpen(),
+            apps: window.__apps.appsOpen(), front: window.__deck.order[window.__deck.at] || ''})""")
+        assert st == {"chat": False, "menu": False, "apps": False, "front": "timer"}, (page, st)
+    # a BACKGROUND show (a worker's) never takes the screen from him
+    _only(phone, "chat")
+    phone.evaluate("() => window.__deck.show('clock', { background: true })")
+    phone.wait_for_timeout(200)
+    assert phone.evaluate("() => window.__store.chatOpen()") is True
+
+
+def test_the_menu_is_the_person_and_the_chat_is_the_agent(phone):
+    """The unified menu: ☰ = account · energy · settings · voice · connectors · feedback · computer · desktop (the
+    desktop's top bar); the chat page = Chat · Processes (the desktop wall's first two tabs)."""
+    _only(phone, "menu")
+    rows = phone.evaluate("() => [...document.querySelectorAll('.zm-page[data-page=\"menu\"] .zm-row b')].map(b => b.textContent)")
+    order = [ES["mobile.account"], ES["mobile.settings"], ES["mobile.voice"], ES["chat.tabConnectors"], ES["feedback.title"]]
+    assert [r for r in rows if r in order] == order, rows
+    assert phone.locator(".zm-page[data-page='menu'] .zm-procs").count() == 0, "processes live in the chat now"
+    _only(phone, "chat")
+    tabs = phone.evaluate("() => [...document.querySelectorAll('.zm-page[data-page=\"chat\"] .zm-tab')].map(b => b.textContent.trim())")
+    assert tabs[0] == ES["chat.tabChat"] and tabs[1].startswith(ES["chat.tabTasks"]), tabs
+
+
+def test_the_connectors_page_is_a_page_of_the_menu(phone):
+    _only(phone, "connectors")
+    assert phone.evaluate("() => document.querySelector('.zm-page[data-page=\"connectors\"]').classList.contains('open')")
+    phone.click(".zm-page[data-page='connectors'] .zm-page-back")
+    phone.wait_for_timeout(200)
+    assert phone.evaluate("() => window.__store.mobileMenuOpen()") is True, "‹ goes back to the menu"

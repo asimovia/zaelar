@@ -22,7 +22,7 @@ The two hosts have different subjects:
 |---|---|---|
 | stylesheet | `app/styles.css`, a 3-column desk, docking chat, draggable chrome | `mobile/app/styles.css`, a fraction of the size |
 | widget host | `app/widgets/desktop.js`, whose subject is a pointer: drag by the grip, 8 resize handles, free-space tiling, z-order on click | `mobile/app/shell/Deck.js`: one ordered deck, one card at a time, full screen |
-| controls | an arc of icons above the orb + a top bar | one bottom dock of FIVE controls, orb in the CENTRE, every control within thumb reach |
+| controls | an arc of icons above the orb + a top bar | one bottom dock, three controls a side of the orb in the CENTRE, every control within thumb reach |
 | panels | several open at once, floating and dockable | mutually exclusive bottom sheets |
 
 Retrofitting the first host would put every mobile regression inside the desktop's blast radius permanently. The
@@ -82,11 +82,12 @@ frontend/mobile/
    └─ shell/
       ├─ mobile-surfaces.js canonical list of native mobile surfaces (the pattern of core/system-surfaces.js)
       ├─ Deck.js            ★ the host: full-screen cards, two-finger paging
-      ├─ DockBar.js         the bottom bar: ☰ menu · chat · wake word | ORB | mic · speaker · feedback
+      ├─ DockBar.js         the bottom bar: ☰ menu · chat (+ process count) · widgets | ORB | mic · speaker · wake word
       ├─ OrbMini.js         the orb
-      ├─ ChatSheet.js       chat as a bottom sheet
-      ├─ MenuSheet.js       ☰: account (plan, Energy, billing, sign-out) · Energy → top-up · settings · voice · escape hatch
-      ├─ FeedbackSheet.js   the feedback form in its own sheet, opened by the dock's ⚠ (never inside the menu)
+      ├─ ChatSheet.js       the chat page: Chat · Processes (the desktop wall's first two tabs)
+      ├─ MenuSheet.js       ☰ (the desktop's top bar): account · Energy · settings · voice · connectors · feedback · computer · desktop · delete (app)
+      ├─ ConnectorsSheet.js ☰ → Connectors: the shared `components/ConnectorsList.js`; «Connect» opens the desktop settings panel by link
+      ├─ FeedbackSheet.js   the feedback form, a page of the ☰
       ├─ EnergyLine.js      the cycle's Energy left, a 3px line along the top edge (cloud only, inert to touch)
       └─ SettingsSheet.js   the small settings sheet (language · theme · speaker)
 ```
@@ -199,9 +200,11 @@ nothing to reload).
 
 ### The dock, and why the orb is in the middle of it
 
-Since 2026-10-25 the bar is `☰ · chat · wake word` | **ORB** | `mic · speaker · feedback`: the main menu is the classic
-three bars (a gear promised «settings» and held the account), and feedback has its own sheet. What follows is the
-earlier five-control rationale, which still holds for the orb and the zones:
+Since 2026-11-16 the bar is `☰ · chat · widgets` | **ORB** | `mic · speaker · wake word` — three a side (V2-923). The ☰
+is the PERSON and the setup (the desktop's top bar), the chat page is the AGENT (Chat · Processes, the desktop wall's
+first two tabs, the live process count riding 💬). A card brought to the front (`app/widgets/card-front.js`) closes
+every page over the deck, so «open activity» from the full-screen chat shows the widget. What follows is the earlier
+rationale, which still holds for the orb and the zones:
 
 - **chat / dashboards** are the WHOLE footer navigation, however many cards are open. Which card you are on is
   the deck's business — its pips and its `k/n` switcher — never the bar's. *Dashboards* is not a sheet: it is

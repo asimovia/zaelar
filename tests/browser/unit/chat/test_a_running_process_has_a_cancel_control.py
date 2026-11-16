@@ -106,7 +106,7 @@ def test_the_desktop_row_cancels_its_own_task_and_a_refusal_gives_the_control_ba
         assert not pg._errors, pg._errors
 
 
-def test_the_phone_menu_cancels_a_parked_task_too(server):
+def test_the_phone_processes_tab_cancels_a_parked_task_too(server):
     """A worker parked on his answer is not alive, and the task is still his to stop — English this time."""
     from playwright.sync_api import sync_playwright
     with sync_playwright() as pw:
@@ -115,9 +115,9 @@ def test_the_phone_menu_cancels_a_parked_task_too(server):
             const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '/frontend/mobile/app/styles.css';
             document.head.append(l);
             const store = await import('/frontend/app/core/store.js?v=2');
-            const m = await import('/frontend/mobile/app/shell/MenuSheet.js?v=2');
-            document.body.append(m.MenuSheet());
-            store.startTask('row-7', 'A flat to rent in Valencia'); store.setMobileMenuOpen(true); }""")
+            const m = await import('/frontend/mobile/app/shell/ChatSheet.js?v=1');
+            document.body.append(m.ChatSheet());
+            store.startTask('row-7', 'A flat to rent in Valencia'); store.setChatTab('procesos'); store.setChatOpen(true); }""")
         _press_and_answer(pg, "en")
         pg.wait_for_timeout(300)
         assert pg.evaluate("() => document.querySelector('.pe .pe-cancel').disabled"), \

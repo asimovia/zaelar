@@ -134,3 +134,24 @@ def test_the_orbs_lid_button_says_where_it_opens_from():
     orb = (ENGINE / "frontend/app/components/Orb.js").read_text(encoding="utf-8")
     i = orb.index('"data-ctl": "chat"')
     assert 'openChatFrom("orb")' in orb[i:i + 700], "the orb's chat button must open the wall FROM THE ORB"
+
+
+def test_a_card_brought_to_the_front_folds_a_floating_wall_that_covers_the_screen(browser_and_port):
+    """2026-11-16 (card-front.js): a card that comes to the front must be SEEN. A floating wall that covers a narrow
+    window (≤640 px it is a sheet over half the canvas) folds away; a docked column never covers a card and stays."""
+    browser, port = browser_and_port
+    pg = _fresh_page(browser, port)
+    pg.set_viewport_size({"width": 390, "height": 800})
+    pg.evaluate("() => window.__store.openChatFrom('orb')")
+    pg.wait_for_timeout(150)
+    assert pg.evaluate("() => window.__store.chatOpen()") is True
+    pg.evaluate("""async () => { const m = await import('/frontend/app/widgets/card-front.js?v=1'); m.frontDoor('timer', 'code'); }""")
+    pg.wait_for_timeout(100)
+    assert pg.evaluate("() => window.__store.chatOpen()") is False, "the floating sheet over the canvas folds away"
+    pg.set_viewport_size({"width": 1280, "height": 800})
+    pg.evaluate("() => window.__store.openChatFrom('bar')")          # the bar docks it: a column, not a cover
+    pg.wait_for_timeout(150)
+    pg.evaluate("""async () => { const m = await import('/frontend/app/widgets/card-front.js?v=1'); m.frontDoor('timer', 'code'); }""")
+    pg.wait_for_timeout(100)
+    assert pg.evaluate("() => window.__store.chatOpen()") is True, "a docked column stays open beside the card"
+    pg.close()

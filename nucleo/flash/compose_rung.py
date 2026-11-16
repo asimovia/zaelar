@@ -53,7 +53,7 @@ def tool() -> dict:
     """The function the commission pass may call instead of handing the text to a worker."""
     return {"type": "function", "function": {
         "name": TOOL_NAME,
-        "description": ("Write this card's text yourself, now, in one go: a text written from what you know or from "
+        "description": ("Write this widget's text yourself, now, in one go: a text written from what you know or from "
                         "ONE known source — summarise, explain or translate a named work, page or file; an "
                         "explainer, a letter, a draft. The engine looks that one source up for you. NOT for research "
                         "across several sources, comparisons or a hunt: that stays with the worker."),

@@ -614,9 +614,9 @@ def refused(rec, action: str, payload: dict) -> str:
         return ""
     _refusal_event(rec, wid, own)
     if not own:
-        return (f"this errand delivers no app — its result is told (or simply done), so it opens nothing on his "
+        return (f"this errand delivers no widget — its result is told (or simply done), so it opens nothing on his "
                 f"screen and «{wid}» stays closed. Read it with read_widget (nothing opens) and report your result.")
-    return (f"this errand's deliverable is the «{own}» app, and it is the only app the errand opens on his screen — "
+    return (f"this errand's deliverable is the «{own}» widget, and it is the only widget the errand opens on his screen — "
             f"«{wid}» stays closed. Read it with read_widget (nothing opens) and deliver your result into «{own}».")
 
 

@@ -18,17 +18,17 @@ import { createEffect, createSignal } from "../core/reactive.js?v=2";
 import * as store from "../core/store.js?v=2";
 import * as session from "../services/session.js?v=3";
 import * as api from "../services/api.js?v=2";
-import * as feedbackApi from "../services/feedback-api.js?v=1";
 import * as chatFiles from "../services/chat-files.js?v=1";
 import { makeResizable } from "../lib/resizable.js?v=1";
 import { CLOSE_ICON, PAPERCLIP_ICON, TRASH_ICON, MESSAGE_SQUARE_ICON, ACTIVITY_ICON, CLOCK_ICON, SERVER_ICON, LINK_ICON, APPS_ICON, WIDGETS_ICON } from "../lib/icons.js?v=1";
 import { renderMarkdownLite } from "../lib/markdown-lite.js?v=1";
 import { t } from "../core/i18n.js?v=1";
-import { groupGoogle } from "./ConnectorWizard.js?v=6";
 import { ProcessEntry } from "./ProcessEntry.js?v=1";
 import { AskWall, placeAsks } from "./TaskAsk.js?v=1";
 import { chatRefView } from "./ChatRef.js?v=1";
 import * as a2a from "./A2AView.js?v=1";
+import { onCardFront } from "../widgets/card-front.js?v=1";
+import { ConnectorsList } from "./ConnectorsList.js?v=1";
 
 // V2-561/V2-526 — stable family order, matching connectors/registry.py's descriptors() order; any family
 // not listed (a catalog-only wishlist family) sorted after, alphabetically, so one nobody expects does not
@@ -36,8 +36,6 @@ import * as a2a from "./A2AView.js?v=1";
 // V2-679, so the YouTube account and Google Calendar were being filed under "a family nobody expects" and
 // rendered below Infraestructura. Nothing errored; they were just in the wrong place, which is how every
 // wiring point in this list fails. A test now walks descriptors() against this array.
-const CONN_FAMILY_ORDER = ["google", "mensajeria", "musica", "fotos", "archivos", "video", "agenda", "contactos", "infra"];
-const connFamilyRank = (f) => { const i = CONN_FAMILY_ORDER.indexOf(f); return i < 0 ? 99 : i; };
 
 const SEND_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>`;
 // V2-621 — the ONE map from a tab id to its label key: the header's standing name (`.cw-tabname`) and each
@@ -158,6 +156,14 @@ export function ChatWall() {
   // signal later would show the desktop for a frame and then drop a panel on top of it.
   const _wasOpen = loadOpen();
   if (_wasOpen.open) { store.setChatTab(_wasOpen.tab); store.setChatOpen(true); }
+  // A card brought to the front must be SEEN (card-front.js, 2026-11-16). The docked column reserves its own strip, so
+  // it never covers a card; the FLOATING box does when it covers the screen (≤640 px it is a sheet over half the
+  // canvas): then it folds away, as the phone's full-screen chat does. A small floating box beside the cards stays.
+  onCardFront(() => {
+    if (!store.chatOpen() || dockSide || !wallEl) return;
+    const r = wallEl.getBoundingClientRect(), vw = window.innerWidth || 1, vh = window.innerHeight || 1;
+    if ((r.width * r.height) / (vw * vh) >= 0.35) store.setChatOpen(false);
+  });
 
   // V2-646 — NOTHING IS LISTENING, SO NOTHING IS SENT (operator, 2026-09-09): «estaba el agente parado y me
   // he puesto a escribir… si lo mando y nadie está escuchando se pierde». It did: `session.sendText` queues
@@ -458,89 +464,14 @@ export function ChatWall() {
   // `live` = connectors/registry.py's descriptors() (real state); `wish` = the NOT-live half
   // (connectors/catalog.py's planned/not-possible manifests). Two independent, cheap fetches merged here by
   // `family` — never a new widget, never a model call, never more than what a GET already returns.
-  const [connCatalog, setConnCatalog] = createSignal({ live: [], wish: [] });
-  const [connRequested, setConnRequested] = createSignal(new Set());
-  // A failed read (the engine still booting) used to be painted as «no connectors» and never retried —
-  // the operator opened the tab, saw it empty, and only the wishlist came back later. Retried a few times.
-  const refreshConnectors = async (tries = 6) => {
-    const [live, wish] = await Promise.all([api.getConnectors(), api.getConnectorCatalog()]);
-    const rows = (live && live.connectors) || [];
-    setConnCatalog({ live: groupGoogle(rows), wish: (wish && wish.catalog) || [] });
-    if (!rows.length && tries > 1) setTimeout(() => refreshConnectors(tries - 1), 2000);
-  };
   // "Conectar" on a built-but-disconnected row hands off to the CREDENTIAL surface (V2-083's ConfigPanel
   // "conectores" tab) rather than connecting from here — the same voice/hands boundary V2-520 already pins:
   // this tab is for browsing and asking, never for holding a form.
   const openConnectorConfig = (id) => { store.setConfigInitialTab("conectores"); store.setConfigConnector(id || null); store.setConfigOpen(true); };
-  // "Lo quiero" on a PLANNED entry: a request the receiving side can COUNT, so it carries the manifest `id`
-  // as a fixed, machine-written prefix rather than anything the operator typed — free text cannot be
-  // grouped. Once per session per id (the row itself shows it was sent instead of inviting a second click).
-  const requestConnector = async (m) => {
-    if (connRequested().has(m.id)) return;
-    setConnRequested(new Set([...connRequested(), m.id]));
-    try { await feedbackApi.sendFeedback({ message: `[conector:${m.id}] Lo quiero: ${m.label}` }); }
-    catch (_) { /* best-effort; the row already reflects the attempt and nothing here blocks the tab */ }
-  };
-
-  // One row per connector he CAN use, with the one button that matters: connect it, or manage it. Google is
-  // one row (one account, a consent per service — the count says how many are on).
-  const connLiveRow = (c) => {
-    const n = c.services ? c.services.filter(x => x.connected).length : 0;
-    const on = c.services ? n > 0 : c.connected;
-    return h("div", { class: "cl-row" },
-      h("div", { class: "cl-main" },
-        h("div", { class: "cl-name" }, h("span", { class: () => "cl-dot" + (on ? " on" : "") }), c.label || c.id),
-        h("div", { class: "cl-meta" }, () => c.services ? t("config.cx.of_services", { n, total: c.services.length })
-                                                       : (c.connected ? t("chat.connected") : t("chat.disconnected"))),
-      ),
-      h("div", { class: "cl-btns" },
-        h("button", { class: "cl-b" + (on ? "" : " on"), onClick: () => openConnectorConfig(c.id) },
-          () => t(on ? "chat.manageBtn" : "chat.connectBtn")),
-      ),
-    );
-  };
-
-  const connWishRow = (m) => {
-    const impossible = m.state === "not-possible";
-    const requested = connRequested().has(m.id);
-    return h("div", { class: "cl-row" + (impossible ? " cn-imposs" : ""), title: impossible  // pack `ui` key; the manifest's sentence only for an entry with no key yet
-        ? ((k) => t(k) !== k ? t(k) : (m["why-not"] || ""))("connectors." + m.id + ".why_not") : "" },
-      h("div", { class: "cl-main" },
-        h("div", { class: "cl-name" }, h("span", { class: "cl-dot" }), m.label || m.id),
-        h("div", { class: "cl-meta" },
-          impossible ? t("chat.connWishlistImpossible") : t("chat.connWishlistPlanned")),
-      ),
-      h("div", { class: "cl-btns" },
-        impossible ? null
-          : h("button", { class: "cl-b" + (requested ? "" : " on"), disabled: requested,
-                          onClick: () => requestConnector(m) },
-              () => t(requested ? "chat.connWantedBtn" : "chat.connWantBtn")),
-      ),
-    );
-  };
-
-  // What he can connect comes FIRST, by family; what we do not have yet (planned / not possible) goes below,
-  // folded, so the list he came for is not buried under a wishlist.
-  const byFamily = (rows) => {
-    const fams = new Map();
-    for (const r of rows) { const f = r.family || "infra"; if (!fams.has(f)) fams.set(f, []); fams.get(f).push(r); }
-    return [...fams.keys()].sort((a, b) => connFamilyRank(a) - connFamilyRank(b) || a.localeCompare(b)).map(f => [f, fams.get(f)]);
-  };
-  // t() returns the KEY itself when a string is missing (truthy) — never `|| fam` here (V2-538).
-  const famHead = (fam) => h("div", { class: "cn-fam" }, () => fam === "google" ? "Google" : t("chat.connFamily." + fam));
-  const connFamilySections = () => {
-    const { live, wish } = connCatalog();
-    if (!live.length && !wish.length) return [h("div", { class: "cw-empty" }, () => t("chat.connEmpty"))];
-    const out = [];
-    for (const [fam, rows] of byFamily(live)) { out.push(famHead(fam)); rows.forEach(c => out.push(connLiveRow(c))); }
-    if (wish.length) {
-      const inner = [];
-      for (const [fam, rows] of byFamily(wish)) { inner.push(famHead(fam)); rows.forEach(m => inner.push(connWishRow(m))); }
-      out.push(h("details", { class: "cn-soon" },
-        h("summary", { class: "cn-fam" }, () => t("chat.connSoon", { n: wish.length })), ...inner));
-    }
-    return out;
-  };
+  // The list itself is SHARED (components/ConnectorsList.js, 2026-11-16): the phone's ☰ → Connectors page draws the
+  // same rows from the same reads, so the two shells can never disagree about what is connected.
+  const connList = ConnectorsList({ onManage: openConnectorConfig });
+  const refreshConnectors = connList.refresh;
 
   // ── APPS tab (V2-761): the widget catalogue — Sistema (shipped) · Custom (his own + his forks) ──────────
   // One GET (`/widgets/registry`, the resolver's own read model) and nothing else: `origin` says who built
@@ -666,7 +597,7 @@ export function ChatWall() {
     // orb entry — this tab IS the "browse and ask" surface the design doc calls for.
     h("div", { class: "cw-red" }, h("div", { class: "cl-list" }, () => (a2a.on() ? a2a.networkBody() : null))),   // V2-866 — off: no tab, no body
     h("div", { class: "cw-conn" },
-      h("div", { class: "cl-list" }, () => connFamilySections()),
+      connList.node,
     ),
     // APPS (V2-761) — the widget catalogue, Sistema · Custom.
     // Drawn only while it is the open tab: hidden, its Sistema · Custom bar was a second `.cw-subtabs` in the

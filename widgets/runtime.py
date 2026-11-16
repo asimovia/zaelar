@@ -1,10 +1,12 @@
 # Widget runtime — catalog + identification (HANDOFF §3): one folder + manifest.json per widget, code loaded lazily
 # in the browser. The ONLY thing the rest of the app talks to for widgets — isolated from the voice core.
 import difflib
+import functools
 import json
 import os
 import re
 import unicodedata
+from contextvars import ContextVar
 
 from loguru import logger
 
@@ -228,13 +230,47 @@ def _system_index() -> list[dict]:
     return rows
 
 
+_FOLD: ContextVar[bool] = ContextVar("widgets_runtime_fold", default=False)
+
+
+@functools.lru_cache(maxsize=4096)
+def _sing(word: str) -> str:
+    """One word to its NUMBER-free form, the same for singular and plural, English and Castilian (2026-11-16, App
+    Review recording: «open my activities» opened nothing — «activities» is not the alias «activity», and difflib put
+    it at 0.78, under the 0.84 voice cutoff). Applied to BOTH sides, so it only has to be consistent, not correct
+    grammar: activity/activities → activity, actividad/actividades → actividad, note/notes → not, reloj/relojes → reloj.
+    Short words (≤3) are left alone: «bus», «gas», «mis» are not plurals of anything we name."""
+    w = word
+    if len(w) <= 3:
+        return w
+    if w.endswith("ies") and len(w) > 4:
+        return w[:-3] + "y"
+    if w.endswith("es") and len(w) > 4:
+        w = w[:-2]
+    elif w.endswith("s") and not w.endswith("ss"):
+        w = w[:-1]
+    return w[:-1] if w.endswith("e") and len(w) > 3 else w
+
+
+@functools.lru_cache(maxsize=4096)
+def _canon(phrase: str) -> str:
+    """A normalized phrase with every word number-free (`_sing`), padded for word-aligned matching."""
+    return " " + " ".join(_sing(t) for t in phrase.split()) + " "
+
+
 def _alias_score(q: str, q_padded: str, q_tokens: list, aliases: list, alias_tokens: set) -> float:
     """Score a piece against the query ONLY by NAME/ALIAS (never by description). Word-aligned alias phrase = strong
     signal; fuzzy query token over a distinctive alias token = voice tolerance. Certainty: description does not
-    participate, so nothing opens by thematic similarity."""
+    participate, so nothing opens by thematic similarity.
+
+    A name is the same name in the plural: «my activities», «las notas», «open contacts» name the widget whose alias
+    is singular (and the other way round). Both sides go through `_canon`, still word-aligned — the plural never
+    widens a match into an INNER token of another word. Only on the SECOND pass (`_FOLD`, see `identify`): an exact
+    name always wins first, so «abre el chat» stays the chat wall and never becomes Messages' «chats»."""
     score = 0.0
+    q_canon = _canon(q) if _FOLD.get() else None
     for a in aliases:
-        if f" {a} " in q_padded:                            # whole alias, word-aligned
+        if f" {a} " in q_padded or (q_canon and _canon(a) in q_canon):   # whole alias, word-aligned (any number)
             score += 3 if (" " in a or len(a) > 6) else 2
     # Voice tolerance matches only tokens that are a COMPLETE alias by themselves ('watsap'≈'wasap'), never an inner
     # token of a multi-word alias (2026-09-03: «restaurante» fuzzy-matched the timer's 'tiempo restante' at 0.842).
@@ -296,6 +332,21 @@ def rank(query: str, limit: int = 8) -> list[tuple[float, dict]]:
 
 
 def identify(query: str, open_ids: list | None = None, recent_ids: list | None = None) -> dict:
+    """Two passes over ONE resolver (see `_identify_once` for the contract): the exact names first; only when they
+    name NOTHING at all — no widget, no surface, no candidates — the same names again in any grammatical number
+    («my activities» → Activity). An exact hit can never be overruled by a plural one."""
+    first = _identify_once(query, open_ids, recent_ids)
+    if first.get("match") or first.get("system") or first.get("ambiguous") or first.get("candidates"):
+        return first
+    tok = _FOLD.set(True)
+    try:
+        second = _identify_once(query, open_ids, recent_ids)
+    finally:
+        _FOLD.reset(tok)
+    return second if (second.get("match") or second.get("system") or second.get("ambiguous")) else first
+
+
+def _identify_once(query: str, open_ids: list | None = None, recent_ids: list | None = None) -> dict:
     """Resolve a voice/text request to a PIECE by NAME or ALIAS, with CERTAINTY (V2-082).
 
     Hard rules:

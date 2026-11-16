@@ -143,8 +143,8 @@ def _closes_every_card(text: str, spare) -> bool:
     that card too? (pass 4 Z2: «clear everything off the screen» spared Images.) No answer keeps the spare."""
     try:
         from nucleo import jev
-        q = {"scope": {"instructions": f"The app he was using: «{', '.join(spare)}». Does he close that one too?",
-                       "criteria": {"every_card": "yes, every app off the screen", "spare": "no, only the others"}}}
+        q = {"scope": {"instructions": f"The widget he was using: «{', '.join(spare)}». Does he close that one too?",
+                       "criteria": {"every_card": "yes, every widget off the screen", "spare": "no, only the others"}}}
         got = jev.choose_many_sync(f"The operator said «{str(text).strip()[:300]}».", q, question_id="close_scope") if str(text or "").strip() else {}
         return float((((got or {}).get("scope") or {}).get("probs") or {}).get("every_card") or 0.0) >= jev.MIN_CONFIDENCE
     except Exception as e:  # noqa: BLE001 — unaskable: the spare stays

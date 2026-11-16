@@ -562,16 +562,31 @@ button.zm-page-btn:active { background: var(--hb-bubble); }
 .zm-proc + .zm-proc { border-top: 1px solid var(--hb-line-subtle); }
 .zm-proc > b { display: block; font: 600 14px/1.3 var(--sans); color: var(--hb-ink); overflow-wrap: anywhere; }
 
-/* V2-822 — the live process count rides the ☰ (the menu is the phone's processes view): ProcessCount.js, its look in
-   core/shared-surfaces.css (`.pcount`). Placed on the button's top-right corner so the dock's seven controls keep
-   their geometry; it takes no tap of its own — tapping it is tapping ☰. */
-/* Scoped to the DOCK on purpose: the ☰ page carries `zm-menu` too (`zm-page zm-menu`), and an unscoped
-   `.zm-menu { position: relative }` turns the fixed page into a block in the flow, below the screen. */
-.zm-dock .zm-menu { position: relative; }
-.zm-dock .zm-menu .pcount { position: absolute; top: 1px; right: -3px; gap: 3px; padding: 0 2px; cursor: inherit;
+/* V2-822 — the live process count rides the 💬 since the unified menu (2026-11-16: the processes are the chat's second
+   tab, as on the desktop's wall): ProcessCount.js, its look in core/shared-surfaces.css (`.pcount`). Placed on the
+   button's top-right corner so the dock keeps its geometry; it takes no tap of its own — tapping it is tapping 💬. */
+/* Scoped to the DOCK on purpose: the chat page carries `zm-chat` too (`zm-page zm-chat`), and an unscoped
+   `.zm-chat { position: relative }` turns the fixed page into a block in the flow, below the screen. */
+.zm-dock .zm-chat { position: relative; }
+.zm-dock .zm-chat .pcount { position: absolute; top: 1px; right: -3px; gap: 3px; padding: 0 2px; cursor: inherit;
   pointer-events: none; }
-.zm-dock .zm-menu .pcount-n { font-size: 0.75rem; }
-.zm-dock .zm-menu .pcount-bar { height: 11px; }
+.zm-dock .zm-chat .pcount-n { font-size: 0.75rem; }
+.zm-dock .zm-chat .pcount-bar { height: 11px; }
+
+/* The chat page's two tabs (2026-11-16): Chat · Processes — the desktop wall's first two, the agent's own. */
+.zm-tabs { display: flex; gap: 6px; padding: 8px 12px 6px; border-bottom: 1px solid var(--hb-line-subtle); flex: 0 0 auto; }
+.zm-tab { flex: 1 1 0; min-height: 36px; border: 1px solid var(--hb-line); border-radius: 10px; background: transparent;
+  color: var(--hb-muted); font: 600 14px/1 var(--sans); display: flex; align-items: center; justify-content: center; gap: 6px; }
+.zm-tab.on { color: var(--hb-accent); border-color: var(--hb-accent); background: color-mix(in srgb, var(--hb-accent) 10%, transparent); }
+.zm-tab-n { font: 700 12px/1 var(--sans); }
+.zm-page.zm-chat .zm-hide { display: none; }
+.zm-proclist { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 4px 16px 16px; }
+.zm-proclist .cw-empty { color: var(--hb-muted-2); font: 14px/1.4 var(--sans); padding: 18px 0; }
+/* Connectors page (☰ → Connectors): the shared list (components/ConnectorsList.js + core/components.css) in a page. */
+.zm-connectors .cl-list { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 16px; }
+.zm-connectors .cl-name { font-size: 15px; }
+.zm-connectors .cl-meta { font-size: 13px; }
+.zm-connectors .cl-b { min-height: 36px; padding: 6px 12px; font-size: 13px; }
 
 /* V2-876 D-C — the APPS page (shell/AppsPane.js): a grid of every app, its icon on its own colour (the deck home's
    tile), its name and one line of what it does. A tile is the whole tap target (≥ 44px); three across at 393px. */

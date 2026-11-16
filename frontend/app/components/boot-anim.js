@@ -6,9 +6,14 @@
 // neighbours, a ripple when a neuron appears and a soft trail wash. V2-881 added the ring of eight dots turning in the
 // centre — the same eight the HTML paints before any module — and that ring stays.
 //
-// THE GROWTH (operator, 2026-11-12): continuous and driven by TIME, not by the boot phases. One neuron at the top,
-// another at the bottom, one on the left, two at the top… several fronts grow outwards from the ring at a steady
-// organic cadence (`growthOrder` interleaves them), never in two or three batches. The growth slows towards a ceiling
+// THE BRAIN (operator, 2026-11-16, App Review recording): the mesh is a BRAIN seen from above — two hemispheres with
+// the fissure between them along the long axis and a folded outline — and it BUILDS ITSELF FROM THE CENTRE OUTWARDS,
+// slower: every neuron joins the brain through a synapse from an older one nearer the ring (`parentOf`), so what you
+// watch is a tree of light growing out of the core, never sparks appearing anywhere. Portrait screens get a brain
+// standing up, landscape one lying down, and it always fits inside the screen with its margin.
+//
+// THE GROWTH (operator, 2026-11-12): continuous and driven by TIME, not by the boot phases, at a steady organic
+// cadence (`growthOrder`: a radial wavefront with a little jitter, so every side grows at once), never in batches. The growth slows towards a ceiling
 // below the whole mesh (`GROW.CAP`): only `finish()` — called on `store.bootReady` — completes it, and then the rest
 // develops very fast (`GROW.FINISH_S`) before the veil lifts. A real phase may pull the growth forward (`setStage`
 // raises a floor it catches up to), always at a bounded rate so it never lands as a batch.
@@ -19,18 +24,17 @@
 // ============================================================================
 
 /** The growth schedule. Fractions are of the mesh beyond the ring; rates are fractions per second. */
-export const GROW = { CAP: 0.92, TAU: 7, RAMP_S: 1.6, MAX_RATE: 0.22, CATCHUP: 1.5, FINISH_S: 0.42 };
+export const GROW = { CAP: 0.92, TAU: 11, RAMP_S: 1.6, MAX_RATE: 0.15, CATCHUP: 1.2, FINISH_S: 0.5 };
 /** A real stage's floor — 0 the ring (HTML), 1 /healthz, 2 the interface loaded, 3 voice, 4 memory, 5 reflex, 6 ready. */
 export const STAGE_FLOOR = [0, 0.03, 0.06, 0.3, 0.5, 0.7, 1];
 export const STAGE_READY = STAGE_FLOOR.length - 1;
 export const BURST_MS = 380;      // the veil's fade once the growth is complete
-const NODE_COUNT = 240;
+const NODE_COUNT = 280;
 const NEIGHBOURS = 3;             // edges per node (to its nearest N)
-const FRONTS = 6;                 // angular regions growing at once (top, bottom, left, right and the diagonals)
 const RING_N = 8;                 // the dots of the first ring
 const RING_R = 22;                // px; equals `.pb-ring` in core/shared-surfaces.css
 const RING_PERIOD = 2.4;          // seconds per turn; equals the `pb-turn` animation
-const APPEAR_S = 0.38;            // how long one neuron takes to light up (its synapse draws in over the same time)
+const APPEAR_S = 0.6;             // how long one neuron takes to light up (its synapse draws in over the same time)
 // LIVING BRAIN: while we wait, the lit mesh fires spontaneously and the spark travels to the neighbours.
 const IGNITE_RATE = 3.2, PULSE_DUR = 0.34, PULSE_FANOUT = 3, CASCADE_DECAY = 0.52, CASCADE_MIN = 0.12;
 const MAX_PULSES = 90, FIRE_DECAY = 2.8;
@@ -45,40 +49,34 @@ export function growStep(p, dt, t, floor, finishing) {
   return Math.min(GROW.CAP, p + Math.max(0, rate) * dt);
 }
 
-/** The order the neurons appear in: each of FRONTS angular regions grows outwards from the node nearest the centre
- *  (each next node the one closest to what that region already has), and the regions take turns in runs of one to
- *  three, never the same region twice in a row. `pts` = [{x, y}], `rnd` = a () → [0,1) source. Pure. */
+/** The order the neurons appear in: a wavefront from the centre outwards. Each point's depth is its distance from
+ *  the centre measured against the brain's own outline (`edge(angle)`, 1 = the rim), plus a little jitter so the front
+ *  is organic and every side grows at once. `pts` = [{x, y, rim}] (`rim` = that point's outline radius, px), `rnd` =
+ *  a () → [0,1) source. Pure. */
 export function growthOrder(pts, cx, cy, rnd = Math.random) {
-  const regions = Array.from({ length: FRONTS }, () => []);
-  pts.forEach((p, i) => {
-    const a = (Math.atan2(p.y - cy, p.x - cx) + Math.PI * 2 + Math.PI / FRONTS) % (Math.PI * 2);
-    regions[Math.floor(a / (Math.PI * 2 / FRONTS)) % FRONTS].push(i);
-  });
-  const d2 = (i, j) => (pts[i].x - pts[j].x) ** 2 + (pts[i].y - pts[j].y) ** 2;
-  const grown = regions.map((ids) => {          // Prim-like within one region, seeded at its innermost node
-    if (!ids.length) return [];
-    const left = ids.slice(), out = [], mind = new Map();
-    left.sort((i, j) => ((pts[i].x - cx) ** 2 + (pts[i].y - cy) ** 2) - ((pts[j].x - cx) ** 2 + (pts[j].y - cy) ** 2));
-    let pick = left.shift();
-    for (;;) {
-      out.push(pick);
-      for (const i of left) mind.set(i, Math.min(mind.get(i) ?? Infinity, d2(i, pick)));
-      if (!left.length) return out;
-      let k = 0;
-      for (let q = 1; q < left.length; q++) if (mind.get(left[q]) < mind.get(left[k])) k = q;
-      pick = left.splice(k, 1)[0];
-    }
-  });
-  const order = [];
-  let last = -1;
-  while (order.length < pts.length) {
-    const open = grown.map((g, r) => r).filter((r) => grown[r].length && (r !== last || grown.filter((g) => g.length).length === 1));
-    const r = open[Math.floor(rnd() * open.length) % open.length];
-    for (let n = 1 + Math.floor(rnd() * 3); n > 0 && grown[r].length; n--) order.push(grown[r].shift());
-    last = r;
-  }
-  return order;
+  const key = pts.map((p, i) => [i, Math.hypot(p.x - cx, p.y - cy) / Math.max(1, p.rim || 1) + (rnd() - 0.5) * 0.12]);
+  key.sort((a, b) => a[1] - b[1]);
+  return key.map(([i]) => i);
 }
+
+/** Every neuron but the first joins the brain through ONE synapse from an OLDER neuron (the nearest one that appeared
+ *  before it), so the growth reads as a tree out of the core. `order` from growthOrder. Returns [[parent, child]]. */
+export function parentOf(pts, order) {
+  const out = [];
+  for (let k = 1; k < order.length; k++) {
+    const c = order[k];
+    let best = order[0], bd = Infinity;
+    for (let q = Math.max(0, k - 120); q < k; q++) {           // the recent front: the nearest older is in it
+      const o = order[q], d = (pts[o].x - pts[c].x) ** 2 + (pts[o].y - pts[c].y) ** 2;
+      if (d < bd) { bd = d; best = o; }
+    }
+    out.push([best, c]);
+  }
+  return out;
+}
+
+/** The brain's outline at angle `a`, as a fraction of its radii: a folded rim (gyri), slightly fuller at the front. */
+export function brainEdge(a) { return 1 + 0.05 * Math.sin(a * 7 + 0.6) + 0.035 * Math.sin(a * 13 + 2.1) + 0.04 * Math.cos(a); }
 
 function toRGB(name, fallback) {
   const s = (getComputedStyle(document.documentElement).getPropertyValue(name) || "").trim() || fallback;
@@ -102,22 +100,37 @@ export function startBootAnim(canvas, { onProgress } = {}) {
   let p = 0, floor = STAGE_FLOOR[0], stage = 0, finishing = false, onDone = null, reported = -1;
   const nodes = [], pulses = [];
   let edges = [], adj = [];
-  for (let i = 0; i < NODE_COUNT; i++) {
-    nodes.push({ a: Math.random() * Math.PI * 2, rad: 0.14 + 0.86 * Math.sqrt(Math.random()), seed: Math.random() * 1000,
-      hx: 0, hy: 0, x: 0, y: 0, ord: 0, act: 0, ripple: -1, fire: 0 });
+  // Two hemispheres: a point too close to the fissure (the long axis' midline) is drawn again, except in the core
+  // around the ring, where the two halves meet. Denser towards the rim, like a cortex.
+  while (nodes.length < NODE_COUNT) {
+    const a = Math.random() * Math.PI * 2, rad = 0.14 + 0.86 * Math.pow(Math.random(), 0.42);
+    if (rad > 0.28 && Math.abs(Math.sin(a)) * rad < 0.085) continue;   // the fissure (rotated onto the long axis below)
+    nodes.push({ a, rad, seed: Math.random() * 1000, hx: 0, hy: 0, x: 0, y: 0, ord: 0, act: 0, ripple: -1, fire: 0 });
   }
-  let ordered = false;
+  let ordered = false, tree = [], trunk = new Set();
 
   function layout() {
     const r = canvas.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2);
     W = r.width; H = r.height; cx = W / 2; cy = H * 0.46; span = Math.min(W, H) * 0.34;
     canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    for (const n of nodes) {   // an ellipse a bit wider than tall around the ring
-      n.hx = cx + Math.cos(n.a) * n.rad * span * 1.5; n.hy = cy + Math.sin(n.a) * n.rad * span * 1.05;
+    // The long axis follows the screen (a brain lying down on a desk, standing up on a phone) and both radii keep a
+    // margin inside the screen — the old disk spilled past a 390 px phone's edges.
+    const portrait = H > W * 1.15;
+    const long = Math.min(span * 1.45, (portrait ? H * 0.34 : W * 0.42)), short = Math.min(long * 0.74, (portrait ? W : H) * 0.40);
+    const [rx, ry] = portrait ? [short, long] : [long, short];
+    for (const n of nodes) {
+      // the fissure was cut at sin(a)≈0; on a standing brain it has to run vertically, so the angle turns a quarter
+      const a = portrait ? n.a + Math.PI / 2 : n.a, e = brainEdge(n.a);
+      n.hx = cx + Math.cos(a) * n.rad * e * rx; n.hy = cy + Math.sin(a) * n.rad * e * ry;
+      n.rim = Math.hypot(Math.cos(a) * e * rx, Math.sin(a) * e * ry);
     }
     if (!ordered) {
-      growthOrder(nodes.map((n) => ({ x: n.hx, y: n.hy })), cx, cy).forEach((idx, rank) => { nodes[idx].ord = rank; });
+      const pts = nodes.map((n) => ({ x: n.hx, y: n.hy, rim: n.rim }));
+      const order = growthOrder(pts, cx, cy);
+      order.forEach((idx, rank) => { nodes[idx].ord = rank; });
+      tree = parentOf(pts, order);
+      trunk = new Set(tree.map(([x, y]) => Math.min(x, y) * 4096 + Math.max(x, y)));
       ordered = true;
     }
     edges = [];
@@ -127,6 +140,8 @@ export function startBootAnim(canvas, { onProgress } = {}) {
       d.sort((a, b) => a[1] - b[1]);
       for (let k = 0; k < NEIGHBOURS; k++) if (d[k] && i < d[k][0]) edges.push([i, d[k][0]]);
     }
+    const have = new Set(edges.map(([i, j]) => i * 4096 + j));     // the growth tree's synapses join the mesh
+    for (const [a, b] of tree) { const [i, j] = a < b ? [a, b] : [b, a]; if (!have.has(i * 4096 + j)) { edges.push([i, j]); have.add(i * 4096 + j); } }
     adj = nodes.map(() => []);
     for (const [i, j] of edges) { adj[i].push(j); adj[j].push(i); }
   }
@@ -198,7 +213,7 @@ export function startBootAnim(canvas, { onProgress } = {}) {
       if (a.act <= 0.02 || b.act <= 0.02) continue;
       const k = b.act, ex = lerp(a.x, b.x, k), ey = lerp(a.y, b.y, k);
       const col = lerpRGB(accent, accent2, 0.5 + 0.5 * Math.sin(t * 1.6 - (i + j) * 0.25));
-      ctx.strokeStyle = rgba(col, 0.10 * Math.min(a.act, k));
+      ctx.strokeStyle = rgba(col, (trunk.has(i * 4096 + j) ? 0.24 : 0.10) * Math.min(a.act, k));   // the growth tree reads
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(ex, ey); ctx.stroke();
       if (!reduced && k > 0.6) {
         const tp = (t * 0.4 + (i * 0.13 + j * 0.07)) % 1;

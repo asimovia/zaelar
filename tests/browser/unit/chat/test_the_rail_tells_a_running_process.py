@@ -7,7 +7,7 @@ needs him), or, when he opens it, the browser's page and capture, how much it ha
 `GET /api/tasks/<id>/process`, derived from the live registry; opening it re-reads nothing.
 
 Rendered in Chromium against the real ChatWall, store, stylesheets and Spanish bundle (desktop), and the real
-MenuSheet at 375 px (the phone, which has no processes tab: its menu carries the same entry).
+ChatSheet at 375 px (the phone's chat page, whose Processes tab carries the same entry since the unified menu, 2026-11-16).
 Disarm: `paintEntry` ignoring `open` (always collapsed) → red.
 
 V2-822 (the operator's decision 1): the entry's LAST line says what the process waits on him for — «waiting for you
@@ -146,7 +146,7 @@ def test_the_desktop_panel_tells_it_collapsed_and_expanded(server):
         assert hits[0] == "7", "the entry is keyed by the session id the SSE events name"
 
 
-def test_the_phone_menu_carries_the_same_entry(server):
+def test_the_phone_chat_processes_tab_carries_the_same_entry(server):
     from playwright.sync_api import sync_playwright
     hits: list = []
     with sync_playwright() as pw:
@@ -155,9 +155,9 @@ def test_the_phone_menu_carries_the_same_entry(server):
             const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '/frontend/mobile/app/styles.css';
             document.head.append(l);
             const store = await import('/frontend/app/core/store.js?v=2');
-            const m = await import('/frontend/mobile/app/shell/MenuSheet.js?v=2');
-            document.body.append(m.MenuSheet());
-            store.startTask('7', 'Documento con tu estilo'); store.setMobileMenuOpen(true); }""")
+            const m = await import('/frontend/mobile/app/shell/ChatSheet.js?v=1');
+            document.body.append(m.ChatSheet());
+            store.startTask('7', 'Documento con tu estilo'); store.setChatTab('procesos'); store.setChatOpen(true); }""")
         _check_collapsed_then_expanded(pg, hits)
         width = pg.evaluate("() => document.documentElement.scrollWidth")
         assert width <= 375, f"the phone scrolls sideways ({width}px)"
@@ -173,9 +173,9 @@ def test_a_blocked_process_says_why_on_its_last_line(server):
             const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '/frontend/mobile/app/styles.css';
             document.head.append(l);
             const store = await import('/frontend/app/core/store.js?v=2');
-            const m = await import('/frontend/mobile/app/shell/MenuSheet.js?v=2');
-            document.body.append(m.MenuSheet());
-            store.startTask('7', 'Documento con tu estilo'); store.setMobileMenuOpen(true); }""")
+            const m = await import('/frontend/mobile/app/shell/ChatSheet.js?v=1');
+            document.body.append(m.ChatSheet());
+            store.startTask('7', 'Documento con tu estilo'); store.setChatTab('procesos'); store.setChatOpen(true); }""")
         pg.wait_for_selector(".pe .pe-need[data-wait]", timeout=5000)
         c = pg.evaluate(_READ)[0]
         assert c["wait"] == [["blocked", _ES["chat.procBlockedNoWindow"]]] and c["lastIsWait"], c["wait"]

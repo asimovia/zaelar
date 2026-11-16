@@ -102,7 +102,7 @@ def _verdict_hint(action: str, manifest: dict) -> str:
     a = str(action or "").strip()
     if not a or a not in (manifest.get("actions") or {}):
         return ""
-    return (f"\nThe engine's reading of this order names the action «{a}» on this app — use it, with every value "
+    return (f"\nThe engine's reading of this order names the action «{a}» on this widget — use it, with every value "
             f"the conversation already gave (dates, names), unless it clearly cannot do what he asked.")
 
 

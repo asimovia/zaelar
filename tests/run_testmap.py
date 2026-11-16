@@ -6415,10 +6415,16 @@ DOMAINS: list[dict] = [
                                  "launcher in the ☰): chat, menu, apps, settings, feedback and the AI question run from the "
                                  "status bar to the dock with one header (‹ · title · ×, 44px), their last row reachable, "
                                  "one open at a time, settings and feedback replace the menu and ‹ returns to it, no "
-                                 ".zm-sheet anywhere; the dock is six 44px targets (≡ · chat · apps | orb | mic · speaker); "
+                                 ".zm-sheet anywhere; the dock is three 44px targets a side (≡ · chat · widgets | orb | mic · speaker · wake word, 2026-11-16); "
+                                 "a card brought to the front closes every page over the deck (card-front.js; a background show never does); "
+                                 "the ☰ is the person (account · settings · voice · connectors · feedback) and the chat the agent (Chat · Processes); "
+                                 "the Connectors page is a page of the menu; "
                                  "the apps page is a 3-column grid where no two apps share an icon and a tap opens the app "
                                  "through hb:open-card; typing in the chat page lays it over the keyboard — RENDERED at 393×852",
             "ch": UNIT, "paths": ["tests/browser/unit/mobile/test_every_shell_surface_is_a_page.py"]},
+        # 2026-11-16 — disarmed: `_FOLD` never set (the plural pass skipped) → «open my activities» opens nothing → red.
+        {"id": "4.551", "title": "A widget's name is the same name in the plural (App Review recording 2026-11-16: «open my activities» opened nothing): `identify` folds grammatical number on both sides (EN/ES) on a SECOND pass, only when the exact names name nothing — «abre el chat» stays the wall and never Messages' «chats»; still word-aligned",
+            "ch": UNIT, "paths": ["tests/browser/unit/widgets/test_a_name_is_the_same_name_in_the_plural.py"]},
         {"id": "4.318", "title": "After a reconnect the screen adopts the engine's list of cards: an orphan it cannot "
                                  "name goes, an unlisted app closes, a listed one opens beside, and the drift is a "
                                  "widget/reconcile event (V2-825 F5, refactor2710-04 T-04) — RENDERED",
@@ -6688,7 +6694,7 @@ DOMAINS: list[dict] = [
         {"id": "4.480", "title": "ONE loader from the first byte to ready, both shells (V2-881): the HTML paints the neurons' first ring and preboot.js narrates it (cached bundle, English floor, never a key); BootOverlay takes over the SAME element; the growth (the progress bar and the lit canvas) keeps composing itself while no phase arrives and never completes on its own; `store.bootReady` completes it and the loader is gone within one second",
             "ch": UNIT, "paths": ["tests/browser/unit/arranque/test_one_loader_grows_on_real_phases_and_bursts_on_ready.py"]},
         # 2026-11-12 — disarmed: boot-anim.js with the clock term of `growStep` cut (growth on phases only) → red.
-        {"id": "4.492", "title": "The boot loader's mesh (the original «Synaptic hive», restored) grows continuously on its own clock around the turning ring: one neuron at a time (never more than two per frame), several fronts taking turns outwards from the ring, still growing every half second while no phase arrives, never complete before ready; on ready the rest develops within GROW.FINISH_S (0.42 s), whatever was reached",
+        {"id": "4.492", "title": "The boot loader is a BRAIN (two hemispheres, folded rim, fits the screen standing up or lying down) that builds itself from the centre outwards on its own clock (2026-11-16, slower): one neuron at a time (never more than two per frame), a radial wavefront where every tenth sits deeper than the last, each neuron joining through a synapse from an older one, still growing every half second while no phase arrives, never complete before ready; on ready the rest develops within GROW.FINISH_S, whatever was reached",
             "ch": UNIT, "paths": ["tests/browser/unit/arranque/test_the_loader_grows_continuously_and_finishes_fast.py"]},
         {"id": "4.515", "title": "The markets card says which quote and which period each screen charts (V2-884 C8 step 5): `symbol` and `range` (following both the quote and the period) after every paint; a `show` or a `range` is `?ordered` on each screen until it has drawn it; two screen pairs; disarmed → red",
             "ch": UNIT, "paths": ["tests/browser/unit/markets/test_the_chart_reports_what_it_shows.py"]},

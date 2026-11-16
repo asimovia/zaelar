@@ -33,7 +33,7 @@ CRITERIA = {
     CLEAR: "it reads as a request, a question, an answer or a remark — even casual, elliptical, slangy, in any "
            "language, or with one word off",
     GARBLED: "words are swapped, cut or missing as a speech recogniser leaves them, so the sentence does not read as "
-             "it stands — but a request can still be guessed from it: an app, a song, a person or an action is named",
+             "it stands — but a request can still be guessed from it: a widget, a song, a person or an action is named",
     NOISE: "no readable intent at all: stray syllables, sounds, or a fragment with nothing named",
 }
 

@@ -158,8 +158,8 @@ def run(url):
         # already paid for the difference once (the unpainted orb).
         left = [x["label"] for x in box["btns"] if x["x"] + x["w"] / 2 < box["centre"]["cx"] - 5]
         right = [x["label"] for x in box["btns"] if x["x"] + x["w"] / 2 > box["centre"]["cx"] + 5]
-        check("three controls left of the orb, two right",
-              len(left) == 3 and len(right) == 2,
+        check("three controls each side of the orb (2026-11-16: the wake word is back, right of the speaker)",
+              len(left) == 3 and len(right) == 3,
               f"left={left} right={right}")
 
         small = [(x["label"], x["w"], x["h"]) for x in box["btns"] if min(x["w"], x["h"]) < MIN_TAP]

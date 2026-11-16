@@ -47,7 +47,7 @@ def test_the_canvas_block_teaches_the_inside_with_a_concrete_example():
 def test_a_yes_to_your_own_offer_is_an_order_to_execute_it():
     """First failure of the night: «Sí.» after «¿Quieres que lo abra?» re-showed the card."""
     src = _prompt_src()
-    assert "OFERTA que TÚ acabas de hacer" in src and "no de volver a enseñar la app" in src
+    assert "OFERTA que TÚ acabas de hacer" in src and "no de volver a enseñar el widget" in src
 
 
 # ── The tool descriptions carry the same map ────────────────────────────────────────────────────────────────

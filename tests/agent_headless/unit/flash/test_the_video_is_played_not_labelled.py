@@ -279,7 +279,7 @@ def test_una_lista_VACIA_lo_dice_en_vez_de_callar(monkeypatch, tmp_path):
     from widgets import store
     monkeypatch.setattr(store, "DATA_DIR", str(tmp_path), raising=False)
     from widgets import refs
-    assert "VACÍA" in refs.items_line("youtube")
+    assert "VACÍO" in refs.items_line("youtube")
 
 
 # ── V2-467 — the player's list can be NAMED ──────────────────────────────────────────────────────────────

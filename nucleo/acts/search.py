@@ -149,7 +149,7 @@ def compose_system(operator_text: str, query: str, res: dict, ctx: str, *, today
                  "enseñando: no digas que no puedes mostrarlo; completa con el dato de los resultados.")
     if writing:
         # An act of THIS turn is writing the text he asked for onto a card; it lands there in seconds (F1, 2026-11-13).
-        tail += (f"\nEN MARCHA en este mismo turno: estás escribiendo en la app {', '.join(writing)} el texto que "
+        tail += (f"\nEN MARCHA en este mismo turno: estás escribiendo en el widget {', '.join(writing)} el texto que "
                  "pidió, y aparecerá en su pantalla en unos segundos. Eso YA lo estás haciendo tú: no digas que no "
                  "puedes crearlo, guardarlo ni enseñarlo; di en una frase que lo tiene en pantalla y completa con el "
                  "dato de los resultados.")

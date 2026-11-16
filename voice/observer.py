@@ -232,7 +232,7 @@ def _prompt_excerpt(system: str) -> str:
 #: What the operator has IN FRONT OF HIM, as `widgets/brief.for_prompt` writes it. It lives in the middle
 #: of the prompt, between the persona (head) and the live state (tail), and the head/tail excerpt dropped
 #: it whole.
-_ON_SCREEN_MARK, _STATE_MARK = "items ahora (de lo ABIERTO", "app state as each app REPORTS it"   # V2-884: the second is `state_render.LEGEND`'s head — the state lines open just before the band
+_ON_SCREEN_MARK, _STATE_MARK = "items ahora (de lo ABIERTO", "widget state as each widget REPORTS it"   # V2-884: the second is `state_render.LEGEND`'s head — the state lines open just before the band
 _ON_SCREEN_MAX = 2500
 
 

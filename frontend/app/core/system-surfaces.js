@@ -28,6 +28,7 @@ import { AppsWindow } from "../components/AppsWindow.js?v=1";
 import { BenchmarksPanel } from "../components/BenchmarksPanel.js?v=1";
 import { BootOverlay } from "../components/BootOverlay.js?v=4";
 import { ChatWall } from "../components/ChatWall.js?v=6";
+import "./config-link.js?v=1";   // a link that opens the settings panel on one connector (the phone's ☰ → Connectors)
 import { ConfigPanel } from "../components/ConfigPanel.js?v=8";
 import { DaemonSetup } from "../components/DaemonSetup.js?v=1";
 import { DebugPanel } from "../components/DebugPanel.js?v=4";

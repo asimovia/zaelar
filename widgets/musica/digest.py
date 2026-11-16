@@ -55,9 +55,9 @@ def prompt_digest() -> str:
         heard = (" · playing" if playing else " · paused") + f" · volume {level}" + (" (MUTED)" if vol.get("muted") else "")
     else:   # the page player: whether it plays, its sound and volume are what it REPORTS — the app's state line
         screen = _screen_word((db.get("source") or {}).get("screen", ""))
-        where = "the page player of this card" + (f", on his {screen}" if screen else "")
+        where = "the page player of this widget" + (f", on his {screen}" if screen else "")
         heard = ""
-    lines = [f"MUSIC APP — NOW: «{cur.get('title') or '?'}"
+    lines = [f"MUSIC WIDGET — NOW: «{cur.get('title') or '?'}"
              + (f" — {cur.get('artist')}" if cur.get("artist") else "") + f"» · source: {where}" + heard]
     if (snd := _sound.digest_line(live)):
         lines.append(snd)
@@ -77,7 +77,7 @@ def _found_lines(db: dict) -> list:
         return []
     chosen = str(srch.get("chosen") or "")
     from search.media import SPOKEN_KIND
-    out = [f"MUSIC SEARCH ON THE APP («{str(srch.get('query') or '')[:60]}», {len(rows)} numbered, ▶ = the one "
+    out = [f"MUSIC SEARCH ON THE WIDGET («{str(srch.get('query') or '')[:60]}», {len(rows)} numbered, ▶ = the one "
            "started): pick one with play_result{item: number | name | owner}. «Not this one» / «which ones?» → say "
            "the others with their owners and let him choose; never search again (it renumbers)."]
     for i, r in enumerate(rows, 1):

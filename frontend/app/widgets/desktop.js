@@ -21,6 +21,7 @@ import { t as tr } from "../core/i18n.js?v=1";
 import * as store from "../core/store.js?v=2";
 import { mountState, refreshed } from "./state-reporter.js?v=1";
 import { desktopScreen } from "./desktop-screen.js?v=1";
+import { frontDoor } from "./card-front.js?v=1";
 // V2-792 — services load on first use: a host imports none statically (tests mount it with its core imports stubbed).
 const _screens = () => import("../services/screens.js?v=1");
 const _sensors = () => import("../services/device.js?v=1");   // V2-870 P2: ctx.device — the screen's sensors
@@ -742,6 +743,7 @@ export class Desktop {
   _noteBy(id, by){ const b=String(id||"").split("::")[0].trim().toLowerCase(); if(b){ (this._by||(this._by={}))[b]=String(by||"code"); } }
   async show(rawId, {q="", data:providedData=null, pos=null, background=false, by="code"}={}){
     this._noteBy(rawId, this._restoring ? "restore" : by);
+    if(!background && !this._restoring) frontDoor(rawId, by);   // whatever covers the screen gives way (card-front.js)
     // `background` (worker-commissioned shows, see sse.js): the card still OPENS — placed in free
     // space, data rendering as usual — but it must not take focus (no _bringFront, no hb-focus steal)
     // over whatever the operator is looking at. Session 6d19df41: a ghost errand's `documento`

@@ -26,7 +26,7 @@ from nucleo.turn import confirm_gates as gates
 NOTES = ("[SISTEMA] Aviso para el operador (zaelar): Esto mueve dinero («Elaborar un informe…») y no hago ningún "
          "cargo sin tu OK. ¿Sigo? Díselo con tus palabras DESPUÉS de contestar a lo que te ha pedido — todavía no "
          "lo sabe.\n[SISTEMA] Aviso para el operador (zaelar): Si no te he entendido mal, me pides que te CONSTRUYA "
-         "una app nueva («Construir un widget de un juego…»). ¿La hago?")
+         "un widget nuevo («Construir un widget de un juego…»). ¿Lo hago?")
 
 
 def _brief(kind: str, p: float = 0.95):

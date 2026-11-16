@@ -20,7 +20,7 @@ INSTRUCTIONS = (
     "offered, says he keeps what he already has, or says he no longer needs it because the matter is decided — a "
     "decision about its subject, not an order to stop it. Answer 'keep' for anything else: a "
     "complaint or comment about something earlier, a question about the task, an unrelated new request, or an order "
-    "about an app on screen, a video, music or the assistant's voice.")
+    "about a widget on screen, a video, music or the assistant's voice.")
 
 #: The answers, named once (V2-820 added `replace` and `steer`, V2-831 T-29 `settled`).
 STOP, STOP_ALL, REPLACE, STEER, SETTLED, KEEP = "stop", "stop_all", "replace", "steer", "settled", "keep"

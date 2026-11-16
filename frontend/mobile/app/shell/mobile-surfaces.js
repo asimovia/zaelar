@@ -1,7 +1,7 @@
 // mobile-surfaces.js — THE CANONICAL LIST of the phone shell's native surfaces (same role as app/core/system-surfaces.js):
 // main.js mounts from here, so there is never a second list. A different list from the desktop's, by design: a phone is
 // for USING the agent, so the camera unit, the activity honeycomb, the config and debug panels stay on the desk; the
-// eye collapses to a six-target dock (DockBar.js: ≡ · chat · apps | ORB | mic · speaker), N cards to one deck of
+// eye collapses to a dock of three a side (DockBar.js: ≡ · chat · widgets | ORB | mic · speaker · wake word), N cards to one deck of
 // full-screen cards (Deck.js), and every other surface is a full-screen PAGE (Page.js, V2-876 D-A). Modal, full-bleed
 // desktop surfaces are REUSED verbatim (BootOverlay, LanguageOnboarding, Alert…): forking a first-run gate is how two
 // shells disagree about whether onboarding happened. Fields: id · comp · target ("deck" | "body") · phase ("scaffold"
@@ -23,20 +23,22 @@ import { FeedbackSheet } from "./FeedbackSheet.js?v=2";
 import { EnergyLine } from "./EnergyLine.js?v=1";
 import { AiConsentSheet } from "./AiConsentSheet.js?v=1";
 import { AppsPane } from "./AppsPane.js?v=2";
+import { ConnectorsSheet } from "./ConnectorsSheet.js?v=1";
 
 export const MOBILE_SURFACES = [
   // ── the bar that owns every control ──
-  { id: "dock",     comp: DockBar,     target: "body", phase: "scaffold", label: "Bottom dock (≡ · chat · apps · ORB · mic · speaker)", shared: false },
+  { id: "dock",     comp: DockBar,     target: "body", phase: "scaffold", label: "Bottom dock (≡ · chat · widgets · ORB · mic · speaker · wake word)", shared: false },
   // NO CAPTIONS BAND (V2-573, operator: «deactivate subtitles. dont want icon for that»). It was the second
   // scaffold surface and it is GONE from the phone, together with its 📝 button in the dock. Deleting the LINE is
   // the whole removal — which is the point of this file existing: a surface nobody mounts cannot half-exist.
   // The desktop's captions are untouched.
   // ── PAGES: full screen from the status bar to the dock, one open at a time (main.js), never stacked ──
-  { id: "chat",     comp: ChatSheet,      target: "body", phase: "overlay", label: "Chat page", shared: false },
-  { id: "menu",     comp: MenuSheet,      target: "body", phase: "overlay", label: "☰ page: processes · account · energy · settings · feedback · voice · desktop", shared: false },
-  { id: "apps",     comp: AppsPane,       target: "body", phase: "overlay", label: "Apps page: every app, its icon, name and one line", shared: false },
+  { id: "chat",     comp: ChatSheet,      target: "body", phase: "overlay", label: "Chat page: chat · processes (the agent's work, the desktop wall's first two tabs)", shared: false },
+  { id: "menu",     comp: MenuSheet,      target: "body", phase: "overlay", label: "☰ page: account · energy · settings · voice · connectors · feedback · computer · desktop", shared: false },
+  { id: "apps",     comp: AppsPane,       target: "body", phase: "overlay", label: "Widgets page: every widget, its icon, name and one line", shared: false },
   { id: "settings", comp: SettingsSheet,  target: "body", phase: "overlay", label: "Settings page (language · theme · speaker · wake word · notifications · permissions)", shared: false },
   { id: "feedback", comp: FeedbackSheet,  target: "body", phase: "overlay", label: "Feedback page (a row of the ☰ page)", shared: false },
+  { id: "connectors", comp: ConnectorsSheet, target: "body", phase: "overlay", label: "Connectors page (a row of the ☰ page; the desktop chat wall's list)", shared: false },
   // ── V2-870 — inside the native app: the yes to the AI services, asked before the first turn ──
   { id: "ai-consent", comp: AiConsentSheet, target: "body", phase: "overlay", label: "AI services consent (native app only)", shared: false },
   // ── the Energy left, a thin line along the top edge (cloud only) ──

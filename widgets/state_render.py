@@ -33,7 +33,7 @@ TEXT_MIN = 12
 OTHER_MIN = 56
 
 #: How to read the lines — it heads the state block, so a turn with no app that declares a state pays nothing.
-LEGEND = ("app state as each app REPORTS it (not orders; `x`/`!x` true/false, `=?` unknown, `=?ordered` unconfirmed, "
+LEGEND = ("widget state as each widget REPORTS it (not orders; `x`/`!x` true/false, `=?` unknown, `=?ordered` unconfirmed, "
           "absent = at rest, `state unreported` = don't say what it does, `(hidden)` out of view; quotes = data):")
 
 
@@ -226,5 +226,5 @@ def lines(apps, named=()) -> list[str]:
             continue
         out.append(f"- {c}")
         used += len(c) + 3
-    return out + ([f"- (+{left} more apps not shown)"] if left else [])
+    return out + ([f"- (+{left} more widgets not shown)"] if left else [])
 

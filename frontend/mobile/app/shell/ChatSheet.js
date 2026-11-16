@@ -1,8 +1,10 @@
 // ChatSheet.js — the chat on the phone, a full-screen page (Page.js). Mobile counterpart of components/ChatWall.js; the SHELL is new, the CONTENT is
 // not forked: the rows are store.chatMsgs() (the desktop wall's signal) and sending is ChatWall's submitChat(), the ONE
 // path from a typed sentence to the agent — a local copy would be a second path, and a second path is how one shell
-// starts recording messages the other never sees. One tab only: processes and crons live in the menu, clusters are
-// desktop setup; `store.chatTab` is left alone so the phone never changes what the desktop shows.
+// starts recording messages the other never sees. TWO TABS since the unified menu (2026-11-16): Chat · Processes, the
+// desktop wall's first two — the agent's own (the ☰ is the person and the setup). Processes are the same entries the
+// desktop's processes tab draws (ProcessEntry.js, one record each). `store.chatTab` is this browser's own signal, and
+// `screen-panel.js` names the tab in the screen document; clusters and the network stay desktop setup.
 import { h, raw } from "../../../app/core/dom.js?v=2";
 import { createEffect, createSignal } from "../../../app/core/reactive.js?v=2";
 import * as store from "../../../app/core/store.js?v=2";
@@ -12,6 +14,7 @@ import { renderMarkdownLite } from "../../../app/lib/markdown-lite.js?v=1";
 import { t } from "../../../app/core/i18n.js?v=1";
 import * as consent from "./ai-consent.js?v=1";
 import { Page } from "./Page.js?v=1";
+import { ProcessEntry } from "../../../app/components/ProcessEntry.js?v=1";
 
 const SEND = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>`;
 
@@ -32,8 +35,21 @@ export function ChatSheet() {
     inputEl.focus();
   };
 
+  const onChat = () => store.chatTab() !== "procesos";
+  const tab = (id, label, n) => h("button", { class: () => "zm-tab" + ((id === "procesos") !== onChat() ? " on" : ""),
+    onClick: () => store.setChatTab(id) }, () => t(label), n ? h("span", { class: "zm-tab-n" }, () => (n() ? String(n()) : "")) : null);
   const sheet = Page({ id: "chat", open: store.chatOpen, title: () => t("chat.title"), close: () => store.setChatOpen(false), scroll: false },
-    h("div", { class: "zm-msgs", ref: (el) => (listEl = el),
+    h("div", { class: "zm-tabs", role: "tablist" },
+      tab("chat", "chat.tabChat"), tab("procesos", "chat.tabTasks", () => store.liveProcessCount())),
+    // ── PROCESSES: what the agent is doing for him now, each with its cancel (V2-852 T07) — moved from the ☰ page.
+    h("div", { class: () => "zm-proclist" + (onChat() ? " zm-hide" : "") }, () => {
+      const live = store.liveProcesses();
+      if (!live.length) return h("div", { class: "cw-empty" }, () => t("chat.procEmpty"));
+      return live.map(x => h("div", { class: "zm-proc" },
+        h("b", null, (x.title || x.note || "").trim() || t("chat.working")),
+        ProcessEntry(x.id)));
+    }),
+    h("div", { class: () => "zm-msgs" + (onChat() ? "" : " zm-hide"), ref: (el) => (listEl = el),
       // Following the newest line is a STATE of the list, read from his last scroll — measured after a render it
       // is already wrong (the new line made the list taller), which is why the list never followed (V2-877 #10).
       onScroll: () => { stick = listEl.scrollHeight - listEl.scrollTop - listEl.clientHeight < 120; } },
@@ -48,7 +64,7 @@ export function ChatSheet() {
       }),
       () => (offNote() ? h("div", { class: "zm-msg sys zm-off-note" }, t("mobile.chat_off")) : null),
     ),
-    h("form", { class: "zm-compose", onSubmit: (e) => { e.preventDefault(); send(); } },
+    h("form", { class: () => "zm-compose" + (onChat() ? "" : " zm-hide"), onSubmit: (e) => { e.preventDefault(); send(); } },
       h("input", {
         ref: (el) => (inputEl = el),
         type: "text", autocomplete: "off", autocapitalize: "sentences", enterkeyhint: "send",

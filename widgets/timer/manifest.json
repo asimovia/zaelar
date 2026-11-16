@@ -68,7 +68,7 @@
       "payload": {}
     },
     "reset": {
-      "desc": "Cancel the countdown and clear the app.",
+      "desc": "Cancel the countdown and clear the widget.",
       "payload": {}
     }
   }

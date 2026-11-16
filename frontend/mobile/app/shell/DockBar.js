@@ -1,8 +1,10 @@
 // DockBar.js — every control, at the bottom, around the orb (the mobile counterpart of the desktop's «eye» and TopBar).
 // The thumb reaches the bottom third, so this bar is the ONLY fixed chrome and --dock-h the one geometry the shell
 // knows: every card and page ends at its top edge; on iOS it pads itself with the safe area (styles.css).
-// COMPOSITION (V2-876 D-C, 2026-11-11): ≡ menu · 💬 chat · ▦ apps | ORB | 🎤 mic · 🔊 speaker. Feedback is a row of the
-// ☰ page, the wake word a row of Settings. Mic and speaker stay here because the voice belongs to ONE device and the hand
+// COMPOSITION (V2-876 D-C, 2026-11-11; 2026-11-16 the wake word came back): ≡ menu · 💬 chat · ▦ widgets | ORB |
+// 🎤 mic · 🔊 speaker · 🤖 wake word — three a side, the orb centred on the screen by the grid (styles.css). The wake
+// word is the desktop orb bar's 🤖, same glyph and same seam (wake.js): the App Review recording showed a phone with
+// no way to say «only when I call you» short of digging into Settings. Feedback is a row of the ☰ page. Mic and speaker stay here because the voice belongs to ONE device and the hand
 // that opens them takes it there, and muting your mic is a privacy gesture that must take one tap. The mic button is
 // the ONE mic indicator; the orb's colour is the agent's state (P-19). A long press on any control says its name (P-13).
 // THE ORB IS ALSO THE SWITCH (2026-08-18): stopped → a ⏻ and nothing else; running → the orb, and a tap stops it — the
@@ -23,6 +25,8 @@ import * as consent from "./ai-consent.js?v=1";   // V2-870: in the app the voic
 import { appsOpen, setAppsOpen } from "./AppsPane.js?v=2";
 import { APPS_ICON } from "../../../app/lib/icons.js?v=2";
 import { problemTitleKey } from "../../../app/services/device-health.js?v=1";
+import * as wake from "./wake.js?v=1";
+import { connectorsOpen } from "./ConnectorsSheet.js?v=1";
 
 const SW = `viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`;
 const MIC_ON  = `<svg ${SW}><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>`;
@@ -35,6 +39,8 @@ const SPK_OFF = `<svg ${SW}><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="m22 9-6 6
 // account, the energy and everything else; settings are now one row inside it.
 const MENU    = `<svg ${SW}><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg>`;
 const PWR     = `<svg ${SW}><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/></svg>`;
+// The desktop orb bar's 🤖 (Orb.js BOT_ICON), drawn here at the dock's size: blue = wake-word mode, grey = always on.
+const BOT     = `<svg ${SW}><path d="M12 8V4H8"/><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M9 13v2"/><path d="M15 13v2"/></svg>`;
 
 // BLUE = on/live, pale GREY = off/closed. Same language as the desktop's lid icons.
 const cls = (on) => "zm-ic" + (on ? " on" : " off");
@@ -68,20 +74,27 @@ export function DockBar() {
 
     // ── LEFT of the orb: the menu, the conversation, the apps ──
     h("div", { class: "zm-side" },
-      // V2-822 — the ☰ also carries the live count of RUNNING PROCESSES (ProcessCount.js, the same component and the
-      // same number as the desktop's bar): the menu is the phone's processes view, so tapping the count is tapping ☰.
+      // The ☰ is the person and the setup (account, settings, voice, connectors — MenuSheet.js), never the agent's work.
       h("button", {
-        class: () => cls(store.mobileMenuOpen() || store.mobileSettingsOpen() || store.mobileFeedbackOpen()) + " zm-menu",
-        "aria-label": () => (store.liveProcessCount() > 0
-          ? t("mobile.menu_processes", { n: store.liveProcessCount() }) : t("mobile.menu")),
+        class: () => cls(store.mobileMenuOpen() || store.mobileSettingsOpen() || store.mobileFeedbackOpen()
+                         || connectorsOpen()) + " zm-menu",
+        "aria-label": () => t("mobile.menu"),
         onClick: () => { const v = !store.mobileMenuOpen(); store.setMobileMenuOpen(v); api.uiEvent("mobile:menu", { state: v ? "open" : "close" }); },
-      }, raw(MENU), ProcessCount({ as: "span" })),
+      }, raw(MENU)),
 
+      // V2-822 — the chat carries the live count of RUNNING PROCESSES (ProcessCount.js, the same component and number
+      // as the desktop's bar): since the unified menu (2026-11-16) the processes are the chat's second tab, as on the
+      // desktop's wall, so the count rides the button that opens them. With processes running it opens on that tab.
       h("button", {
-        class: () => cls(store.chatOpen()),
-        "aria-label": () => t("camera.chat_title"),
-        onClick: () => { const v = !store.chatOpen(); store.setChatOpen(v); api.uiEvent("mobile:chat", { state: v ? "open" : "close" }); },
-      }, raw(CHAT)),
+        class: () => cls(store.chatOpen()) + " zm-chat",
+        "aria-label": () => (store.liveProcessCount() > 0
+          ? t("mobile.chat_processes", { n: store.liveProcessCount() }) : t("camera.chat_title")),
+        onClick: () => {
+          const v = !store.chatOpen();
+          if (v) store.setChatTab(store.liveProcessCount() > 0 && store.chatTab() === "procesos" ? "procesos" : "chat");
+          store.setChatOpen(v); api.uiEvent("mobile:chat", { state: v ? "open" : "close" });
+        },
+      }, raw(CHAT), ProcessCount({ as: "span" })),
 
       h("button", {
         class: () => cls(appsOpen()), "data-ctl": "apps",
@@ -120,7 +133,7 @@ export function DockBar() {
       }, ORB),
     ),
 
-    // ── RIGHT of the orb: the microphone (privacy, one tap) and everything else ──
+    // ── RIGHT of the orb: the microphone (privacy, one tap), the speaker and the wake word ──
     h("div", { class: "zm-side" },
       h("button", {
         // 2026-11-16 — `problem`: no usable microphone (permission, device, a dead track, no agent in the room). RED and
@@ -165,6 +178,14 @@ export function DockBar() {
         },
       }, () => raw(store.botMuted() ? SPK_OFF : SPK_ON)),
 
+      // THE WAKE WORD (2026-11-16). ON (blue) = he says the name once and keeps talking; OFF (grey) = always listening.
+      // The long press says the word itself, with today's name — the one question this button raises.
+      h("button", {
+        class: () => cls(wake.on()), "data-ctl": "bot",
+        "aria-label": () => (wake.on() ? t("mobile.wake_on", { name: store.assistantName() })
+                                       : t("mobile.wake_off", { name: store.assistantName() })),
+        onClick: () => wake.toggle(),
+      }, raw(BOT)),
     ),
   );
 }

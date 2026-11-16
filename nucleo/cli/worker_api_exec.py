@@ -142,7 +142,7 @@ async def _exec_allow(action: str, payload: dict, rec) -> dict:
             from nucleo import canvas_closes as _closes
             if _closes.closed_after(wid, float(getattr(rec, "started", 0) or 0)):
                 return {"ok": False, "error": f"the operator CLOSED «{_base}» after this errand began — do not "
-                                              f"reopen it. Your result stays in the app for when he asks; "
+                                              f"reopen it. Your result stays in the widget for when he asks; "
                                               f"say in one line that it is ready."}
         try:
             from nucleo.acts import canvas
@@ -154,7 +154,7 @@ async def _exec_allow(action: str, payload: dict, rec) -> dict:
                 extra["span"] = f"worker:{getattr(rec, 'task_id', '')}"
             # a worker's close names its card: with no id the canvas closes EVERY card (refactor2710-04)
             if not str(wid or "").strip():
-                return {"ok": False, "error": "close_widget needs the app it closes"}
+                return {"ok": False, "error": "close_widget needs the widget it closes"}
             canvas.apply("show" if action == "show_widget" else "close", str(wid), src=_src, **extra)
             return {"ok": True, "result": {"widget": wid}}
         except Exception as e:  # noqa: BLE001

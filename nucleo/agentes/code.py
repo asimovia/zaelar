@@ -158,7 +158,7 @@ async def run(task) -> WorkResult:
                               summary="No encuentro ese widget para borrarlo; ¿de cuál hablas?")
         # V2-781 T531 — a worker never deletes a card: that is a confirmed act (`pending_confirm`).
         return WorkResult(ok=False, deliver=True, meta={"widget_id": existing, "deleted": False},
-                          summary=f"No he borrado «{existing}»: borrar una app se confirma aparte.")
+                          summary=f"No he borrado «{existing}»: borrar un widget se confirma aparte.")
 
     if existing and _MODIFY_RE.search(req):
         logger.info(f"code: MODIFY widget '{existing}'")

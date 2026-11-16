@@ -130,7 +130,7 @@ def test_the_briefs_focus_on_a_phone_is_the_front_app(on, monkeypatch, lang):
     memory.set_state({"maximized_widget": "musica", "front_reported": True})
     on(PHONE)
     q = brief_screen.target_question(["agenda", "musica", "youtube"])
-    assert q and "PHONE: «musica» is the app in front" in q["instructions"], q and q["instructions"][-300:]
+    assert q and "PHONE: «musica» is the widget in front" in q["instructions"], q and q["instructions"][-300:]
     assert "names a kind of thing" in q["instructions"] and "NEW content" in q["instructions"], "the counterweights went"
     assert next(iter(q["criteria"])).startswith("musica:"), list(q["criteria"])[:3]
     on(DESK)

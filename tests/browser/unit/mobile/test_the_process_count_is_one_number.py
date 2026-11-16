@@ -113,12 +113,13 @@ def test_the_phone_dock_counts_the_same_and_opens_the_processes(server):
         pg = _page(pw, server, 375)
         pg.evaluate("""async () => { const m = await import('/frontend/mobile/app/shell/DockBar.js?v=4');
             document.body.append(m.DockBar()); }""")
-        _one_number(pg, ".zm-dock .zm-menu .pcount")
-        label = pg.evaluate("() => document.querySelector('.zm-menu').getAttribute('aria-label')")
-        assert label == _ES["mobile.menu_processes"].replace("{n}", "2"), label
+        # Since the unified menu (2026-11-16) the processes are the chat's second tab, so the count rides 💬.
+        _one_number(pg, ".zm-dock .zm-chat .pcount")
+        label = pg.evaluate("() => document.querySelector('.zm-dock .zm-chat').getAttribute('aria-label')")
+        assert label == _ES["mobile.chat_processes"].replace("{n}", "2"), label
         assert pg.evaluate("() => document.documentElement.scrollWidth") <= 375, "the dock keeps its width"
         if _SHOTS:
             pg.locator(".zm-dock").screenshot(path=str(_SHOTS / "counter-375.png"))
-        pg.click(".zm-dock .zm-menu")
-        assert pg.evaluate("() => window.__store.mobileMenuOpen()") is True, "a tap opens the menu, its processes view"
+        pg.click(".zm-dock .zm-chat")
+        assert pg.evaluate("() => window.__store.chatOpen()") is True, "a tap opens the chat, whose second tab is the processes"
         assert not pg._errors, pg._errors
