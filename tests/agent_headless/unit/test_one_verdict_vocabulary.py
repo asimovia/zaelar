@@ -79,14 +79,14 @@ def test_a_non_ending_is_never_settled(rows):
 
 
 def test_memory_keeps_a_result_only_when_the_verdict_declares_it_delivered(monkeypatch):
-    import asyncio
+    from types import SimpleNamespace
 
-    from nucleo.memory_agent import writer
+    from memory import api as _memory
+    from nucleo.circuit import ledger
     kept: list = []
-
-    async def _remember(p):
-        kept.append(p)
-    monkeypatch.setattr("nucleo.memory_agent.external.remember", _remember)
+    monkeypatch.setattr(_memory, "write", lambda line, **k: kept.append(k))
+    monkeypatch.setattr(_memory, "task_trace_ids", lambda uid: [])
     for name in ("met", "undeclared", "unverifiable", "unmet", "gave_up", "cannot", "started"):
-        asyncio.run(writer.result("the report", task_id=name, verdict=name))
-    assert [p["meta"]["verdict"] for p in kept] == ["met", "undeclared", "unverifiable"]
+        ledger.remembered(SimpleNamespace(uid=name, kind="web", title="the report", goal="the report", verdict=name),
+                          state="done", outcome="the report")
+    assert [k["meta"]["verdict"] for k in kept] == ["met", "undeclared", "unverifiable"]

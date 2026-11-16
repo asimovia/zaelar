@@ -117,7 +117,7 @@ async def remember_external(item: dict, *, source: str = "external") -> dict:
         lineage is written only by the operator's turn); work slots (`goal.moto`, `weather:x`, namespaced) pass normally
         — exact superseding remains theirs.
       - **Stamped provenance** (`meta.source="worker:<id>"`); the KIND is the pill grammar's, a `result` only ever
-        the circuit's verdict (`writer.result`, V2-825 F1). Returns `{ok, reason}` for the endpoint."""
+        the circuit's verdict (`writer.admits`, written by the row's close, V2-825 F1). Returns `{ok, reason}` for the endpoint."""
     if not isinstance(item, dict):
         return {"ok": False, "reason": "bad-item"}
     text = (item.get("text") or "").strip()

@@ -8,9 +8,9 @@ with «Sí, está terminado» for an errand that had failed (V2-825 F1).
 So the grammar is enforced where a pill is born, not at the reader:
   - the distiller's kinds are `profile · pref · fact · event · intent · request` (`request` = something he ASKED
     the assistant to do). A `result` the model returns is stored as a `request` (`distilled_kind`).
-  - `result(...)` is the door for the circuit's verdict: it writes when the worker DELIVERED
-    (the verdicts that declare `delivered`), stamping the verdict so a reader tells «checked» from «delivered, unverified»; a
-    failed or parked errand writes nothing.
+  - `admits(...)` is the gate of the circuit's verdict: a `result` is written (by the row's close,
+    `ledger.remembered`) only when the worker DELIVERED (the verdicts that declare `delivered`), stamped with the
+    verdict so a reader tells «checked» from «delivered, unverified»; a failed or parked errand writes nothing.
 """
 from __future__ import annotations
 
@@ -24,24 +24,10 @@ def distilled_kind(raw: object) -> str:
     return "request" if kind == RESULT else kind
 
 
-async def result(text: str, *, task_id: str, verdict: str, level: str = "mid",
-                 importance: float = 0.5, meta: dict | None = None) -> bool:
-    """Write an errand's OUTCOME as a `result` pill (`meta.verdict` = the verdict) when the worker delivered; True
-    when queued. Any other verdict writes nothing: that outcome is a fact of the task store, never of memory."""
-    text = (text or "").strip()
-    v, why = admits(task_id, verdict, text)
-    if why:
-        return False
-    from nucleo.memory_agent.external import remember
-    stamp = {**(meta or {}), "source": f"worker:{task_id}", "verdict": v}
-    await remember({"text": text, "kind": RESULT, "level": level, "importance": importance, "meta": stamp})
-    return True
-
-
 def admits(task_id: str, verdict: str, text: str) -> tuple[str, str]:
     """THE gate of a task's outcome into memory: `(verdict name, why not)` — `why` is '' only when the verdict
-    declares the worker DELIVERED and there is text. Observed either way. Every outcome pill crosses it (this door
-    and the row's close, `ledger.remembered`), so a failed or parked errand writes nothing anywhere."""
+    declares the worker DELIVERED and there is text. Observed either way. Its one writer is the row's close
+    (`ledger.remembered`), so a failed or parked errand writes nothing anywhere."""
     from nucleo.circuit import verdict as _verdict   # each verdict declares whether the worker DELIVERED
     v = getattr(_v := _verdict.of(str(verdict or "").strip().lower()), "name", str(verdict or "").strip().lower())
     why = ("" if text and _v is not None and _v.delivered

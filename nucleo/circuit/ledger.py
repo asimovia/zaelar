@@ -467,11 +467,10 @@ def remembered(rec, *, state: str = "done", outcome: str = "") -> None:
         return
     from nucleo.memory_agent import writer as _mw    # THE one gate: only a delivered verdict is remembered
     v, why = _mw.admits(uid, str(getattr(rec, "verdict", "") or ""), name)
-    if why:
+    if why or state != "done":           # a delivered verdict on a row that did not end done is not one either
         return
-    verb = {"done": "terminó", "failed": "falló", "cancelled": "se canceló"}.get(state, "terminó")
     when = time.strftime("%Y-%m-%d", time.localtime())
-    line = f"[task:{uid}] El encargo «{name[:160]}» {verb} el {when}."
+    line = f"[task:{uid}] El encargo «{name[:160]}» terminó el {when}."
     if outcome and outcome.strip() != name:
         line += f" Resultado: {outcome.strip()[:240]}"
     if title and goal and goal != title:

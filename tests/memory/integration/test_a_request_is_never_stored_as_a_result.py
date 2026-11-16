@@ -6,7 +6,7 @@ pill — for an errand whose task row said `failed`. Only the circuit that judge
 was done; the operator's words never do.
 
 The guard is the pill GRAMMAR at birth (`nucleo/memory_agent/writer.py`): whatever kind the model returns, a
-distilled pill is never a `result`; a `result` is written only through `writer.result(...)` on a `met` verdict.
+distilled pill is never a `result`; a `result` is written only through `writer.admits(...)` (the row's close) on a delivered verdict.
 Checked through the REAL write path — the HTTP call is the only thing replaced — with requests in three languages
 and three domains, so no wording carries the test.
 """
@@ -93,17 +93,24 @@ def test_the_distiller_is_never_told_to_write_a_result():
 def test_a_result_is_written_only_when_the_worker_delivered(fresh_db):
     """Delivered = `met`, or an errand whose end state was undeclared / unreadable (a trip plan, a report): its
     deliverable is kept, stamped with that verdict. Failed, cancelled or parked errands write nothing."""
+    from types import SimpleNamespace
+    from nucleo.circuit import ledger
+
+    def close(v, text):
+        rec = SimpleNamespace(uid=f"t-{v or 'none'}", kind="web", title=text, goal=text, verdict=v)
+        return ledger.remembered(rec, state="done", outcome=text)
+
     async def scenario():
         await memapi.start()
-        refused = [await writer.result("Encontró tres carpinteros en Soria.", task_id="t1", verdict=v)
+        refused = [writer.admits("t1", v, "Encontró tres carpinteros en Soria.")[1] == ""
                    for v in ("unmet", "gave_up", "skipped", "retrying", "cannot", "asked", "")]
-        written = [await writer.result(f"Plan de viaje a Lisboa ({v}).", task_id=f"t-{v}", verdict=v)
-                   for v in ("met", "undeclared", "unverifiable")]
+        for v in ("met", "undeclared", "unverifiable"):
+            close(v, f"Plan de viaje a Lisboa ({v}).")
         await memqueue.get_queue().join()
         await memapi.stop()
-        return refused, written
-    refused, written = asyncio.run(scenario())
-    assert refused == [False] * 7 and written == [True] * 3
+        return refused
+    refused = asyncio.run(scenario())
+    assert refused == [False] * 7
     rows = memdb.get_db().query("SELECT kind, meta FROM memories WHERE valid=1 AND kind='result'")
     assert sorted(json.loads(r["meta"])["verdict"] for r in rows) == ["met", "undeclared", "unverifiable"]
 

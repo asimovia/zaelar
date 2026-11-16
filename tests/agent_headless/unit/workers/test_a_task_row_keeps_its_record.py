@@ -95,12 +95,14 @@ def test_the_close_remembers_only_through_the_one_gate(monkeypatch, verdict, sta
 
 
 def test_the_delivery_writes_no_memory_of_its_own(monkeypatch):
-    from nucleo.memory_agent import writer
+    from memory import api as _memory
+    from nucleo.memory_agent import external
     from nucleo.workers import session_finish
 
     async def _boom(*a, **k):
         raise AssertionError("a second memory writer")
-    monkeypatch.setattr(writer, "result", _boom)
+    monkeypatch.setattr(external, "remember", _boom)
+    monkeypatch.setattr(_memory, "write", lambda *a, **k: (_ for _ in ()).throw(AssertionError("a second writer")))
     _deliver_quiet(monkeypatch)
     rec = _rec(verdict="met")
     rec.ok, rec.result_summary = True, "Grupo creado."
@@ -171,3 +173,11 @@ def test_a_close_emits_exactly_one_notice_in_total(monkeypatch, ok, status, summ
         asyncio.run(session_finish._deliver(rec))         # `_ending` delivers only a summary that is not a cancel
     ended._remember_ended(rec)
     assert len(told) == expected, told
+
+
+def test_an_ending_whose_judge_raised_is_still_remembered(monkeypatch):
+    """Audit note 10: `circuit.close` that raises returns `undeclared` AND stamps it, so the gate reads a verdict."""
+    from nucleo import circuit
+    monkeypatch.setattr(circuit, "_close", lambda rec, cap: (_ for _ in ()).throw(RuntimeError("boom")))
+    rec = _rec()
+    assert circuit.close(rec, 1) == "undeclared" and rec.verdict == "undeclared"
