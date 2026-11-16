@@ -86,6 +86,9 @@ def calls_not_run(model_calls, tasks) -> list[tuple[str, str]]:
         card, action = base(args.get("widget_id")), str(args.get("action") or "").strip()
         if not card or not action or card in acted or any(card == w for w, _a in out):
             continue
+        from nucleo.turn import rerouted     # another card's act ran in its place: that act's card answers for it
+        if rerouted.was(card, action):
+            continue
         try:   # a read that did not run has no act to say undone
             from widgets import effects
             if effects.carries(card, action, effects.DATA_READ):

@@ -229,6 +229,7 @@ def _apply_widget_data(wid: str, action_name: str, payload: dict, ref: str='', *
         emit("brain", "📇 no channel named: the act its card declares for that", text=f"{wid}:{action_name} → "
              f"{_twin[0]}:{_twin[1]}", role="system", extra={"cat": "flash", "from": f"{wid}:{action_name}",
                                                             "to": f"{_twin[0]}:{_twin[1]}"})
+        __import__("nucleo.turn.rerouted", fromlist=["x"]).note(wid, action_name)   # its card answers for it
         return _apply_widget_data(_twin[0], _twin[1], _twin[2])
     if _leaving_is_a_task(wid, action_name, text, escalate_req, emit, payload=payload, brief=_brief):   # V2-852 M2
         return
