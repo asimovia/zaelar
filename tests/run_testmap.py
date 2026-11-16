@@ -5362,6 +5362,17 @@ DOMAINS: list[dict] = [
                                  "weekly window states and relays to the titular, and every worker event names it",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/workers/test_the_claude_subscription_rung.py"]},
+        {"id": "2.1780", "title": "Every account of a mediated deployment gets the Claude-subscription rung by default (V2-913): "
+                                 "behind mediated egress the rung runs with the process's own egress credential, no "
+                                 "hand-made code_agent.providers and never the token; outside mediated egress that credential "
+                                 "creates nothing; the main model and a cheaper fast slot come from the table",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/workers/test_the_claude_subscription_rung.py"]},
+        {"id": "2.1781", "title": "A microVM is a container (V2-913): a runtime's env marker (FLY_MACHINE_ID, "
+                                 "KUBERNETES_SERVICE_HOST, container) or init file (/.fly/init, /run/.containerenv) makes "
+                                 "doctor.hardware() say container, and the worker chain then never ends in the local licence",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/workers/test_a_microvm_never_offers_the_local_licence.py"]},
         {"id": "2.1761", "title": "A group he ordered with the members he named leaves a task's exit door unasked: "
                                  "`mensajeria:create_group` declares its slots (recipient ← `members` by his words, channel "
                                  "← `platform` by the reading, text composed) and its own sentence in ES and EN; a LIST "
