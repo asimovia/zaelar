@@ -99,3 +99,31 @@ def test_compose_never_leaves_without_his_confirmation(world, lang, send, monkey
     res = asyncio.run(send_task_run.run(uid))
     assert world["reached"] == [], "checkpoint 1 is not relaxed for an act with no readable end state"
     assert res.get("ok") is False and "checkpoint 1" in str(res.get("error"))
+
+
+def test_an_unread_declaration_fails_toward_asking(monkeypatch):
+    from nucleo.flash import payload_fill
+    from nucleo.request import send_task_fields
+    monkeypatch.setattr(payload_fill, "_payload_spec", lambda *a: (_ for _ in ()).throw(RuntimeError("unread")))
+    art = {"widget": "mensajeria", "action": "create_group", "slots": {"text": {"key": "text", "rule": "composed"}}}
+    assert send_task_fields.required(art, "text") is True
+
+
+@pytest.mark.xfail(strict=True, reason="OPEN CLASS (V2-919 audit): `take_call` fills a waiting send row from the "
+                   "answering turn's call whatever that turn IS — a question about a held draft that names its addressee "
+                   "fills the person and the draft leaves. Unchanged from main; recorded, not fixed in this pass.")
+@pytest.mark.parametrize("lang", ["es", "en"])
+def test_a_question_about_a_held_draft_answered_by_the_models_call_sends_nothing(world, lang, monkeypatch):
+    """The answering turn's own call (`take_call`) on a QUESTION about the draft that names its addressee — the path
+    T4's first test does not cover (code unchanged from main)."""
+    monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
+    from nucleo.request import send_task_answer
+    from widgets import contract
+    monkeypatch.setattr(contract, "would_refuse", lambda *a, **k: None)   # the draft to Luis Gil IS held
+    said = "manda el borrador" if lang == "es" else "send the draft"
+    _say(said)
+    uid = send_task.commission("mensajeria", "send_draft", {"key": "draft-1"}, said)
+    q = "¿qué pone en el borrador para Luis Gil?" if lang == "es" else "what does the draft to Luis Gil say?"
+    _say(q)
+    send_task_answer.take_call("mensajeria", "send_draft", {"key": "draft-1", "contact": "Luis Gil"}, q)
+    assert world["reached"] == [], "a question about the draft never sends it"

@@ -5406,7 +5406,8 @@ DOMAINS: list[dict] = [
                                  "whose call names nobody asks «to whom» on its row and sends nothing (the person a leaving "
                                  "act reaches is required whatever the payload declares; es, en); compose keeps its "
                                  "done_when_unreadable and a retained compose is refused at checkpoint 1 — nothing reaches the "
-                                 "widget's door, with or without send: true",
+                                 "widget's door, with or without send: true; an unread payload declaration fails toward asking; OPEN (xfail strict): a "
+                                 "question about a held draft answered by the model's own call (take_call) still sends it",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/turn/test_the_set_aside_regressions_stay_closed.py"]},
         {"id": "2.1786", "title": "A list field and a channel field keep the shape and the key their action declares through "
