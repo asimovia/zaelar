@@ -195,8 +195,9 @@ def take_call(wid: str, action: str, payload: dict | None, said: str) -> str:
             art.update(state="answered", answer=str(dict(payload or {}).get(ret.get("slot")) or ""),
                        answered_at=time.time())
             asker.keep(uid, art)
-            merged = {**dict(keep.get("payload") or {}),
-                      **{k: v for k, v in dict(payload or {}).items() if isinstance(v, str) and v.strip()}}
+            from nucleo.request.send_task import filled
+            merged = {**dict(keep.get("payload") or {}),       # a list of people is a value too, as text is
+                      **{k: v for k, v in dict(payload or {}).items() if filled(v)}}
             keep.update(payload=merged, slots=sources(wid, action, merged, said, reading=keep.get("reading")))
             keep.setdefault("heard", []).append(said)
             for s, d in keep["slots"].items():   # what he already gave this task stays his
