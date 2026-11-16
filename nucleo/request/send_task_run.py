@@ -42,11 +42,22 @@ def stamp(payload: dict | None) -> str:
 
 def consented(uid: str) -> None:
     """His yes to the exit door's question about this row's act: kept on the row with what it was said about, so the
-    door's same question is the one he answered when the act crosses it again (as a worker's retained act does)."""
+    door's same question is the one he answered when the act crosses it again (as a worker's retained act does). One
+    crossing only (`_spent`)."""
     from nucleo.request.send_task import _keep
     art = artefact(uid)
+    if not art.get("action"):          # an unread row keeps what it holds: nothing is written over it
+        return
     art["consented"] = stamp(art.get("payload"))
     _keep(uid, art)
+
+
+def _spent(uid: str, art: dict) -> None:
+    """His yes answered ONE crossing: it is used up when the act passes the door, so a later crossing of the same row
+    (a taint that arose since, a draft edited since) is asked on its own."""
+    if art.pop("consented", None) is not None:
+        from nucleo.request.send_task import _keep
+        _keep(uid, art)
 
 
 
@@ -90,6 +101,7 @@ async def run(uid: str) -> dict:
         return {"ok": False, "asked": ask_id, "row": uid}
     inner = ex.payload.get("payload") if isinstance(ex.payload, dict) and isinstance(ex.payload.get("payload"), dict) \
         else payload
+    _spent(uid, art)
     ledger.resumed(uid)
     _play.door(uid, "passed", art)
     from nucleo.flash import data_ops

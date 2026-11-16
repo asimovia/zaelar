@@ -193,7 +193,22 @@ def _folded(wid: str, action: str, payload: dict | None) -> dict:
     return field_types.as_declared(base(wid), action, folded)
 
 
-def take_call(wid: str, action: str, payload: dict | None, said: str) -> str:
+def _answers(brief, ask_id: str) -> bool:
+    """Does the turn's reading surely say his words answer THIS open question (`worker_api_bind.KEY`, at the licence)?
+    No reading, a doubt, or another choice → no."""
+    if brief is None or not ask_id:
+        return False
+    try:
+        from nucleo.cli import worker_api_bind as _bind
+        from nucleo.turn import verdicts
+        choice, _info = verdicts.read(brief, _bind.KEY, None)
+        return choice is not None and str(choice).split(_bind.PICK, 1)[0] == ask_id
+    except Exception as e:  # noqa: BLE001 — an unread verdict is no answer: the exit asks
+        note(e)
+        return False
+
+
+def take_call(wid: str, action: str, payload: dict | None, said: str, *, brief=None) -> str:
     """The same act Flash calls on a turn that answers this task's question (the model heard his answer and called
     the door with it): its slots fill the waiting row, nothing new opens. The row's uid, or "" when no send task
     waits on this card's act."""
@@ -231,8 +246,11 @@ def take_call(wid: str, action: str, payload: dict | None, said: str) -> str:
                 k = str(d.get("key") or s)
                 if d["source"] == AGENT and str((before.get(s) or {}).get("source")) == HIS and merged.get(k) == held.get(k):
                     d["source"] = HIS
-            if merged != held:    # a value the answering turn's CALL put on the row is not part of what he ordered:
-                keep["order_void"] = True     # his order over a held row is not read for it — the exit asks
+            # A value this turn's CALL put on the row is part of what he ordered only when the turn's reading says
+            # his words ANSWER this row's question; with any other reading, or none, his order over a held row is
+            # not read for it — the exit asks.
+            if merged != held and not _answers(brief, str(a.get("ask_id") or "")):
+                keep["order_void"] = True
             _keep(uid, keep)
             _end_state(uid, wid, action, merged, said)
             _go_on(uid, keep)    # missing re-read AFTER the merge: a row never waits on a question nobody asked

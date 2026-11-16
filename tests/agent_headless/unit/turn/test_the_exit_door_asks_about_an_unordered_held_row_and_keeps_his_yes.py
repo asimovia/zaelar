@@ -168,3 +168,36 @@ def test_his_sure_order_covers_his_own_answer_but_not_a_later_calls_value(world,
     assert world["reached"] == [], "a value the later call added is not covered by his order"
     assert _open_question(other).get("consent") == consent.ASK_CONSENT
     assert send_task.artefact(other).get("order_void") is True
+
+
+def test_his_yes_is_used_up_by_the_crossing_it_answered(world, monkeypatch):
+    """A yes answers ONE crossing: after the act passed the door, the same row crossing again is asked on its own
+    (audit: a taint that arose after the yes went out with no question)."""
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "en")
+    uid = _held_draft_waits_on_the_door("en")
+    send_task_answer.answered(uid, _open_question(uid), "yes")
+    assert len(world["reached"]) == 1 and "consented" not in send_task.artefact(uid)
+    asyncio.run(send_task_run.run(uid))                       # the same row, the same payload, crossing again
+    assert len(world["reached"]) == 1, "the spent yes does not open the door a second time"
+
+
+@pytest.mark.parametrize("reads, void", [("this", False), ("other", True), ("none", True)])
+def test_the_calls_value_is_his_order_only_when_the_turn_reads_his_words_as_the_answer(world, monkeypatch, reads, void):
+    """The answering turn's call puts the person on the row. When the turn's reading says his words answer THIS row's
+    question, the value is part of what he ordered (his order still releases it); with another reading, or none, it is
+    not, and the exit asks."""
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "en")
+    from nucleo.acts import message
+    from nucleo.cli import worker_api_bind
+    from nucleo.turn import verdicts
+    monkeypatch.setattr(message, "confirmed", lambda *a, **k: True)       # he surely ordered the draft sent
+    _say(ORDER["en"])
+    uid = send_task.commission("mensajeria", "send_draft", {"key": "draft-1"}, ORDER["en"])
+    ask_id = str(_open_question(uid).get("ask_id"))
+    choice = {"this": ask_id, "other": "another-row-q1", "none": None}[reads]
+    monkeypatch.setattr(verdicts, "read", lambda h, key, fb, **k: (choice, None) if key == worker_api_bind.KEY else (fb, None))
+    _say("to Luis Gil")
+    send_task_answer.take_call("mensajeria", "send_draft", {"key": "draft-1", "contact": "Luis Gil"}, "to Luis Gil",
+                               brief=object())
+    assert bool(send_task.artefact(uid).get("order_void")) is void
+    assert (world["reached"] == []) is void, "released by his order only when the turn read his words as the answer"

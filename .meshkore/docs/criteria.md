@@ -282,9 +282,10 @@ below is the first kind, or it names the mechanism that replaced the second.
 - **CRIT-C9b · A held row nobody surely ordered is asked at the exit, and his yes is kept.** A declared `held` slot
   that his order did not release reads `unknown` at the exit door (`stranger` after a stranger's text), so the act's own
   question is asked; the commissioning turn's order covers the row as his answers completed it and is void for a value
-  a later turn's call put on it (`order_void`). His yes to the door's question is kept on the row with the payload it
-  was said about (`send_task_run.consented`): the act runs once, the question he answered is not asked again, a payload
-  changed since is. — since 2026-11-16 · node 2.1787 · `nucleo/workers/exit_slots.py`, `nucleo/request/send_task_run.py`,
+  a later turn's call put on it unless that turn's reading says his words answer the row's question (`order_void`). His
+  yes to the door's question is kept on the row with the payload it was said about (`send_task_run.consented`) and is
+  used up by the crossing it answered: the act runs once, the question he answered is not asked again, a payload
+  changed since — or a later crossing — is. — since 2026-11-16 · node 2.1787 · `nucleo/workers/exit_slots.py`, `nucleo/request/send_task_run.py`,
   `nucleo/request/send_task_answer.py`.
 - **CRIT-C10 · Every act that reaches the real world reads ONE door, and his rules override its defaults.** A widget's
   act through `frontend.action_verdict`; a cluster message, an errand's reply and a worker's click through
