@@ -1225,7 +1225,8 @@ Flash keeps the conversation; the row is what both brains read.
   input, wakes a sleeping tab and reopens its stream with `wake=1`, with nothing to press. Putting the app away says
   the person left (`POST /api/screens/beat {left}` → `screens.left`), and with no other screen on and no voice session
   open the idle stop counts its short `wake_grace_min` from that moment; a worker running or a notice due keeps its
-  veto. A browser tab coming to the foreground is still not a person (R24, R25). — since 2026-11-16 · node 4.553 ·
+  veto. Inside the native companion the shell leaves a hint cookie (`zaelar_app=1`) a deployment's edge may read. A
+  browser tab coming to the foreground is still not a person (R24, R25). — since 2026-11-16 · node 4.553 ·
   `frontend/app/services/presence.js`, `voice/screens.py`, `nucleo/idle_stop.py`, `server/screens_api.py`.
 - **CRIT-R26 · Nothing at boot starts the Chromium on a host that stops when idle.** `prewarm_browser` decides the search browser's warm-up (a declared value wins; undeclared, it is false under `ZAELAR_IDLE_STOP_MIN`), the first search starts the browser itself, the boot status probe leaves the browser rows `unprobed` while it is down, and loading the video card issues no search (V2-872) — since 2026-11-10 · nodes 3.183 · `nucleo/llm/prewarm.py`, `search/api.py`, `search/browser.py`.
 - **CRIT-R27 · A passive tick follows presence.** With a screen open (or `background.always`) a passive widget keeps its declared cadence; with none it ticks at most every `background_idle_every_s`, the first tick a full idle period after boot; reminders are scheduler jobs and never depend on the tick (V2-872) — since 2026-11-10 · nodes 3.183 · `widgets/background.py`, `widgets/validator_actions.py`.

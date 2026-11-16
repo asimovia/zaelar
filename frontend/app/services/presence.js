@@ -84,6 +84,19 @@ export function soundingNow(media = []) {
   return Array.from(media || []).some((m) => m && !m.paused && !m.ended && !m.muted);
 }
 
+/** Inside the native companion (`in-app` on the root), leave a cookie that says so: `zaelar_app=1`, for a year. A
+ *  deployment whose edge decides what may start a sleeping host reads it to tell the app's page load from a browser
+ *  tab's — the app's User-Agent suffix does not survive a page load the service worker re-issues (measured on
+ *  Android, 2026-11-16). A hint, never a credential: the cookie jar is the app's own. Returns the cookie written. */
+export function markNativeApp(doc = globalThis.document, loc = globalThis.location) {
+  try {
+    if (!doc || !doc.documentElement.classList.contains("in-app")) return "";
+    const c = "zaelar_app=1; Path=/; Max-Age=31536000; SameSite=Lax" + (loc && loc.protocol === "https:" ? "; Secure" : "");
+    doc.cookie = c;
+    return c;
+  } catch (_) { return ""; }
+}
+
 function _soundingNow() {
   try { return soundingNow(document.querySelectorAll("audio, video")); } catch (_) { return false; }
 }
@@ -157,6 +170,7 @@ export function wirePresence(h) {
   } catch (_) {}
   const input = () => { _p.lastInput = _p.lastGesture = Date.now(); if (_p.asleep) wake(); };
   if (_appNow()) _p.lastGesture = _p.lastInput = Date.now();   // the app was opened: however the page was loaded, he did it
+  markNativeApp();
   for (const ev of ["pointerdown", "keydown"]) window.addEventListener(ev, input, { capture: true, passive: true });
   const iv = setInterval(() => { if (!_p.asleep && sleepDue({ lastInputMs: _p.lastInput, nowMs: Date.now(), sleepMin: _p.sleepMin })) sleep(); }, 30000);
   if (iv && iv.unref) iv.unref();   // a node harness that mounts sse.js must still exit; a browser returns a number

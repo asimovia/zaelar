@@ -45,11 +45,21 @@ assert.equal(P.installedApp({ displayStandalone: true }), false, "a standalone w
 assert.equal(P.soundingNow([{ paused: true }, { paused: false, ended: true }, { paused: false, muted: true }]), false);
 assert.equal(P.soundingNow([{ paused: true }, { paused: false, ended: false, muted: false }]), true, "music is sounding");
 
+// ── the native app leaves its mark for a deployment's edge; a browser tab and a home-screen page do not ──
+const jar = (cls) => { const d = { cookie: "", documentElement: { classList: { contains: (c) => cls && c === "in-app" } } }; return d; };
+const native = jar(true), plain = jar(false);
+assert.equal(P.markNativeApp(native, { protocol: "https:" }), "zaelar_app=1; Path=/; Max-Age=31536000; SameSite=Lax; Secure");
+assert.equal(native.cookie, "zaelar_app=1; Path=/; Max-Age=31536000; SameSite=Lax; Secure");
+assert.equal(P.markNativeApp(jar(true), { protocol: "http:" }), "zaelar_app=1; Path=/; Max-Age=31536000; SameSite=Lax", "no Secure on a plain-http engine");
+assert.equal(P.markNativeApp(plain, { protocol: "https:" }), "", "a browser tab leaves none");
+assert.equal(plain.cookie, "");
+
 let opens = 0, wakes = 0, closes = 0, lefts = 0, beats = 0;
 P.wirePresence({ open: (o) => { opens++; if (o && o.wake) wakes++; }, close: () => closes++, t: (k) => k,
                  beat: () => beats++, left: () => lefts++, dormant: () => {} });
 const show = (visible) => { globalThis.document.hidden = !visible; for (const fn of docListeners.visibilitychange || []) fn(); };
 
+assert.equal(/zaelar_app=1/.test(globalThis.document.cookie || ""), MODE === "app", "wiring presence marks the native app, and only it");
 P.onStreamOpen();
 later(60000);                                                           // a minute after he opened it…
 P.presenceEvent({ kind: "session", label: "engine.sleep" });          // …the engine said goodnight: the tab sleeps
