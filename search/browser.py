@@ -63,6 +63,7 @@ def _where() -> tuple[str, str]:
 
 # singleton state (lives on the server loop)
 _pw = _ctx = None     # the async_playwright object and its persistent BrowserContext
+_remote_browser = None  # remote mode only (`nucleo/remote_browser.py`): the CDP-connected Browser `_ctx` lives on
 _loop = None          # the server loop (for the sync→async bridge)
 _start_lock: asyncio.Lock | None = None
 _owner = None         # the event loop `_ctx` and `_start_lock` belong to
@@ -103,11 +104,14 @@ def _egress_launch() -> list[str]:
 async def ensure_started() -> bool:
     """Starts (idempotently) the persistent Chromium context and warms it with google.com. True when ready.
     Fire-and-forget from boot; never raises into the lifespan."""
-    global _pw, _ctx, _start_lock, _owner
+    global _pw, _ctx, _start_lock, _owner, _remote_browser
     if not enabled():
         return False
     if _owner is not asyncio.get_running_loop():   # a context and its lock serve only the loop that made them
         _pw, _ctx, _start_lock, _owner = None, None, asyncio.Lock(), asyncio.get_running_loop()
+    from nucleo import remote_browser as _remote
+    if _remote.is_remote():
+        return await _ensure_remote(_remote)
     if _ctx is not None and not _egress_changed():
         return True
     async with _start_lock:
@@ -155,6 +159,37 @@ async def ensure_started() -> bool:
             logger.warning(f"browser_search no pudo arrancar (búsqueda caerá a DDG): {e}")
             _ctx = None
             return False
+
+
+async def _ensure_remote(_remote) -> bool:
+    """Remote mode: a context on a browser reached over CDP — no Chromium is launched here, ever. A browser that
+    cannot be reached is logged by its NAMED reason and the search chain falls to its next index, exactly as for any
+    start failure; it never becomes a local launch."""
+    global _pw, _ctx, _remote_browser
+    _remote.touch()
+    if _ctx is not None and _remote.alive(_remote_browser):
+        return True
+    async with _start_lock:
+        if _ctx is not None and _remote.alive(_remote_browser):
+            return True
+        _ctx = _remote_browser = None
+        try:
+            from playwright.async_api import async_playwright
+            if _pw is None:
+                _pw = await async_playwright().start()
+            _remote_browser = await _remote.connect(_pw)
+            _hl, _gl = _where()
+            _ctx = await _remote_browser.new_context(user_agent=_UA, locale=f"{_hl}-{_gl.upper()}",
+                                                     viewport={"width": 1280, "height": 900})
+            _ctx.set_default_timeout(_TIMEOUT_MS)
+            logger.info("browser_search: remote browser context ready")
+            return True
+        except _remote.RemoteBrowserUnavailable as e:
+            logger.warning(f"browser_search: {e} — the search falls to its next index")
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"browser_search: remote context failed ({e!r}) — the search falls to its next index")
+        _ctx = _remote_browser = None
+        return False
 
 
 async def _dismiss_consent(page) -> None:
@@ -647,12 +682,18 @@ def page_html_sync(url: str) -> str:
 
 async def stop() -> None:
     """Closes the context and playwright (on the lifespan shutdown)."""
-    global _pw, _ctx
+    global _pw, _ctx, _remote_browser
     try:
         if _ctx is not None:
             await _ctx.close()
     except Exception:
         pass
+    try:
+        if _remote_browser is not None:
+            await _remote_browser.close()          # over CDP this only disconnects; the remote browser is not ours
+    except Exception:
+        pass
+    _remote_browser = None
     try:
         if _pw is not None:
             await _pw.stop()
