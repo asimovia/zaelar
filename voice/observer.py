@@ -146,6 +146,9 @@ _CAT = {
     # browser reports through `/api/ui-event`).
     "error": "system", "alert": "system", "homeostasis": "system", "language": "system", "client": "system",
     "energy": "system",
+    # `voice_fault` (V2-910): the voice did NOT do what it owed — a room crossed a freeze, rooms asked for and never
+    # joined, the cure that followed. Never hidden by category in either viewer, like `error`/`alert`.
+    "voice_fault": "system",
     # `feedback` (V2-760): the operator pressed the thumbs-down — «from here backwards, something went wrong».
     # In the system family so it shows on the same timeline it points into.
     "feedback": "system",
@@ -557,7 +560,7 @@ def emit(kind: str, label: str, text: str = "", role: str = "", extra: dict | No
         ev["cat"] = _CAT.get(kind, "other")
     # PRESSURE NUMBERS (V2-837 G8): every alert and every homeostasis reaction says what the host looked like, here
     # and not at each of its callers — two of three pressure alerts carried no number at all.
-    if kind in ("alert", "homeostasis") and "pressure" not in ev:
+    if kind in ("alert", "homeostasis", "voice_fault") and "pressure" not in ev:
         try:
             from observability import pressure as _pressure
             ev["pressure"] = _pressure.snapshot()

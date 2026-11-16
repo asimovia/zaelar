@@ -165,12 +165,18 @@ export function Orb() {
         title: () => (!store.micHealth().ok ? t(problemTitleKey("mic", store.micHealth().reason))
                       : store.micMuted() ? t("camera.mic_unmute") : t("camera.mic_mute")),
         // Opening the mic by hand brings the voice to this surface (session.openMicHere); closing it is local.
+        // 2026-11-16 — a RED mic (no usable microphone: permission, device, a dead track, no agent) is a tap to
+        // RECOVER it (`session.recoverMic`), never a toggle: muting a mic nobody can hear would only hide the fault.
         onClick: () => {
+          if (!store.micHealth().ok && session.recoverMic) {
+            api.uiEvent("orb:mic", { state: "recover", reason: store.micHealth().reason });
+            session.recoverMic("orb"); return;
+          }
           if (store.micMuted() && session.openMicHere) session.openMicHere("orb");
           else mic.toggle("orb");
           api.uiEvent("orb:mic", { state: store.micMuted() ? "muted" : "unmuted" });
         },
-      }, () => raw(store.micMuted() ? MIC_OFF : MIC_ICON)),
+      }, () => raw(!store.micHealth().ok || store.micMuted() ? MIC_OFF : MIC_ICON)),   // a fault is slashed too, in red
       h("button", { "data-ctl": "spk",
         class: () => devClass(!store.botMuted()) + (store.spkHealth().ok ? "" : " problem"),
         title: () => !store.spkHealth().ok ? t(problemTitleKey("spk", store.spkHealth().reason))
