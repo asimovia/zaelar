@@ -162,34 +162,26 @@ async def ensure_started() -> bool:
 
 
 async def _ensure_remote(_remote) -> bool:
-    """Remote mode: a context on a browser reached over CDP — no Chromium is launched here, ever. A browser that
-    cannot be reached is logged by its NAMED reason and the search chain falls to its next index, exactly as for any
-    start failure; it never becomes a local launch."""
+    """Remote mode (V2-918): a context on a browser reached over CDP, never a launch. A named failure is logged and the
+    chain falls to its next index, as for any start failure."""
     global _pw, _ctx, _remote_browser
     _remote.touch()
-    if _ctx is not None and _remote.alive(_remote_browser):
-        return True
     async with _start_lock:
         if _ctx is not None and _remote.alive(_remote_browser):
             return True
-        _ctx = _remote_browser = None
         try:
             from playwright.async_api import async_playwright
-            if _pw is None:
-                _pw = await async_playwright().start()
+            _pw = _pw or await async_playwright().start()
             _remote_browser = await _remote.connect(_pw)
             _hl, _gl = _where()
             _ctx = await _remote_browser.new_context(user_agent=_UA, locale=f"{_hl}-{_gl.upper()}",
                                                      viewport={"width": 1280, "height": 900})
             _ctx.set_default_timeout(_TIMEOUT_MS)
-            logger.info("browser_search: remote browser context ready")
             return True
-        except _remote.RemoteBrowserUnavailable as e:
-            logger.warning(f"browser_search: {e} — the search falls to its next index")
-        except Exception as e:  # noqa: BLE001
-            logger.warning(f"browser_search: remote context failed ({e!r}) — the search falls to its next index")
-        _ctx = _remote_browser = None
-        return False
+        except Exception as e:  # noqa: BLE001 — RemoteBrowserUnavailable names its reason
+            logger.warning(f"browser_search: remote browser unavailable ({e}) — the search falls to its next index")
+            _ctx = _remote_browser = None
+            return False
 
 
 async def _dismiss_consent(page) -> None:
@@ -690,7 +682,7 @@ async def stop() -> None:
         pass
     try:
         if _remote_browser is not None:
-            await _remote_browser.close()          # over CDP this only disconnects; the remote browser is not ours
+            await _remote_browser.close()          # over CDP this only disconnects
     except Exception:
         pass
     _remote_browser = None
