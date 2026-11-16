@@ -95,12 +95,11 @@ def words(key: str) -> str:
 
 def command(wid: str, act: str, payload: dict) -> str:
     """The ONE shell command that runs the act: its fields as `key=value` arguments (`cli.widget data`), so the
-    worker spends one model turn per act, not a Write and then a Bash. A text value is double-quoted, any other
-    value is its JSON single-quoted."""
+    worker spends one model turn per act, not a Write and then a Bash. Every value is SINGLE-quoted — the shell
+    expands nothing inside (`$50`, backticks), a `'` is written `'\\''` — and a non-text value is its JSON."""
     def arg(k, v):
-        if isinstance(v, str):
-            return f'{k}="' + "".join("\\" + c if c in '\\"$`' else c for c in v) + '"'
-        return f"{k}='" + json.dumps(v, ensure_ascii=False).replace("'", "'\\''") + "'"
+        text = v if isinstance(v, str) else json.dumps(v, ensure_ascii=False)
+        return f"{k}='" + text.replace("'", "'\\''") + "'"
     return " ".join(["python -m nucleo.cli.widget data", wid, act, *(arg(k, v) for k, v in payload.items())])
 
 
