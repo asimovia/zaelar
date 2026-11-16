@@ -556,7 +556,31 @@ async def deliver_typed(text: str, dev) -> bool:
     return True
 
 
+_UNHELD = {"key": "", "at": 0.0}
+#: How long the same waiting line stays one trace (the page asks again every few seconds while it waits).
+UNHELD_EVERY_S = 60.0
+
+
+def note_unheld(text: str, dev, now: float | None = None) -> bool:
+    """A typed line reached the engine and no session could take it: said on the timeline, once per line per
+    `UNHELD_EVERY_S`. Measured 2026-11-16: three lines waited five minutes for a session and left no trace at all, so
+    the wait could only be inferred from the gap. True when the trace was left."""
+    t = time.time() if now is None else now
+    key = f"{clean(dev)}:{str(text or '').strip()[:200]}"
+    if key == _UNHELD["key"] and t - _UNHELD["at"] < UNHELD_EVERY_S:
+        return False
+    _UNHELD["key"], _UNHELD["at"] = key, t
+    try:
+        from voice.observer import emit
+        emit("brain", "📭 typed line waiting — no session holds the voice", text=str(text or "")[:160], role="system",
+             extra={"cat": "flash", "dev": clean(dev), "waiting": True})
+    except Exception:  # noqa: BLE001 — the trace never decides the answer
+        pass
+    return True
+
+
 def _reset_for_tests() -> None:
+    _UNHELD["key"], _UNHELD["at"] = "", 0.0
     with _mx:
         _screens.clear()
         _playing.clear()

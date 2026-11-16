@@ -52,3 +52,25 @@ export function watchAgent(room, onMissing, ms = AGENT_WAIT_MS, setT = setTimeou
   const timer = setT(() => { if (!agentPresent(room)) onMissing(); }, ms);
   return () => clearT(timer);
 }
+
+/** What a page does when the engine says nobody holds a session for the line it typed: with no session of its own it
+ *  starts one; holding a room the agent is not in — and not still waiting for it to arrive — it asks for a new room;
+ *  while one is coming up, or the agent is there and only its typed door is not open yet, it waits. */
+export function onNoSession({ started = false, starting = false, watching = false, agent = false } = {}) {
+  if (starting) return "wait";
+  if (!started) return "start";
+  return (!agent && !watching) ? "reconnect" : "wait";
+}
+
+/** The outbox's `onNoSession` for a page: reads its state when asked and starts, asks for a new room, or waits. */
+export function noSession(state, start, reconnect, log = () => {}) {
+  return () => {
+    const act = onNoSession(state());
+    if (act === "start") Promise.resolve(start()).catch(() => {});
+    else if (act === "reconnect") {
+      try { log("🤖 agent left the room", { text: "a typed line found no session", state: "agent_left" }); } catch (_) {}
+      Promise.resolve(reconnect()).catch(() => {});
+    }
+    return act;
+  };
+}

@@ -41,6 +41,7 @@ async def chat(text: str = Body(..., embed=True), dev: str = Body("", embed=True
     if not t:
         return JSONResponse({"ok": False, "reason": "empty"}, status_code=400)
     if not await screens.deliver_typed(t, dev):
+        screens.note_unheld(t, dev)      # on the timeline once: a line that waits leaves a trace of its wait
         return JSONResponse({"ok": False, "reason": "no_session"})
     return JSONResponse({"ok": True})
 
