@@ -12,7 +12,7 @@ import * as store from "../../../app/core/store.js?v=2";
 import * as session from "../../../app/services/session.js?v=3";
 import * as api from "../../../app/services/api.js?v=2";
 import { t } from "../../../app/core/i18n.js?v=1";
-import { logoutLink } from "../../../app/core/account-link.js?v=1";
+import { logoutLink } from "../../../app/core/account-link.js?v=2";
 import { inNativeApp } from "../../../app/core/native.js?v=1";
 import { ZAP_ICON, USER_ICON, GEAR_ICON, MIC_ICON, PLUG_ICON, MESSAGE_SQUARE_ICON, DESKTOP_ICON, LOG_OUT_ICON, FACE_ICON } from "../../../app/lib/icons.js?v=2";
 import * as daemon from "../../../app/services/daemon.js?v=3";
@@ -30,13 +30,14 @@ import { faceName } from "../../../app/presence/catalog-api.js?v=1";
 // missing one — the worst of the three states a status row can be in.
 daemon.start();
 
-/** Sign out of this device: the account service revokes the session and clears its cookie, then the shell reloads
- *  and the deployment's front door asks to sign in again. `no-cors`: the answer is not read, only sent; the
- *  revocation holds even if a browser kept the cookie. */
+/** Sign out of this device: a same-origin POST the deployment's front door answers (it revokes the session and
+ *  clears its cookie), then the shell reloads and the front door asks to sign in again. Same origin on purpose: a
+ *  write to another origin is refused by a front door that guards against cross-origin writes. The redirect it
+ *  answers with is not followed here (`manual`): the reload below is the one navigation. */
 async function logOut() {
   const u = logoutLink(store.accountUrl());
   api.uiEvent("mobile:logout", {});
-  if (u) await fetch(u, { method: "POST", mode: "no-cors", credentials: "include" }).catch(() => {});
+  if (u) await fetch(u, { method: "POST", credentials: "same-origin", redirect: "manual" }).catch(() => {});
   location.replace(location.pathname || "/m");
 }
 

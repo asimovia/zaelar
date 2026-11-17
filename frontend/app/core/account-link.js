@@ -12,10 +12,13 @@ export function accountLink(url, fragment = "") {
   return fragment ? `${base}#${fragment}` : base;
 }
 
-/** The account service's sign-out endpoint, beside the account page: same origin, `/api/auth/logout`. Empty url →
- *  "" (self-host: nobody to sign out of). Pure, so it is tested without a browser. */
+/** Where «Log out» posts: a path on the AGENT'S OWN origin, answered by the deployment's front door (it revokes the
+ *  session and clears the cookie it set). Not the account service's endpoint beside the account page: that is
+ *  another origin, and a front door that refuses cross-origin writes refuses it — the error was swallowed and the
+ *  reload signed the person straight back in. Empty url → "" (self-host: no account, nobody to sign out of). */
+export const LOGOUT_PATH = "/__account/logout";
 export function logoutLink(url) {
-  try { return url ? new URL(String(url)).origin + "/api/auth/logout" : ""; } catch (_) { return ""; }
+  return String(url || "").trim() ? LOGOUT_PATH : "";
 }
 
 /** The reason the out-of-energy notice should be open for, or "" when it should not. Pure: the decision the

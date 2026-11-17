@@ -282,6 +282,14 @@ check("the menu button is ☰ and the menu leads with the Energy, then the accou
   && MENUSHEET.lastIndexOf('t("mobile.logout")') > MENUSHEET.indexOf('t("daemon.mobile.row")')
   && /openAccount\((?:inNativeApp\(\) \? "" : )?"buy"\)/.test(MENUSHEET),   // V2-870: no #buy inside the native app
   "the ☰ sheet must open with the Energy row that opens the top-up, then the account row, and end with log out (operator 2026-11-17)");
+// Feedback 9c654886: «Log out» posted to the account service's origin, a front door that refuses cross-origin
+// writes refused it, the error was swallowed and the reload signed the person straight back in. The sign-out is a
+// same-origin POST now, and nothing in the menu may point it at another origin again.
+const ACCOUNT_LINK = read("frontend", "app", "core", "account-link.js");
+check("log out posts to the agent's own origin, never another",
+  /export const LOGOUT_PATH = "\/[^"]+"/.test(ACCOUNT_LINK) && !/new URL\([^)]*\)\.origin/.test(ACCOUNT_LINK.split("export function logoutLink")[1] || "")
+  && /fetch\(u, \{ method: "POST", credentials: "same-origin"/.test(MENUSHEET) && !/mode: "no-cors"/.test(MENUSHEET),
+  "logoutLink must return a same-origin path and the menu must POST it same-origin (a cross-origin write is refused)");
 check("the Energy left is always on screen", /comp: EnergyLine,/.test(SURFACES),
   "the phone lost its Energy line along the top edge");
 
