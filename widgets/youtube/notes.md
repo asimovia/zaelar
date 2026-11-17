@@ -170,3 +170,19 @@ rides the new canvas `minimize` order (`desktop.shrink`).
   scroll (the subscriptions tab wears `tab_subs_short`), the plug and source dots leave the row (rule 5), the player
   keeps 16:9, controls and the home head's buttons are 44 px. The desktop geometry is pinned by
   `test_the_phone_player_fits_the_hand.py::test_the_desktop_card_is_unchanged`.
+
+## 2026-11-17 — the phone view is the YouTube app (supersedes «The phone» above)
+- Asked: the phone view was judged very poor; redesign it on the real YouTube mobile app, no patterns of our own.
+- Narrow card (container < 520px): a sideways chip strip (`data-hpan`) Inicio · Cola · Suscripciones · Listas + 🔍;
+  no ⋯ dropdown (it opened over the content and over the keyboard's Paste/Select callout). «Reproductor» is not a chip:
+  the mini-player and a tapped video open it, ⌄ leaves it. Wide cards keep the house bar with the Reproductor tab.
+- One search door: 🔍 turns the bar into ← · field · ✕; an empty field lists `recent_queries`; results keep the query
+  in the field; ← clears the band (YouTube's back). Loading = skeleton rows, never «0 results».
+- Results/suggestions: one column, full-width 16:9 with the duration badge, the ordinal as a small index beside the
+  title (voice and eye share one index), ⋮ → a sheet inside the card. ≥ 600px they become rows.
+- Mini-player: one slim row ≤ 60px with a progress line; the sound toggle only while muted; hidden while typing.
+- Watch page: video → block notice → seek bar (the player's own clock; a tap is his hand, no server act) → controls →
+  title · channel · Seguir → chips → «A continuación». On wide cards the video keeps its full height (≥ the old 462px
+  at 660×600); everything under the controls scrolls.
+- Rejected: buttons overlaid on thumbnails, a second search box in the body, the video's title as the card header
+  (the header names the widget; `live_title` is for cards whose content IS their identity).

@@ -38,7 +38,8 @@ If the answer is yes to any of these, run the full workflow:
 - The generator's validation gate (`widgets/generator.py`).
 - The home of the system's public documentation (the public diagram `/technology/widgets`, outside this repo — a
   MANUAL step that no workflow syncs on its own; update it only when the change matters to an outside reader, not
-  for every internal detail — plus `widgets/AGENTS.md` and `zaelar-modules.md §Widgets`).
+  for every internal detail — plus `widgets/AGENTS.md`, `zaelar-modules.md §Widgets` and the one-page spec
+  `zaelar-widget-spec.md`).
 
 If the change is only inside ONE widget (its `data.py`/`widget.js`/`notes.md`) and touches none of the above,
 update THAT widget's `notes.md` (per-widget memory, see `widgets/AGENTS.md`) and stop there — nothing else in this

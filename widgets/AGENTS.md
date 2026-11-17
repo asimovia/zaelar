@@ -1,5 +1,8 @@
 # Widget house style — READ THIS before creating or editing any widget
 
+The one-page map of the pieces (manifest fields, voice, storage, i18n, layout, who creates and changes a widget and
+how) is `.meshkore/docs/modules/zaelar-widget-spec.md`; the rules themselves are here.
+
 You are building/editing a widget for **zaelar**, a warm voice-first assistant. The canvas supports BOTH a dark
 theme (the default) and a light theme — the user toggles between them live from the toolbar (☾/☀), and a widget
 already on screen must re-paint correctly the instant they do, with **zero JS changes**, purely via CSS. Make
@@ -134,6 +137,27 @@ widgets feel polished and consistent with the rest. These are HARD rules — fol
     So you do not have to size for thumbs — but do not FIGHT the floor either: a control that must stay small
     (a checkbox, a slider track) is already excepted, and anything else you pin with a hard `height` will look
     cramped exactly where it matters most. Prefer `padding` over `height` on your own buttons.
+  - **The phone — copy the platform's own app for your genre, never a pattern of your own** (2026-11-17, the video
+    widget, modelled on the YouTube app after the operator called its phone view «malísimo»). Below ~520px of
+    container (`@container`, never a viewport breakpoint):
+    - **Sections are a chip row that scrolls sideways**, one tap each, the current one in the selection shape. Never a
+      ⋯ dropdown laid over the content (it lands on the keyboard's own Paste/Select callout). Mark the row
+      `data-hpan`: the phone deck pages on a sideways swipe and only leaves alone what declares it scrolls sideways.
+    - **One search door.** The bar's 🔍 turns the bar itself into the field (← · field · ✕); an empty field lists his
+      recent searches; the results page keeps the query in that field. Never a second search box in the body.
+    - **Loading is skeleton rows** in the shape of what is coming. Never «0 results · searching…» over an empty page.
+    - **Lists are ONE column**: full-width media (16:9 for video) with its badge (a duration) in a corner, then the
+      title clamped to two lines, then «source · age». Per-item actions go behind a ⋮ that opens a SHEET inside the
+      card (sticky to its foot, z-index ≤ 5, a scrim inside the card) — never buttons overlaid on the picture. If the
+      voice addresses items by number, the ordinal is a small muted index beside the title, not a badge on the image.
+      At ≥ ~600px the same item becomes a row (media left, text right).
+    - **A now-playing bar is slim**: one row ≤ 64px at the card's foot (thumb · title/source · play/pause · next),
+      a thin progress line on its top edge, hidden while a field has focus (the keyboard would float it mid-screen).
+    - **A media page is the platform's watch page**: the media full width, a seek bar under it, then title and
+      source, a scrollable row of action chips, then what comes next. Never a lone row of icons under the picture.
+    - **The header names the WIDGET.** The shells use `data.title` as the card's header only when the manifest
+      declares `"live_title": true` — for a card whose content IS its identity (a document, a page). A player's
+      current item is not.
   - Measured, not assumed: `tests/browser/e2e/mobile/render_widgets_on_a_phone.py` renders EVERY widget in the
     catalog — including this one, once it exists — at 390px with its real data and fails on horizontal overflow,
     anything escaping the screen, controls under 40px and inputs under 16px.

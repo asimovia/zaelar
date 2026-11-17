@@ -120,6 +120,9 @@ connectors/<family>/
 
 ## 3. The widget — the files and their order
 
+The specification in one page — every manifest field and where its rule lives — is
+`.meshkore/docs/modules/zaelar-widget-spec.md`.
+
 ```
 widgets/<id>/
 ├─ manifest.json   identity, declared actions, aliases, size, and its `state` (REQUIRED, V2-884: what the face
