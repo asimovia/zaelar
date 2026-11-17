@@ -1,6 +1,7 @@
 /* Permission sentences (Spanish). */
-"NSMicrophoneUsageDescription" = "Zaelar solo escucha mientras la voz está encendida, cuando le hablas.";
+"NSMicrophoneUsageDescription" = "Zaelar solo escucha mientras la voz está encendida, cuando le hablas o durante una videollamada que tú empiezas.";
+"NSCameraUsageDescription" = "Zaelar usa la cámara solo cuando tú la activas: para que su cara te mire, para hacer una foto que compartes con tu agente o para una videollamada. Para la cara, las imágenes se procesan en tu iPhone y nunca salen de él.";
 "NSLocationWhenInUseUsageDescription" = "Zaelar usa tu ubicación solo cuando algo que le pides lo necesita: lo que hay cerca, o una actividad que tú empiezas.";
 "NSLocationAlwaysAndWhenInUseUsageDescription" = "Zaelar usa tu ubicación durante una actividad que tú empiezas, como una salida en bici o un paseo, y mientras dura iOS enseña el indicador azul de ubicación. Se para cuando terminas la actividad.";
 "NSBluetoothAlwaysUsageDescription" = "Zaelar se conecta a tu banda o reloj de pulso para decirte tus pulsaciones durante una actividad que tú empiezas.";
-"NSMotionUsageDescription" = "Zaelar usa el movimiento para saber si caminas, vas en bici o conduces durante una actividad que tú empiezas, y así simplificar la pantalla y hablarte sin manos.";
+"NSMotionUsageDescription" = "Zaelar usa el movimiento para saber si caminas, vas en bici o conduces durante una actividad que tú empiezas y, con AirPods, para seguir tu cabeza y que su cara te mire. El movimiento de la cabeza se procesa en tu iPhone y nunca sale de él.";

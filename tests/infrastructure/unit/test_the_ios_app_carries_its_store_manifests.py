@@ -23,7 +23,7 @@ PBXPROJ = APP / "App.xcodeproj" / "project.pbxproj"
 # string App Store Connect flags the upload (ITMS-90683).
 PURPOSE_KEYS = ("NSMicrophoneUsageDescription", "NSLocationWhenInUseUsageDescription",
                 "NSLocationAlwaysAndWhenInUseUsageDescription", "NSBluetoothAlwaysUsageDescription",
-                "NSMotionUsageDescription")
+                "NSMotionUsageDescription", "NSCameraUsageDescription")
 
 
 def _plist(p: Path) -> dict:
@@ -47,12 +47,27 @@ def test_info_plist_answers_what_review_asks() -> None:
     assert info["UISupportedInterfaceOrientations"] == ["UIInterfaceOrientationPortrait"]
     for key in PURPOSE_KEYS:
         assert info.get(key, "").strip(), f"{key} is missing: iOS kills the app when the permission is first asked"
-    assert "NSCameraUsageDescription" not in info, "nothing uses the camera: review asks why a permission is declared"
+    # V2-928 T10: the camera serves the face that looks at the person (on the device), photos shared with the agent and
+    # video calls; review reads the sentence against what the app does, so it names all three.
+    cam = info["NSCameraUsageDescription"].lower()
+    assert all(w in cam for w in ("face", "photo", "video call")), cam
+    assert "never leave" in cam, "the face's frames are processed on the phone and the sentence says so"
+    assert "NSPhotoLibraryUsageDescription" not in info and "NSPhotoLibraryAddUsageDescription" not in info, \
+        "nothing reads or saves the photo library (the picker needs no permission): review asks why it is declared"
     assert info["CFBundleShortVersionString"] == "$(MARKETING_VERSION)"
     assert info["CFBundleVersion"] == "$(CURRENT_PROJECT_VERSION)"
     # V2-890: exactly the two modes an activity the person starts needs (route + heart-rate strap with the screen
     # locked). Review asks what each mode is for; audio waits for background voice and brings its own reason.
     assert info["UIBackgroundModes"] == ["location", "bluetooth-central"]
+
+
+def test_the_head_motion_bridge_is_a_method_of_the_device_plugin_and_reaches_the_page() -> None:
+    swift = (APP / "App" / "DevicePlugin.swift").read_text()
+    for name in ("headMotionAvailable", "startHeadMotion", "stopHeadMotion"):
+        assert f'CAPPluginMethod(name: "{name}"' in swift and f"@objc func {name}(" in swift, name
+    assert "CMHeadphoneMotionManager" in swift and 'notifyListeners("headMotion"' in swift
+    glue = (APP.parent.parent / "www" / "in-app.js").read_text()
+    assert "native.headMotion" in glue and "platform !== 'ios'" in glue, "Android answers available() = false"
 
 
 def test_the_project_targets_the_iphone_and_is_versioned_by_the_script() -> None:
@@ -65,12 +80,14 @@ def test_the_project_targets_the_iphone_and_is_versioned_by_the_script() -> None
 
 def test_the_privacy_manifest_declares_no_tracking_and_the_store_labels() -> None:
     p = _plist(PRIVACY)
+    # PhotosorVideos (V2-928 T10): a photo the person shares with the agent is sent and kept. The face's camera frames,
+    # the head's motion and a live video call are processed in real time and never stored: not collected.
     assert p["NSPrivacyTracking"] is False and p["NSPrivacyTrackingDomains"] == []
     assert p["NSPrivacyAccessedAPITypes"] == [{"NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
                                                "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]}]
     kinds = {d["NSPrivacyCollectedDataType"].removeprefix("NSPrivacyCollectedDataType"): d
              for d in p["NSPrivacyCollectedDataTypes"]}
-    assert set(kinds) == {"EmailAddress", "Name", "CoarseLocation", "PreciseLocation", "Health", "Fitness", "Contacts", "AudioData", "OtherUserContent",
+    assert set(kinds) == {"EmailAddress", "Name", "CoarseLocation", "PreciseLocation", "Health", "Fitness", "Contacts", "AudioData", "PhotosorVideos", "OtherUserContent",
                           "CustomerSupport", "SearchHistory", "UserID", "ProductInteraction", "OtherDiagnosticData"}
     for name, d in kinds.items():
         assert d["NSPrivacyCollectedDataTypeLinked"] is True, name

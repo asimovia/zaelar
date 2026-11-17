@@ -43,17 +43,24 @@
     </application>
 
     <!-- Permissions (asked on first use, never at launch; the sentences live in the store listing). Nothing else:
-         no notifications, no background location, no Bluetooth, no camera until a feature uses them. -->
+         no notifications, no background location, no Bluetooth until a feature uses them. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Voice inside the WebView (WebRTC): the microphone, and the audio mode switch Chromium makes for a call. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- The camera inside the WebView, asked the first time the page wants it: the agent's face that looks at the
+         person (frames stay on the phone), a photo shared with the agent (<input capture> / getUserMedia) and a video
+         call (WebRTC, with the microphone). ExternalWindowChromeClient grants VIDEO_CAPTURE and AUDIO_CAPTURE;
+         Capacitor's file chooser opens the camera for a capture input once this permission is declared. -->
+    <uses-permission android:name="android.permission.CAMERA" />
     <!-- Location while the app is open: the agent's «use my location» (coarse) and apps that ask for a position.
          Android 12+ lets the person grant only the approximate one. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
-    <!-- Not required: the app also runs on devices without GPS or a microphone (text chat). -->
+    <!-- Not required: the app also runs on devices without GPS, a microphone or a camera (text chat). -->
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.front" android:required="false" />
 </manifest>

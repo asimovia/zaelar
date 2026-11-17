@@ -1,3 +1,4 @@
+import AVFoundation
 import Capacitor
 import CoreBluetooth
 import CoreLocation
@@ -34,6 +35,9 @@ public class DevicePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "drain", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "scanHeartRate", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "forgetHeartRate", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "headMotionAvailable", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "startHeadMotion", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "stopHeadMotion", returnType: CAPPluginReturnPromise),
     ]
 
     static let knownSensors: Set<String> = ["location", "heart_rate", "motion_activity", "altitude"]
@@ -43,6 +47,7 @@ public class DevicePlugin: CAPPlugin, CAPBridgedPlugin {
     private let location = CLLocationManager()
     private let activity = CMMotionActivityManager()
     private let altimeter = CMAltimeter()
+    private let headphones = CMHeadphoneMotionManager()
     private var central: CBCentralManager?
     private var strap: CBPeripheral?
     private var scanCall: CAPPluginCall?
@@ -87,7 +92,11 @@ public class DevicePlugin: CAPPlugin, CAPBridgedPlugin {
                                  "permission": Self.motionPermission()],
                     "haptics": ["available": device.userInterfaceIdiom == .phone],
                     "microphone": ["available": true],
-                    "camera": ["available": false],          // no feature uses it yet: no permission sentence shipped
+                    // The page asks for the camera itself (getUserMedia / <input capture>); iOS shows the dialog.
+                    "camera": ["available": UIImagePickerController.isSourceTypeAvailable(.camera),
+                               "permission": Self.cameraPermission()],
+                    "head_motion": ["available": self.headphones.isDeviceMotionAvailable,
+                                    "permission": Self.headMotionPermission(), "via": "headphones"],
                     "push": ["available": false],            // needs APNs + the cloud sender (INI-057)
                 ],
             ])
@@ -196,6 +205,69 @@ public class DevicePlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     // MARK: motion
+
+    static func cameraPermission() -> String {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized: return "granted"
+        case .denied, .restricted: return "denied"
+        default: return "not_asked"
+        }
+    }
+
+    static func headMotionPermission() -> String {
+        switch CMHeadphoneMotionManager.authorizationStatus() {
+        case .authorized: return "granted"
+        case .denied, .restricted: return "denied"
+        default: return "not_asked"
+        }
+    }
+
+    // MARK: head motion (V2-928 T10)
+
+    /// The head's attitude from headphones that report it (AirPods Pro, Max, 3rd gen and later), so the agent's face
+    /// can turn toward the person. Values stay on the phone: they go to the page as `headMotion` events and nowhere
+    /// else. It runs only between `startHeadMotion` and `stopHeadMotion`, never inside an activity session, and the
+    /// first start shows iOS's motion dialog (`NSMotionUsageDescription`).
+    @objc func headMotionAvailable(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            call.resolve(["available": self.headphones.isDeviceMotionAvailable,
+                          "active": self.headphones.isDeviceMotionActive,
+                          "permission": Self.headMotionPermission()])
+        }
+    }
+
+    @objc func startHeadMotion(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            guard self.headphones.isDeviceMotionAvailable else {
+                call.reject("head motion is not available on this device", "UNAVAILABLE")
+                return
+            }
+            if Self.headMotionPermission() == "denied" {
+                call.reject("motion permission denied", "DENIED")
+                return
+            }
+            if !self.headphones.isDeviceMotionActive {
+                self.headphones.startDeviceMotionUpdates(to: .main) { [weak self] motion, error in
+                    guard let self else { return }
+                    if let error {
+                        self.notifyListeners("headMotion", data: ["error": error.localizedDescription])
+                        return
+                    }
+                    guard let a = motion?.attitude else { return }
+                    self.notifyListeners("headMotion", data: ["yaw": a.yaw, "pitch": a.pitch,
+                                                              "t": Date().timeIntervalSince1970 * 1000])
+                }
+            }
+            call.resolve(["active": true])
+        }
+    }
+
+    @objc func stopHeadMotion(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            self.headphones.stopDeviceMotionUpdates()
+            call.resolve(["active": false])
+        }
+    }
 
     static func motionPermission() -> String {
         switch CMMotionActivityManager.authorizationStatus() {

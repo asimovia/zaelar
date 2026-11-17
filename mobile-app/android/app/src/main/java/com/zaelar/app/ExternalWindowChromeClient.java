@@ -24,7 +24,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Capacitor's chrome client (microphone and location permissions, file chooser) plus one rule: a new window — a
+ * Capacitor's chrome client (camera, microphone and location permissions, file chooser with camera capture) plus one rule: a new window — a
  * `window.open(url)`, a `target="_blank"` link, or `window.open("")` whose location the page sets afterwards — opens
  * in the system browser and never inside the app, as on iOS. The shell opens the account page this way, so the app
  * itself never shows a purchase path (App Store 3.1.3(f); Play's payments policy is the same).
@@ -32,7 +32,8 @@ import java.util.Set;
  * The new window is a throwaway WebView that is never shown: its first navigation is handed to the browser and it is
  * destroyed. The opener only sees a window that went away.
  *
- * It also answers the page's camera/microphone requests itself. Capacitor's version keeps ONE pending listener: when
+ * It also answers the page's camera/microphone requests itself (the face that looks at the person, a photo for the
+ * agent, a video call: VIDEO_CAPTURE → CAMERA, AUDIO_CAPTURE → RECORD_AUDIO). Capacitor's version keeps ONE pending listener: when
  * the page asks twice before the person answers the system dialog (the shell does, on its first voice start), both
  * dialog results reach the second request, which is granted twice and the WebView throws — the app crashed the first
  * time anyone allowed the microphone. Here every pending request is answered exactly once, a permission the app

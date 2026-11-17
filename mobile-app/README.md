@@ -24,7 +24,7 @@ target (device family `1,2`), with the shell it gets (`/m` or the desktop `/`) s
 |---|---|
 | `AVAudioSession` `playAndRecord` + `voiceChat`, speaker by default, Bluetooth allowed; set at launch and on every foreground (`AppDelegate.swift`) | Everything you see and touch: dock, orb, deck, sheets, chat |
 | Plugins: Keyboard (`resize: native`, dark keys, no form accessory bar), Haptics, App, Geolocation, and the app's own `ZaelarDevice` (`DevicePlugin.swift`: device capabilities + an activity session — location with the screen locked, Bluetooth heart rate, motion activity, altitude; `docs/modules/zaelar-device-bridge.md`) | Voice v1: the LiveKit WebRTC client inside the WebView, foreground only |
-| Permission sentences (EN + ES `InfoPlist.strings`) for microphone, location, Bluetooth and motion; iOS asks on first use, never at launch (no camera: nothing uses it). Background modes: `location`, `bluetooth-central`, only used inside an activity the person starts | Safe-area layout (`viewport-fit=cover` + `env(safe-area-inset-*)`) |
+| Permission sentences (EN + ES `InfoPlist.strings`) for microphone, camera, location, Bluetooth and motion; iOS asks on first use, never at launch. The camera serves the face that looks at the person (frames processed on the phone), photos shared with the agent and video calls; motion also reads the head's attitude from AirPods (`window.ZaelarNative.headMotion`, V2-928 T10). Background modes: `location`, `bluetooth-central`, only used inside an activity the person starts | Safe-area layout (`viewport-fit=cover` + `env(safe-area-inset-*)`) |
 | `www/in-app.js`, the app's glue (below); light status bar; portrait on iPhone | Sign-in, session, i18n strings — all served by the engine |
 | `www/index.html`, shown only when the origin cannot be loaded (or answers 502/503/504): it retries on its own while the app is in the foreground (2 s, 4 s, 8 s, 15 s, then every 30 s), and at once on ↻ or on coming back to the foreground | |
 
@@ -159,7 +159,7 @@ The shell behaves differently only where `inNativeApp()` (`frontend/app/core/nat
 
 | File | What it carries |
 |---|---|
-| `ios/App/App/Info.plist` | display name, `ITSAppUsesNonExemptEncryption = false` (HTTPS only), `LSApplicationCategoryType` productivity, `UIRequiresFullScreen`, portrait, the microphone and location sentences (no camera: nothing uses it); versions read from build settings. No `UIBackgroundModes` until background voice. |
+| `ios/App/App/Info.plist` | display name, `ITSAppUsesNonExemptEncryption = false` (HTTPS only), `LSApplicationCategoryType` productivity, `UIRequiresFullScreen`, portrait, the microphone, camera, location and motion sentences (no photo-library key: nothing reads or saves it); versions read from build settings. No `UIBackgroundModes` until background voice. |
 | `ios/App/App.xcodeproj` | iPhone only for 1.0 (`TARGETED_DEVICE_FAMILY = 1`; iPad later, same target), iOS 16+, `MARKETING_VERSION`/`CURRENT_PROJECT_VERSION` stamped by `scripts/version.sh` |
 | `scripts/version.sh` (run by `npm run sync`) | version = `package.json` `version`; build = the engine's `update/BUILD` (`IOS_BUILD=127.1` for a second upload on the same engine build) |
 | `ios/App/App/PrivacyInfo.xcprivacy` | no tracking; the store labels' data types (email, name, precise location, contacts, audio, user content, customer support, search history, user id, product interaction, diagnostics), all linked, for app functionality; required-reason API: UserDefaults (CA92.1) (Capacitor's frameworks ship their own manifests) |
@@ -218,9 +218,9 @@ template says 35), Java 21. What the native side adds, file by file
 - **Voice**: WebRTC inside the WebView. Chromium switches the audio to communication mode (echo cancellation,
   speaker by default, Bluetooth headsets) by itself; the manifest gives it `RECORD_AUDIO` + `MODIFY_AUDIO_SETTINGS`,
   and the system asks for the microphone the first time the page wants it.
-- **Permissions** (`AndroidManifest.xml`): internet, microphone, audio settings, coarse + fine location (Android 12+
+- **Permissions** (`AndroidManifest.xml`): internet, microphone, audio settings, camera, coarse + fine location (Android 12+
   lets the person grant only approximate). Asked on first use, never at launch. Nothing for notifications, background
-  location, Bluetooth or camera until a feature uses them. `allowBackup` is off: the session cookie stays on the device.
+  location or Bluetooth until a feature uses them; CAMERA (with `android.hardware.camera` optional) serves the face, photos and video calls. `allowBackup` is off: the session cookie stays on the device.
 - **Look**: portrait; Android 12+ splash = the mark on `#0a0f16`; adaptive icon (mark on black, as on iOS) with a
   monochrome layer for themed icons — all from `npm run icons -- --android --source brand/icon-source.png`, which also
   writes `build/store/play-icon-512.png` for the listing.

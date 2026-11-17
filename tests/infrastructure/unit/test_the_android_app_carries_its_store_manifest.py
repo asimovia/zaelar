@@ -3,8 +3,9 @@ release build that is never signed from the repository.
 
 Play refuses an upload whose target API is below the year's floor, and every permission in the manifest must match
 the Data safety form and the store listing: a permission added here without its declaration is a rejection that arrives
-days later. The set is exact on purpose — notifications, background location, Bluetooth and the camera come with the
-features that use them (and with their own Play declarations), never ahead of them.
+days later. The set is exact on purpose — notifications, background location and Bluetooth come with the features that
+use them (and with their own Play declarations), never ahead of them. The camera came with V2-928 T10: the face that
+looks at the person, photos for the agent and video calls.
 """
 from __future__ import annotations
 
@@ -21,7 +22,8 @@ VARIABLES = ANDROID / "variables.gradle"
 NS = "{http://schemas.android.com/apk/res/android}"
 TARGET_FLOOR = 36   # Google Play: new apps and updates target API 36 from 2026-08-31 (extension to 2026-11-01)
 
-PERMISSIONS = {"INTERNET", "RECORD_AUDIO", "MODIFY_AUDIO_SETTINGS", "ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"}
+PERMISSIONS = {"INTERNET", "RECORD_AUDIO", "MODIFY_AUDIO_SETTINGS", "CAMERA", "ACCESS_COARSE_LOCATION",
+               "ACCESS_FINE_LOCATION"}
 
 
 def _manifest() -> ET.Element:
@@ -33,6 +35,16 @@ def test_the_manifest_asks_for_exactly_what_the_app_uses() -> None:
     assert declared == PERMISSIONS, declared ^ PERMISSIONS
     features = {f.get(f"{NS}name"): f.get(f"{NS}required") for f in _manifest().iter("uses-feature")}
     assert all(v == "false" for v in features.values()), "a required feature hides the app from phones without it"
+    # CAMERA implies a REQUIRED camera feature unless it is declared optional: phones without one would not see the app.
+    assert features.get("android.hardware.camera") == "false", "declare the camera optional next to CAMERA"
+
+
+def test_the_webview_turns_a_page_camera_or_microphone_request_into_the_runtime_permission() -> None:
+    src = (ANDROID / "app" / "src" / "main" / "java" / "com" / "zaelar" / "app" / "ExternalWindowChromeClient.java").read_text()
+    assert "RESOURCE_VIDEO_CAPTURE)) out.add(Manifest.permission.CAMERA)" in src
+    assert "RESOURCE_AUDIO_CAPTURE" in src and "Manifest.permission.RECORD_AUDIO" in src
+    assert "extends BridgeWebChromeClient" in src, "Capacitor's file chooser (camera capture for <input capture>) is inherited"
+    assert "onShowFileChooser" not in src, "the inherited chooser opens the camera; an override here must keep that"
 
 
 def test_the_application_keeps_its_session_on_the_device() -> None:

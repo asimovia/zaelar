@@ -37,7 +37,9 @@
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Zaelar listens only while voice is on, when you talk to it.</string>
+	<string>Zaelar listens only while voice is on, when you talk to it or during a video call you start.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Zaelar uses the camera only when you turn it on: so its face can look at you, to take a photo you share with your agent, or for a video call. For the face, the images are processed on your iPhone and never leave it.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Zaelar uses your location during an activity you start, such as a ride or a walk, and while it runs iOS shows the blue location indicator. It stops when you end the activity.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
@@ -45,7 +47,7 @@
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Zaelar connects to your heart rate strap or watch so it can tell you your heart rate during an activity you start.</string>
 	<key>NSMotionUsageDescription</key>
-	<string>Zaelar uses motion to know whether you are walking, cycling or driving during an activity you start, so it can keep the screen simple and talk to you hands-free.</string>
+	<string>Zaelar uses motion to know whether you are walking, cycling or driving during an activity you start, and, with AirPods, to follow your head so its face can look at you. Head movement is processed on your iPhone and never leaves it.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
