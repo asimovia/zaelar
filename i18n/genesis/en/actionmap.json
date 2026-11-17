@@ -1,6 +1,6 @@
 {
- "_comment": "Genesis seed pack (English) for the action map (V2-539). Same rules as es.json: unambiguous whole-utterance commands only; variants are separate entries; anything that could mean more than the mapped action stays out and goes to the model. · V2-682 — the possessive and the courtesy form were the whole hole. Measured on the operator's own English session (2026-09-12): «open the agenda» matched and «can you open MY agenda, please» did not, so a widget SHOW fell through to the model and from there to a Brain Worker that died on a provider 400. Spanish had the identical hole («abre mi agenda», «abreme la agenda»), which is why the fix lands in BOTH packs: this was never an English defect. Courtesy and modal forms are ENTRIES here, never something the matcher is allowed to understand (normalize.py doctrine). · V2-761 — the widget catalogue («Apps») joins as a panel tab; the operator calls it apps or widgets indifferently, so both words are entries. · V2-764 — the `torrent` widget merged into `archivos` (section Torrents): its names open that section. · v15 (demo pass 2026-09-28, V3) — «make it fullscreen» over the video had no entry, the model said «going fullscreen now» and called nothing: a pronoun fullscreen targets the app in front (`*`). · v17 — the agent's OWN controls: «silencia el altavoz» / «mute the speaker» (the 🔊, it keeps listening), «quita el mute» / «unmute», «apágate» / «turn yourself off» (the ⏻). One `controls` act each, run on the screen that heard him by that screen's own button door (`nucleo/acts/self_controls.py`). A bare «apaga»/«turn off» stays out: it names a device as often as the agent. · v21 — his voice's VOLUME and the MIC by voice: «sube tu volumen» / «turn your volume up», «habla más bajo» / «speak softer» (the agent's own voice on that screen; a bare «sube el volumen» stays out — a playing video or song owns it as often), and «silencia el micrófono» / «mute the mic» (one-way: the way back is the button). A level («volumen al 30 %») carries a number, so it is the model's `agent_controls` call, never a seed.",
- "version": 21,
+ "_comment": "Genesis seed pack (English) for the action map (V2-539). Same rules as es.json: unambiguous whole-utterance commands only; variants are separate entries; anything that could mean more than the mapped action stays out and goes to the model. · V2-682 — the possessive and the courtesy form were the whole hole. Measured on the operator's own English session (2026-09-12): «open the agenda» matched and «can you open MY agenda, please» did not, so a widget SHOW fell through to the model and from there to a Brain Worker that died on a provider 400. Spanish had the identical hole («abre mi agenda», «abreme la agenda»), which is why the fix lands in BOTH packs: this was never an English defect. Courtesy and modal forms are ENTRIES here, never something the matcher is allowed to understand (normalize.py doctrine). · V2-761 — the widget catalogue («Apps») joins as a panel tab; the operator calls it apps or widgets indifferently, so both words are entries. · V2-764 — the `torrent` widget merged into `archivos` (section Torrents): its names open that section. · v15 (demo pass 2026-09-28, V3) — «make it fullscreen» over the video had no entry, the model said «going fullscreen now» and called nothing: a pronoun fullscreen targets the app in front (`*`). · v17 — the agent's OWN controls: «silencia el altavoz» / «mute the speaker» (the 🔊, it keeps listening), «quita el mute» / «unmute», «apágate» / «turn yourself off» (the ⏻). One `controls` act each, run on the screen that heard him by that screen's own button door (`nucleo/acts/self_controls.py`). A bare «apaga»/«turn off» stays out: it names a device as often as the agent. · v21 — his voice's VOLUME and the MIC by voice: «sube tu volumen» / «turn your volume up», «habla más bajo» / «speak softer» (the agent's own voice on that screen; a bare «sube el volumen» stays out — a playing video or song owns it as often), and «silencia el micrófono» / «mute the mic» (one-way: the way back is the button). A level («volumen al 30 %») carries a number, so it is the model's `agent_controls` call, never a seed. · v22 — the CAMERA its face follows him with (V2-928 T10): «turn off the camera» / «look at me», on the screen that heard him, through its switch's own door (`presence/look-state.js`). The session's old camera (CameraUnit) is unplugged, so «the camera» names only this one.",
+ "version": 22,
  "grids": [
   {
    "_comment": "VERB x OBJECT grid for mensajeria's LENSES (V2-545). «Abreme el Telegram» is not «show the app»: WhatsApp/Telegram/correo are VIEWS OF an app, and the model reads them as app names because they are also the widget's aliases - measured live, three turns of «Aqui lo tienes» over an unmoved app. Expanded into ordinary exact-match entries at import; a view op also brings the app up (executor), so one order gets both halves. `$` is filled with the value.",
@@ -2258,6 +2258,62 @@
    "action": {
     "do": "controls",
     "act": "presence_settings"
+   }
+  },
+  {
+   "phrase": "turn off the camera",
+   "action": {
+    "do": "controls",
+    "act": "camera_off"
+   }
+  },
+  {
+   "phrase": "turn off your camera",
+   "action": {
+    "do": "controls",
+    "act": "camera_off"
+   }
+  },
+  {
+   "phrase": "switch off the camera",
+   "action": {
+    "do": "controls",
+    "act": "camera_off"
+   }
+  },
+  {
+   "phrase": "stop looking at me",
+   "action": {
+    "do": "controls",
+    "act": "camera_off"
+   }
+  },
+  {
+   "phrase": "turn on the camera",
+   "action": {
+    "do": "controls",
+    "act": "camera_on"
+   }
+  },
+  {
+   "phrase": "turn on your camera",
+   "action": {
+    "do": "controls",
+    "act": "camera_on"
+   }
+  },
+  {
+   "phrase": "switch on the camera",
+   "action": {
+    "do": "controls",
+    "act": "camera_on"
+   }
+  },
+  {
+   "phrase": "look at me",
+   "action": {
+    "do": "controls",
+    "act": "camera_on"
    }
   },
   {

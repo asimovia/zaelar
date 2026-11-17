@@ -276,10 +276,10 @@ TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "agent_controls",
-            "description": "Tus controles (altavoz, volumen de tu voz -no del vídeo-, micro, apagado, voz, idioma, cara), solo si te lo ORDENA.",
+            "description": "Tus controles (altavoz, volumen de tu voz -no del vídeo-, micro, apagado, voz, idioma, cara, la cámara con la que le miras), solo si te lo ORDENA.",
             "parameters": {
                 "type": "object",
-                "properties": {"act": {"type": "string", "enum": ["mute", "unmute", "volume_up", "volume_down", "volume_set", "mic_off", "off", "voice_male", "voice_female", "voice_list", "voice_settings", "language", "presence_on", "presence_off", "presence_settings"]},
+                "properties": {"act": {"type": "string", "enum": ["mute", "unmute", "volume_up", "volume_down", "volume_set", "mic_off", "off", "voice_male", "voice_female", "voice_list", "voice_settings", "language", "presence_on", "presence_off", "presence_settings", "camera_on", "camera_off"]},
                                "value": {"type": "integer"}},   # volume_set's level, 0-100 (clamped at the door)
                 "required": ["act"],
             },

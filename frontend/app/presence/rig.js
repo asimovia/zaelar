@@ -25,8 +25,9 @@ const GESTURES = {
   sad:      { dur: 2.2, fx: (p, r) => { const b = bell(p); r.smile -= 0.8 * b; r.browIn += 0.8 * b; r.pitch += 0.08 * b; r.gazeY -= 0.4 * b; } },
 };
 export const GESTURE_NAMES = Object.keys(GESTURES);
-// How far «look at me» turns the head at the edge of the camera's view (radians).
-export const LOOK_YAW = 0.42, LOOK_PITCH = 0.2;
+// «Look at me» gets a GAZE in radians (look.js): the head takes this share of it, never past LOOK_HEAD_MAX, and the
+// eyes the rest — an eye at full travel (gazeX = ±1) looks LOOK_EYE_RAD aside.
+export const LOOK_HEAD = 0.3, LOOK_HEAD_MAX = 0.08, LOOK_EYE_RAD = 0.35;
 
 const MOOD = {
   idle:      { lid: 0.42, smile: 0.12, brow: 0.0, glow: 0.45 },
@@ -113,14 +114,15 @@ export function createRig(rnd = Math.random) {
   function lookAt(r, dt) {
     const L = s.look;
     s.lookW = ease(s.lookW, L ? clamp(L.w) : 0, dt, 380);
-    if (L) { s.lookX = ease(s.lookX, clamp(L.x, -1, 1), dt, 240); s.lookY = ease(s.lookY, clamp(L.y, -1, 1), dt, 300); }
+    if (L) { s.lookX = ease(s.lookX, clamp(L.x, -0.5, 0.5), dt, 240); s.lookY = ease(s.lookY, clamp(L.y, -0.5, 0.5), dt, 300); }
     const w = s.lookW;
     if (w < 0.001) return;
     const keep = 1 - 0.65 * w, keepEye = 1 - 0.7 * w;
-    r.yaw = r.yaw * keep + w * s.lookX * LOOK_YAW;
-    r.pitch = r.pitch * keep - w * s.lookY * LOOK_PITCH;          // pitch < 0 lifts the face
-    r.gazeX = r.gazeX * keepEye + w * s.lookX * 0.75;               // the eyes lead the head
-    r.gazeY = r.gazeY * keepEye + w * s.lookY * 0.6;
+    const hx = clamp(s.lookX * LOOK_HEAD, -LOOK_HEAD_MAX, LOOK_HEAD_MAX), hy = clamp(s.lookY * LOOK_HEAD, -LOOK_HEAD_MAX, LOOK_HEAD_MAX);
+    r.yaw = r.yaw * keep + w * hx;
+    r.pitch = r.pitch * keep - w * hy;                               // pitch < 0 lifts the face
+    r.gazeX = r.gazeX * keepEye + w * clamp((s.lookX - hx) / LOOK_EYE_RAD, -1, 1);   // the eyes take the rest of the gaze
+    r.gazeY = r.gazeY * keepEye + w * clamp((s.lookY - hy) / LOOK_EYE_RAD, -1, 1);
   }
 
   return {

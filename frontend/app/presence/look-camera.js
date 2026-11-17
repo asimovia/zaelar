@@ -18,7 +18,7 @@ async function classifier() {
 
 const MEMORY = 4, IOU = 0.2, MIN_Q = 36;   // detections merged over the last 4 frames; a cluster's summed score floor
 
-/** A detector over RGBA frames: `detect(rgba, w, h)` → `[{x, y, size, q}]` (centre and side over the frame, 0..1). */
+/** A detector over RGBA frames: `detect(rgba, w, h)` → `[{x, y, size, q, ar}]` (centre and side over the frame, 0..1; ar = height over width). */
 export async function createDetector() {
   const classify = await classifier();
   const memory = pico.instantiate_detection_memory(MEMORY);
@@ -29,7 +29,7 @@ export async function createDetector() {
     const params = { shiftfactor: 0.1, minsize: Math.max(16, Math.round(w * 0.08)), maxsize: Math.round(Math.min(w, h) * 0.95), scalefactor: 1.1 };
     let dets = pico.run_cascade({ pixels: gray, nrows: h, ncols: w, ldim: w }, classify, params);
     dets = pico.cluster_detections(memory(dets), IOU);
-    return dets.filter((d) => d[3] > MIN_Q).map(([r, c, s, q]) => ({ x: c / w, y: r / h, size: s / w, q }));
+    return dets.filter((d) => d[3] > MIN_Q).map(([r, c, s, q]) => ({ x: c / w, y: r / h, size: s / w, q, ar: h / w }));
   };
 }
 

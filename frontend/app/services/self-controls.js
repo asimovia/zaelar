@@ -60,6 +60,10 @@ async function run(d) {
     store.setConfigInitialTab("settings"); store.setConfigInitialSection("voice"); store.setConfigOpen(true);
   } else if (act === "presence_on" || act === "presence_off") {   // V2-928: its face, the ☺ button's own door
     import("../presence/state.js?v=1").then(p => p.setPresenceOn(act === "presence_on", "voice")).catch(() => {});
+  } else if (act === "camera_on" || act === "camera_off") {   // V2-928 T10: the camera it looks at him with, its switch's door
+    const on = act === "camera_on";   // «look at me» needs a face to look with: on brings the face too (off leaves it)
+    import("../presence/look-state.js?v=1").then(p => p.setLookCamera(on, "voice")).catch(() => {});
+    if (on) import("../presence/state.js?v=1").then(p => p.setPresenceOn(true, "voice")).catch(() => {});
   } else if (act === "presence_settings") {   // the phone's own page when it has one, else Settings ▸ Presence
     import("../presence/state.js?v=1").then(p => { if (!p.openPresencePage()) { store.setConfigInitialTab("presence"); store.setConfigOpen(true); } }).catch(() => {});
   } else if (act === "language") {

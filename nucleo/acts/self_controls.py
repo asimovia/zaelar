@@ -26,7 +26,8 @@ from enum import Enum
 
 class Act(str, Enum):
     """The closed vocabulary of act ids (not words of a language: his words reach them through the model's call). `mute`/`unmute`
-    = the 🔊 (reversible, the agent keeps listening); `off` = the ⏻; then his voice, the locked language and its face (presence)."""
+    = the 🔊 (reversible, the agent keeps listening); `off` = the ⏻; then his voice, the locked language, its face (presence)
+    and the camera its face follows him with."""
     MUTE = "mute"
     UNMUTE = "unmute"
     OFF = "off"
@@ -39,6 +40,9 @@ class Act(str, Enum):
     PRESENCE_ON = "presence_on"
     PRESENCE_OFF = "presence_off"
     PRESENCE_SETTINGS = "presence_settings"
+    # V2-928 T10 — «look at me»: the camera that lets its face follow him, on that screen (its switch's own door).
+    CAMERA_ON = "camera_on"
+    CAMERA_OFF = "camera_off"
     # His voice's volume on that screen (up/down by one step, or a level 0-100) and the mic, closed by voice (one-way).
     VOLUME_UP = "volume_up"
     VOLUME_DOWN = "volume_down"

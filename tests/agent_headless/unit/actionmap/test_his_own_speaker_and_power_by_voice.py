@@ -130,11 +130,12 @@ def test_both_packs_seed_every_act_and_the_version_moved():
     import json
     for lang in ("es", "en"):
         d = json.loads((ENGINE / f"i18n/genesis/{lang}/actionmap.json").read_text(encoding="utf-8"))
-        assert d["version"] >= 17, f"{lang}: new phrases in an old version reach no existing install"
+        assert d["version"] >= 22, f"{lang}: new phrases in an old version reach no existing install"
         acts = {(e.get("action") or {}).get("act") for e in d["entries"] if (e.get("action") or {}).get("do") == "controls"}
         # `volume_set` carries a number, so it is the model's call only (V2-930), never a seed
         assert acts == {"mute", "unmute", "off", "voice_male", "voice_female", "voice_list", "voice_settings", "language",
-                        "presence_on", "presence_off", "presence_settings", "mic_off", "volume_up", "volume_down"}, (lang, acts)
+                        "presence_on", "presence_off", "presence_settings", "mic_off", "volume_up", "volume_down",
+                        "camera_on", "camera_off"}, (lang, acts)
 
 
 # ── the disarm ────────────────────────────────────────────────────────────────────────────────────────────
@@ -166,6 +167,11 @@ def test_the_disarmed_door_emits_nothing_and_the_order_falls_to_the_model(johnny
     ("en", "Johnny, hide your face", "presence_off"),
     ("en", "Johnny, show your face", "presence_on"),
     ("en", "Johnny, change your face", "presence_settings"),
+    # V2-928 T10 — the camera its face follows him with, by the same door
+    ("es", "Johnny, apaga la cámara", "camera_off"),
+    ("es", "Johnny, mírame", "camera_on"),
+    ("en", "Johnny, turn off the camera", "camera_off"),
+    ("en", "Johnny, look at me", "camera_on"),
 ])
 def test_his_voice_orders_are_the_action_maps_without_the_model(johnny, lang, phrase, act):
     case = _case(f"ctl-voice-{lang}-{act}", lang, phrase, f"controls:{act}")

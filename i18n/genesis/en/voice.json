@@ -236,6 +236,8 @@
   "voice_settings": "I've opened the voice settings: pick the one you want there.",
   "voice_list": "Here are the voices I have: pick the one you want.",
   "presence_settings": "I've opened the presence settings: pick my face there.",
+  "camera_on": "Camera on: I'll look at you. No image leaves this device.",
+  "camera_off": "Camera off: I'll stop following you with my eyes.",
   "language": "The system language can't be changed once it is set."
  },
  "data_ack": "Done.",

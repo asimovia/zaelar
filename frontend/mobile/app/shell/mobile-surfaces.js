@@ -35,7 +35,7 @@ const faceCovered = () => !document.querySelector(".zm-home.live") || !!document
 export const MOBILE_SURFACES = [
   // ── V2-928 T11 — the agent's face behind the home and the cards, the desktop's own layer (target "deck": main.js puts
   //    it between the backdrop and the stage, so it never covers a card nor catches a touch) ──
-  { id: "presence", comp: () => PresenceLayer({ covered: faceCovered }), target: "deck", phase: "scaffold", label: "The agent's face behind the deck (V2-928)", shared: true },
+  { id: "presence", comp: () => PresenceLayer({ covered: faceCovered }), target: "deck", phase: "scaffold", label: "The agent's face behind the deck (V2-928) and the camera it looks at him with (T10: look-state.js lookCamera — Settings, the voice camera_on/off, the ● Camera badge)", shared: true },
   // ── the bar that owns every control ──
   { id: "dock",     comp: DockBar,     target: "body", phase: "scaffold", label: "Bottom dock (≡ · chat · widgets · ORB · mic · speaker · wake word)", shared: false },
   // NO CAPTIONS BAND (V2-573, operator: «deactivate subtitles. dont want icon for that»). It was the second

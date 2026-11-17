@@ -6486,10 +6486,14 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/browser/unit/mobile/test_the_phone_wears_the_face.py"]},
         {"id": "4.570", "title": "«Look at me» (V2-928 T10): the face turns to the person, on the device — fake detections turn "
                                  "the head and eyes left/right with them, jitter inside the dead band holds, a lost person hands "
-                                 "the head back to idle, the AirPods' turn maps the same way; the camera never starts with its "
-                                 "switch off, starts once (front camera, no audio) with a badge, stops on every off (switch, "
-                                 "face, tab, badge), a refusal says why; nothing leaves the page; the phone's AirPods row only in "
-                                 "the native app. Disarms: the gate forced open, the rig without lookAt, an unmirrored frame",
+                                 "the head back to idle, the AirPods' turn maps the same way; the gaze is the camera's geometry "
+                                 "(a 62° lens: the frame's edge is ≈31°) drawn at a flat face's share — ±0.19 rad at the edges, "
+                                 "eyes most, the head under 0.15, centred zero; the camera is ON with nothing stored, a choice "
+                                 "by hand is kept and off never starts it, it starts once (front camera, no audio) with a badge, "
+                                 "stops on every off (switch, face, tab, badge, the voice's camera_off), a refusal says why, is "
+                                 "stored and never asked again; nothing leaves the page; the phone's AirPods row only in the "
+                                 "native app. Disarms: the gate forced open, the rig without lookAt, an unmirrored frame, the "
+                                 "true angle drawn whole",
             "ch": UNIT, "paths": ["tests/browser/unit/presence/test_the_face_looks_at_you.py"]},
         # V2-930 — by voice, phone and desktop: «apaga/enciende el altavoz» (a target state, read back from the button),
         # his voice's volume («sube tu volumen», «volumen al 30 %»: 0-100, kept per device) and the one-way «silencia el

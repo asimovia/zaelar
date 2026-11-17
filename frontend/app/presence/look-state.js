@@ -1,4 +1,7 @@
-// look-state.js — the «look at me» switches (V2-928 T10): the camera, and the AirPods on an iPhone. Both OFF by default.
+// look-state.js — the «look at me» switches (V2-928 T10): the camera, and the AirPods on an iPhone.
+// The CAMERA is ON until he says otherwise (the operator, 2026-11-17): with no stored choice the first face that shows
+// asks the browser for it; a refusal (or no camera, or no https) turns the switch off and is stored like a choice by
+// hand, so it is never asked again in a loop. A choice by hand is kept, both ways. The AirPods stay OFF by default.
 // Kept per DEVICE (localStorage only), never in the account: a camera and its permission belong to one browser on one
 // machine, so turning it on at the phone must not make the computer ask for its camera. Runtime facts (is the camera
 // live, why it could not start, can this device read headphone motion) are signals here too, so the desktop's Settings,
@@ -12,7 +15,7 @@ function read() {
   try { const d = JSON.parse(localStorage.getItem(KEY) || "{}"); return d && typeof d === "object" ? d : {}; } catch (_) { return {}; }
 }
 const boot = read();
-const [camera, setCameraRaw] = createSignal(boot.camera === true);
+const [camera, setCameraRaw] = createSignal(boot.camera !== false);   // no record = never touched = on
 const [airpods, setAirpodsRaw] = createSignal(boot.airpods === true);
 export { camera as lookCamera, airpods as lookAirpods };
 

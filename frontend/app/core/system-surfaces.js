@@ -51,8 +51,12 @@ import { UpdateSurface } from "../update/UpdateSurface.js?v=1";
 // The ORDER is the actual DOM mount order (it matters for stacking). Scaffold first, then overlay.
 export const SYSTEM_SURFACES = [
   // V2-928 — the agent's FACE, behind every card and above the desk's backdrop (scaffold: mounted before the stage).
+  // Its CAMERA (T10, «look at me») is part of this surface, not one of its own: it runs only while the face is up, so it
+  // is declared on the face's line with its own switch — on by default, per device, never in the account.
   { id: "presence",   comp: PresenceLayer, target: "desk", phase: "scaffold", kind: "canvas-bg",
-    toggle: "presence/state.js presenceOn (☺ in the bar, ⚙ Presence, the voice)", label: "The agent's face (presence)",
+    toggle: "presence/state.js presenceOn (☺ in the bar, ⚙ Physical form, the voice presence_on/off) · its camera: "
+      + "presence/look-state.js lookCamera (⚙ Physical form, the voice camera_on/off, the ● Camera badge turns it off)",
+    label: "The agent's face (presence) and the camera it looks at him with",
     name: null, aliases: null },
   // El PANAL DE ACTIVIDAD (hexágonos de fondo, V2-039) se RETIRÓ el 2026-08-20 por decisión del operador
   // (V2-233 D): el relato de lo que está pasando vive en UN sitio por encargo — la pestaña «Proceso» de la

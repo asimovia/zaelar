@@ -3,7 +3,7 @@
 const base = new URL("file://" + process.argv[2].replace(/\/?$/, "/"));
 const imp = (f) => import(new URL(f, base).href);
 const { createRig } = await imp("rig.js?v=1");
-const { createTracker, createHeadTracker, blend } = await imp("look.js?v=1");
+const { createTracker, createHeadTracker, blend, direction } = await imp("look.js?v=1");
 
 let seed = 11; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
 const FRAME = 1000 / 60, DET = 80;   // the face draws at 60 fps; the detector answers every 80 ms (12.5 fps)
@@ -44,6 +44,15 @@ const stick = run(rig2, { feed: (d, t) => tr2.feed(d.length ? [...d, { x: 0.25, 
   2, () => ({ x: 0.75, y: 0.45, size: 0.3, q: 60 }), s.t);
 const stay = { yaw: tail(stick.out.yaw) };
 
+// The geometry: one person at the frame's edges and centre, at a laptop's distance (box = a quarter of the frame).
+const at = (x) => { const t = createTracker(); t.feed([{ x, y: 0.45, size: 0.25, q: 60, ar: 0.75 }], 0); return t.sample(0); };
+const edge = { theirLeft: at(1), theirRight: at(0), centre: at(0.5), trueYaw: direction({ x: 0, y: 0.45, size: 0.25 }).yaw,
+  dist: direction({ x: 0.5, y: 0.45, size: 0.25 }).dist };
+// the rig at their far left: the head turns a little, the eyes take the rest
+const rigE = createRig(rnd), trE = createTracker();
+const e = run(rigE, trE, 3, () => ({ x: 1, y: 0.45, size: 0.25, q: 60 }), 0);
+const edgeRig = { yaw: tail(e.out.yaw), gazeX: tail(e.out.gazeX) };
+
 // The headphones: he turns his head 0.3 rad to his right from where he faced at the start, then back.
 const hd = createHeadTracker(); let ht = 0; const hs = [];
 for (let i = 0; i < 50; i++) { ht += 40; hd.feed({ yaw: 1.0, pitch: 0 }, ht); }               // the zero: 1.0 rad
@@ -60,4 +69,4 @@ const hm = await imp("head-motion.js?v=1"); let got = null;
 const avail = await hm.available(); (await hm.start((m) => { got = m; }))();
 const bridgeYaw = got && got.yaw, bridgePitch = got && got.pitch;
 
-console.log(JSON.stringify({ left, right, jitterTarget, gone, stay, headRight, seamX, bridgeYaw, bridgePitch, avail }));
+console.log(JSON.stringify({ edge, edgeRig, left, right, jitterTarget, gone, stay, headRight, seamX, bridgeYaw, bridgePitch, avail }));
