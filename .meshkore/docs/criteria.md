@@ -84,14 +84,15 @@ below is the first kind, or it names the mechanism that replaced the second.
   2026-11-14 · nodes 3.232 · `voice/engine/pipeline/agent_events.py`, `nucleo/flash/hard_turn.py`, `voice/trace.py`.
 - **CRIT-V23 · Several entries named and one written is said, and a cut turn's words reach the model.** How many NEW
   entries his words name is a question of the call door (`items_asked`, one trip with `acts_asked`): sure of several,
-  with exactly one model call that carries no list and landed as the turn's only op, the mouth says only part was
-  done, in place of the canned ack (`nucleo/turn/items_asked.py`). A turn cut before its first word owes its sentence
+  with exactly one write holding at most one row in the slots its card declares as rows, landed as the turn's only
+  op, the mouth says only part was done, in place of the canned ack (`nucleo/turn/items_asked.py`); a refused write
+  did nothing and is never «part». A turn cut before its first word owes its sentence
   to the next one, and the model is handed what the verdict judged: the owed sentences and this turn's as ONE user
-  message (`nucleo/turn/owed_words.py`). When every op of a turn was refused with a card's `error`, the composed
-  line never carries a code-shaped word — the plain failure line stands in (`nucleo/flash/data_ops.py`). A typed
+  message (`nucleo/turn/owed_words.py`). When every op of a turn was refused with a card's `error`, the mouth
+  says its plain line: the `error` is the model's and is never said nor composed (`nucleo/flash/data_ops.py`). A typed
   line the engine has no session for asks for a new room when the page holds one the agent left
-  (`voice-arrival.onNoSession`), and leaves one trace of its wait. — since 2026-11-16 · nodes 2.1788, 2.1789,
-  2.1790, 4.556.
+  (`voice-arrival.onNoSession`) or its typed door stayed closed, and leaves one trace of its wait. — since 2026-11-16 · nodes 2.1788, 2.1789,
+  2.1790, 4.556, 4.560.
 - **CRIT-V8 · The assistant's own name changes by a verdict, never by a regex, and fails CLOSED** (absent or
   unsure → no rename). The brief's `identity_change` decides, sure at 0.85, and the new name is the model's declared
   `set_style_directive.name` — nothing is read from his words; a rename takes one model turn
