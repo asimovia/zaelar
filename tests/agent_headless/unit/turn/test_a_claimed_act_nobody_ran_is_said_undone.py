@@ -52,6 +52,7 @@ def turn(monkeypatch):
         return t if t and t[1]["confidence"] >= floor else (fb, None)
     monkeypatch.setattr(verdicts, "read", read)
     monkeypatch.setattr(canvas_focus, "this_turn_acts", lambda: [])
+    monkeypatch.setattr(canvas_focus, "this_turn_writes", lambda: [])
     monkeypatch.setattr("nucleo.turn.brief_turn.of_this_turn", lambda: {})
     monkeypatch.setattr("widgets.effects.carries", lambda card, action, effect: False)
     reply._NOTED.clear()
@@ -260,3 +261,17 @@ def test_a_turn_whose_words_wait_behind_an_act_is_not_a_silent_one(turn):
     unserved._WAITING.clear()
     _t, out = _say("", calls=[], quiet=True)
     assert out, "with no words waiting the silent turn is said undone"
+
+
+def test_an_order_whose_card_is_being_written_is_not_said_undone(turn, monkeypatch):
+    """Demo sandbox 2026-11-17, F1: «write me a one page summary … in a document» → the compose rung started writing
+    the document in the background (`canvas_focus.writing`), the model called nothing and the turn's doors had not
+    landed yet; «Nothing got done for that yet.» was said 2 ms later, and the document arrived 8 s after it. An act in
+    flight is not an act undone: its landing reports it. Disarm: drop `this_turn_writes` from the reader → red."""
+    turn.update({**ORDER, tb.CATALOG_KEY: ("documento", {"confidence": 0.87})})
+    monkeypatch.setattr(canvas_focus, "this_turn_writes", lambda: ["documento"])
+    _t, out = _say("I'll put together a one-page summary in a document now.", calls=[], quiet=True)
+    assert out == [], out
+    monkeypatch.setattr(canvas_focus, "this_turn_writes", lambda: [])
+    _t, out = _say("I'll put together a one-page summary in a document now.", calls=[], quiet=True)
+    assert out and out[-1], "with nothing being written the order is said undone, as before"

@@ -171,13 +171,13 @@ def outcomes(tasks, model_calls, *, said: str, quiet: bool, held: bool = False, 
     asks which row — nothing is undone then, it waits."""
     try:
         from i18n import langs
+        from nucleo import canvas_focus as _cf
         from nucleo.circuit import verdict as V
         from nucleo.play import shadow as _play
         from nucleo.turn import reply as _reply
         if held or _reply.asked() or _ended_asking(said) or (words_waiting() and not str(said or "").strip()):
             return []      # …or the model's words WAIT behind an act (the hold's deferred words): they are its answer
-        lang = langs.current_language()
-        out: list = []
+        lang, out = langs.current_language(), []
         missed = _own_rows_out(calls_not_run(model_calls, tasks))
         if missed:
             tpl = str(getattr(lang, "reply_not_run", "") or "")
@@ -193,7 +193,7 @@ def outcomes(tasks, model_calls, *, said: str, quiet: bool, held: bool = False, 
             brief = brief_turn.of_this_turn()
         called = any(isinstance(c, dict) and c.get("name") for c in model_calls or ())
         if (quiet and not called) or (called and served_elsewhere(brief, tasks, model_calls)):
-            if order_unserved(brief):
+            if order_unserved(brief) and not _cf.this_turn_writes():   # a card written in the background is served (F1)
                 line = str(getattr(lang, "reply_nothing_done", "") or "")
                 if line:
                     out.append(_reply.Outcome(V.UNMET.name, "", "", reason=line, said=line))
