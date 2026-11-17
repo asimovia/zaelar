@@ -10,6 +10,8 @@ import { createRig } from "./rig.js?v=1";
 import { createFace, lookOf, fit, drawLook } from "./face.js?v=1";
 import { CATEGORIES, facesOf, faceById, editableSpec, faceName, catName } from "./catalog-api.js?v=1";
 import { CONTROLS, getP, setP } from "./controls.js?v=1";
+import { createEffect } from "../core/reactive.js?v=2";
+import { lookCamera, setLookCamera, cameraProblem, CAMERA_PROBLEM } from "./look-state.js?v=1";
 import { presenceOn, presenceFace, presenceCustom, setPresenceOn, setPresenceFace, saveCustomFace, resetPresence, DEFAULT_FACE } from "./state.js?v=1";
 
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -26,7 +28,7 @@ function still(canvas, entry) {
 
 export function mountPresence(host, msg = () => {}) {
   if (!host) return;
-  if (live) { clearInterval(live.timer); live.face.dispose(); live = null; }
+  if (live) { clearInterval(live.timer); live.fx(); live.face.dispose(); live = null; }
   const current = () => faceById(presenceFace(), presenceCustom()) || faceById(DEFAULT_FACE);
   let cat = current().cat, editing = null, picked = current();
 
@@ -44,10 +46,18 @@ export function mountPresence(host, msg = () => {}) {
     <footer class="pz-foot">
       <label class="pz-switch"><input type="checkbox" class="pz-on"/><span>${esc(t("presence.physical"))}</span></label>
       <button type="button" class="pz-ghost pz-reset">${esc(t("presence.reset"))}</button>
+      <div class="pz-look"><label class="pz-switch"><input type="checkbox" class="pz-cam"/><span>${esc(t("presence.camera"))}</span></label>
+        <p class="pz-hint pz-cam-hint"></p></div>
     </footer></div>`;
   const $ = (s) => host.querySelector(s);
   const face = createFace($(".pz-face"), { entry: picked, scale: 0.34 });
-  live = { face, timer: setInterval(() => { if (!host.isConnected && live && live.face === face) { clearInterval(live.timer); face.dispose(); live = null; } }, 1000) };
+  // «Look at me» (T10): the switch and its line follow look-state.js (a refusal turns it back off and says why)
+  const fx = createEffect(() => {
+    const on = lookCamera(), why = cameraProblem();
+    $(".pz-cam").checked = on;
+    const hint = $(".pz-cam-hint"); hint.textContent = t(why ? CAMERA_PROBLEM[why] || CAMERA_PROBLEM.unavailable : "presence.camera_hint"); hint.classList.toggle("is-problem", !!why);
+  });
+  live = { face, fx, timer: setInterval(() => { if (!host.isConnected && live && live.face === face) { clearInterval(live.timer); fx(); face.dispose(); live = null; } }, 1000) };
 
   const io = new IntersectionObserver((xs) => xs.forEach((x) => { if (x.isIntersecting) { const b = x.target; still(b.querySelector("canvas"), b._entry); io.unobserve(b); } }), { root: $(".pz-list") });
   function paintList() {
@@ -105,6 +115,7 @@ export function mountPresence(host, msg = () => {}) {
     face.setEntry(picked); paintList(); paintStage(); msg(t("presence.saved"));
   };
   $(".pz-on").onchange = (e) => { setPresenceOn(e.target.checked, "settings"); msg(t(e.target.checked ? "presence.shown" : "presence.hidden")); };
+  $(".pz-cam").onchange = (e) => setLookCamera(e.target.checked, "settings");
   $(".pz-reset").onclick = () => { resetPresence(); editing = null; picked = faceById(DEFAULT_FACE); cat = picked.cat; face.setEntry(picked); paintList(); paintStage(); msg(t("presence.restored")); };
   paintList(); paintStage();
 }

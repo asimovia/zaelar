@@ -1,0 +1,103 @@
+// LookAtMe.js — «look at me» (V2-928 T10) wired to the live face: it starts and stops the sources and hands the face one
+// target a few dozen times a second. The camera runs ONLY while all of these hold, and stops the moment one does not:
+//   the switch is on · the face is on (this exists only while PresenceLayer has a face) · the tab is visible ·
+//   the face is not covered (the phone's card or page in front of it) for more than a moment.
+// While the camera runs a small «● Camera» badge stays on screen above everything; tapping it turns the switch off.
+// The AirPods source (iPhone app only) follows the same rules, without a badge: it reads no image.
+import { h } from "../core/dom.js?v=2";
+import { createEffect, createSignal, untrack } from "../core/reactive.js?v=2";
+import { t } from "../core/i18n.js?v=1";
+import { createTracker, createHeadTracker, blend } from "./look.js?v=1";
+import { startCamera, cameraError } from "./look-camera.js?v=1";
+import { start as startHead } from "./head-motion.js?v=1";
+import { lookCamera, lookAirpods, setLookCamera, setLookAirpods, cameraLive, setCameraLive, setCameraProblem,
+  setAirpodsProblem, airpodsAvailable, probeAirpods } from "./look-state.js?v=1";
+
+const COVER_GRACE_MS = 2000, PUSH_MS = 40;
+// A refusal or a missing device will not change by itself: the switch goes back off and says why.
+const FINAL = new Set(["denied", "nocamera", "unsupported"]);
+
+/** Start following for `face` (face.js). `covered` (optional) = the shell's «something opaque is in front». Returns dispose. */
+export function LookAtMe(face, { covered = null } = {}) {
+  return untrack(() => {
+    probeAirpods();
+    let disposed = false, cam = null, camStarting = false, headStop = null, headStarting = false, push = 0, coverTimer = 0;
+    const cams = createTracker(), heads = createHeadTracker();
+    const [visible, setVisible] = createSignal(!document.hidden);
+    const [hiddenLong, setHiddenLong] = createSignal(false);
+    const onVis = () => setVisible(!document.hidden);
+    document.addEventListener("visibilitychange", onVis);
+    const disposers = [];
+
+    // a card over the face for a moment (a glance at a widget) does not flick the camera off and on
+    if (covered) disposers.push(createEffect(() => {
+      const c = !!covered();
+      clearTimeout(coverTimer);
+      if (!c) setHiddenLong(false); else coverTimer = setTimeout(() => setHiddenLong(true), COVER_GRACE_MS);
+    }));
+    const wants = (on) => !disposed && on && visible() && !hiddenLong();
+
+    function pump() {
+      if (push) return;
+      push = setInterval(() => {
+        const now = performance.now();
+        const target = blend(cams.sample(now), heads.sample(now));
+        face.setLook(target);
+        if (!cam && !headStop && !target) { clearInterval(push); push = 0; face.setLook(null); }
+      }, PUSH_MS);
+    }
+
+    disposers.push(createEffect(() => {
+      const want = wants(lookCamera());
+      if (want && !cam && !camStarting) {
+        camStarting = true;
+        startCamera({ onFaces: (dets, at) => cams.feed(dets, at) }).then((handle) => {
+          camStarting = false;
+          if (!untrack(() => wants(lookCamera()))) { handle.stop(); return; }
+          cam = handle; setCameraLive(true); setCameraProblem(""); pump();
+          if (typeof window !== "undefined") window.__zaelarLook = { stats: () => (cam ? cam.stats() : null) };
+        }).catch((e) => {
+          camStarting = false;
+          const why = cameraError(e);
+          setCameraProblem(why);
+          if (FINAL.has(why)) setLookCamera(false, "camera");
+        });
+      } else if (!want && cam) { cam.stop(); cam = null; setCameraLive(false); }
+    }));
+
+    disposers.push(createEffect(() => {
+      const want = wants(lookAirpods()) && airpodsAvailable();
+      if (want && !headStop && !headStarting) {
+        headStarting = true; heads.recenter();
+        startHead((m) => heads.feed(m, performance.now())).then((stop) => {
+          headStarting = false;
+          if (!untrack(() => wants(lookAirpods()))) { stop(); return; }
+          headStop = stop; setAirpodsProblem(""); pump();
+        }).catch((e) => {
+          headStarting = false;
+          const why = e && e.code === "denied" ? "denied" : "unavailable";
+          setAirpodsProblem(why); setLookAirpods(false, "airpods");
+        });
+      } else if (!want && headStop) { headStop(); headStop = null; }
+    }));
+
+    // the badge: on screen exactly while the camera is
+    const badge = h("button", { type: "button", class: "hb-cam", title: () => t("presence.camera_off_title"),
+      "aria-label": () => t("presence.camera_off_title"), onClick: () => setLookCamera(false, "badge") },
+      h("i", { "aria-hidden": "true" }), h("span", null, () => t("presence.camera_badge")));
+    disposers.push(createEffect(() => {
+      if (cameraLive()) { if (!badge.isConnected) document.body.append(badge); } else badge.remove();
+    }));
+
+    return () => {
+      disposed = true;
+      document.removeEventListener("visibilitychange", onVis);
+      clearTimeout(coverTimer); clearInterval(push); push = 0;
+      for (const d of disposers) d();
+      if (cam) { cam.stop(); cam = null; }
+      if (headStop) { headStop(); headStop = null; }
+      setCameraLive(false); badge.remove();
+      face.setLook(null);
+    };
+  });
+}

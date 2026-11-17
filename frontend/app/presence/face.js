@@ -102,6 +102,8 @@ export function createFace(host, opts = {}) {
       if (s !== undefined) speakingHint = !!s;
     },
     gesture: (g) => rig.gesture(g),
+    /** «Look at me» (T10): `{x, y, w}` from look.js, or null when nobody is followed. */
+    setLook: (target) => rig.setLook(target),
     setAlpha(a) { alpha = a; },
     setScale(k) { scale = k; },
     setPaused(p) { if (view) view.setPaused(p || document.hidden); },

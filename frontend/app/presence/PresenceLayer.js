@@ -6,7 +6,8 @@
 //               agent's audio stream (`audio.onBotStream`, observe only — the page keeps playing it);
 //   hearing   ← the person's real microphone level (`store.micLevel`) while the agent is quiet;
 //   thinking  ← the person spoke and the agent has not answered yet (a short window, cleared by the agent's voice);
-//   idle      ← the agent is stopped: the face rests, dimmed.
+//   idle      ← the agent is stopped: the face rests, dimmed;
+//   look at   ← the camera or the AirPods, only with their switch on (LookAtMe.js, T10) — on the device, nothing sent.
 // The big eye (Orb.js) is HIDDEN, not deleted: the orb lives in the bottom bar (V2-623 dock) from now on.
 import { h } from "../core/dom.js?v=2";
 import { createEffect, createSignal } from "../core/reactive.js?v=2";
@@ -15,6 +16,7 @@ import { onBotStream } from "../services/audio.js?v=2";
 import { presenceOn, presenceFace, presenceCustom, syncPresence, DEFAULT_FACE } from "./state.js?v=1";
 import { faceById } from "./catalog-api.js?v=1";
 import { createFace } from "./face.js?v=1";
+import { LookAtMe } from "./LookAtMe.js?v=1";
 
 const HEAR = 0.05, THINK_S = 6;
 
@@ -25,7 +27,7 @@ export const currentEntry = () => faceById(presenceFace(), presenceCustom()) || 
  *  says so, and the face stops drawing until it shows again — a hidden face spends no battery. */
 export function PresenceLayer({ covered = null } = {}) {
   syncPresence();
-  let face = null, unsub = null, timer = 0, heardAt = 0, thinkUntil = 0;
+  let face = null, unsub = null, timer = 0, heardAt = 0, thinkUntil = 0, look = null;
   const host = h("div", { id: "presence", class: "hb-presence", "aria-hidden": "true" });
   const [tick, setTick] = createSignal(0);
 
@@ -41,8 +43,10 @@ export function PresenceLayer({ covered = null } = {}) {
       const unlock = () => face && face.unlock();
       document.addEventListener("pointerdown", unlock, { once: true });
       timer = setInterval(() => setTick((n) => n + 1), 120);
+      look = LookAtMe(face, { covered });          // «look at me» (T10): off unless its switch is on
     } else if (!live && face) {
       clearInterval(timer); if (unsub) unsub(); unsub = null;
+      if (look) look(); look = null;
       face.dispose(); face = null;
     }
   });

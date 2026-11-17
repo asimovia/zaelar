@@ -6484,6 +6484,13 @@ DOMAINS: list[dict] = [
                                  "a page that fits the width (categories → strip of faces → face, «Customise» as a step) "
                                  "whose back returns to Settings; the voice act opens the phone's page, never the desktop's",
             "ch": UNIT, "paths": ["tests/browser/unit/mobile/test_the_phone_wears_the_face.py"]},
+        {"id": "4.570", "title": "«Look at me» (V2-928 T10): the face turns to the person, on the device — fake detections turn "
+                                 "the head and eyes left/right with them, jitter inside the dead band holds, a lost person hands "
+                                 "the head back to idle, the AirPods' turn maps the same way; the camera never starts with its "
+                                 "switch off, starts once (front camera, no audio) with a badge, stops on every off (switch, "
+                                 "face, tab, badge), a refusal says why; nothing leaves the page; the phone's AirPods row only in "
+                                 "the native app. Disarms: the gate forced open, the rig without lookAt, an unmirrored frame",
+            "ch": UNIT, "paths": ["tests/browser/unit/presence/test_the_face_looks_at_you.py"]},
         {"id": "4.566", "title": "The agent's face (V2-928): every face of the catalogue draws at rest, speaking and thinking; "
                                  "Porcelain is the default; every label of Settings ▸ Presence is in both bundles; the rig "
                                  "is never a statue (idle actions, speech accents). Disarm: life.js off → a statue",

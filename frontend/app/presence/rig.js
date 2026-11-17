@@ -25,6 +25,8 @@ const GESTURES = {
   sad:      { dur: 2.2, fx: (p, r) => { const b = bell(p); r.smile -= 0.8 * b; r.browIn += 0.8 * b; r.pitch += 0.08 * b; r.gazeY -= 0.4 * b; } },
 };
 export const GESTURE_NAMES = Object.keys(GESTURES);
+// How far «look at me» turns the head at the edge of the camera's view (radians).
+export const LOOK_YAW = 0.42, LOOK_PITCH = 0.2;
 
 const MOOD = {
   idle:      { lid: 0.42, smile: 0.12, brow: 0.0, glow: 0.45 },
@@ -40,6 +42,7 @@ export function createRig(rnd = Math.random) {
     smile: MOOD.listening.smile, lid: 0, brow: 0, glow: 0.8, think: 0,
     blink: 0, blinkAt: -1, nextBlink: 1.5,
     gaze: { x: 0, y: 0 }, gazeTo: { x: 0, y: 0 }, nextSaccade: 1,
+    look: null, lookW: 0, lookX: 0, lookY: 0,        // «look at me» (T10): where the person is, from look.js
   };
 
   function update(dtMs, frame) {
@@ -95,6 +98,7 @@ export function createRig(rnd = Math.random) {
       breathe: Math.sin(t * Math.PI * 2 / (s.mood === "idle" ? 5.2 : 4.2)),
     };
     life.apply(r, { t, dt, speaking, mood: s.mood, open, hearing: !!frame.hearing, gesture: (n) => s.gestures.push({ name: n, start: t }) });
+    lookAt(r, dt);
     s.gestures = s.gestures.filter((gst) => t - gst.start < GESTURES[gst.name].dur);
     for (const gst of s.gestures) GESTURES[gst.name].fx((t - gst.start) / GESTURES[gst.name].dur, r, t);
     r.smile = clamp(r.smile, -1, 1.2); r.squint = clamp(r.squint);
@@ -103,8 +107,27 @@ export function createRig(rnd = Math.random) {
     return r;
   }
 
+  // «Look at me» (V2-928 T10): the head and the eyes turn toward the person, eased like a real neck, keeping a share
+  // of the idle life on top so a face that follows someone still breathes, glances and nods. The weight fades in and
+  // out, so losing the person hands the head back to the idle life without a jump.
+  function lookAt(r, dt) {
+    const L = s.look;
+    s.lookW = ease(s.lookW, L ? clamp(L.w) : 0, dt, 380);
+    if (L) { s.lookX = ease(s.lookX, clamp(L.x, -1, 1), dt, 240); s.lookY = ease(s.lookY, clamp(L.y, -1, 1), dt, 300); }
+    const w = s.lookW;
+    if (w < 0.001) return;
+    const keep = 1 - 0.65 * w, keepEye = 1 - 0.7 * w;
+    r.yaw = r.yaw * keep + w * s.lookX * LOOK_YAW;
+    r.pitch = r.pitch * keep - w * s.lookY * LOOK_PITCH;          // pitch < 0 lifts the face
+    r.gazeX = r.gazeX * keepEye + w * s.lookX * 0.75;               // the eyes lead the head
+    r.gazeY = r.gazeY * keepEye + w * s.lookY * 0.6;
+  }
+
   return {
     update,
+    /** Where the person is (`{x, y, w}`, look.js) or null for nobody: the face turns to them. */
+    setLook(target) { s.look = target && Number.isFinite(target.x) && Number.isFinite(target.y) ? target : null; },
+    get lookWeight() { return s.lookW; },
     setMood(m) { if (MOOD[m]) s.mood = m; },
     gesture(name) { if (GESTURES[name]) s.gestures.push({ name, start: s.t }); },
     get mood() { return s.mood; },

@@ -40,6 +40,17 @@
 .pz-foot{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
 .pz-switch{display:flex;align-items:center;gap:8px;color:var(--hb-ink);font-size:0.875rem;cursor:pointer}
 .pz-switch input{width:18px;height:18px;accent-color:var(--hb-accent)}
+.pz-look{flex:1 1 100%;display:flex;flex-direction:column;gap:4px}
+.pz-hint{margin:0 0 0 26px;color:var(--hb-muted);font-size:0.75rem;max-width:62ch}
+.pz-hint.is-problem{color:var(--hb-danger,#d9534f)}
+
+/* «Look at me» (T10): while the camera runs, a badge says so above everything; a tap turns the camera off. */
+.hb-cam{position:fixed;z-index:2147483000;top:calc(env(safe-area-inset-top,0px) + 8px);left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:6px;padding:4px 10px 4px 8px;border-radius:999px;border:1px solid var(--hb-line);
+  background:color-mix(in srgb,var(--hb-bg) 88%,transparent);color:var(--hb-ink);font:inherit;font-size:0.75rem;cursor:pointer;
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.hb-cam i{width:8px;height:8px;border-radius:50%;background:#e5484d;box-shadow:0 0 0 3px color-mix(in srgb,#e5484d 25%,transparent)}
+.hb-cam:hover{background:var(--hb-hover)}
 
 /* A PHONE (or a narrow window) — one column, in the order the hand reads it: the categories as a row that scrolls
    sideways, the faces of the category as a strip of stills, the face itself, and the switch. «Customise» is a STEP:

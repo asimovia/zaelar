@@ -20,6 +20,15 @@ import { Row } from "./menu-row.js?v=1";
 import { setPresenceOpen } from "./PresenceSheet.js?v=1";
 import { currentEntry } from "../../../app/presence/PresenceLayer.js?v=1";
 import { faceName } from "../../../app/presence/catalog-api.js?v=1";
+import * as look from "../../../app/presence/look-state.js?v=1";
+
+// A switch with its explaining line under the label (the «look at me» rows: what it does, or why it could not start).
+function HintToggle(label, hint, get, onToggle, cls) {
+  return h("button", { class: () => "zm-row zm-toggle " + cls + (get() ? " on" : ""), "aria-pressed": () => String(!!get()), onClick: onToggle },
+    h("span", { class: "zm-row-t" }, h("b", null, label), h("small", null, hint)),
+    h("span", { class: "zm-sw", "aria-hidden": "true" }),
+  );
+}
 
 function Toggle(label, get, onToggle) {
   return h("button", { class: () => "zm-row zm-toggle" + (get() ? " on" : ""), onClick: onToggle },
@@ -130,6 +139,16 @@ export function SettingsSheet() {
           h("small", null, () => t("mobile.full_settings_sub")),
         ),
       ),
+
+      // ── «LOOK AT ME» (V2-928 T10), last: the face turns to the person — the front camera (on the phone, nothing
+      //    sent), and in the iPhone app the AirPods' head motion, a row that exists only when the app says it can.
+      h("div", { class: "zm-procs-t" }, () => t("config.tab.presence")),
+      HintToggle(() => t("presence.camera"),
+        () => t(look.cameraProblem() ? look.CAMERA_PROBLEM[look.cameraProblem()] || look.CAMERA_PROBLEM.unavailable : "presence.camera_hint"),
+        look.lookCamera, () => look.setLookCamera(!look.lookCamera(), "settings"), "zm-look-cam"),
+      () => (look.probeAirpods(), look.airpodsAvailable()) ? HintToggle(() => t("presence.airpods"),
+        () => t(look.airpodsProblem() ? look.AIRPODS_PROBLEM[look.airpodsProblem()] || look.AIRPODS_PROBLEM.unavailable : "presence.airpods_hint"),
+        look.lookAirpods, () => look.setLookAirpods(!look.lookAirpods(), "settings"), "zm-look-airpods") : null,
     ),
   );
 }
