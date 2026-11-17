@@ -162,7 +162,11 @@ async def _one_act(rec, action: str, payload: dict) -> dict:
         return {"ok": False, "error": _why}
     from nucleo.workers import taint as _taint      # a stranger's text this act renders marks THIS session (§4a)
     with _taint.during(rec, source=str((payload or {}).get("tool") or action)):
-        res = await _exec_allow(action, payload or {}, rec)
+        if _released:                              # a send his order released: followed to its receipt like a yes
+            from nucleo.request import send_receipt
+            res = await send_receipt.run_followed(rec, action, payload or {}, lambda: _exec_allow(action, payload or {}, rec))
+        else:
+            res = await _exec_allow(action, payload or {}, rec)
     return missing_datum.after(rec, action, payload or {}, res)
 
 

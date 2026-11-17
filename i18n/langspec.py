@@ -301,6 +301,11 @@ class LangSpec:
     #: V2-851 §3a — his words were bound to the question a task waits on (the task resumes with them), and a doubt
     #: about WHICH waiting task they answer is asked, naming the tasks ({among}).
     answer_taken: str = ""
+    #: A message to a cluster held for his word ({name}, {to}: « a <peer>» or "", {text}); and a rows expression over
+    #: several rows that needs his word ({n}, {collection}, {names}: « (a; b)» or ""). Both were Spanish literals.
+    cluster_send_confirm: str = ""
+    cluster_send_to: str = ""
+    rows_many_confirm: str = ""
     #: V2-877 #2 — his answer named a question that was already answered: said once, never «passed on».
     answer_already_given: str = ""
     #: V2-931 — a send's ONE confirmation, asked by the exit door when the worker has it ready ({who}: his contact).

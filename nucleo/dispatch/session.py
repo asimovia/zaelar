@@ -69,7 +69,8 @@ async def _run_session(task: "Task") -> None:
     # said it (f84f91ef: a design brief dictated to ANOTHER conversation started a worker rewriting his YouTube card). Here:
     # the ONE door that starts a worker, `kind == "code"` decided by the brief's `errand_kind`. The dev worker (V2-076) is exempt.
     from nucleo.request import kind as _ek_gate          # a SURE order starts unasked; doubt asks once; a remark: nothing
-    if kind == "code" and not _confirmed and not _d._dev_worker_params(task.context) and not _ek_gate.sure_order(task.context):
+    _said_yes = _confirmed or bool(task.context.get("offered"))      # his yes to our own offer is his order to do it
+    if kind == "code" and not _said_yes and not _d._dev_worker_params(task.context) and not _ek_gate.sure_order(task.context):
         rec = _d._SESSIONS.get(key)
         if rec and _ek_gate.a_remark(task.context):     # a comment or a complaint builds nothing and asks nothing
             return _ek_gate.dropped(_d, key, rec, req)

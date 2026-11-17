@@ -211,7 +211,7 @@ async def unlicensed_gate(task: "Task", key: str, req: str, *, wait_s: float = 2
     except Exception as e:  # noqa: BLE001 — no voice layer: no line behind this errand, nothing to ask about
         logger.debug(f"unlicensed_gate: no attention layer ({e!r}) — the errand runs")
         return False
-    if bool(ctx.get("confirmed")):
+    if bool(ctx.get("confirmed") or ctx.get("offered")):
         _attn.grant_line(trace)
         return False
     lic = await _attn.wait_licence(trace, timeout_s=wait_s)
@@ -419,7 +419,9 @@ def _relaunch(p: dict) -> dict:
     """His yes to a parked errand: the SAME request through the same door, `confirmed`, on its OWN row (V2-857 P0-1:
     the row was kept and waited on his answer, so «how is it going?» and a restart both find it). The gate it crosses
     writes the yes on the row (`confirmed_on_row`), so no later relay of it asks him again (V2-877 #2)."""
-    ctx = {**p["context"], "confirmed": True, "kind": p["kind"]}
+    # His yes to OUR offer («shall I look for it?») is his order to do it — never his yes to the question a money or
+    # irreversible errand asks before it starts: an offer relaunches `offered`, and that gate still asks (V2-931).
+    ctx = {**p["context"], ("offered" if p.get("offered") else "confirmed"): True, "kind": p["kind"]}
     if p.get("uid"):
         ctx["task_uid"] = str(p["uid"])
         try:

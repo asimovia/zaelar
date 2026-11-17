@@ -168,6 +168,9 @@ def gate(rec, payload: dict) -> Exit:
     channel = str(inner.get("platform") or inner.get("channel") or "")
     if under_mandate(rec, "message", channel):
         return Exit(out)
+    from nucleo.acts import message as _msg      # ONE act, ONE question: a draft he was shown and then ORDERED sent
+    if _msg.confirmed(wid, act, inner, None):     # was asked about when it was shown — his order is the yes (CRIT-C9)
+        return Exit(out, released=True)
     return Exit(out, question=ready_question(wid, act, inner))
 
 

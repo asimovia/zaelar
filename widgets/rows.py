@@ -331,9 +331,10 @@ async def apply(widget_id: str, op: str, payload: dict | None, *, confirmed: boo
         return p
     if p.get("confirm") and not confirmed:
         names = "; ".join(p.get("names") or [])
+        from i18n import langs as _lg      # his language, never a literal here
         return _refuse(NEEDS_CONFIRM,
-                       f"Son {p['n']} filas de «{p['collection']}»" + (f" ({names})" if names else "")
-                       + ". Dímelo y lo hago.",
+                       _lg.current_language().rows_many_confirm.format(
+                           n=p["n"], collection=p["collection"], names=f" ({names})" if names else ""),
                        n=p["n"], names=p.get("names") or [], collection=p["collection"],
                        needs_confirm=True)
     if op == "list":

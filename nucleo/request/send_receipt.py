@@ -151,6 +151,20 @@ def follow_soon(uid: str, wid: str, action: str, payload: dict | None, result, d
 _tasks: set = set()
 
 
+async def run_followed(rec, action: str, payload: dict, run) -> dict:
+    """A send that runs with NO question — his order over a draft he had seen was the yes: the same end as a confirmed
+    one. Its end state is on the row and the engine follows it to the connector's receipt and says the final line."""
+    from nucleo import on_his_behalf as _ob
+    wid, act, inner = _ob._resolve(payload or {}) if action == "widget_data" else ("", "", {})
+    dw = end_state(wid, act, inner) if wid and act else None          # its baseline: BEFORE the act
+    result = await run()
+    if wid and act and isinstance(result, dict) and result.get("ok"):
+        uid = str(getattr(rec, "uid", "") or "")
+        record_end_state(uid, wid, act, inner, done_when=dw)
+        follow_soon(uid, wid, act, inner, result, dw)
+    return result
+
+
 def followed(uid: str) -> bool:
     """Is this task's send being followed to its receipt right now? (Its final line is the engine's.)"""
     return uid in _following

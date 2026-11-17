@@ -44,7 +44,10 @@ def gate(name: str, to, text: str, media=None) -> str:
         return "refused"
     try:
         from widgets import confirm as _wconfirm
-        q = f"¿Mando al cluster «{name}»{(' a ' + str(to)) if to else ''}: «{str(text or '')[:140]}»?"
+        from i18n import langs as _lg
+        _sp = _lg.current_language()      # his language, never a literal here
+        q = _sp.cluster_send_confirm.format(name=name, to=_sp.cluster_send_to.format(to=to) if to else "",
+                                            text=str(text or "")[:140])
         op = {"action": "cluster_send", "effects": EFFECTS, "payload": {"name": name, "to": to, "text": text, "media": media}}
         # V2-857 phase 3: the held send waits on a ROW through the one asker; in memory only when no row could open
         from nucleo.request import consent_ask as _ca
