@@ -78,10 +78,8 @@ def test_our_own_question_makes_the_turns_row_wait_with_his_request(fresh):
     assert (row["state"], row["waiting_for"], row["ask_id"], row["ask"]) == ("waiting", "user_answer", ask_id, Q)
     assert row["session_id"], "the row carries the session that asked"
     ret = asker.artefact(row["id"])["retained"]
-    # a card whose send declares its slots keeps the question on a SEND TASK (`nucleo/request/send_task`): the act,
-    # the slot it asks about (which person) and the directory's candidates — no utterance to re-run
-    assert {k: ret[k] for k in ("kind", "widget", "action", "slot", "candidates")} == {
-        "kind": "send", "widget": "mensajeria", "action": "send_to", "slot": "contact", "candidates": CANDS}
+    # his request is retained on the row (V2-931: a send keeps no slot task of its own; his answer hands it to a worker)
+    assert {k: ret[k] for k in ("kind", "text", "widget")} == {"kind": "utterance", "text": SAID, "widget": "mensajeria"}
     asks = [e for e in fresh.events if e["kind"] == "ask"]
     assert len(asks) == 1 and asks[0]["ask_id"] == ask_id and asks[0]["options"] == CANDS
 

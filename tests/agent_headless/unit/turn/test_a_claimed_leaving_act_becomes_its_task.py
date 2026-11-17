@@ -53,8 +53,8 @@ def test_a_claimed_send_with_no_call_becomes_a_message_task(wired):
     assert tid == 7
     (text, ctx), = seen["escalated"]
     assert text == "manda un mensaje a pablo diciendo hola"
-    assert ctx["task_uid"] == "row-1" and ctx["playbook"] == "message"
-    assert ("row-1", {"playbook": "message"}) in seen["patched"]
+    assert ctx["playbook"] == "message" and ctx["src"] == "unreached", "the send's ONE worker task (V2-931)"
+    assert ctx["send"]["action"] == "send_to" and "task_uid" not in ctx, "the worker's row is its own, born at the portal"
 
 
 def test_a_question_is_never_a_claim(wired):

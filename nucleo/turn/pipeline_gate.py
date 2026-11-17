@@ -205,14 +205,10 @@ async def open_the_turn(self, motor) -> dict | None:
     if 'text' in _blk:
         text = _blk['text']
 
-    # V2-931 — the switchboard: with a process open (running, or waiting on him), ONE decision says whether this chunk
-    # is that process's. If it is, it is delivered there as he said it and the turn ends: Flash never re-calls the
-    # act, re-asks or answers for the task.
-    if not first_turn:
-        from nucleo.switchboard import route as _switchboard
-        if await _switchboard.take(text, brain=brain, emit=emit, say=self._out, window_max=motor._WINDOW_MAX):
-            motor._release_acc_trace_if_fresh(brain)
-            return None
+    # V2-931 — the switchboard: a chunk that is an open process's is delivered there and the turn ends (Flash never
+    # re-calls the act, re-asks or answers for the task).
+    if not first_turn and await __import__("nucleo.switchboard.route", fromlist=["x"]).at_the_gate(text, brain, emit, self._out, motor):
+        return None
 
     # The VAULT before anything reads his words (refactor2710-01) — `vault_intercept.vault_first`.
     _vault_done, text = await motor._vault_first(text, first_turn, emit, self._event_ch, brain)

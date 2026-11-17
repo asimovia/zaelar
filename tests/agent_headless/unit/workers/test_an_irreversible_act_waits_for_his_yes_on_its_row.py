@@ -5,7 +5,7 @@ question used to live in this process's memory for 90 s (`widgets.confirm._PENDI
 list before the brief: a restart or a barge-in lost it, and «ok, book it» once sent a mail. Now the request's inline
 row waits with its `ask_id`, the act is retained on the row, the two answers are DECLARED candidates the brief picks
 (`#0` yes · `#1` no) and the screen shows as buttons, and the yes re-runs the act through its own door — once,
-whoever answered first (the voice bound by the brief, or the card's button). Nothing waits in memory.
+whoever answered first (his voice, delivered to the row by the switchboard, or the card's button). Nothing waits in memory.
 """
 from __future__ import annotations
 
@@ -22,19 +22,16 @@ TURNS = {"es": ("vacía toda la agenda", "¿Vacío toda la agenda?", "sí, vací
 
 @pytest.fixture
 def world(monkeypatch):
-    from nucleo.cli import worker_api, worker_api_resume
+    from nucleo.cli import worker_api_resume
     from nucleo.flash import data_ops
-    from nucleo.turn import verdicts
     from widgets import confirm as wc
-    st = {"dispatched": [], "choice": None, "events": []}
+    st = {"dispatched": [], "events": []}
 
     async def _dispatch(wid, action, payload, **kw):
         st["dispatched"].append((wid, action, dict(payload or {}), kw.get("row")))
         return {"ok": True}
     monkeypatch.setattr(data_ops, "dispatch_and_report", _dispatch)
     monkeypatch.setattr(worker_api_resume, "resume_soon", lambda uid, e: None)
-    monkeypatch.setattr(verdicts, "read", lambda h, key, fb, min_confidence=None:
-                        (st["choice"], {"confidence": 0.9}) if key == "answers_open_question" and st["choice"] else (fb, None))
     import voice.observer as _obs
     real = _obs.emit
     monkeypatch.setattr(_obs, "emit", lambda kind, label, text="", role="", extra=None, **kw:
@@ -75,15 +72,10 @@ def test_the_question_waits_on_the_row_with_its_two_declared_answers_and_nothing
 
 
 @pytest.mark.parametrize("lang", ["es", "en"])
-def test_his_yes_bound_by_the_brief_runs_the_act_once_on_that_row(world, lang):
-    from nucleo.cli import worker_api, worker_api_bind as bind
+def test_his_yes_runs_the_act_once_on_that_row(world, lang):
+    from nucleo.cli import worker_api
     from nucleo.circuit import ledger
     row, ask_id = _ask(world, lang)
-    world["choice"] = f"{ask_id}#0"
-    from nucleo.circuit import asked_last
-    asked_last.turn_began()             # his answer comes in his next turn: this row asked him (K2b R6)
-    how, asks = bind.bind(object())
-    assert how == bind.ANSWER and asks[0]["ask_id"] == ask_id and asks[0]["choice"] == 0
     assert asyncio.run(worker_api.answer(ask_id, TURNS[lang][2], choice=0)) is True
     assert world["dispatched"] == [("agenda", "clear_all", {}, row)]
     assert (ledger.get(row) or {}).get("waiting_for") in (None, ""), "the row still waits after his yes"
@@ -115,15 +107,3 @@ def test_the_turn_asks_on_the_row_first_and_keeps_the_old_gate_only_when_no_row_
     src = inspect.getsource(txw)
     assert src.index("_ca.ask_consent(") < src.index('_wconfirm.request("data", d["wid"]')
     assert "if not row:" in src
-
-
-def test_disarmed_in_memory_the_yes_binds_nothing(world, monkeypatch):
-    from nucleo.cli import worker_api_bind as bind
-    from widgets import confirm as wc
-    monkeypatch.setattr(ca, "ask_consent", lambda wid, action, payload, question, text="":
-                        (wc.request("data", wid, question, op={"action": action, "payload": payload}, notify_ui=False), "") and ("", ""))
-    rq.begin(TURNS["es"][0])
-    assert ca.ask_consent("agenda", "clear_all", {}, TURNS["es"][1], text=TURNS["es"][0]) == ("", "")
-    assert wc.pending(), "the disarm did not take"
-    world["choice"] = "anything#0"
-    assert bind.bind(object()) == (bind.NOTHING, []), "with the question in memory the brief had nothing to bind"

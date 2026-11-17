@@ -24,10 +24,10 @@ def test_a_silent_send_call_says_the_start_and_names_the_act(lang):
             "model": {"say": "", "tools": [{"name": "widget_data", "args": {
                 "widget_id": "mensajeria", "action": "send_to",
                 "payload": {"contact": "Raquel Salinas", "channel": "whatsapp", "text": TEXT[lang]}}}]},
-            "expect": "data-op mensajeria:send_to"}
+            "expect": "escalate"}
     out = th.run_case(case)
     from i18n import langs
     start = langs.spec(lang).done_just_started
     mute = tuple(langs.spec(lang).mute_lines)
-    assert out.decision == "data-op mensajeria:send_to", out.decision
+    assert out.decision == "escalate", out.decision      # V2-931: the send is handed to its ONE worker task
     assert start in out.reply and not any(m in out.reply for m in mute), out.reply

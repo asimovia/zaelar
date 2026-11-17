@@ -1,15 +1,12 @@
-"""A task's exit door asks about a card act with the act's OWN question (`on_his_behalf.question`, V2-909).
+"""A task's exit door asks about a card act in a sentence of its own, never with machinery (V2-909, V2-931).
 
-A send task whose recipient the worker picked (`recipient: agent`) is asked before it leaves. The door used to ask
-with the on-behalf line — «The background task wants to do «send_to» with «…» on your behalf…» — the act's raw id
-and the word for our machinery read to him, where every other door asks the same act with its own sentence: who, by
-which app, the draft. Now the door asks with `confirm_gate.own_question` (the sentence the turn's gate composes for
-that act) and keeps the on-behalf line only for an act that declares none. The turn's gate is unchanged:
+A send task is asked ONCE before it leaves. The door used to ask with the on-behalf line — «The background task wants
+to do «send_to» with «…» on your behalf…» — the act's raw id and the word for our machinery read to him. Now a send is
+asked with the ready line (`exit_gate.ready_question`, i18n `send_ready_confirm`) naming his contact; the on-behalf
+line stays only for an act that declares no question of its own. The turn's gate is unchanged:
 `_human_confirm_question` is `own_question`, else `_from_desc`, for every declared action.
 
 Through the real door (`exit_gate.leave`), over an isolated directory, ES and EN.
-
-Disarm (seen red, in memory): `own_question` answering '' → the door falls back to the on-behalf line, 2 reds.
 """
 from __future__ import annotations
 
@@ -65,16 +62,16 @@ def _ask_send(world, lang):
     world.his_words.note(v["other"], ts=time.time() - 60)     # she was named for ANOTHER order: the pick is the agent's
     ex = exit_gate.leave(world.rec(f"s-{lang}", [v["heard"]]), "widget_data",
                          {"widget_id": "mensajeria", "action": "send_to", "payload": dict(v["payload"])})
-    assert ex.slots.get("recipient") == "agent" and ex.verdict == "ask", ex
+    assert ex.verdict == "ask", ex
     return ex.question, v
 
 
 @pytest.mark.parametrize("lang", sorted(SENDS))
-def test_a_send_whose_recipient_the_agent_picked_is_asked_with_the_send_sentence(world, monkeypatch, lang):
+def test_a_send_is_asked_with_the_ready_sentence_naming_her(world, monkeypatch, lang):
     monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
     q, v = _ask_send(world, lang)
-    assert q == confirm_gate.own_question("mensajeria", "send_to", v["payload"]), q
-    assert "Odile Varga" in q and v["payload"]["text"] in q and "WhatsApp" in q, q
+    assert q == exit_gate.ready_question("mensajeria", "send_to", v["payload"]), q
+    assert "Odile Varga" in q, q
     assert "send_to" not in q, q
     assert not any(m in q.lower() for m in v["machinery"]), q
 
@@ -127,14 +124,6 @@ def test_an_unknown_act_has_no_own_question_and_the_gate_asks_the_generic_line(m
     assert confirm_gate.own_question("nowhere", "frobnicate", {}) == ""
     assert confirm_gate._human_confirm_question("nowhere", "frobnicate", {}) == confirm_gate._from_desc(
         "nowhere", "frobnicate", {}) != ""
-
-
-@pytest.mark.parametrize("lang", sorted(SENDS))
-def test_disarmed_a_door_without_the_acts_own_question_reads_the_on_behalf_line(world, monkeypatch, lang):
-    """Disarm: `own_question` answers '' — the door asks with the on-behalf line and the send assertions go red."""
-    monkeypatch.setattr(confirm_gate, "own_question", lambda *a, **k: "")
-    with pytest.raises(AssertionError):
-        test_a_send_whose_recipient_the_agent_picked_is_asked_with_the_send_sentence(world, monkeypatch, lang)
 
 
 def test_a_manifest_question_fills_its_placeholders_from_the_payload_and_a_hole_is_no_question():

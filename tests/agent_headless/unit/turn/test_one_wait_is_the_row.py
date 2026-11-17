@@ -29,17 +29,8 @@ import pytest
 
 from nucleo.circuit import asker
 from nucleo.cli import worker_api  # noqa: F401 — the package first: its answer module imports it back
-from nucleo.cli import worker_api_bind as bind
 from nucleo.dispatch import confirm as dc
 from widgets import confirm as wc
-
-
-def _brief(choice: str, conf: float = 0.95) -> dict:
-    """A brief whose binding question was read — `choice` is the pick among the open asks."""
-    ev = threading.Event()
-    ev.set()
-    return {"event": ev, "_call_id": "t", "turn_id": "t", "open_ids": [],
-            "result": {"_call_id": "t", bind.KEY: {"choice": choice, "confidence": conf, "probs": {choice: conf}}}}
 
 
 @pytest.fixture
@@ -73,61 +64,6 @@ def _open(ask_id_of: str) -> dict:
 
 # ── 2.1680 · two open questions and a «yes» → the one the brief names, zero model calls ──────────────────────────
 
-@pytest.mark.parametrize("yes", ["sí", "yes", "はい"])
-def test_two_card_questions_and_a_yes_answer_the_one_the_brief_names(clean, no_model, monkeypatch, yes):
-    deleted: list = []
-
-    async def _delete(wid, who):
-        deleted.append(wid)
-        return {"ok": True}
-    from widgets import lifecycle
-    monkeypatch.setattr(lifecycle, "delete_widget", _delete)
-    wc.request("delete", "meteo", "¿Borro la app del tiempo?", notify_ui=False)
-    time.sleep(0.01)
-    wc.request("delete", "agenda", "¿Borro la agenda?", notify_ui=False)
-    first, second = wc.pending()["meteo"], wc.pending()["agenda"]
-    assert first.get("ask_id") and second.get("ask_id"), "a gate question is not on a row"
-
-    # no word, however bare, picks one of two: «the most recent» answered a question he was not answering
-    assert wc.resolve("", ok=True) is None
-    assert set(wc.pending()) == {"meteo", "agenda"}
-
-    brief = _brief(f"{first['ask_id']}#0")                      # the brief names the OLDER one, its declared yes
-    from nucleo.circuit import asked_last                        # V2-893 L4 (K2b R6): two rows and a «yes» bind by id
-    asked_last.turn_began()                                      # both asked in one reply: neither alone is identity
-    assert bind.bind(brief, asks=worker_api.open_asks())[0] == bind.ASK_WHICH
-    asked_last.note(first["ask_id"])                             # the older one asked him again, alone
-    asked_last.turn_began()
-    assert wc.answers_pending(yes, brief) is None, "the words answered over the brief's pick"
-    how, (a,) = bind.bind(brief, asks=worker_api.open_asks())
-    assert how == bind.ANSWER and a["ask_id"] == first["ask_id"] and a["choice"] == 0
-    assert asyncio.run(worker_api.answer(a["ask_id"], yes, choice=a["choice"]))
-    assert deleted == ["meteo"]
-    assert set(wc.pending()) == {"agenda"}, "the index kept a question its row no longer waits on"
-
-
-def test_two_parked_errands_and_a_yes_launch_the_one_the_brief_names(clean, no_model):
-    from nucleo.turn import confirm_gates as gates
-    task = SimpleNamespace(kind="generic", trusted=True, context={})
-    for key, req in (("k1", "paga la factura de la luz"), ("k2", "cancela mi suscripción al gimnasio")):
-        dc.remember_confirm(key, req, task)
-        dc.make_durable(key, SimpleNamespace(uid=asker.open_row(req, kind="generic")))
-        time.sleep(0.01)
-    assert dc.pending_confirm() is None, "with two parked and none named, the newest answered"
-    older = dc._PENDING_CONFIRM["k1"]["ask_id"]
-
-    from nucleo.circuit import asked_last                        # V2-893 L4 (K2b R6): by id, never by the pick's bar
-    asked_last.turn_began()
-    assert bind.bind(_brief(f"{older}#0"), asks=worker_api.open_asks())[0] == bind.ASK_WHICH
-    asked_last.note(older)
-    asked_last.turn_began()
-    brief = _brief(f"{older}#0")
-    assert not gates.resolve_all("sí", brief=brief), "the task gate answered by the word, over the brief's pick"
-    how, (a,) = bind.bind(brief, asks=worker_api.open_asks())
-    assert how == bind.ANSWER and a["ask_id"] == older
-    assert asyncio.run(worker_api.answer(older, "sí", choice=a["choice"]))
-    assert [r for r, _ in clean] == ["paga la factura de la luz"]
-    assert "k2" in dc._PENDING_CONFIRM and "k1" not in dc._PENDING_CONFIRM
 
 
 # ── 2.1681 · a parked offer survives ten minutes of a frozen clock and a restart ─────────────────────────────────
@@ -175,8 +111,9 @@ def test_a_scheduled_notice_that_asks_waits_on_a_row(clean, quiet_notice, q):
     assert ask_id, "a notice that asks opened no question"
     a = _open(ask_id)
     assert a["question"] == q
-    assert any(k.startswith(ask_id) for k in bind.question(worker_api.open_asks())["criteria"]), \
-        "the brief's binding does not see the notice's question"
+    from nucleo.switchboard import board
+    assert any(p["ask_id"] == ask_id and p["state"] == "waiting" for p in board.open_processes()), \
+        "the switchboard's board does not see the notice's question"
     assert asyncio.run(quiet_notice.notify("aviso", q, key=f"job:7:{abs(hash(q))}", kind="reminder"))["duplicate"]
     assert sum(x["question"] == q for x in worker_api.open_asks()) == 1, "the same firing opened a second question"
 
@@ -189,14 +126,6 @@ def test_a_notice_that_only_tells_opens_no_question(clean, quiet_notice):
     asyncio.run(quiet_notice.notify("aviso", "Cita con el dentista a las 10.", key="job:8:1", kind="reminder"))
     asyncio.run(quiet_notice.notify("zaelar", "Done — did it land?", key="info:1", kind="info"))
     assert len(worker_api.open_asks()) == before
-
-
-@pytest.mark.xfail(strict=True, reason="V2-878 §1: `named_errand.known()` reads the waiting rows into the flow pool")
-def test_a_notice_that_asks_is_a_flow_of_candidate(clean, quiet_notice):
-    from nucleo.turn import flow_of
-    q = "¿Has llamado a tu madre?"
-    asyncio.run(quiet_notice.notify("aviso", q, key="job:9:1", kind="reminder"))
-    assert any(q in str(c.get("request") or c.get("title") or "") for c in flow_of.candidates())
 
 
 def test_a_no_through_the_task_gate_ends_the_row_it_waited_on(clean):

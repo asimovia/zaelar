@@ -471,15 +471,14 @@ Each is one line in `.meshkore/docs/criteria.md`, with its node; read the sectio
   or the brief's sure `escalate`, never by a word backstop over his sentence (C16); a sign-in the model forgot opens
   only on the brief's sure `login_only` (C17); with no stop verdict only the model's own `stop_worker` stops an
   errand (C18).
-- **An act that leaves is a task (§T, T2b):** Flash never sends inline and opens no confirmation for a send — his
-  words are the turn's commission, the routed send has its own slot so no guard can drop it, and the worker sends
-  through its exit door (`nucleo/workers/exit_gate.leave`, the acts that leave declared once in `EXITS`, never chosen
-  by name — C15), crossed before any question and again on his yes. Each slot the card declares for the act
-  (`slots` in its manifest: recipient, channel, text, a held draft) is asked where its value came from — his words,
-  the task's reading, his order over the row, or a stranger (`nucleo/workers/exit_slots.py`). A send is ONE linear
-  task (T2e): Flash's call is retained on the row with its slots and their origin (`nucleo/request/send_task.py`),
-  every slot his → the exit door and the card's door run with zero questions and no worker, a slot that lacks is ONE
-  durable question his answer fills on the same row, and the taint asks only about a slot a stranger wrote.
+- **A send is ONE Brain Worker task, and one switchboard routes his words (§T, T2b, T3):** Flash never sends, asks
+  about a send or says it went — a call whose act leaves is handed over before any guard reads it
+  (`nucleo/request/send_errand.py`), and the worker (Claude itself, never relayed to another model) finds the person,
+  uses his words, asks ONE confirmation at its exit door (`nucleo/workers/exit_gate.gate`), sends and verifies. With a
+  process open — running, or waiting on him — every chunk he says is routed at the turn's gate, before the model, by
+  one decision over one board (`nucleo/switchboard`): for process N it is delivered there as he said it and Flash
+  does not run; for none, Flash takes the turn. Flash has no tool that routes his words to a process, and no reader
+  binds an answer after the model.
 - **Background work never starves the voice (§R, R18–R20):** a held worker names its TRUE reason (memory only under
   the floor, else the voice's shed, else what it queues behind), a shed ends when ITS source recovers, admission is a
   limit with no deadline start, one worker at a time, floor = what the declared pieces need, capped by a ratio of the host, never under the voice reserve, and a

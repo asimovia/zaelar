@@ -51,15 +51,6 @@ def test_an_undeclared_key_is_not_read_as_a_field():
     assert cli_widget._field_args("contactos", "create_group", ["just a sentence"]) is None
 
 
-def test_the_send_row_block_renders_the_one_command(monkeypatch):
-    from nucleo.request import send_task_words
-    monkeypatch.setattr(send_task_words, "artefact", lambda uid: {
-        "widget": "mensajeria", "action": "send_to", "payload": {"contact": "Ana"},
-        "slots": {"recipient": {"key": "contact", "source": "his"}, "text": {"key": "text", "rule": "composed"}}})
-    out = send_task_words.brief_block("row-1")
-    assert "python -m nucleo.cli.widget data mensajeria send_to contact='Ana' text='<…>'" in out
-
-
 def test_disarmed_without_field_arguments_the_act_needs_a_file_first(monkeypatch):
     """RED proof: with the argument reader disarmed, `name=cena` is not a payload (the two-turn path again)."""
     monkeypatch.setattr(cli_widget, "_field_args", lambda wid, action, args: None)
@@ -193,27 +184,6 @@ def test_disarmed_without_the_door_conversion_false_is_true(monkeypatch):
     assert m.get("allDay")
 
 
-
-# ── fourth audit: the send row's ONE command names only declared fields ─────────────────────────────────────────
-@pytest.mark.parametrize("payload", [
-    {"to": "Ana", "message": "llego tarde", "contact": "Ana", "text": "llego tarde"},     # aliases kept by fold_aliases
-    {"contact": "Ana", "item": "3", "widget_id": "mensajeria"},                            # extra keys
-    {"contact": "Ana's $50 `x`", "text": "[URGENTE] true {ok}"},
-])
-def test_the_send_rows_command_is_accepted_and_names_only_declared_fields(monkeypatch, payload):
-    from nucleo.flash import payload_fill
-    from nucleo.request import send_task_words
-    monkeypatch.setattr(send_task_words, "artefact", lambda uid: {
-        "widget": "mensajeria", "action": "send_to", "payload": payload,
-        "slots": {"recipient": {"key": "contact", "source": "his"}, "text": {"key": "text", "rule": "composed"}}})
-    out = send_task_words.brief_block("row-1")
-    cmd = out.split("`python -m nucleo.cli.widget data ")[1].split("`;")[0].split("`.")[0]
-    cmd = "python -m nucleo.cli.widget data " + cmd.rstrip("`")
-    argv = _bash_argv(cmd)
-    got = cli_widget._field_args("mensajeria", "send_to", argv[2:])
-    declared = payload_fill._payload_spec("mensajeria", "send_to")
-    assert got is not None and set(got) <= set(declared), (cmd, got)
-    assert all(got[k] == v for k, v in payload.items() if k in got), (got, payload)
 
 
 def test_update_meeting_declares_the_field_it_types():

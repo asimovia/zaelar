@@ -119,8 +119,7 @@ def deliver(p: dict, text: str) -> bool:
         return bool(worker_api.answer_soon(p["ask_id"], text))
     if p.get("dispatch"):
         from nucleo import dispatch as _d
-        _d.inject_soon(p["dispatch"], text)
-        return True
+        return bool(_d.relay_his_words(p["dispatch"], text))     # THE door for his sentence into a running errand
     return False
 
 
@@ -180,6 +179,14 @@ async def take(text: str, *, brain=None, emit=None, say=None, window_max: int = 
         return False                                # nothing took it: Flash does, rather than his words vanishing
     _seen.update(text=_flat(said), key=to["key"], at=time.time())
     _acknowledge(said, brain, say, window_max)
+    return True
+
+
+async def at_the_gate(text: str, brain, emit, say, motor) -> bool:
+    """`take` as the turn's gate calls it: a chunk a process took releases the turn's fresh trace (no turn follows)."""
+    if not await take(text, brain=brain, emit=emit, say=say, window_max=motor._WINDOW_MAX):
+        return False
+    motor._release_acc_trace_if_fresh(brain)
     return True
 
 

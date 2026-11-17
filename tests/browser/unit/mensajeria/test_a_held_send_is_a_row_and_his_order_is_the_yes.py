@@ -208,18 +208,6 @@ def _left():
     return [(o["to"], o.get("subject")) for o in (data.load_db().get("pending_send") or [])]
 
 
-@pytest.mark.parametrize("text", ["Hi Quinn, Thursday at ten works for us.", "Hola Quinn, el jueves a las diez nos va bien."])
-def test_his_sure_order_over_the_draft_he_saw_is_the_yes_at_the_worker_door(monkeypatch, text):
-    """CRIT-C9 where the send now runs: the turn that routed his «send it» recorded its sure order over THAT row
-    (`message.note_his_order`), and the worker's exit door reads it with no brief — nothing is asked, the row leaves."""
-    d = _worker_door(monkeypatch)
-    _quinn_draft(text)
-    assert held_send.note_his_order("mensajeria", "send_draft", _QUINN, _brief("mensajeria:send_draft", 0.95))
-    got = d.act(_QUINN)
-    assert got.get("ok") and got.get("status") != "pending", got
-    assert _left() == [("quinn@example.com", "Thursday")]
-
-
 def test_a_draft_edited_after_his_order_is_another_row_and_is_asked(monkeypatch):
     d = _worker_door(monkeypatch)
     _quinn_draft()

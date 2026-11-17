@@ -623,19 +623,17 @@ observability — what is counted is listed, a peer's chatter is not a task, a r
 through `nucleo/circuit/asker.py`: the row waits for `user_answer` with an `ask_id`, the retained act is the row's
 `ask` artefact, and `worker.ask` becomes one observer `ask` event — the question on the chat wall and under its task in
 the processes panel, with a way to answer. A screen answer carries its `ask_id` (`POST /api/tasks/{id}/answer`); a
-spoken one is bound by a question of the turn's brief whose choices are the open `ask_id`s
-(`nucleo/cli/worker_api_bind.py`): one waiting row binds at the act floor (at the licence when the model answered too);
-with SEVERAL waiting a pick binds only by IDENTITY — the row that asked him since his last turn, a row our «which?»
-named (`circuit.asked_last`, by id), or a candidate no other row declares; a row identified whose candidates his words
-do not pick has its own question put again (`reask`); `none` at the veto (0.85) binds nothing; any other verdict is a
-doubt, asked as «which?» — never by length, a word list, a bar or «the oldest». The worker's process ENDS after asking; the answer resumes THAT session by
+spoken chunk is routed at the turn's gate, before the model, by the switchboard (`nucleo/switchboard`): one board of
+what is open (every live worker session and every row waiting on his answer) and ONE decision — «for process N, or for
+none?». For a process it is delivered as he said it (a waiting question takes it as its answer, a running worker as
+his next words) and Flash does not run; a reply that is one of the two declared answers of the only waiting question
+needs no model; an unreadable or late decision is Flash's turn. The worker's process ENDS after asking; the answer resumes THAT session by
 id in its stored cwd, re-briefed from the row (`nucleo/cli/worker_api_resume.py`). An answer about an act that leaves
 and needs composing hands the row to one Brain Worker with the `message` playbook (`nucleo/request/answered_task.py`).
 A `user_answer` wait ends at his rule (`answer_wait_days`, default 7) through `settle(cancelled)` with one line. A
 CLARIFICATION (a fact or a choice the work needs) is dialogue, never a card, and ends with its conversation
-(`nucleo/request/clarify_end.py`): when his next turn surely answers none of the waiting questions (`none` at the veto)
-while it asked him in our last reply, by id, it closes; unanswered past `clarify_wait_minutes` (default 30) the pulse
-closes it — one `ask_closed` event either way, nothing said, never asked again.
+(`nucleo/request/clarify_end.py`): unanswered past `clarify_wait_minutes` (default 30) the pulse
+closes it — one `ask_closed` event, nothing said, never asked again.
 
 **The playbook.** A worker's brief (`nucleo/workers/prompts/build.py`) is a stable prefix in the session's language —
 the shell's rules, the method's nine checkpoints (understand · record · resolve the facts · choose channel and UI ·
@@ -716,8 +714,8 @@ recipient as his (`nucleo/acts/message.py`, read by both channels and by `messag
 card's outbound queue, visible and cancellable until it leaves. **An irreversible act of a card (`confirm:true`, or
 the one rule's ASK_CONSENT) waits for his yes ON ITS ROW** (V2-857 phase 3): the request's inline row waits through
 the one asker (`nucleo/request/consent_ask.ask_consent` → `inline_ask.held` → `circuit/asker`) with its `ask_id`, the act retained on the
-row and the two answers DECLARED as candidates (`answer_yes` · `answer_no` of the language) — the brief's binding
-verdict picks one (`worker_api_bind`: `#0` yes, `#1` no), the screen shows them as the question's buttons
+row and the two answers DECLARED as candidates (`answer_yes` · `answer_no` of the language) — a reply that IS one of them decides
+(`consent_ask.declared_answer`), the screen shows them as the question's buttons
 (`TaskAsk`), the card's own button (`POST /widgets/{id}/confirm` → `widgets/confirm_answer.py`) answers that same question, and the yes re-runs
 the act through its own door once (`inline_ask.rerun`, `take`). Nothing waits in this process's memory and no word
 list reads the yes before the brief. Since V2-878 §4 every gate question waits on a row (a card's delete or restore,
@@ -926,15 +924,13 @@ enforces it in both directions.
 | `a2a_connect` | Ask to connect with a contact's agent; only the request is sent, the other side accepts. | → `a2a.runtime().connect_contact` | **only with A2A on and ≥1 accepted contact** (`a2a_live`) |
 | `a2a_grant` | Share (or stop sharing, `stop=true`) one item with a connected contact, optionally for N hours. | → `a2a` grants (rules rows) | **only with A2A on and ≥1 accepted contact** (`a2a_live`) |
 | `a2a_read` | Read the network: `what=sharing` / `inbox` / `status`. | → `a2a.runtime()` read surfaces | **only with A2A on and ≥1 accepted contact** (`a2a_live`) |
-| `send_to_worker` | Inject a refinement into a **live** Brain Worker ("además, verde") — do NOT open another. | → `dispatch.inject_soon` (piggyback queue) | **only if workers are live** |
 | `stop_worker` | **Kill** a live Brain Worker ("para eso"). ≠ close/delete a widget. | → `dispatch.cancel_soon` (killpg) | **only if workers are live** |
 | `cancel_scheduled` | **Cancel** one of his scheduled/periodic jobs by its name (V2-883). ≠ stop a worker. | → `scheduler_refs.unschedule` (resolved by `widgets.refs.match`; `ok` = no longer listed) | **only if a job is scheduled** |
-| `answer_worker` | Route his words to a task that is **waiting** on him. A reading, not a binding: which task it answers is the brief's verdict over the open `ask_id`s, else it asks which (§5h). | → post-stream settle → `nucleo/cli/worker_api_bind` → `worker_api_answer` | **only if a task waits for his answer** |
 | `not_understood` | The model's own say that it cannot tell what the operator wants (a garbled or cut transcript), instead of asking him to repeat. The PRIMARY trigger is the brief's `readable` verdict (garbled · noise), which holds the reflex words from the first word; this call is the second reader of the same state. | → `nucleo/flash/unclear_turn`: ONE `not_understood_lines` line from the language table (it did not understand; put it another way or give one more detail). No model runs again (CRIT-T7) | always (`core`) |
 
 > **Brain Workers:** one worker session per task (`nucleo/workers/`, agent-agnostic backend: Claude Code
 > stream-json today; the `CodeAgent` interface admits Codex and others that resume by id). Three channels: ↓ inject
-> (`send_to_worker` → piggyback queue), ↑ report-to-state (phase auto-derived + `hbnote`), ↑ ask/act with response
+> (the switchboard, `nucleo/switchboard` → `dispatch.relay_his_words` → piggyback queue), ↑ report-to-state (phase auto-derived + `hbnote`), ↑ ask/act with response
 > (`hbask`/`hbact` → `/api/worker/act`, policy ALLOW/CONFIRM/DENY, the FlashBrain lends its tools e.g.
 > `web_search`). The task's ROW is the truth (§5h); `dispatch._SESSIONS` only registers the live processes, and
 > the pulse supervises them (stuck/timeout/death → resumed by id once, or said on the row).

@@ -65,17 +65,6 @@ def test_a_name_he_never_said_is_kept_and_asked_never_swapped_for_a_word_of_his(
     assert kept == wa.FAST
 
 
-def test_the_door_runs_on_every_data_op():
-    """Since V2-852 M2 a send runs at the worker's exit door, so that is where his recipient goes back in — since V2-857
-    phase 5 as the rule of each recipient slot a leaving card DECLARES (`exit_slots`), never as a reader by name."""
-    workers = pathlib.Path(gate.__file__).parents[1] / "workers"
-    assert "exit_slots.read(" in (workers / "exit_gate.py").read_text()
-    assert "his_recipient" not in (workers / "exit_slots.py").read_text().split("def _his_words", 1)[1][:800]
-    from nucleo.workers import exit_slots
-    for act in ("send_to", "send_draft", "forward"):
-        assert exit_slots.declared("mensajeria", act)["recipient"] == {"key": "contact", "from": "his_words"}, act
-
-
 # ── a draft that waits for him is on screen ─────────────────────────────────────────────────────────────────
 
 def test_a_draft_brings_its_card():

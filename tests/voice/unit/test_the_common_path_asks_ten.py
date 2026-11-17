@@ -45,10 +45,11 @@ def test_a_running_errand_adds_only_its_own_two():
     assert got == COMMON | {"stop_errand", "errand_target"}, got
 
 
-def test_a_waiting_task_adds_only_the_answer_binding():
+def test_a_waiting_task_adds_no_question_to_the_brief():
+    """V2-931 — whose his words are is the switchboard's decision at the gate: the brief asks nothing about it."""
     asks = [{"task_id": "b-1", "ask_id": "a1", "question": "¿enduro o cross?", "title": "moto", "since": 0}]
     got = _asked(open_asks=asks)
-    assert got == COMMON | {"answers_open_question"}, got
+    assert got == COMMON, got
 
 
 def test_no_door_question_rides_the_turn_trip_in_any_context():

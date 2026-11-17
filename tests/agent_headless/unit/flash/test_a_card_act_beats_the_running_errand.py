@@ -233,15 +233,6 @@ def _in_the_turn(brief, fn):
         return fn()
 
 
-def test_the_models_send_to_worker_over_a_turn_the_card_owns_is_refused(errand):
-    from nucleo.flash import tool_executor_calls as _calls
-    _note("musica", "play", {"query": "Hung Up"})
-    acted = {"v": None}
-    _in_the_turn(_u2_p5(), lambda: _calls._t_send_to_worker(args={"which": "9", "message": CORRECTIONS[0][0]},
-                                                            emit=lambda *a, **k: None, worker_acted=acted))
-    assert errand["injected"] == [] and acted["v"] is None
-
-
 def test_a_turn_that_went_through_the_music_door_owns_its_words(errand):
     from nucleo import consequence
     def _turn_body():
@@ -249,16 +240,6 @@ def test_a_turn_that_went_through_the_music_door_owns_its_words(errand):
         from nucleo import dispatch
         return dispatch.relay_his_words("9", "louder")
     assert _in_the_turn(_brief(), _turn_body) is False and errand["injected"] == []
-
-
-@pytest.mark.parametrize("text", REAL_STEERS)
-def test_his_words_for_the_errand_still_reach_it_through_the_door(text, errand):
-    """No card owns the turn (he commissioned the monitor, nothing since): the same door relays."""
-    acted = {"v": None}
-    from nucleo.flash import tool_executor_calls as _calls
-    _in_the_turn(_brief(stop_errand=("steer", 0.95)), lambda: _calls._t_send_to_worker(
-        args={"which": "9", "message": text}, emit=lambda *a, **k: None, worker_acted=acted))
-    assert errand["injected"] == [("9", text)] and acted["v"] == "inject"
 
 
 # ── R7e · an act of his turn is ANY card mutation it caused, recorded with his trace (pass 7, U2) ───────────────

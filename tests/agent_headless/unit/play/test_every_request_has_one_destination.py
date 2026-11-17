@@ -45,7 +45,8 @@ def test_every_declared_action_has_a_programme(wid, action):
 
 @pytest.mark.parametrize("wid,action", ACTS, ids=IDS)
 def test_one_declared_action_goes_where_the_router_sends_it_today(wid, action):
-    worker = actions.classify(_spec(wid, action), action) == actions.ESCALATE
+    # a worker's: the action's class escalates, or the act leaves the machine (V2-931: a send is ONE worker task)
+    worker = actions.classify(_spec(wid, action), action) == actions.ESCALATE or effects.leaves(wid, action)
     assert route.destination([(wid, action)]) == (route.ERRAND if worker else route.PLAY)
     # under a sure errand reading: home acts stay with their widget, a leaving one follows the reading
     home = route_by_verdict.stays_home("widget_data", {"widget_id": wid, "action": action})
@@ -60,12 +61,14 @@ def test_the_ladder_in_order():
     assert route.destination([("mensajeria", "no_such_action")]) == route.TALK
     assert route.destination([("no_such_widget", "open")]) == route.TALK
     assert route.destination(errand=True) == route.ERRAND                     # work outside our widgets
-    assert route.destination([send]) == route.PLAY                            # one declared action
-    assert route.destination([send, send]) == route.PLAY                      # the same action named twice is one
-    assert route.destination([("mensajeria::2", "send_to")]) == route.PLAY    # an instance is its widget
-    assert route.destination([send], several=True) == route.ERRAND            # several steps: a worker
+    assert route.destination([add]) == route.PLAY                             # one declared action
+    assert route.destination([add, add]) == route.PLAY                        # the same action named twice is one
+    assert route.destination([("agenda::2", add[1])]) == route.PLAY           # an instance is its widget
+    assert route.destination([send]) == route.ERRAND                          # an act that leaves: its worker task
+    assert route.destination([("mensajeria::2", "send_to")]) == route.ERRAND
+    assert route.destination([add], several=True) == route.ERRAND             # several steps: a worker
     assert route.destination([send, add]) == route.ERRAND
-    assert route.destination([send, ("mensajeria", "no_such_action")]) == route.PLAY   # the undeclared one is nothing
+    assert route.destination([add, ("agenda", "no_such_action")]) == route.PLAY   # the undeclared one is nothing
 
 
 ACTS_OF = {w: a for w, a in ACTS if not effects.leaves(w, a)

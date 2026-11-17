@@ -9,65 +9,14 @@ three-tasks-at-once (2026-10-11 02:58), the game parked on «¿La hago?» / «Sh
   · ES «Vale, perfecto. Del monitor, que no pase de 150» → the model re-escalated the game and said «va en marcha»
     over an errand still parked.
 
-Mechanism pinned here (V2-878 §4b): the parked errand waits on its ROW, and a yes inside a longer sentence is the
-brief's binding pick over that row — any wording, any language — never the word it opens with (`opening_answer` and the
-yes/no tables went). The gate yields to the pick; with no pick only the row's declared answer decides.
+Mechanism pinned here (V2-878 §4b): the parked errand waits on its ROW, and a reply decides it by word only when it
+IS one of the row's declared answers — never the word a longer sentence opens with (`opening_answer` and the yes/no
+tables went). A longer reply is routed to the row by the switchboard at the turn's gate (V2-931).
 """
 from __future__ import annotations
 
-import threading
-import time
-import types
-
-import pytest
-
-from nucleo import dispatch
-from nucleo.dispatch import confirm as dc
-from nucleo.turn import confirm_gates as gates
-from nucleo.turn import errands_of_a_turn as E
-
-GAME = "Build a playable platform game widget, Super Mario style: a side-scrolling platformer with a character"
-MONITOR = E.listing_errand({"query": "cheap used monitor"})
-Q = "If I've got this right, you're asking me to BUILD you a new app. Shall I?"
 
 
-def _brief(**verdicts):
-    ev = threading.Event()
-    ev.set()
-    return {"event": ev, "result": {k: {"choice": c, "confidence": 0.99, "probs": {c: 0.99}}
-                                    for k, c in verdicts.items()}, "_call_id": "t", "turn_id": "t", "open_ids": []}
-
-
-@pytest.fixture
-def parked(monkeypatch):
-    out = []
-    monkeypatch.setattr("nucleo.acts.errand.escalate_to_slowbrain", lambda req, context=None: out.append(req) or 1)
-    monkeypatch.setattr(dispatch, "pending_summaries", lambda: [{"id": "3", "request": MONITOR, "phase": "",
-                                                                  "waiting_on": ""}])
-    monkeypatch.setattr(dispatch, "get_record", lambda tid: types.SimpleNamespace(label="", title=""))
-    monkeypatch.setattr(dc, "_PENDING_CONFIRM", {"2": {"request": GAME, "kind": "code", "trusted": True,
-                                                       "context": {}, "sheet": "", "ts": time.time(),
-                                                       "code_change": "create", "question": Q}})
-    return out
-
-
-JUEGO = "Crear un widget nuevo para el canvas: un juego de plataformas tipo Super Mario, jugable, para probar"
-
-
-@pytest.mark.parametrize("game, said", [
-    (GAME, "yeah go ahead with the game, and add coins to it too. btw for the monitor it has to be at least 27 inches"),
-    (JUEGO, "Sí, justo eso, y ponle que el muñeco salte más alto, que si no no hay quien pase las plataformas. ¿El "
-            "monitor cómo va?"),
-])
-def test_the_yes_it_opens_with_is_the_briefs_pick_over_the_row(parked, game, said):
-    from nucleo.cli import worker_api_bind as bind
-    dc._PENDING_CONFIRM["2"].update(request=game, uid="row-2", ask_id="row-2-start")
-    asks = [{"task_id": "row-2", "ask_id": "row-2-start", "question": Q, "candidates": ["Yes", "No"]}]
-    brief = _brief(request_type="order", **{bind.KEY: "row-2-start#0"})
-    assert not gates.resolve_all(said, brief=brief), "the gate read the word over the brief's pick"
-    how, (a,) = bind.bind(brief, asks=asks)
-    assert how == bind.ANSWER and a["ask_id"] == "row-2-start" and a["choice"] == 0, said
-    assert not gates.resolve_all(said, brief=_brief(request_type="order")) and not parked, "a word decided it"
 
 
 def test_an_if_is_not_a_yes(monkeypatch):

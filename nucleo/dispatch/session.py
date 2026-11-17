@@ -174,9 +174,7 @@ async def _run_session(task: "Task") -> None:
             # who sirve the session (`providers.worker_sees`, fail-open a SÍ ve).
             prompt = _d._web_prompt(req, ctx, brief, vision=_d._worker_sees(), playbook=_pb)
         else:
-            from nucleo.request import send_errand as _send     # a send brings its own method (V2-931)
-            prompt = _d._build_prompt(req, ctx, trusted, brief, playbook=_pb,
-                                      method=_send.brief_block(task.context) if trusted else "")
+            prompt = _d._build_prompt(req, ctx, trusted, brief, playbook=_pb, task_context=task.context)
         # V2-644 (a REPORT flips the delivery contract) + V2-661 (his FILES): a trusted worker's blocks, in one place.
         if trusted and not _dev:
             from nucleo.workers.prompts.surfaces import trusted_blocks

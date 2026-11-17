@@ -46,10 +46,9 @@ DECLARED: dict[tuple[str, str], str] = {
     ("nucleo/flash/resume_turn.py", "resume"): CONTINUES,
     ("nucleo/pulse/rehydrate.py", "_later"): CONTINUES,
     ("nucleo/request/answered_task.py", "start"): CONTINUES + " (his answer hands its waiting row to a worker: `task_uid`)",
-    ("nucleo/request/send_task_answer.py", "_worker"): CONTINUES + " (his answer hands the send task's own waiting row "
-                                                         "to a `message` worker through the portal, `task_uid`, #225)",
-    ("nucleo/request/send_task_turn.py", "at_close"): CONTINUES + " (the send row `by_verdict` just opened or found is "
-                                                       "composed by a worker through the portal on that row, `task_uid`, #225)",
+    ("nucleo/request/send_errand.py", "start"): PORTAL + " (V2-931: a send the close found with nothing launched — the "
+                                                 "switchboard already said at the gate that his words are for no "
+                                                 "open process, so it opens its own)",
     ("nucleo/request/append.py", "_rerun"): "the dispatcher's backstop re-running a delivered pass in its box",
     ("nucleo/sheets.py", "sheet_for_delivery"): CONTINUES,
     ("nucleo/workers/quota_wait.py", "fire"): CONTINUES,
@@ -58,10 +57,6 @@ DECLARED: dict[tuple[str, str], str] = {
     ("nucleo/workers/relay.py", "restart_stalled"): CONTINUES,
     ("nucleo/dispatch/confirm.py", "_relaunch"): CONTINUES + " (his yes to a parked errand relaunches the SAME request on "
                                                   "its own waiting row, `task_uid`, V2-857)",
-    ("nucleo/request/ask_outside_door.py", "to_message_task"): PORTAL + " (a sure leaving act the turn's words claimed and "
-                                                               "no door reached becomes its message task, V2-851/852)",
-    ("nucleo/request/ask_outside_door.py", "_an_order_nothing_served"): PORTAL + " (a sure order whose leaving act no "
-                                                                        "door reached, V2-852)",
     ("nucleo/events/stream.py", "launch_session"): CONTINUES + " (the event reached it through `flow_of.route(event=…)`, a "
                                                    "subscribed rule's stream, V2-851 F4 branch c; the stream's own recurring row "
                                                    "carries it; the SESSION playbook, from `_launch` or the bounded turn's "

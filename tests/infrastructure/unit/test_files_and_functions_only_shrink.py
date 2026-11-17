@@ -74,14 +74,14 @@ FUNCTIONS = {
     'nucleo/memory_agent/ingest_steps.py::gate_the_utterance': 164,
     'nucleo/cli/worker_api_exec.py::_exec_allow': 175,   # V2-883 merge: the scheduler's acts left for worker_api_schedule.run; V2-851 trim B: the spawn act went
     'nucleo/workers/providers/claude_map.py::_map': 126,   # V2-851 trim B: re-measured
-    'nucleo/workers/providers/claude_start.py::start': 130,   # V2-851 trim B: re-measured
+    'nucleo/workers/providers/claude_start.py::start': 134,   # +4 V2-931 (2.1801): a task marked for Claude itself takes that rung or does not start (`claude_tier.route`); V2-851 trim B: re-measured
     'server/voice_status.py::brain_and_voice': 140,
     'server/voice_status.py::the_rest_and_the_light': 192,
     # V2-851 F5 (2.1191): `_run_inner` (705) and `turn_after.close_the_turn` (294) MOVED to nucleo/turn and split by
     # stage — the three over the line are the moved bodies, each shorter than what they came from.
     'nucleo/turn/pipeline.py::run': 196,
     'nucleo/turn/pipeline_close.py::close_the_turn': 217,   # +2 2026-11-15 V2-909 (2.1754): the route is recorded after the close's errands, with `opened` and `said`; +3 2026-11-15 V2-909 P6: the route of a turn recorded beside what it did (stage off)
-    'nucleo/turn/pipeline_gate.py::open_the_turn': 195,
+    'nucleo/turn/pipeline_gate.py::open_the_turn': 200,   # +5 V2-931 (2.1800): the switchboard's one call at the gate (`route.at_the_gate`)
     'voice/engine/pipeline/agent.py::entrypoint': 443,  # +17 V2-863 (2.1638/2.1639): with the Flux ear the session reads the end of turn from the STT and adds only `stt_flux_min_delay`; the preemptive tap is installed; 2026-11-08 apps principles: a waiting typed line skips the greeting; the typed door opens after start
     'voice/engine/pipeline/agent_events.py::_on_data': 142,
     'voice/engine/speech/filler_audio.py::llm_node_with_filler': 143,

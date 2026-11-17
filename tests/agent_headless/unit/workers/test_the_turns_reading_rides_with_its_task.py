@@ -4,15 +4,13 @@ Since an act that leaves is a task (CRIT-T2b), the worker does the send with no 
 from his sentence — the channel he named, his sure order over the row he saw — was read on Flash's brief and lost on
 the way, one wire at a time (the channel was the open one: `message_channel.his_channel` read a brief the worker never
 had). Now the brief's verdicts are frozen once on the task (`nucleo/turn/brief.carried`), kept on the record
-(`rec.reading`) and revived at the worker's exit door for the same readers Flash uses. ES and EN words alike: the
-reading is the verdict, never his words.
+(`rec.reading`) and revived for the same readers Flash uses. ES and EN words alike: the reading is the verdict, never
+his words.
 """
 from __future__ import annotations
 
 import threading
-from types import SimpleNamespace
 
-import pytest
 
 from nucleo.turn import brief as tb
 
@@ -33,37 +31,6 @@ def test_a_reading_is_plain_data_and_revives_for_every_reader():
     assert verdicts.read(turn, "message_channel", None)[0] == "whatsapp"
     assert tb.carried({"event": threading.Event(), "result": {}}) == {}   # a brief still in flight carries nothing
     assert tb.revived({}) is None
-
-
-@pytest.fixture
-def door(monkeypatch):
-    from nucleo.acts import card, message
-    from nucleo.workers import exit_gate, taint
-    from nucleo.workers.prompts import playbook
-    from widgets import contract
-    monkeypatch.setattr(playbook, "checkpoint_one", lambda rec: "")
-    monkeypatch.setattr(contract, "would_refuse", lambda *a: None)
-    monkeypatch.setattr(card, "licence", lambda *a, **k: SimpleNamespace(verdict=card.RUN))
-    monkeypatch.setattr(taint, "tainted", lambda rec: False)
-    from nucleo.acts import message_channel
-    monkeypatch.setattr(message_channel, "_declares_channel", lambda *a: True)
-    return exit_gate
-
-
-@pytest.mark.parametrize("said", ["mándale a Quinn por whatsapp que llego tarde", "tell Quinn on whatsapp I'm late"])
-def test_the_channel_he_named_reaches_the_worker_send(door, said):
-    rec = SimpleNamespace(task_id="w1", uid="", reading=tb.carried(_brief(message_channel=("whatsapp", 0.97))),
-                          mandate={}, goal=said)
-    ex = door.gate(rec, {"widget_id": "mensajeria", "action": "send_to",
-                         "payload": {"contact": "Quinn", "text": "late", "channel": "telegram"}})
-    assert ex.payload["payload"]["channel"] == "whatsapp", ex
-
-
-def test_disarmed_a_task_with_no_reading_keeps_the_models_channel(door):
-    rec = SimpleNamespace(task_id="w2", uid="", reading={}, mandate={}, goal="tell Quinn I'm late")
-    ex = door.gate(rec, {"widget_id": "mensajeria", "action": "send_to",
-                         "payload": {"contact": "Quinn", "text": "late", "channel": "telegram"}})
-    assert ex.payload["payload"]["channel"] == "telegram"
 
 
 def test_the_escalation_carries_the_turns_reading():

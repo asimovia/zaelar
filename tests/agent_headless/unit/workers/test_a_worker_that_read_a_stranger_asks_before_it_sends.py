@@ -56,13 +56,15 @@ def test_after_reading_the_mail_the_send_is_asked_and_nothing_leaves(door, monke
     got = _send(door)
     assert got.get("status") == "pending" and door.sent == []
     q = door.api._ACTS[got["corr_id"]]["question"]
-    assert "Rowan Smith" in q and ("terceros" in q if lang == "es" else "others" in q)
+    assert "Rowan Smith" in q, "the send's one confirmation names his contact"
 
 
-def test_an_untainted_session_sends_to_whom_he_named(door):
+def test_an_untainted_session_is_asked_the_same_one_confirmation(door):
+    """V2-931 — a send needs his confirmation, tainted or not: one rule, one question, nothing leaves before his yes."""
     his_words.note("tell Rowan Smith on telegram that I'm late")
     got = _send(door)
-    assert got.get("ok") and [s[1] for s in door.sent] == ["send_to"]
+    assert got.get("status") == "pending" and door.sent == []
+    assert "Rowan Smith" in door.api._ACTS[got["corr_id"]]["question"]
 
 
 def test_a_mandate_that_covers_the_channel_sends_after_reading(door):

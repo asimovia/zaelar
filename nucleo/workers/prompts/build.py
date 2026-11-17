@@ -16,14 +16,17 @@ from nucleo.workers.prompts.surfaces import worker_language_block
 
 
 def _build_prompt(request: str, context: str, trusted: bool, brief: dict | None = None, *,
-                  playbook: str = _playbook.ERRAND, method: str = "") -> str:
-    """`method`: a task that brings its own method (a send, V2-931) reads that instead of the playbook's checkpoints."""
+                  playbook: str = _playbook.ERRAND, task_context: dict | None = None) -> str:
+    """A task that brings its own method (a send, V2-931: `send_errand.brief_block`) reads that instead of the
+    playbook's checkpoints."""
     if not trusted:
         parts = [catalog.words("header_untrusted"), worker_language_block()]
         if context:
             parts.append(f"{catalog.words('context_head')}\n{context}")
         parts.append(f"{catalog.words('request_head')}\n{request}")
         return "\n\n".join(p for p in parts if p)
+    from nucleo.request import send_errand
+    method = send_errand.brief_block(task_context)
     stable = [catalog.words("header"),
               method or _playbook.block(playbook, _playbook.done_when(playbook),
                                         results=_playbook.results_contract(brief)),

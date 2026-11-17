@@ -1,6 +1,6 @@
 """Which errand his words are for is the brief's `errand_target`, read asymmetrically (refactor2710-06 T-03).
 
-`cluster_send`, `send_to_worker` and `set_cluster_objective` read no verdict before. Now, through the catalogue's own
+`cluster_send` and `set_cluster_objective` read no verdict before. Now, through the catalogue's own
 arms: the verdict naming the arm's target runs it; a sure contrary verdict (≥ VETO) drops it; an unsure one is a doubt
 and the call runs, never a «which one?» (V2-886 D2); and no verdict — an old brief, nothing running — keeps today's route, never a new question.
 """
@@ -27,7 +27,6 @@ def arm(monkeypatch):
     ran = []
     calls = SimpleNamespace(
         _t_cluster_send=lambda **k: ran.append("cluster_send"),
-        _t_send_to_worker=lambda **k: ran.append("send_to_worker"),
         _t_set_cluster_objective=lambda **k: ran.append("set_cluster_objective"))
     monkeypatch.setattr(tools, "_calls", lambda: calls)
 
@@ -49,8 +48,8 @@ def test_the_brief_asks_it_while_an_errand_runs():
 
 
 def test_an_agreeing_verdict_runs_and_no_verdict_keeps_todays_route(arm):
-    ran, ask = arm("send_to_worker", _brief("running_errand"))
-    assert ran == ["send_to_worker"] and not ask
+    ran, ask = arm("cluster_send", _brief("cluster_peer"))
+    assert ran == ["cluster_send"] and not ask
     ran, ask = arm("cluster_send", None)
     assert ran[-1] == "cluster_send" and not ask, "no verdict: today's route, never a new question"
 

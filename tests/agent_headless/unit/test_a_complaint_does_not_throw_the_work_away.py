@@ -78,13 +78,3 @@ def test_the_measured_relaunch_order_matches_and_an_unrelated_errand_does_not():
     # a one-word order cannot walk away with whatever errand is pending (the floor of 3)
     assert dispatch._find_resume("busca") is None
 
-
-def test_the_directive_teaches_inject_on_complaint_before_the_kill(monkeypatch):
-    from nucleo.turn.prompt import operating as P
-    monkeypatch.setattr(dispatch, "has_active", lambda: True)
-    text = P._workers_directive()
-    assert "Si se QUEJA" in text and "ENTREGUE YA" in text, text
-    # the complaint fork must come BEFORE the kill sentence: the first imperative wins (V2-318)
-    assert text.index("Si se QUEJA") < text.index("Si pide PARARLO"), text
-    # …and killing stays available for the explicit order: teaching inject must not unteach stop
-    assert "stop_worker" in text

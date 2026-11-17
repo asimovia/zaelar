@@ -1,8 +1,7 @@
 """Demo pass 45 (2026-09-29), C2→C3: the model asked «I'll write to Rowan on Telegram: … Shall I send it?» for a message
 nobody had asked for; the next turn — «ok book it, call it catch up with rowan», an order about the CALENDAR —
 matched `ok` in the yes/no table and the Telegram went out. A bare answer still resolves at once; a reply that
-carries its own words never sends on a word — the brief's pick over the question's row reads it (V2-878 §4: the
-second model that used to be asked here is gone)."""
+carries its own words never sends on a word (V2-878 §4: the second model that used to be asked here is gone)."""
 from tests import voice_turn_source as _vts
 import pytest
 
@@ -29,15 +28,6 @@ def no_model(monkeypatch):
     monkeypatch.setattr(fast_client.FastClient, "complete", _never)
 
 
-def _bound(choice: str):
-    import threading
-    from nucleo.cli import worker_api_bind as bind
-    ev = threading.Event()
-    ev.set()
-    return {"event": ev, "_call_id": "t", "turn_id": "t", "open_ids": [],
-            "result": {"_call_id": "t", bind.KEY: {"choice": choice, "confidence": 0.95, "probs": {choice: 0.95}}}}
-
-
 def test_a_different_order_that_starts_with_ok_confirms_nothing(no_model):
     assert confirm.answers_pending("ok book it, call it catch up with rowan") is None
 
@@ -46,16 +36,7 @@ def test_a_declared_answer_resolves_at_once(no_model, monkeypatch):
     monkeypatch.setenv("ZAELAR_LANGUAGE", "en")
     assert confirm.answers_pending("Yes") == "yes"
     assert confirm.answers_pending("no.") == "no"
-    assert confirm.answers_pending("ok go ahead") is None, "V2-878 §4b: a longer reply is the brief's pick"
-
-
-def test_a_long_yes_is_the_briefs_pick_never_a_second_model(no_model):
-    """The question waits on its row; the brief's binding read it — its pick answers the row, not the words here."""
-    (p,) = confirm.pending().values()
-    assert p.get("ask_id"), "the question is not on a row"
-    said = "yeah sure, send that to him right now please"
-    assert confirm.answers_pending(said, _bound(f"{p['ask_id']}#0")) is None
-    assert confirm.answers_pending(said) is None, "a longer reply never sends on its word"
+    assert confirm.answers_pending("ok go ahead") is None, "V2-878 §4b: a longer reply never sends on its word"
 
 
 def test_both_voice_sites_and_the_gate_use_it():

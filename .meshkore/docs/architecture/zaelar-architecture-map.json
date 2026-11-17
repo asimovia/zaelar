@@ -637,7 +637,7 @@
    "paths": [
     "nucleo/circuit/ledger.py",
     "nucleo/request",
-    "nucleo/cli/worker_api_bind.py"
+    "nucleo/switchboard"
    ],
    "emits": [
     "task_state",
@@ -645,7 +645,7 @@
     "errand",
     "step"
    ],
-   "_doc": "The order's row (`nucleo/request/`): one row per intention; his answer binds to the row that asked him, by identity — never by text — and asks «which?» when two could take it (`worker_api_bind`). A clarification ends with its conversation (`request/clarify_end`). A send leaves byte-identical to what he approved, and is never said done before its exit door reports."
+   "_doc": "The order's row (`nucleo/request/`): one row per intention; what he says for an open process — a live worker or a row waiting on him — is delivered to it by ONE decision at the turn's gate, before the model (`nucleo/switchboard`: one board, one decision per chunk). A send is one Brain Worker task with one confirmation at its exit door (`request/send_errand`)."
   },
   {
    "id": "t_circuit",

@@ -116,6 +116,16 @@ def start(said: str, *, wid: str = "", action: str = "", src: str = "send", emit
         return 0
 
 
+def on_claude(task, env: dict) -> str:
+    """A send's worker runs on Claude itself (the operator's decision, 2026-11-17): the spec's env carries the mark
+    `claude_start` reads, and the model is that rung's. "" for any other task (the chain decides as always)."""
+    if str((getattr(task, "context", None) or {}).get("playbook") or "") != PLAYBOOK:
+        return ""
+    from nucleo.workers.providers import claude_tier
+    env[claude_tier.ANTHROPIC_MARK] = "anthropic"
+    return str((claude_tier.tier() or {}).get("model") or "")
+
+
 # ── the brief the worker reads ──────────────────────────────────────────────────────────────────────────────────
 def brief_block(context: dict | None) -> str:
     """The send's method for the worker, with the model's call as a hint. '' for a task that is not a send."""

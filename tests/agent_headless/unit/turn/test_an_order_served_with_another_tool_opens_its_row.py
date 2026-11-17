@@ -26,7 +26,7 @@ import pytest
 from memory import db as memdb, embeddings as mememb, tasks_store as ts
 from nucleo import his_words, untrusted
 from nucleo.circuit import asker
-from nucleo.request import inline_ask, model, order_unserved as ou, send_task
+from nucleo.request import inline_ask, model, order_unserved as ou
 
 ROOT = Path(__file__).resolve().parents[4]
 WID, ACT = "mensajeria", "send_to"
@@ -114,41 +114,18 @@ def _open(brief, said, reply, ops=VIEW_OPS, calls=VIEW_CALLS, **kw):
 
 
 @pytest.mark.parametrize("lang", ["es", "en"])
-def test_a_send_the_model_served_with_a_view_opens_the_send_task_and_asks_the_one_slot_it_lacks(world, lang):
+@pytest.mark.parametrize("which", ["said", "nobody"])
+def test_a_send_the_model_served_with_another_tool_is_its_one_worker_task(world, lang, which):
+    """V2-931 — a leaving order nobody served is ONE worker task: no inline row, no slot question, nothing sent here.
+    Whether his words name somebody of his or nobody is the worker's to find out."""
     w = WORDS[lang]
-    _say(w["said"])
-    got = _open(_brief(), w["said"], w["view"])
-    assert got["how"] == "asked" and got["widget"] == WID and got["act"] == ACT
-    (row,) = _rows()
-    assert row["id"] == got["row"] and row["state"] == "waiting" and row["waiting_for"] == "user_answer"
-    ret = asker.artefact(row["id"])["retained"]
-    assert ret["kind"] == "send" and ret["action"] == ACT and ret["slot"] == "text"
-    assert send_task.artefact(row["id"])["payload"]["contact"] == "raquel", "the person is his word"
-    assert world["sent"] == [] and world["workers"] == []
-    assert any(e["label"].startswith("🚪 the order the brief identified") and e["how"] == "asked"
-               for e in world["events"])
-
-
-@pytest.mark.parametrize("lang", ["es", "en"])
-def test_a_send_whose_words_the_model_quoted_runs_on_its_row_with_no_question(world, lang):
-    w = WORDS[lang]
-    _say(w["said"])
-    got = _open(_brief(), w["said"], w["quoted"])
-    assert got["how"] == "run"
-    (s,) = world["sent"]
-    assert (s["widget"], s["action"], s["payload"]["text"], s["row"]) == (WID, ACT, w["text"], got["row"])
-    assert world["workers"] == []
-
-
-@pytest.mark.parametrize("lang", ["es", "en"])
-def test_a_send_to_nobody_of_his_goes_to_a_worker_on_its_row(world, lang):
-    w = WORDS[lang]
-    _say(w["nobody"])
-    got = _open(_brief(), w["nobody"], w["view"])
+    _say(w[which])
+    got = _open(_brief(), w[which], w["view"])
     assert got["how"] == "worker" and got["worker"] == 7
     ((text, ctx),) = world["workers"]
-    assert text == w["nobody"] and ctx["playbook"] == "message" and ctx["src"] == "served_elsewhere"
-    assert world["sent"] == []
+    assert text == w[which] and ctx["playbook"] == "message" and ctx["src"] == "served_elsewhere"
+    assert ctx["send"]["action"] == ACT, "the act the brief read rides as a hint"
+    assert world["sent"] == [] and _rows() == []
 
 
 def test_a_served_order_a_doubted_one_a_question_or_an_errand_opens_nothing(world):
@@ -322,17 +299,6 @@ def test_a_question_of_the_order_waits_on_a_row_of_its_own_when_the_turns_row_ha
     assert ts.task_get(ended)["state"] == "done", "the other act's row keeps its end"
     from nucleo.cli import worker_api
     assert [a["task_id"] for a in worker_api.open_asks()] == [row["id"]], "his answer has a row to bind to"
-
-
-def test_a_send_task_of_the_order_is_born_on_a_row_of_its_own_when_the_turns_row_has_ended(world, monkeypatch):
-    from widgets.contactos import data as cd
-    cd.apply_action("add_contact", {"name": "Odalys Brezmes", "phone": "600 555 0142"})
-    said = "Mándale un whatsapp a Odalys"
-    _say(said)
-    ended = _the_other_act_ended_the_turns_row("contactos", "show_contact")
-    got = _open(_brief(), said, "Aquí la tienes.", ops=[("contactos", "show_contact")], calls=[])
-    assert got["how"] == "asked" and got["row"] != ended
-    assert ts.task_get(got["row"])["state"] == "waiting", "the slot it lacks waits for his answer"
 
 
 def test_a_turns_row_still_open_is_the_orders_row(world):

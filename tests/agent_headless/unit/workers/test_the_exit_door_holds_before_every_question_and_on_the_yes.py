@@ -1,11 +1,8 @@
-"""A worker's act that leaves crosses its exit door before ANY question, and again on his yes (V2-852, CRIT-T2b).
+"""A worker's act that leaves crosses its exit door before ANY question (V2-852, CRIT-T2b; V2-931).
 
-Two holes of the same class. The «a person his words never named» question (`on_his_behalf.worker_question`) used to
-skip `exit_gate.gate` entirely, and his yes then ran the retained act straight (`_exec_allow`): a worker that never
-named its playbook sent once he said yes, past checkpoint 1. And the act's own refusal was only read by an inline
-confirmation Flash no longer opens for a send, so a worker could be asked about a reply that answers nothing. Now
-the door holds first — checkpoint 1, the act's own refusal (`widgets.contract.would_refuse`), his recipient — then
-any question is asked, and the retained act crosses the door again before it runs. ES and EN.
+The act's own refusal was only read by an inline confirmation Flash no longer opens for a send, so a worker could be
+asked about a reply that answers nothing. Now the door holds first — the act's own refusal
+(`widgets.contract.would_refuse`) — then the one question is asked, and his yes runs the retained act. ES and EN.
 """
 from __future__ import annotations
 
@@ -58,16 +55,7 @@ def _act(d, action="send_to", payload=None):
     return json.loads(out.body)
 
 
-# ── H4 · the «somebody he never named» question no longer skips the door ─────────────────────────────────────────
-
-@pytest.mark.parametrize("said", ["busca un fontanero en Madrid y pide cita", "find a plumber in Madrid and book"])
-def test_an_unnamed_recipient_is_still_held_by_checkpoint_one_before_the_question(door, said):
-    his_words.note(said)
-    door.rec.playbook_chosen = ""
-    got = _act(door)
-    assert got.get("ok") is False and "checkpoint 1" in str(got.get("error")), got
-    assert door.sent == [] and not _asked(door)
-
+# ── H4 · the one question, and his yes ───────────────────────────────────────────────────────────────────────────
 
 def test_with_checkpoint_one_closed_the_unnamed_recipient_is_asked(door):
     his_words.note("find a plumber in Madrid and book")
@@ -75,31 +63,11 @@ def test_with_checkpoint_one_closed_the_unnamed_recipient_is_asked(door):
     assert got.get("status") == "pending" and door.sent == [], got
 
 
-def test_his_yes_runs_the_retained_act_only_through_the_door_again(door, monkeypatch):
-    """The yes answers the question, never the door: a retained act whose task lost checkpoint 1 is refused on the yes."""
-    his_words.note("find a plumber in Madrid and book")
-    got = _act(door)
-    door.rec.playbook_chosen = ""
-    assert asyncio.run(door.api.answer(got["corr_id"], "yes", resume=False))
-    assert door.sent == [] and "checkpoint 1" in str(door.api._ACTS[got["corr_id"]]["result"].get("error"))
-
-
 def test_his_yes_sends_when_the_door_lets_it(door):
     his_words.note("find a plumber in Madrid and book")
     got = _act(door)
     assert asyncio.run(door.api.answer(got["corr_id"], "yes", resume=False))
     assert [s[1] for s in door.sent] == ["send_to"]
-
-
-def test_disarmed_the_question_skips_the_door_again(door, monkeypatch):
-    """Disarm: the door crossed only when nothing is asked (the old order) → checkpoint 1 is bypassed by the question."""
-    from nucleo.workers import exit_gate
-    real = exit_gate.gate
-    monkeypatch.setattr(exit_gate, "gate", lambda rec, p: exit_gate.Exit(p) if (rec.playbook_chosen == "") else real(rec, p))
-    his_words.note("find a plumber in Madrid and book")
-    door.rec.playbook_chosen = ""
-    got = _act(door)
-    assert got.get("status") == "pending", "the disarm did not take: the door still held"
 
 
 # ── H5 · a call the act would refuse is never asked about ──────────────────────────────────────────────────────

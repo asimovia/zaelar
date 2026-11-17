@@ -17,7 +17,7 @@ from memory import db as memdb
 from memory import embeddings as mememb
 from memory import tasks_store as ts
 from nucleo.circuit import asker
-from nucleo.cli import worker_api, worker_api_bind as bind
+from nucleo.cli import worker_api
 from nucleo.request import inline_ask
 from nucleo.turn import verdicts
 
@@ -73,45 +73,6 @@ def test_a_plain_refusal_asks_nothing(fresh):
     assert inline_ask.held("b0-i1", "mensajeria", "send_to", ACT, {"ok": False, "message": "no channel"}) == ""
     assert ts.task_get("b0-i1")["state"] == "running"
     assert inline_ask.verdict_of({"ok": False, "candidates": ["only one"], "slot": "contact"}) is None
-
-
-def test_the_screen_option_reruns_the_act_on_the_same_row(fresh):
-    ask_id = _held()
-    assert asyncio.run(worker_api.answer_task("b0-i1", ask_id, "Raquel Martín")) is True
-    assert fresh.ran == [{"wid": "mensajeria", "action": "send_to", "row": "b0-i1",
-                          "payload": {"contact": "Raquel Martín", "text": "llego tarde"}}]
-    assert ts.task_get("b0-i1")["state"] == "running" and len(ts.tasks_where(states=("running", "waiting"),
-                                                                              visible_only=False)) == 1
-
-
-def test_the_verdict_chooses_the_candidate_never_his_words(fresh, monkeypatch):
-    ask_id = _held()
-    asks = worker_api.open_asks()
-    q = bind.question(asks)
-    assert {f"{ask_id}#0", f"{ask_id}#1", bind.NONE} == set(q["criteria"]), "one choice per declared candidate"
-    monkeypatch.setattr(verdicts, "read", lambda h, key, fb, min_confidence=None: (f"{ask_id}#1", {"confidence": .9}))
-    how, got = bind.bind(None, asks=asks)
-    assert how == bind.ANSWER and got[0]["choice"] == 1
-    asyncio.run(worker_api.answer(ask_id, "la segunda", choice=got[0]["choice"]))
-    assert fresh.ran[0]["payload"]["contact"] == "Raquel Martín" and fresh.ran[0]["row"] == "b0-i1"
-
-
-def test_a_bare_question_id_over_candidates_is_asked_which(fresh, monkeypatch):
-    """The row is picked but not its candidate: ITS question is put again (V2-903 a5 — never «which of these tasks?»
-    over the one row the verdict already named)."""
-    ask_id = _held()
-    monkeypatch.setattr(verdicts, "read", lambda h, key, fb, min_confidence=None: (ask_id, {"confidence": .9}))
-    how, asks = bind.bind(None)
-    assert how == bind.REASK and [a["ask_id"] for a in asks] == [ask_id]
-
-
-def test_the_same_act_naming_a_candidate_is_his_answer_on_that_row(fresh):
-    _held()
-    assert inline_ask.claim("mensajeria", "send_to", {"contact": "Raquel Gómez", "text": "x"}) == ("b0-i1", False)
-    assert ts.task_get("b0-i1")["state"] == "running" and not worker_api.open_asks()
-    assert inline_ask.claim("mensajeria", "send_to", {"contact": "Raquel Gómez"}) == ("b0-i1", True), \
-        "the act already ran on his answer: a second call is the same act, never a second send"
-    assert inline_ask.claim("mensajeria", "send_to", {"contact": "Lucía"}) == ("", False)
 
 
 def test_the_data_op_door_holds_its_row_instead_of_failing_it(tmp_path, monkeypatch):

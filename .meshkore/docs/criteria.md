@@ -227,7 +227,7 @@ below is the first kind, or it names the mechanism that replaced the second.
   its conversation: answered, it goes on; when his next turn surely answers none of the waiting questions (`none` at
   VETO) a clarify our last reply put closes, by its id (`circuit.asked_last`); unanswered past `clarify_wait_minutes`
   (30) the pulse closes it — each close cancels its row and says so in ONE `ask_closed` event, no line, never re-asked
-  (`request/clarify_end.py`). — since 2026-10-26 · nodes 4.188, 4.185, 2.174, 2.811, 2.431, 2.728, 2.729, 2.1693, 2.1740 · `nucleo/consent.py`, `rules/shape.py`, `nucleo/flash/undecided.py`.
+  (`request/clarify_end.py`). — since 2026-10-26 · nodes 4.188, 4.185, 2.174, 2.811, 2.431, 2.728, 2.729, 2.1693 · `nucleo/consent.py`, `rules/shape.py`, `nucleo/flash/undecided.py`.
 - **CRIT-C2 · A «yes» answers ONE proposal** and spends only that proposal's authority; an order that starts with
   «ok» is not a yes to a different pending action; every pending confirmation can be answered in words. A line
   that follows a question of OURS is his reply whether the verdict reads it as `answer` or `order` — the label only
@@ -287,13 +287,12 @@ below is the first kind, or it names the mechanism that replaced the second.
   recipient is never a doubt: one he did not name (this turn or his last 15 min) is asked «¿se lo mando a X?», a
   spelling-only near contact is named back, never written to, and the engine never turns a draft into a send to
   somebody he did not name. When it was asked, the yes is HIS words (a plain yes, or the judge's YES), never the
-  model's `confirmed=true` over a sentence about something else. The same holds for a WORKER (V2-886 D4): a send
-  whose recipient the worker picked, from an errand whose reading asks for no send (`message_channel.backs_a_send`, read by `exit_slots.unbacked_send`:
-  the class `sends_for_him` or a channel he named), is dropped at its exit with an event, and no send worker is born
-  from a lean alone. — since 2026-09-29 ·
+  model's `confirmed=true` over a sentence about something else. A WORKER's send is never dropped or run on a reading of whose
+  words named the person: it is asked, once, at its exit (CRIT-T2b), and no send worker is born from a lean alone
+  (`message_channel.backs_a_send`). — since 2026-09-29 ·
   The question names the person as he knows her (`directory.shown_as`) and the card carries its row's title
   (`asker.title_of`) — never a raw id, never «a process» (V2-886 D5). —
-  nodes 2.106, 2.168, 2.730, 2.740, 2.1690, 2.1691 · `nucleo/acts/message.py` (`asked_if_leaving`), `widgets/mensajeria/outbound.py`,
+  nodes 2.106, 2.168, 2.730, 2.740, 2.1691 · `nucleo/acts/message.py` (`asked_if_leaving`), `widgets/mensajeria/outbound.py`,
   `widgets/confirm.py::backs_a_yes`.
 - **CRIT-C6 · An action does not manufacture permission for its own side effects**; the confirm gate asks
   SOMEONE, and its «yes» returns to the click it stopped. — since 2026-09-18 · nodes 4.21, 2.29.
@@ -313,14 +312,6 @@ below is the first kind, or it names the mechanism that replaced the second.
   only. A pending confirmation lives in the conversation (voice or the chat's Yes/No resolve the same row), never
   also on the card; the confirmed act owes its declared end state (`send_draft.done_when`: a sent row for that
   recipient), so «confirmed» and «done» are judged apart. — since 2026-10-26 · nodes 2.806, 2.807 · `widgets/mensajeria/held.py`, `nucleo/consent.decide`.
-- **CRIT-C9b · A held row nobody surely ordered is asked at the exit, and his yes is kept.** A declared `held` slot
-  that his order did not release reads `unknown` at the exit door (`stranger` after a stranger's text), so the act's own
-  question is asked; the commissioning turn's order covers the row as his answers completed it and is void for a value
-  a later turn's call put on it unless that turn's reading says his words answer the row's question (`order_void`). His
-  yes to the door's question is kept on the row with the payload it was said about (`send_task_run.consented`) and is
-  used up by the crossing it answered: the act runs once, the question he answered is not asked again, a payload
-  changed since — or a later crossing — is. — since 2026-11-16 · nodes 2.1787 · `nucleo/workers/exit_slots.py`, `nucleo/request/send_task_run.py`,
-  `nucleo/request/send_task_answer.py`.
 - **CRIT-C10 · Every act that reaches the real world reads ONE door, and his rules override its defaults.** A widget's
   act through `frontend.action_verdict`; a cluster message, an errand's reply and a worker's click through
   `consent.decide_act(class, channel)` — `messaging.send_new@<channel>`, `web.commit`, `payment.authorize`, defaults
@@ -412,20 +403,17 @@ below is the first kind, or it names the mechanism that replaced the second.
   «the message appears as sent» after his no is not a shortfall). — since 2026-11-06 · nodes 2.1625 ·
   `nucleo/cli/worker_api_answer.py`, `nucleo/circuit/__init__.py`.
 - **CRIT-C20 · The answer to a waiting question is yes, no or NEITHER.** His line while a parked errand or a held click
-  waits on its row is read by the brief's pick for that question (`answers_open_question`); the answer words decide
-  alone only a reply made of them, and a yes/no word inside an order to a card (a sure screen action) is neither. A
+  waits is read by its two declared answers: the answer words decide only a reply made of them, and a yes/no word
+  inside a longer sentence is neither (a question that waits on a ROW is the switchboard's, CRIT-T3). A
   yes/no word that answered nothing is said: «X is still waiting for your yes or no» (`errand_still_waiting`) — never
   a lost turn. — since 2026-11-10 (V2-873) · nodes 2.1659 · `nucleo/turn/confirm_gates.py`, `widgets/confirm.py`.
 - **CRIT-C15 · Every act of a worker that leaves crosses ONE declared exit door.** The bridge acts that leave are
   declared once (`exit_gate.EXITS`: the door each crosses and how its event type is read — the card's own class refined
   by its hook, or a fixed type); the bridge and the retained act his yes runs ask `exit_gate.leave(rec, action, payload)`
   and nothing by action name; an undeclared act crosses no door. Every exit records one `task` event with the event
-  type, the person it reaches (the subject), the channel and its verdict. Inside the door each DECLARED slot of the act
-  (the manifest's `slots`: `recipient`, `channel`, `text`, a held `draft`, each naming the rule its value must come
-  from — `his_words`, `reading`, `held`, `card`, `composed`) is asked one question: his words, the task's reading, his
-  order over the row he saw, or a stranger; the source of each is on the exit's event (`slots`), and a new leaving card
-  declares its slots, never a reader. — since 2026-11-06 · nodes 2.1615, 2.1619 · `nucleo/workers/exit_gate.py`,
-  `nucleo/workers/exit_slots.py`, `nucleo/cli/worker_api.py`, `nucleo/cli/worker_api_answer.py`.
+  type, the person it reaches (the subject), the channel and its verdict. Inside the door of a card's send there is
+  one rule (CRIT-T2b): the card's own refusal, then one confirmation. — since 2026-11-06 · nodes 2.1615 ·
+  `nucleo/workers/exit_gate.py`, `nucleo/cli/worker_api.py`, `nucleo/cli/worker_api_answer.py`.
 
 ## 3 · The canvas — whose card, what runs
 
@@ -473,24 +461,9 @@ below is the first kind, or it names the mechanism that replaced the second.
   model call aimed at the same thing reads the LICENCE; no verdict, the call runs. (4) A verdict that VETOES or
   SUBSTITUTES a model call reads VETO (between the licence and VETO: a recorded doubt, `against_the_model`) — always when
   what enters in its place leaves the machine or deletes. (5) HOLDING a call that LEAVES reads the LICENCE (holding
-  sends nothing; the worst case is a question — battery C9); holding a reversible call reads VETO. (6) Binding an answer
-  or choosing a card or row goes by IDENTITY — the id of the row that asked, the card from the same key as the act —
-  never by a bar; two candidates → ASK_WHICH, and ONE waiting row is never asked «which of these tasks?» — its own
-  question is put again (REASK). A turn the brief reads as a SURE order on the screen that picks no row surely is not
-  an answer: nothing binds; a pick of a row at the licence, or the model's `answer_worker`, beside it is still a doubt
-  and is asked, never dropped (V2-903 a5, node 2.1746). The id, never text: the one asker notes each question it puts to him
-  (`circuit.asked_last`), and the identity advances only on a NEW reply of ours (a dropped fragment or a barge-in never
-  spends it); with several rows waiting the row that asked ALONE among those still waiting binds, before any pick (a
-  pick of another row is asked); a row our «which?» named is identified as a ROW — a row with candidates is asked its
-  own question again (REASK), never a yes or no guessed for him; a declared candidate identifies its row only when no
-  other row declares it and every other row declares its own (an open question takes any answer), and a yes or no of
-  any language never does. Measured conduct that changed: two waiting rows and a «sí» are asked where the brief's pick
-  bound; asking which is attended (no new errand beside it, and it is asked whatever else the turn did). Our last «which?» rules over what was asked before it; a reply
-  cut before it asked anything never spends the identity. Declared: the identity is process memory (after a restart,
-  two waiting rows are asked which until one asks again; switching between voice and typing spends it, since each
-  channel's brain has its own window); a question asked out of turn is noted when it is registered, not when it is
-  heard (a turn of his in between spends it — it is asked which); a prose question about one of several sends anchors
-  to none (its answer is asked which). Corollary: the words follow the act — one decision object
+  sends nothing; the worst case is a question — battery C9); holding a reversible call reads VETO. (6) Whose his words are — an open process's or nobody's — is the switchboard's ONE decision
+  (CRIT-T3), never a bar read after the model; choosing a card or a row goes by IDENTITY — the card from the same key
+  as the act, a reply that is one of the two declared answers of the only question that waits — never by a bar. Corollary: the words follow the act — one decision object
   (`route_by_verdict.Turn`) releases the call, its words and its tags on ONE state, never a second reading at another
   bar: while the escalate verdict is in flight or in the band (licence to act floor) the words and tags wait with the
   calls until the brief lands or the stream ends, never for a clock (this replaced the lead-in filler deadline of
@@ -503,19 +476,13 @@ below is the first kind, or it names the mechanism that replaced the second.
   escalation stays at the licence (11/11 escalated orders); canvas verdicts keep node 2.930. Substitution (V2-893 L3):
   where what enters LEAVES or DELETES the verdict reads VETO through `verdicts.substitutes` (a doubt below is recorded
   and the model's call runs); a REVERSIBLE act in a call's place (a draft for a reply) keeps the act floor. A send that
-  an app call's substitution (`run_ordered`, `_verdict_instead`) puts in the model's place is born ASKING his yes on its
-  row (`substitution.in_the_models_place`, rule 2) when the act declares its slots and none lacks — so the declared
-  exception, the ordered send the model only drafted (bench E3: order 1.00, `forward` 0.79), substitutes under an order
-  sure at VETO and asks before it leaves. In the band the turn has ONE owner: when the model's escalation is the turn's,
-  the close opens no send task. Measured conduct that changed: a removal is vetoed from 0.85 (was 0.9);
+  an app call's substitution (`run_ordered`, `_verdict_instead`) puts in the model's place is handed to its worker
+  task, which asks before it leaves (CRIT-T2b). Measured conduct that changed: a removal is vetoed from 0.85 (was 0.9);
   `picture_by_verdict` replaces the model's tool from 0.85 (was 0.9); a sensitive act the verdict disagrees with below
   VETO runs as the model called it when what would enter leaves or deletes (a reversible one enters at the act floor,
   or he is asked); the model's own channel is replaced only at VETO, and a reading below VETO naming another channel is
-  asked as WHICH channel — his answer («sí» to the one he said, or the one he names) becomes the row's reading and the
-  send leaves once; a send task in the escalation's place needs VETO (below it the model's worker runs). Declared debt
-  (owner: V2-893, the next batch): the birth question is lost for a leaving act with no declared slots (the worker
-  route), after a slot question his answer fills, through `take_call`, and for a send task in the escalation's place
-  run with no question (`at_escalation`, `how == "run"`); #34, #36, #37 (`_looked`), #44 still substitute below VETO. The inventory, one row per
+  the worker's to settle with him before the send's one confirmation (CRIT-T2b). Declared debt
+  (owner: V2-893, the next batch): #34, #36, #37 (`_looked`), #44 still substitute below VETO. The inventory, one row per
   reader with the rule that applies, is V2-893's table. — since 2026-11-12 · nodes 2.1736, 2.1737, 2.1738, 3.175 ·
   `nucleo/turn/verdicts.py`, `nucleo/turn/brief_doors.py`, `nucleo/turn/route_by_verdict.py`.
 - **CRIT-K3 · The verdict's action lands on the LIVE card**, never a bare phantom; with several cards of one type
@@ -724,9 +691,7 @@ below is the first kind, or it names the mechanism that replaced the second.
   order opens its outbox row by `ref`, the connector's echo bound to that `ref` settles it `sent` and its failure
   (`msg.send_failed`) `failed` with the reason; «the connector reports it» is a readable receipt, never a
   `done_when_unreadable` reason — and checkpoint 1 is never relaxed for an act with no readable end state.
-  **The words that left are his, or they are said** (2026-11-17): at the echo, a declared `composed` text that is not
-  a run of his words (`exit_slots.words_not_his`) is named in the receipt's fact — never «sent, checked» alone.
-  — since 2026-11-04 (the receipt rule 2026-11-16, node 2.1784) · nodes 2.1008, 2.1784, 2.1793, 2.1794 · `nucleo/circuit/verify.py`, `nucleo/circuit/baseline.py`,
+  — since 2026-11-04 (the receipt rule 2026-11-16, node 2.1784) · nodes 2.1008, 2.1784, 2.1794 · `nucleo/circuit/verify.py`, `nucleo/circuit/baseline.py`,
   `nucleo/circuit/__init__.py::tick`, `nucleo/flash/data_ops.py`, `nucleo/turn/reply.py::of_op`, `widgets/effects.py`.
 - **CRIT-E9d · A send reaches the person his words name, or it asks.** When a call names nobody (`reply {n}`), the card
   answers who it reaches (`recipients_of`, read by `on_his_behalf.who_of`); a person his words do not name, and not
@@ -788,7 +753,7 @@ below is the first kind, or it names the mechanism that replaced the second.
 - **CRIT-E24 · One request, one errand, one sheet.** A request the flow door finds covered by an errand parked on his yes is absorbed into it (`absorb_refinement`) and relaunches nothing; one covered by an escalation in flight lands in the sheet its errand id names (`sheets.sheet_of_flow`); a new hunt is an errand born before it runs and its sheet is that errand's (`errand.born`, CRIT-E26), which the worker never opens fresh; a launch folded into a parked errand gives it its sheet or closes the duplicate. — since 2026-11-02 (V2-843) · nodes 2.1002 · `nucleo/turn/flow_of.py::join`, `nucleo/acts/search_listing.py`, `nucleo/dispatch/listener.py::_absorb_into`.
 - **CRIT-E25 · Who owns a surface is measured before it is enforced.** The turn's own fast pass signs a box no errand owns as the turn's (`turn:<trace>`, arbiter `turn-owned`), never as a task's; every show at the canvas door and every turn write into a sheet is recorded in shadow (`owner` events, read by `/api/observability/shadow?kind=owner`) with its would-be owner (`errand:<uid>` when an errand's row owns it) and the violations per class — non-owner show/write, duplicate open for one joined request, orphan, a discarded turn's launch, a fragment as an errand's goal, the flow door and the dispatcher disagreeing. Nothing is refused on it yet. — since 2026-11-02 (V2-844 F0) · nodes 2.1003 · `nucleo/acts/surface_owner.py`, `nucleo/acts/search_sheet.py`, `nucleo/acts/canvas_arbiter.py`.
 - **CRIT-E26 · An errand is born in its turn, with his whole request.** Where a turn decides an errand — a new hunt before its fast pass runs, any escalation at the portal — its durable row is written (`starting`, off the board, by one ordered writer) under the uid that also names its sheet; nothing mints a box under a counter id of its own. Its request is the joined request of a turn that arrived CUT (a sentence his barge-in left unanswered, joined with what he said next — `turn_marks.cut`) when the door's words are only that turn's tail — the literal tail, or words with no content of their own (`errand.whole_request`); never a subset rule, never for one part of a turn that asked for several things. The dispatcher's row for it is that same row; a first-rung delivery closes it, a hand-on that did not become a worker of its own forgets it, the pulse forgets one nobody adopted. — since 2026-11-02 (V2-844 F1a) · nodes 2.1004 · `nucleo/acts/errand.py`, `nucleo/circuit/ledger.py`, `nucleo/acts/search_listing.py`, `nucleo/acts/search_sheet.py`, `nucleo/dispatch/listener.py`.
-- **CRIT-E27 · One door routes every request, before anything is opened; the dedup is its backstop.** A turn's request is routed ONCE by `flow_of.route` (begun beside the model call, read by the escalation portal and the listing door before their first side effect): `conversation` opens nothing and the model is told (no content of its own, or chat by the turn's sure `request_type` that no flow claims — a comment with content still reaches its flow); a sentence about several errands is routed part by part, each escalation paired with its part by its words, never by likeness, and one part never takes the whole turn's route; a likeness only PROPOSES a parked or finished errand — the model judge decides the fold; one that belongs to an open flow joins it — a live worker takes it (with the way back, `not_mine`) or the turn's stop/steer verdict governs it, an errand parked on his yes absorbs it and its question is asked again, a finished or delivered one reopens into its sheet; only `new` and `replace` open an errand. A turn discarded unanswered starts nothing and its pass writes nothing. The dispatcher's dedup and continuity still fold, and warn when the door did not route the request there. Every function that starts work or opens an errand's sheet is declared with how it reaches the route. A SURE `escalate_or_inline = escalate` verdict (≥ the licence) decides before the model is trusted (V2-851 F5): the request goes to the errand portal whether or not the model called `escalate`, and the model's inline calls, tags and words of that turn do not run — the turn's one line is the start line (`nucleo/turn/route_by_verdict.py`, read at the first word by the Hold and at every call). The Hold releases nothing a routed or undecided turn holds — the stream's closing empty piece included — and a held turn whose request reached a live worker (steer, inject) instead of launching says it is still on it (V2-874, node 2.1668); the launch's event names the join (`inject`, `steer`, `absorb`, `reopen`, `join`) and keeps «escalada registrada» for a new errand (node 2.1669). Whether this verdict should overrule the model's inline answer between LICENCE and VETO is read in SHADOW (`🧭 commission (shadow)`: `did`, rule (a), rule (b); node 3.186) — the routing itself is unchanged. A PLAYER call (a tool `nucleo/acts/media.CARD_OF_TOOL` declares: music to the music card, video to the video card) is not swallowed: it runs, its words are said and no errand opens behind it — the exemption is the CALL, never the turn: any other call of the turn is still routed, and a player after the turn was routed does not run (V2-860 T1.1). An EVENT goes through the same door: an inbound message or mail, a due job, a worker that ended or asked is a request whose origin is its source (`nucleo/events`, one topic per source, one subscriber — the pulse's pump), and `flow_of.route(event=…)` answers one of three, in order — a row waiting for it (`waiting_for = event:<topic>[:<key>]`) or the claimant that owns it (an errand bound to that conversation) resumes; a rule subscribed to it (CRIT-T11) hands it to its stream worker; else nothing, and the source's own handling stands. Every route is recorded once (a `flow` event). — since 2026-11-02 (V2-844 F2), events 2026-11-05 · nodes 2.1005, 2.1006, 2.1007, 2.1192, 2.1172, 2.1632 · `nucleo/turn/flow_events.py`, `nucleo/events/pump.py`, `nucleo/turn/flow_of.py`, `nucleo/turn/flow_door.py`, `nucleo/acts/errand.py`, `nucleo/cli/worker_api_exec.py`.
+- **CRIT-E27 · One door routes every request, before anything is opened; the dedup is its backstop.** A turn's request is routed ONCE by `flow_of.route` (begun beside the model call, read by the escalation portal and the listing door before their first side effect): `conversation` opens nothing and the model is told (no content of its own, or chat by the turn's sure `request_type` that no flow claims — a comment with content still reaches its flow); a sentence about several errands is routed part by part, each escalation paired with its part by its words, never by likeness, and one part never takes the whole turn's route; a likeness only PROPOSES a parked or finished errand — the model judge decides the fold; one that belongs to an open flow joins it — a live worker takes it (with the way back, `not_mine`) or the turn's stop/steer verdict governs it, an errand parked on his yes absorbs it and its question is asked again, a finished or delivered one reopens into its sheet; only `new` and `replace` open an errand. A turn discarded unanswered starts nothing and its pass writes nothing. The dispatcher's dedup and continuity still fold, and warn when the door did not route the request there. Every function that starts work or opens an errand's sheet is declared with how it reaches the route. A SURE `escalate_or_inline = escalate` verdict (≥ the licence) decides before the model is trusted (V2-851 F5): the request goes to the errand portal whether or not the model called `escalate`, and the model's inline calls, tags and words of that turn do not run — the turn's one line is the start line (`nucleo/turn/route_by_verdict.py`, read at the first word by the Hold and at every call). The Hold releases nothing a routed or undecided turn holds — the stream's closing empty piece included — and a held turn whose request reached a live worker (steer, inject) instead of launching says it is still on it (V2-874, node 2.1668); the launch's event names the join (`inject`, `steer`, `absorb`, `reopen`, `join`) and keeps «escalada registrada» for a new errand (node 2.1669). Whether this verdict should overrule the model's inline answer between LICENCE and VETO is read in SHADOW (`🧭 commission (shadow)`: `did`, rule (a), rule (b); node 3.186) — the routing itself is unchanged. A PLAYER call (a tool `nucleo/acts/media.CARD_OF_TOOL` declares: music to the music card, video to the video card) is not swallowed: it runs, its words are said and no errand opens behind it — the exemption is the CALL, never the turn: any other call of the turn is still routed, and a player after the turn was routed does not run (V2-860 T1.1). An EVENT goes through the same door: an inbound message or mail, a due job, a worker that ended or asked is a request whose origin is its source (`nucleo/events`, one topic per source, one subscriber — the pulse's pump), and `flow_of.route(event=…)` answers one of three, in order — a row waiting for it (`waiting_for = event:<topic>[:<key>]`) or the claimant that owns it (an errand bound to that conversation) resumes; a rule subscribed to it (CRIT-T11) hands it to its stream worker; else nothing, and the source's own handling stands. Every route is recorded once (a `flow` event). — since 2026-11-02 (V2-844 F2), events 2026-11-05 · nodes 2.1005, 2.1006, 2.1192, 2.1172, 2.1632 · `nucleo/turn/flow_events.py`, `nucleo/events/pump.py`, `nucleo/turn/flow_of.py`, `nucleo/turn/flow_door.py`, `nucleo/acts/errand.py`, `nucleo/cli/worker_api_exec.py`.
 - **CRIT-E41 · Same subject is not same errand: a card's act is the card's.** An order whose one act (`acts_asked` not sure of several — asked at the turn's first model call, so before it lands it reads «not sure», since 2026-11-12 · nodes 3.197) is to be done, not told (`wants_words=act`), and that the catalogue gives to a card at VETO, is that card's (`stop.card_act_named`, read by the one owner rule `card_owns_the_turn`): the route says `card`, the portal opens nothing and the relay door sends nothing to the errand on its subject. Never a process banner (`transient`), the card a running errand delivers into, or any card while an errand builds one; a paid stop verdict that ends the errand keeps it. — since 2026-11-11 · nodes 4.482 · `nucleo/request/stop.py`, `nucleo/turn/flow_of.py`, `nucleo/turn/flow_door.py`.
 - **CRIT-E42 · What can be reopened belongs to one conversation and is declared by how it ended.** The just-ended pool (`nucleo/workers/ended`) is bound to the observability session: a new session empties it and an errand born before it never enters it; each end stays reopenable for `REOPEN_GRACE_S[end_of(row)]` (delivered 900 s; done, error, cancelled, relevada 300 s), and an end not declared there is final. — since 2026-11-11 · nodes 4.483 · `nucleo/workers/ended.py`.
 - **CRIT-E13 · A worker's request is never his click.** On a self-hosted engine every mutation is the operator's
@@ -877,68 +842,26 @@ Flash keeps the conversation; the row is what both brains read.
   Measured 2026-11-06: with only the prose «DONE WHEN» beside `report goal`, every first goal of eleven errands was
   prose and refused — a round trip and a late checkpoint 1 each. — since 2026-11-06 · nodes 2.1359 ·
   `nucleo/workers/prompts/playbook.py`, `nucleo/circuit/spec_declares.py`, `i18n/genesis/*/voice.json`.
-- **CRIT-T2b · An act that leaves is a task: Flash never sends inline.** A call of the turn whose action declares
-  `external.send` is never run by Flash, and no inline confirmation is opened for it: his words are the turn's
-  commission (`tool_executor_widget_calls._leaving_is_a_task`), routed like any request, and the worker sends through
-  its exit door. The routed send also has its own slot (`escalate_req["sends"]`) that the launch folds back
-  (`nucleo/turn/routed_sends.keep`): whatever cleared or claimed the commission, the send leaves the turn as a
-  commission, rides the live worker his words reached, or starts on its own row — never lost. The exit door
-  (`nucleo/workers/exit_gate.gate`) is crossed by every leaving act of a worker before ANY question — checkpoint 1,
-  the act's own refusal (`widgets.contract.would_refuse`: nothing is asked about a call that cannot run), his
-  recipient, the stranger's-text taint — and again by the retained act his yes runs. — since 2026-11-05 · nodes
-  2.1601, 2.1603, 2.1604 · `nucleo/flash/tool_executor_widget_calls.py`, `nucleo/turn/routed_sends.py`,
-  `nucleo/cli/worker_api.py`, `nucleo/cli/worker_api_answer.py`.
-- **CRIT-T2e · A send is ONE linear task: his data travel with their origin, one door decides.** Flash's leaving call
-  is retained on the request's row with each declared slot and its source (`nucleo/request/send_task`: the person by
-  `message.is_his`, the channel by the turn's reading, the words by `his_text` — a run of his own words, in order),
-  and the row is born with its end state. Every required slot his → the act crosses the exit door and the card's door
-  runs: zero questions, no worker, whatever the session read meanwhile — the taint asks only about a slot a stranger
-  wrote (`exit_gate.gate`). A slot that lacks → ONE durable question on that row through the one asker; his answer, or
-  the answering turn's own call of the act, fills that slot and the SAME row runs — never a second row, never a
-  re-run turn; a which-answer that still leaves the words lacking hands the row to a Brain Worker that composes them
-  (the person and the end state already on the row). Our own prose question about the send holds the send task
-  (`ask_outside_door.held`). A card whose act declares no `slots` keeps the worker route. **The verdict commissions
-  it, not the model's call** (`send_task_words.by_verdict`, at the escalation and at the close): `screen_action`
-  naming a leaving act, or `end_state` naming the card's sent echo (the action flagged `primary`), identifies the
-  send; the text is what the model QUOTED of his words (`quoted_his`); an escalation that quotes them runs with no
-  worker, one that lacks them keeps the worker on the row; a promise with no call runs; the model's prose question
-  becomes the row's; a bound answer is the quoted text. A second prose question about a send that already waits is
-  asked on THAT row (`send_task_anchor.to_waiting`): his words fill the one declared candidate they name by identity,
-  the question is asked for the slot still lacking — one row per intention, and an intention is the card, the act
-  AND the person (`one_row.people`: the row's person value, its candidates, his word that names people): a send
-  to somebody else opens its own row and replaces nothing — also when his words name nobody of his and the turn is
-  surely a NEW order (`request_type = order` at the act floor): its question never lands on the row of another
-  person — and every birth of a send row (`send_task.retain`) ends
-  the row of that act and person that still waited. — since 2026-11-06, the question's half
-  2026-11-12 · nodes 2.1657, 2.1629, 2.1619, 2.1140, 2.1731 · `nucleo/request/send_task.py`, `nucleo/flash/tool_executor_widget_calls.py`,
-  `nucleo/request/ask_outside_door.py`, `nucleo/request/inline_ask.py`, `nucleo/workers/exit_slots.py`,
-  `nucleo/workers/exit_gate.py`. **A slot is read by what the act DECLARES, not by the shape of a send** (V2-919): a
-  value fills its field by the field's declared kind (`types`: a `list` by one non-blank item, a `bool` by a value that
-  reads as one, any other by non-blank text or a number; the wrong kind fills nothing — `widgets/field_types.filled`,
-  the one reader); the hand-off requires only what the exit door judges — the person, always, and a composed text
-  unless the action declares it optional (`payload_fill.declared_optional`, both spellings) — every other field is the
-  widget's to know and to refuse; a slot with no send line of its own asks by its declared label
-  (`send_missing_field`), and after an answer or a merge whatever still lacks is asked on the SAME row — only a text he
-  did not dictate goes to a worker. —
-  since 2026-11-16 · nodes 2.1782, 2.1783, 2.1785 · `nucleo/request/send_task_fields.py`, `widgets/field_types.py`.
-- **CRIT-T2i · A turn that already holds its send task opens no second row at its close.** The model's leaving
-  call opened the row during the stream; `send_task_turn.at_close` answers `HELD`, so no later branch of the close
-  (`ask_outside_door.claimed`) opens a second row or a worker for the same send. — since 2026-11-15 · nodes 2.1756 ·
-  `nucleo/request/send_task_turn.py`.
-- **CRIT-T2j · A send task's exit door reads the row's own words.** A record that keeps its words (`own_words`:
-  the send task's row) is read by them alone — a person or a text he said for ANOTHER order is not his word for this
-  one, and is asked; where the act declares its recipient slot, the slot's source decides the question (`agent` →
-  asked), and the leave rule decides only for an act that declares none. — since 2026-11-15 · nodes 2.1757 ·
-  `nucleo/workers/exit_gate.py`, `nucleo/request/send_task_run.py`.
-- **CRIT-T2f · A send reaches whom he named, or asks ONE «which?».** A person slot whose value — his word or the
-  model's pick from it — reaches several people alike (no one leads by `clear_margin`) is one question on the send's
-  row with them as candidates, before anything runs; a row-reference act (`reply {n}`, a bare reply reaching nobody)
-  whose person he did not name becomes the card's primary act to the person he named. — since 2026-11-12 · nodes
-  2.1724 · `nucleo/request/send_task_who.py`.
+- **CRIT-T2b · A send is ONE Brain Worker task, owned end to end; Flash never sends, asks or says it went.** A call of
+  the turn whose action declares `external.send` is handed over before any ladder, guard or verdict reads it
+  (`tool_executor_widget_calls._leaving_is_a_task` → `send_errand.hand_over`): his words are the turn's commission and
+  the model's call rides as a hint, never as a decision; a send the brief read and no call made is launched at the
+  close by the same door (`send_errand.start`). The worker follows the send's own method (`send_errand.brief_block`):
+  find the person in his contacts (`bridge act find_contact`), asking him until it is the right one; his dictated
+  words verbatim; open the messaging widget; ONE call of the send. The worker of a send runs on Claude itself — the
+  subscription rung where its credential resolves, else the local login — and is never relayed to another model
+  (`providers.anthropic_tier`). The exit door (`exit_gate.gate`) says the card's own refusal first and then asks ONE
+  confirmation, every time, unless an errand's mandate covers the channel; the act is retained on the task's row. The
+  screen's button or a reply that is one of the two declared answers decides at once; any other answer resumes the
+  worker with his words, and the worker confirms with `bridge act confirm_send`, which runs exactly the act he was
+  asked about, once (`worker_api_answer.confirm_retained`) — or redoes the act with his change, or ends saying nothing
+  was sent. The send's declared end state is recorded on the row for `bridge act verify`. — since 2026-11-17 (V2-931)
+  · nodes 2.1801 · `nucleo/request/send_errand.py`, `nucleo/workers/exit_gate.py`, `nucleo/cli/worker_api.py`,
+  `nucleo/cli/worker_api_answer.py`, `nucleo/dispatch/session_steps.py`.
 - **CRIT-T2g · An order the model served with another tool opens the ORDER's row.** At the close, a sure order
   (`verdicts.sure_order`: `request_type = order` and `screen_action = card:act` at the one act floor, `wants_words` ≠
-  tell) that no door SERVED (`order_unserved.served`) opens its row: a leaving act becomes its send task from his words
-  (runs, or ONE slot asked; a worker on its row when his words name nobody of his); a card act runs by the empty
+  tell) that no door SERVED (`order_unserved.served`) opens its row: a leaving act becomes its ONE worker task
+  (`send_errand.start`, CRIT-T2b); a card act runs by the empty
   turn's completion or asks ONE `ASK_FACT` question on that row — never a worker for an app act. The model's valid
   call is never overruled (K2): an order that only reads is served by what the turn did, an act that stays on the
   card by the model's own call that ran there. A LENS it called where the turn surely asks to act (`wants_words =
@@ -952,7 +875,7 @@ Flash keeps the conversation; the row is what both brains read.
   open nothing. — since 2026-11-12 · nodes 2.1729, 2.73 · `nucleo/request/order_unserved.py`.
 - **CRIT-T2h · Our own question about an act of a card is a ROW, and his answer runs that act on it.** A turn that
   ends asking while the brief names a declared act at the act floor (`ask_outside_door.named_act`) makes its row wait
-  with his request retained; his answer binds through `answers_open_question` → `inline_answer.rerun` →
+  with his request retained; his answer reaches it through the switchboard (CRIT-T3) → `inline_answer.rerun` →
   `answered_offer.run`: a declared no cancels, a yes or a fact composes the payload by ONE bounded pass over his
   request, our question and his answer and runs it through the card's door on that row — an act the one consent
   rule asks about for that call (`action_mode_now`) waits there for his yes first, with the card's declared
@@ -971,16 +894,23 @@ Flash keeps the conversation; the row is what both brains read.
   one line), or a hard failure with its reason — never its age: no wall-clock budget, no «stop or keep
   going?» (the 15 s sign of life stays). — since 2026-11-05 · nodes 7.91, 2.1013, 2.1096, 2.1350, 2.1354, 2.1355 ·
   `nucleo/circuit/__init__.py::settle`, `nucleo/pulse/workers.py`.
-- **CRIT-T3 · A question for him is durable and bound by a verdict, never by length or age.** Whoever asks — a worker
-  through the bridge, a door's consent ASK on an inline act, Flash's own question about a door's act — goes through ONE
-  asker (`nucleo/circuit/asker`): the row waits for `user_answer` with an `ask_id`, the act it retains is the row's
-  `ask` artefact, and one `ask` event puts the question on screen with a way to answer. A screen answer carries its
-  `ask_id` (`POST /api/tasks/{id}/answer`, 409 when that question is not open); a spoken one is bound by a question of
-  the turn's brief whose choices are the open `ask_id`s — an `ask_id` at the licence binds it, `none` at the veto binds
-  nothing, a doubt asks which task (`nucleo/cli/worker_api_bind`). One answer runs its retained act once; an answer
-  about an act that leaves and needs composing starts ONE Brain Worker on the same row with the `message` playbook.
-  The worker's process ends after asking and the answer resumes THAT session (CRIT-T1). — since 2026-11-05 · nodes
-  2.1030, 2.1031, 2.1110, 2.1130, 2.1140, 2.1145, 2.1211, 4.359.
+- **CRIT-T3 · A question for him is durable, and what he says about an open process reaches it through ONE switchboard.**
+  Whoever asks — a worker through the bridge, a door's consent ASK on an inline act, Flash's own question about a
+  door's act — goes through ONE asker (`nucleo/circuit/asker`): the row waits for `user_answer` with an `ask_id`, the
+  act it retains is the row's `ask` artefact, and one `ask` event puts the question on screen with a way to answer. A
+  screen answer carries its `ask_id` (`POST /api/tasks/{id}/answer`, 409 when that question is not open). A spoken
+  chunk is routed at the turn's gate, before the model, by one decision over one board
+  (`nucleo/switchboard`: `board.open_processes` — every live worker session and every row waiting on his answer, keyed
+  by the row): «for process N, or for none?». For a process, the chunk is delivered as he said it — a waiting question
+  takes it as its answer and the task resumes, a running worker takes it as his next words — and Flash does not run;
+  for none, Flash takes the turn. Decided by identity, with no model: a reply that is one of the two declared answers
+  of the ONLY waiting question, and a sentence handed again as it grows (only what is new travels). An unreadable or
+  late decision is Flash's turn, never his words lost. Every decision is one `thread` event (`event: switchboard`)
+  with the board it read, who decided, why and the ms. Flash has no tool that routes his words to a process. One
+  answer runs its retained act once. The worker's process ends after asking and the answer resumes THAT session
+  (CRIT-T1). — since 2026-11-05, the switchboard since 2026-11-17 (V2-931) · nodes 2.1030, 2.1110,
+  2.1140, 2.1145, 4.359, 2.1800 · `nucleo/switchboard/board.py`, `nucleo/switchboard/route.py`,
+  `nucleo/turn/pipeline_gate.py`.
 - **CRIT-T4 · A wait for his answer ends at his rule, said once.** A `user_answer` wait is closed by the pulse at
   `waiting_since` plus his period — a `rules` row, scope `global`, key `answer_wait_days`, default 7 from genesis —
   through `circuit.settle(cancelled)`, with ONE line by the out-of-turn mouth; a rule he changes applies to the waits

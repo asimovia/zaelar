@@ -66,11 +66,3 @@ def test_the_voice_channel_reads_the_sends_of_its_turn():
     line = S.status_with_refined(HIS, _brief())
     assert "Super Mario" in line and "«Marketplace listings for used cheap monitor»" in line, line
     assert "passed that on" not in S.status_with_refined(HIS, _brief()), "a send is said once"
-
-
-def test_the_voice_executor_notes_its_sends(monkeypatch):
-    from nucleo.flash import tool_executor_calls as T
-    monkeypatch.setattr(dispatch, "inject_soon", lambda which, msg: None)
-    T._t_send_to_worker(args={"which": "the monitor search", "message": "at least 27 inches"},
-                        emit=lambda *a, **k: None, worker_acted={"v": None})
-    assert "«Marketplace listings for used cheap monitor»" in S.status_with_refined(HIS, _brief())

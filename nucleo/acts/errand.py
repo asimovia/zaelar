@@ -209,8 +209,7 @@ _TARGETS = (
     ("cluster_objective", "his words change the cluster's shared OBJECTIVE"),
     ("none", "his words are for none of these: a new order, a question, small talk"),
 )
-_ARM_TARGET = (("send_to_worker", "running_errand"), ("cluster_send", "cluster_peer"),
-               ("set_cluster_objective", "cluster_objective"))
+_ARM_TARGET = (("cluster_send", "cluster_peer"), ("set_cluster_objective", "cluster_objective"))
 
 
 def target_question(ctx=None) -> dict:

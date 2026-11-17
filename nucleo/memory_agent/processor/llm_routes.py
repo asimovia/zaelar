@@ -23,9 +23,6 @@ _DEFAULTS = {
     # errand_scope — with an errand live, is a NEW escalation separate or ABOUT it? Off the voice turn but in
     # front of a worker he is waiting on.
     "errand_scope": ("https://api.deepseek.com", "deepseek-v4-flash", True),
-    # switchboard (V2-931) — with a process open, is this chunk of his for process N or for none? Inside the voice
-    # turn, before the model: reasoning OFF, a 60-token JSON.
-    "switchboard": ("https://api.deepseek.com", "deepseek-v4-flash", True),
     # paraphrase (V2-031 T2) — reformulations of a durable pill for the paraphrase index, from REM. Reasoning OFF
     # or it returns nothing (measured 2026-08-18).
     "paraphrase": ("https://api.deepseek.com", "deepseek-flash", True),
@@ -34,6 +31,7 @@ _DEFAULTS = {
     # rule_shape (V2-806) — a spoken rule shaped ONCE into rules-table rows; batch_split's profile and seat.
     "rule_shape": ("https://api.deepseek.com", "deepseek-flash", True),
 }
+_DEFAULTS["switchboard"] = _DEFAULTS["errand_scope"]   # V2-931: «for process N, or for none?» — the same seat
 
 # DeepSeek on its OWN endpoint: the titular of most tasks; `failover_rungs` skips a rung that is already the
 # titular, so listing it costs nothing and keeps the order true when the titular is, say, a local Ollama.

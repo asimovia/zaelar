@@ -130,13 +130,6 @@ def test_a_free_answer_about_a_send_goes_to_the_worker_with_no_guessed_end_state
     assert "done_when" not in ctx and "chosen" not in ctx, "nobody chosen: the errand's birth asks its end state once"
 
 
-def test_a_plain_pick_reruns_the_kept_act_with_no_model(fresh):
-    ask_id = _door_row(fresh)
-    asyncio.run(worker_api.answer(ask_id, "Rachel Stone", choice=1))
-    assert fresh.started == [] and fresh.ran[0]["payload"]["contact"] == "Rachel Stone"
-    assert answered_task.deterministic({"retained": {"kind": "utterance", "candidates": CANDS}}, 0) is False
-
-
 def _view(fresh):
     import widgets
     from nucleo.flash import data_ops

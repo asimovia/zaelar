@@ -104,17 +104,10 @@ async def start(self, prompt: str, *, spec: "WorkerSpec") -> None:
     # helper, `v2.external_worker_env()`, shared with the widget generator. Fail-open. Since 2026-08-02 a CHAIN
     # (`workers/providers/`): each spawn picks the first HEALTHY tier.
     _unrouted = False
-    if env.get("ZAELAR_WORKER_TIER") == "anthropic" and "ANTHROPIC_BASE_URL" not in env:
-        # V2-931 — a task that must run on Claude itself (a send): its rung, never the chain's first.
-        from nucleo.workers import providers as _prov
-        self._tier = _prov.anthropic_tier()
-        if self._tier is None:
-            return await self._fail_fast("no Claude rung is available for this task (no subscription token and no "
-                                         "local `claude` login in a container)")
-        env.update(_prov.env_for_tier(self._tier))
-        if not self._tier.get("base_url"):
-            env.pop("ANTHROPIC_API_KEY", None)
-            env.pop("ANTHROPIC_AUTH_TOKEN", None)
+    if env.get("ZAELAR_WORKER_TIER") == "anthropic" and "ANTHROPIC_BASE_URL" not in env:   # V2-931: Claude itself
+        from nucleo.workers.providers import claude_tier as _ct
+        if (_why := _ct.route(self, env)):
+            return await self._fail_fast(_why)
     elif "ANTHROPIC_BASE_URL" not in env:
         try:
             from nucleo.workers import providers as _prov

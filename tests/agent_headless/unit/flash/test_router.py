@@ -1,6 +1,6 @@
 """Tests for nucleo/flash/router.py (V2-004 · T61; worker tools V2-038) — function-calling routing."""
 from nucleo.flash import router
-from nucleo.flash.router import ANSWER, CHAT, ESCALATE, INJECT, MUSIC, STOP, STYLE, VIDEO
+from nucleo.flash.router import CHAT, ESCALATE, MUSIC, STOP, STYLE, VIDEO
 
 
 def test_tools_are_openai_functions():
@@ -10,7 +10,7 @@ def test_tools_are_openai_functions():
                      "confirm_widget_delete", "authenticate_web", "login_done", "web_search", "search_listings",
                      "recall", "read_widget", "reopen_task", "resume_task",
                      "reveal_secret", "play_music", "play_video", "show_images", "reply_message", "connect_cluster",
-                     "cluster_send", "set_cluster_objective", "send_to_worker", "stop_worker", "answer_worker",
+                     "cluster_send", "set_cluster_objective", "stop_worker",
                      "cancel_scheduled", "agent_controls",
                      "a2a_send", "a2a_connect", "a2a_grant", "a2a_read"}
     for t in router.tools():
@@ -19,13 +19,11 @@ def test_tools_are_openai_functions():
 
 
 def test_worker_tools_are_situational():
-    # V2-038: with no live workers, send/stop are NOT offered; answer_worker only appears with a pending ask.
+    # V2-038: with no live workers, stop is NOT offered (V2-931: no tool routes his words to a worker).
     normal = {t["function"]["name"] for t in router.tools(router.tool_context())}
-    assert "send_to_worker" not in normal and "stop_worker" not in normal and "answer_worker" not in normal
+    assert "stop_worker" not in normal
     with_w = {t["function"]["name"] for t in router.tools(router.tool_context(has_workers=True))}
-    assert {"send_to_worker", "stop_worker"} <= with_w and "answer_worker" not in with_w
-    with_ask = {t["function"]["name"] for t in router.tools(router.tool_context(has_workers=True, ask_pending=True))}
-    assert "answer_worker" in with_ask
+    assert "stop_worker" in with_w
 
 
 def test_cluster_tools_are_always_offered():
@@ -98,7 +96,7 @@ def test_tools_report_is_observable():
     assert sum(rep["tool_families"].values()) == len(offered)
     # PRUNED tools are also recorded: without that, one cannot audit why a turn did not have a tool.
     # (V2-086: `connect_cluster` was deliberately removed from here — it is no longer gated.)
-    assert "cluster_send" in rep["tools_omitted"] and "send_to_worker" in rep["tools_omitted"]
+    assert "cluster_send" in rep["tools_omitted"] and "stop_worker" in rep["tools_omitted"]
     assert "connect_cluster" not in rep["tools_omitted"]
 
 
@@ -214,9 +212,7 @@ def test_tool_catalog_stays_compact():
 
 
 def test_decide_worker_tools():
-    assert router.decide("send_to_worker", {"which": "la moto", "message": "verde"}).kind == INJECT
     assert router.decide("stop_worker", {"which": "el widget"}).kind == STOP
-    assert router.decide("answer_worker", {"answer": "enduro"}).kind == ANSWER
 
 
 def test_stop_wins_priority():

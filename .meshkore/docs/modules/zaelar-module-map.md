@@ -131,12 +131,9 @@ start with `make run` → `python -m server`.
   id: it is the turn's `trace` PROMOTED** from a JSON field to an indexed column (`events.corr_id`) — a second,
   parallel id would drift from the first at the first unstitched cross-loop seam. A new flow is born with every
   operator request; whatever continues a live flow inherits its id.
-  **A correction spoken while a task is still live MERGES into that task's `corr_id`** instead of opening a new
-  one: `send_to_worker`'s handler (`nucleo.py::_on_tool_call`) already resolves its target via
-  `dispatch.resolve_sessions()`; when that resolves to exactly one live session, this turn adopts its `trace_id`
-  (`dispatch.trace_of` + `trace.adopt`) instead of keeping the fresh one `trace.begin()` opened at turn start. With
-  several live sessions and no unambiguous match, nothing merges — an extra flow beats guessing which task a
-  correction belongs to. A flow's end is EXPLICIT (`kind="flow"`, emitted where the worker session that spawned it
+  **What he says for an open process is delivered to it by the switchboard** (`nucleo/switchboard`, V2-931): its
+  `thread` event (`event: switchboard`) names the process's ROW and stays on the turn's own trace — the row id is
+  what ties the chunk to its task. A flow's end is EXPLICIT (`kind="flow"`, emitted where the worker session that spawned it
   finishes), not inferred from silence.
   **A single utterance split across several LiveKit turns also merges:** LiveKit closes one turn per STT-final
   segment, so `_begin_or_adopt_trace()` (`nucleo.py`) checks the fragment accumulator's `pending()`: while a

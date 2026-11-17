@@ -37,11 +37,10 @@ def _brief(choice: str, confidence: float):
 
 
 def _run(monkeypatch, said, brief):
-    from nucleo.flash import card_commission, post_stream_settle
+    from nucleo.flash import card_commission
     from nucleo.request import stop
     from nucleo.turn import route_by_verdict
     monkeypatch.setattr(stop, "steer", lambda *a, **k: None)
-    monkeypatch.setattr(post_stream_settle, "no_new_errand_for_a_bound_answer", lambda *a, **k: None)
     monkeypatch.setattr(route_by_verdict, "owns", lambda *a, **k: False)
     monkeypatch.setattr(card_commission, "picture_named_by", lambda *a, **k: None)
     presented: list = []

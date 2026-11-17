@@ -30,9 +30,3 @@ def gate_scene(tmp_path, monkeypatch):
     untrusted.reset()
     his_words.reset()
 
-
-def test_when_the_readers_disagree_on_an_act_that_leaves_the_verdict_runs(gate_scene, monkeypatch):
-    out = rig.run("mensajeria", "reply", {"n": 1, "text": "I'll send the meet link"},
-                  said="draft a short reply saying I'll send the meet link",
-                  turn_brief=rig.brief("mensajeria:draft", 1.0), monkeypatch=monkeypatch)
-    assert [a for _w, a, _p in out.ran] == ["draft"] and out.ran[0][2].get("text"), out

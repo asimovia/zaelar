@@ -5,7 +5,7 @@ cual?» and no call (the verdict said `agenda:add_meeting` 0.89, act 0.94); «m�
 at 4.19 s while the send, routed to its task, failed at 4.37 s (ten Raquels).
 
   · the turn prompt tells the model to act on a clear request and ask only for a missing fact, never «shall I?»;
-  · an act that left as a task (`escalate_req["send_task"]`) is said as a START, never as the short «Hecho.».
+  · an act that left as a task (`"send" in escalate_req`) is said as a START, never as the short «Hecho.».
 """
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ def test_a_send_that_left_as_a_task_is_a_start_never_the_short_done():
     src = inspect.getsource(post_stream_settle)
     assert "routed_send_line(" in src
     ack = src.index('if data_done["v"] and not spoken_text and _ack_allowed')
-    assert 'not escalate_req.get("send_task")' in src[ack:ack + 200], "the short «Hecho.» still covers a routed send"
+    assert 'not ("send" in escalate_req)' in src[ack:ack + 200], "the short «Hecho.» still covers a routed send"
 
 
 def test_the_start_line_exists_in_both_languages():

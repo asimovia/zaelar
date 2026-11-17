@@ -39,7 +39,7 @@ def destination(acts=(), *, several: bool = False, errand: bool = False) -> str:
         spec = ((runtime.get(wid) or {}).get("actions") or {}).get(action) or {}
         if actions.classify(spec, action) == actions.ESCALATE:
             return ERRAND
-        if errand and programme.of(wid, action)["leaves"]:
+        if programme.of(wid, action)["leaves"]:      # V2-931: an act that leaves is its ONE worker task, always
             return ERRAND
         return PLAY
     if errand or several or len(named) > 1:

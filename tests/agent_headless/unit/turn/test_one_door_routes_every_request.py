@@ -5,9 +5,10 @@ A car request dictated in fragments: the flow door said «this is the parked car
 and the car's own confirmed relaunch was then folded INTO the errand called «Okay.». A turn discarded unanswered
 still wrote its sheet. Two doors, one question, opposite answers, and nobody owning the result.
 
-`flow_of.route` is now THE answer for a turn — begun beside the model call, read at the escalation portal and the
-listing door before their first side effect: `conversation` (nothing to commission), a `list` (one sentence, several
-errands), `inject|absorb|reopen|join|stop|steer|replace` into the flow it belongs to, or `new`. The dispatcher's dedup
+`flow_of.route` is the answer for a turn — begun beside the model call and read at the listing door before its
+first side effect (routing his words into an OPEN process moved to the switchboard at the turn's gate, V2-931):
+`conversation` (nothing to commission), a `list` (one sentence, several errands), `inject|absorb|reopen|join|stop|
+steer|replace` into the flow it belongs to, or `new`. The dispatcher's dedup
 stays behind it and folds AND warns when the door missed. A worker can hand words back (`not_mine`).
 """
 from __future__ import annotations
@@ -21,12 +22,6 @@ from nucleo.acts import errand, surface_owner
 from nucleo.dispatch import confirm
 from nucleo.turn import brief_turn, flow_door, flow_of, turn_marks
 from voice import trace
-
-CAR_EN = ("let's focus on the car. I wanna... One of those big runners, a Toyota 4Runner. Two or three good offers. "
-          "Thirty, forty, fifty thousand. Okay.", "Okay.")
-CAR_ES = ("vale, el coche. Uno de esos todoterreno grandes, un Toyota 4Runner. Dos o tres buenas ofertas. Entre treinta "
-          "y cincuenta mil. Vale.", "Vale.")
-CAR_GOAL = {"en": "I wanna buy a car, a Toyota 4Runner", "es": "quiero comprarme un coche, un Toyota 4Runner"}
 
 
 @pytest.fixture
@@ -77,27 +72,7 @@ def _escalate(t: str, judged: str, req: str, ctx: dict | None = None, *, tail: s
     return asyncio.run(turn())
 
 
-def _parked(tid: str, request: str) -> dict:
-    confirm._PENDING_CONFIRM[tid] = {"request": request, "question": "¿Lo hago?", "sheet": "", "context": {}}
-    return {"id": tid, "request": request, "parked": True}
-
-
 # ── the fragments of one request are that request's ─────────────────────────────────────────────────────────
-
-@pytest.mark.parametrize("lang, whole, tail", [("en", *CAR_EN), ("es", *CAR_ES)])
-def test_a_fragment_of_a_parked_request_joins_it_and_opens_nothing(door, lang, whole, tail):
-    door["pool"] = [_parked("2", CAR_GOAL[lang])]
-    door["judge"] = "2"
-    assert _escalate("T39", whole, tail, {"src": "voice"}, tail=tail) == 0
-    assert not door["bus"], "the fragment opened an errand of its own (the one called «Okay.»)"
-    assert confirm._PENDING_CONFIRM["2"]["refinements"] == [whole], "the parked car never heard his whole request"
-
-
-def test_a_flat_search_nobody_covers_is_a_new_errand_routed_new(door):
-    _turn("T40", "find me a flat to rent in Madrid, two bedrooms, near Retiro")
-    tid = errand.escalate_to_slowbrain("find me a flat to rent in Madrid, two bedrooms, near Retiro", context={})
-    assert tid and door["bus"][0]["context"]["routed"] == "new:"
-
 
 def test_two_different_requests_in_a_row_are_two_errands(door):
     _turn("T41", "find me a used Toyota 4Runner, thirty to fifty thousand")
@@ -108,33 +83,7 @@ def test_two_different_requests_in_a_row_are_two_errands(door):
     assert first and second and first != second and len(door["bus"]) == 2
 
 
-# ── into a live errand: inject, steer, stop; into a finished one: reopen ─────────────────────────────────────
-
 LIVE = {"id": "5", "request": "find me a used Toyota 4Runner, thirty to fifty thousand", "sheet": "b1-5"}
-
-
-def test_a_refinement_reaches_the_live_errand_with_the_way_back(door):
-    door["pool"], door["judge"] = [dict(LIVE)], "5"       # the model judge: a refinement that shares few words
-    text = "the Toyota 4Runner, only diesel, under forty thousand"
-    assert _escalate("T43", text, text) == 0
-    which, words = door["relayed"][0]
-    assert which == "5" and "not_mine" in words and not door["bus"]
-
-
-def test_a_steer_reaches_it_and_a_stop_starts_nothing(door):
-    door["pool"], door["judge"] = [dict(LIVE)], "5"
-    door["stop"] = "steer"
-    _escalate("T44", "the Toyota 4Runner — look on coches.net instead", "the Toyota 4Runner — look on coches.net instead")
-    assert door["relayed"] and not door["bus"]
-    door["stop"], door["relayed"] = "stop", []
-    assert _escalate("T45", "stop the Toyota 4Runner search", "stop the Toyota 4Runner search") == 0
-    assert not door["relayed"] and not door["bus"], "a stop launched or relayed the errand it stops"
-
-
-def test_a_correction_on_a_finished_errand_reopens_into_its_sheet(door):
-    door["pool"], door["judge"] = [{**LIVE, "id": "7", "sheet": "b1-7", "ended": True}], "7"
-    _escalate("T46", "the Toyota 4Runner — exclude the red ones", "the Toyota 4Runner — exclude the red ones")
-    assert door["bus"][0]["context"]["sheet"] == "b1-7" and door["bus"][0]["context"]["routed"] == "reopen:7"
 
 
 # ── conversation, several errands at once, a discarded turn ──────────────────────────────────────────────────
@@ -146,16 +95,6 @@ def _reads_as(monkeypatch, kind: str) -> list:
     flows: list = []
     monkeypatch.setattr("nucleo.turn.flow_door._emit", lambda label, req, r: flows.append(label))
     return flows
-
-
-@pytest.mark.parametrize("said, kind", [("Okay.", "comment"), ("Vale.", "comment"), ("Sorry.", "comment"),
-                                        ("Perdona, gracias.", "greeting")])
-def test_a_word_after_a_request_is_conversation_not_an_errand(door, monkeypatch, said, kind):
-    flows = _reads_as(monkeypatch, kind)
-    door["pool"] = [dict(LIVE)]        # the judge: no flow claims it (nothing cut before it, chat by the paid verdict)
-    assert _escalate("T47", said, said) == 0
-    assert any("conversation" in f for f in flows), "the dropped escalation is recorded as conversation, not a mute 0"
-    assert not door["bus"] and not door["relayed"]
 
 
 def test_one_sentence_about_two_errands_routes_each_part(door):
@@ -184,34 +123,6 @@ def test_the_turns_route_is_begun_once_and_every_door_reads_it(door, monkeypatch
         return joined
     joined = asyncio.run(turn())
     assert joined.get("injected") and door["judged"] == 1, f"the judge ran {door['judged']} times for one turn"
-
-
-def test_a_stop_that_lands_after_the_route_was_begun_still_holds(door):
-    door["pool"], door["judge"] = [dict(LIVE)], "5"
-    text = "the Toyota 4Runner search — drop it"
-
-    async def turn():
-        _turn("T52", text)
-        flow_of.begin(text)
-        await flow_of.settled()                         # routed before the verdict landed: «inject»
-        door["stop"] = "stop"                           # …and the turn's stop verdict lands now
-        return errand.escalate_to_slowbrain(text, context={})
-    assert asyncio.run(turn()) == 0 and not door["relayed"] and not door["bus"]
-
-
-@pytest.mark.parametrize("said", ["those are too expensive, under thirty thousand",
-                                  "esos son demasiado caros, por debajo de treinta mil"])
-def test_a_comment_with_content_finds_its_flow_and_reaches_it(door, monkeypatch, said):
-    _reads_as(monkeypatch, "comment")
-    door["pool"], door["judge"] = [dict(LIVE)], "5"
-    assert _escalate("T53", said, said) == 0
-    assert door["relayed"] and door["relayed"][0][0] == "5", "a refinement read as a comment was swallowed"
-
-
-@pytest.mark.parametrize("said", ["...", "¡Ok!", "Eh."])
-def test_words_with_no_content_at_all_are_conversation_even_without_a_route(door, said):
-    _turn("T54", said)                                  # e.g. a backstop's launch: no route was begun for it
-    assert errand.escalate_to_slowbrain(said, context={}) == 0 and not door["bus"]
 
 
 def test_a_chat_verdict_alone_never_drops_a_request_no_route_was_judged_for(door, monkeypatch):
@@ -275,36 +186,6 @@ def test_an_inline_part_never_reaches_the_worker_of_the_escalated_one(door):
     whole = "find me flights to Rome next week, and remind me to call mum tonight"
     _escalate("T61", whole, "find me flights to Rome next week", tail="and remind me to call mum tonight")
     assert [p["request"] for p in door["bus"]] == ["find me flights to Rome next week"]
-
-
-# ── B2 · in a list, each escalation is paired with its part by identity, through the portal ────────────────
-
-def test_each_part_of_a_list_turn_reaches_its_own_errand_through_the_portal(door):
-    door["pool"] = [dict(LIVE), {"id": "6", "request": "book a table for two in Seville on Friday", "sheet": "b1-6"}]
-    text = "The Toyota 4Runner under forty thousand. And the table in Seville, make it at nine."
-
-    async def turn():
-        _turn("T62", text)
-        flow_of.begin(text)
-        r = await flow_of.settled()
-        for i, p in enumerate(r["parts"]):
-            errand.escalate_to_slowbrain(p["words"], context={"part": i})
-        errand.escalate_to_slowbrain("book a flight to Lisbon on Monday", context={"part": 9})
-    asyncio.run(turn())
-    assert sorted(w for w, _m in door["relayed"]) == ["5", "6"], f"parts went to {door['relayed']}"
-    assert [p["request"] for p in door["bus"]] == ["book a flight to Lisbon on Monday"]
-
-
-# ── M2 · a likeness only proposes a finished or parked errand: the judge decides ─────────────────────────────
-
-@pytest.mark.parametrize("done, asked", [("find me a hotel in Rome for Friday", "find me a hotel in Paris for Friday"),
-                                         ("búscame un hotel en Roma para el viernes",
-                                          "búscame un hotel en París para el viernes")])
-def test_a_new_hotel_city_is_a_new_errand_not_a_reopen(door, done, asked):
-    door["pool"] = [{"id": "8", "request": done, "sheet": "b1-8", "ended": True}]
-    door["judge"] = ""                                   # the judge: a different stay
-    _escalate("T63", asked, asked)
-    assert door["bus"][0]["context"]["routed"] == "new:" and "sheet" not in door["bus"][0]["context"]
 
 
 # ── m · the portal and the listing door ────────────────────────────────────────────────────────────────────

@@ -10,8 +10,6 @@ already existed for sends (`sent.outbox_open` on the order, `outbox_settle` on t
     (`msg.send_failed`) settles it `failed` with the reason — through the owner, the one writer of the card's store;
     both connectors' drains are exercised with a client double, and a bridge that returns no group id is a failure;
   · the action's end state is that row: met by the success only, never by the queue nor by the failure;
-  · with a readable end state the retained act crosses the exit door and reaches the widget's door: checkpoint 1 is
-    closed by the rule that already exists, not relaxed (a `message` with no end state is still refused);
   · invariant: every leaving action declares `done_when`, or a `done_when_unreadable` that does not claim the
     connector reports it.
 
@@ -179,39 +177,6 @@ def test_every_leaving_action_declares_a_readable_end_state_or_why_not():
             why = str(s.get("done_when_unreadable") or "")
             assert s.get("done_when") or why, (wid, act)
             assert "connector reports" not in why.lower(), (wid, act, "the connector's report IS a readable receipt")
-
-
-def test_the_retained_group_crosses_the_exit_door_by_its_end_state(card, monkeypatch):
-    """Checkpoint 1 is closed by the row's readable end state — and is NOT relaxed: the same row without one is
-    refused, as before."""
-    from nucleo import his_words, untrusted
-    from nucleo.circuit import spec as _spec
-    from nucleo.flash import data_ops
-    from nucleo.request import model, send_task, send_task_run
-    from nucleo.workers.prompts import playbook
-    untrusted.reset()
-    his_words.reset()
-    reached = []
-
-    async def _dispatch(wid, action, payload, *, row="", text="", **kw):
-        reached.append((wid, action, dict(payload), row))
-        return {"ok": True}
-    monkeypatch.setattr(data_ops, "dispatch_and_report", _dispatch)
-    said = "make a WhatsApp group with Ana Prat called Dinner"
-    model.begin(said, trace="t-1")
-    his_words.note(said)
-    reading = {"result": {"message_channel": {"choice": "whatsapp", "confidence": 0.97}}, "open_ids": ["mensajeria"]}
-    payload = {"name": "Dinner", "platform": "whatsapp", "members": ["Ana Prat"]}
-    uid = send_task.retain("mensajeria", "create_group", payload, said, reading=reading)
-    assert uid and (_spec.of_task(uid) or {}).get("done_when"), "the row is born with the order's receipt"
-    res = asyncio.run(send_task_run.run(uid))
-    assert res.get("ok") is not False and reached == [("mensajeria", "create_group", payload, uid)], res
-    from types import SimpleNamespace
-    assert playbook.checkpoint_one(SimpleNamespace(playbook_chosen="message", done_when={}, task_id="", uid="")), \
-        "a message with no end state still cannot leave"
-    model._TURN.set(None)
-    untrusted.reset()
-    his_words.reset()
 
 
 @pytest.mark.parametrize("act,payload", [("send_to", {"contact": "Rowan", "text": "hi"}),

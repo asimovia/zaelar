@@ -66,8 +66,9 @@ def _close(calls=(), ops=(), escalate_req=None, acted_elsewhere=False, **kw):
 
 
 def test_a_card_call_the_path_commissioned_as_a_send_task_agrees_on_the_programme(turn):
-    rec = _close(calls=[SEND], escalate_req={"v": None, "send_task": True})
-    assert (rec["dest"], rec["legacy"], rec["agree"], rec["unserved"]) == ("play", "play", True, False)
+    send = {"widget": "mensajeria", "action": "send_to", "payload": {}, "text": "x"}
+    rec = _close(calls=[SEND], escalate_req={"v": "x", "leaves": True, "send": send})     # `send_errand.hand_over`
+    assert (rec["dest"], rec["legacy"], rec["agree"], rec["unserved"]) == ("errand", "errand", True, False)
     assert rec["named"] == ["mensajeria:send_to"]
     assert [(k, label) for k, label, _ in turn.seen] == [("play", "route")]
 
@@ -84,8 +85,9 @@ def test_nothing_named_and_nothing_run_agrees_on_the_conversation(turn):
     assert [label for _, label, _ in turn.seen] == ["route"]
 
 
-def test_one_declared_call_the_path_sent_to_a_worker_is_a_drift(turn):
-    rec = _close(calls=[SEND], escalate_req={"v": "x"})
+def test_one_declared_call_that_stays_home_sent_to_a_worker_is_a_drift(turn):
+    home = {"name": "widget_data", "args": {"widget_id": "agenda", "action": "show_day"}}
+    rec = _close(calls=[home], escalate_req={"v": "x"})
     assert (rec["dest"], rec["legacy"], rec["agree"]) == ("play", "errand", False)
     assert [label for _, label, _ in turn.seen] == ["route_drift"]
     assert turn.seen[0][2]["dest"] == "play" and turn.seen[0][2]["legacy"] == "errand"
@@ -138,7 +140,9 @@ def test_every_declared_action_called_and_run_agrees_unless_its_class_is_the_wor
     rec = _close(calls=[{"name": "widget_data", "args": {"widget_id": wid, "action": action}}], ops=[(wid, action)])
     assert rec["dest"] == route.destination([(wid, action)])
     assert rec["legacy"] == "play"
-    assert rec["agree"] is (actions.classify(_spec(wid, action), action) != actions.ESCALATE)
+    from widgets import effects   # a worker's by its class, or because the act leaves the machine (V2-931)
+    assert rec["agree"] is (actions.classify(_spec(wid, action), action) != actions.ESCALATE
+                            and not effects.leaves(wid, action))
 
 
 def test_with_the_stage_off_nothing_is_recorded(turn, monkeypatch):
@@ -160,7 +164,7 @@ def test_the_close_of_the_turn_records_its_route():
 
 
 def test_the_route_is_read_after_the_close_opened_its_rows_and_carries_what_it_said():
-    """After `launch_the_errands` (a send task it opens sets `send_task`, so the record reads `play`), with `opened`
+    """After `launch_the_errands` (a send it hands over is an escalation, so the record reads `errand`), with `opened`
     and `said` — and `launch_the_errands` reports the row it opened."""
     src = (ROOT / "nucleo" / "turn" / "pipeline_close.py").read_text(encoding="utf-8")
     assert CLOSE_CALL in src

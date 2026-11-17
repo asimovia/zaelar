@@ -145,7 +145,7 @@ def test_stop_worker_todo_also_discards_the_marks():
     src = "\n".join(l for l in _vts.read(NUCLEO).splitlines()
                     if not l.strip().startswith("#"))
     i = src.find('elif name == "stop_worker":')
-    j = src.find('elif name == "answer_worker":', i)
+    j = src.find('elif name == "cancel_scheduled":', i)
     assert 0 < i < j, "the stop_worker handler moved: this guard would be watching nothing"
     block = src[i:j]
     assert "abandon_work_soon" in block, \

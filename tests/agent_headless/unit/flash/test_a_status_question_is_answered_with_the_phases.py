@@ -13,7 +13,6 @@ turn (and the typed channel, which runs it) calls `errands_of_a_turn.status_owed
 """
 from __future__ import annotations
 
-import asyncio
 import threading
 import types
 
@@ -64,21 +63,3 @@ def test_nothing_live_is_no_status(monkeypatch):
     from nucleo import dispatch
     monkeypatch.setattr(dispatch, "pending_summaries", lambda: [])
     assert E.status_owed(SAID, _brief(wants_words="tell")) == ""
-
-
-def test_the_typed_turn_says_the_status_instead_of_the_holding_line(three_live):
-    """Through the typed channel, which runs the voice turn: the model sends to the workers and says nothing."""
-    from tests.platform import turn_harness as H
-    case = {"id": "status", "lang": "en", "phrase": SAID, "source": "test", "screen": {"open": []}, "expect": "talk",
-            "brief": {"wants_words": ("tell", 0.99), "request_type": ("question", 0.99)},
-            "model": {"tools": [{"name": "send_to_worker", "args": {"which": "the monitor", "message": SAID}},
-                                {"name": "send_to_worker", "args": {"which": "all", "message": SAID}}]}}
-    with H.Isolated("en") as iso:
-        iso.seed(case)
-        from nucleo.cli import turn
-        try:
-            res = asyncio.run(turn.run_turn(SAID, sid="status", ingest=False))
-        finally:
-            turn.reset("status")
-    assert "Elaborating the report" in res["reply"], res
-    assert "give me a moment" not in res["reply"].lower()
