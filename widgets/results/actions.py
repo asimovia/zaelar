@@ -17,7 +17,7 @@ from . import data as _d
 from . import find as _find
 from . import door_event as _door
 from . import hard_checks as _hard
-from . import pool as _pool, live as _live
+from . import pool as _pool, live as _live, spec_call as _spec_call
 
 
 def _file_pages(data: dict, pages: list[dict]) -> dict:
@@ -219,7 +219,7 @@ def _a_layout(action, payload, sheet) -> dict:
     # «Compare them visually» over a sheet already on screen (demo run, 2026-09-26): the model promised to put
     # them side by side and had no way to — the template could only arrive with `present`, which re-sends
     # every item. This re-shapes what is there; the surface still owns the geometry (presentation.py rule 1).
-    lay = str(payload.get("layout") or payload.get("view") or "").strip().lower()
+    lay = _spec_call.layout_named(str(payload.get("layout") or payload.get("view") or "")).strip().lower()
     if lay not in _d._LAYOUTS:
         return {"ok": False, "error": "layout needs one of: tile (side by side, with photos) · row (a dense "
                                       "list) · card (photo left) · compare (composite proposals)"}

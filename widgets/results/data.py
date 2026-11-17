@@ -168,6 +168,7 @@ from .digest import head as _digest_head, one as _digest_one, _MAX_HEAD_CHARS, _
 
 # The sections merged alongside present/append and the spoken tab names live in `merge.py`; handlers in `actions.py`.
 from .merge import _TAB_ALIASES, _merge_sections  # noqa: E402,F401 — re-export
+from .spec_call import spec_call  # noqa: E402,F401 — the end state a layout call owes, as the sheet keeps it
 
 
 from .actions import (  # noqa: E402,F401

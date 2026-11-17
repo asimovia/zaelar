@@ -33,3 +33,16 @@ def test_the_action_is_declared_so_the_brain_can_choose_it():
     m = json.loads((pathlib.Path(__file__).resolve().parents[4] / "widgets/results/manifest.json").read_text())
     assert "compare them visually" in m["actions"]["layout"]["desc"]
     assert m["actions"]["detail"]["desc"].startswith("OPENS ONE result in full («open the best value option»")
+
+
+@pytest.mark.parametrize("said, shape", [("table", "compare"), ("side_by_side", "tile"), ("Comparison", "compare")])
+def test_a_shape_named_by_a_declared_alias_is_that_shape_for_the_act_and_its_end_state(rs, said, shape):
+    """Demo sandbox 2026-11-17, S2: «compare them side by side» → `layout: "table"`, then `"side_by_side"` — refused, and
+    «I couldn't get that done» over the sheet on screen. The manifest declares the aliases (`widgets.enums`, V2-754);
+    the act and the end state (`spec.render` → `spec_call`) read that one declaration. Disarm: drop the aliases from the
+    manifest's `layout` payload → the act refuses and the clause still owes the raw word."""
+    got = rs.apply_action("layout", {"layout": said})
+    assert got["ok"] and got["layout"] == shape, got
+    from nucleo.circuit import spec
+    clause = spec.render("results", "layout", {"layout": said})
+    assert clause and clause.get("is") == shape, clause

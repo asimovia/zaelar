@@ -3028,7 +3028,9 @@ DOMAINS: list[dict] = [
         # 2026-09-26, his demo script: «Compare them visually» over the monitors sheet — a promise with no way
         # to keep it; «Open the best value option» — the verb lived nowhere in `detail`.
         {"id": "4.220", "title": "La hoja de resultados en pantalla cambia de FORMA sin reenviar nada (compararlos "
-                                 "en paralelo) y «abre el mejor» nombra el expediente",
+                                 "en paralelo) y «abre el mejor» nombra el expediente; una forma dicha con un alias "
+                                 "declarado («table», «side_by_side») es esa forma para el acto y su estado final "
+                                 "(demo sandbox 2026-11-17, S2, `results.spec_call`)",
             "ch": UNIT, "paths": ["tests/browser/unit/results/test_a_sheet_on_screen_can_change_its_shape.py"]},
         {"id": "4.219", "title": "MAPA: los sitios por nombre y ciudad se geolocalizan aquí (con relevo), uno que "
                                  "nadie encuentra se DICE en vez de inventarlo, todas las chinchetas caben en la "

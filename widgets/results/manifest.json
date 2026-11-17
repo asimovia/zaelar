@@ -189,7 +189,7 @@
     "layout": {
       "desc": "CAMBIA CÓMO SE VEN los resultados ya pintados («compare them visually», «side by side», «ponlos en fila»): tile = en paralelo con foto · row = lista densa · card = foto a la izquierda",
       "payload": {
-        "layout": "tile | row | card | compare"
+        "layout": "tile (side by side, side_by_side, grid) | row | card | compare (table, comparison, columns)"
       },
       "view": true,
       "done_when": {
