@@ -97,3 +97,14 @@ def test_the_reading_is_the_send_doors_own_and_the_slot_is_declared():
     assert exit_slots.words_not_his("mensajeria", "reply", {"text": "te debes $50"}, "…: te debo $50") == "te debes $50"
     assert exit_slots.words_not_his("mensajeria", "reply", {"text": "te debo $50"}, "…: te debo $50") == ""
     assert send_task.his_text("te debo $50", "…: te debo $50")
+
+
+def test_a_yes_to_a_draft_never_reads_as_words_that_are_not_his(world):
+    """He dictated the text a turn earlier and this turn only says «yes»: the text is not a run of THIS sentence, and
+    that is all the fact may say — the words are named, never called not his. A long body is named by its start."""
+    body = "Te debo $50. " + "Gracias por adelantarlo el otro día, de verdad. " * 12
+    facts = _echo(world, "sí, envíalo", "reply", {"n": 1, "text": body},
+                  {"coll": "sent", "id": "e3", "body": body, "name": "Ana", "queued": False})
+    fact = facts[0][0]
+    assert "«Te debo $50." in fact and "no son las que él dijo" not in fact
+    assert len(fact) < len(circuit.SENT) + circuit.SENT_TEXT_MAX + 120 and "…»" in fact

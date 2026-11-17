@@ -178,8 +178,11 @@ def _state_event(uid: str, state: str, trace: str) -> None:
 #: is no receipt (V2-847) — and measured on his engine (2026-11-04) the echo then closed in silence.
 SENT = "Ya ha salido: el envío ha quedado confirmado."
 
-#: …and, when the words that left are not his (INI-071 B4), which words did: the change is said, never checked as his.
-SENT_NOT_HIS = "Las palabras que salieron no son las que él dijo; salieron estas: «{text}»."
+#: …and, when the words that left are not a run of his sentence (INI-071 B4), which words did. It says what is KNOWN:
+#: the text is not in the sentence of this turn — he may have dictated it a turn earlier and only said «yes» now, so
+#: the fact never claims they are not his. A long body is named by its start (`SENT_TEXT_MAX`): a receipt, not a reading.
+SENT_NOT_HIS = "El texto que salió no es una cita literal de su frase; salió esto: «{text}»."
+SENT_TEXT_MAX = 280
 
 
 def _sent_fact(e: dict) -> str:
@@ -192,6 +195,8 @@ def _sent_fact(e: dict) -> str:
     except Exception as ex:  # noqa: BLE001
         logger.debug(f"circuit: the words that left are unread ({ex})")
         text = ""
+    if len(text) > SENT_TEXT_MAX:
+        text = text[:SENT_TEXT_MAX].rstrip() + "…"
     return f"{SENT} {SENT_NOT_HIS.format(text=text)}" if text else SENT
 
 
@@ -465,17 +470,19 @@ def _close(rec, relay_cap: int) -> str:
     _src_entry = entry or _spec.of_task(str(getattr(rec, "uid", "") or "")) or {}
     if verdict == "unmet" and "inferred" in str(_src_entry.get("source") or ""):
         verdict, missing = "unverifiable", ""
-    # INI-071 B3 — the outcome is judged on what the errand DELIVERED: a search that found nothing satisfies a card's
-    # end state («the query is on the page») and still handed over nothing. Empty is a shortfall, never `met`.
-    if verdict in ("met", "unverifiable", "undeclared") and (empty := _breadth.delivered_nothing(rec)):
-        verdict, missing = "unmet", empty
     # V2-840 H2 — the brief's own target is part of the end state: a model judged the shortfall NOT enough.
     gap = _breadth.another_round(rec) if verdict in ("met", "unverifiable", "undeclared") else ""
     if gap and tries < retries() and int(getattr(rec, "relay_gen", 0) or 0) < relay_cap:
         verdict, missing = "unmet", gap
     elif verdict in ("met", "unverifiable", "undeclared"):
         gap = ""
-        _breadth.note_delivery(rec)            # a short delivery says why on the sheet — never held back
+        # INI-071 B3 — …and so is what the errand DELIVERED: a search that found nothing satisfies a card's end state
+        # («the query is on the page») and still handed over nothing. Read AFTER the target's gap, which carries the
+        # judge's next step and the brief to resume; empty is a shortfall, never `met`.
+        if (empty := _breadth.delivered_nothing(rec)):
+            verdict, missing = "unmet", empty
+        else:
+            _breadth.note_delivery(rec)        # a short delivery says why on the sheet — never held back
     if verdict == "unmet":
         budget = retries()
         if tries < budget and int(getattr(rec, "relay_gen", 0) or 0) < relay_cap:

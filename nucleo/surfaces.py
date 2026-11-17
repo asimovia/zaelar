@@ -171,7 +171,36 @@ def set_once(rec, value) -> str:
         rec.surface = stamped
     except Exception:  # noqa: BLE001
         return current or stamped
+    if not normalize(value):
+        _note_guessed(rec)
     return stamped
+
+
+#: The task artefact slot that says an errand's surface was DERIVED from its kind — nobody declared it (INI-071 B3).
+GUESSED_SLOT = "surface_guessed"
+
+
+def _note_guessed(rec) -> None:
+    """Written on the errand's ROW, so a relay or a relaunch of the same errand (which carries the sealed surface as if
+    it had been declared) still reads it as a guess. Never raises."""
+    try:
+        from nucleo.circuit import ledger
+        if (uid := str(getattr(rec, "uid", "") or "")):
+            ledger.store().artifact_put(uid, GUESSED_SLOT, True)
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"surfaces: guessed surface not noted: {e!r}")
+
+
+def guessed(rec) -> bool:
+    """Was this errand's surface derived from its kind? A derived sheet is where a web ERRAND THAT ACTS (a booking, a
+    form, an auto-resumed operation) also lands: it promised him no rows, so its emptiness says nothing."""
+    try:
+        from nucleo.circuit import ledger
+        uid = str(getattr(rec, "uid", "") or "")
+        return bool(uid and ledger.store().artifact_get(uid, GUESSED_SLOT))
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"surfaces: guessed surface unreadable: {e!r}")
+        return False
 
 
 def opens_sheet(surface: str) -> bool:

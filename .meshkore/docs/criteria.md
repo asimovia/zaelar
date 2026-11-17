@@ -681,7 +681,10 @@ below is the first kind, or it names the mechanism that replaced the second.
   escalation, the inference or the worker; and the inference is not offered a card's emptiness. An open spec says «not met yet» when what is missing changes, not at every read.
   The ending is judged on what the errand DELIVERED (2026-11-17): a results surface that keeps no row, or a worker that
   reported it kept none, is `unmet` with the reason (`breadth.delivered_nothing`), however true the card's end state
-  reads — a search attempt is not a delivery. —
+  reads — a search attempt is not a delivery. It is read after the brief's own gap (the judge's next step is what a
+  relaunch carries), only for a worker that said it delivered and a sheet somebody DECLARED (`surfaces.guessed`: a
+  sheet derived from the kind is where an errand that acts lands too), and an emptiness the breadth judge called
+  enough is the answer. —
   since 2026-11-05 · nodes 2.1351, 2.185, 2.1792 · `nucleo/circuit/__init__.py::tick`, `nucleo/circuit/spec.py`,
   `nucleo/circuit/breadth.py`.
 - **CRIT-E9c · An act that LEAVES the machine is done only when the world's echo of it lands.** Every action that

@@ -105,3 +105,53 @@ def test_a_delivery_that_holds_rows_is_judged_by_its_spec_as_before(world, goal,
 def test_a_worker_with_no_sheet_and_no_count_is_judged_by_its_spec_as_before(world):
     rec = _errand("tell me tomorrow's tide times in Cádiz", "u-tide-es", surface="voz")
     assert circuit.close(rec, relay_cap=2) == "met"
+
+
+# ── what emptiness does NOT say (the audit of B3, 2026-11-17) ────────────────────────────────────────────────
+
+def test_a_sheet_nobody_declared_says_nothing_of_an_errand_that_acts(world):
+    """A web errand with no declared surface gets a sheet from its KIND (`surfaces._BY_KIND`), and one that acts — a
+    booking, an auto-resumed form — never writes a row on it. Sealed through the dispatcher's own door (`set_once`)."""
+    from nucleo import surfaces
+    rec = SessionRecord(task_id="b1", goal="reserva mesa para dos el viernes a las nueve", kind="web",
+                        uid="u-book-es", status="done", ok=True, sheet="u-book-es")
+    assert surfaces.set_once(rec, None) == surfaces.LIST and surfaces.guessed(rec)
+    rec.done_when, rec.result_summary = dict(SEARCH_DONE), "Reserved."
+    _sheet(rec.sheet, 0)
+    assert circuit.close(rec, relay_cap=2) == "met" and not world, "a finished act was relaunched for an empty sheet"
+    relay = SessionRecord(task_id="b2", goal=rec.goal, kind="web", uid="u-book-es", status="done", ok=True,
+                          sheet="u-book-es")
+    assert surfaces.set_once(relay, rec.surface) == surfaces.LIST and surfaces.guessed(relay), \
+        "a relay carries the sealed surface: it must still read as a guess"
+    declared = SessionRecord(task_id="b3", goal="find flats", kind="web", uid="u-flats-declared", ok=True)
+    surfaces.set_once(declared, "lista")
+    assert not surfaces.guessed(declared)
+
+
+def test_an_emptiness_the_breadth_judge_called_enough_is_the_answer(world):
+    """«No flights that day» is an answer: the model that judged the breadth said the shortfall is legitimate, so the
+    errand is neither relaunched nor told as not done."""
+    rec = _errand("are there direct flights from Vigo to Oslo on Christmas Day", "u-flights-en")
+    rec.breadth = {"judged": True, "enough": True, "short": True, "why": "No airline flies that route that day.",
+                   "target": {"n_final": 3}, "progress": {"rows": 0}}
+    assert circuit.close(rec, relay_cap=2) == "met" and not world
+    rec2 = _errand("are there direct flights from Vigo to Oslo on Christmas Day", "u-flights-nj")
+    rec2.breadth = {"judged": False, "enough": True, "short": True}          # the judge failed: not a verdict
+    assert circuit.close(rec2, relay_cap=2) == "started"
+
+
+def test_the_judges_own_gap_is_what_a_relaunch_carries(world):
+    """The breadth judge said NOT enough and named the next step: that gap — and the brief to resume — is what the
+    relaunch carries, not the bare «nothing was found»."""
+    rec = _errand(CASES[0][0], "u-flats-gap")
+    rec.breadth = {"judged": True, "enough": False, "short": True, "next": "try the two regional portals",
+                   "target": {"min_candidates": 20, "n_final": 5}, "progress": {"explored": 4, "rows": 0}}
+    assert circuit.close(rec, relay_cap=2) == "started"
+    req, ctx = world[0]
+    assert "try the two regional portals" in req and "resume" in ctx
+
+
+def test_a_worker_that_did_not_say_it_delivered_is_told_by_its_own_reason(world):
+    rec = _errand(CASES[0][0], "u-flats-died", ok=False)
+    rec.done_when = {}
+    assert circuit.close(rec, relay_cap=2) == "undeclared" and not world, "a failed ending was relaunched as an empty search"

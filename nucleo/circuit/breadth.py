@@ -88,21 +88,34 @@ NOTHING_DELIVERED = "no se ha entregado ningún resultado: la búsqueda no encon
 
 
 def delivered_nothing(rec) -> str:
-    """The reason this errand delivered NOTHING it promised, or "" (INI-071 B3). Read by `close` before any verdict.
+    """The reason this errand delivered NOTHING it promised, or "" (INI-071 B3). Read by `close` once the brief's own
+    target had its say (`another_round`).
 
-    What an errand promised is declared where it was born, never guessed from its words: a results surface (a list, one
-    item) promises ROWS on its sheet, and a worker that reported its finalists (`hbnote considered N --kept M`) promised
-    that many. An end state a card attests by the search ATTEMPT alone (`navegador:search`: the query is on the page)
-    stays true when nothing was found — so the sheet, and only then the count, decide. "" when neither was declared,
-    or when the sheet cannot be read: an unreadable sheet is never a failure."""
+    What an errand promised is declared where it was born, never guessed from its words: a DECLARED results surface (a
+    list, one item) promises ROWS on its sheet, and a worker that reported its finalists (`hbnote considered N --kept
+    M`) promised that many. An end state a card attests by the search ATTEMPT alone (`navegador:search`: the query is
+    on the page) stays true when nothing was found — so the sheet, and only then the count, decide. "" when:
+      · the worker did not say it delivered (`ok` false): a failed ending is told by its own reason, as before;
+      · the model that judged the breadth said the shortfall is ENOUGH (a market with nothing in it): the emptiness is
+        the answer, and that verdict was already paid for;
+      · the sheet came from the kind fallback (`surfaces.guessed`): a web errand that ACTS lands on one too, and
+        calling a finished booking «not done» offers him to do it twice;
+      · neither was declared, or the sheet cannot be read: an unreadable sheet is never a failure."""
     try:
         from nucleo import surfaces
+        if not bool(getattr(rec, "ok", False)):
+            return ""
+        b = getattr(rec, "breadth", None) or {}
+        if b.get("short") and b.get("judged") and b.get("enough") is True:
+            return ""
         sheet = str(getattr(rec, "sheet", "") or "")
         if sheet and surfaces.opens_sheet(str(getattr(rec, "surface", "") or "")):
+            if surfaces.guessed(rec):
+                return ""
             from widgets.results import data as _sheet
             return "" if int(_sheet.holding(sheet).get("kept") or 0) > 0 else NOTHING_DELIVERED
         kept = getattr(rec, "kept", -1)
-        return NOTHING_DELIVERED if isinstance(kept, int) and kept == 0 else ""
+        return NOTHING_DELIVERED if isinstance(kept, int) and not isinstance(kept, bool) and kept == 0 else ""
     except Exception as e:  # noqa: BLE001 — a delivery that cannot be read is judged by its spec, as before
         logger.debug(f"breadth: delivery unreadable: {e!r}")
         return ""
