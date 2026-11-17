@@ -56,3 +56,10 @@ export function syncPresence() {
   if (_synced) return; _synced = true;
   api.getSettings().then((d) => { if (d && d.presence && typeof d.presence === "object" && Object.keys(d.presence).length) adopt(d.presence); }).catch(() => {});
 }
+
+// «Open the presence settings» (the voice act, a row): each shell names ITS page. The phone registers its Presence page
+// here; with none registered the caller opens the desktop's Settings ▸ Presence. One door, two screens.
+let _page = null;
+export function setPresencePage(open) { _page = typeof open === "function" ? open : null; }
+/** True when a shell's own page took the order. */
+export function openPresencePage() { if (!_page) return false; _page(); return true; }

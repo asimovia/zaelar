@@ -648,3 +648,7 @@ html.zm-consent-pending .zm-orb-btn, html.zm-consent-pending .zm-pwr, html.zm-co
   white-space: nowrap; }
 .zm-today-row.play small { color: var(--hb-accent2); }
 .zm-home .zm-empty { flex: 0 0 auto; padding-top: 20px; }   /* the hint goes BELOW today, not centred over it */
+
+/* V2-928 T11 — with the agent's face on, the home is see-through: the face lives behind it (app/presence/). Cards and
+   pages stay opaque and cover it. */
+body.hb-presence-on .zm-home { background: transparent; }

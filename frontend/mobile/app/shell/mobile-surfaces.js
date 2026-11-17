@@ -25,8 +25,16 @@ import { AiConsentSheet } from "./AiConsentSheet.js?v=1";
 import { AppsPane } from "./AppsPane.js?v=2";
 import { ConnectorsSheet } from "./ConnectorsSheet.js?v=1";
 import { AccountSheet } from "./AccountSheet.js?v=1";
+import { PresenceSheet } from "./PresenceSheet.js?v=1";
+import { PresenceLayer } from "../../../app/presence/PresenceLayer.js?v=1";
+
+// The face is seen only on the home: a card or a page in front of it covers it whole, so it stops drawing (V2-928 T11).
+const faceCovered = () => !document.querySelector(".zm-home.live") || !!document.querySelector(".zm-page.open");
 
 export const MOBILE_SURFACES = [
+  // ── V2-928 T11 — the agent's face behind the home and the cards, the desktop's own layer (target "deck": main.js puts
+  //    it between the backdrop and the stage, so it never covers a card nor catches a touch) ──
+  { id: "presence", comp: () => PresenceLayer({ covered: faceCovered }), target: "deck", phase: "scaffold", label: "The agent's face behind the deck (V2-928)", shared: true },
   // ── the bar that owns every control ──
   { id: "dock",     comp: DockBar,     target: "body", phase: "scaffold", label: "Bottom dock (≡ · chat · widgets · ORB · mic · speaker · wake word)", shared: false },
   // NO CAPTIONS BAND (V2-573, operator: «deactivate subtitles. dont want icon for that»). It was the second
@@ -35,11 +43,12 @@ export const MOBILE_SURFACES = [
   // The desktop's captions are untouched.
   // ── PAGES: full screen from the status bar to the dock, one open at a time (main.js), never stacked ──
   { id: "chat",     comp: ChatSheet,      target: "body", phase: "overlay", label: "Chat page: chat · processes (the agent's work, the desktop wall's first two tabs)", shared: false },
-  { id: "menu",     comp: MenuSheet,      target: "body", phase: "overlay", label: "☰ page: energy · account · settings · voice · connectors · feedback · computer · log out", shared: false },
+  { id: "menu",     comp: MenuSheet,      target: "body", phase: "overlay", label: "☰ page: energy · account · physical presence · settings · voice · connectors · feedback · computer · log out", shared: false },
   { id: "apps",     comp: AppsPane,       target: "body", phase: "overlay", label: "Widgets page: every widget, its icon, name and one line", shared: false },
   { id: "settings", comp: SettingsSheet,  target: "body", phase: "overlay", label: "Settings page (language · theme · speaker · wake word · notifications · permissions)", shared: false },
   { id: "feedback", comp: FeedbackSheet,  target: "body", phase: "overlay", label: "Feedback page (a row of the ☰ page)", shared: false },
   { id: "connectors", comp: ConnectorsSheet, target: "body", phase: "overlay", label: "Connectors page (a row of the ☰ page; the desktop chat wall's list)", shared: false },
+  { id: "presence-page", comp: PresenceSheet, target: "body", phase: "overlay", label: "Presence page (a row of Settings): the agent's face, chosen and tuned", shared: false },
   { id: "account",  comp: AccountSheet,   target: "body", phase: "overlay", label: "My account page (a row of the ☰ page): account area · profile · plans · invoices · delete", shared: false },
   // ── V2-870 — inside the native app: the yes to the AI services, asked before the first turn ──
   { id: "ai-consent", comp: AiConsentSheet, target: "body", phase: "overlay", label: "AI services consent (native app only)", shared: false },

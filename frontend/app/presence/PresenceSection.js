@@ -36,10 +36,10 @@ export function mountPresence(host, msg = () => {}) {
       <aside class="pz-list" aria-label="${esc(t("presence.faces"))}"></aside>
       <section class="pz-stage"><div class="pz-face"></div>
         <div class="pz-name"></div>
-        <div class="pz-acts"><button type="button" class="cf-btn pz-custom">${esc(t("presence.customise"))}</button></div>
+        <div class="pz-acts"><button type="button" class="pz-btn pz-custom">${esc(t("presence.customise"))}</button></div>
         <p class="pz-note"></p></section>
       <aside class="pz-edit" hidden><div class="pz-knobs"></div>
-        <div class="pz-editfoot"><button type="button" class="cf-btn pz-save">${esc(t("presence.save"))}</button><button type="button" class="pz-ghost pz-cancel">${esc(t("presence.cancel"))}</button></div></aside>
+        <div class="pz-editfoot"><button type="button" class="pz-btn pz-save">${esc(t("presence.save"))}</button><button type="button" class="pz-ghost pz-cancel">${esc(t("presence.cancel"))}</button></div></aside>
     </div>
     <footer class="pz-foot">
       <label class="pz-switch"><input type="checkbox" class="pz-on"/><span>${esc(t("presence.physical"))}</span></label>

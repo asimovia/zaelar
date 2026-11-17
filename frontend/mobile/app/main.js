@@ -59,7 +59,10 @@ session.attachBotAudio(botAudio);
 createEffect(() => { try { botAudio.muted = store.botMuted(); } catch (_) {} });
 
 // ---- native mobile surfaces, mounted from the canonical list (shell/mobile-surfaces.js) ----
-for (const s of MOBILE_SURFACES.filter((s) => s.phase === "scaffold")) mount(s.comp(), s.target === "deck" ? wrap : undefined);
+// A "deck" scaffold (the agent's face) goes UNDER the stage: above the backdrop, below every card.
+for (const s of MOBILE_SURFACES.filter((s) => s.phase === "scaffold")) {
+  if (s.target === "deck") wrap.insertBefore(s.comp(), stage); else mount(s.comp());
+}
 for (const s of MOBILE_SURFACES.filter((s) => s.phase === "overlay")) mount(s.comp(), s.target === "deck" ? wrap : undefined);
 
 // V2-881 — no splash to remove here: #preboot IS the loader, and BootOverlay (mounted above) took it over.

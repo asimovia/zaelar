@@ -25,7 +25,8 @@ SHOTS = Path(os.environ["PHONE_SHOTS"]) if os.environ.get("PHONE_SHOTS") else No
 PACK = {lang: json.loads((ENGINE / f"i18n/genesis/{lang}/ui.json").read_text(encoding="utf-8")) for lang in ("es", "en")}
 
 CSS = ["/frontend/app/core/palette.css", "/frontend/app/core/shared-surfaces.css",
-       "/frontend/app/core/components.css", "/frontend/mobile/app/styles.css"]
+       "/frontend/app/core/components.css", "/frontend/mobile/app/styles.css",
+       "/frontend/app/presence/presence.css"]
 
 
 def _listening(port: int) -> bool:

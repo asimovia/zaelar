@@ -16,6 +16,10 @@ import * as privacy from "../../../app/services/privacy.js?v=1";
 import { inNativeApp } from "../../../app/core/native.js?v=1";
 import { Page } from "./Page.js?v=1";
 import * as wake from "./wake.js?v=1";
+import { Row } from "./menu-row.js?v=1";
+import { setPresenceOpen } from "./PresenceSheet.js?v=1";
+import { currentEntry } from "../../../app/presence/PresenceLayer.js?v=1";
+import { faceName } from "../../../app/presence/catalog-api.js?v=1";
 
 function Toggle(label, get, onToggle) {
   return h("button", { class: () => "zm-row zm-toggle" + (get() ? " on" : ""), onClick: onToggle },
@@ -80,6 +84,9 @@ export function SettingsSheet() {
       Toggle(() => t("config.theme_dark"),
         () => store.theme() === "dark",
         toggleTheme),
+
+      // ── PRESENCE (V2-928 T11): the agent's face — which one and how it looks, on its own page (PresenceSheet.js).
+      Row(null, () => t("config.tab.presence"), () => faceName(currentEntry()), () => { close(); setPresenceOpen(true); }),
 
       // ── THE SPEAKER LIVES HERE NOW (V2-573, 2026-09-04). Until the dock restyle it had its own button one tap
       //    away, and this sheet said — correctly, then — that a duplicate would be clutter. The restyle removed

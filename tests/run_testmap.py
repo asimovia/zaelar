@@ -6478,6 +6478,12 @@ DOMAINS: list[dict] = [
         {"id": "4.568", "title": "The build number on the phone: the last line of the ☰ page, quiet and live, and "
                                  "without the desktop's floating badge",
             "ch": UNIT, "paths": ["tests/browser/unit/mobile/test_the_menu_shows_the_build_number.py"]},
+        {"id": "4.569", "title": "The phone wears the agent's face (V2-928 T11): the layer sits between the backdrop and the "
+                                 "stage behind a see-through home and stops drawing under a card or a page; the ☰ «Physical "
+                                 "presence» switch turns it off (no canvas) and on and names the face; Settings ▸ Presence is "
+                                 "a page that fits the width (categories → strip of faces → face, «Customise» as a step) "
+                                 "whose back returns to Settings; the voice act opens the phone's page, never the desktop's",
+            "ch": UNIT, "paths": ["tests/browser/unit/mobile/test_the_phone_wears_the_face.py"]},
         {"id": "4.566", "title": "The agent's face (V2-928): every face of the catalogue draws at rest, speaking and thinking; "
                                  "Porcelain is the default; every label of Settings ▸ Presence is in both bundles; the rig "
                                  "is never a statue (idle actions, speech accents). Disarm: life.js off → a statue",

@@ -3,7 +3,7 @@
 // lleva arriba el perfil, la configuración, las voces y los conectores; el chat lleva lo del agente»). ORDER
 // (2026-11-17, operator): Energy first, then My account (its own page, AccountSheet.js: the account area, profile,
 // plans, invoices and deleting the account — what is done once goes one tap deeper, not on a page opened many times a
-// day) · Settings · Voice · Connectors · Feedback · your computer (read only) · Log out, last. Every row carries an
+// day) · Physical presence (the agent's face on or off, V2-928) · Settings · Voice · Connectors · Feedback · your computer (read only) · Log out, last. Every row carries an
 // outline icon from app/lib/icons.js. The «desktop version» row moved off this page: the escape hatch stays in
 // Settings (SettingsSheet.js) and index.html's `?desktop=1`. The RUNNING PROCESSES live in the chat's Processes tab (ChatSheet.js); the widgets launcher is the
 // dock's (AppsPane.js).
@@ -14,13 +14,16 @@ import * as api from "../../../app/services/api.js?v=2";
 import { t } from "../../../app/core/i18n.js?v=1";
 import { logoutLink } from "../../../app/core/account-link.js?v=1";
 import { inNativeApp } from "../../../app/core/native.js?v=1";
-import { ZAP_ICON, USER_ICON, GEAR_ICON, MIC_ICON, PLUG_ICON, MESSAGE_SQUARE_ICON, DESKTOP_ICON, LOG_OUT_ICON } from "../../../app/lib/icons.js?v=2";
+import { ZAP_ICON, USER_ICON, GEAR_ICON, MIC_ICON, PLUG_ICON, MESSAGE_SQUARE_ICON, DESKTOP_ICON, LOG_OUT_ICON, FACE_ICON } from "../../../app/lib/icons.js?v=2";
 import * as daemon from "../../../app/services/daemon.js?v=3";
 import { Page } from "./Page.js?v=1";
 import { setConnectorsOpen } from "./ConnectorsSheet.js?v=1";
 import { setAccountOpen, openAccount } from "./AccountSheet.js?v=1";
 import { Row } from "./menu-row.js?v=1";
 import { VersionLabel } from "../../../app/update/VersionLabel.js?v=1";
+import { presenceOn, togglePresence } from "../../../app/presence/state.js?v=1";
+import { currentEntry } from "../../../app/presence/PresenceLayer.js?v=1";
+import { faceName } from "../../../app/presence/catalog-api.js?v=1";
 
 // The daemon poll runs here too: the desktop starts it from the setup surface, which this shell does not
 // mount. Without this the row would always read "not connected", which is a wrong answer rather than a
@@ -71,6 +74,13 @@ export function MenuSheet() {
       () => store.cloudProfile()
         ? Row(USER_ICON, () => t("mobile.account"), () => t("mobile.account_sub"), go(setAccountOpen))
         : null,
+      // ── PHYSICAL PRESENCE (V2-928 T11): the agent's face behind the home, on or off — the desktop's ☺, by the account
+      //    rows. The subtitle names the face it wears; choosing another is Settings ▸ Presence.
+      h("button", { class: () => "zm-row zm-toggle" + (presenceOn() ? " on" : ""), "aria-pressed": () => String(presenceOn()),
+        onClick: () => togglePresence("menu") },
+        h("span", { class: "zm-row-i", "aria-hidden": "true" }, raw(FACE_ICON)),
+        h("span", { class: "zm-row-t" }, h("b", null, () => t("presence.physical")), h("small", null, () => faceName(currentEntry()))),
+        h("span", { class: "zm-sw", "aria-hidden": "true" })),
       Row(GEAR_ICON, () => t("mobile.settings"), () => t("mobile.settings_sub"), go(store.setMobileSettingsOpen)),
       Row(MIC_ICON, () => t("mobile.voice"), () => (store.voices()[store.voiceIdx()] || {}).label || "",
         () => { session.cycleVoice(); api.uiEvent("mobile:voice_cycle", {}); }),

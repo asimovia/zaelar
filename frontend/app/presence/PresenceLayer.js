@@ -21,7 +21,9 @@ const HEAR = 0.05, THINK_S = 6;
 /** The entry to wear: his choice, or the default when an id no longer exists. */
 export const currentEntry = () => faceById(presenceFace(), presenceCustom()) || faceById(DEFAULT_FACE);
 
-export function PresenceLayer() {
+/** `covered` (optional): a shell that knows when an opaque surface hides the face (the phone: a card or a page in front)
+ *  says so, and the face stops drawing until it shows again — a hidden face spends no battery. */
+export function PresenceLayer({ covered = null } = {}) {
   syncPresence();
   let face = null, unsub = null, timer = 0, heardAt = 0, thinkUntil = 0;
   const host = h("div", { id: "presence", class: "hb-presence", "aria-hidden": "true" });
@@ -58,6 +60,7 @@ export function PresenceLayer() {
     const mood = stopped ? "idle" : now < thinkUntil ? "thinking" : "listening";
     face.setState({ mood, hearing, speaking });
     face.setAlpha(stopped ? 0.55 : 1);
+    if (covered) face.setPaused(!!covered());
   });
   return host;
 }
