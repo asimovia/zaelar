@@ -13,7 +13,11 @@
 // ============================================================================
 import * as api from "./api.js?v=2";
 
-let ac = null, micAn = null, botAn = null;
+let ac = null, micAn = null, botAn = null, botStr = null;
+const _botListeners = new Set();
+// V2-928 — the agent's face listens to the same stream (observe only): it subscribes here instead of re-wiring LiveKit.
+export function onBotStream(fn) { _botListeners.add(fn); if (botStr) fn(botStr); return () => _botListeners.delete(fn); }
+const _tellBot = (s) => { botStr = s; for (const fn of _botListeners) { try { fn(s); } catch (_) {} } };
 
 export function context() { return ac; }
 export function micAnalyser() { return micAn; }
@@ -54,6 +58,7 @@ export function attachBot(stream) {
     botAn = ac.createAnalyser(); botAn.fftSize = 512; ac.createMediaStreamSource(stream).connect(botAn);
     api.uiState("audio:out", { state: "attached" });
   } catch (_) {}
+  _tellBot(stream);
 }
 
 // Truly RELEASE: besides forgetting the nodes, CLOSE the AudioContext (releasing the browser's audio graph).
@@ -61,14 +66,14 @@ export function attachBot(stream) {
 export function reset(reason = "stop") {
   const had = { mic: !!micAn, bot: !!botAn };
   const old = ac;
-  botAn = null; micAn = null; ac = null;
+  botAn = null; micAn = null; ac = null; if (had.bot) _tellBot(null);
   try { if (old && old.state !== "closed" && old.close) old.close(); } catch (_) {}
   if (had.bot) api.uiState("audio:out", { state: "released" });
   if (had.mic) api.uiState("mic:analyser", { state: "closed", reason });
 }
 export function dropBot() {
   if (!botAn) return;                                    // already released: no transition to record
-  botAn = null;
+  botAn = null; _tellBot(null);
   api.uiState("audio:out", { state: "released" });
 }
 

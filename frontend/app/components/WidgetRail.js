@@ -48,7 +48,7 @@ import { createEffect } from "../core/reactive.js?v=2";
 import * as store from "../core/store.js?v=2";
 import { chatOpen, setChatOpen, setChatTab, openChatFrom, orbDock, setOrbDock, agentState, agentLive, screenState } from "../core/store.js?v=2";
 import * as power from "../services/power.js?v=1";
-import { APPS_ICON } from "../lib/icons.js?v=1";
+import { APPS_ICON, FACE_ICON, FACE_OFF_ICON } from "../lib/icons.js?v=1"; import { presenceOn, togglePresence } from "../presence/state.js?v=1";   // V2-928: the bar's swap is the face toggle
 import { ProcessCount } from "./ProcessCount.js?v=1";
 
 function injectStyles(){
@@ -384,13 +384,13 @@ export function WidgetRail(){
                      slot.title=s==="secondary"?t("orb.centre_secondary"):t("orb.power_"+agentState()); });
   orbr.append(swap);
   orbzone.append(orbl,slot,orbr);
-  const paintSwap=()=>{
-    const bar=orbDock()==="bar";
-    swap.innerHTML=bar?ICONS.orbUp:ICONS.orbBar;
-    swap.title=bar?t("rail.orbToEye"):t("rail.orbHere");
-    swap.classList.toggle("on",bar);
+  const paintSwap=()=>{   // V2-928: the eye is retired (hidden) — this button now shows/hides the agent's face
+    const on=presenceOn();
+    swap.innerHTML=on?FACE_ICON:FACE_OFF_ICON;
+    swap.title=on?t("presence.hide"):t("presence.show");
+    swap.classList.toggle("on",on);
   };
-  swap.onclick=(e)=>{ e.stopPropagation(); setOrbDock(orbDock()==="bar"?"eye":"bar"); };
+  swap.onclick=(e)=>{ e.stopPropagation(); togglePresence("bar"); };
   createEffect(paintSwap);
   // V2-619/666: the chevron collapses the CHAT COLUMN, never this bar (see the header comment) — it MOVED
   // to the bar's left edge (operator, 2026-09-11: «la flechita que abre… el menú de la izquierda va a la

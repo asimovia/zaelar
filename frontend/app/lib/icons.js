@@ -97,3 +97,6 @@ export const MORE_ICON = `<svg ${S}><circle cx="5" cy="12" r="1"/><circle cx="12
 export const CHEVRON_UP_ICON = `<svg ${S}><path d="m18 15-6-6-6 6"/></svg>`;
 export const CHEVRON_DOWN_ICON = `<svg ${S}><path d="m6 9 6 6 6-6"/></svg>`;
 export const SIDEBAR_ICON = `<svg ${S}><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg>`;
+// V2-928 — the agent's face (presence) on/off: a face, and the same face crossed out.
+export const FACE_ICON = `<svg ${S}><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="1" fill="currentColor"/><circle cx="15" cy="10" r="1" fill="currentColor"/><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0"/></svg>`;
+export const FACE_OFF_ICON = `<svg ${S}><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="1" fill="currentColor"/><circle cx="15" cy="10" r="1" fill="currentColor"/><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0"/><path class="face-slash" d="m4 4 16 16"/></svg>`;

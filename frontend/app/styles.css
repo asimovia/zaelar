@@ -1835,3 +1835,49 @@ body.dbg-open .orbwrap{left:calc(50% - var(--dbg-w) / 2)}
 .a2a-rel,.a2a-share,.a2a-ev{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:space-between}
 .a2a-name{font-weight:600}
 .a2a-chip{display:inline-flex;gap:4px;align-items:center;border:1px solid var(--hb-line);border-radius:999px;padding:1px 4px 1px 9px}
+
+/* V2-928 — the agent's face behind every card (presence/PresenceLayer.js); never catches a click. */
+.hb-presence{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+/* V2-928 — Settings ▸ Presence: categories on top; faces · the face · the knobs in three columns (stacked on a phone). */
+.pz{display:flex;flex-direction:column;gap:14px;min-height:calc(100vh - 170px)}
+.pz-cats{display:flex;gap:6px;flex-wrap:wrap}
+.pz-cats button{border:1px solid var(--hb-line);background:var(--hb-bg-soft);color:var(--hb-ink);border-radius:999px;padding:7px 14px;font:inherit;font-size:0.8125rem;cursor:pointer}
+.pz-cats button:hover{background:var(--hb-hover)}
+.pz-cats button.on{background:var(--hb-bubble);border-color:transparent;color:color-mix(in srgb,var(--hb-accent) 70%,var(--hb-ink));font-weight:600}
+.pz-body{flex:1 1 auto;display:grid;grid-template-columns:240px minmax(0,1fr);gap:16px;min-height:0}
+.pz.is-editing .pz-body{grid-template-columns:240px minmax(0,1fr) 300px}
+.pz-list{background:var(--hb-bg-soft);border:1px solid var(--hb-line);border-radius:var(--hb-r-l);padding:6px;overflow-y:auto;max-height:calc(100vh - 260px)}
+.pz-item{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;color:var(--hb-ink);text-align:left;padding:6px 8px;border-radius:10px;font:inherit;font-size:0.8125rem;cursor:pointer}
+.pz-item canvas{width:40px;height:40px;flex:none;border-radius:8px;background:var(--hb-bg)}
+.pz-item:hover{background:var(--hb-hover)}
+.pz-item.on{background:var(--hb-bubble);color:color-mix(in srgb,var(--hb-accent) 70%,var(--hb-ink));font-weight:600}
+.pz-empty{color:var(--hb-muted);font-size:0.8125rem;padding:10px}
+.pz-stage{display:flex;flex-direction:column;align-items:center;gap:10px;min-width:0}
+.pz-face{position:relative;width:100%;flex:1 1 auto;min-height:340px;border-radius:var(--hb-r-l);background:var(--canvas);border:1px solid var(--hb-line)}
+.pz-name{font-weight:600;color:var(--hb-ink)}
+.pz-acts{display:flex;gap:8px}
+.pz-note{margin:0;color:var(--hb-muted);font-size:0.75rem;min-height:1em}
+.pz-edit{background:var(--hb-bg-soft);border:1px solid var(--hb-line);border-radius:var(--hb-r-l);display:flex;flex-direction:column;min-height:0;max-height:calc(100vh - 260px)}
+.pz-edit[hidden]{display:none}
+.pz-knobs{flex:1 1 auto;overflow-y:auto;padding:4px 14px}
+.pz-knobs details{border-bottom:1px solid var(--hb-line);padding:4px 0}
+.pz-knobs summary{cursor:pointer;font-weight:600;padding:6px 0;color:var(--hb-ink)}
+.pz-ctl{display:grid;grid-template-columns:110px 1fr;gap:8px;align-items:center;padding:4px 0;font-size:0.8125rem;color:var(--hb-muted)}
+.pz-ctl select{width:100%;background:var(--hb-bg);color:var(--hb-ink);border:1px solid var(--hb-line);border-radius:8px;padding:5px}
+.pz-ctl input[type=range]{width:100%}
+.pz-ctl input[type=color]{width:44px;height:26px;border:0;background:none;padding:0}
+.pz-editfoot{display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--hb-line)}
+.pz-ghost{background:none;border:1px solid var(--hb-line);color:var(--hb-ink);border-radius:9px;padding:8px 14px;font:inherit;font-size:0.8125rem;cursor:pointer}
+.pz-ghost:hover{background:var(--hb-hover)}
+.pz-foot{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.pz-switch{display:flex;align-items:center;gap:8px;color:var(--hb-ink);font-size:0.875rem;cursor:pointer}
+.pz-switch input{width:18px;height:18px;accent-color:var(--hb-accent)}
+@media (max-width:760px){
+  .pz{min-height:0}
+  .pz-body,.pz.is-editing .pz-body{grid-template-columns:minmax(0,1fr)}
+  .pz-stage{order:-2}
+  .pz-edit{order:-1}
+  .pz-face{min-height:260px}
+  .pz-list,.pz-edit{max-height:none}
+}
+.cf-panel:has(> #cf_presence_host){max-width:none}   /* V2-928: Presence uses the whole width, like Connectors */

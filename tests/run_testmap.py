@@ -3249,9 +3249,10 @@ DOMAINS: list[dict] = [
         # V2-666 (2026-09-11, operator): the right flank was reordered — immediately right of the orb comes
         # the wake-word/activation-mode toggle, then chat, then the swap back to the eye (it used to be
         # chat·robot·swap).
-        {"id": "4.133", "title": "The bottom system bar: the orb swaps eye↔bar (one canvas, reparented), "
-                                 "lid controls flank it 3|3 (robot·chat·swap on the right, V2-666), and the "
-                                 "memory control lives in the TopBar",
+        {"id": "4.133", "title": "The bottom system bar: the orb lives in the bar (one canvas, reparented; the eye is "
+                                 "hidden since V2-928, never deleted), lid controls flank it 3|3 (robot·chat·swap on the "
+                                 "right, V2-666), the swap shows/hides the agent's face and the choice survives a reload, "
+                                 "and the memory control lives in the TopBar",
             "ch": UNIT,
             "paths": ["tests/browser/e2e/widgets/test_the_orb_swaps_into_the_bottom_bar.py"]},
         # V2-553 — la BARRA DE ACTUALIZACIÓN. La regla que solo se puede comprobar renderizando no es que la
@@ -6477,6 +6478,14 @@ DOMAINS: list[dict] = [
         {"id": "4.568", "title": "The build number on the phone: the last line of the ☰ page, quiet and live, and "
                                  "without the desktop's floating badge",
             "ch": UNIT, "paths": ["tests/browser/unit/mobile/test_the_menu_shows_the_build_number.py"]},
+        {"id": "4.566", "title": "The agent's face (V2-928): every face of the catalogue draws at rest, speaking and thinking; "
+                                 "Porcelain is the default; every label of Settings ▸ Presence is in both bundles; the rig "
+                                 "is never a statue (idle actions, speech accents). Disarm: life.js off → a statue",
+            "ch": UNIT, "paths": ["tests/browser/unit/presence/test_every_face_draws_and_is_never_still.py"]},
+        {"id": "4.567", "title": "The face choice is kept per account in /api/settings `presence`, sanitised to parts, "
+                                 "colours, numbers and flags; a malformed value is the default face, never half trusted. "
+                                 "Disarm: an unsanitised store lets markup through",
+            "ch": UNIT, "paths": ["tests/browser/unit/presence/test_the_face_choice_is_kept_per_account.py"]},
         {"id": "4.318", "title": "After a reconnect the screen adopts the engine's list of cards: an orphan it cannot "
                                  "name goes, an unlisted app closes, a listed one opens beside, and the drift is a "
                                  "widget/reconcile event (V2-825 F5, refactor2710-04 T-04) — RENDERED",

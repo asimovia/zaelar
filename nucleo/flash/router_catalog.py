@@ -275,10 +275,10 @@ TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "agent_controls",
-            "description": "Tu altavoz, apagado o tu VOZ (otra voz masculina/femenina, listarlas, abrir sus ajustes; `language` si pide cambiar el idioma del sistema), si te lo ORDENA.",
+            "description": "Tus controles (altavoz, apagado, voz, idioma del sistema, tu cara en pantalla), solo si te lo ORDENA.",
             "parameters": {
                 "type": "object",
-                "properties": {"act": {"type": "string", "enum": ["mute", "unmute", "off", "voice_male", "voice_female", "voice_list", "voice_settings", "language"]}},
+                "properties": {"act": {"type": "string", "enum": ["mute", "unmute", "off", "voice_male", "voice_female", "voice_list", "voice_settings", "language", "presence_on", "presence_off", "presence_settings"]}},
                 "required": ["act"],
             },
         },

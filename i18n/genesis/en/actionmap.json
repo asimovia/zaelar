@@ -1,6 +1,6 @@
 {
  "_comment": "Genesis seed pack (English) for the action map (V2-539). Same rules as es.json: unambiguous whole-utterance commands only; variants are separate entries; anything that could mean more than the mapped action stays out and goes to the model. · V2-682 — the possessive and the courtesy form were the whole hole. Measured on the operator's own English session (2026-09-12): «open the agenda» matched and «can you open MY agenda, please» did not, so a widget SHOW fell through to the model and from there to a Brain Worker that died on a provider 400. Spanish had the identical hole («abre mi agenda», «abreme la agenda»), which is why the fix lands in BOTH packs: this was never an English defect. Courtesy and modal forms are ENTRIES here, never something the matcher is allowed to understand (normalize.py doctrine). · V2-761 — the widget catalogue («Apps») joins as a panel tab; the operator calls it apps or widgets indifferently, so both words are entries. · V2-764 — the `torrent` widget merged into `archivos` (section Torrents): its names open that section. · v15 (demo pass 2026-09-28, V3) — «make it fullscreen» over the video had no entry, the model said «going fullscreen now» and called nothing: a pronoun fullscreen targets the app in front (`*`). · v17 — the agent's OWN controls: «silencia el altavoz» / «mute the speaker» (the 🔊, it keeps listening), «quita el mute» / «unmute», «apágate» / «turn yourself off» (the ⏻). One `controls` act each, run on the screen that heard him by that screen's own button door (`nucleo/acts/self_controls.py`). A bare «apaga»/«turn off» stays out: it names a device as often as the agent.",
- "version": 19,
+ "version": 20,
  "grids": [
   {
    "_comment": "VERB x OBJECT grid for mensajeria's LENSES (V2-545). «Abreme el Telegram» is not «show the app»: WhatsApp/Telegram/correo are VIEWS OF an app, and the model reads them as app names because they are also the widget's aliases - measured live, three turns of «Aqui lo tienes» over an unmoved app. Expanded into ordinary exact-match entries at import; a view op also brings the app up (executor), so one order gets both halves. `$` is filled with the value.",
@@ -2153,6 +2153,111 @@
    "action": {
     "do": "controls",
     "act": "voice_settings"
+   }
+  },
+  {
+   "phrase": "hide your face",
+   "action": {
+    "do": "controls",
+    "act": "presence_off"
+   }
+  },
+  {
+   "phrase": "hide the face",
+   "action": {
+    "do": "controls",
+    "act": "presence_off"
+   }
+  },
+  {
+   "phrase": "remove your face",
+   "action": {
+    "do": "controls",
+    "act": "presence_off"
+   }
+  },
+  {
+   "phrase": "turn off your face",
+   "action": {
+    "do": "controls",
+    "act": "presence_off"
+   }
+  },
+  {
+   "phrase": "turn off your presence",
+   "action": {
+    "do": "controls",
+    "act": "presence_off"
+   }
+  },
+  {
+   "phrase": "show your face",
+   "action": {
+    "do": "controls",
+    "act": "presence_on"
+   }
+  },
+  {
+   "phrase": "show me your face",
+   "action": {
+    "do": "controls",
+    "act": "presence_on"
+   }
+  },
+  {
+   "phrase": "show the face",
+   "action": {
+    "do": "controls",
+    "act": "presence_on"
+   }
+  },
+  {
+   "phrase": "bring your face back",
+   "action": {
+    "do": "controls",
+    "act": "presence_on"
+   }
+  },
+  {
+   "phrase": "turn on your presence",
+   "action": {
+    "do": "controls",
+    "act": "presence_on"
+   }
+  },
+  {
+   "phrase": "open the presence settings",
+   "action": {
+    "do": "controls",
+    "act": "presence_settings"
+   }
+  },
+  {
+   "phrase": "open the face settings",
+   "action": {
+    "do": "controls",
+    "act": "presence_settings"
+   }
+  },
+  {
+   "phrase": "open your face settings",
+   "action": {
+    "do": "controls",
+    "act": "presence_settings"
+   }
+  },
+  {
+   "phrase": "change your face",
+   "action": {
+    "do": "controls",
+    "act": "presence_settings"
+   }
+  },
+  {
+   "phrase": "i want to change your face",
+   "action": {
+    "do": "controls",
+    "act": "presence_settings"
    }
   },
   {

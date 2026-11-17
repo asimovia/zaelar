@@ -118,6 +118,9 @@ def test_the_act_is_scoped_to_the_screen_that_heard_him_and_runs_the_buttons_doo
     body = (ENGINE / "frontend/app/services/self-controls.js").read_text(encoding="utf-8")
     assert "setPower(true" in body, "«off» must run the ⏻'s own door (power.setPower), not a copy of it"
     assert "toggleBotMute" in body and "openSpeakerHere" in body, "the 🔊 must run the speaker button's own door"
+    face = (ENGINE / "frontend/app/presence/state.js").read_text(encoding="utf-8")
+    assert "p.setPresenceOn(" in body and "togglePresence = (by) => setPresenceOn(" in face, \
+        "the face by voice must run the ☺ button's own door (presence/state.js setPresenceOn)"
     orb = (ENGINE / "frontend/app/components/Orb.js").read_text(encoding="utf-8")
     assert "session.openSpeakerHere" in orb and "session.toggleBotMute" in orb and "power.togglePower" in orb, \
         "the button doors this act reuses moved — follow them"
@@ -129,7 +132,8 @@ def test_both_packs_seed_every_act_and_the_version_moved():
         d = json.loads((ENGINE / f"i18n/genesis/{lang}/actionmap.json").read_text(encoding="utf-8"))
         assert d["version"] >= 17, f"{lang}: new phrases in an old version reach no existing install"
         acts = {(e.get("action") or {}).get("act") for e in d["entries"] if (e.get("action") or {}).get("do") == "controls"}
-        assert acts == {"mute", "unmute", "off", "voice_male", "voice_female", "voice_list", "voice_settings", "language"}, (lang, acts)
+        assert acts == {"mute", "unmute", "off", "voice_male", "voice_female", "voice_list", "voice_settings", "language",
+                        "presence_on", "presence_off", "presence_settings"}, (lang, acts)
 
 
 # ── the disarm ────────────────────────────────────────────────────────────────────────────────────────────
@@ -154,6 +158,13 @@ def test_the_disarmed_door_emits_nothing_and_the_order_falls_to_the_model(johnny
     ("en", "Johnny, what voices do you have", "voice_list"),
     ("en", "Johnny, open the voice settings", "voice_settings"),
     ("en", "Johnny, change the language", "language"),
+    # V2-928 — its face on the screen, by the same door
+    ("es", "Johnny, oculta tu cara", "presence_off"),
+    ("es", "Johnny, muestra tu cara", "presence_on"),
+    ("es", "Johnny, abre los ajustes de presencia", "presence_settings"),
+    ("en", "Johnny, hide your face", "presence_off"),
+    ("en", "Johnny, show your face", "presence_on"),
+    ("en", "Johnny, change your face", "presence_settings"),
 ])
 def test_his_voice_orders_are_the_action_maps_without_the_model(johnny, lang, phrase, act):
     case = _case(f"ctl-voice-{lang}-{act}", lang, phrase, f"controls:{act}")

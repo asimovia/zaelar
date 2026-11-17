@@ -19,7 +19,7 @@ from enum import Enum
 
 class Act(str, Enum):
     """The closed vocabulary of act ids (not words of a language: his words reach them through the model's call). `mute`/`unmute`
-    = the 🔊 (reversible, the agent keeps listening); `off` = the ⏻; then his voice and the locked language."""
+    = the 🔊 (reversible, the agent keeps listening); `off` = the ⏻; then his voice, the locked language and its face (presence)."""
     MUTE = "mute"
     UNMUTE = "unmute"
     OFF = "off"
@@ -28,6 +28,10 @@ class Act(str, Enum):
     VOICE_LIST = "voice_list"
     VOICE_SETTINGS = "voice_settings"
     LANGUAGE = "language"
+    # V2-928 — its face on the screen: shown, hidden, or the Presence settings opened for him to choose it.
+    PRESENCE_ON = "presence_on"
+    PRESENCE_OFF = "presence_off"
+    PRESENCE_SETTINGS = "presence_settings"
 
 
 ACTS: tuple[str, ...] = tuple(a.value for a in Act)

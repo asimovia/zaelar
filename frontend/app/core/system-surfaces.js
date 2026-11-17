@@ -45,10 +45,15 @@ import { VaultModal } from "../components/VaultModal.js?v=1";
 import { WizardModal } from "../components/WizardModal.js?v=1";
 import { WidgetRail } from "../components/WidgetRail.js?v=2";
 import { Veil } from "../components/Veil.js?v=1";
+import { PresenceLayer } from "../presence/PresenceLayer.js?v=1";
 import { UpdateSurface } from "../update/UpdateSurface.js?v=1";
 
 // The ORDER is the actual DOM mount order (it matters for stacking). Scaffold first, then overlay.
 export const SYSTEM_SURFACES = [
+  // V2-928 — the agent's FACE, behind every card and above the desk's backdrop (scaffold: mounted before the stage).
+  { id: "presence",   comp: PresenceLayer, target: "desk", phase: "scaffold", kind: "canvas-bg",
+    toggle: "presence/state.js presenceOn (☺ in the bar, ⚙ Presence, the voice)", label: "The agent's face (presence)",
+    name: null, aliases: null },
   // El PANAL DE ACTIVIDAD (hexágonos de fondo, V2-039) se RETIRÓ el 2026-08-20 por decisión del operador
   // (V2-233 D): el relato de lo que está pasando vive en UN sitio por encargo — la pestaña «Proceso» de la
   // superficie donde va a aterrizar el resultado, y la pestaña «Procesos» del chat para todo lo demás. Tres

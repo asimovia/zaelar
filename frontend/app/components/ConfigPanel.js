@@ -9,9 +9,10 @@ import { createEffect } from "../core/reactive.js?v=2";
 import * as store from "../core/store.js?v=2";
 import * as api from "../services/api.js?v=2";
 import * as session from "../services/session.js?v=3";
-import { GEAR_ICON, BRAIN_ICON, CPU_ICON, DATABASE_ICON, MIC_ICON, SEARCH_ICON, MUSIC_ICON, SERVER_ICON, BELL_ICON, MOON_ICON, LINK_ICON, WIDGETS_ICON, LIST_ICON, LOCK_ICON } from "../lib/icons.js?v=2";
+import { GEAR_ICON, BRAIN_ICON, CPU_ICON, DATABASE_ICON, MIC_ICON, SEARCH_ICON, MUSIC_ICON, SERVER_ICON, BELL_ICON, MOON_ICON, LINK_ICON, WIDGETS_ICON, LIST_ICON, LOCK_ICON, FACE_ICON } from "../lib/icons.js?v=2";
 import { mountRules } from "./RulesSection.js?v=1";   // V2-806 — his rules and preferences, one table
 import { mountPermissions } from "./PermissionsSection.js?v=1";   // V2-875 — his permission switches
+import { mountPresence } from "../presence/PresenceSection.js?v=1";   // V2-928 — the agent's face
 import * as push from "../services/push.js?v=1";
 import { t } from "../core/i18n.js?v=1";
 import { THEMES, FONT_SIZES, FONT_STACKS } from "../core/themes.js?v=1";
@@ -55,6 +56,7 @@ const CLOUD_LOCKED_VOICE_KEYS = new Set(["stt_provider", "tts_provider"]);
 const TABS = [
   { id: "settings", icon: GEAR_ICON },
   { id: "apariencia", icon: MOON_ICON },   // V2-617: design profiles + custom knobs — the whole desktop's skin
+  { id: "presence", icon: FACE_ICON },     // V2-928: the agent's face — choose it, tune it, switch it off
   { id: "conectores", icon: LINK_ICON },
   { id: "widgets", icon: WIDGETS_ICON },
 ];
@@ -114,6 +116,7 @@ export function ConfigPanel() {
     if (activeTab === "conectores") content = sec_connectors();
     else if (activeTab === "apariencia") content = sec_apariencia();
     else if (activeTab === "widgets") content = sec_widgets();
+    else if (activeTab === "presence") content = `<div id="cf_presence_host"></div>`;
     else content = builders[activeSec]();
     // Every area reads from the left edge, one measure wide; the connectors page keeps its own wider measure.
     const pane = `<div class="cf-main"><div class="cf-mback"><button type="button" class="cf-mback-btn" data-menu="1">← ${esc(t("config.menu"))}</button><b>${esc(here)}</b></div>` +
@@ -327,6 +330,7 @@ export function ConfigPanel() {
   function wire() {
     if (activeTab === "settings" && activeSec === "rules") mountRules(document.getElementById("cf_rules_host"), msg);
     if (activeTab === "settings" && activeSec === "permissions") mountPermissions(document.getElementById("cf_perm_host"), msg, cfg);
+    if (activeTab === "presence") mountPresence(document.getElementById("cf_presence_host"), msg);
     // V2-083: pestañas principales (settings/conectores/widgets)
     // The menu: an area row opens that area (Settings on its current section); a sub-item opens that section.
     // Re-clicking the open area on a phone still has to leave the menu, so it always renders.

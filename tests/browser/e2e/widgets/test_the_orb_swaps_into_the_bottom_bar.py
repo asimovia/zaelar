@@ -1,4 +1,11 @@
-"""V2-623 — the orb swaps between the EYE and the bottom system bar, and the memory control moved upstairs.
+"""V2-623 → V2-928 — the orb lives in the bottom system bar, its swap is the FACE toggle, and memory moved upstairs.
+
+V2-928 (operator, 2026-11-17): «desactivamos el orbe grande del ojo con el pulso, eso queda oculto. No se borra… el
+botón que teníamos de subir o bajar en la barra… ahí podríamos poner un icono de una cara que activará o desactivará la
+visualización de la representación física». The eye is HIDDEN, never deleted: the orb boots in the bar, the lid's
+controls flank it, and the bar's swap shows/hides the agent's face (`#presence`), persisted across a reload.
+
+The original V2-623 spec, kept for the bar's layout:
 
 The operator's spec (2026-09-08): «move the left bar to bottom. orbe goes to center, left and right side
 contains the open widgets and the other icons in the bar respectively. initially the hor bar orbe is
@@ -68,6 +75,9 @@ _STATE = """() => {
     pwrSlot: lid.findIndex(b => (b.className || '').includes('pwr-')) + 1,
     memOnLid: lid.some(b => ((b.getAttribute('title') || '').toLowerCase().includes('memor'))),
     memBtn: !!document.getElementById('memBtn'),
+    face: !!document.querySelector('#presence canvas'),
+    faceBtnOn: !!(document.getElementById('faceBtn') || {classList:{contains:()=>false}}).classList.contains('on'),
+    swapOn: !!swap && swap.classList.contains('on'),
     memBtnOn: !!(document.getElementById('memBtn') || {classList:{contains:()=>false}}).classList.contains('on'),
     // Stray TEXT nodes among the lid/flank buttons. Element.append(null) does not throw — it prints the
     // literal word "null" (the 2026-09-09 operator screenshot: seven of them beside the orb), so any
@@ -132,20 +142,19 @@ def measured(run):
         errors = []
         pg.on("pageerror", lambda e: errors.append(str(e)))
         _boot(pg, run)
-        out["eye"] = pg.evaluate(_STATE)
-
-        # The lid's corner swap sends the orb into the bar (a REAL click on the rendered button).
-        pg.evaluate("() => document.querySelector('.orbctl button').click()")
-        pg.wait_for_timeout(400)
-        out["bar"] = pg.evaluate(_STATE)
+        out["eye"] = out["bar"] = pg.evaluate(_STATE)      # the eye is retired: the boot IS bar mode, face on
         out["boot_and_swap_errors"] = list(errors)
 
-        # A reload with the choice persisted must come back in bar mode (the retry path: the bar's slot may
-        # mount after the orb on a persisted-"bar" boot).
+        # The bar's swap hides the face (a REAL click on the rendered button)…
+        pg.evaluate("() => document.querySelector('#wrail .wr-swap').click()")
+        pg.wait_for_timeout(400)
+        out["face_off"] = pg.evaluate(_STATE)
+
+        # …the choice survives a reload (the retry path: the bar's slot may mount after the orb)…
         _boot(pg, run)
         out["bar_reload"] = pg.evaluate(_STATE)
 
-        # The bar's own centre button is the way back up.
+        # …and the same button brings the face back.
         pg.evaluate("() => document.querySelector('#wrail .wr-swap').click()")
         pg.wait_for_timeout(400)
         out["back"] = pg.evaluate(_STATE)
@@ -161,8 +170,6 @@ def measured(run):
         # screen — the switch persisted off and the orb in the bar, then a load (this preview has no run switch).
         # (The guard keeps this preview's first-run takeover — it has no language chosen — from wiping the page.)
         pg.evaluate("() => { sessionStorage.setItem('hb_first_run_takeover', '1'); }")
-        pg.evaluate("() => document.querySelector('#wrail .wr-swap').click()")
-        pg.wait_for_timeout(300)
         pg.evaluate("async () => { (await import('/static/app/core/store.js?v=2')).setPowerOff(true); }")
         pg.wait_for_timeout(500)
         out["bar_off"] = pg.evaluate(_STATE)
@@ -170,13 +177,13 @@ def measured(run):
     return out
 
 
-def test_the_eye_orb_is_the_default_and_the_bar_orb_starts_deactivated(measured):
-    """«initially the hor bar orbe is deactivated and we show the eye orbe»."""
+def test_the_eye_is_retired_and_the_orb_boots_in_the_bar_with_the_face_on(measured):
+    """V2-928: the big eye is hidden (not deleted) — the ONE orb canvas rests in the bar, and the face is on."""
     e = measured["eye"]
-    assert not e["barMode"], e
-    assert e["orbVisible"] and e["orbParent"] == "orbcore", f"the orb must rest in the eye: {e}"
-    assert not e["slotShown"], f"the bar's orb slot must start hidden: {e}"
-    assert e["swapShown"], f"the bar's swap button must show even while deactivated: {e}"
+    assert e["barMode"] and e["orbParent"] == "wr-orbslot" and e["orbVisible"], f"the orb must rest in the bar: {e}"
+    assert not e["eyeChromeShown"], f"the eye chrome must stay hidden: {e}"
+    assert e["swapShown"] and e["swapOn"] and e["face"], f"the face is on by default, its toggle lit: {e}"
+    assert e["swapTitle"] and "." not in e["swapTitle"].split(" ")[0], f"raw i18n key on the toggle: {e['swapTitle']!r}"
     assert measured["boot_and_swap_errors"] == [], measured["boot_and_swap_errors"]
 
 
@@ -187,25 +194,19 @@ def test_the_bar_owns_the_bottom_edge(measured):
     assert r["bottom"] >= 799 and r["h"] < 80, r
 
 
-def test_the_lids_corner_swap_hides_the_eye_and_parks_the_orb_in_the_bar(measured):
-    """ONE canvas, reparented — measured by its PARENT and its rendered SIZE, never by reading source (the
-    4.19 lesson: a re-created canvas renders blank with no error)."""
-    b = measured["bar"]
-    assert b["barMode"], b
-    assert b["orbParent"] == "wr-orbslot", f"the SAME canvas must move into the bar's slot: {b}"
+def test_the_bar_swap_hides_the_face_and_leaves_the_orb_where_it_is(measured):
+    """ONE canvas — measured by its PARENT and its rendered SIZE (the 4.19 lesson). Off means no face canvas at all."""
+    b = measured["face_off"]
+    assert not b["face"] and not b["swapOn"] and not b["faceBtnOn"], f"the face must be gone, both toggles off: {b}"
+    assert b["barMode"] and b["orbParent"] == "wr-orbslot", f"hiding the face must not move the orb: {b}"
     assert b["orbVisible"] and 0 < b["orbW"] <= 60, f"the bar orb must render small and real: {b}"
-    assert not b["eyeChromeShown"], f"the eye chrome must hide: {b}"
-    # #activity has an :empty→none rule of its own, so the honest check is PARITY: whatever it showed in eye
-    # mode, bar mode must not change it — the bar-mode hiding rule must never reach it.
-    assert b["activityShown"] == measured["eye"]["activityShown"], \
-        f"bar mode changed #activity's visibility: {b} vs {measured['eye']}"
 
 
 def test_the_lid_controls_flank_the_bar_orb_three_a_side(measured):
     """Operator, 2026-09-08: «el orbe tiene que estar en el centro y a los lados tiene que haber los tres
     iconos a un lado y los tres al otro… el icono de arrancar y parar en el centro del orbe». mic·spk·cap
     left; robot·chat·swap right (reordered 2026-09-11, operator: immediately right of the orb comes the
-    wake-word/activation-mode toggle, then chat, then the swap back to the eye); ⏻ does NOT travel — the
+    wake-word/activation-mode toggle, then chat, then the swap — the face toggle since V2-928); ⏻ does NOT travel — the
     slot IS the switch (the V2-124 mobile pattern): a BUTTON whose ⏻ face shows exactly while the agent is
     STOPPED (V2-792 §9, 2026-10-25: «starting» or «voice on another screen» wear the orb, never the ⏻)."""
     b = measured["bar"]
@@ -223,17 +224,13 @@ def test_the_lid_controls_flank_the_bar_orb_three_a_side(measured):
 def test_the_choice_survives_a_reload(measured):
     b = measured["bar_reload"]
     assert b["barMode"] and b["orbParent"] == "wr-orbslot" and b["orbVisible"], b
+    assert not b["face"] and not b["swapOn"], f"a hidden face stays hidden after a reload: {b}"
 
 
-def test_the_bar_swap_brings_the_eye_back(measured):
+def test_the_bar_swap_brings_the_face_back(measured):
     k = measured["back"]
-    assert not k["barMode"], k
-    assert k["orbParent"] == "orbcore" and k["orbVisible"], f"the canvas must return home whole: {k}"
-    assert k["eyeChromeShown"], k
-    assert not k["slotShown"], k
-    # The lid recovered ALL seVEN controls in canonical order — the flanked ones came home too.
-    assert k["lidCount"] == 7 and k["pwrSlot"] == 4, f"the lid must come back whole and ordered: {k['lidTitles']}"
-    assert k["flankL"] == [] and k["flankR"] == ["wr-swap"], f"the bar must give the controls back: {k}"
+    assert k["face"] and k["swapOn"] and k["faceBtnOn"], f"the face must come back, both toggles lit: {k}"
+    assert k["barMode"] and k["orbParent"] == "wr-orbslot", k
 
 
 def test_the_memory_control_moved_to_the_top_bar(measured):
@@ -242,8 +239,10 @@ def test_the_memory_control_moved_to_the_top_bar(measured):
     e = measured["eye"]
     assert e["memBtn"], "the TopBar must carry the memory button now"
     assert not e["memOnLid"], f"the lid must NOT carry a memory control any more: {e['lidTitles']}"
-    assert e["lidCount"] == 7, f"the lid keeps 7 slots so the arc geometry holds: {e['lidTitles']}"
-    assert e["pwrSlot"] == 4, f"⏻ must stay at the apex (slot 4): {e['lidTitles']}"
+    # V2-928: the eye is hidden, so its lid keeps only the swap and ⏻ while the other five flank the bar orb —
+    # the seven controls are all still there (the eye can come back whole: hidden, not deleted).
+    flanked = e["flankL"] + [c for c in e["flankR"] if c != "wr-swap"]
+    assert e["lidCount"] + len(flanked) == 7, f"the seven controls must all survive: {e['lidTitles']} + {flanked}"
     assert measured["mem_after_click"]["memBtnOn"], "clicking the TopBar memory button must open the map"
 
 
@@ -253,6 +252,6 @@ def test_no_lid_move_ever_prints_the_word_null(measured):
     # Element.append(null) coerces each null to the TEXT "null" instead of throwing. The stray text nodes
     # then survive every later (correct) re-append. Measured across all four states so neither direction
     # of the swap can reintroduce it.
-    for state in ("eye", "bar", "bar_reload", "back"):
+    for state in ("eye", "face_off", "bar_reload", "back"):
         stray = measured[state]["strayText"]
         assert stray == "", f"stray text printed among the lid/flank buttons in state '{state}': {stray!r}"

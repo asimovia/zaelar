@@ -19,6 +19,10 @@ export function applyControl(d) {
     listVoices();
   } else if (act === "voice_settings") {
     store.setConfigInitialTab("settings"); store.setConfigInitialSection("voice"); store.setConfigOpen(true);
+  } else if (act === "presence_on" || act === "presence_off") {   // V2-928: its face, the ☺ button's own door
+    import("../presence/state.js?v=1").then(p => p.setPresenceOn(act === "presence_on", "voice")).catch(() => {});
+  } else if (act === "presence_settings") {
+    store.setConfigInitialTab("presence"); store.setConfigOpen(true);
   } else if (act === "language") {
     flash("🌐 " + t("controls.language_locked"));      // the system language is fixed once initialised:
   } else if (act === "mute" || act === "unmute") {

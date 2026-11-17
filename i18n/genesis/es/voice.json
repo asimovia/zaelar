@@ -231,6 +231,7 @@
  "controls_said": {
   "voice_settings": "Te abro los ajustes de voz: elige ahí la que quieras.",
   "voice_list": "Te enseño las voces que tengo: elige la que quieras.",
+  "presence_settings": "Te abro los ajustes de presencia: elige ahí mi cara.",
   "language": "El idioma del sistema no se puede cambiar una vez elegido."
  },
  "data_ack": "Hecho.",

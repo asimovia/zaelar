@@ -253,7 +253,7 @@ def effective() -> dict:
     # V2-929 — every spelling an STT writes for a catalogue name, so the browser's cheap ear answers to «Yoni» as it
     # does to «Johnny» (`frontend/app/services/wakeword.js::wakeNames`).
     return {"knobs": knobs, "free_text": [], "voices_by_provider": voices_by_provider, "theme": theme(),
-            "wallpaper": wallpaper(), "assistant_name": assistant_name, "wake_names": persona.wake_table()}
+            "wallpaper": wallpaper(), "presence": presence(), "assistant_name": assistant_name, "wake_names": persona.wake_table()}
 
 
 import re as _re
@@ -314,6 +314,55 @@ def wallpaper() -> dict:
     return _sanitize_wallpaper(_read().get("wallpaper"))
 
 
+# V2-928 — the agent's face: on/off, which catalogue face, and his customised one. The catalogue lives in the
+# frontend (`frontend/app/presence/`), so ids are checked for SHAPE only; the custom spec is a small nested dict of
+# part names, colours, numbers and flags, drawn on a canvas — anything else is dropped, and it is bounded in size.
+_FACE_ID_RE = _re.compile(r"^[a-z0-9-]{1,40}$")
+_PART_RE = _re.compile(r"^[a-z0-9-]{1,24}$")
+_COLOR_RE = _re.compile(r"^#[0-9a-fA-F]{3,8}$")
+
+
+def _sanitize_spec(raw, depth: int = 0):
+    if not isinstance(raw, dict) or depth > 1:
+        return None
+    out = {}
+    for k, v in list(raw.items())[:24]:
+        if not _PART_RE.match(str(k)):
+            continue
+        if isinstance(v, bool):
+            out[k] = v
+        elif isinstance(v, (int, float)) and abs(v) < 1e4 and v == v:
+            out[k] = round(float(v), 4)
+        elif isinstance(v, str) and (_COLOR_RE.match(v) or _PART_RE.match(v) or v == ""):
+            out[k] = v
+        elif isinstance(v, dict):
+            sub = _sanitize_spec(v, depth + 1)
+            if sub is not None:
+                out[k] = sub
+    return out
+
+
+def _sanitize_presence(raw) -> dict:
+    """None/{}/malformed collapse to {} — the client then wears the default face (Porcelain), switched on."""
+    if not isinstance(raw, dict):
+        return {}
+    out = {}
+    if isinstance(raw.get("on"), bool):
+        out["on"] = raw["on"]
+    face = str(raw.get("face") or "")
+    if _FACE_ID_RE.match(face):
+        out["face"] = face
+    custom = _sanitize_spec(raw.get("custom"))
+    if custom:
+        out["custom"] = custom
+    return out
+
+
+def presence() -> dict:
+    """The persisted presence choice, for /api/settings GET ({} = never chosen: the default face, on)."""
+    return _sanitize_presence(_read().get("presence"))
+
+
 def update(payload: dict) -> dict:
     """Validate + persist + apply. Returns {ok, applied, needs_reconnect, note}."""
     d = _read()
@@ -345,6 +394,9 @@ def update(payload: dict) -> dict:
     if "theme_custom" in payload:
         d["theme_custom"] = _sanitize_theme_custom(payload.get("theme_custom"))
         applied.append("theme_custom")
+    if "presence" in payload:
+        d["presence"] = _sanitize_presence(payload.get("presence"))
+        applied.append("presence")
     if "wallpaper" in payload:
         # None/{}/invalid all CLEAR it — «quita el fondo» must not need a second vocabulary.
         d["wallpaper"] = _sanitize_wallpaper(payload.get("wallpaper"))
@@ -499,6 +551,7 @@ AGENT_KEYS = frozenset({
     "attention_mode",     # his preference
     "attention_window",   # his preference
     "wallpaper",          # V2-641, his desktop photo
+    "presence",           # V2-928, the agent's face (on/off, which one, his customised one)
     "theme",              # V2-617 skin profile
     "theme_custom",       # V2-617 custom knobs
     "memory_observability",
