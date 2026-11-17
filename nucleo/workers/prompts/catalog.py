@@ -22,7 +22,7 @@ from typing import Callable
 #: family and rides in full — that, plus room for his memory, is the 0.2k over the battery's provisional 16k. A brief
 #: over it is a defect: raise it only with a declared mechanism beside it. C11 reads this number on the live
 #: `worker_start.prompt_chars`.
-PROMPT_CEILING_CHARS = 16_500
+PROMPT_CEILING_CHARS = 16_550   # +50 2026-11-17: «app» → «widget» in the worker prompts put hotel-en at 16,501
 
 
 

@@ -47,7 +47,7 @@ def _production_files() -> list[pathlib.Path]:
         # Relative to the engine, with a leading slash so the patterns still anchor: a checkout that LIVES under
         # `.claude/worktrees/` would otherwise skip every one of its own files and read «nothing imports memory».
         s = "/" + p.relative_to(REPO).as_posix()
-        if any(d in s for d in _SKIP_DIRS):
+        if any(d in s for d in _SKIP_DIRS) or p.name == "conftest.py":   # a conftest is the suite's, not production
             continue
         out.append(p)
     return out

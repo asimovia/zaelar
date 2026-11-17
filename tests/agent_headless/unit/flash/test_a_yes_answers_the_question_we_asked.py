@@ -8,6 +8,7 @@ annulled the escalation. «…running for 15 minutes now. Want me to stop it or 
 from __future__ import annotations
 
 import pathlib
+import re
 import threading
 from types import SimpleNamespace
 
@@ -94,4 +95,4 @@ def test_no_guard_that_runs_after_the_stream_reads_the_live_reply():
         src = (_ENGINE / rel).read_text(encoding="utf-8")
         assert "_last_reply" not in src, f"{rel} reads the reply being streamed as «what we said before»"
     tp = (_ENGINE / "voice/engine/llm/providers/turn_prompt.py").read_text(encoding="utf-8")
-    assert "_prior_line.snapshot(brain, brain._window)" in tp
+    assert re.search(r"prior_line\b[^\n]*\.snapshot\(brain, brain\._window\)", tp), "the prompt builder takes no snapshot"
