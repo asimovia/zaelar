@@ -68,15 +68,15 @@ async def _run_session(task: "Task") -> None:
             _d.sync_state()
         return
 
-    # THE GATE FOR TOUCHING A CARD OF HIS (V2-757): a card of his is not built or rewritten unless he said so, knowing
-    # he said it (session f84f91ef: a design brief dictated to ANOTHER conversation started a worker rewriting his
-    # YouTube card). Here because `_run_session` is the ONE door that starts a worker, with `kind == "code"` already
-    # decided by the brief's `errand_kind`. The cluster dev worker (V2-076) is out of scope: it brings its own repo and licence.
-    if (kind == "code" and not _confirmed
-            and not _d._dev_worker_params(task.context)):
+    # THE GATE FOR TOUCHING A CARD OF HIS (V2-757): a card of his is not built or rewritten unless he said so, knowing he
+    # said it (f84f91ef: a design brief dictated to ANOTHER conversation started a worker rewriting his YouTube card). Here:
+    # the ONE door that starts a worker, `kind == "code"` decided by the brief's `errand_kind`. The dev worker (V2-076) is exempt.
+    if kind == "code" and not _confirmed and not _d._dev_worker_params(task.context):
         from nucleo.request import kind as _ek_gate
-        _d.logger.info(f"dispatch: task {key} STOPPED by the widget confirm-gate: {req[:80]}")
         rec = _d._SESSIONS.get(key)
+        if rec and _ek_gate.a_remark(task.context):     # a comment or a complaint builds nothing and asks nothing
+            return _ek_gate.dropped(_d, key, rec, req)
+        _d.logger.info(f"dispatch: task {key} STOPPED by the widget confirm-gate: {req[:80]}")
         if rec:
             rec.status = "done"
             rec.result_summary = _ek_gate.code_change_question(req, _ek_gate.code_change(task.context.get("errand_kind")))

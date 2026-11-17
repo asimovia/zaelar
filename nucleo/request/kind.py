@@ -89,6 +89,33 @@ def code_change_question(request: str, change: str = "") -> str:
     return tpl.format(what=short)
 
 
+def a_remark(ctx: dict | None) -> bool:
+    """Did the turn that commissioned this errand read his words as a COMMENT or a COMPLAINT (the reading it carries,
+    `brief.carried`)? «That came out late», «this should behave differently» are remarks about us: no card is built
+    or rewritten from one, and he is not asked whether to (2026-11-17: dictated notes for his developers opened «shall
+    I change your messaging widget?»). Unread → False: the gate asks, as before."""
+    try:
+        from nucleo.turn import brief as _tb
+        choice, info = _tb.read(_tb.revived((ctx or {}).get("reading")), _tb.REQUEST_KEY, "")
+        return bool(info) and str(choice or "") in ("comment", "complaint")
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def dropped(_d, key: str, rec, req: str) -> None:
+    """A card errand born of a remark ends here, unasked and unstarted: its row closes `cancelled` with the reason."""
+    rec.status, rec.result_summary = "cancelled", "a remark, not an order: nothing was built or changed"
+    _d._SESSIONS.pop(key, None)
+    _d._task_row("ended_early", rec, state="cancelled")
+    try:
+        from voice.observer import emit
+        emit("task", "🫥 a remark commissions no card work", text=req[:160], role="system",
+             extra={"id": key, "kind_diag": "remark_not_an_order"})
+    except Exception as e:  # noqa: BLE001
+        _d.logger.debug(f"dispatch: the dropped remark's event was not emitted — {e!r}")
+    _d.sync_state()
+
+
 def default_label(kind: str, request: str = "") -> str:
     """The task row's label before the worker says anything, in the instance's language."""
     from nucleo.workers.progress import say as _say

@@ -13,7 +13,8 @@ sentence again when it grows: only what is new travels).
 The same decision says what KIND of reply it is to a process that waits on his yes: a plain yes or no decides the
 retained act at once — exactly as the screen's button does, with no session resumed — and he hears ONE line
 («OK, sending it…», «OK, I won't send it»); a cut-off piece that says nothing yet is held and joined to what he says
-next; anything else (a change, a detail, a complaint) resumes the process with his words.
+next; an order to stop ends the process — or all of them — through the row's own cancel door, at once; anything else
+(a change, a detail, a complaint) resumes the process with his words. What a decision does lives in `act.py`.
 """
 from __future__ import annotations
 
@@ -33,7 +34,8 @@ DECIDE_S = 3.0
 SEEN_S = 90.0
 #: How long a cut-off piece waits for the rest of his sentence before it is forgotten.
 PIECE_S = 20.0
-YES, NO, OTHER, FRAGMENT = "yes", "no", "other", "fragment"
+from nucleo.switchboard.act import (FRAGMENT, NO, OTHER, STOP, STOP_ALL, YES, _line, deliver, line_of,  # noqa: E402,F401
+                                    stop, waits_on_his_yes)
 
 SYSTEM = (
     "You route what the operator of a voice assistant just said. Background processes of the assistant are OPEN, "
@@ -52,8 +54,10 @@ SYSTEM = (
     "Also say what it IS for that process: \"yes\" — it plainly accepts or authorises what a WAITING process asked, "
     "with no change and no condition (yes, go ahead, send it, I authorise it); \"no\" — it plainly refuses or cancels "
     "it; \"fragment\" — a cut-off piece that carries no decision and no content yet (a word or two, a sentence that "
-    "stops); \"other\" — anything else: a change, a detail, a correction, a complaint, a question.\n"
-    'Reply with JSON only: {"to": <number>, "is": "yes|no|other|fragment", "why": "<a few words>"}'
+    "stops); \"stop\" — he orders that process to STOP: stop it, cancel it, drop it, do not do it, he never asked "
+    "for it (add \"all\": true when he orders every process to stop); \"other\" — anything else: a change, a "
+    "detail, a correction, a complaint, a question.\n"
+    'Reply with JSON only: {"to": <number>, "is": "yes|no|stop|other|fragment", "why": "<a few words>"}'
 )
 
 _seen: dict = {"text": "", "key": "", "at": 0.0}
@@ -110,7 +114,9 @@ def ask_the_model(text: str, procs: list[dict], last_reply: str = "",
     except Exception:  # noqa: BLE001
         return -1, f"unreadable: {raw[:60]!r}", OTHER
     kind = str(got.get("is") or OTHER).strip().lower()
-    kind = kind if kind in (YES, NO, OTHER, FRAGMENT) else OTHER
+    kind = kind if kind in (YES, NO, OTHER, FRAGMENT, STOP) else OTHER
+    if kind == STOP and got.get("all") is True:
+        kind, n = STOP_ALL, n or 1
     return (n, str(got.get("why") or "")[:80], kind) if 0 <= n <= len(procs) else (-1, f"out of range: {n}", OTHER)
 
 
@@ -128,32 +134,6 @@ def _declared_answer(text: str, procs: list[dict]) -> tuple[dict | None, str]:
     except Exception as e:  # noqa: BLE001
         logger.debug(f"switchboard: declared answers unread — {e!r}")
         return None, ""
-
-
-def waits_on_his_yes(p: dict) -> bool:
-    """Does this process wait on a yes/no about an act it retained (a send's confirmation, a card's consent)?"""
-    if p["state"] != _board.WAITING:
-        return False
-    try:
-        from nucleo.circuit import asker
-        return asker.kind_of(asker.artefact(p["key"])) == asker.KIND_CONSENT
-    except Exception as e:  # noqa: BLE001
-        logger.debug(f"switchboard: the question's kind unread — {e!r}")
-        return False
-
-
-def deliver(p: dict, text: str, kind: str = OTHER) -> bool:
-    """Hand `text` to process `p` as he said it: its open question takes it as the answer — a plain yes or no decides
-    its retained act at once, as the screen's button does; anything else resumes the task with his words — and a
-    running worker takes it as his next words."""
-    if p["state"] == _board.WAITING and p.get("ask_id"):
-        from nucleo.cli import worker_api
-        choice = {YES: 0, NO: 1}.get(kind) if waits_on_his_yes(p) else None
-        return bool(worker_api.answer_soon(p["ask_id"], text, choice))
-    if p.get("dispatch"):
-        from nucleo import dispatch as _d
-        return bool(_d.relay_his_words(p["dispatch"], text))     # THE door for his sentence into a running errand
-    return False
 
 
 def _event(emit, text: str, procs: list[dict], *, to: dict | None, by: str, why: str, ms: float, delivered=None,
@@ -207,11 +187,18 @@ async def take(text: str, *, brain=None, emit=None, say=None, window_max: int = 
     if to is None:
         _event(emit, said, procs, to=None, by=by, why=why, ms=ms)
         return False
+    if kind in (STOP, STOP_ALL):                    # his stop: the row's own cancel door, now — never words to relay
+        ended = stop(procs if kind == STOP_ALL else [to])
+        _event(emit, said, procs, to=to, by=by, why=why, ms=ms, delivered=bool(ended), kind=kind)
+        if ended:
+            _acknowledge(said, brain, say, window_max, _line("stopped_now"))
+        return bool(ended)
     if kind == FRAGMENT:                            # his, for that process, and nothing yet: wait for the rest
         _piece.update(text=fresh, at=time.time())
         _event(emit, said, procs, to=to, by=by, why=why, ms=ms, delivered=False, kind=kind)
         return True
-    line = line_of(to, kind if waits_on_his_yes(to) else OTHER)      # read BEFORE the answer clears what it held
+    kind = kind if waits_on_his_yes(to) else OTHER     # a yes or a no decides only what a process asked him
+    line = line_of(to, kind)                            # read BEFORE the answer clears what it held
     ok = False
     try:
         ok = deliver(to, fresh, kind)
@@ -223,25 +210,6 @@ async def take(text: str, *, brain=None, emit=None, say=None, window_max: int = 
     _seen.update(text=_flat(said), key=to["key"], at=time.time())
     _acknowledge(said, brain, say, window_max, line)
     return True
-
-
-def line_of(p: dict, kind: str) -> str:
-    """The ONE line he hears for a chunk a process took: his yes to a send («OK, sending it. I'll tell you if anything
-    goes wrong.»), his yes or no to any other act it held, or a bare «noted» for anything else."""
-    from i18n import langs
-    lang = langs.current_language()
-    key = "answer_taken"
-    if kind in (YES, NO):
-        leaves = False
-        try:
-            from nucleo.circuit import asker
-            from nucleo.request import send_receipt
-            leaves = send_receipt.is_send((asker.artefact(p["key"]).get("retained") or {}))
-        except Exception as e:  # noqa: BLE001
-            logger.debug(f"switchboard: the retained act unread — {e!r}")
-        key = {(YES, True): "send_going", (NO, True): "send_not_sent",
-               (YES, False): "work_started", (NO, False): "confirm_cancelled"}[(kind, leaves)]
-    return str(getattr(lang, key, "") or getattr(lang, "answer_taken", "") or "")
 
 
 async def at_the_gate(text: str, brain, emit, say, motor) -> bool:

@@ -489,7 +489,9 @@ Each is one line in `.meshkore/docs/criteria.md`, with its node; read the sectio
   process open — running, or waiting on him — every chunk he says is routed at the turn's gate, before the model, by
   one decision over one board (`nucleo/switchboard`): for process N it is delivered there as he said it and Flash
   does not run; for none, Flash takes the turn. Flash has no tool that routes his words to a process, and no reader
-  binds an answer after the model.
+  binds an answer after the model. His order to stop an open process is read by that same decision and ends its row
+  through the ONE cancel door (`dispatch.control.cancel_row`), never as words relayed to the worker. A remark — a
+  comment, a complaint — commissions nothing: no card is built or changed from one, and he is not asked whether to.
 - **Background work never starves the voice (§R, R18–R20):** a held worker names its TRUE reason (memory only under
   the floor, else the voice's shed, else what it queues behind), a shed ends when ITS source recovers, admission is a
   limit with no deadline start, one worker at a time, floor = what the declared pieces need, capped by a ratio of the host, never under the voice reserve, and a

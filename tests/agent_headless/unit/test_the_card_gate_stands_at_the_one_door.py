@@ -63,3 +63,52 @@ def test_rewriting_a_card_of_his_parks_the_question_and_starts_no_worker(monkeyp
 def test_an_errand_that_is_not_card_code_passes_the_gate(monkeypatch):
     seen = _run("búscame vuelos a Roma para el jueves", "generic", monkeypatch)
     assert seen["passed"] and not dispatch.pending_confirm()
+
+
+# ── a remark is not an order (V2-931, his rule of 2026-11-17) ────────────────────────────────────────────────────────
+def _run_read(req: str, request_type: str, confidence: float, monkeypatch) -> tuple[dict, list]:
+    """The same door, with the READING the commissioning turn carried (`brief.carried`)."""
+    seen, rows = {"passed": False}, []
+
+    async def _beyond(task, key, req_):
+        seen["passed"] = True
+        return True
+
+    monkeypatch.setattr(_dconf, "unlicensed_gate", _beyond)
+    monkeypatch.setattr(dispatch, "_task_row", lambda how, rec, **kw: rows.append((how, kw.get("state"))))
+    reading = {"result": {"request_type": {"choice": request_type, "confidence": confidence}}, "open_ids": [],
+               "turn_id": "T1", "judged": req}
+    task = dispatch.Task(id="c5", request=req, kind="generic", trusted=True,
+                         context={"errand_kind": {"choice": "change_card", "confidence": SURE},
+                                  "errand_class": {"choice": "none", "confidence": SURE}, "reading": reading})
+    dispatch._SESSIONS["c5"] = SessionRecord(task_id="c5", goal=req[:200], kind="generic")
+    try:
+        asyncio.run(dispatch._run_session(task))
+        return seen, rows
+    finally:
+        dispatch._SESSIONS.pop("c5", None)
+
+
+REMARK = ("Improve the messaging widget: when a message is sent it should show the connector's real delivery state "
+          "instead of leaving it unconfirmed")
+
+
+@pytest.mark.parametrize("request_type", ["comment", "complaint"])
+def test_a_remark_builds_no_card_and_asks_nothing(request_type, monkeypatch):
+    """23:09 — notes dictated for his developers, read `complaint`, were commissioned as «improve the messaging widget»
+    and he was asked «shall I change your widget?». A remark starts no card work and parks no question."""
+    seen, rows = _run_read(REMARK, request_type, 0.77, monkeypatch)
+    assert not seen["passed"] and not dispatch.pending_confirm(), "a remark was asked about, or started a worker"
+    assert rows == [("ended_early", "cancelled")] and "c5" not in dispatch._SESSIONS
+
+
+def test_an_order_to_change_a_card_is_still_asked(monkeypatch):
+    seen, rows = _run_read(COMMISSION, "order", 0.9, monkeypatch)
+    p = dispatch.pending_confirm()
+    assert not seen["passed"] and p and p["task_id"] == "c5" and p["code_change"] == "modify" and rows == []
+
+
+def test_disarm_an_unread_reading_asks_as_before(monkeypatch):
+    """With no sure reading the remark rule decides nothing: the gate asks (the safe side of this door)."""
+    seen, _rows = _run_read(REMARK, "complaint", 0.2, monkeypatch)
+    assert not seen["passed"] and dispatch.pending_confirm()

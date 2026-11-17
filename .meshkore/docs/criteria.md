@@ -260,7 +260,9 @@ below is the first kind, or it names the mechanism that replaced the second.
   says only part was done — never a completion nobody attested. A move already put back is never undone again. —
   since 2026-11-12 · nodes 2.1727 · `nucleo/acts/correction_undo.py`, `widgets/agenda/edit.py`, `nucleo/turn/reply.py`.
 - **CRIT-C4 · Building or rewriting a card of his asks first**, at the one door a worker is lit
-  (`dispatch._run_session`, `kind == code`); the cluster dev-worker is exempt. — since 2026-09-23 · nodes 2.76.
+  (`dispatch._run_session`, `kind == code`); the cluster dev-worker is exempt. A REMARK is not an order: an errand
+  whose commissioning turn was read as a comment or a complaint (the reading it carries, `kind.a_remark`) builds
+  nothing, asks nothing and ends its row there. — since 2026-09-23, narrowed 2026-11-17 · nodes 2.76, 2.1170, 2.1804.
 - **CRIT-C4c · Every appointment he writes carries its notice**: a timed one ~2 h before, an all-day one at 09:00 that
   day; an asked `remind` wins; items synced from Google stay silent. — since 2026-10-10 · nodes 2.250.
 - **CRIT-C4d · A notice is a ROW and reaches him exactly once.** Every reminder, finished job and pending approval goes
@@ -922,7 +924,10 @@ Flash keeps the conversation; the row is what both brains read.
   of the ONLY waiting question, and a sentence handed again as it grows (only what is new travels). The same decision
   says what the chunk IS for a process that waits on his yes: a plain yes or no decides its retained act at once, as
   the button does, and he hears one line; a cut-off piece that says nothing yet is held and joined to what he says
-  next; anything else resumes the process with his words. An unreadable or
+  next; an order to stop ends that process — or every open one — through the row's ONE cancel door
+  (`dispatch.control.cancel_row`, the screen's button: a running worker is told to stop, a queued one never starts, a
+  waiting question is closed), never as words relayed to the worker (node 2.1805); anything else resumes the process
+  with his words. An unreadable or
   late decision is Flash's turn, never his words lost. Every decision is one `thread` event (`event: switchboard`)
   with the board it read, who decided, why and the ms. Flash has no tool that routes his words to a process. One
   answer runs its retained act once. The worker's process ends after asking and the answer resumes THAT session
