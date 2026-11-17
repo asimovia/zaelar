@@ -91,3 +91,19 @@ def test_only_a_gateway_status_brings_up_the_retry_page() -> None:
     client = (java / "GatewayErrorWebViewClient.java").read_text()
     assert re.search(r"status == 502 \|\| status == 503 \|\| status == 504", client)
     assert "new GatewayErrorWebViewClient(bridge)" in (java / "MainActivity.java").read_text()
+
+
+def test_the_audio_bridge_reads_the_route_and_never_sets_a_level() -> None:
+    """`window.ZaelarNative.audio` on Android: the same plugin name and events as iOS, registered before the bridge;
+    a call is read from the audio mode (no phone-state permission), and no stream volume is ever written."""
+    java_dir = ANDROID / "app" / "src" / "main" / "java" / "com" / "zaelar" / "app"
+    src = (java_dir / "AudioPlugin.java").read_text()
+    assert '@CapacitorPlugin(name = "ZaelarAudio")' in src
+    for name in ("available", "route", "setSpeaker"):
+        assert re.search(rf"@PluginMethod\s+public void {name}\(PluginCall", src), name
+    assert 'notifyListeners("audioRoute"' in src and 'notifyListeners("audioInterruption"' in src
+    code = "\n".join(l for l in src.splitlines() if not l.strip().startswith(("*", "/*", "//")))
+    for banned in ("setStreamVolume", "adjustStreamVolume", "adjustVolume", "requestAudioFocus"):
+        assert banned not in code, f"the audio bridge must not {banned}: the volume is the person's, the focus the WebView's"
+    assert "registerPlugin(AudioPlugin.class)" in (java_dir / "MainActivity.java").read_text()
+    assert "READ_PHONE_STATE" not in MANIFEST.read_text()

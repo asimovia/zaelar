@@ -80,8 +80,11 @@ def test_what_leaves_for_the_speakers_follows_the_level_on_a_real_graph():
         assert pg.evaluate("() => window.__volume.routesOut()") is True
         assert pg.evaluate("() => window.__audio.botOutRouted()") is True
         assert pg.evaluate("() => document.querySelector('#botaudio').muted") is True, "the element must stay silent"
-        pg.wait_for_function(f"({RMS})().then(v => v > 0.01)", timeout=5000)   # the tone's first frames take a moment
-        full = pg.evaluate(RMS)
+        full = 0.0
+        for _ in range(40):   # the tone's first frames take a moment, longer on a loaded machine
+            full = pg.evaluate(RMS)
+            if full > 0.2:
+                break
         assert full > 0.2, f"the voice must reach the speakers at the default level: rms {full}"
         pg.evaluate("() => window.__volume.setLevel(30)")
         low = pg.evaluate(RMS)

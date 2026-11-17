@@ -10,7 +10,8 @@
 //   • routed: the gain carries the level (30 % → 0.3, 100 % → 1) and the 🔊 (muted → 0), the element is held muted
 //     even after the vendor un-mutes it, and only ONE route reaches the speakers after a second track;
 //   • the route gone (session stop), the element is the way out again, at his level;
-//   • a context opened before any touch is resumed by the unlock.
+//   • a context opened before any touch is resumed by the unlock, and inside the app the end of an interruption (a
+//     call, Siri) resumes it too, with no tap.
 //
 // Run: node tests/browser/unit/voice/test_the_voice_level_holds_where_the_element_ignores_it.mjs
 // ============================================================================
@@ -43,7 +44,12 @@ class Ctx { constructor() { this.state = "suspended"; this.destination = { kind:
   createMediaStreamSource() { return new Node_(this); }
   resume() { resumed++; this.state = "running"; return Promise.resolve(); }
   close() { this.state = "closed"; } }
-globalThis.window = { addEventListener(){}, location: { href: "http://localhost/" }, AudioContext: Ctx };
+// The app's audio bridge (mobile-app/www/in-app.js), recorded: the page subscribes and the test fires its events.
+const fire = {};
+const bridge = { onInterruption: (cb) => { fire.int = cb; return Promise.resolve(() => {}); },
+                 onRouteChange: (cb) => { fire.route = cb; return Promise.resolve(() => {}); } };
+globalThis.window = { addEventListener(){}, location: { href: "http://localhost/" }, AudioContext: Ctx,
+                      ZaelarNative: { audio: bridge } };
 
 const store = await import("../../../../frontend/app/core/store.js?v=2");
 const audio = await import("../../../../frontend/app/services/audio.js?v=2");
@@ -84,6 +90,15 @@ near(gainOut(), 0.6, "the new route starts at his level");
 // the unlock resumes a context opened before any touch
 audio.resumeContext();
 assert.equal(resumed, 1, "the gesture's unlock resumes the context the gain plays in");
+// inside the app: a call took the audio (iOS suspends the context); its end brings the voice back without a tap
+assert.equal(typeof fire.int, "function", "binding the voice subscribes to the app's interruptions");
+audio.context().state = "suspended";
+fire.int({ phase: "began", reason: "default" });
+assert.equal(resumed, 1, "an interruption that begins resumes nothing");
+fire.int({ phase: "ended", shouldResume: true });
+assert.equal(resumed, 2, "the end of an interruption resumes the context the voice gain plays in");
+fire.route({ output: "bluetooth", name: "AirPods", reason: "device_added" });   // recorded, never a level change
+near(gainOut(), 0.6, "a route change leaves his level alone");
 
 // ══ 2 · the route gone: the element is the way out again ═══════════════════════════════════════════════════
 audio.reset("session_stop");

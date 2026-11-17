@@ -36,6 +36,7 @@ public class MainActivity extends BridgeActivity {
         // Registered before the bridge exists: plugins load before the WebView loads the first page, so the
         // document-start script is in place for it.
         registerPlugin(InAppPlugin.class);
+        registerPlugin(AudioPlugin.class);   // the voice's audio: route, speaker, calls (window.ZaelarNative.audio)
         super.onCreate(savedInstanceState);
 
         WebView webView = bridge.getWebView();

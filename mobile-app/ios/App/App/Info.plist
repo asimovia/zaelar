@@ -52,6 +52,7 @@
 	<array>
 		<string>location</string>
 		<string>bluetooth-central</string>
+		<string>audio</string>
 	</array>
 	<key>UIStatusBarStyle</key>
 	<string>UIStatusBarStyleLightContent</string>

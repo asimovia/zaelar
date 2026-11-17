@@ -13,6 +13,7 @@ class MainViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
         bridge?.registerPluginInstance(DevicePlugin())   // the device bridge (V2-890): sensors for the shell
+        bridge?.registerPluginInstance(AudioPlugin())    // the voice's audio: route, speaker, interruptions
         // capacitorDidLoad runs inside loadView, before the first page is requested: no load escapes the filter.
         // At this point the WebView's navigation delegate is still Capacitor's handler (set in prepareWebView).
         if let handler = webView?.navigationDelegate as? WebViewDelegationHandler {

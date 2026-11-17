@@ -13,6 +13,7 @@
 import * as store from "../core/store.js?v=2";
 import { createEffect, createSignal } from "../core/reactive.js?v=2";
 import * as audio from "./audio.js?v=2";
+import { watch as watchNativeAudio } from "./native-audio.js?v=1";
 
 const KEY = "hb_bot_volume";
 /** One spoken «louder» / «quieter». */
@@ -67,6 +68,7 @@ export function enforce(el) {
 /** Keep `el` following the level and the 🔊 for the life of the page — and the gain route appearing or going. */
 export function bind(el) {
   audio.onBotOutChange(() => enforce(el));
+  watchNativeAudio();   // inside the app: an interruption's end brings the voice back (services/native-audio.js)
   createEffect(() => { _level(); store.botMuted(); enforce(el); });
 }
 
