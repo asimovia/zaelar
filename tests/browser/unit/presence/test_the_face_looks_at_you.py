@@ -95,7 +95,7 @@ def _modest(d: dict) -> bool:
     """1b: the edges draw ≈±0.19 rad (never past the 0.2 clamp), centred draws 0, and the head stays well under 0.42."""
     e = d["edge"]
     return (-0.2 <= e["theirLeft"]["x"] < -0.15 and 0.15 < e["theirRight"]["x"] <= 0.2 and e["centre"]["x"] == 0
-            and abs(d["edgeRig"]["yaw"]) < 0.15 and d["edgeRig"]["gazeX"] < -0.3)
+            and abs(d["edgeRig"]["yaw"]) < 0.15 and d["edgeRig"]["gazeX"] < -0.2)   # the idle glances keep 30 % of the eyes
 
 
 node = pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")

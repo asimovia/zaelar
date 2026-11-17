@@ -5,9 +5,9 @@
 // blinking and gestures behave identically across styles and only the look changes.
 
 import { createLife } from "./life.js?v=1";
+import { mouthFrom, MOUTH_EASE } from "./mouth.js?v=1";
 
 const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
-const rand = (a, b) => a + Math.random() * (b - a);
 const ease = (cur, target, dt, ms) => cur + (target - cur) * (1 - Math.exp(-dt / ms));
 const drift = (t, s) => Math.sin(t * 0.31 + s) * 0.6 + Math.sin(t * 0.17 + s * 2.3) * 0.3 + Math.sin(t * 0.73 + s * 0.7) * 0.1;
 const bell = (p) => Math.sin(Math.PI * clamp(p));
@@ -46,9 +46,10 @@ const MOOD = {
 
 export function createRig(rnd = Math.random) {
   const life = createLife(rnd);
+  const rand = (a, b) => a + rnd() * (b - a);       // blinks and glances draw from the same source (seeded in tests)
   const s = {
     t: 0, mood: "listening", gestures: [],
-    open: 0, wide: 0, round: 0, press: 0, energy: 0,
+    open: 0, wide: 0, round: 0, press: 0, upper: 0, lower: 0, bite: 0, tip: 0, funnel: 0, energy: 0,
     smile: MOOD.listening.smile, lid: 0, brow: 0, glow: 0.8, think: 0,
     blink: 0, blinkAt: -1, nextBlink: 1.5,
     gaze: { x: 0, y: 0 }, gazeTo: { x: 0, y: 0 }, nextSaccade: 1,
@@ -63,16 +64,9 @@ export function createRig(rnd = Math.random) {
     const speaking = frame.mode === "speaking";
     const m = MOOD[s.mood] || MOOD.listening;
 
-    // ---- mouth from visemes (Oculus set) ----
-    const g = (k) => v[k] || 0;
-    const open = clamp(g("aa") + g("O") * 0.75 + g("E") * 0.55 + g("U") * 0.45 + g("I") * 0.35
-      + (g("DD") + g("kk") + g("nn") + g("TH")) * 0.25 + (g("CH") + g("SS") + g("RR")) * 0.18 + g("FF") * 0.08);
-    const wide = clamp(g("E") * 0.8 + g("I") * 0.9 + g("SS") * 0.6 + g("aa") * 0.3 + g("kk") * 0.2
-      - g("O") * 0.6 - g("U") * 0.9 - g("CH") * 0.4 - g("RR") * 0.3, -1, 1);
-    const round = clamp(g("O") * 0.8 + g("U") + g("RR") * 0.5 + g("CH") * 0.5);
-    const press = clamp(g("PP") + g("FF") * 0.4);
-    s.open = ease(s.open, open, dt, 35); s.wide = ease(s.wide, wide, dt, 45);
-    s.round = ease(s.round, round, dt, 45); s.press = ease(s.press, press, dt, 25);
+    // ---- mouth from visemes (Oculus set): each sound its own recipe over nine channels (mouth.js) ----
+    const mt = mouthFrom(v), open = mt.open;
+    for (const c in MOUTH_EASE) s[c] = ease(s[c], mt[c], dt, MOUTH_EASE[c]);
     s.energy = ease(s.energy, speaking ? clamp(open * 1.2 + 0.3) : 0, dt, 110);
     s.think = ease(s.think, s.mood === "thinking" && !speaking ? 1 : 0, dt, 500);
     s.smile = ease(s.smile, speaking ? 0.18 : m.smile, dt, 400);
@@ -99,6 +93,7 @@ export function createRig(rnd = Math.random) {
     const r = {
       t, mood: s.mood, speaking, energy: s.energy, glow: s.glow, think: s.think,
       open: s.open, wide: s.wide, round: s.round, press: s.press,
+      upper: s.upper, lower: s.lower, bite: s.bite, tip: s.tip, funnel: s.funnel,
       smile: s.smile, squint: 0, eyeScale: 1, brow: s.brow, browIn: 0, tongue: 0,
       blinkL: Math.max(s.blink, s.lid), blinkR: Math.max(s.blink, s.lid),
       gazeX: s.gaze.x, gazeY: s.gaze.y,
@@ -202,17 +197,23 @@ export function geometry(r, cx, cy, R, shape = DEFAULT_SHAPE) {
     }
     return pts;
   }
+  // The opening of the mouth (mouth.js says what each channel is). With every speech channel at 0 it is exactly the
+  // mouth it always was; a sealed «m» closes it, «f» leaves a slit under the teeth, «i e» flatten it wide, «sh» squares it.
   function mouth(n = 24) {
-    const my = MO.y, mw = 0.2 * MO.k * (1 + 0.35 * r.wide - 0.4 * r.round + 0.15 * Math.max(0, r.smile));
-    const h = (0.012 + 0.21 * r.open) * (1 - r.press * 0.9) * Math.sqrt(MO.k);
+    const up = r.upper || 0, lo = r.lower || 0, bite = r.bite || 0, fun = r.funnel || 0, wide = Math.max(0, r.wide);
+    const my = MO.y + 0.012 * bite;
+    const mw = 0.2 * MO.k * (1 + 0.35 * r.wide - 0.4 * r.round - 0.18 * fun + 0.15 * Math.max(0, r.smile)) * (1 - 0.06 * r.press);
+    const h = (0.012 + 0.21 * r.open) * (r.press > 0 ? 1 - r.press * 0.97 : 1) * (1 - 0.5 * bite) * Math.sqrt(MO.k);
     const c = r.smile * 0.07 * MO.k;
-    const upper = [], lower = [];
+    const upper = [], lower = [], hu = 0.25 + 0.15 * up, hl = 0.75 + 0.15 * lo;
     for (let i = 0; i <= n; i++) {
       const k = (i / n) * 2 - 1, body = 1 - k * k;
       const roundBody = Math.sqrt(Math.max(0, body));
-      const prof = body * (1 - r.round) + roundBody * r.round;
-      upper.push([k * mw, my + c * k * k + 0.25 * h * prof]);
-      lower.push([k * mw, my + c * k * k - 0.75 * h * prof - c * 0.4 * body]);
+      let prof = body * (1 - r.round) + roundBody * r.round;
+      if (wide > 0) prof = prof ** (1 - 0.45 * wide);                           // stretched lips: a flatter opening
+      if (fun > 0) prof = prof * (1 - 0.6 * fun) + Math.max(0, body) ** 0.35 * 0.6 * fun;   // pushed out: squared
+      upper.push([k * mw, my + c * k * k + hu * h * prof]);
+      lower.push([k * mw, my + c * k * k - hl * h * prof - c * 0.4 * body]);
     }
     return { upper, lower, my, mw, h };
   }
