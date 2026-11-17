@@ -73,10 +73,9 @@ export function LookAtMe(face, { covered = null } = {}) {
           headStarting = false;
           if (!untrack(() => wants(lookAirpods()))) { stop(); return; }
           headStop = stop; setAirpodsProblem(""); pump();
-        }).catch((e) => {
+        }).catch(() => {
           headStarting = false;
-          const why = e && e.code === "denied" ? "denied" : "unavailable";
-          setAirpodsProblem(why); setLookAirpods(false, "airpods");
+          setAirpodsProblem("unavailable"); setLookAirpods(false, "airpods");
         });
       } else if (!want && headStop) { headStop(); headStop = null; }
     }));

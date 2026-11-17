@@ -23,7 +23,7 @@ export const [airpodsProblem, setAirpodsProblem] = createSignal("");
 /** Why a source could not start → the i18n key of the line under its switch (both shells say the same). */
 export const CAMERA_PROBLEM = { denied: "presence.camera_denied", nocamera: "presence.camera_nocamera",
   unsupported: "presence.camera_unsupported", unavailable: "presence.camera_unavailable" };
-export const AIRPODS_PROBLEM = { denied: "presence.airpods_denied", unavailable: "presence.airpods_unavailable" };
+export const AIRPODS_PROBLEM = { unavailable: "presence.airpods_unavailable" };
 /** True only in the native iPhone app with the headphone-motion plugin (head-motion.js); the switch shows only then. */
 export const [airpodsAvailable, setAirpodsAvailable] = createSignal(false);
 let _asked = false;

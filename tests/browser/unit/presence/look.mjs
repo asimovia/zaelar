@@ -53,4 +53,11 @@ const headRight = hs[hs.length - 1];
 const seam = createHeadTracker(); seam.feed({ yaw: 3.1, pitch: 0 }, 0); seam.feed({ yaw: -3.1, pitch: 0 }, 40);
 const seamX = seam.sample(40).x;
 
-console.log(JSON.stringify({ left, right, jitterTarget, gone, stay, headRight, seamX }));
+// The app's bridge hands Core Motion's attitude as it comes (yaw > 0 = the head turns to ITS left): flipped once.
+globalThis.window = { ZaelarNative: { headMotion: { available: async () => true, stop: async () => {},
+  start: async (cb) => { cb({ yaw: 0.3, pitch: 0.1, t: 1 }); return true; } } } };
+const hm = await imp("head-motion.js?v=1"); let got = null;
+const avail = await hm.available(); (await hm.start((m) => { got = m; }))();
+const bridgeYaw = got && got.yaw, bridgePitch = got && got.pitch;
+
+console.log(JSON.stringify({ left, right, jitterTarget, gone, stay, headRight, seamX, bridgeYaw, bridgePitch, avail }));

@@ -13,7 +13,8 @@ What is pinned:
      the face hidden, the tab hidden, the badge; a refusal turns the switch back off and says why;
   4. while it runs nothing is sent anywhere: no request leaves the page's own host and none carries an image;
   5. the phone's Settings carries the camera switch at the bottom, and the AirPods switch ONLY when the native app's
-     plugin says the device can read headphone motion — which then starts and stops the plugin.
+     bridge (`window.ZaelarNative.headMotion`) says the device can read headphone motion — which then starts and stops
+     it; Core Motion's yaw (> 0 = to the head's left) is flipped once, so a turn to his right turns the face right.
 
 Disarms: the camera gate forced open (LookAtMe.js served with the switch read as `true`) starts the camera with the
 switch off; the rig without `lookAt` keeps its head still; the camera frame read unmirrored turns the face the wrong way.
@@ -88,6 +89,7 @@ def test_a_fake_detection_turns_the_head_toward_the_person():
     assert d["stay"]["yaw"] < -0.15, f"a farther face crossing behind stole the gaze: {d}"
     assert d["headRight"]["x"] > 0.3 and d["headRight"]["y"] > 0.1, f"AirPods: a turn to his right must turn the face right: {d}"
     assert 0 < d["seamX"] < 0.2, f"AirPods: a small turn across the sensor's ±π seam read as a whole turn: {d}"
+    assert d["bridgeYaw"] == -0.3 and d["bridgePitch"] == 0.1, f"Core Motion's yaw (> 0 = left) must be flipped once: {d}"
 
 
 def _disarmed(tmp_path: Path, file: str, old: str, new: str) -> dict:
@@ -206,12 +208,13 @@ PHONE = """
   document.body.append(MOBILE_SURFACES.find(s => s.id === 'settings').comp());
   window.__store.setMobileSettingsOpen(true);
 """
+# the iOS app's page glue (`mobile-app/www/in-app.js`): `window.ZaelarNative.headMotion`
 NATIVE = """
   window.__hm = { started: 0, stopped: 0, emit: null };
-  globalThis.Capacitor = { isNativePlatform: () => true, Plugins: { ZaelarHeadMotion: {
-    isAvailable: async () => ({ available: true }),
-    start: async () => { window.__hm.started++; }, stop: async () => { window.__hm.stopped++; },
-    addListener: async (ev, fn) => { if (ev === 'motion') window.__hm.emit = fn; return { remove() {} }; } } } };
+  window.ZaelarNative = { headMotion: {
+    available: async () => true,
+    start: async (cb) => { window.__hm.started++; window.__hm.emit = cb; return true; },
+    stop: async () => { window.__hm.stopped++; } } };
 """
 ROWS = """() => { const rows = [...document.querySelectorAll('.zm-page[data-page="settings"] .zm-toggle')];
   const i = (s) => rows.findIndex(r => r.matches(s));
@@ -239,7 +242,7 @@ def test_inside_the_native_app_the_airpods_switch_drives_the_plugin():
         pg.click(".zm-look-airpods")
         pg.wait_for_timeout(500)
         hm = pg.evaluate("() => ({ started: window.__hm.started, listening: !!window.__hm.emit })")
-        assert hm == {"started": 1, "listening": True}, f"the switch did not start the headphone plugin: {hm}"
+        assert hm == {"started": 1, "listening": True}, f"the switch did not start the headphone bridge: {hm}"
         pg.click(".zm-look-airpods")
         pg.wait_for_timeout(300)
         assert pg.evaluate("() => window.__hm.stopped") == 1, "turning the switch off did not stop the plugin"
