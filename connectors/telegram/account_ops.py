@@ -64,7 +64,7 @@ async def _drain_groups() -> None:
                 await _send(gid, text, files)
             except Exception as e:  # noqa: BLE001
                 logger.warning(f"Telegram: grupo creado, primer mensaje no enviado: {e}")
-        _svc._note(f"[SISTEMA] Grupo de Telegram «{name}» creado con {len(peers)} persona(s). Díselo al operador.")
+        # INI-071 B9: no success note — the chat row above is the receipt the circuit confirms (one act, one door)
 
 
 async def _walk_tick() -> None:

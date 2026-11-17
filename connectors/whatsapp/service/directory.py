@@ -201,7 +201,7 @@ async def _drain_groups() -> None:
                 await _svc._send(gid, text, files)
             except Exception as e:  # noqa: BLE001
                 logger.warning(f"WhatsApp: grupo creado, primer mensaje no enviado: {e}")
-        _svc._note(f"[SISTEMA] Grupo de WhatsApp «{name}» creado con {len(members)} persona(s). Díselo al operador.")
+        # INI-071 B9: no success note — the chat row above is the receipt the circuit confirms (one act, one door)
 
 
 async def _drain_chats() -> None:

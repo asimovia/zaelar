@@ -690,7 +690,7 @@ below is the first kind, or it names the mechanism that replaced the second.
   and a row still in the queue are not it. The mouth reads a queued send as `started`, never `met`; an act that leaves
   with no end state to check settles `unverifiable` (never `undeclared`, which says «It is done.»); no echo past the
   grace is said as unconfirmed, never as failed. No connector tells the model a send happened — the echo settles the
-  row and the mouth says the verdict. A send the card REFUSES never left: its row ends `unmet`, the mouth says the
+  row and the mouth says the verdict — a group's creation included: its success is the echo, never a connector note (2.1794). A send the card REFUSES never left: its row ends `unmet`, the mouth says the
   card's sentence once and no model runs again to correct it (V2-851 F2, door test at `data_ops.dispatch_and_report`).
   **Every order a widget queues to a connector has a receipt, and the receipt is its end state** (V2-919 M3): the
   order opens its outbox row by `ref`, the connector's echo bound to that `ref` settles it `sent` and its failure
@@ -698,7 +698,7 @@ below is the first kind, or it names the mechanism that replaced the second.
   `done_when_unreadable` reason — and checkpoint 1 is never relaxed for an act with no readable end state.
   **The words that left are his, or they are said** (2026-11-17): at the echo, a declared `composed` text that is not
   a run of his words (`exit_slots.words_not_his`) is named in the receipt's fact — never «sent, checked» alone.
-  — since 2026-11-04 (the receipt rule 2026-11-16, node 2.1784) · nodes 2.1008, 2.1784, 2.1793 · `nucleo/circuit/verify.py`, `nucleo/circuit/baseline.py`,
+  — since 2026-11-04 (the receipt rule 2026-11-16, node 2.1784) · nodes 2.1008, 2.1784, 2.1793, 2.1794 · `nucleo/circuit/verify.py`, `nucleo/circuit/baseline.py`,
   `nucleo/circuit/__init__.py::tick`, `nucleo/flash/data_ops.py`, `nucleo/turn/reply.py::of_op`, `widgets/effects.py`.
 - **CRIT-E9d · A send reaches the person his words name, or it asks.** When a call names nobody (`reply {n}`), the card
   answers who it reaches (`recipients_of`, read by `on_his_behalf.who_of`); a person his words do not name, and not
