@@ -55,20 +55,31 @@ export function watchAgent(room, onMissing, ms = AGENT_WAIT_MS, setT = setTimeou
 
 /** What a page does when the engine says nobody holds a session for the line it typed: with no session of its own it
  *  starts one; holding a room the agent is not in — and not still waiting for it to arrive — it asks for a new room;
- *  while one is coming up, or the agent is there and only its typed door is not open yet, it waits. */
-export function onNoSession({ started = false, starting = false, watching = false, agent = false } = {}) {
+ *  while one is coming up it waits. The agent there with its typed door not open is waited for too, but no longer
+ *  than an agent is waited for (`waitedMs`, AGENT_WAIT_MS): a session that ended while its agent stayed in the room
+ *  never opens that door, and the line would wait in it until it aged out. */
+export function onNoSession({ started = false, starting = false, watching = false, agent = false, waitedMs = 0 } = {}) {
   if (starting) return "wait";
   if (!started) return "start";
-  return (!agent && !watching) ? "reconnect" : "wait";
+  if (agent) return waitedMs >= AGENT_WAIT_MS ? "reconnect" : "wait";
+  return watching ? "wait" : "reconnect";
 }
 
-/** The outbox's `onNoSession` for a page: reads its state when asked and starts, asks for a new room, or waits. */
-export function noSession(state, start, reconnect, log = () => {}) {
+/** The outbox's `onNoSession` for a page: reads its state when asked and starts, asks for a new room, or waits —
+ *  counting how long it has waited on an agent that is there (the count ends with any other answer). */
+export function noSession(state, start, reconnect, log = () => {}, now = () => Date.now()) {
+  let since = 0;
   return () => {
-    const act = onNoSession(state());
+    const st = state() || {};
+    if (st.agent && st.started && !st.starting) since = since || now(); else since = 0;
+    const act = onNoSession({ ...st, waitedMs: since ? now() - since : 0 });
+    if (act !== "wait") since = 0;
     if (act === "start") Promise.resolve(start()).catch(() => {});
     else if (act === "reconnect") {
-      try { log("🤖 agent left the room", { text: "a typed line found no session", state: "agent_left" }); } catch (_) {}
+      try {
+        log(st.agent ? "🤖 the agent's typed door never opened" : "🤖 agent left the room",
+            { text: "a typed line found no session", state: st.agent ? "typed_door_closed" : "agent_left" });
+      } catch (_) {}
       Promise.resolve(reconnect()).catch(() => {});
     }
     return act;

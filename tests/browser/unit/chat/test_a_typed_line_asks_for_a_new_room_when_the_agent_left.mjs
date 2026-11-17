@@ -59,4 +59,30 @@ box2.add("x");
 for (let i = 0; i < 5; i++) { await new Promise((r) => setTimeout(r, 2)); for (const fn of timers2.splice(0)) fn(); }
 await new Promise((r) => setTimeout(r, 2));
 assert.equal(stuck.rooms, 1); assert.equal(box2.size(), 1, "the old rule leaves the line waiting in a room nobody is in");
+// ── audit 2026-11-17: an agent that is THERE with its typed door closed is waited for no longer than an agent is ──
+assert.equal(A.onNoSession({ started: true, agent: true, waitedMs: A.AGENT_WAIT_MS - 1 }), "wait");
+assert.equal(A.onNoSession({ started: true, agent: true, waitedMs: A.AGENT_WAIT_MS }), "reconnect", "its door never opened");
+assert.equal(A.onNoSession({ started: true, starting: true, agent: true, waitedMs: 1e9 }), "wait", "a room coming up is not counted");
+{
+  let t = 1000; const st = { started: true, starting: false, watching: false, agent: true }, did = [];
+  const h = A.noSession(() => st, () => did.push("start"), () => did.push("reconnect"), (l, x) => did.push(x.state), () => t);
+  assert.equal(h(), "wait"); t += 3000; assert.equal(h(), "wait");
+  st.starting = true; t += A.AGENT_WAIT_MS; assert.equal(h(), "wait", "a new room coming up starts the count again");
+  st.starting = false; assert.equal(h(), "wait"); t += A.AGENT_WAIT_MS - 1; assert.equal(h(), "wait");
+  t += 1; assert.equal(h(), "reconnect"); assert.deepEqual(did, ["typed_door_closed", "reconnect"]);
+  assert.equal(h(), "wait", "after asking for a new room the count starts over");
+}
+// disarm on the real file: without the bound, the same page waits for as long as it is asked
+{
+  const fs = await import("node:fs"), os = await import("node:os"), path = await import("node:path"), url = await import("node:url");
+  const real = url.fileURLToPath(new URL("../../../../frontend/app/services/voice-arrival.js", import.meta.url));
+  const src = fs.readFileSync(real, "utf8"), bound = 'if (agent) return waitedMs >= AGENT_WAIT_MS ? "reconnect" : "wait";';
+  assert.ok(src.includes(bound), "the bound is not where this disarm expects it");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "arrival-")), copy = path.join(dir, "voice-arrival.mjs");
+  fs.writeFileSync(copy, src.replace(bound, 'if (agent) return "wait";'));
+  const M = await import(url.pathToFileURL(copy).href);
+  let t = 0; const h = M.noSession(() => ({ started: true, agent: true }), () => {}, () => {}, () => {}, () => t);
+  for (let i = 0; i < 400; i++) { t += 3000; assert.equal(h(), "wait", "the mutation did not land"); }
+  fs.rmSync(dir, { recursive: true, force: true });
+}
 console.log("ok");
