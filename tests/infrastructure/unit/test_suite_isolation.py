@@ -178,3 +178,34 @@ def test_the_server_reads_the_credential_store_the_writer_writes():
     assert Path(credentials.STORE).resolve() != repo_store.resolve(), "the suite's store is the operator's"
     assert Path(common._CREDENTIAL_STORE).resolve() == Path(credentials.STORE).resolve(), \
         "the server reads a credential store the writer does not write"
+
+
+def test_a_question_and_an_act_one_test_leaves_do_not_reach_the_next(tmp_path):
+    """Added 2026-11-17. Two stores were shared by every test of a run and given back by none: the TASK LEDGER (a row
+    left waiting on his answer is an open question for whoever runs next — the binding verdict saw two questions and
+    bound nothing) and the ring of acts that just ran (`nucleo.done_ops` — an agenda delete earned the next test's brief a
+    correction question). Red only in a folder run, green alone, which is the shape the root conftest exists to end.
+
+    Measured by running pytest, because a fixture cannot be believed from inside the run it governs: the first test of
+    the case leaves both behind, the second asserts it starts with neither. Disarm measured: without the two fixtures
+    the second test is red on both counts."""
+    import subprocess
+    import sys
+
+    case = tmp_path / "test_two_in_a_row.py"
+    case.write_text(
+        "from memory import tasks_store\n"
+        "from nucleo import done_ops\n"
+        "def test_a_leaves_a_waiting_question_and_an_act():\n"
+        "    tasks_store.task_put({'id': 'iso-a1', 'title': 'clear the agenda', 'state': 'waiting'})\n"
+        "    tasks_store.task_patch('iso-a1', waiting_for='user_answer', ask_id='iso-a1-q1')\n"
+        "    done_ops.note('agenda', 'clear_all', {}, destructive=True)\n"
+        "    assert tasks_store.task_get('iso-a1') and done_ops.recent()\n"
+        "def test_b_starts_with_neither():\n"
+        "    assert tasks_store.task_get('iso-a1') is None, 'the ledger row crossed'\n"
+        "    assert done_ops.recent() == [], 'the act crossed'\n", encoding="utf-8")
+    root = Path(__file__).resolve().parents[3]
+    r = subprocess.run([sys.executable, "-m", "pytest", str(case), "-q", "--no-header", "-p", "no:randomly",
+                        "-p", "conftest"], cwd=root, capture_output=True, text=True)
+    out = r.stdout + r.stderr
+    assert r.returncode == 0 and "2 passed" in out, out[-2000:]

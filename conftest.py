@@ -514,3 +514,50 @@ def _the_memory_state_row_is_given_back():
     else:
         db.execute("INSERT INTO state (id, data) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET data=excluded.data",
                    (before,))
+
+
+@_pytest5.fixture(autouse=True)
+def _a_tests_task_rows_leave_with_it():
+    """THE TASK LEDGER — every errand, inline question and parked offer (`memory.tasks_store`) — comes out of each test as
+    it went in (2026-11-17). It is a table of the session's single test database, and a row a test left WAITING on his
+    answer is an open question for every test after it: `worker_api.open_asks` listed a stranger's row, the binding
+    verdict saw two questions where its test asked one and bound nothing, and `live_tasks.waiting_lines` told the next
+    turn about the wrong one — red only in a folder run (`agent_headless/unit/turn/` beside the consent-on-its-row test),
+    green alone. Rows a test added are deleted after it with everything hanging off them; rows it found stay. Only the
+    database the test started on is touched; a test that re-points `ZAELAR_DB` owns its own file."""
+    mdb = _sys5.modules.get("memory.db")
+    db = getattr(mdb, "_DB", None) if mdb is not None else None
+    path = getattr(db, "path", None)
+    try:
+        before = {r["id"] for r in db.query("SELECT id FROM tasks")} if db is not None else None
+    except Exception:                       # the table may not exist yet in a database a test is creating
+        before = None
+    yield
+    mdb = _sys5.modules.get("memory.db")
+    db = getattr(mdb, "_DB", None) if mdb is not None else None
+    if db is None or (path is not None and getattr(db, "path", None) != path):
+        return
+    try:
+        added = [r["id"] for r in db.query("SELECT id FROM tasks") if before is None or r["id"] not in before]
+    except Exception:                       # no task table: nothing was opened
+        added = []
+    if added:
+        from memory import tasks_store as _ts   # the store's own forget: the row and everything hanging off it
+        for tid in added:
+            _ts.task_forget(tid)
+
+
+@_pytest5.fixture(autouse=True)
+def _what_a_test_did_is_not_what_the_next_one_just_did():
+    """«What we just did for him» (`nucleo.done_ops`: the ring of acts that ran, the cards his turn touched, the canvas
+    gestures) is PROCESS state read with a 120 s window. An agenda test's delete stayed in the ring, so the next test's
+    brief carried the correction question (`corrects_last`) it had not earned — `test_the_common_path_asks_ten` and
+    `test_the_turn_asks_jev_once` counted one question too many, red only after `tests/browser/unit/agenda`. The ring
+    starts and ends empty for every test; a test that needs a past act notes it itself."""
+    mod = _sys5.modules.get("nucleo.done_ops")
+    if mod is not None:
+        mod.reset()
+    yield
+    mod = _sys5.modules.get("nucleo.done_ops")
+    if mod is not None:
+        mod.reset()
