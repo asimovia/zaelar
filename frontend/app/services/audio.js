@@ -14,6 +14,13 @@
 import * as api from "./api.js?v=2";
 
 let ac = null, micAn = null, botAn = null, botStr = null;
+// The agent's voice OUT through a gain (where the page cannot set an element's volume — iOS WebKit): source → gain →
+// speakers. `null` while nothing is routed; then the <audio> element is the only way out and plays as before.
+let outSrc = null, outGain = null, outLevel = 1;
+let _outHook = null;
+/** Who hears when the gain route appears or goes (services/volume.js re-holds the element: silent iff routed). */
+export function onBotOutChange(fn) { _outHook = fn; }
+const _outChanged = () => { try { if (_outHook) _outHook(); } catch (_) {} };
 const _botListeners = new Set();
 // V2-928 — the agent's face listens to the same stream (observe only): it subscribes here instead of re-wiring LiveKit.
 export function onBotStream(fn) { _botListeners.add(fn); if (botStr) fn(botStr); return () => _botListeners.delete(fn); }
@@ -53,12 +60,45 @@ export function rebindMic(stream) {
 }
 
 // Attach the bot's returning audio to its own analyser (drives the orb). Best-effort.
-export function attachBot(stream) {
+// `routeOut`: the voice also LEAVES through this context's gain instead of the element (volume.js decides where that
+// is needed). One source feeds both the analyser and the gain, and a new track replaces the previous route — two live
+// routes would be the voice twice.
+export function attachBot(stream, routeOut = false) {
+  _unrouteOut();
   try {
-    botAn = ac.createAnalyser(); botAn.fftSize = 512; ac.createMediaStreamSource(stream).connect(botAn);
-    api.uiState("audio:out", { state: "attached" });
-  } catch (_) {}
+    const src = ac.createMediaStreamSource(stream);
+    botAn = ac.createAnalyser(); botAn.fftSize = 512; src.connect(botAn);
+    if (routeOut) {
+      outGain = ac.createGain(); outGain.gain.value = outLevel;
+      src.connect(outGain); outGain.connect(ac.destination); outSrc = src;
+    }
+    api.uiState("audio:out", { state: "attached", route: outGain ? "gain" : "element" });
+  } catch (_) { _unrouteOut(); }
   _tellBot(stream);
+  _outChanged();
+}
+
+/** Is the voice leaving through the gain right now? (false ⇒ the element is the way out). */
+export function botOutRouted() { return !!outGain; }
+
+/** The gain's level, 0–1. Kept even with nothing routed, so the next route starts at it. */
+export function setBotGain(v) {
+  outLevel = Math.max(0, Math.min(1, Number(v) || 0));
+  if (outGain) { try { outGain.gain.value = outLevel; } catch (_) {} }
+}
+
+function _unrouteOut() {
+  const had = !!outGain;
+  try { if (outSrc) outSrc.disconnect(); } catch (_) {}
+  try { if (outGain) outGain.disconnect(); } catch (_) {}
+  outSrc = null; outGain = null;
+  return had;
+}
+
+/** Called inside the gesture that unlocks sound: a context the page opened before any touch may still be suspended. */
+export function resumeContext() {
+  try { if (ac && ac.state === "suspended" && ac.resume) return ac.resume().catch(() => {}); } catch (_) {}
+  return Promise.resolve();
 }
 
 // Truly RELEASE: besides forgetting the nodes, CLOSE the AudioContext (releasing the browser's audio graph).
@@ -66,14 +106,18 @@ export function attachBot(stream) {
 export function reset(reason = "stop") {
   const had = { mic: !!micAn, bot: !!botAn };
   const old = ac;
+  const routed = _unrouteOut();
   botAn = null; micAn = null; ac = null; if (had.bot) _tellBot(null);
+  if (routed) _outChanged();
   try { if (old && old.state !== "closed" && old.close) old.close(); } catch (_) {}
   if (had.bot) api.uiState("audio:out", { state: "released" });
   if (had.mic) api.uiState("mic:analyser", { state: "closed", reason });
 }
 export function dropBot() {
   if (!botAn) return;                                    // already released: no transition to record
+  const routed = _unrouteOut();
   botAn = null; _tellBot(null);
+  if (routed) _outChanged();
   api.uiState("audio:out", { state: "released" });
 }
 

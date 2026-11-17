@@ -322,6 +322,7 @@ export function attachBotAudio(el) {
 // no-op. It must run INSIDE the gesture's call stack — awaiting anything first spends the user-activation.
 export async function unlockAudio() {
   let ok = true;
+  audio.resumeContext();   // first, before any await: the voice's gain (iOS) plays only in a running context
   try {
     if (room && room.canPlaybackAudio === false && typeof room.startAudio === "function") {
       await room.startAudio();
@@ -741,7 +742,7 @@ export async function start() {
         store.setAudioBlocked(true);
         store.showAlert(t("voice.alert_tap_audio"), () => { unlockAudio(); });
       });
-      try { audio.attachBot(new MediaStream([track.mediaStreamTrack])); } catch (_) {}
+      try { audio.attachBot(new MediaStream([track.mediaStreamTrack]), vol.routesOut()); } catch (_) {}   // iOS: out by the gain
     });
     // V2-573 — THE SDK'S OWN VERDICT ON WHETHER SOUND CAN COME OUT. `play()` rejecting is one symptom; this is
     // the state, and it also fires when playback is RESTORED, which is what lets the orb stop shouting on its

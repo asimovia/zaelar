@@ -56,9 +56,10 @@ def test_info_plist_answers_what_review_asks() -> None:
         "nothing reads or saves the photo library (the picker needs no permission): review asks why it is declared"
     assert info["CFBundleShortVersionString"] == "$(MARKETING_VERSION)"
     assert info["CFBundleVersion"] == "$(CURRENT_PROJECT_VERSION)"
-    # V2-890: exactly the two modes an activity the person starts needs (route + heart-rate strap with the screen
-    # locked). Review asks what each mode is for; audio waits for background voice and brings its own reason.
-    assert info["UIBackgroundModes"] == ["location", "bluetooth-central"]
+    # V2-890: the two modes an activity the person starts needs (route + heart-rate strap with the screen locked), and
+    # audio: a voice conversation the person started keeps going with the screen locked, as in any calling app.
+    # Review asks what each mode is for; none is declared ahead of the feature that uses it.
+    assert info["UIBackgroundModes"] == ["location", "bluetooth-central", "audio"]
 
 
 def test_the_head_motion_bridge_is_a_method_of_the_device_plugin_and_reaches_the_page() -> None:
@@ -68,6 +69,25 @@ def test_the_head_motion_bridge_is_a_method_of_the_device_plugin_and_reaches_the
     assert "CMHeadphoneMotionManager" in swift and 'notifyListeners("headMotion"' in swift
     glue = (APP.parent.parent / "www" / "in-app.js").read_text()
     assert "native.headMotion" in glue and "platform !== 'ios'" in glue, "Android answers available() = false"
+
+
+def test_the_audio_bridge_reads_the_route_and_never_sets_a_level() -> None:
+    """`window.ZaelarNative.audio`: route, speaker, route changes and interruptions from the app's own plugin, built
+    into the target and registered; it never touches a level or the session's category (WebKit owns the session)."""
+    swift = (APP / "App" / "AudioPlugin.swift").read_text()
+    for name in ("available", "route", "setSpeaker"):
+        assert f'CAPPluginMethod(name: "{name}"' in swift and f"@objc func {name}(" in swift, name
+    assert 'jsName = "ZaelarAudio"' in swift
+    assert 'notifyListeners("audioRoute"' in swift and 'notifyListeners("audioInterruption"' in swift
+    assert "routeChangeNotification" in swift and "interruptionNotification" in swift
+    code = "\n".join(l for l in swift.splitlines() if not l.strip().startswith("///") and not l.strip().startswith("//"))
+    for banned in ("setCategory", "setActive", "outputVolume", "MPVolumeView"):
+        assert banned not in code, f"the audio bridge must not {banned}: the session is WebKit's, the volume the person's"
+    assert "AudioPlugin.swift in Sources" in PBXPROJ.read_text(), "the plugin must be compiled into the app"
+    assert "registerPluginInstance(AudioPlugin())" in (APP / "App" / "MainViewController.swift").read_text()
+    glue = (APP.parent.parent / "www" / "in-app.js").read_text()
+    for name in ("available:", "route:", "setSpeaker:", "onRouteChange:", "onInterruption:"):
+        assert name in glue.split("native.audio")[1], name
 
 
 def test_the_project_targets_the_iphone_and_is_versioned_by_the_script() -> None:

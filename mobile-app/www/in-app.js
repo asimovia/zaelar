@@ -17,6 +17,14 @@
 //     `cb({yaw, pitch, t})` (radians, epoch ms), `stop()` → Promise. iOS only (CMHeadphoneMotionManager, through the
 //     device plugin); Android has no such API, so there `available()` is false and `start()` does nothing. The values
 //     stay on the phone: the page reads them and never sends them anywhere.
+//   · `window.ZaelarNative.audio`: the voice's audio as the phone sees it, iOS and Android (`ZaelarAudio` plugin) —
+//     `available()` → Promise<boolean>; `route()` → Promise<{output, name, speakerForced} | null>, output one of
+//     speaker · earpiece · bluetooth · headphones · usb · airplay · car · other · none; `setSpeaker(on)` →
+//     Promise<route | null> (on: the loudspeaker even when the system would use the earpiece; off: the system's
+//     choice again); `onRouteChange(cb)` and `onInterruption(cb)` → Promise<unsubscribe>, cb gets the route with a
+//     `reason`, or `{phase: began|ended|reset, shouldResume?, reason?, t}` (a call, Siri, another app). It never sets
+//     a LEVEL: the agent's voice level is the page's own (a Web Audio gain on iOS, the element's volume elsewhere),
+//     and the system volume is the person's.
 (function () {
   if (typeof ZAELAR_APP_ORIGIN !== 'string' || location.origin !== ZAELAR_APP_ORIGIN) return;
   var root = document.documentElement;
@@ -83,6 +91,33 @@
           .then(function () { return true; }, function () { return stop().then(function () { return false; }); });
       },
       stop: stop,
+    };
+  })();
+
+  native.audio = (function () {
+    function plugin() {
+      try {
+        var cap = window.Capacitor;
+        return cap && ((cap.Plugins && cap.Plugins.ZaelarAudio) || (cap.registerPlugin && cap.registerPlugin('ZaelarAudio')));
+      } catch (_) { return null; }
+    }
+    function call(name, arg) {
+      var p = plugin();
+      if (!p || typeof p[name] !== 'function') return Promise.resolve(null);
+      return Promise.resolve(p[name](arg)).catch(function () { return null; });
+    }
+    function listen(event, cb) {
+      var p = plugin();
+      if (!p || typeof cb !== 'function') return Promise.resolve(function () {});
+      return Promise.resolve(p.addListener(event, function (d) { try { cb(d || {}); } catch (_) {} }))
+        .then(function (h) { return function () { if (h && h.remove) h.remove(); }; }, function () { return function () {}; });
+    }
+    return {
+      available: function () { return call('available').then(function (r) { return !!(r && r.available); }); },
+      route: function () { return call('route'); },
+      setSpeaker: function (on) { return call('setSpeaker', { on: on !== false }); },
+      onRouteChange: function (cb) { return listen('audioRoute', cb); },
+      onInterruption: function (cb) { return listen('audioInterruption', cb); },
     };
   })();
 })();

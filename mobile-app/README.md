@@ -24,7 +24,7 @@ target (device family `1,2`), with the shell it gets (`/m` or the desktop `/`) s
 |---|---|
 | `AVAudioSession` `playAndRecord` + `voiceChat`, speaker by default, Bluetooth allowed; set at launch and on every foreground (`AppDelegate.swift`) | Everything you see and touch: dock, orb, deck, sheets, chat |
 | Plugins: Keyboard (`resize: native`, dark keys, no form accessory bar), Haptics, App, Geolocation, and the app's own `ZaelarDevice` (`DevicePlugin.swift`: device capabilities + an activity session — location with the screen locked, Bluetooth heart rate, motion activity, altitude; `docs/modules/zaelar-device-bridge.md`) | Voice v1: the LiveKit WebRTC client inside the WebView, foreground only |
-| Permission sentences (EN + ES `InfoPlist.strings`) for microphone, camera, location, Bluetooth and motion; iOS asks on first use, never at launch. The camera serves the face that looks at the person (frames processed on the phone), photos shared with the agent and video calls; motion also reads the head's attitude from AirPods (`window.ZaelarNative.headMotion`, V2-928 T10). Background modes: `location`, `bluetooth-central`, only used inside an activity the person starts | Safe-area layout (`viewport-fit=cover` + `env(safe-area-inset-*)`) |
+| Permission sentences (EN + ES `InfoPlist.strings`) for microphone, camera, location, Bluetooth and motion; iOS asks on first use, never at launch. The camera serves the face that looks at the person (frames processed on the phone), photos shared with the agent and video calls; motion also reads the head's attitude from AirPods (`window.ZaelarNative.headMotion`, V2-928 T10). Background modes: `location`, `bluetooth-central`, only used inside an activity the person starts, and `audio`: a voice conversation the person started keeps going with the screen locked | Safe-area layout (`viewport-fit=cover` + `env(safe-area-inset-*)`) |
 | `www/in-app.js`, the app's glue (below); light status bar; portrait on iPhone | Sign-in, session, i18n strings — all served by the engine |
 | `www/index.html`, shown only when the origin cannot be loaded (or answers 502/503/504): it retries on its own while the app is in the foreground (2 s, 4 s, 8 s, 15 s, then every 30 s), and at once on ↻ or on coming back to the foreground | |
 
@@ -113,6 +113,22 @@ buttons. Capacitor also injects its bridge into every page, remote origin includ
 `window.Capacitor.isNativePlatform()` (`services/push.js` uses it: no «add to Home Screen» offer inside the app) and
 reach plugins as `window.Capacitor.Plugins.<Name>` — never through an npm import, since the shell is served by the
 engine, not bundled. The user agent ends in `ZaelarApp/<version> (ios)`: a hint for the engine, never a credential.
+
+## The page's native bridges (`window.ZaelarNative`)
+
+Defined by `www/in-app.js`, so they exist only inside the app; a page feature-detects them and works without them.
+
+| Bridge | Contract | Native side |
+|---|---|---|
+| `headMotion` (V2-928 T10) | `available()` → Promise<boolean>; `start(cb)` → Promise<boolean>, `cb({yaw, pitch, t})` in radians and epoch ms; `stop()` → Promise. iOS only; Android answers `false` | `DevicePlugin.swift` (`CMHeadphoneMotionManager`) |
+| `audio` (V2-930) | `available()` → Promise<boolean>; `route()` → Promise<`{output, name, speakerForced}` \| null>, `output` ∈ speaker · earpiece · bluetooth · headphones · usb · airplay · car · other · none; `setSpeaker(on)` → Promise<route \| null> (on: the loudspeaker even where the system would use the earpiece; off: the system's choice again); `onRouteChange(cb)` → Promise<unsubscribe>, `cb(route + {reason})`, reason ∈ device_added · device_removed · override · category · wake · no_route · configuration · other; `onInterruption(cb)` → Promise<unsubscribe>, `cb({phase: began · ended · reset, shouldResume?, reason?, t})` — a call, Siri, another app's audio. iOS and Android | `AudioPlugin.swift` (`AVAudioSession` notifications, `overrideOutputAudioPort`) · `AudioPlugin.java` (`AudioDeviceCallback`, the communication device, the audio mode for calls — no phone-state permission) |
+
+`audio` never sets a **level**. iOS has no public way to scale what a WKWebView plays and the system volume is the
+person's, so the agent's voice level stays the page's own — a Web Audio gain where WebKit is the engine, the element's
+volume elsewhere (engine `frontend/app/services/volume.js`). Nor does it touch the session's category: the app sets it
+once (`AppDelegate.swift`) and WebKit drives it while the page captures. The engine's `services/native-audio.js`
+listens: the end of an interruption resumes the context the voice gain plays in; route changes and interruptions go
+to the session's trace.
 
 ## The screen as a sensor
 
@@ -213,6 +229,7 @@ template says 35), Java 21. What the native side adds, file by file
 | `ExternalWindowChromeClient.java` | Capacitor's chrome client (microphone and location prompts) + every new window (`window.open`, `target="_blank"`, also `window.open("")` whose location is set later) goes to the system browser — the account page, never inside the app | WKWebView's default for a new window |
 | `GatewayErrorWebViewClient.java` | Capacitor's WebView client, but only a main-frame 502/503/504 (or no answer at all) brings up the retry page; any other HTTP status is shown as the engine sent it | `NavigationFilter.swift` |
 | `app/build.gradle` + `AndroidManifest.xml` (`asset_statements`) | the app's side of Digital Asset Links for each host in `ZAELAR_APP_LINKS_HOST`, so Android offers the password saved for that site; the site's `/.well-known/assetlinks.json` must name `com.zaelar.app` with the SHA-256 of Play's app signing key (`delegate_permission/common.get_login_creds`) | `webcredentials:` in `App.entitlements.template` |
+| `AudioPlugin.java` | `window.ZaelarNative.audio` (contract above): the route, forcing the loudspeaker (the communication device on Android 12+, `setSpeakerphoneOn` before), device and communication-device changes, a call seen through the audio mode (Android 12+) | `AudioPlugin.swift` |
 | `MainActivity.java` | edge-to-edge on every version; the WebView between the system bars and above the keyboard (an Android WebView reads `env(safe-area-inset-*)` as 0, so the margins are native); light bar icons on the dark background; Back = the WebView's history, then the app to the background (the App plugin's own handler, which stops at the start, is off) | `contentInset: never`, Keyboard `resize: native`, light status bar |
 
 - **Voice**: WebRTC inside the WebView. Chromium switches the audio to communication mode (echo cancellation,
