@@ -18,6 +18,8 @@ def waits_on_his_yes(p: dict) -> bool:
     """Does this process wait on a yes/no about an act it retained (a send's confirmation, a card's consent)?"""
     if p["state"] != _board.WAITING:
         return False
+    if str(p.get("ask_id") or "").startswith(_board.STEP):      # a step parked on his OK asks exactly that
+        return True
     try:
         from nucleo.circuit import asker
         return asker.kind_of(asker.artefact(p["key"])) == asker.KIND_CONSENT
@@ -30,6 +32,14 @@ def deliver(p: dict, text: str, kind: str = OTHER) -> bool:
     """Hand `text` to process `p` as he said it: its open question takes it as the answer — a plain yes or no decides
     its retained act at once, as the screen's button does; anything else resumes the task with his words — and a
     running worker takes it as his next words."""
+    if str(p.get("ask_id") or "").startswith(_board.STEP):      # his yes or no to a parked step goes to THAT step
+        if kind in (YES, NO):
+            from nucleo.request.consent_ask import yes_no
+            from widgets.navegador import tasks as _nav
+            _nav.answer(str(p["ask_id"])[len(_board.STEP):], yes_no()[0 if kind == YES else 1])
+            return True
+        from nucleo import dispatch as _d      # anything else is for the process that runs it
+        return bool(p.get("dispatch")) and bool(_d.relay_his_words(p["dispatch"], text))
     if p["state"] == _board.WAITING and p.get("ask_id"):
         from nucleo.cli import worker_api
         choice = {YES: 0, NO: 1}.get(kind)          # the caller passes yes/no only for a process waiting on a yes

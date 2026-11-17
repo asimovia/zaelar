@@ -201,3 +201,31 @@ def test_disarmed_a_delivery_that_fails_is_not_called_taken(desk, monkeypatch):
     desk.procs, _ = [WAITS], desk.model(1)
     monkeypatch.setattr(route, "deliver", lambda p, text: False)
     assert _take(desk, "send it") is False and desk.events[-1]["delivered"] is False
+
+
+def test_a_step_parked_on_his_ok_is_that_processs_question_and_his_yes_answers_the_step(monkeypatch):
+    """V2-931 P5 — the browser's click gate asked in its own registry: the board never listed it, so with its worker
+    running his «yes» was relayed to the worker as words. A parked step is the open question of the process that runs
+    it; a plain yes or no goes to THAT step, anything else to the process."""
+    from nucleo import dispatch
+    from nucleo.cli import worker_api
+    from nucleo.request import stop_row
+    from nucleo.switchboard import act
+    from widgets.navegador import tasks as nav
+    monkeypatch.setattr(worker_api, "open_asks", lambda: [])
+    monkeypatch.setattr(dispatch, "pending_summaries", lambda: [{"id": "7", "request": "Renew the gym membership"}])
+    monkeypatch.setattr(dispatch, "get_record", lambda t: SimpleNamespace(uid="r-7"))
+    monkeypatch.setattr(stop_row, "parked_step", lambda: {"step": "2", "question": "Pay 29 €?", "task": "gym", "uid": "r-7"})
+    (p,) = _real_open()
+    assert (p["state"], p["question"], p["ask_id"], p["dispatch"]) == ("waiting", "Pay 29 €?", "step:2", "7")
+    assert act.waits_on_his_yes(p)
+    got, relayed = [], []
+    monkeypatch.setattr(nav, "answer", lambda step, text: got.append((step, text)))
+    monkeypatch.setattr(dispatch, "relay_his_words", lambda which, words: relayed.append((which, words)) or True)
+    from nucleo.request.consent_ask import yes_no
+    assert act.deliver(p, "sí, págalo", "yes") and act.deliver(p, "no", "no")
+    assert got == [("2", yes_no()[0]), ("2", yes_no()[1])] and relayed == []
+    assert act.deliver(p, "mejor con la otra tarjeta", "other") and relayed == [("7", "mejor con la otra tarjeta")]
+
+
+_real_open = board.open_processes

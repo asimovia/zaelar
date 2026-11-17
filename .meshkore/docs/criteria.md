@@ -265,8 +265,11 @@ below is the first kind, or it names the mechanism that replaced the second.
   `kind.sure_order`) starts with no question; a REMARK — a comment, a complaint (`kind.a_remark`) — builds nothing,
   asks nothing and ends its row there; anything else asks ONE question, worded for him (`kind.asked`). The cluster
   dev-worker is exempt. A start gate's question is on its row BEFORE it is said (`confirm.park`): his answer has
-  somewhere to go from the instant the gate decides to ask. A send asks once, at its exit door, never also at its
-  start. — since 2026-09-23, narrowed 2026-11-17 and 2026-11-18 · nodes 2.76, 2.1170, 2.1804.
+  somewhere to go from the instant the gate decides to ask. ONE act, ONE question: a send asks once, at its exit
+  door, never also at its start; a draft he was shown and then ordered sent is not asked about again — the turn that
+  hands the send over records his sure order over that row (`message.note_his_order`) and the exit door reads it
+  (`message.confirmed` → released, followed to its receipt like a yes, CRIT-C9); his yes to OUR offer is his order to
+  do it and never his yes to the question a critical errand asks before it starts (`offered`, not `confirmed`). — since 2026-09-23, narrowed 2026-11-17 and 2026-11-18 · nodes 2.76, 2.1170, 2.1804.
 - **CRIT-T3a · Nothing acts on a sentence he has not finished, and nothing he said is asked again.** The model starts
   when the ear CONFIRMS the end of turn, not on its eager announcement (`SETTINGS.preemptive_generation`, off): a turn
   acts — it commissions, answers a waiting question, sends — and a draft of an unfinished sentence did all of that
@@ -948,7 +951,9 @@ Flash keeps the conversation; the row is what both brains read.
   (`dispatch.control.cancel_row`, the screen's button: a running worker is told to stop, a queued one never starts, a
   waiting question is closed), never as words relayed to the worker; a stop that reaches Flash instead (`stop_worker`,
   the `stop_errand` verdict → `dispatch.cancel_soon`) ends in that same door, and «everything» also closes the rows
-  that only wait on his answer (node 2.1805); anything else resumes the process
+  that only wait on his answer (node 2.1805). A STEP of a running process parked on his OK (its browser's click gate)
+  is that process's open question on the board: his plain yes or no answers that step, anything else goes to the
+  process that runs it; anything else resumes the process
   with his words. An unreadable or
   late decision is Flash's turn, never his words lost. Every decision is one `thread` event (`event: switchboard`)
   with the board it read, who decided, why and the ms. Flash has no tool that routes his words to a process. One

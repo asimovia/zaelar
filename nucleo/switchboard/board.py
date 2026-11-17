@@ -8,6 +8,8 @@ from __future__ import annotations
 from loguru import logger
 
 RUNNING, WAITING = "running", "waiting"
+#: The `ask_id` of a question that is a parked STEP of a running process (never a row's own ask): `step:<its id>`.
+STEP = "step:"
 
 
 def _note(what: str, e: Exception) -> None:
@@ -43,6 +45,14 @@ def open_processes() -> list[dict]:
                         "question": "", "ask_id": "", "since": 0, "phase": str(s.get("phase") or "")[:120]}
     except Exception as e:  # noqa: BLE001
         _note("live sessions", e)
+    try:                                   # a STEP of a running process parked on his OK (its browser's click gate) is
+        from nucleo.request import stop_row    # that process's open question too: it lived in the browser's own registry
+        step = stop_row.parked_step()
+        p = out.get(str((step or {}).get("uid") or ""))
+        if p is not None and p["state"] == RUNNING:
+            p.update(state=WAITING, question=str(step["question"])[:300], ask_id=f"{STEP}{step['step']}")
+    except Exception as e:  # noqa: BLE001
+        _note("parked step", e)
     return sorted(out.values(), key=lambda p: (p["since"] or 0, p["key"]))
 
 
