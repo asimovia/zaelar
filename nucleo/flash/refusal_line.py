@@ -38,18 +38,6 @@ def clean(text: str) -> str:
     return " ".join(said).rstrip(";").strip()
 
 
-def codey(text: str) -> bool:
-    """Does `text` carry something shaped like code — a snake_case name, a backtick, a brace?"""
-    return bool(_CODEY.search(str(text or "")))
-
-
-def without_code(text: str) -> str:
-    """`text` with its code-shaped words taken out, for a composer that must not learn them: a field or an action
-    name it never read is one it cannot say."""
-    s = " ".join(_QUOTED_FIELD.sub("", str(text or "")).split("`")[::2])      # what sits between backticks goes
-    return " ".join(_CODEY.sub(" ", s).split()).strip(" :;,—-")
-
-
 def speakable(wid: str, res: dict) -> str:
     """The widget's own sentence for the operator, cleaned — `say` (bundle key) first, then `message`. Never `error`."""
     res = res if isinstance(res, dict) else {}

@@ -41,11 +41,13 @@ def test_an_op_still_running_past_the_wait_keeps_todays_path():
     assert not _run([{"ok": False, "error": "x"}], delay=2.0)
 
 
-def test_the_turn_says_the_reason_and_is_no_longer_done(monkeypatch):
+def test_the_turn_says_it_was_not_done_and_is_no_longer_done(monkeypatch):
+    """The refusal is said in the mouth's plain line; the `error` is the model's and is never composed into words
+    (2026-11-17 — a channel he lacks is said by the card's own `say`, `widgets.mensajeria.refusal_no_channel`)."""
     from nucleo.flash import data_ops
     from nucleo.workers import spoken_delivery
     async def _line(goal, summary, ok=True, **_k):
-        return "I couldn't send it — I don't have Rowan's Telegram."
+        raise AssertionError("the card's error was handed to a composer")
     monkeypatch.setattr(spoken_delivery, "line", _line)
     sent, done = [], {"v": True}
 
@@ -58,4 +60,4 @@ def test_the_turn_says_the_reason_and_is_no_longer_done(monkeypatch):
             return {"ok": False, "error": "no tengo el Telegram de Rowan"}
         return await data_ops.say_refusal_instead([("mensajeria", asyncio.ensure_future(op()))], done, sent.append, _Sp)
     said = asyncio.run(go())
-    assert said and sent == [said] and done["v"] is False
+    assert said and sent == [said] and done["v"] is False and "Telegram" not in said

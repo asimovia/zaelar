@@ -145,21 +145,19 @@ async def refused_unsaid(tasks, timeout: float = 4.0):
 
 
 async def say_refusal_instead(tasks, data_done: dict, send, speech) -> str:
-    """Before the canned success ack: when `refused_unsaid`, the turn is NOT done and the reason is SAID, in the
-    agent's language. Returns what was said ("" = today's path)."""
+    """Before the canned success ack: when `refused_unsaid`, the turn is NOT done and that is SAID, in the agent's
+    language: the plain line. The card's `error` is written for the MODEL and never reaches the mouth,
+    composed or not (2026-11-16: handed to a composer, it came out as «add a notice_at value») — a reason he should
+    hear is the card's own `say`/`message`, and a refusal that carries one never gets here. Returns what was said
+    ("" = today's path)."""
     why = await refused_unsaid(tasks)
     if not why:
         return ""
     data_done["v"] = False
     try:
-        from nucleo.workers import spoken_delivery as _sd
         from voice.observer import emit
-        # The reason is the card's `error`, written for the MODEL: the composer is handed it without its code-shaped
-        # words, and a line that still names one (a field, an action) is not said — the plain line is.
-        said = await _sd.line(why[0], _rline.without_code(why[1]), ok=False) or _failed_line()
-        if _rline.codey(said):
-            said = _failed_line()
-        emit("brain", "🚫 «hecho» retirado: todas las ops del turno se rechazaron — se dice el motivo", role="system",
+        said = _failed_line()          # the mouth's own line for a refusal with no sentence (`reply.line`)
+        emit("brain", "🚫 «hecho» retirado: todas las ops del turno se rechazaron — se dice que no se hizo", role="system",
              text=f"{why[0]}: {why[1][:140]}", extra={"cat": "flash", "id": why[0], "is_error": True})
     except Exception:  # noqa: BLE001
         said = _failed_line()
