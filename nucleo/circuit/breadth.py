@@ -83,6 +83,31 @@ def progress(sheet: str, considered: int = -1) -> dict:
             "state": str((data.get("summary") or {}).get("state") or "")}
 
 
+#: Why an errand that handed over nothing is not met (the shortfall a relaunch carries, and what he hears at the end).
+NOTHING_DELIVERED = "no se ha entregado ningún resultado: la búsqueda no encontró nada que cumpla lo pedido"
+
+
+def delivered_nothing(rec) -> str:
+    """The reason this errand delivered NOTHING it promised, or "" (INI-071 B3). Read by `close` before any verdict.
+
+    What an errand promised is declared where it was born, never guessed from its words: a results surface (a list, one
+    item) promises ROWS on its sheet, and a worker that reported its finalists (`hbnote considered N --kept M`) promised
+    that many. An end state a card attests by the search ATTEMPT alone (`navegador:search`: the query is on the page)
+    stays true when nothing was found — so the sheet, and only then the count, decide. "" when neither was declared,
+    or when the sheet cannot be read: an unreadable sheet is never a failure."""
+    try:
+        from nucleo import surfaces
+        sheet = str(getattr(rec, "sheet", "") or "")
+        if sheet and surfaces.opens_sheet(str(getattr(rec, "surface", "") or "")):
+            from widgets.results import data as _sheet
+            return "" if int(_sheet.holding(sheet).get("kept") or 0) > 0 else NOTHING_DELIVERED
+        kept = getattr(rec, "kept", -1)
+        return NOTHING_DELIVERED if isinstance(kept, int) and kept == 0 else ""
+    except Exception as e:  # noqa: BLE001 — a delivery that cannot be read is judged by its spec, as before
+        logger.debug(f"breadth: delivery unreadable: {e!r}")
+        return ""
+
+
 def short(tgt: dict, prog: dict) -> bool:
     """Is the progress below the brief's own target? Compared only against numbers the composer declared."""
     if not tgt or not prog:

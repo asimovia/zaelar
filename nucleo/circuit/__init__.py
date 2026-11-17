@@ -448,6 +448,10 @@ def _close(rec, relay_cap: int) -> str:
     _src_entry = entry or _spec.of_task(str(getattr(rec, "uid", "") or "")) or {}
     if verdict == "unmet" and "inferred" in str(_src_entry.get("source") or ""):
         verdict, missing = "unverifiable", ""
+    # INI-071 B3 — the outcome is judged on what the errand DELIVERED: a search that found nothing satisfies a card's
+    # end state («the query is on the page») and still handed over nothing. Empty is a shortfall, never `met`.
+    if verdict in ("met", "unverifiable", "undeclared") and (empty := _breadth.delivered_nothing(rec)):
+        verdict, missing = "unmet", empty
     # V2-840 H2 — the brief's own target is part of the end state: a model judged the shortfall NOT enough.
     gap = _breadth.another_round(rec) if verdict in ("met", "unverifiable", "undeclared") else ""
     if gap and tries < retries() and int(getattr(rec, "relay_gen", 0) or 0) < relay_cap:
