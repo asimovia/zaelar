@@ -37,6 +37,7 @@ export function attachVideo(el) { videoEl = el; }
 // and a namespace missing the export would throw inside a hot path. This engine has no LiveKit room to unlock, so
 // the honest implementation is the element half of it: resume playback if the browser paused it.
 export async function unlockAudio() {
+  audio.resumeContext();   // before any await, as in session-lk.js: the voice's gain (iOS) needs a running context
   try { if (botAudioEl && botAudioEl.paused && botAudioEl.play) await botAudioEl.play(); }
   catch (_) { store.setAudioBlocked(true); return false; }
   store.setAudioBlocked(false);
@@ -220,7 +221,7 @@ export async function start() {
     pc.ontrack = e => {
       const a = botAudioEl; if (!a) return; a.srcObject = e.streams[0]; a.muted = store.botMuted();   // honor persisted bot-mute
       if (a.play) a.play().then(store.hideAlert).catch(() => store.showAlert(t("voice.alert_tap_audio"), () => a.play().catch(() => {})));
-      audio.attachBot(e.streams[0]);
+      audio.attachBot(e.streams[0], vol.routesOut());
     };
     pc.onconnectionstatechange = () => {
       if (!pc) return; const c = pc.connectionState; store.setConnState(c, c === "connected");

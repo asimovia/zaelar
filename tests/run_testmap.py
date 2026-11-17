@@ -6413,6 +6413,15 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/browser/unit/chat/test_the_wall_is_in_the_order_things_were_committed.py",
                                   "tests/browser/unit/chat/test_the_rendered_wall_keeps_commit_order_and_marks_what_was_restored.py",
                                   "tests/voice/unit/providers/test_the_still_listening_nudge_needs_an_open_ear.py"]},
+        # 2026-11-17 — the operator: «volumen al 30 %» does nothing on the iPhone. iOS WebKit plays an element at full
+        # whatever its `volume` says (and reads the value back), so there the voice leaves through a Web Audio gain.
+        {"id": "4.573", "title": "His voice's volume holds on the iPhone (V2-930 gain): iOS WebKit (told by its platform, "
+                                 "since its element reads back the volume it ignores) routes the agent's voice through a "
+                                 "Web Audio gain and holds the element silent; the gain carries the level (30 % = 0.3 of "
+                                 "full on a real graph) and the 🔊 (muted = silence); one route at a time, none after a "
+                                 "stop; the unlock resumes its context; elsewhere the element's own volume stays the way "
+                                 "out. Disarms: the platform test off, the element left unmuted while routed",
+            "ch": UNIT, "paths": ["tests/browser/unit/voice/test_the_voice_level_holds_where_the_element_ignores_it.py"]},
         {"id": "4.566", "title": "The agent's face (V2-928): every face of the catalogue draws at rest, speaking and thinking; "
                                  "Porcelain is the default; every label of Settings ▸ Presence is in both bundles; the rig "
                                  "is never a statue (idle actions, speech accents). Disarm: life.js off → a statue",

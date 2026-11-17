@@ -4,11 +4,15 @@
 // never the device's system volume, which a web page (and an iOS app through public API) cannot set. Kept per device
 // (`hb_bot_volume`): the phone and the desktop each keep their own. Mute stays its own switch (`store.botMuted`, the
 // 🔊): the element plays at 0 while muted and at this level otherwise, so un-muting brings back the level he chose.
-// iOS WebKit ignores `HTMLMediaElement.volume`; there `settable()` is false and the screen says so instead of
-// claiming a level it could not set. Nothing here waits on a frame or on the page being visible: a locked phone's
-// voice order lands the same way.
+// iOS WebKit (Safari and the app's WKWebView) ignores `HTMLMediaElement.volume`: there the voice leaves through a
+// Web Audio gain instead (services/audio.js — same track, source → gain → speakers) and the element only stays silent.
+// Everywhere else the element's own volume is the level, as before: on Chrome a remote voice played through Web Audio
+// is not the reference its echo canceller listens to, so the mic would hear the agent. Only with neither (no Web
+// Audio either) is `settable()` false, and the screen says so instead of claiming a level it could not set. Nothing
+// here waits on a frame or on the page being visible: a locked phone's voice order lands the same way.
 import * as store from "../core/store.js?v=2";
 import { createEffect, createSignal } from "../core/reactive.js?v=2";
+import * as audio from "./audio.js?v=2";
 
 const KEY = "hb_bot_volume";
 /** One spoken «louder» / «quieter». */
@@ -48,21 +52,42 @@ export const step = (dir) => setLevel(_level() + (dir < 0 ? -STEP : STEP));
 export const out = () => (store.botMuted() ? 0 : _level() / 100);
 
 /** Hold the element to the 🔊 and the level. The vendor rewrites `muted` on every attach, so the session calls this on
- *  attach and on every `volumechange` (writes only on a difference, so it cannot loop). */
+ *  attach and on every `volumechange` (writes only on a difference, so it cannot loop). With the voice routed through
+ *  the gain the element is held SILENT — it is still the track's sink, but the voice must come out once — and the
+ *  gain carries the level and the 🔊. */
 export function enforce(el) {
+  audio.setBotGain(out());
   if (!el) return;
-  const muted = store.botMuted(), v = out();
+  const routed = audio.botOutRouted();
+  const muted = routed || store.botMuted(), v = routed ? 0 : out();
   if (el.muted !== muted) el.muted = muted;
+  if (routed) return;   // a volume the platform ignores is not written (it would only fire a `volumechange` loop)
   if (Math.abs((typeof el.volume === "number" ? el.volume : 1) - v) > 0.004) { try { el.volume = v; } catch (_) {} }
 }
-/** Keep `el` following the level and the 🔊 for the life of the page. */
-export function bind(el) { createEffect(() => { _level(); store.botMuted(); enforce(el); }); }
-
-let _settable = null;
-/** False where the platform ignores an element's volume (iOS WebKit): the level cannot be honoured on this screen. */
-export function settable() {
-  if (_settable !== null) return _settable;
-  try { const a = document.createElement("audio"); a.volume = 0.5; _settable = Math.abs(a.volume - 0.5) < 0.01; }
-  catch (_) { _settable = true; }
-  return _settable;
+/** Keep `el` following the level and the 🔊 for the life of the page — and the gain route appearing or going. */
+export function bind(el) {
+  audio.onBotOutChange(() => enforce(el));
+  createEffect(() => { _level(); store.botMuted(); enforce(el); });
 }
+
+let _honours = null;
+// iOS WebKit KEEPS the value written to an element's `volume` and reads it back, yet plays at full (measured on an
+// iPhone, iOS 18.7, in the app's WKWebView, 2026-11-17): a read-back probe cannot see it, so iOS is told by its
+// platform (every browser there is WebKit; an iPad asks for the desktop site as a touch «MacIntel»).
+const _iosWebKit = () => {
+  try { const n = navigator; return /iPad|iPhone|iPod/.test(n.userAgent || "") || (n.platform === "MacIntel" && n.maxTouchPoints > 1); }
+  catch (_) { return false; }
+};
+/** Does this platform play an element at the volume the page sets? False on iOS WebKit. */
+export function elementHonoursVolume() {
+  if (_honours !== null) return _honours;
+  if (_iosWebKit()) return (_honours = false);
+  try { const a = document.createElement("audio"); a.volume = 0.5; _honours = Math.abs(a.volume - 0.5) < 0.01; }
+  catch (_) { _honours = true; }
+  return _honours;
+}
+const _webAudio = () => typeof window !== "undefined" && !!(window.AudioContext || window.webkitAudioContext);
+/** Should the agent's voice leave through the gain on this screen? Only where the element's volume is ignored. */
+export function routesOut() { return !elementHonoursVolume() && _webAudio(); }
+/** False only where neither the element nor a gain can carry the level: the screen says so instead. */
+export function settable() { return elementHonoursVolume() || _webAudio(); }

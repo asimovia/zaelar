@@ -119,8 +119,12 @@ classifier this module refuses to be.
   one door (`frontend/app/services/volume.js`) that the 🔊's slider (`components/VolumeSlider.js`: a popover over the
   desktop lid — wheel or right click on the 🔊 —, a line over the phone dock, a row in the phone's Settings) and his
   voice share. The bot's `<audio>` plays at 0 while muted and at the level otherwise. It is **not the system volume**: a
-  web page — and an iOS app through public API — cannot set it. iOS WebKit also ignores an element's volume; there the
-  screen says the volume follows the device's buttons instead of claiming a level. «Louder» over a muted speaker brings
+  web page — and an iOS app through public API — cannot set it. iOS WebKit (Safari and the app's WKWebView) plays an
+  element at full whatever its `volume` says — and reads the written value back, so only the platform gives it away
+  (measured on an iPhone, iOS 18.7): there the voice leaves through a Web Audio gain (`services/audio.js`, the same
+  track's source → gain → speakers, the element held silent) and the gain carries the level and the 🔊. Elsewhere the
+  element's own volume stays the way out (Chrome's echo canceller listens to the element, not to Web Audio). Only with
+  neither does the screen say the volume follows the device's buttons. «Louder» over a muted speaker brings
   the speaker back; «quieter» leaves it muted. A bare «sube el volumen» is not seeded: a playing video or song owns it
   as often, so the model decides with the screen in view.
 - **One-way acts**: after `mic_off` or `off` he cannot be heard, so there is no voice way back — the button is. Their
