@@ -2,7 +2,7 @@
 // update/VersionLabel.js — the build number a person can read, ONE element for both shells (node 4.568).
 //
 // The desktop mounts it from `UpdateSurface.js` as `#hb-upd-ver`, bottom-right just above the bottom system bar,
-// over the desk's background; the phone shell mounts it as the last line of its ☰ page. Both read the SAME
+// over the desk's background; the phone shell mounts it as the last line of its ☰ page, at 14px. Both read the SAME
 // `watch.js` signals, so the number climbs live in a tab left open for days, with no second poll.
 //
 // Quiet on purpose: small muted type (`--hb-muted-2`, light grey on the dark themes and the muted ink on the light
@@ -28,8 +28,9 @@ function injectStyles() {
      and the feedback launcher (.fw-wrap, bottom: wrail-h + 16px), so line-height 1 and 3px off the bar. */
   #hb-upd-ver{position:fixed;right:calc(var(--chatdock-r,0px) + 14px);bottom:calc(var(--wrail-h,58px) + 3px);
     z-index:11;line-height:1}
-  /* Phone: the foot of the ☰ page, centred under the last row. */
-  .zm-ver{display:block;text-align:center;padding:18px 16px 22px}
+  /* Phone: the foot of the ☰ page, centred under the last row, at a size he can read without squinting (operator,
+     2026-11-17: the 11px badge was too small on the phone). */
+  .zm-ver{display:block;text-align:center;padding:18px 16px 22px;font-size:14px;opacity:.9}
   `;
   document.head.appendChild(s);
 }

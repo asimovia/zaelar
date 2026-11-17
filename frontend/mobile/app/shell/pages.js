@@ -1,5 +1,5 @@
 // pages.js — ONE PAGE AT A TIME (V2-876 D-A/D-D). Every shell surface is a full-screen page (Page.js) and pages never
-// stack: opening one closes the others. Account, settings, feedback and connectors are opened FROM the ☰ page, so back returns there;
+// stack: opening one closes the others. Account, settings, feedback, connectors and devices are opened FROM the ☰ page, so back returns there;
 // Presence is opened from Settings, so back returns to Settings.
 import { createEffect, untrack } from "../../../app/core/reactive.js?v=2";
 import * as store from "../../../app/core/store.js?v=2";
@@ -8,12 +8,13 @@ import { onCardFront } from "../../../app/widgets/card-front.js?v=1";
 import { connectorsOpen, setConnectorsOpen } from "./ConnectorsSheet.js?v=1";
 import { accountOpen, setAccountOpen } from "./AccountSheet.js?v=1";
 import { presenceOpen, setPresenceOpen } from "./PresenceSheet.js?v=1";
+import { devicesOpen, setDevicesOpen } from "./DevicesSheet.js?v=1";
 
 // Each page: [is open, set open, the surface it is (`mobile-surfaces.js` id — the screen document's `panel`)].
 export const PAGES = [[store.chatOpen, store.setChatOpen, "chat"], [store.mobileMenuOpen, store.setMobileMenuOpen, "menu"],
   [store.mobileSettingsOpen, store.setMobileSettingsOpen, "settings"], [store.mobileFeedbackOpen, store.setMobileFeedbackOpen, "feedback"],
   [connectorsOpen, setConnectorsOpen, "connectors"], [accountOpen, setAccountOpen, "account"],
-  [presenceOpen, setPresenceOpen, "presence"],
+  [presenceOpen, setPresenceOpen, "presence"], [devicesOpen, setDevicesOpen, "devices"],
   [appsOpen, setAppsOpen, "apps"]];
 
 export function onePageAtATime() {
@@ -28,7 +29,7 @@ export function backFromPage() {
   for (const [get, set] of PAGES) if (get()) {
     set(false);
     if (get === presenceOpen) store.setMobileSettingsOpen(true);            // Presence was opened from Settings
-    else if (get === store.mobileSettingsOpen || get === store.mobileFeedbackOpen || get === connectorsOpen || get === accountOpen) store.setMobileMenuOpen(true);
+    else if (get === store.mobileSettingsOpen || get === store.mobileFeedbackOpen || get === connectorsOpen || get === accountOpen || get === devicesOpen) store.setMobileMenuOpen(true);
     return true;
   }
   return false;

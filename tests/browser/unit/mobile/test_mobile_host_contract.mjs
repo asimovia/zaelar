@@ -276,12 +276,16 @@ check("feedback is a row of the ☰ page that opens its own page, and not a dock
   && /comp: FeedbackSheet/.test(SURFACES) && /FeedbackForm\(/.test(read("frontend", "mobile", "app", "shell", "FeedbackSheet.js")),
   "the ☰ page must carry a feedback row opening FeedbackSheet (mounted from mobile-surfaces.js)");
 check("the menu does not embed the form", !/FeedbackForm/.test(MENUSHEET), "the form lives on its own page");
-check("the menu button is ☰ and the menu leads with the Energy, then the account, and ends with log out",
+check("the menu button is ☰ and the menu leads with the Energy, then the account, and ends with feedback, log out and the build",
   /raw\(MENU\)/.test(DOCKBAR) && !/const CFG\b/.test(DOCKBAR)
   && MENUSHEET.indexOf('"zm-energy"') > 0 && MENUSHEET.indexOf('"zm-energy"') < MENUSHEET.indexOf('t("mobile.account")')
-  && MENUSHEET.lastIndexOf('t("mobile.logout")') > MENUSHEET.indexOf('t("daemon.mobile.row")')
+  && MENUSHEET.indexOf('t("mobile.devices")') > 0
+  && MENUSHEET.indexOf('t("mobile.devices")') < MENUSHEET.indexOf('t("feedback.title")')
+  && MENUSHEET.indexOf('t("feedback.title")') < MENUSHEET.indexOf('t("mobile.logout")')
+  && MENUSHEET.indexOf('t("mobile.logout")') < MENUSHEET.indexOf("VersionLabel({")
+  && !/daemon\.mobile\.(row|hint|connected)/.test(MENUSHEET)
   && /openAccount\((?:inNativeApp\(\) \? "" : )?"buy"\)/.test(MENUSHEET),   // V2-870: no #buy inside the native app
-  "the ☰ sheet must open with the Energy row that opens the top-up, then the account row, and end with log out (operator 2026-11-17)");
+  "the ☰ sheet must open with Energy, then the account; Devices is one row whose page holds the computer; the foot is feedback, log out, then the build number (operator 2026-11-17)");
 // Feedback 9c654886: «Log out» posted to the account service's origin, a front door that refuses cross-origin
 // writes refused it, the error was swallowed and the reload signed the person straight back in. The sign-out is a
 // same-origin POST now, and nothing in the menu may point it at another origin again.

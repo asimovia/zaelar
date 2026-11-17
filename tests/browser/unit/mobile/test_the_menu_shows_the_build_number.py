@@ -1,7 +1,7 @@
 """The phone shell shows the build number at the foot of its ☰ page, live (2026-11-17, node 4.568).
 
-The operator: the build number visible on the phone too, subtle, at the bottom of the menu that opens from the dock,
-under the energy and account rows. It is the desktop badge's own element (`update/VersionLabel.js`) reading the same
+The operator: the build number visible on the phone too, at the bottom of the menu that opens from the dock, the very
+last line after Feedback and Log out — and READABLE (2026-11-17: the 11px badge was too small to read on the phone). It is the desktop badge's own element (`update/VersionLabel.js`) reading the same
 `update/watch.js` signals, so the number follows `GET /api/update` without a reload; and the phone mounts the update
 surface WITHOUT the desktop's floating badge — one number per shell.
 
@@ -58,12 +58,12 @@ def phone():
         yield pg
 
 
-def test_the_menu_ends_with_the_build_number_quiet_and_live(phone):
+def test_the_menu_ends_with_the_build_number_readable_and_live(phone):
     s = phone.evaluate(_STATE)
     assert s["found"], "the ☰ page has no build number"
     assert s["visible"] and s["text"] == "v150", f"the ☰ page shows {s['text']!r}, the engine says v150: {s}"
     assert s["belowRows"], f"the build number must sit at the foot of the page, under every row: {s}"
-    assert s["fontPx"] <= 12 and s["opacity"] < 1, f"the build number has to be subtle: {s}"
+    assert s["fontPx"] >= 13 and s["opacity"] >= 0.85, f"the build number has to be readable on a phone: {s}"
     assert not s["floatingBadge"], "the phone mounted the desktop's floating badge as well — one number per shell"
     shot(phone, "menu-build-number")
 

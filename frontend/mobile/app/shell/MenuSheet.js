@@ -3,7 +3,9 @@
 // lleva arriba el perfil, la configuración, las voces y los conectores; el chat lleva lo del agente»). ORDER
 // (2026-11-17, operator): Energy first, then My account (its own page, AccountSheet.js: the account area, profile,
 // plans, invoices and deleting the account — what is done once goes one tap deeper, not on a page opened many times a
-// day) · Physical presence (the agent's face on or off, V2-928) · Settings · Voice · Connectors · Feedback · your computer (read only) · Log out, last. Every row carries an
+// day) · Physical display (the agent's face on or off, V2-928) · Settings · Voice · Connectors · Devices (its own page,
+// DevicesSheet.js: this phone and his computer, read only) · then what has nothing to do with the session, at the foot:
+// Feedback · Log out · the build number, last and readable (operator, 2026-11-17). Every row carries an
 // outline icon from app/lib/icons.js. The «desktop version» row moved off this page: the escape hatch stays in
 // Settings (SettingsSheet.js) and index.html's `?desktop=1`. The RUNNING PROCESSES live in the chat's Processes tab (ChatSheet.js); the widgets launcher is the
 // dock's (AppsPane.js).
@@ -19,6 +21,7 @@ import * as daemon from "../../../app/services/daemon.js?v=3";
 import { Page } from "./Page.js?v=1";
 import { setConnectorsOpen } from "./ConnectorsSheet.js?v=1";
 import { setAccountOpen, openAccount } from "./AccountSheet.js?v=1";
+import { setDevicesOpen, devicesSummaryKey } from "./DevicesSheet.js?v=1";
 import { Row } from "./menu-row.js?v=1";
 import { VersionLabel } from "../../../app/update/VersionLabel.js?v=1";
 import { presenceOn, togglePresence } from "../../../app/presence/state.js?v=1";
@@ -75,7 +78,7 @@ export function MenuSheet() {
       () => store.cloudProfile()
         ? Row(USER_ICON, () => t("mobile.account"), () => t("mobile.account_sub"), go(setAccountOpen))
         : null,
-      // ── PHYSICAL PRESENCE (V2-928 T11): the agent's face behind the home, on or off — the desktop's ☺, by the account
+      // ── PHYSICAL DISPLAY (V2-928 T11): the agent's face behind the home, on or off — the desktop's ☺, by the account
       //    rows. The subtitle names the face it wears; choosing another is Settings ▸ Presence.
       h("button", { class: () => "zm-row zm-toggle" + (presenceOn() ? " on" : ""), "aria-pressed": () => String(presenceOn()),
         onClick: () => togglePresence("menu") },
@@ -87,38 +90,21 @@ export function MenuSheet() {
         () => { session.cycleVoice(); api.uiEvent("mobile:voice_cycle", {}); }),
       // ── CONNECTORS (2026-11-16): the desktop chat wall's list, one tap deep.
       Row(PLUG_ICON, () => t("chat.tabConnectors"), () => t("mobile.connectors_sub"), go(setConnectorsOpen)),
-      Row(MESSAGE_SQUARE_ICON, () => t("feedback.title"), () => t("mobile.feedback_sub"), go(store.setMobileFeedbackOpen)),
 
-      // ── 🖥 THE LOCAL DAEMON, READ ONLY (V2-575 P1). A phone does not install a desktop daemon, so this row
-      //    has no chevron and no click: it REPORTS. It is here because "is my computer connected?" is a
-      //    question somebody asks from wherever they are, and a mobile shell that simply omitted the answer
-      //    would read as "this device has no daemon" rather than "you cannot set it up from here".
-      h("div", { class: () => "zm-row zm-row-static" + (daemon.isOffered() ? "" : " is-off") },
-        h("span", { class: "zm-row-i", "aria-hidden": "true" }, raw(DESKTOP_ICON)),
-        h("span", { class: "zm-row-t" },
-          h("b", null, () => t("daemon.mobile.row")),
-          // What works FROM HERE, said plainly (P1): the folders he granted can be read, a sign-in window cannot
-          // open on a phone — it opens on the computer, so the phone never promises one.
-          h("small", null, () => (daemon.isConnected() ? t("daemon.mobile.connected") : t("daemon.mobile.hint"))),
-          // The browser the sign-in window uses and the link to the cloud agent, one line each — the same words
-          // the desktop's settings screen uses (`daemon.browserLine` / `daemon.linkLine`), read, never set here.
-          h("small", { class: "zm-daemon-browser" }, () => {
-            const b = daemon.browserLine();
-            return t("daemon.mobile.browser_line", { state: t(b.key, b.vars || undefined) });
-          }),
-          h("small", { class: "zm-daemon-link" }, () => {
-            const l = daemon.linkLine();
-            return t("daemon.mobile.link_line", { state: t(l.key, l.vars || undefined) });
-          }),
-        ),
-      ),
+      // ── DEVICES: one line of title, one of subtitle — the computer's state, since the phone is always there. The
+      //    rows (this phone, his computer and its daemon) and the explanation live on the page it opens.
+      Row(DESKTOP_ICON, () => t("mobile.devices"),
+        () => t(devicesSummaryKey(daemon.isOffered(), daemon.isConnected())), go(setDevicesOpen)),
+
+      // ── AT THE FOOT, what has nothing to do with the session: Feedback, Log out, then the build number.
+      Row(MESSAGE_SQUARE_ICON, () => t("feedback.title"), () => t("mobile.feedback_sub"), go(store.setMobileFeedbackOpen)),
 
       // ── LOG OUT, last — cloud only (self-host has no sign-in to leave).
       () => store.cloudProfile()
         ? Row(LOG_OUT_ICON, () => t("mobile.logout"), null, logOut)
         : null,
     ),
-    // The build number, quiet, at the foot of the page — the same live element as the desktop's badge.
+    // The build number, the very last line — the same live element as the desktop's badge, at a size he can read.
     VersionLabel({ cls: "zm-ver" }),
   );
 }

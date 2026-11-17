@@ -333,7 +333,7 @@ def test_the_icon_is_offered_on_every_engine_once_status_arrives():
     topbar = (ENGINE / "frontend" / "app" / "components" / "TopBar.js").read_text(encoding="utf-8")
     block = topbar.split('id: "daemonBtn"')[0].rsplit('h("button"', 1)[-1]
     assert "daemon.isOffered()" in block and "is-off" in block, "the icon is no longer gated on the first status"
-    sheet = (ENGINE / "frontend" / "mobile" / "app" / "shell" / "MenuSheet.js").read_text(encoding="utf-8")
+    sheet = (ENGINE / "frontend" / "mobile" / "app" / "shell" / "DevicesSheet.js").read_text(encoding="utf-8")
     assert "daemon.isOffered()" in sheet.split("daemon.mobile.row")[0].rsplit('h("div"', 1)[-1]
     assert ".daemonBtn.is-off{display:none}" in (ENGINE / "frontend" / "app" / "styles.css").read_text(encoding="utf-8")
 
@@ -460,8 +460,9 @@ def test_the_screen_admits_what_it_cannot_do_from_the_cloud():
 
 def test_a_phone_is_told_why_it_cannot_do_this_rather_than_shown_a_dead_control():
     """A desktop daemon is not installed from a phone. The mobile row therefore REPORTS and does not act — but
-    omitting it entirely would read as "there is no daemon" instead of "you cannot set it up from here"."""
-    sheet = (ENGINE / "frontend" / "mobile" / "app" / "shell" / "MenuSheet.js").read_text(encoding="utf-8")
+    omitting it entirely would read as "there is no daemon" instead of "you cannot set it up from here". Since 2026-11-17
+    it lives on the Devices page (DevicesSheet.js), one tap from the ☰ page's Devices row."""
+    sheet = (ENGINE / "frontend" / "mobile" / "app" / "shell" / "DevicesSheet.js").read_text(encoding="utf-8")
     row = sheet.split("daemon.mobile.row")[0].rsplit("h(\"div\"", 1)[-1]
     assert "zm-row-static" in row, "the mobile daemon row is not the static, non-tappable kind"
     assert "daemon.mobile.hint" in sheet

@@ -1,7 +1,7 @@
 """The phone wears the agent's face too (V2-928 T11, node 4.569).
 
 The operator, 2026-11-17: the face he chose on the computer, on the phone as well — behind the home, Porcelain for
-everyone at first, a «Physical presence» switch on the ☰ page by the account rows, and Settings ▸ Presence laid out for
+everyone at first, a «Physical display» switch on the ☰ page by the account rows, and Settings ▸ Presence laid out for
 the hand (categories, a strip of faces, the face, «Customise» as a step). What is checked, RENDERED with the real
 surfaces of `shell/mobile-surfaces.js` and the real stylesheets in Chromium at 393×852:
 
@@ -96,8 +96,8 @@ def test_the_face_lives_behind_the_home(phone):
 def test_the_menu_switch_turns_the_face_off_and_on(phone):
     phone.evaluate("() => window.__store.setMobileMenuOpen(true)")
     phone.wait_for_timeout(300)
-    row = '.zm-page[data-page="menu"] .zm-toggle:has-text("Presencia física")'
-    assert phone.locator(row).count() == 1, "the ☰ page has no «Presencia física» switch"
+    row = '.zm-page[data-page="menu"] .zm-toggle:has-text("Pantalla física")'
+    assert phone.locator(row).count() == 1, "the ☰ page has no «Pantalla física» switch"
     assert "Porcelana" in phone.locator(row).inner_text(), "the switch must name the face it wears (Porcelain by default)"
     phone.click(row)
     phone.wait_for_timeout(300)

@@ -25,6 +25,7 @@ import { AiConsentSheet } from "./AiConsentSheet.js?v=1";
 import { AppsPane } from "./AppsPane.js?v=2";
 import { ConnectorsSheet } from "./ConnectorsSheet.js?v=1";
 import { AccountSheet } from "./AccountSheet.js?v=1";
+import { DevicesSheet } from "./DevicesSheet.js?v=1";
 import { PresenceSheet } from "./PresenceSheet.js?v=1";
 import { PresenceLayer } from "../../../app/presence/PresenceLayer.js?v=1";
 
@@ -43,12 +44,13 @@ export const MOBILE_SURFACES = [
   // The desktop's captions are untouched.
   // ── PAGES: full screen from the status bar to the dock, one open at a time (main.js), never stacked ──
   { id: "chat",     comp: ChatSheet,      target: "body", phase: "overlay", label: "Chat page: chat · processes (the agent's work, the desktop wall's first two tabs)", shared: false },
-  { id: "menu",     comp: MenuSheet,      target: "body", phase: "overlay", label: "☰ page: energy · account · physical presence · settings · voice · connectors · feedback · computer · log out", shared: false },
+  { id: "menu",     comp: MenuSheet,      target: "body", phase: "overlay", label: "☰ page: energy · account · physical display · settings · voice · connectors · devices · feedback · log out · build", shared: false },
   { id: "apps",     comp: AppsPane,       target: "body", phase: "overlay", label: "Widgets page: every widget, its icon, name and one line", shared: false },
   { id: "settings", comp: SettingsSheet,  target: "body", phase: "overlay", label: "Settings page (language · theme · speaker · wake word · notifications · permissions)", shared: false },
   { id: "feedback", comp: FeedbackSheet,  target: "body", phase: "overlay", label: "Feedback page (a row of the ☰ page)", shared: false },
   { id: "connectors", comp: ConnectorsSheet, target: "body", phase: "overlay", label: "Connectors page (a row of the ☰ page; the desktop chat wall's list)", shared: false },
   { id: "presence-page", comp: PresenceSheet, target: "body", phase: "overlay", label: "Presence page (a row of Settings): the agent's face, chosen and tuned", shared: false },
+  { id: "devices",  comp: DevicesSheet,   target: "body", phase: "overlay", label: "Devices page (a row of the ☰ page): this phone and his computer, read only", shared: false },
   { id: "account",  comp: AccountSheet,   target: "body", phase: "overlay", label: "My account page (a row of the ☰ page): account area · profile · plans · invoices · delete", shared: false },
   // ── V2-870 — inside the native app: the yes to the AI services, asked before the first turn ──
   { id: "ai-consent", comp: AiConsentSheet, target: "body", phase: "overlay", label: "AI services consent (native app only)", shared: false },
