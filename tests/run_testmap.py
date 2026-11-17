@@ -6459,6 +6459,11 @@ DOMAINS: list[dict] = [
                                  "centred in the window; the bottom rail stays usable; asleep and «moved» are black over "
                                  "the chat itself — RENDERED",
             "ch": UNIT, "paths": ["tests/browser/unit/arranque/test_a_stopped_agent_shades_the_whole_width.py"]},
+        {"id": "4.565", "title": "Every shipped stylesheet closes only the braces it opens: a stray top-level `}` makes "
+                                 "the browser drop the NEXT rule in silence (V2-926 left one in shared-surfaces.css and "
+                                 "the first-run language gate showed on every screen). Disarm: the brace that hid the "
+                                 "gate is caught",
+            "ch": UNIT, "paths": ["tests/browser/unit/arranque/test_every_stylesheet_closes_only_what_it_opens.py"]},
         {"id": "4.318", "title": "After a reconnect the screen adopts the engine's list of cards: an orphan it cannot "
                                  "name goes, an unlisted app closes, a listed one opens beside, and the drift is a "
                                  "widget/reconcile event (V2-825 F5, refactor2710-04 T-04) — RENDERED",

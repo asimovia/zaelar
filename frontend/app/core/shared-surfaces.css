@@ -50,7 +50,6 @@
 .pb-ring{top:calc((100% - 132px) * .5)}
 .pb-cap{top:auto;bottom:0;height:132px;justify-content:center;box-sizing:border-box;
   padding:0 24px calc(env(safe-area-inset-bottom, 0px) + 10px)}
-}
 
 /* ── Language onboarding (V2-101): first-run blocking modal, ABOVE the boot veil (100010) so it follows it —
    two veils in a row, never one rebuilt. `.open` shows it; `.gone` (set once the "ready" SSE phase lands)
