@@ -1,17 +1,16 @@
 // ============================================================================
-// update/UpdateSurface.js — the one thing a person sees of the update channel on the CANVAS (V2-553; the
-// always-visible version badge retired in V2-666).
+// update/UpdateSurface.js — what a person sees of the update channel on the CANVAS (V2-553): the reload bar,
+// and on the desktop the build-number badge.
 //
 // THE BAR (top, above everything). «Hay una versión nueva — pulsa para actualizar.» It appears only when
 // the engine is serving frontend bytes this tab is not running (`watch.js` decides), so a backend-only
 // update never interrupts anyone. Clicking anywhere on it reloads.
 //
-// V2-666 (operator, 2026-09-11): the always-on "v11" badge that used to sit at the bottom-left corner of
-// the desk was retired from the scene — «quítalo de la escena… puedes meter la versión dentro del apartado
-// de configuración». The build number is not gone, it moved: `ConfigPanel.js` reads the SAME `build`/`info`
-// signals this module still exports from `watch.js` and shows the version in its header, visible only while
-// Settings is open. This file keeps `startUpdateWatch()` running (unconditionally, below) so that signal
-// stays live whether or not Settings has ever been opened this session.
+// THE BADGE (desktop only). V2-666 had moved the build number into the Settings header; on 2026-11-17 the
+// operator asked for it back on the scene, quiet: bottom-right, just above the bottom system bar, over the
+// background. It is `VersionLabel.js` mounted as `#hb-upd-ver`, and it is the ONE place the desktop shows the
+// number (Settings no longer repeats it). The phone passes `{ badge: false }`: its number is the last line of
+// the ☰ page, the same element. `startUpdateWatch()` runs unconditionally below, so the bar works either way.
 //
 // WHY THE BAR OWNS `--banner-h`: that custom property already existed in `core/palette.css`, documented as
 // «height of the update banner when visible (0 when hidden) — top controls shift down by this», with `.tr`
@@ -24,6 +23,7 @@ import { h } from "../core/dom.js?v=2";
 import { createEffect } from "../core/reactive.js?v=2";
 import { t } from "../core/i18n.js?v=1";
 import { stale, dismiss, applyUpdate, startUpdateWatch } from "./watch.js?v=1";
+import { VersionLabel } from "./VersionLabel.js?v=1";
 
 const BAR_H = 36;
 
@@ -51,7 +51,7 @@ function injectStyles() {
   document.head.appendChild(s);
 }
 
-export function UpdateSurface() {
+export function UpdateSurface({ badge = true } = {}) {
   injectStyles();
   startUpdateWatch();
 
@@ -80,7 +80,8 @@ export function UpdateSurface() {
     } catch (_) { /* no CSSOM (harness): the bar still renders, the toolbar just does not shift */ }
   });
 
-  // A layout-neutral holder: the bar is position:fixed, so this div occupies nothing wherever `main.js`
-  // mounts it. The version badge that used to live here moved into ConfigPanel.js (V2-666).
-  return h("div", { id: "hb-update", style: { display: "contents" } }, bar);
+  // A layout-neutral holder: the bar and the badge are position:fixed, so this div occupies nothing wherever
+  // `main.js` mounts it.
+  return h("div", { id: "hb-update", style: { display: "contents" } }, bar,
+    badge ? VersionLabel({ id: "hb-upd-ver" }) : null);
 }

@@ -189,12 +189,11 @@ export const SYSTEM_SURFACES = [
   // V2-553 — the UPDATE CHANNEL: the «there is a new version, click to reload» bar (top, above everything).
   // Self-contained in `app/update/`: this line is the ONLY place the app knows it exists, which is the
   // constraint the operator set for it. Not voice-addressable — «open the update» is not a thing to open;
-  // it is either there or it is not. The always-on version badge that used to sit here too was retired from
-  // the scene in V2-666 («quítalo de la escena») — ConfigPanel.js now shows the build number, only while
-  // Settings is open, reading the same `update/watch.js` signals.
+  // it is either there or it is not. It also mounts the build-number badge (`update/VersionLabel.js`),
+  // quiet, bottom-right just above the bottom system bar — the one place the desktop shows the number.
   { id: "update",     comp: UpdateSurface, target: "body", phase: "overlay", kind: "transient",
-    toggle: "auto (bar when the served frontend differs from the one running)",
-    label: "Update bar",
+    toggle: "auto (bar when the served frontend differs from the one running); the badge is always on",
+    label: "Update bar + build number",
     name: null, aliases: null },
   // V2-101 (2026-08-16): first-run "which language?" blocking modal — the SECOND veil, right after the boot
   // veil lifts, shown only once (GET /api/i18n/state's `chosen` flag). Not voice-addressable — you can't "open"

@@ -1,7 +1,7 @@
 ---
 title: Update channel (version number + «there is a new version»)
 category: modules
-updated: 2026-09-02
+updated: 2026-11-17
 owner: ricart
 status: current
 ---
@@ -12,8 +12,9 @@ status: current
 
 It answers two questions and keeps them apart on purpose:
 
-1. **«Which version am I on?»** — a plain incrementing integer, shown at the foot of the desktop's left column
-   and updated live, so a browser left open for days watches the number climb.
+1. **«Which version am I on?»** — a plain incrementing integer, shown quietly bottom-right just above the
+   desktop's bottom bar and as the last line of the phone's ☰ page, updated live, so a browser left open for
+   days watches the number climb.
 2. **«Does this tab have to reload?»** — a bar across the top offering to reload, which appears **only** when
    the engine is serving frontend bytes this tab is not running.
 
@@ -72,10 +73,11 @@ elements:
   Clicking anywhere on it reloads; ✕ dismisses **that revision only**, in memory, never persisted: the fix
   for staleness is a reload, which clears the dismissal by definition, while a dismissal remembered across
   reloads could hide a real update forever.
-- **The badge** (`#hb-upd-ver`) at the foot of the widget rail's column — but **not inside `WidgetRail.js`**,
-  because the rail hides itself whenever the canvas is empty, and a version number you can only read while a
-  widget happens to be open is not a version number you can read. It steps aside when the rail is folded
-  through `body:has(#wrail.folded)`, which is why this file holds no reference to the rail at all.
+- **The badge** (`#hb-upd-ver`), which is `VersionLabel.js`: small muted type (`--hb-muted-2`) bottom-right,
+  in the gap between the bottom system bar and the feedback launcher, over the desk's background and under
+  every card. It is the ONLY place the desktop shows the number — Settings held it for a while (V2-666) and
+  no longer repeats it. The tooltip carries `short` (build + commit) and the deployment; a click asks the
+  engine again and toggles `short` inline.
 
 The bar writes `--banner-h`, a custom property that already existed in `core/palette.css` documented as
 *«height of the update banner when visible (0 when hidden) — top controls shift down by this»*, with `.tr` and
@@ -84,9 +86,12 @@ layout CSS is involved. Widget cards deliberately do not move: placement already
 reserves the top 70 px (`Desktop.tile.top`), more than the bar occupies, so the guarantee that a card is
 always whole and reachable still holds with the bar up.
 
-The **mobile shell gets the bar and not the badge** (`UpdateSurface({badge:false})`): its bottom edge belongs
-to the dock. An installed PWA is the surface most likely to be running code from days ago, which is why it
-gets the bar first.
+The **mobile shell gets the bar and not the floating badge** (`UpdateSurface({badge:false})`): its bottom edge
+belongs to the dock. Its number is the same `VersionLabel` element as the last line of the ☰ page
+(`MenuSheet.js`), where a tap shows `short` because a phone has no hover. An installed PWA is the surface most
+likely to be running code from days ago, which is why it gets the bar first. The native companion app is the
+same shell: its WebView loads `/m` from the engine's origin (`mobile-app/capacitor.config.ts`, `server.url`),
+the service worker never caches modules, so the bar and the reload reach it with no extra mechanism.
 
 ## The constraint this module was built under
 
@@ -106,5 +111,5 @@ python -m update bump       # raise the build number by one, print it (a release
 curl -s localhost:43917/api/update
 ```
 
-Tests: node **7.29** (engine) and node **4.103** (rendered — the bar, the badge, and the rule that a
-backend-only release moves the number and shows no bar).
+Tests: node **7.29** (engine), node **4.103** (rendered — the bar, the desktop badge, and the rule that a
+backend-only release moves the number and shows no bar) and node **4.568** (rendered — the phone's ☰ page).

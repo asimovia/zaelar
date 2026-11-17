@@ -17,11 +17,6 @@ import { t } from "../core/i18n.js?v=1";
 import { THEMES, FONT_SIZES, FONT_STACKS } from "../core/themes.js?v=1";
 import * as themeSvc from "../services/theme.js?v=2";
 import { theme as themeSignal, setTheme } from "../core/store.js?v=2";
-// V2-666 — the build-number badge that used to sit always-on at the bottom-left corner of the desk moved
-// HERE (operator, 2026-09-11: «quítalo de la escena… puedes meter la versión dentro del apartado de
-// configuración»): same signals `update/UpdateSurface.js` already read, so the number keeps updating live
-// while Settings is open instead of freezing at whatever it was on open.
-import { build as updBuild, info as updInfo, check as updCheck } from "../update/watch.js?v=1";
 import { connectorList, connectorWizard, connectorForm, isSettling, groupGoogle, focusOf } from "./ConnectorWizard.js?v=6";
 
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -819,19 +814,6 @@ export function ConfigPanel() {
     h("div", { class: "cf-shell" },
       h("div", { class: "cf-head" },
         h("h3", {}, raw(GEAR_ICON), () => t("config.tab.settings")),
-        h("span", {
-          class: "cf-ver",
-          title: () => {
-            const s = updInfo() || {};
-            return t("update.version_title", { short: s.short || "?", deploy: s.deploy || "?" });
-          },
-          onClick: updCheck,   // a signal, not a control — the only thing it does is ask again, now
-        }, () => {
-          const n = updBuild();
-          if (n > 0) return "v" + n;
-          const s = updInfo() || {};
-          return s.version ? "v" + s.version : "";
-        }),
         h("span", { class: "cf-msg", ref: el => (msgEl = el) }),
         h("button", { class: "cf-x", onClick: close }, () => t("config.close")),
       ),

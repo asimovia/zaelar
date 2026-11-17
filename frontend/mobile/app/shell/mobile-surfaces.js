@@ -52,10 +52,9 @@ export const MOBILE_SURFACES = [
   { id: "boot",            comp: BootOverlay,       target: "body", phase: "overlay", label: "Startup loader (the one loader, V2-881)", shared: true },
   { id: "lang-onboarding", comp: LanguageOnboarding, target: "body", phase: "overlay", label: "First-run language onboarding", shared: true },
   // V2-553 — the update bar. An installed PWA is the surface most likely to be running code from days ago,
-  // so it is the one that most needs to be told. `UpdateSurface` is bar-only now (V2-666 retired the
-  // always-on version badge from BOTH shells' canvas); where the build number belongs on a phone — this
-  // shell has no Settings screen yet — is still open.
-  { id: "update",          comp: UpdateSurface, target: "body", phase: "overlay", label: "«New version — reload» bar", shared: true },
+  // so it is the one that most needs to be told. Bar only: the phone's build number is the last line of the
+  // ☰ page (MenuSheet.js), not a badge over the dock.
+  { id: "update",          comp: () => UpdateSurface({ badge: false }), target: "body", phase: "overlay", label: "«New version — reload» bar", shared: true },
   // V2-785 — out of Energy, on screen, with the top-up button (the voice alone used to say it).
   { id: "energy-notice",   comp: EnergyNotice,  target: "body", phase: "overlay", label: "Out of Energy + top up", shared: true },
   // V2-881 — ONE veil: the agent stopped, the engine asleep, or the voice on another device — one face at a time, and

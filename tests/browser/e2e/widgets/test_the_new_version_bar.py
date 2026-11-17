@@ -1,22 +1,20 @@
-"""V2-553 — «hay una versión nueva, pulsa aquí» RENDERED. V2-666 moved the always-on version badge off the
-canvas and into Settings, so this file's original two-surface premise («la barra vertical abajo del todo ver
-el número de versión») changed shape; what the operator now asks is stated in his own words below.
+"""V2-553 — «hay una versión nueva, pulsa aquí» RENDERED, plus where the build number lives on the desktop.
 
     «cuando se actualiza el código […] el frontend tiene que detectarlo y tiene que sacar una barra
      horizontal por encima de todo que diga que hay una nueva versión operativa, pulsa aquí para reiniciar
      el navegador […] obviamente en el caso de que los cambios requieran un reinicio del frontend; si solo
      se ha tocado algo del backend obviamente no hace falta.» (V2-553)
 
-    «Lo de la versión […] quítalo de la escena. Puedes meter la versión dentro del apartado de
-     configuración, que haya que abrir el apartado de configuración para ver la versión.» (V2-666, 2026-09-11)
+The build number itself moved twice: V2-666 (2026-09-11) took it off the scene and into Settings; on
+2026-11-17 the operator asked for it back on the scene, subtle, bottom-right just above the bottom bar — one
+badge, so Settings no longer repeats it.
 
 The rule for the BAR is the interesting half, and it is the one only a browser can check: a release that
-moves the build number but not a single byte of frontend must move the NUMBER (now inside Settings) and show
-NO bar. The engine's side of that decision is unit-tested
-(`test_the_update_channel_tells_the_ui_from_the_engine.py`); what happens here is whether the tab acts on it
-— the bar's visibility, the `--banner-h` seam that shifts the top controls, the dismissal that lasts exactly
-one revision, and the reload — plus, separately, that the version number is genuinely gone from the bare
-canvas and genuinely reachable from Settings.
+moves the build number but not a single byte of frontend must move the NUMBER and show NO bar. The engine's
+side of that decision is unit-tested (`test_the_update_channel_tells_the_ui_from_the_engine.py`); what happens
+here is whether the tab acts on it — the bar's visibility, the `--banner-h` seam that shifts the top controls,
+the dismissal that lasts exactly one revision, and the reload — plus, separately, the badge: where it sits,
+that it is quiet, that it follows the engine live, and that it is the only one.
 
 The new versions are simulated by intercepting `/api/update`, so the test drives the REAL client code down
 the real path: a synthetic `visibilitychange` is what wakes the watcher, exactly as returning to a tab does.
@@ -62,18 +60,26 @@ _STATE = """() => {
   };
 }"""
 
-# V2-666 — the version number's own state, read wherever it now lives: nowhere on the bare canvas, and
-# inside the Settings header once opened.
+# The build number's own state: the desktop badge (`#hb-upd-ver`, `update/VersionLabel.js`) and the retired
+# Settings copy (`.cf-ver`), which must stay gone — one badge, not two.
 _VER_STATE = """() => {
-  const ver = document.querySelector('.cf-ver');
+  const ver = document.getElementById('hb-upd-ver');
   const vis = el => { if (!el) return false; const r = el.getBoundingClientRect();
                       const cs = getComputedStyle(el);
                       return r.width > 0 && r.height > 0 && cs.display !== 'none' && cs.visibility !== 'hidden'; };
+  const rail = document.getElementById('wrail');
+  const r = ver ? ver.getBoundingClientRect() : null, q = rail ? rail.getBoundingClientRect() : null;
+  const cs = ver ? getComputedStyle(ver) : null;
   return {
-    onCanvasById: !!document.getElementById('hb-upd-ver'),   // the retired always-on badge — must never exist
-    inSettings: !!ver, settingsOn: vis(ver),
-    settingsText: ver ? ver.textContent.trim() : '',
-    settingsTitle: ver ? (ver.getAttribute('title') || '') : '',
+    on: vis(ver), text: ver ? ver.textContent.trim() : '', title: ver ? (ver.getAttribute('title') || '') : '',
+    right: r ? Math.round(innerWidth - r.right) : null, bottom: r ? Math.round(r.bottom) : null,
+    left: r ? Math.round(r.left) : null, railTop: q && q.height ? Math.round(q.top) : null,
+    fontPx: cs ? parseFloat(cs.fontSize) : null, opacity: cs ? parseFloat(cs.opacity) : null,
+    settingsCopies: document.querySelectorAll('.cf-ver').length,
+    // the feedback launcher sits bottom-right above the bar too: the badge must not run under it
+    underLauncher: (() => { const f = document.querySelector('.fw-launcher'); if (!f || !r) return false;
+                            const q = f.getBoundingClientRect();
+                            return r.left < q.right && r.right > q.left && r.top < q.bottom && r.bottom > q.top; })(),
   };
 }"""
 
@@ -152,7 +158,7 @@ def test_the_bar(run):
 
         # ── A BACKEND-ONLY RELEASE: nobody is interrupted ───────────────────────────────────────────────
         # This is the operator's rule and the reason the payload carries two fields instead of one. The
-        # number itself now lives in Settings (V2-666) and is checked separately below.
+        # number itself (the bottom-right badge) is checked separately below.
         _serve(pg, {**live, "build": live["build"] + 41})
         _wake(pg)
         s = pg.evaluate(_STATE)
@@ -200,12 +206,10 @@ def test_the_bar(run):
         b.close()
 
 
-def test_the_version_left_the_scene_and_lives_in_settings(run):
-    """V2-666, the operator: «Lo de la versión 11 quítalo de la escena […] puedes meter la versión dentro
-    del apartado de configuración, que haya que abrir el apartado de configuración para ver la versión.»
-    Two claims, both false until this shipped: (1) nothing on the bare canvas names the build number any
-    more — not the retired `#hb-upd-ver` id, not any visible text; (2) opening ⚙ Settings shows it, live,
-    reading the SAME `update/watch.js` signal the old badge read."""
+def test_the_build_number_sits_bottom_right_above_the_bar_and_climbs_live(run):
+    """2026-11-17, the operator: the build number visible on the desktop, subtle, bottom-right just above the
+    horizontal bottom bar, over the background. ONE badge: Settings no longer repeats it (it held the number
+    since V2-666). The number climbs in place when the engine reports a new build — no reload."""
     import update as upd
     from playwright.sync_api import sync_playwright
 
@@ -214,21 +218,28 @@ def test_the_version_left_the_scene_and_lives_in_settings(run):
         pg = b.new_page(viewport={"width": 1280, "height": 800})
         _boot(pg, run)
 
-        # ── the bare canvas: no version anywhere VISIBLE ────────────────────────────────────────────────
-        # (Settings' own overlay, `.cf-ver` included, mounts hidden at boot like every other system overlay
-        # — the claim is about what a person can SEE, not about the node existing off-screen in the DOM.)
-        gone = pg.evaluate(_VER_STATE)
-        assert not gone["onCanvasById"], "the retired #hb-upd-ver badge is back on the canvas"
-        assert not gone["settingsOn"], "the version must not be visible before Settings is opened"
+        s = pg.evaluate(_VER_STATE)
+        assert s["on"], f"the build number is not on the desktop: {s}"
+        assert s["text"] == f"v{upd.build()}", f"the badge shows {s['text']!r}, the engine says v{upd.build()}"
+        assert s["right"] is not None and 0 <= s["right"] <= 40 and s["left"] > 1280 / 2, \
+            f"the badge is not at the bottom-RIGHT: {s}"
+        assert s["railTop"] is not None, "the bottom system bar did not mount — nothing to sit above"
+        assert s["railTop"] - 30 <= s["bottom"] <= s["railTop"], \
+            f"the badge must sit just ABOVE the bottom bar (bar top {s['railTop']}, badge bottom {s['bottom']})"
+        assert s["fontPx"] <= 12 and s["opacity"] < 1, f"the badge has to be subtle: {s}"
+        assert not s["underLauncher"], f"the badge runs under the feedback launcher: {s}"
+        assert "update.version_title" not in s["title"] and len(s["title"]) > 8, \
+            f"the tooltip is showing a raw i18n key: {s['title']!r}"
 
-        # ── open ⚙ Settings: the version is right there, live ───────────────────────────────────────────
+        # ── live: a new build reported by the engine moves the number in place ─────────────────────────────
+        live = {"build": upd.build() + 7, "version": "", "sha": "t", "short": "b-test", "ui_rev": upd.ui_rev(),
+                "started_ms": 0, "deploy": "local"}
+        _serve(pg, live)
+        _wake(pg)
+        assert pg.evaluate(_VER_STATE)["text"] == f"v{upd.build() + 7}", "the badge did not follow the engine live"
+
+        # ── one badge: opening Settings shows no second copy ───────────────────────────────────────────────
         pg.click("#cfgBtn")
         pg.wait_for_timeout(700)
-        s = pg.evaluate(_VER_STATE)
-        assert not s["onCanvasById"], "opening Settings must not resurrect the old badge id"
-        assert s["inSettings"] and s["settingsOn"], f"the version never rendered in Settings: {s}"
-        assert s["settingsText"] == f"v{upd.build()}", \
-            f"Settings shows {s['settingsText']!r}, engine says v{upd.build()}"
-        assert "update.version_title" not in s["settingsTitle"] and len(s["settingsTitle"]) > 8, \
-            f"the tooltip is showing a raw i18n key: {s['settingsTitle']!r}"
+        assert pg.evaluate(_VER_STATE)["settingsCopies"] == 0, "Settings repeats the build number — keep ONE badge"
         b.close()

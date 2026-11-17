@@ -20,6 +20,7 @@ import { Page } from "./Page.js?v=1";
 import { setConnectorsOpen } from "./ConnectorsSheet.js?v=1";
 import { setAccountOpen, openAccount } from "./AccountSheet.js?v=1";
 import { Row } from "./menu-row.js?v=1";
+import { VersionLabel } from "../../../app/update/VersionLabel.js?v=1";
 
 // The daemon poll runs here too: the desktop starts it from the setup surface, which this shell does not
 // mount. Without this the row would always read "not connected", which is a wrong answer rather than a
@@ -106,5 +107,7 @@ export function MenuSheet() {
         ? Row(LOG_OUT_ICON, () => t("mobile.logout"), null, logOut)
         : null,
     ),
+    // The build number, quiet, at the foot of the page — the same live element as the desktop's badge.
+    VersionLabel({ cls: "zm-ver" }),
   );
 }

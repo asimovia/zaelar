@@ -908,9 +908,6 @@ canvas#orb.frozen{opacity:.32;filter:grayscale(1)}
 .cf-head{flex:0 0 auto;display:flex;align-items:center;gap:14px;min-height:52px;padding:0 var(--sp-5);
   border-bottom:1px solid var(--hb-line);background:var(--hb-bg-soft)}
 .cf-head h3{margin:0;font-size:1rem;color:var(--hb-ink)}
-/* V2-666 — the build number, moved here from the always-on desk badge; a quiet signal beside the title, not a control. */
-.cf-ver{flex:0 0 auto;color:var(--hb-muted-2,var(--hb-muted));font-size:0.75rem;font-weight:600;cursor:default;opacity:.75}
-.cf-ver:hover{opacity:1;color:var(--hb-ink)}
 .cf-msg{flex:1 1 auto;color:var(--hb-muted);font-size:0.8125rem}
 .cf-x{background:var(--hb-bubble);color:var(--hb-ink);border:1px solid var(--hb-line);border-radius:8px;padding:7px 14px;cursor:pointer}
 .cf-x:hover{background:var(--hb-hover)}

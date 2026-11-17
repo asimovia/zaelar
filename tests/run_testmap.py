@@ -3262,12 +3262,12 @@ DOMAINS: list[dict] = [
         # EXACTAMENTE una revisión, y la recarga. Las versiones nuevas se simulan interceptando `/api/update`
         # y despertando la pestaña con un `visibilitychange` — el mismo camino que recorre volver a una
         # pestaña de fondo, sin gancho de test.
-        # V2-666 (2026-09-11, operador): «lo de la versión 11 quítalo de la escena… puedes meter la versión
-        # dentro del apartado de configuración» — el número YA NO vive siempre visible en el lienzo
-        # (`#hb-upd-ver` retirado); ahora solo se ve al abrir ⚙ Ajustes, leyendo la MISMA señal en vivo.
-        {"id": "4.103", "title": "Hay una versión nueva: la barra sale cuando cambia el FRONTEND y «ahora no» "
-                                 "dura una sola versión; el número dejó la escena y solo se ve dentro de ⚙ "
-                                 "(V2-666)",
+        # The build number moved twice: V2-666 (2026-09-11) put it inside ⚙ Settings; on 2026-11-17 the operator
+        # asked for it back on the scene, subtle, bottom-right just above the bottom bar (`#hb-upd-ver`,
+        # `update/VersionLabel.js`) — ONE badge, so Settings no longer repeats it. The phone's copy is node 4.568.
+        {"id": "4.103", "title": "A new version: the bar shows when the FRONTEND changes and «not now» lasts one "
+                                 "version; the build number, quiet, bottom-right just above the bottom bar, live, "
+                                 "and only once (no longer in ⚙)",
             "ch": UNIT,
             "paths": ["tests/browser/e2e/widgets/test_the_new_version_bar.py"]},
         # V2-538 — la hoja de resultados RENDERIZADA. El operador, con la hoja delante: cuatro bandas de cromo
@@ -6470,6 +6470,13 @@ DOMAINS: list[dict] = [
                                  "the first-run language gate showed on every screen). Disarm: the brace that hid the "
                                  "gate is caught",
             "ch": UNIT, "paths": ["tests/browser/unit/arranque/test_every_stylesheet_closes_only_what_it_opens.py"]},
+        # 2026-11-17 (operator): the build number on the phone too — the last line of the ☰ page, under the energy
+        # and account rows, quiet, live from the same `update/watch.js` signals as the desktop badge (4.103); the
+        # phone mounts the update bar without the desktop's floating badge. Disarm: the line out of MenuSheet, or
+        # the phone mounting the desktop badge, goes red.
+        {"id": "4.568", "title": "The build number on the phone: the last line of the ☰ page, quiet and live, and "
+                                 "without the desktop's floating badge",
+            "ch": UNIT, "paths": ["tests/browser/unit/mobile/test_the_menu_shows_the_build_number.py"]},
         {"id": "4.318", "title": "After a reconnect the screen adopts the engine's list of cards: an orphan it cannot "
                                  "name goes, an unlisted app closes, a listed one opens beside, and the drift is a "
                                  "widget/reconcile event (V2-825 F5, refactor2710-04 T-04) — RENDERED",
