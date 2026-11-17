@@ -12,7 +12,7 @@
     "not": "Lo que NO hace"
   },
   "live": {
-    "camera": "Tu cámara está ENCENDIDA en {screen}: solo detecta DÓNDE está la persona para girar tus ojos hacia ella; no la ve ni reconoce su cara, y ninguna imagen sale de ese dispositivo.",
+    "camera": "Tu cámara está ENCENDIDA en {screen}: en ese dispositivo encuentra DÓNDE está la persona, para girar tus ojos hacia ella, y lee sus gestos (una sonrisa, un guiño, una risa, un asentir…) para que tu cara le conteste con los suyos; no reconoce quién es, nada de eso te llega a ti, y ninguna imagen sale de ese dispositivo.",
     "face": "Tu cara en pantalla ahora: «{face}»."
   },
   "topics": {
@@ -41,10 +41,10 @@
       "not": "La cara es solo una cara: no cambia lo que el agente sabe hacer."
     },
     "camera": {
-      "what": "«Mírame»: con la cámara encendida, la cara gira los ojos hacia donde estás. Un detector dentro del dispositivo encuentra DÓNDE hay una cara en la imagen, una docena de veces por segundo.",
+      "what": "«Mírame»: con la cámara encendida, la cara gira los ojos hacia donde estás y contesta tus gestos con los suyos — un guiño, una sonrisa, una risa, sacar la lengua, asentir, un bostezo —, a veces, y no como un espejo: alguno lo deja pasar. Unos detectores dentro del dispositivo leen dónde está tu cara y su expresión, unas diez veces por segundo.",
       "voice": "«Mírame» / «deja de mirarme» (encender la cámara también enseña la cara).",
       "button": "Ajustes ⚙ ▸ Forma física ▸ interruptor de la cámara; mientras funciona hay una insignia «● Cámara» en pantalla, y tocarla la apaga.",
-      "not": "NO te ve: no reconoce tu cara, no lee tu expresión y no puede describir lo que tiene delante. Ningún fotograma, ninguna imagen y ningún número sale de ese dispositivo — al agente no le llega nada. Solo funciona mientras la cara se ve y la pantalla está visible."
+      "not": "NO te ve: no reconoce quién eres y no puede describir lo que tiene delante. Tu expresión se lee en ese dispositivo solo para mover la cara — ningún fotograma, ninguna imagen y ningún número sale de él, así que al agente no le llega nada: su cara contesta, pero luego no puede contarte lo que vio. Solo funciona mientras la cara se ve y la pantalla está visible."
     },
     "voice": {
       "what": "Su voz al hablar, su volumen en cada pantalla, el altavoz, el micrófono y el botón de apagado.",

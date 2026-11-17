@@ -5,6 +5,8 @@
 //   no black face is up (the engine asleep, the voice held by another screen: Veil.js covers everything, the badge too).
 // While the camera runs a small «● Camera» badge stays on screen above everything; tapping it turns the switch off.
 // The AirPods source (iPhone app only) follows the same rules, without a badge: it reads no image.
+// While the camera runs the face also ANSWERS him (T12, humanity/): imported only when the camera starts, it reads his
+// expression on the device and plays the face's gestures back — never an image or a number sent anywhere.
 import { h } from "../core/dom.js?v=2";
 import { createEffect, createSignal, untrack } from "../core/reactive.js?v=2";
 import { t } from "../core/i18n.js?v=1";
@@ -19,11 +21,13 @@ const COVER_GRACE_MS = 2000, PUSH_MS = 40;
 // A refusal or a missing device will not change by itself: the switch goes back off and says why.
 const FINAL = new Set(["denied", "nocamera", "unsupported"]);
 
-/** Start following for `face` (face.js). `covered` (optional) = the shell's «something opaque is in front». Returns dispose. */
-export function LookAtMe(face, { covered = null } = {}) {
+/** Start following for `face` (face.js). `covered` (optional) = the shell's «something opaque is in front»; `speech`
+ *  (optional) → `{hearing, speaking}` (his mic hears him · the agent speaks), so talking is not read as a face. Returns dispose. */
+export function LookAtMe(face, { covered = null, speech = () => ({}) } = {}) {
   return untrack(() => {
     probeAirpods();
     let disposed = false, cam = null, camStarting = false, headStop = null, headStarting = false, push = 0, coverTimer = 0;
+    let humanity = null;
     const cams = createTracker(), heads = createHeadTracker();
     const [visible, setVisible] = createSignal(!document.hidden);
     const [hiddenLong, setHiddenLong] = createSignal(false);
@@ -54,18 +58,31 @@ export function LookAtMe(face, { covered = null } = {}) {
       const want = wants(lookCamera());
       if (want && !cam && !camStarting) {
         camStarting = true;
-        startCamera({ onFaces: (dets, at) => cams.feed(dets, at) }).then((handle) => {
+        // the face answers you (T12): its module only now, with the camera; its landmarker loads behind the stream
+        const hum = import("./humanity/index.js?v=1").then((m) => {
+          if (disposed || !camStarting && !cam) return null;
+          if (!humanity) humanity = m.createHumanity(face, { speech });
+          return m;
+        }).catch(() => null);
+        startCamera({
+          onFaces: (dets, at, faces) => {
+            cams.feed(dets, at);
+            if (humanity) humanity.frame(faces || dets.map((d) => ({ size: d.size })), at);
+          },
+          rich: () => hum.then((m) => (m ? m.meshDetector() : null)),
+        }).then((handle) => {
           camStarting = false;
           if (!untrack(() => wants(lookCamera()))) { handle.stop(); return; }
           cam = handle; setCameraLive(true); setCameraProblem(""); pump();
-          if (typeof window !== "undefined") window.__zaelarLook = { stats: () => (cam ? cam.stats() : null) };
+          if (typeof window !== "undefined") window.__zaelarLook = { stats: () => (cam ? cam.stats() : null),
+            humanity: () => (humanity ? { engagement: humanity.engagement, log: humanity.log } : null) };
         }).catch((e) => {
           camStarting = false;
           const why = cameraError(e);
           setCameraProblem(why);
           if (FINAL.has(why)) setLookCamera(false, "camera");
         });
-      } else if (!want && cam) { cam.stop(); cam = null; setCameraLive(false); }
+      } else if (!want && cam) { cam.stop(); cam = null; setCameraLive(false); if (humanity) humanity.dispose(); humanity = null; }
     }));
 
     disposers.push(createEffect(() => {
@@ -97,6 +114,7 @@ export function LookAtMe(face, { covered = null } = {}) {
       clearTimeout(coverTimer); clearInterval(push); push = 0;
       for (const d of disposers) d();
       if (cam) { cam.stop(); cam = null; }
+      if (humanity) { humanity.dispose(); humanity = null; }
       if (headStop) { headStop(); headStop = null; }
       setCameraLive(false); badge.remove();
       face.setLook(null);

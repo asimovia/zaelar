@@ -27,8 +27,24 @@ export function fit(W, H, look, k = 0.3) {
 
 /** Draw one frame of `look` with rig numbers `r`. */
 export function drawLook(ctx, look, r, cx, cy, R, W, H) {
-  if (look.spec) drawAvatar(ctx, geometry(r, cx, cy, R, look.shape), look.spec);
-  else look.style.draw(ctx, geometry(r, cx, cy, R), W, H);
+  const G = look.spec ? geometry(r, cx, cy, R, look.shape) : geometry(r, cx, cy, R);
+  if (look.spec) drawAvatar(ctx, G, look.spec);
+  else look.style.draw(ctx, G, W, H);
+  if (r.tongue > 0.02) drawTongue(ctx, G, look.spec && look.spec.mouth && look.spec.mouth.tongue);
+}
+
+/** The tongue (T12, «the face answers you»): drawn over EVERY look from the shared mouth, so any face can stick it out. */
+export function drawTongue(ctx, G, color) {
+  const k = G.r.tongue, m = G.mouth(), base = m.my - m.h * 0.55, w = Math.max(0.07, m.mw * 0.42), len = 0.05 + 0.14 * k;
+  const pts = [];
+  for (let i = 0; i <= 16; i++) { const a = (Math.PI * i) / 16; pts.push(G.P([-Math.cos(a) * w, base - Math.sin(a) * len], 0.06)); }
+  ctx.save();
+  ctx.beginPath(); pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))); ctx.closePath();
+  ctx.fillStyle = color || "#e0607a"; ctx.fill();
+  ctx.lineWidth = Math.max(1, G.R * 0.012); ctx.strokeStyle = "rgba(90,20,40,0.5)"; ctx.stroke();
+  const a = G.P([0, base], 0.06), b = G.P([0, base - len * 0.55], 0.06);
+  ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+  ctx.restore();
 }
 
 export function createFace(host, opts = {}) {

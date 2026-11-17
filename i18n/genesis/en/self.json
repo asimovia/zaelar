@@ -12,7 +12,7 @@
     "not": "What it does NOT do"
   },
   "live": {
-    "camera": "Your camera is ON on {screen}: it only detects WHERE the person is so your eyes turn to him; it does not see or recognise his face, and no image leaves that device.",
+    "camera": "Your camera is ON on {screen}: on that device it finds WHERE the person is, so your eyes turn to him, and reads his gestures (a smile, a wink, a laugh, a nod…) so your face answers with its own; it does not recognise who he is, nothing of it reaches you, and no image leaves that device.",
     "face": "Your face on screen now: «{face}»."
   },
   "topics": {
@@ -41,10 +41,10 @@
       "not": "The face is only a face: it does not change what the agent can do."
     },
     "camera": {
-      "what": "«Look at me»: with the camera on, the face turns its eyes towards where you are. An on-device detector finds WHERE a face is in the frame, a dozen times a second.",
+      "what": "«Look at me»: with the camera on, the face turns its eyes towards where you are and answers your gestures with its own — a wink, a smile, a laugh, a tongue out, a nod, a yawn — sometimes, and not as a mirror: it may let one go. Detectors inside the device read where your face is and its expression, about ten times a second.",
       "voice": "«Look at me» / «stop looking at me» (turning the camera on also shows the face).",
       "button": "Settings ⚙ ▸ Physical form ▸ camera switch; while it runs a «● Camera» badge stays on screen and tapping it turns it off.",
-      "not": "It does NOT see you: it does not recognise your face, does not read your expression and cannot describe what is in front of it. No frame, no image and no number leaves that device — nothing reaches the agent. It only runs while the face is shown and the screen is visible."
+      "not": "It does NOT see you: it does not recognise who you are and cannot describe what is in front of it. Your expression is read on that device only to move the face — no frame, no image and no number leaves it, so nothing reaches the agent: its face answers, but it cannot tell you afterwards what it saw. It only runs while the face is shown and the screen is visible."
     },
     "voice": {
       "what": "Its spoken voice, its volume on each screen, the speaker, the microphone and the power button.",

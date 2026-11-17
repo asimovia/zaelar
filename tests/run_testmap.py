@@ -6423,6 +6423,20 @@ DOMAINS: list[dict] = [
                                  "(ZaelarNative.audio); elsewhere the element's own volume stays the way "
                                  "out. Disarms: the platform test off, the element left unmuted while routed",
             "ch": UNIT, "paths": ["tests/browser/unit/voice/test_the_voice_level_holds_where_the_element_ignores_it.py"]},
+        # V2-928 T12 — «the face answers you»: what he does in front of the camera (a smile, a laugh, a wink, a tongue, a
+        # yawn, a nod) read on the device by the vendored MediaPipe Face Landmarker, answered by a temperament that is not a
+        # mirror (seeded in the test), played by the rig; zero model, API or token, no image leaves the page.
+        {"id": "4.574", "title": "The face answers you (V2-928 T12): fake blendshape frames are perceived as a held smile, a "
+                                 "laugh, a one-eyed wink with its side, a tongue, a yawn, a nod, a shake, an arrival and a "
+                                 "departure — never a blink, an eye held shut, a smile hovering at the line twice, or his "
+                                 "talking mouth (heard, or seen with the mic muted); a seeded temperament answers the same "
+                                 "way twice and, across seeds, mostly winks back, sometimes lets go, mostly ignores a yawn, "
+                                 "keeps its gap and cooldowns, tires of repetition, keeps its mouth for the voice while it "
+                                 "speaks and waits a human beat; the tongue draws over every look; the seam to the "
+                                 "conversation is OFF; with the switch off nothing of it loads, on the landmarker loads "
+                                 "hash-checked and runs, and when it cannot load picojs keeps following; the vendored files "
+                                 "match their pins and carry no telemetry. Disarms: no talking gate, no «let it go», no gap",
+            "ch": UNIT, "paths": ["tests/browser/unit/presence/test_the_face_answers_you.py"]},
         {"id": "4.566", "title": "The agent's face (V2-928): every face of the catalogue draws at rest, speaking and thinking; "
                                  "Porcelain is the default; every label of Settings ▸ Presence is in both bundles; the rig "
                                  "is never a statue (idle actions, speech accents). Disarm: life.js off → a statue",

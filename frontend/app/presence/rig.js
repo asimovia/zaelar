@@ -11,6 +11,8 @@ const rand = (a, b) => a + Math.random() * (b - a);
 const ease = (cur, target, dt, ms) => cur + (target - cur) * (1 - Math.exp(-dt / ms));
 const drift = (t, s) => Math.sin(t * 0.31 + s) * 0.6 + Math.sin(t * 0.17 + s * 2.3) * 0.3 + Math.sin(t * 0.73 + s * 0.7) * 0.1;
 const bell = (p) => Math.sin(Math.PI * clamp(p));
+// up quickly, held, down quickly (a pose that has to be SEEN, like a tongue out)
+const plateau = (p, a = 0.2, b = 0.25) => (p < a ? Math.sin((Math.PI / 2) * clamp(p / a)) : p > 1 - b ? Math.sin((Math.PI / 2) * clamp((1 - p) / b)) : 1);
 
 // Gestures: duration (s) + what they add to the rig at progress p (0..1).
 const GESTURES = {
@@ -21,6 +23,13 @@ const GESTURES = {
   laugh:    { dur: 2.0, fx: (p, r, t) => { const b = bell(p); r.smile += b; r.squint += 0.7 * b; r.open = Math.max(r.open, b * (0.35 + 0.2 * Math.sin(t * 22))); r.pitch -= 0.06 * b; } },
   surprise: { dur: 1.6, fx: (p, r) => { const b = bell(p); r.brow += 0.9 * b; r.eyeScale += 0.35 * b; r.open = Math.max(r.open, 0.45 * b); r.round = Math.max(r.round, 0.8 * b); r.pitch -= 0.05 * b; } },
   wink:     { dur: 0.9, fx: (p, r) => { r.blinkR = Math.max(r.blinkR, bell(p)); r.smile += 0.5 * bell(p); r.roll += 0.06 * bell(p); } },
+  winkL:    { dur: 0.9, fx: (p, r) => { r.blinkL = Math.max(r.blinkL, bell(p)); r.smile += 0.5 * bell(p); r.roll -= 0.06 * bell(p); } },
+  // «the face answers you» (T12, humanity/): what it may give back besides the gestures above
+  tongue:   { dur: 1.7, fx: (p, r) => { const b = plateau(p); r.tongue = Math.max(r.tongue, b); r.open = Math.max(r.open, 0.22 * b); r.wide += 0.2 * b; r.squint += 0.3 * b; r.roll += 0.05 * b; } },
+  giggle:   { dur: 1.2, fx: (p, r, t) => { const b = bell(p); r.smile += 0.85 * b; r.squint += 0.55 * b; r.open = Math.max(r.open, b * (0.1 + 0.08 * Math.sin(t * 26))); r.roll += 0.05 * b; } },
+  yawn:     { dur: 2.8, fx: (p, r) => { const b = plateau(p, 0.35, 0.3); r.open = Math.max(r.open, 0.85 * b); r.round = Math.max(r.round, 0.35 * b); r.blinkL = Math.max(r.blinkL, 0.7 * b); r.blinkR = Math.max(r.blinkR, 0.7 * b); r.pitch -= 0.1 * b; r.brow += 0.25 * b; } },
+  sigh:     { dur: 1.9, fx: (p, r) => { const b = bell(p); r.blinkL = Math.max(r.blinkL, 0.5 * b); r.blinkR = Math.max(r.blinkR, 0.5 * b); r.pitch += 0.07 * b; r.smile -= 0.25 * b; r.open = Math.max(r.open, 0.08 * b); r.round = Math.max(r.round, 0.4 * b); } },
+  brows:    { dur: 0.75, fx: (p, r) => { const b = bell(p); r.brow += 0.85 * b; r.eyeScale += 0.1 * b; } },
   look:     { dur: 3.2, fx: (p, r) => { const g = Math.sin(p * Math.PI * 2) * bell(p * 1.0); r.gazeX += 0.9 * g; r.yaw += 0.35 * g; } },
   sad:      { dur: 2.2, fx: (p, r) => { const b = bell(p); r.smile -= 0.8 * b; r.browIn += 0.8 * b; r.pitch += 0.08 * b; r.gazeY -= 0.4 * b; } },
 };
@@ -90,7 +99,7 @@ export function createRig(rnd = Math.random) {
     const r = {
       t, mood: s.mood, speaking, energy: s.energy, glow: s.glow, think: s.think,
       open: s.open, wide: s.wide, round: s.round, press: s.press,
-      smile: s.smile, squint: 0, eyeScale: 1, brow: s.brow, browIn: 0,
+      smile: s.smile, squint: 0, eyeScale: 1, brow: s.brow, browIn: 0, tongue: 0,
       blinkL: Math.max(s.blink, s.lid), blinkR: Math.max(s.blink, s.lid),
       gazeX: s.gaze.x, gazeY: s.gaze.y,
       yaw: drift(t * slow, 5) * 0.09 + s.think * 0.14,
