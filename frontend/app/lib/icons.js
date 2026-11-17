@@ -47,6 +47,10 @@ export const MUSIC_ICON = `<svg ${S}><path d="M9 18V5l12-2v13"/><circle cx="6" c
 export const DESKTOP_ICON = `<svg ${S}><rect x="2" y="4" width="20" height="12" rx="2"/><path d="M8 20h8"/><path d="M12 16v4"/></svg>`;
 export const SERVER_ICON = `<svg ${S}><rect x="2" y="3" width="20" height="8" rx="2"/><rect x="2" y="13" width="20" height="8" rx="2"/><path d="M6 7h.01"/><path d="M6 17h.01"/></svg>`;
 export const MOON_ICON = `<svg ${S}><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg>`;
+// The ☰ page's Energy row (2026-11-17): a bolt, the same charge the desktop battery stands for.
+export const ZAP_ICON = `<svg ${S}><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>`;
+// The ☰ page's last row: sign out of this device (cloud only).
+export const LOG_OUT_ICON = `<svg ${S}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>`;
 export const USER_ICON = `<svg ${S}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
 export const MESSAGE_SQUARE_ICON = `<svg ${S}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 7v6"/><path d="M9 10h6"/></svg>`;
 // V2-760 — the one-click «this went wrong» marker beside the feedback launcher (lucide thumbs-down).

@@ -12,6 +12,12 @@ export function accountLink(url, fragment = "") {
   return fragment ? `${base}#${fragment}` : base;
 }
 
+/** The account service's sign-out endpoint, beside the account page: same origin, `/api/auth/logout`. Empty url →
+ *  "" (self-host: nobody to sign out of). Pure, so it is tested without a browser. */
+export function logoutLink(url) {
+  try { return url ? new URL(String(url)).origin + "/api/auth/logout" : ""; } catch (_) { return ""; }
+}
+
 /** The reason the out-of-energy notice should be open for, or "" when it should not. Pure: the decision the
  *  rendered test (and anyone reading the notice) relies on. A notice the person closed stays closed for THAT
  *  reason; a new exhaustion (a different reason, or after the balance recovers and runs out again) opens it again. */

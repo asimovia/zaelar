@@ -24,6 +24,7 @@ import { EnergyLine } from "./EnergyLine.js?v=1";
 import { AiConsentSheet } from "./AiConsentSheet.js?v=1";
 import { AppsPane } from "./AppsPane.js?v=2";
 import { ConnectorsSheet } from "./ConnectorsSheet.js?v=1";
+import { AccountSheet } from "./AccountSheet.js?v=1";
 
 export const MOBILE_SURFACES = [
   // ── the bar that owns every control ──
@@ -34,11 +35,12 @@ export const MOBILE_SURFACES = [
   // The desktop's captions are untouched.
   // ── PAGES: full screen from the status bar to the dock, one open at a time (main.js), never stacked ──
   { id: "chat",     comp: ChatSheet,      target: "body", phase: "overlay", label: "Chat page: chat · processes (the agent's work, the desktop wall's first two tabs)", shared: false },
-  { id: "menu",     comp: MenuSheet,      target: "body", phase: "overlay", label: "☰ page: account · energy · settings · voice · connectors · feedback · computer · desktop", shared: false },
+  { id: "menu",     comp: MenuSheet,      target: "body", phase: "overlay", label: "☰ page: energy · account · settings · voice · connectors · feedback · computer · log out", shared: false },
   { id: "apps",     comp: AppsPane,       target: "body", phase: "overlay", label: "Widgets page: every widget, its icon, name and one line", shared: false },
   { id: "settings", comp: SettingsSheet,  target: "body", phase: "overlay", label: "Settings page (language · theme · speaker · wake word · notifications · permissions)", shared: false },
   { id: "feedback", comp: FeedbackSheet,  target: "body", phase: "overlay", label: "Feedback page (a row of the ☰ page)", shared: false },
   { id: "connectors", comp: ConnectorsSheet, target: "body", phase: "overlay", label: "Connectors page (a row of the ☰ page; the desktop chat wall's list)", shared: false },
+  { id: "account",  comp: AccountSheet,   target: "body", phase: "overlay", label: "My account page (a row of the ☰ page): account area · profile · plans · invoices · delete", shared: false },
   // ── V2-870 — inside the native app: the yes to the AI services, asked before the first turn ──
   { id: "ai-consent", comp: AiConsentSheet, target: "body", phase: "overlay", label: "AI services consent (native app only)", shared: false },
   // ── the Energy left, a thin line along the top edge (cloud only) ──

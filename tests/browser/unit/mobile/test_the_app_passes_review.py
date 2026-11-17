@@ -7,7 +7,8 @@ The app is the phone shell in a WebView; `window.Capacitor.isNativePlatform()` i
     page WITHOUT #buy, and the notice offers «your account», not «top up»; a browser keeps #buy and «top up».
   · 5.1.2(i) — nothing reaches the AI services before a yes: the question opens on load, the voice gate refuses,
     the orb looks disabled; Accept writes the engine's config, and after a reload the yes is still there.
-  · 5.1.1(v) — the menu carries «Delete account», opening the account page at #delete in the system browser.
+  · 5.1.1(v) — ☰ → My account carries «Delete account», opening the account page at #delete in the system browser
+    (2026-11-17: one tap under My account, not on the ☰ page). Plans and invoices stay out of the app.
 """
 from __future__ import annotations
 
@@ -43,12 +44,13 @@ PAGE = """<!doctype html><meta charset="utf-8"><meta name="viewport" content="wi
   import { EnergyNotice } from "/static/app/components/EnergyNotice.js?v=1";
   import { MenuSheet } from "/static/mobile/app/shell/MenuSheet.js?v=2";
   import { SettingsSheet } from "/static/mobile/app/shell/SettingsSheet.js?v=2";
+  import { AccountSheet } from "/static/mobile/app/shell/AccountSheet.js?v=1";
   import { BootOverlay } from "/static/app/components/BootOverlay.js?v=4";
   store.setCloudProfile(true);
   store.setAccountUrl("%s");
   if (window.__boot) mount(BootOverlay());   // the real loader, over everything until the boot is ready
   else store.setEnergy({ cloud: true, known: true, balance: 0, capacity: 400, exhausted: { reason: "balance_depleted" } });
-  mount(AiConsentSheet()); mount(EnergyNotice()); mount(MenuSheet()); mount(SettingsSheet());
+  mount(AiConsentSheet()); mount(EnergyNotice()); mount(MenuSheet()); mount(AccountSheet()); mount(SettingsSheet());
   const cfg = await fetch("/api/config").then((r) => r.json());
   consent.loadFrom(cfg);
   window.__consent = consent;
@@ -170,17 +172,22 @@ def test_a_browser_is_never_asked(browser_page) -> None:
     assert engine["posts"] == []
 
 
-def test_the_menu_offers_delete_account_and_settings_the_withdrawal_only_in_the_app(browser_page) -> None:
+def test_delete_account_lives_under_my_account_and_billing_stays_out_of_the_app(browser_page) -> None:
     open_, engine = browser_page
     pg = open_(True)
-    row = pg.locator(".zm-menu .zm-row", has_text="mobile.delete_account")
+    assert pg.locator(".zm-menu .zm-row", has_text="mobile.delete_account").count() == 0, "not on the ☰ page"
+    row = pg.locator(".zm-account .zm-row", has_text="mobile.delete_account")
     assert row.count() == 1
     row.evaluate("el => el.click()")
     assert pg.evaluate("window.__opened") == [ACCOUNT + "#delete"]
+    assert pg.locator(".zm-account .zm-row", has_text="mobile.account_plans").count() == 0
+    assert pg.locator(".zm-account .zm-row", has_text="mobile.account_billing").count() == 0
     assert pg.locator(".zm-settings", has_text="consent.settings_label").count() == 1
 
     pg = open_(False)
-    assert pg.locator(".zm-menu .zm-row", has_text="mobile.delete_account").count() == 0
+    assert pg.locator(".zm-account .zm-row", has_text="mobile.delete_account").count() == 1
+    assert pg.locator(".zm-account .zm-row", has_text="mobile.account_plans").count() == 1
+    assert pg.locator(".zm-account .zm-row", has_text="mobile.account_billing").count() == 1
     assert pg.locator(".zm-settings", has_text="consent.settings_label").count() == 0
 
 

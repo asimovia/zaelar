@@ -318,6 +318,14 @@ button.zm-page-btn:active { background: var(--hb-bubble); }
 .zm-row-t small { font: 13px/1.35 var(--sans); color: var(--hb-muted); }
 .zm-row svg { flex: 0 0 auto; color: var(--hb-muted-2); }
 .zm-row-v { flex: 0 0 auto; font: 600 14px var(--sans); color: var(--hb-accent); }
+/* The row's icon (2026-11-17): one outline glyph per row from app/lib/icons.js, in the ink colour so it reads as the
+   row's name in a picture; the chevron on the right stays quiet. */
+.zm-row-i { flex: 0 0 auto; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; }
+.zm-row-i svg { width: 22px; height: 22px; color: var(--hb-ink); }
+.zm-row-c { flex: 0 0 auto; display: flex; }
+.zm-row-c svg { width: 18px; height: 18px; }
+.zm-row-danger b, .zm-row-danger .zm-row-i svg { color: var(--hb-danger, #ef4444); }
+.zm-energy .zm-row-i { letter-spacing: 0; text-transform: none; }
 .zm-row select {
   min-height: 40px; padding: 0 10px; border: 1px solid var(--hb-line); border-radius: 11px;
   background: var(--hb-bg-soft); color: var(--hb-ink); font: 15px var(--sans);

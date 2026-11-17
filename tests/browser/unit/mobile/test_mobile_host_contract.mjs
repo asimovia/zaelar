@@ -276,11 +276,12 @@ check("feedback is a row of the ☰ page that opens its own page, and not a dock
   && /comp: FeedbackSheet/.test(SURFACES) && /FeedbackForm\(/.test(read("frontend", "mobile", "app", "shell", "FeedbackSheet.js")),
   "the ☰ page must carry a feedback row opening FeedbackSheet (mounted from mobile-surfaces.js)");
 check("the menu does not embed the form", !/FeedbackForm/.test(MENUSHEET), "the form lives on its own page");
-check("the menu button is ☰ and the menu leads with the account and the Energy",
+check("the menu button is ☰ and the menu leads with the Energy, then the account, and ends with log out",
   /raw\(MENU\)/.test(DOCKBAR) && !/const CFG\b/.test(DOCKBAR)
-  && MENUSHEET.indexOf('t("mobile.account")') > 0 && MENUSHEET.indexOf('t("mobile.account")') < MENUSHEET.indexOf('"zm-energy"')
+  && MENUSHEET.indexOf('"zm-energy"') > 0 && MENUSHEET.indexOf('"zm-energy"') < MENUSHEET.indexOf('t("mobile.account")')
+  && MENUSHEET.lastIndexOf('t("mobile.logout")') > MENUSHEET.indexOf('t("daemon.mobile.row")')
   && /openAccount\((?:inNativeApp\(\) \? "" : )?"buy"\)/.test(MENUSHEET),   // V2-870: no #buy inside the native app
-  "the ☰ sheet must open with the account row, then the Energy row that opens the top-up");
+  "the ☰ sheet must open with the Energy row that opens the top-up, then the account row, and end with log out (operator 2026-11-17)");
 check("the Energy left is always on screen", /comp: EnergyLine,/.test(SURFACES),
   "the phone lost its Energy line along the top edge");
 

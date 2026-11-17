@@ -85,7 +85,8 @@ frontend/mobile/
       ├─ DockBar.js         the bottom bar: ☰ menu · chat (+ process count) · widgets | ORB | mic · speaker · wake word
       ├─ OrbMini.js         the orb
       ├─ ChatSheet.js       the chat page: Chat · Processes (the desktop wall's first two tabs)
-      ├─ MenuSheet.js       ☰ (the desktop's top bar): account · Energy · settings · voice · connectors · feedback · computer · desktop · delete (app)
+      ├─ MenuSheet.js       ☰ (the desktop's top bar): Energy · account · settings · voice · connectors · feedback · computer · log out
+      ├─ AccountSheet.js    ☰ → My account: account area · profile · plans + invoices (browser only) · delete account
       ├─ ConnectorsSheet.js ☰ → Connectors: the shared `components/ConnectorsList.js`; «Connect» opens the desktop settings panel by link
       ├─ FeedbackSheet.js   the feedback form, a page of the ☰
       ├─ EnergyLine.js      the cycle's Energy left, a 3px line along the top edge (cloud only, inert to touch)
@@ -348,7 +349,7 @@ stylesheet just to be redirected away from it:
 3. otherwise: narrow viewport **and** coarse pointer → `/m`. Both conditions, deliberately — a narrow desktop
    window is still a mouse, and getting this wrong permissively would strand a laptop user in a one-card shell.
 
-The escape hatch is not optional and appears in two places (the menu sheet and the settings sheet): a shell you
+The escape hatch is not optional and lives in the settings sheet (since 2026-11-17 no longer on the ☰ page): a shell you
 cannot leave is a trap, and the picker would otherwise bounce a tablet back on every load. `/` keeps answering 200
 with HTML because the platform's health check fetches it — the redirect is client-side, never an HTTP 302.
 

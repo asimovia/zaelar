@@ -27,6 +27,7 @@ import { APPS_ICON } from "../../../app/lib/icons.js?v=2";
 import { problemTitleKey } from "../../../app/services/device-health.js?v=1";
 import * as wake from "./wake.js?v=1";
 import { connectorsOpen } from "./ConnectorsSheet.js?v=1";
+import { accountOpen } from "./AccountSheet.js?v=1";
 
 const SW = `viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`;
 const MIC_ON  = `<svg ${SW}><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>`;
@@ -77,7 +78,7 @@ export function DockBar() {
       // The ☰ is the person and the setup (account, settings, voice, connectors — MenuSheet.js), never the agent's work.
       h("button", {
         class: () => cls(store.mobileMenuOpen() || store.mobileSettingsOpen() || store.mobileFeedbackOpen()
-                         || connectorsOpen()) + " zm-menu",
+                         || connectorsOpen() || accountOpen()) + " zm-menu",
         "aria-label": () => t("mobile.menu"),
         onClick: () => { const v = !store.mobileMenuOpen(); store.setMobileMenuOpen(v); api.uiEvent("mobile:menu", { state: v ? "open" : "close" }); },
       }, raw(MENU)),
