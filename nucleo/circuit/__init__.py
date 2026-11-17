@@ -78,7 +78,7 @@ def tick(now: float | None = None) -> list[dict]:
                 closed.append(e)
                 settle(e, verdict="met", now=now)
                 if not e.get("task_id") and _fx.leaves(str(e.get("widget") or ""), str(e.get("action") or "")):
-                    _say_now(e, "", fact=SENT, verdict="met")   # a worker's errand speaks through its own `close`   # V2-850: the mouth said «started»; the echo is «sent»
+                    _say_now(e, "", fact=_sent_fact(e), verdict="met")   # a worker's errand speaks through its own `close`   # V2-850: the mouth said «started»; the echo is «sent»
             elif out is None and e.get("awaiting") == "no_ack" and not e.get("task_id") and _no_ack_due(e, now):
                 settle(e, verdict="unverifiable", outcome=_verdict.REASONS["no_ack"], now=now)
                 closed.append(e)              # V2-884 A6: asked, never confirmed by the app — not done, not failed
@@ -177,6 +177,23 @@ def _state_event(uid: str, state: str, trace: str) -> None:
 #: What he is told when a send's echo lands (V2-850). The turn said «I'll tell you when it's done» — the queue taking it
 #: is no receipt (V2-847) — and measured on his engine (2026-11-04) the echo then closed in silence.
 SENT = "Ya ha salido: el envío ha quedado confirmado."
+
+#: …and, when the words that left are not his (INI-071 B4), which words did: the change is said, never checked as his.
+SENT_NOT_HIS = "Las palabras que salieron no son las que él dijo; salieron estas: «{text}»."
+
+
+def _sent_fact(e: dict) -> str:
+    """The fact a landed send is said from: `SENT`, plus the words that left when the act's composed text is not a run
+    of his words (`exit_slots.words_not_his`). Never raises: unread, the fact is `SENT` as before."""
+    try:
+        from nucleo.workers import exit_slots
+        said = str((e.get("turn") or {}).get("text") or e.get("text") or "")
+        text = exit_slots.words_not_his(str(e.get("widget") or ""), str(e.get("action") or ""), e.get("payload"), said)
+    except Exception as ex:  # noqa: BLE001
+        logger.debug(f"circuit: the words that left are unread ({ex})")
+        text = ""
+    return f"{SENT} {SENT_NOT_HIS.format(text=text)}" if text else SENT
+
 
 #: What he is told when a send's echo never came within the grace (V2-847). Not «unmet»: the connector may still
 #: deliver it, and a failure is told by the connector's own failure path the moment it happens.

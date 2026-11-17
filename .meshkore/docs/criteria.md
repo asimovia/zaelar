@@ -696,7 +696,9 @@ below is the first kind, or it names the mechanism that replaced the second.
   order opens its outbox row by `ref`, the connector's echo bound to that `ref` settles it `sent` and its failure
   (`msg.send_failed`) `failed` with the reason; «the connector reports it» is a readable receipt, never a
   `done_when_unreadable` reason — and checkpoint 1 is never relaxed for an act with no readable end state.
-  — since 2026-11-04 (the receipt rule 2026-11-16, node 2.1784) · nodes 2.1008, 2.1784 · `nucleo/circuit/verify.py`, `nucleo/circuit/baseline.py`,
+  **The words that left are his, or they are said** (2026-11-17): at the echo, a declared `composed` text that is not
+  a run of his words (`exit_slots.words_not_his`) is named in the receipt's fact — never «sent, checked» alone.
+  — since 2026-11-04 (the receipt rule 2026-11-16, node 2.1784) · nodes 2.1008, 2.1784, 2.1793 · `nucleo/circuit/verify.py`, `nucleo/circuit/baseline.py`,
   `nucleo/circuit/__init__.py::tick`, `nucleo/flash/data_ops.py`, `nucleo/turn/reply.py::of_op`, `widgets/effects.py`.
 - **CRIT-E9d · A send reaches the person his words name, or it asks.** When a call names nobody (`reply {n}`), the card
   answers who it reaches (`recipients_of`, read by `on_his_behalf.who_of`); a person his words do not name, and not

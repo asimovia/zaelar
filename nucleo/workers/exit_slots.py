@@ -177,6 +177,25 @@ def _held(ctx: dict, out: Reading, slot: str, key: str) -> None:
 RULES = {f.__name__.lstrip("_"): f for f in (_his_words, _reading, _card, _composed, _held)}
 
 
+def words_not_his(wid: str, act: str, payload: dict | None, said: str) -> str:
+    """The text of the act's declared `composed` slot when it is NOT his words (`send_task.his_text`), else "".
+
+    What leaves in his name is his words, in order, or the receipt says the words that left (INI-071 B4): measured on
+    his engine, «…: te debo $50» left as «te debes $50» and was said «sent, checked» — true of the turn's words, not of
+    his. Read at the echo from the act's own declaration; nothing classifies his sentence. "" when his words are
+    unknown (nothing to compare with) or the act declares no composed slot."""
+    if not str(said or "").strip():
+        return ""
+    from nucleo.request import send_task
+    for slot, d in declared(str(wid or "").split("::", 1)[0], act).items():
+        if str(d.get("from") or "") != "composed":
+            continue
+        v = (payload or {}).get(str(d.get("key") or slot))
+        if isinstance(v, str) and v.strip() and not send_task.his_text(v, said):
+            return v.strip()
+    return ""
+
+
 def unbacked_send(rec, turn, got, mandated: bool = False) -> str:
     """CRIT-C5's second half at the worker's exit: a send whose recipient the WORKER chose, from an errand whose
     reading does not ask for anything to be sent in his name, is dropped — never turned into a question (V2-886 D4).
