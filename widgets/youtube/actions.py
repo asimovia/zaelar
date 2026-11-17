@@ -159,12 +159,13 @@ def _a_add(action, p, db) -> dict:
     return {"ok": True, "position": len(lst), "title": lst[-1]["title"], "count": len(lst), **notice}
 
 
-_RECENT_MAX = 8
+_RECENT_MAX, _RECENT_CHARS = 8, 120
 
 
 def _remember_query(db, q: str) -> None:
     """His recent searches, newest first (2026-11-17): what the bar's search field lists while it is empty. One entry
     per question however it was spelled, the same normalisation `search` uses to tell a repeat (`_norm`)."""
+    q = q[:_RECENT_CHARS].strip()                   # a pasted page of text is not a question to list back
     key = _d._norm(q)
     rest = [x for x in (db.get("recent_queries") or []) if isinstance(x, str) and _d._norm(x) != key]
     db["recent_queries"] = [q] + rest[:_RECENT_MAX - 1]

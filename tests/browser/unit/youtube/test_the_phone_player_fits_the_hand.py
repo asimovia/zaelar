@@ -151,10 +151,11 @@ def test_the_embed_speaks_the_cards_language(phone):
     assert "hl=en" in phone.get_attribute(".hb-yt-frame iframe", "src")
 
 
-# Desktop: geometry of the card at 660x600 on the player tab with no notice. Re-measured 2026-11-17 for the watch page
-# (the title line moved UNDER the video, a seek bar between it and the controls, the video 16:9 of the card's width and
-# shrinking only when the card is too short to keep them in sight): the bar did not move.
-_DESK = {".hb-yt-nav": [8, 8, 660, 49], ".hb-yt-frame": [8, 57, 660, 371], ".hb-yt-ctrls": [8, 452, 660, 54]}
+# Desktop: geometry of the card at 660x600 on the player tab with no notice. Re-measured 2026-11-17 for the watch page:
+# the title line moved UNDER the controls (it scrolls with the chips and «A continuación»), a seek bar sits between the
+# video and the controls, and the video still FILLS the rest of a wide card — taller than the 462 px it had with the
+# title above it (origin/main 1431ca974), the controls on screen. The bar did not move.
+_DESK = {".hb-yt-nav": [8, 8, 660, 49], ".hb-yt-frame": [8, 57, 660, 473], ".hb-yt-ctrls": [8, 554, 660, 54]}
 
 
 def test_the_desktop_card_is_unchanged(_browser):
@@ -164,3 +165,5 @@ def test_the_desktop_card_is_unchanged(_browser):
         return [s, [r.left, r.top, r.width, r.height].map(Math.round)]; }))""", list(_DESK))
     page.context.close()
     assert got == _DESK
+    assert got[".hb-yt-frame"][3] >= 462 and got[".hb-yt-ctrls"][1] + got[".hb-yt-ctrls"][3] <= 8 + 600, \
+        "a wide card's video never loses height to the watch page, and its controls stay in the card"

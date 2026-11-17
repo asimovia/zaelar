@@ -127,12 +127,12 @@ export function paintQueue(root, E, data, ctx){
     acts.append(up, down, x);
     row.appendChild(acts);
     // A narrow card wears the YouTube playlist row (2026-11-17): the same four controls behind one ⋮ and its sheet.
-    row.appendChild(moreBtn("hb-yt-qmore", tt("more_actions", null, "Más acciones"), () => openSheet(root, it.title || "", [
+    row.appendChild(moreBtn("hb-yt-qmore", tt("more_actions", null, "Más acciones"), (b) => openSheet(root, it.title || "", [
       {id: "play", label: tt("play_from_here", null, "Reproducir desde aquí"),
        run: () => { act("play_item", {item: n}); if(root._hbYtSelectTab) root._hbYtSelectTab("player"); }},
       {id: "up", label: tt("move_up", null, "Subir"), disabled: i === 0, run: () => act("move", {item: n, to: String(i)})},
       {id: "down", label: tt("move_down", null, "Bajar"), disabled: i === lst.length - 1, run: () => act("move", {item: n, to: String(i + 2)})},
-      {id: "remove", label: tt("remove_from_list", null, "Quitar de la lista"), run: () => act("remove", {item: n})}])));
+      {id: "remove", label: tt("remove_from_list", null, "Quitar de la lista"), run: () => act("remove", {item: n})}], b)));
     row.addEventListener("click", () => {
       act("play_item", {item: n});
       if(root._hbYtSelectTab) root._hbYtSelectTab("player");

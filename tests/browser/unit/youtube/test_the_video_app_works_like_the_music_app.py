@@ -283,13 +283,19 @@ def test_narrower_the_tools_take_a_second_row_aligned_right(page):
     assert g["nav"]["r"] - g["find"]["r"] <= 16, "…aligned to the right edge"
 
 
-def test_on_the_phone_the_sections_are_a_chip_row_and_nothing_hides_behind_a_menu(page):
-    """2026-11-17, the YouTube app's: every section one tap away in a row that scrolls sideways, the 🔍 at its right."""
+def test_a_narrow_card_wears_a_chip_row_and_a_desk_one_keeps_its_plug(page):
+    """2026-11-17, the YouTube app's: every section one tap away in a row that scrolls sideways, the 🔍 at its right,
+    nothing behind a ⋯. A DESK card dragged this narrow keeps its connectors plug in that row (on the phone it is not a
+    control: test_the_phone_player_fits_the_hand.py)."""
     _mount(page, _data(), width=366)
     _tab(page, "inicio")
     g = page.evaluate(_BAR)
-    assert g["tabs"] == ["inicio", "cola", "subs", "listas"] and g["plug"] is None and g["find"] and g["more"] is None
+    assert g["tabs"] == ["inicio", "cola", "subs", "listas"] and g["find"] and g["more"] is None
+    assert g["plug"] and abs(g["plug"]["t"] - g["tabsBox"]["t"]) < 12 and g["plug"]["r"] <= g["find"]["l"], g
     assert abs(g["find"]["t"] - g["tabsBox"]["t"]) < 8, "one row"
+    page.click(".hb-yt-plug")
+    assert "hb-yt-connmode" in page.get_attribute(".hb-yt", "class")
+    page.click(".hb-yt-plug")
     page.click(".hb-yt-tab[data-tab=listas]")
     assert "hb-yt-t-listas" in page.get_attribute(".hb-yt", "class")
 

@@ -6779,7 +6779,8 @@ DOMAINS: list[dict] = [
                                   "queue rows with a 120 px face, channel · date and named ↑ ↓ ✕ ▶ controls calling "
                                   "move/remove/play_item; every empty tab offers its options; a new list prefilled with "
                                   "today's date that a repaint never eats; the bar at three widths (one line with the "
-                                  "search closing it ~30 px from the plug, two right-aligned rows, phone a chip row + 🔍); since 2026-11-17 "
+                                  "search closing it ~30 px from the plug, two right-aligned rows, a narrow card a chip row + 🔍 that keeps the "
+                                  "plug on a desk); since 2026-11-17 "
                                   "the results are ONE feed under the bar's search field, the catalogue opens on his "
                                   "channels, and a phone queue row is the YouTube playlist row with one ⋮",
             "ch": UNIT, "paths": ["tests/browser/unit/youtube/test_the_video_app_works_like_the_music_app.py"]},
@@ -6790,7 +6791,11 @@ DOMAINS: list[dict] = [
                                   "mini-player is one slim row (a `data-strip`: the shell's wrap stacked it) with a progress "
                                   "line and the sound only while muted, hidden while he types; the watch page has a seek bar "
                                   "fed by the player's own clock whose tap seeks with no server action, then title, Seguir, "
-                                  "chips and «A continuación»; each mechanism disarmed in place and restored in `finally`",
+                                  "chips and «A continuación»; the audit's seven: a drag is his until he lets go (and a "
+                                  "stopped agent seeks nothing), a video arriving over the typed search is one screen with "
+                                  "its ⌄, a rebuild keeps his words and focus, an open sheet closes when the rows under it "
+                                  "change and gives the focus back, the ⋮ and the seek bar are 44 pt; each mechanism "
+                                  "disarmed in place and restored in `finally`",
             "ch": UNIT, "paths": ["tests/browser/unit/youtube/test_the_phone_wears_the_youtube_app.py"]},
         {"id": "4.563", "title": "The video search keeps his recent questions and each result's length (2026-11-17, ES/EN): "
                                   "`search` writes `recent_queries` (newest first, eight, one per question however spelled, "

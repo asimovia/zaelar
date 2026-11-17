@@ -24,7 +24,7 @@ export function feedItem(root, it, n, o){
   const sub = [it.channel, it.published].filter(Boolean).join(" · ");
   if(sub) text.appendChild(el("div", "hb-yt-imeta", sub));
   item.append(pic, text, moreBtn("hb-yt-imore", tt("more_actions", null, "Más acciones"),
-                                 () => openSheet(root, it.title || "", o.sheet)));
+                                 (b) => openSheet(root, it.title || "", o.sheet, b)));
   item.addEventListener("click", o.play);
   item.addEventListener("keydown", (e) => { if(e.key === "Enter" && e.target === item) o.play(); });
   return item;

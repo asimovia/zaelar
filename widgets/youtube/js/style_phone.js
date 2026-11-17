@@ -17,7 +17,8 @@ export const CSS_PHONE = `
   .hb-yt-sbtn svg{width:16px;height:16px;display:block}
   .hb-yt-sbtn:hover{background:var(--hb-hover,rgba(255,255,255,.06));color:var(--hb-ink,#F2F4F7)}
   .hb-yt-sbtn:focus-visible,.hb-yt-down:focus-visible,.hb-yt-more3:focus-visible,.hb-yt-wchip:focus-visible,
-  .hb-yt-item:focus-visible,.hb-yt-strack:focus-visible{outline:none;box-shadow:var(--hb-focus-ring,0 0 0 2px #AE90FF)}
+  .hb-yt-item:focus-visible,.hb-yt-strack:focus-visible,.hb-yt-rq:focus-visible,.hb-yt-unrow:focus-visible,
+  .hb-yt .hb-yt-follow:focus-visible{outline:none;box-shadow:var(--hb-focus-ring,0 0 0 2px #AE90FF)}
   .hb-yt-sbtn.go,.hb-yt-sback{color:var(--hb-ink,#F2F4F7)}
   .hb-yt.hb-yt-smode .hb-yt-search{display:flex}
   .hb-yt.hb-yt-smode .hb-yt-find{display:none}
@@ -80,6 +81,8 @@ export const CSS_PHONE = `
   .hb-yt.hb-yt-t-player.hb-yt-hasvid:not(.hb-yt-connmode) .hb-yt-upnext:not([hidden]){display:flex}
   .hb-yt-seek{align-items:center;gap:var(--sp-3,12px);padding:var(--sp-1,4px) var(--sp-4,16px) 0}
   .hb-yt-strack{position:relative;flex:1 1 auto;height:20px;cursor:pointer;touch-action:none}
+  .zm-scroll .hb-yt-strack{height:44px}            /* a thumb's target; the line drawn stays 3 px */
+  .zm-scroll .hb-yt-more3{width:44px;height:44px}
   .hb-yt-strack::before,.hb-yt-sfill{content:"";position:absolute;left:0;top:50%;height:3px;margin-top:-1.5px;border-radius:2px}
   .hb-yt-strack::before{right:0;background:var(--hb-line,rgba(255,255,255,.14))}
   .hb-yt-sfill{width:0;background:#f03}
@@ -110,8 +113,13 @@ export const CSS_PHONE = `
   .hb-yt-unchan{font-size:var(--fs-micro,12.75px);color:var(--hb-muted,#A9B1BD);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   /* A NARROW card (≤ 519 px: the phone, a desk card dragged small) — the YouTube app's bar and watch page. */
   @container hbyt (max-width:519px){
-    .hb-yt .hb-yt-nav.hb-bar.hb-bar{grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"down lead find";column-gap:var(--sp-1,4px)}
-    .hb-yt .hb-yt-nav .hb-bar-tray,.hb-yt .hb-yt-nav.hb-bar .hb-bar-more{display:none}
+    /* the chips replace the ⋯ menu; a DESK card keeps its platform icons and plug in the row (on the phone they are
+       not controls: style_cards.js hides .hb-yt-navright under .zm-scroll) */
+    .hb-yt .hb-yt-nav.hb-bar.hb-bar{grid-template-columns:auto minmax(0,1fr) auto auto;grid-template-areas:"down lead aux find";
+      column-gap:var(--sp-1,4px)}
+    .hb-yt .hb-yt-nav.hb-bar .hb-bar-tray{display:contents}
+    .hb-yt .hb-yt-nav.hb-bar .hb-bar-more,.hb-yt .hb-yt-nav .hb-yt-menu{display:none}
+    .hb-yt .hb-yt-nav.hb-bar .hb-bar-aux{margin-left:var(--sp-1,4px)}
     .hb-yt .hb-yt-nav .hb-yt-tabs{gap:var(--sp-2,8px);margin:0;overflow-x:auto;scrollbar-width:none;scroll-padding-inline:var(--sp-2,8px)}
     .hb-yt .hb-yt-nav .hb-yt-tab{display:inline-flex;align-items:center;border-radius:var(--hb-r-s,8px);padding:6px 12px;
       color:var(--hb-ink,#F2F4F7);background:var(--hb-bg-soft,#272D35)}

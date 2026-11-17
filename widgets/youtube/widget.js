@@ -16,6 +16,7 @@ import { renderSubs } from "./js/channel.js";
 import { buildQueueBoxes, paintQueue, paintSavedLists } from "./js/lists.js";
 import { buildControls, paintPlayer } from "./js/controls.js";
 import { closeSheet } from "./js/sheet.js";
+import { carrySearch, searchSnapshot } from "./js/search.js";
 import { buildSeek, paintClock, buildInfo, buildChips, paintWatch } from "./js/watch.js";
 
 function injectStyles(){
@@ -28,6 +29,7 @@ function injectStyles(){
 function buildCard(root, data, ctx, v){
   const {id, seq, loading, st, src, isStream, pkey, hasVid} = v;
   closeSheet(root);                                     // a ⋮ sheet belongs to the card it was opened on
+  const typed = searchSnapshot(root);                   // what he is typing survives the new bar (search.js)
   root.className = "hb-yt";
   root.textContent = "";
   // HOME vs PLAYER (V2-596): with no video loaded the card IS the home catalog; with one, the nav button
@@ -39,25 +41,27 @@ function buildCard(root, data, ctx, v){
   // video ARRIVING on a card that had none jumps to the player: «ponme el vídeo de X» means watching it,
   // and leaving the dashboard up while it plays underneath is the confusion the redesign exists to end.
   if(!Y.tab) Y.tab = hasVid ? "player" : "inicio";
-  if(hasVid && st && !st.key.slice(2) && !loading && Y.tab !== "player"){ Y.prev = Y.tab; Y.tab = "player"; }
+  // Both jumps leave the search too: a video arriving over the typed field is one screen, not two (2026-11-17).
+  if(hasVid && st && !st.key.slice(2) && !loading && Y.tab !== "player"){ Y.prev = Y.tab; Y.tab = "player"; Y.searching = false; }
   // V2-753 — and the MIRROR, which was never written: a video LEAVING a card that had one goes back
   // to the catalog. «Páralo, y vuelve al inicio» is one order, and `close` only did the first half —
   // the player emptied and the card sat on the now-blank Reproductor tab, which is exactly what he
   // reported twice: «y tampoco vuelves al inicio a ver el catálogo». Gated on the TRANSITION for the
   // same reason the jump above is: clicking «Reproductor» on an empty card is his choice and stands.
-  if(!hasVid && st && st.key.slice(2) && !loading && Y.tab === "player") Y.tab = "inicio";
+  if(!hasVid && st && st.key.slice(2) && !loading && Y.tab === "player"){ Y.tab = "inicio"; Y.searching = false; }
   applyTabClass(root);
   Y.tcur = 0; Y.tdur = 0;                               // a new player starts its own clock
 
   const {dots, sInp, sClr, recent} = buildNav(root, ctx);   // the bar: tabs · platform icons · plug · search (nav.js)
+  carrySearch(root, typed);
   // Everything under the bar lives in ONE scroll region, so the bar never scrolls away with the content.
   const body = el("div", "hb-yt-body");
   root.appendChild(body);
   body.appendChild(recent);                             // his recent searches, while he types into an empty field
 
   // THE WATCH PAGE (2026-11-17, the YouTube app's): the video full width, the block notice right under it, the seek
-  // bar, the controls, then the title and «channel · date». The STAGE holds them so a desk card sizes the video to
-  // leave them in sight; chips and «A continuación» follow below the fold.
+  // bar and the controls — the STAGE, so the video gives way to keep them in sight (a wide card: the video FILLS the
+  // rest, V2-636) — then the title and «channel · date», the chips and «A continuación», below the fold on a desk.
   const stage = el("div", "hb-yt-stage");
   body.appendChild(stage);
   // V2-634 — the playback-block banner: when the owner refuses embedding, the card SAYS what happened
@@ -65,12 +69,12 @@ function buildCard(root, data, ctx, v){
   // operator alone with the player's raw error screen. Filled per render from data.blocked_notice.
   const blockMsg = el("div", "hb-yt-blockmsg", "");
   const {frame, iframe, video, unmuteHint} = buildFrame(data, ctx, loading, isStream, src, id);
-  const seek = buildSeek(root);
+  const seek = buildSeek(root, ctx);
   const {ctrls, hint, playBtn, muteBtn, vol} = buildControls(ctx);
   const {tline, title, meta, follow} = buildInfo();
-  stage.append(frame, blockMsg, seek.box, ctrls, tline);
+  stage.append(frame, blockMsg, seek.box, ctrls);
   const chips = buildChips(root, ctx);
-  body.append(chips.row, chips.upnext, hint);
+  body.append(tline, chips.row, chips.upnext, hint);
   const {home, blockedLine, conn} = buildHome(body);
   const {listBox, subsBox, listsBox, addInp, newList, nlNote, nlSave} = buildQueueBoxes(root, ctx, body);
   const mini = buildMini(root, ctx);                    // V2-885: the foot bar while a video is current off the player
@@ -114,6 +118,10 @@ export function render(root, data, ctx){
   // Dynamic refresh on EVERY render (title, verifiable metadata, mute-toggle button, volume).
   const E = root._hbYtEls || {};
   root._hbYtData = data;
+  // A ⋮ sheet names its row by NUMBER: when the rows under it change (the voice removed one), it would act on another.
+  const rowsSig = [data.list, data.search_results, data.suggested]
+    .map((a) => (Array.isArray(a) ? a : []).map((x) => x && (x.videoId || x.url || "")).join(",")).join("|");
+  if(root._hbYtRowsSig !== rowsSig){ closeSheet(root); root._hbYtRowsSig = rowsSig; }
   // V2-638 — the control sites below address whichever player is mounted: a <video> for a library or
   // torrent row, the YouTube embed otherwise. `post` speaks both, so nothing else has to branch.
   const PL = E.video || E.iframe;

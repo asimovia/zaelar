@@ -109,5 +109,7 @@ export function paintNav(root, data){
   Object.keys(root._hbYtTabBtns).forEach((k) => { root._hbYtTabBtns[k].textContent = label(k); });
   root.querySelectorAll(".hb-yt-menu .hb-yt-mitem").forEach((m) => { m.textContent = label(m.dataset.tab); });
   if(root._hbYtPaintTabs) root._hbYtPaintTabs();
+  [[".hb-yt-find", tt("search_open", null, "Buscar vídeos")], [".hb-yt-down", tt("minimize", null, "Minimizar el reproductor")]]
+    .forEach(([s, label]) => { const b = root.querySelector(s); if(b){ b.title = label; b.setAttribute("aria-label", label); } });
   paintSearchMode(root);                                  // and fits the bar: a label that grew («Cola · 12»), the field
 }

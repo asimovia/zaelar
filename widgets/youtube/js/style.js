@@ -36,9 +36,10 @@ const CSS_PLAYER = `
   .hb-yt-video{position:absolute;inset:0;width:100%;height:100%;background:#000;object-fit:contain}
   /* V2-636 - the control bar stays visible at ANY card size - the operator grew the card and the buttons were
      CLIPPED under its bottom edge. Since 2026-11-17 the page is YouTube's watch page: the STAGE (video, notice,
-     seek bar, controls, title) is at most the body's height, and the video, 16:9 of the card's width, is what
-     gives way when the card is short (YouTube letterboxes inside the iframe); the chips and «A continuación»
-     scroll below. The video runs EDGE TO EDGE: no inset and no radius around it.
+     seek bar, controls) is at most the body's height and the video is what gives way when the card is short
+     (YouTube letterboxes inside the iframe). On a narrow card the video is 16:9 of its width (the phone); on a
+     wide one the stage IS the body's height and the video fills the rest, as before. The title, the chips and
+     «A continuación» follow and scroll. The video runs EDGE TO EDGE: no inset and no radius around it.
      connmode is excluded: the connector shelf is a list and must keep its scroll. */
   .hb-yt-stage{display:contents}
   .hb-yt.hb-yt-t-player:not(.hb-yt-connmode) .hb-yt-body{overflow:auto;padding:0;gap:0}
@@ -47,7 +48,11 @@ const CSS_PLAYER = `
   .hb-yt.hb-yt-t-player:not(.hb-yt-connmode) .hb-yt-stage > *{flex:0 0 auto}
   .hb-yt.hb-yt-t-player:not(.hb-yt-connmode) .hb-yt-stage > .hb-yt-frame{flex:0 1 auto;height:56.25cqw;
     min-height:120px;aspect-ratio:auto;border-radius:0}
-  .hb-yt.hb-yt-t-player:not(.hb-yt-connmode) .hb-yt-tline{padding:var(--sp-2,8px) var(--sp-4,16px)}
+  @container hbyt (width >= 520px){
+    .hb-yt.hb-yt-t-player:not(.hb-yt-connmode) .hb-yt-stage{height:100%}
+    .hb-yt.hb-yt-t-player:not(.hb-yt-connmode) .hb-yt-stage > .hb-yt-frame{flex:1 1 auto;min-height:140px}
+  }
+  .hb-yt.hb-yt-t-player:not(.hb-yt-connmode) .hb-yt-tline{flex:0 0 auto;padding:var(--sp-2,8px) var(--sp-4,16px)}
   .hb-yt.hb-yt-t-player:not(.hb-yt-connmode) .hb-yt-blockmsg{margin:var(--sp-2,8px) var(--sp-4,16px) 0}
   .hb-yt.hb-yt-t-player:not(.hb-yt-connmode) .hb-yt-ctrls{margin:0;padding:var(--sp-2,8px) var(--sp-3,12px);border-top:0}
   .hb-yt.hb-yt-t-player:not(.hb-yt-connmode) .hb-yt-hint{padding:0 var(--sp-4,16px) var(--sp-3,12px)}

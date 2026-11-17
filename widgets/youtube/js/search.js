@@ -1,8 +1,9 @@
 // youtube widget — THE ONE SEARCH DOOR (2026-11-17, the YouTube app's own): the bar's 🔍 turns the bar itself into the
 // field — ← · field · ✕ — and an empty field lists his recent searches (`recent_queries`, written by the `search`
 // action). The results page keeps the query in that field; ← leaves the typing, and over the results it drops them
-// (`clear_search`) and goes back to the catalogue. Enter is the same `search` the voice sends. Built ONCE with the bar,
-// so a repaint never eats what he is typing; only its value and the mode are painted per render.
+// (`clear_search`) and goes back to the catalogue. Enter is the same `search` the voice sends. A repaint paints only its
+// value, its words and the mode, never what he is typing; a REBUILD of the card (another video, the queue moving on)
+// makes a new bar, and widget.js carries his words and the focus over to it (`carrySearch`).
 import { Y } from "./state.js";
 import { ICON_SEARCH, ICON_CLEAR, ICON_BACK, ICON_CLOCK, el, iconBtn, svgEl, tt } from "./shared.js";
 import { fit } from "/frontend/app/lib/toolbar.js";
@@ -14,9 +15,7 @@ export function buildSearch(root, ctx, selectTab){
   form.setAttribute("role", "search");
   const inp = el("input", "");
   inp.type = "search"; inp.name = "q"; inp.autocomplete = "off"; inp.enterKeyHint = "search";
-  inp.placeholder = tt("search_ph", null, "Buscar en YouTube…");
-  inp.setAttribute("aria-label", tt("search_label", null, "Buscar vídeos"));
-  const back = iconBtn("hb-yt-sbtn hb-yt-sback", ICON_BACK, tt("search_back", null, "Volver"), () => {
+  const back = iconBtn("hb-yt-sbtn hb-yt-sback", ICON_BACK, "", () => {
     const d = root._hbYtData || {};
     const band = (d.search_results || []).length || d.adding;
     if(Y.searching && band) inp.value = String(d.adding || d.search_query || "");   // back to the results he typed over
@@ -28,14 +27,12 @@ export function buildSearch(root, ctx, selectTab){
     inp.blur();
     paintSearchMode(root);
   });
-  const clr = iconBtn("hb-yt-sbtn hb-yt-sclr", ICON_CLEAR, tt("clear_text", null, "Borrar el texto"), () => {
+  const clr = iconBtn("hb-yt-sbtn hb-yt-sclr", ICON_CLEAR, "", () => {
     inp.value = ""; Y.searching = true; inp.focus(); paintSearchMode(root);
   });
   const go = el("button", "hb-yt-sbtn go");
   go.type = "submit";
   go.appendChild(svgEl(ICON_SEARCH));
-  go.title = tt("search_go", null, "Buscar");
-  go.setAttribute("aria-label", go.title);
   form.append(back, inp, clr, go);
   const submit = (q) => {
     q = String(q || "").trim();
@@ -54,7 +51,7 @@ export function buildSearch(root, ctx, selectTab){
   const recent = el("div", "hb-yt-recent");
   recent.setAttribute("role", "listbox");
   recent.setAttribute("aria-label", tt("recent_searches", null, "Búsquedas recientes"));
-  root._hbYtSearch = {form, inp, clr, recent, submit};
+  root._hbYtSearch = {form, inp, clr, back, go, recent, submit};
   return {form, inp, clr, recent};
 }
 
@@ -63,6 +60,11 @@ export function paintSearchMode(root){
   const S = root._hbYtSearch;
   if(!S) return;
   const d = root._hbYtData || {};
+  // Its words, from the bundle on every paint (V2-694).
+  S.inp.placeholder = tt("search_ph", null, "Buscar en YouTube…");
+  S.inp.setAttribute("aria-label", tt("search_label", null, "Buscar vídeos"));
+  [[S.back, tt("search_back", null, "Volver")], [S.clr, tt("clear_text", null, "Borrar el texto")], [S.go, tt("search_go", null, "Buscar")]]
+    .forEach(([b, label]) => { b.title = label; b.setAttribute("aria-label", label); });
   const band = !Y.screen && Y.tab === "inicio" && ((d.search_results || []).length > 0 || !!d.adding);
   const typing = !!Y.searching && !Y.screen;
   if(document.activeElement !== S.inp && !typing) S.inp.value = String(d.adding || d.search_query || "");
@@ -72,6 +74,11 @@ export function paintSearchMode(root){
   root.classList.toggle("hb-yt-typing", typing);
   const onBand = !!d.search_query && norm(S.inp.value) === norm(d.search_query);   // the field still says the results' query
   root.classList.toggle("hb-yt-recents", typing && recents.length > 0 && !onBand);
+  if(S.refocus && typing){
+    S.inp.focus({preventScroll: true});
+    try{ S.inp.setSelectionRange(S.refocus.start, S.refocus.end); }catch(_){}
+  }
+  S.refocus = null;
   S.clr.style.visibility = S.inp.value ? "" : "hidden";
   const sig = recents.join("\n");
   if(S.recent.dataset.sig !== sig){
@@ -87,4 +94,18 @@ export function paintSearchMode(root){
     });
   }
   fit(root.querySelector(".hb-yt-nav"));
+}
+
+// A rebuild of the card makes a new bar: what he was typing, and the focus, move over to it (and he stays in the
+// typing only if he was). `old` = the previous bar's search, read before the card was emptied.
+export function carrySearch(root, old){
+  const S = root._hbYtSearch;
+  if(!S || !old || !Y.searching) return;
+  S.inp.value = old.value;
+  if(old.focus) S.refocus = old;                        // once the bar wears the field (paintSearchMode): hidden, it cannot
+}
+export function searchSnapshot(root){
+  const S = root._hbYtSearch;
+  if(!S) return null;
+  return {value: S.inp.value, focus: document.activeElement === S.inp, start: S.inp.selectionStart, end: S.inp.selectionEnd};
 }

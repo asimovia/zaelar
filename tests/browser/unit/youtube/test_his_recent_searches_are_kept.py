@@ -58,3 +58,9 @@ def test_a_result_keeps_the_length_its_picture_showed(sandbox):
 def test_the_seed_declares_the_key_and_the_action_owns_the_writer():
     assert helpers._SEED["recent_queries"] == []
     assert callable(actions._remember_query)
+
+
+def test_a_pasted_wall_of_text_is_kept_as_a_short_question():
+    db = {"recent_queries": ["lofi"]}
+    actions._remember_query(db, "x" * 500)
+    assert len(db["recent_queries"][0]) <= 120 and db["recent_queries"][1] == "lofi"
