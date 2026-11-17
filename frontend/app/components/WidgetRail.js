@@ -183,7 +183,7 @@ function injectStyles(){
      The bar's own button rule above (muted ink for every tool) was winning over .orbic.on on the flanks, so an
      open mic in the bar read exactly like a closed one. */
   #wrail .orbic.on{color:var(--hb-accent,#AE90FF)}
-  #wrail .orbic.off{color:var(--hb-muted-2,#99A2AE)}
+  #wrail .orbic.off,#wrail .orbic.wait{color:var(--hb-muted-2,#99A2AE)}   /* .wait: parked for the wake word (4.327) */
   #wrail .wr-orbslot{display:none;width:48px;height:48px;position:relative;border-radius:50%;flex:none}
   body.hb-orb-bar #wrail .wr-orbslot{display:flex}
   #wrail .wr-orbslot #orb{position:absolute;inset:0;margin:auto;width:42px!important;height:42px!important;
