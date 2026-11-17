@@ -18,6 +18,8 @@ import time
 from functools import lru_cache
 from pathlib import Path
 
+from loguru import logger
+
 CATALOG = Path(__file__).resolve().parent / "catalog.json"
 
 
@@ -91,6 +93,6 @@ async def prepare(args: dict, operator_text: str, lang_lock: str, emit) -> str:
         emit("brain", "🪞 about_self (tool del modelo)", role="system", text=f"{entry(topic)['id']} ← {question or operator_text[:80]}",
              extra={"cat": "flash", "topic": entry(topic)["id"], "asked": topic, "read_ms": round((time.time() - t0) * 1000),
                     "chars": len(system)})
-    except Exception:  # noqa: BLE001 — the trace never decides the answer
-        pass
+    except Exception as e:  # noqa: BLE001 — the trace never decides the answer
+        logger.warning(f"about_self: trace not emitted ({e!r})")
     return system

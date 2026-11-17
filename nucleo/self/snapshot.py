@@ -131,7 +131,8 @@ def daemon() -> dict:
 def build() -> str:
     try:
         return (ENGINE / "update" / "BUILD").read_text(encoding="utf-8").strip()
-    except OSError:
+    except OSError as e:
+        logger.warning(f"self snapshot: update/BUILD unreadable ({e!r})")
         return ""
 
 

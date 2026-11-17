@@ -40,7 +40,7 @@ FILES = {
 }
 
 FUNCTIONS = {
-    'config/settings.py::update': 146,
+    'config/settings.py::update': 149,  # +3 2026-11-17 V2-928: the presence settings (face, on/off, camera) are one more validated group
     'i18n/init/detect.py::lock': 132,
     'memory/writer/__init__.py::insert_memory': 151,
     'nucleo/actionmap/executor.py::execute': 144,
