@@ -77,11 +77,24 @@ def several(brief) -> bool:
         return False
 
 
+def refused(task) -> bool:
+    """This op ANSWERED and its card refused it (`op_receipt.failed`). An op with no answer yet is not refused."""
+    try:
+        from nucleo.flash import op_receipt
+        return task is not None and task.done() and not task.cancelled() and op_receipt.failed(task.result())
+    except Exception as e:  # noqa: BLE001 — unreadable is «not refused»: the op's own verdict line speaks for it
+        logger.debug(f"acts_asked: op result unread — {e!r}")
+        return False
+
+
 def ran(tasks=()) -> list[tuple[str, str]]:
-    """The distinct `(card, action)` the turn's doors ran: its data-ops (`(card::action, task)`) and its card acts
+    """The distinct `(card, action)` the turn's doors ran: its data-ops (`(card::action, task)`) that were not refused —
+    a refused write did nothing, and «part of it» is never said over nothing — and its card acts
     (`canvas_focus.this_turn_acts`: shows, closes, controls)."""
     out: list[tuple[str, str]] = []
     for w, _t in tasks or ():
+        if refused(_t):
+            continue
         card, _sep, action = str(w).partition("::")
         out.append((card.split("::", 1)[0], action))
     try:

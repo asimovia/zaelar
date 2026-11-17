@@ -126,3 +126,99 @@ def test_disarmed_the_reply_stops_reading_the_entries_and_done_stands_alone(turn
         importlib.reload(acts_asked)
     _t, out = _say([("agenda::add_meeting", _Done(OK))], ONE_MEETING)
     assert out, "restored: the line is said again"
+
+
+# ── audit 2026-11-17: only a write that LANDED is «part», only writes are counted, only the declared rows slot ──────
+
+REFUSED = {"ok": False, "error": "the day is missing"}
+
+
+def _mutated(module, old, new):
+    """Rewrite `old` → `new` in the module's source and reload it; returns the restore."""
+    src = pathlib.Path(module.__file__)
+    original = src.read_text(encoding="utf-8")
+    assert old in original, f"{src.name}: the disarm no longer finds its line"
+    src.write_text(original.replace(old, new), encoding="utf-8")
+    importlib.reload(module)
+
+    def restore():
+        src.write_text(original, encoding="utf-8")
+        for pyc in (src.parent / "__pycache__").glob(f"{src.stem}.*.pyc"):
+            pyc.unlink()
+        importlib.reload(module)
+    return restore
+
+
+@pytest.mark.parametrize("res", [REFUSED, {"ok": False, "verdict": "asked", "say": "widgets.agenda.notice_when"}])
+def test_a_single_write_that_was_refused_is_never_done_in_part(turn, monkeypatch, res):
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "en")
+    _t, out = _say([("agenda::add_meeting", _Done(res))], ONE_MEETING)
+    assert out and not any("part" in o for o in out), f"nothing was written and «part» was claimed: {out}"
+
+
+def test_the_acts_reading_does_not_count_a_refused_write_either(turn, monkeypatch):
+    from nucleo.turn import acts_asked
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "en")
+    monkeypatch.setattr(verdicts, "read", lambda h, key, fb, min_confidence=None: (acts_asked.SEVERAL, {"confidence": 0.97}))
+    assert acts_asked.ran([("agenda::add_meeting", _Done(REFUSED))]) == []
+    _t, out = _say([("agenda::add_meeting", _Done(REFUSED))], ONE_MEETING)
+    assert not any("part" in o for o in out), out
+    _t, out = _say([("agenda::add_meeting", _Done(REFUSED)), ("notas::add_note", _Done(OK))], ONE_MEETING)
+    assert any("part" in o for o in out), "one of two acts landed: that IS part"
+
+
+def test_a_call_that_writes_nothing_beside_the_write_is_not_counted(turn, monkeypatch):
+    """The usual shape: one entry written and the card shown. The show is not a second entry."""
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "en")
+    calls = ONE_MEETING + [{"name": "show_widget", "args": {"widget_id": "agenda"}}]
+    _t, out = _say([("agenda::add_meeting", _Done(OK))], calls)
+    assert any("part" in o for o in out), f"one of several was written beside a show and nothing said so: {out}"
+
+
+def test_a_list_that_is_a_detail_of_one_entry_is_not_its_rows(turn, monkeypatch):
+    """Who comes to ONE appointment is a list and is one entry; only a slot the card declares as rows carries several."""
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "en")
+    calls = [{"name": "widget_data", "args": {"widget_id": "agenda", "action": "add_meeting", "payload": {
+        "title": "Sprint review", "date": "2031-03-04", "attendees": ["Ilse Brandt", "Teo Varga"], "days": ["mon", "thu"]}}}]
+    _t, out = _say([("agenda::add_meeting", _Done(OK))], calls)
+    assert out and "part" in out[-1], out
+    assert items_asked._rows_slots("agenda", "add_list") == ["items"] and items_asked._rows_slots("agenda", "add_meeting") == []
+
+
+def test_rows_given_as_one_text_are_several_rows(turn):
+    calls = [{"name": "widget_data", "args": {"widget_id": "agenda", "action": "add_list",
+                                              "payload": {"name": "Hardware store", "items": "nails, glue; tape"}}}]
+    _t, out = _say([("agenda::add_list", _Done(OK))], calls)
+    assert not out, out
+
+
+def test_disarmed_a_refused_write_is_called_part_again(turn, monkeypatch):
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "en")
+    restore = _mutated(items_asked, "acts_asked.refused(ops[0][1]) or ", "")
+    try:
+        _t, out = _say([("agenda::add_meeting", _Done(REFUSED))], ONE_MEETING)
+        assert any("part" in o for o in out), "the mutation did not land"
+    finally:
+        restore()
+    _t, out = _say([("agenda::add_meeting", _Done(REFUSED))], ONE_MEETING)
+    assert not any("part" in o for o in out)
+
+
+def test_disarmed_any_call_counts_and_any_list_hides_the_rest_again(turn, monkeypatch):
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "en")
+    calls = [{"name": "widget_data", "args": {"widget_id": "agenda", "action": "add_meeting", "payload": {
+        "title": "Sprint review", "attendees": ["Ilse Brandt", "Teo Varga"]}}}]
+    restore = _mutated(items_asked, "for k in _rows_slots(card, action))", "for k in payload)")
+    try:
+        _t, out = _say([("agenda::add_meeting", _Done(OK))], calls)
+        assert not out, "the mutation did not land"
+    finally:
+        restore()
+    restore = _mutated(items_asked, "    if len(writes) != 1:\n", "    if len([c for c in model_calls or ()]) != 1:\n")
+    try:
+        _t, out = _say([("agenda::add_meeting", _Done(OK))], ONE_MEETING + [{"name": "show_widget", "args": {}}])
+        assert not out, "the mutation did not land"
+    finally:
+        restore()
+    _t, out = _say([("agenda::add_meeting", _Done(OK))], calls)
+    assert out and "part" in out[-1]

@@ -10,7 +10,8 @@ list.
 `acts_asked` cannot see this: the same thing done to several entries is ONE act by its own definition (a bulk call is
 one call). How many ENTRIES his words name is its own question of the brief (`items_asked`, any language, never a word
 list), asked at the same door — the turn's first model call. When the brief is sure he named several and the model
-made exactly one call, carrying no list, that landed as the turn's only op, the mouth says only part was done and
+made exactly one WRITE (calls that write nothing are not counted), with no more than one row in the slots the card
+declares as rows, that landed as the turn's only op, the mouth says only part was done and
 where: the verdict is `unmet`, always said, and it takes the place of the «Done.» that used to follow.
 
 What it does not reach: several asked and SOME written (two calls for four entries) — the brief answers one or
@@ -55,26 +56,41 @@ def several(brief) -> bool:
         return False
 
 
-def _carries_a_list(value) -> bool:
-    """A call whose arguments hold a list of two or more carries several entries by itself (a list with its items)."""
+def _several(value) -> bool:
+    """A rows slot holding more than one row: a list of two or more, or one text with its rows apart."""
     if isinstance(value, (list, tuple)):
-        return len(value) > 1 or any(_carries_a_list(v) for v in value)
-    if isinstance(value, dict):
-        return any(_carries_a_list(v) for v in value.values())
-    return False
+        return len(value) > 1
+    return isinstance(value, str) and len([r for r in value.replace(";", "\n").replace(",", "\n").splitlines() if r.strip()]) > 1
 
 
-def one_single_call(model_calls) -> bool:
-    """The model made exactly one call this turn and it names one entry."""
-    calls = [c for c in model_calls or () if isinstance(c, dict) and c.get("name")]
-    return len(calls) == 1 and not _carries_a_list(calls[0].get("args"))
+def _rows_slots(card: str, action: str) -> list[str]:
+    """The payload slots the card DECLARES as rows (`"[string, …] — …"`): the only place a call carries several
+    entries. A list that is a detail of one entry (who comes, its tags) is declared otherwise and is not one."""
+    from nucleo.flash import payload_fill
+    return [str(k) for k, d in payload_fill._payload_spec(card, action).items() if str(d or "").lstrip().startswith("[")]
+
+
+def one_single_write(model_calls, card: str, action: str) -> bool:
+    """Of the model's calls, exactly ONE is the write the turn's op ran (`card:action`) and it names one entry. What
+    else the model called beside it (a show, a search) writes nothing and is not counted."""
+    writes = [c.get("args") for c in model_calls or () if isinstance(c, dict) and isinstance(c.get("args"), dict)
+              and str(c["args"].get("widget_id") or "").split("::")[0] == card and str(c["args"].get("action") or "") == action]
+    if len(writes) != 1:
+        return False
+    payload = writes[0].get("payload") if isinstance(writes[0].get("payload"), dict) else {}
+    return not any(_several(payload.get(k)) for k in _rows_slots(card, action))
 
 
 def left_undone(tasks=(), model_calls=None, *, brief=None) -> list:
     """The `unmet` outcome owed when he named several new entries and the turn wrote one; [] otherwise."""
     try:
-        if len(list(tasks or ())) != 1 or not one_single_call(model_calls):
+        ops = list(tasks or ())
+        if len(ops) != 1:
             return []
+        from nucleo.turn import acts_asked
+        card, _sep, action = str(ops[0][0]).partition("::")
+        if acts_asked.refused(ops[0][1]) or not one_single_write(model_calls, card, action):
+            return []                      # a refused write did NOTHING: its own verdict line says so, not «part»
         if brief is None:
             from nucleo.turn import brief_turn
             brief = brief_turn.of_this_turn()
@@ -84,7 +100,6 @@ def left_undone(tasks=(), model_calls=None, *, brief=None) -> list:
         from nucleo.circuit import verdict as V
         from nucleo.flash import card_receipt
         from nucleo.turn.reply import Outcome
-        card, _sep, action = str(list(tasks)[0][0]).partition("::")
         tpl = str(getattr(langs.current_language(), "reply_part_only", "") or "")
         if not tpl:
             return []
