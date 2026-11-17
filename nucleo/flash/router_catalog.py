@@ -270,15 +270,17 @@ TOOLS: list[dict] = [
     },
     {
         # His OWN controls, out of reach when he talks from across the room: the 🔊 (mute keeps the mic and the
-        # session on) and the ⏻. One door with the buttons: `nucleo/acts/self_controls.py` hands the act to the
-        # screen that heard him, which runs its button. A remark about the noise is not an order: no call.
+        # session on), his voice's volume on that screen, the mic (one-way) and the ⏻. One door with the buttons:
+        # `nucleo/acts/self_controls.py` hands the act to the screen that heard him, which runs its button. A remark
+        # about the noise is not an order: no call.
         "type": "function",
         "function": {
             "name": "agent_controls",
-            "description": "Tus controles (altavoz, apagado, voz, idioma del sistema, tu cara en pantalla), solo si te lo ORDENA.",
+            "description": "Tus controles (altavoz, volumen de tu voz -no del vídeo-, micro, apagado, voz, idioma, cara), solo si te lo ORDENA.",
             "parameters": {
                 "type": "object",
-                "properties": {"act": {"type": "string", "enum": ["mute", "unmute", "off", "voice_male", "voice_female", "voice_list", "voice_settings", "language", "presence_on", "presence_off", "presence_settings"]}},
+                "properties": {"act": {"type": "string", "enum": ["mute", "unmute", "volume_up", "volume_down", "volume_set", "mic_off", "off", "voice_male", "voice_female", "voice_list", "voice_settings", "language", "presence_on", "presence_off", "presence_settings"]},
+                               "value": {"type": "integer"}},   # volume_set's level, 0-100 (clamped at the door)
                 "required": ["act"],
             },
         },
@@ -679,11 +681,11 @@ TOOLS: list[dict] = [
                 "type": "object",
                 "properties": {
                     "cluster": {"type": "string",
-                                "description": "Alias del cluster (el mismo que usa connect_cluster/widget_data)."},
+                                "description": "Alias del cluster."},
                     "peer": {"type": "string",
                              "description": "Handle EXACTO del peer (nunca lo inventes)."},
                     "objective": {"type": "string",
-                                  "description": "El objetivo en una frase, en el idioma de la conversación. Vacío = borrarlo."},
+                                  "description": "El objetivo en una frase, en el idioma de la conversación."},   # «vacío = borrar» is in the description (V2-930 paid here)
                 },
                 "required": ["cluster", "peer", "objective"],
             },

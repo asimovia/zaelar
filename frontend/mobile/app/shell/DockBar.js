@@ -25,6 +25,7 @@ import * as consent from "./ai-consent.js?v=1";   // V2-870: in the app the voic
 import { appsOpen, setAppsOpen } from "./AppsPane.js?v=2";
 import { APPS_ICON } from "../../../app/lib/icons.js?v=2";
 import { problemTitleKey } from "../../../app/services/device-health.js?v=1";
+import { VolumeSlider } from "../../../app/components/VolumeSlider.js?v=1";
 import * as wake from "./wake.js?v=1";
 import { connectorsOpen } from "./ConnectorsSheet.js?v=1";
 import { accountOpen } from "./AccountSheet.js?v=1";
@@ -165,6 +166,9 @@ export function DockBar() {
       // drew it nowhere — «the agent is not available» and «allow the microphone in Settings» never reached the person.
       h("div", { class: () => "zm-micnote" + (store.micBlocked().show ? " show" : ""), role: "status" },
         () => store.micBlocked().msg),
+      // His voice's level on this phone (V2-930), one line over the dock while a voice order moves it; the hand's
+      // slider is the row under «Speaks out loud» in Settings. The same door (services/volume.js) for both.
+      VolumeSlider("zm-volnote"),
 
       // THE SPEAKER, back in the dock (operator, 2026-10-24). Opening it by hand brings the voice here, like the mic.
       h("button", {

@@ -270,6 +270,7 @@ async def settle_what_is_pending(*, _ans, _ask_waiting, _auth_pending, _brief, _
         except Exception:
             spoken_text = "Aquí lo tienes."
         send(speech.sanitize(spoken_text, drop_metadata=False))
+    spoken_text = __import__("nucleo.acts.self_controls", fromlist=["x"]).say_the_way_back(acted, spoken_text, send, speech)   # one-way: the button is the way back (V2-930)
 
     # V2-660/V2-658 — what the turn OWES (`harness_turn`): the cards it showed are goals the prompt carries, and a
     # widget_data cut by the cap escalates with a document surface. No line is said for it after the reply (V2-851 F5).

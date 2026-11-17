@@ -59,8 +59,10 @@ def remainder(text: str, hard: str) -> str:
     """Question 4 alone: what the sentence ordered besides the close or the stop ("" when that was all)."""
     try:
         from voice import attention as _att
-        return (_att.close_all_remainder(text) if hard == "close"
-                else _att.stop_remainder(text) if hard == "stop" else "")
+        from nucleo import actionmap as _amap   # a ONE-word remainder counts when it is a declared order («apágate»)
+        known = lambda rest: _amap.enabled() and _amap.match_spoken(rest) is not None   # noqa: E731
+        return (_att.close_all_remainder(text, known) if hard == "close"
+                else _att.stop_remainder(text, known) if hard == "stop" else "")
     except Exception:                          # noqa: BLE001 — unreadable remainder = the old behaviour
         return ""
 

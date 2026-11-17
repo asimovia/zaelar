@@ -38,6 +38,7 @@ import { makeDraggable, resetDraggable } from "../lib/draggable.js?v=2";
 import { startEcg } from "../lib/ecg.js?v=2";
 import { t } from "../core/i18n.js?v=1";
 import { problemTitleKey } from "../services/device-health.js?v=1";
+import { VolumeSlider, volumeHands } from "./VolumeSlider.js?v=1";
 
 // Inline SVGs (self-contained, currentColor). Mic + memory + speaker on/off + power + captions + chat + robot.
 const MIC_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>`;
@@ -135,6 +136,7 @@ export function Orb() {
     h("div", { class: "orbveil", "aria-hidden": "true" }),
     h("div", { id: "activity", class: "activity" }),                                   // agent activity (desktop mounts here)
     h("div", { class: () => "vlabel" + (store.voiceFlash().show ? " show" : "") }, () => store.voiceFlash().text),
+    VolumeSlider("volpop"),   // his voice's level on this screen (V2-930): a wheel / right click on the 🔊, or his voice
     h("div", { class: () => "micblockcap" + (store.micBlocked().show ? " show" : "") }, () => store.micBlocked().msg),
     // UPPER LID of the EYE — 7 controls arched over the orb (order L→R, CENTRE = ⏻ at the apex, outer icons dive
     // to the corners to meet the ECG's lower lid): ⇩ · 🎤 · 🔊 · ⏻ · 📝 · 💬 · 🤖. BLUE = on/open, GREEN = off.
@@ -177,7 +179,7 @@ export function Orb() {
           api.uiEvent("orb:mic", { state: store.micMuted() ? "muted" : "unmuted" });
         },
       }, () => raw(!store.micHealth().ok || store.micMuted() ? MIC_OFF : MIC_ICON)),   // a fault is slashed too, in red
-      h("button", { "data-ctl": "spk",
+      h("button", { "data-ctl": "spk", ...volumeHands,
         class: () => devClass(!store.botMuted()) + (store.spkHealth().ok ? "" : " problem"),
         title: () => !store.spkHealth().ok ? t(problemTitleKey("spk", store.spkHealth().reason))
                    : store.botMuted() ? t("orb.speaker_muted") : t("orb.speaker_unmuted"),

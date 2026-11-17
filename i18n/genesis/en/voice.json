@@ -229,6 +229,13 @@
  "done_asked": "Asked — the widget hasn't confirmed it yet.",
  "done_just_started": "I'm on it — it isn't done yet.",
  "controls_said": {
+  "mute": "Muting my voice; I'm still listening.",
+  "unmute": "Speaking out loud again.",
+  "volume_up": "Turning my voice up.",
+  "volume_down": "Turning my voice down.",
+  "volume_set": "Setting my voice to {n}%.",
+  "mic_off": "Closing the microphone, so I can't hear you now: to come back, tap the microphone.",
+  "off": "Switching off: to come back, press the power button.",
   "voice_settings": "I've opened the voice settings: pick the one you want there.",
   "voice_list": "Here are the voices I have: pick the one you want.",
   "presence_settings": "I've opened the presence settings: pick my face there.",

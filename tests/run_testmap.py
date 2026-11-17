@@ -6491,6 +6491,17 @@ DOMAINS: list[dict] = [
                                  "face, tab, badge), a refusal says why; nothing leaves the page; the phone's AirPods row only in "
                                  "the native app. Disarms: the gate forced open, the rig without lookAt, an unmirrored frame",
             "ch": UNIT, "paths": ["tests/browser/unit/presence/test_the_face_looks_at_you.py"]},
+        # V2-930 — by voice, phone and desktop: «apaga/enciende el altavoz» (a target state, read back from the button),
+        # his voice's volume («sube tu volumen», «volumen al 30 %»: 0-100, kept per device) and the one-way «silencia el
+        # micrófono» / «apágate» (the line naming the button as the way back is heard first). One `controls` door.
+        {"id": "4.571", "title": "His speaker, his voice's volume, the mic and the ⏻ by voice (V2-930), ES+EN: seeds and the "
+                                 "model's call reach one door; mute/unmute are a target state read back from the button; a "
+                                 "level is 0-100, kept per device, the bot's audio follows it; a one-way act's line names the "
+                                 "button and is said over the model's words and with acks off, before the screen acts; "
+                                 "«cállate y apágate» runs both; rendered on the phone dock and the desktop lid. Disarms: a "
+                                 "blind toggle, no wait for the line, an assumed flash, the tail off, the one-word remainder",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/actionmap/test_his_voice_volume_and_mic_by_voice.py",
+                                  "tests/browser/unit/voice/test_his_controls_move_the_buttons.py"]},
         {"id": "4.566", "title": "The agent's face (V2-928): every face of the catalogue draws at rest, speaking and thinking; "
                                  "Porcelain is the default; every label of Settings ▸ Presence is in both bundles; the rig "
                                  "is never a statue (idle actions, speech accents). Disarm: life.js off → a statue",

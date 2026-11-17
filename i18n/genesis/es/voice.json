@@ -229,6 +229,13 @@
  "done_asked": "Pedido; el widget todavía no lo ha confirmado.",
  "done_just_started": "Me pongo con ello; todavía no está hecho.",
  "controls_said": {
+  "mute": "Silencio mi voz; te sigo escuchando.",
+  "unmute": "Vuelvo a hablar en voz alta.",
+  "volume_up": "Subo el volumen de mi voz.",
+  "volume_down": "Bajo el volumen de mi voz.",
+  "volume_set": "Pongo mi voz al {n} %.",
+  "mic_off": "Cierro el micrófono y ya no te oigo: para volver, toca el micrófono.",
+  "off": "Me apago: para volver, pulsa el botón de encendido.",
   "voice_settings": "Te abro los ajustes de voz: elige ahí la que quieras.",
   "voice_list": "Te enseño las voces que tengo: elige la que quieras.",
   "presence_settings": "Te abro los ajustes de presencia: elige ahí mi cara.",

@@ -12,6 +12,7 @@ import * as store from "../core/store.js?v=2";
 import * as micDenial from "./mic-denial.js?v=1";
 import * as audio from "./audio.js?v=2";
 import * as api from "./api.js?v=2";
+import * as vol from "./volume.js?v=1";
 import * as mic from "./mic.js?v=1";
 import { SpeakerGate } from "../lib/speaker-gate.js?v=2";
 import { startMicVAD, stopMicVAD } from "./vad.js?v=2";
@@ -47,16 +48,11 @@ export function attachBotAudio(el) {
   // ICON↔AUDIO PARITY — SELF-CORRECTING INVARIANT (mirror of session-lk.js, hydration bug 2026-07-17):
   // any external muted/volume change triggers 'volumechange' → reassert the signal state (recursion guard)
   // + volume=0 safety belt + immediate hydration of the persisted state on mount.
-  const enforce = () => {
-    const want = store.botMuted();
-    if (el.muted !== want) el.muted = want;
-    if (want && el.volume !== 0) el.volume = 0;
-    else if (!want && el.volume === 0) el.volume = 1;
-  };
+  const enforce = () => vol.enforce(el);   // muted ⇒ volume 0, else his level for this screen (services/volume.js)
   try {
     el.addEventListener("volumechange", enforce);
     el.addEventListener("playing", enforce);
-    enforce();
+    vol.bind(el);   // hydration now, then every change of his level or the 🔊
   } catch (_) {}
 }
 export function unmuteVoice() {
@@ -101,8 +97,7 @@ export function toggleMic() { mic.toggle("orb"); }
 // persists across refreshes and is honored on (re)connect in pc.ontrack. ----
 export function applyBotMute() {
   if (!botAudioEl) return;
-  botAudioEl.muted = store.botMuted();
-  botAudioEl.volume = store.botMuted() ? 0 : 1;   // safety belt: volume 0 silences even if something unmutes the element
+  vol.enforce(botAudioEl);   // muted + volume 0 (the backstop, even if the vendor unmutes the element), else his level
 }
 export function toggleBotMute() {
   const next = !store.botMuted(); store.setBotMuted(next); localStorage.setItem("hb_bot_muted", next ? "1" : "0");

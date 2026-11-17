@@ -23,6 +23,7 @@ import { Room, RoomEvent, LocalAudioTrack, ConnectionState } from "../../vendor/
 import * as store from "../core/store.js?v=2";
 import * as audio from "./audio.js?v=2";
 import * as api from "./api.js?v=2";
+import * as vol from "./volume.js?v=1";
 
 let _capSeen = false;   // V2-752: the audio-synced caption channel has been heard from this session
 import * as mic from "./mic.js?v=1";
@@ -300,16 +301,11 @@ export function attachBotAudio(el) {
   // "muted" (localStorage) but the voice PLAYING after a refresh. Since any muted/volume change fires
   // 'volumechange', we reassert the signal state there (recursion guard: only writes if it differs) + volume=0
   // backstop (the vendor never touches volume on this path) + IMMEDIATE HYDRATION of persisted state on mount.
-  const enforce = () => {
-    const want = store.botMuted();
-    if (el.muted !== want) el.muted = want;
-    if (want && el.volume !== 0) el.volume = 0;
-    else if (!want && el.volume === 0) el.volume = 1;
-  };
+  const enforce = () => vol.enforce(el);   // muted ⇒ volume 0, else his level for this screen (services/volume.js)
   try {
     el.addEventListener("volumechange", enforce);   // cualquier des-mute externo (vendor/startAudio) se revierte al instante
     el.addEventListener("playing", enforce);
-    enforce();                                      // hydration: apply persisted state NOW, before any session
+    vol.bind(el);                                   // hydration NOW, then every change of his level or the 🔊
   } catch (_) {}
 }
 // ── AUDIO PLAYBACK UNLOCK (V2-573) ───────────────────────────────────────────────────────────────────────────
@@ -425,8 +421,7 @@ export function applyCam() { if (stream) stream.getVideoTracks().forEach(t => t.
 export function toggleMic() { mic.toggle("orb"); }
 export function applyBotMute() {
   if (!botAudioEl) return;
-  botAudioEl.muted = store.botMuted();
-  botAudioEl.volume = store.botMuted() ? 0 : 1;   // backstop: volume 0 silences even if the vendor unmutes the element
+  vol.enforce(botAudioEl);   // muted + volume 0 (the backstop, even if the vendor unmutes the element), else his level
 }
 export function toggleBotMute() {
   const next = !store.botMuted(); store.setBotMuted(next); localStorage.setItem("hb_bot_muted", next ? "1" : "0");

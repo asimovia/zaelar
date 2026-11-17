@@ -1,0 +1,68 @@
+// volume.js — the agent's OWN voice volume on THIS screen (0–100): one door for the 🔊's slider and for his voice.
+//
+// It is the level of the agent's voice coming out of this page — the <audio> element the LiveKit track plays in —
+// never the device's system volume, which a web page (and an iOS app through public API) cannot set. Kept per device
+// (`hb_bot_volume`): the phone and the desktop each keep their own. Mute stays its own switch (`store.botMuted`, the
+// 🔊): the element plays at 0 while muted and at this level otherwise, so un-muting brings back the level he chose.
+// iOS WebKit ignores `HTMLMediaElement.volume`; there `settable()` is false and the screen says so instead of
+// claiming a level it could not set. Nothing here waits on a frame or on the page being visible: a locked phone's
+// voice order lands the same way.
+import * as store from "../core/store.js?v=2";
+import { createEffect, createSignal } from "../core/reactive.js?v=2";
+
+const KEY = "hb_bot_volume";
+/** One spoken «louder» / «quieter». */
+export const STEP = 20;
+
+/** A level as an integer 0–100; `fallback` when it is not a number. */
+export function clamp(n, fallback = 100) {
+  const v = Math.round(Number(n));
+  return Number.isFinite(v) && String(n).trim() !== "" ? Math.max(0, Math.min(100, v)) : fallback;
+}
+const _read = () => { try { const v = localStorage.getItem(KEY); return v === null ? 100 : clamp(v); } catch (_) { return 100; } };
+const [_level, _setLevel] = createSignal(_read());
+const [_shown, _setShown] = createSignal(false);
+/** The level (reactive). */
+export const level = _level;
+/** Whether the transient slider over the 🔊 shows (reactive). */
+export const shown = _shown;
+
+/** Show the slider for a few seconds (a wheel notch, a voice order, a drag re-arms it). */
+export function reveal(ms = 4000) {
+  _setShown(true);
+  clearTimeout(reveal._t); reveal._t = setTimeout(() => _setShown(false), ms);
+}
+
+/** THE ONE WRITE: set the level, persist it on this device, show it. Returns the level it landed on. */
+export function setLevel(n) {
+  const v = clamp(n, _level());
+  _setLevel(v);
+  try { localStorage.setItem(KEY, String(v)); } catch (_) { /* private window: this session only */ }
+  reveal();
+  return v;
+}
+/** One step louder (+1) or quieter (−1). */
+export const step = (dir) => setLevel(_level() + (dir < 0 ? -STEP : STEP));
+
+/** What the bot's <audio> plays at: 0 while the 🔊 is muted, else the level. */
+export const out = () => (store.botMuted() ? 0 : _level() / 100);
+
+/** Hold the element to the 🔊 and the level. The vendor rewrites `muted` on every attach, so the session calls this on
+ *  attach and on every `volumechange` (writes only on a difference, so it cannot loop). */
+export function enforce(el) {
+  if (!el) return;
+  const muted = store.botMuted(), v = out();
+  if (el.muted !== muted) el.muted = muted;
+  if (Math.abs((typeof el.volume === "number" ? el.volume : 1) - v) > 0.004) { try { el.volume = v; } catch (_) {} }
+}
+/** Keep `el` following the level and the 🔊 for the life of the page. */
+export function bind(el) { createEffect(() => { _level(); store.botMuted(); enforce(el); }); }
+
+let _settable = null;
+/** False where the platform ignores an element's volume (iOS WebKit): the level cannot be honoured on this screen. */
+export function settable() {
+  if (_settable !== null) return _settable;
+  try { const a = document.createElement("audio"); a.volume = 0.5; _settable = Math.abs(a.volume - 0.5) < 0.01; }
+  catch (_) { _settable = true; }
+  return _settable;
+}

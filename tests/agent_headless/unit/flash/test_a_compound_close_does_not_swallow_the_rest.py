@@ -118,7 +118,7 @@ def test_the_owner_of_the_decision_consults_the_remainder():
     """Anchored on the module that OWNS the block (V2-555), not on the caller it was extracted from — the
     whole hard-interrupt decision lives in `hard_turn.py` since the architecture ratchet was paid here."""
     body = _src("nucleo", "flash", "hard_turn.py")
-    assert "close_all_remainder(text)" in body, "the remainder is never asked for"
+    assert "close_all_remainder(text" in body, "the remainder is never asked for"   # V2-930: (text, known)
     assert "return rest" in body, "the remainder never becomes what the turn goes on with"
 
 

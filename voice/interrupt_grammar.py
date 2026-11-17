@@ -202,7 +202,7 @@ _COURTESY_CLAUSE_RE = re.compile(
     r"right\s+now|now|anda|hombre|tio|tia|hey)$", re.I)
 
 
-def close_all_remainder(text: str) -> str:
+def close_all_remainder(text: str, known=None) -> str:
     """What the operator asked for BESIDES closing the canvas, or "" when closing was the whole request.
 
     `hard_interrupt()` answers «close» and the caller executes it DETERMINISTICALLY and returns — the
@@ -235,8 +235,17 @@ def close_all_remainder(text: str) -> str:
         if _closes_the_whole_canvas(n) or _COURTESY_CLAUSE_RE.match(n.strip()):
             continue
         kept.append(c)
+    return _kept_order(kept, known)
+
+
+def _kept_order(kept: list[str], known=None) -> str:
+    """The remainder's clauses as one order, or "" when they are too thin to be one. Two words carry an order; ONE
+    word does only when `known` (the caller's reading of declared orders — the action map) recognises it: «cállate y
+    apágate» is two orders, and «apágate» alone is a whole one (V2-930) — a bare «música» still buys no model turn."""
     rest = ", ".join(kept).strip(" ,;.")
-    return rest if len(rest.split()) >= 2 else ""
+    if len(rest.split()) >= 2:
+        return rest
+    return rest if rest and known is not None and known(rest) else ""   # a reader that fails: the caller's handler
 
 
 #: A clause that is only a negation interjection carries no request. Without this, «No. So no. Stop it.
@@ -246,7 +255,7 @@ def close_all_remainder(text: str) -> str:
 _NEGATION_CLAUSE_RE = re.compile(r"^(?:no|nah|nope|non|nein|so\s+no|oh\s+no|no\s+no)$", re.I)
 
 
-def stop_remainder(text: str) -> str:
+def stop_remainder(text: str, known=None) -> str:
     """What the operator asked for BESIDES silence, or "" when stopping was the whole request.
 
     The stop twin of `close_all_remainder` (V2-688 fixed the close branch; the stop branch kept the same
@@ -271,8 +280,7 @@ def stop_remainder(text: str) -> str:
                 or _NEGATION_CLAUSE_RE.match(n.strip())):
             continue
         kept.append(c)
-    rest = ", ".join(kept).strip(" ,;.")
-    return rest if len(rest.split()) >= 2 else ""
+    return _kept_order(kept, known)
 
 
 # ── bounded turn end + command preservation (T135) ───────────────────────────────────────────────

@@ -28,7 +28,7 @@ _ALLOWED: dict[str, tuple[str, ...]] = {
     "unfullscreen": (),          # V2-773: the card at full screen, one step down («exit fullscreen»)
     "arrange": (),               # V2-588: snap the whole canvas to the aligned grid — no target, no data
     "widget_data": ("widget", "action"),   # FAST-classified declared ops only, checked at execute
-    "controls": ("act",),        # the agent's own 🔊 / ⏻ (`nucleo/acts/self_controls.py`): mute · unmute · off
+    "controls": ("act",),        # the agent's own 🔊 / volume / mic / ⏻ (`nucleo/acts/self_controls.py`), `value` for a level
     "presence": (), "address": (),   # refactor2710-07: spoken by `fast_lane.presence`; `execute` returns False
 }
 
@@ -227,7 +227,7 @@ def execute(action: dict, emit, phrase: str = "") -> bool:
         return True
     if do == "controls":                    # his own 🔊/⏻: the SAME door as the model's `agent_controls` call, which
         from nucleo.acts import self_controls   # hands the act to the screen that heard him (`acts/self_controls.py`)
-        return self_controls.apply(action.get("act"), emit, src=src["src"], said=said)
+        return self_controls.apply(action.get("act"), emit, src=src["src"], said=said, value=action.get("value"))
     if do == "arrange":
         # V2-588: same emit as POST /api/canvas/arrange and the arrange_canvas tool — one rail, three doors.
         _canvas(emit, said, "arrange")

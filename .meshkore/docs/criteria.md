@@ -114,6 +114,13 @@ below is the first kind, or it names the mechanism that replaced the second.
   action map's seeds or the model's `agent_controls` call — never a word table over his sentence, so a remark about the
   speaker does nothing; the act lands only on the screen that heard him (`origin_dev`), which runs its own 🔊 / ⏻ door.
   — since 2026-11-11 · nodes 4.487.
+- **CRIT-V8e · His controls by voice name a STATE, run in his order, and a one-way act says the way back.** Mute/unmute
+  read the 🔊 first (a state already reached is left alone) and the screen shows what the button holds afterwards; his
+  voice's volume (`volume_up` · `volume_down` · `volume_set` 0-100) is the agent's own output on that screen, kept per
+  device, never the system volume; `mic_off` and `off` cannot be undone by voice, so their line names the button, is
+  said over the model's words and with acks off, and the screen acts once it was heard; several acts in one turn run
+  in order, and a stop's one-word remainder that is a declared order («cállate y apágate») keeps its turn.
+  — since 2026-11-17 · nodes 4.571.
 - **CRIT-V9 · A phase pack rides only a FREE turn.** A question, an order or a long sentence gets its answer and
   no introduction block that turn (`nucleo/turn/prompt/packs/free_turn.py`, `packs.compose(turn_text)`).
   — since 2026-10-11 · nodes 2.474.

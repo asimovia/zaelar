@@ -145,6 +145,8 @@ def test_tools_report_is_observable():
 # the last one being the wording that sent one-step orders to 50-60 s workers, V2-776 E). Ceiling unchanged.
 # `agent_controls` (his own 🔊 / ⏻ by voice, +276) was PAID for by compaction: connect_cluster's parameter glosses and
 # set_cluster_objective's `peer` lost their repetitions («ver arriba», «sácalo de ahí», «por defecto»). Ceiling unchanged.
+# V2-930 (his voice's volume, the mic and the level by voice: four acts + `value`, +110) was PAID for by compaction:
+# set_cluster_objective's `cluster` gloss and its repeated «vacío = borrarlo». Ceiling unchanged.
 # +2_050 2026-11-14 V2-866 F3: the four A2A tools (a2a_send/connect/grant/read). Measured in the full catalogue, but
 # state-gated (`a2a_live`: A2A on AND an accepted contact): a turn without that state is offered none of them, so the
 # default turn pays 0 of it (`test_a2a_tools_are_offered_only_with_an_accepted_contact`).

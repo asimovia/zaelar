@@ -178,14 +178,9 @@ def arrange_canvas(args: dict, c) -> None:
 
 
 def agent_controls(args: dict, c) -> None:
-    # His own 🔊 / ⏻ by voice — the one door the action map's `controls` entries also take (self_controls.py).
-    if "agent_controls" in c._tool_fired:
-        return
+    # His own 🔊 / volume / mic / ⏻ by voice — the one door the action map's `controls` entries also take (self_controls.py).
     from nucleo.acts import self_controls
-    if self_controls.apply(args.get("act"), c.emit, src="flash", said=c.operator_text or c.text):
-        c._tool_fired.add("agent_controls")
-        c.acted["widget"] = True     # a UI act: the turn is never mute about it and never escalates it
-        c.acted.update({"act_line": line} if (line := self_controls.said(args.get("act"))) else {})   # a chooser opened is said as one, never «Done.»
+    self_controls.from_tool(args, c)
 
 
 def reply_message(args: dict, c) -> None:

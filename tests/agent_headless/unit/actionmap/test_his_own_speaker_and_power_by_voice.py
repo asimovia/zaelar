@@ -132,8 +132,9 @@ def test_both_packs_seed_every_act_and_the_version_moved():
         d = json.loads((ENGINE / f"i18n/genesis/{lang}/actionmap.json").read_text(encoding="utf-8"))
         assert d["version"] >= 17, f"{lang}: new phrases in an old version reach no existing install"
         acts = {(e.get("action") or {}).get("act") for e in d["entries"] if (e.get("action") or {}).get("do") == "controls"}
+        # `volume_set` carries a number, so it is the model's call only (V2-930), never a seed
         assert acts == {"mute", "unmute", "off", "voice_male", "voice_female", "voice_list", "voice_settings", "language",
-                        "presence_on", "presence_off", "presence_settings"}, (lang, acts)
+                        "presence_on", "presence_off", "presence_settings", "mic_off", "volume_up", "volume_down"}, (lang, acts)
 
 
 # ── the disarm ────────────────────────────────────────────────────────────────────────────────────────────
@@ -192,7 +193,7 @@ def test_the_language_refusal_is_a_string_in_both_languages_and_invents_no_reset
         ui = json.loads((ENGINE / f"i18n/genesis/{lang}/ui.json").read_text(encoding="utf-8"))
         assert ui["controls.language_locked"] and ui["controls.voices"], lang
     body = (ENGINE / "frontend/app/services/self-controls.js").read_text(encoding="utf-8")
-    seg = body[body.index('act === "language"'):body.index('act === "mute" || act === "unmute"')]
+    seg = body[body.index('act === "language"'):body.index('} else return;')]
     assert "reset" not in seg.lower() and "setLang" not in seg and "applyLang" not in seg
 
 

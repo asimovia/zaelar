@@ -108,7 +108,30 @@ classifier this module refuses to be.
 | `move` | `widget`, `where` | `left · right · center · top · bottom` |
 | `show_panel` | `tab` | `chat · procesos · crons · clusters`; optional `action: open\|close` |
 | `widget_data` | `widget`, `action` | only ops the widget declares **FAST**, checked at execute time |
-| `controls` | `act` | the agent's OWN 🔊 / ⏻: `mute` (it keeps listening) · `unmute` · `off`. Through `nucleo/acts/self_controls.py`, the door the model's `agent_controls` tool also takes: one `controls` event scoped to the screen that heard him (`origin_dev`), where `sse.js` runs that screen's own button (`session.toggleBotMute` / `openSpeakerHere`, `power.setPower`). Reversible: he presses ⏻ to come back. A bare «apaga» / «turn off» is not seeded — it names a device as often as the agent |
+| `controls` | `act` (+ `value`) | the agent's OWN 🔊 / volume / mic / ⏻: `mute` (it keeps listening) · `unmute` · `volume_up` · `volume_down` · `mic_off` · `off` (`volume_set` carries a number, so it is the model's call, never a seed; see «His own controls» below). Through `nucleo/acts/self_controls.py`, the door the model's `agent_controls` tool also takes: one `controls` event scoped to the screen that heard him (`origin_dev`), where `sse.js` runs that screen's own button (`session.toggleBotMute` / `openSpeakerHere`, `power.setPower`). Reversible: he presses ⏻ to come back. A bare «apaga» / «turn off» is not seeded — it names a device as often as the agent |
+
+### His own controls (V2-930)
+
+- **A target state, never a toggle.** Every act names the state it leaves: the screen (`frontend/app/services/
+  self-controls.js`) reads the button first, so «mute» on a muted speaker presses nothing, and what it shows afterwards
+  (the flash, the audit `voice:controls`) is read back from the button — a door that failed to unmute shows «muted».
+- **His voice's volume is the agent's own output on that screen**, 0-100, kept per device (`hb_bot_volume`), through
+  one door (`frontend/app/services/volume.js`) that the 🔊's slider (`components/VolumeSlider.js`: a popover over the
+  desktop lid — wheel or right click on the 🔊 —, a line over the phone dock, a row in the phone's Settings) and his
+  voice share. The bot's `<audio>` plays at 0 while muted and at the level otherwise. It is **not the system volume**: a
+  web page — and an iOS app through public API — cannot set it. iOS WebKit also ignores an element's volume; there the
+  screen says the volume follows the device's buttons instead of claiming a level. «Louder» over a muted speaker brings
+  the speaker back; «quieter» leaves it muted. A bare «sube el volumen» is not seeded: a playing video or song owns it
+  as often, so the model decides with the screen in view.
+- **One-way acts**: after `mic_off` or `off` he cannot be heard, so there is no voice way back — the button is. Their
+  line says so, is said even over the model's own words and with short acks switched off, and the screen acts only
+  once that line was heard (speech started and then quiet for a breath, bounded; at once when the voice is not heard
+  there).
+- **In his order**: each act once per turn, several in the order he gave them; the screen queues them. «Cállate y
+  apágate» is the barge-in stop plus a one-word remainder, and a one-word remainder keeps its turn when it is a
+  declared order (`interrupt_grammar._kept_order`, read against this map).
+- **A locked phone** keeps its event stream with background audio; nothing on this path waits on visibility or an
+  animation frame.
 
 Everything runs through the **same emit funnels the model's own output uses** — the `widget` / `panel` observer
 events the frontend already consumes — never a parallel executor. The vocabulary is idempotent or reversible by

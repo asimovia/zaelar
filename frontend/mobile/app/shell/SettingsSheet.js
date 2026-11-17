@@ -21,6 +21,7 @@ import { setPresenceOpen } from "./PresenceSheet.js?v=1";
 import { currentEntry } from "../../../app/presence/PresenceLayer.js?v=1";
 import { faceName } from "../../../app/presence/catalog-api.js?v=1";
 import * as look from "../../../app/presence/look-state.js?v=1";
+import { VolumeSlider } from "../../../app/components/VolumeSlider.js?v=1";
 
 // A switch with its explaining line under the label (the «look at me» rows: what it does, or why it could not start).
 function HintToggle(label, hint, get, onToggle, cls) {
@@ -107,6 +108,7 @@ export function SettingsSheet() {
       Toggle(() => t("mobile.speaker"),          // a row's label, never the desktop's «click to…» tooltip (V2-876 P-14)
         () => !store.botMuted(),
         () => (store.botMuted() && session.openSpeakerHere ? session.openSpeakerHere("settings") : session.toggleBotMute())),
+      VolumeSlider("zm-row zm-vol", true),     // V2-930: his voice's level on this phone, the door his voice also takes
 
       // ── THE WAKE WORD (V2-876 D-C: its dock slot went to Apps). The desktop orb's 🤖, the same seam (wake.js).
       Toggle(() => t("mobile.wake_word", { name: store.assistantName() }), wake.on, wake.toggle),

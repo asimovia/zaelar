@@ -82,7 +82,8 @@ async def handled(brain, text: str, emit, *, first_turn: bool, t_entry: float, w
     # player» (map, silent) then «Find me a free slot…» → «closing the player now» and the player reopened (demo run,
     # 2026-09-26). A bulk close records ITS receipt, the line he hears, so «i said all» finds the close it repairs (V2-831 T-02b).
     from nucleo.acts import self_controls as _sc0          # a chooser opened says so, never «Done.» (2026-11-14)
-    _receipt0 = _bulk0.take_receipt() or (_sc0.said((_amap_hit.get("action") or {}).get("act")) if (_amap_hit.get("action") or {}).get("do") == "controls" else "")
+    _ctl0 = (_amap_hit.get("action") or {}) if (_amap_hit.get("action") or {}).get("do") == "controls" else {}
+    _receipt0 = _bulk0.take_receipt() or (_sc0.said(_ctl0.get("act"), _ctl0.get("value")) if _ctl0 else "")
     _dialog0.record_turn_without_model(brain, text, _receipt0, cap=window_max)
     try:
         # Conv buffer (mirror of the provider's post-reply write): the NEXT turn — and a worker's
@@ -113,7 +114,7 @@ async def handled(brain, text: str, emit, *, first_turn: bool, t_entry: float, w
         _ack_on = _style.confirm_short_actions()
     except Exception:
         _ack_on = True                      # fail-open to the old behavior: never mute by accident
-    if _ack_on:
+    if _ack_on or (_ctl0 and _sc0.one_way(_ctl0.get("act"))):   # no voice way back: its line is always said
         await _speak_ack(brain, _receipt0)
     return True
 
