@@ -799,7 +799,7 @@ export class Deck {
   _applyTitle(w, data) {
     const reg = this._registry && this._registry[w.base];
     const meta = this._meta && this._meta[w.base];
-    const live = data && (data.title || data.task);
+    const live = data && ((meta && meta.live_title && data.title) || data.task);   // `live_title` opt-in, as desktop.js
     w.titleEl.textContent = String(live || (reg && reg.name) || (meta && (meta.name || meta.title)) || w.base);
   }
 

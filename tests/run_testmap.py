@@ -6786,6 +6786,11 @@ DOMAINS: list[dict] = [
                                   "an unanswered one too) and the band's rows carry the `duration` the results page showed "
                                   "(`search/video.py` reads `lengthText` inside each row's block)",
             "ch": UNIT, "paths": ["tests/browser/unit/youtube/test_his_recent_searches_are_kept.py"]},
+        {"id": "4.564", "title": "The phone's card header names the WIDGET (2026-11-17): `Deck.js::_applyTitle` lends a card its "
+                                  "`data.title` only when the manifest declares `live_title`, as desktop.js does — a "
+                                  "player's video is not its name; `data.task` and his own name for it still apply; the "
+                                  "old every-title rule disarmed reads red",
+            "ch": UNIT, "paths": ["tests/browser/unit/mobile/test_the_phone_header_names_the_widget.py"]},
         {"id": "4.518", "title": "The photo gallery says the filter on each screen, how many photos it holds and the year he is looking at (V2-884 C8 step 5): `filter`, `shown` and `year` (the header at the top of what he sees) after every paint and as he scrolls — the applied report owed until sent, a scroll never cancels it; a search is `?ordered` on each screen until it acks; two screen pairs; disarmed → red",
             "ch": UNIT, "paths": ["tests/browser/unit/fotos/test_the_gallery_reports_what_he_sees.py"]},
         # V2-882 — disarmed 2026-11-11 (`fit()` never stepping → 3 red; the step-3 grid rule removed → red; the gate's
