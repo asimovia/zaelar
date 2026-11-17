@@ -465,6 +465,10 @@ Each is one line in `.meshkore/docs/criteria.md`, with its node; read the sectio
 - **The chat column is the conversation (§1):** a voice line is OWED when the mouth starts it, its identity is
   the turn's `trace`, and a held fragment only joins the next one if the next one continues it (V7); a complaint
   about what was just done is an order to redo it; the assistant's name changes by verdict and fails CLOSED (V8).
+- **The agent knows itself (§1, V8f):** a question about what it is, what it can do or how something of its own is done
+  (by voice or with the button) is answered by `about_self` from ONE catalogue (`nucleo/self/catalog.json` + the `self`
+  language pack) and its live facts (`nucleo/self/snapshot.py`, one reader per truth); a new act, tool, surface,
+  setting, connector or widget enters an entry's `covers` in the same commit (node 7.134).
 - **One vocabulary of events (§2, C11):** a leaving act's class, a rule's subscription topic, a mandate's grant and a
   manifest's effect are readings of ONE declared event type (`nucleo/events/vocabulary.py`) — a new act declares
   itself there, never in a second table; a class the code names and the table lacks is nobody's event. His

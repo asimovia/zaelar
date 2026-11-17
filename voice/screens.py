@@ -174,7 +174,7 @@ def _entry(dev: str, now: float) -> dict:
     e = _screens.get(dev)
     if e is None:
         e = _screens[dev] = {"dev": dev, "streams": 0, "visible": True, "seen_at": now, "input_at": 0.0,
-                             "opened_at": now}
+                             "opened_at": now, "camera": False}
     return e
 
 
@@ -203,8 +203,9 @@ def detach(dev) -> None:
             e["seen_at"] = now
 
 
-def beat(dev, *, visible=None) -> None:
-    """A surface says whether it is on screen. Sent on every `visibilitychange`."""
+def beat(dev, *, visible=None, camera=None) -> None:
+    """A surface says whether it is on screen. Sent on every `visibilitychange`. `camera` (V2-932): whether its «look
+    at me» camera is running — a flag from `presence/look-state.js`, never an image (`nucleo/self/snapshot.py`)."""
     d = clean(dev)
     if not d:
         return
@@ -214,6 +215,8 @@ def beat(dev, *, visible=None) -> None:
         e["seen_at"] = now
         if isinstance(visible, bool):
             e["visible"] = visible
+        if isinstance(camera, bool):
+            e["camera"] = camera
     if visible is True:
         _left["at"] = 0.0             # a screen is on again: whatever said he left no longer speaks
 

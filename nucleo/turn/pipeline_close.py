@@ -177,7 +177,7 @@ async def close_the_turn(*, motor, send, _acc_ms, _amap_ms, _brief, _busy_at_sta
     # answer — over the summary this time — contradicted the first out loud.
     _acted_elsewhere = bool((data_done["v"] and not _ending.only_held()) or worker_acted["v"] or escalate_req["v"] is not None
                     or search_req["v"] is not None or music_req["v"] is not None or confirm_state.get("opened")
-                    or clarify.get("msg") or read_req["v"] is not None
+                    or clarify.get("msg") or read_req["v"] is not None or bool(read_req.get("self"))
                     # every other door a turn acts through (full27 A1: `search_listings` launched the monitor
                     # errand and the promise guard, not counting it, added «I haven't looked, nothing is running»)
                     or any(r["v"] is not None for r in (listing_req, images_req, recall_req, reopen_req,

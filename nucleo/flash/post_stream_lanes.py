@@ -223,6 +223,12 @@ async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_ad
     # por las costuras que ya publica para el prompt (`widget_read.read`) + 2º pase con ese contenido como
     # ÚNICA fuente. Sesión 53de97d4: la hora de la cita con Hacienda estaba en la agenda y el modelo no tenía
     # ninguna puerta para leerla con la app cerrada. Solo si el turno no escaló ni buscó ni reveló.
+    # V2-932 — a question about the agent ITSELF: its catalogue entry and live facts are the second pass's only source.
+    if read_req.get("self") and escalate_req["v"] is None and search_req["v"] is None and reveal_req["v"] is None:
+        from nucleo.self import about as _about
+        await speak(await _about.prepare(read_req["self"], operator_text, _prompt_mod._lang_lock(), emit),
+                    operator_text, 220, "about_self compose")
+        spoken_text = "".join(spoken).strip()
     if read_req["v"] is not None and escalate_req["v"] is None and search_req["v"] is None \
             and reveal_req["v"] is None:
         from nucleo.flash import widget_read as _wread
@@ -276,7 +282,7 @@ async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_ad
         emit("brain", _re["label"], role="system", text=_re["text"], extra=_re["extra"])
 
     if recall_req["v"] is not None and escalate_req["v"] is None and search_req["v"] is None \
-            and reveal_req["v"] is None and read_req["v"] is None:
+            and reveal_req["v"] is None and read_req["v"] is None and not read_req.get("self"):
         from nucleo.flash import tool_round as _second_v
         _cover_work("recall")
         _recall_empty_thread = await _second_v.recall_spoken(text, recall_req["v"], spec, emit, speak)

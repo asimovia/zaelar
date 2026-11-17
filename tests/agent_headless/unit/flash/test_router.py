@@ -8,7 +8,7 @@ def test_tools_are_openai_functions():
     assert names == {"escalate_to_slowbrain", "set_style_directive", "not_understood", "show_widget", "close_widget", "show_panel", "fullscreen_widget", "restore_widget",
                      "manage_widget_alias", "widget_data", "delete_widget", "arrange_canvas",
                      "confirm_widget_delete", "authenticate_web", "login_done", "web_search", "search_listings",
-                     "recall", "read_widget", "reopen_task", "resume_task",
+                     "recall", "read_widget", "about_self", "reopen_task", "resume_task",
                      "reveal_secret", "play_music", "play_video", "show_images", "reply_message", "connect_cluster",
                      "cluster_send", "set_cluster_objective", "stop_worker",
                      "cancel_scheduled", "agent_controls",
@@ -148,6 +148,8 @@ def test_tools_report_is_observable():
 # +2_050 2026-11-14 V2-866 F3: the four A2A tools (a2a_send/connect/grant/read). Measured in the full catalogue, but
 # state-gated (`a2a_live`: A2A on AND an accepted contact): a turn without that state is offered none of them, so the
 # default turn pays 0 of it (`test_a2a_tools_are_offered_only_with_an_accepted_contact`).
+# V2-932 `about_self` (+622: a question about the agent itself, its topic an enum of the catalogue's ids) fits under the
+# ceiling, which does not move; its own cap lives in `test_everything_it_can_do_is_in_its_self_catalog.py`.
 MAX_CATALOG_CHARS = 25_650
 
 

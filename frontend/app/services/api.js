@@ -152,14 +152,17 @@ export const postCanvasState = (open) => { try { postJSON("/api/canvas/state", {
 // HTTP into the one live session. Resolves `{ok}`; `reason:"no_session"` means nobody holds a session at all.
 export const chatText = (text) =>
   postJSON("/api/chat", { text, dev: DEVICE }).then((r) => r.json()).catch(() => ({ ok: false, reason: "network" }));
-// Visible / hidden, and «the operator touched this screen» — how the server tells the active screen.
+// Visible / hidden, and «the operator touched this screen» — how the server tells the active screen; every beat carries
+// whether this screen's «look at me» camera runs (V2-932: a flag, so a restarted engine learns it on the next beat).
+let _camera = false;
 export const screensBeat = (visible, touched = false) => {
-  try { postJSON("/api/screens/beat", { dev: DEVICE, visible: !!visible, touched: !!touched }); } catch (_) {}
+  try { postJSON("/api/screens/beat", { dev: DEVICE, visible: !!visible, touched: !!touched, camera: _camera }); } catch (_) {}
 };
+export const screensCamera = (on) => { if (!!on !== _camera) { _camera = !!on; try { postJSON("/api/screens/beat", { dev: DEVICE, camera: _camera }).catch(() => {}); } catch (_) {} } };
 // A visible, connected, awake screen says a person is here (services/presence.js, once a minute): the idle stop keeps
 // the engine up for its whole window after the last one (nucleo/idle_stop.py).
 export const screensPresent = () => {
-  try { postJSON("/api/screens/beat", { dev: DEVICE, visible: true, present: true }).catch(() => {}); } catch (_) {}
+  try { postJSON("/api/screens/beat", { dev: DEVICE, visible: true, present: true, camera: _camera }).catch(() => {}); } catch (_) {}
 };
 // The phone app went to the background or was closed: the person left (services/presence.js). `keepalive` lets the
 // request outlive a page that is being put away.

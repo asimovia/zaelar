@@ -38,6 +38,7 @@ class Pack:
 PACKS: tuple[Pack, ...] = (
     Pack("ui", "every string the screen shows, the engine's own included"),
     Pack("voice", "what the agent says and the vocabulary its detectors read"),
+    Pack("self", "what the agent knows about itself: one entry per topic of `nucleo/self/catalog.json`"),
     Pack("smalltalk", "the greetings/thanks/goodbye phrasebook of the conversational lane"),
     Pack("aliases", "the voice words that name each system surface"),
     Pack("actionmap", "whole-utterance commands mapped to a direct action"),

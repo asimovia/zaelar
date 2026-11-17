@@ -6,6 +6,7 @@ One reader per truth: the screen (`state.open_widgets`, the canvas's own report)
 from __future__ import annotations
 
 from files import attachments as _attachments
+from nucleo.self import snapshot as _self_snapshot
 from nucleo.turn.prompt import live_browser, live_history, live_record, live_tasks
 from voice import screens as _screens
 
@@ -103,7 +104,7 @@ def live_state() -> str:
         lines.extend(_styled.prompt_lines(_mstate))
     except Exception:
         pass
-    lines.extend([*filter(None, [_screens.slot_line()]), *_attachments.prompt_lines()])  # V2-792 · V2-809 attached
+    lines.extend([*filter(None, [_screens.slot_line()]), *_attachments.prompt_lines(), *_self_snapshot.live_lines()])  # V2-932
     try:
         from widgets import confirm as _confirm
         cl = _confirm.pending_line()

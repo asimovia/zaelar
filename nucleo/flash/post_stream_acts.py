@@ -92,7 +92,7 @@ async def complete_the_acts(*, _apply_widget_data, _brief, _data_ops_hechas, _ha
     _no_tool = (not acted["widget"] and not data_done["v"] and not music_req["v"] and not worker_acted["v"]
                 and escalate_req["v"] is None and search_req["v"] is None
                 and all(r["v"] is None for r in (images_req, listing_req, recall_req, read_req, reopen_req,
-                                                 reveal_req)))
+                                                 reveal_req)) and not read_req.get("self"))
     _op_text = _router.operator_words(operator_text, text)   # a note is CONTEXT, never the errand
     # V2-754 — no tool, an ORDER on an open card (`show_tab` 0.88 over nothing): the verdict completes the turn. What
     # it did is the turn's verdict, said by the mouth (V2-851 F2 retired the tail said after the words).
@@ -185,7 +185,8 @@ async def complete_the_acts(*, _apply_widget_data, _brief, _data_ops_hechas, _ha
                                             emit=emit, _prompt_mod=_prompt_mod, window=list(brain._window))
     if _op_answer:
         spoken_text = "".join(spoken).strip()
-    elif read_req["v"] is None and escalate_req["v"] is None and search_req["v"] is None and not clarify["msg"]:
+    elif read_req["v"] is None and not read_req.get("self") and escalate_req["v"] is None and search_req["v"] is None \
+            and not clarify["msg"]:
         from nucleo.flash import card_commission as _cardc3
         _qlens = _cardc3.question_left_to_a_lens(_brief, ops=list(_data_ops_hechas), acted=acted,
                                                  operator_text=_op_text)

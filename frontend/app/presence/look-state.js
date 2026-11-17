@@ -20,7 +20,10 @@ const [airpods, setAirpodsRaw] = createSignal(boot.airpods === true);
 export { camera as lookCamera, airpods as lookAirpods };
 
 /** Live facts: the camera is running · why a source could not start ("" | denied | nocamera | unsupported | unavailable). */
-export const [cameraLive, setCameraLive] = createSignal(false);
+const [cameraLive, setCameraLiveRaw] = createSignal(false);
+export { cameraLive };
+/** Started or stopped: the server hears the FLAG (V2-932 — «can you see me?» knows its camera is on), never an image. */
+export function setCameraLive(v) { setCameraLiveRaw(!!v); try { api.screensCamera(!!v); } catch (_) {} }
 export const [cameraProblem, setCameraProblem] = createSignal("");
 export const [airpodsProblem, setAirpodsProblem] = createSignal("");
 /** Why a source could not start → the i18n key of the line under its switch (both shells say the same). */

@@ -175,6 +175,7 @@ them produce an empty surface or an invisible capability.
 | 14 | `.meshkore/docs/modules/zaelar-connectors-inventory.md` | the list stops telling the truth the same day |
 | 15 | **`widgets.<id>.name` in `en.json` AND `es.json`** | the card is titled from `manifest.json`, i.e. in whatever language you wrote it, for everyone |
 | 16 | **`tt("key", params, "<the literal>")` on EVERY visible string in `widget.js`**, with its row in both bundles | a session in English reads your buttons in Spanish — and the gate (node 4.11) rejects it |
+| 17 | `nucleo/self/catalog.json` — the widget or connector id in an entry's `covers` (and, if the entry's words no longer describe it, `i18n/genesis/{en,es}/self.json`) | the agent can do it and cannot explain it: «what can you do?» / «how do I connect X?» is answered by guess (V2-932; `test_everything_it_can_do_is_in_its_self_catalog.py` names it) |
 
 > Points 9-14 have a ratchet: `tests/connectors/unit/catalog/test_a_built_connector_is_never_on_the_wishlist.py`
 > (node 5.7) checks 9, 10 and 11 against the live registry, plus "no `built` without a live row" and "no

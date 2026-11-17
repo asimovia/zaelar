@@ -124,6 +124,14 @@ below is the first kind, or it names the mechanism that replaced the second.
   said over the model's words and with acks off, and the screen acts once it was heard; several acts in one turn run
   in order, and a stop's one-word remainder that is a declared order («cállate y apágate») keeps its turn.
   — since 2026-11-17 · nodes 4.571.
+- **CRIT-V8f · The agent answers about ITSELF from its own catalogue and its live facts, never from its prior.** A
+  question about what it is, what it can do, how something of its own is done or its state («¿me ves?», «¿dónde
+  vives?») is the model's `about_self(topic)` call — `topic` an id of `nucleo/self/catalog.json`, any language — and
+  the answer pass reads that entry in his language (what it is, by voice, on screen, what it does NOT do) and only the
+  live facts it names (`nucleo/self/snapshot.py`, one reader per truth; an unread fact is absent, never guessed). The
+  camera's state is a flag on the screen's beat, never an image; the live tail says it is on only while it runs.
+  Every act, tool, voice-named surface, Settings section, built connector and shipped widget is covered by an entry.
+  — since 2026-11-17 · nodes 2.1802, 7.134.
 - **CRIT-V9 · A phase pack rides only a FREE turn.** A question, an order or a long sentence gets its answer and
   no introduction block that turn (`nucleo/turn/prompt/packs/free_turn.py`, `packs.compose(turn_text)`).
   — since 2026-10-11 · nodes 2.474.

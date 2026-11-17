@@ -51,6 +51,7 @@ UNREACHABLE**, and an unreachable surface gets diagnosed as «the model did not 
 | 11 | `nucleo/flash/router_catalog.py` — the `show_panel` description names it (**paid for by compressing, never by raising a ceiling**: `test_router.py` + `test_the_prompt_prose_only_shrinks.py`) | the model has no reason to call the tool for it |
 | 12 | `nucleo/actionmap/executor.py::_PANEL_TABS` + `i18n/genesis/{es,en}/actionmap.json` with the pack `version` **bumped** | whole-utterance orders fall through to the model — and new phrases in an old version reach no existing install |
 | 13 | `tests/run_testmap.py` — the rendered test and the voice test, each with its node | the tests exist and nobody runs them |
+| 14 | `nucleo/self/catalog.json` — `surface:<id>` (and any new act, tool or Settings section) in an entry's `covers`, its words in `i18n/genesis/{en,es}/self.json` | the agent cannot say what the surface is or how to open it (V2-932; `test_everything_it_can_do_is_in_its_self_catalog.py` names it) |
 
 ## 3. Aliases: measure the NEIGHBOURHOOD, not the phrase
 

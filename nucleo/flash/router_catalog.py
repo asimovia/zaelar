@@ -15,6 +15,7 @@ from __future__ import annotations
 from nucleo.flash import tools_media as _tools_media   # V2-457: las definiciones de medios
 from nucleo.acts.search import TOOL_DEF as _LISTING_TOOL   # V2-556: its contract lives with its door
 from nucleo.flash.widget_read import TOOL_DEF as _READ_WIDGET_TOOL   # V2-668: a question about a widget reads it
+from nucleo.self.about import TOOL_DEF as _ABOUT_SELF_TOOL   # V2-932: a question about the agent reads its own catalogue
 
 # ── function catalog (OpenAI-compatible) offered to the fast model ─────────────────────────────────────
 # ⚠️ Canonical catalog doc: zaelar-architecture.md §8. Keep IN SYNC (condensed description
@@ -364,6 +365,7 @@ TOOLS: list[dict] = [
     # V2-668 — the fourth door: `widget_data` acts, `recall` remembers his life, `web_search` reads the world;
     # what his OWN widgets store had no reader (the Hacienda hour, session 53de97d4). Contract lives with its module.
     _READ_WIDGET_TOOL,
+    _ABOUT_SELF_TOOL,
     {
         "type": "function",
         "function": {

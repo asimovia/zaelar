@@ -82,6 +82,12 @@ def read_widget(args: dict, c) -> None:
                          "question": (args.get("question") or "").strip()}
 
 
+def about_self(args: dict, c) -> None:
+    # V2-932: a question about the agent itself — its catalogue entry + live facts, answered after the stream.
+    if not c.read_req.get("self"):
+        c.read_req["self"] = {"topic": str(args.get("topic") or "").strip(), "question": str(args.get("question") or "").strip()}
+
+
 def resume_task(args: dict, c) -> None:
     _x = _calls()
     _x._resume_turn.from_tool(args, escalate_req=c.escalate_req, operator_text=c.operator_text,
@@ -268,7 +274,7 @@ def stop_worker(args: dict, c) -> None:
 
 #: tool name → its door. Built from the functions above: one name per arm, written once.
 CATALOG = {f.__name__: f for f in (
-    not_understood, widget_data, escalate_to_slowbrain, web_search, search_listings, recall, read_widget,
+    not_understood, widget_data, escalate_to_slowbrain, web_search, search_listings, recall, read_widget, about_self,
     resume_task, reopen_task, reveal_secret, play_music, play_video, show_images, show_widget, show_panel,
     manage_widget_alias, close_widget, fullscreen_widget, arrange_canvas, reply_message, delete_widget,
     restore_widget, confirm_widget_delete, set_style_directive, authenticate_web, login_done, connect_cluster,

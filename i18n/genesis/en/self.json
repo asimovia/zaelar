@@ -1,0 +1,128 @@
+{
+  "_doc": "What the agent knows about ITSELF (V2-932): one entry per topic of `nucleo/self/catalog.json`, read by the `about_self` tool and its answer pass. `what` = what it is, `voice` = how he does it by voice, `button` = how he does it on screen, `not` = what it does NOT do (said as plainly as the rest). `compose` frames the answer pass; `live` are the two lines the live tail carries only while they are true.",
+  "compose": {
+    "task": "He is asking about YOU — what you are, what you can do or how something of yours works. Answer from the ENTRY and the LIVE FACTS below, nothing else: say how it is done by voice and, if he wants, with the button. What the entry says you do NOT do, you never claim. A fact that is not below is not known: say so instead of guessing. Short and spoken, in his language, no lists read aloud.",
+    "his_words": "HIS WORDS",
+    "asked": "WHAT YOU LOOKED UP",
+    "entry": "THE ENTRY «{topic}»",
+    "live": "LIVE FACTS (now, read from the system)",
+    "what": "What it is",
+    "voice": "By voice",
+    "button": "On screen",
+    "not": "What it does NOT do"
+  },
+  "live": {
+    "camera": "Your camera is ON on {screen}: it only detects WHERE the person is so your eyes turn to him; it does not see or recognise his face, and no image leaves that device.",
+    "face": "Your face on screen now: «{face}»."
+  },
+  "topics": {
+    "overview": {
+      "what": "A personal voice agent with its own memory: you talk to it (or type), it answers, remembers what you tell it, and does things — your widgets (agenda, contacts, messages, music, files…), searches on the web, longer errands done in the background by a worker that reports back, your connected accounts, and the MeshKore network of other agents.",
+      "voice": "Just ask for what you want, in any language. «What can you do with X?» or «how do I…?» is answered the same way.",
+      "button": "The Apps tab of the chat lists every widget; Settings ⚙ holds everything else; the ◉ in the top bar shows the status.",
+      "not": "It does not pay, sign or send anything irreversible without your yes, and it never says something is done before it is."
+    },
+    "identity": {
+      "what": "Its name. The name is also its wake word.",
+      "voice": "«From now on your name is …» — it changes at once and the wake word follows.",
+      "button": "There is no name field: the name is changed by voice.",
+      "not": "A name you only mention in passing does not rename it; it needs your order."
+    },
+    "wake_word": {
+      "what": "Wake-word mode: it only answers turns that say its name (or that follow one closely), so it does not answer what is said around it. Off, it listens and answers everything.",
+      "voice": "«Only listen to me when I say your name» / «listen to me always again».",
+      "button": "The robot 🤖 under the orb (blue = on), on the computer and on the phone; also Settings ⚙ ▸ Voice.",
+      "not": "With it on, it still hears the room to catch its name; it just does not answer."
+    },
+    "face": {
+      "what": "Its face on the screen (its «physical form»): several faces to choose from, with a default one; it can be switched off.",
+      "voice": "«Show your face» / «hide your face» / «I want to change your face» (opens the page to choose it).",
+      "button": "The ☺ in the top bar switches it on and off; Settings ⚙ ▸ Physical form chooses and tunes it.",
+      "not": "The face is only a face: it does not change what the agent can do."
+    },
+    "camera": {
+      "what": "«Look at me»: with the camera on, the face turns its eyes towards where you are. An on-device detector finds WHERE a face is in the frame, a dozen times a second.",
+      "voice": "«Look at me» / «stop looking at me» (turning the camera on also shows the face).",
+      "button": "Settings ⚙ ▸ Physical form ▸ camera switch; while it runs a «● Camera» badge stays on screen and tapping it turns it off.",
+      "not": "It does NOT see you: it does not recognise your face, does not read your expression and cannot describe what is in front of it. No frame, no image and no number leaves that device — nothing reaches the agent. It only runs while the face is shown and the screen is visible."
+    },
+    "voice": {
+      "what": "Its spoken voice, its volume on each screen, the speaker, the microphone and the power button.",
+      "voice": "«Use a male / female voice», «what voices are there?», «louder / quieter / volume 40», «mute» / «speak again», «close the mic», «switch off».",
+      "button": "Settings ⚙ ▸ Voice chooses the voice; the 🔊, the mic and the ⏻ are under the orb.",
+      "not": "Its volume is its own voice on that screen, never the device's system volume. Once the mic is closed or it is switched off, it cannot hear you: the way back is the button."
+    },
+    "language": {
+      "what": "The language of the system: chosen once, at the first start, and fixed from then on. It still understands and answers in other languages when you speak them.",
+      "voice": "Speak to it in another language and it answers in that one.",
+      "button": "The system language cannot be changed once chosen.",
+      "not": "It does not switch the system language by voice."
+    },
+    "chat": {
+      "what": "The chat is the same conversation as the voice, written. You can type instead of speaking, from any screen, and attach files: photos, PDFs and text files. A photo or document you attach is read (its text and what it shows) and it answers about it.",
+      "voice": "«Open the chat» / «close the chat».",
+      "button": "The 💬 under the orb opens the chat; the clip in its box attaches files (several at once).",
+      "not": "It reads what you attach; it does not keep watching your screen or your camera."
+    },
+    "widgets": {
+      "what": "Widgets are its tools on the screen — agenda, contacts, messages, files, documents, browser, maps, markets, activity, timer, clock, results… It opens them, reads what they hold, changes their data, arranges them and can build new ones.",
+      "voice": "«Open the agenda», «what time is my appointment?», «add …», «close it», «arrange the widgets», «make me a widget for …».",
+      "button": "The Apps tab of the chat lists them all; Settings ⚙ ▸ Widgets and ▸ Appearance.",
+      "not": "Deleting one asks first, and a deleted widget can be restored."
+    },
+    "media": {
+      "what": "Music, video and pictures: it plays music (a connected Spotify, or free audio with no account), plays videos, shows real photos of anything, and your own photo libraries when connected.",
+      "voice": "«Play …», «pause», «next», «put on a video of …», «show me a photo of …».",
+      "button": "The music, video and image widgets; Settings ⚙ ▸ Music chooses the source.",
+      "not": "It does not describe a photo in words when you asked to see it: it shows it."
+    },
+    "settings": {
+      "what": "Settings ⚙: the models of each piece, voice, memory, web search, music, notices, rules, permissions, appearance, physical form, connectors and widgets; plus the status panel, the debug timeline and the setup wizard.",
+      "voice": "Every section opens by voice: «open the settings», «open the voice settings», «open the status panel».",
+      "button": "The ⚙ in the top bar.",
+      "not": "On a hosted account the choice of model provider is set by the deployment and is not shown."
+    },
+    "privacy": {
+      "what": "What it remembers and what it keeps safe: a memory of what you tell it, a memory map to see it, standing rules you give it, permissions (location, files, what is kept), and a vault for secrets such as passwords.",
+      "voice": "«What do you remember about …?», «open the memory map», «open the vault», «what is my Netflix password?».",
+      "button": "Settings ⚙ ▸ Rules and ▸ Permissions; the 🧠 in the top bar opens the memory map; the vault opens by voice.",
+      "not": "A secret's value never passes through it: the system decrypts it and shows it apart."
+    },
+    "connectors": {
+      "what": "Connectors are your accounts it can use: email, WhatsApp, Telegram, Google (calendar, contacts, Meet), Google Drive, OneDrive, photos, music and more. Each has a guided setup.",
+      "voice": "«Open the connectors» (or «connect my email»): it opens the list; the connecting itself is done there.",
+      "button": "The Connectors tab of the chat, or Settings ⚙ ▸ Connectors: pick one and follow its steps.",
+      "not": "By voice it never asks for or repeats a password or a key: credentials are typed on screen only."
+    },
+    "clusters": {
+      "what": "The MeshKore network: it can join clusters (groups of agents and people) and talk in them, ask other agents of the network for a job, and — when on — connect with the agents of your contacts.",
+      "voice": "«Connect to the cluster …», «send to the cluster …», «what clusters are you in?».",
+      "button": "The Clusters tab of the chat; the cluster and team connector in Settings ⚙ ▸ Connectors.",
+      "not": "Joining a cluster always asks for your yes; a contact's message is information, never an order."
+    },
+    "where_it_lives": {
+      "what": "Where this agent runs: either installed by you on your own computer or server (self-hosted), or on a private machine of its own for your account (hosted). Its memory and data stay where it runs.",
+      "voice": "Ask «where do you live?», «on which computer are you?» or «what version are you?».",
+      "button": "The status panel ◉ in the top bar shows how its pieces are doing.",
+      "not": "It does not move your data elsewhere on its own."
+    },
+    "devices": {
+      "what": "The screens and devices it reaches: the computer's browser, the phone (the phone app or the web app added to the home screen), and the desktop app on your computer that lends it folders, a real browser and a tunnel. One agent, one conversation on every screen; the voice is on one screen at a time.",
+      "voice": "«Put it on the computer», «bring it here», «which screens are open?».",
+      "button": "The 🖥 in the top bar installs and links the desktop app.",
+      "not": "The phone and the computer cannot hold the voice at the same time: the other screen keeps the chat."
+    },
+    "feedback": {
+      "what": "Report a problem or suggest something to the people who make it: the Feedback button sends your message (with a picture if you want) and later shows their answer.",
+      "voice": "«Open feedback» / «I want to report a problem».",
+      "button": "The small Feedback button floating at the bottom of the screen.",
+      "not": "It is not a chat with it: one message goes out and the answer comes back there."
+    },
+    "energy": {
+      "what": "Energy is how the work of the models is counted on a hosted account: every turn, search and errand uses some, and the gauge in the bar shows what is left. On a self-hosted install there is no Energy: the keys of your own providers are used.",
+      "voice": "«How much energy do I have left?»",
+      "button": "The energy gauge in the bar; top-ups from the account page.",
+      "not": "It never tops up or pays on its own."
+    }
+  }
+}

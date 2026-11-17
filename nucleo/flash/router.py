@@ -86,7 +86,7 @@ FAMILIES: dict[str, tuple[str, ...]] = {
     "messaging": ("reply_message",),
     "media":     ("play_music", "play_video", "show_images"),
     "web":       ("web_search", "search_listings", "authenticate_web", "login_done"),
-    "memory":    ("recall", "reveal_secret", "read_widget", "reopen_task"),   # V2-668: never trimmed — a question announces nothing
+    "memory":    ("recall", "reveal_secret", "read_widget", "reopen_task", "about_self"),   # V2-668/V2-932: never trimmed — a question announces nothing
 }
 
 
