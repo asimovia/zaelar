@@ -172,17 +172,27 @@ def gate(rec, payload: dict) -> Exit:
 
 
 def ready_question(wid: str, act: str, inner: dict) -> str:
-    """«The message is ready — shall I send it to <person>?», in his language, naming his contact (never a raw id)."""
+    """«The message for <her> is ready — shall I send it?», in his language: one short sentence, naming his contact by
+    the first word of the name he keeps her under (never a raw id); with several people, all of them."""
     from nucleo import on_his_behalf as _ob
     who = _ob.shown_who(wid, act, inner) or ", ".join(_ob.who_of(wid, act, inner)) or ""
     try:
         from i18n import langs as _lg
         tpl = str(getattr(_lg.current_language(), "send_ready_confirm", "") or "")
         if tpl and who:
-            return tpl.format(who=who)
+            return tpl.format(who=_short(who))
     except Exception as e:  # noqa: BLE001
         logger.debug(f"exit_gate: the ready line unread ({e!r})")
     return _ob.question(wid, act, inner)
+
+
+def _short(who: str) -> str:
+    """One person's name as he says it aloud: its first word, when the name has several and is a name (no address, no
+    number). Several people, or anything else, as they are."""
+    w = " ".join(str(who or "").split())
+    first = w.split(" ", 1)[0]
+    plain = "," not in w and "@" not in w and not any(ch.isdigit() for ch in w)
+    return first if plain and " " in w and len(first) > 2 else w
 
 
 def mesh(rec, payload: dict) -> Exit:

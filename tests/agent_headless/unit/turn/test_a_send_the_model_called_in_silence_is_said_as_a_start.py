@@ -27,7 +27,7 @@ def test_a_silent_send_call_says_the_start_and_names_the_act(lang):
             "expect": "escalate"}
     out = th.run_case(case)
     from i18n import langs
-    start = langs.spec(lang).done_just_started
+    start = langs.spec(lang).send_preparing        # V2-931: the send's own start line, never «not done yet»
     mute = tuple(langs.spec(lang).mute_lines)
     assert out.decision == "escalate", out.decision      # V2-931: the send is handed to its ONE worker task
     assert start in out.reply and not any(m in out.reply for m in mute), out.reply

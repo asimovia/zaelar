@@ -9,6 +9,11 @@ turn ends there. Every decision is one `thread` event with the board it read, wh
 Two things are decided without a model, by identity: a reply that IS one of the two declared answers of the only
 question that waits (the screen's own buttons say exactly these), and a chunk already delivered (the ear hands a
 sentence again when it grows: only what is new travels).
+
+The same decision says what KIND of reply it is to a process that waits on his yes: a plain yes or no decides the
+retained act at once — exactly as the screen's button does, with no session resumed — and he hears ONE line
+(«OK, sending it…», «OK, I won't send it»); a cut-off piece that says nothing yet is held and joined to what he says
+next; anything else (a change, a detail, a complaint) resumes the process with his words.
 """
 from __future__ import annotations
 
@@ -26,6 +31,9 @@ from nucleo.switchboard import board as _board
 DECIDE_S = 3.0
 #: How long a delivered chunk is remembered, to peel it off the same sentence handed again.
 SEEN_S = 90.0
+#: How long a cut-off piece waits for the rest of his sentence before it is forgotten.
+PIECE_S = 20.0
+YES, NO, OTHER, FRAGMENT = "yes", "no", "other", "fragment"
 
 SYSTEM = (
     "You route what the operator of a voice assistant just said. Background processes of the assistant are OPEN, "
@@ -36,14 +44,20 @@ SYSTEM = (
     "task. Then answer its number.\n"
     "Answer 0 when it is for none of them: a different request (even on a similar subject), an order about the screen "
     "or an app (open, close, play, pause, show), a question he wants answered now (the time, the weather, which tasks "
-    "exist or how one is going), small talk, or words meant for somebody else in the room.\n"
+    "exist, or how a task is going or whether it is done — the assistant answers those itself), small talk, or words "
+    "meant for somebody else in the room.\n"
     "A bare yes, no or ok while a process WAITS on a question is that process's answer (with several waiting, the one "
     "that asked last). His words may arrive in pieces: a piece that continues what he was telling a process is that "
     "process's.\n"
-    'Reply with JSON only: {"to": <number>, "why": "<a few words>"}'
+    "Also say what it IS for that process: \"yes\" — it plainly accepts or authorises what a WAITING process asked, "
+    "with no change and no condition (yes, go ahead, send it, I authorise it); \"no\" — it plainly refuses or cancels "
+    "it; \"fragment\" — a cut-off piece that carries no decision and no content yet (a word or two, a sentence that "
+    "stops); \"other\" — anything else: a change, a detail, a correction, a complaint, a question.\n"
+    'Reply with JSON only: {"to": <number>, "is": "yes|no|other|fragment", "why": "<a few words>"}'
 )
 
 _seen: dict = {"text": "", "key": "", "at": 0.0}
+_piece: dict = {"text": "", "at": 0.0}
 
 
 def _flat(text: str) -> str:
@@ -76,8 +90,10 @@ def _context(brain) -> tuple[str, list[str]]:
     return last, list(reversed(his))
 
 
-def ask_the_model(text: str, procs: list[dict], last_reply: str = "", before: list[str] | None = None) -> tuple[int, str]:
-    """`(n, why)` — the number of the process the chunk is for (1-based), 0 for none. -1 when unreadable."""
+def ask_the_model(text: str, procs: list[dict], last_reply: str = "",
+                  before: list[str] | None = None) -> tuple[int, str, str]:
+    """`(n, why, is)` — the number of the process the chunk is for (1-based), 0 for none, -1 when unreadable; and what
+    the chunk is for it (`yes` · `no` · `other` · `fragment`)."""
     menu = "\n".join(_board.line(i + 1, p) for i, p in enumerate(procs))
     user = f"OPEN PROCESSES:\n{menu}\n\n"
     if last_reply:
@@ -92,38 +108,56 @@ def ask_the_model(text: str, procs: list[dict], last_reply: str = "", before: li
         got = json.loads(m.group(0)) if m else {}
         n = int(got.get("to"))
     except Exception:  # noqa: BLE001
-        return -1, f"unreadable: {raw[:60]!r}"
-    return (n, str(got.get("why") or "")[:80]) if 0 <= n <= len(procs) else (-1, f"out of range: {n}")
+        return -1, f"unreadable: {raw[:60]!r}", OTHER
+    kind = str(got.get("is") or OTHER).strip().lower()
+    kind = kind if kind in (YES, NO, OTHER, FRAGMENT) else OTHER
+    return (n, str(got.get("why") or "")[:80], kind) if 0 <= n <= len(procs) else (-1, f"out of range: {n}", OTHER)
 
 
-def _declared_answer(text: str, procs: list[dict]) -> dict | None:
-    """The ONE waiting process, when his whole reply is one of its two declared answers; else None."""
+def _declared_answer(text: str, procs: list[dict]) -> tuple[dict | None, str]:
+    """`(the ONE waiting process, yes|no)` when his whole reply is one of its two declared answers; else (None, "")."""
     waiting = [p for p in procs if p["state"] == _board.WAITING]
     if len(waiting) != 1:
-        return None
+        return None, ""
     try:
         from nucleo.circuit import asker
         from nucleo.request import consent_ask
         opts = asker.artefact(waiting[0]["key"]).get("options") or None
-        return waiting[0] if consent_ask.declared_answer(text, opts) else None
+        said = consent_ask.declared_answer(text, opts)
+        return (waiting[0], said) if said else (None, "")
     except Exception as e:  # noqa: BLE001
         logger.debug(f"switchboard: declared answers unread — {e!r}")
-        return None
+        return None, ""
 
 
-def deliver(p: dict, text: str) -> bool:
-    """Hand `text` to process `p` as he said it: its open question takes it as the answer (the task resumes with it),
-    a running worker takes it as his next words."""
+def waits_on_his_yes(p: dict) -> bool:
+    """Does this process wait on a yes/no about an act it retained (a send's confirmation, a card's consent)?"""
+    if p["state"] != _board.WAITING:
+        return False
+    try:
+        from nucleo.circuit import asker
+        return asker.kind_of(asker.artefact(p["key"])) == asker.KIND_CONSENT
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"switchboard: the question's kind unread — {e!r}")
+        return False
+
+
+def deliver(p: dict, text: str, kind: str = OTHER) -> bool:
+    """Hand `text` to process `p` as he said it: its open question takes it as the answer — a plain yes or no decides
+    its retained act at once, as the screen's button does; anything else resumes the task with his words — and a
+    running worker takes it as his next words."""
     if p["state"] == _board.WAITING and p.get("ask_id"):
         from nucleo.cli import worker_api
-        return bool(worker_api.answer_soon(p["ask_id"], text))
+        choice = {YES: 0, NO: 1}.get(kind) if waits_on_his_yes(p) else None
+        return bool(worker_api.answer_soon(p["ask_id"], text, choice))
     if p.get("dispatch"):
         from nucleo import dispatch as _d
         return bool(_d.relay_his_words(p["dispatch"], text))     # THE door for his sentence into a running errand
     return False
 
 
-def _event(emit, text: str, procs: list[dict], *, to: dict | None, by: str, why: str, ms: float, delivered=None) -> None:
+def _event(emit, text: str, procs: list[dict], *, to: dict | None, by: str, why: str, ms: float, delivered=None,
+           kind: str = "") -> None:
     if emit is None:
         return
     try:
@@ -132,7 +166,7 @@ def _event(emit, text: str, procs: list[dict], *, to: dict | None, by: str, why:
         emit("thread", label, text=str(text)[:200], role="system",
              extra={"cat": "flash", "event": "switchboard", "to": (to or {}).get("key", ""),
                     "state": (to or {}).get("state", ""), "ask_id": (to or {}).get("ask_id", ""), "by": by,
-                    "why": why, "ms": round(ms), "delivered": delivered,
+                    "why": why, "ms": round(ms), "delivered": delivered, "is": kind,
                     "board": [_board.line(i + 1, p) for i, p in enumerate(procs)]})
     except Exception as e:  # noqa: BLE001 — the record never decides the route
         logger.debug(f"switchboard: event not emitted — {e!r}")
@@ -147,39 +181,67 @@ async def take(text: str, *, brain=None, emit=None, say=None, window_max: int = 
     if not procs:
         return False
     t0 = time.monotonic()
+    if _piece["text"] and time.time() - float(_piece["at"]) <= PIECE_S:     # the piece he had started: one sentence
+        said = f"{_piece['text']} {said}"
+    _piece.update(text="", at=0.0)
     fresh, already = _fresh(said)
     if already and not fresh:                       # the same sentence handed again: it already went there
         to = next((p for p in procs if p["key"] == already), None)
         _event(emit, said, procs, to=to, by="seen", why="already delivered", ms=0.0, delivered=False)
         return to is not None
-    to, by, why = _declared_answer(fresh, procs), "declared", "one of the question's two answers"
+    (to, kind), by, why = _declared_answer(fresh, procs), "declared", "one of the question's two answers"
     if to is None and already:                      # what is new continues what that process already took
         to, by, why = next((p for p in procs if p["key"] == already), None), "continues", "the same sentence, growing"
     if to is None:
         last, before = _context(brain)
         try:
-            n, why = await asyncio.wait_for(asyncio.to_thread(ask_the_model, fresh, procs, last, before), DECIDE_S)
+            n, why, kind = await asyncio.wait_for(asyncio.to_thread(ask_the_model, fresh, procs, last, before), DECIDE_S)
             by = "model"
         except asyncio.TimeoutError:
             n, why, by = -1, f"no answer in {DECIDE_S}s", "timeout"
         except Exception as e:  # noqa: BLE001 — an unreadable decision is Flash's turn, said on the timeline
             n, why, by = -1, f"{type(e).__name__}: {e}"[:80], "error"
         to = procs[n - 1] if n and n > 0 else None
+    kind = kind or OTHER
     ms = (time.monotonic() - t0) * 1000.0
     if to is None:
         _event(emit, said, procs, to=None, by=by, why=why, ms=ms)
         return False
+    if kind == FRAGMENT:                            # his, for that process, and nothing yet: wait for the rest
+        _piece.update(text=fresh, at=time.time())
+        _event(emit, said, procs, to=to, by=by, why=why, ms=ms, delivered=False, kind=kind)
+        return True
+    line = line_of(to, kind if waits_on_his_yes(to) else OTHER)      # read BEFORE the answer clears what it held
     ok = False
     try:
-        ok = deliver(to, fresh)
+        ok = deliver(to, fresh, kind)
     except Exception as e:  # noqa: BLE001
         logger.warning(f"switchboard: could not deliver to {to['key']} — {e!r}")
-    _event(emit, said, procs, to=to, by=by, why=why, ms=ms, delivered=ok)
+    _event(emit, said, procs, to=to, by=by, why=why, ms=ms, delivered=ok, kind=kind)
     if not ok:
         return False                                # nothing took it: Flash does, rather than his words vanishing
     _seen.update(text=_flat(said), key=to["key"], at=time.time())
-    _acknowledge(said, brain, say, window_max)
+    _acknowledge(said, brain, say, window_max, line)
     return True
+
+
+def line_of(p: dict, kind: str) -> str:
+    """The ONE line he hears for a chunk a process took: his yes to a send («OK, sending it. I'll tell you if anything
+    goes wrong.»), his yes or no to any other act it held, or a bare «noted» for anything else."""
+    from i18n import langs
+    lang = langs.current_language()
+    key = "answer_taken"
+    if kind in (YES, NO):
+        leaves = False
+        try:
+            from nucleo.circuit import asker
+            from nucleo.request import send_receipt
+            leaves = send_receipt.is_send((asker.artefact(p["key"]).get("retained") or {}))
+        except Exception as e:  # noqa: BLE001
+            logger.debug(f"switchboard: the retained act unread — {e!r}")
+        key = {(YES, True): "send_going", (NO, True): "send_not_sent",
+               (YES, False): "work_started", (NO, False): "confirm_cancelled"}[(kind, leaves)]
+    return str(getattr(lang, key, "") or getattr(lang, "answer_taken", "") or "")
 
 
 async def at_the_gate(text: str, brain, emit, say, motor) -> bool:
@@ -190,11 +252,9 @@ async def at_the_gate(text: str, brain, emit, say, motor) -> bool:
     return True
 
 
-def _acknowledge(said: str, brain, say, window_max: int) -> None:
-    """One short line so he knows where his words went, and the exchange kept in the window."""
+def _acknowledge(said: str, brain, say, window_max: int, line: str) -> None:
+    """One short line so he knows what his words did, and the exchange kept in the window."""
     try:
-        from i18n import langs
-        line = str(getattr(langs.current_language(), "answer_taken", "") or "")
         if brain is not None:
             from nucleo.flash import dialog
             dialog.push_user(brain._window, said)

@@ -6,23 +6,24 @@ that could give birth to a send row, an exit door that judged every slot against
 that cancelled the waiting question, and a binder that read his «sí» as `none` — asked him again and again and sent
 nothing. Every fix had added a lane; none had removed one.
 
-Now there is one path:
+Now there is one path, and he hears three lines — the ask, «sending», «sent / failed, and why»:
 
   · the turn — any wording, any language, the model's call or the reading of the order — hands his words to ONE
-    worker task with the `message` playbook (`start`, `context`). Flash never runs a send, never asks about one and
-    never says it went;
-  · the worker (Claude Code with an Anthropic model, `nucleo/dispatch/session_steps`) finds the person in his
-    contacts (asking him until it is the right one), composes the text (his dictated words verbatim), opens the
-    messaging widget and calls the send;
-  · the exit door asks ONE confirmation for every send (`exit_gate.gate`): «the message is ready — shall I send it to
-    <his contact>?», spoken and on screen. The act is retained on the task's row;
-  · while the task is open, what he says about it reaches it through the switchboard (`nucleo/switchboard`, before
-    Flash runs): the screen's button or a bare yes/no decides at once; anything else resumes the worker with his
-    words, and the worker — the one reader — confirms (`bridge act confirm_send`), edits or cancels;
-  · the retained act runs, the worker verifies the outbox (`bridge act verify`) and says the one final line.
+    worker task with the `message` playbook (`hand_over`, `start`, `context`). Flash never runs a send, never asks
+    about one and never says it went; its one line is «I'll get the message ready»;
+  · the worker (Claude Code with an Anthropic model, `on_claude`) finds the person in his contacts (asking him until
+    it is the right one), writes his words as a DRAFT into the card — her conversation opens with the text in its box
+    — and calls the send. It says nothing itself;
+  · the exit door asks ONE confirmation (`exit_gate.gate`): «the message for <her> is ready — shall I send it?»,
+    spoken as it is and on screen. The act is retained on the task's row;
+  · what he says next reaches the task through the switchboard (`nucleo/switchboard`, before Flash runs). A plain yes
+    — in any wording, or the screen's button — runs the retained act at once: no session is resumed, he hears «OK,
+    sending it». A plain no ends it. Anything else resumes the worker with his words (it confirms with
+    `bridge act confirm_send`, rewrites the draft, or cancels);
+  · the engine follows the queued order to the connector's own receipt (`nucleo/request/send_receipt`) and says the
+    final line from it; the task's row ends with that verdict.
 """
 from __future__ import annotations
-
 
 from loguru import logger
 
@@ -165,22 +166,3 @@ def find_contact(name: str) -> dict:
     return {"ok": True, "result": {"query": q, "people": rows,
                                    "note": ("one person → use that name; several → ask him which, naming them; "
                                             "none → ask him who it is")}}
-
-
-# ── the end state the worker verifies ───────────────────────────────────────────────────────────────────────────
-def record_end_state(uid: str, wid: str, action: str, payload: dict | None, said: str = "") -> None:
-    """The send ran: its declared end state (the outbox row) goes on the task's row, for `bridge act verify` to read.
-    Not owed to the circuit: the worker verifies and says the one final line."""
-    if not uid:
-        return
-    try:
-        from nucleo.circuit import spec
-        dw = spec.render(wid, action, payload)
-        if not dw:
-            return
-        e = spec.open(dw, text=said, source="send", widget=wid, action=action, task_id=uid)
-        if e is not None:
-            spec.withdraw(e)
-            spec.persist(uid, e)
-    except Exception as e:  # noqa: BLE001
-        _note(e)

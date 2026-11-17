@@ -280,7 +280,7 @@ def routed_send_line(spoken: str, send, data_done, say, speech) -> str:
     if not (send and not spoken):
         return spoken
     try:
-        return say_started(str(getattr(_lang(), "done_just_started", "") or ""), "", say, speech) or spoken
+        return say_started(str(getattr(_lang(), "send_preparing", "") or _lang().done_just_started or ""), "", say, speech) or spoken
     except Exception as e:  # noqa: BLE001
         return logger.debug(f"reply: the start line was not said — {e!r}") or spoken
 

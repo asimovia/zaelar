@@ -140,6 +140,9 @@ async def answer(corr_id: str, text: str, *, resume: bool = True, choice: int | 
     if retained.get("action") and said == "no":
         e["declined"] = True
         _declined(uid, retained)               # his no ends the act's goal: never a shortfall the circuit retries
+        from nucleo.request import send_receipt
+        if send_receipt.is_send(retained):      # a send he refused is over: the row ends, no session is resumed for it
+            e["followed"] = e["refused_send"] = True
     elif retained.get("action") and said is None:
         e["result"] = {"ok": False, "unclear": True}   # neither yes nor no: nothing runs, nothing ends — the session
     elif retained.get("action"):                       # resumes with his words; the worker reads them (V2-931)
@@ -151,7 +154,10 @@ async def answer(corr_id: str, text: str, *, resume: bool = True, choice: int | 
         from nucleo.circuit import ledger
         ledger.resumed(uid)
     _m._clear_waiting(str(e.get("task_id") or ""), corr_id)
-    if resume and uid:
+    if uid and e.get("refused_send"):
+        from nucleo import circuit
+        circuit.settle(row=uid, state="cancelled", outcome="he said no to the send")
+    if resume and uid and not e.get("followed"):
         try:
             from nucleo.cli import worker_api_resume as _res
             _res.resume_soon(uid, e)
@@ -162,8 +168,8 @@ async def answer(corr_id: str, text: str, *, resume: bool = True, choice: int | 
 
 async def _run_retained(e: dict, rec) -> dict:
     """His yes runs the act the question retained: it crosses the exit door again for the act's own refusal (the
-    question it would ask is the one he answered), runs, and its artefact lands on the task. A send records its end
-    state for the worker to verify (`send_errand.record_end_state`)."""
+    question it would ask is the one he answered), runs, and its artefact lands on the task. A send that was queued is
+    FOLLOWED to the connector's receipt (`send_receipt.follow`): the engine says the one final line and ends the row."""
     retained = e.get("retained") or {}
     from nucleo.workers import taint as _taint
     _taint.cleared(rec)        # his yes: what the session read before is behind his confirmation (§4a)
@@ -177,17 +183,20 @@ async def _run_retained(e: dict, rec) -> dict:
         if refused:
             result = {"ok": False, "error": refused}
         else:
+            from nucleo import on_his_behalf as _ob
+            from nucleo.request import send_receipt
+            wid, act, inner = _ob._resolve(payload or {}) if str(retained["action"]) == "widget_data" else ("", "", {})
+            sends = bool(wid and act) and exit_gate.leaves(wid, act)
+            dw = send_receipt.end_state(wid, act, inner) if sends else None     # its baseline: BEFORE the act
             with _taint.during(rec, source=str(retained["action"])):
                 result = await _m._exec_allow(retained["action"], payload, rec)
             from nucleo.workers import missing_datum     # his yes ran it: the hold reads it as the bridge does
             result = missing_datum.after(rec, str(retained["action"]), payload, result)
-            if isinstance(result, dict) and result.get("ok"):
-                from nucleo import on_his_behalf as _ob
-                wid, act, inner = _ob._resolve(payload or {})
-                if wid and act and exit_gate.leaves(wid, act):
-                    from nucleo.request import send_errand
-                    send_errand.record_end_state(str(e.get("uid") or getattr(rec, "uid", "") or ""), wid, act, inner,
-                                                 str(e.get("answer") or ""))
+            if sends and isinstance(result, dict) and result.get("ok"):
+                uid = str(e.get("uid") or getattr(rec, "uid", "") or "")
+                send_receipt.record_end_state(uid, wid, act, inner, str(e.get("answer") or ""), done_when=dw)
+                send_receipt.follow_soon(uid, wid, act, inner, result, dw)
+                e["followed"] = True               # the engine says the final line: the session is not resumed for it
         from nucleo.workers import task_files      # his yes ran it: its artefact on the task, at the door
         task_files.record(rec, str(retained["action"]), payload, result)
         task_files.said(rec, str(retained["action"]), payload, result)

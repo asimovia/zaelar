@@ -144,7 +144,7 @@ which names the dominant origin). `GET /api/debug/loop` shows the last and worst
 Brain Worker is admitted only while the free memory leaves the floor its declared PIECES need (voice, body, worker,
 chromium — per deployment), never under the voice reserve; the shed ladder and the watchdog share ONE pressure band
 (they open under the pressure floor and close only over it × `pressure_band_ratio`); and a worker is also held while
-the body loop stalled within `loop_hold_s` — a paging host shows it in the loop, not in «available». A held row says
+the body loop stalled within `loop_hold_s` for at least `loop_hold_min_s` in all — a paging host shows it in the loop, not in «available». A held row says
 its reason (`waiting_room`, `waiting_host`, `waiting_voice`, `queued_behind`).
 
 Across the seam, the voice process sends the session facts queued before each request AHEAD of it

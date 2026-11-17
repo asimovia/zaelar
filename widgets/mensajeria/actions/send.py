@@ -111,6 +111,10 @@ def _draft_new(db: dict, payload: dict) -> dict:
         return _unresolved(db, t)
     target = {**t, "new": True, "subject": str(payload.get("subject") or "").strip()}
     out = _d._drafts.write(db, target, str(payload.get("text") or ""), False, files=payload.get("files"))
+    if t.get("platform") != "email" and str(t.get("chatId") or "").strip():
+        # The draft is read where it will leave from: her conversation opens with the text in its box (as `send_to`
+        # opens it) — a draft written into a chat that is not on screen is a draft he cannot check.
+        db["active_chat"] = {"platform": t.get("platform"), "chatId": t.get("chatId")}
     _d.store.save(_d.WIDGET_ID, db)
     return {**out, "held": True, "to": t.get("name"), "channel": t.get("platform"),
             "message": _say("draft_ready", "It's written: check it and tell me whether to send it now or when.")}

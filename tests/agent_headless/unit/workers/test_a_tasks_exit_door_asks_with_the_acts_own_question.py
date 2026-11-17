@@ -71,7 +71,7 @@ def test_a_send_is_asked_with_the_ready_sentence_naming_her(world, monkeypatch, 
     monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
     q, v = _ask_send(world, lang)
     assert q == exit_gate.ready_question("mensajeria", "send_to", v["payload"]), q
-    assert "Odile Varga" in q, q
+    assert "Odile" in q and "Varga" not in q, "one short sentence: her name as he says it aloud"
     assert "send_to" not in q, q
     assert not any(m in q.lower() for m in v["machinery"]), q
 

@@ -289,7 +289,23 @@ def annulment_verdict(jev_choice: str, *, reply: str, acted: bool,
     # `covered_by_live_work` for the errand that was never born because of the old spelling.
     if covered_by_live_work(commission, anything_running=anything_running):
         return {"annul": True, "disposition": HANDLED_INLINE, "why": "covered-by-live-work"}
+    if talks_about_us(brief):
+        return {"annul": True, "disposition": HANDLED_INLINE, "why": "a-comment-commissions-nothing"}
     return {"annul": False, "disposition": UNRESOLVED, "why": "no-evidence"}
+
+
+def talks_about_us(brief) -> bool:
+    """The turn's verdict reads it as talk ABOUT us or the conversation — a comment, a complaint — and not as an order.
+    Measured on his engine (2026-11-17): «the widget shows it as sent, that should be reliable enough…», read
+    `complaint` + `handle_inline` 0.96, was commissioned by the model as «improve the messaging widget» and he was
+    asked whether to rewrite his card. A remark about a result is answered with words; it starts no work. (What he
+    says FOR an open process reaches that process at the gate, before the model — `nucleo/switchboard`.)"""
+    try:
+        from nucleo.turn import brief as _tb
+        kind, info = _tb.read(brief, _tb.REQUEST_KEY, "")
+        return bool(info) and str(kind or "") in ("comment", "complaint")
+    except Exception:  # noqa: BLE001 — unread: the commission stays, the safe side of this gate
+        return False
 
 
 def reply_promises(reply: str, *, acted: bool = False, anything_running: bool = False, brief=None) -> bool:

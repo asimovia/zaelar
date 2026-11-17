@@ -69,6 +69,27 @@ def test_a_new_message_held_for_his_word_is_a_draft_row_and_nothing_leaves():
     assert "BORRADOR esperando su OK" in data.__dict__["_held"].prompt_lines(db)[0]
 
 
+def test_a_draft_for_a_chat_opens_her_conversation_with_the_text_in_its_box(monkeypatch):
+    """V2-931 — the draft is read where it will leave from: writing it for a person whose conversation exists opens
+    that conversation (as a send does), so the box he looks at holds the text. A person with no conversation yet, and
+    a mail draft (it has its own screen), open no chat. Nothing leaves."""
+    chat = {"ok": True, "platform": "whatsapp", "chatId": "34600111222@c.us", "name": "Rowan Pike", "contactId": "c1"}
+    monkeypatch.setattr(data._outbound, "resolve_target", lambda payload=None: dict(chat))
+    out = data.apply_action("draft", {"contact": "Rowan Pike", "text": "Good night"})
+    assert out["ok"] and out["held"], out
+    db = data.load_db()
+    assert db.get("active_chat") == {"platform": "whatsapp", "chatId": "34600111222@c.us"}, db.get("active_chat")
+    assert db["draft"]["text"] == "Good night" and not db.get("pending_send"), "written, never sent"
+    assert str(db["draft"]["target"].get("chatId")) == "34600111222@c.us", "the box that holds it is that chat's"
+    for none in ({**chat, "chatId": ""}, {**chat, "platform": "email", "chatId": "rowan@example.com"}):
+        db = data.load_db()
+        db["active_chat"] = None
+        wstore.save(data.WIDGET_ID, db)
+        monkeypatch.setattr(data._outbound, "resolve_target", lambda payload=None, t=none: dict(t))
+        assert data.apply_action("draft", {"contact": "Rowan Pike", "text": "Good night"})["ok"]
+        assert not data.load_db().get("active_chat"), none
+
+
 def test_send_draft_named_by_its_recipient_sends_that_draft_with_its_subject():
     _held_email()
     data.apply_action("draft", {"contact": "Rowan Pike", "text": "See you at 4"})   # a second held draft, newer

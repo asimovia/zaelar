@@ -478,7 +478,10 @@ Each is one line in `.meshkore/docs/criteria.md`, with its node; read the sectio
 - **A send is ONE Brain Worker task, and one switchboard routes his words (§T, T2b, T3):** Flash never sends, asks
   about a send or says it went — a call whose act leaves is handed over before any guard reads it
   (`nucleo/request/send_errand.py`), and the worker (Claude itself, never relayed to another model) finds the person,
-  uses his words, asks ONE confirmation at its exit door (`nucleo/workers/exit_gate.gate`), sends and verifies. With a
+  writes his words as a draft in the card and calls the send; its exit door (`nucleo/workers/exit_gate.gate`) asks ONE
+  confirmation in one short sentence. He hears three lines and no more: the ask, «sending» on his yes (the retained
+  act runs at once, no session resumed), and the final line, which is the connector's RECEIPT — sent, or failed and
+  why (`nucleo/request/send_receipt.py`); nothing claims a send before it. With a
   process open — running, or waiting on him — every chunk he says is routed at the turn's gate, before the model, by
   one decision over one board (`nucleo/switchboard`): for process N it is delivered there as he said it and Flash
   does not run; for none, Flash takes the turn. Flash has no tool that routes his words to a process, and no reader

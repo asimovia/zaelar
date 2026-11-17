@@ -128,7 +128,7 @@ async def _run_session(task: "Task") -> None:
         _d.sync_state()
         return
 
-    async with _a_slot(_d, key, rec):
+    async with _a_slot(_d, key, rec, answered=bool(((task.context or {}).get("resume") or {}).get("rebrief"))):
         if rec.status == "cancelled":         # cancelada mientras esperaba el pool (its surface: `_a_slot`)
             _d._SESSIONS.pop(key, None)
             _d._task_row("ended_early", rec, state="cancelled")
@@ -221,13 +221,13 @@ from nucleo.dispatch import session_steps as _dss  # noqa: E402 — V2-778 F1, r
 
 
 @contextlib.asynccontextmanager
-async def _a_slot(_d, key, rec):
+async def _a_slot(_d, key, rec, answered: bool = False):
     """The worker pool, entered the way the operator should see it: a commission that waits says behind what, and
     its silence starts when it RUNS, never while it waited for a slot (the loop's stuck clock reads it)."""
     _say_queued_behind(_d, key)
     from nucleo.workers import envelope as _env      # V2-831 T-27 + V2-867: admission by measured room, no clock
     try:
-        await _env.wait_for_room(lambda why: _say_held(_d, key, why), key=key, runs=lambda: _runs(rec))
+        await _env.wait_for_room(lambda why: _say_held(_d, key, why), key=key, runs=lambda: _runs(rec), answered=answered)
         await _d._pool().acquire()          # `max_parallel` stays the CEILING; the room decides below it
     except asyncio.CancelledError:          # stopped while it waited: it never ran, so its finally never will
         _env.released(key)

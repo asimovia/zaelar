@@ -168,11 +168,7 @@ class WorkersPulse:
             # session 85eec898 made unmissable. `proactive.notify` now ARMS the window and `note_bot_speech`'s
             # falling edge anchors it at the LAST word, which is what «§v3·D: his immediate response is
             # DIRECTED» meant all along.
-            await self._deliver_keyed("zaelar", self._say(
-                "worker_ask_named" if goal else "worker_ask_generic",
-                # Clipped on a word boundary (V2-530): the old `[:40]` cut mid-word, and a name read aloud
-                # with its last word amputated is worse than a slightly longer one.
-                goal=_errand_title.provisional(goal, 48), question=a["question"]),
+            await self._deliver_keyed("zaelar", relay_line(self._say, a["question"], goal),
                 f"ask:{a['corr_id']}", str(a.get("task_id") or ""), ask_id=str(a.get("ask_id") or a["corr_id"]))
         # purge resolved corr_ids from the relayed set (to avoid growth)
         try:
@@ -229,3 +225,19 @@ class WorkersPulse:
                 await self._deliver_keyed("zaelar", self._say(    # V2-831: says what the supervisor WILL do
                     goal=goal, minutes=max(1, int(s.get("silent_s", age)) // 60), **_relay.stuck_notice(s)),
                     _STUCK_KEY + str(s.get("uid") or tid), str(s.get("uid") or tid))     # its ROW (V2-852 I1)
+
+
+def relay_line(say, question: str, goal: str = "", alone: bool | None = None) -> str:
+    """How a process's question is SAID: as it is while that process is the only one open (V2-931: «one of the running
+    processes asks: …» in front of the one thing he is waiting for is noise), attributed by its errand's name when
+    several are open — so he knows which one asks."""
+    if alone is None:
+        from nucleo.switchboard import board as _board
+        alone = len(_board.open_processes()) <= 1
+    if alone:
+        return str(question or "")
+    # Clipped on a word boundary (V2-530): the old `[:40]` cut mid-word, and a name read aloud with its last word
+    # amputated is worse than a slightly longer one.
+    return say("worker_ask_named" if goal else "worker_ask_generic",
+               goal=_errand_title.provisional(goal, 48), question=question)
+

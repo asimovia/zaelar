@@ -306,6 +306,13 @@ class LangSpec:
     answer_already_given: str = ""
     #: V2-931 — a send's ONE confirmation, asked by the exit door when the worker has it ready ({who}: his contact).
     send_ready_confirm: str = ""
+    #: …and the other lines of a send, all the engine's: his yes was taken, the connector's receipt, a refusal.
+    send_going: str = ""
+    send_done: str = ""
+    send_failed: str = ""          # {why}: the connector's own reason
+    send_unconfirmed: str = ""
+    send_not_sent: str = ""
+    send_preparing: str = ""       # the turn's start line for a send it handed over
     #: An act of a card the brief ordered and the turn served with another tool asks ONE question for the facts it
     #: still needs, on the order's row (`nucleo/request/order_unserved`).
     act_needs_facts: str = ""

@@ -104,10 +104,13 @@ def under_pressure(total: int, available: int, pol: dict | None = None) -> bool:
 
 
 def host_stalled(pol: dict | None = None) -> bool:
-    """The body loop stopped inside the last `loop_hold_s`: a host that pages shows it there, not in «available»
-    (macOS keeps inactive pages until the end), so a new worker waits for the loop, not only for memory."""
-    hold = float((pol or policy()).get("loop_hold_s", 0) or 0)
-    return hold > 0 and loop_lag.stalled_since(mono=time.monotonic() - hold) > 0
+    """The body loop LOST at least `loop_hold_min_s` inside the last `loop_hold_s`: a host that pages shows it there,
+    not in «available» (macOS keeps inactive pages until the end), so a new worker waits for the loop, not only for
+    memory. One short stall is no paging host — the engine causes one itself when a voice session starts — and held
+    every errand he ordered in the next minute (measured 2026-11-17: a single 2.03 s stall, two 41–60 s holds)."""
+    pol = pol or policy()
+    hold = float(pol.get("loop_hold_s", 0) or 0)
+    return hold > 0 and loop_lag.stalled_since(mono=time.monotonic() - hold) >= max(float(pol.get("loop_hold_min_s", 0) or 0), 0.001)
 
 
 def preexec(also=None):
@@ -154,14 +157,14 @@ def released(key) -> None:
     _admitted.pop(str(key), None)
 
 
-def reason() -> str:
+def reason(answered: bool = False) -> str:
     """Why a new worker cannot start NOW — `waiting_room` (under the memory floor), `waiting_host` (the body loop
     stalled within `loop_hold_s`), `waiting_voice` (a shed held),
     `queued_behind` (the worker admitted before it is not running yet) — or "" when it can. Memory is named only
     when `admits()` is false (V2-867 T590: a 60 s «waiting for free memory» was a voice shed on a 70 % free host)."""
     if not admits(*measured()):
         return "waiting_room"
-    if host_stalled():
+    if host_stalled() and not answered:      # a task he just answered goes on: it is the one he is waiting for
         return "waiting_host"
     if shedding():
         return "waiting_voice"
@@ -170,13 +173,13 @@ def reason() -> str:
     return ""
 
 
-async def wait_for_room(say=None, *, key=None, runs=None, poll_s: float = 5.0) -> bool:
+async def wait_for_room(say=None, *, key=None, runs=None, poll_s: float = 1.0, answered: bool = False) -> bool:
     """Hold a new worker until the host has room for it — for as long as it takes (V2-867 T592: a deadline made the
     envelope a delay, and the worker that «started anyway» is what starved the voice). `say(reason)` is called each
     time the reason changes. Once admitted, `key` holds the gate until `runs()` is true or `released(key)`. True."""
     said = ""
     while True:
-        why = reason()
+        why = reason(answered)
         if not why:
             break
         if why != said:

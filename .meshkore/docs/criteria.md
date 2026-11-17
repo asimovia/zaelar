@@ -612,7 +612,7 @@ below is the first kind, or it names the mechanism that replaced the second.
   side: ≡ · 💬 · ▦ | orb | 🎤 · 🔊 · 🤖. — since 2026-11-16 · nodes 4.317,
   4.492 · `frontend/mobile/app/shell/MenuSheet.js`, `ChatSheet.js`, `ConnectorsSheet.js`, `DockBar.js`.
 - **CRIT-K33 · An errand runs behind the screen.** A card action that a rung runs instead of a worker (the catalogue rung, the card that answers a search, the order carried out after a read) brings its card up only when its output exists only on screen (`present.mount`), when it is a lens (`data.read`) over a closed card, or when the turn's verdict says `canvas = show`; otherwise it runs and the visibility flag stays where he left it, and the refusal is emitted. A lens is never such an action for an errand whose deliverable has its own box (a document, pictures — the surface verdict when it is sure, else the `surface` the escalation itself declared) unless the verdict says `canvas = show`: the catalogue rung leaves it to the worker (`a_view_is_not_the_deliverable`; V2-851 F2: the promise-pass clause died with the promise repair), so talking about a card's content, or an errand that will read it, does not open it. A browser card — the base one included — with no live task behind it is never restored on reload, on either host. — since 2026-10-27 · nodes 4.302, 4.87, 3.140 · `nucleo/flash/canvas_visibility.py::present_for_call`, `::a_view_is_not_the_deliverable`, `frontend/mobile/app/shell/Deck.js`, `frontend/app/widgets/desktop.js`.
-- **CRIT-K34 · A question the state answers is answered, not delegated — when its answer is SAID.** A turn the verdict reads as question · tell · handle_inline annuls its commission (`escalation_guard.a_question_the_state_answers`) and Flash answers from the state in its OWN stream — the state is in its prompt; nothing composes the answer after the stream (V2-851 F5: the answered-from-state pass went). A stream that said nothing keeps the commission (`post_stream_acts._keep_unanswered`): a worker answers rather than silence or a mute apology. A verdict whose surface is something to LOOK at (`informe`, `lista`, `item`, `imagenes`, `widget`) goes on to the rung that writes it. «Conversation» from `flow_of.route` opens nothing (`turn/flow_door`). The verdict judges what the model answers: a request his own barge-in cut before its first word is part of the next turn's sentence (`accumulator.whole_turn`). — since 2026-10-27, narrowed 2026-11-05 · nodes 2.759, 3.142 · `nucleo/flash/escalation_guard.py`, `nucleo/flash/post_stream_acts.py`.
+- **CRIT-K34 · A question the state answers is answered, not delegated — when its answer is SAID.** A turn the verdict reads as question · tell · handle_inline annuls its commission (`escalation_guard.a_question_the_state_answers`) and Flash answers from the state in its OWN stream — the state is in its prompt; nothing composes the answer after the stream (V2-851 F5: the answered-from-state pass went). A stream that said nothing keeps the commission (`post_stream_acts._keep_unanswered`): a worker answers rather than silence or a mute apology. A verdict whose surface is something to LOOK at (`informe`, `lista`, `item`, `imagenes`, `widget`) goes on to the rung that writes it. «Conversation» from `flow_of.route` opens nothing (`turn/flow_door`). The verdict judges what the model answers: a request his own barge-in cut before its first word is part of the next turn's sentence (`accumulator.whole_turn`). A remark commissions nothing: a turn the brief reads as a comment or a complaint and the verdict as handled inline annuls its escalation the same way (`annulment_verdict`, `a-comment-commissions-nothing`). — since 2026-10-27, narrowed 2026-11-05 and 2026-11-17 · nodes 2.759, 3.142, 2.1804 · `nucleo/flash/escalation_guard.py`, `nucleo/flash/post_stream_acts.py`.
 - **CRIT-K41 · A close's follow-up question never blocks the voice loop.** «Which cards on screen does he name» and
   «does a bulk close take the card in use too» ride the brief's own background trip; the hard interrupt awaits its
   question in a thread; a reader on the loop never asks, and with no answer the verdict stands. An explicit total
@@ -850,22 +850,29 @@ Flash keeps the conversation; the row is what both brains read.
   Measured 2026-11-06: with only the prose «DONE WHEN» beside `report goal`, every first goal of eleven errands was
   prose and refused — a round trip and a late checkpoint 1 each. — since 2026-11-06 · nodes 2.1359 ·
   `nucleo/workers/prompts/playbook.py`, `nucleo/circuit/spec_declares.py`, `i18n/genesis/*/voice.json`.
-- **CRIT-T2b · A send is ONE Brain Worker task, owned end to end; Flash never sends, asks or says it went.** A call of
-  the turn whose action declares `external.send` is handed over before any ladder, guard or verdict reads it
+- **CRIT-T2b · A send is ONE Brain Worker task, and he hears three lines of it: the ask, «sending», «sent / failed».** A
+  call of the turn whose action declares `external.send` is handed over before any ladder, guard or verdict reads it
   (`tool_executor_widget_calls._leaving_is_a_task` → `send_errand.hand_over`): his words are the turn's commission and
   the model's call rides as a hint, never as a decision; a send the brief read and no call made is launched at the
-  close by the same door (`send_errand.start`). The worker follows the send's own method (`send_errand.brief_block`):
-  find the person in his contacts (`bridge act find_contact`), asking him until it is the right one; his dictated
-  words verbatim; open the messaging widget; ONE call of the send. The worker of a send runs on Claude itself — the
-  subscription rung where its credential resolves, else the local login — and is never relayed to another model
-  (`providers.anthropic_tier`). The exit door (`exit_gate.gate`) says the card's own refusal first and then asks ONE
-  confirmation, every time, unless an errand's mandate covers the channel; the act is retained on the task's row. The
-  screen's button or a reply that is one of the two declared answers decides at once; any other answer resumes the
-  worker with his words, and the worker confirms with `bridge act confirm_send`, which runs exactly the act he was
-  asked about, once (`worker_api_answer.confirm_retained`) — or redoes the act with his change, or ends saying nothing
-  was sent. The send's declared end state is recorded on the row for `bridge act verify`. — since 2026-11-17 (V2-931)
-  · nodes 2.1801 · `nucleo/request/send_errand.py`, `nucleo/workers/exit_gate.py`, `nucleo/cli/worker_api.py`,
-  `nucleo/cli/worker_api_answer.py`, `nucleo/dispatch/session_steps.py`.
+  close by the same door (`send_errand.start`); the turn's one line is the send's start (`send_preparing`). The worker
+  follows the send's own method (`send_errand.brief_block`): find the person in his contacts (`bridge act
+  find_contact`), asking him until it is the right one; his dictated words verbatim, written as a DRAFT into the card
+  (her conversation opens with the text in its box); ONE call of the send; it says nothing itself. The worker of a
+  send runs on Claude itself — the subscription rung where its credential resolves, else the local login — and is
+  never relayed to another model (`claude_tier.tier`). The exit door (`exit_gate.gate`) says the card's own refusal
+  first and then asks ONE confirmation, every time, unless an errand's mandate covers the channel: one short sentence
+  naming her as he says it aloud (`ready_question`), said as it is while that process is the only one open
+  (`pulse/workers.relay_line`); the act is retained on the task's row. A plain yes — the screen's button, a reply that
+  is one of the two declared answers, or the switchboard's reading of his sentence (CRIT-T3) — runs the retained act
+  at once with no session resumed, and a plain no ends the row; any other answer resumes the worker with his words,
+  and it confirms with `bridge act confirm_send`, which runs exactly the act he was asked about, once
+  (`worker_api_answer.confirm_retained`), or rewrites the draft, or cancels. The final line is the RECEIPT's
+  (`send_receipt.follow`): the engine follows the queued order to the connector's own answer — the card's declared end
+  state for «sent», the order's outbox row for «failed» and its reason — and says the line from it; with no receipt
+  inside the bound it says once that it is not confirmed yet and tells him when it lands; the row ends with the
+  verdict the line says. — since 2026-11-17 (V2-931) · nodes 2.1801, 2.1803 · `nucleo/request/send_errand.py`,
+  `nucleo/request/send_receipt.py`, `nucleo/workers/exit_gate.py`, `nucleo/cli/worker_api_answer.py`,
+  `widgets/mensajeria/actions/send.py`.
 - **CRIT-T2g · An order the model served with another tool opens the ORDER's row.** At the close, a sure order
   (`verdicts.sure_order`: `request_type = order` and `screen_action = card:act` at the one act floor, `wants_words` ≠
   tell) that no door SERVED (`order_unserved.served`) opens its row: a leaving act becomes its ONE worker task
@@ -912,7 +919,10 @@ Flash keeps the conversation; the row is what both brains read.
   by the row): «for process N, or for none?». For a process, the chunk is delivered as he said it — a waiting question
   takes it as its answer and the task resumes, a running worker takes it as his next words — and Flash does not run;
   for none, Flash takes the turn. Decided by identity, with no model: a reply that is one of the two declared answers
-  of the ONLY waiting question, and a sentence handed again as it grows (only what is new travels). An unreadable or
+  of the ONLY waiting question, and a sentence handed again as it grows (only what is new travels). The same decision
+  says what the chunk IS for a process that waits on his yes: a plain yes or no decides its retained act at once, as
+  the button does, and he hears one line; a cut-off piece that says nothing yet is held and joined to what he says
+  next; anything else resumes the process with his words. An unreadable or
   late decision is Flash's turn, never his words lost. Every decision is one `thread` event (`event: switchboard`)
   with the board it read, who decided, why and the ms. Flash has no tool that routes his words to a process. One
   answer runs its retained act once. The worker's process ends after asking and the answer resumes THAT session
@@ -1192,7 +1202,7 @@ Flash keeps the conversation; the row is what both brains read.
   nodes 7.86 · `widgets/results/door_event.py`.
 - **CRIT-R17 · Every row brings its picture, fetched only from the public web**: after a push is saved, a row whose template draws a photo with a `url` and no `image` gets the cover its page declares, and every remote picture is copied once into the results folder and served by `/widgets/results/asset/` (background, one fetch per page, public addresses only at every hop, pinned connection, byte cap, image types and signatures, no SVG); `offer`/`link` rows stay without one; the door event counts `no_picture`. — since 2026-11-02 · nodes 7.87, 7.88 · `widgets/results/media.py`, `search/public_fetch.py`.
 
-- **CRIT-R18 · A held worker names its true reason.** Memory only while `admits()` is false, the host while the body loop stalled within `loop_hold_s` (`waiting_host`: a paging host shows it in the loop, not in «available»), the voice's shed as the voice, else what it queues behind; a shed names its source (`voice_loop` · `voice_audio` · `watchdog`) and ends when THAT source recovers, the seconds only a ceiling (V2-867 F0) — since 2026-11-09 · nodes 3.178 · `nucleo/workers/envelope.py`, `voice/lag.py`.
+- **CRIT-R18 · A held worker names its true reason.** Memory only while `admits()` is false, the host while the body loop stalled within `loop_hold_s` for at least `loop_hold_min_s` in all (`waiting_host`: a paging host shows it in the loop, not in «available»; one short hiccup holds nothing, and a task resumed with his answer is never held for the host), the voice's shed as the voice, else what it queues behind; a shed names its source (`voice_loop` · `voice_audio` · `watchdog`) and ends when THAT source recovers, the seconds only a ceiling (V2-867 F0) — since 2026-11-09, narrowed 2026-11-17 · nodes 3.178 · `nucleo/workers/envelope.py`, `nucleo/dispatch/session.py`, `voice/lag.py`.
 - **CRIT-R19 · Admission is a limit, not a delay.** A worker waits for room with no deadline start (the exit is his cancel) and is admitted one at a time, the next measured only once the previous runs; the floor is the deployment's own `free_floor` (V2-891, CRIT-R39): what its declared `pieces` need (ceilings + reserve), the ratio of the total only a CAP, never under the voice reserve — a block without `pieces`, and a policy without `budgets`, keep max(ratio × total, reserve); the host is SHORT under its `pressure_pieces` (+ reserve), capped by `pause_free_ratio` × total (2026-11-13: 20 % of a 48 GB laptop held every errand with 4.5 GB free); `max_parallel` is the ceiling (V2-867 F1) — since 2026-11-09 · nodes 3.178, 3.194 · `nucleo/workers/envelope.py`, `nucleo/dispatch/session.py`.
 - **CRIT-R20 · A Chromium never launches outside the worker envelope.** Without room the newest running worker nobody else paused is paused first and resumed when room returns; room undoes only its own pauses; the operator's own window is never refused; the search browser waits like a worker through `search.hooks.room` (V2-867 F2) — since 2026-11-09 · nodes 3.179 · `nucleo/workers/room.py`.
 - **CRIT-R41 · A remote browser is reached, never launched.** With `ZAELAR_BROWSER_CDP_URL` or `ZAELAR_BROWSER_LEASE=1` every browser consumer (the navigator, the search browser) connects over CDP and opens a fresh context; the engine launches no Chromium of its own, an unreachable endpoint is the named `RemoteBrowserUnavailable` (never a local fallback), the boot prewarm takes no browser, and a lease is renewed only when used. Nothing configured = local, unchanged (V2-918) — since 2026-11-16 · nodes 4.550 · `nucleo/remote_browser.py`.

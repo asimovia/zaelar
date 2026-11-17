@@ -5,8 +5,12 @@ an empty menu (the router only saw worker errands), his explicit yes was read at
 the act five times. The switchboard reads one board — what runs and what waits, whoever asked — and delivers the chunk
 itself: a waiting question takes it as its answer, a running worker as his next words; anything else is Flash's turn.
 
+The same decision says what KIND of reply it is to a process that waits on his yes: a plain yes or no decides its
+retained act at once, as the screen's button does, and he hears ONE line; a cut-off piece is held and joined to what he
+says next; anything else resumes the process with his words.
+
 The model is a double here (the decision's quality is a bench's number, not a unit's): what these pin is the board, the
-two decisions made by identity, the delivery and the record. ES and EN, invented people.
+decisions made by identity, the delivery, the line and the record. ES and EN, invented people.
 """
 from __future__ import annotations
 
@@ -30,13 +34,18 @@ def desk(monkeypatch):
     monkeypatch.setattr(board, "open_processes", lambda: [dict(p) for p in got.procs])
     from nucleo.cli import worker_api
     from nucleo import dispatch
-    monkeypatch.setattr(worker_api, "answer_soon", lambda ask, text, choice=None: got.answers.append((ask, text)) or True)
-    monkeypatch.setattr(dispatch, "inject_soon", lambda which, words: got.injects.append((which, words)))
-    monkeypatch.setattr(route, "_declared_answer", lambda text, procs: None)
+    got.choices = []
+    monkeypatch.setattr(worker_api, "answer_soon", lambda ask, text, choice=None: (
+        got.answers.append((ask, text)), got.choices.append(choice)) and True)
+    monkeypatch.setattr(dispatch, "relay_his_words", lambda which, words: got.injects.append((which, words)) or True)
+    monkeypatch.setattr(route, "_declared_answer", lambda text, procs: (None, ""))
+    monkeypatch.setattr(route, "waits_on_his_yes", lambda p: p["state"] == "waiting")
+    monkeypatch.setattr(route, "line_of", lambda p, kind: f"line:{kind}")
     route._seen.update(text="", key="", at=0.0)
+    route._piece.update(text="", at=0.0)
     got.emit = lambda kind, label, text="", role="", extra=None: got.events.append({"kind": kind, "label": label, **(extra or {})})
-    got.model = lambda n: monkeypatch.setattr(route, "ask_the_model", lambda text, procs, last="", before=None:
-                                              got.asked.append(text) or (n, "double"))
+    got.model = lambda n, kind="other": monkeypatch.setattr(
+        route, "ask_the_model", lambda text, procs, last="", before=None: got.asked.append(text) or (n, "double", kind))
     return got
 
 
@@ -54,11 +63,11 @@ def test_with_nothing_open_nothing_is_asked_and_flash_takes_the_turn(desk):
 def test_his_answer_to_a_waiting_question_reaches_it_as_he_said_it(desk, said):
     desk.procs, _ = [WAITS], desk.model(1)
     assert _take(desk, said) is True
-    assert desk.answers == [("q1", said)] and desk.injects == []
+    assert desk.answers == [("q1", said)] and desk.injects == [] and desk.choices == [None]
     ev = desk.events[-1]
     assert (ev["kind"], ev["event"], ev["to"], ev["by"], ev["delivered"]) == ("thread", "switchboard", "b0-7", "model", True)
     assert ev["board"] and "WAITING" in ev["board"][0], "the record carries the board the decision read"
-    assert len(desk.said) == 1, "one short line tells him where his words went"
+    assert desk.said == ["line:other"], "one short line tells him his words were taken"
 
 
 def test_a_detail_for_a_running_worker_is_injected_into_it(desk):
@@ -79,7 +88,7 @@ def test_an_unreadable_or_late_decision_never_swallows_his_words(desk, monkeypat
     desk.procs, _ = [WAITS], desk.model(-1)
     assert _take(desk, "send it") is False and desk.answers == []
     monkeypatch.setattr(route, "DECIDE_S", 0.05)
-    monkeypatch.setattr(route, "ask_the_model", lambda *a, **k: __import__("time").sleep(0.4) or (1, "late"))
+    monkeypatch.setattr(route, "ask_the_model", lambda *a, **k: __import__("time").sleep(0.4) or (1, "late", "other"))
     assert _take(desk, "send it now") is False and desk.events[-1]["by"] == "timeout"
 
 
@@ -101,6 +110,7 @@ def test_the_only_waiting_questions_declared_answer_needs_no_model(desk, monkeyp
     monkeypatch.setattr(route, "_declared_answer", _real_declared)
     assert _take(desk, "Yes.") is True
     assert desk.answers == [("q1", "Yes.")] and desk.asked == [] and desk.events[-1]["by"] == "declared"
+    assert desk.choices == [0] and desk.said == ["line:yes"], "the declared yes decides the act, as the button does"
 
 
 def test_two_waiting_questions_are_never_answered_by_identity(desk, monkeypatch):
@@ -128,6 +138,61 @@ def test_the_board_is_one_list_of_what_runs_and_what_waits(monkeypatch):
 
 
 _real_declared = route._declared_answer
+
+
+@pytest.mark.parametrize("said, kind, choice", [("Puedes mandar el mensaje, te autorizo", "yes", 0),
+                                                ("send it, go ahead", "yes", 0),
+                                                ("no, déjalo, no lo mandes", "no", 1)])
+def test_a_plain_yes_or_no_decides_the_waiting_act_at_once(desk, said, kind, choice):
+    """His yes in any wording is the button's yes: the retained act is decided now, no session is resumed to read it."""
+    desk.procs, _ = [WAITS], desk.model(1, kind)
+    assert _take(desk, said) is True
+    assert desk.answers == [("q1", said)] and desk.choices == [choice]
+    assert desk.said == [f"line:{kind}"] and desk.events[-1]["is"] == kind
+
+
+def test_a_yes_to_a_question_that_holds_no_act_is_only_his_words(desk, monkeypatch):
+    """«Sí» to «which Quinn?» decides nothing: a question that retained no act takes his words as they are."""
+    desk.procs, _ = [WAITS], desk.model(1, "yes")
+    monkeypatch.setattr(route, "waits_on_his_yes", lambda p: False)
+    assert _take(desk, "yes, the first one") is True
+    assert desk.choices == [None] and desk.said == ["line:other"]
+
+
+def test_a_cut_off_piece_is_held_and_joined_to_what_he_says_next(desk):
+    """Measured 2026-11-17 23:06: «mensaje.» and then «…puedes mandar el mensaje.» — the piece resumed the task and was
+    answered twice. A piece that says nothing yet is delivered to nobody and acknowledged by nothing."""
+    desk.procs, _ = [WAITS], desk.model(1, "fragment")
+    assert _take(desk, "mensaje.") is True
+    assert desk.answers == [] and desk.said == [] and desk.events[-1]["delivered"] is False
+    desk.model(1, "yes")
+    assert _take(desk, "puedes mandar el mensaje.") is True
+    assert desk.answers == [("q1", "mensaje. puedes mandar el mensaje.")] and desk.choices == [0]
+    assert desk.said == ["line:yes"], "ONE line for the whole sentence"
+
+
+def test_a_held_piece_is_forgotten_after_its_window(desk, monkeypatch):
+    desk.procs, _ = [WAITS], desk.model(1, "fragment")
+    assert _take(desk, "bueno,") is True
+    route._piece["at"] -= route.PIECE_S + 1
+    desk.model(0)
+    assert _take(desk, "abre YouTube") is False and desk.asked[-1] == "abre YouTube"
+
+
+def test_the_line_he_hears_is_the_sends_own(monkeypatch):
+    from i18n import langs
+    from nucleo.circuit import asker
+    from nucleo.request import send_receipt as send_errand
+    lang = langs.current_language()
+    monkeypatch.setattr(asker, "artefact", lambda uid: {"retained": {"action": "widget_data"}})
+    monkeypatch.setattr(send_errand, "is_send", lambda retained: True)
+    assert _real_line(WAITS, "yes") == lang.send_going and _real_line(WAITS, "no") == lang.send_not_sent
+    monkeypatch.setattr(send_errand, "is_send", lambda retained: False)
+    assert _real_line(WAITS, "yes") == lang.work_started and _real_line(WAITS, "no") == lang.confirm_cancelled
+    assert _real_line(RUNS, "other") == lang.answer_taken and "tarea" not in langs.spec("es").answer_taken
+
+
+_real_line = route.line_of
 
 
 def test_disarmed_a_delivery_that_fails_is_not_called_taken(desk, monkeypatch):

@@ -86,4 +86,4 @@ def test_a_reply_is_never_sent_by_the_turn_with_or_without_a_strangers_words(gat
         if taint:
             U.seen()
         out = rig.run("mensajeria", "reply", {"n": 1, "text": "ok, thanks"}, said="reply ok thanks", monkeypatch=monkeypatch)
-        assert not out.ran and not out.asked and any("is a task" in label for _k, label in out.events), out
+        assert not out.ran and not out.asked and any("a send is one worker task" in label for _k, label in out.events), out

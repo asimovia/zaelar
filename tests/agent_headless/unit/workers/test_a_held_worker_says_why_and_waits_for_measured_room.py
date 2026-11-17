@@ -167,3 +167,31 @@ def test_a_host_whose_loop_stalls_holds_the_worker_and_says_so(monkeypatch):
     monkeypatch.setitem(loop_lag._state, "stalls", deque([(time.monotonic() - 10, time.time() - 10, 4.0, "host")]))
     monkeypatch.setattr(envelope, "policy", lambda: dict(POL))
     assert envelope.reason() == "", "no declared window holds nothing"
+
+
+def test_one_short_stall_holds_nothing_and_an_answered_task_never_waits_for_the_host(monkeypatch):
+    """Measured 2026-11-17: ONE 2.03 s stall — the engine's own, when a voice session starts — held the errand he had
+    just ordered for 41 s, and held it again for 60 s when his yes resumed it. A paging host loses seconds of the loop,
+    again and again: the hold needs `loop_hold_min_s` lost inside the window, and a task he just answered goes on."""
+    import time
+    from collections import deque
+    from nucleo.pulse import loop_lag
+    monkeypatch.setattr(envelope, "measured", lambda: (48 * GB, 20 * GB))
+    monkeypatch.setattr(envelope, "policy", lambda: {**POL, "loop_hold_s": 15, "loop_hold_min_s": 3.0})
+    one = (time.monotonic() - 5, time.time() - 5, 2.03, "host")
+    monkeypatch.setitem(loop_lag._state, "stalls", deque([one]))
+    assert envelope.reason() == "", "a single short stall held a new worker"
+    two = (time.monotonic() - 2, time.time() - 2, 2.0, "host")
+    monkeypatch.setitem(loop_lag._state, "stalls", deque([one, two]))
+    assert envelope.reason() == "waiting_host", "a loop that keeps stalling is a host that pages"
+    assert envelope.reason(answered=True) == "", "the task he just answered was held again"
+    monkeypatch.setattr(envelope, "measured", lambda: (48 * GB, 1 * GB))
+    assert envelope.reason(answered=True) == "waiting_room", "memory still holds anyone"
+
+
+def test_the_declared_window_is_seconds_not_a_minute():
+    import json
+    from pathlib import Path
+    pol = json.loads((Path(__file__).resolve().parents[4] / "config" / "resources.default.json").read_text("utf-8"))
+    assert 0 < float(pol["loop_hold_s"]) <= 20 and float(pol["loop_hold_min_s"]) >= 2.5
+
