@@ -159,6 +159,17 @@ def _a_add(action, p, db) -> dict:
     return {"ok": True, "position": len(lst), "title": lst[-1]["title"], "count": len(lst), **notice}
 
 
+_RECENT_MAX = 8
+
+
+def _remember_query(db, q: str) -> None:
+    """His recent searches, newest first (2026-11-17): what the bar's search field lists while it is empty. One entry
+    per question however it was spelled, the same normalisation `search` uses to tell a repeat (`_norm`)."""
+    key = _d._norm(q)
+    rest = [x for x in (db.get("recent_queries") or []) if isinstance(x, str) and _d._norm(x) != key]
+    db["recent_queries"] = [q] + rest[:_RECENT_MAX - 1]
+
+
 def _a_search(action, p, db) -> dict:
     # V2-402/V2-632 — a MEDIA search lands in the WIDGET, never in the results sheet; and since the
     # operator's redesign (2026-09-09) it lands on the DASHBOARD as its own numbered band, never in the
@@ -169,6 +180,7 @@ def _a_search(action, p, db) -> dict:
     q = _d._results_query(q) or q                       # a pasted results link is the query, decoded
     if not q:
         return {"ok": False, "error": "no_query", "message": say("youtube", "say_which_videos", "Tell me which videos to look for.")}
+    _remember_query(db, q)
     # V2-756 — THE NUMBERS UNDER HIS FEET. Live session 74be8e9a (2026-09-23): «Ahora quiero que me
     # pongas el vídeo número tres» came back as `play_video(action=list)` — a SEARCH — three turns
     # running, and each one re-fetched the same query and rebuilt the band. He said it himself:
@@ -218,6 +230,7 @@ def _a_search(action, p, db) -> dict:
     db["search_results"] = [{"videoId": h["videoId"],
                              "title": h["title"] or ("youtu.be/" + h["videoId"]),
                              "channel": h["channel"], "published": h["published"],
+                             "duration": h.get("duration") or "",
                              "url": "https://www.youtube.com/watch?v=" + h["videoId"],
                              "source": "youtube"} for h in hits]
     db["search_query"] = q

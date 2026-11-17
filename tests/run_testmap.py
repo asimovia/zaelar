@@ -6781,6 +6781,11 @@ DOMAINS: list[dict] = [
                                   "today's date that a repaint never eats; the bar at three widths (one line with the "
                                   "search closing it ~30 px from the plug, two right-aligned rows, phone Inicio + 🔍 + ⋯)",
             "ch": UNIT, "paths": ["tests/browser/unit/youtube/test_the_video_app_works_like_the_music_app.py"]},
+        {"id": "4.563", "title": "The video search keeps his recent questions and each result's length (2026-11-17, ES/EN): "
+                                  "`search` writes `recent_queries` (newest first, eight, one per question however spelled, "
+                                  "an unanswered one too) and the band's rows carry the `duration` the results page showed "
+                                  "(`search/video.py` reads `lengthText` inside each row's block)",
+            "ch": UNIT, "paths": ["tests/browser/unit/youtube/test_his_recent_searches_are_kept.py"]},
         {"id": "4.518", "title": "The photo gallery says the filter on each screen, how many photos it holds and the year he is looking at (V2-884 C8 step 5): `filter`, `shown` and `year` (the header at the top of what he sees) after every paint and as he scrolls — the applied report owed until sent, a scroll never cancels it; a search is `?ordered` on each screen until it acks; two screen pairs; disarmed → red",
             "ch": UNIT, "paths": ["tests/browser/unit/fotos/test_the_gallery_reports_what_he_sees.py"]},
         # V2-882 — disarmed 2026-11-11 (`fit()` never stepping → 3 red; the step-3 grid rule removed → red; the gate's

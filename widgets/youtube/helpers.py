@@ -87,9 +87,10 @@ _SEED = {
     # there («reproduce el tercero», «añade los tres primeros a la cola», «regenera en 4K») and the queue only
     # receives what he explicitly sends in. `source` travels per row because the widget is provider-agnostic
     # by design — today every row says "youtube", and a second source is a value, not a schema change.
-    "search_results": [],    # [{videoId, title, channel, published, url, source}]
+    "search_results": [],    # [{videoId, title, channel, published, duration, url, source}]
     "search_query": "",
     "searched_at": 0,
+    "recent_queries": [],    # his last searches, newest first, one per question (the bar's empty field lists them)
 }
 
 

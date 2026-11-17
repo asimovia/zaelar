@@ -35,6 +35,11 @@ def _unesc(s: str) -> str:
     return re.sub(r"\\u([0-9a-fA-F]{4})", lambda m: chr(int(m.group(1), 16)), s or "")
 
 
+# The length a results row shows on its picture («12:45», «1:02:03»): `lengthText` holds an accessibility label (nested
+# braces) and the `simpleText` the picture wears; read inside the row's own block, like every other field.
+_LENGTH_RE = re.compile(r'"lengthText":\{(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*?"simpleText":"(\d{1,2}(?::\d{2}){1,2})"')
+
+
 def parse(html: str, n: int) -> list[dict]:
     """Top-`n` DISTINCT videos of a results page, in page order. A hit the parser cannot NAME is not a candidate
     (V2-469: Shorts blocks repeat `videoId` with no title — skipped, the walk goes on). Each block is bounded at the
@@ -57,8 +62,9 @@ def parse(html: str, n: int) -> list[dict]:
             continue
         ch = re.search(r'"(?:ownerText|longBylineText)":\{"runs":\[\{"text":"([^"]{1,80})"', blk)
         pub = re.search(r'"publishedTimeText":\{"simpleText":"([^"]{2,40})"', blk)
+        dur = _LENGTH_RE.search(blk)                     # optional: a live stream or a Short carries none
         out.append({"videoId": vid, "title": _unesc(t.group(1)), "channel": _unesc(ch.group(1)) if ch else "",
-                    "published": _unesc(pub.group(1)) if pub else ""})
+                    "published": _unesc(pub.group(1)) if pub else "", "duration": dur.group(1) if dur else ""})
         if len(out) >= n:
             break
     return out

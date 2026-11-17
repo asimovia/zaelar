@@ -81,3 +81,20 @@ def test_both_sources_are_declared_providers_with_a_probe():
     assert PROVIDERS["youtube"].kind == PROVIDERS["youtube_browser"].kind == "video"
     src = (ENGINE / "search/health.py").read_text(encoding="utf-8")
     assert 'name == "youtube"' in src and 'name == "youtube_browser"' in src
+
+
+# 2026-11-17 — the length a results row wears on its picture, for the card's duration badge. YouTube's `lengthText`
+# nests an accessibility label before the `simpleText`; a live stream or a Short has none. Each read stays inside the
+# row's own block: the second row has no length and must not borrow the third's.
+_LEN = ('"videoId":"{id}","title":{{"runs":[{{"text":"{t}"}}]}},"ownerText":{{"runs":[{{"text":"C"}}]}}{x}')
+_LENGTHS = "".join(_LEN.format(id=i, t=t, x=x) for i, t, x in (
+    ("aaaaaaaaaa1", "Long one", ',"lengthText":{"accessibility":{"accessibilityData":{"label":"1 hour, 2 minutes"}},'
+                                '"simpleText":"1:02:45"}'),
+    ("aaaaaaaaaa2", "Live now", ',"badges":[{"metadataBadgeRenderer":{"label":"LIVE"}}]'),
+    ("aaaaaaaaaa3", "Short one", ',"lengthText":{"simpleText":"3:21","accessibility":{"accessibilityData":{"label":"x"}}}')))
+
+
+def test_a_results_row_carries_its_length_when_the_page_shows_one():
+    hits = video.parse(_LENGTHS, 5)
+    assert [(h["videoId"], h["duration"]) for h in hits] == [
+        ("aaaaaaaaaa1", "1:02:45"), ("aaaaaaaaaa2", ""), ("aaaaaaaaaa3", "3:21")]
