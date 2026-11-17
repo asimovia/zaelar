@@ -3,7 +3,7 @@
 // among weighted answers, where «nothing» is always one of them: an engaged face answers more often, a fresh one
 // shrugs more gestures off, and the same gesture again and again gets tired answers (a sigh, a glance away) and then
 // none. Cooldowns keep it from chattering: a gap between any two answers, and the same answer never twice in a row
-// within a while. Answers take a human beat to come (a random 250–750 ms). While the agent SPEAKS its mouth belongs to
+// within a while. Answers take a human beat to come (a random 120–380 ms), and a FIRST gesture is almost always answered. While the agent SPEAKS its mouth belongs to
 // the voice, so the answers that use the mouth (laugh, tongue, yawn) are swapped for ones that do not.
 // No DOM, no clock: the caller passes the time; with a seed (tests) the same events give the same answers.
 
@@ -21,15 +21,15 @@ export function seeded(seed) {
 
 // perceived event → weighted answers (`null` = it lets this one go). The weights are the character.
 export const ANSWERS = {
-  smile:    { smile: 5, tilt: 2, shy: 1.2, null: 2.5 },
+  smile:    { smile: 7, tilt: 1.5, shy: 1.2, null: 2.5 },
   laugh:    { laugh: 5, giggle: 3, smile: 2, null: 1 },
-  wink:     { wink: 6, smile: 2, brows: 1, null: 2 },
+  wink:     { wink: 8, smile: 2, brows: 1, null: 2 },
   tongue:   { tongue: 5, laugh: 2, surprise: 1, null: 2 },
   yawn:     { yawn: 1.5, sigh: 1.5, null: 7 },
   surprise: { surprise: 4, brows: 2, null: 2.5 },
   brows:    { brows: 4, tilt: 1, null: 3.5 },
   nod:      { nod: 4, smile: 1, null: 3 },
-  shake:    { shake: 2, tilt: 2, sad: 1, null: 3 },
+  shake:    { shake: 1.5, tilt: 2, sad: 1, null: 3 },
   arrive:   { hello: 6, smile: 2, null: 1 },
   leave:    { sigh: 2, look: 2, null: 3 },
   hand:     { hello: 5, smile: 2, null: 1 },     // declared: no hand detector ships yet (hands.js)
@@ -37,11 +37,15 @@ export const ANSWERS = {
 const TIRED = { sigh: 1, look: 1.2, null: 6 };    // the same gesture once too often
 const MOUTH = new Set(["laugh", "giggle", "tongue", "yawn"]);
 const QUIET_SWAP = { laugh: "smile", giggle: "smile", tongue: "brows", yawn: null };
+// A FIRST gesture (none of its kind for `tiredMs`) is almost always answered — the moment he tries something the face
+// must show it noticed (2026-11-18: «it follows me, but it does not feel it reacts to me»). Letting go is for repeats.
+// These keep their full «nothing»: a yawn, a departure, a brow, a nod are not invitations.
+const SHY = new Set(["yawn", "leave", "brows", "nod"]);
 
 export const TEMPER = {
   rise: 0.18, halfLifeMs: 45000,          // engagement: each exchange adds, then it halves every 45 s
-  gapMs: 1800, sameMs: 5000, tiredAfter: 3, tiredMs: 20000,
-  delayMs: [250, 750],
+  gapMs: 1200, sameMs: 5000, tiredAfter: 3, tiredMs: 20000, fresh: 0.25,
+  delayMs: [120, 380],
 };
 
 export function createTemperament(opts = {}) {
@@ -71,12 +75,12 @@ export function createTemperament(opts = {}) {
     // repetition: the same gesture within `tiredMs` of the last one counts up; past `tiredAfter` the answers tire
     const run = runs[ev.type];
     runs[ev.type] = run && t - run.t < k.tiredMs ? { n: run.n + 1, t } : { n: 1, t };
-    const tired = runs[ev.type].n > k.tiredAfter;
+    const tired = runs[ev.type].n > k.tiredAfter, fresh = runs[ev.type].n === 1 && !SHY.has(ev.type);
     engagement = Math.min(1, engagement + (tired ? 0.02 : k.rise));
     if (t - lastAnswerAt < k.gapMs) return null;                       // still answering the last one
     const w = { ...(tired ? TIRED : base) };
     // a fresh face lets more go; an engaged one lets less go (×1.6 at 0 engagement, ×0.6 at full)
-    if (w.null) w.null *= 1.6 - engagement;
+    if (w.null) w.null *= (1.6 - engagement) * (fresh ? k.fresh : 1);
     for (const n in w) if (n !== "null" && n === lastAnswer && t - lastAnswerAt < k.sameMs) w[n] = 0;
     let answer = pick(w);
     if (answer && speaking && MOUTH.has(answer)) answer = QUIET_SWAP[answer];

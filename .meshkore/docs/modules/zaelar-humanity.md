@@ -70,18 +70,18 @@ smile.
 
 | event | reading (MediaPipe blendshapes) | held |
 |---|---|---|
-| smile | mean of `mouthSmileLeft/Right` ≥ 0.55 | 450 ms |
-| laugh | smile ≥ 0.62 and `jawOpen` ≥ 0.2 | 380 ms |
-| wink (side) | one `eyeBlink*` ≥ 0.45, the other ≤ 0.25, gap ≥ 0.3 | 160–1400 ms |
+| smile | mean of `mouthSmileLeft/Right` ≥ 0.5 | 300 ms |
+| laugh | smile ≥ 0.6 and `jawOpen` ≥ 0.2 | 300 ms |
+| wink (side) | one `eyeBlink*` ≥ 0.38, the other ≤ 0.35 (it squints a little), gap ≥ 0.15 | 120–1400 ms |
 | tongue | `tongueOut` ≥ 0.3 | 260 ms |
 | yawn | `jawOpen` ≥ 0.58, no smile | 1.1 s |
 | surprise («oh!») | `jawOpen` ≥ 0.35 and brows ≥ 0.45 | 320 ms |
-| brows | `browInnerUp` or the outer brows ≥ 0.5, mouth closed | 260 ms |
-| nod / shake | ≥ 2 swings of the head-pose proxy on one axis within 1.6 s | — |
+| brows | `browInnerUp` or the outer brows ≥ 0.5, mouth closed | 220 ms |
+| nod / shake | nod: ≥ 2 pitch swings of 0.04; shake: ≥ 3 yaw swings of 0.09 (looking aside or swaying is never a «no») within 1.6 s | — |
 | arrive / leave | a face held 0.7 s after 30 s of absence / gone 4 s | — |
 
 **The talking gate:**
-- Mouth events (smile, tongue, yawn, surprise) are muted while he talks, and for 0.9 s after.
+- Mouth events (smile, tongue, yawn, surprise) are muted while he talks, for 0.9 s after, and whenever the jaw moved twice in the last 0.6 s (so the first syllables of speech do not slip through before talking is recognised).
 - Talking is **heard** (his mic level, from `PresenceLayer.js`) or **seen**: the jaw's flutter, four or more swings of
   0.07 within 1.5 s. Because it can be seen, a muted mic does not let his talking through.
 - A laugh is the one mouth event allowed while he makes sound, because laughing is audible, and only with a big smile.
@@ -97,13 +97,14 @@ Known limits:
 - **Engagement** (0..1) rises 0.18 with every perceived event and halves every 45 s.
 - **Weighted answers** per event, `null` included («let it go»): the weights *are* the character
   (`ANSWERS` in the file). An engaged face lets less go: the `null` weight is multiplied by `1.6 − engagement`.
+- **A first gesture is almost always answered** (2026-11-18, the operator: «it follows me, but it does not feel it reacts to me»): the first of its kind in 20 s has its `null` weight × 0.25 — except yawn, leave, brows and nod, which are not invitations. Letting go is for repeats.
 - **Cooldowns:**
-  - at least 1.8 s between any two answers;
+  - at least 1.2 s between any two answers;
   - the same answer never twice within 5 s.
 - **Tiredness:** the same gesture more than three times within 20 s draws from `{sigh, look, nothing}`.
 - **The voice's mouth:** while the agent speaks, laugh, giggle and tongue become a smile or a brow flash, and a yawn
   becomes nothing.
-- **A human beat:** each answer waits a random 250–750 ms.
+- **A human beat:** each answer waits a random 120–380 ms.
 - **Seeded:** product runs draw a random seed per camera session, so the same session is consistent and no two are alike.
   Tests pass a seed (`seeded(n)`, mulberry32) and are deterministic.
 

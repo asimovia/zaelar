@@ -29,6 +29,7 @@ const perceive = {
   smileTalkingMuted: types(drive(fresh(), 2, (t) => face({ ...SMILE, mouthSmileLeft: 0.6, mouthSmileRight: 0.58, jawOpen: flutter(t) }), {}, 2000)),
   laughHearing: types(drive(fresh(), 1, () => face({ mouthSmileLeft: 0.85, mouthSmileRight: 0.85, jawOpen: 0.4 }), { hearing: true }, 2000)),
   winkLeft: types(drive(fresh(), 0.8, (t) => face(t < 2400 ? { eyeBlinkLeft: 0.7, eyeBlinkRight: 0.08 } : {}), {}, 2000)),
+  winkReal: types(drive(fresh(), 0.8, (t) => face(t < 2300 ? { eyeBlinkLeft: 0.48, eyeBlinkRight: 0.3 } : { eyeBlinkLeft: 0.12, eyeBlinkRight: 0.1 }), {}, 2000)),
   blinkBoth: types(drive(fresh(), 0.8, (t) => face(t < 2300 ? { eyeBlinkLeft: 0.7, eyeBlinkRight: 0.7 } : {}), {}, 2000)),
   eyeShutLong: types(drive(fresh(), 3, (t) => face(t < 4500 ? { eyeBlinkLeft: 0.7, eyeBlinkRight: 0.08 } : {}), {}, 2000)),
   smileHover: types(drive(fresh(), 6, (t) => face({ mouthSmileLeft: 0.52 + 0.08 * Math.sin(t / 300), mouthSmileRight: 0.52 + 0.08 * Math.sin(t / 300) }), {}, 2000)),
@@ -38,6 +39,9 @@ const perceive = {
   talkingNoYawn: types(drive(fresh(), 3, (t) => face({ jawOpen: flutter(t) + (t % 700 < 300 ? 0.5 : 0) }), {}, 2000)),
   nod: types(drive(fresh(), 1.6, (t) => face({}, { yaw: 0, pitch: 0.05 * Math.sin((t - 2000) / 1000 * Math.PI * 2 * 2) }), {}, 2000)),
   shake: types(drive(fresh(), 1.6, (t) => face({}, { yaw: 0.1 * Math.sin((t - 2000) / 1000 * Math.PI * 2 * 2), pitch: 0 }), {}, 2000)),
+  // he turns to look aside and back, and he sways gently: neither is a «no»
+  lookAside: types(drive(fresh(), 2, (t) => face({}, { yaw: 0.25 * Math.sin(Math.PI * Math.min(1, (t - 2000) / 1500)), pitch: 0 }), {}, 2000)),
+  sway: types(drive(fresh(), 4, (t) => face({}, { yaw: 0.04 * Math.sin((t - 2000) / 1000 * Math.PI * 2 * 1.5), pitch: 0 }), {}, 2000)),
 };
 // presence: nobody, then someone, then nobody for a while
 const pp = createPerceiver();
@@ -58,6 +62,8 @@ const temper = {
   sameTwice: (() => { let n = 0; for (let s = 1; s <= 200; s++) { const a = answersFor(s, [{ type: "laugh", t: 0 }, { type: "laugh", t: 2500 }]); if (a[0] && a[0] === a[1]) n++; } return n; })(),
   delays: (() => { const tp = createTemperament({ rng: seeded(3) }); const d = []; for (let i = 0; i < 40; i++) { const a = tp.hear({ type: "arrive", t: i * 3000 }, i * 3000); if (a) d.push(a.delayMs); } return [Math.min(...d), Math.max(...d)]; })(),
   everyEvent: Object.keys(ANSWERS).sort(),
+  firstAnswered: (() => { const n = {}; for (const ty of ["smile", "wink", "laugh", "tongue"]) { n[ty] = 0; for (let s = 1; s <= 200; s++) if (answersFor(s, [{ type: ty, t: 0 }])[0]) n[ty]++; } return n; })(),
+  repeatLetGo: (() => { let n = 0; for (let s = 1; s <= 200; s++) n += answersFor(s, [{ type: "wink", t: 0 }, { type: "wink", t: 3000 }, { type: "wink", t: 6000 }]).slice(1).filter((a) => !a).length; return n; })(),
 };
 
 // ---- expression: a wink mostly mirrors him; a hello is a brow flash and a smile

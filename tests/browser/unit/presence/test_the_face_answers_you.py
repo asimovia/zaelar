@@ -8,13 +8,13 @@ has loaded behind the camera, with picojs keeping the gaze until then or when th
 
 What is pinned:
   1. PERCEPTION (humanity.mjs, node, fake blendshape frames): a held smile, a laugh, a one-eyed wink (and its side), a
-     tongue, a yawn, a nod, a shake, an arrival and a departure are events; a blink with both eyes, an eye held shut and
+     tongue, a yawn, a nod, a shake, an arrival and a departure are events, but looking aside or swaying is no «no»; a blink with both eyes, an eye held shut and
      a short flicker are not, and a smile hovering at the line for seconds is one smile; while he TALKS — heard by his mic or seen as the jaw's flutter, mic muted — no mouth event
      (smile, tongue, yawn) fires, and a laugh still does;
   2. TEMPERAMENT (seeded): the same seed gives the same answers; across seeds a wink is usually answered and sometimes
      let go, a yawn mostly gets nothing; two events inside the gap get one answer; the same answer never twice in a row
      within its cooldown; the same gesture over and over tires (a sigh, a glance, nothing); while the agent speaks no
-     answer uses the mouth (laugh, giggle, tongue, yawn); an answer waits a human beat (250–750 ms);
+     answer uses the mouth (laugh, giggle, tongue, yawn); an answer waits a quick human beat (120–380 ms); a FIRST gesture is almost always answered, repeats are let go more;
   3. EXPRESSION: a wink back mirrors his eye three times in four; a hello is a brow flash then a smile; the rig plays the
      new gestures (tongue, yawn, the left wink), and the tongue is drawn on top of EVERY look, classics and parametric;
   4. the whole chain on a fake face: a tongue held in silence is answered after its beat; the same tongue while he
@@ -80,10 +80,11 @@ def test_what_he_does_is_perceived_and_talking_is_not_a_face(run):
     p = run["perceive"]
     assert p["smile"] == ["smile"] and p["laughHearing"] == ["laugh"], f"a held smile / a laugh: {p}"
     assert p["smileHover"] == ["smile"], f"a smile held at the line for 6 s is ONE smile, not one every few seconds: {p}"
-    assert p["winkLeft"] == ["wink:left"], f"a one-eyed wink, with its side: {p}"
+    assert p["winkLeft"] == ["wink:left"] and p["winkReal"] == ["wink:left"], f"a one-eyed wink (also a real one, the open eye squinting a little), with its side: {p}"
     assert p["blinkBoth"] == [] and p["eyeShutLong"] == [], f"a blink or an eye held shut is not a wink: {p}"
     assert p["tongue"] == ["tongue"] and p["yawn"] == ["yawn"], f"a tongue out / a yawn: {p}"
     assert p["nod"] and set(p["nod"]) == {"nod"} and p["shake"] and set(p["shake"]) == {"shake"}, f"head nod / shake: {p}"
+    assert p["lookAside"] == [] and p["sway"] == [], f"turning to look aside, or swaying, is not a «no»: {p}"
     assert p["presence"] == ["arrive", "leave"], f"someone arrives, then leaves: {p}"
     assert _talk_gate_holds(p), f"his talking mouth fired a face (heard, or seen with the mic muted): {p}"
 
@@ -93,15 +94,17 @@ def test_it_is_another_being_not_a_mirror(run):
     t = run["temper"]
     assert t["sameSeedSame"], "the same seed must give the same answers (deterministic in a test)"
     w = t["winkAcross"]
-    assert w.get("wink", 0) > 0.4 * 300 and 0.08 * 300 < w.get("nothing", 0) < 0.4 * 300 and len(w) >= 3, \
-        f"a wink is mostly winked back, sometimes let go, sometimes answered otherwise: {w}"
+    assert w.get("wink", 0) > 0.6 * 300 and 0 < w.get("nothing", 0) < 0.1 * 300 and len(w) >= 3, \
+        f"a first wink is winked back most of the time, rarely let go, sometimes answered otherwise: {w}"
+    assert all(n > 0.85 * 200 for n in t["firstAnswered"].values()), f"a FIRST gesture is almost always answered: {t}"
+    assert 0.15 * 400 < t["repeatLetGo"] < 0.6 * 400, f"repeats are let go more often — the being, not the mirror: {t}"
     y = t["yawnAcross"]
     assert y.get("nothing", 0) > 0.6 * 300, f"a yawn mostly gets nothing: {y}"
     assert t["cooldown"] == 0, f"two laughs half a second apart both got an answer (no gap): {t}"
     assert t["sameTwice"] == 0, f"the same answer twice in a row inside its cooldown: {t}"
     assert "smile" not in t["tired"] and set(t["tired"]) <= {"sigh", "look", "nothing"}, f"the same gesture over and over must tire: {t}"
     assert not set(t["speakingMouth"]) & {"laugh", "giggle", "tongue", "yawn"}, f"while it speaks its mouth is the voice's: {t}"
-    assert 250 <= t["delays"][0] and t["delays"][1] <= 750, f"an answer waits a human beat: {t}"
+    assert 120 <= t["delays"][0] and t["delays"][1] <= 380, f"an answer comes after a quick human beat: {t}"
     assert "hand" in t["everyEvent"], "the declared hand event has its answers ready for a future detector"
 
 
@@ -136,13 +139,13 @@ def test_the_seam_to_the_conversation_offers_one_summary_per_stretch(run):
 
 @node
 def test_disarm_perception_without_the_talking_gate_reads_his_talking_as_faces(tmp_path):
-    d = _disarmed(tmp_path, "humanity/perceive.js", "const mouthFree = t >= quietUntil;", "const mouthFree = true;")
+    d = _disarmed(tmp_path, "humanity/perceive.js", "const mouthFree = t >= quietUntil && swings(recent, k.talkAmp) <= 1;", "const mouthFree = true;")
     assert not _talk_gate_holds(d["perceive"])
 
 
 @node
 def test_disarm_a_temperament_that_never_lets_go_answers_every_yawn(tmp_path):
-    d = _disarmed(tmp_path, "humanity/temperament.js", "if (w.null) w.null *= 1.6 - engagement;", "w.null = 0;")
+    d = _disarmed(tmp_path, "humanity/temperament.js", "if (w.null) w.null *= (1.6 - engagement) * (fresh ? k.fresh : 1);", "w.null = 0;")
     assert d["temper"]["yawnAcross"].get("nothing", 0) == 0
 
 

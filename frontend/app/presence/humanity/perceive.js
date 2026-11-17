@@ -12,18 +12,21 @@
 
 /** Thresholds, one place (MediaPipe blendshape scores are 0..1). */
 export const SENSE = {
-  smile: 0.55, smileMs: 450,            // mean of mouthSmileLeft/Right, held
-  laughSmile: 0.62, laughJaw: 0.2, laughMs: 380,
-  winkClosed: 0.45, winkOpen: 0.25, winkGap: 0.3, winkMs: 160, winkMaxMs: 1400,
+  smile: 0.5, smileMs: 300,              // mean of mouthSmileLeft/Right, held
+  laughSmile: 0.6, laughJaw: 0.2, laughMs: 300,
+  // a real wink (measured feel, 2026-11-18): the shut eye reads ~0.4–0.7 and the open one rises too (the cheek squints)
+  winkClosed: 0.38, winkOpen: 0.35, winkGap: 0.15, winkMs: 120, winkMaxMs: 1400,
   tongue: 0.3, tongueMs: 260,
   yawnJaw: 0.58, yawnMs: 1100,
   ohJaw: 0.35, ohBrow: 0.45, ohMs: 320,  // jaw open + brows up = «oh!»
-  brows: 0.5, browsMs: 260,              // browInnerUp or the outer brows' mean
+  brows: 0.5, browsMs: 220,              // browInnerUp or the outer brows' mean
   releaseMs: 280,                        // a held state must let go this long before it can fire again…
   letGo: 0.7,                            // …and «let go» means under this share of its threshold (a held smile that
                                          // hovers at the line is ONE smile, not one every few seconds)
   talkWindowMs: 1500, talkSwings: 4, talkAmp: 0.07, quietMs: 900,
-  nodWindowMs: 1600, nodAmp: 0.035, shakeAmp: 0.06,
+  // a nod is two clear swings of the pitch; a SHAKE needs three wide ones — turning to look around, or settling in the
+  // chair, is one or two swings and must never read as «no» (2026-11-18: the face kept saying no out of the blue)
+  nodWindowMs: 1600, nodAmp: 0.04, shakeAmp: 0.09, shakeSwings: 3,
   arriveMs: 700, awayMs: 4000, absentMs: 30000,
 };
 
@@ -90,7 +93,10 @@ export function createPerceiver(opts = {}) {
     jaw.push({ t, v: jo }); trim(jaw, t, k.talkWindowMs);
     const talkingSeen = swings(jaw.map((s) => s.v), k.talkAmp) >= k.talkSwings;
     if (hearing || talkingSeen) quietUntil = t + k.quietMs;
-    const mouthFree = t >= quietUntil;
+    // a held face also needs a STILL jaw right now: talking is recognised a few swings in, and a quick smile must not
+    // slip through in those first frames of speech
+    const recent = jaw.filter((x) => t - x.t <= 600).map((x) => x.v);
+    const mouthFree = t >= quietUntil && swings(recent, k.talkAmp) <= 1;
 
     const smile = (S(sh, "mouthSmileLeft") + S(sh, "mouthSmileRight")) / 2;
     const bl = S(sh, "eyeBlinkLeft"), br = S(sh, "eyeBlinkRight");
@@ -124,7 +130,7 @@ export function createPerceiver(opts = {}) {
       trim(yaws, t, k.nodWindowMs); trim(pitches, t, k.nodWindowMs);
       const ny = swings(yaws.map((s) => s.v), k.shakeAmp), np = swings(pitches.map((s) => s.v), k.nodAmp);
       if (np >= 2 && ny === 0) { out.push({ type: "nod", t }); pitches.length = 0; yaws.length = 0; }
-      else if (ny >= 2 && np <= 1) { out.push({ type: "shake", t }); pitches.length = 0; yaws.length = 0; }
+      else if (ny >= k.shakeSwings && np <= 1) { out.push({ type: "shake", t }); pitches.length = 0; yaws.length = 0; }
     }
     return out;
   }
