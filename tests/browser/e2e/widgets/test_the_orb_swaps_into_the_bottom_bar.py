@@ -76,7 +76,6 @@ _STATE = """() => {
     memOnLid: lid.some(b => ((b.getAttribute('title') || '').toLowerCase().includes('memor'))),
     memBtn: !!document.getElementById('memBtn'),
     face: !!document.querySelector('#presence canvas'),
-    faceBtnOn: !!(document.getElementById('faceBtn') || {classList:{contains:()=>false}}).classList.contains('on'),
     swapOn: !!swap && swap.classList.contains('on'),
     memBtnOn: !!(document.getElementById('memBtn') || {classList:{contains:()=>false}}).classList.contains('on'),
     // Stray TEXT nodes among the lid/flank buttons. Element.append(null) does not throw — it prints the
@@ -197,7 +196,7 @@ def test_the_bar_owns_the_bottom_edge(measured):
 def test_the_bar_swap_hides_the_face_and_leaves_the_orb_where_it_is(measured):
     """ONE canvas — measured by its PARENT and its rendered SIZE (the 4.19 lesson). Off means no face canvas at all."""
     b = measured["face_off"]
-    assert not b["face"] and not b["swapOn"] and not b["faceBtnOn"], f"the face must be gone, both toggles off: {b}"
+    assert not b["face"] and not b["swapOn"], f"the face must be gone, the toggle off: {b}"
     assert b["barMode"] and b["orbParent"] == "wr-orbslot", f"hiding the face must not move the orb: {b}"
     assert b["orbVisible"] and 0 < b["orbW"] <= 60, f"the bar orb must render small and real: {b}"
 
@@ -229,7 +228,7 @@ def test_the_choice_survives_a_reload(measured):
 
 def test_the_bar_swap_brings_the_face_back(measured):
     k = measured["back"]
-    assert k["face"] and k["swapOn"] and k["faceBtnOn"], f"the face must come back, both toggles lit: {k}"
+    assert k["face"] and k["swapOn"], f"the face must come back, the toggle lit: {k}"
     assert k["barMode"] and k["orbParent"] == "wr-orbslot", k
 
 

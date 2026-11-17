@@ -11,8 +11,7 @@ import * as api from "../services/api.js?v=2";
 import { overallStatus } from "../services/status.js?v=2";
 import { toggleTheme } from "../services/theme.js?v=2";
 import { t } from "../core/i18n.js?v=1";
-import { BUG_ICON, GEAR_ICON, COMPASS_ICON, MOON_ICON, USER_ICON, MEM_ICON, DESKTOP_ICON, FACE_ICON, FACE_OFF_ICON } from "../lib/icons.js?v=2";
-import { presenceOn, togglePresence } from "../presence/state.js?v=1";
+import { BUG_ICON, GEAR_ICON, COMPASS_ICON, MOON_ICON, USER_ICON, MEM_ICON, DESKTOP_ICON } from "../lib/icons.js?v=2";
 import * as daemon from "../services/daemon.js?v=3";
 import { EnergyGauge } from "./EnergyGauge.js?v=3";
 import { accountLink } from "../core/account-link.js?v=1";
@@ -70,10 +69,6 @@ export function TopBar() {
     h("button", { class: () => "ic" + (store.theme() === "dark" ? " on" : ""), id: "themeBtn",
       title: () => (store.theme() === "dark" ? t("topbar.theme_light") : t("topbar.theme_dark")),
       onClick: () => { toggleTheme(); api.uiEvent("topbar:theme", { state: store.theme() }); } }, raw(MOON_ICON)),
-    // V2-928 — the agent's face: one tap hides it (the icon crossed out), another brings it back.
-    h("button", { class: () => "ic" + (presenceOn() ? " on" : ""), id: "faceBtn",
-      title: () => (presenceOn() ? t("presence.hide") : t("presence.show")),
-      onClick: () => togglePresence("topbar") }, () => raw(presenceOn() ? FACE_ICON : FACE_OFF_ICON)),
     // 🧭 Setup panel (V2-040): what is MISSING on this machine + its API keys. It no longer asks where it is
     // running and no longer fires on its own at first boot (V2-671, V2-725) — this icon is its only door.
     () => store.cloudProfile() ? null : h("button", { class: () => "ic" + (store.wizardOpen() ? " on" : ""), id: "wizBtn",
