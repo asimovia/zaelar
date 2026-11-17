@@ -15,6 +15,7 @@ that, so it broke silently. These tests pin the two properties that matter:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 
 import pytest
 
@@ -77,22 +78,35 @@ def _scheduled_names():
     return [j.get("name") for j in scheduler.list_jobs(active_only=True)]
 
 
-def test_a_cron_tag_is_actually_scheduled_not_just_captured(probe_session, monkeypatch):
-    monkeypatch.setattr("nucleo.llm.fast_client.FastClient", _CronTagClient)
-    res = asyncio.run(turn.run_turn(
-        "Apúntame que el jueves tengo que renovar el seguro del coche, y recuérdamelo el miércoles.",
-        sid=probe_session, ingest=False, execute=True))
+@contextlib.contextmanager
+def _model(cls):
+    """The stub model, set INSIDE the isolation and put back there too. A `monkeypatch` is undone AFTER
+    `probe_session` has closed the harness, so it put the harness's own stub back for every later test."""
+    from nucleo.llm import fast_client
+    real = fast_client.FastClient
+    fast_client.FastClient = cls
+    try:
+        yield
+    finally:
+        fast_client.FastClient = real
+
+
+def test_a_cron_tag_is_actually_scheduled_not_just_captured(probe_session):
+    with _model(_CronTagClient):
+        res = asyncio.run(turn.run_turn(
+            "Apúntame que el jueves tengo que renovar el seguro del coche, y recuérdamelo el miércoles.",
+            sid=probe_session, ingest=False, execute=True))
     assert res["ok"] is True
     assert "seguro-coche" in _scheduled_names()
 
 
-def test_booking_the_appointment_does_not_kill_the_reminder(probe_session, monkeypatch):
+def test_booking_the_appointment_does_not_kill_the_reminder(probe_session):
     """The turn has ONE `action`; the cron runs outside it on purpose. If they competed, the half the model
     happened to emit last would silently win and the operator would get an agenda entry with no alert."""
-    monkeypatch.setattr("nucleo.llm.fast_client.FastClient", _CronPlusToolClient)
-    res = asyncio.run(turn.run_turn(
-        "Apúntame que el jueves tengo que renovar el seguro del coche, y recuérdamelo el miércoles.",
-        sid=probe_session, ingest=False, execute=True))
+    with _model(_CronPlusToolClient):
+        res = asyncio.run(turn.run_turn(
+            "Apúntame que el jueves tengo que renovar el seguro del coche, y recuérdamelo el miércoles.",
+            sid=probe_session, ingest=False, execute=True))
     assert res["ok"] is True
     assert res["action"].startswith("widget_data"), res["action"]   # the tool took the turn's single action…
     assert "seguro-coche" in _scheduled_names()    # …and the reminder still got scheduled

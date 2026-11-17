@@ -63,7 +63,10 @@ def deterministic_paths(suite_id: str) -> list[str]:
         for node in domain["nodes"]:
             if not node.get("live"):
                 paths.extend(node.get("paths", ()))
-    return list(dict.fromkeys(paths))
+    # Every folder's files together (sorted by path parts). pytest 9 collects the args in the order given, and a
+    # folder re-entered after leaving it loses its own conftest: the agenda's autouse fixtures went missing in
+    # `run all` (19 «fixture not found», measured 2026-11-17).
+    return sorted(dict.fromkeys(paths), key=lambda p: Path(p.rstrip("/")).parts)
 
 
 def suite_nodes(suite_id: str) -> list[dict]:

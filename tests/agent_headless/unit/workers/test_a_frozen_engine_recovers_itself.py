@@ -112,12 +112,14 @@ def test_a_loop_that_answers_is_healthy_and_an_episode_closes(world):
 
 def test_it_is_wired_into_boot_shutdown_and_the_exit_status():
     import importlib
+    import importlib.util
     lifespan = importlib.import_module("server.lifespan")
     from server.boot import surfaces
-    import server.__main__ as _m  # noqa: F401 — import only, its body runs under __main__
+    # Read, never imported: importing `server.__main__` runs its boot (the log patcher, the workspace) in this process.
+    main = importlib.util.find_spec("server.__main__").origin
     assert "self_watchdog.start()" in inspect.getsource(surfaces)
     assert "nucleo.pulse.self_watchdog" in inspect.getsource(lifespan)
-    src = open(_m.__file__, encoding="utf-8").read()
+    src = open(main, encoding="utf-8").read()
     assert "_self_watchdog.request_exit(" in src and "sys.exit(_self_watchdog.exit_code())" in src
 
 
