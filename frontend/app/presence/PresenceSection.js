@@ -33,6 +33,12 @@ export function mountPresence(host, msg = () => {}) {
   let cat = current().cat, editing = null, picked = current();
 
   host.innerHTML = `<div class="pz">
+    <footer class="pz-foot">
+      <label class="pz-switch"><input type="checkbox" class="pz-on"/><span>${esc(t("presence.physical"))}</span></label>
+      <button type="button" class="pz-ghost pz-reset">${esc(t("presence.reset"))}</button>
+      <div class="pz-look"><label class="pz-switch"><input type="checkbox" class="pz-cam"/><span>${esc(t("presence.camera"))}</span></label>
+        <p class="pz-hint pz-cam-hint"></p></div>
+    </footer>
     <div class="pz-cats" role="tablist">${CATEGORIES.map((c) => `<button type="button" role="tab" data-cat="${c.id}">${esc(catName(c.id))}</button>`).join("")}</div>
     <div class="pz-body">
       <aside class="pz-list" aria-label="${esc(t("presence.faces"))}"></aside>
@@ -43,12 +49,7 @@ export function mountPresence(host, msg = () => {}) {
       <aside class="pz-edit" hidden><div class="pz-knobs"></div>
         <div class="pz-editfoot"><button type="button" class="pz-btn pz-save">${esc(t("presence.save"))}</button><button type="button" class="pz-ghost pz-cancel">${esc(t("presence.cancel"))}</button></div></aside>
     </div>
-    <footer class="pz-foot">
-      <label class="pz-switch"><input type="checkbox" class="pz-on"/><span>${esc(t("presence.physical"))}</span></label>
-      <button type="button" class="pz-ghost pz-reset">${esc(t("presence.reset"))}</button>
-      <div class="pz-look"><label class="pz-switch"><input type="checkbox" class="pz-cam"/><span>${esc(t("presence.camera"))}</span></label>
-        <p class="pz-hint pz-cam-hint"></p></div>
-    </footer></div>`;
+</div>`;
   const $ = (s) => host.querySelector(s);
   const face = createFace($(".pz-face"), { entry: picked, scale: 0.34 });
   // «Look at me» (T10): the switch and its line follow look-state.js (a refusal turns it back off and says why)
