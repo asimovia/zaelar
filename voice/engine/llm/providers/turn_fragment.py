@@ -31,8 +31,15 @@ async def hold_a_fragment(*, brain, emit, first_turn, text) -> dict:
         # `_dropped` on EITHER branch, so this fires every time regardless of what this call goes on to do.
         _speak_drop, _fresh_chain = _p._acc_notice_plan(_action, _dropped, _n_before)
         if _dropped:
+            # What he said before is KEPT, never dropped (V2-931): it is not part of this sentence, and it is still his
+            # — it goes into the conversation the model reads, in its order, so nothing has to be asked again.
+            try:
+                from nucleo.flash import dialog as _dialog
+                _dialog.push_user(brain._window, _dropped)
+            except Exception as e:  # noqa: BLE001
+                __import__("loguru").logger.debug(f"acc: the earlier sentence did not reach the window — {e!r}")
             emit("brain", "🕳️ frase anterior descartada por el hueco", text=_dropped[:200], role="system",
-                 extra={"cat": "flash", "gap_s": _acc.MAX_GAP_S})
+                 extra={"cat": "flash", "gap_s": _acc.MAX_GAP_S, "kept": "window"})
         if _speak_drop:
             _p._spawn(_p._speak_acc_drop(_dropped), "acc_drop_notice")
 

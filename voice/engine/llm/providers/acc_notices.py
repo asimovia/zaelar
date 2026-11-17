@@ -72,6 +72,11 @@ async def _speak_acc_drop(dropped: str) -> None:
         verdict, extra = await segmenter.judge(dropped)
         if verdict == "ask" and extra:
             text = extra
+        elif verdict == "complete":
+            # It said something whole: it is in the conversation already (`turn_fragment` keeps it in the window) and
+            # asking him to repeat a sentence that was understood is noise — measured 2026-11-17, «sorry, I did not
+            # catch what you said before the pause» spoken in the middle of his dictation.
+            return
         # a «complete» fragment used to ride his next turn as a [SISTEMA] note; the mailbox went in V2-851 F5 —
         # the spoken notice below tells him, and he says it again if it still stands
     except Exception:

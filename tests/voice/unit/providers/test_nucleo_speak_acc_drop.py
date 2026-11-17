@@ -60,9 +60,9 @@ def test_judge_says_ASK_speaks_the_clarifying_question_instead_of_the_generic_no
     assert _speaker == ["¿Seguías queriendo que buscara vuelos a Londres?"]
 
 
-def test_judge_says_COMPLETE_speaks_the_generic_notice(monkeypatch, _speaker):
-    """COMPLETE can't safely re-dispatch a full turn from this out-of-band path (no live turn context): the
-    operator gets an immediate spoken signal that something happened (V2-851 F5: no note rides his next turn)."""
+def test_judge_says_COMPLETE_says_nothing_the_sentence_is_already_in_the_conversation(monkeypatch, _speaker):
+    """A whole sentence that was not part of the next one is KEPT in the window the model reads (`turn_fragment`);
+    asking him to repeat what was understood is noise (V2-931, measured in the middle of a dictation)."""
     from nucleo.flash import segmenter
 
     async def _fake_judge(text):
@@ -71,7 +71,7 @@ def test_judge_says_COMPLETE_speaks_the_generic_notice(monkeypatch, _speaker):
     from voice.engine.core import langs
 
     _run("dame los datos personales que conoces de mi")
-    assert _speaker == [langs.current_language().acc_fragment_dropped]
+    assert _speaker == [], "a sentence that was understood is never asked again (V2-931)"
 
 
 def test_judge_says_INCOMPLETE_keeps_the_plain_generic_notice(monkeypatch, _speaker):

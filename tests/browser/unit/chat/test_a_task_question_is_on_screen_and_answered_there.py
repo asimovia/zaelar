@@ -268,3 +268,13 @@ def test_a_question_sits_under_the_turn_that_caused_it_and_has_a_close(open_wall
     assert foot == ["Z2"], f"only the question with no anchor stays at the foot: {foot}"
     assert pg.evaluate("() => document.querySelectorAll('#chatwall .tq .tq-close').length") == 2
     assert not pg._errors, pg._errors
+
+
+def test_a_question_is_drawn_once_its_card_and_not_a_chat_line_too():
+    """V2-931 — the question of an open card, spoken or notified with the same words, is not painted again as an agent
+    line: one question, one place. (Markdown marks and the bell of a notice do not make it a different text.)"""
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[4] / "frontend" / "app"
+    sse, asks = (root / "services" / "sse.js").read_text("utf-8"), (root / "core" / "asks.js").read_text("utf-8")
+    assert "export const isOpenQuestion" in asks and "openAsks().some" in asks
+    assert sse.count("if (!asks.isOpenQuestion(d.text)) store.pushAgentChat(") == 2, "the spoken line or the notice is drawn beside its card"

@@ -37,6 +37,11 @@ export function askOfRow(r) {
            since: Number(r.waiting_since) || 0, sent: "", error: false, busy: false };
 }
 
+/** Is `text` the question of a card that is open now? Its card is the question's ONE place on screen: the same
+ *  words spoken or notified are not drawn again as a chat line (V2-931). */
+const _flat = (s) => _str(s).replace(/^🔔\s*/, "").replace(/[`*_]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+export const isOpenQuestion = (text) => { const t = _flat(text); return !!t && openAsks().some(a => _flat(a.text) === t); };
+
 /** SSE `ask`: the question of one task, added or replacing that task's previous one. */
 export function onAsk(d) {
   const task_id = _str(d && d.task_id), ask_id = _str(d && d.ask_id);

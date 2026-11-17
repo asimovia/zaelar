@@ -296,7 +296,7 @@ export function routeEvent(desktop, d) {
         // NOT hit the voice-command fast-path — zaelar saying "cierro la agenda" is not the operator asking to close.
         // V2-745 — `spoken`: this is the record of what LiveKit actually VOICED. A strict prefix of what is
         // on screen means a barge-in cut it there, and the short one is now the one that survives.
-        store.pushAgentChat(d.text, { spoken: true, trace: d.trace || "" });
+        if (!asks.isOpenQuestion(d.text)) store.pushAgentChat(d.text, { spoken: true, trace: d.trace || "" });
       } else {
         // Voice: "transcript" = final, "interim" = partial. TYPED chat/paste ("text-injected …") is final.
         const isFinal = d.label === "transcript" || (d.label || "").startsWith("text-injected");
@@ -530,7 +530,7 @@ export function routeEvent(desktop, d) {
       // NO floating toast. When a voice session is live, zaelar SPEAKS it → the live caption comes from the
       // audio-synced transcription (session-lk.js), same as any turn. Here we just keep it in the chat wall as
       // history; pushAgentChat dedupes against the spoken transcript so it lands exactly once.
-      store.pushAgentChat("🔔 " + d.text);
+      if (!asks.isOpenQuestion(d.text)) store.pushAgentChat("🔔 " + d.text);   // a question's card is its one place
     } else if (d.kind === "cluster") {                                            // MeshKore channel
       // The chat wall is ONLY the operator ↔ zaelar channel (operator rule, 2026-07-25): cluster traffic is NOT
       // dumped here. V2-086: it is not stored anywhere in the frontend either — clusters have their OWN monitor,

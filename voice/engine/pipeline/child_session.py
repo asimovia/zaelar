@@ -98,7 +98,7 @@ async def entrypoint(ctx: JobContext) -> None:
 
     session = AgentSession(vad=vad_session, stt=stt, llm=RemoteBrainLLM(), tts=tts, turn_handling={
         "turn_detection": turn_detection, "endpointing": _endpointing, "interruption": _interruption,
-        "preemptive_generation": {"enabled": True}})
+        "preemptive_generation": {"enabled": SETTINGS.preemptive_generation}})
     try:
         from . import preemptive_tap as _ptap
         _ptap.install(_emit)

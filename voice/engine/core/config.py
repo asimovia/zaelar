@@ -114,6 +114,11 @@ class Settings:
     stt_eager_eot: float = float(env("ZAELAR_STT_EAGER_EOT", "0.5"))
     stt_eot_threshold: float = float(env("ZAELAR_STT_EOT_THRESHOLD", "0.7"))
     stt_eot_timeout_ms: int = int(env("ZAELAR_STT_EOT_TIMEOUT_MS", "3000"))
+    # Does the MODEL start on the eager end of turn (LiveKit's preemptive generation)? OFF (V2-931): a turn ACTS — it
+    # commissions work, answers a waiting question, sends — and a draft started on a sentence he had not finished did
+    # all of that before the ear confirmed the turn (measured 2026-11-17: one 28 s sentence ran as three turns, two
+    # of them never spoken, each with its effects). The turn's brief still fires on the eager event (`eager_brief`).
+    preemptive_generation: bool = env("ZAELAR_PREEMPTIVE", "0") == "1"
     # With Flux the end of turn is the model's: this is the only silence we ADD after it (the old hold is not used).
     stt_flux_min_delay: float = float(env("ZAELAR_STT_FLUX_MIN_DELAY", "0.25"))
     tts_model: str = env("ZAELAR_TTS_MODEL", "sonic-3")

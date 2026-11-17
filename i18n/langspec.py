@@ -301,7 +301,6 @@ class LangSpec:
     #: V2-851 §3a — his words were bound to the question a task waits on (the task resumes with them), and a doubt
     #: about WHICH waiting task they answer is asked, naming the tasks ({among}).
     answer_taken: str = ""
-    answer_which_task: str = ""
     #: V2-877 #2 — his answer named a question that was already answered: said once, never «passed on».
     answer_already_given: str = ""
     #: V2-931 — a send's ONE confirmation, asked by the exit door when the worker has it ready ({who}: his contact).
@@ -366,7 +365,6 @@ class LangSpec:
     death_why_auth: str = ""
     death_why_network: str = ""
     death_why_stalled: str = ""
-    death_offer_retry: str = ""
     death_offer_fix: str = ""
     # A widget refused a data operation — `nucleo/flash/widget_data_turn.py`.
     widget_data_failed: str = ""

@@ -267,6 +267,14 @@ below is the first kind, or it names the mechanism that replaced the second.
   dev-worker is exempt. A start gate's question is on its row BEFORE it is said (`confirm.park`): his answer has
   somewhere to go from the instant the gate decides to ask. A send asks once, at its exit door, never also at its
   start. — since 2026-09-23, narrowed 2026-11-17 and 2026-11-18 · nodes 2.76, 2.1170, 2.1804.
+- **CRIT-T3a · Nothing acts on a sentence he has not finished, and nothing he said is asked again.** The model starts
+  when the ear CONFIRMS the end of turn, not on its eager announcement (`SETTINGS.preemptive_generation`, off): a turn
+  acts — it commissions, answers a waiting question, sends — and a draft of an unfinished sentence did all of that
+  before the turn existed. The turn's brief still fires on the eager event. A held sentence that was not part of the
+  next one is KEPT in the conversation the model reads (`turn_fragment`), in its order; only a piece that says
+  nothing whole is acknowledged aloud, and a whole one is never asked to be repeated (`acc_notices`). On screen a
+  question is drawn once — its card (`asks.isOpenQuestion`). — since 2026-11-18 (V2-931) · nodes 2.68, 2.1800 ·
+  `voice/engine/core/config.py`, `voice/engine/llm/providers/turn_fragment.py`, `frontend/app/core/asks.js`.
 - **CRIT-C4w · What the engine tells him is a FACT worded by a model, never a fixed sentence.** The engine decides the
   fact («the message is ready», «sent and confirmed», «could not be sent: why», «stopped»); `nucleo/wording.word` hands
   it to a small warm model with the voice's rules — one short sentence, different every time, about WHAT HE ASKED FOR

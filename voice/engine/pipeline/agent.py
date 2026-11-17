@@ -251,7 +251,7 @@ async def entrypoint(ctx: JobContext) -> None:
             "turn_detection": turn_detection,       # None (ML disabled) → EOU by VAD
             "endpointing": _endpointing,            # how much silence closes the turn (see above)
             "interruption": _interruption,          # barge-in: the operator's voice cuts TTS
-            "preemptive_generation": {"enabled": True},   # latency: starts generating before EOU is confirmed
+            "preemptive_generation": {"enabled": SETTINGS.preemptive_generation},   # OFF: a draft of an unfinished sentence acted
         },
     )
 

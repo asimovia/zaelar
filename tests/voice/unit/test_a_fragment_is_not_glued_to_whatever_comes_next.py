@@ -177,3 +177,14 @@ def test_a_repetition_across_the_seam_is_NOT_edited_out(one_sentence):
     _offer(a, "no he dicho la palabra Johnny,")
     assert a.text().count("no he dicho") == 2, (
         "a run repeated across two separate fragments is left exactly as he said it")
+
+
+def test_the_half_that_was_not_part_of_the_next_sentence_stays_in_the_conversation():
+    """V2-931 — «discarded» used to mean dropped and asked again («sorry, say that again?»). What he said before is
+    not part of the new sentence and it is still his: the turn keeps it in the window the model reads, in order."""
+    import inspect
+
+    from voice.engine.llm.providers import turn_fragment
+    src = inspect.getsource(turn_fragment.hold_a_fragment)
+    kept, said = src.index("_dialog.push_user(brain._window, _dropped)"), src.index("_speak_acc_drop(_dropped)")
+    assert kept < said, "the earlier sentence must be in the window before anything is said about it"
