@@ -72,9 +72,10 @@ def _to_trash(db: dict, kind: str, rows: list, label: str, list_row: dict | None
 
 
 def _rows_named(raw) -> list[str]:
-    """The rows a list is born with: a list of titles (or of `{title}` rows); one string is one row per line."""
+    """The rows a list is born with: a list of titles (or of `{title}` rows); one string is one row per line, and a
+    single line names its rows between commas or semicolons (the slot is declared as rows: one text is still several)."""
     if isinstance(raw, str):
-        raw = raw.splitlines()
+        raw = raw.splitlines() if len(raw.strip().splitlines()) > 1 else raw.replace(";", ",").split(",")
     out: list[str] = []
     for r in raw if isinstance(raw, (list, tuple)) else ():
         t = str((r.get("title") or r.get("name") or "") if isinstance(r, dict) else (r or "")).strip()

@@ -64,10 +64,16 @@ def _resolve_date(raw: str, at: str = "") -> str:
     """Convert a spoken relative date (tomorrow, today, the day after tomorrow, a weekday, or already 'YYYY-MM-DD') into
     'YYYY-MM-DD'. Sensible default: today. This keeps a relative-date appointment correctly placed even when the
     model does not calculate the date itself."""
+    return _read_date(raw, at) or _today()
+
+
+def _read_date(raw: str, at: str = "") -> str:
+    """The day `raw` names as 'YYYY-MM-DD', or "" when it names none this reader knows — for a caller that must not
+    take today for an answer (a notice: `notice.in_the_cards_shape`)."""
     import time as _t
     s = (raw or "").strip().lower()
     if not s:
-        return _today()
+        return ""
     if len(s) >= 8 and s[:4].isdigit() and "-" in s:      # already comes as YYYY-MM-DD
         return s[:10]
     n = _TIME_OF_DAY.sub(" ", _strip_accents(s))
@@ -90,7 +96,7 @@ def _resolve_date(raw: str, at: str = "") -> str:
         if nn in n:
             delta = coming_offset(wd, today.tm_wday, at, _t.strftime("%H:%M", today))   # today is today (0c)
             return _t.strftime("%Y-%m-%d", _t.localtime(base + delta * day))
-    return _today()
+    return ""
 
 
 _MONTHS = {"enero": 1, "febrero": 2, "marzo": 3, "abril": 4, "mayo": 5, "junio": 6, "julio": 7, "agosto": 8,

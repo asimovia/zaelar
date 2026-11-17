@@ -50,7 +50,11 @@ def test_a_list_asked_with_its_rows_is_written_whole(ag, name, rows):
 def test_rows_given_as_rows_or_as_lines_are_the_same_rows(ag):
     ag.apply_action("add_list", {"name": "Camping", "items": [{"title": "tent"}, {"title": "stove"}]})
     ag.apply_action("add_list", {"name": "Picnic", "items": "bread\ncheese\n"})
+    ag.apply_action("add_list", {"name": "Bakery", "items": "rye loaf, two baguettes; a brioche"})
+    ag.apply_action("add_list", {"name": "Solo", "items": "one thing"})
     assert _titles(ag, "Camping") == ["tent", "stove"] and _titles(ag, "Picnic") == ["bread", "cheese"]
+    assert _titles(ag, "Bakery") == ["rye loaf", "two baguettes", "a brioche"], "one text named three rows"
+    assert _titles(ag, "Solo") == ["one thing"]
 
 
 def test_a_list_that_exists_takes_only_the_rows_it_lacks(ag):

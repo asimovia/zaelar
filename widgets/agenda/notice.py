@@ -110,20 +110,66 @@ def schedule(create, data: dict) -> tuple[dict, str]:
 DAY_HOUR = "09:00"
 
 
-def in_the_cards_shape(payload: dict) -> dict:
+def _hour_of(text: str) -> tuple[int, str, str] | None:
+    """`(hour, minutes or "", "a"/"p"/"")` when the slot holds an HOUR and nothing else — `8`, `08:30`, `17h`, `17h30`,
+    `8am`, `5 p.m.` — else None. A format, read by its shape: no word of any language."""
+    s, mer = str(text or "").strip().lower(), ""
+    for end in ("a.m.", "p.m.", "am", "pm"):
+        if s.endswith(end):
+            s, mer = s[: -len(end)].strip(), end[0]
+            break
+    for sep in (":", "h", "."):
+        if sep in s:
+            h, _sep, mm = s.partition(sep)
+            break
+    else:
+        h, sep, mm = s, "", ""
+    if not (h.isdigit() and len(h) <= 2 and int(h) <= 23) or (mm and not (mm.isdigit() and len(mm) == 2 and int(mm) <= 59)):
+        return None
+    return int(h), mm or ("00" if sep else ""), mer
+
+
+def instant_of(day: str, hour: str, now: _dt.datetime | None = None) -> str:
+    """`YYYY-MM-DD HH:MM` from a day slot and an hour slot, or "" — the door then ASKS. A slot that is not a day or
+    not an hour is not read as one (the card's writers default an unread day to today: right for a draft he sees,
+    wrong for a notice that rings unseen). A missing slot takes the card's own (today · `DAY_HOUR`) only while the
+    instant that leaves is still AHEAD: «at 8» said at 15:00 names no day, and five minutes from now is not it."""
+    if not (day or hour):
+        return ""
+    whole = _instant(day) if len(day) > 10 else None          # the day slot carrying the whole instant
+    if whole is not None and not hour:
+        return whole.strftime("%Y-%m-%d %H:%M")
+    from . import when as _when
+    hh = DAY_HOUR
+    if hour:
+        read = _hour_of(hour)
+        if read is None:
+            return ""
+        h, mm, mer = read
+        if not (mm or mer):
+            hh = _when._resolve_time(str(h), DAY_HOUR)        # a bare number: the card's own rule for it
+        else:
+            hh = f"{(h % 12 + 12 if mer == 'p' else h % 12 if mer == 'a' else h):02d}:{mm or '00'}"
+    d = _when._read_date(day, hh) if day else _when._today()
+    at = _instant(f"{d} {hh}") if d else None
+    if at is None or (not (day and hour) and at <= (now or _dt.datetime.now())):
+        return ""
+    return f"{d} {hh}"
+
+
+def in_the_cards_shape(payload: dict, now: _dt.datetime | None = None) -> dict:
     """The notice's slots, read from the shape every other write of this card takes (`date` + `time`, `title`).
 
     Measured 2026-11-16: «Remind me tomorrow at 8am to water the plants» → `add_reminder {title, date, time}` — the
     slots `add_meeting` and `add_task` declare — and the door refused it for a missing `notice_at`. A day and an
-    hour ARE the instant; a title IS what to tell him. Slots only: a payload with neither day nor hour still asks."""
+    hour ARE the instant; a title IS what to tell him. Slots only: a payload with neither day nor hour still asks,
+    and so does one whose day or hour is not one (`instant_of`)."""
     p = dict(payload) if isinstance(payload, dict) else {}
     if not (p.get("notice_at") or p.get("before")):
-        day = str(p.get("date") or p.get("day") or "").strip()
-        hour = str(p.get("time") or p.get("startTime") or p.get("at") or "").strip()
-        if day or hour:
-            from . import when as _when
-            hh = _when._resolve_time(hour, DAY_HOUR)
-            p["notice_at"] = f"{_when._resolve_date(day, hh)} {hh}"
+        at = instant_of(str(p.get("date") or p.get("day") or "").strip(),
+                        str(p.get("time") or p.get("startTime") or p.get("at") or "").strip(), now)
+        if at:
+            p["notice_at"] = at
     if not str(p.get("commitment") or p.get("prompt") or "").strip():
         what = str(p.get("title") or p.get("text") or p.get("what") or "").strip()
         if what:
@@ -136,7 +182,8 @@ def _a_add_reminder(action, payload, db, _extra) -> dict:
     `commitment_at`, or the card's own `date` + `time`). No moment → `asked`, never guessed from words."""
     p = in_the_cards_shape(payload)
     if not (p.get("notice_at") or p.get("before")):
-        return {"ok": False, "verdict": "asked", "error": "no moment to ring at: notice_at is missing"}
+        return {"ok": False, "verdict": "asked", "say": "widgets.agenda.notice_when",     # the question is the card's
+                "error": "no moment to ring at: give notice_at (or a date and a time that are a day and an hour)"}
     from nucleo.pulse import scheduler as _sched
     r, verdict = schedule(_sched.create, {**p, "prompt": p.get("commitment") or p.get("prompt") or ""})
     return {"ok": bool(r.get("ok")), "verdict": verdict, "display": r.get("display") or "",

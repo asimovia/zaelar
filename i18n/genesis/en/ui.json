@@ -962,6 +962,7 @@
  "voice.spk_learning": "🎧 learning your voice… {count}/{need}",
  "voice.spk_recognizing": "🔊 recognizing your voice",
  "voice.spk_you": "🔊 you",
+ "widgets.agenda.notice_when": "When should I remind you? Tell me the day and the time.",
  "widgets.agenda.add_at": "New appointment at {at}",
  "widgets.agenda.repeat_weekly": "Repeats every week: {days}",
  "widgets.agenda.repeat_daily": "Repeats every day",

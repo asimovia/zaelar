@@ -507,7 +507,7 @@
       "desc": "CREA una lista de tareas nueva («hazme una lista de la compra», «una lista para el viaje»), CON lo que va dentro si lo dice («una lista de la compra: leche, huevos y pan» → `items`). Queda numerada y con su propio identificador; si ya existe una con ese nombre, devuelve esa y le añade lo que falte",
       "payload": {
         "name": "cómo la llama él: «la compra», «casa», «viaje a Roma»",
-        "items": "[string, …] — lo que va en la lista, un texto por fila, tal como lo dijo (opcional: solo si lo nombra)"
+        "items": "[string, …] — lo que va en la lista, un texto por fila, tal como lo dijo, solo si lo nombra (opcional)"
       },
       "confirm": false
     },
