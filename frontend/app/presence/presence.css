@@ -44,8 +44,9 @@
 .pz-hint{margin:0 0 0 26px;color:var(--hb-muted);font-size:0.75rem;max-width:62ch}
 .pz-hint.is-problem{color:var(--hb-danger,#d9534f)}
 
-/* «Look at me» (T10): while the camera runs, a badge says so above everything; a tap turns the camera off. */
-.hb-cam{position:fixed;z-index:2147483000;top:calc(env(safe-area-inset-top,0px) + 8px);left:50%;transform:translateX(-50%);
+/* «Look at me» (T10): while the camera runs, a badge says so above the cards and panels — but UNDER the black faces
+   (`.zv.sleep,.zv.moved`, 100900, which cover everything): under one of them the camera is stopped (LookAtMe.js). */
+.hb-cam{position:fixed;z-index:100100;top:calc(env(safe-area-inset-top,0px) + 8px);left:50%;transform:translateX(-50%);
   display:flex;align-items:center;gap:6px;padding:4px 10px 4px 8px;border-radius:999px;border:1px solid var(--hb-line);
   background:color-mix(in srgb,var(--hb-bg) 88%,transparent);color:var(--hb-ink);font:inherit;font-size:0.75rem;cursor:pointer;
   -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}

@@ -1,12 +1,14 @@
 // LookAtMe.js — «look at me» (V2-928 T10) wired to the live face: it starts and stops the sources and hands the face one
 // target a few dozen times a second. The camera runs ONLY while all of these hold, and stops the moment one does not:
 //   the switch is on · the face is on (this exists only while PresenceLayer has a face) · the tab is visible ·
-//   the face is not covered (the phone's card or page in front of it) for more than a moment.
+//   the face is not covered (the phone's card or page in front of it) for more than a moment ·
+//   no black face is up (the engine asleep, the voice held by another screen: Veil.js covers everything, the badge too).
 // While the camera runs a small «● Camera» badge stays on screen above everything; tapping it turns the switch off.
 // The AirPods source (iPhone app only) follows the same rules, without a badge: it reads no image.
 import { h } from "../core/dom.js?v=2";
 import { createEffect, createSignal, untrack } from "../core/reactive.js?v=2";
 import { t } from "../core/i18n.js?v=1";
+import * as store from "../core/store.js?v=2";
 import { createTracker, createHeadTracker, blend } from "./look.js?v=1";
 import { startCamera, cameraError } from "./look-camera.js?v=1";
 import { start as startHead } from "./head-motion.js?v=1";
@@ -35,7 +37,8 @@ export function LookAtMe(face, { covered = null } = {}) {
       clearTimeout(coverTimer);
       if (!c) setHiddenLong(false); else coverTimer = setTimeout(() => setHiddenLong(true), COVER_GRACE_MS);
     }));
-    const wants = (on) => !disposed && on && visible() && !hiddenLong();
+    const black = () => { const d = store.dormant(); return !!(d && d.face === "sleep") || !!store.remoteHeld(); };
+    const wants = (on) => !disposed && on && visible() && !hiddenLong() && !black();
 
     function pump() {
       if (push) return;

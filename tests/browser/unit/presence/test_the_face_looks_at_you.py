@@ -166,6 +166,16 @@ def test_on_it_starts_once_and_every_off_stops_it(desk):
     desk.wait_for_timeout(1000)
     assert desk.evaluate(STATE)["live"], "the face came back without its camera"
 
+    # a black face (the engine asleep) covers everything, the badge too: the camera stops under it, and comes back
+    n = desk.evaluate(STATE)["stopped"]
+    desk.evaluate("() => window.__store.setDormant({ face: 'sleep', waking: false })")
+    desk.wait_for_timeout(300)
+    s = desk.evaluate(STATE)
+    assert s["stopped"] > n and not s["live"] and not s["badge"], f"the camera ran unseen under the black veil: {s}"
+    desk.evaluate("() => window.__store.setDormant({ face: '', waking: false })")
+    desk.wait_for_timeout(1000)
+    assert desk.evaluate(STATE)["live"], "the camera did not come back when the black veil lifted"
+
     # the badge is the way out: a tap turns the switch off, for this device
     n = desk.evaluate(STATE)["stopped"]
     desk.click(".hb-cam")
