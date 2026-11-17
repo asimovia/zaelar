@@ -115,7 +115,6 @@ export const CSS_PANELS = `\
   .hb-yt .hb-yt-list,.hb-yt .hb-yt-addrow,.hb-yt .hb-yt-home,.hb-yt .hb-yt-blocked,.hb-yt .hb-yt-subs,
   .hb-yt .hb-yt-mylists{display:none}
   .hb-yt.hb-yt-t-inicio .hb-yt-home{display:flex}
-  .hb-yt.hb-yt-t-inicio .hb-yt-homehead{display:flex}
   .hb-yt.hb-yt-t-inicio .hb-yt-blocked{display:block}
   .hb-yt.hb-yt-t-player .hb-yt-frame{display:block}
   .hb-yt.hb-yt-t-player .hb-yt-blockmsg{display:block}
@@ -133,7 +132,7 @@ export const CSS_PANELS = `\
   .hb-yt.hb-yt-connmode .hb-yt-ctrls,.hb-yt.hb-yt-connmode .hb-yt-hint,.hb-yt.hb-yt-connmode .hb-yt-list,
   .hb-yt.hb-yt-connmode .hb-yt-addrow,.hb-yt.hb-yt-connmode .hb-yt-home,.hb-yt.hb-yt-connmode .hb-yt-subs,
   .hb-yt.hb-yt-connmode .hb-yt-mylists,.hb-yt.hb-yt-connmode .hb-yt-blocked,
-  .hb-yt.hb-yt-connmode .hb-yt-blockmsg,.hb-yt.hb-yt-connmode .hb-yt-homehead{display:none}
+  .hb-yt.hb-yt-connmode .hb-yt-blockmsg,.hb-yt.hb-yt-connmode .hb-yt-recent{display:none}
   .hb-yt:not(.hb-yt-connmode) .hb-yt-conn{display:none}
   /* CINEMA (V2-596): inside a maximized/fullscreen card the video IS the screen — the frame fills the card and
      the card-shaped furniture (title, controls, hint, playlist, add row) disappears. Without this, a voice
@@ -141,10 +140,15 @@ export const CSS_PANELS = `\
      sets .hb-cinema on the card (desktop.js) and its floating exit button restores everything; the unmute pill
      stays, it is the one control the browser's autoplay policy makes necessary. */
   .hb-win.hb-cinema .hb-yt,.hb-win:fullscreen .hb-yt{width:100%;height:100%;max-width:none;background:#000}
-  .hb-win.hb-cinema .hb-yt-body,.hb-win:fullscreen .hb-yt-body{padding:0;gap:0;overflow:hidden}
-  .hb-win.hb-cinema .hb-yt-homehead,.hb-win:fullscreen .hb-yt-homehead{display:none}
-  .hb-win.hb-cinema .hb-yt-frame,.hb-win:fullscreen .hb-yt-frame{display:block;aspect-ratio:auto;
-    flex:1 1 auto;min-height:0;border-radius:0}
+  .hb-win.hb-cinema .hb-yt .hb-yt-body,.hb-win:fullscreen .hb-yt .hb-yt-body{padding:0;gap:0;overflow:hidden}
+  .hb-win.hb-cinema .hb-yt .hb-yt-stage,.hb-win:fullscreen .hb-yt .hb-yt-stage{display:flex;flex-direction:column;
+    flex:1 1 auto;max-height:none;min-height:0}
+  .hb-win.hb-cinema .hb-yt .hb-yt-stage > .hb-yt-frame,.hb-win:fullscreen .hb-yt .hb-yt-stage > .hb-yt-frame{display:block;
+    aspect-ratio:auto;flex:1 1 auto;height:auto;min-height:0;border-radius:0}
+  .hb-win.hb-cinema .hb-yt-seek,.hb-win:fullscreen .hb-yt-seek,.hb-win.hb-cinema .hb-yt-wchips,
+  .hb-win:fullscreen .hb-yt-wchips,.hb-win.hb-cinema .hb-yt-upnext,.hb-win:fullscreen .hb-yt-upnext,
+  .hb-win.hb-cinema .hb-yt-recent,.hb-win:fullscreen .hb-yt-recent,.hb-win.hb-cinema .hb-yt-sheet,
+  .hb-win:fullscreen .hb-yt-sheet,.hb-win.hb-cinema .hb-yt-scrim,.hb-win:fullscreen .hb-yt-scrim{display:none}
   .hb-win.hb-cinema .hb-yt-tline,.hb-win.hb-cinema .hb-yt-ctrls,
   .hb-win.hb-cinema .hb-yt-hint,.hb-win.hb-cinema .hb-yt-list,.hb-win.hb-cinema .hb-yt-addrow,
   .hb-win.hb-cinema .hb-yt-nav,.hb-win.hb-cinema .hb-yt-home,.hb-win.hb-cinema .hb-yt-blocked,
@@ -156,12 +160,8 @@ export const CSS_PANELS = `\
   .hb-win:fullscreen .hb-yt-conn,.hb-win:fullscreen .hb-yt-subs,.hb-win:fullscreen .hb-yt-mylists{display:none}
   /* Cinema: the video is the screen — the frame must show whatever tab was active. */
   .hb-win.hb-cinema .hb-yt-frame,.hb-win:fullscreen .hb-yt-frame{display:block}
-    /* THE PHONE (V2-876 P-24), inside the shell's scroller: one row of tabs (V2-885: Inicio · search · ⋯), 16:9, 44 px */
-  .zm-scroll .hb-yt-nav{padding:4px 0} .zm-scroll .hb-yt-tabs{flex:1 1 auto;overflow:visible}
-  .zm-scroll .hb-yt-tab{flex:1 1 auto;min-width:0;min-height:44px;padding:0 5px;font-size:12.5px;overflow:hidden;text-overflow:ellipsis}
-  .zm-scroll .hb-yt-tab[data-short]{font-size:0} .zm-scroll .hb-yt-tab[data-short]::after{content:attr(data-short);font-size:12.5px}
-  .zm-scroll .hb-yt.hb-yt-t-player:not(.hb-yt-connmode) .hb-yt-frame{flex:0 0 auto;aspect-ratio:16/9;min-height:0}
-  .zm-scroll .hb-yt-ctrls{justify-content:space-between} .zm-scroll .hb-yt-cbtn svg{width:22px;height:22px}
-  .zm-scroll .hb-yt-cbtn,.zm-scroll .hb-yt-sbtn,.zm-scroll .hb-yt-radd{min-width:44px;min-height:44px;align-items:center;justify-content:center}
-  .zm-scroll .hb-yt-radd{display:flex;padding:0 12px}
+  /* THE PHONE (V2-876 P-24), inside the shell's scroller: 16:9, 44 px controls (the bar and the rest: style_phone.js) */
+  .zm-scroll .hb-yt-nav{padding:4px 0}
+  .zm-scroll .hb-yt-cbtn svg{width:22px;height:22px}
+  .zm-scroll .hb-yt-cbtn,.zm-scroll .hb-yt-sbtn{min-width:44px;min-height:44px;align-items:center;justify-content:center}
   `;

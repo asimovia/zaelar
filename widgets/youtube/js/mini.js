@@ -5,12 +5,21 @@
 // Operator, 2026-11-11: «si hay algo sonando, abajo del todo — como en el widget de música — los controles del
 // reproductor con el vídeo en miniatura». Its visibility is CLASS-driven (style_cards.js): a tab change repaints no
 // data, so a per-render display toggle would lag one click behind.
-import { ICON_PLAY, ICON_PAUSE, ICON_NEXT, ICON_MUTED, ICON_VOL_UP, el, iconBtn, svgEl, halted, tt } from "./shared.js";
+//
+// 2026-11-17 — the YouTube app's slim bar: ONE row (≤ 64 px) — the picture, title over channel, play/pause, next, and
+// the sound toggle only while it plays muted (it autoplays muted) — with the progress on its top edge, hidden while he
+// types a search (the keyboard would float it mid-screen). It is a `data-strip`: the phone shell wraps any other row
+// of buttons, and that wrap is what stacked it into a fifth of the screen.
+import { ICON_PLAY, ICON_PAUSE, ICON_NEXT, ICON_VOL_UP, el, iconBtn, svgEl, halted, tt } from "./shared.js";
 import { post } from "./player.js";
 
 export function buildMini(root, ctx){
   const bar = el("div", "hb-yt-mini");
+  bar.dataset.strip = "";
   bar.setAttribute("role", "region");
+  const line = el("div", "hb-yt-mline");
+  const prog = el("div", "hb-yt-mprog");
+  line.appendChild(prog);
   bar.setAttribute("aria-label", tt("mini_label", null, "Reproduciendo"));
   const open = () => { if(root._hbYtSelectTab) root._hbYtSelectTab("player"); };
   const thumb = document.createElement("img");
@@ -26,10 +35,10 @@ export function buildMini(root, ctx){
   const play = iconBtn("hb-yt-mbtn main", ICON_PLAY, tt("play", null, "Play"));
   const next = iconBtn("hb-yt-mbtn", ICON_NEXT, tt("next", null, "Siguiente"),
                        () => { if(ctx && ctx.action) ctx.action("next"); });
-  const mute = iconBtn("hb-yt-mbtn", ICON_MUTED, tt("mute", null, "Silencio"));
-  bar.append(thumb, info, play, next, mute);
+  const mute = iconBtn("hb-yt-mbtn snd", ICON_VOL_UP, tt("sound", null, "Sonido"));
+  bar.append(line, thumb, info, play, next, mute);
   root.appendChild(bar);
-  return {bar, thumb, title, chan, play, mute};
+  return {bar, thumb, title, chan, play, mute, prog};
 }
 
 export function paintMini(M, data, ctx, PL){
@@ -44,12 +53,13 @@ export function paintMini(M, data, ctx, PL){
   };
   face(M.play, data.paused ? ICON_PLAY : ICON_PAUSE, data.paused ? tt("play", null, "Play") : tt("pause", null, "Pausa"));
   M.play.onclick = (e) => { e.stopPropagation(); if(ctx && ctx.action) ctx.action(data.paused ? "play" : "pause"); };
-  face(M.mute, data.muted ? ICON_VOL_UP : ICON_MUTED, data.muted ? tt("sound", null, "Sonido") : tt("mute", null, "Silencio"));
+  M.bar.classList.toggle("muted", !!data.muted);         // the sound toggle shows only while it plays muted
   const vol0 = Number(data.volume != null ? data.volume : 70);
   M.mute.onclick = (e) => {
     e.stopPropagation();
     // the same door as the player's own mute: the REAL click unlocks the browser's audio, gated on a stopped agent
-    if(data.muted && !halted(ctx)){ post(PL, "unMute", []); post(PL, "setVolume", [vol0]); }
-    if(ctx && ctx.action) ctx.action(data.muted ? "unmute" : "mute");
+    if(!data.muted) return;
+    if(!halted(ctx)){ post(PL, "unMute", []); post(PL, "setVolume", [vol0]); }
+    if(ctx && ctx.action) ctx.action("unmute");
   };
 }

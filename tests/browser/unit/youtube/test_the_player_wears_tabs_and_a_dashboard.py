@@ -137,18 +137,23 @@ def test_a_video_arriving_jumps_to_the_player_tab(_page):
 
 def test_search_results_render_numbered_on_the_dashboard_and_steer_by_click(_page):
     _mount(_page, _data(search_results=_RESULTS, search_query="gatitos"))
-    # 2026-09-29 — the head names the band and the search box CARRIES the question being answered
-    assert "Resultados" in _page.locator(".hb-yt-home .hb-yt-hometitle").inner_text()   # V2-885: the band's own head
+    # 2026-09-29 — the search box CARRIES the question being answered (since 2026-11-17 the bar's field, YouTube's
+    # results page: the query in the bar, the band alone under it — never a «Results 0» head)
     assert _page.locator(".hb-yt-search input").input_value() == "gatitos"
+    assert _page.locator(".hb-yt-home .hb-yt-hometitle").count() == 0
     nums = _page.eval_on_selector_all(".hb-yt-rnum", "els => els.map(e => e.textContent)")
     assert nums == ["1", "2", "3"], "the numbers ARE the voice index («reproduce el tercero»)"
-    # the per-tile «+ cola» queues WITHOUT playing and stays on the dashboard
-    _page.locator(".hb-yt-radd").nth(1).click()
+    # 2026-11-17: the ordinal is a small index beside the title, never a badge on the picture
+    assert _page.locator(".hb-yt-ithumb .hb-yt-rnum").count() == 0
+    # the row's ⋮ sheet queues WITHOUT playing and stays on the dashboard
+    _page.locator(".hb-yt-home .hb-yt-item .hb-yt-more3").nth(1).click()
+    _page.click(".hb-yt-sheet [data-opt=queue]")
     assert ["add_results", {"items": "2"}] in _page.evaluate("window.__calls")
     assert "hb-yt-t-inicio" in _cls(_page)
-    # a tile click plays that result and jumps to the player
+    assert _page.locator(".hb-yt-sheet").count() == 0, "a choice closes the sheet"
+    # a row click plays that result and jumps to the player
     _page.evaluate("window.__calls = []")
-    _page.locator(".hb-yt-home .hb-yt-tile").nth(2).click()
+    _page.locator(".hb-yt-home .hb-yt-item").nth(2).click()
     assert ["play_result", {"item": "3"}] in _page.evaluate("window.__calls")
     assert "hb-yt-t-player" in _cls(_page)
 
@@ -260,25 +265,34 @@ def test_the_block_banner_says_what_happened_and_only_when_something_did(_page):
     assert not _page.locator(".hb-yt-blockmsg").is_visible()
 
 
-def test_the_home_search_box_searches_by_hand_and_its_cross_clears(_page):
+def test_the_bar_search_searches_by_hand_and_its_back_arrow_clears(_page):
     """Operator, 2026-09-29: «un campo de texto con un icono para iniciar una búsqueda y dentro el término
-    que estamos buscando ahora mismo, de tal manera que el usuario pudiera usar este widget manualmente»."""
+    que estamos buscando ahora mismo, de tal manera que el usuario pudiera usar este widget manualmente».
+    Since 2026-11-17 it is ONE door, the YouTube app's: the bar's 🔍 turns the bar into the field."""
     _mount(_page, _data())
-    assert _page.locator(".hb-yt-homehead").is_visible(), "Inicio carries its own search head"
+    assert _page.locator(".hb-yt-home .hb-yt-search").count() == 0, "no second search box in the body"
+    assert not _page.locator(".hb-yt-search").is_visible(), "the field waits behind the 🔍"
+    _page.click(".hb-yt-find")
     inp = _page.locator(".hb-yt-search input")
-    assert inp.input_value() == ""
+    assert inp.is_visible() and inp.input_value() == ""
     inp.fill("veleros")
     inp.press("Enter")
     assert ["search", {"query": "veleros"}] in _page.evaluate("window.__calls")
     assert "hb-yt-t-inicio" in _cls(_page), "a search is something to choose from: nothing jumps"
-    # the icon starts it too
+    # the icon starts it too (the harness answers nothing, so the band that would keep the field up never comes)
     _page.evaluate("window.__calls = []")
+    _page.click(".hb-yt-find")
     inp.fill("regatas")
     _page.locator(".hb-yt-sbtn.go").click()
     assert ["search", {"query": "regatas"}] in _page.evaluate("window.__calls")
-    # with results on screen the ✕ inside the box drops them
+    # with results on screen the field carries the query, its ✕ only clears the text, and ← drops the band
     _mount(_page, _data(search_results=_RESULTS, search_query="gatitos"))
-    _page.locator(".hb-yt-search .hb-yt-sbtn:not(.go)").click()
+    assert _page.locator(".hb-yt-search input").is_visible()
+    _page.locator(".hb-yt-search .hb-yt-sclr").click()
+    assert _page.evaluate("window.__calls") == [] and inp.input_value() == ""
+    _page.locator(".hb-yt-search .hb-yt-sback").click()                     # ← out of the typing: back to the results
+    assert _page.evaluate("window.__calls") == [] and inp.input_value() == "gatitos"
+    _page.locator(".hb-yt-search .hb-yt-sback").click()                     # ← over the results: the catalogue
     assert ["clear_search", {}] in _page.evaluate("window.__calls")
 
 
@@ -290,7 +304,9 @@ def test_a_repaint_never_eats_what_he_is_typing(_page):
     assert inp.input_value() == "medio escri"
 
 
-def test_the_search_head_lives_only_on_inicio(_page):
-    _mount(_page, _data())
+def test_the_search_field_lives_only_in_search_mode(_page):
+    _mount(_page, _data(search_results=_RESULTS, search_query="gatitos"))
+    assert _page.locator(".hb-yt-search").is_visible(), "a band on Inicio keeps its query in the bar"
     _page.click(".hb-yt-tab[data-tab=cola]")
-    assert not _page.locator(".hb-yt-homehead").is_visible()
+    assert not _page.locator(".hb-yt-search").is_visible()
+    assert _page.locator(".hb-yt-find").is_visible()

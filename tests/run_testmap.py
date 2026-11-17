@@ -6614,12 +6614,12 @@ DOMAINS: list[dict] = [
                                  "the art); no «Unknown artist»; middle-truncated title; the queue a page; Search never opens "
                                  "on the playing query; 44 pt targets; the desktop geometry pinned unchanged",
             "ch": UNIT, "paths": ["tests/browser/unit/musica/test_the_phone_card_fits_the_hand.py"]},
-        {"id": "4.471", "title": "YouTube on the phone at 393x852 (V2-876 P-24, V2-877 #6): one row with no sideways scroll "
-                                 "(V2-885: Inicio, the face on screen, 🔍 and ⋯ at 44 pt), Home reachable with what is "
-                                 "loaded in the mini-player, the player 16:9 with 44 pt controls, the "
+        {"id": "4.471", "title": "YouTube on the phone at 393x852 (V2-876 P-24, V2-877 #6): one row of 44 pt chips that "
+                                 "scrolls sideways (`data-hpan`, no ⋯; «Reproductor» is not a chip, its ⌄ goes back), Home "
+                                 "reachable with what is loaded in the mini-player, the player 16:9 with 4 controls of 44 pt, the "
                                  "swap notice legible and only for the video it swapped to, the embed in the card's language; "
                                  "a video whose owner refuses the embed (oEmbed 401/404) is never offered and joins the "
-                                 "blocklist, fail-open; the desktop geometry pinned unchanged",
+                                 "blocklist, fail-open; the desktop geometry pinned (re-measured for the watch page, 2026-11-17)",
             "ch": UNIT, "paths": ["tests/browser/unit/youtube/test_the_phone_player_fits_the_hand.py",
                                   "tests/browser/unit/youtube/test_a_video_its_owner_refuses_is_never_offered.py"]},
         # V2-877 #9 / V2-876 P-40 — a phone showed the worker's status line, the sheet door's rule to the
@@ -6779,8 +6779,19 @@ DOMAINS: list[dict] = [
                                   "queue rows with a 120 px face, channel · date and named ↑ ↓ ✕ ▶ controls calling "
                                   "move/remove/play_item; every empty tab offers its options; a new list prefilled with "
                                   "today's date that a repaint never eats; the bar at three widths (one line with the "
-                                  "search closing it ~30 px from the plug, two right-aligned rows, phone Inicio + 🔍 + ⋯)",
+                                  "search closing it ~30 px from the plug, two right-aligned rows, phone a chip row + 🔍); since 2026-11-17 "
+                                  "the results are ONE feed under the bar's search field, the catalogue opens on his "
+                                  "channels, and a phone queue row is the YouTube playlist row with one ⋮",
             "ch": UNIT, "paths": ["tests/browser/unit/youtube/test_the_video_app_works_like_the_music_app.py"]},
+        {"id": "4.562", "title": "The video widget on the phone is the YouTube app (2026-11-17): the 🔍 turns the bar into "
+                                  "the field and an empty field lists his recent searches; a search in flight is skeletons, "
+                                  "never «0 results»; results are one column of full-width 16:9 pictures with their length "
+                                  "and a ⋮ that opens a sheet INSIDE the card (play · queue · follow/unfollow · block); the "
+                                  "mini-player is one slim row (a `data-strip`: the shell's wrap stacked it) with a progress "
+                                  "line and the sound only while muted, hidden while he types; the watch page has a seek bar "
+                                  "fed by the player's own clock whose tap seeks with no server action, then title, Seguir, "
+                                  "chips and «A continuación»; each mechanism disarmed in place and restored in `finally`",
+            "ch": UNIT, "paths": ["tests/browser/unit/youtube/test_the_phone_wears_the_youtube_app.py"]},
         {"id": "4.563", "title": "The video search keeps his recent questions and each result's length (2026-11-17, ES/EN): "
                                   "`search` writes `recent_queries` (newest first, eight, one per question however spelled, "
                                   "an unanswered one too) and the band's rows carry the `duration` the results page showed "

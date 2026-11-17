@@ -51,6 +51,12 @@ if(typeof window !== "undefined" && !window.__hbYtWidgetBound){
       const key = vid || "current";
       if(key !== Y.qSeen){ Y.qSeen = key; Y.ytQuality(d.info.availableQualityLevels, vid); }
     }
+    // 2026-11-17 — the player's own clock, for the watch page's seek bar and the mini-player's line (watch.js).
+    if(d.event === "infoDelivery" && d.info && (typeof d.info.currentTime === "number" || typeof d.info.duration === "number")){
+      if(typeof d.info.currentTime === "number") Y.tcur = d.info.currentTime;
+      if(typeof d.info.duration === "number" && d.info.duration > 0) Y.tdur = d.info.duration;
+      if(Y.onTime) Y.onTime();
+    }
     // V2-884 1a — the player's sound and volume as it reports them, on every change (never the order).
     if(d.event === "infoDelivery" && d.info){
       const p = {};
@@ -185,6 +191,8 @@ export function buildFrame(data, ctx, loading, isStream, src, id){
     video.addEventListener("playing", () => reportState({playing: true}));
     video.addEventListener("pause", () => reportState({playing: false}));
     video.addEventListener("volumechange", () => reportState(sound()));
+    const clock = () => { Y.tcur = video.currentTime || 0; Y.tdur = isFinite(video.duration) ? video.duration : 0; if(Y.onTime) Y.onTime(); };
+    ["timeupdate", "durationchange", "seeked"].forEach((ev) => video.addEventListener(ev, clock));
     frame.appendChild(video);
   } else if(id){
     iframe = document.createElement("iframe");

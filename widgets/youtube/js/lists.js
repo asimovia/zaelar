@@ -8,6 +8,7 @@
 import { Y } from "./state.js";
 import { ICON_UP, ICON_DOWN, ICON_CLEAR, ICON_PLAY, el, iconBtn, emptyState, tt } from "./shared.js";
 import { hl } from "./channel.js";
+import { openSheet, moreBtn } from "./sheet.js";
 
 function today(ctx){                                   // ctx.lang, the host's live language (a switch re-reads it)
   try{ return new Intl.DateTimeFormat(hl(ctx), {day: "numeric", month: "short", year: "numeric"}).format(new Date()); }
@@ -125,6 +126,13 @@ export function paintQueue(root, E, data, ctx){
     const x = iconBtn("hb-yt-qbtn hb-yt-rowx", ICON_CLEAR, tt("remove_from_list", null, "Quitar de la lista"), () => act("remove", {item: n}));
     acts.append(up, down, x);
     row.appendChild(acts);
+    // A narrow card wears the YouTube playlist row (2026-11-17): the same four controls behind one ⋮ and its sheet.
+    row.appendChild(moreBtn("hb-yt-qmore", tt("more_actions", null, "Más acciones"), () => openSheet(root, it.title || "", [
+      {id: "play", label: tt("play_from_here", null, "Reproducir desde aquí"),
+       run: () => { act("play_item", {item: n}); if(root._hbYtSelectTab) root._hbYtSelectTab("player"); }},
+      {id: "up", label: tt("move_up", null, "Subir"), disabled: i === 0, run: () => act("move", {item: n, to: String(i)})},
+      {id: "down", label: tt("move_down", null, "Bajar"), disabled: i === lst.length - 1, run: () => act("move", {item: n, to: String(i + 2)})},
+      {id: "remove", label: tt("remove_from_list", null, "Quitar de la lista"), run: () => act("remove", {item: n})}])));
     row.addEventListener("click", () => {
       act("play_item", {item: n});
       if(root._hbYtSelectTab) root._hbYtSelectTab("player");

@@ -98,24 +98,28 @@ def test_with_a_search_the_results_are_the_first_thing_under_the_search_box(page
     _mount(page, _data(search_results=_RES, search_query="bruce", history=_Q, **_PLAY))
     _tab(page, "inicio")
     order = page.evaluate("""() => [...document.querySelector('.hb-yt-home').children].map(e => e.className)""")
-    assert order[0].startswith("hb-yt-hometitle"), order
-    assert "Resultados" in page.inner_text(".hb-yt-home > :first-child")
+    assert order == ["hb-yt-feed"], order
     assert "Sonando ahora" not in page.inner_text(".hb-yt-home"), "what plays is the mini-player's, never Home's"
     assert page.locator(".hb-yt-shelf").count() == 0, "a live search IS Inicio: no catalogue rows under it"
     assert page.locator(".hb-yt-home .hb-yt-rnum").count() == 6
-    # the search box sits ON TOP of Inicio, full width of the body
+    # the search box is the BAR's (2026-11-17, the YouTube app's results page): the query in it, above the band
     box = page.evaluate("""() => { const s = document.querySelector('.hb-yt-search').getBoundingClientRect();
-        const b = document.querySelector('.hb-yt-body').getBoundingClientRect();
         const h = document.querySelector('.hb-yt-home').getBoundingClientRect();
-        return {sw: s.width, bw: b.width, above: s.bottom <= h.top}; }""")
-    assert box["above"] and box["sw"] >= box["bw"] - 40, box
+        return {inBar: !!document.querySelector('.hb-yt-nav .hb-yt-search'), above: s.bottom <= h.top}; }""")
+    assert box["inBar"] and box["above"], box
+    assert page.input_value(".hb-yt-search input") == "bruce"
 
 
 def test_without_a_search_home_is_a_catalogue_of_rows_and_an_empty_row_is_omitted(page):
     _mount(page, _data(history=_Q, channels=[{"name": "MUNDO DE LA VELA"}],
                        lists=[{"name": "tarde", "items": _Q[:2]}]))
     shelves = page.eval_on_selector_all(".hb-yt-shelf", "els => els.map(e => e.dataset.shelf)")
-    assert shelves == ["history", "channels", "lists"], "no account connected → no suggestions row at all"
+    # the YouTube app's order (2026-11-17): his channels' faces first, then what he watched, then his lists
+    assert shelves == ["channels", "history", "lists"], "no account connected → no suggestions row at all"
+    # «Ver todo» on what he watched is the old «whole history → queue»: the same action, a quiet label
+    page.locator(".hb-yt-shelf[data-shelf=history] .hb-yt-seeall").click()
+    assert _calls(page)[-1] == ["show_history", {}] and "hb-yt-t-cola" in page.get_attribute(".hb-yt", "class")
+    _tab(page, "inicio")
     # «ver todo» opens the row's tab
     page.locator(".hb-yt-shelf[data-shelf=lists] .hb-yt-seeall").click()
     assert "hb-yt-t-listas" in page.get_attribute(".hb-yt", "class")
@@ -191,13 +195,21 @@ def test_the_queue_rows_are_cards_with_a_face_the_words_and_four_named_controls(
     assert ["play_item", {"item": "2"}] in _calls(page)
 
 
-def test_on_the_phone_the_queue_face_is_full_width_and_the_controls_44_points(page):
+def test_on_the_phone_a_queue_row_is_the_youtube_playlist_row_with_its_controls_behind_one_more(page):
+    """2026-11-17: the picture ~40 % (≤ 168 px) left, title over channel right, ONE ⋮ — the four controls in its sheet."""
     _mount(page, _data(list=_Q), width=366)
     _tab(page, "cola")
     geo = page.evaluate("""() => { const r = document.querySelector('.hb-yt-qrow');
-        return {img: r.querySelector('.hb-yt-rimg').getBoundingClientRect().width, row: r.getBoundingClientRect().width,
-                btn: Math.min(...[...r.querySelectorAll('.hb-yt-qacts button')].map(b => b.getBoundingClientRect().height))}; }""")
-    assert geo["img"] >= geo["row"] - 20 and geo["btn"] >= 44, geo
+        const img = r.querySelector('.hb-yt-rimg').getBoundingClientRect(), info = r.querySelector('.hb-yt-qinfo').getBoundingClientRect();
+        const more = r.querySelector('.hb-yt-qmore').getBoundingClientRect();
+        return {img: img.width, row: r.getBoundingClientRect().width, beside: info.left >= img.right - 1 && Math.abs(info.top - img.top) < 30,
+                more: more.width > 0 && more.top < img.bottom, acts: r.querySelector('.hb-yt-qacts').getClientRects().length}; }""")
+    assert geo["img"] <= min(168, geo["row"] * 0.42) and geo["beside"] and geo["more"] and geo["acts"] == 0, geo
+    page.locator(".hb-yt-qrow").nth(1).locator(".hb-yt-qmore").click()
+    assert page.eval_on_selector_all(".hb-yt-sheet [data-opt]", "els => els.map(e => e.dataset.opt)") == \
+        ["play", "up", "down", "remove"]
+    page.click(".hb-yt-sheet [data-opt=down]")
+    assert _calls(page) == [["move", {"item": "2", "to": "3"}]], "the voice's own move, one tap away"
 
 
 # ── Empty sections offer their options ───────────────────────────────────────────────────────────────────────────
@@ -271,19 +283,15 @@ def test_narrower_the_tools_take_a_second_row_aligned_right(page):
     assert g["nav"]["r"] - g["find"]["r"] <= 16, "…aligned to the right edge"
 
 
-def test_on_the_phone_inicio_and_the_search_stay_and_the_rest_goes_behind_the_menu(page):
+def test_on_the_phone_the_sections_are_a_chip_row_and_nothing_hides_behind_a_menu(page):
+    """2026-11-17, the YouTube app's: every section one tap away in a row that scrolls sideways, the 🔍 at its right."""
     _mount(page, _data(), width=366)
     _tab(page, "inicio")
     g = page.evaluate(_BAR)
-    assert g["tabs"] == ["inicio"] and g["plug"] is None and g["find"] and g["more"]
+    assert g["tabs"] == ["inicio", "cola", "subs", "listas"] and g["plug"] is None and g["find"] and g["more"] is None
     assert abs(g["find"]["t"] - g["tabsBox"]["t"]) < 8, "one row"
-    page.click(".hb-bar-more")
-    items = page.eval_on_selector_all(".hb-yt-menu .hb-yt-mitem", "els => els.map(e => e.dataset.tab)")
-    assert items == ["player", "cola", "subs", "listas"]
-    page.click(".hb-yt-menu .hb-yt-mitem[data-tab=cola]")
-    assert "hb-yt-t-cola" in page.get_attribute(".hb-yt", "class")
-    assert page.locator(".hb-yt-menu").is_hidden()
-    assert page.evaluate(_BAR)["tabs"] == ["inicio", "cola"], "the face on screen stays named in the bar"
+    page.click(".hb-yt-tab[data-tab=listas]")
+    assert "hb-yt-t-listas" in page.get_attribute(".hb-yt", "class")
 
 
 def test_the_search_button_lands_on_inicio_with_the_box_focused_from_any_tab(page):

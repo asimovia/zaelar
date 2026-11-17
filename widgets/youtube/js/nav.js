@@ -7,24 +7,35 @@
 // tabs — Inicio and the search always in sight. It is the HOUSE bar (V2-882, lib/toolbar.js), which MEASURES the
 // step it needs instead of guessing from a breakpoint: lead = the tabs · tray = the secondary tabs (seen only in its
 // ⋯ menu) + the platform icons and the plug · the search pinned right in its own column (style_cards.js).
+//
+// 2026-11-17 — a NARROW card (the phone; style_phone.js) wears the YouTube app's bar instead: the sections as a chip
+// row that scrolls sideways (`data-hpan`: the deck does not page on it), the 🔍 at its right, no ⋯; «Reproductor» is
+// not a chip there — a video or the mini-player opens it, and its ⌄ goes back to the section he came from. The 🔍
+// turns the bar into the search field at every width (search.js).
 import { Y } from "./state.js";
 import { reportState } from "./report.js";
-import { ICON_PLUG, ICON_SEARCH, svgEl, el, _TABS, tabLabel, applyTabClass, iconBtn, tt } from "./shared.js";
+import { ICON_PLUG, ICON_SEARCH, ICON_DOWN, svgEl, el, _TABS, tabLabel, applyTabClass, iconBtn, tt } from "./shared.js";
 import { renderConn } from "./conn.js";
-import { bar, fit } from "/frontend/app/lib/toolbar.js";
+import { buildSearch, paintSearchMode } from "./search.js";
+import { closeSheet } from "./sheet.js";
+import { bar } from "/frontend/app/lib/toolbar.js";
 
 export function buildNav(root, ctx){
   const nav = el("div", "hb-yt-nav");
   const tabsBox = el("div", "hb-yt-tabs hb-bar-lead");
   tabsBox.setAttribute("role", "tablist");
+  tabsBox.dataset.hpan = "";                               // a sideways swipe here scrolls the chips, never the deck
   nav.appendChild(tabsBox);
   const tabBtns = {};
   const menu = el("div", "hb-yt-menu hb-bar-views");
   const selectTab = (tid) => {
+    if(tid !== Y.tab && Y.tab && Y.tab !== "player") Y.prev = Y.tab;   // where the watch page's ⌄ goes back to
     Y.tab = tid;
-    Y.screen = null; Y.connErr = "";                       // choosing a tab is ONE transition (V2-626)
+    Y.screen = null; Y.connErr = ""; Y.searching = false;  // choosing a tab is ONE transition (V2-626)
+    closeSheet(root);
     applyTabClass(root);
     paintTabs();
+    paintSearchMode(root);
     const cb = root.querySelector(".hb-yt-plug"); if(cb) cb.classList.remove("on");
     root.classList.remove("hb-yt-connmode");
     const connBox = root._hbYtEls && root._hbYtEls.conn; if(connBox) connBox.textContent = "";
@@ -64,25 +75,30 @@ export function buildNav(root, ctx){
     if(Y.screen){ selectTab(Y.tab); return; }              // toggle off → back to the active tab
     Y.screen = {view: "shelf"}; Y.connErr = "";
     connBtn.classList.add("on");
-    paintTabs();
+    paintTabs(); paintSearchMode(root);
     renderConn(root._hbYtEls || {}, root, root._hbYtData || {}, ctx);
   });
   right.appendChild(connBtn);
-  // The search is a DOOR, not a second field: it lands on Inicio with the one search box focused.
+  // The search is a DOOR, not a second field: the bar becomes the field, on Inicio, focused.
+  const S = buildSearch(root, ctx, selectTab);
   const focusSearch = () => {
     if(Y.tab !== "inicio" || Y.screen) selectTab("inicio");
-    const inp = root._hbYtEls && root._hbYtEls.sInp;
-    if(inp){ inp.focus(); if(inp.select) inp.select(); }
+    Y.searching = true;
+    paintSearchMode(root);
+    S.inp.focus(); if(S.inp.select) S.inp.select();
   };
   const findBtn = iconBtn("hb-yt-find", ICON_SEARCH, tt("search_open", null, "Buscar vídeos"), focusSearch);
+  const down = iconBtn("hb-yt-down", ICON_DOWN, tt("minimize", null, "Minimizar el reproductor"),
+                       () => selectTab(Y.prev && Y.prev !== "player" ? Y.prev : "inicio"));
   tray.append(menu, right);
-  nav.append(tray, findBtn);
+  nav.prepend(down);
+  nav.append(tray, findBtn, S.form);
   root.appendChild(bar(nav, {more: tt("more_tabs", null, "Más secciones")}));
   root._hbYtSelectTab = selectTab;
   root._hbYtTabBtns = tabBtns;
   root._hbYtPaintTabs = paintTabs;
   root._hbYtFocusSearch = focusSearch;
-  return {dots, menu};
+  return {dots, menu, sInp: S.inp, sClr: S.clr, recent: S.recent};
 }
 
 // Per render: every label re-read from the bundle (V2-694), the Cola tab and its menu row wear the count.
@@ -90,11 +106,8 @@ export function paintNav(root, data){
   if(!root._hbYtTabBtns) return;
   const nQ = Array.isArray(data.list) ? data.list.length : 0;
   const label = (k) => { const lab = tabLabel(k); return (k === "cola" && nQ) ? (lab + " · " + nQ) : lab; };
-  Object.keys(root._hbYtTabBtns).forEach((k) => {
-    root._hbYtTabBtns[k].textContent = label(k);
-    if(k === "subs") root._hbYtTabBtns[k].dataset.short = tt("tab_subs_short", null, "Canales");   // the phone's row
-  });
+  Object.keys(root._hbYtTabBtns).forEach((k) => { root._hbYtTabBtns[k].textContent = label(k); });
   root.querySelectorAll(".hb-yt-menu .hb-yt-mitem").forEach((m) => { m.textContent = label(m.dataset.tab); });
   if(root._hbYtPaintTabs) root._hbYtPaintTabs();
-  fit(root.querySelector(".hb-yt-nav"));                  // a label that grew («Cola · 12») may need the next step
+  paintSearchMode(root);                                  // and fits the bar: a label that grew («Cola · 12»), the field
 }

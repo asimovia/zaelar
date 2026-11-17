@@ -87,26 +87,30 @@ def phone(_browser):
     page.context.close()
 
 
-def test_the_tabs_share_one_row_with_no_sideways_scroll_and_44_points(phone):
-    """V2-885: on the phone the bar is Inicio, the face on screen, the search and «⋯» (the other tabs) — one row."""
+def test_the_sections_are_one_row_of_44_point_chips_and_the_watch_page_has_its_way_back(phone):
+    """2026-11-17, the YouTube app's bar: the sections as chips in ONE row that scrolls sideways (the deck leaves that
+    swipe alone: `data-hpan`), the 🔍 at its right, no ⋯ menu; «Reproductor» is not a chip — the watch page wears a ⌄
+    that goes back to the section he came from."""
     _mount(phone, _playing())
     geo = phone.evaluate("""() => { const s = document.querySelector('.hb-yt-tabs');
         const vis = (e) => !!e && e.getClientRects().length > 0;
         const tabs = [...document.querySelectorAll('.hb-yt-tab')].filter(vis).map(t => { const r = t.getBoundingClientRect();
-            return {id: t.dataset.tab, h: r.height, cut: t.scrollWidth > t.clientWidth + 1, right: r.right, top: r.top}; });
+            return {id: t.dataset.tab, h: r.height, top: r.top}; });
         const f = document.querySelector('.hb-yt-find').getBoundingClientRect();
-        return {scrolls: s.scrollWidth > s.clientWidth + 1, tabs, edge: document.querySelector('.hb-yt').getBoundingClientRect().right,
-                find: {h: f.height, top: f.top}, more: vis(document.querySelector('.hb-bar-more')),
+        const d = document.querySelector('.hb-yt-down').getBoundingClientRect();
+        return {hpan: s.hasAttribute('data-hpan'), scroll: getComputedStyle(s).overflowX, tabs,
+                find: {h: f.height, top: f.top}, down: {h: d.height, top: d.top}, more: vis(document.querySelector('.hb-bar-more')),
                 plug: vis(document.querySelector('.hb-yt-plug'))}; }""")
-    assert not geo["scrolls"], "every tab in sight — no strip to scroll"
-    assert [t["id"] for t in geo["tabs"]] == ["inicio", "player"], geo["tabs"]
-    assert all(t["h"] >= 44 and not t["cut"] and t["right"] <= geo["edge"] + 1 for t in geo["tabs"]), geo["tabs"]
-    assert geo["find"]["h"] >= 44 and abs(geo["find"]["top"] - geo["tabs"][0]["top"]) < 8 and geo["more"]
+    assert geo["hpan"] and geo["scroll"] == "auto", geo
+    assert [t["id"] for t in geo["tabs"]] == ["inicio", "cola", "subs", "listas"], geo["tabs"]
+    assert all(t["h"] >= 44 and abs(t["top"] - geo["find"]["top"]) < 8 for t in geo["tabs"]), geo
+    assert geo["find"]["h"] >= 44 and geo["down"]["h"] >= 44 and not geo["more"], geo
     assert not geo["plug"], "the connector is not a phone control (rule 5)"
-    phone.tap(".hb-bar-more")
-    phone.tap(".hb-yt-mitem[data-tab=subs]")
-    assert phone.evaluate("() => getComputedStyle(document.querySelector('.hb-yt-tab[data-tab=subs]'), '::after').content") \
-        == '"Channels"', "the long tab wears its short label, from the bundle"
+    phone.tap(".hb-yt-tab[data-tab=cola]")
+    phone.tap(".hb-yt-mini .hb-yt-minfo")
+    assert "hb-yt-t-player" in phone.get_attribute(".hb-yt", "class")
+    phone.tap(".hb-yt-down")
+    assert "hb-yt-t-cola" in phone.get_attribute(".hb-yt", "class"), "⌄ goes back to where he was"
 
 
 def test_home_is_reachable_and_shows_what_plays(phone):
@@ -123,11 +127,12 @@ def test_home_is_reachable_and_shows_what_plays(phone):
 def test_the_player_is_16_9_with_44_point_controls(phone):
     _mount(phone, _playing())
     geo = phone.evaluate("""() => { const f = document.querySelector('.hb-yt-frame').getBoundingClientRect();
-        const small = [...document.querySelectorAll('.hb-yt-ctrls button')].filter(b => {
-            const r = b.getBoundingClientRect(); return r.width < 44 || r.height < 44; }).length;
-        return {ar: f.width / f.height, small, home: document.querySelector('[data-tab=inicio]').getBoundingClientRect().top}; }""")
+        const shown = [...document.querySelectorAll('.hb-yt-ctrls button')].filter(b => b.getClientRects().length);
+        const small = shown.filter(b => { const r = b.getBoundingClientRect(); return r.width < 44 || r.height < 44; }).length;
+        return {ar: f.width / f.height, small, n: shown.length,
+                home: document.querySelector('[data-tab=inicio]').getBoundingClientRect().top}; }""")
     assert abs(geo["ar"] - 16 / 9) < 0.02, geo
-    assert geo["small"] == 0
+    assert geo["small"] == 0 and geo["n"] == 4, "prev · play/pause · next · sound: vol−/vol+/% are the wide card's"
     assert 0 <= geo["home"] < 200, "«back to the catalog» — the Home tab — is on screen above the video"
 
 
@@ -146,9 +151,10 @@ def test_the_embed_speaks_the_cards_language(phone):
     assert "hl=en" in phone.get_attribute(".hb-yt-frame iframe", "src")
 
 
-# Desktop: geometry of the card at 660x600 measured on origin/main (1431ca974) before this pass, on the player tab with
-# no notice (the notice's own padding is the one intended change).
-_DESK = {".hb-yt-nav": [8, 8, 660, 49], ".hb-yt-frame": [8, 91, 660, 462], ".hb-yt-ctrls": [8, 553, 660, 55]}
+# Desktop: geometry of the card at 660x600 on the player tab with no notice. Re-measured 2026-11-17 for the watch page
+# (the title line moved UNDER the video, a seek bar between it and the controls, the video 16:9 of the card's width and
+# shrinking only when the card is too short to keep them in sight): the bar did not move.
+_DESK = {".hb-yt-nav": [8, 8, 660, 49], ".hb-yt-frame": [8, 57, 660, 371], ".hb-yt-ctrls": [8, 452, 660, 54]}
 
 
 def test_the_desktop_card_is_unchanged(_browser):

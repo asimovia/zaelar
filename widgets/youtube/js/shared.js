@@ -1,6 +1,7 @@
 // youtube widget — the pieces every part uses: icons, DOM builders, the i18n helper, the tab ids and labels.
 // Part of the client split out of widget.js (refactor2710-12 T-03); widget.js stays the entry with render().
 import { Y } from "./state.js";
+import * as I from "/frontend/app/lib/icons.js";
 
 // Control-bar icons - the music widget's visual language, duplicated locally on purpose (V2-557:
 // widget modules never import each other). Outline strokes for secondary controls, solid for the
@@ -22,6 +23,16 @@ export const ICON_SEARCH   = `<svg ${_SW}><circle cx="11" cy="11" r="7"/><line x
 export const ICON_CLEAR    = `<svg ${_SW}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
 export const ICON_UP       = `<svg ${_SW}><polyline points="6 15 12 9 18 15"/></svg>`;
 export const ICON_DOWN     = `<svg ${_SW}><polyline points="6 9 12 15 18 9"/></svg>`;
+// The phone pass (2026-11-17, modelled on the YouTube app): the shell's own glyphs for back, recent and the ⋮.
+export const ICON_BACK = I.CHEVRON_LEFT_ICON, ICON_CLOCK = I.CLOCK_ICON, ICON_MORE = I.MORE_ICON;
+
+export function thumbUrl(vid){ return vid ? "https://i.ytimg.com/vi/" + encodeURIComponent(vid) + "/mqdefault.jpg" : ""; }
+// Seconds as the player says them: 1:23, 12:45, 1:02:03.
+export function fmtTime(s){
+  s = Math.max(0, Math.floor(Number(s) || 0));
+  const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = String(s % 60).padStart(2, "0");
+  return h ? h + ":" + String(m).padStart(2, "0") + ":" + x : m + ":" + x;
+}
 
 export function svgEl(markup){
   const t = document.createElement("template");

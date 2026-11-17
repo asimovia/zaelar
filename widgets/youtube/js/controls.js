@@ -5,7 +5,7 @@ import { ICON_PREV, ICON_NEXT, ICON_PLAY, ICON_PAUSE, ICON_VOL_DOWN, ICON_VOL_UP
 import { post } from "./player.js";
 import { Y } from "./state.js";
 
-export function buildControls(ctx, body){
+export function buildControls(ctx){
   // Click controls (mirror of what can also be requested by voice) - ICON buttons since V2-636
   // («no sé si es necesario el texto Play en un botón de play»), the music widget's bar language.
   const ctrls = el("div", "hb-yt-ctrls");
@@ -20,17 +20,16 @@ export function buildControls(ctx, body){
   const playBtn = icbtn("main", ICON_PLAY, tt("play", null, "Play"));  // face + action follow data.paused on each render
   ctrls.appendChild(playBtn);
   ctrls.appendChild(icbtn("", ICON_NEXT, tt("next", null, "Siguiente"), "next"));
-  ctrls.appendChild(icbtn("", ICON_VOL_DOWN, tt("vol_down", null, "Bajar volumen"), "volume_down"));
-  ctrls.appendChild(icbtn("", ICON_VOL_UP, tt("vol_up", null, "Subir volumen"), "volume_up"));
+  // vol−, vol+ and the % are the WIDE card's (2026-11-17): the phone's hands have the device's own volume keys.
+  ctrls.appendChild(icbtn("wide", ICON_VOL_DOWN, tt("vol_down", null, "Bajar volumen"), "volume_down"));
+  ctrls.appendChild(icbtn("wide", ICON_VOL_UP, tt("vol_up", null, "Subir volumen"), "volume_up"));
   const muteBtn = icbtn("", ICON_MUTED, tt("mute", null, "Silencio"));  // face/action are set on each render (toggle)
   ctrls.appendChild(muteBtn);
   const vol = el("div", "hb-yt-vol", "");
   ctrls.appendChild(vol);
-  body.appendChild(ctrls);
-
-  body.appendChild(el("div", "hb-yt-hint", tt("voice_hint", null,
-    "Por voz: «pon el vídeo de…», «búscame vídeos de…» (salen en Inicio), «reproduce el tercero», «siguiente», «pausa», «sigue a este canal».")));
-  return {playBtn, muteBtn, vol};
+  const hint = el("div", "hb-yt-hint", tt("voice_hint", null,
+    "Por voz: «pon el vídeo de…», «búscame vídeos de…» (salen en Inicio), «reproduce el tercero», «siguiente», «pausa», «sigue a este canal»."));
+  return {ctrls, hint, playBtn, muteBtn, vol};
 }
 
 export function paintPlayer(E, data, ctx, id, PL){

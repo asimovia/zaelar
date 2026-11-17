@@ -2,6 +2,7 @@
 // `CSS` is both halves in their original order (refactor2710-12 T-03).
 import { CSS_PANELS } from "./style_panels.js";
 import { CSS_CARDS } from "./style_cards.js";
+import { CSS_PHONE } from "./style_phone.js";
 
 const CSS_PLAYER = `
   /* ONE BOX (V2-717 applied here, 2026-09-29). The canvas window IS the frame: the root draws no border,
@@ -17,8 +18,10 @@ const CSS_PLAYER = `
   .hb-yt button,.hb-yt input{font-family:inherit}
   .hb-yt-body{flex:1 1 auto;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:var(--sp-3,12px);
               padding:var(--sp-3,12px) var(--sp-4,16px) var(--sp-4,16px);box-sizing:border-box}
-  /* V2-636 - ONE header line: title left (ellipsis), channel/date right. Saves a vertical row. */
-  .hb-yt-tline{display:flex;align-items:baseline;gap:12px;min-width:0}
+  /* V2-636 - ONE header line: title left (ellipsis), channel/date right. Saves a vertical row. Since 2026-11-17 it
+     sits UNDER the video, and on a narrow card it stacks the YouTube app's way (style_phone.js). */
+  .hb-yt-tline{display:flex;align-items:center;gap:12px;min-width:0}
+  .hb-yt-by{display:flex;align-items:center;gap:var(--sp-2,8px);flex:0 1 auto;min-width:0}
   .hb-yt-title{font-size:14px;font-weight:700;color:var(--hb-ink,#0d1622);line-height:1.3;
                white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1 1 auto;min-width:0}
   .hb-yt-meta{font-size:12px;color:var(--hb-muted,#5b6b82);line-height:1.3;flex:0 1 auto;
@@ -31,17 +34,22 @@ const CSS_PLAYER = `
      the player looks identical whatever the source. object-fit:contain letterboxes rather than crops: a
      film in the wrong aspect must not lose its edges. */
   .hb-yt-video{position:absolute;inset:0;width:100%;height:100%;background:#000;object-fit:contain}
-  /* V2-636 - the PLAYER tab FILLS the card: the frame takes every spare pixel (YouTube letterboxes inside
-     the iframe) and the control bar below stays pinned and visible at ANY card size - the operator grew the
-     card and the buttons were CLIPPED under its bottom edge. Since the one-box pass the video also runs
-     EDGE TO EDGE: no inset and no radius around it, the title and the controls carry their own gutter.
+  /* V2-636 - the control bar stays visible at ANY card size - the operator grew the card and the buttons were
+     CLIPPED under its bottom edge. Since 2026-11-17 the page is YouTube's watch page: the STAGE (video, notice,
+     seek bar, controls, title) is at most the body's height, and the video, 16:9 of the card's width, is what
+     gives way when the card is short (YouTube letterboxes inside the iframe); the chips and «A continuación»
+     scroll below. The video runs EDGE TO EDGE: no inset and no radius around it.
      connmode is excluded: the connector shelf is a list and must keep its scroll. */
-  .hb-yt.hb-yt-t-player:not(.hb-yt-connmode) .hb-yt-body{overflow:hidden;padding:0;gap:0}
-  .hb-yt.hb-yt-t-player:not(.hb-yt-connmode) .hb-yt-frame{flex:1 1 auto;min-height:140px;aspect-ratio:auto;
-    border-radius:0}
+  .hb-yt-stage{display:contents}
+  .hb-yt.hb-yt-t-player:not(.hb-yt-connmode) .hb-yt-body{overflow:auto;padding:0;gap:0}
+  .hb-yt.hb-yt-t-player:not(.hb-yt-connmode) .hb-yt-stage{display:flex;flex-direction:column;flex:0 0 auto;
+    max-height:100%;min-height:0}
+  .hb-yt.hb-yt-t-player:not(.hb-yt-connmode) .hb-yt-stage > *{flex:0 0 auto}
+  .hb-yt.hb-yt-t-player:not(.hb-yt-connmode) .hb-yt-stage > .hb-yt-frame{flex:0 1 auto;height:56.25cqw;
+    min-height:120px;aspect-ratio:auto;border-radius:0}
   .hb-yt.hb-yt-t-player:not(.hb-yt-connmode) .hb-yt-tline{padding:var(--sp-2,8px) var(--sp-4,16px)}
-  .hb-yt.hb-yt-t-player:not(.hb-yt-connmode) .hb-yt-blockmsg{margin:0 var(--sp-4,16px) var(--sp-2,8px)}
-  .hb-yt.hb-yt-t-player:not(.hb-yt-connmode) .hb-yt-ctrls{margin:0;padding:var(--sp-2,8px) var(--sp-3,12px)}
+  .hb-yt.hb-yt-t-player:not(.hb-yt-connmode) .hb-yt-blockmsg{margin:var(--sp-2,8px) var(--sp-4,16px) 0}
+  .hb-yt.hb-yt-t-player:not(.hb-yt-connmode) .hb-yt-ctrls{margin:0;padding:var(--sp-2,8px) var(--sp-3,12px);border-top:0}
   .hb-yt.hb-yt-t-player:not(.hb-yt-connmode) .hb-yt-hint{padding:0 var(--sp-4,16px) var(--sp-3,12px)}
   .hb-yt-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
   .hb-yt-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
@@ -130,35 +138,11 @@ const CSS_PLAYER = `
               border-radius:var(--hb-r-s,8px);cursor:pointer;display:flex;align-items:center;justify-content:center}
   .hb-yt-plug svg{width:15px;height:15px;display:block}
   .hb-yt-plug:hover,.hb-yt-plug.on{border-color:var(--hb-accent,#AE90FF);color:var(--hb-accent,#AE90FF)}
-  /* INICIO's own head: what the grid below is, and a search box that carries the question on screen —
-     so the card works by hand as well as by voice (operator, 2026-09-29). Built ONCE, outside the grid
-     that is rebuilt per render, or an SSE repaint would eat what he is typing. */
-  .hb-yt-homehead{display:none;align-items:center;min-width:0}
   .hb-yt-hometitle{font-size:var(--fs-ui,14px);font-weight:600;color:var(--hb-ink,#F2F4F7);white-space:nowrap;
                    display:flex;align-items:center;gap:var(--sp-2,8px)}
   .hb-yt-homecount{font-weight:400;color:var(--hb-muted,#A9B1BD);font-variant-numeric:tabular-nums}
-  .hb-yt-search{flex:1 1 auto;min-width:0;display:flex;align-items:center;   /* full width on top (V2-885) */
-                gap:var(--sp-2,8px);height:40px;box-sizing:border-box;padding:0 6px 0 var(--sp-4,16px);
-                border:1px solid var(--hb-line,rgba(255,255,255,.14));border-radius:999px;
-                background:var(--hb-bg-soft,#272D35)}
-  .hb-yt-search:focus-within{border-color:var(--hb-accent,#AE90FF)}
-  .hb-yt-search input{flex:1 1 auto;min-width:0;border:0;outline:none;background:none;padding:0;
-                      color:var(--hb-ink,#F2F4F7);font-size:var(--fs-caption,13.8px)}
-  .hb-yt-search input::placeholder{color:var(--hb-muted,#A9B1BD)}
-  .hb-yt-sbtn{width:26px;height:26px;flex:0 0 auto;border:0;border-radius:999px;background:none;padding:0;
-              color:var(--hb-muted,#A9B1BD);cursor:pointer;display:flex;align-items:center;justify-content:center}
-  .hb-yt-sbtn svg{width:15px;height:15px;display:block}
-  .hb-yt-sbtn:hover{background:var(--hb-hover,rgba(255,255,255,.06));color:var(--hb-ink,#F2F4F7)}
-  .hb-yt-sbtn:focus-visible{outline:none;box-shadow:var(--hb-focus-ring,0 0 0 2px #AE90FF)}
-  .hb-yt-sbtn.go{color:var(--hb-ink,#F2F4F7)}
   /* Placeholder (V2-632): with no video, the player tab still SHOWS where the video will live. */
   .hb-yt-empt-ico{font-size:34px;opacity:.5;line-height:1}
-  /* Search band on Inicio (V2-632): numbered result tiles + a per-tile «a la cola» button. */
-  .hb-yt-rnum{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.62);color:#fff;font-size:11px;
-              font-weight:700;border-radius:6px;padding:2px 6px;font-family:ui-monospace,Menlo,monospace}
-  .hb-yt-radd{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.55);color:#fff;border:0;
-              border-radius:6px;font-size:11px;padding:2px 7px;cursor:pointer}
-  .hb-yt-radd:hover{background:var(--hb-accent,#3D6FE0)}
   /* Queue rows carry a thumbnail now (V2-632): «que se intuya mejor de qué vídeo estamos hablando». */
   .hb-yt-rimg{width:62px;aspect-ratio:16/9;object-fit:cover;border-radius:6px;flex:0 0 auto;
               background:var(--hb-bg-soft,#0d1622)}
@@ -166,4 +150,4 @@ const CSS_PLAYER = `
   .hb-yt-mylists{display:flex;flex-direction:column;gap:var(--sp-3,12px)}
 `;
 
-export const CSS = CSS_PLAYER + CSS_PANELS + CSS_CARDS;
+export const CSS = CSS_PLAYER + CSS_PANELS + CSS_CARDS + CSS_PHONE;

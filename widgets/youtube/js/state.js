@@ -34,6 +34,9 @@ export const Y = {
   chBusy: "",           // "" | "refresh" | "more" | "tab" — drives the loader lines
   chSyncAsked: 0,
   newList: false,       // V2-885 — the «Nueva lista» field is open (module-lived: a repaint keeps it open)
+  // The phone pass (2026-11-17): he is typing into the bar's search (the recents show, the mini-player hides); the
+  // section the watch page's ⌄ goes back to; the player's own clock (`infoDelivery` / <video>), painted by onTime.
+  searching: false, prev: "", tcur: 0, tdur: 0, onTime: null,
   // V2-884 — the facts the engine answered (the protocol's own state lives in `/frontend/app/lib/player-report.js`).
   facts: [], paintHint: null, armUnlock: null, handAt: 0,
 };
