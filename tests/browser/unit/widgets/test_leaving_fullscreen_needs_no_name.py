@@ -144,7 +144,8 @@ def test_the_canvas_reports_which_card_is_maximized():
     src = (FRONTEND / "app" / "widgets" / "desktop.js").read_text(encoding="utf-8")
     layout = src[src.index("_layout(){"):src.index("_persist(){")]
     layout = "\n".join(re.sub(r"//.*$", "", ln) for ln in layout.split("\n"))
-    assert re.search(r"max\s*:\s*r\s*\?", layout), "el canvas no informa de cuál está a pantalla completa"
+    # either the maximize marker alone or with the browser's own full screen (4.561): `max:(r || …)?1:0`
+    assert re.search(r"max\s*:\s*\(?\s*r\b[^?]*\?", layout), "el canvas no informa de cuál está a pantalla completa"
 
 
 def test_the_server_stores_the_maximized_card_from_the_canvas_report(monkeypatch):

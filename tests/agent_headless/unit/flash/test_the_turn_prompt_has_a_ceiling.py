@@ -51,9 +51,12 @@ MARGIN = 64
 # 2026-11-14 (V2-903 E, the mail opened by its name): +24 on the everyday screen — `mensajeria:open` declares its field
 # contract (`open: name·n·platform`), so «open it» names the mail the read just found instead of guessing a chat; the
 # only line that moved (measured by diff of the composed prompt at b7a44c00e and at the v3.157 RC)
-CEILINGS = {(): 24_861, ("agenda", "mensajeria"): 30_023,
-            ("agenda", "mensajeria", "youtube", "contactos", "results", "musica"): 37_735}   # V2-795: musica usage trimmed
-TARGET_EVERYDAY = 30_023   # the audit's 30 000 + the mail's open contract above (2026-11-14)
+# 2026-11-17: +19 on the everyday screen — `agenda:add_list` keeps its whole meaning with the tail moved to `how`
+# (444dade78; the screen used to receive the desc cut); +47 more with six cards — `results:layout` declares its aliases
+# (`compare (side_by_side, table, …)`, fe9436d35/e27b53ee4) so a named layout resolves through the one enum declaration
+CEILINGS = {(): 24_861, ("agenda", "mensajeria"): 30_042,
+            ("agenda", "mensajeria", "youtube", "contactos", "results", "musica"): 37_801}   # V2-795: musica usage trimmed
+TARGET_EVERYDAY = 30_042   # the audit's 30 000 + the mail's open contract (2026-11-14) + add_list's how (2026-11-17)
 
 
 _SNIPPET = """
