@@ -112,12 +112,33 @@ export function normalize(text) {
 
 // The names this ear answers to: whatever he renamed it to, plus "zaelar",
 // which keeps working after a rename (habit, or a stray «oye zaelar» from
-// before it) — additive exactly like `attention._wakewords()`.
-export function wakeNames(assistantName) {
+// before it) — additive exactly like `attention._wakewords()`. V2-929: and
+// every spelling a recogniser writes for that name (`heard`, the genome's
+// `persona.heard_as`, served by GET /api/settings as `wake_names`) — the
+// browser's own STT writes «Yoni» for «Johnny» in Spanish.
+let _heard = {};
+export function setHeard(table) {
+  _heard = (table && typeof table === "object") ? table : {};
+}
+export function wakeNames(assistantName, heard = _heard) {
   const out = ["zaelar"];
   const n = normalize(assistantName).trim();
   if (n && n !== "zaelar") out.push(n);
+  for (const v of ((heard || {})[n] || [])) {
+    const k = normalize(v).trim();
+    if (k && !out.includes(k)) out.push(k);
+  }
   return out;
+}
+
+// The spellings table is read once, by the ear itself, from the settings both shells already read.
+let _heardAsked = false;
+function _askHeard() {
+  if (_heardAsked || typeof fetch !== "function") return;
+  _heardAsked = true;
+  try {
+    fetch("/api/settings").then(r => r.json()).then(c => setHeard(c && c.wake_names)).catch(() => {});
+  } catch (_) { /* no server to ask (a test): the name alone */ }
 }
 
 // Whole-word match, never a substring: «zaelar» must not fire on «zaelariano»,
@@ -257,7 +278,7 @@ function _onHeard() {
   _arm();
 }
 
-export function install(deps) { _deps = deps || null; }
+export function install(deps) { _deps = deps || null; if (_deps) _askHeard(); }
 
 export function start() {
   if (_dead || _wantRunning || !supported() || !_deps) return false;

@@ -15,9 +15,10 @@ from memory import embeddings as mememb
 from nucleo.batch import runner
 from nucleo.turn import identity
 
-ES = ("Te llamas Johnny. Cuando diga «Johnny», te estoy hablando a ti. Actúa como mi asistente digital personal. "
+# «Bruno», not the measured «Johnny»: Johnny is the default name since V2-929, so a step naming it proves nothing.
+ES = ("Te llamas Bruno. Cuando diga «Bruno», te estoy hablando a ti. Actúa como mi asistente digital personal. "
       "Usa lo que ya sabes de mí cuando venga al caso en vez de pedirme que lo repita.")
-EN = ("Your name is Johnny. When I say “Johnny”, I am talking to you. Act as my personal digital assistant. "
+EN = ("Your name is Bruno. When I say “Bruno”, I am talking to you. Act as my personal digital assistant. "
       "Use information you already know about me when it is relevant instead of asking me to repeat it.")
 
 
@@ -40,14 +41,14 @@ def _brief(choice="rename", conf=0.95):
     return {"event": ev, "result": {identity.KEY: {"choice": choice, "confidence": conf}}}
 
 
-def _run(steps, *, name="Johnny", verdict="rename"):
+def _run(steps, *, name="Bruno", verdict="rename"):
     """Each step's turn: the brief reads `verdict` and the model declares `name` — what `post_stream` hands
     `identity.settle` on a real turn (refactor2710-07: the verdict decides, the model names, nothing is read from
     his words)."""
     async def turn(text, **kw):
-        if "Johnny" in text:
+        if "Bruno" in text:
             await identity.settle(_brief(verdict), name, lambda *a, **k: None)
-        return {"ok": True, "reply": ["Entendido, soy Johnny."]}
+        return {"ok": True, "reply": ["Entendido, soy Bruno."]}
 
     async def ingest(text):
         await asyncio.sleep(0)
@@ -62,7 +63,7 @@ def _run(steps, *, name="Johnny", verdict="rename"):
 @pytest.mark.parametrize("say", [ES, EN])
 def test_the_measured_identity_step_stores_the_name(say):
     s = _run([{"title": "identidad", "kind": "identity", "say": say}])
-    assert (memapi.state().get("assistant_name") or "").lower() == "johnny"
+    assert (memapi.state().get("assistant_name") or "").lower() == "bruno"
     assert len(s["done"]) == 1 and not s["failed"]
 
 

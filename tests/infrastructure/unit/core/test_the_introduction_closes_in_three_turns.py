@@ -21,7 +21,7 @@ import pytest
 
 from i18n import langs
 from nucleo.turn.prompt import packs as CP
-from nucleo.turn.prompt.packs import introduction
+from nucleo.turn.prompt.packs import introduction, presentation
 
 
 @pytest.fixture(autouse=True)
@@ -30,6 +30,7 @@ def _fresh():
     introduction._turns = 0
     introduction._judging = False
     introduction._offer_pending = ""
+    presentation._pending = ""
     introduction._tasks = []
     yield
     introduction._tasks = []
@@ -57,7 +58,7 @@ class _Q:
         return await self.items.get()
 
 
-async def _turn(q: _Q, *, reply: str = "Hola, soy Zaelar. ¿Cómo te llamas?") -> None:
+async def _turn(q: _Q, *, reply: str = "Hola, soy Johnny. ¿Cómo te llamas?") -> None:
     """One `turn.completed` delivered to the watcher, with the window the observer publishes."""
     await q.items.put({"window": [{"role": "assistant", "text": reply}], "trace": "T"})
     for _ in range(4):
@@ -85,7 +86,7 @@ def test_start_subscribes_even_before_the_language_is_locked(world, monkeypatch)
 
 
 def test_a_session_closes_the_phase_in_three_turns(world, monkeypatch):
-    """ES then EN: kickoff (the offer is told) → his name (memory writes it after the turn) → any turn → closed."""
+    """ES then EN: kickoff (the presentation, which carries the offer, is said) → his name (memory writes it after the turn) → any turn → closed."""
     store, state = world
     for code in ("es", "en"):
         store.clear()
@@ -98,11 +99,12 @@ def test_a_session_closes_the_phase_in_three_turns(world, monkeypatch):
             q = _Q()
             task = _watch(q)
             store["stt_language"] = code                          # the ceremony locks it AFTER the boot
-            assert "masculina o femenina" in CP.compose(note), "T1: the first prompt carries the offer"
-            await _turn(q)                                        # T1 closes: the offer was told
-            assert store.get(introduction.OFFER_FLAG) is True
+            t1 = CP.compose(note)
+            assert "PRESENTACIÓN" in t1 and "Johnny" in t1, "T1: the first prompt carries the presentation"
+            await _turn(q)                                        # T1 closes: the presentation (and its offer) said
+            assert store.get(presentation.FLAG) is True and store.get(introduction.OFFER_FLAG) is True
             t2 = CP.compose("pepe")                               # T2: he answers; the state is still empty
-            assert "SI LO QUE ACABA DE DECIR CONTESTA" in t2
+            assert "SI LO QUE ACABA DE DECIR CONTESTA" in t2 and "PRESENTACIÓN" not in t2
             await _turn(q, reply="Encantado, Pepe.")
             state["operator_name"] = "Pepe"                        # the memory agent, ~2 s later
             assert CP.compose("vale") and store.get("intro_done") is not True, "T3 still runs, the name just landed"
@@ -127,6 +129,7 @@ def test_closing_needs_BOTH_facts(world):
 def test_the_offer_is_not_told_by_a_turn_that_said_nothing(world):
     store, _state = world
     store["stt_language"] = "es"
+    store[presentation.FLAG] = True       # V2-929: said already — this turn carries the bare offer
     CP.compose(langs.spec("es").kickoff_prompt)
     assert introduction._offer_pending
     introduction._settle_offer({"window": [], "trace": "T"})
@@ -142,6 +145,7 @@ def test_a_reply_without_our_name_still_tells_the_offer_and_a_rename_makes_it_mo
     once he renamed us (the name slot set) it is moot."""
     store, _state = world
     store["stt_language"] = "es"
+    store[presentation.FLAG] = True       # V2-929: said already — this turn carries the bare offer
     CP.compose("pepe")
     introduction._settle_offer({"window": [{"role": "assistant", "text": "Encantado, Pepe. Puedes cambiarme el "
                                                                          "nombre y la voz."}], "trace": "T"})
@@ -157,6 +161,7 @@ def test_the_offer_settles_by_the_real_trace_of_its_turn(world, monkeypatch):
     from voice import trace
     store, _state = world
     store["stt_language"] = "es"
+    store[presentation.FLAG] = True       # V2-929: said already — this turn carries the bare offer
     monkeypatch.undo()       # back to the real `_this_turn`; the world's stores are set again below
     monkeypatch.setattr("config.settings.get", lambda k, d=None: store.get(k, d))
     monkeypatch.setattr("config.settings.update", lambda patch: store.update(patch))
@@ -188,6 +193,7 @@ def test_the_offer_is_told_only_by_the_turn_whose_prompt_carried_it(world, monke
     """A7 P2: a block composed outside a turn (a prompt warmed ahead) or another turn's close settles nothing."""
     store, _state = world
     store["stt_language"] = "es"
+    store[presentation.FLAG] = True       # V2-929: said already — this turn carries the bare offer
     monkeypatch.setattr("nucleo.turn.prompt.packs.introduction_block._this_turn", lambda: "")
     CP.compose(langs.spec("es").kickoff_prompt)
     introduction._settle_offer({"window": [{"role": "assistant", "text": "Hola, soy Zaelar."}], "trace": ""})

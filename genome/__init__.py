@@ -34,7 +34,7 @@ GENESIS = ENGINE / "nucleo" / "genesis.json"
 PACKS = ENGINE / "i18n" / "genesis"
 
 #: The sections a genesis must carry, each an object. A reader of one of these may assume a dict.
-SECTIONS = ("style", "consent", "library", "errands", "playbooks", "contacts", "circuit", "tasks", "genome")
+SECTIONS = ("persona", "style", "consent", "library", "errands", "playbooks", "contacts", "circuit", "tasks", "genome")
 
 _cache: dict = {"mtime": None, "data": None, "fallback": False}
 

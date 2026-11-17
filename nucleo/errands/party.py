@@ -45,7 +45,8 @@ def build_system(assistant_name: str, operator_name: str, lang_native: str,
     unconditionally is one the model promises unconditionally, and the person who pays for the gap is a
     stranger waiting for a link that never arrives.
     """
-    who = assistant_name or "zaelar"
+    from genome import persona
+    who = assistant_name or persona.default_name()
     op = operator_name or "la persona para la que trabajo"
     return (
         f"Eres {who}, el asistente personal de {op}. Estás escribiéndole a OTRA PERSONA en su nombre, por "

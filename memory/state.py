@@ -23,7 +23,11 @@ from . import db as _db
 # committed to writing their memory in Spanish. The product opens in English and switches to the operator's real
 # language on their first sentence; the memory has to start from the same place as everything else.
 _DEFAULT: dict = {
-    "assistant_name": "Zaelar",
+    # None = NOBODY NAMED IT: resolved at READ time from the genome's per-language catalogue (`genome/persona.py`), and
+    # stored as None again by `write` while it equals that default — so a language that later gets its own name in the
+    # catalogue renames an unnamed agent, and never one he named. Older rows carry the legacy default stamped in by
+    # `write` before this existed; `_NAME_EPOCH` tells that stamp from a real choice of the same word.
+    "assistant_name": None,
     "operator_name": None,
     # None = NOT YET CHOSEN, the same convention `mission`/`operator_name`/`location` already use here. It used to
     # be the literal "en", and that literal was a PIN nothing could move: no code in the tree ever writes this
@@ -91,7 +95,21 @@ def read() -> dict:
             pass
     if not base.get("language"):
         base["language"] = _active_language()
+    base["assistant_name"] = _resolved_name(base)
     return base
+
+
+#: Rows written since the name catalogue carry this; a row without it may hold the legacy default as a STAMP (V2-929).
+_NAME_EPOCH = 1
+
+
+def _resolved_name(st: dict) -> str:
+    """The name the agent goes by: the one he gave it, else the catalogue's for the memory's language."""
+    from genome import persona
+    name = str(st.get("assistant_name") or "").strip()
+    if st.get("assistant_name_epoch") != _NAME_EPOCH:
+        name = persona.chosen(name)          # the legacy default stamped by an older `write` was never chosen
+    return name or persona.default_name(st.get("language"))
 
 
 def _active_language() -> str:
@@ -116,6 +134,10 @@ def write(data: dict) -> None:
     """Reemplaza el estado completo por `data` (fusiona sobre los defaults para no dejar huecos)."""
     merged = dict(_DEFAULT)
     merged.update(data or {})
+    from genome import persona
+    if persona.norm(merged.get("assistant_name") or "") == persona.norm(persona.default_name(merged.get("language"))):
+        merged["assistant_name"] = None      # the catalogue's name is not a choice: stored as «unnamed» (see _DEFAULT)
+    merged["assistant_name_epoch"] = _NAME_EPOCH
     blob = json.dumps(merged, ensure_ascii=False)
     _db.get_db().execute(
         "INSERT INTO state (id, data) VALUES (1, ?) "

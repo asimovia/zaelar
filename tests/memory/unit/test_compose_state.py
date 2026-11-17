@@ -45,9 +45,10 @@ def test_compose_uses_seeded_mission_over_fallback(fresh_db):
     assert "MISIÓN SEMBRADA" in block and "fallback" not in block
 
 
-def test_compose_empty_with_no_fallback_is_blank(fresh_db):
+def test_compose_empty_with_no_fallback_carries_only_its_own_name(fresh_db):
+    """Nothing known but the agent's own name: the mission no longer names it (V2-929), so this line is where it does."""
     block, op, stats = memapi.compose_state(mission_fallback="")
-    assert block == "" and op == ""
+    assert "Te llamas Johnny." in block and op == ""
     assert not stats["has_mission"]
 
 

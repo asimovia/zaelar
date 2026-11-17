@@ -124,13 +124,40 @@ session exists for `live_tts.apply_voice` to reach, so `agent.py` calls `live_tt
 **The ⚙ says what each voice is**: `voices.describe_voice()` → «Eric · English (US) ♂», with the variant's
 native name from the picker catalog — a bare name would hide the voice's accent.
 
-### 6 · The greeting
+### 6 · The greeting — the presentation, said once
 
-`onboarding.confirmSpoken`, in the chosen language, spoken by `server/i18n_api.py` after the lock. On a
-normal (non-first) start the kickoff is decided by `first_air.decide_kickoff` (the voice process asks the body for
-the same decision) and its text is ONE i18n note, `kickoff_prompt`, read through `nucleo/turn/kickoff.py` — a system
-note, never his words. While the introduction phase runs, what the greeting says (its name, that its name and voice
-can change, his name) is that pack's block (`.meshkore/docs/architecture/zaelar-context-packs.md` §4, CRIT-V21).
+Nothing is spoken at the lock (V2-765: no language, no agent): the lock lifts the gate, the voice session starts, and
+its kickoff is the first thing heard. `first_air.decide_kickoff` decides whether a session greets at all (the voice
+process asks the body for the same decision) and its text is ONE i18n note, `kickoff_prompt`, read through
+`nucleo/turn/kickoff.py` — a system note, never his words. What the greeting SAYS is the introduction phase's block
+(`.meshkore/docs/architecture/zaelar-context-packs.md` §4, CRIT-V21).
+
+**On an install's first turn that block is the PRESENTATION** (`nucleo/turn/prompt/packs/presentation.py`, V2-929).
+Its words are language data, one entry per pack — `i18n/genesis/<lang>/voice.json › introduction.presentation`, with
+`{name}` filled from the agent's current name — so each language says it its own way; a language whose pack lacks it
+gets the English one and the model says it in his. It covers, in a few sentences:
+
+- who it is («I'm Johnny» — the genome's default name, below);
+- that right now it listens all the time and answers everything, but **word activation** makes it answer only when
+  called by name, switched by its button or by asking;
+- that its name and voice are his to change;
+- that it answers to one operator, though others may talk with it;
+- and his name.
+
+The turn that carried it settles it — **only when its reply named the agent**, which is what saying it means — as
+`intro_presentation_said`, an agent-side key in `config/settings.json`: never repeated, and a reset that starts the
+relationship over (which drops the agent-side keys) says it again. It carries the name-and-voice offer, so the offer
+is told with it. A first turn that is not a kickoff (a typed line was waiting) answers first and presents itself in
+the same turn.
+
+### 7 · The name
+
+An agent nobody named goes by the genome's catalogue (`nucleo/genesis.json › persona`, read by `genome/persona.py`):
+`name` maps a language to its default and `*` to every other one — «Johnny» for all of them today, chosen for how it
+sounds in English and Spanish, not its spelling. `heard_as` lists the spellings a recogniser writes for it («Jonny»,
+«Yoni»…); while that is the name each of them is a wake word, on the server's gate (`voice/attention._wakewords`) and
+on the browser's cheap ear (`wakeword.js`, from `GET /api/settings › wake_names`). «zaelar» stays a wake word after any
+name. The memory never stores the default as a choice: a name he gives (`state.assistant_name`) always wins.
 
 ## What any reset puts back
 
@@ -162,3 +189,5 @@ a reader looking for `d.extra.src` would never find it and leave the mic and spe
 | 8.6 | nothing speaks before a language is chosen; the catalog; the voice follows the language |
 | 8.7 | where the agent's files live — the validator, the endpoints, the cloud refusal |
 | 4.162 | the picker and the folder step, RENDERED |
+| 3.236 | the presentation, said once per install, ES and EN |
+| 2.1795 | the default name from the catalogue, and its STT spellings as wake words |

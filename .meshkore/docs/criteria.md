@@ -99,6 +99,16 @@ below is the first kind, or it names the mechanism that replaced the second.
   (`nucleo/turn/identity.py`, refactor2710-07). — since 2026-09-22 · nodes 2.56. The question is asked at the RENAME
   door — the model's `set_style_directive` call fires it into the turn's brief, its settle awaits it off the loop,
   still failing closed (`nucleo/turn/brief_doors`). — since 2026-11-12 · nodes 3.197.
+- **CRIT-V8c · The default name is DATA, and every spelling of it is his word.** An agent nobody named goes by the
+  genome's per-language catalogue (`nucleo/genesis.json › persona.name`, `*` for any other language — «Johnny» today),
+  read through one door (`genome/persona.py`); the memory never stores that default as a choice (a row an older engine
+  stamped with the legacy default reads as unnamed), and the spellings an STT writes for the name (`persona.heard_as`)
+  open the wake-word gate — server and browser ear alike — only while it is the name. A name he gives always wins.
+  — since 2026-11-17 · nodes 2.1795.
+- **CRIT-V8d · Word activation is knowledge and a switch, never a rail.** The live state names the mode as people
+  call it («palabra de activación», «word activation», wake word), what it is for, that its button is on the desktop
+  and the phone and that his voice switches it; the brief's sure `identity_change` verdict switches it both ways where
+  the button writes and tells both shells through `orb:attention`. — since 2026-11-17 · nodes 3.237.
 - **CRIT-V8b · His own speaker and ⏻ are reachable by voice through their BUTTONS.** «Mute the speaker» (it keeps
   listening), «unmute», «switch yourself off» are one `controls` act (`nucleo/acts/self_controls.py`) reached by the
   action map's seeds or the model's `agent_controls` call — never a word table over his sentence, so a remark about the
@@ -110,7 +120,10 @@ below is the first kind, or it names the mechanism that replaced the second.
 - **CRIT-V21 · The introduction is ONE phase of genesis, run once, and the first turn is a system note.** The first
   turn's text is the i18n `kickoff_prompt`, one line per language (`nucleo/turn/kickoff.py`): recognised by catalog at
   the gate, never substituted, never kept in the window or the short-term buffer as his words; the greeting's content
-  is the introduction block, a system section carrying the name-and-voice offer. The phase's watcher subscribes at
+  is the introduction block, a system section carrying the name-and-voice offer — and, on an install's first turn,
+  the PRESENTATION (`packs/presentation.py`, the language's `introduction.presentation`: its name, word activation, that
+  its name is his to change, one operator, his name), said once and marked `intro_presentation_said` by the turn whose
+  reply named the agent; it carries the offer, so the offer is told with it (node 3.236, since 2026-11-17). The phase's watcher subscribes at
   boot whatever the language, and reads its condition per turn; the block reads THE TURN — when he just answered something we asked (the answer rule, or a sure `answer` verdict
   even if our reply did not end on the question) it says, CONDITIONALLY, that what he said is known before memory
   writes it, never guessing which goal it was (I1); it closes on his name AND the offer told (`intro_offer_told`,

@@ -150,13 +150,16 @@ def _situation(st: dict, op: str) -> tuple[list[str], list[str]]:
     # IDENTITY WITHOUT AMBIGUITY (2026-09-09): renamed «Johnny», it greeted the OPERATOR as «Johnny». The OPERATOR
     # goes FIRST in the sentence — the small model takes the first name it sees as the vocative. Never «⚠️» here:
     # that marker is reserved for the critical facts (pinned by test_the_limit_is_the_last_thing_read.py).
-    aname = (st.get("assistant_name") or "Zaelar").strip() or "Zaelar"
+    from genome import persona
+    aname = str(st.get("assistant_name") or "").strip() or persona.default_name(st.get("language"))
     if op:
         sit.append(f"El operador se llama {op}: para dirigirte a él usa «{op}» y SOLO «{op}». Tú te llamas "
                    f"{aname} — «{aname}» eres TÚ (y es tu palabra de activación), JAMÁS un modo de llamarle "
                    f"a él.")
-    elif aname != "Zaelar":
-        sit.append(f"Te llamas {aname}.")      # a rename is something to say even before his name is known
+    else:
+        # Before his name is known too (V2-929): the mission no longer names the agent, so this line is where it learns
+        # its name — the catalogue's default or the one he gave it.
+        sit.append(f"Te llamas {aname}.")
     if st.get("treatment"):
         sit.append(f"Trato preferido: {st['treatment']}.")
     # Spoken rules are rows of the rules table since V2-806: the voice turn composes them, not memory.

@@ -102,11 +102,12 @@ def _known() -> dict:
 
 
 def offer_told() -> bool:
-    """Told once — or moot: he already renamed us (the name slot is set), so he knows it is his to change."""
+    """Told once (the presentation carries it, V2-929) — or moot: he renamed us, so he knows it is his to change."""
     try:
         from config import settings
+        from genome import persona
         from voice import attention
-        return bool(settings.get(OFFER_FLAG)) or bool(attention.assistant_name())
+        return bool(settings.get(OFFER_FLAG)) or not persona.is_default(attention.assistant_name())
     except Exception as e:  # noqa: BLE001
         logger.debug(f"introduction: {OFFER_FLAG} unreadable ({e!r})")
         return False
@@ -228,6 +229,9 @@ async def _consume_turns(q) -> None:
             if not is_active():
                 continue
             _turns += 1
+            from .presentation import settle as _present
+            from .introduction_block import _own_name
+            _present(payload, _own_name())
             _settle_offer(payload)
             await _maybe_close()
             if is_active() and _RECHECK_S > 0:

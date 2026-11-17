@@ -1,11 +1,18 @@
 {
   "_comment": "GENESIS RULES (V2-633) — the engine's shipped BASE conversational rules. This file is the factory default every install starts from; the operator overrides any of it by just SAYING so (set_style_directive -> style_policy.apply_directive persists the override in <workspace>/config/style.json, applied on the very next turn). Nothing here is per-user data: user overrides never live in this file.",
-  "generation": 2,
+  "generation": 3,
   "_generation": "V2-859 — the genome's GENERATION (was `version`). One integer for the whole genome (this file + i18n/genesis/<lang>/); `genome.identity()` names it with a hash of the canonical content, documentation keys stripped. A release that changes a gene bumps it; on boot a new generation absorbs the learned rows it now ships (`genome/absorb.py`).",
   "genome": {
     "_comment": "V2-859 T564 — what may cross from this agent to another: STRUCTURED genes only (alias · route · nothing_serves · threshold), each with the evidence it needs here. Prose is never learned. `thresholds` is the closed list of knobs a learned value may move, with its bounds; a knob not listed here is never a gene.",
     "evidence": {"alias_hits": 3, "route_closures": 1, "nothing_serves_answers": 1},
     "thresholds": {"consent.intent_act_at": [0.5, 0.95]}
+  },
+  "persona": {
+    "_comment": "The agent's default NAME, per language (operator, 2026-11-17: «nuestro agente se va a llamar Johnny desde el primer momento»). `name` is a catalogue: a language code maps to the name an install in that language is born with, and `*` is what every other language falls back to — so a language gets its own name by adding a row here, never by code. What counts is how the name SOUNDS and how the STT writes it, not its spelling: `heard_as` lists, per name, the spellings a speech recogniser produces for it in English and Spanish, and every one of them is a wake word while that is the name. A name the operator gives the agent replaces this one for good (`state.assistant_name`); `genome/persona.py` is the one reader.",
+    "name": {"*": "Johnny", "en": "Johnny", "es": "Johnny"},
+    "heard_as": {
+      "johnny": ["jonny", "johnnie", "jonnie", "johny", "jony", "joni", "jhonny", "jhony", "yoni", "yony", "yonny"]
+    }
   },
   "style": {
     "confirm_short_actions": true,

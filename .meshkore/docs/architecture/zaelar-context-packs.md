@@ -93,6 +93,12 @@ because a self-introduction should never turn into a four-minute monologue.
 Exits: knowing his name AND having told him, once, that the agent's name and voice are his to change
 (`intro_offer_told`, persisted by a turn that replied) · a judge after 4 turns, then one call every 4 · a cap at 30.
 
+**The install's first turn says the PRESENTATION** (V2-929, `packs/presentation.py`): the language's
+`introduction.presentation` (its name, word activation, that its name and voice are his to change, one operator, his
+name), said almost verbatim, once per install — `intro_presentation_said`, written by the close of the turn that
+carried it when its reply named the agent. It carries the name-and-voice offer, so that flag is written with it.
+Detail: `.meshkore/docs/modules/zaelar-first-run.md` §6.
+
 **It is one phase of genesis, and it owns the first turn** (CRIT-V21). The first turn's text is ONE i18n line,
 `kickoff_prompt`, read through `nucleo/turn/kickoff.py` by every piece that needs it (the voice that triggers the
 greeting, the gate that recognises a first turn by catalog, the window and the day ledger that must not keep it as

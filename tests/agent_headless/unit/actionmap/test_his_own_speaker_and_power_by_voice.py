@@ -185,7 +185,7 @@ def test_the_language_refusal_is_a_string_in_both_languages_and_invents_no_reset
     assert "reset" not in seg.lower() and "setLang" not in seg and "applyLang" not in seg
 
 
-@pytest.mark.parametrize("name", ["Zaelar", "Pepa"])
+@pytest.mark.parametrize("name", ["Johnny", "Pepa"])
 def test_the_first_run_greeting_offers_a_new_name_and_a_voice_with_the_name_slot(name, monkeypatch):
     """The offer lives in the INTRODUCTION phase's first-turn block (A7): one text for the first turn — the i18n
     kickoff note that `greeting_prompt` hands the voice — and the block the kickoff makes the phase compose, with
@@ -196,17 +196,17 @@ def test_the_first_run_greeting_offers_a_new_name_and_a_voice_with_the_name_slot
     from nucleo.turn import kickoff
     from nucleo.turn.prompt.packs import introduction
     from voice.engine.pipeline.first_air import greeting_prompt
-    store = {"stt_language": "es"}
+    store = {"stt_language": "es", "intro_presentation_said": True}   # V2-929: after the presentation, the bare offer
     monkeypatch.setattr("config.settings.get", lambda k, d=None: store.get(k, d))
     monkeypatch.setattr(introduction, "_known", lambda: {})
     before = attention._state.get("assistant_name")
     try:
-        attention.set_assistant_name("" if name == "Zaelar" else name)
+        attention.set_assistant_name("" if name == "Johnny" else name)
         for code in ("es", "en"):
             note = greeting_prompt(langs.spec(code))
             assert note == kickoff.text(langs.spec(code)) and kickoff.is_kickoff(note), code
             block = introduction.block(note)
-            if name != "Zaelar":           # he renamed us: the offer is moot (3.206)
+            if name != "Johnny":           # he renamed us: the offer is moot (3.206)
                 assert "nombre que quiera" not in block and "masculina o femenina" not in block, block
                 continue
             assert f"te llamas {name}" in block and "nombre que quiera" in block, block

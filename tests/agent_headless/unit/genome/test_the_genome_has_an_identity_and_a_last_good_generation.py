@@ -12,7 +12,7 @@ import json
 
 import genome
 
-GOOD = {"generation": 3, "style": {"max_sentences": 2, "_why": "doc"}, "consent": {}, "library": {"x": 1},
+GOOD = {"generation": 3, "persona": {}, "style": {"max_sentences": 2, "_why": "doc"}, "consent": {}, "library": {"x": 1},
         "errands": {}, "playbooks": {"meeting": {"done_when": "agreed"}}, "contacts": {}, "circuit": {},
         "tasks": {}, "genome": {"evidence": {}, "thresholds": {}}}
 

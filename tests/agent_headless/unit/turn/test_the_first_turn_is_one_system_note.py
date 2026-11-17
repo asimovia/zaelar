@@ -139,11 +139,17 @@ def phase(monkeypatch):
 
 @pytest.mark.parametrize("code", ["es", "en"])
 def test_the_kickoff_opens_the_phase_block_with_the_offer(phase, code):
+    """The first turn of an install carries the PRESENTATION (V2-929), which carries the offer; once it was said, a
+    first turn carries the bare offer (A7)."""
     note = langs.spec(code).kickoff_prompt
     composed = CP.compose(note)
     assert composed, "the kickoff is a system note: the phase rides it whatever its length"
-    assert "masculina o femenina" in composed and "nombre que quiera" in composed, composed
+    assert "PRESENTACIÓN" in composed and "Johnny" in composed, composed
     assert "PRIMER TURNO" in composed
+    phase["intro_presentation_said"] = True
+    composed = CP.compose(note)
+    assert "masculina o femenina" in composed and "nombre que quiera" in composed, composed
+    assert "PRESENTACIÓN" not in composed
 
 
 def test_the_built_first_prompt_carries_the_offer_as_a_system_section(phase, monkeypatch):
@@ -151,7 +157,7 @@ def test_the_built_first_prompt_carries_the_offer_as_a_system_section(phase, mon
     from nucleo.turn.prompt import builder
     monkeypatch.setattr(memory_cache, "get", lambda: ("", ""))
     system = builder.build_flash_system(turn_text=langs.spec("en").kickoff_prompt)[0]
-    assert "masculina o femenina" in system and "CONTEXTO DE FASE" in system
+    assert "PRESENTACIÓN" in system and "CONTEXTO DE FASE" in system
     assert "I just connected" not in system
 
 

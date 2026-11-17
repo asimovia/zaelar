@@ -27,7 +27,7 @@ def test_a_new_account_starts_in_english_and_empty(fresh_db):
     brand-new account's memory to a language its owner never chose."""
     s = memstate.read()
     assert s["language"] == "en"
-    assert s["assistant_name"] == "Zaelar"
+    assert s["assistant_name"] == "Johnny"            # the genome's default name (V2-929), never stored as a choice
     # And EMPTY: a fresh account owns no identity, no mission and no rules yet.
     assert s["operator_name"] is None
     assert s["mission"] is None

@@ -19,6 +19,10 @@ _GUIDE_URL = "https://zaelar.com/guide"
 _GUIDE_EXAMPLES_URL = "https://zaelar.com/guide/examples"
 
 
+_NOT_IN_PHASE = ("LO QUE NO HACES en esta fase: prometer nada que no puedas hacer, y hablar de cómo estás hecho por "
+                 "dentro. Si te pregunta qué eres, eres su asistente — no un modelo, ni una lista de piezas.")
+
+
 def _phase():
     from nucleo.turn.prompt.packs import introduction as _i   # the phase's state, read live (tests patch it there)
     return _i
@@ -26,11 +30,12 @@ def _phase():
 
 def _own_name() -> str:
     """The assistant-name slot (never a literal): what it is called right now."""
+    from genome import persona     # V2-929: the catalogue's default until he names it
     try:
         from voice.attention import assistant_name
-        return assistant_name() or "Zaelar"
+        return assistant_name() or persona.default_name()
     except Exception:  # noqa: BLE001 — an unreadable slot introduces itself by the default
-        return "Zaelar"
+        return persona.default_name()
 
 
 def _answered_ours(turn_text: str, asked: str | None = None) -> bool:
@@ -92,8 +97,14 @@ def block(turn_text: str = "", asked: str | None = None) -> str:
                if not str(st.get(key) or "").strip() and not (_here and key == "location")]
     first = _kickoff.is_kickoff(turn_text)
     answered = not first and _answered_ours(turn_text, asked)
-    tell_offer = not ph.offer_told()
+    from .presentation import line as _presentation
+    present = _presentation(_own_name(), first, _this_turn())    # V2-929: said once per install, then ""
+    tell_offer = not present and not ph.offer_told()             # the presentation carries the offer
     ph._offer_pending = _this_turn() if tell_offer else ""      # the turn that carries it, never a compose outside one
+    if first and present:
+        lines = ["ES TU PRIMER TURNO CON ÉL, el primero de esta instalación, y acaba de conectarse.", present,
+                 "Luego para y espera a que hable él.", _NOT_IN_PHASE]
+        return "\n".join(f"· {ln}" if i else ln for i, ln in enumerate(lines))
     if first:
         lines = [
             "ES TU PRIMER TURNO CON ÉL y acaba de conectarse: salúdale en 1-2 frases, cálido y breve. Si por tu "
@@ -103,9 +114,7 @@ def block(turn_text: str = "", asked: str | None = None) -> str:
         if tell_offer:
             lines.append(_offer_line())
         lines.append("Tres frases como mucho. Luego para y espera a que hable él.")
-        lines.append(
-            "LO QUE NO HACES en esta fase: prometer nada que no puedas hacer, y hablar de cómo estás hecho por "
-            "dentro. Si te pregunta qué eres, eres su asistente — no un modelo, ni una lista de piezas.")
+        lines.append(_NOT_IN_PHASE)
         return "\n".join(f"· {ln}" if i else ln for i, ln in enumerate(lines))
     lines = [
         "ES EL PRINCIPIO DE VUESTRA RELACIÓN: todavía no os conocéis. Durante esta fase, además de atender "
@@ -126,6 +135,8 @@ def block(turn_text: str = "", asked: str | None = None) -> str:
         lines.append("Ya sabes quién es. Lo que falta es que él sepa quién eres tú y para qué le sirves.")
     if name:
         lines.append(f"Se llama {name}: úsalo con naturalidad, ni en cada frase ni nunca.")
+    if present:
+        lines.append(present)
     if tell_offer:
         lines.append(_offer_line())
     # V2-737 — OFFERING the tour is part of the phase, not only answering about it. The operator (2026-09-20)
@@ -156,7 +167,5 @@ def block(turn_text: str = "", asked: str | None = None) -> str:
         f"en el chat: {_GUIDE_URL} (y {_GUIDE_EXAMPLES_URL} son ejemplos para copiar tal cual). Escribes la "
         f"dirección y ya se ve como enlace; **no la leas en voz alta letra por letra** — dile que se la "
         f"dejas ahí y sigue. Es un complemento de la conversación, nunca la respuesta a «¿qué sabes hacer?».")
-    lines.append(
-        "LO QUE NO HACES en esta fase: prometer nada que no puedas hacer, y hablar de cómo estás hecho por "
-        "dentro. Si te pregunta qué eres, eres su asistente — no un modelo, ni una lista de piezas.")
+    lines.append(_NOT_IN_PHASE)
     return "\n".join(f"· {ln}" if i else ln for i, ln in enumerate(lines))

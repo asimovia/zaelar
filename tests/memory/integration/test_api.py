@@ -239,7 +239,7 @@ def test_map_empty_db_is_graceful(fresh_db):
     m = memapi.map()
     assert m["layers"] == {"short": [], "long": []}
     assert m["edges"] == [] and m["counts"]["total"] == 0
-    assert m["state"]["assistant_name"] == "Zaelar"
+    assert m["state"]["assistant_name"] == "Johnny"   # the genome's default (V2-929)
 
 
 # ── TYPED multi-source ingestion + reading by indexed type (multi-source 2026-07-10) ────────────────────────

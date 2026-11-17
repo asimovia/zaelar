@@ -109,10 +109,20 @@ def _wakewords() -> tuple[str, ...]:
     # forever — this list was still hardcoded to "zaelar" and nothing had ever wired the rename to it. See
     # `set_assistant_name()` below for who calls in. Additive, never a replacement: "zaelar" keeps working
     # even after a rename (habit, or a stray "oye zaelar" from before it).
-    custom = _norm(_state["assistant_name"])
-    if custom and custom not in _DEFAULT_WAKEWORDS:
-        return _DEFAULT_WAKEWORDS + (custom,)
-    return _DEFAULT_WAKEWORDS
+    # V2-929 — and before anybody named it, the genome's default name (`genome/persona.py`, «Johnny»), with every
+    # spelling the STT writes for it: the name is chosen for how it SOUNDS, so «Yoni» must open the gate as «Johnny»
+    # does. A name not in the catalogue's table is just itself.
+    out = list(_DEFAULT_WAKEWORDS)
+    try:
+        from genome import persona
+        name = _state["assistant_name"] or persona.default_name()
+        spellings = persona.heard_as(name)
+    except Exception:  # noqa: BLE001 — an unreadable genome: the pushed name alone, as before
+        spellings = (_state["assistant_name"],)
+    for w in (_norm(x) for x in spellings):
+        if w and w not in out:
+            out.append(w)
+    return tuple(out)
 
 
 def set_assistant_name(name: str | None) -> None:
@@ -128,7 +138,8 @@ def set_assistant_name(name: str | None) -> None:
 
 
 def assistant_name() -> str:
-    """The name pushed by `set_assistant_name()` — '' if never set (nothing to add beyond the default)."""
+    """The name pushed by `set_assistant_name()` — '' until the memory has pushed one (the default name is still a
+    wake word: `_wakewords` reads the genome's catalogue)."""
     return _state["assistant_name"]
 
 

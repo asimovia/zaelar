@@ -115,11 +115,12 @@ async def _ask_model(system: str, dossier: str, *, max_tokens: int = MAX_TOKENS)
 
 def _identity() -> tuple[str, str, str]:
     """Who we are, who he is, and his language — the ONLY three facts about the operator that may cross."""
-    name, op, lang = "zaelar", "", "español"
+    from genome import persona
+    name, op, lang = persona.default_name(), "", "español"
     try:
         from memory import api as memory
         st = memory.state() or {}
-        name = str(st.get("assistant_name") or "zaelar")
+        name = str(st.get("assistant_name") or name)
         op = str(st.get("operator_name") or "")
     except Exception:
         pass

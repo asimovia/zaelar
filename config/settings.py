@@ -231,26 +231,29 @@ def effective() -> dict:
              _say("config.knob.language_note", "multilingual; on change, STT, the TTS voice and replies re-align to the language (applies on reconnect)")),
         knob("attention_mode", _say("config.knob.attention_label", "Attention · open mic"), os.getenv("ZAELAR_ATTENTION", "always"),
              [(_say("config.knob.attention_smart", "Smart (wake-word + conversation)"), "smart"),
-              (_say("config.knob.attention_wakeword", "Wake-word only («zaelar»)"), "wakeword"),
+              (_say("config.knob.attention_wakeword", "Word activation only (its name)"), "wakeword"),
               (_say("config.knob.attention_ptt", "Push to talk"), "ptt"),
               (_say("config.knob.attention_always", "Always on (everything is a command)"), "always")], "live",
-             _say("config.knob.attention_note", "smart = it only acts if you speak to zaelar («zaelar») or continue a conversation; the rest it ignores (ambient)")),
+             _say("config.knob.attention_note", "smart = it only acts if you call it by its name or continue a conversation; the rest it ignores (ambient)")),
         # ⚠️ 5s is a HARD ceiling in smart mode (operator rule 2026-09-10: no pause over 5 seconds) — the
         # engine clamps whatever this knob says (voice/attention.py::window_s), so the options only shorten.
         knob("attention_window", _say("config.knob.window_label", "Attention · conversation window"), os.getenv("ZAELAR_ATTENTION_WINDOW", "5"),
              [("3 s", "3"), ("4 s", "4"), (_say("config.knob.window_max", "5 s (maximum)"), "5")], "live",
-             _say("config.knob.window_note", "seconds it keeps listening without you repeating «zaelar» after addressing it (smart mode); "
+             _say("config.knob.window_note", "seconds it keeps listening without you repeating its name after addressing it (smart mode); "
                                              "hard ceiling of 5 s")),
     ]
     # Read-only, for the orb's 🤖 tooltip (2026-09-09): the wake-word IS the current spoken name (renamed via
     # voice, `nucleo/flash/identity_actions.py`), not the literal "zaelar" the tooltip used to hardcode.
+    from genome import persona
     try:
         from memory import api as _mem
-        assistant_name = (_mem.state().get("assistant_name") or "Zaelar").strip() or "Zaelar"
+        assistant_name = str(_mem.state().get("assistant_name") or "").strip() or persona.default_name()
     except Exception:
-        assistant_name = "Zaelar"
+        assistant_name = persona.default_name()
+    # V2-929 — every spelling an STT writes for a catalogue name, so the browser's cheap ear answers to «Yoni» as it
+    # does to «Johnny» (`frontend/app/services/wakeword.js::wakeNames`).
     return {"knobs": knobs, "free_text": [], "voices_by_provider": voices_by_provider, "theme": theme(),
-            "wallpaper": wallpaper(), "assistant_name": assistant_name}
+            "wallpaper": wallpaper(), "assistant_name": assistant_name, "wake_names": persona.wake_table()}
 
 
 import re as _re
@@ -366,7 +369,7 @@ def update(payload: dict) -> dict:
     # V2-675 — the introduction phase, once over. It had no branch here, so `update` dropped it with «sin
     # cambios» and the phase «closed» on every turn without ever persisting: 79 closes in one demo pass, and
     # after forty turns the agent was still asking «since we've only just started talking…» (2026-09-28, S4).
-    for k in (k for k in ("intro_done", "intro_offer_told") if k in payload):   # A7: the offer told once is the phase's second fact
+    for k in (k for k in ("intro_done", "intro_offer_told", "intro_presentation_said") if k in payload):   # A7: the offer told once is the phase's second fact
         d[k] = bool(payload[k])
         applied.append(k)
     # Boolean knobs (apply live, without reconnecting): e.g. memory_observability.
@@ -504,6 +507,7 @@ AGENT_KEYS = frozenset({
     # cero, como si fuera la primera vez") correctly makes the agent introduce itself again.
     "intro_done",
     "intro_offer_told",   # A7 — that he was told, once, that the name and the voice are his to change
+    "intro_presentation_said",   # V2-929 — the first-run presentation, said once per relationship
 })
 
 

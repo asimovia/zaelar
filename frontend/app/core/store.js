@@ -97,7 +97,7 @@ export const [micLevel, setMicLevel]       = createSignal(0);               // t
 // the only real-time signal this turn-based system can give (never word-by-word); it clears on the next
 // `ambient` (not-directed) verdict or after its own `window_s`, whichever comes first — see sse.js.
 export const [attentionMode, setAttentionMode] = createSignal("always");
-export const [assistantName, setAssistantName] = createSignal("Zaelar");
+export const [assistantName, setAssistantName] = createSignal("Johnny");   // until GET /api/settings answers: the genome's default name (V2-929)
 export const [attentionHit, setAttentionHit]   = createSignal(false);
 let _attnHitT = null;
 export function pulseAttentionHit(windowS) {

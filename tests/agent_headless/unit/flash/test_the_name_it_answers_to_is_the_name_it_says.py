@@ -39,10 +39,10 @@ def world(monkeypatch):
 def test_a_sure_rename_verdict_with_the_models_name_renames(world):
     wrote, emit, events = world
     from voice import attention
-    assert not attention.has_wakeword("Hey, Johnny.")          # the deaf state of 2026-09-12
-    assert asyncio.run(identity.settle(_brief("rename", 0.95), "Johnny", emit)) == "rename"
-    assert wrote == {"assistant_name": "Johnny"}, "written where the gate reads it, never as a pill or a rule"
-    assert attention.has_wakeword("Hey, Johnny. Show me my agenda.")
+    assert not attention.has_wakeword("Hey, Lola.")            # the deaf state of 2026-09-12 («Johnny» is now the default)
+    assert asyncio.run(identity.settle(_brief("rename", 0.95), "Lola", emit)) == "rename"
+    assert wrote == {"assistant_name": "Lola"}, "written where the gate reads it, never as a pill or a rule"
+    assert attention.has_wakeword("Hey, Lola. Show me my agenda.")
     assert "zaelar" in [w.lower() for w in attention.wakewords()], "the shipped name keeps working"
     assert any(a[1] == "🏷️ zaelar se renombra" for a in events)
 

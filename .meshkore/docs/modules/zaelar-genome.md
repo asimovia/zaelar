@@ -11,7 +11,7 @@ Two places that already existed, read as one thing — nothing moved:
 
 | Part | Lives in | What it carries |
 |---|---|---|
-| universal genes | `nucleo/genesis.json` | knobs, consent classes, playbook end states and needs, the `genome` section |
+| universal genes | `nucleo/genesis.json` | the default name (`persona`), knobs, consent classes, playbook end states and needs, the `genome` section |
 | culture | `i18n/genesis/<lang>/*.json` | playbook prose, action aliases, small talk, voice |
 
 `genome.identity()` → `{generation, hash, langs}`. The hash is sha256 over canonical JSON with every documentation
@@ -36,10 +36,20 @@ snapshot at `<workspace>/config/genome/last_good.json`, then the absorption. Rea
 `alert` event) and the reader gets the last generation that passed; with no snapshot yet, `{}` and each reader's
 own code default. Never half a file.
 
-Readers through `genome.genesis()` today: `nucleo/errands/playbooks.py`, `rules/defaults.py`, `library/paths.py`,
+Readers through `genome.genesis()` today: `genome/persona.py`, `nucleo/errands/playbooks.py`, `rules/defaults.py`, `library/paths.py`,
 `widgets/directory.py`. **Still reading the file directly:** `nucleo/circuit/__init__.py` (open — it should read
 through the same door). A culture pack that does not parse is logged as an error at boot; the packs have no
 fallback of their own yet (their reader is `i18n/packs.py`).
+
+## The default name (`persona`, V2-929 — generation 3)
+
+`genesis.json › persona` is the agent's name before anybody names it, as a catalogue: `name` maps a language code to
+the name an install in that language is born with, `*` covers every other language (all «Johnny» today), and
+`heard_as` lists, per name, the spellings a recogniser writes for it in the shipped languages. `genome/persona.py` is
+the one reader (`default_name(lang)`, `heard_as(name)`, `wake_table()`); the memory resolves an unnamed state through
+it at read time and never stores the default as a choice, the attention gate and the browser ear answer to every
+spelling of the current name. It is factory data, not a heritable gene: a learned value never moves it, and the name
+he gives his agent is personal (memory). `persona` is a required section of `check()`.
 
 ## Genes: the closed shapes (`genes.py`)
 

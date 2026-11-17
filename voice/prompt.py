@@ -16,11 +16,12 @@
 #
 import os
 
-ASSISTANT_NAME = os.getenv("ASSISTANT_NAME", "Zaelar")
+ASSISTANT_NAME = os.getenv("ASSISTANT_NAME", "")   # power-user override; unset = the genome's default name (V2-929)
 
 
 def build_system_prompt(assistant_name: str = "", user_name: str = "", has_context: bool = False) -> str:
-    name = assistant_name or ASSISTANT_NAME
+    from genome import persona
+    name = assistant_name or ASSISTANT_NAME or persona.default_name()
     know_name = (user_name or "").strip()
 
     name_rule = (

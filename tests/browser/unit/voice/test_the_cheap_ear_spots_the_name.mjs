@@ -45,6 +45,15 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 assert.deepEqual(wake.wakeNames("Johnny"), ["zaelar", "johnny"]);
 assert.deepEqual(wake.wakeNames(""), ["zaelar"], "no rename yet — the default still answers");
 assert.deepEqual(wake.wakeNames("Zaelar"), ["zaelar"], "never the same word twice");
+// V2-929 — the default «Johnny» is chosen for how it SOUNDS: every spelling the genome lists for it
+// (`persona.heard_as`, served as `wake_names`) is a name this ear answers to, and only for THAT name.
+const HEARD = { johnny: ["jonny", "yoni"] };
+assert.deepEqual(wake.wakeNames("Johnny", HEARD), ["zaelar", "johnny", "jonny", "yoni"]);
+assert.equal(wake.spotIn("oye Yoni, ¿qué tiempo hace?", wake.wakeNames("Johnny", HEARD)), "yoni");
+assert.deepEqual(wake.wakeNames("Lola", HEARD), ["zaelar", "lola"], "a spelling only while it is the name");
+wake.setHeard(HEARD);
+assert.deepEqual(wake.wakeNames("Johnny"), ["zaelar", "johnny", "jonny", "yoni"], "the table the settings served");
+wake.setHeard({});
 
 // ══ 2 · THE MATCH IS THE ENGINE'S MATCH ══════════════════════════════════════════════════════════════
 // `voice/attention.py::_norm` strips accents and lowercases; if this side did not, «Iñaki» and «Inaki»
