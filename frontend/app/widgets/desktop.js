@@ -302,8 +302,8 @@ export class Desktop {
     // flag each branch has to remember to move: six places add or remove `hb-cinema`/`hb-fullwide`
     // (maximize, restore, close, resize, the reset and the native toggle) and a rule every caller has to
     // remember is not a rule. They all call one method and that method LOOKS. Leaving native fullscreen
-    // with Escape goes through none of them: hence the event.
-    try{ document.addEventListener("fullscreenchange", ()=>this._syncOrbDock()); }catch(_){}
+    // with Escape goes through none of them: hence the event. It is REPORTED too (`max`, 4.561): a typed order enters the browser's own full screen with no `_persist`, so the circuit read «not maximized» and said «I couldn't make it full screen».
+    try{ document.addEventListener("fullscreenchange", ()=>{ this._syncOrbDock(); this._reportOpen(true); }); }catch(_){}
     // V2-759 — Escape leaves the IN-APP full screen as well. The native one already exits on Escape by itself,
     // and a voice order lands on the in-app road (no gesture, V2-583), so without this the same key meant «out»
     // or nothing depending on a road he cannot see. A widget that uses Escape for itself calls preventDefault.
@@ -486,7 +486,7 @@ export class Desktop {
       // reached a model that could not name the target and answered «Hecho.» without doing anything (measured
       // live 2026-09-07 18:54:27). It rides the report that already travels on every _persist().
       items.push({id, q:w.q||"", left:(r?r.left:c.style.left), top:(r?r.top:c.style.top), z:c.style.zIndex||"",
-                  min:c.classList.contains("hb-minned")?1:0, max:r?1:0, t:c._t||0,
+                  min:c.classList.contains("hb-minned")?1:0, max:(r || document.fullscreenElement === c)?1:0, t:c._t||0,
                   w:(r?r.w:c.style.width)||"", h:(r?r.h:c.style.height)||""}); });
     return items;
   }
@@ -501,8 +501,8 @@ export class Desktop {
   // llaman _persist a ráfagas) + best-effort. Envía this.list() crudo; el servidor normaliza (navegador::t3→navegador).
   // Lleva ADEMÁS la geometría, que el server guarda como red de seguridad del localStorage (que es per-origen y
   // per-navegador: el mismo zaelar por localhost y por 127.0.0.1 son dos escritorios distintos). Ver `restore()`.
-  _reportOpen(){
-    try{ document.dispatchEvent(new CustomEvent("hb:canvas-changed")); }catch(_){}   // V2-537 (closeAll/restore too)
+  _reportOpen(quiet){   // quiet: the legacy report alone — the screen document has its own fullscreenchange listener
+    if(!quiet) try{ document.dispatchEvent(new CustomEvent("hb:canvas-changed")); }catch(_){}   // V2-537 (closeAll/restore too)
     clearTimeout(this._openTimer);
     this._openTimer=setTimeout(async ()=>{
       const dev = await _device();
