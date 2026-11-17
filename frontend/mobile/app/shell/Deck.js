@@ -216,8 +216,7 @@ export class Deck {
     this.order = [];            // deck order, left to right
     this.at = -1;               // index of the visible card (-1 = the HOME)
     this._running = true;
-    this._meta = null; this._ids = null; this._registry = null; this._ver = {};
-    this._openTimer = 0;
+    this._meta = null; this._ids = null; this._registry = null; this._ver = {}; this._live = {}; this._openTimer = 0;
     this._empty = null;
     this._pips = null;
     this._runtime = {};         // base -> active_when clauses (V2-092 runtime contract), null = declares none
@@ -702,7 +701,8 @@ export class Deck {
     try {
       const data = providedData != null ? providedData
         : await fetch(`/widgets/${baseId}/data` + (q ? `?q=${encodeURIComponent(q)}` : "")).then(r => r.json());
-      const mod = await import(`/widgets/${baseId}/widget.js` + (this._ver[baseId] ? `?v=${this._ver[baseId]}` : ""));
+      const [mod] = await Promise.all([import(`/widgets/${baseId}/widget.js` + (this._ver[baseId] ? `?v=${this._ver[baseId]}` : "")),
+        this._catalog()]);                            // the catalog says live_title before the first render (hostTitle)
       if (data && data.error) return this._mountError(w, baseId, "data: " + data.error);
       w.card.classList.remove("loading");
       if (w.load) { w.load.remove(); w.load = null; }
@@ -762,9 +762,9 @@ export class Deck {
         // would go stale and a widget that produces would start over a stopped agent (V2-092).
         get running() { return deck._running; },
       };
-      // The card header already carries the title, so tell the widget not to draw its own — same marker the
-      // desktop host uses, set BEFORE the first render or the first paint ships a duplicated title.
-      w.body.dataset.hostTitle = "1";
+      // A `live_title` card's header carries its title, so tell the widget not to draw its own — the desktop's marker and
+      // its condition (desktop.js), set BEFORE the first render or the first paint ships a duplicated title.
+      if (this._live[baseId]) w.body.dataset.hostTitle = "1";
       mod.render(w.body, data, ctx);
       this._applyTitle(w, data);
       w._dataSig = JSON.stringify(data); w._data = data; w._mod = mod; w._ctx = ctx;
@@ -794,12 +794,12 @@ export class Deck {
     } catch (_) {}
   }
 
-  // Title priority: the LIVE task the widget is working on (a sentence beats a label — same call the desktop
-  // header makes), then the operator's own name for it (registry, V2-082), then the catalog index, then the id.
+  // Title priority: the LIVE task, or the title of a `live_title` widget (`_live`, kept apart from `_meta`, which is
+  // dropped and refetched), then the operator's own name for it (registry, V2-082), then the catalog index, then the id.
   _applyTitle(w, data) {
     const reg = this._registry && this._registry[w.base];
     const meta = this._meta && this._meta[w.base];
-    const live = data && ((meta && meta.live_title && data.title) || data.task);   // `live_title` opt-in, as desktop.js
+    const live = data && ((this._live[w.base] && data.title) || data.task);   // `live_title` opt-in, as desktop.js
     w.titleEl.textContent = String(live || (reg && reg.name) || (meta && (meta.name || meta.title)) || w.base);
   }
 
@@ -821,7 +821,7 @@ export class Deck {
       const c = await fetch("/widgets").then(r => r.json());
       const ws = c.widgets || [];
       this._ids = ws.map(w => w.id);
-      this._meta = {}; ws.forEach(w => { this._meta[w.id] = w; });
+      this._meta = {}; ws.forEach(w => { this._meta[w.id] = w; if (w.live_title) this._live[w.id] = true; });
     } catch (_) { this._meta = this._meta || {}; this._ids = this._ids || []; }
     return this._meta;
   }

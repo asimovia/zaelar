@@ -6800,7 +6800,8 @@ DOMAINS: list[dict] = [
         {"id": "4.564", "title": "The phone's card header names the WIDGET (2026-11-17): `Deck.js::_applyTitle` lends a card its "
                                   "`data.title` only when the manifest declares `live_title`, as desktop.js does — a "
                                   "player's video is not its name; `data.task` and his own name for it still apply; the "
-                                  "old every-title rule disarmed reads red",
+                                  "flag outlives a dropped or failed catalog and `hostTitle` is set on the same condition; "
+                                  "each old rule disarmed reads red",
             "ch": UNIT, "paths": ["tests/browser/unit/mobile/test_the_phone_header_names_the_widget.py"]},
         {"id": "4.518", "title": "The photo gallery says the filter on each screen, how many photos it holds and the year he is looking at (V2-884 C8 step 5): `filter`, `shown` and `year` (the header at the top of what he sees) after every paint and as he scrolls — the applied report owed until sent, a scroll never cancels it; a search is `?ordered` on each screen until it acks; two screen pairs; disarmed → red",
             "ch": UNIT, "paths": ["tests/browser/unit/fotos/test_the_gallery_reports_what_he_sees.py"]},
