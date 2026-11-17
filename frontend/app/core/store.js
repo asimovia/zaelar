@@ -807,9 +807,8 @@ function _saveChatNow(xs) {
 }
 
 const _restoredChat = _loadChat();
-// WHERE the restored part ends, so the wall can mark it. A history that looks like it was just said is
-// the V2-582 class — a stale thing presented as current is worse than a blank screen.
-export const restoredChatCount = _restoredChat.msgs.length;
+// WHEN the restored part was saved, so the wall can mark it (its rows are flagged below). A history that looks like
+// it was just said is the V2-582 class — a stale thing presented as current is worse than a blank screen.
 export const restoredChatAt = _restoredChat.at;
 
 // The exported setter IS the wrapper, so there is no unwrapped door: `_setChatMsgs` never leaves this file.
@@ -818,7 +817,7 @@ export const setChatMsgs = (v) => {
   try { _saveChat(chatMsgs()); } catch (_) {}
   return out;
 };
-export const pushChat = (m) => setChatMsgs(xs => _capChat([...xs, m]));
+export const pushChat = (m) => setChatMsgs(xs => _insertByAt(xs, m));
 
 // V2-862 — an errand's REFERENCE BOX on the wall (`nucleo/chat_refs.py`, SSE kind `artifact`). ONE box per task
 // row (`ref`): the first event draws it where the conversation is, every later one (retitled, closed, a relay that
@@ -831,7 +830,7 @@ export const upsertChatRef = (d) => {
                 card: String(d.card || ""), state: String(d.state || "started"), file: String(d.file || "") };
   setChatMsgs(xs => {
     const k = xs.findIndex(m => m && m.role === "ref" && m.ref === ref);
-    if (k < 0) return _capChat([...xs, row]);
+    if (k < 0) return _insertByAt(xs, row);
     const was = xs[k];
     const merged = { ...was, ...row, text: row.text || was.text, card: row.card || was.card, file: row.file || was.file };
     return [...xs.slice(0, k), merged, ...xs.slice(k + 1)];
@@ -852,7 +851,9 @@ export const [liveChat, _setLiveChat] = createSignal("");
 export const setLiveChat  = (text) => _setLiveChat(String(text || "").slice(0, CHAT_MAX_TEXT));
 export const clearLiveChat = () => _setLiveChat("");
 
-if (_restoredChat.msgs.length) _setChatMsgs(_restoredChat.msgs);   // restore without re-writing what we read
+// Each restored row is FLAGGED, so the wall's divider follows the rows themselves — a counter could not tell which
+// rows the cap trimmed once the list sat at the cap, and the divider stuck to the end for good.
+if (_restoredChat.msgs.length) _setChatMsgs(_restoredChat.msgs.map(m => ({ ...m, restored: true })));   // no re-write
 // A tab being closed can happen inside the debounce window — flush what is PENDING rather than lose the
 // last thing he said. `pagehide` fires where `beforeunload` is unreliable (mobile Safari, bfcache).
 //
@@ -880,6 +881,24 @@ try {
 // is kept (what the agent intended to say), as it is the useful history.
 const _CHAT_MARKERS = /^(?:🔔|💬)\s*/;
 const _normAgent = s => String(s || "").replace(_CHAT_MARKERS, "").trim();
+
+// ── 2026-11-17 · EVERY ROW IS STAMPED WHEN IT IS COMMITTED, AND THE WALL IS IN THAT ORDER ──────────────────
+// Operator's rule: his words when they are final (said or typed), the agent's line when the voice starts it — each at
+// that instant, to the ms — and the wall shows them in exactly that order. Rows used to be ordered by when they were
+// PUSHED, so a line of his released late by the attention hold landed under the reply it had caused. `at` is the
+// engine's `t_ms` of the committing event; a row with no event of its own takes the engine clock as this tab last
+// read it (`noteServerTime`), so both kinds sort on one clock. Insertion is stable; a row without `at` (a history
+// from before stamps) is a barrier nothing sorts above.
+let _skewMs = 0;
+export const noteServerTime = (tMs) => { const t = Number(tMs); if (t > 0) _skewMs = t - Date.now(); };
+const _stamp = (at) => (Number(at) > 0 ? Number(at) : Date.now() + _skewMs);
+export const serverNow = () => _stamp();
+const _insertByAt = (xs, m) => {
+  const row = { ...m, at: _stamp(m.at) };
+  let k = xs.length;
+  while (k > 0 && Number(xs[k - 1].at) > row.at) k--;
+  return _capChat([...xs.slice(0, k), row, ...xs.slice(k)]);
+};
 
 // ── V2-745 · THE WALL KEEPS WHAT WAS SAID, NOT WHAT WAS MEANT ───────────────────────────────────────────
 //
@@ -986,16 +1005,16 @@ export const noteVoiceIdle = () => { _voiceSounding = null; if (_pendingVoiced &
 
 /** The voice STARTED this line (`bot_speech speaking`, or the first caption of it) → now it may be written.
  *  Until this, an owed line exists nowhere the operator can see, which is the whole point. */
-const _paintOwed = () => {
+const _paintOwed = (at) => {   // `at`: the start event's t_ms — the line is committed when the voice starts it
   const p = _pendingVoiced;
   if (!p || p.painted) return;
   p.painted = true;
-  setChatMsgs(xs => _capChat([...xs, { role: "agent", text: p.full, trace: p.trace || "" }]));
+  setChatMsgs(xs => _insertByAt(xs, { role: "agent", text: p.full, trace: p.trace || "", at }));
   _setVoicedLine({ full: p.full, heard: p.heard, streaming: true, trace: p.trace || "" });
 };
 
 /** `bot_speech speaking` — the engine says this utterance reached the speaker. */
-export const noteVoiceStarted = (trace) => {
+export const noteVoiceStarted = (trace, at) => {
   // the voice moved on to a line that waits behind the one still owed: that one ended where the voice left it
   if (_pendingVoiced && _pendingVoiced.painted && _owedQueue.length && (trace || "") !== (_pendingVoiced.trace || "")
       && (!trace || !_owedQueue[0].trace || _owedQueue.some(q => q.trace === trace))) settleAgentSpoken();
@@ -1006,7 +1025,7 @@ export const noteVoiceStarted = (trace) => {
   // turn. Painting the owed line on it put the reply in a bubble ABOVE what the voice said next (his ERROR 6); a traced
   // line is written by its own start, its own caption or its own spoken record, in the order the voice says them.
   if (p.trace && trace !== p.trace) { if (!trace) _voiceSounding = ""; return; }
-  _paintOwed();
+  _paintOwed(at);
 };
 
 /** The turn was cancelled (`state interrupted`, `flow end` with no speech). A line the voice never began is
@@ -1078,7 +1097,7 @@ const _settleOwed = () => {
     // A cut line keeps an ellipsis: it is the honest mark that the sentence stopped where the voice did.
     // It keeps what was OWED (`full`): the spoken record that follows is compared with that, never with the cut text.
     const t = xs[k].trace || "";
-    return heard ? [...xs.slice(0, k), { role: "agent", text: heard + "…", trace: t, full: p.full, cut: true }, ...xs.slice(k + 1)]
+    return heard ? [...xs.slice(0, k), { role: "agent", text: heard + "…", trace: t, full: p.full, cut: true, at: xs[k].at }, ...xs.slice(k + 1)]
                  : [...xs.slice(0, k), ...xs.slice(k + 1)];
   });
 };
@@ -1102,8 +1121,8 @@ const _fromSpoken = (xs, k, text, trace) => {
   const m = xs[k], owed = _normAgent(m.full || m.text), said = _normAgent(text);
   if (!said || (!m.cut && owed === said)) return xs;
   let row;
-  if (owed === said || said.startsWith(owed)) row = { role: "agent", text, trace };   // all of it (and what followed)
-  else if (owed.startsWith(said)) row = { role: "agent", text: text + "…", trace, full: m.full || m.text, cut: true };
+  if (owed === said || said.startsWith(owed)) row = { role: "agent", text, trace, at: m.at };   // all of it (and what followed)
+  else if (owed.startsWith(said)) row = { role: "agent", text: text + "…", trace, full: m.full || m.text, cut: true, at: m.at };
   else return xs;
   return [...xs.slice(0, k), row, ...xs.slice(k + 1)];
 };
@@ -1151,14 +1170,14 @@ export const pushAgentChat = (text, opts) => {
     _pendingVoiced = null;
     _endVoiceStream();
     const cut = owed.startsWith(said) && owed !== said;
-    setChatMsgs(xs => _capChat([...xs, cut ? { role: "agent", text: text + "…", trace: tr, full, cut: true }
-                                           : { role: "agent", text, trace: tr }]));
+    setChatMsgs(xs => _insertByAt(xs, cut ? { role: "agent", text: text + "…", trace: tr, full, cut: true, at: o.at }
+                                          : { role: "agent", text, trace: tr, at: o.at }));
     return;
   }
   if (o.spoken && o.trace && _owedQueue.some(q => q.trace === o.trace)) {
     // the record of a line that waited its turn: proof it sounded, written now, in its place
     _owedQueue = _owedQueue.filter(q => q.trace !== o.trace);
-    setChatMsgs(xs => _capChat([...xs, { role: "agent", text, trace: o.trace }]));
+    setChatMsgs(xs => _insertByAt(xs, { role: "agent", text, trace: o.trace, at: o.at }));
     return;
   }
   if (o.spoken && o.trace && (_isMuted(o.trace)
@@ -1189,15 +1208,15 @@ export const pushAgentChat = (text, opts) => {
       // already trimmed by `settleAgentSpoken` and this collapses to the equality above.
       if (a && b && o.spoken && a.startsWith(b)) {
         _pendingVoiced = null;
-        return _capChat([...xs.slice(0, -1), { role: "agent", text: text + "…", full: last.text, cut: true }]);
+        return _capChat([...xs.slice(0, -1), { role: "agent", text: text + "…", full: last.text, cut: true, at: last.at }]);
       }
       if (a && b && a.startsWith(b)) return xs;                        // a shorter re-send of the same line
       if (a && b && b.startsWith(a)) {                                 // the new one EXTENDS what is rendered → replace
         if (_pendingVoiced && _normAgent(_pendingVoiced.full) === a) _pendingVoiced.full = text;   // same line, longer
-        return _capChat([...xs.slice(0, -1), { role: "agent", text }]);
+        return _capChat([...xs.slice(0, -1), { role: "agent", text, at: last.at }]);
       }
     }
-    return _capChat([...xs, { role: "agent", text, trace: o.trace || "", ...(o.kind ? { kind: o.kind } : {}) }]);
+    return _insertByAt(xs, { role: "agent", text, trace: o.trace || "", at: o.at, ...(o.kind ? { kind: o.kind } : {}) });
   });
 };
 

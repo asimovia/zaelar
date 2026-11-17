@@ -121,11 +121,11 @@ function harness(mode = "smart", holdMs = 40) {
   assert.ok(src.includes("createAttentionHold("), "sse.js no longer builds the hold");
   assert.ok(src.includes("holdSpokenTurn(desktop, d.text, isFinal)"),
     "spoken transcripts must go through the hold, not straight to the wall");
-  assert.ok(src.includes("settleHeldTurns(desktop, d.text || \"\", !!d.directed)"),
+  assert.ok(src.includes("settleHeldTurns(desktop, d.text || \"\", !!d.directed, { reason: d.reason || \"\" })"),
     "the gate's verdict must settle what is held");
   // V2-664: the delivery must SPLIT — the wall always, the canvas only when judged.
   // V2-745 adds the second axis: `whole` says which half of the release this call is.
-  assert.ok(/deliver:\s*\(text,\s*isFinal,\s*judged,\s*whole\)\s*=>/.test(src),
+  assert.ok(/deliver:\s*\(text,\s*isFinal,\s*judged,\s*whole,\s*at\)\s*=>/.test(src),
     "sse.js must receive both flags the hold now hands it");
   assert.ok(/if\s*\(whole\)\s*return void store\.pushChat/.test(src),
     "the JOINED paragraph is the only thing that may reach the wall — one sentence, one bubble");

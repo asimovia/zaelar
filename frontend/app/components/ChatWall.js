@@ -867,9 +867,9 @@ export function ChatWall() {
   // reactive CHAT message list: rebuild on every change, then pin to the latest message.
   // V2-681 T-1 — where the RESTORED part of the history ends. The wall now survives a refresh, and a
   // conversation from before that refresh must not read as something just said: this marks the boundary
-  // the way the messaging widget already marks the start of what it has stored. It shrinks as the
-  // restored lines age out of the 100-message cap, and reaches 0 once none are left.
-  let restoredLeft = store.restoredChatCount;
+  // the way the messaging widget already marks the start of what it has stored. The store FLAGS each restored
+  // row (`restored`), and the divider goes after the last one: a counter of them could not see the cap trim
+  // one once the list sat at 100, and stuck the divider to the end of the wall for good (2026-11-17).
   const restoredAt = store.restoredChatAt;
   // Reuses `ago()` — this file's own relative formatter, already translated in both bundles — instead of a
   // second way of saying when something happened inside one component.
@@ -892,8 +892,8 @@ export function ChatWall() {
     // V2-747 — the line the voice is saying RIGHT NOW, and how much of it has been heard. A dependency of
     // this effect on purpose: each caption segment repaints the wall, which is the crawl he asked for.
     const say = store.voicedLine();
-    // The cap trims from the OLDEST end, so the restored block can only shrink, never move.
-    if (restoredLeft > msgs.length) restoredLeft = msgs.length;
+    let restoredLeft = 0;                    // rows up to and including the last restored one
+    msgs.forEach((m, i) => { if (m && m.restored) restoredLeft = i + 1; });
     const rows = [], lastRow = new Map();   // V2-886 D6: trace → index after that turn's last row (`placeAsks` reads the asks)
     msgs.forEach((m, i) => {
       // The divider goes AFTER the last restored line — it says «what is above this was said earlier»,

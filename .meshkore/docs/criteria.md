@@ -65,8 +65,11 @@ below is the first kind, or it names the mechanism that replaced the second.
   (`bot_speech speaking`), never when generated; its identity is the turn's trace, not its position; a held
   fragment is glued to the next only if the next continues it. A line whose utterance is already sounding (the wait
   filler opened it) is written when it is owed, and a spoken record that EXTENDS the owed line (the verdict's
-  sentence after it) is written whole — a voiced reply always reaches the wall (V2-850). — since 2026-09-22 ·
-  nodes 4.210, 4.357 · `nucleo/flash/continuation.py`, `frontend/app/core/store.js`.
+  sentence after it) is written whole — a voiced reply always reaches the wall (V2-850). Every row is stamped `at`
+  when it is COMMITTED (his words when final, the agent's line when the voice starts it) and the wall is in that
+  order; a verdict that reaches the client before his final still rules it (`attention_hold` LATCH_MS), and the
+  still-listening nudge is never said into a closed mic (2026-11-17). — since 2026-09-22 ·
+  nodes 4.210, 4.357, 4.572 · `nucleo/flash/continuation.py`, `frontend/app/core/store.js`.
 - **CRIT-V20 · A pause that was a start is not a turn.** A reply is superseded when his voice resumes after it
   began, for as long as an interruption (`ZAELAR_MIN_INTERRUPTION_SEC`), or a longer version of his sentence arrives;
   a superseded turn runs no tool, and one that did nothing leaves his words in the window, not its reply, and owes

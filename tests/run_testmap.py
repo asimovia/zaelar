@@ -6506,6 +6506,19 @@ DOMAINS: list[dict] = [
                                  "blind toggle, no wait for the line, an assumed flash, the tail off, the one-word remainder",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/actionmap/test_his_voice_volume_and_mic_by_voice.py",
                                   "tests/browser/unit/voice/test_his_controls_move_the_buttons.py"]},
+        # 2026-11-17 — the operator's rule: every bubble is stamped when it is COMMITTED (his words when final, the
+        # agent's line when the voice starts it) and the wall is in that order. His line had landed under its reply.
+        {"id": "4.572", "title": "The chat wall is in commit order, ES+EN: a directed verdict that arrives before his final "
+                                 "(the eager end of turn, 24-90 ms) still paints it at once, spent on one turn, bounded "
+                                 "by LATCH_MS, never from a wake-word spot; an ambient one drops the line it covers in "
+                                 "either order; every row carries `at` (the committing event's t_ms) and is inserted by "
+                                 "it, so a line released late lands where it was said, and the stamp is persisted; the "
+                                 "«earlier» divider follows the flagged restored rows at the 100 cap; the still-listening "
+                                 "nudge is never said into a closed mic. Disarms: the latch off, append instead of "
+                                 "insert, the restored counter, the ear check",
+            "ch": UNIT, "paths": ["tests/browser/unit/chat/test_the_wall_is_in_the_order_things_were_committed.py",
+                                  "tests/browser/unit/chat/test_the_rendered_wall_keeps_commit_order_and_marks_what_was_restored.py",
+                                  "tests/voice/unit/providers/test_the_still_listening_nudge_needs_an_open_ear.py"]},
         {"id": "4.566", "title": "The agent's face (V2-928): every face of the catalogue draws at rest, speaking and thinking; "
                                  "Porcelain is the default; every label of Settings ▸ Presence is in both bundles; the rig "
                                  "is never a statue (idle actions, speech accents). Disarm: life.js off → a statue",

@@ -96,17 +96,17 @@ def _schedule_acc_nudge(brain: "NucleoLLM", gen: int) -> None:
     touches the accumulator's buffer, so it can't violate V2-096's no-timed-flush invariant — a fragment that
     never continues still gets no reply, only an acknowledgement that the system is waiting on it.
 
-    `gen` pins the nudge to THIS chain (`brain._acc_gen`, bumped by the caller every time a chain resolves or gets
-    dropped): if the chain already moved on by the time the delay elapses, the nudge checks the counter and
-    no-ops instead of firing after the fact for a conversation that has already continued elsewhere."""
+    `gen` pins the nudge to THIS chain (`brain._acc_gen`, bumped on every resolve or drop): a chain that moved on
+    no-ops it. It invites him to go on, so never into a closed mic (`mic_input.feeds_stt`: muted, parked, ⏻) —
+    measured 2026-11-17, said 4 s after the audio input closed, above his pending line; unknown counts as closed."""
     async def _run() -> None:
         await asyncio.sleep(_ACC_NUDGE_S)
         if getattr(brain, "_acc_gen", None) != gen or not brain._acc.pending():
             return
         try:
-            from voice import proactive
+            from voice import mic_input, proactive
             speak = proactive.speaker()
-            if speak is None or proactive.user_speaking() or proactive.hushed():
+            if speak is None or proactive.user_speaking() or proactive.hushed() or not mic_input.feeds_stt():
                 return
             # V2-752 — HE WAS DRAWING BREATH. Measured in session fce3eff3: this fired at +250.2 s and his
             # voice came back at +250.7 s, half a second later, so «Sigo aquí, cuando quieras sigue» landed
@@ -118,7 +118,7 @@ def _schedule_acc_nudge(brain: "NucleoLLM", gen: int) -> None:
             await asyncio.sleep(_ACC_SETTLE_S)
             if getattr(brain, "_acc_gen", None) != gen or not brain._acc.pending():
                 return
-            if proactive.user_speaking() or proactive.hushed():
+            if proactive.user_speaking() or proactive.hushed() or not mic_input.feeds_stt():
                 return
             from voice.engine.core import langs
             r = speak(langs.current_language().acc_still_listening)

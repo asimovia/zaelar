@@ -20,10 +20,14 @@ const store = readFileSync(path.join(root, "frontend/app/core/store.js"), "utf8"
 const i = store.indexOf("export const upsertChatRef");
 const j = store.indexOf("\n};\n", i);
 assert.ok(i > 0 && j > i, "upsertChatRef was not found in store.js — was it renamed?");
+// the box is placed through the wall's one insert door (commit stamp, 2026-11-17): sliced from the source, not copied
+const d0 = store.indexOf("let _skewMs"), d1 = store.indexOf("\n};\n", store.indexOf("const _insertByAt"));
+assert.ok(d0 > 0 && d1 > d0, "the wall's insert door was not found in store.js — was it renamed?");
 const shim = `
 let msgs = [];
 const setChatMsgs = (fn) => { msgs = fn(msgs); };
 const _capChat = (xs) => xs;
+${store.slice(d0, d1 + 3)}
 ${store.slice(i, j + 3)}
 export const reset = () => { msgs = []; };
 export const rows = () => msgs;

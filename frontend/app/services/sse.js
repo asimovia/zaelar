@@ -40,12 +40,13 @@ const _hold = createAttentionHold({
   mode: () => store.attentionMode(),
   // V2-763 — whether the orb is saying «te escucho» right now: the fail-open may only paint while it is.
   listening: () => paintsProvisional(store.attentionMode(), store.attentionHit()),
+  now: store.serverNow,   // the engine's clock as of the event being routed: a verdict and a final compare on it
   // V2-745 — `whole` says WHICH of the two halves of a release this call is. The fragments drive the
   // CANVAS (V2-664 tuned that path against fragments); the joined paragraph is the one line that reaches
   // the wall, because «lo conviertes en dos frases separadas cuando es el mismo párrafo» was the STT's
   // segmentation showing through a surface that should only ever show his sentence.
-  deliver: (text, isFinal, judged, whole) => {
-    if (whole) return void store.pushChat({ role: "you", text });
+  deliver: (text, isFinal, judged, whole, at) => {
+    if (whole) return void store.pushChat({ role: "you", text, at });   // stamped when his words went final
     // V2-807 T-05 — the fragments drive NOTHING on the canvas. They used to feed a client fast path that
     // opened cards from a verb-stem table plus a catalogue noun on interim text: «pon también la web» opened
     // a browser, «este mensaje» the messaging card. A card is opened only by the engine's own op (its verdict,
@@ -73,7 +74,7 @@ export function captionPartial(text) {
   const now = String(text || "").trim();
   store.setLiveChat(said && now ? said + " " + now : (said || now));
 }
-export function settleHeldTurns(desktop, verdictText, directed) { _hold.verdict(verdictText, directed); }
+export function settleHeldTurns(desktop, verdictText, directed, meta) { _hold.verdict(verdictText, directed, meta); }
 
 let es = null, _opens = 0;
 
@@ -132,6 +133,7 @@ function field(d, key) {
 
 export function routeEvent(desktop, d) {
     if (!d) return;
+    store.noteServerTime(d.t_ms);   // a row with no event of its own is stamped on the engine's clock (store.pushChat)
     presenceEvent(d);   // V2-872: the hello's tab_sleep_min, `engine.sleep`, his spoken turn
     // V2-792 — ONE AGENT, MANY SCREENS. What a request does to a screen (open a card, go full screen, open the
     // panel) happens on the screen that asked; this one keeps at most a chip. `event-scope.js` is the table.
@@ -151,7 +153,7 @@ export function routeEvent(desktop, d) {
       // the turn's trace and it does not depend on the caption transport, so a build with no audio-synced
       // transcription still writes the wall, and a reply cancelled before its first audio frame writes
       // nothing at all — the 9-in-24 phantom paragraphs of session fce3eff3. See `store.pushAgentChat`.
-      if (speaking) store.noteVoiceStarted(d.trace || "");
+      if (speaking) store.noteVoiceStarted(d.trace || "", d.t_ms);
       else store.noteVoiceIdle();
       // The ring mirrors the REAL window (2026-09-09, session 0071d30e): the backend holds an open window
       // while zaelar talks and re-anchors it at its last word (attention.note_bot_speech) — but the ring's
@@ -372,7 +374,7 @@ export function routeEvent(desktop, d) {
                         store.pulseAttentionHit(_voiceActive ? VAD_HOLD_S : _attnWinS); }
       else if (d.window_open === false) store.clearAttentionHit();
       else if (d.window_open === true && !store.attentionHit()) store.pulseAttentionHit(d.window_s || _attnWinS);
-      settleHeldTurns(desktop, d.text || "", !!d.directed);                        // V2-647: and the wall obeys it
+      settleHeldTurns(desktop, d.text || "", !!d.directed, { reason: d.reason || "" });   // V2-647: the wall obeys it
     } else if (d.kind === "language" && d.phase === "progress") {
       // V2-731 — a STEP of the first-run preparation finished. Handled before everything else in this branch
       // and carrying no `code` on purpose: it must not re-run applyLang, which would refetch the bundle once

@@ -72,10 +72,24 @@ export const HOLD_CEILING_MS = 180000;
 // change that nobody measured.
 const _joinSpoken = (parts) => parts.map(s => String(s || "").trim()).filter(Boolean).join(" ");
 
+// ── 2026-11-17 · A VERDICT RULES WHAT FOLLOWS IT, NOT ONLY WHAT IS ALREADY HELD ───────────────────────────
+// On the eager end-of-turn path the gate rules 24–90 ms BEFORE the STT final arrives (measured, 14 of 40 turns of
+// one session). A verdict with nothing held was thrown away, so his line waited for the NEXT turn's verdict and
+// landed under its own reply, or for the fail-open, or (orb off) was dropped at the ceiling. So a verdict now stays
+// in force for `latchMs` after it is emitted: a DIRECTED one that found nothing held releases the next final (one
+// verdict, one turn: it is spent on it); an AMBIENT one drops a final its text covers, as if it had been held first.
+// Events that rule no turn — the instant wake-word spots, the agent's own question, a hard stop acted on — never latch.
+export const LATCH_MS = 1500;
+const _SIGNALS = new Set(["wakeword_interim", "wakeword_spot", "addressed_reply", "hard_interrupt",
+                          "hard_interrupt_remainder"]);
+const _covers = (hay, text) => { const h = String(hay || "").toLowerCase();
+  return !h || h.includes(String(text || "").toLowerCase().trim()); };
+
 export function createAttentionHold({ mode, deliver, settled = () => {}, holdMs = HOLD_MS,
-                                      listening = () => true, ceilingMs = HOLD_CEILING_MS,
-                                      setTimer = setTimeout, clearTimer = clearTimeout }) {
+                                      listening = () => true, ceilingMs = HOLD_CEILING_MS, latchMs = LATCH_MS,
+                                      now = () => Date.now(), setTimer = setTimeout, clearTimer = clearTimeout }) {
   let held = [];
+  let ruled = null;               // the last turn verdict { directed, text, at } — order-independent (see LATCH_MS)
   let timer = null;
   let waited = 0;                 // ms this batch has waited without a verdict (V2-763)
 
@@ -92,31 +106,37 @@ export function createAttentionHold({ mode, deliver, settled = () => {}, holdMs 
     const batch = held; held = [];
     clearTimer(timer); timer = null; waited = 0;
     // The CANVAS still sees every fragment (V2-664 tuned it that way); the WALL sees the paragraph.
-    for (const h of batch) deliver(h.text, h.isFinal, judged, false);
-    if (batch.length) deliver(_joinSpoken(batch.map(h => h.text)), true, judged, true);
+    // `at`: the moment the LAST fragment became final — the bubble is committed when his words are (store.pushChat).
+    for (const h of batch) deliver(h.text, h.isFinal, judged, false, h.at);
+    if (batch.length) deliver(_joinSpoken(batch.map(h => h.text)), true, judged, true, batch[batch.length - 1].at);
     if (batch.length) settled("delivered");
   };
 
   return {
     /** A spoken turn arrived. Held until the gate rules on it (or delivered at once with no gate). */
-    spoken(text, isFinal) {
+    spoken(text, isFinal, at) {
+      const t = Number(at) > 0 ? Number(at) : now();
       if (mode() === "always") {
-        deliver(text, isFinal, true, false);                          // no gate to wait for: it IS the verdict
-        deliver(text, isFinal, true, true);                           // …and it is a batch of exactly one
+        deliver(text, isFinal, true, false, t);                       // no gate to wait for: it IS the verdict
+        deliver(text, isFinal, true, true, t);                        // …and it is a batch of exactly one
         return settled("delivered");
       }
-      held.push({ text, isFinal });
+      const r = isFinal && ruled && t >= ruled.at && t - ruled.at <= latchMs ? ruled : null;
+      if (r && !r.directed && r.text && _covers(r.text, text)) return settled("dropped");   // ruled the room before it landed
+      held.push({ text, isFinal, at: t });
+      if (r && r.directed) { ruled = null; return release(true); }    // ruled for him before it landed
       if (!timer) timer = setTimer(expire, holdMs);                   // V2-664: a timeout judged nothing
     },
     /** The gate ruled. `directed` releases everything waiting; otherwise the turns this verdict COVERS are
      *  dropped — the verdict carries the accumulated phrase, so anything outside it belongs to a later turn
      *  still waiting for its own ruling. */
-    verdict(verdictText, directed) {
+    verdict(verdictText, directed, { reason = "", at } = {}) {
+      if (!_SIGNALS.has(reason) && !(directed && held.length))
+        ruled = { directed: !!directed, text: verdictText || "", at: Number(at) > 0 ? Number(at) : now() };
       if (!held.length) return;
       if (directed) return release(true);
-      const hay = (verdictText || "").toLowerCase();
       const before = held.length;
-      held = held.filter(h => !(!hay || hay.includes((h.text || "").toLowerCase().trim())));
+      held = held.filter(h => !_covers(verdictText, h.text));
       if (!held.length) { clearTimer(timer); timer = null; waited = 0; }
       if (held.length < before) settled("dropped");
     },
