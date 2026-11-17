@@ -91,10 +91,9 @@ def receipt(wid: str, ref: str, done_when) -> tuple[str, str]:
 async def _say(uid: str, stage: str, key: str, **fmt) -> None:
     """One line of the send, by the out-of-turn mouth, once per stage of that send."""
     try:
-        from i18n import langs
+        from nucleo import wording
         from nucleo.pulse import notices
-        tpl = str(getattr(langs.current_language(), key, "") or "")
-        line = tpl.format(**fmt).strip().rstrip(":").strip() if tpl else ""
+        line = await wording.said(key, **fmt)
         if line:
             await notices.notify("zaelar", line, key=f"send:{uid}:{stage}", kind="info")
     except Exception as e:  # noqa: BLE001

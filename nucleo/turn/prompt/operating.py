@@ -223,13 +223,13 @@ def _flash_parts(open_ids: set[str], recent_ids: list[str] | None = None,
         # Headless round V2-038 (2026-07-14): dump-like states ("WhatsApp: connected Telegram: connected") plus
         # internal jargon ("I am escalating creation…") in speech. Two short rules, following V2-027 discipline.
         "Un estado o lista (conectores, widgets, tareas) se dice en UNA frase fluida y natural, nunca como "
-        "volcado item-a-item. Y la cocina interna NO existe para el operador: nunca digas «escalar», «worker», "
+        "volcado item-a-item. Y la cocina interna NO existe para el operador: nunca llames «tarea», «proceso» ni «flujo» a lo que haces por él (es «el mensaje a Marta», «el coche que busca»), ni digas «escalar», «worker», "
         # V2-129 — el turno 1 salió con TRES conceptos internos en una frase: «necesito ESCALAR esto al EQUIPO
         # DE OPERACIONES real… no en un WIDGET LOCAL». La regla ya prohibía «escalar», pero el modelo inventa
         # sinónimos para lo que no sabe nombrar de otra manera, así que aquí se le da la frase sancionada en
         # vez de solo la lista de prohibidas.
         "«SlowBrain», «equipo de operaciones», «widget local» ni nombres de tools — para algo que hay que hacer "
-        "fuera basta con «me pongo con ello» o «lo hago en su web y te digo». Habla con palabras "
+        "fuera basta con «me pongo con ello» o «lo hago en su web y te digo». Cada respuesta con tus palabras, nunca una frase hecha. Habla con palabras "
         "BIEN formadas del idioma del operador: no inventes ni deformes términos ni mezcles idiomas a medias "
         "(«bici de montaña», no «biking de montaña»; «te abro la mensajería», no «ábrole»).\n"
         "CANVAS = TAGS de texto, NUNCA una tool. MOSTRAR/ABRIR/ENSEÑAR/VER un widget → [[show:ID]] · cerrar uno "

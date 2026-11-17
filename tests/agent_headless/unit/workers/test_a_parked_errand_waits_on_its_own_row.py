@@ -81,5 +81,8 @@ def test_the_gates_no_longer_forget_the_row():
     import inspect
     from nucleo.dispatch import session
     src = inspect.getsource(session) + inspect.getsource(dc.unlicensed_gate)
-    assert '_task_row("withdrawn"' not in src and src.count("make_durable(key, rec)") == 3
+    # the three start gates park through ONE door (`confirm.park`), which puts the question on its row BEFORE it is said
+    assert '_task_row("withdrawn"' not in src and src.count("park(key, rec, lambda:") == 3
+    park = inspect.getsource(dc.park)
+    assert park.index("make_durable(key, rec)") < park.index("_deliver_confirm(rec)"), "said before it was on its row"
 

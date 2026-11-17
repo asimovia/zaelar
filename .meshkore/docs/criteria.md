@@ -260,9 +260,21 @@ below is the first kind, or it names the mechanism that replaced the second.
   says only part was done — never a completion nobody attested. A move already put back is never undone again. —
   since 2026-11-12 · nodes 2.1727 · `nucleo/acts/correction_undo.py`, `widgets/agenda/edit.py`, `nucleo/turn/reply.py`.
 - **CRIT-C4 · Building or rewriting a card of his asks first**, at the one door a worker is lit
-  (`dispatch._run_session`, `kind == code`); the cluster dev-worker is exempt. A REMARK is not an order: an errand
-  whose commissioning turn was read as a comment or a complaint (the reading it carries, `kind.a_remark`) builds
-  nothing, asks nothing and ends its row there. — since 2026-09-23, narrowed 2026-11-17 · nodes 2.76, 2.1170, 2.1804.
+  (`dispatch._run_session`, `kind == code`) — only when the reading is in DOUBT. Three outcomes, from the reading the
+  errand carries: a SURE order (the turn read as an order and the kind of work at the veto's confidence,
+  `kind.sure_order`) starts with no question; a REMARK — a comment, a complaint (`kind.a_remark`) — builds nothing,
+  asks nothing and ends its row there; anything else asks ONE question, worded for him (`kind.asked`). The cluster
+  dev-worker is exempt. A start gate's question is on its row BEFORE it is said (`confirm.park`): his answer has
+  somewhere to go from the instant the gate decides to ask. A send asks once, at its exit door, never also at its
+  start. — since 2026-09-23, narrowed 2026-11-17 and 2026-11-18 · nodes 2.76, 2.1170, 2.1804.
+- **CRIT-C4w · What the engine tells him is a FACT worded by a model, never a fixed sentence.** The engine decides the
+  fact («the message is ready», «sent and confirmed», «could not be sent: why», «stopped»); `nucleo/wording.word` hands
+  it to a small warm model with the voice's rules — one short sentence, different every time, about WHAT HE ASKED FOR
+  in his terms, never «tasks», «processes» or «flows», nothing the fact does not state — and the language's own line
+  as an example. The plain line is said only when no sentence comes back inside the line's budget: never silence. A
+  line is worded off the loop that carries the voice. Flash's own prompt carries the same rule of vocabulary. — since
+  2026-11-18 (V2-933) · nodes 2.1806 · `nucleo/wording.py`, `nucleo/switchboard/act.py`,
+  `nucleo/request/send_receipt.py`, `nucleo/turn/prompt/operating.py`.
 - **CRIT-C4c · Every appointment he writes carries its notice**: a timed one ~2 h before, an all-day one at 09:00 that
   day; an asked `remind` wins; items synced from Google stay silent. — since 2026-10-10 · nodes 2.250.
 - **CRIT-C4d · A notice is a ROW and reaches him exactly once.** Every reminder, finished job and pending approval goes
@@ -926,7 +938,9 @@ Flash keeps the conversation; the row is what both brains read.
   the button does, and he hears one line; a cut-off piece that says nothing yet is held and joined to what he says
   next; an order to stop ends that process — or every open one — through the row's ONE cancel door
   (`dispatch.control.cancel_row`, the screen's button: a running worker is told to stop, a queued one never starts, a
-  waiting question is closed), never as words relayed to the worker (node 2.1805); anything else resumes the process
+  waiting question is closed), never as words relayed to the worker; a stop that reaches Flash instead (`stop_worker`,
+  the `stop_errand` verdict → `dispatch.cancel_soon`) ends in that same door, and «everything» also closes the rows
+  that only wait on his answer (node 2.1805); anything else resumes the process
   with his words. An unreadable or
   late decision is Flash's turn, never his words lost. Every decision is one `thread` event (`event: switchboard`)
   with the board it read, who decided, why and the ms. Flash has no tool that routes his words to a process. One

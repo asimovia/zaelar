@@ -168,7 +168,7 @@ class WorkersPulse:
             # session 85eec898 made unmissable. `proactive.notify` now ARMS the window and `note_bot_speech`'s
             # falling edge anchors it at the LAST word, which is what «§v3·D: his immediate response is
             # DIRECTED» meant all along.
-            await self._deliver_keyed("zaelar", relay_line(self._say, a["question"], goal),
+            await self._deliver_keyed("zaelar", await __import__("asyncio").to_thread(relay_line, self._say, a["question"], goal),
                 f"ask:{a['corr_id']}", str(a.get("task_id") or ""), ask_id=str(a.get("ask_id") or a["corr_id"]))
         # purge resolved corr_ids from the relayed set (to avoid growth)
         try:
@@ -238,6 +238,8 @@ def relay_line(say, question: str, goal: str = "", alone: bool | None = None) ->
         return str(question or "")
     # Clipped on a word boundary (V2-530): the old `[:40]` cut mid-word, and a name read aloud with its last word
     # amputated is worse than a slightly longer one.
-    return say("worker_ask_named" if goal else "worker_ask_generic",
-               goal=_errand_title.provisional(goal, 48), question=question)
+    plain = say("worker_ask_named" if goal else "worker_ask_generic",
+                goal=_errand_title.provisional(goal, 48), question=question)
+    from nucleo import wording        # worded for him: which of the things he asked for this question is about (V2-933)
+    return wording.word(wording.ASKS.format(question=question), about=goal, examples=(plain,), fallback=plain)
 

@@ -32,6 +32,7 @@ _DEFAULTS = {
     "rule_shape": ("https://api.deepseek.com", "deepseek-flash", True),
 }
 _DEFAULTS["switchboard"] = _DEFAULTS["errand_scope"]   # V2-931: «for process N, or for none?» — the same seat
+_DEFAULTS["wording"] = _DEFAULTS["errand_scope"]       # V2-933: a fact worded for his ear (`nucleo/wording.py`)
 
 # DeepSeek on its OWN endpoint: the titular of most tasks; `failover_rungs` skips a rung that is already the
 # titular, so listing it costs nothing and keeps the order true when the titular is, say, a local Ollama.

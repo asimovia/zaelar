@@ -102,10 +102,24 @@ def test_a_remark_builds_no_card_and_asks_nothing(request_type, monkeypatch):
     assert rows == [("ended_early", "cancelled")] and "c5" not in dispatch._SESSIONS
 
 
-def test_an_order_to_change_a_card_is_still_asked(monkeypatch):
+def test_a_sure_order_to_change_a_card_starts_with_no_question(monkeypatch):
+    """His rule (2026-11-18): certainty that he asked needs no «shall I?». The turn read as an order and the kind of
+    work read at the veto's confidence → the errand goes on to its worker, nothing is parked."""
     seen, rows = _run_read(COMMISSION, "order", 0.9, monkeypatch)
+    assert seen["passed"] and not dispatch.pending_confirm() and rows == []
+
+
+def test_doubt_asks_once(monkeypatch):
+    """Not a remark, not a sure order (a question, an unsure reading): ONE question, on its row, and no worker."""
+    seen, rows = _run_read(COMMISSION, "question", 0.9, monkeypatch)
     p = dispatch.pending_confirm()
     assert not seen["passed"] and p and p["task_id"] == "c5" and p["code_change"] == "modify" and rows == []
+    from nucleo.request import kind as _kind
+    unsure = {"errand_kind": {"choice": "change_card", "confidence": 0.6},
+              "reading": {"result": {"request_type": {"choice": "order", "confidence": 0.9}}, "open_ids": [],
+                          "turn_id": "T1", "judged": COMMISSION}}
+    assert not _kind.sure_order(unsure), "an order whose KIND is unsure is doubt"
+    assert not _kind.sure_order({"errand_kind": {"choice": "change_card", "confidence": SURE}}), "no reading is doubt"
 
 
 def test_disarm_an_unread_reading_asks_as_before(monkeypatch):

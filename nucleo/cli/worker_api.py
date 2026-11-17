@@ -144,6 +144,9 @@ async def _one_act(rec, action: str, payload: dict) -> dict:
         if _released and pol == CONFIRM:
             pol = ALLOW                                 # his order over the row he saw is the yes (CRIT-C9)
     _q_behalf = "" if _released or pol != ALLOW else _behalf.worker_question(rec, action, payload)
+    if _q_exit:                               # worded for his ear, never a fixed sentence (V2-933)
+        from nucleo import wording
+        _q_exit = await wording.word_soon(wording.READY.format(plain=_q_exit), examples=(_q_exit,), fallback=_q_exit)
     _q_behalf = _q_exit or _q_behalf          # a send's one confirmation is the exit door's (V2-931)
     if pol == CONFIRM or _q_behalf:
         # §v3·K: an irreversible act becomes an auto-generated ask_user with the RETAINED action.

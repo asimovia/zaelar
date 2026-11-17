@@ -34,8 +34,8 @@ DECIDE_S = 3.0
 SEEN_S = 90.0
 #: How long a cut-off piece waits for the rest of his sentence before it is forgotten.
 PIECE_S = 20.0
-from nucleo.switchboard.act import (FRAGMENT, NO, OTHER, STOP, STOP_ALL, YES, _line, deliver, line_of,  # noqa: E402,F401
-                                    stop, waits_on_his_yes)
+from nucleo.switchboard.act import (FRAGMENT, NO, OTHER, STOP, STOP_ALL, YES, _line, deliver, line_key,  # noqa: E402,F401
+                                    line_of, stop, waits_on_his_yes)
 
 SYSTEM = (
     "You route what the operator of a voice assistant just said. Background processes of the assistant are OPEN, "
@@ -191,14 +191,14 @@ async def take(text: str, *, brain=None, emit=None, say=None, window_max: int = 
         ended = stop(procs if kind == STOP_ALL else [to])
         _event(emit, said, procs, to=to, by=by, why=why, ms=ms, delivered=bool(ended), kind=kind)
         if ended:
-            _acknowledge(said, brain, say, window_max, _line("stopped_now"))
+            _acknowledge(said, brain, say, window_max, await asyncio.to_thread(_line, "stopped_now", to["title"]))
         return bool(ended)
     if kind == FRAGMENT:                            # his, for that process, and nothing yet: wait for the rest
         _piece.update(text=fresh, at=time.time())
         _event(emit, said, procs, to=to, by=by, why=why, ms=ms, delivered=False, kind=kind)
         return True
     kind = kind if waits_on_his_yes(to) else OTHER     # a yes or a no decides only what a process asked him
-    line = line_of(to, kind)                            # read BEFORE the answer clears what it held
+    key = line_key(to, kind)                            # read BEFORE the answer clears what it held
     ok = False
     try:
         ok = deliver(to, fresh, kind)
@@ -208,7 +208,7 @@ async def take(text: str, *, brain=None, emit=None, say=None, window_max: int = 
     if not ok:
         return False                                # nothing took it: Flash does, rather than his words vanishing
     _seen.update(text=_flat(said), key=to["key"], at=time.time())
-    _acknowledge(said, brain, say, window_max, line)
+    _acknowledge(said, brain, say, window_max, await asyncio.to_thread(_line, key, to["title"]))   # worded, off the loop
     return True
 
 

@@ -95,7 +95,7 @@ def remember_confirm(task_id: str, request: str, task: "Task", *, sheet: str = "
         "sheet": str(sheet or ""), "ts": time.time(), "asked": _SPOKEN.pop(str(task_id), False)}
 
 
-def remember_code_change(task_id: str, request: str, task: "Task", *, sheet: str = "") -> None:
+def remember_code_change(task_id: str, request: str, task: "Task", *, sheet: str = "", question: str = "") -> None:
     """Park an errand that would BUILD OR REWRITE one of his cards, and keep the question (V2-757).
 
     Same registry as the irreversible gate on purpose — it already solves everything hard here: the yes/no
@@ -115,7 +115,7 @@ def remember_code_change(task_id: str, request: str, task: "Task", *, sheet: str
     _PENDING_CONFIRM[str(task_id)] = {
         "request": request, "kind": (task.kind or "code"), "trusted": bool(task.trusted),
         "context": dict(task.context or {}),
-        "question": _ek.code_change_question(request, _ek.code_change((task.context or {}).get("errand_kind"))),
+        "question": question or _ek.code_change_question(request, _ek.code_change((task.context or {}).get("errand_kind"))),
         "sheet": str(sheet or ""), "code_change": _ek.code_change((task.context or {}).get("errand_kind")) or "modify",
         "ts": time.time(), "asked": _SPOKEN.pop(str(task_id), False)}
 
@@ -171,6 +171,22 @@ def unlicensed_question(request: str) -> str:
     return _lg.current_language().errand_unaddressed_confirm.format(what=short)
 
 
+async def park(key: str, rec, remember) -> None:
+    """A start gate parks its errand: the question is ON ITS ROW before it is said (V2-931). It used to be spoken first
+    and made durable after — and the voice waits for him to stop talking: 45 s measured (2026-11-17), during which
+    his «don't change anything» found no open question and reached nothing. From the instant the gate decides to ask,
+    his answer has somewhere to go; no window, no timer."""
+    from nucleo import dispatch as _d
+    remember()
+    rec.start_ask = _d.make_durable(key, rec)     # the row waits on the question (V2-857 P0-1)
+    _d.sync_state()
+    await _d._deliver_confirm(rec)
+    if (p := _PENDING_CONFIRM.get(str(key))) is not None:
+        p["asked"] = _SPOKEN.pop(str(key), False) or bool(p.get("asked"))
+    _d._SESSIONS.pop(key, None)
+    _d.sync_state()
+
+
 async def unlicensed_gate(task: "Task", key: str, req: str, *, wait_s: float = 2.5) -> bool:
     """THE door a worker starts through asks the ONE consent rule whether the line behind it licensed it
     (V2-812 T-03). True when the errand was parked on a question; False when it may run.
@@ -188,6 +204,8 @@ async def unlicensed_gate(task: "Task", key: str, req: str, *, wait_s: float = 2
     trace = str(ctx.get("trace") or "")
     if not trace or _d._dev_worker_params(ctx):     # the cluster dev worker brings its own authorisation
         return False
+    if str(ctx.get("playbook") or "") == "message":  # a send asks ONCE, at its exit door, with the message written:
+        return False                                 # a second question at its start is the same act asked twice
     try:
         from voice import attention as _attn
     except Exception as e:  # noqa: BLE001 — no voice layer: no line behind this errand, nothing to ask about
@@ -206,11 +224,8 @@ async def unlicensed_gate(task: "Task", key: str, req: str, *, wait_s: float = 2
     if rec:
         rec.status = "done"
         rec.result_summary = question
-        await _deliver_confirm(rec)
-        _d._SESSIONS.pop(key, None)
-        remember_unlicensed(key, req, task, question=question, sheet=_d.sheet_of(rec))
-        make_durable(key, rec)                 # the row waits on the question (V2-857 P0-1)
-        _d.sync_state()
+        _sheet = _d.sheet_of(rec)
+        await park(key, rec, lambda: remember_unlicensed(key, req, task, question=question, sheet=_sheet))
     else:
         remember_unlicensed(key, req, task, question=question)
     return True
@@ -502,7 +517,8 @@ async def _deliver_confirm(rec: "SessionRecord") -> None:
         # V2-796 — an errand waiting on his yes is a notice that must reach him: his phone when he is away.
         from nucleo.pulse import notices as _notices
         _res = await _notices.notify("zaelar", rec.result_summary, kind="approval", key=f"approval:{rec.task_id}",
-                                     task_id=str(rec.task_id), speak=True, detail={"task": rec.task_id})
+                                     task_id=str(rec.task_id), speak=True, detail={"task": rec.task_id},
+                                     ask_id=str(getattr(rec, "start_ask", "") or ""))
         _SPOKEN[str(rec.task_id)] = "voice" in str(_res.get("channel") or "")
     except Exception:
         pass

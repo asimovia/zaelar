@@ -77,7 +77,7 @@ def test_the_gate_lives_where_EVERY_door_into_the_generator_passes():
     # …and the exemption is read from THIS gate's own condition, not from anywhere else in the method:
     # `_dev_worker_params` is also called further down to build the worker spec, and an anchor on the
     # whole source was satisfied by that one with the exemption deleted (measured while disarming).
-    cond = src[src.index('if (kind == "code"'):src.index("remember_code_change")]
+    cond = src[src.index('if kind == "code"'):src.index("remember_code_change")]
     assert "_dev_worker_params(task.context)" in cond, (
         "the cluster dev-worker brings its own repo and its own authorisation — it is not his catalogue")
     # …and it stands BEFORE anything is launched, like the irreversible gate it sits next to.

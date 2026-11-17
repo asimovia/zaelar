@@ -24,10 +24,11 @@ def test_a_send_that_left_as_a_task_is_a_start_never_the_short_done():
     from nucleo.turn import reply
     speech = type("S", (), {"sanitize": staticmethod(lambda t, **k: t)})
     said = []
-    line = reply.routed_send_line("", True, True, said.append, speech)
+    import asyncio
+    line = asyncio.run(reply.routed_send_line("", True, True, said.append, speech))
     assert line and said and "Hecho" not in said[0]
-    assert reply.routed_send_line("", False, True, said.append, speech) == ""      # no send: nothing of its own
-    assert reply.routed_send_line("ya va", True, True, said.append, speech) == "ya va"   # the model spoke: kept
+    assert asyncio.run(reply.routed_send_line("", False, True, said.append, speech)) == ""      # no send: nothing of its own
+    assert asyncio.run(reply.routed_send_line("ya va", True, True, said.append, speech)) == "ya va"   # the model spoke: kept
     src = inspect.getsource(post_stream_settle)
     assert "routed_send_line(" in src
     ack = src.index('if data_done["v"] and not spoken_text and _ack_allowed')

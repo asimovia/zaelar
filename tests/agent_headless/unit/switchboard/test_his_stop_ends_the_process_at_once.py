@@ -173,3 +173,39 @@ def test_the_stop_runs_on_the_loop_that_owns_the_sessions(desk, monkeypatch):
         t.join(timeout=2)
         owner.close()
     assert ran_on == [owner] and ts.task_get("s1-7")["state"] == "cancelled"
+
+
+def test_the_turns_own_stop_ends_in_the_same_door_and_everything_closes_what_only_waits(desk, monkeypatch):
+    """His stop that reaches Flash (`stop_worker`, the `stop_errand` verdict → `dispatch.cancel_soon`) ends in the SAME
+    function as the switchboard's and the screen's button: the row's cancel door. «Everything» also closes a question
+    that waits with no live session — the registry of sessions never listed it, so it used to stay open."""
+    _row("s1-8", "running", "Search flights")
+    _row("s1-9", "waiting", "Change the messaging widget")
+    sess = _Session()
+    dispatch._SESSIONS["8"] = SimpleNamespace(uid="s1-8", status="running", task_id="8", session=sess, task=None,
+                                              settled="", trace_id="", label="", goal="Search flights", kind="web",
+                                              result_summary="")
+    from nucleo.cli import worker_api
+    monkeypatch.setattr(worker_api, "open_asks", lambda: [{"task_id": "s1-9", "ask_id": "s1-9-a", "question": "?"}])
+
+    async def go():
+        monkeypatch.setattr(dispatch, "_LOOP", asyncio.get_running_loop())
+        named = dispatch.cancel_soon("todo")
+        await asyncio.sleep(0.05)
+        return named
+    assert asyncio.run(go()) == ["8", "s1-9"]
+    assert [ts.task_get(u)["state"] for u in ("s1-8", "s1-9")] == ["cancelled", "cancelled"]
+    assert sess.stops == ["operator"] and "8" not in dispatch._SESSIONS
+
+
+def test_a_stop_of_one_named_thing_leaves_what_waits_alone(desk, monkeypatch):
+    _row("s1-10", "waiting", "Book the table")
+    from nucleo.cli import worker_api
+    monkeypatch.setattr(worker_api, "open_asks", lambda: [{"task_id": "s1-10", "ask_id": "s1-10-a", "question": "?"}])
+
+    async def go():
+        monkeypatch.setattr(dispatch, "_LOOP", asyncio.get_running_loop())
+        named = dispatch.cancel_soon("the flights search")
+        await asyncio.sleep(0.05)
+        return named
+    assert asyncio.run(go()) == [] and ts.task_get("s1-10")["state"] == "waiting"

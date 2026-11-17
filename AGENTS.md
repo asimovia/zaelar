@@ -491,7 +491,11 @@ Each is one line in `.meshkore/docs/criteria.md`, with its node; read the sectio
   does not run; for none, Flash takes the turn. Flash has no tool that routes his words to a process, and no reader
   binds an answer after the model. His order to stop an open process is read by that same decision and ends its row
   through the ONE cancel door (`dispatch.control.cancel_row`), never as words relayed to the worker. A remark — a
-  comment, a complaint — commissions nothing: no card is built or changed from one, and he is not asked whether to.
+  comment, a complaint — commissions nothing: no card is built or changed from one, and he is not asked whether to; a
+  SURE order to build or change a card starts with no question, only doubt asks, once (§C, C4).
+- **Nothing he hears is a fixed sentence (§C, C4w):** the engine decides the FACT and `nucleo/wording.py` has a model
+  word it — short, different every time, about what he asked for and never about «tasks», «processes» or «flows»; the
+  language's own line is the example and the last resort, never the line said every time.
 - **Background work never starves the voice (§R, R18–R20):** a held worker names its TRUE reason (memory only under
   the floor, else the voice's shed, else what it queues behind), a shed ends when ITS source recovers, admission is a
   limit with no deadline start, one worker at a time, floor = what the declared pieces need, capped by a ratio of the host, never under the voice reserve, and a

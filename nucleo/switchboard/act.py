@@ -81,15 +81,20 @@ def _stop_here(procs: list[dict]) -> list[str]:
     return ended
 
 
-def _line(key: str) -> str:
+def _line(key: str, about: str = "") -> str:
+    """The line he hears for what his words did, WORDED for him (`nucleo/wording`): the language's own line is the
+    example and the last resort, never the sentence said every time. Blocking — call it off the loop."""
     from i18n import langs
+    from nucleo import wording
     lang = langs.current_language()
-    return str(getattr(lang, key, "") or getattr(lang, "answer_taken", "") or "")
+    plain = str(getattr(lang, key, "") or getattr(lang, "answer_taken", "") or "")
+    fact = wording.FACTS.get(key, "")
+    return wording.word(fact, examples=(plain,), about=about, fallback=plain) if fact else plain
 
 
-def line_of(p: dict, kind: str) -> str:
-    """The ONE line he hears for a chunk a process took: his yes to a send («OK, sending it. I'll tell you if anything
-    goes wrong.»), his yes or no to any other act it held, or a bare «noted» for anything else."""
+def line_key(p: dict, kind: str) -> str:
+    """WHICH fact he is told for a chunk a process took: his yes to a send (it is going), his no (it is not), his yes
+    or no to any other act it held, or that his words were taken. Read BEFORE the answer clears what the row held."""
     key = "answer_taken"
     if kind in (YES, NO):
         leaves = False
@@ -101,4 +106,9 @@ def line_of(p: dict, kind: str) -> str:
             logger.debug(f"switchboard: the retained act unread — {e!r}")
         key = {(YES, True): "send_going", (NO, True): "send_not_sent",
                (YES, False): "work_started", (NO, False): "confirm_cancelled"}[(kind, leaves)]
-    return _line(key)
+    return key
+
+
+def line_of(p: dict, kind: str) -> str:
+    """The ONE line he hears for a chunk a process took, worded for him."""
+    return _line(line_key(p, kind), str(p.get("title") or ""))

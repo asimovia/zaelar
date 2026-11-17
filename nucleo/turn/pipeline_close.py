@@ -39,7 +39,7 @@ async def close_the_turn(*, motor, send, _acc_ms, _amap_ms, _brief, _busy_at_sta
     if "send" in escalate_req and not str(spoken_text or "").strip():
         # V2-887 — the model called the send in silence and the send went to its task: say it as a start, never the
         from nucleo.turn import reply as _reply_st      # mute line «Perdona, se me ha ido» (live T15, the bench 3/3)
-        spoken_text = _reply_st.routed_send_line(spoken_text, True, True, send, speech)
+        spoken_text = await _reply_st.routed_send_line(spoken_text, True, True, send, speech)
         _tool_handled = True
     if _wait_lines.owes_a_line(spoken_text, _tool_handled, _held):
         try:

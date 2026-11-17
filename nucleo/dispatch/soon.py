@@ -70,17 +70,48 @@ def settle_soon(which: str, words: str) -> list[str]:
 
 @consequence.door("worker.stop", neutral=_resolve)
 def cancel_soon(which: str) -> list[str]:
-    """Fire-and-forget: resolve `which` and KILL it on the owning loop. Returns the ids it is about to kill (for the
-    voice). Closed, it still names them: the turn says what it would have stopped."""
+    """Fire-and-forget: resolve `which` and STOP it on the owning loop, through the row's ONE cancel door
+    (`control.cancel_row` — the screen's button and the switchboard's stop end there too): the worker is signalled and
+    killed past its grace and the row ends `cancelled`. «Everything» also closes the rows that only WAIT on his answer
+    (no live session: the registry does not list them). Returns what it is about to stop (for the voice). Closed, it
+    still names them: the turn says what it would have stopped."""
     from nucleo import dispatch
     tids = dispatch.resolve_sessions(which)   # a dict read (cheap); the real cancellation goes to the owning loop
     dispatch._qwait.forget(which)             # a stop he ordered also stops an errand waiting for the quota's reset
-    if dispatch._LOOP is not None and tids:
+    waiting = _rows_only_waiting(which)
+    if dispatch._LOOP is not None and (tids or waiting):
         def _do():
+            from nucleo.dispatch import control
             for t in tids:
-                dispatch.cancel_session(t)
+                r = dispatch.get_record(t)
+                uid, why = str(getattr(r, "uid", "") or ""), str(getattr(r, "result_summary", "") or "")
+                if not (uid and _ends_row(control, uid, why)):
+                    dispatch.cancel_session(t)          # a session with no row yet
+            for uid in waiting:
+                _ends_row(control, uid, "")
         try:
             dispatch._LOOP.call_soon_threadsafe(_do)
         except Exception as e:  # noqa: BLE001 — fire-and-forget, but never in silence
             logger.warning(f"cancel_soon({which!r}): could not reach the registry loop: {e!r}")
-    return tids
+    return tids + waiting
+
+
+def _ends_row(control, uid: str, why: str) -> bool:
+    try:
+        return control.cancel_row(uid, outcome=why or "stopped by his word") == "cancelled"
+    except Exception as e:  # noqa: BLE001 — no row to end: the caller stops the session itself
+        return bool(logger.debug(f"cancel_soon: row {uid} not ended by its door — {e!r}"))
+
+
+def _rows_only_waiting(which: str) -> list[str]:
+    """«Everything»: the rows that wait on his answer with no live session — a stop of all closes them too."""
+    from nucleo import dispatch
+    q = dispatch._norm(which)
+    if q and not dispatch._ALL_RE.search(q):
+        return []
+    try:
+        from nucleo.cli import worker_api
+        live = {str(getattr(dispatch.get_record(t), "uid", "") or "") for t in dispatch._live_keys()}
+        return [u for u in dict.fromkeys(str(a.get("task_id") or "") for a in worker_api.open_asks()) if u and u not in live]
+    except Exception as e:  # noqa: BLE001
+        return logger.debug(f"cancel_soon: waiting rows unread — {e!r}") or []

@@ -89,6 +89,31 @@ def code_change_question(request: str, change: str = "") -> str:
     return tpl.format(what=short)
 
 
+def sure_order(ctx: dict | None) -> bool:
+    """He ORDERED this card work and the reading is sure of it: the commissioning turn was read as an order
+    (`reply.owes_an_act`) and the kind of work — build a card, change one — at the veto's confidence. Then it starts
+    with no question (his rule, 2026-11-18: certainty that he asked needs no «shall I?»; only doubt asks, once).
+    Anything less — no reading, an unsure kind, a turn that was not an order — is doubt."""
+    try:
+        from nucleo.turn import brief as _tb, reply as _reply, verdicts as _v
+        v = (ctx or {}).get(KEY) or {}
+        handle = _tb.revived((ctx or {}).get("reading"))
+        return (handle is not None and _reply.owes_an_act(handle) == "order" and str(v.get("choice") or "") in (BUILD, CHANGE)
+                and float(v.get("confidence") or 0.0) >= _v.VETO)
+    except Exception:  # noqa: BLE001 — unread: doubt, and doubt asks
+        return False
+
+
+async def asked(request: str, ctx: dict | None) -> str:
+    """The ONE question of a card errand the reading is not sure he ordered, worded for him (`nucleo/wording`)."""
+    change = code_change((ctx or {}).get(KEY))
+    plain = code_change_question(request, change)
+    from nucleo import wording
+    what = " ".join(str(request or "").split())[:160]
+    return await wording.word_soon(wording.UNSURE_CARD.format(change="build" if change == "create" else "change", what=what),
+                                   examples=(plain,), fallback=plain)
+
+
 def a_remark(ctx: dict | None) -> bool:
     """Did the turn that commissioned this errand read his words as a COMMENT or a COMPLAINT (the reading it carries,
     `brief.carried`)? «That came out late», «this should behave differently» are remarks about us: no card is built

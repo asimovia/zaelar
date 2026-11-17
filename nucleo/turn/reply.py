@@ -275,12 +275,12 @@ def say_started(line: str, said: str, send, speech) -> str:
     return text
 
 
-def routed_send_line(spoken: str, send, data_done, say, speech) -> str:
-    """V2-887 · E3 b136 — a send that LEFT as a task, said in silence: its START line, never «Done.», data-op or not."""
+async def routed_send_line(spoken: str, send, data_done, say, speech) -> str:
+    """V2-887 · E3 b136 — a send that LEFT as a task, said in silence: its START, worded for him, never «Done.»."""
     if not (send and not spoken):
         return spoken
     try:
-        return say_started(str(getattr(_lang(), "send_preparing", "") or _lang().done_just_started or ""), "", say, speech) or spoken
+        return say_started(await __import__("nucleo.wording", fromlist=["x"]).said("send_preparing") or _lang().done_just_started, "", say, speech) or spoken
     except Exception as e:  # noqa: BLE001
         return logger.debug(f"reply: the start line was not said — {e!r}") or spoken
 

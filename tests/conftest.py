@@ -148,6 +148,18 @@ def _jev_never_reaches_the_network_and_starts_closed():
 
 
 @pytest.fixture(autouse=True)
+def _a_worded_line_never_reaches_the_network(monkeypatch):
+    """`nucleo/wording.py` hands every fact the engine says to a PAID model (V2-933). Inside the suite it answers
+    nothing, so each line is its plain fallback — deterministic, offline. The tests of the wording itself give it
+    their own model (`wording._ask`)."""
+    try:
+        from nucleo import wording
+        monkeypatch.setattr(wording, "_ask", lambda system, user, seat: "")
+    except Exception:  # noqa: BLE001 — a tree without the module has nothing to keep offline
+        pass
+
+
+@pytest.fixture(autouse=True)
 def _the_spec_ledger_starts_empty():
     """V2-776 L1 keeps the open end states in one in-process ledger (`nucleo.circuit.spec._OPEN`); a test that dispatched a
     data-op left its spec open, and every later brief asked an `end_state` question it never expected — measured

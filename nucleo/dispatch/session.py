@@ -57,34 +57,28 @@ async def _run_session(task: "Task") -> None:
         if rec:
             rec.status = "done"
             rec.result_summary = danger.confirm_question(req, cls=_cls)
-            await _d._deliver_confirm(rec)
-            _d._SESSIONS.pop(key, None)
             # The question is REMEMBERED (V2-126): the gate used to speak it and drop the record, nobody ever set
             # `context["confirmed"]`, so a yes had nothing to return to and the next turn narrated work that did
             # not exist (`cancel-subscription-before-charge`, `pay-known-bill`). …and with its SHEET, already on
-            # screen, so the yes returns to it (V2-508).
-            _d.remember_confirm(key, req, task, sheet=_d.sheet_of(rec), cls=_cls)
-            _d.make_durable(key, rec)          # the row waits on the question (V2-857 P0-1)
-            _d.sync_state()
+            # screen, so the yes returns to it (V2-508). On its ROW before it is said (`confirm.park`).
+            _sheet = _d.sheet_of(rec)
+            await _dconf.park(key, rec, lambda: _d.remember_confirm(key, req, task, sheet=_sheet, cls=_cls))
         return
 
     # THE GATE FOR TOUCHING A CARD OF HIS (V2-757): a card of his is not built or rewritten unless he said so, knowing he
     # said it (f84f91ef: a design brief dictated to ANOTHER conversation started a worker rewriting his YouTube card). Here:
     # the ONE door that starts a worker, `kind == "code"` decided by the brief's `errand_kind`. The dev worker (V2-076) is exempt.
-    if kind == "code" and not _confirmed and not _d._dev_worker_params(task.context):
-        from nucleo.request import kind as _ek_gate
+    from nucleo.request import kind as _ek_gate          # a SURE order starts unasked; doubt asks once; a remark: nothing
+    if kind == "code" and not _confirmed and not _d._dev_worker_params(task.context) and not _ek_gate.sure_order(task.context):
         rec = _d._SESSIONS.get(key)
         if rec and _ek_gate.a_remark(task.context):     # a comment or a complaint builds nothing and asks nothing
             return _ek_gate.dropped(_d, key, rec, req)
         _d.logger.info(f"dispatch: task {key} STOPPED by the widget confirm-gate: {req[:80]}")
         if rec:
             rec.status = "done"
-            rec.result_summary = _ek_gate.code_change_question(req, _ek_gate.code_change(task.context.get("errand_kind")))
-            await _d._deliver_confirm(rec)
-            _d._SESSIONS.pop(key, None)
-            _d.remember_code_change(key, req, task, sheet=_d.sheet_of(rec))
-            _d.make_durable(key, rec)          # the row waits on the question (V2-857 P0-1)
-            _d.sync_state()
+            rec.result_summary = _q = await _ek_gate.asked(req, task.context)
+            _sheet = _d.sheet_of(rec)
+            await _dconf.park(key, rec, lambda: _d.remember_code_change(key, req, task, sheet=_sheet, question=_q))
         return
 
     _dconf.passed(task.context)          # the start gates passed on HIS yes: a fact of the row from now on (V2-877 #2)
