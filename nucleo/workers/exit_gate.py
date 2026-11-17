@@ -1,26 +1,14 @@
-"""nucleo/workers/exit_gate.py — a worker act that LEAVES the machine crosses the message door (V2-851 F2, §4a/§15c).
+"""nucleo/workers/exit_gate.py — a worker act that LEAVES the machine crosses ONE door (V2-851 F2, V2-931).
 
-Measured in F0: a worker's `widget_data` reached `server_api.brain_action` through the SAME consent rule as Flash but
-skipped everything `nucleo/acts/message` does around a send — the recipient put back in his word, the held row, the
-someone-else's-text check — and `card.licence`; and no worker exit read the taint. This is that door, reused, never
-rebuilt; `worker_api.worker_act` asks it before executing, after the consent policy and `on_his_behalf`:
+`worker_api.worker_act` asks it before executing; the retained act his yes runs crosses it again
+(`worker_api_answer`). Each leaving act is declared once in `EXITS`, never chosen by name:
 
-  · `card.licence` at LEAVES and FAST — a vetoed call is refused to the worker with its reason (e.g. the identical
-    retry of a refused op);
-  · ONE question per DECLARED slot of the act (`exit_slots`, V2-857 phase 5): the card's manifest declares each
-    slot (`recipient`, `channel`, `text`, a held `draft`) and the rule its value must come from — his words (a
-    swapped recipient goes back to HIS word), the commissioning turn's READING (`rec.reading`: the channel he
-    named), his sure order over the row he saw (the yes, CRIT-C9), the card, or the worker's own; each slot's source
-    is recorded on the exit's event;
-  · `asked_if_leaving` — the leave rule, the SAME one Flash's send gate asks; the stranger's-text half reads THIS
-    session's taint, not Flash's window;
-  · **taint (§4a)** — `taint_question`: while the session has consumed a stranger's text since its last confirmed
-    act, an exit is ASK_CONSENT unless the session runs under an explicit mandate that covers it
-    (`nucleo/errands/mandate.py`). Freedom of reasoning, zero freedom of consequence (`party.py`): the worker may
-    read anything; what leaves after reading it waits for his yes.
+  · `widget_data` on a card whose act leaves (`gate`): the card's own refusal first, then ONE confirmation — sending a
+    message needs his yes — unless an errand's mandate covers the channel;
+  · `mesh_serve` (`mesh`): the errand text to a third-party agent — outbound scan, the consent class, the taint.
 
-Every exit the worker reaches calls `taint_question`: a leaving `widget_data` (here), `mesh_serve` (the errand text
-to a third-party agent) and the browser's submit (`widgets/navegador/click_gate.py`).
+`taint_question` is the rule the browser's submit reads too (`widgets/navegador/click_gate.py`): while the session has
+consumed a stranger's text since its last confirmed act, an exit asks unless a mandate covers it.
 """
 from __future__ import annotations
 
@@ -38,7 +26,7 @@ class Exit:
     released: bool = False  # his order over a held row he has seen is the yes (CRIT-C9): no consent question
     event: str = ""         # the EVENT TYPE this exit is (`messaging.send_new@whatsapp`, `errand.mesh_serve@mesh`)
     subject: str = ""       # the contact id the act reaches, when it reaches exactly one person (V2-857 phase 2)
-    slots: dict = field(default_factory=dict)   # {declared slot: its source} (`exit_slots`, V2-857 phase 5)
+    slots: dict = field(default_factory=dict)   # {declared slot: its source} — recorded on the exit's event
 
     @property
     def verdict(self) -> str:
@@ -156,69 +144,45 @@ def taint_question(rec, kind: str, action: str, target: str, channel: str = "") 
 
 
 def gate(rec, payload: dict) -> Exit:
-    """The message door for one `widget_data` call of a worker. A call that does not leave passes untouched."""
+    """The message door for one `widget_data` call of a worker (V2-931). A call that does not leave passes untouched.
+
+    Sending a message needs his confirmation — that is the whole rule: ONE question, «the message is ready — shall I
+    send it to <person>?», asked every time unless an errand's mandate covers the channel (an errand with a third party
+    he set going). Nothing re-derives where the person or the words came from, nothing vetoes by his last turn's words:
+    the worker owns the send and he confirms what it is about to send. The card's own refusal is said before any
+    question, so he is never asked about an act that would not run."""
     from nucleo import on_his_behalf as _ob
     wid, act, inner = _ob._resolve(payload or {})
     if not wid or not act or not leaves(wid, act):
         return Exit(payload)
-    from nucleo.workers.prompts import playbook as _pbk
-    if (first := _pbk.checkpoint_one(rec)):          # the harness: checkpoint 1 closes before anything leaves (T19b)
-        _emit("🧭 checkpoint 1 abierto — el acto que sale espera", first, {"id": str(getattr(rec, "task_id", "")),
-                                                                         "exit": f"{wid}:{act}"})
-        return Exit(payload, refused=first)
     from widgets import contract as _contract     # an act that would refuse this call is said so before any question
     if (no := _contract.would_refuse(wid, act, inner)):
         why = str(no.get("message") or no.get("error") or "refused")
         _emit("🚫 the act would refuse this call — nothing is asked", f"{wid}:{act} · {why}"[:200],
               {"id": str(getattr(rec, "task_id", "")), "exit": f"{wid}:{act}", "error": str(no.get("error") or "")})
         return Exit(payload, refused=f"{wid}:{act} would be refused ({no.get('error') or 'refused'}): {why}")
-    # His words FOR THIS REQUEST: a record that keeps them itself (`own_words`, a send task's row) by them alone — what
-    # he said for ANOTHER order is asked; any other record, his turns since the errand began plus the words it kept.
-    heard = getattr(rec, "heard", None) or []
-    heard = [heard] if isinstance(heard, str) else list(heard)
-    said = " ".join(heard if (heard and getattr(rec, "own_words", False)) else [*_ob.errand_words(rec), *heard])
-    from nucleo.turn import brief as _tb   # the commissioning turn's reading (V2-852), its doors awaited by `cross`
-    turn = _tb.revived(getattr(rec, "reading", None))
-    from nucleo.acts import card, message
-    for at in (card.LEAVES, card.FAST):
-        lic = card.licence({"text": said, "brief": None}, wid, act, inner, at=at)
-        if lic.verdict == card.DROP:
-            _emit(lic.label or "🛑 vetoed", lic.text, {**(lic.extra or {}), "id": str(getattr(rec, "task_id", ""))})
-            return Exit(payload, refused=f"{wid}:{act} not run ({lic.clause}): {lic.text}")
     out = dict(payload or {})
-    # ONE question per declared slot (V2-857 phase 5, second slice): his word, the turn's reading, his order over the
-    # held row, or a stranger's — the manifest's `slots` name the rule, `exit_slots` holds the mechanism
-    from nucleo.workers import exit_slots
-    got = exit_slots.read(rec, wid, act, inner, said=said, turn=turn,
-                          call=out, emit=_emit)
-    if got.inner != inner:
-        out["payload"], inner = got.inner, got.inner
-    if (why := exit_slots.unbacked_send(rec, turn, got, under_mandate(
-            rec, "message", str(inner.get("platform") or inner.get("channel") or "")))):
-        _emit("🛑 unbacked send dropped", f"{wid}:{act} · {why}"[:200], {"id": str(getattr(rec, "task_id", "")),
-                                                                         "exit": f"{wid}:{act}", "clause": "unbacked"})
-        return Exit(payload, refused=f"{wid}:{act} not run (unbacked): {why}")
+    from nucleo.workers.prompts import playbook as _pbk
     if (named := _pbk.continues_as(rec, wid, act)):
         out["payload"] = inner = {**inner, "playbook": named}
-    from nucleo.workers import taint
-    from widgets import actions as _wa
-    who = _ob.shown_who(wid, act, inner) or wid       # V2-886 D5: his contact's name, never a raw id
     channel = str(inner.get("platform") or inner.get("channel") or "")
-    # The taint asks about WHAT leaves: a slot whose value the worker wrote after reading a stranger's text
-    # (`stranger`). A send whose every declared slot is his, the turn's reading, the card's or the held row's carries
-    # nothing a stranger could have steered — the taint is no question there (measured 2026-11-06: a text he dictated
-    # himself was asked about because the worker had read the inbox to find the person).
-    stranger = taint.tainted(rec) and not under_mandate(rec, "message", channel) and (
-        not got.sources or "stranger" in got.sources.values())
-    mode = message.asked_if_leaving(_wa.FAST, None, wid, act, payload=inner, said=said, stranger=stranger)
-    q = taint_question(rec, "message", act, who, channel) if stranger else ""
-    # ONE reading of «did he name this person»: a declared recipient slot's source decides (`agent`: nobody he named
-    # for THIS request); the leave rule's reading only where none is declared. An unread slot asks (K2b R1).
-    unnamed = got.sources["recipient"] == "agent" if "recipient" in got.sources else mode == _wa.CONFIRM
-    if not q and (unnamed or "unknown" in got.sources.values()):
-        # the leave rule's question: a recipient his words do not name (with the taint: one only a stranger named)
-        q = _ob.question(wid, act, inner)
-    return Exit(out, question=q, released=got.released, slots=dict(got.sources))
+    if under_mandate(rec, "message", channel):
+        return Exit(out)
+    return Exit(out, question=ready_question(wid, act, inner))
+
+
+def ready_question(wid: str, act: str, inner: dict) -> str:
+    """«The message is ready — shall I send it to <person>?», in his language, naming his contact (never a raw id)."""
+    from nucleo import on_his_behalf as _ob
+    who = _ob.shown_who(wid, act, inner) or ", ".join(_ob.who_of(wid, act, inner)) or ""
+    try:
+        from i18n import langs as _lg
+        tpl = str(getattr(_lg.current_language(), "send_ready_confirm", "") or "")
+        if tpl and who:
+            return tpl.format(who=who)
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"exit_gate: the ready line unread ({e!r})")
+    return _ob.question(wid, act, inner)
 
 
 def mesh(rec, payload: dict) -> Exit:

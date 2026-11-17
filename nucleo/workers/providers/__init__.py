@@ -189,6 +189,52 @@ def pick() -> dict | None:
     return None
 
 
+#: The env mark a worker spec carries when its task must run on Claude itself (V2-931: a send is owned end to end by
+#: an Anthropic model). `claude_start` reads it and takes `anthropic_tier()` instead of the chain's first rung.
+ANTHROPIC_MARK = "ZAELAR_WORKER_TIER"
+
+
+def anthropic_tier() -> dict | None:
+    """The rung that runs Claude itself: the subscription rung where its credential resolves and it is not parked,
+    else — on a desktop — the local licence the `claude` CLI is logged in with, on the table's Claude model. None in a
+    container with no subscription rung (no browser login exists there): the caller says so instead of relaying to
+    another model."""
+    for t in chain():
+        if t.get("auth") == "oauth" and _store.available(t["name"]):
+            return t
+    if _is_container():
+        return None
+    lead = next((dict(k) for k in KNOWN if k.get("lead")), None) or {}
+    try:
+        from config import models as _tabla
+        lead = lead or dict(_tabla.lead("brain_worker") or {})
+    except Exception:  # noqa: BLE001
+        pass
+    t = dict(LICENSE_TIER)
+    t["model"] = str(lead.get("model") or "")
+    if lead.get("fast_model"):
+        t["fast_model"] = lead["fast_model"]
+    t["vision"] = True
+    return t
+
+
+def env_for_tier(t: dict | None) -> dict:
+    """`env_for_worker` for a given rung: the licence (no base URL) needs nothing but its model slots."""
+    if not t:
+        return {}
+    if not t.get("base_url"):
+        return {**slot_env(t), **vision_env(t)}
+    tok = _credential(t)
+    if not tok:
+        return {}
+    from nucleo.energy import egress as llm_egress
+    if t.get("auth") == "oauth" and not llm_egress.mediated():
+        return {"CLAUDE_CODE_OAUTH_TOKEN": tok, "CLAUDE_CODE_MAX_RETRIES": "3", **slot_env(t), **vision_env(t)}
+    base, tok = llm_egress.route_url(t["base_url"], tok)
+    return {"ANTHROPIC_BASE_URL": base, "ANTHROPIC_AUTH_TOKEN": tok, "CLAUDE_CODE_MAX_RETRIES": "3",
+            **slot_env(t), **vision_env(t)}
+
+
 def relayed() -> bool:
     """¿Estamos corriendo en un escalón DISTINTO del configurado? Solo entonces hay que tocar el modelo: mientras
     se use el proveedor de siempre, el modelo por invocación (`code_agent.model_*`) manda como toda la vida."""

@@ -259,25 +259,11 @@ def set_cluster_objective(args: dict, c) -> None:
     return _x._t_set_cluster_objective(args=args, _say=c._say, _spawn=c._spawn, clarify=c.clarify, emit=c.emit)
 
 
-def send_to_worker(args: dict, c) -> None:
-    if not _errand_target_lets("send_to_worker", c):
-        return None
-    _x = _calls()
-    # V2-778 F1 — the body lives in `nucleo/flash/tool_executor_calls.py`; this branch passes what it reads.
-    return _x._t_send_to_worker(args=args, emit=c.emit, worker_acted=c.worker_acted, fired=c._tool_fired)
-
-
 def stop_worker(args: dict, c) -> None:
     _x = _calls()
     # V2-778 F1 — the body lives in `nucleo/flash/tool_executor_calls.py`; this branch passes what it reads.
     return _x._t_stop_worker(args=args, _norm_nfkd=c._norm_nfkd, _say=c._say, clarify=c.clarify,
                           emit=c.emit, text=c.text, worker_acted=c.worker_acted, brief=c._brief)
-
-
-def answer_worker(args: dict, c) -> None:
-    _x = _calls()
-    # V2-778 F1 — the body lives in `nucleo/flash/tool_executor_calls.py`; this branch passes what it reads.
-    return _x._t_answer_worker(args=args, emit=c.emit, worker_acted=c.worker_acted, fired=c._tool_fired)
 
 
 #: tool name → its door. Built from the functions above: one name per arm, written once.
@@ -286,7 +272,7 @@ CATALOG = {f.__name__: f for f in (
     resume_task, reopen_task, reveal_secret, play_music, play_video, show_images, show_widget, show_panel,
     manage_widget_alias, close_widget, fullscreen_widget, arrange_canvas, reply_message, delete_widget,
     restore_widget, confirm_widget_delete, set_style_directive, authenticate_web, login_done, connect_cluster,
-    cluster_send, set_cluster_objective, send_to_worker, stop_worker, answer_worker, cancel_scheduled,
+    cluster_send, set_cluster_objective, stop_worker, cancel_scheduled,
     agent_controls,
 )}
 

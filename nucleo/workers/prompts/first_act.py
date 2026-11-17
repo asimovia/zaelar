@@ -7,8 +7,8 @@ ran the act. The turn's reading already travels on the row (`rec.reading`, V2-85
 So the worker's brief carries, once, as DATA: his words verbatim (`task.context["said"]`, the sentence of the turn
 that commissioned it) and — when the turn's `screen_action` verdict is sure and names an action the card declares —
 that action with its declared fields and the one bridge call that runs it. It generalises what a send row already
-had (`send_task_words.brief_block`): a send row keeps its own block (its slots carry their sources); any other
-declared action gets this one. Nothing here decides intent: the verdict was paid for in the turn, the card declares
+had: a send keeps its own block (`send_errand.brief_block`, the send's method); any other declared action gets
+this one. Nothing here decides intent: the verdict was paid for in the turn, the card declares
 the fields, and the worker composes the values from his words.
 """
 from __future__ import annotations
@@ -143,8 +143,9 @@ def parts(uid: str, context: dict | None, reading: dict | None, trace: str = "",
         out.append(f"{head}\n«{said}»")
     from nucleo.workers import state_now
     out.append(state_now.block(uid))
-    from nucleo.request import send_task_words as _send_task
-    out.append((_send_task.brief_block(uid) if uid else "") or act_block(reading, context, trace))
+    from nucleo.request import send_errand          # a send: its method, the model's call as a hint (V2-931)
+    if not send_errand.brief_block(context):        # a send's method is already the brief's (`build._build_prompt`)
+        out.append(act_block(reading, context, trace))
     return [p for p in out if p]
 
 

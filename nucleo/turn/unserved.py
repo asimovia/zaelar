@@ -86,9 +86,9 @@ def calls_not_run(model_calls, tasks) -> list[tuple[str, str]]:
         card, action = base(args.get("widget_id")), str(args.get("action") or "").strip()
         if not card or not action or card in acted or any(card == w for w, _a in out):
             continue
-        try:   # a read that did not run has no act to say undone
+        try:   # a read that did not run has no act to say undone; a send is its worker task's (V2-931)
             from widgets import effects
-            if effects.carries(card, action, effects.DATA_READ):
+            if effects.carries(card, action, effects.DATA_READ) or effects.leaves(card, action):
                 continue
         except Exception as e:  # noqa: BLE001 — an unreadable manifest reads as an act
             logger.debug(f"unserved: {card}:{action} effects unread — {e!r}")
@@ -154,17 +154,6 @@ def served_elsewhere(brief, tasks, model_calls) -> bool:
     return card not in _cards_that_acted(tasks) and not any(_addresses(c, card) for c in model_calls or ())
 
 
-def _own_rows_out(missed) -> list:
-    """Minus the acts a programme is walking right now (V2-909, stage `own`): the row has no outcome yet, so «that was
-    not done» is not a fact of this turn — its one report comes when the walk ends."""
-    try:
-        from nucleo.play import send as _own
-        return [(c, a) for c, a in missed or () if not (_own.enabled() and _own.live(c, a))]
-    except Exception as e:  # noqa: BLE001 — unread: the line is owed as before
-        logger.debug(f"unserved: live walks unread — {e!r}")
-        return list(missed or ())
-
-
 def outcomes(tasks, model_calls, *, said: str, quiet: bool, held: bool = False, brief=None) -> list:
     """The `unmet` outcomes the turn owes for what its words may claim and its doors did not run. `quiet`: the turn's
     doors ran nothing at all (no op, no card act, no lane, no worker); `held`: the turn holds an act for his yes or
@@ -178,7 +167,7 @@ def outcomes(tasks, model_calls, *, said: str, quiet: bool, held: bool = False, 
         if held or _reply.asked() or _ended_asking(said) or (words_waiting() and not str(said or "").strip()):
             return []      # …or the model's words WAIT behind an act (the hold's deferred words): they are its answer
         lang, out = langs.current_language(), []
-        missed = _own_rows_out(calls_not_run(model_calls, tasks))
+        missed = calls_not_run(model_calls, tasks)
         if missed:
             tpl = str(getattr(lang, "reply_not_run", "") or "")
             if tpl:

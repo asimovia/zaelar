@@ -304,12 +304,8 @@ class LangSpec:
     answer_which_task: str = ""
     #: V2-877 #2 — his answer named a question that was already answered: said once, never «passed on».
     answer_already_given: str = ""
-    #: A send task that lacks ONE slot asks for it on its row (`nucleo/request/send_task`): the words, the person.
-    send_missing_text: str = ""
-    send_missing_recipient: str = ""
-    send_missing_field: str = ""      # a declared field of the act with no value: {field} is its declared label
-    #: …and a person his word reaches several of alike is ONE «which?» naming them (`send_task_who.which`).
-    send_which_recipient: str = ""
+    #: V2-931 — a send's ONE confirmation, asked by the exit door when the worker has it ready ({who}: his contact).
+    send_ready_confirm: str = ""
     #: An act of a card the brief ordered and the turn served with another tool asks ONE question for the facts it
     #: still needs, on the order's row (`nucleo/request/order_unserved`).
     act_needs_facts: str = ""
@@ -515,7 +511,6 @@ class LangSpec:
     worker_confirm_generic: str = ""
     # An act in HIS name toward somebody he never named in this errand (`nucleo/on_his_behalf.py`).
     worker_confirm_on_behalf: str = ("")
-    send_channel_which: str = ""   # V2-893 L3: his reading names another channel than the call — which one ({his}, {other})
     # V2-851 F2 §4a — an act that leaves after the worker read a stranger's text (`nucleo/workers/exit_gate.py`).
     worker_confirm_tainted: str = ""
     # V2-851 F2 §6 — a worker proposes a standing rule; it is written only on his yes (`nucleo/workers/rules_bridge.py`).

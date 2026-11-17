@@ -35,8 +35,15 @@ def rebrief(row: dict, entry: dict) -> str:
     act = (entry.get("retained") or {}).get("action")
     if act:
         res = entry.get("result")
-        lines.append(f"The act you asked to confirm ({act}) RAN; its result: {res}" if res is not None
-                     else f"The act you asked to confirm ({act}) did NOT run: he did not confirm it.")
+        if isinstance(res, dict) and res.get("unclear"):
+            lines.append(f"The act you asked to confirm ({act}) did NOT run: his answer was not a bare yes or no, so "
+                         "YOU read it. It confirms → `python -m nucleo.cli.bridge act confirm_send` (runs exactly the act "
+                         "he was asked about); it changes the person or the text → redo the act with the change (he is "
+                         "asked again); it cancels → end with one line saying it was not sent.")
+        elif res is not None and not entry.get("declined"):
+            lines.append(f"The act you asked to confirm ({act}) RAN; its result: {res}")
+        else:
+            lines.append(f"The act you asked to confirm ({act}) did NOT run: he said no.")
     lines.append("Confirm the state through the bridge before acting, then continue from that step.")
     return "\n".join(lines)
 
@@ -45,6 +52,7 @@ def context_for(row: dict, entry: dict, src: str = "answer") -> dict:
     """The escalation context that resumes `row`: same row, same session id, same cwd, the re-brief."""
     uid = str(row.get("id") or "")
     return {"src": src, "kind": str(row.get("kind") or "generic"), "task_uid": uid,
+            "playbook": str(row.get("playbook") or ""),        # a send resumes on the same playbook and model
             "sheet": str(row.get("sheet") or ""), "surface": str(row.get("surface") or ""),
             "resume": {"answer": str(entry.get("answer") or ""), "native_sid": str(row.get("session_id") or ""),
                        "cwd": str(row.get("cwd") or ""), "rebrief": rebrief(row, entry), "brief_task": uid}}

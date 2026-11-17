@@ -93,6 +93,10 @@ def classify_act(action: str, payload: dict) -> str:
     a = (action or "").strip()
     if a == "ask_user":
         return ALLOW
+    if a in ("find_contact", "confirm_send"):
+        # V2-931 — a send's two steps: a read of his contacts, and the run of the act HE answered (the engine finds
+        # it on the task's own question; the worker supplies nothing but the word).
+        return ALLOW
     if a == "not_mine":
         # V2-844 F2 (V2-784 F5) — the worker hands back words the route folded into its errand that are not its
         # business: they become an errand of their own. It writes nothing and reaches nothing by itself.

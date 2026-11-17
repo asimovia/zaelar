@@ -10,12 +10,23 @@ from nucleo.dispatch import session as _ds
 from nucleo.runtime_ids import errand_key   # V2-868: the one key of anything stored per errand
 
 
+def _on_claude(task, env: dict) -> str:
+    """A send's worker runs on Claude itself (V2-931, the operator's decision 2026-11-17): the spec carries the mark
+    `claude_start` reads, and the model is that rung's. "" for any other task (the chain decides as always)."""
+    if str((getattr(task, "context", None) or {}).get("playbook") or "") != "message":
+        return ""
+    from nucleo.workers import providers as _prov
+    env[_prov.ANTHROPIC_MARK] = "anthropic"
+    return str((_prov.anthropic_tier() or {}).get("model") or "")
+
+
 async def build_what_it_runs_with(*, ctx, key, kind, rec, req, task, trusted) -> dict:
     env = {"ZAELAR_TASK_REQUEST": req,       # req crudo → registry (elige generador) + backend
            # V2-152: a worker must talk to the engine that SPAWNED it. The six bridges default `ZAELAR_BASE` to
            # `localhost:43917` and nobody set it, so `book-hotel-night-known__es` drove the operator's LIVE
            # engine while its own record stayed empty — and the brain truthfully said nothing had been opened.
            "ZAELAR_BASE": _ds._d._own_base_url()}
+    _claude_model = _on_claude(task, env)          # V2-931: a send runs on Claude itself
     nav_tid = ""
     resume = task.context.get("resume") or {}     # V2-049: {nav_task, native_sid, count} si REANUDA una gestión
     _answered = bool(resume.get("rebrief"))       # V2-851: an answer resumes the session that asked, by id
@@ -62,7 +73,7 @@ async def build_what_it_runs_with(*, ctx, key, kind, rec, req, task, trusted) ->
             if _answered and resume.get("cwd") and _ds._d.os.path.isdir(str(resume["cwd"])):
                 _wd = str(resume["cwd"])
         _tools, _jail_args = _ds._d.dev_worker_guard.jail_writes(_ds._d._tools_for(kind, trusted, _may_write), _wd, env, key=key)
-        spec = _ds._d.WorkerSpec(kind=kind, model=_ds._d._model_for(kind), tools=_tools,   # V2-778 F4-34 — writes-only jail
+        spec = _ds._d.WorkerSpec(kind=kind, model=_claude_model or _ds._d._model_for(kind), tools=_tools,   # V2-778 F4-34
                           deny_tools=(not trusted), trusted=trusted, task_id=key,
                           token=_ds._d.rec_token(rec), parent_task_id=rec.parent_task_id, depth=rec.depth,
                           env=env, cwd=_wd, resume_sid=resume_sid,

@@ -18,7 +18,7 @@ below is this process's INDEX of those rows — what the voice's early answer an
 an entry whose row no longer waits on its `ask_id` is dropped, and an entry on a row never expires by the wall clock
 (a suspension's frozen hours are not his silence; the row's own `deadline` ends it). Only an entry no row could be
 written for keeps the old in-memory TTL. Which of several questions a reply answers is the brief's binding verdict
-(`nucleo/cli/worker_api_bind`), never «the most recent».
+(`nucleo/switchboard`), never «the most recent».
 """
 from __future__ import annotations
 
@@ -259,21 +259,6 @@ def _end_row(p: dict, ok: bool, *, outcome: str = "") -> bool:
     return True
 
 
-def bound_by_brief(brief) -> bool:
-    """The turn's brief read the binding question over the open rows (`worker_api_bind`): its pick answers the one it
-    names (or none, or asks which), so no reading of his words here answers a question that waits on a row."""
-    if brief is None or not any(v.get("ask_id") for v in _PENDING.values()):
-        return False
-    try:
-        from nucleo.cli import worker_api_bind as _bind
-        from nucleo.turn import verdicts as _v
-        choice, info = _v.read(brief, _bind.KEY, None, min_confidence=0.0)
-        return bool(info) and choice is not None
-    except Exception as e:  # noqa: BLE001
-        __import__("loguru").logger.debug(f"confirm: binding verdict unreadable — {e!r}")
-        return False
-
-
 def only_pending() -> tuple[str, dict]:
     """The one confirmation waiting, or ("", {}) when none or several — several are told apart by the brief only."""
     items = list(pending().items())
@@ -295,8 +280,6 @@ def answers_pending(text: str, brief=None) -> str | None:
     .declared_answer`, V2-878 §4b); anything longer, or several questions waiting, or a brief that read the binding
     question over the rows, is the brief's pick — never a word table (the yes/no regexes went), never a second model
     (the judge went in §4a). Demo pass 45: «ok book it, call it catch up with rowan» sent a pending mail on its «ok»."""
-    if bound_by_brief(brief):
-        return None
     wid, p = only_pending()
     if not wid:
         return None

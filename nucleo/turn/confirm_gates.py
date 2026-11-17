@@ -116,11 +116,6 @@ def _task_gate(brief=None):
         if not p:
             return None          # several parked and his words name none: the brief's pick over their rows decides
         tid = str(p.get("task_id") or "")
-        if _the_binding_reads_it(brief, p):
-            # its row's question is answered by the brief's pick (`bind_the_answer`), not here — and when the brief read
-            # his turn as an ANSWER that answered none of the waiting questions, the errand keeps waiting and he is TOLD
-            # (V2-873: «yes, and close the video» left it waiting in silence, and he believed he had answered)
-            return {"still_waiting": str(p.get("request") or "")} if _answered_none(brief) else None
         # With no pick, only a reply that IS one of the row's two declared answers decides (V2-878 §4b: the yes/no word
         # tables went — a longer reply is the brief's to read, never a word inside it).
         v = _ca.declared_answer(words, _row_options(p))
@@ -133,25 +128,6 @@ def _task_gate(brief=None):
             _d.absorb_refinement(tid, words)
         return _d.resolve_confirm(v == "yes", tid) if v else None
     return (_open, _do)
-
-
-def _the_binding_reads_it(brief, p: dict) -> bool:
-    """The parked errand waits on its ROW (`dispatch.confirm.make_durable` gave it an `ask_id`) and the turn's brief
-    read the binding question over the open asks: then the brief's pick among the two DECLARED answers is the reader
-    (CRIT-C13), and his words are read only when no pick came (V2-873: «vale cierra los resultados» — a «vale» that
-    opens another order — was read here as the yes to «this moves money… shall I go on?» before the brief, which saw
-    the question, could say it answered none)."""
-    if brief is None or not str((p or {}).get("ask_id") or ""):
-        return False
-    try:
-        from nucleo.cli import worker_api_bind as _bind
-        from nucleo.turn import verdicts as _v
-        choice, info = _v.read(brief, _bind.KEY, None, min_confidence=0.0)
-        return bool(info) and choice is not None
-    except Exception as e:  # noqa: BLE001 — unreadable: the words decide, as before
-        from loguru import logger
-        logger.debug(f"confirm_gates: binding verdict unreadable — {type(e).__name__}: {e}")
-        return False
 
 
 def _names_another_errand(words: str, parked: str) -> bool:
@@ -184,20 +160,6 @@ def operator_words(text: str) -> str:
     """The turn without the `[SISTEMA]` notes glued in front: our notice's «sin tu OK» is not his vote."""
     from nucleo.acts import errand as _esc
     return _esc.strip_system_notes(text) if "[SISTEMA]" in (text or "") else (text or "")
-
-
-def _answered_none(brief) -> bool:
-    """The brief read his turn as an ANSWER (`request_type`) and its binding pick answered none of the waiting rows."""
-    try:
-        from nucleo.cli import worker_api_bind as _bind
-        from nucleo.turn import brief as _tb, verdicts as _v
-        kind, _info = _tb.read(brief, _tb.REQUEST_KEY, "")
-        choice, info = _v.read(brief, _bind.KEY, None, min_confidence=0.0)
-        return kind == "answer" and bool(info) and str(choice) == _bind.NONE
-    except Exception as e:  # noqa: BLE001
-        from loguru import logger
-        logger.debug(f"confirm_gates: answer verdict unreadable — {type(e).__name__}: {e}")
-        return False
 
 
 def _row_options(p: dict):

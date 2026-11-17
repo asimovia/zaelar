@@ -24,101 +24,6 @@ def settled_ack(spoken_text: str) -> str:
     return "" if spoken_text else __import__("i18n.langs", fromlist=["langs"]).current_language().errand_settled
 
 
-def answers_an_open_ask(brief, worker_acted: dict, escalate_req=None) -> bool:
-    """Does this turn answer a waiting task's question — bound, or asked which (then `bind_the_answer` always asks)?"""
-    try:
-        from nucleo.cli import worker_api_bind as _bind
-        from nucleo.request import send_task_turn as _st
-        how, asks = _st.unbind(brief, str((brief or {}).get("judged") or ""), *_bind.bind(brief, model_answered=(
-            m := bool(str((worker_acted or {}).get("model_answer") or "")))), escalate_req or {}, lambda *a, **k: None)
-        return how == _bind.ANSWER or how in (_bind.ASK_WHICH, _bind.REASK) and _bind.answers_one(brief, model_answered=m)
-    except Exception:  # noqa: BLE001 — an unreadable binding binds nothing, as before
-        return False
-
-
-def no_new_errand_for_a_bound_answer(escalate_req: dict, brief, *, worker_acted: dict, emit) -> bool:
-    """V2-854 F4 (I1, V2-851 §3a) — a turn bound to an open ask answers THAT task: its commission is no new errand and
-    no card act. Measured on his engine (2026-11-05 17:22): «Sí, mándaselo» answered the waiting send's question, and
-    the same turn's escalation went through the catalogue rung into a SECOND `send_to` that asked «Shall I send it?»
-    again — the binding that clears the escalation ran after the rungs had turned it into an act. Read before the
-    rungs, by the same verdict. True when it cleared something."""
-    if escalate_req.get("v") is None or not answers_an_open_ask(brief, worker_acted, escalate_req):
-        return False
-    dropped = [escalate_req.get("v"), *(escalate_req.get("more") or [])]
-    escalate_req["v"], escalate_req["more"] = None, []
-    emit("brain", "💬 the turn answers a waiting task — no new errand for it", text=str(dropped[0] or "")[:120],
-         role="system", extra={"cat": "flash", "dropped": [str(d)[:120] for d in dropped if d]})
-    return True
-
-
-def withdraw_the_turns_leaving_confirms(confirm_state: dict, emit) -> list[str]:
-    """A bound answer re-runs the waiting task's own act; a confirmation THIS turn opened for an act that leaves the
-    machine is that act asked twice — withdrawn, never spoken. Returns the cards withdrawn."""
-    out: list[str] = []
-    try:
-        from voice import trace as _trace
-        from widgets import confirm as _wc, effects
-        from nucleo.request import base
-        here = _trace.current() or ""
-        for wid, p in _wc.pending().items():
-            op = p.get("op") if isinstance(p.get("op"), dict) else {}
-            if here and p.get("trace_id") == here and p.get("action") == "data" and op.get("action") \
-                    and effects.leaves(base(wid), str(op.get("action"))):
-                _wc.resolve(wid, ok=False)
-                out.append(wid)
-        # …and the consent questions this turn put on a ROW for a leaving act (V2-857 phase 3): the same act, asked twice
-        from nucleo import circuit
-        from nucleo.circuit import asker, ledger
-        from nucleo.cli import worker_api as _wapi
-        for a in _wapi.open_asks():
-            art = asker.artefact(a["task_id"])
-            ret = art.get("retained") or {}
-            if not (art.get("inline") and art.get("consent") == "ask_consent" and ret.get("widget") and ret.get("action")):
-                continue
-            row = ledger.get(a["task_id"]) or {}
-            if here and str(row.get("trace_id") or "") == here and effects.leaves(base(ret["widget"]), str(ret["action"])):
-                circuit.settle(row=a["task_id"], state="cancelled", outcome="the waiting task owns the act")
-                out.append(f"{base(ret['widget'])} ({a['task_id']})")
-        if out:
-            confirm_state["opened"] = ""
-            emit("brain", "💬 the waiting task owns the act — this turn's own confirmation withdrawn",
-                 text=", ".join(out), role="system", extra={"cat": "flash", "withdrawn": out})
-    except Exception:  # noqa: BLE001 — never takes the turn down
-        pass
-    return out
-
-
-def bind_the_answer(brief, text: str, *, model_answer: str, worker_acted: dict, escalate_req: dict, others_acted: bool,
-                    spoken_text: str, send, speech, emit, confirm_state: dict | None = None) -> str:
-    """Bind this turn to the question a waiting task asked — or ask which task — through `worker_api_bind`. Returns
-    what has been said this turn."""
-    from i18n import langs as _l
-    from nucleo.cli import worker_api as _wapi, worker_api_bind as _bind
-    from nucleo.request import send_task_turn as _st   # a turn that is a send task binds no other waiting task
-    how, asks = _st.unbind(brief, text, *_bind.bind(brief, model_answered=bool(model_answer)), escalate_req, emit)
-    if how == _bind.ANSWER and _wapi.answer_soon(asks[0]["ask_id"], _st.slot_answer(asks[0], text, spoken_text),
-                                                 asks[0].get("choice")):
-        worker_acted["v"] = "answer"
-        escalate_req["v"] = None          # it answered a waiting task: no new errand
-        emit("brain", "💬 answer bound to its task", text=text[:120], role="system",
-             extra={"cat": "flash", "task_id": asks[0]["task_id"], "ask_id": asks[0]["ask_id"]})
-        if confirm_state is not None:     # …and no second question for the act it owns (V2-854 F4)
-            withdraw_the_turns_leaving_confirms(confirm_state, emit)
-        if not spoken_text and (spoken_text := str(getattr(_l.current_language(), "answer_taken", "") or "")):
-            send(speech.sanitize(spoken_text, drop_metadata=False))
-    elif how in (_bind.ASK_WHICH, _bind.REASK) and (model_answer or _bind.answers_one(brief, model_answered=bool(model_answer))
-                                                     or not (others_acted or escalate_req["v"] is not None)):
-        line = _bind.ask_which(asks, text=text) if how == _bind.ASK_WHICH else _bind.reask(asks[0])
-        worker_acted["v"] = "answer"      # attended (asking), nothing bound blind
-        escalate_req["v"] = None
-        emit("brain", "❓ which waiting task does his answer belong to — asked", text=text[:120], role="system",
-             extra={"cat": "flash", "among": [a["task_id"] for a in asks]})
-        if line:
-            send(speech.sanitize(line, drop_metadata=False))
-            spoken_text = (spoken_text + " " + line).strip() if spoken_text else line
-    return spoken_text
-
-
 async def settle_what_is_pending(*, _ans, _ask_waiting, _auth_pending, _brief, _dialog, _filler_audio, _langs, _prev_pending, _r, _resolve_confirm, _router, _shown_ids, _turn_op_tasks=(), acted, aside, brain, clarify, confirm_state, data_done, emit, escalate_req, had_pending_confirm, llm_metrics, music_req, operator_text, search_req, send, speech, spoken_text, style_fired, text, worker_acted) -> dict:
     if had_pending_confirm and not confirm_state["handled"]:
         try:
@@ -148,17 +53,8 @@ async def settle_what_is_pending(*, _ans, _ask_waiting, _auth_pending, _brief, _
             if not spoken_text and (spoken_text := str(getattr((_langs or _i18n_langs).current_language(), "work_started" if _ans.yes else "confirm_cancelled", "") or "")):
                 send(speech.sanitize(spoken_text, drop_metadata=False))
 
-    # V2-851 §3a — his words while tasks WAIT for his answer are bound by the brief's verdict (`worker_api_bind`):
-    # sure → that task's question gets them and its session resumes; unsure → asked which task; never by length,
-    # by a word list or by age. The model's own `answer_worker` is one more reading of the same turn, never a binding.
-    _model_answer = str(worker_acted.get("model_answer") or "")
-    if (_ask_waiting or _model_answer) and worker_acted["v"] != "answer" and not had_pending_confirm \
-            and not _auth_pending:
-        spoken_text = bind_the_answer(_brief, text, model_answer=_model_answer, worker_acted=worker_acted,
-                                      escalate_req=escalate_req, others_acted=bool(
-                                          search_req["v"] is not None or acted["widget"] or data_done["v"]),
-                                      spoken_text=spoken_text, send=send, speech=speech, emit=emit,
-                                      confirm_state=confirm_state)
+    # V2-931 — his words for an open process were delivered by the switchboard before this turn ran
+    # (`nucleo/switchboard`): nothing here binds an answer or reads the model's own routing.
     # STOP backstop: workers are live and the model did NOT call stop_worker. Only the turn's sure stop verdict (or his
     # taken offer) stops one here; with no verdict nothing stops — no word list over his sentence (V2-857 phase 8).
     if worker_acted["v"] not in ("stop",):
@@ -227,8 +123,8 @@ async def settle_what_is_pending(*, _ans, _ask_waiting, _auth_pending, _brief, _
                                                          or music_req["v"] is not None or worker_acted["v"]),
                                               held=bool(confirm_state.get("opened") or clarify["msg"]))
     spoken_text = __import__("nucleo.turn.reply", fromlist=["x"]).routed_send_line(   # V2-887: a routed send is a START
-        spoken_text, escalate_req.get("send_task"), data_done["v"], send, speech)
-    if data_done["v"] and not spoken_text and _ack_allowed and not escalate_req.get("send_task") and escalate_req["v"] is None and search_req["v"] is None:
+        spoken_text, ("send" in escalate_req), data_done["v"], send, speech)
+    if data_done["v"] and not spoken_text and _ack_allowed and not ("send" in escalate_req) and escalate_req["v"] is None and search_req["v"] is None:
         try:
             from i18n import langs as _langs   # same object as the voice.engine.core shim
             _lg = _langs.current_language()
@@ -257,7 +153,7 @@ async def settle_what_is_pending(*, _ans, _ask_waiting, _auth_pending, _brief, _
     # SHOW/CLOSE de canvas por tag SIN frase hablada → ack corto (bug 2026-07-13: el modelo emitía [[show:agenda]]
     # sin decir nada → turno MUDO; el operador no oía NI veía nada y creía que estaba roto). Nunca mudo al abrir/
     # cerrar un widget.
-    if acted["widget"] and not spoken_text and _ack_allowed and not escalate_req.get("send_task") \
+    if acted["widget"] and not spoken_text and _ack_allowed and not ("send" in escalate_req) \
             and escalate_req["v"] is None and search_req["v"] is None \
             and not confirm_state.get("opened") and not clarify["msg"]:
         try:

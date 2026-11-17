@@ -93,7 +93,5 @@ def run_ordered(brief, widget_id: str, model_action: str, payload: dict | None, 
          text=f"{widget_id}: modelo={model_action} · veredicto={sent[0]}", role="system",
          extra={"cat": "flash", "id": widget_id, "model": model_action, "verdict": sent[0]})
     acted["widget"] = True
-    from nucleo.request import substitution
-    with substitution.in_the_models_place():        # a send in the model's call's place asks before it leaves
-        apply(widget_id, sent[0], sent[1])
+    apply(widget_id, sent[0], sent[1])             # a send goes to its worker task, which asks before it leaves
     return True

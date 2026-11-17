@@ -53,16 +53,16 @@ def _sure_order(brief) -> bool:
     return canvas_verdict.sure_no_canvas(brief)
 
 
-def read(*, brief, calls, ops, escalated: bool, send_task: bool, acted_elsewhere: bool, asked: bool) -> dict:
+def read(*, brief, calls, ops, escalated: bool, acted_elsewhere: bool, asked: bool) -> dict:
     """The record of one turn: `{dest, legacy, agree, unserved, named, ran}`. Pure over its readings."""
     from nucleo.turn import acts_asked, route_by_verdict
     named, ran = _named(calls, brief), _ran(ops)
     errand = route_by_verdict.sure_escalate(brief) or any(
         isinstance(c, dict) and c.get("name") == "escalate_to_slowbrain" for c in calls or ())
     dest = _route.destination(named, several=acts_asked.several(brief), errand=errand)
-    if escalated and not send_task:
+    if escalated:                       # a send is an errand too: its worker task (V2-931)
         legacy = _route.ERRAND
-    elif send_task or ran:
+    elif ran:
         legacy = _route.PLAY
     else:
         legacy = _route.TALK
@@ -80,7 +80,7 @@ def closed(*, brief, calls, ops, escalate_req, acted_elsewhere: bool, opened: bo
         from nucleo.request import ends_asking
         from nucleo.turn import reply
         rec = read(brief=brief, calls=calls, ops=ops, escalated=(escalate_req or {}).get("v") is not None,
-                   send_task=bool((escalate_req or {}).get("send_task")), acted_elsewhere=bool(acted_elsewhere),
+                   acted_elsewhere=bool(acted_elsewhere),
                    asked=bool(opened) or reply.asked() or ends_asking(said))
         from voice import observer
         drift = not rec["agree"] or rec["unserved"]

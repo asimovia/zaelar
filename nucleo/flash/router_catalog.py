@@ -694,25 +694,6 @@ TOOLS: list[dict] = [
     {
         "type": "function",
         "function": {
-            "name": "send_to_worker",
-            "description": (
-                "Inyecta una instrucción a un Brain Worker YA EN MARCHA (mira «BRAIN WORKERS EN MARCHA» en tu "
-                "estado) cuando el operador refina, amplía o corrige una tarea EN CURSO. Para un refinamiento NO "
-                "abras otra con escalate: inyecta aquí."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "which": {"type": "string", "description": "a qué worker (natural: 'la búsqueda de la moto', 'todos')"},
-                    "message": {"type": "string", "description": "la instrucción/refinamiento nuevo, autocontenido"},
-                },
-                "required": ["which", "message"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
             "name": "stop_worker",
             "description": (
                 "MATA un Brain Worker EN MARCHA ('deja de buscar'): no un widget ni una tarea programada "
@@ -736,25 +717,6 @@ TOOLS: list[dict] = [
                 "type": "object",
                 "properties": {"job": {"type": "string"}},
                 "required": ["job"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "answer_worker",
-            "description": (
-                "Responde la PREGUNTA de un Brain Worker que ESPERA (marca ⚠️ en tu estado) con lo que conteste el "
-                "operador ('enduro', 'sí, en verde', 'el segundo'). `answer` = la respuesta tal cual; `which` = a "
-                "qué worker, si hay varios esperando."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "answer": {"type": "string", "description": "la respuesta del operador, tal cual"},
-                    "which": {"type": "string", "description": "a qué worker (opcional; si varios esperan)"},
-                },
-                "required": ["answer"],
             },
         },
     },

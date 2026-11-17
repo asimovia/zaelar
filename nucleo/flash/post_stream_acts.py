@@ -21,10 +21,6 @@ async def complete_the_acts(*, _apply_widget_data, _brief, _data_ops_hechas, _ha
     spoken_text = "".join(spoken).strip()
     _stop_decision.steer(_brief, _router.operator_words(operator_text, text), worker_acted=worker_acted, emit=emit, escalate_req=escalate_req,
                          acted=acted, data_done=data_done, lanes=(music_req, images_req))  # V2-820: first — unless a card or lane carried the words out
-    # V2-854 F4 — a turn that answers a waiting task's question opens nothing of its own: no errand, no card act.
-    from nucleo.flash import post_stream_settle as _pss
-    _pss.no_new_errand_for_a_bound_answer(escalate_req, _brief, worker_acted=worker_acted, emit=emit)
-    __import__("nucleo.request.clarify_end", fromlist=["x"]).moved_on(_brief, emit)   # V2-886 D1: a clarify moved on
     # V2-887: no word guard turns the model's tool into a «show» — a regex read «pone» as «pon» and swapped a search
     # for «Aquí lo tienes» with nothing done. A show is the model's call or the brief's sure canvas verdict.
     _routed = _route.owns(escalate_req)   # a sure escalate verdict decided: nothing below swaps or drops it

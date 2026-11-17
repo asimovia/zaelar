@@ -14,7 +14,7 @@ The answer (screen route, or the brief's binding verdict on a later turn) resume
 among the door's declared candidates (or a yes to its consent) the retained act re-runs through the same door with the
 answer bound into its slot (`rerun`) — never a new row, never a model run. An answer about an act that LEAVES which
 needs composing goes to a Brain Worker on the same row instead (`nucleo/request/answered_task`, V2-851 F2e). Which
-candidate he named is the binding verdict's choice over the declared candidates (`worker_api_bind`); his words are
+candidate he named is the choice the screen sends over the declared candidates; his words are
 never matched here. The door's echo then settles the row through `circuit.settle`, as any inline act's.
 """
 from __future__ import annotations
@@ -41,7 +41,7 @@ _RESUMING: dict = {}
 #: What `ask_outside_door.held` retains for our own question: his request, the card and its acts.
 UTTERANCE = "utterance"
 #: How long our own question about an act of a card takes the model's call of that act as his answer (`claim`): the
-#: conversation (`send_task_answer.RECENT_S`), not for ever — a call days later is a new order.
+#: conversation, not for ever — a call days later is a new order.
 OFFER_S = 600.0
 
 

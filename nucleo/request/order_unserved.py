@@ -21,10 +21,8 @@ THE MECHANISM, at the turn's close, read off verdicts already paid for and what 
     model's call that RAN there; one that only LOOKED where the turn surely asks to act (`_beyond_looks`) owes its
     QUESTION, never a second act;
   · then the order opens ITS row — the turn's while that is open, a new one when the model's other act already
-    ended it (an ended row is never re-opened). An act that LEAVES becomes a send task
-    (`send_task_words.from_verdict`: the person his word names, the text the model quoted of his words — it runs, or
-    asks the ONE slot it lacks on that row); when his words resolve no person of his, or the act declares no slots,
-    a Brain Worker takes it on its row with the `message` playbook (`ask_outside_door.to_message_task`). An act of
+    ended it (an ended row is never re-opened). An act that LEAVES is its ONE worker task (`send_errand.start`,
+    V2-931: the worker finds the person, composes, asks his one confirmation and sends). An act of
     the CARD runs by the same completion the empty turn uses (`direct_action.complete`, a payload his words can fill
     honestly), else ONE `ASK_FACT` question through the one asker on the order's row, naming the facts the act
     still needs — never a worker for an app act.
@@ -112,7 +110,7 @@ def open_the_order(brief, *, said: str, reply: str, ops=(), model_calls=(), esca
     try:
         esc, wa = escalate_req or {}, worker_acted or {}
         text = " ".join(str(said or "").split())
-        if not text or esc.get("send_task") or esc.get("v") is not None or wa.get("v") or ends_asking(reply):
+        if not text or "send" in esc or esc.get("v") is not None or wa.get("v") or ends_asking(reply):
             return {}
         from nucleo.turn import reply as _reply
         if _reply.asked():
@@ -137,14 +135,9 @@ def open_the_order(brief, *, said: str, reply: str, ops=(), model_calls=(), esca
 
 
 def _leaving(brief, wid: str, act: str, said: str, reply: str, emit) -> dict:
-    """An act that leaves: the send task from his words (run, or one slot asked on its row), else a worker on its row."""
-    from nucleo.request import ask_outside_door, send_task_words
-    from nucleo.turn import brief as _tb
-    uid, how = send_task_words.from_verdict(wid, act, said, reply, reading=_tb.carried(brief) or None, emit=emit,
-                                            on_missing="ask")
-    if uid:
-        return {"row": uid, "how": how, "widget": wid, "act": act}
-    tid = ask_outside_door.to_message_task(wid, act, said, src="served_elsewhere", emit=emit)
+    """An act that leaves: its ONE worker task (`send_errand.start`) — the worker finds the person and asks."""
+    from nucleo.request import send_errand
+    tid = send_errand.start(said, wid=wid, action=act, src="served_elsewhere", emit=emit)
     return {"row": "", "how": "worker", "worker": tid, "widget": wid, "act": act} if tid else {}
 
 

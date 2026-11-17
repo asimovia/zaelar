@@ -16,7 +16,8 @@ from nucleo.workers.prompts.surfaces import worker_language_block
 
 
 def _build_prompt(request: str, context: str, trusted: bool, brief: dict | None = None, *,
-                  playbook: str = _playbook.ERRAND) -> str:
+                  playbook: str = _playbook.ERRAND, method: str = "") -> str:
+    """`method`: a task that brings its own method (a send, V2-931) reads that instead of the playbook's checkpoints."""
     if not trusted:
         parts = [catalog.words("header_untrusted"), worker_language_block()]
         if context:
@@ -24,7 +25,8 @@ def _build_prompt(request: str, context: str, trusted: bool, brief: dict | None 
         parts.append(f"{catalog.words('request_head')}\n{request}")
         return "\n\n".join(p for p in parts if p)
     stable = [catalog.words("header"),
-              _playbook.block(playbook, _playbook.done_when(playbook), results=_playbook.results_contract(brief)),
+              method or _playbook.block(playbook, _playbook.done_when(playbook),
+                                        results=_playbook.results_contract(brief)),
               catalog.headlines()]
     variable = [worker_language_block(), _today_block(), catalog.said_block()]
     variable.append(catalog.known_lines(request))   # what is KNOWN about this errand: per task, so not on request

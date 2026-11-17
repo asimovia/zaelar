@@ -81,7 +81,7 @@ FAMILIES: dict[str, tuple[str, ...]] = {
     "core":      ("escalate_to_slowbrain", "set_style_directive", "not_understood", "cancel_scheduled", "agent_controls"),
     "widgets":   ("show_widget", "close_widget", "widget_data", "delete_widget", "restore_widget", "confirm_widget_delete",
                   "fullscreen_widget", "manage_widget_alias", "show_panel", "arrange_canvas"),
-    "workers":   ("send_to_worker", "stop_worker", "answer_worker", "resume_task"),
+    "workers":   ("stop_worker", "resume_task"),
     "cluster":   ("connect_cluster", "set_cluster_objective", "cluster_send"), "a2a": ("a2a_send", "a2a_connect", "a2a_grant", "a2a_read"),
     "messaging": ("reply_message",),
     "media":     ("play_music", "play_video", "show_images"),
@@ -123,9 +123,7 @@ _SITUATIONAL = {
     # knowing in advance that a widget had to be opened first (it no longer exists: the network is a NATIVE surface).
     # The protection was never the gate but the Yes/No confirmation with the cluster_id visible, still intact.
     # V2-038: worker tools only when there is something to direct (§v3·D: gated by has_workers / ask_pending).
-    "send_to_worker":        lambda ctx: ctx.get("has_workers", False),
     "stop_worker":           lambda ctx: ctx.get("has_workers", False),
-    "answer_worker":         lambda ctx: ctx.get("ask_pending", False),
     "resume_task":           lambda ctx: ctx.get("has_pending", False), "cancel_scheduled": lambda ctx: ctx.get("has_scheduled", False),   # V2-799 / V2-883: only when something is pending / scheduled
     # V2-085 — three NEW gates, all based on REAL SYSTEM CAPABILITY (if it does not exist, the tool cannot work and
     # offering it only invites the model to promise something impossible):
@@ -261,14 +259,8 @@ def decide(name: str, args: dict | None = None) -> Decision:
     if name == "set_style_directive":
         return Decision(STYLE, {"directive": (args.get("directive") or "").strip(),
                                 "name": (args.get("name") or "").strip()})
-    if name == "send_to_worker":
-        return Decision(INJECT, {"which": (args.get("which") or "").strip(),
-                                 "message": (args.get("message") or "").strip()})
     if name == "stop_worker":
         return Decision(STOP, {"which": (args.get("which") or "").strip()})
-    if name == "answer_worker":
-        return Decision(ANSWER, {"answer": (args.get("answer") or "").strip(),
-                                 "which": (args.get("which") or "").strip()})
     return Decision(CHAT, {})
 
 

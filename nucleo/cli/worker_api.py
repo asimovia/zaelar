@@ -111,6 +111,12 @@ async def _one_act(rec, action: str, payload: dict) -> dict:
     if action == "card":            # a widget's declared actions and fields, without its data
         from nucleo.workers import widget_card
         return widget_card.card(str((payload or {}).get("id") or (payload or {}).get("widget_id") or ""))
+    if action == "find_contact":    # V2-931: a send's first step — whom his word names, with their channels
+        from nucleo.request import send_errand
+        return send_errand.find_contact(str((payload or {}).get("name") or (payload or {}).get("query") or ""))
+    if action == "confirm_send":    # V2-931: the worker read his answer as a yes to ITS retained send
+        from nucleo.cli import worker_api_answer as _ans
+        return await _ans.confirm_retained(rec)
     if action == "ask_user":
         q = (payload or {}).get("question") or (payload or {}).get("text") or ""
         if not str(q).strip() and not isinstance((payload or {}).get("remote"), dict):
@@ -138,7 +144,7 @@ async def _one_act(rec, action: str, payload: dict) -> dict:
         if _released and pol == CONFIRM:
             pol = ALLOW                                 # his order over the row he saw is the yes (CRIT-C9)
     _q_behalf = "" if _released or pol != ALLOW else _behalf.worker_question(rec, action, payload)
-    _q_behalf = _q_behalf or (_q_exit if pol == ALLOW else "")
+    _q_behalf = _q_exit or _q_behalf          # a send's one confirmation is the exit door's (V2-931)
     if pol == CONFIRM or _q_behalf:
         # §v3·K: an irreversible act becomes an auto-generated ask_user with the RETAINED action.
         q = _q_behalf or _confirm_question(action, payload)

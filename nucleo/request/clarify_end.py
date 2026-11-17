@@ -41,22 +41,6 @@ def close(task_id: str, ask_id: str, reason: str, emit=None, waited_s: float | N
         return False
 
 
-def moved_on(brief, emit=None) -> list[str]:
-    """His turn surely answers NONE of the waiting questions: every clarify that asked him in our last reply closes."""
-    try:
-        from nucleo.circuit import asked_last
-        from nucleo.cli import worker_api, worker_api_bind as bind
-        from nucleo.turn import verdicts
-        choice, _info = verdicts.read(brief, bind.KEY, None, min_confidence=verdicts.VETO)
-        if str(choice) != bind.NONE:
-            return []
-        return [a["ask_id"] for a in worker_api.open_asks() if asked_last.asked_since(a) and is_clarify(a["task_id"])
-                and close(a["task_id"], a["ask_id"], MOVED_ON, emit)]
-    except Exception as e:  # noqa: BLE001
-        note(e)
-        return []
-
-
 def wait_s(now: float | None = None) -> float:
     try:
         import rules

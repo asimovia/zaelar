@@ -2,7 +2,7 @@
 
 The second half of `nucleo/request/inline_ask` (split by concern, 2026-11-12 A5: the ask door stays there — the row
 waits, the answering call is claimed —, the ANSWER's re-run lives here). `rerun` is the one door every bound or
-screen answer to an inline row crosses (`worker_api_answer.answer`): a task matter, a notice, a send task's slot, a
+screen answer to an inline row crosses (`worker_api_answer.answer`): a task matter, a notice, a
 «for X or new?», a parked errand, a card's consent act, our own question about an act of a card (`answered_offer`), an
 answer that needs composing about an act that leaves (`answered_task`), and the plain re-run of the kept act with the
 answer bound into its slot through the card's own door.
@@ -41,8 +41,6 @@ async def rerun(uid: str, entry: dict, text: str, choice: int | None = None):
         return {"ok": True, "row": uid, "answered": True}
     if retained.get("kind") == "notice":         # a scheduled notice's question (V2-878 §4): his answer ends it
         return __import__("nucleo.pulse.notice_ask", fromlist=["x"]).answered(uid, entry, text)
-    if retained.get("kind") == "send":           # a send task's slot (`nucleo/request/send_task`): his answer fills it
-        return __import__("nucleo.request.send_task_answer", fromlist=["x"]).answered(uid, entry, text, choice)
     if retained.get("kind") == "which":          # «for X, or something new?» (V2-878 §3 e): his answer routes it
         return __import__("nucleo.turn.which_flow", fromlist=["x"]).answered(uid, entry, text, choice)
     if retained.get("kind") == "start":          # a parked errand's question (V2-857 P0-1): its yes relaunches it
@@ -79,9 +77,9 @@ async def rerun(uid: str, entry: dict, text: str, choice: int | None = None):
         # A5 — our own question about an act of the CARD: his yes or his fact composes the act on this row
         from nucleo.request import answered_offer
         return await answered_offer.run(uid, entry, text, choice)
-    if leaves and not answered_task.deterministic(entry, choice):
-        # F2e — an answer that needs composing (our own question, a fact, a free answer) about an act that LEAVES is
-        # an identified task: a worker takes it on this row. A plain pick or a yes re-runs the kept act below.
+    if leaves:
+        # F2e, V2-931 — any answer about an act that LEAVES is its worker task on this row: the worker owns the send
+        # and asks his one confirmation; nothing here re-runs a send inline.
         return {"ok": True, "worker": answered_task.start(uid, entry, text, choice), "row": uid}
     wid, action = str(retained.get("widget") or ""), str(retained.get("action") or "")
     if not inline_ask.take(str(entry.get("ask_id") or entry.get("corr_id") or "")):

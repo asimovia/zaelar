@@ -138,33 +138,12 @@ async def answer(corr_id: str, text: str, *, resume: bool = True, choice: int | 
         return True
     said = decision(str(e.get("question") or ""), text, choice, e.get("options")) if retained.get("action") else None
     if retained.get("action") and said == "no":
+        e["declined"] = True
         _declined(uid, retained)               # his no ends the act's goal: never a shortfall the circuit retries
     elif retained.get("action") and said is None:
         e["result"] = {"ok": False, "unclear": True}   # neither yes nor no: nothing runs, nothing ends — the session
-    elif retained.get("action"):                       # resumes with his words and asks again
-        from nucleo.workers import taint as _taint
-        rec = _record_for(e)
-        _taint.cleared(rec)        # his yes: what the session read before is behind his confirmation (§4a)
-        try:
-            payload, refused = retained.get("payload") or {}, ""
-            from nucleo.workers import exit_gate
-            # his yes answers the question, never the door: an act that leaves crosses it again (checkpoint 1, the
-            # act's own refusal, his recipient) before it runs; the question it would ask is the one he answered
-            if rec is not None and (_ex := await exit_gate.cross(rec, str(retained["action"]), payload)) is not None:
-                payload = _ex.payload
-                refused = _ex.refused
-            if refused:
-                e["result"] = {"ok": False, "error": refused}
-            else:
-                with _taint.during(rec, source=str(retained["action"])):
-                    e["result"] = await _m._exec_allow(retained["action"], payload, rec)
-                from nucleo.workers import missing_datum     # his yes ran it: the hold reads it as the bridge does
-                e["result"] = missing_datum.after(rec, str(retained["action"]), payload, e["result"])
-            from nucleo.workers import task_files      # his yes ran it: its artefact on the task, at the door
-            task_files.record(rec, str(retained["action"]), payload, e["result"])
-            task_files.said(rec, str(retained["action"]), payload, e["result"])
-        except Exception as ex:  # noqa: BLE001 — `as e` here unbound the entry itself (Python deletes the name)
-            _note(ex)
+    elif retained.get("action"):                       # resumes with his words; the worker reads them (V2-931)
+        e["result"] = await _run_retained(e, _record_for(e))
     if corr_id in _m._ACTS:
         _m._ACTS[corr_id] = e
     _keep(uid, e)
@@ -181,6 +160,63 @@ async def answer(corr_id: str, text: str, *, resume: bool = True, choice: int | 
     return True
 
 
+async def _run_retained(e: dict, rec) -> dict:
+    """His yes runs the act the question retained: it crosses the exit door again for the act's own refusal (the
+    question it would ask is the one he answered), runs, and its artefact lands on the task. A send records its end
+    state for the worker to verify (`send_errand.record_end_state`)."""
+    retained = e.get("retained") or {}
+    from nucleo.workers import taint as _taint
+    _taint.cleared(rec)        # his yes: what the session read before is behind his confirmation (§4a)
+    result: dict = {"ok": False, "error": "not run"}
+    try:
+        payload, refused = retained.get("payload") or {}, ""
+        from nucleo.workers import exit_gate
+        if rec is not None and (_ex := await exit_gate.cross(rec, str(retained["action"]), payload)) is not None:
+            payload = _ex.payload
+            refused = _ex.refused
+        if refused:
+            result = {"ok": False, "error": refused}
+        else:
+            with _taint.during(rec, source=str(retained["action"])):
+                result = await _m._exec_allow(retained["action"], payload, rec)
+            from nucleo.workers import missing_datum     # his yes ran it: the hold reads it as the bridge does
+            result = missing_datum.after(rec, str(retained["action"]), payload, result)
+            if isinstance(result, dict) and result.get("ok"):
+                from nucleo import on_his_behalf as _ob
+                wid, act, inner = _ob._resolve(payload or {})
+                if wid and act and exit_gate.leaves(wid, act):
+                    from nucleo.request import send_errand
+                    send_errand.record_end_state(str(e.get("uid") or getattr(rec, "uid", "") or ""), wid, act, inner,
+                                                 str(e.get("answer") or ""))
+        from nucleo.workers import task_files      # his yes ran it: its artefact on the task, at the door
+        task_files.record(rec, str(retained["action"]), payload, result)
+        task_files.said(rec, str(retained["action"]), payload, result)
+    except Exception as ex:  # noqa: BLE001
+        _note(ex)
+    return result
+
+
+async def confirm_retained(rec) -> dict:
+    """Bridge act `confirm_send` (V2-931): the worker read his answer to its send question as a confirmation. Runs the
+    act THAT question retained — never one the worker writes now — once, and only when he answered it with words the
+    engine recorded as his and nothing ran yet."""
+    uid = str(getattr(rec, "uid", "") or "")
+    e = dict(_artefact(uid)) if uid else {}
+    retained = e.get("retained") or {}
+    res = e.get("result")
+    if not (retained.get("action") and e.get("state") == "answered" and str(e.get("answer") or "").strip()):
+        return {"ok": False, "error": "no answered confirmation of this task waits: ask with the send act first"}
+    if e.get("declined"):
+        return {"ok": False, "error": "he said no to this act: it is not sent — end saying so"}
+    if isinstance(res, dict) and (res.get("ok") or e.get("confirmed")):
+        return {"ok": False, "error": "this act already ran on his answer: verify it, do not send it again"}
+    e["confirmed"] = time.time()
+    _keep(uid, e)                              # once: a second confirm finds it spent
+    e["result"] = await _run_retained(e, rec)
+    _keep(uid, e)
+    return e["result"] if isinstance(e["result"], dict) else {"ok": True, "result": e["result"]}
+
+
 async def answer_task(uid: str, ask_id: str, text: str) -> bool:
     """The screen's answer: it names its task and its question. False (→ 409) when that question is not open. A
     screen option IS a declared candidate: picking it is its index, never a reading of words."""
@@ -195,7 +231,7 @@ async def answer_task(uid: str, ask_id: str, text: str) -> bool:
 @_consequence.door("worker.answer", neutral=False)
 def answer_soon(ask_id: str, text: str, choice: int | None = None) -> bool:
     """Fire-and-forget onto the server loop, from the FlashBrain's job thread: answer the question the turn's verdict
-    BOUND (`worker_api_bind`). True if the question was open AND its answer will be taken — the same reading the
+    ROUTED here (`nucleo/switchboard`). True if the question was open AND its answer will be taken — the same reading the
     answer door makes (`refusal`): an answer it would refuse is never reported bound, and a spent question is said
     so (`_refused`), never «passed on» (V2-877 #2)."""
     why = refusal(ask_id)

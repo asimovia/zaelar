@@ -7,7 +7,7 @@ The worker's process ends after asking; an answer resumes THAT task's session (`
 
 The RAM registry (`worker_api._ACTS`) is only a cache of the live session's questions; the truth is the row and its
 artefact, so a restart loses nothing. Which waiting task an utterance answers is never decided here: a screen answer
-carries its `ask_id`, a spoken one is bound by the brief's verdict (`nucleo/cli/worker_api_bind`); the answering
+carries its `ask_id`, a spoken one is routed by the switchboard (`nucleo/switchboard`); the answering
 lives in `nucleo/cli/worker_api_answer`.
 """
 from __future__ import annotations
@@ -98,7 +98,7 @@ def has_pending_ask() -> bool:
 
 
 def pending_asks() -> list[dict]:
-    """Open questions, oldest first, for the voice relay — never a binding (`worker_api_bind` binds)."""
+    """Open questions, oldest first, for the voice relay — never a routing (`nucleo/switchboard` routes)."""
     seen, out = set(), []
     for a in open_asks():
         seen.add(a["ask_id"])

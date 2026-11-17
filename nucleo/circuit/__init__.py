@@ -178,26 +178,10 @@ def _state_event(uid: str, state: str, trace: str) -> None:
 #: is no receipt (V2-847) — and measured on his engine (2026-11-04) the echo then closed in silence.
 SENT = "Ya ha salido: el envío ha quedado confirmado."
 
-#: …and, when the words that left are not a run of his sentence (INI-071 B4), which words did. It says what is KNOWN:
-#: the text is not in the sentence of this turn — he may have dictated it a turn earlier and only said «yes» now, so
-#: the fact never claims they are not his. A long body is named by its start (`SENT_TEXT_MAX`): a receipt, not a reading.
-SENT_NOT_HIS = "El texto que salió no es una cita literal de su frase; salió esto: «{text}»."
-SENT_TEXT_MAX = 280
-
-
 def _sent_fact(e: dict) -> str:
-    """The fact a landed send is said from: `SENT`, plus the words that left when the act's composed text is not a run
-    of his words (`exit_slots.words_not_his`). Never raises: unread, the fact is `SENT` as before."""
-    try:
-        from nucleo.workers import exit_slots
-        said = str((e.get("turn") or {}).get("text") or e.get("text") or "")
-        text = exit_slots.words_not_his(str(e.get("widget") or ""), str(e.get("action") or ""), e.get("payload"), said)
-    except Exception as ex:  # noqa: BLE001
-        logger.debug(f"circuit: the words that left are unread ({ex})")
-        text = ""
-    if len(text) > SENT_TEXT_MAX:
-        text = text[:SENT_TEXT_MAX].rstrip() + "…"
-    return f"{SENT} {SENT_NOT_HIS.format(text=text)}" if text else SENT
+    """The fact a landed send is said from. What left is the worker's to say (V2-931): it verified the outbox and
+    names the words; the circuit's line only confirms the echo."""
+    return SENT
 
 
 #: What he is told when a send's echo never came within the grace (V2-847). Not «unmet»: the connector may still

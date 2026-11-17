@@ -110,19 +110,9 @@ def held(measured: dict, reply: str, said: str) -> str:
         return ""
     try:
         from nucleo.circuit import asker, ledger
-        from nucleo.request import model, send_task_words
+        from nucleo.request import model
         from nucleo.runtime_ids import next_seq
         from observability import identity
-        # A card whose leaving act declares its slots keeps the question on a SEND TASK: his words resolved into the
-        # act's slots (the person his word names), the question about the one slot the turn lacks, and his answer
-        # fills that slot on that row (`send_task.answered`) — no worker, no re-run turn.
-        if leaves:
-            # ONE row per intention (A6): a send of this card already waiting on its row takes this question too
-            from nucleo.request import send_task_anchor
-            if (ask_id := send_task_anchor.to_waiting(wid, said, q)):
-                return "" if ask_id == send_task_anchor.SEVERAL else ask_id
-            if (ask_id := send_task_words.hold(wid, leaves, said, q, brief=None)):
-                return ask_id
         row = model.opened(wid, acts[0], text=said)
         if not row:
             return ""
@@ -172,7 +162,8 @@ async def claimed(brief, reply: str, said: str, *, emit=None) -> int:
         # A7 audit: the order AND the act at the floor, and a reading backing a send («¿le mandaste…?» is no send)
         if not (wid and _backs(brief)):
             return _an_order_nothing_served(brief, text, emit=emit)
-        return to_message_task(wid, act, said, src="unreached", emit=emit)
+        from nucleo.request import send_errand
+        return send_errand.start(said, wid=wid, action=act, src="unreached", emit=emit)
     except Exception as e:  # noqa: BLE001 — never takes the turn down; the line stands as it was
         note(e)
         return 0
@@ -205,29 +196,6 @@ def _leans_out(brief) -> tuple[str, str]:
     return (wid, act) if wid and act and effects.leaves(base(wid), act) else ("", "")
 
 
-def to_message_task(wid: str, act: str, said: str, *, src: str, why: str = "", emit=None) -> int:
-    """A leaving act the turn could not make itself becomes its OWN task: a row for the card's act and a Brain Worker
-    on it with the `message` playbook (§2b — the worker resolves the facts or asks). Shared by a sure act no call
-    reached (`claimed`) and a routed send whose turn stopped a worker and started nothing in its place
-    (`nucleo/turn/routed_sends.keep`). Returns the worker id, or 0."""
-    from nucleo.circuit import ledger
-    from nucleo.request import model
-    from nucleo.request.answered_task import PLAYBOOK
-    text = " ".join(str(said or "").split())
-    # The row is born with what his words already resolve (the person, as his word) and its end state, so the worker
-    # composes the text and sends — it never rediscovers the person from the inbox (`send_task.retain`).
-    row = send_task_row(wid, act, said) or model.opened(wid, act, text=said)
-    if not (row and text):
-        return 0
-    ledger.store().task_patch(row, playbook=PLAYBOOK)
-    from nucleo.acts.errand import escalate_to_slowbrain
-    tid = int(escalate_to_slowbrain(text, context={"src": src, "kind": "generic", "task_uid": row,
-                                                   "playbook": PLAYBOOK, "surface": "voz"}) or 0)
-    event(emit, "🚪 a leaving act the turn could not make → its task", text,
-          {"cat": "flash", "task_id": row, "widget": wid, "act": act, "worker": tid, "src": src, "why": why})
-    return tid
-
-
 def _an_order_nothing_served(brief, text: str, *, emit=None) -> int:
     """V2-852 (his engine, 2026-11-05): «Pregúntale a Raquel cuándo vuelve» was read `request_type = order` 0.94, the
     send itself only `mensajeria:send_to` 0.43, and the reply «I'll try again — let me get a message to Raquel now»
@@ -243,22 +211,5 @@ def _an_order_nothing_served(brief, text: str, *, emit=None) -> int:
     from nucleo.acts import message_channel
     if not (wid and message_channel.backs_a_send(brief)):
         return 0          # an order about the screen stays the turn's: a card act is never a worker's 15 s
-    from nucleo.request.answered_task import PLAYBOOK
-    ctx = {"src": "unserved", "kind": "generic", "surface": "voz", "playbook": PLAYBOOK}
-    from nucleo.acts.errand import escalate_to_slowbrain
-    tid = int(escalate_to_slowbrain(text, context=ctx) or 0)
-    event(emit, "🚪 a sure order no door served → its task", text,
-          {"cat": "flash", "worker": tid, "leaned": f"{wid}:{act}", "playbook": ctx.get("playbook", "")})
-    return tid
-
-
-def send_task_row(wid: str, act: str, said: str) -> str:
-    """The send task's row for an act the turn never called: retained with the person his words name (`send_task`),
-    "" when the act declares no slots or nothing of his resolves."""
-    try:
-        from nucleo.request import send_task, send_task_words
-        payload = send_task_words.payload_from_words(wid, act, said)
-        return send_task.retain(wid, act, payload, said) if payload else ""
-    except Exception as e:  # noqa: BLE001
-        note(e)
-        return ""
+    from nucleo.request import send_errand
+    return send_errand.start(text, wid=wid, action=act, src="unserved", emit=emit)

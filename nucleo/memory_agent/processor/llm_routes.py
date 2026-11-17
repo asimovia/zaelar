@@ -23,6 +23,9 @@ _DEFAULTS = {
     # errand_scope — with an errand live, is a NEW escalation separate or ABOUT it? Off the voice turn but in
     # front of a worker he is waiting on.
     "errand_scope": ("https://api.deepseek.com", "deepseek-v4-flash", True),
+    # switchboard (V2-931) — with a process open, is this chunk of his for process N or for none? Inside the voice
+    # turn, before the model: reasoning OFF, a 60-token JSON.
+    "switchboard": ("https://api.deepseek.com", "deepseek-v4-flash", True),
     # paraphrase (V2-031 T2) — reformulations of a durable pill for the paraphrase index, from REM. Reasoning OFF
     # or it returns nothing (measured 2026-08-18).
     "paraphrase": ("https://api.deepseek.com", "deepseek-flash", True),

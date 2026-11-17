@@ -6,7 +6,7 @@ tengo mañana?» → «…¿te apunto el gimnasio?». The question was ours, and
 licence, ate the model's words when it did not (1 of 3 on the bench).
 
 Now our question about a declared act the brief names is a row (`ask_outside_door.held`, kind `utterance` with the
-card and the act), his answer binds to it through the brief's `answers_open_question` and lands here
+card and the act), his answer reaches it through the switchboard (`nucleo/switchboard`) and lands here
 (`inline_ask.rerun`):
 
   · a declared NO (`worker_api_answer.decision`) cancels the row — nothing runs;
@@ -107,8 +107,13 @@ async def run(uid: str, entry: dict, text: str, choice: int | None = None) -> di
     if mode == _wa.FAST:
         return await data_ops.dispatch_and_report(wid, act, payload, row=uid, text=request)
     # CRIT-C13 — his answer composed the act, it never said yes to it: the card's declared question waits on this row
-    from nucleo.request import consent_ask, send_task
+    from nucleo.request import consent_ask
     q = consent_ask.question(wid, act, payload)
     inline_ask.held(uid, wid, act, payload, {"ok": False, "consent": "ask_consent"}, question=q, options=consent_ask.yes_no())
-    send_task._said_asked(wid, act, q)
+    try:                                     # the row's question is SAID, in the turn or out of it
+        from nucleo.circuit import verdict as V
+        from nucleo.turn import mouth
+        mouth.say(q, verdict=V.ASKED.name, door=base(wid), key=f"{base(wid)}:{act}:{abs(hash(q)) % 10**8}")
+    except Exception as e:  # noqa: BLE001
+        note(e)
     return {"ok": False, "row": uid, "asked": True}

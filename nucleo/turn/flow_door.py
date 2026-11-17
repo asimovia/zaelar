@@ -59,8 +59,8 @@ def at_the_portal(req: str, ctx: dict) -> bool:
         if turn_marks.was_discarded(t):
             _emit("🧵 a discarded turn starts nothing — its chain carries the request", req, {"as": "discarded"})
             return False
-        from nucleo.turn import brief as _tb, flow_of as _flow
-        return obey(req, _flow.for_request(req, _tb.of_this_turn(), part=ctx.get("part") is not None), ctx)
+        return True      # V2-931: whose his words are was decided at the gate (`nucleo/switchboard`); what reaches
+                         # the portal is for no open process, so it opens its own
     except Exception as e:  # noqa: BLE001 — a route that cannot be read never blocks an errand
         logger.warning(f"flow_door: route unreadable at the portal, the errand opens — {type(e).__name__}: {e}")
         return True

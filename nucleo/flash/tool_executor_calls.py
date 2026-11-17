@@ -367,36 +367,6 @@ def _t_set_cluster_objective(*, args, _say, _spawn, clarify, emit):
         clarify["msg"] = _say().objective_which_peer
 
 
-def _t_send_to_worker(*, args, emit, worker_acted, fired=None):
-    # V2-038: refine a live worker → INJECT (no relaunch), fire-and-forget on the server loop (§v3·O).
-    which = (args.get("which") or "").strip()
-    msg = (args.get("message") or "").strip()
-    if msg:
-        try:
-            from nucleo import dispatch as _d
-            if not _d.relay_his_words(which or "todo", msg):
-                return
-            worker_acted["v"] = "inject"
-            fired is not None and fired.add("send_to_worker")    # the close backstop reads it (three-tasks)
-            emit("brain", "↪️ inyección a worker", text=f"{which}: {msg}"[:120], role="system")
-            # Observability (V2-090): a correction to a LIVE task joins that task's flow — only when exactly
-            # one session matches; with several, merging would be a guess.
-            try:
-                # ⚠️ ruff F821 (2026-09-05): `_trace` was never in scope, so this merge died as a NameError
-                # inside this except every time — the fail-open class, live in the hot path.
-                from voice import trace as _trace
-                _targets = _d.resolve_sessions(which or "todo")
-                if len(_targets) == 1:
-                    _target_trace = _d.trace_of(_targets[0])
-                    if _target_trace:
-                        _trace.adopt(_target_trace)
-            except Exception:
-                pass
-            _sbe.note_sent(which)   # the status line names the errand this reached (2.644)
-        except Exception as e:  # noqa: BLE001
-            _tx.logger.warning(f"send_to_worker falló: {e}")
-
-
 def _t_stop_worker(*, args, _norm_nfkd, _say, clarify, emit, text, worker_acted, brief=None):
     which = (args.get("which") or "").strip()
     # ── GUARD 1: never stop the worker you just answered (2026-08-14): answering and killing, the answer wins. ──
@@ -445,16 +415,6 @@ def _t_stop_worker(*, args, _norm_nfkd, _say, clarify, emit, text, worker_acted,
              extra={"cat": "flash", **_stop_decision.reading(brief, "call:stop_worker")})
     except Exception as e:  # noqa: BLE001
         _tx.logger.warning(f"stop_worker falló: {e}")
-
-
-def _t_answer_worker(*, args, emit, worker_acted, fired=None):
-    """The model routed the turn to a waiting task. That is a reading, not a binding: the post-stream settle binds it
-    through the brief's verdict (`worker_api_bind`, V2-851 §3a) — which task, or asked which."""
-    ans = (args.get("answer") or "").strip()
-    if ans:
-        worker_acted["model_answer"] = ans
-        fired is not None and fired.add("answer_worker")    # the close backstop reads it (three-tasks)
-        emit("brain", "💬 respuesta a worker (pendiente de ligar a su tarea)", text=ans[:120], role="system")
 
 
 def _langs_now():

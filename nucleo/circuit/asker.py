@@ -8,7 +8,7 @@ subscriber below is the observer's `ask` event — the question on screen. The r
 restart loses nothing.
 
 Who answers is never decided here: a screen answer carries its `ask_id`, a spoken one is bound by the brief's verdict
-(`nucleo/cli/worker_api_bind`), and the answering lives in `nucleo/cli/worker_api_answer`.
+(`nucleo/switchboard`), and the answering lives in `nucleo/cli/worker_api_answer`.
 """
 from __future__ import annotations
 

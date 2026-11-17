@@ -212,6 +212,8 @@ def _apply_widget_data(wid: str, action_name: str, payload: dict, ref: str='', *
     from widgets import actions as _wactions, text_home as _text_home
     wid, action_name, payload = _text_home.redirect(_txw._data_ops.one_open_instance((wid or "").strip().lower()), (action_name or "").strip(), payload, emit=emit, present=_txw._cvis.present)   # V2-773 one open instance · V2-807 T-09 a held message's text goes to its row
     action_name = (action_name or "").strip()
+    if _leaving_is_a_task(wid, action_name, text, escalate_req, emit, payload=payload, brief=_brief):   # V2-931
+        return                        # a send is the worker's whole task: no ladder, guard or verdict reads it here
     # refactor2710-05 T-02 — the vetoes are ONE ladder read against the request (`nucleo.acts.card`).
     _req = {"brief": _brief, "text": text}
     _lic = _card.logged(_card.licence(_req, wid, action_name, payload, at=_card.GATE, last_reply=_prior_line.of(brain)), emit)
@@ -219,13 +221,6 @@ def _apply_widget_data(wid: str, action_name: str, payload: dict, ref: str='', *
         _tag_emit("close", {"id": _lic.card})
         acted["widget"] = True
     if _lic.verdict != _card.RUN:
-        return
-    # A call that leaves, against a sure verdict for an act on this card that does NOT (full12 E3: verdict `draft`,
-    # model `reply`): the verdict's act runs here with the model's content — a routed task would send what he asked
-    # only to be drafted. Both leaving (the verdict `send_to`, the model `reply`) → the task below decides.
-    if _verdict_instead(wid, action_name, payload, _brief, text, emit, acted, _apply_widget_data, leaving=True):
-        return
-    if _leaving_is_a_task(wid, action_name, text, escalate_req, emit, payload=payload, brief=_brief):   # V2-852 M2
         return
     action_name, payload = _txw._row_lens.retarget(wid, action_name, _txw._said_day.payload(wid, action_name, payload, text), text)   # the day he said; the row he named, on ITS day (pass 140)
     if __import__("nucleo.acts.correction_undo", fromlist=["x"]).undo_first(wid, action_name, payload, _brief, apply=_apply_widget_data, emit=emit) == "already": return   # noqa: E701 — «no, la otra»: the first goes back, once
@@ -329,6 +324,8 @@ def _handle_widget_data_tool(args: dict, *, _apply_widget_data, _brief, _fronten
         return
     ref = ref or _frontend.payload_ref(wid, action_name, payload, named_only=True)   # demo pass 102 (V2-708)
     # refactor2710-05 T-02 — the vetoes over the model's call are one ladder (`nucleo.acts.card`).
+    if _leaving_is_a_task(wid, action_name, text, escalate_req, emit, payload=payload, brief=_brief):   # V2-931
+        return                        # before the ladder: no show guard swaps a send for a show
     _req = {"brief": _brief, "text": text}
     _lic = _card.logged(_card.licence(_req, wid, action_name, payload, at=_card.CALL, emit=emit), emit)
     if _lic.verdict == _card.DROP:
@@ -444,15 +441,14 @@ def _handle_widget_data_tool(args: dict, *, _apply_widget_data, _brief, _fronten
     _apply_widget_data(_cd["card"], action_name, res.payload, ref)
 
 
-def _verdict_instead(wid, action_name, payload, brief, text, emit, acted, apply, *, leaving=False) -> bool | None:
+def _verdict_instead(wid, action_name, payload, brief, text, emit, acted, apply) -> bool | None:
     """Two readers disagree on an act at level ≥ sensitive: the verdict's action runs with the model's content
-    (True), or nothing could run it (False: the caller asks); None when they agree or there is no verdict. With
-    `leaving`, only a verdict whose own act stays on the machine takes the place of the leaving call."""
+    (True), or nothing could run it (False: the caller asks); None when they agree or there is no verdict."""
     from widgets import effects as _fx
     from nucleo.request import base as _base
     from nucleo.turn import verdicts as _v   # it SUBSTITUTES the model's call (CRIT-K2b R4)
     _vdis = _txw._direct_action.completes(brief, wid, model_action=action_name)
-    if not _vdis or (leaving and (not _fx.leaves(_base(wid), action_name) or _fx.leaves(_base(wid), _vdis))):
+    if not _vdis:
         return None
     from nucleo.flash import destructive_veto as _dv   # VETO only when what enters leaves or deletes (K2b R4)
     if (_fx.leaves(_base(wid), _vdis) or _dv.removes(wid, _vdis)) and not _v.substitutes(brief, action_name):
@@ -465,16 +461,13 @@ def _verdict_instead(wid, action_name, payload, brief, text, emit, acted, apply,
     _vkeys = set(_txw._direct_action._payload_spec(wid, _vdis))
     _vpay = {k: v for k, v in (payload or {}).items() if k in _vkeys and str(v or "").strip()}
     _vpay.update(_txw._direct_action.person_fill(wid, _vdis, _vpay, text))
-    from nucleo.request import substitution
     if _vpay:
         acted["widget"] = True
-        with substitution.in_the_models_place():    # a send in the model's call's place asks before it leaves
-            apply(wid, _vdis, _vpay)
+        apply(wid, _vdis, _vpay)                    # a leaving verdict act goes to its worker task (V2-931)
         return True
-    with substitution.in_the_models_place():
-        done = _txw._direct_action.complete(brief, operator_text=text, emit=emit, present=_txw._cvis.present,
-                                            apply_widget_data=apply, widget_id=wid, instead_of=action_name,
-                                            require_order=False)
+    done = _txw._direct_action.complete(brief, operator_text=text, emit=emit, present=_txw._cvis.present,
+                                        apply_widget_data=apply, widget_id=wid, instead_of=action_name,
+                                        require_order=False)
     if done:
         acted["widget"] = True
         return True
@@ -483,40 +476,14 @@ def _verdict_instead(wid, action_name, payload, brief, text, emit, acted, apply,
 
 def _leaving_is_a_task(wid: str, action: str, text: str, escalate_req: dict, emit, *, payload=None,
                        brief=None) -> bool:
-    """An act that LEAVES the machine is a task, never an inline act of the turn (V2-852 M2, session 94be1e1e: Flash
-    chose `reply` over the verdict's `send_to`, asked «Shall I send it?» about a call that could not run, and the yes
-    sent nothing). The turn routes his words through the one escalation — `flow_of` joins or reopens the errand they
-    belong to, so a complaint about a send reaches that send's task (M5) — and the worker picks its playbook, resolves
-    the person and asks through the one durable asker (M6). Flash says the start line; it never sends.
-
-    The send is also kept in its own slot, `escalate_req["sends"]`: whatever later clears or replaces the turn's
-    commission, the launch folds it back (`nucleo/turn/routed_sends.keep`), so a routed send is never lost. And the
-    turn's reading of his order over a held row he has seen travels with the row (`message.note_his_order`): the
-    worker's door has no brief, and his «send it» over the draft he saw is still the yes there (CRIT-C9)."""
+    """An act that LEAVES the machine is ONE Brain Worker task, never an inline act of the turn (V2-931). The turn hands
+    his words over (`nucleo/request/send_errand.hand_over`) with the model's call as a hint; the worker finds the
+    person, composes, asks his one confirmation, sends, verifies and says the one final line. Flash never sends."""
     from widgets import effects as _fx
-    from nucleo.request import base as _base
+    from nucleo.request import base as _base, send_errand
     if not _fx.leaves(_base(wid), action):
         return False
-    emit("brain", "📨 an act that leaves is a task — the turn routes it, the worker sends", text=f"{wid}:{action}",
-         role="system", extra={"cat": "flash", "id": wid, "action": action})
-    from nucleo.acts import message as _msg
-    _msg.note_his_order(wid, action, payload, brief)
-    # The hand-off keeps what he said (`nucleo/request/send_task`): the call's slots and their origin go on the
-    # request's row and the task runs there, or asks for the ONE slot it lacks. A turn answering that task's question
-    # with the same act fills the waiting row. Only a card whose act declares no slots keeps the worker route below.
-    from nucleo.request import send_task, send_task_answer, send_task_who
-    wid, action, payload = send_task_who.readdressed(wid, action, payload, text, emit=emit)   # V2-847: whom he named
-    from nucleo.flash import meeting_time    # V2-903 P1-A: the agenda's time, once, before the act is held or shown
-    payload = meeting_time.at_composition(wid, action, payload or {}, text, emit)
-    if send_task_answer.take_call(wid, action, payload, text, brief=brief) or send_task.commission(
-            wid, action, payload, text, reading=_reading_of(brief), emit=emit):
-        escalate_req["send_task"] = True
-        return True
-    from nucleo.turn import routed_sends
-    routed_sends.note(escalate_req, wid, action, text)
-    if escalate_req["v"] is None:
-        escalate_req["v"] = text
-    escalate_req["leaves"] = True          # no «the turn already acted» guard may annul it (`settle_commission`)
+    send_errand.hand_over(escalate_req, text, wid, action, payload, emit=emit)
     return True
 
 

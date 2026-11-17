@@ -43,11 +43,10 @@ class Gate:
 def _keys() -> dict:
     """The verdict keys the gate reads, from their owners (never re-spelled here)."""
     from nucleo.acts import errand as _errand
-    from nucleo.cli import worker_api_bind as _bind
     from nucleo.flash import unclear_turn as _unclear
     from nucleo.turn import acts_asked as _acts, brief as _brief
     return {"request": _brief.REQUEST_KEY, "escalate": _brief.ESCALATE_KEY, "target": _errand.TARGET_KEY,
-            "acts": _acts.KEY, "answers": _bind.KEY, "readable": _unclear.KEY,
+            "acts": _acts.KEY, "readable": _unclear.KEY,
             "garbled": _unclear.GARBLED, "several": _acts.SEVERAL}
 
 
@@ -114,7 +113,7 @@ def score(verdicts: dict, threads: list[dict], decisions: list[str], text: str =
     if not g.thread and req.get("choice") in QUIET_KINDS and float(req.get("confidence") or 0.0) >= _v.VETO:
         g.vetoed, g.reasons = True, [f"quiet:{req['choice']}"]
         return g
-    for name in ("request", "escalate", "target", "acts", "answers"):
+    for name in ("request", "escalate", "target", "acts"):
         conf = float((verdicts.get(k[name]) or {}).get("confidence") or 0.0)
         if (verdicts.get(k[name]) or {}).get("choice") and _v.LICENCE <= conf < _v.VETO:
             g.score += 1

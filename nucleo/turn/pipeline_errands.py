@@ -11,7 +11,7 @@ from loguru import logger
 from nucleo.acts import message as _message   # our own «which one?» over his word is remembered (V2-850)
 from nucleo.circuit import spec as _spec_mod   # the brief's END verdict travels with the errand (T-19 R6)
 from nucleo.request import model as _request   # his words travel with the ONE errand his sentence commissions
-from nucleo.request import send_task_turn as _send_turn   # a send the verdict identified is its task (2026-11-06)
+from nucleo.request import send_errand as _send   # a send is ONE worker task (V2-931)
 from nucleo.request import stop as _stop_decision   # V2-820: a replace stops X and starts Y in one act
 from nucleo.request import order_unserved as _order   # the order the brief identified, served with another tool (A2)
 from nucleo.turn import brief as _tb   # the turn's reading travels with the errand it commissions (V2-852)
@@ -19,7 +19,6 @@ from nucleo.turn import commission as _commission   # V2-874: who wins the commi
 from nucleo.turn import named_errand as _named   # V2-878 §1: a request routed into an errand is a mention of it
 from nucleo.turn import his_spec_to_sheet as _his_spec   # a spec he stated about one errand reaches its sheet
 from nucleo.turn import reply as _reply   # the turn's one mouth: a door's start line on a silent turn (V2-851 F1)
-from nucleo.turn import routed_sends as _routed_sends   # a send the turn routed leaves it as a commission (V2-852)
 from nucleo.turn import errands_of_a_turn as _eot   # the errand the pool could not take is said (three-tasks)
 from nucleo.turn import split_by_errand as _sbe   # one sentence about several errands: each one said (2.643)
 
@@ -40,8 +39,9 @@ async def launch_the_errands(*, motor, send, speech, emit, brain, _brief, _op_te
     # is the model's call or the brief's sure «escalate» (`route_by_verdict`), and the errand carries the brief's class.
     # Escalates after the TTS; not when the turn addressed a live worker (inject/answer/stop) — save a REPLACE (V2-820).
     _replacing = _stop_decision.start_beside_the_stop(_brief, escalate_req, _op_text, worker_acted, emit=emit)
-    _routed_sends.keep(escalate_req, worker_acted, _replacing, emit=emit)   # V2-852 M2: a routed send is never lost
-    _send_ctx = _send_turn.at_escalation(_brief, _op_text, spoken_text, escalate_req, worker_acted, _replacing, emit)
+    _send.kept(escalate_req, worker_acted, brief=_brief,       # a send leaves the turn as its ONE commission
+               calls=getattr(brain, "_turn_calls", None) or ())
+    _send_ctx = _send.context(escalate_req)        # …with its playbook and the model's call as a hint
     if escalate_req["v"] is not None and (not worker_acted["v"] or _replacing):
         req = escalate_req["v"] or _op_text
         # V2-844 F2: a request that belongs to an open errand is ROUTED at the portal (`flow_door`) by the turn's one
@@ -81,7 +81,7 @@ async def launch_the_errands(*, motor, send, speech, emit, brain, _brief, _op_te
                           "errand_class": _escalate_mod.class_verdict(_brief),   # the consent class it carries
                           "reading": _tb.carried(_brief),   # V2-852: the turn's verdicts ride with its task
                           "asked": spoken_text,   # V2-655: si el turno pidió permiso, se APARCA
-                          **_send_ctx,            # a send the verdict identified: the worker composes on ITS row
+                          **_send_ctx,            # a send: the `message` playbook, the model's call as a hint
                           **({"replaces": escalate_req["replaces"]} if _replacing else {}),
                           **({"part": 0} if escalate_req.get("more") else {})})   # V2-844: one of several
         _as = str((_settled or {}).get("as") or _flow.NEW)
@@ -116,10 +116,8 @@ async def launch_the_errands(*, motor, send, speech, emit, brain, _brief, _op_te
                                                     else "") or _op_text)   # no judged text yet: his own words
         # V2-851 F2c — a question about a door's act that no door asked is counted (never repaired)
         from nucleo.request import ask_outside_door as _aod
-        if (_opened := await _send_turn.at_close(_brief, _op_text, spoken_text, escalate_req, worker_acted, emit,
-                                                 _escalate_mod)):
-            pass                                               # the send task owns the request's row now
-        elif (_asked_out := _aod.measure(_brief, spoken_text, did_act=False, asked_which=_which, emit=emit)):
+        _opened = None
+        if (_asked_out := _aod.measure(_brief, spoken_text, did_act=False, asked_which=_which, emit=emit)):
             _opened = _aod.held(_asked_out, spoken_text, _op_text) or True   # F2d — durable: the row waits on it
         elif escalate_req["v"] is None:                    # a sure leaving act its words claimed: it is a task
             _opened = await _aod.claimed(_brief, spoken_text, _op_text, emit=emit)

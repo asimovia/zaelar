@@ -47,11 +47,13 @@ def bare_query_payload(action: str, raw: str):
     would run a search with braces inside); any other action's structure would be invented, so: None.
     """
     act = str(action or "").strip()
-    if act not in ("web_search", "use_tool"):
+    if act not in ("web_search", "use_tool", "find_contact"):
         return None
     texto = str(raw or "").strip()
     if not texto or texto.startswith("{") or texto.startswith("[") or texto.startswith("@"):
         return None
+    if act == "find_contact":            # V2-931: the name he used, as plain words (no braces for the gate to refuse)
+        return {"name": texto[:120]}
     # V2-782 — `act use_tool "<query>"` is the form the prompts now teach: measured 2026-10-10, four workers wrote
     # `busca.json` to a path the confinement guard refused and stayed blind; a quoted sentence has no braces, so
     # the permission gate lets it through, and it reaches the one search tool a worker has.

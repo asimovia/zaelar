@@ -3,7 +3,7 @@
 The question used to live in this process's memory (`widgets.confirm._PENDING`, 90 s) and its yes was read by a word
 list before the brief: a restart or a barge-in lost it, and «ok, book it» once sent a mail. Now it is one more
 durable question of the one asker (`inline_ask.held` → `circuit/asker`): the request's inline row waits with its
-`ask_id`, the act is retained on the row, the two answers are DECLARED candidates the brief picks (`worker_api_bind`:
+`ask_id`, the act is retained on the row, the two answers are DECLARED candidates (the screen's buttons:
 `#0` yes, `#1` no) and the screen shows as buttons, the card's own button answers the same `ask_id`
 (`widgets/confirm_answer.py`), and the yes re-runs the act through its own door once (`inline_ask.rerun`, `take`).
 """
@@ -101,7 +101,7 @@ def ask_consent(wid: str, action: str, payload: dict | None, question: str, *, t
     ROW through the one asker (V2-857 phase 3). It used to wait in this process's memory (`widgets.confirm._PENDING`,
     90 s) and its yes was read by a word list before the brief: a restart or a barge-in lost the question, and «ok,
     book it» sent a mail. Now the request's inline row (`request.model.opened`) waits with its `ask_id`, the act is
-    retained on the row, the two answers are DECLARED candidates the brief picks (`worker_api_bind`: `#0` yes,
+    retained on the row, the two answers are DECLARED candidates (the screen's buttons: `#0` yes,
     `#1` no) and the screen shows as buttons, and the yes re-runs the act through its own door (`rerun`). Returns
     `(row, ask_id)`, or `("", "")` when no row could be opened — the caller then keeps the act's old gate."""
     try:
