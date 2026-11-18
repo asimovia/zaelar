@@ -135,8 +135,8 @@ async def run_listener(stop: "asyncio.Event | None" = None) -> None:
                     except Exception:
                         pass
                     try:
-                        from nucleo.turn import flow_door
-                        flow_door.ask_again(question)
+                        from nucleo.dispatch import fold as _fold_q
+                        _fold_q.ask_again(question)
                     except Exception:  # noqa: BLE001
                         pass
                     _d._close_escalated_flow(ctx, ok=True, status="dedup_parked")
@@ -243,8 +243,8 @@ async def _fold_into(dup: str, request: str, key: str, ctx: dict | None = None) 
     joined, never a second one."""
     await _d.inject(dup, request)
     _close_folded(key, ctx)
-    from nucleo.turn import flow_of as _flow
-    _flow.late_fold(dup, ctx or {})          # V2-784 — an alarm now, and the duplicate's sheet does not stay behind
+    from nucleo.dispatch import fold as _fold
+    _fold.late_fold(dup, ctx or {})          # the duplicate's sheet does not stay behind
 
 
 def _absorb_into(pdup: str, request: str, key: str, ctx: dict | None = None) -> str:
@@ -255,8 +255,6 @@ def _absorb_into(pdup: str, request: str, key: str, ctx: dict | None = None) -> 
     with no sheet ADOPTS it (his «yes» relaunches there); one that already has its own closes the duplicate."""
     question = _d.absorb_refinement(pdup, request)
     _close_folded(key, ctx)
-    from nucleo.turn import flow_door
-    flow_door.backstop(pdup, ctx, "parked")       # V2-844 F2: folds and warns when the door did not route it there
     own = str((ctx or {}).get("sheet") or "").strip()
     if own:
         from nucleo.dispatch import confirm as _dc

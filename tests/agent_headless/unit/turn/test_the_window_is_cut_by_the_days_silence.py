@@ -91,12 +91,3 @@ def test_a_line_of_ours_is_never_his_repeat():
     old = {"id": 3, "created": 0.5, "text": q, "meta": ""}           # a row from before the structured fields
     assert history._oldest_repeat([old, his], history._words(q), None) == 3
 
-
-def test_a_hand_back_ends_with_the_row_that_handed_it_back():
-    from nucleo.turn import flow_of
-    flow_of._NOT_MINE.clear()
-    words = "reserva mesa para cuatro el viernes"
-    flow_of.not_mine(words, "w7")
-    assert flow_of._was_handed_back(words, {"id": "w7", "request": "busca monitor"})
-    assert not flow_of._was_handed_back(words, {"id": "w7", "request": "busca monitor", "ended": True})
-    assert not flow_of._NOT_MINE, "the hand-back outlived its row"

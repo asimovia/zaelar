@@ -1,4 +1,4 @@
-"""The router's answer for an EVENT — `flow_of.route(event=…)`, the same door his words go through (V2-851 F4, §7).
+"""The route of an EVENT — a request whose origin is a source, not his voice (V2-851 F4, §7).
 
 An event is a request whose origin is a source (`nucleo/events`). The question is the same as for his words — which
 open flow does it belong to — and the answers are three, in order:

@@ -83,8 +83,8 @@ def escalate_to_slowbrain(request: str, *, context: dict | None = None, task_id:
         logger.debug(f"escalate: capability gate skipped: {e!r}")
     # THE ONE DOOR (V2-844 F2): a turn's request is routed before it opens anything — joined, absorbed, stopped,
     # conversation or a discarded turn's launch start nothing here; `new` and `replace` go on.
-    from nucleo.turn import flow_door as _door
-    if not _door.at_the_portal(req, ctx0):
+    from nucleo.turn import open_flows as _open
+    if _open.a_discarded_turn(req, ctx0):
         return 0
     # A QUESTION IS NOT THEATRE (V2-655): a turn that ASKED permission aloud has no order yet — it is parked.
     asked = strip_system_notes(str(ctx0.get("asked") or ""))    # our own notes' «¿La hago?» is nobody's offer

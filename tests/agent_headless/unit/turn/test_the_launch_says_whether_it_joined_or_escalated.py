@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from nucleo.turn import flow_of
+from nucleo.turn import pipeline_errands as _pe
 from nucleo.turn import pipeline_errands as PE
 
 
@@ -17,12 +17,12 @@ def lang(request):
     return request.param
 
 
-@pytest.mark.parametrize("joins_as", [flow_of.INJECT, "steer", flow_of.ABSORB, flow_of.REOPEN, flow_of.JOIN])
+@pytest.mark.parametrize("joins_as", ["inject", "steer", "absorb", "reopen", "join"])
 def test_a_join_is_labelled_as_the_join_it_was(lang, joins_as):
     label = PE.launch_label(joins_as)
     assert "escalada" not in label and f"({joins_as})" in label
 
 
-@pytest.mark.parametrize("joins_as", [flow_of.NEW, ""])
+@pytest.mark.parametrize("joins_as", [_pe.NEW, ""])
 def test_a_new_errand_keeps_its_escalation_label(lang, joins_as):
     assert PE.launch_label(joins_as) == "🧭 Flash → Brain Worker (escalada registrada)"

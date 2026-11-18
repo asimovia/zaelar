@@ -18,7 +18,7 @@ import pytest
 from nucleo import sheets
 from nucleo.acts import search_listing
 from nucleo.dispatch import confirm
-from nucleo.turn import flow_of, launches
+from nucleo.turn import launches
 
 REQ = {"query": "SUV"}
 
@@ -64,30 +64,6 @@ def _park(tid: str, request: str, sheet: str = "") -> dict:
     confirm._PENDING_CONFIRM[tid] = {"request": request, "question": "¿Lo hago?", "sheet": sheet, "ts": time.time(),
                                      "context": {}}
     return confirm._PENDING_CONFIRM[tid]
-
-
-@pytest.mark.parametrize("first, fragments", [CAR_EN, CAR_ES, FLAT_EN], ids=["car-en", "car-es", "flat-en"])
-def test_every_fragment_of_a_parked_request_joins_it_and_relaunches_nothing(scene, first, fragments):
-    calls, judge = scene
-    parked = _park("2", first)
-    judge["id"] = "2"            # the house judge's verdict (lexical containment or the model): this IS errand 2
-    outs = [asyncio.run(search_listing.listings({"text": text}, REQ)) for text in fragments]
-    assert not calls, "a fragment of the parked request launched a hunt (and a sheet) of its own"
-    assert parked["refinements"] == fragments[-5:], "his words did not reach the parked errand"
-    assert all(o.verdict == "asked" and o.say == "¿Lo hago?" for o in outs), "the turn did not ask the question again"
-    assert not parked["sheet"], "nothing was relaunched, so no box was opened for it"
-
-
-def test_the_measured_fragment_is_proposed_by_containment_and_decided_by_the_judge(scene):
-    """S4 measured: the joined fragment contains the parked request's words. Since V2-844 F2 (M2) a likeness only
-    PROPOSES a parked errand: folding into it is the model judge's call — «a hotel in Paris» is not the parked Rome."""
-    calls, judge = scene
-    _park("2", CAR_EN[0])
-    text = "let's let's focus on the car. I wanna buy a car. A new car. One of those big runners."
-    assert asyncio.run(flow_of.flow_of(text)) is None, "a likeness folded a request into a parked errand by itself"
-    judge["id"] = "2"
-    flow = asyncio.run(flow_of.flow_of(text))
-    assert flow and flow["id"] == "2"
 
 
 def test_an_escalation_in_flight_lends_its_errands_sheet(scene, monkeypatch):

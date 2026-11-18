@@ -23,11 +23,13 @@ from nucleo.turn import errands_of_a_turn as _eot   # the errand the pool could 
 from nucleo.turn import split_by_errand as _sbe   # one sentence about several errands: each one said (2.643)
 
 
+NEW = "new"       # how a commission of the turn reaches the dispatcher: whose his words are was decided at the gate
+
+
 def launch_label(joins_as: str) -> str:
-    """The launch's event says what happened (V2-874): a NEW errand is an escalation; a request `flow_of` joined to a
+    """The launch's event says what happened (V2-874): a NEW errand is an escalation; a request joined to a
     live errand (inject, steer, absorb, reopen, join) is that join — the panel used to call both «escalada»."""
-    from nucleo.turn import flow_of as _flow
-    if str(joins_as or _flow.NEW) == _flow.NEW:
+    if str(joins_as or NEW) == NEW:
         return "🧭 Flash → Brain Worker (escalada registrada)"
     return f"🧵 Flash → its live errand ({joins_as})"
 
@@ -44,11 +46,8 @@ async def launch_the_errands(*, motor, send, speech, emit, brain, _brief, _op_te
     _send_ctx = _send.context(escalate_req)        # …with its playbook and the model's call as a hint
     if escalate_req["v"] is not None and (not worker_acted["v"] or _replacing):
         req = escalate_req["v"] or _op_text
-        # V2-844 F2: a request that belongs to an open errand is ROUTED at the portal (`flow_door`) by the turn's one
-        # route, settled here before the first launch — no second yardstick in this branch any more.
-        from nucleo.turn import flow_of as _flow
-        _settled = await _flow.settled()
-        _named.mentioned(str((_settled or {}).get("flow") or ""))   # V2-878 §1: he named that errand again
+        # Whose his words are was decided at the gate (`nucleo/switchboard`): what is commissioned here is NEW.
+        _settled: dict = {}          # a commission is NEW: the gate already decided it is for no open process
         _commission.shadow(emit, at="close", brief=_brief, escalate_req=escalate_req, launched=True,
                            model_calls=getattr(brain, "_turn_calls", None) or (),
                            flow_as=str((_settled or {}).get("as") or ""), words_said=bool(spoken_text), text=req)
@@ -84,7 +83,7 @@ async def launch_the_errands(*, motor, send, speech, emit, brain, _brief, _op_te
                           **_send_ctx,            # a send: the `message` playbook, the model's call as a hint
                           **({"replaces": escalate_req["replaces"]} if _replacing else {}),
                           **({"part": 0} if escalate_req.get("more") else {})})   # V2-844: one of several
-        _as = str((_settled or {}).get("as") or _flow.NEW)
+        _as = NEW
         emit("brain", launch_label(_as), text=req, role="system", extra={"heard": _heard, "as": _as})
         _say = escalate_req.pop("say", "")
         if _started:   # V2-852 T21 — a door that refused said why; «I'm on it» is a start's line, never a refusal's
@@ -99,11 +98,9 @@ async def launch_the_errands(*, motor, send, speech, emit, brain, _brief, _op_te
                  role="system", extra={"cat": "flash", "not_started": list(escalate_req["dropped"])})
 
     else:   # V2-874: a turn that launches nothing is in the shadow too — the rule may have opened what it did not
-        from nucleo.turn import flow_of as _flow
-        _named.mentioned(str((_flow.peek() or {}).get("flow") or ""))   # V2-878 §1: a refinement names its errand
         _commission.shadow(emit, at="close", brief=_brief, escalate_req=escalate_req, words_said=bool(spoken_text),
                            model_calls=getattr(brain, "_turn_calls", None) or (),
-                           flow_as=str((_flow.peek() or {}).get("as") or ""), worker=str(worker_acted["v"] or ""),
+                           flow_as="", worker=str(worker_acted["v"] or ""),
                            text=_op_text)
     # A task that started or waits is visible from its row (V2-851 F1): no later line re-promises or says «not done».
     _his_spec.carry(_op_text)          # every voice turn: a spec he stated about one errand reaches its sheet

@@ -30,7 +30,6 @@ def door(tmp_path, monkeypatch):
     errand.reset()
     state = {"bus": [], "born": [], "stopped": True}
     monkeypatch.setattr(errand, "_emit_bus", lambda topic, payload: state["bus"].append((topic, payload)))
-    monkeypatch.setattr("nucleo.turn.flow_door.at_the_portal", lambda req, ctx: True)
     monkeypatch.setattr("nucleo.consequence.passes", lambda *a, **k: True)
     monkeypatch.setattr("nucleo.acts.surface_owner.errand_born", lambda *a, **k: None)
     monkeypatch.setattr("nucleo.circuit.ledger.born", lambda tid, req, ctx: state["born"].append(req) or f"row-{tid}")

@@ -1,7 +1,7 @@
 """The pulse's EVENT beat: the one subscriber per source, the one router, the route obeyed (V2-851 F4, §7).
 
 Each beat drains the bus topics an event comes from (an inbound message — mail is its own stream —, a worker that
-ended, a worker that asked), turns each into an event (`nucleo/events.event`), asks `flow_of.route(event=…)` and
+ended, a worker that asked), turns each into an event (`nucleo/events.event`), asks `flow_events.route` and
 obeys: RESUME a row that waits for it (its session relaunched by id with the event as its re-brief) or hand it to
 the claimant that owns it (an errand bound to that conversation, `errands.watch`); STREAM it to the worker of the
 rules that subscribe to it; NOTHING leaves the source's own handling standing (the messaging triage, the delivery).
@@ -10,6 +10,7 @@ A cron's due job is routed through the same door from `pulse/due` (`publish`). E
 """
 from __future__ import annotations
 
+import asyncio
 import time
 
 from loguru import logger
@@ -84,12 +85,12 @@ async def publish(ev: dict, *, now: float | None = None) -> dict:
     """Route ONE event and obey the route. The entry for any source (`pulse/due` for a cron's job)."""
     now = time.time() if now is None else now
     from nucleo.events import once
-    from nucleo.turn import flow_events, flow_of
+    from nucleo.turn import flow_events
     if not once.first(ev):                 # a re-delivered message resumes no row and runs no rule twice (V2-872 F2)
         _events.said("flow", "🧵 a re-delivered message is not routed again", str(ev.get("text") or "")[:160],
                      origin=ev.get("origin"), key=ev.get("key"), message=once.key_of(ev))
         return {"as": flow_events.NOTHING, "again": True}
-    r = await flow_of.route(event=ev)
+    r = await asyncio.to_thread(flow_events.route, ev)
     how = r.get("as")
     try:
         if how == flow_events.RESUME and r.get("by") == "row":

@@ -229,3 +229,24 @@ def test_a_step_parked_on_his_ok_is_that_processs_question_and_his_yes_answers_t
 
 
 _real_open = board.open_processes
+
+
+def test_what_he_adds_to_an_errand_parked_on_his_yes_travels_with_it_and_starts_nothing(monkeypatch):
+    """The old flow router folded a refinement into a parked errand after the model (its own judge). Whose his words
+    are is decided HERE now: words for a process parked at its start question that are neither yes nor no are kept
+    with the errand (`absorb_refinement`) — no answer is recorded, nothing is launched, its question stands."""
+    from nucleo.circuit import asker
+    from nucleo.cli import worker_api
+    from nucleo.dispatch import confirm
+    from nucleo.switchboard import act
+    kept, answered = [], []
+    monkeypatch.setattr(asker, "artefact", lambda uid: {"task_id": "5", "retained": {"kind": "start"}})
+    monkeypatch.setattr(confirm, "absorb_refinement", lambda tid, text: kept.append((tid, text)) or "Shall I look for it?")
+    monkeypatch.setattr(worker_api, "answer_soon", lambda *a, **k: answered.append(a) or True)
+    parked = {"key": "r-5", "dispatch": "", "title": "Find a second-hand car", "state": "waiting",
+              "question": "Shall I look for it?", "ask_id": "r-5-start-b-1", "since": 0}
+    assert act.deliver(parked, "que sea diésel y de menos de cinco años", "other") is True
+    assert kept == [("5", "que sea diésel y de menos de cinco años")] and answered == []
+    assert act.deliver(parked, "sí", "yes") is True and len(answered) == 1, "his yes still answers the question"
+    monkeypatch.setattr(asker, "artefact", lambda uid: {"task_id": "5", "retained": {"action": "widget_data"}})
+    assert act.deliver(parked, "mejor mañana", "other") is True and len(answered) == 2, "any other question takes his words"

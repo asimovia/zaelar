@@ -52,9 +52,9 @@ from loguru import logger
 
 def _similar_pending(req: str, pendings: list[dict]) -> bool:
     """Is `req` the errand one of `pendings` already is? The flow door's own yardstick (V2-844 F2: one measure for «the
-    same errand», `flow_of.lexical`), so this check and the route can never disagree. Two different requests (a
+    same errand», `open_flows.lexical`), so this check and the route can never disagree. Two different requests (a
     motorbike, a flat) never fold."""
-    from nucleo.turn import flow_of as _flow
+    from nucleo.turn import open_flows as _flow
     return _flow.lexical(req, [{"request": str(p.get("request") or "")} for p in (pendings or [])]) is not None
 
 

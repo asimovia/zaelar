@@ -12,7 +12,7 @@ import time
 
 import pytest
 
-from nucleo.turn import flow_of
+from nucleo.turn import open_flows as flow_of
 from nucleo.workers import ended
 from nucleo.workers.session import SessionRecord
 from observability import identity
@@ -59,16 +59,6 @@ def test_an_errand_cancelled_by_the_clean_does_not_land_in_the_new_session(sessi
     session()
     _ended("2", status="cancelled", ok=False, started=born)    # …and its end lands after the clean
     assert _ended_flows() == []
-
-
-def test_the_route_of_the_same_request_after_a_clean_is_new(session, monkeypatch):
-    async def judge(text, pool):                # the judge folds the same kind of thing into the ended errand
-        return next((str(c["id"]) for c in pool if c.get("ended")), ""), False
-    monkeypatch.setattr("nucleo.turn.flow_judge.judge", judge)
-    _ended("3")
-    assert asyncio.run(flow_of.route(GOAL))["as"] == flow_of.REOPEN
-    session()
-    assert asyncio.run(flow_of.route(GOAL))["as"] == flow_of.NEW
 
 
 @pytest.mark.parametrize("status, ok, kind", [("done", True, "delivered"), ("done", False, "done"),

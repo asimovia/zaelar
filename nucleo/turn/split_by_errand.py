@@ -17,7 +17,7 @@ The rule is a mechanism over the consequence, not a reading of intent: his sente
 words name (`named_errand.named`, the attribution's yardstick — a part that names none rides with the part before
 it), a statement reaches that errand's LIVE worker through the same injection `send_to_worker` uses, a question is
 answered with that errand's state, and the reply names every errand it has not already named. One errand named →
-nothing here: the turn's one route (`flow_of.route`) owns that case.
+nothing here: whose his words are is the switchboard's to decide (`nucleo/switchboard`).
 """
 from __future__ import annotations
 
@@ -88,8 +88,8 @@ def route(operator_text: str) -> list[dict]:
         return list(_LAST["parts"])
     out: list[dict] = []
     try:
-        from nucleo.turn import flow_of as _flow
-        ps = parts(text, _flow.candidates())     # V2-844 F2: the flows the one door knows, the same list its route cuts
+        from nucleo.turn import open_flows as _flow
+        ps = parts(text, _flow.candidates())     # the flows that are open (`open_flows`)
         if len({str(p["errand"].get("id")) for p in ps}) >= 2:
             from nucleo import dispatch as _d
             for p in ps:

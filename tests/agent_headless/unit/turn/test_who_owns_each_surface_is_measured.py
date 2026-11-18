@@ -156,16 +156,6 @@ def test_a_turn_writing_an_errands_sheet_is_a_non_owner_and_his_hands_are_not(ev
 
 # ── the WIRING: the real doors report, not a helper called by hand ───────────────────────────────────────────
 
-def test_the_flow_door_records_its_answer(events, monkeypatch):
-    import asyncio
-    from nucleo.turn import flow_of
-    monkeypatch.setattr(flow_of, "candidates", lambda: [{"id": "2", "request": "I wanna buy a car. A new car.",
-                                                         "parked": True}])
-    monkeypatch.setattr("nucleo.request.append.about_a_live_errand", lambda text, live: "2")   # the judge confirms
-    trace.adopt("T39")
-    asyncio.run(flow_of.flow_of("I wanna buy a car, a new 4Runner"))
-    so.dispatcher_said({"trace": "T39"}, "Okay.", "", "miss")
-    assert _of(events, "door_disagree"), "the flow door's answer never reached the comparison"
 
 
 def test_an_escalation_reports_its_birth(events, monkeypatch):

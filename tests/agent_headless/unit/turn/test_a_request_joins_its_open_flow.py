@@ -13,7 +13,8 @@ import threading
 import pytest
 
 from nucleo.acts import search_listing
-from nucleo.turn import flow_of, launches
+from nucleo.dispatch import fold as flow_of
+from nucleo.turn import launches
 
 FRAGMENT = "Okay. Can you find me, like, three twenty seven inch four k monitors?"
 WHOLE = ("Okay. Can you find me, like, three twenty seven inch four k monitors? Under four hundred bucks. "
@@ -61,54 +62,8 @@ def test_the_sentence_that_finishes_a_cancelled_fragment_reuses_its_sheet(hunts)
         "the whole sentence opened a SECOND sheet beside the hunt it finishes"
 
 
-def test_a_request_about_a_live_worker_is_injected_not_hunted_again(hunts, monkeypatch):
-    sent = []
-
-    async def fake_inject(which, message):
-        sent.append((which, message))
-        return [which]
-
-    monkeypatch.setattr("nucleo.dispatch.pending_summaries",
-                        lambda: [{"id": "7", "request": FRAGMENT, "sheet": "S7"}])
-    monkeypatch.setattr("nucleo.dispatch.get_record", lambda tid: None)
-    monkeypatch.setattr("nucleo.dispatch.inject", fake_inject)
-    _o = asyncio.run(search_listing.listings({"text": WHOLE}, REQ))
-    res, _ = _o.data, _o.say
-    # V2-844 F2: his words reach the worker with the way back (`not_mine`) if they are not its errand's
-    assert [w for w, _m in sent] == ["7"] and sent[0][1].startswith(WHOLE) and "not_mine" in sent[0][1] and not hunts, \
-        "the refinement started a second hunt beside the live worker"
-    assert res["joined"] == "7" and res["sheet"] == "S7"
-
-
-def test_a_word_about_the_weather_in_between_does_not_hide_the_hunt(hunts, monkeypatch):
-    """The candidates are every open flow, not the last trace; a refinement with few shared words goes to the
-    model judge, the same one the dispatcher uses."""
-    launches.opened(FRAGMENT, "S1")
-    monkeypatch.setattr("nucleo.request.append.about_a_live_errand",
-                        lambda text, live: next(i for i, g in live if "monitors" in g))
-    flow = asyncio.run(flow_of.flow_of("Actually make them cheaper, under 350"))
-    assert flow and flow["sheet"] == "S1"
-
-
-def test_a_new_hunt_is_a_new_flow(hunts, monkeypatch):
-    launches.opened(FRAGMENT, "S1")
-    assert asyncio.run(flow_of.flow_of("find me a used acoustic guitar in Madrid")) is None
-
-
 # ── F3/F4 · the dispatcher's late fold is an alarm, and it no longer leaves a sheet behind ──────────────────
 
-def test_a_late_fold_closes_the_duplicates_sheet_and_says_so(monkeypatch):
-    from types import SimpleNamespace
-
-    from voice import observer
-    seen = []
-    monkeypatch.setattr(observer, "emit", lambda *a, **kw: seen.append((a, kw)))
-    monkeypatch.setattr("nucleo.dispatch.get_record", lambda tid: SimpleNamespace(sheet="ls1"))
-    monkeypatch.setattr("nucleo.dispatch.sheet_of", lambda rec: rec.sheet)
-    assert flow_of.late_fold("7", {"sheet": "ls2"}) == "ls2"
-    assert any(a[:2] == ("widget", "close") and kw["extra"]["id"] == "results::ls2" for a, kw in seen), \
-        "the folded duplicate's sheet stayed on screen with nobody writing into it"
-    assert any(a[0] == "alert" for a, _ in seen), "a late fold means the flow door missed — it must be SAID"
 
 
 def test_a_late_fold_into_the_same_sheet_closes_nothing(monkeypatch):

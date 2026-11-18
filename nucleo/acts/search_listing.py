@@ -113,7 +113,7 @@ async def listings(request: dict, args: dict, *, spec=None, on_delta=None, alrea
     mute). `CancelledError` is re-raised: a cancelled turn must not look like a failed search."""
     import asyncio
 
-    from nucleo.turn import flow_of as _flow, launches as _launches
+    from nucleo.turn import launches as _launches, open_flows as _flow
     from nucleo.acts.errand import whole_request
     operator_text = whole_request(str((request or {}).get("text") or ""))   # V2-844 F1a: never the cut turn's tail
     taken = "" if (already_said or "").strip() else _taken_line()

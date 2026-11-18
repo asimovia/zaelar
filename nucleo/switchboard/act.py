@@ -41,6 +41,8 @@ def deliver(p: dict, text: str, kind: str = OTHER) -> bool:
         from nucleo import dispatch as _d      # anything else is for the process that runs it
         return bool(p.get("dispatch")) and bool(_d.relay_his_words(p["dispatch"], text))
     if p["state"] == _board.WAITING and p.get("ask_id"):
+        if kind == OTHER and _absorbed(p, text):     # an errand parked on his yes takes what he adds; its question stands
+            return True
         from nucleo.cli import worker_api
         choice = {YES: 0, NO: 1}.get(kind)          # the caller passes yes/no only for a process waiting on a yes
         return bool(worker_api.answer_soon(p["ask_id"], text, choice))
@@ -48,6 +50,22 @@ def deliver(p: dict, text: str, kind: str = OTHER) -> bool:
         from nucleo import dispatch as _d
         return bool(_d.relay_his_words(p["dispatch"], text))     # THE door for his sentence into a running errand
     return False
+
+
+def _absorbed(p: dict, text: str) -> bool:
+    """A process parked at its START question («shall I?») and words of his that are neither a yes nor a no: they are
+    part of what he asked — a detail, a change — and travel with the errand when his yes relaunches it
+    (`confirm.absorb_refinement`). Nothing new is started for them and the question is not asked again."""
+    try:
+        from nucleo.circuit import asker
+        from nucleo.dispatch import confirm as _dc
+        a = asker.artefact(p["key"]) or {}
+        if (a.get("retained") or {}).get("kind") != "start":
+            return False
+        return bool(_dc.absorb_refinement(str(a.get("task_id") or ""), text))
+    except Exception as e:  # noqa: BLE001 — unread: the question's own answer door takes the words
+        logger.debug(f"switchboard: the parked errand did not take the words — {e!r}")
+        return False
 
 
 def stop(procs: list[dict]) -> list[str]:

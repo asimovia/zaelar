@@ -1,5 +1,5 @@
 """An event goes through the ONE router (V2-851 F4, §7): what arrives without a turn is a request with its origin,
-routed by `flow_of.route(event=…)` — a task WAITING for it resumes, a CLAIMANT (an errand bound to the conversation)
+routed by `flow_events.route` — a task WAITING for it resumes, a CLAIMANT (an errand bound to the conversation)
 takes it, a rule SUBSCRIBED to it hands it to the stream worker, else nothing. A subscription is a rules row matched
 in code on the event's declared fields; his note is read into one once; a pre-condition is a declared verdict. The
 stream is ONE recurring row per stream that rests between items, obeys ⏻, carries the rules' mandate, and recycles
@@ -18,7 +18,7 @@ from memory import embeddings as mememb
 from nucleo import events
 from nucleo.circuit import ledger
 from nucleo.events import pump, stream
-from nucleo.turn import flow_events, flow_of
+from nucleo.turn import flow_events
 
 ADDR = "billing@acme.example"
 RULE_TEXT = f"When an email from {ADDR} arrives, add a task to my agenda to pay the invoice."
@@ -125,7 +125,7 @@ def test_a_claimant_takes_what_is_its_own():
 
 def test_the_router_is_flow_of_route():
     _subscribe()
-    assert asyncio.run(flow_of.route(event=_mail()))["as"] == flow_events.STREAM
+    assert flow_events.route(_mail())["as"] == flow_events.STREAM
 
 
 def test_the_stream_is_one_recurring_row_that_rests_and_carries_the_mandate(monkeypatch):

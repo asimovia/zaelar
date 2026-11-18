@@ -41,8 +41,6 @@ async def rerun(uid: str, entry: dict, text: str, choice: int | None = None):
         return {"ok": True, "row": uid, "answered": True}
     if retained.get("kind") == "notice":         # a scheduled notice's question (V2-878 §4): his answer ends it
         return __import__("nucleo.pulse.notice_ask", fromlist=["x"]).answered(uid, entry, text)
-    if retained.get("kind") == "which":          # «for X, or something new?» (V2-878 §3 e): his answer routes it
-        return __import__("nucleo.turn.which_flow", fromlist=["x"]).answered(uid, entry, text, choice)
     if retained.get("kind") == "start":          # a parked errand's question (V2-857 P0-1): its yes relaunches it
         from nucleo.dispatch import confirm as _dc
         return _dc.rerun_start(uid, entry, text, choice)
