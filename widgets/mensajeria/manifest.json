@@ -202,6 +202,7 @@
     },
     "draft": {
       "desc": "Escribe un mensaje en el CUADRO del widget SIN enviarlo: respuesta (n) o mensaje NUEVO a una persona (contact). Dile «ya está escrito, revísalo y dime si lo mando ya o cuándo».",
+      "taken_back_by": "discard_draft",
       "payload": {
         "text": "string (el texto dictado)",
         "n": "opcional: número de un email concreto (si no hay conversación abierta)",

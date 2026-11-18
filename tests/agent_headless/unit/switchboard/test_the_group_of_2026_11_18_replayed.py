@@ -170,3 +170,40 @@ def test_a_request_whose_act_already_landed_never_asks_about_it_again(world):
     assert exit_gate.leave(rec, "widget_data", other).verdict == "ask", "other words are another act"
     assert exit_gate.leave(world.rec("z-2", "tell Odile good night"), "widget_data", send).verdict == "ask", \
         "another request is asked: only the request that sent it is done with it"
+
+
+# ── his no takes back what the request wrote ────────────────────────────────────────────────────────────────────
+def test_his_no_takes_back_the_draft_the_request_wrote(world, monkeypatch):
+    """Live, 02:45 — «no, don't send it» ended the send and the refused text stayed written in her chat box: one tap
+    from being sent, and a draft «he had already seen» for a later order. His no (and his stop) clears what THIS
+    request wrote there, with the act the card declares for it (`taken_back_by`); a request that wrote nothing clears
+    nothing. (Disarmed on the real card below: writing an empty text is refused and clears nothing.)"""
+    from nucleo.circuit import ledger
+    calls = []
+    fake = SimpleNamespace(apply_action=lambda action, payload: calls.append((action, dict(payload))) or {"ok": True})
+    import importlib
+    real = importlib.import_module
+    monkeypatch.setattr(importlib, "import_module", lambda name, *a: fake if name == "widgets.mensajeria.data" else real(name, *a))
+    rec = world.rec("n-1", "tell Odile good night")
+    draft = {"widget_id": "mensajeria", "action": "draft", "payload": {"contact": "Odile Varga", "text": "good night"}}
+    act.wrote(rec, "widget_data", draft)
+    act.wrote(rec, "widget_data", {"widget_id": "mensajeria", "action": "send_draft", "payload": {"contact": "Odile Varga"}})
+    assert (ledger.store().artifact_get("n-1", act.WRITTEN) or {}).get("call", {}).get("action") == "draft"
+    assert send_errand.withdraw("n-1") is True
+    assert calls == [("discard_draft", {"contact": "Odile Varga"})], "the act the card DECLARES takes it back"
+    assert send_errand.withdraw("n-1") is False and len(calls) == 1, "taken back once"
+    assert send_errand.withdraw(world.rec("n-2", "nothing written").uid) is False
+
+
+def test_the_real_card_takes_its_draft_back(tmp_path, monkeypatch):
+    from widgets import effects, store
+    from widgets.contactos import data as cd
+    from widgets.mensajeria import data as md
+    monkeypatch.setattr(store, "DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(store, "_last_hash", {})
+    cd.apply_action("add_contact", {"name": "Odile Varga", "phone": "611 204 377"})
+    assert md.apply_action("draft", {"contact": "Odile Varga", "text": "good night", "channel": "whatsapp"})["ok"]
+    assert not md.apply_action("draft", {"contact": "Odile Varga", "text": "", "channel": "whatsapp"}).get("ok"), \
+        "disarmed: an empty text is not how a draft is taken back"
+    undo = effects._manifest("mensajeria")["actions"]["draft"]["taken_back_by"]
+    assert md.apply_action(undo, {"contact": "Odile Varga"})["ok"] and not (md.load_db().get("drafts") or {})

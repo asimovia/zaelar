@@ -114,6 +114,8 @@ async def answered(answer, entry: dict | None, decision, corr_id: str, text: str
         keep_answer(e0, text)
     if took and said in (YES, NO):
         resolved_soon(str(e0.get("uid") or ""), e0, said)
+    if took and said == NO:              # what the request wrote where he reads it does not outlive his no
+        __import__("nucleo.request.send_errand", fromlist=["x"]).withdraw(str(e0.get("uid") or ""))
     return took
 
 

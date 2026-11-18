@@ -129,6 +129,34 @@ async def start_line(send) -> str:
     return await wording.said(wording.line(fam, "preparing"), about=str(s.get("text") or "")[:200])
 
 
+def withdraw(uid: str) -> bool:
+    """His NO (or his stop) to a send: the text this request wrote where he reads it — the draft in her chat box — is
+    taken back, with the act the card DECLARES for it (`taken_back_by` on the act that wrote, called with the fields
+    both share). A refused text left in the box is one tap from being sent, and a later «send it» would find it as a
+    draft he had already seen. Measured live 2026-11-18. True when it ran."""
+    try:
+        import importlib
+        from nucleo.circuit import ledger
+        from widgets import effects
+        slot = ledger.store().artifact_get(uid, "written_text") or {}
+        call = slot.get("call") if isinstance(slot.get("call"), dict) else None
+        wid, wrote = str((call or {}).get("widget") or ""), str((call or {}).get("action") or "")
+        acts = effects._manifest(wid).get("actions") or {} if wid else {}
+        undo = str((acts.get(wrote) or {}).get("taken_back_by") or "") if isinstance(acts.get(wrote), dict) else ""
+        if not (uid and undo and isinstance(acts.get(undo), dict)):
+            return False
+        pay = {k: v for k, v in dict(call.get("payload") or {}).items() if k in (acts[undo].get("payload") or {})}
+        res = importlib.import_module(f"widgets.{wid}.data").apply_action(undo, pay)
+        ledger.store().artifact_put(uid, "written_text", {})
+        from voice.observer import emit
+        emit("task", "🧹 he said no — what the request wrote is taken back", text=f"{wid}:{undo}", role="system",
+             extra={"id": uid, "ok": bool(isinstance(res, dict) and res.get("ok"))})
+        return True
+    except Exception as e:  # noqa: BLE001 — the no stands either way
+        _note(e)
+        return False
+
+
 def on_claude(task, env: dict) -> str:
     """A send's worker runs on Claude itself (the operator's decision, 2026-11-17): the spec's env carries the mark
     `claude_start` reads, and the model is that rung's. "" for any other task (the chain decides as always)."""

@@ -149,10 +149,13 @@ def wrote(rec, action: str, payload: dict | None) -> None:
             return
         from nucleo import on_his_behalf as _ob
         from nucleo.circuit import ledger
-        _wid, _act, inner = _ob._resolve(payload or {})
+        wid, _act, inner = _ob._resolve(payload or {})
         uid, text = str(getattr(rec, "uid", "") or ""), str((inner or {}).get("text") or "").strip()
         if uid and text and str((ledger.store().task_get(uid) or {}).get("playbook") or "") == "message":
-            ledger.store().artifact_put(uid, WRITTEN, {"text": text})
+            from nucleo.workers import exit_gate     # a write that stays here (the draft he reads) can be taken back
+            call = ({"widget": wid, "action": _act, "payload": dict(inner)} if not exit_gate.leaves(wid, _act)
+                    else (ledger.store().artifact_get(uid, WRITTEN) or {}).get("call"))
+            ledger.store().artifact_put(uid, WRITTEN, {"text": text, **({"call": call} if call else {})})
     except Exception as e:  # noqa: BLE001
         logger.debug(f"switchboard: the written text not kept — {e!r}")
 
@@ -242,6 +245,7 @@ def _stop_here(procs: list[dict]) -> list[str]:
                 ok = control.cancel_row(p["key"], outcome="stopped by his word") == "cancelled"
             if ok:
                 ended.append(p["key"])
+                __import__("nucleo.request.send_errand", fromlist=["x"]).withdraw(p["key"])
         except Exception as e:  # noqa: BLE001 — one process that would not stop never keeps the others running
             logger.warning(f"switchboard: could not stop {p['key']} — {e!r}")
     return ended
