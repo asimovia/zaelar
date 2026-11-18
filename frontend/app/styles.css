@@ -232,8 +232,9 @@ body.chatdock-r .statuspanel{right:calc(18px + var(--chatdock-r))}
 .cw-input{display:flex;align-items:flex-end;gap:var(--sp-2);padding:var(--sp-3) var(--sp-3) var(--sp-4);
      border-top:1px solid var(--hb-line)}
 /* V2-617/619: the composer is for WRITING — body-size type, THREE lines tall at rest (rows:3 in the markup,
-   min-height here so a profile's type scale keeps the ratio), and real margins off the floor. */
-.cw-input textarea{flex:1 1 auto;resize:none;min-height:4.4em;max-height:180px;border:1px solid var(--hb-line);border-radius:var(--hb-r-m,12px);
+   min-height here so a profile's type scale keeps the ratio), and real margins off the floor. Basis 0 + min-width 0:
+   the textarea gives up width, so the clip and send column never wraps under it in a narrow column (2026-11-18). */
+.cw-input textarea{flex:1 1 0;min-width:0;resize:none;min-height:4.4em;max-height:180px;border:1px solid var(--hb-line);border-radius:var(--hb-r-m,12px);
      padding:var(--sp-3);font-size:var(--fs-ui);font-family:var(--sans);color:var(--hb-ink);
      background:var(--hb-bg);outline:none;line-height:var(--hb-lh,1.55)}
 .cw-input textarea:focus{border-color:var(--hb-accent)}

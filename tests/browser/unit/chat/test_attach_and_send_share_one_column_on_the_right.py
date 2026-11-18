@@ -127,3 +127,17 @@ def test_attach_and_send_share_one_column_on_the_right(browser_and_port, width, 
     assert tray["b"] <= min(g["ta"]["t"], g["clip"]["t"]) + TOL, "the tray stays above the text box and the column"
     assert not pg._errors, pg._errors
     pg.close()
+
+
+@pytest.mark.parametrize("wall_px", [260, 200], ids=["dock-minimum", "narrower-than-any-limit"])
+def test_a_narrow_column_keeps_attach_and_send_on_the_right(browser_and_port, wall_px):
+    # operator 2026-11-18: squeezing the chat column wrapped the clip and send UNDER the text box. The text box gives
+    # up width instead (flex-basis 0 + min-width 0), so even below the dock's minimum the column stays on its right.
+    b, port = browser_and_port
+    pg = _page(b, port, 1280, 800)
+    pg.evaluate(f"() => {{ const w = document.querySelector('#chatwall'); w.style.width = '{wall_px}px';"
+                f" w.style.minWidth = '0'; }}")
+    pg.wait_for_timeout(100)
+    _assert_one_column_on_the_right(_geometry(pg), f"wall {wall_px}px")
+    assert not pg._errors, pg._errors
+    pg.close()
