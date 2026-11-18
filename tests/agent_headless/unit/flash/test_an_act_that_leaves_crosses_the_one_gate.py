@@ -23,9 +23,26 @@ def _scene(tmp_path, monkeypatch):
     his_words.reset()
 
 
-def test_a_send_to_someone_his_words_never_named_is_never_sent_by_the_turn(monkeypatch):
-    """Since V2-852 M2 the turn routes it as a task; the «his words never named» question is the worker's exit door
-    (`nucleo/workers/exit_gate.gate` reuses `asked_if_leaving`)."""
-    out = rig.run("mensajeria", "send_to", {"contact": "Quinn", "text": "the numbers"},
-                  said="send the numbers to the team", monkeypatch=monkeypatch)
-    assert not out.ran and not out.asked and any("is a task" in label for _k, label in out.events), out
+def test_a_send_to_someone_his_words_never_named_is_never_sent_by_the_turn(tmp_path, monkeypatch):
+    """Since V2-931 the turn hands a send over as ONE worker task and never runs or asks it itself; what keeps it from
+    leaving is the worker's exit door (`nucleo/workers/exit_gate.leave`): a message is read off its declared risk and
+    is asked, naming her, before anything leaves — never passed through on the turn's say-so."""
+    import time
+    from types import SimpleNamespace
+    from nucleo import consent
+    from nucleo.workers import exit_gate
+    from nucleo.workers.prompts import playbook
+    from widgets import contract
+    call = {"contact": "Quinn", "text": "the numbers"}
+    out = rig.run("mensajeria", "send_to", dict(call), said="send the numbers to the team", monkeypatch=monkeypatch)
+    assert not out.ran and not out.asked and any("worker task" in label for _k, label in out.events), out
+    monkeypatch.setattr(playbook, "checkpoint_one", lambda rec: "")
+    monkeypatch.setattr(contract, "would_refuse", lambda *a, **k: None)     # the door's question, not a channel probe
+    monkeypatch.setattr(consent, "_overrides_path", lambda: tmp_path / "consent.json")
+    consent._reset_for_tests()
+    rec = SimpleNamespace(task_id="t-quinn", playbook_chosen="message", uid="t-quinn", started=time.time(), depth=0,
+                          trace_id="", surface="", sheet="", mandate={}, reading=None,
+                          heard=["send the numbers to the team"], own_words=True)
+    ex = exit_gate.leave(rec, "widget_data", {"widget_id": "mensajeria", "action": "send_to", "payload": call})
+    consent._reset_for_tests()
+    assert ex is not None and ex.verdict == "ask" and "Quinn" in ex.question, ex
