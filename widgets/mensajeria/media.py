@@ -71,10 +71,38 @@ def _strip(msg: dict, gone: set, folder: str) -> bool:
     return True
 
 
-def sweep(db: dict, folder: str, now: float | None = None) -> dict:
+def _over_budget(folder: str, budget: int, gone: set) -> list[tuple[str, int]]:
+    """The files that must leave for what is left to fit `budget` bytes, OLDEST first: `[(name, size)]`."""
+    rows, total = [], 0
+    try:
+        names = os.listdir(folder)
+    except OSError as e:
+        _log.warning(f"media budget: cannot list the media folder: {e}")
+        return []
+    for name in names:
+        if not name.startswith(PREFIXES) or name in gone:
+            continue
+        try:
+            st = os.stat(os.path.join(folder, name))
+        except OSError:
+            continue                 # gone meanwhile: nothing to count
+        rows.append((st.st_mtime, name, st.st_size))
+        total += st.st_size
+    out = []
+    for _mtime, name, size in sorted(rows):
+        if total <= budget:
+            break
+        out.append((name, size))
+        total -= size
+    return out
+
+
+def sweep(db: dict, folder: str, now: float | None = None, budget: int = 0) -> dict:
     """Delete downloaded media older than the window and unhook it from the messages that showed it. Returns
-    {files, bytes, messages}. With «Siempre» nothing is deleted, but references to files already missing are
-    still unhooked (a broken picture is worse than a label)."""
+    {files, bytes, messages}. With «Siempre» nothing is deleted by age, but references to files already missing
+    are still unhooked (a broken picture is worse than a label). With `budget` (bytes; 0 = none, the caller reads
+    it from the declared policy), whatever the window, the OLDEST files leave until the rest fits: days bound how
+    long, the budget bounds how much — a week of video is larger than a small disk."""
     now = now or time.time()
     keep_days = days(db)
     gone: set = set()
@@ -99,6 +127,13 @@ def sweep(db: dict, folder: str, now: float | None = None) -> dict:
             except OSError as e:
                 _log.warning(f"media sweep: {name} not removed: {e}")
                 continue
+    for name, size in _over_budget(folder, int(budget), gone) if budget and budget > 0 else []:
+        try:
+            os.remove(os.path.join(folder, name))
+            gone.add(name)
+            freed += size
+        except OSError as e:
+            _log.warning(f"media budget: {name} not removed: {e}")
     touched = 0
     for it in db.get("items") or []:
         if isinstance(it, dict) and _strip(it, gone, folder):

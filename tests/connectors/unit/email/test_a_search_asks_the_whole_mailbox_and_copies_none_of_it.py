@@ -80,6 +80,7 @@ def test_a_search_answer_says_how_far_each_platforms_past_reaches(tmp_path, monk
     archive.backfill_mark("telegram", "2", page=True)
     res = views._search_archive_answer({"q": "barco"})["result"]
     assert res["history"]["email"]["mode"] == "on_demand" and res["history"]["whatsapp"]["mode"] == "at_link"
-    assert res["history"]["telegram"] == {"mode": "walk", "done": 1, "started": 2, "messages": 0}
+    assert res["history"]["telegram"] == {"mode": "walk", "done": 1, "started": 2, "messages": 0,
+                                         "first_import_days": 90}
     assert "telegram: 1 de 2 chats" in res["detail"], "«nothing found» must say the walk is still going"
     archive.reset()

@@ -72,6 +72,13 @@ try {
 const PAIR_ONLY = args.includes('--pair-only');
 // ZAELAR-PATCH: how this linked device is named on the operator's phone.
 const DEVICE_NAME = process.env.ZAELAR_DEVICE_NAME || 'Zaelar Agent';
+// ZAELAR-PATCH (V2-936): a media file over this many bytes is not downloaded by itself — its type still travels,
+// the bytes stay on the phone. 0 = no cap. Without it every video was pulled whole into memory (a 136 MB one, measured).
+const MEDIA_MAX_BYTES = parseInt(process.env.ZAELAR_MEDIA_MAX_BYTES || '0', 10) || 0;
+function overMediaCap(m) {
+  const n = Number(m?.fileLength?.toString?.() ?? m?.fileLength ?? 0);
+  return MEDIA_MAX_BYTES > 0 && Number.isFinite(n) && n > MEDIA_MAX_BYTES;
+}
 const WHATSAPP_MODE = getArg('mode', process.env.WHATSAPP_MODE || 'self-chat'); // "bot" | "self-chat" | "observe" (ZAELAR-PATCH)
 const ALLOWED_USERS = parseAllowedUsers(process.env.WHATSAPP_ALLOWED_USERS || '');
 const DEFAULT_REPLY_PREFIX = '';
@@ -633,6 +640,7 @@ async function startSocket() {
         hasMedia = true;
         mediaType = 'image';
         try {
+          if (overMediaCap(messageContent.imageMessage)) throw new Error('over the media cap, left on the phone');
           const buf = await downloadMediaMessage(msg, 'buffer', {}, { logger, reuploadRequest: sock.updateMediaMessage });
           const mime = messageContent.imageMessage.mimetype || 'image/jpeg';
           const extMap = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/gif': '.gif' };
@@ -649,6 +657,7 @@ async function startSocket() {
         hasMedia = true;
         mediaType = 'video';
         try {
+          if (overMediaCap(messageContent.videoMessage)) throw new Error('over the media cap, left on the phone');
           const buf = await downloadMediaMessage(msg, 'buffer', {}, { logger, reuploadRequest: sock.updateMediaMessage });
           const mime = messageContent.videoMessage.mimetype || 'video/mp4';
           const ext = mime.includes('mp4') ? '.mp4' : '.mkv';
@@ -664,6 +673,7 @@ async function startSocket() {
         mediaType = messageContent.pttMessage ? 'ptt' : 'audio';
         try {
           const audioMsg = messageContent.pttMessage || messageContent.audioMessage;
+          if (overMediaCap(audioMsg)) throw new Error('over the media cap, left on the phone');
           const buf = await downloadMediaMessage(msg, 'buffer', {}, { logger, reuploadRequest: sock.updateMediaMessage });
           const mime = audioMsg.mimetype || 'audio/ogg';
           const ext = mime.includes('ogg') ? '.ogg' : mime.includes('mp4') ? '.m4a' : '.ogg';
@@ -680,6 +690,7 @@ async function startSocket() {
         mediaType = 'document';
         const fileName = messageContent.documentMessage.fileName || 'document';
         try {
+          if (overMediaCap(messageContent.documentMessage)) throw new Error('over the media cap, left on the phone');
           const buf = await downloadMediaMessage(msg, 'buffer', {}, { logger, reuploadRequest: sock.updateMediaMessage });
           mkdirSync(DOCUMENT_CACHE_DIR, { recursive: true });
           const safeFileName = path.basename(fileName).replace(/[^a-zA-Z0-9._-]/g, '_');

@@ -84,6 +84,8 @@ def _conn() -> sqlite3.Connection:
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA busy_timeout=5000")
         conn.executescript(_SCHEMA)
+        if "want" not in {r[1] for r in conn.execute("PRAGMA table_info(backfill)")}:
+            conn.execute("ALTER TABLE backfill ADD COLUMN want REAL NOT NULL DEFAULT 0")   # V2-936: asked on demand
         _CONN, _PATH = conn, path
         return conn
 
@@ -205,5 +207,5 @@ def chats(platform: str, limit: int = 600) -> list[dict]:
 from connectors.messaging.archive.lookup import (  # noqa: E402,F401
     _fts_term, _naming_terms, _ranked_by_name, doc_count, ranked, search)
 from connectors.messaging.archive.backfill import (  # noqa: E402,F401
-    backfill_mark, backfill_state, backfill_stats, count, oldest)
+    backfill_mark, backfill_state, backfill_stats, count, held, oldest, served, want, wanted)
 from connectors.messaging.archive.stats import PAGE_CAP, page, per_day, stats, totals  # noqa: E402,F401

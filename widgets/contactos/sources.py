@@ -36,6 +36,14 @@ being told its book), and then daily. A person it brings that a row already prov
 account — `identity.find`) becomes a CHANNEL of that row; only the others become rows. The one way to stop it is
 his: switching a source off (`set_auto(source, False)`) is remembered as `declined`, and a declined source is read
 only when he asks.
+
+## The directory is not bounded by the message window
+
+How much of an account's PAST is copied is bounded (`connectors/messaging/history.py`); who is IN the directory
+is not. A pass reads the platform's own book — its address book and every named one-to-one conversation it lists —
+so a person with no message inside the window is still a row. And a message that arrives from an account no row
+holds marks the source as owed a read (`nudge`): she is in the directory within one `EVERY_S`, not at the next
+daily pass.
 """
 from __future__ import annotations
 
@@ -260,6 +268,18 @@ def _due(source: str, st: dict, now: float) -> bool:
     if st.get("declined") or not (not last or bool(st.get("partial")) or now - last >= DAILY_S):
         return False
     return source == "meshkore" or connected(source)        # asked last: it reads the connectors' registry
+
+
+def nudge(db: dict, source: str) -> bool:
+    """A one-to-one message arrived from an account no row holds: the source's book is owed a new read soon — its
+    next pass brings that person in (a row, or a channel of the row a phone proves). It never creates a contact
+    itself: the directory is filled from the platform's book, not from whoever writes. True when `db` changed
+    (the caller saves); nothing for a source never read, switched off, or already owed."""
+    st = (db.get("sources") or {}).get(str(source or ""))
+    if not isinstance(st, dict) or st.get("declined") or st.get("partial") or not st.get("last"):
+        return False
+    st["partial"] = True
+    return True
 
 
 def _tried(source: str) -> None:

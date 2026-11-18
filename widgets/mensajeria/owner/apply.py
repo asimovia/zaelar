@@ -84,10 +84,12 @@ class _Apply:
         db = msgstore.load()
         if not _media.due(db):
             return
-        res = _media.sweep(db, _wstore.data_dir("mensajeria"))
+        from connectors.messaging import history as _history     # V2-936: the declared disk budget for media
+        folder = _wstore.data_dir("mensajeria")
+        res = _media.sweep(db, folder, budget=_history.media_budget_bytes(folder))
         msgstore.save(db)
         if res["files"] or res["messages"]:
-            logger.info(f"mensajeria: media older than {_media.days(db)} d removed — {res['files']} file(s), "
+            logger.info(f"mensajeria: media past {_media.days(db)} d or over its disk budget removed — {res['files']} file(s), "
                         f"{res['bytes'] / 1e6:.0f} MB, {res['messages']} message(s) now point to the phone")
 
     def _apply_chats(self) -> None:

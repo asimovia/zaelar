@@ -13,7 +13,6 @@ from connectors.telegram import service as _svc
 # (`event.raw_text or ""`) — worse than WhatsApp, which at least had a placeholder. MTProto gives the bytes in
 # one call; they land in the messaging widget's own data dir so `GET /widgets/mensajeria/asset/{name}` can
 # serve them. A file over the cap is not downloaded (the type still travels, so the widget says WHAT it is).
-_TG_MEDIA_MAX_BYTES = 20 * 1024 * 1024
 
 
 def _media_dir() -> str:
@@ -45,7 +44,9 @@ async def _capture_media(msg, chat_id) -> tuple[str | None, list[str]]:
         return None, []
     try:
         size = int(getattr(getattr(msg, "file", None), "size", 0) or 0)
-        if size > _TG_MEDIA_MAX_BYTES:
+        from connectors.messaging import history as _history     # V2-936: one cap for every platform, 0 = none
+        cap = _history.media_cap_bytes()
+        if cap and size > cap:
             return mtype, []                       # too big: say what it is, do not pull the bytes
         import os
         base = os.path.join(_media_dir(), f"tg_{chat_id}_{msg.id}")

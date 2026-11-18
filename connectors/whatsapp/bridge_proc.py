@@ -57,6 +57,8 @@ class _Bridge:
         config.session_dir().mkdir(parents=True, exist_ok=True)
         env = dict(os.environ)
         env["WHATSAPP_MODE"] = "observe"
+        from connectors.messaging import history as _history       # V2-936: the largest file downloaded by itself
+        env.setdefault("ZAELAR_MEDIA_MAX_BYTES", str(_history.media_cap_bytes()))
         env.setdefault("WHATSAPP_REPLY_PREFIX", "")  # in observe we do not reply; no prefix
         # V2-543 — received media lands DIRECTLY in the messaging widget's own data dir, the one place
         # `GET /widgets/mensajeria/asset/{name}` can serve (flat namespace). Without this the bridge wrote to

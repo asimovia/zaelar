@@ -473,9 +473,10 @@
         "since_days": "number opcional (ventana hacia atrás en días)",
         "direction": "'in'|'out' opcional",
         "check_reply": "bool opcional: comprueba si el mensaje encontrado tuvo respuesta nuestra",
+        "deeper": "bool opcional: pide a la plataforma mensajes MÁS ANTIGUOS del chat nombrado (chat/sender) aunque ya haya coincidencias",
         "limit": "int opcional (máx 20)"
       },
-      "types": {"check_reply": "bool"},
+      "types": {"check_reply": "bool", "deeper": "bool"},
       "safe": true,
       "view": true,
       "effects": [

@@ -41,12 +41,15 @@ def test_the_pairing_history_goes_to_the_archive_and_nowhere_else(tmp_path, monk
     monkeypatch.setattr(ingest, "publish_msg", lambda *a, **k: published.append(a))
 
     async def get_sync():
-        return [{"messageId": "S1", "chatId": "1@s.whatsapp.net", "senderName": "Ana", "body": "hace un año",
-                 "timestamp": 1700000000, "direction": "in"},
+        import time
+        return [{"messageId": "S1", "chatId": "1@s.whatsapp.net", "senderName": "Ana", "body": "hace un mes",
+                 "timestamp": time.time() - 30 * 86400, "direction": "in"},
+                {"messageId": "S0", "chatId": "1@s.whatsapp.net", "senderName": "Ana", "body": "years ago",
+                 "timestamp": 1700000000, "direction": "in"},       # V2-936: past the first import's day bound
                 {"messageId": "S2", "chatId": "1@s.whatsapp.net", "body": "sin hora"}]
     monkeypatch.setattr(client, "get_sync", get_sync)
     asyncio.run(service._drain_sync())
-    assert archive.count("whatsapp", "1@s.whatsapp.net") == 1, "a message with no time is not filed as «now»"
+    assert archive.count("whatsapp", "1@s.whatsapp.net") == 1, "no time is not «now», and years ago is not the first import"
     assert published == []
     archive.reset()
 

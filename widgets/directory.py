@@ -625,6 +625,10 @@ def note_inbound(platform: str, msg: dict) -> bool:
         people = db.get("contacts") or []
         hits = _match_sender(people, p, msg)
         if len(hits) != 1:
+            if not hits:      # somebody no row holds wrote to him: the source's book is read again soon (V2-936)
+                from .contactos import sources as _src
+                if _src.nudge(db, p):
+                    _cd.store.save(_cd.WIDGET_ID, db)
             return False
         c = hits[0]
         chat_id = str(msg.get("chatId") or "").strip()

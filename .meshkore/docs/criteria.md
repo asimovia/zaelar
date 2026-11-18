@@ -1160,6 +1160,16 @@ Flash keeps the conversation; the row is what both brains read.
   loop. — since 2026-11-18 (V2-934) · nodes 4.581, 4.582, 4.583, 2.1811 ·
   `widgets/contactos/identity.py`, `fusion.py`, `person_actions.py`, `widgets/mensajeria/outbound/in_front.py`,
   `connectors/whatsapp/`.
+- **CRIT-M12d · The messaging past is copied inside declared bounds; live is never bounded.** Every message that
+  arrives or leaves is archived. The FIRST import of an account is bounded by days AND conversations AND messages
+  per conversation AND a total, newest first (`config/messaging.default.json`, read by
+  `connectors/messaging/history.policy`); what a phone hands over at pairing is trimmed to the day bound. A
+  conversation somebody names and the archive cannot answer about is asked of its platform ON DEMAND — that one, a
+  bounded stretch per ask, by id or by the name used (`archive.want`) — and the search says it asked. A file over
+  the per-file cap is never downloaded by itself; downloaded media leaves oldest first over its disk budget (the
+  smaller of an absolute bound and a share of the disk), whatever the day window. Who is a contact is not bounded
+  by any of this: a message from an account no row holds marks its source owed a read. — since 2026-11-18
+  (V2-936) · node 4.588 · `.meshkore/docs/modules/zaelar-messaging-history.md`.
 - **CRIT-M12b · His contacts are structured memory, and one person is one person.** Each record the contacts card
   manages is one structured pill in its own retriever lane (`nucleo/memory_agent/contacts.py`, slot `contact:<id>`,
   no phone or address in it); a NAME is the resolver's, a DESCRIPTION («the girl from the guitar course») is

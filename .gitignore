@@ -18,6 +18,7 @@ config/v2.json
 # after a unit test wrote `consent.json` into the live workspace and it turned up unignored.
 config/style.json
 config/consent.json
+config/messaging.json
 # Identidad de ESTA instalación (UUID4 aleatorio + fecha). Runtime por-instalación, jamás al repo:
 # commitearlo haría que todo el que clone comparta user_id y la observabilidad mezclaría instalaciones.
 config/identity.json

@@ -185,13 +185,16 @@ async def _drain_sync() -> None:
     rows = await client.get_sync()
     if not rows:
         return
-    from connectors.messaging import archive
+    from connectors.messaging import archive, history
     by_chat: dict[str, list[dict]] = {}
     for m in rows:
         by_chat.setdefault(str(m.get("chatId")), []).append(m)
     n = 0
     for chat_id, msgs in by_chat.items():
         entries = [e for e in (_svc._history_entry(m) for m in msgs) if e.get("ts")]
+        # V2-936: what the phone sends at pairing is the first import — its DAY bound applies. Not the per-chat
+        # one: this history arrives once, and asking the phone for it again later is a notification on it.
+        entries = history.within_first_import(entries, per_chat=False)
         n += archive.record(PLATFORM, chat_id, entries, chat_name=str(msgs[0].get("chatName") or ""),
                             is_group=bool(msgs[0].get("isGroup")))
     logger.info(f"WhatsApp: pairing history → {n} new message(s) archived from {len(by_chat)} chat(s)")

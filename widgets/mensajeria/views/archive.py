@@ -211,6 +211,17 @@ def _search_archive_answer(payload: dict) -> dict:
                   f"Para indexar el pasado de UN chat: load_more con ese chat (o fetch_now con platform en "
                   f"telegram/email) y repite esta búsqueda")
     result = {"matches": matches, "count": len(matches), "archive_since": coverage, "detail": detail}
+    # V2-936 — a conversation he NAMED that the archive cannot answer about is asked of its platform, that one
+    # alone (views/deeper.py); `deeper` asks for more of it even when something matched.
+    if (chat or sender) and (not matches or payload.get("deeper")):
+        from . import deeper as _deeper
+        asked = _deeper.ask([n for n in (chat, sender) if n], platform)
+        if asked:
+            result["asked_history"] = asked
+            result["detail"] += ("; he PEDIDO a la plataforma los mensajes anteriores de "
+                                 + ", ".join(f"«{a['chat']}» ({a['platform']})" for a in asked)
+                                 + " — llegan en segundo plano: repite esta búsqueda en unos segundos antes de "
+                                   "decir que no hay nada")
     # How each platform's PAST reaches the archive (connectors/messaging/history.py): WhatsApp and Telegram are
     # walked back once, the mailbox is asked on demand. Without it, «nothing found» over a walk still running
     # reads as «it never happened».

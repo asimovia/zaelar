@@ -928,7 +928,8 @@ Ollama — nothing personal leaves the machine) and dumps content to `memory/`. 
   tool `reply_message` → the `mensajeria` `reply` data-op (`confirm:true`) → CONFIRM gate reads the draft and asks OK
   → `pending_reply` → owner drains → `msg.reply` → the channel's connector sends. Generic across channels
   (WhatsApp/Telegram reuse the same path). Writing first to a NAMED contact builds on contacts as PERSON-data in
-  central memory, with channels per contact and default-channel deduction (`zaelar-contacts-sync.md`).
+  central memory, with channels per contact and default-channel deduction (`zaelar-contacts-sync.md`). How much of an account's past is copied
+  and how much media stays on disk: `zaelar-messaging-history.md`.
 
 ## Music connectors (`connectors/{music,spotify}/`) — voice-driven playback
 
