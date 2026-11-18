@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[4]
 SSE = ROOT / "frontend" / "app" / "services" / "sse.js"
 SESSION = ROOT / "frontend" / "app" / "services" / "session-lk.js"
 AGENT = ROOT / "voice" / "engine" / "pipeline" / "agent.py"
+AGENT_EVENTS = ROOT / "voice" / "engine" / "pipeline" / "agent_events.py"
 #: The kickoff decision lives with the first air since the voice runs in its own process (V2-891).
 FIRST_AIR = ROOT / "voice" / "engine" / "pipeline" / "first_air.py"
 EAR = ROOT / "frontend" / "app" / "services" / "wakeword.js"
@@ -139,7 +140,9 @@ def test_the_engine_records_when_the_paid_ear_last_finished_a_turn():
     # The fact the backstop reads. Stop writing it and the backstop answers everything twice.
     s = _src(AGENT)
     assert '_wake = {"last_user_final": 0.0, "spot_at": 0.0}' in s
-    assert '_wake["last_user_final"] = time.time()' in s
+    # the transcript handler lives in agent_events.py (V2-778 F1) and keeps the words beside the time (V2-931)
+    on = _src(AGENT_EVENTS).split("def _on_transcript", 1)[1].split("\ndef ", 1)[0]
+    assert '_wake["last_user_final"], _wake["last_user_text"] = _ag.time.time(), str(ev.transcript or "")' in on
 
 
 def test_the_greeting_is_not_asked_into_a_parked_microphone():
