@@ -52,6 +52,45 @@ def deliver(p: dict, text: str, kind: str = OTHER) -> bool:
     return False
 
 
+#: The row slot of a yes he gave BEFORE the question existed: the send's worker was still getting it ready.
+EARLY_YES = "his_yes"
+
+
+def early_yes(p: dict, kind: str) -> bool:
+    """His go-ahead for a send that is still being prepared (the process RUNS, nothing is asked yet): kept on its row,
+    and the exit door takes it as the answer to the question it would have asked — ONE act, one question, and a yes
+    said first is that yes (measured 2026-11-18: «OK, send it now» while the worker redrafted, then «shall I send
+    it?», then «why do you ask again if I already said yes?»). Any later word of his that is not a yes takes it back.
+    True when this chunk IS that early yes."""
+    try:
+        from nucleo.circuit import ledger
+        store, uid = ledger.store(), str(p.get("key") or "")
+        row = store.task_get(uid) if uid and p["state"] == _board.RUNNING else None
+        if not row or str(row.get("playbook") or "") != "message":
+            return False
+        if kind == YES:
+            store.artifact_put(uid, EARLY_YES, {"at": __import__("time").time()})
+            return True
+        store.artifact_put(uid, EARLY_YES, {})          # a change, a doubt, a no: the yes he gave no longer stands
+    except Exception as e:  # noqa: BLE001 — unrecorded: the exit door asks, as before
+        logger.debug(f"switchboard: his early yes not kept — {e!r}")
+    return False
+
+
+def took_early_yes(uid: str) -> bool:
+    """The exit door's read of that yes — ONCE: it answers one question, the next send is asked about again."""
+    try:
+        from nucleo.circuit import ledger
+        store = ledger.store()
+        if not (uid and (store.artifact_get(uid, EARLY_YES) or {}).get("at")):
+            return False
+        store.artifact_put(uid, EARLY_YES, {})
+        return True
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"switchboard: his early yes unread — {e!r}")
+        return False
+
+
 def _absorbed(p: dict, text: str) -> bool:
     """A process parked at its START question («shall I?») and words of his that are neither a yes nor a no: they are
     part of what he asked — a detail, a change — and travel with the errand when his yes relaunches it

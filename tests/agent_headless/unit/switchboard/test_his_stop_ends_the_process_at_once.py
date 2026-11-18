@@ -209,3 +209,42 @@ def test_a_stop_of_one_named_thing_leaves_what_waits_alone(desk, monkeypatch):
         await asyncio.sleep(0.05)
         return named
     assert asyncio.run(go()) == [] and ts.task_get("s1-10")["state"] == "waiting"
+
+
+# ── a yes said before the question, and a send that was sent (V2-931, his test of 2026-11-18 01:23) ──────────────────
+def test_his_go_ahead_while_the_send_is_being_prepared_is_the_yes_the_exit_door_takes(desk):
+    """«OK, send it now» arrived while the worker was still redrafting: nothing was asked yet, so it was passed on as
+    words, and the exit door then asked «shall I send it?». A yes said first is that yes: kept on the row, taken ONCE
+    by the exit door; a later word that is not a yes takes it back; a task that is not a send keeps nothing."""
+    _row("s2-1", "running", "Message to Quinn")
+    ts.task_patch("s2-1", playbook="message")
+    desk.procs = [_proc("s2-1", "Message to Quinn", tid="4")]
+    desk.model(1, "yes")
+    assert _say(desk, "vale, pues ahora mándalo") is True
+    assert desk.said == [_line("send_going")] and desk.relayed == ["vale, pues ahora mándalo"]
+    assert act.took_early_yes("s2-1") is True and act.took_early_yes("s2-1") is False, "it answers ONE question"
+    assert _say(desk, "sí, mándalo ya") is True                 # given again …
+    desk.model(1, "other")
+    assert _say(desk, "espera, mejor pon buenas noches") is True      # … and taken back by a change
+    assert act.took_early_yes("s2-1") is False
+    _row("s2-2", "running", "Compare three laptops")            # not a send: a yes with no question is only words
+    desk.procs = [_proc("s2-2", "Compare three laptops", tid="5")]
+    desk.model(1, "yes")
+    assert _say(desk, "sí, adelante") is True and act.took_early_yes("s2-2") is False
+
+
+def test_a_send_taken_to_its_receipt_is_never_judged_unmet_nor_relaunched(monkeypatch):
+    """The session ended two seconds before the connector's receipt; its close read the goal «unmet» and relaunched the
+    task on another model, which verified a sent message and said so again. The receipt is the verdict of a send the
+    engine follows: the close steps aside."""
+    from nucleo import circuit
+    from nucleo.request import send_receipt
+    launched = []
+    monkeypatch.setattr("nucleo.acts.errand.escalate_to_slowbrain", lambda *a, **k: launched.append(a) or 1)
+    monkeypatch.setattr(circuit, "verdict_of", lambda rec: ("unmet", "mensajeria.sent has no row"))
+    monkeypatch.setattr(circuit, "_emit", lambda *a, **k: None)
+    rec = SimpleNamespace(uid="s2-3", status="done", handoff="", task_id="9", goal="Message to Quinn", kind="generic",
+                          trace_id="", done_when={}, depth=0, relay_gen=0, goal_retried=False, result_summary="", ok=True)
+    monkeypatch.setitem(send_receipt._taken, "s2-3", time.time())
+    assert circuit._close(rec, 3) == "skipped" and launched == [] and rec.verdict == "skipped"
+    assert send_receipt.owns_the_verdict("s2-3") and not send_receipt.owns_the_verdict("nobody")

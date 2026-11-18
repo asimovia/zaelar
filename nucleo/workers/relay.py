@@ -44,6 +44,7 @@ def relay_out_of_fuel(rec, relay_cap: int) -> None:
             from nucleo.acts import errand as _esc
             _esc.escalate_to_slowbrain(rec.goal, context={      # V2-877: his goal, never the worker's brief
                 "src": "context_handoff", "kind": rec.kind, "trace": rec.trace_id,
+                **__import__("nucleo.circuit", fromlist=["x"])._send_stays(rec),   # a send stays on its model
                 BRIEF_KEY: context_handoff(rec),
                 "sheet": str(getattr(rec, "sheet", "") or ""),   # the sheet belongs to the ERRAND, not the session
                 # V2-698 — and so does the SURFACE. Without it the relaunch was born with the default one

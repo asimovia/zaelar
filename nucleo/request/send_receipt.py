@@ -28,6 +28,8 @@ RECEIPT_S = 30.0
 LATE_S = 600.0
 POLL_S = 1.0
 _following: set = set()
+#: The rows whose send the engine took to its receipt (now or earlier): the receipt is their verdict. Bounded.
+_taken: dict = {}
 
 
 def is_send(retained: dict | None) -> bool:
@@ -112,6 +114,9 @@ async def follow(uid: str, wid: str, action: str, payload: dict | None, result, 
     poll_s = POLL_S if poll_s is None else poll_s
     ref, t0, told_late = _ref_of(result), time.monotonic(), False
     _following.add(uid)
+    _taken[uid] = time.time()
+    for old in sorted(_taken, key=_taken.get)[:max(0, len(_taken) - 64)]:
+        _taken.pop(old, None)
     try:
         while True:
             state, why = receipt(wid, ref, done_when)
@@ -168,6 +173,14 @@ async def run_followed(rec, action: str, payload: dict, run) -> dict:
 def followed(uid: str) -> bool:
     """Is this task's send being followed to its receipt right now? (Its final line is the engine's.)"""
     return uid in _following
+
+
+def owns_the_verdict(uid: str) -> bool:
+    """Did the engine take this task's send to the connector's receipt (now, or it already landed)? Then the RECEIPT
+    is the task's verdict and ends its row: the session's own close never reads its goal as unmet nor relaunches it.
+    Measured 2026-11-18: a session ended two seconds before its receipt, was judged «unmet», relaunched on another
+    model, re-verified a message that had been sent and said so a second time — twice."""
+    return bool(uid) and (uid in _following or uid in _taken)
 
 
 def record_end_state(uid: str, wid: str, action: str, payload: dict | None, said: str = "", *, done_when=None) -> None:

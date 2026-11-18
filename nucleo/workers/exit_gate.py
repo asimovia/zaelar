@@ -171,6 +171,9 @@ def gate(rec, payload: dict) -> Exit:
     from nucleo.acts import message as _msg      # ONE act, ONE question: a draft he was shown and then ORDERED sent
     if _msg.confirmed(wid, act, inner, None):     # was asked about when it was shown — his order is the yes (CRIT-C9)
         return Exit(out, released=True)
+    from nucleo.switchboard import act as _sb     # …and a yes he gave while it was being prepared is that yes, once
+    if _sb.took_early_yes(str(getattr(rec, "uid", "") or "")):
+        return Exit(out, released=True)
     return Exit(out, question=ready_question(wid, act, inner))
 
 

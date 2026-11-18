@@ -34,8 +34,8 @@ DECIDE_S = 3.0
 SEEN_S = 90.0
 #: How long a cut-off piece waits for the rest of his sentence before it is forgotten.
 PIECE_S = 20.0
-from nucleo.switchboard.act import (FRAGMENT, NO, OTHER, STOP, STOP_ALL, YES, _line, deliver, line_key,  # noqa: E402,F401
-                                    line_of, stop, waits_on_his_yes)
+from nucleo.switchboard.act import (FRAGMENT, NO, OTHER, STOP, STOP_ALL, YES, _line, deliver, early_yes,  # noqa: E402,F401
+                                    line_key, line_of, stop, waits_on_his_yes)
 
 SYSTEM = (
     "You route what the operator of a voice assistant just said. Background processes of the assistant are OPEN, "
@@ -197,8 +197,9 @@ async def take(text: str, *, brain=None, emit=None, say=None, window_max: int = 
         _piece.update(text=fresh, at=time.time())
         _event(emit, said, procs, to=to, by=by, why=why, ms=ms, delivered=False, kind=kind)
         return True
+    early = not waits_on_his_yes(to) and early_yes(to, kind)   # his go-ahead before the send's question exists
     kind = kind if waits_on_his_yes(to) else OTHER     # a yes or a no decides only what a process asked him
-    key = line_key(to, kind)                            # read BEFORE the answer clears what it held
+    key = "send_going" if early else line_key(to, kind)   # read BEFORE the answer clears what it held
     ok = False
     try:
         ok = deliver(to, fresh, kind)

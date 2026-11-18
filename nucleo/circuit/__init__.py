@@ -445,6 +445,10 @@ def _close(rec, relay_cap: int) -> str:
         rec.verdict = "skipped"
         _emit(rec, "skipped", missing=f"he declined {no.get('action') or 'the act'}")
         return "skipped"
+    if __import__("nucleo.request.send_receipt", fromlist=["x"]).owns_the_verdict(str(getattr(rec, "uid", "") or "")):
+        rec.verdict = "skipped"      # its send is followed to the connector's receipt: THAT is the verdict, and it ends
+        _emit(rec, "skipped", missing="the send's receipt is this task's verdict")   # the row — never a relaunch
+        return "skipped"
     verdict, missing = verdict_of(rec)
     entry = _entry_for(rec)
     tries = int((entry or {}).get("tries") or 0) + (1 if getattr(rec, "goal_retried", False) else 0)
@@ -479,6 +483,7 @@ def _close(rec, relay_cap: int) -> str:
                     f"{rec.goal}\n\n[ARNÉS] Esto quedó SIN cumplir y es lo que hay que terminar: {missing}. "
                     f"Lo demás ya está hecho: no lo repitas.",
                     context={"src": "goal_unmet", "kind": rec.kind, "trace": rec.trace_id,
+                             **_send_stays(rec),     # a send relaunched stays a send, on its own model
                              "sheet": str(getattr(rec, "sheet", "") or ""),
                              "surface": str(getattr(rec, "surface", "") or ""),
                              "done_when": dict(rec.done_when), "depth": int(rec.depth or 0),
@@ -527,6 +532,12 @@ def _close(rec, relay_cap: int) -> str:
 RETRY_QUESTION = "¿Lo intento otra vez, con alguna pista tuya?"
 
 
+def _send_stays(rec) -> dict:
+    """A send that is relaunched keeps its playbook, and with it the model it is pinned to (`send_errand.on_claude`):
+    measured 2026-11-18, a relaunch with no playbook ran a send on the chain's next provider."""
+    return {"playbook": "message"} if str(getattr(rec, "playbook_chosen", "") or "") == "message" else {}
+
+
 def _park_retry(rec, missing: str) -> bool:
     try:
         from nucleo.dispatch import confirm as _dc
@@ -534,6 +545,7 @@ def _park_retry(rec, missing: str) -> bool:
             f"{rec.goal}\n\n[ARNÉS] Esto quedó SIN cumplir y es lo que hay que terminar: {missing}. "
             f"Lo demás ya está hecho: no lo repitas.",
             context={"src": "goal_unmet", "kind": rec.kind, "trace": rec.trace_id,
+                     **_send_stays(rec),
                      "sheet": str(getattr(rec, "sheet", "") or ""), "surface": str(getattr(rec, "surface", "") or ""),
                      "done_when": dict(rec.done_when), "depth": int(rec.depth or 0),
                      "task_uid": str(getattr(rec, "uid", "") or "")},
