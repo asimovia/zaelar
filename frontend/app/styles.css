@@ -649,10 +649,10 @@ canvas#orb:active{cursor:grabbing}
 .vlabel.show{opacity:1}
 /* V2-930 — his voice's level over the lid, shown by a wheel notch / right click on the 🔊 or a voice order. */
 .volpop{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);white-space:nowrap;display:flex;align-items:center;gap:8px;padding:4px 10px;border-radius:10px;background:var(--hb-bubble);
-  font-family:var(--mono);font-size:var(--fs-micro);color:var(--hb-muted-2);opacity:0;pointer-events:none;transition:opacity .2s;margin-bottom:4px}
+  font-family:var(--mono);font-size:var(--fs-micro);color:var(--hb-muted);opacity:0;pointer-events:none;transition:opacity .2s;margin-bottom:4px}
 .volpop.show{opacity:1;pointer-events:auto}
 .volpop input{width:120px;accent-color:var(--hb-accent)}
-.volpop .vol-n{min-width:3.2em;text-align:right;color:var(--hb-accent)}
+.volpop .vol-n{min-width:3.2em;text-align:right;color:var(--hb-ink)}   /* on --hb-bubble the accent is 4.7:1; the bubble carries ink, like a chat bubble */
 /* THE SPEAKER NO LONGER TOUCHES THE ORB (V2-648, operator 2026-09-10): «el naranja realmente lo quiero poner
    cuando la gente nos está escuchando A NOSOTROS, no cuando puede hablar… el altavoz no tiene ningún efecto
    sobre el color del orbe». `canvas#orb.muted{opacity:.5;filter:grayscale(.45)}` used to dim it, and that rule
