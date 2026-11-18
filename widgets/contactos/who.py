@@ -9,8 +9,8 @@ people's, the second word is nobody's».
 So a NAME (never a sentence) is scored against every row, word by word, with no model and no table of names:
 
   · a said word against a word of a name: the same word · the same SOUND (`directory.sound`: c/k/q, b/v, ll/y,
-    a silent h, accents) · a STEM («Salva» of «Salvador») · a word inside a name written joined · one slip of
-    spelling (a letter missing, added, changed or swapped);
+    a silent h, accents) · a STEM («Salva» of «Salvador») or the name under an ending («the Odiles») · a word
+    inside a name written joined · one slip of spelling (a letter missing, added, changed or swapped);
   · in ANY order, each said word taking a different word of the name; every name the row is known by is tried
     (the shown one, the ones other sources gave, each chat's), and his own word for the person (`aliases`) is the
     person outright;
@@ -31,6 +31,10 @@ SAME, SOUND, STEM, INSIDE, SLIP = 1.0, 0.9, 0.75, 0.7, 0.6
 ADDRESS = 0.8
 #: The shortest stem, the shortest word a slip is forgiven in, and the shortest joined name read against a handle.
 STEM_MIN, SLIP_MIN, ADDRESS_MIN = 3, 5, 6
+#: The shortest name read under an ending he added («the Odiles», «Odile's»), and the longest such ending.
+ENDING_MIN, ENDING_MAX = 4, 2
+#: The shortest word a slip is forgiven in when the name is only named back to him, never acted on.
+NEAR_MIN = 4
 #: What a name said WHOLE adds over a name that has more words than he said; and the lead one full match needs.
 WHOLE, LEAD = 0.1, 0.1
 #: How many candidates one answer carries.
@@ -51,31 +55,35 @@ def _slip(a: str, b: str) -> bool:
     return a[i:] == b[i + 1:]
 
 
-def word(w: str, t: str) -> float:
+def word(w: str, t: str, slip_min: int = SLIP_MIN) -> float:
     """How well the said word `w` is the name's word `t` (both lowercase, accents off) — one of the worths above, 0."""
     from widgets.directory import sound
     if w == t:
         return SAME
     sw, st = sound(w), sound(t)
+    if not sw or not st:                 # a word with no Latin letter in it has no sound to compare
+        return 0.0
     if len(sw) >= 2 and sw == st:
         return SOUND
     if len(w) >= STEM_MIN and len(t) > len(w) and (t.startswith(w) or st.startswith(sw)):
         return STEM
     if len(w) >= STEM_MIN and len(t) - len(w) >= 4 and t.endswith(w):
         return INSIDE
-    if min(len(sw), len(st)) >= SLIP_MIN - 1 and min(len(w), len(t)) >= SLIP_MIN and _slip(sw, st):
+    if len(t) >= ENDING_MIN and 0 < len(w) - len(t) <= ENDING_MAX and (w.startswith(t) or sw.startswith(st)):
+        return STEM                                   # the name with an ending: a plural, a possessive
+    if min(len(sw), len(st)) >= slip_min - 1 and min(len(w), len(t)) >= slip_min and _slip(sw, st):
         return SLIP
     return 0.0
 
 
-def _against(words: list[str], toks: tuple[str, ...]) -> tuple[float, list[str]]:
+def _against(words: list[str], toks: tuple[str, ...], slip_min: int = SLIP_MIN) -> tuple[float, list[str]]:
     """The said words against ONE name: (mean worth, the said words it does not carry). Each said word takes its best
     word of the name still free — the order he said them in is nothing."""
     free, total, missing = list(toks), 0.0, []
     for w in sorted(words, key=len, reverse=True):
         best, at = 0.0, -1
         for i, t in enumerate(free):
-            s = word(w, t)
+            s = word(w, t, slip_min)
             if s > best:
                 best, at = s, i
         if at < 0:
@@ -87,9 +95,11 @@ def _against(words: list[str], toks: tuple[str, ...]) -> tuple[float, list[str]]
 
 
 def left_over(name, words: list[str]) -> list[str]:
-    """The words of `name` that the said words do not carry — [] when the whole name is in what he said."""
+    """The words of `name` that the said words do not carry — [] when the whole name is in what he said. Read for a
+    name that is only NAMED BACK to him («did you mean …?»), so a slip is forgiven in a shorter word (`NEAR_MIN`)
+    than where a match is acted on."""
     from widgets.directory import _tokens
-    return _against(_tokens(name), tuple(words))[1]
+    return _against(_tokens(name), tuple(words), NEAR_MIN)[1]
 
 
 def _handles(c: dict) -> list[str]:

@@ -127,6 +127,8 @@ def fold(db: dict, into: dict, other: dict, *, by: str = "") -> dict:
     into["flags"] = list(dict.fromkeys(list(into.get("flags") or []) + list(other.get("flags") or [])))
     into["agents"] = list(into.get("agents") or []) + list(other.get("agents") or [])
     into["hidden"] = bool(into.get("hidden")) and bool(other.get("hidden"))
+    if not into["hidden"]:
+        into.pop("keptBy", None)             # one of the two was in sight: the person is
     into["created"] = min(str(into.get("created") or "9"), str(other.get("created") or "9"))
     into["updated"] = time.strftime("%Y-%m-%d")           # not `_touch`: a fold is not him editing the person
     model.normalize(into)

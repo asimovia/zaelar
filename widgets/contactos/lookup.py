@@ -63,8 +63,22 @@ def _a_name_they_share(span: str, found: list[dict]) -> list[dict]:
     w = span.strip().lower()
     if not w or " " in w:
         return []
-    carriers = [c for c in found if w in re.findall(r"[^\W\d_]+", str(c.get("name") or "").lower())]
+    from . import who                                    # the word, its sound, or the name under a plural
+    from widgets import directory as _dir
+    w = _dir._norm(w)
+    carriers = [c for c in found if any(who.word(w, t) >= who.STEM for n in _dir.names(c) for t in _dir._tokens_of(n))]
     return carriers if len(carriers) * 2 >= len(found) else []
+
+
+#: How many of the people who share a name are NAMED in the answer (the first ones whole, the rest in a line).
+_MAX_NAMED = 12
+
+
+def _brief_row(c: dict) -> str:
+    """One person of a long list: the name and by which platforms — never a handle."""
+    from .data import _reach
+    plats = sorted({str(ch.get("platform") or "") for ch in _reach(c)} - {""})
+    return f"«{c.get('name')}»" + (f" ({', '.join(plats)})" if plats else " (sin canal)")
 
 
 def _spans(question: str) -> list[str]:
@@ -163,6 +177,14 @@ def read_query(question: str) -> str:
             found = directory.resolve(s) or []
         except Exception:                                # noqa: BLE001
             continue
+        if len(found) == 1 and " " not in s.strip():
+            # ONE word that several people carry: the ranking's leader is who a SEND would go to, never the answer
+            # to «which … do I have» — every carrier is read, the leader first (2026-11-18: eight people shared a
+            # first name and the answer was the record of the one he had last talked to).
+            from . import who
+            many = who.find(s, limit=50)
+            if many["confidence"] == "several":
+                found = found + [r["contact"] for r in many["people"] if r["contact"].get("id") != found[0].get("id")]
         if len(found) > _MAX_HITS and shared is None and (carriers := _a_name_they_share(s, found)):
             shared = (s, carriers)                       # V2-850: «Raquel», ten of them — a question, not silence
         if not found or len(found) > _MAX_HITS:          # a common word, not a name
@@ -177,9 +199,12 @@ def read_query(question: str) -> str:
     if not hits and shared:
         word, found = shared
         top = found[:directory.CANDIDATES_MAX]
-        return "\n".join([f"{len(found)} personas del directorio se llaman «{word}» — las más cercanas a él primero "
-                           f"(y {len(found) - len(top)} más, menos cercanas). PREGÚNTALE cuál, o pásale «{word}» al "
-                           "widget que envía y él pregunta:"] + [_full_row(c) for c in top])
+        rest = "; ".join(_brief_row(c) for c in found[len(top):_MAX_NAMED])
+        return "\n".join([f"{len(found)} personas del directorio se llaman «{word}» — TODAS cuentan, tengan el canal "
+                           f"que tengan; las más cercanas a él primero. PREGÚNTALE cuál, o pásale «{word}» al "
+                           "widget que envía y él pregunta:"] + [_full_row(c) for c in top]
+                          + ([f"· y además: {rest}" + (f" (+{len(found) - _MAX_NAMED} más)" if len(found) > _MAX_NAMED else "")]
+                             if rest else []))
     if not hits:
         return ""
     head = ("Ficha COMPLETA de quien se pregunta (resuelto contra el directorio; esto SÍ es el registro):"

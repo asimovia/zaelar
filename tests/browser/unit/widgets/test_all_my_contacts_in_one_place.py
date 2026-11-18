@@ -140,7 +140,7 @@ def test_a_second_pass_changes_nothing():
     rows = [{"name": "Nuevo", "phone": "+34699888777", "externalIds": {"telegram": "t1"}}]
     first = imports.merge_contacts(db, rows, source="telegram")
     second = imports.merge_contacts(db, rows, source="telegram")
-    assert first["added"] == 1 and second == {"added": 0, "filled": 0, "unchanged": 1, "read": 1}
+    assert first["added"] == 1 and second == {"added": 0, "filled": 0, "unchanged": 1, "read": 1, "ids": ["c3"]}
 
 
 # ── 3 · hiding keeps the mapping, which is why it beats deleting ────────────────────────────────────────

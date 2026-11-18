@@ -15,7 +15,8 @@ One definition, asked by every importer, by the store's migration and by the dai
     a home landline, a switchboard, a family mailbox. An address book that keeps them apart is believed; its
     nickname row and its full-name row of one person («Odile Work» · «Odile Varga Lund») are one;
   · `find(index, row)` — the stored row an arriving one IS (the same account first, then the one its name fits);
-  · `unify(db)` — the look back: every set of rows that are one person is folded into one (`fusion.fold`);
+  · `unify(db)` — the look back: every set of rows that are one person is folded into one (`fusion.fold`), and
+    then the pairs only a FULL name joins (`by_name`) — so which source arrived first changes nothing;
   · `known_as` / `said` — the names OTHER sources know the person by. They are not his words (`aliases` are, and
     name their person outright): they are matched like a name, each with the source that gave it.
 
@@ -178,6 +179,68 @@ def same(a: dict, b: dict, apart: set | None = None) -> str:
     return sorted(k[0] for k in shared)[0]
 
 
+#: Why the ENGINE keeps a row out of sight (`hidden` + `keptBy`), never his own hide: somebody only seen as a
+#: member of one of his groups, or an account with a number where its name should be. The row keeps its mapping,
+#: is never a candidate, and comes back by itself the day a source proves it is a contact or gives it a name.
+MEMBER, NO_NAME = "member", "no_name"
+
+
+def his(c: dict) -> bool:
+    """Has HE said anything about this row — an edit, a favorite, a word, a relation, a note, a conversation?"""
+    return bool(c.get("touchedAt") or c.get("favorite") or c.get("aliases") or c.get("relation")
+                or str(c.get("notes") or "").strip()
+                or any(float((ch or {}).get("volume") or 0) or float((ch or {}).get("last_seen") or 0)
+                       for ch in c.get("channels") or []))
+
+
+def keep_back(c: dict, why: str) -> bool:
+    """Take a row out of sight for the engine's own reason (see above). Never a row he said something about, his
+    address book gave, or he hid himself. True when it changed."""
+    if c.get("hidden") or his(c) or source_of(c) in ("his", "google", "icloud", "carddav"):
+        return False
+    c["hidden"], c["keptBy"] = True, why
+    return True
+
+
+def surface(c: dict, why: str = "") -> bool:
+    """Bring back a row the engine kept out of sight (any reason, or only `why`). His own hide is never undone."""
+    if not c.get("keptBy") or (why and c.get("keptBy") != why):
+        return False
+    c.pop("keptBy", None)
+    c["hidden"] = False
+    return True
+
+
+def _full_names(c: dict) -> set[str]:
+    """The names of the row that are a FULL name: two words or more, given by somebody (no handle, no number)."""
+    return {model.norm(n) for n in names(c) if real_name(n) and len(model.norm(n).split()) >= 2}
+
+
+def by_name(people: list[dict], apart: set) -> list[tuple[dict, dict]]:
+    """The pairs of rows that NOTHING proves to be one person except a full name, and that are: exactly TWO rows
+    carry that name among all of them (as the shown name or one a source knows the person by), from two DIFFERENT
+    sources, in sight, never taken apart. The account that shows the name she chose and knows the one he saved,
+    and the row of his address book under that saved name. Whichever arrived first."""
+    holders: dict[str, list[dict]] = {}
+    for c in people:
+        if c.get("hidden"):
+            continue
+        for n in _full_names(c):
+            holders.setdefault(n, []).append(c)
+    out, seen = [], set()
+    for rows in holders.values():
+        if len(rows) != 2:
+            continue
+        a, b = rows
+        pair = frozenset((str(a.get("id")), str(b.get("id"))))
+        if (pair in seen or pair in apart or source_of(a) == source_of(b)
+                or model.kind(a.get("kind")) != model.kind(b.get("kind"))):
+            continue
+        seen.add(pair)
+        out.append((a, b))
+    return out
+
+
 def apart_pairs(db: dict) -> set:
     """The pairs he took apart (`split_contact`): never joined again."""
     return {frozenset(map(str, p)) for p in db.get("apart") or [] if isinstance(p, (list, tuple)) and len(p) == 2}
@@ -312,5 +375,16 @@ def unify(db: dict) -> dict:
                 continue
             fusion.fold(db, keep, other, by="key")
             merged += 1
+        into_ids.append(keep.get("id"))
+    # …then what only a full name joins (`by_name`): read AFTER the keys, over the rows that are left.
+    gone: set = set()
+    for a, b in by_name([c for c in db.get("contacts") or [] if model.kind(c.get("kind")) in PEOPLE], apart):
+        if id(a) in gone or id(b) in gone:
+            continue
+        keep = fusion.keeper([a, b])
+        other = b if keep is a else a
+        fusion.fold(db, keep, other, by="name")
+        gone.add(id(other))
+        merged += 1
         into_ids.append(keep.get("id"))
     return {"merged": merged, "into": into_ids}

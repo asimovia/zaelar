@@ -110,6 +110,7 @@ def merge_imported(db: dict, rows: list[dict], *, authoritative: bool = False) -
             index.add(c)
             added += 1
             continue
+        identity.surface(c)              # his address book lists them: whatever kept the row back is over
         # HIS EDITS WIN. Google only FILLS IN what is empty here — it never overwrites a field the
         # operator typed, because a second import would silently undo every correction he had made,
         # and he would have no way to tell which of the two surfaces was lying.

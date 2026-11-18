@@ -201,6 +201,8 @@ def test_a_surname_nobody_carries_is_partial_with_names_and_never_a_match(people
     assert directory.resolve("Odile Kowalski") == [], "no door sends on part of a name"
     assert directory.resolve("Odile Sante") == [], "most of the letters of «Odile Stone» is not her surname"
     assert who.find("Odile Sante")["confidence"] == "partial"
+    assert who.find("Carolina Riuz")["confidence"] == "partial", "a slip in a four-letter word is no match to act on…"
+    assert [c["name"] for c in directory.near("Carolina Riuz")] == ["Carolina Ruiz"], "…and is still named back to him"
     assert [c["name"] for c in directory.resolve("with Marek Stone")] == ["Marek Stone"], "her whole name, inside more words"
     assert directory.resolve("Odile Stome")[0]["name"] == "Odile Stone", "a slip of the surname is still her"
     assert who.find("Kowalski")["confidence"] == "none"

@@ -159,25 +159,43 @@ def _refresh(c: dict, inc: dict, source: str, _d) -> bool:
     return touched
 
 
-def merge_contacts(db: dict, rows: list[dict], *, source: str, refresh: bool = False) -> dict:
-    """Fold imported people in. Returns counts; never overwrites a field he can edit.
+def merge_contacts(db: dict, rows: list[dict], *, source: str, refresh: bool = False, members: bool = False,
+                   index=None) -> dict:
+    """Fold imported people in. Returns counts and the `ids` of the rows these people are; never overwrites a
+    field he can edit.
 
     A hidden row is matched and left hidden: the mapping is what stops the next pass resurrecting somebody
     he removed from his sight on purpose. With `refresh`, nobody is added.
+
+    Who becomes a row IN SIGHT (2026-11-18, measured: one pass of one account added 1 716 people, 1 046 of them
+    seen only as members of his groups, and 13 whose name was a phone number): a person the source lists as HIS —
+    its address book, a conversation — with a name somebody gave. A group's member nobody else knows (`members`)
+    and an account with a number where its name should be are kept, mapped and out of sight (`identity.keep_back`):
+    never a candidate, never a new row on the card — and back by themselves when a source proves the first is a
+    contact or names the second.
     """
     from . import data as _d, identity
     contacts = db.setdefault("contacts", [])
-    index = identity.Index(contacts, identity.apart_pairs(db))
+    index = index or identity.Index(contacts, identity.apart_pairs(db))
     today = time.strftime("%Y-%m-%d")
     added = filled = unchanged = 0
+    ids: list = []
     for i, inc in enumerate(rows or []):
         give_way(i)                      # E0: a thousand rows in the widget thread give the loop its turn
         name = str(inc.get("name") or "").strip()
         if not name:
             continue                        # a row with no name cannot be referenced, listed or spoken
+        named = any(ch.isalpha() for ch in name)      # a number is not a name: it never shows a row (`identity.said`
+                                                      # and `known_as` already refuse to rename or nickname by one)
         c = match(contacts, {**inc, "source": source}, index)
         if c is None and refresh:
             continue
+        if c is not None:
+            ids.append(c.get("id"))
+            if not members and identity.surface(c, identity.MEMBER):     # the source now lists them as HIS
+                c["updated"] = today
+            if named and identity.surface(c, identity.NO_NAME):
+                c["updated"] = today
         if c is None:
             cid = f"c{db.get('next_id', 1)}"
             db["next_id"] = int(db.get("next_id", 1)) + 1
@@ -196,8 +214,11 @@ def merge_contacts(db: dict, rows: list[dict], *, source: str, refresh: bool = F
             c["channels"] = [ch for ch in c.get("channels") or [] if ch.get("platform")]
             for n in inc.get("knownAs") or []:
                 identity.known_as(c, n, source)
+            if members or not named:
+                identity.keep_back(c, identity.MEMBER if members else identity.NO_NAME)
             index.add(c)
-            added += 1
+            ids.append(cid)
+            added += int(not c.get("hidden"))
             continue
         if _refresh(c, inc, source, _d):
             c["updated"] = today             # NOT `_touch`: an import filling a blank is not him deciding
@@ -205,10 +226,10 @@ def merge_contacts(db: dict, rows: list[dict], *, source: str, refresh: bool = F
             filled += 1
         else:
             unchanged += 1
-    return {"added": added, "filled": filled, "unchanged": unchanged, "read": len(rows or [])}
+    return {"added": added, "filled": filled, "unchanged": unchanged, "read": len(rows or []), "ids": ids}
 
 
-def merge_groups(db: dict, rows: list[dict], *, source: str) -> dict:
+def merge_groups(db: dict, rows: list[dict], *, source: str, listed: set | None = None) -> dict:
     """Fold imported GROUPS in — a Telegram/WhatsApp group chat, a Telegram channel, a MeshKore cluster.
 
     A group is a `kind`, not a label (V2-714). `data.py` has warned since V2-523 that a group LABEL
@@ -227,21 +248,27 @@ def merge_groups(db: dict, rows: list[dict], *, source: str) -> dict:
     contacts = db.setdefault("contacts", [])
     today = time.strftime("%Y-%m-%d")
     added = filled = unchanged = 0
+    # ONE index for the whole pass (measured 2026-11-18: an index per group and per member made a pass of 53
+    # groups over 4 000 rows take minutes in the widget thread).
+    index = identity.Index(contacts, identity.apart_pairs(db))
+    by_id = {c.get("id"): c for c in contacts}
     for i, inc in enumerate(rows or []):
         give_way(i)                      # E0: a thousand rows in the widget thread give the loop its turn
         name = str(inc.get("name") or "").strip()
         if not name:
             continue
         member_rows = [m for m in (inc.get("members") or []) if isinstance(m, dict)]
+        member_ids: list = []
         if member_rows:
-            merge_contacts(db, member_rows, source=source)
-        member_ids, seen = [], set()
-        for m in member_rows:
-            hit = match(contacts, m)
-            if hit is not None and hit["id"] not in seen:
-                seen.add(hit["id"])
-                member_ids.append(hit["id"])
-        g = match(contacts, {**inc, "kind": "group"})
+            got = merge_contacts(db, member_rows, source=source, members=True, index=index)
+            member_ids = list(dict.fromkeys(got["ids"]))
+            for mid in member_ids:
+                c = by_id.get(mid) or by_id.setdefault(mid, _d._find(db, mid))
+                # a row an earlier pass made of somebody only ever seen as a member
+                if (listed is not None and mid not in listed and c is not None and identity.source_of(c) == source
+                        and not identity.keys(c) - _own_keys(c, source)):
+                    identity.keep_back(c, identity.MEMBER)
+        g = match(contacts, {**inc, "kind": "group"}, index)
         if g is None:
             gid = f"c{db.get('next_id', 1)}"
             db["next_id"] = int(db.get("next_id", 1)) + 1
@@ -256,6 +283,7 @@ def merge_groups(db: dict, rows: list[dict], *, source: str) -> dict:
             for row in inc.get("channels") or []:
                 _d._merge_channel(g, _d._channel_row(row) or {})
             g["channels"] = [ch for ch in g.get("channels") or [] if ch.get("platform")]
+            index.add(g)
             added += 1
             continue
         touched = False
@@ -284,14 +312,20 @@ def merge_groups(db: dict, rows: list[dict], *, source: str) -> dict:
     return {"added": added, "filled": filled, "unchanged": unchanged, "read": len(rows or [])}
 
 
+def _own_keys(c: dict, source: str) -> set:
+    """The keys of the row that are only the source's own account of it — what a stranger of a group has."""
+    return {k for k in identity.keys(c) if k[0] == "acct" and k[1] == identity.model.source_key(source)}
+
+
 def absorb(db: dict, payload: dict, *, source: str, refresh: bool = False) -> dict:
     """One pass of one source: `{"contacts": [...], "groups": [...]}` → counts. The single door every
     importer comes through, so a new platform adds a normaliser and nothing else. After it, the rows the pass
     proved to be one person are one row (`identity.unify`)."""
     from . import identity
     people = merge_contacts(db, payload.get("contacts") or [], source=source, refresh=refresh)
-    groups = merge_groups(db, [] if refresh else payload.get("groups") or [], source=source)
-    merged = identity.unify(db)["merged"] if people["added"] or people["filled"] or groups["added"] else 0
+    groups = merge_groups(db, [] if refresh else payload.get("groups") or [], source=source,
+                          listed=None if refresh else set(people["ids"]))
+    merged = identity.unify(db)["merged"]            # change-gated by what it finds: cheap when nothing is one
     return {"contacts": people, "groups": groups, "merged": merged,
             "added": people["added"] + groups["added"],
             "filled": people["filled"] + groups["filled"]}

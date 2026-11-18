@@ -81,7 +81,7 @@ def people_named(text: str, limit: int = 4) -> list[dict]:
     from widgets import directory as _dir
     low = (text or "").lower()
     words = set(_re.findall(r"[^\W\d_]{3,}", low))
-    full, first = [], []
+    full, first, starts = [], [], {}
     # V2-849 — a word he gave a person («Raquel», «mi tontita», «mamá») names that person outright.
     said = f" {' '.join(_re.findall(r'[^\W_]+', low))} "
     people = _d.visible(_d.load_db())
@@ -102,6 +102,11 @@ def people_named(text: str, limit: int = 4) -> list[dict]:
             full.append(c)
         elif any(len(t[0]) >= 3 and t[0] in words for _n, t in named):
             first.append(c)
+        for _n, t in named:
+            if len(t[0]) >= 3:
+                starts.setdefault(_dir.sound(t[0]), {})[id(c)] = c
+    if not full:
+        full = _said_in_two_words(low, starts)
     hits = _dir.closest_first(full or first)
     if not full and hits:
         # A first name: only the closest level that has it — the rest are counted, never listed.
@@ -112,6 +117,32 @@ def people_named(text: str, limit: int = 4) -> list[dict]:
             rows[-1]["more"] = len(hits) - len(rows)
         return rows
     return [_aka(c) for c in hits[:limit]]
+
+
+#: How many two-word names of one sentence are read tolerantly, and over how many people of that first name at most.
+_PAIRS_MAX, _NAMESAKES_MAX = 2, 60
+
+
+def _said_in_two_words(low: str, starts: dict) -> list[dict]:
+    """The people a sentence names with a first name plus one more word that no row spells that way — «odile
+    karo» for the «Odile Caro» of a chat app, a surname by its sound or its stem (`who.find`). Read only for a
+    pair whose first word SOUNDS like somebody's first name and over those people alone, at most `_PAIRS_MAX`
+    pairs a sentence; only a full match counts — a first name alone stays the reading of the caller. Measured 2026-11-18: the name he said was
+    how one chat app writes her, and the turn was handed four other people of that first name."""
+    import re as _re
+    from widgets import directory as _dir
+    from . import who
+    toks = _re.findall(r"[^\W\d_]{3,}", low)
+    out, tried = [], 0
+    for a, b in zip(toks, toks[1:]):
+        same = list((starts.get(_dir.sound(a)) or {}).values())
+        if tried >= _PAIRS_MAX or not same or len(same) > _NAMESAKES_MAX:
+            continue
+        tried += 1
+        got = who.find(f"{a} {b}", same)
+        if got["confidence"] in ("one", "several"):
+            out += [r["contact"] for r in got["people"] if r["contact"] not in out]
+    return out
 
 
 def _aka(c: dict) -> dict:

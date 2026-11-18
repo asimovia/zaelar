@@ -1185,7 +1185,11 @@ Flash keeps the conversation; the row is what both brains read.
   the same given name or one is a one-word stem of the other; a shared surname proves nothing. A said NAME is
   scored word by word (`contactos/who.py`: sound, stem, one slip, any order, an address that sounds like it) with
   no model; a word nobody carries makes the answer `partial` — names to ask among, never a match — for the doors
-  (`directory.resolve`) and the send worker (`find_contact`) alike (node 4.586). When nothing proves it, he says it once (`merge_contacts`). The
+  (`directory.resolve`) and the send worker (`find_contact`) alike (node 4.586). The ORDER the sources arrive in
+  changes nothing: every import and every start end in one look back, which also joins the two rows of two
+  sources that only a full name joins; a group's member nobody else knows and an account named by a number are
+  kept mapped and out of sight until a source lists them as his or names them; one word several people carry
+  answers a question with every carrier, never the ranking's leader alone (node 4.592). When nothing proves it, he says it once (`merge_contacts`). The
   conversation he has OPEN is the first reading of a name it carries at the send door; a word he gave somebody else
   is asked, the one in front first. The look back also runs — and is WRITTEN — at every start of the engine, as the
   card's declared start step (`"background": {"on_start": true}`, `widgets/start_steps.py`): idempotent, off the

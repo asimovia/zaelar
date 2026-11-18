@@ -178,6 +178,27 @@ A name is never a key. What only he knows he says once: `merge_contacts`.
   other (`identity.akin`): the nickname row and the full-name row. A shared surname proves nothing — a family on
   one landline stays apart — and neither does a line shared by people with different names.
 
+## Whatever order the sources arrive in
+
+Every importer ends in the same look back (`identity.unify`), and so does every start of the engine. It folds
+what a key proves and then (`identity.by_name`) the pairs that only a FULL name joins: exactly two rows carry
+that name — as the shown name or as one a source knows the person by — from two different sources, both in
+sight, never taken apart. So the account that shows the name she chose and knows the one he saved, and his
+address book's row under that saved name, are one row whether the chats or the address book were read first.
+Once folded, the shown name is his address book's and the chat's name is one she is known by.
+
+## Who is in sight
+
+A source hands over two kinds of people: the ones it lists as HIS (its address book, his conversations) and the
+members of his groups. A member nobody else knows is not a contact: the row is kept — the group counts him, the
+mapping stops a later pass making him twice — with `hidden` and `keptBy: "member"`. So is an account whose only
+name is a phone number (`keptBy: "no_name"`): a number never shows, names or renames a row. A kept-back row is
+never a candidate of a lookup and is not listed among the rows HE hid. It comes back by itself
+(`identity.surface`) when a source lists the person as his, his address book holds them, or the platform names
+the account; a pass also keeps back the member-only rows an EARLIER pass made — never one he edited, starred,
+named, wrote to, or that carries a phone or an address. The start step asks every source that gave groups with
+members for one such pass (`sources.owe_members`, once per store).
+
 ## Who a said name is
 
 `widgets/contactos/who.py` scores a NAME (never a sentence) against every row with no model and no table of names:
@@ -201,6 +222,11 @@ never a match. Readers:
 
 - `directory.resolve` (every outbound door) asks it when nothing matched word for word; a near spelling of several
   words never names a row that lacks one of them, so a door never sends on part of a name.
+- the question door (`lookup.read_query`): ONE word several people carry — as said, by sound, or under an ending
+  («the Odiles») — names every carrier, the ranking's leader first; the leader alone is who a send goes to, never
+  the answer to «which … do I have».
+- the turn's people block (`digest.people_named`): a first name plus one more word that no row spells that way is
+  read by sound over the people of that first name (at most two pairs a sentence).
 - the send worker's `find_contact` (`nucleo/request/send_contact.py`) returns the ranked rows with `confidence`,
   `match` and `unmatched`; the conversation he has open is still the first reading (`in_front`), and when it only
   SHARES part of the name it is the one to ask about first (`shares`).

@@ -216,8 +216,9 @@ def view_data(q: str = "") -> dict:
         "relations": list(relations()),
         "native_groups": _groups.declared(),
         # The hidden ones travel TOO, so a hide is undoable from the same card (V2-715).
-        "hidden_rows": [c for c in (db.get("contacts") or []) if c.get("hidden")],
-        "hidden_count": sum(1 for c in (db.get("contacts") or []) if c.get("hidden")),
+        # …his own hides only: a row the engine keeps back (`keptBy`) is a mapping, not something he put away.
+        "hidden_rows": [c for c in (db.get("contacts") or []) if c.get("hidden") and not c.get("keptBy")],
+        "hidden_count": sum(1 for c in (db.get("contacts") or []) if c.get("hidden") and not c.get("keptBy")),
         "count": len(contacts),
         "a2a": _a2a_status(),     # V2-866: contact id → connected/pending, empty while A2A is off (the card's badge)
         "view": _fresh_view(db),
@@ -357,13 +358,19 @@ def on_start() -> dict:
     row BEFORE his first word, and the store is written at its current version — the migration above is lazy (it
     upgrades what is read and writes nothing), so on an engine nobody wrote to it never reached the disk.
     Idempotent: a start that repeats it folds nothing and writes nothing."""
-    from . import identity
+    from . import identity, sources
     with store.mutating(WIDGET_ID):
         db = load_db()                       # migrates a store of an older version in memory…
         got = identity.unify(db)             # …and looks back again: free when there is nothing to fold
+        kept = sum(identity.keep_back(c, identity.NO_NAME) for c in db.get("contacts") or []
+                   if model.kind(c.get("kind")) in identity.PEOPLE
+                   and not any(ch.isalpha() for ch in str(c.get("name") or "")))
+        owed = sources.owe_members(db)       # groups whose members became rows before members were kept back
         store.save(WIDGET_ID, db)            # change-gated: a store already folded and current is not rewritten
-    return {"people": sum(1 for c in db.get("contacts") or [] if model.kind(c.get("kind")) in identity.PEOPLE),
-            "folded_now": got["merged"], "folded_in_all": len(db.get("merged") or {})}
+    people = [c for c in db.get("contacts") or [] if model.kind(c.get("kind")) in identity.PEOPLE]
+    return {"people": sum(1 for c in people if not c.get("hidden")), "kept_back": sum(1 for c in people if c.get("keptBy")),
+            "folded_now": got["merged"], "folded_in_all": len(db.get("merged") or {}),
+            "numbers_kept_back_now": kept, "sources_owed_a_read": owed}
 
 
 def tick(ctx) -> None:

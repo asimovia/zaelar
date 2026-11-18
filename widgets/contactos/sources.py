@@ -282,6 +282,23 @@ def nudge(db: dict, source: str) -> bool:
     return True
 
 
+def owe_members(db: dict) -> list[str]:
+    """Once per store: every source that gave groups WITH members is owed a read — the pass that tells who is his
+    (its book, his conversations) from who was only seen in a group, and keeps the second out of sight
+    (`imports.merge_groups`). The sources marked."""
+    if db.get("members_kept"):
+        return []
+    db["members_kept"] = 1
+    out = []
+    for s, st in state(db).items():
+        has = any(c.get("kind") == "group" and c.get("members") and (c.get("platform") or c.get("source")) == s
+                  for c in db.get("contacts") or [])
+        if has and st.get("last") and not st.get("declined"):
+            st["partial"] = True
+            out.append(s)
+    return out
+
+
 def _tried(source: str) -> None:
     """Stamp an automatic try, so a source that answers nothing is not asked again on every tick."""
     from . import data as _d

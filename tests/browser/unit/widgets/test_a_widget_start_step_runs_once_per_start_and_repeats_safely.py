@@ -47,7 +47,8 @@ def test_reading_alone_never_wrote_the_fold_and_the_start_step_does(book):
     assert len([c for c in data.load_db()["contacts"]]) == 1, "the lazy migration folds what is READ"
     assert _disk(path)["_v"] == 4 and len(_disk(path)["contacts"]) == 2, "…and writes nothing"
     got = data.on_start()
-    assert got == {"people": 1, "folded_now": 0, "folded_in_all": 1}, got      # folded by the migration it triggered
+    assert got == {"people": 1, "kept_back": 0, "folded_now": 0, "folded_in_all": 1, "numbers_kept_back_now": 0,
+                   "sources_owed_a_read": []}, got      # folded by the migration it triggered
     disk = _disk(path)
     assert disk["_v"] == data.DB_VERSION and [c["id"] for c in disk["contacts"]] == ["c1"] and "c2" in disk["merged"]
     assert {"name": "Odi V", "source": "whatsapp"} in disk["contacts"][0]["knownAs"]
