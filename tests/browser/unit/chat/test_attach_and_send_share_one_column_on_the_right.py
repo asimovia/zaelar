@@ -129,7 +129,7 @@ def test_attach_and_send_share_one_column_on_the_right(browser_and_port, width, 
     pg.close()
 
 
-@pytest.mark.parametrize("wall_px", [260, 200], ids=["dock-minimum", "narrower-than-any-limit"])
+@pytest.mark.parametrize("wall_px", [280, 200], ids=["dock-minimum", "narrower-than-any-limit"])
 def test_a_narrow_column_keeps_attach_and_send_on_the_right(browser_and_port, wall_px):
     # operator 2026-11-18: squeezing the chat column wrapped the clip and send UNDER the text box. The text box gives
     # up width instead (flex-basis 0 + min-width 0), so even below the dock's minimum the column stays on its right.

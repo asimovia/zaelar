@@ -83,7 +83,7 @@ export function forgetChatPlacement() {
   try { localStorage.removeItem(OPEN_KEY); } catch (_) {}
   store.setChatOpen(false);
 }
-const DOCK_PX = 34, MIN_W = 260, MIN_H = 200, DOCK_MIN_W = 260, DOCK_DEF_W = 340;
+const DOCK_PX = 34, MIN_W = 260, MIN_H = 200, DOCK_MIN_W = 280, DOCK_DEF_W = 340;
 
 const _num = (v, d) => (typeof v === "number" && isFinite(v) ? v : d);
 function loadFloat() {
