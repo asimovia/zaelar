@@ -36,20 +36,27 @@ SYSTEM = (
     "  \"channel\": \"whatsapp\", \"telegram\" or \"email\" only when he names one; else \"\".\n"
     "  \"send\": true only when he plainly tells it to send the message as it stands now (yes, send it, go ahead) "
     "with no change in the same words.\n"
+    "  \"bare\": true when his words are ONLY an affirmation (yes, ok, sure, vale, venga) that never mentions sending "
+    "or the message; false when they say to send it («send it», «mándaselo», «envíalo»).\n"
     "  \"drop\": true when he says not to send it, to cancel it or to forget it.\n"
     "  \"list\": the name he asks about when he asks which people with that name he has (or who the options are); "
     "else \"\".\n"
     "Reply with JSON only: {\"mine\": bool, \"who\": str, \"text\": str|null, \"channel\": str, \"send\": bool, "
-    "\"drop\": bool, \"list\": str}"
+    "\"bare\": bool, \"drop\": bool, \"list\": str}"
 )
 
-#: The read of a sentence that changes nothing (a failed read is this too, with `mine` false).
-NOTHING = {"mine": False, "who": "", "text": None, "channel": "", "send": False, "drop": False, "list": ""}
+#: The read of a sentence that changes nothing. A read that could not be made says so (`unread`): it is never taken for
+#: «not about the message» by a caller that must not lose his order.
+NOTHING = {"mine": False, "who": "", "text": None, "channel": "", "send": False, "bare": False, "drop": False,
+           "list": "", "unread": False}
 
 
 def _state(draft, last_line: str) -> str:
     if draft.target:
         to = f"«{draft.target.get('name')}» (chosen)"
+    elif draft.candidates and draft.who:
+        to = f"not chosen yet — he said «{draft.who}»; the people it could be: " + "; ".join(
+            f"«{c['name']}»" + (f" ({c['note']})" if c.get("note") else "") for c in draft.candidates)
     elif draft.candidates:
         to = "not chosen yet; the people it could be: " + "; ".join(
             f"«{c['name']}»" + (f" ({c['note']})" if c.get("note") else "") for c in draft.candidates)
@@ -72,14 +79,14 @@ def parse(raw: str) -> dict:
     except ValueError:
         got = None
     if not isinstance(got, dict):
-        return dict(NOTHING)
+        return {**NOTHING, "unread": True}
     text = got.get("text")
     chan = str(got.get("channel") or "").strip().lower()
     return {"mine": got.get("mine") is True, "who": str(got.get("who") or "").strip(),
             "text": " ".join(str(text).split()) if isinstance(text, str) and text.strip() else None,
             "channel": chan if chan in ("whatsapp", "telegram", "email") else "",
-            "send": got.get("send") is True, "drop": got.get("drop") is True,
-            "list": str(got.get("list") or "").strip()}
+            "send": got.get("send") is True, "bare": got.get("bare") is True, "drop": got.get("drop") is True,
+            "list": str(got.get("list") or "").strip(), "unread": False}
 
 
 def _ask(system: str, user: str) -> str:
@@ -97,4 +104,4 @@ def read(said: str, draft, last_line: str = "", before: list[str] | None = None)
         return parse(_ask(SYSTEM, user))
     except Exception as e:  # noqa: BLE001 — an unread sentence is the conversation's
         logger.info(f"send.read: unread ({type(e).__name__}: {e})")
-        return dict(NOTHING)
+        return {**NOTHING, "unread": True}

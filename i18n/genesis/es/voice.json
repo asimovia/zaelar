@@ -170,6 +170,8 @@
  "send_ask_text": "¿Qué le digo a {who}?",
  "send_confirm": "Para {who} por {channel}: «{text}». ¿Se lo mando?",
  "send_listed": "Tengo a {names}. ¿A cuál se lo mando?",
+ "send_ask_channel": "A {who} le puedo escribir por {channels}. ¿Por cuál?",
+ "send_cannot": "El mensaje para {who} no puede salir así: {why}. ¿Qué hago?",
  "act_preparing": "Me pongo con ello.",
  "act_going": "Vale, lo hago. Si hay algún problema te aviso.",
  "act_done": "Hecho.",

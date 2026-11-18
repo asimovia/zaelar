@@ -32,7 +32,11 @@ def claim(escalate_req: dict, text: str, wid: str, action: str, payload: dict | 
     """The model's call of a message act: handed to the owner (True), never run by the turn. False for any other act."""
     if not is_message(wid, action, payload):
         return False
-    escalate_req.setdefault(KEY, {"said": " ".join(str(text or "").split()), "hint": dict(payload or {})})
+    hint = {**dict(payload or {}), "_act": str(action)}
+    if KEY in escalate_req:          # several messages in one sentence: each is the owner's, one after the other
+        escalate_req[KEY].setdefault("more", []).append(hint)
+    else:
+        escalate_req[KEY] = {"said": " ".join(str(text or "").split()), "hint": hint}
     if emit is not None:
         try:
             emit("brain", "📨 a message goes to its owner (nucleo/send)", text=f"{wid}:{action}", role="system",
@@ -71,11 +75,18 @@ async def speak(escalate_req: dict, spoken_text: str, send, speech, brain=None) 
     try:
         o["line"] = await owner.intake(o.get("said") or "", o.get("hint") or {}, last_line=last, before=before[:-1],
                                        by=str(o.get("by") or "call"))
+        from nucleo.send import draft
+        for more in o.get("more") or ():      # the other messages of the same sentence wait their turn, in order
+            draft.queue(o.get("said") or "", more, "call")
     except Exception as e:  # noqa: BLE001
         logger.warning(f"send.turn: the owner did not open the draft — {e!r}")
         return spoken_text
     said = str(spoken_text or "").strip()
-    if not o["line"] or o.get("quiet") or said.endswith("?"):   # the turn already asked him: one question at a time
+    from nucleo.send import draft as _d
+    d = _d.current()
+    # Our own question about the message stands and the draft adopts it — unless the owner's line is the confirmation:
+    # a confirmation he never heard is never the one his yes answers.
+    if not o["line"] or (o.get("quiet") and not (d is not None and d.asked == _d.CONFIRM)):
         return spoken_text
     send((" " if said else "") + speech.sanitize(o["line"], drop_metadata=False))
     return f"{said} {o['line']}".strip()
@@ -152,15 +163,13 @@ async def at_close(escalate_req: dict, said: str, brief, calls, spoken_text: str
         return False
     escalate_req.setdefault(KEY, {"said": " ".join(str(said or "").split()), "hint": payload or {}})
     escalate_req[KEY]["by"] = by
-    from nucleo.request import ends_asking
-    # the turn's own question stands and the draft adopts it — whatever its last mark, when it ended on one
-    escalate_req[KEY]["quiet"] = by == "our question" or ends_asking(spoken_text)
+    escalate_req[KEY]["quiet"] = by == "our question"      # the turn's own question about it stands
     await speak(escalate_req, spoken_text, send, speech, brain)
     if escalate_req[KEY].get("line") == "" and by == owner_lean():
         escalate_req.pop(KEY, None)       # a lean the owner's read refused: the close goes on as for any other turn
         return False
-    if escalate_req.get("v") is not None and not escalate_req.get("more"):
-        escalate_req["v"] = None          # the order IS the message: no worker is commissioned for it
+    if escalate_req.get("v") is not None and by == "held call":
+        escalate_req["v"] = None          # the verdict held the message call as its errand: the owner has it now
     escalate_req.pop("send", None)
     return True
 

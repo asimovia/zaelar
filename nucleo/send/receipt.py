@@ -27,8 +27,8 @@ def _owner_emit(label: str, d, **extra) -> None:
 async def _say(d, key: str, **fmt) -> None:
     try:
         from nucleo.pulse import notices
-        from nucleo.send.owner import _line
-        line = await _line(key, who=d.target.get("name"), **fmt)
+        from nucleo.send import ask
+        line = await ask.line(key, who=d.target.get("name"), **fmt)
         if line:
             await notices.notify("zaelar", line, key=f"send:{d.id}:{key}", kind="info")
     except Exception as e:  # noqa: BLE001

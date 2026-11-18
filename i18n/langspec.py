@@ -332,6 +332,8 @@ class LangSpec:
     send_ask_text: str = ""        # {who}
     send_confirm: str = ""         # {who}, {channel}, {text}
     send_listed: str = ""          # {who}, {names}
+    send_ask_channel: str = ""     # {who}, {channels}
+    send_cannot: str = ""          # {who}, {why}
     #: The same moments of an act that leaves and is NOT a message (a group created): told as what he asked for.
     act_preparing: str = ""
     act_going: str = ""

@@ -5,9 +5,10 @@ an abandoned one never owns a sentence of his.
 """
 from __future__ import annotations
 
+import asyncio
 import time
 import uuid
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 
 #: A draft he has not spoken about for this long is closed: it no longer reads his sentences.
 IDLE_S = 600.0
@@ -30,17 +31,27 @@ class Draft:
     asked: str = ""
     state: str = OPEN
     ref: str = ""                               # the outbox order once queued
+    act: str = "send_to"                        # the card's act that will carry it (send_to · reply · forward)
+    extra: dict = field(default_factory=dict)   # that act's other fields (a reply's `n`, files, a subject, a time)
+    confirm_line: str = ""                      # the confirmation he was read, exactly — his bare yes answers only it
+    by: str = ""                                # who handed it over (the model's call, a verdict, a worker)
+    unread: bool = False                        # his contacts could not be read when the name was looked up
+    lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False, compare=False)
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:8])
     opened_at: float = field(default_factory=time.time)
     touched_at: float = field(default_factory=time.time)
 
     def snapshot(self) -> dict:
-        d = asdict(self)
+        keys = ("id", "said", "who", "channel", "text", "target", "candidates", "unmatched", "asked", "state", "ref",
+                "act", "by")
+        d = {k: getattr(self, k) for k in keys}
         d["text"] = d["text"][:300]
         return d
 
 
 _open: dict = {"draft": None}
+#: The messages he asked for while another was open, in order: each is opened when the one before it ends.
+_queue: list = []
 
 
 def current() -> Draft | None:
@@ -71,5 +82,16 @@ def touch(d: Draft) -> None:
 
 
 def reset() -> None:
-    """Forget the open draft (tests, a hard reset)."""
+    """Forget the open draft and the queued ones (tests, a hard reset)."""
     _open["draft"] = None
+    _queue.clear()
+
+
+def queue(said: str, hint: dict, by: str) -> int:
+    """Keep a message he asked for while another is open; returns how many wait."""
+    _queue.append({"said": said, "hint": dict(hint or {}), "by": by})
+    return len(_queue)
+
+
+def next_queued() -> dict | None:
+    return _queue.pop(0) if _queue else None

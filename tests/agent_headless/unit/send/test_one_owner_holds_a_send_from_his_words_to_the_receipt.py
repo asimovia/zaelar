@@ -51,9 +51,12 @@ class World:
             return {"several": several, "unmatched": []} if several else {"none": True}
         monkeypatch.setattr(people, "resolve", resolve)
         monkeypatch.setattr(people, "_in_front", lambda name: {})
+        monkeypatch.setattr(people, "named", lambda q: [p["name"] for p in PEOPLE if q.lower() in p["name"].lower()])
+        from nucleo.send import deliver
+        monkeypatch.setattr(deliver, "check", lambda d: {"ok": True, "platform": "whatsapp"})
 
-        def run(payload):
-            self.sent.append(dict(payload))
+        def run(d):
+            self.sent.append(deliver.payload(d))
             return {"ok": True, "result": {"ref": f"r{len(self.sent)}"}}
         monkeypatch.setattr(owner, "_run", run)
         from nucleo.request import send_receipt
@@ -111,7 +114,8 @@ def test_his_script_sends_only_what_he_kept_to_the_one_he_chose(world):
         await asyncio.gather(*list(receipt.tasks))
         return taken, line
     taken, _line = asyncio.run(yes_and_receipt())
-    assert taken and world.sent == [{"text": "I love you very much", "contact": "Odile Brandt", "contact_id": "c2"}]
+    assert taken and world.sent == [{"text": "I love you very much", "contact": "Odile Brandt", "contact_id": "c2",
+                                     "channel": "whatsapp"}]
     assert _draft.current() is None, "a sent draft owns no more sentences"
     assert world.said_out, "the final line is the receipt's"
 
@@ -144,10 +148,20 @@ def test_forget_that_message_drops_it_and_nothing_leaves(world):
     assert asyncio.run(gate.at_the_gate("Yes", None, None)) is False, "with nothing open the gate takes nothing"
 
 
-def test_the_send_goes_to_the_chosen_row_by_id():
+def test_the_send_goes_to_the_chosen_row_by_id_never_the_name_read_again(monkeypatch):
+    """Two rows carry the same name: the chosen row's id decides, never a second reading of the name."""
+    from widgets import directory
     from widgets.mensajeria.outbound import targets
-    src = targets.resolve_target.__code__.co_consts
-    assert any("contact_id" in str(c) for c in src) or "contact_id" in open(targets.__file__).read()
+    rows = [{"id": "a1", "name": "Odile Marsh", "kind": "person", "phone": "+34600000101",
+             "channels": [{"platform": "whatsapp", "handle": "+34600000101", "chatId": "34600000101@s.whatsapp.net"}]},
+            {"id": "b2", "name": "Odile Marsh", "kind": "person", "phone": "+34600000102",
+             "channels": [{"platform": "whatsapp", "handle": "+34600000102", "chatId": "34600000102@s.whatsapp.net"}]}]
+    monkeypatch.setattr(directory, "_contacts", lambda: rows)
+    monkeypatch.setattr(targets, "connected_platforms", lambda db=None: None)
+    got = targets.resolve_target({"contact": "Odile Marsh", "contact_id": "b2", "text": "hi", "channel": "whatsapp"})
+    assert got.get("ok") and got["contactId"] == "b2" and got["chatId"].startswith("34600000102"), got
+    gone = targets.resolve_target({"contact": "Odile Marsh", "contact_id": "zz", "text": "hi"})
+    assert gone.get("ok") is False, "a chosen row that is gone is a refusal, never the name read again"
 
 
 def test_a_lean_to_the_messaging_card_opens_nothing_unless_his_words_order_a_message(world):
@@ -186,3 +200,109 @@ def test_a_reset_forgets_the_open_message(world):
     except Exception:  # noqa: BLE001 — the rest of the reset may need a full engine; the draft goes first
         pass
     assert _draft.current() is None
+
+
+def test_a_yes_split_in_two_sentences_sends_once(world):
+    """Audit P0: «Sí» / «mándaselo» arriving as two finals at once each read `send` — one message leaves."""
+    world.reads = [_read(who="Odile Marsh", text="I'm late")]
+    asyncio.run(owner.intake("Tell Odile Marsh I'm late", {}))
+    line = _draft.current().confirm_line
+    world.reads = [_read(send=True, bare=True), _read(send=True)]
+
+    async def both():
+        out = await asyncio.gather(owner.take("Yes", last_line=line), owner.take("send it", last_line=line))
+        await asyncio.gather(*list(receipt.tasks))
+        return out
+    asyncio.run(both())
+    assert len(world.sent) == 1
+
+
+def test_his_order_never_sends_without_the_confirmation(world):
+    """Audit P0: «send Odile Marsh that I'm late, now» read as `send` — he is still read the text first."""
+    world.reads = [_read(who="Odile Marsh", text="I'm late", send=True)]
+    line = asyncio.run(owner.intake("Send Odile Marsh that I'm late, now", {}))
+    assert not world.sent and _draft.current().asked == _draft.CONFIRM and "I'm late" in line
+
+
+def test_an_unread_order_is_never_lost_and_a_bare_order_asks_who(world):
+    """Audit P0: the read failing must not drop the model's call; «I want to send a message» asks who."""
+    world.reads = ["not json"]
+    line = asyncio.run(owner.intake("Message Odile Marsh that I'm late", {"contact": "Odile Marsh", "text": "I'm late"}))
+    assert _draft.current() is not None and _draft.current().asked == _draft.CONFIRM and line and not world.sent
+    _draft.reset()
+    world.reads = [_read()]
+    asyncio.run(owner.intake("I want to send a message", {}))
+    assert _draft.current() is not None and _draft.current().asked == _draft.WHO
+
+
+def test_a_bare_yes_answers_only_the_confirmation_said_last(world):
+    """Audit P0: a draft waits at the confirmation; he talks about something else; a bare «ok» to that is not a send."""
+    world.reads = [_read(who="Odile Marsh", text="I'm late")]
+    asyncio.run(owner.intake("Tell Odile Marsh I'm late", {}))
+    world.reads = [_read(send=True, bare=True)]
+    taken, line = _take_after("Ok", "Shall I put the radio on?")
+    assert taken and not world.sent and "I'm late" in line, "he is read the message again"
+    world.reads = [_read(send=True, bare=True)]
+    taken, _l = _take_after("Ok", _draft.current().confirm_line)
+    assert taken and len(world.sent) == 1
+
+
+def _take_after(text, last):
+    async def go():
+        out = await owner.take(text, last_line=last)
+        await asyncio.gather(*list(receipt.tasks))
+        return out
+    return asyncio.run(go())
+
+
+def test_what_would_stop_it_is_asked_before_the_confirmation_and_a_refusal_keeps_his_text(world, monkeypatch):
+    """Audit P1: a contact with several channels is asked which BEFORE the yes; a refusal after it keeps the draft."""
+    from nucleo.send import deliver
+    monkeypatch.setattr(deliver, "check", lambda d: {"ok": False, "channels": ["whatsapp", "email"]})
+    world.reads = [_read(who="Odile Marsh", text="I'm late")]
+    line = asyncio.run(owner.intake("Tell Odile Marsh I'm late", {}))
+    assert _draft.current().asked == _draft.WHO and "WhatsApp" in line and not world.sent
+    monkeypatch.setattr(deliver, "check", lambda d: {"ok": True, "platform": "email"})
+    world.reads = [_read(channel="email")]
+    assert _take("by email")[0] and _draft.current().asked == _draft.CONFIRM
+    monkeypatch.setattr(owner, "_run", lambda d: {"ok": False, "error": "the link is down"})
+    world.reads = [_read(send=True)]
+    taken, line = _take("send it")
+    assert taken and _draft.current() is not None and _draft.current().text == "I'm late"
+
+
+def test_a_reply_and_a_message_for_later_keep_the_act_he_asked_for(world):
+    """Audit P1: a reply names its message; a message for later goes as a held draft with its time."""
+    from nucleo.send import deliver
+    world.reads = [_read(text="On my way")]
+    asyncio.run(owner.intake("answer that one: on my way", {"n": 3, "text": "On my way", "_act": "reply"}))
+    d = _draft.current()
+    assert d.act == "reply" and deliver.payload(d) == {"n": 3, "text": "On my way"}
+    _draft.reset()
+    world.reads = [_read(who="Odile Marsh", text="Happy birthday")]
+    asyncio.run(owner.intake("tomorrow at nine tell Odile Marsh happy birthday",
+                             {"contact": "Odile Marsh", "at": "09:00", "_act": "send_to"}))
+    d = _draft.current()
+    assert d.extra == {"at": "09:00"} and "at" not in deliver.payload(d)
+
+
+def test_several_messages_in_one_sentence_are_asked_one_after_the_other(world):
+    """Audit P1: the second message of «tell Odile Marsh X and Odile Brandt Y» is not dropped."""
+    world.reads = [_read(who="Odile Marsh", text="X")]
+    asyncio.run(owner.intake("tell Odile Marsh X and Odile Brandt Y", {}))
+    _draft.queue("tell Odile Marsh X and Odile Brandt Y", {"contact": "Odile Brandt", "text": "Y"}, "call")
+    world.reads = [_read(drop=True), _read(who="Odile Brandt", text="Y")]
+    assert _take("forget the first one")[0]
+    nxt = _draft.current()
+    assert nxt is not None and nxt.target["name"] == "Odile Brandt" and nxt.text == "Y"
+
+
+def test_the_turn_says_the_confirmation_even_after_its_own_question(world, monkeypatch):
+    """Audit P0: a confirmation he never heard is never the one his yes answers — the owner's line is said."""
+    from nucleo.send import turn
+    world.reads = [_read(who="Odile Marsh", text="I'm late")]
+    said = []
+    esc = {"send_owner": {"said": "tell Odile Marsh I'm late", "hint": {}, "quiet": True, "by": "our question"}}
+    out = asyncio.run(turn.speak(esc, "Anything else?", said.append, type("S", (), {"sanitize": staticmethod(
+        lambda t, drop_metadata=False: t)})))
+    assert said and "I'm late" in said[-1] and "I'm late" in out

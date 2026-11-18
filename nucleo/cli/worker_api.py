@@ -144,12 +144,12 @@ async def _one_act(rec, action: str, payload: dict) -> dict:
         payload, _q_exit, _released = _ex.payload, _ex.question, _ex.released
         if _released and pol == CONFIRM:
             pol = ALLOW                                 # his order over the row he saw is the yes (CRIT-C9)
-    # V2-938 — a MESSAGE the door would ask him about is its owner's (`nucleo/send`): the owner asks him, sends on his
+    _q_behalf = "" if _released or pol != ALLOW else _behalf.worker_question(rec, action, payload)
+    # V2-938 — a MESSAGE anyone would ask him about is its owner's (`nucleo/send`): the owner asks him, sends on his
     # yes and says the receipt. The door's refusals, a mandate and his released order (above) stand as they are.
-    if (_q_exit or (pol == CONFIRM and not _released)) and \
+    if (_q_exit or _q_behalf or (pol == CONFIRM and not _released)) and \
             (_handed := await __import__("nucleo.send.worker", fromlist=["x"]).hand(rec, action, payload)):
         return _handed
-    _q_behalf = "" if _released or pol != ALLOW else _behalf.worker_question(rec, action, payload)
     if _q_exit:                               # worded for his ear, never a fixed sentence (V2-933)
         from nucleo import wording
         from nucleo.request import send_receipt

@@ -49,7 +49,7 @@ def test_an_act_that_leaves_is_routed_as_a_task_and_never_run_inline():
     said = "mandale un whatsapp a raquel"
     assert calls._leaving_is_a_task("mensajeria", "send_to", said, esc, lambda *a, **k: seen.append(a[1]),
                                     payload={"contact": "Raquel"}) is True
-    assert esc["send_owner"]["hint"] == {"contact": "Raquel"} and esc["v"] is None and "send" not in esc
+    assert esc["send_owner"]["hint"] == {"contact": "Raquel", "_act": "send_to"} and esc["v"] is None and "send" not in esc
     grp = {"v": None}
     assert calls._leaving_is_a_task("mensajeria", "create_group", "crea un grupo con raquel", grp,
                                     lambda *a, **k: None, payload={"members": ["Raquel"]}) is True

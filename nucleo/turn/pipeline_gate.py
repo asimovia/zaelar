@@ -160,6 +160,11 @@ async def open_the_turn(self, motor) -> dict | None:
         except Exception:  # noqa: BLE001
             pass
 
+    # V2-938 — the open message first, before any fast lane: a sentence about the message he is writing («vale», a
+    # dictated «hola, buenos días») is its owner's (`nucleo/send`), answered at once; anything else goes on untouched.
+    if await __import__("nucleo.send.gate", fromlist=["x"]).at_the_gate(text, brain, self._out, motor):
+        return None
+
     # ACTION MAP (V2-539) + PRESENCE knock (V2-640) + SMALL TALK (V2-674) skip the model: see
     # fast_lane.py (mirrors in probe.py).
     try:
@@ -204,11 +209,6 @@ async def open_the_turn(self, motor) -> dict | None:
         _acc_ms = _blk['_acc_ms']
     if 'text' in _blk:
         text = _blk['text']
-
-    # V2-938 — the open send first: a sentence about the message he is writing is its owner's (`nucleo/send`), answered
-    # at once; anything else goes on untouched.
-    if await __import__("nucleo.send.gate", fromlist=["x"]).at_the_gate(text, brain, self._out, motor):
-        return None
 
     # V2-931 — the switchboard: a chunk that is an open process's is delivered there and the turn ends (Flash never
     # re-calls the act, re-asks or answers for the task).

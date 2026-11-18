@@ -170,6 +170,8 @@
  "send_ask_text": "What should I tell {who}?",
  "send_confirm": "To {who} on {channel}: «{text}». Shall I send it?",
  "send_listed": "I have {names}. Which one is it for?",
+ "send_ask_channel": "I can reach {who} by {channels}. Which one?",
+ "send_cannot": "The message for {who} can't go like this: {why}. What should I do?",
  "act_preparing": "I'm on it.",
  "act_going": "OK, doing it. I'll tell you if anything goes wrong.",
  "act_done": "Done.",

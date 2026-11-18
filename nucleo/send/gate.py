@@ -41,7 +41,11 @@ async def at_the_gate(text: str, brain, say, motor=None) -> bool:
     if draft.current() is None:
         return False
     last, before = _context(brain)
-    taken, line = await owner.take(text, last_line=last, before=before)
+    try:
+        taken, line = await owner.take(text, last_line=last, before=before)
+    except Exception as e:  # noqa: BLE001 — a broken owner never eats his words: the conversation answers them
+        logger.warning(f"send.gate: the owner failed on a sentence — {type(e).__name__}: {e}")
+        return False
     if not taken:
         return False
     if brain is not None:

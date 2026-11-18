@@ -46,9 +46,9 @@ def resolve(name: str, channel: str = "") -> dict:
     try:
         from widgets.contactos import who
         got = who.find(q)
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001 — an unreadable directory is not «nobody has that name»
         _note(e)
-        return {"none": True}
+        return {"several": [], "unread": True}
     people = [r["contact"] for r in got.get("people") or []]
     if got.get("confidence") == "one" and people:
         return {"one": {**_row(people[0]), "platform": channel}}
@@ -68,11 +68,14 @@ def chosen(name: str, candidates: list[dict], channel: str = "") -> dict:
 
 
 def named(query: str) -> list[str]:
-    """The names of the people a word names, closest first — what he asks for with «which <name>s do you have?»."""
-    got = resolve(query)
-    if got.get("one"):
-        return [got["one"]["name"]]
-    return [c["name"] for c in got.get("several") or []]
+    """The names of the people a word names, closest first — what he asks for with «which <name>s do you have?»: his
+    contacts only (an open conversation is one of them, never the whole answer)."""
+    try:
+        from widgets.contactos import who
+        return [str(r["contact"].get("name") or "") for r in who.find(query).get("people") or []][:ASK_MAX]
+    except Exception as e:  # noqa: BLE001
+        _note(e)
+        return []
 
 
 def _apart(c: dict) -> str:

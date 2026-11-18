@@ -938,7 +938,9 @@ Flash keeps the conversation; the row is what both brains read.
   about the message (who, what it says, a phrase added or taken out — the text is rewritten whole —, send it, drop it,
   which people carry that name) → the owner's, answered at once and the change said back; anything else → not taken,
   the conversation answers it; an unreadable read → not taken. Nothing leaves before his yes over one person and a
-  text; it leaves through the card's own act with the chosen row's id (`resolve_target` `contact_id`), and the final
+  text — never at intake, whatever the order said; what would stop it (a channel to choose, no way to reach her) is
+  said BEFORE the confirmation; the confirmation is verified to carry his text verbatim and her name; a bare «yes»
+  answers only the confirmation said last; one sentence at a time per draft; it leaves through the card's own act with the chosen row's id (`resolve_target` `contact_id`), and the final
   line is the connector's receipt (`send/receipt`). A draft nobody touches for 10 min is closed and reads nothing. —
   since 2026-11-18 (V2-938) · node 2.1801 · `nucleo/send/`, `nucleo/turn/pipeline_gate.py`,
   `nucleo/turn/pipeline_errands.py`, `nucleo/cli/worker_api.py`, `widgets/mensajeria/outbound/targets.py`. End to end:

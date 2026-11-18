@@ -31,7 +31,8 @@ def test_the_a_ver_order_is_handed_to_the_owner_never_swapped_for_a_show():
     assert show_guard.is_pure_show_request(ORDER), "the sentence still reads as a pure show to the guard…"
     esc = {"v": None, "surface": {}}
     _call(esc)
-    assert esc["send_owner"] == {"said": ORDER, "hint": {"contact": "Quinn", "text": TEXT}}, "…and it is the owner's"
+    assert esc["send_owner"] == {"said": ORDER, "hint": {"contact": "Quinn", "text": TEXT, "_act": "send_to"}}, \
+        "…and it is the owner's, with the act the model named"
     assert esc["v"] is None and "send" not in esc, "no worker is commissioned for a message"
 
 
