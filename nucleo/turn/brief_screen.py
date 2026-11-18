@@ -35,10 +35,11 @@ def target_question(open_ids) -> dict | None:
         ids = sorted(ids, key=lambda i: i.split("::", 1)[0] != front)
         focus = ids[0] if ids[0].split("::", 1)[0] == front else focus
     criteria: dict[str, str] = {}
+    rows_of: dict[str, set] = {}     # each card's published rows are read ONCE per question, not once per action
     for wid in ids[:MAX_OPEN_CARDS]:
         face = _card_label(wid)
         for name, spec in (_fe.declared_actions(_base_of(wid)) or {}).items():
-            if not _possible_now(wid, name):
+            if not _possible_now(wid, name, rows_of):
                 continue
             desc = str((spec if isinstance(spec, dict) else {}).get("desc") or name)[:MAX_DESC_CHARS]
             criteria[f"{wid}:{name}"] = f"[{face}] {desc}"
@@ -81,8 +82,12 @@ def _card_label(widget_id: str) -> str:
         return widget_id
 
 
-def _possible_now(widget_id: str, action: str) -> bool:
-    """Can this action run on THIS card now? Unknown means YES; only an action that must name an EXISTING row on a card that publishes none is out."""
+def _possible_now(widget_id: str, action: str, rows_of: dict | None = None) -> bool:
+    """Can this action run on THIS card now? Unknown means YES; only an action that must name an EXISTING row on a card that publishes none is out.
+
+    `rows_of` is the question's own memo — {card: the fields its rows publish}. A card's index is its whole store read
+    and digested (measured 2026-11-18: 98 ms for a directory of 2 700 people), and the question asked it once per
+    declared action: 24 reads, 2.1 s on the loop at every end of turn with that card open."""
     try:
         from widgets import refs as _refs
         base = _base_of(widget_id)
@@ -91,8 +96,10 @@ def _possible_now(widget_id: str, action: str) -> bool:
             return True
         if not _refs._exposes_ref_index(base):
             return True                     # the widget does not publish rows: nothing to conclude
-        rows = [r for r in _refs._ref_index(base) if r.get("field") == field]
-        return bool(rows)
+        memo = rows_of if rows_of is not None else {}
+        if base not in memo:
+            memo[base] = {r.get("field") for r in _refs._ref_index(base)}
+        return field in memo[base]
     except Exception:  # noqa: BLE001
         return True
 

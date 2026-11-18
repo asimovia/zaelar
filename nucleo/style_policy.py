@@ -81,6 +81,12 @@ def confirm_short_actions() -> bool:
     return bool(policy().get("confirm_short_actions", False))
 
 
+def still_working_lines() -> bool:
+    """May the pulse tell him, while an errand runs and nobody is talking, that it is still on it
+    (`nucleo/pulse/still_on_it.py`)? His to turn off: «no need to tell me you are still working»."""
+    return bool(policy().get("still_working_lines", True))
+
+
 def filler_mode() -> str:
     m = str(policy().get("fillers", "smart")).lower()
     return m if m in _FILLER_MODES else "smart"

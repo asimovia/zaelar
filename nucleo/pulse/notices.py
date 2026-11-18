@@ -9,6 +9,7 @@ A reminder that rings, a commission that finished, an approval the agent is wait
     shown    painted on a screen that connected later (the owed list drains there)
     answered a question (`ask_id`) closed before it could be delivered — never delivered after (V2-852 T09)
     seen     he opened it (notification click)
+    dropped  an EPHEMERAL line («still on it») that could not be said when it was due: worth nothing later
     owed     nobody could take it yet: retried with backoff, and drained to the next screen that opens
 
 Tested in `tests/agent_headless/unit/test_notice_ledger.py`: NEVER TWICE (`dedupe_key` is UNIQUE; a re-emit
@@ -139,13 +140,16 @@ def identity(text: str, *, key: str = "", task_id: str = "", ask_id: str = "") -
 
 async def notify(title: str, text: str, *, key: str = "", task_id: str = "", kind: str = "reminder",
                  url: str = "", covered_by: str = "", speak: bool = True, push_: bool = True,
-                 detail: dict | None = None, ask_id: str = "", asks_: bool | None = None, **voice_kw) -> dict:
+                 detail: dict | None = None, ask_id: str = "", asks_: bool | None = None,
+                 ephemeral: bool = False, **voice_kw) -> dict:
     """Deliver one notice through the channels, in order, and record how it ended. Never raises.
 
     `key` is the identity of the notice (e.g. `job:42:1730000000`): the same key never reaches him twice. A line
     about a task passes its `task_id` instead (the key is derived, `identity`), a QUESTION its `ask_id`.
     `covered_by` names another system that already rings for it (`google`): the row is closed, nothing delivered.
-    `asks_`: it asks him (`notice_ask`). Returns {"id", "state", "channel", "duplicate"}."""
+    `asks_`: it asks him (`notice_ask`). `ephemeral`: a courtesy worth nothing later («still on it») — said now if
+    it can be, and otherwise dropped: never pushed to a device, never owed. Returns {"id", "state", "channel",
+    "duplicate"}."""
     text = (text or "").strip()
     if not text:
         return {"id": None, "state": "", "channel": "", "duplicate": False}
@@ -186,8 +190,12 @@ async def notify(title: str, text: str, *, key: str = "", task_id: str = "", kin
         _observe(row, "spoken", "voice")
         return {"id": row["id"], "state": "spoken", "channel": "voice", "duplicate": False}
 
+    if ephemeral and not said:
+        _set(row["id"], state="dropped", channel="", delivered_at=_now())
+        _observe(row, "dropped", "")
+        return {"id": row["id"], "state": "dropped", "channel": "", "duplicate": False}
     accepted = 0
-    if push_:
+    if push_ and not ephemeral:
         try:
             accepted = await asyncio.to_thread(push, row)
         except Exception as e:  # noqa: BLE001

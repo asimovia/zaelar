@@ -176,6 +176,8 @@ class WorkersPulse:
             self._ask_relayed &= pend
         except Exception:
             pass
+        from nucleo.pulse import still_on_it       # (2b) nobody talking while an errand runs: he is told it goes on
+        await still_on_it.beat(sessions, now, self._say)
         # (3) beat + report demand + stuck (silence, said). No age-based question and no budget kill (V2-852 R2).
         for s in sessions:
             tid, age = s["id"], int(s.get("age_s") or 0)

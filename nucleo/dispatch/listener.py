@@ -63,7 +63,9 @@ async def run_listener(stop: "asyncio.Event | None" = None) -> None:
             # refinamiento (the generador of widgets, build atomico, it ignora with gracia; a worker live it aprovecha).
             # V2-851 F2e — an ANSWERED question's task names its row by identity (`answers`): never a refinement of
             # another errand, never a parked one, never a continuation of an ended one.
-            _bound = bool(ctx.get("answers"))
+            # The same holds for a session RESUMED on its row by his answer (`worker_api_resume`): it is that row coming
+            # back (measured 2026-11-18: an answered send was folded «by widget» into a group errand, and was lost).
+            _bound = bool(ctx.get("answers") or (ctx.get("resume") or {}).get("rebrief"))
             dup, _ev = ("", {}) if _bound else _d.dedup_scan(
                 request, kind if kind != "generic" else _d._kind_of(ctx.get("errand_kind")))
             # `by` now comes from the deciding loop instead of being assumed here: a same-widget hit used to

@@ -139,3 +139,15 @@ def test_el_bloque_ops_NO_se_ha_vaciado_de_golpe():
     src = _operating()
     assert "CÓMO OPERAS" in src
     assert "disculpas en bucle" in src, "esta aún no tiene política; sigue siendo prosa, y se dice"
+
+
+def test_the_conversations_base_norm_is_said_once_and_first():
+    """V2-935 — his test of 2026-11-18: «stop repeating what I say», while three replies in a row opened «tienes
+    razón…», «es cierto…», «vale, nada de repetir». The norm of the conversation (a person: brief, never his words
+    back, never opening by agreeing with him, «done» only when something was done) is ONE paragraph at the head of
+    the block, not a half-sentence inside the rule for orders, where it only covered orders."""
+    src = _operating()
+    assert src.count("dándole la razón") == 1 and src.count("disculpas en bucle") == 1
+    assert src.index("Hablas como una persona atenta") < src.index("Si tardas, el sistema"), "first, in the stable prefix"
+    assert "«Hecho» solo si en este turno hiciste algo" in src
+    assert "ni 'tienes razón' ni narrar por qué antes falló" not in src, "the old half-sentence left with it"

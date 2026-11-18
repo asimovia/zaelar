@@ -76,6 +76,8 @@ def measure(brief, reply: str, *, did_act: bool, asked_which: bool = False, emit
         note(e)
         wid = ""
     leaves = leaving_acts(wid) if wid else []
+    if leaves and not (asked_which or _reads_an_act(brief, wid, leaves)):
+        leaves = []                      # the card is only what he TALKED about: no act of it was read, so no door
     actions: list[str] = []
     if not leaves:                       # the ACT the brief names: the question is about that one, leaving or not
         wid, act = named_act(brief)
@@ -94,6 +96,23 @@ def measure(brief, reply: str, *, did_act: bool, asked_which: bool = False, emit
     except Exception as e:  # noqa: BLE001
         note(e)
         return False
+
+def _reads_an_act(brief, wid: str, leaves: list[str]) -> bool:
+    """Does the turn's reading point at one of the card's leaving acts at all — the verdict names it (or the end state
+    it attests), or the act it leans to at any confidence is one of them? A card the brief names with NO act read is a
+    subject of conversation, and our closing question about it is talk: it opens no row (measured 2026-11-18: «I was
+    watching TV, forget that message» read the messaging card and no act; our «and what were you watching?» became a
+    task waiting on his answer, and his next order was delivered into it and started a worker)."""
+    try:
+        from nucleo.request.ending import verdict_names_leaving
+        if verdict_names_leaving(brief, wid):
+            return True
+        lean_wid, lean_act = _leans_out(brief)
+        return bool(lean_act) and base(lean_wid) == base(wid) and lean_act in leaves
+    except Exception as e:  # noqa: BLE001 — unread: no row is opened on a guess
+        note(e)
+        return False
+
 
 #: What the row retains: his request, to be said again with his answer (one name, `inline_ask.UTTERANCE`).
 from nucleo.request.inline_ask import UTTERANCE  # noqa: E402

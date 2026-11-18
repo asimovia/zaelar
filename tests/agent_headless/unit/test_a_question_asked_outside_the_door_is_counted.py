@@ -22,9 +22,15 @@ ROOT = Path(__file__).resolve().parents[3]
 
 @pytest.fixture
 def card(monkeypatch):
-    def _set(wid):
-        monkeypatch.setattr(verdicts, "read", lambda h, key, fb, min_confidence=None:
-                            (wid, {"confidence": .9}) if key == "catalog_widget" else (fb, None))
+    """The brief names card `wid`; `lean` is the act it reads there at ANY confidence ("" = none read)."""
+    def _set(wid, lean="send_to"):
+        def _read(h, key, fb, min_confidence=None):
+            if key == "catalog_widget":
+                return wid, {"confidence": .9}
+            if key == "screen_action" and lean and not min_confidence:
+                return f"{wid}:{lean}", {"confidence": .43}
+            return fb, None
+        monkeypatch.setattr(verdicts, "read", _read)
     return _set
 
 
@@ -46,6 +52,22 @@ def test_a_turn_that_reached_a_door_or_did_not_ask_is_not(card):
     assert _measure("¿A qué Raquel?", did_act=True) == (False, [])
     assert _measure("Se lo mando ahora.") == (False, [])
     assert _measure("Raquel Gómez o Raquel Martín.", which=True)[0], "the directory says it asked which person"
+
+
+@pytest.mark.parametrize("reply", ["Vale, olvidado. ¿Y qué estabas viendo?", "Sure, forgotten. What were you watching?"])
+def test_a_card_he_only_talked_about_is_no_door_and_our_question_is_talk(card, reply):
+    """11:16:12 on his engine (2026-11-18): «I was watching TV, forget that message» named the messaging card and NO act
+    of it; our small-talk question became a row waiting on his answer, his next order was routed into it and a worker
+    started with the TV line as its brief. A card with no act read is a subject, never a door."""
+    card("mensajeria", lean="")
+    assert _measure(reply) == (False, []), "no act was read: nothing is counted, so nothing is made a row"
+    assert _measure("Raquel Gómez o Raquel Martín.", which=True)[0], "the directory's «which person» still is one"
+
+
+def test_disarm_a_card_named_with_no_act_would_open_a_row(card, monkeypatch):
+    card("mensajeria", lean="")
+    monkeypatch.setattr(aod, "_reads_an_act", lambda *a, **k: True)
+    assert _measure("Vale, olvidado. ¿Y qué estabas viendo?")[0], "the reading of an act is what keeps talk from being a task"
 
 
 def test_a_card_whose_acts_never_leave_is_not_a_door_question(card):

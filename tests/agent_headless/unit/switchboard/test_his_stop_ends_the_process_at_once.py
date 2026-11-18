@@ -259,14 +259,20 @@ def test_a_send_taken_to_its_receipt_is_never_judged_unmet_nor_relaunched(monkey
     assert send_receipt.owns_the_verdict("s2-3") and not send_receipt.owns_the_verdict("nobody")
 
 
-def test_plain_words_for_a_process_get_no_line_of_ours_the_process_speaks_next(desk):
-    """01:23:49 — «Done, I'll keep it in mind for the message» after his correction, then the process's own new
-    question: two lines for one thing. Words a process took are answered by the process (its question, its result)."""
+def test_plain_words_a_process_took_are_acknowledged_at_once_and_never_said_back(desk):
+    """01:23:49 (2026-11-18) — «Done, I'll keep it in mind for the message» after his correction, then the process's
+    own question: his words said back to him, twice. 11:20–11:25 the same day, with that line removed: his words went
+    to a worker that spoke 20 to 110 s later, and he heard nothing («you don't even say one moment»). He is answered
+    at once with ONE short line whose fact carries nothing of what he said."""
     _row("s2-4", "running", "Message to Quinn")
     desk.procs = [_proc("s2-4", "Message to Quinn", tid="6")]
     desk.model(1, "other")
     assert _say(desk, "a ver, el mensaje es: espero que estés dormidita") is True
-    assert desk.relayed == ["a ver, el mensaje es: espero que estés dormidita"] and desk.said == []
+    assert desk.relayed == ["a ver, el mensaje es: espero que estés dormidita"]
+    assert desk.said == [_line("answer_taken")], "one line, at once (the suite's wording double says the plain one)"
+    from nucleo import wording
+    fact = wording.FACTS["answer_taken"]
+    assert "nothing of what he said" in fact and "{" not in fact, "the fact hands the model no words of his to repeat"
 
 
 def test_a_go_ahead_given_with_the_order_is_read_at_the_exit_door_and_he_is_not_asked(monkeypatch):

@@ -77,7 +77,8 @@ FACTS = {
                         "as soon as it does."),
     "work_started": "He gave his go-ahead. You are starting on what he asked for now and will tell him when it is done.",
     "confirm_cancelled": "He said no. Nothing has been done or changed.",
-    "answer_taken": "What he just said has been taken into account for what he asked for; it goes on with it.",
+    "answer_taken": ("He just added or answered something about what he asked for. You heard it and you are on it. "
+                     "Tell him only that — two to five words, an acknowledgement; say nothing of what he said."),
     "stopped_now": "He asked to stop. What he had asked for has been stopped now; it is no longer being worked on.",
 }
 

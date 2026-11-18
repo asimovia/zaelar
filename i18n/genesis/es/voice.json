@@ -144,7 +144,7 @@
  "reply_which_message": "¿A qué mensaje respondo y qué le digo?",
  "objective_which_peer": "¿Con qué agente y de qué cluster es ese objetivo?",
  "stop_which_worker": "Tengo varias tareas en marcha distintas — ¿cuál paro exactamente?",
- "answer_taken": "Anotado.",
+ "answer_taken": "Vale, estoy en ello.",
  "cluster_send_confirm": "¿Mando al cluster «{name}»{to}: «{text}»?",
  "cluster_send_to": " a {to}",
  "rows_many_confirm": "Son {n} filas de «{collection}»{names}. Dímelo y lo hago.",

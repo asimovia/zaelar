@@ -144,7 +144,7 @@
  "reply_which_message": "Which message am I replying to, and what shall I say?",
  "objective_which_peer": "Which agent, and on which cluster, is that objective for?",
  "stop_which_worker": "I have several different tasks running — which one exactly am I stopping?",
- "answer_taken": "Noted.",
+ "answer_taken": "OK, I'm on it.",
  "cluster_send_confirm": "Shall I send this to the cluster «{name}»{to}: «{text}»?",
  "cluster_send_to": " to {to}",
  "rows_many_confirm": "That is {n} rows of «{collection}»{names}. Tell me and I will do it.",

@@ -36,7 +36,9 @@ def open_processes() -> list[dict]:
         for s in _d.pending_summaries() or []:
             rec = _d.get_record(s.get("id"))
             key = str(getattr(rec, "uid", "") or "") or f"session:{s.get('id')}"
-            title = str(s.get("heard") or s.get("request") or "")[:160]
+            # what it DOES — the errand's own name, else its brief — and never the sentence that commissioned it: his
+            # turn may carry a remark that has nothing to do with it, and the decision then reads that remark as the task
+            title = str(getattr(rec, "title", "") or s.get("request") or s.get("heard") or "")[:160]
             if key in out:
                 out[key]["dispatch"] = str(s.get("id") or "")
                 out[key]["title"] = out[key]["title"] or title
