@@ -902,7 +902,7 @@ export function ChatWall() {
       if (m && m.trace) lastRow.set(m.trace, rows.length + 1);   // every branch below pushes exactly one row
       if (m.role === "ref") { rows.push(chatRefView(m)); return; }
       if (m.role === "a2a") { rows.push(a2a.a2aChatView(m)); return; }   // V2-866: a consent card or a contact's message   // V2-862: an errand's reference box
-      const cls =m.role === "peer" ? "peer" : m.role === "agent" ? "agent" : m.role === "sys" ? "sys" : "you";
+      const cls =m.role === "peer" ? "peer" : m.role === "agent" ? "agent" : m.role === "sys" ? "sys" : m.role === "record" ? "record" : "you";
       const bubble = h("div", { class: "cw-msg " + cls });
       if (m.role === "peer" && (m.dir === "in" || m.dir === "out")) {
         const who = m.dir === "out" ? `🛰 → ${m.peer || "?"}` : `🛰 ${m.peer || "?"}`;

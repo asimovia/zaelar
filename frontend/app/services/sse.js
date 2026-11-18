@@ -419,7 +419,7 @@ export function routeEvent(desktop, d) {
       // `clearDebugBuffer()` (already called by reset) empties the RING, not the DOM.
       try { store.newSession(); } catch (_) {}
     } else if (d.kind === "artifact") { store.upsertChatRef(d);                 // V2-862: an errand's reference box on the wall
-    } else if (d.kind === "ask_resolved" || d.kind === "ask" || d.kind === "task_state") { if (d.kind !== "ask_resolved") asks.route(d); else if (d.text) store.pushChat({ role: "sys", text: d.text });   // V2-851: a task's question opens / its row moves on · V2-931: an answered one leaves ONE record line
+    } else if (d.kind === "ask_resolved" || d.kind === "ask" || d.kind === "task_state") { if (d.kind !== "ask_resolved") asks.route(d); else if (d.text) store.pushChat({ role: "record", text: d.text });   // V2-851: a task's question opens / its row moves on · V2-931: an answered one leaves ONE record line
     } else if (d.kind === "task") {                                               // SlowBrain background task lifecycle
       // A deep-brain task started/finished — surface it as a liquid chip flanking the orb so the operator SEES
       // zaelar is working (widget build/modify, web task, …) and how many at once. Removed when it ends.

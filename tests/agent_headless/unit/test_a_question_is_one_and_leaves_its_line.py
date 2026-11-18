@@ -127,8 +127,9 @@ def test_only_a_yes_or_a_no_to_a_consent_question_leaves_a_line(monkeypatch):
 def test_the_wall_paints_the_record_line_as_a_system_row_and_the_answer_door_is_wrapped():
     root = Path(__file__).resolve().parents[3]
     sse = (root / "frontend" / "app" / "services" / "sse.js").read_text("utf-8")
-    assert 'd.kind === "ask_resolved"' in sse and 'store.pushChat({ role: "sys", text: d.text })' in sse
-    assert ".cw-msg.sys" in (root / "frontend" / "app" / "styles.css").read_text("utf-8"), "the system row has no colour of its own"
+    assert 'd.kind === "ask_resolved"' in sse and 'store.pushChat({ role: "record", text: d.text })' in sse
+    css = (root / "frontend" / "app" / "core" / "shared-surfaces.css").read_text("utf-8")
+    assert ".cw-msg.record,.zm-msg.record{" in css, "the record line has no colour of its own in one of the two shells"
     from voice import observer
     import inspect
     assert '"ask_resolved"' in inspect.getsource(observer)

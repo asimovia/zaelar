@@ -295,7 +295,8 @@ below is the first kind, or it names the mechanism that replaced the second.
   replaced on screen, its id refused by the answer door — no yes can reach a question whose terms changed. His yes or
   no to a consent question never just vanishes: the answer door leaves ONE record line, worded from the fact with his
   name (`ask_trace.resolved`, «<his name> confirms …»; «the operator» when the state has no name), which the wall
-  paints as a system row and keeps in its place. A clarification is dialogue and leaves none. — since 2026-11-18
+  paints as a `record` row — the question card's own surface and accent edge, neither bubble, in both themes and on
+  both shells (`shared-surfaces.css`, node 4.577) — and keeps in its place. A clarification is dialogue and leaves none. — since 2026-11-18
   (V2-931) · nodes 2.1808 · `nucleo/circuit/ask_trace.py`, `nucleo/circuit/asker.py`, `nucleo/cli/worker_api_answer.py`,
   `frontend/app/services/sse.js`.
 - **CRIT-C4w · What the engine tells him is a FACT worded by a model, never a fixed sentence.** The engine decides the
