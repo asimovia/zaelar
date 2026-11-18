@@ -162,8 +162,8 @@ def test_the_voice_provider_captures_and_resolves_the_read():
     assert "_wread.prepare(" in code, "the voice channel resolves+reads through the shared module"
     # a read is a light route: it yields to a worker, a search or a secret in the same turn…
     assert 'if read_req["v"] is not None and escalate_req["v"] is None and search_req["v"] is None' in code
-    # …and recall does not ALSO speak when the turn read a widget
-    assert 'and reveal_req["v"] is None and read_req["v"] is None:' in code
+    # …and recall does not ALSO speak when the turn read a widget (or itself, `about_self`, V2-932)
+    assert 'and reveal_req["v"] is None and read_req["v"] is None and not read_req.get("self"):' in code
 
 
 def test_both_channels_end_in_the_SAME_module():
