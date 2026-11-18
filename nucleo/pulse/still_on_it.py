@@ -45,7 +45,7 @@ def last_said_at() -> float:
     """When anybody last said anything this session (epoch seconds), read off the event ring; 0.0 when nothing was."""
     try:
         from voice import observer
-        for ev in reversed(observer.debug_events()[-_LOOK_BACK:]):
+        for ev in reversed(list(observer._events[-_LOOK_BACK:])):     # the tail only: this runs on every beat
             if ev.get("kind") in SAID:
                 return float(ev.get("t_ms") or 0.0) / 1000.0
     except Exception as e:  # noqa: BLE001 — unread: treated as «just said», so nothing speaks on a guess

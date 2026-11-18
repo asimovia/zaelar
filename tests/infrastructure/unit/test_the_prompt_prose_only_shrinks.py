@@ -51,7 +51,7 @@ _PROSE_FILES = ("nucleo/turn/prompt/builder.py", "nucleo/turn/prompt/operating.p
                 "nucleo/turn/prompt/live_record.py")   # refactor2710-08: prompt.py and live_blocks split, same sum
 
 #: Measured 2026-09-16. EDIT DOWNWARD ONLY — and the edit is the celebration.
-_MAX_PROSE = 24_866          # refactor2710-08: −63, the screen line and one contradiction out (was 24_929); prompt.py 16_417 + live_blocks.py 3_395 + live_blocks_nav.py 5_117 — DOCSTRINGS OUT
+_MAX_PROSE = 25_060          # +194 2026-11-18 V2-935: the conversation's base norm, said once and first (a person: brief, never his words back nor «you are right», «done» only when something was done) — his explicit order after three replies in a row opened by agreeing with him and repeating him; the half-sentence about apologies and «never a stock sentence» left for it. A rule about behaviour, declared as one: no mechanism reads an opener without a word table; refactor2710-08: −63, the screen line and one contradiction out (was 24_929); prompt.py 16_417 + live_blocks.py 3_395 + live_blocks_nav.py 5_117 — DOCSTRINGS OUT
 #: ⚠️ V2-778 (2026-10-02) — RE-MEASURED, not raised: the count used to include every DOCSTRING of the three modules,
 #: 19_141 of its 44_070 bytes, which the model never reads. A docstring is a comment to the model, and this file's
 #: own last test says a comment costs nothing here — so writing down why a function exists was being charged as
