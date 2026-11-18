@@ -24,6 +24,14 @@ session is bound to the loop that made it; from the other one every turn fails w
 A batch that carries a session's start or close is retried once at the front of the queue: those two facts decide
 what the body registers, and a body still warming up at boot answered the first batch late (measured).
 
+LATEST WINS for the live caption (2026-11-18). An interim — his words while he is still speaking — is only worth its
+newest version, and it was dropped with every failed batch: measured on a swapping host, ~90 failed batches in
+18 min with the body stalled 1-8.7 s, and the caption on the wall froze for exactly those seconds. Now a newer
+interim REPLACES an older one still queued (`send`), the newest interim of a failed batch goes back to the front
+unless something newer already says more (a newer interim, or his final words), and while only such a caption
+waits the sender retries after `CAPTION_GAP_S` instead of the full `RETRY_GAP_S`. An older interim never reaches
+the body after a newer one.
+
 Every call carries the token the body handed this process at spawn (`ZAELAR_VOICE_TOKEN`), and the body only
 answers it from loopback. Never raises into the voice: a failed call is a counted miss and an empty answer.
 """
@@ -43,6 +51,26 @@ HEADER = "x-zaelar-voice-token"
 EVENTS_PATH = "/api/voice/child/events"
 RETRY_GAP_S = 1.0                                 # one connection a second while the body does not answer (E0)
 RETRIED = ("session", "transcript", "item")       # the facts asked once more at the front of the queue
+CAPTION_GAP_S = 0.4                               # the retry gap while only a live caption waits (latest wins)
+
+
+def caption_key(ev: dict):
+    """The identity of a LATEST-WINS fact (his interim words, by speaker), or None for every other fact."""
+    if ev.get("k") == "emit" and ev.get("kind") == "interim":
+        return ("emit", ev.get("role") or "")
+    if ev.get("k") == "transcript" and not ev.get("final"):
+        return ("transcript", "")
+    return None
+
+
+def _says_more(ev: dict, key) -> bool:
+    """Does `ev`, queued AFTER a caption of `key`, make it stale? A newer caption of the same speaker, or his final
+    words (on either channel), which are what the caption was a preview of."""
+    if caption_key(ev) == key:
+        return True
+    if ev.get("k") == "transcript" and ev.get("final"):
+        return True
+    return ev.get("k") == "emit" and ev.get("kind") == "transcript" and ev.get("role") == "user"
 
 
 def body_url() -> str:
@@ -67,7 +95,7 @@ class BodyLink:
         self._sessions: dict = {}             # id(loop) → (loop, aiohttp session): one per loop
         self._fail_streak = 0                 # batches failed in a row: >0 paces the sender to one try per gap
         self._last_try = 0.0
-        self.stats = {"sent": 0, "dropped": 0, "batches": 0, "failed_batches": 0, "overtaken": 0}
+        self.stats = {"sent": 0, "dropped": 0, "batches": 0, "failed_batches": 0, "overtaken": 0, "coalesced": 0}
 
     # ── lifecycle ────────────────────────────────────────────────────────────────────────────────────────────
     def start(self) -> None:
@@ -112,7 +140,13 @@ class BodyLink:
         try:
             ev = dict(event)
             ev.setdefault("at", time.time())
+            key = caption_key(ev)
             with self._lock:
+                if key is not None:                 # latest wins: the older caption still queued is superseded
+                    older = [x for x in self._q if caption_key(x) == key]
+                    for x in older:
+                        self._q.remove(x)
+                    self.stats["coalesced"] += len(older)
                 if len(self._q) == self._q.maxlen:
                     self.stats["dropped"] += 1      # the oldest falls off: a body that cannot keep up loses the oldest
                 self._q.append(ev)
@@ -174,9 +208,13 @@ class BodyLink:
                 self._flying = False              # delivered, or its retried facts are back at the front
 
     async def _pace(self) -> None:
-        """While the body is failing, wait out the gap since the last try: one connection per `RETRY_GAP_S`."""
+        """While the body is failing, wait out the gap since the last try: one connection per `RETRY_GAP_S` — or per
+        `CAPTION_GAP_S` while all that waits is a live caption, which is stale a second later."""
         if self._fail_streak:
-            wait = RETRY_GAP_S - (time.monotonic() - self._last_try)
+            with self._lock:
+                only_captions = bool(self._q) and all(caption_key(ev) is not None for ev in self._q)
+            gap = CAPTION_GAP_S if only_captions else RETRY_GAP_S
+            wait = gap - (time.monotonic() - self._last_try)
             if wait > 0:
                 await asyncio.sleep(wait)
 
@@ -196,15 +234,29 @@ class BodyLink:
             raise
         except Exception as e:  # noqa: BLE001 — dropped and counted: the ear never waits on the body
             self._fail_streak += 1
-            again = [ev for ev in batch if ev.get("k") in RETRIED and not ev.get("_retried")]
-            if again:                       # a session's start/close, his words, the items: asked once more
-                with self._lock:
-                    for ev in reversed(again):
-                        self._q.appendleft({**ev, "_retried": True})
-            self.stats["dropped"] += len(batch) - len(again)
+            back, stale = [], 0
+            with self._lock:
+                later = list(self._q)                # queued since this batch left: all newer than it
+                for i, ev in enumerate(batch):
+                    key = caption_key(ev)
+                    if key is None:
+                        # a session's start/close, his words, the items: asked once more
+                        if ev.get("k") in RETRIED and not ev.get("_retried"):
+                            back.append({**ev, "_retried": True})
+                        continue
+                    # latest wins: a caption goes back unless what came after it — in this batch or queued
+                    # since — already says more. Never marked retried: it is asked until it lands or is replaced.
+                    if any(_says_more(x, key) for x in batch[i + 1:]) or any(_says_more(x, key) for x in later):
+                        stale += 1
+                        continue
+                    back.append(ev)
+                for ev in reversed(back):
+                    self._q.appendleft(ev)
+            self.stats["coalesced"] += stale
+            self.stats["dropped"] += len(batch) - len(back) - stale
             self.stats["failed_batches"] += 1
             if self.stats["failed_batches"] in (1, 10, 100) or self.stats["failed_batches"] % 1000 == 0:
-                logger.warning(f"voice→body: {len(batch)} events dropped ({e!r}); "
+                logger.warning(f"voice→body: {len(batch) - len(back)} of {len(batch)} events dropped ({e!r}); "
                                f"{self.stats['dropped']} dropped so far")
 
     # ── request / response ──────────────────────────────────────────────────────────────────────────────────

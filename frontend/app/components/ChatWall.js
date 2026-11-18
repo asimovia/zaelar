@@ -14,7 +14,7 @@
 // A Ctrl+V anywhere on the page (see main.js) ALSO feeds the chat channel — pasted text reaches the agent even
 // while this panel is hidden; it shows up here the next time you open it.
 import { h, raw } from "../core/dom.js?v=2";
-import { createEffect, createSignal } from "../core/reactive.js?v=2";
+import { createEffect, createMemo, createSignal, untrack } from "../core/reactive.js?v=2";
 import * as store from "../core/store.js?v=2";
 import * as session from "../services/session.js?v=3";
 import * as api from "../services/api.js?v=2";
@@ -883,15 +883,30 @@ export function ChatWall() {
   const _sameLine = (a, b) => String(a || "").replace(_CHAT_MARKERS, "").trim()
                            === String(b || "").replace(_CHAT_MARKERS, "").trim();
 
+  // THE LIVE CAPTIONS ARE NOT THE HISTORY (2026-11-18). His words while he speaks and the agent's line while it
+  // speaks used to be dependencies of the history rebuild below, so every partial re-rendered up to 100 rows of
+  // markdown and forced a layout: measured p50 6.6 ms, p90 13, worst 84-173 ms per partial on a loaded host — the
+  // caption stuttered exactly when the machine was busy. Now the history is rebuilt only when a row is committed
+  // (or the line being said changes shape), and the two captions are their own nodes whose TEXT alone is written,
+  // at most once per animation frame. The live caption is still never a row of `chatMsgs` and never persisted.
+  const captionBody = h("div", { class: "cw-msg-body" });
+  const captionRow = h("div", { class: "cw-msg you cw-live" }, captionBody);
+  let speakBody = null;                     // the body of the row the voice is saying, owned by the last rebuild
+  let _frame = 0, _captionH = -1;           // a frame already asked for; the captions' height at the last pin
+  // Which line is being said and whether any of it was heard yet — the only parts of `voicedLine` that change the
+  // ROWS. A memo compares by value, so a caption segment that only grows `heard` does not rebuild anything.
+  const sayShape = createMemo(() => {
+    const s = store.voicedLine();
+    return s && s.streaming ? `${s.trace || ""}\u0000${s.full || ""}\u0000${s.heard ? 1 : 0}` : "";
+  });
+
   createEffect(() => {
     const msgs = store.chatMsgs(); if (!listEl) return;
-    // V2-743 — the caption of the open microphone, appended after the history and never part of it. It is a
-    // dependency of this effect on purpose, so a new partial repaints the wall the moment it arrives; that
-    // immediacy is the whole feature, and the wall is rebuilt wholesale anyway.
-    const live = store.liveChat();
-    // V2-747 — the line the voice is saying RIGHT NOW, and how much of it has been heard. A dependency of
-    // this effect on purpose: each caption segment repaints the wall, which is the crawl he asked for.
-    const say = store.voicedLine();
+    sayShape();                              // a new line being said, or its first heard word: the rows change
+    // V2-747 — the line the voice is saying RIGHT NOW, and how much of it has been heard. Read untracked: how much
+    // was heard is written into `speakBody` by the caption painter below, never by rebuilding the wall.
+    const say = untrack(store.voicedLine);
+    speakBody = null;
     let restoredLeft = 0;                    // rows up to and including the last restored one
     msgs.forEach((m, i) => { if (m && m.restored) restoredLeft = i + 1; });
     const rows = [], lastRow = new Map();   // V2-886 D6: trace → index after that turn's last row (`placeAsks` reads the asks)
@@ -932,7 +947,9 @@ export function ChatWall() {
           return;
         }
         bubble.classList.add("cw-speaking");
-        bubble.appendChild(h("div", { class: "cw-msg-body" }, say.heard));
+        const said = h("div", { class: "cw-msg-body" }, say.heard);
+        speakBody = said;
+        bubble.appendChild(said);
         rows.push(bubble);
         return;
       }
@@ -946,15 +963,33 @@ export function ChatWall() {
     if (restoredLeft > 0 && restoredLeft === msgs.length) {
       rows.push(h("div", { class: "cw-earlier" }, _whenLabel()));
     }
-    if (live) {
-      // Plain text, NOT markdown: a half-dictated sentence routinely holds an unclosed `*` or `_`, and
-      // rendering it would make the bubble flicker between styles as he keeps talking.
-      const b = h("div", { class: "cw-msg you cw-live" });
-      b.appendChild(h("div", { class: "cw-msg-body" }, live));
-      rows.push(b);
-    }
     listEl.replaceChildren(...placeAsks(rows, lastRow));
-    pinToLatest();
+    untrack(_paintCaptions);                 // the live caption goes back under the rows, with its current text
+    pinToLatest();                           // a new row: the only rebuild that scrolls
+  });
+
+  // V2-743 — the caption of the open microphone, after the history and never part of it. Plain text, NOT
+  // markdown: a half-dictated sentence routinely holds an unclosed `*` or `_`, and rendering it would make the
+  // bubble flicker between styles as he keeps talking. Each partial and each caption segment only asks for a
+  // frame; the frame writes the newest text of both, so a burst of partials costs one write, not one per partial.
+  function _paintCaptions() {
+    _frame = 0;
+    if (!listEl) return;
+    const live = store.liveChat();
+    if (live) {
+      if (captionBody.textContent !== live) captionBody.textContent = live;
+      if (listEl.lastChild !== captionRow) listEl.appendChild(captionRow);
+    } else if (captionRow.parentNode) captionRow.remove();
+    const say = store.voicedLine();
+    if (speakBody && say && say.heard && speakBody.textContent !== say.heard) speakBody.textContent = say.heard;
+    // A caption that wraps onto a new line pushes the bottom out of view: follow it, and only then.
+    const hgt = (live ? captionRow.offsetHeight : 0) + (speakBody ? speakBody.offsetHeight : 0);
+    if (hgt !== _captionH) { _captionH = hgt; pinToLatest(); }
+  }
+  createEffect(() => {
+    store.liveChat(); store.voicedLine();
+    if (_frame || !listEl) return;
+    _frame = typeof requestAnimationFrame === "function" ? requestAnimationFrame(_paintCaptions) : (_paintCaptions(), 0);
   });
 
   // Opening the wall (or coming back to its Chat tab) lands on the latest message. The rebuild above pins

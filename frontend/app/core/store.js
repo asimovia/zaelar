@@ -993,6 +993,7 @@ const _promoteOwed = () => {
   _pendingVoiced = _owedQueue.shift();
   _setVoicedLine(null);
   if (_voiceSounding !== null && _pendingVoiced.trace && _voiceSounding === _pendingVoiced.trace) _paintOwed();
+  _claimEarlyCaption();
 };
 // V2-850 — the turn whose utterance is ALREADY sounding. The wait filler («a ver…») opens the utterance and the
 // reply streams into it, so its one `bot_speech speaking` arrives BEFORE the reply is owed: measured on a cloud
@@ -1051,6 +1052,24 @@ const _muted = [];
 const _mute = (trace) => { _muted.push(trace); if (_muted.length > _MUTED_MAX) _muted.shift(); };
 const _isMuted = (trace) => !!trace && _muted.indexOf(trace) >= 0;
 
+// A CAPTION CAN ARRIVE BEFORE ITS LINE IS OWED (2026-11-18). The captions come from the room straight to the page;
+// the line they belong to comes from the body (`brain reply`), and a body paging in from swap stalled 1-8.7 s
+// (measured). Every caption that landed in that gap was ignored, so the line appeared WHOLE once the reply arrived
+// instead of crawling. The newest caption that matched no owed line waits here, and the line it is the beginning
+// of picks it up the moment it becomes owed. `EARLY_CAPTION_MS` bounds how stale a caption may be to still count:
+// past it the voice has moved on and the caption says nothing about a line owed now.
+const EARLY_CAPTION_MS = 30000;
+let _earlyCaption = null;      // { text, at } — the newest caption, still sounding, no owed line claimed
+const _claimEarlyCaption = () => {
+  const c = _earlyCaption, p = _pendingVoiced;
+  if (!c || !p) return;
+  if (Date.now() - c.at > EARLY_CAPTION_MS) { _earlyCaption = null; return; }
+  const heard = _normAgent(c.text);
+  if (!heard || !_normAgent(p.full).startsWith(heard)) return;   // the beginning of another line
+  _earlyCaption = null;
+  noteSpokenAloud(c.text, false);
+};
+
 /** One audio-synced caption segment: what the operator is HEARING, cumulative, `final` at the end of the
  *  utterance (including an utterance cut short — that is the whole point). */
 export const noteSpokenAloud = (text, final) => {
@@ -1058,9 +1077,14 @@ export const noteSpokenAloud = (text, final) => {
   // a caption IS the voice: one that reads the line waiting behind the owed one says the voice moved on
   if (_pendingVoiced && heardN && !_normAgent(_pendingVoiced.full).startsWith(heardN) && _owedQueue.length
       && _normAgent(_owedQueue[0].full).startsWith(heardN)) settleAgentSpoken();
-  if (!_pendingVoiced) return;
   const heard = _normAgent(text);
-  if (!heard || !_normAgent(_pendingVoiced.full).startsWith(heard)) return;   // not this line's speech
+  if (!_pendingVoiced || !heard || !_normAgent(_pendingVoiced.full).startsWith(heard)) {
+    // not this line's speech — maybe the next line's, ahead of its reply: kept for it (above). Only while it is
+    // still SOUNDING: a finished utterance (a filler, a notice) is no evidence that a later line has started.
+    _earlyCaption = heard && !final ? { text, at: Date.now() } : null;
+    return;
+  }
+  _earlyCaption = null;
   _pendingVoiced.heard = heard;
   // A caption IS the voice speaking, so it paints the line too — `bot_speech` is the primary evidence and
   // this is the second one. Whichever arrives first wins; neither is required for the other to work.
@@ -1150,6 +1174,7 @@ export const pushAgentChat = (text, opts) => {
     _pendingVoiced = { full: text, heard: "", capAt: _capSeq, trace: o.trace || "", painted: false };
     _setVoicedLine(null);
     if (_voiceSounding !== null && o.trace && _voiceSounding === o.trace) _paintOwed();   // already sounding (V2-850)
+    _claimEarlyCaption();                     // its first words may already have been heard
     return;
   }
   // The SPOKEN record of a line that was never painted is the record of something he never heard: the utterance

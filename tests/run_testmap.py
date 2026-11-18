@@ -1729,6 +1729,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_host_stall_is_not_a_provider_stall.py"]},
         {"id": "3.203", "title": "The voice process is honest about a stopped body and never floods it (E0): a body that cannot be reached is tried ONCE more a second later, then he hears «it's running slow» — never «say that again» — and his line rides with the next turn as `prior`, which the body pushes into the window as his words; while the body does not answer the sender opens at most one connection per `RETRY_GAP_S`; his transcripts and the items are asked once more at the front of the queue like a session's start/close, a state is dropped and counted; the ORDER is the request's own — the turn and the kickoff take the facts still queued and carry them (`body_link.ahead`), the body replays them before it runs the turn, a batch in the sender's hands is waited for its own POST and counted when overtaken, facts a request could not deliver return to the front (`back`); the sender paces BEFORE a batch leaves the queue",
             "ch": VOICE, "paths": ["tests/voice/unit/test_a_stalled_body_is_said_slow_and_never_flooded.py"]},
+        {"id": "3.238", "title": "His live caption survives a stalled body (latest wins): a newer interim replaces an older one still queued, the newest interim of a failed batch goes back to the front unless a newer caption or his final words already say more, so once the body answers it receives the latest words once and never an older caption after them; while only a caption waits the sender retries after `CAPTION_GAP_S`, any other fact keeps the E0 pace",
+            "ch": VOICE, "paths": ["tests/voice/unit/test_the_live_caption_survives_a_stalled_body.py"]},
         {"id": "3.204", "title": "A contacts merge in the widget thread gives the loop its turn (E0): both merges (Google, platforms) call `imports.give_way(i)` once per row — every `GIVE_WAY_EVERY` rows the thread yields the interpreter, and while the body's loop is stalling it also waits before the next batch",
             "ch": UNIT, "paths": ["tests/browser/unit/contactos/test_a_contacts_merge_gives_way_to_the_loop.py"]},
         {"id": "3.205", "title": "Two appointments with the same words at the same instant ring as ONE notice (E0): `_schedule_reminder` answers with the pending twin's id instead of a second `cron.create` (723 creates for 154 instants at one boot, measured); other words or another instant get their own; `_cancel_reminder` keeps a shared job while any other row still carries it — in the rows a caller holds (every agenda action and sweep) a row is itself by IDENTITY, so two identical local rows are two rows and the survivor keeps its alarm; only a read-back from the store tells its own copy by what it says",
@@ -3838,6 +3840,12 @@ DOMAINS: list[dict] = [
                                  "para — con el mensaje que está leyendo marcado, y su red si no hay canal",
             "ch": UNIT,
             "paths": ["tests/browser/unit/chat/test_the_wall_says_it_while_it_is_being_said.py"]},
+        {"id": "4.579", "title": "The agent's line crawls even when its captions arrive before the line is owed (a stalled body delays `brain reply`): the newest caption still sounding is kept and the line it begins claims it on arrival; an unrelated, finished or stale caption paints nothing",
+            "ch": UNIT,
+            "paths": ["tests/browser/unit/chat/test_a_caption_ahead_of_its_line_still_crawls.py"]},
+        {"id": "4.580", "title": "A live caption never rebuilds the history (RENDERED): his partials and the agent's crawl write only their own text, once per frame, and the history rows stay the same nodes; the live caption sits last and leaves no row when cleared",
+            "ch": UNIT,
+            "paths": ["tests/browser/unit/chat/test_a_live_caption_never_rebuilds_the_history.py"]},
         # V2-748 — su regla del 2026-09-21: «la agenda va directa. Cuando digo borrar esto, lo borras sin
         # preguntar (…) otra cosa es que guardes un rastro de lo que había, por si me he equivocado, y te
         # digo restáuralo». Las dos mitades: el borrado no pregunta, y la papelera devuelve la fila en su
