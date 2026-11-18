@@ -85,6 +85,16 @@ export function setThemeCustom(partial) {
   _persistLocal(); _apply(); _persistServer();
 }
 
+// Settings ▸ Appearance shows a look before keeping it: `previewTheme` paints without saving anything, and the
+// page's Save calls `saveTheme`; its Cancel previews the saved look back.
+export function previewTheme({ profile, custom }) {
+  if (THEMES[profile]) _profile = profile;
+  _custom = { ...(custom || {}) };
+  for (const k of Object.keys(_custom)) if (!_custom[k]) delete _custom[k];
+  _apply();
+}
+export function saveTheme(look) { previewTheme(look); _persistLocal(); _persistServer(); }
+
 export function toggleTheme() {
   setTheme(theme() === "dark" ? "light" : "dark");
 }

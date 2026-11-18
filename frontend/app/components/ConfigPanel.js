@@ -1,36 +1,24 @@
-// ConfigPanel — ⚙ área of CONFIGURACIÓN a pantalla completa (V2-043).
-// Elige QUÉ API/modelo usa CADA pieza (FlashBrain, CodeAgent, memoria, voz, búsqueda web, música, conectores)
-// and shows the RESUMEN of APIs with SALDO. Todo from the UI (invariante of producto). Patrón: menú lateral
-// (una sección visible a the vez, estilo Chrome/macOS Ajustes) + panel of formulario a the derecha with filas
-// agrupadas and su button of guardar, leído by id (como SettingsModal), guardado by sección contra /api/config/*.
-// The API keys by pieza se guardan en the ENV of the proveedor (coherente with the resolución by endpoint of the FlashBrain).
+// ConfigPanel — the full-screen ⚙ Settings area (V2-043): which API/model each piece uses, voice, search, music,
+// balances, notices, rules, permissions, appearance, the agent's face, connectors and widgets. ONE left menu (a
+// section visible at a time) and a content column where EVERY page is drawn by the one layout in
+// `settings/layout.js` — breadcrumb, title, one line, rows with a fixed label column, Cancel + Save at the bottom
+// right. The plain pages are built in `settings/sections.js`; this file holds the menu, the wiring and the saves.
 import { h, raw } from "../core/dom.js?v=2";
 import { createEffect } from "../core/reactive.js?v=2";
 import * as store from "../core/store.js?v=2";
 import * as api from "../services/api.js?v=2";
 import * as session from "../services/session.js?v=3";
 import { GEAR_ICON, BRAIN_ICON, CPU_ICON, DATABASE_ICON, MIC_ICON, SEARCH_ICON, MUSIC_ICON, SERVER_ICON, BELL_ICON, MOON_ICON, LINK_ICON, WIDGETS_ICON, LIST_ICON, LOCK_ICON, FACE_ICON } from "../lib/icons.js?v=2";
-import { mountRules } from "./RulesSection.js?v=1";   // V2-806 — his rules and preferences, one table
-import { mountPermissions } from "./PermissionsSection.js?v=1";   // V2-875 — his permission switches
+import { mountRules } from "./RulesSection.js?v=2";   // V2-806 — his rules and preferences, one table
+import { mountPermissions } from "./PermissionsSection.js?v=2";   // V2-875 — his permission switches
 import { mountPresence } from "../presence/PresenceSection.js?v=1";   // V2-928 — the agent's face
 import * as push from "../services/push.js?v=1";
 import { t } from "../core/i18n.js?v=1";
-import { THEMES, FONT_SIZES, FONT_STACKS } from "../core/themes.js?v=1";
 import * as themeSvc from "../services/theme.js?v=2";
 import { theme as themeSignal, setTheme } from "../core/store.js?v=2";
-import { connectorList, connectorWizard, connectorForm, isSettling, groupGoogle, focusOf } from "./ConnectorWizard.js?v=6";
-
-const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const opt = (list, sel) => (list || []).map(o => `<option value="${esc(o.value != null ? o.value : o)}"${(o.value != null ? o.value : o) === sel ? " selected" : ""}>${esc(o.label != null ? o.label : o)}</option>`).join("");
-const badge = st => `<span class="cf-badge cf-${esc(st || "off")}">${({ ok: t("config.badge.ok"), warn: t("config.badge.warn"), error: t("config.badge.error"), off: t("config.badge.off"), unknown: "—" }[st] || st || "—")}</span>`;
-
-// a row of ajuste: etiqueta a the izquierda, control (+ pista opcional) a the derecha — patrón Ajustes/Chrome.
-const row = (label, ctl, hint) =>
-  `<div class="cf-row2"><label class="cf-row2-label">${esc(label)}</label><div class="cf-row2-ctl">${ctl}${hint ? `<span class="cf-hint">${hint}</span>` : ""}</div></div>`;
-
-// a sección = título + subtítulo + un grupo of filas (app with separadores, as un grupo of Ajustes).
-const panel = (id, title, sub, inner) =>
-  `<section class="cf-panel-sec" id="cf_${id}"><header class="cf-panel-head"><h4>${esc(title)}</h4>${sub ? `<p>${esc(sub)}</p>` : ""}</header><div class="cf-group">${inner}</div></section>`;
+import { connectorList, connectorWizard, connectorForm, isSettling, groupGoogle, focusOf } from "./ConnectorWizard.js?v=7";
+import { esc, page, btn, bindForm, say } from "./settings/layout.js?v=1";
+import * as S from "./settings/sections.js?v=1";
 
 const SECTIONS = [
   { id: "fast", icon: BRAIN_ICON },
@@ -69,40 +57,39 @@ export function ConfigPanel() {
   let navOpen = true;
   // The Conectores tab shows ONE connector at a time behind a breadcrumb (`cxFocus`), on its guide's `cxStep`.
   let cxFocus = null, cxStep = 0, cxPolling = false, cxService = "";   // cxService: the Google service picked out
-  // Where «Volver» goes (operator 2026-10-25: «si voy a un sitio y le doy a volver, quiero volver desde donde
-  // venía»). Set when something OUTSIDE the panel opened it on one connector (a card, the wall, the voice):
-  // {from: "<caller's name>" | ""}. Then the connector's «Volver» closes the panel — back to the caller —
-  // instead of dropping the person on the connectors list. The breadcrumb stays the way to roam the section,
-  // and taking it drops the return: they chose to explore here.
+  // Where «Volver» goes when something OUTSIDE the panel opened it on one connector (a card, the wall, the voice):
+  // {from: "<caller's name>" | ""}. Then the connector's «Volver» closes the panel — back to the caller.
   let cxReturn = null;
-  // The consent URL the browser REFUSED to open in a window (pop-up blocker). 2026-10-04: the operator pressed
-  // «Connect» on Google Calendar, Chrome blocked the window without a word, the panel sat on «connecting…» for
-  // three minutes and he read it as «se ha quedado ahí». Kept per connector so its form can offer the way in.
+  // The consent URL the browser REFUSED to open in a window (pop-up blocker), kept per connector so its form can
+  // offer the way in (a «connecting…» that never moves read as a hang).
   let cxConsent = null;   // null | { id, url }
-  // V2-694 — the language picker's rows and the code in force, read from GET /api/i18n/state (the SAME source
-  // the first-run veil uses, so the two screens can never offer different languages). `langArmed` is the
-  // first half of the two-click consent: see `applyLanguage`.
+  // V2-694 — the language picker's rows and the code in force, read from GET /api/i18n/state (the SAME source the
+  // first-run veil uses). `langArmed` is the first half of the two-click consent: see `applyLanguage`.
   let langPicker = { rows: [], active: "" };
   let langArmed = false;
+  // Appearance previews before it saves: the look that is SAVED, put back by Cancel or by leaving the page.
+  let savedLook = null;
 
-  const msg = t => { if (msgEl) msgEl.textContent = t || ""; };
+  // A result is said in the bar of the page on screen; with no page (loading) it goes to the top line.
+  const msg = (text, bad) => { if (!say(bodyEl, text, bad === true ? "error" : "") && msgEl) msgEl.textContent = text || ""; };
 
   // ---- render ----
   function render() {
-    const cat = cfg.catalog || {};
     const cloudProfile = !!cfg.cloud_profile;
     const visibleSections = cloudProfile ? SECTIONS.filter(s => !CLOUD_LOCKED_NAV_SECTIONS.has(s.id)) : SECTIONS;
+    const host = (id, sid, form) => page({ id: sid, crumb: [t("config.sec." + sid)], title: t("config.sec." + sid), sub: t(`config.${id}.sub`),
+      body: `<div id="cf_${sid}_host"></div>`, form });
     const builders = {
-      fast: () => sec_fast(cat.fast || {}),
-      code: () => sec_code(cat.code_agent || {}),
-      memory: () => sec_memory(cat),
-      voice: () => sec_voice(cloudProfile),
-      search: () => sec_search(),
-      music: () => sec_music(),
-      apis: () => sec_apis(),
-      notices: () => sec_notices(),
-      rules: () => `<div id="cf_rules_host"></div>`,   // filled from /api/rules once on screen (wire)
-      permissions: () => `<div id="cf_perm_host"></div>`,   // V2-875, filled once on screen (wire)
+      fast: () => S.sec_fast(cfg),
+      code: () => S.sec_code(cfg),
+      memory: () => S.sec_memory(cfg),
+      voice: () => S.sec_voice(cfg, cloudProfile, CLOUD_LOCKED_VOICE_KEYS),
+      search: () => S.sec_search(cfg),
+      music: () => S.sec_music(cfg),
+      apis: () => S.sec_apis(cfg),
+      notices: () => S.sec_notices(),
+      rules: () => page({ id: "rules", crumb: [t("config.sec.rules")], title: t("config.rules.title"), sub: t("config.rules.sub"), body: `<div id="cf_rules_host"></div>`, form: true }),
+      permissions: () => host("perm", "permissions", true),
     };
     if (!builders[activeSec] || (cloudProfile && CLOUD_LOCKED_NAV_SECTIONS.has(activeSec))) activeSec = visibleSections[0].id;
     // ONE left menu: each area a row; «settings» lists its sections under it, always visible.
@@ -114,247 +101,41 @@ export function ConfigPanel() {
     const here = activeTab === "settings" ? t("config.sec." + activeSec) : t("config.tab." + activeTab);
     let content;
     if (activeTab === "conectores") content = sec_connectors();
-    else if (activeTab === "apariencia") content = sec_apariencia();
-    else if (activeTab === "widgets") content = sec_widgets();
-    else if (activeTab === "presence") content = `<div id="cf_presence_host"></div>`;
+    else if (activeTab === "apariencia") content = S.sec_apariencia({ profile: themeSvc.themeProfile(), custom: themeSvc.themeCustom(), mode: themeSignal(), langPicker, langArmed, themeName });
+    else if (activeTab === "widgets") content = S.sec_widgets(cfg, store.lang());
+    else if (activeTab === "presence") content = page({ id: "presence", crumb: [t("config.tab.presence")], title: t("config.tab.presence"), sub: t("config.presence.sub"), body: `<div id="cf_presence_host"></div>` });
     else content = builders[activeSec]();
-    // Every area reads from the left edge, one measure wide; the connectors page keeps its own wider measure.
     const pane = `<div class="cf-main"><div class="cf-mback"><button type="button" class="cf-mback-btn" data-menu="1">← ${esc(t("config.menu"))}</button><b>${esc(here)}</b></div>` +
-      `<div class="cf-scroll${activeTab === "conectores" ? " cf-scroll--cx" : ""}"><div class="cf-panel${activeTab === "conectores" ? " cf-panel--cx" : ""}">${content}</div></div></div>`;
+      `<div class="cf-scroll"><div class="cf-panel">${content}</div></div></div>`;
     bodyEl.innerHTML = `<div class="cf-layout${navOpen ? " is-menu" : ""}">${menu}${pane}</div>`;
     wire();
   }
 
-  const providerKeyRow = (prov) => {
-    // row of API key for the proveedor seleccionado (si es cloud and tiene key_env). Redactada: only presencia.
-    if (!prov || !prov.cloud || !prov.key_env) return "";
-    const setNow = (cfg.credentials || []).some(c => (c.env || []).includes(prov.key_env) && c.set);
-    return row(t("config.apikey.label", { env: prov.key_env }),
-      `<input id="cf_key_${esc(prov.key_env)}" type="password" placeholder="${setNow ? t("config.key.ph_saved_keep") : t("config.key.ph_paste")}" autocomplete="off"/>`,
-      setNow ? t("config.key.configured") : t("config.key.not_configured"));
-  };
-
-  // Desplegable CLOSED of modelos: only lo that ese proveedor sirve. `blank` = a first opción vacía with su
-  // texto (heredar / by defecto of the proveedor). Un modelo that the proveedor no sirve ya no es tecleable — el
-  // backend además lo rechaza al guardar (config_api._model_mismatch), porque the síntoma of un modelo imposible
-  // aparecía minutos después inside of a tarea muerta, no al guardar.
-  const modelSelect = (id, models, sel, blank) =>
-    `<select id="${id}">${blank != null ? `<option value=""${sel ? "" : " selected"}>${esc(blank)}</option>` : ""}${opt(models || [], sel)}</select>`;
-
-  function sec_fast(c) {
-    const f = (cfg.v2 && cfg.v2.fast) || {};
-    const provs = c.providers || [];
-    const cur = provs.find(p => p.id === f.provider) || provs[0] || {};
-    // Ni URL base ni modelo a mano (norma of the operador 2026-08-12): the proveedor determina the endpoint and the lista
-    // of modelos son the that the benchmark avala. Lo único that se teclea here es the API key.
-    return panel("fast", t("config.fast.title"), (c.note || "") + t("config.fast.sub_suffix"),
-      row(t("config.row.provider"), `<select id="cf_fast_provider">${opt(provs.map(p => ({ value: p.id, label: p.label })), f.provider)}</select>`) +
-      row(t("config.row.model"), `<span id="cf_fast_modelbox">${modelSelect("cf_fast_model", cur.models, f.model)}</span>`) +
-      `<div id="cf_fast_keyrow">${providerKeyRow(cur)}</div>` +
-      `<div class="cf-foot"><button class="cf-save" data-sec="fast">${t("config.fast.save")}</button></div>` +
-      `<div class="cf-foot cf-foot-info"><button type="button" class="cf-benchmarks-btn">${t("config.fast.benchmarks")}</button></div>`);
+  // Leaving Appearance with an unsaved look puts the saved one back (a preview is never kept by walking away).
+  function dropPreview() {
+    if (!savedLook) return;
+    themeSvc.previewTheme(savedLook); if (themeSignal() !== savedLook.mode) setTheme(savedLook.mode);
+    savedLook = null;
   }
-
-  // Está the CLI of ese proveedor instalado en ESTA máquina? Lo dice the backend (`detected`/`version`). Antes the UI
-  // ofrecía the dos by igual and elegir the that no estaba se descubría inside of a tarea muerta.
-  const cliState = (p) => {
-    if (p.detected === undefined) return "";
-    if (!p.detected) return `<span class="cf-hint cf-warn">⚠ ${esc(t("config.code.cli_missing"))}</span>`;
-    let s = `<span class="cf-hint">✓ ${esc(t("config.code.cli_found", { version: p.version || "?" }))}</span>`;
-    // Su propio config of the CLI pide un modelo that the API no sirve: se DICE, no se descarta callando.
-    if (p.stale_default) s += `<span class="cf-hint cf-warn">⚠ ${esc(t("config.code.stale_default", { model: p.stale_default }))}</span>`;
-    return s;
-  };
-
-  const codeModelRows = (p, a) => {
-    const ms = p.models || [];
-    // The default of the propio CLI (leído of su config) manda as pista: si the operador ya decidió cuál usa su
-    // Codex, the UI arranca of ahí en vez of proponer otro.
-    const dflt = p.default_model && ms.includes(p.default_model) ? p.default_model : "";
-    const g = t("config.ph.provider_default") + (dflt ? ` (${dflt})` : "");
-    return row(t("config.code.model_global"), modelSelect("cf_code_model", ms, a.model, g)) +
-      row(t("config.code.model_memory"), modelSelect("cf_code_model_memory", ms, a.model_memory, t("config.ph.inherits"))) +
-      row(t("config.code.model_web"), modelSelect("cf_code_model_web", ms, a.model_web, t("config.ph.inherits"))) +
-      row(t("config.code.model_code"), modelSelect("cf_code_model_code", ms, a.model_code, t("config.ph.inherits")));
-  };
-
-  // Un preset mueve CLI + endpoint + modelo A LA VEZ. Elegir the tres piezas by separado es where salían los
-  // desajustes (glm-5.2 sobre Codex, gpt-5.5 sobre Z.AI). Se marca the that NO puede funcionar and POR QUÉ — verlo
-  // antes of elegir, no inside of a tarea muerta media hora después.
-  const presetCard = (p, activeId) => {
-    const on = p.id === activeId;
-    const money = p.billing === "subscription" ? "◆" : (p.billing === "licence" ? "◇" : "$");
-    const state = p.ready ? "" : `<span class="cf-hint cf-warn">⚠ ${esc(p.blocked_by === "cli"
-      ? t("config.preset.no_cli") : t("config.preset.no_key", { env: p.key_env || "" }))}</span>`;
-    return `<button type="button" class="cf-preset${on ? " on" : ""}${p.ready ? "" : " off"}" data-preset="${esc(p.id)}">
-      <span class="cf-preset-h">${money} ${esc(p.label)}${on ? " ✓" : ""}</span>
-      <span class="cf-hint">${esc(p.cost || "")}</span>${state}</button>`;
-  };
-
-  // Cuál of the presets es the that está puesto ahora? Se compara the TERNA completa: dos presets pueden compartir
-  // CLI and distinguirse only by the endpoint.
-  const activePreset = (presets, a) => (presets.find(p =>
-    p.provider === (a.provider || "") && (p.base_url || "") === (a.base_url || "") &&
-    (p.model || "") === (a.model || "")) || {}).id || "";
-
-  function sec_code(c) {
-    const a = (cfg.v2 && cfg.v2.code_agent) || {};
-    const provs = c.providers || [];
-    const cur = provs.find(p => p.id === a.provider) || provs[0] || {};
-    const presets = c.presets || [];
-    const act = activePreset(presets, a);
-    const presetBox = presets.length
-      ? row(t("config.code.preset"), `<div class="cf-presets" id="cf_code_presets">${presets.map(p => presetCard(p, act)).join("")}</div>`,
-        t("config.code.preset_hint"))
-      : "";
-    return panel("code", t("config.code.title"), t("config.code.sub"),
-      presetBox +
-      row(t("config.row.provider"), `<select id="cf_code_provider">${opt(provs.map(p => ({ value: p.id, label: p.label })), a.provider)}</select>`,
-        `<span id="cf_code_clistate">${cliState(cur)}</span>`) +
-      `<div id="cf_code_models">${codeModelRows(cur, a)}</div>` +
-      `<div id="cf_code_provnote" class="cf-hint">${esc(cur.note || c.note || "")}</div>` +
-      row(t("config.code.max_parallel"), `<input id="cf_code_max_parallel" type="number" min="1" max="8" value="${esc(a.max_parallel)}"/>`) +
-      `<div class="cf-foot"><button class="cf-save" data-sec="code_agent">${t("config.code.save")}</button></div>`);
-  }
-
-  function sec_memory(cat) {
-    const m = (cfg.v2 && cfg.v2.memory) || {};
-    const emb = (cat.memory_embed && cat.memory_embed.providers) || [];
-    const rer = (cat.memory_rerank && cat.memory_rerank.providers) || [];
-    return panel("memory", t("config.memory.title"), t("config.memory.sub"),
-      row(t("config.memory.embedding"), `<select id="cf_mem_embed_provider">${opt(emb.map(p => ({ value: p.id, label: p.label })), m.embed_provider)}</select>`, t("config.memory.embed_warn")) +
-      row(t("config.memory.embed_model"), `<input id="cf_mem_embed_model" value="${esc(m.embed_model)}"/>`) +
-      row(t("config.memory.reranker"), `<select id="cf_mem_rerank_provider">${opt(rer.map(p => ({ value: p.id, label: p.label })), m.rerank_provider)}</select>`) +
-      row(t("config.memory.rerank_model"), `<input id="cf_mem_rerank_model" value="${esc(m.rerank_model)}" placeholder="${t("config.ph.provider_default")}"/>`) +
-      row(t("config.memory.top_n"), `<input id="cf_mem_rerank_top_n" type="number" min="1" max="100" value="${esc(m.rerank_top_n)}"/>`) +
-      row(t("config.memory.blend"), `<input id="cf_mem_rerank_blend" type="number" step="0.05" min="0" max="1" value="${esc(m.rerank_blend)}"/>`) +
-      row(t("config.memory.write_processor"), `<input id="cf_mem_mem_processor_model" value="${esc(m.mem_processor_model)}"/>`) +
-      `<div class="cf-foot"><button class="cf-save" data-sec="memory">${t("config.memory.save")}</button></div>`);
-  }
-
-  function sec_voice(cloudProfile) {
-    const v = cfg.voice || {};
-    const allKnobs = v.knobs || [];
-    const knobs = cloudProfile ? allKnobs.filter(k => !CLOUD_LOCKED_VOICE_KEYS.has(k.key)) : allKnobs;
-    const free = new Set(v.free_text || []);
-    const rows = knobs.map(k => {
-      const hint = k.note ? esc(k.note) : "";
-      const ctl = free.has(k.key)
-        ? `<input id="cfv_${k.key}" list="dlv_${k.key}" value="${esc(k.value)}"/><datalist id="dlv_${k.key}">${opt(k.options)}</datalist>`
-        : `<select id="cfv_${k.key}">${opt(k.options, k.value)}</select>`;
-      return row(k.label, ctl, hint);
-    }).join("");
-    const cloudNote = cloudProfile
-      ? `<p class="cf-hint">${esc(t("config.voice.cloud_locked"))}</p>`
-      : "";
-    // THIS BROWSER's capture, which the rest of this panel is not: everything above is server configuration
-    // saved with the button below, while these two are the device the mic opens on and how the OS cleans it —
-    // per-browser, held in localStorage, applied by reconnecting. They arrived here when the bottom-left
-    // connection line was deleted (V2-542): a device choice belongs in Settings, and hiding it in a diagnostic
-    // strip is why it sat on the desktop for months looking like clutter. The ids stay `micsel`/`micmode`
-    // because the session's own helpers drive them by id; `wire()` asks the session to fill them, and empties
-    // the block when it cannot (the legacy Pipecat engine has no such helper) rather than showing two dead
-    // selects.
-    // Its OWN card, BELOW the save button, and that placement is the point: everything above is server
-    // configuration that «Guardar voz» writes, while these two are already applied the moment they change.
-    // Sitting them inside that card would put a Save button under two controls it does not save.
-    const device = panel("voice_device", t("config.voice.device_title"), t("config.voice.device_sub"),
-      row(t("config.voice.device"), `<select id="micsel"></select>`, esc(t("config.voice.device_hint"))) +
-      row(t("config.voice.capture"), `<select id="micmode"></select>`, esc(t("config.voice.capture_hint"))) +
-      // Honest about where the wake-word ear sends its audio (2026-11-11): it is the BROWSER's recogniser, not ours.
-      `<div class="cf-hint">${esc(t("config.voice.wakeword_privacy"))}</div>`);
-    return panel("voice", t("config.voice.title"), t("config.voice.sub"),
-      cloudNote + rows + `<div class="cf-foot"><button class="cf-save-voice">${t("config.voice.save")}</button></div>`)
-      + device;
-  }
-
-  // V2-796 — can THIS browser be reached when zaelar is closed? The engine sends each notice by voice when he is
-  // in front of a screen, and to every subscribed browser when he is not (`nucleo/pulse/notices.py`).
-  function sec_notices() {
-    const p = push.permission();
-    const state = !push.supported() ? "—" : p === "granted" ? t("push.settings_on")
-      : p === "denied" ? t("push.denied") : t("push.settings_off");
-    const ctl = !push.supported() ? "" : p === "granted"
-      ? `<button type="button" class="cf-save cf-push-test">${esc(t("push.test"))}</button>`
-      : p === "default" ? `<button type="button" class="cf-save cf-push-on">${esc(t("push.button"))}</button>` : "";
-    return panel("notices", t("push.title"), t("push.body"), row(t("push.settings_label"), ctl, esc(state)));
-  }
-
-  function sec_search() {
-    // The búsqueda web elige proveedor AUTO by calidad según the key disponible (Perplexity→Tavily→Brave→Google
-    // gratis→DDG). No there is store propio: se gobierna with the KEYS. Se editan here as credenciales.
-    const creds = cfg.credentials || [];
-    const keyRow = (prov, env, label) => {
-      const setNow = creds.some(c => c.key === prov && c.set);
-      return row(`${label} · ${env}`,
-        `<input id="cf_key_${esc(env)}" type="password" placeholder="${setNow ? t("config.key.ph_saved") : t("config.key.ph_paste_optional")}" autocomplete="off"/>`,
-        setNow ? t("config.key.active") : "—");
-    };
-    return panel("search", t("config.search.title"), t("config.search.sub"),
-      keyRow("perplexity", "PERPLEXITY_API_KEY", t("config.search.perplexity")) +
-      keyRow("tavily", "TAVILY_API_KEY", t("config.search.tavily")) +
-      keyRow("brave", "BRAVE_SEARCH_KEY", t("config.search.brave")) +
-      `<div class="cf-foot"><button class="cf-save-keys" data-envs="PERPLEXITY_API_KEY,TAVILY_API_KEY,BRAVE_SEARCH_KEY">${t("config.search.save")}</button></div>`);
-  }
-
-  function sec_music() {
-    const sp = cfg.spotify || {};
-    const st = sp.logged_in ? t("config.music.connected") : (sp.can_connect ? t("config.music.ready") : t("config.music.missing_client"));
-    return panel("music", t("config.music.title"), t("config.music.sub"),
-      row(t("config.row.status"), `<span class="cf-status">${esc(st)}${sp.logged_in ? "" : (sp.default_available ? t("config.music.oneclick") : "")}</span>`) +
-      `<div class="cf-foot">${sp.logged_in
-        ? `<button class="cf-spotify-dis">${t("config.music.disconnect")}</button>`
-        : `<button class="cf-spotify" ${sp.can_connect ? "" : "disabled"}>${t("config.music.connect")}</button>`}</div>`);
-  }
-
-  function apisRows() {
-    const apis = cfg.apis || [];
-    return apis.map(a => `<tr class="cf-api cf-api-${esc(a.state)}">
-        <td class="cf-api-name">${esc(a.key)}<span>${esc(a.enables || "")}</span></td>
-        <td>${badge(a.state)}</td>
-        <td class="cf-api-detail">${esc(a.detail || "")}${a.balance && a.balance.limit ? ` · ${bar(a.balance)}` : ""}</td>
-      </tr>`).join("") || '<tr><td colspan="3">—</td></tr>';
-  }
-  function sec_apis() {
-    return panel("apis", t("config.apis.title"), t("config.apis.sub"),
-      `<table class="cf-apis"><tbody id="cf_apis_tbody">${apisRows()}</tbody></table>
-       <div class="cf-foot"><button class="cf-refresh-apis">${t("config.apis.refresh")}</button></div>`);
-  }
-
-  const bar = (b) => {
-    const pct = b.limit ? Math.min(100, Math.round((b.used / b.limit) * 100)) : 0;
-    return `<span class="cf-bar"><i style="width:${pct}%"></i></span> ${pct}%`;
-  };
+  const lookNow = () => ({ profile: themeSvc.themeProfile(), custom: themeSvc.themeCustom(), mode: themeSignal() });
 
   // ---- wiring ----
   function wire() {
-    if (activeTab === "settings" && activeSec === "rules") mountRules(document.getElementById("cf_rules_host"), msg);
-    if (activeTab === "settings" && activeSec === "permissions") mountPermissions(document.getElementById("cf_perm_host"), msg, cfg);
+    const pg = bodyEl.querySelector(".set-page");
+    if (activeTab === "settings" && activeSec === "rules") mountRules(document.getElementById("cf_rules_host"), msg, pg);
+    if (activeTab === "settings" && activeSec === "permissions") mountPermissions(document.getElementById("cf_permissions_host"), msg, cfg, pg);
     if (activeTab === "presence") mountPresence(document.getElementById("cf_presence_host"), msg);
-    // V2-083: pestañas principales (settings/conectores/widgets)
     // The menu: an area row opens that area (Settings on its current section); a sub-item opens that section.
     // Re-clicking the open area on a phone still has to leave the menu, so it always renders.
     bodyEl.querySelectorAll(".cf-nav-top").forEach(b => b.onclick = () => {
+      dropPreview();
       if (b.dataset.tab === "conectores" && activeTab !== "conectores") { cxFocus = null; cxService = ""; cxStep = 0; }
       activeTab = b.dataset.tab; navOpen = false; render(); bodyEl.querySelector(".cf-scroll")?.scrollTo(0, 0); });
+    bodyEl.querySelectorAll(".cf-nav-sub").forEach(b => b.onclick = () => {
+      dropPreview();
+      activeTab = "settings"; activeSec = b.dataset.sec; navOpen = false; render(); bodyEl.querySelector(".cf-scroll")?.scrollTo(0, 0); });
     bodyEl.querySelectorAll("[data-menu]").forEach(b => b.onclick = () => { navOpen = true; render(); });
-    // controles of the pestaña Apariencia (V2-617) — every change applies live + persists via the theme service
-    bodyEl.querySelectorAll(".cf-th-card").forEach(b => b.onclick = () => {
-      themeSvc.setThemeProfile(b.dataset.profile); msg(t("config.theme.applied")); render();
-    });
-    bodyEl.querySelectorAll(".cf-th-modebtn").forEach(b => b.onclick = () => { setTheme(b.dataset.mode); render(); });
-    const lg = bodyEl.querySelector(".cf-lang-go"); if (lg) lg.onclick = () => applyLanguage(lg);
-    const ls = document.getElementById("cf_lang_sel");
-    // a fresh pick disarms the confirmation: the second click must mean «yes, THAT one».
-    if (ls) ls.onchange = () => { if (langArmed) { langArmed = false; render(); } };
-    const thAccent = document.getElementById("cf_th_accent");
-    if (thAccent) thAccent.onchange = () => { themeSvc.setThemeCustom({ accent: thAccent.value }); msg(t("config.theme.applied")); render(); };
-    const thAccentClear = bodyEl.querySelector(".cf-th-accent-clear");
-    if (thAccentClear) thAccentClear.onclick = () => { themeSvc.setThemeCustom({ accent: "" }); msg(t("config.theme.applied")); render(); };
-    const thFs = document.getElementById("cf_th_fs");
-    if (thFs) thFs.onchange = () => { themeSvc.setThemeCustom({ fs: thFs.value === "m" ? "" : thFs.value }); msg(t("config.theme.applied")); };
-    const thFont = document.getElementById("cf_th_font");
-    if (thFont) thFont.onchange = () => { themeSvc.setThemeCustom({ font: thFont.value === "system" ? "" : thFont.value }); msg(t("config.theme.applied")); };
+    if (activeTab === "apariencia") wireAppearance(pg);
     // controles of the pestaña Conectores
     bodyEl.querySelectorAll(".cf-cx-act").forEach(b => b.onclick = () => cxAct(b.dataset.act, b.dataset.id, b));
     bodyEl.querySelectorAll("[data-cx]").forEach(b => b.onclick = () => { ({ focus: cxFocus, service: cxService } = focusOf(b.dataset.cx)); cxStep = 0; cxConsent = null; render(); });
@@ -375,62 +156,94 @@ export function ConfigPanel() {
       bodyEl.querySelectorAll(".cf-em-link").forEach(a => { a.hidden = a.dataset.em !== emp.value; });
       const o = bodyEl.querySelector(".cf-em-other"); if (o) o.hidden = emp.value !== "other";
     };
-    bodyEl.querySelectorAll(".cf-nav-sub").forEach(b => b.onclick = () => {
-      activeTab = "settings"; activeSec = b.dataset.sec; navOpen = false; render(); bodyEl.querySelector(".cf-scroll")?.scrollTo(0, 0); });
-
-    // proveedor of the FlashBrain → repuebla SUS modelos and su row of key
-    const fp = document.getElementById("cf_fast_provider");
-    if (fp) fp.onchange = () => {
-      const provs = (cfg.catalog.fast && cfg.catalog.fast.providers) || [];
-      const p = provs.find(x => x.id === fp.value) || {};
-      const mb = document.getElementById("cf_fast_modelbox");
-      if (mb) mb.innerHTML = modelSelect("cf_fast_model", p.models, (p.models || [])[0]);
-      const kr = document.getElementById("cf_fast_keyrow"); if (kr) kr.innerHTML = providerKeyRow(p);
-    };
-
-    // preset of Brain Workers → guarda the TERNA of golpe (proveedor + endpoint + modelo) and recarga
-    bodyEl.querySelectorAll(".cf-preset").forEach(b => b.onclick = () => {
-      const presets = (cfg.catalog.code_agent && cfg.catalog.code_agent.presets) || [];
-      const p = presets.find(x => x.id === b.dataset.preset);
-      if (p) savePreset(p, b);
-    });
-
-    // proveedor of the Brain Workers → repuebla SUS modelos (el bug that traía al operador aquí: cambiaba a Codex
-    // and the cinco campos seguían with the `glm-5.2` of the proveedor anterior, that Codex no sirve), su nota de
-    // seguridad and the state of the CLI. The modelos NO se conservan al cambiar: son of otro proveedor.
-    const cp = document.getElementById("cf_code_provider");
-    if (cp) cp.onchange = () => {
-      const provs = (cfg.catalog.code_agent && cfg.catalog.code_agent.providers) || [];
-      const p = provs.find(x => x.id === cp.value) || {};
-      const box = document.getElementById("cf_code_models");
-      if (box) box.innerHTML = codeModelRows(p, { model: p.default_model || "", model_memory: "", model_web: "", model_code: "" });
-      const st = document.getElementById("cf_code_clistate"); if (st) st.innerHTML = cliState(p);
-      const nt = document.getElementById("cf_code_provnote");
-      if (nt) nt.textContent = p.note || (cfg.catalog.code_agent && cfg.catalog.code_agent.note) || "";
-    };
-    bodyEl.querySelectorAll(".cf-save").forEach(b => b.onclick = () => saveV2(b.dataset.sec, b));
-    const bv = bodyEl.querySelector(".cf-save-voice"); if (bv) bv.onclick = () => saveVoice(bv);
-    // The capture block is filled by the session engine, which owns the device list and the reconnect. If this
-    // engine has no such helper, REMOVE the block: two empty selects that do nothing are worse than no block.
-    const dev = bodyEl.querySelector("#cf_voice_device");   // the browser-capture card (sec_voice)
+    wireModels();
+    const rf = bodyEl.querySelector(".cf-refresh-apis"); if (rf) rf.onclick = () => refreshApis(rf);
+    const sc = bodyEl.querySelector(".cf-spotify"); if (sc) sc.onclick = () => connectSpotify(sc);
+    const sd = bodyEl.querySelector(".cf-spotify-dis"); if (sd) sd.onclick = () => disconnectSpotify(sd);
+    // The capture block is filled by the session engine, which owns the device list and the reconnect. Filling is
+    // ASYNC (`enumerateDevices`); a select nobody filled is a control that does nothing — its row goes, and the
+    // block goes when it is left empty (the legacy engine has no capture-mode picker).
+    const dev = bodyEl.querySelector("#cf_voice_device");
     if (dev) {
-      // Filling is ASYNC (the device list comes from `enumerateDevices`), so the pruning has to wait for it.
-      // A select nobody filled is a control that does nothing — drop its row instead of showing it empty. That
-      // is also what keeps this honest across the two engines: the legacy one has no capture-MODE picker, so
-      // its row disappears on its own without this panel having to know which engine it is talking to.
       const filled = session.mountMicPickers ? session.mountMicPickers() : Promise.resolve();
       Promise.resolve(filled).catch(() => {}).then(() => {
-        dev.querySelectorAll("select").forEach(sel => {
-          if (!sel.options.length) { const r = sel.closest(".cf-row2"); if (r) r.remove(); }
-        });
+        dev.querySelectorAll("select").forEach(sel => { if (!sel.options.length) { const r = sel.closest(".set-row"); if (r) r.remove(); } });
         if (!dev.querySelector("select")) dev.remove();
       });
     }
-    bodyEl.querySelectorAll(".cf-save-keys").forEach(b => b.onclick = () => saveKeys(b.dataset.envs.split(","), b));
-    const rf = bodyEl.querySelector(".cf-refresh-apis"); if (rf) rf.onclick = () => refreshApis(rf);
-    const bb = bodyEl.querySelector(".cf-benchmarks-btn"); if (bb) bb.onclick = () => store.setBenchmarksOpen(true);
-    const sc = bodyEl.querySelector(".cf-spotify"); if (sc) sc.onclick = () => connectSpotify(sc);
-    const sd = bodyEl.querySelector(".cf-spotify-dis"); if (sd) sd.onclick = () => disconnectSpotify(sd);
+    // Every page that edits values: Cancel puts the loaded values back by drawing the page again from them.
+    const saves = { fast: () => saveV2("fast"), code: () => saveV2("code_agent"), memory: () => saveV2("memory"),
+      voice: saveVoice, search: () => saveKeys(S.SEARCH_ENVS) };
+    if (pg && activeTab === "settings" && saves[activeSec]) bindForm(pg, { save: saves[activeSec], reset: render });
+  }
+
+  // A provider change repopulates ITS models (a model of the previous provider is one this one does not serve),
+  // its key row and its notes; a Brain Workers preset fills provider + endpoint + model, saved with the page.
+  function wireModels() {
+    const cat = cfg.catalog || {};
+    const fp = document.getElementById("cf_fast_provider");
+    if (fp) fp.onchange = () => {
+      const p = ((cat.fast && cat.fast.providers) || []).find(x => x.id === fp.value) || {};
+      document.getElementById("cf_fast_modelbox").innerHTML = S.modelSelect("cf_fast_model", p.models, (p.models || [])[0]);
+      document.getElementById("cf_fast_keyrow").innerHTML = S.providerKeyRow(cfg, p);
+    };
+    const ca = cat.code_agent || {};
+    const cp = document.getElementById("cf_code_provider");
+    const setCode = (p, a) => {
+      document.getElementById("cf_code_models").innerHTML = S.codeModelRows(p, a);
+      document.getElementById("cf_code_provnote").innerHTML = S.codeHint(p, ca);
+    };
+    const markPreset = () => {
+      const a = { provider: cp.value, base_url: document.getElementById("cf_code_base_url").value, model: (document.getElementById("cf_code_model") || {}).value };
+      const on = S.activePreset(ca.presets || [], a);
+      bodyEl.querySelectorAll(".cf-preset").forEach(b => { b.classList.toggle("on", b.dataset.preset === on); b.setAttribute("aria-pressed", b.dataset.preset === on); });
+    };
+    if (cp) {
+      cp.onchange = () => {
+        const p = (ca.providers || []).find(x => x.id === cp.value) || {};
+        setCode(p, { model: p.default_model || "", model_memory: "", model_web: "", model_code: "" });
+        markPreset();
+      };
+      bodyEl.querySelector("#cf_code_models")?.addEventListener("change", markPreset);
+    }
+    // The per-kind models are CLEARED on purpose: they belong to another provider, and dragging them along is the
+    // mismatch a preset exists to avoid.
+    bodyEl.querySelectorAll(".cf-preset").forEach(b => b.onclick = () => {
+      const p = (ca.presets || []).find(x => x.id === b.dataset.preset); if (!p || !cp) return;
+      cp.value = p.provider;
+      setCode((ca.providers || []).find(x => x.id === p.provider) || {}, { model: p.model || "", model_memory: "", model_web: "", model_code: "" });
+      const bu = document.getElementById("cf_code_base_url"); bu.value = p.base_url || "";
+      markPreset(); bu.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  }
+
+  function wireAppearance(pg) {
+    if (!savedLook) savedLook = lookNow();
+    const field = id => document.getElementById(id);
+    const set = (id, v) => { const el = field(id); el.value = v; el.dispatchEvent(new Event("change", { bubbles: true })); };
+    const preview = () => {
+      const custom = { accent: field("cf_th_accent_val").value, fs: field("cf_th_fs").value === "m" ? "" : field("cf_th_fs").value,
+        font: field("cf_th_font").value === "system" ? "" : field("cf_th_font").value };
+      themeSvc.previewTheme({ profile: field("cf_th_profile").value, custom });
+      if (themeSignal() !== field("cf_th_mode").value) setTheme(field("cf_th_mode").value);
+      bodyEl.querySelectorAll(".cf-th-card").forEach(b => b.classList.toggle("on", b.dataset.profile === field("cf_th_profile").value));
+      bodyEl.querySelectorAll(".cf-th-modebtn").forEach(b => b.classList.toggle("on", b.dataset.mode === field("cf_th_mode").value));
+      const clr = bodyEl.querySelector(".cf-th-accent-clear"); if (clr) clr.disabled = !field("cf_th_accent_val").value;
+    };
+    bodyEl.querySelectorAll(".cf-th-card").forEach(b => b.onclick = () => { set("cf_th_profile", b.dataset.profile); preview(); });
+    bodyEl.querySelectorAll(".cf-th-modebtn").forEach(b => b.onclick = () => { set("cf_th_mode", b.dataset.mode); preview(); });
+    field("cf_th_accent").oninput = e => { set("cf_th_accent_val", e.target.value); preview(); };
+    bodyEl.querySelector(".cf-th-accent-clear").onclick = () => { set("cf_th_accent_val", ""); field("cf_th_accent").value = "#A48FFF"; preview(); };
+    field("cf_th_fs").addEventListener("change", preview);
+    field("cf_th_font").addEventListener("change", preview);
+    bindForm(pg, {
+      save: async () => { const look = lookNow(); themeSvc.saveTheme(look); savedLook = look; return { ok: true }; },
+      reset: () => { dropPreview(); render(); },
+    });
+    const lg = bodyEl.querySelector(".cf-lang-go"); if (lg) lg.onclick = () => applyLanguage(lg);
+    const ls = field("cf_lang_sel");
+    // a fresh pick disarms the confirmation: the second click must mean «yes, THAT one».
+    if (ls) ls.onchange = () => { if (langArmed) { langArmed = false; render(); } };
   }
 
   const val = id => { const el = document.getElementById(id); return el ? el.value : undefined; };
@@ -441,71 +254,58 @@ export function ConfigPanel() {
     return false;
   }
 
-  async function saveV2(section, btn) {
-    btn.disabled = true; msg(t("config.msg.saving"));
-    try {
-      let patch = {};
-      if (section === "fast") {
-        const provs = (cfg.catalog.fast && cfg.catalog.fast.providers) || [];
-        const p = provs.find(x => x.id === val("cf_fast_provider")) || {};
-        // The endpoint SALE of the proveedor, ya no there is campo of URL: elegir proveedor and dejar a base_url vieja
-        // apuntando a otro sitio era a forma silenciosa of romper the FlashBrain.
-        patch = { provider: val("cf_fast_provider"), model: val("cf_fast_model"), base_url: p.base_url || "" };
-        // the key of the proveedor seleccionado (si se tecleó) → credencial en su env
-        if (p.key_env) await saveKey(p.key_env);
-      } else if (section === "code_agent") {
-        patch = { provider: val("cf_code_provider"), model: val("cf_code_model"), model_memory: val("cf_code_model_memory"),
-          model_web: val("cf_code_model_web"), model_code: val("cf_code_model_code"), max_parallel: Number(val("cf_code_max_parallel")) || 3 };
-      } else if (section === "memory") {
-        patch = { embed_provider: val("cf_mem_embed_provider"), embed_model: val("cf_mem_embed_model"),
-          rerank_provider: val("cf_mem_rerank_provider"), rerank_model: val("cf_mem_rerank_model"),
-          rerank_top_n: Number(val("cf_mem_rerank_top_n")) || 20, rerank_blend: Number(val("cf_mem_rerank_blend")) || 0.85,
-          mem_processor_model: val("cf_mem_mem_processor_model") };
-      }
-      const r = await api.saveConfigV2(section, patch);
-      msg(r.ok ? t("config.msg.saved_next_turn") : ("✗ " + (r.error || t("config.msg.error"))));
-      api.uiEvent("config.save", { section });
-    } catch (e) { msg(t("config.msg.error_saving")); } finally { btn.disabled = false; }
+  // After a save the page is drawn again from the server's copy, so Cancel's «loaded values» are the saved ones.
+  async function reloadCfg() { try { Object.assign(cfg, await api.getConfig()); } catch (_) {} render(); }
+
+  async function saveV2(section) {
+    let patch = {};
+    if (section === "fast") {
+      const p = ((cfg.catalog.fast && cfg.catalog.fast.providers) || []).find(x => x.id === val("cf_fast_provider")) || {};
+      // The endpoint comes FROM the provider: choosing one and leaving an old base_url pointing elsewhere was a
+      // silent way to break the FlashBrain.
+      patch = { provider: val("cf_fast_provider"), model: val("cf_fast_model"), base_url: p.base_url || "" };
+      if (p.key_env) await saveKey(p.key_env);
+    } else if (section === "code_agent") {
+      patch = { provider: val("cf_code_provider"), base_url: val("cf_code_base_url") || "", model: val("cf_code_model"), model_memory: val("cf_code_model_memory"),
+        model_web: val("cf_code_model_web"), model_code: val("cf_code_model_code"), max_parallel: Number(val("cf_code_max_parallel")) || 3 };
+    } else if (section === "memory") {
+      patch = { embed_provider: val("cf_mem_embed_provider"), embed_model: val("cf_mem_embed_model"),
+        rerank_provider: val("cf_mem_rerank_provider"), rerank_model: val("cf_mem_rerank_model"),
+        rerank_top_n: Number(val("cf_mem_rerank_top_n")) || 20, rerank_blend: Number(val("cf_mem_rerank_blend")) || 0.85,
+        mem_processor_model: val("cf_mem_mem_processor_model") };
+    }
+    const r = await api.saveConfigV2(section, patch);
+    api.uiEvent("config.save", { section });
+    if (!r.ok) return { ok: false, message: r.error || t("config.msg.error") };
+    await reloadCfg();
+    return { ok: true, message: t("config.msg.saved_next_turn").replace(/^✓\s*/, "") };
   }
 
-  async function savePreset(p, btn) {
-    btn.disabled = true; msg(t("config.msg.saving"));
-    try {
-      // The `model_<kind>` se LIMPIAN a propósito: son of otro proveedor and arrastrarlos es exactamente the desajuste
-      // that the preset viene a evitar.
-      const r = await api.saveConfigV2("code_agent", {
-        provider: p.provider, base_url: p.base_url || "", model: p.model || "",
-        model_memory: "", model_web: "", model_code: "",
-      });
-      msg(r.ok ? "✓ " + p.label : ("✗ " + (r.error || t("config.msg.error"))));
-      api.uiEvent("config.save", { section: "code_agent", preset: p.id });
-      if (r.ok) await load();
-    } catch (e) { msg(t("config.msg.error_saving")); } finally { btn.disabled = false; }
+  async function saveVoice() {
+    const payload = {};
+    (cfg.voice.knobs || []).forEach(k => { const el = document.getElementById("cfv_" + k.key); if (el) payload[k.key] = el.value; });
+    const r = await api.saveSettings(payload);
+    if (!r.ok) return { ok: false, message: t("config.msg.no_changes") };
+    let note = r.note || t("config.msg.saved");
+    if (r.needs_reconnect) {
+      try { await session.loadVoices(); } catch (_) {}
+      if (session.isActive()) { msg(t("config.msg.applying_reconnect")); await session.reconnect(); note = t("config.msg.applied"); }
+      else note = t("config.msg.saved_on_connect");
+    }
+    await reloadCfg();
+    return { ok: true, message: String(note).replace(/^✓\s*/, "") };
   }
 
-  async function saveVoice(btn) {
-    btn.disabled = true; msg(t("config.msg.saving_voice"));
-    try {
-      const payload = {};
-      (cfg.voice.knobs || []).forEach(k => { const el = document.getElementById("cfv_" + k.key); if (el) payload[k.key] = el.value; });
-      const r = await api.saveSettings(payload);
-      if (r.ok && r.needs_reconnect) {
-        try { await session.loadVoices(); } catch (_) {}
-        if (session.isActive()) { msg(t("config.msg.applying_reconnect")); await session.reconnect(); msg(t("config.msg.applied")); }
-        else msg(t("config.msg.saved_on_connect"));
-      } else msg(r.ok ? ("✓ " + (r.note || t("config.msg.saved"))) : t("config.msg.no_changes"));
-    } catch (e) { msg(t("config.msg.error_saving_voice")); } finally { btn.disabled = false; }
+  async function saveKeys(envs) {
+    let n = 0; for (const e of envs) { if (await saveKey(e)) n++; }
+    await reloadApis();
+    await reloadCfg();
+    return { ok: true, message: n ? t("config.msg.keys_saved", { n }).replace(/^✓\s*/, "") : t("config.msg.no_changes") };
   }
 
-  async function saveKeys(envs, btn) {
-    btn.disabled = true; msg(t("config.msg.saving_keys"));
-    try { let n = 0; for (const e of envs) { if (await saveKey(e)) n++; } msg(n ? t("config.msg.keys_saved", { n }) : t("config.msg.no_changes")); }
-    catch (e) { msg(t("config.msg.error_generic")); } finally { btn.disabled = false; await reloadApis(); }
-  }
-
-  async function refreshApis(btn) {
-    btn.disabled = true; msg(t("config.msg.querying_balances"));
-    try { await reloadApis(true); msg(t("config.msg.balances_updated")); } catch (_) { msg(t("config.msg.couldnt_query")); } finally { btn.disabled = false; }
+  async function refreshApis(b) {
+    b.disabled = true; msg(t("config.msg.querying_balances"));
+    try { await reloadApis(true); msg(t("config.msg.balances_updated")); } catch (_) { msg(t("config.msg.couldnt_query"), true); } finally { b.disabled = false; }
   }
 
   async function reloadApis(refresh) {
@@ -513,7 +313,7 @@ export function ConfigPanel() {
     cfg.apis = r.apis || [];
     store.setApiSummary(r.apis || []); store.setApiAlerts(r.alerts || []);
     const tb = document.getElementById("cf_apis_tbody");
-    if (tb) tb.innerHTML = apisRows();
+    if (tb) tb.innerHTML = S.apisRows(cfg);
   }
 
   // The login window opens INSIDE the click and is pointed at Spotify when the endpoint answers (a window
@@ -550,7 +350,7 @@ export function ConfigPanel() {
 
   function sec_connectors() {
     const cs = cfg.connectors || [];
-    if (!cs.length) return `<p class="cf-loading">${t("config.cx.load_error")}</p>`;
+    if (!cs.length) return page({ id: "conectores", crumb: [t("config.tab.conectores")], title: t("config.tab.conectores"), body: `<p class="set-hint">${t("config.cx.load_error")}</p>` });
     const fams = [["google", "Google"], ["mensajeria", t("config.cx.fam_messaging")], ["musica", t("config.cx.fam_music")],
                   ["archivos", t("config.cx.fam_files")], ["fotos", t("config.cx.fam_photos")],
                   ["video", t("config.cx.fam_video")], ["agenda", t("config.cx.fam_calendar")],
@@ -562,12 +362,14 @@ export function ConfigPanel() {
     const c = cxFocus && view.find(x => x.id === cxFocus);
     if (c) {
       if (isSettling(c)) settle();
-      return connectorWizard(c, cxStep, connectorForm(c, famTitle, { ...ui, service: cxService, consent: cxConsent }), famTitle(c.family), { ...ui, returnTo: cxReturn });
+      // One connector: its own breadcrumb (← back to the list) and hero head the page; same column, same buttons.
+      return `<section class="set-page set-page--cx" data-settings-page="conectores">` +
+        connectorWizard(c, cxStep, connectorForm(c, famTitle, { ...ui, service: cxService, consent: cxConsent }), famTitle(c.family), { ...ui, returnTo: cxReturn }) + `</section>`;
     }
-    // The list's foot is the connector page's foot: the way out sits on the left, beside the refresh.
-    return connectorList(view, fams, ui) +
-      `<footer class="cf-acts cf-wiz-foot cf-cx-foot"><button type="button" class="cf-btn cf-btn-ghost cf-cx-refresh">${t("config.cx.refresh_status")}</button>` +
-      `<button type="button" class="cf-btn cf-btn-ghost" data-cx-close="1">${t("config.cxw.close")}</button></footer>`;
+    // The list's way out sits in the page's bar, beside the refresh.
+    return page({ id: "conectores", crumb: [t("config.tab.conectores")], title: t("config.tab.conectores"), sub: t("config.cxw.choose"),
+      body: connectorList(view, fams, ui),
+      tools: btn(t("config.cx.refresh_status"), { cls: "cf-cx-refresh" }) + btn(t("config.cxw.close"), { attrs: 'data-cx-close="1"' }) });
   }
   // A QR to appear, a scan to land: while the chosen connector is still settling AND on screen, its state is
   // re-read. No time cap: Telegram rotates its QR every 30 s, and a cap (it was 2 min) left a dead code on the
@@ -689,73 +491,17 @@ export function ConfigPanel() {
     } catch (e) { try { popup && popup.close(); } catch (_) {} msg(t("config.msg.error_generic")); } finally { btn.disabled = false; }
   }
 
-  // ═══ PESTAÑA APARIENCIA (V2-617) — design profiles + custom knobs. Everything applies INSTANTLY (the
-  // theme service repaints the tokens live) and persists to the ACCOUNT (settings.json) — no save button:
-  // a skin you have to imagine before committing to is a skin nobody tries. ═══════════════════════════════
-  // V2-694 — a profile added later ships its `label` before anyone writes its bundle row; `t()` answers with the
-  // raw key when it has none, so fall back to the label instead of painting `config.theme.profile_x` on the card.
+  // A profile added later ships its `label` before anyone writes its bundle row; `t()` answers with the raw key
+  // when it has none, so the card falls back to the label instead of painting `config.theme.profile_x`.
   function themeName(id, th) {
-    const key = "config.theme.profile_" + id;
-    const s = t(key);
+    const key = "config.theme.profile_" + id, s = t(key);
     return (s && s !== key) ? s : (th.label || id);
   }
 
-  function sec_apariencia() {
-    const curProf = themeSvc.themeProfile();
-    const custom = themeSvc.themeCustom();
-    const mode = themeSignal();
-    const cards = Object.entries(THEMES).map(([id, th]) => {
-      const sw = (th.swatches || []).map(c => `<i style="background:${esc(c)}"></i>`).join("");
-      return `<button type="button" class="cf-th-card${id === curProf ? " on" : ""}" data-profile="${esc(id)}">
-        <span class="cf-th-sw">${sw}</span><span class="cf-th-name">${esc(themeName(id, th))}</span></button>`;
-    }).join("");
-    const fsOpts = [["s", t("config.theme.fs_s")], ["m", t("config.theme.fs_m")], ["l", t("config.theme.fs_l")]]
-      .map(([v, l]) => `<option value="${v}"${(custom.fs || "m") === v ? " selected" : ""}>${esc(l)}</option>`).join("");
-    const fontOpts = [["system", t("config.theme.font_system")], ["rounded", t("config.theme.font_rounded")],
-                      ["serif", t("config.theme.font_serif")]]
-      .map(([v, l]) => `<option value="${v}"${(custom.font || "system") === v ? " selected" : ""}>${esc(l)}</option>`).join("");
-    return panel("apariencia", t("config.theme.title"), t("config.theme.sub"),
-      `<div class="cf-th-cards">${cards}</div>` +
-      row(t("config.theme.mode"),
-        `<span class="cf-th-mode"><button type="button" class="cf-th-modebtn${mode === "dark" ? " on" : ""}" data-mode="dark">${t("config.theme.mode_dark")}</button>` +
-        `<button type="button" class="cf-th-modebtn${mode === "light" ? " on" : ""}" data-mode="light">${t("config.theme.mode_light")}</button></span>`) +
-      row(t("config.theme.accent"),
-        `<span class="cf-th-accent"><input type="color" id="cf_th_accent" value="${esc(custom.accent || "#A48FFF")}">` +
-        `<button type="button" class="cf-th-accent-clear"${custom.accent ? "" : " disabled"}>${t("config.theme.accent_clear")}</button></span>`,
-        t("config.theme.accent_hint")) +
-      row(t("config.theme.fs"), `<select id="cf_th_fs">${fsOpts}</select>`) +
-      row(t("config.theme.font"), `<select id="cf_th_font">${fontOpts}</select>`, t("config.theme.font_hint")))
-      + sec_idioma();
-  }
-
-  // ═══ IDIOMA (V2-694) — the operator's rule, verbatim: «el reset del idioma se debería poder hacer desde la
-  // configuración MANUALMENTE… no es una cosa que vamos a permitir hacer con la voz. Ahora me lo pones en chino,
-  // ahora me lo pones en sueco».
-  //
-  // Until now the desktop ⚙ had NO language control at all — the picker existed only in the first-run veil and
-  // in the phone's sheet, so on this shell the answer to «I want it in English» was a factory reset. It lands
-  // in Apariencia because that is the tab about how the product READS to you.
-  //
-  // It posts to `/api/i18n/choose/{code}` and NEVER to the raw `stt_language` knob: that endpoint is the one
-  // that LOCKS the choice, generates the bundle for a language we do not ship, realigns the TTS voice to one
-  // native to it and speaks the confirmation. Writing the setting directly would leave a Swedish operator with
-  // a Swedish `stt_language` and an English interface, which is the failure this whole batch is about.
-  //
-  // And it asks TWICE on purpose. Changing language re-translates every label, every prompt and every widget's
-  // chrome; it is not a toggle, and a single stray click on a dropdown should not start it.
-  function sec_idioma() {
-    const rows = (langPicker.rows || []).map(l =>
-      `<option value="${esc(l.code)}"${l.code === langPicker.active ? " selected" : ""}>` +
-      `${esc(l.flag || "")} ${esc(l.native || l.code)}</option>`).join("");
-    if (!rows) return "";
-    const pending = langArmed ? " armed" : "";
-    return panel("idioma", t("config.lang.title"), t("config.lang.sub"),
-      row(t("config.lang.pick"), `<select id="cf_lang_sel">${rows}</select>`) +
-      row("", `<button type="button" class="cf-lang-go${pending}">` +
-              `${langArmed ? t("config.lang.confirm") : t("config.lang.apply")}</button>`,
-          t("config.lang.hint")));
-  }
-
+  // ═══ LANGUAGE (V2-694) — changed from Settings by hand, never by voice. It posts to `/api/i18n/choose/{code}` and
+  // NEVER to the raw `stt_language` knob: that endpoint LOCKS the choice, generates the bundle for a language we do
+  // not ship, realigns the TTS voice and speaks the confirmation. It asks TWICE on purpose: it re-translates every
+  // label, prompt and widget, and one stray click on a dropdown should not start it.
   async function applyLanguage(btn) {
     const sel = document.getElementById("cf_lang_sel");
     const code = sel && sel.value;
@@ -771,22 +517,6 @@ export function ConfigPanel() {
       msg(t("config.lang.done"));
     } catch (_) { msg(t("config.msg.error_generic")); }
     finally { btn.disabled = false; render(); }
-  }
-
-  // ═══ PESTAÑA WIDGETS (V2-083) — a sola lista alfabética with badge de-serie/tuyo ═══════════════════════
-  function sec_widgets() {
-    const ws = (cfg.widgets || []).filter(w => w.surface === "user")
-      .sort((a, b) => String(a.name || a.id).localeCompare(String(b.name || b.id), store.lang() || "en"));
-    if (!ws.length) return `<p class="cf-loading">${t("config.widgets.load_error")}</p>`;
-    const rows = ws.map(w => {
-      const kind = w.origin === "builtin"
-        ? `<span class="cf-wbadge builtin">${t("config.widgets.builtin_badge")}</span>`
-        : `<span class="cf-wbadge user">${t("config.widgets.yours_badge")}</span>`;
-      const al = (w.aliases || []).filter(a => a.toLowerCase() !== String(w.name || "").toLowerCase()).slice(0, 6).join(" · ");
-      return `<div class="cf-wrow"><div class="cf-wname">${esc(w.name || w.id)} ${kind}</div>
-        <div class="cf-waliases">${esc(al)}</div></div>`;
-    }).join("");
-    return panel("widgets", t("config.widgets.title"), t("config.widgets.sub"), rows);
   }
 
   async function load() {
@@ -810,7 +540,7 @@ export function ConfigPanel() {
       store.setApiAlerts((cfg.apis || []).filter(a => a.state === "warn" || a.state === "error"));
     } catch (e) { bodyEl.innerHTML = `<p class="cf-loading">${t("config.load_config_error")}</p>`; }
   }
-  const close = () => { cxReturn = null; store.setConfigOpen(false); };
+  const close = () => { dropPreview(); cxReturn = null; store.setConfigOpen(false); };
   const onKey = e => { if (e.key === "Escape" && store.configOpen()) close(); };
   window.addEventListener("keydown", onKey);
 

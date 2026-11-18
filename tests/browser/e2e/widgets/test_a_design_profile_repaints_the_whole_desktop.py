@@ -315,7 +315,8 @@ def config_pane(playwright_available):
             out = {"opened": pg.evaluate(_PANE), "picked": None}
             pick = next((p for p in out["opened"]["cards"] if p not in out["opened"]["on"]), None)
             if pick:
-                pg.click(f'.cf-th-card[data-profile="{pick}"]')
+                pg.click(f'.cf-th-card[data-profile="{pick}"]')   # a preview…
+                pg.click('[data-settings-page="apariencia"] [data-set-save]')   # …kept by the page's Save
                 pg.wait_for_timeout(400)
             out["picked"], out["chosen"], out["errors"] = pick, pg.evaluate(_PANE), errors
             b.close()
@@ -330,8 +331,8 @@ def config_pane(playwright_available):
 
 def test_the_config_panel_offers_the_system(config_pane):
     """The ⚙ seam, rendered: «Apariencia» is an entry of the panel's ONE left menu (since 2026-10-26 the top tabs
-    are gone), its pane paints the whole profile catalog, and a click on a profile goes through the theme service
-    — the one that persists it — so the choice is the panel's state AND the browser's."""
+    are gone), its pane paints the whole profile catalog, a click on a profile previews it, and the page's Save goes
+    through the theme service — the one that persists it — so the choice is the panel's state AND the browser's."""
     o = config_pane["opened"]
     assert o["menu"] and o["entry"], f"the left menu must carry a visible «Apariencia» entry: {o}"
     labels = {json.loads(pathlib.Path(f"i18n/genesis/{lang}/ui.json").read_text(encoding="utf-8"))

@@ -9,7 +9,7 @@ import { createSignal } from "../core/reactive.js?v=2";
 import * as api from "../services/api.js?v=2";
 import * as feedbackApi from "../services/feedback-api.js?v=1";
 import { t } from "../core/i18n.js?v=1";
-import { groupGoogle } from "./ConnectorWizard.js?v=6";
+import { groupGoogle } from "./ConnectorWizard.js?v=7";
 
 // Families in the order he expects them; anything not listed sorts after, alphabetically. A test walks the live
 // descriptors() against this array (a family missing here files his calendar under Infraestructura, silently).

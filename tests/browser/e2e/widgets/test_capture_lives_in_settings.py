@@ -45,7 +45,7 @@ _MEASURE = """() => {
   const ms = document.getElementById('micsel'), mm = document.getElementById('micmode');
   const vis = el => { if (!el) return false; const r = el.getBoundingClientRect();
                       return r.width > 0 && r.height > 0 && getComputedStyle(el).display !== 'none'; };
-  const save = document.querySelector('.cf-save-voice');
+  const save = document.querySelector('[data-settings-page="voice"] [data-set-save]');
   return {
     card: !!card,
     // The card sits AFTER the server card, so «Guardar voz» is never a button under controls it does not save.

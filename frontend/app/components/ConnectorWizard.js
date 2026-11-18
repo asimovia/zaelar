@@ -97,8 +97,8 @@ export function connectorList(cs, fams, { t, esc, badge }) {
       `<span class="cf-cx-name">${esc(c.label)}</span></span><span class="cf-cx-card-state">${badge(c)}</span>` +
       `<span class="cf-cx-go">${esc(c.connected ? t("config.cxw.manage") : t("config.cxw.configure"))} ›</span></button>`).join("")}</div>`;
   }).join("");
-  // Titled like every other page of the panel (2026-10-25: the list read as «suelta» without one).
-  return `<header class="cf-panel-head cf-cx-head"><h4>${esc(t("config.tab.conectores"))}</h4><p>${esc(t("config.cxw.choose"))}</p></header>${rows}`;
+  // The page around it (ConfigPanel, `settings/layout.js`) carries the title, like every other Settings page.
+  return rows;
 }
 
 // ── The building blocks every connector page is made of (2026-10-25 pass) ──────────────────────────────────

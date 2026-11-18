@@ -75,7 +75,7 @@ def test_the_settings_section_is_built_from_the_panels_own_pieces():
     panel = (ENGINE / "frontend/app/components/ConfigPanel.js").read_text("utf-8")
     sec = (ENGINE / "frontend/app/components/RulesSection.js").read_text("utf-8")
     assert '{ id: "rules", icon: LIST_ICON }' in panel and "mountRules(" in panel, "a sub-item of Settings, mounted on screen"
-    for piece in ('class="cf-row2"', 'class="cf-sub"', "cf-btn cf-btn-ghost", 'class="cf-panel-sec"'):
+    for piece in ('from "./settings/layout.js', "row(", "group(", "btn(", "bindForm(pageEl"):   # the one Settings layout
         assert piece in sec, piece
     assert "r.choices" in sec, "the closed set comes from the server, never a second list in the page"
     assert "/api/rules" in (ENGINE / "frontend/app/services/api.js").read_text("utf-8")

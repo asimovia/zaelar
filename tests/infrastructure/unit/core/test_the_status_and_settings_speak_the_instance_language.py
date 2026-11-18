@@ -1,7 +1,7 @@
 """The ◉ Status panel and the ⚙ settings speak the INSTANCE language, never a fixed Castilian (2026-10-21).
 
 Every row label and detail of `/api/status`, the API balance lines, the voice knobs, the provider catalog's prose
-and the benchmark cards used to be literals written in the server — Spanish for most of them, developer English for
+used to be literals written in the server — Spanish for most of them, developer English for
 the catalog — so an English instance read «Memoria · CORAZÓN» and a Spanish one read the catalog in English. They
 now come from the `ui` pack (active language → English → the literal), which is what lets a THIRD language work:
 whatever the onboarding has not generated yet falls back to English, not to Castilian.
@@ -93,16 +93,13 @@ def test_the_voice_knobs_follow_the_language(lang):
     assert "Pulsar para hablar" in [o["label"] for o in knobs["attention_mode"]["options"]]
 
 
-def test_the_provider_catalog_and_the_benchmarks_follow_the_language(lang):
-    from config import model_benchmarks
+def test_the_provider_catalog_follows_the_language(lang):
     from server import config_api
     lang("zz")
-    assert config_api._catalog_for_ui()["fast"]["note"].startswith("NON-reasoners only")
-    assert model_benchmarks.snapshot()["modules"][0]["label"] == "Fast brain · FlashBrain"
+    assert config_api._catalog_for_ui()["fast"]["note"].startswith("Fast models that answer")
     lang("es")
-    assert config_api._catalog_for_ui()["fast"]["note"].startswith("Solo NO razonadores")
-    assert model_benchmarks.snapshot()["modules"][0]["label"] == "Cerebro rápido · FlashBrain"
-    assert config_api._PROVIDER_CATALOG["fast"]["note"].startswith("NON-reasoners only"), "the constant was mutated"
+    assert config_api._catalog_for_ui()["fast"]["note"].startswith("Modelos rápidos que contestan")
+    assert config_api._PROVIDER_CATALOG["fast"]["note"].startswith("Fast models that answer"), "the constant was mutated"
 
 
 def test_every_key_these_surfaces_read_exists_in_both_presets():

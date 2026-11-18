@@ -1,13 +1,12 @@
 // RulesSection — ⚙ Settings → Rules (V2-806): his standing rules and preferences, ONE table, grouped by scope.
 // Each row reads his own words (or the key it sets), its value, and where it came from: «yours» or «default».
 // His rows can be edited, switched off and deleted; a default can be edited — that writes a row of his at the
-// same scope, and the factory row stays. Built from the panel's own pieces (cf-sub, cf-row2, cf-btn-ghost):
-// a label column then a control column, from the left (CRIT-K19). Nothing here decides anything: the server
-// checks every value against its key's domain (`rules/api.py`).
+// same scope, and the factory row stays. Drawn with the Settings layout (`settings/layout.js`): edits wait for the
+// page's Save, Cancel puts the listed values back; Delete acts at once. The server checks every value against its
+// key's domain (`rules/api.py`).
 import * as api from "../services/api.js?v=2";
 import { t } from "../core/i18n.js?v=1";
-
-const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+import { esc, row, group, btn, bindForm } from "./settings/layout.js?v=1";
 
 function control(r) {
   const id = `cf_rule_${esc(r.id)}`;
@@ -25,44 +24,46 @@ function rowHtml(r) {
   const until = r.until ? " · " + t("config.rules.until", { at: new Date(r.until * 1000).toLocaleString() }) : "";
   const except = (r.except_labels || []).length ? " · " + t("config.rules.except", { what: r.except_labels.join(", ") }) : "";
   const hint = (mine ? t("config.rules.mine") : t("config.rules.default")) + except + until + (r.live ? "" : " · " + t("config.rules.off"));
-  const label = r.name;            // his words, or what the row sets — in his language, from the server
   const acts = mine
-    ? `<div class="cf-acts"><label class="cf-hint"><input type="checkbox" class="cf-rule-on" data-rule="${esc(r.id)}"${r.active ? " checked" : ""}/> ${esc(t("config.rules.active"))}</label>` +
-      `<button type="button" class="cf-btn cf-btn-ghost cf-rule-del" data-rule="${esc(r.id)}">${esc(t("config.rules.delete"))}</button></div>`
+    ? `<span class="set-inline"><label class="set-check"><input type="checkbox" id="cf_rule_on_${esc(r.id)}" class="cf-rule-on" data-rule="${esc(r.id)}"${r.active ? " checked" : ""}/> ${esc(t("config.rules.active"))}</label>` +
+      btn(t("config.rules.delete"), { cls: "cf-rule-del", attrs: `data-rule="${esc(r.id)}"` }) + `</span>`
     : "";
-  return `<div class="cf-row2"><label class="cf-row2-label" for="cf_rule_${esc(r.id)}">${esc(label)}</label>` +
-    `<div class="cf-row2-ctl">${r.key === "note" ? "" : control(r)}${acts}<span class="cf-hint">${esc(hint)}</span></div></div>`;
+  // the label is his words, or what the row sets — in his language, from the server
+  return row(r.name, (r.key === "note" ? "" : control(r)) + acts, esc(hint), r.key === "note" ? "" : `cf_rule_${r.id}`);
 }
 
 export function rulesHtml(data) {
   const groups = (data && data.groups) || [];
-  const body = groups.length
-    ? groups.map(g => `<div class="cf-sub"><h5 class="cf-sub-h">${esc(g.label)}</h5>${g.rows.map(rowHtml).join("")}</div>`).join("")
-    : `<p class="cf-hint">${esc(t("config.rules.empty"))}</p>`;
-  return `<section class="cf-panel-sec" id="cf_rules"><header class="cf-panel-head"><h4>${esc(t("config.rules.title"))}</h4>` +
-    `<p>${esc(t("config.rules.sub"))}</p></header><div class="cf-group">${body}</div></section>`;
+  return groups.length ? groups.map(g => group(g.rows.map(rowHtml).join(""), { title: g.label })).join("")
+    : `<p class="set-hint">${esc(t("config.rules.empty"))}</p>`;
 }
 
-// Fills `host` with the list and wires it; every change reloads the list from the server, so the panel never
-// shows a value the table does not hold.
-export async function mountRules(host, say) {
+// Fills `host` with the list and wires it to the page's Cancel + Save; every save reloads the list from the
+// server, so the page never shows a value the table does not hold.
+export async function mountRules(host, say, pageEl) {
   if (!host) return;
   const load = async () => {
     const data = await api.getRules().catch(() => null);
-    if (!data || !data.ok) { host.innerHTML = `<p class="cf-error">${esc(t("config.rules.error"))}</p>`; return; }
+    if (!data || !data.ok) { host.innerHTML = `<p class="set-hint cf-warn-text">${esc(t("config.rules.error"))}</p>`; return; }
     host.innerHTML = rulesHtml(data);
-    wire();
-  };
-  const done = async (res) => { if (res && res.ok === false) say(res.message || t("config.rules.error")); else say(t("config.rules.saved")); await load(); };
-  function wire() {
-    host.querySelectorAll(".cf-rule-val").forEach(el => el.onchange = () => {
-      const raw = el.value;
-      const value = el.dataset.type === "boolean" ? raw === "true" : el.dataset.type === "number" ? Number(raw) : raw;
-      api.editRule(el.dataset.rule, { value }).then(done);
+    host.querySelectorAll(".cf-rule-del").forEach(el => el.onclick = async () => {
+      const res = await api.deleteRule(el.dataset.rule);
+      say(res && res.ok === false ? (res.message || t("config.rules.error")) : t("config.rules.saved"), res && res.ok === false);
+      await load();
     });
-    host.querySelectorAll(".cf-rule-on").forEach(el => el.onchange = () => api.editRule(el.dataset.rule, { active: el.checked }).then(done));
-    host.querySelectorAll(".cf-rule-del").forEach(el => el.onclick = () => api.deleteRule(el.dataset.rule).then(done));
-  }
-  host.innerHTML = `<p class="cf-loading">…</p>`;
+    if (form) form.snap(), form.sync();
+  };
+  const save = async (changed) => {
+    for (const el of changed) {
+      const patch = el.classList.contains("cf-rule-on") ? { active: el.checked }
+        : { value: el.dataset.type === "boolean" ? el.value === "true" : el.dataset.type === "number" ? Number(el.value) : el.value };
+      const res = await api.editRule(el.dataset.rule, patch);
+      if (res && res.ok === false) { await load(); return { ok: false, message: res.message || t("config.rules.error") }; }
+    }
+    await load();
+    return { ok: true, message: t("config.rules.saved") };
+  };
+  const form = pageEl ? bindForm(pageEl, { save, reset: () => load() }) : null;
+  host.innerHTML = `<p class="set-hint">…</p>`;
   await load();
 }

@@ -25,11 +25,10 @@
 //             `null` = superficie no dirigible por voz (transitoria/andamiaje); no entra al resolver de nombres.
 import { Alert } from "../components/Alert.js?v=2";
 import { AppsWindow } from "../components/AppsWindow.js?v=1";
-import { BenchmarksPanel } from "../components/BenchmarksPanel.js?v=1";
 import { BootOverlay } from "../components/BootOverlay.js?v=4";
 import { ChatWall } from "../components/ChatWall.js?v=6";
 import "./config-link.js?v=1";   // a link that opens the settings panel on one connector (the phone's ☰ → Connectors)
-import { ConfigPanel } from "../components/ConfigPanel.js?v=8";
+import { ConfigPanel } from "../components/ConfigPanel.js?v=9";
 import { DaemonSetup } from "../components/DaemonSetup.js?v=1";
 import { DebugPanel } from "../components/DebugPanel.js?v=4";
 import { FeedbackWidget } from "../components/FeedbackWidget.js?v=2";
@@ -137,10 +136,6 @@ export const SYSTEM_SURFACES = [
     toggle: "store.configOpen (⚙)", label: "Settings (API/model per piece, voice, balances)",
     name: "Settings", aliases: ["config", "configuracion", "configuración", "ajustes", "preferencias",
       "settings", "opciones", "preferences", "options"] },
-  { id: "benchmarks", comp: BenchmarksPanel, target: "body", phase: "overlay", kind: "modal",
-    toggle: "from Settings → Fast brain", label: "Benchmarks (why these models?)",
-    name: "Benchmarks", aliases: ["benchmarks", "por que estos modelos", "por qué estos modelos", "comparativa",
-      "why these models", "comparison"] },
   { id: "debug",      comp: DebugPanel,   target: "body", phase: "overlay", kind: "panel",
     toggle: "store.debugOpen (◷)", label: "Debug / observability (logging, timeline, traces)",
     name: "Debug", aliases: ["debug", "depuracion", "depuración", "logs", "logging", "trazas", "timeline",

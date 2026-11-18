@@ -18,20 +18,20 @@ _PROVIDER_CATALOG = {
             # 2026-08-14 — DeepSeek DIRECT is the production default: its endpoint OBEYS `thinking:{"type":"disabled"}`.
             # Measured with the real voice prompt, 6 turns: TTFT p50 1.01s, worst case 1.30s, 0 reasoning tokens —
             # voice=non-reasoner is a hard invariant, not a preference.
-            {"id": "deepseek", "label": "DeepSeek DIRECT (production default — the only one that truly stops reasoning)",
+            {"id": "deepseek", "label": "DeepSeek (recommended)",
              "base_url": "https://api.deepseek.com", "key_env": "DEEPSEEK_API_KEY", "cloud": True,
              "models": ["deepseek-v4-flash", "deepseek-v4-pro"]},
             # Groq left this list on 2026-10-28: the one model it served here no longer exists (the models table's
             # `retired.groq`, 404 model_not_found), and a dropdown entry that cannot work is a stale datum.
-            {"id": "ollama", "label": "Ollama (local/free — slow, offline fallback)",
+            {"id": "ollama", "label": "Ollama (local and free — slower)",
              "base_url": "http://localhost:11434/v1", "key_env": "", "cloud": False,
              "models": ["qwen3.8:27b"]},
         ],
         "closed_models": True,      # the UI renders a dropdown, not a text field
-        "note": "NON-reasoners only (the voice turn must close fast) and only benchmark-endorsed ones. "
-                "deepseek-v4-pro DIRECT = default (it is the titular and "
-                "the only endpoint that actually obeys `thinking:disabled`). deepseek-v4-flash routed 12/12 in "
-                "§9. Endpoint comes from the provider: there is no URL to type.",
+        # User-facing (shown under the section). Why these and only these: non-reasoners only (the voice turn must
+        # close fast); DeepSeek's direct endpoint is the default because it is the one that obeys `thinking:disabled`.
+        "note": "Fast models that answer without a reasoning pause, so spoken replies stay quick. "
+                "The provider sets the address: there is no URL to type.",
     },
     "code_agent": {                 # Brain Workers — the headless agent that DRIVES tasks
         # REAL models per provider (2026-08-12). This list used to be EMPTY for both, so the UI rendered a free
@@ -52,23 +52,25 @@ _PROVIDER_CATALOG = {
              # — fine for workers, never for the voice layer.
              "models": ["opus", "sonnet", "sonnet[1m]", "opus[1m]",
                         "glm-5.3", "glm-5.2", "glm-4.6", "kimi-k2.6"],
-             "note": "Can restrict Bash to our bridges only (single-writer invariant) → the only backend valid for "
-                     "untrusted input (deny_tools) and cluster dev workers. The glm-*/kimi-* entries belong to the "
-                     "relay tiers (Z.AI / Moonshot coding plans): they only work while that endpoint is the "
-                     "active tier — see workers/providers.py."},
+             # It can restrict Bash to our bridges only (single-writer invariant) → the only backend valid for
+             # untrusted input (deny_tools) and cluster dev workers; glm-*/kimi-* are the relay tiers' models
+             # (nucleo/workers/providers/), live only while that endpoint is the active tier.
+             "note": "Its tools can be limited to the agent's own, so it is the one used for content that comes "
+                     "from outside. The glm-* and kimi-* models need their provider's plan."},
             {"id": "codex", "label": "Codex (CLI)", "cloud": True,
              # VERIFIED against the list returned by the model server itself (2026-08-12): these are the three.
              # There is no 5.6 family available — a `gpt-5.6-*` in config.toml is not served by the API.
              "models": ["gpt-5.5", "gpt-5.4", "gpt-5.4-mini"],
-             "note": "Has NO tool allowlist — only sandbox modes, so a Codex worker runs a full shell "
-                     "(wider blast radius). Refused for untrusted input and dev workers."},
+             # No tool allowlist, only sandbox modes: refused for untrusted input and dev workers.
+             "note": "Runs with a full shell and no tool limits, so it is never used for content that comes "
+                     "from outside."},
             {"id": "grok_build", "label": "Grok Build (CLI)", "cloud": True, "key_env": "XAI_API_KEY",
              # VERIFIED with `grok models` against the real account (2026-08-13).
              "models": ["grok-4.5", "grok-4.6", "grok-build-0.1", "grok-4.3",
                         "grok-4.20-0309-non-reasoning"],
-             "note": "Same wire format AND same allowlist syntax as Claude Code — verified it enforces "
-                     "`--deny Bash(...)`, so it CAN hold the single-writer invariant (unlike Codex). "
-                     "Pay-per-token: watch the cost, a trivial turn already costs ~$0.03 (large system prompt)."},
+             # Same wire format and allowlist syntax as Claude Code (it enforces `--deny Bash(...)`), so it can
+             # hold the single-writer invariant, unlike Codex.
+             "note": "Its tools can be limited like Claude Code's. Billed per use: a short turn costs about $0.03."},
         ],
         "closed_models": True,
         # PRESETS (2026-08-13, operator request): a Brain Worker option is not "a provider"; it is the COMBINATION
@@ -85,13 +87,13 @@ _PROVIDER_CATALOG = {
              "base_url": "https://api.deepseek.com/anthropic", "model": "deepseek-v4-flash",
              "key_env": "DEEPSEEK_API_KEY",
              "billing": "per_token", "cost": "~$0.14/$0.28 per Mtok (v4-flash)",
-             "note": "⚠️ Its gateway does NOT map Claude aliases — that belief is what shipped this rung broken. "
-                     "Verified against the live endpoint: a Claude alias gets `400 — The supported API model names "
-                     "are deepseek-v4-pro or deepseek-v4-flash`. Use the DeepSeek name. Compatible in the PROTOCOL "
-                     "is not compatible in the CATALOG. Cheapest of the three."},
+             # Its gateway answers a Claude alias with `400 — The supported API model names are deepseek-v4-pro
+             # or deepseek-v4-flash`: compatible in the protocol is not compatible in the catalog.
+             "note": "Use the DeepSeek model names: its endpoint does not accept Claude aliases. The cheapest of the "
+                     "presets."},
             {"id": "grok45", "label": "Grok Build + Grok 4.5", "provider": "grok_build",
              "base_url": "", "model": "grok-4.5", "key_env": "XAI_API_KEY",
-             "billing": "per_token", "cost": "pay-per-token — measured ~$0.03 for a trivial turn",
+             "billing": "per_token", "cost": "pay per use (~$0.03 a short turn)",
              "note": "Native xAI agent CLI. Grok 4.6 ($2/$6 per Mtok, 500k ctx, reasoning) is selectable as the "
                      "model if quality beats cost."},
             {"id": "cc_local", "label": "Claude Code + local licence", "provider": "claude_code",
@@ -105,22 +107,21 @@ _PROVIDER_CATALOG = {
     },
     "memory_processor": {           # write HEART (mem_processor / pill distiller)
         "providers": [
-            {"id": "deepseek", "label": "DeepSeek DIRECT (titular — config/models.default.json §memory_writer)",
+            # the titular of config/models.default.json §memory_writer
+            {"id": "deepseek", "label": "DeepSeek (default)",
              "base_url": "https://api.deepseek.com", "key_env": "DEEPSEEK_API_KEY", "cloud": True,
              "models": ["deepseek-flash", "deepseek-v4-flash"]},
-            {"id": "openai", "label": "OpenAI DIRECT (failover)",
+            {"id": "openai", "label": "OpenAI (fallback)",
              "base_url": "https://api.openai.com/v1", "key_env": "OPENAI_API_KEY", "cloud": True,
              "models": ["gpt-4.1-mini"]},
             {"id": "ollama", "label": "Ollama (local — only if local usage is accepted)", "base_url": "http://localhost:11434/v1",
              "key_env": "", "cloud": False, "models": ["qwen3.8:27b"]},
         ],
-        # Choose with data, not by provider reputation (benchmark §12.3); the defaults live in the model table.
-        "note": "Off-hot-path (does not touch voice latency) but WRITE-COMPLETENESS is the nº1 lever of recall. "
-                "BENCHMARKED 2026-08-09 (21 candidates × 34 cases, see zaelar-model-benchmarks.md §12.3): "
-                "deepseek-v4-flash ties gpt-4.1-mini on capture (98.5 vs 98.9%) and precision (100%) for −55% cost "
-                "→ CHOSEN; fallback gpt-4.1-mini. ⛔ gpt-4o-mini is VETOED: it files an allergy "
-                "under slot=operator.diet, and a slot invalidates every earlier pill with that slot — a later diet "
-                "change would erase the allergy. Every provider is called DIRECTLY.",
+        # Chosen with data, not by provider reputation; the defaults live in the model table. gpt-4o-mini is vetoed:
+        # it files an allergy under slot=operator.diet, and a slot invalidates every earlier pill with that slot.
+        "note": "Runs off the voice path; how completely it writes is what recall depends on most. "
+                "deepseek-v4-flash by default, gpt-4.1-mini as fallback. gpt-4o-mini is not offered: it files an "
+                "allergy under the diet slot, and a later diet change would erase it.",
     },
     "triage": {                     # messaging classifier (WhatsApp/Telegram relevance)
         "providers": [

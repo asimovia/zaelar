@@ -34,12 +34,12 @@ SCHEMA = 2
 # Catalog of keys the system understands, WHAT each enables, and which profile it is RELEVANT for. The web uses it
 # to ask only for what the chosen profile lacks. `env` = variable(s) that provide it (the 1st non-empty one counts).
 CREDENTIALS = [
-    {"key": "deepseek", "env": ["DEEPSEEK_API_KEY", "FAST_API_KEY"], "enables": "Cloud FlashBrain (DeepSeek direct, the titular)",
+    {"key": "deepseek", "env": ["DEEPSEEK_API_KEY", "FAST_API_KEY"], "enables": "Cloud FlashBrain (DeepSeek, default)",
      "profiles": ["cloud"]},
     {"key": "deepgram", "env": ["DEEPGRAM_API_KEY"], "enables": "Deepgram STT/TTS (cloud)", "profiles": ["cloud"]},
     {"key": "mistral", "env": ["MISTRAL_API_KEY"], "enables": "Voxtral STT (Mistral, cloud)", "profiles": ["cloud"]},
     {"key": "cartesia", "env": ["CARTESIA_API_KEY"], "enables": "Cartesia Sonic TTS (cloud)", "profiles": ["cloud"]},
-    {"key": "inworld", "env": ["INWORLD_API_KEY"], "enables": "Inworld TTS (cloud, default · V2-774)",
+    {"key": "inworld", "env": ["INWORLD_API_KEY"], "enables": "Inworld TTS (cloud, default)",
      "profiles": ["cloud"]},
     {"key": "elevenlabs", "env": ["ELEVENLABS_API_KEY"], "enables": "ElevenLabs TTS (cloud, second choice)",
      "profiles": ["cloud"]},
@@ -52,7 +52,7 @@ CREDENTIALS = [
     {"key": "tavily", "env": ["TAVILY_API_KEY"], "enables": "web search (alternative)", "profiles": []},
     {"key": "brave", "env": ["BRAVE_SEARCH_KEY", "BRAVE_API_KEY"], "enables": "web search (snippets)",
      "profiles": []},
-    {"key": "spotify", "env": ["SPOTIFY_CLIENT_ID"], "enables": "voice music (Spotify, V2-041)",
+    {"key": "spotify", "env": ["SPOTIFY_CLIENT_ID"], "enables": "voice music (Spotify)",
      "profiles": []},
 ]
 

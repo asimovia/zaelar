@@ -40,11 +40,11 @@ def test_one_menu_holds_the_four_areas_and_settings_lists_its_sections_under_it(
 
 def test_the_content_column_starts_at_the_left_edge():
     assert "margin:0" in _rule(".cf-panel") and "auto" not in _rule(".cf-panel")
-    row, ctl, hint = _rule(".cf-row2"), _rule(".cf-row2-ctl"), _rule(".cf-hint")
-    assert "grid-template-columns:200px" in row, "a label column, then the control column — not label ↔ right edge"
-    assert "align-items:flex-start" in ctl and "flex-end" not in ctl
+    # the rows are the Settings layout's (`settings/layout.js`, its own test): a label column, then the field column
+    row, ctl, hint = _rule(".set-row"), _rule(".set-ctl"), _rule(".set-hint")
+    assert "grid-template-columns:var(--st-label-w)" in row, "a label column, then the control column — not label ↔ right edge"
+    assert "flex-end" not in ctl
     assert "text-align:left" in hint
-    assert "justify-content:flex-start" in _rule(".cf-foot")
     assert "text-align:left" in _rule(".cf-waliases")
 
 

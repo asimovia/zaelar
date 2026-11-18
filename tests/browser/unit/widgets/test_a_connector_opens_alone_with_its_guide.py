@@ -96,8 +96,9 @@ def test_each_family_is_a_heading_followed_by_a_row_of_cards(run):
 
 def test_the_connectors_tab_is_left_aligned_and_its_cards_wrap():
     css = (APP / "styles.css").read_text(encoding="utf-8")
-    assert '<div class="cf-scroll${activeTab === "conectores" ? " cf-scroll--cx" : ""}"><div class="cf-panel${activeTab === "conectores" ? " cf-panel--cx" : ""}">' in PANEL
-    assert ".cf-panel--cx{max-width:none;margin:0}" in css, "the centred column (margin:0 auto) is overridden"
+    # every area reads from the left edge in the Settings layout's column (settings/layout.js), connectors included
+    assert '<div class="cf-scroll"><div class="cf-panel">' in PANEL and ".cf-panel{max-width:none;margin:0}" in css
+    assert 'page({ id: "conectores"' in PANEL
     assert re.search(r"\.cf-cx-grid\{display:grid;grid-template-columns:repeat\(auto-fill,", css), "cards wrap"
     assert re.search(r"@media\(max-width:520px\)\{\s*\.cf-cx-grid\{grid-template-columns:repeat\(2,", css)
 
@@ -214,5 +215,5 @@ def test_every_page_ends_on_the_way_out_and_the_last_step_has_no_lone_back(run):
 
 
 def test_the_connectors_list_has_close_beside_refresh():
-    assert re.search(r'cf-cx-foot.*?cf-cx-refresh.*?data-cx-close="1"', PANEL, re.S)
+    assert """cls: "cf-cx-refresh" }) + btn(t("config.cxw.close"), { attrs: 'data-cx-close="1"' })""" in PANEL
     assert re.search(r'\[data-cx-close\]"\)\.forEach\(b => b\.onclick = \(\) => close\(\)\)', PANEL)
