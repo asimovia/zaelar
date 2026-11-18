@@ -54,9 +54,16 @@ MARGIN = 64
 # 2026-11-17: +19 on the everyday screen — `agenda:add_list` keeps its whole meaning with the tail moved to `how`
 # (444dade78; the screen used to receive the desc cut); +47 more with six cards — `results:layout` declares its aliases
 # (`compare (side_by_side, table, …)`, fe9436d35/e27b53ee4) so a named layout resolves through the one enum declaration
-CEILINGS = {(): 24_861, ("agenda", "mensajeria"): 30_042,
-            ("agenda", "mensajeria", "youtube", "contactos", "results", "musica"): 37_801}   # V2-795: musica usage trimmed
-TARGET_EVERYDAY = 30_042   # the audit's 30 000 + the mail's open contract (2026-11-14) + add_list's how (2026-11-17)
+# 2026-11-18: +482 / +585 / +585 after what grew since 11-17 was found by diffing the composed prompt at 0c6d47792 and at
+# cf06277ed. Trimmed back first (−264): the wake-word mode's explanation (what it is, where its button lives) left the
+# per-turn line for `about_self`'s `wake_word` entry (V2-932), and the name catalogue's `assistant_name_epoch` no longer
+# leaks into the state as «Assistant name epoch: 1.». Kept, because each one carries a decision: V2-929 — the mission no
+# longer names the agent, so its name («Te llamas Johnny.») rides the identity block, and the mode is also called
+# «palabra de activación» in his words; V2-931 — the turn claims nothing about a message it hands over; V2-933 — the
+# machinery is never named «tarea/proceso/flujo» and each line is worded fresh.
+CEILINGS = {(): 25_343, ("agenda", "mensajeria"): 30_627,
+            ("agenda", "mensajeria", "youtube", "contactos", "results", "musica"): 38_386}   # V2-795: musica usage trimmed
+TARGET_EVERYDAY = 30_627   # the audit's 30 000 + the mail's open contract (11-14) + add_list's how (11-17) + 11-18 above
 
 
 _SNIPPET = """

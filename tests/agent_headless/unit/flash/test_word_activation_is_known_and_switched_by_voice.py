@@ -4,8 +4,9 @@ The operator, 2026-11-17: «activa eso de la palabra de activación» has to wor
 the phone and on the desktop — and the agent has to know what word activation is if somebody asks. Three facts:
 
 1. KNOWLEDGE — every turn's live state carries the mode under the names people use for it («palabra de activación»,
-   «word activation», «wake word»), what it is for, that its button exists on desktop AND phone, that a spoken order
-   switches it, and which tool does it — never a literal «zaelar» as the word;
+   «word activation», «wake word»), its word, its state, and which tool switches it — never a literal «zaelar» as the
+   word; what it IS FOR and that its button exists on desktop AND phone is self-knowledge, answered by `about_self`
+   from its catalogue entry (`wake_word`, V2-932) in every shipped language — not prose paid on every turn;
 2. VOICE — the brief's sure verdict switches it both ways, persists it where the button writes, and announces it with
    the same `orb:attention` event the button's change sends;
 3. BOTH SHELLS — that event is applied by the one SSE reader both the desktop and the phone shell open.
@@ -37,9 +38,17 @@ def test_the_agent_knows_what_word_activation_is_and_how_it_is_switched(monkeypa
     for named in ("palabra de activación", "word activation", "WAKE WORD"):
         assert named in line, f"the mode is not known by the name «{named}»"
     assert "«Johnny»" in line and "zaelar" not in line.lower().replace("set_style_directive", "")
-    assert "en el móvil" in line and "ordenador" in line, "the button lives on both shells"
-    assert "por voz" in line and "set_style_directive" in line, "the spoken order and its door"
+    assert "set_style_directive" in line, "the spoken order's door"
     assert state in line
+
+
+@pytest.mark.parametrize("code,shells", [("es", ("ordenador", "móvil")), ("en", ("computer", "phone"))])
+def test_what_word_activation_is_and_its_button_on_both_shells_is_in_the_self_catalogue(code, shells):
+    from nucleo.self import about
+    assert "wake_word" in about.topics(), "about_self cannot answer what word activation is"
+    w = about.words(code)["topics"]["wake_word"]
+    assert w.get("what") and w.get("voice"), "what it is for and how it is said"
+    assert all(s in w.get("button", "") for s in shells), "the button lives on both shells"
 
 
 def test_an_unnamed_agent_names_the_catalogue_default_as_its_word(monkeypatch):

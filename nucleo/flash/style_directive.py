@@ -155,12 +155,12 @@ def prompt_lines(mstate: dict) -> list[str]:
         # I1: «ni cómo se llama el operador» only when his name IS in the state — said before it was, it forbade asking
         known = (" ni cómo se llama el operador: ambos están" if str(mstate.get("operator_name") or "").strip()
                  else ": está")
+        # What the mode IS and where its button lives is self-knowledge, answered by `about_self` from its catalogue
+        # entry (`nucleo/self/catalog.json` · `wake_word`, V2-932) — not prose paid on every turn.
         lines.append(
             f"MODO WAKE WORD (también «palabra de activación» o «word activation») — el modo en el que solo "
             f"respondes cuando dicen tu palabra de activación, que ES tu nombre («{att_name}»; nunca preguntes cuál "
-            f"es la palabra{known} en tu ESTADO). Sirve para que no contestes a lo que se habla a tu alrededor; "
-            f"apagado, escuchas siempre y respondes a todo. Se enciende y se apaga con su botón, en el ordenador y "
-            f"en el móvil, o pidiéndotelo por voz. Si te preguntan qué es, explícalo así. Ahora está "
+            f"es la palabra{known} en tu ESTADO). Ahora está "
             f"{att_now}. Si el operador pide activarlo o desactivarlo («activa la palabra de activación», «activa "
             f"el modo wake word», «escúchame/respóndeme solo cuando diga tu nombre», «vuelve a escucharme "
             f"siempre»), LLAMA a set_style_directive con esa orden tal cual — el sistema lo aplica al instante; "

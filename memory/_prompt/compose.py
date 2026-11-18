@@ -16,7 +16,7 @@ from .. import state as _state
 
 _STATE_RENDERED = {"assistant_name", "operator_name", "language", "treatment", "location", "recent", "topics",
                    "open_widgets", "activity", "sessions", "mission", "rails", "rules",
-                   "maximized_widget", "front_reported"}   # V2-903: the screen is the live tail's, never this cache
+                   "maximized_widget", "front_reported", "assistant_name_epoch"}   # V2-903 screen · V2-929 bookkeeping
 
 _RAIL_STATUS = {"searching": "buscando", "playing": "sonando", "paused": "en pausa",
                 "sin_resolver": "SIN RESOLVER"}
