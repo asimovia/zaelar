@@ -129,18 +129,37 @@ merge it in, and then push the result back — laundering a stale value into a f
 leave him unable to tell which of the two surfaces was lying. The ★ travels one way only: starring in
 Google stars here; un-starring there never un-stars the favourite he set on this card.
 
-## How a Google person is matched to a row here
+## How a person from any source is matched to a row here
 
-Four keys, descending by how much they PROVE. Each one can be right while the ones below it are wrong:
+One definition for every importer — Google and the messaging apps alike (`widgets/contactos/identity.py`). In
+descending order of how much each PROVES:
 
-1. **`googleId`** — the same resource as last time. Survives him renaming the person here.
-2. **the email address**, wherever it lives (the stored field or an email channel). An address is an
-   account, so two rows sharing one are one person — the same rule the Telegram import follows.
+1. **the same account** — the Google resource, the chat id, the handle this source gave last time. Survives him
+   renaming the person here, and keeps a hidden person hidden.
+2. **a phone or an address shared with a row** — ANY of the ones either side holds, a phone compared as an account
+   (its last nine digits). The exception is a line, not a person: two rows of the SAME source, each with a real
+   name, neither name contained in the other, on one phone or address (a home landline, a switchboard) stay two.
 3. **name + city** — `add_contact`'s own rule, so the two doors agree.
 4. **the name ALONE, only when exactly one contact here carries it.** This is what makes a re-import
    idempotent: Google routinely knows a city he never typed, so name+city alone would import a second
-   «Marta Ruiz» on every pass. When two contacts share the name it stops — adding a duplicate he can merge
-   beats silently folding two people into one, which he cannot undo.
+   «Marta Ruiz» on every pass. When two contacts share the name it stops.
+
+A name is never a key. What only he knows he says once: `merge_contacts`.
+
+## One person is one row
+
+- **Folding.** Rows that rungs 1–2 prove to be one person are folded (`fusion.fold`) after every pass, and once
+  over what was already stored when the store migrates. Nothing is thrown away: phones, addresses, channels, labels
+  and ids are joined; the folded row is kept whole in `merged`, its id keeps resolving to the row that holds the
+  person, and `split_contact` restores it — the two are then never joined again.
+- **Names.** The shown name is the one he typed here, else his address book's, else the chat's. Every other name a
+  source knows the person by is kept in `knownAs` with its source (the name she chose in a chat app, a nickname of
+  his address book, the name she had before a rename) and finds her like a name. They are not his words: `aliases`
+  are, and only those name a person outright.
+- **Staying in step.** A change on the platform arrives by itself: PUSHED when the connector can tell — the
+  WhatsApp bridge reports renames and the phone it learns behind a linked id, and a push only refreshes people
+  already here — and PULLED once a day from every linked source he has imported from, switch or no switch (the
+  Google look is pull-only while automatic sync is off). A source he never imported from is never read on its own.
 
 ## Two People API rules the code is built around
 

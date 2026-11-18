@@ -10,6 +10,12 @@ platform — the voice loop is on the other side of this call, so the deadline i
 Polled with `queue.get_nowait()` in a sleep loop, the way `ingest._PlatformInbox.drain` already does it:
 this is called from the widget's synchronous dispatch, sometimes off the event loop entirely, and a
 Subscription built outside a loop delivers best-effort into its queue exactly for that case.
+
+`push` / `take_pushed` are the other direction: a connector hands over the rows that CHANGED on the platform
+(a rename, a number learned behind a linked id) without anyone asking. An in-process buffer, not a bus topic:
+the contacts widget takes them on its own tick. A pushed row only REFRESHES a person the directory already
+holds — the widget side enforces it — because the socket reports the nickname of every stranger who writes
+in a group, and none of them is a contact.
 """
 from __future__ import annotations
 
@@ -35,6 +41,39 @@ _POLL_S = 0.15
 _LATE_S = 300.0
 _late: dict[str, tuple] = {}          # platform → (subscription, deadline)
 _late_lock = threading.Lock()
+
+
+#: Newest rows kept per platform between two takes; older ones are dropped (a later change supersedes them).
+PUSH_MAX = 5000
+_pushed: dict[str, list[dict]] = {}
+_pushed_lock = threading.Lock()
+
+
+def push(platform: str, contacts: list[dict]) -> None:
+    """Hand over contact rows that changed on `platform`. Never raises."""
+    try:
+        platform = (platform or "").strip().lower()
+        rows = [dict(c) for c in contacts or [] if isinstance(c, dict)]
+        if not platform or not rows:
+            return
+        with _pushed_lock:
+            buf = _pushed.setdefault(platform, [])
+            buf.extend(rows)
+            del buf[:-PUSH_MAX]
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"contacts_bus: push from {platform} dropped ({e})")
+
+
+def take_pushed() -> dict[str, list[dict]]:
+    """Everything pushed since the last call, per platform; the buffer is emptied. Never raises."""
+    try:
+        with _pushed_lock:
+            out = {p: rows for p, rows in _pushed.items() if rows}
+            _pushed.clear()
+        return out
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"contacts_bus: pushed rows not taken ({e})")
+        return {}
 
 
 def _match(ev, platform: str) -> dict | None:

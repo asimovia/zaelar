@@ -229,6 +229,29 @@ def find_contact(name: str) -> dict:
                      "why": [x.get("text") for x in (w.get("evidence") or [])][:2]} for w in _mc.who(q)]
         except Exception as e:  # noqa: BLE001
             _note(e)
-    return {"ok": True, "result": {"query": q, "people": rows,
-                                   "note": ("one person → use that name; several → ask him which, naming them; "
-                                            "none → ask him who it is")}}
+    out = {"query": q, "people": rows,
+           "note": "one person → use that name; several → ask him which, naming them; none → ask him who it is"}
+    front = _in_front(q)
+    if front:      # what he is LOOKING AT is the first reading of the name (measured 2026-11-18: her chat was open
+        out["in_front"] = front        # and the message was offered to another row of hers, by mail)
+        out["note"] = ("`in_front` is the conversation he has open and his word names it: write THERE — pass its "
+                       "`name` as the contact" + ("; somebody else holds that word as his own for them: ask him which "
+                                                  "of the two, the open one first" if front.get("ask") else "")
+                       + ". Otherwise: " + out["note"])
+    return {"ok": True, "result": out}
+
+
+def _in_front(name: str) -> dict:
+    """The conversation open on the messaging card when `name` names it (`mensajeria/outbound/in_front`); {} else."""
+    try:
+        from widgets import directory
+        from widgets.mensajeria import data as _md
+        from widgets.mensajeria.outbound import in_front
+        got = in_front.named(_md.load_db(), name, "", directory) or {}
+        if got.get("ok"):
+            return {"name": got["name"], "platform": got["platform"]}
+        if got.get("ask"):
+            return {"name": str(got["ask"][0].get("name") or ""), "ask": [str(c.get("name") or "") for c in got["ask"][1:]]}
+    except Exception as e:  # noqa: BLE001 — unread: the directory's rows alone, as before
+        _note(e)
+    return {}

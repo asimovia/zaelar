@@ -2521,6 +2521,7 @@
  "widgets.contactos.rel_colleague": "compañero/a",
  "widgets.contactos.sec_aliases": "Alias",
  "widgets.contactos.alias_learned_hint": "Aprendido cuando elegiste entre varios",
+ "widgets.contactos.known_as_hint": "Así aparece en otra fuente (no es un alias tuyo)",
  "widgets.contactos.alias_remove": "Quitar este alias",
  "widgets.contactos.alias_add": "alias",
  "widgets.contactos.alias_ph": "cómo la llamas…",

@@ -198,6 +198,7 @@ def resolve_target(payload: dict | None = None) -> dict:
     # V2-849 — named by WHO they are to him («mamá» → mother): only the people he said are that; never a name that
     # carries the word as a label. Nobody yet → the question, and his answer becomes the relation (`d.answered`).
     rel = str(payload.get("relation") or "").strip().lower()
+    front: dict = {}
     if rel:
         hits = d.by_relation(rel)
         if not hits:
@@ -207,8 +208,13 @@ def resolve_target(payload: dict | None = None) -> dict:
                              f"vuelve a llamar a send_to con el nombre de esa persona; nunca elijas un contacto porque "
                              f"su nombre lleve esa palabra."}
     else:
-        hits = _resolve_recipient(who, want)
-    if len(hits) > 1:
+        from . import in_front               # the conversation he has open is the first reading of the name
+        from .. import data as _d
+        front = in_front.named(_d.load_db(), who, want, d) or {}
+        if front.get("ok"):
+            return front
+        hits = front.get("ask") or _resolve_recipient(who, want)
+    if len(hits) > 1 and not front.get("ask"):
         hits = _one_mailbox(hits, want, d) or hits
     if len(hits) > 1:
         d.asked(who, hits, rel)

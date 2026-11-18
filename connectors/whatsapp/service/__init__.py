@@ -111,7 +111,8 @@ async def _loop() -> None:
                     await retry_held(_connected_at)   # after the inbound pass: the record has the phone's echoes
                 for what, fn in (("sends", _drain_sends),
                                  ("read marks", _drain_external_reads), ("history", _drain_history),
-                                 ("contacts", _drain_contacts), ("chats", _drain_chats),
+                                 ("contacts", _drain_contacts), ("contact changes", _drain_contact_changes),
+                                 ("chats", _drain_chats),
                                  ("groups", _drain_groups), ("unread", _drain_unread), ("sync", _drain_sync)):
                     try:
                         await fn()
@@ -154,6 +155,7 @@ async def stop() -> None:
 from connectors.whatsapp.service.inbound import (  # noqa: E402
     _drain_external_reads, _drain_history, _history_entry, _ingest_new, _origin)
 from connectors.whatsapp.service.directory import (  # noqa: E402
-    _chat_row, _drain_chats, _drain_contacts, _drain_groups, _drain_reads, _drain_sync, _drain_unread, _wa_person)
+    _chat_row, _drain_chats, _drain_contact_changes, _drain_contacts, _drain_groups, _drain_reads, _drain_sync,
+    _drain_unread, _wa_person)
 from connectors.whatsapp.service.outbound import (  # noqa: E402
     _drain_replies, _drain_sends, _echo_sent, _jid, _send, retry_held)

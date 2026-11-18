@@ -72,7 +72,7 @@ def test_every_capability_EXISTS_in_the_manifest_or_the_model_cannot_choose_it(c
                                  "set_auto",
                                  # V2-849 — his own words for a person and who they are to him: what makes
                                  # «Raquel» or «mamá» one person without asking again.
-                                 "set_alias",
+                                 "set_alias", "merge_contacts", "split_contact",
                                  # 2026-10-05 — a STATE on an entry (closed, blocked, vip) and the way back
                                  # from a deletion said by voice.
                                  "set_flag", "restore_contact"}

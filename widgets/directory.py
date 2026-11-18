@@ -235,14 +235,11 @@ def reachable(question: str) -> str:
 
 
 def names(c: dict) -> list[str]:
-    """Every name a person is known by: his own, and the one each of his chats shows (V2-850 — the WhatsApp chat
-    «Pablo Sabater» linked by phone to the «Pablo FF» of his address book is found by either)."""
-    out = [str(c.get("name") or "")]
-    for ch in c.get("channels") or []:
-        n = str((ch or {}).get("name") or "").strip()
-        if n and _norm(n) not in {_norm(x) for x in out}:
-            out.append(n)
-    return [n for n in out if n.strip()]
+    """Every name a person is known by: the one shown, the ones other sources gave (`knownAs`: the name she chose
+    in a chat app, a nickname of his address book, the name she had before a rename) and the one each chat shows
+    (V2-850) — the person is found by any of them."""
+    from .contactos import identity
+    return identity.names(c)
 
 
 

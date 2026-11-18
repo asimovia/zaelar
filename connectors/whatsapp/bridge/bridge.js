@@ -186,6 +186,10 @@ function buildLidMap() {
   return map;
 }
 let lidToPhone = buildLidMap();
+// ZAELAR-PATCH (contacts identity): pairs learned from traffic (key.remoteJidAlt, lid-mapping.update). Kept apart
+// so a rebuild from the session files on creds.update does not forget them.
+const learnedLidPhone = {};
+function rebuildLidMap() { lidToPhone = { ...buildLidMap(), ...learnedLidPhone }; }
 
 const logger = pino({ level: 'warn' });
 
@@ -234,6 +238,28 @@ const groupSubjects = new Map();
 // "so far" is reported honestly: a count presented as a total when it is not is a promise the card cannot
 // keep. Keyed by JID so an update refines the row rather than adding a second one.
 const contactBook = new Map();
+// ZAELAR-PATCH (contacts identity): persisted next to the session like the chat book — a restart used to forget
+// every name the socket had taught us, and WhatsApp does not repeat them.
+const CONTACT_BOOK_FILE = path.join(SESSION_DIR, 'zaelar-contacts.json');
+try {
+  for (const r of JSON.parse(readFileSync(CONTACT_BOOK_FILE, 'utf8')) || []) {
+    if (r && r.id) contactBook.set(r.id, r);
+  }
+} catch {}
+let contactBookTimer = null;
+
+function saveContactBookSoon() {
+  if (contactBookTimer) return;
+  contactBookTimer = setTimeout(() => {
+    contactBookTimer = null;
+    try { writeFileSync(CONTACT_BOOK_FILE, JSON.stringify(Array.from(contactBook.values()))); }
+    catch (err) { console.error('[bridge] contact book not saved:', err.message); }
+  }, 2000);
+}
+
+// ZAELAR-PATCH (contacts identity): the fields that say WHO someone is. Only a real change of one of them moves
+// `updatedAt`, the cursor GET /contacts?since= walks — an update repeating what we have is not news.
+const IDENTITY_FIELDS = ['name', 'notify', 'verifiedName', 'phoneNumber', 'lid'];
 
 function rememberContact(c) {
   if (!c || !c.id) return;
@@ -242,7 +268,65 @@ function rememberContact(c) {
   for (const k of ['id', 'lid', 'phoneNumber', 'name', 'notify', 'verifiedName', 'imgUrl', 'status']) {
     if (c[k] !== undefined && c[k] !== null && c[k] !== '') next[k] = c[k];
   }
+  const changed = IDENTITY_FIELDS.some((k) => String(next[k] ?? '') !== String(prev[k] ?? ''));
+  if (changed) next.updatedAt = Date.now();
+  const touched = changed || ['imgUrl', 'status'].some((k) => next[k] !== prev[k]);
   contactBook.set(c.id, next);
+  if (touched) saveContactBookSoon();
+}
+
+// ZAELAR-PATCH (contacts identity): the digits of a JID, without server or device («123:4@lid» → «123»).
+function jidUser(jid) { return String(jid || '').split('@')[0].split(':')[0]; }
+
+// ZAELAR-PATCH (contacts identity): the phone behind a linked id. WhatsApp addresses most 1:1 chats by @lid now,
+// and the phone is the only key that recognises the same person in the address book.
+function learnPn(lidJid, pnJid) {
+  const lid = jidUser(lidJid);
+  const pn = jidUser(pnJid);
+  if (!lid || !/^\d+$/.test(pn)) return;
+  learnedLidPhone[lid] = pn;
+  lidToPhone[lid] = pn;
+  rememberContact({ id: `${lid}@lid`, phoneNumber: pn });
+}
+
+// Either order: whichever ends in @lid is the linked id, whichever ends in @s.whatsapp.net is the phone.
+function learnPair(a, b) {
+  if (!a || !b) return;
+  if (a.endsWith('@lid') && b.endsWith('@s.whatsapp.net')) learnPn(a, b);
+  else if (b.endsWith('@lid') && a.endsWith('@s.whatsapp.net')) learnPn(b, a);
+}
+
+function learnFromKey(key) {
+  if (!key) return;
+  learnPair(key.remoteJid, key.remoteJidAlt);
+  learnPair(key.participant, key.participantAlt);
+}
+
+// ZAELAR-PATCH (contacts identity): ask the session's mapping store for the phones still missing. Background
+// only — the caller has already answered; the next GET serves what this found. Never throws.
+const pnTriedAt = new Map();
+const PN_RETRY_MS = 10 * 60_000;
+let pnResolving = false;
+
+function resolveMissingPnsSoon(jids) {
+  const store = sock?.signalRepository?.lidMapping;
+  if (pnResolving || !store || typeof store.getPNForLID !== 'function') return;
+  const now = Date.now();
+  const todo = Array.from(new Set(jids)).filter((j) => j && j.endsWith('@lid') && !lidToPhone[jidUser(j)]
+    && now - (pnTriedAt.get(j) || 0) > PN_RETRY_MS).slice(0, 200);
+  if (!todo.length) return;
+  pnResolving = true;
+  setImmediate(async () => {
+    try {
+      for (const j of todo) {
+        pnTriedAt.set(j, Date.now());
+        try {
+          const pn = await store.getPNForLID(`${jidUser(j)}@lid`);
+          if (pn) learnPn(j, pn);
+        } catch {}
+      }
+    } finally { pnResolving = false; }
+  });
 }
 // ZAELAR-PATCH (chat list): the CHATS this device knows, for a list of conversations that does not depend on
 // what triage kept. WhatsApp tells a linked device its chats ONCE, in the history sync right after pairing
@@ -376,7 +460,7 @@ async function startSocket() {
     },
   });
 
-  sock.ev.on('creds.update', () => { saveCreds(); lidToPhone = buildLidMap(); });
+  sock.ev.on('creds.update', () => { saveCreds(); rebuildLidMap(); });  // ZAELAR-PATCH (contacts identity)
 
   sock.ev.on('connection.update', (update) => {
     const { connection, lastDisconnect, qr } = update;
@@ -432,6 +516,7 @@ async function startSocket() {
     ].filter(Boolean)));
 
     for (const msg of messages) {
+      learnFromKey(msg.key);  // ZAELAR-PATCH (contacts identity): every message carries its LID/phone pair
       if (!msg.message) continue;
 
       const chatId = msg.key.remoteJid;
@@ -682,12 +767,19 @@ async function startSocket() {
   // keeps a name we already had from being wiped by an update that only carries a status.
   sock.ev.on('contacts.upsert', (rows) => { (rows || []).forEach(rememberContact); });
   sock.ev.on('contacts.update', (rows) => { (rows || []).forEach(rememberContact); });
+  // ZAELAR-PATCH (contacts identity): the socket learned a LID↔phone pair ({ lid, pn } in the types; a list is
+  // accepted too, in case a version batches them).
+  sock.ev.on('lid-mapping.update', (m) => {
+    for (const p of [].concat(m || [])) learnPair(p?.lid, p?.pn);
+  });
 
   // ZAELAR-PATCH (chat list): the history sync. Right after pairing it carries the device's chats (absolute
   // unread counters, names, archive/pin state); later, with syncType ON_DEMAND, it is how the PHONE answers
   // `fetchMessageHistory` — those messages never arrive as upserts, so «load previous» was only ever an
   // acknowledgement until this listened. On-demand messages are forwarded as `history:true` scrollback.
-  sock.ev.on('messaging-history.set', ({ chats, contacts, messages, syncType }) => {
+  sock.ev.on('messaging-history.set', ({ chats, contacts, messages, syncType, lidPnMappings }) => {
+    // ZAELAR-PATCH (contacts identity): the history sync carries LID↔phone pairs of its own.
+    for (const p of lidPnMappings || []) learnPair(p?.lid, p?.pn);
     console.log(JSON.stringify({ event: 'history', syncType, chats: (chats || []).length,
                                  messages: (messages || []).length }));
     (contacts || []).forEach(rememberContact);
@@ -814,9 +906,22 @@ app.get('/messages', (req, res) => {
 // NOT drained like /messages: this is a SNAPSHOT of what the socket has taught us, and the widget's import
 // is idempotent (it never overwrites a row that already exists), so handing the same rows twice costs
 // nothing and losing them to a drain would cost the whole book.
+// ZAELAR-PATCH (contacts identity): `?since=<ms>` returns only the rows whose identity changed after it; `now` is
+// the cursor to pass next time. Every row carries the phone the LID map knows when it has none of its own.
 app.get('/contacts', (req, res) => {
+  const since = Number(req.query.since);
+  const all = Array.from(contactBook.values());
+  const rows = (Number.isFinite(since) && req.query.since !== undefined)
+    ? all.filter((c) => (Number(c.updatedAt) || 0) > since) : all;
+  const contacts = rows.map((c) => {
+    if (c.phoneNumber) return c;
+    const lid = c.id.endsWith('@lid') ? jidUser(c.id) : jidUser(c.lid);
+    return lid && lidToPhone[lid] ? { ...c, phoneNumber: lidToPhone[lid] } : c;
+  });
+  resolveMissingPnsSoon(all.filter((c) => !c.phoneNumber).map((c) => c.id));
   res.json({
-    contacts: Array.from(contactBook.values()),
+    contacts,
+    now: Date.now(),
     groups: Array.from(groupSubjects.entries()).map(([id, subject]) => ({ id, subject })),
     // What "partial" means here: WhatsApp cannot be ASKED for everything. Empty is not proof of an empty
     // address book — it is proof the device has not synced one yet.
@@ -843,9 +948,10 @@ app.get('/chats', (req, res) => {
     // ZAELAR-PATCH (V2-850): a @lid chat carries the phone its session mapping knows — the key that links it to
     // the person he already has in his address book (contacts are linked by phone or email, never by name).
     const lid = c.id.endsWith('@lid') ? c.id.split('@')[0] : '';
-    const phoneNumber = contact.phoneNumber || (lid && lidToPhone[lid]) || '';
+    const phoneNumber = contact.phoneNumber || (lid && lidToPhone[jidUser(lid)]) || '';
     return { ...row, name: name || c.id.split('@')[0], ...(phoneNumber ? { phoneNumber } : {}) };
   });
+  resolveMissingPnsSoon(page.filter((c) => !c.phoneNumber).map((c) => c.id));  // ZAELAR-PATCH (contacts identity)
   res.json({ chats: page, complete: rows.length <= limit, known: chatBook.size });
 });
 

@@ -98,9 +98,11 @@ def _full_row(c: dict) -> str:
     """ONE contact, whole. This is the record, not the summary — so the handles ARE here: the operator asked."""
     bits = [f"«{c.get('name') or c.get('id')}»"]
     from widgets import directory as _dir           # V2-850: the name his chat shows is the same person («Pablo Sabater»)
+    by = {_dir._norm(r.get("name")): str(r.get("source") or "") for r in c.get("knownAs") or []}
     also = _dir.names(c)[1:]
-    if also:
-        bits.append("también se llama " + " · ".join(f"«{n}»" for n in also))
+    if also:                                     # with the source that calls her so, when one did
+        bits.append("también se llama " + " · ".join(
+            f"«{n}»" + (f" ({by[_dir._norm(n)]})" if by.get(_dir._norm(n)) not in (None, "", "his") else "") for n in also))
     if c.get("kind") and c["kind"] != "person":
         bits.append(str(c["kind"]))
     if c.get("favorite"):

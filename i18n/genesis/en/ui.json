@@ -2521,6 +2521,7 @@
  "widgets.contactos.rel_colleague": "colleague",
  "widgets.contactos.sec_aliases": "Aliases",
  "widgets.contactos.alias_learned_hint": "Learned when you picked among several",
+ "widgets.contactos.known_as_hint": "How another source names this person (not a word of yours)",
  "widgets.contactos.alias_remove": "Remove this alias",
  "widgets.contactos.alias_add": "alias",
  "widgets.contactos.alias_ph": "what you call them…",

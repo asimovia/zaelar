@@ -25,7 +25,9 @@ WIDGET_ID = "contactos"
 #   2 → 3 (V2-849): `aliases` (his words for the person) and `relation` (who they are to him), via `normalize`.
 #   3 → 4 (V2-854): the `groups` collection (rows with an id; the declared natives seeded, every label a contact
 #   carries made a group of his) — `groups.sync`, idempotent, also run on every load.
-DB_VERSION = 4
+#   4 → 5: one person is one row — the rows already stored that share a phone, an address or an account are folded
+#   (`identity.unify`); the folded rows are kept in `merged` (an undo, and their ids keep answering).
+DB_VERSION = 5
 
 
 def _seed() -> dict:
@@ -51,6 +53,14 @@ def _migrate(db: dict, from_v: int) -> dict:
         except Exception as _e:                                  # noqa: BLE001 — see the warning above
             __import__("loguru").logger.debug(f"contactos: a group row could not be added — {type(_e).__name__}: {_e}")
             pass
+    if from_v < 5:
+        try:
+            from . import identity
+            got = identity.unify(db)
+            if got["merged"]:
+                __import__("loguru").logger.info(f"contactos: {got['merged']} row(s) folded into the person they already were")
+        except Exception as _e:                                  # noqa: BLE001 — see the warning above
+            __import__("loguru").logger.warning(f"contactos: the look back for one person in two rows failed — {type(_e).__name__}: {_e}")
     return db
 
 
@@ -161,6 +171,8 @@ def _public(c: dict) -> dict:
         out["relation"] = c["relation"]
     if c.get("aliasSources"):
         out["aliasSources"] = dict(c["aliasSources"])
+    if c.get("knownAs"):                     # the names other sources know the person by, each with its source
+        out["knownAs"] = [dict(r) for r in c["knownAs"]]
     if c.get("agents"):
         out["agents"] = [dict(a) for a in c["agents"]]
     if model.unclassified(c):
@@ -238,9 +250,14 @@ def visible(db: dict) -> list[dict]:
 
 
 def _find(db: dict, cid) -> dict | None:
+    """The row with this id — or, for the id of a row folded into another, the row that holds the person now."""
     for c in db.get("contacts", []):
         if c.get("id") == cid:
             return c
+    if str(cid or "") in (db.get("merged") or {}):
+        from . import fusion
+        real = fusion.resolve_id(db, cid)
+        return next((c for c in db.get("contacts", []) if str(c.get("id")) == real), None)
     return None
 
 
@@ -267,6 +284,7 @@ from .actions import (  # noqa: E402,F401
     _a_hide_contact, _a_link_contact, _a_set_flag, _a_restore_contact, _a_set_alias, relations)
 from .group_actions import (  # noqa: E402,F401
     _a_create_group, _a_rename_group, _a_delete_group, _a_add_to_group, _a_set_agent, _a_message_group)
+from .person_actions import _a_merge_contacts, _a_split_contact  # noqa: E402,F401
 from .views import (  # noqa: E402,F401
     _a_show_sources, _a_sync_source, _a_show_contact_members, _a_show_view, _a_show_contact, _a_set_auto,
     _a_sync_contacts)
@@ -287,6 +305,8 @@ ACTIONS = {
     "remove_contact": _a_remove_contact,
     "set_favorite": _a_set_favorite,
     "set_alias": _a_set_alias,
+    "merge_contacts": _a_merge_contacts,
+    "split_contact": _a_split_contact,
     "set_flag": _a_set_flag,
     "restore_contact": _a_restore_contact,
     "hide_contact": _a_hide_contact,

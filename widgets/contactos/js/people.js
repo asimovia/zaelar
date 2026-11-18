@@ -210,6 +210,11 @@ function detailAliases(box, c, redraw, act){
     x.onclick=()=>act("set_alias",{contactId:c.id, alias:a, remove:true});
     t.appendChild(x); tw.appendChild(t);
   });
+  // The names OTHER sources know the person by (her own name in a chat app, a nickname of his address book): read-only,
+  // each with its source — they find her like a name, and they are not his words.
+  (c.knownAs||[]).forEach(k=>{ if(!k||!k.name) return;
+    const t=el2("span","cttag learned", k.name+(k.source&&k.source!=="his"?" · "+k.source:""));
+    t.title=tt("known_as_hint", null, "Así la conoce otra fuente"); tw.appendChild(t); });
   const add=el2("button","ctaddtag","+ "+tt("alias_add", null, "alias"));
   add.onclick=()=>inlineInput(add, tt("alias_ph", null, "cómo la llamas…"),
                               (t)=>act("set_alias",{contactId:c.id, alias:t}), ()=>redraw(null), "160px");

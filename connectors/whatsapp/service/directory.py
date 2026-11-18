@@ -17,12 +17,17 @@ PLATFORM = _svc.PLATFORM
 _PHONE_JIDS = ("@s.whatsapp.net", "@c.us")
 
 
+def _fold(s: str) -> str:
+    return " ".join(s.split()).casefold()
+
+
 def _wa_person(c: dict) -> dict | None:
     """One WhatsApp contact as the normalised row `widgets/contactos/imports.py` folds in.
 
     The NAME is the one HE saved (`name`); `notify` — the nickname the other person set for themselves —
-    only fills a blank. It is deliberately never an identity key either: it changes whenever they feel
-    like it and two strangers share it all the time (`imports.match` says the same thing from its side).
+    only fills a blank, and `nameKind` says which it is (`saved` | `self` | `number`). The nickname is never an
+    identity key either: it changes whenever they feel like it and two strangers share it all the time
+    (`imports.match` says the same thing from its side).
     """
     jid = str(c.get("id") or "").strip()
     if not jid or "@g.us" in jid:
@@ -33,11 +38,18 @@ def _wa_person(c: dict) -> dict | None:
         or (jid.split("@")[0] if jid.endswith(_PHONE_JIDS) else "")
     if phone and not phone.startswith("+"):
         phone = f"+{phone}"
-    name = str(c.get("name") or "").strip() or str(c.get("verifiedName") or "").strip() \
-        or str(c.get("notify") or "").strip() or phone
+    names = [("saved", str(c.get("name") or "").strip()), ("self", str(c.get("verifiedName") or "").strip()),
+             ("self", str(c.get("notify") or "").strip()), ("number", phone)]
+    kind, name = next(((k, n) for k, n in names if n), ("", ""))
     if not name:
         return None
-    row = {"name": name, "kind": "person", "phone": phone,
+    # The other names this platform has for him, so a nickname he says finds the person he saved under another one.
+    seen, known_as = {_fold(name)}, []
+    for _k, n in names[:3]:
+        if n and _fold(n) not in seen:
+            seen.add(_fold(n))
+            known_as.append(n)
+    row = {"name": name, "kind": "person", "phone": phone, "nameKind": kind, "knownAs": known_as,
            "channels": [{"platform": "whatsapp", "handle": phone or jid, "chatId": jid}],
            "externalIds": {"whatsapp": jid}}
     if c.get("imgUrl") and str(c["imgUrl"]) != "changed":
@@ -79,6 +91,34 @@ async def _drain_contacts() -> None:
             logger.warning(err)
         ingest.publish_contacts("whatsapp", people, groups, partial=partial, error=err)
         logger.info(f"WhatsApp contactos → {len(people)} personas, {len(groups)} grupos (parcial={partial})")
+
+
+#: How often the bridge is asked what changed in the address book (a rename, a number learned behind a `@lid`).
+CHANGES_EVERY_S = 60.0
+_changes_at = 0.0
+_changes_since: float | None = None      # None = never asked: the first pass takes the whole book (a catch-up)
+
+
+async def _drain_contact_changes() -> None:
+    """Push the contacts that CHANGED on the platform since the last pass, without waiting for an import.
+
+    Without this a rename on the phone only reached the directory when he pressed «import» again. Never raises."""
+    global _changes_at, _changes_since
+    if time.time() - _changes_at < CHANGES_EVERY_S:
+        return
+    _changes_at = time.time()
+    try:
+        got = await client.get_contacts(since=_changes_since or 0)
+        people = [r for c in (got or {}).get("contacts") or [] if (r := _wa_person(c))]
+        if people:
+            from connectors.messaging import contacts_bus
+            contacts_bus.push(PLATFORM, people)
+            logger.debug(f"WhatsApp: {len(people)} changed contact(s) → directory")
+        now = (got or {}).get("now")
+        if isinstance(now, (int, float)) and now > 0:
+            _changes_since = float(now)
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"WhatsApp: contact changes not read: {e}")
 
 
 #: How deep the chat book is read on an import: pages × rows, newest first.

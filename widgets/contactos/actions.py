@@ -84,6 +84,7 @@ def _a_update_contact(action, payload, q, db, contacts, now) -> dict:
                          "(pásame el nombre en `item` y lo resuelvo yo)"}
     for k in _d._FIELDS:
         if payload.get(k) is not None and str(payload.get(k)).strip() != "":
+            c.update({"nameSource": "his"} if k == "name" and model.norm(c.get(k)) != model.norm(payload[k]) else {})
             c[k] = str(payload[k]).strip()
     # V2-699 — EMPTYING a field is its own gesture, and it has to be, because the loop above ignores ""
     # on purpose: a model that omits a field, or sends it blank because it did not hear it, must never

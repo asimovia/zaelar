@@ -70,10 +70,11 @@ async def create_group(subject: str, participants: list[str]) -> dict:
     return await _request("POST", "/group", body={"subject": subject, "participants": participants}, timeout=60.0)
 
 
-async def get_contacts() -> dict:
+async def get_contacts(since: float | None = None) -> dict:
     """The address book the bridge has accumulated (V2-714). A SNAPSHOT, not a drain: WhatsApp cannot be
-    asked for everything, so the same rows come back every pass and the import is idempotent by design."""
-    return await _request("GET", "/contacts")
+    asked for everything, so the same rows come back every pass and the import is idempotent by design.
+    With `since` (ms, the `now` of the previous answer) only the rows whose names or number changed after it."""
+    return await _request("GET", "/contacts" + (f"?since={float(since)}" if since is not None else ""))
 
 
 async def get_chats(before: float | None = None, limit: int = 20) -> dict:

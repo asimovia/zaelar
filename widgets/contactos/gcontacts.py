@@ -129,16 +129,16 @@ def running() -> bool:
     return bool(_RUNNING["since"]) and (_time.time() - _RUNNING["since"]) < 600
 
 
-def sync(db: dict, *, merge, since: float = 0.0, remove=None) -> dict:
-    """ONE pass (see `_sync`), marked as running while it lasts."""
+def sync(db: dict, *, merge, since: float = 0.0, remove=None, pull_only: bool = False) -> dict:
+    """ONE pass (see `_sync`), marked as running while it lasts. `pull_only`: nothing of his is sent."""
     _RUNNING["since"] = _time.time()
     try:
-        return _sync(db, merge=merge, since=since, remove=remove)
+        return _sync(db, merge=merge, since=since, remove=remove, pull_only=pull_only)
     finally:
         _RUNNING["since"] = 0.0
 
 
-def _sync(db: dict, *, merge, since: float = 0.0, remove=None) -> dict:
+def _sync(db: dict, *, merge, since: float = 0.0, remove=None, pull_only: bool = False) -> dict:
     """ONE pass, both directions. `merge` is `data.py`'s own merger — this module never writes the store.
 
     Order matters and is deliberate: PUSH first, then PULL. Pushing our newer rows before reading means
@@ -158,7 +158,7 @@ def _sync(db: dict, *, merge, since: float = 0.0, remove=None) -> dict:
     out: dict = {"pushed": 0, "created": 0, "failed": 0}
     state = db.setdefault("sync", {})
 
-    if sv.can_write("google-contacts"):
+    if sv.can_write("google-contacts") and not pull_only:
         mine = [c for c in db.get("contacts", []) if _is_ours(c, since)]
         gone = list(state.get("pendingDeletes") or [])
         if mine or gone:
@@ -205,6 +205,7 @@ def _sync(db: dict, *, merge, since: float = 0.0, remove=None) -> dict:
 #: wakes this module far more often than it talks to Google, so the period can change here without
 #: touching the manifest, and a card reopening does not trigger a pass.
 PERIOD = 60.0
+DAILY_S = 86400.0
 
 
 def tick(ctx) -> None:
@@ -223,11 +224,13 @@ def tick(ctx) -> None:
     with _d.store.mutating(_d.WIDGET_ID):         # load → Google pass → save is ONE step (see store.mutating)
         db = _d.load_db()
         s = db.get("sync") or {}
-        if not bool(s.get("auto", False)):
+        # Automatic sync on: every `PERIOD`. Off: once a day, and only an account he has imported from (a rename or
+        # a number added in his address book reaches the directory by itself; an import nobody asked for never starts).
+        last = float(s.get("last") or 0.0)
+        if (_time.time() - last) < (PERIOD if bool(s.get("auto", False)) else DAILY_S) or not (s.get("auto") or last):
             return
-        if (_time.time() - float(s.get("last") or 0.0)) < PERIOD:
-            return
-        res = sync(db, merge=_d._merge_imported, since=float(s.get("last") or 0.0), remove=_d._drop_deleted)
+        res = sync(db, merge=_d._merge_imported, since=last, remove=_d._drop_deleted,
+                   pull_only=not bool(s.get("auto", False)))     # the daily look never sends his edits
         if not res.get("ok"):
             # A pass that failed still moves `last`, or a dead token would make every tick retry forever and
             # hammer Google from a loop nobody is watching. The error rides in `lastResult` for the card.

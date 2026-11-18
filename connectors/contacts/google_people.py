@@ -16,7 +16,7 @@ logger = logging.getLogger("zaelar.contacts.google")
 
 #: What we ask Google for. Deliberately short: every extra field is personal data crossing a network and
 #: landing in a local store for a card that would not show it.
-PERSON_FIELDS = "names,emailAddresses,phoneNumbers,addresses,organizations,biographies,memberships"
+PERSON_FIELDS = "names,nicknames,emailAddresses,phoneNumbers,addresses,organizations,biographies,memberships"
 OTHER_FIELDS = "names,emailAddresses,phoneNumbers"
 
 #: Google's own system labels. `starred` is the one that MEANS something to us (it is his ★); the rest are
@@ -132,6 +132,9 @@ def person_to_contact(p: dict, group_names: dict | None = None) -> dict | None:
         "groups": groups[:10],
         "favorite": favorite,
         "googleId": str(p.get("resourceName") or "").strip()[:80],
+        # what HE calls the person in his address book besides the name («nicknames»): names she is known by
+        "knownAs": [n for n in dict.fromkeys(_cap(str((r or {}).get("value") or ""), "name")
+                                             for r in p.get("nicknames") or [] if isinstance(r, dict)) if n][:4],
     }
     if org and org.lower() != name.lower():
         out["notes"] = (out["notes"] + " · " if out["notes"] else "") + org

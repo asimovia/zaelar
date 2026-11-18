@@ -36,36 +36,26 @@ class _StoreProxy:
 store = _StoreProxy()
 
 
-def match_imported(contacts: list[dict], inc: dict) -> dict | None:
+def match_imported(contacts: list[dict], inc: dict, index=None) -> dict | None:
     """Which existing contact this Google person IS, or None for somebody new (V2-699).
 
-    Three keys, in descending order of how much they PROVE — and the order is the whole point, because
-    every one of them can be right while the ones below it are wrong:
+    In descending order of how much each PROVES:
 
-      1. `googleId` — the same resource we imported last time. Survives him renaming the person here.
-      2. the email address, wherever it lives (the stored field OR an email channel). An address is an
-         account, so two rows sharing one are one person — the same rule V2-693 settled for Telegram.
-      3. name + city, normalized — `add_contact`'s own rule, so the two doors agree.
-      4. the name ALONE, but only when exactly ONE contact here carries it. This is what makes a second
-         import safe: `add_contact` can demand the city because the operator is looking at the answer,
-         while Google routinely knows a city he never typed — so «Marta Ruiz» with no city here and
+      1. what `identity.find` reads: the same Google resource (it survives him renaming the person here), then a
+         PHONE or an ADDRESS shared with a row — any of the ones either side holds. Two rows sharing an account
+         are one person (the rule V2-693 settled for Telegram), unless this very address book keeps two differently
+         named people on one line.
+      2. name + city, normalized — `add_contact`'s own rule, so the two doors agree.
+      3. the name ALONE, but only when exactly ONE contact here carries it. This is what makes a second
+         import safe: Google routinely knows a city he never typed — so «Marta Ruiz» with no city here and
          «Marta Ruiz, Soria» there would otherwise import as a SECOND Marta every single time. When two
          contacts share the name it stops: adding a duplicate he can merge beats silently folding two
-         people into one, which he cannot undo.
+         people into one.
     """
-    gid = str(inc.get("googleId") or "").strip()
-    if gid:
-        for c in contacts:
-            if str(c.get("googleId") or "").strip() == gid:
-                return c
-    mail = _norm(inc.get("email"))
-    if mail:
-        for c in contacts:
-            if _norm(c.get("email")) == mail:
-                return c
-            for ch in c.get("channels") or []:
-                if str(ch.get("platform")) == "email" and _norm(ch.get("handle")) == mail:
-                    return c
+    from . import identity
+    hit = identity.find(index or identity.Index(contacts), {**inc, "source": "google"}, "google")
+    if hit is not None:
+        return hit
     nm, city = _norm(inc.get("name")), _norm(inc.get("city"))
     if not nm:
         return None
@@ -96,10 +86,12 @@ def merge_imported(db: dict, rows: list[dict], *, authoritative: bool = False) -
     contacts = db.setdefault("contacts", [])
     now = time.strftime("%Y-%m-%d")
     added = updated_n = unchanged = 0
+    from . import identity
     from .imports import give_way
+    index = identity.Index(contacts, identity.apart_pairs(db))
     for i, inc in enumerate(rows or []):
         give_way(i)                      # E0: a thousand rows in the widget thread give the loop its turn
-        c = match_imported(contacts, inc)
+        c = match_imported(contacts, inc, index)
         if c is None:
             cid = f"c{db.get('next_id', 1)}"
             db["next_id"] = int(db.get("next_id", 1)) + 1
@@ -112,7 +104,10 @@ def merge_imported(db: dict, rows: list[dict], *, authoritative: bool = False) -
                  "parentId": "", "created": now, "updated": now,
                  "source": "google", "googleId": inc.get("googleId", "")}
             _model().normalize(c)
+            for n in inc.get("knownAs") or []:           # the nicknames his address book holds for the person
+                identity.known_as(c, n, "google")
             contacts.append(c)
+            index.add(c)
             added += 1
             continue
         # HIS EDITS WIN. Google only FILLS IN what is empty here — it never overwrites a field the
@@ -128,8 +123,12 @@ def merge_imported(db: dict, rows: list[dict], *, authoritative: bool = False) -
                 c[k] = inc[k]
                 touched = True
         if takes_over and inc.get("name") and inc["name"] != c.get("name"):
-            c["name"] = inc["name"]
+            was, c["name"], c["nameSource"] = c.get("name"), inc["name"], "google"
+            identity.known_as(c, was, "google")          # the name he called her until today still finds her
             touched = True
+        touched |= identity.said(c, inc.get("name"), "google")   # a row a chat app gave takes his address book's name
+        for n in inc.get("knownAs") or []:
+            touched |= identity.known_as(c, n, "google")
         # V2-715 — the OTHER phones and addresses. An ADDITION, always, even when Google is authoritative:
         # a number he typed here is his, and the failure the `takes_over` rule protects against («a second
         # import silently undoes every correction») has exactly the same shape one field over. Google
@@ -155,11 +154,13 @@ def merge_imported(db: dict, rows: list[dict], *, authoritative: bool = False) -
             # NOT `_touch`: Google filling in a blank is not the operator changing his mind, and stamping
             # `touchedAt` here would make the next push send Google's own value straight back at it.
             c["updated"] = now
+            index.add(c)
             updated_n += 1
         else:
             unchanged += 1
 
-    return {"added": added, "updated": updated_n, "unchanged": unchanged, "read": len(rows or [])}
+    merged = identity.unify(db)["merged"] if added or updated_n else 0   # what the pass proved to be one person
+    return {"added": added, "updated": updated_n, "unchanged": unchanged, "read": len(rows or []), "merged": merged}
 
 
 #: A single pass may never remove more than this share of the address book, nor more than this many rows,

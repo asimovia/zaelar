@@ -17,8 +17,15 @@ store.
 
 ## Continuous import is continuous DISCOVERY
 
-`tick` runs from the widget cron while the source is on. It never rewrites a row that exists — that rule
+`tick` runs from the widget cron while the source is on. It never rewrites a field he can edit — that rule
 lives in `imports.merge_contacts` and this module has no way to override it.
+
+## What the platform changes reaches the directory by itself (2026-11-18)
+
+A person renamed on the platform, a number learned behind an account: PUSHED when the connector can tell
+(`contacts_bus.take_pushed`, absorbed as a `refresh` — it only touches people already here), and PULLED once a day
+from every linked source he has imported from at least once, switch or no switch (`DAILY_S`). A source he never
+imported from is never read on its own: an import nobody asked for is not ours to start.
 """
 from __future__ import annotations
 
@@ -34,6 +41,8 @@ KNOWN = ("telegram", "whatsapp", "meshkore")
 #: How long between automatic passes. Generous on purpose: an address book is not a feed, and a pass that
 #: brings nothing new still costs a platform round-trip.
 EVERY_S = 900.0
+#: …and between the passes a linked source gets with its switch OFF, once he has imported from it.
+DAILY_S = 86400.0
 
 
 def state(db: dict) -> dict:
@@ -152,24 +161,27 @@ def sync_now(source: str) -> dict:
         return {"ok": False, "error": f"no pude incorporar los contactos de {source}: {e}"}
 
 
-def _absorb(source: str, got: dict) -> dict:
-    """Fold one connector answer into the directory — the answer asked for now, or one that arrived late."""
+def _absorb(source: str, got: dict, *, refresh: bool = False) -> dict:
+    """Fold one connector answer into the directory — the answer asked for now, one that arrived late, or (with
+    `refresh`) what the platform pushed: only people already here, and never counted as a pass of the source."""
     from . import data as _d, imports
     with _d.store.mutating(_d.WIDGET_ID):         # the merge and a concurrent add must not erase each other
-        return _absorb_locked(source, got, _d, imports)
+        return _absorb_locked(source, got, _d, imports, refresh)
 
 
-def _absorb_locked(source: str, got: dict, _d, imports) -> dict:
+def _absorb_locked(source: str, got: dict, _d, imports, refresh: bool = False) -> dict:
     db = _d.load_db()
     st = state(db)[source]
     if not got.get("ok", True) or got.get("error"):
         st["error"] = str(got.get("error") or "no pude leer esa fuente")
         _d.store.save(_d.WIDGET_ID, db)
         return {"ok": False, "error": st["error"]}
-    res = imports.absorb(db, got, source=source)
-    st.update({"last": time.time(), "added": int(res.get("added") or 0), "error": ""})
+    res = imports.absorb(db, got, source=source, **({"refresh": True} if refresh else {}))
+    if not refresh:
+        st.update({"last": time.time(), "added": int(res.get("added") or 0), "error": ""})
     _d.store.save(_d.WIDGET_ID, db)
-    logger.info(f"contactos: import {source} → +{res['added']} nuevos, {res['filled']} completados")
+    logger.info(f"contactos: {'refresh' if refresh else 'import'} {source} → +{res['added']} new, "
+                f"{res['filled']} completed, {res.get('merged', 0)} folded into one person")
     return {"ok": True, "source": source, **res}
 
 
@@ -189,6 +201,14 @@ def set_auto(source: str, on: bool) -> dict:
     return {**sync_now(source), "on": True}
 
 
+def _due(source: str, st: dict, now: float) -> bool:
+    """Is a pass owed? Every `EVERY_S` while its switch is on; once a day for a linked source he has imported from."""
+    age = now - float(st.get("last") or 0.0)
+    if st.get("on"):
+        return age >= EVERY_S
+    return float(st.get("last") or 0.0) > 0 and age >= DAILY_S and (source == "meshkore" or connected(source))
+
+
 def tick(ctx) -> None:
     """Continuous import, from the widget cron. Best-effort and quiet: a source that cannot be read is a
     line in the log and a message on the card, never a raised turn."""
@@ -204,10 +224,16 @@ def tick(ctx) -> None:
                 logger.info(f"contactos.sources: respuesta tardía de {s} incorporada → {r.get('added', 0)} nuevos")
         except Exception as e:  # noqa: BLE001
             logger.warning(f"contactos.sources: no pude incorporar la respuesta tardía de {s}: {e}")
+    try:                                     # what a platform pushed: a rename, a number learned (refresh only)
+        from connectors.messaging import contacts_bus
+        for s, rows in (contacts_bus.take_pushed() or {}).items():
+            if s in KNOWN and rows:
+                _absorb(s, {"ok": True, "contacts": rows, "groups": []}, refresh=True)
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"contactos.sources: what the platform pushed was not absorbed: {e}")
     try:
         db = _d.load_db()
-        due = [s for s, st in state(db).items()
-               if st.get("on") and (time.time() - float(st.get("last") or 0.0)) >= EVERY_S]
+        due = [s for s, st in state(db).items() if _due(s, st, time.time())]
     except Exception:  # noqa: BLE001
         return
     for s in due:

@@ -1139,6 +1139,19 @@ Flash keeps the conversation; the row is what both brains read.
   by a label in a name; the default channel is his choice, else the busiest, else a question. — since 2026-11-05 ·
   nodes 4.353, 4.354, 4.355, 4.356, 2.1501 · `widgets/directory.py`, `widgets/contactos/`,
   `widgets/mensajeria/outbound/targets.py`.
+- **CRIT-M12c · One person is ONE row, whatever source each row came from.** A phone (any the row holds, as its
+  last nine digits), an address or a platform account PROVES a person; a name never does (`contactos/identity.py`).
+  Two rows sharing one are folded — on every import, on the store's migration (the look back) and after each
+  refresh — unless one source keeps two differently named rows on that line (a landline, a switchboard). Nothing is
+  thrown away: the name not shown stays as a name the person is known by, with its source, and finds her; the folded
+  row is kept whole, its id keeps answering, and `split_contact` restores it for good. The shown name is his own,
+  else his address book's, else the chat's; a source renames only a row it named and he never did. What a platform
+  changes arrives by itself: pushed when the connector can tell (a `refresh` never adds anybody), read once a day
+  from a linked source he has imported from. When nothing proves it, he says it once (`merge_contacts`). The
+  conversation he has OPEN is the first reading of a name it carries at the send door; a word he gave somebody else
+  is asked, the one in front first. — since 2026-11-18 (V2-934) · nodes 4.581, 4.582, 2.1811 ·
+  `widgets/contactos/identity.py`, `fusion.py`, `person_actions.py`, `widgets/mensajeria/outbound/in_front.py`,
+  `connectors/whatsapp/`.
 - **CRIT-M12b · His contacts are structured memory, and one person is one person.** Each record the contacts card
   manages is one structured pill in its own retriever lane (`nucleo/memory_agent/contacts.py`, slot `contact:<id>`,
   no phone or address in it); a NAME is the resolver's, a DESCRIPTION («the girl from the guitar course») is
