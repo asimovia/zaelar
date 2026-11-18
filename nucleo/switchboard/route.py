@@ -34,6 +34,8 @@ DECIDE_S = 3.0
 SEEN_S = 90.0
 #: How long a cut-off piece waits for the rest of his sentence before it is forgotten.
 PIECE_S = 20.0
+#: What the judge calls a chunk that is nobody's: a new request. It always routes to Flash, whatever `to` says.
+NEW = "new"
 from nucleo.switchboard.act import (FRAGMENT, NO, OTHER, STOP, STOP_ALL, YES, _line, deliver, early_yes,  # noqa: E402,F401
                                     line_key, line_of, stop, waits_on_his_yes)
 
@@ -44,7 +46,9 @@ SYSTEM = (
     "yes, a no, a choice, a fact — in any wording or language, whole or cut short), confirms or refuses what it is "
     "about to do, adds a detail, corrects it, complains about how it did it, or asks it to go on, redo or cancel that "
     "task. Then answer its number.\n"
-    "Answer 0 when it is for none of them: a different request (even on a similar subject), an order about the screen "
+    "Answer 0 when it is for none of them: a NEW request — something else he wants done, even on a similar subject, "
+    "even while a process waits for his answer (a waiting question does not own what he says next: «create a group "
+    "with her» is not an answer to «shall I send her the message?») — an order about the screen "
     "or an app (open, close, play, pause, show), a question he wants answered now (the time, the weather, which tasks "
     "exist, or how a task is going or whether it is done — the assistant answers those itself), small talk, or words "
     "meant for somebody else in the room.\n"
@@ -55,9 +59,10 @@ SYSTEM = (
     "with no change and no condition (yes, go ahead, send it, I authorise it); \"no\" — it plainly refuses or cancels "
     "it; \"fragment\" — a cut-off piece that carries no decision and no content yet (a word or two, a sentence that "
     "stops); \"stop\" — he orders that process to STOP: stop it, cancel it, drop it, do not do it, he never asked "
-    "for it (add \"all\": true when he orders every process to stop); \"other\" — anything else: a change, a "
-    "detail, a correction, a complaint, a question.\n"
-    'Reply with JSON only: {"to": <number>, "is": "yes|no|stop|other|fragment", "why": "<a few words>"}'
+    "for it (add \"all\": true when he orders every process to stop); \"other\" — anything else about THAT "
+    "process: a change, a detail, a correction, a complaint, a question; \"new\" — it is for none of them (then "
+    "\"to\" is 0).\n"
+    'Reply with JSON only: {"to": <number>, "is": "yes|no|stop|other|fragment|new", "why": "<a few words>"}'
 )
 
 _seen: dict = {"text": "", "key": "", "at": 0.0}
@@ -114,6 +119,8 @@ def ask_the_model(text: str, procs: list[dict], last_reply: str = "",
     except Exception:  # noqa: BLE001
         return -1, f"unreadable: {raw[:60]!r}", OTHER
     kind = str(got.get("is") or OTHER).strip().lower()
+    if kind == NEW:                  # he asked for something else: no process owns it, whatever number came with it
+        return 0, str(got.get("why") or "")[:80], OTHER
     kind = kind if kind in (YES, NO, OTHER, FRAGMENT, STOP) else OTHER
     if kind == STOP and got.get("all") is True:
         kind, n = STOP_ALL, n or 1
