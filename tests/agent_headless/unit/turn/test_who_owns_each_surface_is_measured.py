@@ -26,7 +26,7 @@ FLAT_EN = ("find me a flat to rent in Madrid, two bedrooms, near Retiro, under f
 
 @pytest.fixture
 def events(monkeypatch):
-    for d in (so._CLAIMS, so._LAUNCHED, so._FLOW_SAID):
+    for d in (so._CLAIMS, so._LAUNCHED):
         d.clear()
     from nucleo.turn import turn_marks
     turn_marks.reset()
@@ -101,24 +101,6 @@ def test_an_errand_named_after_a_fragment_is_counted(events, whole, tail):
     events.clear()
     so.errand_born(6, whole, {"trace": "T39"})
     assert not _of(events, "fragment_goal"), "the joined request itself was counted as a fragment"
-
-
-# ── two doors, one question ─────────────────────────────────────────────────────────────────────────────────
-
-def test_the_flow_door_and_the_dispatcher_disagreeing_is_counted(events):
-    trace.adopt("T39")
-    so.flow_said("Okay.", "2")
-    so.dispatcher_said({"trace": "T39"}, "Okay.", "", "miss")
-    assert _of(events, "door_disagree")[0]["flow_of"] == "2"
-
-
-@pytest.mark.parametrize("flow, into, ctx", [("2", "2", {}), ("esc:9", "9", {}), ("", "", {}),
-                                             ("2", "", {"confirmed": True}), ("delivered:4", "", {})])
-def test_agreeing_doors_count_nothing(events, flow, into, ctx):
-    trace.adopt("T41")
-    so.flow_said("the car, under fifty", flow)
-    so.dispatcher_said({"trace": "T41", **ctx}, "the car, under fifty", into, "containment")
-    assert not _of(events, "door_disagree")
 
 
 # ── duplicates, non-owners, orphans ─────────────────────────────────────────────────────────────────────────

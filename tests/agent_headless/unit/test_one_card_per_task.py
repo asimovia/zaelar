@@ -29,7 +29,7 @@ class Rec:
 
 @pytest.fixture
 def world(monkeypatch):
-    for d in (so._CLAIMS, so._LAUNCHED, so._FLOW_SAID):
+    for d in (so._CLAIMS, so._LAUNCHED):
         d.clear()
     rows: list[dict] = []
     monkeypatch.setattr("voice.observer.emit",

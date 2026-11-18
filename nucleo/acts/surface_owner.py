@@ -11,8 +11,7 @@ would allow:
   · `duplicate_open` — a new sheet opened for a request another open sheet already serves (the dedup's yardstick);
   · `orphan` — a sheet left waiting with no errand behind it, or a duplicate that had to be closed;
   · `discarded_launch` — a turn that was discarded unanswered still showed, wrote or launched work;
-  · `fragment_goal` — an errand born with a fragment of its turn's joined request as its whole goal;
-  · `door_disagree` — the flow door and the dispatcher's dedup answered differently for the same turn.
+  · `fragment_goal` — an errand born with a fragment of its turn's joined request as its whole goal.
 
 Violations carry `allow: False` and a `rule` (the class), so the shadow reader (`/api/observability/shadow?kind=owner`)
 counts them per class like the arbiter's verdicts. Every entry point is best-effort and never raises: a measurement
@@ -26,28 +25,16 @@ from loguru import logger
 
 from nucleo.acts.card_owner import errand as _errand, errand_of_rec as _errand_of_rec, is_live as _is_live
 
-#: How long a turn is remembered as discarded / joined / judged by the flow door. A turn's side effects land within
-#: seconds of it (the measured late write came 2.7 s after the discard); a minute covers a slow fast pass.
-_TURN_TTL_S = 120.0
 #: How many open surfaces are tracked at once: more than any screen holds, bounded so a long session cannot grow it.
 _MAX = 256
 
 _CLAIMS: dict[str, dict] = {}        # wid -> {owner, request, at}
 _LAUNCHED: dict[str, list] = {}      # trace -> what it showed, wrote or launched (read when the discard comes later)
-_FLOW_SAID: dict[str, str] = {}      # trace -> the flow door's answer ("" = new flow)
 
 
 def _bound(d: dict) -> None:
     while len(d) > _MAX:
         d.pop(next(iter(d)))
-
-
-def _fresh(d: dict, trace: str):
-    v = d.get(trace)
-    if isinstance(v, tuple) and time.time() - v[0] > _TURN_TTL_S:
-        d.pop(trace, None)
-        return None
-    return v[1] if isinstance(v, tuple) else v
 
 
 def _trace() -> str:
@@ -270,25 +257,3 @@ def errand_born(tid, request: str, ctx: dict | None) -> None:
                 _emit("fragment_goal", violation=True, text=request, id=str(tid), joined=whole[:200], trace=t)
     except Exception as e:  # noqa: BLE001
         logger.debug(f"surface_owner: errand {tid} not measured — {type(e).__name__}: {e}")
-
-
-def flow_said(text: str, flow: str) -> None:
-    """The flow door's answer for this turn ("" = a new flow)."""
-    t = _trace()
-    if t:
-        _FLOW_SAID[t] = (time.time(), str(flow or ""))
-        _bound(_FLOW_SAID)
-
-
-def dispatcher_said(ctx: dict | None, request: str, into: str, by: str) -> None:
-    """The dispatcher's dedup for an escalation of a turn the flow door judged: do the two doors agree?"""
-    try:
-        t = str((ctx or {}).get("trace") or "")
-        said = _fresh(_FLOW_SAID, t) if t else None
-        if said is None or bool((ctx or {}).get("confirmed")) or str(said).startswith("delivered:"):
-            return      # a confirmed relaunch IS its errand; a delivered pass is continuity's, not the dedup's
-        if str(said).removeprefix("esc:") == str(into or "").removeprefix("esc:"):
-            return
-        _emit("door_disagree", violation=True, text=request, trace=t, flow_of=said, dispatcher=str(into or ""), by=by)
-    except Exception as e:  # noqa: BLE001
-        logger.debug(f"surface_owner: disagreement not measured — {type(e).__name__}: {e}")

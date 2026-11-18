@@ -1,10 +1,10 @@
 """A verdict between LICENCE and VETO never overrules the model — its words stand and an inline answer keeps the turn;
-membership in a live errand belongs to `flow_of`; a send is still held from LICENCE (node 3.186, V2-874).
+membership in a live errand belongs to the switchboard; a send is still held from LICENCE (node 3.186, V2-874).
 
 Measured on a demo turn («open the one that's the best deal» while an errand searched): the brief's escalate verdict
-at 0.54 routed the turn and silenced the model inline, `flow_of` injected the request into the live errand, and the
+at 0.54 routed the turn and silenced the model inline, the flow router injected the request into the live errand, and the
 model's clarifying question was said anyway — three voices. The one rule (`nucleo.turn.commission`, in shadow):
-the escalate verdict decides only errand vs inline; which errand is `flow_of`'s; the more specific question
+the escalate verdict decides only errand vs inline; which errand is the switchboard's; the more specific question
 (`errand_target`, `stop_errand`) wins over escalate; the model's words are silenced only at VETO; an act that leaves
 is held from LICENCE (battery C9: the flip to escalate on sends came at 0.52-0.62). Rule (a), the one chosen: below VETO
 the model's inline answer wins and the escalate verdict commissions nothing; a model that did nothing is licensed.
@@ -72,7 +72,7 @@ def test_below_the_licence_the_turn_stays_inline(lang):
 
 @pytest.mark.parametrize("flow_as, opens", [("new", True), ("", True), ("inject", False), ("absorb", False),
                                             ("steer", False), ("reopen", False)])
-def test_membership_in_a_live_errand_belongs_to_flow_of(lang, flow_as, opens):
+def test_membership_in_a_live_errand_belongs_to_the_route(lang, flow_as, opens):
     assert commission.would(_brief(escalate=("escalate", 0.6)), flow_as=flow_as)["open_new"] is opens
 
 

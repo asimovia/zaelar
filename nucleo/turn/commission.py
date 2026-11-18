@@ -1,7 +1,7 @@
 """Who wins a turn's commission — one rule, read in SHADOW first (V2-874).
 
 Measured on a demo turn («open the one that's the best deal», an errand searching): three voices answered it. The
-brief's `escalate_or_inline` at 0.54 routed the turn and silenced the model inline («nothing runs inline»); `flow_of`
+brief's `escalate_or_inline` at 0.54 routed the turn and silenced the model inline («nothing runs inline»); the flow router
 put the request into the live errand it belonged to (an inject); and the model's clarifying question was said anyway.
 The close then logged the inject as an escalation.
 
@@ -10,13 +10,13 @@ a disagreement is a doubt — applied to the commission, without exceptions but 
 
   · route          — the escalate verdict decides only errand vs inline, and below VETO it does not overrule the
                      model: a model that answered inline (its words, its calls) keeps the turn; a model that did nothing
-                     is licensed into an errand from LICENCE. WHICH errand (new · inject · steer · stop) is `flow_of`'s.
+                     is licensed into an errand from LICENCE. WHICH errand (new · inject · steer · stop) is the switchboard's.
   · hold_send      — the one exception, by REVERSIBILITY: a call that LEAVES the machine (`widgets.effects.leaves`)
                      is held from LICENCE (battery C9 measured the flip to escalate at 0.52-0.62 on sends).
   · silence_words  — the model's words and its clarifying question are silenced only at ≥ VETO.
   · open_new       — the more specific question wins: an escalate opens nothing new while `errand_target` reads an
-                     errand, or `stop_errand` reads a steer/replace/stop/settled, at ≥ LICENCE — nor when `flow_of`
-                     joined the request to an open flow.
+                     errand, or `stop_errand` reads a steer/replace/stop/settled, at ≥ LICENCE — nor when the request
+                     joined an open flow.
 
 `shadow()` emits `🧭 commission (shadow)` — what this rule WOULD do beside what the turn DID — and changes nothing.
 The verdicts are read raw (`jev.peek`): the shadow adds no `jev read` of its own to the timeline.
@@ -31,7 +31,7 @@ from nucleo.request.stop import REPLACE, SETTLED, STEER, STOP, STOP_ALL
 ADDRESSES_THE_ERRAND = (STEER, REPLACE, STOP, STOP_ALL, SETTLED)
 #: The model's own calls that hand the turn to an errand (a new one, or the one running).
 HANDS_OVER = ("escalate_to_slowbrain", "send_to_worker")
-#: `flow_of` outcomes that open a new errand («» — no route was begun or settled).
+#: Route outcomes that open a new errand («» — no route was begun or settled).
 OPENS = ("", "new")
 LABEL = "🧭 commission (shadow)"
 

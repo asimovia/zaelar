@@ -85,8 +85,6 @@ async def run_listener(stop: "asyncio.Event | None" = None) -> None:
                         # «separate» — the same confusion as the mute miss, one layer in. Recorded, not
                         # changed: the fail-open stays, an unreachable judge must never block an errand.
                         _model = f"error:{type(e).__name__}"
-            from nucleo.acts import surface_owner as _own
-            dup and _own.dispatcher_said(ctx, request, dup, _dup_by)   # V2-844 F0: does it agree with the flow door?
             if dup:
                 try:
                     from voice.observer import emit
@@ -125,7 +123,6 @@ async def run_listener(stop: "asyncio.Event | None" = None) -> None:
                         except Exception:  # noqa: BLE001 — fail-open, like the live half
                             pdup = None
                 if pdup:
-                    _own.dispatcher_said(ctx, request, pdup, "parked")
                     question = _absorb_into(pdup, request, key, ctx)
                     try:
                         from voice.observer import emit
@@ -141,7 +138,6 @@ async def run_listener(stop: "asyncio.Event | None" = None) -> None:
                         pass
                     _d._close_escalated_flow(ctx, ok=True, status="dedup_parked")
                     continue
-            _own.dispatcher_said(ctx, request, "", "miss")
             # THE NEGATIVE DECISION, SAID OUT LOUD (V2-507): «dedup did not fire» vs «nothing live» (round
             # 20260830-114302 could not tell). `live: 0` means nobody was there to match.
             try:

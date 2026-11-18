@@ -123,7 +123,7 @@ def test_a_claimant_takes_what_is_its_own():
     assert r["as"] == flow_events.RESUME and r["by"] == "errand" and r["claim"]["row"]["id"] == "e1"
 
 
-def test_the_router_is_flow_of_route():
+def test_the_router_is_flow_events_route():
     _subscribe()
     assert flow_events.route(_mail())["as"] == flow_events.STREAM
 

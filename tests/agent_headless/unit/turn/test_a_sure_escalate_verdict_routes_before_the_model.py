@@ -4,7 +4,7 @@ Battery C9 «the send waits for his consent», measured before this: the brief's
 escalate at 0.52-0.62 and Flash still answered inline and sent. Now the one pipeline reads the verdict where the
 model's output is held anyway — its first word (the Hold) and each call it makes (`route_by_verdict.Turn.gate`) — and
 under a sure «escalate» (≥ the licence) the inline call, tags and words do not run; the request is the commission the
-close launches through the errand portal (`flow_of.route`), and the turn's one line is the start line. Not a re-run:
+close launches through the errand portal, and the turn's one line is the start line. Not a re-run:
 nothing calls the model again. Disarm: `sure_escalate` returning False → red.
 """
 from __future__ import annotations

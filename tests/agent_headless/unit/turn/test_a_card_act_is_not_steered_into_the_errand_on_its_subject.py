@@ -4,8 +4,8 @@ Measured in the lab sandbox (es, 2026-11-11): a coffee-shop search running, then
 brief read `catalog_widget=map` 0.95, `wants_words=act` 0.98, `acts_asked=one` 1.00 — and `stop_errand=steer` 0.68,
 so the route said `steer` into the search and the one relay door sent his words to its worker («Voy a ello», no map).
 `screen_action`, the verdict the owner rule read, is not asked with the map closed: the card-naming verdict there is
-the catalogue's. These tests hold the reading — three paid verdicts and the manifest, no word list — at the route
-(`flow_of.joins_as` → `card`), at the portal (`flow_door.obey` tells no errand) and at the one relay door.
+the catalogue's. These tests hold the reading — three paid verdicts and the manifest, no word list — at the owner rule
+and at the one relay door.
 """
 from __future__ import annotations
 

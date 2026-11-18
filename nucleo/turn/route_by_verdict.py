@@ -3,7 +3,7 @@
 The brief's `escalate_or_inline` question is answered in the turn's one Jev trip. When it is SURE — at or above the
 licence (`verdicts.LICENCE`), the verdict the declared task clauses produce (a document, a reply drafted from his mail)
 — the one router decides: the request goes to the errand portal (`escalate_req` → the close's launch →
-`acts/errand` → `flow_door` → `flow_of.route`), whether or not the model called `escalate_to_slowbrain`, and the
+`acts/errand`), whether or not the model called `escalate_to_slowbrain`, and the
 model's inline act or answer of that turn is NOT executed: no inline `reply`, no send. The turn's one line is the
 start line the close already says for an escalation with no words («on it»).
 
@@ -215,7 +215,7 @@ def owns(escalate_req: dict | None) -> bool:
 
 
 def route(escalate_req: dict, operator_text: str, emit, *, why: str, brief=None, held: str = "") -> None:
-    """The request is the turn's commission (the errand portal launches it at the close, through `flow_of.route`).
+    """The request is the turn's commission (the errand portal launches it at the close).
     The ONLY opener of an errand the model did not call (V2-857 phase 8: no word backstop): its event says the
     verdict, its confidence and where it was read (`source`: the model's call it held, or `verdict` at its words)."""
     first = not escalate_req.get("routed")

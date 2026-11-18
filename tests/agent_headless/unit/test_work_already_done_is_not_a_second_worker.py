@@ -38,7 +38,7 @@ the two came to disagree about whether the calendar had been emptied.
 
 So: the auditor SEES what ran, and `worker_action` refuses to launch a second worker for it.
 
-V2-851 F5: the auditor is gone (a task is born only from his words, through `flow_of.route`), so its
+V2-851 F5: the auditor is gone (a task is born only from his words), so its
 `worker_action` path no longer exists to be refused. What stays is the reader that remains: the fast brain's
 prompt carries the ledger of what already ran.
 """

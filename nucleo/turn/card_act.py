@@ -4,7 +4,7 @@ Measured in the lab sandbox (es, 2026-11-11): a coffee-shop search running, then
 `screen_action` is asked only while cards are open, so the owner rule had no card verdict for the CLOSED map; the
 route said `steer` into the search and the one relay door sent his words to its worker («Voy a ello», no map). The
 verdict that names a closed card is the catalogue's. Read here once, by the owner rule (`stop.card_owns_the_turn`,
-which the relay door and the steer backstop read) and by the route (`flow_of.joins_as` → `card`). No word list:
+which the relay door and the steer backstop read). No word list:
 three verdicts the brief already paid, and the manifests.
 """
 from __future__ import annotations
