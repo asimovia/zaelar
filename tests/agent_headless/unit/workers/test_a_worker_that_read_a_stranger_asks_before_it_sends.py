@@ -4,6 +4,9 @@ F0 measured that no worker exit read the taint and that a worker's `widget_data`
 leaving act crosses `nucleo/workers/exit_gate`: with the session tainted since his last yes it becomes the durable ask
 (the act retained, nothing sent), his yes clears the taint and runs it; a session under a mandate that covers the
 channel sends; an untainted session to somebody he named sends as before. ES and EN.
+
+Since V2-938 a MESSAGE the door would ask about is handed to the message owner (`nucleo/send`): the owner asks him
+and sends on his yes. What stays here: nothing leaves from the worker unless a mandate covers the channel.
 """
 from __future__ import annotations
 
@@ -35,7 +38,19 @@ def door(monkeypatch):
     rec = SimpleNamespace(task_id="c9", playbook_chosen="errand", uid="", started=time.time(), depth=0, trace_id="", surface="", sheet="",
                           native_sid="", waiting_on="", ask="", ask_corr="", parked=False, mandate={})
     monkeypatch.setattr(worker_api, "_verify", lambda *_a: rec)
-    yield SimpleNamespace(api=worker_api, rec=rec, sent=sent)
+    from nucleo.pulse import notices
+    from nucleo.send import owner
+    handed = []
+
+    async def _intake(said, hint=None, **kw):
+        handed.append(dict(hint or {}))
+        return "?"
+
+    async def _notify(*a, **kw):
+        return {}
+    monkeypatch.setattr(owner, "intake", _intake)
+    monkeypatch.setattr(notices, "notify", _notify)
+    yield SimpleNamespace(api=worker_api, rec=rec, sent=sent, handed=handed)
     untrusted.reset()
     his_words.reset()
 
@@ -54,17 +69,15 @@ def test_after_reading_the_mail_the_send_is_asked_and_nothing_leaves(door, monke
     his_words.note(said)
     taint.mark(door.rec, "recall:messages")
     got = _send(door)
-    assert got.get("status") == "pending" and door.sent == []
-    q = door.api._ACTS[got["corr_id"]]["question"]
-    assert "Rowan" in q, "the send's one confirmation names his contact"
+    assert (got.get("result") or {}).get("handed") is True and door.sent == []
+    assert door.handed[0]["contact"] == "Rowan Smith", "the owner asks him about his contact"
 
 
 def test_an_untainted_session_is_asked_the_same_one_confirmation(door):
     """V2-931 — a send needs his confirmation, tainted or not: one rule, one question, nothing leaves before his yes."""
     his_words.note("tell Rowan Smith on telegram that I'm late")
     got = _send(door)
-    assert got.get("status") == "pending" and door.sent == []
-    assert "Rowan" in door.api._ACTS[got["corr_id"]]["question"]
+    assert (got.get("result") or {}).get("handed") is True and door.sent == [] and door.handed
 
 
 def test_a_mandate_that_covers_the_channel_sends_after_reading(door):
@@ -78,4 +91,4 @@ def test_a_mandate_for_another_channel_still_asks(door):
     his_words.note("habla con Rowan Smith por telegram y cierra la hora")
     door.rec.mandate = {"may": ["message"], "channels": ["email"]}
     taint.mark(door.rec, "recall:messages")
-    assert _send(door).get("status") == "pending" and door.sent == []
+    assert (_send(door).get("result") or {}).get("handed") is True and door.sent == []

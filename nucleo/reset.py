@@ -70,6 +70,7 @@ def abandon_work(*, source: str = "reset") -> dict:
     messages, the agenda — this discards WORK, not memories. The short-term record is an INSTRUCTION (V2-214
     doctrine): it says that nothing is pending and nothing should be resumed."""
     ts = time.strftime("%Y-%m-%d %H:%M")
+    __import__("nucleo.send.draft", fromlist=["x"]).reset()     # V2-938: a message being written is work too
     nav = _snapshot_navegador()
     esc = _snapshot_escalations()
     jobs = _snapshot_widget_jobs()

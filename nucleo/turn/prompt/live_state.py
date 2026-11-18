@@ -93,6 +93,8 @@ def live_state() -> str:
     lines.append(screen_line())
     # V2-348 — TAREAS DE FONDO live in `live_blocks.py` (V2-276 precedent); V2-799 — what is pending or stopped.
     lines.extend(live_tasks.pending_task_lines() + live_tasks.waiting_lines() + live_history.pending_work_lines())
+    _draft = __import__("nucleo.send.owner", fromlist=["x"]).status()   # V2-938: the message being written, its truth
+    lines.extend([_draft] if _draft else [])
     lines.extend(live_history.recent_lines() + live_history.earlier_lines() + _day_lines())   # + today (V2-865)
     lines.extend(live_browser.navegador_lines())
     lines.extend(live_record.harness_lines())   # V2-660: an open harness goal is a FACT with its rule

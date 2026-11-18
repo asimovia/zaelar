@@ -1,10 +1,13 @@
-"""A worker never messages somebody he did not name: the send becomes a question, and his «yes» sends it.
+"""A worker never messages somebody he did not name: the send becomes a question — the message owner's (V2-938).
 
 `best-plumber-same-day__es` (2026-10-14, sandbox 20261014-010939-es): he asked to FIND a well-rated plumber
 who can come today. The brief the turn's model wrote said «Buscar y contactar fontaneros», and the worker
 called `mensajeria send_to {to: 683139819, text: «Hola, ¿fontaneros de urgencia?…»}` twice. The door ALLOWED
 it (`classify_act` → `action_mode_now` → FAST, because `send_to` is `confirm:false` for a turn executing his
 order); only a missing directory entry stopped it.
+
+Since V2-938 the question is not the worker's: the act is handed to the message owner (`nucleo/send`), which asks
+him, sends on his yes and says the receipt (its own test: `unit/send/`). Here: nothing leaves from the worker.
 """
 import asyncio
 import json
@@ -42,7 +45,21 @@ def door(monkeypatch):
     from nucleo import dispatch
     monkeypatch.setattr(dispatch, "get_record", lambda tid: rec)
     worker_api._ACTS.clear()
+    from nucleo.pulse import notices
+    from nucleo.send import draft, owner
+    handed: list = []
+
+    async def _intake(said, hint=None, **kw):
+        handed.append(dict(hint or {}))
+        return "¿Se lo mando?"
+
+    async def _notify(*a, **kw):
+        return {}
+    monkeypatch.setattr(owner, "intake", _intake)
+    monkeypatch.setattr(notices, "notify", _notify)
+    rec.handed = handed
     yield rec, ran
+    draft.reset()
     worker_api._ACTS.clear()
     his_words.reset()
 
@@ -62,35 +79,18 @@ def test_the_premise_the_turn_has_and_the_worker_lacks():
     assert worker_policy.classify_act("widget_data", _SEND) == worker_policy.ALLOW
 
 
-def test_a_send_to_a_number_he_never_said_parks_as_a_question(door):
+def test_a_send_to_a_number_he_never_said_is_handed_to_the_owner_and_nothing_leaves(door):
     rec, ran = door
     his_words.note("Tengo una fuga en el baño y necesito un fontanero hoy sí o sí… uno que esté bien valorado")
     his_words.note("Madrid centro")
     out = _act(_SEND)
-    assert out.get("status") == "pending" and out.get("corr_id"), out
+    assert (out.get("result") or {}).get("handed") is True, out
     assert ran == [], "the message left without his word"
-    pend = worker_api.pending_asks()
-    assert len(pend) == 1 and "683139819" in pend[0]["question"]
-    assert rec.waiting_on == "user", "the turn has to put the question to him"
+    assert rec.handed and rec.handed[0]["to"] == "683139819", "the owner holds it, with the act's fields"
+    assert worker_api.pending_asks() == [], "no second question on the worker's row"
 
 
-def test_his_yes_sends_it(door):
-    _rec, ran = door
-    his_words.note("necesito un fontanero hoy")
-    corr = _act(_SEND)["corr_id"]
-    yes = __import__("nucleo.request.consent_ask", fromlist=["x"]).yes_no()[0]   # his declared yes (V2-878 §4b)
-    assert asyncio.run(worker_api.answer(corr, yes)) is True
-    assert ran and ran[0][0] == "widget_data" and ran[0][1]["payload"]["to"] == "683139819"
-
-
-def test_his_no_sends_nothing(door):
-    _rec, ran = door
-    corr = _act(_SEND)["corr_id"]
-    asyncio.run(worker_api.answer(corr, "no, ya llamo yo"))
-    assert ran == []
-
-
-def test_no_words_on_file_asks(door):
+def test_no_words_on_file_is_handed_too(door):
     """A restart, or a channel that never recorded the turn: not knowing what he said is not his yes."""
-    _rec, ran = door
-    assert _act(_SEND).get("status") == "pending" and ran == []
+    rec, ran = door
+    assert (_act(_SEND).get("result") or {}).get("handed") is True and ran == []

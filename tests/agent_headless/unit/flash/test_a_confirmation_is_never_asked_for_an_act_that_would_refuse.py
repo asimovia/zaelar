@@ -44,13 +44,16 @@ def test_a_refused_act_says_its_own_reason_not_a_removal():
 
 def test_an_act_that_leaves_is_routed_as_a_task_and_never_run_inline():
     from nucleo.flash import tool_executor_widget_calls as calls
-    # V2-931: a leaving call is handed over to ONE worker task (`send_errand.hand_over`), never inline
+    # V2-938: a MESSAGE call is handed to its owner (`nucleo/send`); any other act that leaves is ONE worker task
     seen, esc = [], {"v": None}
     said = "mandale un whatsapp a raquel"
     assert calls._leaving_is_a_task("mensajeria", "send_to", said, esc, lambda *a, **k: seen.append(a[1]),
                                     payload={"contact": "Raquel"}) is True
-    assert esc["v"] == said and esc.get("leaves") is True
-    assert (esc["send"]["widget"], esc["send"]["action"]) == ("mensajeria", "send_to")
+    assert esc["send_owner"]["hint"] == {"contact": "Raquel"} and esc["v"] is None and "send" not in esc
+    grp = {"v": None}
+    assert calls._leaving_is_a_task("mensajeria", "create_group", "crea un grupo con raquel", grp,
+                                    lambda *a, **k: None, payload={"members": ["Raquel"]}) is True
+    assert grp["v"] == "crea un grupo con raquel" and grp["send"]["action"] == "create_group"
 
 
 def test_an_act_that_stays_runs_inline():

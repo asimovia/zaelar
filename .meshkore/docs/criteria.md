@@ -924,29 +924,25 @@ Flash keeps the conversation; the row is what both brains read.
   Measured 2026-11-06: with only the prose «DONE WHEN» beside `report goal`, every first goal of eleven errands was
   prose and refused — a round trip and a late checkpoint 1 each. — since 2026-11-06 · nodes 2.1359 ·
   `nucleo/workers/prompts/playbook.py`, `nucleo/circuit/spec_declares.py`, `i18n/genesis/*/voice.json`.
-- **CRIT-T2b · A send is ONE Brain Worker task, and he hears three lines of it: the ask, «sending», «sent / failed».** A
-  call of the turn whose action declares `external.send` is handed over before any ladder, guard or verdict reads it
-  (`tool_executor_widget_calls._leaving_is_a_task` → `send_errand.hand_over`): his words are the turn's commission and
-  the model's call rides as a hint, never as a decision; a send the brief read and no call made is launched at the
-  close by the same door (`send_errand.start`); the turn's one line is the send's start (`send_preparing`). The worker
-  follows the send's own method (`send_errand.brief_block`): find the person in his contacts (`bridge act
-  find_contact`), asking him until it is the right one; his dictated words verbatim, written as a DRAFT into the card
-  (her conversation opens with the text in its box); ONE call of the send; it says nothing itself. The worker of a
-  send runs on Claude itself — the subscription rung where its credential resolves, else the local login — and is
-  never relayed to another model (`claude_tier.tier`). The exit door (`exit_gate.gate`) says the card's own refusal
-  first and then asks ONE confirmation, every time, unless an errand's mandate covers the channel: one short sentence
-  naming her as he says it aloud (`ready_question`), said as it is while that process is the only one open
-  (`pulse/workers.relay_line`); the act is retained on the task's row. A plain yes — the screen's button, a reply that
-  is one of the two declared answers, or the switchboard's reading of his sentence (CRIT-T3) — runs the retained act
-  at once with no session resumed, and a plain no ends the row; any other answer resumes the worker with his words,
-  and it confirms with `bridge act confirm_send`, which runs exactly the act he was asked about, once
-  (`worker_api_answer.confirm_retained`), or rewrites the draft, or cancels. The final line is the RECEIPT's
-  (`send_receipt.follow`): the engine follows the queued order to the connector's own answer — the card's declared end
-  state for «sent», the order's outbox row for «failed» and its reason — and says the line from it; with no receipt
-  inside the bound it says once that it is not confirmed yet and tells him when it lands; the row ends with the
-  verdict the line says. — since 2026-11-17 (V2-931) · nodes 2.1801, 2.1803 · `nucleo/request/send_errand.py`,
-  `nucleo/request/send_receipt.py`, `nucleo/workers/exit_gate.py`, `nucleo/cli/worker_api_answer.py`,
-  `widgets/mensajeria/actions/send.py`.
+- **CRIT-T2b · A message has ONE owner (`nucleo/send`), from his words to the connector's receipt.** Every way a
+  message can be asked for is a HAND-OVER to the owner and decides nothing: the model's call of an act whose event type
+  is a message (`send/turn.claim`, before any ladder or guard reads it); at the turn's close a call the verdict's gate
+  held, the reading's sure act, a sure order nothing served, our own question about a message, or an order that only
+  leans to the messaging card — the last two confirmed by the owner's own read of his words, which opens nothing when
+  they are not an order to send one (`send/turn.at_close`); a worker's message the exit door would ask about
+  (`send/worker.hand`, after the door's refusals and a mandate's release). The owner keeps ONE draft (`send/draft`) and
+  decides by code over it: nobody resolved → the name resolved (`send/people`: the open conversation first, then
+  `contactos/who.find`) — one person is that person, several or a word nobody carries is ONE question naming them,
+  never a pick; no text → «what shall I tell her?»; both → ONE confirmation that reads the text. While a draft is open,
+  each sentence he says is read ONCE against it at the turn's gate, before the switchboard (`send/read`, seat `send`):
+  about the message (who, what it says, a phrase added or taken out — the text is rewritten whole —, send it, drop it,
+  which people carry that name) → the owner's, answered at once and the change said back; anything else → not taken,
+  the conversation answers it; an unreadable read → not taken. Nothing leaves before his yes over one person and a
+  text; it leaves through the card's own act with the chosen row's id (`resolve_target` `contact_id`), and the final
+  line is the connector's receipt (`send/receipt`). A draft nobody touches for 10 min is closed and reads nothing. —
+  since 2026-11-18 (V2-938) · node 2.1801 · `nucleo/send/`, `nucleo/turn/pipeline_gate.py`,
+  `nucleo/turn/pipeline_errands.py`, `nucleo/cli/worker_api.py`, `widgets/mensajeria/outbound/targets.py`. End to end:
+  `python -m tests.agent_headless.e2e.send_owner.bench` (a sandbox engine, real models, a WhatsApp double).
 - **CRIT-T2g · An order the model served with another tool opens the ORDER's row.** At the close, a sure order
   (`verdicts.sure_order`: `request_type = order` and `screen_action = card:act` at the one act floor, `wants_words` ≠
   tell) that no door SERVED (`order_unserved.served`) opens its row: a leaving act becomes its ONE worker task

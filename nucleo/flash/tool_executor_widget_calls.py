@@ -483,6 +483,8 @@ def _leaving_is_a_task(wid: str, action: str, text: str, escalate_req: dict, emi
     from nucleo.request import base as _base, send_errand
     if not _fx.leaves(_base(wid), action):
         return False
+    if __import__("nucleo.send.turn", fromlist=["x"]).claim(escalate_req, text, wid, action, payload, emit=emit):
+        return True            # V2-938: a MESSAGE is its owner's (`nucleo/send`), never a worker task
     __import__("nucleo.acts.message", fromlist=["x"]).note_his_order(wid, action, payload, brief)   # CRIT-C9, read at the exit door
     send_errand.hand_over(escalate_req, text, wid, action, payload, emit=emit)
     return True

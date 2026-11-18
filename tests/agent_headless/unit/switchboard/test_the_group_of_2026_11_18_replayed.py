@@ -145,14 +145,14 @@ def test_a_group_is_never_told_as_a_message(world, monkeypatch):
 
 def test_the_worker_is_told_the_acts_own_steps_and_fields(monkeypatch):
     """02:07:39 — a worker read the whole card (30 KB) and searched it to learn how a group is created. The brief of an
-    act that is not a message carries that act's declaration; a message keeps its own steps."""
+    act that is not a message carries that act's declaration; a message never reaches a worker (V2-938)."""
     monkeypatch.setenv("ZAELAR_LANGUAGE", "en")
     brief = send_errand.brief_block({"playbook": "message", "send": {"widget": "mensajeria", "action": "create_group",
                                                                     "payload": {}}})
     assert "mensajeria:create_group" in brief and "members" in brief and "platform" in brief
     assert "widget data mensajeria create_group" in brief and "draft" not in brief
     msg = send_errand.brief_block({"playbook": "message", "send": {"widget": "mensajeria", "action": "send_to", "payload": {}}})
-    assert "draft" in msg and "create_group" not in msg
+    assert "create_group" not in msg
 
 
 # ── an act that landed is final ─────────────────────────────────────────────────────────────────────────────────

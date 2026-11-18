@@ -208,6 +208,16 @@ def _worker_door(monkeypatch):
                           mandate={})
     monkeypatch.setattr(worker_api, "_verify", lambda *_a: rec)
     monkeypatch.setattr(worker_api_answer, "_record_for", lambda _e: rec)
+    from nucleo.pulse import notices
+    from nucleo.send import owner
+
+    async def _intake(said, hint=None, **kw):          # V2-938: what the door would ask is the message owner's
+        return "?"
+
+    async def _notify(*a, **kw):
+        return {}
+    monkeypatch.setattr(owner, "intake", _intake)
+    monkeypatch.setattr(notices, "notify", _notify)
 
     def act(payload):
         import json
@@ -225,6 +235,11 @@ def _quinn_draft(text="Hi Quinn, Thursday at ten works for us."):
     data.apply_action("draft", {"contact": "quinn@example.com", "subject": "Thursday", "text": text})
 
 
+def _asked(out: dict) -> bool:
+    """He is asked: by the worker's row, or — a message, since V2-938 — by the message owner it was handed to."""
+    return out.get("status") == "pending" or bool((out.get("result") or {}).get("handed"))
+
+
 def _left():
     return [(o["to"], o.get("subject")) for o in (data.load_db().get("pending_send") or [])]
 
@@ -234,7 +249,7 @@ def test_a_draft_edited_after_his_order_is_another_row_and_is_asked(monkeypatch)
     _quinn_draft()
     held_send.note_his_order("mensajeria", "send_draft", _QUINN, _brief("mensajeria:send_draft", 0.95))
     _quinn_draft("Hi Quinn, actually Friday at noon.")
-    assert d.act(_QUINN).get("status") == "pending" and d.sent == []
+    assert _asked(d.act(_QUINN)) and d.sent == []
 
 
 def test_an_unsure_order_records_nothing(monkeypatch):
@@ -250,7 +265,7 @@ def test_disarmed_the_order_the_turn_recorded_does_not_reach_the_worker_and_he_i
     held_send.note_his_order("mensajeria", "send_draft", _QUINN, _brief("mensajeria:send_draft", 0.95))
     from nucleo.acts import message_held
     monkeypatch.setattr(message_held, "_HIS_ORDERS", {})
-    assert d.act(_QUINN).get("status") == "pending" and d.sent == [], "the disarm did not take"
+    assert _asked(d.act(_QUINN)) and d.sent == [], "the disarm did not take"
 
 
 def test_a_pending_confirmation_has_one_surface_the_conversation():

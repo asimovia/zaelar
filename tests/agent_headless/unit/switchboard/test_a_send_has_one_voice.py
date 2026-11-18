@@ -60,14 +60,3 @@ def test_every_line_of_a_send_exists_in_his_language_and_names_no_machinery(lang
     assert "{why}" in lines["send_failed"] and "{who}" in lines["send_ready_confirm"]
 
 
-@pytest.mark.parametrize("lang", LANGS)
-def test_the_workers_method_writes_the_draft_and_never_speaks_for_the_send(lang):
-    from nucleo.request import send_errand
-    import json
-    from pathlib import Path
-    pack = json.loads((Path(__file__).resolve().parents[4] / "i18n" / "genesis" / lang / "voice.json").read_text("utf-8"))
-    steps = pack["worker_brief"]["send_errand_steps"]
-    assert "mensajeria draft contact=" in steps and "mensajeria send_draft contact=" in steps
-    assert steps.index("draft contact=") < steps.index("send_draft contact="), "the draft is written before it is sent"
-    assert "confirm_send" in steps and "act verify" not in steps, "the receipt is the engine's to follow"
-    assert send_errand.PLAYBOOK == "message"

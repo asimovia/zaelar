@@ -11,7 +11,8 @@ from loguru import logger
 from nucleo.acts import message as _message   # our own «which one?» over his word is remembered (V2-850)
 from nucleo.circuit import spec as _spec_mod   # the brief's END verdict travels with the errand (T-19 R6)
 from nucleo.request import model as _request   # his words travel with the ONE errand his sentence commissions
-from nucleo.request import send_errand as _send   # a send is ONE worker task (V2-931)
+from nucleo.request import send_errand as _send   # an act that leaves and is not a message: ONE worker task (V2-931)
+from nucleo.send import turn as _send_owner   # a message is its owner's (V2-938)
 from nucleo.request import stop as _stop_decision   # V2-820: a replace stops X and starts Y in one act
 from nucleo.request import order_unserved as _order   # the order the brief identified, served with another tool (A2)
 from nucleo.turn import brief as _tb   # the turn's reading travels with the errand it commissions (V2-852)
@@ -41,8 +42,12 @@ async def launch_the_errands(*, motor, send, speech, emit, brain, _brief, _op_te
     # is the model's call or the brief's sure «escalate» (`route_by_verdict`), and the errand carries the brief's class.
     # Escalates after the TTS; not when the turn addressed a live worker (inject/answer/stop) — save a REPLACE (V2-820).
     _replacing = _stop_decision.start_beside_the_stop(_brief, escalate_req, _op_text, worker_acted, emit=emit)
-    _send.kept(escalate_req, worker_acted, brief=_brief,       # a send leaves the turn as its ONE commission
-               calls=getattr(brain, "_turn_calls", None) or ())
+    # V2-938 — a MESSAGE is its owner's (`nucleo/send`): every way it could leave the turn is handed over here
+    _owned = await _send_owner.at_close(escalate_req, _op_text, _brief, getattr(brain, "_turn_calls", None) or (),
+                                        spoken_text, send, speech, brain)
+    if not _owned:
+        _send.kept(escalate_req, worker_acted, brief=_brief,   # any OTHER act that leaves is its ONE worker task
+                   calls=getattr(brain, "_turn_calls", None) or ())
     _send_ctx = _send.context(escalate_req)        # …with its playbook and the model's call as a hint
     if escalate_req["v"] is not None and (not worker_acted["v"] or _replacing):
         req = escalate_req["v"] or _op_text
@@ -107,7 +112,9 @@ async def launch_the_errands(*, motor, send, speech, emit, brain, _brief, _op_te
     if not _did_act:
         _sbe.routed(_op_text)          # a sentence about several errands goes part by part (node 2.643)
     from nucleo.request import ending as _ending   # V2-851 F2e — a view of the card never reached the send
-    if not (_acted_elsewhere or (acted["widget"] and not _ending.only_held())):
+    if _owned:
+        _opened = True                 # the message's owner asked or sent: no other row, question or worker for it
+    elif not (_acted_elsewhere or (acted["widget"] and not _ending.only_held())):
         # our «which Raquel?» is a question, and his answer is kept like the card's (V2-850, `directory.asked`)
         _which = _message.asked_which(spoken_text, (str((_brief or {}).get("judged") or "") if isinstance(_brief, dict)
                                                     else "") or _op_text)   # no judged text yet: his own words

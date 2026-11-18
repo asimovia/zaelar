@@ -199,7 +199,17 @@ def resolve_target(payload: dict | None = None) -> dict:
     # carries the word as a label. Nobody yet → the question, and his answer becomes the relation (`d.answered`).
     rel = str(payload.get("relation") or "").strip().lower()
     front: dict = {}
-    if rel:
+    cid = str(payload.get("contact_id") or "").strip()
+    chat = str(payload.get("chat_id") or "").strip()
+    if chat and want and not cid:    # a conversation already chosen by its id (`nucleo/send`): that chat, as it is
+        return {"ok": True, "platform": want, "to": chat, "chatId": chat, "name": who or chat, "contactId": "",
+                "known": False}
+    if cid:      # the person was already chosen (`nucleo/send`): that row, never the name read again
+        hits = [c for c in d._contacts() if str(c.get("id") or "") == cid]
+        if not hits:
+            return {"ok": False, "say": "widgets.mensajeria.refusal_unknown_person",
+                    "error": f"the contact chosen for «{who}» is no longer in the directory"}
+    elif rel:
         hits = d.by_relation(rel)
         if not hits:
             d.asked(who, [], rel)

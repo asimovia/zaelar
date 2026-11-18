@@ -80,10 +80,10 @@ def gate_scene(tmp_path, monkeypatch):
 
 
 def test_a_reply_is_never_sent_by_the_turn_with_or_without_a_strangers_words(gate_scene, monkeypatch):
-    """Since V2-852 M2 an act that leaves is the turn's task: the stranger's-words question is the worker's exit door
-    (`tests/agent_headless/unit/workers/test_a_worker_that_read_a_stranger_asks_before_it_sends.py`)."""
+    """Since V2-938 a message the turn reaches is its owner's (`nucleo/send`): the turn never sends it, and the owner
+    asks him before anything leaves."""
     for taint in (False, True):
         if taint:
             U.seen()
         out = rig.run("mensajeria", "reply", {"n": 1, "text": "ok, thanks"}, said="reply ok thanks", monkeypatch=monkeypatch)
-        assert not out.ran and not out.asked and any("a send is one worker task" in label for _k, label in out.events), out
+        assert not out.ran and not out.asked and any("a message goes to its owner" in label for _k, label in out.events), out

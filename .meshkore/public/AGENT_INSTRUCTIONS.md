@@ -475,20 +475,21 @@ Each is one line in `.meshkore/docs/criteria.md`, with its node; read the sectio
   or the brief's sure `escalate`, never by a word backstop over his sentence (C16); a sign-in the model forgot opens
   only on the brief's sure `login_only` (C17); with no stop verdict only the model's own `stop_worker` stops an
   errand (C18).
-- **A send is ONE Brain Worker task, and one switchboard routes his words (§T, T2b, T3):** Flash never sends, asks
-  about a send or says it went — a call whose act leaves is handed over before any guard reads it
-  (`nucleo/request/send_errand.py`), and the worker (Claude itself, never relayed to another model) finds the person,
-  writes his words as a draft in the card and calls the send; its exit door (`nucleo/workers/exit_gate.gate`) asks ONE
-  confirmation in one short sentence. He hears three lines and no more: the ask, «sending» on his yes (the retained
-  act runs at once, no session resumed), and the final line, which is the connector's RECEIPT — sent, or failed and
-  why (`nucleo/request/send_receipt.py`); nothing claims a send before it. With a
-  process open — running, or waiting on him — every chunk he says is routed at the turn's gate, before the model, by
-  one decision over one board (`nucleo/switchboard`): for process N it is delivered there as he said it and Flash
-  does not run; for none, Flash takes the turn. Flash has no tool that routes his words to a process, and no reader
-  binds an answer after the model. His order to stop an open process is read by that same decision and ends its row
-  through the ONE cancel door (`dispatch.control.cancel_row`), never as words relayed to the worker. A remark — a
-  comment, a complaint — commissions nothing: no card is built or changed from one, and he is not asked whether to; a
-  SURE order to build or change a card starts with no question, only doubt asks, once (§C, C4).
+- **A message has ONE owner, and one switchboard routes his words to the processes (§T, T2b, T3):** «send a message to X»
+  is owned end to end by `nucleo/send` — never by Flash, a worker task or a verdict. The model's message call, a call the
+  verdict's gate held, the reading's sure order, our own question about a message and a worker's message the exit door
+  would ask about are all HANDED OVER (`send/turn.claim`, `send/turn.at_close`, `send/worker.hand`) and nothing else
+  resolves, asks or sends. The owner keeps ONE draft: who he said, who it resolves to (`send/people`: the conversation
+  he has open first, then his contacts ranked — several or a word nobody carries is a question naming them, never a
+  pick), the text, what it last asked. While a draft is open, every sentence he says is read ONCE against it at the
+  turn's gate, before the switchboard (`send/read`): a sentence about the message (who, what it says, a phrase added or
+  taken out, send it, drop it, which people carry that name) is the owner's and answered at once; anything else is NOT
+  — the conversation answers it, and an unreadable read is the conversation's, never a swallow. Nothing leaves before
+  his yes over ONE person and a text; it leaves through the card's own act with the chosen row's id, and the final line
+  is the connector's RECEIPT (`send/receipt`). A worker under a mandate, and the exit door's refusals, stand as they
+  were. With a process open — running, or waiting on him — every OTHER chunk is routed at the gate by one decision over
+  one board (`nucleo/switchboard`); his order to stop ends its row through the ONE cancel door. A remark commissions
+  nothing; a SURE order to build or change a card starts with no question, only doubt asks, once (§C, C4).
 - **Nothing he hears is a fixed sentence (§C, C4w):** the engine decides the FACT and `nucleo/wording.py` has a model
   word it — short, different every time, about what he asked for and never about «tasks», «processes» or «flows»; the
   language's own line is the example and the last resort, never the line said every time.

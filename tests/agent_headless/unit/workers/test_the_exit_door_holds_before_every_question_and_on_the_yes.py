@@ -3,6 +3,9 @@
 The act's own refusal was only read by an inline confirmation Flash no longer opens for a send, so a worker could be
 asked about a reply that answers nothing. Now the door holds first — the act's own refusal
 (`widgets.contract.would_refuse`) — then the one question is asked, and his yes runs the retained act. ES and EN.
+
+Since V2-938 the question about a MESSAGE is its owner's (`nucleo/send`): the door's refusal still comes first, and
+what it would have asked is handed to the owner with nothing sent.
 """
 from __future__ import annotations
 
@@ -37,7 +40,19 @@ def door(monkeypatch):
     monkeypatch.setattr(worker_api, "_verify", lambda *_a: rec)
     monkeypatch.setattr(worker_api_answer, "_record_for", lambda _e: rec)
     worker_api._ACTS.clear()
-    yield SimpleNamespace(api=worker_api, rec=rec, sent=sent)
+    from nucleo.pulse import notices
+    from nucleo.send import owner
+    handed = []
+
+    async def _intake(said, hint=None, **kw):
+        handed.append(dict(hint or {}))
+        return "?"
+
+    async def _notify(*a, **kw):
+        return {}
+    monkeypatch.setattr(owner, "intake", _intake)
+    monkeypatch.setattr(notices, "notify", _notify)
+    yield SimpleNamespace(api=worker_api, rec=rec, sent=sent, handed=handed)
     worker_api._ACTS.clear()
     untrusted.reset()
     his_words.reset()
@@ -57,17 +72,11 @@ def _act(d, action="send_to", payload=None):
 
 # ── H4 · the one question, and his yes ───────────────────────────────────────────────────────────────────────────
 
-def test_with_checkpoint_one_closed_the_unnamed_recipient_is_asked(door):
+def test_with_checkpoint_one_closed_the_unnamed_recipient_is_handed_to_the_owner(door):
     his_words.note("find a plumber in Madrid and book")
     got = _act(door)
-    assert got.get("status") == "pending" and door.sent == [], got
-
-
-def test_his_yes_sends_when_the_door_lets_it(door):
-    his_words.note("find a plumber in Madrid and book")
-    got = _act(door)
-    assert asyncio.run(door.api.answer(got["corr_id"], "yes", resume=False))
-    assert [s[1] for s in door.sent] == ["send_to"]
+    assert (got.get("result") or {}).get("handed") is True and door.sent == [] and not _asked(door), got
+    assert door.handed and door.handed[0]["to"] == "+34600999888"
 
 
 # ── H5 · a call the act would refuse is never asked about ──────────────────────────────────────────────────────

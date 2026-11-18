@@ -324,6 +324,14 @@ class LangSpec:
     send_unconfirmed: str = ""
     send_not_sent: str = ""
     send_preparing: str = ""       # the turn's start line for a send it handed over
+    #: V2-938 — the send owner's questions (`nucleo/send/owner.py`): examples and last resort of a worded fact.
+    send_ask_who: str = ""
+    send_nobody: str = ""          # {who}: the name nobody in his contacts carries
+    send_ask_which: str = ""       # {who}, {names}: the people it could be
+    send_ask_which_partial: str = ""   # {who}, {names}, {missing}: nobody carries every word he said
+    send_ask_text: str = ""        # {who}
+    send_confirm: str = ""         # {who}, {channel}, {text}
+    send_listed: str = ""          # {who}, {names}
     #: The same moments of an act that leaves and is NOT a message (a group created): told as what he asked for.
     act_preparing: str = ""
     act_going: str = ""

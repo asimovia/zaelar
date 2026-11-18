@@ -33,6 +33,7 @@ _DEFAULTS = {
 }
 _DEFAULTS["switchboard"] = _DEFAULTS["errand_scope"]   # V2-931: «for process N, or for none?» — the same seat
 _DEFAULTS["wording"] = _DEFAULTS["errand_scope"]       # V2-933: a fact worded for his ear (`nucleo/wording.py`)
+_DEFAULTS["send"] = _DEFAULTS["errand_scope"]          # V2-938: what his words change in the open send (`nucleo/send/read.py`)
 
 # DeepSeek on its OWN endpoint: the titular of most tasks; `failover_rungs` skips a rung that is already the
 # titular, so listing it costs nothing and keeps the order true when the titular is, say, a local Ollama.
@@ -51,6 +52,9 @@ _FAILOVER: dict[str, tuple[tuple[str, str], ...]] = {
     "distill": ((_OAI, "gpt-4.1-mini"),),
     "batch_split": ((_OAI, "gpt-4.1-mini"),),
     "rule_shape": ((_OAI, "gpt-4.1-mini"),),
+    # send — the read of his words against the open message (V2-938): strict JSON, and a message he dictated must
+    # not be lost to one provider's bad minute.
+    "send": ((_OAI, "gpt-4.1-mini"),),
     # paraphrase — a rung that answers 200 with nothing in it is worse than no rung; gpt-4.1-mini has no thinking.
     "paraphrase": ((_OAI, "gpt-4.1-mini"),),
     # i18n — one rung stops a lost batch from meaning 50 English strings in the UI.

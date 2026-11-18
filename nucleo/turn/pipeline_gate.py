@@ -205,6 +205,11 @@ async def open_the_turn(self, motor) -> dict | None:
     if 'text' in _blk:
         text = _blk['text']
 
+    # V2-938 — the open send first: a sentence about the message he is writing is its owner's (`nucleo/send`), answered
+    # at once; anything else goes on untouched.
+    if await __import__("nucleo.send.gate", fromlist=["x"]).at_the_gate(text, brain, self._out, motor):
+        return None
+
     # V2-931 — the switchboard: a chunk that is an open process's is delivered there and the turn ends (Flash never
     # re-calls the act, re-asks or answers for the task).
     if not first_turn and await __import__("nucleo.switchboard.route", fromlist=["x"]).at_the_gate(text, brain, emit, self._out, motor):

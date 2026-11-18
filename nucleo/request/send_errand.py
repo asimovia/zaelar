@@ -185,9 +185,8 @@ def _act_steps(wid: str, act: str) -> str:
 
 
 def brief_block(context: dict | None) -> str:
-    """The method for the worker, with the model's call as a hint: a message's steps (find her, write the draft, send
-    it), or — when the act the turn read is declared as something else that leaves (a group) — that act's own steps.
-    '' for a task that is not a send."""
+    """The method for the worker, with the model's call as a hint: the leaving act's own steps (a group, an
+    invitation). A MESSAGE never reaches a worker — it is its owner's (`nucleo/send`). '' for a task that is not one."""
     ctx = context or {}
     if "send" not in ctx and ctx.get("playbook") != PLAYBOOK:
         return ""
@@ -195,19 +194,12 @@ def brief_block(context: dict | None) -> str:
     from nucleo.workers.prompts.catalog import words
     wid, act = str(hint.get("widget") or ""), str(hint.get("action") or "")
     pay = hint.get("payload") if isinstance(hint.get("payload"), dict) else {}
-    head = ""
-    try:
-        from nucleo.request import send_receipt
-        if wid and act and send_receipt.family(wid, act, pay) != "send":
-            head = _act_steps(wid, act)
-    except Exception as e:  # noqa: BLE001 — unread: the message's steps, as before
-        _note(e)
-    head = head or str(words("send_errand_steps") or "")
+    head = _act_steps(wid, act) if wid and act else ""
     seen = ", ".join(f"{k}={str(v)[:120]!r}" for k, v in pay.items() if str(v or "").strip())
     if seen and (line := str(words("send_errand_hint") or "")):
         head += "\n" + line.format(call=f"{wid}:{act} {seen}")
     return head
 
 
-# ── the worker's bridge: whom his word names (`send_contact.py`) ────────────────────────────────────────────────
+# ── the worker's bridge: whom his word names (`send_contact.py`), for the people an act reaches ─────────────────────
 from nucleo.request.send_contact import find_contact  # noqa: E402,F401 — the bridge act, kept under this name
