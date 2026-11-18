@@ -1,6 +1,6 @@
 # The playbook routes — what serves this kind of errand, and is that still true?
 
-**Module:** `nucleo/routes/` · **Table:** `playbook_routes` (`memory/schema.py`, facade in `memory/api.py`)
+**Module:** `nucleo/routes/` · **Table:** `playbook_routes` (`memory/schema/`, facade in `memory/api/`)
 **Renamed (V2-859 T563):** this was «the workflow table». A playbook (`nucleo/workers/prompts/playbook.py`) says how a
 kind of work is done; its **route** is the learned channel order for that work — same rows, same TTL, same «operator
 wins» pin. An existing install's `workflows` table is renamed in place at boot (`memory/db.py`). Heritable shape:

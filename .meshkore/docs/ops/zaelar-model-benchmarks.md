@@ -203,7 +203,7 @@ cambio de proveedor — grok es ~1 s por sí mismo.**
 ## Metodología (para no sobre-interpretar)
 - Latencia ABSOLUTA de un candidato solo es fiable si es el ÚNICO modelo cargado y la GPU no está saturada por
   otra ronda (cargar/descargar muchos modelos infla picos aislados).
-- Ollama descarga el modelo tras ~5 min idle → `keep_alive:"30m"` en cada turno (ya en `nucleo/flash/fast_client.py`).
+- Ollama descarga el modelo tras ~5 min idle → `keep_alive:"30m"` en cada turno (ya en `nucleo/llm/fast_client.py`).
 - La comparación de TASA DE ACIERTOS (tool-calling) entre modelos sí es válida bajo misma metodología imperfecta.
 - Para cloud: medir TTFT REAL por la ruta que se va a usar (no el nativo) antes de tomarlo como definitivo.
 
@@ -612,7 +612,7 @@ rate of the titular and of its whole fallback chain. The CORAZÓN accepts any 2x
 
 **🔴 HALLAZGO PRINCIPAL — la síntesis no se ejecutaba.** `_REM_SYSTEM` termina con el ejemplo del contrato de
 salida —`[{"concept": str, "insight": str|null}]`— y se interpolaba con `str.format(lang=…)`: Python lee esas
-llaves literales como marcadores y lanza `KeyError: '"concept"'` en CADA llamada. `memory/rem.py::synthesize`
+llaves literales como marcadores y lanza `KeyError: '"concept"'` en CADA llamada. `memory/rem/::synthesize`
 captura cualquier excepción del hook, escribe un `warning` y devuelve 0 → **la fase 3 del sueño profundo (los
 INSIGHTS por concepto) no escribió una sola píldora desde que se añadió la regla monolingüe hasta el 2026-08-09**.
 Fail-open perfecto y silencioso: el síntoma era «la memoria no consolida», nunca un error. Misma clase de avería

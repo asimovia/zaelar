@@ -23,7 +23,7 @@ failure NEVER takes voice down (try/except "voice/chat unaffected").
 
 | Domain | Facade | Notes |
 |---|---|---|
-| `memory/` | **`memory/api.py`** (imported as `from memory import api as memory`) + `memory/journal.py` (task continuity) | `__all__` declared in `api.py`. Writes go through the queue; `set_state`/`forget`/user-rules are direct (RLock, by design: immediate effect) |
+| `memory/` | **`memory/api/`** (imported as `from memory import api as memory`) + `memory/journal.py` (task continuity) | `__all__` declared in `api.py`. Writes go through the queue; `set_state`/`forget`/user-rules are direct (RLock, by design: immediate effect) |
 | `bus/` | `bus.publish/emit_sync/subscribe/add_sink` + `bus.log.recent/count` | `bus/log.py` is a **sink that persists EVERY bus event** (table `events`) — the durable audit substrate |
 | `widgets/` | `widgets.dispatch_tag` + `widgets/server_api.py` (HTTP + `brain_action` + `run_widget_action`) + `runtime.catalog/identify/get` + `generator` | The `_run_widget` pool (4 threads + 8 s timeout) isolates every `data.py` |
 | `voice/` (brain contract) | `observer.emit/turn_detail`, `proactive.notify` (the speaking primitive — called only by the mouth, `nucleo/pulse/notices`), `trace.begin/adopt/scope`, `attention`, `speech`, `tag_protocol` | Transport-agnostic upper level; `voice/engine/` is the MOTOR (LiveKit) and its internals are not a facade |
@@ -57,7 +57,7 @@ Every topic is ALSO persisted in `zaelar.db·events` by `bus/log.py` (when `ZAEL
 (the autonomous MACHINE-health layer, `nucleo/pulse/homeostasis.py`; labels
 `start`/`degraded`/`recycle`/`rotate`/`evict`/`alert`).
 
-**Agent-to-agent conversation pact.** The cluster bridge (`connectors/meshkore/bridge.py`) emits channel observer
+**Agent-to-agent conversation pact.** The cluster bridge (`connectors/meshkore/bridge/`) emits channel observer
 events with a **`pact`** field in the **`🤝 pact updated`** event when a per-peer pact is sealed (negotiated
 cadence / medium / scope). The `cluster.pact` tag is **allowed from a cluster turn** — it is on the cluster-turn
 tag allowlist next to `cluster.send`/`cluster.done` (the operator's other capability tags stay blocked from a
@@ -92,7 +92,7 @@ These cross-domain dependencies are known, deliberate and bounded; new code does
 | 3 | Lazy inverse coupling `memory/server_api.py` → `nucleo.memory_agent` | It is how the single-writer rule is enforced over HTTP |
 
 Facade rules that are already in force: `widgets.server_api.run_widget_action()` is the public entry for running
-a widget action (no private `_run_widget` imports), `memory/api.py` declares `__all__`, cross-domain imports at
+a widget action (no private `_run_widget` imports), `memory/api/` declares `__all__`, cross-domain imports at
 module level are lazy, `turn.completed` is emitted from the single `observer.turn_detail` point of the one turn
 pipeline, and nothing outside a turn speaks but `nucleo/pulse/notices.notify`.
 

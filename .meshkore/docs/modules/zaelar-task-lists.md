@@ -21,7 +21,7 @@ is not a turn. Every per-turn limit is correct for a turn, and each one would dr
 | memory distiller reads the FIRST 600 chars | `nucleo/memory_agent/processor/distill_prompt.py::MAX_INPUT` | most of the facts |
 | 5 widget writes per turn; a 2nd action on one widget refused | `nucleo/flash/data_ops.py` | calendar entries past the cap |
 | 1 + 2 escalations per turn | provider / probe | every task past the third |
-| 1 200 output tokens | `nucleo/flash/fast_client.py` | trailing tool calls |
+| 1 200 output tokens | `nucleo/llm/fast_client.py` | trailing tool calls |
 | rename lane owns the turn | `fast_lane.rename` | everything after the rename |
 
 None of those limits is wrong. A list is simply run as a sequence of turns, each of which fits them.

@@ -82,7 +82,7 @@ start with `make run` → `python -m server`.
   worker's internal API: ask / act / speak, a request/response plane, `/api/worker/act`, policy + piggyback + token;
   `_asks` keeps the durable question, `_bind` binds an utterance by the brief's verdict, `_answer` + `_resume` resume
   the session by id) ·
-  `nucleo/cli/nav.py` + `widgets/navegador/act_api.py` (`hbweb` — drive the browser) · **`nucleo/cli/widget.py`**
+  `nucleo/cli/nav.py` + `widgets/navegador/act_api/` (`hbweb` — drive the browser) · **`nucleo/cli/widget.py`**
   (`hbwidget` — READ/OPERATE a canvas widget: `read`/`data`/`show`/`close`, the `widget_data` action of
   `/api/worker/act` gated by the canonical catalog + worker provenance; the BRIDGE that reflects in the widgets what
   was done in the real world). `nucleo/danger.py` = the gate for irreversible actions. (The conversational auditor
@@ -116,7 +116,7 @@ start with `make run` → `python -m server`.
   configurable model — benchmarks §12.4] + hygiene with an alert; kill-switch `ZAELAR_REM`) · **episodic** layer
   (it absorbed the old `files/`: paste/drop → `memory/server_api.py` → `memory.write_episode`, binary + searchable
   summary, lazy load) · facade + `memory.updated` signal on the bus.
-  **`memory/vault.py`** ★ (the operator's ENCRYPTED secrets VAULT — asymmetric sealed-box crypto via PyNaCl + an
+  **`memory/vault/`** ★ (the operator's ENCRYPTED secrets VAULT — asymmetric sealed-box crypto via PyNaCl + an
   Argon2id passphrase envelope + WebAuthn PRF passkeys; tables `vault_meta`/`vault_secrets`), **`memory/secrets.py`**
   (FAIL-CLOSED detection + redaction) and **`memory/vault_api.py`** (`/api/vault/*`, loopback). Design in
   `zaelar-memory.md`.
@@ -267,17 +267,18 @@ user-visible build number and the reload signal), `daemon/` (the LOCAL daemon, n
   show that comes from an errand (`worker:<task>`, or `sheet:<sheet>` its search fills), and a show that is not the
   deliverable is emitted as a `step` event (family `worker`) instead of a card (CRIT-E21).
 - `nucleo/circuit/asker.py` — THE asker: a worker's question, a door's consent ASK, a card's irreversible act waiting for his yes (`request/consent_ask.ask_consent`, V2-857) and Flash's own question about a
-  door's act make the row wait with an `ask_id` and one `ask` event; `nucleo/cli/worker_api_bind.py` binds a spoken
-  answer by the brief's verdict — with several rows waiting, only by IDENTITY (the row that asked, a row our «which?»
-  named, a candidate no other row declares) —, `POST /api/tasks/{id}/answer` a screen one (criteria §4b).
+  door's act make the row wait with an `ask_id` and one `ask` event; a spoken answer reaches its row through the
+  switchboard (`nucleo/switchboard/`: one decision over the board of open processes, before the model),
+  `POST /api/tasks/{id}/answer` a screen one (criteria §4b).
   `nucleo/request/clarify_end.py` — a clarification ends with its conversation (moved on / expired), one `ask_closed`.
-  `nucleo/request/substitution.py` — a send made in the model's call's place (the verdict at VETO) is born asking.
+  `nucleo/request/send_errand.py` — a send is ONE Brain Worker task with the `message` playbook; Flash only hands it
+  over. `nucleo/request/send_receipt.py` — the final line of a send is the connector's receipt.
 - The order and the question own their row (CRIT-T2e, T2g, T2h): `nucleo/request/order_unserved.py` — at the close, a
   sure order no door served opens ITS row (a send task, the card act's completion, or one `ASK_FACT` question), yielding
   to the model's valid call; `ask_outside_door.named_act` — our own question about a declared act makes its row wait;
   `nucleo/request/inline_answer.py` — the one `rerun` door every bound answer crosses (split from `inline_ask.py`, which
   keeps the ask and `claim`), reaching `answered_offer.py` (his answer to our offer composes and runs the act on that
-  row); `nucleo/request/send_task_anchor.py` — a second question about a waiting send is asked on that row.
+  row).
 - `nucleo/workers/prompts/playbook.py` + `catalog.py` — the worker's method (nine checkpoints), the playbook catalogue
   the WORKER chooses from (`errand | message | document | lista`; `which` only suggests) with `checkpoint_one`, and
   the two-layer bridge catalogue (headlines in the brief, a family's full set through the bridge).
@@ -314,7 +315,7 @@ monkeypatches keep working. Look here before grepping for a name that seems to h
 - `nucleo/flash/tool_executor.py` — the turn's tool executor (out of `providers/nucleo.py::_run_inner`).
 - `nucleo/flash/post_stream.py` — the chain that runs after the model's stream ends (same origin).
 - `nucleo/flash/commission_guards.py` — the commission readers (out of `router_guards.py`).
-- `nucleo/flash/anthropic_sse.py` — the Anthropic SSE parser (out of `fast_client.py`).
+- `nucleo/llm/anthropic_sse.py` — the Anthropic SSE parser (out of `nucleo/llm/fast_client.py`).
 - `nucleo/flash/payload_fill.py` — the payload fills of a direct widget action (out of `direct_action.py`).
 - `nucleo/dispatch/listener.py` — the escalation listener; `dispatch.py` stays the facade.
 - `nucleo/workers/session_notes.py` — the session's notes as a mixin; `nucleo/workers/tool_steps.py` — tool-step readers.

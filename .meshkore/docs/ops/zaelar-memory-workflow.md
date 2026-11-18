@@ -30,20 +30,20 @@ It applies if the change alters something that **any memory writer or reader has
 these → full workflow:
 
 - **Schema / pill** — columns of `memories` (`slot`/`meta`/…), `state`, `edges`, `episodic`, `journal`;
-  `memory/schema.py` + migration in `memory/db.py` (`SCHEMA_VERSION`).
+  `memory/schema/` + migration in `memory/db.py` (`SCHEMA_VERSION`).
 - **The write HEART** — `nucleo/memory_agent/processor/distill.py` (LLM processor: prompt, model, pill output) or
   `nucleo/memory_agent/` (`classify`/`ingest_utterance`/`remember`/`_write_atom`/`compose_context`).
-- **Writer / queue / slots** — `memory/writer.py` (insert, supersede/dedup by slot, reinforce, delete),
+- **Writer / queue / slots** — `memory/writer/` (insert, supersede/dedup by slot, reinforce, delete),
   `memory/queue.py`, and the **canonical registry `memory/slots.py`** (adding/renaming a slot or an alias affects
   writer + memory_agent + the processor prompt AT ONCE — that is the point: one single place).
-- **Retriever / scoring** — `memory/retriever.py` (vec/FTS/RRF, weights α/β/γ/δ, graph_expand),
+- **Retriever / scoring** — `memory/retriever/` (vec/FTS/RRF, weights α/β/γ/δ, graph_expand),
   `memory/embeddings/`.
 - **Read speeds** — `memory.state()`, `memory.recent_short()`, `memory.query()`; and the FlashBrain cache
   `nucleo/flash/memory_cache.py` + `nucleo/flash/recall_heuristics.py` (`needs_recall`) + `nucleo/turn/prompt/recall.py` (`compose_recall`).
 - **Consolidator / forgetting** — `memory/consolidator.py` (promote/dedup/decay/evict) and its trigger from
   `nucleo/pulse/loop.py`.
 - **Observability / viewer** — `memory/viewer.py` + `GET /api/memory/viewer/*` (`server/memory_viewer_api.py`),
-  the bounded `memory/api.py::map`, the `memory.updated` SSE bridge in `server/__init__.py`,
+  the bounded `memory/api/::map`, the `memory.updated` SSE bridge in `server/__init__.py`,
   `frontend/app/components/MemoryMap.js` + `components/memory/`, `kind=memory` rows in `DebugPanel.js`.
 
 **It is NOT triggered by**: a comment, an internal rename, a tweak that touches neither the data contract nor
@@ -53,7 +53,7 @@ any of the interactions above. Carry on as usual.
 
 ## 1. Impact map — "if you touched this, review/update that"
 
-### 1a. Memory WRITERS (all through the `memory/api.py` facade, async — never the DB directly)
+### 1a. Memory WRITERS (all through the `memory/api/` facade, async — never the DB directly)
 
 | Writer | Where | What to review after a change |
 |---|---|---|
@@ -65,7 +65,7 @@ any of the interactions above. Carry on as usual.
 | **Hard reset** | `nucleo/reset.py` (`set_state({trabajo_interrumpido})` + `memory.write(level='short')`) | Freezing to STATE + logging to SHORT stay valid with the new schema. |
 | **Live UI context → STATE** | Canvas (authoritative frontend): `POST /api/canvas/state` (`server/canvas_api.py`) → `set_state({open_widgets})`; running tasks: `nucleo/dispatch/::_emit_activity` → `set_state({activity})` | The report normalizes instance ids and dedups; `set_state` does NOT overwrite other fields (shallow patch); it fires `memory.updated` to refresh prompt+map. |
 | **Widgets / lifecycle** | `widgets/lifecycle.py` (`record_created`/deletion tombstone) | Creation/removal traces are written through the facade; golden rule "history is never deleted". |
-| **Connectors / messaging** | `connectors/messaging/store.py` (`memory.write(kind='msg', level='short')`) | The dump still goes through the facade; `slot` if the datum is singular. |
+| **Connectors / messaging** | `connectors/messaging/store/` (`memory.write(kind='msg', level='short')`) | The dump still goes through the facade; `slot` if the datum is singular. |
 | **Episodic (paste/drop)** | `memory/episodic.py` ← `memory/server_api.py` (`write_episode`) | The searchable summary is still indexed in `memories` (vec/fts). |
 | **Spoken rules** | NOT memory since V2-806: `nucleo/flash/style_directive.py` (both channels) → `rules.shape.write` → rows of the rules table (`rules/`) | That memory composes no rule; that each surface reads `rules.notes.for_surface` / `rules.prompt.voice_block`; that the event carries the scope. Nodes 2.172, 2.204, 2.811. |
 | **Request rows** | `nucleo/request/model.py` (birth) + `nucleo/circuit/ledger.py` (the row seam: worker sessions, waits, the asker's question) + `nucleo/batch/runner.py` (list steps) → `memory/tasks_store.task_put`/`task_patch`; the end state as the `spec` artifact (`artifact_put`); every ending written by `nucleo/circuit.settle` only | One row per request; a later op never improves a failed row; schema v9 `verdict`; the prompt's `task_block.recent_lines` still reads it. Nodes 2.194, 2.196, 2.198. |
@@ -89,7 +89,7 @@ any of the interactions above. Carry on as usual.
 
 ## 2. Schema migration (if you touched columns/tables)
 
-- Bump `SCHEMA_VERSION` in `memory/schema.py` and add an **idempotent, NON-destructive ALTER** migration in
+- Bump `SCHEMA_VERSION` in `memory/schema/` and add an **idempotent, NON-destructive ALTER** migration in
   `memory/db.py::_migrate` (SQLite has no `ADD COLUMN IF NOT EXISTS` → check `PRAGMA table_info` first).
 - Indexes that depend on new columns are created **after** the ALTER (never in `BASE_DDL`, which runs before).
 - **Verify both paths**: a new DB (from `BASE_DDL`) and an existing old DB (v_previous → v_new) — it migrates and

@@ -165,7 +165,7 @@ it:
    `voice.observer.emit("perf", …)`, visible in the ⚙ panel (`config/balances.py::cluster_providers()`, added to
    `summary_with_workers()`) and in the red badge on the ⚙ icon itself (`store.apiAlerts()`).
 
-`nucleo/flash/fast_client.py::_complete_zai`/`_stream_zai` (the Anthropic-compatible wire that talks to Z.AI
+`nucleo/llm/fast_client.py::_complete_zai`/`_stream_zai` (the Anthropic-compatible wire that talks to Z.AI
 directly) capture the error response BODY (`_raise_with_body`) before raising — without it, a 429 would arrive as
 httpx's generic message ("429 Too Many Requests", nothing more) and `classify_failure` could not tell "weekly
 quota exhausted, resets Thursday" from a transient rate limit: both would be the same bare 429.

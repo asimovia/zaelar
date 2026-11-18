@@ -337,7 +337,7 @@ drives it; at the **end**, `fin` with input/output **tokens** (size chip) + **US
 under `span=worker:<id>` in the Traces view (⛓) and persisted in the jsonl files. The coarse phase (`rec.phase`) is
 kept for the FlashBrain's «PROCESOS DE FONDO» prompt, but does not duplicate the row. Source:
 `nucleo/workers/providers/claude.py` (`_tool_step`) + `nucleo/workers/session.py` (`_emit_step`/`_PLACE`) +
-`widgets/navegador/act_api.py` (`_emit_nav`).
+`widgets/navegador/act_api/` (`_emit_nav`).
 
 ## Event types (`kind`) — what to watch
 
@@ -609,7 +609,7 @@ and record nothing. And `src` is bounded to `user`/`frontend` — anything else 
   a single notice to the operator), **`waiting`**/**concise** according to the verdict. Determinism is kept only for
   the generic parts (exact dedup, `capsule.near_repeat` as an input signal to the evaluator, not as a verdict).
 - **`memory`** — central-memory activity. Two origins:
-  1. **Mutations**: the server bridges the bus signal `memory.updated` (every mutation in `memory/api.py::_emit` —
+  1. **Mutations**: the server bridges the bus signal `memory.updated` (every mutation in `memory/api/::_emit` —
      write/reinforce/pin/link/state/episode/consolidate/query) to the `observer` topic as
      `{kind:"memory", op, ids}` (+ `label=op`). It feeds the viewer's **tinting** and shows up as a row in the ◷
      column.

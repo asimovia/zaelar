@@ -309,7 +309,7 @@ do that part, and the design has to say so instead of pretending otherwise.
   window opened after an `await` is blocked by every browser **silently**. That is why the card opens the popup
   SYNCHRONOUSLY in the click and fills its `location` afterwards.
 - **By voice, the action does the half it can: it leaves the card ON the step with the button.** Returning the
-  URL does not help: `nucleo/flash/widget_data_turn.py` keeps `{widget, act}` and **drops the action's result**,
+  URL does not help: the turn's widget executor (`nucleo/flash/tool_executor_widget.py`) keeps `{widget, act}` and **drops the action's result**,
   so nothing you return reaches the model or the operator. The nudge travels through `view_data()` with the token
   shape the pushed view already uses — a COUNTER (asking twice lands twice) and an `at` that EXPIRES (tomorrow's
   repaint does not open a setup screen on top of them).

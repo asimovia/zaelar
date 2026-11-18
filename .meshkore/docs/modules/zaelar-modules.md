@@ -158,7 +158,7 @@ voice turn: the FlashBrain reads a cached state block and does on-demand recall 
   `memory.write_episode(data, filename, mime)` (`memory/episodic.py`) → the binary lands in the memory data-dir
   (`memory/_data/episodic/`) alongside a **searchable summary** embedded into `memory.query` (vec + FTS; the binary
   loads lazy). See §Files below.
-- **API** — `memory/api.py` facade + a `memory.updated` signal on the bus. `memory/api.py::map()` returns the WHOLE
+- **API** — `memory/api/` facade + a `memory.updated` signal on the bus. `memory/api/::map()` returns the WHOLE
   memory (state + memories grouped by layer short/long + `edges` + every per-unit metadatum) for the **memory-map
   visualizer**; `memory/server_api.py` serves it read-only at **`GET /api/memory/map`** (`no-cache`). Real
   time: the server bridges `memory.updated` onto the `observer` topic (→ GET /events) as `{kind:"memory"}` so the map
@@ -223,7 +223,7 @@ frontend/
       scoring (importance) + date/time + metadata (kind, weight bar, access_count, pinned), readable by ZOOM (wheel)
       + PAN (drag); the concept GRAPH (edges) drawn as SVG curves between nodes. Data: `GET /api/memory/map`
       (read-only, no-cache) → `{state, layers:{short,long}, edges, counts}` with every per-unit field, served by
-      `memory/api.py::map()` (see the Memory module section). REAL-TIME, no polling: the server bridges the bus signal
+      `memory/api/::map()` (see the Memory module section). REAL-TIME, no polling: the server bridges the bus signal
       `memory.updated` onto the `observer` topic (→ GET /events) as `{kind:"memory"}` (server/__init__.py);
       services/sse.js calls store.bumpMemory(); MemoryMap refetches (debounced) ONLY while open.
     lib/
@@ -564,7 +564,7 @@ widget (last bullets).
 - **`mensajeria` as a backed widget** — `mensajeria` is `kind:"backed"` with `"backend":{"owner":"owner.py",
   "gate":"nucleo"}`. The connectors (`connectors/whatsapp`, `connectors/telegram`) are STATELESS: they only PUBLISH
   `connector.msg` / `connector.status` to the bus and drain `msg.mark_read` (`connectors/messaging/ingest.py`).
-  Triage + store live INSIDE the widget owner: `widgets/mensajeria/owner.py` subscribes to the bus, triages with an
+  Triage + store live INSIDE the widget owner: `widgets/mensajeria/owner/` subscribes to the bus, triages with an
   internal `triage_agent` (a **LOCAL** model — `qwen2.5:3b` via Ollama — enforcing the privacy invariant that nothing
   personal leaves the machine; the classifier impl lives in `connectors/messaging/triage.py`), dumps message content
   to `memory/` (kind `msg`), surfaces the relevant through the out-of-turn mouth (`nucleo/pulse/notices`), routes each message as an event (`nucleo/events`), and on a read/clear action
@@ -745,7 +745,7 @@ covers widgets that do not exist yet. Checkboxes, radios and range tracks are ex
 `files/` is **no longer a standalone module**: the central memory absorbed it as an **episodic layer**. There is no
 flat `files/uploads/` tray anymore — an upload's bytes live in the memory data-dir (`memory/_data/episodic/`, next
 to `zaelar.db`). `files/server_api.py` and `files/store.py` remain only as thin **compatibility shims** delegating
-to `memory/api.py`. Design: `.meshkore/docs/architecture/zaelar-memory.md`.
+to `memory/api/`. Design: `.meshkore/docs/architecture/zaelar-memory.md`.
 
 **The two frontend gestures (unchanged).** Both are wired at the top level (`window`) in `frontend/app/main.js`, so
 they work from anywhere in the app — no panel to open, no drop-zone:

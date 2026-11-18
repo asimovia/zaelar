@@ -177,7 +177,7 @@ lines per mouth — never the judge's reading of the prose. Its readers are pinn
 ## The «susurro» group — retired
 
 The conversational auditor and its three test layers were retired in V2-851 F5: a task is born only from
-his words (`flow_of.route`), and a stuck or killed worker is said by the pulse relays (`nucleo/pulse/workers.py`).
+his words (the switchboard, `nucleo/switchboard/`, or Flash's own doors), and a stuck or killed worker is said by the pulse relays (`nucleo/pulse/workers.py`).
 
 ## The «cluster channel» group — talking to AGENTS ("one mind")
 

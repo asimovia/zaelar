@@ -61,14 +61,14 @@ the map can drive a widget's data, a headless report alone would let a test pass
 
 ### The data
 
-`action_map` in `zaelar.db` (`memory/schema.py::ACTION_MAP`):
+`action_map` in `zaelar.db` (`memory/schema/::ACTION_MAP`):
 
 ```
 id · lang · phrase · action(JSON) · source · status · hits · agree · disagree · created_at · last_hit_at
 UNIQUE(lang, phrase)   index (lang, status)
 ```
 
-All access goes through the **`memory/api.py` facade** (`action_map_active`, `action_map_add`,
+All access goes through the **`memory/api/` facade** (`action_map_active`, `action_map_add`,
 `action_map_retarget_seed`, `action_map_seed_version`, `action_map_set_seed_version`, `action_map_hit`):
 production code outside `memory/` may not touch memory internals, and the boundary guard enforces it.
 

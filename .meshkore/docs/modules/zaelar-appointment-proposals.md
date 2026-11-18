@@ -95,7 +95,7 @@ verified cryptographically.
 
 ## Extension points
 
-- **Proposals from a cluster peer.** `connectors/meshkore/bridge.py::_CLUSTER_TURN_ALLOWED` admits
+- **Proposals from a cluster peer.** `connectors/meshkore/bridge/::_CLUSTER_TURN_ALLOWED` admits
   `cluster.send` / `cluster.done` / `cluster.pact`; a `cluster.propose` verb would let a peer-originated turn
   reach this path, gated by its own per-cluster permission in `store.set_perms`.
 - **Telling the requester.** Accepting releases the errand to carry on, and the errand answers through the

@@ -205,9 +205,9 @@ CREATE TABLE memories (
 -- BI-TEMPORAL (v5): `updated` cannot serve as "when it was invalidated" — reinforcement (`writer.reinforce`) and the
 -- consolidator's level promotion also touch it, so an invalid row does not guarantee that `updated` is the moment of
 -- its invalidation. `valid_at`/`invalidated_at` are (set at every write/invalidation/restore site, never reused for
--- anything else), and they enable `memory/api.py::as_of(slot, ts)` — "what did we believe was true on date X?" —
+-- anything else), and they enable `memory/api/::as_of(slot, ts)` — "what did we believe was true on date X?" —
 -- without retroactivity inference (a correction said TODAY is dated TODAY, not in the past it describes).
--- Writer hardening (`memory/writer.py`):
+-- Writer hardening (`memory/writer/`):
 --   (1) `canon_slot()` — alias NORMALISATION: the LLM may emit slots in its own words ('location', 'ubicación'…)
 --       while the heuristic uses the canonical ones ('operator.location'); without normalisation that yields TWO
 --       lineages of the same fact that never supersede each other. The writer is the single choke point → every
@@ -357,8 +357,8 @@ recall does not pay the cold load. Observability: `status()` (provider/model/lat
 >   abstraction + `memory/reembed.py` stay, so the model can be changed.)*
 > - **WRITE-completeness** — most "not retrieved" facts turn out to be **not stored** (the HEART discarded them or
 >   they were superseded), not retrieval failures. Hardening what counts as durable is lever #1.
-> - **Retrieval of what is stored — built**: a deeper pool (`POOL_K = 100`, `memory/retriever.py`) + a
->   **PARAPHRASE index at write time** (`memory/writer.py::index_paraphrases`, also a REM phase
+> - **Retrieval of what is stored — built**: a deeper pool (`POOL_K = 100`, `memory/retriever/`) + a
+>   **PARAPHRASE index at write time** (`memory/writer/::index_paraphrases`, also a REM phase
 >   `rem.py::index_paraphrases` — 1-2 rephrasings per durable pill generated off the hot path, extra surface for
 >   the vocabulary gap with no LLM at read time) + the concept graph.
 > - **Extension point: a continuously SELF-EVALUATING memory** — a sleep-time loop that probes itself, detects
@@ -418,7 +418,7 @@ not tag, guaranteeing graph coverage by category.
   POOL (`limit=40`) and filters to `mid/long`. Recency (SHORT/conv buffer, ephemeral messages) ALREADY goes whole
   into the prompt (`memory_cache`); including it in recall would double-count, and recent chatter would BURY the
   durable task/fact being asked about.
-- **The CONVERSATIONAL BUFFER (`kind='conv'`) is NOT embedded** (`memory/writer.py`): the raw turn↔reply pair
+- **The CONVERSATIONAL BUFFER (`kind='conv'`) is NOT embedded** (`memory/writer/`): the raw turn↔reply pair
   (ephemeral, TTL 2d, `level='short'`) is written EVERY turn; it is read ONLY by recency (`recent_short`, direct
   SQL) and durable recall excludes it → embedding it would be a per-turn cost with no reader, and would put chatter
   noise at the top of the retriever. The HEART already distils what is memorable into separate pills (those ARE
@@ -707,7 +707,7 @@ Signal it emits: `memory.updated` (so the UI and others can refresh).
 Mental rule: **to STORE, let the heart decide; to READ, pick the speed by what you need.** Do not invent new paths
 or touch the database directly.
 
-**WRITING (all async, through the `memory/api.py` facade — never the database directly):**
+**WRITING (all async, through the `memory/api/` facade — never the database directly):**
 
 - **Is it something the operator said/wrote in a turn?** → do NOT call `memory.write` by hand. Pass it through the
   HEART: `await nucleo.memory_agent.ingest_utterance(text)` (the FlashBrain already does this on every directed
@@ -843,7 +843,7 @@ NEVER does synchronous memory I/O on the event loop).
 |---|---|---|---|
 | **STATE** = *the stack* | What is burned in (name, goal/project, location…) **+ the LIVE UI CONTEXT** (open widgets `open_widgets`, tasks/sessions in progress `activity`/`sessions`, and live RAILS `rails` → "Rails in progress"): what the operator has IN FRONT of them. ALWAYS in the prompt. | **Instant, always** — an already composed and **cached** string (`memory_cache.get()`, TTL + off-loop async refresh + invalidation on `memory.updated`; the canvas report triggers the refresh). Zero query. | `nucleo/flash/memory_cache.py` · `memory.state()` |
 | **SHORT TERM** = *working set* | What is recent/ephemeral (turns, today's messages). Small → fits whole. | **Whole and cheap** — ALL recent short term is plugged into the prompt WITHOUT the retriever (direct µs read). Reading it whole is more reliable than *searching* it for a fact just said (such as the operator's name). | `memory.recent_short()` → cached in `memory_cache._compose()` ("Recent conversation" block) |
-| **LONG TERM** = *the archive* | Durable, a lot of information, does not fit. | **Only by QUERY** — retriever vec+FTS→RRF (database, slower), **on demand** (`prompt.needs_recall` as prefetch + the **`recall` tool**) and **off the loop** (`asyncio.to_thread`). | `nucleo/flash/prompt.compose_recall()` → `memory.query()` → `memory/retriever.py` |
+| **LONG TERM** = *the archive* | Durable, a lot of information, does not fit. | **Only by QUERY** — retriever vec+FTS→RRF (database, slower), **on demand** (`prompt.needs_recall` as prefetch + the **`recall` tool**) and **off the loop** (`asyncio.to_thread`). | `nucleo/flash/prompt.compose_recall()` → `memory.query()` → `memory/retriever/` |
 
 > **Invariant:** STATE is read for free (cache), SHORT is read whole and cheaply (it fits), LONG is read by query (it
 > does not fit). The SlowBrain, by contrast, composes context with `nucleo/memory_agent.compose_context()` (the
@@ -913,8 +913,8 @@ about the person" from "what an automatic job produced", and **both readers that
 
 | Reader | What it renders | Where it is filtered |
 |---|---|---|
-| PASSIVE block (every turn) | "[What you know about them]" | `memory/api.py::salient_long` — `slot NOT LIKE '%:%'` |
-| Worker DOSSIER (per task) | "WHAT YOU KNOW ABOUT THE OPERATOR (relevant to the task)" | `nucleo/memory_agent.py::compose_context` |
+| PASSIVE block (every turn) | "[What you know about them]" | `memory/api/::salient_long` — `slot NOT LIKE '%:%'` |
+| Worker DOSSIER (per task) | "WHAT YOU KNOW ABOUT THE OPERATOR (relevant to the task)" | `nucleo/memory_agent/::compose_context` |
 
 The dossier is where this matters most: without the filter, a background pill such as `weather:<city>` (`mid/note`,
 importance 0.3) written every hour by a weather widget could outrank `operator.location` under that heading, and a
@@ -1106,7 +1106,7 @@ already dumped through its typed writeback.
 
 ## The operator's secrets vault — encryption + split storage
 
-> Memory modules: `memory/vault.py` (crypto), `memory/secrets.py` (detection), `memory/vault_api.py`
+> Memory modules: `memory/vault/` (crypto), `memory/secrets.py` (detection), `memory/vault_api.py`
 > (`/api/vault/*`). The brain's read flow lives in `nucleo/acts/memory.py` + the `reveal_secret` tool. Security
 > model in `zaelar-security.md`, configuration surface in `zaelar-conventions.md`. Here, what concerns the MEMORY.
 
@@ -1263,22 +1263,22 @@ the distiller conversation context so a correction without a subject is attribut
 > widgets; it is not part of the brain.
 
 - `memory/db.py` — SQLite connection `zaelar.db` (WAL) + loading `sqlite-vec` + schema migrations.
-- `memory/schema.py` — DDL (state · memories · vec_memories · fts_memories · edges · episodic · journal · …).
+- `memory/schema/` — DDL (state · memories · vec_memories · fts_memories · edges · episodic · journal · …).
 - `memory/queue.py` — async queue (asyncio.Queue): every write goes in here.
-- `memory/writer.py` — the single writer → database; embeddings computed on insert. **Embedding SIGNATURE
+- `memory/writer/` — the single writer → database; embeddings computed on insert. **Embedding SIGNATURE
   enforcement**: if the active embedding model does not match the database's signature (or is degraded), the pill is
   marked `meta.embed_pending` instead of inserting a vector from ANOTHER space (the REM phase repairs it) — vector
   spaces are never mixed silently.
 - `memory/embeddings/` — embeddings client (cloud provider by default · Ollama `embeddinggemma` option · fastembed
   and hashing safety nets).
-- `memory/retriever.py` — hot path: vec ∥ fts ∥ paraphrases → RRF → weighted score → rerank → graph_expand.
+- `memory/retriever/` — hot path: vec ∥ fts ∥ paraphrases → RRF → weighted score → rerank → graph_expand.
 - `memory/state.py` — fixed table (µs read, no search).
 - `memory/graph_ppr.py` (+ `writer.link`) — edges and multi-hop PPR expansion (the retriever reads them).
 - `memory/episodic.py` — files/PDFs: searchable embedded summary + lazy load of the binary.
 - `memory/consolidator.py` — the LIGHT "sleep" job (hourly: promote/exact dedup/decay PER WINDOW/prune_invalid/evict).
 - **`memory/rem/`** — DEEP sleep, the "REM phase" (daily): repair_embeddings + semantic_dedup + synthesize
   (insights per concept, injected LLM hook) + hygiene. See §DEEP sleep.
-- `memory/api.py` — the public facade (write[+`slot`/`meta`]/write_now/query/**recent_short**/state/set_state/
+- `memory/api/` — the public facade (write[+`slot`/`meta`]/write_now/query/**recent_short**/state/set_state/
   reinforce/pin/unpin/link/load_episode/consolidate/**map**).
 - **`nucleo/memory_agent/processor/distill.py`** — the LLM processor (defaults in `config/models.default.json` §memory_writer; local
   qwen option) that DISTILS every turn into pills; it lives in `nucleo/` (it is write-side brain, not substrate) but

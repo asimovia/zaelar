@@ -20,7 +20,7 @@ or of being exploited).
 ## How it is monitored (two layers + observability)
 
 1. **Deterministic layer, in the bridge (real time, every turn).** Cheap, no LLM, fail-open. It is the reflex:
-   it measures, decides and acts in the moment (`connectors/meshkore/bridge.py` + `capsule.py` + `security.py`).
+   it measures, decides and acts in the moment (`connectors/meshkore/bridge/` + `capsule.py` + `security.py`).
 2. **Semantic layer, on the heartbeat.** A model reads the recent exchange and judges what a heuristic cannot
    catch (nonsense, capability mismatch). It intervenes or warns when the conversation is going nowhere
    (`connectors/meshkore/evaluator.py`, see criterion 2).

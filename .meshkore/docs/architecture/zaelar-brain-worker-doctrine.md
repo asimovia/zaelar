@@ -78,7 +78,7 @@ Before writing it, answer these. If any answer is "no", the fix is aimed at the 
 
 This is the half that must be nailed down and kept tested. The contract, in the order the worker meets it:
 
-**Drive the browser like a person.** `widgets/navegador/act_api.py` exposes `snapshot · look · navigate · click ·
+**Drive the browser like a person.** `widgets/navegador/act_api/` exposes `snapshot · look · navigate · click ·
 type · select_option · scroll · press · click_at · type_at · extract`. `nucleo/cli/nav.py` is the CLI the worker
 actually types. Both must be self-describing: a worker that has to *guess* a signature is spending the operator's
 errand on our documentation.

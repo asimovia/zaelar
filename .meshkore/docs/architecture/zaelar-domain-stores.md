@@ -29,7 +29,7 @@ store», it is a view and may expire freely.
 - **Files (cloud)** → `connectors/files/` facade; the providers are canonical, we cache metadata.
 - **Contacts / favourites** → the unified directory: a favourite IS a directory entry. This one
   legitimately lives in memory's slot machinery because it is personal-durable by nature.
-- **Messages** → the **communications archive** (`connectors/messaging/archive.py`): append-only,
+- **Messages** → the **communications archive** (`connectors/messaging/archive/`): append-only,
   catalogued, cross-platform (platform is a column, not a silo), fed at the store's write seams including
   outbound. The inbox/threads are expiring views; the `kind='msg'` pills are decaying salience. **Neither is
   the record.**

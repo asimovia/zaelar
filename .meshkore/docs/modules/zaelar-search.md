@@ -84,7 +84,7 @@ reads it and adds the catch-all row; the metering coverage gate fails otherwise)
   45 s after boot, refreshed by `/api/search/health`), never probing on a poll.
 
 - The turn brief asks Jev the routing question (`search_module`, `route.question()`) in the same trip as its
-  other questions. `nucleo/flash/search_routing.py` reads the verdicts and emits the route the service would take
+  other questions. `search/route.py` reads the verdicts and emits the route the service would take
   as `🧭 ruta de búsqueda (sombra)` on both channels next to every `web_search` — **shadow mode**: the route is
   recorded beside the current path, so it can be validated against real sessions before it takes over.
 - The sheet's `present` / `append` (`widgets/results/actions.py`) apply `candidacy.split` to every batch and return
