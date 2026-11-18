@@ -207,8 +207,8 @@
       "effects": ["data.write"]
     },
     "merge_contacts": {
-      "desc": "DOS filas del directorio son LA MISMA persona («Odile Varga y Odi son la misma», «es la misma persona») — las une en una: teléfonos, correos, canales y nombres de las dos; el nombre que no queda a la vista sigue encontrándola. Por teléfono o correo compartido se unen solas: esto es para cuando nada lo prueba y él lo dice",
-      "how": "contactId = una de las dos; with = la otra (su id, o su nombre si nombra a UNA sola). Nunca por parecido de nombre: solo cuando él dice que son la misma",
+      "desc": "DOS filas del directorio son LA MISMA persona («Odile Varga y Odi son la misma», «es la misma persona»): las une en una, con los teléfonos, correos, canales y nombres de las dos",
+      "how": "contactId = una de las dos; with = la otra (su id, o su nombre si nombra a UNA sola). Nunca por parecido de nombre: solo cuando él dice que son la misma — por teléfono o correo compartido se unen solas. El nombre que no queda a la vista sigue encontrándola",
       "payload": {"contactId": "string", "with": "string: el id o el nombre de la otra fila"},
       "instant": "the op answers the row the store holds once the two are folded",
       "worker": false,
