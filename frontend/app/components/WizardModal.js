@@ -15,7 +15,7 @@
 // rewrites settings.json AND config/v2.json together, which is how this panel once silently replaced the
 // operator's model routing twenty seconds after a factory reset had deliberately preserved it (V2-671).
 //
-// Estilo with the variables --hb-* (tema dark/light). Render by innerHTML + wiring by id, as SettingsModal.
+// Estilo with the variables --hb-* (tema dark/light). Render by innerHTML + wiring by id, as the settings pages once did.
 import { h } from "../core/dom.js?v=2";
 import { createEffect } from "../core/reactive.js?v=2";
 import * as store from "../core/store.js?v=2";

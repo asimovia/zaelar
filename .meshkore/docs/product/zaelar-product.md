@@ -208,7 +208,7 @@ zaelar/
       main.js    entry: mounts components, creates the widget desktop, starts the visualizer
       core/      reactive.js (Solid-compatible signals) · dom.js (h() hyperscript) · store.js (reactive state)
       services/  session-lk.js (LiveKit client) · audio · sse · visualizer · api
-      components/ Orb · CameraUnit · TopBar · SettingsModal · ConnStatus · Alert · ChatWall
+      components/ Orb · CameraUnit · TopBar · ConfigPanel · ConnStatus · Alert · ChatWall
       lib/       draggable.js · speaker-id.js       widgets/ desktop.js (window manager)
     vendor/      vendored LiveKit browser SDK
   server/        SERVER — FastAPI app + routers + entrypoint (__main__.py); runs the LiveKit agent worker EMBEDDED

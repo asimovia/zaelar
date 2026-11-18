@@ -68,7 +68,7 @@ reference look) follows a few explicit rules so no component invents its own. Th
 - **Widget kit** (`hbk-*` in `styles.css §WIDGET KIT`, documented in `widgets/AGENTS.md`): when a widget is
   touched, migrate its hand-rolled card/badge/button CSS to the kit as part of that change.
 - **Scope**: these rules govern the app shell (TopBar, StatusPanel, ChatWall, ConfigPanel,
-  SettingsModal, WizardModal, VaultModal, MemoryMap, DebugPanel). Widgets adopt the shared icons widget by widget,
+  ConfigPanel, WizardModal, VaultModal, MemoryMap, DebugPanel). Widgets adopt the shared icons widget by widget,
   as each is touched, rather than in a big-bang rewrite.
 
 ## Test layout (central `tests/` tree, by suite then test type)
