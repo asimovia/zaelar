@@ -1,5 +1,6 @@
-// TopBar — top-right PROJECT controls, left to right: ◉ status · ◷ debug · 🖥 daemon · 👤 account (cloud) ·
-// 🧠 memory · ☾ theme · 🧭 setup · ⚙ settings · Reset.
+// TopBar — top-right PROJECT controls, left to right: the USER's things first — ◉ status · ● camera (only while it
+// runs, placed by LookAtMe.js) · 👤 account (cloud) · 🧠 memory — then CONFIGURATION, ending at ⚙ — 🖥 daemon ·
+// ☾ theme · 🧭 setup · ◷ debug · ⚙ settings · Reset (operator 2026-11-18).
 // These are the project's tools; zaelar's OWN things (voice, memory, captions, crons, attention, power, theme)
 // live on the EYE's upper lid over the orb (Orb.js, V2-039 “ojo”). ⏰ cron moved there in V2-014; ☾/☀ theme moved
 // there in V2-039. The voice session is ALWAYS ON (auto-connects, main.js) — the ⏻ icon on the eye is the one
@@ -39,22 +40,6 @@ export function TopBar() {
       id: "statusBtn", title: () => t("topbar.status.title"),
       onClick: () => { const v = !store.statusOpen(); store.setStatusOpen(v); api.uiEvent("topbar:status", { state: v ? "open" : "close" }); },
     }, raw(STATUS_ICON)),
-    () => store.cloudProfile() ? null : h("button", {
-      class: () => "ic" + (store.debugOpen() ? " on" : ""),
-      id: "debugBtn", title: () => t("topbar.debug.title"),
-      onClick: () => { const v = !store.debugOpen(); store.setDebugOpen(v); api.uiEvent("topbar:debug", { state: v ? "open" : "close" }); },
-    }, raw(BUG_ICON)),
-    // ☾ tema: MOVIDO here from the ojo (Orb.js, 2026-08-09) — junto a ⚙, a operator request. ONE icon (moon),
-    // blue=dark/grey=light — mismo lenguaje on/off that the resto of controles, nunca se cambia by un icono of sol.
-    // 🖥 THE LOCAL DAEMON (V2-575 P1). Shown on every engine, cloud included: there it is where the user gets
-    // the installer for their own computer. Hidden only until the first status arrives. Same visual language
-    // as the ◉ (`.st-ok/.st-warn`): grey until a daemon answers.
-    h("button", {
-      class: () => "ic daemonBtn st-" + daemon.iconState() + (store.daemonSetupOpen() ? " on" : "")
-        + (daemon.isOffered() ? "" : " is-off"),
-      id: "daemonBtn", title: () => t("topbar.daemon.title"),
-      onClick: () => { const v = !store.daemonSetupOpen(); store.setDaemonSetupOpen(v); api.uiEvent("topbar:daemon", { state: v ? "open" : "close" }); },
-    }, raw(DESKTOP_ICON)),
     // 👤 Perfil of the CUENTA (SOLO cloud): the hosted account's data (user/energy) — distinto of la
     // persona of the operador, that vive en the orbe. En self-host NO aparece (instalación puramente local, no hace falta).
     // Contenido by definir; hoy abre un panel placeholder.
@@ -66,6 +51,17 @@ export function TopBar() {
     h("button", { class: () => "ic" + (store.memOpen() ? " on" : ""), id: "memBtn",
       title: () => t("orb.memory"),
       onClick: () => { const v = !store.memOpen(); store.setMemOpen(v); api.uiEvent("topbar:memory", { state: v ? "open" : "close" }); } }, raw(MEM_ICON)),
+    // ☾ tema: MOVIDO here from the ojo (Orb.js, 2026-08-09) — junto a ⚙, a operator request. ONE icon (moon),
+    // blue=dark/grey=light — mismo lenguaje on/off that the resto of controles, nunca se cambia by un icono of sol.
+    // 🖥 THE LOCAL DAEMON (V2-575 P1). Shown on every engine, cloud included: there it is where the user gets
+    // the installer for their own computer. Hidden only until the first status arrives. Same visual language
+    // as the ◉ (`.st-ok/.st-warn`): grey until a daemon answers.
+    h("button", {
+      class: () => "ic daemonBtn st-" + daemon.iconState() + (store.daemonSetupOpen() ? " on" : "")
+        + (daemon.isOffered() ? "" : " is-off"),
+      id: "daemonBtn", title: () => t("topbar.daemon.title"),
+      onClick: () => { const v = !store.daemonSetupOpen(); store.setDaemonSetupOpen(v); api.uiEvent("topbar:daemon", { state: v ? "open" : "close" }); },
+    }, raw(DESKTOP_ICON)),
     h("button", { class: () => "ic" + (store.theme() === "dark" ? " on" : ""), id: "themeBtn",
       title: () => (store.theme() === "dark" ? t("topbar.theme_light") : t("topbar.theme_dark")),
       onClick: () => { toggleTheme(); api.uiEvent("topbar:theme", { state: store.theme() }); } }, raw(MOON_ICON)),
@@ -74,6 +70,12 @@ export function TopBar() {
     () => store.cloudProfile() ? null : h("button", { class: () => "ic" + (store.wizardOpen() ? " on" : ""), id: "wizBtn",
       title: () => t("topbar.wizard.title"),
       onClick: () => { const v = !store.wizardOpen(); store.setWizardOpen(v); api.uiEvent("topbar:wizard", { state: v ? "open" : "close" }); } }, raw(COMPASS_ICON)),
+    // ◷ debug sits next to ⚙ (operator 2026-11-18): the user's things on the left, configuration on the right.
+    () => store.cloudProfile() ? null : h("button", {
+      class: () => "ic" + (store.debugOpen() ? " on" : ""),
+      id: "debugBtn", title: () => t("topbar.debug.title"),
+      onClick: () => { const v = !store.debugOpen(); store.setDebugOpen(v); api.uiEvent("topbar:debug", { state: v ? "open" : "close" }); },
+    }, raw(BUG_ICON)),
     // ⚙ SETTINGS — the LAST icon of the row, immediately left of Reset (V2-725, operator: «pon el icono de
     // configuración a la derecha del todo como en todas las aplicaciones del mundo… el siguiente icono que
     // aparece a su lado a la izquierda debe ser el de configuración»). It used to sit third from the left,

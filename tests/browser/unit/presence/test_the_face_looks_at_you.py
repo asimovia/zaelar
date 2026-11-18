@@ -309,3 +309,22 @@ def test_inside_the_native_app_the_airpods_switch_drives_the_plugin():
         assert pg.evaluate("() => window.__hm.stopped") == 1, "turning the switch off did not stop the plugin"
         assert pg.evaluate("() => window.__gum.length") == 0, "the AirPods switch started the camera"
         assert not pg._errors, pg._errors
+
+
+TOP_BAR = """
+  const trw = document.createElement('div'); trw.className = 'trw';
+  const tr = document.createElement('div'); tr.className = 'tr'; trw.append(tr);
+  for (const id of ['statusBtn', 'memBtn', 'cfgBtn']) { const b = document.createElement('button'); b.id = id; tr.append(b); }
+  document.body.append(trw);
+"""
+
+
+def test_on_the_desktop_the_camera_badge_sits_in_the_top_bar_right_after_the_status():
+    # operator 2026-11-18: on the desktop the «● Camera» belongs to the user's side of the top bar, next to ◉;
+    # with no visible bar (the phone shell) it keeps floating over the screen
+    with open_phone(FAKE_CAMERA + TOP_BAR + MOUNT, width=1280, height=800) as desk:
+        desk.wait_for_timeout(1200)
+        where = desk.evaluate("""() => { const b = document.querySelector('.hb-cam');
+          return b && { parent: b.parentElement.className, prev: b.previousElementSibling && b.previousElementSibling.id,
+                        inBar: b.classList.contains('in-bar') }; }""")
+    assert where == {"parent": "tr", "prev": "statusBtn", "inBar": True}, f"the camera badge is not beside the status: {where}"

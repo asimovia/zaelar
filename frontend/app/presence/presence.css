@@ -52,6 +52,8 @@
   -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .hb-cam i{width:8px;height:8px;border-radius:50%;background:#e5484d;box-shadow:0 0 0 3px color-mix(in srgb,#e5484d 25%,transparent)}
 .hb-cam:hover{background:var(--hb-hover)}
+.hb-cam.in-bar{position:static;transform:none;z-index:auto;height:32px;padding:0 10px 0 9px;align-self:center;
+  margin:0 2px;-webkit-backdrop-filter:none;backdrop-filter:none;background:transparent;border-color:color-mix(in srgb,#e5484d 45%,var(--hb-line))}
 
 /* A PHONE (or a narrow window) — one column, in the order the hand reads it: the categories as a row that scrolls
    sideways, the faces of the category as a strip of stills, the face itself, and the switch. «Customise» is a STEP:
