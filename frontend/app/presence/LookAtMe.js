@@ -6,7 +6,8 @@
 // While the camera runs a small «● Camera» badge stays on screen above everything; tapping it turns the switch off.
 // The AirPods source (iPhone app only) follows the same rules, without a badge: it reads no image.
 // While the camera runs the face also ANSWERS him (T12, humanity/): imported only when the camera starts, it reads his
-// expression on the device and plays the face's gestures back — never an image or a number sent anywhere.
+// expression on the device and plays the face's gestures back — no image or number is sent anywhere; only the NAMES of
+// the last gestures (his and the face's answers) reach the agent, for half a minute (recent.js), so it can talk about them.
 import { h } from "../core/dom.js?v=2";
 import { createEffect, createSignal, untrack } from "../core/reactive.js?v=2";
 import { t } from "../core/i18n.js?v=1";
@@ -14,6 +15,7 @@ import * as store from "../core/store.js?v=2";
 import { createTracker, createHeadTracker, blend } from "./look.js?v=1";
 import { startCamera, cameraError } from "./look-camera.js?v=1";
 import { start as startHead } from "./head-motion.js?v=1";
+import { clear as forgetRecent } from "./recent.js?v=1";
 import { lookCamera, lookAirpods, setLookCamera, setLookAirpods, cameraLive, setCameraLive, setCameraProblem,
   setAirpodsProblem, airpodsAvailable, probeAirpods } from "./look-state.js?v=1";
 
@@ -82,7 +84,10 @@ export function LookAtMe(face, { covered = null, speech = () => ({}) } = {}) {
           setCameraProblem(why);
           if (FINAL.has(why)) setLookCamera(false, "camera");
         });
-      } else if (!want && cam) { cam.stop(); cam = null; setCameraLive(false); if (humanity) humanity.dispose(); humanity = null; }
+      } else if (!want && cam) {
+        cam.stop(); cam = null; setCameraLive(false); if (humanity) humanity.dispose(); humanity = null;
+        forgetRecent("saw");                        // what the camera saw goes with it (the engine is told)
+      }
     }));
 
     disposers.push(createEffect(() => {
@@ -115,6 +120,7 @@ export function LookAtMe(face, { covered = null, speech = () => ({}) } = {}) {
       for (const d of disposers) d();
       if (cam) { cam.stop(); cam = null; }
       if (humanity) { humanity.dispose(); humanity = null; }
+      forgetRecent("saw");
       if (headStop) { headStop(); headStop = null; }
       setCameraLive(false); badge.remove();
       face.setLook(null);

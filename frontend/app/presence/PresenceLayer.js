@@ -8,7 +8,8 @@
 //   thinking  ← the person spoke and the agent has not answered yet (a short window, cleared by the agent's voice);
 //   idle      ← the agent is stopped: the face rests, dimmed;
 //   look at   ← the camera or the AirPods, only with their switch on (LookAtMe.js, T10) — on the device, nothing sent;
-//   answers   ← with the camera on, what he does in front of it (humanity/, T12), muted while he or the agent talks;
+//   answers   ← with the camera on, what he does in front of it (humanity/, T12), muted while he or the agent talks —
+//               the NAMES of those gestures and of the face's own (recent.js) go to the agent for half a minute;
 //   yes / no  ← the agent's spoken reply opening with a bare yes or no (store.captionSeg, yes-no.js): a nod, a shake.
 // The big eye (Orb.js) is HIDDEN, not deleted: the orb lives in the bottom bar (V2-623 dock) from now on.
 import { h } from "../core/dom.js?v=2";
@@ -20,6 +21,8 @@ import { faceById } from "./catalog-api.js?v=1";
 import { createFace } from "./face.js?v=1";
 import { LookAtMe } from "./LookAtMe.js?v=1";
 import { polarity } from "./yes-no.js?v=1";
+import { note, recent, onNote } from "./recent.js?v=1";
+import * as api from "../services/api.js?v=2";
 import { t } from "../core/i18n.js?v=1";
 
 const HEAR = 0.05, THINK_S = 6;
@@ -65,8 +68,16 @@ export function PresenceLayer({ covered = null } = {}) {
     if (!seg.final && seg.text.trim().length < 14) return;
     judged = seg.id;
     const p = polarity(seg.text, t("presence.says_yes"), t("presence.says_no"));
-    if (p) face.gesture(p === "yes" ? "nod" : "shake");
+    if (!p) return;
+    face.gesture(p === "yes" ? "nod" : "shake");
+    // told to the agent only when it could be SEEN (not under a card, not in a hidden tab)
+    if (!document.hidden && !(covered && covered())) note("did", p === "yes" ? "nod" : "shake", { why: "said_" + p });
   });
+
+  // What the face did and saw in the last seconds goes to the engine as NAMES (recent.js), so the model can answer
+  // «why did you smile?» from what happened; one report per burst of entries.
+  let reportTimer = 0;
+  onNote(() => { if (!reportTimer) reportTimer = setTimeout(() => { reportTimer = 0; api.screensFace(recent()); }, 1200); });
 
   // Mood from the screen's own signals, re-read a few times a second (the mic level moves faster than effects need).
   createEffect(() => {

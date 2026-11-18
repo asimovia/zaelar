@@ -144,6 +144,12 @@ def face_on() -> bool:
     return presence()["on"]
 
 
+def face_recent() -> list[dict]:
+    """What the face did and saw in the last seconds, by name (`face_recent.py`): `[{kind, name, why?, of?, age_s}]`."""
+    from nucleo.self import face_recent as _fr
+    return _fr.recent()
+
+
 def fields(names) -> dict:
     """The named live facts. A field is the reader of the same name in this module, and only a field the catalogue
     declares (`catalog.json` `needs`) is read. A reader that fails is ABSENT, never guessed: the answer pass says what
@@ -167,8 +173,8 @@ def render(facts: dict) -> str:
 
 
 def live_lines() -> list[str]:
-    """The live tail's two self lines, only while true: the camera running on a screen, the face worn on an open one.
-    A turn with neither reads nothing else (no pack, no settings file)."""
+    """The live tail's self lines, only while true: the camera running on a screen, the face worn on an open one, and
+    what that face did and saw in the last 30 s. A turn with none reads nothing else (no pack, no settings file)."""
     out = []
     try:
         open_ = screens()
@@ -182,6 +188,11 @@ def live_lines() -> list[str]:
             out.append(str(words["camera"]).format(screen=", ".join(cams)))
         if worn and words.get("face"):
             out.append(str(words["face"]).format(face=face()))
+        if worn:
+            from nucleo.self import face_recent as _fr
+            recent_line = _fr.line(words)     # V2-928: only while something happened in the last 30 s
+            if recent_line:
+                out.append(recent_line)
     except Exception as e:  # noqa: BLE001 — the tail never fails for a convenience
         logger.debug(f"self.snapshot: live lines unread ({e!r})")
     return out

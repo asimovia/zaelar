@@ -124,6 +124,9 @@ def test_the_whole_chain_answers_a_tongue_in_silence_and_not_a_talking_mouth(run
     s, h = run["whole"]["silent"], run["whole"]["hearing"]
     assert "tongue>tongue" in s["log"] and "tongue" in s["gestures"], f"a tongue in silence is answered: {s}"
     assert not [x for x in h["log"] if x.startswith("tongue")], f"his mouth while he talks is not a face: {h}"
+    # for the model (recent.js → the engine): what he did and what the face answered, by NAME and age only
+    assert "saw:tongue" in s["notes"] and "did:tongue:answer:tongue" in s["notes"], s["notes"]
+    assert set(s["keys"]) <= {"kind", "name", "why", "of", "age_s"}, f"only names and an age leave: {s['keys']}"
 
 
 @node

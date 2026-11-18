@@ -2803,7 +2803,7 @@
  "presence.hidden": "Face hidden.",
  "presence.restored": "Back to the default face (Porcelain).",
  "presence.camera": "Camera: the agent looks at you",
- "presence.camera_hint": "The face turns toward you as you move. It runs on this device only: no image leaves it, and the camera turns off when the face is hidden or you leave the page.",
+ "presence.camera_hint": "The face turns toward you as you move and answers your gestures. It runs on this device: no image leaves it; the agent only gets, in words and for half a minute, your last gestures and what its face answered. The camera turns off when the face is hidden or you leave the page.",
  "presence.camera_badge": "Camera",
  "presence.says_yes": "yes|yeah|yep|sure|of course|exactly|right|absolutely|indeed",
  "presence.says_no": "no|nope|not really|not at all|never",

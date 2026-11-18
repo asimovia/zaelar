@@ -12,8 +12,55 @@
     "not": "What it does NOT do"
   },
   "live": {
-    "camera": "Your camera is ON on {screen}: on that device it finds WHERE the person is, so your eyes turn to him, and reads his gestures (a smile, a wink, a laugh, a nod…) so your face answers with its own; it does not recognise who he is, nothing of it reaches you, and no image leaves that device.",
-    "face": "Your face on screen now: «{face}»."
+    "camera": "Your camera is ON on {screen}: on that device it finds WHERE the person is, so your eyes turn to him, and reads his gestures (a smile, a wink, a laugh, a nod…) so your face answers with its own; what he did and what your face answered reach you as words, never as an image, and it does not recognise who he is.",
+    "face": "Your face on screen now: «{face}» (it also moves and smiles on its own, for no reason).",
+    "face_recent": {
+      "line": "Your face just now (gestures of the person you saw and what you answered; talk about them in your own words if they come up — anything else was your face's own life): {acts}.",
+      "forms": {
+        "answer": "{saw}, and you answered {did} ({age} s ago)",
+        "let_go": "{saw}, and you let it pass ({age} s ago)",
+        "said": "you were {did} as you said {said} ({age} s ago)",
+        "plain": "{saw} ({age} s ago)"
+      },
+      "saw": {
+        "smile": "they smiled at you",
+        "laugh": "they laughed",
+        "wink": "they winked at you",
+        "tongue": "they stuck their tongue out at you",
+        "yawn": "they yawned",
+        "surprise": "they made a surprised face",
+        "brows": "they raised their eyebrows",
+        "nod": "they nodded",
+        "shake": "they shook their head",
+        "hand": "they waved at you"
+      },
+      "did": {
+        "smile": "smiling",
+        "laugh": "laughing",
+        "giggle": "giggling",
+        "tongue": "sticking your tongue out",
+        "yawn": "yawning",
+        "sigh": "with a sigh",
+        "surprise": "looking surprised",
+        "brows": "raising your eyebrows",
+        "tilt": "tilting your head",
+        "nod": "nodding",
+        "shake": "shaking your head",
+        "sad": "looking a little sad",
+        "look": "looking away",
+        "shy": "looking away with a smile",
+        "hello": "with a quick brow flash and a smile",
+        "wink": "winking back"
+      },
+      "said": {
+        "yes": "yes",
+        "no": "no"
+      },
+      "saw_plain": {
+        "arrive": "the person came in front of the screen",
+        "leave": "the person went away from the screen"
+      }
+    }
   },
   "topics": {
     "overview": {
@@ -41,10 +88,10 @@
       "not": "The face is only a face: it does not change what the agent can do."
     },
     "camera": {
-      "what": "«Look at me»: with the camera on, the face turns its eyes towards where you are and answers your gestures with its own — a wink, a smile, a laugh, a tongue out, a nod, a yawn — sometimes, and not as a mirror: it may let one go. Detectors inside the device read where your face is and its expression, about ten times a second.",
+      "what": "«Look at me»: with the camera on, the face turns its eyes towards where you are and answers your gestures with its own — a wink, a smile, a laugh, a tongue out, a nod, a yawn — sometimes, and not as a mirror: it may let one go. Detectors inside the device read where your face is and its expression, about ten times a second; the agent then knows, in words, what you did and what its face answered in the last seconds.",
       "voice": "«Look at me» / «stop looking at me» (turning the camera on also shows the face).",
       "button": "Settings ⚙ ▸ Physical form ▸ camera switch; while it runs a «● Camera» badge stays on screen and tapping it turns it off.",
-      "not": "It does NOT see you: it does not recognise who you are and cannot describe what is in front of it. Your expression is read on that device only to move the face — no frame, no image and no number leaves it, so nothing reaches the agent: its face answers, but it cannot tell you afterwards what it saw. It only runs while the face is shown and the screen is visible."
+      "not": "It does NOT see you: it does not recognise who you are and cannot describe what is in front of it. No frame, no image and no number about your face leaves the device — only the names of the last gestures (yours and the face's answers), for half a minute, so the agent can talk about them. It only runs while the face is shown and the screen is visible."
     },
     "voice": {
       "what": "Its spoken voice, its volume on each screen, the speaker, the microphone and the power button.",

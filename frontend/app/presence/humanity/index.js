@@ -7,12 +7,14 @@
 // The camera feeds it (look-camera.js): face boxes from either detector for presence, and — once the vendored MediaPipe
 // Face Landmarker has loaded (landmarker.js) — the 52 expression scores and a head pose. This module is imported only
 // when the camera starts (LookAtMe.js), so a switch that is off loads none of it. Nothing it reads or decides leaves the
-// page; the one seam towards the conversation (remark.js) is OFF and wired to nothing unless its switch is on.
+// page but the NAMES of what he did and what the face answered (recent.js → the engine words them for the model);
+// the seam that would let the agent speak up about the play (remark.js) is OFF and wired to nothing unless its switch is on.
 import { createPerceiver } from "./perceive.js?v=1";
 import { createTemperament, seeded } from "./temperament.js?v=1";
 import { createExpression } from "./expression.js?v=1";
 import { createRemarker } from "./remark.js?v=1";
 import { loadLandmarker, readResult } from "./landmarker.js?v=1";
+import { note } from "../recent.js?v=1";
 
 const KEY = "hb_presence_humanity";
 /** The seam's switch (per device, off unless set by hand): may a stretch's summary be offered to the conversation? */
@@ -41,8 +43,14 @@ export function createHumanity(face, { speech = () => ({}), rng = null, offer = 
         remarker.note(ev, t);
         const a = temper.hear(ev, t, { speaking: !!sp.speaking });
         keep({ t: Math.round(t), saw: ev.type, side: ev.side, answer: a ? a.answer : null });
+        note("saw", ev.type);                       // for the model: what he did (recent.js), by name only
         if (!a) continue;
-        const id = setTimer(() => { timers.delete(id); if (!disposed) expr.play(a.answer, ev); }, a.delayMs);
+        const id = setTimer(() => {
+          timers.delete(id);
+          if (disposed) return;
+          expr.play(a.answer, ev);
+          note("did", a.answer, { why: "answer", of: ev.type });
+        }, a.delayMs);
         timers.add(id);
       }
       return evs;

@@ -203,9 +203,10 @@ def detach(dev) -> None:
             e["seen_at"] = now
 
 
-def beat(dev, *, visible=None, camera=None) -> None:
+def beat(dev, *, visible=None, camera=None, face=None) -> None:
     """A surface says whether it is on screen. Sent on every `visibilitychange`. `camera` (V2-932): whether its «look
-    at me» camera is running — a flag from `presence/look-state.js`, never an image (`nucleo/self/snapshot.py`)."""
+    at me» camera is running — a flag from `presence/look-state.js`, never an image (`nucleo/self/snapshot.py`).
+    `face` (V2-928): what its face just did and saw, as names already cleaned (`nucleo/self/face_recent.py`)."""
     d = clean(dev)
     if not d:
         return
@@ -217,6 +218,8 @@ def beat(dev, *, visible=None, camera=None) -> None:
             e["visible"] = visible
         if isinstance(camera, bool):
             e["camera"] = camera
+        if isinstance(face, list):
+            e["face"] = {"acts": face, "at": now}
     if visible is True:
         _left["at"] = 0.0             # a screen is on again: whatever said he left no longer speaks
 

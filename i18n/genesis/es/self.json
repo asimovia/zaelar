@@ -12,8 +12,55 @@
     "not": "Lo que NO hace"
   },
   "live": {
-    "camera": "Tu cámara está ENCENDIDA en {screen}: en ese dispositivo encuentra DÓNDE está la persona, para girar tus ojos hacia ella, y lee sus gestos (una sonrisa, un guiño, una risa, un asentir…) para que tu cara le conteste con los suyos; no reconoce quién es, nada de eso te llega a ti, y ninguna imagen sale de ese dispositivo.",
-    "face": "Tu cara en pantalla ahora: «{face}»."
+    "camera": "Tu cámara está ENCENDIDA en {screen}: en ese dispositivo encuentra DÓNDE está la persona, para girar tus ojos hacia ella, y lee sus gestos (una sonrisa, un guiño, una risa, un asentir…) para que tu cara le conteste con los suyos; lo que él hizo y lo que tu cara le contestó te llega en palabras, nunca como imagen, y no reconoce quién es.",
+    "face": "Tu cara en pantalla ahora: «{face}» (también se mueve y sonríe sola, sin motivo).",
+    "face_recent": {
+      "line": "Tu cara hace un momento (gestos de la persona que viste y lo que contestaste; háblalo con tus palabras si sale — lo demás fue la vida propia de tu cara): {acts}.",
+      "forms": {
+        "answer": "{saw}, y le contestaste {did} (hace {age} s)",
+        "let_go": "{saw}, y lo dejaste pasar (hace {age} s)",
+        "said": "estabas {did} mientras decías que {said} (hace {age} s)",
+        "plain": "{saw} (hace {age} s)"
+      },
+      "saw": {
+        "smile": "te sonrió",
+        "laugh": "se rió",
+        "wink": "te guiñó un ojo",
+        "tongue": "te sacó la lengua",
+        "yawn": "bostezó",
+        "surprise": "puso cara de sorpresa",
+        "brows": "levantó las cejas",
+        "nod": "asintió con la cabeza",
+        "shake": "negó con la cabeza",
+        "hand": "te saludó con la mano"
+      },
+      "did": {
+        "smile": "sonriendo",
+        "laugh": "riéndote",
+        "giggle": "con una risita",
+        "tongue": "sacándole la lengua",
+        "yawn": "bostezando",
+        "sigh": "con un suspiro",
+        "surprise": "con cara de sorpresa",
+        "brows": "levantando las cejas",
+        "tilt": "ladeando la cabeza",
+        "nod": "asintiendo",
+        "shake": "negando con la cabeza",
+        "sad": "con cara algo triste",
+        "look": "mirando a otro lado",
+        "shy": "mirando a otro lado con una sonrisa",
+        "hello": "con un gesto rápido de cejas y una sonrisa",
+        "wink": "guiñándole un ojo"
+      },
+      "said": {
+        "yes": "sí",
+        "no": "no"
+      },
+      "saw_plain": {
+        "arrive": "la persona se puso delante de la pantalla",
+        "leave": "la persona se fue de delante de la pantalla"
+      }
+    }
   },
   "topics": {
     "overview": {
@@ -41,10 +88,10 @@
       "not": "La cara es solo una cara: no cambia lo que el agente sabe hacer."
     },
     "camera": {
-      "what": "«Mírame»: con la cámara encendida, la cara gira los ojos hacia donde estás y contesta tus gestos con los suyos — un guiño, una sonrisa, una risa, sacar la lengua, asentir, un bostezo —, a veces, y no como un espejo: alguno lo deja pasar. Unos detectores dentro del dispositivo leen dónde está tu cara y su expresión, unas diez veces por segundo.",
+      "what": "«Mírame»: con la cámara encendida, la cara gira los ojos hacia donde estás y contesta tus gestos con los suyos — un guiño, una sonrisa, una risa, sacar la lengua, asentir, un bostezo —, a veces, y no como un espejo: alguno lo deja pasar. Unos detectores dentro del dispositivo leen dónde está tu cara y su expresión, unas diez veces por segundo; el agente sabe luego, en palabras, lo que hiciste y lo que su cara te contestó en los últimos segundos.",
       "voice": "«Mírame» / «deja de mirarme» (encender la cámara también enseña la cara).",
       "button": "Ajustes ⚙ ▸ Forma física ▸ interruptor de la cámara; mientras funciona hay una insignia «● Cámara» en pantalla, y tocarla la apaga.",
-      "not": "NO te ve: no reconoce quién eres y no puede describir lo que tiene delante. Tu expresión se lee en ese dispositivo solo para mover la cara — ningún fotograma, ninguna imagen y ningún número sale de él, así que al agente no le llega nada: su cara contesta, pero luego no puede contarte lo que vio. Solo funciona mientras la cara se ve y la pantalla está visible."
+      "not": "NO te ve: no reconoce quién eres y no puede describir lo que tiene delante. Ningún fotograma, ninguna imagen y ningún número sobre tu cara sale del dispositivo — solo los nombres de los últimos gestos (los tuyos y las respuestas de la cara), durante medio minuto, para que el agente pueda hablar de ellos. Solo funciona mientras la cara se ve y la pantalla está visible."
     },
     "voice": {
       "what": "Su voz al hablar, su volumen en cada pantalla, el altavoz, el micrófono y el botón de apagado.",

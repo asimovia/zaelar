@@ -159,6 +159,9 @@ export const screensBeat = (visible, touched = false) => {
   try { postJSON("/api/screens/beat", { dev: DEVICE, visible: !!visible, touched: !!touched, camera: _camera }); } catch (_) {}
 };
 export const screensCamera = (on) => { if (!!on !== _camera) { _camera = !!on; try { postJSON("/api/screens/beat", { dev: DEVICE, camera: _camera }).catch(() => {}); } catch (_) {} } };
+// What the face did and saw in the last seconds (V2-928, presence/recent.js): gesture NAMES and their age in seconds —
+// never an image, never a number about a face. The engine words it for the model (nucleo/self/snapshot.py).
+export const screensFace = (acts) => { try { postJSON("/api/screens/beat", { dev: DEVICE, face: acts }).catch(() => {}); } catch (_) {} };
 // A visible, connected, awake screen says a person is here (services/presence.js, once a minute): the idle stop keeps
 // the engine up for its whole window after the last one (nucleo/idle_stop.py).
 export const screensPresent = () => {

@@ -2,7 +2,8 @@
 
   · `POST /api/chat`           — a typed line from ANY screen, into the one conversation.
   · `POST /api/screens/beat`   — a screen says whether it is visible (sent on `visibilitychange`) and whether its
-                                 camera runs (`camera`, V2-932), and, with
+                                 camera runs (`camera`, V2-932), what its face just did and saw (`face`, names,
+                                 V2-928), and, with
                                  `present`, that a person is connected there (`presence.js`, once a minute), or,
                                  with `left`, that the app on his phone was put away.
   · `POST /api/screens/bring`  — «bring it here»: a card that plays on one screen at a time moves to this one.
@@ -51,8 +52,13 @@ async def chat(text: str = Body(..., embed=True), dev: str = Body("", embed=True
 def beat(payload: dict = Body(...)) -> dict:
     dev = (payload or {}).get("dev")
     visible, camera = (payload or {}).get("visible"), (payload or {}).get("camera")
+    face = (payload or {}).get("face")
+    if isinstance(face, list):            # V2-928: what the face just did and saw — names only, cleaned here
+        from nucleo.self import face_recent
+        face = face_recent.clean(face)
     screens.beat(dev, visible=visible if isinstance(visible, bool) else None,
-                 camera=camera if isinstance(camera, bool) else None)   # V2-932: «look at me» running, a flag
+                 camera=camera if isinstance(camera, bool) else None,   # V2-932: «look at me» running, a flag
+                 face=face if isinstance(face, list) else None)
     if (payload or {}).get("left") and visible is False:
         screens.left(dev)             # the phone app went to the background or was closed: the person left
     elif (payload or {}).get("touched"):

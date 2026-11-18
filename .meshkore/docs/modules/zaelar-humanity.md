@@ -117,6 +117,27 @@ Known limits:
 - **The tongue** is drawn by `face.js drawTongue` over **every** look, classics and parametric, from the shared mouth
   geometry. A parametric face uses its own `spec.mouth.tongue` colour.
 
+## The agent knows what its face just did (2026-11-18)
+
+If the face winks, shakes its head or smiles and he asks «why did you smile?», the model finds what just happened in its
+state and talks about it in its own words — never a fixed sentence.
+
+- **Screen** (`presence/recent.js`): a 30 s list of NAMES — `saw` (his gestures perceived on the device, and whether
+  they were answered) and `did` (the face's gestures that have a reason: an answer to his, `why: "answer"`, `of`; a nod
+  or shake while saying yes or no, `why: "said_yes" | "said_no"`). The idle life is not recorded: it has no reason.
+  `PresenceLayer.js` reports the list with the screen beat (`api.screensFace`), once per burst of entries.
+- **Engine** (`nucleo/self/face_recent.py`): `screens_api.beat` cleans the list (well-formed names, an age in the window,
+  at most eight), `voice/screens.py` keeps it beside `camera` in process memory (never stored, never touches presence),
+  and `snapshot.live_lines()` adds ONE line while something happened in the last 30 s, worded only from the `self` pack
+  (`live.face_recent`: a generic intro that asks the model to talk about it in its own words, and the words of each
+  gesture) — a name the pack does not word is dropped, so nothing the screen sends is ever text the model reads.
+  `about_self` (face and camera entries) reads the same facts.
+- **Honesty**: the face line says its own life (glances, a slight smile while listening) has no reason behind it; the
+  recent line says that anything not listed was the face's own life. Gestures only — never emotions, never identity.
+- **Privacy**: names and ages leave the device, never an image or a number about a face; the line is part of the turn's
+  prompt, so the observability capture records it like the rest of the tail.
+- Tests: `tests/agent_headless/unit/self/test_the_face_tells_what_it_just_did.py` (node 2.1807).
+
 ## The seam to the conversation (OFF)
 
 **The future step.** After a sustained stretch of visual play, the agent may *say* something in character, based on his

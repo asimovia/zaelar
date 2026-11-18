@@ -9,6 +9,7 @@ const { createExpression } = await imp("humanity/expression.js?v=1");
 const { createRemarker } = await imp("humanity/remark.js?v=1");
 const { createHumanity } = await imp("humanity/index.js?v=1");
 const { createRig } = await imp("rig.js?v=1");
+const recentMod = await imp("recent.js?v=1");
 
 const DT = 100;                                   // the landmarker's 10 frames a second
 const face = (shapes = {}, pose = { yaw: 0, pitch: 0 }) => ({ size: 0.25, shapes, pose });
@@ -79,13 +80,16 @@ const seam = { offers: offered.length, seconds: offered[0] && offered[0].seconds
 
 // ---- the whole humanity on a fake face: an answer is played after its human beat; his talking mouth gets none
 function wholeRun(hearing) {
+  recentMod.clear();
   const g = []; const timers = [];
   const hm = createHumanity({ gesture: (n) => g.push(n) }, { rng: seeded(21), speech: () => ({ hearing, speaking: false }),
     setTimer: (fn, ms) => { timers.push(fn); return timers.length; }, clearTimer: () => {} });
   for (let t = 0; t < 4000; t += DT) hm.frame([face()], t);
   for (let t = 4000; t < 9000; t += DT) hm.frame([face({ tongueOut: 0.6, jawOpen: 0.25 })], t);
   timers.forEach((fn) => fn());
-  return { gestures: g, log: hm.log.map((x) => x.saw + ">" + x.answer) };
+  const notes = recentMod.recent().map((x) => x.kind + ":" + x.name + (x.why ? ":" + x.why + ":" + x.of : ""));
+  const keys = [...new Set(recentMod.recent().flatMap((x) => Object.keys(x)))].sort();
+  return { gestures: g, log: hm.log.map((x) => x.saw + ">" + x.answer), notes, keys };
 }
 const whole = { silent: wholeRun(false), hearing: wholeRun(true) };
 

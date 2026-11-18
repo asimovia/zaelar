@@ -2803,7 +2803,7 @@
  "presence.hidden": "Cara oculta.",
  "presence.restored": "Vuelta a la cara por defecto (Porcelana).",
  "presence.camera": "Cámara: el agente te mira",
- "presence.camera_hint": "La cara se gira hacia ti cuando te mueves. Funciona solo en este dispositivo: ninguna imagen sale de él, y la cámara se apaga si ocultas la cara o sales de la página.",
+ "presence.camera_hint": "La cara se gira hacia ti cuando te mueves y contesta tus gestos. Funciona en este dispositivo: ninguna imagen sale de él; al agente solo le llegan, en palabras y durante medio minuto, tus últimos gestos y lo que su cara contestó. La cámara se apaga si ocultas la cara o sales de la página.",
  "presence.camera_badge": "Cámara",
  "presence.says_yes": "sí|claro|exacto|correcto|por supuesto|desde luego|eso es|efectivamente",
  "presence.says_no": "no|qué va|para nada|en absoluto|tampoco",
