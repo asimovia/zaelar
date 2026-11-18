@@ -92,3 +92,59 @@ def test_with_no_voice_open_the_paste_goes_at_once():
     s = _Session()
     agent_events._on_data(_packet("hello"), _emit=lambda *a, **k: None, _json=json, _wake={}, session=s)
     assert s.replies == ["hello"]
+
+
+def test_an_utterance_cut_by_the_ear_closing_stops_holding_text_after_the_grace():
+    """His engine, 2026-11-18: a rising edge, then the mic closed with nothing heard — no falling edge ever came, and
+    that «speaking» outlived the session: every typed line of the next session waited the whole CAP_S (8.0 s, `held_ms`
+    8018/8021) behind a voice that was not there. The close is the silence's start."""
+    order.note_onset(10.0)                      # he began; the mic closes mid-word, no falling edge follows
+    order.note_ear_closed(13.0)
+    assert order.must_wait(13.5, 13.5), "what the close commits still lands first, inside the grace"
+    assert not order.must_wait(300.0, 300.0), "minutes later nothing is open"
+    assert not order.must_wait(13.0 + order.SILENT_GRACE_S + 0.1, 13.0 + order.SILENT_GRACE_S + 0.1)
+    order.reset()
+    order.note_onset(10.0)
+    order.note_end(11.0)
+    order.note_ear_closed(20.0)                 # already silent: the close does not move the silence's start
+    assert not order.must_wait(15.5, 15.5)
+
+
+class _Remote:
+    """The body's RemoteSession, as the input door sees it: an audio input lever and `on(event, fn)`."""
+    def __init__(self):
+        self.enabled, self.handlers = None, {}
+        self.input = SimpleNamespace(set_audio_enabled=lambda on: setattr(self, "enabled", on))
+
+    def on(self, event, fn):
+        self.handlers.setdefault(event, []).append(fn)
+
+
+def _stale_utterance_then_a_closed_ear():
+    """The 2026-11-18 sequence through the real door: an onset with no falling edge, then the ear closed by his mute."""
+    import time
+    from voice import mic_input
+    mic_input.reset()
+    s = _Remote()
+    order.note_onset(time.monotonic() - 300.0)
+    try:
+        agent_events.open_mic_door(session=s)
+        mic_input.set_muted(True, source="test")
+        assert s.enabled is False, "the lever closed"
+        later = time.monotonic() + order.SILENT_GRACE_S + 0.5
+        return order.must_wait(later, later)
+    finally:
+        for fn in s.handlers.get("close", []):
+            fn()
+        mic_input.reset()
+
+
+def test_the_input_door_closing_ends_the_open_utterance():
+    assert not _stale_utterance_then_a_closed_ear(), "a typed line waited for an utterance the closed ear can't end"
+
+
+def test_disarmed_a_closed_ear_that_leaves_the_utterance_open_holds_text_again(monkeypatch):
+    """Disarm: `note_ear_closed` does nothing → the stale «speaking» holds the typed line again → red."""
+    monkeypatch.setattr(order, "note_ear_closed", lambda now=None: None)
+    with pytest.raises(AssertionError):
+        test_the_input_door_closing_ends_the_open_utterance()

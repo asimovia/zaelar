@@ -110,10 +110,32 @@ def order_unserved(brief) -> bool:
             choice, info = verdicts.read(brief, key, None)
             # a choice that names nothing (the questions' declared «none» / the canvas's «neither») aims at nothing
             if info and str(choice or "").strip().lower() not in ("", "none", "neither"):
+                if key == tb.CATALOG_KEY and not reads_an_act(brief, str(choice)):
+                    continue        # a card named with NO act read is what he talked about, not an act owed
                 return True
         return False
     except Exception as e:  # noqa: BLE001 — unread is «not an order»: nothing is said
         logger.debug(f"unserved: the brief was not read — {e!r}")
+        return False
+
+
+def reads_an_act(brief, card: str) -> bool:
+    """Did the turn read an act on `card` at all — the end state its verdict names, the verdict's leaving act on it
+    (`ending.verdict_names_leaving`), or an act of it `screen_action` leans to at any confidence (the readings
+    `ask_outside_door._reads_an_act` uses)? Measured 2026-11-18: «I was watching TV, forget that message» read the
+    messaging card at 0.70 and NO act or end state; «That is not done yet.» was glued to «OK, I'll leave it»."""
+    try:
+        from nucleo.circuit import spec
+        from nucleo.request import base
+        from nucleo.request.ending import verdict_names_leaving
+        from nucleo.turn import brief as tb, verdicts
+        if spec.end_state_verdict(brief) or verdict_names_leaving(brief, card):
+            return True
+        leaned, _l = verdicts.read(brief, tb.TARGET_KEY, None, min_confidence=0.0)
+        wid, _sep, act = str(leaned or "").partition(":")
+        return bool(act) and base(wid) == base(card)
+    except Exception as e:  # noqa: BLE001 — unread reads no act: nothing is said undone on a guess
+        logger.debug(f"unserved: the act was not read — {e!r}")
         return False
 
 

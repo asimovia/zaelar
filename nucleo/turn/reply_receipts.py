@@ -176,6 +176,11 @@ async def blocked_channel() -> list:
         return []
 
 
+def _content_free(ack: str) -> bool:
+    from nucleo.flash import card_receipt
+    return card_receipt.content_free(ack)
+
+
 def _asked(e: dict) -> bool:
     """The app has not confirmed this end state yet: it reads None for want of its ack, or contrary only on a report
     older than the act (`reported.unheard`) — said as asked, never as done nor as «not on the card»."""
@@ -201,16 +206,26 @@ def end_state_unmet(cards: set[str] | None = None, turn: str = "") -> dict | Non
     return None
 
 
-def bare_ack(ack: str, cards: set[str] | None, *, beside: bool = False, turn: str = "") -> str:
+def unattested(ops) -> list[tuple[str, str]]:
+    """The `(card, action)` ops of the turn whose action declares nothing that checks its «done» (`spec.declares_done`):
+    no end state and no `instant` — nothing the engine can attest, so our «Done.» over them is a guess (2026-11-18)."""
+    from nucleo.circuit import spec
+    return [(str(c), str(a)) for c, a in ops or () if not spec.declares_done(str(c), str(a))]
+
+
+def bare_ack(ack: str, cards: set[str] | None, *, beside: bool = False, turn: str = "", ops=None) -> str:
     """The bare acknowledgement WE are about to say over a turn's writes, or the true line instead: «just started» when
     an errand runs beside it, «not on the card yet» when an end state THIS turn owes on those cards reads unmet, and
-    «asked» while the app has not confirmed it (V2-884 A6: said as asked, never as done nor as failed)."""
+    «asked» while the app has not confirmed it (V2-884 A6: said as asked, never as done nor as failed) — or when an op
+    in `ops` declares nothing that attests it (`unattested`): a completion line stands only on an attested act."""
     try:
         lang = _lang()
         if beside:
             return str(lang.done_just_started)
         e = end_state_unmet(cards, turn)
         if not e:
+            if ops and unattested(ops) and _content_free(ack):   # a card's receipt the ack became stays its own line
+                return str(lang.done_asked)
             return ack
         return str(lang.done_asked if _asked(e) else lang.done_not_on_card)
     except Exception as e:  # noqa: BLE001 — an unreadable screen leaves the ack as it was

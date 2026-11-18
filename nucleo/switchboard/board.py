@@ -8,6 +8,8 @@ from __future__ import annotations
 from loguru import logger
 
 RUNNING, WAITING = "running", "waiting"
+#: A process whose worker has NOT started: the host has no room for it yet (`workers/envelope`), or it queues behind.
+HELD = "held"
 #: The `ask_id` of a question that is a parked STEP of a running process (never a row's own ask): `step:<its id>`.
 STEP = "step:"
 
@@ -43,7 +45,8 @@ def open_processes() -> list[dict]:
                 out[key]["dispatch"] = str(s.get("id") or "")
                 out[key]["title"] = out[key]["title"] or title
                 continue
-            out[key] = {"key": key, "dispatch": str(s.get("id") or ""), "title": title, "state": RUNNING,
+            out[key] = {"key": key, "dispatch": str(s.get("id") or ""), "title": title,
+                        "state": HELD if s.get("held") else RUNNING,       # not started: the gate holds it
                         "question": "", "ask_id": "", "since": 0, "phase": str(s.get("phase") or "")[:120]}
     except Exception as e:  # noqa: BLE001
         _note("live sessions", e)
@@ -59,7 +62,24 @@ def open_processes() -> list[dict]:
 
 
 def line(n: int, p: dict) -> str:
-    """One process as the decision reads it: its number, what he asked, its state and — when it waits — its question."""
-    state = (f"WAITING for his answer to: «{p['question']}»" if p["state"] == WAITING
-             else f"running{(' — ' + p['phase']) if p.get('phase') else ''}")
+    """One process as the decision reads it: its number, what it does, its state and — when it waits — its question."""
+    if p["state"] == WAITING:
+        state = f"WAITING for his answer to: «{p['question']}»"
+    elif p["state"] == HELD:
+        state = f"NOT STARTED yet — held until this computer has room{(' (' + p['phase'] + ')') if p.get('phase') else ''}"
+    else:
+        state = f"running{(' — ' + p['phase']) if p.get('phase') else ''}"
     return f"{n}. «{p['title'] or '(untitled)'}» — {state}"
+
+
+def conversation_line(last_reply: str = "") -> str:
+    """Entry 0 of the list the decision reads: the conversation with the assistant itself, with its last line — a
+    candidate like any other, so what answers the ASSISTANT's own question is not handed to whichever process happens
+    to be open (measured 2026-11-18: «tell her I love her», said to «what shall I tell her?», went to a contacts sync
+    that was the only thing on the board)."""
+    said = " ".join(str(last_reply or "").split())[:300]
+    if not said:
+        return "0. The CONVERSATION with the assistant itself — nothing said just now"
+    asked = said.rstrip("»\"'”) ")[-1:] in "?？؟"
+    return (f"0. The CONVERSATION with the assistant itself — it just {'ASKED him' if asked else 'said'}: «{said}»"
+            + (" (his answer to THAT is 0)" if asked else ""))

@@ -137,7 +137,8 @@ async def settle_what_is_pending(*, _ans, _ask_waiting, _auth_pending, _brief, _
         # true instead (`reply_receipts.bare_ack`).
         from nucleo.turn import reply_receipts as _receipts
         spoken_text = _receipts.bare_ack(spoken_text, {str(w).split("::", 1)[0] for w, _a in (data_done.get("ops") or [])},
-                                         turn=__import__("voice.trace", fromlist=["x"]).current())
+                                         turn=__import__("voice.trace", fromlist=["x"]).current(),
+                                         ops=data_done.get("ops"))   # «Done.» only over attested acts (2026-11-18)
         send(speech.sanitize(spoken_text, drop_metadata=False))
 
     # Regla de usuario fijada/retirada SIN frase hablada → ack corto (V2-046 A1, visto en el probe: la

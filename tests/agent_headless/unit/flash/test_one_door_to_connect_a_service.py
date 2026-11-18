@@ -144,6 +144,39 @@ def test_disarmed_a_canon_that_names_nothing_leaves_the_voice_turn_on_the_list(m
     assert _voice_panel_emit(args, "conecta mi Drive")[1].get("connector") == "gdrive"   # green again
 
 
+@pytest.mark.parametrize("lang", ["es", "en"])
+def test_a_panel_opened_is_said_as_a_surface_opened_never_as_done(monkeypatch, lang):
+    """His engine, 2026-11-18: «I want to connect my Google contacts» → `show_panel(conectores)` and the engine's own
+    «Done.» — opening the panel is the START of what he asked. The act leaves the line of an opened surface
+    (`surface_ack.show_ack`) for the turn's ack (`post_stream_settle`: `act_line` before `data_ack`); a close leaves none."""
+    monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
+    from i18n import langs
+    lg = langs.current_language()
+    acted: dict = {}
+    TEC._t_show_panel(args={"panel": "conectores", "connector": "google contacts"}, _router=router, _tool_fired=set(),
+                      acted=acted, operator_text="", text="connect my Google contacts", emit=lambda *a, **k: None)
+    assert acted.get("act_line") == lg.show_ack and acted["act_line"] != lg.data_ack, acted
+    closed: dict = {}
+    TEC._t_show_panel(args={"panel": "conectores", "action": "close"}, _router=router, _tool_fired=set(), acted=closed,
+                      operator_text="", text="close it", emit=lambda *a, **k: None)
+    assert "act_line" not in closed, closed
+
+
+def test_the_turns_ack_reads_the_acts_line_before_the_bare_done():
+    """The wiring the test above relies on: the UI act's ack is `act_line`, `data_ack` only in its absence."""
+    import inspect
+    from nucleo.flash import post_stream_settle
+    assert 'acted.get("act_line", _lg_ack.data_ack)' in inspect.getsource(post_stream_settle)
+
+
+def test_disarmed_a_panel_without_its_line_falls_back_to_done(monkeypatch):
+    """Disarm: the panel's line unwired (`_panel_line` → "") → no `act_line`, the ack is «Done.» again → red."""
+    monkeypatch.setattr(TEC, "_panel_line", lambda: "")
+    assert TEC._panel_line() == "", "the disarm landed"
+    with pytest.raises(AssertionError):
+        test_a_panel_opened_is_said_as_a_surface_opened_never_as_done(monkeypatch, "en")
+
+
 # ── 2. no widget keeps a connect door (ratchet) ───────────────────────────────────────────────────────────────
 
 # The actions 6a39a053 removed — agenda/contactos/fotos `connect`+`disconnect`, archivos `open_connectors` /

@@ -75,6 +75,14 @@ def pending_task_lines() -> list[str]:
             _ofrecer: list[str] = []
             for t in _pend:
                 ph = (t.get("phase") or "").strip()
+                if t.get("held"):
+                    # V2-935 — NOT STARTED is a fact of its own. Held 20 min at the admission gate (2026-11-18) it
+                    # read here as «ENCALLADA», and asked why it took so long the turn answered «it got stuck, I'm
+                    # relaunching it» — and relaunched nothing: nothing was stuck, and the turn cannot start it.
+                    bits.append(name_of(t) + " — NO HA EMPEZADO: este ordenador va justo y espera hueco; arranca sola "
+                                "cuando lo haya. No está atascada ni puedes relanzarla tú: él puede decir «arráncalo "
+                                "igual» o «déjalo»")
+                    continue
                 bit = name_of(t) + (f' — {ph}' if ph else "")
                 # V2-059: progreso ESTRUCTURADO si el worker lo reporta (paso N/total, %, nota) → respuesta precisa
                 # a "¿cómo va?" en vez de una fase vaga.

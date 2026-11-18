@@ -51,6 +51,16 @@ def note_end(now: float | None = None) -> None:
     _state["end"] = _now(now)
 
 
+def note_ear_closed(now: float | None = None) -> None:
+    """The audio input closed (his mic muted, the session over): no frame reaches the VAD any more, so the falling edge
+    of an utterance in course never arrives — its silence starts NOW, and what the close commits lands inside the
+    grace. Measured 2026-11-18 (his engine): a rising edge, the mic closed 3 s later with nothing heard, and that
+    «speaking» outlived the session; every typed line of the next one waited the whole `CAP_S` for a voice that was
+    not there."""
+    if _state["speaking"]:
+        note_end(now)
+
+
 def note_committed(now: float | None = None) -> None:
     """A user turn entered the conversation (a user item was added): whatever was being said is now a turn."""
     _state["committed"] = _now(now)

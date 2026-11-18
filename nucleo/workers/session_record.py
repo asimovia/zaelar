@@ -84,6 +84,11 @@ class SessionRecord:
     error_class: str = ""
     injects: list = field(default_factory=list)     # [Inject]
     transcript: list = field(default_factory=list)  # its events, buffered until `task_record.flush` writes them
+    # V2-935 — NOT started: why the admission gate holds it (`workers/envelope.reason`, "" once admitted), since when,
+    # and his «start it anyway», which lets it in at the gate's next look.
+    held: str = ""
+    held_since: float = 0.0
+    start_now: bool = False
     paused: bool = False           # V2-065: SIGSTOP'd (⏻ del operador) — sigue "running" para el registro, pero
                                     # frozen; do not confuse with status=cancelled (that is irreversible)
     # ── STRUCTURED worker observability (V2-059): `plan` (`hbnote plan "a|b|c"`), `done` (`--done N`), `pct`

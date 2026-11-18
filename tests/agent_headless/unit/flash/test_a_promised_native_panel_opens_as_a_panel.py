@@ -38,7 +38,8 @@ def test_the_words_name_the_connectors_panel(said, connector):
     assert (runtime.identify(said) or {}).get("system") == "conectores"
     got, acted, fired = [], {}, set()
     assert open_named_panel(said, lambda *a, **k: got.append((a, k)), proposed=True, card="", acted=acted, fired=fired)
-    assert acted == {"widget": True} and fired == {"show_panel"}, "through THE show_panel door (S1 audit H6)"
+    assert acted.get("widget") is True and fired == {"show_panel"}, "through THE show_panel door (S1 audit H6)"
+    assert set(acted) <= {"widget", "act_line"}, acted     # the door's own line for an opened panel (2026-11-18)
     assert got[0][0] == ("panel", "open") and got[0][1]["extra"].get("connector", "") == connector, got
     assert not open_named_panel(said, lambda *a, **k: None, proposed=False, card=""), "nothing promised: nothing opens"
 

@@ -301,6 +301,9 @@ class LangSpec:
     #: V2-851 §3a — his words were bound to the question a task waits on (the task resumes with them), and a doubt
     #: about WHICH waiting task they answer is asked, naming the tasks ({among}).
     answer_taken: str = ""
+    kept_until_start: str = ""      # V2-935: his words for a process that has NOT started — kept, and he can start it
+    starting_anyway: str = ""       # V2-935: his «start it anyway» for a process held at the gate
+    still_held: str = ""            # V2-935: the pulse's line for a process still held at the gate
     #: A message to a cluster held for his word ({name}, {to}: « a <peer>» or "", {text}); and a rows expression over
     #: several rows that needs his word ({n}, {collection}, {names}: « (a; b)» or ""). Both were Spanish literals.
     cluster_send_confirm: str = ""

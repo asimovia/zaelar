@@ -200,6 +200,16 @@ def _t_show_panel(*, args, _router, _tool_fired, acted, emit, operator_text, tex
         emit("panel", _act, extra={"tab": _tab, "src": "flash", **({"connector": _cx} if _cx else {})})
         emit("brain", f"🗂️ show_panel → panel nativo ({_act})", text=_tab, role="system")
         acted["widget"] = True     # cuenta como acción de UI (ack "nunca mudo" + no escala espurio)
+        if _act == "open":         # a panel opens the WAY to what he asked, never its completion: said as a surface opened
+            acted["act_line"] = " ".join(x for x in (acted.get("act_line"), _panel_line()) if x)
+
+
+def _panel_line() -> str:
+    """The line of a native panel opened (2026-11-18: «connect my Google contacts» → the connectors panel → «Done.»):
+    the ack every opened surface says (`surface_ack.show_ack`), never a completion nobody attests."""
+    from i18n import langs
+    from nucleo.flash import surface_ack
+    return str(surface_ack.show_ack(langs.current_language()) or "")
 
 
 def _t_manage_widget_alias(*, args, _say, _tool_fired, acted, clarify, emit, text):

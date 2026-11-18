@@ -40,6 +40,9 @@ def active_sessions(now: float | None = None) -> list[dict]:
             # human reads or hears. Falls back to the brief, so a consumer can use it unconditionally.
             "title": _d._sheets.title_of(r),
             "phase": r.phase, "status": r.status, "age_s": int(now - r.started), "paused": r.paused,
+            # V2-935 — NOT started: the reason the gate holds it, and for how long (0 when it runs)
+            "held": str(getattr(r, "held", "") or ""),
+            "held_s": int(now - float(getattr(r, "held_since", 0) or now)) if getattr(r, "held", "") else 0,
             # V2-227: where mira the operator. El frontend opens the sheet with esto ANTES of that haya a result,
             # so that viaja in the proyeccion live and no in the entrega.
             "surface": r.surface,
@@ -99,7 +102,8 @@ def pending_summaries() -> list[dict]:
              "considered": r.considered, "kept": r.kept,
              "sheet": _d.sheet_of(r),     # V2-451: la hoja es del ENCARGO, y sin esto solo viajaba con navegador
              "surface": getattr(r, "surface", ""),
-             "heard": getattr(r, "heard", "")}   # V2-874: his commissioning sentence, beside the errand's own title
+             "heard": getattr(r, "heard", ""),   # V2-874: his commissioning sentence, beside the errand's own title
+             "held": str(getattr(r, "held", "") or "")}     # V2-935: NOT started — why the gate holds it
             for r in _d._SESSIONS.values() if r.status in _d.LIVE_SESSION_STATES]
 
 

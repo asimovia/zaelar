@@ -359,7 +359,8 @@ async def screen_report(payload: dict):
         d = screen_doc.read(dev)
         emit("screen", "report", text=f"v{v} · front {(d.front if d else '') or '-'}",
              extra={"dev": dev, "v": v, "acks": taken, "by": str(p.get("by") or "")[:20],
-                    **({"layout": d.layout, "front": d.front, "open": [r["id"] for r in d.open]} if d else {})})
+                    **({"layout": d.layout, "front": d.front, "open": [r["id"] for r in d.open],
+                        "panel": d.panel} if d else {})})   # the native surface over the canvas (T9), "" = none
     return JSONResponse({"ok": True, "v": v, "acks": taken})
 
 

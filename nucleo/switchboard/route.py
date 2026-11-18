@@ -15,7 +15,10 @@ retained act at once — exactly as the screen's button does, with no session re
 («OK, sending it…», «OK, I won't send it»); a cut-off piece that says nothing yet is held and joined to what he says
 next; an order to stop ends the process — or all of them — through the row's own cancel door, at once; anything else
 about its matter (a change, a detail, a question) reaches the process as his words. What a decision does lives in
-`act.py`.
+`act.py`; a process that has not started yet is told as that, and his «start it anyway» starts it (`held.py`).
+
+The conversation with the assistant itself is entry 0 of the list the decision reads, with the assistant's own last
+line: what answers THAT is not a process's (`board.conversation_line`).
 
 A process never owns the conversation (measured 2026-11-18: with one errand running, eight turns in four minutes —
 complaints that the assistant was slow, silent, repeating him — were delivered to that errand and nobody answered).
@@ -33,6 +36,7 @@ import time
 from loguru import logger
 
 from nucleo.switchboard import board as _board
+from nucleo.switchboard import held as _held
 
 #: The decision's budget inside a turn. Past it Flash takes the chunk (and the event says so): a slow judge never
 #: holds his words.
@@ -49,37 +53,43 @@ from nucleo.switchboard.act import (FRAGMENT, NO, OTHER, STOP, STOP_ALL, YES, _l
                                     line_key, line_of, stop, waits_on_his_yes)
 
 SYSTEM = (
-    "You route what the operator of a voice assistant just said. Things the assistant is carrying out for him in the "
-    "background are OPEN, listed with a number: each line says WHAT that process is doing, and some are WAITING for "
-    "his answer to a question they asked. Decide whether what he just said is about the MATTER of ONE of them — the "
-    "thing that process is doing: it answers its question (a yes, a no, a choice, a fact — in any wording or language, "
-    "whole or cut short), confirms or refuses what it is about to do, gives or changes what it works with (who, which "
-    "one, what text, when), asks something about that matter (who it found, what the text says, why it asked that), "
-    "or tells it to go on, redo or cancel. Then answer its number.\n"
-    "Answer 0 when it is for none of them: a NEW request — something else he wants done, even on a similar subject, even "
-    "while a process waits for his answer (a waiting question does not own what he says next: «create a group with her» "
-    "is not an answer to «shall I send her the message?») — an order about his screen or an app — words for the "
-    "ASSISTANT ITSELF and not about a process's matter: how it speaks or behaves (it is slow, it went silent, it repeats "
-    "him, it talks over him, it did not listen), a complaint or an instruction about its manner, a greeting, thanks, a "
-    "comment — a question he wants answered now (the time, the weather, which tasks exist, or how a task is going or "
-    "whether it is done — the assistant answers those itself), or words for somebody else in the room. A process that "
-    "runs never owns the conversation: what is not about its matter is 0, however few processes are open.\n"
+    "You route what the operator of a voice assistant just said. You get a numbered list. Entry 0 is always the "
+    "CONVERSATION with the assistant itself, with the last thing it said to him. Every other entry is something the "
+    "assistant is carrying out for him in the background: its line says WHAT that process is doing, and whether it "
+    "is running, has NOT STARTED yet, or is WAITING for his answer to a question it asked.\n"
+    "Decide which ONE entry his words belong to, by their MATTER — what they are about. They belong to a process "
+    "only when they are about the very thing its line names: they answer its question (a yes, a no, a choice, a fact "
+    "— in any wording or language, whole or cut short), confirm or refuse what it is about to do, give or change what "
+    "it works with (who, which one, what text, when), ask about what it found or why it asked that, or tell it to go "
+    "on, redo or cancel. Compare the matter of his words with the matter in the process's line: a message for a "
+    "person is not the matter of a process that syncs contacts, deletes groups or looks for a film — even when that "
+    "process is the only one open, and even though both are «things he asked for».\n"
+    "Everything else belongs to entry 0: what answers or continues what the ASSISTANT just said (its own question is "
+    "answered to it, not to a process) — a NEW request, something else he wants done, even on a similar subject, even "
+    "while a process waits for his answer (a waiting question does not own what he says next: «create a group with "
+    "her» is not an answer to «shall I send her the message?») — an order about his screen or an app — words for the "
+    "ASSISTANT ITSELF: how it speaks or behaves (it is slow, it went silent, it repeats him, it talks over him, it did "
+    "not listen), a complaint or an instruction about its manner, a greeting, thanks, a comment — a question he wants "
+    "answered now (the time, the weather, which tasks exist, what he has stored, or how a task is going or whether it "
+    "is done — the assistant answers those itself) — or words for somebody else in the room. A process never owns the "
+    "conversation: in doubt, 0.\n"
     "A bare yes, no or ok while a process WAITS on a question is that process's answer (with several waiting, the one "
-    "that asked last). His words may arrive in pieces: a piece that continues what he was telling a process is that "
-    "process's.\n"
-    "Also say what it IS for that process: \"yes\" — it plainly accepts or authorises what a WAITING process asked, with "
+    "that asked last) — unless the assistant itself asked him something after it. His words may arrive in pieces: a "
+    "piece that continues what he was telling a process is that process's.\n"
+    "Also say what it IS for the process: \"yes\" — it plainly accepts or authorises what a WAITING process asked, with "
     "no change and no condition (yes, go ahead, send it, I authorise it); \"no\" — it plainly refuses or cancels it; "
     "\"fragment\" — a cut-off piece that carries no decision and no content yet (a word or two, a sentence that stops); "
     "\"stop\" — he orders that process to STOP: stop it, cancel it, drop it, do not do it, he never asked for it (add "
-    "\"all\": true when he orders every process to stop); \"other\" — anything else about THAT process's matter: a "
-    "change, a detail, a correction, a question about it; \"screen\" — an order about his screen or an app, not the task "
-    "(show, hide, minimise or close a sheet — that never stops its process —, open, mark or archive a message), even "
-    "about the sheet or item a process works on, even if he adds that it should keep going (it already does); "
-    "\"talk\" — words for the assistant itself, or asking how a task is GOING or whether it is done (progress is the "
-    "assistant's to tell, at once) (then \"to\" is 0); \"new\" — it is for none of them (then "
-    "\"to\" is 0).\n"
-    "Reply with JSON only: {\"to\": <number>, \"is\": \"yes|no|stop|other|fragment|screen|talk|new\", \"why\": \"<a few "
-    "words>\"}"
+    "\"all\": true when he orders every process to stop); \"go\" — he tells a process that has NOT STARTED to start "
+    "anyway, now, without waiting; \"other\" — anything else about THAT process's matter: a change, a detail, a "
+    "correction, a question about it; \"screen\" — an order about his screen or an app, not the task (show, hide, "
+    "minimise or close a sheet — that never stops its process —, open, mark or archive a message), even about the "
+    "sheet or item a process works on, even if he adds that it should keep going (it already does); \"talk\" — words "
+    "for the assistant itself, an answer to what it just said, or asking how a task is GOING or whether it is done "
+    "(progress is the assistant's to tell, at once); \"new\" — a new request. For \"screen\", \"talk\" and \"new\", "
+    "\"to\" is 0.\n"
+    "Reply with JSON only: {\"to\": <number>, \"is\": \"yes|no|stop|go|other|fragment|screen|talk|new\", \"why\": \"<a "
+    "few words>\"}"
 )
 
 _seen: dict = {"text": "", "key": "", "at": 0.0}
@@ -120,10 +130,8 @@ def ask_the_model(text: str, procs: list[dict], last_reply: str = "",
                   before: list[str] | None = None) -> tuple[int, str, str]:
     """`(n, why, is)` — the number of the process the chunk is for (1-based), 0 for none, -1 when unreadable; and what
     the chunk is for it (`yes` · `no` · `other` · `fragment`)."""
-    menu = "\n".join(_board.line(i + 1, p) for i, p in enumerate(procs))
-    user = f"OPEN PROCESSES:\n{menu}\n\n"
-    if last_reply:
-        user += f"THE ASSISTANT JUST SAID: «{last_reply}»\n"
+    menu = "\n".join([_board.conversation_line(last_reply)] + [_board.line(i + 1, p) for i, p in enumerate(procs)])
+    user = f"THE LIST:\n{menu}\n\n"
     if before:
         user += "HE SAID BEFORE: " + " · ".join(f"«{b}»" for b in before) + "\n"
     user += f"HE NOW SAYS: «{str(text)[:600]}»"
@@ -139,7 +147,7 @@ def ask_the_model(text: str, procs: list[dict], last_reply: str = "",
     if kind in (NEW, SCREEN, TALK):  # something else, his screen and apps, or talk with the assistant itself: no
                                      # process owns it, whatever number came — a running process never mutes him
         return 0, str(got.get("why") or "")[:80], OTHER
-    kind = kind if kind in (YES, NO, OTHER, FRAGMENT, STOP) else OTHER
+    kind = kind if kind in (YES, NO, OTHER, FRAGMENT, STOP, _held.GO) else OTHER
     if kind == STOP and got.get("all") is True:
         kind, n = STOP_ALL, n or 1
     return (n, str(got.get("why") or "")[:80], kind) if 0 <= n <= len(procs) else (-1, f"out of range: {n}", OTHER)
@@ -218,13 +226,19 @@ async def take(text: str, *, brain=None, emit=None, say=None, window_max: int = 
         if ended:
             _acknowledge(said, brain, say, window_max, await asyncio.to_thread(_line, "stopped_now", to["title"]))
         return bool(ended)
+    if kind == _held.GO:                            # «start it anyway»: only a process that has not started takes it
+        if _held.start_now(to):
+            _event(emit, said, procs, to=to, by=by, why=why, ms=ms, delivered=True, kind=kind)
+            _acknowledge(said, brain, say, window_max, await asyncio.to_thread(_line, _held.STARTING, to["title"]))
+            return True
+        kind = OTHER                                # it already runs: his words to it
     if kind == FRAGMENT:                            # his, for that process, and nothing yet: wait for the rest
         _piece.update(text=fresh, at=time.time())
         _event(emit, said, procs, to=to, by=by, why=why, ms=ms, delivered=False, kind=kind)
         return True
     early = early_yes(to, kind)                         # his go-ahead before the send's question exists
     kind = kind if waits_on_his_yes(to) else OTHER     # a yes or a no decides only what a process asked him
-    key = "send_going" if early else line_key(to, kind)   # read BEFORE the answer clears what it held
+    key = "send_going" if early else _held.line_key(to, line_key(to, kind))   # read BEFORE the answer clears it
     ok = False
     try:
         ok = deliver(to, fresh, kind)

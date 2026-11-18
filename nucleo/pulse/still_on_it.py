@@ -10,6 +10,10 @@ paused); a voice session is live; nobody has said anything — he or the agent �
 into a rhythm); and his own rule allows it. The line is a FACT worded by a model (`nucleo/wording.py`): that it goes
 on, and the step it is at when the errand has reported one.
 
+An errand that has NOT started — the admission gate holds it while the host has no room — is never told as «still
+on it»: after `HELD_FIRST_S` he hears that it has not begun, why, and that he can have it started anyway; then again
+at intervals that double (`held_due`). Measured the same day: twenty minutes held and not a word.
+
 It is a courtesy, never a debt: a line that could not be said is dropped — not pushed to his phone, not owed, not
 retried when the errand is long over (`notices.notify(ephemeral=True)`). And it is HIS to silence: the genesis style
 knob `still_working_lines` is a `voice` row of the rules table, so «no need to tell me you are still on it» written
@@ -55,9 +59,42 @@ def last_said_at() -> float:
 
 
 def running(sessions: list[dict]) -> list[dict]:
-    """The errands that are being WORKED on right now: not waiting on him, not queued, not paused."""
+    """The errands that are being WORKED on right now: not waiting on him, not queued, not paused, not held."""
     return [s for s in sessions or [] if s.get("waiting_on") != "user" and s.get("status") != "queued"
-            and not s.get("paused")]
+            and not s.get("paused") and not s.get("held")]
+
+
+def held(sessions: list[dict]) -> list[dict]:
+    """The errands that have NOT started: the admission gate holds them (`workers/envelope`)."""
+    return [s for s in sessions or [] if s.get("held") and s.get("waiting_on") != "user"]
+
+
+#: A held errand is said after `HELD_FIRST_S` of hold, then at intervals that double up to `HELD_MAX_S`: he must know
+#: it has not begun and that he can start it anyway, without hearing it every half minute for twenty.
+HELD_FIRST_S, HELD_MAX_S = 20.0, 600.0
+_held_said: dict = {}      # errand → (how many times it was said, when last)
+
+
+def held_due(sessions: list[dict], now: float) -> dict | None:
+    """The held errand to speak for on this tick, or None: the one held longest whose own interval has passed."""
+    live = {str(s.get("uid") or s.get("id") or ""): s for s in held(sessions)}
+    for k in [k for k in _held_said if k not in live]:
+        _held_said.pop(k, None)
+    for key, s in sorted(live.items(), key=lambda kv: -int(kv[1].get("held_s") or 0)):
+        n, last = _held_said.get(key, (0, 0.0))
+        wait = min(HELD_FIRST_S * (2 ** n), HELD_MAX_S)
+        since = float(s.get("held_s") or 0) if not n else now - last
+        if since >= wait and _allowed() and _floor_free():
+            return s
+    return None
+
+
+def held_line(s: dict, say) -> str:
+    """The line for a held errand: the truth — not started, why, and that he can start it anyway. Blocking."""
+    from nucleo import wording
+    plain = str(say("still_held") or "")
+    return wording.word(wording.FACTS["still_held"], about=str(s.get("title") or s.get("goal") or "")[:160],
+                        examples=(plain,), fallback=plain)
 
 
 def _allowed() -> bool:
@@ -108,12 +145,21 @@ def line(s: dict, say) -> str:
 async def beat(sessions: list[dict], now: float, say) -> bool:
     """One tick: say the line when it is due. True when a line was handed to the mouth. Never raises."""
     try:
-        s = due(sessions, now)
-        if s is None:
-            return False
         import asyncio
 
         from nucleo.pulse import notices
+        h = held_due(sessions, now)
+        if h is not None:                                        # not started: said as that, never as «still on it»
+            uid = str(h.get("uid") or h.get("id") or "")
+            _held_said[uid] = (_held_said.get(uid, (0, 0.0))[0] + 1, now)
+            text = await asyncio.to_thread(held_line, h, say)
+            if text:
+                await notices.notify("zaelar", text, key=f"held:{uid}:{int(now)}", task_id=uid, kind="info",
+                                     ephemeral=True)             # it opens his window: «start it anyway» is expected
+            return bool(text)
+        s = due(sessions, now)
+        if s is None:
+            return False
         text = await asyncio.to_thread(line, s, say)
         _state.update(anchor=time.time(), wait=_draw())          # said or not, the next one waits its own turn
         if not text:

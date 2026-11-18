@@ -78,7 +78,16 @@ FACTS = {
     "work_started": "He gave his go-ahead. You are starting on what he asked for now and will tell him when it is done.",
     "confirm_cancelled": "He said no. Nothing has been done or changed.",
     "answer_taken": ("He just added or answered something about what he asked for. You heard it and you are on it. "
-                     "Tell him only that — two to five words, an acknowledgement; say nothing of what he said."),
+                     "Tell him only that — two to five plain words, an acknowledgement with no praise and no "
+                     "«perfect»; say nothing of what he said."),
+    "kept_until_start": ("What he asked for has NOT started yet: this computer is too busy right now and it is waiting "
+                         "for room. What he just said is kept for it. It starts by itself as soon as there is room; he "
+                         "can tell you to start it anyway, or to drop it. Tell him exactly that, briefly."),
+    "starting_anyway": ("He told you to start it without waiting. You are starting what he asked for right now, even "
+                        "though this computer is busy."),
+    "still_held": ("What he asked for has NOT started yet: this computer is too busy right now and it is still waiting "
+                   "for room. It starts by itself when there is room; he can tell you to start it anyway, or to drop "
+                   "it. Tell him exactly that, briefly — no apology."),
     "stopped_now": "He asked to stop. What he had asked for has been stopped now; it is no longer being worked on.",
 }
 

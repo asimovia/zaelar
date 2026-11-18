@@ -316,7 +316,10 @@ below is the first kind, or it names the mechanism that replaced the second.
   nobody speaking. It is a courtesy, never a debt: a line that could not be said is dropped
   (`notices.notify(ephemeral=True)`: not pushed, not owed, state `dropped`). The genesis style knob
   `still_working_lines` is a `voice` row of the rules table: a rule of his («no need to tell me you are still on it»)
-  turns it off, and removing the rule turns it on again. — since 2026-11-18 (V2-935) · nodes 2.1813 ·
+  turns it off, and removing the rule turns it on again. An errand that has NOT started (held at the gate) is never
+  told as «still on it»: after 20 s of hold he hears that it has not begun, why, and that he can have it started
+  anyway, then again at intervals that double up to ten minutes (`held_due`); and the turn's own facts say «NO HA
+  EMPEZADO», never «stuck», so a turn cannot promise to relaunch what it cannot start (node 2.1816). — since 2026-11-18 (V2-935) · nodes 2.1813 ·
   `nucleo/pulse/still_on_it.py`, `nucleo/style_policy.py::still_working_lines`.
 - **CRIT-C4c · Every appointment he writes carries its notice**: a timed one ~2 h before, an all-day one at 09:00 that
   day; an asked `remind` wins; items synced from Google stay silent. — since 2026-10-10 · nodes 2.250.
@@ -1009,7 +1012,14 @@ Flash keeps the conversation; the row is what both brains read.
   number the judge gave (`route.TALK`, like `new` and `screen`), so Flash answers him. The board names a running
   process by what it DOES (the errand's name, else its brief), never by the sentence that commissioned it. A session
   his answer resumes is its row coming back: the dispatcher compares it with no other errand
-  (`listener`: `resume.rebrief` is bound, as `answers` is). An unreadable or
+  (`listener`: `resume.rebrief` is bound, as `answers` is). The conversation with the assistant itself is entry 0
+  of the list the decision reads, with the assistant's own last line (`board.conversation_line`): what answers THAT
+  is not handed to whichever process happens to be open, even when it is the only one (node 2.1816). A process
+  whose worker has NOT started — the admission gate holds it — is listed as `HELD`; words it takes are kept for when
+  it starts and the line he hears says exactly that, never «on it»; and his «start it anyway» is the decision's `go`:
+  the gate lets it in at its next look, held then by the memory floor only (`switchboard/held.py`,
+  `envelope.reason(forced=True)`; R19: the operator's cancel is the wait's exit and his word its entrance). An
+  unreadable or
   late decision is Flash's turn, never his words lost. Every decision is one `thread` event (`event: switchboard`)
   with the board it read, who decided, why and the ms. Flash has no tool that routes his words to a process. One
   answer runs its retained act once. The worker's process ends after asking and the answer resumes THAT session

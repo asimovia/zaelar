@@ -133,7 +133,11 @@ def payload_ref(widget_id: str, action: str, payload, *, named_only: bool = Fals
             return str(payload.get(k)).strip()
     # …else the ONE text the call carries under a key the action does not declare: with the id field empty there is
     # nothing else that text can be (measured: `set_favorite {contacto: "<name>", favorite: true}` read as a loose
-    # pronoun and went to a worker). Two such texts name nothing.
+    # pronoun and went to a worker). Two such texts name nothing. Only where the action NEEDS a row: with an OPTIONAL
+    # selector a stray text is something else the model meant (measured 2026-11-18: `show_view {platform:
+    # "whatsapp"}` became `groupId: "whatsapp"`, no such group, and the view was left as it was — said «done»).
+    if _refs.selector_is_optional((widget_id or "").strip().lower(), (action or "").strip(), field):
+        return ""
     try:
         from nucleo.flash import payload_fill as _pf
         declared = set(_pf._payload_spec((widget_id or "").strip().lower(), (action or "").strip()))

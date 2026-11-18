@@ -221,9 +221,13 @@ def open_mic_door(*, session, _emit=None):
         else:
             loop.call_soon_threadsafe(lambda: set_ear(session, bool(enabled), _emit=_emit))
         mic_input.note_ear(bool(enabled))         # stamped once the lever applied (a failing lever raised above)
+        if not enabled:
+            _typed_order.note_ear_closed()        # no frame reaches the VAD now: its falling edge will never come
 
+    from nucleo.input import typed as _typed_order
     mic_input.use_input(_set)
     session.on("close", lambda _ev=None: mic_input.clear_input(_set))
+    session.on("close", lambda _ev=None: _typed_order.note_ear_closed())   # a closed session commits nothing more
 
     def _clear() -> None:    # a turn the gate discarded is forgotten by the speech engine's own buffer too
         if loop is None or loop.is_closed() or _ag.asyncio._get_running_loop() is loop:

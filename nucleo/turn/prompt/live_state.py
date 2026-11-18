@@ -29,7 +29,20 @@ def screen_line() -> str:
         home = __import__("i18n.runtime", fromlist=["x"]).text("screen.phone_home", "home")   # a2b: a named screen
         return ("En pantalla (teléfono): " + (f"«{front}» delante" if front else home)
                 + (f"; detrás: {', '.join(behind)}" if behind else "") + ".")
-    return "En pantalla: " + (", ".join([i for i in ids if i][:12]) or "nada (pantalla VACÍA)") + "."
+    return "En pantalla: " + (", ".join([i for i in ids if i][:12]) or "nada (pantalla VACÍA)") + "." + _panel_line()
+
+
+def _panel_line() -> str:
+    """A native panel open on top (Settings, Connectors): the screen's own report says which (`screen_doc.panel`). It
+    covers everything under it and no card's state shows it — measured 2026-11-18: the connectors panel stayed open
+    over three turns and the turn's facts said «empty screen»."""
+    try:
+        doc = __import__("widgets.screen_doc", fromlist=["x"]).read()
+        panel = str(getattr(doc, "panel", "") or "") if doc is not None else ""
+    except Exception as e:  # noqa: BLE001 — unread: nothing is said about a panel
+        __import__("loguru").logger.debug(f"live_state: the open panel unread ({e!r})")
+        return ""
+    return f" Encima de todo, tapándolo, está abierto el panel «{panel}»." if panel else ""
 
 
 def _recent_widget_ids() -> list[str]:

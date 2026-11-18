@@ -63,6 +63,13 @@ def template_of(wid: str, action: str) -> dict | None:
     return copy.deepcopy(tpl) if isinstance(tpl, (dict, list)) else None
 
 
+def declares_done(wid: str, action: str) -> bool:
+    """Does the action say how its «done» is checked — an end state (`done_when`) or `instant` (the op's own answer is
+    that end state)? An action with neither has nothing that attests it (`test_every_action_says_how_its_done_is_checked`)."""
+    spec = ((_manifest(wid).get("actions") or {}).get(str(action or "").strip()))
+    return isinstance(spec, dict) and (TEMPLATE_KEY in spec or bool(str(spec.get("instant") or "").strip()))
+
+
 def _fill(node, payload: dict):
     """Placeholders `{key}` are the payload's values; `{key?}` is dropped (with its key) when absent. A required
     placeholder with no value makes the whole template unrenderable → None (unverifiable, never a guess)."""

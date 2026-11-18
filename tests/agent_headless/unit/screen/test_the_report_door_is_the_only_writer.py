@@ -61,6 +61,16 @@ def test_the_door_writes_the_document_and_takes_the_answers(door):
     assert code == 200 and ans["v"] == 1 and len(events) == 1          # nothing moved: no event
 
 
+def test_the_reports_event_says_which_native_panel_is_open(door):
+    """His engine, 2026-11-18: the connectors panel covered the screen and every `screen/report` event said only
+    `front: "", open: []` — the panel the document holds was in no trace. The event carries it ("" = none)."""
+    post, events, _sd, _so = door
+    post({"dev": DESK, "mount": "k1", "n": 1, "doc": {**_doc(), "panel": "conectores"}})
+    assert events[-1][2]["extra"]["panel"] == "conectores"
+    post({"dev": DESK, "mount": "k1", "n": 2, "doc": _doc()})
+    assert events[-1][2]["extra"]["panel"] == ""
+
+
 def test_a_refused_report_is_refused_whole(door):
     post, events, sd, so = door
     post({"dev": DESK, "mount": "k1", "n": 5, "doc": _doc(("agenda", "front"))})
