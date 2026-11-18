@@ -252,3 +252,13 @@ def test_what_he_adds_to_an_errand_parked_on_his_yes_travels_with_it_and_starts_
     assert act.deliver(parked, "sí", "yes") is True and len(answered) == 1, "his yes still answers the question"
     monkeypatch.setattr(asker, "artefact", lambda uid: {"task_id": "5", "retained": {"action": "widget_data"}})
     assert act.deliver(parked, "mejor mañana", "other") is True and len(answered) == 2, "any other question takes his words"
+
+
+def test_an_order_on_the_screen_or_an_apps_item_is_the_assistants_even_about_a_process():
+    """Demo pass 2026-11-18 (A2, E4): «put it away while you work» and «leave that mail unread» were routed into the
+    running worker as «a detail» — the sheet stayed on screen, and the act's line was never heard. The router's prompt
+    names hiding a sheet and marking an item as the assistant's own, even when a process works on that sheet or item."""
+    head = route.SYSTEM.split("Answer 0 when")[1].split("A bare yes")[0]
+    for gesture in ("hide", "minimise", "mark read or unread"):
+        assert gesture in head, f"«{gesture}» is a screen/app order the router keeps for the assistant"
+    assert "even on the sheet or the item a process works on" in head
