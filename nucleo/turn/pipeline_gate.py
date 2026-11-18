@@ -28,7 +28,9 @@ async def open_the_turn(self, motor) -> dict | None:
 
     text = __import__("voice.mic_input", fromlist=["x"]).undouble(motor._last_user_text(self._chat_ctx))   # «X X» = X
     if not text:
-        emit("brain", "⚠️ Nucleo triggered but no user text in context")
+        # Nothing to answer, and nothing went wrong: the turn simply closes. A ⚠️ on the timeline for it read as a
+        # fault in every session that had one (2026-11-18), so it is a debug line, not an event.
+        logger.debug("nucleo: turn opened with no user text in context → nothing to answer")
         return None
 
     # PRE-TURN CLOCK (2026-09-01). The LENTO verdict's `t0` starts AFTER the attention judge, the fragment

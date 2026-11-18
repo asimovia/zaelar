@@ -2859,6 +2859,9 @@ DOMAINS: list[dict] = [
         {"id": "3.113", "title": "An inline request's row survives a restart honestly: its spec is persisted on the row, "
                                  "and a previous boot's live inline row is judged once (met) or closed as interrupted",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_an_inline_row_outlives_a_restart_honestly.py"]},
+        {"id": "3.241", "title": "A turn opened with no user text in context closes quietly: nothing to answer, no ⚠️ "
+                                 "event on the session timeline",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_turn_with_no_text_closes_quietly.py"]},
         {"id": "3.114", "title": "A turn's own writes and scans on its loop stay inside V2-776 M1's 3 ms (measured: ~0.9 ms "
                                  "writes, ~1.2 ms people scan over 500 contacts) — pinned instead of moved",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_the_turns_own_writes_stay_cheap.py"]},
