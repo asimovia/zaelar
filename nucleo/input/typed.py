@@ -83,6 +83,11 @@ def must_wait(since: float, now: float | None = None) -> bool:
     return t - since < CAP_S and _state["onset"] <= since and voice_open(t)
 
 
+def speaking() -> bool:
+    """Is his voice on the microphone right now (the ear's last word: started, not yet ended)?"""
+    return bool(_state["speaking"])
+
+
 def mark(now: float | None = None) -> float:
     """The instant a reply began to be composed: what `resumed_since` measures against."""
     return _now(now)

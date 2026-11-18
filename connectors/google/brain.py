@@ -93,10 +93,9 @@ def live_line() -> str:
     """One line: the Google services connected right now ("" when none) — the short form of `brain_state`."""
     from connectors.google import services as _svc
     live = sorted(set(connected_services()))
-    where = [s + (f" (sus datos se traen y se ven en el widget {_svc.SERVICES[s].widget})"
+    where = [s + (f" (su widget: {_svc.SERVICES[s].widget})"
                   if s in _svc.SERVICES and _svc.SERVICES[s].widget else "") for s in live]
-    return ("GOOGLE conectado: " + ", ".join(where) + ". Ya está conectado: no hace falta conectarlo otra vez. "
-            "Lo que no esté en esa lista NO está conectado.") if live else ""
+    return ("GOOGLE conectado: " + ", ".join(where) + ". Lo que está en esa lista ya está conectado; lo que no esté NO lo está.") if live else ""
 
 
 def brain_state() -> str:

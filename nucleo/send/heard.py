@@ -19,7 +19,18 @@ def heard(line: str, spoken: bool = True) -> None:
     thing a go-ahead can answer."""
     d = _draft.current()
     if d is not None and spoken and line and d.confirm_line and _ask._fold(line).endswith(_ask._fold(d.confirm_line)):
+        if _talking():
+            return                   # said while HE is talking: it plays under his voice — not heard, read again
         d.heard, d.heard_at = True, now_ms()
+
+
+def _talking() -> bool:
+    try:
+        from nucleo.input import typed
+        return typed.speaking()
+    except Exception as e:  # noqa: BLE001 — unreadable: as if he were talking, it is read again
+        _note(e)
+        return True
 
 
 def now_ms() -> float:
@@ -36,7 +47,7 @@ def cut_since(t_ms: float) -> bool:
     a cut speech that did not resume? Then what was being said may not have reached him."""
     try:
         from voice import observer
-        for e in observer.debug_events(limit=400):
+        for e in observer.debug_events():
             if float(e.get("t_ms") or 0) < t_ms:
                 continue
             label = str(e.get("label") or "")

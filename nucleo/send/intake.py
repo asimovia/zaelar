@@ -111,7 +111,8 @@ async def _open(d, said: str, h: dict, act: str, last_line: str, before, by: str
     elif adopted.get("target"):            # a reply's conversation, a card draft's person: read once, by id
         d.target = dict(adopted["target"])
         d.who = d.target.get("name") or ""
-    elif (front := _people.open_conversation()).get("chat_id"):   # nobody named: the conversation he has open
+    elif not got.get("unread") and (front := _people.open_conversation()).get("chat_id"):
+        # nobody named in words that were READ: the conversation he has open (an unread sentence asks who)
         d.target, d.who = front, front.get("name") or ""
     owner._emit("opened", d, by=by, read=got)
     return await owner._next(d)

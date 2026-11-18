@@ -120,8 +120,14 @@ def _apply(d, got: dict) -> None:
         _when(d, got["at"])
     if got.get("channel"):
         d.channel = got["channel"]
-        if d.target.get("chat_id") and not d.target.get("contact_id") and d.target.get("platform") != d.channel:
-            _resolve(d, d.target.get("name") or d.who)    # a chat lives on one platform: another one is the person's
+        if d.target.get("chat_id") and d.target.get("platform") != d.channel:
+            for k in ("reply_chat", "reply_to"):          # a chat lives on ONE platform: another channel is a new
+                d.extra.pop(k, None)                      # message to the person, never this chat or this reply
+            if d.target.get("contact_id"):
+                d.target = {k: v for k, v in d.target.items() if k != "chat_id"}
+                d.target["platform"] = got["channel"]
+            else:
+                _resolve(d, d.target.get("name") or d.who)
         elif d.target:
             d.target["platform"] = got["channel"]
     if got.get("text") is not None:
@@ -146,17 +152,19 @@ async def _step(d, got: dict, last_line: str = "") -> str:
         return await _ask.line("send_not_sent")
     changed = (got.get("text") is not None or bool(got.get("channel")) or bool(got.get("at"))
                or bool(got.get("who") and not _names_the_chosen(d, got["who"])))
+    if changed:                                   # the confirmation he heard was of another message: it no longer
+        d.heard, d.confirm_line, d.asked = False, "", ""      # counts, from this instant, before anything awaits
     _apply(d, got)
     if got.get("list") and not changed:
         names = _people.named(got["list"])
         _emit("listed", d, names=names)
         if not names:
             return await _ask.line("send_nobody", who=got["list"])
-        d.asked = _draft.WHO
+        d.asked, d.unmatched = _draft.WHO, []
         if not d.target and len(names) > 1:
             d.candidates = list(_people.resolve(got["list"]).get("several") or d.candidates)
         return await _ask.line("send_listed", who=got["list"], names=", ".join(names))
-    if got.get("send") and not changed and d.asked == _draft.CONFIRM and d.target and d.text:
+    if got.get("send") and not changed and d.asked == _draft.CONFIRM and d.target and (d.text or "attach_from" in d.extra):
         # A bare «yes» answers only the confirmation said LAST; after anything else in between he is read it again.
         # Only a confirmation he HEARD is answered; a bare «yes» answers it only when it was said last.
         if d.heard and (not got.get("bare") or _ask._fold(d.confirm_line) in _ask._fold(last_line)):
@@ -224,7 +232,7 @@ async def intake(said: str, hint: dict | None = None, last_line: str = "", befor
 
 
 async def take(said: str, *, last_line: str = "", before: list[str] | None = None,
-               bounded: bool = True) -> tuple[bool, str]:
+               bounded: bool = True, superseded=None) -> tuple[bool, str]:
     """`(taken, line)`: one sentence of his while a draft is open. Not taken → the conversation's."""
     d = _draft.current()
     text = " ".join(str(said or "").split())
@@ -233,6 +241,9 @@ async def take(said: str, *, last_line: str = "", before: list[str] | None = Non
     async with d.lock:                            # one sentence at a time: a split «yes» never sends twice
         if _draft.current() is not d:
             return False, ""                      # the sentence before ended it: this one is the conversation's
+        if d.heard and _cut_since(d.heard_at):    # latched now, whoever this sentence turns out to be for
+            d.heard = False
+            _emit("confirmation cut", d)
         t0 = time.monotonic()
         try:
             job = asyncio.to_thread(_read.read, text, d, last_line, before)
@@ -244,10 +255,10 @@ async def take(said: str, *, last_line: str = "", before: list[str] | None = Non
         if not got.get("mine"):
             _emit("unread" if got.get("unread") else "not mine", d, said=text[:200], ms=ms)
             return False, ""
+        if superseded is not None and superseded():
+            _emit("a fragment he went on from", d, said=text[:200])   # «yes…» of «yes… but take out the last
+            return False, ""                                          # phrase»: the whole sentence is read, not this
         _draft.touch(d)
-        if d.heard and _cut_since(d.heard_at):
-            d.heard = False                       # he spoke over the confirmation: it is read to him again
-            _emit("confirmation cut", d)
         line = await _step(d, got, last_line)
         _emit("taken", d, said=text[:200], read=got, ms=ms, line=line[:200])     # the draft as his words left it
     if _draft.current() is None:

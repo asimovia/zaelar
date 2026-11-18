@@ -162,7 +162,8 @@ async def open_the_turn(self, motor) -> dict | None:
 
     # V2-938 — the open message first, before any fast lane: a sentence about the message he is writing («vale», a
     # dictated «hola, buenos días») is its owner's (`nucleo/send`), answered at once; anything else goes on untouched.
-    if await __import__("nucleo.send.gate", fromlist=["x"]).at_the_gate(text, brain, self._out, motor):
+    if await __import__("nucleo.send.gate", fromlist=["x"]).at_the_gate(text, brain, self._out, motor,
+                                                                       superseded=getattr(self, "_superseded", None)):
         return None
 
     # ACTION MAP (V2-539) + PRESENCE knock (V2-640) + SMALL TALK (V2-674) skip the model: see

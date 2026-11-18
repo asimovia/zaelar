@@ -35,14 +35,15 @@ def keep(brain, said: str, line: str, window_max: int = 0) -> None:
         logger.debug(f"send.gate: window not kept — {e!r}")
 
 
-async def at_the_gate(text: str, brain, say, motor=None) -> bool:
+async def at_the_gate(text: str, brain, say, motor=None, superseded=None) -> bool:
     """True when the open send took the sentence (and he was answered); False → the turn goes on."""
     from nucleo.send import draft, owner
     if draft.current() is None:
         return False
     last, before = _context(brain)
     try:
-        taken, line = await owner.take(text, last_line=last, before=before)
+        taken, line = await owner.take(text, last_line=last, before=before,
+                                       superseded=superseded)
     except Exception as e:  # noqa: BLE001 — a broken owner never eats his words: the conversation answers them
         logger.warning(f"send.gate: the owner failed on a sentence — {type(e).__name__}: {e}")
         return False

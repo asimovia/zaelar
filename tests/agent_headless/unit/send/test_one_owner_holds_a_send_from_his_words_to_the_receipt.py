@@ -439,3 +439,43 @@ def test_a_confirmation_he_spoke_over_is_read_again(world, monkeypatch):
     world.reads = [_read(send=True)]
     taken, line = _take_after("send it", "")
     assert taken and not world.sent and "I'm late" in line
+
+
+def test_a_changed_message_never_leaves_on_the_old_confirmations_yes(world, monkeypatch):
+    """Audit 5 P0: «add B» changes the text — from that instant the heard confirmation of «A» no longer counts, even if
+    the turn is cut before the new one is read to him."""
+    world.reads = [_read(who="Odile Marsh", text="A")]
+    asyncio.run(owner.intake("tell Odile Marsh A", {}))
+    _said()
+    from nucleo.send import deliver
+
+    def cut(d):
+        raise asyncio.CancelledError
+    monkeypatch.setattr(deliver, "check", cut)
+    world.reads = [_read(text="A and B")]
+    try:
+        _take("add B")
+    except BaseException:  # noqa: BLE001 — the cut turn
+        pass
+    d = _draft.current()
+    assert d is not None and not d.heard and d.asked != _draft.CONFIRM
+
+
+def test_a_confirmation_said_while_he_talks_is_not_heard(world, monkeypatch):
+    """Audit 5 P0: handed to the mouth while his voice is on — it plays under him: not heard."""
+    from nucleo.input import typed
+    world.reads = [_read(who="Odile Marsh", text="A")]
+    asyncio.run(owner.intake("tell Odile Marsh A", {}))
+    monkeypatch.setattr(typed, "speaking", lambda: True)
+    _said()
+    assert not _draft.current().heard
+
+
+def test_a_fragment_he_went_on_from_is_not_taken(world):
+    """Audit 5 P0: «yes…» of «yes… but take out the last phrase» — superseded, it is not the owner's to act on."""
+    world.reads = [_read(who="Odile Marsh", text="A")]
+    asyncio.run(owner.intake("tell Odile Marsh A", {}))
+    _said()
+    world.reads = [_read(send=True, bare=True)]
+    got = asyncio.run(owner.take("yes", last_line=_draft.current().confirm_line, superseded=lambda: True))
+    assert got == (False, "") and not world.sent
