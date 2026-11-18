@@ -181,6 +181,7 @@
  "act_failed": "No se ha podido hacer: {why}",
  "act_unconfirmed": "Aún no me consta que esté hecho. Te aviso en cuanto se confirme.",
  "act_not_done": "Vale, no lo hago.",
+ "act_ask_which": "Hay varios que encajan — {names}. ¿Todos o cuál?",
  "act_needs_facts": "Para hacerlo en {card} me falta: {facts}. ¿Me lo dices?",
  "stopped_now": "Vale, lo paro.",
  "stopped_also": "He parado esa tarea.",

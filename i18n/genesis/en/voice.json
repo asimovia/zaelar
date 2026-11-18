@@ -181,6 +181,7 @@
  "act_failed": "It could not be done: {why}",
  "act_unconfirmed": "I can't confirm it is done yet. I'll tell you as soon as it is.",
  "act_not_done": "OK, I won't do it.",
+ "act_ask_which": "Several match — {names}. All of them, or which one?",
  "act_needs_facts": "To do that on {card} I still need: {facts}. What should it be?",
  "stopped_now": "Okay, I'm stopping it.",
  "stopped_also": "I've stopped that task.",

@@ -26,3 +26,19 @@ def test_disarmed_the_chat_list_alone_does_not_find_it(monkeypatch):
         {"platform": "whatsapp", "chatId": "120363000000000101@g.us"}]}])
     monkeypatch.setattr(leave, "_directory_groups", lambda platform="": [])
     assert leave.resolve({}, {"groups": ["Book club"]})[1], "without the directory the group is not found"
+
+
+def test_a_group_name_is_read_by_its_sound_and_all_of_them_is_an_answer(monkeypatch):
+    """Measured live 2026-11-18: he said «Club Hípica», his groups are «Club Ípica» (a silent h) — twice, two
+    chats of one name. It is found by sound; «all of them» (`every`) takes both; never a partial name."""
+    from widgets import directory
+    from widgets.mensajeria import data  # noqa: F401
+    from widgets.mensajeria.actions import leave
+    rows = [{"name": "Club Ípica", "subtype": "group", "channels": [{"platform": "whatsapp", "chatId": "120363000000000101@g.us"}]},
+            {"name": "club ípica", "subtype": "group", "channels": [{"platform": "whatsapp", "chatId": "120363000000000102@g.us"}]},
+            {"name": "Club Ípica 2", "subtype": "group", "channels": [{"platform": "whatsapp", "chatId": "120363000000000103@g.us"}]}]
+    monkeypatch.setattr(directory, "_contacts", lambda: rows)
+    _f, refused = leave.resolve({}, {"groups": ["Club Hípica"]})
+    assert refused and len(refused["candidates"]["Club Hípica"]) == 2, refused
+    found, no = leave.resolve({}, {"groups": ["Club Hípica"], "every": True})
+    assert no is None and len(found) == 2 and all(r["name"].lower() == "club ípica" for r in found)

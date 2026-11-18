@@ -65,7 +65,25 @@ def _match(pool: list[dict], said: str) -> list[dict]:
     if not want:
         return []
     exact = [r for r in pool if _norm(r["name"]) == want]
-    return exact or [r for r in pool if want in _norm(r["name"])]
+    return exact or [r for r in pool if want in _norm(r["name"])] or _sounds(pool, said)
+
+
+def _sounds(pool: list[dict], said: str) -> list[dict]:
+    """The rows whose name carries EVERY word he said by the one ranking names are read with (`contactos/who`: the same
+    word, its sound — a silent h, b/v —, a stem or one slip): «Club Hípica» is «Club Ípica». Never a partial."""
+    try:
+        from widgets import directory
+        from widgets.contactos import who
+        q = directory._norm(str(said or "").strip(_QUOTES + " "))
+        words = directory._tokens(q)
+        hits = [(who.score(q, {"name": r["name"]}, words), r) for r in pool] if words else []
+        full = [(s, r) for s, r in hits if s.get("score") and s.get("confidence") != "partial"]
+        best = max((s["score"] for s, _r in full), default=0)
+        return [r for s, r in full if s["score"] >= best - 1e-9]
+    except Exception as e:  # noqa: BLE001 — unread: what the literal match found stands
+        from loguru import logger
+        logger.debug(f"leave_group: names unread by sound — {e!r}")
+        return []
 
 
 def _names(raw, pool: list[dict]) -> list[str]:
@@ -98,6 +116,9 @@ def resolve(db: dict, payload: dict) -> tuple[list[dict], dict | None]:
     found, problems, candidates = [], [], {}
     for s in said[:20]:
         hits = _match(pool, s)
+        if len(hits) > 1 and payload.get("every") is True:      # he said «all of them»: every group that name is
+            found += [h for h in hits if h not in found]
+            continue
         if len(hits) == 1:
             if hits[0] not in found:
                 found.append(hits[0])

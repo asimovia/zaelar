@@ -159,6 +159,9 @@ async def _step(d, got: dict, last_line: str = "") -> str:
         return await _ask.line("send_not_sent")
     if d.kind == "act":
         from nucleo.send import act as _act
+        if d.asked == _draft.WHO and got.get("send") and not got.get("names"):
+            d.extra["every"] = True                      # «yes, all of them» to «which one, or all?»
+            return await _next(d)
         if _act.take_names(d, got.get("names") or []):   # other groups, other people: the same act, asked again
             d.heard, d.confirm_line, d.asked = False, "", ""
             _emit("act changed", d)

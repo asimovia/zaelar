@@ -344,6 +344,7 @@ class LangSpec:
     act_failed: str = ""           # {why}: the service's own reason
     act_unconfirmed: str = ""
     act_not_done: str = ""
+    act_ask_which: str = ""        # {names}: what he named, each with the rows that match it (V2-938)
     #: An act of a card the brief ordered and the turn served with another tool asks ONE question for the facts it
     #: still needs, on the order's row (`nucleo/request/order_unserved`).
     act_needs_facts: str = ""

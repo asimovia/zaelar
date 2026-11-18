@@ -184,3 +184,16 @@ def test_the_new_groups_own_name_is_never_one_of_its_members(world):
                                                                "whatsapp", "_act": "create_group",
                                                                "_widget": "mensajeria"}))
     assert _draft.current().extra["members"] == ["Odile"]
+
+
+def test_a_name_several_of_his_groups_carry_is_asked_all_or_which_and_all_is_taken(world):
+    """Measured live: two of his groups share the name he said. The owner asks «all of them, or which one?» and keeps
+    the act open; his «yes, both» leaves every one of them after the one confirmation."""
+    world.refusal = {"ok": False, "candidates": {"Book club": ["Book club (whatsapp)", "book club (whatsapp)"]}}
+    line = asyncio.run(owner.intake("leave Book club", dict(LEAVE)))
+    d = _draft.current()
+    assert d is not None and d.asked == _draft.WHO and line and not world.ran
+    world.refusal = None
+    world.reads = [_read(send=True)]
+    taken, line = _take("yes, both", d.confirm_line)
+    assert taken and d.extra.get("every") is True and d.asked == _draft.CONFIRM and not world.ran

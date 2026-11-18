@@ -18,6 +18,15 @@ def _note(e: Exception) -> None:
     logger.debug(f"send.act: {type(e).__name__}: {e}")
 
 
+def _plain(key: str, **fmt) -> str:
+    from i18n import langs
+    try:
+        return str(getattr(langs.current_language(), key, "") or "").format(**fmt)
+    except Exception as e:  # noqa: BLE001
+        _note(e)
+        return ""
+
+
 def _what(d) -> str:
     """What he asked for, in his words — what the lines name («the groups you asked to leave»)."""
     return str(d.said or "")[:200]
@@ -51,6 +60,19 @@ async def next_step(d, lead: str = "") -> str:
     except Exception as e:  # noqa: BLE001 — unread: the act itself refuses later, said then
         _note(e)
         refusal = None
+    cands = refusal.get("candidates") if isinstance(refusal, dict) else None
+    if isinstance(cands, dict) and cands and all(cands.values()):
+        # every name he said is THERE, some more than once: ask which — or all of them — and keep the act open
+        d.asked, d.heard, d.confirm_line = draft.WHO, False, ""
+        names = "; ".join(f"«{k}»: {', '.join(v)}" for k, v in cands.items())
+        owner._emit("asked which", d, names=names[:300])
+        from nucleo import wording
+        plain = _plain("act_ask_which", names=names)
+        said = await wording.word_soon(
+            (f"{lead} Then: " if lead else "") + f"Several of his groups match what he named: {names}. Ask him whether "
+            "it is all of them or which one.", examples=(plain,) if plain else (), fallback=plain) or plain
+        d.confirm_line = said                     # what his next words answer (the read is told it)
+        return said
     if refusal:
         why = str(refusal.get("message") or refusal.get("error") or "")[:300]
         draft.close(d, draft.CANCELLED)
