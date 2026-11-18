@@ -197,3 +197,29 @@ def test_a_name_several_of_his_groups_carry_is_asked_all_or_which_and_all_is_tak
     world.reads = [_read(send=True)]
     taken, line = _take("yes, both", d.confirm_line)
     assert taken and d.extra.get("every") is True and d.asked == _draft.CONFIRM and not world.ran
+
+
+def test_yes_delete_them_to_all_or_which_is_the_go_ahead_never_asked_twice(world):
+    """Measured live: «yes, delete them» to «several match — all of them or which one?», a question that named every
+    group found, is his go-ahead; he is not asked a second time."""
+    world.refusal = {"ok": False, "candidates": {"Book club": ["Book club (whatsapp)", "book club (whatsapp)"]}}
+    asyncio.run(owner.intake("leave Book club", dict(LEAVE)))
+    d = _draft.current()
+    owner.heard(d.confirm_line)                  # the mouth said the question
+    world.refusal = None
+    world.reads = [_read(send=True, bare=False)]
+    taken, _l = _take("yes, delete them", d.confirm_line)
+    assert taken and d.extra.get("every") is True and len(world.ran) == 1
+
+
+def test_naming_back_the_groups_offered_is_all_of_them(world):
+    """Measured live: «yes, delete them» to «all of them or which?» came read with the offered names themselves — that
+    is «all», never a change that asks again."""
+    world.refusal = {"ok": False, "candidates": {"Book club": ["Book club (whatsapp)", "book club (whatsapp)"]}}
+    asyncio.run(owner.intake("leave Book club", dict(LEAVE)))
+    d = _draft.current()
+    owner.heard(d.confirm_line)
+    world.refusal = None
+    world.reads = [_read(send=True, bare=False, names=["book club", "Book club"])]
+    taken, _l = _take("yes, delete them", d.confirm_line)
+    assert taken and d.extra.get("every") is True and len(world.ran) == 1

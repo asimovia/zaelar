@@ -64,6 +64,7 @@ async def next_step(d, lead: str = "") -> str:
     if isinstance(cands, dict) and cands and all(cands.values()):
         # every name he said is THERE, some more than once: ask which — or all of them — and keep the act open
         d.asked, d.heard, d.confirm_line = draft.WHO, False, ""
+        d.candidates = [{"name": str(x).rsplit(" (", 1)[0]} for v in cands.values() for x in v]   # what was offered
         names = "; ".join(f"«{k}»: {', '.join(v)}" for k, v in cands.items())
         owner._emit("asked which", d, names=names[:300])
         from nucleo import wording
@@ -71,7 +72,8 @@ async def next_step(d, lead: str = "") -> str:
         said = await wording.word_soon(
             (f"{lead} Then: " if lead else "") + f"Several of his groups match what he named: {names}. Ask him whether "
             "it is all of them or which one.", examples=(plain,) if plain else (), fallback=plain) or plain
-        d.confirm_line = said                     # what his next words answer (the read is told it)
+        d.confirm_line = said                     # what his next words answer (the read is told it; the mouth that
+                                                  # says it marks it heard, `owner.heard`)
         return said
     if refusal:
         why = str(refusal.get("message") or refusal.get("error") or "")[:300]

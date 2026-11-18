@@ -159,9 +159,18 @@ async def _step(d, got: dict, last_line: str = "") -> str:
         return await _ask.line("send_not_sent")
     if d.kind == "act":
         from nucleo.send import act as _act
-        if d.asked == _draft.WHO and got.get("send") and not got.get("names"):
+        offered = {_ask._fold(c.get("name")) for c in d.candidates} | {_ask._fold(n) for n in d.names_said()}
+        if d.asked == _draft.WHO and got.get("send") and all(_ask._fold(n) in offered for n in got.get("names") or []):
+            # his answer to the question that NAMED every group found: explicit, or a bare yes said right after it
+            asked_all = d.heard and (not got.get("bare") or _ask._fold(d.confirm_line) in _ask._fold(last_line))
             d.extra["every"] = True                      # «yes, all of them» to «which one, or all?»
-            return await _next(d)
+            line = await _next(d)
+            if d.asked == _draft.CONFIRM and asked_all and not _heard.began_before(d):
+                # «yes, delete them» to the question that NAMED every group found: that is his go-ahead — never asked
+                # a second time
+                d.heard, d.heard_at = True, _heard.now_ms()
+                return await _send(d)
+            return line
         if _act.take_names(d, got.get("names") or []):   # other groups, other people: the same act, asked again
             d.heard, d.confirm_line, d.asked = False, "", ""
             _emit("act changed", d)
@@ -259,6 +268,12 @@ def status() -> str:
     d = _draft.current()
     if d is None:
         return ""
+    if d.kind == "act":
+        about = ", ".join(d.names_said()) or "what he named"
+        wait = "which ones (or all)" if d.asked == _draft.WHO else "his yes"
+        return (f"He asked for {d.act} ({about}); the assistant can do it through the messaging card. It has asked him "
+                f"and is waiting for {wait}: NOTHING is being done until he answers that question — never say it is "
+                "under way, and never tell him to do it by hand.")
     to = d.target.get("name") if d.target else (f"not chosen ({d.who})" if d.who else "nobody yet")
     wait = {"who": "who it is for", "text": "what it should say", "confirm": "his yes to send it"}.get(d.asked, "")
     return (f"A message is being written for him — to: {to}; text: «{d.text[:160]}»; waiting for {wait}. Not sent. "
