@@ -75,3 +75,32 @@ def test_the_real_adapter_built_by_the_engine_is_re_pointed(monkeypatch):
     finally:
         live_tts.detach()
     assert a.calls == [("Alvaro", "es")] and b.calls == [("es-voice-id", "es")], (a.calls, b.calls)
+
+
+def test_a_language_that_lands_in_the_voice_process_re_points_the_voice_already_speaking(monkeypatch):
+    """The voice runs in its own process: the language he picks lives in the BODY's env and reaches this one with
+    the body's next message (`apply_env`) — after the session's TTS was attached and pointed with the language
+    this process knew then. Whatever message carries it, the live voices follow it, the stand-in included; a
+    setting that says nothing about the voice moves nothing."""
+    from voice.engine.pipeline import remote_brain
+    from voice.engine.speech import live_tts, voices
+    by_lang = {("inworld", "en"): "Reed", ("inworld", "es"): "Alvaro",
+               ("elevenlabs", "en"): "en-voice-id", ("elevenlabs", "es"): "es-voice-id"}
+    monkeypatch.setattr(voices, "selected_voice", lambda p=None: "")
+    monkeypatch.setattr(voices, "default_voice_for", lambda p=None, lang=None, region=None:
+                        by_lang.get((p, lang or voices.langs.current_code()), ""))
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "en")
+    a, b = _Fake(), _Fake()
+    live_tts.attach(_Adapter(a, b), "inworld")
+    try:
+        live_tts.apply_current()                     # the session comes up before the language reached this process
+        assert a.calls == [("Reed", "en")] and b.calls == [("en-voice-id", "en")]
+        assert remote_brain.apply_env({"ZAELAR_SOME_MODE": "1"}) == 1
+        assert len(a.calls) == 1, "a setting that is not the voice's re-pointed it"
+        assert remote_brain.apply_env({"ZAELAR_LANGUAGE": "es"}) == 1
+    finally:
+        live_tts.detach()
+        import os
+        os.environ.pop("ZAELAR_SOME_MODE", None)
+    assert a.calls[-1] == ("Alvaro", "es"), "the titular kept the voice of the language it was built in"
+    assert b.calls[-1] == ("es-voice-id", "es"), "the stand-in kept the voice of the language it was built in"

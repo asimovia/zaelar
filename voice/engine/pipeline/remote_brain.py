@@ -42,6 +42,8 @@ CHILD_ORIGIN: contextvars.ContextVar[str] = contextvars.ContextVar("zaelar_child
 
 #: The `ZAELAR_*` settings the body may push (anything else in the env is this process's own).
 ENV_PREFIX = "ZAELAR_"
+#: The settings the live voice is chosen by: one of them moving re-points the TTS that is speaking.
+VOICE_ENV = ("ZAELAR_LANGUAGE", "ZAELAR_LANGUAGE_REGION")
 
 
 def last_user_text(chat_ctx) -> str:
@@ -78,7 +80,7 @@ def turn_payload(chat_ctx, lost: str = "") -> dict:
 
 def apply_env(env) -> int:
     """The body's live settings onto this process. Only `ZAELAR_*`; an empty value removes it. Returns how many moved."""
-    moved = 0
+    moved, voice = 0, False
     for k, v in (env or {}).items():
         k = str(k)
         if not k.startswith(ENV_PREFIX):
@@ -91,6 +93,12 @@ def apply_env(env) -> int:
         else:
             os.environ.pop(k, None)
         moved += 1
+        voice = voice or k in VOICE_ENV
+    if voice:
+        # The language lives in the BODY's env and lands here with the body's next message — after the session's
+        # TTS was attached and pointed with what this process knew then. This is the one door it arrives through.
+        from voice.engine.speech import live_tts
+        live_tts.apply_current()
     return moved
 
 
