@@ -185,7 +185,7 @@ resumable by id (§5h). The brain drives the canvas through a thin tag contract 
 │  Decides + acts. Owns the canvas via SILENT TAGS in its reply.           │
 │  • FlashBrain (nucleo/flash/ + nucleo/turn/) — sub-second turn, ONE     │
 │    pipeline for voice and text (nucleo/turn/pipeline.py), one model    │
-│    call; the router (turn/flow_of.route) and the mouth                   │
+│    call; the gate's switchboard (nucleo/switchboard) and the mouth     │
 │  • Tasks — one row each (tasks) + one Brain Worker per task             │
 │    (nucleo/dispatch/ + workers/ + agentes/), resumable by session id;   │
 │    the circuit (nucleo/circuit/) verifies and is the only closer        │
@@ -660,7 +660,7 @@ keeps searching after reading the web; a request carrying his data waits for his
 
 **Events.** What arrives without a turn — an inbound message (`connector.msg`), a mail (`mail.in`), a due job
 (`cron.due`), a worker that ended or asked — is a request with its origin (`nucleo/events/`), drained by the pulse's
-pump and routed by the SAME door as his words, `flow_of.route(event=…)` (`nucleo/turn/flow_events.py`): a row waiting
+pump and routed by its own door, `flow_events.route` (`nucleo/turn/flow_events.py`): a row waiting
 for it (or its claimant, an errand bound to that conversation) resumes; a rule subscribed to it — an `on_event` row read
 once from his spoken rule (`rules/subscriptions.py`), matched on the event's declared fields — hands it to the stream
 worker (`nucleo/events/stream.py`: one `mode=recurring` row per stream, one item at a time, held while the agent is
@@ -797,7 +797,7 @@ adapters. The stages, each a module of its own:
    said as asked, never as done.
 6. **Close** (`pipeline_close.close_the_turn`) — the window, the fallbacks, the `reply` event; then
    `pipeline_errands.launch_the_errands` — the errand the turn commissions, through the escalation portal
-   (`nucleo/acts/errand.py` → `nucleo/turn/flow_door.py` → `flow_of.route`). It opens only what the model called or
+   (`nucleo/acts/errand.py`; whose his words are was decided at the gate, `nucleo/switchboard`). It opens only what the model called or
    the brief's sure `escalate` routed: no backstop reads his words for an order the model did not escalate (CRIT-C16).
    The login fallback opens a sign-in only on the brief's sure `login_only` verdict, the site from his words
    (CRIT-C17); the stop backstop stops an errand only on a sure `stop_errand` verdict or his taken offer — with no
@@ -866,7 +866,7 @@ tier does in the background. Model routing changes apply on the next voice recon
 > to THAT file — the prose below is orientation, and where it disagrees the map and the code win.
 
 - Voice core: `voice/engine/` (LiveKit AgentSession, providers), `voice/tag_protocol.py`, `voice/observer.py`, `server/` (entry: `server/__main__.py`, `python -m server`).
-- Brain: `nucleo/flash/` + `nucleo/turn/` (FlashBrain; `nucleo/turn/pipeline*.py` = the one turn pipeline, `flow_of.py` = the router, `reply.py`/`mouth.py` = the in-turn mouth) + `nucleo/circuit/` (spec, ledger, settle, asker) + `nucleo/request/` (a request's birth, its questions, its ending) + `nucleo/events/` (events, the stream worker) + `search/` (shared web search as a service, §5b) + `nucleo/rails.py` + `nucleo/flash/music_flow.py` (RAILS, §5c) + `nucleo/dispatch/`/`nucleo/workers/`/`nucleo/agentes/` (Brain Workers; web search via native `WebSearch`/`WebFetch`) + `nucleo/cli/` (the worker's bridge) + `nucleo/pulse/loop.py`/`nucleo/pulse/scheduler.py`/`nucleo/pulse/cron_api.py`/`nucleo/pulse/sparks.py`/`nucleo/pulse/notices.py` (the out-of-turn mouth); adapters `voice/engine/llm/providers/nucleo.py` (voice) and `voice/typed_turn.py` (text). Memory: `memory/` (SQLite). Bus: `bus/`.
+- Brain: `nucleo/flash/` + `nucleo/turn/` (FlashBrain; `nucleo/turn/pipeline*.py` = the one turn pipeline, `open_flows.py` = what is open and a request said again, `flow_events.py` = the events' router, `reply.py`/`mouth.py` = the in-turn mouth) + `nucleo/circuit/` (spec, ledger, settle, asker) + `nucleo/request/` (a request's birth, its questions, its ending) + `nucleo/events/` (events, the stream worker) + `search/` (shared web search as a service, §5b) + `nucleo/rails.py` + `nucleo/flash/music_flow.py` (RAILS, §5c) + `nucleo/dispatch/`/`nucleo/workers/`/`nucleo/agentes/` (Brain Workers; web search via native `WebSearch`/`WebFetch`) + `nucleo/cli/` (the worker's bridge) + `nucleo/pulse/loop.py`/`nucleo/pulse/scheduler.py`/`nucleo/pulse/cron_api.py`/`nucleo/pulse/sparks.py`/`nucleo/pulse/notices.py` (the out-of-turn mouth); adapters `voice/engine/llm/providers/nucleo.py` (voice) and `voice/typed_turn.py` (text). Memory: `memory/` (SQLite). Bus: `bus/`.
 - Widget circuit: `widgets/{runtime,server_api,brief,generator}.py`, `widgets/<id>/` (data.py + widget.js), `frontend/app/widgets/desktop.js`.
 - Music (§5d): `connectors/music/` (agnostic seam) + `connectors/spotify/` (Web API + OAuth PKCE) + `connectors/music/youtube_audio.py` (free fallback) + `widgets/musica/` (surface) + `server/spotify_api.py` (`/api/spotify/*` + `/api/music/state`).
 - Front: `frontend/` — ES-module app (`app/core` reactive store, `app/services` WebRTC/audio/VAD/STT/SSE engine, `app/components`, SSE + voice-command fast-path). `index.html` is a thin bootstrap. Solid-migration-ready.

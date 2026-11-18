@@ -1330,7 +1330,7 @@ STATIONS: tuple[dict, ...] = (
     {"id": "brief", "label": "Turn brief", "module": "nucleo/turn/brief (Jev)", "hint": "one trip: verdicts with a confidence"},
     {"id": "memory", "label": "Memory heart", "module": "memory/ · nucleo/memory_agent", "hint": "state · recall · the window"},
     {"id": "prompt", "label": "Prompt", "module": "nucleo/flash/prompt", "hint": "composed state + request + tools"},
-    {"id": "route", "label": "Router · post-stream", "module": "flow_of.route · nucleo/flash/post_stream*", "hint": "conversation · inline act · a task · the acts' verdicts"},
+    {"id": "route", "label": "Router · post-stream", "module": "nucleo/switchboard · nucleo/flash/post_stream*", "hint": "conversation · inline act · a task · the acts' verdicts"},
     {"id": "model", "label": "Main stream", "module": "nucleo/turn/pipeline_stream", "hint": "the one model call"},
     {"id": "tools", "label": "Reflexes · tools", "module": "nucleo/flash/tool_executor · search/ · widgets/", "hint": "search · card ops · arbiter"},
     {"id": "consent", "label": "Doors", "module": "nucleo/consent · consequence doors", "hint": "pass · ask · blocked"},

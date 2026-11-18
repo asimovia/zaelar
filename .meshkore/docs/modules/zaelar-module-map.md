@@ -26,9 +26,8 @@ start with `make run` → `python -m server`.
   which turn is addressed to zaelar; ambient vs attending).
 - `nucleo/` — **the engine's own brain, «Colmena»**: a FlashBrain that owns the conversation and Brain Workers that do
   the work, one per task. **`nucleo/turn/`** = the ONE turn pipeline for every channel (`pipeline.py` + its stages
-  `pipeline_gate`/`_admit`/`_state`/`_stream`/`_failure`/`_close`/`_errands`), the router (`flow_of.py`, for requests
-  and — through `flow_events.py` — events; its model judge `flow_judge.py`, and when that runs out of time with an
-  errand open the route is `undecided` and `which_flow.py` asks him «for X, or something new?» on a row — V2-878 §3), the turn brief (`brief.py`, the one Jev trip), the in-turn mouth
+  `pipeline_gate`/`_admit`/`_state`/`_stream`/`_failure`/`_close`/`_errands`), what is open and a request said again (`open_flows.py`; whose his words are is the switchboard's, `nucleo/switchboard`)
+  , the events' router (`flow_events.py`), the turn brief (`brief.py`, the one Jev trip), the in-turn mouth
   (`reply.py`, `mouth.py`) and `route_by_verdict.py` (a sure escalate routes before the model is trusted). The voice
   engine reaches it through its provider adapter (`voice/engine/llm/providers/nucleo.py`, `BRAIN=nucleo` = default),
   the typed channel through `voice/typed_turn.py`. `nucleo/flash/` = **FlashBrain**'s reflexes and tools (`router.py`
@@ -298,7 +297,7 @@ user-visible build number and the reload signal), `daemon/` (the LOCAL daemon, n
 - `widgets/directory.py` + `widgets/contactos/{model,groups,group_actions}.py` + `nucleo/memory_agent/contacts.py` +
   `memory/rem/contacts.py` — who he means: one ranking by sound and closeness, filtered by the act; groups as rows
   with ids; contacts as structured memory with `who(description)`; REM links one person's records (never deletes).
-- `nucleo/events/` + `rules/subscriptions.py` — an event is routed by `flow_of.route(event=…)`; a rule «when X
+- `nucleo/events/` + `rules/subscriptions.py` — an event is routed by `flow_events.route`; a rule «when X
   arrives, do Y» is an `on_event` row served by one stream worker per stream; its topics, like every class a leaving
   act is decided by, are the event types `nucleo/events/vocabulary.py` declares once.
 - `rules/` — every standing rule and preference is a scoped row; `rules.shape` writes it once from his words,

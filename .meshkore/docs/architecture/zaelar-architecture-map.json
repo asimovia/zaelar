@@ -1029,8 +1029,6 @@
    "ui": "u_voice",
    "*": "f_prompt"
   },
-  "nucleo/turn/flow_door.py": "f_admit",
-  "nucleo/turn/flow_of.py": "f_admit",
   "nucleo/turn/prompt": "f_prompt",
   "nucleo/turn/prompt/recall.py": {
    "memory": "m_retriever",

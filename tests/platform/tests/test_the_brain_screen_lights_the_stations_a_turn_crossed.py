@@ -25,7 +25,7 @@ def test_the_picture_is_fixed_and_follows_the_turn_pipeline_of_the_architecture(
     assert ids == ["gate", "brief", "memory", "prompt", "route", "model", "tools", "consent", "circuit", "worker", "notices", "mouth"]
     doc = ARCHITECTURE.read_text(encoding="utf-8") if ARCHITECTURE.exists() else ""
     if doc:
-        for needle in ("pipeline_gate", "brief", "flow_of.route", "pipeline_stream", "consent", "circuit", "notices", "mouth"):
+        for needle in ("pipeline_gate", "brief", "switchboard", "pipeline_stream", "consent", "circuit", "notices", "mouth"):
             assert needle in doc, f"the architecture no longer names {needle}; the station list must follow it"
 
 
