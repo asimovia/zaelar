@@ -323,7 +323,7 @@ def reconciled(live_uids, *, now: float | None = None, grace_s: float = 60.0) ->
         mi = _INLINE_UID.match(uid)    # …and one a worker carries is alive, whatever its id says (an answered inline row)
         if mi:
             if mi.group(1) != _boot_id():
-                n += _settle_inline_after_restart(uid, now)
+                n += _settle_unclaimed(uid, "interrumpido por un reinicio del motor", now)
             continue                # this boot's inline rows are the circuit's: its pulse holds their spec
         m = _WORKER_UID.match(uid)
         if not m:
@@ -339,15 +339,16 @@ def reconciled(live_uids, *, now: float | None = None, grace_s: float = 60.0) ->
                 continue
         else:
             outcome = "interrumpido por un reinicio del motor"
-        _settle(row=uid, state="failed", outcome=outcome, now=now)
-        n += 1
+        n += _settle_unclaimed(uid, outcome, now)
     return n
 
 
-def _settle_inline_after_restart(uid: str, now: float) -> int:
-    """A previous boot's inline row (V2-778 F3-26): its spec died with that process, so it is judged ONCE from the
-    copy on the row — met if the screen shows it now, otherwise closed as interrupted. No voice: whatever this
-    was about, the operator is in a different moment now, and a spoken correction would be about nothing."""
+def _settle_unclaimed(uid: str, outcome: str, now: float) -> int:
+    """A live row nobody carries any more — an inline row of a previous boot (V2-778 F3-26), or a worker row whose
+    worker is gone — is judged ONCE from the spec copy on the row before it is failed: met if the end state holds
+    now, otherwise closed with `outcome`. A worker that died after doing the job is not a failed job (2026-11-18:
+    a sent message closed as `failed` because its worker's process was gone, its spec met half an hour earlier).
+    No voice: whatever this was about, the operator is in a different moment now."""
     try:
         from nucleo.circuit import spec as _spec
         e = _spec.of_task(uid)
@@ -357,7 +358,7 @@ def _settle_inline_after_restart(uid: str, now: float) -> int:
             return 1
     except Exception as ex:  # noqa: BLE001 — an unreadable spec is just an interrupted request
         logger.debug(f"tasks: inline spec of {uid} not readable after restart ({ex})")
-    _settle(row=uid, state="failed", outcome="interrumpido por un reinicio del motor", now=now)
+    _settle(row=uid, state="failed", outcome=outcome, now=now)
     return 1
 
 

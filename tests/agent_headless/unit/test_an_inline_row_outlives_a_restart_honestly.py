@@ -73,3 +73,33 @@ def test_the_inline_spec_is_persisted_on_its_row(fresh_db, monkeypatch):
     assert rows, "the op opened no row — this test would prove nothing"
     persisted = S.of_task(rows[0]["id"])
     assert persisted and persisted.get("done_when"), "the row carries no spec: a restart would orphan it"
+
+
+# ── the same honesty for a WORKER row (2026-11-18) ─────────────────────────────────────────────────────────────
+# A worker row the pulse finds with no live worker was failed blind: a message that had left (its spec met at
+# 07:32) was closed `failed` at 08:08 because the worker's process was gone. The row is judged from its spec first.
+
+def _worker_row(uid, *, age_s=600):
+    now = int(time.time())
+    ts.task_put({"id": uid, "goal": "manda el mensaje", "kind": "worker", "mode": "now", "state": "running",
+                 "created_at": now - int(age_s), "started_at": now - int(age_s)})
+
+
+@pytest.mark.parametrize("boot", ["previous", "this"])
+def test_an_unclaimed_worker_row_whose_end_state_holds_is_met_not_failed(fresh_db, monkeypatch, boot):
+    uid = f"{'abcdef' if boot == 'previous' else T._boot_id()}-7"
+    _worker_row(uid)
+    S.persist(uid, {"done_when": {"x": 1}, "status": "open", "born": time.time() - 600})
+    monkeypatch.setattr(S, "attest", lambda e, now=None: True)
+    assert T.reconciled(set()) == 1
+    row = ts.task_get(uid)
+    assert row["state"] == "done" and row.get("verdict") == "met"
+
+
+def test_an_unclaimed_worker_row_whose_end_state_does_not_hold_still_fails(fresh_db, monkeypatch):
+    _worker_row("abcdef-8")
+    S.persist("abcdef-8", {"done_when": {"x": 1}, "status": "open", "born": time.time() - 600})
+    monkeypatch.setattr(S, "attest", lambda e, now=None: False)
+    assert T.reconciled(set()) == 1
+    row = ts.task_get("abcdef-8")
+    assert row["state"] == "failed" and "reinicio" in row["outcome"]
