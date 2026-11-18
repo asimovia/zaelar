@@ -70,3 +70,14 @@ def test_a_name_that_shares_a_word_with_the_found_mail_opens_it(md):
     md.apply_action("search_archive", {"query": "acme"})
     md.apply_action("open", {"name": "Acme invoice"})
     assert md.load_db()["active_chat"] == {"platform": "email", "chatId": ACME}
+
+
+def test_the_open_descriptor_offers_the_bare_open_and_keeps_his_order_out_of_name():
+    """Demo pass 2026-11-18, E2: the model called open {name: "open it"} — his order as the chat's name — and the card
+    answered «no such chat» with the found mail one bare `open` away. The descriptor the model reads offers that bare
+    open for «open it» and says `name` never carries the order's own words."""
+    import json, pathlib
+    import widgets.mensajeria as pkg
+    desc = json.loads((pathlib.Path(pkg.__file__).parent / "manifest.json").read_text())["actions"]["open"]["desc"]
+    assert "sin `name` ni `n` = lo último encontrado" in desc
+    assert "`name` nunca lleva la frase de la orden" in desc
