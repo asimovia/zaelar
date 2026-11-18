@@ -197,7 +197,7 @@ async def take(text: str, *, brain=None, emit=None, say=None, window_max: int = 
         _piece.update(text=fresh, at=time.time())
         _event(emit, said, procs, to=to, by=by, why=why, ms=ms, delivered=False, kind=kind)
         return True
-    early = not waits_on_his_yes(to) and early_yes(to, kind)   # his go-ahead before the send's question exists
+    early = early_yes(to, kind)                         # his go-ahead before the send's question exists
     kind = kind if waits_on_his_yes(to) else OTHER     # a yes or a no decides only what a process asked him
     key = "send_going" if early else line_key(to, kind)   # read BEFORE the answer clears what it held
     ok = False

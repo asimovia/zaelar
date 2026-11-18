@@ -273,7 +273,10 @@ below is the first kind, or it names the mechanism that replaced the second.
   he gives BEFORE the question exists — the send is still being prepared — is that yes: kept on the row
   (`switchboard/act.early_yes`), taken once by the exit door, void after any later word of his that is not a yes, and
   valid only for a text made of his own words (`_his_own`: what the worker wrote is in what he said), never for one
-  the agent composed. A send the engine took to its receipt is never judged unmet nor relaunched by its session's
+  the agent composed. The same holds for a go-ahead he gives WITH the order («send her a message, and I already
+  confirm you can send it»): at the exit door, before he is asked, his own words on the row are read once by a model
+  (`read_his_go_ahead`, off the loop; an order to send is not a go-ahead; unread or unsure, he is asked) and a yes
+  lands in that same slot. A send the engine took to its receipt is never judged unmet nor relaunched by its session's
   close, whose own closing words are not said (`send_receipt.owns_the_verdict`, `circuit._close`); a send that IS
   relaunched keeps its playbook and its model. Words a process took as words get no line of ours: the process speaks
   next. The local ear's wake backstop never answers words the paid ear already delivered as a turn

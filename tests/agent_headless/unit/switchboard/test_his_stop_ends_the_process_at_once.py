@@ -267,3 +267,45 @@ def test_plain_words_for_a_process_get_no_line_of_ours_the_process_speaks_next(d
     desk.model(1, "other")
     assert _say(desk, "a ver, el mensaje es: espero que estés dormidita") is True
     assert desk.relayed == ["a ver, el mensaje es: espero que estés dormidita"] and desk.said == []
+
+
+def test_a_go_ahead_given_with_the_order_is_read_at_the_exit_door_and_he_is_not_asked(monkeypatch):
+    """His question (2026-11-18): «can I confirm while I give the order — send her a message, and I already confirm
+    you can send it?». At the exit door, before asking, his own words on the row are read ONCE by a model: an explicit
+    go-ahead given in advance is the yes (same slot as a yes said while it was prepared: taken once, only for a text
+    of his own words). An order to send is not a go-ahead; a reading that found none is not repeated until he says
+    more."""
+    from nucleo.workers import task_record
+    import tempfile, os
+    monkeypatch.setenv("ZAELAR_DB", os.path.join(tempfile.mkdtemp(), "zaelar.db"))
+    memdb.reset_db()
+    memdb.get_db()
+    asked = []
+    answers = ['{"confirmed": true, "why": "he says he already confirms"}']
+    monkeypatch.setattr(act, "_go_ahead_model", lambda words: asked.append(words) or (answers.pop(0) if answers else ""))
+    _row("s3-1", "running", "Mándale un mensaje a Quinn que diga buenas noches, y ya te confirmo que puedes mandarlo.")
+    ts.task_patch("s3-1", playbook="message")
+    rec = SimpleNamespace(uid="s3-1")
+    act.wrote(rec, "widget_data", {"widget_id": "mensajeria", "action": "draft", "payload": {"contact": "Quinn", "text": "Buenas noches"}})
+    assert act.read_his_go_ahead(rec) is True and "ya te confirmo" in asked[0]
+    assert act.read_his_go_ahead(rec) is True and len(asked) == 1, "read once"
+    assert act.took_early_yes("s3-1") is True and act.took_early_yes("s3-1") is False
+    # an order with no go-ahead: read once, he is asked; what he adds is read again
+    _row("s3-2", "running", "Mándale un mensaje a Quinn que diga buenas noches.")
+    ts.task_patch("s3-2", playbook="message")
+    rec2 = SimpleNamespace(uid="s3-2")
+    answers[:] = ['{"confirmed": false, "why": "only the order"}', '{"confirmed": true, "why": "now he says so"}']
+    assert act.read_his_go_ahead(rec2) is False and act.read_his_go_ahead(rec2) is False and len(asked) == 2
+    assert act.took_early_yes("s3-2") is False
+    task_record.said("s3-2", "y mándalo sin preguntarme")
+    act.early_yes({"key": "s3-2", "state": "waiting"}, "other")          # his new words: the reading is void
+    act.wrote(rec2, "widget_data", {"widget_id": "mensajeria", "action": "draft", "payload": {"contact": "Quinn", "text": "buenas noches"}})
+    assert act.read_his_go_ahead(rec2) is True and len(asked) == 3 and act.took_early_yes("s3-2") is True
+    # not a send, an unreadable model, a model that is offline: he is asked
+    _row("s3-3", "running", "Compare three laptops, go ahead")
+    assert act.read_his_go_ahead(SimpleNamespace(uid="s3-3")) is False and len(asked) == 3
+    _row("s3-4", "running", "Message to Quinn: hi")
+    ts.task_patch("s3-4", playbook="message")
+    answers[:] = ["not json"]
+    assert act.read_his_go_ahead(SimpleNamespace(uid="s3-4")) is False
+    memdb.reset_db()

@@ -71,6 +71,8 @@ async def cross(rec, action: str, payload: dict | None) -> "Exit | None":
     wid, act, _inner = _ob._resolve(payload or {}) if str(action or "") == "widget_data" else ("", "", None)
     if wid and act and leaves(wid, act) and (turn := _tb.revived(getattr(rec, "reading", None))) is not None:
         await asyncio.gather(*(brief_doors.landed(turn, d, jev._timeout_s() + 1.0) for d in ("send", "portal")))
+    if wid and act and leaves(wid, act):      # a go-ahead he gave WITH the order is read once, off the loop (V2-931)
+        await asyncio.to_thread(__import__("nucleo.switchboard.act", fromlist=["x"]).read_his_go_ahead, rec)
     return leave(rec, action, payload)
 
 

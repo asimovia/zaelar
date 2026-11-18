@@ -155,6 +155,8 @@ def _a_worded_line_never_reaches_the_network(monkeypatch):
     try:
         from nucleo import wording
         monkeypatch.setattr(wording, "_ask", lambda system, user, seat: "")
+        from nucleo.switchboard import act as _sb_act      # …and so does the exit door's reading of his go-ahead
+        monkeypatch.setattr(_sb_act, "_go_ahead_model", lambda words: "")
     except Exception:  # noqa: BLE001 — a tree without the module has nothing to keep offline
         pass
 

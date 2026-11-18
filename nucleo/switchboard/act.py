@@ -65,16 +65,74 @@ def early_yes(p: dict, kind: str) -> bool:
     try:
         from nucleo.circuit import ledger
         store, uid = ledger.store(), str(p.get("key") or "")
-        row = store.task_get(uid) if uid and p["state"] == _board.RUNNING else None
+        row = store.task_get(uid) if uid else None
         if not row or str(row.get("playbook") or "") != "message":
             return False
         if kind == YES:
+            if p["state"] != _board.RUNNING:            # a yes to a question that waits is that question's answer
+                return False
             store.artifact_put(uid, EARLY_YES, {"at": __import__("time").time()})
             return True
-        store.artifact_put(uid, EARLY_YES, {})          # a change, a doubt, a no: the yes he gave no longer stands
+        store.artifact_put(uid, EARLY_YES, {})          # a change, a doubt, a no: the yes he gave no longer stands,
+                                                        # and his words are read again at the exit door
     except Exception as e:  # noqa: BLE001 — unrecorded: the exit door asks, as before
         logger.debug(f"switchboard: his early yes not kept — {e!r}")
     return False
+
+
+GO_AHEAD = (
+    "The operator of a voice assistant asked it to send a message. Below are HIS words about it, in order. Decide "
+    "whether, in those words, he EXPLICITLY said in advance that it may be sent without asking him again — for "
+    "example «and send it without asking me», «I already confirm you can send it», «mándalo directamente, no me "
+    "preguntes», «ya te confirmo que puedes mandarlo». Asking for the message to be sent is NOT that: the order to "
+    "send is the request itself, and he is asked once before it leaves. Only a go-ahead he gave in advance counts; in "
+    "doubt, answer false.\n"
+    'Reply with JSON only: {"confirmed": true|false, "why": "<a few words>"}'
+)
+
+
+def _go_ahead_model(words: str) -> str:
+    """The seam of the one question (the suite keeps it offline, `tests/conftest.py`)."""
+    from nucleo.memory_agent.processor import llm
+    return llm.chat_sync("switchboard", GO_AHEAD, f"HIS WORDS:\n{words}", max_tokens=50, temperature=0.0, timeout=4.0) or ""
+
+
+def read_his_go_ahead(rec) -> bool:
+    """At the exit door of a send, BEFORE he is asked: did he already give his go-ahead with the order itself («send
+    her a message and I confirm you can send it»)? His words on the row — the request and what he added — are read
+    once by a model; a yes is kept in the same slot as a yes said while it was being prepared (`EARLY_YES`), so the
+    door takes it the same way, once, and only for a text of his own words. Read once per state of his words: a
+    reading that found none is remembered until he says something more. Blocking: call it off the loop. Never raises
+    — unread or unsure, the door asks."""
+    try:
+        import json
+        import re
+        import time
+        from nucleo.circuit import ledger
+        from nucleo.workers import task_record
+        store, uid = ledger.store(), str(getattr(rec, "uid", "") or "")
+        row = store.task_get(uid) if uid else None
+        if not row or str(row.get("playbook") or "") != "message":
+            return False
+        slot = store.artifact_get(uid, EARLY_YES) or {}
+        if slot.get("at") or slot.get("read"):
+            return bool(slot.get("at"))
+        his = [str(row.get("goal") or "")] + [str(r.get("text") or "") for r in (store.artifact_get(uid, task_record.SAID_SLOT) or [])]
+        words = "\n".join(f"- {w.strip()}" for w in his if w.strip())
+        m = re.search(r"\{.*\}", _go_ahead_model(words) if words else "", re.S)
+        got = json.loads(m.group(0)) if m else {}
+        yes = got.get("confirmed") is True
+        store.artifact_put(uid, EARLY_YES, {"at": time.time(), "by": "order"} if yes else {"read": time.time()})
+        try:
+            from voice.observer import emit
+            emit("thread", "🔏 exit door: his go-ahead was in his own words" if yes else "🔏 exit door: no go-ahead in his words — he is asked",
+                 text=str(got.get("why") or "")[:160], role="system", extra={"cat": "flash", "event": "go_ahead", "task_id": uid, "confirmed": yes})
+        except Exception as e:  # noqa: BLE001
+            logger.debug(f"switchboard: go-ahead event not emitted — {e!r}")
+        return yes
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"switchboard: his go-ahead unread, he is asked — {e!r}")
+        return False
 
 
 #: The row slot of the text a send's worker last wrote for it (`wrote`), read when his early yes is taken.
