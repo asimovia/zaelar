@@ -8,7 +8,8 @@
 // While the camera runs the face also ANSWERS him (T12, humanity/): imported only when the camera starts, it reads his
 // expression on the device and plays the face's gestures back — no image or number is sent anywhere; only the NAMES of
 // the last gestures (his and the face's answers) reach the agent, for half a minute (recent.js), so it can talk about them.
-import { h } from "../core/dom.js?v=2";
+import { h, raw } from "../core/dom.js?v=2";
+import { CAMERA_ICON } from "../lib/icons.js?v=2";
 import { createEffect, createSignal, untrack } from "../core/reactive.js?v=2";
 import { t } from "../core/i18n.js?v=1";
 import * as store from "../core/store.js?v=2";
@@ -110,10 +111,11 @@ export function LookAtMe(face, { covered = null, speech = () => ({}) } = {}) {
     }));
 
     // the badge: on screen exactly while the camera is. On the desktop it sits IN the top bar, right after the ◉
-    // status (operator 2026-11-18: it belongs to the user's side of that bar); where there is no visible bar (the
+    // status as a camera icon with a red dot, no word (operator 2026-11-18: it belongs to the user's side of that bar); where there is no visible bar (the
     // phone shell) it floats at the top of the screen as before.
     const badge = h("button", { type: "button", class: "hb-cam", title: () => t("presence.camera_off_title"),
       "aria-label": () => t("presence.camera_off_title"), onClick: () => setLookCamera(false, "badge") },
+      h("b", { class: "hb-cam-ic", "aria-hidden": "true" }, raw(CAMERA_ICON)),
       h("i", { "aria-hidden": "true" }), h("span", null, () => t("presence.camera_badge")));
     const mountBadge = () => {
       const bar = document.querySelector(".trw:not(.is-pending) .tr");

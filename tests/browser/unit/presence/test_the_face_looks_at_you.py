@@ -326,5 +326,8 @@ def test_on_the_desktop_the_camera_badge_sits_in_the_top_bar_right_after_the_sta
         desk.wait_for_timeout(1200)
         where = desk.evaluate("""() => { const b = document.querySelector('.hb-cam');
           return b && { parent: b.parentElement.className, prev: b.previousElementSibling && b.previousElementSibling.id,
-                        inBar: b.classList.contains('in-bar') }; }""")
-    assert where == {"parent": "tr", "prev": "statusBtn", "inBar": True}, f"the camera badge is not beside the status: {where}"
+                        inBar: b.classList.contains('in-bar'), icon: !!b.querySelector('.hb-cam-ic svg'),
+                        word: getComputedStyle(b.querySelector('span')).display }; }""")
+    # in the bar it is an ICON (a camera with its red dot), never the word (operator 2026-11-18)
+    assert where == {"parent": "tr", "prev": "statusBtn", "inBar": True, "icon": True, "word": "none"}, \
+        f"the camera badge is not a camera icon beside the status: {where}"

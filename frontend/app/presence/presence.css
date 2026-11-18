@@ -52,8 +52,15 @@
   -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .hb-cam i{width:8px;height:8px;border-radius:50%;background:#e5484d;box-shadow:0 0 0 3px color-mix(in srgb,#e5484d 25%,transparent)}
 .hb-cam:hover{background:var(--hb-hover)}
-.hb-cam.in-bar{position:static;transform:none;z-index:auto;height:32px;padding:0 10px 0 9px;align-self:center;
-  margin:0 2px;-webkit-backdrop-filter:none;backdrop-filter:none;background:transparent;border-color:color-mix(in srgb,#e5484d 45%,var(--hb-line))}
+.hb-cam-ic{display:none}
+/* in the top bar it is one of the bar's icons: a camera, a red dot on its corner, no word */
+.hb-cam.in-bar{position:relative;top:auto;left:auto;transform:none;z-index:auto;width:32px;height:32px;padding:0;gap:0;justify-content:center;
+  border:1px solid transparent;border-radius:var(--hb-r-s);background:transparent;color:var(--hb-ink);
+  -webkit-backdrop-filter:none;backdrop-filter:none}
+.hb-cam.in-bar span{display:none}
+.hb-cam.in-bar .hb-cam-ic{display:flex}
+.hb-cam.in-bar .hb-cam-ic svg{width:18px;height:18px}
+.hb-cam.in-bar i{position:absolute;top:4px;right:3px;width:7px;height:7px;box-shadow:0 0 0 2px var(--hb-bg)}
 
 /* A PHONE (or a narrow window) — one column, in the order the hand reads it: the categories as a row that scrolls
    sideways, the faces of the category as a strip of stills, the face itself, and the switch. «Customise» is a STEP:
