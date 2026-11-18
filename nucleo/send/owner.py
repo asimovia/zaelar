@@ -92,7 +92,8 @@ async def _next(d, lead: str = "") -> str:
         d.target["platform"] = ok["platform"]
     d.asked, d.heard = _draft.CONFIRM, False
     files = int(d.extra.get("files_n") or 0)
-    d.confirm_line = await _ask.confirm(d.target["name"], d.target.get("platform") or d.channel,
+    who = d.target["name"] + (f" ({d.target['note']})" if d.target.get("note") else "")   # a namesake, told apart
+    d.confirm_line = await _ask.confirm(who, d.target.get("platform") or d.channel,
                                         d.text + (f" (📎×{files})" if files else ""), at=_deliver.at(d))
     return d.confirm_line
 
@@ -138,7 +139,7 @@ def _apply(d, got: dict) -> None:
 
 def _names_the_chosen(d, who: str) -> bool:
     """«tell Raquel also…» while Raquel Ortega is chosen: words that are all in her name keep the choice."""
-    if not d.target:
+    if not d.target or d.target.get("note"):   # chosen among namesakes: the name alone no longer tells them apart
         return False
     said = set(_ask._fold(who).split())
     return bool(said) and said <= set(_ask._fold(d.target.get("name")).split())
@@ -167,7 +168,8 @@ async def _step(d, got: dict, last_line: str = "") -> str:
     if got.get("send") and not changed and d.asked == _draft.CONFIRM and d.target and (d.text or "attach_from" in d.extra):
         # A bare «yes» answers only the confirmation said LAST; after anything else in between he is read it again.
         # Only a confirmation he HEARD is answered; a bare «yes» answers it only when it was said last.
-        if d.heard and (not got.get("bare") or _ask._fold(d.confirm_line) in _ask._fold(last_line)):
+        if d.heard and (not got.get("bare") or (_ask._fold(d.confirm_line) in _ask._fold(last_line)
+                                                and d.other_at <= d.heard_at)):
             return await _send(d)
     lead = (f"Say back in a few words that the message now reads «{d.text}»." if got.get("text") is not None
             and d.text else "")

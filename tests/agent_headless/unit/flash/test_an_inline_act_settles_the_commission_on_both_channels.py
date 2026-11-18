@@ -43,15 +43,16 @@ def _spawns(res: dict) -> int:
 
 def test_an_act_on_a_card_read_inline_launches_no_worker_beside_it():
     res = _turn({"escalate_or_inline": ("handle_inline", 0.95)}, [ESCALATE, FORWARD])
-    assert res["action"] == "escalate", res                 # the forward is a task (M2), never sent inline
-    assert _spawns(res) == 1, res["consequences"]           # one hand on the send: never two, never none
+    assert res["action"] != "escalate", res                 # V2-938: the forward is its owner's, never sent inline
+    assert _spawns(res) == 0, res["consequences"]           # one hand on the send: the owner's, no worker beside it
 
 
 def test_a_brief_that_escalates_keeps_the_worker():
     """The same rule the voice runs — an act covers a promise (`reply_promises`), so only the brief keeps a worker."""
-    for brief in ({"escalate_or_inline": ("escalate", 0.95)}, {"escalate_or_inline": ("handle_inline", 0.3)}):
-        res = _turn(brief, [ESCALATE, FORWARD])
-        assert res["action"] == "escalate", (brief, res)
+    res = _turn({"escalate_or_inline": ("escalate", 0.95)}, [ESCALATE, FORWARD])
+    assert res["action"] == "escalate", res                 # a SURE errand carries the message to its owner later
+    res = _turn({"escalate_or_inline": ("handle_inline", 0.3)}, [ESCALATE, FORWARD])
+    assert res["action"] != "escalate" and _spawns(res) == 0, res   # V2-938: unsure → the message is its owner's
 
 
 def test_a_worker_alone_is_left_to_the_turn():
@@ -64,6 +65,6 @@ def test_a_carried_out_sure_order_settles_a_commission_the_brief_did_not_judge()
     the turn ran is the commission. A sure «escalate» (a compound turn) keeps its worker."""
     brief = {"screen_action": ("mensajeria:forward", 0.74), "request_type": ("order", 1.0)}
     res = _turn(brief, [ESCALATE, FORWARD])
-    assert res["action"] == "escalate" and _spawns(res) == 1, res      # M2: the send is the one task
+    assert res["action"] != "escalate" and _spawns(res) == 0, res      # V2-938: the message is its owner's
     res = _turn(dict(brief, escalate_or_inline=("escalate", 0.95)), [ESCALATE, FORWARD])
     assert res["action"] == "escalate", res

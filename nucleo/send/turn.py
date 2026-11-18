@@ -64,11 +64,31 @@ def from_brief(escalate_req: dict, text: str, brief) -> bool:
     return True
 
 
-async def speak(escalate_req: dict, spoken_text: str, send, speech, brain=None) -> str:
-    """Open the draft for a handed-over send and say its line after what the turn said. Returns the turn's text."""
+def compound(escalate_req: dict, brief) -> bool:
+    """The turn ALSO commissioned an errand, and the reading is SURE it is one («find a table and send it to her»):
+    the worker carries it and hands the message to the owner when it has one — the turn opens no draft beside it."""
+    if escalate_req.get("v") is None or brief is None:
+        return False
+    try:
+        from nucleo.turn import verdicts
+        kind, info = verdicts.read(brief, "escalate_or_inline", None, min_confidence=verdicts.act_floor())
+        return bool(info) and str(kind or "") == "escalate"
+    except Exception as e:  # noqa: BLE001
+        _note(e)
+        return False
+
+
+async def speak(escalate_req: dict, spoken_text: str, send, speech, brain=None, brief=None) -> str:
+    """Open the draft for a handed-over send and say its line after what the turn said. Returns the turn's text.
+    A turn that also commissioned a SURE errand leaves the message to that errand's worker."""
     o = escalate_req.get(KEY)
     if not isinstance(o, dict) or o.get("line") is not None:
         return spoken_text
+    if compound(escalate_req, brief):
+        escalate_req.pop(KEY, None)
+        return spoken_text
+    if escalate_req.get("v") is not None and not escalate_req.get("more"):
+        escalate_req["v"] = None          # the order IS the message: no worker is commissioned beside its owner
     from nucleo.send import gate, owner
     last, before = gate._context(brain) if brain is not None else ("", [])
     o["line"] = ""
@@ -166,7 +186,10 @@ async def at_close(escalate_req: dict, said: str, brief, calls, spoken_text: str
     escalate_req.setdefault(KEY, {"said": " ".join(str(said or "").split()), "hint": payload or {}})
     escalate_req[KEY]["by"] = by
     escalate_req[KEY]["quiet"] = by == "our question"      # the turn's own question about it stands
-    await speak(escalate_req, spoken_text, send, speech, brain)
+    if compound(escalate_req, brief):
+        escalate_req.pop(KEY, None)                         # a sure errand: its worker carries the message
+        return False
+    await speak(escalate_req, spoken_text, send, speech, brain, brief)
     if escalate_req[KEY].get("line") == "" and by == owner_lean():
         escalate_req.pop(KEY, None)       # a lean the owner's read refused: the close goes on as for any other turn
         return False

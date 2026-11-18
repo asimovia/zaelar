@@ -35,7 +35,7 @@ def test_a_send_to_someone_his_words_never_named_is_never_sent_by_the_turn(tmp_p
     from widgets import contract
     call = {"contact": "Quinn", "text": "the numbers"}
     out = rig.run("mensajeria", "send_to", dict(call), said="send the numbers to the team", monkeypatch=monkeypatch)
-    assert not out.ran and not out.asked and any("worker task" in label for _k, label in out.events), out
+    assert not out.ran and not out.asked and any("goes to its owner" in label for _k, label in out.events), out
     monkeypatch.setattr(playbook, "checkpoint_one", lambda rec: "")
     monkeypatch.setattr(contract, "would_refuse", lambda *a, **k: None)     # the door's question, not a channel probe
     monkeypatch.setattr(consent, "_overrides_path", lambda: tmp_path / "consent.json")

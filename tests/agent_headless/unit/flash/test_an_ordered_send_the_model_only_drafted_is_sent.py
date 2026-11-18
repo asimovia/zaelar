@@ -69,9 +69,8 @@ def test_a_dry_turn_reports_the_call_as_it_would_run():
     out = H.run_case(case)
     assert not out.error, out.error
     assert out.decision != "data-op mensajeria:draft", (out.decision, out.tool_calls, out.reply)
-    assert any("a send is one worker task" in str(e.get("label") or "") and "forward" in str(e.get("text"))
-               for e in out.events), "the forward is what the turn hands to its worker task"
-    assert out.decision == "escalate", (out.decision, [e.get("label") for e in out.events][-12:])
+    assert any("goes to its owner" in str(e.get("label") or "") and "forward" in str(e.get("text"))
+               for e in out.events), "the forward is what the turn hands to its owner (V2-938)"
 
 
 @pytest.fixture()
@@ -87,4 +86,4 @@ def test_a_sure_ordered_forward_the_model_only_drafted_is_the_task_the_turn_rout
     out = rig.run("mensajeria", "draft", {"text": "We're already trying Inworld — please book it."},
                   said="send the invoice to quinn, tell him we're already trying inworld and he should book it",
                   turn_brief=rig.brief("mensajeria:forward", 0.79), monkeypatch=monkeypatch)
-    assert not out.ran and any("a send is one worker task" in label for _k, label in out.events), out
+    assert not out.ran and any("goes to its owner" in label for _k, label in out.events), out

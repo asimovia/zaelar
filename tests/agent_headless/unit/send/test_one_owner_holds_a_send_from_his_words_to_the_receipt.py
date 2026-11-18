@@ -479,3 +479,70 @@ def test_a_fragment_he_went_on_from_is_not_taken(world):
     world.reads = [_read(send=True, bare=True)]
     got = asyncio.run(owner.take("yes", last_line=_draft.current().confirm_line, superseded=lambda: True))
     assert got == (False, "") and not world.sent
+
+
+def test_two_people_of_one_name_are_told_apart_and_the_one_he_picked_is_the_one(world, monkeypatch):
+    """Audit 6 P0: two «Odile Varga» (Valencia, Madrid) — «the one from Madrid» goes to Madrid's row, the confirmation
+    says which, and a bare name never collapses the choice to the first."""
+    twins = [{"name": "Odile Varga", "contact_id": "v1", "note": "Valencia"},
+             {"name": "Odile Varga", "contact_id": "m2", "note": "Madrid"}]
+    monkeypatch.setattr(people, "resolve", lambda name, channel="", relation="": {"several": twins, "unmatched": []})
+    world.reads = [_read(who="Odile Varga", text="hi")]
+    asyncio.run(owner.intake("tell Odile Varga hi", {}))
+    world.reads = [_read(who="Odile Varga")]
+    _take("Odile Varga")
+    d = _draft.current()
+    assert not d.target and len(d.candidates) == 2, "the bare shared name asks again among them"
+    world.reads = [_read(who="Odile Varga Madrid")]
+    taken, line = _take("the one from Madrid")
+    assert d.target["contact_id"] == "m2" and "Madrid" in line
+
+
+def test_a_bare_yes_after_another_line_of_ours_is_not_the_messages(world):
+    """Audit 6 P0: a worker's question said out of turn after the confirmation — his «yes» answers THAT."""
+    from nucleo.send import heard
+    world.reads = [_read(who="Odile Marsh", text="I'm late")]
+    asyncio.run(owner.intake("tell Odile Marsh I'm late", {}))
+    _said()
+    line = _draft.current().confirm_line
+    heard.other_line("Shall I book the table for eight?")
+    world.reads = [_read(send=True, bare=True)]
+    _take_after("yes", line)
+    assert not world.sent
+
+
+def test_his_voice_before_the_confirmation_played_out_is_a_cut(world, monkeypatch):
+    """Audit 6 P0: his voice began before our speech started (or ended) — the confirmation did not reach him."""
+    from nucleo.send import heard
+    from voice import observer
+    world.reads = [_read(who="Odile Marsh", text="I'm late")]
+    asyncio.run(owner.intake("tell Odile Marsh I'm late", {}))
+    _said()
+    t = _draft.current().heard_at
+    monkeypatch.setattr(observer, "debug_events", lambda kind="", limit=0: [
+        {"t_ms": t + 10, "kind": "vad", "edge": "on", "label": "🎤 voz detectada (VAD)"}])
+    assert heard.cut_since(t)
+    monkeypatch.setattr(observer, "debug_events", lambda kind="", limit=0: [
+        {"t_ms": t + 10, "kind": "state", "state": "speaking"}, {"t_ms": t + 900, "kind": "state", "state": "listening"},
+        {"t_ms": t + 1500, "kind": "vad", "edge": "on"}])
+    assert not heard.cut_since(t), "played to the end, then his yes"
+
+
+def test_yes_send_it_to_our_offer_is_read_to_him_never_lost(world):
+    """Audit 6 P0: «shall I tell Odile Marsh you're late?» → «yes, send it» → the model's call carries who and what:
+    he is read it (one confirmation), never silence."""
+    world.reads = [_read(send=True)]
+    line = asyncio.run(owner.intake("yes, send it", {"contact": "Odile Marsh", "text": "I'm late"}))
+    assert line and _draft.current().asked == _draft.CONFIRM and not world.sent
+
+
+def test_a_reply_to_someone_else_while_a_message_is_open_waits_and_is_said(world, monkeypatch):
+    """Audit 6 P0: «answer the second one: ok» while Odile Marsh's waits — the reply's conversation is not hers: queued
+    and said, never lost."""
+    from nucleo.send import deliver
+    world.reads = [_read(who="Odile Marsh", text="I'm late")]
+    asyncio.run(owner.intake("tell Odile Marsh I'm late", {}))
+    monkeypatch.setattr(deliver, "adopt", lambda act, h: {"extra": {}, "target": {
+        "name": "Piers Lane", "contact_id": "", "platform": "whatsapp", "chat_id": "c-9"}})
+    line = asyncio.run(owner.intake("answer the second one: ok", {"n": 2, "text": "ok", "_act": "reply"}))
+    assert line and len(_draft._queue) == 1 and _draft.current().target["contact_id"] == "c1"

@@ -123,7 +123,8 @@ async def settle_what_is_pending(*, _ans, _ask_waiting, _auth_pending, _brief, _
                                                          or music_req["v"] is not None or worker_acted["v"]),
                                               held=bool(confirm_state.get("opened") or clarify["msg"]))
     # V2-938: the model's message call went to its owner (`nucleo/send`) — the owner speaks here, right after the stream
-    spoken_text = await __import__("nucleo.send.turn", fromlist=["x"]).speak(escalate_req, spoken_text, send, speech, brain)
+    spoken_text = await __import__("nucleo.send.turn", fromlist=["x"]).speak(escalate_req, spoken_text, send, speech, brain,
+                                                                            _brief)
     spoken_text = await __import__("nucleo.turn.reply", fromlist=["x"]).routed_send_line(   # V2-887: a routed send is a START
         spoken_text, escalate_req.get("send") or ("send" in escalate_req), data_done["v"], send, speech)
     if data_done["v"] and not spoken_text and _ack_allowed and not ("send" in escalate_req) and escalate_req["v"] is None and search_req["v"] is None:

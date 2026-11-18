@@ -71,10 +71,21 @@ def resolve(name: str, channel: str = "", relation: str = "") -> dict:
 def chosen(name: str, candidates: list[dict], channel: str = "") -> dict:
     """A name he gave while being asked among `candidates`: the candidate it names exactly (by its full name), else
     the name resolved afresh."""
-    said = " ".join(str(name or "").lower().split())
-    for c in candidates or ():
-        if said and said == " ".join(str(c.get("name") or "").lower().split()) and c.get("contact_id"):
-            return {"one": {"name": c["name"], "contact_id": c["contact_id"], "platform": channel}}
+    from nucleo.send import ask
+    said = ask._fold(name)
+    if not said:
+        return resolve(name, channel)
+    full = [c for c in candidates or () if c.get("contact_id")
+            and said == ask._fold(f"{c.get('name')} {c.get('note') or ''}")]
+    named_ = [c for c in candidates or () if c.get("contact_id") and said == ask._fold(c.get("name"))]
+    hits = full or named_
+    if len(hits) == 1:                       # by the row he picked — two people of one name are told apart by note
+        c = hits[0]
+        same = sum(1 for x in candidates if ask._fold(x.get("name")) == ask._fold(c.get("name"))) > 1
+        return {"one": {"name": c["name"], "contact_id": c["contact_id"], "platform": channel,
+                        **({"note": c.get("note") or ""} if same else {})}}
+    if len(hits) > 1:                        # he named a name several of them carry: ask among THEM, by what differs
+        return {"several": hits, "unmatched": []}
     return resolve(name, channel)
 
 

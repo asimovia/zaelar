@@ -162,6 +162,22 @@ def _a_worded_line_never_reaches_the_network(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _no_message_is_open_between_tests(monkeypatch):
+    """The message being written (`nucleo/send/draft`) lives in the process: one test's open draft would take the next
+    test's sentences at the gate. Every test starts and ends with none, and the owner's read of his words stays offline
+    (a test of the owner gives it its own reads)."""
+    try:
+        from nucleo.send import draft, read
+        draft.reset()
+        monkeypatch.setattr(read, "_ask", lambda system, user: "")
+    except Exception:  # noqa: BLE001 — a tree without the owner has nothing to reset
+        draft = None
+    yield
+    if draft is not None:
+        draft.reset()
+
+
+@pytest.fixture(autouse=True)
 def _the_spec_ledger_starts_empty():
     """V2-776 L1 keeps the open end states in one in-process ledger (`nucleo.circuit.spec._OPEN`); a test that dispatched a
     data-op left its spec open, and every later brief asked an `end_state` question it never expected — measured

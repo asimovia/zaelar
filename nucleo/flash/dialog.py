@@ -351,6 +351,7 @@ def note_spoken(text: str, about: str = "") -> None:
     t = sanitize_reply((text or "").strip()) if (text or "").strip() else ""
     if t:
         import time
+        __import__("nucleo.send.heard", fromlist=["x"]).other_line(t)   # V2-938: a bare yes after it answers THIS
         _SPOKEN_SEQ[0] += 1
         _SPOKEN.append((_SPOKEN_SEQ[0], t, time.monotonic(), str(about or "")))
         del _SPOKEN[:-_SPOKEN_MAX]

@@ -47,6 +47,7 @@ def cut_since(t_ms: float) -> bool:
     a cut speech that did not resume? Then what was being said may not have reached him."""
     try:
         from voice import observer
+        playing = False
         for e in observer.debug_events():
             if float(e.get("t_ms") or 0) < t_ms:
                 continue
@@ -54,7 +55,21 @@ def cut_since(t_ms: float) -> bool:
             if (e.get("kind") == "vad" and (e.get("is_interruption") is True or e.get("resumed") is False)) \
                     or "barge-in" in label:
                 return True
+            if e.get("kind") == "state" and str(e.get("state") or label) == "speaking":
+                playing = True                       # our voice started: the confirmation is being played
+            elif e.get("kind") == "state" and str(e.get("state") or label) == "listening" and playing:
+                return False                         # it played to the end with no voice of his over it
+            elif e.get("kind") == "vad" and e.get("edge") == "on":
+                return True                          # his voice began before the confirmation had played out
     except Exception as e:  # noqa: BLE001 — unreadable: as if cut, he is read it again
         _note(e)
         return True
     return False
+
+
+def other_line(text: str) -> None:
+    """A line of ours said AFTER the confirmation that is not the confirmation (a worker's question, a notice): a bare
+    «yes» after it answers THAT, never the message."""
+    d = _draft.current()
+    if d is not None and d.heard and text and not _ask._fold(text).endswith(_ask._fold(d.confirm_line)):
+        d.other_at = now_ms()

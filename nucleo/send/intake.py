@@ -38,14 +38,17 @@ def _note(e: Exception) -> None:
     logger.debug(f"send.intake: {type(e).__name__}: {e}")
 
 
-def _orders_one(got: dict, by: str, act: str) -> bool:
+def _orders_one(got: dict, by: str, act: str, h: dict | None = None) -> bool:
     """Do his words order a message? A read that is only a «yes» (nobody named, nothing said) orders none — unless the
-    call names a card draft he can see, which carries its own text and person."""
+    call names a card draft he can see (it carries its own text and person), or the model's own call carries a person
+    and a text: his «yes, send it» to OUR offer «shall I tell X that…?» (he is read it, never sent it here)."""
+    h = h or {}
     if got.get("unread"):
         return by in SURE
     if not got.get("mine") or got.get("drop"):
         return False
-    return bool(got.get("who") or got.get("text") or not got.get("send") or act in CARRIES_TEXT)
+    offered = by in SURE and bool(str(h.get("contact") or h.get("to") or "").strip() and str(h.get("text") or "").strip())
+    return bool(got.get("who") or got.get("text") or not got.get("send") or act in CARRIES_TEXT or offered)
 
 
 def _same_person(d, other: str) -> bool:
@@ -66,7 +69,16 @@ async def intake(said: str, hint: dict | None = None, last_line: str = "", befor
     async with _lock():
         if (open_ := _draft.current()) is not None:
             other = str(h.get("contact") or h.get("to") or "").strip()
-            if by in NO_READ or (other and not _same_person(open_, other)):
+            elsewhere = {}
+            if not other and act in ("reply", "forward", "send_draft", "compose"):
+                # a reply names its message, not a person: read it once now, and see whether it is THIS message's
+                adopted = h.pop("_adopted", None) or await asyncio.to_thread(_deliver.adopt, act, h)
+                t = adopted.get("target") or {}
+                if t and not ((t.get("contact_id") and t.get("contact_id") == open_.target.get("contact_id"))
+                              or (t.get("chat_id") and t.get("chat_id") == open_.target.get("chat_id"))):
+                    elsewhere, other = adopted, str(t.get("name") or "")
+            if by in NO_READ or elsewhere or (other and not _same_person(open_, other)):
+                h = {**h, **({"_adopted": elsewhere} if elsewhere else {})}
                 n = _draft.queue(said, {**h, "_act": act}, "worker" if by == "worker" else "queued")
                 owner._emit("queued behind the open draft", open_, by=by, waiting=n)
                 if by == "worker":
@@ -92,7 +104,7 @@ async def _open(d, said: str, h: dict, act: str, last_line: str, before, by: str
     adopted = await asyncio.to_thread(_deliver.adopt, act, h)
     d.extra = dict(adopted.get("extra") or {})
     got = dict(_read.NOTHING) if by in NO_READ else await asyncio.to_thread(_read.read, said, d, last_line, before)
-    if by not in NO_READ and not _orders_one(got, by, act):
+    if by not in NO_READ and not _orders_one(got, by, act, h):
         # Only HIS words order a message. A call, a verdict or a lean over words that do not («a bare yes», «stop
         # repeating me», «forget that message») opens nothing.
         _draft.close(d, _draft.CANCELLED)
