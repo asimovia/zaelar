@@ -381,7 +381,8 @@ def attest(e: dict | None, *, now: float | None = None) -> bool | None:
         out = True if e.get("existing") else None if e.get("met_at_birth") else _verify.check(e.get("done_when"), now)
     except Exception:  # noqa: BLE001
         out = None
-    e["last"] = out
+    heard = out is not False or not _reported.unheard(e, now)   # a report older than the act is no verdict on it
+    e["last"] = out = out if heard else None
     if out is True:
         _emit("✅ spec: cumplida", e)   # what it READ; whoever acts on it settles (`circuit.settle`)
     elif out is False:
@@ -390,7 +391,7 @@ def attest(e: dict | None, *, now: float | None = None) -> bool | None:
         if e.get("last_seen") != "unmet" or e.get("last_missing") != missing:
             _emit("❌ spec: sin cumplir todavía", e, missing=missing, checks=e["checks"])
         e["last_missing"] = missing
-    elif not _reported.mark(e, out) and e.get("last_seen") != "unreadable":   # V2-884 A6: a wait is not unreadable
+    elif not _reported.mark(e, out, "" if heard else _reported.PENDING) and e.get("last_seen") != "unreadable":   # V2-884 A6: a wait is not unreadable
         _emit("🫥 spec: no verificable — la app no lo declara", e)
     e["last_seen"] = {True: "met", False: "unmet"}.get(out) or e.get("awaiting") or "unreadable"
     if e.get("task_id"):

@@ -176,6 +176,14 @@ async def blocked_channel() -> list:
         return []
 
 
+def _asked(e: dict) -> bool:
+    """The app has not confirmed this end state yet: it reads None for want of its ack, or contrary only on a report
+    older than the act (`reported.unheard`) — said as asked, never as done nor as «not on the card»."""
+    from nucleo.circuit import reported, verify
+    out = verify.check(e.get("done_when"))
+    return bool(out is None and reported.awaiting(e.get("done_when"))) or (out is False and reported.unheard(e))
+
+
 def end_state_unmet(cards: set[str] | None = None, turn: str = "") -> dict | None:
     """The first end state still owed on `cards` (any card when None) that reads NOT met now. With `turn`, only the end
     states born in THAT turn (the spec's trace): one another request left open is its business (demo sandbox
@@ -204,9 +212,7 @@ def bare_ack(ack: str, cards: set[str] | None, *, beside: bool = False, turn: st
         e = end_state_unmet(cards, turn)
         if not e:
             return ack
-        from nucleo.circuit import reported, verify
-        asked = verify.check(e.get("done_when")) is None and reported.awaiting(e.get("done_when"))
-        return str(lang.done_asked if asked else lang.done_not_on_card)
+        return str(lang.done_asked if _asked(e) else lang.done_not_on_card)
     except Exception as e:  # noqa: BLE001 — an unreadable screen leaves the ack as it was
         logger.debug(f"reply_receipts: ack not checked — {e}")
         return ack
@@ -226,7 +232,7 @@ def unconfirmed(outcomes: list, turn: str = "") -> list:
         from nucleo.circuit import reported, spec
         from nucleo.circuit import verdict as V
         waiting = {str(e.get("target") or "").split(":", 1)[0] for e in spec.open_specs()
-                   if (not turn or str(e.get("trace") or "") == turn) and reported.awaiting(e.get("done_when"))}
+                   if (not turn or str(e.get("trace") or "") == turn) and (reported.awaiting(e.get("done_when")) or _asked(e))}
         if not waiting:
             return outcomes
         from nucleo.turn import reply

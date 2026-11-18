@@ -331,7 +331,9 @@ below is the first kind, or it names the mechanism that replaced the second.
   the mouth names it as asked — «On it: «title»», a bare ack «asked» — never «Done», `reply_receipts.unconfirmed`); nothing acked within `PENDING_S`, or no surface at all, settles `unverifiable` with the reason
   `no_ack` — asked, never done nor failed, no spoken correction; an acked contrary report is unmet only at
   `INLINE_GRACE_S`, and not corrected again when the app's own late tell said it. — since 2026-11-13 (V2-884 1b, A6) ·
-  nodes 4.411, 4.520.
+  nodes 4.411, 4.520. A contrary reading of a report the surface made BEFORE the act was born is no verdict on it
+  either: inside the grace it waits as asked (`reported.unheard`), and the mouth says the short asked line, never
+  «it isn't on the widget, so it's not done». — since 2026-11-18 (V2-934) · node 2.1810.
 - **CRIT-C4b · A worker never deletes a card.** Deleting is a confirmed act (`pending_confirm`, the UI's Yes/No);
   the first verb of a request names its act, so a build that mentions deleting its own entries builds. — since
   2026-10-09 · nodes 2.246.

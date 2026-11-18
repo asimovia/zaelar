@@ -10,6 +10,8 @@ Three marks, each deciding one thing in the circuit:
   · pending — the order changed and the surface has not acked it yet: the act WAITS (never unverifiable, never unmet);
   · unknown — no ack within `PENDING_S`, or no surface reports the app: the act settles `unverifiable` with the
     reason `no_ack` — said as asked, never as done. A late ack still resolves the field, not the act's verdict.
+A `known` value the surface reported BEFORE the act was born is no verdict on it (`unheard`): within the grace a contrary
+reading of it waits as `pending`.
 
 `expect: changed` takes its base from the valid report at the act's birth, and from the order key when there is none.
 """
@@ -84,10 +86,11 @@ def awaiting(done_when) -> str:
     return wait(verify._clauses(done_when)[1])
 
 
-def mark(e: dict, out) -> str:
+def mark(e: dict, out, why: str = "") -> str:
     """Mark an open spec `awaiting` when its condition reads None for want of the app's ack (said once on its
-    timeline): `circuit.tick` settles a `no_ack` and the op's own ending leaves both to the pulse."""
-    e["awaiting"] = "" if out is not None or e.get("met_at_birth") else awaiting(e.get("done_when"))
+    timeline): `circuit.tick` settles a `no_ack` and the op's own ending leaves both to the pulse. `why` when the
+    caller already knows it (`unheard`: a contrary report older than the act)."""
+    e["awaiting"] = "" if out is not None or e.get("met_at_birth") else why or awaiting(e.get("done_when"))
     if e["awaiting"] and e.get("last_seen") != e["awaiting"]:
         from nucleo.circuit import spec
         spec._emit("⏳ spec: ordered — the app has not confirmed it yet", e, awaiting=e["awaiting"])
@@ -110,3 +113,16 @@ def spoke_since(done_when, t: float) -> bool:
     from widgets import state
     apps = {str(c.get("widget") or "") for c in verify._clauses(done_when)[1] if field_of(c)}
     return any(float(snap.get("at") or 0) >= float(t or 0) for a in apps for _i, _d, snap in state.snapshots(a))
+
+
+def unheard(e: dict, now: float | None = None) -> bool:
+    """No surface the end state names has reported since the act was born, and the act is inside `INLINE_GRACE_S`: a
+    contrary reading is then the surface's LAST report, made before the act — «asked», never a verdict. 2026-11-18:
+    «open the chat of …» read 1 s after the order against the card's report from before it, said «It isn't on the
+    widget yet», and the app confirmed the chat at +12 s. Past the grace the circuit's own ending applies."""
+    import time
+    from nucleo.circuit import INLINE_GRACE_S, verify
+    born, dw = float(e.get("born") or 0), e.get("done_when")
+    if not born or (time.time() if now is None else now) - born >= INLINE_GRACE_S:
+        return False
+    return any(field_of(c) for c in verify._clauses(dw)[1]) and not spoke_since(dw, born)

@@ -239,7 +239,7 @@
  "reminder_date_passed": "Heads-up: that date — {date} — has already passed, so I haven't set a reminder.",
  "reminder_moved_soon": "{asked} today has already gone by, so I'll remind you today at {at}.",
  "done_not_on_card": "It isn't on the widget yet, so it's not done.",
- "done_asked": "Asked — the widget hasn't confirmed it yet.",
+ "done_asked": "On its way.",
  "done_just_started": "I'm on it — it isn't done yet.",
  "controls_said": {
   "mute": "Muting my voice; I'm still listening.",
