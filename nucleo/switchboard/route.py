@@ -36,33 +36,36 @@ SEEN_S = 90.0
 PIECE_S = 20.0
 #: What the judge calls a chunk that is nobody's: a new request. It always routes to Flash, whatever `to` says.
 NEW = "new"
+SCREEN = "screen"   #: what the judge calls an order about his screen or an app: the assistant's own hands
 from nucleo.switchboard.act import (FRAGMENT, NO, OTHER, STOP, STOP_ALL, YES, _line, deliver, early_yes,  # noqa: E402,F401
                                     line_key, line_of, stop, waits_on_his_yes)
 
 SYSTEM = (
-    "You route what the operator of a voice assistant just said. Background processes of the assistant are OPEN, "
-    "listed with a number: each one is carrying out a task for him, and some are WAITING for his answer to a question "
-    "they asked. Decide whether what he just said is addressed to ONE of those processes: it answers its question (a "
-    "yes, a no, a choice, a fact — in any wording or language, whole or cut short), confirms or refuses what it is "
-    "about to do, adds a detail, corrects it, complains about how it did it, or asks it to go on, redo or cancel that "
-    "task. Then answer its number.\n"
-    "Answer 0 when it is for none of them: a NEW request — something else he wants done, even on a similar subject, "
-    "even while a process waits for his answer (a waiting question does not own what he says next: «create a group "
-    "with her» is not an answer to «shall I send her the message?») — an order about the screen, an app or an item in "
-    "it (open, close, show, hide, minimise, play, pause, mark read or unread), even on the sheet or the item a process "
-    "works on — a question he wants answered now (the time, the weather, which tasks exist, or how a task is going or "
-    "whether it is done — the assistant answers those itself), small talk, or words for somebody else in the room.\n"
+    "You route what the operator of a voice assistant just said. Background processes of the assistant are OPEN, listed "
+    "with a number: each one is carrying out a task for him, and some are WAITING for his answer to a question they "
+    "asked. Decide whether what he just said is addressed to ONE of those processes: it answers its question (a yes, a "
+    "no, a choice, a fact — in any wording or language, whole or cut short), confirms or refuses what it is about to do, "
+    "adds a detail, corrects it, complains about how it did it, or asks it to go on, redo or cancel that task. Then "
+    "answer its number.\n"
+    "Answer 0 when it is for none of them: a NEW request — something else he wants done, even on a similar subject, even "
+    "while a process waits for his answer (a waiting question does not own what he says next: «create a group with her» "
+    "is not an answer to «shall I send her the message?») — an order about his screen or an app — a question he wants "
+    "answered now (the time, the weather, which tasks exist, or how a task is going or whether it is done — the "
+    "assistant answers those itself), small talk, or words for somebody else in the room.\n"
     "A bare yes, no or ok while a process WAITS on a question is that process's answer (with several waiting, the one "
     "that asked last). His words may arrive in pieces: a piece that continues what he was telling a process is that "
     "process's.\n"
-    "Also say what it IS for that process: \"yes\" — it plainly accepts or authorises what a WAITING process asked, "
-    "with no change and no condition (yes, go ahead, send it, I authorise it); \"no\" — it plainly refuses or cancels "
-    "it; \"fragment\" — a cut-off piece that carries no decision and no content yet (a word or two, a sentence that "
-    "stops); \"stop\" — he orders that process to STOP: stop it, cancel it, drop it, do not do it, he never asked "
-    "for it (add \"all\": true when he orders every process to stop); \"other\" — anything else about THAT "
-    "process: a change, a detail, a correction, a complaint, a question; \"new\" — it is for none of them (then "
-    "\"to\" is 0).\n"
-    'Reply with JSON only: {"to": <number>, "is": "yes|no|stop|other|fragment|new", "why": "<a few words>"}'
+    "Also say what it IS for that process: \"yes\" — it plainly accepts or authorises what a WAITING process asked, with "
+    "no change and no condition (yes, go ahead, send it, I authorise it); \"no\" — it plainly refuses or cancels it; "
+    "\"fragment\" — a cut-off piece that carries no decision and no content yet (a word or two, a sentence that stops); "
+    "\"stop\" — he orders that process to STOP: stop it, cancel it, drop it, do not do it, he never asked for it (add "
+    "\"all\": true when he orders every process to stop); \"other\" — anything else about THAT process: a change, a "
+    "detail, a correction, a complaint, a question; \"screen\" — an order about his screen or an app, not the task "
+    "(show, hide, minimise or close a sheet — that never stops its process —, open, mark or archive a message), even "
+    "about the sheet or item a process works on, even if he adds that it should keep going (it already does); \"new\" — "
+    "it is for none of them (then \"to\" is 0).\n"
+    "Reply with JSON only: {\"to\": <number>, \"is\": \"yes|no|stop|other|fragment|screen|new\", \"why\": \"<a few "
+    "words>\"}"
 )
 
 _seen: dict = {"text": "", "key": "", "at": 0.0}
@@ -119,7 +122,7 @@ def ask_the_model(text: str, procs: list[dict], last_reply: str = "",
     except Exception:  # noqa: BLE001
         return -1, f"unreadable: {raw[:60]!r}", OTHER
     kind = str(got.get("is") or OTHER).strip().lower()
-    if kind == NEW:                  # he asked for something else: no process owns it, whatever number came with it
+    if kind in (NEW, SCREEN):        # something else, or his screen and apps: no process owns it, whatever number came
         return 0, str(got.get("why") or "")[:80], OTHER
     kind = kind if kind in (YES, NO, OTHER, FRAGMENT, STOP) else OTHER
     if kind == STOP and got.get("all") is True:
