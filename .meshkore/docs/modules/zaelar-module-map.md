@@ -60,7 +60,7 @@ start with `make run` → `python -m server`.
   `compose_context` is the worker's **multi-axis dossier**: profile without mission + rules + ⚠️ critical items
   ALWAYS + recall + `by_concepts` + agenda, durables only, `to_thread`) + `nucleo/memory_agent/processor/distill.py` ★ (the WRITE
   heart: a fast non-reasoning model configured under `§memory` — default `deepseek/deepseek-v4-flash`, chosen by the
-  distiller benchmark in `zaelar-model-benchmarks.md` §12.3 for matching completeness and precision at a lower cost;
+  distiller benchmark in the model-benchmark log (kept outside this repo) for matching completeness and precision at a lower cost;
   `gpt-4o-mini` is excluded because it writes facts in the wrong language into identity slots. Key PER ENDPOINT +
   health tracking with an alert on a streak of failures, so a dead writer never goes unnoticed; writing may be slow,
   it prioritises writing WELL — it DISTILLS every turn into curated pills — datum + metadata, decides

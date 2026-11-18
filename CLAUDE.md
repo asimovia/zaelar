@@ -380,7 +380,7 @@ on a clean clone, by design.
 | Architecture | `.meshkore/docs/architecture/zaelar-architecture.md` |
 | Modularity / coupling contracts | `.meshkore/docs/architecture/zaelar-modularity.md` |
 | Central memory | `.meshkore/docs/architecture/zaelar-memory.md` |
-| Why THESE models | `.meshkore/docs/ops/zaelar-model-benchmarks.md` |
+| Why THESE models | `config/models.default.json` (the WHY per row) + `.meshkore/docs/ops/zaelar-model-change.md` |
 | Cluster channel — end-to-end algorithm | `.meshkore/docs/architecture/zaelar-cluster-channel.md` |
 | MeshKore network — external agents (Oracle) + clusters | `.meshkore/docs/architecture/zaelar-meshkore-network.md` |
 | Brain Worker doctrine | `.meshkore/docs/architecture/zaelar-brain-worker-doctrine.md` |

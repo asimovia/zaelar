@@ -9,8 +9,8 @@ it — a new endpoint gets added here once instead of in four places that can ea
 
 ROUTING POLICY: every LLM call goes to the provider's own DIRECT endpoint listed below — there is no broker. This
 governs *which host to call*, never *whether to reason*: the memory tasks' routes carry a separate, explicit
-per-task `disable_thinking` flag, because a model's benchmarked quality can assume reasoning-on (§12.3/§12.4 of
-`zaelar-model-benchmarks.md`). Picking a host is a routing decision; touching `disable_thinking` is a separate,
+per-task `disable_thinking` flag, because a model's benchmarked quality can assume reasoning-on (the memory
+benchmark rounds). Picking a host is a routing decision; touching `disable_thinking` is a separate,
 benchmark-backed one — don't let one quietly relitigate the other.
 """
 from __future__ import annotations

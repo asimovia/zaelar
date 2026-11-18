@@ -107,8 +107,8 @@ any of the interactions above. Carry on as usual.
      chains. Also: **save the raw report** of the run in `tests/memory/e2e/bot/resultados/` and add its row to
      that folder's `README.md`. The rule is that nobody should have to RE-RUN a benchmark to know why we use a
      model — explanations come from the doc, not from the memory of whoever ran it. Dense verdicts go to
-     `zaelar-model-benchmarks.md §12.x` and the curated summary the operator sees to
-     `config/model_benchmarks.py` (all three, or they drift apart silently).
+     the model-benchmark log (kept outside this repo); this doc keeps the short answer (both, or they drift apart
+     silently).
 2. **`CLAUDE.md`**: the "Central memory" key decision + the `memory/`/`nucleo/` module bullet + (if it is a new
    invariant) its hard rule. **Explain how memory is used from other modules** — keeping it current is mandatory
    (write AND read).

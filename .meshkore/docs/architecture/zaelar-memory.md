@@ -5,7 +5,7 @@
 > observability, light and deep (REM) sleep, a canonical slot registry with the v2 `value`/`change` atom contract,
 > a gated external write path for Brain Workers, RAILS projected into `state.rails`, the `recall` tool of the
 > FlashBrain, the multi-axis worker dossier (`compose_context`), and memory models chosen by benchmark
-> (`zaelar-model-benchmarks.md §12`).
+> (model-benchmark log, kept outside this repo).
 >
 > **At a glance**
 > - **Schema v9, 19 tables** (on a fresh `zaelar.db`): `state`, `memories` + `vec_memories` + `fts_memories`,
@@ -45,7 +45,7 @@ configurable providers: cloud by default so that every deployment measures the s
   default, because write quality is the number-one lever of recall and the measured external models win it
   clearly; and because a default that only exists on a laptop (a local Ollama server) would make a laptop measure
   something different from a container. **Which model is chosen by the benchmark, not by provider reputation**
-  (`zaelar-model-benchmarks.md §12.3`). The **local option** (qwen / embeddinggemma via Ollama) stays available by
+  (model-benchmark log, kept outside this repo). The **local option** (qwen / embeddinggemma via Ollama) stays available by
   config (`§memory.mem_processor_*`, `§memory.embed_*`) for whoever prioritises privacy/offline use. When the
   HEART runs on DeepSeek it uses the **direct** endpoint (`api.deepseek.com`), which honours
   `thinking:{"type":"disabled"}` where a broker may ignore it.
@@ -332,7 +332,7 @@ At SCALE (hundreds of memories) a bi-encoder embedding (independent vectors) ord
 is usually in the top-10 but NOT in the top-1/3. A **reranker** (cross-encoder) re-scores each candidate **reading
 query+memory TOGETHER** → it lifts the right one. It is the biggest recall lever for the smallest cost, with a clear
 gain at recall@1 and MRR; the evaluation harness is `tests/memory/e2e/bot/scale_eval.py` and the numbers are in
-`zaelar-model-benchmarks.md`.
+the model-benchmark log (kept outside this repo).
 
 **Architecture** (`memory/rerank.py` + `memory/rerank_local.py`, config `config/v2.py` section `memory`): the same
 LLM-agnostic pattern as the brain routing (`fast`/`code_agent`) — **provider CONFIGURABLE from the UI/config**.
@@ -351,7 +351,7 @@ recall does not pay the cold load. Observability: `status()` (provider/model/lat
 
 > **Raising the recall ceiling — the levers.** The reranker fixes most of the ORDERING gap; the real ceiling is
 > `found@10` — what the retriever does not bring at all. The levers, ranked by evidence (see
-> `zaelar-model-benchmarks.md §6/§7/§8` and `tests/memory/e2e/bot/RESEARCH.md`):
+> the model-benchmark log (kept outside this repo) and `tests/memory/e2e/bot/RESEARCH.md`):
 > - **A STRONGER embedding is NOT the lever**: a SOTA multilingual 1024-d model (`bge-m3`) performs on par with
 >   the 768-d one on found@10. The axis is NOT the bi-encoder's quality. *(The provider-driven dimension
 >   abstraction + `memory/reembed.py` stay, so the model can be changed.)*
@@ -540,7 +540,7 @@ ENDPOINT — a key sent to the wrong endpoint must be impossible by construction
 ## Memory models — WHAT we use, WHY, and where the evidence is
 
 > **This section is the canonical answer to "why these models?"**, written so that no benchmark has to be repeated
-> to answer it. The dense detail lives in `zaelar-model-benchmarks.md §12.3` (distilling) and **§12.4**
+> to answer it. The dense detail lives in the model-benchmark log (kept outside this repo), for distilling and for REM sleep
 > (consolidating); the harnesses are versioned and reproducible (see below), and each run writes its raw report
 > under `tests/memory/e2e/bot/resultados/` (local output, not tracked). The effective defaults are declared, with
 > their rationale, in **`config/models.default.json`** (`memory_writer`, `memory_rem`, `embeddings`, `reranker`).
@@ -822,7 +822,7 @@ survives a crash/restart to remind you that you left it halfway.
   (`memory.state()`) is **cached per session** (`nucleo/flash/memory_cache.py` — TTL + async refresh +
   invalidation on `memory.updated`), and **recall** (`memory.query` → embeddings) is **on demand** (heuristic
   `nucleo/flash/prompt.needs_recall`) and **off the event loop** (`asyncio.to_thread`). So a small-talk turn never
-  triggers the retriever or blocks the loop, while real recall is preserved (see `zaelar-model-benchmarks.md §4`).
+  triggers the retriever or blocks the loop, while real recall is preserved (see the model-benchmark log (kept outside this repo)).
 - **State maintenance**: the memory agent and the consolidator write the `state` table; the composer reads it on
   every prompt.
 
@@ -955,7 +955,7 @@ lives in `nucleo/memory_agent/` + `nucleo/memory_agent/processor/distill.py`:
 - **`mem_processor.process(text, state) → list|None`** — the **LLM processor**. Default model: DeepSeek Flash
   DIRECT (`api.deepseek.com`), stand-in OpenAI `gpt-4.1-mini` (`config/models.default.json` §memory_writer; config
   `§memory.mem_processor_model/_base_url/_api_key`). Chosen by the **distillation bench**
-  (`tests/memory/e2e/bot/distiller_bench.py`, `zaelar-model-benchmarks.md §12.3`): many commercial candidates over a
+  (`tests/memory/e2e/bot/distiller_bench.py`, the model-benchmark log (kept outside this repo)): many commercial candidates over a
   fixed corpus on **four separate axes** (write-completeness · precision/no-pollution · layer+slot · $/1k turns with
   real tokens) — see §Memory models for the reasoning and the `gpt-4o-mini` veto. Writing is off the hot path, so a
   slower model costs the turn nothing. The **local OPTION** (qwen via Ollama) remains available by pointing

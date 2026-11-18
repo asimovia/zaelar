@@ -52,7 +52,7 @@ env-first). It runs at two speeds:
   through `voice/typed_turn.py`: the stream reads the last user turn, runs the fast model, and emits `ChatChunk`s already cleaned by
   `voice/tag_protocol.py` (side-effects) + `voice/speech.py`. Its model is chosen **per invocation** from
   `config/v2.py` `fast` section (`FAST_PROVIDER`/`FAST_MODEL`/`FAST_BASE_URL`/`FAST_API_KEY`) — a local Ollama model
-  or a cloud model called on its provider's direct endpoint (comparison in `.meshkore/docs/ops/zaelar-model-benchmarks.md`). It creates/cancels
+  or a cloud model called on its provider's direct endpoint (comparison in the model-benchmark log (kept outside this repo)). It creates/cancels
   cron via `nucleo/pulse/scheduler`. **Hard constraint: the voice model MUST be non-reasoning** (a reasoner adds 5s+ of
   thinking latency to the real-time path). Reasoning belongs off the critical path — that is the Brain Workers.
   **Memory is OUT of the synchronous turn**: the STATE block (name/treatment/topics) comes from a
@@ -60,7 +60,7 @@ env-first). It runs at two speeds:
   `memory.updated`), and semantic **recall** (`nucleo/flash/prompt.compose_recall` → embeddings) is **on demand**
   (heuristic `prompt.needs_recall`, es/en) and **off the event loop** (`asyncio.to_thread`). A chat turn never
   fires the retriever, so it closes ~1s; the per-turn latency breakdown is emitted as a `timing` event on `/debug`
-  (baseline vs. after in `zaelar-model-benchmarks.md §4`).
+  (baseline vs. after in the model-benchmark log (kept outside this repo)).
 - **Brain Workers** (`nucleo/dispatch/` + `nucleo/workers/` + `nucleo/agentes/`; «SlowBrain» in older docs) — the
   **async** tier off the voice path: one worker session per task, resumable by id, with a playbook, reaching the agent
   only through the bridge (`nucleo/cli/`, the internal API); the task's row is its state and `circuit.settle` its only
@@ -318,7 +318,7 @@ handing it data that must first be looked up (`[[push]]`) all require the SlowBr
 DATA is NOT the SlowBrain's job** — every action a widget declares (its `apply_action` vocabulary) is a **data-op the
 FlashBrain runs itself, instantly**, via `[[widget.data:id]]` (see "Per-action execution mode" below). The
 **FlashBrain** (the fast voice layer, `nucleo/flash/`; non-reasoning model per-invocation from `config/v2.py` `fast`
-section — Ollama local or a direct cloud provider; full comparison in `.meshkore/docs/ops/zaelar-model-benchmarks.md`)
+section — Ollama local or a direct cloud provider; full comparison in the model-benchmark log (kept outside this repo))
 handles `[[show:id]]`/`[[close:id]]`/`[[close]]`/`[[move]]`, deleting a widget (with confirmation), AND all
 declared data actions directly — the ONLY things it escalates via `escalate_to_slowbrain` are CREATE/MODIFY-code and
 data-to-look-up. This is enforced in **code, not just the prompt** (`voice/engine/llm/providers/nucleo.py`): if the

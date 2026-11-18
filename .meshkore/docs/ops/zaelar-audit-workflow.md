@@ -200,7 +200,7 @@ and at the end a list of **Findings ordered by severity**.
    (declared, not present) and undeclared root directories; `git status` for uncommitted work.
 2. **Version coherence**: `cluster.yaml version` = git tag = commits; `state.json` (generated, NOT edited by
    hand); the real model routing (`config/v2.json`, `fast`/`code_agent` sections) vs what the docs say
-   (`CLAUDE.md`, `zaelar-model-benchmarks.md`, the `/technology` diagrams on the public site).
+   (`CLAUDE.md`, the model-benchmark log (kept outside this repo), the `/technology` diagrams on the public site).
 3. **The public diagrams** (`/technology/*`, outside this repo): compare their narrative/topology against
    `architecture.md` + `modules.md`. Quote every stale fragment. It is curated content, TRIMMED on purpose for an
    external audience (no internal file paths) — do not expect the same detail as the canonical docs; only flag

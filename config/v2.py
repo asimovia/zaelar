@@ -170,7 +170,7 @@ _DEFAULTS: dict[str, dict] = {
         # DEEP sleep «REM phase» (V2-056, memory/rem.py): daily LLM consolidation — synthesis of pill clusters into
         # high-level INSIGHTS (kind='insight', slot insight:<concept>, superseded by sleep). Fully off-hot-path
         # (triggered by the loop); model per task (router nucleo/memllm.py, key by endpoint). Synthesis benchmark
-        # 2026-07-20 → see zaelar-model-benchmarks.md §12.2.
+        # 2026-07-20 (model-benchmark log, kept outside this repo).
         # Titular flows from THE TABLE (§memory_rem): OpenAI DIRECT `gpt-4.1-mini` since 2026-09-10 — the model
         # §12.2 measured at 100% on this task, back on the seat by operator directive (memory services run on
         # OpenAI direct). History worth keeping: a titular with no credential used to fail SILENTLY; the ladder

@@ -108,7 +108,6 @@ internal comment. A completed file must therefore be reviewed, not blindly mass-
 - `config/connectors.py` — translated comments/docstrings; preserved connector config keys and behavior.
 - `config/credentials.py` — translated comments/docstrings; preserved credential-store behavior.
 - `config/doctor.py` — translated comments/docstrings; preserved runtime Spanish report text.
-- `config/model_benchmarks.py` — translated developer docstrings; preserved user-visible benchmark data.
 - `config/profiles.py` — translated comments/docstrings; preserved profile labels and summaries.
 - `config/settings.py` — translated comments/docstrings; behavior unchanged.
 - `config/v2.py` — translated comments/docstrings; preserved config schema/defaults and runtime Spanish strings.

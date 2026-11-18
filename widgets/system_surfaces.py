@@ -58,11 +58,6 @@ SYSTEM_SURFACES: dict[str, dict] = {
         "aliases": ["config", "configuracion", "configuración", "ajustes", "preferencias", "settings", "opciones",
                     "preferences", "options"],
     },
-    "benchmarks": {
-        "name": "Benchmarks",
-        "aliases": ["benchmarks", "por que estos modelos", "por qué estos modelos", "comparativa",
-                    "why these models", "comparison"],
-    },
     "debug": {
         "name": "Debug",
         "aliases": ["debug", "depuracion", "depuración", "logs", "logging", "trazas", "timeline", "observabilidad",

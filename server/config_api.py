@@ -200,17 +200,6 @@ async def set_credential(payload: dict | None = None):
         return JSONResponse({"ok": False, "error": str(e)[:160]}, status_code=500)
 
 
-@router.get("/api/config/benchmarks")
-async def get_benchmarks():
-    """CURATED read-only replica of model decisions — where each choice comes from, cost, latency, tool-calling/
-    hallucination reliability, and which candidates were evaluated. See `config/model_benchmarks.py`."""
-    try:
-        from config import model_benchmarks
-        return JSONResponse(model_benchmarks.snapshot())
-    except Exception as e:  # noqa: BLE001
-        return JSONResponse({"modules": [], "error": str(e)[:160]})
-
-
 @router.get("/api/config/apis")
 async def get_apis(refresh: bool = False):
     """External API/service summary with BALANCE (proactive where exposed + reactive from last error). For the config

@@ -5,7 +5,7 @@ the endpoint: a task asking for STRICT JSON under a long instruction makes a rea
 and return an EMPTY 200 (measured on `paraphrase`: content '' at every budget tried), and moving a task to an
 endpoint that obeys the flag without deciding it silently swaps in an unmeasured variant of the model. The two
 hot-path judges (`turn_complete`, `directed`) disable it for latency; the JSON tasks disable it to work at all.
-Config `§memory.<task>_model/_base_url/_api_key` overrides the titular. Benchmarks: `zaelar-model-benchmarks.md §12`.
+Config `§memory.<task>_model/_base_url/_api_key` overrides the titular. Benchmarks: the model-benchmark log (kept outside this repo).
 """
 from __future__ import annotations
 

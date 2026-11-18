@@ -27,7 +27,7 @@
                 "widget:imagenes", "widget:fotos", "connector:spotify", "connector:youtube-audio", "connector:youtube",
                 "connector:google-photos", "connector:torrent"]},
     {"id": "settings", "needs": ["host"],
-     "covers": ["surface:config", "surface:benchmarks", "surface:debug", "surface:wizard", "settings:settings", "settings:fast",
+     "covers": ["surface:config", "surface:debug", "surface:wizard", "settings:settings", "settings:fast",
                 "settings:code", "settings:memory", "settings:search", "settings:apis", "settings:notices"]},
     {"id": "privacy", "needs": [],
      "covers": ["surface:memory-map", "surface:vault", "settings:rules", "settings:permissions", "tool:recall",

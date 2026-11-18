@@ -82,7 +82,7 @@ CASES: list[tuple[str, str, set[str], set[str]]] = [
      {"escalate_to_slowbrain"}, {"search_listings"}),
     ("alias", "llama a este widget «mi informe»", {"manage_widget_alias"}, set()),
     # ── QUESTION ≠ COMMAND ──────────────────────────────────────────────────────────────────────────────────
-    # The EXACT turn that got grok banned from FlashBrain (A/B 2026-07-17, `zaelar-model-benchmarks.md §9`):
+    # The EXACT turn that got grok banned from FlashBrain (A/B 2026-07-17, the model-benchmark log (kept outside this repo)):
     # with the answer in front of it in the prompt, it replied «Done» and called `widget_data`. Routing a
     # QUESTION to an ACTION is what the operator called «absurd conversations», and none of the
     # cases above catches it. Responding without a tool or looking at memory is acceptable; TOUCHING data is not.

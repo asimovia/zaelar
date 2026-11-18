@@ -82,8 +82,6 @@ _EXENTOS: dict[str, str] = {
         "guarda los DEFAULTS de routing (base_url como texto de config); no invoca a nadie.",
     "voice/engine/core/config.py":
         "perfiles remote/local; el mismo caso, solo declara endpoints.",
-    "config/model_benchmarks.py":
-        "réplica CURADA de los benchmarks para la UI; texto, sin tráfico.",
     "voice/llm.py":
         "cliente del ARNÉS de evaluación (tests/agent_headless/harness) — corre en la máquina del "
         "desarrollador, nunca dentro de una Machine de inquilino, y su coste no es de ningún usuario.",

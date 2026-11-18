@@ -21,7 +21,6 @@ const _is = (id, open) => () => (open() ? id : "");
 //: The desktop's named surfaces, topmost first: [surface id, reader → the id when open, else ""].
 export const DESKTOP_PANELS = [
   ["config", _is("config", store.configOpen)],
-  ["benchmarks", _is("benchmarks", store.benchmarksOpen)],
   ["wizard", _is("wizard", store.wizardOpen)],
   ["vault", _is("vault", store.vaultOpen)],
   ["memory-map", _is("memory-map", store.memOpen)],

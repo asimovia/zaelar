@@ -25,7 +25,7 @@ SIX axes:
   6. $/SLEEP and $/YEAR — using REAL tokens (`llm.last_usage()`) × published rates (`prices.json`).
 
 Usage: PYTHONPATH=. ./.venv/bin/python tests/memory/e2e/bot/rem_synth_bench.py [--models a,b] [--runs 3] [--preflight]
-Verdicts → zaelar-model-benchmarks.md §12.4.
+Verdicts → the model-benchmark log (kept outside this repo)
 """
 from __future__ import annotations
 

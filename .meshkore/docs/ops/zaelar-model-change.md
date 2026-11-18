@@ -34,7 +34,6 @@ bot-protection while completions work (or the reverse).
 |---|---|---|
 | `config/models.default.json` | **THE canonical table**: one row per service (voice_brain, brief_composer, memory_writer, memory_rem, workers, embeddings…) with provider/model/base_url/key_env and the WHY | The only place a default model id is data. Keys are never here. |
 | `config/v2.json` (gitignored, per install) | Local overrides written by the ⚙ UI | ⚠️ Check it does not pin a stale provider: a local override of `fast.provider` wins over the canonical table silently. |
-| `config/model_benchmarks.py` | The benchmarked WHY behind each choice | Update the affected entries or mark them stale with a date; a bench that names a retired model as "current" misleads the next reader. |
 | `config/profiles.py` | Wizard profiles (first-run defaults) | Grep for the old id. |
 | `.env` comments | Power-user fallbacks (`FAST_*`) | Deliberately unset; do not add. |
 
