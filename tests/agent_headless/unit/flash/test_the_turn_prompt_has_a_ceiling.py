@@ -61,9 +61,9 @@ MARGIN = 64
 # longer names the agent, so its name («Te llamas Johnny.») rides the identity block, and the mode is also called
 # «palabra de activación» in his words; V2-931 — the turn claims nothing about a message it hands over; V2-933 — the
 # machinery is never named «tarea/proceso/flujo» and each line is worded fresh.
-CEILINGS = {(): 25_343, ("agenda", "mensajeria"): 30_627,
-            ("agenda", "mensajeria", "youtube", "contactos", "results", "musica"): 38_386}   # V2-795: musica usage trimmed
-TARGET_EVERYDAY = 30_627   # the audit's 30 000 + the mail's open contract (11-14) + add_list's how (11-17) + 11-18 above
+CEILINGS = {(): 25_669, ("agenda", "mensajeria"): 30_997,
+            ("agenda", "mensajeria", "youtube", "contactos", "results", "musica"): 38_821}   # V2-795: musica usage trimmed
+TARGET_EVERYDAY = 30_997   # +370 2026-11-18 V2-935: the conversation's base norm (said once, first), leaving a group in the messaging card's routing line, and what landed beside them the same day; the audit's 30 000 + the mail's open contract (11-14) + add_list's how (11-17) + 11-18 above
 
 
 _SNIPPET = """

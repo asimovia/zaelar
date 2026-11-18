@@ -444,7 +444,7 @@ below is the first kind, or it names the mechanism that replaced the second.
   `nucleo/danger.py`, `nucleo/dispatch/session.py`. The class (and the errand's kind) is asked at the PORTAL, not per
   turn: an escalation call or a sure escalate verdict fires it into the turn's brief and the launch awaits it off the
   loop, bounded (`brief_doors.DOORS["portal"]`); unanswered reads «none», as before. — since 2026-11-12 · nodes 3.197.
-- **CRIT-C20 · Leaving a messaging group is ONE declared act: found first, asked once, verified by its receipt.**
+- **CRIT-C21 · Leaving a messaging group is ONE declared act: found first, asked once, verified by its receipt.**
   `mensajeria:leave_group` (event type `messaging.leave_group`, sensitive; genesis `ask`) leaves each named group and
   removes its chat from his list — it cannot be undone. Every name is resolved against HIS group chats before
   anything is asked or queued (an exact name before a partial one; one name missing or ambiguous refuses the whole

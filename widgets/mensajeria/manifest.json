@@ -25,7 +25,7 @@
   },
   "title": "Mensajería",
   "description": "WhatsApp, Telegram y correo en un sitio: leer, filtrar y ENVIAR o contestar mensajes («message Rowan on Telegram», «escríbele a Anna», «reply to that email»), ya triado a lo que va dirigido a ti. Se vinculan en Conectores; puedes dictar una respuesta y mandarla, con fotos o archivos, crear grupos, y SALIR de un grupo o borrarlo («elimina el grupo X»).",
-  "whenToUse": "Ver quién le ha escrito, buscar, resumir, responder o mandar mensajes de WhatsApp/Telegram/correo (con adjuntos) y su archivo pasado («¿cuándo me escribió X?»). Crear un grupo, o SALIR de uno y borrarlo (leave_group). CONECTAR un canal NO es aquí: show_panel(panel='conectores', connector=…)",
+  "whenToUse": "Ver quién le ha escrito, buscar, resumir, responder o mandar mensajes de WhatsApp/Telegram/correo (con adjuntos) y su archivo pasado («¿cuándo me escribió X?»). Crear un grupo o SALIR de uno (leave_group). CONECTAR un canal NO es aquí: show_panel(panel='conectores', connector=…)",
   "keywords": [
     "mensajes",
     "mensajeria",

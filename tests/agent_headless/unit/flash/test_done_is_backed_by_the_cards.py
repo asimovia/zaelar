@@ -101,9 +101,9 @@ def test_a_cards_receipt_is_never_replaced_by_the_asked_line():
 
 
 def test_disarmed_every_act_read_as_declared_says_done_again(monkeypatch):
-    """Disarm: `spec.declares_done` answers True for every act → «Done.» over the undeclared act → red."""
-    monkeypatch.setattr(spec, "declares_done", lambda wid, action: True)
-    assert spec.declares_done("agenda", "snooze"), "the disarm landed"
+    """Disarm: `declares_done` answers True for every act → «Done.» over the undeclared act → red."""
+    monkeypatch.setattr(reply_receipts, "declares_done", lambda wid, action: True)
+    assert reply_receipts.declares_done("agenda", "snooze"), "the disarm landed"
     with pytest.raises(AssertionError):
         test_done_over_an_act_that_declares_nothing_to_check_it_is_said_as_asked()
 

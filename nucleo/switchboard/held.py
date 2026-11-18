@@ -26,6 +26,20 @@ GO = "go"
 KEPT, STARTING = "kept_until_start", "starting_anyway"
 
 
+def mark(rec, why: str) -> None:
+    """The gate holds `rec`'s worker for `why`: the record says so, and since when (the board, the turn's facts and the
+    pulse read it). The session clears it when it is admitted."""
+    import time
+    if not getattr(rec, "held", ""):
+        rec.held_since = time.time()
+    rec.held = why
+
+
+def forced(rec) -> bool:
+    """He said «start it anyway» for this record (`start_now`)."""
+    return bool(getattr(rec, "start_now", False))
+
+
 def is_held(p: dict) -> bool:
     return (p or {}).get("state") == _board.HELD
 

@@ -207,10 +207,17 @@ def end_state_unmet(cards: set[str] | None = None, turn: str = "") -> dict | Non
 
 
 def unattested(ops) -> list[tuple[str, str]]:
-    """The `(card, action)` ops of the turn whose action declares nothing that checks its «done» (`spec.declares_done`):
+    """The `(card, action)` ops of the turn whose action declares nothing that checks its «done» (`declares_done`):
     no end state and no `instant` — nothing the engine can attest, so our «Done.» over them is a guess (2026-11-18)."""
+    return [(str(c), str(a)) for c, a in ops or () if not declares_done(str(c), str(a))]
+
+
+def declares_done(card: str, action: str) -> bool:
+    """Does the action say how its «done» is checked — an end state (`done_when`) or `instant` (the op's own answer
+    is that end state)? With neither, nothing attests it (`test_every_action_says_how_its_done_is_checked`)."""
     from nucleo.circuit import spec
-    return [(str(c), str(a)) for c, a in ops or () if not spec.declares_done(str(c), str(a))]
+    act = (spec._manifest(card).get("actions") or {}).get(str(action or "").strip())
+    return isinstance(act, dict) and (spec.TEMPLATE_KEY in act or bool(str(act.get("instant") or "").strip()))
 
 
 def bare_ack(ack: str, cards: set[str] | None, *, beside: bool = False, turn: str = "", ops=None) -> str:

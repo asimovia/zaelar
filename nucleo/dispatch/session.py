@@ -222,8 +222,9 @@ async def _a_slot(_d, key, rec, answered: bool = False):
     _say_queued_behind(_d, key)
     from nucleo.workers import envelope as _env      # V2-831 T-27 + V2-867: admission by measured room, no clock
     try:
-        await _env.wait_for_room(lambda why: _held(_d, key, rec, why), key=key, runs=lambda: _runs(rec),
-                                 answered=answered, forced=lambda: bool(getattr(rec, "start_now", False)))
+        from nucleo.switchboard import held as _h       # V2-935: the record says NOT started, and his word starts it
+        await _env.wait_for_room(lambda why: (_h.mark(rec, why), _say_held(_d, key, why)), key=key,
+                                 runs=lambda: _runs(rec), answered=answered, forced=lambda: _h.forced(rec))
         rec.held = ""                       # admitted: it is no longer waiting for room
         await _d._pool().acquire()          # `max_parallel` stays the CEILING; the room decides below it
     except asyncio.CancelledError:          # stopped while it waited: it never ran, so its finally never will
@@ -243,14 +244,6 @@ async def _a_slot(_d, key, rec, answered: bool = False):
 def _runs(rec) -> bool:
     """The admitted worker RUNS — its process is up — so the next one is measured against the floor (T593)."""
     return bool(getattr(getattr(rec, "session", None), "alive", False))
-
-
-def _held(_d, key, rec, why: str) -> None:
-    """The record says it has NOT started and why (the board, the prompt and the pulse read it), then the row does."""
-    if not getattr(rec, "held", ""):
-        rec.held_since = time.time()
-    rec.held = why
-    _say_held(_d, key, why)
 
 
 def _say_held(_d, key, why: str) -> None:

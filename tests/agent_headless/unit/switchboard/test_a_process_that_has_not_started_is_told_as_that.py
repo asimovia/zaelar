@@ -142,13 +142,11 @@ def test_the_gate_lets_it_in_at_its_next_look_and_the_record_says_it_was_held(mo
     monkeypatch.setattr(envelope, "measured", lambda: (100, 50))
     monkeypatch.setattr(envelope, "host_stalled", lambda pol=None: False)
     monkeypatch.setattr(envelope, "shedding", lambda: True)
-    monkeypatch.setattr(dsession, "_say_held", lambda _d, key, why: None)
     rec = SimpleNamespace(held="", held_since=0.0, start_now=False)
 
     async def go():
         waiting = asyncio.ensure_future(envelope.wait_for_room(
-            lambda why: dsession._held(None, "1", rec, why), key="1", runs=lambda: True, poll_s=0.01,
-            forced=lambda: rec.start_now))
+            lambda why: held.mark(rec, why), key="1", runs=lambda: True, poll_s=0.01, forced=lambda: held.forced(rec)))
         await asyncio.sleep(0.05)
         assert not waiting.done() and rec.held == "waiting_voice" and rec.held_since > 0
         rec.start_now = True
@@ -156,7 +154,9 @@ def test_the_gate_lets_it_in_at_its_next_look_and_the_record_says_it_was_held(mo
     asyncio.run(go())
     envelope.released("1")
     import inspect
-    assert 'rec.held = ""' in inspect.getsource(dsession._a_slot), "admitted: no longer told as held"
+    src = inspect.getsource(dsession._a_slot)
+    assert 'rec.held = ""' in src and "_h.mark(rec, why)" in src and "_h.forced(rec)" in src, \
+        "the session marks the hold, reads his word and clears the mark when admitted"
 
 
 # ── the pulse and the turn's facts ──────────────────────────────────────────────────────────────────────────────
