@@ -49,3 +49,17 @@ def test_the_engine_drops_the_preroll_when_the_paid_stt_was_listening():
     assert i_drop != -1, "the engine must read the park state the browser sent"
     assert wake[i_drop:i_drop + 120].count('_before = ""') == 1
     assert i_drop < wake.find("_attn_wake.note_preroll(_before)"), "the drop must happen before any pre-roll is noted"
+
+
+def test_the_wake_backstop_does_not_answer_what_the_paid_ear_already_delivered():
+    """V2-931 — one «Hola, Johnny» answered twice («Sí, dime.» then «Aquí estoy. ¿Qué necesitas?»): the paid ear's
+    final landed just BEFORE the local ear's spot, so «a final after the spot» missed it. Same words inside the window
+    the spot opens are the same utterance; other words, or the same words long ago, are not."""
+    from voice.engine.pipeline import agent_events as ae
+    wake = {"last_user_final": 100.0, "last_user_text": "Hola, Johnny."}
+    assert ae.heard_by_the_paid_ear("hola johnny", wake, 100.4, 5.0)
+    assert not ae.heard_by_the_paid_ear("hola johnny", wake, 400.0, 5.0), "said again minutes later: the backstop answers"
+    assert not ae.heard_by_the_paid_ear("apaga la luz", wake, 100.4, 5.0)
+    assert not ae.heard_by_the_paid_ear("hola johnny", {"last_user_final": 0.0}, 100.4, 5.0), "the paid ear heard nothing"
+    import inspect
+    assert "heard_by_the_paid_ear(text, _wake, spot_at" in inspect.getsource(ae)

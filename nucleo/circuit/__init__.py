@@ -446,6 +446,7 @@ def _close(rec, relay_cap: int) -> str:
         _emit(rec, "skipped", missing=f"he declined {no.get('action') or 'the act'}")
         return "skipped"
     if __import__("nucleo.request.send_receipt", fromlist=["x"]).owns_the_verdict(str(getattr(rec, "uid", "") or "")):
+        rec.result_summary = ""      # …and the final line is the receipt's: the session's own closing words are not said
         rec.verdict = "skipped"      # its send is followed to the connector's receipt: THAT is the verdict, and it ends
         _emit(rec, "skipped", missing="the send's receipt is this task's verdict")   # the row — never a relaunch
         return "skipped"

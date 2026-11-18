@@ -216,8 +216,13 @@ def test_his_go_ahead_while_the_send_is_being_prepared_is_the_yes_the_exit_door_
     """«OK, send it now» arrived while the worker was still redrafting: nothing was asked yet, so it was passed on as
     words, and the exit door then asked «shall I send it?». A yes said first is that yes: kept on the row, taken ONCE
     by the exit door; a later word that is not a yes takes it back; a task that is not a send keeps nothing."""
-    _row("s2-1", "running", "Message to Quinn")
+    from nucleo.workers import task_record
+    _row("s2-1", "running", "Quiero que le mandes un mensaje a Quinn y le pongas dormidita.")
     ts.task_patch("s2-1", playbook="message")
+    task_record.said("s2-1", "A ver, el mensaje que yo te había dicho es, espero que estés dormidita.")
+    rec = SimpleNamespace(uid="s2-1")
+    draft = {"widget_id": "mensajeria", "action": "draft", "payload": {"contact": "Quinn", "text": "Espero que estés dormidita."}}
+    act.wrote(rec, "widget_data", draft)                        # the worker redrafts with HIS correction
     desk.procs = [_proc("s2-1", "Message to Quinn", tid="4")]
     desk.model(1, "yes")
     assert _say(desk, "vale, pues ahora mándalo") is True
@@ -227,6 +232,10 @@ def test_his_go_ahead_while_the_send_is_being_prepared_is_the_yes_the_exit_door_
     desk.model(1, "other")
     assert _say(desk, "espera, mejor pon buenas noches") is True      # … and taken back by a change
     assert act.took_early_yes("s2-1") is False
+    desk.model(1, "yes")                                        # a text the AGENT composed is never covered by it
+    assert _say(desk, "sí, mándalo") is True
+    act.wrote(rec, "widget_data", {**draft, "payload": {"contact": "Quinn", "text": "Que descanses mucho, un abrazo."}})
+    assert act.took_early_yes("s2-1") is False, "a yes said first covered words he never dictated"
     _row("s2-2", "running", "Compare three laptops")            # not a send: a yes with no question is only words
     desk.procs = [_proc("s2-2", "Compare three laptops", tid="5")]
     desk.model(1, "yes")
@@ -248,3 +257,13 @@ def test_a_send_taken_to_its_receipt_is_never_judged_unmet_nor_relaunched(monkey
     monkeypatch.setitem(send_receipt._taken, "s2-3", time.time())
     assert circuit._close(rec, 3) == "skipped" and launched == [] and rec.verdict == "skipped"
     assert send_receipt.owns_the_verdict("s2-3") and not send_receipt.owns_the_verdict("nobody")
+
+
+def test_plain_words_for_a_process_get_no_line_of_ours_the_process_speaks_next(desk):
+    """01:23:49 — «Done, I'll keep it in mind for the message» after his correction, then the process's own new
+    question: two lines for one thing. Words a process took are answered by the process (its question, its result)."""
+    _row("s2-4", "running", "Message to Quinn")
+    desk.procs = [_proc("s2-4", "Message to Quinn", tid="6")]
+    desk.model(1, "other")
+    assert _say(desk, "a ver, el mensaje es: espero que estés dormidita") is True
+    assert desk.relayed == ["a ver, el mensaje es: espero que estés dormidita"] and desk.said == []

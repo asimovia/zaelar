@@ -209,7 +209,9 @@ async def take(text: str, *, brain=None, emit=None, say=None, window_max: int = 
     if not ok:
         return False                                # nothing took it: Flash does, rather than his words vanishing
     _seen.update(text=_flat(said), key=to["key"], at=time.time())
-    _acknowledge(said, brain, say, window_max, await asyncio.to_thread(_line, key, to["title"]))   # worded, off the loop
+    # A chunk the process took as his WORDS gets no line of ours: the process speaks next (its question, its result).
+    line = "" if key == "answer_taken" else await asyncio.to_thread(_line, key, to["title"])   # worded, off the loop
+    _acknowledge(said, brain, say, window_max, line)
     return True
 
 

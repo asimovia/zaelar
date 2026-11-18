@@ -269,7 +269,15 @@ below is the first kind, or it names the mechanism that replaced the second.
   door, never also at its start; a draft he was shown and then ordered sent is not asked about again — the turn that
   hands the send over records his sure order over that row (`message.note_his_order`) and the exit door reads it
   (`message.confirmed` → released, followed to its receipt like a yes, CRIT-C9); his yes to OUR offer is his order to
-  do it and never his yes to the question a critical errand asks before it starts (`offered`, not `confirmed`). — since 2026-09-23, narrowed 2026-11-17 and 2026-11-18 · nodes 2.76, 2.1170, 2.1804.
+  do it and never his yes to the question a critical errand asks before it starts (`offered`, not `confirmed`). A yes
+  he gives BEFORE the question exists — the send is still being prepared — is that yes: kept on the row
+  (`switchboard/act.early_yes`), taken once by the exit door, void after any later word of his that is not a yes, and
+  valid only for a text made of his own words (`_his_own`: what the worker wrote is in what he said), never for one
+  the agent composed. A send the engine took to its receipt is never judged unmet nor relaunched by its session's
+  close, whose own closing words are not said (`send_receipt.owns_the_verdict`, `circuit._close`); a send that IS
+  relaunched keeps its playbook and its model. Words a process took as words get no line of ours: the process speaks
+  next. The local ear's wake backstop never answers words the paid ear already delivered as a turn
+  (`agent_events.heard_by_the_paid_ear`). — since 2026-09-23, narrowed 2026-11-17 and 2026-11-18 · nodes 2.76, 2.1170, 2.1804.
 - **CRIT-T3a · Nothing acts on a sentence he has not finished, and nothing he said is asked again.** The model starts
   when the ear CONFIRMS the end of turn, not on its eager announcement (`SETTINGS.preemptive_generation`, off): a turn
   acts — it commissions, answers a waiting question, sends — and a draft of an unfinished sentence did all of that

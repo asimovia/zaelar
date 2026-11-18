@@ -7,6 +7,10 @@ module-level name of `agent` it reads is read through it (`_ag.<name>`), so a pa
 """
 from __future__ import annotations
 
+import re as _re
+
+_re_words = _re.compile(r"\w+")
+
 from loguru import logger
 
 from voice.engine.pipeline import agent as _ag
@@ -78,7 +82,7 @@ def _on_data(packet, *, _emit, _json, _wake, session) -> None:
                 # than answering once a second later.
                 async def _wake_backstop(text: str, spot_at: float):
                     await _ag.asyncio.sleep(1.2)
-                    if _wake["last_user_final"] > spot_at:
+                    if _wake["last_user_final"] > spot_at or heard_by_the_paid_ear(text, _wake, spot_at, _attn_wake.window_s()):
                         _emit("brain", "🤐 respaldo de palabra descartado — el STT de pago ya tiene el turno",
                               text=text[:120], role="system")
                         return
@@ -565,10 +569,22 @@ def _on_item(ev, *, _emit, speech_id: str | None = None, surfaced: bool | None =
             pass
 
 
+def heard_by_the_paid_ear(text: str, wake: dict, spot_at: float, window_s: float) -> bool:
+    """Did the paid STT already deliver THESE words as a turn, just before the local ear's spot arrived? The two ears
+    hear one utterance and race: when the paid final lands first, the backstop's «a final after the spot» check misses
+    it and the same greeting is answered twice (measured 2026-11-18: «Sí, dime.» and then «Aquí estoy. ¿Qué
+    necesitas?»). Identity, not timing: the same words (folded), inside the window the spot itself opens."""
+    def fold(s) -> str:
+        return " ".join(_re_words.findall(str(s or "").lower()))
+    mine, theirs = fold(text), fold(wake.get("last_user_text"))
+    recent = 0.0 <= float(spot_at or 0.0) - float(wake.get("last_user_final") or 0.0) <= float(window_s or 0.0)
+    return bool(mine) and recent and (mine in theirs or theirs in mine)
+
+
 def _on_transcript(ev, *, _emit, _wake) -> None:
     _relay_bound.ear_heard()
     if ev.is_final:
-        _wake["last_user_final"] = _ag.time.time()
+        _wake["last_user_final"], _wake["last_user_text"] = _ag.time.time(), str(ev.transcript or "")
         # → observer/SSE: the chat wall + the front-end voice-command fast path.
         _emit("transcript", "🗣", text=ev.transcript, role="user")
     else:

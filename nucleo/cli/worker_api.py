@@ -137,6 +137,7 @@ async def _one_act(rec, action: str, payload: dict) -> dict:
     # declared there) EVERY time — before any question, so checkpoint 1, the act's own refusal and his recipient hold
     # whichever question follows (V2-852); the retained act his yes runs crosses it again (`worker_api_answer.answer`).
     from nucleo.workers import exit_gate
+    __import__("nucleo.switchboard.act", fromlist=["x"]).wrote(rec, action, payload)   # what a send will carry
     if (_ex := await exit_gate.cross(rec, action, payload or {})) is not None:
         if _ex.refused:
             return {"ok": False, "error": _ex.refused}

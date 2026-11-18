@@ -77,15 +77,47 @@ def early_yes(p: dict, kind: str) -> bool:
     return False
 
 
+#: The row slot of the text a send's worker last wrote for it (`wrote`), read when his early yes is taken.
+WRITTEN = "written_text"
+
+
+def wrote(rec, action: str, payload: dict | None) -> None:
+    """A send's worker wrote text into a card act (the draft, the send itself): kept on its row, so his early yes can
+    be checked against what will actually leave. Never raises."""
+    try:
+        if action != "widget_data":
+            return
+        from nucleo import on_his_behalf as _ob
+        from nucleo.circuit import ledger
+        _wid, _act, inner = _ob._resolve(payload or {})
+        uid, text = str(getattr(rec, "uid", "") or ""), str((inner or {}).get("text") or "").strip()
+        if uid and text and str((ledger.store().task_get(uid) or {}).get("playbook") or "") == "message":
+            ledger.store().artifact_put(uid, WRITTEN, {"text": text})
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"switchboard: the written text not kept — {e!r}")
+
+
+def _his_own(store, uid: str) -> bool:
+    """Is the text that will leave made of HIS words — said in his order or in what he added to it? A yes given before
+    the question covers what he dictated, never a text the agent composed (that one he is shown and asked about)."""
+    from nucleo import matching
+    from nucleo.workers import task_record
+    text = matching.norm_text(str((store.artifact_get(uid, WRITTEN) or {}).get("text") or ""))
+    row = store.task_get(uid) or {}
+    his = [str(row.get("goal") or "")] + [str(r.get("text") or "") for r in (store.artifact_get(uid, task_record.SAID_SLOT) or [])]
+    return bool(text) and any(text in matching.norm_text(h) for h in his)
+
+
 def took_early_yes(uid: str) -> bool:
-    """The exit door's read of that yes — ONCE: it answers one question, the next send is asked about again."""
+    """The exit door's read of that yes — ONCE: it answers one question, the next send is asked about again. It holds
+    only for a text that is his own words."""
     try:
         from nucleo.circuit import ledger
         store = ledger.store()
         if not (uid and (store.artifact_get(uid, EARLY_YES) or {}).get("at")):
             return False
         store.artifact_put(uid, EARLY_YES, {})
-        return True
+        return _his_own(store, uid)
     except Exception as e:  # noqa: BLE001
         logger.debug(f"switchboard: his early yes unread — {e!r}")
         return False
