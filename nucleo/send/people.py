@@ -98,3 +98,15 @@ def _apart(c: dict) -> str:
     except Exception as e:  # noqa: BLE001
         _note(e)
         return ""
+
+
+def open_conversation() -> dict:
+    """The conversation open on the messaging card, as a target `{name, contact_id, platform, chat_id}`; {} when none."""
+    try:
+        from nucleo.send import deliver
+        from widgets.mensajeria import data as _md
+        from widgets.mensajeria.outbound import in_front
+        return deliver._chat({**(in_front.conversation(_md.load_db()) or {})})
+    except Exception as e:  # noqa: BLE001
+        _note(e)
+        return {}

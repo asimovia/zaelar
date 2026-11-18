@@ -428,3 +428,14 @@ def test_a_time_he_says_is_read_once_and_confirmed(world):
     world.reads = [_read(who="Odile Marsh", text="Happy birthday", at=t.strftime("%Y-%m-%dT%H:%M"))]
     line = asyncio.run(owner.intake("tomorrow at nine tell Odile Marsh happy birthday", {}))
     assert deliver.at(_draft.current()) and t.strftime("%Y-%m-%d %H:%M") in line
+
+
+def test_a_confirmation_he_spoke_over_is_read_again(world, monkeypatch):
+    """Audit 4 P0: handed to the mouth is not heard — a barge-in over the confirmation means he is read it again."""
+    world.reads = [_read(who="Odile Marsh", text="I'm late")]
+    asyncio.run(owner.intake("tell Odile Marsh I'm late", {}))
+    _said()
+    monkeypatch.setattr(owner, "_cut_since", lambda t: True)
+    world.reads = [_read(send=True)]
+    taken, line = _take_after("send it", "")
+    assert taken and not world.sent and "I'm late" in line

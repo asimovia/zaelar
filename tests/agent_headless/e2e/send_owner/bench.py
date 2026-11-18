@@ -71,7 +71,7 @@ SCENARIOS = [
          {"say": "¿Por qué tardas tanto?", "left": [], "reply": "nonempty", "fast": 15, "tone": True},
          {"say": "Deja de repetir lo que digo.", "left": [], "reply": "nonempty", "fast": 15, "tone": True},
          {"say": "Sí, elimínalos.", "left": ["Prueba Zahelar", "Excursión de mayo"], "acts": ["mensajeria:leave_group"],
-          "asked_once": ["excursion"], "reply": "nonempty", "tone": True},
+          "asked_once": 2, "reply": "nonempty", "tone": True},
          {"say": "Ahora quiero que le mandes un mensaje a Raquel Caro.", "owner": "opened", "sends": 0, "tone": True},
          {"say": "Dile que la quiero mucho.", "owner": "taken", "sends": 0, "draft_has": ["quiero mucho"], "tone": True},
          {"say": "que esté enamorado de mí.", "owner": "taken", "sends": 0, "draft_has": ["enamorad"], "tone": True},
@@ -225,10 +225,11 @@ def judge_session(turn: dict, *, evs: list[dict], reply: str, ctx: dict) -> list
     if turn.get("acts_any") and not set(turn["acts_any"]) & ran:
         fails.append(f"none of {turn['acts_any']} ran (ran {sorted(ran)})")
     if turn.get("asked_once"):                   # the question may come out of turn: every ask of the scenario so far
+        # The record masks the names it carries, so the ask is counted by what it IS: one question naming two things.
         asks = [str(e.get("text") or "") for e in ctx.get("scenario_evs", []) if e.get("kind") == "ask"]
-        named = [a for a in asks if all(w in _fold(a) for w in turn["asked_once"])]
+        named = [a for a in asks if "?" in a and a.count("«") >= turn["asked_once"]]
         if len(named) != 1:
-            fails.append(f"asked {len(named)} time(s) naming {turn['asked_once']} (want once): {asks}")
+            fails.append(f"asked {len(named)} time(s) naming {turn['asked_once']} things (want once): {asks}")
     if turn.get("fast") and ctx.get("secs", 0) > turn["fast"]:
         fails.append(f"answered in {ctx['secs']} s (want ≤ {turn['fast']})")
     if turn.get("tone"):
@@ -236,7 +237,8 @@ def judge_session(turn: dict, *, evs: list[dict], reply: str, ctx: dict) -> list
         if r.strip(" .!") in _DONE_WORDS and not ran:
             fails.append(f"«{reply.strip()}» with nothing done")
         said = _fold(turn["say"])
-        if len(said.split()) >= 5 and said in r:
+        dictated = any(e.get("kind") == "send" and e.get("step") == "taken" for e in evs)   # a draft is read back
+        if len(said.split()) >= 5 and said in r and not dictated:
             fails.append("his own sentence said back to him")
     return fails
 
@@ -328,6 +330,14 @@ def main(argv=None) -> int:
             return next((c for c in (conns or {}).get("connectors") or [] if c.get("id") == "whatsapp"), {})
         until_sync(lambda: _wa().get("connected") is True, "WhatsApp connected through the double", timeout_s=60, poll_s=1.0)
         wa_double.assert_isolated(wa_env, ws, double)
+        # His engine before the session: WhatsApp linked long ago, its people and groups already in his directory
+        # (the linked source feeds it by itself; here it is asked once, through the card's own act, and awaited).
+        eng.post("/widgets/contactos/action", {"action": "sync_source", "payload": {"source": "whatsapp"}})
+
+        def _fed() -> bool:
+            _c, data = eng.get("/widgets/contactos/data")
+            return "whatsapp" in json.dumps(data or {}).lower() and "raquel" in json.dumps(data or {}).lower()
+        until_sync(_fed, "his WhatsApp people in the directory before the session", timeout_s=90, poll_s=2.0)
         tl = Timeline(ws / "logs" / "timeline-latest.jsonl")
         for sc in scenarios:
             if sc["id"] != "S0":           # his session imports them itself; the others start from them

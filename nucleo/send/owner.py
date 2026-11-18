@@ -78,7 +78,7 @@ async def _next(d, lead: str = "") -> str:
         if d.who and d.unread:
             return await _ask.line("send_cannot", lead, who=d.who, why="his contacts could not be read just now")
         return await (_ask.line("send_nobody", lead, who=d.who) if d.who else _ask.line("send_ask_who", lead))
-    if not d.text:
+    if not d.text and "attach_from" not in d.extra:      # a forward's files are its content
         d.asked = _draft.TEXT
         return await _ask.line("send_ask_text", lead, who=d.target["name"])
     ok = await asyncio.to_thread(_deliver.check, d)
@@ -91,17 +91,13 @@ async def _next(d, lead: str = "") -> str:
     if ok.get("platform"):
         d.target["platform"] = ok["platform"]
     d.asked, d.heard = _draft.CONFIRM, False
-    d.confirm_line = await _ask.confirm(d.target["name"], d.target.get("platform") or d.channel, d.text,
-                                        at=_deliver.at(d))
+    files = int(d.extra.get("files_n") or 0)
+    d.confirm_line = await _ask.confirm(d.target["name"], d.target.get("platform") or d.channel,
+                                        d.text + (f" (📎×{files})" if files else ""), at=_deliver.at(d))
     return d.confirm_line
 
 
-def heard(line: str, spoken: bool = True) -> None:
-    """The mouth that said `line` reports it: when it is the open draft's confirmation, he has now HEARD it — the one
-    thing a go-ahead can answer."""
-    d = _draft.current()
-    if d is not None and spoken and line and d.confirm_line and _ask._fold(line).endswith(_ask._fold(d.confirm_line)):
-        d.heard = True
+from nucleo.send.heard import cut_since as _cut_since, heard  # noqa: E402,F401 — the mouth reports here
 
 
 def _when(d, at: str) -> None:
@@ -124,7 +120,9 @@ def _apply(d, got: dict) -> None:
         _when(d, got["at"])
     if got.get("channel"):
         d.channel = got["channel"]
-        if d.target:
+        if d.target.get("chat_id") and not d.target.get("contact_id") and d.target.get("platform") != d.channel:
+            _resolve(d, d.target.get("name") or d.who)    # a chat lives on one platform: another one is the person's
+        elif d.target:
             d.target["platform"] = got["channel"]
     if got.get("text") is not None:
         d.text = got["text"]
@@ -182,6 +180,8 @@ async def _send(d) -> str:
         return await asyncio.shield(job)
     except asyncio.CancelledError:
         job.add_done_callback(_say_late)
+        from nucleo.send import intake as _intake
+        job.add_done_callback(lambda _j: asyncio.ensure_future(_intake.open_the_next()))
         raise
 
 
@@ -245,6 +245,9 @@ async def take(said: str, *, last_line: str = "", before: list[str] | None = Non
             _emit("unread" if got.get("unread") else "not mine", d, said=text[:200], ms=ms)
             return False, ""
         _draft.touch(d)
+        if d.heard and _cut_since(d.heard_at):
+            d.heard = False                       # he spoke over the confirmation: it is read to him again
+            _emit("confirmation cut", d)
         line = await _step(d, got, last_line)
         _emit("taken", d, said=text[:200], read=got, ms=ms, line=line[:200])     # the draft as his words left it
     if _draft.current() is None:

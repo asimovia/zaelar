@@ -35,6 +35,7 @@ class Draft:
     extra: dict = field(default_factory=dict)   # that act's other fields (a reply's `n`, files, a subject, a time)
     confirm_line: str = ""                      # the confirmation he was read, exactly — his bare yes answers only it
     heard: bool = False                         # that confirmation was SAID to him (not only written)
+    heard_at: float = 0.0                       # when it was handed to the mouth (ms on the observer's clock)
     by: str = ""                                # who handed it over (the model's call, a verdict, a worker)
     unread: bool = False                        # his contacts could not be read when the name was looked up
     lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False, compare=False)
@@ -61,9 +62,7 @@ def current() -> Draft | None:
     if d is None:
         return None
     if time.time() - d.touched_at > IDLE_S or d.state in (SENT, FAILED, CANCELLED):
-        _open["draft"] = None                 # an idle draft takes the messages queued behind it with it
-        if d.state == OPEN:
-            _queue.clear()
+        _open["draft"] = None                 # the messages queued behind an idle one keep their own clock
         return None
     return d if d.state == OPEN else None     # while it SENDS it is not current, and is not let go either
 
@@ -92,9 +91,14 @@ def reset() -> None:
 
 def queue(said: str, hint: dict, by: str) -> int:
     """Keep a message he asked for while another is open; returns how many wait."""
-    _queue.append({"said": said, "hint": dict(hint or {}), "by": by})
+    _queue.append({"said": said, "hint": dict(hint or {}), "by": by, "at": time.time()})
     return len(_queue)
 
 
 def next_queued() -> dict | None:
-    return _queue.pop(0) if _queue else None
+    """The oldest message still waiting; one that waited longer than a draft lives is gone (never opened stale)."""
+    while _queue:
+        q = _queue.pop(0)
+        if time.time() - float(q.get("at") or 0) <= IDLE_S:
+            return q
+    return None

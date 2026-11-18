@@ -26,6 +26,8 @@ async def hand(rec, action: str, payload: dict | None) -> dict | None:
             return None
         from nucleo.workers import exit_gate
         if exit_gate.under_mandate(rec, "message", str(inner.get("channel") or inner.get("platform") or "")):
+            for k in ("contact_id", "chat_id"):   # ids chosen by the owner only: the worker names people by name
+                inner.pop(k, None)
             return None                          # an errand's standing mandate covers it: the worker's own act
         from nucleo.send import owner
         said = str(getattr(rec, "heard", "") or getattr(rec, "request", "") or "")

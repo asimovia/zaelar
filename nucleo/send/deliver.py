@@ -61,8 +61,10 @@ def adopt(act: str, hint: dict) -> dict:
             out["target"] = _chat(item)
             if out["target"]:          # the message it answers, by id: it threads, and is never read by position again
                 out["extra"].update(reply_chat=out["target"]["chat_id"], reply_to=str((item or {}).get("messageId") or ""))
-        elif act == "forward":
-            src = {k: h[k] for k in ("n", "messageId", "from") if h.get(k) not in (None, "")}
+        elif act == "forward" or h.get("attach_from") not in (None, ""):
+            af = h.get("attach_from")
+            src = {k: h[k] for k in ("n", "messageId", "from") if h.get(k) not in (None, "")} if act == "forward" else (
+                af if isinstance(af, dict) else ({"n": af} if str(af or "").strip() else {}))
             ref = targets._message_ref(db, src) or {}
             src = {"messageId": str(ref["messageId"])} if ref.get("messageId") else {k: v for k, v in src.items() if k == "from"}
             out["extra"]["attach_from"] = src

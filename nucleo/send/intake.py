@@ -78,8 +78,9 @@ async def intake(said: str, hint: dict | None = None, last_line: str = "", befor
             return line if taken else ""
         d = _draft.start(said)
         try:
-            return await _open(d, said, h, act, last_line, before, by)
-        except Exception as e:  # noqa: BLE001 — a draft half-built is closed, never left to read his sentences
+            async with d.lock:                   # his next sentence waits for the draft to be built
+                return await _open(d, said, h, act, last_line, before, by)
+        except BaseException as e:  # noqa: BLE001 — half-built (an error, a cut turn): closed, never left to read him
             _draft.close(d, _draft.CANCELLED)
             owner._emit("intake failed", d, why=f"{type(e).__name__}: {e}"[:200])
             raise
@@ -110,6 +111,8 @@ async def _open(d, said: str, h: dict, act: str, last_line: str, before, by: str
     elif adopted.get("target"):            # a reply's conversation, a card draft's person: read once, by id
         d.target = dict(adopted["target"])
         d.who = d.target.get("name") or ""
+    elif (front := _people.open_conversation()).get("chat_id"):   # nobody named: the conversation he has open
+        d.target, d.who = front, front.get("name") or ""
     owner._emit("opened", d, by=by, read=got)
     return await owner._next(d)
 
