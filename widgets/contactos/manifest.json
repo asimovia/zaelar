@@ -54,7 +54,8 @@
   ],
   "entry": "widget.js",
   "background": {
-    "every": "30s"
+    "every": "30s",
+    "on_start": true
   },
   "size": {
     "w": 720,

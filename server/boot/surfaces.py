@@ -61,6 +61,13 @@ def widgets(app) -> None:
         app.state.widget_resume_task = asyncio.create_task(resume_interrupted_generations())
     except Exception as e:
         logger.warning(f"widget generation resume failed (voice/chat unaffected): {e}")
+    # What a widget's store owes at the start (`"background": {"on_start": true}` → `data.on_start()`, idempotent,
+    # off the loop): the contacts card folds the rows that are one person before his first word.
+    try:
+        from widgets import start_steps
+        app.state.widget_start_steps = start_steps.start()
+    except Exception as e:
+        logger.warning(f"widget start steps failed (voice/chat unaffected): {e}")
     # Backed widgets (kind:"backed", zaelar-modules.md §Widget-apps): widget-apps with a live backend (the
     # browser's headless Chromium). The supervisor discovers them in the catalog and runs each owner under a
     # supervised task in THIS loop (mailbox drain + restart-with-backoff + disable-on-repeated-failure). Owners

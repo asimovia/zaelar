@@ -1149,7 +1149,9 @@ Flash keeps the conversation; the row is what both brains read.
   changes arrives by itself: pushed when the connector can tell (a `refresh` never adds anybody), read once a day
   from a linked source he has imported from. When nothing proves it, he says it once (`merge_contacts`). The
   conversation he has OPEN is the first reading of a name it carries at the send door; a word he gave somebody else
-  is asked, the one in front first. — since 2026-11-18 (V2-934) · nodes 4.581, 4.582, 2.1811 ·
+  is asked, the one in front first. The look back also runs — and is WRITTEN — at every start of the engine, as the
+  card's declared start step (`"background": {"on_start": true}`, `widgets/start_steps.py`): idempotent, off the
+  loop. — since 2026-11-18 (V2-934) · nodes 4.581, 4.582, 4.583, 2.1811 ·
   `widgets/contactos/identity.py`, `fusion.py`, `person_actions.py`, `widgets/mensajeria/outbound/in_front.py`,
   `connectors/whatsapp/`.
 - **CRIT-M12b · His contacts are structured memory, and one person is one person.** Each record the contacts card

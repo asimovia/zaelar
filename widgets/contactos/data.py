@@ -352,6 +352,20 @@ _match_imported = gmerge.match_imported
 _drop_deleted = gmerge.drop_deleted
 
 
+def on_start() -> dict:
+    """The engine's start (`widgets/start_steps`, declared in the manifest): the rows that are one person are one
+    row BEFORE his first word, and the store is written at its current version — the migration above is lazy (it
+    upgrades what is read and writes nothing), so on an engine nobody wrote to it never reached the disk.
+    Idempotent: a start that repeats it folds nothing and writes nothing."""
+    from . import identity
+    with store.mutating(WIDGET_ID):
+        db = load_db()                       # migrates a store of an older version in memory…
+        got = identity.unify(db)             # …and looks back again: free when there is nothing to fold
+        store.save(WIDGET_ID, db)            # change-gated: a store already folded and current is not rewritten
+    return {"people": sum(1 for c in db.get("contacts") or [] if model.kind(c.get("kind")) in identity.PEOPLE),
+            "folded_now": got["merged"], "folded_in_all": len(db.get("merged") or {})}
+
+
 def tick(ctx) -> None:
     """Keep the linked account in step (V2-701). The scheduler needs this name in THIS file; body in `gcontacts.py`."""
     gcontacts.tick(ctx)

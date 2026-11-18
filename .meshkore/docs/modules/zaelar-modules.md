@@ -380,6 +380,10 @@ declarative idea:
   stays stdlib-only (the generator gate still enforces that). `meteo-soria` is the reference (`every:1h` →
   `tick` writes "Tiempo en Soria ahora…" to `slot=weather:soria`; a voice "¿qué tiempo hace en Soria?" then
   answers fresh even if the card was never opened).
+- **a step at the engine's start** — `"background": {"on_start": true}` runs `data.py:on_start()` once per start,
+  off the loop, isolated like a tick (`widgets/start_steps.py`). It must be IDEMPOTENT. It exists because a store's
+  migration is lazy — `store.load` upgrades what it reads and writes nothing — so work a migration does is not on
+  disk until somebody saves; the contacts card uses it to fold the rows that are one person and write the store.
 - **backed** — heavy, a live owner process that self-schedules (the navegador's Chromium, mensajeria's
   connectors). A backed widget IS background by nature; if it declares `background` the scheduler enqueues a
   `tick` command to its owner's mailbox each cycle (else it's left alone — `mensajeria` self-polls and does not
