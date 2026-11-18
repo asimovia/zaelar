@@ -76,8 +76,8 @@ def _his_name() -> str:
             return name.split()[0]
     except Exception as e:  # noqa: BLE001
         logger.debug(f"ask_trace: his name unread — {e!r}")
-    from i18n import langs
-    return str(getattr(langs.current_language(), "operator_generic", "") or "The operator")
+    from i18n import langs     # every shipped pack carries it (genesis voice.json): no constant of one language here
+    return str(getattr(langs.current_language(), "operator_generic", "") or "")
 
 
 async def resolved(uid: str, entry: dict | None, said: str) -> str:
