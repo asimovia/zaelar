@@ -1,6 +1,8 @@
 // landmarker.js — the vendored MediaPipe Face Landmarker (frontend/vendor/mediapipe/), loaded LAZILY and verified.
-// Nothing here runs until the camera switch is on and the camera is live: `loadLandmarker()` is the first and only
-// door, called by look-camera.js after its stream started. The runtime ships gzip-compressed (the raw WebAssembly is over
+// It runs INSIDE the camera's Web Worker (presence/look-worker.js), never on the page's main thread, so its 10–60 ms a
+// frame never delays a caption or a click. Nothing here runs until the camera switch is on and the camera is live:
+// `loadLandmarker()` is the first and only door, called by the worker after the stream started. The runtime's loader
+// is MediaPipe's ES-module build: it loads through `import()`, which a module worker allows. The runtime ships gzip-compressed (the raw WebAssembly is over
 // the public repository's file limit), so it is inflated in the page and its bytes are checked against the upstream
 // SHA-256 before it is compiled; the model is checked the same way. A mismatch, a browser without DecompressionStream
 // or WebCrypto, or a slow start → the promise rejects and the camera keeps the light detector (picojs) for the gaze.
@@ -8,7 +10,7 @@
 
 const BASE = new URL("../../../vendor/mediapipe/", import.meta.url).href;
 export const PINS = {
-  wasm: "6a5c64584c2ab61c763b6e204afbdbc7ce1caf7f5216187322bca8df94f646bc",    // inflated vision_wasm_internal.wasm
+  wasm: "617b8e0248dbd27e9d7ece4218004eae4cefb499196d1bb4fa0e3fef21708756",    // inflated vision_wasm_module_internal.wasm
   model: "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",   // face_landmarker.task
 };
 
@@ -38,11 +40,11 @@ export function loadLandmarker({ delegate } = {}) {
     if (typeof DecompressionStream !== "function" || !(globalThis.crypto && crypto.subtle)) throw new Error("no inflate / no hash here");
     const [vision, wasm, model] = await Promise.all([
       import(BASE + "vision_bundle.mjs"),
-      bytes("vision_wasm_internal.wasm.gz", true).then((b) => checked(b, PINS.wasm, "the runtime")),
+      bytes("vision_wasm_module_internal.wasm.gz", true).then((b) => checked(b, PINS.wasm, "the runtime")),
       bytes("face_landmarker.task").then((b) => checked(b, PINS.model, "the model")),
     ]);
     const wasmUrl = URL.createObjectURL(new Blob([wasm], { type: "application/wasm" }));
-    const fileset = { wasmLoaderPath: BASE + "vision_wasm_internal.js", wasmBinaryPath: wasmUrl };
+    const fileset = { wasmLoaderPath: BASE + "vision_wasm_module_internal.js", wasmBinaryPath: wasmUrl };
     const make = (d) => vision.FaceLandmarker.createFromOptions(fileset, {
       baseOptions: { modelAssetBuffer: model, delegate: d }, runningMode: "VIDEO", numFaces: 2,
       outputFaceBlendshapes: true, outputFacialTransformationMatrixes: false,

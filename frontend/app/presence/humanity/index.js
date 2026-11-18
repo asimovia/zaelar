@@ -5,7 +5,8 @@
 //                                always an option: another being, not a mirror;
 //   EXPRESSION  (expression.js) the answer as the face rig's gestures.
 // The camera feeds it (look-camera.js): face boxes from either detector for presence, and — once the vendored MediaPipe
-// Face Landmarker has loaded (landmarker.js) — the 52 expression scores and a head pose. This module is imported only
+// Face Landmarker has loaded in the camera's worker (look-worker.js, landmarker.js) — the 52 expression scores and a
+// head pose. This module is imported only
 // when the camera starts (LookAtMe.js), so a switch that is off loads none of it. Nothing it reads or decides leaves the
 // page but the NAMES of what he did and what the face answered (recent.js → the engine words them for the model);
 // the seam that would let the agent speak up about the play (remark.js) is OFF and wired to nothing unless its switch is on.
@@ -13,7 +14,6 @@ import { createPerceiver } from "./perceive.js?v=1";
 import { createTemperament, seeded } from "./temperament.js?v=1";
 import { createExpression } from "./expression.js?v=1";
 import { createRemarker } from "./remark.js?v=1";
-import { loadLandmarker, readResult } from "./landmarker.js?v=1";
 import { note } from "../recent.js?v=1";
 
 const KEY = "hb_presence_humanity";
@@ -58,18 +58,5 @@ export function createHumanity(face, { speech = () => ({}), rng = null, offer = 
     get engagement() { return temper.engagement; },
     get log() { return log.slice(); },
     dispose() { disposed = true; for (const id of timers) clearTimer(id); timers.clear(); },
-  };
-}
-
-/** The camera's rich detector: the Face Landmarker on a video element. → `{detect(video, t) → {dets, faces}, delegate}`. */
-export async function meshDetector() {
-  const lm = await loadLandmarker();
-  let last = 0;
-  return {
-    delegate: lm.delegate,
-    detect(video, t) {
-      const ts = Math.max(last + 1, Math.round(t)); last = ts;
-      return readResult(lm.detectForVideo(video, ts), video.videoWidth || 1, video.videoHeight || 1);
-    },
   };
 }

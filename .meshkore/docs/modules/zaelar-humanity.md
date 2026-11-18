@@ -53,9 +53,18 @@ humanity/index.js  createHumanity(face, {speech})
 
     The GPU delegate compiles its shaders on the first frame: 2.7 s per frame on software GL, blocking the page. It
     stays opt-in.
+- **Off the main thread** (2026-11-18): both detectors run in a module Web Worker (`presence/look-worker.js`). The page
+  hands it one frame at a time as a transferred `ImageBitmap` (a frame in flight is never queued behind another) and
+  gets the same readings back. That is why the runtime's loader is MediaPipe's ES-module build: a module worker loads it
+  with `import()`. Measured with a face in a fake camera, on the operator's busy Mac: on the main thread the landmarker
+  took ~61 ms a frame, with 35 long tasks (max 263 ms) in 7 s and the live caption painted up to 449 ms late (p90 127);
+  in the worker, no long task at all and the caption p90 5 ms late. A page without workers (no `OffscreenCanvas`) runs
+  picojs itself, light only. While he or the agent talks the camera drops to 4 frames a second (`setPace`): following
+  him needs no more, and his mouth is not read then. The face pulls its gaze target on its own animation frame
+  (`face.setLookSource`), with no timer of its own.
 - **Degrading under load.**
-  - The landmarker starts at 10 analysed frames a second. While a frame takes more than 45 % of its slot it steps down
-    to 7, then 5.
+  - The landmarker starts at 10 analysed frames a second. While a frame takes more than 15 % of its slot it steps down
+    to 7, then 5 (it runs in the worker, but a core it holds is a core the page and the voice do not get).
   - Under that, or after one frame that blocks for more than 250 ms, it is dropped for the rest of the camera session and
     picojs keeps the gaze.
   - `window.__zaelarLook.stats()` shows `mode` (`light` | `mesh`), `delegate`, `meshFps`, `ms` and `fps`.

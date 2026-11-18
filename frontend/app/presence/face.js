@@ -50,7 +50,7 @@ export function drawTongue(ctx, G, color) {
 export function createFace(host, opts = {}) {
   const rig = createRig();
   let look = lookOf(opts.entry), mood = "listening", hearing = false, speakingHint = false, alpha = 1, scale = opts.scale || 0.3;
-  let avatar = null, getFrame = () => ({ visemes: {}, mode: mood });
+  let avatar = null, getFrame = () => ({ visemes: {}, mode: mood }), lookSource = null;
 
   function createRenderer(el, frameOf) {
     getFrame = frameOf;
@@ -70,6 +70,7 @@ export function createFace(host, opts = {}) {
     function tick(now) {
       const dt = Math.min(now - last, 50); last = now;
       const f = getFrame();
+      if (lookSource) { try { rig.setLook(lookSource(now)); } catch (_) {} }   // «look at me» pulls on this frame
       const r = rig.update(dt, { ...f, mode: f.mode === "speaking" || speakingHint && !avatar ? "speaking" : f.mode, hearing });
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, W, H);
@@ -120,6 +121,8 @@ export function createFace(host, opts = {}) {
     gesture: (g) => rig.gesture(g),
     /** «Look at me» (T10): `{x, y, w}` from look.js, or null when nobody is followed. */
     setLook: (target) => rig.setLook(target),
+    /** …or a function the face asks on each of its own frames (`now` → target or null): no extra timer. */
+    setLookSource(fn) { lookSource = typeof fn === "function" ? fn : null; if (!lookSource) rig.setLook(null); },
     setAlpha(a) { alpha = a; },
     setScale(k) { scale = k; },
     setPaused(p) { if (view) view.setPaused(p || document.hidden); },

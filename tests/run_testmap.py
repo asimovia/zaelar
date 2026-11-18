@@ -6429,7 +6429,7 @@ DOMAINS: list[dict] = [
                                  "way twice and, across seeds, mostly winks back, sometimes lets go, mostly ignores a yawn, "
                                  "keeps its gap and cooldowns, tires of repetition, keeps its mouth for the voice while it "
                                  "speaks and waits a human beat; the tongue draws over every look; the seam to the "
-                                 "conversation is OFF; with the switch off nothing of it loads, on the landmarker loads "
+                                 "conversation is OFF; with the switch off nothing of it loads, on the landmarker loads in the camera's worker (off the main thread) "
                                  "hash-checked and runs, and when it cannot load picojs keeps following; the vendored files "
                                  "match their pins and carry no telemetry. Disarms: no talking gate, no «let it go», no gap",
             "ch": UNIT, "paths": ["tests/browser/unit/presence/test_the_face_answers_you.py"]},

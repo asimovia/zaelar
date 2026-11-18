@@ -19,7 +19,7 @@ import { clear as forgetRecent } from "./recent.js?v=1";
 import { lookCamera, lookAirpods, setLookCamera, setLookAirpods, cameraLive, setCameraLive, setCameraProblem,
   setAirpodsProblem, airpodsAvailable, probeAirpods } from "./look-state.js?v=1";
 
-const COVER_GRACE_MS = 2000, PUSH_MS = 40;
+const COVER_GRACE_MS = 2000;
 // A refusal or a missing device will not change by itself: the switch goes back off and says why.
 const FINAL = new Set(["denied", "nocamera", "unsupported"]);
 
@@ -46,32 +46,36 @@ export function LookAtMe(face, { covered = null, speech = () => ({}) } = {}) {
     const black = () => { const d = store.dormant(); return !!(d && d.face === "sleep") || !!store.remoteHeld(); };
     const wants = (on) => !disposed && on && visible() && !hiddenLong() && !black();
 
+    // The face PULLS its target on its own animation frame (no timer of ours on the main thread); while he or the agent
+    // talks the camera slows to a few frames a second (following him needs no more, and his mouth is not read then).
+    let slow = false;
     function pump() {
       if (push) return;
-      push = setInterval(() => {
-        const now = performance.now();
+      push = 1;
+      face.setLookSource((now) => {
+        const sp = speech() || {}, s = !!(sp.hearing || sp.speaking);
+        if (cam && s !== slow) { slow = s; cam.setPace(s); }
         const target = blend(cams.sample(now), heads.sample(now));
-        face.setLook(target);
-        if (!cam && !headStop && !target) { clearInterval(push); push = 0; face.setLook(null); }
-      }, PUSH_MS);
+        if (!cam && !headStop && !target) { push = 0; face.setLookSource(null); return null; }
+        return target;
+      });
     }
 
     disposers.push(createEffect(() => {
       const want = wants(lookCamera());
       if (want && !cam && !camStarting) {
         camStarting = true;
-        // the face answers you (T12): its module only now, with the camera; its landmarker loads behind the stream
-        const hum = import("./humanity/index.js?v=1").then((m) => {
-          if (disposed || !camStarting && !cam) return null;
+        // the face answers you (T12): its module only now, with the camera
+        import("./humanity/index.js?v=1").then((m) => {
+          if (disposed || !camStarting && !cam) return;
           if (!humanity) humanity = m.createHumanity(face, { speech });
-          return m;
-        }).catch(() => null);
+        }).catch(() => {});
         startCamera({
           onFaces: (dets, at, faces) => {
             cams.feed(dets, at);
             if (humanity) humanity.frame(faces || dets.map((d) => ({ size: d.size })), at);
           },
-          rich: () => hum.then((m) => (m ? m.meshDetector() : null)),
+          mesh: true,                                // the landmarker loads in the camera's worker, behind the stream
         }).then((handle) => {
           camStarting = false;
           if (!untrack(() => wants(lookCamera()))) { handle.stop(); return; }
@@ -116,7 +120,7 @@ export function LookAtMe(face, { covered = null, speech = () => ({}) } = {}) {
     return () => {
       disposed = true;
       document.removeEventListener("visibilitychange", onVis);
-      clearTimeout(coverTimer); clearInterval(push); push = 0;
+      clearTimeout(coverTimer); push = 0; face.setLookSource(null);
       for (const d of disposers) d();
       if (cam) { cam.stop(); cam = null; }
       if (humanity) { humanity.dispose(); humanity = null; }

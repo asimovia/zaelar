@@ -22,8 +22,9 @@ What is pinned:
   5. the SEAM to the conversation is OFF: one summary per 20–60 s stretch of play, offered to nothing unless its
      switch is on;
   6. LOADING: with the camera switch off neither humanity/ nor the vendored MediaPipe is requested; on, they load
-     behind the camera, the runtime is inflated and hash-checked, and the landmarker runs (headless: on the CPU when
-     the GPU is refused); a landmarker that cannot load leaves the camera on the light detector, still following;
+     behind the camera, in the camera's Web Worker — never on the page's main thread — hash-checked, on the CPU; a
+     landmarker that cannot load, or a page without workers, leaves the light detector following; while the agent
+     speaks the camera slows to a few frames a second, and back after;
   7. the vendored files match their pins, and none of them carries a telemetry endpoint.
 
 Disarms: perception without the talking gate fires a smile and a tongue while he talks; a temperament without «let it
@@ -181,10 +182,9 @@ def test_with_the_camera_on_the_landmarker_loads_verified_and_runs():
                              timeout=45000)
         pg.wait_for_timeout(1200)
         stats = pg.evaluate("() => window.__zaelarLook.stats()")
-        assert stats["delegate"] in ("GPU", "CPU") and stats["meshFps"] >= 5 and stats["fps"] > 0, stats
+        assert stats["delegate"] == "CPU" and stats["meshFps"] >= 5 and stats["fps"] > 0, stats
+        assert stats["worker"], f"the detectors must run in the camera's worker, off the page's main thread: {stats}"
         loaded = pg.evaluate("() => performance.getEntriesByType('resource').map(e => e.name)") + urls
-        names = {u.rsplit("/", 1)[-1].split("?")[0] for u in _heavy(loaded)}
-        assert {"vision_bundle.mjs", "vision_wasm_internal.wasm.gz", "face_landmarker.task"} <= names, names
         host = pg.url.split("/")[2]
         assert not [u for u in loaded if not u.startswith(("blob:", "data:")) and u.split("/")[2] != host], "a request left the device"
         assert pg.evaluate(STATE)["live"], "the camera stopped once the landmarker ran"
@@ -199,17 +199,38 @@ def test_a_landmarker_that_cannot_load_leaves_the_light_detector_following():
             f"without the landmarker the camera must keep following with picojs: {stats}"
 
 
+def test_without_workers_the_page_follows_with_the_light_detector_itself():
+    with open_phone("delete window.OffscreenCanvas;" + DESK, width=1280, height=800) as pg:
+        pg.wait_for_timeout(2500)
+        stats = pg.evaluate("() => window.__zaelarLook.stats()")
+        assert not stats["worker"] and stats["mode"] == "light" and stats["fps"] >= 8 and pg.evaluate(STATE)["live"], stats
+
+
+def test_while_the_agent_speaks_the_camera_slows_down():
+    with open_phone(DESK, width=1280, height=800) as pg:
+        pg.wait_for_function("() => window.__zaelarLook && window.__zaelarLook.stats()", timeout=15000)
+        assert not pg.evaluate("() => window.__zaelarLook.stats().slow")
+        pg.evaluate("() => window.__store.setBotSpeaking(true)")
+        pg.wait_for_timeout(2500)
+        s = pg.evaluate("() => window.__zaelarLook.stats()")
+        assert s["slow"] and s["fps"] <= 5, f"while the agent speaks a few frames a second are enough: {s}"
+        pg.evaluate("() => window.__store.setBotSpeaking(false)")
+        pg.wait_for_timeout(2500)
+        s = pg.evaluate("() => window.__zaelarLook.stats()")
+        assert not s["slow"] and s["fps"] >= 6, f"…and back to its pace after: {s}"
+
+
 # ── the vendored files: pinned, and silent ───────────────────────────────────────────────────────────────────────────
 def test_the_vendored_landmarker_matches_its_pins_and_has_no_telemetry():
     src = (PRESENCE / "humanity" / "landmarker.js").read_text(encoding="utf-8")
     pins = dict(re.findall(r'(\w+): "([0-9a-f]{64})"', src))
-    wasm = gzip.decompress((VENDOR / "vision_wasm_internal.wasm.gz").read_bytes())
+    wasm = gzip.decompress((VENDOR / "vision_wasm_module_internal.wasm.gz").read_bytes())
     assert hashlib.sha256(wasm).hexdigest() == pins["wasm"], "the inflated runtime does not match its pin"
     assert hashlib.sha256((VENDOR / "face_landmarker.task").read_bytes()).hexdigest() == pins["model"], "the model moved"
     note = (VENDOR / "VENDORED_FROM.md").read_text(encoding="utf-8")
-    for f in ("vision_bundle.mjs", "vision_wasm_internal.js", "vision_wasm_internal.wasm.gz", "face_landmarker.task"):
+    for f in ("vision_bundle.mjs", "vision_wasm_module_internal.js", "vision_wasm_module_internal.wasm.gz", "face_landmarker.task"):
         assert hashlib.sha256((VENDOR / f).read_bytes()).hexdigest() in note, f"{f} is not the file VENDORED_FROM.md pins"
-    for f in ("vision_bundle.mjs", "vision_wasm_internal.js"):
+    for f in ("vision_bundle.mjs", "vision_wasm_module_internal.js"):
         body = (VENDOR / f).read_text(encoding="utf-8", errors="replace")
         assert not re.search(r"odml\.pa\.googleapis|/v1/log|sendBeacon|x-goog-api-key", body), f"{f} carries a telemetry endpoint"
     assert all((VENDOR / f).stat().st_size < 5 * 1024 * 1024 for f in (p.name for p in VENDOR.iterdir())), \

@@ -15,14 +15,17 @@
   test `tests/browser/unit/presence/test_the_face_answers_you.py` fails if a vendored file names a logging endpoint.
 - Files and SHA-256 (checked by the loader, `frontend/app/presence/humanity/landmarker.js`, before anything runs):
   - `vision_bundle.mjs` — 55d7ab624fbb70dcc5adc4ae6d7ea9cfcb569139d3dbfbf2b1deafcb966bc0fe (upstream, unchanged)
-  - `vision_wasm_internal.js` — e7fd9858e8e8f221d9b96eddc11f8e077f263e0b7bbd79d3cbe882b134274f8c (upstream `wasm/`, unchanged)
-  - `vision_wasm_internal.wasm.gz` — the upstream `wasm/vision_wasm_internal.wasm` (SIMD build, 11,153,617 bytes,
-    6a5c64584c2ab61c763b6e204afbdbc7ce1caf7f5216187322bca8df94f646bc) compressed with `gzip -9 -n`
-    (6b6902aa01bbf06cc523ddc403cbbe5199e61b75487598f306c1fd919183913e). **The only local change**: the raw binary is
-    over the public repository's 5 MB file limit, so it ships compressed and the loader inflates it in the browser
+  - `vision_wasm_module_internal.js` — 1f1d6215324a1fe62f6742d49a3db911170987ca18ad8c1b75f1a1c82acf2b44 (upstream `wasm/`,
+    unchanged): the ES-MODULE build of the runtime's loader, the one that loads inside a module Web Worker (the classic
+    build needs `importScripts` or a `<script>` tag; the landmarker runs off the main thread, `presence/look-worker.js`)
+  - `vision_wasm_module_internal.wasm.gz` — the upstream `wasm/vision_wasm_module_internal.wasm` (SIMD build, 11,153,641
+    bytes, 617b8e0248dbd27e9d7ece4218004eae4cefb499196d1bb4fa0e3fef21708756) compressed with `gzip -9 -n`
+    (101f6eb59716c93032eb68353e05401df11863648941ab3dcd5a6640dc332cda). **The only local change**: the raw binary is
+    over the public repository's 5 MB file limit, so it ships compressed and the loader inflates it in the worker
     (`DecompressionStream`) and checks the hash of the INFLATED bytes against the upstream one above.
   - `face_landmarker.task` — 64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff (unchanged)
-- Not vendored: the no-SIMD and ES-module variants of the runtime (every browser that runs the engine has WASM SIMD),
+- Not vendored: the no-SIMD and the classic-script variants of the runtime (every browser that runs the engine has
+  WASM SIMD; the landmarker only runs in a module worker),
   and the hand / gesture models (8.4 and 7.8 MB, over the file limit — `humanity/hands.js` is a declared stub).
 - Used by `frontend/app/presence/humanity/` (V2-928 T12, «the face answers you»), loaded lazily: only while the camera
   switch is on and the camera is running.
