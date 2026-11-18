@@ -98,6 +98,7 @@ async def _next(d, lead: str = "") -> str:
     return d.confirm_line
 
 
+from nucleo.send import heard as _heard  # noqa: E402
 from nucleo.send.heard import cut_since as _cut_since, heard  # noqa: E402,F401 — the mouth reports here
 
 
@@ -168,8 +169,10 @@ async def _step(d, got: dict, last_line: str = "") -> str:
     if got.get("send") and not changed and d.asked == _draft.CONFIRM and d.target and (d.text or "attach_from" in d.extra):
         # A bare «yes» answers only the confirmation said LAST; after anything else in between he is read it again.
         # Only a confirmation he HEARD is answered; a bare «yes» answers it only when it was said last.
-        if d.heard and (not got.get("bare") or (_ask._fold(d.confirm_line) in _ask._fold(last_line)
-                                                and d.other_at <= d.heard_at)):
+        # …and never after another line of ours (a worker's «shall I send it?» is answered by his «yes, send it»), nor
+        # by a sentence he began before the confirmation existed.
+        if d.heard and d.other_at <= d.heard_at and not _heard.began_before(d) and (
+                not got.get("bare") or _ask._fold(d.confirm_line) in _ask._fold(last_line)):
             return await _send(d)
     lead = (f"Say back in a few words that the message now reads «{d.text}»." if got.get("text") is not None
             and d.text else "")

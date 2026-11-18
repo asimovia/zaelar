@@ -77,6 +77,12 @@ async def intake(said: str, hint: dict | None = None, last_line: str = "", befor
                 if t and not ((t.get("contact_id") and t.get("contact_id") == open_.target.get("contact_id"))
                               or (t.get("chat_id") and t.get("chat_id") == open_.target.get("chat_id"))):
                     elsewhere, other = adopted, str(t.get("name") or "")
+            if not other and not elsewhere and by in SURE:
+                # a SURE order the call names nobody for: read on its own — a message to somebody else waits its turn
+                fresh = await asyncio.to_thread(_read.read, said, _draft.Draft(said=said), last_line, before)
+                if _orders_one(fresh, by, act, h) and fresh.get("who") and not _same_person(open_, fresh["who"]):
+                    other = fresh["who"]
+                    h = {**h, "contact": other, **({"text": fresh["text"]} if fresh.get("text") else {})}
             if by in NO_READ or elsewhere or (other and not _same_person(open_, other)):
                 h = {**h, **({"_adopted": elsewhere} if elsewhere else {})}
                 n = _draft.queue(said, {**h, "_act": act}, "worker" if by == "worker" else "queued")

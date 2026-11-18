@@ -201,7 +201,14 @@ def resolve_target(payload: dict | None = None) -> dict:
     front: dict = {}
     cid = str(payload.get("contact_id") or "").strip()
     chat = str(payload.get("chat_id") or "").strip()
-    if chat and want and not cid:    # a conversation already chosen by its id (`nucleo/send`): that chat, as it is
+    if chat and want and not cid:    # a conversation already chosen by its id (`nucleo/send`): that chat, as it is —
+        from .. import chatlist, data as _md, thread as _th    # only when the card knows it on THAT platform
+        db = _md.load_db()
+        known = chatlist.row(db, want, chat) or _th._thread(db, want, chat, create=False) or any(
+            str(it.get("platform")) == want and str(it.get("chatId")) == chat for it in db.get("items") or [])
+        if not known:
+            return {"ok": False, "say": "widgets.mensajeria.refusal_unknown_person",
+                    "error": f"there is no {want} conversation with id {chat}"}
         return {"ok": True, "platform": want, "to": chat, "chatId": chat, "name": who or chat, "contactId": "",
                 "known": False}
     if cid:      # the person was already chosen (`nucleo/send`): that row, never the name read again

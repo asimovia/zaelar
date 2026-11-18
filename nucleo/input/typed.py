@@ -83,6 +83,11 @@ def must_wait(since: float, now: float | None = None) -> bool:
     return t - since < CAP_S and _state["onset"] <= since and voice_open(t)
 
 
+def last_onset() -> float:
+    """When his latest utterance began (the monotonic clock; 0.0 when he never spoke)."""
+    return float(_state["last_onset"] or 0.0)
+
+
 def speaking() -> bool:
     """Is his voice on the microphone right now (the ear's last word: started, not yet ended)?"""
     return bool(_state["speaking"])

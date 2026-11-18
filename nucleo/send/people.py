@@ -52,8 +52,8 @@ def resolve(name: str, channel: str = "", relation: str = "") -> dict:
     if not q:
         return {"none": True}
     front = _in_front(q)
-    if front.get("name"):
-        return {"one": {**front, "platform": channel or front.get("platform", "")}}
+    if front.get("name") and (not channel or channel == front.get("platform")):
+        return {"one": front}             # the open chat, on ITS platform (another channel is the person's, below)
     try:
         from widgets.contactos import who
         got = who.find(q)

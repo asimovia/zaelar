@@ -21,7 +21,7 @@ def heard(line: str, spoken: bool = True) -> None:
     if d is not None and spoken and line and d.confirm_line and _ask._fold(line).endswith(_ask._fold(d.confirm_line)):
         if _talking():
             return                   # said while HE is talking: it plays under his voice — not heard, read again
-        d.heard, d.heard_at = True, now_ms()
+        d.heard, d.heard_at, d.heard_mono = True, now_ms(), time.monotonic()
 
 
 def _talking() -> bool:
@@ -73,3 +73,19 @@ def other_line(text: str) -> None:
     d = _draft.current()
     if d is not None and d.heard and text and not _ask._fold(text).endswith(_ask._fold(d.confirm_line)):
         d.other_at = now_ms()
+
+
+def began_before(d) -> bool:
+    """Did the sentence being read now BEGIN before the confirmation was said? Then it cannot be its answer, whatever it
+    says («send it now» said while the draft was being built). A typed line has no onset of its own: never."""
+    try:
+        from voice import attention
+        if attention.was_typed(within_s=10.0):
+            return False
+        from nucleo.input import typed
+        on = typed.last_onset()
+        return bool(on) and bool(d.heard_mono) and on < d.heard_mono
+    except Exception as e:  # noqa: BLE001 — unreadable: as if it did, the confirmation is read again
+        _note(e)
+        return True
+

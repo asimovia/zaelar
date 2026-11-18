@@ -546,3 +546,46 @@ def test_a_reply_to_someone_else_while_a_message_is_open_waits_and_is_said(world
         "name": "Piers Lane", "contact_id": "", "platform": "whatsapp", "chat_id": "c-9"}})
     line = asyncio.run(owner.intake("answer the second one: ok", {"n": 2, "text": "ok", "_act": "reply"}))
     assert line and len(_draft._queue) == 1 and _draft.current().target["contact_id"] == "c1"
+
+
+def test_a_go_ahead_after_another_line_of_ours_is_read_the_confirmation_again(world):
+    """Audit 7 P0: a worker asked «shall I send the restaurant's mail?» after our confirmation — «yes, send it» is
+    not the message's."""
+    from nucleo.send import heard
+    world.reads = [_read(who="Odile Marsh", text="I'm late")]
+    asyncio.run(owner.intake("tell Odile Marsh I'm late", {}))
+    _said()
+    heard.other_line("The restaurant's mail is ready, shall I send it?")
+    world.reads = [_read(send=True)]
+    taken, line = _take_after("yes, send it", "")
+    assert taken and not world.sent and "I'm late" in line
+
+
+def test_a_sentence_begun_before_the_confirmation_is_not_its_answer(world, monkeypatch):
+    """Audit 7 P0: «send it now» said while the draft was being built began before the confirmation existed."""
+    from nucleo.input import typed
+    world.reads = [_read(who="Odile Marsh", text="I'm late")]
+    asyncio.run(owner.intake("tell Odile Marsh I'm late", {}))
+    _said()
+    monkeypatch.setattr(typed, "last_onset", lambda: _draft.current().heard_mono - 1.0)
+    world.reads = [_read(send=True)]
+    taken, _l = _take_after("send it now", "")
+    assert taken and not world.sent
+
+
+def test_a_second_order_naming_nobody_in_the_call_waits_its_turn(world):
+    """Audit 7 P0: «and send Odile Brandt a hello» while Odile Marsh's is open, the model's call naming nobody — read
+    on its own, queued and said; Odile Marsh's message untouched."""
+    world.reads = [_read(who="Odile Marsh", text="I'm late")]
+    asyncio.run(owner.intake("tell Odile Marsh I'm late", {}))
+    d = _draft.current()
+    world.reads = [_read(who="Odile Brandt", text="hello")]
+    line = asyncio.run(owner.intake("and send Odile Brandt a hello", {}, by="brief"))
+    assert line and len(_draft._queue) == 1 and d.target["contact_id"] == "c1" and d.text == "I'm late"
+
+
+def test_an_open_chat_of_one_platform_never_leaves_by_another():
+    """Audit 7 P0: an open Telegram chat with no contact row, «by WhatsApp» — never its id on WhatsApp."""
+    from widgets.mensajeria.outbound import targets
+    got = targets.resolve_target({"contact": "Piers Lane", "chat_id": "120363000000000103", "channel": "whatsapp", "text": "hi"})
+    assert got.get("ok") is False

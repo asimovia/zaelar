@@ -37,6 +37,7 @@ class Draft:
     heard: bool = False                         # that confirmation was SAID to him (not only written)
     heard_at: float = 0.0                       # when it was handed to the mouth (ms on the observer's clock)
     other_at: float = 0.0                       # when another line of ours was said after it
+    heard_mono: float = 0.0                     # the same instant on the ear's clock (`nucleo/input/typed`)
     by: str = ""                                # who handed it over (the model's call, a verdict, a worker)
     unread: bool = False                        # his contacts could not be read when the name was looked up
     lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False, compare=False)
