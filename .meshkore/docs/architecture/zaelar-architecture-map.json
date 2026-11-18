@@ -1,7 +1,7 @@
 {
  "_doc": "The canonical map of the agent's architecture, measured on the code. Source: the code. This map is the one representation the others (the web's Technology pages, the operator's session player, the observability events) are aligned to. A test (tests/infrastructure/unit/test_the_architecture_map_matches_the_code.py) fails when a path stops existing, a model id leaves config/models.default.json, or a flow names a piece that is not here.",
  "version": 1,
- "measured": "2026-11-13",
+ "measured": "2026-11-18",
  "blocks": [
   {
    "id": "origins",
@@ -162,6 +162,16 @@
     "client"
    ],
    "_doc": "Every app declares the state its face shows and REPORTS it through one door (`POST /widgets/{id}/state`, `widgets/state.py`): a store per mounted screen, the order ledger (an order is pending until that screen acks its revision), host facts only the body may write (`by: host`), a `static` face for an app no order can move. A move under his hand is adopted as his order through the app's own action (`state_adopt`). Players share one reporter protocol."
+  },
+  {
+   "id": "u_face",
+   "zone": "you",
+   "name": "Presence · the face",
+   "paths": [
+    "frontend/app/presence",
+    "nucleo/self/face_recent.py"
+   ],
+   "_doc": "The agent's face and its reactions, drawn on the device with zero tokens; the camera's «look at me» runs on-device in a Web Worker. What the face just did and saw reaches the engine as gesture names (`face_recent`), read by self-knowledge."
   },
   {
    "id": "u_child",
@@ -354,6 +364,19 @@
    ]
   },
   {
+   "id": "f_switch",
+   "zone": "flash",
+   "name": "Switchboard",
+   "paths": [
+    "nucleo/switchboard"
+   ],
+   "emits": [
+    "thread",
+    "flow"
+   ],
+   "_doc": "Whose his words are, decided ONCE at the turn's gate, before the model: one board of the open processes (running, or a row waiting on him) and one decision per chunk. For process N the chunk is delivered there as he said it and Flash does not run; for none, Flash takes the turn. His stop for an open process ends its row through the one cancel door."
+  },
+  {
    "id": "f_admit",
    "zone": "flash",
    "name": "Admission · brief",
@@ -366,7 +389,6 @@
    "emits": [
     "trace",
     "rail",
-    "flow",
     "thread"
    ],
    "_doc": "Every reader of the brief's verdicts reads one act floor (`verdicts.to_act`); at VETO a sure verdict takes the place of the model's call when what enters leaves or deletes, and a send in the model's place is born asking. The words follow the act: calls and tags wait for the verdict (`route_by_verdict`)."
@@ -441,6 +463,20 @@
     "arbiter",
     "brain"
    ]
+  },
+  {
+   "id": "f_self",
+   "zone": "flash",
+   "name": "Self-knowledge",
+   "paths": [
+    "nucleo/self/about.py",
+    "nucleo/self/catalog.json",
+    "nucleo/self/snapshot.py"
+   ],
+   "emits": [
+    "brain"
+   ],
+   "_doc": "What the agent knows about itself: `about_self` answers from ONE catalogue (`catalog.json` + the `self` language pack) and the live snapshot (one reader per truth: settings, connectors, widgets, the camera, the face)."
   },
   {
    "id": "f_doors",
@@ -636,8 +672,7 @@
    "name": "Task rows",
    "paths": [
     "nucleo/circuit/ledger.py",
-    "nucleo/request",
-    "nucleo/switchboard"
+    "nucleo/request"
    ],
    "emits": [
     "task_state",
@@ -645,7 +680,7 @@
     "errand",
     "step"
    ],
-   "_doc": "The order's row (`nucleo/request/`): one row per intention; what he says for an open process — a live worker or a row waiting on him — is delivered to it by ONE decision at the turn's gate, before the model (`nucleo/switchboard`: one board, one decision per chunk). A send is one Brain Worker task with one confirmation at its exit door (`request/send_errand`)."
+   "_doc": "The order's row (`nucleo/request/`): one row per intention. A send is one Brain Worker task with one confirmation at its exit door (`request/send_errand`); its final line is the connector's receipt (`request/send_receipt.py`), said through the out-of-turn notices."
   },
   {
    "id": "t_circuit",
@@ -967,6 +1002,7 @@
   "_doc": "Which piece an observability event comes from (`piece`), for modules the pieces' `paths` do not name. Read by observability/pieces.py: an exact file here beats a piece's own path; otherwise the deepest folder (here or in a piece's paths) wins. A value is a piece id, or {kind: piece, '*': default} where one module hosts several pieces. A module drawn nowhere stamps piece='unmapped' with its path — never a guess.",
   "nucleo/turn/thread_event.py": "f_admit",
   "nucleo/turn/whisper": "f_whisper",
+  "nucleo/turn/open_flows.py": "f_switch",
   "voice/engine/pipeline/agent.py": {
    "vad": "f_ear",
    "worker_start": "t_dispatch",
@@ -1164,6 +1200,15 @@
     "nucleo/workers/providers/claude.py",
     "nucleo/workers/brief.py"
    ]
+  },
+  {
+   "id": "x_claude",
+   "zone": "models",
+   "name": "Claude · Anthropic",
+   "called_from": [
+    "nucleo/workers/providers/claude_tier.py"
+   ],
+   "_doc": "The Brain Worker's optional first rung (the model table's `lead`): Claude itself through the Claude Code CLI, present only where its credential resolves; the titular below it takes over when it is absent or parked."
   },
   {
    "id": "x_glm",
@@ -1371,6 +1416,11 @@
    "label": "to the chat"
   },
   {
+   "id": "faceread",
+   "a": "f_mouth",
+   "b": "u_face"
+  },
+  {
    "id": "widget_in",
    "a": "u_canvas",
    "b": "f_gate",
@@ -1393,6 +1443,21 @@
    "a": "f_gate",
    "b": "f_admit",
    "label": "admits"
+  },
+  {
+   "id": "switch",
+   "a": "f_gate",
+   "b": "f_switch"
+  },
+  {
+   "id": "deliver",
+   "a": "f_switch",
+   "b": "t_row"
+  },
+  {
+   "id": "noproc",
+   "a": "f_switch",
+   "b": "f_admit"
   },
   {
    "id": "jevask",
@@ -1435,6 +1500,16 @@
    "a": "f_model",
    "b": "f_tools",
    "label": "tool calls"
+  },
+  {
+   "id": "aboutself",
+   "a": "f_tools",
+   "b": "f_self"
+  },
+  {
+   "id": "facerecent",
+   "a": "u_face",
+   "b": "f_self"
   },
   {
    "id": "act",
@@ -1888,6 +1963,11 @@
    "label": "send"
   },
   {
+   "id": "receipt",
+   "a": "t_row",
+   "b": "b_notices"
+  },
+  {
    "id": "wsearch",
    "a": "w_tools",
    "b": "s_search",
@@ -1941,6 +2021,11 @@
    "a": "w_backend",
    "b": "x_glm",
    "label": "worker's model"
+  },
+  {
+   "id": "wclaude",
+   "a": "w_backend",
+   "b": "x_claude"
   },
   {
    "id": "wpro",
