@@ -310,8 +310,13 @@ def say_bound(text: str) -> float:
 
 async def _say_bounded(spoken: str) -> bool:
     """True once the playout is confirmed. Past `say_bound` the say finishes on its own (shielded, never cut) and
-    the delivery is reported UNCONFIRMED on the timeline."""
-    r = _speaker(spoken)
+    the delivery is reported UNCONFIRMED on the timeline. A voice that closed while the delivery waited its turn has
+    no mouth: the delivery is not spoken — it stays on screen and its notice is owed — never a crash on `None`."""
+    speak = _speaker
+    if speak is None:
+        logger.info("proactive: the voice closed before the say → not spoken; it stays on screen and its notice is owed")
+        return False
+    r = speak(spoken)
     if not asyncio.iscoroutine(r):
         return True
     try:

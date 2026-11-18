@@ -67,6 +67,17 @@ def test_a_say_that_never_completes_releases_the_queue(_isolated):
     assert any("SIN CONFIRMAR" in x for x in errors), "an unconfirmed say is logged, never silent"
 
 
+def test_a_voice_that_closed_while_the_delivery_waited_is_not_a_crash(_isolated):
+    """The voice session closed (its speaker cleared) while a delivery waited for quiet: the say had no mouth and
+    `None(...)` raised mid-delivery, logged as «falló a media locución», and the notice was lost. Now it is simply
+    not spoken: the delivery returns False with no error, and the queue moves on."""
+    proactive.register_speaker(lambda text: None)
+    proactive.clear_speaker()
+    assert asyncio.run(proactive._say_bounded("The message to her is sent.")) is False
+    errors = [lbl for kind, lbl, _ in _isolated if kind == "error"]
+    assert not errors, f"a closed voice is not an error: {errors}"
+
+
 class _Handle:
     """A LiveKit SpeechHandle stand-in: awaiting it waits for a playout that this test controls."""
 
