@@ -84,8 +84,9 @@ def _over_budget(folder: str, budget: int, gone: set) -> list[tuple[str, int]]:
             continue
         try:
             st = os.stat(os.path.join(folder, name))
-        except OSError:
-            continue                 # gone meanwhile: nothing to count
+        except OSError as e:         # gone meanwhile: nothing to count
+            _log.debug(f"media budget: {name} gone meanwhile: {e}")
+            continue
         rows.append((st.st_mtime, name, st.st_size))
         total += st.st_size
     out = []

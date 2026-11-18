@@ -95,8 +95,8 @@ def media_budget_bytes(folder: str) -> int:
         try:
             import shutil
             bounds.append(int(shutil.disk_usage(folder).total * float(p["media_disk_ratio"])))
-        except OSError:
-            pass                       # the disk cannot be measured: the absolute bound alone
+        except OSError as e:           # the disk cannot be measured: the absolute bound alone
+            __import__("logging").getLogger("zaelar.messaging.history").info(f"disk size unreadable: {e}")
     return min(bounds) if bounds else 0
 _ENV = {"telegram": "TG_BACKFILL"}
 

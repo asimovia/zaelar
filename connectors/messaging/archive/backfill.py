@@ -28,7 +28,8 @@ def backfill_state(platform: str, chat_id) -> dict:
         row = _svc._conn().execute("SELECT done, pages, updated FROM backfill WHERE platform=? AND chat_id=?",
                                    (str(platform), str(chat_id))).fetchone()
         return dict(row) if row else {"done": 0, "pages": 0, "updated": 0.0}
-    except Exception:  # noqa: BLE001 — unknown state reads as «not walked yet»
+    except Exception as e:  # noqa: BLE001 — unknown state reads as «not walked yet»
+        logging.getLogger("zaelar.messaging.archive").warning(f"backfill state unreadable: {type(e).__name__}")
         return {"done": 0, "pages": 0, "updated": 0.0}
 
 
@@ -81,7 +82,8 @@ def wanted(platform: str) -> list[dict]:
                                     (str(platform),)).fetchall()
         return [{"chat_id": r["chat_id"], "want": float(r["want"]),
                  "name": r["chat_id"][len(BY_NAME):] if str(r["chat_id"]).startswith(BY_NAME) else ""} for r in rows]
-    except Exception:  # noqa: BLE001 — unreadable asks read as none
+    except Exception as e:  # noqa: BLE001 — unreadable asks read as none
+        logging.getLogger("zaelar.messaging.archive").warning(f"history asks unreadable: {type(e).__name__}")
         return []
 
 
@@ -105,7 +107,8 @@ def held(platform: str, since: float = 0.0) -> int:
     try:
         return int(_svc._conn().execute("SELECT COUNT(*) FROM messages WHERE platform=? AND ts>=?",
                                         (str(platform), float(since))).fetchone()[0])
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        logging.getLogger("zaelar.messaging.archive").warning(f"archive chat count unreadable: {type(e).__name__}")
         return 0
 
 

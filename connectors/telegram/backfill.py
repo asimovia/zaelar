@@ -32,7 +32,8 @@ WANT_RELIST_S = 30        # an ask for a conversation not listed yet looks at th
 def _stamp(dialog) -> float:
     try:
         return dialog.date.timestamp()
-    except Exception:  # noqa: BLE001 — a dialog without a date sorts last and is still walked
+    except Exception as e:  # noqa: BLE001 — a dialog without a date sorts last and is still walked
+        logger.debug(f"telegram backfill: dialog date unreadable: {type(e).__name__}")
         return 0.0
 
 
