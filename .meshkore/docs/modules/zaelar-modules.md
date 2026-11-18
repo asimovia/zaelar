@@ -744,8 +744,8 @@ covers widgets that do not exist yet. Checkboxes, radios and range tracks are ex
 
 `files/` is **no longer a standalone module**: the central memory absorbed it as an **episodic layer**. There is no
 flat `files/uploads/` tray anymore — an upload's bytes live in the memory data-dir (`memory/_data/episodic/`, next
-to `zaelar.db`). `files/server_api.py` and `files/store.py` remain only as thin **compatibility shims** delegating
-to `memory/api/`. Design: `.meshkore/docs/architecture/zaelar-memory.md`.
+to `zaelar.db`); the upload router is `server/memory_routes.py`, and `files/` keeps only the chat attachments
+(`files/attachments.py`). Design: `.meshkore/docs/architecture/zaelar-memory.md`.
 
 **The two frontend gestures (unchanged).** Both are wired at the top level (`window`) in `frontend/app/main.js`, so
 they work from anywhere in the app — no panel to open, no drop-zone:

@@ -992,7 +992,6 @@
    "name": "library · files",
    "paths": [
     "library/__init__.py",
-    "files/store.py",
     "files/attachments.py"
    ],
    "emits": []
