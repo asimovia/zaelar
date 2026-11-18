@@ -135,7 +135,8 @@ def test_the_meter_cannot_move_when_nobody_is_listening():
     body = ORB.read_text(encoding="utf-8")
     i = body.index('"--vu"')
     expr = body[i:body.index("\n", i)]
-    assert "agentLive()" in expr and "micMuted()" in expr, f"el vúmetro debe estar acotado: {expr}"
+    # 2026-11-18 V2-937: bounded by the mic's WIRE (`mic.shownOpen()`), which is closed whenever nothing is sent
+    assert "agentLive()" in expr and "mic.shownOpen()" in expr, f"the meter must be bounded: {expr}"
 
 
 def test_custom_properties_actually_reach_the_dom():

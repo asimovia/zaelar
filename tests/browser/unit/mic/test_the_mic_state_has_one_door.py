@@ -98,6 +98,8 @@ def test_the_livekit_publish_change_can_no_longer_fail_in_silence():
 @pytest.mark.parametrize("needle,why", [
     ("setMicMuted(", "writes the icon's signal without touching the audio or the engine"),
     ("hb_mic_muted", "writes the persisted state without touching the audio or the engine"),
+    # 2026-11-18 (session af04be1f): the 🎤 draws the WIRE; a second writer could paint it from intent again.
+    ("setMicWire(", "writes what the icon draws without reading the session's own probe"),
 ])
 def test_only_the_door_writes_the_mic_state(needle, why):
     offenders = []

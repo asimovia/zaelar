@@ -66,12 +66,14 @@ def test_the_session_takes_a_lost_track_again_and_says_when_no_agent_comes():
 def test_an_unusable_mic_is_red_slashed_and_its_tap_recovers(path):
     btn = _mic_button(_code(path))
     assert re.search(r'store\.micHealth\(\)\.ok \? "" : " problem"', btn), "the class must read the mic's health"
-    assert re.search(r"!store\.micHealth\(\)\.ok \|\| store\.micMuted\(\) \? MIC_OFF", btn), "a fault is SLASHED"
+    # 2026-11-18 — the glyph is the WIRE (`mic.iconOpen`): a fault with nothing sending is slashed there (its own
+    # test, `mic/test_the_mic_icon_mirrors_the_wire.mjs`); a fault over a SENDING mic is drawn open and its tap closes it.
+    assert re.search(r"raw\(micOn\(\) \? MIC_(ICON|ON) : MIC_OFF\)", btn), "a fault with nothing sending is SLASHED"
     click = btn[btn.index("onClick"):]
     rec = click.index("session.recoverMic")
-    assert click.index("if (!store.micHealth().ok") < rec < click.index("mic.toggle("), \
-        "a red mic's tap must recover it before anything toggles the mute"
-    assert "return;" in click[rec:click.index("mic.toggle(")]
+    assert click.index("if (!store.micHealth().ok") < rec < click.index("mic.setMuted(false"), \
+        "a red mic's tap must recover it before anything opens the switch"
+    assert "return;" in click[rec:click.index("mic.setMuted(false")]
 
 
 def test_the_phone_says_why_in_words():

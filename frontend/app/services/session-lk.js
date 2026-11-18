@@ -27,6 +27,7 @@ import * as vol from "./volume.js?v=1";
 
 let _capSeen = false;   // V2-752: the audio-synced caption channel has been heard from this session
 import * as mic from "./mic.js?v=1";
+import { publishMic, wireOpen } from "./mic-wire.js?v=1";   // 2026-11-18: born in the switch's state · the reality probe
 import { openSSE } from "./sse.js?v=6";
 import { clearDebugBuffer } from "./debugbus.js?v=2";
 import { asleep } from "./presence.js?v=1";   // V2-872: a sleeping tab retries nothing
@@ -254,7 +255,7 @@ export function claimOnNextStart() { _claimNext = true; }
 /** Take the voice HERE now: take the lock if another surface has it, then bring this one up. */
 export async function claimVoice(reason = "hand") {
   if (started) return true;                       // a started surface already holds the lock (it beats for it)
-  const r = await api.sessionSteal(SID);
+  const r = await api.sessionSteal(SID, mic.muted());
   if (!r || r.ok === false) return false;
   if (_blockedRetry) { clearTimeout(_blockedRetry); _blockedRetry = null; }
   store.setMicBlocked({ show: false, msg: "" }); store.setRemoteHeld(false);
@@ -406,6 +407,7 @@ const _micDevice = createMicDevice({
     stream = fresh;
     audio.rebindMic(fresh);
     health.watchMicTrack(tr);
+    mic.readWire();   // the icon follows the wire: the reopened capture is what makes it open
   },
   log: (what, e) => {
     if (e && what === "reopen_failed") health.micCaptureResult(e);   // a refused retake is the mic's health, not a log
@@ -434,7 +436,7 @@ function _applyMicTransport(want) {
   else if (_micDevice.released()) { const g = _gen; _micDevice.reacquire(() => g !== _gen || mic.muted()); }
   if (stream) stream.getAudioTracks().forEach(t => t.enabled = !off);
   if (room && room.localParticipant) {
-    try { Promise.resolve(room.localParticipant.setMicrophoneEnabled(!off)).catch(() => {}); } catch (_) {}
+    try { Promise.resolve(room.localParticipant.setMicrophoneEnabled(!off)).catch(() => {}).then(() => mic.readWire()); } catch (_) {}
   }
 }
 const _sendTap = () => _publish("zaelar-tap", { parked: _tapParked });
@@ -634,7 +636,8 @@ export async function start() {
   // SINGLE-SESSION GATE: before touching the mic, request to be the only live session. If another tab/browser has it,
   // tiene, NO abrimos el micro (evita dos micros); avisamos y reintentamos solos hasta que la otra se cierre.
   const claim = _claimNext; _claimNext = false;
-  const acq = claim ? await api.sessionSteal(SID) : await api.sessionAcquire(SID);
+  // The lock carries this screen's mic switch (2026-11-18): the engine keeps the STT closed until the holder declares it.
+  const acq = claim ? await api.sessionSteal(SID, mic.muted()) : await api.sessionAcquire(SID, mic.muted());
   if (acq && acq.ok === false) {
     starting = false; store.setStarting(false); started = false; store.setStarted(false); store.setConnState("—");
     store.setMicBlocked({ show: true, msg: t("voice.session_open_other_tab") });
@@ -685,6 +688,7 @@ export async function start() {
     // nobody else will do it: the operator would be left with the browser's red dot lit over a stopped agent.
     if (gen !== _gen) return _abortedStartup(gen, captured);
     stream = captured; streamKey = key; _micDevice.reset();
+    if (mic.muted()) captured.getAudioTracks().forEach((tr) => { tr.enabled = false; });   // closed from the first frame
     if (!captured.__silent) health.micCaptureResult(null);
     health.watchMicTrack(captured.getAudioTracks()[0]);
     _bootPhase("voz");   // mic granted — the voice link is coming up (frontend-known milestone)
@@ -850,12 +854,16 @@ export async function start() {
     // this very line would blow up just like the `initMic` one — and we would leave a connected room behind as well.
     if (gen !== _gen) { try { await room.disconnect(); } catch (_) {} return _abortedStartup(gen, null); }
     // Publish the mic track we already captured (so the analyser and the published audio are the SAME track).
+    // FAIL CLOSED (2026-11-18, session af04be1f): the track is published ALREADY in the switch's state — disabled and
+    // muted before `publishTrack`, never «published open, then muted by the transport below». That order left a
+    // window on every reconnect, engine restart and device switch in which a closed mic sent audio.
     const micTrack = stream.getAudioTracks()[0];
-    if (micTrack) await room.localParticipant.publishTrack(new LocalAudioTrack(micTrack));
+    await publishMic({ track: micTrack, closed: mic.muted() || _tapParked,
+                       wrap: (tr) => new LocalAudioTrack(tr), publish: (lt) => room.localParticipant.publishTrack(lt) });
     // V2-654: registering APPLIES — a track that was just published must be born in the state the icon already
     // shows. This is the reconnect hole: the mute survived in localStorage and on screen, the new publication
-    // came up open, and nothing re-asserted it.
-    mic.useTransport(_applyMicTransport);
+    // came up open, and nothing re-asserted it. The probe is what the icon draws: the room's own publication.
+    mic.useTransport(_applyMicTransport, () => wireOpen(room));
     vlock.useTransport(_publish, () => { if (started) _startSpeakerShadow(); });   // V2-651 F1: registering re-asserts the switch
     _armWakeEar();
     applyCam();

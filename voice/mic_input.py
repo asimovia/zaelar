@@ -2,8 +2,9 @@
 #
 # ONE server-side fact — is his microphone muted? — that everything acting on what it heard asks (session 85eec898:
 # the icon moved, the audio did not, and he was transcribed for seven minutes). `frontend/app/services/mic.js`
-# writes it, the ~4 s heartbeat re-asserts it. Muted is STICKY (the safe side of a dead client); boot is OPEN
-# (a stale client must never leave the agent deaf). NOT the attention mode: it is his own hand — consulted first,
+# writes it, the ~4 s heartbeat re-asserts it. Muted is STICKY (the safe side of a dead client); boot is UNDECLARED
+# and the input stays closed until the voice holder speaks for its mic (2026-11-18, below — a silent client is heard
+# after a bounded grace, so a stale one still never leaves the agent deaf). NOT the attention mode: it is his own hand — consulted first,
 # never lifted by a wake word, and lifting it changes no attention state.
 #
 # THE INPUT DOOR: a cloud STT bills every frame it is PUSHED (Deepgram: one report per 5 s), so closed states
@@ -22,6 +23,17 @@ _state = {"muted": False, "at": 0.0, "source": ""}
 _tap = {"parked": False}
 _input = {"sink": None, "applied": None}   # the live session's `(enabled) -> None`; one voice holder at a time
 
+# ── FAIL CLOSED UNTIL THE HOLDER HAS SPOKEN FOR ITS MIC (2026-11-18) ─────────────────────────────────────────────
+# Measured on his engine (session af04be1f): the engine restarted, a screen reconnected, and the session's input
+# opened the STT at the boot default (`muted=False`) before any screen had said what its switch was. A boot default
+# is a guess about a person's microphone, and «open» is the guess that transcribes him. So the input stays CLOSED
+# until the voice holder DECLARES its switch — on `POST /api/session/acquire`/`steal` (the lock carries it, before any
+# room exists), `POST /api/mic` and every heartbeat. A change of holder undeclares: the new surface speaks for its own
+# mic. A client that never declares (an old tab, a bare test participant) is heard after `UNDECLARED_GRACE_S` —
+# three heartbeats, so any real screen has declared long before and only a silent one ever reaches the grace.
+UNDECLARED_GRACE_S = 12.0
+_decl = {"declared": False, "since": 0.0, "timer": None}
+
 
 def is_muted() -> bool:
     """The one answer. Cheap enough for the hot path of every turn."""
@@ -30,9 +42,50 @@ def is_muted() -> bool:
 
 
 def snapshot() -> dict:
-    """The whole fact, for the API and the viewer — `muted`, when it last changed, and who said so."""
+    """The whole fact, for the API and the viewer — `muted`, when it last changed, who said so, and whether the
+    holder has declared it at all since boot or since the voice changed hands."""
     with _mx:
-        return {"muted": bool(_state["muted"]), "at": _state["at"], "source": _state["source"]}
+        return {"muted": bool(_state["muted"]), "at": _state["at"], "source": _state["source"],
+                "declared": bool(_decl["declared"])}
+
+
+def _undeclared_locked(now: float | None = None) -> bool:
+    """Caller holds `_mx`. True while nobody has spoken for the mic and the grace has not run out."""
+    if _decl["declared"]:
+        return False
+    since = _decl["since"]
+    now = time.time() if now is None else now
+    return not since or (now - since) < UNDECLARED_GRACE_S
+
+
+def _arm_grace_locked() -> None:
+    """Caller holds `_mx`. Re-apply the input when the grace runs out, so a silent client is heard after it."""
+    old = _decl["timer"]
+    if old is not None:
+        old.cancel()
+    t = threading.Timer(UNDECLARED_GRACE_S + 0.05, apply_input)
+    t.daemon = True
+    _decl["timer"] = t
+    t.start()
+
+
+def _disarm_grace_locked() -> None:
+    old = _decl["timer"]
+    if old is not None:
+        old.cancel()
+    _decl["timer"] = None
+
+
+def undeclare(*, reason: str = "holder_changed") -> None:
+    """The voice changed hands: the switch it carried belonged to the previous surface. Closed until the new one
+    speaks (or the grace runs out)."""
+    with _mx:
+        if not _decl["declared"] and _decl["since"]:
+            return
+        _decl["declared"], _decl["since"] = False, time.time()
+        if _input["sink"] is not None:
+            _arm_grace_locked()
+    apply_input()
 
 
 def set_muted(muted: bool, *, source: str = "frontend", now: float | None = None, dev: str = "") -> dict:
@@ -43,6 +96,8 @@ def set_muted(muted: bool, *, source: str = "frontend", now: float | None = None
     with _mx:
         changed = muted != bool(_state["muted"])
         _state["muted"], _state["at"], _state["source"] = muted, now, (source or "")[:40]
+        _decl["declared"] = True
+        _disarm_grace_locked()
     if changed:
         _say("🎤⃠ micrófono CERRADO" if muted else "🎤 micrófono abierto",
              extra={"muted": muted, "src": source, **({"dev": dev} if dev else {})})
@@ -61,7 +116,7 @@ def set_parked(parked: bool) -> None:
 def feeds_stt() -> bool:
     """THE input rule: may audio reach the speech recogniser right now? Every closed state answers no."""
     with _mx:
-        if _state["muted"] or _tap["parked"]:
+        if _state["muted"] or _tap["parked"] or _undeclared_locked():
             return False
     from nucleo import runstate
     return not runstate.stopped()
@@ -79,6 +134,9 @@ def use_input(sink) -> None:
     not one frame) and starts unparked."""
     with _mx:
         _input["sink"], _input["applied"], _tap["parked"] = sink, None, False
+        if not _decl["declared"]:
+            _decl["since"] = time.time()      # the grace counts from the moment there is an input to open
+            _arm_grace_locked()
     apply_input()
 
 
@@ -143,7 +201,11 @@ def apply_input() -> bool | None:
             _input["applied"] = None
         _say("⚠️ audio input lever failed", extra={"stt_input": want, "error": str(e)[:160]})
         return None
-    _say("👂 audio input OPEN (STT)" if want else "👂⃠ audio input CLOSED (no STT)", extra={"stt_input": want})
+    with _mx:
+        why = "" if want else ("undeclared" if _undeclared_locked() else "")
+        lapsed = want and not _decl["declared"]
+    extra = {"stt_input": want, **({"why": why} if why else {}), **({"why": "undeclared_grace"} if lapsed else {})}
+    _say("👂 audio input OPEN (STT)" if want else "👂⃠ audio input CLOSED (no STT)", extra=extra)
     return want
 
 
@@ -200,12 +262,15 @@ def blocks_turn(text: str) -> bool:
     return True
 
 
-def reset() -> None:
-    """Back to the boot default (open). For tests and for a full engine reset — NOT a way to lift a mute."""
+def reset(*, fresh_boot: bool = False) -> None:
+    """Back to an open, DECLARED switch (what most tests start from). `fresh_boot=True` is the real boot default:
+    nobody has spoken for the mic yet, so the input is closed. NOT a way to lift a mute."""
     with _mx:
         _state.update(muted=False, at=0.0, source="")
         _tap["parked"] = False
         _input.update(sink=None, applied=None)
+        _disarm_grace_locked()
+        _decl.update(declared=not fresh_boot, since=0.0)
     _closed_on["at"] = 0.0
 
 

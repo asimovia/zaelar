@@ -126,6 +126,8 @@ export function Orb() {
   const secClass = (on) => "orbic" + (on ? " on" : " off");
   // V2-831 T-18: GREY `wait` (full strength, no slash) while the parked tap sends nothing to the STT; else lidClass.
   const waiting = () => !!(session.tapParked && session.tapParked());
+  const micOn = () => mic.iconOpen(waiting());   // the 🎤 mirrors the wire (services/mic.js), 2026-11-18
+  const camOn = () => lookCamera() || cameraLive();   // …and the 📷 the live capture (presence/look-state.js)
   const devClass = (on) => (on && store.agentLive() && waiting() ? "orbic wait" : lidClass(on));
   // The ⏻ means POWER and nothing else: grey only when the agent is stopped. «Voice on another screen» is not
   // stopped (that face is what made the operator stop everything, 2026-10-25); it is shown on the orb.
@@ -165,24 +167,30 @@ export function Orb() {
         // because there is no level: the meter can move only when the system is actually listening.
         "data-ctl": "mic",
         // V2-788: red when the DEVICE has a problem (store.micHealth — a deliberate mute is not one).
-        class: () => devClass(!store.micMuted()) + (store.agentLive() && !store.micMuted() && !waiting() ? " vu" : "")
+        // 2026-11-18 — THE MIRROR: every face of this button reads the WIRE (`mic.iconOpen`, `mic.shownOpen`: is a
+        // published capture sending?), never the switch alone. Session af04be1f: a slashed 🎤 over a mic the engine
+        // was transcribing. A sending mic is drawn open even under a closed switch or a fault, so a mismatch shows.
+        class: () => devClass(micOn()) + (store.agentLive() && mic.shownOpen() && !waiting() ? " vu" : "")
                      + (store.micHealth().ok ? "" : " problem"),
-        style: { "--vu": () => (store.agentLive() && !store.micMuted() ? String(Math.min(1, store.micLevel() * 6)) : "0") },
-        title: () => (!store.micHealth().ok ? t(problemTitleKey("mic", store.micHealth().reason))
-                      : store.micMuted() ? t("camera.mic_unmute") : t("camera.mic_mute")),
+        style: { "--vu": () => (store.agentLive() && mic.shownOpen() ? String(Math.min(1, store.micLevel() * 6)) : "0") },
+        title: () => (!store.micHealth().ok && !micOn() ? t(problemTitleKey("mic", store.micHealth().reason))
+                      : micOn() ? t("camera.mic_mute") : t("camera.mic_unmute")),
         // Opening the mic by hand brings the voice to this surface (session.openMicHere); closing it is local.
         // 2026-11-16 — a RED mic (no usable microphone: permission, device, a dead track, no agent) is a tap to
         // RECOVER it (`session.recoverMic`), never a toggle: muting a mic nobody can hear would only hide the fault.
         onClick: () => {
+          // The tap does what the icon SHOWS: an open glyph closes (off wins, even over a fault — a sending mic is
+          // closed first, recovered after), a closed one opens or, red, recovers.
+          if (micOn()) { mic.setMuted(true, "orb"); api.uiEvent("orb:mic", { state: "muted" }); return; }
           if (!store.micHealth().ok && session.recoverMic) {
             api.uiEvent("orb:mic", { state: "recover", reason: store.micHealth().reason });
             session.recoverMic("orb"); return;
           }
-          if (store.micMuted() && session.openMicHere) session.openMicHere("orb");
-          else mic.toggle("orb");
+          if (session.openMicHere) session.openMicHere("orb");
+          else mic.setMuted(false, "orb");
           api.uiEvent("orb:mic", { state: store.micMuted() ? "muted" : "unmuted" });
         },
-      }, () => raw(!store.micHealth().ok || store.micMuted() ? MIC_OFF : MIC_ICON)),   // a fault is slashed too, in red
+      }, () => raw(micOn() ? MIC_ICON : MIC_OFF)),   // closed or a fault with nothing sending: slashed (red on a fault)
       h("button", { "data-ctl": "spk", ...volumeHands,
         class: () => devClass(!store.botMuted()) + (store.spkHealth().ok ? "" : " problem"),
         title: () => !store.spkHealth().ok ? t(problemTitleKey("spk", store.spkHealth().reason))
@@ -201,11 +209,13 @@ export function Orb() {
       // top bar's «● Camera» badge turns off — one signal, so the bar, the badge and Settings never disagree. Lilac =
       // the switch is on (the camera runs while the face is shown); a refusal or a missing camera says why.
       h("button", { "data-ctl": "cam",
-        class: () => secClass(lookCamera()) + (lookCamera() && cameraProblem() ? " problem" : ""),
+        // 2026-11-18 — the mirror, as for the mic: a LIVE camera is drawn on whatever the switch says, so a capture
+        // that outlived its switch shows; its tap turns it off.
+        class: () => secClass(camOn()) + (lookCamera() && cameraProblem() ? " problem" : ""),
         title: () => (cameraProblem() && CAMERA_PROBLEM[cameraProblem()] ? t(CAMERA_PROBLEM[cameraProblem()])
-                      : !lookCamera() ? t("orb.camera_off") : cameraLive() ? t("orb.camera_live") : t("orb.camera_on")),
-        onClick: () => { const v = !lookCamera(); setLookCamera(v, "orb"); },
-      }, () => raw(lookCamera() ? CAMERA_ICON : CAMERA_OFF_ICON)),
+                      : !camOn() ? t("orb.camera_off") : cameraLive() ? t("orb.camera_live") : t("orb.camera_on")),
+        onClick: () => { setLookCamera(!camOn(), "orb"); },
+      }, () => raw(camOn() ? CAMERA_ICON : CAMERA_OFF_ICON)),
       h("button", {
         // The ⏻ is the ONLY icon that can never lie: it is what the operator looks at to know whether someone is
         // al otro lado. Pinta the CUATRO estados reales (store.agentState), no the flag persistido:

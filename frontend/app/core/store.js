@@ -32,6 +32,9 @@ export const [bootPhase, setBootPhase] = createSignal("encendiendo");
 export const [theme, setTheme]         = createSignal(localStorage.getItem("hb_theme") || "dark");  // "dark" | "light" — dark by default (night-friendly)
 
 export const [micMuted, setMicMuted]   = createSignal(localStorage.getItem("hb_mic_muted") === "1");
+// What the mic's WIRE is doing (2026-11-18): true = a published capture is sending, false = nothing leaves the page,
+// null = no session transport to ask. Written ONLY by `services/mic.js` from the session's own probe; the 🎤 draws this.
+export const [micWire, setMicWire]     = createSignal(null);
 export const [camOff, setCamOff]       = createSignal(localStorage.getItem("hb_cam_off") === "1");
 export const [botMuted, setBotMuted]   = createSignal(localStorage.getItem("hb_bot_muted") === "1");  // silence zaelar's voice OUTPUT (agent keeps running)
 

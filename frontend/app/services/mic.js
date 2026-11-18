@@ -38,18 +38,52 @@ import * as store from "../core/store.js?v=2";
 import * as api from "./api.js?v=2";
 
 let _transport = null;   // (muted:boolean) => void — installed by the live session engine
+let _probe = null;       // () => boolean — is audio ACTUALLY leaving the page? (services/mic-wire.js::wireOpen)
 let _lastSent = null;    // last value the engine was told; null = never told
 
 // The session engine calls this on start so the door can reach the live track.
 // Registering APPLIES immediately: a freshly published track must be born in
 // the state the icon is already showing (the reconnect hole — the icon said
 // closed, the new publication came up open).
-export function useTransport(fn) {
+// It also FORGETS what the engine was told: a new transport is a new session, and the engine on the other side may
+// have restarted since (session af04be1f) — its boot default is not a statement anybody made.
+export function useTransport(fn, probe = null) {
   _transport = typeof fn === "function" ? fn : null;
+  _probe = _transport && typeof probe === "function" ? probe : null;
+  _lastSent = null;
   if (_transport) applyNow("transport-attached");
+  else readWire();
 }
 
 export function muted() { return store.micMuted(); }
+
+// ── THE MIRROR (2026-11-18) ─────────────────────────────────────────────────────────────────────────────────────
+// The operator's order: the 🎤 is an infallible mirror — never OFF while the mic is ON. So the icon draws the WIRE,
+// not the switch: `readWire()` asks the session's own probe (the room's publication), and `shownOpen()` is what every
+// face of the mic paints. With no transport to ask (no session ever started here) nothing can be sending, and the
+// switch is all there is to show. A wire found open under a CLOSED switch is shown open — the disagreement is visible
+// — and corrected toward his intent: off wins (`beat()`, every heartbeat).
+export function readWire() {
+  let open = null;
+  if (_probe) { try { open = !!_probe(); } catch (_) { open = null; } }
+  if (store.micWire() !== open) store.setMicWire(open);
+  return open;
+}
+export function shownOpen() {
+  const w = store.micWire();
+  return w === null ? !store.micMuted() : w;
+}
+// The 🎤's glyph, on every surface (desktop orb bar, phone dock). OPEN whenever audio leaves the page — even under a
+// closed switch or a fault, because hiding a sending mic is the one lie the operator forbade. Otherwise closed when
+// his switch is, open while the wake word holds the paid ear `parked` (the browser's own ear is listening, drawn in
+// the waiting grey), and, with no session to ask, the switch unless a fault says no capture can exist.
+export function iconOpen(parked = false) {
+  const w = store.micWire();
+  if (w === true) return true;
+  if (store.micMuted()) return false;
+  if (parked) return true;
+  return w === null ? store.micHealth().ok : false;
+}
 
 // The ONE write. `reason` is not decoration: it travels to the engine and lands
 // in the timeline, so «who closed this mic» is answerable — power button, boot
@@ -80,6 +114,7 @@ export function toggle(reason = "ui") { setMuted(!store.micMuted(), reason); ret
 export function applyNow(reason = "assert") {
   const want = store.micMuted();
   if (_transport) { try { _transport(want); } catch (_) {} }
+  readWire();
   if (want === _lastSent) return;
   // Remember what LANDED, never what we tried: a request lost before a heartbeat
   // exists behind it (⏻ off, no room) would otherwise be recorded as told and
@@ -97,5 +132,19 @@ export function applyNow(reason = "assert") {
 export function beat() {
   const want = store.micMuted();
   _lastSent = want;
+  // The mirror's self-correction: the wire found sending under a closed switch is closed again, and said.
+  if (readWire() === true && want && _transport) {
+    try { _transport(true); } catch (_) {}
+    readWire();
+    try { api.clientLog("🎤⃠ mic found OPEN under a closed switch — closed again", { state: "wire_mismatch" }); } catch (_) {}
+  }
   return want;
 }
+
+// A tab coming back to the front re-asserts the switch over the live track (idempotent: the transport writes only
+// what is already wanted). A background tab is exactly where a stale open track would go unnoticed.
+try {
+  if (typeof document !== "undefined" && document.addEventListener) {
+    document.addEventListener("visibilitychange", () => { if (_transport) applyNow("visibility"); });
+  }
+} catch (_) {}

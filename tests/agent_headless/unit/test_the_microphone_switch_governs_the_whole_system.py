@@ -275,7 +275,7 @@ def test_a_hand_on_the_mic_or_speaker_claims_the_voice_and_the_loser_stands_down
     root = pathlib.Path(__file__).resolve().parents[3] / "frontend"
     js = (root / "app/services/session-lk.js").read_text("utf-8")
     assert js.count("_standDown(") >= 3, "both refusal paths (lost and held) turn this surface's mic and speaker off"
-    assert "const acq = claim ? await api.sessionSteal(SID) : await api.sessionAcquire(SID);" in js
+    assert "const acq = claim ? await api.sessionSteal(SID, mic.muted()) : await api.sessionAcquire(SID, mic.muted());" in js
     for f in ("app/components/Orb.js", "mobile/app/shell/DockBar.js"):
         assert "session.openMicHere(" in (root / f).read_text("utf-8"), f
     assert "session.claimOnNextStart()" in (root / "mobile/app/main.js").read_text("utf-8")

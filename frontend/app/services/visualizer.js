@@ -9,6 +9,7 @@ import * as store from "../core/store.js?v=2";
 import { micRMS, micAnalyser, botAnalyser, level } from "./audio.js?v=2";
 import { t as tr } from "../core/i18n.js?v=1";
 import { orbWarm } from "./orb-colour.js?v=1";
+import { shownOpen as micShownOpen } from "./mic.js?v=1";
 
 let raf = null, orbPhase = 0, vizPhase = 0;
 // Was the orb already painted in its resting form after freezing? (avoids repainting it 60 times per second while
@@ -119,8 +120,10 @@ export function startVisualizer({ orbCanvas, vizCanvas, getStream, getGate, audi
     // kept publishing a level and the VU meter kept moving: the operator saw «microphone capturing» in
     // observability and assumed someone was listening. With the agent stopped there is no mic: the level is
     // 0 and this is reported ONCE (not every frame, so effects are not awakened 60 times per second).
+    // 2026-11-18 — and by the mic's WIRE (`mic.shownOpen`): a closed mic has no level, so nothing that reads it — the
+    // 🎤's meter, the face's «hearing», the spectrum — can look like listening while the mic is off.
     const live = store.agentLive();
-    const micAn = live ? micAnalyser() : null;
+    const micAn = live && micShownOpen() ? micAnalyser() : null;
     if (micAn) { const r = micRMS(); store.setMicLevel(r); if (r > 0.02) audit.silent = false; }
     else if (store.micLevel() !== 0) store.setMicLevel(0);
 
