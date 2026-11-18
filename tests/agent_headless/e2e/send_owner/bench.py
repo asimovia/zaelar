@@ -63,7 +63,8 @@ SCENARIOS = [
           "reply": "nonempty", "tone": True},
          {"say": "Ábreme los contactos.", "shown": "contactos", "no_worker": True, "tone": True},
          {"say": "Enséñame los grupos que tengo de WhatsApp.", "acts_any": ["contactos:show_view",
-                                                                            "mensajeria:show_view"], "no_worker": True,
+                                                                            "mensajeria:show_view"],
+          "or_says": ["prueba zahelar", "excursion de mayo", "familia"], "no_worker": True,
           "reply": "nonempty", "tone": True},
          {"say": "Cierra los contactos.", "closed": "contactos", "no_worker": True, "tone": True},
          {"say": "Mira, hay un grupo que se llama Prueba Zahelar, que creamos nosotros ayer, y otro que se llama excursión "
@@ -193,6 +194,8 @@ def _acts(evs: list[dict]) -> set[str]:
             out.add(f"{e.get('widget')}:{e.get('action')}")
         if e.get("kind") == "widget" and str(e.get("label") or "").startswith("data:"):
             out.add(f"{e.get('id')}:{str(e.get('label'))[5:]}")
+        if e.get("kind") == "send" and e.get("step") == "queued" and isinstance(e.get("draft"), dict):
+            out.add(f"{e['draft'].get('widget')}:{e['draft'].get('act')}")      # the owner ran the card's own act
     return out
 
 
@@ -222,11 +225,13 @@ def judge_session(turn: dict, *, evs: list[dict], reply: str, ctx: dict) -> list
         left = sorted(g["subject"] for g in GROUPS if g["id"] in ctx.get("left", []))
         if left != sorted(turn["left"]):
             fails.append(f"groups left: {left} (want {sorted(turn['left'])})")
-    if turn.get("acts_any") and not set(turn["acts_any"]) & ran:
-        fails.append(f"none of {turn['acts_any']} ran (ran {sorted(ran)})")
+    if turn.get("acts_any") and not set(turn["acts_any"]) & ran and not (
+            turn.get("or_says") and all(_fold(w) in _fold(reply) for w in turn["or_says"])):
+        fails.append(f"none of {turn['acts_any']} ran (ran {sorted(ran)}) and the reply does not tell them")
     if turn.get("asked_once"):                   # the question may come out of turn: every ask of the scenario so far
         # The record masks the names it carries, so the ask is counted by what it IS: one question naming two things.
-        asks = [str(e.get("text") or "") for e in ctx.get("scenario_evs", []) if e.get("kind") == "ask"]
+        asks = [str(e.get("text") or "") for e in ctx.get("scenario_evs", []) if e.get("kind") == "ask"] + [
+            str(e.get("line") or "") for e in ctx.get("scenario_evs", []) if e.get("kind") == "send" and e.get("step") == "asked"]
         named = [a for a in asks if "?" in a and a.count("«") >= turn["asked_once"]]
         if len(named) != 1:
             fails.append(f"asked {len(named)} time(s) naming {turn['asked_once']} things (want once): {asks}")
@@ -338,6 +343,14 @@ def main(argv=None) -> int:
             _c, data = eng.get("/widgets/contactos/data")
             return "whatsapp" in json.dumps(data or {}).lower() and "raquel" in json.dumps(data or {}).lower()
         until_sync(_fed, "his WhatsApp people in the directory before the session", timeout_s=90, poll_s=2.0)
+        # …and his chat list on the messaging card, loaded through the card's own act (his has been for days)
+        eng.post("/widgets/mensajeria/action", {"action": "show_view", "payload": {"platform": "whatsapp"}})
+
+        def _chats() -> bool:
+            _c, data = eng.get("/widgets/mensajeria/data")
+            blob = json.dumps(data or {}, ensure_ascii=False).lower()
+            return all(g["subject"].lower() in blob for g in GROUPS)
+        until_sync(_chats, "his WhatsApp chat list on the messaging card before the session", timeout_s=120, poll_s=2.0)
         tl = Timeline(ws / "logs" / "timeline-latest.jsonl")
         for sc in scenarios:
             if sc["id"] != "S0":           # his session imports them itself; the others start from them

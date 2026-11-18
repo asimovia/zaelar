@@ -148,9 +148,40 @@ def order_over_a_card_left_undone(brief) -> bool:
         if k is None or str(kind) != "order":
             return False
         card, c = _tb.read(brief, _tb.CATALOG_KEY, "", min_confidence=_v.act_floor())
-        return c is not None and bool(card) and str(card) != "none"
+        if c is None or not card or str(card) == "none":
+            return False
+        return _owed_on(brief, str(card))
     except Exception:  # noqa: BLE001
         return False
+
+
+def _owed_on(brief, card: str) -> bool:
+    """Look before acting (V2-938): work is owed on `card` only when the reading names an ACT of it — the act it leans
+    to, or an end state of it — and that end state does not already hold. A card named with no act read is what he
+    talked ABOUT («I want to connect my Google contacts» with them connected): nothing to commission."""
+    from nucleo.circuit import spec
+    from nucleo.turn import verdicts as _v
+    base = card.split("::", 1)[0].strip().lower()
+    leaned, _l = _v.read(brief, "screen_action", None, min_confidence=0.0)
+    lean_card = str(leaned or "").partition(":")[0].split("::", 1)[0].strip().lower()
+    end = spec.end_state_verdict(brief)
+    if end and end.split(":", 1)[0] == base:
+        return not _already(base, end)
+    return lean_card == base
+
+
+def _already(card: str, end: str) -> bool:
+    """Does the card's end state `end` (`card:state`) already hold, read on the card now? False when unreadable."""
+    try:
+        from nucleo.circuit import spec, verify
+        for name, sp in ((spec._manifest(card).get("actions") or {}).items()):
+            tpl = sp.get(spec.TEMPLATE_KEY) if isinstance(sp, dict) else None
+            if isinstance(tpl, (dict, list)) and spec.target_of(tpl) == end:
+                dw = spec.render(card, name, {})
+                return bool(dw) and verify.check(dw) is True
+    except Exception:  # noqa: BLE001 — unread: the work stays owed
+        return False
+    return False
 
 
 def completes(brief, widget_id: str, *, model_action: str = "") -> str:

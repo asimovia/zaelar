@@ -51,7 +51,7 @@ SYSTEM = (
 #: The read of a sentence that changes nothing. A read that could not be made says so (`unread`): it is never taken for
 #: «not about the message» by a caller that must not lose his order.
 NOTHING = {"mine": False, "who": "", "text": None, "channel": "", "send": False, "bare": False, "drop": False,
-           "list": "", "at": "", "unread": False}
+           "list": "", "at": "", "names": [], "unread": False}
 
 
 def _state(draft, last_line: str) -> str:
@@ -90,7 +90,9 @@ def parse(raw: str) -> dict:
             "text": " ".join(str(text).split()) if isinstance(text, str) and text.strip() else None,
             "channel": chan if chan in ("whatsapp", "telegram", "email") else "",
             "send": got.get("send") is True, "bare": got.get("bare") is True, "drop": got.get("drop") is True,
-            "list": str(got.get("list") or "").strip(), "at": str(got.get("at") or "").strip(), "unread": False}
+            "list": str(got.get("list") or "").strip(), "at": str(got.get("at") or "").strip(),
+            "names": [str(x).strip() for x in (got.get("names") or []) if str(x or "").strip()][:20]
+            if isinstance(got.get("names"), list) else [], "unread": False}
 
 
 def _ask(system: str, user: str) -> str:
@@ -99,7 +101,11 @@ def _ask(system: str, user: str) -> str:
 
 
 def read(said: str, draft, last_line: str = "", before: list[str] | None = None) -> dict:
-    """What `said` changes in `draft`. Blocking: call it off the loop. Never raises."""
+    """What `said` changes in `draft`. Blocking: call it off the loop. Never raises. An act's draft has its own read
+    (`read_act`): the message's instruction stays the one measured for messages."""
+    if getattr(draft, "kind", "") == "act":
+        from nucleo.send import read_act
+        return read_act.read(said, draft, last_line, before)
     user = _state(draft, last_line)
     if before:
         user += "HE SAID BEFORE: " + " · ".join(f"«{b}»" for b in before[-2:]) + "\n"

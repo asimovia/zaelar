@@ -58,6 +58,9 @@ class GoogleService:
     owner: str
     #: The widget the operator sees it through, or "" when it has no surface of its own.
     widget: str
+    #: The act of that widget that brings this service's data in («import my contacts»), or "" when there is none —
+    #: declared here so the turn is TOLD which act it is, never left to guess it from a connect panel (V2-938).
+    imports: str = ""
     #: Set ONLY for a service with no connector of its own. Otherwise the owner's registry is the truth.
     scopes: tuple[str, ...] = ()
     note: str = ""
@@ -104,7 +107,7 @@ SERVICES: dict[str, GoogleService] = {
         note="Tus suscripciones alimentan el inicio del reproductor. Solo lectura."),
     "contacts": GoogleService(
         id="contacts", label="Google Contacts", owner="connectors.contacts", widget="contactos",
-        sensitive=True,
+        imports="sync_contacts", sensitive=True,
         note="Copia tu agenda de Google al directorio de zaelar. Es una IMPORTACIÓN de una sola "
              "dirección: lo que edites aquí es tuyo y nunca vuelve a Google."),
 }

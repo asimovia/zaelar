@@ -32,7 +32,29 @@ def _group_chats(db: dict, platform: str = "") -> list[dict]:
         if plat in _LEAVE_PLATFORMS and (not platform or plat == platform) and cid and isinstance(th, dict) \
                 and (th.get("isGroup") or cid.endswith("@g.us")) and th.get("name"):
             rows.setdefault((plat, cid), {"platform": plat, "chatId": cid, "name": str(th["name"])})
+    for g in _directory_groups(platform):   # his groups the directory holds, whether or not the chat list was loaded
+        rows.setdefault((g["platform"], g["chatId"]), g)
     return list(rows.values())
+
+
+def _directory_groups(platform: str = "") -> list[dict]:
+    """The group rows of his directory (a linked source feeds them, V2-934) with the chat each lives in. Measured
+    2026-11-18: «delete those two groups» found nothing because the card's chat list had never been opened, while his
+    directory held both."""
+    out = []
+    try:
+        from widgets import directory
+        for c in directory._contacts():
+            if str(c.get("subtype") or c.get("kind") or "") != "group" or not c.get("name"):
+                continue
+            for ch in c.get("channels") or []:
+                plat, cid = str(ch.get("platform") or ""), str(ch.get("chatId") or "")
+                if plat in _LEAVE_PLATFORMS and (not platform or plat == platform) and cid:
+                    out.append({"platform": plat, "chatId": cid, "name": str(c["name"])})
+    except Exception as e:  # noqa: BLE001 — an unreadable directory adds nothing; the card's own list stands
+        from loguru import logger
+        logger.debug(f"leave_group: the directory's groups unread — {e!r}")
+    return out
 
 
 def _match(pool: list[dict], said: str) -> list[dict]:

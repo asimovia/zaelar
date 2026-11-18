@@ -22,7 +22,7 @@ async def hand(rec, action: str, payload: dict | None) -> dict | None:
         from nucleo import on_his_behalf
         from nucleo.send import turn
         wid, act, inner = on_his_behalf._resolve(payload or {})
-        if not turn.is_message(wid, act, inner):
+        if not turn.owned(wid, act, inner):
             return None
         from nucleo.workers import exit_gate
         if exit_gate.under_mandate(rec, "message", str(inner.get("channel") or inner.get("platform") or "")):

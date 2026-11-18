@@ -339,13 +339,16 @@ def test_the_turn_says_the_confirmation_even_after_its_own_question(world, monke
     assert said and "I'm late" in said[-1] and "I'm late" in out
 
 
-def test_another_order_while_one_is_open_waits_its_turn_and_he_is_told(world):
-    """Audit 2 P1: «and send another one to Odile Brandt: hi» while Odile Marsh's waits — never dropped, never merged."""
+def test_another_order_while_one_only_waits_for_his_yes_is_taken_and_the_first_said_undone(world):
+    """Audit 2 P1 → his session: «and send another one to Odile Brandt: hi» while Odile Marsh's waits for his yes — he
+    moved on: the first is left undone (and said), the new one is taken now; never dropped, never merged."""
     world.reads = [_read(who="Odile Marsh", text="I'm late")]
     asyncio.run(owner.intake("tell Odile Marsh I'm late", {}))
     d = _draft.current()
     line = asyncio.run(owner.intake("and another to Odile Brandt: hi", {"contact": "Odile Brandt", "text": "hi"}))
-    assert _draft.current() is d and d.text == "I'm late" and line and len(_draft._queue) == 1
+    new = _draft.current()
+    assert d.state == _draft.CANCELLED and new is not d and new.target["contact_id"] == "c2" and line
+    assert not world.sent
 
 
 def test_a_sentence_that_overlaps_a_send_is_the_conversations(world):
@@ -545,7 +548,7 @@ def test_a_reply_to_someone_else_while_a_message_is_open_waits_and_is_said(world
     monkeypatch.setattr(deliver, "adopt", lambda act, h: {"extra": {}, "target": {
         "name": "Piers Lane", "contact_id": "", "platform": "whatsapp", "chat_id": "c-9"}})
     line = asyncio.run(owner.intake("answer the second one: ok", {"n": 2, "text": "ok", "_act": "reply"}))
-    assert line and len(_draft._queue) == 1 and _draft.current().target["contact_id"] == "c1"
+    assert line and _draft.current().target.get("chat_id") == "c-9" and not world.sent
 
 
 def test_a_go_ahead_after_another_line_of_ours_is_read_the_confirmation_again(world):
@@ -581,7 +584,7 @@ def test_a_second_order_naming_nobody_in_the_call_waits_its_turn(world):
     d = _draft.current()
     world.reads = [_read(who="Odile Brandt", text="hello")]
     line = asyncio.run(owner.intake("and send Odile Brandt a hello", {}, by="brief"))
-    assert line and len(_draft._queue) == 1 and d.target["contact_id"] == "c1" and d.text == "I'm late"
+    assert line and _draft.current().target["contact_id"] == "c2" and d.text == "I'm late" and not world.sent
 
 
 def test_an_open_chat_of_one_platform_never_leaves_by_another():

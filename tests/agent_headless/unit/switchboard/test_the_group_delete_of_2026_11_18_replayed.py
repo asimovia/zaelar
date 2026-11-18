@@ -1,4 +1,8 @@
-"""«Delete the groups X and "Shopping list"», replayed end to end through the real card (V2-935).
+"""«Delete the groups X and "Shopping list"», replayed through the real card (V2-935).
+
+Since V2-938 leaving groups is the message owner's (`nucleo/send/act`): finding them, the one question naming them,
+his yes and his no, and the receipt are tested in `tests/agent_headless/unit/send/test_an_act_toward_a_messaging_
+platform_has_the_same_owner.py`. What stays here is the card's own resolution and the connector's echo.
 
 What he lived (2026-11-18, 11:19–11:26): no act existed that leaves or deletes a messaging group; the turn's reader
 took the nearest one (`dismiss`, which only hides a row here), a generic worker spent six minutes on it, asked him
@@ -145,47 +149,6 @@ def test_the_order_is_handed_to_one_worker_with_the_acts_own_steps(monkeypatch):
 
 
 # ── the exit door, his yes, the receipt ─────────────────────────────────────────────────────────────────────────
-def test_two_groups_are_found_asked_about_once_left_on_his_yes_and_verified(world):
-    from i18n import langs
-    from nucleo.switchboard import board, route
-    lang = langs.current_language()
-
-    async def session():
-        got = await _act(world, "widget_data", CALL)
-        assert got.get("status") == "pending", got
-        (asked,) = _asks(world)
-        assert "«Book club»" in asked["text"] and "«Shopping list»" in asked["text"], asked["text"]
-        assert "cannot be undone" in asked["text"], "he is told what he is confirming"
-        assert not world.md.load_db().get("pending_group_leave") and world.calls == [], "nothing ran before his yes"
-        assert [(p["key"], p["state"]) for p in board.open_processes()] == [(UID, "waiting")]
-        world.kind = "yes"
-        assert await route.take("yes, delete both", emit=world.emit, say=world.spoken.append) is True
-        await asyncio.sleep(0.05)
-        assert world.spoken == [lang.act_going], "the line of an act that leaves — never «the message»"
-        assert world.calls == [("mensajeria", "leave_group")] and world.resumed == [], "run at once, no session resumed"
-        orders = {o["platform"]: o["chats"] for o in world.md.load_db()["pending_group_leave"]}
-        assert orders == {"whatsapp": [{"chatId": WA_BOOK, "name": "Book club"}],
-                          "telegram": [{"chatId": TG_SHOPPING, "name": "Shopping list"}]}
-        row = _order_row(world)
-        assert row["state"] == "queued" and world.lines == [], "queued is not done: nothing is said yet"
-        _gone(world, "whatsapp", WA_BOOK, row["ref"])
-        await asyncio.sleep(0.05)
-        assert _order_row(world)["state"] == "queued" and world.lines == [], "one of two left: still not done"
-        assert ts.task_get(UID)["state"] != "done"
-        _gone(world, "telegram", TG_SHOPPING, row["ref"])
-        for _ in range(60):
-            await asyncio.sleep(0.01)
-            if world.lines:
-                break
-        assert [t for _k, t in world.lines] == [lang.act_done], world.lines
-        assert ts.task_get(UID)["state"] == "done", "the row ends with the verdict the line says"
-        db = world.md.load_db()
-        assert WA_BOOK not in db["chat_index"]["whatsapp"]["rows"] and TG_SHOPPING not in db["chat_index"]["telegram"]["rows"]
-
-    asyncio.run(session())
-    assert len(_asks(world)) == 1, "ONE question for both groups"
-
-
 @pytest.mark.parametrize("groups, names", [(["Book club", "Garden"], "Garden"), (["Chess"], "Chess")])
 def test_a_group_that_is_not_his_is_refused_before_any_question(world, groups, names):
     async def session():
@@ -194,33 +157,6 @@ def test_a_group_that_is_not_his_is_refused_before_any_question(world, groups, n
         assert names in json.dumps(got, ensure_ascii=False), "the refusal names what was not found, so the worker asks him"
     asyncio.run(session())
     assert not world.md.load_db().get("pending_group_leave") and world.calls == []
-
-
-def test_his_no_leaves_both_groups_where_they_are(world):
-    from nucleo.switchboard import route
-
-    async def session():
-        await _act(world, "widget_data", CALL)
-        world.kind = "no"
-        assert await route.take("no, leave them", emit=world.emit, say=world.spoken.append) is True
-        await asyncio.sleep(0.05)
-    asyncio.run(session())
-    db = world.md.load_db()
-    assert not db.get("pending_group_leave") and world.calls == [] and WA_BOOK in db["chat_index"]["whatsapp"]["rows"]
-
-
-def test_disarm_declared_harmless_it_would_leave_without_asking(world, monkeypatch):
-    """Two declarations make it ask — the event type's level and the class's factory rule; with both off it just runs."""
-    from nucleo import consent
-    from nucleo.events import vocabulary as voc
-    t = voc.of("messaging.leave_group")
-    monkeypatch.setitem(voc._BY_NAME, "messaging.leave_group", t._replace(level="standard"))
-    monkeypatch.setattr(consent, "class_policy", lambda cls: "allow")
-
-    async def session():
-        got = await _act(world, "widget_data", CALL)
-        assert got.get("status") != "pending" and world.calls == [("mensajeria", "leave_group")], got
-    asyncio.run(session())
 
 
 def test_an_end_state_reads_a_call_that_names_several_things():

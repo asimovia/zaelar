@@ -93,8 +93,14 @@ def live_line() -> str:
     """One line: the Google services connected right now ("" when none) — the short form of `brain_state`."""
     from connectors.google import services as _svc
     live = sorted(set(connected_services()))
-    where = [s + (f" (su widget: {_svc.SERVICES[s].widget})"
-                  if s in _svc.SERVICES and _svc.SERVICES[s].widget else "") for s in live]
+    def _where(s: str) -> str:
+        sv = _svc.SERVICES.get(s)
+        if not sv or not sv.widget:
+            return s
+        imp = (f"; traer o importar sus datos = widget_data(widget_id='{sv.widget}', action='{sv.imports}')"
+               if sv.imports else "")
+        return f"{s} (su widget: {sv.widget}{imp})"
+    where = [_where(s) for s in live]
     return ("GOOGLE conectado: " + ", ".join(where) + ". Lo que está en esa lista ya está conectado; lo que no esté NO lo está.") if live else ""
 
 
@@ -119,8 +125,7 @@ def brain_state() -> str:
                 "que no hay ni correo ni calendario reales. NO afirmes que está conectada ni que has leído "
                 "o escrito nada en su cuenta.\n" + _how_to_connect())
 
-    out = ["GOOGLE conectado: " + ", ".join(sorted(live)) + ". Lo que no esté en esa lista NO está "
-           "conectado — no lo des por hecho."]
+    out = [live_line()]                                # the same line every turn says, with each service's import act
     if "meet" in live:
         # The one sentence that exists to prevent an invented tool. It names the ARGUMENT because that is
         # what the model has to produce; naming the capability alone is what makes it improvise a verb.

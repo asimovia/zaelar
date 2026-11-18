@@ -32,6 +32,8 @@ class Draft:
     state: str = OPEN
     ref: str = ""                               # the outbox order once queued
     act: str = "send_to"                        # the card's act that will carry it (send_to · reply · forward)
+    kind: str = "message"                       # "message", or "act": a group created or left (`nucleo/send/act`)
+    widget: str = "mensajeria"                  # the card whose act it is
     extra: dict = field(default_factory=dict)   # that act's other fields (a reply's `n`, files, a subject, a time)
     confirm_line: str = ""                      # the confirmation he was read, exactly — his bare yes answers only it
     heard: bool = False                         # that confirmation was SAID to him (not only written)
@@ -45,9 +47,16 @@ class Draft:
     opened_at: float = field(default_factory=time.time)
     touched_at: float = field(default_factory=time.time)
 
+    def names_said(self) -> list[str]:
+        """What an act is about as it stands: the items of its declared list field (groups, members)."""
+        for v in (self.extra or {}).values():
+            if isinstance(v, list) and all(isinstance(x, str) for x in v):
+                return list(v)
+        return [str(self.extra.get(k)) for k in ("group", "name") if str((self.extra or {}).get(k) or "").strip()][:1]
+
     def snapshot(self) -> dict:
         keys = ("id", "said", "who", "channel", "text", "target", "candidates", "unmatched", "asked", "state", "ref",
-                "act", "by")
+                "act", "kind", "widget", "by")
         d = {k: getattr(self, k) for k in keys}
         d["text"] = d["text"][:300]
         return d

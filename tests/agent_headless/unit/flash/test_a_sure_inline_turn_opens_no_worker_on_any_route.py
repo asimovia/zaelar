@@ -35,7 +35,9 @@ def _brief(escalate: tuple, *, order=0.78, card="agenda") -> dict:
         tb.ESCALATE_KEY: {"choice": escalate[0], "confidence": escalate[1]},
         tb.REQUEST_KEY: {"choice": "order", "confidence": order},
         tb.CATALOG_KEY: {"choice": card, "confidence": 0.93},
-        tb.WORDS_KEY: {"choice": "act", "confidence": 0.84}}}
+        tb.WORDS_KEY: {"choice": "act", "confidence": 0.84},
+        # V2-938: work is owed on a card only when an act of it is read (here the one the order leans to)
+        tb.TARGET_KEY: {"choice": f"{card}:add_reminder", "confidence": 0.3}}}
 
 
 def _voice_lane(monkeypatch, brief, said, reply, *, acted=None, data_done=False):

@@ -28,11 +28,27 @@ def is_message(wid: str, action: str, payload: dict | None = None) -> bool:
         return False
 
 
-def claim(escalate_req: dict, text: str, wid: str, action: str, payload: dict | None, emit=None) -> bool:
-    """The model's call of a message act: handed to the owner (True), never run by the turn. False for any other act."""
-    if not is_message(wid, action, payload):
+def owned(wid: str, action: str, payload: dict | None = None) -> bool:
+    """Is this an act that LEAVES toward a messaging platform — a message, a group created, a group left — by the event
+    type it declares (`messaging.*`)? Every such act is the owner's; any other act that leaves is not."""
+    try:
+        from nucleo.request import base
+        from nucleo.workers import exit_risk
+        from widgets import effects
+        b = base(wid)
+        return bool(b and action) and effects.leaves(b, action) and \
+            exit_risk.klass(b, action, payload or {}).startswith("messaging.")
+    except Exception as e:  # noqa: BLE001
+        _note(e)
         return False
-    hint = {**dict(payload or {}), "_act": str(action)}
+
+
+def claim(escalate_req: dict, text: str, wid: str, action: str, payload: dict | None, emit=None) -> bool:
+    """The model's call of an act toward a messaging platform: handed to the owner (True), never run by the turn.
+    False for any other act."""
+    if not owned(wid, action, payload):
+        return False
+    hint = {**dict(payload or {}), "_act": str(action), "_widget": str(wid)}
     if KEY in escalate_req:          # several messages in one sentence: each is the owner's, one after the other
         escalate_req[KEY].setdefault("more", []).append(hint)
     else:
@@ -58,9 +74,9 @@ def from_brief(escalate_req: dict, text: str, brief) -> bool:
     except Exception as e:  # noqa: BLE001
         _note(e)
         return False
-    if not is_message(wid, act):
+    if not owned(wid, act):
         return False
-    escalate_req[KEY] = {"said": " ".join(str(text or "").split()), "hint": {}, "by": "brief"}
+    escalate_req[KEY] = {"said": " ".join(str(text or "").split()), "hint": {"_act": act, "_widget": wid}, "by": "brief"}
     return True
 
 
@@ -118,38 +134,40 @@ def _message_call(calls) -> dict | None:
     """The first call of the turn — made or held by the verdict's gate — whose act is a message: its payload."""
     for c in calls or ():
         a = c.get("args") if isinstance(c, dict) and isinstance(c.get("args"), dict) else None
-        if a and c.get("name") == "widget_data" and is_message(str(a.get("widget_id") or ""), str(a.get("action") or ""),
-                                                               a.get("payload") if isinstance(a.get("payload"), dict) else {}):
-            return dict(a.get("payload") or {}) if isinstance(a.get("payload"), dict) else {}
+        if a and c.get("name") == "widget_data" and owned(str(a.get("widget_id") or ""), str(a.get("action") or ""),
+                                                          a.get("payload") if isinstance(a.get("payload"), dict) else {}):
+            return {**(dict(a.get("payload") or {}) if isinstance(a.get("payload"), dict) else {}),
+                    "_act": str(a.get("action") or ""), "_widget": str(a.get("widget_id") or "")}
     return None
 
 
-def _asked_about_a_message(brief, reply: str, said: str) -> bool:
-    """The turn ended on OUR question about a message (who it is for, what to say) without reaching any door: the
-    card the reading names is the messaging card with a message act read, or the question names the people his word
-    reaches. Read off the verdicts and the directory, never off phrasing."""
+def _asked_about_a_message(brief, reply: str, said: str) -> dict:
+    """The turn ended on OUR question about an owned act (who a message is for, which groups) without reaching any
+    door: the act the reading names or leans to, or — the messaging card with a message act read, or a question naming
+    the people his word reaches — a message. Read off the verdicts and the directory, never off phrasing. The act as a
+    hint (`{_act, _widget}`), {} when none."""
     try:
         from nucleo.acts import message as _message
         from nucleo.request import ask_outside_door as _aod, ends_asking
         from nucleo.turn import verdicts
         which = _message.asked_which(reply, said)      # it named the people his word reaches, whatever its last mark
         if not (which or ends_asking(reply)):
-            return False
+            return {}
         for wid, act in (_aod.named_act(brief), _aod._leans_out(brief)):
-            if act and is_message(wid, act):
-                return True
+            if act and owned(wid, act):
+                return {"_act": act, "_widget": wid}
         wid, _i = verdicts.read(brief, "catalog_widget", None)
         wid = str(wid or "")
         if not wid or wid == "none":
-            return False
+            return {}
         acts = [a for a in _aod.leaving_acts(wid) if is_message(wid, a)]
-        return bool(acts) and (which or _aod._reads_an_act(brief, wid, acts))
+        return {"_widget": wid} if acts and (which or _aod._reads_an_act(brief, wid, acts)) else {}
     except Exception as e:  # noqa: BLE001
         _note(e)
-        return False
+        return {}
 
 
-def _ordered_on_the_messaging_card(brief) -> bool:
+def _ordered_on_the_messaging_card(brief) -> str:
     """The reading is an ORDER that wants an act, on a card whose acts include a message — a lean, never a decision:
     the owner's read of his words decides whether it is a message to send (`owner.LEAN`)."""
     try:
@@ -157,14 +175,14 @@ def _ordered_on_the_messaging_card(brief) -> bool:
         from nucleo.turn import verdicts
         kind, info = verdicts.read(brief, "request_type", None)
         words, _w = verdicts.read(brief, "wants_words", None)
-        wid, _i = verdicts.read(brief, "catalog_widget", None)
+        wid, _i = verdicts.read(brief, "catalog_widget", None, min_confidence=0.0)   # a lean, at any confidence
         wid = str(wid or "")
         if not (info and str(kind or "") == "order" and str(words or "") != "tell" and wid and wid != "none"):
-            return False
-        return any(is_message(wid, a) for a in _aod.leaving_acts(wid))
+            return ""
+        return wid if any(owned(wid, a) for a in _aod.leaving_acts(wid)) else ""
     except Exception as e:  # noqa: BLE001
         _note(e)
-        return False
+        return ""
 
 
 async def at_close(escalate_req: dict, said: str, brief, calls, spoken_text: str, send, speech, brain=None) -> bool:
@@ -177,10 +195,10 @@ async def at_close(escalate_req: dict, said: str, brief, calls, spoken_text: str
     by = "held call" if payload is not None else ""
     if not by and brief is not None and from_brief(escalate_req, said, brief):
         by = "brief"
-    if not by and brief is not None and _asked_about_a_message(brief, spoken_text, said):
-        by = "our question"
-    if not by and brief is not None and _ordered_on_the_messaging_card(brief):
-        by = "order"
+    if not by and brief is not None and (asked := _asked_about_a_message(brief, spoken_text, said)):
+        by, payload = "our question", asked
+    if not by and brief is not None and (leaned := _ordered_on_the_messaging_card(brief)):
+        by, payload = "order", {"_widget": leaned}
     if not by:
         return False
     escalate_req.setdefault(KEY, {"said": " ".join(str(said or "").split()), "hint": payload or {}})

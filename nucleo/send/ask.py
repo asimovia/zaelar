@@ -80,12 +80,12 @@ def when(ts: float) -> str:
     return time.strftime("%Y-%m-%d %H:%M", time.localtime(float(ts)))
 
 
-async def confirm(name: str, platform: str, text: str, at: float = 0.0) -> str:
+async def confirm(name: str, platform: str, text: str, at: float = 0.0, lead: str = "") -> str:
     """The ONE confirmation: worded, and verified to carry his text verbatim, her whole name and its time — else the
     plain line (a fixed one built from the same facts when the language has none)."""
     channel = CHANNELS.get(str(platform or "").lower(), str(platform or ""))
     key, at_s = ("send_confirm_later", when(at)) if at else ("send_confirm", "")
-    said = await line(key, who=name, channel=channel, text=text, when=at_s)
+    said = await line(key, lead, who=name, channel=channel, text=text, when=at_s)
     if carries(said, text, name, at_s):
         return said
     return _plain(key, who=name, channel=channel, text=text, when=at_s) or f"{name} · {channel} · «{text}» {at_s} ?"

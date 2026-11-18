@@ -25,7 +25,6 @@ from nucleo.send import deliver as _deliver
 from nucleo.send import draft as _draft
 from nucleo.send import people as _people
 from nucleo.send import read as _read
-from nucleo.send import receipt as _receipt
 
 #: The hand-over that only LEANS to a message (an order on the messaging card, no message act read): when the owner's
 #: read says his words are not a message, the turn goes on as any other. Every other hand-over the read refuses is
@@ -67,6 +66,9 @@ def _resolve(d, who: str, relation: str = "") -> None:
 
 async def _next(d, lead: str = "") -> str:
     """Ask what is missing, what stops it, or the confirmation. Returns the line."""
+    if d.kind == "act":
+        from nucleo.send import act as _act
+        return await _act.next_step(d, lead)
     if not d.target:
         d.asked = _draft.WHO
         if d.candidates:
@@ -94,7 +96,7 @@ async def _next(d, lead: str = "") -> str:
     files = int(d.extra.get("files_n") or 0)
     who = d.target["name"] + (f" ({d.target['note']})" if d.target.get("note") else "")   # a namesake, told apart
     d.confirm_line = await _ask.confirm(who, d.target.get("platform") or d.channel,
-                                        d.text + (f" (📎×{files})" if files else ""), at=_deliver.at(d))
+                                        d.text + (f" (📎×{files})" if files else ""), at=_deliver.at(d), lead=lead)
     return d.confirm_line
 
 
@@ -151,7 +153,16 @@ async def _step(d, got: dict, last_line: str = "") -> str:
     if got.get("drop"):
         _draft.close(d, _draft.CANCELLED)
         _emit("dropped", d)
+        if d.kind == "act":
+            from nucleo.send import act as _act
+            return await _act.line(d, "no")
         return await _ask.line("send_not_sent")
+    if d.kind == "act":
+        from nucleo.send import act as _act
+        if _act.take_names(d, got.get("names") or []):   # other groups, other people: the same act, asked again
+            d.heard, d.confirm_line, d.asked = False, "", ""
+            _emit("act changed", d)
+            return await _next(d)
     changed = (got.get("text") is not None or bool(got.get("channel")) or bool(got.get("at"))
                or bool(got.get("who") and not _names_the_chosen(d, got["who"])))
     if changed:                                   # the confirmation he heard was of another message: it no longer
@@ -166,7 +177,8 @@ async def _step(d, got: dict, last_line: str = "") -> str:
         if not d.target and len(names) > 1:
             d.candidates = list(_people.resolve(got["list"]).get("several") or d.candidates)
         return await _ask.line("send_listed", who=got["list"], names=", ".join(names))
-    if got.get("send") and not changed and d.asked == _draft.CONFIRM and d.target and (d.text or "attach_from" in d.extra):
+    ready = d.kind == "act" or (d.target and (d.text or "attach_from" in d.extra))
+    if got.get("send") and not changed and d.asked == _draft.CONFIRM and ready:
         # A bare «yes» answers only the confirmation said LAST; after anything else in between he is read it again.
         # Only a confirmation he HEARD is answered; a bare «yes» answers it only when it was said last.
         # …and never after another line of ours (a worker's «shall I send it?» is answered by his «yes, send it»), nor
@@ -181,51 +193,13 @@ async def _step(d, got: dict, last_line: str = "") -> str:
 
 # ── the send ────────────────────────────────────────────────────────────────────────────────────────────────────────
 def _run(d) -> dict:
+    if d.kind == "act":
+        from nucleo.send import act as _act
+        return _act.run(d)
     return _deliver.run(d)
 
 
-async def _send(d) -> str:
-    """The act and what follows it run to the end even if his turn is cut meanwhile: a message that left is never
-    left unreported (its line is said out of turn when the turn that asked is gone)."""
-    d.state = _draft.SENDING
-    job = asyncio.ensure_future(_sent(d))
-    try:
-        return await asyncio.shield(job)
-    except asyncio.CancelledError:
-        job.add_done_callback(_say_late)
-        from nucleo.send import intake as _intake
-        job.add_done_callback(lambda _j: asyncio.ensure_future(_intake.open_the_next()))
-        raise
-
-
-def _say_late(job) -> None:
-    try:
-        line = job.result()
-        if line:
-            from nucleo.send import receipt
-            asyncio.ensure_future(receipt.say_out(line, f"send:late:{abs(hash(line))}"))
-    except Exception as e:  # noqa: BLE001
-        _note(e)
-
-
-async def _sent(d) -> str:
-    try:
-        res = await asyncio.to_thread(_run, d)
-    except Exception as e:  # noqa: BLE001
-        res = {"ok": False, "error": f"{type(e).__name__}: {e}"}
-    if not (isinstance(res, dict) and res.get("ok")):
-        why = str((res or {}).get("message") or (res or {}).get("error") or "unknown")[:200]
-        d.state, d.asked = _draft.OPEN, _draft.WHO        # his text stays: he decides what to do with it
-        _emit("refused", d, why=why)
-        return await _ask.line("send_cannot", who=d.target.get("name"), why=why)
-    d.ref = _deliver.ref_of(res)
-    _draft.close(d, _draft.SENT)
-    if res.get("later"):
-        _emit("held for later", d, ref=d.ref, at=res["later"])
-        return await _ask.line("send_later", who=d.target.get("name"), when=_ask.when(res["later"]))
-    _emit("queued", d, ref=d.ref)
-    _receipt.follow_soon(d)
-    return await _ask.line("send_going", who=d.target.get("name"))
+from nucleo.send.go import send as _send  # noqa: E402,F401 — the act on his yes, its report (`go.py`)
 
 
 # ── the two doors in ───────────────────────────────────────────────────────────────────────────────────────────────

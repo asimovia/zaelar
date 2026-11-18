@@ -108,7 +108,7 @@ def test_every_launch_reads_the_one_act_floor():
         assert reply.owes_an_act(_read(**{tb.REQUEST_KEY: ("order", high)})) == "order"
         assert not card_verdict.verdict_shows(_read(**{tb.CANVAS_KEY: ("show", low), tb.REQUEST_KEY: ("order", 0.9)}))
         assert card_verdict.verdict_shows(_read(**{tb.CANVAS_KEY: ("show", high), tb.REQUEST_KEY: ("order", 0.9)}))
-        cat = {tb.CATALOG_KEY: ("documento", 0.9)}
+        cat = {tb.CATALOG_KEY: ("documento", 0.9), tb.TARGET_KEY: ("documento:append", 0.3)}   # an act of it leaned
         assert not card_verdict.order_over_a_card_left_undone(_read(**{tb.REQUEST_KEY: ("order", low)}, **cat))
         assert card_verdict.order_over_a_card_left_undone(_read(**{tb.REQUEST_KEY: ("order", high)}, **cat))
     sure = {tb.REQUEST_KEY: ("order", 0.7), tb.TARGET_KEY: ("agenda:cancel_meeting", 0.7)}

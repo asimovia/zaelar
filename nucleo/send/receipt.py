@@ -37,7 +37,16 @@ async def say_out(line: str, key: str) -> dict:
         return {}
 
 
+_ACT_MOMENT = {"send_done": "done", "send_failed": "failed", "send_unconfirmed": "late"}
+
+
 async def _say(d, key: str, **fmt) -> None:
+    if getattr(d, "kind", "") == "act":           # a group's lines: told as what he asked for, never «the message»
+        from nucleo.send import act
+        line = await act.line(d, _ACT_MOMENT[key], **fmt)
+        if line:
+            await say_out(line, f"send:{d.id}:{key}")
+        return
     try:
         from nucleo.pulse import notices
         from nucleo.send import ask
