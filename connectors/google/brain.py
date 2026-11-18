@@ -89,6 +89,12 @@ def connected_services() -> list[str]:
     return live
 
 
+def live_line() -> str:
+    """One line: the Google services connected right now ("" when none) — the short form of `brain_state`."""
+    live = sorted(set(connected_services()))
+    return ("GOOGLE conectado: " + ", ".join(live) + ". Lo que no esté en esa lista NO está conectado.") if live else ""
+
+
 def brain_state() -> str:
     """~4 lines for the turn prompt. Empty string when there is nothing worth the tokens.
 

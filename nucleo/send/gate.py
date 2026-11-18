@@ -11,7 +11,7 @@ def _context(brain) -> tuple[str, list[str]]:
     """Our last line and his last two — what his sentence answers."""
     last, his = "", []
     try:
-        last = str(getattr(brain, "_last_reply", "") or getattr(brain, "_last_spoken", "") or "")[:300]
+        last = str(getattr(brain, "_last_reply", "") or getattr(brain, "_last_spoken", "") or "")[:4000]
         for m in reversed(list(getattr(brain, "_window", None) or [])[-8:]):
             if m.get("role") == "user" and len(his) < 2:
                 his.append(str(m.get("content") or "")[:200])
@@ -53,6 +53,7 @@ async def at_the_gate(text: str, brain, say, motor=None) -> bool:
     if line and say is not None:
         try:
             say(line)
+            owner.heard(line)
         except Exception as e:  # noqa: BLE001
             logger.warning(f"send.gate: the line was not said — {e!r}")
     if motor is not None:

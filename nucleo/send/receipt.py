@@ -24,6 +24,19 @@ def _owner_emit(label: str, d, **extra) -> None:
     _emit(label, d, **extra)
 
 
+async def say_out(line: str, key: str) -> dict:
+    """A line of the send said OUT of turn (the turn that asked is gone); reports to the owner whether it was SPOKEN."""
+    try:
+        from nucleo.pulse import notices
+        from nucleo.send import owner
+        got = await notices.notify("zaelar", line, key=key, kind="info") or {}
+        owner.heard(line, spoken=got.get("state") == "spoken")
+        return got
+    except Exception as e:  # noqa: BLE001
+        _note(e)
+        return {}
+
+
 async def _say(d, key: str, **fmt) -> None:
     try:
         from nucleo.pulse import notices

@@ -34,7 +34,7 @@ def _script_hash() -> str:
 
 
 class Double:
-    def __init__(self, port: int, contacts: list[dict] | None = None):
+    def __init__(self, port: int, contacts: list[dict] | None = None, groups: list[dict] | None = None):
         if int(port) == REAL_BRIDGE_PORT:
             raise RuntimeError("the double never listens on the real bridge's port")
         self.port = int(port)
@@ -43,6 +43,8 @@ class Double:
         self._queue: list[dict] = []
         self._lock = threading.Lock()
         self._contacts = contacts or []
+        self._groups = list(groups or [])        # [{id: …@g.us, subject}] — groups he is in
+        self.left: list[str] = []                # the groups he left through `/group/leave`
         self._server = ThreadingHTTPServer(("127.0.0.1", self.port), self._handler())
         self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
 
@@ -102,9 +104,11 @@ class Double:
                         out, double._queue = double._queue, []
                         return self._json(out)
                 if path == "/contacts":
-                    return self._json({"contacts": double._contacts, "groups": [], "partial": True})
+                    return self._json({"contacts": double._contacts, "groups": double._groups, "partial": True})
                 if path == "/chats":
-                    return self._json({"chats": [], "complete": True, "known": 0})
+                    rows = [{"id": g["id"], "isGroup": True, "name": g["subject"], "ts": int(time.time()) - 60 * i}
+                            for i, g in enumerate(double._groups)]
+                    return self._json({"chats": rows, "complete": True, "known": len(rows)})
                 if path in ("/sync", "/reads"):
                     return self._json([])
                 if path.startswith("/chat/"):
@@ -136,6 +140,14 @@ class Double:
                     return self._json({"available": False, "requested": 0})
                 if path == "/group":
                     return self._json({"id": uuid.uuid4().hex[:18] + "@g.us", "subject": body.get("subject") or ""})
+                if path == "/group/leave":
+                    gid = str(body.get("chatId") or "")
+                    if not gid.endswith("@g.us"):
+                        return self._json({"error": "chatId must be a group id (…@g.us)"}, 400)
+                    with double._lock:
+                        double.left.append(gid)
+                        double._groups = [g for g in double._groups if g["id"] != gid]
+                    return self._json({"left": True, "deleted": True})
                 return self._json({"error": "not found"}, 404)
 
         return H

@@ -24,13 +24,15 @@ async def hand(rec, action: str, payload: dict | None) -> dict | None:
         wid, act, inner = on_his_behalf._resolve(payload or {})
         if not turn.is_message(wid, act, inner):
             return None
+        from nucleo.workers import exit_gate
+        if exit_gate.under_mandate(rec, "message", str(inner.get("channel") or inner.get("platform") or "")):
+            return None                          # an errand's standing mandate covers it: the worker's own act
         from nucleo.send import owner
         said = str(getattr(rec, "heard", "") or getattr(rec, "request", "") or "")
         line = await owner.intake(said, {**dict(inner), "_act": act}, by="worker")
         if line:
-            from nucleo.pulse import notices
-            await notices.notify("zaelar", line, key=f"send:worker:{getattr(rec, 'uid', '')}:{abs(hash(line))}",
-                                 kind="info")
+            from nucleo.send import draft, receipt
+            await receipt.say_out(line, f"send:worker:{getattr(draft.current(), 'id', '') or abs(hash(line))}")
         return {"ok": True, "result": {"handed": True, "note": HANDED}}
     except Exception as e:  # noqa: BLE001 — a message that could not be handed over is refused, never sent around it
         logger.warning(f"send.worker: a message act was not handed over — {e!r}")

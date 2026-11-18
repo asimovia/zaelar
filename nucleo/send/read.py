@@ -36,19 +36,21 @@ SYSTEM = (
     "  \"channel\": \"whatsapp\", \"telegram\" or \"email\" only when he names one; else \"\".\n"
     "  \"send\": true only when he plainly tells it to send the message as it stands now (yes, send it, go ahead) "
     "with no change in the same words.\n"
+    "  \"at\": when he says WHEN it should go («mañana a las 9», «in two hours»), that moment as a local date-time "
+    "«YYYY-MM-DDTHH:MM» counted from NOW; \"\" otherwise (and \"now\" when he says to send it now after all).\n"
     "  \"bare\": true when his words are ONLY an affirmation (yes, ok, sure, vale, venga) that never mentions sending "
     "or the message; false when they say to send it («send it», «mándaselo», «envíalo»).\n"
     "  \"drop\": true when he says not to send it, to cancel it or to forget it.\n"
     "  \"list\": the name he asks about when he asks which people with that name he has (or who the options are); "
     "else \"\".\n"
     "Reply with JSON only: {\"mine\": bool, \"who\": str, \"text\": str|null, \"channel\": str, \"send\": bool, "
-    "\"bare\": bool, \"drop\": bool, \"list\": str}"
+    "\"bare\": bool, \"drop\": bool, \"list\": str, \"at\": str}"
 )
 
 #: The read of a sentence that changes nothing. A read that could not be made says so (`unread`): it is never taken for
 #: «not about the message» by a caller that must not lose his order.
 NOTHING = {"mine": False, "who": "", "text": None, "channel": "", "send": False, "bare": False, "drop": False,
-           "list": "", "unread": False}
+           "list": "", "at": "", "unread": False}
 
 
 def _state(draft, last_line: str) -> str:
@@ -65,7 +67,8 @@ def _state(draft, last_line: str) -> str:
     else:
         to = "nobody yet"
     text = f"«{draft.text}»" if draft.text else "(nothing yet)"
-    out = f"THE MESSAGE:\n  for: {to}\n  text: {text}\n"
+    import time
+    out = f"NOW: {time.strftime('%Y-%m-%dT%H:%M (%A)')}\nTHE MESSAGE:\n  for: {to}\n  text: {text}\n"
     if last_line:
         out += f"THE ASSISTANT JUST SAID: «{last_line[:300]}»\n"
     return out
@@ -86,7 +89,7 @@ def parse(raw: str) -> dict:
             "text": " ".join(str(text).split()) if isinstance(text, str) and text.strip() else None,
             "channel": chan if chan in ("whatsapp", "telegram", "email") else "",
             "send": got.get("send") is True, "bare": got.get("bare") is True, "drop": got.get("drop") is True,
-            "list": str(got.get("list") or "").strip(), "unread": False}
+            "list": str(got.get("list") or "").strip(), "at": str(got.get("at") or "").strip(), "unread": False}
 
 
 def _ask(system: str, user: str) -> str:

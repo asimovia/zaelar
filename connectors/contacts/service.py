@@ -11,12 +11,19 @@ So the answer to «did it import?» is always a COUNT the widget produced, never
 from __future__ import annotations
 
 import logging
+import os
 
 from . import google_people as _gp
 from . import oauth as _oauth
 from . import providers as _pv
 
 logger = logging.getLogger("zaelar.contacts.service")
+
+
+def _api(p) -> str:
+    """The provider's API base; `ZAELAR_CONTACTS_API_BASE`, when set, points it elsewhere (a loopback test double of
+    the People API — the same seam as the WhatsApp bridge's port)."""
+    return os.getenv("ZAELAR_CONTACTS_API_BASE") or p.api_base
 
 
 def connected(provider_id: str = "google-contacts") -> bool:
@@ -80,12 +87,12 @@ def fetch(provider_id: str = "google-contacts", *, sync_token: str = "") -> dict
     tokens: dict[str, str] = {}
     full = not sync_token
     with httpx.Client() as client:
-        res = _gp.list_people(client, p.api_base, tok, sync_token=_split(sync_token).get("main", ""))
+        res = _gp.list_people(client, _api(p), tok, sync_token=_split(sync_token).get("main", ""))
         if res.get("expired"):
             # Documented remedy, and the only one: drop the token and read everything once.
             logger.info("contacts sync token expired — falling back to a full read")
             full = True
-            res = _gp.list_people(client, p.api_base, tok)
+            res = _gp.list_people(client, _api(p), tok)
         if not res.get("ok") and not res.get("people"):
             st = res.get("status")
             if st in (401, 403):
@@ -97,16 +104,16 @@ def fetch(provider_id: str = "google-contacts", *, sync_token: str = "") -> dict
         tokens["main"] = str(res.get("syncToken") or "")
         # The labels cost a request of their own, and a quiet incremental pass has nobody to label. Asking
         # for them anyway would double the steady-state cost of a permanent sync to learn nothing.
-        groups = _gp.contact_groups(client, p.api_base, tok) if res.get("people") else {}
+        groups = _gp.contact_groups(client, _api(p), tok) if res.get("people") else {}
         batches = [(res.get("people") or [], groups)]
         if want_other:
             if not _split(sync_token).get("other"):
                 full = True          # one half read in full makes the whole pass a full read, not a delta
-            other = _gp.list_people(client, p.api_base, tok, other=True,
+            other = _gp.list_people(client, _api(p), tok, other=True,
                                     sync_token=_split(sync_token).get("other", ""))
             if other.get("expired"):
                 full = True
-                other = _gp.list_people(client, p.api_base, tok, other=True)
+                other = _gp.list_people(client, _api(p), tok, other=True)
             # «Other contacts» carry no memberships, so they get no labels — and a failure here never
             # costs the real address book that already came back above.
             batches.append((other.get("people") or [], {}))
@@ -164,7 +171,7 @@ def push(rows: list[dict], provider_id: str = "google-contacts", *, gone: list[s
     problems: list[str] = []
     with httpx.Client() as client:
         for gid in gone or []:
-            res = _gp.delete_person(client, p.api_base, tok, str(gid))
+            res = _gp.delete_person(client, _api(p), tok, str(gid))
             if res.get("ok"):
                 removed += 1
             else:
@@ -173,8 +180,8 @@ def push(rows: list[dict], provider_id: str = "google-contacts", *, gone: list[s
                     problems.append(f"borrar {gid}: {res.get('error') or res.get('status')}")
         for c in rows or []:
             gid = str(c.get("googleId") or "").strip()
-            res = _gp.update_person(client, p.api_base, tok, gid, c) if gid \
-                else _gp.create_person(client, p.api_base, tok, c)
+            res = _gp.update_person(client, _api(p), tok, gid, c) if gid \
+                else _gp.create_person(client, _api(p), tok, c)
             if res.get("ok"):
                 if res.get("skipped"):
                     continue

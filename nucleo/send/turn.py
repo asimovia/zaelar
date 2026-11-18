@@ -76,8 +76,9 @@ async def speak(escalate_req: dict, spoken_text: str, send, speech, brain=None) 
         o["line"] = await owner.intake(o.get("said") or "", o.get("hint") or {}, last_line=last, before=before[:-1],
                                        by=str(o.get("by") or "call"))
         from nucleo.send import draft
-        for more in o.get("more") or ():      # the other messages of the same sentence wait their turn, in order
-            draft.queue(o.get("said") or "", more, "call")
+        if o["line"] and draft.current() is not None:   # the other messages of the same sentence wait their turn,
+            for more in o.get("more") or ():            # each from its own call — never his whole sentence read again
+                draft.queue(o.get("said") or "", more, "queued")
     except Exception as e:  # noqa: BLE001
         logger.warning(f"send.turn: the owner did not open the draft — {e!r}")
         return spoken_text
@@ -89,6 +90,7 @@ async def speak(escalate_req: dict, spoken_text: str, send, speech, brain=None) 
     if not o["line"] or (o.get("quiet") and not (d is not None and d.asked == _d.CONFIRM)):
         return spoken_text
     send((" " if said else "") + speech.sanitize(o["line"], drop_metadata=False))
+    owner.heard(o["line"])
     return f"{said} {o['line']}".strip()
 
 

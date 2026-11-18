@@ -50,6 +50,11 @@ def connector_facts(open_ids: set[str], turn_text: str = "") -> str:
             if sources or not _gb.connected_services():
                 if (gstate := _gb.brain_state()):
                     out = (out + "\n\n" + gstate) if out else gstate
+            elif (live := _gb.live_line()):
+                # V2-938: which of his accounts are connected is a fact of EVERY turn (one line): with contacts
+                # connected and no card open, «connect my Google contacts» was answered with the connection panel
+                # and «can you import them?» never reached the card's own import.
+                out = (out + "\n\n" + live) if out else live
         except Exception:  # noqa: BLE001
             pass
         if sources:

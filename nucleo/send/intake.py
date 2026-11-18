@@ -48,6 +48,16 @@ def _orders_one(got: dict, by: str, act: str) -> bool:
     return bool(got.get("who") or got.get("text") or not got.get("send") or act in CARRIES_TEXT)
 
 
+def _same_person(d, other: str) -> bool:
+    """Does the name a call carries point at the open draft's person — the one chosen, the name he said, or one of
+    the people it is asking among? Then it is about THAT message, never a second one."""
+    from nucleo.send import ask
+    said = set(ask._fold(other).split())
+    names = [d.target.get("name") if d.target else "", d.who] + [c.get("name") for c in d.candidates]
+    return bool(said) and any(said <= set(ask._fold(n).split()) or set(ask._fold(n).split()) <= said
+                              for n in names if n)
+
+
 async def intake(said: str, hint: dict | None = None, last_line: str = "", before: list[str] | None = None,
                  by: str = "call") -> str:
     from nucleo.send import owner
@@ -56,8 +66,7 @@ async def intake(said: str, hint: dict | None = None, last_line: str = "", befor
     async with _lock():
         if (open_ := _draft.current()) is not None:
             other = str(h.get("contact") or h.get("to") or "").strip()
-            if by in NO_READ or (other and not owner._names_the_chosen(open_, other)
-                                 and other.lower() != (open_.who or "").lower()):
+            if by in NO_READ or (other and not _same_person(open_, other)):
                 n = _draft.queue(said, {**h, "_act": act}, "worker" if by == "worker" else "queued")
                 owner._emit("queued behind the open draft", open_, by=by, waiting=n)
                 if by == "worker":
@@ -68,29 +77,41 @@ async def intake(said: str, hint: dict | None = None, last_line: str = "", befor
             owner._emit("kept the open draft", open_, by=by, said=str(said)[:200], taken=taken)
             return line if taken else ""
         d = _draft.start(said)
-        d.by, d.act = by, act
-        adopted = await asyncio.to_thread(_deliver.adopt, act, h)
-        d.extra = dict(adopted.get("extra") or {})
-        got = dict(_read.NOTHING) if by in NO_READ else await asyncio.to_thread(_read.read, said, d, last_line, before)
-        if by not in NO_READ and not _orders_one(got, by, act):
-            # Only HIS words order a message. A call, a verdict or a lean over words that do not («a bare yes», «stop
-            # repeating me», «forget that message») opens nothing.
+        try:
+            return await _open(d, said, h, act, last_line, before, by)
+        except Exception as e:  # noqa: BLE001 — a draft half-built is closed, never left to read his sentences
             _draft.close(d, _draft.CANCELLED)
-            owner._emit("not a message", d, by=by, read=got)
-            return ""
-        who = got.get("who") or str(h.get("contact") or h.get("to") or "").strip()
-        text = got.get("text") if got.get("text") is not None else (
-            " ".join(str(adopted.get("text") or h.get("text") or "").split()) or None)
-        d.channel = got.get("channel") or str(h.get("channel") or h.get("platform") or "").strip().lower()
-        if text:
-            d.text = text
-        if who:
-            owner._resolve(d, who, relation=str(h.get("relation") or ""))
-        elif adopted.get("target"):            # a reply's conversation, a card draft's person: read once, by id
-            d.target = dict(adopted["target"])
-            d.who = d.target.get("name") or ""
-        owner._emit("opened", d, by=by, read=got)
-        return await owner._next(d)
+            owner._emit("intake failed", d, why=f"{type(e).__name__}: {e}"[:200])
+            raise
+
+
+async def _open(d, said: str, h: dict, act: str, last_line: str, before, by: str) -> str:
+    from nucleo.send import owner
+    d.by, d.act = by, act
+    adopted = await asyncio.to_thread(_deliver.adopt, act, h)
+    d.extra = dict(adopted.get("extra") or {})
+    got = dict(_read.NOTHING) if by in NO_READ else await asyncio.to_thread(_read.read, said, d, last_line, before)
+    if by not in NO_READ and not _orders_one(got, by, act):
+        # Only HIS words order a message. A call, a verdict or a lean over words that do not («a bare yes», «stop
+        # repeating me», «forget that message») opens nothing.
+        _draft.close(d, _draft.CANCELLED)
+        owner._emit("not a message", d, by=by, read=got)
+        return ""
+    who = got.get("who") or str(h.get("contact") or h.get("to") or "").strip()
+    text = got.get("text") if got.get("text") is not None else (
+        " ".join(str(adopted.get("text") or h.get("text") or "").split()) or None)
+    d.channel = got.get("channel") or str(h.get("channel") or h.get("platform") or "").strip().lower()
+    if text:
+        d.text = text
+    if got.get("at"):
+        owner._when(d, got["at"])
+    if who:
+        owner._resolve(d, who, relation=str(h.get("relation") or ""))
+    elif adopted.get("target"):            # a reply's conversation, a card draft's person: read once, by id
+        d.target = dict(adopted["target"])
+        d.who = d.target.get("name") or ""
+    owner._emit("opened", d, by=by, read=got)
+    return await owner._next(d)
 
 
 async def open_the_next() -> None:
@@ -102,8 +123,8 @@ async def open_the_next() -> None:
         from nucleo.send import draft
         line = await intake(nxt["said"], nxt["hint"], by=nxt["by"])
         if line:
-            from nucleo.pulse import notices
+            from nucleo.send import receipt
             d = draft.current()
-            await notices.notify("zaelar", line, key=f"send:next:{getattr(d, 'id', '')}", kind="info")
+            await receipt.say_out(line, f"send:next:{getattr(d, 'id', '')}")
     except Exception as e:  # noqa: BLE001
         _note(e)

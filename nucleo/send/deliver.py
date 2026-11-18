@@ -55,14 +55,18 @@ def adopt(act: str, hint: dict) -> dict:
             n, mid = h.get("n"), h.get("messageId")
             if n is not None:
                 from widgets.mensajeria.actions.send import reply_target
-                out["target"] = _chat(reply_target(db, int(n) if str(n).strip().isdigit() else n))
+                item = reply_target(db, int(n) if str(n).strip().isdigit() else n)
             else:
-                out["target"] = _chat(targets.resolve_reply_target(db, None, mid))
+                item = targets.resolve_reply_target(db, None, mid)
+            out["target"] = _chat(item)
+            if out["target"]:          # the message it answers, by id: it threads, and is never read by position again
+                out["extra"].update(reply_chat=out["target"]["chat_id"], reply_to=str((item or {}).get("messageId") or ""))
         elif act == "forward":
             src = {k: h[k] for k in ("n", "messageId", "from") if h.get(k) not in (None, "")}
             ref = targets._message_ref(db, src) or {}
-            if ref.get("messageId"):
-                out["extra"]["attach_from"] = {"messageId": str(ref["messageId"])}
+            src = {"messageId": str(ref["messageId"])} if ref.get("messageId") else {k: v for k, v in src.items() if k == "from"}
+            out["extra"]["attach_from"] = src
+            out["extra"]["files_n"] = len(targets.attachments_of(db, src) or []) if src else 0
             if ref.get("subject") and "subject" not in out["extra"]:
                 out["extra"]["subject"] = f"Fwd: {ref['subject']}"
         elif act in ("send_draft", "compose"):
@@ -91,6 +95,9 @@ def recipient(d) -> dict:
         p["contact_id"] = d.target["contact_id"]
     elif d.target.get("chat_id"):
         p["chat_id"] = d.target["chat_id"]
+        if d.target.get("platform"):          # a chat lives on ONE platform: no other channel applies to it
+            p["channel"] = d.target["platform"]
+            return p
     if d.target.get("platform") or d.channel:
         p["channel"] = d.target.get("platform") or d.channel
     return p
@@ -110,6 +117,11 @@ def check(d) -> dict:
     `{"ok": False, "channels": [...]}` (he picks one) or `{"ok": False, "why": "…"}`."""
     if d.extra.get("bad_time"):
         return {"ok": False, "why": "the time he gave cannot be read or is too far ahead"}
+    if "attach_from" in d.extra:
+        if not d.extra.get("files_n"):
+            return {"ok": False, "why": "the message he wants forwarded has no files that can be found"}
+        if at(d):
+            return {"ok": False, "why": "a forward with its files cannot be scheduled, only sent now"}
     try:
         from widgets.mensajeria.outbound import targets
         got = targets.describe({**recipient(d), "text": d.text or "-"})
@@ -129,6 +141,8 @@ def run(d) -> dict:
     from widgets.mensajeria import data as _md
     p = payload(d)
     when = at(d)
+    if d.extra.get("reply_chat") and d.extra["reply_chat"] == d.target.get("chat_id"):
+        return _reply(d, when)
     if when:
         wrote = _md.apply_action("draft", p)
         if not (isinstance(wrote, dict) and wrote.get("ok") and wrote.get("key")):
@@ -137,6 +151,20 @@ def run(d) -> dict:
         return {**(res if isinstance(res, dict) else {}), "later": when}
     res = _md.apply_action("send_to", p)
     return res if isinstance(res, dict) else {"ok": False, "error": "no answer from the card"}
+
+
+def _reply(d, when: float) -> dict:
+    """A reply to the conversation it answers, threaded on the message it answers (found by id, never by position)."""
+    from widgets.mensajeria import data as _md
+    from widgets.mensajeria.outbound import queue, targets
+    db = _md.load_db()
+    mid = str(d.extra.get("reply_to") or "")
+    item = (targets.resolve_reply_target(db, None, mid) if mid else None) or {
+        "platform": d.target.get("platform"), "chatId": d.target.get("chat_id")}
+    ref = queue.new_ref()
+    queue.enqueue_reply(db, item, d.text, not_before=when, ref=ref)
+    _md.store.save(_md.WIDGET_ID, db)
+    return {"ok": True, "ref": ref, **({"later": when} if when else {})}
 
 
 def _now() -> float:

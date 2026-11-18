@@ -90,13 +90,38 @@ async def _next(d, lead: str = "") -> str:
         return await _ask.line("send_cannot", lead, who=d.target["name"], why=ok.get("why") or "")
     if ok.get("platform"):
         d.target["platform"] = ok["platform"]
-    d.asked = _draft.CONFIRM
+    d.asked, d.heard = _draft.CONFIRM, False
     d.confirm_line = await _ask.confirm(d.target["name"], d.target.get("platform") or d.channel, d.text,
                                         at=_deliver.at(d))
     return d.confirm_line
 
 
+def heard(line: str, spoken: bool = True) -> None:
+    """The mouth that said `line` reports it: when it is the open draft's confirmation, he has now HEARD it — the one
+    thing a go-ahead can answer."""
+    d = _draft.current()
+    if d is not None and spoken and line and d.confirm_line and _ask._fold(line).endswith(_ask._fold(d.confirm_line)):
+        d.heard = True
+
+
+def _when(d, at: str) -> None:
+    """A moment he said, read now (`now` drops one he gave before)."""
+    if at.lower() == "now":
+        d.extra.pop("at_ts", None)
+        d.extra.pop("bad_time", None)
+        return
+    from widgets.mensajeria import held
+    ts, bad = held.when({"at": at})
+    d.extra.pop("bad_time", None)
+    if bad:
+        d.extra["bad_time"] = bad
+    elif ts:
+        d.extra["at_ts"] = ts
+
+
 def _apply(d, got: dict) -> None:
+    if got.get("at"):
+        _when(d, got["at"])
     if got.get("channel"):
         d.channel = got["channel"]
         if d.target:
@@ -121,7 +146,8 @@ async def _step(d, got: dict, last_line: str = "") -> str:
         _draft.close(d, _draft.CANCELLED)
         _emit("dropped", d)
         return await _ask.line("send_not_sent")
-    changed = got.get("text") is not None or bool(got.get("who")) or bool(got.get("channel"))
+    changed = (got.get("text") is not None or bool(got.get("channel")) or bool(got.get("at"))
+               or bool(got.get("who") and not _names_the_chosen(d, got["who"])))
     _apply(d, got)
     if got.get("list") and not changed:
         names = _people.named(got["list"])
@@ -134,7 +160,8 @@ async def _step(d, got: dict, last_line: str = "") -> str:
         return await _ask.line("send_listed", who=got["list"], names=", ".join(names))
     if got.get("send") and not changed and d.asked == _draft.CONFIRM and d.target and d.text:
         # A bare «yes» answers only the confirmation said LAST; after anything else in between he is read it again.
-        if not got.get("bare") or (d.confirm_line and _ask._fold(d.confirm_line) in _ask._fold(last_line)):
+        # Only a confirmation he HEARD is answered; a bare «yes» answers it only when it was said last.
+        if d.heard and (not got.get("bare") or _ask._fold(d.confirm_line) in _ask._fold(last_line)):
             return await _send(d)
     lead = (f"Say back in a few words that the message now reads «{d.text}»." if got.get("text") is not None
             and d.text else "")
@@ -162,8 +189,8 @@ def _say_late(job) -> None:
     try:
         line = job.result()
         if line:
-            from nucleo.pulse import notices
-            asyncio.ensure_future(notices.notify("zaelar", line, key=f"send:late:{abs(hash(line))}", kind="info"))
+            from nucleo.send import receipt
+            asyncio.ensure_future(receipt.say_out(line, f"send:late:{abs(hash(line))}"))
     except Exception as e:  # noqa: BLE001
         _note(e)
 

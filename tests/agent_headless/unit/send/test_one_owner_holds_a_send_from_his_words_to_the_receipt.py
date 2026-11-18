@@ -77,6 +77,11 @@ def world(monkeypatch):
     _draft.reset()
 
 
+def _said():
+    """The mouth said the open draft's confirmation to him (what the gate or the turn reports, `owner.heard`)."""
+    owner.heard(_draft.current().confirm_line)
+
+
 def _take(text):
     return asyncio.run(owner.take(text))
 
@@ -106,6 +111,7 @@ def test_his_script_sends_only_what_he_kept_to_the_one_he_chose(world):
     taken, line = _take("Odile Brandt")
     assert taken and d.target["contact_id"] == "c2" and d.asked == _draft.CONFIRM and not world.sent
     assert "I love you very much" in line, "the confirmation reads him the text"
+    _said()
 
     world.reads = [_read(send=True)]
 
@@ -207,6 +213,7 @@ def test_a_yes_split_in_two_sentences_sends_once(world):
     world.reads = [_read(who="Odile Marsh", text="I'm late")]
     asyncio.run(owner.intake("Tell Odile Marsh I'm late", {}))
     line = _draft.current().confirm_line
+    _said()
     world.reads = [_read(send=True, bare=True), _read(send=True)]
 
     async def both():
@@ -239,9 +246,11 @@ def test_a_bare_yes_answers_only_the_confirmation_said_last(world):
     """Audit P0: a draft waits at the confirmation; he talks about something else; a bare «ok» to that is not a send."""
     world.reads = [_read(who="Odile Marsh", text="I'm late")]
     asyncio.run(owner.intake("Tell Odile Marsh I'm late", {}))
+    _said()
     world.reads = [_read(send=True, bare=True)]
     taken, line = _take_after("Ok", "Shall I put the radio on?")
     assert taken and not world.sent and "I'm late" in line, "he is read the message again"
+    _said()
     world.reads = [_read(send=True, bare=True)]
     taken, _l = _take_after("Ok", _draft.current().confirm_line)
     assert taken and len(world.sent) == 1
@@ -344,6 +353,7 @@ def test_a_sentence_that_overlaps_a_send_is_the_conversations(world):
     world.reads = [_read(who="Odile Marsh", text="I'm late")]
     asyncio.run(owner.intake("tell Odile Marsh I'm late", {}))
     line = _draft.current().confirm_line
+    _said()
     world.reads = [_read(send=True)]
 
     async def both():
@@ -384,3 +394,37 @@ def test_the_confirmation_must_carry_her_whole_name():
     assert ask.carries("Para Raquel Ortega: «Te quiero». ¿Lo mando?", "Te quiero", "Raquel Ortega")
     assert not ask.carries("Para Raquel: «Te quiero». ¿Lo mando?", "Te quiero", "Raquel Ortega")
     assert not ask.carries("Para Raquel Ortega: «Te quiero mucho»", "Te quiero mucho, de verdad", "Raquel Ortega")
+
+
+def test_a_confirmation_he_never_heard_is_never_answered(world):
+    """Audit 3 P0: «send it» over a confirmation that was only written (a notice not spoken, a line cut) reads it to
+    him again instead of sending."""
+    world.reads = [_read(who="Odile Marsh", text="I'm late")]
+    asyncio.run(owner.intake("tell Odile Marsh I'm late", {}))
+    world.reads = [_read(send=True)]
+    taken, line = _take("send it")
+    assert taken and not world.sent and "I'm late" in line
+    _said()
+    world.reads = [_read(send=True)]
+    _take_after("send it", "")
+    assert len(world.sent) == 1
+
+
+def test_his_yes_naming_her_again_sends(world):
+    """Audit 3 P1: «yes, send it to Odile Marsh» over Odile Marsh's confirmation is no change."""
+    world.reads = [_read(who="Odile Marsh", text="I'm late")]
+    asyncio.run(owner.intake("tell Odile Marsh I'm late", {}))
+    _said()
+    world.reads = [_read(who="Odile Marsh", send=True)]
+    _take_after("yes, send it to Odile Marsh", "")
+    assert len(world.sent) == 1
+
+
+def test_a_time_he_says_is_read_once_and_confirmed(world):
+    """Audit 3 P1: «tomorrow at nine» in his words (no call carried it) holds the message for then."""
+    from nucleo.send import deliver
+    import datetime
+    t = (datetime.datetime.now() + datetime.timedelta(days=1)).replace(hour=9, minute=0, second=0, microsecond=0)
+    world.reads = [_read(who="Odile Marsh", text="Happy birthday", at=t.strftime("%Y-%m-%dT%H:%M"))]
+    line = asyncio.run(owner.intake("tomorrow at nine tell Odile Marsh happy birthday", {}))
+    assert deliver.at(_draft.current()) and t.strftime("%Y-%m-%d %H:%M") in line
