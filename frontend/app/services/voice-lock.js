@@ -23,11 +23,44 @@ export function loadProfile() {
     return p && p.pitch && p.centroid ? p : null;
   } catch (_) { return null; }
 }
-export function saveProfile(p) { if (p) { _set(PROFILE_KEY, JSON.stringify(p)); setEnrolledRaw(true); sync(); } }
+export function saveProfile(p) {
+  if (!p) return;
+  const kept = { ...p, learned_at: p.learned_at || Date.now() };
+  _set(PROFILE_KEY, JSON.stringify(kept)); setEnrolledRaw(true); setLearnedAt(kept.learned_at); sync();
+}
 
 const [on, setOnRaw] = createSignal(_get(KEY) === "1");          // no record = never touched = OFF
 const [enrolled, setEnrolledRaw] = createSignal(!!loadProfile());
-export { on as voiceLock, enrolled as voiceEnrolled };
+// When the kept voice was learned (ms), 0 = not learned or learned before the date was kept.
+const [learnedAt, setLearnedAt] = createSignal((loadProfile() || {}).learned_at || 0);
+export { on as voiceLock, enrolled as voiceEnrolled, learnedAt as voiceLearnedAt };
+
+// «TRAIN MY VOICE» (Settings › Voice recognition, the ONLY place to re-learn it). The session registers the trainer,
+// which owns the microphone's analyser: it sets the kept voice aside, enrols afresh from what he says now, and keeps
+// the new voice only when the enrolment completes — a failed or abandoned one puts the old voice back. While it runs
+// nothing is enrolled, so «Stick to my voice» filters nothing (the voice process hears `enrolled: false`).
+const [training, setTraining] = createSignal(null);      // null | {count, need}
+export { training as voiceTraining };
+let _trainer = null;
+export function useTrainer(fn) { _trainer = fn; }
+/** Train afresh. Resolves {ok, why}: why = "no_session" (the agent is not listening here) | "timeout" | "stopped". */
+export async function train({ timeoutMs = 30000 } = {}) {
+  if (!_trainer) return { ok: false, why: "no_session" };
+  if (training()) return { ok: false, why: "busy" };
+  setTraining({ count: 0, need: 0 });
+  const was = enrolled();
+  setEnrolledRaw(false); sync();
+  let r;
+  try {
+    r = await _trainer({ timeoutMs, onProgress: (count, need) => setTraining({ count, need }) });
+  } catch (e) { r = { ok: false, why: String((e && e.message) || e) }; }
+  setTraining(null);
+  if (r && r.ok && r.profile) saveProfile({ ...r.profile, learned_at: Date.now() });
+  else { setEnrolledRaw(was && !!loadProfile()); sync(); }
+  import("./api.js?v=2").then((api) => api.uiEvent("voice:train", { ok: !!(r && r.ok), why: (r && r.why) || "" }))
+    .catch(() => {});
+  return r && r.ok ? { ok: true } : { ok: false, why: (r && r.why) || "failed" };
+}
 
 // The voice process hears the switch through one door the session registers (its data-channel publisher), and
 // `ensure` starts the fingerprint if it was not running (it can be killed for the shadow; the switch needs it).

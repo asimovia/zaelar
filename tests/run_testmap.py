@@ -5445,6 +5445,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/voice/unit/test_stick_to_my_voice.py"]},
         {"id": "4.585", "title": "Four controls a side around the orb (RENDERED, phone 375 px and desktop bar): the device's tools (mic · speaker · camera) on one side, the voice's activation (wake word · stick to my voice) on the other; nothing overflows or overlaps, targets 44 px tall; the camera button is the presence camera switch both ways; «Stick to my voice» toggles, persists and says «nothing filtered» until a voice is enrolled; the eye keeps ⏻ at the apex of nine",
             "ch": UNIT, "paths": ["tests/browser/unit/voice/test_four_a_side_around_the_orb.py"]},
+        {"id": "4.587", "title": "Settings › Voice › Voice recognition (RENDERED, the one Settings layout): the «Stick to my voice» switch mirrors the orb bar's both ways (a bar click moves the box and leaves nothing to save, Save moves the bar and the stored setting); the kept voice's state and date; «Train my voice» replaces the kept voice with the one just learned and a failed training keeps the old one; the panel lists it right after Voice",
+            "ch": UNIT, "paths": ["tests/browser/unit/voice/test_voice_recognition_settings.py"]},
         # V2-600 → V2-601 T-07 (2026-09-05): «cierra la pantalla completa» (y el «…completamente» del STT) es una
         # orden de ESTADO de pantalla; el veto vivía en los dos backstops del servidor y la TERCERA copia de la
         # regla —la del cliente, voiceCommands.js— seguía cerrando el canvas entero. Conduce el módulo REAL.

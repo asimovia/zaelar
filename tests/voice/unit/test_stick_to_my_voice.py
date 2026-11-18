@@ -84,6 +84,10 @@ def test_the_enroll_label_carries_no_verdict_and_off_clears():
     VL.note_verdict("other", now=10.0)
     VL.set_state(False, True)
     assert VL.state()["pending"] == 0, "turning the switch off forgets what was heard under it"
+    VL.set_state(True, True)
+    VL.note_verdict("operator", now=11.0)
+    VL.set_state(True, False)
+    assert VL.state()["pending"] == 0, "a voice being re-learned voids what was judged against the old one"
 
 
 # ── the gate: dropped before the judge, not filed as room noise ──────────────────────────────────────────────────

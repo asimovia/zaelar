@@ -96,7 +96,7 @@
     "voice": {
       "what": "Su voz al hablar, su volumen en cada pantalla, el altavoz, el micrófono y el botón de apagado.",
       "voice": "«Ponte voz de hombre / de mujer», «¿qué voces hay?», «más alto / más bajo / volumen 40», «silencio» / «vuelve a hablar», «cierra el micro», «apágate».",
-      "button": "Ajustes ⚙ ▸ Voz elige la voz; el 🔊, el micro y el ⏻ están debajo del orbe.",
+      "button": "Ajustes ⚙ ▸ Voz elige la voz; el 🔊, el micro y el ⏻ están debajo del orbe. «Solo mi voz» (junto al orbe, y Ajustes ⚙ ▸ Reconocimiento de voz, donde «Entrenar mi voz» la aprende otra vez) deja pasar solo tu voz aprendida.",
       "not": "Su volumen es el de su propia voz en esa pantalla, nunca el volumen del sistema del dispositivo. Con el micro cerrado o apagado ya no te oye: para volver, el botón."
     },
     "language": {

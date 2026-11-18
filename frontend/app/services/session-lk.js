@@ -125,7 +125,11 @@ function _startSpeakerShadow() {
         // V2-651 F1: the first voice enrolled on this device is kept (a reload does not enrol whoever speaks next),
         // and the enrolment is what «Stick to my voice» filters against.
         profiles: (() => { const p = vlock.loadProfile(); return p ? { operator: p } : {}; })(),
-        onState: (st) => { if (st && st.enrolled && _spk) vlock.saveProfile(_spk.profiles.operator); },
+        onState: (st) => {
+          if (_train) { if (st && st.enrolling) _train.onProgress(st.count, st.need);
+                        else if (st && st.enrolled && _spk) _endTrain({ ok: true, profile: _spk.profiles.operator }); return; }
+          if (st && st.enrolled && _spk) vlock.saveProfile(_spk.profiles.operator);
+        },
         onUtterance: (v) => {
           vlock.verdict(v.label);   // only while the switch is on: the voice process drops a turn of another voice
           try {
@@ -174,7 +178,28 @@ function _startSpeakerShadow() {
   }
 }
 let _spkLevelT = 0;
+// «Train my voice» (Settings › Voice recognition): the kept voice is set aside, the next segments he says enrol a new
+// one, and voice-lock.js keeps it only on success; a timeout or a stopped session puts the old one back.
+let _train = null;
+function _endTrain(r) {
+  const tr = _train; if (!tr) return;
+  _train = null; clearTimeout(tr.timer);
+  if (!r.ok && _spk) { _spk.reset(); if (tr.old) _spk.profiles.operator = tr.old; }
+  tr.resolve(r);
+}
+vlock.useTrainer(({ timeoutMs = 30000, onProgress = () => {} } = {}) => {
+  if (!started) return Promise.resolve({ ok: false, why: "no_session" });
+  _startSpeakerShadow();
+  if (!_spk) return Promise.resolve({ ok: false, why: "no_session" });
+  const old = _spk.profiles.operator || null;
+  _spk.reset();
+  return new Promise((resolve) => {
+    _train = { resolve, onProgress, old, timer: setTimeout(() => _endTrain({ ok: false, why: "timeout" }), timeoutMs) };
+    onProgress(0, _spk.minEnroll);
+  });
+});
 function _stopSpeakerShadow() {
+  _endTrain({ ok: false, why: "stopped" });
   if (_spkRaf) { try { cancelAnimationFrame(_spkRaf); } catch (_) {} _spkRaf = 0; }
   clearTimeout(_spkLevelT); _spkLevelT = 0;
   _spk = null;

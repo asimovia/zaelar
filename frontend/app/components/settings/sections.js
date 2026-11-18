@@ -117,6 +117,9 @@ export function sec_voice(cfg, cloudProfile, lockedKeys) {
     { title: t("config.voice.device_title"), note: `${t("config.voice.device_sub")} ${t("config.voice.wakeword_privacy")}`, attrs: 'id="cf_voice_device" data-set-live' }) });
 }
 
+// Voice › Voice recognition (V2-651 F1): built and wired in its own file, listed here with the other pages.
+export { sec_voiceid } from "./voice-id.js?v=1";
+
 // Web search picks its provider from the keys present; the keys ARE its settings. Empty = keep what is saved.
 export function sec_search(cfg) {
   const creds = cfg.credentials || [];

@@ -8,7 +8,7 @@ import { createEffect } from "../core/reactive.js?v=2";
 import * as store from "../core/store.js?v=2";
 import * as api from "../services/api.js?v=2";
 import * as session from "../services/session.js?v=3";
-import { GEAR_ICON, BRAIN_ICON, CPU_ICON, DATABASE_ICON, MIC_ICON, SEARCH_ICON, MUSIC_ICON, SERVER_ICON, BELL_ICON, MOON_ICON, LINK_ICON, WIDGETS_ICON, LIST_ICON, LOCK_ICON, FACE_ICON } from "../lib/icons.js?v=2";
+import { GEAR_ICON, BRAIN_ICON, CPU_ICON, DATABASE_ICON, MIC_ICON, SEARCH_ICON, MUSIC_ICON, SERVER_ICON, BELL_ICON, MOON_ICON, LINK_ICON, WIDGETS_ICON, LIST_ICON, LOCK_ICON, FACE_ICON, VOICE_LOCK_ICON } from "../lib/icons.js?v=2";
 import { mountRules } from "./RulesSection.js?v=2";   // V2-806 — his rules and preferences, one table
 import { mountPermissions } from "./PermissionsSection.js?v=2";   // V2-875 — his permission switches
 import { mountPresence } from "../presence/PresenceSection.js?v=1";   // V2-928 — the agent's face
@@ -19,12 +19,14 @@ import { theme as themeSignal, setTheme } from "../core/store.js?v=2";
 import { connectorList, connectorWizard, connectorForm, isSettling, groupGoogle, focusOf } from "./ConnectorWizard.js?v=7";
 import { esc, page, btn, bindForm, say } from "./settings/layout.js?v=1";
 import * as S from "./settings/sections.js?v=1";
+import { wireVoiceId } from "./settings/voice-id.js?v=1";   // V2-651 F1 — «Stick to my voice»
 
 const SECTIONS = [
   { id: "fast", icon: BRAIN_ICON },
   { id: "code", icon: CPU_ICON },
   { id: "memory", icon: DATABASE_ICON },
   { id: "voice", icon: MIC_ICON },
+  { id: "voiceid", icon: VOICE_LOCK_ICON },   // V2-651 F1 — voice recognition: the switch mirror and «Train my voice»
   { id: "search", icon: SEARCH_ICON },
   { id: "music", icon: MUSIC_ICON },
   { id: "apis", icon: SERVER_ICON },
@@ -84,6 +86,7 @@ export function ConfigPanel() {
       code: () => S.sec_code(cfg),
       memory: () => S.sec_memory(cfg),
       voice: () => S.sec_voice(cfg, cloudProfile, CLOUD_LOCKED_VOICE_KEYS),
+      voiceid: () => S.sec_voiceid(),
       search: () => S.sec_search(cfg),
       music: () => S.sec_music(cfg),
       apis: () => S.sec_apis(cfg),
@@ -124,6 +127,7 @@ export function ConfigPanel() {
     const pg = bodyEl.querySelector(".set-page");
     if (activeTab === "settings" && activeSec === "rules") mountRules(document.getElementById("cf_rules_host"), msg, pg);
     if (activeTab === "settings" && activeSec === "permissions") mountPermissions(document.getElementById("cf_permissions_host"), msg, cfg, pg);
+    if (activeTab === "settings" && activeSec === "voiceid") wireVoiceId(pg, { reset: render });
     if (activeTab === "presence") mountPresence(document.getElementById("cf_presence_host"), msg);
     // The menu: an area row opens that area (Settings on its current section); a sub-item opens that section.
     // Re-clicking the open area on a phone still has to leave the menu, so it always renders.

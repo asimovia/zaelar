@@ -36,8 +36,8 @@ def set_state(on: bool, enrolled: bool) -> None:
     """The browser's switch and whether it holds an enrolled voice (`zaelar-voicelock`)."""
     _state["on"] = bool(on)
     _state["enrolled"] = bool(enrolled)
-    if not _state["on"]:
-        _state["verdicts"].clear()
+    if not (_state["on"] and _state["enrolled"]):
+        _state["verdicts"].clear()   # off, or a voice being re-learned: what was judged against the old one is void
 
 
 def note_verdict(label: str, now: float | None = None) -> None:

@@ -96,7 +96,7 @@
     "voice": {
       "what": "Its spoken voice, its volume on each screen, the speaker, the microphone and the power button.",
       "voice": "«Use a male / female voice», «what voices are there?», «louder / quieter / volume 40», «mute» / «speak again», «close the mic», «switch off».",
-      "button": "Settings ⚙ ▸ Voice chooses the voice; the 🔊, the mic and the ⏻ are under the orb.",
+      "button": "Settings ⚙ ▸ Voice chooses the voice; the 🔊, the mic and the ⏻ are under the orb. «Stick to my voice» (beside the orb, and Settings ⚙ ▸ Voice recognition, where «Train my voice» learns it again) lets only your learned voice through.",
       "not": "Its volume is its own voice on that screen, never the device's system volume. Once the mic is closed or it is switched off, it cannot hear you: the way back is the button."
     },
     "language": {

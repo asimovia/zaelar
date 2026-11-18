@@ -11,7 +11,7 @@
     {"id": "camera", "needs": ["camera", "face_on", "face_recent"], "covers": ["act:camera_on", "act:camera_off"]},
     {"id": "voice", "needs": ["voice", "language"],
      "covers": ["tool:agent_controls", "act:voice_male", "act:voice_female", "act:voice_list", "act:voice_settings", "act:mute",
-                "act:unmute", "act:volume_up", "act:volume_down", "act:volume_set", "act:mic_off", "act:off", "settings:voice",
+                "act:unmute", "act:volume_up", "act:volume_down", "act:volume_set", "act:mic_off", "act:off", "settings:voice", "settings:voiceid",
                 "surface:orb"]},
     {"id": "language", "needs": ["language"], "covers": ["act:language"]},
     {"id": "chat", "needs": [], "covers": ["surface:chat"]},
