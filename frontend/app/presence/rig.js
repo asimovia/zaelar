@@ -15,8 +15,8 @@ const plateau = (p, a = 0.2, b = 0.25) => (p < a ? Math.sin((Math.PI / 2) * clam
 
 // Gestures: duration (s) + what they add to the rig at progress p (0..1).
 const GESTURES = {
-  nod:      { dur: 1.1, fx: (p, r) => { r.pitch += 0.16 * Math.sin(p * Math.PI * 4) * bell(p); } },
-  shake:    { dur: 1.2, fx: (p, r) => { r.yaw += 0.28 * Math.sin(p * Math.PI * 4) * bell(p); } },
+  nod:      { dur: 1.1, fx: (p, r) => { r.pitch += 0.09 * Math.sin(p * Math.PI * 4) * bell(p); } },
+  shake:    { dur: 1.2, fx: (p, r) => { r.yaw += 0.16 * Math.sin(p * Math.PI * 4) * bell(p); } },
   tilt:     { dur: 1.8, fx: (p, r) => { r.roll += 0.2 * bell(p); r.smile += 0.3 * bell(p); } },
   smile:    { dur: 2.2, fx: (p, r) => { r.smile += 0.9 * bell(p); r.squint += 0.35 * bell(p); r.brow += 0.15 * bell(p); } },
   laugh:    { dur: 2.0, fx: (p, r, t) => { const b = bell(p); r.smile += b; r.squint += 0.7 * b; r.open = Math.max(r.open, b * (0.35 + 0.2 * Math.sin(t * 22))); r.pitch -= 0.06 * b; } },
@@ -104,7 +104,7 @@ export function createRig(rnd = Math.random) {
       blinkL: Math.max(s.blink, s.lid), blinkR: Math.max(s.blink, s.lid),
       gazeX: s.gaze.x, gazeY: s.gaze.y,
       yaw: drift(t * slow, 5) * 0.09 + s.think * 0.14,
-      pitch: drift(t * slow, 2) * 0.05 + s.energy * 0.04 * Math.sin(t * 7.3) - s.think * 0.06,
+      pitch: drift(t * slow, 2) * 0.05 + s.energy * 0.012 * Math.sin(t * 7.3) - s.think * 0.06,
       roll: drift(t * slow, 8) * 0.035 + s.think * 0.07,
       breathe: Math.sin(t * Math.PI * 2 / (s.mood === "idle" ? 5.2 : 4.2)),
     };

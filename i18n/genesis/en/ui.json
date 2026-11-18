@@ -2805,6 +2805,8 @@
  "presence.camera": "Camera: the agent looks at you",
  "presence.camera_hint": "The face turns toward you as you move. It runs on this device only: no image leaves it, and the camera turns off when the face is hidden or you leave the page.",
  "presence.camera_badge": "Camera",
+ "presence.says_yes": "yes|yeah|yep|sure|of course|exactly|right|absolutely|indeed",
+ "presence.says_no": "no|nope|not really|not at all|never",
  "presence.camera_off_title": "The camera is on so the face can look at you. Tap to turn it off.",
  "presence.camera_denied": "The camera is blocked. Allow it for this page in the browser (or the app's settings), then turn the switch on again.",
  "presence.camera_nocamera": "No camera was found on this device.",

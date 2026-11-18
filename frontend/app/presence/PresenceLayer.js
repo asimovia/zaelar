@@ -8,7 +8,8 @@
 //   thinking  ← the person spoke and the agent has not answered yet (a short window, cleared by the agent's voice);
 //   idle      ← the agent is stopped: the face rests, dimmed;
 //   look at   ← the camera or the AirPods, only with their switch on (LookAtMe.js, T10) — on the device, nothing sent;
-//   answers   ← with the camera on, what he does in front of it (humanity/, T12), muted while he or the agent talks.
+//   answers   ← with the camera on, what he does in front of it (humanity/, T12), muted while he or the agent talks;
+//   yes / no  ← the agent's spoken reply opening with a bare yes or no (store.captionSeg, yes-no.js): a nod, a shake.
 // The big eye (Orb.js) is HIDDEN, not deleted: the orb lives in the bottom bar (V2-623 dock) from now on.
 import { h } from "../core/dom.js?v=2";
 import { createEffect, createSignal } from "../core/reactive.js?v=2";
@@ -18,6 +19,8 @@ import { presenceOn, presenceFace, presenceCustom, syncPresence, DEFAULT_FACE } 
 import { faceById } from "./catalog-api.js?v=1";
 import { createFace } from "./face.js?v=1";
 import { LookAtMe } from "./LookAtMe.js?v=1";
+import { polarity } from "./yes-no.js?v=1";
+import { t } from "../core/i18n.js?v=1";
 
 const HEAR = 0.05, THINK_S = 6;
 
@@ -52,6 +55,18 @@ export function PresenceLayer({ covered = null } = {}) {
     }
   });
   createEffect(() => { const e = currentEntry(); if (face) face.setEntry(e); });
+
+  // The agent answers yes or no: the face nods or shakes its head as it SAYS it (the caption segments are audio-synced).
+  // Each segment is judged once, as soon as its first words are in.
+  let judged = "";
+  createEffect(() => {
+    const seg = store.captionSeg();
+    if (!face || !seg || seg.id === judged) return;
+    if (!seg.final && seg.text.trim().length < 14) return;
+    judged = seg.id;
+    const p = polarity(seg.text, t("presence.says_yes"), t("presence.says_no"));
+    if (p) face.gesture(p === "yes" ? "nod" : "shake");
+  });
 
   // Mood from the screen's own signals, re-read a few times a second (the mic level moves faster than effects need).
   createEffect(() => {

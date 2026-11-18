@@ -6443,6 +6443,12 @@ DOMAINS: list[dict] = [
                                  "draws a different mouth; the inside shows teeth and tongue only while open; at rest it is the "
                                  "live mouth exactly; nothing in the live face imports it. Disarm: f without its bite",
             "ch": UNIT, "paths": ["tests/browser/unit/presence/test_the_mouth_speaks_each_sound.py"]},
+        {"id": "4.576", "title": "The face nods to say YES, not all the time (V2-928): the head's vertical travel is calm while "
+                                 "the agent speaks (under 0.08 rad/s, was 0.17) and while he talks (under 0.015, was 0.029); a "
+                                 "spoken reply that opens with a bare yes or no (ES/EN, the bundles' words) nods or shakes the "
+                                 "head, once per caption segment; «no te preocupes», «si quieres», «nobody» are neither. "
+                                 "Disarm: the old speech bob",
+            "ch": UNIT, "paths": ["tests/browser/unit/presence/test_the_face_nods_to_say_yes.py"]},
         {"id": "4.566", "title": "The agent's face (V2-928): every face of the catalogue draws at rest, speaking and thinking; "
                                  "Porcelain is the default; every label of Settings ▸ Presence is in both bundles; the rig "
                                  "is never a statue (idle actions, speech accents). Disarm: life.js off → a statue",

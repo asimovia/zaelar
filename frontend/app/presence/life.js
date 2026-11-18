@@ -4,6 +4,8 @@
 //    intervals whose range depends on the mood. While the person is speaking it gives small nods (backchannel).
 //  * EMPHASIS while it speaks: a rise of the voice's energy after a calmer stretch fires one accent (nod, brow raise,
 //    tilt, turn, smile, lean), never the same one twice in a row, then waits a random refractory gap.
+// Calmer since 2026-11-18 (the operator: «the face moves up and down a lot, as if saying yes, very exaggerated»): the
+// nods are half as deep and rarer, an accent no longer fires a whole nod, and a nod is kept for when it means yes.
 // Nothing here is a fixed loop: every interval, amplitude and choice is drawn, so no two minutes look alike.
 // The rig hands `apply()` the frame's numbers; this adds offsets to them and may start one of the rig's gestures.
 
@@ -20,9 +22,9 @@ const POSES = {
   smile:    (a) => ({ smile: 0.55 * a, squint: 0.2 * a, brow: 0.08 * a }),
   brow:     (a) => ({ brow: 0.6 * a, eyeScale: 0.08 * a }),
   settle:   (a, s) => ({ pitch: 0.05 * a, roll: -0.05 * s * a, lid: 0.25 * a }),
-  nod:      (a) => ({ pitch: 0.09 * a }),
+  nod:      (a) => ({ pitch: 0.045 * a }),
   // speech accents (short)
-  accNod:   (a) => ({ pitch: 0.1 * a, brow: 0.1 * a }),
+  accNod:   (a) => ({ pitch: 0.045 * a, brow: 0.1 * a }),
   accBrow:  (a) => ({ brow: 0.75 * a, eyeScale: 0.07 * a }),
   accTilt:  (a, s) => ({ roll: 0.11 * s * a, brow: 0.2 * a }),
   accTurn:  (a, s) => ({ yaw: 0.16 * s * a, gazeX: -0.3 * s * a }),
@@ -33,7 +35,7 @@ const POSES = {
 const PLAN = {
   idle:      { gap: [1.8, 5.5], w: { glance: 3, lookUp: 1.4, lookDown: 1.4, tilt: 2, settle: 1.2, smile: 0.8, think: 0.5 } },
   listening: { gap: [2.2, 6], w: { glance: 2.4, tilt: 1.6, smile: 1.4, brow: 1, lookUp: 0.6, lookDown: 0.4 } },
-  hearing:   { gap: [1.6, 4.2], w: { nod: 3.4, brow: 1, smile: 1, tilt: 0.8 } },
+  hearing:   { gap: [2.2, 5], w: { nod: 1.4, brow: 1, smile: 1, tilt: 0.8, glance: 0.8 } },
   thinking:  { gap: [1.2, 3.2], w: { think: 4, lookUp: 2, tilt: 1, glance: 0.6 } },
 };
 const ACCENTS = ["accNod", "accBrow", "accTilt", "accTurn", "accSmile", "accLean"];
@@ -59,12 +61,12 @@ export function createLife(R = Math.random) {
       if (t - accAt > accGap && fast > slow * 1.35 + 0.08) {
         let name; do name = ACCENTS[Math.floor(R() * ACCENTS.length)]; while (name === lastAcc);
         start(name, t, between(0.35, 0.8), between(0.6, 1.15));
-        if (R() < 0.25) f.gesture(R() < 0.5 ? "nod" : "smile");
-        lastAcc = name; accAt = t; accGap = between(0.6, 1.7);
+        if (R() < 0.12) f.gesture("smile");
+        lastAcc = name; accAt = t; accGap = between(1.0, 2.4);
       }
       next = Math.max(next, t + between(0.6, 1.8));          // idle actions wait for the voice to end
     } else {
-      if (wasSpeaking && R() < 0.5) start(R() < 0.6 ? "smile" : "nod", t, between(0.8, 1.6), between(0.5, 0.9));
+      if (wasSpeaking && R() < 0.5) start(R() < 0.8 ? "smile" : "nod", t, between(0.8, 1.6), between(0.5, 0.9));
       if (t >= next) {
         const plan = PLAN[hearing ? "hearing" : mood] || PLAN.listening;
         start(pick(plan.w), t, between(0.9, 2.6), between(0.5, 1.2));
