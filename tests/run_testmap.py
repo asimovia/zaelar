@@ -2336,6 +2336,16 @@ DOMAINS: list[dict] = [
                                  "sentence where to allow it — the iOS app opens its settings (V2-910)",
             "ch": UNIT,
             "paths": ["tests/browser/unit/voice/test_a_dead_mic_is_taken_again.py"]},
+        # 2026-11-18 — measured on iOS (b154): the mic was revived DURING an audio interruption, the fresh track was born
+        # muted, the log said «reopened», and after the interruption the server got pure silence until the session ended.
+        {"id": "4.593", "title": "An iOS audio interruption does not leave the mic deaf: a capture lost while the audio "
+                                 "context is interrupted WAITS and the end of the interruption (the track unmuting, or "
+                                 "the context leaving it) revives once and resumes the context; a track born muted gets "
+                                 "the grace; a revive stops the old capture first and is PROVED on the wire (born muted "
+                                 "or no sender level → republished, still silent → the session restarts; «reopened» "
+                                 "only when proved); the mic analyser hears one capture; each guard disarmed → red",
+            "ch": UNIT,
+            "paths": ["tests/browser/unit/voice/test_a_mic_revived_during_an_interruption_is_not_deaf.py"]},
         # V2-910 — a host suspended with a voice room open woke with a LiveKit job the server had ended; the worker
         # re-registered, reported it, was dropped, and looped — rooms asked for after the resume never got an agent.
         {"id": "3.235", "title": "No voice room outlives a freeze: the sleep closes the live room before the host is "

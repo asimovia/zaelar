@@ -27,7 +27,7 @@ import * as vol from "./volume.js?v=1";
 
 let _capSeen = false;   // V2-752: the audio-synced caption channel has been heard from this session
 import * as mic from "./mic.js?v=1";
-import { publishMic, wireOpen } from "./mic-wire.js?v=1";   // 2026-11-18: born in the switch's state · the reality probe
+import { publishMic, wireOpen, sentLevel, republishMic } from "./mic-wire.js?v=1";   // 2026-11-18: born in the switch's state · the reality probe
 import { openSSE } from "./sse.js?v=6";
 import { clearDebugBuffer } from "./debugbus.js?v=2";
 import { asleep } from "./presence.js?v=1";   // V2-872: a sleeping tab retries nothing
@@ -409,6 +409,11 @@ const _micDevice = createMicDevice({
     health.watchMicTrack(tr);
     mic.readWire();   // the icon follows the wire: the reopened capture is what makes it open
   },
+  // 2026-11-18 — a revive is PROVED on the wire, republished, or the session restarts (`mic-device.js` VERIFY_MS).
+  current: () => stream,
+  probe: async () => { const tr = stream && stream.getAudioTracks()[0]; return tr ? { ended: tr.readyState === "ended", muted: tr.muted, level: tr.enabled ? await sentLevel(room) : null } : null; },
+  republish: async () => { await republishMic({ room, track: stream && stream.getAudioTracks()[0], closed: mic.muted() || _tapParked, wrap: (tr) => new LocalAudioTrack(tr) }); mic.readWire(); },
+  restart: async () => { try { stream.getTracks().forEach((tr) => tr.stop()); } catch (_) {} await stop(); return start(); },
   log: (what, e) => {
     if (e && what === "reopen_failed") health.micCaptureResult(e);   // a refused retake is the mic's health, not a log
     try { api.clientLog("🎙️ mic " + what, { text: e ? String(e.name || e) : what, state: what }); } catch (_) {}

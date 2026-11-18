@@ -113,8 +113,15 @@ export function micCaptureResult(err) {
 // LOST, and the lost hook (`onMicLost`, installed by the session engine) takes the device again. The same check runs
 // when the page comes back to the front and when the audio context leaves an interruption: iOS ends the track while
 // the page is frozen and the event may never be delivered.
+//
+// 2026-11-18 — NOT DURING THE INTERRUPTION. Measured on iOS (b154): the grace timer and the context check revived the mic
+// while the audio session was still interrupted; the fresh track was born muted, nobody looked again when the
+// interruption ended, and the session stayed deaf. So a loss found while the context is `interrupted` WAITS, and the
+// end of the interruption (the track unmuting, or the context leaving `interrupted`) revives once. A track born muted
+// gets the same grace as one muted later, and the end of an interruption resumes the context — on iOS the agent's
+// voice leaves through it (V2-930), so an interruption silenced him too.
 export const MUTE_GRACE_MS = 1500;
-let _micTrack = null, _onLost = null, _muteTimer = null;
+let _micTrack = null, _onLost = null, _muteTimer = null, _waiting = false;
 const _setT = (fn, ms) => setTimeout(fn, ms), _clearT = (t) => clearTimeout(t);
 /** The session engine's reaction to a lost capture track: `fn(why)` takes the device again. */
 export function onMicLost(fn) { _onLost = typeof fn === "function" ? fn : null; }
@@ -128,30 +135,48 @@ export function micTrackDead() {
   const tr = _micTrack;
   return !!tr && (tr.readyState === "ended" || !!tr.muted);
 }
-export function checkMicAlive(why) { if (micTrackDead()) _lost(why); }
+const _interrupted = () => !!_ctx && _ctx.state === "interrupted";
+function _lostOrWait(why) {
+  if (!_interrupted()) { _lost(why); return; }
+  if (!_waiting) note("mic", "lost", "waiting_interruption:" + why + ":" + Date.now());
+  _waiting = true;
+}
+function _interruptionEnded(why) {
+  try { if (_ctx && _ctx.state !== "running" && _ctx.state !== "closed" && _ctx.resume) _ctx.resume().catch(() => {}); } catch (_) {}
+  if (!_waiting) return false;
+  _waiting = false;
+  _lost(why);
+  return true;
+}
+export function checkMicAlive(why) { if (micTrackDead()) _lostOrWait(why); }
 export function watchMicTrack(track, { setT = _setT, clearT = _clearT } = {}) {
   if (!track || track === _micTrack) return;
-  _micTrack = track;
+  _micTrack = track; _waiting = false;
   if (_muteTimer) { clearT(_muteTimer); _muteTimer = null; }
   setCondition("mic", "track_ended", false, "new track");
   setCondition("mic", "track_muted", !!track.muted, track.muted ? "born muted by its source" : "new track");
   const label = () => String(track.label || "").slice(0, 80);
+  const armMute = () => {
+    if (_muteTimer) clearT(_muteTimer);
+    _muteTimer = setT(() => { _muteTimer = null; if (_micTrack === track && track.muted) _lostOrWait("track_muted"); },
+                      MUTE_GRACE_MS);
+  };
+  if (track.muted) armMute();
   track.addEventListener("ended", () => {
     if (_micTrack !== track) return;
     setCondition("mic", "track_ended", true, label());
-    _lost("track_ended");
+    _lostOrWait("track_ended");
   });
   track.addEventListener("mute", () => {
     if (_micTrack !== track) return;
     setCondition("mic", "track_muted", true, label());
-    if (_muteTimer) clearT(_muteTimer);
-    _muteTimer = setT(() => { _muteTimer = null; if (_micTrack === track && track.muted) _lost("track_muted"); },
-                      MUTE_GRACE_MS);
+    armMute();
   });
   track.addEventListener("unmute", () => {
     if (_micTrack !== track) return;
     if (_muteTimer) { clearT(_muteTimer); _muteTimer = null; }
     setCondition("mic", "track_muted", false, label());
+    _interruptionEnded("track_unmuted");
   });
 }
 
@@ -213,9 +238,14 @@ let _ctx = null;
 export function watchAudioContext(ctx) {
   if (!ctx || ctx === _ctx) return;
   _ctx = ctx;
+  let was = ctx.state;
   const apply = () => {
+    if (_ctx !== ctx) return;
     note("spk", "context", ctx.state);
     setCondition("spk", "context_interrupted", ctx.state === "interrupted", "AudioContext=" + ctx.state);
+    const ended = was === "interrupted" && ctx.state !== "interrupted";
+    was = ctx.state;
+    if (ended && _interruptionEnded("context_" + ctx.state)) return;
     if (ctx.state === "running") checkMicAlive("context_running");   // out of an interruption: is the mic still ours?
   };
   apply();

@@ -13,7 +13,7 @@
 // ============================================================================
 import * as api from "./api.js?v=2";
 
-let ac = null, micAn = null, botAn = null, botStr = null;
+let ac = null, micAn = null, micSrc = null, botAn = null, botStr = null;
 // The agent's voice OUT through a gain (where the page cannot set an element's volume — iOS WebKit): source → gain →
 // speakers. `null` while nothing is routed; then the <audio> element is the only way out and plays as before.
 let outSrc = null, outGain = null, outLevel = 1;
@@ -46,16 +46,20 @@ export function initMic(stream) {
   if (ac) reset("reinit");
   ac = new (window.AudioContext || window.webkitAudioContext)();
   micAn = ac.createAnalyser(); micAn.fftSize = 2048;
-  ac.createMediaStreamSource(stream).connect(micAn);
+  micSrc = ac.createMediaStreamSource(stream); micSrc.connect(micAn);
   api.uiState("mic:analyser", { state: "open", reason: "session_start" });
   return { ac, micAn };
 }
 
 // A microphone reopened after the operator closed it (`mic-device.js`): the same analyser listens to the new capture,
 // and the AudioContext — with the bot's analyser on it — stays. Without a context yet, the full init.
+// 2026-11-18: the previous capture's source is disconnected first — stacked sources let the orb move on a capture the
+// sender was not using, so the screen said «heard» over a deaf wire (iOS, b154).
 export function rebindMic(stream) {
   if (!ac || !micAn) return initMic(stream);
-  try { ac.createMediaStreamSource(stream).connect(micAn); } catch (_) {}
+  try { if (micSrc) micSrc.disconnect(); } catch (_) {}
+  micSrc = null;
+  try { micSrc = ac.createMediaStreamSource(stream); micSrc.connect(micAn); } catch (_) {}
   return { ac, micAn };
 }
 
@@ -107,7 +111,7 @@ export function reset(reason = "stop") {
   const had = { mic: !!micAn, bot: !!botAn };
   const old = ac;
   const routed = _unrouteOut();
-  botAn = null; micAn = null; ac = null; if (had.bot) _tellBot(null);
+  botAn = null; micAn = null; micSrc = null; ac = null; if (had.bot) _tellBot(null);
   if (routed) _outChanged();
   try { if (old && old.state !== "closed" && old.close) old.close(); } catch (_) {}
   if (had.bot) api.uiState("audio:out", { state: "released" });

@@ -35,3 +35,22 @@ export function wireOpen(room) {
     return !!(mt && mt.readyState === "live" && mt.enabled);
   });
 }
+
+/** The level the SENDER reads off the published capture (getStats `media-source`), or null where the browser does not
+ *  say — the proof a revived mic is heard by the wire, not only by the orb (2026-11-18, `mic-device.js` VERIFY_MS). */
+export async function sentLevel(room) {
+  try {
+    const p = [...room.localParticipant.audioTrackPublications.values()][0];
+    const st = await p.track.getRTCStatsReport();
+    for (const r of st.values()) if (r.type === "media-source" && r.kind === "audio" && typeof r.audioLevel === "number") return r.audioLevel;
+  } catch (_) {}
+  return null;
+}
+
+/** A replaced track the sender does not carry (iOS after an interruption): unpublish (tracks kept) and publish anew. */
+export async function republishMic({ room, track, closed, wrap }) {
+  const lp = room && room.localParticipant;
+  if (!lp || !track) return null;
+  for (const p of [...lp.audioTrackPublications.values()]) { if (p.track) await lp.unpublishTrack(p.track, false); }
+  return publishMic({ track, closed, wrap, publish: (lt) => lp.publishTrack(lt) });
+}
