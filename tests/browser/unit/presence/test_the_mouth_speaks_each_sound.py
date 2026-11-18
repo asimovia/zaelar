@@ -1,19 +1,18 @@
-"""The face speaks each sound with its own mouth (V2-928, node 4.575) — ES and EN alike.
+"""A richer speaking mouth, PARKED (V2-928, node 4.575) — built and kept, not wired.
 
-The operator, 2026-11-18: «that the lips have more resolution, that it looks like a person really speaking». The voice
-model already tells 15 sounds apart (Oculus visemes, language-free); the rig folded them into four numbers, so every sound
-was a slightly different slit. `presence/mouth.js` gives each sound a recipe over nine channels and the human-like looks
-(Porcelain, the parametric «filled» / «lips» / «o» mouths) show teeth and a tongue inside the opening.
+The operator, 2026-11-18, asked for lips with «more resolution»; the same day, after seeing it, he preferred the simpler
+mouth (and its lag behind the voice is less visible). `presence/mouth.js` keeps the richer one — a recipe per sound over
+nine channels, teeth and a tongue inside the human-like looks — unimported, with its wiring steps in its header.
 
-What is pinned (mouth.mjs, node, a held viseme through the real rig and geometry):
+What is pinned: nothing in the live face imports it (his choice holds), and, driven directly (mouth.mjs, node):
   1. «p b m» seal the lips (no opening); «f v» leave a thin slit with the lower lip under the upper teeth; «t d n l» lift
      the tongue tip and «th» puts it between the teeth; «o u» round and narrow the lips; «i e s» stretch them wider than
      rest; «a» opens the most;
   2. resolution: every pair of the 14 sounds draws a measurably different mouth;
-  3. the human-like look shows teeth for every open sound and none when sealed or at rest; an abstract look (LED) never;
-  4. at rest the mouth is exactly the one it always was (the old formula, to the last digit).
+  3. the inside shows teeth for every open sound and none when sealed or at rest;
+  4. at rest the mouth is exactly the one the live face draws (the old formula, to the last digit).
 
-Disarms: «f» without its bite has no teeth over the lip; the inside switched off shows no teeth anywhere.
+Disarm: «f» without its bite has no teeth over the lip.
 """
 from __future__ import annotations
 
@@ -66,22 +65,22 @@ def test_every_pair_of_sounds_is_told_apart(run):
     assert run["minGap"] > 0.08, f"two sounds draw (almost) the same mouth: {run['closest']} at {run['minGap']}"
 
 
-def test_the_human_look_shows_teeth_while_it_speaks_and_the_abstract_ones_never(run):
+def test_the_inside_shows_teeth_only_while_open(run):
     o = run["out"]
     assert all(o[v]["teeth"] for v in o if v not in ("rest", "PP")), {v: o[v]["teeth"] for v in o}
     assert not o["rest"]["teeth"] and not o["PP"]["teeth"], "teeth through closed lips"
-    assert not any(o[v]["ledTeeth"] for v in o), "an abstract look grew teeth"
 
 
-def test_at_rest_the_mouth_is_the_one_it_always_was(run):
-    assert run["restSame"], "the resting mouth moved: every face's still look would change"
+def test_the_live_face_does_not_wire_it():
+    for f in ("rig.js", "face.js", "classics.js", "parts-face.js", "creator.js"):
+        assert "mouth.js" not in (PRESENCE / f).read_text(encoding="utf-8").replace("PARKED in mouth.js", ""), \
+            f"{f} wires the parked mouth — the operator chose the simpler one (2026-11-18)"
+
+
+def test_at_rest_it_is_the_live_mouth(run):
+    assert run["restSame"], "at rest the parked mouth must be the live one exactly"
 
 
 def test_disarm_f_without_its_bite_has_no_teeth_over_the_lip(tmp_path):
     d = _disarmed(tmp_path, "FF: { open: 0.22, bite: 1,", "FF: { open: 0.22, bite: 0,")
     assert not (d["out"]["FF"]["bite"] > 0.9 and 0.02 < d["out"]["FF"]["h"] < 0.05)
-
-
-def test_disarm_without_the_inside_no_look_shows_teeth(tmp_path):
-    d = _disarmed(tmp_path, 'new Set(["porcelain"])', "new Set([])")
-    assert not any(v["teeth"] for v in d["out"].values())

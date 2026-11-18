@@ -6437,12 +6437,11 @@ DOMAINS: list[dict] = [
                                  "hash-checked and runs, and when it cannot load picojs keeps following; the vendored files "
                                  "match their pins and carry no telemetry. Disarms: no talking gate, no «let it go», no gap",
             "ch": UNIT, "paths": ["tests/browser/unit/presence/test_the_face_answers_you.py"]},
-        {"id": "4.575", "title": "The face speaks each sound with its own mouth (V2-928), ES and EN alike: p b m seal the lips, "
+        {"id": "4.575", "title": "A richer speaking mouth, PARKED and unwired (V2-928, the operator preferred the simpler one): p b m seal the lips, "
                                  "f v leave a slit under the upper teeth, t d n l lift the tongue tip and th puts it between "
                                  "the teeth, o u round and narrow, i e s stretch, a opens the most; every pair of the 14 sounds "
-                                 "draws a different mouth; the human-like looks show teeth and tongue while it speaks (never "
-                                 "sealed, never at rest), the abstract ones never; the resting mouth is the one it always was. "
-                                 "Disarms: f without its bite, the inside switched off",
+                                 "draws a different mouth; the inside shows teeth and tongue only while open; at rest it is the "
+                                 "live mouth exactly; nothing in the live face imports it. Disarm: f without its bite",
             "ch": UNIT, "paths": ["tests/browser/unit/presence/test_the_mouth_speaks_each_sound.py"]},
         {"id": "4.566", "title": "The agent's face (V2-928): every face of the catalogue draws at rest, speaking and thinking; "
                                  "Porcelain is the default; every label of Settings ▸ Presence is in both bundles; the rig "

@@ -1,13 +1,16 @@
-// mouth.js — how the face SPEAKS (V2-928): every sound the voice model hears has its own mouth, and the human-like looks
-// show what a real mouth shows inside — teeth and a tongue.
+// mouth.js — a richer SPEAKING mouth (V2-928), PARKED: built 2026-11-18 and taken back out the same day — the operator
+// preferred the simpler, less realistic mouth, and the richer one also made the ~52 ms lag of the lip-sync model (it hears
+// a sound before it names it) easier to see. NOTHING imports this file today. To wire it back:
+//   1. rig.js: replace the «mouth from visemes» block with `const mt = mouthFrom(v), open = mt.open;` and ease every
+//      channel of MOUTH_EASE into the rig state; add the five new channels (upper lower bite tip funnel) to the frame;
+//   2. rig.js geometry(): use `articulatedMouth(r, MO, n)` (below) as `mouth()`;
+//   3. face.js drawLook(): after the style, `if (r.open > 0.04 && showsInside(look)) drawMouthInside(ctx, G);`
+// The test that keeps it alive (node 4.575) drives these functions directly and pins that nothing wires them.
 //
-// The lip-sync model (vendor/talking-avatar) listens to the agent's voice and gives, per frame, the weights of the 15
-// Oculus visemes (sil PP FF TH DD kk CH SS nn RR aa E I O U), already blended between sounds (coarticulation). It is
-// language-free: it hears sounds, so Spanish and English speak the same way. The rig used to fold those 15 weights into
-// four numbers (open, wide, round, press), which is why every sound looked like a slightly different slit. Here each
-// sound is a RECIPE over nine channels, so «m» seals the lips, «f» tucks the lower lip under the upper teeth, «t d n l»
-// lift the tongue tip, «th» puts it between the teeth, «o u» round and push the lips, «i e» stretch them and show teeth.
-// At rest every channel is 0 and the mouth is exactly the one it always was.
+// What it does: the lip-sync model gives the weights of the 15 Oculus visemes; instead of folding them into four
+// numbers, each sound is a RECIPE over nine channels — «m» seals the lips, «f» tucks the lower lip under the upper
+// teeth, «t d n l» lift the tongue tip, «th» puts it between the teeth, «o u» round the lips, «i e» stretch them — and
+// the human-like looks show teeth and a tongue inside the opening. At rest every channel is 0: the old mouth exactly.
 
 /** The channels: open (jaw) · wide (−1 pursed … 1 stretched) · round (lips rounded) · press (lips sealed) · upper (the
  *  upper lip lifts: the upper teeth show) · lower (the lower lip drops: the lower teeth show) · bite (the lower lip under
@@ -94,4 +97,24 @@ export function drawMouthInside(ctx, G, colours = INSIDE_COLOURS) {
     ctx.beginPath(); ctx.ellipse(c.x, c.y, m.mw * 0.28 * c.s, Math.max(1, 0.018 * c.s), G.r.roll, 0, Math.PI * 2);
     ctx.fillStyle = colours.tongue; ctx.fill();
   }
+}
+
+/** The mouth opening with the nine channels (what rig.js geometry().mouth() would become). `MO` = the shape's mouth. */
+export function articulatedMouth(r, MO = { y: -0.42, k: 1 }, n = 24) {
+  const up = r.upper || 0, lo = r.lower || 0, bite = r.bite || 0, fun = r.funnel || 0, wide = Math.max(0, r.wide);
+  const my = MO.y + 0.012 * bite;
+  const mw = 0.2 * MO.k * (1 + 0.35 * r.wide - 0.4 * r.round - 0.18 * fun + 0.15 * Math.max(0, r.smile)) * (1 - 0.06 * r.press);
+  const h = (0.012 + 0.21 * r.open) * (r.press > 0 ? 1 - r.press * 0.97 : 1) * (1 - 0.5 * bite) * Math.sqrt(MO.k);
+  const c = r.smile * 0.07 * MO.k;
+  const upper = [], lower = [], hu = 0.25 + 0.15 * up, hl = 0.75 + 0.15 * lo;
+  for (let i = 0; i <= n; i++) {
+    const k = (i / n) * 2 - 1, body = 1 - k * k;
+    const roundBody = Math.sqrt(Math.max(0, body));
+    let prof = body * (1 - r.round) + roundBody * r.round;
+    if (wide > 0) prof = prof ** (1 - 0.45 * wide);                           // stretched lips: a flatter opening
+    if (fun > 0) prof = prof * (1 - 0.6 * fun) + Math.max(0, body) ** 0.35 * 0.6 * fun;   // pushed out: squared
+    upper.push([k * mw, my + c * k * k + hu * h * prof]);
+    lower.push([k * mw, my + c * k * k - hl * h * prof - c * 0.4 * body]);
+  }
+  return { upper, lower, my, mw, h };
 }

@@ -6,7 +6,6 @@
 import { createRig, geometry } from "./rig.js?v=1";
 import { drawAvatar, shapeOf, isTall } from "./creator.js?v=1";
 import { STYLES } from "./classics.js?v=1";
-import { showsInside, drawMouthInside } from "./mouth.js?v=1";
 
 /** The look an entry asks for: a classic id or a parametric spec (see catalog-api.js). */
 export function lookOf(entry) {
@@ -31,7 +30,6 @@ export function drawLook(ctx, look, r, cx, cy, R, W, H) {
   const G = look.spec ? geometry(r, cx, cy, R, look.shape) : geometry(r, cx, cy, R);
   if (look.spec) drawAvatar(ctx, G, look.spec);
   else look.style.draw(ctx, G, W, H);
-  if (r.open > 0.04 && showsInside(look)) drawMouthInside(ctx, G);       // teeth and tongue while it speaks
   if (r.tongue > 0.02) drawTongue(ctx, G, look.spec && look.spec.mouth && look.spec.mouth.tongue);
 }
 
