@@ -40,8 +40,24 @@ def test_the_microphone_capture_survived_the_disable():
     assert mic.search(SESSION_LK), "session-lk.js lost its mic capture"
 
 
+#: The ONE sanctioned camera owner outside the session: the face's «look at me» (V2-928), on-device face tracking he
+#: turns on himself — never part of a voice session, never sent anywhere. A new entry here is a product decision.
+CAMERA_OWNERS = {FRONTEND / "app" / "presence" / "look-camera.js"}
+
+
 def test_no_other_frontend_code_asks_for_video():
     """Sweep app/ and mobile/ (vendor bundles excluded): the two engines were the only doors, and this
-    keeps a third one from appearing under a different name."""
+    keeps a third one from appearing under a different name. The declared owners are the exception, by path."""
     for path in list((FRONTEND / "app").rglob("*.js")) + list((FRONTEND / "mobile").rglob("*.js")):
+        if path in CAMERA_OWNERS:
+            continue
         assert not _VIDEO_CAPTURE.search(_code(path)), f"{path} asks for the camera"
+
+
+def test_each_declared_camera_owner_exists_and_asks_for_video_only():
+    """An owner that moved or stopped asking is a stale exception; one that also takes the microphone is a second
+    voice capture the session does not know about."""
+    for path in CAMERA_OWNERS:
+        code = _code(path)
+        assert _VIDEO_CAPTURE.search(code), f"{path} no longer asks for the camera — drop it from CAMERA_OWNERS"
+        assert re.search(r"getUserMedia\(\s*\{\s*audio:\s*false", code), f"{path} must not take the microphone"
