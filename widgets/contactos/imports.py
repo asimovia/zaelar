@@ -69,8 +69,8 @@ def match(contacts: list[dict], inc: dict, index=None) -> dict | None:
     What PROVES it first — `identity.find`: the same account (the row this source gave last time: it survives a
     rename here and keeps a hidden person hidden), then a phone or an address shared with a row, ANY of the ones
     either side holds. Then the name, the weakest: name + city, and the name ALONE when exactly one contact carries
-    it — `add_contact`'s rule, so the two doors agree. It stops at two: a duplicate he can merge beats silently
-    folding two people into one.
+    it — `add_contact`'s rule, so the two doors agree; the same for a full name (two words or more) the source
+    also knows the account by. It stops at two: a duplicate he can merge beats silently folding two people into one.
 
     ⚠️ What is deliberately NOT a key: WhatsApp's `notify`, the nickname the OTHER person set for themselves. It
     changes whenever they feel like it and two strangers share it all the time. It names, it never identifies.
@@ -87,7 +87,17 @@ def match(contacts: list[dict], inc: dict, index=None) -> dict | None:
         if _norm(c.get("name")) == nm and _norm(c.get("city")) == city:
             return c
     same = [c for c in pool if _norm(c.get("name")) == nm]
-    return same[0] if len(same) == 1 else None
+    if len(same) == 1:
+        return same[0]
+    # …and a FULL name the source also has for this account (the one he saved there, the one its conversation
+    # carried), when exactly one row is called that: «Odi V.» on the platform is the «Odile Varga Lund» he keeps.
+    for other in inc.get("knownAs") or []:
+        o = _norm(other)
+        if inc.get("kind") != "group" and len(o.split()) >= 2 and identity.real_name(other):
+            same = [c for c in pool if _norm(c.get("name")) == o]
+            if len(same) == 1:
+                return same[0]
+    return None
 
 
 #: Fields an import may FILL IN when they are empty here. It may never change one that has a value — that

@@ -11,8 +11,9 @@ One definition, asked by every importer, by the store's migration and by the dai
   · `keys(row)` — what PROVES an identity: every phone (as an account: its last nine digits), every address,
     every platform account (an external id, a chat id, a handle) and the address-book resource id;
   · `same(a, b)` — two rows that share a key are one person. The one exception is a LINE, not a person: two rows
-    of the SAME source, each with a real name, neither name contained in the other, sharing a phone or an address —
-    a home landline, a switchboard, a family mailbox. An address book that keeps them apart is believed;
+    of the SAME source, each with a real name and a different given name (`akin`), on one phone or address —
+    a home landline, a switchboard, a family mailbox. An address book that keeps them apart is believed; its
+    nickname row and its full-name row of one person («Odile Work» · «Odile Varga Lund») are one;
   · `find(index, row)` — the stored row an arriving one IS (the same account first, then the one its name fits);
   · `unify(db)` — the look back: every set of rows that are one person is folded into one (`fusion.fold`);
   · `known_as` / `said` — the names OTHER sources know the person by. They are not his words (`aliases` are, and
@@ -133,6 +134,33 @@ def alike(a: dict, b: dict) -> bool:
     return False
 
 
+#: How short a given name may be to count, and how short the stem a one-word nickname row is read by.
+AKIN_WORD, AKIN_STEM = 3, 4
+
+
+def _ordered(name) -> list[str]:
+    from widgets.directory import sound
+    return [sound(t) for t in re.findall(r"[^\W\d_]+", model.norm(name)) if len(t) >= 2]
+
+
+def akin(a: dict, b: dict) -> bool:
+    """Are the two names one person's two entries? They START with the same given name, by sound («Odile Work» ·
+    «Odile Varga Lund»), or one is a single word that is a stem of a word of the other («Varg» · «Odile Vargas»).
+    Read only for two rows that already share a phone or an address. A shared SURNAME says nothing: a family on one
+    landline («Odile Varga» · «Tomas Varga») stays two people."""
+    for x in names(a):
+        for y in names(b):
+            wx, wy = _ordered(x), _ordered(y)
+            if not wx or not wy:
+                continue
+            if wx[0] == wy[0] and len(wx[0]) >= AKIN_WORD:
+                return True
+            one, other = (wx, wy) if len(wx) == 1 else (wy, wx)
+            if len(one) == 1 and len(one[0]) >= AKIN_STEM and any(t != one[0] and t.startswith(one[0]) for t in other):
+                return True
+    return False
+
+
 def same(a: dict, b: dict, apart: set | None = None) -> str:
     """The reason two rows are ONE person — «phone», «email», «acct» — or "" (see the module note)."""
     if a is b or model.kind(a.get("kind")) != model.kind(b.get("kind")) or model.kind(a.get("kind")) not in PEOPLE:
@@ -144,8 +172,9 @@ def same(a: dict, b: dict, apart: set | None = None) -> str:
         return ""
     if any(k[0] == "acct" for k in shared):
         return "acct"
-    if source_of(a) == source_of(b) and real_name(a.get("name")) and real_name(b.get("name")) and not alike(a, b):
-        return ""                                  # one source, two names, one line: two people
+    if (source_of(a) == source_of(b) and real_name(a.get("name")) and real_name(b.get("name"))
+            and not alike(a, b) and not akin(a, b)):
+        return ""                                  # one source, two unrelated names, one line: two people
     return sorted(k[0] for k in shared)[0]
 
 

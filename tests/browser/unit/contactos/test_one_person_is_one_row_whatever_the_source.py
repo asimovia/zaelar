@@ -212,11 +212,11 @@ def test_he_says_two_rows_are_one_person_and_can_take_them_apart_again(book):
 
 # ── once a day, and only a source he has imported from ────────────────────────────────────────────────────────
 
-def test_a_linked_source_is_looked_at_once_a_day_only_after_he_imported_from_it(book, monkeypatch):
+def test_a_linked_source_is_read_by_itself_and_then_once_a_day(book, monkeypatch):
     from widgets.contactos import sources
     monkeypatch.setattr(sources, "connected", lambda s: True)
     now = time.time()
-    assert not sources._due("whatsapp", {"on": False, "last": 0.0}, now), "an import nobody asked for never starts"
+    assert sources._due("whatsapp", {"on": False, "last": 0.0}, now), "linking the account is the ask"
     assert not sources._due("whatsapp", {"on": False, "last": now - 3600}, now)
     assert sources._due("whatsapp", {"on": False, "last": now - 90000}, now)
     assert sources._due("whatsapp", {"on": True, "last": now - 1000}, now)

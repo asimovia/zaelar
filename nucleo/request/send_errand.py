@@ -209,49 +209,5 @@ def brief_block(context: dict | None) -> str:
     return head
 
 
-# ── the worker's bridge: whom his word names ────────────────────────────────────────────────────────────────────
-def find_contact(name: str) -> dict:
-    """Bridge act `find_contact`: the rows of his contacts his word names — whole name, alias or first name — with
-    their channels; when no row is named, the people his memory points at for that description («my sister»)."""
-    q = " ".join(str(name or "").split())
-    if not q:
-        return {"ok": False, "error": "find_contact needs the name or description he used"}
-    rows: list = []
-    try:
-        from widgets.contactos import data as _cd
-        rows = list(_cd.people_named(q, limit=6) or [])
-    except Exception as e:  # noqa: BLE001
-        _note(e)
-    if not rows:
-        try:
-            from nucleo.memory_agent import contacts as _mc
-            rows = [{"name": w.get("name"), "contact_id": w.get("contact_id"),
-                     "why": [x.get("text") for x in (w.get("evidence") or [])][:2]} for w in _mc.who(q)]
-        except Exception as e:  # noqa: BLE001
-            _note(e)
-    out = {"query": q, "people": rows,
-           "note": "one person → use that name; several → ask him which, naming them; none → ask him who it is"}
-    front = _in_front(q)
-    if front:      # what he is LOOKING AT is the first reading of the name (measured 2026-11-18: her chat was open
-        out["in_front"] = front        # and the message was offered to another row of hers, by mail)
-        out["note"] = ("`in_front` is the conversation he has open and his word names it: write THERE — pass its "
-                       "`name` as the contact" + ("; somebody else holds that word as his own for them: ask him which "
-                                                  "of the two, the open one first" if front.get("ask") else "")
-                       + ". Otherwise: " + out["note"])
-    return {"ok": True, "result": out}
-
-
-def _in_front(name: str) -> dict:
-    """The conversation open on the messaging card when `name` names it (`mensajeria/outbound/in_front`); {} else."""
-    try:
-        from widgets import directory
-        from widgets.mensajeria import data as _md
-        from widgets.mensajeria.outbound import in_front
-        got = in_front.named(_md.load_db(), name, "", directory) or {}
-        if got.get("ok"):
-            return {"name": got["name"], "platform": got["platform"]}
-        if got.get("ask"):
-            return {"name": str(got["ask"][0].get("name") or ""), "ask": [str(c.get("name") or "") for c in got["ask"][1:]]}
-    except Exception as e:  # noqa: BLE001 — unread: the directory's rows alone, as before
-        _note(e)
-    return {}
+# ── the worker's bridge: whom his word names (`send_contact.py`) ────────────────────────────────────────────────
+from nucleo.request.send_contact import find_contact  # noqa: E402,F401 — the bridge act, kept under this name

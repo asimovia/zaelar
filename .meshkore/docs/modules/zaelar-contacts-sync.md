@@ -158,8 +158,54 @@ A name is never a key. What only he knows he says once: `merge_contacts`.
   are, and only those name a person outright.
 - **Staying in step.** A change on the platform arrives by itself: PUSHED when the connector can tell — the
   WhatsApp bridge reports renames and the phone it learns behind a linked id, and a push only refreshes people
-  already here — and PULLED once a day from every linked source he has imported from, switch or no switch (the
-  Google look is pull-only while automatic sync is off). A source he never imported from is never read on its own.
+  already here — and PULLED once a day from every linked source, switch or no switch (the Google look is
+  pull-only while automatic sync is off).
+- **A linked messaging source feeds the directory by itself** (`sources._due`, since 2026-11-18). Linking the
+  account is the ask: WhatsApp, Telegram and the MeshKore clusters are read on the first tick they are seen linked
+  (the engine's start included), again every 15 minutes while the answer is `partial` (a linked device is told its
+  book little by little), then daily. An arriving person that a row already proves becomes a CHANNEL of that row
+  — the row now «has WhatsApp» — and only the others become rows. His «off» for a source
+  (`set_auto(source, False)`) is stored as `declined` and stops the automatic read; a try that brought nothing
+  waits 15 minutes.
+- **The names a conversation carried.** Before a pass is folded in, each arriving person gains the names its own
+  conversation has had in the message log (`sources._names_seen`, over `connectors.messaging.archive.chats`), by
+  conversation id or by the phone that id is. A name several accounts carry is dropped (the log files his own name
+  under every conversation he wrote in). A FULL name (two words or more) the source has for the account, when
+  exactly one row is called that, is that row (`imports.match`): the account that shows the name she chose joins
+  the row of his address book that had only an address.
+- **Two entries of one address book.** Two rows of the SAME source on one phone or address are one person when
+  their names start with the same given name, by sound, or one is a single word that is a stem of a word of the
+  other (`identity.akin`): the nickname row and the full-name row. A shared surname proves nothing — a family on
+  one landline stays apart — and neither does a line shared by people with different names.
+
+## Who a said name is
+
+`widgets/contactos/who.py` scores a NAME (never a sentence) against every row with no model and no table of names:
+
+| A said word against a word of the name | Worth |
+|---|---|
+| the same word | 1.0 |
+| the same sound (`directory.sound`: c/k/q, b/v, ll/y, soft g/j, a silent h, accents) | 0.9 |
+| a stem («Salva» of «Salvador») | 0.75 |
+| inside a name written joined | 0.7 |
+| one slip of spelling — a letter missing, added, changed, or two swapped | 0.6 |
+
+Said words are matched in any order, each to a different word of the name, against every name the row is known by;
+his own word for the person (`aliases`) is the person outright; and what he said, joined, sounding like the part
+before the @ of an address the row holds is a `likely` match. A row is `sure` (every word, by word or sound),
+`likely` (every word, some by stem or slip) or `partial` (one word is on the row and another is not).
+
+`who.find(name)` answers `one`, `several`, `partial` or `none`. Full matches hide partial ones. With no full match
+the partial rows come back closest first, with `unmatched` = the said words NO row carries: a question with names,
+never a match. Readers:
+
+- `directory.resolve` (every outbound door) asks it when nothing matched word for word; a near spelling of several
+  words never names a row that lacks one of them, so a door never sends on part of a name.
+- the send worker's `find_contact` (`nucleo/request/send_contact.py`) returns the ranked rows with `confidence`,
+  `match` and `unmatched`; the conversation he has open is still the first reading (`in_front`), and when it only
+  SHARES part of the name it is the one to ask about first (`shares`).
+
+Cost: one pass over the directory in memory (about 15 ms over 2 700 rows); nothing is sent to a model.
 
 ## Two People API rules the code is built around
 

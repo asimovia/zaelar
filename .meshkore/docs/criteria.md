@@ -1147,7 +1147,13 @@ Flash keeps the conversation; the row is what both brains read.
   row is kept whole, its id keeps answering, and `split_contact` restores it for good. The shown name is his own,
   else his address book's, else the chat's; a source renames only a row it named and he never did. What a platform
   changes arrives by itself: pushed when the connector can tell (a `refresh` never adds anybody), read once a day
-  from a linked source he has imported from. When nothing proves it, he says it once (`merge_contacts`). The
+  from every linked source. A LINKED messaging source feeds the directory by itself — at once when never read,
+  soon again while its answer is partial, then daily; his «off» stops it — and a person it brings that a row proves
+  is a channel of that row. One address book's two entries on one line are one person only when they start with
+  the same given name or one is a one-word stem of the other; a shared surname proves nothing. A said NAME is
+  scored word by word (`contactos/who.py`: sound, stem, one slip, any order, an address that sounds like it) with
+  no model; a word nobody carries makes the answer `partial` — names to ask among, never a match — for the doors
+  (`directory.resolve`) and the send worker (`find_contact`) alike (node 4.586). When nothing proves it, he says it once (`merge_contacts`). The
   conversation he has OPEN is the first reading of a name it carries at the send door; a word he gave somebody else
   is asked, the one in front first. The look back also runs — and is WRITTEN — at every start of the engine, as the
   card's declared start step (`"background": {"on_start": true}`, `widgets/start_steps.py`): idempotent, off the

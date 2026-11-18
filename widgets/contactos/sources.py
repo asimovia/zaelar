@@ -24,8 +24,18 @@ lives in `imports.merge_contacts` and this module has no way to override it.
 
 A person renamed on the platform, a number learned behind an account: PUSHED when the connector can tell
 (`contacts_bus.take_pushed`, absorbed as a `refresh` — it only touches people already here), and PULLED once a day
-from every linked source he has imported from at least once, switch or no switch (`DAILY_S`). A source he never
-imported from is never read on its own: an import nobody asked for is not ours to start.
+from every linked source, switch or no switch (`DAILY_S`).
+
+## A linked source feeds the directory by itself (2026-11-18)
+
+Measured on a real directory: 2 705 rows, every one from the address book, with two messaging accounts linked and
+their switches never touched — nobody he writes to was a row, so no row could ever gain a channel and «send her a
+message» found an address only. Linking the account IS the ask: a linked source is read on the first tick after it
+is seen linked (the engine's start included), again soon while its answer is `partial` (a socket that is still
+being told its book), and then daily. A person it brings that a row already proves (a phone, an address, an
+account — `identity.find`) becomes a CHANNEL of that row; only the others become rows. The one way to stop it is
+his: switching a source off (`set_auto(source, False)`) is remembered as `declined`, and a declined source is read
+only when he asks.
 """
 from __future__ import annotations
 
@@ -176,13 +186,50 @@ def _absorb_locked(source: str, got: dict, _d, imports, refresh: bool = False) -
         st["error"] = str(got.get("error") or "no pude leer esa fuente")
         _d.store.save(_d.WIDGET_ID, db)
         return {"ok": False, "error": st["error"]}
+    if not refresh:
+        _names_seen(source, got.get("contacts") or [])
     res = imports.absorb(db, got, source=source, **({"refresh": True} if refresh else {}))
     if not refresh:
-        st.update({"last": time.time(), "added": int(res.get("added") or 0), "error": ""})
+        st.update({"last": time.time(), "added": int(res.get("added") or 0), "error": "",
+                   "partial": bool(got.get("partial"))})
     _d.store.save(_d.WIDGET_ID, db)
     logger.info(f"contactos: {'refresh' if refresh else 'import'} {source} → +{res['added']} new, "
                 f"{res['filled']} completed, {res.get('merged', 0)} folded into one person")
     return {"ok": True, "source": source, **res}
+
+
+def _names_seen(source: str, rows: list[dict]) -> int:
+    """Add to each arriving person the names its own conversation has carried in the message log
+    (`connectors.messaging.archive.chats`) — the account by its conversation id, or by the phone that id is. A linked
+    device is told a chat's name once and the log keeps every name it saw: the same account can be the name she
+    chose on one id and the name he saved on another. A name several accounts carry is nobody's (the log files
+    his own name under every conversation he wrote in). Returns how many rows gained a name; never raises."""
+    from . import identity
+    try:
+        from connectors.messaging import archive
+        by: dict[str, set] = {}
+        holders: dict[str, set] = {}
+        for ch in archive.chats(source) or []:
+            cid, name = str(ch.get("chatId") or ""), " ".join(str(ch.get("name") or "").split())
+            if ch.get("kind") != "person" or not cid or not identity.real_name(name):
+                continue
+            key = identity._account_phone(source, "chatId", cid) or cid
+            by.setdefault(key, set()).add(name)
+            holders.setdefault(name.casefold(), set()).add(key)
+        gained = 0
+        for r in rows:
+            cid = str((r.get("externalIds") or {}).get(source) or "")
+            keys = {cid, identity._account_phone(source, "chatId", cid), identity.phone_key(r.get("phone"))} - {""}
+            names = sorted(n for k in keys for n in by.get(k, ()) if len(holders[n.casefold()]) == 1)
+            names = [n for n in names if n.casefold() != str(r.get("name") or "").casefold()
+                     and n not in (r.get("knownAs") or [])]
+            if names:
+                r["knownAs"] = list(r.get("knownAs") or []) + names
+                gained += 1
+        return gained
+    except Exception as e:  # noqa: BLE001 — the pass goes on with the names the platform gave
+        logger.debug(f"contactos.sources: the log's names for {source} were not read ({e})")
+        return 0
 
 
 def set_auto(source: str, on: bool) -> dict:
@@ -194,7 +241,7 @@ def set_auto(source: str, on: bool) -> dict:
     if source not in KNOWN:
         return {"ok": False, "error": f"no sé importar contactos de «{source}»"}
     db = _d.load_db()
-    state(db)[source]["on"] = bool(on)
+    state(db)[source].update({"on": bool(on), "declined": not on})   # his «off» also stops the automatic feed
     _d.store.save(_d.WIDGET_ID, db)
     if not on:
         return {"ok": True, "source": source, "on": False}
@@ -202,11 +249,26 @@ def set_auto(source: str, on: bool) -> dict:
 
 
 def _due(source: str, st: dict, now: float) -> bool:
-    """Is a pass owed? Every `EVERY_S` while its switch is on; once a day for a linked source he has imported from."""
-    age = now - float(st.get("last") or 0.0)
+    """Is a pass owed? Every `EVERY_S` while its switch is on. Otherwise, for a LINKED source he has not switched
+    off: at once when it was never read, every `EVERY_S` while its last answer was partial, then once a day. A try
+    that brought nothing (the connector was still starting) waits `EVERY_S` before the next."""
+    last = float(st.get("last") or 0.0)
+    if now - max(last, float(st.get("tried") or 0.0)) < EVERY_S:
+        return False
     if st.get("on"):
-        return age >= EVERY_S
-    return float(st.get("last") or 0.0) > 0 and age >= DAILY_S and (source == "meshkore" or connected(source))
+        return True
+    if st.get("declined") or not (not last or bool(st.get("partial")) or now - last >= DAILY_S):
+        return False
+    return source == "meshkore" or connected(source)        # asked last: it reads the connectors' registry
+
+
+def _tried(source: str) -> None:
+    """Stamp an automatic try, so a source that answers nothing is not asked again on every tick."""
+    from . import data as _d
+    with _d.store.mutating(_d.WIDGET_ID):
+        db = _d.load_db()
+        state(db)[source]["tried"] = time.time()
+        _d.store.save(_d.WIDGET_ID, db)
 
 
 def tick(ctx) -> None:
@@ -238,6 +300,7 @@ def tick(ctx) -> None:
         return
     for s in due:
         try:
+            _tried(s)
             sync_now(s)
         except Exception as e:  # noqa: BLE001
             logger.warning(f"contactos.sources: tick de {s} falló: {e}")

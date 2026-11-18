@@ -409,9 +409,19 @@ def resolve(name: str, *, tolerant: bool = True, platform: str | None = None) ->
         s = strength(q, c, words=words, literal=literal)
         if s:
             scored.append((s, c))
-    if not scored and tolerant and not literal:
-        from . import textmatch      # the ONE shared spelling-tolerant matcher (V2-705): «Kryptonite» → «Cryptonite»
-        scored = [(NEAR, c) for _score, c in textmatch.rank(raw, people, key=lambda c: c.get("name"), floor=0.8)]
+    if tolerant and not literal and max((s for s, _c in scored), default=0) < WORDS:
+        # Nothing matched word for word: the word-by-word reading joins in (a stem, a slip of spelling, an address
+        # that sounds like it — `contactos/who`), then, with still nobody, the ONE shared spelling-tolerant matcher
+        # (V2-705: «Kryptonite» → «Cryptonite»). A near spelling of several words names a row only when the row's whole
+        # name is in what he said («meeting with Odile Lund»): «Odile Varga» is not «Odile Lund» for sharing most
+        # of its letters.
+        from . import textmatch
+        from .contactos import who
+        have = {id(c) for _s, c in scored}
+        scored += [(NEAR, c) for c in people
+                   if id(c) not in have and who.score(q, c, words)["confidence"] in ("sure", "likely")]
+        scored = scored or [(NEAR, c) for _score, c in textmatch.rank(raw, people, key=lambda c: c.get("name"), floor=0.8)
+                            if len(words) < 2 or not who.left_over(c.get("name"), words)]
     if platform is not None:
         able = [(s, c) for s, c in scored if _reaches(c, platform)]
         scored = able or scored
