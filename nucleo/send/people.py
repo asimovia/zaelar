@@ -93,8 +93,19 @@ def named(query: str) -> list[str]:
     """The names of the people a word names, closest first — what he asks for with «which <name>s do you have?»: his
     contacts only (an open conversation is one of them, never the whole answer)."""
     try:
+        from widgets import directory as d
         from widgets.contactos import who
-        return [str(r["contact"].get("name") or "") for r in who.find(query).get("people") or []][:ASK_MAX]
+        q = d._norm(str(query or "").strip())
+        words = d._tokens(q)
+        if not words:
+            return []
+        rows = [(who.score(q, c, words), c) for c in d._contacts()
+                if d.level(c) and c.get("kind") in (None, "", "person", "company")]
+        full = [(s, c) for s, c in rows if s.get("score") and s.get("confidence") != "partial"]
+        kept = {id(t[2]) for t in d._one_row_per_person([(0, 0, c) for _s, c in full])}
+        full = sorted([(s, c) for s, c in full if id(c) in kept], key=lambda r: -float(r[0].get("score") or 0))
+        # EVERY person who carries the name — «which Raquels do you have?» is never answered with the closest alone
+        return [str(c.get("name") or "") for _s, c in full][:ASK_MAX]
     except Exception as e:  # noqa: BLE001
         _note(e)
         return []

@@ -45,11 +45,13 @@ def _directory_groups(platform: str = "") -> list[dict]:
     try:
         from widgets import directory
         for c in directory._contacts():
-            if str(c.get("subtype") or c.get("kind") or "") != "group" or not c.get("name"):
-                continue
+            if str(c.get("subtype") or c.get("kind") or "") != "group" or not c.get("name") or not directory.level(c):
+                continue                      # a hidden or blocked row is not a group he has
             for ch in c.get("channels") or []:
                 plat, cid = str(ch.get("platform") or ""), str(ch.get("chatId") or "")
-                if plat in _LEAVE_PLATFORMS and (not platform or plat == platform) and cid:
+                # WhatsApp only: its group id is the chat's own (`…@g.us`); Telegram's directory id is not the
+                # chat list's marked id, and a wrong one reaches the wrong dialog
+                if plat == "whatsapp" and (not platform or plat == platform) and cid.endswith("@g.us"):
                     out.append({"platform": plat, "chatId": cid, "name": str(c["name"])})
     except Exception as e:  # noqa: BLE001 — an unreadable directory adds nothing; the card's own list stands
         from loguru import logger

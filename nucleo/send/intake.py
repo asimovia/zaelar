@@ -50,8 +50,11 @@ async def _an_act_ordered(said: str, widget: str, last_line: str, before) -> dic
         from nucleo.send import read_act, turn
         from widgets import effects
         b = base(widget)
+        from nucleo.workers import exit_risk
+        # the acts that ASK (a lean never runs one unasked, and a harmless one needs fields a lean does not carry)
         acts = {name: str((sp or {}).get("desc") or "") for name, sp in (effects._manifest(b).get("actions") or {}).items()
-                if isinstance(sp, dict) and turn.owned(b, name) and not turn.is_message(b, name)}
+                if isinstance(sp, dict) and turn.owned(b, name) and not turn.is_message(b, name)
+                and exit_risk.asks_by_itself(b, name, {})}
         got = await asyncio.to_thread(read_act.choose, said, acts, last_line, before)
         return got if got.get("act") else None
     except Exception as e:  # noqa: BLE001
@@ -86,6 +89,7 @@ async def intake(said: str, hint: dict | None = None, last_line: str = "", befor
                  by: str = "call") -> str:
     from nucleo.send import owner
     h = dict(hint or {})
+    named_act = bool(h.get("_act"))              # the call (or the reading) NAMED an act; a lean names none
     act = str(h.pop("_act", "") or "send_to")
     widget = str(h.pop("_widget", "") or "mensajeria")
     async with _lock():
@@ -106,15 +110,25 @@ async def intake(said: str, hint: dict | None = None, last_line: str = "", befor
                     other = fresh["who"]
                     h = {**h, "contact": other, **({"text": fresh["text"]} if fresh.get("text") else {})}
             if by not in NO_READ and open_.asked == _draft.CONFIRM and (elsewhere or (other and not _same_person(
-                    open_, other)) or (act != open_.act and open_.kind == "act")):
-                # a NEW order while the open one only waits for his yes: he moved on — it is left undone (said), and
-                # the new one is taken now; a queue behind a question he will not answer would hold it for good
-                _draft.close(open_, _draft.CANCELLED)
-                owner._emit("left undone for his new order", open_, by=by)
+                    open_, other)) or (named_act and act != open_.act and open_.kind == "act")):
+                # a NEW order while the open one only waits for his yes: he moved on. The new one is decided FIRST;
+                # only when it opens is the first left undone (and said) — a queue behind a question he will not
+                # answer would hold it for good, and a lean that orders nothing must cancel nothing
                 lead = f"First say in a few words that «{open_.said[:120]}» was left undone — nothing was done."
                 d = _draft.start(said)
-                async with d.lock:
-                    line = await _open(d, said, h, act, last_line, before, by, widget, lead=lead)
+                try:
+                    async with d.lock:
+                        line = await _open(d, said, h, act, last_line, before, by, widget, lead=lead)
+                except BaseException:
+                    _draft.close(d, _draft.CANCELLED)
+                    _draft._open["draft"] = open_          # the first stands as it was
+                    raise
+                if not line or _draft.current() is not d and d.state == _draft.CANCELLED:
+                    if _draft.current() is None:
+                        _draft._open["draft"] = open_      # nothing new was ordered: the first stands as it was
+                    return line
+                open_.state = _draft.CANCELLED
+                owner._emit("left undone for his new order", open_, by=by)
                 return line
             if by in NO_READ or elsewhere or (other and not _same_person(open_, other)):
                 h = {**h, **({"_adopted": elsewhere} if elsewhere else {})}

@@ -262,8 +262,6 @@ def test_a_show_that_names_a_card_we_have_beats_the_worker_and_an_undone_order_o
     from nucleo.flash import direct_action as _da
     lean = {_tb.TARGET_KEY: ("documento:append", 0.3)}      # V2-938: an act of the card is read, at any confidence
     assert _da.order_over_a_card_left_undone(_brief({_tb.REQUEST_KEY: ("order", 0.61), _tb.CATALOG_KEY: ("documento", 0.86), **lean}))
-    assert not _da.order_over_a_card_left_undone(_brief({_tb.REQUEST_KEY: ("order", 0.61), _tb.CATALOG_KEY: ("contactos", 0.68)})), \
-        "V2-938: «I want to connect my Google contacts» names the card and no act of it — talk, not work owed"
     assert not _da.order_over_a_card_left_undone(_brief({_tb.REQUEST_KEY: ("order", 0.59), _tb.CATALOG_KEY: ("documento", 0.86), **lean})), \
         "A7: under the act floor (0.6) an order launches nothing"
     assert not _da.order_over_a_card_left_undone(_brief({_tb.REQUEST_KEY: ("question", 0.9), _tb.CATALOG_KEY: ("agenda", 0.9)})), "a question is not work owed"

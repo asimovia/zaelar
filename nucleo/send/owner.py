@@ -183,8 +183,12 @@ async def _step(d, got: dict, last_line: str = "") -> str:
         # Only a confirmation he HEARD is answered; a bare «yes» answers it only when it was said last.
         # …and never after another line of ours (a worker's «shall I send it?» is answered by his «yes, send it»), nor
         # by a sentence he began before the confirmation existed.
-        if d.heard and d.other_at <= d.heard_at and not _heard.began_before(d) and (
-                not got.get("bare") or _ask._fold(d.confirm_line) in _ask._fold(last_line)):
+        said_last = _ask._fold(d.confirm_line) in _ask._fold(last_line)
+        # an act's go-ahead answers its question only when that question was said LAST, unless his words name again
+        # what it is about («yes, leave Book club and the other one»)
+        act_ok = d.kind != "act" or said_last or bool(got.get("names")) or not got.get("bare")
+        if d.heard and act_ok and d.other_at <= d.heard_at and not _heard.began_before(d) and (
+                d.kind == "act" or not got.get("bare") or said_last):
             return await _send(d)
     lead = (f"Say back in a few words that the message now reads «{d.text}»." if got.get("text") is not None
             and d.text else "")

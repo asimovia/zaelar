@@ -170,3 +170,16 @@ def test_the_guard_sees_a_route_that_skips_the_reader():
         "\n\nasync def _a_new_route(escalate_req, _op_text, _brief, emit):\n    _eg.keeps_it_inline(_brief)\n"
         "    if _op_text:\n        escalate_req['v'] = _op_text\n")
     assert unguarded({**src, "nucleo/flash/post_stream_lanes.py": bad}), "a new unguarded route must go red"
+
+
+def test_an_order_whose_end_state_already_holds_owes_no_worker(monkeypatch):
+    """V2-938 — look before acting: the backstop owes work on a card unless the end state the reading asks of it
+    already holds there."""
+    from nucleo.acts import card_verdict
+    from nucleo.circuit import spec
+    b = _brief(("handle_inline", 0.15))
+    monkeypatch.setattr(spec, "end_state_verdict", lambda brief: "agenda:reminded")
+    monkeypatch.setattr(card_verdict, "_already", lambda card, end: True)
+    assert not card_verdict.order_over_a_card_left_undone(b)
+    monkeypatch.setattr(card_verdict, "_already", lambda card, end: False)
+    assert card_verdict.order_over_a_card_left_undone(b)

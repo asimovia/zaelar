@@ -76,8 +76,12 @@ def test_leaving_two_groups_is_asked_once_naming_what_was_found_and_runs_on_his_
     world.reads = [_read(mine=False)]
     assert _take("why are you so slow?") == (False, ""), "his complaint is the conversation's, never swallowed"
     owner.heard(d.confirm_line)
-    world.reads = [_read(send=True)]
-    taken, _l = _take("yes, delete them")
+    world.reads = [_read(send=True, bare=True)]
+    assert _take("yes", "Shall I open your agenda?")[1] and not world.ran, \
+        "audit P0: a bare yes after another question of the turn is not the act's"
+    owner.heard(_draft.current().confirm_line)
+    world.reads = [_read(send=True, bare=False)]
+    taken, _l = _take("yes, delete them", "I'm not slow, it's waiting for you.")   # explicit: it names the act
     assert taken and world.ran == [("leave_group", {"groups": ["Odile's club", "Book club"], "platform": "whatsapp"})]
     assert world.said_out, "the final line is the act's receipt"
 
@@ -160,3 +164,23 @@ def test_a_choice_outside_what_the_card_declares_opens_nothing(world):
     world.reads = [_read(mine=False), json.dumps({"act": "delete_everything", "names": []})]
     assert asyncio.run(owner.intake("show me my groups", {"_widget": "mensajeria"}, by="order")) == ""
     assert _draft.current() is None
+
+
+def test_a_lean_that_orders_nothing_cancels_nothing(world):
+    """Audit P0: a group act waits for his yes; «show me my chats» reaches the owner as a lean — it orders no act and
+    no message, so the waiting act stands, untouched."""
+    asyncio.run(owner.intake("delete the groups Odile's club and Book club", dict(LEAVE)))
+    d = _draft.current()
+    world.reads = [_read(mine=False), _read(mine=False), json.dumps({"act": "", "names": []})]
+    assert asyncio.run(owner.intake("show me my chats", {"_widget": "mensajeria"}, by="order")) == ""
+    assert _draft.current() is d and d.state == _draft.OPEN and d.asked == _draft.CONFIRM
+
+
+def test_the_new_groups_own_name_is_never_one_of_its_members(world):
+    """Audit P1: «make a group Trip with Odile» — his words name «Trip» and «Odile»; Trip is the group's declared name,
+    never a member."""
+    world.reads = [_read(names=["Trip", "Odile"])]
+    asyncio.run(owner.intake("make a group Trip with Odile", {"name": "Trip", "members": ["Odile"], "platform":
+                                                               "whatsapp", "_act": "create_group",
+                                                               "_widget": "mensajeria"}))
+    assert _draft.current().extra["members"] == ["Odile"]

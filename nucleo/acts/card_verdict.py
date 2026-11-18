@@ -156,18 +156,13 @@ def order_over_a_card_left_undone(brief) -> bool:
 
 
 def _owed_on(brief, card: str) -> bool:
-    """Look before acting (V2-938): work is owed on `card` only when the reading names an ACT of it — the act it leans
-    to, or an end state of it — and that end state does not already hold. A card named with no act read is what he
-    talked ABOUT («I want to connect my Google contacts» with them connected): nothing to commission."""
+    """Look before acting (V2-938): work is owed on `card` unless the end state the reading asks of it already holds,
+    read on the card now. (The reading never asks for the act it leans to beside the catalogue, so an act read cannot
+    be required here — audit 2026-11-18.)"""
     from nucleo.circuit import spec
-    from nucleo.turn import verdicts as _v
     base = card.split("::", 1)[0].strip().lower()
-    leaned, _l = _v.read(brief, "screen_action", None, min_confidence=0.0)
-    lean_card = str(leaned or "").partition(":")[0].split("::", 1)[0].strip().lower()
     end = spec.end_state_verdict(brief)
-    if end and end.split(":", 1)[0] == base:
-        return not _already(base, end)
-    return lean_card == base
+    return not (end and end.split(":", 1)[0] == base and _already(base, end))
 
 
 def _already(card: str, end: str) -> bool:

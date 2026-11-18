@@ -71,6 +71,21 @@ async def next_step(d, lead: str = "") -> str:
     return said
 
 
+def _declared_fields(d) -> set[str]:
+    """The fields the act's manifest DECLARES (an undeclared key the model passed — an alias — is no other field)."""
+    try:
+        from widgets import effects
+        return set(((effects._manifest(d.widget).get("actions") or {}).get(d.act) or {}).get("payload") or {})
+    except Exception as e:  # noqa: BLE001
+        _note(e)
+        return set()
+
+
+def ask_fold(s) -> str:
+    from nucleo.send import ask
+    return ask._fold(s)
+
+
 def list_field(d) -> str:
     """The ONE field of this act declared a list (`types`: the groups it leaves, the members it adds), or ""."""
     try:
@@ -87,7 +102,10 @@ def take_names(d, names: list[str], *, only_more: bool = False) -> bool:
     named two groups, the call carried one). `only_more`: at intake, only when his words name more. True if it
     changed."""
     field = list_field(d)
-    names = [str(n).strip() for n in names or () if str(n or "").strip()]
+    declared = _declared_fields(d)
+    others = {ask_fold(v) for k, v in (d.extra or {}).items() if k != field and k in declared and isinstance(v, str)}
+    # what his words name for ANOTHER field (the new group's own name) is never one of its members
+    names = [str(n).strip() for n in names or () if str(n or "").strip() and ask_fold(n) not in others]
     if not field or not names:
         return False
     had = d.names_said()

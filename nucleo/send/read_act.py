@@ -26,10 +26,12 @@ SYSTEM = (
     "When mine:\n"
     "  \"send\": true when he plainly tells it to go ahead as it stands (yes, do it, delete them, go ahead) — naming "
     "again the very things it is already about is no change.\n"
+    "  \"bare\": true when his words are ONLY an affirmation (yes, ok, sure, vale) that never names the act («delete "
+    "them», «leave them», «do it») nor what it is about.\n"
     "  \"drop\": true when he says not to do it, to cancel it or to forget it.\n"
     "  \"names\": EVERY group or person his words name for it, each as he said it, in a list — when his words point "
     "back («delete them», «those two»), the ones he named before; [] when he names none.\n"
-    "Reply with JSON only: {\"mine\": bool, \"send\": bool, \"drop\": bool, \"names\": [str]}"
+    "Reply with JSON only: {\"mine\": bool, \"send\": bool, \"bare\": bool, \"drop\": bool, \"names\": [str]}"
 )
 
 CHOOSE = (
@@ -82,7 +84,7 @@ def read(said: str, draft, last_line: str = "", before: list[str] | None = None)
     if got is None:
         return {**_read.NOTHING, "unread": True}
     return {**_read.NOTHING, "mine": got.get("mine") is True, "send": got.get("send") is True,
-            "drop": got.get("drop") is True, "names": _names(got)}
+            "bare": got.get("bare") is not False, "drop": got.get("drop") is True, "names": _names(got)}
 
 
 def choose(said: str, acts: dict[str, str], last_line: str = "", before: list[str] | None = None) -> dict:
