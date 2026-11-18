@@ -26,7 +26,7 @@ async def hand(rec, action: str, payload: dict | None) -> dict | None:
             return None
         from nucleo.send import owner
         said = str(getattr(rec, "heard", "") or getattr(rec, "request", "") or "")
-        line = await owner.intake(said, dict(inner), by="worker")
+        line = await owner.intake(said, {**dict(inner), "_act": act}, by="worker")
         if line:
             from nucleo.pulse import notices
             await notices.notify("zaelar", line, key=f"send:worker:{getattr(rec, 'uid', '')}:{abs(hash(line))}",

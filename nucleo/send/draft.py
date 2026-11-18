@@ -59,10 +59,12 @@ def current() -> Draft | None:
     d = _open["draft"]
     if d is None:
         return None
-    if d.state != OPEN or time.time() - d.touched_at > IDLE_S:
-        _open["draft"] = None
+    if time.time() - d.touched_at > IDLE_S or d.state in (SENT, FAILED, CANCELLED):
+        _open["draft"] = None                 # an idle draft takes the messages queued behind it with it
+        if d.state == OPEN:
+            _queue.clear()
         return None
-    return d
+    return d if d.state == OPEN else None     # while it SENDS it is not current, and is not let go either
 
 
 def start(said: str) -> Draft:
@@ -73,7 +75,7 @@ def start(said: str) -> Draft:
 
 def close(d: Draft, state: str) -> None:
     d.state = state
-    if _open["draft"] is d:
+    if _open["draft"] is d and state != OPEN:
         _open["draft"] = None
 
 

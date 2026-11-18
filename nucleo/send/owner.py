@@ -50,10 +50,11 @@ def _emit(label: str, d, **extra) -> None:
 
 
 # ── the next step, by code ──────────────────────────────────────────────────────────────────────────────────────────
-def _resolve(d, who: str) -> None:
-    """Point the draft at the person `who` names (among the candidates it was asking about, when it was)."""
+def _resolve(d, who: str, relation: str = "") -> None:
+    """Point the draft at the person `who` names (among the candidates it was asking about, when it was); a relation
+    he named her by («mum») reads the people he said are that."""
     was = list(d.candidates)
-    got = _people.chosen(who, was, d.channel) if was else _people.resolve(who, d.channel)
+    got = _people.chosen(who, was, d.channel) if was else _people.resolve(who, d.channel, relation)
     if was and not (got.get("one") or got.get("several")):
         return                                   # a name nobody carries keeps the question he was asked
     d.who, d.target, d.candidates, d.unmatched = who, {}, [], []
@@ -90,7 +91,8 @@ async def _next(d, lead: str = "") -> str:
     if ok.get("platform"):
         d.target["platform"] = ok["platform"]
     d.asked = _draft.CONFIRM
-    d.confirm_line = await _ask.confirm(d.target["name"], d.target.get("platform") or d.channel, d.text)
+    d.confirm_line = await _ask.confirm(d.target["name"], d.target.get("platform") or d.channel, d.text,
+                                        at=_deliver.at(d))
     return d.confirm_line
 
 
@@ -101,8 +103,16 @@ def _apply(d, got: dict) -> None:
             d.target["platform"] = got["channel"]
     if got.get("text") is not None:
         d.text = got["text"]
-    if got.get("who") and got["who"] != (d.target or {}).get("name"):
+    if got.get("who") and not _names_the_chosen(d, got["who"]):
         _resolve(d, got["who"])
+
+
+def _names_the_chosen(d, who: str) -> bool:
+    """«tell Raquel also…» while Raquel Ortega is chosen: words that are all in her name keep the choice."""
+    if not d.target:
+        return False
+    said = set(_ask._fold(who).split())
+    return bool(said) and said <= set(_ask._fold(d.target.get("name")).split())
 
 
 async def _step(d, got: dict, last_line: str = "") -> str:
@@ -124,7 +134,7 @@ async def _step(d, got: dict, last_line: str = "") -> str:
         return await _ask.line("send_listed", who=got["list"], names=", ".join(names))
     if got.get("send") and not changed and d.asked == _draft.CONFIRM and d.target and d.text:
         # A bare «yes» answers only the confirmation said LAST; after anything else in between he is read it again.
-        if not got.get("bare") or " ".join(last_line.split()) == " ".join(d.confirm_line.split()):
+        if not got.get("bare") or (d.confirm_line and _ask._fold(d.confirm_line) in _ask._fold(last_line)):
             return await _send(d)
     lead = (f"Say back in a few words that the message now reads «{d.text}»." if got.get("text") is not None
             and d.text else "")
@@ -137,7 +147,28 @@ def _run(d) -> dict:
 
 
 async def _send(d) -> str:
+    """The act and what follows it run to the end even if his turn is cut meanwhile: a message that left is never
+    left unreported (its line is said out of turn when the turn that asked is gone)."""
     d.state = _draft.SENDING
+    job = asyncio.ensure_future(_sent(d))
+    try:
+        return await asyncio.shield(job)
+    except asyncio.CancelledError:
+        job.add_done_callback(_say_late)
+        raise
+
+
+def _say_late(job) -> None:
+    try:
+        line = job.result()
+        if line:
+            from nucleo.pulse import notices
+            asyncio.ensure_future(notices.notify("zaelar", line, key=f"send:late:{abs(hash(line))}", kind="info"))
+    except Exception as e:  # noqa: BLE001
+        _note(e)
+
+
+async def _sent(d) -> str:
     try:
         res = await asyncio.to_thread(_run, d)
     except Exception as e:  # noqa: BLE001
@@ -149,58 +180,20 @@ async def _send(d) -> str:
         return await _ask.line("send_cannot", who=d.target.get("name"), why=why)
     d.ref = _deliver.ref_of(res)
     _draft.close(d, _draft.SENT)
+    if res.get("later"):
+        _emit("held for later", d, ref=d.ref, at=res["later"])
+        return await _ask.line("send_later", who=d.target.get("name"), when=_ask.when(res["later"]))
     _emit("queued", d, ref=d.ref)
     _receipt.follow_soon(d)
     return await _ask.line("send_going", who=d.target.get("name"))
 
 
 # ── the two doors in ───────────────────────────────────────────────────────────────────────────────────────────────
-def _orders_one(got: dict, by: str) -> bool:
-    """Do his words order a message? A read that is only a «yes» (nobody named, nothing said) orders none."""
-    if got.get("unread"):
-        return by in SURE
-    return bool(got.get("mine")) and not got.get("drop") and not (got.get("send") and not (got.get("who") or
-                                                                                          got.get("text")))
-
-
 async def intake(said: str, hint: dict | None = None, last_line: str = "", before: list[str] | None = None,
                  by: str = "call") -> str:
-    """His order to send: a NEW draft, read from his words (the model's call fills what the read left empty). Returns
-    the line the turn says: always a question — nothing leaves before his yes to the confirmation."""
-    h = dict(hint or {})
-    if (open_ := _draft.current()) is not None:
-        if by == "worker":                       # a worker's message waits its turn behind the one he is writing
-            n = _draft.queue(said, h, by)
-            _emit("queued behind the open draft", open_, by=by, waiting=n)
-            return ""
-        # The gate's read of this sentence did not take it (not about the message, or unread): the same turn's call
-        # or lean never replaces the message he is writing — the sentence is read again, with no clock, by the owner.
-        taken, line = await take(said, last_line=last_line, before=before, bounded=False)
-        _emit("kept the open draft", open_, by=by, said=str(said)[:200], taken=taken)
-        return line if taken else ""
-    d = _draft.start(said)
-    d.by = by
-    d.act, d.extra = _deliver.shape(h)
-    # His words are read when he said them; a worker's act carries its fields and no words of his to read.
-    got = dict(_read.NOTHING) if by == "worker" else await asyncio.to_thread(_read.read, said, d, last_line, before)
-    if by != "worker" and not _orders_one(got, by):
-        # Only HIS words order a message. A call, a verdict or a lean over words that do not («a bare yes», «stop
-        # repeating me», «forget that message») opens nothing.
-        _draft.close(d, _draft.CANCELLED)
-        _emit("not a message", d, by=by, read=got)
-        return ""
-    who = got.get("who") or str(h.get("contact") or h.get("to") or "").strip()
-    text = got.get("text") if got.get("text") is not None else (" ".join(str(h.get("text") or "").split()) or None)
-    d.channel = got.get("channel") or str(h.get("channel") or h.get("platform") or "").strip().lower()
-    if text:
-        d.text = text
-    if who:
-        _resolve(d, who)
-    elif d.act == "reply" or "n" in d.extra:   # a reply goes to the conversation it answers
-        if (conv := _people.conversation(d.extra.get("n"))).get("name"):
-            d.who, d.target = conv["name"], conv
-    _emit("opened", d, by=by, read=got)
-    return await _next(d)
+    """His order to send — `nucleo/send/intake.py`."""
+    from nucleo.send import intake as _intake
+    return await _intake.intake(said, hint, last_line, before, by)
 
 
 async def take(said: str, *, last_line: str = "", before: list[str] | None = None,
@@ -212,7 +205,7 @@ async def take(said: str, *, last_line: str = "", before: list[str] | None = Non
         return False, ""
     async with d.lock:                            # one sentence at a time: a split «yes» never sends twice
         if _draft.current() is not d:
-            return True, ""                       # the sentence before this one already ended it, and said so
+            return False, ""                      # the sentence before ended it: this one is the conversation's
         t0 = time.monotonic()
         try:
             job = asyncio.to_thread(_read.read, text, d, last_line, before)
@@ -228,22 +221,9 @@ async def take(said: str, *, last_line: str = "", before: list[str] | None = Non
         line = await _step(d, got, last_line)
         _emit("taken", d, said=text[:200], read=got, ms=ms, line=line[:200])     # the draft as his words left it
     if _draft.current() is None:
-        await _open_the_next()
+        from nucleo.send import intake as _intake
+        asyncio.ensure_future(_intake.open_the_next())    # never awaited here: an intake may be the caller
     return True, line
-
-
-async def _open_the_next() -> None:
-    """The draft ended: the next message he asked for (or a worker handed over) is opened and asked out of turn."""
-    nxt = _draft.next_queued()
-    if nxt is None:
-        return
-    try:
-        line = await intake(nxt["said"], nxt["hint"], by=nxt["by"] if nxt["by"] == "worker" else "call")
-        if line:
-            from nucleo.pulse import notices
-            await notices.notify("zaelar", line, key=f"send:next:{abs(hash(line))}", kind="info")
-    except Exception as e:  # noqa: BLE001
-        _note(e)
 
 
 def status() -> str:

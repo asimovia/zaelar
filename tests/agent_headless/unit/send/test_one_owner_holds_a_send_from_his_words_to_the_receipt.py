@@ -42,7 +42,7 @@ class World:
         self.receipt = ("sent", "")
         monkeypatch.setattr(read, "_ask", lambda system, user: self.reads.pop(0) if self.reads else "")
 
-        def resolve(name, channel=""):
+        def resolve(name, channel="", relation=""):
             n = " ".join(str(name).lower().split())
             hit = [p for p in PEOPLE if p["name"].lower() == n]
             if hit:
@@ -271,28 +271,50 @@ def test_what_would_stop_it_is_asked_before_the_confirmation_and_a_refusal_keeps
     assert taken and _draft.current() is not None and _draft.current().text == "I'm late"
 
 
-def test_a_reply_and_a_message_for_later_keep_the_act_he_asked_for(world):
-    """Audit P1: a reply names its message; a message for later goes as a held draft with its time."""
+def test_a_reply_is_read_once_to_its_conversation_and_sent_there_by_id(world, monkeypatch):
+    """Audit 2 P0: a reply's `n` is a screen position — read ONCE at intake into its conversation's chat id; what
+    leaves is a `send_to` to that chat, and naming somebody else repoints the message, never the reply's number."""
     from nucleo.send import deliver
+    monkeypatch.setattr(deliver, "adopt", lambda act, h: {"extra": {}, "target": {
+        "name": "Odile Marsh", "contact_id": "", "platform": "whatsapp", "chat_id": "c-77"}} if act == "reply" else
+        {"extra": {}})
     world.reads = [_read(text="On my way")]
     asyncio.run(owner.intake("answer that one: on my way", {"n": 3, "text": "On my way", "_act": "reply"}))
     d = _draft.current()
-    assert d.act == "reply" and deliver.payload(d) == {"n": 3, "text": "On my way"}
-    _draft.reset()
+    assert deliver.payload(d) == {"contact": "Odile Marsh", "chat_id": "c-77", "channel": "whatsapp",
+                                  "text": "On my way"}
+    world.reads = [_read(who="Odile Brandt")]
+    _take("no, to Odile Brandt")
+    assert deliver.payload(d)["contact_id"] == "c2" and "chat_id" not in deliver.payload(d)
+
+
+def test_a_message_for_later_is_confirmed_with_its_time_and_held(world, monkeypatch):
+    """Audit 2 P1: the time is read once, the confirmation says it, and what leaves is a held draft with its time."""
+    from nucleo.send import deliver
+    monkeypatch.setattr(deliver, "adopt", lambda act, h: {"extra": {"at_ts": 1_900_000_000.0}})
     world.reads = [_read(who="Odile Marsh", text="Happy birthday")]
-    asyncio.run(owner.intake("tomorrow at nine tell Odile Marsh happy birthday",
-                             {"contact": "Odile Marsh", "at": "09:00", "_act": "send_to"}))
-    d = _draft.current()
-    assert d.extra == {"at": "09:00"} and "at" not in deliver.payload(d)
+    line = asyncio.run(owner.intake("tomorrow at nine tell Odile Marsh happy birthday", {"at": "x", "_act": "send_to"}))
+    assert deliver.at(_draft.current()) and "Happy birthday" in line and _ask_when(1_900_000_000.0) in line
+    assert "at_ts" not in deliver.payload(_draft.current())
+
+
+def _ask_when(ts):
+    from nucleo.send import ask
+    return ask.when(ts)
 
 
 def test_several_messages_in_one_sentence_are_asked_one_after_the_other(world):
     """Audit P1: the second message of «tell Odile Marsh X and Odile Brandt Y» is not dropped."""
     world.reads = [_read(who="Odile Marsh", text="X")]
     asyncio.run(owner.intake("tell Odile Marsh X and Odile Brandt Y", {}))
-    _draft.queue("tell Odile Marsh X and Odile Brandt Y", {"contact": "Odile Brandt", "text": "Y"}, "call")
-    world.reads = [_read(drop=True), _read(who="Odile Brandt", text="Y")]
-    assert _take("forget the first one")[0]
+    _draft.queue("tell Odile Marsh X and Odile Brandt Y", {"contact": "Odile Brandt", "text": "Y"}, "queued")
+    world.reads = [_read(drop=True), _read(who="Odile Marsh", text="X")]     # a re-read would repeat the first one
+
+    async def drop_then_next():
+        out = await owner.take("forget the first one")
+        await asyncio.sleep(0.05)
+        return out
+    assert asyncio.run(drop_then_next())[0]
     nxt = _draft.current()
     assert nxt is not None and nxt.target["name"] == "Odile Brandt" and nxt.text == "Y"
 
@@ -306,3 +328,59 @@ def test_the_turn_says_the_confirmation_even_after_its_own_question(world, monke
     out = asyncio.run(turn.speak(esc, "Anything else?", said.append, type("S", (), {"sanitize": staticmethod(
         lambda t, drop_metadata=False: t)})))
     assert said and "I'm late" in said[-1] and "I'm late" in out
+
+
+def test_another_order_while_one_is_open_waits_its_turn_and_he_is_told(world):
+    """Audit 2 P1: «and send another one to Odile Brandt: hi» while Odile Marsh's waits — never dropped, never merged."""
+    world.reads = [_read(who="Odile Marsh", text="I'm late")]
+    asyncio.run(owner.intake("tell Odile Marsh I'm late", {}))
+    d = _draft.current()
+    line = asyncio.run(owner.intake("and another to Odile Brandt: hi", {"contact": "Odile Brandt", "text": "hi"}))
+    assert _draft.current() is d and d.text == "I'm late" and line and len(_draft._queue) == 1
+
+
+def test_a_sentence_that_overlaps_a_send_is_the_conversations(world):
+    """Audit 2 P1: while «yes, send it» holds the draft, «what time is it?» is not swallowed with no answer."""
+    world.reads = [_read(who="Odile Marsh", text="I'm late")]
+    asyncio.run(owner.intake("tell Odile Marsh I'm late", {}))
+    line = _draft.current().confirm_line
+    world.reads = [_read(send=True)]
+
+    async def both():
+        a = asyncio.ensure_future(owner.take("yes, send it", last_line=line))
+        await asyncio.sleep(0)
+        b = await owner.take("what time is it?", last_line=line)
+        await a
+        await asyncio.gather(*list(receipt.tasks))
+        return b
+    assert asyncio.run(both()) == (False, "") and len(world.sent) == 1
+
+
+def test_a_send_cut_by_his_barge_in_still_leaves_once_and_is_told(world, monkeypatch):
+    """Audit 2 P1: a turn cancelled while the act runs — the act finishes, the draft closes, the line is said later."""
+    import time as _t
+    world.reads = [_read(who="Odile Marsh", text="I'm late")]
+    asyncio.run(owner.intake("tell Odile Marsh I'm late", {}))
+    d = _draft.current()
+    slow = owner._run
+
+    def run_slowly(dd):
+        _t.sleep(0.1)
+        return slow(dd)
+    monkeypatch.setattr(owner, "_run", run_slowly)
+
+    async def cut():
+        t = asyncio.ensure_future(owner._send(d))
+        await asyncio.sleep(0.02)
+        t.cancel()
+        await asyncio.sleep(0.3)
+        await asyncio.gather(*list(receipt.tasks))
+    asyncio.run(cut())
+    assert len(world.sent) == 1 and d.state == _draft.SENT and world.said_out
+
+
+def test_the_confirmation_must_carry_her_whole_name():
+    from nucleo.send import ask
+    assert ask.carries("Para Raquel Ortega: «Te quiero». ¿Lo mando?", "Te quiero", "Raquel Ortega")
+    assert not ask.carries("Para Raquel: «Te quiero». ¿Lo mando?", "Te quiero", "Raquel Ortega")
+    assert not ask.carries("Para Raquel Ortega: «Te quiero mucho»", "Te quiero mucho, de verdad", "Raquel Ortega")

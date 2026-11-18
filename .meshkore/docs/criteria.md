@@ -940,7 +940,11 @@ Flash keeps the conversation; the row is what both brains read.
   the conversation answers it; an unreadable read → not taken. Nothing leaves before his yes over one person and a
   text — never at intake, whatever the order said; what would stop it (a channel to choose, no way to reach her) is
   said BEFORE the confirmation; the confirmation is verified to carry his text verbatim and her name; a bare «yes»
-  answers only the confirmation said last; one sentence at a time per draft; it leaves through the card's own act with the chosen row's id (`resolve_target` `contact_id`), and the final
+  answers only the confirmation said last; one sentence at a time per draft (a sentence that arrives while
+  another ends the draft is the conversation's); what the model called is read ONCE when it is handed over
+  (`deliver.adopt`: a reply → its conversation's chat id, a forward → its source message id, a card draft → its text
+  and person, a time → the moment, said in the confirmation and sent as the card's held draft); a second order while
+  one is open waits its turn and he is told; the act and its report survive a cut turn; it leaves through the card's own act with the chosen row's id (`resolve_target` `contact_id`), and the final
   line is the connector's receipt (`send/receipt`). A draft nobody touches for 10 min is closed and reads nothing. —
   since 2026-11-18 (V2-938) · node 2.1801 · `nucleo/send/`, `nucleo/turn/pipeline_gate.py`,
   `nucleo/turn/pipeline_errands.py`, `nucleo/cli/worker_api.py`, `widgets/mensajeria/outbound/targets.py`. End to end:

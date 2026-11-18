@@ -28,16 +28,27 @@ def _in_front(name: str) -> dict:
         got = in_front.named(_md.load_db(), name, "", directory) or {}
         if got.get("ok"):
             return {"name": str(got.get("name") or ""), "platform": str(got.get("platform") or ""),
-                    "contact_id": str(got.get("contactId") or "")}
+                    "contact_id": str(got.get("contactId") or ""), "chat_id": str(got.get("chatId") or "")}
     except Exception as e:  # noqa: BLE001
         _note(e)
     return {}
 
 
-def resolve(name: str, channel: str = "") -> dict:
+def resolve(name: str, channel: str = "", relation: str = "") -> dict:
     """`{"one": {name, contact_id, platform}}` · `{"several": [{name, contact_id, note}], "unmatched": [...]}` ·
     `{"none": True}`. `platform` is "" when the person's own channel is to be used."""
     q = " ".join(str(name or "").split())
+    if relation:                         # «mum»: only the people he said are that, never a name carrying the word
+        try:
+            from widgets import directory
+            hits = list(directory.by_relation(relation.strip().lower()) or [])
+        except Exception as e:  # noqa: BLE001
+            _note(e)
+            hits = []
+        if len(hits) == 1:
+            return {"one": {**_row(hits[0]), "platform": channel}}
+        if hits:
+            return {"several": [_row(c, _apart(c)) for c in hits[:ASK_MAX]], "unmatched": []}
     if not q:
         return {"none": True}
     front = _in_front(q)
@@ -87,28 +98,3 @@ def _apart(c: dict) -> str:
     except Exception as e:  # noqa: BLE001
         _note(e)
         return ""
-
-
-def conversation(n=None) -> dict:
-    """The conversation a reply goes to — the message numbered `n` on the card, else the one he has open:
-    `{name, contact_id, platform, chat_id}`; {} when there is none."""
-    try:
-        from widgets import directory
-        from widgets.mensajeria import data as _md
-        from widgets.mensajeria.outbound import in_front, targets
-        db = _md.load_db()
-        if n not in (None, ""):
-            it = targets.resolve_reply_target(db, int(n) if str(n).strip().isdigit() else n) or {}
-            front = {"platform": str(it.get("platform") or ""), "chatId": str(it.get("chatId") or ""),
-                     "name": str(it.get("chatName") or it.get("senderName") or it.get("from") or "")}
-        else:
-            front = in_front.conversation(db) or {}
-        if not front.get("platform") or not front.get("chatId"):
-            return {}
-        row = directory.find_by_channel(front["platform"], front["chatId"]) or {}
-        return {"name": str(row.get("name") or front.get("name") or front["chatId"]),
-                "contact_id": str(row.get("id") or ""), "platform": front["platform"], "chat_id": front["chatId"]}
-    except Exception as e:  # noqa: BLE001
-        _note(e)
-        return {}
-

@@ -1,20 +1,23 @@
-"""How a message leaves: the card's own act (the one he asked for — a new message, a reply, a forward), with the
-person already chosen by id, and the act's other fields carried as he gave them.
+"""How a message leaves: ONE act of the card, `send_to`, to a person or a conversation already chosen by id, with the
+text he heard — never a screen position or a name read again at the moment it leaves.
 
-`check` resolves the target READ-ONLY before he is asked: a channel to choose, a channel down or no way to reach her
-is said BEFORE the confirmation, never after his yes.
+Whatever the model called, it is read ONCE when the message is handed over (`adopt`):
+  · a reply (`reply {n}` or the open conversation) → that conversation, by its chat id;
+  · a forward (`forward {n | messageId | from}`) → its source message, by its message id, whose files travel along;
+  · a draft on the card (`send_draft`, `compose`) → that draft's text and conversation;
+  · a time (`at`, `in_minutes`) → the moment, read now; the message is then written as the card's held draft and
+    sent with its time (`send_draft` by the draft's own key).
+`check` resolves the target READ-ONLY before he is asked: a channel to choose, a channel down, no way to reach her or
+a time that cannot be read is said BEFORE the confirmation, never after his yes.
 """
 from __future__ import annotations
 
 from loguru import logger
 
 WIDGET = "mensajeria"
-#: The acts a message can be: a new one, a reply to a message on the card, a forward. Anything else goes as a new one.
-ACTS = ("send_to", "reply", "forward")
-#: The fields of the act that are not the recipient or the text, carried from the model's call as he gave them.
-EXTRA = ("n", "messageId", "attach_from", "files", "subject", "objective", "relation", "reply_all", "cc", "from",
-         "at", "in_minutes")
-#: A message he asked for LATER is written as a draft and sent with its time (`send_draft` holds it until then).
+#: The fields of the model's call that ride with the message as they were given.
+CARRIED = ("subject", "objective", "files")
+#: A time he asked for.
 LATER = ("at", "in_minutes")
 
 
@@ -22,15 +25,67 @@ def _note(e: Exception) -> None:
     logger.debug(f"send.deliver: {type(e).__name__}: {e}")
 
 
-def shape(hint: dict) -> tuple[str, dict]:
-    """`(act, extra)` from the model's call: the act it named when it is a message act, and its other fields."""
-    act = str((hint or {}).get("_act") or "send_to")
-    extra = {k: hint[k] for k in EXTRA if k in (hint or {}) and hint[k] not in (None, "", [], {})}
-    return (act if act in ACTS else "send_to"), extra
+def _db():
+    from widgets.mensajeria import data as _md
+    return _md.load_db()
+
+
+def _chat(it: dict | None) -> dict:
+    """A card item or thread row as a target: `{name, contact_id, platform, chat_id}`; {} when it has no chat."""
+    it = it or {}
+    platform, chat = str(it.get("platform") or ""), str(it.get("chatId") or "")
+    if not (platform and chat):
+        return {}
+    from widgets import directory
+    row = directory.find_by_channel(platform, chat) or {}
+    name = str(row.get("name") or it.get("chatName") or it.get("senderName") or it.get("from") or it.get("name") or chat)
+    return {"name": name, "contact_id": str(row.get("id") or ""), "platform": platform, "chat_id": chat}
+
+
+def adopt(act: str, hint: dict) -> dict:
+    """What the model's call means, read ONCE now: `{target?, text?, extra}` — `target` when the call names a
+    conversation (a reply, a draft), `extra` the fields that ride with the message (a forward's source by id, a time
+    already read, a subject, files)."""
+    h = dict(hint or {})
+    out: dict = {"extra": {k: h[k] for k in CARRIED if h.get(k) not in (None, "", [], {})}}
+    try:
+        db = _db()
+        from widgets.mensajeria.outbound import targets
+        if act == "reply":
+            n, mid = h.get("n"), h.get("messageId")
+            if n is not None:
+                from widgets.mensajeria.actions.send import reply_target
+                out["target"] = _chat(reply_target(db, int(n) if str(n).strip().isdigit() else n))
+            else:
+                out["target"] = _chat(targets.resolve_reply_target(db, None, mid))
+        elif act == "forward":
+            src = {k: h[k] for k in ("n", "messageId", "from") if h.get(k) not in (None, "")}
+            ref = targets._message_ref(db, src) or {}
+            if ref.get("messageId"):
+                out["extra"]["attach_from"] = {"messageId": str(ref["messageId"])}
+            if ref.get("subject") and "subject" not in out["extra"]:
+                out["extra"]["subject"] = f"Fwd: {ref['subject']}"
+        elif act in ("send_draft", "compose"):
+            from widgets.mensajeria.actions.send import draft_named
+            _key, dr, text, _files, refused = draft_named(db, h)
+            if not refused:
+                t = dr.get("target") or {}
+                out["text"] = text
+                out["target"] = _chat(t) or ({"name": str(t.get("name") or ""), "contact_id": str(t.get("contactId") or ""),
+                                              "platform": str(t.get("platform") or "")} if t.get("name") else {})
+        if any(h.get(k) not in (None, "") for k in LATER):
+            from widgets.mensajeria import held
+            ts, bad = held.when({k: h.get(k) for k in LATER})
+            out["extra"]["at_ts" if not bad else "bad_time"] = ts if not bad else bad
+    except Exception as e:  # noqa: BLE001 — unread: the message is asked about as a new one
+        _note(e)
+    if "target" in out and not out["target"]:
+        out.pop("target")
+    return out
 
 
 def recipient(d) -> dict:
-    """The chosen person as the card's act names her: the row id, else the chat id, with the channel."""
+    """The chosen person or conversation as `send_to` names it: the row id, else the chat id, with the channel."""
     p = {"contact": d.target.get("name") or d.who}
     if d.target.get("contact_id"):
         p["contact_id"] = d.target["contact_id"]
@@ -42,16 +97,19 @@ def recipient(d) -> dict:
 
 
 def payload(d) -> dict:
-    if d.act == "reply":                                   # a reply names its message, never a person
-        return {**{k: v for k, v in d.extra.items() if k not in LATER}, "text": d.text}
-    return {**{k: v for k, v in d.extra.items() if k not in LATER + ("n",)}, **recipient(d), "text": d.text}
+    return {**{k: v for k, v in d.extra.items() if k in CARRIED + ("attach_from",)}, **recipient(d), "text": d.text}
+
+
+def at(d) -> float:
+    """The moment he asked it to leave (0.0: now)."""
+    return float(d.extra.get("at_ts") or 0.0)
 
 
 def check(d) -> dict:
     """`{"ok": True, "platform": …}` when the message can go as it stands; otherwise what stops it:
     `{"ok": False, "channels": [...]}` (he picks one) or `{"ok": False, "why": "…"}`."""
-    if d.act == "reply":
-        return {"ok": True, "platform": d.target.get("platform") or ""}
+    if d.extra.get("bad_time"):
+        return {"ok": False, "why": "the time he gave cannot be read or is too far ahead"}
     try:
         from widgets.mensajeria.outbound import targets
         got = targets.describe({**recipient(d), "text": d.text or "-"})
@@ -66,16 +124,24 @@ def check(d) -> dict:
 
 
 def run(d) -> dict:
-    """The card's act, blocking (call it off the loop)."""
+    """The card's act, blocking (call it off the loop): `send_to` now, or the held draft sent at its time. Returns
+    `{"ok", "ref"?, "later"?, "error"?}`."""
     from widgets.mensajeria import data as _md
     p = payload(d)
-    later = {k: d.extra[k] for k in LATER if k in d.extra}
-    if later and d.act != "reply":
+    when = at(d)
+    if when:
         wrote = _md.apply_action("draft", p)
-        if not (isinstance(wrote, dict) and wrote.get("ok")):
-            return wrote
-        return _md.apply_action("send_draft", {"contact": p.get("contact"), **later})
-    return _md.apply_action(d.act, p)
+        if not (isinstance(wrote, dict) and wrote.get("ok") and wrote.get("key")):
+            return {"ok": False, "error": str((wrote or {}).get("message") or (wrote or {}).get("error") or "no draft")}
+        res = _md.apply_action("send_draft", {"key": wrote["key"], "in_minutes": max(0.1, (when - _now()) / 60.0)})
+        return {**(res if isinstance(res, dict) else {}), "later": when}
+    res = _md.apply_action("send_to", p)
+    return res if isinstance(res, dict) else {"ok": False, "error": "no answer from the card"}
+
+
+def _now() -> float:
+    import time
+    return time.time()
 
 
 def ref_of(result) -> str:

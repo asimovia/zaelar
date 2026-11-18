@@ -23,6 +23,11 @@ FACTS = {
     "send_cannot": "The message for {who} cannot go as it is: {why}. Tell him plainly and ask him what to do.",
     "send_confirm": "The message for {who} ({channel}) reads EXACTLY: «{text}». Read him that text word for word, "
                     "inside quotes, name {who}, and ask whether to send it.",
+    "send_confirm_later": "The message for {who} ({channel}) reads EXACTLY: «{text}», to be sent {when}. Read him that "
+                          "text word for word, inside quotes, name {who}, say when it goes, and ask whether to send it.",
+    "send_later": "The message to {who} is written and will be sent by itself {when}. Nothing has left yet.",
+    "send_queued": "He asked for another message, to {who}. You will take it right after the one to {now}; say so in a "
+                   "few words.",
     "send_listed": "The people in his contacts named «{who}» are: {names}. Tell him, and ask which one the message is "
                    "for.",
     "send_going": "He gave his go-ahead. The message to {who} is being sent right now — not confirmed yet.",
@@ -41,7 +46,9 @@ def _plain(key: str, **fmt) -> str:
     plain = str(getattr(langs.current_language(), key, "") or "")
     try:
         return plain.format(**fmt).strip()
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001 — a line whose blanks do not fit its language is no example
+        from loguru import logger
+        logger.debug(f"send.ask: «{key}» unfilled — {e!r}")
         return ""
 
 
@@ -61,15 +68,24 @@ def _fold(s: str) -> str:
     return " ".join("".join(ch if ch.isalnum() else " " for ch in s if unicodedata.category(ch) != "Mn").split())
 
 
-def carries(said: str, text: str, name: str) -> bool:
-    """Does a worded confirmation carry the whole text and the person's first name?"""
+def carries(said: str, text: str, name: str, when: str = "") -> bool:
+    """Does a worded confirmation carry the whole text, the person's whole name and (when it has one) its time?"""
     f = _fold(said)
-    first = (_fold(name).split() or [""])[0]
-    return bool(_fold(text)) and _fold(text) in f and (not first or first in f)
+    return all(bool(_fold(x)) and _fold(x) in f for x in (text, name)) and (not when or _fold(when) in f)
 
 
-async def confirm(name: str, platform: str, text: str) -> str:
-    """The ONE confirmation: worded, and verified to carry his text verbatim and her name — else the plain line."""
+def when(ts: float) -> str:
+    """A moment as he says it: the day and the hour («2026-11-19 09:00»), never a duration that ages."""
+    import time
+    return time.strftime("%Y-%m-%d %H:%M", time.localtime(float(ts)))
+
+
+async def confirm(name: str, platform: str, text: str, at: float = 0.0) -> str:
+    """The ONE confirmation: worded, and verified to carry his text verbatim, her whole name and its time — else the
+    plain line (a fixed one built from the same facts when the language has none)."""
     channel = CHANNELS.get(str(platform or "").lower(), str(platform or ""))
-    said = await line("send_confirm", who=name, channel=channel, text=text)
-    return said if carries(said, text, name) else (_plain("send_confirm", who=name, channel=channel, text=text) or said)
+    key, at_s = ("send_confirm_later", when(at)) if at else ("send_confirm", "")
+    said = await line(key, who=name, channel=channel, text=text, when=at_s)
+    if carries(said, text, name, at_s):
+        return said
+    return _plain(key, who=name, channel=channel, text=text, when=at_s) or f"{name} · {channel} · «{text}» {at_s} ?"
