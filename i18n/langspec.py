@@ -321,6 +321,13 @@ class LangSpec:
     send_unconfirmed: str = ""
     send_not_sent: str = ""
     send_preparing: str = ""       # the turn's start line for a send it handed over
+    #: The same moments of an act that leaves and is NOT a message (a group created): told as what he asked for.
+    act_preparing: str = ""
+    act_going: str = ""
+    act_done: str = ""
+    act_failed: str = ""           # {why}: the service's own reason
+    act_unconfirmed: str = ""
+    act_not_done: str = ""
     #: An act of a card the brief ordered and the turn served with another tool asks ONE question for the facts it
     #: still needs, on the order's row (`nucleo/request/order_unserved`).
     act_needs_facts: str = ""

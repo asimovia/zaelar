@@ -110,9 +110,41 @@ async def answered(answer, entry: dict | None, decision, corr_id: str, text: str
     said = decision(str(e0.get("question") or ""), text, kw.get("choice"), e0.get("options")) \
         if e0 and asker.kind_of(e0) == asker.KIND_CONSENT else None
     took = await answer(corr_id, text, **kw)
+    if took:
+        keep_answer(e0, text)
     if took and said in (YES, NO):
         resolved_soon(str(e0.get("uid") or ""), e0, said)
     return took
+
+
+#: The row slot of what he ANSWERED to the row's questions, in order — his words about the request, with the question.
+ANSWERS = "his_answers"
+
+
+def keep_answer(entry: dict | None, text: str) -> None:
+    """His answer stays on the row with the question it answered: a later door of the same request reads what he
+    already said (a «yes, go ahead» to the worker's own question is not asked again at the exit). Never raises."""
+    try:
+        uid, said = str((entry or {}).get("uid") or ""), " ".join(str(text or "").split())
+        if not (uid and said):
+            return
+        from nucleo.circuit import ledger
+        rows = list(ledger.store().artifact_get(uid, ANSWERS) or [])
+        rows.append({"q": str((entry or {}).get("question") or "")[:200], "text": said[:400]})
+        ledger.store().artifact_put(uid, ANSWERS, rows[-12:])
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"ask_trace: his answer not kept on the row — {e!r}")
+
+
+def his_answers(uid: str) -> list[str]:
+    """What he answered on this row, each with its question: «asked "…" he answered: …»."""
+    try:
+        from nucleo.circuit import ledger
+        return [f'asked «{r.get("q")}» he answered: {r.get("text")}' for r in (ledger.store().artifact_get(uid, ANSWERS) or [])
+                if str(r.get("text") or "").strip()]
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"ask_trace: his answers unread — {e!r}")
+        return []
 
 
 def resolved_soon(uid: str, entry: dict | None, said: str) -> None:

@@ -81,27 +81,30 @@ def early_yes(p: dict, kind: str) -> bool:
 
 
 GO_AHEAD = (
-    "The operator of a voice assistant asked it to send a message. Below are HIS words about it, in order. Decide "
-    "whether, in those words, he EXPLICITLY said in advance that it may be sent without asking him again — for "
-    "example «and send it without asking me», «I already confirm you can send it», «mándalo directamente, no me "
-    "preguntes», «ya te confirmo que puedes mandarlo». Asking for the message to be sent is NOT that: the order to "
-    "send is the request itself, and he is asked once before it leaves. Only a go-ahead he gave in advance counts; in "
+    "The operator of a voice assistant asked it for something it will only do after asking him once: {what}. Below are "
+    "HIS words about it, in order — the request and what he answered since. Decide whether, in those words, he "
+    "EXPLICITLY said that it may go ahead without asking him again — for example «and do it without asking me», "
+    "«I already confirm it», «consider it confirmed», «mándalo directamente, no me preguntes», «ya te confirmo que "
+    "puedes mandarlo», «sí, créalo, adelante» said to a question about this very thing. Asking for it is NOT that: "
+    "the order is the request itself, and he is asked once before it leaves. Only a go-ahead he gave counts; in "
     "doubt, answer false.\n"
-    'Reply with JSON only: {"confirmed": true|false, "why": "<a few words>"}'
+    'Reply with JSON only: {{"confirmed": true|false, "why": "<a few words>"}}'
 )
 
 
-def _go_ahead_model(words: str) -> str:
+def _go_ahead_model(words: str, what: str = "") -> str:
     """The seam of the one question (the suite keeps it offline, `tests/conftest.py`)."""
     from nucleo.memory_agent.processor import llm
-    return llm.chat_sync("switchboard", GO_AHEAD, f"HIS WORDS:\n{words}", max_tokens=50, temperature=0.0, timeout=4.0) or ""
+    system = GO_AHEAD.format(what=what or "a message is sent to someone")
+    return llm.chat_sync("switchboard", system, f"HIS WORDS:\n{words}", max_tokens=50, temperature=0.0, timeout=4.0) or ""
 
 
-def read_his_go_ahead(rec) -> bool:
-    """At the exit door of a send, BEFORE he is asked: did he already give his go-ahead with the order itself («send
-    her a message and I confirm you can send it»)? His words on the row — the request and what he added — are read
-    once by a model; a yes is kept in the same slot as a yes said while it was being prepared (`EARLY_YES`), so the
-    door takes it the same way, once, and only for a text of his own words. Read once per state of his words: a
+def read_his_go_ahead(rec, what: str = "") -> bool:
+    """At the exit door of an act that asks, BEFORE he is asked: did he already give his go-ahead — with the order
+    itself («send her a message and I confirm you can send it») or in an answer he gave on this row since («yes,
+    create it, go ahead»)? His words on the row are read once by a model that is told WHAT the act is (`what`, the
+    event type's own line); a yes is kept in the same slot as a yes said while it was being prepared (`EARLY_YES`), so
+    the door takes it the same way, once, and only for a text of his own words. Read once per state of his words: a
     reading that found none is remembered until he says something more. Blocking: call it off the loop. Never raises
     — unread or unsure, the door asks."""
     try:
@@ -109,20 +112,19 @@ def read_his_go_ahead(rec) -> bool:
         import re
         import time
         from nucleo.circuit import ledger
-        from nucleo.workers import task_record
         store, uid = ledger.store(), str(getattr(rec, "uid", "") or "")
         row = store.task_get(uid) if uid else None
         if not row or str(row.get("playbook") or "") != "message":
             return False
         slot = store.artifact_get(uid, EARLY_YES) or {}
-        if slot.get("at") or slot.get("read"):
+        his = _his_words(store, uid, row)
+        if slot.get("at") or (slot.get("read") and int(slot.get("n") or 0) == len(his)):
             return bool(slot.get("at"))
-        his = [str(row.get("goal") or "")] + [str(r.get("text") or "") for r in (store.artifact_get(uid, task_record.SAID_SLOT) or [])]
         words = "\n".join(f"- {w.strip()}" for w in his if w.strip())
-        m = re.search(r"\{.*\}", _go_ahead_model(words) if words else "", re.S)
+        m = re.search(r"\{.*\}", _go_ahead_model(words, what) if words else "", re.S)
         got = json.loads(m.group(0)) if m else {}
         yes = got.get("confirmed") is True
-        store.artifact_put(uid, EARLY_YES, {"at": time.time(), "by": "order"} if yes else {"read": time.time()})
+        store.artifact_put(uid, EARLY_YES, {"at": time.time(), "by": "order"} if yes else {"read": time.time(), "n": len(his)})
         try:
             from voice.observer import emit
             emit("thread", "🔏 exit door: his go-ahead was in his own words" if yes else "🔏 exit door: no go-ahead in his words — he is asked",
@@ -155,15 +157,22 @@ def wrote(rec, action: str, payload: dict | None) -> None:
         logger.debug(f"switchboard: the written text not kept — {e!r}")
 
 
+def _his_words(store, uid: str, row: dict | None = None) -> list[str]:
+    """Everything he said about this request, in order: the order, what he added while it ran, what he answered."""
+    from nucleo.circuit import ask_trace
+    from nucleo.workers import task_record
+    row = row if row is not None else (store.task_get(uid) or {})
+    return [w for w in [str(row.get("goal") or "")]
+            + [str(r.get("text") or "") for r in (store.artifact_get(uid, task_record.SAID_SLOT) or [])]
+            + ask_trace.his_answers(uid) if w.strip()]
+
+
 def _his_own(store, uid: str) -> bool:
     """Is the text that will leave made of HIS words — said in his order or in what he added to it? A yes given before
     the question covers what he dictated, never a text the agent composed (that one he is shown and asked about)."""
     from nucleo import matching
-    from nucleo.workers import task_record
     text = matching.norm_text(str((store.artifact_get(uid, WRITTEN) or {}).get("text") or ""))
-    row = store.task_get(uid) or {}
-    his = [str(row.get("goal") or "")] + [str(r.get("text") or "") for r in (store.artifact_get(uid, task_record.SAID_SLOT) or [])]
-    return bool(text) and any(text in matching.norm_text(h) for h in his)
+    return bool(text) and any(text in matching.norm_text(h) for h in _his_words(store, uid))
 
 
 def took_early_yes(uid: str) -> bool:
@@ -250,19 +259,21 @@ def _line(key: str, about: str = "") -> str:
 
 
 def line_key(p: dict, kind: str) -> str:
-    """WHICH fact he is told for a chunk a process took: his yes to a send (it is going), his no (it is not), his yes
-    or no to any other act it held, or that his words were taken. Read BEFORE the answer clears what the row held."""
+    """WHICH fact he is told for a chunk a process took: his yes to an act that leaves (it is going), his no (it is
+    not) — in the lines of what the act IS, a message or anything else (`send_receipt.family_of`) — his yes or no to
+    any other act it held, or that his words were taken. Read BEFORE the answer clears what the row held."""
     key = "answer_taken"
     if kind in (YES, NO):
-        leaves = False
+        fam = ""
         try:
             from nucleo.circuit import asker
             from nucleo.request import send_receipt
-            leaves = send_receipt.is_send((asker.artefact(p["key"]).get("retained") or {}))
+            fam = send_receipt.family_of((asker.artefact(p["key"]).get("retained") or {}))
         except Exception as e:  # noqa: BLE001
             logger.debug(f"switchboard: the retained act unread — {e!r}")
-        key = {(YES, True): "send_going", (NO, True): "send_not_sent",
-               (YES, False): "work_started", (NO, False): "confirm_cancelled"}[(kind, leaves)]
+        from nucleo import wording
+        key = wording.line(fam, "going" if kind == YES else "no") if fam \
+            else {YES: "work_started", NO: "confirm_cancelled"}[kind]
     return key
 
 

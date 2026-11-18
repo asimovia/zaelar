@@ -186,9 +186,11 @@ def test_the_line_he_hears_is_the_sends_own(monkeypatch):
     from nucleo.request import send_receipt as send_errand
     lang = langs.current_language()
     monkeypatch.setattr(asker, "artefact", lambda uid: {"retained": {"action": "widget_data"}})
-    monkeypatch.setattr(send_errand, "is_send", lambda retained: True)
+    monkeypatch.setattr(send_errand, "family_of", lambda retained: "send")
     assert _real_line(WAITS, "yes") == lang.send_going and _real_line(WAITS, "no") == lang.send_not_sent
-    monkeypatch.setattr(send_errand, "is_send", lambda retained: False)
+    monkeypatch.setattr(send_errand, "family_of", lambda retained: "act")     # it leaves and is not a message
+    assert _real_line(WAITS, "yes") == lang.act_going and _real_line(WAITS, "no") == lang.act_not_done
+    monkeypatch.setattr(send_errand, "family_of", lambda retained: "")
     assert _real_line(WAITS, "yes") == lang.work_started and _real_line(WAITS, "no") == lang.confirm_cancelled
     assert _real_line(RUNS, "other") == lang.answer_taken and "tarea" not in langs.spec("es").answer_taken
 

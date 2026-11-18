@@ -63,6 +63,7 @@ class EventType(NamedTuple):
     grant: str = ""       # OUT: the grant that covers it; "" when none does (money, an account, a login)
     level: str = ""       # OUT: its default sensitivity when the caller measured none (`consent.LEVELS`)
     effect: str = ""      # OUT: what an action of this class carries (`widgets.effects`: external.send, data.write)
+    says: str = ""        # OUT: the lines he hears for it (`nucleo/wording.LINES`): "send" — a message — or the act's own
 
 
 TYPES: tuple[EventType, ...] = (
@@ -76,9 +77,13 @@ TYPES: tuple[EventType, ...] = (
     EventType(WORKER_ASK, TASK, "a task of his asks him something"),
     # ── leaves: a message ──
     EventType("messaging.send_new", OUT, "a message is sent to someone", grant="message", level="sensitive",
-              effect="external.send"),
+              effect="external.send", says="send"),
     EventType("messaging.autorespond", OUT, "a message is answered automatically", grant="message", level="sensitive",
-              effect="external.send"),
+              effect="external.send", says="send"),
+    # A group is a place, not words of his: creating one with people he named is undone by leaving it, and nothing he
+    # did not say reaches anyone. A group born WITH a first message is a send (the card's `consent_scope` says so).
+    EventType("messaging.create_group", OUT, "a group is created in a messaging app with people he named",
+              grant="message", level="standard", effect="external.send"),
     # ── leaves: his agenda, as seen by the people in it ──
     EventType("calendar.invite_agreed", OUT, "an invitation to a meeting already agreed with its guests",
               grant="schedule", level="sensitive", effect="external.send"),
@@ -141,6 +146,21 @@ def level_of(name: str, default: str = "sensitive") -> str:
     """A leaving type's default sensitivity, for a caller that measured none."""
     t = of(name)
     return (t.level if t and t.level else default)
+
+
+def asks_by_itself(name: str) -> bool:
+    """Does an act of this type ask him before it leaves, by what the type DECLARES? `sensitive` and above ask once;
+    a `standard` one — reversible, carrying nothing he did not say — runs on his order. An undeclared name asks: what
+    nobody declared harmless is not harmless."""
+    t = of(name)
+    return t is None or (t.level or "sensitive") not in ("routine", "standard")
+
+
+def says(name: str) -> str:
+    """The family of lines he hears for a leaving type (`nucleo/wording.LINES`): "send" for a message, else "act" —
+    an undeclared name too: «what you asked for is done» is never wrong, «message sent» can be."""
+    t = of(name)
+    return (t.says if t and t.says else "act")
 
 
 def grant_of(name: str) -> str:

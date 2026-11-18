@@ -17,6 +17,8 @@ from dataclasses import dataclass, field
 
 from loguru import logger
 
+from nucleo.workers.exit_risk import _short, asks_by_itself, family, klass, own_question, ready_question  # noqa: F401 — the door's readers
+
 
 @dataclass(frozen=True)
 class Exit:
@@ -27,6 +29,7 @@ class Exit:
     event: str = ""         # the EVENT TYPE this exit is (`messaging.send_new@whatsapp`, `errand.mesh_serve@mesh`)
     subject: str = ""       # the contact id the act reaches, when it reaches exactly one person (V2-857 phase 2)
     slots: dict = field(default_factory=dict)   # {declared slot: its source} — recorded on the exit's event
+    why: str = ""           # what released it, for the record («harmless by its declared type»)
 
     @property
     def verdict(self) -> str:
@@ -55,11 +58,12 @@ def leave(rec, action: str, payload: dict | None) -> Exit | None:
     p = dict(payload or {})
     ex = globals()[spec.body](rec, p)
     event, subject, who, channel = _event_of(spec, ex.payload if ex.payload else p)
-    ex = Exit(ex.payload, ex.question, ex.refused, ex.released, event=event, subject=subject, slots=ex.slots)
+    ex = Exit(ex.payload, ex.question, ex.refused, ex.released, event=event, subject=subject, slots=ex.slots,
+              why=ex.why)
     _emit(f"🚪 exit door: {ex.verdict}", f"{event or action} → {', '.join(who) or channel or '?'}"[:200],
           {"id": str(getattr(rec, "task_id", "")), "exit": action, "event": event, "channel": channel,
            "subject": subject, "who": who[:3], "verdict": ex.verdict, "slots": dict(ex.slots),
-           "why": (ex.refused or ex.question or ("his order over the row" if ex.released else ""))[:160]})
+           "why": (ex.refused or ex.question or ex.why or ("his order over the row" if ex.released else ""))[:160]})
     return ex
 
 
@@ -71,8 +75,12 @@ async def cross(rec, action: str, payload: dict | None) -> "Exit | None":
     wid, act, _inner = _ob._resolve(payload or {}) if str(action or "") == "widget_data" else ("", "", None)
     if wid and act and leaves(wid, act) and (turn := _tb.revived(getattr(rec, "reading", None))) is not None:
         await asyncio.gather(*(brief_doors.landed(turn, d, jev._timeout_s() + 1.0) for d in ("send", "portal")))
-    if wid and act and leaves(wid, act):      # a go-ahead he gave WITH the order is read once, off the loop (V2-931)
-        await asyncio.to_thread(__import__("nucleo.switchboard.act", fromlist=["x"]).read_his_go_ahead, rec)
+    if wid and act and leaves(wid, act) and asks_by_itself(wid, act, _inner):
+        # a go-ahead he gave WITH the order — or in an answer on this row — is read once, off the loop (V2-931)
+        from nucleo.events import vocabulary as _evoc
+        t = _evoc.of(klass(wid, act, _inner))
+        await asyncio.to_thread(__import__("nucleo.switchboard.act", fromlist=["x"]).read_his_go_ahead, rec,
+                                t.what if t else "")
     return leave(rec, action, payload)
 
 
@@ -146,13 +154,16 @@ def taint_question(rec, kind: str, action: str, target: str, channel: str = "") 
 
 
 def gate(rec, payload: dict) -> Exit:
-    """The message door for one `widget_data` call of a worker (V2-931). A call that does not leave passes untouched.
+    """The exit door for one `widget_data` call of a worker (V2-931). A call that does not leave passes untouched.
 
-    Sending a message needs his confirmation — that is the whole rule: ONE question, «the message is ready — shall I
-    send it to <person>?», asked every time unless an errand's mandate covers the channel (an errand with a third party
-    he set going). Nothing re-derives where the person or the words came from, nothing vetoes by his last turn's words:
-    the worker owns the send and he confirms what it is about to send. The card's own refusal is said before any
-    question, so he is never asked about an act that would not run."""
+    Whether he is asked is read off the RISK the act's event type declares, never off its name: a type declared
+    harmless (a group created with people he named) runs on his order, said once; a message — his words reaching a
+    person — and any act of no declared type needs his confirmation: ONE question, the act's own («the message is ready
+    — shall I send it to <person>?»), unless an errand's mandate covers the channel. Nothing re-derives where the
+    person or the words came from, nothing vetoes by his last turn's words: the worker owns the act and he confirms
+    what is about to leave. The card's own refusal is said before any question, so he is never asked about an act that
+    would not run. Measured 2026-11-18: «create a group with her called X» was asked three times, each time as «the
+    message for her is written — shall I send it?»."""
     from nucleo import on_his_behalf as _ob
     wid, act, inner = _ob._resolve(payload or {})
     if not wid or not act or not leaves(wid, act):
@@ -163,6 +174,12 @@ def gate(rec, payload: dict) -> Exit:
         _emit("🚫 the act would refuse this call — nothing is asked", f"{wid}:{act} · {why}"[:200],
               {"id": str(getattr(rec, "task_id", "")), "exit": f"{wid}:{act}", "error": str(no.get("error") or "")})
         return Exit(payload, refused=f"{wid}:{act} would be refused ({no.get('error') or 'refused'}): {why}")
+    from nucleo.request import send_receipt as _sr     # this request already took this very act to its receipt
+    if _sr.landed(str(getattr(rec, "uid", "") or ""), wid, act, inner):
+        _emit("✅ the act already landed for this request — not asked, not run again", f"{wid}:{act}"[:200],
+              {"id": str(getattr(rec, "task_id", "")), "exit": f"{wid}:{act}"})
+        return Exit(payload, refused=f"{wid}:{act} is ALREADY DONE for this request: it ran and the service confirmed "
+                                     "it. Do not repeat it and do not ask him about it — end now.")
     out = dict(payload or {})
     from nucleo.workers.prompts import playbook as _pbk
     if (named := _pbk.continues_as(rec, wid, act)):
@@ -170,37 +187,22 @@ def gate(rec, payload: dict) -> Exit:
     channel = str(inner.get("platform") or inner.get("channel") or "")
     if under_mandate(rec, "message", channel):
         return Exit(out)
+    cls = klass(wid, act, inner)
+    if not asks_by_itself(wid, act, inner):      # harmless by its declared type: his order is the yes, said once
+        try:
+            from nucleo import consent
+            if consent.class_policy(cls) == "never":
+                return Exit(out, refused=f"his rule forbids it ({cls}): nothing was done")
+        except Exception as e:  # noqa: BLE001
+            logger.debug(f"exit_gate: his rule for {cls} unread ({e!r})")
+        return Exit(out, released=True, why="harmless by its declared type — his order is the yes")
     from nucleo.acts import message as _msg      # ONE act, ONE question: a draft he was shown and then ORDERED sent
     if _msg.confirmed(wid, act, inner, None):     # was asked about when it was shown — his order is the yes (CRIT-C9)
         return Exit(out, released=True)
     from nucleo.switchboard import act as _sb     # …and a yes he gave while it was being prepared is that yes, once
     if _sb.took_early_yes(str(getattr(rec, "uid", "") or "")):
         return Exit(out, released=True)
-    return Exit(out, question=ready_question(wid, act, inner))
-
-
-def ready_question(wid: str, act: str, inner: dict) -> str:
-    """«The message for <her> is ready — shall I send it?», in his language: one short sentence, naming his contact by
-    the first word of the name he keeps her under (never a raw id); with several people, all of them."""
-    from nucleo import on_his_behalf as _ob
-    who = _ob.shown_who(wid, act, inner) or ", ".join(_ob.who_of(wid, act, inner)) or ""
-    try:
-        from i18n import langs as _lg
-        tpl = str(getattr(_lg.current_language(), "send_ready_confirm", "") or "")
-        if tpl and who:
-            return tpl.format(who=_short(who))
-    except Exception as e:  # noqa: BLE001
-        logger.debug(f"exit_gate: the ready line unread ({e!r})")
-    return _ob.question(wid, act, inner)
-
-
-def _short(who: str) -> str:
-    """One person's name as he says it aloud: its first word, when the name has several and is a name (no address, no
-    number). Several people, or anything else, as they are."""
-    w = " ".join(str(who or "").split())
-    first = w.split(" ", 1)[0]
-    plain = "," not in w and "@" not in w and not any(ch.isdigit() for ch in w)
-    return first if plain and " " in w and len(first) > 2 else w
+    return Exit(out, question=ready_question(wid, act, inner, cls))
 
 
 def mesh(rec, payload: dict) -> Exit:

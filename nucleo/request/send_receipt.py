@@ -46,6 +46,56 @@ def is_send(retained: dict | None) -> bool:
         return False
 
 
+def family(wid: str, action: str, payload: dict | None) -> str:
+    """The lines of this leaving act (`nucleo/wording.LINES`): "send" for a message, "act" for anything else — read
+    off its declared event type (`exit_risk.family`), so a group created is never told as «message sent»."""
+    from nucleo.workers import exit_risk
+    return exit_risk.family(wid, action, payload)
+
+
+def family_of(retained: dict | None) -> str:
+    """`family` of the act a question retained; "" when it does not leave the machine."""
+    if not is_send(retained):
+        return ""
+    from nucleo import on_his_behalf as _ob
+    return family(*_ob._resolve((retained or {}).get("payload") or {}))
+
+
+#: The row slot of the leaving acts this request already took to their receipt: `[{terms, at}]`.
+LANDED = "landed_acts"
+
+
+def _terms(uid: str, wid: str, action: str, payload: dict | None) -> str:
+    """The identity of one leaving act of a request: the call and the text the row last wrote for it."""
+    from nucleo.circuit import ask_trace, ledger
+    text = str((ledger.store().artifact_get(uid, "written_text") or {}).get("text") or "") if uid else ""
+    call = {k: v for k, v in dict(payload or {}).items() if k != "playbook"}     # the door's own mark is not a term
+    return ask_trace.terms_of({"retained": {"widget": wid, "action": action, "payload": call, "text": text}})
+
+
+def landed(uid: str, wid: str, action: str, payload: dict | None) -> bool:
+    """Did THIS request already take this very act to its receipt? Then it is done: the exit door never asks about it
+    again nor runs it twice (a session relaunched or resumed after its send repeats the call; measured 2026-11-18: a
+    message already sent kept a «shall I send it?» open for forty minutes, and his next order fell into it)."""
+    try:
+        from nucleo.circuit import ledger
+        t = _terms(uid, wid, action, payload)
+        return bool(uid and t) and any(r.get("terms") == t for r in (ledger.store().artifact_get(uid, LANDED) or []))
+    except Exception as e:  # noqa: BLE001 — unread: the door decides as before
+        _note(e)
+        return False
+
+
+def _mark_landed(uid: str, wid: str, action: str, payload: dict | None) -> None:
+    try:
+        from nucleo.circuit import ledger
+        rows = list(ledger.store().artifact_get(uid, LANDED) or [])
+        rows.append({"terms": _terms(uid, wid, action, payload), "at": time.time()})
+        ledger.store().artifact_put(uid, LANDED, rows[-8:])
+    except Exception as e:  # noqa: BLE001
+        _note(e)
+
+
 def end_state(wid: str, action: str, payload: dict | None):
     """The send's declared end state (its outbox row as sent), rendered BEFORE the act runs — its baseline is what
     the card showed before. None when the act declares none."""
@@ -91,11 +141,13 @@ def receipt(wid: str, ref: str, done_when) -> tuple[str, str]:
 
 
 async def _say(uid: str, stage: str, key: str, **fmt) -> None:
-    """One line of the send, by the out-of-turn mouth, once per stage of that send."""
+    """One line of the send, by the out-of-turn mouth, once per stage of that send — about what he asked for."""
     try:
         from nucleo import wording
+        from nucleo.circuit import ledger
         from nucleo.pulse import notices
-        line = await wording.said(key, **fmt)
+        row = ledger.store().task_get(uid) or {}
+        line = await wording.said(key, about=str(row.get("title") or row.get("goal") or "")[:200], **fmt)
         if line:
             await notices.notify("zaelar", line, key=f"send:{uid}:{stage}", kind="info")
     except Exception as e:  # noqa: BLE001
@@ -113,6 +165,8 @@ async def follow(uid: str, wid: str, action: str, payload: dict | None, result, 
     late_s = LATE_S if late_s is None else late_s
     poll_s = POLL_S if poll_s is None else poll_s
     ref, t0, told_late = _ref_of(result), time.monotonic(), False
+    from nucleo import wording
+    fam = family(wid, action, payload)
     _following.add(uid)
     _taken[uid] = time.time()
     for old in sorted(_taken, key=_taken.get)[:max(0, len(_taken) - 64)]:
@@ -121,11 +175,12 @@ async def follow(uid: str, wid: str, action: str, payload: dict | None, result, 
         while True:
             state, why = receipt(wid, ref, done_when)
             if state == "sent":
-                await _say(uid, "sent", "send_done")
+                _mark_landed(uid, wid, action, payload)
+                await _say(uid, "sent", wording.line(fam, "done"))
                 circuit.settle(row=uid, verdict="met", outcome="the connector confirmed the send")
                 return "sent"
             if state == "failed":
-                await _say(uid, "failed", "send_failed", why=why)
+                await _say(uid, "failed", wording.line(fam, "failed"), why=why)
                 circuit.settle(row=uid, verdict="unmet", outcome=f"the send failed: {why}"[:300])
                 return "failed"
             waited = time.monotonic() - t0
@@ -134,7 +189,7 @@ async def follow(uid: str, wid: str, action: str, payload: dict | None, result, 
                 return "unconfirmed"
             if waited >= receipt_s and not told_late:
                 told_late = True
-                await _say(uid, "late", "send_unconfirmed")
+                await _say(uid, "late", wording.line(fam, "late"))
             await asyncio.sleep(poll_s)
     except Exception as e:  # noqa: BLE001 — a watcher that broke leaves the row to the circuit's own close
         logger.warning(f"send_receipt: the receipt of {uid} was not followed — {e!r}")

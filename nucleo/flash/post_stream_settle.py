@@ -123,7 +123,7 @@ async def settle_what_is_pending(*, _ans, _ask_waiting, _auth_pending, _brief, _
                                                          or music_req["v"] is not None or worker_acted["v"]),
                                               held=bool(confirm_state.get("opened") or clarify["msg"]))
     spoken_text = await __import__("nucleo.turn.reply", fromlist=["x"]).routed_send_line(   # V2-887: a routed send is a START
-        spoken_text, ("send" in escalate_req), data_done["v"], send, speech)
+        spoken_text, escalate_req.get("send") or ("send" in escalate_req), data_done["v"], send, speech)
     if data_done["v"] and not spoken_text and _ack_allowed and not ("send" in escalate_req) and escalate_req["v"] is None and search_req["v"] is None:
         try:
             from i18n import langs as _langs   # same object as the voice.engine.core shim

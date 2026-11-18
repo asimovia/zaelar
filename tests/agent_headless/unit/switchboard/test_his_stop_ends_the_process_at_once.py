@@ -282,7 +282,7 @@ def test_a_go_ahead_given_with_the_order_is_read_at_the_exit_door_and_he_is_not_
     memdb.get_db()
     asked = []
     answers = ['{"confirmed": true, "why": "he says he already confirms"}']
-    monkeypatch.setattr(act, "_go_ahead_model", lambda words: asked.append(words) or (answers.pop(0) if answers else ""))
+    monkeypatch.setattr(act, "_go_ahead_model", lambda words, what="": asked.append(words) or (answers.pop(0) if answers else ""))
     _row("s3-1", "running", "Mándale un mensaje a Quinn que diga buenas noches, y ya te confirmo que puedes mandarlo.")
     ts.task_patch("s3-1", playbook="message")
     rec = SimpleNamespace(uid="s3-1")

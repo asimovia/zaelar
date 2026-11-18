@@ -284,6 +284,7 @@
       },
       "confirm": false,
       "usage": "Si no tienes su canal guardado, guárdalo antes con contactos/set_channel. A QUIÉN y por QUÉ CANAL lo resuelve esta acción, no tú: llámala con el nombre y el canal TAL COMO LOS DIJO, aunque conozcas a varios con ese nombre o no sepas si tiene ese canal. Si hay duda, el widget le pregunta cuál (con los candidatos) y la petición ESPERA su respuesta; no le preguntes tú «¿cuál?» antes de llamarla, y nunca escojas tú a uno por parecido. NO se pide confirmación para esto (V2-692): quien la llama está ejecutando una orden que el operador acaba de dar, y su permiso ya viene con la orden — preguntarle otra vez es hacerle dar el mismo permiso dos veces. `reply` SÍ la sigue pidiendo: contestar a algo que llegó no es una orden suya.",
+      "consent_class": "messaging.send_new",
       "effects": [
         "present.mount",
         "external.send"
@@ -302,12 +303,12 @@
       }
     },
     "create_group": {
-      "desc": "CREA UN GRUPO nuevo en WhatsApp o Telegram con esas personas (del directorio), y opcionalmente le escribe el primer mensaje. Para «crea un grupo con Ana y Luis que se llame Viaje». No crea nada si alguien no se encuentra o es ambiguo",
+      "desc": "CREA UN GRUPO nuevo en WhatsApp o Telegram con esas personas (del directorio). El grupo existe y se ve sin escribir nada en él: `text` SOLO si pidió un primer mensaje. Para «crea un grupo con Ana y Luis que se llame Viaje». No crea nada si alguien no se encuentra o es ambiguo",
       "payload": {
         "platform": "'whatsapp' | 'telegram'",
         "name": "nombre del grupo",
         "members": "lista de nombres de contactos",
-        "text": "opcional: primer mensaje"
+        "text": "solo si él pidió un primer mensaje: sus palabras"
       },
       "on_his_behalf": "members",
       "types": {"members": "list"},
@@ -318,6 +319,7 @@
       },
       "confirm_q": "¿Creo el grupo «{name}» con {members}?",
       "confirm": false,
+      "consent_class": "messaging.create_group",
       "effects": [
         "present.mount",
         "external.send"
@@ -336,6 +338,7 @@
         "channel": "opcional: whatsapp | telegram | email (por defecto email)"
       },
       "confirm": false,
+      "consent_class": "messaging.send_new",
       "effects": [
         "external.send"
       ],

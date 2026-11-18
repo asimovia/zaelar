@@ -117,6 +117,18 @@ def start(said: str, *, wid: str = "", action: str = "", src: str = "send", emit
         return 0
 
 
+async def start_line(send) -> str:
+    """The turn's ONE line for an act it handed over (`escalate_req["send"]`), worded for him: «I'll get the message
+    ready» for a message; for any other act that leaves — a group, an invitation — the start of what he asked for,
+    never «the message». "" when no line could be worded."""
+    from nucleo import wording
+    from nucleo.request import send_receipt
+    s = send if isinstance(send, dict) else {}
+    fam = send_receipt.family(str(s.get("widget") or ""), str(s.get("action") or ""),
+                              s.get("payload") if isinstance(s.get("payload"), dict) else {}) if s.get("action") else "send"
+    return await wording.said(wording.line(fam, "preparing"), about=str(s.get("text") or "")[:200])
+
+
 def on_claude(task, env: dict) -> str:
     """A send's worker runs on Claude itself (the operator's decision, 2026-11-17): the spec's env carries the mark
     `claude_start` reads, and the model is that rung's. "" for any other task (the chain decides as always)."""
@@ -128,18 +140,44 @@ def on_claude(task, env: dict) -> str:
 
 
 # ── the brief the worker reads ──────────────────────────────────────────────────────────────────────────────────
+def _act_steps(wid: str, act: str) -> str:
+    """The method for an act that leaves and is NOT a message, with the act's own declaration in it — what it does and
+    its fields — so the worker calls it at once instead of reading the card to learn how. "" when undeclared."""
+    from widgets import effects
+    from nucleo.workers.prompts.catalog import words
+    spec = (effects._manifest(wid).get("actions") or {}).get(act)
+    tpl = str(words("leaving_act_steps") or "")
+    if not (tpl and isinstance(spec, dict)):
+        return ""
+    fields = "; ".join(f"{k} = {v}" for k, v in (spec.get("payload") or {}).items()) or "-"
+    for k, v in (("act", f"{wid}:{act}"), ("desc", str(spec.get("desc") or "")), ("fields", fields),
+                 ("widget", wid), ("action", act)):
+        tpl = tpl.replace("{" + k + "}", v)
+    return tpl
+
+
 def brief_block(context: dict | None) -> str:
-    """The send's method for the worker, with the model's call as a hint. '' for a task that is not a send."""
+    """The method for the worker, with the model's call as a hint: a message's steps (find her, write the draft, send
+    it), or — when the act the turn read is declared as something else that leaves (a group) — that act's own steps.
+    '' for a task that is not a send."""
     ctx = context or {}
     if "send" not in ctx and ctx.get("playbook") != PLAYBOOK:
         return ""
     hint = ctx.get("send") or {}
     from nucleo.workers.prompts.catalog import words
-    head = str(words("send_errand_steps") or "")
+    wid, act = str(hint.get("widget") or ""), str(hint.get("action") or "")
     pay = hint.get("payload") if isinstance(hint.get("payload"), dict) else {}
+    head = ""
+    try:
+        from nucleo.request import send_receipt
+        if wid and act and send_receipt.family(wid, act, pay) != "send":
+            head = _act_steps(wid, act)
+    except Exception as e:  # noqa: BLE001 — unread: the message's steps, as before
+        _note(e)
+    head = head or str(words("send_errand_steps") or "")
     seen = ", ".join(f"{k}={str(v)[:120]!r}" for k, v in pay.items() if str(v or "").strip())
     if seen and (line := str(words("send_errand_hint") or "")):
-        head += "\n" + line.format(call=f"{hint.get('widget')}:{hint.get('action')} {seen}")
+        head += "\n" + line.format(call=f"{wid}:{act} {seen}")
     return head
 
 

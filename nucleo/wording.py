@@ -33,6 +33,7 @@ SYSTEM = (
     "Speak about WHAT HE ASKED FOR, in his own terms — the message to her, the coffee brands study, the car he is "
     "looking for. Never mention tasks, processes, flows, workers, jobs, queues or any other inner working of the "
     "assistant: to him there is only what he asked for.\n"
+    "You are talking TO him: say «you», never «he» — the fact is written about him, your sentence is said to him.\n"
     "Reply with the sentence only."
 )
 
@@ -41,6 +42,10 @@ SYSTEM = (
 READY = ("What he asked to send is written and he can read it on screen. Ask him whether you should send it TO THE "
          "PERSON the plain question names (the message goes to that person, never to him), and name that person. "
          "The plain question: {plain}")
+#: The same door for an act that is NOT a message (a group, an invitation): its own question, never the message's.
+READY_ACT = ("What he asked for is ready to be done and needs his go-ahead first. Ask him the plain question below in "
+             "your own words, naming what it is and who it reaches. It is not a message unless the question says so. "
+             "The plain question: {plain}")
 #: He may want one of his widgets changed, or a new one built, and the reading is not sure he ORDERED it.
 UNSURE_CARD = ("It is not clear whether he wants you to {change} a widget of his. What you understood he may want: "
                "«{what}». Ask him, in one short question, whether he wants you to do that. Do not start anything.")
@@ -59,11 +64,40 @@ FACTS = {
     "send_failed": "The message could NOT be sent. The reason the messaging service gave: {why}.",
     "send_unconfirmed": ("The message was handed over to be sent, but its confirmation has not arrived yet. He will "
                          "be told as soon as it does."),
+    # the same moments of an act that leaves and is NOT a message (a group created, an invitation placed): said of
+    # WHAT HE ASKED FOR, which rides as `about` — never «the message»
+    "act_preparing": "You are starting on what he asked for now; it is not done yet.",
+    "act_going": ("He gave his go-ahead. What he asked for is being done right now — not confirmed yet. He will be "
+                  "told if anything goes wrong."),
+    "act_not_done": "He said no. What he asked for is NOT done and nothing has left.",
+    "act_done": ("What he asked for is DONE (confirmed by the service — do not mention the confirmation). Tell him "
+                 "it is done, naming what it was in a few words."),
+    "act_failed": "What he asked for could NOT be done. The reason the service gave: {why}.",
+    "act_unconfirmed": ("What he asked for was handed over, but its confirmation has not arrived yet. He will be told "
+                        "as soon as it does."),
     "work_started": "He gave his go-ahead. You are starting on what he asked for now and will tell him when it is done.",
     "confirm_cancelled": "He said no. Nothing has been done or changed.",
     "answer_taken": "What he just said has been taken into account for what he asked for; it goes on with it.",
     "stopped_now": "He asked to stop. What he had asked for has been stopped now; it is no longer being worked on.",
 }
+
+
+#: The line of each moment of an act that leaves, by the family its event type declares
+#: (`nucleo/events/vocabulary.says`): a message has its own; any other act is told as what he asked for.
+LINES = {"send": {"preparing": "send_preparing", "going": "send_going", "no": "send_not_sent", "done": "send_done",
+                  "failed": "send_failed", "late": "send_unconfirmed"},
+         "act": {"preparing": "act_preparing", "going": "act_going", "no": "act_not_done", "done": "act_done",
+                 "failed": "act_failed", "late": "act_unconfirmed"}}
+
+
+def line(family: str, moment: str) -> str:
+    """The key of the line for this moment of a leaving act of this family ("act" for any family not declared)."""
+    return LINES.get(family if family in LINES else "act", LINES["act"])[moment]
+
+
+def ready(family: str) -> str:
+    """The exit door's question as a fact, for the act's family of lines ("send" — a message — or the act's own)."""
+    return READY if family == "send" else READY_ACT
 
 
 def _clean(raw: str) -> str:

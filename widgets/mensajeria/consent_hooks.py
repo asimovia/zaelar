@@ -25,9 +25,13 @@ def consent_scope(action: str, payload: dict | None = None) -> dict:
     pidas confirmación para los correos») governs that channel only; `consent.class_policy` falls back to the bare
     class when the channel has no rule of its own. A call whose channel cannot be read keeps the declared class."""
     try:
+        p = dict(payload or {})
+        if action == "create_group":    # born with a first message or a file it IS a send; bare, its declared class
+            plat = str(p.get("platform") or p.get("channel") or "").strip().lower()
+            cls = "messaging.send_new" if str(p.get("text") or "").strip() or p.get("files") else "messaging.create_group"
+            return {"class": f"{cls}@{plat}" if plat else cls}
         if action not in ("send_draft", "send_to", "reply", "forward"):
             return {}
-        p = dict(payload or {})
         plat = ""
         if action == "send_draft":
             db = load_db()
