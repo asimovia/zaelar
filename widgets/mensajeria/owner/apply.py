@@ -107,6 +107,20 @@ class _Apply:
                     if isinstance(row, dict) and row.get("ref"):
                         _f._settle(row["ref"], True)
 
+    def _apply_chats_gone(self) -> None:
+        """Chats he LEFT (`leave_group`, `connector.chats_gone`): they leave the card, and the order's outbox row is
+        crossed off — settled sent once every chat it named is gone. A chat that could not be left arrives as
+        `msg.send_failed` and settles the row failed, naming it."""
+        for ev in self._drain(self._gone_sub):
+            ev = ev if isinstance(ev, dict) else {}
+            platform, ids = str(ev.get("platform") or ""), [str(c) for c in ev.get("chatIds") or []]
+            if not platform or not ids:
+                continue
+            msgstore.drop_chats(platform, ids)
+            logger.info(f"mensajeria: {len(ids)} {platform} chat(s) gone from his account ({ev.get('ref')})")
+            if ev.get("ref"):
+                _f._settle_gone(ev["ref"], platform, ids)
+
     def _apply_mailbox(self) -> None:
         """A mail folder page, or one message read whole, for the email section (mailbox.py)."""
         events = [ev for ev in self._drain(self._mailbox_sub) if (ev or {}).get("platform") == "email"]

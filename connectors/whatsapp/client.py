@@ -70,6 +70,12 @@ async def create_group(subject: str, participants: list[str]) -> dict:
     return await _request("POST", "/group", body={"subject": subject, "participants": participants}, timeout=60.0)
 
 
+async def leave_group(chat_id: str) -> dict:
+    """Leave a WhatsApp group and remove its chat from his list: {left, deleted}. `deleted` is False when the bridge
+    left the group but could not delete the chat on the phone (it still drops it from its own book)."""
+    return await _request("POST", "/group/leave", body={"chatId": chat_id}, timeout=60.0)
+
+
 async def get_contacts(since: float | None = None) -> dict:
     """The address book the bridge has accumulated (V2-714). A SNAPSHOT, not a drain: WhatsApp cannot be
     asked for everything, so the same rows come back every pass and the import is idempotent by design.

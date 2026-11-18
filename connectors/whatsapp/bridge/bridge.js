@@ -363,9 +363,13 @@ function isListedChat(id) {
   return !!id && !id.includes('status') && !id.endsWith('@newsletter') && !id.endsWith('@broadcast');
 }
 
+// ZAELAR-PATCH (leave group): groups this device has just LEFT. The «you left» notice WhatsApp sends afterwards
+// must not put the chat back in the book the operator asked to remove it from.
+const leftChats = new Set();
+
 // `unread` is ABSOLUTE (history sync, read marks); `unreadDelta` is what a live message adds.
 function rememberChat(id, patch) {
-  if (!isListedChat(id)) return;
+  if (!isListedChat(id) || leftChats.has(id)) return;
   const prev = chatBook.get(id) || { id, isGroup: id.endsWith('@g.us') };
   const next = { ...prev };
   for (const k of ['name', 'archived', 'pinned', 'muted']) {
@@ -386,7 +390,8 @@ function rememberChat(id, patch) {
       // request with what came BEFORE the anchor, never the anchor itself. Not sent with /chats pages.
       next.lastId = patch.lastId;
       next.last = { body: String(patch.preview || '').slice(0, 4000), mediaType: patch.mediaType || '',
-                    fromMe: !!patch.fromMe, sender: patch.sender || '', ts };
+                    fromMe: !!patch.fromMe, sender: patch.sender || '', ts,
+                    participant: patch.participant || '' };  // ZAELAR-PATCH (leave group): a group key needs it
     }
   }
   chatBook.set(id, next);
@@ -535,6 +540,7 @@ async function startSocket() {
           rememberChat(chatId, {
             ts: tsNum(msg.messageTimestamp), preview: g.body, mediaType: g.mediaType, fromMe: !!msg.key.fromMe,
             lastId: msg.key.id, sender: msg.key.fromMe ? '' : (msg.pushName || ''),
+            participant: msg.key.participant || '',  // ZAELAR-PATCH (leave group)
             name: !chatId.endsWith('@g.us') && !msg.key.fromMe ? msg.pushName : undefined,
           });
         }
@@ -804,6 +810,7 @@ async function startSocket() {
         ts: tsNum(c.conversationTimestamp) || (last ? tsNum(last.messageTimestamp) : 0) || 0,
         preview: g ? g.body : undefined, mediaType: g ? g.mediaType : undefined,
         fromMe: last ? !!last.key?.fromMe : undefined, lastId: last?.key?.id, sender: last?.pushName || '',
+        participant: last?.key?.participant || '',  // ZAELAR-PATCH (leave group)
       });
     }
     if (syncType !== 6) {
@@ -984,6 +991,44 @@ app.post('/group', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// ZAELAR-PATCH (leave group): LEAVE a group and remove its chat from his list, as the phone's «Exit group» +
+// «Delete group» do. Leaving is the act; deleting the chat needs the chat's last message as its anchor (an app-state
+// patch), so it is best effort: the answer says `deleted: false` when it could not be done, and the chat leaves the
+// bridge's own book either way.
+app.post('/group/leave', async (req, res) => {
+  if (!sock || connectionState !== 'connected') {
+    return res.status(503).json({ error: 'Not connected to WhatsApp' });
+  }
+  const { chatId } = req.body || {};
+  const jid = String(chatId || '');
+  if (!jid.endsWith('@g.us')) {
+    return res.status(400).json({ error: 'chatId must be a group id (…@g.us)' });
+  }
+  try {
+    await sock.groupLeave(jid);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+  leftChats.add(jid);
+  const row = chatBook.get(jid) || {};
+  const last = row.last || {};
+  let deleted = false;
+  let why = '';
+  try {
+    const key = { remoteJid: jid, id: row.lastId, fromMe: !!last.fromMe };
+    if (!last.fromMe && last.participant) key.participant = last.participant;
+    if (!row.lastId || (!key.fromMe && !key.participant)) throw new Error('no anchor message for this chat');
+    await sock.chatModify({ delete: true, lastMessages: [{ key, messageTimestamp: Number(last.ts || row.ts) || Math.floor(Date.now() / 1000) }] }, jid);
+    deleted = true;
+  } catch (err) {
+    why = String(err?.message || err);
+  }
+  chatBook.delete(jid);
+  groupSubjects.delete(jid);
+  saveChatBookSoon();
+  res.json({ left: true, deleted, ...(why ? { why } : {}) });
 });
 
 // ZAELAR-PATCH: up to 2000 messages of the pairing history sync per call, oldest first.

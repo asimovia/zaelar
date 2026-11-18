@@ -215,8 +215,9 @@ from connectors.messaging.store.media import (  # noqa: E402,F401
 from connectors.messaging.store.taken import TAKEN_CAP, _taken_key, new_among, taken_ids  # noqa: E402,F401
 from connectors.messaging.store.fanout import _to_archive, _to_directory, _to_memory  # noqa: E402,F401
 from connectors.messaging.store.sync import (  # noqa: E402,F401
-    CHAT_INDEX_MAX, _CHAT_FIELDS, _clear_chat_items, add_chats, add_history, apply_external_read, record_outbound)
+    CHAT_INDEX_MAX, _CHAT_FIELDS, _clear_chat_items, add_chats, add_history, apply_external_read, drop_chats,
+    record_outbound)
 from connectors.messaging.store.queues import (  # noqa: E402,F401
     requeue_pending_read, take_control, take_pending_chats, take_pending_disposal, take_pending_fetch,
-    take_pending_group, take_pending_history, take_pending_read, take_pending_reply, take_pending_send,
+    take_pending_group, take_pending_group_leave, take_pending_history, take_pending_read, take_pending_reply, take_pending_send,
     take_pending_unread)

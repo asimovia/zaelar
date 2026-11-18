@@ -153,6 +153,9 @@ def would_refuse(action: str, payload: dict) -> dict | None:
     """The refusal a send WOULD get, read before the confirmation is asked (`widgets.contract.would_refuse`): a reply
     whose number answers nothing, a draft that is not there. None when the act can run."""
     p = dict(payload or {})
+    if action == "leave_group":            # every group named must be found, one by one, before he is asked
+        from .leave import refusal
+        return refusal(p)
     if action == "send_draft" and not _card_send_of(p):
         return draft_named(_d.load_db(), p)[4]
     if action == "reply" and not any(str(p.get(k) or "").strip() for k in ("contact", "to")):
@@ -161,6 +164,16 @@ def would_refuse(action: str, payload: dict) -> dict | None:
         if reply_target(_d.load_db(), p.get("n")) is None and not p.get("messageId"):
             return {"ok": False, "error": "no_target", "message": _no_reply_say(_d.load_db())}
     return None
+
+
+def confirm_values(action: str, payload: dict) -> dict:
+    """What the confirmation's blanks say for this call when the card knows better than the call's own words
+    (read by the exit door before it formats `confirm_q`): the groups `leave_group` FOUND, never his raw names.
+    {} when the call's words stand."""
+    if action == "leave_group":
+        from .leave import shown
+        return shown(dict(payload or {}))
+    return {}
 
 
 def _card_send_of(payload: dict) -> bool:

@@ -91,6 +91,13 @@ class _Handle:
                 ingest.publish_group(order)
         except Exception as e:  # noqa: BLE001
             logger.warning(f"mensajeria group flush: {e}")
+        # And for leaving groups (leave_group): its own topic, its connector leaves and answers with the chats gone.
+        try:
+            from connectors.messaging import group_leave
+            for order in msgstore.take_pending_group_leave():
+                group_leave.publish_group_leave(order)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"mensajeria group leave flush: {e}")
         # And for chat-list pages: entering a platform, or «Cargar más» at the bottom of its list.
         try:
             for order in msgstore.take_pending_chats():

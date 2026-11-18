@@ -84,6 +84,9 @@ TYPES: tuple[EventType, ...] = (
     # did not say reaches anyone. A group born WITH a first message is a send (the card's `consent_scope` says so).
     EventType("messaging.create_group", OUT, "a group is created in a messaging app with people he named",
               grant="message", level="standard", effect="external.send"),
+    # Leaving a group removes him from it and deletes the chat from his list: nothing undoes it, so it asks once.
+    EventType("messaging.leave_group", OUT, "he leaves a messaging group and it is removed from his chats",
+              grant="message", level="sensitive", effect="external.send"),
     # ── leaves: his agenda, as seen by the people in it ──
     EventType("calendar.invite_agreed", OUT, "an invitation to a meeting already agreed with its guests",
               grant="schedule", level="sensitive", effect="external.send"),

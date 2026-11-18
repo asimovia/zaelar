@@ -51,6 +51,17 @@ def _settle(ref, ok: bool, reason: str = "", *, retried: bool = False) -> None:
         logger.info(f"mensajeria: outbox row {ref} not settled ({type(e).__name__}: {e})")
 
 
+def _settle_gone(ref, platform: str, chat_ids) -> None:
+    """Cross the chats a connector says are gone off the outbox row of the order `ref`. Never raises."""
+    try:
+        from .. import sent as _sent
+        db = msgstore.load()
+        if _sent.outbox_gone(db, ref, platform, chat_ids):
+            msgstore.save(db)
+    except Exception as e:  # noqa: BLE001
+        logger.info(f"mensajeria: outbox row {ref} not crossed off ({type(e).__name__}: {e})")
+
+
 def _record_left(ev: dict) -> None:
     """The body a send of this card LEFT with (V2-807), on the timeline (`sent.left_event`): what was sent is
     then read from the record, never rebuilt from the conversation that wrote it."""

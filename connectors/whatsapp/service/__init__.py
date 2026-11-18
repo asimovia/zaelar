@@ -30,6 +30,7 @@ _history_inbox = None            # V2-546: msg.history subscription (created in 
 _contacts_inbox = None           # V2-714: msg.contacts subscription
 _chats_inbox = None              # msg.chats: one page of the chat list
 _group_inbox = None              # msg.group: creating a group
+_group_leave_inbox = None        # msg.group_leave: leaving a group
 _unread_inbox = None             # msg.mark_unread: «déjalo como no leído»
 _held: list[dict] = []           # V2-854 F4: sends that failed on the LINK, retried once on the next reconnect
 _connected_at: float = 0.0       # when the bridge last became connected (the retry's trigger)
@@ -62,7 +63,7 @@ def _note(text: str) -> None:
 
 async def _loop() -> None:
     global _mark_inbox, _reply_inbox, _send_inbox, _history_inbox, _contacts_inbox, _chats_inbox, _group_inbox
-    global _unread_inbox, _connected_at
+    global _unread_inbox, _connected_at, _group_leave_inbox
     _set_status("starting", None)
     if _contacts_inbox is None:
         _contacts_inbox = ingest.ContactsInbox(PLATFORM)   # V2-714: the address book
@@ -70,6 +71,9 @@ async def _loop() -> None:
         _chats_inbox = ingest.ChatsInbox(PLATFORM)         # the chat list
     if _group_inbox is None:
         _group_inbox = ingest.GroupInbox(PLATFORM)         # new groups
+    if _group_leave_inbox is None:
+        from connectors.messaging import group_leave
+        _group_leave_inbox = group_leave.GroupLeaveInbox(PLATFORM)   # groups he leaves
     if _unread_inbox is None:
         _unread_inbox = ingest.MarkUnreadInbox(PLATFORM)   # back to unread
     if ingest.v2_enabled() and _mark_inbox is None:
@@ -113,7 +117,8 @@ async def _loop() -> None:
                                  ("read marks", _drain_external_reads), ("history", _drain_history),
                                  ("contacts", _drain_contacts), ("contact changes", _drain_contact_changes),
                                  ("chats", _drain_chats),
-                                 ("groups", _drain_groups), ("unread", _drain_unread), ("sync", _drain_sync)):
+                                 ("groups", _drain_groups), ("group leaves", _drain_group_leaves),
+                                 ("unread", _drain_unread), ("sync", _drain_sync)):
                     try:
                         await fn()
                     except Exception as e:  # noqa: BLE001
@@ -157,5 +162,6 @@ from connectors.whatsapp.service.inbound import (  # noqa: E402
 from connectors.whatsapp.service.directory import (  # noqa: E402
     _chat_row, _drain_chats, _drain_contact_changes, _drain_contacts, _drain_groups, _drain_reads, _drain_sync,
     _drain_unread, _wa_person)
+from connectors.whatsapp.service.leave import _drain_group_leaves  # noqa: E402
 from connectors.whatsapp.service.outbound import (  # noqa: E402
     _drain_replies, _drain_sends, _echo_sent, _jid, _send, retry_held)

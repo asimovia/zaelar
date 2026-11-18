@@ -35,6 +35,10 @@ y reaplicarlos tras un re-vendor. Parches actuales (INI-014):
 3. **QR como data-URI** — `connection.update` genera el QR también como PNG data-URI (dep nueva `qrcode`), lo
    guarda en `currentQR` y lo expone en `GET /health` (`qr`), para pintarlo en el widget del canvas (el operador
    escanea ahí, no en un terminal). Se limpia al conectar. Upstream solo lo imprime en la terminal.
+4. **`POST /group/leave`** (leave group) — leaves a group (`sock.groupLeave`) and, best effort, deletes its chat
+   (`sock.chatModify({ delete: true, lastMessages })`, anchored on the chat book's last message, which now keeps its
+   `participant`). Answers `{left, deleted}`; the chat leaves the bridge's book either way, and `leftChats` keeps
+   the «you left» notice from adding it back. Upstream has no way to leave a group.
 
 ## Re-vendoring (adoptar mejoras de upstream)
 

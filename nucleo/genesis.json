@@ -18,6 +18,7 @@
     "confirm_short_actions": true,
     "fillers": "smart",
     "max_sentences": 2,
+    "still_working_lines": true,
     "one_action_per_turn": true,
     "_V2_713": "Dos PREFERENCIAS que vivían como prosa en el bloque `ops` del prompt: cuántas frases habla y si ejecuta una acción por turno. `principles.md` las llama carril sobre el JUICIO — una receta de conducta —, y desde V2-633 hay dónde ponerlas: aquí, con el operador cambiándolas al decirlo. `max_sentences: 0` = sin límite; `one_action_per_turn: false` = puede encadenar."
   },
@@ -31,6 +32,7 @@
     "classes": {
       "messaging.autorespond": "never",
       "messaging.send_new": "allow",
+      "messaging.leave_group": "ask",
       "account.disconnect": "allow",
       "payment.authorize": "ask",
       "web.commit": "ask",

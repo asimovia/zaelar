@@ -35,6 +35,7 @@ _fetch_inbox = None              # V2-624: msg.fetch subscription (platform-wide
 _contacts_inbox = None           # V2-714: msg.contacts subscription (the ADDRESS BOOK, not the messages)
 _chats_inbox = None              # msg.chats: one page of the chat list
 _group_inbox = None              # msg.group: creating a group
+_group_leave_inbox = None        # msg.group_leave: leaving a group
 _unread_inbox = None             # msg.mark_unread: «déjalo como no leído»
 
 
@@ -181,7 +182,7 @@ async def _loop() -> None:
             logger.debug(f"Telegram read receipt: {e}")
 
     global _mark_inbox, _reply_inbox, _send_inbox, _history_inbox, _fetch_inbox, _contacts_inbox, _chats_inbox
-    global _group_inbox, _unread_inbox
+    global _group_inbox, _unread_inbox, _group_leave_inbox
     if ingest.v2_enabled() and _mark_inbox is None:
         _mark_inbox = ingest.MarkReadInbox("telegram")   # subscription in THIS loop (server) -> direct delivery
     if ingest.v2_enabled() and _reply_inbox is None:
@@ -198,6 +199,9 @@ async def _loop() -> None:
         _chats_inbox = ingest.ChatsInbox("telegram")          # the chat list
     if _group_inbox is None:
         _group_inbox = ingest.GroupInbox("telegram")          # new groups
+    if _group_leave_inbox is None:
+        from connectors.messaging import group_leave
+        _group_leave_inbox = group_leave.GroupLeaveInbox("telegram")   # groups he leaves
     if _unread_inbox is None:
         _unread_inbox = ingest.MarkUnreadInbox("telegram")    # back to unread
     _set_status("connected", None)
@@ -228,6 +232,7 @@ async def _loop() -> None:
                          ("read marks", _drain_read_marks),
                          ("history", _drain_history), ("fetch", _drain_fetch),
                          ("contacts", _drain_contacts), ("chats", _drain_chats), ("groups", _drain_groups),
+                         ("group leaves", _drain_group_leaves),
                          ("unread", _drain_unread),
                          ("history walk", _walk_tick)):
             try:
@@ -275,4 +280,4 @@ from connectors.telegram.service.history import (  # noqa: E402
 from connectors.telegram.service.directory import _drain_contacts  # noqa: E402
 from connectors.telegram.service.outbound import _drain_replies, _drain_sends  # noqa: E402
 from connectors.telegram.account_ops import (  # noqa: E402
-    _dialog_row, _drain_chats, _drain_groups, _drain_unread, _send, _walk_tick)
+    _dialog_row, _drain_chats, _drain_group_leaves, _drain_groups, _drain_unread, _send, _walk_tick)

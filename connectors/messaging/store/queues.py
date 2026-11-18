@@ -29,6 +29,16 @@ def take_pending_group() -> list[dict]:
     return list(pending)
 
 
+def take_pending_group_leave() -> list[dict]:
+    """Return (and REMOVE) group-leave orders enqueued by the widget's `leave_group`: {platform, ref, chats}."""
+    db = _svc.load()
+    pending = db.get("pending_group_leave", [])
+    if pending:
+        db["pending_group_leave"] = []
+        _svc.save(db)
+    return list(pending)
+
+
 def take_pending_chats() -> list[dict]:
     """Return (and REMOVE) chat-list page orders: {platform, before, limit}. Enqueued by the widget, published to
     `msg.chats` by the owner, served by that platform's connector."""

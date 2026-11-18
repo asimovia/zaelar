@@ -133,7 +133,8 @@
       "safe": true
     },
     "dismiss": {
-      "desc": "QUITA el mensaje N de ESTA lista (no toca su app: allí sigue como estaba) — «quítalo de aquí», «ese no me interesa». «Déjalo sin leer / márcalo como no leído» NO es esto: eso es `unread`",
+      "desc": "Solo OCULTA el mensaje N de ESTA lista; nunca sale ni borra un grupo o un chat de su app — «quítalo de aquí». «Déjalo sin leer» NO es esto: eso es `unread`",
+      "how": "«Elimina / borra / sal del grupo X» NO es esto: eso es `leave_group`.",
       "payload": {
         "n": "int"
       },
@@ -326,6 +327,22 @@
         "external.send"
       ],
       "done_when": {"widget": "mensajeria", "collection": "outbox", "where": {"name": "{name}", "kind": "group", "state": "sent"}, "expect": "added"}
+    },
+    "leave_group": {
+      "desc": "SALE de uno o varios grupos de WhatsApp o Telegram y los BORRA de sus chats. No se puede deshacer. Para «elimina / borra / sal del grupo X», «delete the groups X and Y»",
+      "how": "`groups`: los nombres tal como los dijo (lista, o un texto con «,», « y », « and »). Se buscan en SU lista de chats de grupo; si uno no está o es ambiguo no se hace nada y se le pregunta cuál.",
+      "payload": {
+        "groups": "lista de nombres de grupo tal como los dijo",
+        "platform": "opcional: 'whatsapp' | 'telegram'"
+      },
+      "types": {"groups": "list"},
+      "confirm_q": "He encontrado {groups}. ¿Confirmas que salga y los borre de tus chats? No se puede deshacer.",
+      "confirm": false,
+      "consent_class": "messaging.leave_group",
+      "effects": [
+        "external.send"
+      ],
+      "done_when": {"widget": "mensajeria", "collection": "outbox", "where": {"said": "{groups}", "kind": "group_leave", "state": "sent"}, "expect": "added"}
     },
     "forward": {
       "ref": "from",

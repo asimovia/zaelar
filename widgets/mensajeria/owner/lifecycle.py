@@ -22,6 +22,7 @@ class _Lifecycle:
         self._chats_sub = None            # one page of a platform's chat list
         self._mailbox_sub = None          # one page of a mail folder, or one message read whole
         self._failed_sub = None           # V2-819: a send that did not leave, with the reason
+        self._gone_sub = None             # chats he left (leave_group): gone from his account
         self._task: asyncio.Task | None = None
         self._triage_task: asyncio.Task | None = None
         # No in-memory «seen» set: what he removed is kept from coming back by the DURABLE ledger in the store
@@ -47,6 +48,9 @@ class _Lifecycle:
             self._mailbox_sub = bus.subscribe(ingest.TOPIC_MAILBOX)
         if self._failed_sub is None:
             self._failed_sub = bus.subscribe(ingest.TOPIC_SEND_FAILED)
+        if self._gone_sub is None:
+            from connectors.messaging import group_leave
+            self._gone_sub = bus.subscribe(group_leave.TOPIC_CHATS_GONE)
         self._report_switched_off()
         if self._task is None or self._task.done():
             self._task = asyncio.create_task(self._consume())
@@ -72,7 +76,7 @@ class _Lifecycle:
             self._triage_task.cancel()
             self._triage_task = None
         for sub in (self._msg_sub, self._status_sub, self._out_sub, self._read_sub, self._history_sub,
-                    self._chats_sub, self._mailbox_sub, self._failed_sub):
+                    self._chats_sub, self._mailbox_sub, self._failed_sub, self._gone_sub):
             try:
                 if sub is not None:
                     sub.close()
@@ -80,7 +84,7 @@ class _Lifecycle:
                 pass
         self._msg_sub = self._status_sub = None
         self._out_sub = self._read_sub = self._history_sub = self._chats_sub = self._mailbox_sub = None
-        self._failed_sub = None
+        self._failed_sub = self._gone_sub = None
 
     # Bus consumption: incoming messages + status.
     async def _consume(self) -> None:
@@ -99,6 +103,7 @@ class _Lifecycle:
             for what, fn in (("outbound", self._apply_outbound), ("failed", self._apply_send_failures),
                              ("read", self._apply_external_reads),
                              ("history", self._apply_history), ("chats", self._apply_chats),
+                             ("gone", self._apply_chats_gone),
                              ("mailbox", self._apply_mailbox),
                              ("media", self._sweep_media), ("queues", self._flush_queues)):
                 try:

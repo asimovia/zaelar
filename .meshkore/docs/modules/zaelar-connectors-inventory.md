@@ -76,6 +76,19 @@ is set. See `zaelar-google-connector.md`.
 scope: it is an ARGUMENT (`meet: true`) of `add_meeting`/`update_meeting`, not something the operator
 connects. `connectors/catalog/google-meet.json` exists only so `search()` finds the capability by name.
 
+**Leaving a group is one declared act, `mensajeria:leave_group`** (event type `messaging.leave_group`, level
+`sensitive`: it cannot be undone, so the exit door asks once). The card resolves every name he said against his own
+group chats (`actions/leave.py`: exact name over partial, accents and case aside); one name missing or ambiguous and
+it refuses with the candidates — `would_refuse` says so before any question, and `confirm_values` puts the groups AS
+FOUND in the question's `{groups}`. Otherwise it opens ONE outbox row (`kind: group_leave`, waiting on every
+`platform|chatId`) and queues one order per platform in `pending_group_leave`; the owner flushes it to
+`msg.group_leave` (`connectors/messaging/group_leave.py`). WhatsApp posts each chat to the bridge's `/group/leave`
+(`groupLeave`, then a best-effort `chatModify` delete anchored on the chat book's last message — `{left, deleted}`);
+Telegram calls Telethon's `delete_dialog`. Both answer through `group_leave.leave_each`: the chats that left as
+`connector.chats_gone` (the owner drops their list row, thread and pending items, and crosses them off the row,
+which settles `sent` when nothing is left to wait on), the ones that did not as one `msg.send_failed` naming them
+(the row settles `failed`). `dismiss` only hides a row here and never leaves anything.
+
 ## Catalogue states
 
 Besides `built`, a manifest can be `planned` (a connector the catalogue offers for the wishlist) or

@@ -65,12 +65,27 @@ def own_question(wid: str, act: str, inner: dict | None) -> str:
             return ""
         vals = {k: (", ".join(str(x.get("name") if isinstance(x, dict) else x) for x in v)
                     if isinstance(v, (list, tuple)) else str(v)) for k, v in (inner or {}).items()}
+        vals.update(_card_values(wid, act, inner))
         q = tpl.format_map(type("_Blank", (dict,), {"__missing__": lambda self, k: ""})(vals)).strip()
         text = " ".join(str((inner or {}).get("text") or "").split())
         return f"{q} «{text[:160]}»" if q and text and text not in q else q
     except Exception as e:  # noqa: BLE001
         logger.debug(f"exit_gate: the act's own question unread ({e!r})")
         return ""
+
+
+def _card_values(wid: str, act: str, inner: dict | None) -> dict:
+    """The blanks the CARD fills for this call (its data module's `confirm_values(action, payload)`, when it declares
+    one): what it found for the call's words, so he confirms the thing that will be acted on. {} otherwise."""
+    try:
+        import importlib
+        card = str(wid or "").split("::", 1)[0].strip().lower()
+        hook = getattr(importlib.import_module(f"widgets.{card}.data"), "confirm_values", None)
+        got = hook(str(act or ""), dict(inner or {})) if callable(hook) else None
+        return {str(k): str(v) for k, v in got.items() if str(v)} if isinstance(got, dict) else {}
+    except Exception as e:  # noqa: BLE001 — unread: the call's own words fill the blanks
+        logger.debug(f"exit_risk: the card's values for {wid}:{act} unread ({e!r})")
+        return {}
 
 
 def ready_question(wid: str, act: str, inner: dict, cls: str = "") -> str:

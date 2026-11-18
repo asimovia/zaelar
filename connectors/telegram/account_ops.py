@@ -1,7 +1,7 @@
 #
 # account_ops.py — what the operator does with his Telegram ACCOUNT beyond reading and replying: the chat list
-# (`msg.chats`), creating a group (`msg.group`), «mark as unread» (`msg.mark_unread`), sending files, and the history
-# walk's tick. Extracted from service.py when it crossed the size ratchet — split along a real seam, never a
+# (`msg.chats`), creating and leaving a group (`msg.group`, `msg.group_leave`), «mark as unread»
+# (`msg.mark_unread`), sending files, and the history walk's tick. Extracted from service.py when it crossed the size ratchet — split along a real seam, never a
 # raised ceiling. Every function reads the connection and the inboxes from `service` AT CALL TIME (`_svc.…`), so
 # the loop that owns them, and a test that replaces them, stay the single source.
 #
@@ -65,6 +65,24 @@ async def _drain_groups() -> None:
             except Exception as e:  # noqa: BLE001
                 logger.warning(f"Telegram: grupo creado, primer mensaje no enviado: {e}")
         # INI-071 B9: no success note — the chat row above is the receipt the circuit confirms (one act, one door)
+
+
+async def _drain_group_leaves() -> None:
+    """Leave the groups the operator asked to leave, as Telegram's «Delete and leave» does: Telethon's
+    `delete_dialog` leaves a group or channel and removes the dialog from his list. Told once on failure."""
+    if _svc._group_leave_inbox is None:
+        return
+    from connectors.messaging import group_leave
+
+    async def _leave_one(chat_id: str) -> None:
+        entity = await _svc._client.get_input_entity(int(chat_id) if chat_id.lstrip("-").isdigit() else chat_id)
+        await _svc._client.delete_dialog(entity)
+
+    for order in _svc._group_leave_inbox.drain():
+        left, failed = await group_leave.leave_each("telegram", order, _leave_one)
+        logger.info(f"Telegram: left {len(left)} group(s), {len(failed)} failed")
+        if failed:
+            _svc._note(f"[SISTEMA] No pude salir de {'; '.join(failed)} en Telegram. Díselo al operador.")
 
 
 async def _walk_tick() -> None:

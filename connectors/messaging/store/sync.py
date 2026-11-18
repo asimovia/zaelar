@@ -148,5 +148,25 @@ def add_chats(platform: str, ev: dict) -> dict:
     return _svc.save(db)
 
 
+def drop_chats(platform: str, chat_ids) -> dict:
+    """These chats are GONE from his account (he left the group and the chat was removed, `leave_group`): their row
+    in the chat list, the conversation held here, its pending items and a chat open on screen leave the card."""
+    db = _svc.load()
+    ids = {str(c) for c in chat_ids or [] if str(c)}
+    if not ids:
+        return db
+    rows = ((db.get("chat_index") or {}).get(platform) or {}).get("rows") or {}
+    for cid in ids:
+        rows.pop(cid, None)
+        (db.get("threads") or {}).pop(f"{platform}|{cid}", None)
+    db["items"] = [it for it in db.get("items", [])
+                   if not (it.get("platform") == platform and str(it.get("chatId")) in ids)]
+    active = db.get("active_chat") or {}
+    if active.get("platform") == platform and str(active.get("chatId") or "") in ids:
+        db["active_chat"] = None
+    db["updated"] = _svc._now()
+    return _svc.save(db)
+
+
 # Read back through the facade (V2-778 F1): tests patch `load`/`save`/`_to_archive` there.
 from connectors.messaging import store as _svc  # noqa: E402

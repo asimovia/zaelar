@@ -72,6 +72,8 @@ def _fill(node, payload: dict):
             if isinstance(v, str) and (m := _PLACEHOLDER.match(v)):
                 key, optional = m.group(1), bool(m.group(2))
                 val = payload.get(key)
+                if isinstance(val, (list, tuple)) and val and all(isinstance(x, (str, int, float)) for x in val):
+                    val = ", ".join(str(x) for x in val)   # several plain values are told as one, as the row keeps them
                 if val in (None, "") or isinstance(val, (dict, list)):
                     if optional:
                         continue
@@ -86,13 +88,8 @@ def _fill(node, payload: dict):
                 out[k] = got
         return out
     if isinstance(node, list):
-        out = []
-        for v in node:
-            got = _fill(v, payload)
-            if got is None and v is not None:
-                return None
-            out.append(got)
-        return out
+        out = [_fill(v, payload) for v in node]
+        return None if any(got is None and v is not None for got, v in zip(out, node)) else out
     return node
 
 

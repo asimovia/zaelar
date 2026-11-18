@@ -118,6 +118,27 @@ def outbox_settle(db: dict, ref, ok: bool, reason: str = "", *, retried: bool = 
     return False
 
 
+def outbox_wait(db: dict, ref: str, keys: list[str]) -> None:
+    """An order that is done only when SEVERAL chats are gone (`leave_group`): the `platform|chatId` keys its row
+    waits on. Its connectors' echoes cross them off (`outbox_gone`)."""
+    for r in db.get("outbox") or []:
+        if isinstance(r, dict) and r.get("ref") == str(ref):
+            r["waiting"] = [str(k) for k in keys]
+
+
+def outbox_gone(db: dict, ref, platform: str, chat_ids) -> bool:
+    """A connector says these chats of the order `ref` are gone: crossed off its row, which settles sent only when
+    nothing is left to wait on. True when the row changed."""
+    gone = {f"{platform}|{c}" for c in chat_ids or []}
+    for r in db.get("outbox") or []:
+        if isinstance(r, dict) and r.get("ref") == str(ref or "") and r.get("state") == "queued":
+            left = [k for k in r.get("waiting") or [] if k not in gone]
+            changed = left != list(r.get("waiting") or [])
+            r["waiting"] = left
+            return (outbox_settle(db, ref, True) if not left else False) or changed
+    return False
+
+
 def outbox_view(db: dict, now: float | None = None) -> list[dict]:
     """The rows the card reads. A queued row past `OUTBOX_STALE_S` is shown as `unconfirmed`: not a claim that it
     failed, only that nothing has said it left."""
