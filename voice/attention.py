@@ -269,6 +269,11 @@ def note_speech_end(now: float | None = None) -> None:
     _state["speech_end"] = time.time() if now is None else now
 
 
+def utterance_onset() -> float:
+    """When the operator's current utterance began (0 = unknown) — what `voice_lock.admit` dates its verdicts from."""
+    return float(_state.get("speech_onset") or 0.0)
+
+
 def _speaking(now: float) -> bool:
     """Is the operator's voice active RIGHT NOW as far as the VAD told us? The last rising edge with no falling
     edge after it — bounded by the cap, so a missed edge cannot leave the window open forever."""

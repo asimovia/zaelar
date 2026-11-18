@@ -1,8 +1,9 @@
 // DockBar.js — every control, at the bottom, around the orb (the mobile counterpart of the desktop's «eye» and TopBar).
 // The thumb reaches the bottom third, so this bar is the ONLY fixed chrome and --dock-h the one geometry the shell
 // knows: every card and page ends at its top edge; on iOS it pads itself with the safe area (styles.css).
-// COMPOSITION (V2-876 D-C, 2026-11-11; 2026-11-16 the wake word came back): ≡ menu · 💬 chat · ▦ widgets | ORB |
-// 🎤 mic · 🔊 speaker · 🤖 wake word — three a side, the orb centred on the screen by the grid (styles.css). The wake
+// COMPOSITION (2026-11-18, operator: four a side — the voice's activation on one, the device's tools on the other):
+// ≡ menu · 💬 chat · «Stick to my voice» · 🤖 wake word | ORB | 🎤 mic · 🔊 speaker · 📷 camera · ▦ widgets.
+// Before (V2-876 D-C, 2026-11-11; 2026-11-16 the wake word came back): ≡ · 💬 · ▦ | ORB | 🎤 · 🔊 · 🤖 — three a side, the orb centred on the screen by the grid (styles.css). The wake
 // word is the desktop orb bar's 🤖, same glyph and same seam (wake.js): the App Review recording showed a phone with
 // no way to say «only when I call you» short of digging into Settings. Feedback is a row of the ☰ page. Mic and speaker stay here because the voice belongs to ONE device and the hand
 // that opens them takes it there, and muting your mic is a privacy gesture that must take one tap. The mic button is
@@ -23,7 +24,9 @@ import * as power from "../../../app/services/power.js?v=1";
 import { ProcessCount } from "../../../app/components/ProcessCount.js?v=1";
 import * as consent from "./ai-consent.js?v=1";   // V2-870: in the app the voice asks first
 import { appsOpen, setAppsOpen } from "./AppsPane.js?v=2";
-import { APPS_ICON } from "../../../app/lib/icons.js?v=2";
+import { APPS_ICON, CAMERA_ICON, CAMERA_OFF_ICON, VOICE_LOCK_ICON } from "../../../app/lib/icons.js?v=2";
+import { lookCamera, setLookCamera, cameraLive, cameraProblem, CAMERA_PROBLEM } from "../../../app/presence/look-state.js?v=1";
+import { voiceLock, voiceEnrolled, toggleVoiceLock, lockTitleKey } from "../../../app/services/voice-lock.js?v=1";
 import { problemTitleKey } from "../../../app/services/device-health.js?v=1";
 import { VolumeSlider } from "../../../app/components/VolumeSlider.js?v=1";
 import * as wake from "./wake.js?v=1";
@@ -74,7 +77,7 @@ export function DockBar() {
     onPointercancel: let_go, onContextmenu: (e) => e.preventDefault(),
     ref: (el) => el.addEventListener("click", (e) => { if (said) { said = false; e.stopPropagation(); e.preventDefault(); } }, true) },
 
-    // ── LEFT of the orb: the menu, the conversation, the apps ──
+    // ── LEFT of the orb: the menu, the conversation, and the voice's activation (stick to my voice · wake word) ──
     h("div", { class: "zm-side" },
       // The ☰ is the person and the setup (account, settings, voice, connectors — MenuSheet.js), never the agent's work.
       h("button", {
@@ -98,11 +101,23 @@ export function DockBar() {
         },
       }, raw(CHAT), ProcessCount({ as: "span" })),
 
+      // «STICK TO MY VOICE» (V2-651 F1): only the voice enrolled on this device reaches the brain. On with nothing
+      // enrolled filters nothing — grey (`wait`), and the long press says so.
       h("button", {
-        class: () => cls(appsOpen()), "data-ctl": "apps",
-        "aria-label": () => t("mobile.apps"),
-        onClick: () => { const v = !appsOpen(); setAppsOpen(v); api.uiEvent("mobile:apps", { state: v ? "open" : "close" }); },
-      }, raw(APPS_ICON)),
+        class: () => (voiceLock() && !voiceEnrolled() ? "zm-ic wait" : cls(voiceLock())), "data-ctl": "lock",
+        "aria-label": () => t(lockTitleKey()),
+        onClick: () => toggleVoiceLock("dock"),
+      }, raw(VOICE_LOCK_ICON)),
+
+      // THE WAKE WORD (2026-11-16). ON (blue) = he says the name once and keeps talking; OFF (grey) = always listening.
+      // The long press says the word itself, with today's name — the one question this button raises. Beside the orb,
+      // on the voice side (2026-11-18), as on the desktop's bar.
+      h("button", {
+        class: () => cls(wake.on()), "data-ctl": "bot",
+        "aria-label": () => (wake.on() ? t("mobile.wake_on", { name: store.assistantName() })
+                                       : t("mobile.wake_off", { name: store.assistantName() })),
+        onClick: () => wake.toggle(),
+      }, raw(BOT)),
     ),
 
     // ── CENTRE: the orb, which is also the switch. Stopped → a ⏻ and nothing else; running → zaelar's face. ──
@@ -135,7 +150,7 @@ export function DockBar() {
       }, ORB),
     ),
 
-    // ── RIGHT of the orb: the microphone (privacy, one tap), the speaker and the wake word ──
+    // ── RIGHT of the orb: the device's tools — the microphone (privacy, one tap), the speaker, the camera — and the widgets ──
     h("div", { class: "zm-side" },
       h("button", {
         // 2026-11-16 — `problem`: no usable microphone (permission, device, a dead track, no agent in the room). RED and
@@ -183,14 +198,19 @@ export function DockBar() {
         },
       }, () => raw(store.botMuted() ? SPK_OFF : SPK_ON)),
 
-      // THE WAKE WORD (2026-11-16). ON (blue) = he says the name once and keeps talking; OFF (grey) = always listening.
-      // The long press says the word itself, with today's name — the one question this button raises.
+      // 📷 THE CAMERA (2026-11-18): the switch the face reads and the floating «● Camera» badge turns off — one signal.
       h("button", {
-        class: () => cls(wake.on()), "data-ctl": "bot",
-        "aria-label": () => (wake.on() ? t("mobile.wake_on", { name: store.assistantName() })
-                                       : t("mobile.wake_off", { name: store.assistantName() })),
-        onClick: () => wake.toggle(),
-      }, raw(BOT)),
+        class: () => cls(lookCamera()) + (lookCamera() && cameraProblem() ? " problem" : ""), "data-ctl": "cam",
+        "aria-label": () => (cameraProblem() && CAMERA_PROBLEM[cameraProblem()] ? t(CAMERA_PROBLEM[cameraProblem()])
+                             : !lookCamera() ? t("orb.camera_off") : cameraLive() ? t("orb.camera_live") : t("orb.camera_on")),
+        onClick: () => setLookCamera(!lookCamera(), "dock"),
+      }, () => raw(lookCamera() ? CAMERA_ICON : CAMERA_OFF_ICON)),
+
+      h("button", {
+        class: () => cls(appsOpen()), "data-ctl": "apps",
+        "aria-label": () => t("mobile.apps"),
+        onClick: () => { const v = !appsOpen(); setAppsOpen(v); api.uiEvent("mobile:apps", { state: v ? "open" : "close" }); },
+      }, raw(APPS_ICON)),
     ),
   );
 }

@@ -166,9 +166,10 @@ def test_an_account_is_never_asked_its_email_in_feedback(phone):
     phone.evaluate("() => window.__store.setCloudProfile(true)")
 
 
-def test_the_dock_is_three_a_side_of_44(phone):
-    """2026-11-16: the wake word came back to the dock — three controls each side of the orb (menu · chat · widgets |
-    mic · speaker · wake word), seven visible targets with the orb."""
+def test_the_dock_is_four_a_side_44_tall(phone):
+    """2026-11-18 (operator): four controls each side of the orb — menu · chat · stick to my voice · wake word | mic ·
+    speaker · camera · widgets — nine visible targets with the orb. Four a side no longer fit 44pt wide on a phone
+    (4 × 44 + 3 × 8 = 200 of the ~150 a side has), so the targets stay 44pt TALL and share the width (≈35 at 393)."""
     _only(phone, "chat")
     phone.evaluate("() => window.__store.setChatOpen(false)")
     d = phone.evaluate("""() => { const d = document.querySelector('.zm-dock');
@@ -176,9 +177,9 @@ def test_the_dock_is_three_a_side_of_44(phone):
         return {n: vis.length, sizes: vis.map(b => { const r = b.getBoundingClientRect(); return [r.width, r.height]; }),
                 sides: [...d.querySelectorAll('.zm-side')].map(s => s.querySelectorAll('button').length),
                 apps: !!d.querySelector('[data-ctl="apps"]')}; }""")
-    assert d["n"] == 7, d
-    assert all(w >= 44 and h >= 44 for w, h in d["sizes"]), d
-    assert d["sides"] == [3, 3] and d["apps"], d
+    assert d["n"] == 9, d
+    assert all(w >= 32 and h >= 44 for w, h in d["sizes"]), d
+    assert d["sides"] == [4, 4] and d["apps"], d
 
 
 def test_every_dock_glyph_is_drawn_at_its_size(phone):

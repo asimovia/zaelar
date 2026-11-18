@@ -90,7 +90,10 @@ body {
 }
 /* Each side HUGS the orb rather than spreading to the screen edge: the controls read as belonging to the orb
    (“along the sides of the orb”), and the outer corners stay clear of the thumb's natural resting spots. */
-.zm-side { display: flex; align-items: center; gap: 8px; }   /* 8pt apart (V2-876 rule 2) */
+/* FOUR a side since 2026-11-18 (operator: the voice's activation on one side, the device's tools on the other). 44pt
+   targets 8pt apart no longer fit a phone: 4 × 44 + 3 × 8 = 200 of the ~144 a side has at 375pt. The targets stay
+   44pt TALL and share the width (below), 4pt apart — never an overflow, never a smaller glyph. */
+.zm-side { display: flex; align-items: center; gap: 4px; }
 .zm-side:first-child { justify-content: flex-end; }
 .zm-side:last-child  { justify-content: flex-start; }
 /* The centre slot hangs from the bar's TOP edge: the orb rises 4px above it (the raised centre of a tab bar) and its
@@ -100,9 +103,9 @@ body {
   margin-top: -4px; }
 
 .zm-ic {
-  /* 44pt each, 8pt apart: 3 × 44 + 2 × 8 = 148 of the ~152 a side has at 393pt. The min() keeps a 360pt phone from
-     overflowing (≈40pt there) — the tap area stays the whole button. */
-  width: min(44px, calc((50vw - 62px) / 3)); height: 44px; flex: 0 0 auto;
+  /* 44pt tall; four share a side: (screen − 16 dock padding − 72 centre) / 2 − 3 gaps of 4, over 4 — ≈33pt wide at
+     375pt, ≈35 at 393, 44 from a ~440pt screen up. The tap area stays the whole button. */
+  width: min(44px, calc((50vw - 56px) / 4)); height: 44px; flex: 0 0 auto;
   display: flex; align-items: center; justify-content: center;
   border: none; border-radius: 15px; background: transparent;
   transition: color .18s, background .18s, transform .12s;
@@ -114,6 +117,8 @@ body {
    one shell can read the other without learning a second vocabulary. */
 .zm-ic.on { color: var(--hb-accent); }
 .zm-ic.off { color: var(--hb-muted-2); }
+/* Armed but with nothing to act on yet («Stick to my voice» with no voice enrolled): grey, full strength. */
+.zm-ic.wait { color: var(--hb-muted-2); }
 /* 2026-11-16 — NO USABLE MICROPHONE: red, slashed glyph (DockBar.js), red disc that pulses. Never the grey of his own
    mute. A tap recovers it; the line above the dock (.zm-micnote) says why in words. */
 .zm-ic.problem, .zm-ic.problem.on, .zm-ic.problem.off { color: var(--hb-risk);

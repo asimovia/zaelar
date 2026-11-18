@@ -32,6 +32,7 @@ import { clearDebugBuffer } from "./debugbus.js?v=2";
 import { asleep } from "./presence.js?v=1";   // V2-872: a sleeping tab retries nothing
 import { startVisualizer } from "./visualizer.js?v=2";
 import { SpeakerID } from "../lib/speaker-id.js?v=1";
+import * as vlock from "./voice-lock.js?v=1";   // V2-651 F1: «Stick to my voice»
 import * as wake from "./wakeword.js?v=1";
 import { createEffect, createSignal } from "../core/reactive.js?v=2";   // T-18: ?v=1 was a 2nd instance, blind to the store
 import { t } from "../core/i18n.js?v=1";
@@ -108,6 +109,7 @@ let _spk = null, _spkRaf = 0;
 function _speakerShadowOn() {
   try {
     const sp = new URLSearchParams(location.search);
+    if (vlock.voiceLock()) return true;   // «Stick to my voice» needs the fingerprint, whatever the shadow's kill switch says
     if (sp.get("nospk") === "1") return false;
     return localStorage.getItem("zaelar_spk_shadow") !== "0";
   } catch (_) { return true; }
@@ -120,7 +122,12 @@ function _startSpeakerShadow() {
       () => { const c = audio.context(); return (c && c.sampleRate) || 48000; },
       { // never fingerprint the agent's own voice coming back through the mic (it would poison enrollment)
         suppressed: () => { try { return !!store.botSpeaking(); } catch (_) { return false; } },
+        // V2-651 F1: the first voice enrolled on this device is kept (a reload does not enrol whoever speaks next),
+        // and the enrolment is what «Stick to my voice» filters against.
+        profiles: (() => { const p = vlock.loadProfile(); return p ? { operator: p } : {}; })(),
+        onState: (st) => { if (st && st.enrolled && _spk) vlock.saveProfile(_spk.profiles.operator); },
         onUtterance: (v) => {
+          vlock.verdict(v.label);   // only while the switch is on: the voice process drops a turn of another voice
           try {
             const d = v.opDist || {};
             api.clientLog("🎙️ speaker", {
@@ -181,6 +188,7 @@ function _startHeartbeat() {
       if (r && r.ok === false && started) _lostVoice("heartbeat");   // another tab is alive → yield, not two mics
     });
     _sendTap();   // V2-831 T-18: and the tap's park, so a lost packet or a fresh agent session self-corrects
+    vlock.sync();  // V2-651 F1: and «Stick to my voice», for the same reason
   }, 4000);
 }
 // We lost the voice: yield it, say WHO has it — the remote-control blue, not «stalled» amber (operator, demo
@@ -823,6 +831,7 @@ export async function start() {
     // shows. This is the reconnect hole: the mute survived in localStorage and on screen, the new publication
     // came up open, and nothing re-asserted it.
     mic.useTransport(_applyMicTransport);
+    vlock.useTransport(_publish, () => { if (started) _startSpeakerShadow(); });   // V2-651 F1: registering re-asserts the switch
     _armWakeEar();
     applyCam();
     openSSE(window.__zaelarDesktop);   // backend→UI events (widgets, bot_speech, transcript, alerts) — same as before

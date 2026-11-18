@@ -43,6 +43,17 @@ async def judge(text: str, *, context: str, emit) -> tuple[bool, str, float]:
              extra={"mode": attention.mode(), "reason": "typed"})
         return True, text, 0.0
 
+    # «Stick to my voice» (V2-651 F1): with the switch on and a voice enrolled, a turn every segment of which the
+    # browser judged ANOTHER voice is dropped here, before any judge or model. It is not room noise to reclaim with
+    # the wake word later, so it does not join the ambient tail.
+    from voice import voice_lock
+    keep, why = await voice_lock.admit(onset=attention.utterance_onset())
+    if not keep:
+        emit("ambient", "🔒 not the enrolled voice — dropped", text=text[:200], role="user",
+             extra={"mode": attention.mode(), "reason": "voice_lock", "lock": why,
+                    "window_s": attention.window_s(), "window_open": attention.window_open()})
+        return False, text, 0.0
+
     t0 = time.time()
     verdict = await attention.evaluate_content(text, context=context)
     gate_ms = round((time.time() - t0) * 1000, 1)

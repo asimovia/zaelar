@@ -209,8 +209,9 @@ def test_the_lid_controls_flank_the_bar_orb_three_a_side(measured):
     slot IS the switch (the V2-124 mobile pattern): a BUTTON whose ⏻ face shows exactly while the agent is
     STOPPED (V2-792 §9, 2026-10-25: «starting» or «voice on another screen» wear the orb, never the ⏻)."""
     b = measured["bar"]
-    assert b["flankL"] == ["mic", "spk", "cap"], f"left flank must be the three voice-side controls: {b['flankL']}"
-    assert b["flankR"] == ["bot", "chat", "wr-swap"], f"right flank must be robot·chat·swap: {b['flankR']}"
+    # 2026-11-18 (operator): FOUR a side — the 📷 camera joins the device side, «Stick to my voice» the voice side.
+    assert b["flankL"] == ["mic", "spk", "cam", "cap"], f"left flank must be the four device-side controls: {b['flankL']}"
+    assert b["flankR"] == ["bot", "lock", "chat", "wr-swap"], f"right flank must be robot·lock·chat·swap: {b['flankR']}"
     assert b["slotTag"] == "BUTTON", f"the slot must be clickable — it is the power switch: {b['slotTag']}"
     assert "pwr" not in b["flankL"] + b["flankR"], "⏻ must never sit beside the orb — it IS the orb's click"
     # This preview's agent is not stopped (it is starting): the orb shows, NOT the ⏻ face.
@@ -241,7 +242,8 @@ def test_the_memory_control_moved_to_the_top_bar(measured):
     # V2-928: the eye is hidden, so its lid keeps only the swap and ⏻ while the other five flank the bar orb —
     # the seven controls are all still there (the eye can come back whole: hidden, not deleted).
     flanked = e["flankL"] + [c for c in e["flankR"] if c != "wr-swap"]
-    assert e["lidCount"] + len(flanked) == 7, f"the seven controls must all survive: {e['lidTitles']} + {flanked}"
+    # NINE since 2026-11-18 (+📷 · +«Stick to my voice»).
+    assert e["lidCount"] + len(flanked) == 9, f"the nine controls must all survive: {e['lidTitles']} + {flanked}"
     assert measured["mem_after_click"]["memBtnOn"], "clicking the TopBar memory button must open the map"
 
 

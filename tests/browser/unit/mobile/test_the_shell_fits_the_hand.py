@@ -193,12 +193,15 @@ def test_the_chat_composer_is_44pt_and_the_newest_line_stays_in_sight_over_the_k
         f"with the keyboard up the newest line is in sight above the composer: {g}"
 
 
-def test_the_dock_is_44pt_targets_8pt_apart_and_a_long_press_says_the_name(phone):
+def test_the_dock_is_44pt_tall_targets_apart_and_a_long_press_says_the_name(phone):
+    # 2026-11-18 (operator): FOUR a side — 44pt wide and 8pt apart no longer fit (4 × 44 + 3 × 8 = 200 of the ~150 a side
+    # has at 393pt), so the targets keep 44pt of height, share the width (≥32) and stay 4pt apart, never overlapping.
     g = phone.evaluate("""() => [...document.querySelectorAll('.zm-dock .zm-side')].map(s =>
         [...s.querySelectorAll('button')].map(b => { const r = b.getBoundingClientRect(); return [r.left, r.right, r.height]; }))""")
     for side in g:
-        assert all(r - l >= 44 and h >= 44 for l, r, h in side), g
-        assert all(side[i + 1][0] - side[i][1] >= 8 for i in range(len(side) - 1)), f"8pt apart: {g}"
+        assert len(side) == 4, g
+        assert all(r - l >= 32 and h >= 44 for l, r, h in side), g
+        assert all(side[i + 1][0] - side[i][1] >= 4 for i in range(len(side) - 1)), f"4pt apart: {g}"
     chat_open = "() => window.__store.chatOpen()"
     before = phone.evaluate(chat_open)
     box = phone.evaluate("""() => { const b = document.querySelector('.zm-dock .zm-side button:nth-child(2)');

@@ -800,18 +800,24 @@ canvas#orb.frozen{opacity:.32;filter:grayscale(1)}
    already anchors where the pulse starts/ends (ecg.js computes that from the orb rect, independent of these icons)
    — so they're pulled back a bit short of the canthus (v5, operator 2026-07-22: matching 2nd-difference of the
    inner curve instead of diving all the way to it) to close the gap between the 5-icon cluster and the 2 extremes. */
-.orbctl .orbic:nth-child(4){transform:translateY(0)}
-.orbctl .orbic:nth-child(3),.orbctl .orbic:nth-child(5){transform:translateY(6px)}
-.orbctl .orbic:nth-child(2){transform:translate(-5px,23px)}
-.orbctl .orbic:nth-child(6){transform:translate(5px,23px)}
-.orbctl .orbic:nth-child(1){transform:translate(-10px,50px)}
-.orbctl .orbic:nth-child(7){transform:translate(10px,50px)}
-.orbctl .orbic:nth-child(4):hover{transform:translateY(-2px)}
-.orbctl .orbic:nth-child(3):hover,.orbctl .orbic:nth-child(5):hover{transform:translateY(4px)}
-.orbctl .orbic:nth-child(2):hover{transform:translate(-5px,21px)}
-.orbctl .orbic:nth-child(6):hover{transform:translate(5px,21px)}
-.orbctl .orbic:nth-child(1):hover{transform:translate(-10px,48px)}
-.orbctl .orbic:nth-child(7):hover{transform:translate(10px,48px)}
+/* 2026-11-18 — NINE slots (four a side, ⏻ still the apex at slot 5): the original seven shift out by one and the two
+   new outer slots dive further toward the canthi. Keyed by slot index, as before. */
+.orbctl .orbic:nth-child(5){transform:translateY(0)}
+.orbctl .orbic:nth-child(4),.orbctl .orbic:nth-child(6){transform:translateY(6px)}
+.orbctl .orbic:nth-child(3){transform:translate(-5px,23px)}
+.orbctl .orbic:nth-child(7){transform:translate(5px,23px)}
+.orbctl .orbic:nth-child(2){transform:translate(-10px,50px)}
+.orbctl .orbic:nth-child(8){transform:translate(10px,50px)}
+.orbctl .orbic:nth-child(1){transform:translate(-14px,84px)}
+.orbctl .orbic:nth-child(9){transform:translate(14px,84px)}
+.orbctl .orbic:nth-child(5):hover{transform:translateY(-2px)}
+.orbctl .orbic:nth-child(4):hover,.orbctl .orbic:nth-child(6):hover{transform:translateY(4px)}
+.orbctl .orbic:nth-child(3):hover{transform:translate(-5px,21px)}
+.orbctl .orbic:nth-child(7):hover{transform:translate(5px,21px)}
+.orbctl .orbic:nth-child(2):hover{transform:translate(-10px,48px)}
+.orbctl .orbic:nth-child(8):hover{transform:translate(10px,48px)}
+.orbctl .orbic:nth-child(1):hover{transform:translate(-14px,82px)}
+.orbctl .orbic:nth-child(9):hover{transform:translate(14px,82px)}
 /* ELECTROCARDIOGRAM cradling the orb (V2-039) — zaelar's REAL heartbeat, driven by lib/ecg.js off store.pulse
    (one QRS per orchestrator loop.tick, racing under load). The trace runs along a SEMICIRCULAR ARC under the orb
    (mirror of the icon crown above; ecg.js computes the arc from #orb's live rect) with soft fade-off at both tips.

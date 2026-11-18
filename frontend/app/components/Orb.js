@@ -2,7 +2,8 @@
 // from it (Star-Wars style), the activity rail, the transient flash label, the 🚫 mic-blocked ring/caption, and
 // — V2-039 “EL OJO” (operator 2026-07-17) — the whole cluster reads as an EYE: the icon arc above is the UPPER
 // LID, the ECG arc below (lib/ecg.js) is the LOWER LID, the orb is the IRIS. Both arcs stretch so their tips
-// nearly meet at the corners (canthi). SEVEN controls on the upper lid (L→R):
+// nearly meet at the corners (canthi). NINE controls on the upper lid since 2026-11-18 — the 📷 camera joins the device
+// side after 🔊 and «Stick to my voice» the voice side after 🤖 (four a side); the original seven (L→R):
 //   🎤 mic      → mute/unmute the OPERATOR'S OWN microphone input. MOVED here 2026-08-09 when the CameraUnit
 //                 widget (its former home) was hidden/archived — same session.toggleMic()/store.micMuted() seam.
 //   ⇩ to-bar    → V2-623: LEFT CORNER — sends the orb into the bottom system bar (small orb at its centre, eye
@@ -39,6 +40,9 @@ import { startEcg } from "../lib/ecg.js?v=2";
 import { t } from "../core/i18n.js?v=1";
 import { problemTitleKey } from "../services/device-health.js?v=1";
 import { VolumeSlider, volumeHands } from "./VolumeSlider.js?v=1";
+import { CAMERA_ICON, CAMERA_OFF_ICON, VOICE_LOCK_ICON } from "../lib/icons.js?v=2";
+import { lookCamera, setLookCamera, cameraLive, cameraProblem, CAMERA_PROBLEM } from "../presence/look-state.js?v=1";
+import { voiceLock, voiceEnrolled, toggleVoiceLock, lockTitleKey } from "../services/voice-lock.js?v=1";
 
 // Inline SVGs (self-contained, currentColor). Mic + memory + speaker on/off + power + captions + chat + robot.
 const MIC_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>`;
@@ -138,7 +142,7 @@ export function Orb() {
     h("div", { class: () => "vlabel" + (store.voiceFlash().show ? " show" : "") }, () => store.voiceFlash().text),
     VolumeSlider("volpop"),   // his voice's level on this screen (V2-930): a wheel / right click on the 🔊, or his voice
     h("div", { class: () => "micblockcap" + (store.micBlocked().show ? " show" : "") }, () => store.micBlocked().msg),
-    // UPPER LID of the EYE — 7 controls arched over the orb (order L→R, CENTRE = ⏻ at the apex, outer icons dive
+    // UPPER LID of the EYE — 9 controls (2026-11-18; 7 before) arched over the orb (order L→R, CENTRE = ⏻ at the apex, outer icons dive
     // to the corners to meet the ECG's lower lid): ⇩ · 🎤 · 🔊 · ⏻ · 📝 · 💬 · 🤖. BLUE = on/open, GREEN = off.
     // V2-623: the 🧠 memory control moved to the TopBar; the LEFT CORNER slot is the swap that sends the orb
     // into the bottom bar («en una esquina de los iconos del orbe») — the slot count stays 7, so the arc's
@@ -193,6 +197,15 @@ export function Orb() {
           api.uiEvent("orb:speaker", { state: store.botMuted() ? "muted" : "unmuted" });
         },
       }, () => raw(store.botMuted() ? SPK_OFF : SPK_ON)),
+      // 📷 THE CAMERA (2026-11-18, operator): the SAME switch the presence face reads (presence/look-state.js) and the
+      // top bar's «● Camera» badge turns off — one signal, so the bar, the badge and Settings never disagree. Lilac =
+      // the switch is on (the camera runs while the face is shown); a refusal or a missing camera says why.
+      h("button", { "data-ctl": "cam",
+        class: () => secClass(lookCamera()) + (lookCamera() && cameraProblem() ? " problem" : ""),
+        title: () => (cameraProblem() && CAMERA_PROBLEM[cameraProblem()] ? t(CAMERA_PROBLEM[cameraProblem()])
+                      : !lookCamera() ? t("orb.camera_off") : cameraLive() ? t("orb.camera_live") : t("orb.camera_on")),
+        onClick: () => { const v = !lookCamera(); setLookCamera(v, "orb"); },
+      }, () => raw(lookCamera() ? CAMERA_ICON : CAMERA_OFF_ICON)),
       h("button", {
         // The ⏻ is the ONLY icon that can never lie: it is what the operator looks at to know whether someone is
         // al otro lado. Pinta the CUATRO estados reales (store.agentState), no the flag persistido:
@@ -226,6 +239,14 @@ export function Orb() {
         title: () => wakeOn() ? t("orb.wake_on", { name: store.assistantName() }) : t("orb.wake_off", { name: store.assistantName() }),
         onClick: () => { toggleWake(); api.uiEvent("orb:attention", { state: store.attentionMode() }); },
       }, raw(BOT_ICON)),
+      // «STICK TO MY VOICE» (V2-651 F1, operator 2026-11-18): ON = only the voice enrolled on this device reaches the
+      // brain (services/voice-lock.js → voice/voice_lock.py). On with nothing enrolled yet filters nothing: grey at
+      // full strength (`wait`), and the tooltip says so.
+      h("button", { "data-ctl": "lock",
+        class: () => (voiceLock() && !voiceEnrolled() ? "orbic wait" : secClass(voiceLock())),
+        title: () => t(lockTitleKey()),
+        onClick: () => toggleVoiceLock("orb"),
+      }, raw(VOICE_LOCK_ICON)),
     ),
     // orb + its overlays in a RELATIVE box: the caption is ABSOLUTE, anchored above the orb (bottom:100%), so it
     // grows UPWARD as lines crawl in — the orb itself never moves, and the text stays centred on it.
@@ -271,7 +292,7 @@ export function Orb() {
   // visible: a transient notice must not die with the eye); "eye" puts the canvas back in .orbcore before the
   // micblock ring. The bar may mount after us on a persisted "bar" boot, so the move retries on a frame until
   // its slot exists.
-  // The lid's own controls FLANK the bar orb, three a side (operator, 2026-09-08: «el orbe tiene que estar
+  // The lid's own controls FLANK the bar orb, FOUR a side since 2026-11-18 (+📷 · +«Stick to my voice»; three before, operator 2026-09-08: «el orbe tiene que estar
   // en el centro y a los lados los tres iconos a un lado y los tres al otro»): mic·spk·captions left,
   // robot·chat·(the bar's own swap) right — order fixed 2026-09-11 at the operator's request: immediately
   // right of the orb comes the wake-word/activation-mode toggle, then chat, then the swap that returns to
@@ -294,12 +315,12 @@ export function Orb() {
       const r = document.querySelector("#wrail .wr-orbr");
       if (!slot || !l || !r) { _dockRaf = requestAnimationFrame(applyOrbDock); return; }
       if (orbEl.parentNode !== slot) slot.appendChild(orbEl);
-      l.append(...ctls("mic", "spk", "cap"));
-      r.prepend(...ctls("bot", "chat"));                 // the bar's .wr-swap stays last
+      l.append(...ctls("mic", "spk", "cam", "cap"));      // the device side (2026-11-18: four a side)
+      r.prepend(...ctls("bot", "lock", "chat"));         // the voice side; the bar's .wr-swap stays last
     } else {
       const ctl = wrapEl.querySelector(".orbctl");
-      // append() re-inserts in canonical lid order — the slot count stays 7 and ⏻ keeps the apex.
-      if (ctl) ctl.append(...ctls("tobar", "mic", "spk", "pwr", "cap", "chat", "bot"));
+      // append() re-inserts in canonical lid order — NINE slots since 2026-11-18 (four a side) and ⏻ keeps the apex.
+      if (ctl) ctl.append(...ctls("tobar", "mic", "spk", "cam", "pwr", "cap", "chat", "bot", "lock"));
       if (micblockEl && orbEl.nextSibling !== micblockEl) micblockEl.parentNode.insertBefore(orbEl, micblockEl);
     }
   };

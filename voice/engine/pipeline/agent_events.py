@@ -41,6 +41,19 @@ def _on_data(packet, *, _emit, _json, _wake, session) -> None:
             except Exception as te:  # noqa: BLE001
                 _ag.logger.warning("zaelar-tap handler: %s", te)
             return
+        # «Stick to my voice» (V2-651 F1): the switch and the enrolment (`zaelar-voicelock`), and one verdict per speech
+        # segment while it is on (`zaelar-speaker`); the attention gate reads them through `voice/voice_lock.py`.
+        if topic in ("zaelar-voicelock", "zaelar-speaker"):
+            try:
+                from voice import voice_lock
+                _d = _json.loads(bytes(packet.data).decode("utf-8"))
+                if topic == "zaelar-voicelock":
+                    voice_lock.set_state(bool(_d.get("on")), bool(_d.get("enrolled")))
+                else:
+                    voice_lock.note_verdict(str(_d.get("label") or ""))
+            except Exception as le:  # noqa: BLE001
+                _ag.logger.warning("%s handler: %s", topic, le)
+            return
         # THE CHEAP EAR SPEAKS (V2-749). In a wake-word mode the paid STT is PARKED until a free, browser-local
         # recogniser hears the assistant's name (`frontend/app/services/wakeword.js`). TWO phases, because Chrome
         # only finalises when you STOP TALKING (session 5789bad4: five «Johnny»s arrived as ONE final 33.5 s in):

@@ -5441,6 +5441,10 @@ DOMAINS: list[dict] = [
                                  "classification, self-voice suppression and a continuous distance — logged, "
                                  "never gated",
             "ch": UNIT, "paths": ["tests/browser/unit/voice/test_speaker_id_shadow.py"]},
+        {"id": "4.584", "title": "«Stick to my voice» (V2-651 F1): with the switch on and a voice enrolled, a turn every segment of which the browser judged ANOTHER voice is dropped at the attention gate before any judge or model, and is not reclaimable room noise; any segment of his keeps it; no enrolment, the switch off or no verdict within a short grace filter nothing; a verdict is consumed by its turn; the data channel feeds the switch and the verdicts",
+            "ch": UNIT, "paths": ["tests/voice/unit/test_stick_to_my_voice.py"]},
+        {"id": "4.585", "title": "Four controls a side around the orb (RENDERED, phone 375 px and desktop bar): the device's tools (mic · speaker · camera) on one side, the voice's activation (wake word · stick to my voice) on the other; nothing overflows or overlaps, targets 44 px tall; the camera button is the presence camera switch both ways; «Stick to my voice» toggles, persists and says «nothing filtered» until a voice is enrolled; the eye keeps ⏻ at the apex of nine",
+            "ch": UNIT, "paths": ["tests/browser/unit/voice/test_four_a_side_around_the_orb.py"]},
         # V2-600 → V2-601 T-07 (2026-09-05): «cierra la pantalla completa» (y el «…completamente» del STT) es una
         # orden de ESTADO de pantalla; el veto vivía en los dos backstops del servidor y la TERCERA copia de la
         # regla —la del cliente, voiceCommands.js— seguía cerrando el canvas entero. Conduce el módulo REAL.

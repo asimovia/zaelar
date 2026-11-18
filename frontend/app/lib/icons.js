@@ -36,6 +36,9 @@ export const BRAIN_ICON = `<svg ${S}><path d="M12 4.5a3 3 0 0 0-3 3 3 3 0 0 0-1.
 export const CPU_ICON = `<svg ${S}><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v2"/><path d="M15 2v2"/><path d="M9 20v2"/><path d="M15 20v2"/><path d="M20 9h2"/><path d="M20 15h2"/><path d="M2 9h2"/><path d="M2 15h2"/></svg>`;
 export const DATABASE_ICON = `<svg ${S}><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.66 3.58 3 8 3s8-1.34 8-3V5"/><path d="M4 11v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6"/></svg>`;
 export const CAMERA_ICON = `<svg ${S}><path d="m16 13 5.2 3.5a.5.5 0 0 0 .8-.4V7.9a.5.5 0 0 0-.8-.4L16 11"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>`;
+// V2-651 F1 — the bar's camera switch when OFF (the same camera, slashed), and «Stick to my voice»: a speaking head.
+export const CAMERA_OFF_ICON = `<svg ${S}><path d="m16 13 5.2 3.5a.5.5 0 0 0 .8-.4V7.9a.5.5 0 0 0-.8-.4L16 11"/><rect x="2" y="6" width="14" height="12" rx="2"/><path d="m2 2 20 20"/></svg>`;
+export const VOICE_LOCK_ICON = `<svg ${S}><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 12 0v1"/><path d="M17 6a4 4 0 0 1 0 6"/><path d="M20 3.5a8 8 0 0 1 0 11"/></svg>`;
 export const MIC_ICON = `<svg ${S}><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><path d="M12 18v4"/><path d="M8 22h8"/></svg>`;
 // 📎 attach an IMAGE to a report (V2-695). A paperclip and not a picture frame on purpose: what the
 // button does is ATTACH, and the file picker behind it already says «images only».
