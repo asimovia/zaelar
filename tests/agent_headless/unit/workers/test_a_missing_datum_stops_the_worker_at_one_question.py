@@ -172,7 +172,7 @@ def test_his_yes_that_runs_the_retained_act_clears_the_hold(rec):
     from nucleo.cli import worker_api_answer
     assert "missing_datum.after(" in inspect.getsource(worker_api_answer._run_retained), \
         "the one place a retained act runs on his yes (`answer` and `confirm_send` both call it)"
-    assert "_run_retained(" in inspect.getsource(worker_api_answer.answer)
+    assert "_run_retained(" in inspect.getsource(worker_api_answer._answer)
 
 
 def test_a_session_close_clears_the_hold(rec):

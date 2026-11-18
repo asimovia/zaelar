@@ -289,6 +289,15 @@ below is the first kind, or it names the mechanism that replaced the second.
   nothing whole is acknowledged aloud, and a whole one is never asked to be repeated (`acc_notices`). On screen a
   question is drawn once — its card (`asks.isOpenQuestion`). — since 2026-11-18 (V2-931) · nodes 2.68, 2.1800 ·
   `voice/engine/core/config.py`, `voice/engine/llm/providers/turn_fragment.py`, `frontend/app/core/asks.js`.
+- **CRIT-C4q · ONE live confirmation question per act, and one line when he answers it — any act that asks.** A
+  question's identity is its act and its terms (`ask_trace.terms_of`); the row keeps one question at a time, so a new
+  one over it SUPERSEDES the one before (`asker.ask` → `ask_trace.superseded`): said on the timeline, its card
+  replaced on screen, its id refused by the answer door — no yes can reach a question whose terms changed. His yes or
+  no to a consent question never just vanishes: the answer door leaves ONE record line, worded from the fact with his
+  name (`ask_trace.resolved`, «<his name> confirms …»; «the operator» when the state has no name), which the wall
+  paints as a system row and keeps in its place. A clarification is dialogue and leaves none. — since 2026-11-18
+  (V2-931) · nodes 2.1808 · `nucleo/circuit/ask_trace.py`, `nucleo/circuit/asker.py`, `nucleo/cli/worker_api_answer.py`,
+  `frontend/app/services/sse.js`.
 - **CRIT-C4w · What the engine tells him is a FACT worded by a model, never a fixed sentence.** The engine decides the
   fact («the message is ready», «sent and confirmed», «could not be sent: why», «stopped»); `nucleo/wording.word` hands
   it to a small warm model with the voice's rules — one short sentence, different every time, about WHAT HE ASKED FOR

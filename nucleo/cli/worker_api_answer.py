@@ -105,10 +105,13 @@ def refusal(corr_id: str) -> str:
 
 
 async def answer(corr_id: str, text: str, *, resume: bool = True, choice: int | None = None) -> bool:
-    """Resolve the question `corr_id` with his `text`: the artefact records the answer, a retained act runs only on his
-    yes (`_says_yes`), the row stops waiting and — when the asking session already ended — that session is resumed by
-    id with the answer. An INLINE row's question (`nucleo/request/inline_ask`) re-runs its retained act instead, with
-    the answer — or the candidate the binding verdict chose (`choice`) — bound. True if an open question was resolved."""
+    """THE answer door; his yes or no to a CONSENT question leaves its record line (`circuit/ask_trace.answered`)."""
+    return await __import__("nucleo.circuit.ask_trace", fromlist=["x"]).answered(_answer, _entry(corr_id), decision, corr_id, text, resume=resume, choice=choice)
+
+
+async def _answer(corr_id: str, text: str, *, resume: bool = True, choice: int | None = None) -> bool:
+    """Resolve question `corr_id` with his `text`: recorded on the artefact, a retained act runs only on his yes, the row stops
+    waiting and its session resumes with it; an INLINE row re-runs its act with the answer bound. True if it was open."""
     e = _entry(corr_id)
     if e is None or refusal(corr_id):
         return False

@@ -172,6 +172,8 @@ def ask(uid: str, entry: dict, *, bus_id: str = "") -> str:
     asked_last.note(ask_id)
     entry.setdefault("created", time.time())
     entry.setdefault("state", "pending")
+    from nucleo.circuit import ask_trace          # ONE live question per act: the one before is superseded
+    ask_trace.superseded(uid, artefact(uid), entry)
     keep(uid, entry)
     if uid:
         try:

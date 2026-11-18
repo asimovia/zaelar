@@ -310,6 +310,10 @@ class LangSpec:
     answer_already_given: str = ""
     #: V2-931 — a send's ONE confirmation, asked by the exit door when the worker has it ready ({who}: his contact).
     send_ready_confirm: str = ""
+    #: V2-931 — the RECORD line of an answered confirmation ({name}: his first name, else `operator_generic`).
+    ask_confirmed: str = ""
+    ask_refused: str = ""
+    operator_generic: str = ""
     #: …and the other lines of a send, all the engine's: his yes was taken, the connector's receipt, a refusal.
     send_going: str = ""
     send_done: str = ""

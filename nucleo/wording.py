@@ -84,7 +84,8 @@ def _model(system: str, user: str, seat: str) -> str:
 _ask = _model       # the seam: the suite keeps every line offline by replacing THIS name (`tests/conftest.py`)
 
 
-def word(fact: str, *, examples: tuple = (), about: str = "", fallback: str = "", seat: str = SEAT) -> str:
+def word(fact: str, *, examples: tuple = (), about: str = "", fallback: str = "", seat: str = SEAT,
+         system: str = "") -> str:
     """`fact` worded for his ear, in his language. `examples`: lines that show the tone; `about`: what he asked for, in
     his words, so the line can name it. With no answer in time → `fallback`. Blocking: call it off the loop
     (`word_soon`) or from a worker thread."""
@@ -100,7 +101,7 @@ def word(fact: str, *, examples: tuple = (), about: str = "", fallback: str = ""
         shown = [str(e) for e in examples if str(e or "").strip()][:3]
         if shown:
             user += "\nEXAMPLES of the tone (do not copy): " + " · ".join(f"«{e}»" for e in shown)
-        line = _clean(_ask(SYSTEM.format(language=language), user, seat))
+        line = _clean(_ask((system or SYSTEM).format(language=language), user, seat))
         if line:
             return line
         logger.info(f"wording: no line came back for «{fact[:60]}» — the plain one is said")
