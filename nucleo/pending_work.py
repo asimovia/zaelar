@@ -21,8 +21,9 @@ verdict over these rows (`nucleo/flash/resume_turn.py`); this module only lists 
 """
 from __future__ import annotations
 
-import importlib
+import importlib.util
 import json
+import pathlib
 import time
 
 from loguru import logger
@@ -77,6 +78,13 @@ def _energy_stopped(r: dict) -> bool:
         return False
 
 
+def _may_declare(name: str) -> bool:
+    """Read off the SOURCE whether a data module can hold the hook: importing every widget's data module on the event
+    loop to learn it declares nothing held a cloud host's loop 1.6 s (musica). No spec: the import below says why."""
+    spec = importlib.util.find_spec(name)
+    return spec is None or not spec.origin or _HOOK in pathlib.Path(spec.origin).read_text(encoding="utf-8")
+
+
 def _widget_rows() -> list[dict]:
     out = []
     try:
@@ -87,6 +95,8 @@ def _widget_rows() -> list[dict]:
         return out
     for wid in ids:
         try:
+            if not _may_declare(f"widgets.{wid}.data"):
+                continue
             hook = getattr(importlib.import_module(f"widgets.{wid}.data"), _HOOK, None)
         except Exception as e:  # noqa: BLE001 — a widget without a data module holds nothing for him
             logger.debug(f"pending_work: {wid} has no data module ({e})")

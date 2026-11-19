@@ -356,3 +356,20 @@ def test_a_confirmed_send_owes_its_end_state_and_a_send_that_did_not_happen_is_u
     from widgets.mensajeria import owner
     owner._settle(res["ref"], True)                  # the connector's echo bound to our ref (`_apply_outbound`)
     assert spec.attest(e) is True
+
+
+def test_listing_pending_rows_does_not_import_a_widget_that_declares_none(monkeypatch):
+    """G1 (2026-11-19): `_widget_rows` imported every widget's data module on the event loop to learn whether it
+    declares `pending_rows` — the music card's alone held a cloud host's loop 1.6 s. A module whose source does not
+    name the hook is never imported; one that does (mail) still offers its rows."""
+    import importlib
+    import sys
+
+    from widgets import runtime
+    monkeypatch.setattr(runtime, "catalog", lambda: [{"id": "musica"}, {"id": "mensajeria"}])
+    monkeypatch.delitem(sys.modules, "widgets.musica.data", raising=False)
+    imported, real = [], importlib.import_module
+    monkeypatch.setattr(importlib, "import_module", lambda name, *a: imported.append(name) or real(name, *a))
+    pending_work._widget_rows()
+    assert "widgets.musica.data" not in imported, "a widget that declares no pending rows was imported to list them"
+    assert "widgets.mensajeria.data" in imported, "a widget that declares the hook is still read"
