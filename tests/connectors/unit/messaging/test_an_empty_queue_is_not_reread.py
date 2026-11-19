@@ -67,3 +67,22 @@ def test_a_patched_store_is_always_read(reads, monkeypatch):
     monkeypatch.setattr(msgstore, "load", lambda: fake)
     monkeypatch.setattr(msgstore, "save", lambda db: db)
     assert [o["ref"] for o in msgstore.take_pending_send()] == ["r2"]
+
+
+def test_the_owners_whole_flush_over_empty_queues_never_reads_the_store(reads, monkeypatch):
+    """The flush's last drain (the email section's page orders) read the whole store every beat on its own."""
+    from connectors.messaging import ingest
+    from widgets.mensajeria.owner.handle import _Handle
+    asked = []
+    monkeypatch.setattr(ingest, "publish_mailbox_ask", asked.append)
+    msgstore.load()
+    reads["n"] = 0
+    for _ in range(3):
+        _Handle()._flush_queues()
+    assert reads["n"] == 0 and asked == []
+    db = msgstore.load()
+    db["pending_mail"] = [{"platform": "email", "folder": "INBOX"}]
+    msgstore.save(db)
+    _Handle()._flush_queues()
+    assert [o["folder"] for o in asked] == ["INBOX"], "an order written since is published by the next flush"
+    assert msgstore.load().get("pending_mail") == [], "and taken off the queue"

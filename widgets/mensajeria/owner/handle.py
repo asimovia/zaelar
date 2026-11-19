@@ -107,10 +107,12 @@ class _Handle:
         # And for the email section's folder pages and opened messages.
         try:
             from .. import mailbox as _mbx
-            db = msgstore.load()
-            orders = _mbx.take_pending(db)
-            if orders:
-                msgstore.save(db)
+            orders = []
+            if not msgstore.nothing_queued("pending_mail"):     # an empty queue in an unchanged file is not re-read
+                db = msgstore.load()
+                orders = _mbx.take_pending(db)
+                if orders:
+                    msgstore.save(db)
             for order in orders:
                 ingest.publish_mailbox_ask(order)
         except Exception as e:  # noqa: BLE001

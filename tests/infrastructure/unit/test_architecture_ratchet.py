@@ -512,6 +512,8 @@ _PACKAGE_CEILINGS["connectors"] += 86     # same cause: the store's queued-field
 _PACKAGE_CEILINGS["widgets"] += 77   # 2026-11-19 support fix (3.246, INI-042 #34): the loop no longer held by a pending send — the follower reads the receipt once per version of the card's store (`store.version`), the namer's lookups built once per version of the contacts store (`widgets/chat_names.py`)
 _PACKAGE_CEILINGS["nucleo/request"] += 13   # same cause
 _TOTAL_MAX += 98   # 2026-11-19 support fix (3.246, INI-042 #34): the loop no longer held by a pending send — the follower reads the receipt once per version of the card's store (`store.version`), the namer's lookups built once per version of the contacts store (`widgets/chat_names.py`) — the addenda above
+_PACKAGE_CEILINGS["widgets"] += 2    # 2026-11-19 INI-042 #34: the owner's flush no longer reads the whole store for an empty mail-order queue (`handle._flush_queues`)
+_TOTAL_MAX += 2    # same cause
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())
