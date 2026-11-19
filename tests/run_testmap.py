@@ -2562,6 +2562,9 @@ DOMAINS: list[dict] = [
                    # V2-597: the ACCOUNT layer — intent travels, credentials never do; suggest honors the
                    # blocked-channels filter and passes a legitimate emptiness through as ok+reason.
                    "tests/browser/unit/youtube/test_the_account_connects_by_intent_never_by_credential.py",
+                   # A «subscriptions» count says what it counts: the account's total, the channels read
+                   # for the band and the channels followed here travel named, and the tab answers its list.
+                   "tests/browser/unit/youtube/test_a_subscription_count_says_what_it_counts.py",
                    # V2-634: an unplayable video (owner blocks embedding, LaLiga live case) is ACTED on —
                    # our own pick swaps to the next playable candidate and is blocklisted forever; a link
                    # the operator pasted gets the honest message instead; a late onError never blames the

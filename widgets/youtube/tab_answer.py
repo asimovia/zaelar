@@ -16,6 +16,9 @@ QUEUE_TABS = frozenset({"cola", "player"})
 
 def result(db: dict, tab: str) -> dict:
     """`{"queue": [...], "total": N}` for a face that shows the queue, {} for any other."""
+    if tab == "subs":                                # the count the screen shows is the count the reply gives
+        names = [str(c.get("name") or "")[:80] for c in db.get("channels") or [] if isinstance(c, dict)]
+        return {"channels_followed_in_widget": names, "total": len(names)}
     if tab not in QUEUE_TABS:
         return {}
     pos = int(db.get("pos", -1))

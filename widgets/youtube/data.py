@@ -35,8 +35,6 @@ _PLATFORMS_FRESH_S = 300
 _svc = account._svc
 _accounts_enabled = account._accounts_enabled
 _sync_platforms = account._sync_platforms
-_NOT_YET = account._NOT_YET
-account._drop_blocked = None  # bound below, once _drop_blocked exists
 
 
 account._drop_blocked = _drop_blocked   # the extraction's one seam back (V2-632)
@@ -48,11 +46,6 @@ from . import sources as _sources        # V2-638: where a playable row comes fr
 
 # Requests the MOST RECENT video (e.g. "the latest video by Jose Luis Carpatos") → sort by upload date.
 _LATEST_RE = re.compile(r"\b(?:[uú]ltim[oa]s?|m[aá]s\s+recientes?|reciente|nuevo|last|latest|newest)\b", re.I)
-
-
-def _unesc(s: str) -> str:
-    """Decode \\uXXXX sequences that YouTube sometimes embeds in JSON, without touching already decoded UTF-8."""
-    return re.sub(r"\\u([0-9a-fA-F]{4})", lambda m: chr(int(m.group(1), 16)), s or "")
 
 
 def _accept_language() -> str:

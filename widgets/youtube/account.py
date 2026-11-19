@@ -100,10 +100,14 @@ def apply(action: str, p: dict, db: dict) -> "dict | None":
         db["suggested_channels"] = int(r.get("channels") or 0)
         _sync_platforms(db)                              # a successful pull proves the connection is live
         store.save(WID, db)
-        out = {"ok": True, "n": len(items), "channels": db["suggested_channels"], "platform": platform}
+        # Every figure NAMED: a bare `channels: 50` (the account read's cap) was said as his subscriptions (3df07e48).
+        res = {"suggested_videos": len(items), "account_channels_read_for_suggestions": db["suggested_channels"],
+               "account_subscriptions_total": r.get("subscriptions"),       # None = the provider did not say
+               "channels_followed_in_widget": len(db.get("channels") or [])}   # what the Subscriptions tab lists
+        out = {"ok": True, "n": len(items), "channels": db["suggested_channels"], "platform": platform, "result": res}
         if n_blocked:
             out["blocked_out"] = n_blocked
         if r.get("reason"):
-            out["reason"] = str(r.get("reason"))[:200]
+            out["reason"] = res["reason"] = str(r.get("reason"))[:200]
         return out
     return None

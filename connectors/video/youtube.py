@@ -37,8 +37,9 @@ def _err_of(resp) -> str:
 
 def list_subscriptions(client, api_base: str, token: str, max_n: int = 50) -> dict:
     """The account's subscriptions, newest-relevance order (the API's default for mine=true).
-    Returns {"ok": True, "channels": [{channel_id, channel}]} or {"ok": False, "error"}."""
-    rows, page = [], ""
+    Returns {"ok": True, "channels": [{channel_id, channel}], "total": int|None} or {"ok": False, "error"}.
+    `channels` is CAPPED at `max_n`: how many he HAS is `total` (the provider's figure; None when nobody knows)."""
+    rows, page, total = [], "", None
     while len(rows) < max_n:
         params = {"part": "snippet", "mine": "true", "maxResults": min(50, max_n - len(rows))}
         if page:
@@ -48,6 +49,7 @@ def list_subscriptions(client, api_base: str, token: str, max_n: int = 50) -> di
         if r.status_code != 200:
             return {"ok": False, "error": _err_of(r)}
         body = r.json()
+        total = (body.get("pageInfo") or {}).get("totalResults", total)
         for it in body.get("items") or []:
             sn = it.get("snippet") or {}
             cid = ((sn.get("resourceId") or {}).get("channelId") or "").strip()
@@ -56,8 +58,9 @@ def list_subscriptions(client, api_base: str, token: str, max_n: int = 50) -> di
                 rows.append({"channel_id": cid, "channel": title[:80]})
         page = str(body.get("nextPageToken") or "")
         if not page:
+            total = len(rows)                            # the listing was read whole: its length IS the total
             break
-    return {"ok": True, "channels": rows[:max_n]}
+    return {"ok": True, "channels": rows[:max_n], "total": total if isinstance(total, int) else None}
 
 
 def channel_recent_uploads(client, api_base: str, token: str, channel_id: str,

@@ -42,10 +42,6 @@ def available() -> bool:
         return False
 
 
-def providers_public() -> list[dict]:
-    return providers.public_list()
-
-
 def status() -> dict:
     """Per-provider connection state, REDACTED (a token never leaves this module)."""
     try:
@@ -71,22 +67,6 @@ def _prepared(provider_id: str):
     return p, tok, None
 
 
-def connect_url(provider_id: str, tier_id: str = "") -> dict:
-    """The consent URL for a provider whose app is already registered. INTENT only — credentials are typed
-    once in ⚙ → Conectores, never through this door (V2-520)."""
-    try:
-        return oauth.authorize_url(provider_id, tier_id)
-    except Exception as e:  # noqa: BLE001
-        return {"ok": False, "error": str(e)[:200]}
-
-
-def disconnect(provider_id: str) -> dict:
-    try:
-        return oauth.forget(provider_id)
-    except Exception as e:  # noqa: BLE001
-        return {"ok": False, "error": str(e)[:200]}
-
-
 def suggestions(provider_id: str = "youtube", limit: int = _MAX_ITEMS) -> dict:
     """The home band: recent uploads from the account's subscriptions, newest first, NORMALIZED
     ({videoId,title,channel,published,url}). Per-provider on purpose — results from two platforms are never
@@ -103,12 +83,14 @@ def suggestions(provider_id: str = "youtube", limit: int = _MAX_ITEMS) -> dict:
             subs = _yt.list_subscriptions(client, p.api_base, tok, max_n=_MAX_CHANNELS * 2)
             if not subs.get("ok"):
                 return {"ok": False, "error": subs.get("error") or "no pude leer las suscripciones"}
-            channels = subs.get("channels") or []
+            # `channels` = the ones that FEED the band; how many he has is `subscriptions`. The length of the
+            # capped read was once said as his subscription count (session 3df07e48: «you have 50»).
+            channels = (subs.get("channels") or [])[:_MAX_CHANNELS]
             if not channels:
-                return {"ok": True, "provider": p.id, "items": [], "channels": 0,
+                return {"ok": True, "provider": p.id, "items": [], "channels": 0, "subscriptions": 0,
                         "reason": "la cuenta no tiene suscripciones — no hay de dónde sacar sugerencias"}
             items = []
-            for ch in channels[:_MAX_CHANNELS]:
+            for ch in channels:
                 items.extend(_yt.channel_recent_uploads(client, p.api_base, tok,
                                                         ch["channel_id"], ch["channel"], n=_PER_CHANNEL))
     except Exception as e:  # noqa: BLE001
@@ -116,7 +98,7 @@ def suggestions(provider_id: str = "youtube", limit: int = _MAX_ITEMS) -> dict:
     items.sort(key=lambda it: it.get("published") or "", reverse=True)
     items = items[:max(1, min(int(limit or _MAX_ITEMS), 50))]
     out = {"ok": True, "provider": p.id, "items": items, "channels": len(channels),
-           "fetched_at": int(time.time())}
+           "subscriptions": subs.get("total"), "fetched_at": int(time.time())}
     if not items:
         # Subscriptions exist and no uploads came back: a different fact than an empty account, said apart.
         out["reason"] = "tus suscripciones no devolvieron vídeos recientes"
