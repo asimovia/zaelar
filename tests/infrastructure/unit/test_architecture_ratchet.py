@@ -452,6 +452,10 @@ _PACKAGE_CEILINGS["server"] += 61
 # (`nucleo/input/support_note.py`, checked at the typed door).
 _PACKAGE_CEILINGS["nucleo/input"] += 40
 _PACKAGE_CEILINGS["server"] += 4
+# +84 nucleo/input, +2 nucleo/turn — 2026-11-19 INI-042 #37: a note he SAYS for support is a note too — proposed by
+# the sentence naming support, decided by the brief's `support_note` verdict, ended at the turn gate.
+_PACKAGE_CEILINGS["nucleo/input"] += 84
+_PACKAGE_CEILINGS["nucleo/turn"] += 2
 _PACKAGE_CEILINGS["observability"] += 46   # 2026-11-19 V2-939: a session records who drove it (User-Agent, webdriver, harness tag) — `identity.py`, `flows.py`, `api.py`
 _PACKAGE_CEILINGS["server"] += 1   # 2026-11-19 INI-042 #42: the voice child's once-only replay, one line its own raise missed
 
@@ -492,6 +496,7 @@ _TOTAL_MAX += 5     # 2026-11-19: the broker's 404 is an answer, not an outage �
 _TOTAL_MAX += 6     # 2026-11-19 INI-042 #26: a sent errand WAITS for the reply — the `nucleo/circuit` row above
 _TOTAL_MAX += 61    # 2026-11-19: a fact the voice process asks twice is replayed once — the addendum above
 _TOTAL_MAX += 44    # 2026-11-19 INI-042 #37: a typed `LOG:` line is a note, never a turn — the addendum above
+_TOTAL_MAX += 86    # 2026-11-19 INI-042 #37: a SPOKEN note for support is a note too — the addendum above
 _TOTAL_MAX += 119   # 2026-11-19 support fix (3.243): the loop no longer held by a turn's reading — the directory's index memoised by its store's version, the brief's table reading each open card once (`turn/screen_read.py`), the widget folders scanned once per trust window — the addenda above
 _TOTAL_MAX += 32    # 2026-11-19 V2-939 (+46 observability) and INI-042 #42 (+1 server), net of the slack the other addenda left
 _TOTAL_MAX += 70    # 2026-11-19 INI-042 #44 P-1 (a plain message's follow-up only watches) and P0a (a refused go-ahead names its guard)

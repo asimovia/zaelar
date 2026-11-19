@@ -149,6 +149,8 @@ QUESTIONS = (
     (CATALOG_CLOSED_KEY, lambda c: bool(target_question(c.get("open_ids"))), lambda _c: catalog_question()),
     (NAMES_KEY, lambda c: bool(c.get("open_ids")), lambda c: names_question(c.get("open_ids"))),
     (ITEM_REF_KEY, lambda c: bool(c.get("open_ids")), lambda c: item_ref_question(c.get("open_ids"))),
+    (("nucleo.input.support_note", "KEY"), None,       # INI-042 #37: asked only when the sentence names support
+     lambda c: __import__("nucleo.input.support_note", fromlist=["x"]).question(c)),
     (("nucleo.flash.unclear_turn", "KEY"), None, lambda c: __import__("nucleo.flash.unclear_turn", fromlist=["x"]).question(c)),   # V2-833 F8: readable at all?
 )
 

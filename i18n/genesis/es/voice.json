@@ -868,5 +868,13 @@
  "a2a_unshared": "Has dejado de compartir {item} con {name}.",
  "introduction": {
   "presentation": "¡Hola! Soy {name}. Ahora te escucho siempre y respondo a todo; si activas la palabra de activación, con su botón o pidiéndomelo, solo responderé cuando me llames por mi nombre. Puedes cambiarme el nombre o la voz cuando quieras. Respondo a una sola persona, tú, aunque otros también pueden hablarme. ¿Cómo te llamas?"
+ },
+ "support_note": {
+  "_comment": "Words that NAME the assistant's support team. A sentence carrying one only PROPOSES a note for support; the turn brief's verdict decides (nucleo/input/support_note.py).",
+  "names": [
+   "soporte",
+   "support",
+   "asistencia técnica"
+  ]
  }
 }

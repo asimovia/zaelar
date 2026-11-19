@@ -213,9 +213,9 @@ async def open_the_turn(self, motor) -> dict | None:
     if 'text' in _blk:
         text = _blk['text']
 
-    # V2-931 — the switchboard: a chunk that is an open process's is delivered there and the turn ends (Flash never
-    # re-calls the act, re-asks or answers for the task).
-    if not first_turn and await __import__("nucleo.switchboard.route", fromlist=["x"]).at_the_gate(text, brain, emit, self._out, motor):
+    # A note he SAYS for support (INI-042 #37), then a chunk an open process owns (V2-931, the switchboard): no turn.
+    if not first_turn and (await __import__("nucleo.input.support_note", fromlist=["x"]).heard(text, self._out)
+                           or await __import__("nucleo.switchboard.route", fromlist=["x"]).at_the_gate(text, brain, emit, self._out, motor)):
         return None
 
     # The VAULT before anything reads his words (refactor2710-01) — `vault_intercept.vault_first`.

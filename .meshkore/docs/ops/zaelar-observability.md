@@ -363,6 +363,11 @@ kept for the FlashBrain's «PROCESOS DE FONDO» prompt, but does not duplicate t
   ONE event `feedback` · `📝 support note (LOG:)` with the note as `text` and `extra = {support_note: true, dev}`, and
   answers `{ok: true, note: true}`: no reply, no routing, no errand, and no session is brought up for it. It is how
   whoever runs a session leaves a mark on the timeline for whoever reads it later.
+  A SPOKEN note has no prefix: a sentence that names the support team (the `voice` pack's `support_note.names`) only
+  proposes it, and the turn brief's `support_note` verdict decides it before the model, at the body's turn gate on
+  the whole sentence. A sure `note` writes the same event as `📝 support note (voice)` (`extra.verdict =
+  support_note`) and ends the turn, with at most a two-to-four-word acknowledgement; a doubt or a late verdict is an
+  ordinary turn, and a sentence that names no support pays nothing.
 - **A task's life (V2-851)** — what the battery, the viewer and «how is it going?» read, all family `worker` unless
   said (taxonomy in `voice/observer.py`):
   - **`task_state`** — `📌 task <state> (settle)`: a row moved into its ending, written ONLY by `circuit.settle`;
