@@ -2740,6 +2740,8 @@
  "widgets.agenda.say_already_invited": "{who} was already invited to this meeting.",
  "widgets.agenda.say_invited_calendar": "Invitation sent to {who} from the calendar.",
  "widgets.agenda.say_invited_email": "Invitation emailed to {who}.",
+ "widgets.agenda.say_invite_held": "Invitations are held on this install: nothing was sent.",
+ "widgets.agenda.say_rsvp_held": "Answers to invitations are held on this install: the organizer was not told.",
  "widgets.contactos.say_can_import_from": " I can bring them from {sources} right now: tell me if you want.",
  "widgets.contactos.say_source_not_connected": "{source} isn't connected yet — connect it and ask me again.",
  "widgets.producers.say_agent_stopped": "The agent is stopped. Switch it on (⏻) to play again.",

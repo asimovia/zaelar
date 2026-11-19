@@ -206,6 +206,11 @@ def rsvp_google(m: dict, answer: str) -> tuple[bool, str]:
     s = svc()
     if s is None:
         return False, "el conector de Google Calendar no está disponible en este build"
+    from connectors import exit as door      # the install's outbound switch: an answer to an invitation leaves too
+    if door.check("rsvp", door.INVITE):
+        from widgets.say import say
+        return False, say("agenda", "say_rsvp_held", "Answers to invitations are held on this install: "
+                                                     "the organizer was not told.")
     try:
         res = s.rsvp(m, answer) or {}
     except Exception as e:  # noqa: BLE001

@@ -2740,6 +2740,8 @@
  "widgets.agenda.say_already_invited": "{who} ya estaba invitado a esta reunión.",
  "widgets.agenda.say_invited_calendar": "Invitación enviada a {who} desde el calendario.",
  "widgets.agenda.say_invited_email": "Invitación enviada por correo a {who}.",
+ "widgets.agenda.say_invite_held": "Las invitaciones están retenidas en esta instalación: no se ha enviado nada.",
+ "widgets.agenda.say_rsvp_held": "Las respuestas a invitaciones están retenidas en esta instalación: el organizador no se ha enterado.",
  "widgets.contactos.say_can_import_from": " Ahora mismo puedo traerlos de {sources}: dime si quieres.",
  "widgets.contactos.say_source_not_connected": "{source} no está conectado todavía — conéctalo y vuelve a pedírmelo.",
  "widgets.producers.say_agent_stopped": "El agente está parado. Enciéndelo (⏻) para volver a reproducir.",

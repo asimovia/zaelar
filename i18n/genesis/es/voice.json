@@ -834,7 +834,9 @@
    "when": "día y hora",
    "people": "cuántas personas",
    "holder": "a nombre de quién"
-  }
+  },
+  "reply_held": "[SISTEMA] Sobre «{topic}»: {party} espera respuesta, pero los envíos están retenidos en esta instalación. No se ha enviado nada.{kept} Díselo al operador.",
+  "reply_held_kept": " La respuesta queda en borrador: «{text}»."
  },
  "navegador": {
   "_comment": "V2-877 #10 — what the agent SAYS when a browser task ends (a proactive notice, spoken as-is). {summary} is the task's user-facing summary.",

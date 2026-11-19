@@ -263,6 +263,10 @@ def run(db: dict, payload: dict) -> dict:
 
     note = str(payload.get("message") or payload.get("text") or "").strip()
     via = _via(payload)
+    from connectors import exit as door      # the install's outbound switch: no rung runs while invitations are held
+    if (held := door.check("invite", door.INVITE)):
+        return {"ok": False, "error": held,
+                "message": say("agenda", "say_invite_held", "Invitations are held on this install: nothing was sent.")}
     # RUNG 1 — the meeting has a calendar behind it: the calendar sends the invitation. He may NAME the rung
     # (`via: email`) for this call only: then the .ics goes by mail even when a calendar is behind the meeting.
     s = _gcal().svc()
@@ -349,12 +353,12 @@ def _offer_second_rung(payload: dict, guests: dict, why: str) -> dict:
 
 
 def _mail_invitation(m: dict, guests: dict, note: str) -> dict:
-    """The .ics rung. Queued through the SAME outbound door every other message uses, so it is archived,
-    echoed and bound exactly like anything else this house sends."""
+    """The .ics rung. It leaves through THE exit door (`connectors/exit.leave`, lane `invite`) every other message
+    uses, so it is archived, echoed, counted and held exactly like anything else this house sends."""
     try:
         from connectors.calendar import ics as _ics
         from connectors.email import config as _mailcfg
-        from connectors.messaging import ingest as _ingest
+        from connectors import exit as door
     except Exception:
         return {"ok": False, "error": "no tengo el conector de correo disponible para mandar la invitación"}
     me = ""
@@ -379,11 +383,14 @@ def _mail_invitation(m: dict, guests: dict, note: str) -> dict:
         body = body + "\n\n" + link
     sent = []
     for addr in guests["emails"]:
-        _ingest.publish_send({"ref": f"inv-{_ics.uid_for(m)[:24]}-{addr[:40]}", "platform": "email",
-                              "to": addr, "chatId": addr, "name": addr,
-                              "subject": str(m.get("title") or "Invitación"), "text": body,
-                              "ics": text, "ics_method": "REQUEST"})
-        sent.append(addr)
+        if door.leave(door.SEND, {"ref": f"inv-{_ics.uid_for(m)[:24]}-{addr[:40]}", "platform": "email",
+                                  "to": addr, "chatId": addr, "name": addr,
+                                  "subject": str(m.get("title") or "Invitación"), "text": body,
+                                  "ics": text, "ics_method": "REQUEST", "lane": door.INVITE}):
+            sent.append(addr)
+    if not sent:
+        return {"ok": False, "error": door.reason(door.held(door.INVITE) or door.SWITCH, door.INVITE),
+                "message": say("agenda", "say_invite_held", "Invitations are held on this install: nothing was sent.")}
     return {"ok": True, "invited": sent, "already": [], "how": "email",
             "message": say("agenda", "say_invited_email", "Invitation emailed to {who}.", who=", ".join(sent))}
 

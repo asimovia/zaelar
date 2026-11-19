@@ -66,6 +66,10 @@ def verdict(errand: dict, platform: str, chat_id: str = "") -> dict:
 def deliver(errand: dict, platform: str, chat_id: str, text: str, party: str, send, tell) -> bool:
     """Send under the mandate when the shared rule says so; otherwise hold it as a draft row (asked) or drop it
     (his «never»), and tell him. `send(...)` and `tell(text)` are the wake's own doors. True = it went out."""
+    from connectors import exit as door           # the install's outbound switch: held = kept as a draft, said once
+    if door.check("send", door.ERRAND, {"platform": platform}):
+        tell(_held_line(errand, party or chat_id, text, hold(platform, chat_id, text, party)))
+        return False
     from nucleo import consent
     v = verdict(errand, platform, chat_id)
     if not consent.asks(v):
@@ -79,6 +83,14 @@ def deliver(errand: dict, platform: str, chat_id: str, text: str, party: str, se
         tell(f"[SISTEMA] Sobre «{topic}»: he dejado en borrador la respuesta para {party or chat_id} "
              f"({v.get('why') or 'su regla'}): «{text[:160]}». Pregúntale al operador si la mando.")
     return False
+
+
+def _held_line(errand: dict, party: str, text: str, kept: bool) -> str:
+    """The one line he hears when the install holds an errand's reply, in his language (`errands.reply_held`)."""
+    from i18n import langs as _langs
+    keep = str(_langs.words("errands.reply_held_kept", default="")).replace("{text}", text[:160]) if kept else ""
+    return str(_langs.words("errands.reply_held", default="{party}: nothing was sent (held).{kept}")).replace(
+        "{topic}", str(errand.get("objective") or "")[:80]).replace("{party}", party or "?").replace("{kept}", keep)
 
 
 def hold(platform: str, chat_id: str, text: str, party: str) -> bool:

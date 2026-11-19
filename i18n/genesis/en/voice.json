@@ -836,7 +836,9 @@
    "when": "day and time",
    "people": "how many people",
    "holder": "whose name it is under"
-  }
+  },
+  "reply_held": "[SYSTEM] About «{topic}»: {party} is waiting for an answer, but outbound messages are held on this install. Nothing was sent.{kept} Tell the operator.",
+  "reply_held_kept": " The reply is kept as a draft: «{text}»."
  },
  "navegador": {
   "_comment": "V2-877 #10 — what the agent SAYS when a browser task ends (a proactive notice, spoken as-is). {summary} is the task's user-facing summary.",
