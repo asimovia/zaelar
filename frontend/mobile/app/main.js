@@ -11,6 +11,7 @@ import * as mic from "../../app/services/mic.js?v=1";
 import * as screens from "../../app/services/screens.js?v=1";
 import { openSSE } from "../../app/services/sse.js?v=6";
 import * as api from "../../app/services/api.js?v=2";
+import { reflectRunState } from "../../app/services/presence.js?v=1";
 import { startStatusPolling } from "../../app/services/status.js?v=2";
 import { initTheme } from "../../app/services/theme.js?v=2";
 import { initI18n, t } from "../../app/core/i18n.js?v=1";
@@ -186,12 +187,11 @@ window.addEventListener("pointerdown", () => { try { session.unlockAudio(); } ca
   try {
     const askedAt = Date.now();
     const r = await api.runState();
-    if (!r || typeof r.running !== "boolean") return;
-    if (store.powerCmdAt() > askedAt) return;
+    // The server's ⏻ is REFLECTED, never propagated (INI-042 #46): a stale «stopped» in this phone's storage never
+    // stops an agent that runs — woken from its sleep, it stays on. Only a press stops it (`power.setPower`).
     // V2-654: through the door. The note below already named this exact failure — «the phone would paint itself
     // off with the mic open — the state that lies» — and this line was still only painting.
-    if (!r.running) { store.setPowerOff(true); mic.setMuted(true, "boot-not-running"); store.setBotMuted(true); }
-    else if (store.powerOff()) api.runStop();
+    if (reflectRunState(r, askedAt, store) === true) { mic.setMuted(true, "boot-not-running"); store.setBotMuted(true); }
   } catch { /* the server isn't answering yet: local state already applied */ }
 })();
 

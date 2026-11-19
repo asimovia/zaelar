@@ -25,6 +25,7 @@ import { initI18n, t } from "./core/i18n.js?v=1";
 import { submitChat } from "./components/ChatWall.js?v=6";
 import { SYSTEM_SURFACES } from "./core/system-surfaces.js?v=6";
 import * as api from "./services/api.js?v=2";
+import { reflectRunState } from "./services/presence.js?v=1";
 
 import { Desktop } from "./widgets/desktop.js?v=11";
 
@@ -225,9 +226,9 @@ window.addEventListener("pointerdown", ensureVoice);
 // The server now stores whether the agent is stopped and reconciliation happens here, in the SAFE direction:
 //   · server STOPPED → obey: shut down here too and tear down the session if it had already started (seeding is async,
 //     so `ensureVoice()` above may have started it before this response arrives).
-//   · server RUNNING with ⏻ off HERE → propagate our intent to the server (POST /api/run/stop) instead
-//     of starting on our own. Never the reverse: a startup the operator did not request is worse than stale state,
-//     and this also covers migration (⏻ off before the server knew about it).
+//   · server RUNNING with ⏻ off HERE → obey too: the stored ⏻ is old. Until 2026-11-19 this page sent it to the
+//     server (POST /api/run/stop, the V2-092 migration for a ⏻ the server did not know yet) and so stopped an agent
+//     nobody had stopped, every time a tab reloaded after a wake (INI-042 #46). The server has kept the switch since.
 //
 // And a third rule, learned from a failure the operator captured (2026-08-14): this reply is a SNAPSHOT of the
 // moment it was requested, not of the moment it arrives. On a machine waking from cold that takes seconds, and the
@@ -241,13 +242,12 @@ window.addEventListener("pointerdown", ensureVoice);
   try {
     const askedAt = Date.now();
     const r = await api.runState();
-    if (!r || typeof r.running !== "boolean") return;
-    if (store.powerCmdAt() > askedAt) return;   // the operator commanded LATER: this snapshot is history
-    // V2-654: `mic.setMuted`, not `store.setMicMuted` — the boot probe was the writer that made the icon lie
-    // hardest, because it fires before the operator has touched anything and its muted icon is the FIRST thing
-    // he sees. Through the door it now also silences the track and tells the engine.
-    if (!r.running) { store.setPowerOff(true); mic.setMuted(true, "boot-not-running"); store.setBotMuted(true); }
-    else if (store.powerOff()) api.runStop("client_state");   // this page propagates its stored ⏻, nobody pressed it
+    // The SERVER's ⏻ is the truth and is REFLECTED here, never propagated (INI-042 #46): a page that loads with an
+    // old «stopped» in its storage while the agent runs follows the agent. It used to send that old ⏻ to the server
+    // and stop the agent nobody had stopped — measured on the operator's Machine (2026-11-19 16:31): it woke from
+    // its sleep, the reloaded tab stopped it, and he had to press ⏻. Only a press stops it (`power.setPower`).
+    // A reply older than his last command is history; V2-654: muting goes through `mic.setMuted`, the door.
+    if (reflectRunState(r, askedAt, store) === true) { mic.setMuted(true, "boot-not-running"); store.setBotMuted(true); }
   } catch { /* the server is not responding yet: local state prevails, as it is already applied */ }
 })();
 
