@@ -616,8 +616,7 @@ class FastClient:
         # `async for` below has yielded anything, a retry would duplicate speech, so the relay is NOT attempted
         # from there — a mid-stream failure stays a failed turn, which is the honest outcome.
         await self._client_ready(spec)
-        _attempt = 0
-        _relayed = False
+        _attempt, _relayed = 0, False
         while True:
             try:
                 stream = (await self._client_for(spec).chat.completions.create(**call_kwargs)).__aiter__()
