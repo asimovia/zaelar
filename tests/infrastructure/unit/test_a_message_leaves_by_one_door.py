@@ -75,9 +75,11 @@ CLIENT = {
 STAMP = {
     "nucleo/send/deliver.py::lane": 1,                             # the message owner
     "widgets/server_api.py::widget_action": 1,                     # his hand
+    "nucleo/workers/exit_gate.py::gate": 1,                        # a worker's act that passes: a mandate, or his order
     f"{EXIT}::by": 1,
 }
 ASKS = {
+    "nucleo/workers/exit_gate.py::gate",           # a worker's act, before any question
     "nucleo/errands/mandate.py::deliver",          # an errand's or a stream's reply
     "widgets/agenda/invite.py::run",               # an invitation through the calendar provider
     "widgets/agenda/invite.py::_mail_invitation",  # an invitation by mail
