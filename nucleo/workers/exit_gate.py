@@ -185,8 +185,15 @@ def gate(rec, payload: dict) -> Exit:
     if (named := _pbk.continues_as(rec, wid, act)):
         out["payload"] = inner = {**inner, "playbook": named}
     channel = str(inner.get("platform") or inner.get("channel") or "")
-    if under_mandate(rec, "message", channel):
-        return Exit(out)
+    mandated = under_mandate(rec, "message", channel)
+    from connectors import exit as door           # the install's outbound switch, asked before any yes is asked for
+    lane = door.MANDATE if mandated else door.WORKER
+    if (held := door.check(f"{wid}:{act}", lane, inner)):
+        return Exit(payload, refused=f"outbound is held on this install ({held}): nothing was sent and nothing will "
+                                     "be. Tell him so in one line and end.")
+    go = {**out, "payload": door.by(lane, out["payload"])}   # the act PASSES: its lane stamped by code, never asked
+    if mandated:
+        return Exit(go)
     cls = klass(wid, act, inner)
     if not asks_by_itself(wid, act, inner):      # harmless by its declared type: his order is the yes, said once
         try:
@@ -195,13 +202,13 @@ def gate(rec, payload: dict) -> Exit:
                 return Exit(out, refused=f"his rule forbids it ({cls}): nothing was done")
         except Exception as e:  # noqa: BLE001
             logger.debug(f"exit_gate: his rule for {cls} unread ({e!r})")
-        return Exit(out, released=True, why="harmless by its declared type — his order is the yes")
+        return Exit(go, released=True, why="harmless by its declared type — his order is the yes")
     from nucleo.acts import message as _msg      # ONE act, ONE question: a draft he was shown and then ORDERED sent
     if _msg.confirmed(wid, act, inner, None):     # was asked about when it was shown — his order is the yes (CRIT-C9)
-        return Exit(out, released=True)
+        return Exit(go, released=True)
     from nucleo.switchboard import act as _sb     # …and a yes he gave while it was being prepared is that yes, once
     if _sb.took_early_yes(str(getattr(rec, "uid", "") or "")):
-        return Exit(out, released=True)
+        return Exit(go, released=True)
     return Exit(out, question=ready_question(wid, act, inner, cls))
 
 
