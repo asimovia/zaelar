@@ -21,6 +21,16 @@
       "kind": "unit"
     },
     {
+      "id": "13.3",
+      "label": "Every final word belongs to one intervention (I2)",
+      "kind": "unit"
+    },
+    {
+      "id": "13.4",
+      "label": "One arbiter closes a turn (D1, A6)",
+      "kind": "unit"
+    },
+    {
       "id": "13.19",
       "label": "A stale epoch writes nothing; the Store contract over both stores",
       "kind": "unit"

@@ -8996,6 +8996,10 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/conversation/unit/test_baseline_counts_a_synthetic_archive.py"]},
         {"id": "13.19", "title": "One writer per account, fenced by an epoch (I5), and the Store contract both stores keep (memory and sqlite): acquiring bumps the epoch, a transaction under a taken lease writes nothing — not even half — and says so, a failed transaction leaves nothing, `cas` moves a row only from the expected value, `insert_unique` returns the same row on a repeat, a snapshot is a detached coherent copy; on sqlite two real writers on one file: the old one stops at the takeover, and everything survives a reopen",
             "ch": UNIT, "paths": ["tests/conversation/unit/test_a_stale_epoch_writes_nothing.py"]},
+        {"id": "13.3", "title": "I2: every final word of the speech-to-text belongs to exactly one intervention — a revision REPLACES a provider turn's words, a late partial never undoes a final, a turn without its final leaves the intervention incomplete, a reopen that loses to the seal moves its words to the amendment; fixed cases and seeded revision streams",
+            "ch": UNIT, "paths": ["tests/conversation/unit/test_every_final_word_belongs_to_one_intervention.py"]},
+        {"id": "13.4", "title": "One arbiter closes a turn: the provider's end of turn + full coverage + the watermark past the voice's fall; an eager hint only makes it tentative (eager + resumed extends), never closes; at the cap coverage closes and its absence is incomplete; a stream that stops beating is incomplete with its words; a declared number gives more patience; voice with no words and a guard's discard are events with text and reason; resumed voice reopens before the seal and amends after it; typed input is closed on send",
+            "ch": UNIT, "paths": ["tests/conversation/unit/test_one_arbiter_closes_a_turn.py"]},
     ]},
 ]
 

@@ -51,3 +51,12 @@ def store(request, tmp_path):
     s = MemoryStore() if request.param == "memory" else SqliteStore(tmp_path / "conversation.db")
     yield s
     s.close()
+
+
+@pytest.fixture
+def ear(clock, telemetry):
+    from conversation.config import Config
+    from conversation.ear import Ear
+    from conversation.telemetry import Emitter
+    from conversation.types import Ids
+    return Ear("acct-test", Config(), Emitter(telemetry, clock, "acct-test"), Ids())

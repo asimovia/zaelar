@@ -113,6 +113,12 @@
    "block": "external",
    "name": "The world",
    "package": ""
+  },
+  {
+   "id": "conversation",
+   "block": "brain",
+   "name": "Conversation & turn manager (isolated, V2-941)",
+   "package": "conversation/"
   }
  ],
  "pieces": [
@@ -995,6 +1001,17 @@
     "files/attachments.py"
    ],
    "emits": []
+  },
+  {
+   "id": "c_ear",
+   "zone": "conversation",
+   "name": "Ear — the turn arbiter",
+   "paths": [
+    "conversation/ear"
+   ],
+   "emits": [
+    "conv_ear"
+   ]
   }
  ],
  "emitters": {
@@ -2270,8 +2287,7 @@
   "i18n": "the strings every surface speaks in",
   "update": "the update channel: off the agent's hot path by design",
   "observability": "adds who/when/flow to the event log — the instrument the player reads, not a piece of the brain",
-  "tests": "the test system",
-  "conversation": "the conversation & turn manager (V2-941): isolated, not on the live path yet; its pieces are drawn as each lands"
+  "tests": "the test system"
  },
  "relays": [
   "voice/observer.py",
