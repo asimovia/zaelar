@@ -440,6 +440,9 @@ _PACKAGE_CEILINGS["server"] += 18
 _PACKAGE_CEILINGS["nucleo/pulse"] += 69
 _PACKAGE_CEILINGS["voice"] += 5
 _PACKAGE_CEILINGS["nucleo/turn"] += 2
+# +5 connectors — 2026-11-19: the broker's 404 «no client for this family» is an answer (`empty`, held an hour), not
+# an outage reported every minute (`oauth_broker._fetch`).
+_PACKAGE_CEILINGS["connectors"] += 5
 
 def _package_totals() -> dict[str, int]:
     from tests.infrastructure.import_graph import package_of, product_modules
@@ -474,6 +477,7 @@ _TOTAL_MAX += 160   # 2026-11-18 V2-938 audit round 2 (2.1801): a reply, a forwa
 _TOTAL_MAX += 241   # 2026-11-18 V2-938 audit (2.1801): one sentence at a time per draft, the confirmation verified to carry his text, the channel asked BEFORE it, the act he asked for (reply, forward, later) carried, several messages queued, an unread read that never loses his order
 _TOTAL_MAX += 912   # 2026-11-18 V2-938 (2.1801): a message has ONE owner — the new `nucleo/send` package (draft, one read of his words, the people, the owner, its receipt, the turn's and the worker's hand-over, ~880 lines) and its hand-over points; the worker's message steps left the brief
 _TOTAL_MAX += 77    # 2026-11-19 support fixes: a held loop names its code (`loop_lag` stack sampler), a closed voice is not a crash, an empty turn is quiet — the addendum above
+_TOTAL_MAX += 5     # 2026-11-19: the broker's 404 is an answer, not an outage — the addendum above
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

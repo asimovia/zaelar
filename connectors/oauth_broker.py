@@ -85,17 +85,22 @@ def family_of(token_url: str) -> str:
 
 
 def _fetch(family: str) -> str:
-    cid = ""
+    """A 404 is the broker's ANSWER «this family has no client here», not a failure: reported `empty` and held as
+    long as a client would be. Only an error or another refusal is `unreachable` and retried soon. Read as a refusal,
+    a family the deployment never configured put «⚠️ unreachable» on every session's timeline once a minute."""
+    cid, answered = "", False
     try:
         import httpx
         r = _outcome.call(f"oauth-broker:{family}", "client", lambda: httpx.post(base_url() + "/client", json={"provider": family},
-                                                                             headers=_headers(), timeout=4), measure=lambda r: {"status": r.status_code}, refused=lambda r: r.status_code >= 400)
+                                                                             headers=_headers(), timeout=4), measure=lambda r: {"status": r.status_code},
+                          refused=lambda r: r.status_code >= 400 and r.status_code != 404, empty=lambda r: r.status_code == 404)
         if r.status_code == 200:
             cid = str((r.json() or {}).get("client_id") or "").strip()
+        answered = r.status_code in (200, 404)
     except Exception as e:  # noqa: BLE001 — unreachable reads as «no client»
         logger.warning(f"oauth broker: client lookup for {family} failed: {type(e).__name__}")
     with _lock:
-        _cache[family] = (cid, time.monotonic() + (_CLIENT_TTL if cid else _MISS_TTL))
+        _cache[family] = (cid, time.monotonic() + (_CLIENT_TTL if answered else _MISS_TTL))
     return cid
 
 

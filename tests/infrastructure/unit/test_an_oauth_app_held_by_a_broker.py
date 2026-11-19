@@ -118,3 +118,25 @@ def test_a_provider_the_broker_does_not_serve_is_never_sent_there():
     assert oauth_broker.family_of("https://login.microsoftonline.com/common/oauth2/v2.0/token") == "microsoft"
     assert oauth_broker.family_of("https://accounts.spotify.com/api/token") == "spotify"
     assert oauth_broker.family_of("https://evil.example/token") == ""
+
+
+def test_a_family_the_broker_has_no_client_for_is_an_answer_not_an_outage(monkeypatch):
+    """2026-11-19: the deployment has no Microsoft client, the broker answers 404 `provider_not_configured`, and the
+    engine read it as a refusal — «⚠️ oauth-broker:microsoft · client · unreachable» on every session, once a minute.
+    A 404 is the broker's answer: reported `empty`, never `unreachable`, and held as long as a client id."""
+    import httpx
+    from connectors import oauth_broker
+    from voice import observer
+    _cloud(monkeypatch)
+    oauth_broker._reset_for_tests()
+    seen, asked = [], []
+    monkeypatch.setattr(observer, "emit", lambda kind, label, **k: seen.append((kind, label, k.get("extra") or {})))
+    monkeypatch.setattr(httpx, "post", lambda url, **k: asked.append(url) or _Resp({"error": "provider_not_configured"}, 404))
+    try:
+        assert oauth_broker.client_id("microsoft") == ""
+        assert oauth_broker.client_id("microsoft") == "", "the answer is held: no second lookup in a minute"
+        reasons = [x.get("reason") for k, lbl, x in seen if k == "provider"]
+        assert reasons == ["empty"], f"a 404 is the broker's answer, not an outage: {reasons}"
+        assert len(asked) == 1
+    finally:
+        oauth_broker._reset_for_tests()
