@@ -180,6 +180,12 @@ async def session_start(request: Request):
     # a `null` invites a reader to treat the key as missing.
     info = _identity.begin_session(str((body or {}).get("source") or "frontend"),
                                    force=bool((body or {}).get("force")))
+    # V2-939 — who connected: the request's User-Agent plus what the page itself knows (`navigator.webdriver`, a
+    # harness tag). Facts on the session's own stream; a no-op when no session opened (agent ⏻ off).
+    if info.get("id"):
+        b = body if isinstance(body, dict) else {}
+        _identity.note_client(ua=request.headers.get("user-agent", ""), automated=b.get("automated") is True,
+                              tag=str(b.get("tag") or ""), dev=str(b.get("dev") or ""))
     return JSONResponse({"session_id": info.get("id") or "", "user_id": _identity.user_id()})
 
 

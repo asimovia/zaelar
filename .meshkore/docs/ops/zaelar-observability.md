@@ -247,6 +247,23 @@ Two reads on top of the flow reads:
 `GET /api/observability/session/{sid}` also marks `live` by comparing with the open session, and returns `flows`
 (a number) and `flows_detail` (the list) as SEPARATE fields, so a consumer always gets the same type for each.
 
+### Who drove a session (V2-939)
+
+A browser driven by a program and a person's browser used to leave identical sessions. Now the session records the
+FACTS of who connected, and nothing more:
+
+- **`source`** — what opened it (`frontend`, `auto`, `power_on`, `reset`, or whatever a caller passed to
+  `begin_session`), from the `session`/`start` event.
+- **`session`/`client`** — stamped ONCE per screen per session by `identity.note_client` when the page calls
+  `POST /api/observability/session/start`: `ua` (the request's User-Agent), `automated` (the page's
+  `navigator.webdriver`, true when a program drives the browser), `tag` (an optional harness label: open the agent
+  with `?zaelar_client=<tag>`, kept for the tab's life) and `dev`. It is a `system` fact: never activity, opens no
+  session (a no-op with the agent ⏻ off).
+
+`flows.sessions()` returns them as `source`, `client_ua`, `client_automated` and `client_tag`. A reader classes the
+session from these facts; the engine itself behaves the same whoever drives it. A harness that drives the agent
+should pass a tag — `?zaelar_client=test-<what>` for a test run, `?zaelar_client=agent-check` for an automated agent's check.
+
 ### Who may read the CONTENT
 
 In a home installation the port is only reachable from the machine itself. The same code runs in deployments where

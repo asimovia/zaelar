@@ -86,8 +86,20 @@ export const sessionRelease = (sid) => {
 // conectar el agente y se cierra con ⏻ o al cerrar la pestaña. El server reutiliza la sesión abierta, así que
 // una reconexión no la parte en dos. El cierre va por `sendBeacon` porque al cerrar la pestaña no da tiempo a
 // negociar un fetch normal (mismo patrón que `sessionRelease`).
+// V2-939 — the page also says WHO is driving it: `navigator.webdriver` (true when a program drives the browser) and
+// an optional harness tag, `?zaelar_client=<tag>` on the URL, kept for the tab's life. Facts for the session's
+// stream (`identity.note_client`); the agent behaves the same either way.
+const _clientTag = (() => {
+  try {
+    const q = new URLSearchParams(location.search).get("zaelar_client");
+    if (q) sessionStorage.setItem("zaelar_client", q.slice(0, 40));
+    return sessionStorage.getItem("zaelar_client") || "";
+  } catch (_) { return ""; }
+})();
 export const obsSessionStart = (source = "frontend") =>
-  postJSON("/api/observability/session/start", { source }).then(json).catch(() => ({}));
+  postJSON("/api/observability/session/start", {
+    source, dev: DEVICE, automated: typeof navigator !== "undefined" && navigator.webdriver === true, tag: _clientTag,
+  }).then(json).catch(() => ({}));
 export const obsSessionEnd = (reason = "frontend", cause = "") => {
   try {
     const blob = new Blob([JSON.stringify({ reason, cause: cause || reason, dev: DEVICE })], { type: "application/json" });

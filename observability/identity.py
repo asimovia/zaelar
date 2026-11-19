@@ -180,6 +180,34 @@ def begin_session(source: str = "frontend", force: bool = False) -> dict:
     return info
 
 
+#: (session id, device, ua) already stamped by `note_client` — one `session`/`client` mark per screen per session.
+_clients_seen: set = set()
+
+
+def note_client(*, ua: str = "", automated: bool = False, tag: str = "", dev: str = "") -> bool:
+    """V2-939 — WHO is on the other side of the open session: the connecting client's User-Agent, whether the browser
+    says a program drives it (`navigator.webdriver`), and a free tag a harness may declare. Stamped ONCE per screen per
+    session as a `session`/`client` event, so a reader of the stored events can tell a person's browser from an
+    automated one or a test harness without guessing. Facts only — no rule here classifies anything.
+
+    Opens nothing: with no session open (the agent is ⏻ off, or the session just closed) it is a no-op."""
+    info = dict(_session)
+    sid = info.get("id")
+    if not sid:
+        return False
+    ua, tag, dev = str(ua or "")[:300], str(tag or "")[:40], str(dev or "")[:48]
+    key = (sid, dev, ua, bool(automated), tag)
+    with _lock:
+        if key in _clients_seen:
+            return False
+        if len(_clients_seen) > 512:
+            _clients_seen.clear()
+        _clients_seen.add(key)
+    _emit_session("client", info, extra={"ua": ua, "automated": bool(automated), "tag": tag,
+                                         **({"dev": dev} if dev else {})})
+    return True
+
+
 def end_session(reason: str = "frontend", *, cause: str = "", device: str = "") -> dict:
     """Closes the current session (stop button, tab closed). The next event will open a new one automatically:
     we prefer a clearly marked orphaned session to an event without a session."""

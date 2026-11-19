@@ -181,6 +181,18 @@ def sessions(limit: int = 30, user_id: str = "") -> list[dict]:
                MAX(CASE WHEN {REAL_ACTIVITY_WHERE} THEN ts_ms END) AS last_real_ms,
                MAX(CASE WHEN kind = 'session' AND label = 'voice.up' THEN ts_ms END) AS voice_up_ms,
                MAX(CASE WHEN kind = 'session' AND label = 'voice.down' THEN ts_ms END) AS voice_down_ms,
+               -- V2-939 — WHO opened and drove the session: the `source` its start was given, and the client facts the
+               -- frontend's connection stamped (`identity.note_client`). A reader classes the session (a person's
+               -- browser, an automated one, a harness) from these facts; nothing here decides. Nested CASE so
+               -- json_extract only ever sees a valid payload of a session row.
+               MAX(CASE WHEN kind = 'session' AND label = 'start' THEN
+                   CASE WHEN json_valid(payload) THEN json_extract(payload, '$.source') END END) AS source,
+               MAX(CASE WHEN kind = 'session' AND label = 'client' THEN
+                   CASE WHEN json_valid(payload) THEN json_extract(payload, '$.ua') END END) AS client_ua,
+               MAX(CASE WHEN kind = 'session' AND label = 'client' THEN
+                   CASE WHEN json_valid(payload) THEN json_extract(payload, '$.automated') END END) AS client_automated,
+               MAX(CASE WHEN kind = 'session' AND label = 'client' THEN
+                   CASE WHEN json_valid(payload) THEN json_extract(payload, '$.tag') END END) AS client_tag,
                -- V2-713 R2 — A TASK THAT DIED IS COUNTED AS A FAILURE, and it is counted APART.
                -- `errors` above asks «did something raise or alert»; a worker closing with ok=false is
                -- neither: `session.py::_finish` ends it as kind='task', label='end', ok=false, and `ok`
