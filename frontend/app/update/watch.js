@@ -36,6 +36,12 @@ export { build, stale, info };
 let _baseline = null;     // the ui_rev this tab is RUNNING (first answer wins)
 let _dismissed = "";      // a revision the operator waved away — until the NEXT one arrives
 let _iv = null;
+let _reloadOnReturn = false;
+/** The PHONE shell: coming back to the foreground with a newer frontend reloads instead of showing the bar. Nothing is
+ *  in his hand at that instant, and an app resumed from the background otherwise runs the screen of a release ago
+ *  until he taps — measured 2026-11-19: a release changed the phone's home and his app, alive since the build before,
+ *  kept the old one. The desktop keeps the bar (a reload there may cut what he is typing). */
+export function reloadOnReturn(on = true) { _reloadOnReturn = !!on; }
 
 export async function check() {
   let s;
@@ -72,7 +78,7 @@ export function startUpdateWatch(ms = POLL_MS) {
   // Coming back to a tab left open for hours is the moment the answer is most likely to have changed, and
   // the moment the operator is actually looking. Check then, without shortening the interval for everyone.
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") check();
+    if (document.visibilityState === "visible") check().then(() => { if (_reloadOnReturn && stale()) applyUpdate(); });
   });
 }
 

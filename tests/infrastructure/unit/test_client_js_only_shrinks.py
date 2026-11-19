@@ -38,6 +38,7 @@ JS_TOTAL_MAX += 22   # 2026-11-19 INI-042 #36: the echo of a typed line is paint
 JS_TOTAL_MAX += 12   # 2026-11-19 V2-939: the client tags its own requests with who drives the session (`services/api.js`)
 JS_TOTAL_MAX += 18   # 2026-11-19 (4.595, operator): the phone home is only the face with it on (`Deck.js`, the home holding `face` in `deck-screen.js`)
 JS_TOTAL_MAX += 6    # 2026-11-19 INI-042 #47 (4.599): «close all» closes Settings and every native surface (`screen-panel.closePanels`, `pages.closePages`)
+JS_TOTAL_MAX += 7    # 2026-11-19 (4.600, operator): a phone back from the background onto a newer frontend reloads instead of showing the bar (`update/watch.js` reloadOnReturn, its switch in UpdateSurface)
 
 
 def _ours(p: Path) -> bool:

@@ -3047,6 +3047,11 @@ DOMAINS: list[dict] = [
         # the restart with every old card and re-reported them to the server as open — the ghosts were in the
         # server's canvas state before anyone typed. The SSE re-open IS the restart seen from the tab.
         {"id": "4.433", "title": "A tab sleeps on its own and never reconnects without a gesture (V2-872): a stream error CLOSES the EventSource and `presence.reconnectDecision` reopens it only while visible and touched within `tab_sleep_min` (the hello's value), with a 2 s → 60 s backoff; a hidden or untouched tab goes dormant (the orb dims, «Zaelar duerme — toca para despertar») and every poller asks `asleep()` before it reaches the server; `engine.sleep` puts it to sleep; the first gesture wakes it, and every open the tab decides says it is a person (`wake=1`, counted as input by the engine) so a hosted edge may start a stopped engine for it and never for a browser's own retry", "ch": UNIT, "paths": ["tests/browser/unit/arranque/test_a_sleeping_tab_never_reconnects_on_its_own.py"]},
+        {"id": "4.600", "title": "A phone back from the background runs the new screen (2026-11-19): on the phone shell "
+                                 "(`watch.reloadOnReturn`) coming back to the foreground onto a newer frontend (`ui_rev`) reloads "
+                                 "at once instead of showing the bar; the desktop keeps the bar; the same frontend reloads nothing. "
+                                 "Disarm: the return no longer reloads",
+            "ch": UNIT, "paths": ["tests/browser/unit/arranque/test_a_phone_back_from_the_background_runs_the_new_screen.py"]},
         {"id": "4.598", "title": "Nobody wakes the agent to leave it stopped (INI-042 #46): only the ⏻ door (`power.setPower`) "
                                  "calls `runStop`; both shells' boot probe REFLECTS the server's ⏻ (`presence.reflectRunState`) "
                                  "and never sends a stored one — a stale «stopped» follows a running agent, a real stop holds, "

@@ -66,7 +66,7 @@ export const MOBILE_SURFACES = [
   // V2-553 — the update bar. An installed PWA is the surface most likely to be running code from days ago,
   // so it is the one that most needs to be told. Bar only: the phone's build number is the last line of the
   // ☰ page (MenuSheet.js), not a badge over the dock.
-  { id: "update",          comp: () => UpdateSurface({ badge: false }), target: "body", phase: "overlay", label: "«New version — reload» bar", shared: true },
+  { id: "update",          comp: () => UpdateSurface({ badge: false, reloadOnReturn: true }), target: "body", phase: "overlay", label: "«New version — reload» bar; back from the background onto a newer frontend, the phone reloads itself", shared: true },
   // V2-785 — out of Energy, on screen, with the top-up button (the voice alone used to say it).
   { id: "energy-notice",   comp: EnergyNotice,  target: "body", phase: "overlay", label: "Out of Energy + top up", shared: true },
   // 2026-11-19 — under 5 % of the cycle's Energy: a small card before the stop, never a modal.

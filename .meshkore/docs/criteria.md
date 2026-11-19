@@ -1351,6 +1351,10 @@ Flash keeps the conversation; the row is what both brains read.
   and never sends one: a stale «stopped» in a page's storage follows a running agent. Only a press stops it
   (`power.setPower` is the one client caller of `runStop`); an agent stopped on purpose stays stopped and still needs ⏻
   (INI-042 #46) — since 2026-11-19 · node 4.598 · `frontend/app/main.js`, `frontend/mobile/app/main.js`.
+- **CRIT-R25d · A phone back from the background runs the new screen.** A page knows it runs an older frontend when
+  `GET /api/update` answers another `ui_rev` than its first answer (V2-553); the desktop shows the reload bar, and the
+  phone shell (`watch.reloadOnReturn`) reloads at once when it comes back to the foreground onto a newer one — nothing
+  is in his hand then; the same frontend reloads nothing — since 2026-11-19 · node 4.600 · `frontend/app/update/watch.js`.
 - **CRIT-R25b · The app on his phone is opened by a person, and leaving it is said.** In the native companion or a
   page installed on a PHONE's home screen (never a standalone window on a computer), coming to the foreground is a
   gesture (`presence.js::installedApp`); with music sounding in the page, putting it away is not leaving; it counts as

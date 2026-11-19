@@ -22,7 +22,7 @@
 import { h } from "../core/dom.js?v=2";
 import { createEffect } from "../core/reactive.js?v=2";
 import { t } from "../core/i18n.js?v=1";
-import { stale, dismiss, applyUpdate, startUpdateWatch } from "./watch.js?v=1";
+import { stale, dismiss, applyUpdate, startUpdateWatch, reloadOnReturn } from "./watch.js?v=1";
 import { VersionLabel } from "./VersionLabel.js?v=1";
 
 const BAR_H = 36;
@@ -51,8 +51,9 @@ function injectStyles() {
   document.head.appendChild(s);
 }
 
-export function UpdateSurface({ badge = true } = {}) {
+export function UpdateSurface({ badge = true, reloadOnReturn: onReturn = false } = {}) {
   injectStyles();
+  if (onReturn) reloadOnReturn(true);         // the phone: back from the background onto a newer frontend → reload
   startUpdateWatch();
 
   const bar = h("div", {
