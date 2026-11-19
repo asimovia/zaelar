@@ -54,6 +54,7 @@ const _sensors = () => import("../../../app/services/device.js?v=1");   // V2-87
 import { createEffect } from "../../../app/core/reactive.js?v=2";
 import { paintPips, wirePipDrag } from "./pips.js?v=1";
 import { HomeToday } from "./HomeToday.js?v=1";
+import { presenceOn } from "../../../app/presence/state.js?v=1";
 import { deckScreen } from "./deck-screen.js?v=1";
 import { frontDoor } from "../../../app/widgets/card-front.js?v=1";
 
@@ -477,7 +478,7 @@ export class Deck {
       this._home.classList.toggle("live", this.at === -1);
       this._home.setAttribute("aria-hidden", this.at === -1 ? "false" : "true");
       this._renderHome();
-      if (this.at === -1 && this._today) this._today.refresh(this);
+      if (this.at === -1 && this._today && !this._faceHome) this._today.refresh(this);   // the face home reads no agenda
     }
     if (this._pips) paintPips(this, this._pips, HOME_ICO);       // the page switcher (pips.js)
     if (this._empty) this._empty.classList.toggle("on", n === 0);
@@ -511,6 +512,9 @@ export class Deck {
     e.append(h, p);
     this._today = HomeToday();                              // greeting, next appointments, what plays (P-10)
     home.append(head, this._today.el, grid, e);
+    // With the agent's face on the home IS the face, as the desktop's empty desk is (V2-928); face off, the launcher.
+    createEffect(() => { this._faceHome = presenceOn(); home.classList.toggle("zm-home-face", this._faceHome);
+      if (this._screen) this._screen.changed(); if (!this._faceHome && this.at === -1) this._today.refresh(this); });
     this.stage.appendChild(home);
     this._home = home; this._hgrid = grid; this._hcount = count; this._hall = all; this._empty = e;
     const pips = document.createElement("div"); pips.className = "zm-pips";

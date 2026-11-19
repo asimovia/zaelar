@@ -6451,6 +6451,11 @@ DOMAINS: list[dict] = [
                                  "(ZaelarNative.audio); elsewhere the element's own volume stays the way "
                                  "out. Disarms: the platform test off, the element left unmuted while routed",
             "ch": UNIT, "paths": ["tests/browser/unit/voice/test_the_voice_level_holds_where_the_element_ignores_it.py"]},
+        {"id": "4.595", "title": "With the agent's face on, the phone's home IS the face, as the desktop's empty desk is (V2-928): "
+                                 "no title, today, hint or tiles over it, even with apps open; the agenda is not read for a "
+                                 "today nobody sees and the screen document says the home holds `face` alone; face off, the "
+                                 "launcher and today come back. Disarm: the deck stops marking the face home",
+            "ch": UNIT, "paths": ["tests/browser/unit/mobile/test_the_home_is_the_face.py"]},
         # V2-928 T12 — «the face answers you»: what he does in front of the camera (a smile, a laugh, a wink, a tongue, a
         # yawn, a nod) read on the device by the vendored MediaPipe Face Landmarker, answered by a temperament that is not a
         # mirror (seeded in the test), played by the rig; zero model, API or token, no image leaves the page.

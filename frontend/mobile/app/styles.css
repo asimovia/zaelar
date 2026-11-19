@@ -647,6 +647,7 @@ html.zm-consent-pending .zm-orb-btn, html.zm-consent-pending .zm-pwr, html.zm-co
 .zm-deck.has-pips .zm-card, .zm-deck.has-pips .zm-home { bottom: calc(var(--dock-h) + var(--zm-safe-b) + 30px); }
 .zm-deck .zm-pips { bottom: calc(var(--dock-h) + var(--zm-safe-b)); height: 30px; align-items: center;
   background: var(--hb-bg-a); border-top: 1px solid var(--hb-line-subtle); }
+.zm-deck:not(.has-pips) .zm-pips { display: none; }   /* no app open: no row to show, no empty band over the home */
 .zm-pipn { margin-left: 6px; font: 600 12px/1 var(--sans); color: var(--hb-muted); font-variant-numeric: tabular-nums; }
 
 /* ---------- THE HOME's today (V2-876 rule 7, P-10, shell/HomeToday.js) ---------- */
@@ -667,3 +668,5 @@ html.zm-consent-pending .zm-orb-btn, html.zm-consent-pending .zm-pwr, html.zm-co
 /* V2-928 T11 — with the agent's face on, the home is see-through: the face lives behind it (app/presence/). Cards and
    pages stay opaque and cover it. */
 body.hb-presence-on .zm-home { background: transparent; }
+/* With the face on the home is ONLY the face (Deck.js `zm-home-face`): its title, today, hint and tiles are not drawn. */
+.zm-deck .zm-home.zm-home-face > * { display: none; }   /* over the deck's own `.zm-empty.on` (Deck.js) */

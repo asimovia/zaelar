@@ -54,6 +54,8 @@ def _widgets(route):
 
 SETUP = """
   const stage = document.createElement('div'); stage.id = 'zm-deck-wrap'; document.body.append(stage);
+  // The LAUNCHER home is what this test reads: the agent's face off (with it on, the home is only the face).
+  (await import('/frontend/app/presence/state.js?v=1')).setPresenceOn(false);
   const { Deck } = await import('/frontend/mobile/app/shell/Deck.js?v=5');
   window.__deck = new Deck(stage);
   const { MOBILE_SURFACES } = await import('/frontend/mobile/app/shell/mobile-surfaces.js?v=4');

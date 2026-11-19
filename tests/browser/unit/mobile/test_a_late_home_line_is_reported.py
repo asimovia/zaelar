@@ -38,6 +38,8 @@ def _last_holds(home_src: str | None = None) -> tuple[list, list]:
         pg.evaluate(_LATE_AGENDA, LATE_MS)
         pg.evaluate("""async () => {
             const stage = document.createElement('div'); stage.id = 'zm-deck-wrap'; document.body.append(stage);
+            // The LAUNCHER home is what this test reads: the agent's face off (with it on, the home is only the face).
+            (await import('/frontend/app/presence/state.js?v=1')).setPresenceOn(false);
             const { Deck } = await import('/frontend/mobile/app/shell/Deck.js?v=a3');
             window.__deck = new Deck(stage); window.__deck.home();
         }""")

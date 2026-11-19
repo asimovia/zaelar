@@ -37,6 +37,8 @@ SETUP = """
   window.__newDeck = async (v) => {
     document.querySelectorAll('.zm-deck').forEach((s) => { s.remove(); });
     const stage = document.createElement('div'); stage.id = 'zm-deck-wrap'; document.body.append(stage);
+    // The LAUNCHER home is what this test reads: the agent's face off (with it on, the home is only the face).
+    (await import('/frontend/app/presence/state.js?v=1')).setPresenceOn(false);
     const { Deck } = await import('/frontend/mobile/app/shell/Deck.js?v=' + (v || '5'));
     if (window.__deck && window.__deck._screen) window.__deck._screen.rep.dispose();
     window.__deck = new Deck(stage);

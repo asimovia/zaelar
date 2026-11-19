@@ -4,7 +4,8 @@
 // A deck shows one app at a time: the card on screen (`order[at]`) is `front`, every other open card is `behind`
 // (a deck never reports `visible`), layer 0 is the front and the rest follow the deck's order. At `at = -1` the
 // HOME is on screen and nothing is in front (`front: ""`); the home says what it holds by declared names — the
-// lines `HomeToday` drew (greeting, next_events, now_playing) and the tiles of the open apps (`apps`).
+// lines `HomeToday` drew (greeting, next_events, now_playing) and the tiles of the open apps (`apps`) — or, with the
+// agent's face on, only `face`: the home is the face and draws nothing over it.
 // The deck reports through the shared `widgets/screen-reporter.js` on every `_reportOpen` (a show, close, page,
 // home); `services/sse.js` answers each order through `widgets/screen-order.js`, as on the desktop.
 // ============================================================================
@@ -24,7 +25,8 @@ export function deckAdapter(deck) {
     vis: (id) => (!deck.order.includes(id) ? "" : id === front() ? "front" : "behind"),
     layer: (id) => (id === front() ? 0 : rest().indexOf(id) + (front() ? 1 : 0)),
     home: () => ({ shown: deck.at === -1,
-                   holds: [...((deck._today && deck._today.holds && deck._today.holds()) || []), ...(deck.order.length ? ["apps"] : [])] }),
+                   holds: deck._faceHome ? ["face"]
+                     : [...((deck._today && deck._today.holds && deck._today.holds()) || []), ...(deck.order.length ? ["apps"] : [])] }),
     panel: () => panelOf(PANELS),
   };
 }
