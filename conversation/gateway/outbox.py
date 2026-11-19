@@ -1,34 +1,33 @@
-"""The gateway's decisions: the ONLY place an effect is born (I8), as one reserved row per logical operation (N3).
+"""The gateway: the ONLY door from a run to the world (I8).
 
-`request` judges one tool call of a run against the run's batch (plan §15 E1): a read passes; an effect must rest on
-the person's entries (the batch's authority floor) or on a mandate, seal every intervention of the person's in the batch and
-reserve its row — ONE transaction; an `egress` needs a delegation or a grant (spent in that same transaction), and
-anything that needs a gesture (`egress` without a mandate, `destructive`, `payment`, or any effect in a batch that is
-not all the person's) answers `NeedsConfirmation(handle)`. `confirm` spends a presented handle by a gesture: the control's
-accounting, the spend, the seals and the reservation are ONE transaction (I1/N3). An effect id is a hash of
-(mandate, trigger, operation): the same operation again returns the same row; a new one is never minted. A refused
-proposal is only refused (§15 E5): the writes switch trips in `dispatch`, never here.
+In F1 it does two things: a read passes; anything else is `Refused`, with its event. Whether a tool only reads is the
+host's derivation from the tool's declared act (`ToolSpec.effect_class`): the package keeps no list of reads.
 
-Contract for the adapters (F1/F2): the `Tools` adapter performs a real external send ONLY through the engine's one
-exit door, `connectors/exit.py` (its kill switch and its inventory included). This package never sends anything.
+What stays, untouched, for F2 is the RESERVATION: `reserve` seals every intervention of the person's in the batch and
+reserves ONE row per logical operation in the same transaction (I1, N3); an effect id is a hash of (mandate, trigger,
+operation), so the same operation again is the same row and a new one is never minted; `dispatch.submit` writes it
+ahead before the call, an unknown outcome is reconciled by looking, never resent; a call or a receipt without a
+reservation cuts every write of the account (`disable_writes`). No product path reaches the reservation before F2:
+its own tests exercise it.
+
+Contract for the adapters (F2): the `Tools` adapter performs a real external send ONLY through the engine's one exit
+door, `connectors/exit.py` (its kill switch and its inventory included). This package never sends anything.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Callable
 
-from conversation import envelopes as E
 from conversation.config import Config
 from conversation.gateway import authority as A
 from conversation.gateway import seal as S
-from conversation.inbox.mailbox import apply_control
 from conversation.ledger import Book
 from conversation.ports import Clock, ToolCall, ToolSpec
 from conversation.telemetry import Emitter
-from conversation.types import ControlOp, EffectClass, Ids, ItemKind
+from conversation.types import EffectClass, Ids, ItemKind
 
 FLAGS = "flags"
-OPS = "effect_ops"          # (trigger, operation) → its effect: a repeat is one read (review 2, MINOR 11)
+OPS = "effect_ops"          # (trigger, operation) → its effect: a repeat is one read
 
 
 @dataclass(frozen=True)
@@ -43,23 +42,11 @@ class Claimed:
 
 
 @dataclass(frozen=True)
-class NeedsConfirmation:
-    """The effect waits for a gesture on this handle (plan §15 E3)."""
-    handle_id: str
-
-
-@dataclass(frozen=True)
-class Held:
-    """The effect waits on the person: a hold before its submission (A7), or they are speaking (unclaimed)."""
-    reason: str
-
-
-@dataclass(frozen=True)
 class Refused:
-    reason: str      # unsealed · no_authority · handle_spent · handle_not_presented · not_a_gesture · write_disabled …
+    reason: str      # unknown_tool · not_a_read · person_speaking · unsealed · no_authority · write_disabled …
 
 
-Decision = Read | Claimed | NeedsConfirmation | Held | Refused
+Decision = Read | Claimed | Refused
 
 
 class _Abort(Exception):
@@ -89,7 +76,7 @@ class Gateway:
         for label, refs, payload in said:
             self.em.emit("conv_effect", label, owner="gateway", cause={"kind": "effect"}, refs=refs, **payload)
 
-    def _decide(self, fn, control: E.Envelope | None = None) -> Decision:
+    def _decide(self, fn) -> Decision:
         self._said = []
         try:
             with self.book.tx() as b:
@@ -97,9 +84,6 @@ class Gateway:
         except _Abort as stop:
             self._said = [s for s in self._said if s[0] == "refused"]
             self._flush()
-            if control is not None:                      # the control is still accounted, alone
-                with self.book.tx() as b:
-                    apply_control(b.tx, control.id, b.now)
             return stop.decision
         except BaseException:
             self._said = [s for s in self._said if s[0] in ("refused", "write_disabled")]
@@ -111,52 +95,54 @@ class Gateway:
     # ── one tool call ───────────────────────────────────────────────────────────────────────────────────────────
 
     def request(self, ctx: A.RunCtx, call: ToolCall, *, held: bool = False) -> Decision:
+        """One tool call of a run: a read passes; anything else is refused (F1) — while the person speaks, with that
+        reason. The model's `on` is telemetry, never authority."""
         spec = self.specs().get(call.name)
+        hint = call.args.get("on")
         if spec is None:
-            self._note("refused", ctx, tool=call.name, reason="unknown_tool")
-            self._flush()
-            return Refused("unknown_tool")
-        args = dict(call.args)
-        hint = args.pop("on", None)                    # the model's attribution: telemetry, never authority
-        if spec.effect_class is EffectClass.READ:
+            reason = "unknown_tool"
+        elif spec.effect_class is EffectClass.READ:
             self._note("read", ctx, tool=call.name, effect_class=str(spec.effect_class), model_on=hint)
             self._flush()
             return Read()
-        if held:                              # the person is speaking: an effect waits, unclaimed and unsealed (§7 row 1)
-            self._note("held", ctx, tool=call.name, reason="person_speaking")
+        else:
+            reason = "person_speaking" if held else "not_a_read"
+        self._note("refused", ctx, tool=call.name, reason=reason, act=getattr(spec, "act", None),
+                   effect_class=str(spec.effect_class) if spec else None, model_on=hint)
+        self._flush()
+        return Refused(reason)
+
+    def reserve(self, ctx: A.RunCtx, call: ToolCall) -> Decision:
+        """F2's door: reserve the effect of one tool call on the batch's authority floor — the seals and the row in
+        ONE transaction. No run reaches it in F1."""
+        spec = self.specs().get(call.name)
+        if spec is None or spec.effect_class is EffectClass.READ:
+            self._note("refused", ctx, tool=call.name, reason="not_an_effect")
             self._flush()
-            return Held("person_speaking")
-        return self._decide(lambda b: self._effect(b, ctx, spec, call.name, args, hint))
+            return Refused("not_an_effect")
+        args = {k: v for k, v in call.args.items() if k != "on"}
+        return self._decide(lambda b: self._effect(b, ctx, call.name, args))
 
     def _refuse(self, ctx, tool: str, reason: str, **kw) -> Refused:
         self._note("refused", ctx, tool=tool, reason=reason, **kw)
         return Refused(reason)
 
-    def _effect(self, b, ctx: A.RunCtx, spec: ToolSpec, tool: str, args: dict, hint: str | None) -> Decision:
+    def _effect(self, b, ctx: A.RunCtx, tool: str, args: dict) -> Decision:
         if (b.tx.get(FLAGS, "write_disabled") or {}).get("on"):
             return self._refuse(ctx, tool, "write_disabled")
         users = A.floor(ctx)
+        if not users:
+            return self._refuse(ctx, tool, "no_authority")
         op = A.op_key(tool, args)
-        trigger = (users or sorted(ctx.batch.values(), key=lambda e: (e.onset_ms, e.id)) or [None])[0]
-        ivs = [e.refs.intervention_id for e in users or ()]
-        if users and self.cfg.action_seal_grace_ms and not self._grace_over(b, ivs, ctx.endpoint):
-            return self._refuse(ctx, tool, "seal_grace")
-        existing = self._existing(b, trigger.id if trigger is not None else None, op)
+        trigger = users[0]
+        existing = self._existing(b, trigger.id, op)
         if existing is not None and existing["state"] in ("rejected", "withdrawn"):
             return self._refuse(ctx, tool, f"repeat_of_{existing['state']}", effect=existing["id"])
-        if existing is not None:              # the same operation on the same trigger: the SAME row, no new spend (M2)
+        if existing is not None:              # the same operation on the same trigger: the SAME row
             self._note("claimed", ctx, tool=tool, effect=existing["id"], repeat=True)
             return Claimed(existing["id"], repeat=True)
-        if users and spec.effect_class is EffectClass.LOCAL_WRITE:
-            return self._reserve(b, ctx, trigger.id, trigger.id, op, tool, args, ivs, users[0])
-        # a delegation or a grant never authorises an effect in a run whose batch carries no content of the person
-        # (Architect, M4): a run caused only by a contact, a worker or the system needs a presented, confirmed handle
-        his = any(e.is_user and e.kind in A.CONTENT for e in ctx.batch.values())
-        mandate = (A.delegation_for(b.tx, spec, args, b.now) or A.grant_for(b.tx, tool, args, b.now)) if his else None
-        if mandate is not None and trigger is not None:
-            self._spend(b, mandate, op)
-            return self._reserve(b, ctx, mandate["id"], trigger.id, op, tool, args, ivs, trigger)
-        return self._issue_handle(b, ctx, spec, tool, args, op, trigger, ivs, hint)
+        ivs = [e.refs.intervention_id for e in users]
+        return self._reserve(b, ctx, trigger.id, trigger.id, op, tool, args, ivs)
 
     @staticmethod
     def _existing(b, trigger: str | None, op: str) -> dict | None:
@@ -166,22 +152,7 @@ class Gateway:
         ref = b.tx.get(OPS, f"{trigger}|{op}")
         return b.get(ref["effect"]) if ref else None
 
-    def _spend(self, b, mandate: dict, op: str) -> None:
-        if mandate["kind"] == str(ItemKind.DELEGATION):
-            used = mandate["data"].get("used", 0) + 1
-            b.tx.put("items", mandate["id"], {**mandate, "data": {**mandate["data"], "used": used}})
-            if used >= mandate["data"].get("max", 0):
-                b.move(mandate["id"], "exhausted")
-        else:
-            b.move(mandate["id"], "spent", cause={"kind": "effect", "ref": op})
-
-    def _grace_over(self, b, ivs: list, endpoint: str | None) -> bool:
-        onset = (b.tx.get("onsets", endpoint or "") or {}).get("t_ms", 0)
-        closed = max(((b.tx.get(S.T, iv) or {}).get("closed_ms", 0) for iv in ivs), default=0)
-        return b.now - closed >= self.cfg.action_seal_grace_ms and onset <= closed
-
-    def _reserve(self, b, ctx, mandate: str, trigger: str, op: str, tool: str, args: dict, ivs: list,
-                 env: E.Envelope) -> Decision:
+    def _reserve(self, b, ctx, mandate: str, trigger: str, op: str, tool: str, args: dict, ivs: list) -> Decision:
         for iv in ivs:
             if not S.seal(b.tx, iv, b.now):
                 raise _Abort(self._refuse(ctx, tool, "unsealed", iv=iv))
@@ -191,20 +162,8 @@ class Gateway:
             "tool": tool, "args": args, "op": op, "mandate": mandate, "trigger": trigger, "run": ctx.run_id,
             "req": ctx.request_id, "endpoint": ctx.endpoint, "ivs": ivs})
         b.tx.put(OPS, f"{trigger}|{op}", {"effect": row["id"]})
-        self._note("claimed", ctx, tool=tool, effect=row["id"], authority=str(env.authority), grant=mandate,
-                   repeat=not new)
+        self._note("claimed", ctx, tool=tool, effect=row["id"], mandate=mandate, repeat=not new)
         return Claimed(row["id"], repeat=not new)
-
-    def _issue_handle(self, b, ctx, spec: ToolSpec, tool: str, args: dict, op: str, trigger, ivs: list,
-                      hint: str | None) -> NeedsConfirmation:
-        trig = trigger.id if trigger is not None else ctx.run_id
-        hid = A.effect_id("handle", trig, op).replace("x_", "h_", 1)
-        b.open(ItemKind.HANDLE, hid, data={"tool": tool, "args": args, "op": op, "trigger": trig, "ivs": ivs,
-                                            **A.bound(spec, args), "run": ctx.run_id, "req": ctx.request_id,
-                                            "endpoint": ctx.endpoint, "expires_ms": b.now + self.cfg.handle_ttl_ms},
-               waiting_on="user")
-        self._note("held", ctx, tool=tool, reason="needs_confirmation", item=hid, model_on=hint)
-        return NeedsConfirmation(hid)
 
     def disable_writes(self, reason: str) -> None:
         """Cut every write of the account (plan §15 E5: a leaving call reached dispatch without a valid reservation,
@@ -213,78 +172,6 @@ class Gateway:
             b.tx.put(FLAGS, "write_disabled", {"on": True, "reason": reason, "t_ms": b.now})
             self._note("write_disabled", None, reason=reason)
         self._decide(fn)
-
-    # ── handles, delegations, grants: by id ─────────────────────────────────────────────────────────────────────
-
-    def present(self, handle_id: str, endpoint: str | None) -> None:
-        """The mouth played (or painted) the question this handle confirms: now a gesture may spend it."""
-        def fn(b):
-            row = b.get(handle_id)
-            if row and row["state"] == "issued":
-                b.move(handle_id, "presented", data={"presented_on": endpoint})
-        self._decide(fn)
-
-    def confirm(self, control: E.Envelope) -> Decision:
-        """`user.control(confirm, handle_id)`: control accounted + handle spent + interventions sealed + effect reserved,
-        ONE transaction. A confirmation that is not a gesture spends nothing unless a delegation covers the send."""
-        body = control.body
-        assert body.op is ControlOp.CONFIRM
-
-        def fn(b):
-            apply_control(b.tx, control.id, b.now)
-            h = b.get(body.handle_id or "")
-            d = h["data"] if h else {}
-            ctx = A.RunCtx(d["run"], d["req"], {}, d["endpoint"]) if h else None
-            if h is None or h["kind"] != str(ItemKind.HANDLE):
-                return self._refuse(ctx, "", "handle_not_presented")
-            if h["state"] == "spent":
-                return self._refuse(ctx, d["tool"], "handle_spent", item=h["id"])
-            if h["state"] != "presented" or b.now >= d["expires_ms"]:
-                return self._refuse(ctx, d["tool"], "handle_not_presented", item=h["id"])
-            spec = self.specs().get(d["tool"])
-            if not body.gesture and (spec is None or A.delegation_for(b.tx, spec, d["args"], b.now) is None):
-                return self._refuse(ctx, d["tool"], "not_a_gesture", item=h["id"])
-            if (b.tx.get(FLAGS, "write_disabled") or {}).get("on"):
-                return self._refuse(ctx, d["tool"], "write_disabled")
-            b.move(h["id"], "spent", cause={"kind": "envelope", "ref": control.id})
-            return self._reserve(b, ctx, h["id"], d["trigger"], d["op"], d["tool"], d["args"],
-                                 list(d["ivs"]), control)
-        return self._decide(fn, control)
-
-    def decline(self, control: E.Envelope) -> None:
-        def fn(b):
-            apply_control(b.tx, control.id, b.now)
-            h = b.get(control.body.handle_id or "")
-            if h and h["state"] in ("issued", "presented"):
-                b.move(h["id"], "expired", reason="declined")
-        self._decide(fn)
-
-    def delegate(self, control: E.Envelope) -> Decision:
-        """A hands-free scope exists only by a gesture on the device (D8)."""
-        def fn(b):
-            apply_control(b.tx, control.id, b.now)
-            scope = control.body.scope or {}
-            if not control.body.gesture or not scope.get("recipients") or not scope.get("max"):
-                return self._refuse(None, "", "not_a_gesture" if not control.body.gesture else "no_scope")
-            b.open(ItemKind.DELEGATION, self.ids.new("dg"), data={**scope, "used": 0},
-                   cause={"kind": "envelope", "ref": control.id})
-            return Read()
-        return self._decide(fn)
-
-    def grant(self, ctx: A.RunCtx, tool: str, args: dict, expires_ms: int) -> Decision:
-        """The ledger's one way to create a grant (plan §15 E6): from a batch that is ALL the person's and under an active
-        delegation that covers its recipient and channel, bound to the exact operation."""
-        spec = self.specs().get(tool)
-        users = A.floor(ctx)
-
-        def fn(b):
-            if users is None or spec is None or A.delegation_for(b.tx, spec, args, b.now) is None:
-                return self._refuse(ctx, tool, "no_authority")
-            b.open(ItemKind.GRANT, self.ids.new("g"), data={"op": A.op_key(tool, args), "tool": tool, "args": args,
-                                                            "expires_ms": expires_ms, "from": users[0].id},
-                   cause={"kind": "envelope", "ref": users[0].id})
-            return Read()
-        return self._decide(fn)
 
     def seal_publication(self, ctx: A.RunCtx, ivs: list[str]) -> bool:
         """The first publication seals every intervention of the person's in the batch — all, or none and the run is
@@ -296,8 +183,3 @@ class Gateway:
                 self._note("sealed", ctx, iv=iv, by="publication")
             return Read()
         return isinstance(self._decide(fn), Read)
-
-    def note_onset(self, endpoint: str, t_ms: int) -> None:
-        def fn(b):
-            b.tx.put("onsets", endpoint, {"t_ms": t_ms})
-        self._decide(fn)

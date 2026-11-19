@@ -44,7 +44,7 @@ class Turn:
 @dataclass(frozen=True)
 class PromptParts:
     prefix: str                     # stable between turns (cache)
-    state: str                      # NOW · OPEN · TO_TELL
+    state: str                      # NOW · OPEN · the host's blocks
     conversation: tuple[Turn, ...]
     input: str                      # the batch, each entry with its id, channel and state
     steps: tuple = ()               # (ToolCall, result) pairs of this run, fed back to the next model call
@@ -54,12 +54,11 @@ class PromptParts:
 class ToolSpec:
     name: str
     schema: dict = field(default_factory=dict)
+    #: the event type the tool's act is, in the host's vocabulary — opaque here; the host derives `effect_class` from
+    #: it (a tool with no act is a read only if all it declares is reading)
+    act: str = ""
     effect_class: EffectClass = EffectClass.READ
     core: bool = False              # never filtered out (I7)
-    #: which arguments are the recipient, the channel and the content — so a handle or a delegation binds an effect
-    #: without the gateway naming any tool (plan §15 E2)
-    binding: dict = field(default_factory=dict)
-    hands_off: bool = False         # the work goes on without the run (a task started): its request is handed off
 
 
 @dataclass(frozen=True)
@@ -115,6 +114,12 @@ class Tools(Protocol):
     def catalog(self) -> list[ToolSpec]: ...            # the ONE list of tools
     async def call(self, name: str, args: dict, *, effect_id: str | None, idempotency_key: str | None,
                    deadline_mono_ms: int) -> ToolResult: ...
+
+
+class Tasks(Protocol):
+    """The host's tasks, by id. A button that cancels one is handled here; the task's row and its writer are the
+    host's. Without this port a `cancel_task` control has no handler and is refused when accepted."""
+    def cancel(self, account: str, task_id: str) -> bool: ...
 
 
 # ── memory (read only) ───────────────────────────────────────────────────────────────────────────────────────────

@@ -65,8 +65,6 @@ ELSEWHERE = {
 NOT_A_WAIT = {
     "port_budget_ms": "a port slower than this is an event; the call still runs to its own deadline",
     "evidence_ttl_ms": "how long evidence stays valid for a claim, not a wait",
-    "action_seal_grace_ms": "the gateway's grace before an action seals (0 in the core)",
-    "handle_ttl_ms": "the life of a confirmation handle (F2)",
     "retain_ms": "what is done leaves the live tables (A6 removes it)",
     "prune_every_ms": "how often the prune runs (A6 removes it)",
 }

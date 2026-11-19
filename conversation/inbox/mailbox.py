@@ -7,10 +7,12 @@ row is in exactly one state:
 
   queued    waits for a batch                          held      a text waiting behind earlier, open voice
   dequeued  in a batch the manager is running          accounted done, with its outcome: told · silent · expired ·
-                                                                 applied (a control, handled by id) · failed
+                                                                 applied (a control, handled by id) · failed ·
+                                                                 refused (a control nobody here handles)
 
 Controls never wait: `accept` hands them back at once (`control`) and the manager applies them by id; the voice
-intervention stays open and closes as always. Which voice is open the manager tells the inbox (`voice_open`, on the
+intervention stays open and closes as always. A control this manager has no handler for is accounted `refused` in
+the transaction that accepts it, with its event — never left for the sweep. Which voice is open the manager tells the inbox (`voice_open`, on the
 ear's onset; `voice_done`, on its utterance or its discard): a text waits behind a voice that began before it.
 """
 from __future__ import annotations
@@ -24,7 +26,7 @@ from conversation.config import Config
 from conversation.inbox import ordering
 from conversation.ports import Lease, Store
 from conversation.telemetry import Emitter
-from conversation.types import Coverage, EnvelopeKind, Ids
+from conversation.types import ControlOp, Coverage, EnvelopeKind, Ids
 
 T = "inbox"
 VOICE = "voice_open"
@@ -34,6 +36,7 @@ class Outcome(Enum):
     """How an accepted envelope ended (I6). `applied`: a control handled by id."""
     TOLD, SILENT, EXPIRED, APPLIED = "told", "silent", "expired", "applied"
     FAILED = "failed"            # its run failed; the request carries the recovery
+    REFUSED = "refused"          # a control nobody here handles
 
 
 class RowState(Enum):
@@ -54,14 +57,15 @@ class Batch:
 @dataclass(frozen=True)
 class Admission:
     envelope: E.Envelope | None
-    disposition: str     # queued · held · control · duplicate · refused
+    disposition: str     # queued · held · control · duplicate · refused (no row) · unhandled (accounted refused)
     extra: object = None  # what the caller's admission hook returned, inside the same transaction
 
 
 class Inbox:
     def __init__(self, store: Store, lease: Callable[[], Lease], account: str, config: Config, emitter: Emitter,
-                 ids: Ids) -> None:
+                 ids: Ids, handles: frozenset = frozenset({ControlOp.STOP})) -> None:
         self.store, self.lease, self.acct, self.cfg, self.em, self.ids = store, lease, account, config, emitter, ids
+        self.handles = handles      # the controls the manager has a handler for
 
     # ── accept ──────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -104,6 +108,9 @@ class Inbox:
 
     def _route(self, tx, env: E.Envelope, now: int) -> str:
         k = env.kind
+        if k is EnvelopeKind.USER_CONTROL and env.body.op not in self.handles:
+            self._final(tx, env.id, Outcome.REFUSED.value, now, reason="no_handler")
+            return "unhandled"
         if k is EnvelopeKind.USER_CONTROL:
             self._move(tx, env.id, state="dequeued")   # handed to the manager; accounted by its handler's transaction
             return "control"

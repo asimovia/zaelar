@@ -2,7 +2,7 @@
 
 `run_case(seed)` builds a manager over an audited in-memory store and drives it with a random interleaving: voice cut
 at random (eager / resumed / an end of turn mid-sentence / a stream that stops), typed texts on another device, stops
-from a button or the text field, confirmations with and without a gesture, lines owed to the person (a worker's result,
+from a button or the text field, controls by id nobody here handles, lines owed to the person (a worker's result,
 a contact's message, a reminder — held for the voice in their own ledger), jumps of the clock, and a TAKEOVER (another
 process acquires the account, the old one keeps being fed). The model is scripted at random — reads, local writes, sends, replies with and without numeric
 claims, silences, failures — and injects new input between its own events, so checkpoints are exercised. At the end
@@ -27,7 +27,7 @@ from conversation.store.sqlite import SqliteStore
 from conversation.testing.fakes import (AckingMouth, FakeClock, FakeOwed, ListTelemetry, NoMemory, RecordingTools,
                                         evidence)
 from conversation.testing.scripted_model import ScriptedModel, reply
-from conversation.types import Channel, ControlOp, EnvelopeKind, ItemKind
+from conversation.types import Channel, ControlOp, EffectClass, EnvelopeKind, ItemKind
 
 ACCT = "acct-p3"
 
@@ -231,11 +231,11 @@ class Case:
         elif a < 0.52:
             self._envelope(conv, EnvelopeKind.USER_CONTROL, E.ControlBody(ControlOp.STOP),
                            channel=self.rng.choice([Channel.BUTTON, Channel.TEXT]), endpoint="d1")
-        elif a < 0.62:
-            handles = [r["id"] for _k, r in self.store.snapshot(ACCT).scan("items") if r["kind"] == "handle"]
+        elif a < 0.62:                                   # a control by id this manager has no handler for
+            op = self.rng.choice([ControlOp.CONFIRM, ControlOp.DECLINE, ControlOp.DELEGATE, ControlOp.CANCEL_TASK])
             self._envelope(conv, EnvelopeKind.USER_CONTROL,
-                           E.ControlBody(ControlOp.CONFIRM, handle_id=self.rng.choice(handles or ["h_none"]),
-                                         gesture=self.rng.random() < 0.6), channel=Channel.BUTTON, endpoint="d1")
+                           E.ControlBody(op, handle_id="h_none", task_id="t_none", gesture=self.rng.random() < 0.6),
+                           channel=Channel.BUTTON, endpoint="d1")
         elif a < 0.86:                                   # a line owed: a worker's result, a contact, a reminder
             self.n += 1
             self.owed.add(f"n{self.n}", f"w{self.rng.randint(1, 60)}", self._now())
@@ -249,11 +249,6 @@ class Case:
             self._go_on_unfinished(conv)                                         # B1: a reopen left open
         elif a < 0.965:
             self._forge(conv)                                                    # M1: a forged producer / account
-        elif a < 0.975:
-            self._envelope(conv, EnvelopeKind.USER_CONTROL, E.ControlBody(         # M4: a hands-free scope
-                ControlOp.DELEGATE, gesture=True, scope={"recipients": ["c1"], "channel": "chat",
-                                                         "expires_ms": self._now() + 10 ** 7, "max": 3}),
-                channel=Channel.BUTTON, endpoint="d1")
         else:
             self.clock.advance(self.rng.choice([100, 2000, 9000, 40_000]))
             self._feed(conv, S.Tick(self._now()))
@@ -352,9 +347,7 @@ def check(case: Case) -> list[str]:
         for iv in row["data"].get("ivs", []):                                        # I1
             if phases.get(iv) not in ("sealed", "final"):
                 out.append(f"I1: effect {eid} rests on {iv} in phase {phases.get(iv)}")
-        mandate = items.get(row["data"]["mandate"])                                    # I8
-        if mandate is None and row["data"]["tool"] == "send_message":
-            out.append(f"I8: send {eid} without a handle, delegation or grant")
+        out.append(f"I8: effect {eid} reserved by a run (nothing but a read passes)")
     owners: dict = {}                                       # I2: a word is identified by its provider turn and place
     for c in ((case.conv,) if case.old is None else ()):
         for iv, word_id in c.ear.spans.final_word_ids():
@@ -387,6 +380,10 @@ def check(case: Case) -> list[str]:
         out.append("I7: a model call without the core tools")
     if len(case.tools.calls) > case.issued_calls:
         out.append("I7: a tool ran that the model did not ask for")
+    classes = {t.name: t.effect_class for t in case.tools.catalog()}
+    for name, _args, effect_id in case.tools.calls:                                    # I8: only reads reach Tools
+        if classes.get(name) is not EffectClass.READ or effect_id is not None:
+            out.append(f"I8: {name} reached the tools and is not a read")
     closes: dict[str, int] = {}
     closed_at: dict[str, int] = {}
     for k, lab, p in case.tel.events:
@@ -397,26 +394,12 @@ def check(case: Case) -> list[str]:
         if not r["env"]["producer"].startswith(E.KINDS[EnvelopeKind(r["kind"])][3]) or \
                 r["env"]["account"] != getattr(case, "account", ACCT):
             out.append(f"I8: {r['id']} accepted from {r['env']['producer']} for {r['env']['account']}")
-    for rid, row in items.items():
-        if row["kind"] == str(ItemKind.DELEGATION) and row["data"].get("used", 0) > len(
-                [e for e in items.values() if e["kind"] == "effect" and e["data"].get("mandate") == rid]):
-            out.append(f"N3: delegation {rid} spent more times than it has effects")        # M2
-    runs_batch = {p["refs"]["run"]: set(p["batch_envs"]) for k, lab, p in case.tel.events
-                  if k == "conv_run" and lab == "started"}
-    kind_of = {r["id"]: r["kind"] for r in inbox_rows}
-    for rid, row in items.items():                                                     # M4
-        m = items.get(row["data"].get("mandate", "")) if row["kind"] == "effect" else None
-        if m is not None and m["kind"] in ("delegation", "grant"):
-            envs = runs_batch.get(row["data"].get("run"), set())
-            if not any(kind_of.get(e) in ("user.utterance", "user.text") for e in envs):
-                out.append(f"I8: effect {rid} under a {m['kind']} in a run with no content of the person")
+    for r in inbox_rows:                                    # I6: a control with no handler is refused at once
+        if r["kind"] == "user.control" and r["env"]["body"]["op"] != "stop" and r["state"] == "accounted" and \
+                (r["outcome"], r.get("accounted_ms")) != ("refused", r["accepted"]):
+            out.append(f"I6: control {r['id']} with no handler ended {r['outcome']}, not refused when accepted")
     if any(o.text == "w8nv" for o in case.mouth.orders):                              # D9/M3
         out.append("D9: a reply published with a numeric claim that has no value")
-    holds = list(snap.scan("holds"))
-    for rid, row in items.items():                                                     # M5
-        if row["kind"] == "effect" and row["state"] == "claimed" and not any(
-                h["t_ms"] >= row["created_ms"] and rid not in h["released"] for _k, h in holds):
-            out.append(f"M5: effect {rid} claimed and left: never sent, never withdrawn")
     batch_of, fenced = {}, set()                            # a FENCED batch never runs again unchanged (B1)
     for k, lab, p in case.tel.events:
         if k == "conv_run" and lab == "started":

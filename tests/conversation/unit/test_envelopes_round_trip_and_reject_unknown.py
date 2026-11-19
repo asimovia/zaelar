@@ -118,8 +118,9 @@ def test_m1_a_gesture_comes_only_by_a_button():
 
 
 def test_minor2_the_button_channel_is_the_button_producers_alone(store):
-    """Review 2, MINOR 2: a control from `chat:` on the BUTTON channel with `gesture` created a delegation — the
-    gesture followed the channel, not who sent it. Now the inbox refuses it and no delegation exists."""
+    """A control from `chat:` on the BUTTON channel with `gesture` is not the button producer's: the gesture follows who
+    sent it, not the channel. The inbox refuses it with no row; the button's own is accepted (and, with no handler for
+    it here, accounted refused)."""
     from tests.conversation.unit.convkit import ACCT, Harness
     scope = {"recipients": ["c1"], "channel": "chat", "expires_ms": 10 ** 15, "max": 1}
     forged = E.make(EnvelopeKind.USER_CONTROL, E.ControlBody(ControlOp.DELEGATE, gesture=True, scope=scope),
@@ -129,6 +130,6 @@ def test_minor2_the_button_channel_is_the_button_producers_alone(store):
     assert not E.producer_allowed(forged) and E.producer_allowed(real)
     h = Harness(store)
     h.conv.give(forged)
-    assert not [r for _k, r in store.snapshot(ACCT).scan("items") if r["kind"] == "delegation"]
+    assert not list(store.snapshot(ACCT).scan("inbox"))
     h.conv.give(real)
-    assert [r["state"] for _k, r in store.snapshot(ACCT).scan("items") if r["kind"] == "delegation"] == ["active"]
+    assert [r["env"]["producer"] for _k, r in store.snapshot(ACCT).scan("inbox")] == ["button:d2"]

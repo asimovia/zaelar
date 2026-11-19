@@ -76,7 +76,7 @@ def test_what_was_accepted_survives_closing_the_store(tmp_path, clock, telemetry
 
 def test_a_control_whose_handler_never_ran_is_closed_by_the_sweep_with_its_reason(store, clock, telemetry):
     p = Pipe(store, clock, telemetry)
-    env = p.at(100).give(control(ControlOp.CONFIRM, 100, "k1", gesture=True, handle="h-x")).envelope
+    env = p.at(100).give(control(ControlOp.STOP, 100, "k1")).envelope     # handled, and the handler never ran
     assert audit(store.snapshot(ACCT), 100 + p.cfg.control_bound_ms, p.cfg) == []
     assert audit(store.snapshot(ACCT), 101 + p.cfg.control_bound_ms, p.cfg) != []   # the audit sees the limbo
     p.at(100 + p.cfg.control_bound_ms).batch()                                    # the sweep closes it

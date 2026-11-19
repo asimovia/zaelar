@@ -1,13 +1,13 @@
 """The blocks of the state the model sees, each thing ONCE (§«Cómo ve el modelo el estado»):
 
   NOW           the time, the screen, the device with the voice
-  OPEN          what is open in the ledger, under a budget; the device's focus is pinned in it and marked
-  TO_TELL       what is owed to the person and not told yet — never something already in OPEN
+  OPEN          what is open in the ledger (the person's requests, a reserved effect), newest first, under a budget
   CONVERSATION  the last turns, literal; ours cut to what was heard (unknown is said, never assumed heard)
   INPUT         the batch, each entry with its id, channel and state
 
 Pure functions of plain data. No word of a language is chosen here: titles are the contract's names, contents come
-from the ledger, the turns and the batch.
+from the ledger, the turns and the batch. What the host keeps — its tasks, what it owes the person — reaches the state
+as the blocks the host reads (`Memory.state_blocks`), never as a copy in this ledger.
 """
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ from conversation.types import Coverage, EnvelopeKind, ItemKind
 
 
 class Title(Enum):
-    NOW, OPEN, TO_TELL, CONVERSATION, INPUT = "NOW", "OPEN", "TO TELL", "CONVERSATION", "INPUT"
+    NOW, OPEN, CONVERSATION, INPUT = "NOW", "OPEN", "CONVERSATION", "INPUT"
 
 
 def now_block(now_ms: int, tz_offset_min: int, screen: str | None, voice_endpoint: str | None, lang: str) -> str:
@@ -36,7 +36,7 @@ def now_block(now_ms: int, tz_offset_min: int, screen: str | None, voice_endpoin
     return f"{Title.NOW.value} " + " · ".join(parts)
 
 
-def _line(row: dict, focus: str | None) -> str:
+def _line(row: dict) -> str:
     d = row.get("data") or {}
     bits = [f"[{row['id']}] {row['kind']} · {row['state']}"]
     if d.get("summary"):
@@ -45,27 +45,19 @@ def _line(row: dict, focus: str | None) -> str:
         bits.append(f"owner {row['owner']}")
     if row.get("waiting_on"):
         bits.append(f"waiting on {row['waiting_on']}")
-    line = " · ".join(bits)
-    return line + "  ⟵ focus" if row["id"] == focus else line
+    return " · ".join(bits)
 
 
 def open_items(items: list[dict]) -> list[dict]:
-    return [r for r in items if r["kind"] != str(ItemKind.TO_TELL) and not final(ItemKind(r["kind"]), r["state"])]
+    return [r for r in items if not final(ItemKind(r["kind"]), r["state"])]
 
 
-def open_block(items: list[dict], focus: str | None, budget: int) -> tuple[str, set[str]]:
-    """The open items, newest first, at most `budget`; the focus always among them, first."""
-    rows = sorted(open_items(items), key=lambda r: (r["id"] != focus, -r.get("updated_ms", 0), r["id"]))[:budget]
-    shown = {r["id"] for r in rows}
+def open_block(items: list[dict], budget: int) -> str:
+    """The open items, newest first, at most `budget`, and how many more there are."""
+    rows = sorted(open_items(items), key=lambda r: (-r.get("updated_ms", 0), r["id"]))[:budget]
     hidden = len(open_items(items)) - len(rows)
-    lines = [_line(r, focus) for r in rows] + ([f"(+{hidden} more open)"] if hidden > 0 else [])
-    return "\n".join([Title.OPEN.value, *lines]), shown
-
-
-def to_tell_block(items: list[dict], already: set[str], now_ms: int) -> str:
-    rows = [r for r in items if r["kind"] == str(ItemKind.TO_TELL) and r["id"] not in already
-            and (r["state"] == "pending" or (r["state"] == "deferred" and (r["data"].get("due_ms") or 0) <= now_ms))]
-    return "\n".join([Title.TO_TELL.value, *(_line(r, None) for r in sorted(rows, key=lambda r: r["id"]))])
+    lines = [_line(r) for r in rows] + ([f"(+{hidden} more open)"] if hidden > 0 else [])
+    return "\n".join([Title.OPEN.value, *lines])
 
 
 def cut_to_heard(turns: list[dict], keep: int) -> tuple[Turn, ...]:

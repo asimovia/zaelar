@@ -20,18 +20,16 @@ from conversation.ear import Ear
 from conversation.ear import signals as S
 from conversation.gateway import dispatch
 from conversation.gateway.authority import RunCtx
-from conversation.gateway.outbox import Claimed
 from conversation.gateway import seal as SEAL
 from conversation.gateway.outbox import Gateway
 from conversation.inbox import Inbox
-from conversation.inbox.mailbox import apply_control
 from conversation.ledger import Book
 from conversation.ledger.book import BookTx
 from conversation.ledger.items import final
 from conversation import guard
 from conversation.manager import policy, run
 from conversation.mouth import Device, Painted, PlayoutAck, SayEnded, SayStarted, Speaker
-from conversation.ports import Clock, Memory, Model, Mouth, Owed, Store, Telemetry, Tools
+from conversation.ports import Clock, Memory, Model, Mouth, Owed, Store, Tasks, Telemetry, Tools
 from conversation.telemetry import Emitter
 from conversation.types import ControlOp, Coverage, EnvelopeKind, Ids, ItemKind, MgrState, Op
 
@@ -51,16 +49,15 @@ class Running:
     last_entry_ms: int = 0                # the latest close among the person's entries in the batch
     last_endpoint: str | None = None      # …and the device it came from
     resumed_iv: str | None = None         # the resumed voice that stopped this run
-    presents: str | None = None
     said: list = field(default_factory=list)
 
 
 class Conversation:
     def __init__(self, *, account: str, owner: str, model: Model, tools: Tools, store: Store, memory: Memory | None,
                  clock: Clock, mouth: Mouth, telemetry: Telemetry, config: Config | None = None, prefix: str = "",
-                 ids: Ids | None = None, owed: Owed | None = None) -> None:
+                 ids: Ids | None = None, owed: Owed | None = None, tasks: Tasks | None = None) -> None:
         self.account, self.cfg, self.prefix = account, config or Config(), prefix
-        self.model, self.tools, self.memory, self.clock, self.owed = model, tools, memory, clock, owed
+        self.model, self.tools, self.memory, self.clock, self.owed, self.tasks = model, tools, memory, clock, owed, tasks
         self.lease = store.acquire(account, owner)
         self.em = Emitter(telemetry, clock, account, epoch=lambda: self.lease.epoch)
         self.store = guard.TimedStore(store, self.em, self.cfg)
@@ -68,21 +65,20 @@ class Conversation:
         self.ids = ids or Ids("" if self.lease.epoch == 1 else f"{self.lease.epoch}x")
         lease = lambda: self.lease  # noqa: E731
         self.ear = Ear(account, self.cfg, self.em, self.ids)
-        self.inbox = Inbox(self.store, lease, account, self.cfg, self.em, self.ids)
+        # the controls this manager has a handler for; any other is refused when accepted
+        handles = frozenset({ControlOp.STOP} | ({ControlOp.CANCEL_TASK} if tasks is not None else set()))
+        self.inbox = Inbox(self.store, lease, account, self.cfg, self.em, self.ids, handles=handles)
         self.book = Book(self.store, lease, account, self.em, clock)
         self.gw = Gateway(self.book, account, self.cfg, self.em, clock, self.ids,
                           lambda: {t.name: t for t in tools.catalog()})
-        self.speaker = Speaker(self.store, lease, mouth, self.em, clock, self.ids, on_presented=self._presented,
-                               on_owed=self._owed_ended, on_ended=self._line_ended, config=self.cfg)
+        self.speaker = Speaker(self.store, lease, mouth, self.em, clock, self.ids, on_owed=self._owed_ended, on_ended=self._line_ended, config=self.cfg)
         self.devices: dict[str, Device] = {}
         self.state = MgrState.IDLE
         self.current: Running | None = None
         self.speaking_on: set[str] = set()
-        self.to_submit: list[str] = []      # effects a gesture committed outside a run, sent by the next pump
         self.dirty = False                  # something was accepted since the last pump (a driver may pump only then)
         self._swept_at = -1 << 62
         self._pruned_at = -1 << 62
-        self._voice_wait: int | None = None  # a run gave its batch back on a held act: nothing runs until that voice ends
         self._held_iv: str | None = None     # a run gave its batch back to a resumed voice: nothing runs while it is open
         self.eligible_since = 0              # when the last held batch became eligible again (liveness counts from it)
         self.recover()
@@ -119,7 +115,7 @@ class Conversation:
         adm = self.inbox.accept(env, now, admit=lambda tx, e: self._admit(tx, e, now, pending))
         self.dirty = True
         self.book.say(pending)
-        if adm.envelope is None:
+        if adm.envelope is None or adm.disposition == "unhandled":   # a duplicate, refused, or no handler here
             return
         env = adm.envelope
         self._voice_state(env)
@@ -148,13 +144,11 @@ class Conversation:
     def _onset(self, o: S.Onset) -> None:
         """The person starts speaking. While we speak, nothing here: cutting our voice is the voice's local rule."""
         self.speaking_on.add(o.endpoint)
-        self.gw.note_onset(o.endpoint, o.t_ms)
         for op in policy.decide(o, self.state, claimed=bool(self.current and self.current.claimed)):
             if op is Op.WAIT_BEHIND_VOICE:
                 self.inbox.voice_open(o.intervention_id, o.t_ms, o.endpoint)
             elif op is Op.ACTIONS_WAIT and self.current is not None:
-                self.current.actions_held = True        # unclaimed actions wait: the gateway answers Held
-                dispatch.hold(self.gw, self.ids.new("hold"), o.endpoint, self.clock.now_ms(), "onset")
+                self.current.actions_held = True        # an act asked for while they speak is refused with that reason
             elif (op is Op.HOLD_FOR_VOICE and self.current is not None
                   and run.resumed(self, self.current, o.endpoint, o.t_ms)):
                 self.current.interrupt = "resumed"      # stop it at its next checkpoint; its batch waits for that voice
@@ -165,20 +159,12 @@ class Conversation:
             self.speaking_on.discard(endpoint)
         if self.current is not None and not self.speaking_on:
             self.current.actions_held = False
-        if not self.speaking_on:
-            self._voice_wait = None
 
     def hold_for(self, iv: str) -> None:
         """A run gave its batch back to the person's resumed voice: nothing runs while that voice is open. The ear
         always ends it (its cap, on the sweep's ticks): then the continuation travels with the batch, or — a cough,
         no words — the batch runs as it was."""
         self._held_iv = iv
-
-    def wait_for_voice(self) -> None:
-        """A run met a held act (NM1): the batch is back in the queue and runs again when the person has finished —
-        the voice that held it closes (a new sentence supersedes it) or ends with no words (it runs as it was). Bounded
-        by `cross_channel_hold_ms` whatever the voice does."""
-        self._voice_wait = self.clock.now_ms()
 
     def _apply(self, env: E.Envelope, ops: tuple[Op, ...]) -> None:
         for op in ops:
@@ -199,28 +185,11 @@ class Conversation:
             self.inbox.applied(env.id, self.clock.now_ms())
 
     def _by_id(self, env: E.Envelope) -> None:
-        op = env.body.op
-        if op is ControlOp.CONFIRM:
-            got = self.gw.confirm(env)
-            if isinstance(got, Claimed):            # the gesture committed it: the next pump sends it
-                self.to_submit.append(got.effect_id)
-        elif op is ControlOp.DECLINE:
-            self.gw.decline(env)
-        elif op is ControlOp.DELEGATE:
-            self.gw.delegate(env)
-        elif op is ControlOp.CANCEL_TASK:
-            with self.book.tx() as b:
-                apply_control(b.tx, env.id, b.now)
-                task = b.get(env.body.task_id or "")
-                if task is not None and task["state"] in ("started", "running", "waiting"):
-                    b.move(task["id"], "cancelled", cause={"kind": "envelope", "ref": env.id})
-
-    def release(self, effect_id: str, endpoint: str | None, gesture: bool) -> bool:
-        """A gesture on the initiating device commits a held effect: the next pump sends it."""
-        ok = dispatch.release(self.gw, effect_id, endpoint, gesture)
-        if ok:
-            self.to_submit.append(effect_id)
-        return ok
+        """A control by id. Only those with a handler reach here (the inbox refused the rest when it accepted them):
+        in F1, cancelling one of the host's tasks. Cancelling a task is never a stop and never a run's cancel (D3)."""
+        if env.body.op is ControlOp.CANCEL_TASK and self.tasks is not None:
+            guard.sync(self.em, self.cfg, "tasks", lambda: self.tasks.cancel(self.account, env.body.task_id or ""))
+            self.inbox.applied(env.id, self.clock.now_ms())
 
     def ack(self, sig: SayStarted | PlayoutAck | Painted | SayEnded) -> None:
         self.speaker.ack(sig)
@@ -229,10 +198,6 @@ class Conversation:
         """A line ended — played, cut, or unknown past its deadline: we are not speaking any more."""
         if self.state is MgrState.SPEAKING:
             self.state = MgrState.IDLE
-
-    def _presented(self, handle: str, endpoint: str | None) -> None:
-        if handle:
-            self.gw.present(handle, endpoint)
 
     def device(self, endpoint: str, **state) -> None:
         self.devices[endpoint] = Device(endpoint, **state)
@@ -288,19 +253,12 @@ class Conversation:
             if now - self._swept_at >= 100:      # the clock's turn is about time: once per 100 ms is every time
                 self._swept_at = now
                 self.sweep(now)
-            while self.to_submit:
-                eid = self.to_submit.pop(0)
-                await dispatch.submit(self.gw, self.tools, eid, self.clock.mono_ms() + self.cfg.tool_ms)
             if self.state is not MgrState.IDLE:
                 return runs
             if self._held_iv is not None:
                 if self._held_iv in self.ear.open_ids():
                     return runs
                 self._held_iv, self.eligible_since = None, now
-            if self._voice_wait is not None:
-                if self.speaking_on and now - self._voice_wait < self.cfg.cross_channel_hold_ms:
-                    return runs
-                self._voice_wait = None
             batch = self.inbox.next_batch(self.clock.now_ms())
             if batch is None:
                 await self._say_owed()

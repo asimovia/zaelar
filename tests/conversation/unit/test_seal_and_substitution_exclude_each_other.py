@@ -35,7 +35,7 @@ def test_a_sealed_intervention_stays_sealed_and_an_unended_one_never_seals(store
         assert not S.seal(tx, "iv2", 16) and not S.seal(tx, "iv3", 16)
     assert (_phase(store, "iv1"), _phase(store, "iv2"), _phase(store, "iv3")) == ("sealed", "incomplete",
                                                                                     "discarded")
-    assert isinstance(k.gw.request(k.ctx(a), ADD), Claimed)
+    assert isinstance(k.gw.reserve(k.ctx(a), ADD), Claimed)
 
 
 def test_an_action_never_rests_on_an_incomplete_intervention(store, clock, telemetry):
@@ -43,7 +43,7 @@ def test_an_action_never_rests_on_an_incomplete_intervention(store, clock, telem
     env = k.utterance("iv1", closed=False)
     with store.tx(k.lease) as tx:
         S.note(tx, "iv1", "incomplete", 5)
-    assert k.gw.request(k.ctx(env), ADD) == Refused("unsealed") and not k.items("effect")
+    assert k.gw.reserve(k.ctx(env), ADD) == Refused("unsealed") and not k.items("effect")
 
 
 def test_how_it_ended_is_noted_once_and_nothing_moves_a_seal(store, clock, telemetry):

@@ -108,11 +108,12 @@ def test_the_ear_closes_only_on_the_providers_end_or_its_cap(name):
 
 @pytest.mark.parametrize("name", SESSIONS)
 def test_the_replay_acts_and_hears_its_own_voice(name):
-    """Review 2, MINOR 7 and 8: the replay's model also writes to the agenda (every third request), so the gateway's
-    seal, reservation and receipt are exercised and I1/I8 have something to check; and our own voice reaches the ear as
-    the device's playback, so a sentence after a line we played is new — it never amends what came before it."""
+    """The replay's model also reads and asks for a write (every third request), so the gateway is exercised — the read
+    reaches the tools, the write never does (I8); and our own voice reaches the ear as the device's playback, so a
+    sentence after a line we played is new — it never amends what came before it."""
     rep, _sig = _replay(name)
-    assert rep.tools.calls and "conv_effect/receipt" in rep.tel.labels("conv_effect")
+    assert rep.tools.calls and "conv_effect/refused" in rep.tel.labels("conv_effect")
+    assert {name for name, _a, _e in rep.tools.calls} == {"search"}
     snap = rep.store.snapshot("replay")
     sealed = {k: r.get("sealed_ms") for k, r in snap.scan("interventions") + snap.scan("interventions.done")}
     voiced = [p["t_ms"] for k, lab, p in rep.tel.events if k == "conv_mouth" and lab == "say" and "voice" in p["channels"]]

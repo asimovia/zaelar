@@ -99,10 +99,13 @@ class Replay:
         self.loop = asyncio.new_event_loop()
 
     def _answer(self, ids: list[str]) -> list:
-        """Think, then answer; every third request also writes to the agenda first, so the replay exercises the
-        gateway (seal, reservation, receipt) and I1/I8 have something to check (review 2, MINOR 7)."""
+        """Think, then answer; every third request also reads and asks for a write first, so the replay exercises the
+        gateway (the read passes, the write is refused) and I8 has something to check."""
         self.asked += 1
-        act = [ToolCall(f"a{self.asked}", "agenda_add", {"what": ids[0] if ids else "w0"})] if self.asked % 3 == 0 else []
+        what = ids[0] if ids else "w0"
+        act = ([ToolCall(f"r{self.asked}", "search", {"q": what}), ToolCall(f"a{self.asked}", "agenda_add",
+                                                                            {"what": what})]
+               if self.asked % 3 == 0 else [])
         self.issued += len(act)
         return [lambda: self.until(self.clock.now_ms() + self.think_ms), *act, reply("ok " + "+".join(ids)), Done()]
 

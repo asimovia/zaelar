@@ -1,4 +1,5 @@
-"""A gateway over a real store, with a small tool catalogue and a recording `Tools` double. Names are tokens."""
+"""A gateway over a real store, with a small tool catalogue (each tool with its act and the class a host derives
+from it) and a recording `Tools` double. Names are tokens."""
 from __future__ import annotations
 
 from conversation import envelopes as E
@@ -13,13 +14,10 @@ from conversation.telemetry import Emitter
 from conversation.types import Channel, ControlOp, EffectClass, EnvelopeKind, Ids
 
 ACCT = "acct-test"
-SEND = {"recipient": "to", "channel": "via", "content": "text"}
 SPECS = {
     "search": ToolSpec("search", core=True),
-    "agenda_add": ToolSpec("agenda_add", effect_class=EffectClass.LOCAL_WRITE),
-    "send_message": ToolSpec("send_message", effect_class=EffectClass.EGRESS, binding=SEND),
-    "delete_all": ToolSpec("delete_all", effect_class=EffectClass.DESTRUCTIVE),
-    "pay": ToolSpec("pay", effect_class=EffectClass.PAYMENT, binding={"recipient": "to"}),
+    "agenda_add": ToolSpec("agenda_add", act="a1.add", effect_class=EffectClass.WRITE),
+    "send_message": ToolSpec("send_message", act="a2.send", effect_class=EffectClass.LEAVES),
 }
 
 

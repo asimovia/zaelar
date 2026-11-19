@@ -24,7 +24,7 @@ from conversation import guard
 from conversation.composer import compose, view_from
 from conversation.gateway import dispatch
 from conversation.gateway.authority import RunCtx
-from conversation.gateway.outbox import Claimed, Held, NeedsConfirmation, Read
+from conversation.gateway.outbox import Read
 from conversation.inbox.mailbox import Batch
 from conversation.manager import claims as CL
 from conversation.manager import commands
@@ -122,26 +122,10 @@ async def _fail(conv: "Conversation", r: "Running", reason: str) -> None:
     by the model that just failed. From there it is said when the manager is free, or pushed, or shown."""
     now = conv.clock.now_ms()
     conv.inbox.account(list(r.batch_ids), "failed", now)
-    _withdraw(conv, r, reason)
     for req in r.requests:
         if close(conv, req, "recovered", "recovered", reason=reason) and conv.owed is not None:
             conv.owed.owe(conv.account, f"conv:failed:{req}", f"failed:{reason}")
     _emit(conv, "ended", r, outcome="failed", reason=reason)
-
-
-def _withdraw(conv: "Conversation", r: "Running", reason: str) -> None:
-    """Effects this run claimed and never submitted are withdrawn, and that is said (M5)."""
-    with conv.book.tx() as b:
-        for row in b.items(ItemKind.EFFECT, ("claimed",)):
-            if row["data"].get("run") == r.run_id:
-                b.move(row["id"], "withdrawn", reason=reason, cause={"kind": "run", "ref": r.run_id})
-
-
-def _keep_held(conv: "Conversation", r: "Running", call: ToolCall) -> None:
-    """An act held while the person speaks, in a run that cannot give its batch back (it already acted): it is not
-    lost — the person is owed a line that names it."""
-    if conv.owed is not None:
-        conv.owed.owe(conv.account, f"conv:held:{r.run_id}:{call.call_id}", f"held:{call.name}")
 
 
 def resumed(conv: "Conversation", r: "Running", endpoint: str | None, t_ms: int) -> bool:
@@ -170,15 +154,12 @@ def _checkpoint(conv: "Conversation", r: "Running") -> None:
     if r.interrupt == "resumed" and not r.claimed:
         _hold(conv, r, r.resumed_iv)               # the run stops; its batch waits for that voice
         raise _Stop()
-    if r.interrupt in ("superseded", "held") and not r.claimed:
+    if r.interrupt == "superseded" and not r.claimed:
         conv.inbox.requeue(list(r.batch_ids))
         _emit(conv, "superseded", r, reason=r.interrupt)
-        if r.interrupt == "held":
-            conv.wait_for_voice()
         raise _Stop()
     now = conv.clock.now_ms()
     conv.inbox.account(list(r.batch_ids), "silent", now)
-    _withdraw(conv, r, r.interrupt)
     for req in r.requests:
         close(conv, req, "silent", "silent", reason="stopped")
     _emit(conv, "cancelled", r, reason=r.interrupt)
@@ -258,20 +239,6 @@ async def _tool(conv: "Conversation", r: "Running", call: ToolCall) -> ToolResul
         with conv.store.tx(conv.lease) as tx:
             CL.remember(tx, result.evidence, conv.clock.now_ms(), conv.cfg.evidence_ttl_ms)
         return result
-    if isinstance(decision, Claimed):
-        r.claimed = True
-        with guard.measured(conv.em, conv.cfg, "tools", {"run": r.run_id}):
-            sent = await dispatch.submit(conv.gw, conv.tools, decision.effect_id, deadline)
-        return sent or ToolResult("held", data={"effect": decision.effect_id})
-    if isinstance(decision, NeedsConfirmation):
-        r.presents = decision.handle_id
-        return ToolResult("needs_confirmation", data={"handle": decision.handle_id})
-    if isinstance(decision, Held):
-        if not r.claimed:                       # the run gives its batch back and waits for that voice to end (NM1)
-            r.interrupt = "held"
-            _checkpoint(conv, r)
-        _keep_held(conv, r, call)               # claimed: the act stays as an entry the next run proposes again
-        return ToolResult("held", data={"reason": decision.reason})
     return ToolResult("refused", data={"reason": decision.reason})
 
 
@@ -299,7 +266,7 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
             conv.speaker.voice_unavailable(r.run_id, r.ctx.endpoint)
         conv.state = MgrState.SPEAKING
         await conv.speaker.say(run_id=r.run_id, request_id=r.ctx.request_id, text=cmd.text, channels=reply.channels,
-                               endpoint=r.ctx.endpoint, presents=r.presents,
+                               endpoint=r.ctx.endpoint,
                                iv=next(iter(r.ctx.batch.values())).refs.intervention_id if r.ctx.batch else None)
         for req in r.requests:
             close(conv, req, "answered", "answered", steps=len(steps))
@@ -307,26 +274,11 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
         _emit(conv, "ended", r, outcome="answered")
         return True
     reason = getattr(cmd, "reason", None) or getattr(cmd, "name", "")
-    handed = _handed_off(conv, r)
     for req in r.requests:
-        if handed:
-            close(conv, req, "handed_off", "handed_off", reason="task")
-        else:
-            close(conv, req, "silent", "silent", reason=reason)
+        close(conv, req, "silent", "silent", reason=reason)
     conv.inbox.account(list(r.batch_ids), "silent", now)
-    _emit(conv, "ended", r, outcome="handed_off" if handed else "no_reply", reason=reason)
+    _emit(conv, "ended", r, outcome="no_reply", reason=reason)
     return True
-
-
-def _handed_off(conv: "Conversation", r: "Running") -> bool:
-    """The run started work that goes on without it: a tool the catalog declares as a hand-off was claimed."""
-    specs = {t.name: t for t in conv.tools.catalog()}
-    for _k, row in conv.book.snapshot().scan("items"):
-        d = row["data"]
-        if row["kind"] == str(ItemKind.EFFECT) and d.get("run") == r.run_id and \
-                getattr(specs.get(d.get("tool")), "hands_off", False):
-            return True
-    return False
 
 
 def _seal_batch(conv: "Conversation", r: "Running", batch: Batch) -> bool:

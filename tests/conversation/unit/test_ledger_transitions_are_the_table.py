@@ -1,9 +1,10 @@
-"""The ledger's transitions are ONE table, and nothing moves outside it (node 13.10).
+"""The ledger keeps two items and their transitions are ONE table; nothing moves outside it (node 13.10).
 
-For every item kind: every listed transition is taken, every unlisted one (including any move out of a final state)
-is refused with `conv_ledger/refused` and writes nothing. A follow-up is its own item, apart from the effect that
-sent: the effect can be delivered while its follow-up still waits. The ledger's events are said only when the
-transaction commits, and a taken lease writes nothing and says `stale_epoch`. Over both stores.
+A request and the reservation of an effect — nothing else: tasks, questions, what is owed and mandates are the host's
+rows, referred to by id. For both kinds: every listed transition is taken, every unlisted one (including any move out
+of a final state) is refused with `conv_ledger/refused` and writes nothing. An accepted effect is final here: whether
+it was delivered is the connector's receipt. The ledger's events are said only when the transaction commits, and a
+taken lease writes nothing and says `stale_epoch`. Over both stores.
 """
 from __future__ import annotations
 
@@ -55,19 +56,15 @@ def test_every_listed_move_is_taken_and_every_other_is_refused(book, telemetry, 
             assert [lab for _k, lab, _p in telemetry.events[before:]] == ["refused"]
 
 
-def test_a_followup_is_its_own_item_apart_from_the_effect(book):
+def test_two_kinds_and_an_accepted_effect_never_goes_back_to_sending(book):
+    assert [str(k) for k in ItemKind] == ["request", "effect"]
     with book.tx() as b:
-        b.open(ItemKind.EFFECT, "x1", data={"tool": "send_message"})
-        b.open(ItemKind.FOLLOWUP, "f1", data={"effect": "x1", "scope": "thread:th1"}, waiting_on="reply")
-        for s in ("submitting", "provider_accepted", "delivered"):
+        b.open(ItemKind.EFFECT, "x1", data={"tool": "w_tool"})
+        for s in ("submitting", "provider_accepted"):
             b.move("x1", s)
-    snap = book.snapshot()
-    assert snap.get("items", "x1")["state"] == "delivered" and snap.get("items", "f1")["state"] == "waiting"
-    with book.tx() as b:
-        b.move("f1", "matched")
     with pytest.raises(InvalidTransition):
         with book.tx() as b:
-            b.move("x1", "submitting")                      # a delivered effect never goes back to sending
+            b.move("x1", "submitting")
 
 
 def test_events_are_said_only_when_the_transaction_commits(book, telemetry):
@@ -93,34 +90,21 @@ def test_a_taken_lease_writes_nothing_and_says_so(book, store, telemetry):
 
 def test_open_is_idempotent_by_id(book):
     with book.tx() as b:
-        first = b.open(ItemKind.TASK, "t1", owner="worker:t1")
-        again = b.open(ItemKind.TASK, "t1", owner="conversation")
+        first = b.open(ItemKind.REQUEST, "r1", owner="worker:t1")
+        again = b.open(ItemKind.REQUEST, "r1", owner="conversation")
     assert again == first and again["owner"] == "worker:t1"
 
 
-#: §6.4 of the plan, written here independently of the code: the table may not drift from it.
+#: the two items as the design writes them, independently of the code: the table may not drift from it.
 SPEC = {
     ItemKind.REQUEST: {"open": {"answered", "handed_off", "silent", "recovered", "failed"}},
-    ItemKind.TASK: {"started": {"running", "waiting", "failed", "cancelled"},
-                    "running": {"waiting", "done", "failed", "cancelled"},
-                    "waiting": {"running", "done", "failed", "cancelled"}},
-    ItemKind.QUESTION: {"asked": {"presented", "expired", "superseded"},
-                        "presented": {"answered", "expired", "superseded"}},
-    ItemKind.GRANT: {"active": {"spent", "expired", "revoked"}},
-    ItemKind.HANDLE: {"issued": {"presented", "expired"}, "presented": {"spent", "expired"}},
-    ItemKind.DELEGATION: {"active": {"exhausted", "expired", "revoked"}},
     ItemKind.EFFECT: {"claimed": {"submitting", "withdrawn"},
                       "submitting": {"provider_accepted", "rejected", "submission_unknown"},
-                      "submission_unknown": {"provider_accepted", "rejected"},
-                      "provider_accepted": {"delivered", "delivery_unconfirmed", "failed"}},
-    ItemKind.FOLLOWUP: {"waiting": {"matched", "expired"}},
-    ItemKind.TO_TELL: {"pending": {"told", "coalesced", "expired", "deferred"},
-                       "deferred": {"pending", "told", "coalesced", "expired"}},
+                      "submission_unknown": {"provider_accepted", "rejected"}},
 }
 
 
-def test_the_table_is_the_specified_one_and_spent_or_ended_never_comes_back():
+def test_the_table_is_the_specified_one_and_an_end_never_comes_back():
     assert {k: {f: set(t) for f, t in v.items()} for k, v in TRANSITIONS.items()} == SPEC
-    for kind in ("handle", "grant", "delegation"):
-        for end in ("spent", "expired", "revoked", "exhausted"):
-            assert end not in TRANSITIONS[ItemKind(kind)], f"{kind}: {end} must be final"
+    for end in ("answered", "silent", "recovered", "failed", "withdrawn", "provider_accepted", "rejected"):
+        assert all(end not in TRANSITIONS[k] for k in ItemKind), f"{end} must be final"

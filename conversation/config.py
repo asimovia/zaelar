@@ -31,12 +31,6 @@ class Config:
     #: a control is handled by id at once; one accepted and still unaccounted after this (its handler never ran or
     #: raised) is closed by the sweep with a visible outcome (I6).
     control_bound_ms: int = 5000
-    # ── the gateway ──
-    #: extra wait without onset on the initiating device before an ACTION seals (D2's «0.3–0.7 s», PA-3). 0 in the
-    #: core; F0/P4 set it.
-    action_seal_grace_ms: int = 0
-    #: a confirmation handle lives this long after it was presented.
-    handle_ttl_ms: int = 120_000
     # ── the manager ──
     #: every accepted request ends (answered, handed off, silent, recovered) within this budget, or is closed
     #: `stalled` by the sweep (I9).
@@ -65,7 +59,7 @@ class Config:
     #: the model used for the conversation (D6); the adapter passes the live id from the model table.
     model_id: str = ""
     # ── the composer ──
-    #: OPEN holds at most this many items; the device's focus is always among them.
+    #: OPEN holds at most this many items, newest first; the rest are counted.
     open_budget: int = 8
     #: the last turns of the conversation, literal.
     conversation_turns: int = 12

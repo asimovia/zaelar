@@ -4,7 +4,8 @@ Accept, close, seal, reserve, submit, the provider's answer, the recorded receip
 and after, the process is killed (`conversation.testing.faults`), a new manager acquires the account on the SAME
 sqlite file, recovers what the dead one left (a dequeued batch back to the queue, an effect left `submitting` →
 `submission_unknown`), and the conversation goes on. Then: no effect reached the provider twice, an unknown
-submission was never resent, every request ended, and the inbox is drained clean.
+submission was never resent, every request ended, and the inbox is drained clean. No run reserves an effect in F1
+(nothing but a read passes), so the reservation's points are driven through its own door, as F2 will.
 """
 from __future__ import annotations
 
@@ -17,21 +18,21 @@ from conversation import build
 from conversation.config import Config
 from conversation.ear import signals as S
 from conversation.inbox.accounting import audit
+from conversation.gateway import dispatch
+from conversation.gateway.authority import RunCtx
+from conversation import envelopes as E
 from conversation.ports import Done, ToolCall
 from conversation.store import SqliteStore
 from conversation.testing.faults import Crash, Point, inject
 from conversation.testing.fakes import AckingMouth, FakeClock, ListTelemetry, NoMemory, RecordingTools
 from conversation.testing.scripted_model import ScriptedModel, reply
-from conversation.types import ControlOp
-from tests.conversation.unit.inboxkit import control
 
 ACCT = "acct-test"
 
 
 def _script():
     return ScriptedModel(default=lambda ids: (
-        [ToolCall("a", "agenda_add", {"what": "w1"}), ToolCall("s", "send_message", {"to": "c1", "via": "chat",
-                                                                                     "text": "w5"}), Done()]
+        [ToolCall("a", "search", {"q": "w1"}), Done()]
         if ids and ids[0].startswith("iv") else [reply("w-told"), Done()]))
 
 
@@ -62,11 +63,16 @@ def _speak(p: Process, clock) -> None:
     p.pump()
 
 
-def _confirm(p: Process) -> None:
-    handles = [r for _k, r in p.store.snapshot(ACCT).scan("items") if r["kind"] == "handle"]
-    if handles:
-        p.conv.give(control(ControlOp.CONFIRM, 0, "k-confirm", endpoint="d1", gesture=True, handle=handles[0]["id"]))
-        p.pump()
+def _act(p: Process) -> None:
+    """F2's path, driven by hand: reserve an effect on the person's first entry and submit it."""
+    rows = [r for _k, r in p.store.snapshot(ACCT).scan("inbox") if r["kind"] == "user.utterance"]
+    if not rows:
+        return
+    env = E.from_json(rows[0]["env"])
+    got = p.conv.gw.reserve(RunCtx("run-act", f"r_{env.refs.intervention_id}", {env.id: env}, "d1"),
+                            ToolCall("a", "agenda_add", {"what": "w1"}))
+    if hasattr(got, "effect_id"):
+        asyncio.run(dispatch.submit(p.conv.gw, p.conv.tools, got.effect_id, 10 ** 12))
 
 
 CASES = [(pt, when) for pt in Point for when in ("before", "after")
@@ -82,13 +88,13 @@ def test_a_crash_at_any_transition_recovers(tmp_path, point, when):
     with inject(point, when, tools=tools) as fired:
         try:
             _speak(first, clock)
-            _confirm(first)
+            _act(first)
         except Crash:
             crashed = True
     assert crashed == bool(fired["n"]), "the armed point was never reached"
     second = Process(path, clock, tools)                       # the same file, a new lease: the dead one is fenced
     second.pump()
-    _confirm(second)
+    _act(second)
     for _ in range(3):                                         # time runs out: every budget expires, what is ready runs
         clock.advance(31_000)
         second.conv.sweep()
@@ -108,13 +114,15 @@ def test_a_crash_at_any_transition_recovers(tmp_path, point, when):
 def test_a_crash_after_the_provider_answered_leaves_an_unknown_submission_that_is_never_resent(tmp_path):
     path, clock, tools = tmp_path / "c.db", FakeClock(t0_ms=0), RecordingTools()
     first = Process(path, clock, tools)
+    _speak(first, clock)
     with inject(Point.PROVIDER, "after", tools=tools):
         with pytest.raises(Crash):
-            _speak(first, clock)
+            _act(first)
     second = Process(path, clock, tools)
     second.pump()
+    _act(second)
     effect = [r for _k, r in second.store.snapshot(ACCT).scan("items") if r["kind"] == "effect"][0]
     assert effect["state"] == "submission_unknown"
-    assert [c[0] for c in tools.calls] == ["agenda_add"]          # the rerun found the same row and did not resend
+    assert [c[0] for c in tools.calls if c[2]] == ["agenda_add"]   # the rerun found the same row and did not resend
     second.store.close()
     first.store.close()

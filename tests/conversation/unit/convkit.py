@@ -13,13 +13,14 @@ ACCT = "acct-test"
 
 
 class Harness:
-    def __init__(self, store, *, script: dict | None = None, config: Config | None = None, prefix: str = "RULES") -> None:
+    def __init__(self, store, *, script: dict | None = None, config: Config | None = None, prefix: str = "RULES",
+                 tasks=None) -> None:
         self.clock, self.tel = FakeClock(t0_ms=0), ListTelemetry()   # signal times ARE the wall clock
         self.model, self.tools, self.mouth = ScriptedModel(script or {}), RecordingTools(), AckingMouth()
         self.store, self.owed = store, FakeOwed()
         self.conv = build(account=ACCT, owner="test", model=self.model, tools=self.tools, store=store,
                           memory=NoMemory(), clock=self.clock, mouth=self.mouth, telemetry=self.tel,
-                          config=config or Config(), prefix=prefix, owed=self.owed)
+                          config=config or Config(), prefix=prefix, owed=self.owed, tasks=tasks)
         self.mouth.ack = self.conv.ack
         self.conv.device("d1", voice_live=True, speaker_open=True)
         self._seq = 0

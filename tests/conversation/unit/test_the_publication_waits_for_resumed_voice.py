@@ -91,9 +91,11 @@ def test_another_device_or_outside_the_window_holds_nothing(store, why):
 
 
 def test_a_run_that_already_acted_is_not_held(store):
+    """No run claims an effect in F1 (nothing but a read passes); the fact is set by hand, as F2's reservation will."""
     h = Harness(store)
     once: list = []
-    h.model.script["iv_000001"] = [[ToolCall("c", "agenda_add", {"what": "w1"}), Done()],
+    h.model.script["iv_000001"] = [[lambda: setattr(h.conv.current, "claimed", True),
+                                    ToolCall("c", "search", {"q": "w1"}), Done()],
                                    [_go_on(h, [], once=once), reply("w9"), Done()]]
     h.utter([(["w1", "w2"], 0)])
     assert "conv_run/held" not in h.tel.labels() and len(h.mouth.orders) == 1

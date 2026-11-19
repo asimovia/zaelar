@@ -40,6 +40,8 @@ class Coverage(_Str):
 
 
 class ControlOp(_Str):
+    """The controls a device may send. In F1 only `stop` and, when the host gives a `Tasks` port, `cancel_task` have a
+    handler; the others (the confirmation and the delegation of F2) are refused when accepted, with their event."""
     STOP = "stop"
     CONFIRM = "confirm"
     DECLINE = "decline"
@@ -82,25 +84,18 @@ class Op(_Str):
 
 
 class ItemKind(_Str):
+    """The two items the ledger keeps. Tasks, their questions, what is owed, mandates and receipts have their own rows
+    and their own writer outside this package: the conversation refers to them by id."""
     REQUEST = "request"
-    TASK = "task"
-    QUESTION = "question"
-    GRANT = "grant"
-    HANDLE = "handle"
-    DELEGATION = "delegation"
     EFFECT = "effect"
-    FOLLOWUP = "followup"
-    TO_TELL = "to_tell"
 
 
 class EffectClass(_Str):
-    """What a tool does to the world (plan §15 E2). Everything but `read` is an effect; `egress`, `destructive` and
-    `payment` need a gesture (a presented handle) or, for `egress` only, a delegation."""
+    """What a tool does to the world, as the host derives it from the tool's declared act (`ToolSpec.act`, an event
+    type of the host's vocabulary): only reads, writes here, or something that leaves. The package names no act."""
     READ = "read"
-    LOCAL_WRITE = "local_write"
-    EGRESS = "egress"
-    DESTRUCTIVE = "destructive"
-    PAYMENT = "payment"
+    WRITE = "write"
+    LEAVES = "leaves"
 
 
 @dataclass(frozen=True)

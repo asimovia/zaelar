@@ -68,11 +68,9 @@ def test_a_line_owed_waits_behind_the_run_and_is_said_after_its_line(store):
 
 
 def test_a_stop_during_a_run_silences_and_cancels_the_run_and_the_task_goes_on(store):
-    h = Harness(store)
-    with h.conv.book.tx() as b:
-        from conversation.types import ItemKind
-        b.open(ItemKind.TASK, "t1", owner="worker:t1")
-        b.move("t1", "running")
+    from conversation.testing.fakes import FakeTasks
+    tasks = FakeTasks()
+    h = Harness(store, tasks=tasks)                                     # the person has a task of the host going
     stop = control(ControlOp.STOP, 0, "k-stop", endpoint="d1")
     h.model.script["iv_000001"] = [[lambda: h.conv.give(stop), ToolCall("c", "search", {"q": "w1"}),
                                     reply("w9"), Done()]]
@@ -81,7 +79,7 @@ def test_a_stop_during_a_run_silences_and_cancels_the_run_and_the_task_goes_on(s
     assert not h.mouth.orders and not h.tools.calls                   # cancelled at the checkpoint, before the tool
     assert ("stop", None, "stop") in h.mouth.calls
     assert "conv_run/cancelled" in h.tel.labels()
-    assert h.conv.book.snapshot().get("items", "t1")["state"] == "running"
+    assert tasks.cancelled == []                                        # the task goes on
     assert [lab for lab, _ in h.closes()] == ["silent"]
 
 

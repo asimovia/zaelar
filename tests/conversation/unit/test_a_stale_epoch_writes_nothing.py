@@ -151,7 +151,7 @@ def test_the_last_controllable_point_before_a_call_checks_the_lease_again(store,
     from conversation.ports import ToolCall
     from tests.conversation.unit.gatekit import ACCT, Kit, RecordingTools
     k = Kit(store, clock, telemetry)
-    eid = k.gw.request(k.ctx(k.utterance("iv1")), ToolCall("c", "agenda_add", {"what": "w1"})).effect_id
+    eid = k.gw.reserve(k.ctx(k.utterance("iv1")), ToolCall("c", "agenda_add", {"what": "w1"})).effect_id
     store.acquire(ACCT, "another-process")
     tools = RecordingTools()
     with pytest.raises(StaleEpoch):

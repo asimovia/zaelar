@@ -1,19 +1,9 @@
-"""I8: authority is judged PER EFFECT, from the run's batch — never from the model (plan §15 E1).
+"""I8: what a run may do is judged per tool call from the run's batch — never from the model.
 
-The manager hands the gateway the batch of the run. Its AUTHORITY FLOOR:
-  · every entry with content is the person's (`user.*`) → an effect rests on those entries; the trigger is the first
-    by onset (a voice + text batch is fine);
-  · any `contact`, `worker` or `system` entry in the batch → no implicit authority at all: an effect needs, one by
-    one, a presented handle spent by a gesture, a delegation, or a grant for that exact operation.
-A batch that mixes the person's sentence with a contact's message lends the contact nothing (A3). The `on` the model may name
-is an attribution hint for telemetry and nothing more.
-
-Mandates (ledger items):
-  handle      one-use confirmation of ONE bound effect, presented and then spent by a GESTURE (`confirm`, gesture)
-  delegation  hands-free scope for `egress`, created only by a gesture (D8): recipients, channel, expiry, a maximum
-  grant       created only through the ledger API from an all-user batch AND an active delegation that covers its
-              recipient and channel, bound to the exact operation (plan §15 E6)
-`destructive` and `payment` always need a gesture. A text is not a gesture (PA-10).
+In F1 the gateway lets a read pass and refuses everything else. What stays for the reservation (F2's door, exercised
+today only by its own tests) is the batch's AUTHORITY FLOOR: an effect rests on the person's entries, the first by
+onset being its trigger, and a batch that carries anything else lends no authority at all. The `on` the model may
+name is an attribution hint for telemetry and nothing more.
 """
 from __future__ import annotations
 
@@ -22,10 +12,8 @@ import json
 from dataclasses import dataclass, field
 
 from conversation import envelopes as E
-from conversation.ports import ToolSpec
-from conversation.types import EffectClass, EnvelopeKind, ItemKind
+from conversation.types import EnvelopeKind
 
-ITEMS = "items"
 CONTENT = frozenset({EnvelopeKind.USER_UTTERANCE, EnvelopeKind.USER_TEXT})
 
 
@@ -52,36 +40,3 @@ def floor(ctx: RunCtx) -> list[E.Envelope] | None:
     if not content or any(not e.is_user for e in content):
         return None
     return sorted(content, key=lambda e: (e.onset_ms, e.accepted_ms, e.id))
-
-
-def bound(spec: ToolSpec, args: dict) -> dict:
-    """recipient · channel · content of an effect, read through the tool's declared binding."""
-    return {role: args.get(arg) for role, arg in spec.binding.items()}
-
-
-def needs_gesture(spec: ToolSpec) -> bool:
-    return spec.effect_class in (EffectClass.EGRESS, EffectClass.DESTRUCTIVE, EffectClass.PAYMENT)
-
-
-def delegation_for(tx, spec: ToolSpec, args: dict, now: int) -> dict | None:
-    if spec.effect_class is not EffectClass.EGRESS:
-        return None
-    b = bound(spec, args)
-    for _k, row in tx.scan(ITEMS):
-        if row["kind"] != str(ItemKind.DELEGATION) or row["state"] != "active":
-            continue
-        d = row["data"]
-        if (b.get("recipient") in d.get("recipients", ()) and b.get("channel") == d.get("channel")
-                and now < d.get("expires_ms", 0) and d.get("used", 0) < d.get("max", 0)):
-            return row
-    return None
-
-
-def grant_for(tx, tool: str, args: dict, now: int) -> dict | None:
-    """A grant matches its exact operation only (plan §15 E6)."""
-    op = op_key(tool, args)
-    for _k, row in tx.scan(ITEMS):
-        if (row["kind"] == str(ItemKind.GRANT) and row["state"] == "active" and row["data"].get("op") == op
-                and now < row["data"].get("expires_ms", 0)):
-            return row
-    return None

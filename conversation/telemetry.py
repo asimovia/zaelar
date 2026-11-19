@@ -43,7 +43,7 @@ class LedgerLabels(_Labels):
 
 
 class EffectLabels(_Labels):
-    READ, SEALED, CLAIMED, HELD, RELEASED, REFUSED = "read", "sealed", "claimed", "held", "released", "refused"
+    READ, SEALED, CLAIMED, REFUSED = "read", "sealed", "claimed", "refused"
     SUBMITTED, RECEIPT, UNKNOWN, RECONCILED = "submitted", "receipt", "unknown", "reconciled"
     WRITE_DISABLED = "write_disabled"
 

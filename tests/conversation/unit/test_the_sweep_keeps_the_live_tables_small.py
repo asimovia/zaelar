@@ -38,7 +38,7 @@ def test_nothing_in_course_is_ever_archived(store):
     h = Harness(store, config=Config(retain_ms=1000, prune_every_ms=0))
     with h.conv.book.tx() as b:
         from conversation.types import ItemKind
-        b.open(ItemKind.TASK, "t1", owner="worker:t1")
-        b.move("t1", "running")
+        b.open(ItemKind.EFFECT, "x1", data={"tool": "w_tool"})
+        b.move("x1", "submitting")
     h.at(10 ** 7).pump()
-    assert h.conv.prune(h.clock.now_ms()) == 0 and store.snapshot(ACCT).get("items", "t1")["state"] == "running"
+    assert h.conv.prune(h.clock.now_ms()) == 0 and store.snapshot(ACCT).get("items", "x1")["state"] == "submitting"

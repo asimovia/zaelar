@@ -75,11 +75,13 @@ def test_x6_the_same_words_on_both_channels_are_two_entries(store, clock, teleme
     assert kinds(b) == [UTT, TEXT] and b.envelopes[0].body.text == b.envelopes[1].body.text
 
 
-def test_x7_a_confirm_button_with_the_voice_open_does_not_wait(store, clock, telemetry):
+def test_x7_a_button_by_id_with_the_voice_open_does_not_wait(store, clock, telemetry):
+    """A confirmation has no handler in F1: it is refused at once — with the voice open, it never waits behind it."""
     p = Pipe(store, clock, telemetry)
     _voice_open(p, 0)
     adm = p.give(control(ControlOp.CONFIRM, 300, "k1", gesture=True, handle="h1"))
-    assert adm.disposition == "control" and adm.envelope.body.gesture
+    assert adm.disposition == "unhandled" and adm.envelope.body.gesture
+    assert [r["outcome"] for r in p.inbox.rows()] == ["refused"]
 
 
 def test_x8_a_voice_that_ends_incomplete_releases_the_text_and_asks_for_the_end(store, clock, telemetry):

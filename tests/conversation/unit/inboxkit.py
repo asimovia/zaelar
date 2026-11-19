@@ -61,9 +61,9 @@ class Pipe:
         return self.inbox.next_batch(self.now())
 
 
-def control(op: ControlOp, t: int, n: str, endpoint="d2", gesture=False, handle=None, channel=None):
+def control(op: ControlOp, t: int, n: str, endpoint="d2", gesture=False, handle=None, channel=None, task=None):
     from conversation.types import Channel
-    return E.make(EnvelopeKind.USER_CONTROL, E.ControlBody(op, handle_id=handle, gesture=gesture),
+    return E.make(EnvelopeKind.USER_CONTROL, E.ControlBody(op, handle_id=handle, task_id=task, gesture=gesture),
                   producer=f"button:{endpoint}", producer_id=n, account=ACCT, onset_ms=t, sealed_ms=t,
                   channel=channel or Channel.BUTTON, endpoint=endpoint)
 

@@ -40,14 +40,15 @@ class ListTelemetry:
 
 
 def catalog() -> list[ToolSpec]:
-    """A catalogue shaped like the engine's: core reads, a local write, a send, a destructive act, the task tools."""
-    send = {"recipient": "to", "channel": "via", "content": "text"}
+    """A catalogue shaped like the engine's: core reads, a write here, a send that leaves, a destructive act, the
+    task tools — each with the act it declares and the class a host would derive from it (tokens, not the engine's
+    names)."""
     return [ToolSpec("search", core=True), ToolSpec("market_data", core=True), ToolSpec("discover_tools", core=True),
-            ToolSpec("agenda_add", effect_class=EffectClass.LOCAL_WRITE),
-            ToolSpec("send_message", effect_class=EffectClass.EGRESS, binding=send),
-            ToolSpec("delete_all", effect_class=EffectClass.DESTRUCTIVE),
-            ToolSpec("task.start", effect_class=EffectClass.LOCAL_WRITE, hands_off=True),
-            ToolSpec("task.cancel", effect_class=EffectClass.LOCAL_WRITE)]
+            ToolSpec("agenda_add", act="a1.add", effect_class=EffectClass.WRITE),
+            ToolSpec("send_message", act="a2.send", effect_class=EffectClass.LEAVES),
+            ToolSpec("delete_all", act="a3.delete", effect_class=EffectClass.WRITE),
+            ToolSpec("task.start", act="a4.start", effect_class=EffectClass.WRITE),
+            ToolSpec("task.cancel", act="a4.cancel", effect_class=EffectClass.WRITE)]
 
 
 @dataclass
@@ -72,6 +73,16 @@ class RecordingTools:
             raise self.raises[name]
         return self.answers.get(name, ToolResult("ok", data={"tool": name},
                                                  receipt={"delivered": True} if effect_id else None))
+
+
+@dataclass
+class FakeTasks:
+    """The host's tasks, by id: records what a button cancelled."""
+    cancelled: list = field(default_factory=list)
+
+    def cancel(self, account: str, task_id: str) -> bool:
+        self.cancelled.append(task_id)
+        return True
 
 
 def evidence(eid: str, entity: str, period: str, metric: str, direction: str, value: float) -> Evidence:

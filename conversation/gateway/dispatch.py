@@ -1,20 +1,17 @@
-"""Reads and actions through the `Tools` port. An action is submitted ONCE and never retried blind (A5).
+"""Reads and actions through the `Tools` port. An action is submitted ONCE and never retried blind.
 
 Before `Tools.call` of an action — the last point the manager controls — one transaction checks again: the lease
-(fencing, I5), the writes switch, the effect still `claimed` (never resubmitted from any other state), its mandate
-not revoked or expired, and no hold received since it was claimed (A7). Then the effect moves to `submitting` and
-commits BEFORE the call (the write-ahead, plan §15 E4). Whatever comes back maps to one state; an exception or a timeout is `submission_unknown`,
+(fencing, I5), the writes switch, and the effect still `claimed` (never resubmitted from any other state). Then the
+effect moves to `submitting` and commits BEFORE the call (the write-ahead). Whatever comes back maps to one state; an exception or a timeout is `submission_unknown`,
 which keeps its slot and is reconciled by looking, never by sending again.
 """
 from __future__ import annotations
 
 import asyncio
 
-from conversation.gateway import holds as H
 from conversation.gateway.outbox import FLAGS, Gateway
 from conversation.ports import ToolCall, ToolResult, Tools
 from conversation.types import EffectClass, ItemKind
-
 
 
 def _settled(status: str) -> str:
@@ -41,17 +38,8 @@ async def read(gw: Gateway, tools: Tools, call: ToolCall, deadline_mono_ms: int)
         return ToolResult("failed", data={"reason": "timeout"})
 
 
-def _mandate_alive(b, row: dict) -> bool:
-    m = b.get(row["data"]["mandate"])
-    if m is None or m["kind"] in (str(ItemKind.REQUEST),):
-        return True
-    if m["kind"] == str(ItemKind.DELEGATION):
-        return m["state"] in ("active", "exhausted") and b.now < m["data"].get("expires_ms", 0)
-    return m["state"] not in ("revoked",)
-
-
 async def submit(gw: Gateway, tools: Tools, effect_id: str, deadline_mono_ms: int) -> ToolResult | None:
-    """Submit a claimed effect. None when it did not go (held, disabled, fenced, already past `claimed`)."""
+    """Submit a claimed effect. None when it did not go (disabled, fenced, already past `claimed`)."""
     def gate(b):
         row = b.get(effect_id)
         if row is None or row["kind"] != str(ItemKind.EFFECT):
@@ -65,13 +53,6 @@ async def submit(gw: Gateway, tools: Tools, effect_id: str, deadline_mono_ms: in
             return None
         if (b.tx.get(FLAGS, "write_disabled") or {}).get("on"):
             gw._note("refused", None, effect=effect_id, reason="write_disabled")
-            return None
-        if not _mandate_alive(b, row):
-            gw._note("refused", None, effect=effect_id, reason="mandate_gone")
-            return None
-        blocking = H.blocking(b.tx, row)
-        if blocking:
-            gw._note("held", None, effect=effect_id, reason="hold", holds=[h["id"] for h in blocking])
             return None
         b.move(effect_id, "submitting")
         gw._note("submitted", None, effect=effect_id, tool=row["data"]["tool"], req=row["data"].get("req"),
@@ -96,8 +77,6 @@ async def submit(gw: Gateway, tools: Tools, effect_id: str, deadline_mono_ms: in
         b.move(effect_id, to, data={"receipt": result.receipt})
         gw._note("unknown" if to == "submission_unknown" else "receipt", None, effect=effect_id, state=to,
                  req=row["data"].get("req"), run=row["data"].get("run"))
-        if to == "provider_accepted" and (result.receipt or {}).get("delivered"):
-            b.move(effect_id, "delivered")
     gw._decide(settle)
     return result
 
@@ -121,21 +100,6 @@ def reconcile(gw: Gateway, effect_id: str, found: str, receipt: dict | None = No
         b.move(effect_id, found, data={"receipt": receipt})
         gw._note("reconciled", None, effect=effect_id, state=found)
     gw._decide(fn)
-
-
-def hold(gw: Gateway, hold_id: str, endpoint: str, t_ms: int, reason: str) -> None:
-    def fn(b):
-        H.hold(b.tx, hold_id, endpoint, t_ms, reason)
-    gw._decide(fn)
-
-
-def release(gw: Gateway, effect_id: str, endpoint: str | None, gesture: bool) -> bool:
-    def fn(b):
-        ok = H.release(b.tx, b.get(effect_id), endpoint, gesture)
-        if ok:
-            gw._note("released", None, effect=effect_id, endpoint_by=endpoint)
-        return ok
-    return gw._decide(fn)
 
 
 def recover(gw: Gateway) -> list[str]:
