@@ -45,8 +45,8 @@ def prefire(text: str, now: float | None = None) -> None:
         return
     try:
         task = asyncio.get_running_loop().create_task(a._directed_judge(t, ctx))
-    except RuntimeError:                                  # no loop here: the gate judges as always
-        return
+    except RuntimeError as e:                             # no loop here: the gate judges as always
+        return logger.debug(f"attention.prefire: no running loop, not prefired — {e!r}")
     old = _PREFIRE.get("task")
     if old is not None and not old.done():
         old.cancel()
