@@ -504,6 +504,9 @@ _PACKAGE_CEILINGS["widgets"] += 9         # same cause: `screen_doc.panel_over`
 _TOTAL_MAX += 212   # 2026-11-19 INI-042 #34 remains (3.245): three loop stalls moved off the loop — the voice LLM's vendor SDKs warmed at boot in a thread (`server/boot/warm_imports.py`), libtorrent looked up by `find_spec` and imported in a thread, an empty messaging queue in an unchanged store not re-read
 _PACKAGE_CEILINGS["server"] += 111        # same cause: `server/boot/warm_imports.py` and its boot call
 _PACKAGE_CEILINGS["connectors"] += 86     # same cause: the store's queued-fields index + the drains' guard, the torrent client's off-loop import
+_PACKAGE_CEILINGS["widgets"] += 77   # 2026-11-19 support fix (3.246, INI-042 #34): the loop no longer held by a pending send — the follower reads the receipt once per version of the card's store (`store.version`), the namer's lookups built once per version of the contacts store (`widgets/chat_names.py`)
+_PACKAGE_CEILINGS["nucleo/request"] += 13   # same cause
+_TOTAL_MAX += 98   # 2026-11-19 support fix (3.246, INI-042 #34): the loop no longer held by a pending send — the follower reads the receipt once per version of the card's store (`store.version`), the namer's lookups built once per version of the contacts store (`widgets/chat_names.py`) — the addenda above
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

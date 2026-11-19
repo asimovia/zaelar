@@ -27,6 +27,8 @@ RECEIPT_S = 30.0
 #: How long a late receipt is still followed (and told when it lands).
 LATE_S = 600.0
 POLL_S = 1.0
+#: With the card's store unchanged, the receipt is still re-read this often (an end state may read more than its store).
+REREAD_S = 30.0
 _following: set = set()
 #: The rows whose send the engine took to its receipt (now or earlier): the receipt is their verdict. Bounded.
 _taken: dict = {}
@@ -140,6 +142,17 @@ def receipt(wid: str, ref: str, done_when) -> tuple[str, str]:
     return "", ""
 
 
+def _version(wid: str):
+    """What the card's receipt is a function of: its store as it stands (`store.version`). None = cannot be told, and
+    the receipt is then read every time."""
+    try:
+        from widgets import store
+        return store.version(str(wid or "").split("::", 1)[0].strip().lower())
+    except Exception as e:  # noqa: BLE001
+        _note(e)
+        return None
+
+
 async def _say(uid: str, stage: str, key: str, **fmt) -> None:
     """One line of the send, by the out-of-turn mouth, once per stage of that send — about what he asked for."""
     try:
@@ -171,9 +184,17 @@ async def follow(uid: str, wid: str, action: str, payload: dict | None, result, 
     _taken[uid] = time.time()
     for old in sorted(_taken, key=_taken.get)[:max(0, len(_taken) - 64)]:
         _taken.pop(old, None)
+    seen, read_at = None, None
     try:
         while True:
-            state, why = receipt(wid, ref, done_when)
+            # The receipt is the card's whole view, read on the loop: it is read when the card's store CHANGED (the
+            # connector's receipt is a write) and otherwise every `REREAD_S`, never once per poll. Measured on a live
+            # engine (2026-11-19): ten minutes of an unanswered send re-read the card every poll and held the loop
+            # 1–5 s each time.
+            ver, state, why = _version(wid), "", ""
+            if ver is None or ver != seen or read_at is None or time.monotonic() - read_at >= REREAD_S:
+                seen, read_at = ver, time.monotonic()
+                state, why = receipt(wid, ref, done_when)
             if state == "sent":
                 _mark_landed(uid, wid, action, payload)
                 await _say(uid, "sent", wording.line(fam, "done"))

@@ -136,6 +136,17 @@ def revision(widget_id: str) -> int:
     return _rev.get(canvas_id(widget_id), 0)
 
 
+def version(widget_id: str):
+    """What this card's stored data IS a function of, for a reader that memoises something built from it: the store
+    file as it stands (a write replaces it, so its mtime and size move — whichever process wrote) and this process's
+    own change count. None = no store to read, never memoised."""
+    path = os.path.join(data_dir(widget_id), "state.json")
+    if not os.path.exists(path):
+        return None
+    st = os.stat(path)
+    return (path, st.st_mtime_ns, st.st_size, revision(widget_id))
+
+
 def _state_seed(widget_id: str, path: str) -> None:
     try:
         __import__("widgets.state", fromlist=["x"]).seed(canvas_id(widget_id), path)

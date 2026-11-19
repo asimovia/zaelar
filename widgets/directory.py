@@ -735,53 +735,10 @@ def _phone_of(platform: str, chat_id) -> str:
     return _digits(cid) if re.fullmatch(r"\+?[\d\s().-]{7,}", cid) else ""
 
 
-def _photo(contact: dict) -> str:
-    """A picture the card can draw without a fetch of its own: same-origin or inline. A remote URL is left out
-    rather than handed to a widget that must never reach the network (widgets/validator.py)."""
-    a = str((contact or {}).get("avatar") or "").strip()
-    return a if a.startswith(("/widgets/", "data:image/")) else ""
-
-
 def namer(people: list[dict] | None = None):
-    """ONE resolver for the name and picture of the other side of a conversation, for every list and header
-    that shows one. Contacts are read ONCE per call to `namer()` — a view names dozens of rows.
-
-        name = namer()
-        name("whatsapp", "34600111222@s.whatsapp.net", fallback="Mamá ❤")  ->  {"name": "mama", "photo": ""}
-
-    Order, each step only when the previous one has nothing: the contact holding this conversation → the contact
-    whose phone/address the id carries → the platform's display name (`fallback`) → the bare id. A contact match
-    must be UNIQUE: two rows with the same number is an ambiguity, and the platform's name is then more honest."""
-    if people is None:
-        try:
-            from .contactos import data as _cd
-            people = _cd.visible(_cd.load_db())
-        except Exception:  # noqa: BLE001
-            people = []
-    people = [c for c in people if isinstance(c, dict) and c.get("kind") != "group" and str(c.get("name") or "").strip()]
-
-    def _one(hits: list[dict]) -> dict | None:
-        uniq = {id(c): c for c in hits}
-        return next(iter(uniq.values())) if len(uniq) == 1 else None
-
-    def resolve(platform: str, chat_id, fallback: str = "") -> dict:
-        p, cid = _norm(platform), str(chat_id or "").strip()
-        hit = None
-        if p and cid:
-            hit = _one([c for c in people for ch in c.get("channels") or []
-                        if _norm(ch.get("platform")) == p and str(ch.get("chatId") or "") == cid])
-            if hit is None and p == "email" and "@" in cid:
-                hit = _one([c for c in people if any(_norm(a) == _norm(cid) for a in _emails(c))])
-            if hit is None:
-                tel = _phone_of(p, cid)
-                if tel:
-                    hit = _one([c for c in people if any(_same_phone(tel, t) for t in _phones(c))])
-        if hit is not None:
-            return {"name": str(hit.get("name")).strip(), "photo": _photo(hit), "contactId": str(hit.get("id") or "")}
-        name = str(fallback or "").strip() or cid.split("@", 1)[0]
-        return {"name": name, "photo": "", "contactId": ""}
-
-    return resolve
+    """ONE resolver for the name and picture of the other side of a conversation (`widgets/chat_names.py`)."""
+    from . import chat_names
+    return chat_names.namer(people)
 
 
 def one_per_spelling(rows: list[dict]) -> list[dict]:
