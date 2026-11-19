@@ -43,6 +43,8 @@ def spoken(monkeypatch):
     monkeypatch.setattr(runstate, "stopped", lambda: False)
     monkeypatch.setitem(mic_input._state, "muted", False)
     monkeypatch.setitem(mic_input._tap, "parked", False)
+    # V2-937: an undeclared mic feeds no STT; the open-ear case is a holder that declared its switch open.
+    monkeypatch.setitem(mic_input._decl, "declared", True)
     tasks: list = []
     monkeypatch.setattr(nucleo_provider, "_spawn", lambda coro, label: tasks.append(coro))
     yield said, tasks
