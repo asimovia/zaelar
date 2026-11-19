@@ -32,7 +32,8 @@ _scan = {"key": None, "at": 0.0, "rows": ()}
 def _root_mtime(root: str):
     try:
         return os.stat(root).st_mtime_ns
-    except OSError:
+    except OSError as e:
+        logger.debug(f"widgets.runtime: root {root} unreadable, rescanned — {e}")
         return None
 
 
@@ -115,10 +116,8 @@ def _undeclared(man: dict, folder: str, mtime) -> None:
 
 def get(widget_id: str) -> dict | None:
     catalog()                                       # refreshes the cache when a manifest moved
-    try:
-        return _cache["by_id"].get(widget_id)
-    except TypeError:                               # an unhashable id names no widget
-        return None
+    # ids are strings: anything else (an unhashable value included) names no widget
+    return _cache["by_id"].get(widget_id) if isinstance(widget_id, str) else None
 
 
 def invalidate() -> None:

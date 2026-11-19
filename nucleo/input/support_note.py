@@ -34,6 +34,7 @@ def record(text: str, dev: str = "") -> bool:
         from voice.observer import emit
         emit("feedback", "📝 support note (LOG:)", text=note[:MAX_CHARS], role="user",
              extra={"cat": "system", "support_note": True, **({"dev": dev} if dev else {})})
-    except Exception:  # noqa: BLE001 — a note that cannot be traced is still not a turn
-        pass
+    except Exception as e:  # noqa: BLE001 — a note that cannot be traced is still not a turn
+        from loguru import logger
+        logger.warning(f"support_note: the note could not be traced — {type(e).__name__}: {e}")
     return True

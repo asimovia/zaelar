@@ -6456,6 +6456,10 @@ DOMAINS: list[dict] = [
                                  "today nobody sees and the screen document says the home holds `face` alone; face off, the "
                                  "launcher and today come back. Disarm: the deck stops marking the face home",
             "ch": UNIT, "paths": ["tests/browser/unit/mobile/test_the_home_is_the_face.py"]},
+        {"id": "4.596", "title": "Under 5 % of the cycle's Energy a corner card warns BEFORE the stop, never a modal (rendered with the real `EnergyLow.js`): at 4 % it shows, translated, saying nothing is lost at zero, and the screen stays clickable; at 6 %, at zero with the stop in place, or on self-host it does not",
+            "ch": UNIT, "paths": ["tests/browser/unit/energy/test_low_energy_warns_before_the_stop_without_blocking.py"]},
+        {"id": "4.597", "title": "Every ⚙ Settings page is drawn by ONE layout (`components/settings/layout.js`): breadcrumb, title, one line, rows with a fixed label column, Cancel + Save at the bottom right; every section reaches the screen through it and the benchmarks screen is gone (read from the sources)",
+            "ch": UNIT, "paths": ["tests/browser/unit/widgets/test_every_settings_page_uses_the_one_layout.py"]},
         # V2-928 T12 — «the face answers you»: what he does in front of the camera (a smile, a laugh, a wink, a tongue, a
         # yawn, a nod) read on the device by the vendored MediaPipe Face Landmarker, answered by a temperament that is not a
         # mirror (seeded in the test), played by the rig; zero model, API or token, no image leaves the page.
@@ -7710,6 +7714,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_an_order_is_acknowledged_never_restated.py"]},
         {"id": "2.1820", "title": "A message's follow-up only watches and a refused yes names its guard (INI-042 #44 P-1, P0a): a message under no playbook that continues with her opens an errand that only WATCHES — her answer is told to him in one line, nothing is written back, no model turn, the errand ends — while a gestión (a meeting he ordered) keeps answering under its mandate (disarmed: the plain message granted `message` → red); the six guards on his go-ahead live in ONE function, each refusal carries its reason and the owner records `go-ahead not taken` (disarmed: the record removed → red)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/send/test_a_refused_go_ahead_names_its_guard.py", "tests/agent_headless/unit/test_an_errand_runs_the_whole_errand.py"]},
+        {"id": "2.1821", "title": "A sent errand WAITS for the reply (INI-042 #26): an errand whose message went out (`contacting`, `negotiating`) is mirrored on the task board as `waiting` with `waiting_for = reply`, drawn «sent · awaiting reply», and back to in progress at `agreed`; every errand state maps to one board state",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/test_a_sent_errand_awaits_the_reply.py"]},
         {"id": "2.1818", "title": "A typed line that starts with `LOG:` is a note on the timeline, never a turn (INI-042 #37): the typed door recognises the prefix in any case and with any number of colons, writes one `feedback` event with the note and `support_note: true`, and hands nothing to the session; an ordinary line, or one that merely contains «log:», still reaches it. Disarm: the door skips the note check",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_a_log_line_is_a_note_not_a_turn.py"]},
         {"id": "2.1817", "title": "A stray text is the row a call names only where the action NEEDS a row, and an open native panel is a fact of the screen (V2-935): one text under an undeclared key is still the row of an action that cannot run without one, and names nothing where the selector is optional (`show_view {platform: …}` no longer becomes a group id; disarmed: without the check it does); the turn's screen line names the native panel the screen's own report says is open, and claims nothing on an unknown screen",
@@ -7886,6 +7892,8 @@ DOMAINS: list[dict] = [
         # V2-932 (2026-11-17): with the camera on it said «te veo» and 9 s later «no tengo cámara» — it had no description of itself.
         {"id": "7.134", "title": "Everything the agent can do is in its catalogue of itself (V2-932): every act, tool, voice-named surface, Settings section, built connector and shipped widget is covered by an entry of `nucleo/self/catalog.json` or listed in a shrink-only NOT_USER_FACING; every covered id exists; every entry has its words in English and Spanish; every live fact it needs has a reader; the `about_self` schema stays under its token cap. Disarm: a fake act → red",
          "ch": UNIT, "paths": ["tests/infrastructure/unit/test_everything_it_can_do_is_in_its_self_catalog.py"]},
+        {"id": "7.135", "title": "A session says WHO drove it (V2-939): the connecting page reports `navigator.webdriver` and an optional harness tag, the request carries its User-Agent; the session stamps them once per screen as a `session`/`client` event and `observability/flows.sessions` returns them",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/test_a_session_says_who_drove_it.py"]},
         # 2026-09-20: del 15 al 20 de septiembre una pasada ancha de pytest estuvo PROHIBIDA aquí porque le
         # colgaba la máquina al operador — con la causa sin diagnosticar, que era lo honesto entonces y dejaba
         # al motor sin poder contestar «¿sigue pasando todo?». Corrección del operador: se cuelgan ALGUNOS

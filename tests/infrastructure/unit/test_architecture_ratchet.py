@@ -495,6 +495,9 @@ _TOTAL_MAX += 44    # 2026-11-19 INI-042 #37: a typed `LOG:` line is a note, nev
 _TOTAL_MAX += 119   # 2026-11-19 support fix (3.243): the loop no longer held by a turn's reading — the directory's index memoised by its store's version, the brief's table reading each open card once (`turn/screen_read.py`), the widget folders scanned once per trust window — the addenda above
 _TOTAL_MAX += 32    # 2026-11-19 V2-939 (+46 observability) and INI-042 #42 (+1 server), net of the slack the other addenda left
 _TOTAL_MAX += 70    # 2026-11-19 INI-042 #44 P-1 (a plain message's follow-up only watches) and P0a (a refused go-ahead names its guard)
+_TOTAL_MAX += 2     # 2026-11-19 INI-042 #44 ratchets: three swallowed failures now say what failed (support note, widget scan, contacts index)
+_PACKAGE_CEILINGS["nucleo/input"] += 1   # same cause: the support note says when it could not be traced
+_PACKAGE_CEILINGS["widgets"] += 1        # same cause: the widget scan and the contacts index say what they could not read
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

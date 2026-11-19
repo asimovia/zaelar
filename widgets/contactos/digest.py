@@ -173,7 +173,9 @@ def _index_key():
     path = os.path.join(store.data_dir(_d.WIDGET_ID), "state.json")
     try:
         st = os.stat(path)
-    except OSError:
+    except OSError as e:
+        from loguru import logger
+        logger.debug(f"contactos.digest: no state file to key the index by, built afresh — {e}")
         return None
     return (path, st.st_mtime_ns, st.st_size, store.revision(_d.WIDGET_ID), _langs.current_code(),
             int(time.time() // _RANK_TTL_S), _d.load_db)
