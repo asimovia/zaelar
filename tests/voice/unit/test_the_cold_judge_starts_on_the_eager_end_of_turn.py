@@ -65,6 +65,21 @@ def test_other_words_or_another_frame_are_judged_again(final_text, frame):
     assert calls[-1] == (final_text, frame) and len(calls) == 2, "the verdict judges the words and frame of the turn"
 
 
+def test_the_spoken_lead_in_before_the_reply_does_not_waste_the_early_verdict(monkeypatch):
+    """The timeline's line is what was SAID — the lead-in cover and then the reply; the gate's frame is the reply alone
+    (`_last_reply`). Measured on a cloud Machine 2026-11-19: with an exact match the early verdict was reused in 1 cold
+    turn of ~5. A frame that ENDS in the reply is the same frame."""
+    calls: list = []
+    attention.set_directed_judge(_judge(calls, delay=0.01))
+    monkeypatch.setattr(attention._prefire, "_last_said", lambda: "Ya voy… " + LINE)
+
+    async def run():
+        attention.prefire("Yes, book it")
+        await asyncio.sleep(0.05)
+        return await attention.evaluate_content("Yes, book it", context=LINE)
+    assert asyncio.run(run()).directed and len(calls) == 1, "one judge call: the lead-in is not another frame"
+
+
 def test_an_ambient_verdict_still_stops_the_turn():
     calls: list = []
     attention.set_directed_judge(_judge(calls, delay=0.01, directed=False))

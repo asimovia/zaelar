@@ -54,8 +54,10 @@ def prefire(text: str, now: float | None = None) -> None:
 
 
 def prefired(text: str, context: str):
-    """The prefired judgement for exactly these words and this frame, once (None otherwise)."""
-    if _PREFIRE.get("key") != (text, str(context or "")) or time.time() - float(_PREFIRE.get("at") or 0) > PREFIRE_TTL_S:
+    """The prefired judgement for exactly these words, once, when the frame it was judged with ENDS in the gate's frame
+    (`_last_reply`): the timeline's line carries the spoken lead-in («Ya voy… ») the reply does not. None otherwise."""
+    said, ctx = _PREFIRE.get("key") or ("", ""), str(context or "").strip()
+    if said[0] != text or not ctx or not str(said[1]).rstrip().endswith(ctx) or time.time() - float(_PREFIRE.get("at") or 0) > PREFIRE_TTL_S:
         return None
     task = _PREFIRE.pop("task", None)
     _PREFIRE.clear()
