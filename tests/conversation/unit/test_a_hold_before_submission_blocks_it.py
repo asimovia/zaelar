@@ -107,3 +107,51 @@ def test_m8_a_hold_after_a_confirmation_blocks_its_send_until_the_initiating_dev
     assert h.conv.release(effect["id"], "d1", gesture=True)
     h.pump()
     assert [c[0] for c in h.tools.calls] == ["send_message"]
+
+
+def test_nm1_an_act_held_while_the_person_speaks_waits_and_runs_once_they_finish(store):
+    """Review 2, NM1: «hold» means wait. The run gives its batch back, nothing runs while that voice is open, and when
+    it ends with no words the batch runs again: the act the person asked for happens — once."""
+    from conversation.ear import signals as S
+    from conversation.ports import Done
+    from conversation.testing.scripted_model import reply
+    from tests.conversation.unit.convkit import Harness
+
+    h = Harness(store)
+    rose = []
+
+    def other_device_speaks():
+        if not rose:
+            rose.append(1)
+            h.hear(S.VadEdge("d2", "rise", h.clock.mono + 5))
+
+    h.model.script["iv_000001"] = [[other_device_speaks, ToolCall("c", "agenda_add", {"what": "w1"}), Done()],
+                                   [reply("w2"), Done()]]
+    h.utter([(["w1"], 0)])
+    assert h.tools.calls == [] and not h.mouth.orders                   # held: nothing done, nothing said yet
+    assert [p.get("reason") for k, lab, p in h.tel.events if k == "conv_run" and lab == "superseded"] == ["held"]
+    h.at(h.clock.mono + 500).pump()
+    assert h.tools.calls == []                                           # the voice is still open: still waiting
+    t = h.clock.mono
+    h.hear(S.VadEdge("d2", "fall", t), S.Tick(t + 3000))                 # a cough: no words, the voice ends
+    assert [c[0] for c in h.tools.calls] == ["agenda_add"]
+    assert [lab for lab, _ in h.closes()] == ["answered"]
+
+
+def test_nm1_an_act_held_after_the_run_already_acted_stays_as_an_entry_proposed_again(store):
+    from conversation.ear import signals as S
+    from conversation.ports import Done
+    from conversation.testing.scripted_model import reply
+    from tests.conversation.unit.convkit import Harness
+
+    h = Harness(store)
+    h.model.script["iv_000001"] = [[ToolCall("c1", "agenda_add", {"what": "w1"}), Done()],
+                                   [lambda: h.hear(S.VadEdge("d2", "rise", h.clock.mono + 5)),
+                                    ToolCall("c2", "agenda_add", {"what": "w2"}), Done()],
+                                   [reply("w3"), Done()]]
+    h.utter([(["w1"], 0)])
+    assert [c[0] for c in h.tools.calls] == ["agenda_add"]               # the first act went; the second was held
+    t = h.clock.mono
+    h.hear(S.VadEdge("d2", "fall", t), S.Tick(t + 3000))
+    h.at(h.clock.mono + 1000).pump()
+    assert any("held:agenda_add" in c.prompt.input for c in h.model.calls[1:]), "the held act was never proposed again"

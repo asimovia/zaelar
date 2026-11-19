@@ -135,3 +135,24 @@ def test_b6_a_tool_that_raises_ends_the_run_visibly_and_accounts_its_batch(store
     assert [r["outcome"] for r in rows] == ["failed"]
     assert audit(store.snapshot("acct-test"), h.clock.now_ms(), h.conv.cfg, drained=True) == []
     assert [o.text for o in h.mouth.orders] == ["w-told"]
+
+
+def test_nm7_a_model_that_stays_down_still_tells_the_person_through_the_last_resort_line(store):
+    """Review 2, NM7: the run fails, the request closes `recovered` and its must-tell reminder is worded by the next
+    run — which fails too, and again on its one retry: the mouth then says the language's last-resort line (text
+    empty, `fallback` set for the adapter). Nothing that must be told ends `failed` in silence."""
+    from tests.conversation.unit.convkit import Harness
+
+    def boom():
+        raise RuntimeError("model down")
+
+    h = Harness(store)
+    h.model.default = lambda ids: [boom]
+    h.utter([(["w1"], 0)])
+    for t in range(h.clock.mono + 500, h.clock.mono + 20_000, 500):
+        h.at(t).pump()
+    assert [lab for lab, _ in h.closes()] == ["recovered"]
+    said = [o for o in h.mouth.orders if o.fallback]
+    assert len(said) == 1 and said[0].text == "" and said[0].fallback.startswith("failed:")
+    rows = [r for _k, r in store.snapshot("acct-test").scan("inbox") if r["kind"] == "system.reminder"]
+    assert rows and all(r.get("retries") == 1 for r in rows)

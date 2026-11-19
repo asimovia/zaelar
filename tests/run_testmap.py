@@ -9042,6 +9042,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/conversation/unit/test_random_chunkings_break_no_invariant.py"]},
         {"id": "13.27", "title": "A final request takes its intervention with it: later voice is a new intervention with its own request and close (also right after a stop); a reopen counts only within reopen_window_ms; the sweep ticks the ear, so a reopen no signal ends is given back and the sentence answered; the provider's end anchors the cap; a stall is never measured from before the voice",
             "ch": UNIT, "paths": ["tests/conversation/unit/test_a_final_request_is_never_reopened.py"]},
+        {"id": "13.28", "title": "The sweep's cost follows what is in course: what is done and older than retain_ms leaves the live tables (inbox, items, says, interventions, all but the newest turns); an archived envelope re-delivered is still a duplicate; nothing in course is archived",
+            "ch": UNIT, "paths": ["tests/conversation/unit/test_the_sweep_keeps_the_live_tables_small.py"]},
         {"id": "13.26", "title": "P3 full profile, the bench: 100,000 seeded cases with rotated seeds, a JSON report of counts and violations by invariant with their seeds (by request, never in the gate)",
             "ch": UNIT, "live": True, "cmd": "./.venv/bin/python -m tests.conversation.benchmarks.bombardment --cases 100000 --out <report.json>",
             "paths": ["tests/conversation/benchmarks/bombardment.py"]},

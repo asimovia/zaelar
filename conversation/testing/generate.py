@@ -319,10 +319,24 @@ class Case:
             self.loop.run_until_complete(self.conv.pump())
 
 
+class _WithArchive:
+    """A snapshot that reads each table together with its archive (`<table>.done`)."""
+
+    def __init__(self, snap) -> None:
+        self._s = snap
+
+    def get(self, table: str, key: str):
+        return self._s.get(table, key) or self._s.get(f"{table}.done", key)
+
+    def scan(self, table: str):
+        return sorted(self._s.scan(table) + self._s.scan(f"{table}.done"))
+
+
 def check(case: Case) -> list[str]:
     """I1–I9 over what the case left behind. Each violation is one sentence."""
     out = [f"crash: {c}" for c in case.crashes]
-    snap = case.store.snapshot(getattr(case, "account", ACCT))
+    live = case.store.snapshot(getattr(case, "account", ACCT))
+    snap = _WithArchive(live)                      # what the sweep archived is still what the case left behind (NM2)
     items = {k: r for k, r in snap.scan("items")}
     phases = {k: r["phase"] for k, r in snap.scan("interventions")}
     for eid, row in items.items():

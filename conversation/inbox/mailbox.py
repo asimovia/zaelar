@@ -291,6 +291,17 @@ class Inbox:
                 due_ms = min(due_ms, row["accepted"] + self.cfg.must_tell_max_defer_ms)
             self._move(tx, env_id, state="deferred", due=due_ms, batch=None)
 
+    def retry_once(self, env_id: str, due_ms: int, now: int) -> bool:
+        """What must be told and failed to be worded: back once, at `due_ms`. False when it already had its retry."""
+        with self.store.tx(self.lease()) as tx:
+            row = tx.get(T, env_id)
+            if row is None or row.get("retries", 0) >= 1:
+                return False
+            row["retries"] = row.get("retries", 0) + 1
+            tx.put(T, env_id, row)
+            self._move(tx, env_id, state="deferred", due=due_ms, batch=None)
+            return True
+
     def requeue(self, env_ids: list[str]) -> None:
         """A superseded run gives its batch back: the entries are queued again for the next batch."""
         with self.store.tx(self.lease()) as tx:

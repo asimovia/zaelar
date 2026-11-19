@@ -26,6 +26,7 @@ from conversation.inbox import Inbox
 from conversation.inbox.mailbox import apply_control
 from conversation.ledger import Book
 from conversation.ledger.book import BookTx
+from conversation.ledger.items import final
 from conversation import guard
 from conversation.manager import policy, run
 from conversation.manager.focus import Focus
@@ -78,6 +79,8 @@ class Conversation:
         self.to_submit: list[str] = []      # effects a gesture committed outside a run, sent by the next pump
         self.dirty = False                  # something was accepted since the last pump (a driver may pump only then)
         self._swept_at = -1 << 62
+        self._pruned_at = -1 << 62
+        self._voice_wait: int | None = None  # a run gave its batch back on a held act: nothing runs until that voice ends
         self.recover()
 
     # ── a new owner of the account ──────────────────────────────────────────────────────────────────────────────
@@ -163,6 +166,14 @@ class Conversation:
                 self.speaker.unduck(endpoint)
         if self.current is not None and not self.speaking_on:
             self.current.actions_held = False
+        if not self.speaking_on:
+            self._voice_wait = None
+
+    def wait_for_voice(self) -> None:
+        """A run met a held act (NM1): the batch is back in the queue and runs again when the person has finished —
+        the voice that held it closes (a new sentence supersedes it) or ends with no words (it runs as it was). Bounded
+        by `cross_channel_hold_ms` whatever the voice does."""
+        self._voice_wait = self.clock.now_ms()
 
     def _apply(self, env: E.Envelope, ops: tuple[Op, ...]) -> None:
         for op in ops:
@@ -244,6 +255,31 @@ class Conversation:
             self.ack(SayEnded(say_id, "unknown", None, now))
         self._abandon_reopens(now)
         run.sweep_liveness(self, now)
+        if now - self._pruned_at >= self.cfg.prune_every_ms:
+            self._pruned_at = now
+            self.prune(now)
+
+    def prune(self, now: int) -> int:
+        """What is done and older than `retain_ms` leaves the live tables (NM2). Returns how many rows moved."""
+        old = now - self.cfg.retain_ms
+        done = {
+            "inbox": lambda r: r["state"] == "accounted" and r.get("accounted_ms", now) <= old,
+            "says": lambda r: r["state"] == "ended" and r["t_ms"] <= old,
+            SEAL.T: lambda r: r["phase"].endswith((":sealed", ":final")) and r.get("updated_ms", now) <= old,
+            "items": lambda r: final(ItemKind(r["kind"]), r["state"]) and r["updated_ms"] <= old,
+        }
+        moved = 0
+        with self.store.tx(self.lease) as tx:
+            for table, is_done in done.items():
+                for key, row in tx.scan(table):
+                    if is_done(row):
+                        tx.archive(table, key)
+                        moved += 1
+            turns = tx.scan("turns")
+            for key, _row in turns[:max(0, len(turns) - 4 * self.cfg.conversation_turns)]:
+                tx.archive("turns", key)
+                moved += 1
+        return moved
 
     def _abandon_reopens(self, now: int) -> None:
         """A reopen nobody finishes within the bound goes back to the revision it reopened — whether the process that
@@ -276,6 +312,10 @@ class Conversation:
                 await dispatch.submit(self.gw, self.tools, eid, self.clock.mono_ms() + self.cfg.tool_ms)
             if self.state not in (MgrState.IDLE, MgrState.COLLECTING):
                 return runs
+            if self._voice_wait is not None:
+                if self.speaking_on and now - self._voice_wait < self.cfg.cross_channel_hold_ms:
+                    return runs
+                self._voice_wait = None
             batch = self.inbox.next_batch(self.clock.now_ms(), idle=self.state is MgrState.IDLE)
             if batch is None:
                 return runs

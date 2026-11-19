@@ -165,3 +165,23 @@ def test_m5_a_confirmation_by_gesture_is_sent_by_the_manager_and_a_stop_withdraw
     assert [c[0] for c in h.tools.calls] == ["send_message"]
     effect = [r for _k, r in store.snapshot("acct-test").scan("items") if r["kind"] == "effect"][0]
     assert effect["state"] == "delivered"
+
+
+def test_nm6_a_stop_withdraws_an_effect_the_run_claimed_and_a_hold_kept_from_being_sent(store):
+    """Review 2, NM6: the stop half of M5, with an effect that really is claimed and unsent — a hold from another
+    device arrived after the claim — when the person says stop: it is withdrawn, never left claimed, never sent."""
+    from conversation.gateway import dispatch
+    from conversation.ports import Done, ToolCall
+    from conversation.testing.scripted_model import reply
+    from tests.conversation.unit.convkit import Harness
+    from tests.conversation.unit.inboxkit import control
+    h = Harness(store)
+    stop = control(ControlOp.STOP, 0, "k-stop", endpoint="d1")
+    h.model.script["iv_000001"] = [
+        [lambda: dispatch.hold(h.conv.gw, "hd", "d2", h.clock.now_ms() + 10, "onset"),
+         ToolCall("c", "agenda_add", {"what": "w1"}), Done()],
+        [lambda: h.conv.give(stop), reply("w2"), Done()]]
+    h.utter([(["w1"], 0)])
+    effect = [r for _k, r in store.snapshot("acct-test").scan("items") if r["kind"] == "effect"][0]
+    assert effect["state"] == "withdrawn" and h.tools.calls == []
+    assert [lab for lab, _ in h.closes()] == ["silent"]

@@ -146,6 +146,9 @@ class SayOrder:
     endpoint: str | None
     lang: str = ""
     presents: str | None = None       # the handle this line presents (a question that needs a yes)
+    #: the model could not word what must be told: `text` is empty and the adapter says the language's own last-resort
+    #: line for this reason (the package holds no sentence; NM7)
+    fallback: str | None = None
 
 
 class Mouth(Protocol):
@@ -186,6 +189,9 @@ class Tx(Protocol):
     def insert_unique(self, table: str, key: str, row: dict, unique: str) -> tuple[dict, bool]: ...
     def scan(self, table: str) -> list[tuple[str, dict]]: ...
     def next_seq(self, name: str) -> int: ...
+    #: move a row that is done out of the live table (to `<table>.done`): no scan of the live table sees it again, and
+    #: its unique value still answers `insert_unique` — a late duplicate stays a duplicate (NM2)
+    def archive(self, table: str, key: str) -> None: ...
 
 
 class Snapshot(Protocol):

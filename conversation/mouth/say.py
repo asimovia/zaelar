@@ -80,7 +80,8 @@ class Speaker:
         return {"say": row["say_id"], "run": row["run"], "req": row["req"], "endpoint": row.get("endpoint")}
 
     async def say(self, *, run_id: str, request_id: str, text: str, channels: frozenset[str], endpoint: str | None,
-                  lang: str = "", presents: str | None = None, iv: str | None = None) -> str:
+                  lang: str = "", presents: str | None = None, iv: str | None = None,
+                  fallback: str | None = None) -> str:
         say_id = self.ids.new("s")
         row = {"say_id": say_id, "run": run_id, "req": request_id, "text": text, "channels": sorted(channels),
                "endpoint": endpoint, "presents": presents, "state": "ordered", "heard": {}, "painted": [],
@@ -91,10 +92,10 @@ class Speaker:
             tx.put(TURNS, f"{seq:08d}", {"role": "agent", "channel": "+".join(sorted(channels)), "text": text,
                                         "heard_chars": None, "ref": say_id, "iv": iv})
         self.em.emit("conv_mouth", "say", owner="mouth", cause={"kind": "run", "ref": run_id}, refs=self._refs(row),
-                     channels=sorted(channels), chars=len(text), presents=presents)
+                     channels=sorted(channels), chars=len(text), presents=presents, fallback=fallback)
         await guard.call(self.em, self.cfg, "mouth", self.mouth.say(SayOrder(say_id, run_id, request_id, text,
                                                                              frozenset(channels), endpoint, lang,
-                                                                             presents)),
+                                                                             presents, fallback)),
                          self.cfg.mouth_ms, {"say": say_id, "run": run_id})
         return say_id
 

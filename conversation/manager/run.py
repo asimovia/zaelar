@@ -104,18 +104,27 @@ async def run_batch(conv: "Conversation", batch: Batch) -> None:
         conv.inbox.requeue(list(r.batch_ids))  # the process is stopping: the batch waits for the next one
         raise
     except Exception as e:  # noqa: BLE001 — every failure of a run ends visibly; the class is recorded by name
-        _fail(conv, r, f"{type(e).__name__}")
+        await _fail(conv, r, f"{type(e).__name__}")
     finally:
         conv.current = None
         if conv.state in (MgrState.RUNNING_CLAIMED, MgrState.RUNNING_UNCLAIMED):
             conv.state = MgrState.COLLECTING if r.interrupt == "superseded" else MgrState.IDLE
 
 
-def _fail(conv: "Conversation", r: "Running", reason: str) -> None:
+async def _fail(conv: "Conversation", r: "Running", reason: str) -> None:
     """The run failed: its batch is accounted `failed`, its requests close `recovered`, and the person will hear it
-    — a must-tell entry the next run words (M6)."""
+    — a must-tell entry the next run words (M6). What must be told is never lost to a model that stays down (NM7): it
+    goes back once; failing again, the mouth says the language's last-resort line for it (the adapter words it)."""
     now = conv.clock.now_ms()
-    conv.inbox.account(list(r.batch_ids), "failed", now)
+    owed = [e for e in r.ctx.batch.values() if e.must_tell and not e.is_user]
+    again = [e.id for e in owed if conv.inbox.retry_once(e.id, now + conv.cfg.stall_ms, now)]
+    conv.inbox.account([i for i in r.batch_ids if i not in again], "failed", now)
+    if len(again) < len(owed):
+        try:
+            await conv.speaker.say(run_id=r.run_id, request_id=r.ctx.request_id, text="", channels=frozenset({"text"}),
+                                   endpoint=r.ctx.endpoint, fallback=f"failed:{reason}")
+        except guard.PortTimeout as late:
+            r.said.append(("fallback", str(late)))   # the mouth is slow too: port_slow said it, the account stands
     _withdraw(conv, r, reason)
     for req in r.requests:
         if close(conv, req, "recovered", "recovered", reason=reason):
@@ -133,12 +142,24 @@ def _withdraw(conv: "Conversation", r: "Running", reason: str) -> None:
                 b.move(row["id"], "withdrawn", reason=reason, cause={"kind": "run", "ref": r.run_id})
 
 
+def _keep_held(conv: "Conversation", r: "Running", call: ToolCall) -> None:
+    """An act held while the person speaks, in a run that cannot give its batch back (it already acted): it is not
+    lost — a must-tell entry names it, and the next run, once the person has finished, proposes it again (NM1)."""
+    now = conv.clock.now_ms()
+    conv.give(E.make(E.EnvelopeKind.SYSTEM_REMINDER, E.ReminderBody(f"held-{r.run_id}-{call.call_id}",
+                                                                    f"held:{call.name}", now),
+                     producer="manager:held", producer_id=f"held-{r.run_id}-{call.call_id}", account=conv.account,
+                     onset_ms=now, sealed_ms=now, surfacing=Surfacing.WHEN_IDLE, must_tell=True))
+
+
 def _checkpoint(conv: "Conversation", r: "Running") -> None:
     if r.interrupt is None:
         return
-    if r.interrupt == "superseded" and not r.claimed:
+    if r.interrupt in ("superseded", "held") and not r.claimed:
         conv.inbox.requeue(list(r.batch_ids))
-        _emit(conv, "superseded", r)
+        _emit(conv, "superseded", r, reason=r.interrupt)
+        if r.interrupt == "held":
+            conv.wait_for_voice()
         raise _Stop()
     now = conv.clock.now_ms()
     conv.inbox.account(list(r.batch_ids), "silent", now)
@@ -183,19 +204,19 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
                     repaired, called = True, True        # one repair round, with the reason as a step
                     break
                 elif isinstance(ev, Failed):
-                    _fail(conv, r, f"{ev.whose}:{ev.reason}")
+                    await _fail(conv, r, f"{ev.whose}:{ev.reason}")
                     return
                 elif isinstance(ev, Done):
                     _emit(conv, "model_done", r, usage=ev.usage)
         except guard.PortTimeout:
-            _fail(conv, r, "provider:timeout")
+            await _fail(conv, r, "provider:timeout")
             return
         _checkpoint(conv, r)
         if not called:
             await _command(conv, r, batch, commands.Reply(text) if text else commands.NoReply("empty"), steps,
                            last_try=True)
             return
-    _fail(conv, r, "max_steps")
+    await _fail(conv, r, "max_steps")
 
 
 async def _memory(conv: "Conversation", r: "Running") -> list:
@@ -231,6 +252,10 @@ async def _tool(conv: "Conversation", r: "Running", call: ToolCall) -> ToolResul
         r.presents = decision.handle_id
         return ToolResult("needs_confirmation", data={"handle": decision.handle_id})
     if isinstance(decision, Held):
+        if not r.claimed:                       # the run gives its batch back and waits for that voice to end (NM1)
+            r.interrupt = "held"
+            _checkpoint(conv, r)
+        _keep_held(conv, r, call)               # claimed: the act stays as an entry the next run proposes again
         return ToolResult("held", data={"reason": decision.reason})
     return ToolResult("refused", data={"reason": decision.reason})
 

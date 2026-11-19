@@ -66,16 +66,19 @@ class _Tx(_Read):
         return cur.rowcount == 1
 
     def insert_unique(self, table: str, key: str, row: dict, unique: str) -> tuple[dict, bool]:
-        r = self._c.execute("SELECT key FROM rows WHERE account=? AND tbl=? AND uniq=?",
-                            (self._a, table, unique)).fetchone()
+        r = self._c.execute("SELECT tbl, key FROM rows WHERE account=? AND tbl IN (?, ?) AND uniq=?",
+                            (self._a, table, f"{table}.done", unique)).fetchone()
         if r:
-            return self.get(table, r[0]), False
+            return self.get(r[0], r[1]), False
         try:
             self._c.execute("INSERT INTO rows (account, tbl, key, row, uniq) VALUES (?,?,?,?,?)",
                             (self._a, table, key, json.dumps(row), unique))
         except sqlite3.IntegrityError as e:
             raise Conflict(f"{table}/{key} exists under another unique value") from e
         return row, True
+
+    def archive(self, table: str, key: str) -> None:
+        self._c.execute("UPDATE rows SET tbl=? WHERE account=? AND tbl=? AND key=?", (f"{table}.done", self._a, table, key))
 
     def next_seq(self, name: str) -> int:
         self._c.execute("INSERT INTO seqs (account, name, n) VALUES (?,?,1) "

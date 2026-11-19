@@ -3,8 +3,8 @@ ear respects every FIRM boundary of the person in both directions.
 
 Each fixture is a real session converted to ear signals with every word a token (`fixtures/sessions/`). Each labelled
 boundary carries its evidence (`labels.json` › `boundaries`): only `transcript` boundaries — the agent spoke between —
-are firm; `old_prompt_only` and `none` only reproduce where the old engine cut, and are reported, never scored, until
-the operator reviews them (review 2, NM4/NM5). Scored, both at zero: a FUSION — a firm boundary the ear does not
+are firm; `old_prompt_only` and `none` only reproduce where the old engine cut: they are unscored — reported, never
+deciding (review 2, NM4/NM5). Scored, both at zero: a FUSION — a firm boundary the ear does not
 respect (two of the person's interventions glued into one) — and an unrelated SPLIT — the ear cutting where no boundary
 is labelled with no `amends` chain between the pieces. A split that amends (the reply was out, the revision sealed,
 the person went on: I3) is counted and reported. Every intervention that closed reaches the model's prompt within one
@@ -45,7 +45,8 @@ def score(rep: Replay, labels: dict) -> dict:
     owner = [iv for iv, _w in rep.conv.ear.spans.all_final_words()]
     assert len(owner) == labels["tokens"], "the ear did not keep every final word of the session"
     amends = {}
-    for _k, row in rep.store.snapshot("replay").scan("inbox"):
+    snap = rep.store.snapshot("replay")
+    for _k, row in snap.scan("inbox") + snap.scan("inbox.done"):          # archived rows too (NM2)
         body = row["env"]["body"]
         if row["kind"] in (str(EnvelopeKind.USER_UTTERANCE), str(EnvelopeKind.INTERVENTION_STATE)) and body.get("amends"):
             amends[body["intervention_id"]] = body["amends"]
