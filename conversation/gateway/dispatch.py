@@ -15,7 +15,15 @@ from conversation.gateway.outbox import FLAGS, Gateway
 from conversation.ports import ToolCall, ToolResult, Tools
 from conversation.types import ItemKind
 
-_STATUS = {"ok": "provider_accepted", "rejected": "rejected", "failed": "rejected", "unknown": "submission_unknown"}
+
+
+def _settled(status: str) -> str:
+    """The provider's answer → the effect's state. Anything not clearly accepted or refused is unknown."""
+    if status == "ok":
+        return "provider_accepted"
+    if status in ("rejected", "failed"):
+        return "rejected"
+    return "submission_unknown"
 
 
 async def read(gw: Gateway, tools: Tools, call: ToolCall, deadline_mono_ms: int) -> ToolResult:
@@ -67,7 +75,7 @@ async def submit(gw: Gateway, tools: Tools, effect_id: str, deadline_mono_ms: in
                                   idempotency_key=effect_id, deadline_mono_ms=deadline_mono_ms)
     except (asyncio.TimeoutError, OSError, RuntimeError) as e:     # whatever it was, we do not know if it went
         result = ToolResult("unknown", data={"error": type(e).__name__})
-    to = _STATUS.get(result.status, "submission_unknown")
+    to = _settled(result.status)
 
     def settle(b):
         b.move(effect_id, to, data={"receipt": result.receipt})

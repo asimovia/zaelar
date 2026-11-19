@@ -113,3 +113,18 @@ def test_x10_past_the_hold_cap_the_text_runs_alone_and_the_voice_comes_later(sto
     _voice_close(p, 9500)
     assert kinds(p.at(9500).batch()) == [UTT]
     assert audit(store.snapshot(ACCT), 9500, p.cfg) == []
+
+
+def test_x5_a_yes_on_a_device_where_the_question_was_not_presented_has_no_focus():
+    from conversation.manager.focus import Focus
+    f = Focus()
+    f.presented("h1", "desk", 100)                      # painted / played on the desktop only
+    assert f.onset("phone") is None                     # «yes» said to the phone: nothing to answer
+    assert f.onset("desk") == "h1"
+    f.presented("q9", "desk", 200)                      # a worker's question appears while he speaks…
+    assert f.of("desk") == "h1"                          # …and does not steal the pinned focus
+    f.done_speaking("desk")
+    assert f.onset("desk") is None                      # two candidates now: ambiguous, nothing authorises
+    f.done_speaking("desk")
+    f.closed("q9")
+    assert f.onset("desk") == "h1"

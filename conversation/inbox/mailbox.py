@@ -150,6 +150,10 @@ class Inbox:
                 elif row["state"] == "deferred" and now >= row["due"]:
                     self._move(tx, key, state="queued", due=None)
                     moved.append(key)
+                elif (row["state"] == "dequeued" and row["kind"] == str(EnvelopeKind.USER_CONTROL)
+                      and now - row["accepted"] >= self.cfg.control_bound_ms):
+                    self._final(tx, key, Outcome.EXPIRED.value, now, reason="control_unhandled")
+                    moved.append(key)
         return moved
 
     # ── out ─────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -230,13 +234,13 @@ class Inbox:
         row.update(fields)
         tx.put(T, key, row)
 
-    def _final(self, tx, key: str, outcome: str, now: int) -> None:
+    def _final(self, tx, key: str, outcome: str, now: int, reason: str | None = None) -> None:
         row = tx.get(T, key)
         if row["state"] == "accounted":
             return
-        row.update(state="accounted", outcome=outcome, accounted_ms=now)
+        row.update(state="accounted", outcome=outcome, accounted_ms=now, reason=reason)
         tx.put(T, key, row)
-        self._emit_row("accounted", row, outcome=outcome)
+        self._emit_row("accounted", row, outcome=outcome, reason=reason)
 
     def _emit(self, label: str, env: E.Envelope, *, cause: dict | None = None, refs_extra: dict | None = None,
               **payload) -> None:

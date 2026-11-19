@@ -28,6 +28,9 @@ class Config:
     must_tell_max_defer_ms: int = 120_000
     #: progress updates of one task coalesce over this window.
     progress_coalesce_ms: int = 10_000
+    #: a control is handled by id at once; one accepted and still unaccounted after this (its handler never ran or
+    #: raised) is closed by the sweep with a visible outcome (I6).
+    control_bound_ms: int = 5000
     #: a to-tell item expires after this if never told (it is reported, never silently lost).
     to_tell_expiry_ms: int = 30 * 60_000
     # ── the gateway ──

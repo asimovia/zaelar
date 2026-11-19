@@ -26,6 +26,9 @@ def audit(snapshot, now: int, cfg: Config, *, drained: bool = False) -> list[str
             bad.append(f"{key}: unknown state {state!r}")
         elif drained:
             bad.append(f"{key}: still {state} after the inbox drained")
+        elif (state == "dequeued" and row["kind"] == "user.control"
+              and now - row["accepted"] > cfg.control_bound_ms):
+            bad.append(f"{key}: a control accepted and never handled")
         elif state == "held" and (row["hold_until"] is None or now > row["hold_until"]):
             bad.append(f"{key}: held past its cap")
         elif state == "deferred":

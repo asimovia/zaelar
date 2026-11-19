@@ -107,3 +107,15 @@ def test_what_was_accepted_survives_closing_the_store(tmp_path, clock, telemetry
     b = inbox.next_batch(1000, idle=True)
     assert [e.body.text for e in b.envelopes] == ["w1"]
     s2.close()
+
+
+def test_a_control_whose_handler_never_ran_is_closed_by_the_sweep_with_its_reason(store, clock, telemetry):
+    p = Pipe(store, clock, telemetry)
+    env = p.at(100).give(control(ControlOp.CONFIRM, 100, "k1", gesture=True, handle="h-x")).envelope
+    assert audit(store.snapshot(ACCT), 100 + p.cfg.control_bound_ms, p.cfg) == []
+    assert audit(store.snapshot(ACCT), 101 + p.cfg.control_bound_ms, p.cfg) != []   # the audit sees the limbo
+    p.at(100 + p.cfg.control_bound_ms).batch()                                    # the sweep closes it
+    snap = store.snapshot(ACCT)
+    assert outcomes(snap) == {env.id: "expired"} and audit(snap, 10 ** 6, p.cfg, drained=True) == []
+    closed = [pl for k, lab, pl in telemetry.events if lab == "accounted"]
+    assert closed[-1]["reason"] == "control_unhandled" and closed[-1]["outcome"] == "expired"

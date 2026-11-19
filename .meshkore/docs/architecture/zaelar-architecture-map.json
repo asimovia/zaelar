@@ -1054,6 +1054,17 @@
    "emits": [
     "conv_effect"
    ]
+  },
+  {
+   "id": "c_mouth",
+   "zone": "conversation",
+   "name": "Mouth — say, and what was heard",
+   "paths": [
+    "conversation/mouth"
+   ],
+   "emits": [
+    "conv_mouth"
+   ]
   }
  ],
  "emitters": {

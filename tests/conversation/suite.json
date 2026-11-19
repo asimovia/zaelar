@@ -71,6 +71,11 @@
       "kind": "unit"
     },
     {
+      "id": "13.16",
+      "label": "The mouth knows what was heard",
+      "kind": "unit"
+    },
+    {
       "id": "13.19",
       "label": "A stale epoch writes nothing; the Store contract over both stores",
       "kind": "unit"
