@@ -22,6 +22,7 @@ this module's globals. The submodules hold what nothing patches from inside:
   events.py      the `memory.updated` signal
 """
 from .. import db as _db  # noqa: F401  (imports the package; get_db is lazy)
+from ..lock_watch import status as lock_status  # noqa: F401 — who held the database lock when somebody waited
 from .. import state as _state
 from .. import viewer  # noqa: F401 — V2-808: the bounded reads behind the memory viewer
 from .. import writer as _writer

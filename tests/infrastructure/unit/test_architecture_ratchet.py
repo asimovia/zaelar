@@ -523,6 +523,10 @@ _PACKAGE_CEILINGS["voice"] += 70        # same cause: `attention_prefire` (prefi
 _PACKAGE_CEILINGS["nucleo/turn"] += 5   # same cause: the eager brief starts the judge (`brief_turn.fire_early`)
 _PACKAGE_CEILINGS["memory"] += 9    # 2026-11-19 INI-042 #34 (3.247): the memory queue applies each write on ONE writer thread and awaits it — the embedding requests of a write no longer hold the event loop (`memory/queue.py`)
 _TOTAL_MAX += 9    # same cause
+_PACKAGE_CEILINGS["memory"] += 179    # 2026-11-19 INI-042 #34 (3.248): the event loop reads on its own read-only WAL connection (`memory/db.py::_reader`) and the database lock names its holder when somebody waits (`memory/lock_watch.py`, new)
+_PACKAGE_CEILINGS["nucleo/pulse"] += 26   # same cause: a stall's event names the threads that were running while the loop was held (`loop_lag._sample_others`)
+_PACKAGE_CEILINGS["server"] += 1          # same cause: `GET /api/debug/loop` carries the lock's record
+_TOTAL_MAX += 206   # same cause
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

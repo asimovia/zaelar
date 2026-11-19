@@ -12,9 +12,16 @@ broker. This module:
 **Concurrency**: zaelar is one process with two loops (uvicorn + LiveKit job-thread). The ONLY writer is the queue
 (`memory/writer.py`); readers (retriever/state) go direct. We share ONE connection (`check_same_thread=False`)
 serialized by a `threading.RLock`: at our scale (one user, tens of thousands of memories) hold times are sub-ms, and
-it avoids traps from sharing a `sqlite3.Connection` across threads. WAL also lets a future reader/writer split avoid
-schema changes.
+it avoids traps from sharing a `sqlite3.Connection` across threads.
+
+**The event loop reads on its own connection** (INI-042 #34). A `SELECT` from a thread that runs an event loop goes
+through a READ-ONLY connection of that thread (`_reader`): a WAL reader waits neither for the lock above nor for
+SQLite's writer, so a write that is slow in another thread (a busy database, a checkpoint) no longer stops the loop
+at its next read. It sees what is COMMITTED — what it saw before, once the writer had let go. Inside its own
+`cursor()` block the loop still reads the shared connection, so it sees its own uncommitted rows; anything that is not
+a `SELECT`, and any read the read-only connection refuses, goes to the shared one.
 """
+import asyncio
 import logging
 import os
 import sqlite3
@@ -23,6 +30,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from . import schema as _schema
+from .lock_watch import WatchedLock
 from nucleo import workspace as _workspace
 
 logger = logging.getLogger("zaelar.memory.db")
@@ -77,7 +85,7 @@ class Database:
     def __init__(self, path: Path | None = None):
         self.path = Path(path) if path else db_path()
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self._lock = threading.RLock()
+        self._lock = WatchedLock()     # names its holder when somebody waits (`memory/lock_watch.py`)
         self.conn = sqlite3.connect(str(self.path), check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
         # SQLite `lower()` is ASCII-ONLY, so accented uppercase letters do NOT match Python `.lower()`. Any
@@ -96,7 +104,44 @@ class Database:
             pass
         self.vec_available = _try_load_vec(self.conn)
         self.fts_available = _has_fts5(self.conn)
+        self._readers: dict[int, sqlite3.Connection | None] = {}   # one read-only connection per event-loop thread
         self._migrate()
+
+    # ── the event loop's read-only connection ────────────────────────────────────────────────────────────
+    def _open_reader(self) -> sqlite3.Connection | None:
+        try:
+            conn = sqlite3.connect(f"{self.path.resolve().as_uri()}?mode=ro", uri=True, check_same_thread=False)
+            conn.row_factory = sqlite3.Row
+            conn.create_function("pylower", 1, lambda s: s.lower() if isinstance(s, str) else s, deterministic=True)
+            if self.vec_available:
+                _try_load_vec(conn)
+            conn.execute("SELECT 1 FROM sqlite_master LIMIT 1").fetchone()
+            return conn
+        except Exception as e:  # noqa: BLE001 — without it the loop reads the shared connection, as before
+            logger.warning(f"memory db: no read-only connection for the event loop ({e!r}); it reads the shared one")
+            return None
+
+    def _reader(self, sql: str) -> sqlite3.Connection | None:
+        """The calling thread's read-only connection, when `sql` is a SELECT, the thread runs an event loop and it
+        holds no transaction of its own on the shared connection; else None (the shared connection, under the lock)."""
+        if asyncio._get_running_loop() is None or self._lock.held_by_me() or sql.lstrip()[:6].upper() != "SELECT":
+            return None
+        tid = threading.get_ident()
+        if tid not in self._readers:
+            self._readers[tid] = self._open_reader()
+        return self._readers[tid]
+
+    def _read(self, sql: str, params, one: bool):
+        conn = self._reader(sql)
+        if conn is not None:
+            try:
+                cur = conn.execute(sql, params)
+                return cur.fetchone() if one else cur.fetchall()
+            except sqlite3.Error as e:      # refused there (a function that writes, a table it cannot see): ask the shared one
+                logger.debug(f"memory db: read-only connection refused a read ({e!r}); reading the shared one")
+        with self._lock:
+            cur = self.conn.execute(sql, params)
+            return cur.fetchone() if one else cur.fetchall()
 
     # ── migrations / schema ──────────────────────────────────────────────────────────────────────────────
     def _migrate(self):
@@ -234,15 +279,19 @@ class Database:
             return cur.lastrowid
 
     def query(self, sql: str, params: tuple | list = ()) -> list[sqlite3.Row]:
-        with self._lock:
-            return self.conn.execute(sql, params).fetchall()
+        return self._read(sql, params, one=False)
 
     def query_one(self, sql: str, params: tuple | list = ()) -> sqlite3.Row | None:
-        with self._lock:
-            return self.conn.execute(sql, params).fetchone()
+        return self._read(sql, params, one=True)
 
     def close(self):
         with self._lock:
+            readers, self._readers = [c for c in self._readers.values() if c is not None], {}
+            for conn in readers:
+                try:
+                    conn.close()
+                except Exception as e:  # noqa: BLE001
+                    logger.debug(f"memory db: a read-only connection did not close ({e!r})")
             try:
                 self.conn.close()
             except Exception:

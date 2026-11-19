@@ -132,7 +132,8 @@ async def debug_loop():
     """The body's own event loop as it measures itself (`nucleo/pulse/loop_lag`): the last reading, the worst, the
     last stall and the seconds lost to stalls — «was it the host that stopped?» answered by the process (E0)."""
     from nucleo.pulse import loop_lag as _loop_lag
-    return JSONResponse(_loop_lag.status())
+    from memory import api as _memory
+    return JSONResponse({**_loop_lag.status(), "db_lock": _memory.lock_status()})
 
 
 @router.get("/api/status")

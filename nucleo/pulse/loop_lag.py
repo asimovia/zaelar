@@ -41,7 +41,7 @@ _WHERE_DEPTH = 6         # frames kept per sample, innermost last
 _ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 _state: dict = {"loops": set(), "last": 0.0, "worst": 0.0, "n": 0, "total_s": 0.0, "stalls": deque(maxlen=64),
                 "last_stall": None,       # a state record
-                "beat": 0.0, "loop_tid": None, "samples": Counter()}
+                "beat": 0.0, "loop_tid": None, "samples": Counter(), "others": Counter()}
 _sampler_thread: threading.Thread | None = None
 
 
@@ -63,10 +63,12 @@ def note(lag_s: float, *, cpu_s=None, faults: int = 0, mono=None, wall=None) -> 
         who = "engine" if (cpu_s or 0) >= _OURS_CPU_SHARE * lag_s else ("host" if faults > 0 else "unknown")
         where, seen = _where()
         _state["stalls"].append((mono, wall, lag_s, who))
-        _state["last_stall"] = {"at": wall, "s": round(lag_s, 2), "whose": who, "where": where, "where_samples": seen}
+        _state["last_stall"] = {"at": wall, "s": round(lag_s, 2), "whose": who, "where": where, "where_samples": seen,
+                                "busy": _busy()}
         _say(lag_s, who)
     else:
         _state.setdefault("samples", Counter()).clear()
+        _state.setdefault("others", Counter()).clear()
     _shed(lag_s)
     return stalled
 
@@ -89,7 +91,7 @@ def _say(lag_s: float, who: str = "host") -> None:
              role="system", text=(" ← ".join(reversed(where)) if where else ""),
              extra={"cat": "health", "kind_diag": "loop_lag", "lag_s": round(lag_s, 2), "source": BODY,
                     "bound_s": bound_s(), "whose": who, "cause": {"host": "machine"}.get(who, who),
-                    "where": where or [], "where_samples": seen})
+                    "where": where or [], "where_samples": seen, "busy": last.get("busy") or []})
     except Exception as e:  # noqa: BLE001 — a stall that cannot be said is still recorded
         logger.debug(f"loop_lag: event not emitted: {e!r}")
 
@@ -111,12 +113,16 @@ def status() -> dict:
             "watching": bool(_state["loops"])}
 
 
+def _ours(path: str) -> bool:
+    return path.startswith(_ROOT) and os.sep + ".venv" + os.sep not in path and "site-packages" not in path
+
+
 def _frames(frame) -> tuple:
     """The innermost `_WHERE_DEPTH` frames of OUR code (the engine's files), innermost last, as «path:line fn»."""
     out = []
     while frame is not None:
         path = frame.f_code.co_filename
-        if path.startswith(_ROOT) and os.sep + ".venv" + os.sep not in path and "site-packages" not in path:
+        if _ours(path):
             out.append(f"{os.path.relpath(path, _ROOT)}:{frame.f_lineno} {frame.f_code.co_name}")
             if len(out) >= _WHERE_DEPTH:
                 break
@@ -133,7 +139,27 @@ def _sample_once(period_s: float) -> bool:
     sig = _frames(frame) if frame is not None else ()
     if sig:
         _state.setdefault("samples", Counter())[sig] += 1
+    _sample_others(tid)
     return True
+
+
+def _sample_others(loop_tid) -> None:
+    """While the loop is late, who ELSE is running: every other thread whose innermost frame is the engine's own code
+    (a thread parked in the library's waits — a queue, a lock, a socket — held nothing), by name and by the frames it
+    is in: the thread a starved loop was waiting behind (a lock's holder, the interpreter's)."""
+    me, names = threading.get_ident(), {t.ident: t.name for t in threading.enumerate()}
+    for tid, frame in sys._current_frames().items():
+        if tid in (me, loop_tid) or not _ours(frame.f_code.co_filename):
+            continue
+        sig = _frames(frame)
+        if sig:
+            _state.setdefault("others", Counter())[(names.get(tid, str(tid)), sig[-3:])] += 1
+
+
+def _busy() -> list:
+    """The three threads seen running most often while the loop was held, as «name ×samples: frames»; consumed."""
+    got, _state["others"] = _state.get("others") or Counter(), Counter()
+    return [f"{name} ×{n}: {' ← '.join(reversed(sig))}" for (name, sig), n in got.most_common(3)]
 
 
 def _sampler(period_s: float) -> None:
