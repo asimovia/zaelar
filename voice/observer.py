@@ -63,6 +63,7 @@ _CAT = {
     # after it. Family `flash` because it is prompt the turn carried; its own kind because «this stretch of
     # the relationship is over» happens once and must stay findable, not be lost among the turn's own rows.
     "phase": "flash",
+    "send": "flash",   # V2-938: the message owner's steps (`nucleo/send/owner.py`), already tagged flash at the emitter
     # `ask_outside_door` (V2-851 F2c): the turn ended on our own question about a card whose acts leave the machine,
     # and no call reached its door — counted, never repaired (the door is the one reader of ambiguity).
     "ask_outside_door": "flash",

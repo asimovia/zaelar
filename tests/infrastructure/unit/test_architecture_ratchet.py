@@ -515,6 +515,8 @@ _TOTAL_MAX += 98   # 2026-11-19 support fix (3.246, INI-042 #34): the loop no lo
 _PACKAGE_CEILINGS["widgets"] += 2    # 2026-11-19 INI-042 #34: the owner's flush no longer reads the whole store for an empty mail-order queue (`handle._flush_queues`)
 _TOTAL_MAX += 2    # same cause
 _TOTAL_MAX += 10   # 2026-11-19 INI-042 G1: listing pending rows reads a widget data module's source before importing it (`pending_work._may_declare`) — musica's import held a cloud loop 1.6 s
+_PACKAGE_CEILINGS["voice"] += 1   # 2026-11-19 (operator-authorised): the `send` kind gets its observer family (`voice/observer._CAT`)
+_TOTAL_MAX += 1     # the same line
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())
