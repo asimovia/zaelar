@@ -14,7 +14,8 @@ adapter doc A6), the intervention is INCOMPLETE: not actionable, the run asks fo
 The intervention is the unit: once it ended, nothing reopens it. Voice that follows is ANOTHER intervention, which
 `amends` the previous one when we have not spoken since; the manager decides whether the two travel together.
 
-Out: envelopes for the inbox (`intervention.state`, `user.utterance`, `user.text`) and `Onset` for the control lane.
+Out: the person's entries for the inbox (`user.utterance` — whole, or incomplete with what was heard — and
+`user.text`), and two facts for the manager: `Onset` (a voice opened: the control lane) and `VoiceDiscarded`.
 """
 from __future__ import annotations
 
@@ -26,7 +27,7 @@ from conversation.ear import signals as S
 from conversation.ear.spans import Spans
 from conversation.ear.typed import submit
 from conversation.telemetry import Emitter
-from conversation.types import Channel, EnvelopeKind, Ids, IvState
+from conversation.types import Channel, Coverage, EnvelopeKind, Ids, IvState
 
 OPEN_STATES = (IvState.OPEN, IvState.TENTATIVE)
 ENDED_STATES = (IvState.CLOSED, IvState.INCOMPLETE)
@@ -146,7 +147,7 @@ class Ear:
         if v.state in OPEN_STATES:
             refs.update(iv=v.iv)
             v.state = IvState.DISCARDED
-            out.append(self._env_state(v, IvState.DISCARDED, t, text=sig.text, reason=sig.reason))
+            out.append(S.VoiceDiscarded(v.endpoint, v.iv, t))
         self.em.emit("conv_ear", "discarded", owner="ear", cause={"kind": "guard", "ref": sig.reason}, refs=refs,
                      text=sig.text, reason=sig.reason)
 
@@ -161,14 +162,12 @@ class Ear:
         v.iv, v.state, v.onset_ms = self.ids.new("iv"), IvState.OPEN, t
         v.eot_end_ms = v.eot_prob = v.fall_ms = v.last_word_ms = None   # nothing of the previous one is this one's
         out.append(S.Onset(v.endpoint, t, v.iv))
-        out.append(self._env_state(v, IvState.OPEN, t))
         self.em.emit("conv_ear", "onset", owner="ear", cause={"kind": "voice"}, refs=self._refs(v), t_onset_ms=t)
         self.em.emit("conv_ear", "opened", owner="ear", cause={"kind": "voice"}, refs=self._refs(v),
                      amends=v.amends)
 
     def _state(self, v: _Voice, state: IvState, label: str, t: int, out: list) -> None:
         v.state = state
-        out.append(self._env_state(v, state, t))
         self.em.emit("conv_ear", label, owner="ear", cause={"kind": "provider"}, refs=self._refs(v),
                      eot_prob=v.eot_prob)
 
@@ -197,15 +196,18 @@ class Ear:
             else:
                 self._discard_empty(v, t, out)
 
+    def _utterance(self, v: _Voice, t: int, coverage: Coverage, reason: str | None = None) -> E.Envelope:
+        words = self.spans.words(v.iv)
+        body = E.UtteranceBody(v.iv, " ".join(w[0] for w in words), tuple(E.Span(*w) for w in words),
+                               coverage=coverage, amends=v.amends, reason=reason)
+        return E.make(EnvelopeKind.USER_UTTERANCE, body, producer=f"ear:{v.endpoint}",
+                      producer_id=f"{v.iv}:{coverage}", account=self.account, onset_ms=v.onset_ms, sealed_ms=t,
+                      channel=Channel.VOICE, endpoint=v.endpoint, refs=E.Refs(intervention_id=v.iv))
+
     def _close(self, v: _Voice, t: int, by: str, out: list) -> None:
         v.state, v.closed_ms, v.previous = IvState.CLOSED, t, v.iv
         words = self.spans.words(v.iv)
-        body = E.UtteranceBody(v.iv, " ".join(w[0] for w in words), tuple(E.Span(*w) for w in words),
-                               amends=v.amends)
-        out.append(E.make(EnvelopeKind.USER_UTTERANCE, body, producer=f"ear:{v.endpoint}",
-                          producer_id=f"{v.iv}:closed", account=self.account, onset_ms=v.onset_ms,
-                          sealed_ms=t, channel=Channel.VOICE, endpoint=v.endpoint,
-                          refs=E.Refs(intervention_id=v.iv)))
+        out.append(self._utterance(v, t, Coverage.FULL))
         last = words[-1][2] if words else t
         self.em.emit("conv_ear", "closed", owner="ear", cause={"kind": "provider" if by == "eot" else "cap"},
                      refs=self._refs(v), closed_by=by, words=len(words), t0_ms=v.onset_ms, t1_ms=last,
@@ -215,14 +217,14 @@ class Ear:
     def _discard_empty(self, v: _Voice, t: int, out: list) -> None:
         """Voice rose and fell and no word came: nothing to answer, and the discard is an event (I4)."""
         v.state = IvState.DISCARDED
-        out.append(self._env_state(v, IvState.DISCARDED, t, text="", reason="no_words"))
+        out.append(S.VoiceDiscarded(v.endpoint, v.iv, t))
         self.em.emit("conv_ear", "discarded", owner="ear", cause={"kind": "cap"}, refs=self._refs(v), text="",
                      reason="no_words")
 
     def _incomplete(self, v: _Voice, t: int, reason: str, out: list) -> None:
         v.state, v.closed_ms, v.previous = IvState.INCOMPLETE, t, v.iv
         text = " ".join(w[0] for w in self.spans.words(v.iv))
-        out.append(self._env_state(v, IvState.INCOMPLETE, t, text=text, reason=reason))
+        out.append(self._utterance(v, t, Coverage.INCOMPLETE, reason))
         self.em.emit("conv_ear", "incomplete", owner="ear", cause={"kind": "cap" if reason == "no_final"
                                                                    else "stall"},
                      refs=self._refs(v), text=text, reason=reason, watermark_ms=v.watermark_ms)
@@ -231,14 +233,6 @@ class Ear:
 
     def _refs(self, v: _Voice) -> dict:
         return {"iv": v.iv, "endpoint": v.endpoint, "channel": "voice"}
-
-    def _env_state(self, v: _Voice, state: IvState, t: int, *, text: str | None = None,
-                   reason: str | None = None) -> E.Envelope:
-        body = E.InterventionStateBody(v.iv, state, text, reason)
-        return E.make(EnvelopeKind.INTERVENTION_STATE, body, producer=f"ear:{v.endpoint}",
-                      producer_id=f"{v.iv}:{state}:{t}", account=self.account, onset_ms=v.onset_ms,
-                      sealed_ms=t, channel=Channel.VOICE, endpoint=v.endpoint,
-                      refs=E.Refs(intervention_id=v.iv))
 
     def open_ids(self) -> set[str]:
         """The interventions this ear is still hearing (open or tentative)."""

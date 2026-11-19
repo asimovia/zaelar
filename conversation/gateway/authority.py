@@ -26,8 +26,7 @@ from conversation.ports import ToolSpec
 from conversation.types import EffectClass, EnvelopeKind, ItemKind
 
 ITEMS = "items"
-CONTENT = frozenset({EnvelopeKind.USER_UTTERANCE, EnvelopeKind.USER_TEXT, EnvelopeKind.CONTACT_MESSAGE,
-                     EnvelopeKind.WORKER_UPDATE, EnvelopeKind.SYSTEM_REMINDER})
+CONTENT = frozenset({EnvelopeKind.USER_UTTERANCE, EnvelopeKind.USER_TEXT})
 
 
 @dataclass(frozen=True)

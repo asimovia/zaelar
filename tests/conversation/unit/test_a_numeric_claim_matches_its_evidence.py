@@ -41,6 +41,7 @@ def _run(store, claim: dict, *, earlier: bool = False, ttl: int = 600_000):
         plan.append([ToolCall("c0", "market_data", {"q": "w1"}), Done()])
         plan.append([reply("w0"), Done()])
         plan.append([reply("w8", [claim]), Done()])
+        plan.append([reply("w8", [claim]), Done()])                    # the repair round
     else:
         plan.append([ToolCall("c1", "market_data", {"q": "w1"}), Done()])
         plan.append([reply("w8", [claim]), Done()])

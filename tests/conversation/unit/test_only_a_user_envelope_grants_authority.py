@@ -21,33 +21,6 @@ ADD = ToolCall("c", "agenda_add", {"what": "w0001"})
 SCOPE = {"recipients": ["c1"], "channel": "chat", "expires_ms": 10 ** 15, "max": 2}
 
 
-def test_a_read_passes_from_any_batch(store, clock, telemetry):
-    k = Kit(store, clock, telemetry)
-    for env in (k.contact(), k.worker(), k.utterance("iv1")):
-        assert k.gw.request(k.ctx(env), ToolCall("c", "search", {"q": "w1"})) == Read()
-
-
-def test_a_local_write_rests_only_on_a_batch_that_is_all_the_persons(store, clock, telemetry):
-    k = Kit(store, clock, telemetry)
-    voice, typed, contact = k.utterance("iv1"), k.text("iv2", t=100), k.contact()
-    assert isinstance(k.gw.request(k.ctx(voice, typed), ADD), Claimed)          # voice + text: both the person's
-    assert isinstance(k.gw.request(k.ctx(contact), ToolCall("c", "agenda_add", {"what": "w2"})), NeedsConfirmation)
-    mixed = k.gw.request(k.ctx(k.utterance("iv3"), k.contact()), ToolCall("c", "agenda_add", {"what": "w3"}))
-    assert isinstance(mixed, NeedsConfirmation), "a mixed batch lent the contact the person's authority"
-
-
-def test_a_send_caused_by_a_contact_or_a_worker_needs_a_gesture_and_cuts_nothing(store, clock, telemetry):
-    k = Kit(store, clock, telemetry)
-    for cause in (k.contact(), k.worker()):
-        d = k.gw.request(k.ctx(cause), k.send())
-        assert isinstance(d, NeedsConfirmation)
-    voice = k.utterance("iv1")
-    d = k.gw.request(k.ctx(voice, k.contact()), k.send(on=voice.id))            # the model's `on` is a hint only
-    assert isinstance(d, NeedsConfirmation)
-    assert not k.items("effect") and not k.flags().get("on")
-    assert "conv_effect/claimed" not in telemetry.labels()
-
-
 def test_destructive_and_payment_always_need_a_gesture(store, clock, telemetry):
     k = Kit(store, clock, telemetry)
     k.gw.delegate(k.control(ControlOp.DELEGATE, scope=SCOPE))
@@ -67,22 +40,6 @@ def test_a_delegation_exists_only_by_a_gesture_and_covers_egress_up_to_its_maxim
     assert isinstance(k.gw.request(k.ctx(k.utterance("iv9")), k.send(to="c2")), NeedsConfirmation)
 
 
-def test_a_grant_needs_an_all_user_batch_and_a_delegation_and_matches_its_exact_operation(store, clock, telemetry):
-    k = Kit(store, clock, telemetry)
-    voice = k.utterance("iv1")
-    assert k.gw.grant(k.ctx(voice), "send_message", k.send().args, 10 ** 15) == Refused("no_authority")
-    k.gw.delegate(k.control(ControlOp.DELEGATE, scope={**SCOPE, "max": 1}))
-    assert k.gw.grant(k.ctx(voice, k.contact()), "send_message", k.send().args, 10 ** 15) == Refused("no_authority")
-    assert k.gw.grant(k.ctx(voice), "send_message", k.send().args, 10 ** 15) == Read()
-    result = k.worker()
-    k.gw.request(k.ctx(k.utterance("iv5")), k.send(text="w0555"))               # spends the delegation's one use
-    # M4 (Architect): a run caused ONLY by a worker never uses a mandate — it needs a presented, confirmed handle
-    assert isinstance(k.gw.request(k.ctx(result), k.send()), NeedsConfirmation)
-    mixed = k.ctx(k.utterance("iv6"), result, run="run2")
-    assert isinstance(k.gw.request(mixed, k.send()), Claimed)                    # the grant: the exact operation
-    assert isinstance(k.gw.request(mixed, k.send(text="w0999")), NeedsConfirmation)
-
-
 def test_a_call_that_reaches_dispatch_without_a_reservation_cuts_the_writes(store, clock, telemetry):
     k = Kit(store, clock, telemetry)
     tools = RecordingTools()
@@ -90,15 +47,6 @@ def test_a_call_that_reaches_dispatch_without_a_reservation_cuts_the_writes(stor
     assert k.flags().get("on") and not tools.calls
     assert k.gw.request(k.ctx(k.utterance("iv1")), ADD) == Refused("write_disabled")
     assert k.gw.request(k.ctx(k.utterance("iv2")), ToolCall("c", "search", {})) == Read()   # reads go on
-
-
-def test_m4_a_delegation_never_serves_a_run_caused_only_by_a_contact(store, clock, telemetry):
-    """Architect's decision M4: no autonomous reply to a third party — a delegation that covers the send does not
-    serve a run whose batch has no content of the person; with the person's sentence in it, it does."""
-    k = Kit(store, clock, telemetry)
-    k.gw.delegate(k.control(ControlOp.DELEGATE, scope=SCOPE))
-    assert isinstance(k.gw.request(k.ctx(k.contact()), k.send()), NeedsConfirmation)
-    assert isinstance(k.gw.request(k.ctx(k.utterance("iv1"), k.contact(), run="r2"), k.send()), Claimed)
 
 
 def test_minor3_a_read_goes_without_the_models_hint_and_an_act_never_passes_as_a_read(store, clock, telemetry):

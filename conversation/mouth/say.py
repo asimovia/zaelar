@@ -65,9 +65,11 @@ def cut_to_sentence(text: str, heard_chars: int) -> str:
 class Speaker:
     def __init__(self, store: Store, lease: Callable[[], Lease], mouth: Mouth, emitter: Emitter, clock: Clock,
                  ids: Ids, on_presented: Callable[[str, str | None], None] | None = None,
+                 on_owed: Callable[[str, bool], None] | None = None,
                  config: Config | None = None) -> None:
         self.store, self.lease, self.mouth, self.em, self.clock, self.ids = store, lease, mouth, emitter, clock, ids
         self.on_presented = on_presented or (lambda handle, endpoint: None)
+        self.on_owed = on_owed or (lambda key, sounded: None)   # a line owed ended: did it sound?
         self.cfg = config or Config()
 
     def overdue(self, now: int) -> list[str]:
@@ -81,21 +83,21 @@ class Speaker:
 
     async def say(self, *, run_id: str, request_id: str, text: str, channels: frozenset[str], endpoint: str | None,
                   lang: str = "", presents: str | None = None, iv: str | None = None,
-                  fallback: str | None = None) -> str:
+                  notice_key: str | None = None) -> str:
         say_id = self.ids.new("s")
         row = {"say_id": say_id, "run": run_id, "req": request_id, "text": text, "channels": sorted(channels),
                "endpoint": endpoint, "presents": presents, "state": "ordered", "heard": {}, "painted": [],
-               "outcome": None, "t_ms": self.clock.now_ms()}
+               "outcome": None, "t_ms": self.clock.now_ms(), "notice_key": notice_key}
         with self.store.tx(self.lease()) as tx:
             tx.put(SAYS, say_id, row)
             seq = tx.next_seq(TURNS)
             tx.put(TURNS, f"{seq:08d}", {"role": "agent", "channel": "+".join(sorted(channels)), "text": text,
                                         "heard_chars": None, "ref": say_id, "iv": iv})
         self.em.emit("conv_mouth", "say", owner="mouth", cause={"kind": "run", "ref": run_id}, refs=self._refs(row),
-                     channels=sorted(channels), chars=len(text), presents=presents, fallback=fallback)
+                     channels=sorted(channels), chars=len(text), presents=presents, notice_key=notice_key)
         await guard.call(self.em, self.cfg, "mouth", self.mouth.say(SayOrder(say_id, run_id, request_id, text,
                                                                              frozenset(channels), endpoint, lang,
-                                                                             presents, fallback)),
+                                                                             presents, notice_key)),
                          self.cfg.mouth_ms, {"say": say_id, "run": run_id})
         return say_id
 
@@ -109,6 +111,9 @@ class Speaker:
         self.em.emit("conv_mouth", label, owner="mouth", cause={"kind": "ack"}, refs=self._refs(row), **extra)
         if extra.get("presented"):
             self.on_presented(row["presents"], extra.get("presented_on"))
+        if row.get("notice_key") and isinstance(sig, SayEnded):
+            # it sounded if it played, or a cut came after it began; an unknown end or a cut before any sound did not
+            self.on_owed(row["notice_key"], sig.outcome == "played" or bool(extra.get("heard_chars")))
 
     def _apply(self, tx, row: dict, sig) -> tuple[str, dict]:
         if isinstance(sig, SayStarted):

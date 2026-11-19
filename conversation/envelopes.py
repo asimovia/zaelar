@@ -1,16 +1,16 @@
-"""The envelope: the ONLY thing that enters the inbox (§5.1), with a typed body per kind.
+"""The envelope: the ONLY thing that enters the inbox (§5.1) — what the PERSON said, typed or did — with a typed body
+per kind: a voice utterance, a text, a control. Everything the engine owes the person (a worker's result, a contact's
+message, a reminder) is not an entry: it is a line owed, read by reference from its own ledger (`ports.Owed`).
 
 `from_json` is strict: an unknown kind, an unknown field or a missing one is refused (`EnvelopeError`), and the
-authority and channel of a kind are FIXED here — an envelope that claims `user` authority for a contact's message is
-refused, never read as the person (I8). The authority of an envelope is what its producer is, not what it says.
+authority and channel of a kind are FIXED here. The authority of an envelope is what its producer is, not what it says.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field, fields
 from typing import Any
 
-from conversation.types import (Authority, Channel, ControlOp, EnvelopeKind, Evidence, IvState, Surfacing,
-                                WorkerUpdate)
+from conversation.types import Authority, Channel, ControlOp, Coverage, EnvelopeKind, Evidence
 
 SCHEMA = 1
 
@@ -22,10 +22,6 @@ class EnvelopeError(ValueError):
 @dataclass(frozen=True)
 class Refs:
     task_id: str | None = None
-    question_id: str | None = None
-    thread_id: str | None = None
-    reply_to: str | None = None
-    reminder_id: str | None = None
     handle_id: str | None = None
     intervention_id: str | None = None
 
@@ -45,8 +41,9 @@ class UtteranceBody:
     text: str
     spans: tuple[Span, ...] = ()
     lang: str = ""
-    coverage: str = "full"
+    coverage: Coverage = Coverage.FULL      # INCOMPLETE: it ended without its final words — the run asks for the end
     amends: str | None = None
+    reason: str | None = None               # why it is incomplete (a stalled stream, no final at the cap)
 
 
 @dataclass(frozen=True)
@@ -66,39 +63,7 @@ class ControlBody:
     scope: dict | None = None   # a delegation's scope: recipients, channel, expires_ms, max
 
 
-@dataclass(frozen=True)
-class InterventionStateBody:
-    intervention_id: str
-    state: IvState
-    text: str | None = None
-    reason: str | None = None
-
-
-@dataclass(frozen=True)
-class ReminderBody:
-    reminder_id: str
-    text: str
-    due_ms: int
-
-
-@dataclass(frozen=True)
-class ContactBody:
-    thread_id: str
-    sender_ref: str
-    text: str
-    reply_to: str | None = None
-
-
-@dataclass(frozen=True)
-class WorkerBody:
-    task_id: str
-    type: WorkerUpdate
-    text: str
-    question_id: str | None = None
-    evidence: tuple[Evidence, ...] = ()
-
-
-Body = UtteranceBody | TextBody | ControlBody | InterventionStateBody | ReminderBody | ContactBody | WorkerBody
+Body = UtteranceBody | TextBody | ControlBody
 
 #: kind → (body class, the authority it carries, the channels it may come by, the producers that may send it).
 #: Fixed: never read off the wire. The inbox refuses an envelope whose producer is not one of its kind's (M1): a
@@ -109,11 +74,6 @@ KINDS: dict[EnvelopeKind, tuple[type, Authority, frozenset[Channel], tuple[str, 
     EnvelopeKind.USER_CONTROL: (ControlBody, Authority.USER,
                                 frozenset({Channel.VOICE, Channel.TEXT, Channel.BUTTON}),
                                 ("button:", "chat:", "ear:", "guard:")),
-    EnvelopeKind.INTERVENTION_STATE: (InterventionStateBody, Authority.USER, frozenset({Channel.VOICE}), ("ear:",)),
-    EnvelopeKind.SYSTEM_REMINDER: (ReminderBody, Authority.SYSTEM, frozenset({Channel.SYSTEM}),
-                                   ("pulse:", "system:", "manager:")),
-    EnvelopeKind.CONTACT_MESSAGE: (ContactBody, Authority.CONTACT, frozenset({Channel.CONNECTOR}), ("connector:",)),
-    EnvelopeKind.WORKER_UPDATE: (WorkerBody, Authority.WORKER, frozenset({Channel.WORKER}), ("worker:",)),
 }
 
 
@@ -149,9 +109,6 @@ class Envelope:
     onset_ms: int
     sealed_ms: int
     accepted_ms: int
-    surfacing: Surfacing
-    must_tell: bool
-    expires_ms: int | None
     body: Body = field(compare=False)
 
     @property
@@ -161,8 +118,7 @@ class Envelope:
 
 def make(kind: EnvelopeKind, body: Body, *, producer: str, producer_id: str, account: str, onset_ms: int,
          sealed_ms: int, channel: Channel | None = None, endpoint: str | None = None, session: str | None = None,
-         cause: str | None = None, refs: Refs | None = None, surfacing: Surfacing = Surfacing.NOW,
-         must_tell: bool = False, expires_ms: int | None = None) -> Envelope:
+         cause: str | None = None, refs: Refs | None = None) -> Envelope:
     """An envelope as a producer hands it over: no id and no `accepted_ms` yet (the inbox sets both)."""
     cls, authority, channels, _producers = KINDS[kind]
     if not isinstance(body, cls):
@@ -172,7 +128,7 @@ def make(kind: EnvelopeKind, body: Body, *, producer: str, producer_id: str, acc
         raise EnvelopeError(f"{kind} cannot come by {channel}")
     _gesture_by_button(kind, body, channel)
     return Envelope(SCHEMA, "", producer, producer_id, account, session, endpoint, kind, channel, authority, cause,
-                    refs or Refs(), onset_ms, sealed_ms, 0, surfacing, must_tell, expires_ms, body)
+                    refs or Refs(), onset_ms, sealed_ms, 0, body)
 
 
 # ── JSON ─────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -212,15 +168,11 @@ def _body(kind: EnvelopeKind, d: dict) -> Body:
     try:
         if cls is UtteranceBody:
             d["spans"] = tuple(Span(str(w), int(a), int(b), float(c)) for w, a, b, c in d.get("spans", ()))
+            d["coverage"] = Coverage(d.get("coverage", Coverage.FULL))
         if cls is TextBody:
             d["attachments"] = tuple(d.get("attachments", ()))
         if cls is ControlBody:
             d["op"] = ControlOp(d["op"])
-        if cls is InterventionStateBody:
-            d["state"] = IvState(d["state"])
-        if cls is WorkerBody:
-            d["type"] = WorkerUpdate(d["type"])
-            d["evidence"] = tuple(Evidence.from_json(e) for e in d.get("evidence", ()))
         return cls(**d)
     except (TypeError, ValueError, KeyError) as e:
         raise EnvelopeError(f"{kind} body: {e}") from e
@@ -240,14 +192,13 @@ def from_json(d: dict) -> Envelope:
     _cls, authority, channels, _producers = KINDS[kind]
     try:
         channel, claimed = Channel(d["channel"]), Authority(d["authority"])
-        surfacing = Surfacing(d["surfacing"])
     except ValueError as e:
         raise EnvelopeError(str(e)) from e
     if claimed is not authority:
         raise EnvelopeError(f"{kind} carries {authority} authority, not {claimed}")
     if channel not in channels:
         raise EnvelopeError(f"{kind} cannot come by {channel}")
-    d.update(kind=kind, channel=channel, authority=authority, surfacing=surfacing,
+    d.update(kind=kind, channel=channel, authority=authority,
              refs=Refs(**_strict(Refs, d["refs"], "refs")), body=_body(kind, d["body"]))
     _gesture_by_button(kind, d["body"], channel)
     return Envelope(**d)

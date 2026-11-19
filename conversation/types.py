@@ -19,34 +19,24 @@ class Channel(_Str):
     VOICE = "voice"
     TEXT = "text"
     BUTTON = "button"
-    SYSTEM = "system"
-    CONNECTOR = "connector"
-    WORKER = "worker"
 
 
 class Authority(_Str):
-    """Who an envelope speaks for. Only `user` can grant anything (I8)."""
+    """Who an envelope speaks for: only the person enters the inbox. What the engine owes the person (a worker's
+    result, a contact's message, a reminder) is a line it says, never an entry (I8)."""
     USER = "user"
-    CONTACT = "contact"
-    WORKER = "worker"
-    SYSTEM = "system"
-    TOOL = "tool"
 
 
 class EnvelopeKind(_Str):
     USER_UTTERANCE = "user.utterance"
     USER_TEXT = "user.text"
     USER_CONTROL = "user.control"
-    INTERVENTION_STATE = "intervention.state"
-    SYSTEM_REMINDER = "system.reminder"
-    CONTACT_MESSAGE = "contact.message"
-    WORKER_UPDATE = "worker.update"
 
 
-class Surfacing(_Str):
-    NOW = "now"
-    WHEN_IDLE = "when_idle"
-    SILENT = "silent"
+class Coverage(_Str):
+    """How much of an utterance the ear heard: all of it, or it ended without its final words (the run asks)."""
+    FULL = "full"
+    INCOMPLETE = "incomplete"
 
 
 class ControlOp(_Str):
@@ -55,13 +45,6 @@ class ControlOp(_Str):
     DECLINE = "decline"
     CANCEL_TASK = "cancel_task"
     DELEGATE = "delegate"
-
-
-class WorkerUpdate(_Str):
-    PROGRESS = "progress"
-    QUESTION = "question"
-    RESULT = "result"
-    FAILED = "failed"
 
 
 class IvState(_Str):

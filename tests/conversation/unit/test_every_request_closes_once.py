@@ -107,8 +107,10 @@ def test_b3_a_hung_model_times_out_and_the_request_recovers_visibly(store):
     h.utter([(["w1"], 0)])
     assert [(lab, p["reason"]) for lab, p in h.closes()] == [("recovered", "provider:timeout")]
     assert "conv_run/port_slow" in h.tel.labels()
-    assert [o.text for o in h.mouth.orders] == ["w-recovery"]       # the person hears it, in the model's words
-    assert "«failed:provider:timeout»" in h.conv.model.calls[1].input
+    said = [(o.text, o.notice_key, tuple(sorted(o.channels))) for o in h.mouth.orders]
+    assert said == [("failed:provider:timeout", "conv:failed:r_iv_000001", ("voice",))]   # owed, said as it is
+    assert len(h.conv.model.calls) == 1                             # no model words the failure
+    assert h.owed.rows["conv:failed:r_iv_000001"]["state"] == "spoken"
 
 
 def test_b3_the_sweep_closes_the_request_of_a_run_in_course_and_stops_it(store):
@@ -136,13 +138,13 @@ def test_b6_a_tool_that_raises_ends_the_run_visibly_and_accounts_its_batch(store
     rows = [r for _k, r in store.snapshot("acct-test").scan("inbox") if r["kind"] == "user.utterance"]
     assert [r["outcome"] for r in rows] == ["failed"]
     assert audit(store.snapshot("acct-test"), h.clock.now_ms(), h.conv.cfg, drained=True) == []
-    assert [o.text for o in h.mouth.orders] == ["w-told"]
+    assert [o.text for o in h.mouth.orders] == ["failed:ValueError"]
 
 
-def test_nm7_a_model_that_stays_down_still_tells_the_person_through_the_last_resort_line(store):
-    """Review 2, NM7: the run fails, the request closes `recovered` and its must-tell reminder is worded by the next
-    run — which fails too, and again on its one retry: the mouth then says the language's last-resort line (text
-    empty, `fallback` set for the adapter). Nothing that must be told ends `failed` in silence."""
+def test_a_model_that_stays_down_still_tells_the_person_and_the_line_is_owed_not_retried(store):
+    """The run fails: its request closes `recovered` and the person is owed a line in the ledger of what is owed —
+    worded by the host, said as it is by voice when the manager is free, never by the model that failed. A line that
+    does not sound goes back to that ledger, for its other ways (a push, the next screen)."""
     from tests.conversation.unit.convkit import Harness
 
     def boom():
@@ -151,13 +153,16 @@ def test_nm7_a_model_that_stays_down_still_tells_the_person_through_the_last_res
     h = Harness(store)
     h.model.default = lambda ids: [boom]
     h.utter([(["w1"], 0)])
-    for t in range(h.clock.mono + 500, h.clock.mono + 20_000, 500):
+    for t in range(h.clock.mono + 500, h.clock.mono + 5_000, 500):
         h.at(t).pump()
-    assert [lab for lab, _ in h.closes()] == ["recovered"]
-    said = [o for o in h.mouth.orders if o.fallback]
-    assert len(said) == 1 and said[0].text == "" and said[0].fallback.startswith("failed:")
-    rows = [r for _k, r in store.snapshot("acct-test").scan("inbox") if r["kind"] == "system.reminder"]
-    assert rows and all(r.get("retries") == 1 for r in rows)
+    assert [lab for lab, _ in h.closes()] == ["recovered"] and len(h.model.calls) == 1
+    assert [o.notice_key for o in h.mouth.orders] == ["conv:failed:r_iv_000001"]
+    h2 = Harness(store.__class__()) if hasattr(store, "acquire") and store.__class__.__name__ == "MemoryStore" else None
+    if h2 is not None:                                          # no device can speak: back to its ledger
+        h2.conv.devices.clear()
+        h2.model.default = lambda ids: [boom]
+        h2.utter([(["w1"], 0)])
+        assert not h2.mouth.orders and h2.owed.rows["conv:failed:r_iv_000001"]["state"] == "owed"
 
 
 def test_minor1_keep_time_sweeps_on_its_own_timer(store):

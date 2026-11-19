@@ -20,13 +20,14 @@ def test_eager_then_resumed_then_end_closes_once_with_the_whole_sentence(ear, te
     out = feed(ear, S.VadEdge(D, "rise", 0), span(1, 1, False, words("w1", "w2")),
                S.EotHint(D, "flux", "eager", .55, 450), beats(500, 2800),
                S.Tick(2800))                                             # an eager hint alone: still tentative
-    assert not utterances(out) and states(out)[-1][0] == TENTATIVE
+    assert not utterances(out) and telemetry.labels("conv_ear")[-1] == "conv_ear/tentative"
     out += feed(ear, S.EotHint(D, "flux", "resumed", .1, 2850), span(1, 2, False, words("w1", "w2", "w3")),
                 span(1, 3, True, words("w1", "w2", "w3", "w4")), S.VadEdge(D, "fall", 800),
                 S.Watermark(D, 900), S.EotHint(D, "flux", "end", .8, 3200))
     closed = utterances(out)
     assert len(closed) == 1 and closed[0].body.text == "w1 w2 w3 w4"
-    assert [s for s, _ in states(out)] == [OPEN, TENTATIVE, OPEN]
+    assert [lab for lab in telemetry.labels("conv_ear") if lab != "conv_ear/onset"] == [
+        "conv_ear/opened", "conv_ear/tentative", "conv_ear/extended", "conv_ear/closed"]
     assert "conv_ear/closed" in telemetry.labels() and len(onsets(out)) == 1
     closed_ev = [p for k, lab, p in telemetry.events if lab == "closed"][0]
     assert closed_ev["closed_by"] == "eot" and closed_ev["refs"]["iv"] == closed[0].body.intervention_id
@@ -68,10 +69,10 @@ def test_a_declared_number_gives_more_patience(ear):
 
 def test_voice_with_no_words_is_discarded_and_a_guards_discard_keeps_its_text(ear, telemetry):
     out = feed(ear, S.VadEdge(D, "rise", 0), S.VadEdge(D, "fall", 200), S.Tick(3000))
-    assert states(out)[-1][0] == DISCARDED and out[-1].body.reason == "no_words"
+    assert states(out)[-1][0] == DISCARDED
     out = feed(ear, S.VadEdge(D, "rise", 4000), span(1, 1, False, words("w9", t0=4000)),
                S.Discard(D, "w9", "echo", 4300))
-    assert states(out)[-1][0] == DISCARDED and out[-1].body.text == "w9" and out[-1].body.reason == "echo"
+    assert states(out)[-1][0] == DISCARDED
     discards = [p for _k, lab, p in telemetry.events if lab == "discarded"]
     assert [(p["reason"], p["text"]) for p in discards] == [("no_words", ""), ("echo", "w9")]
 
@@ -101,19 +102,20 @@ def test_typed_input_is_closed_on_send(ear, telemetry):
     assert telemetry.labels() == ["conv_ear/typed"]
 
 
-def test_an_eager_hint_over_final_words_never_closes(ear):
+def test_an_eager_hint_over_final_words_never_closes(ear, telemetry):
     out = feed(ear, S.VadEdge(D, "rise", 0), span(1, 1, True, words("w1", "w2")), S.VadEdge(D, "fall", 400),
                beats(400, 1500), S.EotHint(D, "flux", "eager", .6, 1500), beats(1500, 2800))
-    assert not utterances(out) and states(out)[-1][0] == TENTATIVE
+    assert not utterances(out) and telemetry.labels("conv_ear")[-1] == "conv_ear/tentative"
 
 
-def test_voice_after_a_close_is_one_new_intervention_through_its_hints(ear):
+def test_voice_after_a_close_is_one_new_intervention_through_its_hints(ear, telemetry):
     out = feed(ear, span(1, 1, True, words("w1")), S.EotHint(D, "flux", "end", .9, 300),
                span(2, 1, False, words("w2", t0=1000)),                                  # he went on: a new one
                S.EotHint(D, "flux", "eager", .5, 1300), S.EotHint(D, "flux", "resumed", .1, 1400))
     seen = states(out)
-    assert [s for s, _iv in seen] == [OPEN, OPEN, TENTATIVE, OPEN]               # opened · opened · tentative · extended
-    assert seen[0][1] != seen[1][1] and {iv for _s, iv in seen[1:]} == {seen[1][1]}
+    assert [s for s, _iv in seen] == [OPEN, OPEN] and seen[0][1] != seen[1][1]       # two onsets: two interventions
+    second = [lab for k, lab, p in telemetry.events if k == "conv_ear" and p["refs"].get("iv") == seen[1][1]]
+    assert second == ["onset", "opened", "tentative", "extended"]
 
 
 def test_an_open_voice_with_no_new_word_ends_at_the_cap(ear):

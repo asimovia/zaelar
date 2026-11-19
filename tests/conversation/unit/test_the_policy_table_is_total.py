@@ -42,15 +42,6 @@ def test_new_input_while_we_speak_silences_then_supersedes_or_follows_up():
             Op.FOLLOW_UP,)
 
 
-def test_a_worker_question_never_takes_the_focus_while_the_person_speaks(store):
-    from conversation import envelopes as E
-    from conversation.types import EnvelopeKind, MgrState, WorkerUpdate
-    q = E.make(EnvelopeKind.WORKER_UPDATE, E.WorkerBody("t1", WorkerUpdate.QUESTION, "w1", question_id="q1"),
-               producer="worker:t1", producer_id="1", account="a", onset_ms=0, sealed_ms=0)
-    assert policy.decide(q, MgrState.IDLE) == (Op.SURFACE_NOW,)
-    assert policy.decide(q, MgrState.IDLE, person_speaking=True) == (Op.WAIT_FOCUS,)
-
-
 def test_a_stop_during_a_run_silences_and_cancels_the_run_and_the_task_goes_on(store):
     h = Harness(store)
     with h.conv.book.tx() as b:

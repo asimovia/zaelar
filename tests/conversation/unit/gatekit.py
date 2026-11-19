@@ -10,7 +10,7 @@ from conversation.inbox import Inbox
 from conversation.ledger import Book
 from conversation.ports import ToolCall, ToolResult, ToolSpec
 from conversation.telemetry import Emitter
-from conversation.types import Channel, ControlOp, EffectClass, EnvelopeKind, Ids, WorkerUpdate
+from conversation.types import Channel, ControlOp, EffectClass, EnvelopeKind, Ids
 
 ACCT = "acct-test"
 SEND = {"recipient": "to", "channel": "via", "content": "text"}
@@ -68,18 +68,6 @@ class Kit:
         with self.store.tx(self.lease) as tx:
             S.note(tx, iv, "closed", t)
         return env
-
-    def contact(self, t: int = 0) -> E.Envelope:
-        self.n += 1
-        return self._accept(E.make(EnvelopeKind.CONTACT_MESSAGE, E.ContactBody("th1", "c-ref-1", "w0009"),
-                                   producer="connector:chat", producer_id=f"m{self.n}", account=ACCT, onset_ms=t,
-                                   sealed_ms=t))
-
-    def worker(self, t: int = 0) -> E.Envelope:
-        self.n += 1
-        return self._accept(E.make(EnvelopeKind.WORKER_UPDATE, E.WorkerBody("t1", WorkerUpdate.RESULT, "w0010"),
-                                   producer="worker:t1", producer_id=f"r{self.n}", account=ACCT, onset_ms=t,
-                                   sealed_ms=t))
 
     def control(self, op: ControlOp, *, handle: str | None = None, gesture: bool = True, scope: dict | None = None,
                 endpoint: str = "d1", channel: Channel = Channel.BUTTON) -> E.Envelope:

@@ -1,8 +1,8 @@
 """Every envelope kind goes to JSON and back unchanged; what the schema does not know is refused (node 13.2).
 
-The authority of an envelope is fixed by its KIND, never read off the wire: a contact's message that claims to be the
-user's is refused, and so is a worker update that claims to be a system reminder's channel. That is the first wall
-of I8 — only an envelope of the person can grant anything, and nothing becomes one by saying so.
+Only the person enters the inbox: three kinds — a voice utterance (whole or incomplete), a text, a control. A kind the
+schema does not know (a contact's message, a worker's update, a reminder: lines owed, never entries) is refused, and
+the authority and channel of a kind are fixed by the kind, never read off the wire.
 """
 from __future__ import annotations
 
@@ -11,8 +11,7 @@ import dataclasses
 import pytest
 
 from conversation import envelopes as E
-from conversation.types import (Authority, Channel, ControlOp, EnvelopeKind, Evidence, IvState, Surfacing,
-                                WorkerUpdate)
+from conversation.types import Channel, ControlOp, Coverage, EnvelopeKind
 
 BODIES = {
     EnvelopeKind.USER_UTTERANCE: E.UtteranceBody("i1", "w0001 w0002", (E.Span("w0001", 0, 120, 0.9),
@@ -20,18 +19,12 @@ BODIES = {
     EnvelopeKind.USER_TEXT: E.TextBody("i2", "w0003", ("att-1",)),
     EnvelopeKind.USER_CONTROL: E.ControlBody(ControlOp.DELEGATE, gesture=True,
                                              scope={"recipients": ["c1"], "channel": "chat", "max": 3}),
-    EnvelopeKind.INTERVENTION_STATE: E.InterventionStateBody("i1", IvState.OPEN),
-    EnvelopeKind.SYSTEM_REMINDER: E.ReminderBody("r1", "w0004", 1_000),
-    EnvelopeKind.CONTACT_MESSAGE: E.ContactBody("th1", "contact-ref-1", "w0005", reply_to="m9"),
-    EnvelopeKind.WORKER_UPDATE: E.WorkerBody("t1", WorkerUpdate.RESULT, "w0006",
-                                             evidence=(Evidence("ev1", "market", "ACME", "2026-W46", "close", "up",
-                                                                1.5),)),
 }
 
 
 def _env(kind: EnvelopeKind) -> E.Envelope:
     env = E.make(kind, BODIES[kind], producer=f"p:{kind}", producer_id="x1", account="acct-test", onset_ms=10,
-                 sealed_ms=20, refs=E.Refs(task_id="t1"), surfacing=Surfacing.WHEN_IDLE, must_tell=True)
+                 sealed_ms=20, refs=E.Refs(task_id="t1"))
     return dataclasses.replace(env, id="e_000001", accepted_ms=30)
 
 
@@ -70,24 +63,31 @@ def test_a_missing_field_is_refused():
         E.from_json(d)
 
 
-@pytest.mark.parametrize("kind", [EnvelopeKind.CONTACT_MESSAGE, EnvelopeKind.WORKER_UPDATE,
-                                  EnvelopeKind.SYSTEM_REMINDER])
-def test_authority_is_never_elevated_to_the_user(kind):
-    d = E.to_json(_env(kind))
-    d["authority"] = str(Authority.USER)
+@pytest.mark.parametrize("gone", ["contact.message", "worker.update", "system.reminder", "intervention.state"])
+def test_what_is_owed_or_the_ears_state_is_no_entry(gone):
+    d = E.to_json(_env(EnvelopeKind.USER_TEXT))
+    d["kind"] = gone
     with pytest.raises(E.EnvelopeError):
         E.from_json(d)
 
 
-def test_a_user_kind_cannot_be_lowered_either():
+def test_an_incomplete_utterance_round_trips_with_its_reason():
+    body = E.UtteranceBody("i3", "w0001", coverage=Coverage.INCOMPLETE, reason="stalled")
+    env = dataclasses.replace(E.make(EnvelopeKind.USER_UTTERANCE, body, producer="ear:d1", producer_id="i3:x",
+                                     account="a", onset_ms=0, sealed_ms=1), id="e1", accepted_ms=2)
+    back = E.from_json(E.to_json(env))
+    assert back.body.coverage is Coverage.INCOMPLETE and back.body.reason == "stalled"
+
+
+def test_the_authority_on_the_wire_must_be_the_kinds():
     d = E.to_json(_env(EnvelopeKind.USER_TEXT))
-    d["authority"] = str(Authority.TOOL)
+    d["authority"] = "contact"
     with pytest.raises(E.EnvelopeError):
         E.from_json(d)
 
 
 def test_a_kind_cannot_come_by_another_channel():
-    d = E.to_json(_env(EnvelopeKind.CONTACT_MESSAGE))
+    d = E.to_json(_env(EnvelopeKind.USER_UTTERANCE))
     d["channel"] = str(Channel.TEXT)
     with pytest.raises(E.EnvelopeError):
         E.from_json(d)

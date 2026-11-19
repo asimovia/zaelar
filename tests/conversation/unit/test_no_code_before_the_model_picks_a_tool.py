@@ -15,7 +15,7 @@ import pytest
 from conversation import envelopes as E
 from conversation.ear import signals as S
 from conversation.testing.fakes import catalog
-from conversation.types import EnvelopeKind, WorkerUpdate
+from conversation.types import EnvelopeKind
 from tests.conversation.unit.convkit import Harness
 from tests.infrastructure.unit import test_words_never_fix_a_case as words_ratchet
 
@@ -23,7 +23,7 @@ PKG = Path(__file__).resolve().parents[3] / "conversation"
 CORE = {t.name for t in catalog() if t.core}
 
 
-@pytest.mark.parametrize("how", ["voice", "text_es", "text_en", "expect_number", "worker"])
+@pytest.mark.parametrize("how", ["voice", "text_es", "text_en", "expect_number", "incomplete"])
 def test_the_model_call_carries_the_whole_catalog_and_no_tool_ran_before_it(store, how):
     h = Harness(store)
     if how == "voice":
@@ -32,9 +32,10 @@ def test_the_model_call_carries_the_whole_catalog_and_no_tool_ran_before_it(stor
         h.hear(S.ContextHint("d1", "number"))
         h.utter([(["w3"], 0)], end_pause=1500)
         h.at(h.clock.mono + 5000).hear(S.Tick(h.clock.mono + 5000))
-    elif how == "worker":
-        h.conv.give(E.make(EnvelopeKind.WORKER_UPDATE, E.WorkerBody("t1", WorkerUpdate.RESULT, "w7"),
-                           producer="worker:t1", producer_id="r1", account="acct-test", onset_ms=0, sealed_ms=0))
+    elif how == "incomplete":                                     # the stream stops mid-sentence: the run asks
+        t = h.clock.mono + 10
+        h.hear(S.VadEdge("d1", "rise", t), S.WordSpan("d1", 5, 1, False, h.words(["w7"], t), (t, t + 180)),
+               S.Watermark("d1", t + 200), S.Tick(t + 2000))
     else:
         h.typed({"text_es": "w4 w5", "text_en": "w6"}[how], h.clock.mono + 1)
         h.at(h.clock.mono + 1000)

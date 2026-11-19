@@ -14,7 +14,7 @@ from conversation.types import ControlOp, EnvelopeKind
 from tests.conversation.unit.earkit import beats, span, words
 from tests.conversation.unit.inboxkit import ACCT, Pipe, control, kinds
 
-UTT, TEXT, STATE = str(EnvelopeKind.USER_UTTERANCE), str(EnvelopeKind.USER_TEXT), str(EnvelopeKind.INTERVENTION_STATE)
+UTT, TEXT = str(EnvelopeKind.USER_UTTERANCE), str(EnvelopeKind.USER_TEXT)
 
 
 def _voice_open(p: Pipe, t0: int = 0, lang_tok=("w1", "w2")):
@@ -51,7 +51,7 @@ def test_x2_a_text_then_voice_are_two_inputs_in_the_order_he_began(store, clock,
 def test_x3_a_text_while_the_agent_speaks_is_ready_at_once(store, clock, telemetry):
     p = Pipe(store, clock, telemetry)
     p.signal(S.PlaybackState("d1", True, 0), S.TypedSubmit("d1", "c1", "w9", 100))
-    assert kinds(p.at(450).batch(idle=False)) == [TEXT]
+    assert kinds(p.at(450).batch()) == [TEXT]
 
 
 def test_x4_a_typed_stop_or_a_button_with_the_voice_open_is_applied_at_once(store, clock, telemetry):
@@ -88,7 +88,7 @@ def test_x8_a_voice_that_ends_incomplete_releases_the_text_and_asks_for_the_end(
     p.signal(beats(240, 400, stream="d1"), S.TypedSubmit("d2", "c1", "w9", 400))
     p.signal(S.Tick(400 + 1500))                                     # the stream stopped beating
     b = p.at(1900).batch()
-    assert kinds(b) == [STATE, TEXT] and str(b.envelopes[0].body.state) == "incomplete"
+    assert kinds(b) == [UTT, TEXT] and str(b.envelopes[0].body.coverage) == "incomplete"
 
 
 def test_x9_two_texts_under_350_ms_are_one_batch(store, clock, telemetry):

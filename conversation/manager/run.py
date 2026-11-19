@@ -8,8 +8,8 @@ never cut (I7). Every port call has its deadline (`conversation.guard`).
 
 EVERY exit of a run accounts for its batch with what happened (B6, M6): answered → `told`; a deliberate silence →
 `silent`; superseded → back to the queue; anything else — the provider failed or timed out, a tool raised, the
-steps ran out — → `failed`, its requests closed `recovered`, and a must-tell recovery entry queued so the person
-hears that it failed (worded by the model, never a fixed sentence). A numeric claim that does not match its evidence
+steps ran out — → `failed`, its requests closed `recovered`, and the person owed a line that says so (`Owed.owe`:
+the host words it in the person's language; the model that failed never does). A numeric claim that does not match its evidence
 gets ONE repair round with the reason; then the run stays silent (D9). The first publication seals the batch's
 interventions; one that cannot seal fences the run.
 """
@@ -30,12 +30,12 @@ from conversation.manager import claims as CL
 from conversation.manager import commands
 from conversation.mouth import Device, choose
 from conversation.ports import Command, Done, Failed, PromptParts, StaleEpoch, TextDelta, ToolCall, ToolResult
-from conversation.types import EnvelopeKind, ItemKind, MgrState, Surfacing
+from conversation.types import Coverage, EnvelopeKind, ItemKind, MgrState
 
 if TYPE_CHECKING:
     from conversation.manager.loop import Conversation, Running
 
-REQUEST_KINDS = (EnvelopeKind.USER_UTTERANCE, EnvelopeKind.USER_TEXT, EnvelopeKind.INTERVENTION_STATE)
+REQUEST_KINDS = (EnvelopeKind.USER_UTTERANCE, EnvelopeKind.USER_TEXT)
 
 
 class _Stop(Exception):
@@ -117,25 +117,15 @@ async def run_batch(conv: "Conversation", batch: Batch) -> None:
 
 
 async def _fail(conv: "Conversation", r: "Running", reason: str) -> None:
-    """The run failed: its batch is accounted `failed`, its requests close `recovered`, and the person will hear it
-    — a must-tell entry the next run words (M6). What must be told is never lost to a model that stays down (NM7): it
-    goes back once; failing again, the mouth says the language's last-resort line for it (the adapter words it)."""
+    """The run failed: its batch is accounted `failed`, its requests close `recovered`, and the person is owed a line
+    that says so — a row of the ledger of what is owed (`Owed.owe`), worded by the host in the person's language, never
+    by the model that just failed. From there it is said when the manager is free, or pushed, or shown."""
     now = conv.clock.now_ms()
-    owed = [e for e in r.ctx.batch.values() if e.must_tell and not e.is_user]
-    again = [e.id for e in owed if conv.inbox.retry_once(e.id, now + conv.cfg.stall_ms, now)]
-    conv.inbox.account([i for i in r.batch_ids if i not in again], "failed", now)
-    if len(again) < len(owed):
-        try:
-            await conv.speaker.say(run_id=r.run_id, request_id=r.ctx.request_id, text="", channels=frozenset({"text"}),
-                                   endpoint=r.ctx.endpoint, fallback=f"failed:{reason}")
-        except guard.PortTimeout as late:
-            r.said.append(("fallback", str(late)))   # the mouth is slow too: port_slow said it, the account stands
+    conv.inbox.account(list(r.batch_ids), "failed", now)
     _withdraw(conv, r, reason)
     for req in r.requests:
-        if close(conv, req, "recovered", "recovered", reason=reason):
-            conv.give(E.make(E.EnvelopeKind.SYSTEM_REMINDER, E.ReminderBody(f"rec-{req}", f"failed:{reason}", now),
-                             producer="manager:recovery", producer_id=f"rec-{req}", account=conv.account,
-                             onset_ms=now, sealed_ms=now, surfacing=Surfacing.WHEN_IDLE, must_tell=True))
+        if close(conv, req, "recovered", "recovered", reason=reason) and conv.owed is not None:
+            conv.owed.owe(conv.account, f"conv:failed:{req}", f"failed:{reason}")
     _emit(conv, "ended", r, outcome="failed", reason=reason)
 
 
@@ -149,12 +139,9 @@ def _withdraw(conv: "Conversation", r: "Running", reason: str) -> None:
 
 def _keep_held(conv: "Conversation", r: "Running", call: ToolCall) -> None:
     """An act held while the person speaks, in a run that cannot give its batch back (it already acted): it is not
-    lost — a must-tell entry names it, and the next run, once the person has finished, proposes it again (NM1)."""
-    now = conv.clock.now_ms()
-    conv.give(E.make(E.EnvelopeKind.SYSTEM_REMINDER, E.ReminderBody(f"held-{r.run_id}-{call.call_id}",
-                                                                    f"held:{call.name}", now),
-                     producer="manager:held", producer_id=f"held-{r.run_id}-{call.call_id}", account=conv.account,
-                     onset_ms=now, sealed_ms=now, surfacing=Surfacing.WHEN_IDLE, must_tell=True))
+    lost — the person is owed a line that names it."""
+    if conv.owed is not None:
+        conv.owed.owe(conv.account, f"conv:held:{r.run_id}:{call.call_id}", f"held:{call.name}")
 
 
 def resumed(conv: "Conversation", r: "Running", endpoint: str | None, t_ms: int) -> bool:
@@ -345,8 +332,9 @@ def _handed_off(conv: "Conversation", r: "Running") -> bool:
 def _seal_batch(conv: "Conversation", r: "Running", batch: Batch) -> bool:
     """The first publication seals every intervention of the person's in the batch — all of them, or none and the run
     is fenced."""
-    ivs = [env.refs.intervention_id for env in batch.envelopes
-           if env.is_user and env.kind in (EnvelopeKind.USER_UTTERANCE, EnvelopeKind.USER_TEXT)]
+    ivs = [env.refs.intervention_id for env in batch.envelopes      # an incomplete one is not sealed: it asks
+           if env.kind is EnvelopeKind.USER_TEXT or (env.kind is EnvelopeKind.USER_UTTERANCE
+                                                    and env.body.coverage is Coverage.FULL)]
     waits = _resumed_voice(conv, r)
     if waits is not None:                          # he spoke again after the last checkpoint: hold, never publish
         _hold(conv, r, waits)

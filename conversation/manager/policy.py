@@ -13,7 +13,7 @@ from enum import Enum
 
 from conversation import envelopes as E
 from conversation.ear.signals import Onset
-from conversation.types import ControlOp, EnvelopeKind, IvState, MgrState, Op, Surfacing, WorkerUpdate
+from conversation.types import ControlOp, Coverage, EnvelopeKind, MgrState, Op
 
 
 class Input(Enum):
@@ -22,13 +22,7 @@ class Input(Enum):
     TEXT = "text"
     STOP = "stop"
     BY_ID = "by_id"
-    INCOMPLETE = "incomplete"
-    WORKER_QUESTION = "worker_question"
-    WORKER_PROGRESS = "worker_progress"
-    WORKER_RESULT = "worker_result"
-    CONTACT = "contact"
-    REMINDER = "reminder"
-    VOICE_STATE = "voice_state"        # opened / tentative / extended / discarded: the inbox's, nothing to do here
+    INCOMPLETE = "incomplete"          # an utterance that ended without its final words: the run asks for the end
 
 
 class Column(Enum):
@@ -61,14 +55,6 @@ TABLE: dict[Input, dict[Column, tuple[Op, ...]]] = {
     Input.BY_ID: _row((O.BY_ID,), (O.BY_ID,), (O.BY_ID,), (O.BY_ID,), (O.BY_ID,), (O.BY_ID,)),
     Input.INCOMPLETE: _row((O.RUN_NOW,), (O.JOIN,), (O.AT_CHECKPOINT,), (O.FOLLOW_UP,), (O.WHEN_IDLE,),
                            (O.WHEN_IDLE,)),
-    Input.WORKER_QUESTION: _row((O.SURFACE_NOW,), (O.WAIT_FOCUS,), (O.AT_CHECKPOINT,), (O.AT_CHECKPOINT,),
-                                (O.WHEN_IDLE,), (O.WHEN_IDLE,)),
-    Input.WORKER_PROGRESS: _row(*([(O.COALESCE,)] * 6)),
-    Input.WORKER_RESULT: _row(*([(O.WHEN_IDLE,)] * 6)),
-    Input.CONTACT: _row(*([(O.WHEN_IDLE,)] * 6)),
-    Input.REMINDER: _row((O.SURFACE_NOW,), (O.SURFACE_NOW,), (O.WHEN_IDLE,), (O.WHEN_IDLE,), (O.WHEN_IDLE,),
-                         (O.WHEN_IDLE,)),
-    Input.VOICE_STATE: _row(*([(O.NONE,)] * 6)),
 }
 
 
@@ -77,20 +63,12 @@ def classify(item: E.Envelope | Onset) -> Input:
         return Input.ONSET
     k = item.kind
     if k is EnvelopeKind.USER_UTTERANCE:
-        return Input.UTTERANCE
+        return Input.UTTERANCE if item.body.coverage is Coverage.FULL else Input.INCOMPLETE
     if k is EnvelopeKind.USER_TEXT:
         return Input.TEXT
     if k is EnvelopeKind.USER_CONTROL:
         return Input.STOP if item.body.op is ControlOp.STOP else Input.BY_ID
-    if k is EnvelopeKind.INTERVENTION_STATE:
-        return Input.INCOMPLETE if item.body.state is IvState.INCOMPLETE else Input.VOICE_STATE
-    if k is EnvelopeKind.WORKER_UPDATE:
-        t = item.body.type
-        return (Input.WORKER_QUESTION if t is WorkerUpdate.QUESTION else
-                Input.WORKER_PROGRESS if t is WorkerUpdate.PROGRESS else Input.WORKER_RESULT)
-    if k is EnvelopeKind.CONTACT_MESSAGE:
-        return Input.CONTACT
-    return Input.REMINDER
+    raise ValueError(f"no policy row for {k}")
 
 
 def column(state: MgrState, claimed: bool) -> Column:
@@ -105,10 +83,4 @@ def column(state: MgrState, claimed: bool) -> Column:
 
 def decide(item: E.Envelope | Onset, state: MgrState, *, claimed: bool = False,
            person_speaking: bool = False) -> tuple[Op, ...]:
-    ops = TABLE[classify(item)][column(state, claimed)]
-    if isinstance(item, E.Envelope) and item.kind is EnvelopeKind.SYSTEM_REMINDER and \
-            item.surfacing is Surfacing.WHEN_IDLE and ops == (O.SURFACE_NOW,):
-        return (O.WHEN_IDLE,)                       # the reminder's own declared surfacing
-    if person_speaking and ops == (O.SURFACE_NOW,) and classify(item) is Input.WORKER_QUESTION:
-        return (O.WAIT_FOCUS,)                      # never take the focus while they are speaking (N2)
-    return ops
+    return TABLE[classify(item)][column(state, claimed)]

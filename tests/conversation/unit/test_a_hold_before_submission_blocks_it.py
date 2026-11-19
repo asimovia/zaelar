@@ -151,7 +151,5 @@ def test_nm1_an_act_held_after_the_run_already_acted_stays_as_an_entry_proposed_
                                    [reply("w3"), Done()]]
     h.utter([(["w1"], 0)])
     assert [c[0] for c in h.tools.calls] == ["agenda_add"]               # the first act went; the second was held
-    t = h.clock.mono
-    h.hear(S.VadEdge("d2", "fall", t), S.Tick(t + 3000))
-    h.at(h.clock.mono + 1000).pump()
-    assert any("held:agenda_add" in c.prompt.input for c in h.model.calls[1:]), "the held act was never proposed again"
+    held = [k for k in h.owed.rows if k.startswith("conv:held:")]
+    assert held and h.owed.rows[held[0]]["text"] == "held:agenda_add", "the held act was lost"

@@ -13,7 +13,7 @@ import re
 from conversation import envelopes as E
 from conversation.composer import compose, view_from
 from conversation.config import Config
-from conversation.types import Channel, EnvelopeKind, ItemKind, WorkerUpdate
+from conversation.types import Channel, Coverage, EnvelopeKind, ItemKind
 
 PREFIX = "OPERATING RULES v1\nTOOLS: search, market_data, discover_tools, send_message"
 T0 = 1_800_000_000_000
@@ -42,9 +42,10 @@ def _batch(text_voice: str, text_typed: str):
                  producer_id="iv7:1", account="acct", onset_ms=T0, sealed_ms=T0 + 900)
     txt = E.make(EnvelopeKind.USER_TEXT, E.TextBody("iv8", text_typed), producer="chat:d2", producer_id="c1",
                  account="acct", onset_ms=T0 + 300, sealed_ms=T0 + 300, channel=Channel.TEXT)
-    wrk = E.make(EnvelopeKind.WORKER_UPDATE, E.WorkerBody("t5", WorkerUpdate.PROGRESS, "w0601"),
-                 producer="worker:t5", producer_id="p1", account="acct", onset_ms=T0, sealed_ms=T0)
-    return (utt, txt, E.Envelope(**{**wrk.__dict__, "id": "e_9"}))
+    inc = E.make(EnvelopeKind.USER_UTTERANCE, E.UtteranceBody("iv9", "w0601", coverage=Coverage.INCOMPLETE,
+                                                               amends="iv7"),
+                 producer="ear:d1", producer_id="iv9:incomplete", account="acct", onset_ms=T0 + 900, sealed_ms=T0 + 2000)
+    return (utt, txt, inc)
 
 
 ES_TURNS = [("user", "w0001 w0002", None), ("agent", "Te lo miro ahora mismo, dame un segundo.", 13),
@@ -75,7 +76,7 @@ def test_the_spanish_snapshot(store):
     assert p.state == EXPECTED_ES
     assert [t.text for t in p.conversation] == ["w0001 w0002", "Te lo miro ah", "Hecho. [heard: unknown]"]
     assert p.input == ("INPUT\n[iv7 · voice · closed] «w0701 w0702»\n[iv8 · text · closed] «w0801»\n"
-                       "[e_9 · worker t5 · progress] «w0601»")
+                       "[iv9 · voice · incomplete · amends iv7] «w0601»")
 
 
 def test_the_english_snapshot_has_the_same_shape(store):

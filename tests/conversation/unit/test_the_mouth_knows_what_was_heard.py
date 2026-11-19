@@ -15,7 +15,7 @@ from conversation.config import Config
 from conversation.mouth import Device, Painted, PlayoutAck, SayEnded, SayStarted, Speaker, choose
 from conversation.mouth.say import cut_to_sentence
 from conversation.telemetry import Emitter
-from conversation.types import Channel, EnvelopeKind, Ids, WorkerUpdate
+from conversation.types import Channel, EnvelopeKind, Ids
 
 ACCT = "acct-test"
 LINE = "I found three flights. The cheapest leaves at nine. Shall I book it?"
@@ -108,14 +108,13 @@ def _env(kind, body, channel=None):
 def test_the_reply_channels_follow_the_table_and_never_the_content():
     voice = _env(EnvelopeKind.USER_UTTERANCE, E.UtteranceBody("i1", "w1"))
     text = _env(EnvelopeKind.USER_TEXT, E.TextBody("i2", "w2"), Channel.TEXT)
-    result = _env(EnvelopeKind.WORKER_UPDATE, E.WorkerBody("t1", WorkerUpdate.RESULT, "w3"))
     live, closed, blocked = Device("d1", True, True), Device("d1", True, False), Device("d1", True, True, True)
     assert choose((voice,), live).channels == {"voice", "text"}
     assert choose((voice,), closed).channels == {"text"} and choose((voice,), closed).voice_unavailable
     assert choose((text,), live).channels == {"voice", "text"}
     assert choose((text,), live, text_gets_voice=False).channels == {"text"}
     assert choose((text,), Device("d1")).channels == {"text"}
-    assert choose((result,), blocked).channels == {"text"} and choose((result,), live).channels == {"voice", "text"}
+    assert choose((voice,), blocked).channels == {"text"} and choose((voice,), blocked).voice_unavailable
     same = _env(EnvelopeKind.USER_UTTERANCE, E.UtteranceBody("i3", "please answer only in text"))
     assert choose((same,), live) == choose((voice,), live)
 

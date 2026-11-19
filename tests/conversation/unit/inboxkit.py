@@ -8,7 +8,7 @@ from conversation.ear import Ear
 from conversation.ear import signals as S
 from conversation.inbox import Inbox
 from conversation.telemetry import Emitter
-from conversation.types import ControlOp, EnvelopeKind, Surfacing, WorkerUpdate
+from conversation.types import ControlOp, EnvelopeKind
 
 ACCT = "acct-test"
 
@@ -41,7 +41,11 @@ class Pipe:
                 if t is not None:
                     self.clock.mono = max(self.clock.mono, t)
                 for item in self.ear.feed(one):
-                    if isinstance(item, E.Envelope):
+                    if isinstance(item, S.Onset):              # as the manager does: an open voice holds texts
+                        self.inbox.voice_open(item.intervention_id, item.t_ms, item.endpoint)
+                    elif isinstance(item, S.VoiceDiscarded):
+                        self.inbox.voice_done(item.intervention_id, self.now())
+                    elif isinstance(item, E.Envelope):
                         adm = self.inbox.accept(item, self.now())
                         self.admissions.append(adm)
                         out.append(adm)
@@ -52,15 +56,9 @@ class Pipe:
         self.admissions.append(adm)
         return adm
 
-    def batch(self, idle: bool = True):
+    def batch(self):
         self.inbox.sweep(self.now())
-        return self.inbox.next_batch(self.now(), idle=idle)
-
-
-def worker(task: str, kind: WorkerUpdate, t: int, n: str, surfacing=Surfacing.WHEN_IDLE, must_tell=False):
-    return E.make(EnvelopeKind.WORKER_UPDATE, E.WorkerBody(task, kind, f"w-{n}"), producer=f"worker:{task}",
-                  producer_id=n, account=ACCT, onset_ms=t, sealed_ms=t, surfacing=surfacing, must_tell=must_tell,
-                  refs=E.Refs(task_id=task))
+        return self.inbox.next_batch(self.now())
 
 
 def control(op: ControlOp, t: int, n: str, endpoint="d2", gesture=False, handle=None, channel=None):

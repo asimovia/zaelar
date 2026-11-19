@@ -18,14 +18,14 @@ stdlib only, no regex, no word tables (the person's words are never read by code
 | Piece | Path | What it owns |
 |---|---|---|
 | Ear | `ear/` | Speech signals → interventions. An intervention CLOSES only on the provider's end of turn + full coverage + the watermark past the voice's fall, or at a cap; an eager hint never closes it. It reopens (a new revision) only within `reopen_window_ms` of the close and never once sealed or once its request is final. A stream that stops beating is `incomplete`, never actionable. |
-| Inbox | `inbox/` | Every envelope (voice, text, controls, workers, contacts, reminders) accepted durably and deduplicated by producer id, ordered by onset across devices and channels, collected into batches; every one ends accounted (told · coalesced · silent · expired · applied · failed). |
+| Inbox | `inbox/` | The person's entries — a voice utterance (whole, or incomplete with what was heard), a text, a control — accepted durably and deduplicated by producer id, ordered by onset across devices and channels, collected into batches; every one ends accounted (told · silent · expired · applied · failed). What the engine owes the person is not an entry: it is a line in its own ledger (`Owed`), said as it is, by voice, when the manager is free. |
 | Ledger | `ledger/` | Requests, effects, tasks, questions, handles, delegations, grants as rows with ONE transition table. |
 | Composer | `composer/` | A pure function from the store to the prompt: a cacheable prefix, the state, the last turns (cut to what was heard), the input. |
 | Gateway | `gateway/` | The only door out: a read passes; a write rests on a batch that is all the person's or on a mandate (a confirmed handle, a delegation, a grant); every effect is reserved, sealed and recorded before the provider is called; an unknown outcome is reconciled by looking, never resent. |
 | Mouth | `mouth/` | Orders lines on the reply channels; per-device acknowledgements decide what was heard; a line no device acknowledges ended «unknown». |
 | Manager | `manager/` | The policy table (input × state → operations), one run at a time, checkpoints where a stop, a new sentence or a held act takes effect, the liveness sweep. |
 
-Ports (`ports.py`) are the seams to the outside: `Clock`, `Telemetry`, `Model`, `Tools`, `Memory`, `Mouth`, `Store`.
+Ports (`ports.py`) are the seams to the outside: `Clock`, `Telemetry`, `Model`, `Tools`, `Memory`, `Mouth`, `Owed`, `Store`.
 Two stores keep the same contract: in memory (tests) and on sqlite (a file of its own).
 
 ## The invariants

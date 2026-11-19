@@ -31,9 +31,9 @@ from conversation import guard
 from conversation.manager import policy, run
 from conversation.manager.focus import Focus
 from conversation.mouth import Device, Painted, PlayoutAck, SayEnded, SayStarted, Speaker
-from conversation.ports import Clock, Memory, Model, Mouth, Store, Telemetry, Tools
+from conversation.ports import Clock, Memory, Model, Mouth, Owed, Store, Telemetry, Tools
 from conversation.telemetry import Emitter
-from conversation.types import ControlOp, EnvelopeKind, Ids, IvState, ItemKind, MgrState, Op
+from conversation.types import ControlOp, Coverage, EnvelopeKind, Ids, ItemKind, MgrState, Op
 
 REQUESTS = (EnvelopeKind.USER_UTTERANCE, EnvelopeKind.USER_TEXT)
 
@@ -58,9 +58,9 @@ class Running:
 class Conversation:
     def __init__(self, *, account: str, owner: str, model: Model, tools: Tools, store: Store, memory: Memory | None,
                  clock: Clock, mouth: Mouth, telemetry: Telemetry, config: Config | None = None, prefix: str = "",
-                 ids: Ids | None = None) -> None:
+                 ids: Ids | None = None, owed: Owed | None = None) -> None:
         self.account, self.cfg, self.prefix = account, config or Config(), prefix
-        self.model, self.tools, self.memory, self.clock = model, tools, memory, clock
+        self.model, self.tools, self.memory, self.clock, self.owed = model, tools, memory, clock, owed
         self.lease = store.acquire(account, owner)
         self.em = Emitter(telemetry, clock, account, epoch=lambda: self.lease.epoch)
         self.store = guard.TimedStore(store, self.em, self.cfg)
@@ -74,7 +74,7 @@ class Conversation:
                           lambda: {t.name: t for t in tools.catalog()})
         self.focus = Focus()
         self.speaker = Speaker(self.store, lease, mouth, self.em, clock, self.ids, on_presented=self._presented,
-                               config=self.cfg)
+                               on_owed=self._owed_ended, config=self.cfg)
         self.devices: dict[str, Device] = {}
         self.state = MgrState.IDLE
         self.current: Running | None = None
@@ -102,8 +102,17 @@ class Conversation:
         for out in self.ear.feed(sig):
             if isinstance(out, S.Onset):
                 self._onset(out)
+            elif isinstance(out, S.VoiceDiscarded):
+                self._discarded(out)
             else:
                 self.give(out)
+
+    def _discarded(self, d: S.VoiceDiscarded) -> None:
+        """An open voice ended with nothing to answer: noted once, nothing waits behind it, it speaks no more."""
+        with self.store.tx(self.lease) as tx:
+            SEAL.note(tx, d.intervention_id, "discarded", d.t_ms)
+        self.inbox.voice_done(d.intervention_id, self.clock.now_ms())
+        self._voice_done(d.endpoint)
 
     def give(self, env: E.Envelope) -> None:
         now = self.clock.now_ms()
@@ -123,12 +132,11 @@ class Conversation:
         """Inside the acceptance's transaction, after the dedupe: how the intervention ended (noted once) and the
         person's request, opened with it."""
         k, b = env.kind, env.body
-        if k in REQUESTS:
-            SEAL.note(tx, b.intervention_id, "closed", now)
-        elif k is EnvelopeKind.INTERVENTION_STATE and b.state in (IvState.INCOMPLETE, IvState.DISCARDED):
-            SEAL.note(tx, b.intervention_id, str(b.state), now)
-        opens = k in REQUESTS or (k is EnvelopeKind.INTERVENTION_STATE and b.state is IvState.INCOMPLETE)
-        if opens and b.intervention_id:
+        if k not in REQUESTS:
+            return
+        whole = k is EnvelopeKind.USER_TEXT or b.coverage is Coverage.FULL
+        SEAL.note(tx, b.intervention_id, "closed" if whole else "incomplete", now)
+        if b.intervention_id:
             req = f"r_{b.intervention_id}"
             book = BookTx(tx, now, pending)
             book.open(ItemKind.REQUEST, req, data={"req": req, "iv": b.intervention_id, "sealed_ms": env.sealed_ms},
@@ -136,13 +144,12 @@ class Conversation:
             book.attach(req, env.id, decided_by="id", cause={"kind": "envelope", "ref": env.id})
 
     def _voice_state(self, env: E.Envelope) -> None:
-        if env.kind not in (EnvelopeKind.USER_UTTERANCE, EnvelopeKind.INTERVENTION_STATE) or not env.endpoint:
-            return
-        if env.kind is EnvelopeKind.USER_UTTERANCE or env.body.state in (IvState.INCOMPLETE, IvState.DISCARDED):
-            self._voice_done(env.endpoint)
+        if env.kind is EnvelopeKind.USER_UTTERANCE and env.endpoint:
+            self._voice_done(env.endpoint)          # the voice ended — whole, or incomplete
 
     def _onset(self, o: S.Onset) -> None:
         self.speaking_on.add(o.endpoint)
+        self.inbox.voice_open(o.intervention_id, o.t_ms, o.endpoint)
         self.gw.note_onset(o.endpoint, o.t_ms)
         for op in policy.decide(o, self.state, claimed=bool(self.current and self.current.claimed)):
             if op is Op.FIX_FOCUS:
@@ -298,8 +305,34 @@ class Conversation:
                 if self.speaking_on and now - self._voice_wait < self.cfg.cross_channel_hold_ms:
                     return runs
                 self._voice_wait = None
-            batch = self.inbox.next_batch(self.clock.now_ms(), idle=self.state is MgrState.IDLE)
+            batch = self.inbox.next_batch(self.clock.now_ms())
             if batch is None:
+                await self._say_owed()
                 return runs
             await run.run_batch(self, batch)
             runs += 1
+
+    async def _say_owed(self) -> None:
+        """Free, nobody speaking, no entry waiting: say the next line owed, as it is — no model — and only by voice (it
+        is already on the wall). With no device that can speak, it goes back to its ledger for its other ways."""
+        if self.owed is None or self.state is not MgrState.IDLE or self.speaking_on:
+            return
+        line = self.owed.next(self.account)
+        if line is None:
+            return
+        device = next((d for d in self.devices.values() if d.voice_live and d.speaker_open and not d.blocked), None)
+        if device is None:
+            self.owed.release(line.key)
+            return
+        self.state = MgrState.SPEAKING
+        await self.speaker.say(run_id=f"owed:{line.key}", request_id=line.key, text=line.text,
+                               channels=frozenset({"voice"}), endpoint=device.endpoint, notice_key=line.key)
+
+    def _owed_ended(self, key: str, sounded: bool) -> None:
+        """The line owed ended: said, its ledger marks it spoken; it never sounded, it goes back for its other ways."""
+        if self.owed is None:
+            return
+        if sounded:
+            self.owed.settle(key)
+        else:
+            self.owed.release(key)

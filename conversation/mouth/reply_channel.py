@@ -5,8 +5,7 @@ the voice is the extra decision.
   batch with voice      voice live and speaker open → voice + text; otherwise text, and `voice_unavailable`
   batch of text only    voice live and speaker open ON THAT DEVICE → voice + text when the operator's rule says so
                         (the default keeps today's behaviour, PA-9); otherwise text
-  no input of theirs       a reminder, a result, a contact's reply: blocked device → text (pending stays visible);
-                        voice live and speaker open → voice + text; otherwise text
+A line owed (a result, a contact's message, a reminder) is not a batch: it is already on the wall and goes by voice.
 """
 from __future__ import annotations
 
@@ -36,8 +35,6 @@ TEXT, VOICE = frozenset({"text"}), frozenset({"voice", "text"})
 def choose(batch: tuple[E.Envelope, ...], device: Device, *, text_gets_voice: bool = True) -> Reply:
     can_speak = device.voice_live and device.speaker_open and not device.blocked
     kinds = {e.kind for e in batch}
-    if EnvelopeKind.USER_UTTERANCE in kinds or EnvelopeKind.INTERVENTION_STATE in kinds:
+    if EnvelopeKind.USER_UTTERANCE in kinds:
         return Reply(VOICE) if can_speak else Reply(TEXT, voice_unavailable=True)
-    if EnvelopeKind.USER_TEXT in kinds:
-        return Reply(VOICE if (can_speak and text_gets_voice) else TEXT)
-    return Reply(VOICE if can_speak else TEXT)
+    return Reply(VOICE if (can_speak and text_gets_voice) else TEXT)

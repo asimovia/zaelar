@@ -1,6 +1,5 @@
-"""I6: every accepted envelope ends accounted for — told, coalesced, silent on purpose, expired, or applied by id —
-and until then it is in a state with a clock: queued, held (until its cap), deferred (until its due time, never past
-the must-tell cap), or dequeued into a run. Nothing sits in limbo.
+"""I6: every accepted envelope ends accounted for — told, silent on purpose, expired, applied by id, or failed — and
+until then it is in a state with a clock: queued, held (until its cap), or dequeued into a run. Nothing sits in limbo.
 
 `audit` reads a snapshot and returns the violations as sentences; P3 calls it after every random case and the
 mailbox test after every scenario. It reads; it never repairs.
@@ -35,10 +34,6 @@ def audit(snapshot, now: int, cfg: Config, *, drained: bool = False, running: se
             bad.append(f"{key}: dequeued into batch {row['batch']}, which no run is running")
         elif state == "held" and (row["hold_until"] is None or now > row["hold_until"]):
             bad.append(f"{key}: held past its cap")
-        elif state == "deferred":
-            cap = row["accepted"] + cfg.must_tell_max_defer_ms
-            if row["due"] is None or (row["must_tell"] and row["due"] > cap):
-                bad.append(f"{key}: deferred without a due time inside the must-tell cap")
     return bad
 
 

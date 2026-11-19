@@ -32,13 +32,23 @@ def feed(ear, *sigs) -> list:
 
 
 def utterances(out: list) -> list[E.Envelope]:
-    return [e for e in out if isinstance(e, E.Envelope) and e.kind is EnvelopeKind.USER_UTTERANCE]
+    """The utterances that closed whole."""
+    return [e for e in out if isinstance(e, E.Envelope) and e.kind is EnvelopeKind.USER_UTTERANCE
+            and e.body.coverage == "full"]
 
 
-def states(out: list) -> list[tuple[str, int]]:
-    """(state, intervention) of each intervention.state envelope."""
-    return [(str(e.body.state), e.body.intervention_id) for e in out
-            if isinstance(e, E.Envelope) and e.kind is EnvelopeKind.INTERVENTION_STATE]
+def states(out: list) -> list[tuple[str, str]]:
+    """(state, intervention) the ear reported, in order: open (its onset), incomplete (an utterance without its end),
+    discarded. A closed one is an utterance (`utterances`); tentative and extended are events, not outputs."""
+    seen = []
+    for e in out:
+        if isinstance(e, S.Onset):
+            seen.append((OPEN, e.intervention_id))
+        elif isinstance(e, S.VoiceDiscarded):
+            seen.append((DISCARDED, e.intervention_id))
+        elif isinstance(e, E.Envelope) and e.kind is EnvelopeKind.USER_UTTERANCE and e.body.coverage != "full":
+            seen.append((INCOMPLETE, e.body.intervention_id))
+    return seen
 
 
 def onsets(out: list) -> list[S.Onset]:

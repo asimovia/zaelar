@@ -28,15 +28,9 @@ class Config:
     collect_ms: int = 350
     #: a text waits at most this long behind an open voice intervention that began earlier (today's 8 s cap).
     cross_channel_hold_ms: int = 8000
-    #: what must be told is never deferred past this; then it is told whatever the state.
-    must_tell_max_defer_ms: int = 120_000
-    #: progress updates of one task coalesce over this window.
-    progress_coalesce_ms: int = 10_000
     #: a control is handled by id at once; one accepted and still unaccounted after this (its handler never ran or
     #: raised) is closed by the sweep with a visible outcome (I6).
     control_bound_ms: int = 5000
-    #: a to-tell item expires after this if never told (it is reported, never silently lost).
-    to_tell_expiry_ms: int = 30 * 60_000
     # ── the gateway ──
     #: extra wait without onset on the initiating device before an ACTION seals (D2's «0.3–0.7 s», PA-3). 0 in the
     #: core; F0/P4 set it.

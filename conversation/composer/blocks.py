@@ -17,7 +17,7 @@ from enum import Enum
 from conversation import envelopes as E
 from conversation.ledger.items import final
 from conversation.ports import Turn
-from conversation.types import EnvelopeKind, ItemKind
+from conversation.types import Coverage, EnvelopeKind, ItemKind
 
 
 class Title(Enum):
@@ -86,17 +86,10 @@ def input_block(batch: tuple[E.Envelope, ...]) -> str:
     for env in batch:
         b = env.body
         if env.kind in (EnvelopeKind.USER_UTTERANCE, EnvelopeKind.USER_TEXT):
-            tag = f"{b.intervention_id} · {env.channel} · closed"
+            ended = "closed" if env.kind is EnvelopeKind.USER_TEXT else ("closed" if b.coverage is Coverage.FULL
+                                                                         else "incomplete")
+            tag = f"{b.intervention_id} · {env.channel} · {ended}"
             if b.amends:
                 tag += f" · amends {b.amends}"
             lines.append(f"[{tag}] «{b.text}»")
-        elif env.kind is EnvelopeKind.INTERVENTION_STATE:
-            lines.append(f"[{b.intervention_id} · {env.channel} · {b.state}] «{b.text or ''}»")
-        elif env.kind is EnvelopeKind.WORKER_UPDATE:
-            q = f" · question {b.question_id}" if b.question_id else ""
-            lines.append(f"[{env.id} · worker {b.task_id} · {b.type}{q}] «{b.text}»")
-        elif env.kind is EnvelopeKind.CONTACT_MESSAGE:
-            lines.append(f"[{env.id} · contact {b.sender_ref} · thread {b.thread_id}] «{b.text}»")
-        elif env.kind is EnvelopeKind.SYSTEM_REMINDER:
-            lines.append(f"[{env.id} · reminder {b.reminder_id}] «{b.text}»")
     return "\n".join(lines)

@@ -1,16 +1,17 @@
-"""The durable inbox of one account: accept, dedupe, hold, collect, one batch at a time (§5.3, I6).
+"""The durable inbox of one account: the PERSON's entries — voice, text, controls — accepted, deduped, held, collected,
+one batch at a time (§5.3, I6). What the engine owes the person is not here: it is a line owed (`ports.Owed`).
 
 Every envelope is a row of the `inbox` table in the `Store`, so a suspended Machine or a restarted process finds
 what it had accepted. `accept` dedupes by (producer, producer_id) in the same transaction that writes the row. Each
 row is in exactly one state:
 
   queued    waits for a batch                          held      a text waiting behind earlier, open voice
-  deferred  told later, with its next due time         dequeued  in a batch the manager is running
-  accounted done, with its outcome: told · coalesced · silent · expired · applied (a control, handled by id)
+  dequeued  in a batch the manager is running          accounted done, with its outcome: told · silent · expired ·
+                                                                 applied (a control, handled by id) · failed
 
 Controls never wait: `accept` hands them back at once (`control`) and the manager applies them by id; the voice
-intervention stays open and closes as always. State envelopes of the ear (opened, tentative, extended) tell the inbox
-which voice is open — they are accounted `silent` on arrival.
+intervention stays open and closes as always. Which voice is open the manager tells the inbox (`voice_open`, on the
+ear's onset; `voice_done`, on its utterance or its discard): a text waits behind a voice that began before it.
 """
 from __future__ import annotations
 
@@ -23,7 +24,7 @@ from conversation.config import Config
 from conversation.inbox import ordering
 from conversation.ports import Lease, Store
 from conversation.telemetry import Emitter
-from conversation.types import EnvelopeKind, Ids, IvState, Surfacing, WorkerUpdate
+from conversation.types import Coverage, EnvelopeKind, Ids
 
 T = "inbox"
 VOICE = "voice_open"
@@ -31,13 +32,13 @@ VOICE = "voice_open"
 
 class Outcome(Enum):
     """How an accepted envelope ended (I6). `applied`: a control handled by id."""
-    TOLD, COALESCED, SILENT, EXPIRED, APPLIED = "told", "coalesced", "silent", "expired", "applied"
+    TOLD, SILENT, EXPIRED, APPLIED = "told", "silent", "expired", "applied"
     FAILED = "failed"            # its run failed; the request carries the recovery
 
 
 class RowState(Enum):
     """The live states of an inbox row; `accounted` is the end."""
-    QUEUED, HELD, DEFERRED, DEQUEUED, ACCOUNTED = "queued", "held", "deferred", "dequeued", "accounted"
+    QUEUED, HELD, DEQUEUED, ACCOUNTED = "queued", "held", "dequeued", "accounted"
 
 
 FINAL = frozenset(m.value for m in Outcome)
@@ -47,13 +48,13 @@ FINAL = frozenset(m.value for m in Outcome)
 class Batch:
     run_seq: int
     envelopes: tuple[E.Envelope, ...]
-    reason: str          # closed · collect_window · cross_channel · idle_drain · incomplete
+    reason: str          # closed · collect_window · cross_channel · incomplete
 
 
 @dataclass(frozen=True)
 class Admission:
     envelope: E.Envelope | None
-    disposition: str     # queued · held · control · state · silent · duplicate · refused
+    disposition: str     # queued · held · control · duplicate · refused
     extra: object = None  # what the caller's admission hook returned, inside the same transaction
 
 
@@ -97,19 +98,15 @@ class Inbox:
         return back
 
     def _row(self, env: E.Envelope) -> dict:
-        task = env.body.task_id if env.kind is EnvelopeKind.WORKER_UPDATE else None
         return {"id": env.id, "env": E.to_json(env), "kind": str(env.kind), "onset": env.onset_ms,
-                "accepted": env.accepted_ms, "user": env.is_user, "surfacing": str(env.surfacing),
-                "must_tell": env.must_tell, "state": "queued", "outcome": None, "held_behind": None,
-                "hold_until": None, "due": None, "batch": None, "task": task}
+                "accepted": env.accepted_ms, "state": "queued", "outcome": None, "held_behind": None,
+                "hold_until": None, "batch": None}
 
     def _route(self, tx, env: E.Envelope, now: int) -> str:
         k = env.kind
         if k is EnvelopeKind.USER_CONTROL:
             self._move(tx, env.id, state="dequeued")   # handed to the manager; accounted by its handler's transaction
             return "control"
-        if k is EnvelopeKind.INTERVENTION_STATE:
-            return self._voice_state(tx, env, now)
         if k is EnvelopeKind.USER_UTTERANCE:
             self._voice_done(tx, env.body.intervention_id, now)
             return "queued"
@@ -120,26 +117,18 @@ class Inbox:
                 self._move(tx, env.id, state="held", held_behind=iv, hold_until=now + self.cfg.cross_channel_hold_ms)
                 self._emit("held", env, refs_extra={"iv": iv}, held_behind=iv)
                 return "held"
-            return "queued"
-        if env.surfacing is Surfacing.SILENT:
-            self._final(tx, env.id, "silent", now)
-            return "silent"
-        if k is EnvelopeKind.WORKER_UPDATE and env.body.type is WorkerUpdate.PROGRESS:
-            self._coalesce(tx, env, now)
         return "queued"
 
-    def _voice_state(self, tx, env: E.Envelope, now: int) -> str:
-        b = env.body
-        if b.state in (IvState.OPEN, IvState.TENTATIVE):
-            known = tx.get(VOICE, b.intervention_id) or {"onset": env.onset_ms, "endpoint": env.endpoint}
-            tx.put(VOICE, b.intervention_id, {**known, "open": True})
-            self._final(tx, env.id, "silent", now)
-            return "state"
-        self._voice_done(tx, b.intervention_id, now)
-        if b.state is IvState.INCOMPLETE:
-            return "queued"                       # the run asks for the end
-        self._final(tx, env.id, "silent", now)    # discarded: the ear already said so, with text and reason
-        return "state"
+    def voice_open(self, iv: str, onset_ms: int, endpoint: str | None) -> None:
+        """A voice intervention opened (the ear's onset): texts begun after it wait behind it."""
+        with self.store.tx(self.lease()) as tx:
+            known = tx.get(VOICE, iv) or {"onset": onset_ms, "endpoint": endpoint}
+            tx.put(VOICE, iv, {**known, "open": True})
+
+    def voice_done(self, iv: str, now: int) -> None:
+        """A voice intervention was discarded (no words, a guard): nothing waits behind it any more."""
+        with self.store.tx(self.lease()) as tx:
+            self._voice_done(tx, iv, now)
 
     def _voice_done(self, tx, iv: str, now: int) -> None:
         """The voice intervention closed, ended incomplete or was discarded: nothing waits behind it any more."""
@@ -156,17 +145,10 @@ class Inbox:
                 self._move(tx, key, state="queued", held_behind=None, hold_until=None)
                 self._emit_row("released", held, held_behind=iv)
 
-    def _coalesce(self, tx, env: E.Envelope, now: int) -> None:
-        for key, row in tx.scan(T):
-            if (key != env.id and row["state"] == "queued" and row["task"] == env.body.task_id
-                    and row["env"]["body"].get("type") == str(WorkerUpdate.PROGRESS)):
-                self._final(tx, key, "coalesced", now)
-                self._emit_row("coalesced", row, into=env.id)
-
     # ── time ────────────────────────────────────────────────────────────────────────────────────────────────────
 
     def sweep(self, now: int) -> list[str]:
-        """Expire holds past their cap (the text runs alone, I4 event with its text); bring deferred rows due."""
+        """Expire holds past their cap (the text runs alone, I4 event with its text); close a control nobody handled."""
         moved = []
         with self.store.tx(self.lease()) as tx:
             for key, row in tx.scan(T):
@@ -174,9 +156,6 @@ class Inbox:
                     self._move(tx, key, state="queued", held_behind=None, hold_until=None)
                     self._emit_row("expired", row, text=row["env"]["body"].get("text"), held_behind=row["held_behind"],
                                    queue_age_ms=now - row["accepted"])
-                    moved.append(key)
-                elif row["state"] == "deferred" and now >= row["due"]:
-                    self._move(tx, key, state="queued", due=None)
                     moved.append(key)
                 elif (row["state"] == "dequeued" and row["kind"] == str(EnvelopeKind.USER_CONTROL)
                       and now - row["accepted"] >= self.cfg.control_bound_ms):
@@ -186,16 +165,15 @@ class Inbox:
 
     # ── out ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
-    def next_batch(self, now: int, *, idle: bool) -> Batch | None:
-        """The next batch to run, or None. User entries wait out the collect window of the LAST text accepted (two
-        texts in < collect_ms are one batch); `when_idle` entries come only when the manager is idle, unless what
-        must be told has waited past its cap."""
+    def next_batch(self, now: int) -> Batch | None:
+        """The next batch to run, or None: every queued entry, in the order they began — after the collect window of
+        the LAST text accepted (two texts in < collect_ms are one batch)."""
         with self.store.tx(self.lease()) as tx:
             rows = [r for _k, r in tx.scan(T) if r["state"] == "queued"]
             texts = [r for r in rows if r["kind"] == str(EnvelopeKind.USER_TEXT)]
             if texts and now - max(r["accepted"] for r in texts) < self.cfg.collect_ms:
                 return None                       # the collect window of the last text is still open
-            pick = [r for r in rows if self._eligible(r, now, idle)]
+            pick = [r for r in rows if r["kind"] != str(EnvelopeKind.USER_CONTROL)]
             if not pick:
                 return None
             seq = tx.next_seq("runs")
@@ -208,49 +186,20 @@ class Inbox:
                 self._emit_row("dequeued", r, batch=seq, queue_age_ms=now - r["accepted"])
             return Batch(seq, envs, reason)
 
-    def _eligible(self, row: dict, now: int, idle: bool) -> bool:
-        if row["user"]:
-            return True
-        if row["surfacing"] == str(Surfacing.NOW):
-            return True
-        overdue = row["must_tell"] and now - row["accepted"] >= self.cfg.must_tell_max_defer_ms
-        return idle or overdue
-
     @staticmethod
     def _reason(rows: list[dict]) -> str:
         kinds = {r["kind"] for r in rows}
         if str(EnvelopeKind.USER_UTTERANCE) in kinds and str(EnvelopeKind.USER_TEXT) in kinds:
             return "cross_channel"
-        if str(EnvelopeKind.USER_UTTERANCE) in kinds:
-            return "closed"
-        if str(EnvelopeKind.INTERVENTION_STATE) in kinds:
+        if any(r["env"]["body"].get("coverage") == str(Coverage.INCOMPLETE) for r in rows):
             return "incomplete"
-        return "collect_window" if str(EnvelopeKind.USER_TEXT) in kinds else "idle_drain"
+        return "closed" if str(EnvelopeKind.USER_UTTERANCE) in kinds else "collect_window"
 
     def account(self, env_ids: list[str], outcome: str, now: int) -> None:
         assert outcome in FINAL, outcome
         with self.store.tx(self.lease()) as tx:
             for i in env_ids:
                 self._final(tx, i, outcome, now)
-
-    def defer(self, env_id: str, due_ms: int, now: int) -> None:
-        """Told later: back to the queue at `due_ms`. Never past the must-tell cap for what must be told."""
-        with self.store.tx(self.lease()) as tx:
-            row = tx.get(T, env_id)
-            if row["must_tell"]:
-                due_ms = min(due_ms, row["accepted"] + self.cfg.must_tell_max_defer_ms)
-            self._move(tx, env_id, state="deferred", due=due_ms, batch=None)
-
-    def retry_once(self, env_id: str, due_ms: int, now: int) -> bool:
-        """What must be told and failed to be worded: back once, at `due_ms`. False when it already had its retry."""
-        with self.store.tx(self.lease()) as tx:
-            row = tx.get(T, env_id)
-            if row is None or row.get("retries", 0) >= 1:
-                return False
-            row["retries"] = row.get("retries", 0) + 1
-            tx.put(T, env_id, row)
-            self._move(tx, env_id, state="deferred", due=due_ms, batch=None)
-            return True
 
     def requeue(self, env_ids: list[str]) -> None:
         """A superseded run gives its batch back: the entries are queued again for the next batch."""
@@ -286,7 +235,7 @@ class Inbox:
         refs = {"env": env.id, "iv": env.refs.intervention_id, "task": env.refs.task_id,
                 "endpoint": env.endpoint, "channel": str(env.channel), **(refs_extra or {})}
         self.em.emit("conv_inbox", label, owner="inbox", cause=cause or {"kind": "envelope", "ref": env.id},
-                     refs=refs, kind=str(env.kind), surfacing=str(env.surfacing), **payload)
+                     refs=refs, kind=str(env.kind), **payload)
 
     def _emit_row(self, label: str, row: dict, **payload) -> None:
         refs = row["env"]["refs"]

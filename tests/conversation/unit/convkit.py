@@ -6,7 +6,7 @@ import asyncio
 from conversation import build
 from conversation.config import Config
 from conversation.ear import signals as S
-from conversation.testing.fakes import AckingMouth, FakeClock, ListTelemetry, NoMemory, RecordingTools
+from conversation.testing.fakes import AckingMouth, FakeClock, FakeOwed, ListTelemetry, NoMemory, RecordingTools
 from conversation.testing.scripted_model import ScriptedModel
 
 ACCT = "acct-test"
@@ -16,10 +16,10 @@ class Harness:
     def __init__(self, store, *, script: dict | None = None, config: Config | None = None, prefix: str = "RULES") -> None:
         self.clock, self.tel = FakeClock(t0_ms=0), ListTelemetry()   # signal times ARE the wall clock
         self.model, self.tools, self.mouth = ScriptedModel(script or {}), RecordingTools(), AckingMouth()
-        self.store = store
+        self.store, self.owed = store, FakeOwed()
         self.conv = build(account=ACCT, owner="test", model=self.model, tools=self.tools, store=store,
                           memory=NoMemory(), clock=self.clock, mouth=self.mouth, telemetry=self.tel,
-                          config=config or Config(), prefix=prefix)
+                          config=config or Config(), prefix=prefix, owed=self.owed)
         self.mouth.ack = self.conv.ack
         self.conv.device("d1", voice_live=True, speaker_open=True)
         self._seq = 0

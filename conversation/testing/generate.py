@@ -2,9 +2,9 @@
 
 `run_case(seed)` builds a manager over an audited in-memory store and drives it with a random interleaving: voice cut
 at random (eager / resumed / an end of turn mid-sentence / a stream that stops), typed texts on another device, stops
-from a button or the text field, confirmations with and without a gesture, workers' progress, questions and results,
-contacts' messages, reminders, jumps of the clock, and a TAKEOVER (another process acquires the account, the old one
-keeps being fed). The model is scripted at random — reads, local writes, sends, replies with and without numeric
+from a button or the text field, confirmations with and without a gesture, lines owed to the person (a worker's result,
+a contact's message, a reminder — held for the voice in their own ledger), jumps of the clock, and a TAKEOVER (another
+process acquires the account, the old one keeps being fed). The model is scripted at random — reads, local writes, sends, replies with and without numeric
 claims, silences, failures — and injects new input between its own events, so checkpoints are exercised. At the end
 time runs out (every hold, deferral and liveness budget expires) and `check(...)` returns the violations, as text.
 
@@ -24,9 +24,10 @@ from conversation.manager import Conversation
 from conversation.ports import Command, Done, Failed, StaleEpoch, ToolCall, ToolResult
 from conversation.store.memory import MemoryStore
 from conversation.store.sqlite import SqliteStore
-from conversation.testing.fakes import AckingMouth, FakeClock, ListTelemetry, NoMemory, RecordingTools, evidence
+from conversation.testing.fakes import (AckingMouth, FakeClock, FakeOwed, ListTelemetry, NoMemory, RecordingTools,
+                                        evidence)
 from conversation.testing.scripted_model import ScriptedModel, reply
-from conversation.types import Channel, ControlOp, EnvelopeKind, ItemKind, WorkerUpdate
+from conversation.types import Channel, ControlOp, EnvelopeKind, ItemKind
 
 ACCT = "acct-p3"
 
@@ -77,6 +78,7 @@ class Case:
         self.model = ScriptedModel(default=self._behave)
         self.issued_calls = 0
         self.mouth = AckingMouth(heard_all=self.rng.random() < 0.7)
+        self.owed = FakeOwed()
         self.conv = self._manager("p1")
         self.old: Conversation | None = None
         self.seq, self.n = 0, 0
@@ -89,7 +91,7 @@ class Case:
     def _manager(self, owner: str) -> Conversation:
         c = Conversation(account=ACCT, owner=owner, model=self.model, tools=self.tools, store=self.store,
                          memory=NoMemory(), clock=self.clock, mouth=self.mouth, telemetry=self.tel, config=self.cfg,
-                         prefix="P3", ids=None)
+                         prefix="P3", ids=None, owed=self.owed)
         self.mouth.ack = self._lossy_ack(c)                                 # B2: acks get lost
         for ep in ("d1", "d2"):
             c.device(ep, voice_live=self.rng.random() < 0.8, speaker_open=self.rng.random() < 0.8)
@@ -209,13 +211,11 @@ class Case:
         self._feed(conv, S.VadEdge(ep, "fall", t + 10), *[S.Watermark(ep, x) for x in range(t + 60, t + 400, 240)],
                    S.EotHint(ep, "flux", "end", .9, t + 400))
 
-    def _envelope(self, conv: Conversation, kind: EnvelopeKind, body, *, channel=None, endpoint=None,
-                  must_tell=False, surfacing=None) -> None:
+    def _envelope(self, conv: Conversation, kind: EnvelopeKind, body, *, channel=None, endpoint=None) -> None:
         self.n += 1
-        kw = {"surfacing": surfacing} if surfacing is not None else {}
         conv.give(E.make(kind, body, producer=f"{E.KINDS[kind][3][0]}p3", producer_id=f"{self.n}", account=ACCT,
                          onset_ms=self._now(), sealed_ms=self._now(), channel=channel, endpoint=endpoint,
-                         must_tell=must_tell, refs=E.Refs(task_id=getattr(body, "task_id", None)), **kw))
+                         refs=E.Refs(task_id=getattr(body, "task_id", None))))
         if conv.current is None:
             self.loop.run_until_complete(conv.pump())
 
@@ -236,16 +236,11 @@ class Case:
             self._envelope(conv, EnvelopeKind.USER_CONTROL,
                            E.ControlBody(ControlOp.CONFIRM, handle_id=self.rng.choice(handles or ["h_none"]),
                                          gesture=self.rng.random() < 0.6), channel=Channel.BUTTON, endpoint="d1")
-        elif a < 0.75:
-            kind = self.rng.choice(list(WorkerUpdate))
-            self._envelope(conv, EnvelopeKind.WORKER_UPDATE,
-                           E.WorkerBody("t1", kind, "w7", question_id="q1" if kind is WorkerUpdate.QUESTION else None),
-                           must_tell=kind is WorkerUpdate.RESULT)
-        elif a < 0.82:
-            self._envelope(conv, EnvelopeKind.CONTACT_MESSAGE, E.ContactBody("th1", "c-ref", "w6"))
-        elif a < 0.86:
-            self._envelope(conv, EnvelopeKind.SYSTEM_REMINDER, E.ReminderBody("rm1", "w4", self._now()),
-                           must_tell=True)
+        elif a < 0.86:                                   # a line owed: a worker's result, a contact, a reminder
+            self.n += 1
+            self.owed.add(f"n{self.n}", f"w{self.rng.randint(1, 60)}", self._now())
+            if conv.current is None:
+                self.loop.run_until_complete(conv.pump())
         elif a < 0.91:
             self._race_seal(conv)
         elif a < 0.94:
@@ -324,10 +319,11 @@ class Case:
         """Time runs out: no new input; every hold, deferral and budget expires; whatever is ready runs."""
         self.draining = True
         for _ in range(4):
-            self.clock.advance(max(self.cfg.must_tell_max_defer_ms, self.cfg.liveness_ms,
+            self.clock.advance(max(self.cfg.liveness_ms,
                                    self.cfg.cross_channel_hold_ms) + 1)
             # no device signal any more — not even a tick for the ear: only the manager's own clock (N2)
             self.loop.run_until_complete(self.conv.pump())
+            self.owed.expire(self.clock.now_ms())          # the ledger's pulse: a claim past its deadline goes back
 
 
 class _WithArchive:
@@ -431,6 +427,16 @@ def check(case: Case) -> list[str]:
             batch_of[p["refs"]["run"]] = b
         elif k == "conv_run" and lab == "fenced":
             fenced.add(batch_of.get(p["refs"]["run"]))
+    owed = getattr(case, "owed", None)                      # I6, the ledger of what is owed
+    if owed is not None:
+        said: dict = {}
+        for o in case.mouth.orders:
+            if o.notice_key:
+                said[o.notice_key] = said.get(o.notice_key, 0) + 1
+        out += [f"I6: owed line {k} said {n} times" for k, n in said.items() if n > 1]
+        out += [f"I6: owed line {k} spoken and never said" for k, r in owed.rows.items()
+                if r["state"] == "spoken" and not said.get(k)]
+        out += [f"I6: owed line {k} still claimed at the end" for k, r in owed.rows.items() if r["state"] == "claimed"]
     for r in inbox_rows:                                    # I9: every entry of the person is a request at once
         req = f"r_{r['env']['refs'].get('intervention_id')}"
         if r["kind"] in ("user.utterance", "user.text") and req not in items:

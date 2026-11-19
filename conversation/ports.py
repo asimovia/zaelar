@@ -146,9 +146,28 @@ class SayOrder:
     endpoint: str | None
     lang: str = ""
     presents: str | None = None       # the handle this line presents (a question that needs a yes)
-    #: the model could not word what must be told: `text` is empty and the adapter says the language's own last-resort
-    #: line for this reason (the package holds no sentence; NM7)
-    fallback: str | None = None
+    notice_key: str | None = None     # this line says a line owed (`Owed`): its outcome goes back to that ledger
+
+
+@dataclass(frozen=True)
+class OwedLine:
+    """A line the engine owes the person, already worded for them (a worker's result, a contact's message, a
+    reminder, the line that says a run failed), held for the voice by its own ledger."""
+    key: str
+    text: str
+    task_id: str | None = None
+
+
+class Owed(Protocol):
+    """What the engine owes the person lives in ITS ledger, never copied into the inbox: the manager asks for the next
+    line held for the voice when it is free and nobody speaks, says it as it is (no model), and reports back. A claim
+    has a deadline in that ledger: a line never said goes back to `owed`, and from there to its other ways (a push,
+    the next screen). One consumer at a time."""
+    def next(self, account: str) -> OwedLine | None: ...          # a line held for the voice, if any
+    def settle(self, key: str) -> None: ...                      # it sounded: spoken
+    def release(self, key: str) -> None: ...                     # it did not: back to owed, for its other ways
+    def owe(self, account: str, key: str, reason: str) -> None: ...  # the manager owes a line (a failure): the host
+                                                                     # words it in the person's language
 
 
 class Mouth(Protocol):

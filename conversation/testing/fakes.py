@@ -6,7 +6,7 @@ import asyncio
 from dataclasses import dataclass, field
 from typing import Callable
 
-from conversation.ports import Block, ToolResult, ToolSpec
+from conversation.ports import Block, OwedLine, ToolResult, ToolSpec
 from conversation.types import EffectClass, Evidence
 
 
@@ -117,3 +117,43 @@ class NoMemory:
 
     async def recall(self, account, query, *, k):
         return []
+
+
+class FakeOwed:
+    """The ledger of what is owed, as the host's `notices` keeps it: a row is `owed`, `claimed` for the voice (with a
+    deadline), `spoken`, or gone its other ways. `add` puts a line held for the voice; `next` hands each claimed line
+    to ONE consumer at a time; a claim past its deadline goes back to `owed` (`expire`, the pulse's job)."""
+
+    def __init__(self, claim_ms: int = 60_000) -> None:
+        self.rows: dict[str, dict] = {}
+        self.claim_ms = claim_ms
+        self.handed: list[str] = []
+
+    def add(self, key: str, text: str, now: int = 0, task_id: str | None = None) -> None:
+        self.rows.setdefault(key, {"state": "claimed", "text": text, "task_id": task_id, "due": now + self.claim_ms,
+                                   "out": False})
+
+    def next(self, account: str) -> OwedLine | None:
+        for key, r in self.rows.items():
+            if r["state"] == "claimed" and not r["out"]:
+                r["out"] = True
+                self.handed.append(key)
+                return OwedLine(key, r["text"], r["task_id"])
+        return None
+
+    def settle(self, key: str) -> None:
+        if self.rows.get(key, {}).get("state") == "claimed":
+            self.rows[key].update(state="spoken", out=False)
+
+    def release(self, key: str) -> None:
+        if self.rows.get(key, {}).get("state") == "claimed":
+            self.rows[key].update(state="owed", out=False)
+
+    def owe(self, account: str, key: str, reason: str) -> None:
+        self.add(key, reason)
+
+    def expire(self, now: int) -> list[str]:
+        gone = [k for k, r in self.rows.items() if r["state"] == "claimed" and now >= r["due"]]
+        for k in gone:
+            self.rows[k].update(state="owed", out=False)
+        return gone

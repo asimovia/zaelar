@@ -23,6 +23,6 @@ from conversation.types import Authority as Authority, Channel as Channel, Envel
 
 def build(**ports):
     """The facade: `build(account=…, owner=…, model=…, tools=…, store=…, memory=…, clock=…, mouth=…, telemetry=…,
-    config=…, prefix=…)` → a `Conversation` for one account."""
+    config=…, prefix=…, owed=…)` → a `Conversation` for one account."""
     from conversation.manager import Conversation
     return Conversation(**ports)

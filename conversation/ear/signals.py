@@ -83,6 +83,15 @@ class Tick:
 
 
 @dataclass(frozen=True)
+class VoiceDiscarded:
+    """Out of the ear: an open voice ended with nothing to answer (no words, or a guard threw it out). Its event already
+    says the text and the reason (I4); the manager only stops counting it as an open voice."""
+    endpoint: str
+    intervention_id: str
+    t_ms: int
+
+
+@dataclass(frozen=True)
 class Onset:
     """Out of the ear, on the CONTROL lane (never through the inbox): the person started speaking on this device."""
     endpoint: str

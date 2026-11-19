@@ -132,8 +132,7 @@ class Replay:
         while self.i < len(self.queue):
             self.until(_time(self.queue[self.i]))
         for _ in range(3):                         # the end: time runs out, whatever is ready runs
-            self.clock.advance(max(self.config.liveness_ms, self.config.cross_channel_hold_ms,
-                                   self.config.must_tell_max_defer_ms) + 1)
+            self.clock.advance(max(self.config.liveness_ms, self.config.cross_channel_hold_ms) + 1)
             self.conv.hear(S.Tick(self.clock.now_ms()))
             self.loop.run_until_complete(self.conv.pump())
         self.loop.close()

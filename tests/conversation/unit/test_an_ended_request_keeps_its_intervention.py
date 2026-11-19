@@ -77,4 +77,4 @@ def test_the_providers_end_with_a_word_never_final_ends_incomplete_at_the_cap(cl
     feed(e, S.VadEdge(D, "rise", 0), S.WordSpan(D, 1, 1, False, (("w1", 0, 160, 1.0),), (0, 160)),
          S.EotHint(D, "flux", "end", .8, 400))
     out = feed(e, *[S.Watermark(D, t) for t in range(400, 3400, 240)])
-    assert [o.body.state for o in out if isinstance(o, E.Envelope)] == [E.IvState.INCOMPLETE]
+    assert [str(o.body.coverage) for o in out if isinstance(o, E.Envelope)] == ["incomplete"]
