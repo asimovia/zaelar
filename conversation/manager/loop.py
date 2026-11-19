@@ -220,6 +220,12 @@ class Conversation:
             if isinstance(out, E.Envelope):
                 self.give(out)
 
+    def finished(self, iv: str, rev: int) -> None:
+        """Tell the ear a request ended: its intervention is final, later voice is a new one (N1)."""
+        for out in self.ear.feed(S.Finished(iv, rev)):
+            if isinstance(out, E.Envelope):
+                self.give(out)
+
     def _presented(self, handle: str, endpoint: str | None) -> None:
         if handle:
             self.gw.present(handle, endpoint)
@@ -232,6 +238,7 @@ class Conversation:
 
     def sweep(self, now: int | None = None) -> None:
         now = self.clock.now_ms() if now is None else now
+        self.hear(S.Tick(now))                          # the ear lives on the sweep's time too, not only on signals (N2)
         self.inbox.sweep(now)
         for say_id in self.speaker.overdue(now):        # a line nobody acknowledged ended «unknown» (B2)
             self.ack(SayEnded(say_id, "unknown", None, now))
@@ -239,12 +246,13 @@ class Conversation:
         run.sweep_liveness(self, now)
 
     def _abandon_reopens(self, now: int) -> None:
-        """A reopen nobody is finishing (the process that heard it is gone): its revision goes back."""
-        mine = self.ear.open_ids()
+        """A reopen nobody finishes within the bound goes back to the revision it reopened — whether the process that
+        heard it is gone or this ear still hears it (N2): the closed revision then runs and seals, and the words
+        heard since move to a new intervention that amends it (the ear's seal race, I3)."""
         with self.store.tx(self.lease) as tx:
             for iv, _row in tx.scan(SEAL.T):
                 since = SEAL.open_since(tx, iv)
-                if since and iv not in mine and now - since[1] >= self.cfg.cross_channel_hold_ms:
+                if since and now - since[1] >= self.cfg.cross_channel_hold_ms:
                     SEAL.abandon(tx, iv, now)
 
     async def keep_time(self, every_ms: int = 1000) -> None:

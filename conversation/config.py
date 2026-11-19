@@ -19,6 +19,9 @@ class Config:
     patience_ms: dict = field(default_factory=lambda: {"number": 1200, "date": 1000, "spelled": 1500})
     #: the provider sends a watermark every ~240 ms even in silence (A2); four missed beats is a stalled stream (A6).
     stall_ms: int = 1000
+    #: voice that resumes after a close REOPENS the closed revision only within this window of the close (and never
+    #: once its request is final); later voice is a new intervention. Default = the close cap; P4 sets it (N1).
+    reopen_window_ms: int = 2500
     # ── the inbox ──
     #: typed messages sent within this window travel in one batch (the 0.35 s debounce, moved from the ear: PA-4).
     collect_ms: int = 350

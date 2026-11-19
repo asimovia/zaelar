@@ -41,6 +41,9 @@ by the pinned plugin, **exposed raw** (Flux sends it, the plugin drops it), or *
    with their times. The plugin's `SpeechEvent`s lose the probability, the turn index and the silent watermark.
 2. Per-device playback acknowledgements from the clients.
 3. `turn_detection="manual"` on the session, so only the manager opens a turn.
+4. Signal times on the manager's wall clock (`Clock.now_ms`, mapped once per stream as in A9): the manager's sweep
+   ticks the ear with that clock, so an intervention no signal ever ends (a dropped phone) still ends within its cap or
+   its stall, and a reopen is given back past `cross_channel_hold_ms` even while the ear hears it.
 
 ## Not verified
 

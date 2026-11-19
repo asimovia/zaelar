@@ -19,7 +19,7 @@ from enum import Enum
 from typing import Callable
 
 from conversation import envelopes as E
-from conversation.gateway.seal import open_since
+from conversation.gateway.seal import final_rev, open_since
 from conversation.config import Config
 from conversation.inbox import ordering
 from conversation.ports import Lease, Store
@@ -196,6 +196,7 @@ class Inbox:
             texts = [r for r in rows if r["kind"] == str(EnvelopeKind.USER_TEXT)]
             if texts and now - max(r["accepted"] for r in texts) < self.cfg.collect_ms:
                 return None                       # the collect window of the last text is still open
+            rows = [r for r in rows if not self._ended_with_its_request(tx, r, now)]
             pick = self._newest_revisions(tx, [r for r in rows if self._eligible(r, now, idle)
                                                and not self._reopened_since(tx, r, now)], now)
             if not pick:
@@ -210,12 +211,28 @@ class Inbox:
                 self._emit_row("dequeued", r, batch=seq, queue_age_ms=now - r["accepted"])
             return Batch(seq, envs, reason)
 
+    def _ended_with_its_request(self, tx, row: dict, now: int) -> bool:
+        """A revision still queued when its request already ended (N1): a newer revision answered it (`coalesced`), or
+        the request closed without it — past its liveness, say — and running it now would answer a closed request
+        (`expired`). Either way it is accounted here, never run."""
+        if row["kind"] != str(EnvelopeKind.USER_UTTERANCE):
+            return False
+        refs = row["env"]["refs"]
+        final = final_rev(tx, refs["intervention_id"])
+        if final is None or refs["revision"] > final:
+            return False
+        older = refs["revision"] < final
+        self._final(tx, row["id"], (Outcome.COALESCED if older else Outcome.EXPIRED).value, now,
+                    reason="newer_revision" if older else "request_ended")
+        return True
+
     @staticmethod
     def _reopened_since(tx, row: dict, now: int) -> bool:
         """WAIT_AGAIN (policy row 6): a closed revision whose intervention was reopened waits for the newer revision,
         which carries every word — running it would answer a sentence that is not finished, its publication would be
         fenced and it would run again. The ear always ends a revision (closed, incomplete, discarded) and a reopen
-        nobody finishes is given back by the manager's sweep, so the wait is bounded."""
+        nobody finishes is given back by the manager's sweep — which also ticks the ear, and past a clock bound gives
+        back even a reopen this ear still hears (N2) — so the wait is bounded by the clock, never by signals alone."""
         if row["kind"] != str(EnvelopeKind.USER_UTTERANCE):
             return False
         refs = row["env"]["refs"]

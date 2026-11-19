@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING
 
+from conversation.gateway import seal as SEAL
 from conversation import envelopes as E
 from conversation import guard
 from conversation.composer import compose, view_from
@@ -48,13 +49,18 @@ def _emit(conv: "Conversation", label: str, r: "Running | None", **payload) -> N
 
 
 def close(conv: "Conversation", req: str, to: str, label: str, **metrics) -> bool:
-    """Move a request to its end and say so — at most once: the move is a compare-and-set from `open`."""
+    """Move a request to its end and say so — at most once: the move is a compare-and-set from `open`. Its
+    intervention is final for the ear from then on (N1): later voice is a new intervention, never a revision."""
     with conv.book.tx() as b:
         row = b.get(req)
         if row is None or row["state"] != "open":
             return False
         b.move(req, to, reason=metrics.get("reason"), cause={"kind": "close", "ref": label})
         opened = row["data"].get("sealed_ms", row["created_ms"])
+        iv = row["data"].get("iv")
+        rev = SEAL.finish(b.tx, iv, b.now) if iv else 0
+    if iv:
+        conv.finished(iv, rev)
     conv.em.emit("conv_close", label, owner="manager", cause={"kind": "request", "ref": req}, refs={"req": req},
                  total_ms=conv.clock.now_ms() - opened, **metrics)
     return True

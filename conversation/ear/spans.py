@@ -66,5 +66,13 @@ class Spans:
                 t.iv, t.tag, moved = to_iv, 1, moved + 1
         return moved
 
+    def reassign_seq(self, stream: str, seq: int, iv: str, to_iv: str) -> bool:
+        """Move ONE provider turn of `iv` to another intervention (its end came after the first ended, N1)."""
+        t = self._turns.get((stream, seq))
+        if t is None or t.iv != iv:
+            return False
+        t.iv, t.tag = to_iv, 1
+        return True
+
     def all_final_words(self) -> list[tuple[str, Word]]:
         return [(t.iv, w) for _k, t in sorted(self._turns.items()) if t.final for w in t.words]

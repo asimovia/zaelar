@@ -85,6 +85,14 @@ class Sealed:
 
 
 @dataclass(frozen=True)
+class Finished:
+    """The request of this intervention reached a final state (answered, handed off, silent, recovered, failed): its
+    revisions are final for the ear — later voice opens a NEW intervention, never a revision of this one (I3, N1)."""
+    intervention_id: str
+    revision: int
+
+
+@dataclass(frozen=True)
 class Tick:
     t_ms: int
 
@@ -97,4 +105,5 @@ class Onset:
     intervention_id: str
 
 
-Signal = WordSpan | Watermark | VadEdge | EotHint | PlaybackState | ContextHint | TypedSubmit | Discard | Sealed | Tick
+Signal = (WordSpan | Watermark | VadEdge | EotHint | PlaybackState | ContextHint | TypedSubmit | Discard | Sealed
+          | Finished | Tick)

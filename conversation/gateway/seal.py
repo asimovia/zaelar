@@ -10,6 +10,10 @@ revision is never sealed: it is not actionable.
 older revision (an adapter that retries) cannot pull the phase back and make a reopened revision sealable. A reopen
 that is discarded (its words were echo, or it never had any) gives the phase back to the revision it reopened; a
 reopen nobody is finishing (the process that heard it is gone) is given back after a bound (`abandon`).
+
+`finish` is the request's end (N1): its intervention's phase becomes "n:final" — like a seal, nothing reopens it and
+nothing moves it back; a revision already sealed stays sealed. A reopen in course when the request ends loses, as it
+would to a seal: the ear moves its words to a new intervention.
 """
 from __future__ import annotations
 
@@ -31,7 +35,7 @@ def note(tx, iv: str, rev: int, state: str, now: int) -> bool:
     """Record a revision's state (closed · incomplete · discarded), forward only. True when it was written."""
     row = tx.get(T, iv)
     cur_rev, cur_state = _split(row)
-    if cur_state == "sealed" or rev < cur_rev:
+    if cur_state in ("sealed", "final") or rev < cur_rev:
         return False
     if state == "discarded" and rev > 1 and rev == cur_rev and row is not None and row.get("prev"):
         return tx.cas(T, iv, "phase", row["phase"], {"phase": row["prev"], "rev": rev - 1, "prev": None,
@@ -50,7 +54,7 @@ def seal(tx, iv: str, rev: int, now: int) -> bool:
     row = tx.get(T, iv)
     if row is None:
         return False
-    if row["phase"] == phase(rev, "sealed"):
+    if row["phase"] in (phase(rev, "sealed"), phase(rev, "final")):
         return True
     return tx.cas(T, iv, "phase", phase(rev, "closed"), {"phase": phase(rev, "sealed"), "sealed_ms": now})
 
@@ -60,6 +64,22 @@ def reopen(tx, iv: str, rev: int, now: int) -> bool:
     return any(tx.cas(T, iv, "phase", phase(rev, frm), {"phase": phase(rev + 1, "open"), "rev": rev + 1,
                                                          "prev": phase(rev, frm), "updated_ms": now})
                for frm in ("closed", "incomplete"))
+
+
+def finish(tx, iv: str, now: int) -> int:
+    """The intervention's request is final: its last ended revision becomes final (a sealed one stays sealed).
+    Returns that revision (0 when the ear never reported the intervention)."""
+    row = tx.get(T, iv)
+    rev, state = _split(row)
+    if row is None:
+        return 0
+    if state == "open" and row.get("prev"):          # a reopen in course: the revision it reopened is the last one
+        rev = rev - 1
+    if state in ("sealed", "final"):
+        return rev
+    tx.cas(T, iv, "phase", row["phase"], {"phase": phase(rev, "final"), "rev": rev, "prev": None, "final_ms": now,
+                                          "updated_ms": now})
+    return rev
 
 
 def abandon(tx, iv: str, now: int) -> bool:
@@ -77,6 +97,12 @@ def open_since(tx, iv: str) -> tuple[int, int] | None:
     row = tx.get(T, iv)
     rev, state = _split(row)
     return (rev, row.get("updated_ms", 0)) if state == "open" else None
+
+
+def final_rev(tx, iv: str) -> int | None:
+    """The revision its request ended on, once it is final; None before."""
+    rev, state = _split(tx.get(T, iv))
+    return rev if state == "final" else None
 
 
 def sealed_rev(tx, iv: str) -> int | None:

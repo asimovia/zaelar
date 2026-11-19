@@ -315,7 +315,7 @@ class Case:
         for _ in range(4):
             self.clock.advance(max(self.cfg.must_tell_max_defer_ms, self.cfg.liveness_ms,
                                    self.cfg.cross_channel_hold_ms) + 1)
-            self._feed(self.conv, S.Tick(self._now()))
+            # no device signal any more — not even a tick for the ear: only the manager's own clock (N2)
             self.loop.run_until_complete(self.conv.pump())
 
 
@@ -329,7 +329,7 @@ def check(case: Case) -> list[str]:
         if row["kind"] != str(ItemKind.EFFECT):
             continue
         for iv, rev in row["data"].get("ivs", []):                                   # I1
-            if phases.get(iv) != f"{rev}:sealed":
+            if phases.get(iv) not in (f"{rev}:sealed", f"{rev}:final"):
                 out.append(f"I1: effect {eid} rests on {iv} rev {rev} in phase {phases.get(iv)}")
         mandate = items.get(row["data"]["mandate"])                                    # I8
         if mandate is None and row["data"]["tool"] == "send_message":
@@ -339,16 +339,16 @@ def check(case: Case) -> list[str]:
         out.append("I2: a final word in two interventions")
     sealed = set(case.race_seals) | {(p["refs"]["iv"], p["refs"]["rev"]) for k, lab, p in case.tel.events
                                      if k == "conv_effect" and lab == "sealed"}
-    for iv, rev in sorted(sealed):                                                     # I3: a seal is forever
-        if phases.get(iv) != f"{rev}:sealed":
+    for iv, rev in sorted(sealed):                                    # I3: a seal is forever (final keeps it)
+        if phases.get(iv) not in (f"{rev}:sealed", f"{rev}:final"):
             out.append(f"I3: {iv} sealed at {rev} and now {phases.get(iv)}")
     inbox_rows = [r for _k, r in snap.scan("inbox")]
-    for iv, ph in phases.items():                                                      # I3: …and never revised
+    for iv, ph in phases.items():                      # I3: …and never revised — nor once its request is final (N1)
         rev = int(ph.split(":")[0])
-        if ph.endswith(":sealed") and any(r["kind"] == "user.utterance"
+        if (ph.endswith(":sealed") or ph.endswith(":final")) and any(r["kind"] == "user.utterance"
                                           and r["env"]["refs"]["intervention_id"] == iv
                                           and r["env"]["refs"]["revision"] > rev for r in inbox_rows):
-            out.append(f"I3: {iv} sealed at {rev} and a later revision of it was accepted")
+            out.append(f"I3: {iv} {ph.split(':')[1]} at {rev} and a later revision of it was accepted")
     for k, lab, p in case.tel.events:                                                  # I4
         if k == "conv_ear" and lab == "discarded" and ("reason" not in p or "text" not in p):
             out.append("I4: a discard without its text and reason")
@@ -364,9 +364,11 @@ def check(case: Case) -> list[str]:
     if len(case.tools.calls) > case.issued_calls:
         out.append("I7: a tool ran that the model did not ask for")
     closes: dict[str, int] = {}
+    closed_at: dict[str, int] = {}
     for k, lab, p in case.tel.events:
         if k == "conv_close":
             closes[p["refs"]["req"]] = closes.get(p["refs"]["req"], 0) + 1
+            closed_at.setdefault(p["refs"]["req"], p["t_ms"])
     for r in inbox_rows:                                                               # I8/M1
         if not r["env"]["producer"].startswith(E.KINDS[EnvelopeKind(r["kind"])][3]) or \
                 r["env"]["account"] != getattr(case, "account", ACCT):
@@ -402,8 +404,12 @@ def check(case: Case) -> list[str]:
         elif k == "conv_run" and lab == "fenced":
             fenced.add(batch_of.get(p["refs"]["run"]))
     for r in inbox_rows:                                    # I9: every entry of the person is a request at once
-        if r["kind"] in ("user.utterance", "user.text") and f"r_{r['env']['refs']['intervention_id']}" not in items:
+        req = f"r_{r['env']['refs'].get('intervention_id')}"
+        if r["kind"] in ("user.utterance", "user.text") and req not in items:
             out.append(f"I9: {r['id']} was accepted and is no request")
+        elif r["kind"] in ("user.utterance", "user.text") and r["state"] != "duplicate" and \
+                closed_at.get(req, r["accepted"]) < r["accepted"]:
+            out.append(f"I9: {r['id']} was accepted after its request {req} had closed (N1)")
     for rid, row in items.items():                                                     # I9
         if row["kind"] == str(ItemKind.REQUEST):
             if row["state"] == "open":

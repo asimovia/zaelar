@@ -3,13 +3,14 @@
 A voice intervention moves open → (tentative ↔ extended) → closed, or → incomplete / discarded. It CLOSES only when
 three things hold at once: the provider's end of turn (`EotHint(end)`), full coverage (every provider turn assigned
 to it has its final, I2) and the watermark past the voice's last fall — so the last words cannot still be on their
-way. Or, past the cap after the fall, with full coverage. Never by two detectors agreeing with each other (A6): an
+way. Or, past the cap after the fall (or after the provider's end, when the voice never fell), with full coverage. Never by two detectors agreeing with each other (A6): an
 eager hint only makes it TENTATIVE, and a tentative intervention is not delivered to anyone.
 
 Without coverage at the cap, or with a stream that stopped beating (the watermark not advancing while time passes,
 adapter doc A6), the intervention is INCOMPLETE: not actionable, the run asks for the end. Before its seal, voice that
-resumes REOPENS a closed intervention (revision + 1); after it, the new voice is a new intervention that `amends` the
-sealed one (I3). If a reopen loses the race to a seal (`Sealed` arrives for the earlier revision), the words heard
+resumes within `reopen_window_ms` of the close REOPENS the closed intervention (revision + 1); after the seal — or once
+its request is final (`Finished`), or past the window — the new voice is a new intervention, which `amends` the
+previous one if the agent has not spoken since (I3, N1). If a reopen loses the race to a seal (`Sealed` arrives for the earlier revision), the words heard
 since the reopen move, all of them, to a new amending intervention — no word is in two (I2).
 
 Out: envelopes for the inbox (`intervention.state`, `user.utterance`, `user.text`) and `Onset` for the control lane.
@@ -44,6 +45,8 @@ class _Voice:
     amends: str | None = None
     last_sealed: str | None = None
     agent_spoke_since_seal: bool = False
+    closed_ms: int = 0
+    resumed_ms: int = 0           # the voice began (or reopened) here: a stall is never measured from before it
 
 
 class Ear:
@@ -52,6 +55,7 @@ class Ear:
         self.spans = Spans()
         self._voices: dict[str, _Voice] = {}
         self._sealed: set[tuple[str, int]] = set()
+        self._final: set[str] = set()
         self._now = 0
 
     # ── in ──────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -87,7 +91,13 @@ class Ear:
         if owner is None and sig.words:
             self._start_or_resume(v, sig.words[0][1], out)
         elif owner is not None and owner == v.iv and v.state is IvState.INCOMPLETE:
-            self._reopen(v, t, out)           # the stream came back with the end of the same turn
+            if self._may_reopen(v, t):
+                self._reopen(v, t, out)       # the stream came back with the end of the same turn
+            else:                             # too late, or its request is final: the end of that turn is new voice
+                old = v.iv
+                self._new(v, t, out)
+                self.spans.reassign_seq(sig.stream, sig.seq, old, v.iv)
+                owner = v.iv
         target = owner or v.iv
         if target is None:
             return
@@ -104,7 +114,7 @@ class Ear:
             self._judge(v, t, out)
         elif sig.echo_safe:
             v.fall_ms = None
-            if v.state in (IvState.CLOSED, IvState.INCOMPLETE) and (v.iv, v.rev) not in self._sealed:
+            if self._may_reopen(v, t):
                 out.append(S.Onset(v.endpoint, sig.t_ms, v.iv))     # voice again: a reopen needs WORDS (a cough
                 return                                               # is not a continuation)
             self._start_or_resume(v, sig.t_ms, out)
@@ -145,12 +155,17 @@ class Ear:
         self.em.emit("conv_ear", "discarded", owner="ear", cause={"kind": "guard", "ref": sig.reason}, refs=refs,
                      text=sig.text, reason=sig.reason)
 
+    def _on_Finished(self, sig: S.Finished, out: list) -> None:
+        """Its request ended: like a seal for the ear, for every revision of the intervention (N1)."""
+        self._final.add(sig.intervention_id)
+        self._on_Sealed(S.Sealed(sig.intervention_id, sig.revision), out)
+
     def _on_Sealed(self, sig: S.Sealed, out: list) -> None:
         self._sealed.add((sig.intervention_id, sig.revision))
         v = next((x for x in self._voices.values() if x.iv == sig.intervention_id), None)
         if v is None:
             return
-        if v.state is IvState.CLOSED and v.rev == sig.revision:
+        if v.state in (IvState.CLOSED, IvState.INCOMPLETE) and v.rev == sig.revision:
             v.state, v.last_sealed, v.agent_spoke_since_seal = IvState.SEALED, v.iv, False
         elif v.state in OPEN_STATES and v.rev > sig.revision:
             # the reopen lost to the seal: what was heard since moves to a new intervention that amends it
@@ -164,14 +179,27 @@ class Ear:
 
     # ── transitions ─────────────────────────────────────────────────────────────────────────────────────────────
 
+    def _may_reopen(self, v: _Voice, t: int) -> bool:
+        """A closed (or incomplete) revision reopens only if it is not sealed, its request is not final, and the voice
+        resumed within the window of its close (N1)."""
+        return (v.state in (IvState.CLOSED, IvState.INCOMPLETE) and (v.iv, v.rev) not in self._sealed
+                and v.iv not in self._final and t - v.closed_ms <= self.cfg.reopen_window_ms)
+
     def _start_or_resume(self, v: _Voice, t: int, out: list) -> None:
         if v.state in OPEN_STATES:
             return
-        if v.state in (IvState.CLOSED, IvState.INCOMPLETE) and (v.iv, v.rev) not in self._sealed:
+        if self._may_reopen(v, t):
             self._reopen(v, t, out)
             return
-        v.amends = v.last_sealed if (v.state is IvState.SEALED and not v.agent_spoke_since_seal) else None
-        v.iv, v.rev, v.state, v.onset_ms = self.ids.new("iv"), 1, IvState.OPEN, t
+        self._new(v, t, out)
+
+    def _new(self, v: _Voice, t: int, out: list) -> None:
+        ended = v.state is IvState.SEALED or (v.state in (IvState.CLOSED, IvState.INCOMPLETE) and v.iv)
+        prev = v.last_sealed if v.state is IvState.SEALED else v.iv
+        v.amends = prev if (ended and not v.agent_spoke_since_seal) else None
+        if v.state is not IvState.SEALED:
+            v.agent_spoke_since_seal = False
+        v.iv, v.rev, v.state, v.onset_ms, v.resumed_ms = self.ids.new("iv"), 1, IvState.OPEN, t, t
         v.eot_end_ms = v.eot_prob = v.fall_ms = None          # a fall of the previous intervention is not this one's
         out.append(S.Onset(v.endpoint, t, v.iv))
         out.append(self._env_state(v, IvState.OPEN, t))
@@ -180,7 +208,7 @@ class Ear:
                      amends=v.amends)
 
     def _reopen(self, v: _Voice, t: int, out: list) -> None:
-        v.rev, v.state, v.eot_end_ms, v.fall_ms = v.rev + 1, IvState.OPEN, None, None
+        v.rev, v.state, v.eot_end_ms, v.fall_ms, v.resumed_ms = v.rev + 1, IvState.OPEN, None, None, t
         out.append(S.Onset(v.endpoint, t, v.iv))
         out.append(self._env_state(v, IvState.OPEN, t, reopened=True))
         self.em.emit("conv_ear", "reopened", owner="ear", cause={"kind": "voice"}, refs=self._refs(v))
@@ -197,20 +225,23 @@ class Ear:
         covered = self.spans.covered(v.iv)
         caught_up = v.fall_ms is None or (v.watermark_ms or 0) >= v.fall_ms
         cap = self.cfg.close_cap_ms + self.cfg.patience_ms.get(v.expect or "", 0)
+        anchor = v.fall_ms if v.fall_ms is not None else v.eot_end_ms    # the voice fell, or the provider said end
         if v.eot_end_ms is not None and covered and caught_up:
             self._close(v, t, "eot", out)
-        elif v.fall_ms is not None and t - v.fall_ms >= cap:
+        elif anchor is not None and t - anchor >= cap:
             if not self.spans.words(v.iv):
                 self._discard_empty(v, t, out)
             elif covered:
                 self._close(v, t, "cap", out)
             else:
                 self._incomplete(v, t, "no_final", out)
-        elif v.watermark_ms is not None and t - v.watermark_ms >= self.cfg.stall_ms:
+        elif v.watermark_ms is not None and t - max(v.watermark_ms, v.resumed_ms) >= self.cfg.stall_ms:
+            # a stream that stopped beating — measured from when this voice began at the earliest: a watermark left
+            # from before it (the stream idle between interventions) is no stall of this one
             self._incomplete(v, t, "stalled", out)
 
     def _close(self, v: _Voice, t: int, by: str, out: list) -> None:
-        v.state = IvState.CLOSED
+        v.state, v.closed_ms = IvState.CLOSED, t
         words = self.spans.words(v.iv)
         body = E.UtteranceBody(v.iv, v.rev, " ".join(w[0] for w in words),
                                tuple(E.Span(*w) for w in words), amends=v.amends)
@@ -232,7 +263,7 @@ class Ear:
                      reason="no_words")
 
     def _incomplete(self, v: _Voice, t: int, reason: str, out: list) -> None:
-        v.state = IvState.INCOMPLETE
+        v.state, v.closed_ms = IvState.INCOMPLETE, t
         text = " ".join(w[0] for w in self.spans.words(v.iv))
         out.append(self._env_state(v, IvState.INCOMPLETE, t, text=text, reason=reason))
         self.em.emit("conv_ear", "incomplete", owner="ear", cause={"kind": "cap" if reason == "no_final"
