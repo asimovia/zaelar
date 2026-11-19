@@ -75,3 +75,52 @@ def test_a_loop_still_alive_does_not_lend_its_client_to_another():
         assert a is not b
     finally:
         old.close()
+
+
+def test_a_loops_first_client_is_built_off_the_loop(monkeypatch):
+    """G1 (2026-11-19): the first stream of a loop built its client ON the loop — the SDK import, the TLS context and
+    its lazy resources held a cloud host's loop 1.0 s at boot (the prewarm's first stream). It is built in a thread,
+    and the loop keeps beating meanwhile; the next stream of that loop reuses it."""
+    import threading
+    import time
+
+    import openai
+    built_on = []
+
+    class _Slow:
+        def __init__(self, **k):
+            built_on.append(threading.current_thread() is threading.main_thread())
+            time.sleep(0.3)
+
+        @property
+        def chat(self):
+            async def create(**k):
+                raise ValueError("no network in this test")
+            return type("C", (), {"completions": type("R", (), {"create": staticmethod(create)})})
+
+    monkeypatch.setattr(openai, "AsyncOpenAI", _Slow)
+    monkeypatch.setattr(FastClient, "_client_key", lambda self, spec: ("https://x", "k", ()))
+    monkeypatch.setattr(FastClient, "_clients", {})
+
+    async def first_streams():
+        gap, last = [0.0], [time.perf_counter()]
+
+        async def beat():
+            while True:
+                await asyncio.sleep(0.01)
+                now = time.perf_counter()
+                gap[0], last[0] = max(gap[0], now - last[0]), now
+        hb = asyncio.create_task(beat())
+        for _ in range(2):
+            try:
+                async for _t in FastClient()._stream_inner([{"role": "user", "content": "hi"}],
+                                                           spec=ModelSpec(model="m", api_key="k"), max_tokens=1):
+                    pass
+            except ValueError:
+                pass
+        hb.cancel()
+        return gap[0]
+
+    gap = asyncio.run(first_streams())
+    assert built_on == [False], f"the client must be built once, in a thread (built on main thread: {built_on})"
+    assert gap < 0.15, f"the event loop was held {gap:.2f}s while the client was built"

@@ -255,25 +255,40 @@ class FastClient:
         return (base, key, tuple(sorted(extra.items())))
 
     def _client_for(self, spec: ModelSpec):
-        # lazy import: a missing key must not break package/session-setup import.
-        from openai import AsyncOpenAI
-
         ck = self._client_key(spec)
-        base, _key, extra = ck
         from nucleo.llm import loop_clients
         cli = loop_clients.get(FastClient._clients, ck)   # one client per event loop (see that module)
         if cli is None:
-            headers = dict(extra) or None
-            # PHASE 1 (cold-start): the HTTP client keeps the TLS connection ALIVE much longer than httpx's default
-            # (~5s). Without this, prewarming heats the connection at startup but it EXPIRES before the first turn →
-            # TLS+handshake is redone = the first cold turn takes ~3.8s. With long keepalive, the prewarmed connection
-            # survives until the first turn and BETWEEN turns → the hot model (~1.2s) is always perceived.
-            okw = dict(api_key=_key, base_url=base, default_headers=headers)
-            _hc = _http_client()
-            if _hc is not None:
-                okw["http_client"] = _hc
-            cli = AsyncOpenAI(**okw)
+            cli = self._build_client(ck)
             loop_clients.put(FastClient._clients, ck, cli)
+        return cli
+
+    async def _client_ready(self, spec: ModelSpec) -> None:
+        """Build this loop's client in a THREAD the first time: importing the SDK, the TLS context and its lazy
+        `chat.completions` held a cloud host's loop 1.0 s at boot (the prewarm's first stream). Cached: free after."""
+        from nucleo.llm import loop_clients
+        ck = self._client_key(spec)
+        if loop_clients.get(FastClient._clients, ck) is None:
+            cli = await asyncio.to_thread(self._build_client, ck)
+            if loop_clients.get(FastClient._clients, ck) is None:     # another caller may have landed first
+                loop_clients.put(FastClient._clients, ck, cli)
+
+    @staticmethod
+    def _build_client(ck: tuple):
+        # lazy import: a missing key must not break package/session-setup import.
+        from openai import AsyncOpenAI
+        base, _key, extra = ck
+        headers = dict(extra) or None
+        # PHASE 1 (cold-start): the HTTP client keeps the TLS connection ALIVE much longer than httpx's default
+        # (~5s). Without this, prewarming heats the connection at startup but it EXPIRES before the first turn →
+        # TLS+handshake is redone = the first cold turn takes ~3.8s. With long keepalive, the prewarmed connection
+        # survives until the first turn and BETWEEN turns → the hot model (~1.2s) is always perceived.
+        okw = dict(api_key=_key, base_url=base, default_headers=headers)
+        _hc = _http_client()
+        if _hc is not None:
+            okw["http_client"] = _hc
+        cli = AsyncOpenAI(**okw)
+        cli.chat.completions          # noqa: B018 — the SDK imports its resources lazily; pay that here
         return cli
 
     async def complete(
@@ -600,6 +615,7 @@ class FastClient:
         # nothing but the extra round-trip: no half-spoken sentence to undo, no tool call fired twice. Once the
         # `async for` below has yielded anything, a retry would duplicate speech, so the relay is NOT attempted
         # from there — a mid-stream failure stays a failed turn, which is the honest outcome.
+        await self._client_ready(spec)
         _attempt = 0
         _relayed = False
         while True:
