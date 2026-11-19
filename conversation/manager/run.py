@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING
 
 from conversation.composer import compose, view_from
 from conversation.gateway import Claimed, NeedsConfirmation, Read, RunCtx, dispatch
-from conversation.gateway import seal as SEAL
 from conversation.inbox.mailbox import Batch
 from conversation.manager import claims as CL
 from conversation.manager import commands
@@ -185,6 +184,7 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
             conv.inbox.account(list(r.batch_ids), "told", now)
             return
         if not _seal_batch(conv, r, batch):
+            conv.inbox.requeue(list(r.batch_ids))   # the newer revision runs; the request stays open (N1)
             return
         device = conv.devices.get(r.ctx.endpoint or "", Device(r.ctx.endpoint))
         reply = choose(batch.envelopes, device)
@@ -205,23 +205,14 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
         _emit(conv, "ended", r, outcome="no_reply")
 
 
-class _Fenced(Exception):
-    pass
-
-
 def _seal_batch(conv: "Conversation", r: "Running", batch: Batch) -> bool:
     """The first publication seals every revision of the person's in the batch — all of them, or none and the run is
     fenced (a revision was reopened meanwhile: what this run would say answers a sentence that is not finished)."""
-    mine = [env for env in batch.envelopes
-            if env.is_user and env.kind in (EnvelopeKind.USER_UTTERANCE, EnvelopeKind.USER_TEXT)]
-    try:
-        with conv.store.tx(conv.lease) as tx:
-            for env in mine:
-                if not SEAL.seal(tx, env.refs.intervention_id, env.refs.revision or 1, conv.clock.now_ms()):
-                    raise _Fenced(env.refs.intervention_id)
-    except _Fenced as fence:
-        _emit(conv, "fenced", r, iv=str(fence))       # a revision was reopened: nothing of this run is said
+    ivs = [(env.refs.intervention_id, env.refs.revision or 1) for env in batch.envelopes
+           if env.is_user and env.kind in (EnvelopeKind.USER_UTTERANCE, EnvelopeKind.USER_TEXT)]
+    if not conv.gw.seal_publication(r.ctx, ivs):
+        _emit(conv, "fenced", r)
         return False
-    for env in mine:
-        conv.sealed(env.refs.intervention_id, env.refs.revision or 1)
+    for iv, rev in ivs:
+        conv.sealed(iv, rev)
     return True

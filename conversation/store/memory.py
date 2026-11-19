@@ -1,7 +1,7 @@
 """The `Store` in memory: the fast double for unit tests, with the SAME contract as the sqlite one (node 13.19).
 
-A transaction holds the store's lock from start to commit, writes into a staging copy and applies it only on a
-clean exit; the epoch is compared at the start and again at commit. Rows go through JSON on the way in and out, so
+A transaction holds the store's lock from start to commit, writes into a copy-on-write staging and applies it only
+on a clean exit; the epoch is compared at the start and again at commit. Rows go through JSON on the way in and out, so
 a row that would not survive the sqlite store does not survive this one either.
 """
 from __future__ import annotations
@@ -14,28 +14,52 @@ from typing import Any, Iterator
 from conversation.ports import Conflict, Lease, StaleEpoch
 
 
-def _copy(row: Any) -> Any:
-    return json.loads(json.dumps(row))
+def _freeze(row: Any) -> str:
+    return json.dumps(row)
+
+
+def _thaw(text: str) -> Any:
+    return json.loads(text)
 
 
 class _Tables:
+    """Rows are stored as JSON text (like the sqlite store), so a table can be shared between the store, a
+    transaction's staging and a snapshot: nothing a reader holds can change what is stored."""
+
     def __init__(self, data: dict) -> None:
         self.data = data   # {table: {key: row}, "__unique__": {table: {value: key}}, "__seq__": {name: n}}
 
+    def _table(self, table: str) -> dict:
+        return self.data.get(table, {})
+
     def get(self, table: str, key: str) -> dict | None:
-        row = self.data.get(table, {}).get(key)
-        return _copy(row) if row is not None else None
+        row = self._table(table).get(key)
+        return _thaw(row) if row is not None else None
 
     def scan(self, table: str) -> list[tuple[str, dict]]:
-        return [(k, _copy(v)) for k, v in sorted(self.data.get(table, {}).items())]
+        return [(k, _thaw(v)) for k, v in sorted(self._table(table).items())]
 
 
 class _Tx(_Tables):
+    """Copy-on-write staging: a table is copied (shallowly) the first time this transaction writes it."""
+
+    def __init__(self, base: dict) -> None:
+        super().__init__(base)
+        self.staged: dict[str, dict] = {}
+
+    def _table(self, table: str) -> dict:
+        return self.staged[table] if table in self.staged else self.data.get(table, {})
+
+    def _write(self, table: str) -> dict:
+        if table not in self.staged:
+            self.staged[table] = dict(self.data.get(table, {}))
+        return self.staged[table]
+
     def put(self, table: str, key: str, row: dict) -> None:
-        self.data.setdefault(table, {})[key] = _copy(row)
+        self._write(table)[key] = _freeze(row)
 
     def cas(self, table: str, key: str, field_name: str, expect: Any, new: dict) -> bool:
-        row = self.data.get(table, {}).get(key)
+        row = self.get(table, key)
         current = None if row is None else row.get(field_name)
         if current != expect:
             return False
@@ -43,17 +67,19 @@ class _Tx(_Tables):
         return True
 
     def insert_unique(self, table: str, key: str, row: dict, unique: str) -> tuple[dict, bool]:
-        idx = self.data.setdefault("__unique__", {}).setdefault(table, {})
-        if unique in idx:
-            return self.get(table, idx[unique]), False
-        if key in self.data.get(table, {}):
+        idx = self._write("__unique__")
+        tidx = dict(idx.get(table, {}))
+        if unique in tidx:
+            return self.get(table, tidx[unique]), False
+        if key in self._table(table):
             raise Conflict(f"{table}/{key} exists under another unique value")
-        idx[unique] = key
-        self.data.setdefault(table, {})[key] = _copy(row)
+        tidx[unique] = key
+        idx[table] = tidx
+        self._write(table)[key] = _freeze(row)
         return self.get(table, key), True
 
     def next_seq(self, name: str) -> int:
-        seqs = self.data.setdefault("__seq__", {})
+        seqs = self._write("__seq__")
         seqs[name] = seqs.get(name, 0) + 1
         return seqs[name]
 
@@ -84,14 +110,15 @@ class MemoryStore:
     def tx(self, lease: Lease) -> Iterator[_Tx]:
         with self._lock:
             self.check(lease)
-            staged = _copy(self._accounts.get(lease.account, {}))
-            yield _Tx(staged)
+            base = self._accounts.setdefault(lease.account, {})
+            tx = _Tx(base)
+            yield tx
             self.check(lease)
-            self._accounts[lease.account] = staged
+            base.update(tx.staged)
 
     def snapshot(self, account: str) -> _Tables:
         with self._lock:
-            return _Tables(_copy(self._accounts.get(account, {})))
+            return _Tables({t: dict(rows) for t, rows in self._accounts.get(account, {}).items()})
 
     def close(self) -> None:
         pass

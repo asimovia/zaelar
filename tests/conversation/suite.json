@@ -106,6 +106,11 @@
       "kind": "unit"
     },
     {
+      "id": "13.22",
+      "label": "P3: random chunkings break no invariant (2,000 cases)",
+      "kind": "unit"
+    },
+    {
       "id": "13.24",
       "label": "Every stage emits its event (§8)",
       "kind": "unit"

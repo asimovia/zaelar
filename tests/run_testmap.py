@@ -9037,6 +9037,11 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/conversation/unit/test_a_numeric_claim_matches_its_evidence.py"]},
         {"id": "13.24", "title": "The observability contract (§8): one request end to end says every stage (ear, inbox, run, ledger, effect, mouth, close) with t_ms, mono_ms, cause, owner and its refs chain; every kind and label written in the package is in conversation/telemetry.py, every kind is emitted by a piece of the architecture map; a port call over its budget is an event",
             "ch": UNIT, "paths": ["tests/conversation/unit/test_every_stage_emits_its_event.py"]},
+        {"id": "13.22", "title": "P3 short profile: 2,000 seeded random conversations — voice cut at random (eager/resumed, an end of turn mid-sentence, a stalled stream), typed texts from another device, stops, confirmations with and without a gesture, workers, contacts, reminders, clock jumps, a takeover by another process and a seal the ear has not heard of — under a random scripted model that injects input between its events, break none of I1-I9; each invariant disarmed once and seen red",
+            "ch": UNIT, "paths": ["tests/conversation/unit/test_random_chunkings_break_no_invariant.py"]},
+        {"id": "13.26", "title": "P3 full profile, the bench: 100,000 seeded cases with rotated seeds, a JSON report of counts and violations by invariant with their seeds (by request, never in the gate)",
+            "ch": UNIT, "live": True, "cmd": "./.venv/bin/python -m tests.conversation.benchmarks.bombardment --cases 100000 --out <report.json>",
+            "paths": ["tests/conversation/benchmarks/bombardment.py"]},
     ]},
 ]
 

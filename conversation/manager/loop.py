@@ -14,7 +14,7 @@ from conversation import envelopes as E
 from conversation.config import Config
 from conversation.ear import Ear
 from conversation.ear import signals as S
-from conversation.gateway import RunCtx, dispatch
+from conversation.gateway import Claimed, RunCtx, dispatch
 from conversation.gateway import seal as SEAL
 from conversation.gateway.outbox import Gateway
 from conversation.inbox import Inbox
@@ -62,6 +62,7 @@ class Conversation:
         self.state = MgrState.IDLE
         self.current: Running | None = None
         self.speaking_on: set[str] = set()
+        self.dirty = False              # something was accepted since the last pump (a driver may pump only then)
 
     # ── in ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -76,6 +77,7 @@ class Conversation:
         now = self.clock.now_ms()
         lost = self._note_voice(env, now)
         adm = self.inbox.accept(env, now)
+        self.dirty = True
         if adm.envelope is None or lost:          # a reopen that lost to the seal is an amendment, not a reopen
             return
         env = adm.envelope
@@ -143,7 +145,10 @@ class Conversation:
     def _by_id(self, env: E.Envelope) -> None:
         op = env.body.op
         if op is ControlOp.CONFIRM:
-            self.gw.confirm(env)
+            if isinstance(self.gw.confirm(env), Claimed):     # the handle's revisions are sealed: the ear must know
+                handle = self.book.snapshot().get("items", env.body.handle_id or "") or {"data": {}}
+                for iv, rev in handle["data"].get("ivs", []):
+                    self.sealed(iv, rev)
         elif op is ControlOp.DECLINE:
             self.gw.decline(env)
         elif op is ControlOp.DELEGATE:
@@ -178,7 +183,7 @@ class Conversation:
 
     async def pump(self) -> int:
         """Run every ready batch, one at a time; returns how many runs ran."""
-        runs = 0
+        runs, self.dirty = 0, False
         while True:
             now = self.clock.now_ms()
             self.inbox.sweep(now)

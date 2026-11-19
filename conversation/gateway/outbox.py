@@ -263,6 +263,17 @@ class Gateway:
             return Read()
         return self._decide(fn)
 
+    def seal_publication(self, ctx: A.RunCtx, ivs: list[tuple[str, int]]) -> bool:
+        """The first publication seals every revision of the person's in the batch — all, or none (a revision was
+        reopened meanwhile and the run is fenced). ONE transaction."""
+        def fn(b):
+            for iv, rev in ivs:
+                if not S.seal(b.tx, iv, rev, b.now):
+                    raise _Abort(self._refuse(ctx, "", "unsealed", iv=iv, rev=rev))
+                self._note("sealed", ctx, iv=iv, rev=rev, by="publication")
+            return Read()
+        return isinstance(self._decide(fn), Read)
+
     def note_onset(self, endpoint: str, t_ms: int) -> None:
         def fn(b):
             b.tx.put("onsets", endpoint, {"t_ms": t_ms})
