@@ -1034,6 +1034,15 @@
    "emits": [
     "conv_ledger"
    ]
+  },
+  {
+   "id": "c_composer",
+   "zone": "conversation",
+   "name": "Composer — the prompt, each thing once",
+   "paths": [
+    "conversation/composer"
+   ],
+   "emits": []
   }
  ],
  "emitters": {

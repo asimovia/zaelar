@@ -9012,6 +9012,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/conversation/unit/test_voice_and_chat_share_one_order.py"]},
         {"id": "13.10", "title": "The ledger's transitions are ONE table equal to the specified one (§6.4): every listed move is taken, every other — any move out of a final state, a spent handle coming back — is refused with `conv_ledger/refused` and writes nothing; a follow-up is its own item apart from the effect that sent; events are said only on commit; a taken lease writes nothing and says `stale_epoch` — over both stores",
             "ch": UNIT, "paths": ["tests/conversation/unit/test_ledger_transitions_are_the_table.py"]},
+        {"id": "13.11", "title": "The prompt says each thing ONCE, from a pure function: Spanish and English snapshots of one state; every id once across state and input; OPEN under a budget with the device's focus pinned and marked even when oldest; a pending question in OPEN and never again in TO TELL; our lines cut to what was heard and «heard: unknown» said, never assumed; the prefix byte-identical between runs; composing twice gives the same prompt",
+            "ch": UNIT, "paths": ["tests/conversation/unit/test_the_prompt_says_each_thing_once.py"]},
     ]},
 ]
 

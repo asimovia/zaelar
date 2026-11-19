@@ -46,6 +46,11 @@
       "kind": "unit"
     },
     {
+      "id": "13.11",
+      "label": "The prompt says each thing once",
+      "kind": "unit"
+    },
+    {
       "id": "13.19",
       "label": "A stale epoch writes nothing; the Store contract over both stores",
       "kind": "unit"
