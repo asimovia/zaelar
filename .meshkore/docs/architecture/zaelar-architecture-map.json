@@ -1023,6 +1023,17 @@
    "emits": [
     "conv_inbox"
    ]
+  },
+  {
+   "id": "c_ledger",
+   "zone": "conversation",
+   "name": "Ledger — what is open",
+   "paths": [
+    "conversation/ledger"
+   ],
+   "emits": [
+    "conv_ledger"
+   ]
   }
  ],
  "emitters": {

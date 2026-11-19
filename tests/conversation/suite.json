@@ -41,6 +41,11 @@
       "kind": "unit"
     },
     {
+      "id": "13.10",
+      "label": "Ledger transitions are the table",
+      "kind": "unit"
+    },
+    {
       "id": "13.19",
       "label": "A stale epoch writes nothing; the Store contract over both stores",
       "kind": "unit"

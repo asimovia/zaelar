@@ -60,3 +60,12 @@ def ear(clock, telemetry):
     from conversation.telemetry import Emitter
     from conversation.types import Ids
     return Ear("acct-test", Config(), Emitter(telemetry, clock, "acct-test"), Ids())
+
+
+@pytest.fixture
+def book(store, clock, telemetry):
+    from conversation.ledger import Book
+    from conversation.telemetry import Emitter
+    lease = store.acquire("acct-test", "test")
+    b = Book(store, lambda: lease, "acct-test", Emitter(telemetry, clock, "acct-test"), clock)
+    return b

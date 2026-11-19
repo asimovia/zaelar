@@ -9008,6 +9008,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/conversation/unit/test_the_mailbox_accounts_for_every_envelope.py"]},
         {"id": "13.7", "title": "Voice and chat share ONE order, by onset (§7.1): X1 a correction typed while he speaks waits and goes in one batch after the voice; X2 text then voice are two inputs in the order begun; X3 a text while the agent speaks is ready at once; X4 a typed stop or a button with the voice open applies at once and the voice stays open; X6 the same words on both channels are two entries; X7 a confirm button never waits; X8 a voice that ends incomplete releases the text and asks for the end; X9 two texts under 350 ms are one batch; X10 past the hold cap the text runs alone with its event and text — over both stores",
             "ch": UNIT, "paths": ["tests/conversation/unit/test_voice_and_chat_share_one_order.py"]},
+        {"id": "13.10", "title": "The ledger's transitions are ONE table equal to the specified one (§6.4): every listed move is taken, every other — any move out of a final state, a spent handle coming back — is refused with `conv_ledger/refused` and writes nothing; a follow-up is its own item apart from the effect that sent; events are said only on commit; a taken lease writes nothing and says `stale_epoch` — over both stores",
+            "ch": UNIT, "paths": ["tests/conversation/unit/test_ledger_transitions_are_the_table.py"]},
     ]},
 ]
 
