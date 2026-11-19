@@ -1,6 +1,7 @@
 """server/screens_api.py — the HTTP face of `voice/screens.py` (V2-792: one agent, one voice, many screens).
 
-  · `POST /api/chat`           — a typed line from ANY screen, into the one conversation.
+  · `POST /api/chat`           — a typed line from ANY screen, into the one conversation (a `LOG:` line is a note
+                                 on the timeline, never a turn — `nucleo/input/support_note.py`).
   · `POST /api/screens/beat`   — a screen says whether it is visible (sent on `visibilitychange`) and whether its
                                  camera runs (`camera`, V2-932), what its face just did and saw (`face`, names,
                                  V2-928), and, with
@@ -37,6 +38,9 @@ async def chat(text: str = Body(..., embed=True), dev: str = Body("", embed=True
     connection the lock would never grant. `ok:false, reason:"no_session"` means nobody holds a live session: the
     caller then brings the voice up itself, which is the only way a session exists."""
     from nucleo import runstate
+    from nucleo.input import support_note
+    if support_note.record(str(text or "")[:4000], screens.clean(dev)):
+        return JSONResponse({"ok": True, "note": True})   # a `LOG:` line is written on the timeline, never a turn
     if runstate.stopped():
         return JSONResponse({"ok": False, "reason": "stopped"}, status_code=409)
     t = str(text or "").strip()[:4000]

@@ -358,6 +358,11 @@ kept for the FlashBrain's «PROCESOS DE FONDO» prompt, but does not duplicate t
 
 ## Event types (`kind`) — what to watch
 
+- **A note for support (`LOG:`, INI-042 #37)** — a typed line that starts with `LOG:` (any case, any number of
+  colons: `log :`, `LOG:::`) is NOT a turn. The typed door (`POST /api/chat`, `nucleo/input/support_note.py`) writes
+  ONE event `feedback` · `📝 support note (LOG:)` with the note as `text` and `extra = {support_note: true, dev}`, and
+  answers `{ok: true, note: true}`: no reply, no routing, no errand, and no session is brought up for it. It is how
+  whoever runs a session leaves a mark on the timeline for whoever reads it later.
 - **A task's life (V2-851)** — what the battery, the viewer and «how is it going?» read, all family `worker` unless
   said (taxonomy in `voice/observer.py`):
   - **`task_state`** — `📌 task <state> (settle)`: a row moved into its ending, written ONLY by `circuit.settle`;
