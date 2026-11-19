@@ -19,7 +19,7 @@ from enum import Enum
 from typing import Callable
 
 from conversation import envelopes as E
-from conversation.gateway.seal import T as IV_TABLE
+from conversation.gateway.seal import open_since
 from conversation.config import Config
 from conversation.inbox import ordering
 from conversation.ports import Lease, Store
@@ -33,6 +33,7 @@ VOICE = "voice_open"
 class Outcome(Enum):
     """How an accepted envelope ended (I6). `applied`: a control handled by id."""
     TOLD, COALESCED, SILENT, EXPIRED, APPLIED = "told", "coalesced", "silent", "expired", "applied"
+    FAILED = "failed"            # its run failed; the request carries the recovery
 
 
 class RowState(Enum):
@@ -53,7 +54,8 @@ class Batch:
 @dataclass(frozen=True)
 class Admission:
     envelope: E.Envelope | None
-    disposition: str     # queued · held · control · reopened · state · silent · duplicate
+    disposition: str     # queued · held · control · reopened · state · silent · duplicate · refused
+    extra: object = None  # what the caller's admission hook returned, inside the same transaction
 
 
 class Inbox:
@@ -63,16 +65,31 @@ class Inbox:
 
     # ── accept ──────────────────────────────────────────────────────────────────────────────────────────────────
 
-    def accept(self, env: E.Envelope, now: int) -> Admission:
+    def accept(self, env: E.Envelope, now: int, admit=None) -> Admission:
+        """Accept one envelope. `admit(tx, env)` runs INSIDE the same transaction, after the dedupe and before the
+        routing — what must be written with the acceptance (the intervention's phase, the request) or not at all."""
         env = replace(env, id=env.id or self.ids.new("e"), accepted_ms=now)
         with self.store.tx(self.lease()) as tx:
             row, new = tx.insert_unique(T, env.id, self._row(env), f"{env.producer}|{env.producer_id}")
             if not new:
-                self._emit("duplicate", env, cause={"kind": "producer", "ref": env.producer})
+                self._emit("duplicate", env, cause={"kind": "producer", "ref": env.producer},
+                           text=getattr(env.body, "text", None))
                 return Admission(None, "duplicate")
             self._emit("accepted", env)
+            extra = admit(tx, env) if admit is not None else None
             disposition = self._route(tx, env, now)
-        return Admission(env, disposition)
+        return Admission(env, disposition, extra)
+
+    def recover(self, now: int) -> list[str]:
+        """A new owner of the account: whatever a dead process had dequeued for a run goes back to the queue (its
+        run never finished); a control it never handled is closed by the sweep's bound as always."""
+        back = []
+        with self.store.tx(self.lease()) as tx:
+            for key, row in tx.scan(T):
+                if row["state"] == RowState.DEQUEUED.value and row["kind"] != str(EnvelopeKind.USER_CONTROL):
+                    self._move(tx, key, state=RowState.QUEUED.value, batch=None)
+                    back.append(key)
+        return back
 
     def _row(self, env: E.Envelope) -> dict:
         task = env.body.task_id if env.kind is EnvelopeKind.WORKER_UPDATE else None
@@ -182,31 +199,32 @@ class Inbox:
                 self._emit_row("dequeued", r, batch=seq, queue_age_ms=now - r["accepted"])
             return Batch(seq, envs, reason)
 
-    def _reopened_since(self, tx, row: dict, now: int) -> bool:
-        """A closed revision whose intervention was reopened waits for the newer revision (which carries every
-        word): running it would answer a sentence that is not finished, and its publication would be fenced. The
-        wait is bounded like any hold: past `cross_channel_hold_ms` without news of the newer revision, it runs."""
+    @staticmethod
+    def _reopened_since(tx, row: dict, now: int) -> bool:
+        """WAIT_AGAIN (policy row 6): a closed revision whose intervention was reopened waits for the newer revision,
+        which carries every word — running it would answer a sentence that is not finished, its publication would be
+        fenced and it would run again. The ear always ends a revision (closed, incomplete, discarded) and a reopen
+        nobody finishes is given back by the manager's sweep, so the wait is bounded."""
         if row["kind"] != str(EnvelopeKind.USER_UTTERANCE):
             return False
         refs = row["env"]["refs"]
-        iv = tx.get(IV_TABLE, refs["intervention_id"]) or {}
-        rev, _, state = iv.get("phase", "").partition(":")
-        newer_open = state == "open" and rev.isdigit() and int(rev) > refs["revision"]
-        return newer_open and now - iv.get("updated_ms", now) < self.cfg.cross_channel_hold_ms
+        newer = open_since(tx, refs["intervention_id"])
+        return newer is not None and newer[0] > refs["revision"]
 
     def _newest_revisions(self, tx, rows: list[dict], now: int) -> list[dict]:
-        """Two closed revisions of one voice intervention in the queue (a superseded run gave back the older one):
-        the newer carries every word, the older is accounted `coalesced` — one id, once, in the batch."""
+        """Two revisions of one voice intervention in the queue (a superseded run gave back the older one): the newer
+        — closed, or ended incomplete — carries every word; the older is accounted `coalesced`. One id, once."""
+        voice = (str(EnvelopeKind.USER_UTTERANCE), str(EnvelopeKind.INTERVENTION_STATE))
         newest: dict[str, dict] = {}
         for r in rows:
-            if r["kind"] == str(EnvelopeKind.USER_UTTERANCE):
+            if r["kind"] in voice:                    # a closed revision, or a newer one that ended incomplete
                 iv = r["env"]["refs"]["intervention_id"]
                 if iv not in newest or r["env"]["refs"]["revision"] > newest[iv]["env"]["refs"]["revision"]:
                     newest[iv] = r
         keep = []
         for r in rows:
             iv = r["env"]["refs"].get("intervention_id")
-            if r["kind"] == str(EnvelopeKind.USER_UTTERANCE) and newest.get(iv) is not r:
+            if r["kind"] in voice and newest.get(iv) is not r:
                 self._final(tx, r["id"], Outcome.COALESCED.value, now, reason="newer_revision")
             else:
                 keep.append(r)

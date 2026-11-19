@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from conversation import envelopes as E
 from conversation.config import Config
-from conversation.gateway import RunCtx
+from conversation.gateway.authority import RunCtx
 from conversation.gateway import seal as S
 from conversation.gateway.outbox import Gateway
 from conversation.inbox import Inbox

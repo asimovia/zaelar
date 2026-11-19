@@ -129,3 +129,27 @@ def test_duck_and_stop_are_immediate_events_on_the_control_lane(store, clock, te
     assert mouth.calls == [("duck", "d1"), ("unduck", "d1"), ("stop", "d1", "stop")]
     stop = [p for k, lab, p in telemetry.events if lab == "cut"][0]
     assert stop["stop_to_silence_ms"] == 40
+
+
+def test_b2_a_line_nobody_acknowledges_ends_unknown_and_what_comes_next_runs(store):
+    """A device that loses the connection never sends `SayEnded`: past its bound the line ended «unknown», the
+    manager is not left speaking, and the person's next sentence is answered (audit B2)."""
+    from conversation.config import Config
+    from conversation.ports import Done
+    from conversation.testing.scripted_model import reply
+    from tests.conversation.unit.convkit import Harness
+    h = Harness(store, config=Config(say_end_ms=5000))
+    h.mouth.ack = None                                          # a mouth whose acks never arrive
+    h.model.default = lambda ids: [reply("w9"), Done()]
+    h.utter([(["w1"], 0)])
+    assert h.conv.state.value == "speaking"
+    h.at(h.clock.mono + 3000)
+    h.typed("w2", h.clock.mono, ep="d2")                        # arrives while we «speak»: silence, then it runs
+    h.at(h.clock.mono + 1000).pump()
+    assert len(h.mouth.orders) == 2
+    h.at(h.clock.mono + 60_000)
+    h.conv.sweep()
+    assert h.conv.state.value == "idle"
+    ended = [p for k, lab, p in h.tel.events if k == "conv_mouth" and lab == "ended"]
+    assert ended and all(p["outcome"] == "unknown" for p in ended)
+    assert [lab for lab, _ in h.closes()] == ["answered", "answered"]

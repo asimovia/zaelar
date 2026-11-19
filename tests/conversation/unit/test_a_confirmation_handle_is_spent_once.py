@@ -14,7 +14,7 @@ import threading
 
 import pytest
 
-from conversation.gateway import Claimed, NeedsConfirmation, Refused
+from conversation.gateway.outbox import Claimed, NeedsConfirmation, Refused
 from conversation.gateway import dispatch
 from conversation.gateway.outbox import Gateway
 from conversation.ledger import Book

@@ -104,6 +104,9 @@ class Ear:
             self._judge(v, t, out)
         elif sig.echo_safe:
             v.fall_ms = None
+            if v.state in (IvState.CLOSED, IvState.INCOMPLETE) and (v.iv, v.rev) not in self._sealed:
+                out.append(S.Onset(v.endpoint, sig.t_ms, v.iv))     # voice again: a reopen needs WORDS (a cough
+                return                                               # is not a continuation)
             self._start_or_resume(v, sig.t_ms, out)
 
     def _on_EotHint(self, sig: S.EotHint, out: list) -> None:
@@ -249,6 +252,10 @@ class Ear:
                       producer_id=f"{v.iv}:{v.rev}:{label}:{t}", account=self.account, onset_ms=v.onset_ms,
                       sealed_ms=t, channel=Channel.VOICE, endpoint=v.endpoint,
                       refs=E.Refs(intervention_id=v.iv, revision=v.rev))
+
+    def open_ids(self) -> set[str]:
+        """The interventions this ear is still hearing (open or tentative)."""
+        return {v.iv for v in self._voices.values() if v.state in OPEN_STATES and v.iv}
 
     def open_intervention(self, endpoint: str | None = None) -> tuple[str, int, int] | None:
         """(intervention, revision, onset) of an open voice intervention — on that endpoint, or on any."""

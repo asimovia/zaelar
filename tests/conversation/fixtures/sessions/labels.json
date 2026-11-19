@@ -92,7 +92,7 @@
    ]
   ],
   "reviewed": true,
-  "reviewed_by": "implementer against the original, pending the operator",
+  "reviewed_by": "implementer",
   "proposed_by": "converter"
  },
  "s2": {
@@ -144,8 +144,8 @@
    ]
   ],
   "reviewed": true,
-  "reviewed_by": "implementer against the original, pending the operator",
+  "reviewed_by": "implementer",
   "proposed_by": "converter"
  },
- "_doc": "Which final tokens form each intervention of the person, as [start, end) indices over the final words of each fixture in order. Proposed by the converter (between two agent lines), reviewed against the original by the implementer and pending the operator's own review. s3/s4 come when their sessions are named."
+ "_doc": "Which final tokens form each intervention of the person, as [start, end) indices over the final words of each fixture in order. Proposed by the converter (between two agent lines), reviewed against the original by the implementer (spot-checked by the independent reviewer). s3/s4 come when their sessions are named."
 }

@@ -49,7 +49,7 @@ class NeedsConfirmation:
 
 @dataclass(frozen=True)
 class Held:
-    """A claimed effect blocked by a hold received before its submission (A7) — only that."""
+    """The effect waits on the person: a hold before its submission (A7), or they are speaking (unclaimed)."""
     reason: str
 
 
@@ -109,7 +109,7 @@ class Gateway:
 
     # ── one tool call ───────────────────────────────────────────────────────────────────────────────────────────
 
-    def request(self, ctx: A.RunCtx, call: ToolCall) -> Decision:
+    def request(self, ctx: A.RunCtx, call: ToolCall, *, held: bool = False) -> Decision:
         spec = self.specs().get(call.name)
         if spec is None:
             self._note("refused", ctx, tool=call.name, reason="unknown_tool")
@@ -121,6 +121,10 @@ class Gateway:
             self._note("read", ctx, tool=call.name, effect_class=str(spec.effect_class), model_on=hint)
             self._flush()
             return Read()
+        if held:                              # the person is speaking: an effect waits, unclaimed and unsealed (§7 row 1)
+            self._note("held", ctx, tool=call.name, reason="person_speaking")
+            self._flush()
+            return Held("person_speaking")
         return self._decide(lambda b: self._effect(b, ctx, spec, call.name, args, hint))
 
     def _refuse(self, ctx, tool: str, reason: str, **kw) -> Refused:

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import asyncio
 
-from conversation.gateway import Claimed, NeedsConfirmation, Read, Refused
+from conversation.gateway.outbox import Claimed, NeedsConfirmation, Read, Refused
 from conversation.gateway import dispatch
 from conversation.ports import ToolCall
 from conversation.types import Channel, ControlOp

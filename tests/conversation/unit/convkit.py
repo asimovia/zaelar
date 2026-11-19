@@ -14,7 +14,7 @@ ACCT = "acct-test"
 
 class Harness:
     def __init__(self, store, *, script: dict | None = None, config: Config | None = None, prefix: str = "RULES") -> None:
-        self.clock, self.tel = FakeClock(), ListTelemetry()
+        self.clock, self.tel = FakeClock(t0_ms=0), ListTelemetry()   # signal times ARE the wall clock
         self.model, self.tools, self.mouth = ScriptedModel(script or {}), RecordingTools(), AckingMouth()
         self.store = store
         self.conv = build(account=ACCT, owner="test", model=self.model, tools=self.tools, store=store,

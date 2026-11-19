@@ -109,7 +109,7 @@ SPEC = {
     ItemKind.GRANT: {"active": {"spent", "expired", "revoked"}},
     ItemKind.HANDLE: {"issued": {"presented", "expired"}, "presented": {"spent", "expired"}},
     ItemKind.DELEGATION: {"active": {"exhausted", "expired", "revoked"}},
-    ItemKind.EFFECT: {"claimed": {"submitting"},
+    ItemKind.EFFECT: {"claimed": {"submitting", "withdrawn"},
                       "submitting": {"provider_accepted", "rejected", "submission_unknown"},
                       "submission_unknown": {"provider_accepted", "rejected"},
                       "provider_accepted": {"delivered", "delivery_unconfirmed", "failed"}},

@@ -59,6 +59,7 @@ class ToolSpec:
     #: which arguments are the recipient, the channel and the content — so a handle or a delegation binds an effect
     #: without the gateway naming any tool (plan §15 E2)
     binding: dict = field(default_factory=dict)
+    hands_off: bool = False         # the work goes on without the run (a task started): its request is handed off
 
 
 @dataclass(frozen=True)

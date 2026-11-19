@@ -44,6 +44,9 @@ class ScriptedModel:
         self.calls.append(Call(run_id, prompt, list(tools), key))
         events = steps[min(len(prompt.steps), len(steps) - 1)] if steps else self.default(ids)
         for ev in events:
+            if hasattr(ev, "__await__"):
+                await ev                       # a pause the script imposes (a provider that hangs)
+                continue
             if callable(ev) and not isinstance(ev, type):
                 ev()
                 continue

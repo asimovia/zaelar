@@ -13,6 +13,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
+from conversation import guard
+from conversation.config import Config
 from conversation.ports import Clock, Lease, Mouth, SayOrder, Store
 from conversation.telemetry import Emitter
 from conversation.types import Ids
@@ -62,9 +64,17 @@ def cut_to_sentence(text: str, heard_chars: int) -> str:
 
 class Speaker:
     def __init__(self, store: Store, lease: Callable[[], Lease], mouth: Mouth, emitter: Emitter, clock: Clock,
-                 ids: Ids, on_presented: Callable[[str, str | None], None] | None = None) -> None:
+                 ids: Ids, on_presented: Callable[[str, str | None], None] | None = None,
+                 config: Config | None = None) -> None:
         self.store, self.lease, self.mouth, self.em, self.clock, self.ids = store, lease, mouth, emitter, clock, ids
         self.on_presented = on_presented or (lambda handle, endpoint: None)
+        self.cfg = config or Config()
+
+    def overdue(self, now: int) -> list[str]:
+        """Lines with no `SayEnded` past their bound: acks get lost, and nobody waits on one forever (B2)."""
+        snap = self.store.snapshot(self.lease().account)
+        return [k for k, row in snap.scan(SAYS) if row["state"] != "ended"
+                and now - row["t_ms"] >= self.cfg.say_end_ms + 80 * len(row["text"])]
 
     def _refs(self, row: dict) -> dict:
         return {"say": row["say_id"], "run": row["run"], "req": row["req"], "endpoint": row.get("endpoint")}
@@ -82,8 +92,10 @@ class Speaker:
                                         "heard_chars": None, "ref": say_id, "iv": iv})
         self.em.emit("conv_mouth", "say", owner="mouth", cause={"kind": "run", "ref": run_id}, refs=self._refs(row),
                      channels=sorted(channels), chars=len(text), presents=presents)
-        await self.mouth.say(SayOrder(say_id, run_id, request_id, text, frozenset(channels), endpoint, lang,
-                                      presents))
+        await guard.call(self.em, self.cfg, "mouth", self.mouth.say(SayOrder(say_id, run_id, request_id, text,
+                                                                             frozenset(channels), endpoint, lang,
+                                                                             presents)),
+                         self.cfg.mouth_ms, {"say": say_id, "run": run_id})
         return say_id
 
     def ack(self, sig: SayStarted | PlayoutAck | Painted | SayEnded) -> None:

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import threading
 
-from conversation.gateway import Claimed, Refused
+from conversation.gateway.outbox import Claimed, Refused
 from conversation.gateway import seal as S
 from conversation.ports import ToolCall
 from conversation.store import SqliteStore
@@ -105,3 +105,35 @@ def test_the_gateway_racing_a_reopen_never_leaves_an_effect_on_an_unsealed_revis
             assert _phase(first, iv) == f"{rev}:sealed", (iv, _phase(first, iv))
     first.close()
     second.close()
+
+
+def test_b5_note_only_moves_forward_and_a_redelivered_older_revision_cannot_make_a_reopen_sealable(store, clock,
+                                                                                                  telemetry):
+    """Revision 1 closed, the voice went on (2:open); an adapter re-delivers revision 1. The phase stays 2:open and
+    revision 1 cannot be sealed: an action cannot rest on what the person is still extending (audit B5)."""
+    k = Kit(store, clock, telemetry)
+    with store.tx(k.lease) as tx:
+        S.note(tx, "iv1", 1, "closed", 1)
+        assert S.reopen(tx, "iv1", 1, 2)
+        assert not S.note(tx, "iv1", 1, "closed", 3)                     # older: ignored
+        assert not S.seal(tx, "iv1", 1, 4)
+        S.note(tx, "iv0", 1, "closed", 5)
+        assert S.seal(tx, "iv0", 1, 5)
+        assert not S.note(tx, "iv0", 1, "closed", 6)                     # nothing moves off a seal
+    assert _phase(store, "iv1") == "2:open"
+
+
+def test_b5_a_redelivered_revision_through_the_manager_is_a_duplicate_and_writes_nothing(store):
+    from conversation import envelopes as E
+    from conversation.ear import signals as Sg
+    from tests.conversation.unit.convkit import Harness
+    h = Harness(store)
+    h.live = False
+    h.utter([(["w1", "w2"], 0)])
+    first = [r for _k, r in store.snapshot("acct-test").scan("inbox") if r["kind"] == "user.utterance"][0]
+    t = h.clock.mono + 100
+    h.hear(Sg.WordSpan("d1", 50, 1, False, h.words(["w3"], t), (t, t + 180)))          # reopened: 2:open
+    assert store.snapshot("acct-test").get(S.T, "iv_000001")["phase"] == "2:open"
+    h.conv.give(E.from_json({**first["env"], "id": ""}))                              # the adapter retries rev 1
+    assert store.snapshot("acct-test").get(S.T, "iv_000001")["phase"] == "2:open"
+    assert "conv_inbox/duplicate" in h.tel.labels()

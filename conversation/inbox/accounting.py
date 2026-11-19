@@ -13,8 +13,9 @@ from conversation.inbox.mailbox import FINAL, RowState, T
 LIVE = frozenset(m.value for m in RowState) - {RowState.ACCOUNTED.value}
 
 
-def audit(snapshot, now: int, cfg: Config, *, drained: bool = False) -> list[str]:
-    """`drained=True` once the manager has nothing left to run: then only accounted rows are acceptable."""
+def audit(snapshot, now: int, cfg: Config, *, drained: bool = False, running: set | None = None) -> list[str]:
+    """`drained=True` once the manager has nothing left to run: then only accounted rows are acceptable. `running`:
+    the batch numbers of the runs in course — a non-control row dequeued into any other batch is orphaned."""
     bad = []
     for key, row in snapshot.scan(T):
         state = row["state"]
@@ -29,6 +30,9 @@ def audit(snapshot, now: int, cfg: Config, *, drained: bool = False) -> list[str
         elif (state == "dequeued" and row["kind"] == "user.control"
               and now - row["accepted"] > cfg.control_bound_ms):
             bad.append(f"{key}: a control accepted and never handled")
+        elif (state == "dequeued" and row["kind"] != "user.control" and running is not None
+              and row["batch"] not in running):
+            bad.append(f"{key}: dequeued into batch {row['batch']}, which no run is running")
         elif state == "held" and (row["hold_until"] is None or now > row["hold_until"]):
             bad.append(f"{key}: held past its cap")
         elif state == "deferred":

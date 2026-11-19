@@ -68,3 +68,48 @@ def test_a_stop_during_a_run_silences_and_cancels_the_run_and_the_task_goes_on(s
     assert "conv_run/cancelled" in h.tel.labels()
     assert h.conv.book.snapshot().get("items", "t1")["state"] == "running"
     assert [lab for lab, _ in h.closes()] == ["silent"]
+
+
+def test_b1_a_reopened_intervention_still_open_waits_and_the_model_is_called_once(store):
+    """WAIT_AGAIN (audit B1): the provider closed «w1 w2», the model starts, the person goes on — a word, no end yet.
+    The superseded run gives its batch back and the old revision is NOT run again while the new one is open: one
+    model call until the intervention closes, then one with every word."""
+    from conversation.ear import signals as S
+    from conversation.ports import Done
+    from conversation.testing.scripted_model import reply
+
+    h = Harness(store)
+    calls_while_open: list = []
+
+    def go_on():
+        if calls_while_open:
+            return
+        calls_while_open.append(True)
+        t = h.clock.mono + 50
+        h.hear(S.VadEdge("d1", "rise", t), S.WordSpan("d1", 77, 1, False, h.words(["w3"], t), (t, t + 180)))
+
+    def bounded():
+        assert len(h.model.calls) <= 3, "the old revision is being re-run in a loop"
+
+    h.model.script["iv_000001"] = [[bounded, go_on, reply("w9"), Done()]]
+    h.utter([(["w1", "w2"], 0)])
+    for t in range(h.clock.mono + 240, h.clock.mono + 4000, 240):     # the provider keeps beating, nothing closes
+        h.hear(S.Watermark("d1", t))
+    assert len(h.model.calls) == 1 and not h.mouth.orders
+    assert h.tel.labels("conv_run").count("conv_run/fenced") == 0
+    t = h.clock.mono
+    h.hear(S.WordSpan("d1", 77, 2, True, h.words(["w3", "w4"], t - 400), (t - 400, t)), S.VadEdge("d1", "fall", t),
+           h.beats(t, t + 300), S.EotHint("d1", "flux", "end", .9, t + 300))
+    assert len(h.model.calls) == 2 and "«w1 w2 w3 w4»" in h.model.calls[1].prompt.input
+    assert [lab for lab, _ in h.closes()] == ["answered"]
+
+
+def test_b1_a_cough_after_the_close_is_no_reopen(store):
+    from conversation.ear import signals as S
+    h = Harness(store)
+    h.live = False
+    t = h.utter([(["w1"], 0)])
+    h.hear(S.VadEdge("d1", "rise", t + 50), S.VadEdge("d1", "fall", t + 200))
+    assert "conv_ear/reopened" not in h.tel.labels()
+    h.pump()
+    assert len(h.model.calls) == 1 and [lab for lab, _ in h.closes()] == ["answered"]

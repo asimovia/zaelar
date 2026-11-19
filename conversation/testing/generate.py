@@ -54,9 +54,12 @@ class Case:
     def __init__(self, seed: int, cfg: Config | None = None) -> None:
         self.rng = random.Random(seed)
         self.seed = seed
-        self.cfg = cfg or Config(liveness_ms=60_000)
+        self.cfg = cfg or Config(liveness_ms=60_000, model_first_ms=40, model_gap_ms=40, tool_ms=40,
+                                 say_end_ms=8000)
         self.store, self.clock, self.tel = AuditedStore(), FakeClock(), ListTelemetry()
         self.tools = RecordingTools()
+        if self.rng.random() < 0.1:
+            self.tools.raises["market_data"] = ValueError("p3: the adapter broke")    # B6
         self.tools.answers["market_data"] = ToolResult("ok", evidence=(evidence("ev1", "ACME", "q3", "up_days",
                                                                                  "up", 18),))
         self.model = ScriptedModel(default=self._behave)
@@ -75,18 +78,37 @@ class Case:
         c = Conversation(account=ACCT, owner=owner, model=self.model, tools=self.tools, store=self.store,
                          memory=NoMemory(), clock=self.clock, mouth=self.mouth, telemetry=self.tel, config=self.cfg,
                          prefix="P3", ids=None)
-        c.ids._space = owner
-        self.mouth.ack = c.ack
+        self.mouth.ack = self._lossy_ack(c)                                 # B2: acks get lost
         for ep in ("d1", "d2"):
             c.device(ep, voice_live=self.rng.random() < 0.8, speaker_open=self.rng.random() < 0.8)
         return c
+
+    @staticmethod
+    def _hang():
+        class _Hang:                                   # an event the scripted model awaits: past every deadline
+            def __await__(self):
+                return asyncio.sleep(0.045).__await__()
+        return _Hang()
+
+    def _lossy_ack(self, conv: Conversation):
+        loss = self.rng.choice([0.0, 0.0, 0.3, 1.0])
+
+        def ack(sig):
+            if self.rng.random() >= loss:
+                conv.ack(sig)
+        return ack
 
     # ── the model, at random ───────────────────────────────────────────────────────────────────────────────────
 
     def _behave(self, ids: list[str]) -> list:
         r, out = self.rng.random(), []
+        if len(self.model.calls) > 300:
+            self.crashes.append("loop: more than 300 model calls in one case — a run is re-run in a loop")
+            raise RuntimeError("a run is re-run in a loop")
         if not self.draining and self.rng.random() < 0.25:
             out.append(lambda: self._safe(self._random_action))           # new input between two model events
+        elif not self.draining and self.rng.random() < 0.08:
+            out.append(lambda: self._safe(self._reopen_mid_run))           # B1/B5: he goes on while it runs
         if r < 0.15:
             self.issued_calls += 1
             out += [ToolCall("c", "market_data", {"q": "w1"}), Done()]
@@ -104,6 +126,8 @@ class Case:
             out += [Command("no_reply", {"reason": "p3"}), Done()]
         elif r < 0.65:
             out += [Failed("p3", "provider")]
+        elif r < 0.654:
+            out += [self._hang(), reply("w0"), Done()]                       # B3: a provider that hangs
         else:
             out += [reply(f"w{self.rng.randint(10, 99)}. w{self.rng.randint(10, 99)}?"), Done()]
         return out
@@ -208,9 +232,37 @@ class Case:
                            must_tell=True)
         elif a < 0.91:
             self._race_seal(conv)
+        elif a < 0.94:
+            self._redeliver(conv)                                                # B5: an adapter re-delivers
+        elif a < 0.97:
+            self._go_on_unfinished(conv)                                         # B1: a reopen left open
         else:
             self.clock.advance(self.rng.choice([100, 2000, 9000, 40_000]))
             self._feed(conv, S.Tick(self._now()))
+
+    def _reopen_mid_run(self) -> None:
+        """While the model runs on a closed revision, the person goes on (a word, no end yet) and an adapter re-delivers
+        the closed revision."""
+        conv = self.conv
+        rows = [r for _k, r in self.store.snapshot(ACCT).scan("inbox") if r["kind"] == "user.utterance"]
+        self._go_on_unfinished(conv)
+        if rows and self.rng.random() < 0.5:
+            conv.give(E.from_json({**rows[-1]["env"], "id": "", "accepted_ms": 0}))
+
+    def _redeliver(self, conv: Conversation) -> None:
+        rows = [r for _k, r in self.store.snapshot(ACCT).scan("inbox") if r["kind"] in ("user.utterance",
+                                                                                         "user.text")]
+        if rows:
+            row = self.rng.choice(rows)
+            conv.give(E.from_json({**row["env"], "id": "", "accepted_ms": 0}))
+
+    def _go_on_unfinished(self, conv: Conversation) -> None:
+        """The person goes on after a close with a word and no end yet, and the provider keeps beating."""
+        ep, t = "d1", self._now() + 20
+        self.seq += 1
+        ws = ((f"w{self.rng.randint(1, 60)}", t, t + 160, 1.0),)
+        self._feed(conv, S.VadEdge(ep, "rise", t), S.WordSpan(ep, self.seq, 1, False, ws, (t, t + 160)),
+                   *[S.Watermark(ep, x) for x in range(t + 200, t + 2500, 240)])
 
     def _race_seal(self, conv: Conversation) -> None:
         """Another writer of the account (a confirmation, the other process's gateway) seals a closed revision the
@@ -267,6 +319,13 @@ def check(case: Case) -> list[str]:
     for iv, rev in sorted(sealed):                                                     # I3: a seal is forever
         if phases.get(iv) != f"{rev}:sealed":
             out.append(f"I3: {iv} sealed at {rev} and now {phases.get(iv)}")
+    inbox_rows = [r for _k, r in snap.scan("inbox")]
+    for iv, ph in phases.items():                                                      # I3: …and never revised
+        rev = int(ph.split(":")[0])
+        if ph.endswith(":sealed") and any(r["kind"] == "user.utterance"
+                                          and r["env"]["refs"]["intervention_id"] == iv
+                                          and r["env"]["refs"]["revision"] > rev for r in inbox_rows):
+            out.append(f"I3: {iv} sealed at {rev} and a later revision of it was accepted")
     for k, lab, p in case.tel.events:                                                  # I4
         if k == "conv_ear" and lab == "discarded" and ("reason" not in p or "text" not in p):
             out.append("I4: a discard without its text and reason")
@@ -285,6 +344,19 @@ def check(case: Case) -> list[str]:
     for k, lab, p in case.tel.events:
         if k == "conv_close":
             closes[p["refs"]["req"]] = closes.get(p["refs"]["req"], 0) + 1
+    batch_of, fenced = {}, set()                            # a FENCED batch never runs again unchanged (B1)
+    for k, lab, p in case.tel.events:
+        if k == "conv_run" and lab == "started":
+            b = tuple(p["batch_envs"])
+            if b in fenced:
+                out.append("I1: a fenced batch ran again unchanged — its revision re-run while the reopen was open")
+                break
+            batch_of[p["refs"]["run"]] = b
+        elif k == "conv_run" and lab == "fenced":
+            fenced.add(batch_of.get(p["refs"]["run"]))
+    for r in inbox_rows:                                    # I9: every entry of the person is a request at once
+        if r["kind"] in ("user.utterance", "user.text") and f"r_{r['env']['refs']['intervention_id']}" not in items:
+            out.append(f"I9: {r['id']} was accepted and is no request")
     for rid, row in items.items():                                                     # I9
         if row["kind"] == str(ItemKind.REQUEST):
             if row["state"] == "open":

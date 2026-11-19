@@ -49,13 +49,14 @@ def test_every_way_a_request_ends_says_so_once(store):
     stop = control(ControlOp.STOP, 0, "k1", endpoint="d1")
     plan = [[reply("w1"), Done()], [Command("no_reply", {"reason": "nothing_to_add"}), Done()],
             [Failed("timeout", "provider")], [lambda: h.conv.give(stop), reply("w4"), Done()]]
-    h.model.default = lambda ids: plan.pop(0)
+    # a run on a recovery entry (no intervention of the person) just tells it; the plan is for his entries
+    h.model.default = lambda ids: plan.pop(0) if ids and ids[0].startswith("iv") else [reply("w-told"), Done()]
     for n in range(1, 5):
         h.typed(f"w{n}", h.clock.mono + 1000, cid=f"c{n}")
         h.at(h.clock.mono + 1000)
         h.pump()
     assert [(lab, p.get("reason")) for lab, p in h.closes()] == [
-        ("answered", None), ("silent", "nothing_to_add"), ("failed", "provider:timeout"), ("silent", "stopped")]
+        ("answered", None), ("silent", "nothing_to_add"), ("recovered", "provider:timeout"), ("silent", "stopped")]
     assert len({p["refs"]["req"] for _lab, p in h.closes()}) == 4
 
 
@@ -70,3 +71,67 @@ def test_a_request_nobody_ran_is_closed_stalled_once(store):
         h.at(t)
         h.pump()
     assert [(lab, p["reason"]) for lab, p in h.closes()] == [("stalled", "stalled")]
+
+
+def test_m7_a_request_is_opened_when_its_entry_is_accepted(store):
+    """Liveness counts from acceptance: a sentence that never got a run is still a request the sweep closes."""
+    h = Harness(store, config=Config(liveness_ms=5000))
+    h.live = False
+    h.utter([(["w1"], 0)])
+    req = h.conv.book.snapshot().get("items", "r_iv_000001")
+    assert req is not None and req["state"] == "open" and h.model.calls == []
+    h.at(h.clock.mono + 5000)
+    h.conv.sweep()
+    assert [(lab, p["reason"]) for lab, p in h.closes()] == [("stalled", "stalled")]
+
+
+def test_b3_a_hung_model_times_out_and_the_request_recovers_visibly(store):
+    import asyncio
+
+    from conversation.ports import Done
+
+    class Hung:
+        calls: list = []
+
+        async def stream(self, prompt, tools, *, run_id, model_id):
+            self.calls.append(prompt)
+            if len(self.calls) == 1:
+                await asyncio.sleep(10)                         # the provider holds the stream and sends nothing
+            yield reply("w-recovery")
+            yield Done()
+
+    h = Harness(store, config=Config(model_first_ms=30))
+    h.conv.model = Hung()
+    h.utter([(["w1"], 0)])
+    assert [(lab, p["reason"]) for lab, p in h.closes()] == [("recovered", "provider:timeout")]
+    assert "conv_run/port_slow" in h.tel.labels()
+    assert [o.text for o in h.mouth.orders] == ["w-recovery"]       # the person hears it, in the model's words
+    assert "«failed:provider:timeout»" in h.conv.model.calls[1].input
+
+
+def test_b3_the_sweep_closes_the_request_of_a_run_in_course_and_stops_it(store):
+    h = Harness(store, config=Config(liveness_ms=5000))
+
+    def stall():
+        h.at(h.clock.mono + 6000)
+        h.conv.sweep()                                          # the sweep runs on its own timer, not inside pump
+
+    h.model.script["iv_000001"] = [[stall, reply("w9"), Done()]]
+    h.utter([(["w1"], 0)])
+    assert [(lab, p["reason"]) for lab, p in h.closes()] == [("stalled", "stalled")]
+    assert not h.mouth.orders and "conv_run/cancelled" in h.tel.labels()
+
+
+def test_b6_a_tool_that_raises_ends_the_run_visibly_and_accounts_its_batch(store):
+    from conversation.inbox.accounting import audit
+    from conversation.ports import ToolCall
+    h = Harness(store)
+    h.tools.raises["search"] = ValueError("adapter broke")
+    h.model.default = lambda ids: ([ToolCall("c", "search", {"q": "w1"}), Done()] if ids[0].startswith("iv")
+                                   else [reply("w-told"), Done()])
+    h.utter([(["w1"], 0)])
+    assert [(lab, p["reason"]) for lab, p in h.closes()] == [("recovered", "ValueError")]
+    rows = [r for _k, r in store.snapshot("acct-test").scan("inbox") if r["kind"] == "user.utterance"]
+    assert [r["outcome"] for r in rows] == ["failed"]
+    assert audit(store.snapshot("acct-test"), h.clock.now_ms(), h.conv.cfg, drained=True) == []
+    assert [o.text for o in h.mouth.orders] == ["w-told"]

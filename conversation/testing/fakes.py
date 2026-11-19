@@ -2,6 +2,7 @@
 telemetry into a list, a memory that has nothing. Deterministic: no wall clock, no randomness, no I/O."""
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 from typing import Callable
 
@@ -54,6 +55,8 @@ class RecordingTools:
     answers: dict[str, ToolResult] = field(default_factory=dict)
     calls: list[tuple[str, dict, str | None]] = field(default_factory=list)
     before: Callable[[str], None] | None = None
+    delay_s: float = 0.0                       # real time a call takes (deadlines are wall clock)
+    raises: dict = field(default_factory=dict)  # tool name → exception the adapter raises
 
     def catalog(self) -> list[ToolSpec]:
         return list(self.specs)
@@ -62,6 +65,10 @@ class RecordingTools:
         if self.before is not None:
             self.before(name)
         self.calls.append((name, dict(args), effect_id))
+        if self.delay_s:
+            await asyncio.sleep(self.delay_s)
+        if name in self.raises:
+            raise self.raises[name]
         return self.answers.get(name, ToolResult("ok", data={"tool": name},
                                                  receipt={"delivered": True} if effect_id else None))
 

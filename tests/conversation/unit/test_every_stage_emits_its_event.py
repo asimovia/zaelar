@@ -69,8 +69,43 @@ def test_every_kind_and_label_written_in_the_package_is_in_the_contract_and_on_t
 
 
 def test_a_port_call_over_its_budget_is_an_event(store):
-    h = Harness(store, script={"iv_000001": [[ToolCall("c1", "search", {"q": "w1"}), Done()], [reply("w2"), Done()]]})
-    h.tools.before = lambda name: h.clock.advance(h.conv.cfg.port_budget_ms + 100)
+    from conversation.config import Config
+    h = Harness(store, script={"iv_000001": [[ToolCall("c1", "search", {"q": "w1"}), Done()], [reply("w2"), Done()]]},
+                config=Config(port_budget_ms=5))
+    h.tools.delay_s = 0.02
     h.utter([(["w1"], 0)])
     slow = [p for k, lab, p in h.tel.events if lab == "port_slow"]
-    assert slow and slow[0]["port"] == "tools" and slow[0]["ms"] > h.conv.cfg.port_budget_ms
+    assert any(p["port"] == "tools" and p["ms"] > 5 for p in slow), slow
+
+
+def test_m10_every_port_is_measured_the_store_and_the_memory_too(store):
+    import asyncio
+    import time
+
+    from conversation.config import Config
+    from conversation.ports import Block
+
+    class SlowMemory:
+        async def state_blocks(self, account, *, budget_tokens):
+            await asyncio.sleep(0.02)
+            return [Block("STATE", "w1")]
+
+        async def screen(self, account, endpoint):
+            return Block("", "")
+
+        async def recall(self, account, query, *, k):
+            return []
+
+    h = Harness(store, script={"iv_000001": [[reply("w2"), Done()]]}, config=Config(port_budget_ms=5))
+    h.conv.memory = SlowMemory()
+    real_tx = h.conv.store._s.tx
+
+    def slow_tx(lease):
+        time.sleep(0.01)
+        return real_tx(lease)
+
+    h.conv.store._s.tx = slow_tx
+    h.utter([(["w1"], 0)])
+    ports = {p["port"] for k, lab, p in h.tel.events if lab == "port_slow"}
+    assert {"memory", "store"} <= ports, ports
+    assert "STATE\nw1" in h.model.calls[0].prompt.state                # memory reaches the state when it answers

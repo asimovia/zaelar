@@ -45,6 +45,16 @@ class Config:
     liveness_ms: int = 30_000
     #: a port call slower than this is an event (the loop-stall lesson of G1).
     port_budget_ms: int = 500
+    #: deadlines of the ports (wall clock): the model's first event and each next one, a tool, the mouth's order,
+    #: a memory read. Past them the call is abandoned and the run recovers visibly (I9).
+    model_first_ms: int = 20_000
+    model_gap_ms: int = 10_000
+    tool_ms: int = 15_000
+    mouth_ms: int = 3_000
+    memory_ms: int = 1_500
+    #: a line we said with no `SayEnded` after this (plus ~80 ms a character) ended «unknown»: acks get lost (B4 of
+    #: the audit), and the manager never waits on one forever.
+    say_end_ms: int = 20_000
     #: a run may call the model at most this many times (tool results fed back between calls).
     max_steps: int = 6
     #: evidence a tool returned stays valid for a numeric claim of a LATER run this long (D9).

@@ -1,30 +1,44 @@
 """One run: compose → model → tools through the gateway → say → close (§6.3, I9).
 
-The batch's requests are ledger items keyed by the intervention, so a superseded run leaves them OPEN and the next
-run receives them again (N1). Between two model events and between two tools is a CHECKPOINT: an interrupt set by
-the policy (superseded, cancelled) takes effect there; a tool the model asked for and that did not start is skipped.
-Every tool the model sees is the catalog's — ordered at most, never cut (I7). The reply is published only after its
-numeric claims match their evidence (D9) and after every revision of the batch is sealed (the first publication
-seals); a revision reopened meanwhile fences the run. Every request ends exactly once with its `conv_close`; the
-sweep closes as `stalled` the ones that outlive the liveness budget.
+The batch's requests were opened when their entries were accepted, keyed by the intervention, so a superseded run
+leaves them OPEN and the next run receives them again (N1). Between two model events and between two tools is a
+CHECKPOINT: an interrupt set by the policy or the sweep (superseded, cancelled, stalled) takes effect there; a tool
+the model asked for and that did not start is skipped. Every tool the model sees is the catalog's — ordered at most,
+never cut (I7). Every port call has its deadline (`conversation.guard`).
+
+EVERY exit of a run accounts for its batch with what happened (B6, M6): answered → `told`; a deliberate silence →
+`silent`; superseded → back to the queue; anything else — the provider failed or timed out, a tool raised, the
+steps ran out — → `failed`, its requests closed `recovered`, and a must-tell recovery entry queued so the person
+hears that it failed (worded by the model, never a fixed sentence). A numeric claim that does not match its evidence
+gets ONE repair round with the reason; then the run stays silent (D9). The first publication seals the batch's
+revisions; a revision reopened meanwhile fences the run (its batch waits for the newer revision).
 """
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING
 
+from conversation import envelopes as E
+from conversation import guard
 from conversation.composer import compose, view_from
-from conversation.gateway import Claimed, NeedsConfirmation, Read, RunCtx, dispatch
+from conversation.gateway import dispatch
+from conversation.gateway.authority import RunCtx
+from conversation.gateway.outbox import Claimed, Held, NeedsConfirmation, Read
 from conversation.inbox.mailbox import Batch
 from conversation.manager import claims as CL
 from conversation.manager import commands
 from conversation.mouth import Device, choose
-from conversation.ports import Command, Done, Failed, PromptParts, TextDelta, ToolCall, ToolResult
-from conversation.types import EnvelopeKind, ItemKind, MgrState
+from conversation.ports import Command, Done, Failed, PromptParts, StaleEpoch, TextDelta, ToolCall, ToolResult
+from conversation.types import EnvelopeKind, ItemKind, MgrState, Surfacing
 
 if TYPE_CHECKING:
     from conversation.manager.loop import Conversation, Running
 
 REQUEST_KINDS = (EnvelopeKind.USER_UTTERANCE, EnvelopeKind.USER_TEXT, EnvelopeKind.INTERVENTION_STATE)
+
+
+class _Stop(Exception):
+    """End the run here with this outcome (raised at a checkpoint)."""
 
 
 def _emit(conv: "Conversation", label: str, r: "Running | None", **payload) -> None:
@@ -39,7 +53,7 @@ def close(conv: "Conversation", req: str, to: str, label: str, **metrics) -> boo
         row = b.get(req)
         if row is None or row["state"] != "open":
             return False
-        b.move(req, to, reason=metrics.get("reason"))
+        b.move(req, to, reason=metrics.get("reason"), cause={"kind": "close", "ref": label})
         opened = row["data"].get("sealed_ms", row["created_ms"])
     conv.em.emit("conv_close", label, owner="manager", cause={"kind": "request", "ref": req}, refs={"req": req},
                  total_ms=conv.clock.now_ms() - opened, **metrics)
@@ -47,147 +61,194 @@ def close(conv: "Conversation", req: str, to: str, label: str, **metrics) -> boo
 
 
 def sweep_liveness(conv: "Conversation", now: int) -> None:
-    """I9: a request still open past the budget is closed `stalled` — counted, never left in limbo."""
+    """I9: a request still open past the budget — counted from when it was SEALED (accepted complete) — is closed
+    `stalled`, the run in course too: its run is stopped at the next checkpoint."""
     running = set(conv.current.requests) if conv.current else set()
     for _k, row in conv.book.snapshot().scan("items"):
-        if (row["kind"] == str(ItemKind.REQUEST) and row["state"] == "open" and row["id"] not in running
-                and now - row["created_ms"] >= conv.cfg.liveness_ms):
-            close(conv, row["id"], "failed", "stalled", reason="stalled")
+        if (row["kind"] == str(ItemKind.REQUEST) and row["state"] == "open"
+                and now - row["data"].get("sealed_ms", row["created_ms"]) >= conv.cfg.liveness_ms):
+            if close(conv, row["id"], "failed", "stalled", reason="stalled") and row["id"] in running:
+                conv.current.interrupt = "stalled"
 
 
-def _open_requests(conv: "Conversation", batch: Batch) -> tuple[str, ...]:
-    reqs = []
-    with conv.book.tx() as b:
-        for env in batch.envelopes:
-            if env.kind in REQUEST_KINDS and env.refs.intervention_id:
-                rid = f"r_{env.refs.intervention_id}"
-                b.open(ItemKind.REQUEST, rid, data={"req": rid, "sealed_ms": env.sealed_ms},
-                       cause={"kind": "envelope", "ref": env.id})
-                b.attach(rid, env.id, decided_by="id", cause={"kind": "envelope", "ref": env.id})
-                reqs.append(rid)
-    return tuple(dict.fromkeys(reqs))
+def _requests(batch: Batch) -> tuple[str, ...]:
+    return tuple(dict.fromkeys(f"r_{e.refs.intervention_id}" for e in batch.envelopes
+                               if e.kind in REQUEST_KINDS and e.refs.intervention_id))
 
 
 async def run_batch(conv: "Conversation", batch: Batch) -> None:
     from conversation.manager.loop import Running
     users = [e for e in batch.envelopes if e.is_user]
     endpoint = next((e.endpoint for e in users if e.endpoint), None)
-    r = Running(conv.ids.new("run"), tuple(e.id for e in batch.envelopes), _open_requests(conv, batch),
-                RunCtx("", "", {e.id: e for e in batch.envelopes}, endpoint))
-    r.ctx = RunCtx(r.run_id, r.requests[0] if r.requests else r.run_id, r.ctx.batch, endpoint)
+    reqs = _requests(batch)
+    run_id = conv.ids.new("run")
+    r = Running(run_id, tuple(e.id for e in batch.envelopes), reqs,
+                RunCtx(run_id, reqs[0] if reqs else run_id, {e.id: e for e in batch.envelopes}, endpoint),
+                batch_seq=batch.run_seq)
     conv.current, conv.state = r, MgrState.RUNNING_UNCLAIMED
     _emit(conv, "started", r, batch_envs=list(r.batch_ids), reason=batch.reason)
     _emit(conv, "input", r, text=[getattr(e.body, "text", None) for e in batch.envelopes])
     try:
         await _steps(conv, r, batch)
+    except _Stop as stop:
+        r.said.append(("stopped", str(stop)))   # the checkpoint already accounted the batch and said why
+    except StaleEpoch:
+        raise                                   # another process owns the account; its recovery takes the batch
+    except asyncio.CancelledError:
+        conv.inbox.requeue(list(r.batch_ids))  # the process is stopping: the batch waits for the next one
+        raise
+    except Exception as e:  # noqa: BLE001 — every failure of a run ends visibly; the class is recorded by name
+        _fail(conv, r, f"{type(e).__name__}")
     finally:
         conv.current = None
         if conv.state in (MgrState.RUNNING_CLAIMED, MgrState.RUNNING_UNCLAIMED):
             conv.state = MgrState.COLLECTING if r.interrupt == "superseded" else MgrState.IDLE
 
 
-def _interrupted(conv: "Conversation", r: "Running", batch: Batch) -> bool:
+def _fail(conv: "Conversation", r: "Running", reason: str) -> None:
+    """The run failed: its batch is accounted `failed`, its requests close `recovered`, and the person will hear it
+    — a must-tell entry the next run words (M6)."""
+    now = conv.clock.now_ms()
+    conv.inbox.account(list(r.batch_ids), "failed", now)
+    _withdraw(conv, r, reason)
+    for req in r.requests:
+        if close(conv, req, "recovered", "recovered", reason=reason):
+            conv.give(E.make(E.EnvelopeKind.SYSTEM_REMINDER, E.ReminderBody(f"rec-{req}", f"failed:{reason}", now),
+                             producer="manager:recovery", producer_id=f"rec-{req}", account=conv.account,
+                             onset_ms=now, sealed_ms=now, surfacing=Surfacing.WHEN_IDLE, must_tell=True))
+    _emit(conv, "ended", r, outcome="failed", reason=reason)
+
+
+def _withdraw(conv: "Conversation", r: "Running", reason: str) -> None:
+    """Effects this run claimed and never submitted are withdrawn, and that is said (M5)."""
+    with conv.book.tx() as b:
+        for row in b.items(ItemKind.EFFECT, ("claimed",)):
+            if row["data"].get("run") == r.run_id:
+                b.move(row["id"], "withdrawn", reason=reason, cause={"kind": "run", "ref": r.run_id})
+
+
+def _checkpoint(conv: "Conversation", r: "Running") -> None:
     if r.interrupt is None:
-        return False
+        return
     if r.interrupt == "superseded" and not r.claimed:
         conv.inbox.requeue(list(r.batch_ids))
         _emit(conv, "superseded", r)
-    else:
-        conv.inbox.account(list(r.batch_ids), "silent", conv.clock.now_ms())
-        for req in r.requests:
-            close(conv, req, "silent", "silent", reason="stopped")
-        _emit(conv, "cancelled", r)
-    return True
+        raise _Stop()
+    now = conv.clock.now_ms()
+    conv.inbox.account(list(r.batch_ids), "silent", now)
+    _withdraw(conv, r, r.interrupt)
+    for req in r.requests:
+        close(conv, req, "silent", "silent", reason="stopped")
+    _emit(conv, "cancelled", r, reason=r.interrupt)
+    raise _Stop()
 
 
 async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
     view = view_from(conv.store.snapshot(conv.account), prefix=conv.prefix, now_ms=conv.clock.now_ms(),
-                     focus=conv.focus.of(r.ctx.endpoint), voice_endpoint=r.ctx.endpoint)
+                     focus=conv.focus.of(r.ctx.endpoint), voice_endpoint=r.ctx.endpoint,
+                     memory=tuple(await _memory(conv, r)))
     prompt = compose(view, batch.envelopes, conv.cfg)
     tools = conv.tools.catalog()                    # the whole catalog: ordered at most, never cut (I7)
     _emit(conv, "prompt", r, prompt_chars=len(prompt.state) + len(prompt.input), tools=len(tools))
     steps: list = []
+    repaired = False
     t0 = conv.clock.mono_ms()
+    refs = {"run": r.run_id}
     for _ in range(conv.cfg.max_steps):
-        called, first = False, True
-        text = ""
-        async for ev in conv.model.stream(PromptParts(prompt.prefix, prompt.state, prompt.conversation,
-                                                      prompt.input, tuple(steps)),
-                                          tools, run_id=r.run_id, model_id=conv.cfg.model_id):
-            if _interrupted(conv, r, batch):
-                return
-            if first:
-                first = False
-                _emit(conv, "model_first_token", r, ttft_ms=conv.clock.mono_ms() - t0)
-            if isinstance(ev, TextDelta):
-                text += ev.text
-            elif isinstance(ev, ToolCall):
-                called = True
-                steps.append((ev, await _tool(conv, r, ev)))
-                if _interrupted(conv, r, batch):
+        called, first, text = False, True, ""
+        events = conv.model.stream(PromptParts(prompt.prefix, prompt.state, prompt.conversation, prompt.input,
+                                               tuple(steps)), tools, run_id=r.run_id, model_id=conv.cfg.model_id)
+        try:
+            async for ev in guard.stream(conv.em, conv.cfg, events, refs):
+                _checkpoint(conv, r)
+                if first:
+                    first = False
+                    _emit(conv, "model_first_token", r, ttft_ms=conv.clock.mono_ms() - t0)
+                if isinstance(ev, TextDelta):
+                    text += ev.text
+                elif isinstance(ev, ToolCall):
+                    called = True
+                    steps.append((ev, await _tool(conv, r, ev)))
+                    _checkpoint(conv, r)
+                elif isinstance(ev, Command):
+                    _emit(conv, "command", r, command=ev.name)
+                    if await _command(conv, r, batch, commands.parse(ev), steps, last_try=repaired):
+                        return
+                    repaired, called = True, True        # one repair round, with the reason as a step
+                    break
+                elif isinstance(ev, Failed):
+                    _fail(conv, r, f"{ev.whose}:{ev.reason}")
                     return
-            elif isinstance(ev, Command):
-                _emit(conv, "command", r, command=ev.name)
-                await _command(conv, r, batch, commands.parse(ev), steps)
-                return
-            elif isinstance(ev, Failed):
-                for req in r.requests:
-                    close(conv, req, "failed", "failed", reason=f"{ev.whose}:{ev.reason}")
-                conv.inbox.account(list(r.batch_ids), "told", conv.clock.now_ms())
-                return
-            elif isinstance(ev, Done):
-                _emit(conv, "model_done", r, usage=ev.usage)
-        if not called:
-            await _command(conv, r, batch, commands.Reply(text) if text else commands.NoReply("empty"), steps)
+                elif isinstance(ev, Done):
+                    _emit(conv, "model_done", r, usage=ev.usage)
+        except guard.PortTimeout:
+            _fail(conv, r, "provider:timeout")
             return
-    await _command(conv, r, batch, commands.NoReply("max_steps"), steps)
+        _checkpoint(conv, r)
+        if not called:
+            await _command(conv, r, batch, commands.Reply(text) if text else commands.NoReply("empty"), steps,
+                           last_try=True)
+            return
+    _fail(conv, r, "max_steps")
+
+
+async def _memory(conv: "Conversation", r: "Running") -> list:
+    if conv.memory is None:
+        return []
+    try:
+        return await guard.call(conv.em, conv.cfg, "memory",
+                                conv.memory.state_blocks(conv.account, budget_tokens=800), conv.cfg.memory_ms,
+                                {"run": r.run_id})
+    except guard.PortTimeout as late:
+        r.said.append(("memory", str(late)))  # the state goes without memory this time; port_slow said why
+        return []
 
 
 async def _tool(conv: "Conversation", r: "Running", call: ToolCall) -> ToolResult:
-    t = conv.clock.mono_ms()
-    decision = conv.gw.request(r.ctx, call)
-    deadline = t + conv.cfg.liveness_ms
+    decision = conv.gw.request(r.ctx, call, held=r.actions_held)
+    deadline = conv.clock.mono_ms() + conv.cfg.tool_ms
     if isinstance(decision, Read):
-        result = await dispatch.read(conv.gw, conv.tools, call, deadline)
+        with guard.measured(conv.em, conv.cfg, "tools", {"run": r.run_id}):
+            result = await dispatch.read(conv.gw, conv.tools, call, deadline)
         with conv.store.tx(conv.lease) as tx:
             CL.remember(tx, result.evidence, conv.clock.now_ms(), conv.cfg.evidence_ttl_ms)
-    elif isinstance(decision, Claimed):
+        return result
+    if isinstance(decision, Claimed):
         r.claimed, conv.state = True, MgrState.RUNNING_CLAIMED
         for env in r.ctx.batch.values():                 # the gateway sealed them: the ear must know (I3)
             if env.is_user and env.kind in (EnvelopeKind.USER_UTTERANCE, EnvelopeKind.USER_TEXT):
                 conv.sealed(env.refs.intervention_id, env.refs.revision or 1)
-        if r.actions_held:
-            result = ToolResult("held", data={"reason": "the person is speaking"})
-        else:
-            result = await dispatch.submit(conv.gw, conv.tools, decision.effect_id, deadline) or \
-                ToolResult("held", data={"effect": decision.effect_id})
-    elif isinstance(decision, NeedsConfirmation):
+        with guard.measured(conv.em, conv.cfg, "tools", {"run": r.run_id}):
+            sent = await dispatch.submit(conv.gw, conv.tools, decision.effect_id, deadline)
+        return sent or ToolResult("held", data={"effect": decision.effect_id})
+    if isinstance(decision, NeedsConfirmation):
         r.presents = decision.handle_id
-        result = ToolResult("needs_confirmation", data={"handle": decision.handle_id})
-    else:
-        result = ToolResult("refused", data={"reason": decision.reason})
-    ms = conv.clock.mono_ms() - t
-    if ms > conv.cfg.port_budget_ms:
-        _emit(conv, "port_slow", r, port="tools", ms=ms, tool=call.name)
-    return result
+        return ToolResult("needs_confirmation", data={"handle": decision.handle_id})
+    if isinstance(decision, Held):
+        return ToolResult("held", data={"reason": decision.reason})
+    return ToolResult("refused", data={"reason": decision.reason})
 
 
-async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps: list) -> None:
+async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps: list, *, last_try: bool) -> bool:
+    """Carry out the model's order. False = repair once (a claim did not match); True = the run is over."""
     now = conv.clock.now_ms()
     if isinstance(cmd, commands.Reply):
-        evidence = CL.valid(conv.store.snapshot(conv.account), now)
-        bad = CL.check(list(cmd.claims), evidence)
+        bad = CL.check(list(cmd.claims), CL.valid(conv.store.snapshot(conv.account), now))
         if bad:
             _emit(conv, "command", r, command="reply_blocked", claims=[why for _c, why in bad])
+            if not last_try:
+                steps.append((ToolCall("claims", "claims_check", {}),
+                              ToolResult("refused", data={"mismatch": [why for _c, why in bad]})))
+                return False
+            conv.inbox.account(list(r.batch_ids), "silent", now)
             for req in r.requests:
                 close(conv, req, "silent", "silent", reason="claims_unverified")
-            conv.inbox.account(list(r.batch_ids), "told", now)
-            return
+            _emit(conv, "ended", r, outcome="silent", reason="claims_unverified")
+            return True
         if not _seal_batch(conv, r, batch):
             conv.inbox.requeue(list(r.batch_ids))   # the newer revision runs; the request stays open (N1)
-            return
-        device = conv.devices.get(r.ctx.endpoint or "", Device(r.ctx.endpoint))
-        reply = choose(batch.envelopes, device)
+            return True
+        reply = choose(batch.envelopes, conv.devices.get(r.ctx.endpoint or "", Device(r.ctx.endpoint)))
         if reply.voice_unavailable:
             conv.speaker.voice_unavailable(r.run_id, r.ctx.endpoint)
         conv.state = MgrState.SPEAKING
@@ -195,14 +256,31 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
                                endpoint=r.ctx.endpoint, presents=r.presents,
                                iv=next(iter(r.ctx.batch.values())).refs.intervention_id if r.ctx.batch else None)
         for req in r.requests:
-            close(conv, req, "answered", "answered", tools_ms=None, steps=len(steps))
+            close(conv, req, "answered", "answered", steps=len(steps))
         conv.inbox.account(list(r.batch_ids), "told", conv.clock.now_ms())
         _emit(conv, "ended", r, outcome="answered")
-    else:
-        for req in r.requests:
-            close(conv, req, "silent", "silent", reason=getattr(cmd, "reason", None) or getattr(cmd, "name", ""))
-        conv.inbox.account(list(r.batch_ids), "told", now)
-        _emit(conv, "ended", r, outcome="no_reply")
+        return True
+    reason = getattr(cmd, "reason", None) or getattr(cmd, "name", "")
+    handed = _handed_off(conv, r)
+    for req in r.requests:
+        if handed:
+            close(conv, req, "handed_off", "handed_off", reason="task")
+        else:
+            close(conv, req, "silent", "silent", reason=reason)
+    conv.inbox.account(list(r.batch_ids), "silent", now)
+    _emit(conv, "ended", r, outcome="handed_off" if handed else "no_reply", reason=reason)
+    return True
+
+
+def _handed_off(conv: "Conversation", r: "Running") -> bool:
+    """The run started work that goes on without it: a tool the catalog declares as a hand-off was claimed."""
+    specs = {t.name: t for t in conv.tools.catalog()}
+    for _k, row in conv.book.snapshot().scan("items"):
+        d = row["data"]
+        if row["kind"] == str(ItemKind.EFFECT) and d.get("run") == r.run_id and \
+                getattr(specs.get(d.get("tool")), "hands_off", False):
+            return True
+    return False
 
 
 def _seal_batch(conv: "Conversation", r: "Running", batch: Batch) -> bool:

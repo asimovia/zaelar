@@ -44,6 +44,7 @@ def _run(store, claim: dict, *, earlier: bool = False, ttl: int = 600_000):
     else:
         plan.append([ToolCall("c1", "market_data", {"q": "w1"}), Done()])
         plan.append([reply("w8", [claim]), Done()])
+        plan.append([reply("w8", [claim]), Done()])                    # the repair round, if it is asked for
     h.model.default = lambda ids: plan.pop(0)
     h.typed("w1", 1)
     h.at(1000).pump()
@@ -74,3 +75,16 @@ def test_evidence_of_an_earlier_run_counts_while_it_is_valid(store):
 def test_expired_evidence_does_not(store):
     h = _run(store, _claim(), earlier=True, ttl=1000)
     assert [o.text for o in h.mouth.orders] == ["w0"]
+
+
+def test_m6_a_wrong_claim_gets_one_repair_round_with_its_reason(store):
+    h = Harness(store)
+    h.tools.answers["market_data"] = ToolResult("ok", data={"n": 18}, evidence=(EV,))
+    plan = [[ToolCall("c1", "market_data", {"q": "w1"}), Done()], [reply("w8", [_claim(direction="down")]), Done()],
+            [reply("w7", [_claim()]), Done()]]
+    h.model.default = lambda ids: plan.pop(0)
+    h.typed("w1", 1)
+    h.at(1000).pump()
+    assert [o.text for o in h.mouth.orders] == ["w7"] and [lab for lab, _ in h.closes()] == ["answered"]
+    repair = h.model.calls[-1].prompt.steps[-1]
+    assert repair[0].name == "claims_check" and repair[1].data == {"mismatch": ["direction"]}

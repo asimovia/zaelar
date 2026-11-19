@@ -111,6 +111,10 @@ class Book:
             raise
         self._flush(pending)
 
+    def say(self, pending: list) -> None:
+        """Say the ledger events a transaction of someone else's buffered (`BookTx` over a raw tx), once it committed."""
+        self._flush(pending)
+
     def _flush(self, pending: list) -> None:
         for label, cause, refs, payload in pending:
             self.em.emit("conv_ledger", label, owner="ledger", cause=cause, refs=refs, **payload)

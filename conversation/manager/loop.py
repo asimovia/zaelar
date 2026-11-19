@@ -2,9 +2,12 @@
 everything that arrives (§6.3). Idle → Collecting → Running (unclaimed | claimed) → Speaking → Idle.
 
 `hear(signal)` feeds the ear; `give(envelope)` takes what other producers send (workers, connectors, reminders,
-buttons); `ack(...)` takes the mouth's acknowledgements; `pump()` runs what is ready until nothing is. The control lane
-(onset, stop, acks) never waits for a run. A new input during a run is applied at the run's next checkpoint:
-SUPERSEDE replaces the RUN (never the request, N1), FOLLOW_UP queues, CANCEL_RUN drops it, SILENCE stops our voice.
+buttons); `ack(...)` takes the mouth's acknowledgements; `pump()` runs what is ready until nothing is; `sweep(now)`
+is the clock's turn — holds, deferrals, lines nobody acknowledged, reopens nobody finishes, requests past their
+liveness budget — and runs on its own timer (`keep_time`), never only inside `pump`. The control lane (onset, stop,
+acks) never waits for a run. A new input during a run is applied at the run's next checkpoint: SUPERSEDE replaces the
+RUN (never the request, N1), FOLLOW_UP queues, CANCEL_RUN drops it, SILENCE stops our voice. A person's entry opens
+its request in the SAME transaction that accepts it, so liveness counts from the moment it was accepted.
 """
 from __future__ import annotations
 
@@ -14,18 +17,24 @@ from conversation import envelopes as E
 from conversation.config import Config
 from conversation.ear import Ear
 from conversation.ear import signals as S
-from conversation.gateway import Claimed, RunCtx, dispatch
+from conversation.gateway import dispatch
+from conversation.gateway.authority import RunCtx
+from conversation.gateway.outbox import Claimed
 from conversation.gateway import seal as SEAL
 from conversation.gateway.outbox import Gateway
 from conversation.inbox import Inbox
 from conversation.inbox.mailbox import apply_control
 from conversation.ledger import Book
+from conversation.ledger.book import BookTx
+from conversation import guard
 from conversation.manager import policy, run
 from conversation.manager.focus import Focus
 from conversation.mouth import Device, Painted, PlayoutAck, SayEnded, SayStarted, Speaker
 from conversation.ports import Clock, Memory, Model, Mouth, Store, Telemetry, Tools
 from conversation.telemetry import Emitter
-from conversation.types import ControlOp, EnvelopeKind, Ids, IvState, MgrState, Op
+from conversation.types import ControlOp, EnvelopeKind, Ids, IvState, ItemKind, MgrState, Op
+
+REQUESTS = (EnvelopeKind.USER_UTTERANCE, EnvelopeKind.USER_TEXT)
 
 
 @dataclass
@@ -34,8 +43,9 @@ class Running:
     batch_ids: tuple[str, ...]
     requests: tuple[str, ...]
     ctx: RunCtx
+    batch_seq: int = 0
     claimed: bool = False
-    interrupt: str | None = None          # superseded · cancelled
+    interrupt: str | None = None          # superseded · cancelled · stalled
     actions_held: bool = False
     presents: str | None = None
     said: list = field(default_factory=list)
@@ -46,23 +56,37 @@ class Conversation:
                  clock: Clock, mouth: Mouth, telemetry: Telemetry, config: Config | None = None, prefix: str = "",
                  ids: Ids | None = None) -> None:
         self.account, self.cfg, self.prefix = account, config or Config(), prefix
-        self.model, self.tools, self.store, self.memory, self.clock = model, tools, store, memory, clock
+        self.model, self.tools, self.memory, self.clock = model, tools, memory, clock
         self.lease = store.acquire(account, owner)
         self.em = Emitter(telemetry, clock, account, epoch=lambda: self.lease.epoch)
-        self.ids = ids or Ids()
+        self.store = guard.TimedStore(store, self.em, self.cfg)
+        # ids unique across processes on one store (B4): the epoch of the lease names this process's id space
+        self.ids = ids or Ids("" if self.lease.epoch == 1 else f"{self.lease.epoch}x")
         lease = lambda: self.lease  # noqa: E731
         self.ear = Ear(account, self.cfg, self.em, self.ids)
-        self.inbox = Inbox(store, lease, account, self.cfg, self.em, self.ids)
-        self.book = Book(store, lease, account, self.em, clock)
+        self.inbox = Inbox(self.store, lease, account, self.cfg, self.em, self.ids)
+        self.book = Book(self.store, lease, account, self.em, clock)
         self.gw = Gateway(self.book, account, self.cfg, self.em, clock, self.ids,
                           lambda: {t.name: t for t in tools.catalog()})
         self.focus = Focus()
-        self.speaker = Speaker(store, lease, mouth, self.em, clock, self.ids, on_presented=self._presented)
+        self.speaker = Speaker(self.store, lease, mouth, self.em, clock, self.ids, on_presented=self._presented,
+                               config=self.cfg)
         self.devices: dict[str, Device] = {}
         self.state = MgrState.IDLE
         self.current: Running | None = None
         self.speaking_on: set[str] = set()
-        self.dirty = False              # something was accepted since the last pump (a driver may pump only then)
+        self.to_submit: list[str] = []      # effects a gesture committed outside a run, sent by the next pump
+        self.dirty = False                  # something was accepted since the last pump (a driver may pump only then)
+        self._swept_at = -1 << 62
+        self.recover()
+
+    # ── a new owner of the account ──────────────────────────────────────────────────────────────────────────────
+
+    def recover(self) -> None:
+        """What a dead process left behind: its dequeued batch back to the queue, an effect left `submitting` to
+        `submission_unknown` (never resent)."""
+        self.inbox.recover(self.clock.now_ms())
+        dispatch.recover(self.gw)
 
     # ── in ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -75,37 +99,49 @@ class Conversation:
 
     def give(self, env: E.Envelope) -> None:
         now = self.clock.now_ms()
-        lost = self._note_voice(env, now)
-        adm = self.inbox.accept(env, now)
+        pending: list = []
+        adm = self.inbox.accept(env, now, admit=lambda tx, e: self._admit(tx, e, now, pending))
         self.dirty = True
-        if adm.envelope is None or lost:          # a reopen that lost to the seal is an amendment, not a reopen
+        self.book.say(pending)
+        if adm.envelope is None:
             return
-        env = adm.envelope
+        env, lost = adm.envelope, adm.extra
+        if lost:                              # a reopen that lost to the seal: what was heard since amends it (I3)
+            for out in self.ear.feed(S.Sealed(env.body.intervention_id, env.body.revision - 1)):
+                if isinstance(out, E.Envelope):
+                    self.give(out)
+            return
+        self._voice_state(env)
         ops = policy.decide(env, self.state, claimed=bool(self.current and self.current.claimed),
                             person_speaking=bool(self.speaking_on))
         self._apply(env, ops)
 
-    def _note_voice(self, env: E.Envelope, now: int) -> bool:
-        """The intervention's phase in the store: what the gateway's seal and the reopen race on."""
+    def _admit(self, tx, env: E.Envelope, now: int, pending: list) -> bool:
+        """Inside the acceptance's transaction, after the dedupe: the intervention's phase (forward only, B5) and
+        the person's request (B2). Returns True when a reopen lost the race to a seal."""
         k, b = env.kind, env.body
-        lost_to_seal = False
-        with self.store.tx(self.lease) as tx:
-            if k is EnvelopeKind.USER_UTTERANCE:
-                SEAL.note(tx, b.intervention_id, b.revision, "closed", now)
-            elif k is EnvelopeKind.USER_TEXT:
-                SEAL.note(tx, b.intervention_id, 1, "closed", now)
-            elif k is EnvelopeKind.INTERVENTION_STATE and b.state in (IvState.INCOMPLETE, IvState.DISCARDED):
-                SEAL.note(tx, b.intervention_id, b.revision, str(b.state), now)
-            elif E.is_reopen(env):
-                lost_to_seal = not SEAL.reopen(tx, b.intervention_id, b.revision - 1, now)
-        if lost_to_seal:            # the seal won the race: what was heard since becomes an amendment (I3)
-            for out in self.ear.feed(S.Sealed(b.intervention_id, b.revision - 1)):
-                if isinstance(out, E.Envelope):
-                    self.inbox.accept(out, now)
-        if k in (EnvelopeKind.USER_UTTERANCE, EnvelopeKind.INTERVENTION_STATE) and env.endpoint:
-            if k is EnvelopeKind.USER_UTTERANCE or b.state in (IvState.INCOMPLETE, IvState.DISCARDED):
-                self._voice_done(env.endpoint)
-        return lost_to_seal
+        if k is EnvelopeKind.USER_UTTERANCE:
+            SEAL.note(tx, b.intervention_id, b.revision, "closed", now)
+        elif k is EnvelopeKind.USER_TEXT:
+            SEAL.note(tx, b.intervention_id, 1, "closed", now)
+        elif k is EnvelopeKind.INTERVENTION_STATE and b.state in (IvState.INCOMPLETE, IvState.DISCARDED):
+            SEAL.note(tx, b.intervention_id, b.revision, str(b.state), now)
+        elif E.is_reopen(env) and not SEAL.reopen(tx, b.intervention_id, b.revision - 1, now):
+            return True
+        opens = k in REQUESTS or (k is EnvelopeKind.INTERVENTION_STATE and b.state is IvState.INCOMPLETE)
+        if opens and b.intervention_id:
+            req = f"r_{b.intervention_id}"
+            book = BookTx(tx, now, pending)
+            book.open(ItemKind.REQUEST, req, data={"req": req, "iv": b.intervention_id, "sealed_ms": env.sealed_ms},
+                      cause={"kind": "envelope", "ref": env.id})
+            book.attach(req, env.id, decided_by="id", cause={"kind": "envelope", "ref": env.id})
+        return False
+
+    def _voice_state(self, env: E.Envelope) -> None:
+        if env.kind not in (EnvelopeKind.USER_UTTERANCE, EnvelopeKind.INTERVENTION_STATE) or not env.endpoint:
+            return
+        if env.kind is EnvelopeKind.USER_UTTERANCE or env.body.state in (IvState.INCOMPLETE, IvState.DISCARDED):
+            self._voice_done(env.endpoint)
 
     def _onset(self, o: S.Onset) -> None:
         self.speaking_on.add(o.endpoint)
@@ -116,8 +152,8 @@ class Conversation:
             elif op is Op.DUCK:
                 self.speaker.duck(o.endpoint)
             elif op is Op.HOLD_ACTIONS and self.current is not None:
-                self.current.actions_held = True
-                dispatch.hold(self.gw, self.ids.new("hold"), o.endpoint, o.t_ms, "onset")
+                self.current.actions_held = True        # unclaimed actions wait: the gateway answers Held (M5)
+                dispatch.hold(self.gw, self.ids.new("hold"), o.endpoint, self.clock.now_ms(), "onset")
 
     def _voice_done(self, endpoint: str) -> None:
         if endpoint in self.speaking_on:
@@ -133,19 +169,25 @@ class Conversation:
             if op is Op.SILENCE:
                 self.speaker.stop(None, "new_input" if env.kind is not EnvelopeKind.USER_CONTROL else "stop",
                                   self.clock.mono_ms())
+                if self.state is MgrState.SPEAKING:   # our voice is stopped: we are not speaking, ack or no ack
+                    self.state = MgrState.IDLE
             elif op in (Op.SUPERSEDE, Op.AT_CHECKPOINT) and self.current is not None and not self.current.claimed:
                 self.current.interrupt = "superseded"
             elif op is Op.CANCEL_RUN and self.current is not None:
                 self.current.interrupt = "cancelled"
             elif op is Op.BY_ID:
                 self._by_id(env)
+            # WAIT_AGAIN is the inbox's: a closed revision whose intervention reopened is not eligible until the
+            # newer revision ends (`Inbox._reopened_since`). FOLLOW_UP, JOIN, WHEN_IDLE: the queue keeps it.
         if env.kind is EnvelopeKind.USER_CONTROL and env.body.op is ControlOp.STOP:
             self.inbox.applied(env.id, self.clock.now_ms())
 
     def _by_id(self, env: E.Envelope) -> None:
         op = env.body.op
         if op is ControlOp.CONFIRM:
-            if isinstance(self.gw.confirm(env), Claimed):     # the handle's revisions are sealed: the ear must know
+            got = self.gw.confirm(env)
+            if isinstance(got, Claimed):            # the gesture committed it: the next pump sends it (M5)
+                self.to_submit.append(got.effect_id)
                 handle = self.book.snapshot().get("items", env.body.handle_id or "") or {"data": {}}
                 for iv, rev in handle["data"].get("ivs", []):
                     self.sealed(iv, rev)
@@ -159,6 +201,13 @@ class Conversation:
                 task = b.get(env.body.task_id or "")
                 if task is not None and task["state"] in ("started", "running", "waiting"):
                     b.move(task["id"], "cancelled", cause={"kind": "envelope", "ref": env.id})
+
+    def release(self, effect_id: str, endpoint: str | None, gesture: bool) -> bool:
+        """A gesture on the initiating device commits a held effect: the next pump sends it."""
+        ok = dispatch.release(self.gw, effect_id, endpoint, gesture)
+        if ok:
+            self.to_submit.append(effect_id)
+        return ok
 
     def ack(self, sig: SayStarted | PlayoutAck | Painted | SayEnded) -> None:
         self.speaker.ack(sig)
@@ -179,6 +228,31 @@ class Conversation:
     def device(self, endpoint: str, **state) -> None:
         self.devices[endpoint] = Device(endpoint, **state)
 
+    # ── the clock's turn ────────────────────────────────────────────────────────────────────────────────────────
+
+    def sweep(self, now: int | None = None) -> None:
+        now = self.clock.now_ms() if now is None else now
+        self.inbox.sweep(now)
+        for say_id in self.speaker.overdue(now):        # a line nobody acknowledged ended «unknown» (B2)
+            self.ack(SayEnded(say_id, "unknown", None, now))
+        self._abandon_reopens(now)
+        run.sweep_liveness(self, now)
+
+    def _abandon_reopens(self, now: int) -> None:
+        """A reopen nobody is finishing (the process that heard it is gone): its revision goes back."""
+        mine = self.ear.open_ids()
+        with self.store.tx(self.lease) as tx:
+            for iv, _row in tx.scan(SEAL.T):
+                since = SEAL.open_since(tx, iv)
+                if since and iv not in mine and now - since[1] >= self.cfg.cross_channel_hold_ms:
+                    SEAL.abandon(tx, iv, now)
+
+    async def keep_time(self, every_ms: int = 1000) -> None:
+        """The sweep on its own timer, for the adapter to run beside the loop: a hung run cannot stop it (B3)."""
+        while True:
+            await self.clock.sleep_until(self.clock.mono_ms() + every_ms)
+            self.sweep()
+
     # ── run what is ready ───────────────────────────────────────────────────────────────────────────────────────
 
     async def pump(self) -> int:
@@ -186,11 +260,15 @@ class Conversation:
         runs, self.dirty = 0, False
         while True:
             now = self.clock.now_ms()
-            self.inbox.sweep(now)
-            run.sweep_liveness(self, now)
+            if now - self._swept_at >= 100:      # the clock's turn is about time: once per 100 ms is every time
+                self._swept_at = now
+                self.sweep(now)
+            while self.to_submit:
+                eid = self.to_submit.pop(0)
+                await dispatch.submit(self.gw, self.tools, eid, self.clock.mono_ms() + self.cfg.tool_ms)
             if self.state not in (MgrState.IDLE, MgrState.COLLECTING):
                 return runs
-            batch = self.inbox.next_batch(now, idle=self.state is MgrState.IDLE)
+            batch = self.inbox.next_batch(self.clock.now_ms(), idle=self.state is MgrState.IDLE)
             if batch is None:
                 return runs
             await run.run_batch(self, batch)

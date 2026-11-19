@@ -158,3 +158,24 @@ def test_the_last_controllable_point_before_a_call_checks_the_lease_again(store,
         asyncio.run(dispatch.submit(k.gw, tools, eid, 10 ** 9))
     assert not tools.calls and store.snapshot(ACCT).get("items", eid)["state"] == "claimed"
     assert "conv_ledger/stale_epoch" in telemetry.labels()
+
+
+def test_b4_a_second_process_on_the_same_store_answers_with_ids_of_its_own(tmp_path):
+    """After a restart on the same file the ids of the new process never collide with the old one's rows (audit
+    B4): what the person says next is answered, not discarded as a duplicate."""
+    from conversation.store import SqliteStore
+    from tests.conversation.unit.convkit import Harness
+    path = tmp_path / "c.db"
+    s1 = SqliteStore(path)
+    h1 = Harness(s1)
+    h1.utter([(["w1"], 0)])
+    assert [lab for lab, _ in h1.closes()] == ["answered"]
+    s1.close()
+    s2 = SqliteStore(path)
+    h2 = Harness(s2)                                            # a new lease: epoch 2
+    h2.at(10_000).utter([(["w2"], 0)])
+    assert [lab for lab, _ in h2.closes()] == ["answered"] and "conv_inbox/duplicate" not in h2.tel.labels()
+    ivs = {r["env"]["refs"]["intervention_id"] for _k, r in s2.snapshot("acct-test").scan("inbox")
+           if r["kind"] == "user.utterance"}
+    assert len(ivs) == 2
+    s2.close()
