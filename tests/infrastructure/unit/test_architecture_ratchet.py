@@ -432,6 +432,15 @@ _PACKAGE_CEILINGS["voice/engine/llm"] += 11
 _PACKAGE_CEILINGS["voice"] += 65
 _PACKAGE_CEILINGS["server"] += 18
 
+# +69 nucleo/pulse, +5 voice, +2 nucleo/turn — 2026-11-19, support fixes from the operator's sessions: a held loop
+# names the code that held it (`loop_lag` samples the loop thread's stack while its heartbeat is overdue, the stall
+# event carries `where`; eleven ~20 s stalls on an account Machine could not be traced); a proactive say whose voice
+# closed while it waited is not spoken (`proactive._say_bounded`); a turn with no user text closes quietly
+# (`pipeline_gate`). Written as an addendum, not in the rows above.
+_PACKAGE_CEILINGS["nucleo/pulse"] += 69
+_PACKAGE_CEILINGS["voice"] += 5
+_PACKAGE_CEILINGS["nucleo/turn"] += 2
+
 def _package_totals() -> dict[str, int]:
     from tests.infrastructure.import_graph import package_of, product_modules
 
@@ -464,6 +473,7 @@ _TOTAL_MAX += 115   # 2026-11-18 V2-938 audit round 3 + his session (2.1801): a 
 _TOTAL_MAX += 160   # 2026-11-18 V2-938 audit round 2 (2.1801): a reply, a forward, a card draft and a time read ONCE into ids when handed over (`deliver.adopt`), the intake in its own module with one lock, a second order queued and said, the send shielded from a cut turn
 _TOTAL_MAX += 241   # 2026-11-18 V2-938 audit (2.1801): one sentence at a time per draft, the confirmation verified to carry his text, the channel asked BEFORE it, the act he asked for (reply, forward, later) carried, several messages queued, an unread read that never loses his order
 _TOTAL_MAX += 912   # 2026-11-18 V2-938 (2.1801): a message has ONE owner — the new `nucleo/send` package (draft, one read of his words, the people, the owner, its receipt, the turn's and the worker's hand-over, ~880 lines) and its hand-over points; the worker's message steps left the brief
+_TOTAL_MAX += 77    # 2026-11-19 support fixes: a held loop names its code (`loop_lag` stack sampler), a closed voice is not a crash, an empty turn is quiet — the addendum above
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

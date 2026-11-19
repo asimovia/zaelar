@@ -227,3 +227,33 @@ def test_the_page_faults_are_the_loop_threads_where_the_os_counts_them(monkeypat
     assert loop_lag._major_faults() == 7 and asked == [1]
     monkeypatch.setattr(loop_lag, "resource", None)
     assert loop_lag._major_faults() == 0, "off POSIX: no evidence of paging, never the host's"
+
+
+def _held_by_a_named_function(seconds: float) -> None:
+    """Our own work holding the loop: a pure-CPU stretch in a function the stall must NAME."""
+    end = time.monotonic() + seconds
+    while time.monotonic() < end:
+        sum(range(2000))
+
+
+def test_a_stall_names_the_code_that_held_the_loop(world):
+    """(j) 2026-11-19: eleven stalls of ~20 s on an account Machine said «its own work» and nothing more, so the code
+    that held the loop could not be named. A sampler reads the loop thread's stack while the heartbeat is overdue, and
+    the stall's event carries the stack seen most often (`where`), innermost frame last."""
+    async def session():
+        loop_lag.watch()
+        await asyncio.sleep(0.6)             # one beat on the clock, so the sampler knows the loop thread
+        _held_by_a_named_function(2.0)
+        await asyncio.sleep(0.8)             # the probe wakes late and reports
+    asyncio.run(session())
+    stalls = [x for k, lbl, x in world["events"] if k == "homeostasis" and x.get("kind_diag") == "loop_lag"]
+    assert stalls, "the held loop was not reported — this test proves nothing"
+    where = max(stalls, key=lambda x: x["lag_s"]).get("where") or []
+    assert where and "_held_by_a_named_function" in where[-1], f"the stall does not name the code that held it: {where}"
+    assert loop_lag._state["last_stall"]["where"] == where
+
+
+def test_a_loop_that_runs_is_never_sampled(world):
+    """(k) the sampler costs nothing while the loop keeps its beat: no stack is read."""
+    loop_lag._state.update(loop_tid=1, beat=time.monotonic())
+    assert loop_lag._sample_once(0.5) is False

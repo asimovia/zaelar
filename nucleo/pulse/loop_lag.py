@@ -10,12 +10,20 @@ shed through `voice/lag.note(…, BODY)` (never words: not the audio path), and 
 WHOSE it was is measured (E3), never assumed: the LOOP THREAD's CPU over it — `engine` when it ran; `host` only when
 the process paged (major faults grew); else `unknown` (a syscall, the GIL, descheduled).
 `give_way` is the seam heavy work in a thread calls between batches: it yields, and paces itself while the loop stalls.
+
+WHERE it was held is sampled, not guessed: a daemon thread watches the probe's heartbeat and, while the loop is late,
+reads the loop thread's stack (`sys._current_frames`) a few times a second. The stall's event carries the stack seen
+most often (`where`), so «held 19.5 s (its own work)» names the code that held it. It costs nothing while the loop
+runs: the sampler only reads a stack once the heartbeat is overdue.
 """
 from __future__ import annotations
 
 import asyncio
+import os
+import sys
+import threading
 import time
-from collections import deque
+from collections import Counter, deque
 
 from loguru import logger
 
@@ -28,8 +36,13 @@ _PERIOD_S = 0.5
 _DEFAULT_BOUND_S = 1.0
 _OURS_CPU_SHARE = 0.5    # the loop thread ran at least half the stalled stretch → its own work held the loop
 BODY = "body_loop"       # the shed source and the reading's name: the body's loop, never the audio path
+_SAMPLE_EVERY_S = 0.25   # how often the sampler looks; it reads a stack only while the heartbeat is overdue
+_WHERE_DEPTH = 6         # frames kept per sample, innermost last
+_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 _state: dict = {"loops": set(), "last": 0.0, "worst": 0.0, "n": 0, "total_s": 0.0, "stalls": deque(maxlen=64),
-                "last_stall": None}       # a state record
+                "last_stall": None,       # a state record
+                "beat": 0.0, "loop_tid": None, "samples": Counter()}
+_sampler_thread: threading.Thread | None = None
 
 
 def bound_s() -> float:
@@ -48,9 +61,12 @@ def note(lag_s: float, *, cpu_s=None, faults: int = 0, mono=None, wall=None) -> 
         mono, wall = (time.monotonic() if mono is None else mono), (time.time() if wall is None else wall)
         _state.update(n=_state["n"] + 1, total_s=_state["total_s"] + lag_s)
         who = "engine" if (cpu_s or 0) >= _OURS_CPU_SHARE * lag_s else ("host" if faults > 0 else "unknown")
+        where, seen = _where()
         _state["stalls"].append((mono, wall, lag_s, who))
-        _state["last_stall"] = {"at": wall, "s": round(lag_s, 2), "whose": who}
+        _state["last_stall"] = {"at": wall, "s": round(lag_s, 2), "whose": who, "where": where, "where_samples": seen}
         _say(lag_s, who)
+    else:
+        _state.setdefault("samples", Counter()).clear()
     _shed(lag_s)
     return stalled
 
@@ -64,13 +80,16 @@ def _shed(lag_s: float) -> None:
 
 
 def _say(lag_s: float, who: str = "host") -> None:
+    last = _state.get("last_stall") or {}
+    where, seen = last.get("where") or [], last.get("where_samples", 0)
     try:
         from voice.observer import emit
         emit("homeostasis", f"host stalled {lag_s:.1f} s — the engine's loop did not run" if who == "host" else
              f"the engine's loop was held {lag_s:.1f} s ({'its own work' if who == 'engine' else 'cause unknown'})",
-             role="system",
+             role="system", text=(" ← ".join(reversed(where)) if where else ""),
              extra={"cat": "health", "kind_diag": "loop_lag", "lag_s": round(lag_s, 2), "source": BODY,
-                    "bound_s": bound_s(), "whose": who, "cause": {"host": "machine"}.get(who, who)})
+                    "bound_s": bound_s(), "whose": who, "cause": {"host": "machine"}.get(who, who),
+                    "where": where or [], "where_samples": seen})
     except Exception as e:  # noqa: BLE001 — a stall that cannot be said is still recorded
         logger.debug(f"loop_lag: event not emitted: {e!r}")
 
@@ -92,10 +111,55 @@ def status() -> dict:
             "watching": bool(_state["loops"])}
 
 
+def _frames(frame) -> tuple:
+    """The innermost `_WHERE_DEPTH` frames of OUR code (the engine's files), innermost last, as «path:line fn»."""
+    out = []
+    while frame is not None:
+        path = frame.f_code.co_filename
+        if path.startswith(_ROOT) and os.sep + ".venv" + os.sep not in path and "site-packages" not in path:
+            out.append(f"{os.path.relpath(path, _ROOT)}:{frame.f_lineno} {frame.f_code.co_name}")
+            if len(out) >= _WHERE_DEPTH:
+                break
+        frame = frame.f_back
+    return tuple(reversed(out))
+
+
+def _sample_once(period_s: float) -> bool:
+    """Read the loop thread's stack once IF its heartbeat is overdue. True when it sampled."""
+    tid, beat = _state.get("loop_tid"), _state.get("beat", 0.0)
+    if tid is None or not beat or time.monotonic() - beat < period_s + max(0.5, bound_s() / 2):
+        return False
+    frame = sys._current_frames().get(tid)
+    sig = _frames(frame) if frame is not None else ()
+    if sig:
+        _state.setdefault("samples", Counter())[sig] += 1
+    return True
+
+
+def _sampler(period_s: float) -> None:
+    while True:
+        time.sleep(_SAMPLE_EVERY_S)
+        try:
+            _sample_once(period_s)
+        except Exception as e:  # noqa: BLE001 — a sampler that fails never takes the body down
+            logger.debug(f"loop_lag: sample failed: {e!r}")
+
+
+def _where() -> tuple[list, int]:
+    """The stack seen most often while the loop was held, and how many samples saw it; the samples are consumed."""
+    got, _state["samples"] = _state.get("samples") or Counter(), Counter()
+    if not got:
+        return [], 0
+    sig, n = got.most_common(1)[0]
+    return list(sig), n
+
+
 async def _probe(period_s: float = _PERIOD_S) -> None:
     loop = asyncio.get_running_loop()
+    _state["loop_tid"] = threading.get_ident()
     while True:
         t0, c0, f0 = loop.time(), time.thread_time(), _major_faults()
+        _state["beat"] = time.monotonic()
         await asyncio.sleep(period_s)
         note(max(0.0, loop.time() - t0 - period_s), cpu_s=time.thread_time() - c0, faults=_major_faults() - f0)
 
@@ -116,6 +180,11 @@ def watch() -> bool:
         return False
     _state["loops"].add(id(loop))
     loop.create_task(_probe(), name="body-loop-lag-probe")
+    global _sampler_thread
+    if _sampler_thread is None:          # one per process, whatever loops it watches
+        _sampler_thread = threading.Thread(target=_sampler, args=(_PERIOD_S,), name="body-loop-lag-sampler",
+                                           daemon=True)
+        _sampler_thread.start()
     return True
 
 
