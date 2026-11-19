@@ -5,7 +5,7 @@ Exception`) is for failures, not for the process disappearing. Every transaction
 committed stays. `inject(point, when)` arms ONE crash: the next call of that point raises before running (`before`)
 or right after returning (`after`), once.
 
-Points (the transitions of §9): `accept` an envelope · `close` a revision (its phase noted) · `seal` a revision ·
+Points (the transitions of §9): `accept` an envelope · `close` an intervention (its phase noted) · `seal` it ·
 `reserve` an effect · `submit` (the provider is about to be called) · `provider` (the provider answered, nothing
 recorded yet) · `receipt` (the answer recorded) · `ack` (a playout acknowledgement).
 

@@ -50,23 +50,23 @@ class Kit:
         self.inbox = Inbox(store, lambda: self.lease, ACCT, self.cfg, em, self.ids)
         self.n = 0
 
-    def utterance(self, iv: str, rev: int = 1, text: str = "w0001", t: int = 0, closed: bool = True) -> E.Envelope:
-        env = E.make(EnvelopeKind.USER_UTTERANCE, E.UtteranceBody(iv, rev, text), producer="ear:d1",
-                     producer_id=f"{iv}:{rev}", account=ACCT, onset_ms=t, sealed_ms=t + 500, endpoint="d1",
-                     refs=E.Refs(intervention_id=iv, revision=rev))
+    def utterance(self, iv: str, text: str = "w0001", t: int = 0, closed: bool = True) -> E.Envelope:
+        env = E.make(EnvelopeKind.USER_UTTERANCE, E.UtteranceBody(iv, text), producer="ear:d1",
+                     producer_id=f"{iv}:closed", account=ACCT, onset_ms=t, sealed_ms=t + 500, endpoint="d1",
+                     refs=E.Refs(intervention_id=iv))
         env = self._accept(env)
         if closed:
             with self.store.tx(self.lease) as tx:
-                S.note(tx, iv, rev, "closed", t + 500)
+                S.note(tx, iv, "closed", t + 500)
         return env
 
     def text(self, iv: str, text: str = "w0002", t: int = 0) -> E.Envelope:
         env = E.make(EnvelopeKind.USER_TEXT, E.TextBody(iv, text), producer="chat:d2", producer_id=iv, account=ACCT,
                      onset_ms=t, sealed_ms=t, channel=Channel.TEXT, endpoint="d2",
-                     refs=E.Refs(intervention_id=iv, revision=1))
+                     refs=E.Refs(intervention_id=iv))
         env = self._accept(env)
         with self.store.tx(self.lease) as tx:
-            S.note(tx, iv, 1, "closed", t)
+            S.note(tx, iv, "closed", t)
         return env
 
     def contact(self, t: int = 0) -> E.Envelope:

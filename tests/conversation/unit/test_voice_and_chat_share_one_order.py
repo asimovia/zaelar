@@ -102,7 +102,9 @@ def test_x10_past_the_hold_cap_the_text_runs_alone_and_the_voice_comes_later(sto
     p = Pipe(store, clock, telemetry)
     _voice_open(p, 0)
     p.signal(beats(240, 480, stream="d1"), S.TypedSubmit("d2", "c1", "w9", 500))
-    p.signal(beats(720, 8400, stream="d1"))                           # alive and still open
+    for i, t in enumerate(range(720, 8400, 1500)):                    # alive and still open: he keeps talking
+        p.signal(beats(t, t + 1499, stream="d1"),
+                 span(1, 2 + i, False, words(*[f"w{j}" for j in range(1, 4 + i)], t0=0), stream="d1"))
     assert p.at(8499).batch() is None
     b = p.at(8500).batch()
     assert kinds(b) == [TEXT]

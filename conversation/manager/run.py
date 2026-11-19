@@ -11,7 +11,7 @@ EVERY exit of a run accounts for its batch with what happened (B6, M6): answered
 steps ran out — → `failed`, its requests closed `recovered`, and a must-tell recovery entry queued so the person
 hears that it failed (worded by the model, never a fixed sentence). A numeric claim that does not match its evidence
 gets ONE repair round with the reason; then the run stays silent (D9). The first publication seals the batch's
-revisions; a revision reopened meanwhile fences the run (its batch waits for the newer revision).
+interventions; one that cannot seal fences the run.
 """
 from __future__ import annotations
 
@@ -50,7 +50,7 @@ def _emit(conv: "Conversation", label: str, r: "Running | None", **payload) -> N
 
 def close(conv: "Conversation", req: str, to: str, label: str, **metrics) -> bool:
     """Move a request to its end and say so — at most once: the move is a compare-and-set from `open`. Its
-    intervention is final for the ear from then on (N1): later voice is a new intervention, never a revision."""
+    intervention is final from then on: nothing seals it later."""
     with conv.book.tx() as b:
         row = b.get(req)
         if row is None or row["state"] != "open":
@@ -58,9 +58,8 @@ def close(conv: "Conversation", req: str, to: str, label: str, **metrics) -> boo
         b.move(req, to, reason=metrics.get("reason"), cause={"kind": "close", "ref": label})
         opened = row["data"].get("sealed_ms", row["created_ms"])
         iv = row["data"].get("iv")
-        rev = SEAL.finish(b.tx, iv, b.now) if iv else 0
-    if iv:
-        conv.finished(iv, rev)
+        if iv:
+            SEAL.finish(b.tx, iv, b.now)
     conv.em.emit("conv_close", label, owner="manager", cause={"kind": "request", "ref": req}, refs={"req": req},
                  total_ms=conv.clock.now_ms() - opened, **metrics)
     return True
@@ -245,9 +244,6 @@ async def _tool(conv: "Conversation", r: "Running", call: ToolCall) -> ToolResul
         return result
     if isinstance(decision, Claimed):
         r.claimed, conv.state = True, MgrState.RUNNING_CLAIMED
-        for env in r.ctx.batch.values():                 # the gateway sealed them: the ear must know (I3)
-            if env.is_user and env.kind in (EnvelopeKind.USER_UTTERANCE, EnvelopeKind.USER_TEXT):
-                conv.sealed(env.refs.intervention_id, env.refs.revision or 1)
         with guard.measured(conv.em, conv.cfg, "tools", {"run": r.run_id}):
             sent = await dispatch.submit(conv.gw, conv.tools, decision.effect_id, deadline)
         return sent or ToolResult("held", data={"effect": decision.effect_id})
@@ -280,7 +276,7 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
             _emit(conv, "ended", r, outcome="silent", reason="claims_unverified")
             return True
         if not _seal_batch(conv, r, batch):
-            conv.inbox.requeue(list(r.batch_ids))   # the newer revision runs; the request stays open (N1)
+            conv.inbox.requeue(list(r.batch_ids))   # fenced: the batch waits; the request stays open
             return True
         reply = choose(batch.envelopes, conv.devices.get(r.ctx.endpoint or "", Device(r.ctx.endpoint)))
         if reply.voice_unavailable:
@@ -318,13 +314,11 @@ def _handed_off(conv: "Conversation", r: "Running") -> bool:
 
 
 def _seal_batch(conv: "Conversation", r: "Running", batch: Batch) -> bool:
-    """The first publication seals every revision of the person's in the batch — all of them, or none and the run is
-    fenced (a revision was reopened meanwhile: what this run would say answers a sentence that is not finished)."""
-    ivs = [(env.refs.intervention_id, env.refs.revision or 1) for env in batch.envelopes
+    """The first publication seals every intervention of the person's in the batch — all of them, or none and the run
+    is fenced."""
+    ivs = [env.refs.intervention_id for env in batch.envelopes
            if env.is_user and env.kind in (EnvelopeKind.USER_UTTERANCE, EnvelopeKind.USER_TEXT)]
     if not conv.gw.seal_publication(r.ctx, ivs):
         _emit(conv, "fenced", r)
         return False
-    for iv, rev in ivs:
-        conv.sealed(iv, rev)
     return True

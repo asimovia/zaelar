@@ -15,12 +15,12 @@ from conversation.types import (Authority, Channel, ControlOp, EnvelopeKind, Evi
                                 WorkerUpdate)
 
 BODIES = {
-    EnvelopeKind.USER_UTTERANCE: E.UtteranceBody("i1", 2, "w0001 w0002", (E.Span("w0001", 0, 120, 0.9),
+    EnvelopeKind.USER_UTTERANCE: E.UtteranceBody("i1", "w0001 w0002", (E.Span("w0001", 0, 120, 0.9),
                                                                          E.Span("w0002", 130, 300, 1.0)), "es"),
     EnvelopeKind.USER_TEXT: E.TextBody("i2", "w0003", ("att-1",)),
     EnvelopeKind.USER_CONTROL: E.ControlBody(ControlOp.DELEGATE, gesture=True,
                                              scope={"recipients": ["c1"], "channel": "chat", "max": 3}),
-    EnvelopeKind.INTERVENTION_STATE: E.InterventionStateBody("i1", IvState.OPEN, 1),
+    EnvelopeKind.INTERVENTION_STATE: E.InterventionStateBody("i1", IvState.OPEN),
     EnvelopeKind.SYSTEM_REMINDER: E.ReminderBody("r1", "w0004", 1_000),
     EnvelopeKind.CONTACT_MESSAGE: E.ContactBody("th1", "contact-ref-1", "w0005", reply_to="m9"),
     EnvelopeKind.WORKER_UPDATE: E.WorkerBody("t1", WorkerUpdate.RESULT, "w0006",

@@ -276,8 +276,8 @@ class Case:
         conv.give(env)
 
     def _reopen_mid_run(self) -> None:
-        """While the model runs on a closed revision, the person goes on (a word, no end yet) and an adapter re-delivers
-        the closed revision."""
+        """While the model runs on a closed intervention, the person goes on (a word, no end yet) and an adapter
+        re-delivers the closed one."""
         conv = self.conv
         rows = [r for _k, r in self.store.snapshot(ACCT).scan("inbox") if r["kind"] == "user.utterance"]
         self._go_on_unfinished(conv)
@@ -300,17 +300,16 @@ class Case:
                    *[S.Watermark(ep, x) for x in range(t + 200, t + 2500, 240)])
 
     def _race_seal(self, conv: Conversation) -> None:
-        """Another writer of the account (a confirmation, the other process's gateway) seals a closed revision the
-        ear has not heard about — and the person goes on speaking: the reopen must lose (I3)."""
+        """Another writer of the account (a confirmation, the other process's gateway) seals a closed intervention the
+        manager has not published — and the person goes on speaking: what follows is another intervention (I3)."""
         from conversation.gateway import seal as SEAL
-        closed = [(iv, int(r["phase"].split(":")[0])) for iv, r in self.store.snapshot(ACCT).scan("interventions")
-                  if r["phase"].endswith(":closed")]
+        closed = [iv for iv, r in self.store.snapshot(ACCT).scan("interventions") if r["phase"] == "closed"]
         if not closed:
             return
-        iv, rev = self.rng.choice(closed)
+        iv = self.rng.choice(closed)
         with self.store.tx(conv.lease) as tx:
-            if SEAL.seal(tx, iv, rev, self._now()):
-                self.race_seals.append((iv, rev))
+            if SEAL.seal(tx, iv, self._now()):
+                self.race_seals.append(iv)
         self._speak(conv)
 
     def play(self, actions: int) -> None:
@@ -354,27 +353,30 @@ def check(case: Case) -> list[str]:
     for eid, row in items.items():
         if row["kind"] != str(ItemKind.EFFECT):
             continue
-        for iv, rev in row["data"].get("ivs", []):                                   # I1
-            if phases.get(iv) not in (f"{rev}:sealed", f"{rev}:final"):
-                out.append(f"I1: effect {eid} rests on {iv} rev {rev} in phase {phases.get(iv)}")
+        for iv in row["data"].get("ivs", []):                                        # I1
+            if phases.get(iv) not in ("sealed", "final"):
+                out.append(f"I1: effect {eid} rests on {iv} in phase {phases.get(iv)}")
         mandate = items.get(row["data"]["mandate"])                                    # I8
         if mandate is None and row["data"]["tool"] == "send_message":
             out.append(f"I8: send {eid} without a handle, delegation or grant")
-    words = [(w[0], w[1]) for c in (case.conv, case.old) if c for _iv, w in c.ear.spans.all_final_words()]
-    if case.old is None and len(words) != len(set(words)):                             # I2
+    owners: dict = {}                                       # I2: a word is identified by its provider turn and place
+    for c in ((case.conv,) if case.old is None else ()):
+        for iv, word_id in c.ear.spans.final_word_ids():
+            owners.setdefault(word_id, set()).add(iv)
+    if any(len(ivs) > 1 for ivs in owners.values()):
         out.append("I2: a final word in two interventions")
-    sealed = set(case.race_seals) | {(p["refs"]["iv"], p["refs"]["rev"]) for k, lab, p in case.tel.events
+    sealed = set(case.race_seals) | {p["refs"]["iv"] for k, lab, p in case.tel.events
                                      if k == "conv_effect" and lab == "sealed"}
-    for iv, rev in sorted(sealed):                                    # I3: a seal is forever (final keeps it)
-        if phases.get(iv) not in (f"{rev}:sealed", f"{rev}:final"):
-            out.append(f"I3: {iv} sealed at {rev} and now {phases.get(iv)}")
+    for iv in sorted(sealed):                                         # I3: a seal is forever (final keeps it)
+        if phases.get(iv) not in ("sealed", "final"):
+            out.append(f"I3: {iv} sealed and now {phases.get(iv)}")
     inbox_rows = [r for _k, r in snap.scan("inbox")]
-    for iv, ph in phases.items():                      # I3: …and never revised — nor once its request is final (N1)
-        rev = int(ph.split(":")[0])
-        if (ph.endswith(":sealed") or ph.endswith(":final")) and any(r["kind"] == "user.utterance"
-                                          and r["env"]["refs"]["intervention_id"] == iv
-                                          and r["env"]["refs"]["revision"] > rev for r in inbox_rows):
-            out.append(f"I3: {iv} {ph.split(':')[1]} at {rev} and a later revision of it was accepted")
+    content = [r for r in inbox_rows if r["kind"] in ("user.utterance", "user.text")]
+    per_iv: dict = {}
+    for r in content:                                       # I3: one accepted entry per intervention, never a second
+        iv = r["env"]["refs"]["intervention_id"]
+        per_iv[iv] = per_iv.get(iv, 0) + 1
+    out += [f"I3: {iv} accepted {n} entries" for iv, n in per_iv.items() if n > 1]
     for k, lab, p in case.tel.events:                                                  # I4
         if k == "conv_ear" and lab == "discarded" and ("reason" not in p or "text" not in p):
             out.append("I4: a discard without its text and reason")
@@ -424,7 +426,7 @@ def check(case: Case) -> list[str]:
         if k == "conv_run" and lab == "started":
             b = tuple(p["batch_envs"])
             if b in fenced:
-                out.append("I1: a fenced batch ran again unchanged — its revision re-run while the reopen was open")
+                out.append("I1: a fenced batch ran again unchanged")
                 break
             batch_of[p["refs"]["run"]] = b
         elif k == "conv_run" and lab == "fenced":

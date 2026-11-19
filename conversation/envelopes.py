@@ -28,7 +28,6 @@ class Refs:
     reminder_id: str | None = None
     handle_id: str | None = None
     intervention_id: str | None = None
-    revision: int | None = None
 
 
 @dataclass(frozen=True)
@@ -43,7 +42,6 @@ class Span:
 @dataclass(frozen=True)
 class UtteranceBody:
     intervention_id: str
-    revision: int
     text: str
     spans: tuple[Span, ...] = ()
     lang: str = ""
@@ -72,7 +70,6 @@ class ControlBody:
 class InterventionStateBody:
     intervention_id: str
     state: IvState
-    revision: int = 1
     text: str | None = None
     reason: str | None = None
 
@@ -254,15 +251,3 @@ def from_json(d: dict) -> Envelope:
              refs=Refs(**_strict(Refs, d["refs"], "refs")), body=_body(kind, d["body"]))
     _gesture_by_button(kind, d["body"], channel)
     return Envelope(**d)
-
-
-#: the reason an `intervention.state(open)` carries when it is a REOPEN (a new revision), not an extension
-REOPENED = "reopened"
-
-
-def is_reopen(env: Envelope) -> bool:
-    """THE one reading of «this intervention was reopened»: a voice intervention back to open at a NEW revision —
-    said by the ear in the envelope's reason, never inferred from the revision number (an extension of revision 2 is
-    open at revision 2 too). Policy row 6 (supersede only while nothing is sealed) keys on this and nothing else."""
-    return (env.kind is EnvelopeKind.INTERVENTION_STATE and env.body.state is IvState.OPEN
-            and env.body.reason == REOPENED)

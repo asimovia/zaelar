@@ -36,8 +36,8 @@ def utterances(out: list) -> list[E.Envelope]:
 
 
 def states(out: list) -> list[tuple[str, int]]:
-    """(state, revision) of each intervention.state envelope; a reopen reads as ('open', n > 1)."""
-    return [(str(e.body.state), e.body.revision) for e in out
+    """(state, intervention) of each intervention.state envelope."""
+    return [(str(e.body.state), e.body.intervention_id) for e in out
             if isinstance(e, E.Envelope) and e.kind is EnvelopeKind.INTERVENTION_STATE]
 
 

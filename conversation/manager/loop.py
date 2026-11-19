@@ -3,7 +3,7 @@ everything that arrives (§6.3). Idle → Collecting → Running (unclaimed | cl
 
 `hear(signal)` feeds the ear; `give(envelope)` takes what other producers send (workers, connectors, reminders,
 buttons); `ack(...)` takes the mouth's acknowledgements; `pump()` runs what is ready until nothing is; `sweep(now)`
-is the clock's turn — holds, deferrals, lines nobody acknowledged, reopens nobody finishes, requests past their
+is the clock's turn — holds, deferrals, lines nobody acknowledged, voices nobody ends, requests past their
 liveness budget — and runs on its own timer (`keep_time`), never only inside `pump`. The control lane (onset, stop,
 acks) never waits for a run. A new input during a run is applied at the run's next checkpoint: SUPERSEDE replaces the
 RUN (never the request, N1), FOLLOW_UP queues, CANCEL_RUN drops it, SILENCE stops our voice. A person's entry opens
@@ -108,29 +108,20 @@ class Conversation:
         self.book.say(pending)
         if adm.envelope is None:
             return
-        env, lost = adm.envelope, adm.extra
-        if lost:                              # a reopen that lost to the seal: what was heard since amends it (I3)
-            for out in self.ear.feed(S.Sealed(env.body.intervention_id, env.body.revision - 1)):
-                if isinstance(out, E.Envelope):
-                    self.give(out)
-            return
+        env = adm.envelope
         self._voice_state(env)
         ops = policy.decide(env, self.state, claimed=bool(self.current and self.current.claimed),
                             person_speaking=bool(self.speaking_on))
         self._apply(env, ops)
 
-    def _admit(self, tx, env: E.Envelope, now: int, pending: list) -> bool:
-        """Inside the acceptance's transaction, after the dedupe: the intervention's phase (forward only, B5) and
-        the person's request (B2). Returns True when a reopen lost the race to a seal."""
+    def _admit(self, tx, env: E.Envelope, now: int, pending: list) -> None:
+        """Inside the acceptance's transaction, after the dedupe: how the intervention ended (noted once) and the
+        person's request, opened with it."""
         k, b = env.kind, env.body
-        if k is EnvelopeKind.USER_UTTERANCE:
-            SEAL.note(tx, b.intervention_id, b.revision, "closed", now)
-        elif k is EnvelopeKind.USER_TEXT:
-            SEAL.note(tx, b.intervention_id, 1, "closed", now)
+        if k in REQUESTS:
+            SEAL.note(tx, b.intervention_id, "closed", now)
         elif k is EnvelopeKind.INTERVENTION_STATE and b.state in (IvState.INCOMPLETE, IvState.DISCARDED):
-            SEAL.note(tx, b.intervention_id, b.revision, str(b.state), now)
-        elif E.is_reopen(env) and not SEAL.reopen(tx, b.intervention_id, b.revision - 1, now):
-            return True
+            SEAL.note(tx, b.intervention_id, str(b.state), now)
         opens = k in REQUESTS or (k is EnvelopeKind.INTERVENTION_STATE and b.state is IvState.INCOMPLETE)
         if opens and b.intervention_id:
             req = f"r_{b.intervention_id}"
@@ -138,7 +129,6 @@ class Conversation:
             book.open(ItemKind.REQUEST, req, data={"req": req, "iv": b.intervention_id, "sealed_ms": env.sealed_ms},
                       cause={"kind": "envelope", "ref": env.id})
             book.attach(req, env.id, decided_by="id", cause={"kind": "envelope", "ref": env.id})
-        return False
 
     def _voice_state(self, env: E.Envelope) -> None:
         if env.kind not in (EnvelopeKind.USER_UTTERANCE, EnvelopeKind.INTERVENTION_STATE) or not env.endpoint:
@@ -188,8 +178,7 @@ class Conversation:
                 self.current.interrupt = "cancelled"
             elif op is Op.BY_ID:
                 self._by_id(env)
-            # WAIT_AGAIN is the inbox's: a closed revision whose intervention reopened is not eligible until the
-            # newer revision ends (`Inbox._reopened_since`). FOLLOW_UP, JOIN, WHEN_IDLE: the queue keeps it.
+            # FOLLOW_UP, JOIN, WHEN_IDLE: the queue keeps it.
         if env.kind is EnvelopeKind.USER_CONTROL and env.body.op is ControlOp.STOP:
             self.inbox.applied(env.id, self.clock.now_ms())
 
@@ -197,11 +186,8 @@ class Conversation:
         op = env.body.op
         if op is ControlOp.CONFIRM:
             got = self.gw.confirm(env)
-            if isinstance(got, Claimed):            # the gesture committed it: the next pump sends it (M5)
+            if isinstance(got, Claimed):            # the gesture committed it: the next pump sends it
                 self.to_submit.append(got.effect_id)
-                handle = self.book.snapshot().get("items", env.body.handle_id or "") or {"data": {}}
-                for iv, rev in handle["data"].get("ivs", []):
-                    self.sealed(iv, rev)
         elif op is ControlOp.DECLINE:
             self.gw.decline(env)
         elif op is ControlOp.DELEGATE:
@@ -225,18 +211,6 @@ class Conversation:
         if isinstance(sig, SayEnded) and self.state is MgrState.SPEAKING:
             self.state = MgrState.IDLE
 
-    def sealed(self, iv: str, rev: int) -> None:
-        """Tell the ear a revision is sealed: voice that follows amends it, never reopens it (I3)."""
-        for out in self.ear.feed(S.Sealed(iv, rev)):
-            if isinstance(out, E.Envelope):
-                self.give(out)
-
-    def finished(self, iv: str, rev: int) -> None:
-        """Tell the ear a request ended: its intervention is final, later voice is a new one (N1)."""
-        for out in self.ear.feed(S.Finished(iv, rev)):
-            if isinstance(out, E.Envelope):
-                self.give(out)
-
     def _presented(self, handle: str, endpoint: str | None) -> None:
         if handle:
             self.gw.present(handle, endpoint)
@@ -253,7 +227,6 @@ class Conversation:
         self.inbox.sweep(now)
         for say_id in self.speaker.overdue(now):        # a line nobody acknowledged ended «unknown» (B2)
             self.ack(SayEnded(say_id, "unknown", None, now))
-        self._abandon_reopens(now)
         run.sweep_liveness(self, now)
         if now - self._pruned_at >= self.cfg.prune_every_ms:
             self._pruned_at = now
@@ -265,7 +238,7 @@ class Conversation:
         done = {
             "inbox": lambda r: r["state"] == "accounted" and r.get("accounted_ms", now) <= old,
             "says": lambda r: r["state"] == "ended" and r["t_ms"] <= old,
-            SEAL.T: lambda r: r["phase"].endswith((":sealed", ":final")) and r.get("updated_ms", now) <= old,
+            SEAL.T: lambda r: r["phase"] in ("sealed", "final") and r.get("updated_ms", now) <= old,
             "items": lambda r: final(ItemKind(r["kind"]), r["state"]) and r["updated_ms"] <= old,
         }
         moved = 0
@@ -280,16 +253,6 @@ class Conversation:
                 tx.archive("turns", key)
                 moved += 1
         return moved
-
-    def _abandon_reopens(self, now: int) -> None:
-        """A reopen nobody finishes within the bound goes back to the revision it reopened — whether the process that
-        heard it is gone or this ear still hears it (N2): the closed revision then runs and seals, and the words
-        heard since move to a new intervention that amends it (the ear's seal race, I3)."""
-        with self.store.tx(self.lease) as tx:
-            for iv, _row in tx.scan(SEAL.T):
-                since = SEAL.open_since(tx, iv)
-                if since and now - since[1] >= self.cfg.cross_channel_hold_ms:
-                    SEAL.abandon(tx, iv, now)
 
     async def keep_time(self, every_ms: int = 1000) -> None:
         """The sweep on its own timer, for the adapter to run beside the loop: a hung run cannot stop it (B3)."""

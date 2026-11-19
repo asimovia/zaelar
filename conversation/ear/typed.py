@@ -17,7 +17,7 @@ def submit(ear: "Ear", sig: TypedSubmit, t: int) -> E.Envelope:
     iv = ear.ids.new("iv")
     env = E.make(EnvelopeKind.USER_TEXT, E.TextBody(iv, sig.text), producer=f"chat:{sig.endpoint}",
                  producer_id=sig.client_id, account=ear.account, onset_ms=t, sealed_ms=t, channel=Channel.TEXT,
-                 endpoint=sig.endpoint, refs=E.Refs(intervention_id=iv, revision=1))
+                 endpoint=sig.endpoint, refs=E.Refs(intervention_id=iv))
     ear.em.emit("conv_ear", "typed", owner="ear", cause={"kind": "client", "ref": sig.client_id},
-                refs={"iv": iv, "rev": 1, "endpoint": sig.endpoint, "channel": "text"}, closed_by="submit")
+                refs={"iv": iv, "endpoint": sig.endpoint, "channel": "text"}, closed_by="submit")
     return env

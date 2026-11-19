@@ -1,7 +1,7 @@
 """The gateway's decisions: the ONLY place an effect is born (I8), as one reserved row per logical operation (N3).
 
 `request` judges one tool call of a run against the run's batch (plan §15 E1): a read passes; an effect must rest on
-the person's entries (the batch's authority floor) or on a mandate, seal every revision of the person's in the batch and
+the person's entries (the batch's authority floor) or on a mandate, seal every intervention of the person's in the batch and
 reserve its row — ONE transaction; an `egress` needs a delegation or a grant (spent in that same transaction), and
 anything that needs a gesture (`egress` without a mandate, `destructive`, `payment`, or any effect in a batch that is
 not all the person's) answers `NeedsConfirmation(handle)`. `confirm` spends a presented handle by a gesture: the control's
@@ -81,7 +81,7 @@ class Gateway:
 
     def _note(self, label: str, ctx: A.RunCtx | None, **payload) -> None:
         refs = {"run": ctx.run_id, "req": ctx.request_id, "endpoint": ctx.endpoint} if ctx else {}
-        refs.update({k: payload.pop(k) for k in ("effect", "iv", "rev", "item", "req", "run") if k in payload})
+        refs.update({k: payload.pop(k) for k in ("effect", "iv", "item", "req", "run") if k in payload})
         self._said.append((label, refs, payload))
 
     def _flush(self) -> None:
@@ -138,7 +138,7 @@ class Gateway:
         users = A.floor(ctx)
         op = A.op_key(tool, args)
         trigger = (users or sorted(ctx.batch.values(), key=lambda e: (e.onset_ms, e.id)) or [None])[0]
-        ivs = [(e.refs.intervention_id, e.refs.revision or 1) for e in users or ()]
+        ivs = [e.refs.intervention_id for e in users or ()]
         if users and self.cfg.action_seal_grace_ms and not self._grace_over(b, ivs, ctx.endpoint):
             return self._refuse(ctx, tool, "seal_grace")
         existing = self._existing(b, trigger.id if trigger is not None else None, op)
@@ -177,15 +177,15 @@ class Gateway:
 
     def _grace_over(self, b, ivs: list, endpoint: str | None) -> bool:
         onset = (b.tx.get("onsets", endpoint or "") or {}).get("t_ms", 0)
-        closed = max(((b.tx.get(S.T, iv) or {}).get("closed_ms", 0) for iv, _rev in ivs), default=0)
+        closed = max(((b.tx.get(S.T, iv) or {}).get("closed_ms", 0) for iv in ivs), default=0)
         return b.now - closed >= self.cfg.action_seal_grace_ms and onset <= closed
 
     def _reserve(self, b, ctx, mandate: str, trigger: str, op: str, tool: str, args: dict, ivs: list,
                  env: E.Envelope) -> Decision:
-        for iv, rev in ivs:
-            if not S.seal(b.tx, iv, rev, b.now):
-                raise _Abort(self._refuse(ctx, tool, "unsealed", iv=iv, rev=rev))
-            self._note("sealed", ctx, iv=iv, rev=rev)
+        for iv in ivs:
+            if not S.seal(b.tx, iv, b.now):
+                raise _Abort(self._refuse(ctx, tool, "unsealed", iv=iv))
+            self._note("sealed", ctx, iv=iv)
         eid = A.effect_id(mandate, trigger, op)
         row, new = b.open_unique(ItemKind.EFFECT, eid, f"{mandate}|{trigger}|{op}", data={
             "tool": tool, "args": args, "op": op, "mandate": mandate, "trigger": trigger, "run": ctx.run_id,
@@ -225,7 +225,7 @@ class Gateway:
         self._decide(fn)
 
     def confirm(self, control: E.Envelope) -> Decision:
-        """`user.control(confirm, handle_id)`: control accounted + handle spent + revisions sealed + effect reserved,
+        """`user.control(confirm, handle_id)`: control accounted + handle spent + interventions sealed + effect reserved,
         ONE transaction. A confirmation that is not a gesture spends nothing unless a delegation covers the send."""
         body = control.body
         assert body.op is ControlOp.CONFIRM
@@ -248,7 +248,7 @@ class Gateway:
                 return self._refuse(ctx, d["tool"], "write_disabled")
             b.move(h["id"], "spent", cause={"kind": "envelope", "ref": control.id})
             return self._reserve(b, ctx, h["id"], d["trigger"], d["op"], d["tool"], d["args"],
-                                 [tuple(x) for x in d["ivs"]], control)
+                                 list(d["ivs"]), control)
         return self._decide(fn, control)
 
     def decline(self, control: E.Envelope) -> None:
@@ -286,14 +286,14 @@ class Gateway:
             return Read()
         return self._decide(fn)
 
-    def seal_publication(self, ctx: A.RunCtx, ivs: list[tuple[str, int]]) -> bool:
-        """The first publication seals every revision of the person's in the batch — all, or none (a revision was
-        reopened meanwhile and the run is fenced). ONE transaction."""
+    def seal_publication(self, ctx: A.RunCtx, ivs: list[str]) -> bool:
+        """The first publication seals every intervention of the person's in the batch — all, or none and the run is
+        fenced. ONE transaction."""
         def fn(b):
-            for iv, rev in ivs:
-                if not S.seal(b.tx, iv, rev, b.now):
-                    raise _Abort(self._refuse(ctx, "", "unsealed", iv=iv, rev=rev))
-                self._note("sealed", ctx, iv=iv, rev=rev, by="publication")
+            for iv in ivs:
+                if not S.seal(b.tx, iv, b.now):
+                    raise _Abort(self._refuse(ctx, "", "unsealed", iv=iv))
+                self._note("sealed", ctx, iv=iv, by="publication")
             return Read()
         return isinstance(self._decide(fn), Read)
 

@@ -42,46 +42,50 @@ def test_the_session_replays_with_no_invariant_broken(name):
     assert rep.tel.labels("conv_run").count("conv_run/started") >= 3
 
 
+def final_batches(rep: Replay) -> list[set[str]]:
+    """The interventions each run carried in its prompt — the runs that ENDED their batch (answered, silent, stopped,
+    failed), not the ones substituted or fenced, whose batch went back to the queue."""
+    snap = rep.store.snapshot("replay")
+    iv_of = {r["id"]: r["env"]["refs"].get("intervention_id")
+             for _k, r in snap.scan("inbox") + snap.scan("inbox.done")}
+    batch = {p["refs"]["run"]: p["batch_envs"] for k, lab, p in rep.tel.events if k == "conv_run" and lab == "started"}
+    gave_back = {p["refs"]["run"] for k, lab, p in rep.tel.events if k == "conv_run" and lab in ("superseded", "fenced")}
+    return [{iv_of.get(e) for e in envs} - {None} for run, envs in batch.items() if run not in gave_back]
+
+
 def score(rep: Replay, labels: dict) -> dict:
-    """Fusions at firm boundaries, splits where nothing is labelled (unrelated or amending), and the disagreements at
-    boundaries that are not firm — the numbers P2 publishes."""
+    """The sentence reaches the model WHOLE, in one prompt — scored only where the evidence is firm. A labelled
+    intervention bounded by firm boundaries (or the session's edges) must lie inside ONE final prompt (else a
+    `split`); the two sides of a firm boundary must never share one (else a `fusion`). Everything at boundaries that
+    are not firm is reported."""
     owner = [iv for iv, _w in rep.conv.ear.spans.all_final_words()]
     assert len(owner) == labels["tokens"], "the ear did not keep every final word of the session"
-    voiced = [p["t_ms"] for k, lab, p in rep.tel.events if k == "conv_mouth" and lab == "say" and "voice" in p["channels"]]
-    amends = {}
-    snap = rep.store.snapshot("replay")
-    for _k, row in snap.scan("inbox") + snap.scan("inbox.done"):          # archived rows too (NM2)
-        body = row["env"]["body"]
-        if row["kind"] in (str(EnvelopeKind.USER_UTTERANCE), str(EnvelopeKind.INTERVENTION_STATE)) and body.get("amends"):
-            amends[body["intervention_id"]] = body["amends"]
-    support = {k: s for k, s in labels["boundaries"]}
-    cuts = [k for k in range(1, len(owner)) if owner[k] != owner[k - 1]]
-    splits = [k for k in cuts if k not in support]
-    closed, opened = {}, {}                  # when the ear ended the earlier piece and opened the later one
-    for k, lab, p in rep.tel.events:
-        if k == "conv_ear" and lab in ("closed", "incomplete"):
-            closed[p["refs"]["iv"]] = p["t_ms"]
-        elif k == "conv_ear" and lab == "opened":
-            opened.setdefault(p["refs"]["iv"], p["t_ms"])
-    spoke = {k for k in splits if any(closed.get(owner[k - 1], 0) <= t <= opened.get(owner[k], 0) for t in voiced)}
-    return {"fusions": [k for k, s in support.items() if s == "transcript" and owner[k] == owner[k - 1]],
-            "unrelated_splits": [k for k in splits if amends.get(owner[k]) != owner[k - 1] and k not in spoke],
-            "amending_splits": [k for k in splits if amends.get(owner[k]) == owner[k - 1]],
-            "after_our_voice_splits": sorted(spoke),
-            "not_firm_missed": [k for k, s in support.items() if s != "transcript" and owner[k] == owner[k - 1]]}
+    prompts = final_batches(rep)
+    firm = {k for k, s in labels["boundaries"] if s == "transcript"} | {0, labels["tokens"]}
+
+    def together(i: int, j: int) -> bool:
+        return any(owner[i] in b and owner[j] in b for b in prompts)
+
+    def whole(a: int, b: int) -> bool:
+        need = set(owner[a:b])
+        return any(need <= p for p in prompts)
+
+    spans = [tuple(x) for x in labels["interventions"]]
+    return {"fusions": [k for k, s in labels["boundaries"] if s == "transcript" and together(k - 1, k)],
+            "splits": [(a, b) for a, b in spans if a in firm and b in firm and not whole(a, b)],
+            "not_firm_split": [(a, b) for a, b in spans if not (a in firm and b in firm) and not whole(a, b)],
+            "not_firm_fused": [k for k, s in labels["boundaries"] if s != "transcript" and together(k - 1, k)]}
 
 
 @pytest.mark.parametrize("name", SESSIONS)
-def test_the_ear_respects_every_firm_boundary_in_both_directions(name, record_property):
+def test_the_sentence_reaches_the_model_whole_in_one_prompt_both_ways(name, record_property):
     rep, _sig = _replay(name)
     got = score(rep, LABELS[name])
     for key, ks in got.items():
         record_property(key, len(ks))
     assert any(s == "transcript" for _k, s in LABELS[name]["boundaries"]), "a session with no firm boundary scores nothing"
-    assert not got["fusions"], f"firm boundaries glued into one intervention: {got['fusions']}"
-    assert not got["unrelated_splits"], f"the ear cut where nothing is labelled, with no amends: {got['unrelated_splits']}"
-    # a split after a line we played is the scripted model's timing, not the ear's; still a ratchet: never more
-    assert len(got["after_our_voice_splits"]) <= AFTER_VOICE_CEILING[name], got["after_our_voice_splits"]
+    assert not got["fusions"], f"two firmly separate interventions in one prompt: {got['fusions']}"
+    assert not got["splits"], f"a firmly bounded intervention never reached one prompt whole: {got['splits']}"
 
 
 @pytest.mark.parametrize("name", SESSIONS)

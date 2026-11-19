@@ -23,7 +23,7 @@ class _Labels(Enum):
 
 
 class EarLabels(_Labels):
-    OPENED, EXTENDED, TENTATIVE, CLOSED, REOPENED = "opened", "extended", "tentative", "closed", "reopened"
+    OPENED, EXTENDED, TENTATIVE, CLOSED = "opened", "extended", "tentative", "closed"
     INCOMPLETE, DISCARDED, ONSET, TYPED = "incomplete", "discarded", "onset", "typed"
 
 
@@ -65,7 +65,7 @@ class Owner(Enum):
 
 class Ref(Enum):
     """The reference chain every event may carry (§8.1)."""
-    CONV, IV, REV, ENV, RUN, REQ, TASK = "conv", "iv", "rev", "env", "run", "req", "task"
+    CONV, IV, ENV, RUN, REQ, TASK = "conv", "iv", "env", "run", "req", "task"
     EFFECT, SAY, ENDPOINT, CHANNEL, ITEM = "effect", "say", "endpoint", "channel", "item"
 
 

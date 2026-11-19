@@ -22,7 +22,6 @@ class Input(Enum):
     TEXT = "text"
     STOP = "stop"
     BY_ID = "by_id"
-    REOPENED = "reopened"
     INCOMPLETE = "incomplete"
     WORKER_QUESTION = "worker_question"
     WORKER_PROGRESS = "worker_progress"
@@ -60,8 +59,6 @@ TABLE: dict[Input, dict[Column, tuple[Op, ...]]] = {
     Input.STOP: _row((O.SILENCE,), (O.SILENCE,), (O.SILENCE, O.CANCEL_RUN), (O.SILENCE, O.CANCEL_RUN),
                      (O.SILENCE, O.CANCEL_RUN), (O.SILENCE, O.CANCEL_RUN)),
     Input.BY_ID: _row((O.BY_ID,), (O.BY_ID,), (O.BY_ID,), (O.BY_ID,), (O.BY_ID,), (O.BY_ID,)),
-    Input.REOPENED: _row((O.NONE,), (O.WAIT_AGAIN,), (O.SUPERSEDE,), (O.IMPOSSIBLE,), (O.IMPOSSIBLE,),
-                         (O.IMPOSSIBLE,)),
     Input.INCOMPLETE: _row((O.RUN_NOW,), (O.JOIN,), (O.AT_CHECKPOINT,), (O.FOLLOW_UP,), (O.WHEN_IDLE,),
                            (O.WHEN_IDLE,)),
     Input.WORKER_QUESTION: _row((O.SURFACE_NOW,), (O.WAIT_FOCUS,), (O.AT_CHECKPOINT,), (O.AT_CHECKPOINT,),
@@ -86,8 +83,6 @@ def classify(item: E.Envelope | Onset) -> Input:
     if k is EnvelopeKind.USER_CONTROL:
         return Input.STOP if item.body.op is ControlOp.STOP else Input.BY_ID
     if k is EnvelopeKind.INTERVENTION_STATE:
-        if E.is_reopen(item):
-            return Input.REOPENED
         return Input.INCOMPLETE if item.body.state is IvState.INCOMPLETE else Input.VOICE_STATE
     if k is EnvelopeKind.WORKER_UPDATE:
         t = item.body.type

@@ -38,7 +38,7 @@ def _state(store, lang_turns):
 
 
 def _batch(text_voice: str, text_typed: str):
-    utt = E.make(EnvelopeKind.USER_UTTERANCE, E.UtteranceBody("iv7", 1, text_voice), producer="ear:d1",
+    utt = E.make(EnvelopeKind.USER_UTTERANCE, E.UtteranceBody("iv7", text_voice), producer="ear:d1",
                  producer_id="iv7:1", account="acct", onset_ms=T0, sealed_ms=T0 + 900)
     txt = E.make(EnvelopeKind.USER_TEXT, E.TextBody("iv8", text_typed), producer="chat:d2", producer_id="c1",
                  account="acct", onset_ms=T0 + 300, sealed_ms=T0 + 300, channel=Channel.TEXT)

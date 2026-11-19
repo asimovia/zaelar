@@ -65,12 +65,14 @@ class WorkerUpdate(_Str):
 
 
 class IvState(_Str):
-    """An intervention of the person: what they said (or typed) between two of our turns, with its revisions."""
+    """An intervention of the person: what they said (or typed) between two of our turns. Once ended it never changes:
+    what follows is another intervention that amends it."""
     OPEN = "open"
     TENTATIVE = "tentative"
     CLOSED = "closed"
     INCOMPLETE = "incomplete"
     SEALED = "sealed"
+    FINAL = "final"
     DISCARDED = "discarded"
 
 
@@ -102,7 +104,7 @@ class Op(_Str):
     HOLD_BEHIND = "hold_behind"      # waits for the open voice intervention that began earlier
     AT_CHECKPOINT = "at_checkpoint"  # enters the running turn at its next checkpoint
     WAIT_AGAIN = "wait_again"        # the batch waits for the reopened intervention to close
-    IMPOSSIBLE = "impossible"        # the state cannot hold this input (a sealed revision does not reopen)
+    IMPOSSIBLE = "impossible"        # the state cannot hold this input
     NONE = "none"
 
 

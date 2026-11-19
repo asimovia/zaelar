@@ -10,7 +10,7 @@ row is in exactly one state:
 
 Controls never wait: `accept` hands them back at once (`control`) and the manager applies them by id; the voice
 intervention stays open and closes as always. State envelopes of the ear (opened, tentative, extended) tell the inbox
-which voice is open — they are accounted `silent` on arrival; a reopen is handed back (`reopened`) for the policy.
+which voice is open — they are accounted `silent` on arrival.
 """
 from __future__ import annotations
 
@@ -19,7 +19,6 @@ from enum import Enum
 from typing import Callable
 
 from conversation import envelopes as E
-from conversation.gateway.seal import final_rev, open_since
 from conversation.config import Config
 from conversation.inbox import ordering
 from conversation.ports import Lease, Store
@@ -54,7 +53,7 @@ class Batch:
 @dataclass(frozen=True)
 class Admission:
     envelope: E.Envelope | None
-    disposition: str     # queued · held · control · reopened · state · silent · duplicate · refused
+    disposition: str     # queued · held · control · state · silent · duplicate · refused
     extra: object = None  # what the caller's admission hook returned, inside the same transaction
 
 
@@ -135,7 +134,7 @@ class Inbox:
             known = tx.get(VOICE, b.intervention_id) or {"onset": env.onset_ms, "endpoint": env.endpoint}
             tx.put(VOICE, b.intervention_id, {**known, "open": True})
             self._final(tx, env.id, "silent", now)
-            return "reopened" if E.is_reopen(env) else "state"
+            return "state"
         self._voice_done(tx, b.intervention_id, now)
         if b.state is IvState.INCOMPLETE:
             return "queued"                       # the run asks for the end
@@ -196,9 +195,7 @@ class Inbox:
             texts = [r for r in rows if r["kind"] == str(EnvelopeKind.USER_TEXT)]
             if texts and now - max(r["accepted"] for r in texts) < self.cfg.collect_ms:
                 return None                       # the collect window of the last text is still open
-            rows = [r for r in rows if not self._ended_with_its_request(tx, r, now)]
-            pick = self._newest_revisions(tx, [r for r in rows if self._eligible(r, now, idle)
-                                               and not self._reopened_since(tx, r, now)], now)
+            pick = [r for r in rows if self._eligible(r, now, idle)]
             if not pick:
                 return None
             seq = tx.next_seq("runs")
@@ -210,53 +207,6 @@ class Inbox:
             for r in pick:
                 self._emit_row("dequeued", r, batch=seq, queue_age_ms=now - r["accepted"])
             return Batch(seq, envs, reason)
-
-    def _ended_with_its_request(self, tx, row: dict, now: int) -> bool:
-        """A revision still queued when its request already ended (N1): a newer revision answered it (`coalesced`), or
-        the request closed without it — past its liveness, say — and running it now would answer a closed request
-        (`expired`). Either way it is accounted here, never run."""
-        if row["kind"] != str(EnvelopeKind.USER_UTTERANCE):
-            return False
-        refs = row["env"]["refs"]
-        final = final_rev(tx, refs["intervention_id"])
-        if final is None or refs["revision"] > final:
-            return False
-        older = refs["revision"] < final
-        self._final(tx, row["id"], (Outcome.COALESCED if older else Outcome.EXPIRED).value, now,
-                    reason="newer_revision" if older else "request_ended")
-        return True
-
-    @staticmethod
-    def _reopened_since(tx, row: dict, now: int) -> bool:
-        """WAIT_AGAIN (policy row 6): a closed revision whose intervention was reopened waits for the newer revision,
-        which carries every word — running it would answer a sentence that is not finished, its publication would be
-        fenced and it would run again. The ear always ends a revision (closed, incomplete, discarded) and a reopen
-        nobody finishes is given back by the manager's sweep — which also ticks the ear, and past a clock bound gives
-        back even a reopen this ear still hears (N2) — so the wait is bounded by the clock, never by signals alone."""
-        if row["kind"] != str(EnvelopeKind.USER_UTTERANCE):
-            return False
-        refs = row["env"]["refs"]
-        newer = open_since(tx, refs["intervention_id"])
-        return newer is not None and newer[0] > refs["revision"]
-
-    def _newest_revisions(self, tx, rows: list[dict], now: int) -> list[dict]:
-        """Two revisions of one voice intervention in the queue (a superseded run gave back the older one): the newer
-        — closed, or ended incomplete — carries every word; the older is accounted `coalesced`. One id, once."""
-        voice = (str(EnvelopeKind.USER_UTTERANCE), str(EnvelopeKind.INTERVENTION_STATE))
-        newest: dict[str, dict] = {}
-        for r in rows:
-            if r["kind"] in voice:                    # a closed revision, or a newer one that ended incomplete
-                iv = r["env"]["refs"]["intervention_id"]
-                if iv not in newest or r["env"]["refs"]["revision"] > newest[iv]["env"]["refs"]["revision"]:
-                    newest[iv] = r
-        keep = []
-        for r in rows:
-            iv = r["env"]["refs"].get("intervention_id")
-            if r["kind"] in voice and newest.get(iv) is not r:
-                self._final(tx, r["id"], Outcome.COALESCED.value, now, reason="newer_revision")
-            else:
-                keep.append(r)
-        return keep
 
     def _eligible(self, row: dict, now: int, idle: bool) -> bool:
         if row["user"]:
@@ -333,7 +283,7 @@ class Inbox:
 
     def _emit(self, label: str, env: E.Envelope, *, cause: dict | None = None, refs_extra: dict | None = None,
               **payload) -> None:
-        refs = {"env": env.id, "iv": env.refs.intervention_id, "rev": env.refs.revision, "task": env.refs.task_id,
+        refs = {"env": env.id, "iv": env.refs.intervention_id, "task": env.refs.task_id,
                 "endpoint": env.endpoint, "channel": str(env.channel), **(refs_extra or {})}
         self.em.emit("conv_inbox", label, owner="inbox", cause=cause or {"kind": "envelope", "ref": env.id},
                      refs=refs, kind=str(env.kind), surfacing=str(env.surfacing), **payload)

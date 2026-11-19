@@ -29,7 +29,7 @@ def _continue(h: Harness, done: list) -> None:
            S.EotHint("d1", "flux", "end", .9, ws[-1][2] + 300))
 
 
-def test_a_superseded_run_leaves_the_request_open_and_the_next_run_answers_it_once(store):
+def test_a_superseded_run_leaves_the_requests_open_and_the_next_run_answers_both_once(store):
     h = Harness(store)
     done: list = []
     h.model.script["iv_000001"] = [[lambda: _continue(h, done), reply("w90"), Done()]]
@@ -38,8 +38,9 @@ def test_a_superseded_run_leaves_the_request_open_and_the_next_run_answers_it_on
     assert h.tel.labels("conv_run").count("conv_run/started") == 2
     assert h.tel.labels("conv_run").count("conv_run/superseded") == 1
     inputs = [c.prompt.input for c in h.model.calls]
-    assert "«w1 w2 w3»" in inputs[0] and inputs[1].count("[iv_000001") == 1 and "«w1 w2 w3 w5 w6»" in inputs[1]
-    assert [lab for lab, _ in h.closes()] == ["answered"]
+    assert "«w1 w2 w3»" in inputs[0] and "«w5 w6»" not in inputs[0]
+    assert inputs[1].count("[iv_000001") == 1 and "«w1 w2 w3»" in inputs[1] and "amends iv_000001] «w5 w6»" in inputs[1]
+    assert [lab for lab, _ in h.closes()] == ["answered", "answered"]               # one close per request
     req = h.conv.book.snapshot().get("items", "r_iv_000001")
     assert req["state"] == "answered" and len(h.mouth.orders) == 1
 

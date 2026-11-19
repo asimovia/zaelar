@@ -106,7 +106,7 @@ def _env(kind, body, channel=None):
 
 
 def test_the_reply_channels_follow_the_table_and_never_the_content():
-    voice = _env(EnvelopeKind.USER_UTTERANCE, E.UtteranceBody("i1", 1, "w1"))
+    voice = _env(EnvelopeKind.USER_UTTERANCE, E.UtteranceBody("i1", "w1"))
     text = _env(EnvelopeKind.USER_TEXT, E.TextBody("i2", "w2"), Channel.TEXT)
     result = _env(EnvelopeKind.WORKER_UPDATE, E.WorkerBody("t1", WorkerUpdate.RESULT, "w3"))
     live, closed, blocked = Device("d1", True, True), Device("d1", True, False), Device("d1", True, True, True)
@@ -116,7 +116,7 @@ def test_the_reply_channels_follow_the_table_and_never_the_content():
     assert choose((text,), live, text_gets_voice=False).channels == {"text"}
     assert choose((text,), Device("d1")).channels == {"text"}
     assert choose((result,), blocked).channels == {"text"} and choose((result,), live).channels == {"voice", "text"}
-    same = _env(EnvelopeKind.USER_UTTERANCE, E.UtteranceBody("i3", 1, "please answer only in text"))
+    same = _env(EnvelopeKind.USER_UTTERANCE, E.UtteranceBody("i3", "please answer only in text"))
     assert choose((same,), live) == choose((voice,), live)
 
 
