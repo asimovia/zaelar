@@ -69,7 +69,8 @@ def test_a_continuation_before_publication_substitutes_the_run_and_both_seal_tog
     h.utter([(["w1", "w2"], 0)])
     last = h.model.calls[-1].prompt.input
     assert "«w1 w2»" in last and "«w3 w4»" in last                         # one prompt, both entries
-    assert len(h.mouth.orders) == 1 and "conv_run/superseded" in h.tel.labels()
+    assert len(h.mouth.orders) == 1
+    assert {"conv_run/superseded", "conv_run/held"} & set(h.tel.labels())   # the first run gave its batch back
     sealed = [p["refs"]["iv"] for k, lab, p in h.tel.events if k == "conv_effect" and lab == "sealed"]
     assert sorted(sealed) == sorted(["iv_000001", next(iv for iv in sealed if iv != "iv_000001")])
     assert [lab for lab, _ in h.closes()] == ["answered", "answered"]

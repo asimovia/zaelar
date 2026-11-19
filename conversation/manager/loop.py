@@ -48,6 +48,9 @@ class Running:
     claimed: bool = False
     interrupt: str | None = None          # superseded · cancelled · stalled
     actions_held: bool = False
+    last_entry_ms: int = 0                # the latest close among the person's entries in the batch
+    last_endpoint: str | None = None      # …and the device it came from
+    resumed_iv: str | None = None         # the resumed voice that stopped this run
     presents: str | None = None
     said: list = field(default_factory=list)
 
@@ -81,6 +84,8 @@ class Conversation:
         self._swept_at = -1 << 62
         self._pruned_at = -1 << 62
         self._voice_wait: int | None = None  # a run gave its batch back on a held act: nothing runs until that voice ends
+        self._held_iv: str | None = None     # a run gave its batch back to a resumed voice: nothing runs while it is open
+        self.eligible_since = 0              # when the last held batch became eligible again (liveness counts from it)
         self.recover()
 
     # ── a new owner of the account ──────────────────────────────────────────────────────────────────────────────
@@ -145,8 +150,11 @@ class Conversation:
             elif op is Op.DUCK:
                 self.speaker.duck(o.endpoint)
             elif op is Op.HOLD_ACTIONS and self.current is not None:
-                self.current.actions_held = True        # unclaimed actions wait: the gateway answers Held (M5)
+                self.current.actions_held = True        # unclaimed actions wait: the gateway answers Held
                 dispatch.hold(self.gw, self.ids.new("hold"), o.endpoint, self.clock.now_ms(), "onset")
+        if self.current is not None and run.resumed(self, self.current, o.endpoint, o.t_ms):
+            self.current.interrupt = "resumed"          # stop it at its next checkpoint; its batch waits for that voice
+            self.current.resumed_iv = o.intervention_id
 
     def _voice_done(self, endpoint: str) -> None:
         if endpoint in self.speaking_on:
@@ -158,6 +166,12 @@ class Conversation:
             self.current.actions_held = False
         if not self.speaking_on:
             self._voice_wait = None
+
+    def hold_for(self, iv: str) -> None:
+        """A run gave its batch back to the person's resumed voice: nothing runs while that voice is open. The ear
+        always ends it (its cap, on the sweep's ticks): then the continuation travels with the batch, or — a cough,
+        no words — the batch runs as it was."""
+        self._held_iv = iv
 
     def wait_for_voice(self) -> None:
         """A run met a held act (NM1): the batch is back in the queue and runs again when the person has finished —
@@ -173,7 +187,8 @@ class Conversation:
                 if self.state is MgrState.SPEAKING:   # our voice is stopped: we are not speaking, ack or no ack
                     self.state = MgrState.IDLE
             elif op in (Op.SUPERSEDE, Op.AT_CHECKPOINT) and self.current is not None and not self.current.claimed:
-                self.current.interrupt = "superseded"
+                if self.current.interrupt != "resumed":   # already held for this voice: the hold carries it
+                    self.current.interrupt = "superseded"
             elif op is Op.CANCEL_RUN and self.current is not None:
                 self.current.interrupt = "cancelled"
             elif op is Op.BY_ID:
@@ -275,6 +290,10 @@ class Conversation:
                 await dispatch.submit(self.gw, self.tools, eid, self.clock.mono_ms() + self.cfg.tool_ms)
             if self.state not in (MgrState.IDLE, MgrState.COLLECTING):
                 return runs
+            if self._held_iv is not None:
+                if self._held_iv in self.ear.open_ids():
+                    return runs
+                self._held_iv, self.eligible_since = None, now
             if self._voice_wait is not None:
                 if self.speaking_on and now - self._voice_wait < self.cfg.cross_channel_hold_ms:
                     return runs

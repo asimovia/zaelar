@@ -66,12 +66,16 @@ def close(conv: "Conversation", req: str, to: str, label: str, **metrics) -> boo
 
 
 def sweep_liveness(conv: "Conversation", now: int) -> None:
-    """I9: a request still open past the budget — counted from when it was SEALED (accepted complete) — is closed
-    `stalled`, the run in course too: its run is stopped at the next checkpoint."""
+    """I9: a request still open past the budget — counted from when its batch could run (accepted complete, or
+    released by a resumed voice that held it) — is closed `stalled`, the run in course too: its run is stopped at the
+    next checkpoint. While a resumed voice holds the batch, the person is still speaking: no request is stalled."""
+    if conv._held_iv is not None:
+        return
     running = set(conv.current.requests) if conv.current else set()
     for _k, row in conv.book.snapshot().scan("items"):
+        start = max(row["data"].get("sealed_ms", row["created_ms"]), conv.eligible_since)
         if (row["kind"] == str(ItemKind.REQUEST) and row["state"] == "open"
-                and now - row["data"].get("sealed_ms", row["created_ms"]) >= conv.cfg.liveness_ms):
+                and now - start >= conv.cfg.liveness_ms):
             if close(conv, row["id"], "failed", "stalled", reason="stalled") and row["id"] in running:
                 conv.current.interrupt = "stalled"
 
@@ -87,9 +91,11 @@ async def run_batch(conv: "Conversation", batch: Batch) -> None:
     endpoint = next((e.endpoint for e in users if e.endpoint), None)
     reqs = _requests(batch)
     run_id = conv.ids.new("run")
+    last = max(users, key=lambda e: e.sealed_ms, default=None)
     r = Running(run_id, tuple(e.id for e in batch.envelopes), reqs,
                 RunCtx(run_id, reqs[0] if reqs else run_id, {e.id: e for e in batch.envelopes}, endpoint),
-                batch_seq=batch.run_seq)
+                batch_seq=batch.run_seq, last_entry_ms=last.sealed_ms if last else 0,
+                last_endpoint=last.endpoint if last else None)
     conv.current, conv.state = r, MgrState.RUNNING_UNCLAIMED
     _emit(conv, "started", r, batch_envs=list(r.batch_ids), reason=batch.reason)
     _emit(conv, "input", r, text=[getattr(e.body, "text", None) for e in batch.envelopes])
@@ -151,9 +157,32 @@ def _keep_held(conv: "Conversation", r: "Running", call: ToolCall) -> None:
                      onset_ms=now, sealed_ms=now, surfacing=Surfacing.WHEN_IDLE, must_tell=True))
 
 
+def resumed(conv: "Conversation", r: "Running", endpoint: str | None, t_ms: int) -> bool:
+    """The person speaks again on the device of the batch's last entry, within the window of it, and the run has not
+    published: the publication waits for that voice (it may be the rest of the sentence). «Not published» needs no
+    flag: a run is held only at its checkpoints and at the check right before it seals, all before its line."""
+    return (not r.claimed and endpoint is not None and endpoint == r.last_endpoint
+            and 0 <= t_ms - r.last_entry_ms <= conv.cfg.resume_window_ms)
+
+
+def _resumed_voice(conv: "Conversation", r: "Running") -> str | None:
+    """The check repeated right before sealing: a voice opened after the batch's last entry, still open."""
+    found = conv.ear.open_intervention(r.last_endpoint) if r.last_endpoint else None
+    return found[0] if found and resumed(conv, r, r.last_endpoint, found[1]) else None
+
+
+def _hold(conv: "Conversation", r: "Running", iv: str | None) -> None:
+    conv.inbox.requeue(list(r.batch_ids))
+    _emit(conv, "held", r, waits_for=iv)
+    conv.hold_for(iv)
+
+
 def _checkpoint(conv: "Conversation", r: "Running") -> None:
     if r.interrupt is None:
         return
+    if r.interrupt == "resumed" and not r.claimed:
+        _hold(conv, r, r.resumed_iv)               # the run stops; its batch waits for that voice
+        raise _Stop()
     if r.interrupt in ("superseded", "held") and not r.claimed:
         conv.inbox.requeue(list(r.batch_ids))
         _emit(conv, "superseded", r, reason=r.interrupt)
@@ -318,6 +347,10 @@ def _seal_batch(conv: "Conversation", r: "Running", batch: Batch) -> bool:
     is fenced."""
     ivs = [env.refs.intervention_id for env in batch.envelopes
            if env.is_user and env.kind in (EnvelopeKind.USER_UTTERANCE, EnvelopeKind.USER_TEXT)]
+    waits = _resumed_voice(conv, r)
+    if waits is not None:                          # he spoke again after the last checkpoint: hold, never publish
+        _hold(conv, r, waits)
+        raise _Stop()
     if not conv.gw.seal_publication(r.ctx, ivs):
         _emit(conv, "fenced", r)
         return False

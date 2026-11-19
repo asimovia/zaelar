@@ -191,8 +191,11 @@ class Ear:
                 self._incomplete(v, t, "no_final", out)
         elif v.watermark_ms is not None and t - max(v.watermark_ms, v.onset_ms) >= self.cfg.stall_ms:
             # a stream that stopped beating — measured from this voice's onset at the earliest: a watermark left
-            # from before it (the stream idle between interventions) is no stall of this one
-            self._incomplete(v, t, "stalled", out)
+            # from before it (the stream idle between interventions) is no stall of this one. No words: nothing to end.
+            if self.spans.words(v.iv):
+                self._incomplete(v, t, "stalled", out)
+            else:
+                self._discard_empty(v, t, out)
 
     def _close(self, v: _Voice, t: int, by: str, out: list) -> None:
         v.state, v.closed_ms, v.previous = IvState.CLOSED, t, v.iv

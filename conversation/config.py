@@ -19,10 +19,10 @@ class Config:
     patience_ms: dict = field(default_factory=lambda: {"number": 1200, "date": 1000, "spelled": 1500})
     #: the provider sends a watermark every ~240 ms even in silence (A2); four missed beats is a stalled stream (A6).
     stall_ms: int = 1000
-    #: the same person speaking again on the same device within this window of an entry's close, while its run has
-    #: not published, stops that run and makes its batch wait for that voice (the continuation travels with it).
-    #: Default = the close cap; P4 sets it.
-    resume_window_ms: int = 2500
+    #: the same person speaking again on the same device within this window of the batch's last entry, while its run
+    #: has not published, stops that run and makes its batch wait for that voice (the continuation travels with it).
+    #: Never shorter than the model's first-event deadline: a run can take that long before it publishes. P4 sets it.
+    resume_window_ms: int = 20_000
     # ── the inbox ──
     #: typed messages sent within this window travel in one batch (the 0.35 s debounce, moved from the ear: PA-4).
     collect_ms: int = 350

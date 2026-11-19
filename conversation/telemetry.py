@@ -35,7 +35,7 @@ class InboxLabels(_Labels):
 class RunLabels(_Labels):
     STARTED, INPUT, PROMPT, MODEL_FIRST_TOKEN = "started", "input", "prompt", "model_first_token"
     MODEL_DONE, COMMAND, SUPERSEDED, FENCED = "model_done", "command", "superseded", "fenced"
-    CANCELLED, PORT_SLOW, ENDED = "cancelled", "port_slow", "ended"
+    CANCELLED, PORT_SLOW, ENDED, HELD = "cancelled", "port_slow", "ended", "held"
 
 
 class LedgerLabels(_Labels):

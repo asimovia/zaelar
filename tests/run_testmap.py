@@ -9044,6 +9044,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/conversation/unit/test_an_ended_request_keeps_its_intervention.py"]},
         {"id": "13.28", "title": "The sweep's cost follows what is in course: what is done and older than retain_ms leaves the live tables (inbox, items, says, interventions, all but the newest turns); an archived envelope re-delivered is still a duplicate; nothing in course is archived",
             "ch": UNIT, "paths": ["tests/conversation/unit/test_the_sweep_keeps_the_live_tables_small.py"]},
+        {"id": "13.29", "title": "The publication waits for the person's resumed voice (V3-B1): on the device of the batch's last entry, within resume_window_ms (never shorter than the model's first deadline), an unpublished run stops at its checkpoint — and again right before sealing — and its batch waits while that voice is open; with words both reach the model in one prompt and nothing is said before, a cough lets the batch run as it was, a voice that never ends is ended by the ear; another device, outside the window or a run that acted: no hold; no request stalls while held; s2 replayed at 0.8 and 1.5 s says nothing over a resumed voice",
+            "ch": UNIT, "paths": ["tests/conversation/unit/test_the_publication_waits_for_resumed_voice.py"]},
         {"id": "13.26", "title": "P3 full profile, the bench: 100,000 seeded cases with rotated seeds, a JSON report of counts and violations by invariant with their seeds (by request, never in the gate)",
             "ch": UNIT, "live": True, "cmd": "./.venv/bin/python -m tests.conversation.benchmarks.bombardment --cases 100000 --out <report.json>",
             "paths": ["tests/conversation/benchmarks/bombardment.py"]},
