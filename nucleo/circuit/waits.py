@@ -25,9 +25,10 @@ def _settle(**kw) -> None:
     circuit.settle(**kw)
 
 
-#: What a task can wait for (V2-851 §3): `user_answer` (his answer), `worker`, `send_echo`, `time` or `event:<topic>`.
+#: What a task can wait for (V2-851 §3): `user_answer` (his answer), `reply`, `worker`, `send_echo`, `time` or `event:<topic>`.
 #: The engine is the only writer of this field, so it is named by its writers, not filtered through a list here.
 USER_ANSWER = "user_answer"
+REPLY = "reply"   # a message really went out and the OTHER PARTY has the next word (an errand, INI-042 #26)
 
 def waiting(task_id: str, waiting_for: str, ask_id: str = "", ask: str = "", *, now: float | None = None,
             quiet: bool = False) -> bool:

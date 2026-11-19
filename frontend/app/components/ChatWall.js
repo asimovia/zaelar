@@ -276,11 +276,11 @@ export function ChatWall() {
     return m < 60 ? m + " min" : Math.floor(m / 60) + " h " + (m % 60) + " min";
   };
   const liveRow = (task) => {
-    const icon = task.waiting ? "waiting" : task.paused ? "paused" : "run";
-    const gl = task.waiting ? "⏳" : task.paused ? "⏸" : "●";
+    const icon = task.waiting ? "waiting" : task.reply ? "reply" : task.paused ? "paused" : "run";   // reply: INI-042 #26
+    const gl = task.waiting ? "⏳" : task.reply ? "✉" : task.paused ? "⏸" : "●";
     const title = (task.title || "").trim() || (task.note || "").trim() || t("chat.working");
     const note = (task.note || "").trim();
-    const state = task.waiting ? t("chat.waitingYou") : task.paused ? t("chat.paused") : t("chat.running");
+    const state = task.waiting ? t("chat.waitingYou") : task.reply ? t("chat.sentAwaitingReply") : task.paused ? t("chat.paused") : t("chat.running");
     const meta = [
       state,
       task.stepTag || "",
@@ -410,7 +410,7 @@ export function ChatWall() {
     id: r.id, session: r.session || "", title: r.title || r.goal || "", note: r.note || r.phase || "",
     startedAt: r.started_at ? r.started_at * 1000 : null,
     pct: typeof r.pct === "number" ? r.pct : -1, stepTag: "",
-    waiting: r.state === "waiting" || r.waiting_on === "user", paused: !!r.paused,
+    waiting: (r.state === "waiting" && r.waiting_for !== "reply") || r.waiting_on === "user", reply: r.waiting_for === "reply", paused: !!r.paused,
     internal: r.visible === false,
     silentS: typeof r.silent_s === "number" ? r.silent_s : 0, attempts: r.attempts || 0,
   });

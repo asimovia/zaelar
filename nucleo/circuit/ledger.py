@@ -20,7 +20,7 @@ from nucleo.circuit import progress as _progress   # every door that moves a row
 from nucleo.runtime_ids import boot_id as _boot_id
 ENDINGS = _ts.DONE_STATES   # the states a row ENDS in — the store's own, never a second copy
 # What a task waits for, and the pulse's reads of the waits that are due, live in their own file (V2-851 §3).
-from nucleo.circuit.waits import (ANSWER_WAIT_DAYS, ANSWER_WAIT_KEY, USER_ANSWER, WORKER,  # noqa: F401
+from nucleo.circuit.waits import (ANSWER_WAIT_DAYS, ANSWER_WAIT_KEY, REPLY, USER_ANSWER, WORKER,  # noqa: F401
                                   WORKER_DEATHS_RESUMED, WORKER_RESUME_AFTER_S, answer_wait_s, expired_waits,
                                   resumed, waiting, worker_died, worker_resumes_due)
 
@@ -494,6 +494,8 @@ def remembered(rec, *, state: str = "done", outcome: str = "") -> None:
 #: different answer to «is this still going?».
 _ERRAND_STATE = {"gathering": "running", "contacting": "running", "negotiating": "running",
                  "agreed": "running", "closed": "done", "abandoned": "cancelled", "blocked": "failed"}
+#: …but once its message went out the other party has the next word: the row WAITS for a `reply` (INI-042 #26).
+_AWAITS_REPLY = ("contacting", "negotiating")
 
 
 def errand_uid(errand_id) -> str:
@@ -518,13 +520,14 @@ def errand_mirrored(row: dict) -> None:
     state = _ERRAND_STATE.get(str(row.get("state") or ""), "running")
     closed = int(row.get("closed_at") or 0)
     uid = errand_uid(row["id"])
+    awaits, before = state == "running" and row.get("state") in _AWAITS_REPLY, _ts.task_get(uid) or {}
     _ts.task_put({
         "id": uid,
         "title": str(row.get("title") or row.get("objective") or ""),
         "goal": str(row.get("objective") or ""),
         "kind": "encargo",
         "mode": "now",
-        "state": "running",              # live; its ending is settled below, and an ended row is never rewound
+        "state": "waiting" if awaits else "running",   # live; its ending is settled below, an ended row is never rewound
         "visible": True,
         "origin": "voz",
         "surface": "voz",
@@ -533,6 +536,8 @@ def errand_mirrored(row: dict) -> None:
         "created_at": int(row.get("created_at") or 0),
         "started_at": int(row.get("created_at") or 0),
     })
+    if awaits != (before.get("waiting_for") == REPLY):          # its clock is kept while it still waits for the reply
+        _ts.task_patch(uid, waiting_for=REPLY if awaits else "", waiting_since=int(time.time()) if awaits else None)
     if state != "running":
         _settle(row=uid, state=state, outcome=str(row.get("outcome") or "")[:400], now=closed or None)
 

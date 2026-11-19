@@ -222,7 +222,7 @@ def test_an_open_errand_gets_a_row_in_PROCESOS(er):
     assert len(rows) == 1
     row = rows[0]
     assert row["id"] == _tasks.errand_uid(a["id"]) and row["kind"] == "encargo"
-    assert row["state"] == "running" and row["visible"] is True
+    assert row["state"] == "waiting" and row["waiting_for"] == _tasks.REPLY and row["visible"] is True   # INI-042 #26
     assert "esperando respuesta" in row["phase"]
 
 

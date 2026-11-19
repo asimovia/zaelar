@@ -168,7 +168,7 @@ TASKS_V9_COLUMNS = [
 # in a RAM registry a restart empties (the session is a cache; the row and the memory are the truth):
 #   · `session_id`, `cwd`        the worker harness's resumable session and its working directory (a harness resumes
 #                                by id but does not keep the cwd)
-#   · `waiting_for`              user_answer | worker | send_echo | time | event:<topic>, set with `state='waiting'`
+#   · `waiting_for`              user_answer | reply | worker | send_echo | time | event:<topic>, set with `state='waiting'`
 #   · `waiting_since`, `deadline` when the wait began, and when it ends (the pulse settles it `cancelled` past it)
 #   · `ask_id`, `ask`            the durable question the task waits on: its id and its text
 #   · `playbook`                 the skeleton the task follows

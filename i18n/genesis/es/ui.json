@@ -139,6 +139,7 @@
  "chat.title": "Chat",
  "chat.undock": "Soltar la columna (volver al chat flotante)",
  "chat.waitingYou": "esperando tu respuesta",
+ "chat.sentAwaitingReply": "enviado · esperando respuesta",
  "chat.widgetConfirmQ": "¿Lo confirmo?",
  "chat.working": "trabajando…",
  "chat.yes": "Sí",

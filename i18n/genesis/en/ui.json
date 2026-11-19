@@ -139,6 +139,7 @@
  "chat.title": "Chat",
  "chat.undock": "Undock (back to the floating chat)",
  "chat.waitingYou": "waiting for you",
+ "chat.sentAwaitingReply": "sent · awaiting reply",
  "chat.widgetConfirmQ": "Do you confirm?",
  "chat.working": "working…",
  "chat.yes": "Yes",

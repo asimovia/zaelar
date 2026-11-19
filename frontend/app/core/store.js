@@ -379,7 +379,7 @@ export const reconcileTasks = (sessions) => {
       // 🏷️ event already delivered — caught by the mounted test before it shipped.
       return s ? { ...t, title: s.title || t.title || s.goal, note: s.phase || s.note || t.note,
                    startedAt: _startedAt(s, t.startedAt), internal: s.visible === false,
-                   waiting: (s.waiting_on === "user" || s.state === "waiting"), paused: !!s.paused } : t;
+                   waiting: (s.waiting_on === "user" || (s.state === "waiting" && s.waiting_for !== "reply")), reply: s.waiting_for === "reply", paused: !!s.paused } : t;
     });
     const known = new Set(kept.map(t => String(t.id)));
     const added = [];
@@ -392,7 +392,7 @@ export const reconcileTasks = (sessions) => {
       added.push({ id, title: s.title || s.goal || "", note: s.phase || s.note || "", done: false,
                    startedAt: _startedAt(s, Date.now()), internal: s.visible === false,
                    side: (i++ % 2 === 0) ? "l" : "r", delay: 0, hue: 0,
-                   waiting: (s.waiting_on === "user" || s.state === "waiting"), paused: !!s.paused });
+                   waiting: (s.waiting_on === "user" || (s.state === "waiting" && s.waiting_for !== "reply")), reply: s.waiting_for === "reply", paused: !!s.paused });
     }
     return [...kept, ...added];
   });
