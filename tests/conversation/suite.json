@@ -121,6 +121,11 @@
       "kind": "unit"
     },
     {
+      "id": "13.23",
+      "label": "P8: a crash at any transition recovers",
+      "kind": "unit"
+    },
+    {
       "id": "13.24",
       "label": "Every stage emits its event (§8)",
       "kind": "unit"

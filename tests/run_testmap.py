@@ -9046,6 +9046,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/conversation/unit/test_recorded_sessions_replay_clean.py"]},
         {"id": "13.21", "title": "Privacy of the P2 fixtures: every string is a token or the converter's structure (no name, word, account or session id), times are relative to the session's first event",
             "ch": UNIT, "paths": ["tests/conversation/unit/test_recorded_fixtures_carry_no_words.py"]},
+        {"id": "13.23", "title": "P8 skeleton: the process dies before or after each transition (accept, close, seal, reserve, submit, the provider's answer, the recorded receipt, a playout ack) and a new one takes the same sqlite file: it recovers what the dead one left (a dequeued batch back to the queue, an effect left submitting → submission_unknown), no effect reaches the provider twice, an unknown submission is never resent, every request ends and the inbox drains clean; provider-side faults (duplicated or out-of-order webhooks, a late callback, a restored database) declared for F2",
+            "ch": UNIT, "paths": ["tests/conversation/unit/test_a_crash_at_any_transition_recovers.py"]},
     ]},
 ]
 
