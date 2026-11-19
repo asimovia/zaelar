@@ -20,6 +20,7 @@ import { wirePresence, presenceEvent, onStreamOpen, onStreamError, syncRunState 
 import { snapshotAll } from "../widgets/state-reporter.js?v=1";
 import { orderAck, reportAll } from "../widgets/screen-order.js?v=1";
 import { a2aEvent } from "../components/A2AView.js?v=1";
+import { createTypedEcho } from "./typed-echo.js?v=1";
 
 
 // V2-464 — SHOWCASE mode: ?showcase=1 in the URL. The use-case recorder (recorder.py) uses it to keep the chat
@@ -126,6 +127,7 @@ export function openSSE(desktop, { wake = false } = {}) {
 // so on the wire it is `d.src`, never `d.extra.src` — reading the nested spelling found nothing, silently:
 // after a factory reset the mic and speaker stayed muted (hb:language-ready never fired, measured 2026-09-25),
 // and the Energy battery never dropped live. The nested read stays only as a fallback for a hand-built event.
+const typedEcho = createTypedEcho();
 function field(d, key) {
   if (d && d[key] !== undefined) return d[key];
   return ((d && d.extra) || {})[key];
@@ -309,12 +311,10 @@ export function routeEvent(desktop, d) {
         // of them still landed in the chat as if he had said it). So a spoken turn is HELD until the verdict
         // says it was for us; typed text bypasses the hold, being directed by construction.
         if (typed) {
-          // V2-773 — the engine now announces every typed line (`text-injected chat`), so a tab that did not
-          // type it (his Chrome while an orchestrator drives the agent) paints it too. The tab that typed it
-          // already pushed its own bubble in `submitChat`: an identical last line of his is that one, not a repeat.
+          // V2-773 — the engine announces every typed line (`text-injected chat`), so a tab that did not type it
+          // paints it too; the tab that typed it already has its bubble (`submitChat`) — `typed-echo.js`, INI-042 #36.
           const xs = (store.chatMsgs && store.chatMsgs()) || [];
-          const last = xs[xs.length - 1];
-          if (!(last && last.role === "you" && last.text === d.text)) store.pushChat({ role: "you", text: d.text });
+          if (typedEcho(d.text, field(d, "dev"), DEVICE, xs)) store.pushChat({ role: "you", text: d.text });
         }
         else {
           // The FINAL text firms up the caption while the verdict is still pending — the interim stream has

@@ -23,7 +23,7 @@ def test_a_typed_line_reaches_every_wall_and_the_typing_tab_paints_it_once() -> 
     every reply was on his wall and none of the orders. `sse.js` had been waiting for a `text-injected`
     transcript nobody emitted; the tab that types paints its own bubble and no other tab ever heard of it.
     Now the engine announces every typed line the way the STT announces a final transcript, and the tab that
-    typed it recognises its own last line instead of painting it twice."""
+    typed it recognises its own line instead of painting it twice."""
     root = Path(__file__).resolve().parents[4]
     # The typed door moved out of agent.py into its own module when the entrypoint was split; the emit carries the
     # screen that typed (`extra=_dev`, V2-792), so the check reads the call up to its keyword arguments.
@@ -35,6 +35,6 @@ def test_a_typed_line_reaches_every_wall_and_the_typing_tab_paints_it_once() -> 
     assert '(d.label || "").startsWith("text-injected")' in sse, "the wall reads the typed label by prefix"
     j = sse.index("if (typed) {")
     block = sse[j:j + 700]
-    assert 'store.chatMsgs' in block and 'last.role === "you" && last.text === d.text' in block, (
-        "the typing tab must recognise its own bubble, or every typed line paints twice there")
+    assert 'store.chatMsgs' in block and 'typedEcho(d.text, field(d, "dev"), DEVICE, xs)' in block, (
+        "the typing tab must recognise its own bubble, or every typed line paints twice there (`typed-echo.js`)")
     assert 'store.pushChat({ role: "you", text: d.text })' in block
