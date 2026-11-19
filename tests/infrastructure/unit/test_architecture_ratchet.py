@@ -501,6 +501,9 @@ _PACKAGE_CEILINGS["widgets"] += 1        # same cause: the widget scan and the c
 _TOTAL_MAX += 44    # 2026-11-19 INI-042 #47 (3.244): a close-all counts the native surface over the canvas — `screen_doc.panel_over` and the receipt's panel (`bulk_close`, `card_receipt`)
 _PACKAGE_CEILINGS["nucleo/flash"] += 35   # same cause
 _PACKAGE_CEILINGS["widgets"] += 9         # same cause: `screen_doc.panel_over`
+_TOTAL_MAX += 212   # 2026-11-19 INI-042 #34 remains (3.245): three loop stalls moved off the loop — the voice LLM's vendor SDKs warmed at boot in a thread (`server/boot/warm_imports.py`), libtorrent looked up by `find_spec` and imported in a thread, an empty messaging queue in an unchanged store not re-read
+_PACKAGE_CEILINGS["server"] += 111        # same cause: `server/boot/warm_imports.py` and its boot call
+_PACKAGE_CEILINGS["connectors"] += 86     # same cause: the store's queued-fields index + the drains' guard, the torrent client's off-loop import
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

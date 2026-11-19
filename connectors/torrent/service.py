@@ -45,7 +45,8 @@ def enabled() -> bool:
 
 def available() -> bool:
     """Usable at all? The wheel imported AND the operator has it switched on."""
-    return session.available() and enabled()
+    # The switch first: it is a config read, and where it is off (a hosted account) the wheel is never even looked for.
+    return enabled() and session.available()
 
 
 def unavailable_reason() -> str:

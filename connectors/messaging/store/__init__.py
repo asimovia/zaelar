@@ -19,6 +19,7 @@
 #   fanout.py  — directory / archive / memory copies   sync.py   — what the connector reports back
 #   queues.py  — the orders the widget leaves and a connector drains
 #
+import os
 import time
 
 WIDGET_ID = "mensajeria"
@@ -60,7 +61,38 @@ def _thread():
     return thread
 
 
+# WHICH QUEUES HOLD SOMETHING, per version of the file (INI-042 #34). The owner's beat drains a dozen queues every
+# tick on the engine's loop thread, and each `take_*` used to parse the WHOLE store (every message, thread and
+# ledger row) to find an empty list: 2.4 s of a frozen loop measured on a hosted account. `load()` notes, for the
+# file it just read, which `pending_*` fields were non-empty; a drain whose field was empty in a file that has not
+# changed since (same inode, mtime and size — every write is an atomic replace, so a write always moves them)
+# answers «nothing» without reading it. Only the real `load` records, and the shortcut is off while a test has
+# patched `load`, so a patched store is always read.
+_SEEN: dict = {"sig": None, "queued": frozenset()}
+
+
+def _sig():
+    p = _wstore()._path(WIDGET_ID)
+    st = os.stat(p) if os.path.exists(p) else None     # replaced atomically, so it never vanishes between the two
+    return (st.st_ino, st.st_mtime_ns, st.st_size) if st else None
+
+
+def _real_io() -> bool:
+    """The shortcut trusts the file only while every reader and writer of it is the real one (no test double)."""
+    w = _wstore()
+    return load is _REAL_LOAD and getattr(w.load, "__module__", "") == w.__name__ == getattr(w.save, "__module__", "")
+
+
+def nothing_queued(field: str) -> bool:
+    """True only when the file is unchanged since a `load()` that saw `field` empty — then a drain can skip it."""
+    if not _real_io():
+        return False
+    sig = _sig()
+    return sig is not None and sig == _SEEN["sig"] and field not in _SEEN["queued"]
+
+
 def load() -> dict:
+    sig = _sig()                    # BEFORE the read: a write racing it leaves a stale sig, never a stale verdict
     db = _wstore().load(WIDGET_ID, _empty())
     if not isinstance(db.get("platforms"), dict):
         db["platforms"] = {}
@@ -79,7 +111,12 @@ def load() -> dict:
     if not isinstance(db.get("taken"), list):
         db["taken"] = []
     db.setdefault("updated", "")
+    _SEEN["sig"] = sig if _real_io() else None
+    _SEEN["queued"] = frozenset(k for k, v in db.items() if k.startswith("pending_") and v)
     return db
+
+
+_REAL_LOAD = load
 
 
 def save(db: dict) -> dict:

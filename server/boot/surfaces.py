@@ -95,6 +95,12 @@ def voice_worker(app) -> None:
     # `/api/turn/stream`. `ZAELAR_VOICE_EMBEDDED=1` keeps the pre-V2-891 shape: the AgentServer EMBEDDED in this
     # process (job_executor_type=THREAD). Either way it is `app.state.lk_server`/`lk_task` for the heartbeat.
     if os.getenv("ZAELAR_ENGINE", "livekit").lower() == "livekit":
+        # INI-042 #34: the first session's LLM build imported the vendor SDKs ON the loop (4.6 s) — warm them now.
+        try:
+            from server.boot import warm_imports
+            app.state.warm_voice_sdks = warm_imports.start()
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"voice LLM vendor warm not started: {e}")
         try:
             from voice import child_process
             _lk = child_process.factory()()

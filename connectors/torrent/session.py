@@ -28,23 +28,64 @@ _handles: dict = {}        # info_hash (v1 hex) -> {"h": torrent_handle, "file":
 _import_error = ""         # remembered so the facade can say WHY it is off, once
 
 
+_lt_mod = None             # the imported module once an import succeeded
+_lt_tried = False          # an import (successful or not) has finished
+_lt_warming: threading.Thread | None = None
+
+
 def _lt():
-    """Import libtorrent once, remembering failure. Returns the module or None (never raises)."""
-    global _import_error
+    """Import libtorrent once, remembering failure. Returns the module or None (never raises).
+
+    Only the paths that really DRIVE a download call this (add, status of a live handle, stream, remove), so the
+    import cost lands on whoever is about to download, never on a card that only paints."""
+    global _import_error, _lt_mod, _lt_tried
+    if _lt_tried:
+        return _lt_mod
     try:
         import libtorrent as lt
-        return lt
+        _lt_mod = lt
     except Exception as e:  # noqa: BLE001 — a missing/broken wheel disables the feature, it does not crash boot
         _import_error = str(e)[:200]
-        return None
+    _lt_tried = True
+    return _lt_mod
+
+
+def _warm_in_background() -> None:
+    """Start the real import in a daemon thread, once — the next question after it finishes is answered exactly."""
+    global _lt_warming
+    with _lock:
+        if _lt_tried or (_lt_warming is not None and _lt_warming.is_alive()):
+            return
+        _lt_warming = threading.Thread(target=_lt, name="torrent-import", daemon=True)
+        _lt_warming.start()
 
 
 def available() -> bool:
-    return _lt() is not None
+    """Is the client installed? Answered WITHOUT importing libtorrent (INI-042 #34).
+
+    Painting Archivos asks this, on the engine's loop thread, and `import libtorrent` costs ~2 s cold (measured
+    2.2 s on a hosted account with the whole loop frozen). Until the real import has run, the answer is whether the
+    wheel is INSTALLED (`find_spec` locates it without executing it) and the import is started off the loop; once
+    it has run, its result is the answer — so a wheel that is present but broken reads as available for one paint
+    and as unavailable from then on, and a download attempt meanwhile fails with the import's own reason."""
+    if _lt_tried:
+        return _lt_mod is not None
+    try:
+        import importlib.util
+        present = importlib.util.find_spec("libtorrent") is not None
+    except (ImportError, ValueError):
+        present = False
+    if not present:
+        global _import_error
+        _import_error = _import_error or "No module named 'libtorrent'"
+        return False
+    _warm_in_background()
+    return True
 
 
 def import_error() -> str:
-    _lt()
+    """Why the client is off. Cheap: never imports on the caller's thread when the wheel is absent."""
+    available()
     return _import_error
 
 

@@ -6,6 +6,8 @@ import time
 def take_pending_history(platform: str | None = None) -> list[dict]:
     """Return (and REMOVE) 'load previous' orders enqueued by the widget: {platform, chatId, beforeTs, beforeId,
     limit}. Same drain contract as the other queues."""
+    if _svc.nothing_queued("pending_history"):     # INI-042 #34: an empty queue in an unchanged file is not re-read
+        return []
     db = _svc.load()
     pending = db.get("pending_history", [])
     if platform is None:
@@ -21,6 +23,8 @@ def take_pending_history(platform: str | None = None) -> list[dict]:
 
 def take_pending_group() -> list[dict]:
     """Return (and REMOVE) group-creation orders enqueued by the widget's `create_group`."""
+    if _svc.nothing_queued("pending_group"):     # INI-042 #34: an empty queue in an unchanged file is not re-read
+        return []
     db = _svc.load()
     pending = db.get("pending_group", [])
     if pending:
@@ -31,6 +35,8 @@ def take_pending_group() -> list[dict]:
 
 def take_pending_group_leave() -> list[dict]:
     """Return (and REMOVE) group-leave orders enqueued by the widget's `leave_group`: {platform, ref, chats}."""
+    if _svc.nothing_queued("pending_group_leave"):     # INI-042 #34: an empty queue in an unchanged file is not re-read
+        return []
     db = _svc.load()
     pending = db.get("pending_group_leave", [])
     if pending:
@@ -42,6 +48,8 @@ def take_pending_group_leave() -> list[dict]:
 def take_pending_chats() -> list[dict]:
     """Return (and REMOVE) chat-list page orders: {platform, before, limit}. Enqueued by the widget, published to
     `msg.chats` by the owner, served by that platform's connector."""
+    if _svc.nothing_queued("pending_chats"):     # INI-042 #34: an empty queue in an unchanged file is not re-read
+        return []
     db = _svc.load()
     pending = db.get("pending_chats", [])
     if pending:
@@ -53,6 +61,8 @@ def take_pending_chats() -> list[dict]:
 def take_pending_fetch() -> list[dict]:
     """Return (and REMOVE) platform-wide pull orders (V2-624): {platform, since_hours}. Enqueued by the
     widget's `fetch_now`, published to `msg.fetch` by the owner, served by that platform's connector."""
+    if _svc.nothing_queued("pending_fetch"):     # INI-042 #34: an empty queue in an unchanged file is not re-read
+        return []
     db = _svc.load()
     pending = db.get("pending_fetch", [])
     if pending:
@@ -65,6 +75,8 @@ def take_pending_fetch() -> list[dict]:
 def take_pending_read(platform: str | None = None) -> list[dict]:
     """Return (and REMOVE) pending_read keys; if `platform` is given, only its own. Each connector calls with its
     platform, marks read in its app, and if it fails, re-enqueues with requeue_pending_read()."""
+    if _svc.nothing_queued("pending_read"):     # INI-042 #34: an empty queue in an unchanged file is not re-read
+        return []
     db = _svc.load()
     pending = db.get("pending_read", [])
     if platform is None:
@@ -82,6 +94,8 @@ def take_pending_disposal(kind: str, platform: str | None = None) -> list[dict]:
     `pending_archive`/`pending_trash`, enqueued by the widget's actions and drained through the owner into the
     bus (msg.archive / msg.trash), where the platform's connector executes them for real."""
     field = f"pending_{kind}"
+    if _svc.nothing_queued(field):     # INI-042 #34: an empty queue in an unchanged file is not re-read
+        return []
     db = _svc.load()
     pending = db.get(field, [])
     if platform is None:
@@ -99,6 +113,8 @@ def take_pending_reply(platform: str | None = None) -> list[dict]:
     """Return (and REMOVE) pending replies to send; if `platform` is given, only its own. Each send-capable connector
     (email today) calls with its platform, sends in its app, and if it fails, re-enqueues.
     Each order: {platform, chatId, to, messageId, subject, msgid, text}."""
+    if _svc.nothing_queued("pending_reply"):     # INI-042 #34: an empty queue in an unchanged file is not re-read
+        return []
     db = _svc.load()
     pending = db.get("pending_reply", [])
     now = time.time()
@@ -112,6 +128,8 @@ def take_pending_reply(platform: str | None = None) -> list[dict]:
 
 def take_pending_unread() -> list[dict]:
     """Return (and REMOVE) the keys to put back to unread in their app."""
+    if _svc.nothing_queued("pending_unread"):     # INI-042 #34: an empty queue in an unchanged file is not re-read
+        return []
     db = _svc.load()
     mine = list(db.get("pending_unread", []) or [])
     if mine:
@@ -128,6 +146,8 @@ def take_pending_send(platform: str | None = None) -> list[dict]:
     `to` is what the connector needs to open the conversation (a username, a phone, an address) and `chatId`
     is empty until one exists — which is exactly the difference with a reply, and why the connector echoes
     the id it resolved (`connector.msg_out` carrying this `ref`) instead of the caller inventing one."""
+    if _svc.nothing_queued("pending_send"):     # INI-042 #34: an empty queue in an unchanged file is not re-read
+        return []
     db = _svc.load()
     pending = db.get("pending_send", [])
     now = time.time()
@@ -147,6 +167,8 @@ def take_control() -> list[dict]:
     """Return (and REMOVE) control orders enqueued by the WIDGET (connect/disconnect). Drained by the supervisor.
     Each order: {platform, cmd:"connect"|"disconnect", api_id?, api_hash?, forget?}. Removing them from the store
     means secrets (api_hash) do NOT remain resident in the message file (they go to config/connectors.json)."""
+    if _svc.nothing_queued("pending_control"):     # INI-042 #34: an empty queue in an unchanged file is not re-read
+        return []
     db = _svc.load()
     cmds = list(db.get("pending_control", []))
     if cmds:
