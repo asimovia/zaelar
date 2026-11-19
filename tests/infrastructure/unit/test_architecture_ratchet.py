@@ -543,9 +543,9 @@ _TOTAL_MAX += 7     # 2026-11-19 send containment M1 (5.77): a worker's act asks
 _PACKAGE_CEILINGS["nucleo/workers"] += 7    # same cause
 _PACKAGE_CEILINGS["voice"] += 2         # same cause: `attention_prefire.prefired`
 _PACKAGE_CEILINGS["voice"] += 13        # same cause: `agent._endpointing_opts(flux)`
-_PACKAGE_CEILINGS["conversation"] = 1949   # 2026-11-19 V2-941 (13.1, 13.2): born — the isolated conversation & turn manager's contract (types, envelopes, ports, config, telemetry); grows by one declared piece per commit of the phase; +272 commit 4 (13.19): the Store, in memory and on sqlite; +460 commit 5 (13.3, 13.4): the ear; +312 commit 6 (13.6, 13.7): the inbox; +172 commit 7 (13.10): the ledger
+_PACKAGE_CEILINGS["conversation"] = 1994   # 2026-11-19 V2-941 (13.1, 13.2): born — the isolated conversation & turn manager's contract (types, envelopes, ports, config, telemetry); grows by one declared piece per commit of the phase; +272 commit 4 (13.19): the Store, in memory and on sqlite; +460 commit 5 (13.3, 13.4): the ear; +312 commit 6 (13.6, 13.7): the inbox; +172 commit 7 (13.10): the ledger; +45 fix: protocol names as enums, no word table in the package
 _PACKAGE_CEILINGS["voice"] += 3   # same cause: the seven `conv_*` kinds get their observer family (`voice/observer._CAT`)
-_TOTAL_MAX += 1952   # same cause
+_TOTAL_MAX += 1997   # same cause
 
 
 def test_the_total_only_shrinks():

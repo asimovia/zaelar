@@ -16,8 +16,7 @@ Pieces (each a folder, each a box of the architecture map):
 
 Design: `.meshkore/docs/modules/zaelar-conversation.md`. Adapter facts: `zaelar-conversation-adapter.md`.
 """
-from conversation.config import Config
-from conversation.envelopes import SCHEMA, Envelope, EnvelopeError, Refs
-from conversation.types import Authority, Channel, EnvelopeKind, Ids
+from conversation.config import Config as Config
+from conversation.envelopes import SCHEMA as SCHEMA, Envelope as Envelope, EnvelopeError as EnvelopeError, Refs as Refs
+from conversation.types import Authority as Authority, Channel as Channel, EnvelopeKind as EnvelopeKind, Ids as Ids
 
-__all__ = ["SCHEMA", "Authority", "Channel", "Config", "Envelope", "EnvelopeError", "EnvelopeKind", "Ids", "Refs"]

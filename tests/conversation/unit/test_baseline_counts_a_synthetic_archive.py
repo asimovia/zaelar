@@ -15,7 +15,7 @@ from tests.conversation.tools import archive, export_envelopes
 
 T0 = 1_800_000_000_000
 DEV = "desktop:0000aaaa"
-SPEECH = ("Andrew", "viernes", "NVIDIA", "mañana", "Friday", "acciones")
+SPEECH = ("Quinn", "viernes", "NVIDIA", "mañana", "Friday", "acciones")
 
 
 def _row(dt: int, kind: str, label: str, **payload) -> dict:
@@ -31,7 +31,7 @@ def _interim(dt: int, text: str) -> dict:
 
 
 def _archive() -> list[dict]:
-    a, b, c = "Andrew viernes", "Andrew viernes NVIDIA", "mañana Friday acciones"
+    a, b, c = "Quinn viernes", "Quinn viernes NVIDIA", "mañana Friday acciones"
     return [
         _row(0, "vad", "🎤 voz detectada (VAD)", edge="on"),
         _interim(200, a),
@@ -59,7 +59,7 @@ def _archive() -> list[dict]:
         _row(7010, "homeostasis", "held", lag_s=0.05),
         _row(7020, "homeostasis", "held", lag_s=1.2),
         _row(7100, "brain", "🔁 break-loop: nudge"),
-        _row(8000, "transcript", "text-injected chat", text="Andrew mañana", role="user"),
+        _row(8000, "transcript", "text-injected chat", text="Quinn mañana", role="user"),
         _row(8100, "rail", "🛤 upsert"),
         _row(8200, "brain", "🧩 dropped", dropped_reply=True),
     ]
@@ -119,8 +119,8 @@ def test_the_converter_writes_tokens_times_and_proposed_labels_only(tmp_path):
 
 def test_the_same_word_is_the_same_token_and_punctuation_is_dropped():
     toks = export_envelopes.Tokens()
-    assert toks.of("Andrew, viernes.") == ["w0001", "w0002"]
-    assert toks.of("viernes andrew") == ["w0002", "w0001"]
+    assert toks.of("Quinn, viernes.") == ["w0001", "w0002"]
+    assert toks.of("viernes quinn") == ["w0002", "w0001"]
 
 
 def test_both_archive_shapes_read_the_same_event(tmp_path):

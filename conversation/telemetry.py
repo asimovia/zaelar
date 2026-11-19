@@ -13,30 +13,67 @@ from the emitting module, like every other event of the engine.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Callable
 
 from conversation.ports import Clock, Telemetry
 
+class _Labels(Enum):
+    """Each kind's labels, declared as enums (the code's own vocabulary), read into `KINDS` below."""
+
+
+class EarLabels(_Labels):
+    OPENED, EXTENDED, TENTATIVE, CLOSED, REOPENED = "opened", "extended", "tentative", "closed", "reopened"
+    INCOMPLETE, DISCARDED, ONSET, TYPED = "incomplete", "discarded", "onset", "typed"
+
+
+class InboxLabels(_Labels):
+    ACCEPTED, DUPLICATE, HELD, RELEASED = "accepted", "duplicate", "held", "released"
+    EXPIRED, COALESCED, DEQUEUED, ACCOUNTED = "expired", "coalesced", "dequeued", "accounted"
+
+
+class RunLabels(_Labels):
+    STARTED, INPUT, PROMPT, MODEL_FIRST_TOKEN = "started", "input", "prompt", "model_first_token"
+    MODEL_DONE, COMMAND, SUPERSEDED, FENCED = "model_done", "command", "superseded", "fenced"
+    CANCELLED, PORT_SLOW, ENDED = "cancelled", "port_slow", "ended"
+
+
+class LedgerLabels(_Labels):
+    OPENED, ATTACHED, MOVED, REFUSED, STALE_EPOCH = "opened", "attached", "moved", "refused", "stale_epoch"
+
+
+class EffectLabels(_Labels):
+    READ, SEALED, CLAIMED, HELD, RELEASED, REFUSED = "read", "sealed", "claimed", "held", "released", "refused"
+    SUBMITTED, RECEIPT, UNKNOWN, RECONCILED = "submitted", "receipt", "unknown", "reconciled"
+    WRITE_DISABLED = "write_disabled"
+
+
+class MouthLabels(_Labels):
+    SAY, STARTED, ACK, DUCKED, UNDUCKED = "say", "started", "ack", "ducked", "unducked"
+    CUT, ENDED, VOICE_UNAVAILABLE = "cut", "ended", "voice_unavailable"
+
+
+class CloseLabels(_Labels):
+    ANSWERED, HANDED_OFF, SILENT, RECOVERED = "answered", "handed_off", "silent", "recovered"
+    FAILED, STALLED = "failed", "stalled"
+
+
+class Owner(Enum):
+    """The owner of each stage (the `owner` field); a worker's events say `worker:<id>`."""
+    EAR, INBOX, MANAGER, LEDGER, GATEWAY, MOUTH = "ear", "inbox", "manager", "ledger", "gateway", "mouth"
+
+
+class Ref(Enum):
+    """The reference chain every event may carry (§8.1)."""
+    CONV, IV, REV, ENV, RUN, REQ, TASK = "conv", "iv", "rev", "env", "run", "req", "task"
+    EFFECT, SAY, ENDPOINT, CHANNEL, ITEM = "effect", "say", "endpoint", "channel", "item"
+
+
 KINDS: dict[str, frozenset[str]] = {
-    "conv_ear": frozenset({"opened", "extended", "tentative", "closed", "reopened", "incomplete", "discarded",
-                           "onset", "typed"}),
-    "conv_inbox": frozenset({"accepted", "duplicate", "held", "released", "expired", "coalesced", "dequeued",
-                             "accounted"}),
-    "conv_run": frozenset({"started", "input", "prompt", "model_first_token", "model_done", "command", "superseded",
-                           "fenced", "cancelled", "port_slow", "ended"}),
-    "conv_ledger": frozenset({"opened", "attached", "moved", "refused", "stale_epoch"}),
-    "conv_effect": frozenset({"read", "sealed", "claimed", "held", "released", "refused", "submitted", "receipt",
-                              "unknown", "reconciled", "write_disabled"}),
-    "conv_mouth": frozenset({"say", "started", "ack", "ducked", "unducked", "cut", "ended", "voice_unavailable"}),
-    "conv_close": frozenset({"answered", "handed_off", "silent", "recovered", "failed", "stalled"}),
-}
-
-#: the owner of each stage (the `owner` field); a worker's events say `worker:<id>`.
-OWNERS = frozenset({"ear", "inbox", "manager", "ledger", "gateway", "mouth"})
-
-#: the reference chain every event may carry (§8.1).
-REF_KEYS = frozenset({"conv", "iv", "rev", "env", "run", "req", "task", "effect", "say", "endpoint", "channel",
-                      "item"})
+    f"conv_{cls.__name__.removesuffix('Labels').lower()}": frozenset(m.value for m in cls)
+    for cls in (EarLabels, InboxLabels, RunLabels, LedgerLabels, EffectLabels, MouthLabels, CloseLabels)}
+OWNERS = frozenset(m.value for m in Owner)
+REF_KEYS = frozenset(m.value for m in Ref)
 
 
 class UnknownEvent(ValueError):

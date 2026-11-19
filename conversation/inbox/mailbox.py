@@ -15,6 +15,7 @@ which voice is open — they are accounted `silent` on arrival; a reopen is hand
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from enum import Enum
 from typing import Callable
 
 from conversation import envelopes as E
@@ -26,7 +27,19 @@ from conversation.types import EnvelopeKind, Ids, IvState, Surfacing, WorkerUpda
 
 T = "inbox"
 VOICE = "voice_open"
-FINAL = ("told", "coalesced", "silent", "expired", "applied")
+
+
+class Outcome(Enum):
+    """How an accepted envelope ended (I6). `applied`: a control handled by id."""
+    TOLD, COALESCED, SILENT, EXPIRED, APPLIED = "told", "coalesced", "silent", "expired", "applied"
+
+
+class RowState(Enum):
+    """The live states of an inbox row; `accounted` is the end."""
+    QUEUED, HELD, DEFERRED, DEQUEUED, ACCOUNTED = "queued", "held", "deferred", "dequeued", "accounted"
+
+
+FINAL = frozenset(m.value for m in Outcome)
 
 
 @dataclass(frozen=True)

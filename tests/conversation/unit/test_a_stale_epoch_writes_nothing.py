@@ -119,19 +119,22 @@ def test_two_real_writers_on_one_file_the_old_one_stops_at_the_takeover(tmp_path
                     tx.put("log", f"{n:06d}", {"who": "a"})
             except StaleEpoch:
                 return
+            time.sleep(0.001)          # a writer between two transactions, not a spin on the lock
 
-    t = threading.Thread(target=writer_a)
+    t = threading.Thread(target=writer_a, daemon=True)
     t.start()
-    deadline = time.monotonic() + 10
-    while first.snapshot("acct").get("log", "000020") is None and time.monotonic() < deadline:
-        time.sleep(0.001)
-    lease_b = second.acquire("acct", "proc-b")
-    with second.tx(lease_b) as tx:
-        n_b = tx.next_seq("log")
-        tx.put("log", f"{n_b:06d}", {"who": "b"})
-    t.join(timeout=10)
-    stop.set()
-    assert not t.is_alive(), "the old writer kept writing after the takeover"
+    try:
+        deadline = time.monotonic() + 10
+        while first.snapshot("acct").get("log", "000020") is None and time.monotonic() < deadline:
+            time.sleep(0.001)
+        lease_b = second.acquire("acct", "proc-b")
+        with second.tx(lease_b) as tx:
+            n_b = tx.next_seq("log")
+            tx.put("log", f"{n_b:06d}", {"who": "b"})
+        t.join(timeout=10)
+        assert not t.is_alive(), "the old writer kept writing after the takeover"
+    finally:
+        stop.set()
     rows = second.snapshot("acct").scan("log")
     landed_after = [k for k, r in rows if r["who"] == "a" and int(k) > n_b]
     assert not landed_after and n_b > 20

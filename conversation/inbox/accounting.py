@@ -8,9 +8,9 @@ mailbox test after every scenario. It reads; it never repairs.
 from __future__ import annotations
 
 from conversation.config import Config
-from conversation.inbox.mailbox import FINAL, T
+from conversation.inbox.mailbox import FINAL, RowState, T
 
-LIVE = ("queued", "held", "deferred", "dequeued")
+LIVE = frozenset(m.value for m in RowState) - {RowState.ACCOUNTED.value}
 
 
 def audit(snapshot, now: int, cfg: Config, *, drained: bool = False) -> list[str]:
