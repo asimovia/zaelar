@@ -83,8 +83,8 @@ def card_name(card: str, code: str = "") -> str:
         from widgets import runtime as _rt
         if name := str((_rt.get(base) or {}).get("name") or ""):
             return name
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"card_receipt: widget name unread — {e}")
     try:                                         # a native surface (INI-042 #47): Settings, a phone page
         from i18n import runtime as _i18n_rt
         for key in (f"surfaces.{base}.name", f"mobile.{base}"):
