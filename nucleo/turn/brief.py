@@ -167,16 +167,18 @@ def build(operator_text: str, *, open_ids=None, running_goals=None, has_workers:
            "has_workers": has_workers, "ask_pending": ask_pending or bool(open_asks), "last_reply": last_reply,
            "open_asks": list(open_asks or []), "threads": list(threads or [])}
     qs: dict[str, dict] = {}
-    for key, asked_when, question in QUESTIONS:
-        try:
-            if asked_when is not None and not asked_when(ctx):
-                continue
-            q = question(ctx)
-            if q:
-                qs[_key(*key) if isinstance(key, tuple) else key] = q
-        except Exception as e:  # noqa: BLE001 — one question that cannot be built never costs the others
-            from loguru import logger
-            logger.debug(f"brief: question {key!r} not built — {e!r}")
+    from nucleo.turn import brief_screen as _bs
+    with _bs.one_read():                     # the screen is read once for the whole table, not once per question
+        for key, asked_when, question in QUESTIONS:
+            try:
+                if asked_when is not None and not asked_when(ctx):
+                    continue
+                q = question(ctx)
+                if q:
+                    qs[_key(*key) if isinstance(key, tuple) else key] = q
+            except Exception as e:  # noqa: BLE001 — one question that cannot be built never costs the others
+                from loguru import logger
+                logger.debug(f"brief: question {key!r} not built — {e!r}")
     return qs
 
 

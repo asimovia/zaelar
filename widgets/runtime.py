@@ -5,6 +5,7 @@ import functools
 import json
 import os
 import re
+import time
 import unicodedata
 from contextvars import ContextVar
 
@@ -16,20 +17,35 @@ HERE = paths.BUILTIN_ROOT      # kept for callers that import it; new code asks 
 
 # Catalog cache (scales to thousands of widgets): parse manifests once and reuse until a manifest mtime changes.
 # Avoids re-reading + json-parsing every manifest on every call (identify() runs on every transcript).
-_cache = {"sig": None, "list": []}
+_cache = {"sig": None, "list": [], "by_id": {}}
 
 
-def _signature() -> tuple:
-    # (id, folder, manifest mtime). The FOLDER travels in the signature because a widget can live in either
-    # root (see widgets/paths.py) and the catalog below has to read the manifest it actually signed — not
-    # re-resolve the id and risk reading a different one.
-    sig = []
-    hid = hidden.ids()
+#: How long one scan of the widget folders is trusted. A lookup (`get`) rides every declared action of every open card
+#: at every turn, and each one used to list both roots and stat two files per widget — on the voice loop (measured
+#: 2026-11-19: 197 scans in one turn's screen questions, 2–3 s blocked on a loaded machine). A folder added or removed
+#: moves its root's mtime and a lifecycle op calls `invalidate()`, so both are seen at once; only a manifest edited in
+#: place by hand waits this long.
+SCAN_TTL_S = 2.0
+_scan = {"key": None, "at": 0.0, "rows": ()}
+
+
+def _root_mtime(root: str):
+    try:
+        return os.stat(root).st_mtime_ns
+    except OSError:
+        return None
+
+
+def _scanned() -> tuple:
+    """(id, folder, manifest mtime) of every USABLE widget folder, hidden ones included — at most one scan per
+    `SCAN_TTL_S` while the roots themselves do not move."""
+    roots = tuple(paths.roots())
+    key = (roots, tuple(_root_mtime(r) for r in roots))
+    now = time.monotonic()
+    if key == _scan["key"] and now - _scan["at"] < SCAN_TTL_S:
+        return _scan["rows"]
+    rows = []
     for name, folder in paths.iter_folders():
-        # V2-515: a HIDDEN id (a "deleted" shipped widget) is out of the catalog exactly as if the folder
-        # were gone — the folder itself stays on disk so engine updates keep reaching it and restore works.
-        if name in hid:
-            continue
         man = os.path.join(folder, "manifest.json")
         js = os.path.join(folder, "widget.js")
         # A widget needs BOTH a manifest AND a widget.js to be usable. A folder with only a manifest is debris from
@@ -38,9 +54,21 @@ def _signature() -> tuple:
         if not os.path.isfile(js):
             continue
         try:
-            sig.append((name, folder, os.path.getmtime(man)))
+            rows.append((name, folder, os.path.getmtime(man)))
         except OSError:
             pass
+    _scan.update({"key": key, "at": now, "rows": tuple(rows)})
+    return _scan["rows"]
+
+
+def _signature() -> tuple:
+    # (id, folder, manifest mtime). The FOLDER travels in the signature because a widget can live in either
+    # root (see widgets/paths.py) and the catalog below has to read the manifest it actually signed — not
+    # re-resolve the id and risk reading a different one.
+    hid = hidden.ids()
+    # V2-515: a HIDDEN id (a "deleted" shipped widget) is out of the catalog exactly as if the folder
+    # were gone — the folder itself stays on disk so engine updates keep reaching it and restore works.
+    sig = [row for row in _scanned() if row[0] not in hid]
     # The hidden set is part of the signature: hiding/unhiding must invalidate the cache like an mtime change.
     sig.append(("__hidden__", "", tuple(sorted(hid))))
     from widgets import aliases as _aliases   # his words for shipped cards (V2-854 F4): a change is a catalog change
@@ -64,7 +92,10 @@ def catalog() -> list[dict]:
             pass
         else:
             _undeclared(out[-1], folder, _mtime)
-    _cache["sig"], _cache["list"] = sig, out
+    by_id: dict = {}
+    for w in out:
+        by_id.setdefault(w.get("id"), w)            # the first folder that claims an id is the one `get` answers with
+    _cache["sig"], _cache["list"], _cache["by_id"] = sig, out, by_id
     return out
 
 
@@ -83,7 +114,11 @@ def _undeclared(man: dict, folder: str, mtime) -> None:
 
 
 def get(widget_id: str) -> dict | None:
-    return next((w for w in catalog() if w.get("id") == widget_id), None)
+    catalog()                                       # refreshes the cache when a manifest moved
+    try:
+        return _cache["by_id"].get(widget_id)
+    except TypeError:                               # an unhashable id names no widget
+        return None
 
 
 def invalidate() -> None:
@@ -91,6 +126,7 @@ def invalidate() -> None:
     deleted/added folder self-heals anyway, but a widget lifecycle op (create/delete) calls this so the change
     is visible IMMEDIATELY (same tick) without waiting for the next mtime-triggered reload."""
     _cache["sig"] = None
+    _scan["key"] = None
     _index["sig"] = None
     __import__("widgets.state_decl", fromlist=["x"]).forget_cache()   # V2-884: a manifest's state is read again
 

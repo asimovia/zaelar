@@ -2,6 +2,8 @@
 with nothing open, which catalogue card would carry it out (`catalog_widget`). Enumerated per turn (refactor2710-07)."""
 from __future__ import annotations
 
+from nucleo.turn.screen_read import _TURN, _rows, one_read  # noqa: F401 — one turn's reading of the screen
+
 
 TARGET_INSTRUCTIONS = (
     "The operator is looking at the screen and gives an order. Which declared action of the widgets "
@@ -23,6 +25,16 @@ def target_question(open_ids) -> dict | None:
     ids = [str(w).strip() for w in (open_ids or []) if str(w or "").strip()]
     if not ids:
         return None
+    memo = _TURN.get()
+    if memo is None:
+        return _target_question(ids)
+    if ("target", tuple(ids)) not in memo:
+        memo[("target", tuple(ids))] = _target_question(ids)
+    q = memo[("target", tuple(ids))]
+    return {**q, "criteria": dict(q["criteria"])} if q else None      # each asker gets its own
+
+
+def _target_question(ids: list) -> dict | None:
     from nucleo.flash import frontend as _fe
     # Which card the conversation is ABOUT: the one his last turn acted on (demo pass 2026-09-28, E2/U3). Stated in the
     # instructions it moved 3/3 (as a card label 0/3), with the named-kind counterweights still 4/4 on their own card.
@@ -98,7 +110,7 @@ def _possible_now(widget_id: str, action: str, rows_of: dict | None = None) -> b
             return True                     # the widget does not publish rows: nothing to conclude
         memo = rows_of if rows_of is not None else {}
         if base not in memo:
-            memo[base] = {r.get("field") for r in _refs._ref_index(base)}
+            memo[base] = {r.get("field") for r in _rows(base)}
         return field in memo[base]
     except Exception:  # noqa: BLE001
         return True
@@ -242,11 +254,10 @@ MAX_ITEM_ROWS = 12
 def item_ref_question(open_ids) -> dict | None:
     """Which listed row, if any, did he name and then TAKE BACK («el último… no, el penúltimo»)? Asked over the rows
     that EXIST, never read off correction words. None with fewer than two rows on screen."""
-    from widgets import refs as _refs
     rows = []
     for wid in [str(w).strip() for w in (open_ids or []) if str(w or "").strip()][:MAX_OPEN_CARDS]:
         base = _base_of(wid)
-        rows += [(base, i, r) for i, r in enumerate(_refs._ref_index(base), 1)]
+        rows += [(base, i, r) for i, r in enumerate(_rows(base), 1)]
     rows = rows[:MAX_ITEM_ROWS]
     if len(rows) < 2:
         return None

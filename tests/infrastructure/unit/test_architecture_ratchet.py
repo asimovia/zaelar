@@ -440,6 +440,8 @@ _PACKAGE_CEILINGS["server"] += 18
 _PACKAGE_CEILINGS["nucleo/pulse"] += 69
 _PACKAGE_CEILINGS["voice"] += 5
 _PACKAGE_CEILINGS["nucleo/turn"] += 2
+_PACKAGE_CEILINGS["nucleo/turn"] += 46   # 2026-11-19 support fix (3.243): the loop no longer held by a turn's reading — the directory's index memoised by its store's version, the brief's table reading each open card once (`turn/screen_read.py`), the widget folders scanned once per trust window
+_PACKAGE_CEILINGS["widgets"] += 73   # same cause
 # +5 connectors — 2026-11-19: the broker's 404 «no client for this family» is an answer (`empty`, held an hour), not
 # an outage reported every minute (`oauth_broker._fetch`).
 _PACKAGE_CEILINGS["connectors"] += 5
@@ -488,6 +490,7 @@ _TOTAL_MAX += 5     # 2026-11-19: the broker's 404 is an answer, not an outage �
 _TOTAL_MAX += 6     # 2026-11-19 INI-042 #26: a sent errand WAITS for the reply — the `nucleo/circuit` row above
 _TOTAL_MAX += 61    # 2026-11-19: a fact the voice process asks twice is replayed once — the addendum above
 _TOTAL_MAX += 44    # 2026-11-19 INI-042 #37: a typed `LOG:` line is a note, never a turn — the addendum above
+_TOTAL_MAX += 119   # 2026-11-19 support fix (3.243): the loop no longer held by a turn's reading — the directory's index memoised by its store's version, the brief's table reading each open card once (`turn/screen_read.py`), the widget folders scanned once per trust window — the addenda above
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

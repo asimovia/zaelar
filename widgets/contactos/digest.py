@@ -155,15 +155,52 @@ def _aka(c: dict) -> dict:
     return row
 
 
+#: The index of the store as it was last read, and what it was read FROM (`_index_key`).
+_REFS: dict = {"key": None, "rows": ()}
+
+#: Closest-first is a reading of the clock (who is «recent»): an unchanged store is re-ranked this often.
+_RANK_TTL_S = 60
+
+
+def _index_key():
+    """What the index is a function of: the store file as it stands (a write replaces it, so its mtime and size move
+    — whichever process wrote), this process's own change count, the language the hints are said in, the clock's
+    bucket for the ranking, and the reader itself (a patched `data.load_db` is another store). None = unreadable,
+    never memoised."""
+    import os
+    import time
+    from .. import store
+    path = os.path.join(store.data_dir(_d.WIDGET_ID), "state.json")
+    try:
+        st = os.stat(path)
+    except OSError:
+        return None
+    return (path, st.st_mtime_ns, st.st_size, store.revision(_d.WIDGET_ID), _langs.current_code(),
+            int(time.time() // _RANK_TTL_S), _d.load_db)
+
+
 def ref_index() -> list[dict]:
     """Items the brain can reference by voice (V2-026): every contact, by name (+city to disambiguate two
-    «Juan»s). `field` is the payload key every action uses, so refs resolve without the model guessing ids."""
+    «Juan»s). `field` is the payload key every action uses, so refs resolve without the model guessing ids.
+
+    Built once per version of the store: it is the whole directory read and ranked, and a turn asks for it at every
+    door that resolves a reference — on the voice loop (measured 2026-11-19: 1–4 s blocked per read with a directory
+    of thousands). Every caller gets its own rows."""
+    key = _index_key()                       # read BEFORE the store: a write that lands meanwhile misses next time
+    if key is None or key != _REFS["key"]:
+        rows = tuple(_build_ref_index())
+        _REFS.update({"key": key, "rows": rows})
+    return [dict(r) for r in _REFS["rows"]]
+
+
+def _build_ref_index() -> list[dict]:
     out = []
     from widgets import directory as _dir
     # every visible row stays nameable (V2-026, `refs.py` resolves contactId only here), closest first (V2-849)
     rows = _d.visible(_d.load_db())
     ordered = _dir.closest_first(rows)
-    for c in ordered + [c for c in rows if c not in ordered]:            # hidden rows stay MAPPED and stop being referenceable
+    ranked = {id(c) for c in ordered}        # by identity: `c not in ordered` compared whole rows, n² of them
+    for c in ordered + [c for c in rows if id(c) not in ranked]:         # hidden rows stay MAPPED and stop being referenceable
         label = str(c.get("name") or c.get("id"))
         if c.get("city"):
             label += f" ({c['city']})"
