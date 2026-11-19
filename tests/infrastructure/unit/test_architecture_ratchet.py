@@ -498,6 +498,9 @@ _TOTAL_MAX += 70    # 2026-11-19 INI-042 #44 P-1 (a plain message's follow-up on
 _TOTAL_MAX += 2     # 2026-11-19 INI-042 #44 ratchets: three swallowed failures now say what failed (support note, widget scan, contacts index)
 _PACKAGE_CEILINGS["nucleo/input"] += 1   # same cause: the support note says when it could not be traced
 _PACKAGE_CEILINGS["widgets"] += 1        # same cause: the widget scan and the contacts index say what they could not read
+_TOTAL_MAX += 44    # 2026-11-19 INI-042 #47 (3.244): a close-all counts the native surface over the canvas — `screen_doc.panel_over` and the receipt's panel (`bulk_close`, `card_receipt`)
+_PACKAGE_CEILINGS["nucleo/flash"] += 35   # same cause
+_PACKAGE_CEILINGS["widgets"] += 9         # same cause: `screen_doc.panel_over`
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

@@ -21,6 +21,7 @@ import { t as tr } from "../core/i18n.js?v=1";
 import * as store from "../core/store.js?v=2";
 import { mountState, refreshed } from "./state-reporter.js?v=1";
 import { desktopScreen } from "./desktop-screen.js?v=1";
+import { closePanels } from "./screen-panel.js?v=1";
 import { frontDoor } from "./card-front.js?v=1";
 // V2-792 — services load on first use: a host imports none statically (tests mount it with its core imports stubbed).
 const _screens = () => import("../services/screens.js?v=1");
@@ -1335,7 +1336,7 @@ export class Desktop {
     this.wins.clear();
     clearTimeout(this._actTimer); if(this.activity)this.activity.innerHTML=""; this._actId=null;
     try{ localStorage.removeItem("hb_desktop"); }catch(_){}   // que un reconnect/restore no reviva lo cerrado
-    this._reportOpen();                                       // el ESTADO del cerebro también a vacío
+    this._reportOpen(); if(by!=="reset") closePanels();   // the brain's state to empty; INI-042 #47: every surface, Settings too
   }
 
   // Reposition an OPEN widget on the canvas. `where` accepts EN/ES tokens (left/izquierda, right/derecha,

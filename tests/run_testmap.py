@@ -2075,6 +2075,12 @@ DOMAINS: list[dict] = [
                                  "nothing closes everything, and the turn says what closed and what stayed "
                                  "(V2-812 T-04)", "ch": UNIT,
             "paths": ["tests/agent_headless/unit/flash/test_a_close_all_never_closes_nothing_in_silence.py"]},
+        # INI-042 #47 — Settings opened by voice outlived «cierra todo» and the agent said «nothing left on screen»: a
+        # close-all's receipt reads the screen's own panel (`screen_doc.panel_over`) beside the cards. Disarmed → red.
+        {"id": "3.244", "title": "A close-all counts the native surface over the canvas: the receipt says Settings "
+                                 "closed (or still on screen when cards were spared), never «nothing left» over it "
+                                 "(INI-042 #47)", "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/flash/test_a_close_all_counts_the_panel_over_the_canvas.py"]},
         # V2-831 T-02 — «close all» spared the card in use (the V2-807 T-08 spare) and he said it twice more. An explicit
         # total — the grammar's own reading that the quantifier governs the canvas (`close_scope`) — reaches the bulk
         # close as `scope="all"` and spares nothing; a close with no total still spares. es/en. Disarmed → red.
@@ -2621,6 +2627,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/browser/unit/mobile/test_the_deck_reports_what_it_shows.py"]},
         {"id": "4.544", "title": "A native surface open over the canvas is in the screen document (V2-907 T9, `frontend/app/widgets/screen-panel.js`): every named surface of `system-surfaces.js` opened through the store signal its row names makes the desk's next document say `panel: <id>` (the chat wall names its tab: `apps`, `conectores`, `chat`) and `\"\"` once closed; every phone page (`pages.js`, each naming its surface) does the same on the deck's; a named surface the table lacks is red; disarmed (the adapter drops `panel`) → red",
             "ch": UNIT, "paths": ["tests/browser/unit/screen/test_an_open_panel_is_in_the_document.py"]},
+        {"id": "4.599", "title": "«Close all» closes the native surfaces too (INI-042 #47, `screen-panel.js` `closePanels`, `pages.js` `closePages`): every surface of the desk's panel table, opened, is gone after the desk's `closeAll` but the conversation (a wall tab goes back to it); every phone page but the chat after the deck's; a reset keeps its lifecycle; disarmed (the desk without `closePanels()`) → red",
+            "ch": UNIT, "paths": ["tests/browser/unit/screen/test_close_all_closes_the_panels.py"]},
         {"id": "4.545", "title": "A legacy canvas answer that differs from the screen's document is an event (V2-907 T10, shadow): `widgets/screen_doc.drift` names each fact where `memory.state()` (open_widgets, maximized_widget, minimized_widgets, front_reported) and the screen's document disagree, in base ids (`open`, a deck's `front`, a desk's `max`, `min`), nothing when they agree or the document is unknown; `server.canvas_api.drift_check` runs after every counted legacy report (past `DRIFT_GRACE_S`) and at every turn start (`voice.screens.on_turn`), emitting `screen/drift {dev, at, what, legacy, doc, cause}` in the `widget` family — only while the screen is the turn's and against its OWN legacy report (`cause: legacy_report`; a row only the memory state disagrees on is `legacy_store`), the browser's full screen no legacy fact, said once per change of the screen's rows (V2-907 A5); disarmed (a document compared with itself; the screen-of-the-turn guard, the dedup or the fs exclusion dropped) → red",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/screen/test_a_drift_is_an_event.py"]},
         {"id": "4.546", "title": "A reloaded screen is UNKNOWN until its saved apps are back, never an empty screen (V2-907 A1): while the host's `restore()` runs (`screen-reporter.watchRestore`, on the desk and the deck) its reports say `{layout, unknown: true}`, which `widgets/screen_doc.write` stores as the new mount with no document to read and nothing closed; the first full report lists every saved app; disarmed (the reporter ignores the restore) → red",

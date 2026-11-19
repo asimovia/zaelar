@@ -14,6 +14,11 @@ have no model reply of their own (the hard interrupt, the action map).
 
 AN EXPLICIT TOTAL SPARES NOTHING (V2-831 T-02): `scope="all"` from the grammar, or the closed question when it read none.
 
+A CLOSE-ALL IS EVERY SURFACE, NOT EVERY CARD (INI-042 #47): Settings opened by voice stayed over an empty canvas and the
+receipt said «nothing left on screen». The bare close-all shuts the native surface too (the client's `closeAll`), and
+the receipt counts it from the screen's own report (`screen_doc.panel_over`) — closed, or still there when cards were
+spared (only the bare close-all reaches it).
+
 Every bulk-close door of a TURN goes through `close_all`; the reset endpoints do not (a reset is the lifecycle).
 """
 from __future__ import annotations
@@ -160,6 +165,15 @@ def _open_instances() -> list[str]:
         return []
 
 
+def _panel_over() -> str:
+    try:
+        from widgets import screen_doc
+        return screen_doc.panel_over()
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"bulk_close: panel unreadable — {e}")
+        return ""
+
+
 def close_all(emit, *, src: str, text: str = "", said: str = "", extra: dict | None = None,
               open_ids=None, brief=None, scope: str = "") -> list[str]:
     """Close every card he is not using. Returns the cards spared ([] = the bare close-all went out).
@@ -174,16 +188,17 @@ def close_all(emit, *, src: str, text: str = "", said: str = "", extra: dict | N
     req = canvas_turn.request_of(brief, text)
     opened = list(open_ids) if open_ids is not None else _open_instances()
     spare = spare_for(opened, text, emit=emit, src=src, scope=scope, brief=brief)
+    panel = _panel_over()      # INI-042 #47: the bare close-all shuts the native surface too (Settings over the canvas)
     if not spare:
         if canvas.apply("close", "", src=src, text=said, emit=emit, request=req, **base):
-            _note(closed=opened, kept=[], opened=opened)
+            _note(closed=opened + ([panel] if panel else []), kept=[], opened=opened)
         return []
     for cid in opened:
         if cid not in spare:
             canvas.apply("close", cid, src=src, text=said, emit=emit, request=req, **base)
     emit("brain", "🧷 bulk close: the app in use stays", text=",".join(spare), role="system",
          extra={"cat": "flash", "kept": spare, "src": src})
-    _note(closed=[c for c in opened if c not in spare], kept=spare, opened=opened)
+    _note(closed=[c for c in opened if c not in spare], kept=spare + ([panel] if panel else []), opened=opened)
     return spare
 
 

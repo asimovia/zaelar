@@ -197,6 +197,15 @@ def vis(cid, dev=None) -> str | None:
     return next((r["vis"] for r in d.open if r["id"] == cid), "")
 
 
+def panel_over(dev=None) -> str:
+    """The native surface open over the screen that a close of everything also closes (Settings, a modal, a page,
+    a wall tab other than the conversation), "" when none or unknown. The conversation itself (`chat`) is not one:
+    it is where he talks, never «something on screen»; a wall tab names itself (`chat:procesos` → `procesos`)."""
+    d = read(dev)
+    panel = _clean_id(getattr(d, "panel", "") if d is not None else "")
+    return "" if panel in ("", "chat") else panel.split(":", 1)[1] if panel.startswith("chat:") else panel
+
+
 def screens_of(cid) -> list[str]:
     """The open screens whose document lists `cid`."""
     cid = _clean_id(cid)

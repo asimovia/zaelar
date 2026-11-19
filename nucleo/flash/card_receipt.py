@@ -45,6 +45,16 @@ def _base(card: str) -> str:
     return str(card or "").split("::", 1)[0].strip().lower()
 
 
+def _panel_over() -> str:
+    """The native surface open over the canvas (`screen_doc.panel_over`), "" when none or unknown."""
+    try:
+        from widgets import screen_doc
+        return screen_doc.panel_over()
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"card_receipt: panel unread — {e}")
+        return ""
+
+
 def _open_now() -> list[str]:
     """The cards on screen: what the desktop reported, else the normalised state. `[]` = unknown."""
     try:
@@ -71,9 +81,18 @@ def card_name(card: str, code: str = "") -> str:
         logger.debug(f"card_receipt: bundle name unread — {e}")
     try:
         from widgets import runtime as _rt
-        return str((_rt.get(base) or {}).get("name") or base)
+        if name := str((_rt.get(base) or {}).get("name") or ""):
+            return name
     except Exception:  # noqa: BLE001
-        return base
+        pass
+    try:                                         # a native surface (INI-042 #47): Settings, a phone page
+        from i18n import runtime as _i18n_rt
+        for key in (f"surfaces.{base}.name", f"mobile.{base}"):
+            if name := str(_i18n_rt.text(key, "", code=code or None) or ""):
+                return name
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"card_receipt: surface name unread — {e}")
+    return base
 
 
 def display_label(label: str, code: str = "") -> str:
@@ -155,10 +174,11 @@ def lines_for(reply: str, acts, *, open_ids=None, lang=None) -> list[str]:
         if closed:
             missing = [c for c in closed if free or not names(reply, c)]
             gone = {_base(c) for c in closed}
-            left = list(dict.fromkeys(_base(c) for c in ids + shown if _base(c) not in gone))
+            panel = _panel_over()                  # INI-042 #47: Settings over the canvas is still on screen
+            left = list(dict.fromkeys(_base(c) for c in ids + shown + ([panel] if panel else []) if _base(c) not in gone))
             if missing:
                 out.append(lang.receipt_closed.format(cards=_join(lang, missing)))
-            if ids and (missing or not any(names(reply, c) for c in left)):   # an unknown screen says nothing of it
+            if (ids or panel) and (missing or not any(names(reply, c) for c in left)):   # an unknown screen says nothing of it
                 out.append(lang.receipt_left.format(cards=_join(lang, left)) if left else lang.receipt_left_none)
         if shown and not free and len(acts) >= 2 and any(names(reply, c) for c, _, _ in acts):
             missing = [c for c in shown if not names(reply, c)]

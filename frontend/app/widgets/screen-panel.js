@@ -30,6 +30,20 @@ export const DESKTOP_PANELS = [
   ["chat", _chat(store.chatOpen)],
 ];
 
+//: How a close of everything shuts each of them (INI-042 #47: Settings opened by voice outlived «close all»). The wall
+//: stays — it is the conversation — but goes back to it from any other tab.
+const DESKTOP_CLOSE = {
+  config: () => store.setConfigOpen(false), wizard: () => store.setWizardOpen(false), vault: () => store.closeVault(),
+  "memory-map": () => store.setMemOpen(false), debug: () => store.setDebugOpen(false),
+  status: () => store.setStatusOpen(false), feedback: () => store.setFeedbackOpen(false),
+  chat: () => { if (store.chatOpen() && String(store.chatTab() || "chat") !== "chat") store.setChatTab("chat"); },
+};
+
+/** Close every native surface over the desktop but the conversation (a close-all order). */
+export function closePanels() {
+  for (const [id, read] of DESKTOP_PANELS) { try { if (read()) DESKTOP_CLOSE[id](); } catch (_) {} }
+}
+
 /** The phone's pages as a table: `pages` = [[get, set, id]…] (`pages.js`), the chat page naming its tab. */
 export const pagePanels = (pages) => pages.map(([get, , id]) => [id, id === "chat" ? _chat(get) : _is(id, get)]);
 

@@ -24,6 +24,9 @@ export function onePageAtATime() {
   onCardFront(() => PAGES.forEach(([g, set]) => { if (g()) set(false); }));
 }
 
+/** A close-all order closes every page but the conversation (INI-042 #47). */
+export function closePages() { PAGES.forEach(([g, set, id]) => { if (id !== "chat" && g()) set(false); }); }
+
 /** The platform's back: closes the open page (one of the ☰'s goes back to it). False when no page was open. */
 export function backFromPage() {
   for (const [get, set] of PAGES) if (get()) {

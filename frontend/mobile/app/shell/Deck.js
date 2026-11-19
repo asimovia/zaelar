@@ -306,7 +306,7 @@ export class Deck {
     this._persist();
   }
 
-  closeAll({ by = "code" } = {}) { for (const id of [...this.order]) this.close(id, { by }); }
+  closeAll({ by = "code" } = {}) { for (const id of [...this.order]) this.close(id, { by }); if (by !== "reset") import("./pages.js?v=1").then((m) => m.closePages()).catch(() => {}); }   // INI-042 #47: its pages too
 
   onDeleted(id) { this._ids = null; this._meta = null; this.close(id); }
 
