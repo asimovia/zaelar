@@ -287,7 +287,7 @@ function route() {
   const head = parts[0] || "";
   document.querySelectorAll("#nav a").forEach(a => a.classList.toggle("on",
     a.dataset.route === (head === "" ? "home" : head === "sets" ? "sets" : head === "sandboxes" ? "sandboxes"
-      : (head === "scoreboard" || head === "rounds" || head === "round" || head === "brain") ? "scoreboard" : "")));
+      : (head === "scoreboard" || head === "rounds" || head === "round" || head === "brain" || head === "replay") ? "scoreboard" : "")));
   document.getElementById("crumb").textContent = "";
   if (head === "") unmount = home.mount(view);
   else if (head === "sets") unmount = sets.mount(view, parts[1] || "unit");
@@ -297,6 +297,7 @@ function route() {
   else if (head === "rounds") unmount = judge.mountList(view);
   else if (head === "round") unmount = judge.mount(view, parts[1], Number(parts[2] || 0));
   else if (head === "brain") unmount = brain.mount(view, parts[1], Number(parts[2] || 0), Number(parts[3] || 0));
+  else if (head === "replay") unmount = brain.mountReplay(view, parts[1], parts[2] || "");
   else if (head === "run") unmount = mountLive(view, parts[1] || "");
   else location.hash = "#/";
 }

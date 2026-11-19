@@ -4,6 +4,8 @@
    the stations the signal actually crossed lit in the order it crossed them, each with the state it carried.
    The dark stations that SHOULD have fired are the point of the screen: red, with the check that expected them.
    Read from the sandbox's observability DB by the turn's corr_id; the raw flow is a link out, never repainted.
+   A flow that carries `conv_*` events is painted with the conversation package's own stations (CONV_STATIONS, the
+   server chooses the picture); `#/replay/<name>/<trace>` reads a replayed session (`conversation.replay --events`).
    MIRRORED: a private operator console draws the same screen from its `brainMap.js` (see observatory_data.py §8);
    a change to station() or to its CSS in index.html is made in both places. */
 import { $, esc, clip, api, ms, empty, roundHref, brainHref, flag } from "./lib.js";
@@ -14,13 +16,22 @@ export function mount(view, file, idx, turn) {
   return () => {};
 }
 
+const replayHref = (name, trace) => `#/replay/${encodeURIComponent(name)}/${encodeURIComponent(trace || "")}`;
+
+export function mountReplay(view, name, trace) {
+  view.innerHTML = `<div class="empty">reading the replay…</div>`;
+  api(`/api/replay?name=${encodeURIComponent(name)}&trace=${encodeURIComponent(trace || "")}`).then(d => render(view, d)).catch(e => { view.innerHTML = empty("unreadable", String(e)); });
+  return () => {};
+}
+
 function render(view, d) {
   $("crumb").textContent = `${d.scenario || ""} · ${(d.locale || "").toUpperCase()} · turn ${d.turn}${d.n_turns ? ` of ${d.n_turns}` : ""}`;
-  const strip = (d.strip || []).map(s => `<a href="${brainHref(d.file, d.idx, s.turn)}" class="${s.turn === d.turn ? "on" : ""}" title="${esc(s.corr_id || "no flow found")}">
+  const hrefOf = s => d.replay ? replayHref(d.replay, s.corr_id) : brainHref(d.file, d.idx, s.turn);
+  const strip = (d.strip || []).map(s => `<a href="${hrefOf(s)}" class="${s.turn === d.turn ? "on" : ""}" title="${esc(s.corr_id || "no flow found")}">
       <span>turn ${s.turn}</span><span class="dots">${d.stations.map(st => `<i class="${s.lit.includes(st.id) ? "on" : ""}" title="${esc(st.label)}"></i>`).join("")}</span></a>`).join("");
   const head = `
   <section class="panel"><h2>🧠 ${esc(d.scenario || "")} <span class="sub">${flag(d.locale)} · turn ${d.turn}${d.n_turns ? ` of ${d.n_turns}` : ""}${d.corr_id ? ` · <code>${esc(d.corr_id)}</code> matched by ${esc(d.matched_by)} · ${d.n_events} events over ${ms(d.span_ms)}` : ""}</span>
-      <span class="right"><a href="${roundHref(d.file, d.idx)}">← the verdict</a></span></h2>
+      ${d.replay ? "" : `<span class="right"><a href="${roundHref(d.file, d.idx)}">← the verdict</a></span>`}</h2>
     <div class="said"><span class="who">heard</span>${esc(d.heard || "")}</div>
     <div class="said" style="margin-top:6px"><span class="who">said</span>${d.said ? esc(d.said) : `<span class="bad">(nothing — a mute turn)</span>`}</div>
     ${strip ? `<div class="strip" style="margin-top:10px">${strip}</div>` : ""}

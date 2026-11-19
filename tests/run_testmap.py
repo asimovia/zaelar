@@ -7212,6 +7212,7 @@ DOMAINS: list[dict] = [
             "tests/platform/tests/test_the_sets_screen_browses_three_layers.py",
             "tests/platform/tests/test_the_judge_viewer_reads_a_verdict_with_its_evidence.py",
             "tests/platform/tests/test_the_brain_screen_lights_the_stations_a_turn_crossed.py",
+            "tests/platform/tests/test_the_brain_screen_paints_the_conversation_pipeline.py",
             # 2026-11-06 — the home is NUMBERS only (unit · benches · use cases ES|US by theme, from the
             # accumulated ledger over the catalog's completable segment); the tables moved to tabs and the live
             # run to `#/live`.

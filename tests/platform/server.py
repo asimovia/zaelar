@@ -217,7 +217,8 @@ class Handler(BaseHTTPRequestHandler):
     #: path → reader. Every one reads files under the runs root (or the committed ledger) and is cached by
     #: mtime there; none launches anything, none calls a model. The screens: home (`home` — numbers only, with
     #: the live agents), the live run (`running`), scoreboard and sandboxes (`scoreboard`, `sandboxes`, `results`),
-    #: test sets (`sets/*`), the judge viewer (`rounds`, `round`), the brain (`turn`).
+    #: test sets (`sets/*`), the judge viewer (`rounds`, `round`), the brain (`turn`, and `replay` for a replayed
+    #: conversation session).
     def _screen_api(self) -> bool:
         from urllib.parse import parse_qs, urlparse
         from tests.platform import observatory_data as od
@@ -247,6 +248,8 @@ class Handler(BaseHTTPRequestHandler):
                 data = od.round_view(root, q.get("file", ""), int(q.get("idx", "0") or 0))
             elif url.path == "/api/turn":
                 data = od.turn_flow(root, q.get("file", ""), int(q.get("idx", "0") or 0), int(q.get("turn", "0") or 0))
+            elif url.path == "/api/replay":
+                data = od.replay_flow(root, q.get("name", ""), q.get("trace", ""))
             else:
                 return False
         except ValueError:

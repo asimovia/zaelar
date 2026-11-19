@@ -1320,7 +1320,8 @@ def round_view(root: Path, file: str, idx: int = 0) -> dict:
 
 
 # ═══ 8 · THE BRAIN SCREEN — one turn, the stations it crossed ════════════════════════════════════════════════
-# MIRRORED: a private operator console keeps a copy of this section (STATIONS, _station_of, _station_state, _light)
+# MIRRORED: a private operator console keeps a copy of this section (STATIONS, _station_of, _station_state, _light,
+# and CONV_STATIONS with its _conv_* readers)
 # and of dashboard/brain.js in its `brainMap.js`, with a guard test that compares the STATIONS table. A change to a
 # station, to the events that light it or to the state it shows is made in BOTH places in the same batch.
 #: The turn pipeline as STATIONS, in order (zaelar-architecture.md §5i, §5h). Each station names the families and
@@ -1585,6 +1586,109 @@ def _light(stations: dict, turn_action: dict | None, reply: dict | None) -> None
             expect("tools", "the brain itself flagged a promise with no action")
 
 
+#: The conversation package's pipeline (`conversation/`, V2-941): a SECOND picture, chosen when the flow carries
+#: `conv_*` events, so the sessions of the old path keep painting with the stations above. Each station is lit by its
+#: `conv_*` kind (`conversation/telemetry.py` is the only source of kinds and labels); the run's `prompt` label is
+#: the composer's, every other `conv_run` label is the run's.
+CONV_STATIONS: tuple[dict, ...] = (
+    {"id": "ear", "label": "Ear", "module": "conversation/ear", "hint": "words · end of turn · reopen"},
+    {"id": "inbox", "label": "Inbox", "module": "conversation/inbox", "hint": "accepted · held · coalesced · accounted"},
+    {"id": "compose", "label": "Composer", "module": "conversation/composer", "hint": "the prompt, read from the store"},
+    {"id": "model", "label": "Run · model", "module": "conversation/manager/run.py", "hint": "first token · command · superseded"},
+    {"id": "gateway", "label": "Effect gateway", "module": "conversation/gateway", "hint": "sealed · claimed · submitted · receipt"},
+    {"id": "ledger", "label": "Ledger", "module": "conversation/ledger", "hint": "items opened · attached · moved"},
+    {"id": "mouth", "label": "Mouth", "module": "conversation/mouth", "hint": "said · heard · cut"},
+    {"id": "close", "label": "Close", "module": "conversation/manager/loop.py", "hint": "answered · handed off · silent · stalled"},
+)
+CONV_STATION_IDS = tuple(s["id"] for s in CONV_STATIONS)
+#: The payload fields a `conv_*` event carries that say its state (plan F0 §8.2), shown in this order when present.
+_CONV_FIELDS = ("closed_by", "eot_prob", "eot_source", "wait_ms", "surfacing", "held_behind", "queue_age_ms",
+                "prompt_tokens", "ttft_ms", "command", "superseded_by", "port", "tool", "effect_class", "authority",
+                "by", "item", "item_kind", "from", "to", "decided_by", "waiting_on", "channels", "chars",
+                "heard_chars", "outcome", "total_ms", "speech_end_to_first_audio_ms", "steps", "ms", "state", "reason")
+
+
+def is_conv_flow(rows: list[dict]) -> bool:
+    return any(str(r.get("kind") or "").startswith("conv_") for r in rows)
+
+
+def _conv_station_of(row: dict) -> str:
+    kind, label = str(row.get("kind") or ""), row.get("label") or ""
+    if kind == "conv_run":
+        return "compose" if label == "prompt" else "model"
+    sid = {"conv_effect": "gateway", "conv_close": "close"}.get(kind, kind[len("conv_"):])
+    return sid if kind.startswith("conv_") and sid in CONV_STATION_IDS else ""
+
+
+def _conv_station_state(rows: list[tuple[dict, dict]]) -> list[dict]:
+    """One line per event: its label, then the state fields it carried. The run's `input` shows what it read."""
+    st: list[dict] = []
+    for row, p in rows:
+        if row.get("label") == "input":
+            st.append(_kv("heard", " | ".join(p.get("text") or [])))
+            continue
+        words = p.get("words")
+        bits = [f"{len(words)} words"] if isinstance(words, list) else []
+        bits += [f"{k} {p[k]}" for k in _CONV_FIELDS if p.get(k) not in (None, "", [])]
+        st.append(_kv(str(row.get("label") or ""), " · ".join(bits)))
+    return st[:24]
+
+
+def _conv_light(stations: dict) -> None:
+    """The dark conversation stations that should have fired: a request the ear or the inbox opened owes ONE close
+    (I-limbo, §8.2 rule of closing), and a close that says `answered` owes the mouth's line."""
+    def expect(sid: str, why: str) -> None:
+        if not stations[sid]["lit"]:
+            stations[sid]["expected"] = True
+            stations[sid]["why"].append(why)
+
+    if (stations["ear"]["lit"] or stations["inbox"]["lit"]) and stations["model"]["lit"]:
+        expect("close", "a request ran and no conv_close followed — every request closes once (I-limbo)")
+    if any(e["label"] == "answered" for e in stations["close"]["events"]):
+        expect("mouth", "the request closed as answered and the mouth said nothing")
+
+
+def _station_any(row: dict, p: dict) -> str:
+    return _conv_station_of(row) if str(row.get("kind") or "").startswith("conv_") else _station_of(row, p)
+
+
+def light_flow(rows: list[dict], turn_action: dict | None = None) -> dict:
+    """The stations of ONE flow (rows in time order, the observer's columns): the picture is chosen by the flow —
+    `CONV_STATIONS` when it carries `conv_*` events, `STATIONS` otherwise — then lit, stated and judged dark."""
+    conv = is_conv_flow(rows)
+    picture = CONV_STATIONS if conv else STATIONS
+    stations = {s["id"]: dict(s, lit=False, expected=False, why=[], state=[], n=0, first_ms=None, events=[])
+                for s in picture}
+    grouped: dict[str, list[tuple[dict, dict]]] = {sid: [] for sid in stations}
+    t0 = float(rows[0]["ts_ms"]) if rows else 0.0
+    reply = None
+    for row in rows:
+        p = _payload(row)
+        sid = _conv_station_of(row) if conv else _station_of(row, p)
+        if not sid:
+            continue
+        grouped[sid].append((row, p))
+        s = stations[sid]
+        s["lit"] = True
+        s["n"] += 1
+        if s["first_ms"] is None:
+            s["first_ms"] = int(float(row["ts_ms"]) - t0)
+        if len(s["events"]) < 8:
+            s["events"].append({"id": row["id"], "rel_ms": int(float(row["ts_ms"]) - t0), "label": (row["label"] or row["kind"] or "")[:80],
+                                "cat": row["cat"], "kind": row["kind"], "span": row.get("span") or ""})
+        if sid == "model" and "reply" in (row["label"] or ""):
+            reply = p
+    for sid in stations:
+        stations[sid]["state"] = _conv_station_state(grouped[sid]) if conv else _station_state(sid, grouped[sid])
+    if conv:
+        _conv_light(stations)
+    else:
+        _light(stations, turn_action, reply)
+    order = sorted((s for s in stations.values() if s["lit"]), key=lambda s: s["first_ms"] or 0)
+    return {"stations": list(stations.values()), "order": [s["id"] for s in order], "n_events": len(rows),
+            "span_ms": int(float(rows[-1]["ts_ms"]) - t0) if rows else 0}
+
+
 def turn_flow(root: Path, file: str, idx: int, turn: int) -> dict:
     """ONE turn of ONE round through the turn pipeline: the stations the signal crossed, lit in order with the state
     each carried, and the dark ones that should have fired. Read from the sandbox's own DB (read-only), by the
@@ -1628,43 +1732,66 @@ def turn_flow(root: Path, file: str, idx: int, turn: int) -> dict:
             lit = set()
             if c:
                 for row in _flow_rows(con, c, limit=800):
-                    sid = _station_of(row, _payload(row))
+                    sid = _station_any(row, _payload(row))
                     if sid:
                         lit.add(sid)
-            strip.append({"turn": i, "corr_id": c, "matched_by": h, "lit": [s for s in STATION_IDS if s in lit]})
+            strip.append({"turn": i, "corr_id": c, "matched_by": h, "lit": [s for s in dict.fromkeys(STATION_IDS + CONV_STATION_IDS) if s in lit]})
     finally:
         con.close()
-    stations = {s["id"]: s for s in base["stations"]}
-    t0 = float(rows[0]["ts_ms"]) if rows else 0.0
-    grouped: dict[str, list[tuple[dict, dict]]] = {sid: [] for sid in STATION_IDS}
-    reply = None
-    for row in rows:
-        p = _payload(row)
-        sid = _station_of(row, p)
-        if not sid:
-            continue
-        grouped[sid].append((row, p))
-        s = stations[sid]
-        s["lit"] = True
-        s["n"] += 1
-        if s["first_ms"] is None:
-            s["first_ms"] = int(float(row["ts_ms"]) - t0)
-        if len(s["events"]) < 8:
-            s["events"].append({"id": row["id"], "rel_ms": int(float(row["ts_ms"]) - t0), "label": (row["label"] or row["kind"] or "")[:80],
-                                "cat": row["cat"], "kind": row["kind"], "span": row["span"] or ""})
-        if sid == "model" and "reply" in (row["label"] or ""):
-            reply = p
-    for sid in STATION_IDS:
-        stations[sid]["state"] = _station_state(sid, grouped[sid])
     turn_action = next((t for t in ((run.get("mechanism_report") or {}).get("turn_actions") or [])
                         if isinstance(t, dict) and int(t.get("turn", -1)) == turn), None)
-    _light(stations, turn_action, reply)
-    order = sorted((s for s in base["stations"] if s["lit"]), key=lambda s: s["first_ms"] or 0)
+    flow = light_flow(rows, turn_action)
     engine = (sb.get("engine") or {}).get("url") if sb.get("alive") else ""
-    base.update({"readable": True, "corr_id": corr, "matched_by": how, "n_events": len(rows),
-                 "span_ms": int(float(rows[-1]["ts_ms"]) - t0) if rows else 0,
-                 "order": [s["id"] for s in order], "turn_action": turn_action, "strip": strip,
+    base.update({"readable": True, "corr_id": corr, "matched_by": how, **flow, "turn_action": turn_action, "strip": strip,
                  "links": {"flow_api": f"{engine}/api/observability/flow/{corr}" if engine else "",
                            "viewer": f"{engine}/?trace={urllib.parse.quote(corr, safe='')}" if engine else "",
                            "engine_url": engine, "db": str(Path(sb["path"]) / "memory" / "_data" / "sandbox.db")}})
     return base
+
+
+
+def replay_rows(root: Path, name: str) -> list[dict]:
+    """The events of one replay (`python -m conversation.replay <signals> --events <runs>/conversation/replays/
+    <name>.events.jsonl`), in the observer's columns. An event with no trace of its own (the mouth's
+    `voice_unavailable`, a duck) belongs to the trace of its run. A name, never a path."""
+    if not name or not name.replace("-", "").replace("_", "").isalnum():
+        raise ValueError(name)
+    path = root / "conversation" / "replays" / f"{name}.events.jsonl"
+    if not path.is_file():
+        return []
+    rows, trace_of_run = [], {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        e = json.loads(line)
+        extra = e.get("extra") or {}
+        run = (extra.get("refs") or {}).get("run")
+        trace = e.get("trace") or trace_of_run.get(run, "")
+        if run and trace:
+            trace_of_run.setdefault(run, trace)
+        rows.append({"id": e.get("i"), "ts_ms": e.get("t_ms") or 0, "cat": "conversation", "kind": e.get("kind"),
+                     "label": e.get("label"), "span": e.get("piece") or "", "corr_id": trace, "payload": extra})
+    return rows
+
+
+def replay_flow(root: Path, name: str, trace: str = "") -> dict:
+    """ONE request of a replayed session through the conversation pipeline — the brain screen's other source, for
+    the package before it runs live (plan F0 §8.4). `trace` = the request's root intervention; empty = the first."""
+    rows = replay_rows(root, name)
+    traces = list(dict.fromkeys(r["corr_id"] for r in rows if r["corr_id"]))
+    base = {"schema": 1, "replay": name, "scenario": f"replay {name}", "n_turns": len(traces),
+            "stations": [dict(s, lit=False, expected=False, why=[], state=[], n=0, first_ms=None, events=[])
+                         for s in CONV_STATIONS]}
+    if not traces:
+        return {**base, "readable": False, "why": "no such replay, or it carries no request"}
+    corr = trace if trace in traces else traces[0]
+    mine = [r for r in rows if r["corr_id"] == corr]
+    strip = [{"turn": i, "corr_id": t, "matched_by": "trace",
+              "lit": [s for s in CONV_STATION_IDS if any(_conv_station_of(r) == s for r in rows if r["corr_id"] == t)]}
+             for i, t in enumerate(traces)]
+    heard = next((" | ".join(r["payload"].get("text") or []) for r in mine if r["label"] == "input"), "")
+    said = " · ".join(f"{r['payload'].get('chars')} chars" for r in mine if r["kind"] == "conv_mouth" and r["label"] == "say")
+    return {**base, **light_flow(mine), "readable": True, "corr_id": corr, "matched_by": "trace",
+            "turn": traces.index(corr), "heard": heard, "said": said, "strip": strip, "turn_action": None,
+            "links": {"flow_api": "", "viewer": "", "engine_url": "",
+                      "db": str(root / "conversation" / "replays" / f"{name}.events.jsonl")}}
