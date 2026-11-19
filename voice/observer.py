@@ -104,6 +104,9 @@ _CAT = {
     "memory": "memory",
     # ── A2A (ON) — V2-866: every step of the agent-to-agent network, one row each (`a2a/events.py::OPS`).
     "a2a": "a2a",
+    # ── Conversation (ON) — V2-941: the isolated turn manager's stages, one kind each (`conversation/telemetry.py`).
+    "conv_ear": "conversation", "conv_inbox": "conversation", "conv_run": "conversation", "conv_ledger": "conversation",
+    "conv_effect": "conversation", "conv_mouth": "conversation", "conv_close": "conversation",
     # ── Widgets (ON) — EVERY command against the canvas: show/close/move, data-ops (raise volume, maximize…),
     # aliases, and the operator’s own taps on the UI (`ui`). This record ties the “wrong widget”
     # wrong widget” to the PHRASE that requested it (each event carries the turn text + its trace chip).

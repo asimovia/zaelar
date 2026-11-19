@@ -533,6 +533,10 @@ _TOTAL_MAX += 175   # 2026-11-19 send containment (5.77): the ONE exit door of a
 _PACKAGE_CEILINGS["connectors"] += 176   # same cause
 _PACKAGE_CEILINGS["voice"] += 2         # same cause: `attention_prefire.prefired`
 _PACKAGE_CEILINGS["voice"] += 13        # same cause: `agent._endpointing_opts(flux)`
+_PACKAGE_CEILINGS["conversation"] = 733   # 2026-11-19 V2-941 (13.1, 13.2): born — the isolated conversation & turn manager's contract (types, envelopes, ports, config, telemetry); grows by one declared piece per commit of the phase
+_PACKAGE_CEILINGS["voice"] += 3   # same cause: the seven `conv_*` kinds get their observer family (`voice/observer._CAT`)
+_TOTAL_MAX += 736   # same cause
+
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

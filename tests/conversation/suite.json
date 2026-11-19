@@ -3,9 +3,27 @@
   "id": "conversation",
   "label": "Conversation · the turn manager",
   "description": "The isolated conversation & turn manager (conversation/): ear, inbox, manager, composer, ledger, effect gateway, mouth — its contracts, replays of recorded sessions as tokens, the seeded bombardment and the F0 tools",
-  "domain_ids": ["13"],
-  "requirements": ["python"],
+  "domain_ids": [
+    "13"
+  ],
+  "requirements": [
+    "python"
+  ],
   "steps": [
-    {"id": "13.25", "label": "F0 tools: the baseline counts a synthetic archive and the converter writes tokens only", "kind": "unit"}
+    {
+      "id": "13.1",
+      "label": "The package owes the engine nothing (both directions)",
+      "kind": "unit"
+    },
+    {
+      "id": "13.2",
+      "label": "Envelopes round-trip; unknown refused; authority fixed by kind",
+      "kind": "unit"
+    },
+    {
+      "id": "13.25",
+      "label": "F0 tools: the baseline counts a synthetic archive and the converter writes tokens only",
+      "kind": "unit"
+    }
   ]
 }

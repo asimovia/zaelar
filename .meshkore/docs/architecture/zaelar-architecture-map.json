@@ -2270,7 +2270,8 @@
   "i18n": "the strings every surface speaks in",
   "update": "the update channel: off the agent's hot path by design",
   "observability": "adds who/when/flow to the event log — the instrument the player reads, not a piece of the brain",
-  "tests": "the test system"
+  "tests": "the test system",
+  "conversation": "the conversation & turn manager (V2-941): isolated, not on the live path yet; its pieces are drawn as each lands"
  },
  "relays": [
   "voice/observer.py",

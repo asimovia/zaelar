@@ -82,6 +82,17 @@ modules:
       (`brightdata.py`), the host seams (`hooks.py`: the fast model that maps a site once, the per-source record) and the
       HTTP face `/api/scrape/read`. `search/` finds pages and reads them through it. Never imports the turn, the workers,
       `memory/` or `widgets/` (ratchet). Tests: `tests/scrape/`.
+  - id: conversation
+    path: conversation/
+    description: >-
+      (V2-941, 2026-11-19) THE CONVERSATION & TURN MANAGER — isolated, not on the live path yet. One manager per account
+      decides WHEN (the person finished an intervention; what enters the model's turn; what waits; what is said and
+      through which channel); WHAT to do is the model's — no code in front of it picks a tool, a task or a source.
+      Pieces: the ear (one arbiter of the voice intervention, revisions, incomplete), the durable inbox (one order
+      across voice and chat, by onset), the ledger of what is open, a pure composer, the effect gateway (seal per
+      revision, authority per effect, outbox, holds), the mouth (acks per device) and the manager (the policy table, the
+      focus, one run). Seven ports (Model, Tools, Store, Memory, Clock, Mouth, Telemetry); standard library only, it
+      imports nothing of the engine (ratchet). Tests: domain 13 (`tests/conversation/`).
   - id: rules
     path: rules/
     description: >-

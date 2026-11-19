@@ -8981,6 +8981,14 @@ DOMAINS: list[dict] = [
     # V2-941 — the isolated conversation & turn manager (`conversation/`) and its F0 tools. Each node's disarm is written
     # in the commit that landed it.
     {"id": "13", "name": "CONVERSATION (the turn manager)", "nodes": [
+        {"id": "13.1", "title": "`conversation/` owes the engine nothing: every import of the package (top level and lazy) is itself "
+                                "or the standard library — no nucleo, voice, livekit, memory, widgets, connectors, server, bus "
+                                "or search — and the workers and the dispatcher do not import it (they talk by envelopes and ids)",
+            "ch": UNIT, "paths": ["tests/conversation/unit/test_conversation_owes_the_engine_nothing.py"]},
+        {"id": "13.2", "title": "Every envelope kind goes to JSON and back unchanged; an unknown kind, an unknown or missing field, a "
+                                "wrong schema or channel is refused; the authority is fixed by the kind — a contact, worker or "
+                                "reminder envelope that claims the user's authority is refused (I8)",
+            "ch": UNIT, "paths": ["tests/conversation/unit/test_envelopes_round_trip_and_reject_unknown.py"]},
         {"id": "13.25", "title": "F0 tools: the baseline counts every metric of a synthetic archive (eager hints, resumed "
                                  "hints, split sentences, cancelled turns, deciders per turn, final→prompt, first audio, "
                                  "stop→silence, loop stalls) with no text or session id in its report, and the session "
