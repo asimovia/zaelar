@@ -1,7 +1,7 @@
 """I8/A3: only the person's entries grant authority, judged per effect from the run's batch (node 13.13, plan §15).
 
-A read passes from any batch. An effect rests on a batch that is ALL his (the authority floor); a batch caused by a
-contact or a worker — or one that mixes his sentence with theirs — lends nothing: the effect needs a gesture
+A read passes from any batch. An effect rests on a batch that is ALL the person's (the authority floor); a batch caused by a
+contact or a worker — or one that mixes the person's sentence with theirs — lends nothing: the effect needs a gesture
 (`NeedsConfirmation`) or a mandate. The model's `on` changes nothing. `destructive` and `payment` always need a
 gesture; a delegation covers `egress` only, and only a gesture creates one; a grant is created only from an all-user
 batch under a covering delegation and matches its exact operation. A refused or held proposal does NOT cut the
@@ -27,13 +27,13 @@ def test_a_read_passes_from_any_batch(store, clock, telemetry):
         assert k.gw.request(k.ctx(env), ToolCall("c", "search", {"q": "w1"})) == Read()
 
 
-def test_a_local_write_rests_only_on_a_batch_that_is_all_his(store, clock, telemetry):
+def test_a_local_write_rests_only_on_a_batch_that_is_all_the_persons(store, clock, telemetry):
     k = Kit(store, clock, telemetry)
     voice, typed, contact = k.utterance("iv1"), k.text("iv2", t=100), k.contact()
-    assert isinstance(k.gw.request(k.ctx(voice, typed), ADD), Claimed)          # voice + text: both his
+    assert isinstance(k.gw.request(k.ctx(voice, typed), ADD), Claimed)          # voice + text: both the person's
     assert isinstance(k.gw.request(k.ctx(contact), ToolCall("c", "agenda_add", {"what": "w2"})), NeedsConfirmation)
     mixed = k.gw.request(k.ctx(k.utterance("iv3"), k.contact()), ToolCall("c", "agenda_add", {"what": "w3"}))
-    assert isinstance(mixed, NeedsConfirmation), "a mixed batch lent the contact his authority"
+    assert isinstance(mixed, NeedsConfirmation), "a mixed batch lent the contact the person's authority"
 
 
 def test_a_send_caused_by_a_contact_or_a_worker_needs_a_gesture_and_cuts_nothing(store, clock, telemetry):

@@ -77,7 +77,7 @@ def test_what_must_be_told_is_never_deferred_past_its_cap(store, clock, telemetr
     cfg = Config(must_tell_max_defer_ms=60_000)
     p = Pipe(store, clock, telemetry, cfg)
     env = p.give(worker("t1", WorkerUpdate.RESULT, 0, "r1", must_tell=True)).envelope
-    assert p.at(10).batch(idle=False) is None                   # when idle: not while he is busy…
+    assert p.at(10).batch(idle=False) is None                   # when idle: not while busy…
     b = p.at(20).batch(idle=True)
     p.inbox.defer(env.id, due_ms=10 ** 9, now=20)               # …and a deferral far in the future is clamped
     assert b and [r["due"] for r in p.inbox.rows()] == [60_000]

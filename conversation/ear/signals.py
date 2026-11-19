@@ -91,7 +91,7 @@ class Tick:
 
 @dataclass(frozen=True)
 class Onset:
-    """Out of the ear, on the CONTROL lane (never through the inbox): he started speaking on this device."""
+    """Out of the ear, on the CONTROL lane (never through the inbox): the person started speaking on this device."""
     endpoint: str
     t_ms: int
     intervention_id: str

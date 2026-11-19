@@ -106,6 +106,16 @@
       "kind": "unit"
     },
     {
+      "id": "13.20",
+      "label": "P2: recorded sessions replay clean",
+      "kind": "unit"
+    },
+    {
+      "id": "13.21",
+      "label": "Recorded fixtures carry no words",
+      "kind": "unit"
+    },
+    {
       "id": "13.22",
       "label": "P3: random chunkings break no invariant (2,000 cases)",
       "kind": "unit"

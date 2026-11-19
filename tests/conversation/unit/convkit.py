@@ -54,7 +54,7 @@ class Harness:
     def utter(self, parts: list[tuple[list[str], int]], *, ep: str = "d1", mid: str = "eager_resumed",
               end_pause: int = 300) -> int:
         """Say `parts` (tokens, pause after) as ONE provider turn; returns the time of the end of turn. Between parts
-        the provider sends an eager hint and, when he goes on, a resumed one (or `mid='end'`: an end of turn, then a
+        the provider sends an eager hint and, when the person goes on, a resumed one (or `mid='end'`: an end of turn, then a
         new provider turn — the cut Flux made at a 900 ms pause in the adapter probe)."""
         self._seq += 1
         seq, rev, t, said = self._seq, 0, self.clock.mono + 10, []

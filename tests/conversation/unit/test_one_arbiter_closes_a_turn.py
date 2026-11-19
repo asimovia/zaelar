@@ -105,3 +105,20 @@ def test_an_eager_hint_over_final_words_never_closes(ear):
     out = feed(ear, S.VadEdge(D, "rise", 0), span(1, 1, True, words("w1", "w2")), S.VadEdge(D, "fall", 400),
                beats(400, 1500), S.EotHint(D, "flux", "eager", .6, 1500), beats(1500, 2800))
     assert not utterances(out) and states(out)[-1][0] == TENTATIVE
+
+
+def test_an_extension_after_a_reopen_is_not_another_reopen(ear):
+    from conversation import envelopes as E
+    out = feed(ear, span(1, 1, True, words("w1")), S.EotHint(D, "flux", "end", .9, 300),
+               span(2, 1, False, words("w2", t0=1000)),                                  # reopened: revision 2
+               S.EotHint(D, "flux", "eager", .5, 1300), S.EotHint(D, "flux", "resumed", .1, 1400))
+    states_out = [e for e in out if isinstance(e, E.Envelope) and e.kind.value == "intervention.state"]
+    assert [E.is_reopen(e) for e in states_out] == [False, True, False, False]   # opened · reopened · tentative · extended
+
+
+def test_a_fall_of_the_previous_intervention_does_not_cut_the_next(ear):
+    first = utterances(feed(ear, S.VadEdge(D, "rise", 0), span(1, 1, True, words("w1")), S.VadEdge(D, "fall", 300),
+                            beats(300, 600), S.EotHint(D, "flux", "end", .9, 600)))[0]
+    feed(ear, S.Sealed(first.body.intervention_id, 1), S.PlaybackState(D, True, 700))       # answered
+    out = feed(ear, beats(840, 9000), span(2, 1, False, words("w2", t0=9000)))   # words with no new rise
+    assert states(out) == [(OPEN, 1)] and not utterances(out)

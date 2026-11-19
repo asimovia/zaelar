@@ -1,8 +1,8 @@
 """Voice and chat are two channels of ONE inbox with ONE order — by onset (node 13.7, §7.1).
 
 The cross-channel cases X1–X10 at the inbox, over both stores (the parts of X2, X3 and X5 that belong to the policy
-and the focus are proved again by nodes 13.8 and 13.16): a correction typed while he speaks waits and goes in ONE
-batch after the voice, in the order he began them; a control never waits; the same words on both channels are two
+and the focus are proved again by nodes 13.8 and 13.16): a correction typed while the person speaks waits and goes in ONE
+batch after the voice, in the order they were begun; a control never waits; the same words on both channels are two
 entries; a text waits behind an incomplete voice only until it ends; two texts in the collect window are one batch;
 past the hold cap the text runs alone, with its event and its text, and the voice comes later on its own.
 """
@@ -121,7 +121,7 @@ def test_x5_a_yes_on_a_device_where_the_question_was_not_presented_has_no_focus(
     f.presented("h1", "desk", 100)                      # painted / played on the desktop only
     assert f.onset("phone") is None                     # «yes» said to the phone: nothing to answer
     assert f.onset("desk") == "h1"
-    f.presented("q9", "desk", 200)                      # a worker's question appears while he speaks…
+    f.presented("q9", "desk", 200)                      # a worker's question appears while the person speaks…
     assert f.of("desk") == "h1"                          # …and does not steal the pinned focus
     f.done_speaking("desk")
     assert f.onset("desk") is None                      # two candidates now: ambiguous, nothing authorises

@@ -6,16 +6,17 @@
 Writes, under `<dir>`:
   <name>.jsonl         one ear signal per line, in time order, in the shapes of the conversation ear (`WordSpan`,
                        `VadEdge`, `EotHint`, `Watermark`, `PlaybackState`, `TypedSubmit`, `Control`, `AgentLine`)
-  <name>.labels.json   the PROPOSED truth: which final tokens form each of his interventions (one intervention = what
-                       he said between two agent lines), as `[start, end)` token indices — to be reviewed by a person
+  <name>.labels.json   the PROPOSED truth: which final tokens form each intervention of the person (one intervention =
+                       what they said between two agent lines), as `[start, end)` token indices — to be reviewed by a person
                        against the original and saved as a list of cuts
   <name>.counts.json   how many of each signal, with no text
-  <name>.pauses.csv    (with `--pauses`) every pause in the middle of his speech — an eager hint or a VAD gap of
+  <name>.pauses.csv    (with `--pauses`) every pause in the middle of the person's speech — an eager hint or a VAD gap of
                        300 ms or more inside an intervention — with the proposed label `continues` / `ended`; the
                        `annotator` column is for the person who checks it
 
 Anonymised in the converter itself: each word becomes `wNNNN`, stable within the session (the same word, the same
-token), punctuation dropped. Times, revisions, eager/resumed hints, channels and controls are kept; a stop is a field,
+token), punctuation dropped; times are made relative to the session's first event, so no clock time of a real
+session is kept. Times, revisions, eager/resumed hints, channels and controls are kept; a stop is a field,
 never a word. Devices become `d1, d2, …`. Nothing of the original text, names or ids reaches the output.
 
 Today's archive has no per-word times: the words of a partial or a final are spread evenly over the window from the
@@ -72,9 +73,16 @@ def convert(events: list[archive.Event]) -> tuple[list[dict], dict, list[dict]]:
     pauses: list[dict] = []
     last_fall: int | None = None
 
+    seen = next((str(e.payload.get("origin_dev") or e.payload.get("dev")) for e in events
+                 if e.payload.get("origin_dev") or e.payload.get("dev")), "local")
+    last = {"raw": seen}
+
     def dev(ev: archive.Event) -> str:
-        raw = str(ev.payload.get("origin_dev") or ev.payload.get("dev") or "local")
-        return devices.setdefault(raw, f"d{len(devices) + 1}")
+        """The device an event came from; an event that does not say (today's partials) is the last one's."""
+        raw = ev.payload.get("origin_dev") or ev.payload.get("dev")
+        if raw:
+            last["raw"] = str(raw)
+        return devices.setdefault(last["raw"], f"d{len(devices) + 1}")
 
     def close_run() -> None:
         nonlocal run_start
@@ -145,7 +153,7 @@ def convert(events: list[archive.Event]) -> tuple[list[dict], dict, list[dict]]:
 
 
 def _label_pauses(pauses: list[dict], interventions: list[list[int]], signals: list[dict]) -> list[dict]:
-    """`continues` when more of his final words land after the pause inside the same proposed intervention."""
+    """`continues` when more final words of theirs land after the pause inside the same proposed intervention."""
     finals = [(s["window"][1], len(s["words"])) for s in signals if s["sig"] == "WordSpan" and s["final"]]
     cum, starts = 0, []
     for t, n in finals:
@@ -164,6 +172,25 @@ def _label_pauses(pauses: list[dict], interventions: list[list[int]], signals: l
     return out
 
 
+def relative(signals: list[dict], pauses: list[dict]) -> tuple[list[dict], list[dict]]:
+    """Times from 0 at the session's first event: the order and the gaps are kept, the clock time is not."""
+    def first(s: dict) -> int | None:
+        return s.get("t_ms", s.get("processed_through_ms", (s.get("window") or [None])[0]))
+    t0 = min((t for s in signals if (t := first(s)) is not None), default=0)
+
+    def shift(s: dict) -> dict:
+        s = dict(s)
+        for k in ("t_ms", "processed_through_ms"):
+            if k in s:
+                s[k] -= t0
+        if "window" in s:
+            s["window"] = [s["window"][0] - t0, s["window"][1] - t0]
+        if "words" in s:
+            s["words"] = [[w, a - t0, b - t0, c] for w, a, b, c in s["words"]]
+        return s
+    return [shift(s) for s in signals], [{**p, "t_ms": p["t_ms"] - t0} for p in pauses]
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("session", type=Path)
@@ -172,6 +199,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--pauses", action="store_true")
     args = ap.parse_args(argv)
     signals, labels, pauses = convert(archive.read_file(args.session))
+    signals, pauses = relative(signals, pauses)
     args.out.mkdir(parents=True, exist_ok=True)
     with open(args.out / f"{args.name}.jsonl", "w", encoding="utf-8") as fh:
         for s in signals:

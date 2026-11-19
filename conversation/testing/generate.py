@@ -247,7 +247,7 @@ class Case:
 def check(case: Case) -> list[str]:
     """I1–I9 over what the case left behind. Each violation is one sentence."""
     out = [f"crash: {c}" for c in case.crashes]
-    snap = case.store.snapshot(ACCT)
+    snap = case.store.snapshot(getattr(case, "account", ACCT))
     items = {k: r for k, r in snap.scan("items")}
     phases = {k: r["phase"] for k, r in snap.scan("interventions")}
     for eid, row in items.items():

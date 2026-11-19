@@ -5,7 +5,7 @@ the voice is the extra decision.
   batch with voice      voice live and speaker open → voice + text; otherwise text, and `voice_unavailable`
   batch of text only    voice live and speaker open ON THAT DEVICE → voice + text when the operator's rule says so
                         (the default keeps today's behaviour, PA-9); otherwise text
-  no input of his       a reminder, a result, a contact's reply: blocked device → text (pending stays visible);
+  no input of theirs       a reminder, a result, a contact's reply: blocked device → text (pending stays visible);
                         voice live and speaker open → voice + text; otherwise text
 """
 from __future__ import annotations

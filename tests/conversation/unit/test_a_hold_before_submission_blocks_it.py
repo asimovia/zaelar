@@ -1,6 +1,6 @@
 """A7: a hold received before an effect is submitted blocks it; after submission it changes nothing (node 13.15).
 
-A hold from ANY of his devices, received after the effect was claimed and before it was submitted, keeps it from
+A hold from ANY of the person's devices, received after the effect was claimed and before it was submitted, keeps it from
 going — and keeps it there however much time passes: a hold is never released by a clock. Another device cannot
 release it, nor a non-gesture; a gesture on the device that initiated the effect commits it. A hold older than the
 claim, or one that arrives once the effect is submitting, changes nothing.

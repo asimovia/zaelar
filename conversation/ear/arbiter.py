@@ -169,7 +169,7 @@ class Ear:
             return
         v.amends = v.last_sealed if (v.state is IvState.SEALED and not v.agent_spoke_since_seal) else None
         v.iv, v.rev, v.state, v.onset_ms = self.ids.new("iv"), 1, IvState.OPEN, t
-        v.eot_end_ms = v.eot_prob = None
+        v.eot_end_ms = v.eot_prob = v.fall_ms = None          # a fall of the previous intervention is not this one's
         out.append(S.Onset(v.endpoint, t, v.iv))
         out.append(self._env_state(v, IvState.OPEN, t))
         self.em.emit("conv_ear", "onset", owner="ear", cause={"kind": "voice"}, refs=self._refs(v), t_onset_ms=t)
@@ -177,7 +177,7 @@ class Ear:
                      amends=v.amends)
 
     def _reopen(self, v: _Voice, t: int, out: list) -> None:
-        v.rev, v.state, v.eot_end_ms = v.rev + 1, IvState.OPEN, None
+        v.rev, v.state, v.eot_end_ms, v.fall_ms = v.rev + 1, IvState.OPEN, None, None
         out.append(S.Onset(v.endpoint, t, v.iv))
         out.append(self._env_state(v, IvState.OPEN, t, reopened=True))
         self.em.emit("conv_ear", "reopened", owner="ear", cause={"kind": "voice"}, refs=self._refs(v))
@@ -243,8 +243,8 @@ class Ear:
 
     def _env_state(self, v: _Voice, state: IvState, t: int, *, text: str | None = None, reason: str | None = None,
                    reopened: bool = False) -> E.Envelope:
-        label = "reopened" if reopened else str(state)
-        body = E.InterventionStateBody(v.iv, state, v.rev, text, reason)
+        label = E.REOPENED if reopened else str(state)
+        body = E.InterventionStateBody(v.iv, state, v.rev, text, E.REOPENED if reopened else reason)
         return E.make(EnvelopeKind.INTERVENTION_STATE, body, producer=f"ear:{v.endpoint}",
                       producer_id=f"{v.iv}:{v.rev}:{label}:{t}", account=self.account, onset_ms=v.onset_ms,
                       sealed_ms=t, channel=Channel.VOICE, endpoint=v.endpoint,

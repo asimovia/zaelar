@@ -2,7 +2,7 @@
 
 Pure functions over inbox rows. A typed text that arrives while a voice intervention of the same account began
 earlier and is still open waits behind it (bounded by `cross_channel_hold_ms`); when the voice closes, both go in one
-batch in the order he began them, each with its channel label. Nothing here compares the two texts: whether the text
+batch in the order they were begun, each with its channel label. Nothing here compares the two texts: whether the text
 corrects what was said is the model's to read.
 """
 from __future__ import annotations

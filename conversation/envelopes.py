@@ -235,8 +235,13 @@ def from_json(d: dict) -> Envelope:
     return Envelope(**d)
 
 
+#: the reason an `intervention.state(open)` carries when it is a REOPEN (a new revision), not an extension
+REOPENED = "reopened"
+
+
 def is_reopen(env: Envelope) -> bool:
-    """THE one reading of «this intervention was reopened»: a voice intervention back to open at a later revision.
-    Policy row 6 (supersede only while nothing is sealed) keys on this and nothing else."""
+    """THE one reading of «this intervention was reopened»: a voice intervention back to open at a NEW revision —
+    said by the ear in the envelope's reason, never inferred from the revision number (an extension of revision 2 is
+    open at revision 2 too). Policy row 6 (supersede only while nothing is sealed) keys on this and nothing else."""
     return (env.kind is EnvelopeKind.INTERVENTION_STATE and env.body.state is IvState.OPEN
-            and env.body.revision > 1)
+            and env.body.reason == REOPENED)

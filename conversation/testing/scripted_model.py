@@ -1,7 +1,7 @@
 """A `Model` that follows a script keyed by the INPUT's ids — never by text (the replay fixtures are tokens).
 
 `script[key]` is a list of steps; a step is a list of events, where an event is a `ModelEvent` or a callable (run at
-that point of the stream: a test injects his next sentence or a worker's result exactly between two model events,
+that point of the stream: a test injects the person's next sentence or a worker's result exactly between two model events,
 which is how a checkpoint is exercised deterministically). The key is the first id of the INPUT block, or the ids
 joined by `+` when several came together; the step is how many tool rounds the run already did. Unknown keys get
 `default`. Every call is recorded with its prompt and tools.

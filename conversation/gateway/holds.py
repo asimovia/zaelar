@@ -1,6 +1,6 @@
 """A7: a hold received BEFORE an effect is submitted blocks it; after submission it changes nothing.
 
-A hold is a signal from one of his devices (he started speaking, he pressed «wait», a stop) recorded with its time.
+A hold is a signal from one of the person's devices (the person started speaking, the person pressed «wait», a stop) recorded with its time.
 It blocks every claimed effect of the account that has not been submitted yet. It is never released by time — a
 sleeping tab cannot veto forever, because the release does not ask every device: a GESTURE on the device that
 initiated the effect commits it. No other device, and no clock, can.

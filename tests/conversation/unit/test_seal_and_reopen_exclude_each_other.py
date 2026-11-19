@@ -1,6 +1,6 @@
 """I1/I3: a seal and a reopen exclude each other; no action effect rests on an unsealed revision (node 13.5).
 
-A closed revision can be sealed (its first effect) or reopened (he went on) — never both. After the seal there is no
+A closed revision can be sealed (its first effect) or reopened (the person went on) — never both. After the seal there is no
 reopen (the ear amends instead); an incomplete revision is never sealed. Proved on both stores and, on sqlite, with
 TWO REAL WRITERS racing on one file: for every intervention exactly one of the two wins, and every effect row of the
 gateway rests on a revision that is sealed.

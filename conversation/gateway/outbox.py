@@ -1,10 +1,10 @@
 """The gateway's decisions: the ONLY place an effect is born (I8), as one reserved row per logical operation (N3).
 
 `request` judges one tool call of a run against the run's batch (plan §15 E1): a read passes; an effect must rest on
-the person's entries (the batch's authority floor) or on a mandate, seal every revision of his in the batch and
+the person's entries (the batch's authority floor) or on a mandate, seal every revision of the person's in the batch and
 reserve its row — ONE transaction; an `egress` needs a delegation or a grant (spent in that same transaction), and
 anything that needs a gesture (`egress` without a mandate, `destructive`, `payment`, or any effect in a batch that is
-not all his) answers `NeedsConfirmation(handle)`. `confirm` spends a presented handle by a gesture: the control's
+not all the person's) answers `NeedsConfirmation(handle)`. `confirm` spends a presented handle by a gesture: the control's
 accounting, the spend, the seals and the reservation are ONE transaction (I1/N3). An effect id is a hash of
 (mandate, trigger, operation): the same operation again returns the same row; a new one is never minted. A refused
 proposal is only refused (§15 E5): the writes switch trips in `dispatch`, never here.
@@ -249,7 +249,7 @@ class Gateway:
         return self._decide(fn)
 
     def grant(self, ctx: A.RunCtx, tool: str, args: dict, expires_ms: int) -> Decision:
-        """The ledger's one way to create a grant (plan §15 E6): from a batch that is ALL his and under an active
+        """The ledger's one way to create a grant (plan §15 E6): from a batch that is ALL the person's and under an active
         delegation that covers its recipient and channel, bound to the exact operation."""
         spec = self.specs().get(tool)
         users = A.floor(ctx)

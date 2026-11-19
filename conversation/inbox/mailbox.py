@@ -19,6 +19,7 @@ from enum import Enum
 from typing import Callable
 
 from conversation import envelopes as E
+from conversation.gateway.seal import T as IV_TABLE
 from conversation.config import Config
 from conversation.inbox import ordering
 from conversation.ports import Lease, Store
@@ -167,7 +168,8 @@ class Inbox:
             texts = [r for r in rows if r["kind"] == str(EnvelopeKind.USER_TEXT)]
             if texts and now - max(r["accepted"] for r in texts) < self.cfg.collect_ms:
                 return None                       # the collect window of the last text is still open
-            pick = self._newest_revisions(tx, [r for r in rows if self._eligible(r, now, idle)], now)
+            pick = self._newest_revisions(tx, [r for r in rows if self._eligible(r, now, idle)
+                                               and not self._reopened_since(tx, r, now)], now)
             if not pick:
                 return None
             seq = tx.next_seq("runs")
@@ -179,6 +181,18 @@ class Inbox:
             for r in pick:
                 self._emit_row("dequeued", r, batch=seq, queue_age_ms=now - r["accepted"])
             return Batch(seq, envs, reason)
+
+    def _reopened_since(self, tx, row: dict, now: int) -> bool:
+        """A closed revision whose intervention was reopened waits for the newer revision (which carries every
+        word): running it would answer a sentence that is not finished, and its publication would be fenced. The
+        wait is bounded like any hold: past `cross_channel_hold_ms` without news of the newer revision, it runs."""
+        if row["kind"] != str(EnvelopeKind.USER_UTTERANCE):
+            return False
+        refs = row["env"]["refs"]
+        iv = tx.get(IV_TABLE, refs["intervention_id"]) or {}
+        rev, _, state = iv.get("phase", "").partition(":")
+        newer_open = state == "open" and rev.isdigit() and int(rev) > refs["revision"]
+        return newer_open and now - iv.get("updated_ms", now) < self.cfg.cross_channel_hold_ms
 
     def _newest_revisions(self, tx, rows: list[dict], now: int) -> list[dict]:
         """Two closed revisions of one voice intervention in the queue (a superseded run gave back the older one):

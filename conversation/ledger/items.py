@@ -4,7 +4,7 @@ does not list is refused (`InvalidTransition`) and said (`conv_ledger/refused`).
   request     what the person asked; survives a superseded run (N1) and is what liveness counts (I9)
   task        work with an owner (`conversation` or `worker:<id>`)
   question    ours, waiting for an answer; a focus candidate only once PRESENTED
-  grant       a permission given when he commissioned something: the exact content or a bounded template
+  grant       a permission given when the person commissioned something: the exact content or a bounded template
   handle      a one-use confirmation: recipient, channel, exact text, question, expiry
   delegation  hands-free scope, created only by a gesture on the device (D8)
   effect      one logical effect; reconciliation never re-sends

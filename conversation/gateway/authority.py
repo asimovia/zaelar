@@ -5,7 +5,7 @@ The manager hands the gateway the batch of the run. Its AUTHORITY FLOOR:
     by onset (a voice + text batch is fine);
   · any `contact`, `worker` or `system` entry in the batch → no implicit authority at all: an effect needs, one by
     one, a presented handle spent by a gesture, a delegation, or a grant for that exact operation.
-A batch that mixes his sentence with a contact's message lends the contact nothing (A3). The `on` the model may name
+A batch that mixes the person's sentence with a contact's message lends the contact nothing (A3). The `on` the model may name
 is an attribution hint for telemetry and nothing more.
 
 Mandates (ledger items):

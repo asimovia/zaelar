@@ -9005,7 +9005,7 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/conversation/unit/test_a_stale_epoch_writes_nothing.py"]},
         {"id": "13.3", "title": "I2: every final word of the speech-to-text belongs to exactly one intervention — a revision REPLACES a provider turn's words, a late partial never undoes a final, a turn without its final leaves the intervention incomplete, a reopen that loses to the seal moves its words to the amendment; fixed cases and seeded revision streams",
             "ch": UNIT, "paths": ["tests/conversation/unit/test_every_final_word_belongs_to_one_intervention.py"]},
-        {"id": "13.4", "title": "One arbiter closes a turn: the provider's end of turn + full coverage + the watermark past the voice's fall; an eager hint only makes it tentative (eager + resumed extends), never closes; at the cap coverage closes and its absence is incomplete; a stream that stops beating is incomplete with its words; a declared number gives more patience; voice with no words and a guard's discard are events with text and reason; resumed voice reopens before the seal and amends after it; typed input is closed on send",
+        {"id": "13.4", "title": "One arbiter closes a turn: the provider's end of turn + full coverage + the watermark past the voice's fall; an eager hint only makes it tentative (eager + resumed extends), never closes; at the cap coverage closes and its absence is incomplete; a stream that stops beating is incomplete with its words; a declared number gives more patience; voice with no words and a guard's discard are events with text and reason; resumed voice reopens before the seal and amends after it; typed input is closed on send; an extension after a reopen is not another reopen (the envelope says it, `is_reopen`); a fall of the previous intervention never cuts the next",
             "ch": UNIT, "paths": ["tests/conversation/unit/test_one_arbiter_closes_a_turn.py"]},
         {"id": "13.6", "title": "I6: every accepted envelope ends accounted for (told, coalesced, silent, expired, applied) and the audit finds no limbo; dedupe by (producer, producer_id) with its event; two texts in the 350 ms collect window are one batch; progress coalesces; a control is applied at once; a deferral is clamped to the must-tell cap and what must be told surfaces there even if the manager is never idle; a control whose handler never ran is closed by the sweep after its bound with a visible outcome and reason; on sqlite what was accepted survives closing the store — over both stores",
             "ch": UNIT, "paths": ["tests/conversation/unit/test_the_mailbox_accounts_for_every_envelope.py"]},
@@ -9042,6 +9042,10 @@ DOMAINS: list[dict] = [
         {"id": "13.26", "title": "P3 full profile, the bench: 100,000 seeded cases with rotated seeds, a JSON report of counts and violations by invariant with their seeds (by request, never in the gate)",
             "ch": UNIT, "live": True, "cmd": "./.venv/bin/python -m tests.conversation.benchmarks.bombardment --cases 100000 --out <report.json>",
             "paths": ["tests/conversation/benchmarks/bombardment.py"]},
+        {"id": "13.20", "title": "P2: recorded sessions (s1, s2), replayed as tokens through the whole manager with a model that thinks 1 s, break none of I1-I9; every labelled intervention reaches the model whole or continues as an amendment of the sealed one, never as unrelated pieces; every close reaches the prompt within 1 s; the ear closes only on the provider's end or its cap",
+            "ch": UNIT, "paths": ["tests/conversation/unit/test_recorded_sessions_replay_clean.py"]},
+        {"id": "13.21", "title": "Privacy of the P2 fixtures: every string is a token or the converter's structure (no name, word, account or session id), times are relative to the session's first event",
+            "ch": UNIT, "paths": ["tests/conversation/unit/test_recorded_fixtures_carry_no_words.py"]},
     ]},
 ]
 

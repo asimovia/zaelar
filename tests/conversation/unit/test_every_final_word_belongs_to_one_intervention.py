@@ -47,7 +47,7 @@ def test_a_turn_without_its_final_is_a_gap_and_the_intervention_ends_incomplete(
 def test_two_provider_turns_of_one_intervention_close_with_every_word_once(ear):
     out = feed(ear, span(1, 1, False, words("w1")), span(1, 2, True, words("w1", "w2")),
                S.EotHint(D, "flux", "end", .8, 500),                                    # closes after seq 1
-               span(2, 1, False, words("w3", t0=1500)),                                  # he went on: reopened
+               span(2, 1, False, words("w3", t0=1500)),                                  # the person went on: reopened
                span(2, 2, True, words("w3", "w4", t0=1500)), S.EotHint(D, "flux", "end", .8, 2000))
     closed = utterances(out)
     assert [u.body.revision for u in closed] == [1, 2]

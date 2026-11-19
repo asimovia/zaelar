@@ -10,15 +10,15 @@ writes the `sN ↔ file` correspondence to a separate file for whoever keeps it 
 
 What each metric is:
   eager            eager end-of-turn hints (the model starting on a pause), per session and per final sentence
-  resumed          an eager hint after which he went on: a partial with new words before the next final
-  split_sentences  a run of his finals between two agent lines that holds more than one final (one sentence, cut)
+  resumed          an eager hint after which the person went on: a partial with new words before the next final
+  split_sentences  a run of the person's finals between two agent lines that holds more than one final (one sentence, cut)
   turns_cancelled  a turn in flight cancelled by a longer sentence
   dropped / held   fragments thrown away / held back by the accumulator
   unreadable_asks  turns answered with «say that again?»
   loop_nudges      anti-loop nudges injected
   deciders_per_turn  decision calls around the model, per prompt
-  final_to_prompt  ms from his final sentence to the model's prompt; `not_reached_10s` counts those that never got there
-  first_audio      ms from the end of his speech to the first audio (p50/p95/p99)
+  final_to_prompt  ms from the final sentence to the model's prompt; `not_reached_10s` counts those that never got there
+  first_audio      ms from the end of the speech to the first audio (p50/p95/p99)
   stop_to_silence  ms from an attended stop to the agent going idle
   loop_stalls      host loop held > 100 ms and > 500 ms (count, total ms)
   forced_source    answers whose source the code imposed (a forced read of a card, a rail)
@@ -33,7 +33,7 @@ from pathlib import Path
 
 from tests.conversation.tools import archive, today
 
-RESUME_HORIZON_MS = 10_000   # an eager hint is judged against what he says in the next 10 s, not the rest of the day
+RESUME_HORIZON_MS = 10_000   # an eager hint is judged against what is said in the next 10 s, not the rest of the day
 PROMPT_HORIZON_MS = 10_000   # a final that has no prompt in 10 s did not reach the model (§10.1)
 
 
@@ -49,7 +49,7 @@ def percentiles(values: list[float]) -> dict:
 
 
 def resumed_eagers(tagged: list[tuple[str, archive.Event]]) -> int:
-    """An eager hint is RESUMED when, before his next final sentence, a partial arrives with words the hint did not
+    """An eager hint is RESUMED when, before the next final sentence, a partial arrives with words the hint did not
     have (Flux's TurnResumed reaches today's engine as a partial)."""
     n = 0
     for i, (sig, ev) in enumerate(tagged):

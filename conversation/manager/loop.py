@@ -94,8 +94,8 @@ class Conversation:
                 SEAL.note(tx, b.intervention_id, b.revision, "closed", now)
             elif k is EnvelopeKind.USER_TEXT:
                 SEAL.note(tx, b.intervention_id, 1, "closed", now)
-            elif k is EnvelopeKind.INTERVENTION_STATE and b.state is IvState.INCOMPLETE:
-                SEAL.note(tx, b.intervention_id, b.revision, "incomplete", now)
+            elif k is EnvelopeKind.INTERVENTION_STATE and b.state in (IvState.INCOMPLETE, IvState.DISCARDED):
+                SEAL.note(tx, b.intervention_id, b.revision, str(b.state), now)
             elif E.is_reopen(env):
                 lost_to_seal = not SEAL.reopen(tx, b.intervention_id, b.revision - 1, now)
         if lost_to_seal:            # the seal won the race: what was heard since becomes an amendment (I3)
