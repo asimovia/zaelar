@@ -60,35 +60,25 @@ class IvState(_Str):
 
 
 class MgrState(_Str):
+    """Three states. Whether the run already claimed an effect is a fact of the run, not a state; collecting is the
+    inbox's window, not a state."""
     IDLE = "idle"
-    COLLECTING = "collecting"
-    RUNNING_UNCLAIMED = "running_unclaimed"
-    RUNNING_CLAIMED = "running_claimed"
+    RUNNING = "running"
     SPEAKING = "speaking"
 
 
 class Op(_Str):
-    """The operations of the policy table (§7). Each is something the manager DOES, never a reading of content."""
-    FIX_FOCUS = "fix_focus"          # pin the device's focus at the onset of their speech
-    DUCK = "duck"                    # lower our voice, reversible
-    SILENCE = "silence"              # stop our voice, local and immediate
-    HOLD_ACTIONS = "hold_actions"    # unclaimed actions wait
-    RUN_NOW = "run_now"
-    JOIN = "join"                    # joins the batch being collected
-    SUPERSEDE = "supersede"          # replace the RUN at a checkpoint (the request stays open)
-    FOLLOW_UP = "follow_up"          # queue as a follow-up that references the run
-    CANCEL_RUN = "cancel_run"
-    BY_ID = "by_id"                  # goes to its ledger item by id
-    SURFACE_NOW = "surface_now"
-    WHEN_IDLE = "when_idle"
-    COALESCE = "coalesce"
-    SILENT = "silent"
-    WAIT_FOCUS = "wait_focus"        # does not take the focus while they speak
-    HOLD_BEHIND = "hold_behind"      # waits for the open voice intervention that began earlier
-    AT_CHECKPOINT = "at_checkpoint"  # enters the running turn at its next checkpoint
-    WAIT_AGAIN = "wait_again"        # the batch waits for the reopened intervention to close
-    IMPOSSIBLE = "impossible"        # the state cannot hold this input
-    NONE = "none"
+    """The ten operations of the policy table. Each is something the manager DOES, never a reading of content."""
+    RUN = "run"                              # the batch runs (when the manager is free)
+    SUPERSEDE = "supersede"                  # replace the RUN at its next checkpoint (the request stays open)
+    FOLLOW_UP = "follow_up"                  # queued: the next batch, after this run or this line
+    HOLD_FOR_VOICE = "hold_for_voice"        # stop the run and wait for that voice (same device, inside the window)
+    ACTIONS_WAIT = "actions_wait"            # the run's actions wait while the person speaks
+    SILENCE = "silence"                      # stop our voice, local and immediate
+    CANCEL_RUN = "cancel_run"                # drop the run (never a task)
+    BY_ID = "by_id"                          # goes to its ledger item by id
+    SAY_OWED = "say_owed"                    # say the next line owed, as it is, by voice
+    WAIT_BEHIND_VOICE = "wait_behind_voice"  # note the open voice: a text that arrives after it waits behind it
 
 
 class ItemKind(_Str):

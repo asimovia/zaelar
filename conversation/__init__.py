@@ -12,7 +12,7 @@ Pieces (each a folder, each a box of the architecture map):
   composer/  a pure function: snapshot + batch → the prompt (NOW · OPEN · TO_TELL · CONVERSATION · INPUT)
   gateway/   the only producer of effects: seal per intervention, authority per effect, outbox, holds
   mouth/     say, acks per device, what was heard, the reply channel
-  manager/   the policy table, the focus, the model's commands, one run, the loop, numeric claims
+  manager/   the policy table, the model's commands, one run, the loop, numeric claims
 
 Design: `.meshkore/docs/modules/zaelar-conversation.md`. Adapter facts: `zaelar-conversation-adapter.md`.
 """

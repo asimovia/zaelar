@@ -1,5 +1,6 @@
 """The manager of one account: ONE writer (a lease on the store, I5), ONE run at a time, the policy table applied to
-everything that arrives (§6.3). Idle → Collecting → Running (unclaimed | claimed) → Speaking → Idle.
+everything that arrives. Three states: Idle → Running → Speaking → Idle; whether the run claimed an effect is a fact
+of the run, and collecting is the inbox's window. Every wait has its deadline, and the sweep is where they expire.
 
 `hear(signal)` feeds the ear; `give(envelope)` takes what other producers send (workers, connectors, reminders,
 buttons); `ack(...)` takes the mouth's acknowledgements; `pump()` runs what is ready until nothing is; `sweep(now)`
@@ -29,7 +30,6 @@ from conversation.ledger.book import BookTx
 from conversation.ledger.items import final
 from conversation import guard
 from conversation.manager import policy, run
-from conversation.manager.focus import Focus
 from conversation.mouth import Device, Painted, PlayoutAck, SayEnded, SayStarted, Speaker
 from conversation.ports import Clock, Memory, Model, Mouth, Owed, Store, Telemetry, Tools
 from conversation.telemetry import Emitter
@@ -72,9 +72,8 @@ class Conversation:
         self.book = Book(self.store, lease, account, self.em, clock)
         self.gw = Gateway(self.book, account, self.cfg, self.em, clock, self.ids,
                           lambda: {t.name: t for t in tools.catalog()})
-        self.focus = Focus()
         self.speaker = Speaker(self.store, lease, mouth, self.em, clock, self.ids, on_presented=self._presented,
-                               on_owed=self._owed_ended, config=self.cfg)
+                               on_owed=self._owed_ended, on_ended=self._line_ended, config=self.cfg)
         self.devices: dict[str, Device] = {}
         self.state = MgrState.IDLE
         self.current: Running | None = None
@@ -124,8 +123,7 @@ class Conversation:
             return
         env = adm.envelope
         self._voice_state(env)
-        ops = policy.decide(env, self.state, claimed=bool(self.current and self.current.claimed),
-                            person_speaking=bool(self.speaking_on))
+        ops = policy.decide(env, self.state, claimed=bool(self.current and self.current.claimed))
         self._apply(env, ops)
 
     def _admit(self, tx, env: E.Envelope, now: int, pending: list) -> None:
@@ -148,27 +146,23 @@ class Conversation:
             self._voice_done(env.endpoint)          # the voice ended — whole, or incomplete
 
     def _onset(self, o: S.Onset) -> None:
+        """The person starts speaking. While we speak, nothing here: cutting our voice is the voice's local rule."""
         self.speaking_on.add(o.endpoint)
-        self.inbox.voice_open(o.intervention_id, o.t_ms, o.endpoint)
         self.gw.note_onset(o.endpoint, o.t_ms)
         for op in policy.decide(o, self.state, claimed=bool(self.current and self.current.claimed)):
-            if op is Op.FIX_FOCUS:
-                self.focus.onset(o.endpoint)
-            elif op is Op.DUCK:
-                self.speaker.duck(o.endpoint)
-            elif op is Op.HOLD_ACTIONS and self.current is not None:
+            if op is Op.WAIT_BEHIND_VOICE:
+                self.inbox.voice_open(o.intervention_id, o.t_ms, o.endpoint)
+            elif op is Op.ACTIONS_WAIT and self.current is not None:
                 self.current.actions_held = True        # unclaimed actions wait: the gateway answers Held
                 dispatch.hold(self.gw, self.ids.new("hold"), o.endpoint, self.clock.now_ms(), "onset")
-        if self.current is not None and run.resumed(self, self.current, o.endpoint, o.t_ms):
-            self.current.interrupt = "resumed"          # stop it at its next checkpoint; its batch waits for that voice
-            self.current.resumed_iv = o.intervention_id
+            elif (op is Op.HOLD_FOR_VOICE and self.current is not None
+                  and run.resumed(self, self.current, o.endpoint, o.t_ms)):
+                self.current.interrupt = "resumed"      # stop it at its next checkpoint; its batch waits for that voice
+                self.current.resumed_iv = o.intervention_id
 
     def _voice_done(self, endpoint: str) -> None:
         if endpoint in self.speaking_on:
             self.speaking_on.discard(endpoint)
-            self.focus.done_speaking(endpoint)
-            if self.state is MgrState.SPEAKING:
-                self.speaker.unduck(endpoint)
         if self.current is not None and not self.speaking_on:
             self.current.actions_held = False
         if not self.speaking_on:
@@ -193,14 +187,14 @@ class Conversation:
                                   self.clock.mono_ms())
                 if self.state is MgrState.SPEAKING:   # our voice is stopped: we are not speaking, ack or no ack
                     self.state = MgrState.IDLE
-            elif op in (Op.SUPERSEDE, Op.AT_CHECKPOINT) and self.current is not None and not self.current.claimed:
+            elif op is Op.SUPERSEDE and self.current is not None and not self.current.claimed:
                 if self.current.interrupt != "resumed":   # already held for this voice: the hold carries it
                     self.current.interrupt = "superseded"
             elif op is Op.CANCEL_RUN and self.current is not None:
                 self.current.interrupt = "cancelled"
             elif op is Op.BY_ID:
                 self._by_id(env)
-            # FOLLOW_UP, JOIN, WHEN_IDLE: the queue keeps it.
+            # RUN, FOLLOW_UP: the queue keeps it; the next pump with the manager free runs it.
         if env.kind is EnvelopeKind.USER_CONTROL and env.body.op is ControlOp.STOP:
             self.inbox.applied(env.id, self.clock.now_ms())
 
@@ -230,13 +224,15 @@ class Conversation:
 
     def ack(self, sig: SayStarted | PlayoutAck | Painted | SayEnded) -> None:
         self.speaker.ack(sig)
-        if isinstance(sig, SayEnded) and self.state is MgrState.SPEAKING:
+
+    def _line_ended(self, _say_id: str) -> None:
+        """A line ended — played, cut, or unknown past its deadline: we are not speaking any more."""
+        if self.state is MgrState.SPEAKING:
             self.state = MgrState.IDLE
 
     def _presented(self, handle: str, endpoint: str | None) -> None:
         if handle:
             self.gw.present(handle, endpoint)
-            self.focus.presented(handle, endpoint, self.clock.now_ms())
 
     def device(self, endpoint: str, **state) -> None:
         self.devices[endpoint] = Device(endpoint, **state)
@@ -295,7 +291,7 @@ class Conversation:
             while self.to_submit:
                 eid = self.to_submit.pop(0)
                 await dispatch.submit(self.gw, self.tools, eid, self.clock.mono_ms() + self.cfg.tool_ms)
-            if self.state not in (MgrState.IDLE, MgrState.COLLECTING):
+            if self.state is not MgrState.IDLE:
                 return runs
             if self._held_iv is not None:
                 if self._held_iv in self.ear.open_ids():
@@ -314,8 +310,9 @@ class Conversation:
 
     async def _say_owed(self) -> None:
         """Free, nobody speaking, no entry waiting: say the next line owed, as it is — no model — and only by voice (it
-        is already on the wall). With no device that can speak, it goes back to its ledger for its other ways."""
-        if self.owed is None or self.state is not MgrState.IDLE or self.speaking_on:
+        is already on the wall). Only `pump` calls it, and only when free: the row OWED of the table, whose other cells
+        leave the line in its ledger. With no device that can speak, it goes back to its ledger for its other ways."""
+        if self.owed is None or self.speaking_on:
             return
         line = self.owed.next(self.account)
         if line is None:

@@ -96,7 +96,7 @@ async def run_batch(conv: "Conversation", batch: Batch) -> None:
                 RunCtx(run_id, reqs[0] if reqs else run_id, {e.id: e for e in batch.envelopes}, endpoint),
                 batch_seq=batch.run_seq, last_entry_ms=last.sealed_ms if last else 0,
                 last_endpoint=last.endpoint if last else None)
-    conv.current, conv.state = r, MgrState.RUNNING_UNCLAIMED
+    conv.current, conv.state = r, MgrState.RUNNING
     _emit(conv, "started", r, batch_envs=list(r.batch_ids), reason=batch.reason)
     _emit(conv, "input", r, text=[getattr(e.body, "text", None) for e in batch.envelopes])
     try:
@@ -112,8 +112,8 @@ async def run_batch(conv: "Conversation", batch: Batch) -> None:
         await _fail(conv, r, f"{type(e).__name__}")
     finally:
         conv.current = None
-        if conv.state in (MgrState.RUNNING_CLAIMED, MgrState.RUNNING_UNCLAIMED):
-            conv.state = MgrState.COLLECTING if r.interrupt == "superseded" else MgrState.IDLE
+        if conv.state is MgrState.RUNNING:
+            conv.state = MgrState.IDLE
 
 
 async def _fail(conv: "Conversation", r: "Running", reason: str) -> None:
@@ -187,7 +187,7 @@ def _checkpoint(conv: "Conversation", r: "Running") -> None:
 
 async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
     view = view_from(conv.store.snapshot(conv.account), prefix=conv.prefix, now_ms=conv.clock.now_ms(),
-                     focus=conv.focus.of(r.ctx.endpoint), voice_endpoint=r.ctx.endpoint,
+                     voice_endpoint=r.ctx.endpoint,
                      memory=tuple(await _memory(conv, r)))
     prompt = compose(view, batch.envelopes, conv.cfg)
     tools = conv.tools.catalog()                    # the whole catalog: ordered at most, never cut (I7)
@@ -259,7 +259,7 @@ async def _tool(conv: "Conversation", r: "Running", call: ToolCall) -> ToolResul
             CL.remember(tx, result.evidence, conv.clock.now_ms(), conv.cfg.evidence_ttl_ms)
         return result
     if isinstance(decision, Claimed):
-        r.claimed, conv.state = True, MgrState.RUNNING_CLAIMED
+        r.claimed = True
         with guard.measured(conv.em, conv.cfg, "tools", {"run": r.run_id}):
             sent = await dispatch.submit(conv.gw, conv.tools, decision.effect_id, deadline)
         return sent or ToolResult("held", data={"effect": decision.effect_id})

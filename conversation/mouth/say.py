@@ -66,10 +66,11 @@ class Speaker:
     def __init__(self, store: Store, lease: Callable[[], Lease], mouth: Mouth, emitter: Emitter, clock: Clock,
                  ids: Ids, on_presented: Callable[[str, str | None], None] | None = None,
                  on_owed: Callable[[str, bool], None] | None = None,
-                 config: Config | None = None) -> None:
+                 on_ended: Callable[[str], None] | None = None, config: Config | None = None) -> None:
         self.store, self.lease, self.mouth, self.em, self.clock, self.ids = store, lease, mouth, emitter, clock, ids
         self.on_presented = on_presented or (lambda handle, endpoint: None)
         self.on_owed = on_owed or (lambda key, sounded: None)   # a line owed ended: did it sound?
+        self.on_ended = on_ended or (lambda say_id: None)       # a line ended, whatever the outcome
         self.cfg = config or Config()
 
     def overdue(self, now: int) -> list[str]:
@@ -95,10 +96,13 @@ class Speaker:
                                         "heard_chars": None, "ref": say_id, "iv": iv})
         self.em.emit("conv_mouth", "say", owner="mouth", cause={"kind": "run", "ref": run_id}, refs=self._refs(row),
                      channels=sorted(channels), chars=len(text), presents=presents, notice_key=notice_key)
-        await guard.call(self.em, self.cfg, "mouth", self.mouth.say(SayOrder(say_id, run_id, request_id, text,
-                                                                             frozenset(channels), endpoint, lang,
-                                                                             presents, notice_key)),
-                         self.cfg.mouth_ms, {"say": say_id, "run": run_id})
+        try:
+            await guard.call(self.em, self.cfg, "mouth", self.mouth.say(SayOrder(say_id, run_id, request_id, text,
+                                                                                 frozenset(channels), endpoint, lang,
+                                                                                 presents, notice_key)),
+                             self.cfg.mouth_ms, {"say": say_id, "run": run_id})
+        except guard.PortTimeout:              # the order went unanswered: the line ended «unknown», nobody waits on it
+            self.ack(SayEnded(say_id, "unknown", None, self.clock.now_ms(), endpoint))
         return say_id
 
     def ack(self, sig: SayStarted | PlayoutAck | Painted | SayEnded) -> None:
@@ -114,6 +118,8 @@ class Speaker:
         if row.get("notice_key") and isinstance(sig, SayEnded):
             # it sounded if it played, or a cut came after it began; an unknown end or a cut before any sound did not
             self.on_owed(row["notice_key"], sig.outcome == "played" or bool(extra.get("heard_chars")))
+        if isinstance(sig, SayEnded):
+            self.on_ended(sig.say_id)
 
     def _apply(self, tx, row: dict, sig) -> tuple[str, dict]:
         if isinstance(sig, SayStarted):

@@ -23,7 +23,7 @@ stdlib only, no regex, no word tables (the person's words are never read by code
 | Composer | `composer/` | A pure function from the store to the prompt: a cacheable prefix, the state, the last turns (cut to what was heard), the input. |
 | Gateway | `gateway/` | The only door out: a read passes; a write rests on a batch that is all the person's or on a mandate (a confirmed handle, a delegation, a grant); every effect is reserved, sealed and recorded before the provider is called; an unknown outcome is reconciled by looking, never resent. |
 | Mouth | `mouth/` | Orders lines on the reply channels; per-device acknowledgements decide what was heard; a line no device acknowledges ended «unknown». |
-| Manager | `manager/` | The policy table (input × state → operations), one run at a time, checkpoints where a stop, a new sentence or a held act takes effect, the liveness sweep. |
+| Manager | `manager/` | Linear: three states (free, running, speaking), the policy table (six inputs × four columns, ten operations), one run at a time, checkpoints where a stop, a new sentence or a resumed voice takes effect, and a deadline with its exit on every wait — swept by the clock's turn. |
 
 Ports (`ports.py`) are the seams to the outside: `Clock`, `Telemetry`, `Model`, `Tools`, `Memory`, `Mouth`, `Owed`, `Store`.
 Two stores keep the same contract: in memory (tests) and on sqlite (a file of its own).
@@ -38,7 +38,7 @@ within its liveness.
 
 ## How it is tested
 
-Domain 13 of `tests/run_testmap.py`: one node per contract (13.1–13.28), each seen red with its mechanism disarmed.
+Domain 13 of `tests/run_testmap.py`: one node per contract (13.1–13.31), each seen red with its mechanism disarmed.
 The three wide checks: **P3** (13.22, 2,000 seeded random conversations in the gate; 13.26, 100,000 on request) judges
 I1–I9 on what each case left, with crashes, hangs, lost acks, forged producers and races thrown in; **P2** (13.20)
 replays recorded sessions as tokens and scores the boundaries whose evidence is firm; **P8** (13.23) kills the process
