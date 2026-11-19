@@ -93,7 +93,105 @@
   ],
   "reviewed": true,
   "reviewed_by": "implementer",
-  "proposed_by": "converter"
+  "proposed_by": "converter",
+  "boundaries": [
+   [
+    7,
+    "old_prompt_only"
+   ],
+   [
+    23,
+    "old_prompt_only"
+   ],
+   [
+    34,
+    "old_prompt_only"
+   ],
+   [
+    56,
+    "old_prompt_only"
+   ],
+   [
+    61,
+    "old_prompt_only"
+   ],
+   [
+    62,
+    "transcript"
+   ],
+   [
+    65,
+    "transcript"
+   ],
+   [
+    110,
+    "transcript"
+   ],
+   [
+    126,
+    "old_prompt_only"
+   ],
+   [
+    132,
+    "old_prompt_only"
+   ],
+   [
+    133,
+    "old_prompt_only"
+   ],
+   [
+    134,
+    "old_prompt_only"
+   ],
+   [
+    135,
+    "old_prompt_only"
+   ],
+   [
+    148,
+    "none"
+   ],
+   [
+    180,
+    "old_prompt_only"
+   ],
+   [
+    206,
+    "none"
+   ],
+   [
+    354,
+    "old_prompt_only"
+   ],
+   [
+    401,
+    "old_prompt_only"
+   ],
+   [
+    409,
+    "none"
+   ],
+   [
+    418,
+    "transcript"
+   ],
+   [
+    426,
+    "transcript"
+   ]
+  ],
+  "support_method": "what lies between the two finals in the original archive: an agent line, agent speech or its first audio = transcript; only the old engine's prompt = old_prompt_only; nothing = none",
+  "operator_review": "pending for every boundary that is not transcript",
+  "discard_candidates": [
+   [
+    401,
+    409
+   ],
+   [
+    409,
+    418
+   ]
+  ]
  },
  "s2": {
   "tokens": 192,
@@ -145,7 +243,51 @@
   ],
   "reviewed": true,
   "reviewed_by": "implementer",
-  "proposed_by": "converter"
+  "proposed_by": "converter",
+  "boundaries": [
+   [
+    126,
+    "old_prompt_only"
+   ],
+   [
+    130,
+    "transcript"
+   ],
+   [
+    132,
+    "transcript"
+   ],
+   [
+    133,
+    "transcript"
+   ],
+   [
+    143,
+    "none"
+   ],
+   [
+    168,
+    "transcript"
+   ],
+   [
+    180,
+    "transcript"
+   ],
+   [
+    181,
+    "transcript"
+   ],
+   [
+    187,
+    "transcript"
+   ],
+   [
+    188,
+    "old_prompt_only"
+   ]
+  ],
+  "support_method": "what lies between the two finals in the original archive: an agent line, agent speech or its first audio = transcript; only the old engine's prompt = old_prompt_only; nothing = none",
+  "operator_review": "pending for every boundary that is not transcript"
  },
- "_doc": "Which final tokens form each intervention of the person, as [start, end) indices over the final words of each fixture in order. Proposed by the converter (between two agent lines), reviewed against the original by the implementer (spot-checked by the independent reviewer). s3/s4 come when their sessions are named."
+ "_doc": "Which final tokens form each intervention of the person, as [start, end) indices over the final words of each fixture in order. Proposed by the converter (between two agent lines), reviewed against the original by the implementer (spot-checked by the independent reviewer). s3/s4 come when their sessions are named. Each boundary (the start of every intervention but the first) carries its evidence in `boundaries`: `transcript` (the agent spoke between: firm), `old_prompt_only` (only the old engine's prompt between: it reproduces where the old engine cut) or `none` (nothing between). 13.20 scores only `transcript` boundaries, in both directions; the others are reported and decide nothing until the operator reviews them. `discard_candidates`: spans that look like audio that is not the person's (echo, a recording) \u2014 I4 candidates, never required whole."
 }

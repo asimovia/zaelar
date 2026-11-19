@@ -9045,7 +9045,7 @@ DOMAINS: list[dict] = [
         {"id": "13.26", "title": "P3 full profile, the bench: 100,000 seeded cases with rotated seeds, a JSON report of counts and violations by invariant with their seeds (by request, never in the gate)",
             "ch": UNIT, "live": True, "cmd": "./.venv/bin/python -m tests.conversation.benchmarks.bombardment --cases 100000 --out <report.json>",
             "paths": ["tests/conversation/benchmarks/bombardment.py"]},
-        {"id": "13.20", "title": "P2: recorded sessions (s1, s2), replayed as tokens through the whole manager with a model that thinks 1 s, break none of I1-I9; every labelled intervention reaches the model whole or continues as an amendment of the sealed one, never as unrelated pieces; every close reaches the prompt within 1 s; the ear closes only on the provider's end or its cap",
+        {"id": "13.20", "title": "P2: recorded sessions (s1, s2), replayed as tokens through the whole manager with a model that thinks 1 s, break no invariant; each labelled boundary carries its evidence (transcript · old_prompt_only · none) and only transcript boundaries are scored, both directions at zero: no fusion across a firm boundary, no unrelated split (an amending split is reported); every close reaches the prompt within 1 s; the ear closes only on the provider's end or its cap",
             "ch": UNIT, "paths": ["tests/conversation/unit/test_recorded_sessions_replay_clean.py"]},
         {"id": "13.21", "title": "Privacy of the P2 fixtures: every string is a token or the converter's structure (no name, word, account or session id), times are relative to the session's first event",
             "ch": UNIT, "paths": ["tests/conversation/unit/test_recorded_fixtures_carry_no_words.py"]},

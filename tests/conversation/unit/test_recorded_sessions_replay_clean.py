@@ -1,12 +1,14 @@
-"""P2 (node 13.20): recorded sessions, replayed as tokens through the whole manager, break no invariant and keep
-every labelled intervention of the person whole.
+"""P2 (node 13.20): recorded sessions, replayed as tokens through the whole manager, break no invariant, and the
+ear respects every FIRM boundary of the person in both directions.
 
-Each fixture is a real session converted to ear signals with every word a token (`fixtures/sessions/`, the labels
-reviewed against the original). Replayed with a scripted model that thinks a second of simulated time before it
-answers, the session leaves I1–I9 clean. Every labelled intervention reaches the model WHOLE — in one intervention of
-the ear — or, where the person went on only after a pause longer than the model's think window (the reply was out:
-the revision sealed), it continues as a new intervention that AMENDS the earlier one (I3): never two unrelated
-pieces. Every intervention that closed reaches the model's prompt within one second of simulated time.
+Each fixture is a real session converted to ear signals with every word a token (`fixtures/sessions/`). Each labelled
+boundary carries its evidence (`labels.json` › `boundaries`): only `transcript` boundaries — the agent spoke between —
+are firm; `old_prompt_only` and `none` only reproduce where the old engine cut, and are reported, never scored, until
+the operator reviews them (review 2, NM4/NM5). Scored, both at zero: a FUSION — a firm boundary the ear does not
+respect (two of the person's interventions glued into one) — and an unrelated SPLIT — the ear cutting where no boundary
+is labelled with no `amends` chain between the pieces. A split that amends (the reply was out, the revision sealed,
+the person went on: I3) is counted and reported. Every intervention that closed reaches the model's prompt within one
+second of simulated time.
 """
 from __future__ import annotations
 
@@ -37,22 +39,34 @@ def test_the_session_replays_with_no_invariant_broken(name):
     assert rep.tel.labels("conv_run").count("conv_run/started") >= 3
 
 
-@pytest.mark.parametrize("name", SESSIONS)
-def test_every_labelled_intervention_comes_out_whole_or_as_an_amendment(name):
-    rep, _sig = _replay(name)
+def score(rep: Replay, labels: dict) -> dict:
+    """Fusions at firm boundaries, splits where nothing is labelled (unrelated or amending), and the disagreements at
+    boundaries that are not firm — the numbers P2 publishes."""
     owner = [iv for iv, _w in rep.conv.ear.spans.all_final_words()]
-    assert len(owner) == LABELS[name]["tokens"], "the ear did not keep every final word of the session"
+    assert len(owner) == labels["tokens"], "the ear did not keep every final word of the session"
     amends = {}
     for _k, row in rep.store.snapshot("replay").scan("inbox"):
-        if row["kind"] == str(EnvelopeKind.USER_UTTERANCE) and row["env"]["body"].get("amends"):
-            amends[row["env"]["body"]["intervention_id"]] = row["env"]["body"]["amends"]
-    broken = []
-    for a, b in LABELS[name]["interventions"]:
-        ivs = list(dict.fromkeys(owner[a:b]))
-        chained = all(amends.get(later) == earlier for earlier, later in zip(ivs, ivs[1:]))
-        if len(ivs) > 1 and not chained:
-            broken.append((a, b, ivs))
-    assert not broken, f"labelled interventions split into unrelated pieces: {broken}"
+        body = row["env"]["body"]
+        if row["kind"] in (str(EnvelopeKind.USER_UTTERANCE), str(EnvelopeKind.INTERVENTION_STATE)) and body.get("amends"):
+            amends[body["intervention_id"]] = body["amends"]
+    support = {k: s for k, s in labels["boundaries"]}
+    cuts = [k for k in range(1, len(owner)) if owner[k] != owner[k - 1]]
+    splits = [k for k in cuts if k not in support]
+    return {"fusions": [k for k, s in support.items() if s == "transcript" and owner[k] == owner[k - 1]],
+            "unrelated_splits": [k for k in splits if amends.get(owner[k]) != owner[k - 1]],
+            "amending_splits": [k for k in splits if amends.get(owner[k]) == owner[k - 1]],
+            "not_firm_missed": [k for k, s in support.items() if s != "transcript" and owner[k] == owner[k - 1]]}
+
+
+@pytest.mark.parametrize("name", SESSIONS)
+def test_the_ear_respects_every_firm_boundary_in_both_directions(name, record_property):
+    rep, _sig = _replay(name)
+    got = score(rep, LABELS[name])
+    for key, ks in got.items():
+        record_property(key, len(ks))
+    assert any(s == "transcript" for _k, s in LABELS[name]["boundaries"]), "a session with no firm boundary scores nothing"
+    assert not got["fusions"], f"firm boundaries glued into one intervention: {got['fusions']}"
+    assert not got["unrelated_splits"], f"the ear cut where nothing is labelled, with no amends: {got['unrelated_splits']}"
 
 
 @pytest.mark.parametrize("name", SESSIONS)
