@@ -61,7 +61,7 @@ async def gate_the_utterance(*, plan, role, text) -> dict:
         if len(obj) >= 3 or obj.isdigit():  # "18"/"9" (an hour, a short number) is as valid as a word
             try:
                 from memory import api as memory
-                n = memory.unforget(obj)
+                n = await _ing.asyncio.to_thread(memory.unforget, obj)      # table scans: never on the loop
                 return _R, {"source": "unforget", "atoms": 0, "restored": n, "object": obj, "plan": plan}
             except Exception as e:  # noqa: BLE001
                 _ing.logger.debug(f"memory_agent: unforget failed ({e})")
@@ -80,7 +80,7 @@ async def gate_the_utterance(*, plan, role, text) -> dict:
                     from memory import api as memory
                     # include_pinned=True: the pin protects a critical datum from INVOLUNTARY forgetting; an
                     # explicit order to forget always wins over it.
-                    n = memory.forget(obj, hard=hard, include_pinned=True)
+                    n = await _ing.asyncio.to_thread(memory.forget, obj, hard=hard, include_pinned=True)
                     return _R, {"source": "forget", "atoms": 0, "forgot": n, "object": obj, "hard": hard, "plan": plan}
                 except Exception as e:  # noqa: BLE001
                     _ing.logger.debug(f"memory_agent: forget failed ({e})")
@@ -103,7 +103,7 @@ async def gate_the_utterance(*, plan, role, text) -> dict:
                 from memory import api as memory
                 # include_pinned=True (same reason as forgetting on request): an explicit correction
                 # ("it is not X, it is Y") must be able to invalidate the old value even if importance pinned it.
-                memory.forget(w, include_pinned=True)
+                await _ing.asyncio.to_thread(memory.forget, w, include_pinned=True)
             except Exception as e:  # noqa: BLE001
                 _ing.logger.debug(f"memory_agent: correction forget ({w!r}) failed ({e})")
 

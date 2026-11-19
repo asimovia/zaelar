@@ -29,3 +29,27 @@ def test_the_lifespan_wires_the_home_loop():
     src = _vts.read(Path(__file__).resolve().parents[3] / "server" / "boot" / "surfaces.py")
     src = re.sub(r"(?m)#.*$", "", src)
     assert "_mem_agent.set_loop(_running_loop)" in src
+
+
+def test_a_forget_order_scans_the_memory_off_the_loop(monkeypatch):
+    """INI-042 #34 — «forget X» and «it is not X, it is Y» read every valid memory twice (two table scans); on the
+    loop that held it 2.7 s on a hosted account. The scans run in a thread, the gate still answers with their count."""
+    from memory import api as memory
+    from nucleo.memory_agent import ingest_steps
+    seen = []
+
+    def on_which_thread(name):
+        def fn(obj, **kw):
+            seen.append((name, obj, threading.get_ident()))
+            return 2
+        return fn
+    monkeypatch.setattr(memory, "forget", on_which_thread("forget"))
+    monkeypatch.setattr(memory, "unforget", on_which_thread("unforget"))
+
+    async def run():
+        here = threading.get_ident()
+        out = await ingest_steps.gate_the_utterance(plan={}, role="operator", text="olvida lo del regalo")
+        return here, out
+    here, out = asyncio.run(run())
+    assert isinstance(out, tuple) and out[1]["source"] == "forget" and out[1]["forgot"] == 2
+    assert [s[0] for s in seen] == ["forget"] and seen[0][2] != here, "the scan ran off the loop thread"
