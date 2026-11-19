@@ -8994,6 +8994,8 @@ DOMAINS: list[dict] = [
                                  "stop→silence, loop stalls) with no text or session id in its report, and the session "
                                  "converter writes ear signals, proposed labels and pauses as tokens only",
             "ch": UNIT, "paths": ["tests/conversation/unit/test_baseline_counts_a_synthetic_archive.py"]},
+        {"id": "13.19", "title": "One writer per account, fenced by an epoch (I5), and the Store contract both stores keep (memory and sqlite): acquiring bumps the epoch, a transaction under a taken lease writes nothing — not even half — and says so, a failed transaction leaves nothing, `cas` moves a row only from the expected value, `insert_unique` returns the same row on a repeat, a snapshot is a detached coherent copy; on sqlite two real writers on one file: the old one stops at the takeover, and everything survives a reopen",
+            "ch": UNIT, "paths": ["tests/conversation/unit/test_a_stale_epoch_writes_nothing.py"]},
     ]},
 ]
 

@@ -192,5 +192,6 @@ class Store(Protocol):
     def acquire(self, account: str, owner: str) -> Lease: ...           # a new epoch for this owner (fencing)
     def current(self, account: str) -> Lease | None: ...
     def tx(self, lease: Lease) -> AbstractContextManager[Tx]: ...      # raises StaleEpoch; checked again at commit
+    def check(self, lease: Lease) -> None: ...                         # raises StaleEpoch; the last controllable point
     def snapshot(self, account: str) -> Snapshot: ...                  # a coherent read for the composer
     def close(self) -> None: ...

@@ -21,6 +21,11 @@
       "kind": "unit"
     },
     {
+      "id": "13.19",
+      "label": "A stale epoch writes nothing; the Store contract over both stores",
+      "kind": "unit"
+    },
+    {
       "id": "13.25",
       "label": "F0 tools: the baseline counts a synthetic archive and the converter writes tokens only",
       "kind": "unit"
