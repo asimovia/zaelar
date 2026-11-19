@@ -9,6 +9,8 @@ acknowledged, the request closes — and each stage's kind and label are seen, e
 from __future__ import annotations
 
 import ast
+
+import pytest
 import json
 from pathlib import Path
 
@@ -109,3 +111,36 @@ def test_m10_every_port_is_measured_the_store_and_the_memory_too(store):
     ports = {p["port"] for k, lab, p in h.tel.events if lab == "port_slow"}
     assert {"memory", "store"} <= ports, ports
     assert "STATE\nw1" in h.model.calls[0].prompt.state                # memory reaches the state when it answers
+
+
+def test_m9_every_event_of_a_request_carries_its_trace_and_its_cause(store):
+    h = Harness(store, script={"iv_000001": [
+        [ToolCall("c1", "search", {"q": "w1"}), ToolCall("c2", "agenda_add", {"what": "w2"}), Done()],
+        [reply("w9"), Done()]]})
+    h.utter([(["w1", "w2"], 0)])
+    blank = [f"{k}/{lab}" for k, lab, p in h.tel.events if not p["trace"]]
+    assert not blank, blank
+    assert {p["trace"] for _k, _lab, p in h.tel.events} == {"iv_000001"}
+    assert all(p["cause"].get("kind") for _k, _lab, p in h.tel.events)
+
+
+def test_m9_a_task_handed_off_closes_its_request_handed_off_and_an_event_needs_its_cause(store):
+    from conversation.ports import Command
+    from conversation.telemetry import Emitter, UnknownEvent
+    h = Harness(store, script={"iv_000001": [[ToolCall("c", "task.start", {"brief": "w1"}), Done()],
+                                             [Command("no_reply", {"reason": "working"}), Done()]]})
+    h.utter([(["w1"], 0)])
+    assert [lab for lab, _ in h.closes()] == ["handed_off"]
+    with pytest.raises(UnknownEvent):
+        Emitter(h.tel, h.clock, "a").emit("conv_run", "started", owner="manager")
+
+
+def test_minor_11_a_telemetry_port_that_raises_does_not_stop_the_manager(store):
+    class Broken:
+        def emit(self, kind, label, payload):
+            raise OSError("the event sink is down")
+
+    h = Harness(store, script={"iv_000001": [[reply("w9"), Done()]]})
+    h.conv.em.port = Broken()
+    h.utter([(["w1"], 0)])
+    assert [o.text for o in h.mouth.orders] == ["w9"] and h.conv.em.lost > 0

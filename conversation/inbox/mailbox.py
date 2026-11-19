@@ -69,6 +69,12 @@ class Inbox:
         """Accept one envelope. `admit(tx, env)` runs INSIDE the same transaction, after the dedupe and before the
         routing — what must be written with the acceptance (the intervention's phase, the request) or not at all."""
         env = replace(env, id=env.id or self.ids.new("e"), accepted_ms=now)
+        why = ("not_this_account" if env.account != self.acct else
+               "producer_not_of_its_kind" if not E.producer_allowed(env) else None)
+        if why is not None:                  # authority follows the producer, and the account is this one (M1)
+            self._emit("refused", env, cause={"kind": "producer", "ref": env.producer}, reason=why,
+                       text=getattr(env.body, "text", None))
+            return Admission(None, "refused")
         with self.store.tx(self.lease()) as tx:
             row, new = tx.insert_unique(T, env.id, self._row(env), f"{env.producer}|{env.producer_id}")
             if not new:
@@ -141,8 +147,13 @@ class Inbox:
         row = tx.get(VOICE, iv)
         if row is not None:
             tx.put(VOICE, iv, {**row, "open": False})
+        still_open = {v_iv: v for v_iv, v in tx.scan(VOICE) if v.get("open") and v_iv != iv}
         for key, held in tx.scan(T):
             if held["state"] == "held" and held["held_behind"] == iv:
+                behind = ordering.hold_behind(held["onset"], still_open)   # another voice begun earlier still open
+                if behind is not None:
+                    self._move(tx, key, held_behind=behind)
+                    continue
                 self._move(tx, key, state="queued", held_behind=None, hold_until=None)
                 self._emit_row("released", held, held_behind=iv)
 

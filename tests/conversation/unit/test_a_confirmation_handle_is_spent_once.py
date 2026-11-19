@@ -133,3 +133,35 @@ def test_two_confirmations_racing_from_two_writers_reserve_one_effect(tmp_path, 
     assert len(k.items("effect")) == 20
     s1.close()
     s2.close()
+
+
+def test_m2_the_same_send_twice_under_a_delegation_spends_it_once_and_is_one_row(store, clock, telemetry):
+    k = Kit(store, clock, telemetry)
+    k.gw.delegate(k.control(ControlOp.DELEGATE, scope={"recipients": ["c1"], "channel": "chat",
+                                                       "expires_ms": 10 ** 15, "max": 1}))
+    voice = k.utterance("iv1")
+    a = k.gw.request(k.ctx(voice), k.send())
+    b = k.gw.request(k.ctx(voice), k.send())
+    assert isinstance(a, Claimed) and isinstance(b, Claimed) and a.effect_id == b.effect_id and b.repeat
+    dg = [r for r in k.items("delegation")][0]
+    assert dg["data"]["used"] == 1 and len(k.items("effect")) == 1
+
+
+def test_m5_a_confirmation_by_gesture_is_sent_by_the_manager_and_a_stop_withdraws_what_was_claimed(store):
+    """The confirmed send goes out on the next pump — nobody has to call dispatch by hand; a stop during a run
+    withdraws an effect it claimed and never submitted (audit M5)."""
+    from conversation.ports import Done, ToolCall
+    from conversation.testing.scripted_model import reply
+    from tests.conversation.unit.convkit import Harness
+    from tests.conversation.unit.inboxkit import control
+    h = Harness(store, script={"iv_000001": [[ToolCall("c", "send_message", {"to": "c1", "via": "chat",
+                                                                               "text": "w5"}), Done()],
+                                             [reply("w6?"), Done()]]})
+    h.utter([(["w1"], 0)])
+    handle = [r for _k, r in store.snapshot("acct-test").scan("items") if r["kind"] == "handle"][0]
+    assert handle["state"] == "presented"                      # the reply that asked was played on d1
+    h.conv.give(control(ControlOp.CONFIRM, 0, "k1", endpoint="d1", gesture=True, handle=handle["id"]))
+    h.pump()
+    assert [c[0] for c in h.tools.calls] == ["send_message"]
+    effect = [r for _k, r in store.snapshot("acct-test").scan("items") if r["kind"] == "effect"][0]
+    assert effect["state"] == "delivered"

@@ -33,8 +33,8 @@ class Spans:
         if cur is None:
             self._turns[key] = _Turn(iv, revision, final, tuple(words), tag)
             return bool(words)
-        if cur.final and not final:
-            return False                       # a late partial never undoes a final
+        if cur.final and (not final or revision < cur.revision):
+            return False                       # a late partial — or an OLDER final — never undoes a newer final
         if revision < cur.revision and not final:
             return False
         grew = len(words) > len(cur.words)

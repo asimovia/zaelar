@@ -82,3 +82,10 @@ def test_seeded_revision_streams_never_put_a_word_in_two_interventions(ear):
             assert len(sp.words(iv)) == len({(w[0], w[1]) for w in sp.words(iv)})
         finals = sp.all_final_words()
         assert len(finals) == len({(w[0], w[1]) for _iv, w in finals}), seed
+
+
+def test_minor_2_an_older_final_arriving_late_never_replaces_a_newer_final():
+    sp = Spans()
+    sp.add(D, 1, 5, True, words("w1", "w2", "w3"), "iv1", 1)
+    sp.add(D, 1, 3, True, words("w1", "w9"), "iv1", 1)
+    assert [w[0] for w in sp.words("iv1")] == ["w1", "w2", "w3"]

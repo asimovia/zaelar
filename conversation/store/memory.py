@@ -87,6 +87,7 @@ class _Tx(_Tables):
 class MemoryStore:
     def __init__(self) -> None:
         self._lock = threading.RLock()
+        self._depth = threading.local()
         self._accounts: dict[str, dict] = {}
         self._leases: dict[str, Lease] = {}
 
@@ -109,10 +110,16 @@ class MemoryStore:
     @contextmanager
     def tx(self, lease: Lease) -> Iterator[_Tx]:
         with self._lock:
+            if getattr(self._depth, "n", 0):
+                raise RuntimeError("a transaction inside a transaction: the inner one would be lost at commit")
             self.check(lease)
             base = self._accounts.setdefault(lease.account, {})
             tx = _Tx(base)
-            yield tx
+            self._depth.n = 1
+            try:
+                yield tx
+            finally:
+                self._depth.n = 0
             self.check(lease)
             base.update(tx.staged)
 

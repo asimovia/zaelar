@@ -28,7 +28,7 @@ class EarLabels(_Labels):
 
 
 class InboxLabels(_Labels):
-    ACCEPTED, DUPLICATE, HELD, RELEASED = "accepted", "duplicate", "held", "released"
+    ACCEPTED, DUPLICATE, HELD, RELEASED, REFUSED = "accepted", "duplicate", "held", "released", "refused"
     EXPIRED, COALESCED, DEQUEUED, ACCOUNTED = "expired", "coalesced", "dequeued", "accounted"
 
 
@@ -76,6 +76,15 @@ OWNERS = frozenset(m.value for m in Owner)
 REF_KEYS = frozenset(m.value for m in Ref)
 
 
+def root(refs: dict) -> str:
+    """The trace of an event: the root intervention of its request (`r_<iv>` → `<iv>`), so `/flow/<corr_id>` follows a
+    request from the ear to its close (§8.1)."""
+    if refs.get("iv"):
+        return str(refs["iv"])
+    req = str(refs.get("req") or "")
+    return req[2:] if req.startswith("r_") else ""
+
+
 class UnknownEvent(ValueError):
     """A kind or label outside the contract: the code is wrong, not the event."""
 
@@ -97,7 +106,13 @@ class Emitter:
         refs = {k: v for k, v in (refs or {}).items() if v is not None}
         if set(refs) - REF_KEYS:
             raise UnknownEvent(f"refs {sorted(set(refs) - REF_KEYS)}")
+        if not cause or not cause.get("kind"):
+            raise UnknownEvent(f"{kind}/{label} without its cause")      # every event says what provoked it (§8.1)
         body = {"t_ms": self.clock.now_ms(), "mono_ms": self.clock.mono_ms(), "account": self.account,
-                "epoch": self.epoch(), "owner": owner, "cause": cause or {}, "refs": refs,
-                "trace": trace or refs.get("iv") or "", **payload}
-        self.port.emit(kind, label, body)
+                "epoch": self.epoch(), "owner": owner, "cause": cause, "refs": refs,
+                "trace": trace or root(refs), **payload}
+        try:
+            self.port.emit(kind, label, body)
+        except Exception as e:  # noqa: BLE001 — the port must never raise; if it does, the manager goes on and counts
+            self.lost = getattr(self, "lost", 0) + 1
+            self.last_loss = type(e).__name__

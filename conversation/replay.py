@@ -133,6 +133,7 @@ class Replay:
     def as_case(self) -> SimpleNamespace:
         """The shape `conversation.testing.generate.check` reads, to judge I1–I9 on a replay."""
         return SimpleNamespace(crashes=[], store=self.store, conv=self.conv, old=None, tel=self.tel, cfg=self.config,
+                               mouth=self.mouth,
                                clock=self.clock, tools=self.tools, model=self.model, issued_calls=0, race_seals=[],
                                account=ACCOUNT)
 

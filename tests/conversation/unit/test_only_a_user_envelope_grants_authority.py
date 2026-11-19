@@ -2,7 +2,7 @@
 
 A read passes from any batch. An effect rests on a batch that is ALL the person's (the authority floor); a batch caused by a
 contact or a worker — or one that mixes the person's sentence with theirs — lends nothing: the effect needs a gesture
-(`NeedsConfirmation`) or a mandate. The model's `on` changes nothing. `destructive` and `payment` always need a
+(`NeedsConfirmation`) or a mandate, and a mandate never serves a batch that carries no content of the person (M4). The model's `on` changes nothing. `destructive` and `payment` always need a
 gesture; a delegation covers `egress` only, and only a gesture creates one; a grant is created only from an all-user
 batch under a covering delegation and matches its exact operation. A refused or held proposal does NOT cut the
 writes (E5); a call that reaches dispatch without a reservation does.
@@ -76,8 +76,11 @@ def test_a_grant_needs_an_all_user_batch_and_a_delegation_and_matches_its_exact_
     assert k.gw.grant(k.ctx(voice), "send_message", k.send().args, 10 ** 15) == Read()
     result = k.worker()
     k.gw.request(k.ctx(k.utterance("iv5")), k.send(text="w0555"))               # spends the delegation's one use
-    assert isinstance(k.gw.request(k.ctx(result), k.send()), Claimed)            # the grant: the exact operation
-    assert isinstance(k.gw.request(k.ctx(result), k.send(text="w0999")), NeedsConfirmation)
+    # M4 (Architect): a run caused ONLY by a worker never uses a mandate — it needs a presented, confirmed handle
+    assert isinstance(k.gw.request(k.ctx(result), k.send()), NeedsConfirmation)
+    mixed = k.ctx(k.utterance("iv6"), result, run="run2")
+    assert isinstance(k.gw.request(mixed, k.send()), Claimed)                    # the grant: the exact operation
+    assert isinstance(k.gw.request(mixed, k.send(text="w0999")), NeedsConfirmation)
 
 
 def test_a_call_that_reaches_dispatch_without_a_reservation_cuts_the_writes(store, clock, telemetry):
@@ -87,3 +90,12 @@ def test_a_call_that_reaches_dispatch_without_a_reservation_cuts_the_writes(stor
     assert k.flags().get("on") and not tools.calls
     assert k.gw.request(k.ctx(k.utterance("iv1")), ADD) == Refused("write_disabled")
     assert k.gw.request(k.ctx(k.utterance("iv2")), ToolCall("c", "search", {})) == Read()   # reads go on
+
+
+def test_m4_a_delegation_never_serves_a_run_caused_only_by_a_contact(store, clock, telemetry):
+    """Architect's decision M4: no autonomous reply to a third party — a delegation that covers the send does not
+    serve a run whose batch has no content of the person; with the person's sentence in it, it does."""
+    k = Kit(store, clock, telemetry)
+    k.gw.delegate(k.control(ControlOp.DELEGATE, scope=SCOPE))
+    assert isinstance(k.gw.request(k.ctx(k.contact()), k.send()), NeedsConfirmation)
+    assert isinstance(k.gw.request(k.ctx(k.utterance("iv1"), k.contact(), run="r2"), k.send()), Claimed)

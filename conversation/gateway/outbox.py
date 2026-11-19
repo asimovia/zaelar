@@ -80,7 +80,7 @@ class Gateway:
 
     def _note(self, label: str, ctx: A.RunCtx | None, **payload) -> None:
         refs = {"run": ctx.run_id, "req": ctx.request_id, "endpoint": ctx.endpoint} if ctx else {}
-        refs.update({k: payload.pop(k) for k in ("effect", "iv", "rev", "item") if k in payload})
+        refs.update({k: payload.pop(k) for k in ("effect", "iv", "rev", "item", "req", "run") if k in payload})
         self._said.append((label, refs, payload))
 
     def _flush(self) -> None:
@@ -140,13 +140,29 @@ class Gateway:
         ivs = [(e.refs.intervention_id, e.refs.revision or 1) for e in users or ()]
         if users and self.cfg.action_seal_grace_ms and not self._grace_over(b, ivs, ctx.endpoint):
             return self._refuse(ctx, tool, "seal_grace")
+        existing = self._existing(b, trigger.id if trigger is not None else None, op)
+        if existing is not None:              # the same operation on the same trigger: the SAME row, no new spend (M2)
+            self._note("claimed", ctx, tool=tool, effect=existing["id"], repeat=True)
+            return Claimed(existing["id"], repeat=True)
         if users and spec.effect_class is EffectClass.LOCAL_WRITE:
             return self._reserve(b, ctx, trigger.id, trigger.id, op, tool, args, ivs, users[0])
-        mandate = A.delegation_for(b.tx, spec, args, b.now) or A.grant_for(b.tx, tool, args, b.now)
+        # a delegation or a grant never authorises an effect in a run whose batch carries no content of the person
+        # (Architect, M4): a run caused only by a contact, a worker or the system needs a presented, confirmed handle
+        his = any(e.is_user and e.kind in A.CONTENT for e in ctx.batch.values())
+        mandate = (A.delegation_for(b.tx, spec, args, b.now) or A.grant_for(b.tx, tool, args, b.now)) if his else None
         if mandate is not None and trigger is not None:
             self._spend(b, mandate, op)
             return self._reserve(b, ctx, mandate["id"], trigger.id, op, tool, args, ivs, trigger)
         return self._issue_handle(b, ctx, spec, tool, args, op, trigger, ivs, hint)
+
+    @staticmethod
+    def _existing(b, trigger: str | None, op: str) -> dict | None:
+        if trigger is None:
+            return None
+        for row in b.items(ItemKind.EFFECT):
+            if row["data"].get("trigger") == trigger and row["data"].get("op") == op:
+                return row
+        return None
 
     def _spend(self, b, mandate: dict, op: str) -> None:
         if mandate["kind"] == str(ItemKind.DELEGATION):

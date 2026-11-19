@@ -25,7 +25,8 @@ class BookTx:
     def _say(self, label: str, row: dict, cause: dict | None, **payload) -> None:
         refs = {"item": row["id"], "req": row["data"].get("req"), "task": row["data"].get("task_id"),
                 "effect": row["id"] if row["kind"] == str(ItemKind.EFFECT) else None, "run": row["data"].get("run")}
-        self._pending.append((label, cause or {}, refs, {"item_kind": row["kind"], "owner_of_item": row["owner"],
+        self._pending.append((label, cause or {"kind": "ledger", "ref": row["id"]}, refs,
+                              {"item_kind": row["kind"], "owner_of_item": row["owner"],
                                                         "waiting_on": row.get("waiting_on"), **payload}))
 
     def get(self, item_id: str) -> dict | None:
@@ -65,7 +66,7 @@ class BookTx:
         try:
             check(kind, row["state"], to)
         except InvalidTransition:
-            self._pending.append(("refused", cause or {}, {"item": item_id},
+            self._pending.append(("refused", cause or {"kind": "ledger", "ref": item_id}, {"item": item_id},
                                   {"item_kind": row["kind"], "from": row["state"], "to": to}))
             raise
         new = {"state": to, "updated_ms": self.now, "data": {**row["data"], **(data or {})},

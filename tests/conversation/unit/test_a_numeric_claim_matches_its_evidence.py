@@ -88,3 +88,10 @@ def test_m6_a_wrong_claim_gets_one_repair_round_with_its_reason(store):
     assert [o.text for o in h.mouth.orders] == ["w7"] and [lab for lab, _ in h.closes()] == ["answered"]
     repair = h.model.calls[-1].prompt.steps[-1]
     assert repair[0].name == "claims_check" and repair[1].data == {"mismatch": ["direction"]}
+
+
+def test_m3_a_claim_with_no_value_or_a_word_for_a_value_never_matches_and_never_raises():
+    from conversation.manager.claims import Claim, check
+    no_value = Claim.from_args({k: v for k, v in _claim().items() if k != "value"})
+    a_word = Claim.from_args(_claim(value="eighteen"))
+    assert [why for _c, why in check([no_value, a_word], {"ev1": EV})] == ["value", "value"]

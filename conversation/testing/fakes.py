@@ -45,7 +45,7 @@ def catalog() -> list[ToolSpec]:
             ToolSpec("agenda_add", effect_class=EffectClass.LOCAL_WRITE),
             ToolSpec("send_message", effect_class=EffectClass.EGRESS, binding=send),
             ToolSpec("delete_all", effect_class=EffectClass.DESTRUCTIVE),
-            ToolSpec("task.start", effect_class=EffectClass.LOCAL_WRITE),
+            ToolSpec("task.start", effect_class=EffectClass.LOCAL_WRITE, hands_off=True),
             ToolSpec("task.cancel", effect_class=EffectClass.LOCAL_WRITE)]
 
 

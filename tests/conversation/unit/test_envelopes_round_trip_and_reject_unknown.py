@@ -104,3 +104,14 @@ def test_a_wrong_schema_or_body_type_is_refused():
     with pytest.raises(E.EnvelopeError):
         E.make(EnvelopeKind.USER_TEXT, BODIES[EnvelopeKind.USER_CONTROL], producer="p", producer_id="1",
                account="a", onset_ms=0, sealed_ms=0)
+
+
+def test_m1_a_gesture_comes_only_by_a_button():
+    for ch in (Channel.TEXT, Channel.VOICE):
+        with pytest.raises(E.EnvelopeError):
+            E.make(EnvelopeKind.USER_CONTROL, E.ControlBody(ControlOp.CONFIRM, handle_id="h1", gesture=True),
+                   producer="chat:d1", producer_id="1", account="a", onset_ms=0, sealed_ms=0, channel=ch)
+    d = E.to_json(_env(EnvelopeKind.USER_CONTROL))
+    d["channel"] = str(Channel.TEXT)
+    with pytest.raises(E.EnvelopeError):
+        E.from_json(d)

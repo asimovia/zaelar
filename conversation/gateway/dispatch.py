@@ -74,7 +74,8 @@ async def submit(gw: Gateway, tools: Tools, effect_id: str, deadline_mono_ms: in
             gw._note("held", None, effect=effect_id, reason="hold", holds=[h["id"] for h in blocking])
             return None
         b.move(effect_id, "submitting")
-        gw._note("submitted", None, effect=effect_id, tool=row["data"]["tool"])
+        gw._note("submitted", None, effect=effect_id, tool=row["data"]["tool"], req=row["data"].get("req"),
+                 run=row["data"].get("run"))
         return row
     row = gw._decide(gate)
     if row is None:
@@ -93,7 +94,8 @@ async def submit(gw: Gateway, tools: Tools, effect_id: str, deadline_mono_ms: in
 
     def settle(b):
         b.move(effect_id, to, data={"receipt": result.receipt})
-        gw._note("unknown" if to == "submission_unknown" else "receipt", None, effect=effect_id, state=to)
+        gw._note("unknown" if to == "submission_unknown" else "receipt", None, effect=effect_id, state=to,
+                 req=row["data"].get("req"), run=row["data"].get("run"))
         if to == "provider_accepted" and (result.receipt or {}).get("delivered"):
             b.move(effect_id, "delivered")
     gw._decide(settle)

@@ -128,3 +128,17 @@ def test_x5_a_yes_on_a_device_where_the_question_was_not_presented_has_no_focus(
     f.done_speaking("desk")
     f.closed("q9")
     assert f.onset("desk") == "h1"
+
+
+def test_minor_3_a_text_stays_behind_another_voice_that_began_before_it(store, clock, telemetry):
+    """Two devices: a voice on d1 began first, a voice on d3 began before the text too; d1 closes — the text still
+    waits behind d3, which began before it."""
+    p = Pipe(store, clock, telemetry)
+    p.signal(S.VadEdge("d1", "rise", 0), span(1, 1, False, words("w1", t0=0), stream="d1"))
+    p.signal(S.VadEdge("d3", "rise", 100), span(1, 1, False, words("w7", t0=100), stream="d3"))
+    p.signal(S.TypedSubmit("d2", "c1", "w9", 300))
+    p.signal(span(1, 2, True, words("w1", "w2", t0=0), stream="d1"), S.VadEdge("d1", "fall", 900),
+             beats(900, 1200, stream="d1"), S.EotHint("d1", "flux", "end", .9, 1200))
+    b = p.at(1600).batch()
+    assert kinds(b) == [UTT]                                       # the text is not released yet
+    assert [r["held_behind"] for r in p.inbox.rows() if r["kind"] == TEXT][0] is not None

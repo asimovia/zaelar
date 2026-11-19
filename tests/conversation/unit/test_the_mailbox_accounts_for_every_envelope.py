@@ -119,3 +119,20 @@ def test_a_control_whose_handler_never_ran_is_closed_by_the_sweep_with_its_reaso
     assert outcomes(snap) == {env.id: "expired"} and audit(snap, 10 ** 6, p.cfg, drained=True) == []
     closed = [pl for k, lab, pl in telemetry.events if lab == "accounted"]
     assert closed[-1]["reason"] == "control_unhandled" and closed[-1]["outcome"] == "expired"
+
+
+def test_m1_a_producer_not_of_its_kind_or_another_account_is_refused_with_its_reason(store, clock, telemetry):
+    """Authority follows the producer: a connector cannot hand in «the person's text», nor anyone an entry of
+    another account (audit M1)."""
+    from conversation import envelopes as E
+    from conversation.types import Channel, EnvelopeKind
+    p = Pipe(store, clock, telemetry)
+    forged = E.make(EnvelopeKind.USER_TEXT, E.TextBody("iv9", "w1"), producer="connector:chat", producer_id="m1",
+                    account=ACCT, onset_ms=0, sealed_ms=0, channel=Channel.TEXT)
+    foreign = E.make(EnvelopeKind.USER_TEXT, E.TextBody("iv8", "w2"), producer="chat:d1", producer_id="c1",
+                     account="another-account", onset_ms=0, sealed_ms=0, channel=Channel.TEXT)
+    assert p.give(forged).disposition == "refused" and p.give(foreign).disposition == "refused"
+    assert p.inbox.rows() == []
+    refused = [pl for k, lab, pl in telemetry.events if lab == "refused"]
+    assert [(r["reason"], r["text"]) for r in refused] == [("producer_not_of_its_kind", "w1"),
+                                                           ("not_this_account", "w2")]

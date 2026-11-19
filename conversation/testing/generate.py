@@ -116,12 +116,16 @@ class Case:
             self.issued_calls += 1
             out += [ToolCall("c", "agenda_add", {"what": f"w{self.rng.randint(1, 3)}"}), Done()]
         elif r < 0.42:
-            self.issued_calls += 1
-            out += [ToolCall("c", "send_message", {"to": "c1", "via": "chat", "text": "w5"}), Done()]
+            call = ToolCall("c", "send_message", {"to": "c1", "via": "chat", "text": "w5"})
+            twice = self.rng.random() < 0.3                                     # M2: the same call again
+            self.issued_calls += 2 if twice else 1
+            out += [call, call, Done()] if twice else [call, Done()]
         elif r < 0.52:
             claim = {"entity": "ACME", "period": "q3", "metric": "up_days", "value": 18, "evidence_id": "ev1",
                      "direction": self.rng.choice(["up", "down"])}
-            out += [reply("w8", [claim]), Done()]
+            if self.rng.random() < 0.2:
+                claim.pop("value")                                                 # M3: a number with no value
+            out += [reply("w8nv" if "value" not in claim else "w8", [claim]), Done()]
         elif r < 0.60:
             out += [Command("no_reply", {"reason": "p3"}), Done()]
         elif r < 0.65:
@@ -197,7 +201,7 @@ class Case:
                   must_tell=False, surfacing=None) -> None:
         self.n += 1
         kw = {"surfacing": surfacing} if surfacing is not None else {}
-        conv.give(E.make(kind, body, producer=f"p3:{kind}", producer_id=f"{self.n}", account=ACCT,
+        conv.give(E.make(kind, body, producer=f"{E.KINDS[kind][3][0]}p3", producer_id=f"{self.n}", account=ACCT,
                          onset_ms=self._now(), sealed_ms=self._now(), channel=channel, endpoint=endpoint,
                          must_tell=must_tell, refs=E.Refs(task_id=getattr(body, "task_id", None)), **kw))
         if conv.current is None:
@@ -234,11 +238,30 @@ class Case:
             self._race_seal(conv)
         elif a < 0.94:
             self._redeliver(conv)                                                # B5: an adapter re-delivers
-        elif a < 0.97:
+        elif a < 0.955:
             self._go_on_unfinished(conv)                                         # B1: a reopen left open
+        elif a < 0.965:
+            self._forge(conv)                                                    # M1: a forged producer / account
+        elif a < 0.975:
+            self._envelope(conv, EnvelopeKind.USER_CONTROL, E.ControlBody(         # M4: a hands-free scope
+                ControlOp.DELEGATE, gesture=True, scope={"recipients": ["c1"], "channel": "chat",
+                                                         "expires_ms": self._now() + 10 ** 7, "max": 3}),
+                channel=Channel.BUTTON, endpoint="d1")
         else:
             self.clock.advance(self.rng.choice([100, 2000, 9000, 40_000]))
             self._feed(conv, S.Tick(self._now()))
+
+    def _forge(self, conv: Conversation) -> None:
+        self.n += 1
+        if self.rng.random() < 0.5:
+            env = E.make(EnvelopeKind.USER_TEXT, E.TextBody(f"ivf{self.n}", "w1"), producer="connector:p3",
+                         producer_id=f"f{self.n}", account=ACCT, onset_ms=self._now(), sealed_ms=self._now(),
+                         channel=Channel.TEXT)
+        else:
+            env = E.make(EnvelopeKind.USER_TEXT, E.TextBody(f"ivf{self.n}", "w1"), producer="chat:d9",
+                         producer_id=f"f{self.n}", account="another-account", onset_ms=self._now(),
+                         sealed_ms=self._now(), channel=Channel.TEXT)
+        conv.give(env)
 
     def _reopen_mid_run(self) -> None:
         """While the model runs on a closed revision, the person goes on (a word, no end yet) and an adapter re-delivers
@@ -344,6 +367,30 @@ def check(case: Case) -> list[str]:
     for k, lab, p in case.tel.events:
         if k == "conv_close":
             closes[p["refs"]["req"]] = closes.get(p["refs"]["req"], 0) + 1
+    for r in inbox_rows:                                                               # I8/M1
+        if not r["env"]["producer"].startswith(E.KINDS[EnvelopeKind(r["kind"])][3]) or \
+                r["env"]["account"] != getattr(case, "account", ACCT):
+            out.append(f"I8: {r['id']} accepted from {r['env']['producer']} for {r['env']['account']}")
+    for rid, row in items.items():
+        if row["kind"] == str(ItemKind.DELEGATION) and row["data"].get("used", 0) > len(
+                [e for e in items.values() if e["kind"] == "effect" and e["data"].get("mandate") == rid]):
+            out.append(f"N3: delegation {rid} spent more times than it has effects")        # M2
+    runs_batch = {p["refs"]["run"]: set(p["batch_envs"]) for k, lab, p in case.tel.events
+                  if k == "conv_run" and lab == "started"}
+    kind_of = {r["id"]: r["kind"] for r in inbox_rows}
+    for rid, row in items.items():                                                     # M4
+        m = items.get(row["data"].get("mandate", "")) if row["kind"] == "effect" else None
+        if m is not None and m["kind"] in ("delegation", "grant"):
+            envs = runs_batch.get(row["data"].get("run"), set())
+            if not any(kind_of.get(e) in ("user.utterance", "user.text") for e in envs):
+                out.append(f"I8: effect {rid} under a {m['kind']} in a run with no content of the person")
+    if any(o.text == "w8nv" for o in case.mouth.orders):                              # D9/M3
+        out.append("D9: a reply published with a numeric claim that has no value")
+    holds = list(snap.scan("holds"))
+    for rid, row in items.items():                                                     # M5
+        if row["kind"] == "effect" and row["state"] == "claimed" and not any(
+                h["t_ms"] >= row["created_ms"] and rid not in h["released"] for _k, h in holds):
+            out.append(f"M5: effect {rid} claimed and left: never sent, never withdrawn")
     batch_of, fenced = {}, set()                            # a FENCED batch never runs again unchanged (B1)
     for k, lab, p in case.tel.events:
         if k == "conv_run" and lab == "started":

@@ -179,3 +179,17 @@ def test_b4_a_second_process_on_the_same_store_answers_with_ids_of_its_own(tmp_p
            if r["kind"] == "user.utterance"}
     assert len(ivs) == 2
     s2.close()
+
+
+def test_minor_10_a_transaction_inside_a_transaction_is_refused_by_the_memory_store():
+    from conversation.store import MemoryStore
+    s = MemoryStore()
+    lease = s.acquire("acct", "p")
+    with pytest.raises(RuntimeError):
+        with s.tx(lease) as tx:
+            tx.put("t", "a", {"v": 1})
+            with s.tx(lease) as inner:
+                inner.put("t", "b", {"v": 2})
+    with s.tx(lease) as tx:
+        tx.put("t", "c", {"v": 3})                                  # the store is usable afterwards
+    assert s.snapshot("acct").get("t", "c") == {"v": 3}

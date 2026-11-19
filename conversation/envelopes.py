@@ -103,17 +103,32 @@ class WorkerBody:
 
 Body = UtteranceBody | TextBody | ControlBody | InterventionStateBody | ReminderBody | ContactBody | WorkerBody
 
-#: kind → (body class, the authority it carries, the channels it may come by). Fixed: never read off the wire.
-KINDS: dict[EnvelopeKind, tuple[type, Authority, frozenset[Channel]]] = {
-    EnvelopeKind.USER_UTTERANCE: (UtteranceBody, Authority.USER, frozenset({Channel.VOICE})),
-    EnvelopeKind.USER_TEXT: (TextBody, Authority.USER, frozenset({Channel.TEXT})),
+#: kind → (body class, the authority it carries, the channels it may come by, the producers that may send it).
+#: Fixed: never read off the wire. The inbox refuses an envelope whose producer is not one of its kind's (M1): a
+#: connector cannot hand in «the person's text», whatever kind it writes on the envelope.
+KINDS: dict[EnvelopeKind, tuple[type, Authority, frozenset[Channel], tuple[str, ...]]] = {
+    EnvelopeKind.USER_UTTERANCE: (UtteranceBody, Authority.USER, frozenset({Channel.VOICE}), ("ear:",)),
+    EnvelopeKind.USER_TEXT: (TextBody, Authority.USER, frozenset({Channel.TEXT}), ("chat:",)),
     EnvelopeKind.USER_CONTROL: (ControlBody, Authority.USER,
-                                frozenset({Channel.VOICE, Channel.TEXT, Channel.BUTTON})),
-    EnvelopeKind.INTERVENTION_STATE: (InterventionStateBody, Authority.USER, frozenset({Channel.VOICE})),
-    EnvelopeKind.SYSTEM_REMINDER: (ReminderBody, Authority.SYSTEM, frozenset({Channel.SYSTEM})),
-    EnvelopeKind.CONTACT_MESSAGE: (ContactBody, Authority.CONTACT, frozenset({Channel.CONNECTOR})),
-    EnvelopeKind.WORKER_UPDATE: (WorkerBody, Authority.WORKER, frozenset({Channel.WORKER})),
+                                frozenset({Channel.VOICE, Channel.TEXT, Channel.BUTTON}),
+                                ("button:", "chat:", "ear:", "guard:")),
+    EnvelopeKind.INTERVENTION_STATE: (InterventionStateBody, Authority.USER, frozenset({Channel.VOICE}), ("ear:",)),
+    EnvelopeKind.SYSTEM_REMINDER: (ReminderBody, Authority.SYSTEM, frozenset({Channel.SYSTEM}),
+                                   ("pulse:", "system:", "manager:")),
+    EnvelopeKind.CONTACT_MESSAGE: (ContactBody, Authority.CONTACT, frozenset({Channel.CONNECTOR}), ("connector:",)),
+    EnvelopeKind.WORKER_UPDATE: (WorkerBody, Authority.WORKER, frozenset({Channel.WORKER}), ("worker:",)),
 }
+
+
+def producer_allowed(env: "Envelope") -> bool:
+    """Is the producer one that may send this kind (the authority follows the producer, not the label)?"""
+    return env.producer.startswith(KINDS[env.kind][3])
+
+
+def _gesture_by_button(kind: EnvelopeKind, body: Body, channel: Channel) -> None:
+    """A gesture is a button on the device (PA-10): a text or a voice control is never one."""
+    if kind is EnvelopeKind.USER_CONTROL and body.gesture and channel is not Channel.BUTTON:
+        raise EnvelopeError(f"a gesture comes by a button, not by {channel}")
 
 
 @dataclass(frozen=True)
@@ -148,12 +163,13 @@ def make(kind: EnvelopeKind, body: Body, *, producer: str, producer_id: str, acc
          cause: str | None = None, refs: Refs | None = None, surfacing: Surfacing = Surfacing.NOW,
          must_tell: bool = False, expires_ms: int | None = None) -> Envelope:
     """An envelope as a producer hands it over: no id and no `accepted_ms` yet (the inbox sets both)."""
-    cls, authority, channels = KINDS[kind]
+    cls, authority, channels, _producers = KINDS[kind]
     if not isinstance(body, cls):
         raise EnvelopeError(f"{kind}: body must be {cls.__name__}")
     channel = channel or next(iter(sorted(channels, key=str)))
     if channel not in channels:
         raise EnvelopeError(f"{kind} cannot come by {channel}")
+    _gesture_by_button(kind, body, channel)
     return Envelope(SCHEMA, "", producer, producer_id, account, session, endpoint, kind, channel, authority, cause,
                     refs or Refs(), onset_ms, sealed_ms, 0, surfacing, must_tell, expires_ms, body)
 
@@ -220,7 +236,7 @@ def from_json(d: dict) -> Envelope:
         kind = EnvelopeKind(d["kind"])
     except ValueError as e:
         raise EnvelopeError(f"unknown kind {d['kind']!r}") from e
-    _cls, authority, channels = KINDS[kind]
+    _cls, authority, channels, _producers = KINDS[kind]
     try:
         channel, claimed = Channel(d["channel"]), Authority(d["authority"])
         surfacing = Surfacing(d["surfacing"])
@@ -232,6 +248,7 @@ def from_json(d: dict) -> Envelope:
         raise EnvelopeError(f"{kind} cannot come by {channel}")
     d.update(kind=kind, channel=channel, authority=authority, surfacing=surfacing,
              refs=Refs(**_strict(Refs, d["refs"], "refs")), body=_body(kind, d["body"]))
+    _gesture_by_button(kind, d["body"], channel)
     return Envelope(**d)
 
 
