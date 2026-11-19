@@ -8974,6 +8974,15 @@ DOMAINS: list[dict] = [
                                   "label, `untrusted.fence_tree` (V2-846 F6)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/workers/test_a_worker_reaches_the_web_only_through_our_doors.py"]},
     ]},
+    # V2-941 — the isolated conversation & turn manager (`conversation/`) and its F0 tools. Each node's disarm is written
+    # in the commit that landed it.
+    {"id": "13", "name": "CONVERSATION (the turn manager)", "nodes": [
+        {"id": "13.25", "title": "F0 tools: the baseline counts every metric of a synthetic archive (eager hints, resumed "
+                                 "hints, split sentences, cancelled turns, deciders per turn, final→prompt, first audio, "
+                                 "stop→silence, loop stalls) with no text or session id in its report, and the session "
+                                 "converter writes ear signals, proposed labels and pauses as tokens only",
+            "ch": UNIT, "paths": ["tests/conversation/unit/test_baseline_counts_a_synthetic_archive.py"]},
+    ]},
 ]
 
 _SUMMARY = re.compile(r"(\d+) passed|(\d+) failed|(\d+) error")
