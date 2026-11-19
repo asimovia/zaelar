@@ -6903,6 +6903,10 @@ DOMAINS: list[dict] = [
         {"id": "5.1", "title": "Email", "ch": UNIT, "paths": [
             "tests/connectors/unit/email/test_mailbox.py", "tests/connectors/unit/email/test_oauth.py",
             "tests/connectors/unit/email/test_providers.py"]},
+        # The exit door: every order to a connector carries the lane that asked for it, is counted, and is held —
+        # answered as «not sent» — when the lane is unknown or the hold switch names it.
+        {"id": "5.77", "title": "An order leaves by ONE door: its lane, its count, and the switch that holds it",
+            "ch": UNIT, "paths": ["tests/connectors/unit/messaging/test_every_order_leaves_by_one_door.py"]},
         {"id": "5.2", "title": "Mensajería (ingest/reply)", "ch": UNIT, "paths": [
             "tests/connectors/unit/messaging/test_ingest.py", "tests/connectors/unit/messaging/test_reply.py",
             "tests/connectors/unit/messaging/test_memory_dump.py"]},

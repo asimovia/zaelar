@@ -529,6 +529,8 @@ _PACKAGE_CEILINGS["server"] += 1          # same cause: `GET /api/debug/loop` ca
 _TOTAL_MAX += 206   # same cause
 _TOTAL_MAX += 13    # 2026-11-19 cloud speed (a): with Flux the endpointing is FIXED (a long pause after an untranscribed sentence put every later turn at 3 s); env overrides still win
 _TOTAL_MAX += 2     # 2026-11-19 cloud speed (iii) fix: the early verdict is reused when the spoken frame ENDS in the reply (the lead-in is not another frame)
+_TOTAL_MAX += 175   # 2026-11-19 send containment (5.77): the ONE exit door of an outbound order — its lane, its count, the hold switch (`connectors/exit.py`)
+_PACKAGE_CEILINGS["connectors"] += 176   # same cause
 _PACKAGE_CEILINGS["voice"] += 2         # same cause: `attention_prefire.prefired`
 _PACKAGE_CEILINGS["voice"] += 13        # same cause: `agent._endpointing_opts(flux)`
 

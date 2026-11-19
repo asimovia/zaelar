@@ -1123,6 +1123,7 @@
   "memory/retriever": "m_retriever",
   "connectors/meshkore": "o_peers",
   "connectors/outcome.py": "s_conn",
+  "connectors/exit.py": "s_conn",
   "connectors/messaging/calls.py": "s_conn",
   "nucleo/energy": "s_egress",
   "search": "s_search"
