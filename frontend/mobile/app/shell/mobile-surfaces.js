@@ -12,6 +12,7 @@ import { BootOverlay } from "../../../app/components/BootOverlay.js?v=4";
 import { LanguageOnboarding } from "../../../app/components/LanguageOnboarding.js?v=1";
 import { UpdateSurface } from "../../../app/update/UpdateSurface.js?v=1";
 import { EnergyNotice } from "../../../app/components/EnergyNotice.js?v=1";
+import { EnergyLow } from "../../../app/components/EnergyLow.js?v=1";
 import { Veil } from "../../../app/components/Veil.js?v=1";
 import { ElsewhereChips } from "../../../app/components/ElsewhereChips.js?v=1";
 import { ChatSheet } from "./ChatSheet.js?v=1";
@@ -68,6 +69,8 @@ export const MOBILE_SURFACES = [
   { id: "update",          comp: () => UpdateSurface({ badge: false }), target: "body", phase: "overlay", label: "«New version — reload» bar", shared: true },
   // V2-785 — out of Energy, on screen, with the top-up button (the voice alone used to say it).
   { id: "energy-notice",   comp: EnergyNotice,  target: "body", phase: "overlay", label: "Out of Energy + top up", shared: true },
+  // 2026-11-19 — under 5 % of the cycle's Energy: a small card before the stop, never a modal.
+  { id: "energy-low",      comp: EnergyLow,     target: "body", phase: "overlay", label: "Low Energy warning", shared: true },
   // V2-881 — ONE veil: the agent stopped, the engine asleep, or the voice on another device — one face at a time, and
   // its one button wakes, switches on and brings the voice here (it replaced the phone's own «your voice is on the
   // computer» notice, and the desktop's separate stopped-agent veil).

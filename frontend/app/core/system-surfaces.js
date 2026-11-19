@@ -34,6 +34,7 @@ import { DebugPanel } from "../components/DebugPanel.js?v=4";
 import { FeedbackWidget } from "../components/FeedbackWidget.js?v=2";
 import { FaultModal } from "../components/FaultModal.js?v=1";
 import { EnergyNotice } from "../components/EnergyNotice.js?v=1";
+import { EnergyLow } from "../components/EnergyLow.js?v=1";
 import { ElsewhereChips } from "../components/ElsewhereChips.js?v=1";
 import { LanguageOnboarding } from "../components/LanguageOnboarding.js?v=1";
 import { MemoryMap } from "../components/MemoryMap.js?v=6";
@@ -174,6 +175,10 @@ export const SYSTEM_SURFACES = [
   // `core/shared-surfaces.css`); not voice-addressable — it appears when the agent has stopped.
   { id: "energy-notice", comp: EnergyNotice, target: "body", phase: "overlay", kind: "modal",
     toggle: "store.energy().exhausted (SSE kind:energy · /api/energy)", label: "Out of Energy + top up",
+    name: null, aliases: null },
+  // 2026-11-19 — under 5 % of the cycle's Energy: a corner card BEFORE the stop, never a modal. Shared with the phone.
+  { id: "energy-low", comp: EnergyLow, target: "body", phase: "overlay", kind: "transient",
+    toggle: "store.energy() balance under 5 % of capacity", label: "Low Energy warning",
     name: null, aliases: null },
   // V2-792 — what the agent did on the OTHER screen (a card opened there, a video playing there), one tap away.
   { id: "elsewhere",  comp: ElsewhereChips, target: "body", phase: "overlay", kind: "transient",

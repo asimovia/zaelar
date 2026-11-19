@@ -138,6 +138,20 @@
 .en-btn.primary{background:var(--hb-accent);border-color:var(--hb-accent);color:var(--canvas)}
 .en-btn:focus-visible{outline:2px solid var(--hb-accent);outline-offset:2px}
 .en-btn[hidden]{display:none}   /* V2-801 — the paused notice has no Top up */
+/* LOW ENERGY (EnergyLow.js, 2026-11-19) — under 5 %: a corner card, never a modal; nothing under it is blocked. */
+.en-low{position:fixed;top:64px;right:16px;z-index:9500;display:none;gap:10px;align-items:flex-start;box-sizing:border-box;
+  width:min(340px,calc(100vw - 32px));padding:12px 12px 12px 14px;border-radius:var(--hb-r-l,12px);background:var(--hb-bg);
+  color:var(--hb-ink);border:1px solid var(--hb-warn,#e0a526);box-shadow:0 8px 28px rgba(0,0,0,.28)}
+.en-low.on{display:flex}
+.en-low-mark{font-size:1.25rem;line-height:1.2;color:var(--hb-warn,#e0a526)}
+.en-low-text{flex:1;min-width:0}
+.en-low-title{display:block;font-size:0.875rem;font-weight:700;margin-bottom:4px}
+.en-low-body{margin:0 0 6px;font-size:0.8125rem;line-height:1.45;color:var(--hb-ink-2,var(--hb-ink))}
+.en-low-link{font-size:0.8125rem;font-weight:600;color:var(--hb-accent)}
+.en-low-link[hidden]{display:none}
+.en-low-x{border:0;background:none;color:var(--hb-ink);opacity:.7;font-size:1.25rem;line-height:1;cursor:pointer;padding:2px 4px}
+.en-low-x:hover{opacity:1}
+@media (max-width:640px){.en-low{top:auto;bottom:calc(84px + env(safe-area-inset-bottom,0px));right:16px}}
 
 /* ---------- THE ONE VEIL (V2-881) — this screen cannot use the agent; one face at a time (components/Veil.js).
    Both shells mount it. Two heights, as each face had before it was one component:
