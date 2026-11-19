@@ -55,6 +55,7 @@ const CATS = [
   { key: "worker", label: "Brain Workers" },   // trabajo async + the Chromium interno that abren for navegar
   { key: "memory", label: "Memory" },
   { key: "a2a", label: "A2A" },                // V2-866: the agent-to-agent network, one row per step
+  { key: "conversation", label: "Conversation" }, // V2-941: the conversation & turn manager, one kind per stage
   { key: "widget", label: "Widgets" },         // TODA orden contra the canvas (show/close/move/data-op/tap)
   { key: "system", label: "System/Code" },
   // Pulse (V2-043): the LATIDO of the loop orquestador (~1 Hz, “PULSE·tick”). OFF by defecto — ensucia the log muy
@@ -71,6 +72,7 @@ const ALWAYS_KINDS = new Set(["error", "alert", "voice_fault"]);
 const CAT_LABEL_KEY = {
   worker: "debug.cat_worker", memory: "debug.cat_memory", flash: "debug.cat_flash",
   widget: "debug.cat_widget", a2a: "debug.cat_a2a", system: "debug.cat_system", pulse: "debug.cat_pulse",
+  conversation: "debug.cat_conversation",
 };
 
 // Cabecera FIJA of columnas (2026-08-09, operator request: “no se ve claro qué es each columna”). Mismo

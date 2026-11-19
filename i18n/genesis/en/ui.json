@@ -545,6 +545,7 @@
  "debug.cat_other": "Unclassified",
  "debug.cat_pulse": "Pulse",
  "debug.cat_a2a": "A2A network",
+ "debug.cat_conversation": "Conversation",
  "debug.cat_system": "System/Code",
  "debug.cat_system_title": "Internal/perf events (calls, callbacks, cycles) — lots of them",
  "debug.cat_widget": "Widgets",

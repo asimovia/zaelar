@@ -153,7 +153,7 @@ class Replay:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "").partition("\n")[0])
     ap.add_argument("signals")
     ap.add_argument("--events", help="write the manager's events here, in the observer's shape")
     ap.add_argument("--think-ms", type=int, default=800)

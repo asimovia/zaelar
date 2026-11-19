@@ -58,6 +58,7 @@ COPY memory ./memory
 COPY bus ./bus
 COPY connectors ./connectors
 COPY a2a ./a2a
+COPY conversation ./conversation
 # The WhatsApp bridge's Node deps are installed HERE, at build time. Left to the runtime self-heal in
 # connectors/whatsapp/bridge_proc.py, `npm install` ran inside the container and failed every time: two deps are
 # pinned to git commits (`git+ssh://` in the lockfile) and the image had neither git nor an ssh key, so the bridge

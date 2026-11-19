@@ -76,8 +76,8 @@ def test_a_replay_of_s1_is_painted_whole_on_the_brain_screen(observatory) -> Non
     last = d["strip"][-1]["corr_id"]
     one = get(f"{url}/api/replay?name=s1&trace={last}")
     assert one["corr_id"] == last and one["turn"] == len(traces) - 1
-    mouth = {s["id"]: s for s in d["stations"]}["mouth"]
-    assert "voice_unavailable" in [e["label"] for e in mouth["events"]]   # traceless, found through its run
+    rows = od.replay_rows(root, "s1")                                         # an event with a run has its trace
+    assert all(r["corr_id"] for r in rows if (r["payload"].get("refs") or {}).get("run"))
 
 
 def test_a_replay_is_read_by_name_never_by_path(observatory) -> None:  # noqa: F811
