@@ -153,7 +153,7 @@ def test_a_proactive_delivery_arms_the_window_around_its_own_playout():
     text = re.sub(r"(?m)#.*$", "", src.read_text(encoding="utf-8"))
     assert "opens_window: bool = True" in text, (
         "a proactive delivery is addressed to the operator BY DEFAULT — that is what it is")
-    arm, say = text.find("note_addressed_speech()"), text.find("_speaker(spoken)")
+    arm, say = text.find("note_addressed_speech()"), text.find("await _say_bounded(spoken)")
     assert arm >= 0 and say > arm, "the arm has to be set before the first word is spoken"
 
 
