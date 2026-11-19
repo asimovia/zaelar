@@ -88,7 +88,6 @@ def stamped(value) -> str:
     return str(value) if isinstance(value, Stamp) else ""
 
 
-_ALL = frozenset({"all", "1", "true", "yes", "on", "*"})
 _counts: dict[tuple[str, str, str], int] = {}
 _lock = threading.Lock()
 
@@ -99,7 +98,7 @@ def _switch() -> tuple[bool, frozenset]:
     if not raw:
         return False, frozenset()
     tokens = {t.strip() for t in raw.replace(";", ",").split(",") if t.strip()}
-    if tokens & _ALL or not tokens <= LANES:
+    if not tokens <= LANES:           # `all`, `1`, `on`… are no lane: they hold everything
         return True, frozenset()
     return False, frozenset(tokens)
 
