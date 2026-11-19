@@ -521,6 +521,8 @@ _TOTAL_MAX += 16   # 2026-11-19 INI-042 G1: a loop's first fast-model client is 
 _TOTAL_MAX += 75    # 2026-11-19 cloud speed (iii): the cold-turn attention judge starts on the eager end of turn (`voice/attention_prefire.py`)
 _PACKAGE_CEILINGS["voice"] += 70        # same cause: `attention_prefire` (prefire, the reuse by words and frame) and its two calls
 _PACKAGE_CEILINGS["nucleo/turn"] += 5   # same cause: the eager brief starts the judge (`brief_turn.fire_early`)
+_PACKAGE_CEILINGS["memory"] += 9    # 2026-11-19 INI-042 #34 (3.247): the memory queue applies each write on ONE writer thread and awaits it — the embedding requests of a write no longer hold the event loop (`memory/queue.py`)
+_TOTAL_MAX += 9    # same cause
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

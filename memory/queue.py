@@ -2,7 +2,8 @@
 
 ALL writes enter here. A **single consumer** drains the queue and calls the writer (`memory/writer.py`) -> zero write
 collisions; readers (retriever/state) go direct in WAL without blocking. Insertion is NOT urgent: it may take time
-(computes local embeddings), but never blocks the hot path.
+(one embedding request for the text and one per new concept), so the consumer applies each write on ONE writer
+thread and awaits it: the next write starts when the previous one ended, and the loop is never held by a request.
 
 **Loop-agnostic** (same pattern as `bus/` and `runtime.locked_ask`): writers may live in another thread/loop
 (LiveKit job-thread, subprocess callbacks). `submit()` queues safely from any thread — if it is the consumer loop,
@@ -14,6 +15,8 @@ with the result (used by `api.write` when the caller wants the id back).
 """
 import asyncio
 import threading
+from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 from typing import Any
 
 from loguru import logger
@@ -28,6 +31,7 @@ class MemoryQueue:
         self._task: asyncio.Task | None = None
         self._lock = threading.Lock()
         self._running = False
+        self._pool: ThreadPoolExecutor | None = None    # ONE thread: the writes stay serial, off the loop
 
     # ── lifecycle ──────────────────────────────────────────────────────────────────────────────────────
     async def start(self):
@@ -37,6 +41,7 @@ class MemoryQueue:
                 return
             self._loop = asyncio.get_running_loop()
             self._q = asyncio.Queue()
+            self._pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="memory-writer")
             self._running = True
             self._task = self._loop.create_task(self._consume())
 
@@ -54,6 +59,9 @@ class MemoryQueue:
             except (asyncio.CancelledError, Exception):
                 pass
         self._task = None
+        if self._pool is not None:
+            self._pool.shutdown(wait=False)
+            self._pool = None
 
     async def join(self):
         """Wait until the queue is empty (tests: submit -> join -> query)."""
@@ -63,10 +71,11 @@ class MemoryQueue:
     # ── single consumer ────────────────────────────────────────────────────────────────────────────────
     async def _consume(self):
         assert self._q is not None
+        loop = asyncio.get_running_loop()
         while True:
             op, args, kwargs, fut = await self._q.get()
             try:
-                result = self._apply(op, args, kwargs)
+                result = await loop.run_in_executor(self._pool, partial(self._apply, op, args, kwargs))
                 if fut is not None and not fut.done():
                     fut.get_loop().call_soon_threadsafe(fut.set_result, result)
                 # Live observability (V2-014): re-emit `memory.updated` with the REAL id once the async write
