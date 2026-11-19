@@ -83,7 +83,7 @@ class Inbox:
     def _route(self, tx, env: E.Envelope, now: int) -> str:
         k = env.kind
         if k is EnvelopeKind.USER_CONTROL:
-            self._final(tx, env.id, "applied", now)
+            self._move(tx, env.id, state="dequeued")   # handed to the manager; accounted by its handler's transaction
             return "control"
         if k is EnvelopeKind.INTERVENTION_STATE:
             return self._voice_state(tx, env, now)
@@ -215,6 +215,11 @@ class Inbox:
             for i in env_ids:
                 self._move(tx, i, state="queued", batch=None)
 
+    def applied(self, env_id: str, now: int) -> None:
+        """A control handled outside any other transaction (stop, cancel): accounted `applied`."""
+        with self.store.tx(self.lease()) as tx:
+            apply_control(tx, env_id, now)
+
     def rows(self) -> list[dict]:
         return [r for _k, r in self.store.snapshot(self.acct).scan(T)]
 
@@ -246,3 +251,11 @@ class Inbox:
                      refs={"env": row["id"], "iv": refs.get("intervention_id"), "task": refs.get("task_id"),
                            "endpoint": row["env"].get("endpoint"), "channel": row["env"].get("channel")},
                      kind=row["kind"], **payload)
+
+
+def apply_control(tx, env_id: str, now: int) -> None:
+    """Account a control `applied` INSIDE the caller's transaction (a confirm spends its handle in the same one)."""
+    row = tx.get(T, env_id)
+    if row is not None and row["state"] != RowState.ACCOUNTED.value:
+        row.update(state=RowState.ACCOUNTED.value, outcome=Outcome.APPLIED.value, accounted_ms=now)
+        tx.put(T, env_id, row)

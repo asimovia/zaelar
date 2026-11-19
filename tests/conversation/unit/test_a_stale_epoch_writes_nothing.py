@@ -140,3 +140,21 @@ def test_two_real_writers_on_one_file_the_old_one_stops_at_the_takeover(tmp_path
     assert not landed_after and n_b > 20
     first.close()
     second.close()
+
+
+def test_the_last_controllable_point_before_a_call_checks_the_lease_again(store, clock, telemetry):
+    """The effect was claimed under a lease; another process takes the account before submission: the gateway's
+    write-ahead transaction refuses, the tool is never called, and the effect stays `claimed`."""
+    import asyncio
+
+    from conversation.gateway import dispatch
+    from conversation.ports import ToolCall
+    from tests.conversation.unit.gatekit import ACCT, Kit, RecordingTools
+    k = Kit(store, clock, telemetry)
+    eid = k.gw.request(k.ctx(k.utterance("iv1")), ToolCall("c", "agenda_add", {"what": "w1"})).effect_id
+    store.acquire(ACCT, "another-process")
+    tools = RecordingTools()
+    with pytest.raises(StaleEpoch):
+        asyncio.run(dispatch.submit(k.gw, tools, eid, 10 ** 9))
+    assert not tools.calls and store.snapshot(ACCT).get("items", eid)["state"] == "claimed"
+    assert "conv_ledger/stale_epoch" in telemetry.labels()

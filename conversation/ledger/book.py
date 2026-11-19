@@ -46,6 +46,16 @@ class BookTx:
         self._say("opened", row, cause, to=row["state"])
         return row
 
+    def open_unique(self, kind: ItemKind, item_id: str, unique: str, *, owner: str = "conversation",
+                    data: dict | None = None, cause: dict | None = None) -> tuple[dict, bool]:
+        """Open an item under a unique key: a repeat of the same key returns the SAME row, never a second (N3)."""
+        row = {"id": item_id, "kind": str(kind), "state": INITIAL[kind], "owner": owner, "data": data or {},
+               "waiting_on": None, "attached": [], "created_ms": self.now, "updated_ms": self.now}
+        got, new = self.tx.insert_unique(T, item_id, row, unique)
+        if new:
+            self._say("opened", got, cause, to=got["state"])
+        return got, new
+
     def move(self, item_id: str, to: str, *, cause: dict | None = None, reason: str | None = None,
              data: dict | None = None, waiting_on: str | None = None) -> dict:
         row = self.tx.get(T, item_id)

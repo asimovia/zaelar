@@ -36,8 +36,8 @@ TRANSITIONS: dict[K, dict[str, frozenset[str]]] = {
     K.HANDLE: {"issued": frozenset({"presented", "expired"}),
                "presented": frozenset({"spent", "expired"})},
     K.DELEGATION: {"active": frozenset({"exhausted", "expired", "revoked"})},
-    K.EFFECT: {"claimed": frozenset({"submitted", "rejected", "submission_unknown"}),
-               "submitted": frozenset({"provider_accepted", "rejected", "submission_unknown"}),
+    K.EFFECT: {"claimed": frozenset({"submitting"}),          # claimed = provably not sent (plan §15 E4)
+               "submitting": frozenset({"provider_accepted", "rejected", "submission_unknown"}),
                "submission_unknown": frozenset({"provider_accepted", "rejected"}),     # reconciliation, never a resend
                "provider_accepted": frozenset({"delivered", "delivery_unconfirmed", "failed"})},
     K.FOLLOWUP: {"waiting": frozenset({"matched", "expired"})},

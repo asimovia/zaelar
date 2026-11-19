@@ -119,8 +119,13 @@ class ItemKind(_Str):
 
 
 class EffectClass(_Str):
+    """What a tool does to the world (plan §15 E2). Everything but `read` is an effect; `egress`, `destructive` and
+    `payment` need a gesture (a presented handle) or, for `egress` only, a delegation."""
     READ = "read"
-    ACTION = "action"
+    LOCAL_WRITE = "local_write"
+    EGRESS = "egress"
+    DESTRUCTIVE = "destructive"
+    PAYMENT = "payment"
 
 
 @dataclass(frozen=True)

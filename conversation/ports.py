@@ -53,8 +53,11 @@ class PromptParts:
 class ToolSpec:
     name: str
     schema: dict = field(default_factory=dict)
-    effect: EffectClass = EffectClass.READ
+    effect_class: EffectClass = EffectClass.READ
     core: bool = False              # never filtered out (I7)
+    #: which arguments are the recipient, the channel and the content — so a handle or a delegation binds an effect
+    #: without the gateway naming any tool (plan §15 E2)
+    binding: dict = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

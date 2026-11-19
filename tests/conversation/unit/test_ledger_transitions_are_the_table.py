@@ -59,7 +59,7 @@ def test_a_followup_is_its_own_item_apart_from_the_effect(book):
     with book.tx() as b:
         b.open(ItemKind.EFFECT, "x1", data={"tool": "send_message"})
         b.open(ItemKind.FOLLOWUP, "f1", data={"effect": "x1", "scope": "thread:th1"}, waiting_on="reply")
-        for s in ("submitted", "provider_accepted", "delivered"):
+        for s in ("submitting", "provider_accepted", "delivered"):
             b.move("x1", s)
     snap = book.snapshot()
     assert snap.get("items", "x1")["state"] == "delivered" and snap.get("items", "f1")["state"] == "waiting"
@@ -67,7 +67,7 @@ def test_a_followup_is_its_own_item_apart_from_the_effect(book):
         b.move("f1", "matched")
     with pytest.raises(InvalidTransition):
         with book.tx() as b:
-            b.move("x1", "submitted")                      # a delivered effect never goes back to sending
+            b.move("x1", "submitting")                      # a delivered effect never goes back to sending
 
 
 def test_events_are_said_only_when_the_transaction_commits(book, telemetry):
@@ -109,8 +109,8 @@ SPEC = {
     ItemKind.GRANT: {"active": {"spent", "expired", "revoked"}},
     ItemKind.HANDLE: {"issued": {"presented", "expired"}, "presented": {"spent", "expired"}},
     ItemKind.DELEGATION: {"active": {"exhausted", "expired", "revoked"}},
-    ItemKind.EFFECT: {"claimed": {"submitted", "rejected", "submission_unknown"},
-                      "submitted": {"provider_accepted", "rejected", "submission_unknown"},
+    ItemKind.EFFECT: {"claimed": {"submitting"},
+                      "submitting": {"provider_accepted", "rejected", "submission_unknown"},
                       "submission_unknown": {"provider_accepted", "rejected"},
                       "provider_accepted": {"delivered", "delivery_unconfirmed", "failed"}},
     ItemKind.FOLLOWUP: {"waiting": {"matched", "expired"}},

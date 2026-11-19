@@ -30,8 +30,9 @@ def test_every_envelope_ends_accounted_and_the_audit_finds_no_limbo(store, clock
     p.signal(S.TypedSubmit("d1", "c1", "w1", 100))
     p.give(worker("t1", WorkerUpdate.RESULT, 120, "r1", must_tell=True))
     p.give(worker("t1", WorkerUpdate.PROGRESS, 130, "p1", surfacing=Surfacing.SILENT))
-    p.give(control(ControlOp.STOP, 140, "k1"))
+    stop = p.give(control(ControlOp.STOP, 140, "k1")).envelope
     assert audit(store.snapshot(ACCT), 150, p.cfg) == []
+    p.inbox.applied(stop.id, 150)                                   # the manager's handler accounts the control
     _drain(p, 1000)
     snap = store.snapshot(ACCT)
     assert audit(snap, 1000, p.cfg, drained=True) == []

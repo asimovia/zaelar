@@ -1043,6 +1043,17 @@
     "conversation/composer"
    ],
    "emits": []
+  },
+  {
+   "id": "c_gateway",
+   "zone": "conversation",
+   "name": "Effect gateway — the only producer of effects",
+   "paths": [
+    "conversation/gateway"
+   ],
+   "emits": [
+    "conv_effect"
+   ]
   }
  ],
  "emitters": {
@@ -2316,6 +2327,12 @@
    "a": "c_ear",
    "b": "c_inbox",
    "label": "envelopes"
+  },
+  {
+   "id": "c_gateway_ledger",
+   "a": "c_gateway",
+   "b": "c_ledger",
+   "label": "effects, mandates"
   }
  ],
  "_flows": "Who talks to whom. `a`/`b` carry no direction (a call goes and comes back). `uncaptured` = the flow exists in the code but leaves no event (e.g. the rules read into every prompt).",

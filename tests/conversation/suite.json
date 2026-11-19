@@ -31,6 +31,11 @@
       "kind": "unit"
     },
     {
+      "id": "13.5",
+      "label": "Seal and reopen exclude each other (I1, I3)",
+      "kind": "unit"
+    },
+    {
       "id": "13.6",
       "label": "The mailbox accounts for every envelope (I6)",
       "kind": "unit"
@@ -48,6 +53,21 @@
     {
       "id": "13.11",
       "label": "The prompt says each thing once",
+      "kind": "unit"
+    },
+    {
+      "id": "13.13",
+      "label": "Only an entry of the person grants authority (I8)",
+      "kind": "unit"
+    },
+    {
+      "id": "13.14",
+      "label": "A confirmation handle is spent once (A4, N3, D8)",
+      "kind": "unit"
+    },
+    {
+      "id": "13.15",
+      "label": "A hold before submission blocks it (A7)",
       "kind": "unit"
     },
     {
