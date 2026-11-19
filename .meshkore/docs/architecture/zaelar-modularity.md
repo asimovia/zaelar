@@ -30,6 +30,7 @@ failure NEVER takes voice down (try/except "voice/chat unaffected").
 | `nucleo/` | `nucleo/turn/pipeline.run` (the one turn, reached by the voice provider `voice/engine/llm/providers/nucleo.py` and the typed channel `voice/typed_turn.py`) + `switchboard.route.take` (whose his words are) + `turn/flow_events.route` (events) + `dispatch` (sessions facade: `active_sessions/has_active/resolve_sessions/inject_soon/cancel_soon`) + `acts/errand` (the escalation portal) + `circuit.settle` (the one writer of an ending) + `pulse/notices.notify` (the out-of-turn mouth) + `memory_agent` | The task's row is the truth; the `dispatch._SESSIONS` registry is private RAM of the live processes, read ONLY through its facade |
 | `nucleo/events/vocabulary.py` | `TYPES` / `GRANTS` + `of/declared/names/topics/level_of/grant_of/effect_of/grants_of` — THE vocabulary of events (V2-857) | Declared once; `rules.subscriptions.TOPICS`, `rules.vocabulary.classes`, `errands.mandate.MAY`, `consent.decide_act`'s default level and `widgets.effects` read it. No reader keeps a table of its own |
 | `connectors/` | `connectors/<x>/service.py` per connector + `connectors/messaging/ingest.py` (topics) | |
+| `conversation/` | `conversation.build(...)` → `Conversation` (`hear` · `give` · `ack` · `pump` · `sweep` · `keep_time`), its ports in `conversation/ports.py` | Isolated (V2-941 F0): imports nothing of the engine, stdlib only (node 13.1); the engine reaches it only through the F1 adapters |
 | `config/` | one owner module per store (`settings.py`/`connectors.py`/`v2.py`) with a redacted public view | |
 
 ## 3 · EVENT contracts (bus topics)
@@ -38,6 +39,7 @@ Every topic is ALSO persisted in `zaelar.db·events` by `bus/log.py` (when `ZAEL
 
 | Topic | Emitter | Subscriber(s) | Key payload |
 |---|---|---|---|
+| `conv_*` (7 kinds, family `conversation`) | the `Telemetry` port of `conversation/` (`conversation/telemetry.py` is the only source of labels); in F0 only `conversation.replay --events` writes them | the test observatory's brain screen (`CONV_STATIONS`), the operator console's mirror | `{t_ms, mono_ms, account, epoch, owner, cause, refs, trace}` + the kind's own fields |
 | `observer` | `voice/observer.emit` (bridge `bus/sse.py`) — EVERY timeline event | SSE `GET /events`, viewer, tester judge, the task battery | `{kind,label,text,role,extra,trace,span}` |
 | **`turn.completed`** | `voice/observer.turn_detail` (called by the one turn pipeline) | the action map's watch, the introduction pack | full turn: `{user, reply, system_prompt, window, tools, decision, engine, trace}` |
 | `memory.updated` | `memory/queue`, `api._emit`, prompt(query) | SSE bridge (coalesced), `memory_cache` (sink) | `{op, ids}` |

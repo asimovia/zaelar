@@ -1514,6 +1514,28 @@ Flash keeps the conversation; the row is what both brains read.
 - **CRIT-S18 · A sign-in it cannot do is a wait, not a result.** `awaiting_login` / `blocked` parks the errand on one question through the asker, stops its worker and writes nothing to a sheet; the same row resumes on a confirmed sign-in; on the phone the line says to open the agent on a computer; «not a research» owes no results contract (V2-868 D3) — since 2026-11-09 · nodes 2.1656 · `nucleo/request/sign_in_wait.py`.
 - **CRIT-S19 · A result says where it was found.** A worker's row that states data needs a url or a source the sheet knows, else it lands in Rejected with its reason (V2-868 D4) — since 2026-11-09 · nodes 4.416 · `widgets/results/provenance.py`.
 
+## 9 · The conversation and turn manager (`conversation/`, isolated — F0)
+
+These hold for the package; the engine does not run it yet (V2-941 F1 wires it).
+
+- **CRIT-CT1 · One arbiter closes an intervention**: the provider's end of turn with every word final and the
+  watermark past the voice's fall, or the cap after the fall (or after the provider's end); an eager hint never closes
+  one, a stalled stream makes it `incomplete`, never actionable. — since 2026-11-19 · nodes 13.3, 13.4, 13.27 ·
+  `conversation/ear/arbiter.py`.
+- **CRIT-CT2 · A closed intervention reopens only within `reopen_window_ms` of its close, never once sealed or once
+  its request is final**; later voice is a new intervention (amending the previous one when we have not spoken since).
+  — since 2026-11-19 · nodes 13.5, 13.27 · `conversation/gateway/seal.py`.
+- **CRIT-CT3 · Every accepted envelope ends accounted and every request closes exactly once within its liveness**;
+  what must be told is said even when the model is down (one retry, then the language's last-resort line, worded by
+  the adapter). — since 2026-11-19 · nodes 13.6, 13.9, 13.22.
+- **CRIT-CT4 · Nothing leaves without the person's authority or a mandate**: a read passes, a write rests on a batch
+  that is all the person's or on a confirmed handle, a delegation or a grant; an effect is reserved, sealed and
+  recorded before the provider is called and an unknown outcome is reconciled by looking, never resent; an act held
+  while the person speaks waits for that voice. — since 2026-11-19 · nodes 13.13, 13.14, 13.15, 13.23 ·
+  `conversation/gateway/`.
+- **CRIT-CT5 · What the person heard is what a device acknowledged**: a line with no acknowledgement is «heard:
+  unknown» to the model, never heard. — since 2026-11-19 · nodes 13.16.
+
 ## Contradicciones (contradictions — this table must stay empty)
 
 | topic | rule A | rule B | winner |
