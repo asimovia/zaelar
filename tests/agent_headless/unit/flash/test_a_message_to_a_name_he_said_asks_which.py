@@ -21,6 +21,7 @@ import time
 import pytest
 
 from nucleo.acts import message as gate
+from tests.outbound_lane import his_hand  # noqa: F401,E402 — these tests run the card's own acts, as his hand
 
 RAQUEL = "manda un mensaje a raquel, preguntale como va y a que hora llega"
 WIDGETS = pathlib.Path(__file__).resolve().parents[4] / "widgets"

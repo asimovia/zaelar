@@ -18,3 +18,5 @@ from .targets import (  # noqa: F401
 from .queue import (  # noqa: F401
     enqueue_reply, new_ref, _MAILBOX_FILES, _MAILBOX_MAX_ASKS, _mailbox_files, _mail_identities, attachments_of,
     forward_without_files, enqueue, SAME_FILES_S, _send_key, _file_key, same_files_just_sent)
+from . import lane  # noqa: F401,E402 — who asked for a send, from the door that took it to the queue
+from .lane import Held  # noqa: F401,E402

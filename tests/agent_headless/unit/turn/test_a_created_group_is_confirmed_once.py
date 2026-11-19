@@ -19,6 +19,7 @@ from memory import db as memdb, embeddings as mememb
 from nucleo import circuit
 from nucleo.circuit import spec
 from nucleo.request import model as rq
+from tests.outbound_lane import his_hand  # noqa: F401,E402 — these tests run the card's own acts, as his hand
 
 
 @pytest.fixture

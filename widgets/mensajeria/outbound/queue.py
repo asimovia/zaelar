@@ -11,13 +11,15 @@ from .targets import _message_ref
 
 
 def enqueue_reply(db: dict, target: dict, text: str, cc: list | None = None,
-                  attachments: list | None = None, not_before: float = 0.0, ref: str = "") -> None:
+                  attachments: list | None = None, not_before: float = 0.0, ref: str = "", lane: str = "") -> None:
     """The one place a reply/draft is queued for the connector to send. `messageId` (set on ingestion), never
     `n`, is the "real item" signal: only the synthetic thread identity (`resolve_reply_target`, platform + chatId
     alone) lacks it, and it has no pending item to remove."""
     from .. import data as _d
     from .. import sent as _sent
+    from . import lane as _lane
     ref = str(ref or "") or new_ref()       # every order names itself, so OUR send is attestable (its outbox row)
+    lane = _lane.passes("reply", lane, {"ref": ref, "platform": target.get("platform")})   # held → nothing is queued
     _sent.outbox_open(db, ref, target, text, not_before=not_before)
     db.setdefault("pending_reply", []).append({
         "platform": target.get("platform"), "chatId": target.get("chatId"),
@@ -32,6 +34,7 @@ def enqueue_reply(db: dict, target: dict, text: str, cc: list | None = None,
         **({"not_before": float(not_before), "at": time.time(), "scheduled": True} if not_before else {}),
         # V2-819 — the card's send names itself, so the connector's echo or failure settles ITS outbox row.
         **({"ref": str(ref)} if ref else {}),
+        "lane": lane,                        # who asked for this exit (`connectors/exit.py`)
     })
     if target.get("messageId") is not None:
         db.setdefault("pending_read", []).append(_d._key(target))
@@ -147,11 +150,14 @@ def forward_without_files(db: dict, payload: dict) -> dict | None:
 
 def enqueue(db: dict, target: dict, text: str, *, subject: str = "", objective: str = "",
             ref: str = "", attachments: list | None = None, not_before: float = 0.0,
-            scheduled: bool = False, playbook: str = "") -> dict:
+            scheduled: bool = False, playbook: str = "", lane: str = "") -> dict:
     """Put ONE send in the store's outbound queue. The owner flushes it to the bus, exactly as it does with a
     reply — this function never touches the network and never publishes."""
+    from . import lane as _lane
+    ref = ref or new_ref()
     order = {
-        "ref": ref or new_ref(),
+        "ref": ref,
+        "lane": _lane.passes("send", lane, {"ref": ref, "platform": target.get("platform")}),   # held → not queued
         "platform": target.get("platform"),
         "to": target.get("to") or "",
         "chatId": target.get("chatId") or "",

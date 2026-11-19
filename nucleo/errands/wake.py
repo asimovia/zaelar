@@ -358,11 +358,15 @@ def _send(errand: dict, platform: str, chat_id: str, text: str, party: str) -> b
     try:
         from connectors.messaging import store as msgstore
         from widgets.mensajeria import outbound
+        from connectors import exit as door
         db = msgstore.load()
         outbound.enqueue(db, {"platform": platform, "to": chat_id, "chatId": chat_id, "name": party,
-                              "contactId": ""}, text, ref=f"{errand.get('id')}:{int(time.time())}")
+                              "contactId": ""}, text, ref=f"{errand.get('id')}:{int(time.time())}", lane=door.ERRAND)
         msgstore.save(db)
         return True
+    except outbound.Held as held:             # held at the exit: nothing was queued, and the caller says so
+        logger.warning(f"errands: the reply of {errand.get('id')} is held ({held.why}) — nothing was sent")
+        return False
     except Exception as e:  # noqa: BLE001
         logger.warning(f"errands: no pude encolar la respuesta de {errand.get('id')}: {e!r}")
         return False

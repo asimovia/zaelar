@@ -486,7 +486,7 @@ def _write_bytes(path: str, data: bytes) -> None:
 @router.post("/widgets/{wid}/action")
 async def widget_action(wid: str, payload: dict):
     wid = _safe(wid)
-    action, data = payload.get("action", ""), payload.get("payload") or {}
+    action, data = payload.get("action", ""), __import__("connectors.exit", fromlist=["x"]).by("hand", payload.get("payload") or {})
     # V2-039: this route is triggered by the UI (operator presses a card button) → note provenance so the resulting
     # widget/data event (store.save) is attributed to "user". Also emit the action ACT.
     try:

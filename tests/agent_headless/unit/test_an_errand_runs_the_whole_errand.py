@@ -24,6 +24,7 @@ import time
 import pytest
 
 from tests.agent_headless.harness.errand_world import World, agenda_holds, answers, armed
+from tests.outbound_lane import his_hand  # noqa: F401,E402 — the order the errand is born from is run as the card's own act
 
 PLATFORM = "telegram"
 OBJECTIVE = "organizar una reunión con Iván esta tarde, en las próximas 4 horas"

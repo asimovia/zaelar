@@ -152,6 +152,7 @@ def _a_leave_group(action, payload) -> dict:
     if no:
         return no
     ref = _d._outbound.new_ref()
+    lane = _d._outbound.lane.passes("group_leave", "", {"ref": ref})   # held → nothing is queued
     names = [r["name"] for r in found]
     plats = sorted({r["platform"] for r in found})
     from .. import sent as _sent    # the order's receipt: one outbox row, settled when every chat is gone
@@ -164,7 +165,7 @@ def _a_leave_group(action, payload) -> dict:
             r["said"] = said if isinstance(said, str) else ", ".join(str(x) for x in said or [])
     for plat in plats:
         db.setdefault("pending_group_leave", []).append(
-            {"platform": plat, "ref": ref,
+            {"platform": plat, "ref": ref, "lane": lane,
              "chats": [{"chatId": r["chatId"], "name": r["name"]} for r in found if r["platform"] == plat]})
     _d.store.save(_d.WIDGET_ID, db)
     return {"ok": True, "result": {"groups": names, "platforms": plats, "ref": ref,

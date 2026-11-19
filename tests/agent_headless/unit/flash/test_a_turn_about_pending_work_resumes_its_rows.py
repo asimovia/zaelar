@@ -18,6 +18,7 @@ import pytest
 
 from nucleo import pending_work
 from nucleo.flash import resume_turn
+from tests.outbound_lane import his_hand  # noqa: F401,E402 — these tests run the card's own acts, as his hand
 
 ROOT = pathlib.Path(__file__).resolve().parents[4]
 GOAL = "Reserva mesa para 2 el lunes a las 14:00 en un restaurante del centro de Soria"

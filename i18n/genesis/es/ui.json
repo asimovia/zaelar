@@ -2280,6 +2280,7 @@
  "widgets.mensajeria.nothing_scheduled": "No hay ningún envío programado que cancelar.",
  "widgets.mensajeria.no_conversation": "No sé a qué conversación va: ábrela y vuelve a enviarlo.",
  "widgets.mensajeria.nothing_written": "No hay nada escrito que enviar.",
+ "widgets.mensajeria.held_outbound": "Los envíos están en pausa en esta cuenta ahora mismo, así que no se ha enviado nada.",
  "widgets.mensajeria.not_connected_now": "{channel} no está conectado ahora mismo, así que no se ha enviado.",
  "widgets.mensajeria.email_channel": "El correo",
  "widgets.mensajeria.no_saved_draft": "No hay ningún borrador guardado.",

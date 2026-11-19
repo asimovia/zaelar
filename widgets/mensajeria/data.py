@@ -213,7 +213,11 @@ def apply_action(action: str, payload: dict | None = None) -> dict:
     payload = payload or {}
     handler = ACTIONS.get(action) if isinstance(action, str) else None
     if handler is not None:
-        return handler(action, payload)
+        with _outbound.lane.of(payload):          # who asked, for every order this one action queues
+            try:
+                return handler(action, {k: v for k, v in payload.items() if k != _outbound.lane.KEY})
+            except _outbound.Held as held:        # an order that may not leave: nothing was queued, and it says so
+                return _outbound.lane.refusal(held.why)
     db = load_db()
     items = _renumber(db.get("items", []))   # align n with what the widget displayed; view_data numbers by order
     pending = db.get("pending_read", [])

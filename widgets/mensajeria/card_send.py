@@ -80,7 +80,14 @@ def send(payload: dict) -> dict:
     files = _d._media.local_paths(_d.store.data_dir(_d.WIDGET_ID), payload.get("files"))
     reply_all = bool(payload.get("reply_all"))
     cc = [str(a) for a in (target.get("recipients") or []) if str(a).strip()] if reply_all else []
-    _d._outbound.enqueue_reply(db, target, text, cc=cc, attachments=files, ref=ref)
+    try:
+        _d._outbound.enqueue_reply(db, target, text, cc=cc, attachments=files, ref=ref)
+    except _d._outbound.Held as held:       # held at the exit: the row is settled with the reason, his text stays
+        refusal = _d._outbound.lane.refusal(held.why)
+        _sent.outbox_settle(db, ref, False, refusal["message"])
+        _d.store.save(_d.WIDGET_ID, db)
+        logger.info(f"app send {ref} held: {held.why}")
+        return refusal
     # The conversation's autosaved draft WAS this text: it leaves with it, and only it.
     _d._drafts.forget(db, _d._drafts.key(target))
     _d.store.save(_d.WIDGET_ID, db)
@@ -92,6 +99,8 @@ def answer_action(action: str, payload: dict | None = None) -> dict | None:
     """The backed route's read-only veto (`data.answer_action`): the card's own Send is checked BEFORE it is
     queued — a send that cannot leave answers the button now, with the reason, and the card keeps his text. Every
     other action is answered by `answers.answer_action`, unchanged."""
+    if (held := _d._outbound.lane.early(action, payload)) is not None:
+        return held                          # an act that would queue an order the exit holds: answered now
     if action == "send_draft" and is_card_send(payload or {}):
         _target, refusal = check(_d.load_db(), payload or {})
         return refusal

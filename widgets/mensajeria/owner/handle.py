@@ -4,6 +4,7 @@
 #
 from loguru import logger
 
+from connectors import exit as door
 from connectors.messaging import ingest
 from connectors.messaging import store as msgstore
 
@@ -49,7 +50,7 @@ class _Handle:
         # Same for replies to send (V2-051): that platform's connector, today email, sends them.
         try:
             for rep in msgstore.take_pending_reply():
-                ingest.publish_reply(rep)
+                door.leave(door.REPLY, rep)
         except Exception as e:
             logger.debug(f"mensajeria reply flush: {e}")
         # A message to a PERSON (V2-683): its text was composed by a MODEL for somebody outside, so the secret scan
@@ -62,7 +63,7 @@ class _Handle:
                     _f._note(f"[SISTEMA] NO he enviado el mensaje a {order.get('name') or order.get('to')}: el "
                           f"texto llevaba dentro {leaked}. Díselo al operador y no lo reintentes.")
                     continue
-                ingest.publish_send({**order, "text": clean})
+                door.leave(door.SEND, {**order, "text": clean})
         except Exception as e:
             logger.debug(f"mensajeria send flush: {e}")
         # And for archive/delete orders (V2-543): the platform's connector executes them in the real mailbox.
@@ -88,14 +89,13 @@ class _Handle:
         # And for new groups (create_group).
         try:
             for order in msgstore.take_pending_group():
-                ingest.publish_group(order)
+                door.leave(door.GROUP, order)
         except Exception as e:  # noqa: BLE001
             logger.warning(f"mensajeria group flush: {e}")
         # And for leaving groups (leave_group): its own topic, its connector leaves and answers with the chats gone.
         try:
-            from connectors.messaging import group_leave
             for order in msgstore.take_pending_group_leave():
-                group_leave.publish_group_leave(order)
+                door.leave(door.GROUP_LEAVE, order)
         except Exception as e:  # noqa: BLE001
             logger.warning(f"mensajeria group leave flush: {e}")
         # And for chat-list pages: entering a platform, or «Cargar más» at the bottom of its list.

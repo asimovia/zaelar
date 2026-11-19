@@ -105,8 +105,17 @@ def recipient(d) -> dict:
     return p
 
 
+def lane() -> dict:
+    """The owner's lane, stamped under the reserved key the card reads."""
+    from connectors import exit as door
+    from widgets.mensajeria.outbound.lane import KEY
+    return {KEY: door.stamp(door.OWNER)}
+
+
 def payload(d) -> dict:
-    return {**{k: v for k, v in d.extra.items() if k in CARRIED + ("attach_from",)}, **recipient(d), "text": d.text}
+    """The card's act as the owner runs it — on the owner's own lane (`connectors/exit.py`)."""
+    return {**{k: v for k, v in d.extra.items() if k in CARRIED + ("attach_from",)}, **recipient(d), "text": d.text,
+            **lane()}
 
 
 def at(d) -> float:
@@ -119,6 +128,10 @@ def check(d) -> dict:
     `{"ok": False, "channels": [...]}` (he picks one) or `{"ok": False, "why": "…"}`."""
     if d.extra.get("bad_time"):
         return {"ok": False, "why": "the time he gave cannot be read or is too far ahead"}
+    from connectors import exit as door
+    if (why := door.held(door.OWNER)):     # said BEFORE he is asked: a yes that could not be honoured is never asked for
+        return {"ok": False, "held": True,
+                "why": f"sending is paused on this install ({door.reason(why, door.OWNER)}): nothing can be sent now"}
     if "attach_from" in d.extra:
         if not d.extra.get("files_n"):
             return {"ok": False, "why": "the message he wants forwarded has no files that can be found"}
@@ -126,7 +139,7 @@ def check(d) -> dict:
             return {"ok": False, "why": "a forward with its files cannot be scheduled, only sent now"}
     try:
         from widgets.mensajeria.outbound import targets
-        got = targets.describe({**recipient(d), "text": d.text or "-"})
+        got = targets.describe({**recipient(d), "text": d.text or "-"})   # read-only: no lane, nothing is queued
     except Exception as e:  # noqa: BLE001 — unread: the act itself refuses later, said then
         _note(e)
         return {"ok": True, "platform": d.target.get("platform") or d.channel}
@@ -149,7 +162,8 @@ def run(d) -> dict:
         wrote = _md.apply_action("draft", p)
         if not (isinstance(wrote, dict) and wrote.get("ok") and wrote.get("key")):
             return {"ok": False, "error": str((wrote or {}).get("message") or (wrote or {}).get("error") or "no draft")}
-        res = _md.apply_action("send_draft", {"key": wrote["key"], "in_minutes": max(0.1, (when - _now()) / 60.0)})
+        res = _md.apply_action("send_draft", {"key": wrote["key"], "in_minutes": max(0.1, (when - _now()) / 60.0),
+                                              **lane()})
         return {**(res if isinstance(res, dict) else {}), "later": when}
     res = _md.apply_action("send_to", p)
     return res if isinstance(res, dict) else {"ok": False, "error": "no answer from the card"}
@@ -164,9 +178,17 @@ def _reply(d, when: float) -> dict:
     item = (targets.resolve_reply_target(db, None, mid) if mid else None) or {
         "platform": d.target.get("platform"), "chatId": d.target.get("chat_id")}
     ref = queue.new_ref()
-    queue.enqueue_reply(db, item, d.text, not_before=when, ref=ref)
+    try:
+        queue.enqueue_reply(db, item, d.text, not_before=when, ref=ref, lane=str(lane()["_lane"]))
+    except lane_mod().Held as held:
+        return lane_mod().refusal(held.why)
     _md.store.save(_md.WIDGET_ID, db)
     return {"ok": True, "ref": ref, **({"later": when} if when else {})}
+
+
+def lane_mod():
+    from widgets.mensajeria.outbound import lane as _lane
+    return _lane
 
 
 def _now() -> float:

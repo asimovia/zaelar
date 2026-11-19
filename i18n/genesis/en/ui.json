@@ -2280,6 +2280,7 @@
  "widgets.mensajeria.nothing_scheduled": "There is no scheduled send to cancel.",
  "widgets.mensajeria.no_conversation": "I don't know which conversation it goes to: open it and send it again.",
  "widgets.mensajeria.nothing_written": "There is nothing written to send.",
+ "widgets.mensajeria.held_outbound": "Sending is paused on this account right now, so nothing was sent.",
  "widgets.mensajeria.not_connected_now": "{channel} is not connected right now, so nothing was sent.",
  "widgets.mensajeria.email_channel": "Email",
  "widgets.mensajeria.no_saved_draft": "There is no saved draft.",

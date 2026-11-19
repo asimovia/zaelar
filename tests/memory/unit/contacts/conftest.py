@@ -21,3 +21,4 @@ def directory_world(tmp_path, monkeypatch):
     yield cd, directory, rows
     directory._WINDOW.clear()
     directory._ASKED.clear()
+from tests.outbound_lane import his_hand  # noqa: F401 — these tests press the card's own buttons

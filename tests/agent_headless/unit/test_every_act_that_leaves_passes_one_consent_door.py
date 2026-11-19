@@ -16,6 +16,7 @@ import pytest
 
 from nucleo import consent
 from widgets import store as wstore
+from tests.outbound_lane import his_hand  # noqa: F401,E402 — these tests run the card's own acts, as his hand
 
 BOOKING = {"name": "Continue", "role": "button", "isSubmit": True, "inForm": True,
            "pageUrl": "https://tables.example.com/booking/confirm", "targetUrl": "", "signals": ""}

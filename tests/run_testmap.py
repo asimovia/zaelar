@@ -6906,7 +6906,8 @@ DOMAINS: list[dict] = [
         # The exit door: every order to a connector carries the lane that asked for it, is counted, and is held —
         # answered as «not sent» — when the lane is unknown or the hold switch names it.
         {"id": "5.77", "title": "An order leaves by ONE door: its lane, its count, and the switch that holds it",
-            "ch": UNIT, "paths": ["tests/connectors/unit/messaging/test_every_order_leaves_by_one_door.py"]},
+            "ch": UNIT, "paths": ["tests/connectors/unit/messaging/test_every_order_leaves_by_one_door.py",
+                                  "tests/agent_headless/unit/send/test_every_road_to_a_connector_names_its_lane.py"]},
         {"id": "5.2", "title": "Mensajería (ingest/reply)", "ch": UNIT, "paths": [
             "tests/connectors/unit/messaging/test_ingest.py", "tests/connectors/unit/messaging/test_reply.py",
             "tests/connectors/unit/messaging/test_memory_dump.py"]},

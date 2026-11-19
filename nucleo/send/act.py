@@ -145,5 +145,6 @@ def take_names(d, names: list[str], *, only_more: bool = False) -> bool:
 def run(d) -> dict:
     """The card's own act, blocking (call it off the loop)."""
     import importlib
-    res = importlib.import_module(f"widgets.{d.widget}.data").apply_action(d.act, dict(d.extra))
+    from nucleo.send import deliver
+    res = importlib.import_module(f"widgets.{d.widget}.data").apply_action(d.act, {**dict(d.extra), **deliver.lane()})
     return res if isinstance(res, dict) else {"ok": False, "error": "no answer from the card"}

@@ -24,6 +24,7 @@ import pytest
 
 from memory import db as memdb, embeddings as mememb
 from nucleo.circuit import spec, verify
+from tests.outbound_lane import his_hand  # noqa: F401,E402 — these tests run the card's own acts, as his hand
 
 
 @pytest.fixture

@@ -14,8 +14,9 @@ own way. This module is the last step they all share:
     held(lane)           the pure rule behind both.
 
 A LANE is who asked for the exit. It is a closed set (`LANES`), written into the order by the code of the road that
-queued it — never by a model, never read from a payload a model filled. An order whose lane is missing or unknown is
-`unlabelled`: it is held and counted, so a road nobody declared cannot send.
+queued it — never by a model, never read from a payload a model filled: on a payload it travels as a `Stamp`, a type
+only `stamp()` makes. An order whose lane is missing or unknown is `unlabelled`: it is held and counted, so a road
+nobody declared cannot send.
 
 The switch is one environment variable, read at every use:
 
@@ -60,6 +61,32 @@ KINDS = (SEND, REPLY, GROUP, GROUP_LEAVE)
 UNLABELLED, SWITCH, LANE_HELD = "unlabelled", "switch", "lane"
 #: What happened to an exit (`counters`).
 OUT, HELD = "out", "held"
+
+
+
+class Stamp(str):
+    """A lane as CODE names it on a payload that travels to the card. A payload a model wrote can carry the same
+    letters but never this type, and any copy through text or JSON loses it — so a lane that is not a `Stamp` is no
+    lane (`stamped`), and the act is held as unlabelled."""
+    __slots__ = ()
+
+
+def stamp(lane: str) -> Stamp:
+    """The lane a door of ours puts on a payload. Only a declared lane can be stamped."""
+    if lane not in LANES:
+        raise ValueError(f"exit.stamp: {lane!r} is not a lane")
+    return Stamp(lane)
+
+
+def by(lane: str, payload):
+    """`payload` as the door of `lane` hands it on: the same fields, with the lane stamped under `_lane`."""
+    return {**payload, "_lane": stamp(lane)} if isinstance(payload, dict) else payload
+
+
+def stamped(value) -> str:
+    """The lane a payload value carries when our code put it there; '' for anything else."""
+    return str(value) if isinstance(value, Stamp) else ""
+
 
 _ALL = frozenset({"all", "1", "true", "yes", "on", "*"})
 _counts: dict[tuple[str, str, str], int] = {}
@@ -158,11 +185,12 @@ def leave(kind: str, order: dict) -> bool:
     why = held(lane)
     if why:
         _record(kind, lane, HELD, why, order)
-        try:
-            from connectors.messaging import ingest
-            ingest.publish_send_failed(order, reason(why, lane))
-        except Exception as e:  # noqa: BLE001
-            logger.warning(f"exit: a held {kind} could not be answered — {e!r}")
+        if order.get("ref"):                 # something waits on it: its outbox row, an errand, a receipt
+            try:
+                from connectors.messaging import ingest
+                ingest.publish_send_failed(order, reason(why, lane))
+            except Exception as e:  # noqa: BLE001
+                logger.warning(f"exit: a held {kind} could not be answered — {e!r}")
         return False
     _publish(kind, order)
     _record(kind, lane, OUT, "", order)

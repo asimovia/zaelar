@@ -121,7 +121,9 @@ def test_his_script_sends_only_what_he_kept_to_the_one_he_chose(world):
         return taken, line
     taken, _line = asyncio.run(yes_and_receipt())
     assert taken and world.sent == [{"text": "I love you very much", "contact": "Odile Brandt", "contact_id": "c2",
-                                     "channel": "whatsapp"}]
+                                     "channel": "whatsapp", "_lane": "owner"}]
+    from connectors import exit as door       # …on the owner's own lane, stamped by code (never a word in a payload)
+    assert isinstance(world.sent[0]["_lane"], door.Stamp)
     assert _draft.current() is None, "a sent draft owns no more sentences"
     assert world.said_out, "the final line is the receipt's"
 
@@ -291,7 +293,7 @@ def test_a_reply_is_read_once_to_its_conversation_and_sent_there_by_id(world, mo
     asyncio.run(owner.intake("answer that one: on my way", {"n": 3, "text": "On my way", "_act": "reply"}))
     d = _draft.current()
     assert deliver.payload(d) == {"contact": "Odile Marsh", "chat_id": "c-77", "channel": "whatsapp",
-                                  "text": "On my way"}
+                                  "text": "On my way", "_lane": "owner"}
     world.reads = [_read(who="Odile Brandt")]
     _take("no, to Odile Brandt")
     assert deliver.payload(d)["contact_id"] == "c2" and "chat_id" not in deliver.payload(d)

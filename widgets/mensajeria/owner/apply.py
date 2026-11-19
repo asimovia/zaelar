@@ -222,6 +222,7 @@ class _Apply:
             db = msgstore.load()
             if not autorespond.config_for(db, platform)["enabled"]:
                 return 0
+            from connectors import exit as door
             now_ts = _time.time()
             now = datetime.now()
             sent = 0
@@ -233,12 +234,12 @@ class _Apply:
                                        subject=_directory.subject_of(platform, it.get("chatId") or it.get("senderId"))
                                        ).get("verdict") != _consent.RUN:
                     continue                       # his rule for the channel, or for this person, says no
-                ingest.publish_reply({
-                    "platform": platform, "chatId": it.get("chatId"),
-                    "to": it.get("senderId") or it.get("chatId"),
-                    "messageId": it.get("messageId"), "subject": it.get("subject", ""),
-                    "msgid": it.get("msgid", ""), "text": text,
-                })
+                if not door.leave(door.REPLY, {
+                        "lane": door.AUTORESPOND, "platform": platform, "chatId": it.get("chatId"),
+                        "to": it.get("senderId") or it.get("chatId"),
+                        "messageId": it.get("messageId"), "subject": it.get("subject", ""),
+                        "msgid": it.get("msgid", ""), "text": text}):
+                    continue                       # held at the exit: she is not answered, and it is counted
                 autorespond.note_replied(db, platform, it.get("chatId"), now_ts)
                 sent += 1
             if sent:
