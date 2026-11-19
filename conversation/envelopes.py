@@ -121,7 +121,11 @@ KINDS: dict[EnvelopeKind, tuple[type, Authority, frozenset[Channel], tuple[str, 
 
 
 def producer_allowed(env: "Envelope") -> bool:
-    """Is the producer one that may send this kind (the authority follows the producer, not the label)?"""
+    """Is the producer one that may send this kind (the authority follows the producer, not the label)? A gesture —
+    and anything on the button channel — is the button producer's alone (review 2, MINOR 2: a `chat:` control on the
+    BUTTON channel created a delegation)."""
+    if env.kind is EnvelopeKind.USER_CONTROL and (env.channel is Channel.BUTTON or env.body.gesture):
+        return env.producer.startswith("button:")
     return env.producer.startswith(KINDS[env.kind][3])
 
 

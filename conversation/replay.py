@@ -24,7 +24,7 @@ from conversation import envelopes as E
 from conversation.config import Config
 from conversation.ear import signals as S
 from conversation.manager import Conversation
-from conversation.ports import Done
+from conversation.ports import Done, ToolCall
 from conversation.testing.fakes import AckingMouth, FakeClock, ListTelemetry, NoMemory, RecordingTools
 from conversation.testing.generate import AuditedStore
 from conversation.testing.scripted_model import ScriptedModel, reply
@@ -91,11 +91,20 @@ class Replay:
                                  store=self.store, memory=NoMemory(), clock=self.clock, mouth=self.mouth,
                                  telemetry=self.tel, config=self.config, prefix="REPLAY")
         self.mouth.ack = self.conv.ack
-        self.n = 0
+        # our own voice reaches the ear as the device's playback, as it would live (review 2, MINOR 8)
+        self.mouth.playback = lambda ep: self.conv.hear(S.PlaybackState(ep, True, self.clock.now_ms()))
+        for ep in sorted({x.get("endpoint") or x.get("stream") for x in self.signals} - {None}):
+            self.conv.device(ep, voice_live=True, speaker_open=True)     # the recorded devices had a live voice
+        self.n, self.asked, self.issued = 0, 0, 0
         self.loop = asyncio.new_event_loop()
 
     def _answer(self, ids: list[str]) -> list:
-        return [lambda: self.until(self.clock.now_ms() + self.think_ms), reply("ok " + "+".join(ids)), Done()]
+        """Think, then answer; every third request also writes to the agenda first, so the replay exercises the
+        gateway (seal, reservation, receipt) and I1/I8 have something to check (review 2, MINOR 7)."""
+        self.asked += 1
+        act = [ToolCall(f"a{self.asked}", "agenda_add", {"what": ids[0] if ids else "w0"})] if self.asked % 3 == 0 else []
+        self.issued += len(act)
+        return [lambda: self.until(self.clock.now_ms() + self.think_ms), *act, reply("ok " + "+".join(ids)), Done()]
 
     def _feed(self, s: dict) -> None:
         t = _time(s)
@@ -134,7 +143,7 @@ class Replay:
         """The shape `conversation.testing.generate.check` reads, to judge I1–I9 on a replay."""
         return SimpleNamespace(crashes=[], store=self.store, conv=self.conv, old=None, tel=self.tel, cfg=self.config,
                                mouth=self.mouth,
-                               clock=self.clock, tools=self.tools, model=self.model, issued_calls=0, race_seals=[],
+                               clock=self.clock, tools=self.tools, model=self.model, issued_calls=self.issued, race_seals=[],
                                account=ACCOUNT)
 
     def observer_events(self) -> list[dict]:

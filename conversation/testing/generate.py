@@ -23,6 +23,7 @@ from conversation.inbox.accounting import audit
 from conversation.manager import Conversation
 from conversation.ports import Command, Done, Failed, StaleEpoch, ToolCall, ToolResult
 from conversation.store.memory import MemoryStore
+from conversation.store.sqlite import SqliteStore
 from conversation.testing.fakes import AckingMouth, FakeClock, ListTelemetry, NoMemory, RecordingTools, evidence
 from conversation.testing.scripted_model import ScriptedModel, reply
 from conversation.types import Channel, ControlOp, EnvelopeKind, ItemKind, WorkerUpdate
@@ -30,11 +31,11 @@ from conversation.types import Channel, ControlOp, EnvelopeKind, ItemKind, Worke
 ACCT = "acct-p3"
 
 
-class AuditedStore(MemoryStore):
+class _Audited:
     """Records every COMMITTED transaction with the epoch it ran under (I5 is checked on this log)."""
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, *a, **kw) -> None:
+        super().__init__(*a, **kw)
         self.commits: list[tuple[int, int]] = []        # (commit index, epoch)
         self.takeovers: list[tuple[int, int]] = []      # (commit index at the takeover, new epoch)
 
@@ -50,13 +51,24 @@ class AuditedStore(MemoryStore):
         self.commits.append((len(self.commits), lease.epoch))
 
 
+class AuditedStore(_Audited, MemoryStore):
+    """The audited store in memory: most cases."""
+
+
+class AuditedSqliteStore(_Audited, SqliteStore):
+    """The audited store on sqlite: one case in ten, so its own paths (`json_extract` in `cas`, `BEGIN IMMEDIATE`, the
+    archive's move) are bombarded too (review 2, MINOR 6)."""
+
+
 class Case:
     def __init__(self, seed: int, cfg: Config | None = None) -> None:
         self.rng = random.Random(seed)
         self.seed = seed
         self.cfg = cfg or Config(liveness_ms=60_000, model_first_ms=40, model_gap_ms=40, tool_ms=40,
                                  say_end_ms=8000)
-        self.store, self.clock, self.tel = AuditedStore(), FakeClock(), ListTelemetry()
+        self.on_sqlite = seed % 10 == 3                       # chosen by the seed, not the rng: seeds stay seeds
+        self.store = AuditedSqliteStore(":memory:") if self.on_sqlite else AuditedStore()
+        self.clock, self.tel = FakeClock(), ListTelemetry()
         self.tools = RecordingTools()
         if self.rng.random() < 0.1:
             self.tools.raises["market_data"] = ValueError("p3: the adapter broke")    # B6
@@ -440,3 +452,5 @@ def run_case(seed: int, actions: int = 14) -> list[str]:
         return check(case)
     finally:
         case.loop.close()
+        if case.on_sqlite:
+            case.store.close()

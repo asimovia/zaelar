@@ -28,6 +28,7 @@ from conversation.telemetry import Emitter
 from conversation.types import ControlOp, EffectClass, Ids, ItemKind
 
 FLAGS = "flags"
+OPS = "effect_ops"          # (trigger, operation) → its effect: a repeat is one read (review 2, MINOR 11)
 
 
 @dataclass(frozen=True)
@@ -141,6 +142,8 @@ class Gateway:
         if users and self.cfg.action_seal_grace_ms and not self._grace_over(b, ivs, ctx.endpoint):
             return self._refuse(ctx, tool, "seal_grace")
         existing = self._existing(b, trigger.id if trigger is not None else None, op)
+        if existing is not None and existing["state"] in ("rejected", "withdrawn"):
+            return self._refuse(ctx, tool, f"repeat_of_{existing['state']}", effect=existing["id"])
         if existing is not None:              # the same operation on the same trigger: the SAME row, no new spend (M2)
             self._note("claimed", ctx, tool=tool, effect=existing["id"], repeat=True)
             return Claimed(existing["id"], repeat=True)
@@ -157,12 +160,11 @@ class Gateway:
 
     @staticmethod
     def _existing(b, trigger: str | None, op: str) -> dict | None:
+        """The effect of this operation on this trigger, by its index (one read, never a scan of every effect)."""
         if trigger is None:
             return None
-        for row in b.items(ItemKind.EFFECT):
-            if row["data"].get("trigger") == trigger and row["data"].get("op") == op:
-                return row
-        return None
+        ref = b.tx.get(OPS, f"{trigger}|{op}")
+        return b.get(ref["effect"]) if ref else None
 
     def _spend(self, b, mandate: dict, op: str) -> None:
         if mandate["kind"] == str(ItemKind.DELEGATION):
@@ -188,6 +190,7 @@ class Gateway:
         row, new = b.open_unique(ItemKind.EFFECT, eid, f"{mandate}|{trigger}|{op}", data={
             "tool": tool, "args": args, "op": op, "mandate": mandate, "trigger": trigger, "run": ctx.run_id,
             "req": ctx.request_id, "endpoint": ctx.endpoint, "ivs": ivs})
+        b.tx.put(OPS, f"{trigger}|{op}", {"effect": row["id"]})
         self._note("claimed", ctx, tool=tool, effect=row["id"], authority=str(env.authority), grant=mandate,
                    repeat=not new)
         return Claimed(row["id"], repeat=not new)

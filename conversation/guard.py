@@ -47,12 +47,17 @@ async def call(em: Emitter, cfg: Config, port: str, aw: Awaitable[T], timeout_ms
 async def stream(em: Emitter, cfg: Config, agen: AsyncIterator, refs: dict | None = None) -> AsyncIterator:
     """The model's events, each under its deadline (the first is allowed longer than the gaps)."""
     it, first, end = agen.__aiter__(), True, object()
-    while True:
-        ev = await call(em, cfg, "model", anext(it, end), cfg.model_first_ms if first else cfg.model_gap_ms, refs)
-        if ev is end:
-            return
-        first = False
-        yield ev
+    try:
+        while True:
+            ev = await call(em, cfg, "model", anext(it, end), cfg.model_first_ms if first else cfg.model_gap_ms, refs)
+            if ev is end:
+                return
+            first = False
+            yield ev
+    finally:                                   # a deadline or a stop: the provider's stream is closed, never left open
+        closer = getattr(it, "aclose", None)
+        if closer is not None:
+            await closer()
 
 
 class TimedStore:

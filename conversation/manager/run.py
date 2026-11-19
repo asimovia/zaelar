@@ -185,8 +185,9 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
         called, first, text = False, True, ""
         events = conv.model.stream(PromptParts(prompt.prefix, prompt.state, prompt.conversation, prompt.input,
                                                tuple(steps)), tools, run_id=r.run_id, model_id=conv.cfg.model_id)
+        stream = guard.stream(conv.em, conv.cfg, events, refs)
         try:
-            async for ev in guard.stream(conv.em, conv.cfg, events, refs):
+            async for ev in stream:
                 _checkpoint(conv, r)
                 if first:
                     first = False
@@ -211,6 +212,8 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
         except guard.PortTimeout:
             await _fail(conv, r, "provider:timeout")
             return
+        finally:                                    # a stop, a deadline, a command: the provider's stream is closed now
+            await stream.aclose()                   # (review 2, MINOR 10), never left to the garbage collector
         _checkpoint(conv, r)
         if not called:
             await _command(conv, r, batch, commands.Reply(text) if text else commands.NoReply("empty"), steps,

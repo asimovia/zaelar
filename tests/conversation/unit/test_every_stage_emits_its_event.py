@@ -144,3 +144,28 @@ def test_minor_11_a_telemetry_port_that_raises_does_not_stop_the_manager(store):
     h.conv.em.port = Broken()
     h.utter([(["w1"], 0)])
     assert [o.text for o in h.mouth.orders] == ["w9"] and h.conv.em.lost > 0
+
+
+def test_minor10_a_run_stopped_at_a_checkpoint_closes_the_models_stream(store):
+    """Review 2, MINOR 10: a stop at a checkpoint leaves the run mid-stream; the provider's stream is closed then and
+    there — not left open until the garbage collector finds it."""
+    from conversation.ports import Done
+    from conversation.testing.scripted_model import reply
+    from conversation.types import ControlOp
+    from tests.conversation.unit.convkit import Harness
+    from tests.conversation.unit.inboxkit import control
+    h = Harness(store)
+    closed: list = []
+    stop = control(ControlOp.STOP, 0, "k-stop", endpoint="d1")
+
+    async def stream(prompt, tools, *, run_id, model_id):
+        try:
+            h.conv.give(stop)
+            yield reply("w9")
+            yield Done()
+        finally:
+            closed.append(h.conv.current is not None)  # closed by the run itself, while it is still the current run
+
+    h.model.stream = stream
+    h.utter([(["w1"], 0)])
+    assert [lab for lab, _ in h.closes()] == ["silent"] and closed == [True]

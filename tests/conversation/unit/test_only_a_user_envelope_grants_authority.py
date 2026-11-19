@@ -99,3 +99,24 @@ def test_m4_a_delegation_never_serves_a_run_caused_only_by_a_contact(store, cloc
     k.gw.delegate(k.control(ControlOp.DELEGATE, scope=SCOPE))
     assert isinstance(k.gw.request(k.ctx(k.contact()), k.send()), NeedsConfirmation)
     assert isinstance(k.gw.request(k.ctx(k.utterance("iv1"), k.contact(), run="r2"), k.send()), Claimed)
+
+
+def test_minor3_a_read_goes_without_the_models_hint_and_an_act_never_passes_as_a_read(store, clock, telemetry):
+    k = Kit(store, clock, telemetry)
+    tools = RecordingTools()
+    out = asyncio.run(dispatch.read(k.gw, tools, ToolCall("c", "search", {"q": "w1", "on": "iv9"}), 10 ** 9))
+    assert out.status == "ok" and tools.calls[-1][1] == {"q": "w1"}       # `on` never reaches the port
+    refused = asyncio.run(dispatch.read(k.gw, tools, ToolCall("c", "agenda_add", {"what": "w1"}), 10 ** 9))
+    assert refused.status == "refused" and refused.data["reason"] == "not_a_read" and len(tools.calls) == 1
+
+
+def test_minor11_a_repeat_of_a_withdrawn_effect_says_so_and_finds_it_by_its_index(store, clock, telemetry):
+    k = Kit(store, clock, telemetry)
+    voice = k.utterance("iv1")
+    first = k.gw.request(k.ctx(voice), ADD)
+    assert isinstance(first, Claimed)
+    with k.gw.book.tx() as b:
+        b.move(first.effect_id, "withdrawn")
+    again = k.gw.request(k.ctx(voice), ADD)
+    assert again == Refused("repeat_of_withdrawn")
+    assert store.snapshot("acct-test").scan("effect_ops")               # the index the repeat is read from

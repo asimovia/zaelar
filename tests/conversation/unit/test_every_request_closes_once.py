@@ -156,3 +156,27 @@ def test_nm7_a_model_that_stays_down_still_tells_the_person_through_the_last_res
     assert len(said) == 1 and said[0].text == "" and said[0].fallback.startswith("failed:")
     rows = [r for _k, r in store.snapshot("acct-test").scan("inbox") if r["kind"] == "system.reminder"]
     assert rows and all(r.get("retries") == 1 for r in rows)
+
+
+def test_minor1_keep_time_sweeps_on_its_own_timer(store):
+    """`keep_time` is the sweep beside the loop: with nothing else running, a request past its liveness is closed
+    `stalled` by it alone (and the fake clock's sleep yields, so the timer never starves the loop)."""
+    import asyncio as aio
+    from tests.conversation.unit.convkit import Harness
+    h = Harness(store)
+    h.live = False
+    h.utter([(["w1"], 0)])                                    # accepted, never run: its request is open
+
+    async def tick_for_a_while():
+        task = aio.ensure_future(h.conv.keep_time(every_ms=1000))
+        for _ in range(200):
+            await aio.sleep(0)
+        task.cancel()
+        try:
+            await task
+        except aio.CancelledError:
+            return h.clock.mono
+        return h.clock.mono
+
+    assert aio.run(tick_for_a_while()) >= 40_000
+    assert [lab for lab, _ in h.closes()] == ["stalled"]

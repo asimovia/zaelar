@@ -24,6 +24,7 @@ class FakeClock:
         self.mono += ms
 
     async def sleep_until(self, mono_ms: int) -> None:
+        await asyncio.sleep(0)                 # yields like a real sleep: a timer task never starves the loop
         self.mono = max(self.mono, mono_ms)
 
 
@@ -81,6 +82,7 @@ def evidence(eid: str, entity: str, period: str, metric: str, direction: str, va
 class AckingMouth:
     """Says at once; `ack` (set by the harness) receives the acks, `played` decides how much was heard."""
     ack: Callable | None = None
+    playback: Callable | None = None           # (endpoint, t) → the device reports it is playing our line
     heard_all: bool = True
     orders: list = field(default_factory=list)
     calls: list = field(default_factory=list)
@@ -88,6 +90,8 @@ class AckingMouth:
     async def say(self, order) -> None:
         from conversation.mouth import PlayoutAck, SayEnded, SayStarted
         self.orders.append(order)
+        if self.playback is not None and order.endpoint and "voice" in order.channels:
+            self.playback(order.endpoint)
         if self.ack is not None:
             self.ack(SayStarted(order.say_id, 0))
             if self.heard_all and order.endpoint:
