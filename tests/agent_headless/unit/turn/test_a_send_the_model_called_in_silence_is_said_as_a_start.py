@@ -4,6 +4,8 @@ Measured (his session T15, and the kindergarten bench 3 of 3 before the fix): «
 — the model called `mensajeria:send_to` with no words, the send went to its task, and the turn, counting nothing as
 handled, fell to the mute line «Perdona, se me ha ido. ¿Me lo dices otra vez?» while the message was on its way. The
 typed channel also reported the turn as `chat`. Now the routed send IS the turn's act and its line is the start.
+Since V2-938 the send has ONE owner (`nucleo/send`): the model's call becomes the owner's draft, and the turn's line
+is its confirmation — the message read back, never the mute line, and nothing sent before his yes.
 """
 from __future__ import annotations
 
@@ -24,10 +26,9 @@ def test_a_silent_send_call_says_the_start_and_names_the_act(lang):
             "model": {"say": "", "tools": [{"name": "widget_data", "args": {
                 "widget_id": "mensajeria", "action": "send_to",
                 "payload": {"contact": "Raquel Salinas", "channel": "whatsapp", "text": TEXT[lang]}}}]},
-            "expect": "escalate"}
+            "expect": "talk"}
     out = th.run_case(case)
     from i18n import langs
-    start = langs.spec(lang).send_preparing        # V2-931: the send's own start line, never «not done yet»
     mute = tuple(langs.spec(lang).mute_lines)
-    assert out.decision == "escalate", out.decision      # V2-931: the send is handed to its ONE worker task
-    assert start in out.reply and not any(m in out.reply for m in mute), out.reply
+    assert out.decision == "talk", out.decision          # V2-938: the send owner answers in the turn itself
+    assert TEXT[lang] in out.reply and not any(m in out.reply for m in mute), out.reply   # the draft read back

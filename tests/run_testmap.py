@@ -7493,7 +7493,7 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_clear_request_is_done_and_never_called_done_before_its_result.py"]},
         {"id": "2.1701", "title": "One person is one candidate (V2-887 step 6): a contact named by its handle («raquel.salinasortega», «pedrosalvador12») whose letters spell another matched contact's full name is that person — «Raquel Salinas» resolves to one; a plain one-word name stays its own",
             "ch": UNIT, "paths": ["tests/memory/unit/contacts/test_one_person_is_one_candidate.py"]},
-        {"id": "2.1703", "title": "A send the model called in silence is said as a start, never as «I lost that» (V2-887): the routed send is the turn's act — the typed channel names it `widget_data:mensajeria:send_to` and the mouth says `done_just_started`, ES and EN",
+        {"id": "2.1703", "title": "A send the model called in silence is said as a start, never as «I lost that» (V2-887): the routed send is the turn's act — since V2-938 the send owner answers in the turn with the draft read back and nothing sent before his yes, ES and EN",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_send_the_model_called_in_silence_is_said_as_a_start.py"]},
         {"id": "2.1704", "title": "A declared act of one of our apps that does not leave the machine runs under a sure «escalate», like a player call (V2-887): «impórtame todos los contactos» runs `contactos:sync_contacts` instead of a worker; a leaving act (a send) is still routed, ES and EN",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_home_card_act_runs_under_a_sure_escalate.py"]},
