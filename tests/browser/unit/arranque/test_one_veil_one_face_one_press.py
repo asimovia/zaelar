@@ -176,7 +176,8 @@ const cases = [
   [["live", S, true, true, false], "sleep"], [["starting", S, false, true, false], "sleep"],
   [["starting", N, false, true, false], "starting"], [["starting", N, false, false, false], ""],
   [["remote", N, true, true, false], "moved"], [["remote", N, true, true, true], ""],
-  [["live", N, false, true, false], ""], [["stalled", N, false, true, false], ""]];
+  [["live", N, false, true, false], ""], [["stalled", N, false, true, false], ""],
+  [["live", { face: "connecting" }, true, true, false], "connecting"], [["off", { face: "connecting" }, false, true, false], "off"]];
 for (const [args, want] of cases) { const got = veilFace(...args);
   if (got !== want) { console.error(JSON.stringify(args), got, want); process.exit(1); } }
 """
@@ -193,11 +194,11 @@ def _z(src: str, selector: str) -> int:
 def test_the_stopped_face_leaves_the_rail_and_the_orb_above_and_the_black_faces_cover_everything():
     shared = SHARED_CSS.read_text(encoding="utf-8")
     css = (FRONT / "app/styles.css").read_text(encoding="utf-8")
-    shaded, black = _z(shared, ".zv"), _z(shared, ".zv.sleep,.zv.moved")
+    shaded, black = _z(shared, ".zv"), _z(shared, ".zv.sleep,.zv.moved,.zv.connecting")
     stage = _z((FRONT / "app/widgets/desktop.js").read_text(encoding="utf-8"), ".hb-stage")
     rail = _z((FRONT / "app/components/WidgetRail.js").read_text(encoding="utf-8"), "#wrail")
     assert stage < shaded < rail < _z(css, ".orbwrap") and shaded < _z(css, ".trw")
-    assert "body:has(.zv.on.sleep,.zv.on.moved) #desk{transform:none;z-index:%d}" % black in shared, \
+    assert "body:has(.zv.on.sleep,.zv.on.moved,.zv.on.connecting) #desk{transform:none;z-index:%d}" % black in shared, \
         "a black face lifts #desk (where the veil lives on the desktop) above everything"
     for p in [*FRONT.joinpath("app").rglob("*.css"), *FRONT.joinpath("app").rglob("*.js"),
               *FRONT.joinpath("mobile").rglob("*.css"), *FRONT.joinpath("mobile").rglob("*.js")]:
@@ -253,4 +254,52 @@ def test_asleep_plain_speech_does_nothing_and_the_assistants_name_wakes_it(brows
     assert pg.evaluate("() => window.__doors || []") == [], "plain speech must not wake it"
     pg.evaluate("() => window.__wk.offer('hey Pepa wake up')")
     until_sync(lambda: pg.evaluate("() => window.__doors || []")[:1] == ["wake"], "the name to run the click's wake path", timeout_s=2)
+    pg.close()
+
+
+def test_moving_the_mouse_wakes_a_sleeping_screen_and_a_still_one_does_not(browser_and_port):
+    """Operator, 2026-11-19: asleep, moving the mouse over the screen wakes it. Only real movement: a still pointer
+    re-sent by the browser when the veil appears under it is nobody. And a wake by moving never takes the voice from
+    another screen that holds it."""
+    b, port = browser_and_port
+    pg = _page(b, port)
+    pg.mouse.move(300, 300)
+    pg.evaluate("() => window.__store.setDormant({ face: 'sleep', waking: false })")
+    pg.mouse.move(305, 303)
+    pg.wait_for_timeout(200)
+    assert pg.evaluate("() => window.__doors || []") == [], "a jiggle under 24 px wakes nothing"
+    pg.mouse.move(420, 380, steps=6)
+    until_sync(lambda: pg.evaluate("() => window.__doors || []")[:1] == ["wake"], "the move to wake it", timeout_s=2)
+    pg.evaluate("() => { window.__store.setRemoteHeld(true); window.__store.setDormant({ face: '', waking: false }); }")
+    until_sync(lambda: len(pg.evaluate("() => window.__doors || []")) >= 2, "the agent switched on", timeout_s=2)
+    pg.wait_for_timeout(200)
+    assert pg.evaluate("() => window.__doors") == ["wake", "power:false:move"], \
+        "a wake by moving switches the agent on but leaves the voice where another screen holds it"
+    assert not pg._errors, pg._errors
+    pg.close()
+
+
+def test_waking_and_connecting_cover_the_screen_with_a_loader_and_nothing_to_press(browser_and_port):
+    """Never an open screen that is neither listening, speaking nor working (operator, 2026-11-19)."""
+    b, port = browser_and_port
+    pg = _page(b, port)
+    read = """() => { const v = document.querySelector('.zv');
+        return { cls: v.className, shown: getComputedStyle(v).display !== 'none',
+                 spin: getComputedStyle(v.querySelector('.zv-spin')).display !== 'none',
+                 zs: getComputedStyle(v.querySelector('.zv-zs')).display !== 'none',
+                 btn: getComputedStyle(v.querySelector('.zv-btn.primary')).display !== 'none',
+                 title: v.querySelector('.zv-title').textContent }; }"""
+    pg.evaluate("() => window.__store.setDormant({ face: 'sleep', waking: false })")
+    asleep = pg.evaluate(read)
+    assert asleep["shown"] and asleep["zs"] and asleep["btn"] and not asleep["spin"], asleep
+    pg.evaluate("() => window.__store.setDormant({ face: 'sleep', waking: true })")
+    waking = pg.evaluate(read)
+    assert waking["shown"] and waking["spin"] and not waking["zs"], f"waking: the loader replaces the Zs: {waking}"
+    pg.evaluate("() => window.__store.setDormant({ face: 'connecting', waking: true })")
+    conn = pg.evaluate(read)
+    assert conn["shown"] and conn["spin"] and not conn["btn"], conn
+    assert conn["title"] == _EN["veil.connecting"], conn
+    pg.evaluate("() => window.__store.setDormant({ face: '', waking: false })")
+    assert not pg.evaluate(read)["shown"], "the stream answered: the screen is free"
+    assert not pg._errors, pg._errors
     pg.close()

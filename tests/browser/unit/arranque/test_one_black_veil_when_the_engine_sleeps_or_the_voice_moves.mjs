@@ -79,4 +79,16 @@ document.hidden = false;
 listeners.pointerdown[0]();
 assert.deepEqual(last(), { face: "sleep", waking: true }, "any gesture is a Reactivate");
 
+
+// ── 3. a stream lost while he is here: a blip under the first backoff shows nothing; a longer one, the loader ──────
+P.onStreamOpen();
+timers.length = 0;
+P.onStreamError();
+assert.equal(last().face, "", "the first 2 s of a lost stream show nothing: a blip is not a state");
+timers.shift().fn();
+assert.deepEqual(last(), { face: "connecting", waking: true },
+                 "still lost at the first retry: the veil covers the screen with a loader (operator, 2026-11-19)");
+P.onStreamOpen();
+assert.deepEqual(last(), { face: "", waking: false }, "the stream answered: the veil lifts");
+
 console.log("ok — one black veil when the engine sleeps, lifted when it answers");

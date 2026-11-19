@@ -6,10 +6,11 @@
 // the host's CPU with nobody there. So this tab never reconnects by itself:
 //   · a stream error CLOSES the stream; reopening it is `reconnectDecision`'s call — only while the tab is visible
 //     AND had input (pointer, key, his spoken turn) within `tab_sleep_min`, with a 2 s → 60 s backoff;
-//   · a tab with no input for `tab_sleep_min` sleeps on its own (the orb dims, a line under it says so), and the
-//     first gesture wakes it;
-//   · on the engine's `engine.sleep` the WHOLE screen goes dark (`Veil.js`, face "sleep") with a Reactivate
-//     button; any gesture wakes it, and the veil shows that it is waiting until the stream answers;
+//   · a tab with no input for `tab_sleep_min` sleeps on its own, and so does one on the engine's `engine.sleep`:
+//     either way the WHOLE screen goes dark (`Veil.js`, face "sleep") with a wake button; any gesture wakes it, and
+//     the veil stays, with a loader, until the stream answers (operator, 2026-11-19: an open screen that is neither
+//     listening, speaking nor working is never shown bare — the tab's own sleep had only a line under the orb);
+//   · a stream lost while he is here shows the veil's "connecting" face from its first retry until it answers;
 //   · a hidden tab never reconnects, and becoming visible again is not a gesture.
 // While asleep the tab sends nothing: pollers and voice retries ask `asleep()` before they reach the server.
 // Every open this module decides carries `wake=1`: it is a person, and a deployment whose edge lets only a person
@@ -141,7 +142,7 @@ function _navNow() {
 // `why` is what put the tab to sleep: "tab" (its own timer, a failed reconnect) or "engine" (`engine.sleep`).
 // `lastInput` keeps a just-loaded tab's stream (its retries, its own sleep timer); `lastGesture` is what a beat needs.
 const _p = { lastInput: Date.now(), lastGesture: openedByPerson(_navNow()) ? Date.now() : 0, asleep: false, why: "", waking: false, open: false, sleepMin: TAB_SLEEP_MIN,
-             attempt: 0, timer: null, h: null, pill: null };
+             attempt: 0, timer: null, h: null, lost: false };
 
 export const asleep = () => _p.asleep;
 
@@ -153,9 +154,11 @@ function _beat() {
   try { _p.h && _p.h.beat && _p.h.beat(); } catch (_) {}
 }
 
-// What the full-screen veil shows: "sleep" while the engine sleeps, `waking` once a gesture asked it back.
+// What the full-screen veil shows: "sleep" while the tab sleeps (on its own or by the engine's goodnight) and while a
+// gesture is waking it (`waking`, the loader); "connecting" while a stream he was using is being reopened.
 function _dormant() {
-  try { _p.h && _p.h.dormant && _p.h.dormant({ face: _p.why === "engine" ? "sleep" : "", waking: _p.waking }); } catch (_) {}
+  const face = _p.asleep || _p.waking ? "sleep" : _p.lost ? "connecting" : "";
+  try { _p.h && _p.h.dormant && _p.h.dormant({ face, waking: _p.waking || (face === "connecting") }); } catch (_) {}
 }
 
 /** Wired once by sse.js: `open()` / `close()` the stream, `t` names the dormant state. */
@@ -208,7 +211,7 @@ export function presenceEvent(d) {
 /** The stream answered: the engine is awake. The veil lifts, and a visible tab says a person is here. */
 export function onStreamOpen() {
   _p.attempt = 0; _p.open = true;
-  if (_p.why || _p.waking) { _p.why = ""; _p.waking = false; _dormant(); }
+  if (_p.why || _p.waking || _p.lost) { _p.why = ""; _p.waking = false; _p.lost = false; _dormant(); }
   _beat();
 }
 
@@ -222,15 +225,17 @@ export function onStreamError() {
   _p.attempt++;
   _p.timer = setTimeout(() => {
     _p.timer = null;
-    if (reconnectDecision(now()).reconnect) _p.h && _p.h.open({ wake: true }); else sleep();
+    if (!reconnectDecision(now()).reconnect) return sleep();
+    if (!_p.open && !_p.waking && !_p.lost) { _p.lost = true; _dormant(); }   // a blip under its first backoff shows nothing
+    _p.h && _p.h.open({ wake: true });
   }, d.delayMs);
 }
 
-/** `why` "engine" is the engine's goodnight: the whole screen goes dark (the veil), not only the orb. A tab already
- *  asleep on its own timer that hears it keeps sleeping; a wake that gives up returns to the veil it came from. */
+/** `why` "engine" is the engine's goodnight, "tab" the tab's own timer or a reconnect it gave up: both darken the
+ *  whole screen (the veil). A wake that gives up returns to the veil it came from. */
 export function sleep(why = "tab") {
   if (why === "engine" || _p.waking) _p.why = "engine";
-  _p.waking = false; _p.open = false;
+  _p.waking = false; _p.open = false; _p.lost = false;
   if (_p.asleep) { _dormant(); return; }
   _p.asleep = true;
   if (_p.timer) { clearTimeout(_p.timer); _p.timer = null; }
@@ -241,7 +246,7 @@ export function sleep(why = "tab") {
 
 function wake() {
   _p.asleep = false; _p.attempt = 0;
-  if (_p.why === "engine") _p.waking = true;     // the veil stays, saying it is waiting, until the stream answers
+  _p.waking = true;                              // the veil stays, with its loader, until the stream answers
   paint(false);
   _dormant();
   try { _p.h && _p.h.open({ wake: true }); } catch (_) {}
@@ -253,21 +258,10 @@ export function reactivate() {
   if (_p.asleep) wake();
 }
 
-// The dormant state, on both shells: the orb (`#orb`, the same id on desktop and phone) dims and a line under it
-// says what to do. Built here so neither shell grows a second copy.
+// The dormant orb, on both shells (`#orb`, the same id on desktop and phone): dimmed under the veil.
 function paint(on) {
   try {
     const orb = document.getElementById("orb");
     if (orb) orb.style.opacity = on ? "0.35" : "";
-    if (!_p.pill) {
-      _p.pill = document.createElement("div");
-      _p.pill.setAttribute("role", "status");
-      _p.pill.style.cssText = "position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:9999;padding:6px 14px;"
-        + "border-radius:999px;background:rgba(10,12,20,.82);color:#e8ecff;font:13px/1.3 system-ui,sans-serif;pointer-events:none";
-      document.body.appendChild(_p.pill);
-    }
-    const own = on && _p.why !== "engine";        // the engine's sleep has the full-screen veil; the pill is the tab's
-    _p.pill.textContent = own && _p.h && _p.h.t ? _p.h.t("orb.asleep") : "";
-    _p.pill.style.display = own ? "" : "none";
   } catch (_) {}
 }

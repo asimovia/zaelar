@@ -23,6 +23,8 @@ globalThis.clearTimeout = () => {};
 
 const P = await import("../../../../frontend/app/services/presence.js?v=1");
 const MIN = 60000, NOW = 1_800_000_000_000;
+const seen = [];
+const last = () => seen[seen.length - 1];
 
 // ── 1. the pure decision ─────────────────────────────────────────────────────────────────────────────────
 {
@@ -47,7 +49,8 @@ const MIN = 60000, NOW = 1_800_000_000_000;
 // ── 2. the wiring: an error with him here retries; `engine.sleep` puts the tab to sleep; a gesture wakes it ──
 {
   let opens = 0, closes = 0, wakes = 0;
-  P.wirePresence({ open: (o) => { opens++; if (o && o.wake) wakes++; }, close: () => closes++, t: (k) => k });
+  P.wirePresence({ open: (o) => { opens++; if (o && o.wake) wakes++; }, close: () => closes++, t: (k) => k,
+                   dormant: (d) => seen.push(d) });
   assert.ok(listeners.pointerdown && listeners.keydown, "a pointer and a key are input");
   assert.equal(listeners.visibilitychange, undefined, "becoming visible is not a gesture");
 
@@ -83,10 +86,15 @@ const MIN = 60000, NOW = 1_800_000_000_000;
   P.onStreamError();
   assert.equal(timers.length, 0, "a hidden tab never reconnects");
   assert.equal(P.asleep(), true);
-  assert.equal(pill.textContent, "orb.asleep", "a tab asleep on its own says so under the orb");
+  assert.deepEqual(last(), { face: "sleep", waking: false },
+                   "a tab asleep on its own darkens the whole screen too — never a bare screen that hears nothing (2026-11-19)");
+  assert.equal(pill.textContent, "", "…the veil, not a line under the orb");
   globalThis.document.hidden = false;
   listeners.keydown[0]();
   assert.equal(P.asleep(), false, "a key is a gesture too");
+  assert.deepEqual(last(), { face: "sleep", waking: true }, "the veil stays with its loader until the stream answers");
+  P.onStreamOpen();
+  assert.deepEqual(last(), { face: "", waking: false }, "…and lifts when it does");
 }
 
 // ── 4. the hello's tab_sleep_min is the deployment's ───────────────────────────────────────────────────────

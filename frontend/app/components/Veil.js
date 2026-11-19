@@ -5,7 +5,8 @@
 // power veil appeared saying «the agent is stopped», and he had to press ⏻ again. Now ONE face at a time, by priority:
 //
 //   · pausing / off  — the agent is stopping or stopped by him (`store.agentState`). Stopped wins over asleep.
-//   · sleep          — the engine said goodnight (`engine.sleep`, services/presence.js).
+//   · sleep          — the tab or the engine went to sleep (services/presence.js); moving the mouse wakes it too.
+//   · connecting     — the stream he was using is being reopened: a loader, nothing to press.
 //   · starting       — the agent is coming up again after the first boot (the first boot has the loader).
 //   · moved          — the voice is held by another screen (`store.remoteHeld`); «continue here with text» lifts it,
 //                      because chat and the observer still work on a screen without the voice (V2-792).
@@ -28,6 +29,7 @@ import * as wake from "../services/wakeword.js?v=1";
 export function veilFace(state, dormant, remoteHeld, bootReady, movedDismissed) {
   if (state === "pausing" || state === "off") return state;
   if (dormant && dormant.face === "sleep") return "sleep";
+  if (dormant && dormant.face === "connecting") return "connecting";
   if (state === "starting" && bootReady) return "starting";
   if (remoteHeld && !movedDismissed) return "moved";
   return "";
@@ -44,22 +46,23 @@ const awake = () => new Promise((resolve) => {
 });
 
 let _busy = false;
-/** The one gesture: wake the engine, switch the agent on, bring the voice here. Exported for the test. */
-export async function activateHere(where = "veil") {
+/** The one gesture: wake the engine, switch the agent on, bring the voice here. Exported for the test. A wake by moving
+ *  the mouse (`takeVoice` false) never takes the voice from another screen that holds it: that is the "moved" face. */
+export async function activateHere(where = "veil", takeVoice = true) {
   if (_busy) return;
   _busy = true;
   try {
     reactivate();
     await awake();
     await setPower(false, where);
-    if (session.claimVoice) await session.claimVoice(where);
+    if (session.claimVoice && (takeVoice || !store.remoteHeld())) await session.claimVoice(where);
   } finally { _busy = false; }
 }
 
 const MARK = { sleep: "☾", moved: "⇄", off: "⏻" };
-const TITLE = { off: "veil.off_title", pausing: "veil.pausing", starting: "veil.starting",
+const TITLE = { off: "veil.off_title", pausing: "veil.pausing", starting: "veil.starting", connecting: "veil.connecting",
                 sleep: "dormant.sleeping", moved: "dormant.moved_title" };
-const SUB = { off: "veil.off_sub", moved: "dormant.moved_sub" };
+const SUB = { off: "veil.off_sub", sleep: "dormant.sleep_hint", moved: "dormant.moved_sub" };
 const BTN = { off: "veil.on_btn", sleep: "dormant.reactivate", moved: "dormant.use_here" };
 
 // While the engine sleeps, the browser's own recogniser (services/wakeword.js — free, no engine, no stream) listens for
@@ -79,12 +82,30 @@ export function sleepEar(on) {
   } else if (!on && _sleepEar) { _sleepEar = false; wake.stop(); }
 }
 
+// A sleeping screen also wakes when he moves the mouse over it (operator, 2026-11-19). Real movement only: a browser
+// re-sends a still pointer's position when the layout changes under it (the veil itself appearing), which is nobody.
+const MOVE_PX = 24;
+let _moveFrom = null, _moveOn = false;
+function _onMove(e) {
+  if (e.pointerType && e.pointerType !== "mouse") return;
+  if (!_moveFrom) { _moveFrom = [e.screenX, e.screenY]; return; }
+  if (Math.hypot(e.screenX - _moveFrom[0], e.screenY - _moveFrom[1]) < MOVE_PX) return;
+  _moveFrom = null; activateHere("move", false);
+}
+export function moveWakes(on) {
+  if (on === _moveOn) return;
+  _moveOn = on; _moveFrom = null;
+  if (on) window.addEventListener("pointermove", _onMove, { passive: true });
+  else window.removeEventListener("pointermove", _onMove);
+}
+
 export function Veil() {
   createEffect(() => { sleepEar(store.dormant().face === "sleep" && store.agentState() !== "off"); });
   const [dismissed, setDismissed] = createSignal(false);
   createEffect(() => { if (!store.remoteHeld()) setDismissed(false); });   // the next change of hands shows it again
   const face = () => veilFace(store.agentState(), store.dormant(), store.remoteHeld(), store.bootReady(), dismissed());
   const waking = () => !!face() && !!store.dormant().waking;
+  createEffect(() => { moveWakes(face() === "sleep" && !waking()); });
   const swallow = (e) => { e.stopPropagation(); };
   return h("div", {
     class: () => "zv" + (face() ? " on " + face() : "") + (waking() ? " waking" : ""),
@@ -94,6 +115,7 @@ export function Veil() {
   },
     h("div", { class: "zv-box" },
       h("div", { class: "zv-mark", "aria-hidden": "true" }, () => MARK[face()] || ""),
+      h("div", { class: "zv-spin", "aria-hidden": "true" }),
       h("div", { class: "zv-zs", "aria-hidden": "true" }, h("span", {}, "Z"), h("span", {}, "Z"), h("span", {}, "Z")),
       h("h2", { class: "zv-title", id: "zv-title" }, () => (TITLE[face()] ? t(TITLE[face()]) : "")),
       h("p", { class: "zv-sub" }, () => (waking() ? t("dormant.waking") : SUB[face()] ? t(SUB[face()]) : "")),
