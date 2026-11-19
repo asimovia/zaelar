@@ -140,3 +140,38 @@ def test_a_family_the_broker_has_no_client_for_is_an_answer_not_an_outage(monkey
         assert len(asked) == 1
     finally:
         oauth_broker._reset_for_tests()
+
+
+def test_the_first_lookup_on_the_event_loop_does_not_wait_for_the_broker(monkeypatch):
+    """G1 (2026-11-19): measured on a cloud host, the first client lookup of a family held the event loop 1.9 s at
+    wake (`_fetch` ← a status poll). On the loop the first lookup is started in the background and answered "" at
+    once; the id lands in the cache for the next poll. Off the loop it still waits (a token flow needs the answer)."""
+    import asyncio
+    import time as _t
+
+    import httpx
+    from connectors import oauth_broker
+    _cloud(monkeypatch)
+    oauth_broker._reset_for_tests()
+
+    def slow_post(url, **k):
+        _t.sleep(0.4)
+        return _Resp({"client_id": "brokered.apps.googleusercontent.com"})
+    monkeypatch.setattr(httpx, "post", slow_post)
+
+    async def on_loop():
+        t0 = _t.monotonic()
+        first = oauth_broker.client_id("google")
+        return first, _t.monotonic() - t0
+    try:
+        first, waited = asyncio.run(on_loop())
+        assert waited < 0.1, f"the event loop waited {waited:.2f}s for the broker"
+        assert first == ""
+        deadline = _t.monotonic() + 3
+        while _t.monotonic() < deadline and oauth_broker.client_id("google") != "brokered.apps.googleusercontent.com":
+            _t.sleep(0.05)
+        assert oauth_broker.client_id("google") == "brokered.apps.googleusercontent.com", "the id landed for the next poll"
+        oauth_broker._reset_for_tests()
+        assert oauth_broker.client_id("google") == "brokered.apps.googleusercontent.com", "off the loop it still waits"
+    finally:
+        oauth_broker._reset_for_tests()

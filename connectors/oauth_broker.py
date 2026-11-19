@@ -27,6 +27,7 @@ and the connector stays dormant and says so.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import threading
@@ -107,18 +108,17 @@ def _fetch(family: str) -> str:
 def client_id(family: str) -> str:
     """The broker's client id for `family`, or "" (no broker, no client for that family, broker unreachable).
 
-    Status endpoints call this on every poll, from the event loop. So only the FIRST lookup of a family waits for
-    the network (bounded); afterwards a known id is answered from memory at once and refreshed in the background
-    when it ages; a miss is answered "" at once and retried in the background too, so a broker that is down
-    costs the event loop one bounded wait per family, not one per poll."""
+    Status endpoints poll this from the event loop, where nothing waits for the network (a first lookup there held
+    a cloud host's loop 1.9 s at wake): an unknown or aged family is fetched in the background, answered from memory
+    ("" until it lands, a miss retried soon). Off the loop (a token flow in a thread) a first lookup waits, bounded."""
     if not family or not enabled():
         return ""
     now = time.monotonic()
     with _lock:
         hit = _cache.get(family)
-    if hit is None:
+    if hit is None and asyncio._get_running_loop() is None:     # not on an event loop: the caller can wait
         return _fetch(family)
-    cid, until = hit
+    cid, until = hit or ("", now)
     if now >= until:
         with _lock:
             _cache[family] = (cid, now + _MISS_TTL)           # one refresh in flight, not one per poll
