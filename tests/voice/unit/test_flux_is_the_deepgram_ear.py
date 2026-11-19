@@ -37,7 +37,9 @@ def test_the_default_deepgram_ear_is_flux_general_multi(monkeypatch):
     assert stt._opts.model == "flux-general-multi"
     assert stt._opts.eager_eot_threshold == 0.5
     assert stt._opts.eot_threshold == 0.7
-    assert stt._opts.eot_timeout_ms == 3000
+    # the longest silence Flux waits when it is NOT sure the turn ended: 1 s, not 3 (2026-11-19, measured on a cloud
+    # Machine: the 3 s timeout was 2.4-2.8 s of every doubtful turn before the model could start)
+    assert stt._opts.eot_timeout_ms == 1000
     assert stt._opts.endpoint_url.startswith("wss://") and stt._opts.endpoint_url.endswith("/v2/listen")
 
 

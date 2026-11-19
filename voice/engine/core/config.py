@@ -110,10 +110,10 @@ class Settings:
     # keeps working with `ZAELAR_STT_MODEL_DG=nova-3` (silence-based end of turn, `voice/endpointing.py`).
     stt_model_deepgram: str = env("ZAELAR_STT_MODEL_DG", "flux-general-multi")
     # Flux turn thresholds (Deepgram's own ranges): eager 0.3-0.9 (0 disables the eager event), end 0.5-0.9, and the
-    # longest silence Flux waits before closing a turn on its own.
+    # longest silence Flux waits when unsure: 1 s, not 3 (2026-11-19: 2.4-2.8 s of every doubtful cloud turn).
     stt_eager_eot: float = float(env("ZAELAR_STT_EAGER_EOT", "0.5"))
     stt_eot_threshold: float = float(env("ZAELAR_STT_EOT_THRESHOLD", "0.7"))
-    stt_eot_timeout_ms: int = int(env("ZAELAR_STT_EOT_TIMEOUT_MS", "3000"))
+    stt_eot_timeout_ms: int = int(env("ZAELAR_STT_EOT_TIMEOUT_MS", "1000"))
     # Does the MODEL start on the eager end of turn (LiveKit's preemptive generation)? OFF (V2-931): a turn ACTS — it
     # commissions work, answers a waiting question, sends — and a draft started on a sentence he had not finished did
     # all of that before the ear confirmed the turn (measured 2026-11-17: one 28 s sentence ran as three turns, two
