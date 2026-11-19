@@ -52,11 +52,24 @@ logger = logging.getLogger("zaelar.agent")
 _kickoff_recent, _mark_kickoff = kickoff_recent, mark_kickoff
 
 
-def _endpointing_opts() -> dict:
+def _endpointing_opts(flux: bool | None = None) -> dict:
     """How much silence closes a turn. The values live in `voice/endpointing.py` — the SINGLE source of truth for
     this decision, written from real sessions and orphaned until now. Env overrides allow hot adjustment
-    without touching code."""
+    without touching code, and WIN: with either `ZAELAR_ENDPOINT_*_S` set it is the dynamic mode with those bounds.
+    With the Flux ear (`flux` None = read it) and no override it is FIXED at `stt_flux_min_delay`: Flux already
+    decided the turn ended, and LiveKit's dynamic average (built for VAD endpointing) took a long pause after a
+    sentence with no transcript as a pause INSIDE a turn — measured on a cloud Machine 2026-11-19, every later turn
+    then waited the 3 s ceiling (`eou=3.00s`) for the rest of the session."""
     from voice import endpointing as _ep
+    if flux is None:
+        try:
+            from ..speech.stt import deepgram as _dg
+            flux = _dg.flux_active()
+        except Exception as e:  # noqa: BLE001 — unreadable ear: the dynamic endpointing, as before
+            logger.debug("endpointing: flux unreadable — %r", e)
+            flux = False
+    if flux and not any((os.getenv(k) or "").strip() for k in ("ZAELAR_ENDPOINT_MIN_S", "ZAELAR_ENDPOINT_MAX_S")):
+        return {"mode": "fixed", "min_delay": SETTINGS.stt_flux_min_delay, "max_delay": SETTINGS.stt_flux_min_delay}
 
     def _f(name: str, default: float) -> float:
         v = (os.getenv(name) or "").strip()

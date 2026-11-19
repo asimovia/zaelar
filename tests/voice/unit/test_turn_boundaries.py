@@ -103,11 +103,32 @@ def test_endpointing_uses_the_measured_values_not_livekit_defaults():
     and nobody wired it in, so the turn closed with the 0.5 s default. It is now the source of truth."""
     from voice import endpointing as ep
     from voice.engine.pipeline.agent import _endpointing_opts
-    opts = _endpointing_opts()
+    opts = _endpointing_opts(flux=False)          # the VAD ear (nova-3): the dynamic hold
     assert opts["min_delay"] == ep.HOLD_BASE
     assert opts["max_delay"] == ep.HOLD_MAX
     assert opts["min_delay"] > 0.5, "0,5 s es el default de LiveKit: es lo que partía la frase del operador"
     assert opts["mode"] == "dynamic", "hold creciente = lo que hold_secs() calculaba a mano"
+
+
+def test_with_flux_the_endpointing_is_fixed_and_a_long_pause_cannot_poison_it(monkeypatch):
+    """Flux decides the end of turn; the only silence added after it is `stt_flux_min_delay`, FIXED. Measured on a cloud
+    Machine 2026-11-19: with LiveKit's dynamic average, one sentence the STT did not transcribe followed by a pause put
+    every later turn at the 3 s ceiling (`eou=3.00s`) for the rest of the session; fixed, it stays at 0.25 s."""
+    from voice.engine.core.config import SETTINGS
+    from voice.engine.pipeline.agent import _endpointing_opts
+    for k in ("ZAELAR_ENDPOINT_MIN_S", "ZAELAR_ENDPOINT_MAX_S"):
+        monkeypatch.delenv(k, raising=False)
+    d = SETTINGS.stt_flux_min_delay
+    assert _endpointing_opts(flux=True) == {"mode": "fixed", "min_delay": d, "max_delay": d}
+
+
+def test_the_env_override_wins_over_the_flux_default(monkeypatch):
+    """The stopgap on the Machines (`ZAELAR_ENDPOINT_MIN_S=0.25`, `ZAELAR_ENDPOINT_MAX_S=0.6`) keeps working until it is
+    removed: an override, either one, is the dynamic mode with its bounds."""
+    from voice.engine.pipeline.agent import _endpointing_opts
+    monkeypatch.setenv("ZAELAR_ENDPOINT_MIN_S", "0.25")
+    monkeypatch.setenv("ZAELAR_ENDPOINT_MAX_S", "0.6")
+    assert _endpointing_opts(flux=True) == {"mode": "dynamic", "min_delay": 0.25, "max_delay": 0.6}
 
 
 def test_endpointing_is_tunable_without_touching_code(monkeypatch):
@@ -129,7 +150,7 @@ def test_endpointing_survives_a_garbage_env(monkeypatch):
     from voice import endpointing as ep
     from voice.engine.pipeline.agent import _endpointing_opts
     monkeypatch.setenv("ZAELAR_ENDPOINT_MIN_S", "no-es-un-numero")
-    assert _endpointing_opts()["min_delay"] == ep.HOLD_BASE
+    assert _endpointing_opts(flux=False)["min_delay"] == ep.HOLD_BASE
 
 
 # ── 4. A turn that dies leaves a trace AND preserves the sentence ─────────────────────────────────────────────────

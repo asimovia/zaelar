@@ -527,6 +527,8 @@ _PACKAGE_CEILINGS["memory"] += 179    # 2026-11-19 INI-042 #34 (3.248): the even
 _PACKAGE_CEILINGS["nucleo/pulse"] += 26   # same cause: a stall's event names the threads that were running while the loop was held (`loop_lag._sample_others`)
 _PACKAGE_CEILINGS["server"] += 1          # same cause: `GET /api/debug/loop` carries the lock's record
 _TOTAL_MAX += 206   # same cause
+_TOTAL_MAX += 13    # 2026-11-19 cloud speed (a): with Flux the endpointing is FIXED (a long pause after an untranscribed sentence put every later turn at 3 s); env overrides still win
+_PACKAGE_CEILINGS["voice"] += 13        # same cause: `agent._endpointing_opts(flux)`
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())
