@@ -452,6 +452,8 @@ _PACKAGE_CEILINGS["server"] += 61
 # (`nucleo/input/support_note.py`, checked at the typed door).
 _PACKAGE_CEILINGS["nucleo/input"] += 40
 _PACKAGE_CEILINGS["server"] += 4
+_PACKAGE_CEILINGS["observability"] += 46   # 2026-11-19 V2-939: a session records who drove it (User-Agent, webdriver, harness tag) — `identity.py`, `flows.py`, `api.py`
+_PACKAGE_CEILINGS["server"] += 1   # 2026-11-19 INI-042 #42: the voice child's once-only replay, one line its own raise missed
 
 def _package_totals() -> dict[str, int]:
     from tests.infrastructure.import_graph import package_of, product_modules
@@ -491,6 +493,7 @@ _TOTAL_MAX += 6     # 2026-11-19 INI-042 #26: a sent errand WAITS for the reply 
 _TOTAL_MAX += 61    # 2026-11-19: a fact the voice process asks twice is replayed once — the addendum above
 _TOTAL_MAX += 44    # 2026-11-19 INI-042 #37: a typed `LOG:` line is a note, never a turn — the addendum above
 _TOTAL_MAX += 119   # 2026-11-19 support fix (3.243): the loop no longer held by a turn's reading — the directory's index memoised by its store's version, the brief's table reading each open card once (`turn/screen_read.py`), the widget folders scanned once per trust window — the addenda above
+_TOTAL_MAX += 32    # 2026-11-19 V2-939 (+46 observability) and INI-042 #42 (+1 server), net of the slack the other addenda left
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())
