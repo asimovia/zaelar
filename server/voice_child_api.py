@@ -40,7 +40,8 @@ async def child_events(request: Request):
         body = await request.json()
     except Exception:  # noqa: BLE001
         body = {}
-    n = remote_session.handle_batch(list(body.get("events") or []))
+    from server import voice_child_once
+    n = remote_session.handle_batch(voice_child_once.once(body.get("events")))
     return {"ok": True, "n": n}
 
 
@@ -53,7 +54,8 @@ async def child_kickoff(request: Request):
         body = await request.json()
     except Exception:  # noqa: BLE001
         body = {}
-    return {"ok": True, **remote_session.kickoff(str(body.get("room") or ""), body.get("events"))}
+    from server import voice_child_once
+    return {"ok": True, **remote_session.kickoff(str(body.get("room") or ""), voice_child_once.once(body.get("events")))}
 
 
 @router.post("/api/turn/stream")
@@ -65,6 +67,9 @@ async def turn_stream(request: Request):
         payload = await request.json()
     except Exception:  # noqa: BLE001
         payload = {}
+    if isinstance(payload, dict) and payload.get("events"):
+        from server import voice_child_once
+        payload["events"] = voice_child_once.once(payload["events"])   # a fact asked twice is replayed once
 
     async def _lines():
         agen = remote_session.turn_lines(payload)

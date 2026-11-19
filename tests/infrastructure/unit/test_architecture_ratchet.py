@@ -443,6 +443,9 @@ _PACKAGE_CEILINGS["nucleo/turn"] += 2
 # +5 connectors — 2026-11-19: the broker's 404 «no client for this family» is an answer (`empty`, held an hour), not
 # an outage reported every minute (`oauth_broker._fetch`).
 _PACKAGE_CEILINGS["connectors"] += 5
+# +61 server — 2026-11-19: a fact the voice process asks twice is replayed once (`server/voice_child_once.py`, at the
+# body's three doors): a batch answered late and asked again put his sentence and the reply twice on the wall.
+_PACKAGE_CEILINGS["server"] += 61
 
 def _package_totals() -> dict[str, int]:
     from tests.infrastructure.import_graph import package_of, product_modules
@@ -479,6 +482,7 @@ _TOTAL_MAX += 912   # 2026-11-18 V2-938 (2.1801): a message has ONE owner — th
 _TOTAL_MAX += 77    # 2026-11-19 support fixes: a held loop names its code (`loop_lag` stack sampler), a closed voice is not a crash, an empty turn is quiet — the addendum above
 _TOTAL_MAX += 5     # 2026-11-19: the broker's 404 is an answer, not an outage — the addendum above
 _TOTAL_MAX += 6     # 2026-11-19 INI-042 #26: a sent errand WAITS for the reply — the `nucleo/circuit` row above
+_TOTAL_MAX += 61    # 2026-11-19: a fact the voice process asks twice is replayed once — the addendum above
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())
