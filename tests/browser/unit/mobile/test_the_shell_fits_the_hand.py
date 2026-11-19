@@ -54,8 +54,6 @@ def _widgets(route):
 
 SETUP = """
   const stage = document.createElement('div'); stage.id = 'zm-deck-wrap'; document.body.append(stage);
-  // The LAUNCHER home is what this test reads: the agent's face off (with it on, the home is only the face).
-  (await import('/frontend/app/presence/state.js?v=1')).setPresenceOn(false);
   const { Deck } = await import('/frontend/mobile/app/shell/Deck.js?v=5');
   window.__deck = new Deck(stage);
   const { MOBILE_SURFACES } = await import('/frontend/mobile/app/shell/mobile-surfaces.js?v=4');
@@ -143,30 +141,6 @@ def test_the_orb_is_never_clipped_and_the_mic_button_is_the_one_mic_indicator(ph
     assert g["bottom"] <= g["H"] and g["top"] >= g["dockTop"] - 10, f"the orb stays inside the screen and the bar: {g}"
     assert g["orbMic"] == "none", "the orb does not repeat the mic's state"
     assert g["micBtn"] == ES["camera.mic_unmute"], g
-
-
-def test_home_shows_today_with_the_hint_below(phone):
-    _open(phone, ["musica"])
-    phone.evaluate("() => window.__deck.home()")
-    phone.wait_for_function("() => document.querySelectorAll('.zm-today .zm-today-row.appt').length === 3", timeout=5000)
-    phone.wait_for_function("() => !!document.querySelector('.zm-today .zm-today-row.play')", timeout=5000)
-    g = phone.evaluate("""() => ({
-        greet: document.querySelector('.zm-today h2').textContent,
-        appts: [...document.querySelectorAll('.zm-today-row.appt span')].map(s => s.textContent),
-        play: document.querySelector('.zm-today-row.play span').textContent,
-        rows: [...document.querySelectorAll('.zm-today-row')].map(r => r.getBoundingClientRect().height)})""")
-    greetings = {ES[k] for k in ("mobile.greet_morning", "mobile.greet_afternoon", "mobile.greet_night")}
-    assert g["greet"] in greetings, g
-    assert g["appts"] == ["Café con Ana", "Pádel", "Dentista"], "the next three, in order, nothing past"
-    assert g["play"] == "Despechá · Rosalía"
-    assert min(g["rows"]) >= 44
-    shot(phone, "pr3-home-today")
-    phone.evaluate("() => window.__deck.closeAll({ by: 'hand' })")
-    phone.wait_for_timeout(300)
-    g = phone.evaluate("""() => ({today: document.querySelector('.zm-today').getBoundingClientRect().bottom,
-        hint: document.querySelector('.zm-empty.on h2').getBoundingClientRect().top})""")
-    assert g["hint"] >= g["today"], f"the hint sits below today: {g}"
-    shot(phone, "pr3-home-empty")
 
 
 def test_the_chat_composer_is_44pt_and_the_newest_line_stays_in_sight_over_the_keyboard(phone):

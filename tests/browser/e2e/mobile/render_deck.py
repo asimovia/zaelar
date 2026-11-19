@@ -302,58 +302,30 @@ def run(url):
         check("the card ends exactly at the dock's top edge — nothing under the bar, no band wasted",
               geom and abs(geom["cardBottom"] - geom["dockTop"]) <= 1, json.dumps(geom))
 
-        # ── THE HOME: the launcher of what is open (V2-815) ──────────────────────────────────────────────────
+        # ── THE HOME: it draws NOTHING (V2-928, operator 2026-11-19) — the face on the dark ground ──────────────
         # Swiping RIGHT from the first card lands on the home; so does ⌂ in the bar and the first pip.
         swipe1('.zm-card.live .fake-w', 100, 260, 400)
         home = pg.evaluate("""() => {
           const h = document.querySelector('.zm-home');
           const dock = document.querySelector('.zm-dock').getBoundingClientRect();
           const hr = h.getBoundingClientRect();
-          const tiles = [...h.querySelectorAll('.zm-tile')].map(e => {
-            const r = e.getBoundingClientRect();
-            return { cls: e.className, name: e.querySelector('.zm-tn').textContent, prod: !!e.querySelector('.zm-tprod'),
-                     mono: e.querySelector('.zm-tic').firstChild.textContent, h: r.height, w: r.width,
-                     bg: getComputedStyle(e.querySelector('.zm-tic')).backgroundColor }; });
-          const xs = [...h.querySelectorAll('.zm-tx')].map(e => { const r = e.getBoundingClientRect(); return Math.min(r.width, r.height); });
+          const drawn = [...h.querySelectorAll('*')].filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; });
           const pips = [...document.querySelectorAll('.zm-pip')].map(e => e.className);
           return { live: h.classList.contains('live'), cardLive: !!document.querySelector('.zm-card.live'),
-                   bottom: hr.bottom, dockTop: dock.y, tiles, xs, pips,
-                   count: h.querySelector('.zm-count').textContent, all: !!h.querySelector('.zm-hall:not(.hide)') }; }""")
+                   bottom: hr.bottom, dockTop: dock.y, drawn: drawn.length, pips }; }""")
         check("a one-finger swipe right from the first card lands on the HOME, and no card is live",
               home["live"] and not home["cardLive"], json.dumps({k: home[k] for k in ("live", "cardLive")}))
         check("the home ends at the dock's top edge like a card", abs(home["bottom"] - home["dockTop"]) <= 1,
               json.dumps({k: home[k] for k in ("bottom", "dockTop")}))
-        check("one tile per card, named by the LIVE title",
-              [t["name"] for t in home["tiles"]] == ["Alpha card", "Beta tunes", "Gamma view"],
-              json.dumps([t["name"] for t in home["tiles"]]))
-        check("each tile wears the app's monogram on its own colour",
-              [t["mono"] for t in home["tiles"]] == ["A", "B", "G"] and len({t["bg"] for t in home["tiles"]}) == 3,
-              json.dumps([(t["mono"], t["bg"]) for t in home["tiles"]]))
-        check("only the producing tile carries the ♪ badge",
-              [t["prod"] for t in home["tiles"]] == [False, True, False], json.dumps(home["tiles"]))
-        check("the home's pip is lit and it says how many are open",
-              "on" in home["pips"][0].split() and home["count"].startswith("3"), json.dumps([home["pips"][0], home["count"]]))
-        check("every tile and every tile × is a 44px target",
-              all(t["h"] >= 44 for t in home["tiles"]) and all(x >= 40 for x in home["xs"]),
-              json.dumps([t["h"] for t in home["tiles"]] + home["xs"]))
+        check("the home draws nothing — no greeting, today, hint or tiles", home["drawn"] == 0, json.dumps(home))
+        check("the home's pip is lit", "on" in home["pips"][0].split(), json.dumps(home["pips"][:1]))
 
-        pg.evaluate("() => document.querySelectorAll('.zm-tile')[1].click()")
+        pg.evaluate("() => document.querySelectorAll('.zm-pip')[2].click()")
         pg.wait_for_timeout(400)
-        check("tapping a tile opens that card", live() == "beta")
+        check("tapping a pip opens that card", live() == "beta")
         pg.evaluate("() => document.querySelector('.zm-card.live .zm-home-b').click()")
         pg.wait_for_timeout(400)
         check("⌂ in the bar goes home", pg.evaluate("() => document.querySelector('.zm-home').classList.contains('live')"))
-        check("the tile of the card we came from is marked current",
-              pg.evaluate("() => [...document.querySelectorAll('.zm-tile')].map(e => e.classList.contains('cur'))") == [False, True, False])
-
-        pg.evaluate("() => document.querySelectorAll('.zm-tx')[2].click()")
-        pg.wait_for_timeout(500)
-        after_close = pg.evaluate("""() => ({ open: window.__zaelarDeck.list(),
-          tiles: document.querySelectorAll('.zm-tile').length,
-          home: document.querySelector('.zm-home').classList.contains('live') })""")
-        check("closing a card from its tile removes it, the grid repaints in place, and we stay home",
-              after_close["open"] == ["alpha", "beta"] and after_close["tiles"] == 2 and after_close["home"],
-              json.dumps(after_close))
 
         # «minimise» from the engine (the canvas order the brain emits for «go home») lands on the home too
         pg.evaluate("() => { window.__zaelarDeck.show('alpha'); }")
@@ -361,17 +333,15 @@ def run(url):
         pg.evaluate("() => window.__zaelarDeck.shrink('alpha')")
         pg.wait_for_timeout(300)
         check("the engine's minimize order takes the phone to the home, the card still open",
-              pg.evaluate("() => document.querySelector('.zm-home').classList.contains('live') && window.__zaelarDeck.list().length === 2"))
+              pg.evaluate("() => document.querySelector('.zm-home').classList.contains('live') && window.__zaelarDeck.list().length === 3"))
 
-        pg.evaluate("() => document.querySelector('.zm-hall').click()")
+        pg.evaluate("() => window.__zaelarDeck.closeAll({ by: 'hand' })")
         pg.wait_for_timeout(600)
         emptied = pg.evaluate("""() => ({ open: window.__zaelarDeck.list(),
           pips: document.querySelectorAll('.zm-pip').length,
-          empty: !!document.querySelector('.zm-empty.on'),
-          grid: getComputedStyle(document.querySelector('.zm-hgrid')).display })""")
-        check("close-all empties the deck: no pips, the grid gone, the resting state on the home",
-              emptied["open"] == [] and emptied["pips"] == 0 and emptied["empty"] and emptied["grid"] == "none",
-              json.dumps(emptied))
+          band: document.querySelector('.zm-pips').getBoundingClientRect().height })""")
+        check("close-all empties the deck: no pips and no empty band over the home",
+              emptied["open"] == [] and emptied["pips"] == 0 and emptied["band"] == 0, json.dumps(emptied))
 
         # ── PAGE 2: restore parity with the desktop (V2-351) ─────────────────────────────────────────────────
         pg2 = ctx.new_page()

@@ -650,23 +650,7 @@ html.zm-consent-pending .zm-orb-btn, html.zm-consent-pending .zm-pwr, html.zm-co
 .zm-deck:not(.has-pips) .zm-pips { display: none; }   /* no app open: no row to show, no empty band over the home */
 .zm-pipn { margin-left: 6px; font: 600 12px/1 var(--sans); color: var(--hb-muted); font-variant-numeric: tabular-nums; }
 
-/* ---------- THE HOME's today (V2-876 rule 7, P-10, shell/HomeToday.js) ---------- */
-.zm-today { flex: 0 0 auto; padding: 18px 16px 4px; display: flex; flex-direction: column; gap: 6px; }
-.zm-today h2 { margin: 0 0 4px; font: 600 22px/1.25 var(--sans); color: var(--hb-ink); }
-.zm-today-k { margin-top: 8px; font: 700 11px/1.2 var(--sans); letter-spacing: .04em; text-transform: uppercase;
-  color: var(--hb-muted-2); }
-.zm-today-row { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 8px 12px; text-align: left;
-  border: 1px solid var(--hb-line); border-radius: 14px; background: var(--hb-bg-soft); color: var(--hb-ink); }
-.zm-today-row:active { background: var(--hb-bubble); }
-.zm-today-row small { flex: 0 0 auto; min-width: 52px; font: 600 14px/1.2 var(--sans); color: var(--hb-accent);
-  font-variant-numeric: tabular-nums; }
-.zm-today-row span { flex: 1 1 auto; min-width: 0; font: 16px/1.3 var(--sans); overflow: hidden; text-overflow: ellipsis;
-  white-space: nowrap; }
-.zm-today-row.play small { color: var(--hb-accent2); }
-.zm-home .zm-empty { flex: 0 0 auto; padding-top: 20px; }   /* the hint goes BELOW today, not centred over it */
-
-/* V2-928 T11 — with the agent's face on, the home is see-through: the face lives behind it (app/presence/). Cards and
-   pages stay opaque and cover it. */
-body.hb-presence-on .zm-home { background: transparent; }
-/* With the face on the home is ONLY the face (Deck.js `zm-home-face`): its title, today, hint and tiles are not drawn. */
-.zm-deck .zm-home.zm-home-face > * { display: none; }   /* over the deck's own `.zm-empty.on` (Deck.js) */
+/* ---------- THE HOME (V2-928, operator 2026-11-19) ----------
+   Nothing is drawn on the phone's home: no greeting, no today, no hint, no tiles. It is see-through onto the shell's
+   dark ground, where the agent's face lives (app/presence/) — and with the face off, the dark ground alone. */
+.zm-deck .zm-home { background: transparent; }

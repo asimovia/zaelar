@@ -1,11 +1,11 @@
 """The phone deck's screen document equals what the deck SHOWS (V2-907 T8, node 4.543).
 
-RENDERED: the real `Deck.js` + `deck-screen.js` + `HomeToday.js` + the shared `screen-reporter.js`, at 393×852 with
+RENDERED: the real `Deck.js` + `deck-screen.js` + the shared `screen-reporter.js`, at 393×852 with
 touch, the engine's orders driven through the REAL `services/sse.js` (`routeEvent`, with a `seq`), his hand through
 the card's own ⌂ ‹ › × buttons. After every step the last document the deck POSTed to `/api/screen/report` is compared
 with the DOM (the card painted `live` is the front, every other card is behind, the home painted `live` is the home
-in view), and every order's answer is checked. Closing the last app leaves `front: ""` with the home shown and saying
-what it holds. Parametrized over every app in `widgets/*/manifest.json`. Disarm: `_goTo` stops reporting.
+in view), and every order's answer is checked. Closing the last app leaves `front: ""` with the home shown, holding
+nothing (it draws nothing: the agent's face on the dark ground). Parametrized over every app in `widgets/*/manifest.json`. Disarm: `_goTo` stops reporting.
 """
 from __future__ import annotations
 
@@ -37,8 +37,6 @@ SETUP = """
   window.__newDeck = async (v) => {
     document.querySelectorAll('.zm-deck').forEach((s) => { s.remove(); });
     const stage = document.createElement('div'); stage.id = 'zm-deck-wrap'; document.body.append(stage);
-    // The LAUNCHER home is what this test reads: the agent's face off (with it on, the home is only the face).
-    (await import('/frontend/app/presence/state.js?v=1')).setPresenceOn(false);
     const { Deck } = await import('/frontend/mobile/app/shell/Deck.js?v=' + (v || '5'));
     if (window.__deck && window.__deck._screen) window.__deck._screen.rep.dispose();
     window.__deck = new Deck(stage);
@@ -110,7 +108,7 @@ def _scenario(pg, app, version: str = "5") -> dict:
         pg.evaluate("() => window.__deck.home()")
     pg.wait_for_timeout(320)
     doc = _same(pg, "the home by hand")
-    assert doc["front"] == "" and "greeting" in doc["home"]["holds"] and "apps" in doc["home"]["holds"], doc["home"]
+    assert doc["front"] == "" and doc["home"]["holds"] == [], doc["home"]   # the home draws nothing (V2-928)
     _order(pg, "minimize", a, 6)
     _order(pg, "show", b, 7); _hand(pg, b, "x"); _same(pg, f"close {b} by hand")
     _order(pg, "close", a, 8); _same(pg, f"close {a} by order")
@@ -118,7 +116,7 @@ def _scenario(pg, app, version: str = "5") -> dict:
     _order(pg, "close", app, 10)
     doc = _same(pg, "the last app closed")
     assert doc["open"] == [] and doc["front"] == "" and doc["home"]["shown"] is True, doc
-    assert "apps" not in doc["home"]["holds"] and "greeting" in doc["home"]["holds"], doc["home"]
+    assert doc["home"]["holds"] == [], doc["home"]
     _order(pg, "close", "", 11)
     mount = pg.evaluate(_TRUTH)["mount"]
     ns = [r["n"] for r in _reports(pg, mount)]

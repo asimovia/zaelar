@@ -53,8 +53,6 @@ const _device = () => import("../../../app/services/api.js?v=2").then((m) => m.D
 const _sensors = () => import("../../../app/services/device.js?v=1");   // V2-870 P2: ctx.device — the screen's sensors
 import { createEffect } from "../../../app/core/reactive.js?v=2";
 import { paintPips, wirePipDrag } from "./pips.js?v=1";
-import { HomeToday } from "./HomeToday.js?v=1";
-import { presenceOn } from "../../../app/presence/state.js?v=1";
 import { deckScreen } from "./deck-screen.js?v=1";
 import { frontDoor } from "../../../app/widgets/card-front.js?v=1";
 
@@ -157,32 +155,6 @@ function injectStyles() {
      announces itself on its pip: sound with no visible source reads as a haunted phone, not as a feature. */
   .zm-pip.prod::before{background:var(--hb-accent2);box-shadow:0 0 6px var(--hb-accent2)}
   .zm-pip.on.prod::before{background:var(--hb-accent)}
-  /* THE HOME — the launcher. One tile per open card: a monogram on the app's own colour, its LIVE title under it
-     (the same source the top bar paints), a ♪ on the one producing sound, the current one ringed, an × to close.
-     With nothing open it is the resting state of the shell, and says what to do with the orb. */
-  .zm-home .zm-head{justify-content:center}
-  .zm-hall{flex:0 0 auto;min-height:36px;padding:0 12px;border:1px solid var(--hb-line);border-radius:10px;
-    background:var(--hb-bubble);color:var(--hb-muted);font:600 12px var(--sans);margin-right:6px}
-  .zm-hall.hide{display:none}
-  .zm-hgrid{flex:1 1 auto;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;
-    display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:14px 6px;align-content:start;
-    padding:20px 12px 60px}
-  .zm-hgrid.hide{display:none}
-  .zm-tile{position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;min-height:44px;
-    padding:8px 4px 6px;border:none;border-radius:16px;background:transparent;color:var(--hb-ink)}
-  .zm-tile:active{background:var(--hb-bubble)}
-  .zm-tic{position:relative;width:62px;height:62px;border-radius:17px;display:flex;align-items:center;justify-content:center;
-    font:700 26px/1 var(--sans);color:#fff;background:var(--tile,var(--hb-accent));
-    box-shadow:inset 0 -14px 22px rgba(0,0,0,.18),0 2px 8px rgba(0,0,0,.25)}
-  .zm-tile.cur .zm-tic{box-shadow:inset 0 -14px 22px rgba(0,0,0,.18),0 0 0 3px var(--hb-bg),0 0 0 5px var(--hb-accent)}
-  .zm-tn{max-width:100%;font:500 12px/1.25 var(--sans);text-align:center;overflow:hidden;
-    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word}
-  .zm-tprod{position:absolute;right:-5px;bottom:-5px;width:22px;height:22px;border-radius:11px;background:var(--hb-accent2);
-    color:#fff;font:700 12px/22px var(--sans);font-style:normal;text-align:center;box-shadow:0 0 0 2px var(--hb-bg)}
-  .zm-tx{position:absolute;top:-4px;right:calc(50% - 50px);width:40px;height:40px;padding:0;border:none;background:transparent;
-    display:flex;align-items:flex-start;justify-content:flex-end}
-  .zm-tx i{width:22px;height:22px;border-radius:11px;background:var(--hb-bg-soft);border:1px solid var(--hb-line);
-    color:var(--hb-muted);font:600 12px/20px var(--sans);font-style:normal;text-align:center}
   /* CONFIRM overlay (irreversible action): identical semantics to the desktop's, sized for a thumb. */
   .zm-confirm{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;
     gap:16px;padding:24px;background:var(--hb-bg-a);backdrop-filter:blur(8px);text-align:center}
@@ -190,14 +162,7 @@ function injectStyles() {
   .zm-confirm div{display:flex;gap:12px}
   .zm-confirm button{min-width:104px;min-height:46px;border:none;border-radius:12px;font:600 15px var(--sans)}
   .zm-yes{background:var(--hb-risk);color:#fff} .zm-no{background:var(--hb-bubble);color:var(--hb-ink)}
-  .zm-err{padding:20px;font:14px/1.5 var(--sans);color:var(--hb-muted)}
-  /* THE EMPTY HOME is not an error state — it is the resting state of this shell. Nothing is open, the orb is
-     listening, and the screen says what to do with it. */
-  .zm-empty{flex:1 1 auto;display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;
-    padding:32px 32px 80px;text-align:center}
-  .zm-empty.on{display:flex}
-  .zm-empty h2{margin:0;font:600 19px/1.3 var(--sans);color:var(--hb-ink)}
-  .zm-empty p{margin:0;max-width:34ch;font:14px/1.55 var(--sans);color:var(--hb-muted)}`;
+  .zm-err{padding:20px;font:14px/1.5 var(--sans);color:var(--hb-muted)}`;
   document.head.appendChild(s);
 }
 
@@ -218,7 +183,6 @@ export class Deck {
     this.at = -1;               // index of the visible card (-1 = the HOME)
     this._running = true;
     this._meta = null; this._ids = null; this._registry = null; this._ver = {}; this._live = {}; this._openTimer = 0;
-    this._empty = null;
     this._pips = null;
     this._runtime = {};         // base -> active_when clauses (V2-092 runtime contract), null = declares none
     this._home = null;
@@ -477,91 +441,20 @@ export class Deck {
     if (this._home) {
       this._home.classList.toggle("live", this.at === -1);
       this._home.setAttribute("aria-hidden", this.at === -1 ? "false" : "true");
-      this._renderHome();
-      if (this.at === -1 && this._today && !this._faceHome) this._today.refresh(this);   // the face home reads no agenda
     }
     if (this._pips) paintPips(this, this._pips, HOME_ICO);       // the page switcher (pips.js)
-    if (this._empty) this._empty.classList.toggle("on", n === 0);
   }
 
-  // ── the home: the launcher of what is open ────────────────────────────────────────────────────────────────
+  // ── the home: NOTHING is drawn on it. The phone's home is the agent's face on the dark ground, as the desktop's
+  //    empty desk is (V2-928, operator 2026-11-19: «no welcome screen on the phone, no hello, no good afternoon, nothing»);
+  //    with the face off it is the dark ground alone. The open apps stay one swipe or one pip away.
   _mountHome() {
     const home = document.createElement("div"); home.className = "zm-home"; home.dataset.wid = "";
-    const head = document.createElement("div"); head.className = "zm-head";
-    const ttl = document.createElement("div"); ttl.className = "zm-ttl";
-    const title = document.createElement("div"); title.className = "zm-title";
-    const count = document.createElement("div"); count.className = "zm-count";
-    ttl.append(title, count);
-    const all = document.createElement("button"); all.className = "zm-hall hide";
-    all.onclick = () => this.closeAll({ by: "hand" });
-    const spacer = document.createElement("div"); spacer.className = "zm-hb"; spacer.style.visibility = "hidden";
-    head.append(spacer, ttl, all);
-    const grid = document.createElement("div"); grid.className = "zm-hgrid";
-    const e = document.createElement("div"); e.className = "zm-empty on";
-    const h = document.createElement("h2");
-    const p = document.createElement("p");
-    // REACTIVE, not a one-off assignment. This runs at Deck construction and `initI18n()` fetches the bundle
-    // ASYNCHRONOUSLY, so at this instant `tr()` legitimately has nothing and returns the KEY itself
-    // (core/i18n.js: "visible = needs a string"). A plain textContent= froze that key on screen forever — it
-    // showed as a literal "mobile.empty_title" in a phone-sized browser render. `t()` is a reactive read, so an
-    // effect repaints the moment the bundle lands, and again if the operator switches language.
-    createEffect(() => { h.textContent = tr("mobile.empty_title"); });
-    createEffect(() => { p.textContent = tr("mobile.empty_hint"); });
-    createEffect(() => { title.textContent = tr("mobile.home"); });
-    createEffect(() => { all.textContent = tr("mobile.close_all"); });
-    e.append(h, p);
-    this._today = HomeToday();                              // greeting, next appointments, what plays (P-10)
-    home.append(head, this._today.el, grid, e);
-    // With the agent's face on the home IS the face, as the desktop's empty desk is (V2-928); face off, the launcher.
-    createEffect(() => { this._faceHome = presenceOn(); home.classList.toggle("zm-home-face", this._faceHome);
-      if (this._screen) this._screen.changed(); if (!this._faceHome && this.at === -1) this._today.refresh(this); });
     this.stage.appendChild(home);
-    this._home = home; this._hgrid = grid; this._hcount = count; this._hall = all; this._empty = e;
+    this._home = home;
     const pips = document.createElement("div"); pips.className = "zm-pips";
     this.stage.appendChild(pips); this._pips = pips; wirePipDrag(this, pips);
     this._paint();
-  }
-
-  _renderHome() {
-    const g = this._hgrid; if (!g) return;
-    const n = this.order.length;
-    g.classList.toggle("hide", n === 0);
-    if (this._hall) this._hall.classList.toggle("hide", n === 0);
-    if (this._hcount) {
-      this._hcount.textContent = n ? tr("mobile.home_count", { n }) : "";
-      this._hcount.classList.toggle("show", n > 0);
-    }
-    g.textContent = "";
-    this.order.forEach((id, k) => {
-      const w = this.cards.get(id); if (!w) return;
-      const meta = this._meta && this._meta[w.base];
-      const reg = this._registry && this._registry[w.base];
-      const appName = String((reg && reg.name) || (meta && (meta.name || meta.title)) || w.base);
-      const tile = document.createElement("button");
-      const cur = this.at === -1 ? id === this._lastId : k === this.at;
-      tile.className = "zm-tile" + (cur ? " cur" : "");
-      tile.dataset.wid = id;
-      tile.style.setProperty("--tile", `hsl(${tileHue(w.base)} 46% 46%)`);
-      const ic = document.createElement("span"); ic.className = "zm-tic";
-      ic.textContent = [...appName.trim()][0] ? [...appName.trim()][0].toUpperCase() : "·";
-      if (this._producing(w)) {
-        const b = document.createElement("i"); b.className = "zm-tprod"; b.textContent = "♪";
-        b.title = tr("mobile.producing");
-        ic.appendChild(b);
-      }
-      const nm = document.createElement("span"); nm.className = "zm-tn";
-      nm.textContent = w.titleEl.textContent || appName;      // the LIVE title, same source the top bar paints
-      tile.append(ic, nm);
-      tile.setAttribute("aria-label", nm.textContent);
-      tile.onclick = () => this._goTo(k, 0);
-      const x = document.createElement("button"); x.className = "zm-tx";
-      x.setAttribute("aria-label", tr("desktop.close") + " · " + nm.textContent);
-      const xi = document.createElement("i"); xi.textContent = "×"; x.appendChild(xi);
-      x.onclick = (ev) => { ev.stopPropagation(); this.close(id, { by: "hand" }); };
-      const cell = document.createElement("div"); cell.style.position = "relative";
-      cell.append(tile, x);
-      g.appendChild(cell);
-    });
   }
 
   // ── "is this card PRODUCING right now?" — V2-092's runtime contract, read the way the server reads it ─────
