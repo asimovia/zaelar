@@ -518,6 +518,9 @@ _TOTAL_MAX += 10   # 2026-11-19 INI-042 G1: listing pending rows reads a widget 
 _PACKAGE_CEILINGS["voice"] += 1   # 2026-11-19 (operator-authorised): the `send` kind gets its observer family (`voice/observer._CAT`)
 _TOTAL_MAX += 1     # the same line
 _TOTAL_MAX += 16   # 2026-11-19 INI-042 G1: a loop's first fast-model client is built in a thread (`FastClient._client_ready`/`_build_client`) — built on the loop it held a cloud host's loop 1.0 s at boot
+_TOTAL_MAX += 75    # 2026-11-19 cloud speed (iii): the cold-turn attention judge starts on the eager end of turn (`voice/attention_prefire.py`)
+_PACKAGE_CEILINGS["voice"] += 70        # same cause: `attention_prefire` (prefire, the reuse by words and frame) and its two calls
+_PACKAGE_CEILINGS["nucleo/turn"] += 5   # same cause: the eager brief starts the judge (`brief_turn.fire_early`)
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

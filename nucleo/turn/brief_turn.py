@@ -55,6 +55,11 @@ def fire_early(operator_text: str):
     key = _key(operator_text)
     if not key:
         return None
+    try:                                  # the cold-turn attention judge starts on the same words (cloud speed (iii))
+        from voice import attention as _attention
+        _attention.prefire(operator_text)
+    except Exception as e:  # noqa: BLE001 — a judge started early is a saving, never a reason to lose the brief
+        logger.debug(f"brief: attention not prefired — {e!r}")
     import time
     have = _PREFIRED.get(key)
     if have and time.time() - have[0] <= PREFIRED_TTL_S and have[1]:

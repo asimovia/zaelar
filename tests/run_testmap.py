@@ -1328,6 +1328,7 @@ DOMAINS: list[dict] = [
     {"id": "3", "name": "VOZ", "nodes": [
         {"id": "3.1", "title": "Atención / VAD / endpointing", "ch": VOICE, "paths": [
             "tests/voice/unit/test_an_unanswered_operator_is_not_judged.py",
+            "tests/voice/unit/test_the_cold_judge_starts_on_the_eager_end_of_turn.py",
             "tests/voice/unit/test_a_stop_keeps_the_rest_of_the_order.py",
             # V2-338: un 200 con cuerpo vacío no es una respuesta del juez — la regla existía solo en la pata
             # de DeepSeek; GLM vacío se devolvía como respuesta y el relevo (que salta por excepción) no corría.

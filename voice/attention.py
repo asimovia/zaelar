@@ -385,7 +385,7 @@ async def evaluate_content(text: str, *, context: str = "", now: float | None = 
     if not str(context or "").strip():
         return Verdict(True, "no_frame")
     try:
-        directed, request = _as_judgement(await _directed_judge(t, context))
+        directed, request = _as_judgement(await (_prefire.prefired(t, context) or _directed_judge(t, context)))
     except Exception as e:  # noqa: BLE001 — fail-open here ALSO covers an injected judge (set_directed_judge)
         # if it blows up, not just the default: nothing replacing the judge may leave the agent mute.
         logger.warning(f"attention.evaluate_content: judge failed ({str(e)[:160]}) — fail-open to directed")
@@ -764,7 +764,10 @@ def reset() -> None:
     _state["speech_onset"] = 0.0
     _state["speech_rise"] = 0.0
     _state["speech_end"] = 0.0
+    _prefire.clear()
     _state["unanswered"] = []
     _lines.reset()
 
 
+from voice import attention_prefire as _prefire  # noqa: E402 — the judge started on the eager end of turn (cloud speed (iii))
+prefire = _prefire.prefire
