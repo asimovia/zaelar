@@ -167,7 +167,7 @@ class Inbox:
             texts = [r for r in rows if r["kind"] == str(EnvelopeKind.USER_TEXT)]
             if texts and now - max(r["accepted"] for r in texts) < self.cfg.collect_ms:
                 return None                       # the collect window of the last text is still open
-            pick = [r for r in rows if self._eligible(r, now, idle)]
+            pick = self._newest_revisions(tx, [r for r in rows if self._eligible(r, now, idle)], now)
             if not pick:
                 return None
             seq = tx.next_seq("runs")
@@ -179,6 +179,24 @@ class Inbox:
             for r in pick:
                 self._emit_row("dequeued", r, batch=seq, queue_age_ms=now - r["accepted"])
             return Batch(seq, envs, reason)
+
+    def _newest_revisions(self, tx, rows: list[dict], now: int) -> list[dict]:
+        """Two closed revisions of one voice intervention in the queue (a superseded run gave back the older one):
+        the newer carries every word, the older is accounted `coalesced` — one id, once, in the batch."""
+        newest: dict[str, dict] = {}
+        for r in rows:
+            if r["kind"] == str(EnvelopeKind.USER_UTTERANCE):
+                iv = r["env"]["refs"]["intervention_id"]
+                if iv not in newest or r["env"]["refs"]["revision"] > newest[iv]["env"]["refs"]["revision"]:
+                    newest[iv] = r
+        keep = []
+        for r in rows:
+            iv = r["env"]["refs"].get("intervention_id")
+            if r["kind"] == str(EnvelopeKind.USER_UTTERANCE) and newest.get(iv) is not r:
+                self._final(tx, r["id"], Outcome.COALESCED.value, now, reason="newer_revision")
+            else:
+                keep.append(r)
+        return keep
 
     def _eligible(self, row: dict, now: int, idle: bool) -> bool:
         if row["user"]:

@@ -47,6 +47,7 @@ class PromptParts:
     state: str                      # NOW · OPEN · TO_TELL
     conversation: tuple[Turn, ...]
     input: str                      # the batch, each entry with its id, channel and state
+    steps: tuple = ()               # (ToolCall, result) pairs of this run, fed back to the next model call
 
 
 @dataclass(frozen=True)

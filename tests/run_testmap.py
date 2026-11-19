@@ -9025,6 +9025,18 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/conversation/unit/test_a_hold_before_submission_blocks_it.py"]},
         {"id": "13.16", "title": "The mouth knows what was heard: acks per device; no ack is «heard: unknown» in what the model reads, never heard; a cut keeps what was heard, trimmed to the last sentence end; cutting our voice never touches the record of an action; a question counts as presented only once played or painted on a device's text channel; the reply channels follow the §7.1 table from channels and device state, never content; duck and stop are immediate control-lane events with stop→silence measured",
             "ch": UNIT, "paths": ["tests/conversation/unit/test_the_mouth_knows_what_was_heard.py"]},
+        {"id": "13.8", "title": "The policy table is total and keeps three operations apart (D3, §7): every (input, state) pair has a cell; a stop silences and cancels the RUN, never a task, and never waits; a control never waits; new input while we speak silences then supersedes or follows up (CRIT-V22); a worker's question never takes the focus while the person speaks; driven end to end: a stop during a run cancels it at the checkpoint before its tool and the person's task goes on",
+            "ch": UNIT, "paths": ["tests/conversation/unit/test_the_policy_table_is_total.py"]},
+        {"id": "13.9", "title": "I9 + N1: replacing a run never replaces the request — the provider closes at a pause, the person goes on mid-run, the run is superseded at its checkpoint, the request stays open and the next run answers it once with the whole sentence in one entry; every way a request ends (answered, silent, provider failure, stop) says so once; a request nobody ran is closed `stalled` once by the sweep",
+            "ch": UNIT, "paths": ["tests/conversation/unit/test_every_request_closes_once.py"]},
+        {"id": "13.12", "title": "I7: whatever the input (voice, Spanish or English text, a declared number, a worker's result) the model's call carries the whole catalog with every core tool and no tool runs before the model asked; the ear, the inbox and the composer name no tool; the package holds no regex and no word table",
+            "ch": UNIT, "paths": ["tests/conversation/unit/test_no_code_before_the_model_picks_a_tool.py"]},
+        {"id": "13.17", "title": "The NVIDIA case end to end with a scripted model, Spanish, English and another domain: three sentences with eager/resumed pauses close as ONE intervention, the model is called once with every word, only the tool it chose runs, after it, and the request closes `answered` once",
+            "ch": UNIT, "paths": ["tests/conversation/unit/test_three_sentences_reach_the_model_whole.py"]},
+        {"id": "13.18", "title": "D9: a numeric claim is published only when it matches its evidence WHOLE (entity, period, metric, direction, value) — the right number with the wrong direction is not said; evidence of an earlier run counts while valid and not once expired; a blocked reply ends in a deliberate silence with its reason; the checker never chooses a tool",
+            "ch": UNIT, "paths": ["tests/conversation/unit/test_a_numeric_claim_matches_its_evidence.py"]},
+        {"id": "13.24", "title": "The observability contract (§8): one request end to end says every stage (ear, inbox, run, ledger, effect, mouth, close) with t_ms, mono_ms, cause, owner and its refs chain; every kind and label written in the package is in conversation/telemetry.py, every kind is emitted by a piece of the architecture map; a port call over its budget is an event",
+            "ch": UNIT, "paths": ["tests/conversation/unit/test_every_stage_emits_its_event.py"]},
     ]},
 ]
 

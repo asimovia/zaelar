@@ -46,6 +46,16 @@
       "kind": "unit"
     },
     {
+      "id": "13.8",
+      "label": "The policy table is total (D3)",
+      "kind": "unit"
+    },
+    {
+      "id": "13.9",
+      "label": "Every request closes once (I9, N1)",
+      "kind": "unit"
+    },
+    {
       "id": "13.10",
       "label": "Ledger transitions are the table",
       "kind": "unit"
@@ -53,6 +63,11 @@
     {
       "id": "13.11",
       "label": "The prompt says each thing once",
+      "kind": "unit"
+    },
+    {
+      "id": "13.12",
+      "label": "No code before the model picks a tool (I7)",
       "kind": "unit"
     },
     {
@@ -76,8 +91,23 @@
       "kind": "unit"
     },
     {
+      "id": "13.17",
+      "label": "Three sentences reach the model whole",
+      "kind": "unit"
+    },
+    {
+      "id": "13.18",
+      "label": "A numeric claim matches its evidence (D9)",
+      "kind": "unit"
+    },
+    {
       "id": "13.19",
       "label": "A stale epoch writes nothing; the Store contract over both stores",
+      "kind": "unit"
+    },
+    {
+      "id": "13.24",
+      "label": "Every stage emits its event (§8)",
       "kind": "unit"
     },
     {

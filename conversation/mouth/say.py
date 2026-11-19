@@ -131,6 +131,11 @@ class Speaker:
                 turn["heard_chars"] = len(kept)
             tx.put(TURNS, key, turn)
 
+    def voice_unavailable(self, run_id: str, endpoint: str | None) -> None:
+        """The batch had voice and this device cannot speak now: the reply goes as text, and that is said."""
+        self.em.emit("conv_mouth", "voice_unavailable", owner="mouth", cause={"kind": "device"},
+                     refs={"run": run_id, "endpoint": endpoint})
+
     # the control lane: immediate and local, never through the inbox
     def duck(self, endpoint: str) -> None:
         self.mouth.duck(endpoint)

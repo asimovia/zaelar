@@ -1065,6 +1065,19 @@
    "emits": [
     "conv_mouth"
    ]
+  },
+  {
+   "id": "c_manager",
+   "zone": "conversation",
+   "name": "Manager — the turn: policy, focus, one run",
+   "paths": [
+    "conversation/manager",
+    "conversation/__init__.py"
+   ],
+   "emits": [
+    "conv_run",
+    "conv_close"
+   ]
   }
  ],
  "emitters": {
@@ -2344,6 +2357,30 @@
    "a": "c_gateway",
    "b": "c_ledger",
    "label": "effects, mandates"
+  },
+  {
+   "id": "c_inbox_manager",
+   "a": "c_inbox",
+   "b": "c_manager",
+   "label": "batches"
+  },
+  {
+   "id": "c_manager_composer",
+   "a": "c_manager",
+   "b": "c_composer",
+   "label": "state + batch"
+  },
+  {
+   "id": "c_manager_gateway",
+   "a": "c_manager",
+   "b": "c_gateway",
+   "label": "tool calls"
+  },
+  {
+   "id": "c_manager_mouth",
+   "a": "c_manager",
+   "b": "c_mouth",
+   "label": "say"
   }
  ],
  "_flows": "Who talks to whom. `a`/`b` carry no direction (a call goes and comes back). `uncaptured` = the flow exists in the code but leaves no event (e.g. the rules read into every prompt).",

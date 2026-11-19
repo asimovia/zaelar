@@ -545,9 +545,9 @@ _TOTAL_MAX += 4     # 2026-11-19 send containment (5.77): the messaging acts tha
 _PACKAGE_CEILINGS["widgets"] += 5           # same cause
 _PACKAGE_CEILINGS["voice"] += 2         # same cause: `attention_prefire.prefired`
 _PACKAGE_CEILINGS["voice"] += 13        # same cause: `agent._endpointing_opts(flux)`
-_PACKAGE_CEILINGS["conversation"] = 3021   # 2026-11-19 V2-941 (13.1, 13.2): born — the isolated conversation & turn manager's contract (types, envelopes, ports, config, telemetry); grows by one declared piece per commit of the phase; +272 commit 4 (13.19): the Store, in memory and on sqlite; +460 commit 5 (13.3, 13.4): the ear; +312 commit 6 (13.6, 13.7): the inbox; +172 commit 7 (13.10): the ledger; +45 fix: protocol names as enums, no word table in the package; +155 commit 8 (13.11): the composer; +599 commit 9 (13.5, 13.13, 13.14, 13.15): the effect gateway; +265 commit 10 (13.16, X5, the control sweep): the mouth, the reply channel, the focus; +8 the dispatch's status reading is a function, not a table
+_PACKAGE_CEILINGS["conversation"] = 3855   # 2026-11-19 V2-941 (13.1, 13.2): born — the isolated conversation & turn manager's contract (types, envelopes, ports, config, telemetry); grows by one declared piece per commit of the phase; +272 commit 4 (13.19): the Store, in memory and on sqlite; +460 commit 5 (13.3, 13.4): the ear; +312 commit 6 (13.6, 13.7): the inbox; +172 commit 7 (13.10): the ledger; +45 fix: protocol names as enums, no word table in the package; +155 commit 8 (13.11): the composer; +599 commit 9 (13.5, 13.13, 13.14, 13.15): the effect gateway; +265 commit 10 (13.16, X5, the control sweep): the mouth, the reply channel, the focus; +8 the dispatch's status reading is a function, not a table; +834 commit 11 (13.8, 13.9, 13.12, 13.17, 13.18, 13.24): the manager and the package's test doubles; +0 the fence says what failed
 _PACKAGE_CEILINGS["voice"] += 3   # same cause: the seven `conv_*` kinds get their observer family (`voice/observer._CAT`)
-_TOTAL_MAX += 3024   # same cause
+_TOTAL_MAX += 3858   # same cause
 
 
 def test_the_total_only_shrinks():

@@ -45,6 +45,10 @@ class Config:
     liveness_ms: int = 30_000
     #: a port call slower than this is an event (the loop-stall lesson of G1).
     port_budget_ms: int = 500
+    #: a run may call the model at most this many times (tool results fed back between calls).
+    max_steps: int = 6
+    #: evidence a tool returned stays valid for a numeric claim of a LATER run this long (D9).
+    evidence_ttl_ms: int = 10 * 60_000
     #: the model used for the conversation (D6); the adapter passes the live id from the model table.
     model_id: str = ""
     # ── the composer ──

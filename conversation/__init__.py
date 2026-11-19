@@ -20,3 +20,9 @@ from conversation.config import Config as Config
 from conversation.envelopes import SCHEMA as SCHEMA, Envelope as Envelope, EnvelopeError as EnvelopeError, Refs as Refs
 from conversation.types import Authority as Authority, Channel as Channel, EnvelopeKind as EnvelopeKind, Ids as Ids
 
+
+def build(**ports):
+    """The facade: `build(account=…, owner=…, model=…, tools=…, store=…, memory=…, clock=…, mouth=…, telemetry=…,
+    config=…, prefix=…)` → a `Conversation` for one account."""
+    from conversation.manager import Conversation
+    return Conversation(**ports)
