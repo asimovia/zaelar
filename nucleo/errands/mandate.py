@@ -34,6 +34,12 @@ from nucleo.events.vocabulary import GRANTS as MAY  # noqa: E402
 from nucleo.events.vocabulary import grants_of as acts  # noqa: E402,F401 — `may` in THE vocabulary, unknown words dropped
 
 
+def watch_only(errand: dict) -> bool:
+    """Does this errand only WATCH — her answer told to him, nothing sent or booked (`watch._mandate_for`)?"""
+    mandate = errand.get("mandate") if isinstance(errand, dict) else None
+    return isinstance(mandate, dict) and mandate.get("watch") is True
+
+
 def covers(errand: dict, platform: str) -> bool:
     """Does the errand's mandate grant a message on this channel? Unreadable → no: a message to a person is not
     the direction to fail open in (the same choice `book.may_schedule` makes for his calendar)."""

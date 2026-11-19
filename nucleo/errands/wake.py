@@ -14,7 +14,7 @@ structural — there is no tool to misuse.
 
 ## Shadow
 
-`errands.shadow` (genesis, default TRUE) runs everything except the sending: the decision is made and
+`errands.shadow` (genesis; an unreadable setting counts as TRUE) runs everything except the sending: the decision is made and
 LOGGED as `would_say`. The operator flips it once he has read a few of those. Autonomy that writes to real
 people is not something to hand over on the strength of a green test suite.
 """
@@ -165,6 +165,9 @@ async def wake(errand: dict, *, reason: str = "inbound", inbound_id: str = "",
     else:
         note_wake(eid)
 
+    if _mandate.watch_only(errand):
+        return _told(errand, party or platform, msgs, reason)
+
     name, op, lang = _identity()
     brief, busy = "", ""
     try:
@@ -289,6 +292,35 @@ async def wake(errand: dict, *, reason: str = "inbound", inbound_id: str = "",
 #: recognise is one that travels.
 _MEET_RE = re.compile(r"https?://\S*(?:meet\.google\.com|zoom\.us|teams\.(?:microsoft|live)\.com|"
                       r"whereby\.com|meet\.jit\.si|webex\.com)\S*", re.I)
+
+
+def _theirs_since_ours(msgs: list[dict]) -> list[str]:
+    """What the other person wrote after our last message, in order."""
+    out: list[str] = []
+    for m in msgs or []:
+        if str(m.get("dir") or "") == "out":
+            out = []
+            continue
+        body = re.sub(r"\s+", " ", str(m.get("body") or "")).strip()
+        if body:
+            out.append(body)
+    return out
+
+
+def _told(errand: dict, party: str, msgs: list[dict], reason: str) -> dict:
+    """A WATCH errand's move: her answer is told to him in one line and the errand ends. No model turn, nothing
+    written back to her, nothing booked (`mandate.watch_only`; operator 2026-11-19, INI-042 #44 D0)."""
+    from . import close
+    eid = str(errand.get("id") or "")
+    said = _theirs_since_ours(msgs) if reason == "inbound" else []
+    if not said:
+        return {"ok": False, "why": "watching", "watch": True}
+    text = " · ".join(said)[:400]
+    _tell_operator(f"{party or 'The other person'} answered about «{str(errand.get('objective') or '')[:80]}»: "
+                   f"«{text}». Nothing was written back to them.", errand)
+    _emit_decision(errand, {"say": "", "reason": "watch: her answer told to him"}, reason, sent=False)
+    close(eid, "closed", "answered; told to him")
+    return {"ok": True, "say": "", "sent": False, "state": "closed", "watch": True, "shadow": shadow()}
 
 
 def _with_link(say: str, link: str) -> str:

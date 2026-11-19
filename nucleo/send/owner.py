@@ -190,18 +190,11 @@ async def _step(d, got: dict, last_line: str = "") -> str:
             d.candidates = list(_people.resolve(got["list"]).get("several") or d.candidates)
         return await _ask.line("send_listed", who=got["list"], names=", ".join(names))
     ready = d.kind == "act" or (d.target and (d.text or "attach_from" in d.extra))
-    if got.get("send") and not changed and d.asked == _draft.CONFIRM and ready:
-        # A bare «yes» answers only the confirmation said LAST; after anything else in between he is read it again.
-        # Only a confirmation he HEARD is answered; a bare «yes» answers it only when it was said last.
-        # …and never after another line of ours (a worker's «shall I send it?» is answered by his «yes, send it»), nor
-        # by a sentence he began before the confirmation existed.
-        said_last = _ask._fold(d.confirm_line) in _ask._fold(last_line)
-        # an act's go-ahead answers its question only when that question was said LAST, unless his words name again
-        # what it is about («yes, leave Book club and the other one»)
-        act_ok = d.kind != "act" or said_last or bool(got.get("names")) or not got.get("bare")
-        if d.heard and act_ok and d.other_at <= d.heard_at and not _heard.began_before(d) and (
-                d.kind == "act" or not got.get("bare") or said_last):
+    if d.asked == _draft.CONFIRM and (got.get("send") or got.get("bare")):
+        ok, why = _heard.answers(d, got, last_line, changed=changed, ready=bool(ready))
+        if ok:
             return await _send(d)
+        _emit("go-ahead not taken", d, why=why)       # which guard refused his yes — never in silence
     lead = (f"Say back in a few words that the message now reads «{d.text}»." if got.get("text") is not None
             and d.text else "")
     return await _next(d, lead)

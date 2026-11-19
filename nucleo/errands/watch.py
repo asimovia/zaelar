@@ -163,6 +163,21 @@ def _note_births(now: float) -> None:
             _pending_births.pop(ref, None)
 
 
+def _mandate_for(order: dict) -> dict:
+    """What the errand a message opened may do. A message he sent under a playbook that CONTINUES with the other
+    person (a meeting, a booking — a gestión he ordered) may answer and schedule within it. A plain message — a
+    question to somebody, under no such playbook — only WATCHES: her answer is told to him, nothing is written back
+    to her and nothing is booked (operator 2026-11-19, INI-042 #44 D0; measured 2026-11-18: the follow-up of «ask her
+    what time she comes» proposed a time to her three times on its own, and he was not told)."""
+    base = {"parties": [order.get("contactId") or ""], "channels": [order.get("platform") or ""]}
+    try:
+        from .playbooks import kind_of
+        gestion = kind_of(order.get("playbook")) != "generic"
+    except Exception:  # noqa: BLE001 — unreadable: the narrower grant (a message to a person is not where to fail open)
+        gestion = False
+    return {**base, "may": ["message", "schedule"]} if gestion else {**base, "may": [], "watch": True}
+
+
 def _born_from_echo(now: float) -> list[dict]:
     """A message really went out: open the errand and give it the conversation the connector just created."""
     from . import claim, close, start as _start
@@ -177,9 +192,7 @@ def _born_from_echo(now: float) -> list[dict]:
         # unknowns are read from it by `start()` itself — one door, so an errand opened from anywhere closes itself.
         row = _start(
             objective, kind=str(order.get("playbook") or ""), title=objective[:120],
-            mandate={"parties": [order.get("contactId") or ""], "channels": [order.get("platform") or ""],
-                     "may": ["message", "schedule"]},
-            trace=str(order.get("trace") or ""),
+            mandate=_mandate_for(order), trace=str(order.get("trace") or ""),
         )
         if not row:
             continue

@@ -374,25 +374,46 @@ def _capture_notes(monkeypatch) -> list[str]:
 # — swap reunión→cena, Iván→el taller, Meet→Zoom and see whether it still stands — applied to the first
 # system built explicitly to satisfy it. It has been written down as a rule since V2-036 and never executed.
 
-def test_an_errand_with_NO_PLAYBOOK_still_runs_the_whole_arc(world, monkeypatch):
-    """The property that keeps a briefing from being a fence: an errand nobody wrote a playbook for is not
-    refused, not downgraded, and not told to wait for a release that adds its kind."""
+def test_a_PLAIN_message_only_watches_her_answer_is_told_to_him(world, monkeypatch):
+    """A message under no playbook that continues with her (a question, a request — not a gestión he ordered)
+    opens an errand that only WATCHES: her answer is told to him in one line, nothing is written back to her, no
+    model turn decides anything, and the errand ends (operator 2026-11-19, INI-042 #44 D0 — measured 2026-11-18:
+    the follow-up of «ask her what time she comes» proposed a time to her three times on its own)."""
     from nucleo import errands
-    from nucleo.errands import playbooks
+    from nucleo.errands import wake as wake_mod
     _ivan()
     armed(monkeypatch)
-    answers(monkeypatch, '{"say": "¿Te lo llevo el jueves?", "state": "negotiating"}')
+    model = answers(monkeypatch, '{"say": "¿Te lo llevo el jueves?", "state": "negotiating"}')
+    told: list[str] = []
+    monkeypatch.setattr(wake_mod, "_tell_operator", lambda text, errand=None, **_: told.append(text))
 
     got = _open(world, objective="pedirle a Iván que me revise el manuscrito esta semana",
                 text="Hola, soy Zaelar, el asistente de Ricard. ¿Podrías revisarle un manuscrito?", playbook="")
     e = got["errand"]
-    assert e is not None
-    assert e["kind"] == "generic" and playbooks.brief_for("generic") == "", "no playbook, and it runs anyway"
-    assert e["done_when"] == {}, "and with no closing condition it ends by its deadline, never by a guess"
+    assert e is not None and e["kind"] == "generic"
+    assert e["mandate"].get("watch") is True and e["mandate"].get("may") == [], "a plain message grants nothing"
+    sent_before = len(world.texts())
 
     _answers_and_wakes(world, got["chat"], "Claro, ¿cuándo lo necesitas?")
+    assert len(world.texts()) == sent_before, "nothing is written back to her"
+    assert model.calls == [], "no model turn decides anything for a watch"
+    assert len(told) == 1 and "Claro, ¿cuándo lo necesitas?" in told[0], "her own words, told to him once"
+    assert errands.get(e["id"])["state"] == "closed", "answered and told: the follow-up is over"
+
+
+def test_a_GESTION_still_runs_the_whole_arc(world, monkeypatch):
+    """The other half of the same rule: a message under a playbook that continues with her (a meeting he ordered)
+    keeps its mandate and answers within it."""
+    from nucleo import errands
+    _ivan()
+    armed(monkeypatch)
+    answers(monkeypatch, '{"say": "¿Te va bien el jueves?", "state": "negotiating"}')
+    got = _open(world, objective="quedar con Iván esta semana", text="Hola, ¿quedamos esta semana?", playbook="meeting")
+    e = got["errand"]
+    assert "message" in e["mandate"]["may"] and not e["mandate"].get("watch")
+    _answers_and_wakes(world, got["chat"], "Claro, ¿cuándo?")
     assert errands.get(e["id"])["state"] == "negotiating"
-    assert world.texts()[-1] == "¿Te lo llevo el jueves?"
+    assert world.texts()[-1] == "¿Te va bien el jueves?"
 
 
 def test_the_SAME_arc_with_the_words_swapped(world, monkeypatch):

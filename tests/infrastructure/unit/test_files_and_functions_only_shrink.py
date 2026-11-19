@@ -47,7 +47,7 @@ FUNCTIONS = {
     'nucleo/dispatch/listener.py::run_listener': 213,
     'nucleo/dispatch/session.py::_run_session': 203,
     'nucleo/dispatch/session_steps.py::build_what_it_runs_with': 132,
-    'nucleo/errands/wake.py::wake': 153,
+    'nucleo/errands/wake.py::wake': 154,  # +1 2026-11-19 INI-042 #44 P-1: a watch errand leaves before the model turn
     'nucleo/input/stt.py::Accumulator._offer': 129,   # 2026-10-22: `offer` → wrapper + `_offer`
     'nucleo/llm/fast_client.py::FastClient._stream_inner': 267,
     'nucleo/turn/prompt/live_browser.py::navegador_lines': 147,   # refactor2710-08b: moved

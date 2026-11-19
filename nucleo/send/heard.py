@@ -89,3 +89,29 @@ def began_before(d) -> bool:
         _note(e)
         return True
 
+
+
+def answers(d, got: dict, last_line: str, *, changed: bool, ready: bool) -> tuple[bool, str]:
+    """Does this read give his go-ahead to the confirmation open now? `(ok, why)`: every guard in ONE place, and the
+    reason of each refusal (INI-042 #44 P0a — measured 2026-11-18: two «yes» re-asked with no trace of which guard).
+    Only a confirmation he HEARD is answered; a bare «yes» answers only the one said LAST; never after another line of
+    ours (a worker's «shall I send it?»), nor by a sentence begun before the confirmation existed. An act's bare yes
+    answers its question only when said last, unless his words name again what it is about."""
+    if not got.get("send"):
+        return False, "the read did not take it as a go-ahead" + (" (a bare yes)" if got.get("bare") else "")
+    if changed:
+        return False, "his words also change the message"
+    if not ready:
+        return False, "nothing ready to send"
+    said_last = _ask._fold(d.confirm_line) in _ask._fold(last_line)
+    if not d.heard:
+        return False, "he has not heard the confirmation"
+    if d.kind == "act" and not (said_last or got.get("names") or not got.get("bare")):
+        return False, "an act's bare yes, and its question was not our last line"
+    if d.other_at > d.heard_at:
+        return False, "another line of ours came after the confirmation"
+    if began_before(d):
+        return False, "his sentence began before the confirmation was said"
+    if d.kind != "act" and got.get("bare") and not said_last:
+        return False, "a bare yes, and the confirmation was not our last line"
+    return True, ""
