@@ -22,6 +22,8 @@ config/*.json
 !config/resources.default.json
 # V2-809: the declared chat-attachment limits, read by the upload door.
 !config/attachments.default.json
+# V2-936: the declared bounds of the copied messaging past, read by `connectors/messaging/history.policy`.
+!config/messaging.default.json
 .meshkore/credentials
 .meshkore/logs
 

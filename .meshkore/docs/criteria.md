@@ -347,7 +347,7 @@ below is the first kind, or it names the mechanism that replaced the second.
   `INLINE_GRACE_S`, and not corrected again when the app's own late tell said it. — since 2026-11-13 (V2-884 1b, A6) ·
   nodes 4.411, 4.520. A contrary reading of a report the surface made BEFORE the act was born is no verdict on it
   either: inside the grace it waits as asked (`reported.unheard`), and the mouth says the short asked line, never
-  «it isn't on the widget, so it's not done». — since 2026-11-18 (V2-934) · node 2.1810.
+  «it isn't on the widget, so it's not done». — since 2026-11-18 (V2-934) · nodes 2.1810.
 - **CRIT-C4b · A worker never deletes a card.** Deleting is a confirmed act (`pending_confirm`, the UI's Yes/No);
   the first verb of a request names its act, so a build that mentions deleting its own entries builds. — since
   2026-10-09 · nodes 2.246.
@@ -395,7 +395,7 @@ below is the first kind, or it names the mechanism that replaced the second.
   `connectors/meshkore/send_gate.py`, `widgets/navegador/click_gate.py::consent_verdict`. A worker's
   `mesh serve` (the request to an agent that serves it) is a query to a provider, not a message: outbound scan, his
   `errand.mesh_serve` rule (never refuses, ask asks), then the taint on what leaves (asked after untrusted reads when
-  the scan redacted something of his, unless a mandate names `mesh`); every outcome is a `consequence` event on door `mesh.serve` (V2-852 T14 · node 2.1400 ·
+  the scan redacted something of his, unless a mandate names `mesh`); every outcome is a `consequence` event on door `mesh.serve` (V2-852 T14 · nodes 2.1400 ·
   `nucleo/workers/exit_gate.py::mesh`).
 - **CRIT-C8 · A search is never gated as a charge.** A negated act («do not buy») and a first-person wish beside
   a lookup order («I want to buy X, give me the link») are subtracted before the money verbs are read — a
@@ -946,7 +946,7 @@ Flash keeps the conversation; the row is what both brains read.
   and person, a time → the moment, said in the confirmation and sent as the card's held draft); a second order while
   one is open waits its turn and he is told; the act and its report survive a cut turn; it leaves through the card's own act with the chosen row's id (`resolve_target` `contact_id`), and the final
   line is the connector's receipt (`send/receipt`). A draft nobody touches for 10 min is closed and reads nothing. —
-  since 2026-11-18 (V2-938) · node 2.1801 · `nucleo/send/`, `nucleo/turn/pipeline_gate.py`,
+  since 2026-11-18 (V2-938) · nodes 2.1801 · `nucleo/send/`, `nucleo/turn/pipeline_gate.py`,
   `nucleo/turn/pipeline_errands.py`, `nucleo/cli/worker_api.py`, `widgets/mensajeria/outbound/targets.py`. End to end:
   `python -m tests.agent_headless.e2e.send_owner.bench` (a sandbox engine, real models, a WhatsApp double).
 - **CRIT-T2g · An order the model served with another tool opens the ORDER's row.** At the close, a sure order
@@ -1217,7 +1217,7 @@ Flash keeps the conversation; the row is what both brains read.
   the per-file cap is never downloaded by itself; downloaded media leaves oldest first over its disk budget (the
   smaller of an absolute bound and a share of the disk), whatever the day window. Who is a contact is not bounded
   by any of this: a message from an account no row holds marks its source owed a read. — since 2026-11-18
-  (V2-936) · node 4.588 · `.meshkore/docs/modules/zaelar-messaging-history.md`.
+  (V2-936) · nodes 4.588 · `.meshkore/docs/modules/zaelar-messaging-history.md`.
 - **CRIT-M12b · His contacts are structured memory, and one person is one person.** Each record the contacts card
   manages is one structured pill in its own retriever lane (`nucleo/memory_agent/contacts.py`, slot `contact:<id>`,
   no phone or address in it); a NAME is the resolver's, a DESCRIPTION («the girl from the guitar course») is
@@ -1350,11 +1350,11 @@ Flash keeps the conversation; the row is what both brains read.
   (`nucleo/runstate.py`, persisted) and every page REFLECTS it — at boot and on coming back (`presence.reflectRunState`) —
   and never sends one: a stale «stopped» in a page's storage follows a running agent. Only a press stops it
   (`power.setPower` is the one client caller of `runStop`); an agent stopped on purpose stays stopped and still needs ⏻
-  (INI-042 #46) — since 2026-11-19 · node 4.598 · `frontend/app/main.js`, `frontend/mobile/app/main.js`.
+  (INI-042 #46) — since 2026-11-19 · nodes 4.598 · `frontend/app/main.js`, `frontend/mobile/app/main.js`.
 - **CRIT-R25d · A phone back from the background runs the new screen.** A page knows it runs an older frontend when
   `GET /api/update` answers another `ui_rev` than its first answer (V2-553); the desktop shows the reload bar, and the
   phone shell (`watch.reloadOnReturn`) reloads at once when it comes back to the foreground onto a newer one — nothing
-  is in his hand then; the same frontend reloads nothing — since 2026-11-19 · node 4.600 · `frontend/app/update/watch.js`.
+  is in his hand then; the same frontend reloads nothing — since 2026-11-19 · nodes 4.600 · `frontend/app/update/watch.js`.
 - **CRIT-R25b · The app on his phone is opened by a person, and leaving it is said.** In the native companion or a
   page installed on a PHONE's home screen (never a standalone window on a computer), coming to the foreground is a
   gesture (`presence.js::installedApp`); with music sounding in the page, putting it away is not leaving; it counts as
