@@ -1012,6 +1012,17 @@
    "emits": [
     "conv_ear"
    ]
+  },
+  {
+   "id": "c_inbox",
+   "zone": "conversation",
+   "name": "Inbox — one order across channels",
+   "paths": [
+    "conversation/inbox"
+   ],
+   "emits": [
+    "conv_inbox"
+   ]
   }
  ],
  "emitters": {
@@ -2279,6 +2290,12 @@
    "a": "g_route",
    "b": "st_route",
    "label": "stores"
+  },
+  {
+   "id": "c_ear_inbox",
+   "a": "c_ear",
+   "b": "c_inbox",
+   "label": "envelopes"
   }
  ],
  "_flows": "Who talks to whom. `a`/`b` carry no direction (a call goes and comes back). `uncaptured` = the flow exists in the code but leaves no event (e.g. the rules read into every prompt).",

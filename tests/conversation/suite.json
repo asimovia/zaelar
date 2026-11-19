@@ -31,6 +31,16 @@
       "kind": "unit"
     },
     {
+      "id": "13.6",
+      "label": "The mailbox accounts for every envelope (I6)",
+      "kind": "unit"
+    },
+    {
+      "id": "13.7",
+      "label": "Voice and chat share one order (X1-X10)",
+      "kind": "unit"
+    },
+    {
       "id": "13.19",
       "label": "A stale epoch writes nothing; the Store contract over both stores",
       "kind": "unit"

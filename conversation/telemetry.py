@@ -51,7 +51,7 @@ class Emitter:
     account: str
     epoch: Callable[[], int] = field(default=lambda: 0)
 
-    def emit(self, kind: str, label: str, *, owner: str, cause: dict | None = None, refs: dict | None = None,
+    def emit(self, kind: str, label: str, /, *, owner: str, cause: dict | None = None, refs: dict | None = None,
              trace: str | None = None, **payload) -> None:
         if label not in KINDS.get(kind, ()):
             raise UnknownEvent(f"{kind}/{label} is not in conversation.telemetry.KINDS")

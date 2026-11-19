@@ -233,3 +233,10 @@ def from_json(d: dict) -> Envelope:
     d.update(kind=kind, channel=channel, authority=authority, surfacing=surfacing,
              refs=Refs(**_strict(Refs, d["refs"], "refs")), body=_body(kind, d["body"]))
     return Envelope(**d)
+
+
+def is_reopen(env: Envelope) -> bool:
+    """THE one reading of «this intervention was reopened»: a voice intervention back to open at a later revision.
+    Policy row 6 (supersede only while nothing is sealed) keys on this and nothing else."""
+    return (env.kind is EnvelopeKind.INTERVENTION_STATE and env.body.state is IvState.OPEN
+            and env.body.revision > 1)
