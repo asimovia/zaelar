@@ -6912,7 +6912,8 @@ DOMAINS: list[dict] = [
                                   "tests/agent_headless/unit/send/test_the_hold_switch_holds_an_errands_reply.py",
                                   "tests/browser/unit/agenda/test_a_held_install_sends_no_invitation.py",
                                   "tests/agent_headless/unit/send/test_a_preflight_writes_nothing.py",
-                                  "tests/agent_headless/unit/send/test_the_hold_switch_holds_a_workers_act.py"]},
+                                  "tests/agent_headless/unit/send/test_the_hold_switch_holds_a_workers_act.py",
+                                  "tests/agent_headless/unit/send/test_the_acts_that_always_leave_are_declared.py"]},
         {"id": "5.2", "title": "Mensajería (ingest/reply)", "ch": UNIT, "paths": [
             "tests/connectors/unit/messaging/test_ingest.py", "tests/connectors/unit/messaging/test_reply.py",
             "tests/connectors/unit/messaging/test_memory_dump.py"]},

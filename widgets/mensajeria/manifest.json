@@ -273,6 +273,7 @@
       ]
     },
     "send_to": {
+      "always_leaves": true,
       "primary": true,
       "desc": "Escribe a una PERSONA del directorio de contactos por su canal (el preferido si no dices cuál), ABRIENDO la conversación si no existía. Es lo que se usa para «mándale un mensaje a X», «escríbele a X», «contacta con X» — `reply` solo sirve para contestar a algo que YA llegó. También REENVÍA lo que llegó: con `attach_from` los adjuntos de ese mensaje (una factura, un PDF) viajan en el correo — «mándale a X la factura de este correo».",
       "payload": {
@@ -305,6 +306,7 @@
       }
     },
     "create_group": {
+      "always_leaves": true,
       "desc": "CREA UN GRUPO nuevo en WhatsApp o Telegram con esas personas (del directorio). El grupo existe y se ve sin escribir nada en él: `text` SOLO si pidió un primer mensaje. Para «crea un grupo con Ana y Luis que se llame Viaje». No crea nada si alguien no se encuentra o es ambiguo",
       "payload": {
         "platform": "'whatsapp' | 'telegram'",
@@ -329,6 +331,7 @@
       "done_when": {"widget": "mensajeria", "collection": "outbox", "where": {"name": "{name}", "kind": "group", "state": "sent"}, "expect": "added"}
     },
     "leave_group": {
+      "always_leaves": true,
       "desc": "SALE de uno o varios grupos de WhatsApp o Telegram y los BORRA de sus chats. No se puede deshacer. Para «elimina / borra / sal del grupo X», «delete the groups X and Y»",
       "how": "`groups`: los nombres tal como los dijo (lista, o un texto con «,», « y », « and »). Se buscan en SU lista de chats de grupo; si uno no está o es ambiguo no se hace nada y se le pregunta cuál.",
       "payload": {
@@ -345,6 +348,7 @@
       "done_when": {"widget": "mensajeria", "collection": "outbox", "where": {"said": "{groups}", "kind": "group_leave", "state": "sent"}, "expect": "added"}
     },
     "forward": {
+      "always_leaves": true,
       "ref": "from",
       "desc": "REENVÍA por correo un mensaje que llegó, con sus ADJUNTOS (factura, PDF…), a una PERSONA: «mándale a Quinn la factura de este correo». Sin `n`, el correo ABIERTO. No es `reply`",
       "payload": {

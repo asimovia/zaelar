@@ -14,11 +14,10 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 
 from connectors import exit as door
+from widgets import effects as _fx      # the acts that always queue are declared on the manifest (`always_leaves`)
 
 #: The reserved payload key. Its value counts only as a `door.Stamp` — the same letters written by a model are no lane.
 KEY = "_lane"
-#: The acts that always queue an order when they run (the read-only veto answers these before they are queued).
-ALWAYS_LEAVE = ("send_to", "forward", "create_group", "leave_group")
 
 _lane: ContextVar[str] = ContextVar("mensajeria_lane", default="")
 
@@ -68,7 +67,7 @@ def early(action: str, payload: dict | None) -> dict | None:
     """The read-only veto for an act that would queue an order (`data.answer_action`): refused before it is queued,
     answered to whoever asked. None when it may go on, or when the act does not always leave."""
     p = payload or {}
-    if action not in ALWAYS_LEAVE and not (action == "reply" and str(p.get("text") or "").strip()):
+    if not _fx.always_leaves("mensajeria", action) and not (action == "reply" and str(p.get("text") or "").strip()):
         return None
     why = door.check(action, door.stamped(p.get(KEY)) or current())
     return refusal(why) if why else None

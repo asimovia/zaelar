@@ -70,6 +70,12 @@ def leaves(wid: str, action: str) -> bool:
     return EXTERNAL_SEND in of(wid, action)
 
 
+def always_leaves(wid: str, action: str) -> bool:
+    """Does this action queue an order EVERY time it runs (`"always_leaves": true` on its manifest entry)?"""
+    spec = ((_manifest(wid).get("actions") or {}).get(str(action or "").strip()))
+    return isinstance(spec, dict) and spec.get("always_leaves") is True and leaves(wid, action)
+
+
 def unattestable(wid: str, action: str) -> str:
     """Why an act that leaves the machine has no end state to check (`done_when_unreadable`, V2-847), or "".
 
