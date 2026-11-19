@@ -165,3 +165,47 @@ def test_validating_against_a_list_of_iso_codes_would_not_have_caught_it():
     for code in ("it", "th", "la", "su"):
         assert len(code) == 2 and code.isalpha()     # all four are valid ISO-639-1 — the whitelist lets them in
     assert detect.extract_code("The language is es.") is None   # only the ANCHOR rejects them
+
+
+def test_the_classify_does_not_freeze_the_event_loop(monkeypatch):
+    """INI-042 G1: the first-run classify is a synchronous model call (~2.5 s). Called from the HTTP edge it froze
+    the whole process — every other request, stream and timer — for that long. The async door awaits the same
+    decision with the classify in a worker thread: the loop keeps ticking, and the turn still gets the code."""
+    import asyncio
+    import time
+
+    seen: dict = {}
+    monkeypatch.setattr(detect, "should_detect", lambda: True)
+    monkeypatch.setattr(detect, "classify", lambda t: time.sleep(0.4) or "es")
+    _no_lock(monkeypatch, seen)
+
+    async def _run():
+        ticks = 0
+
+        async def _ticker():
+            nonlocal ticks
+            while True:
+                await asyncio.sleep(0.02)
+                ticks += 1
+        t = asyncio.create_task(_ticker())
+        code = await detect.ensure_for_text_async("Búscame un hotel en Madrid")
+        t.cancel()
+        return code, ticks
+
+    code, ticks = asyncio.run(_run())
+    assert code == "es" and seen == {"stt_language": "es"} and detect._should_cache is False
+    assert ticks >= 10, f"the loop ticked {ticks} times during a 0.4 s classify — it was blocked"
+
+
+def test_the_async_door_keeps_the_same_gates(monkeypatch):
+    """Same decision as the sync door: a chosen language is never touched, a configured one wins over the text."""
+    import asyncio
+    called = []
+    monkeypatch.setattr(detect, "classify", lambda t: called.append(t) or "es")
+    monkeypatch.setattr(detect, "should_detect", lambda: False)
+    assert asyncio.run(detect.ensure_for_text_async("Búscame un hotel")) is None and called == []
+    seen: dict = {}
+    monkeypatch.setattr(detect, "should_detect", lambda: True)
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "en")
+    _no_lock(monkeypatch, seen)
+    assert asyncio.run(detect.ensure_for_text_async("Búscame un hotel")) == "en" and called == []

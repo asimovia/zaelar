@@ -72,7 +72,7 @@ async def say(text: str = Body(..., embed=True), session: str = Body("default", 
     # could commit the wrong language before it is answered. A no-op once a language is chosen; never raises.
     try:
         from i18n.init import detect as _lang_detect
-        _lang_detect.ensure_for_text(text)
+        await _lang_detect.ensure_for_text_async(text)   # awaited: turn 1 gets it; the model call is off the loop
     except Exception as e:  # noqa: BLE001 — the line still runs; only the first-run guess is skipped
         logger.debug(f"cli.api: first-run language not locked: {e!r}")
     # TO THE WALL, before anything else: the turn may take seconds and the operator must see the request now.

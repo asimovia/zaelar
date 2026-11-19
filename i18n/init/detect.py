@@ -171,15 +171,34 @@ def ensure_for_text(text: str) -> str | None:
         except RuntimeError:
             asyncio.run(lock(code))
             return code
-        # Inside a running loop `lock()` cannot be awaited from here, and the part that matters for THIS turn
-        # is the persist+env, which is synchronous anyway. The bundle prepare and the SSE switch are the UI's
-        # half and can wait for the next start.
-        from config import settings as _s
-        _s.update({"stt_language": code})
-        global _should_cache
-        _should_cache = False
-        logger.info(f"i18n.detect: text channel locked operator language -> '{code}'")
-        return code
+        return _persist_in_loop(code)
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"i18n.detect: text-channel detection failed: {e}")
+        return None
+
+
+def _persist_in_loop(code: str) -> str:
+    """Inside a running loop `lock()` cannot be awaited from a sync caller; what THIS turn needs is the persist,
+    synchronous anyway. The bundle prepare and the SSE switch are the UI's half and wait for the next start."""
+    from config import settings as _s
+    _s.update({"stt_language": code})
+    global _should_cache
+    _should_cache = False
+    logger.info(f"i18n.detect: text channel locked operator language -> '{code}'")
+    return code
+
+
+async def ensure_for_text_async(text: str) -> str | None:
+    """`ensure_for_text` for a caller ON the event loop (the HTTP edge): same gates, same lock, and the turn still
+    waits for it — but the classify (a sync model call, ~2.5 s) runs in a worker thread instead of freezing every
+    request, stream and timer of the process (INI-042 G1). Gate and persist stay on the loop, as before."""
+    try:
+        if not should_detect():
+            return None
+        import asyncio
+        import os
+        code = (os.getenv("ZAELAR_LANGUAGE") or "").strip().lower() or await asyncio.to_thread(classify, text)
+        return _persist_in_loop(code) if code else None
     except Exception as e:  # noqa: BLE001
         logger.warning(f"i18n.detect: text-channel detection failed: {e}")
         return None

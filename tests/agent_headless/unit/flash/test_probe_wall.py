@@ -28,6 +28,10 @@ def _sin_detector_de_idioma(monkeypatch):
     import i18n.init.detect as _d
     monkeypatch.setattr(_d, "ensure_for_text", lambda *a, **k: None, raising=False)
 
+    async def _none(*a, **k):
+        return None
+    monkeypatch.setattr(_d, "ensure_for_text_async", _none, raising=False)
+
 
 def _capture(monkeypatch) -> list[dict]:
     """The wall is fed by the observer, so it is measured there rather than in a log (`loguru` does not go through the
