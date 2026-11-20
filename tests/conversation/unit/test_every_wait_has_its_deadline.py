@@ -53,20 +53,19 @@ WAITS: dict[str, tuple[tuple[str, ...], str]] = {
                                  "test_a_control_whose_handler_never_ran_is_closed_by_the_sweep_with_its_reason"),
     "a line owed claimed for the voice": ((), U + "test_a_line_owed_is_said_once_by_one_channel::"
                                           "test_a_claim_past_its_deadline_goes_back"),
+    "an open voice of an earlier epoch": ((), U + "test_a_crash_at_any_transition_recovers::"
+                                          "test_a_voice_cut_by_a_restart_is_ended_incomplete_with_its_event_and_asked_again"),
 }
 
 #: waits whose bound lives outside this package or is not built yet — named so that nobody counts them done
 ELSEWHERE = {
     "a voice line arriving late": "the ear's queue and the voice session live in the adapter (tramo B)",
-    "an open voice of an earlier epoch": "closed by `recover()` as incomplete with reason `restart` (A6)",
 }
 
 #: thresholds of `Config` that bound no wait
 NOT_A_WAIT = {
     "port_budget_ms": "a port slower than this is an event; the call still runs to its own deadline",
     "evidence_ttl_ms": "how long evidence stays valid for a claim, not a wait",
-    "retain_ms": "what is done leaves the live tables (A6 removes it)",
-    "prune_every_ms": "how often the prune runs (A6 removes it)",
 }
 
 

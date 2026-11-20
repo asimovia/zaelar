@@ -25,13 +25,12 @@ from conversation.gateway.outbox import Gateway
 from conversation.inbox import Inbox
 from conversation.ledger import Book
 from conversation.ledger.book import BookTx
-from conversation.ledger.items import final
 from conversation import guard
 from conversation.manager import policy, run
 from conversation.mouth import Device, Painted, PlayoutAck, SayEnded, SayStarted, Speaker
 from conversation.ports import Clock, Memory, Model, Mouth, Owed, Store, Tasks, Telemetry, Tools
 from conversation.telemetry import Emitter
-from conversation.types import ControlOp, Coverage, EnvelopeKind, Ids, ItemKind, MgrState, Op
+from conversation.types import Channel, ControlOp, Coverage, EnvelopeKind, Ids, ItemKind, MgrState, Op
 
 REQUESTS = (EnvelopeKind.USER_UTTERANCE, EnvelopeKind.USER_TEXT)
 
@@ -78,7 +77,6 @@ class Conversation:
         self.speaking_on: set[str] = set()
         self.dirty = False                  # something was accepted since the last pump (a driver may pump only then)
         self._swept_at = -1 << 62
-        self._pruned_at = -1 << 62
         self._held_iv: str | None = None     # a run gave its batch back to a resumed voice: nothing runs while it is open
         self.eligible_since = 0              # when the last held batch became eligible again (liveness counts from it)
         self.recover()
@@ -87,9 +85,24 @@ class Conversation:
 
     def recover(self) -> None:
         """What a dead process left behind: its dequeued batch back to the queue, an effect left `submitting` to
-        `submission_unknown` (never resent)."""
-        self.inbox.recover(self.clock.now_ms())
+        `submission_unknown` (never resent), and a voice it was hearing — open under its epoch — ended incomplete
+        (reason `restart`, with its event): the sentence the person was saying is not lost in silence, its run asks
+        them to say it again, and no voice is left open for a text to wait behind."""
+        now = self.clock.now_ms()
+        self.inbox.recover(now)
         dispatch.recover(self.gw)
+        for iv, voice in self.inbox.open_voices(self.lease.epoch):
+            self._restarted(iv, voice, now)
+
+    def _restarted(self, iv: str, voice: dict, now: int) -> None:
+        endpoint = voice.get("endpoint")
+        self.em.emit("conv_ear", "incomplete", owner="ear", cause={"kind": "restart"},
+                     refs={"iv": iv, "endpoint": endpoint, "channel": "voice"}, text="", reason="restart")
+        self.give(E.make(EnvelopeKind.USER_UTTERANCE,
+                         E.UtteranceBody(iv, "", coverage=Coverage.INCOMPLETE, reason="restart"),
+                         producer=f"ear:{endpoint}", producer_id=f"{iv}:{Coverage.INCOMPLETE}", account=self.account,
+                         onset_ms=voice.get("onset", now), sealed_ms=now, channel=Channel.VOICE, endpoint=endpoint,
+                         refs=E.Refs(intervention_id=iv)))
 
     # ── in ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -211,31 +224,6 @@ class Conversation:
         for say_id in self.speaker.overdue(now):        # a line nobody acknowledged ended «unknown» (B2)
             self.ack(SayEnded(say_id, "unknown", None, now))
         run.sweep_liveness(self, now)
-        if now - self._pruned_at >= self.cfg.prune_every_ms:
-            self._pruned_at = now
-            self.prune(now)
-
-    def prune(self, now: int) -> int:
-        """What is done and older than `retain_ms` leaves the live tables (NM2). Returns how many rows moved."""
-        old = now - self.cfg.retain_ms
-        done = {
-            "inbox": lambda r: r["state"] == "accounted" and r.get("accounted_ms", now) <= old,
-            "says": lambda r: r["state"] == "ended" and r["t_ms"] <= old,
-            SEAL.T: lambda r: r["phase"] in ("sealed", "final") and r.get("updated_ms", now) <= old,
-            "items": lambda r: final(ItemKind(r["kind"]), r["state"]) and r["updated_ms"] <= old,
-        }
-        moved = 0
-        with self.store.tx(self.lease) as tx:
-            for table, is_done in done.items():
-                for key, row in tx.scan(table):
-                    if is_done(row):
-                        tx.archive(table, key)
-                        moved += 1
-            turns = tx.scan("turns")
-            for key, _row in turns[:max(0, len(turns) - 4 * self.cfg.conversation_turns)]:
-                tx.archive("turns", key)
-                moved += 1
-        return moved
 
     async def keep_time(self, every_ms: int = 1000) -> None:
         """The sweep on its own timer, for the adapter to run beside the loop: a hung run cannot stop it (B3)."""

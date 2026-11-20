@@ -57,8 +57,8 @@ class AuditedStore(_Audited, MemoryStore):
 
 
 class AuditedSqliteStore(_Audited, SqliteStore):
-    """The audited store on sqlite: one case in ten, so its own paths (`json_extract` in `cas`, `BEGIN IMMEDIATE`, the
-    archive's move) are bombarded too (review 2, MINOR 6)."""
+    """The audited store on sqlite: one case in ten, so its own paths (`json_extract` in `cas` and in a scan by state,
+    `BEGIN IMMEDIATE`) are bombarded too."""
 
 
 class Case:
@@ -321,24 +321,10 @@ class Case:
             self.owed.expire(self.clock.now_ms())          # the ledger's pulse: a claim past its deadline goes back
 
 
-class _WithArchive:
-    """A snapshot that reads each table together with its archive (`<table>.done`)."""
-
-    def __init__(self, snap) -> None:
-        self._s = snap
-
-    def get(self, table: str, key: str):
-        return self._s.get(table, key) or self._s.get(f"{table}.done", key)
-
-    def scan(self, table: str):
-        return sorted(self._s.scan(table) + self._s.scan(f"{table}.done"))
-
-
 def check(case: Case) -> list[str]:
     """I1–I9 over what the case left behind. Each violation is one sentence."""
     out = [f"crash: {c}" for c in case.crashes]
-    live = case.store.snapshot(getattr(case, "account", ACCT))
-    snap = _WithArchive(live)                      # what the sweep archived is still what the case left behind (NM2)
+    snap = case.store.snapshot(getattr(case, "account", ACCT))
     items = {k: r for k, r in snap.scan("items")}
     phases = {k: r["phase"] for k, r in snap.scan("interventions")}
     for eid, row in items.items():

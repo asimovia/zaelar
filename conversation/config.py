@@ -47,11 +47,6 @@ class Config:
     #: a line we said with no `SayEnded` after this (plus ~80 ms a character) ended «unknown»: acks get lost (B4 of
     #: the audit), and the manager never waits on one forever.
     say_end_ms: int = 20_000
-    #: what is done — an accounted envelope, an ended line, a final item or intervention — leaves the live tables
-    #: after this, so the sweep's cost follows what is in course, not the account's history (NM2); the newest
-    #: `conversation_turns` turns always stay. Checked once a `prune_every_ms`.
-    retain_ms: int = 10 * 60_000
-    prune_every_ms: int = 60_000
     #: a run may call the model at most this many times (tool results fed back between calls).
     max_steps: int = 6
     #: evidence a tool returned stays valid for a numeric claim of a LATER run this long (D9).

@@ -27,7 +27,10 @@ stdlib only, no regex, no word tables (the person's words are never read by code
 
 Ports (`ports.py`) are the seams to the outside: `Clock`, `Telemetry`, `Model`, `Tools`, `Memory`, `Mouth`, `Owed`, `Tasks`,
 `Store`. A control by id with no handler here (without `Tasks`, cancelling a task too) is refused when it is accepted.
-Two stores keep the same contract: in memory (tests) and on sqlite (a file of its own).
+Two stores keep the same contract: in memory (tests) and on sqlite (a file of its own). A transaction inside another
+is refused at once; a reader that sweeps reads by state (what is in course), so nothing is archived to keep a table
+small. A new owner of the account recovers what a dead one left — a dequeued batch back to the queue, an effect left
+`submitting` as `submission_unknown`, and a voice it was hearing ended incomplete (`restart`), so its run asks again.
 
 ## The invariants
 
@@ -43,7 +46,7 @@ Domain 13 of `tests/run_testmap.py`: one node per contract (13.1–13.33), each 
 The three wide checks: **P3** (13.22, 2,000 seeded random conversations in the gate; 13.26, 100,000 on request) judges
 I1–I9 on what each case left, with crashes, hangs, lost acks, forged producers and races thrown in; **P2** (13.20)
 replays recorded sessions as tokens and scores the boundaries whose evidence is firm; **P8** (13.23) kills the process
-at every transition and restarts on the same store.
+at every transition of a sentence and of the reservation, and restarts on the same store.
 
 ## Observability
 

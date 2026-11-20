@@ -75,9 +75,9 @@ class Speaker:
 
     def overdue(self, now: int) -> list[str]:
         """Lines with no `SayEnded` past their bound: acks get lost, and nobody waits on one forever (B2)."""
-        snap = self.store.snapshot(self.lease().account)
-        return [k for k, row in snap.scan(SAYS) if row["state"] != "ended"
-                and now - row["t_ms"] >= self.cfg.say_end_ms + 80 * len(row["text"])]
+        with self.store.tx(self.lease()) as tx:            # the lines in course, never the history
+            live = tx.scan(SAYS, states=("ordered", "playing"))
+        return [k for k, row in live if now - row["t_ms"] >= self.cfg.say_end_ms + 80 * len(row["text"])]
 
     def _refs(self, row: dict) -> dict:
         return {"say": row["say_id"], "run": row["run"], "req": row["req"], "endpoint": row.get("endpoint")}

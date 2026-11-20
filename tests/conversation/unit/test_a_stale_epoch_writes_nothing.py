@@ -2,8 +2,10 @@
 
 The battery runs over BOTH stores (in memory and sqlite): acquiring bumps the epoch, a transaction under a lease that
 was taken writes nothing (not even half), a failed transaction leaves nothing behind, `cas` and `insert_unique` are
-the atomic primitives the invariants rest on, a snapshot is a detached coherent copy. On sqlite, two REAL writers on
-one file: the moment the second acquires, the first one's writes stop landing; and everything survives a reopen.
+the atomic primitives the invariants rest on, a snapshot is a detached coherent copy, a scan by states reads only the
+rows in those states, and a transaction inside another is refused at once on both stores, leaving the outer one whole
+(it rolls back, nothing half written). On sqlite, two REAL writers on one file: the moment the second acquires, the
+first one's writes stop landing; and everything survives a reopen.
 """
 from __future__ import annotations
 
@@ -181,15 +183,25 @@ def test_b4_a_second_process_on_the_same_store_answers_with_ids_of_its_own(tmp_p
     s2.close()
 
 
-def test_minor_10_a_transaction_inside_a_transaction_is_refused_by_the_memory_store():
-    from conversation.store import MemoryStore
-    s = MemoryStore()
-    lease = s.acquire("acct", "p")
-    with pytest.raises(RuntimeError):
-        with s.tx(lease) as tx:
+def test_a_transaction_inside_a_transaction_is_refused_and_the_outer_one_stays_whole(store):
+    lease = store.acquire("acct", "p")
+    with pytest.raises(RuntimeError, match="inside a transaction"):
+        with store.tx(lease) as tx:
             tx.put("t", "a", {"v": 1})
-            with s.tx(lease) as inner:
+            with store.tx(lease) as inner:
                 inner.put("t", "b", {"v": 2})
-    with s.tx(lease) as tx:
+    assert store.snapshot("acct").scan("t") == []                   # nothing of either landed
+    with store.tx(lease) as tx:
         tx.put("t", "c", {"v": 3})                                  # the store is usable afterwards
-    assert s.snapshot("acct").get("t", "c") == {"v": 3}
+    assert store.snapshot("acct").get("t", "c") == {"v": 3}
+
+
+def test_a_scan_by_states_reads_only_those_rows(store):
+    lease = store.acquire("acct", "p")
+    with store.tx(lease) as tx:
+        for k, st in (("a", "open"), ("b", "done"), ("c", "open"), ("d", "held")):
+            tx.put("t", k, {"state": st})
+        tx.put("t", "e", {"other": 1})
+        assert [k for k, _ in tx.scan("t", states=("open", "held"))] == ["a", "c", "d"]
+    snap = store.snapshot("acct")
+    assert [k for k, _ in snap.scan("t", states=("done",))] == ["b"] and len(snap.scan("t")) == 5

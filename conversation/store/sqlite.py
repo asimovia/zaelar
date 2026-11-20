@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS leases (account TEXT PRIMARY KEY, owner TEXT NOT NULL
 CREATE TABLE IF NOT EXISTS rows (account TEXT NOT NULL, tbl TEXT NOT NULL, key TEXT NOT NULL, row TEXT NOT NULL,
                                  uniq TEXT, PRIMARY KEY (account, tbl, key));
 CREATE UNIQUE INDEX IF NOT EXISTS rows_uniq ON rows (account, tbl, uniq) WHERE uniq IS NOT NULL;
+CREATE INDEX IF NOT EXISTS rows_state ON rows (account, tbl, json_extract(row, '$.state'));
 CREATE TABLE IF NOT EXISTS seqs (account TEXT NOT NULL, name TEXT NOT NULL, n INTEGER NOT NULL,
                                  PRIMARY KEY (account, name));
 """
@@ -39,9 +40,14 @@ class _Read:
                             (self._a, table, key)).fetchone()
         return json.loads(r[0]) if r else None
 
-    def scan(self, table: str) -> list[tuple[str, dict]]:
-        return [(k, json.loads(v)) for k, v in self._c.execute(
-            "SELECT key, row FROM rows WHERE account=? AND tbl=? ORDER BY key", (self._a, table))]
+    def scan(self, table: str, states: tuple[str, ...] | None = None) -> list[tuple[str, dict]]:
+        if states is None:
+            return [(k, json.loads(v)) for k, v in self._c.execute(
+                "SELECT key, row FROM rows WHERE account=? AND tbl=? ORDER BY key", (self._a, table))]
+        marks = ",".join("?" * len(states))
+        return [(k, json.loads(v)) for k, v in self._c.execute(        # by the state index: what is in course only
+            f"SELECT key, row FROM rows WHERE account=? AND tbl=? AND json_extract(row, '$.state') IN ({marks}) "
+            "ORDER BY key", (self._a, table, *states))]
 
 
 class _Tx(_Read):
@@ -66,8 +72,8 @@ class _Tx(_Read):
         return cur.rowcount == 1
 
     def insert_unique(self, table: str, key: str, row: dict, unique: str) -> tuple[dict, bool]:
-        r = self._c.execute("SELECT tbl, key FROM rows WHERE account=? AND tbl IN (?, ?) AND uniq=?",
-                            (self._a, table, f"{table}.done", unique)).fetchone()
+        r = self._c.execute("SELECT tbl, key FROM rows WHERE account=? AND tbl=? AND uniq=?",
+                            (self._a, table, unique)).fetchone()
         if r:
             return self.get(r[0], r[1]), False
         try:
@@ -76,9 +82,6 @@ class _Tx(_Read):
         except sqlite3.IntegrityError as e:
             raise Conflict(f"{table}/{key} exists under another unique value") from e
         return row, True
-
-    def archive(self, table: str, key: str) -> None:
-        self._c.execute("UPDATE rows SET tbl=? WHERE account=? AND tbl=? AND key=?", (f"{table}.done", self._a, table, key))
 
     def next_seq(self, name: str) -> int:
         self._c.execute("INSERT INTO seqs (account, name, n) VALUES (?,?,1) "
@@ -94,14 +97,16 @@ class _Snapshot:
         row = self._t.get(table, {}).get(key)
         return json.loads(json.dumps(row)) if row is not None else None
 
-    def scan(self, table: str) -> list[tuple[str, dict]]:
-        return [(k, json.loads(json.dumps(v))) for k, v in sorted(self._t.get(table, {}).items())]
+    def scan(self, table: str, states: tuple[str, ...] | None = None) -> list[tuple[str, dict]]:
+        return [(k, json.loads(json.dumps(v))) for k, v in sorted(self._t.get(table, {}).items())
+                if states is None or v.get("state") in states]
 
 
 class SqliteStore:
     def __init__(self, path: str | Path, *, busy_timeout_ms: int = 5000) -> None:
         self.path = str(path)
         self._lock = threading.RLock()
+        self._depth = threading.local()
         self._c = sqlite3.connect(self.path, isolation_level=None, check_same_thread=False,
                                   timeout=busy_timeout_ms / 1000)
         self._c.execute("PRAGMA journal_mode=WAL")
@@ -142,7 +147,10 @@ class SqliteStore:
     @contextmanager
     def tx(self, lease: Lease) -> Iterator[_Tx]:
         with self._lock:
+            if getattr(self._depth, "n", 0):    # refused BEFORE touching the outer one: it stays whole
+                raise RuntimeError("a transaction inside a transaction: the inner one would be lost at commit")
             self._c.execute("BEGIN IMMEDIATE")
+            self._depth.n = 1
             try:
                 self._require(lease)
                 yield _Tx(self._c, lease.account)
@@ -151,6 +159,8 @@ class SqliteStore:
             except BaseException:
                 self._c.execute("ROLLBACK")
                 raise
+            finally:
+                self._depth.n = 0
 
     def snapshot(self, account: str) -> _Snapshot:
         with self._lock:

@@ -95,8 +95,8 @@ class Inbox:
         run never finished); a control it never handled is closed by the sweep's bound as always."""
         back = []
         with self.store.tx(self.lease()) as tx:
-            for key, row in tx.scan(T):
-                if row["state"] == RowState.DEQUEUED.value and row["kind"] != str(EnvelopeKind.USER_CONTROL):
+            for key, row in tx.scan(T, states=(RowState.DEQUEUED.value,)):
+                if row["kind"] != str(EnvelopeKind.USER_CONTROL):
                     self._move(tx, key, state=RowState.QUEUED.value, batch=None)
                     back.append(key)
         return back
@@ -118,7 +118,7 @@ class Inbox:
             self._voice_done(tx, env.body.intervention_id, now)
             return "queued"
         if k is EnvelopeKind.USER_TEXT:
-            open_voice = {iv: v for iv, v in tx.scan(VOICE) if v.get("open")}
+            open_voice = dict(tx.scan(VOICE, states=("open",)))
             iv = ordering.hold_behind(env.onset_ms, open_voice)
             if iv is not None:
                 self._move(tx, env.id, state="held", held_behind=iv, hold_until=now + self.cfg.cross_channel_hold_ms)
@@ -129,8 +129,13 @@ class Inbox:
     def voice_open(self, iv: str, onset_ms: int, endpoint: str | None) -> None:
         """A voice intervention opened (the ear's onset): texts begun after it wait behind it."""
         with self.store.tx(self.lease()) as tx:
-            known = tx.get(VOICE, iv) or {"onset": onset_ms, "endpoint": endpoint}
-            tx.put(VOICE, iv, {**known, "open": True})
+            known = tx.get(VOICE, iv) or {"onset": onset_ms, "endpoint": endpoint, "epoch": self.lease().epoch}
+            tx.put(VOICE, iv, {**known, "state": "open"})
+
+    def open_voices(self, before_epoch: int) -> list[tuple[str, dict]]:
+        """The voices a dead process left open: opened under an earlier epoch and never ended."""
+        with self.store.tx(self.lease()) as tx:
+            return [(iv, v) for iv, v in tx.scan(VOICE, states=("open",)) if v.get("epoch", 0) < before_epoch]
 
     def voice_done(self, iv: str, now: int) -> None:
         """A voice intervention was discarded (no words, a guard): nothing waits behind it any more."""
@@ -141,10 +146,10 @@ class Inbox:
         """The voice intervention closed, ended incomplete or was discarded: nothing waits behind it any more."""
         row = tx.get(VOICE, iv)
         if row is not None:
-            tx.put(VOICE, iv, {**row, "open": False})
-        still_open = {v_iv: v for v_iv, v in tx.scan(VOICE) if v.get("open") and v_iv != iv}
-        for key, held in tx.scan(T):
-            if held["state"] == "held" and held["held_behind"] == iv:
+            tx.put(VOICE, iv, {**row, "state": "done"})
+        still_open = {v_iv: v for v_iv, v in tx.scan(VOICE, states=("open",)) if v_iv != iv}
+        for key, held in tx.scan(T, states=("held",)):
+            if held["held_behind"] == iv:
                 behind = ordering.hold_behind(held["onset"], still_open)   # another voice begun earlier still open
                 if behind is not None:
                     self._move(tx, key, held_behind=behind)
@@ -158,7 +163,7 @@ class Inbox:
         """Expire holds past their cap (the text runs alone, I4 event with its text); close a control nobody handled."""
         moved = []
         with self.store.tx(self.lease()) as tx:
-            for key, row in tx.scan(T):
+            for key, row in tx.scan(T, states=("held", "dequeued")):     # what is in course, never the history
                 if row["state"] == "held" and now >= row["hold_until"]:
                     self._move(tx, key, state="queued", held_behind=None, hold_until=None)
                     self._emit_row("expired", row, text=row["env"]["body"].get("text"), held_behind=row["held_behind"],
@@ -176,7 +181,7 @@ class Inbox:
         """The next batch to run, or None: every queued entry, in the order they began — after the collect window of
         the LAST text accepted (two texts in < collect_ms are one batch)."""
         with self.store.tx(self.lease()) as tx:
-            rows = [r for _k, r in tx.scan(T) if r["state"] == "queued"]
+            rows = [r for _k, r in tx.scan(T, states=("queued",))]
             texts = [r for r in rows if r["kind"] == str(EnvelopeKind.USER_TEXT)]
             if texts and now - max(r["accepted"] for r in texts) < self.cfg.collect_ms:
                 return None                       # the collect window of the last text is still open

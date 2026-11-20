@@ -36,8 +36,9 @@ class _Tables:
         row = self._table(table).get(key)
         return _thaw(row) if row is not None else None
 
-    def scan(self, table: str) -> list[tuple[str, dict]]:
-        return [(k, _thaw(v)) for k, v in sorted(self._table(table).items())]
+    def scan(self, table: str, states: tuple[str, ...] | None = None) -> list[tuple[str, dict]]:
+        rows = [(k, _thaw(v)) for k, v in sorted(self._table(table).items())]
+        return rows if states is None else [(k, r) for k, r in rows if r.get("state") in states]
 
 
 class _Tx(_Tables):
@@ -70,18 +71,13 @@ class _Tx(_Tables):
         idx = self._write("__unique__")
         tidx = dict(idx.get(table, {}))
         if unique in tidx:
-            return self.get(table, tidx[unique]) or self.get(f"{table}.done", tidx[unique]), False
+            return self.get(table, tidx[unique]), False
         if key in self._table(table):
             raise Conflict(f"{table}/{key} exists under another unique value")
         tidx[unique] = key
         idx[table] = tidx
         self._write(table)[key] = _freeze(row)
         return self.get(table, key), True
-
-    def archive(self, table: str, key: str) -> None:
-        live = self._write(table)
-        if key in live:
-            self._write(f"{table}.done")[key] = live.pop(key)
 
     def next_seq(self, name: str) -> int:
         seqs = self._write("__seq__")

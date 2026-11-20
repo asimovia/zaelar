@@ -72,10 +72,11 @@ def sweep_liveness(conv: "Conversation", now: int) -> None:
     if conv._held_iv is not None:
         return
     running = set(conv.current.requests) if conv.current else set()
-    for _k, row in conv.book.snapshot().scan("items"):
+    with conv.store.tx(conv.lease) as tx:                  # the open requests, never the history
+        rows = [r for _k, r in tx.scan("items", states=("open",)) if r["kind"] == str(ItemKind.REQUEST)]
+    for row in rows:
         start = max(row["data"].get("sealed_ms", row["created_ms"]), conv.eligible_since)
-        if (row["kind"] == str(ItemKind.REQUEST) and row["state"] == "open"
-                and now - start >= conv.cfg.liveness_ms):
+        if now - start >= conv.cfg.liveness_ms:
             if close(conv, row["id"], "failed", "stalled", reason="stalled") and row["id"] in running:
                 conv.current.interrupt = "stalled"
 

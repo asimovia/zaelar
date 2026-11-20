@@ -1,44 +1,75 @@
-"""The sweep's cost follows what is in course, not the account's history (node 13.28; review 2, NM2).
+"""The sweep's cost follows what is in course, not the account's history (node 13.28).
 
-What is done — an accounted envelope, an ended line, a final request or effect, a sealed or final intervention — moves
-out of the live tables once older than `retain_ms`; the newest turns always stay. Archived is not forgotten: a late
-re-delivery of an archived envelope is still a duplicate, and nothing that is open is ever moved.
+The clock's turn runs every 100 ms; what it reads is what is in course — a held text, a dequeued control, a line not
+ended, an open request, an open voice — by `scan(table, states)`, never a whole table. Nothing is moved or archived
+to keep a table small: what is done stays where it is (the host's hygiene deletes it by age), so a late re-delivery of
+an old envelope is still a duplicate. Measured as the rows the sweep's reads return, over both stores.
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
+
 from conversation import envelopes as E
-from conversation.config import Config
 from tests.conversation.unit.convkit import ACCT, Harness
 
-LIVE = ("inbox", "items", "says", "interventions")
+
+class _Counting:
+    """The store, with every row a transaction's scan returns counted."""
+
+    def __init__(self, store) -> None:
+        self._s, self.rows, self.whole = store, 0, 0
+
+    def __getattr__(self, name):
+        return getattr(self._s, name)
+
+    @contextmanager
+    def tx(self, lease):
+        with self._s.tx(lease) as tx:
+            outer = self
+
+            class _Tx:
+                def __getattr__(self, name):
+                    return getattr(tx, name)
+
+                def scan(self, table, states=None):
+                    got = tx.scan(table, states)
+                    outer.rows += len(got)
+                    outer.whole += states is None
+                    return got
+
+            yield _Tx()
 
 
-def _count(store, table: str) -> int:
-    return len(store.snapshot(ACCT).scan(table))
+def _sweep_reads(h: Harness, counting: _Counting) -> tuple[int, int]:
+    counting.rows = counting.whole = 0
+    h.conv.sweep(h.clock.now_ms())
+    return counting.rows, counting.whole
 
 
-def test_sixty_exchanges_over_half_an_hour_leave_only_the_last_minutes_live(store):
-    h = Harness(store, config=Config(retain_ms=5 * 60_000, prune_every_ms=60_000))
+def test_sixty_exchanges_later_the_sweep_reads_only_what_is_in_course(store):
+    counting = _Counting(store)
+    h = Harness(counting)
     for i in range(60):
         h.at(i * 30_000).utter([([f"w{i}"], 0)])
     h.at(h.clock.mono + 61_000).pump()
-    live = {t: _count(store, t) for t in LIVE}
-    done = {t: _count(store, f"{t}.done") for t in LIVE}
-    assert all(n <= 15 * 4 for n in live.values()), live                # ~the last five minutes, not sixty exchanges
-    assert done["inbox"] >= 40 and done["items"] >= 40, done
     assert [lab for lab, _ in h.closes()].count("answered") == 60
-    first = store.snapshot(ACCT).get("inbox.done", "e_000003") or next(
-        r for _k, r in store.snapshot(ACCT).scan("inbox.done") if r["kind"] == "user.utterance")
+    assert _sweep_reads(h, counting) == (0, 0)                          # sixty done exchanges: nothing to read
+    snap = store.snapshot(ACCT)
+    assert len(snap.scan("inbox")) >= 60 and not snap.scan("inbox.done")   # nothing was moved anywhere
+    first = next(r for _k, r in snap.scan("inbox") if r["kind"] == "user.utterance")
     again = h.conv.inbox.accept(E.from_json({**first["env"], "id": "", "accepted_ms": 0}), h.clock.now_ms())
-    assert again.disposition == "duplicate"                              # archived, still a duplicate
-    assert len(store.snapshot(ACCT).scan("turns")) <= 4 * Config().conversation_turns
+    assert again.disposition == "duplicate"                              # an old envelope is still a duplicate
 
 
-def test_nothing_in_course_is_ever_archived(store):
-    h = Harness(store, config=Config(retain_ms=1000, prune_every_ms=0))
-    with h.conv.book.tx() as b:
-        from conversation.types import ItemKind
-        b.open(ItemKind.EFFECT, "x1", data={"tool": "w_tool"})
-        b.move("x1", "submitting")
-    h.at(10 ** 7).pump()
-    assert h.conv.prune(h.clock.now_ms()) == 0 and store.snapshot(ACCT).get("items", "x1")["state"] == "submitting"
+def test_what_is_in_course_is_what_the_sweep_reads(store):
+    counting = _Counting(store)
+    h = Harness(counting)
+    for i in range(20):
+        h.at(i * 30_000).utter([([f"w{i}"], 0)])
+    t = h.clock.mono + 10
+    ws = h.words(["w1"], t)
+    from conversation.ear import signals as S
+    h.hear(S.VadEdge("d1", "rise", t), S.WordSpan("d1", 99, 1, False, ws, (t, ws[-1][2])), h.beats(t, t + 300))
+    h.typed("w9", t + 100)                                               # held behind the open voice
+    rows, whole = _sweep_reads(h, counting)
+    assert whole == 0 and 1 <= rows <= 4, rows                          # the held text, the open voice: not history

@@ -33,8 +33,7 @@ class BookTx:
         return self.tx.get(T, item_id)
 
     def items(self, kind: ItemKind | None = None, states: tuple[str, ...] | None = None) -> list[dict]:
-        return [r for _k, r in self.tx.scan(T) if (kind is None or r["kind"] == str(kind))
-                and (states is None or r["state"] in states)]
+        return [r for _k, r in self.tx.scan(T, states) if kind is None or r["kind"] == str(kind)]
 
     def open(self, kind: ItemKind, item_id: str, *, owner: str = "conversation", data: dict | None = None,
              waiting_on: str | None = None, cause: dict | None = None) -> dict:
