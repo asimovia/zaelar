@@ -68,9 +68,13 @@ def ran_in_the_turn(wid: str, act: str, reading: dict | None, trace: str = "") -
         return False
 
 
-def identified(reading: dict | None) -> tuple[str, str, dict]:
-    """`(card, action, {field: description})` the carried reading surely names, the action declared by the card; else
-    ("", "", {}). Sure = the verdicts' licence, the same floor every other reader of the reading uses."""
+def identified(reading: dict | None, context: dict | None = None) -> tuple[str, str, dict]:
+    """`(card, action, {field: description})` the carried reading surely names — or the errand's own `first_act`, the
+    action the conversation manager's model named — the action declared by the card; else ("", "", {}). Sure = the
+    verdicts' licence, the same floor every other reader of the reading uses."""
+    named = (context or {}).get("first_act") or {}
+    if named.get("widget") and named.get("action"):
+        return _declared(str(named["widget"]), str(named["action"]))
     try:
         from nucleo.turn import brief as _tb, verdicts
         handle = _tb.revived(reading)
@@ -80,12 +84,21 @@ def identified(reading: dict | None) -> tuple[str, str, dict]:
         wid, _sep, act = str(choice or "").partition(":")
         if not (info and wid and act):
             return "", "", {}
+        return _declared(wid, act)
+    except Exception as e:  # noqa: BLE001 — an unread reading leaves the brief as it was
+        _note("the reading", e)
+        return "", "", {}
+
+
+def _declared(wid: str, act: str) -> tuple[str, str, dict]:
+    """`(card, action, its fields)` when the card declares the action; else ("", "", {})."""
+    try:
         from nucleo.flash import frontend as _fe, payload_fill
         if act not in (_fe.declared_actions(payload_fill._base_of(wid)) or {}):
             return "", "", {}
         return wid, act, dict(payload_fill._payload_spec(wid, act))
-    except Exception as e:  # noqa: BLE001 — an unread reading leaves the brief as it was
-        _note("the reading", e)
+    except Exception as e:  # noqa: BLE001 — an unreadable card names no first act
+        _note("the card", e)
         return "", "", {}
 
 
@@ -110,7 +123,7 @@ def act_block(reading: dict | None, context: dict | None = None, trace: str = ""
     when it is not THIS errand's (`owns_the_act`) or when the turn already ran it (`ran_in_the_turn`)."""
     if not owns_the_act(context):
         return ""
-    wid, act, fields = identified(reading)
+    wid, act, fields = identified(reading, context)
     head, line, do = words("first_act_head"), words("first_act_field"), words("first_act_do")
     if not (wid and head and line and do) or ran_in_the_turn(wid, act, reading, trace):
         return ""

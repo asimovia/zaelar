@@ -289,7 +289,7 @@
    "act": "errand.open",
    "door": "task",
    "op": "start",
-   "about": "start a task of his that takes work outside this conversation (several sites, a booking, a comparison, a document): it runs apart and you are told when it ends",
+   "about": "start a task of his that takes work outside this conversation (several sites, a booking, a comparison, a document): it runs apart and you are told when it ends; kind: the work it is (web: done ON a site), class: what it does in the world, surface: what he will look at; widget and action: the declared action it starts with, when there is one",
    "schema": {
     "type": "object",
     "required": [
@@ -298,12 +298,32 @@
     "properties": {
      "request": {
       "type": "string"
+     },
+     "kind": {
+      "type": "string"
+     },
+     "class": {
+      "type": "string"
+     },
+     "surface": {
+      "type": "string"
+     },
+     "widget": {
+      "type": "string"
+     },
+     "action": {
+      "type": "string"
      }
     }
    },
    "covers": [
     "errand.start"
-   ]
+   ],
+   "choices": {
+    "kind": "nucleo.request.kind:_KINDS",
+    "class": "nucleo.acts.errand:_CLASSES",
+    "surface": "nucleo.surfaces:_QUESTION.criteria"
+   }
   },
   "resume_task": {
    "act": "errand.resume",
@@ -514,7 +534,7 @@
    "act": "widget.build",
    "door": "life",
    "op": "build",
-   "about": "a widget of his to create or change (its code, not its data): it is built apart, after his yes",
+   "about": "a widget of his to create, or one of his to change (change: true): its code, not its data; it is built apart",
    "schema": {
     "type": "object",
     "required": [
@@ -523,6 +543,9 @@
     "properties": {
      "request": {
       "type": "string"
+     },
+     "change": {
+      "type": "boolean"
      }
     }
    }

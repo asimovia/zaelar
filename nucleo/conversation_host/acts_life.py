@@ -29,7 +29,10 @@ def _build(args: dict) -> ToolResult:
     request = str(args.get("request") or "").strip()
     if not request:
         return ToolResult("failed", {"reason": "no_request"})
-    tid = errand.escalate_to_slowbrain(request, context={"origin": "conversation", "kind": "code"})
+    from nucleo.request import kind as _kind
+    work = _kind.CHANGE if args.get("change") is True or str(args.get("change")).lower() == "true" else _kind.BUILD
+    tid = errand.escalate_to_slowbrain(request, context={       # the model's call is his SURE order (C4): no «shall I?»
+        "origin": "conversation", "kind": "code", _kind.KEY: {"choice": work, "confidence": 1.0}, _kind.SURE: True})
     return ToolResult("ok" if tid else "rejected", {"task": tid} if tid else {"reason": "not started"})
 
 

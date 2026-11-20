@@ -14,6 +14,8 @@ without a browser asks for what it needs, a browser nobody asked for is the fail
 from __future__ import annotations
 
 KEY = "errand_kind"
+#: the errand's context says the card work was his SURE order (the conversation manager's build act): no «shall I?»
+SURE = "sure_order"
 WEB, BUILD, CHANGE, GENERIC = "web", "build_card", "change_card", "generic"
 #: The answers, declared once: the brief asks them, the readers below map them to the worker's kind.
 _KINDS = (
@@ -93,7 +95,10 @@ def sure_order(ctx: dict | None) -> bool:
     """He ORDERED this card work and the reading is sure of it: the commissioning turn was read as an order
     (`reply.owes_an_act`) and the kind of work — build a card, change one — at the veto's confidence. Then it starts
     with no question (his rule, 2026-11-18: certainty that he asked needs no «shall I?»; only doubt asks, once).
-    Anything less — no reading, an unsure kind, a turn that was not an order — is doubt."""
+    Anything less — no reading, an unsure kind, a turn that was not an order — is doubt. The conversation manager's
+    build act carries it as a fact of the errand (`SURE`): the model's call is the order."""
+    if (ctx or {}).get(SURE) is True and str(((ctx or {}).get(KEY) or {}).get("choice") or "") in (BUILD, CHANGE):
+        return True
     try:
         from nucleo.turn import brief as _tb, reply as _reply, verdicts as _v
         v = (ctx or {}).get(KEY) or {}

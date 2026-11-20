@@ -22,12 +22,30 @@ from __future__ import annotations
 from conversation.ports import ToolResult
 
 
+def errand_context(args: dict) -> dict:
+    """What the model's call decides about an errand, in the context its readers already respect (`request/kind.carry`
+    reads the old brief only for a key that is missing): its kind, its consent class, the surface he will look at, the
+    declared action it starts with, and his words. The model's order IS the decision: carried at full confidence."""
+    from nucleo.conversation_host import routing
+    from nucleo.request import kind as _kind
+    said = routing.said()
+    ctx: dict = {"origin": "conversation", **({"heard": said, "said": said} if said else {})}
+    for arg, key in (("kind", _kind.KEY), ("class", "errand_class")):
+        if str(args.get(arg) or "").strip():
+            ctx[key] = {"choice": str(args[arg]).strip(), "confidence": 1.0}
+    if str(args.get("surface") or "").strip():
+        ctx["surface"] = str(args["surface"]).strip()
+    if str(args.get("widget") or "").strip() and str(args.get("action") or "").strip():
+        ctx["first_act"] = {"widget": str(args["widget"]).strip(), "action": str(args["action"]).strip()}
+    return ctx
+
+
 def _start(args: dict) -> ToolResult:
     from nucleo.acts import errand
     request = str(args.get("request") or "").strip()
     if not request:
         return ToolResult("failed", {"reason": "no_request"})
-    tid = errand.escalate_to_slowbrain(request, context={"origin": "conversation"})
+    tid = errand.escalate_to_slowbrain(request, context=errand_context(args))
     if not tid:
         return ToolResult("rejected", {"reason": "the errand door did not start it (refused, parked or stopped)"})
     return ToolResult("ok", {"task": tid, "started": request[:160]})

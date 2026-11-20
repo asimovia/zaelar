@@ -36,8 +36,30 @@ from nucleo.conversation_host.declared import declared
 ACTS: dict[str, dict] = dict(declared()["acts"])      # declared data, read once
 
 
+def _owned_choices(path: str) -> list[str]:
+    """The values an argument's OWNER declares (`module:attribute[.key]`): a tuple of `(value, meaning)` pairs, or a
+    dict's keys — read from the owner, never copied into this file's data."""
+    import importlib
+    mod, _sep, attr = path.partition(":")
+    obj = importlib.import_module(mod)
+    for part in attr.split("."):
+        obj = obj[part] if isinstance(obj, dict) else getattr(obj, part)
+    return [str(v[0]) if isinstance(v, (tuple, list)) else str(v) for v in obj]
+
+
+def _schema(a: dict) -> dict:
+    """An act's schema, its arguments' `choices` filled from the modules that own them (`enum`)."""
+    if not a.get("choices"):
+        return a["schema"]
+    import copy
+    schema = copy.deepcopy(a["schema"])
+    for arg, path in a["choices"].items():
+        schema["properties"][arg]["enum"] = _owned_choices(path)
+    return schema
+
+
 def catalog() -> list[ToolSpec]:
-    return [ToolSpec(name, a["schema"], act=a["act"], effect_class=tools_read.derive(a["act"], False), about=a["about"])
+    return [ToolSpec(name, _schema(a), act=a["act"], effect_class=tools_read.derive(a["act"], False), about=a["about"])
             for name, a in ACTS.items()]
 
 

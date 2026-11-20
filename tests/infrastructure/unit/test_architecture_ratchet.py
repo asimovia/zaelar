@@ -739,6 +739,10 @@ _PACKAGE_CEILINGS["nucleo/conversation_host"] += 3   # same day: `turns.NOT_OK` 
 _TOTAL_MAX += 105    # same cause, measured
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 5     # 2026-11-20 V2-941 (plan v3.2 §3, commit 2): the host's hands for a stop the model chose (`stops.py`, +62) and the four stops offered, less every reader of a stop in his words (`split_stop`, `orders_stop`, `ear_in._stopped`, the typed split, the stop branch of `for_ear`)
 _TOTAL_MAX += 5      # same cause, measured
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 43  # 2026-11-21 INI-078 F2 F5: start_task's kind, class and surface with their choices read from their owners (`acts._owned_choices`), the errand's context at the model's word with his words (`acts_tasks.errand_context`), a build as a sure order
+_PACKAGE_CEILINGS["nucleo/request"] += 5    # same: `kind.SURE`, the manager's build act read as his sure order (C4)
+_PACKAGE_CEILINGS["nucleo/workers"] += 13   # same: the worker's first step from the errand's own `first_act` (`first_act._declared`, split out of `identified`)
+_TOTAL_MAX += 61     # same causes, measured
 _PACKAGE_CEILINGS["conversation"] += 180               # 2026-11-20 V2-941 (plan v3.2 §4, R3, commit 3): a declared new mechanism — our voice never starts while his voice is open (`manager/hold.py`: one predicate, a ready reply parked and never redone, the chunk he adds run with it in view, the two exits, the sweep and the owed lines held by it; the grace-parked reply moved beside it to keep `run.py` under 800)
 _TOTAL_MAX += 180    # same cause, measured
 _PACKAGE_CEILINGS["conversation"] += 18                # 2026-11-20 V2-941 (plan v3.2 §4, R3, commit 4): a piece cut by its length with his voice still up waits for the next one (`mailbox._chained`), and at the monologue's ceiling the batch runs and its reply goes to the wall
@@ -808,6 +812,10 @@ _PACKAGE_CEILINGS["nucleo/actionmap"] += 8  # same (V2-942 T8): `watch.candidate
 _TOTAL_MAX += 123    # same causes, measured
 _PACKAGE_CEILINGS["nucleo/events"] += 5   # 2026-11-20 INI-078 F2 7c (review): a message into a cluster and one to a contact's agent are leaving types of the one vocabulary (`cluster.send`, `a2a.message`), so the manager's gateway holds them while only the owner's lane is let go
 _TOTAL_MAX += 5      # same cause, measured
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 43  # 2026-11-21 INI-078 F2 F5: start_task's kind, class and surface with their choices read from their owners (`acts._owned_choices`), the errand's context at the model's word with his words (`acts_tasks.errand_context`), a build as a sure order
+_PACKAGE_CEILINGS["nucleo/request"] += 5    # same: `kind.SURE`, the manager's build act read as his sure order (C4)
+_PACKAGE_CEILINGS["nucleo/workers"] += 13   # same: the worker's first step from the errand's own `first_act` (`first_act._declared`, split out of `identified`)
+_TOTAL_MAX += 61     # same causes, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())
