@@ -261,7 +261,11 @@ class Database:
     # ── serialized access ────────────────────────────────────────────────────────────────────────────────
     @contextmanager
     def cursor(self):
-        """Cursor under the lock. Commits on clean exit, rolls back on exception."""
+        """Cursor under the lock. Commits on clean exit, rolls back on exception. Refused inside an EXCLUSIVE
+        transaction of this thread (`exclusive()`): it is reentrant and commits on exit, so it would commit the outer
+        transaction half done — the caller must not reach another store from inside one."""
+        if getattr(_EXCLUSIVE, "on", False):
+            raise RuntimeError("a store reached from inside an exclusive transaction: it would commit it half done")
         with self._lock:
             cur = self.conn.cursor()
             try:
@@ -305,6 +309,29 @@ _DB: Database | None = None
 # stamp_identity() -> nucleo.runstate.stopped() -> kv_get() -> get_db() again, on the SAME thread, before
 # the first get_db() call has returned. A plain Lock self-deadlocks there every time; RLock does not.
 _DB_LOCK = threading.RLock()
+
+
+_EXCLUSIVE = threading.local()
+
+
+@contextmanager
+def exclusive(db: "Database"):
+    """One transaction of its own on the shared connection, under its lock: `BEGIN IMMEDIATE` … `COMMIT`, rolled back
+    on any exception (a crash included). While it is open this thread may not enter `cursor()`, nor open another one.
+    Yields the raw connection: reads inside go through it, so they see what the transaction wrote."""
+    if getattr(_EXCLUSIVE, "on", False):
+        raise RuntimeError("a transaction inside a transaction: the inner one would be lost at commit")
+    with db._lock:
+        db.conn.execute("BEGIN IMMEDIATE")
+        _EXCLUSIVE.on = True
+        try:
+            yield db.conn
+            db.conn.execute("COMMIT")
+        except BaseException:
+            db.conn.execute("ROLLBACK")
+            raise
+        finally:
+            _EXCLUSIVE.on = False
 
 
 def get_db() -> Database:

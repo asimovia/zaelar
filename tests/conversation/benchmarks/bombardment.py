@@ -16,6 +16,9 @@ import sys
 import time
 from collections import Counter
 
+import tempfile
+from pathlib import Path
+
 from conversation.testing.generate import run_case
 
 
@@ -31,9 +34,12 @@ def main(argv: list[str] | None = None) -> int:
     by_inv: Counter = Counter()
     examples: dict[str, list] = {}
     bad_cases = 0
+    folder = Path(tempfile.mkdtemp(prefix="p3-"))
+    from tests.conversation.unit.test_random_chunkings_break_no_invariant import on_zaelar_db
+    sql = on_zaelar_db(folder)                       # one case in ten on the host's store over a zaelar.db of its own
     for i in range(args.cases):
         seed = args.seed_base + i
-        violations = run_case(seed, args.actions)
+        violations = run_case(seed, args.actions, sql_store=sql)
         if violations:
             bad_cases += 1
             for v in violations:

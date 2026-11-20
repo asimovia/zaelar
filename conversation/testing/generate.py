@@ -26,7 +26,6 @@ from conversation.inbox.accounting import audit
 from conversation.manager import Conversation
 from conversation.ports import Command, Done, Failed, StaleEpoch, ToolCall, ToolResult
 from conversation.store.memory import MemoryStore
-from conversation.store.sqlite import SqliteStore
 from conversation.testing.fakes import (AckingMouth, FakeClock, FakeOwed, ListTelemetry, NoMemory, RecordingTools,
                                         evidence)
 from conversation.testing.scripted_model import ScriptedModel, reply
@@ -59,9 +58,10 @@ class AuditedStore(_Audited, MemoryStore):
     """The audited store in memory: most cases."""
 
 
-class AuditedSqliteStore(_Audited, SqliteStore):
-    """The audited store on sqlite: one case in ten, so its own paths (`json_extract` in `cas` and in a scan by state,
-    `BEGIN IMMEDIATE`) are bombarded too."""
+def audited(store_class: type) -> type:
+    """The same audit over another `Store` (the host's, on sqlite): one case in ten runs on it, so its own paths —
+    `BEGIN IMMEDIATE`, a scan by state, the lease — are bombarded too."""
+    return type(f"Audited{store_class.__name__}", (_Audited, store_class), {})
 
 
 #: the numbers the design writes (v3.1 §1.6 bis, §1.6 ter), frozen here: the properties judge against THESE, never
@@ -72,13 +72,13 @@ SPEC = {"intervention_max_ms": 30_000, "resume_hold_max_ms": 8000, "resume_windo
 
 
 class Case:
-    def __init__(self, seed: int, cfg: Config | None = None) -> None:
+    def __init__(self, seed: int, cfg: Config | None = None, sql_store=None) -> None:
         self.rng = random.Random(seed)
         self.seed = seed
         self.cfg = cfg or Config(liveness_ms=SPEC["liveness_ms"], model_first_ms=40, model_gap_ms=40, tool_ms=40,
                                  say_end_ms=8000)
-        self.on_sqlite = seed % 10 == 3                       # chosen by the seed, not the rng: seeds stay seeds
-        self.store = AuditedSqliteStore(":memory:") if self.on_sqlite else AuditedStore()
+        self.on_sqlite = sql_store is not None and seed % 10 == 3   # chosen by the seed, not the rng
+        self.store = sql_store() if self.on_sqlite else AuditedStore()
         self.clock, self.tel = FakeClock(), ListTelemetry()
         self.tools = RecordingTools()
         if self.rng.random() < 0.1:
@@ -711,8 +711,9 @@ def check(case: Case) -> list[str]:
     return out
 
 
-def run_case(seed: int, actions: int = 14) -> list[str]:
-    case = Case(seed)
+def run_case(seed: int, actions: int = 14, sql_store=None) -> list[str]:
+    """`sql_store`: a factory of an AUDITED store over sqlite (`audited(…)`), used one case in ten."""
+    case = Case(seed, sql_store=sql_store)
     try:
         case.play(actions)
         return check(case)

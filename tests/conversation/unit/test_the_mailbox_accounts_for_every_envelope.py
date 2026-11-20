@@ -10,7 +10,7 @@ from conversation.config import Config
 from conversation.ear import signals as S
 from conversation.inbox import Inbox
 from conversation.inbox.accounting import audit, outcomes
-from conversation.store import SqliteStore
+from tests.conversation.conftest import zaelar_store
 from conversation.telemetry import Emitter
 from conversation.types import ControlOp, Ids
 from tests.conversation.unit.inboxkit import ACCT, Pipe, control
@@ -62,12 +62,12 @@ def test_a_control_is_applied_at_once_and_never_queued(store, clock, telemetry):
 
 def test_what_was_accepted_survives_closing_the_store(tmp_path, clock, telemetry):
     path = tmp_path / "c.db"
-    s = SqliteStore(path)
+    s = zaelar_store(path)
     p = Pipe(s, clock, telemetry)
     p.signal(S.TypedSubmit("d1", "c1", "w1", 100))
     lease = p.lease
     s.close()
-    s2 = SqliteStore(path)
+    s2 = zaelar_store(path)
     inbox = Inbox(s2, lambda: lease, ACCT, Config(), Emitter(telemetry, clock, ACCT), Ids("r"))
     b = inbox.next_batch(1000)
     assert [e.body.text for e in b.envelopes] == ["w1"]

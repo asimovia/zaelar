@@ -15,7 +15,7 @@ import time
 import pytest
 
 from conversation.ports import Conflict, StaleEpoch
-from conversation.store import SqliteStore
+from tests.conversation.conftest import zaelar_store
 
 
 def test_acquire_bumps_the_epoch_and_names_the_owner(store):
@@ -93,13 +93,13 @@ def test_scan_is_ordered_and_a_snapshot_is_detached(store):
 
 def test_sqlite_survives_a_reopen(tmp_path):
     path = tmp_path / "c.db"
-    s = SqliteStore(path)
+    s = zaelar_store(path)
     lease = s.acquire("acct", "p")
     with s.tx(lease) as tx:
         tx.put("inbox", "e1", {"state": "queued"})
         tx.next_seq("inbox")
     s.close()
-    s2 = SqliteStore(path)
+    s2 = zaelar_store(path)
     assert s2.current("acct") == lease
     assert s2.snapshot("acct").get("inbox", "e1") == {"state": "queued"}
     with s2.tx(lease) as tx:
@@ -109,7 +109,7 @@ def test_sqlite_survives_a_reopen(tmp_path):
 
 def test_two_real_writers_on_one_file_the_old_one_stops_at_the_takeover(tmp_path):
     path = tmp_path / "c.db"
-    first, second = SqliteStore(path), SqliteStore(path)
+    first, second = zaelar_store(path), zaelar_store(path)
     lease_a = first.acquire("acct", "proc-a")
     stop = threading.Event()
 
@@ -165,16 +165,16 @@ def test_the_last_controllable_point_before_a_call_checks_the_lease_again(store,
 def test_b4_a_second_process_on_the_same_store_answers_with_ids_of_its_own(tmp_path):
     """After a restart on the same file the ids of the new process never collide with the old one's rows (audit
     B4): what the person says next is answered, not discarded as a duplicate."""
-    from conversation.store import SqliteStore
+    from tests.conversation.conftest import zaelar_store
     from tests.conversation.unit.convkit import Harness
     path = tmp_path / "c.db"
-    s1 = SqliteStore(path)
+    s1 = zaelar_store(path)
     h1 = Harness(s1, grace=False)
     h1.utter([(["w1"], 0)])
     assert [lab for lab, _ in h1.closes()] == ["answered"]
     s1.close()
-    s2 = SqliteStore(path)
-    h2 = Harness(s2, grace=False)                                            # a new lease: epoch 2
+    s2 = zaelar_store(path)
+    h2 = Harness(s2, grace=False)                               # a new lease: epoch 2
     h2.at(10_000).utter([(["w2"], 0)])
     assert [lab for lab, _ in h2.closes()] == ["answered"] and "conv_inbox/duplicate" not in h2.tel.labels()
     ivs = {r["env"]["refs"]["intervention_id"] for _k, r in s2.snapshot("acct-test").scan("inbox")
@@ -205,3 +205,62 @@ def test_a_scan_by_states_reads_only_those_rows(store):
         assert [k for k, _ in tx.scan("t", states=("open", "held"))] == ["a", "c", "d"]
     snap = store.snapshot("acct")
     assert [k for k, _ in snap.scan("t", states=("done",))] == ["b"] and len(snap.scan("t")) == 5
+
+
+def test_no_port_is_called_while_a_transaction_is_open(store):
+    """Inside a transaction only the store is touched: no model, tool, mouth, memory, line owed, task — and no
+    telemetry either (what a transaction says waits for its commit). Over the host's store a call from inside would
+    commit the transaction half done; this proves the package never makes one."""
+    from contextlib import contextmanager
+
+    from conversation.ear import signals as S
+    from conversation.ports import Done, ToolCall
+    from conversation.testing.scripted_model import reply
+    from conversation.types import ControlOp
+    from tests.conversation.unit.convkit import Harness
+    from tests.conversation.unit.inboxkit import control
+
+    open_tx: list = []
+    seen: list = []
+
+    class Watched:
+        def __init__(self, inner):
+            self._i = inner
+
+        def __getattr__(self, name):
+            return getattr(self._i, name)
+
+        @contextmanager
+        def tx(self, lease):
+            with self._i.tx(lease) as t:
+                open_tx.append(1)
+                try:
+                    yield t
+                finally:
+                    open_tx.pop()
+
+    def guard(obj, *names):
+        for name in names:
+            fn = getattr(obj, name)
+
+            def wrapped(*a, _fn=fn, _name=name, **kw):
+                if open_tx:
+                    seen.append(_name)
+                return _fn(*a, **kw)
+            setattr(obj, name, wrapped)
+
+    h = Harness(Watched(store))
+    guard(h.tel, "emit")
+    guard(h.model, "stream")
+    guard(h.tools, "call", "catalog")
+    guard(h.mouth, "say", "stop")
+    guard(h.owed, "next", "settle", "release", "owe", "add")
+    h.model.script["iv_000001"] = [[ToolCall("c1", "search", {"q": "w1"}), Done()], [reply("w9"), Done()]]
+    h.owed.add("n1", "w5")
+    h.utter([(["w1", "w2"], 0)])
+    h.typed("w3", h.clock.mono + 10)
+    h.conv.give(control(ControlOp.STOP, h.clock.mono, "k1", endpoint="d1"))
+    h.hear(S.Tick(h.clock.mono + 5000))
+    h.at(h.clock.mono + 6000).pump()
+    assert h.model.calls and h.mouth.orders and h.tel.events
+    assert not seen, f"called inside a transaction: {sorted(set(seen))}"

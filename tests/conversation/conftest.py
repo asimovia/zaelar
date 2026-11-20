@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from conversation.store import MemoryStore, SqliteStore
+from conversation.store import MemoryStore
 
 
 class ManualClock:
@@ -46,9 +46,16 @@ def telemetry() -> ListTelemetry:
     return ListTelemetry()
 
 
-@pytest.fixture(params=["memory", "sqlite"])
+def zaelar_store(path, store_class=None):
+    """The host's `Store` over a `zaelar.db` of its own (`conv_*` rows), as the engine runs it."""
+    from memory.db import Database
+    from nucleo.conversation_host.store import ZaelarStore
+    return (store_class or ZaelarStore)(Database(path))
+
+
+@pytest.fixture(params=["memory", "zaelar"])
 def store(request, tmp_path):
-    s = MemoryStore() if request.param == "memory" else SqliteStore(tmp_path / "conversation.db")
+    s = MemoryStore() if request.param == "memory" else zaelar_store(tmp_path / "zaelar.db")
     yield s
     s.close()
 

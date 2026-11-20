@@ -27,7 +27,7 @@ stdlib only, no regex, no word tables (the person's words are never read by code
 
 Ports (`ports.py`) are the seams to the outside: `Clock`, `Telemetry`, `Model`, `Tools`, `Memory`, `Mouth`, `Owed`, `Tasks`,
 `Store`. A control by id with no handler here (without `Tasks`, cancelling a task too) is refused when it is accepted.
-Two stores keep the same contract: in memory (tests) and on sqlite (a file of its own). A transaction inside another
+Two stores keep the same contract: the package's in memory (its tests) and the host's on `zaelar.db` (`nucleo/conversation_host/store.py`, rows `conv_rows` + `conv_meta` of schema v12, through `memory.api.conv`). The host runs the conversation in a thread of its own, with its own event loop: entries are handed over to it, its timer and an hourly prune run there, and it is the only writer of those rows. A transaction is exclusive on the shared connection: inside it no other store can be reached. The prune drops what is final and old, never a row in course. A transaction inside another
 is refused at once; a reader that sweeps reads by state (what is in course), so nothing is archived to keep a table
 small. A new owner of the account recovers what a dead one left — a dequeued batch back to the queue, an effect left
 `submitting` as `submission_unknown`, and a voice it was hearing ended incomplete (`restart`), so its run asks again.

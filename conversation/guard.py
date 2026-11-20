@@ -79,7 +79,7 @@ class TimedStore:
     def tx(self, lease: Lease):
         t0 = time.monotonic()
         try:
-            with self._s.tx(lease) as t:
+            with self._em.deferred(), self._s.tx(lease) as t:   # no port inside: what it says waits for the commit
                 yield t
         finally:
             _slow(self._em, self._cfg, "store", (time.monotonic() - t0) * 1000)

@@ -12,6 +12,7 @@ from the emitting module, like every other event of the engine.
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Callable
@@ -104,6 +105,24 @@ class Emitter:
     account: str
     epoch: Callable[[], int] = field(default=lambda: 0)
     runs: dict = field(default_factory=dict)          # run → the trace it was started with
+    held: list | None = None                          # events of a transaction in course: said when it commits
+
+    @contextmanager
+    def deferred(self):
+        """Inside a transaction no port is called — the telemetry's included: what it says waits for the commit, and
+        a rolled-back transaction says nothing."""
+        if self.held is not None:
+            yield
+            return
+        self.held = []
+        try:
+            yield
+        except BaseException:
+            self.held = None
+            raise
+        held, self.held = self.held, None
+        for kind, label, body in held:
+            self._send(kind, label, body)
 
     def bind(self, run_id: str, trace: str) -> None:
         self.runs[run_id] = trace
@@ -122,6 +141,12 @@ class Emitter:
         body = {"t_ms": self.clock.now_ms(), "mono_ms": self.clock.mono_ms(), "account": self.account,
                 "epoch": self.epoch(), "owner": owner, "cause": cause, "refs": refs,
                 "trace": trace or root(refs, self.runs), **payload}
+        if self.held is not None:
+            self.held.append((kind, label, body))
+            return
+        self._send(kind, label, body)
+
+    def _send(self, kind: str, label: str, body: dict) -> None:
         try:
             self.port.emit(kind, label, body)
         except Exception as e:  # noqa: BLE001 — the port must never raise; if it does, the manager goes on and counts

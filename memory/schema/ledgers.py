@@ -241,3 +241,20 @@ NOTICES_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_notices_owed ON notices(state, next_try_at)",
     "CREATE INDEX IF NOT EXISTS idx_notices_created ON notices(created_at DESC)",
 ]
+
+
+# ── the conversation & turn manager (V2-941, v3.1 B1) ────────────────────────────────────────────────────────────
+# The rows of the `conversation` package's `Store` port: one row per (account, logical table, key) — its tables are
+# the package's, not the engine's (inbox, items, says, interventions, voice_open, evidence, flags, effect_ops). Its ONE
+# writer is the conversation's own thread (`nucleo/conversation_host/runtime.py`), through
+# `memory/conversation_store.py`. The row is JSON; `state` is lifted out so a sweep reads what is in course and never
+# the history; `uniq` is the dedupe key where the port asks for one; `updated_ms` lets the hourly prune drop what is
+# final and old. `conv_meta` holds the lease (the epoch that fences a second process) and the counters.
+CONV = [
+    "CREATE TABLE IF NOT EXISTS conv_meta (account TEXT NOT NULL, key TEXT NOT NULL, value TEXT NOT NULL, "
+    "PRIMARY KEY (account, key))",
+    "CREATE TABLE IF NOT EXISTS conv_rows (account TEXT NOT NULL, tbl TEXT NOT NULL, key TEXT NOT NULL, state TEXT, "
+    "uniq TEXT, updated_ms INTEGER NOT NULL DEFAULT 0, row TEXT NOT NULL, PRIMARY KEY (account, tbl, key))",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_conv_rows_uniq ON conv_rows(account, tbl, uniq) WHERE uniq IS NOT NULL",
+    "CREATE INDEX IF NOT EXISTS idx_conv_rows_state ON conv_rows(account, tbl, state)",
+]

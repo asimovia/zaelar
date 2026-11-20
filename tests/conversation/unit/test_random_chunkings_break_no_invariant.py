@@ -17,15 +17,25 @@ from __future__ import annotations
 
 import time
 
-from conversation.testing.generate import run_case
+import itertools
+
+from conversation.testing.generate import audited, run_case
+from tests.conversation.conftest import zaelar_store
 
 CASES, ACTIONS, BUDGET_S = 2000, 10, 20.0
 
 
-def test_two_thousand_random_conversations_break_no_invariant():
-    t0, found = time.monotonic(), []
+def on_zaelar_db(folder):
+    """One case in ten runs on the host's store over a `zaelar.db` of its own."""
+    from nucleo.conversation_host.store import ZaelarStore
+    n = itertools.count()
+    return lambda: zaelar_store(folder / f"p3-{next(n)}.db", audited(ZaelarStore))
+
+
+def test_two_thousand_random_conversations_break_no_invariant(tmp_path):
+    t0, found, sql = time.monotonic(), [], on_zaelar_db(tmp_path)
     for seed in range(CASES):
-        violations = run_case(seed, ACTIONS)
+        violations = run_case(seed, ACTIONS, sql_store=sql)
         if violations:
             found.append((seed, violations[:3]))
             if len(found) >= 3:

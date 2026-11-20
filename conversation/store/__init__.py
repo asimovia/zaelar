@@ -1,5 +1,5 @@
-"""Two implementations of the `Store` port with one contract (node 13.19): in memory for fast tests, sqlite in a file
-of its own as the reference adapter. Any production adapter passes the same battery."""
+"""The `Store` port's double: in memory, for the package's own tests. The one implementation over sqlite is the
+engine's (`nucleo/conversation_host/store.py`, the `conv_*` rows of `zaelar.db`); both pass the same contract battery
+(node 13.19)."""
 from conversation.store.memory import MemoryStore as MemoryStore
-from conversation.store.sqlite import SqliteStore as SqliteStore
 

@@ -25,7 +25,7 @@ from conversation.gateway import dispatch
 from conversation.gateway.authority import RunCtx
 from conversation import envelopes as E
 from conversation.ports import Done, ToolCall
-from conversation.store import SqliteStore
+from tests.conversation.conftest import zaelar_store
 from conversation.testing.faults import SENTENCE, Crash, Point, inject
 from conversation.testing.fakes import AckingMouth, FakeClock, ListTelemetry, NoMemory, RecordingTools
 from conversation.testing.scripted_model import ScriptedModel, reply
@@ -41,7 +41,7 @@ class Process:
     """One process of the engine: a manager over the store file, the same provider (tools) across restarts."""
 
     def __init__(self, path, clock, tools) -> None:
-        self.store = SqliteStore(path)
+        self.store = zaelar_store(path)
         self.tel, self.mouth, self.model = ListTelemetry(), AckingMouth(), _script()
         self.conv = build(account=ACCT, owner="p", model=self.model, tools=tools, store=self.store,
                           memory=NoMemory(), clock=clock, mouth=self.mouth, telemetry=self.tel,
