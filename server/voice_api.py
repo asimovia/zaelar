@@ -144,6 +144,10 @@ async def debug_conversation(session: str):
     proof = sys.modules.get("nucleo.conversation_host.proof")
     if proof is None:
         return JSONResponse({"session": session, "on": False})
+    if session == "me":                     # this installation's account; resolving it may read the database
+        import asyncio
+        from nucleo.conversation_host import boot
+        session = await asyncio.to_thread(boot.account)
     return JSONResponse(proof.report(session))
 
 

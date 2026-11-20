@@ -160,7 +160,9 @@ async def drive_conversation(eng: Engine, conv: dict) -> dict:
             answers.append({"piece": i, "sent_at": t0, "wall_ms": round((time.monotonic() - t0) * 1000),
                             "ok": res.get("ok"), "error": res.get("error"), "reply": res.get("reply"),
                             "action": res.get("action"), "tool_calls": res.get("tool_calls") or [],
-                            "trace": res.get("trace") or "", "answered_at": time.monotonic()})
+                            "trace": res.get("trace") or "", "answered_at": time.monotonic(),
+                            # the manager's path also says how the request closed and which reads it refused
+                            "conv": res.get("conv"), "refused_calls": res.get("refused_calls") or []})
 
         jobs = []
         for i, piece in enumerate(turn["pieces"]):

@@ -107,7 +107,8 @@ class Gateway:
         elif spec.effect_class is None:
             reason = "undeclared"
         elif spec.effect_class is EffectClass.READ:
-            self._note("read", ctx, tool=call.name, effect_class=str(spec.effect_class), model_on=hint)
+            self._note("read", ctx, tool=call.name, effect_class=str(spec.effect_class), model_on=hint,
+                       args={k: str(v)[:200] for k, v in call.args.items() if k != "on"})   # what was read, bounded
             self._flush()
             return Read()
         else:

@@ -20,7 +20,7 @@ import time
 import uuid
 
 _lock = threading.Lock()
-_waits: dict[str, dict] = {}                 # client id → {iv, future, said}
+_waits: dict[str, dict] = {}                 # client id → {iv, future, said, reads}
 _queue: list = []                            # lines handed while the conversation was still opening, in order
 _opener: dict = {"t": None, "rt": None}       # the thread that opens the conversation, and what it opened
 
@@ -32,6 +32,12 @@ def _listen(kind: str, label: str, p: dict) -> None:
             w = _waits.get(str((p.get("cause") or {}).get("ref") or ""))
             if w is not None:
                 w["iv"] = (p.get("refs") or {}).get("iv")
+    elif kind == "conv_effect" and label in ("read", "refused"):
+        req = (p.get("refs") or {}).get("req")
+        with _lock:
+            for w in _waits.values():
+                if w.get("iv") and req == f"r_{w['iv']}":
+                    w["reads"].append({"name": p.get("tool"), "args": p.get("args") or {}, "outcome": label})
     elif kind == "conv_close":
         req = (p.get("refs") or {}).get("req")
         with _lock:
@@ -105,7 +111,7 @@ def typed(text: str, dev: str = "", *, wait: bool = False, checked: bool = False
     cid = f"c_{uuid.uuid4().hex[:12]}"
     if wait:
         with _lock:
-            _waits[cid] = {"iv": None, "future": concurrent.futures.Future(), "said": []}
+            _waits[cid] = {"iv": None, "future": concurrent.futures.Future(), "said": [], "reads": []}
     from conversation.ear import signals as S
     sig = S.TypedSubmit(dev or "holder", cid, str(text).strip()[:4000], int(time.time() * 1000))
 
@@ -124,7 +130,8 @@ def typed(text: str, dev: str = "", *, wait: bool = False, checked: bool = False
 
 
 async def typed_and_wait(text: str, dev: str = "", *, timeout_s: float = 90.0) -> dict:
-    """The text channel's shape (`ok`, `reply`, `tool_calls`) plus a `conv` block with the ids."""
+    """The text channel's shape (`ok`, `reply`, `tool_calls`: the reads its run made, with their arguments; `trace`:
+    its flow) plus the reads the gateway refused and a `conv` block with the ids."""
     stop = await asyncio.to_thread(_guards, text, dev)      # off the loop: they can wait on the database lock
     if stop is not None:
         return stop
@@ -140,5 +147,7 @@ async def typed_and_wait(text: str, dev: str = "", *, timeout_s: float = 90.0) -
     finally:
         with _lock:
             _waits.pop(got["cid"], None)
-    return {"ok": label == "answered", "reply": " ".join(w["said"]), "tool_calls": [], "channel": "conversation",
-            "conv": {"cid": got["cid"], "iv": w.get("iv"), "close": label}}
+    return {"ok": label == "answered", "reply": " ".join(w["said"]), "channel": "conversation",
+            "tool_calls": [r for r in w["reads"] if r["outcome"] == "read"],
+            "refused_calls": [r for r in w["reads"] if r["outcome"] == "refused"],
+            "trace": w.get("iv") or "", "conv": {"cid": got["cid"], "iv": w.get("iv"), "close": label}}

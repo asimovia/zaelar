@@ -32,6 +32,12 @@ opens wait in order. And a net: a line that still reaches the old turn's reply i
 no turn — it is counted, said as an alert, and handed to the funnel. Until the voice half of the mouth, a reply is
 shown on the chat wall.
 
+The live passes run on a disposable engine with the switch on (`tests/conversation/e2e/sandbox.py`): the text suite
+T1–T12 in both languages (`e2e/text_suite.py`, its cases frozen in `fixtures/suite/text.v1.json`), the bench of the
+model's own `complete` reading (`benchmarks/complete_bench.py`), the frozen corpus and the simulated person. The text
+channel's answer carries what each pass judges: the request's close, the reads its run made with their arguments, the
+reads refused, and its trace. They run by request, never in the gate; what they compute is tested deterministically.
+
 What the engine owes him lives in ONE ledger, `notices`. While a session of the manager holds the voice, `notify`
 paints a line and CLAIMS it for that voice (`nucleo/pulse/notice_claim.py`) — no push, no «shown» — so the retry and
 the drain to the next screen, which read `owed`, never touch it. The manager takes each claimed line once and says it

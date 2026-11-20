@@ -588,6 +588,10 @@ _PACKAGE_CEILINGS["nucleo/pulse"] += 83     # 2026-11-20 V2-941 v3.1 B6: a notic
 _PACKAGE_CEILINGS["memory"] += 22           # same: the notices store's conditional move, the claimed rows and the expired claims
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 63    # same: the Owed port over the notices ledger, wired in the boot
 _TOTAL_MAX += 168    # same cause
+_PACKAGE_CEILINGS["conversation"] += 1    # 2026-11-20 V2-941 v3.1 B7: a read's event carries its arguments, bounded (what the live passes judge the route by)
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 9    # same: the text channel's answer carries its reads, the refused ones and its trace
+_PACKAGE_CEILINGS["server"] += 4          # same: the proof endpoint reads `me`, this installation's account
+_TOTAL_MAX += 14     # same cause
 
 
 def test_the_total_only_shrinks():
