@@ -724,6 +724,8 @@ _PACKAGE_CEILINGS["nucleo/conversation_host"] += 29    # 2026-11-20 V2-941 (plan
 _PACKAGE_CEILINGS["voice"] += 10                       # same cause: `voice_lock.admit_now`, the no-grace admit for a judge after the close
 _PACKAGE_CEILINGS["conversation"] += 1                 # same cause: a silent end says whether his barge-in cut us
 _TOTAL_MAX += 40     # same cause, measured
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 115   # 2026-11-20 V2-941 (plan v3.2 C16): a declared new mechanism — the turn as a unit for the Master and the viewer (`turns.py`: a `trace` «turno» per entry, `flow end` at its request's close, `merge` when absorbed, its id on our rows and on the voice's `bot_speech`)
+_TOTAL_MAX += 115    # same cause, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

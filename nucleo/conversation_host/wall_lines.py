@@ -23,7 +23,8 @@ def listen(kind: str, label: str, p: dict) -> None:
     text = str(p.get("text") or "").strip()
     if refs.get("channel") != "voice" or not text:
         return
-    trace = str(refs.get("iv") or p.get("trace") or "")
+    from nucleo.conversation_host import turns
+    trace = turns.corr(refs.get("iv"), text) or str(p.get("trace") or "")      # his turn's id (C16)
     from voice import attention, observer
     observer.emit("transcript", LABEL, text=text, role="user", extra={"trace": trace}, piece="u_voice")
     try:

@@ -65,10 +65,10 @@ def runtime():
     """The account's conversation, opened if it is not yet. Opening can wait — its lease is a write on the shared
     database, under the lock other writers hold for seconds at times — so it never runs on a caller's loop: see
     `_hand`."""
-    from nucleo.conversation_host import boot, guards, sessions, wall_lines
+    from nucleo.conversation_host import boot, guards, sessions, turns, wall_lines
     acct = boot.account()
-    return sessions.get(acct) or sessions.open_(acct, "body", boot.make((_listen, wall_lines.listen, guards.listen),
-                                                                       _said))
+    listeners = (_listen, turns.listen, wall_lines.listen, guards.listen)
+    return sessions.get(acct) or sessions.open_(acct, "body", boot.make(listeners, _said))
 
 
 def reset() -> None:

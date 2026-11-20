@@ -89,9 +89,9 @@ class Inbox:
                 self._emit("duplicate", env, cause={"kind": "producer", "ref": env.producer},
                            text=getattr(env.body, "text", None))
                 return Admission(None, "duplicate")
-            # his spoken words travel with their acceptance: the host's record and wall write them from here
-            self._emit("accepted", env, trace=trace,
-                       **({"text": env.body.text} if env.kind is EnvelopeKind.USER_UTTERANCE else {}))
+            # his words travel with their acceptance: the host's record, wall and turns write them from here
+            self._emit("accepted", env, trace=trace, **({"text": env.body.text} if env.kind in (
+                EnvelopeKind.USER_UTTERANCE, EnvelopeKind.USER_TEXT) else {}))
             extra = admit(tx, env) if admit is not None else None
             disposition = self._route(tx, env, now)
         return Admission(env, disposition, extra)

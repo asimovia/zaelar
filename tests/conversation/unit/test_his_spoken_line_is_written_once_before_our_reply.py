@@ -24,7 +24,9 @@ from tests.conversation.unit.convkit import Harness
 
 @pytest.fixture
 def log(monkeypatch):
+    from nucleo.conversation_host import turns
     from voice import observer
+    turns._reset_for_tests()
     out = []
     monkeypatch.setattr(observer, "emit", lambda kind, label, text="", role="", extra=None, piece=None:
                         out.append((kind, label, text, role, dict(extra or {}))))
@@ -59,7 +61,7 @@ def test_two_spoken_phrases_are_two_rows_in_order_before_our_reply(store, log):
     assert rows[:4] == [("transcript", "w1 w2"), ("ambient", True), ("transcript", "w3 w4"), ("ambient", True)], rows
     assert rows[4:] and all(r[0] == "say" for r in rows[4:]), "our reply comes after both of his lines"
     user = [x for k, _l, _t, role, x in log if k == "transcript" and role == "user"]
-    assert all(x["trace"].startswith("iv_") for x in user) and len({x["trace"] for x in user}) == 2
+    assert all(x["trace"].startswith("T") for x in user) and len({x["trace"] for x in user}) == 2   # his turns (C16)
 
 
 def test_a_discard_and_a_typed_line_write_no_spoken_row(store, log):

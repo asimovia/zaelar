@@ -19,7 +19,10 @@ REPLY = "💬 conversation: reply"        # the wall's owed line (a `brain` repl
 
 
 def trace_of(order) -> str:
-    return order.request_id[2:] if order.request_id.startswith("r_") else order.request_id
+    """The turn our line answers (`turns.corr`, C16), else its request's own trace (a notice's line has no turn)."""
+    from nucleo.conversation_host import turns
+    iv = turns.iv_of(order.request_id)
+    return turns.known(iv) or iv
 
 
 class WallMouth:

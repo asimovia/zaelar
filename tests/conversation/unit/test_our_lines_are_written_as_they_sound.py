@@ -23,7 +23,9 @@ from nucleo.conversation_host import mouth as M
 
 @pytest.fixture
 def log(monkeypatch):
+    from nucleo.conversation_host import turns
     from voice import observer
+    turns._reset_for_tests()
     out = []
     monkeypatch.setattr(observer, "emit", lambda kind, label, text="", role="", extra=None, piece=None:
                         out.append((kind, label, text, role, dict(extra or {}))))
