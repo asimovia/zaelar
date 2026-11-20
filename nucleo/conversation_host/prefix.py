@@ -65,11 +65,14 @@ def build(catalog: list[ToolSpec], *, native: str, name: str, agent: str = "", p
 
 def held_acts(catalog: list[ToolSpec] = ()) -> tuple[str, ...]:
     """Every leaving act of the event vocabulary, by its name (`messaging.send_new`), but the ones the catalogue
-    carries as a local act: they exist, and the gateway refuses them. The names, not their descriptions: the line
+    carries as a local act or that a carried act declares it `covers` (starting an errand): they exist, and the
+    gateway refuses them. The names, not their descriptions: the line
     stays under the prefix's ceiling."""
     from conversation.types import EffectClass
     from nucleo.events import vocabulary
+    acts = declared().get("acts") or {}
     opened = {t.act for t in catalog if t.effect_class is EffectClass.WRITE}
+    opened |= {c for t in catalog if t.effect_class is EffectClass.WRITE for c in (acts.get(t.name) or {}).get("covers", ())}
     return tuple(n for n in vocabulary.names(vocabulary.OUT) if n not in opened)
 
 

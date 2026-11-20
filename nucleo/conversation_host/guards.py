@@ -168,7 +168,7 @@ def for_ear(endpoint: str, text: str):
 
 #: the silent closes that are the model's judgement on his words (never our own failure: an empty reply, an order
 #: written as text)
-OURS = frozenset({"empty_reply", "order_as_text"})
+OURS = frozenset({"empty_reply", "order_as_text", "routed"})
 
 
 def listen(kind: str, label: str, p: dict) -> None:

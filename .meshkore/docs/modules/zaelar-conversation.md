@@ -105,7 +105,12 @@ generic act, `widget_action(widget, action, payload)`: the action must be one th
 front and `read_widget` give them with their fields), it runs through the data-op door every tap takes
 (`data_ops.dispatch_and_report`, on the engine's loop) by the mode it declares — a `confirm` act asks his yes on its
 row through the one asker — and an act whose output lives in its card brings the card. Music and video are widgets
-like any other: playing is their cards' own declared actions. A message, or any act that leaves, is held here. Each tool's class is derived
+like any other: playing is their cards' own declared actions. A message, or any act that leaves, is held here.
+His errands are acts too (`acts_tasks.py`): start one by the one errand gateway, resume the pending ones TASKS lists by
+id, reopen a finished one, stop one by the one cancel door, cancel a scheduled job, open the browser for him to sign
+in. And before the model is called, his words are offered to the host's `Route` (`routing.py`): with a process of his
+in course or a row waiting on his answer, the switchboard decides whether they are for it — a door that takes them
+answers with its line and no model is paid; with nothing open it costs nothing. Each tool's class is derived
 from what it declares, never listed; a door that fails is a result the model sees. The state comes from the engine's
 own readers, each bounded within `state_tokens`, writing nothing. Every run carries what is open first (the tasks,
 a message draft), the next days beside NOW, the widget in front (at full screen, in front on a phone, else the newest
@@ -219,8 +224,8 @@ produces a flow for it to read.
 ## Not done yet
 
 The package runs behind the switch, for his text and his voice. It READS, STOPS and carries out the canvas and panel
-acts and a widget's declared actions, music and video included (F2 steps 1-2). Errands and sends are not wired yet
-and stay listed as held;
+acts, a widget's declared actions (music and video included) and his errands (F2 steps 1-3). Sends are not wired
+yet and stay listed as held;
 they come one by one through the existing single doors (the widget action runner, dispatch, the send owner), never
 rebuilt.
 The public architecture diagrams show the package and mark those acts as next.

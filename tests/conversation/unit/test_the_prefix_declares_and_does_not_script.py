@@ -57,6 +57,7 @@ def test_it_says_who_is_who_what_each_read_is_for_and_what_exists_but_is_held():
     assert "web_search: the world now" in lines["READS"]
     assert "show_widget" not in lines["READS"]                                # an act is never listed as a read
     assert "show_widget" not in lines["ACTS"]                                 # F2 step 1: a local act is no held one
+    assert "errand.start" not in lines["ACTS"] and "errand.moves_money" in lines["ACTS"]   # what start_task covers
     assert "messaging.send_new" in lines["ACTS"] and "refused" in lines["ACTS"]
     assert "never done, promised or said as done" in lines["ACTS"]          # es-11: «hecho, apuntado» for a held act
     assert "named Quinn" in prefix.build([], native="English", name="English", agent="Johnny", person="Quinn")

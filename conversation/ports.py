@@ -136,6 +136,13 @@ class Tasks(Protocol):
     def cancel(self, account: str, task_id: str) -> bool: ...
 
 
+class Route(Protocol):
+    """The host's doors that already decide whose his words are when something of his is OPEN — a process running or
+    waiting on his answer (plan F2 §3), in their own order. `take` answers the line to say when one took them (""
+    for a take with nothing to say), or None when nobody did and the model answers. With nothing open it costs nothing."""
+    async def take(self, account: str, text: str) -> str | None: ...
+
+
 class Stops(Protocol):
     """The host's hands for a stop the MODEL ordered (plan v3.2 §3): what each scope stops beyond our voice — what is
     playing (`media`, `all`), his tasks (`all`, cancelled and resumable), the attention window. Local and immediate;

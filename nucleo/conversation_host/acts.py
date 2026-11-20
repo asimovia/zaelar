@@ -3,7 +3,7 @@ it — never rebuilt here.
 
 Which acts exist, what each is for, its arguments and the door it goes to are declared data (`declared.json`, `acts`),
 as the reads are; its class is DERIVED from its declared `act` (`tools_read.derive`): a local act is a write, and one
-whose act is a leaving type of the event vocabulary would be refused by the gateway as held. Three doors:
+whose act is a leaving type of the event vocabulary would be refused by the gateway as held. Four doors:
 
   canvas  `nucleo.acts.canvas.apply` — show, close, minimize, full screen, arrange — with the provenance `turn:<effect>`
           (the arbiter's «turn-owned» branch: the model's order on his sealed entry is the decision, no licence ladder)
@@ -12,6 +12,7 @@ whose act is a leaving type of the event vocabulary would be refused by the gate
           every tap takes (`data_ops.dispatch_and_report`) on the engine's loop, by the mode the act declares — a
           `confirm` act asks his yes on its row through the one asker; music and video are widgets like any other,
           their play, pause and load their cards' own actions. An act whose output lives in its card brings the card
+  task    his errands: start, resume, reopen, stop, unschedule, sign in (`acts_tasks.py`)
 
 The widget an act names is resolved against the CATALOGUE — every manifest, by id, name or declared alias
 (`widgets.runtime`) — and narrowed to the card open on screen (`widgets.instances`): a widget nobody wrote code for is
@@ -159,8 +160,8 @@ def run(name: str, args: dict, effect_id: str | None) -> ToolResult:
     if _a_message(args, spec["op"]):
         return ToolResult("rejected", {"reason": "a message is its owner's", "tool": name})
     src = f"turn:{effect_id or name}"
-    if spec["door"] == "widget":                 # its door awaits the engine's loop: `widget_act`, never here
-        return ToolResult("rejected", {"reason": "the widget door is awaited", "tool": name})
+    if spec["door"] in ("widget", "task"):       # their doors: `widget_act`, `acts_tasks.run`, never here
+        return ToolResult("rejected", {"reason": "not a canvas or panel act", "tool": name})
     if spec["door"] == "panel":
         from nucleo.turn.prompt import catalogs
         action = "close" if str(args.get("action") or "") == "close" else "open"
@@ -277,6 +278,9 @@ class HostTools:
         try:
             if ACTS[name]["door"] == "widget":
                 return await widget_act(args, effect_id)
+            if ACTS[name]["door"] == "task":
+                from nucleo.conversation_host import acts_tasks
+                return await asyncio.to_thread(acts_tasks.run, ACTS[name]["op"], args)
             return await asyncio.to_thread(run, name, args, effect_id)
         except Exception as e:  # noqa: BLE001 — an act whose door raised: we do not know it went, the gateway says so
             return ToolResult("unknown", {"tool": name, "error": f"{type(e).__name__}: {str(e)[:160]}"})

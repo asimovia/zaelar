@@ -284,6 +284,115 @@
      }
     }
    }
+  },
+  "start_task": {
+   "act": "errand.open",
+   "door": "task",
+   "op": "start",
+   "about": "start a task of his that takes work outside this conversation (several sites, a booking, a comparison, a document): it runs apart and you are told when it ends",
+   "schema": {
+    "type": "object",
+    "required": [
+     "request"
+    ],
+    "properties": {
+     "request": {
+      "type": "string"
+     }
+    }
+   },
+   "covers": [
+    "errand.start"
+   ]
+  },
+  "resume_task": {
+   "act": "errand.resume",
+   "door": "task",
+   "op": "resume",
+   "about": "resume pending tasks of his by their ids (TASKS lists them)",
+   "schema": {
+    "type": "object",
+    "required": [
+     "ids"
+    ],
+    "properties": {
+     "ids": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     }
+    }
+   }
+  },
+  "reopen_task": {
+   "act": "errand.reopen",
+   "door": "task",
+   "op": "reopen",
+   "about": "bring back a finished task and its result, by what it was about",
+   "schema": {
+    "type": "object",
+    "required": [
+     "query"
+    ],
+    "properties": {
+     "query": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "stop_task": {
+   "act": "errand.stop",
+   "door": "task",
+   "op": "stop",
+   "about": "stop one task in course by its id (TASKS), or all of them",
+   "schema": {
+    "type": "object",
+    "required": [
+     "task"
+    ],
+    "properties": {
+     "task": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "cancel_scheduled": {
+   "act": "schedule.cancel",
+   "door": "task",
+   "op": "unschedule",
+   "about": "cancel one of his scheduled jobs by what it is",
+   "schema": {
+    "type": "object",
+    "required": [
+     "job"
+    ],
+    "properties": {
+     "job": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "sign_in": {
+   "act": "web.sign_in",
+   "door": "task",
+   "op": "sign_in",
+   "about": "open the browser on a site for him to sign in himself; done: true when he says he has",
+   "schema": {
+    "type": "object",
+    "required": [],
+    "properties": {
+     "site": {
+      "type": "string"
+     },
+     "done": {
+      "type": "boolean"
+     }
+    }
+   }
   }
  },
  "state_topics": [

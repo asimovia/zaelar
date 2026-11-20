@@ -152,7 +152,8 @@ def _days() -> str:
 
 
 def _tasks() -> str:
-    """The background tasks in course and those waiting for his answer, as facts: name, step, progress, note."""
+    """The background tasks in course, those waiting for his answer and those pending that can be resumed, as facts
+    with the id each act names them by: name, step, progress, note."""
     from nucleo import dispatch
     from nucleo.circuit import ledger
     lines = []
@@ -165,12 +166,17 @@ def _tasks() -> str:
             bits.append(f"{t['pct']}%")
         if t.get("note"):
             bits.append(str(t["note"]).strip()[:160])
-        lines.append("running: " + " · ".join(b for b in bits if b))
+        lines.append("running: " + (f"[{t['id']}] " if t.get("id") else "") + " · ".join(b for b in bits if b))
     for r in ledger.store().tasks_where(states=("waiting",), visible_only=False, limit=20):
         if str(r.get("waiting_for") or "") == ledger.USER_ANSWER:
             goal = str(r.get("title") or r.get("goal") or "").strip().replace("\n", " ")[:90]
             lines.append(f"waiting for his answer: [{r.get('id')}] {goal} — asked: {str(r.get('ask') or '').strip()[:120]}")
-    return "\n".join(lines[:12])
+    from nucleo import pending_work
+    listed = "\n".join(lines)
+    for p in pending_work.rows()[:6]:            # what can be resumed: the ids `resume_task` chooses among
+        if f"[{p['id']}]" not in listed:
+            lines.append(f"pending: [{p['id']}] {str(p.get('title') or '')[:90]} · {p.get('state') or p.get('source')}")
+    return "\n".join(lines[:14])
 
 
 #: what every run carries, in this order: what is open first, the dates beside NOW, the widget in front, then the

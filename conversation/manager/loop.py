@@ -31,7 +31,7 @@ from conversation import guard
 from conversation.manager import hold, policy, run
 from conversation.manager import record as records
 from conversation.mouth import Device, SayEnded, SayStarted, Speaker
-from conversation.ports import (Clock, Memory, Model, Mouth, Owed, Prefs, Record, StaleEpoch, Stops, Store, Tasks,
+from conversation.ports import (Clock, Memory, Model, Mouth, Owed, Prefs, Record, Route, StaleEpoch, Stops, Store, Tasks,
                                 Telemetry, Tools, Words)
 from conversation.telemetry import Emitter
 from conversation.types import Channel, ControlOp, Coverage, EnvelopeKind, Ids, ItemKind, MgrState, Op
@@ -85,7 +85,8 @@ class Conversation:
                  ids: Ids | None = None, owed: Owed | None = None, tasks: Tasks | None = None,
                  prefs: Prefs | None = None, record: Record | None = None, words: Words | None = None,
                  figures: Callable[[str], tuple] | None = None, ear_guard: Callable[[str, str], str | None] | None = None,
-                 stops: Stops | None = None, foreign_voice: Callable[[str, int], bool] | None = None) -> None:
+                 stops: Stops | None = None, foreign_voice: Callable[[str, int], bool] | None = None,
+                 route: Route | None = None) -> None:
         self.account, self.cfg, self.prefix = account, config or Config(), prefix
         self.prefs: Prefs = prefs or (lambda _key, default: default)
         self.record, self.words = record, words
@@ -97,6 +98,7 @@ class Conversation:
         #: the host's reading of an open voice, `(device, onset_ms) -> bool`: True when it judged that voice another
         #: person's — that voice then never holds our line. None: every open voice holds it
         self.foreign_voice = foreign_voice
+        self.route = route                  # the host's doors for his words to what is open (`Route`); None: none
         self.lease = store.acquire(account, owner)
         self.em = Emitter(telemetry, clock, account, epoch=lambda: self.lease.epoch)
         self.store = guard.TimedStore(store, self.em, self.cfg)

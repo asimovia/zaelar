@@ -156,6 +156,8 @@ async def run_batch(conv: "Conversation", batch: Batch) -> None:
           entries=[{k: v for k, v in f.items() if k != "text"}
                    for f in entry_facts(batch.envelopes, _zone(conv, conv.clock.now_ms())[0])])
     try:
+        if content and await _routed(conv, r, batch, content):
+            return                              # his words went to what is open: its door answered, no model
         if any(str(getattr(e.body, "text", "") or "").strip() for e in content) or not content:
             await _steps(conv, r, batch)
             if r.parked is None and not r.requeued and _open(conv, r):
@@ -179,6 +181,31 @@ async def run_batch(conv: "Conversation", batch: Batch) -> None:
             conv.current = None
             if conv.state is MgrState.RUNNING:
                 conv.state = MgrState.IDLE
+
+
+async def _routed(conv: "Conversation", r: "Running", batch: Batch, content: list) -> bool:
+    """His words to something of his that is OPEN go there by the host's doors before any model is called (plan F2
+    §3): the line its door answers is said, and the run ends. Nothing open, nobody took them, or the doors failed or
+    were late: the model answers, as always."""
+    if conv.route is None:
+        return False
+    text = " ".join(str(getattr(e.body, "text", "") or "").strip() for e in content).strip()
+    if not text:
+        return False
+    try:
+        line = await guard.call(conv.em, conv.cfg, "tools", conv.route.take(conv.account, text), conv.cfg.tool_ms,
+                                {"run": r.run_id})
+    except Exception as e:  # noqa: BLE001 — a door that fails never silences him: the model takes the words
+        r.said.append(("route", f"{type(e).__name__}"))
+        return False
+    if line is None:
+        return False
+    _emit(conv, "command", r, command="routed", said=bool(line))
+    if line:
+        await _publish(conv, r, batch, str(line), 0)
+    else:
+        _silent(conv, r, "routed", conv.clock.now_ms())
+    return True
 
 
 async def _fail(conv: "Conversation", r: "Running", reason: str) -> None:
