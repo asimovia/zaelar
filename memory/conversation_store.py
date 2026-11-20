@@ -19,15 +19,15 @@ from __future__ import annotations
 
 import json
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Any, Iterator
 
 from . import db as _db
 
-#: per logical table, the states that end a row — what the prune may drop once old
-FINAL = {"inbox": ("accounted",), "voice_open": ("done",), "says": ("ended",),
-         "items": ("answered", "handed_off", "silent", "recovered", "failed", "withdrawn", "provider_accepted",
-                   "rejected"),
-         "interventions": None, "evidence": None, "flags": (), "effect_ops": (), "records": ("done",)}
+#: per logical table, the states that end a row — what the prune may drop once old (declared data:
+#: `conversation_final.json`; None: never pruned by state)
+FINAL = {table: (tuple(states) if states is not None else None) for table, states in json.loads(
+    (Path(__file__).with_name("conversation_final.json")).read_text(encoding="utf-8"))["final"].items()}
 LEASE = "lease"
 
 

@@ -250,15 +250,15 @@ NOTICES_INDEXES = [
 # `memory/conversation_store.py`. The row is JSON; `state` is lifted out so a sweep reads what is in course and never
 # the history; `uniq` is the dedupe key where the port asks for one; `updated_ms` lets the hourly prune drop what is
 # final and old. `conv_meta` holds the lease (the epoch that fences a second process) and the counters.
-CONV = [
-    "CREATE TABLE IF NOT EXISTS conv_meta (account TEXT NOT NULL, key TEXT NOT NULL, value TEXT NOT NULL, "
-    "PRIMARY KEY (account, key))",
-    "CREATE TABLE IF NOT EXISTS conv_rows (account TEXT NOT NULL, tbl TEXT NOT NULL, key TEXT NOT NULL, state TEXT, "
-    "uniq TEXT, updated_ms INTEGER NOT NULL DEFAULT 0, row TEXT NOT NULL, PRIMARY KEY (account, tbl, key))",
-    "CREATE UNIQUE INDEX IF NOT EXISTS idx_conv_rows_uniq ON conv_rows(account, tbl, uniq) WHERE uniq IS NOT NULL",
-    "CREATE INDEX IF NOT EXISTS idx_conv_rows_state ON conv_rows(account, tbl, state)",
-    # a run reads the newest rows of a table (the conversation window), never the whole history
-    "CREATE INDEX IF NOT EXISTS idx_conv_rows_recent ON conv_rows(account, tbl, updated_ms)",
-    # the hourly prune: what is final and old, by table — an index that starts by the table, not a scan
-    "CREATE INDEX IF NOT EXISTS idx_conv_rows_prune ON conv_rows(tbl, state, updated_ms)",
-]
+CONV = [stmt.strip() for stmt in """
+CREATE TABLE IF NOT EXISTS conv_meta (account TEXT NOT NULL, key TEXT NOT NULL, value TEXT NOT NULL,
+    PRIMARY KEY (account, key));
+CREATE TABLE IF NOT EXISTS conv_rows (account TEXT NOT NULL, tbl TEXT NOT NULL, key TEXT NOT NULL, state TEXT,
+    uniq TEXT, updated_ms INTEGER NOT NULL DEFAULT 0, row TEXT NOT NULL, PRIMARY KEY (account, tbl, key));
+CREATE UNIQUE INDEX IF NOT EXISTS idx_conv_rows_uniq ON conv_rows(account, tbl, uniq) WHERE uniq IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_conv_rows_state ON conv_rows(account, tbl, state);
+-- a run reads the newest rows of a table (the conversation window), never the whole history
+CREATE INDEX IF NOT EXISTS idx_conv_rows_recent ON conv_rows(account, tbl, updated_ms);
+-- the hourly prune: what is final and old, by table — an index that starts by the table, not a scan
+CREATE INDEX IF NOT EXISTS idx_conv_rows_prune ON conv_rows(tbl, state, updated_ms);
+""".split(";") if stmt.strip()]   # one SQL script, its statements in order

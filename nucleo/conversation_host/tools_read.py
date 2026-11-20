@@ -22,6 +22,7 @@ from typing import Callable
 
 from conversation.ports import ToolResult, ToolSpec
 from conversation.types import EffectClass, Evidence
+from nucleo.conversation_host.declared import declared
 
 
 def derive(act: str, reads_only: bool) -> EffectClass:
@@ -41,13 +42,8 @@ def _obj(**props) -> dict:
 #: name → (schema, core, reads only, what it is for). The purpose is data the model reads (the prefix's READS line and
 #: the tool's own description): what each read reaches, never how to behave.
 SPECS: dict[str, tuple[dict, bool, bool, str]] = {
-    "web_search": (_obj(query=1), True, True, "the world now: news, prices, weather, sports, places, facts"),
-    "read_widget": (_obj(widget=1, question=1), False, True,
-                    "one of his widgets (agenda, contacts, notes…): what it holds now"),
-    "recall": (_obj(query=1), False, True, "his memory: what he told you before"),
-    "about_self": (_obj(topic=1), False, True, "yourself: what you are, what you can do, how something of yours works"),
-    "find_tool": (_obj(query=1), True, True, "this list of reads"),
-}
+    name: (_obj(**{arg: 1 for arg in r["args"]}), r["core"], r["reads"], r["about"])
+    for name, r in declared()["reads"].items()}      # declared data (`declared.json`), read once
 
 
 def catalog() -> list[ToolSpec]:

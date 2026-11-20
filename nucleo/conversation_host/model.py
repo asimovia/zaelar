@@ -22,19 +22,13 @@ from conversation.ports import (RELAY, UNCLAIMED, Command, Done, Failed, PromptP
                                 ToolSpec)
 
 from conversation.manager.claims import OPS       # the package's own operations, never a second list
+from nucleo.conversation_host.declared import declared
 
-_WHAT = {"entity": {"type": "string"}, "period": {"type": "string"}, "metric": {"type": "string"},
-         "direction": {"type": "string"}, "value": {"type": "number"}, "evidence_id": {"type": "string"}}
-#: a figure that IS in the evidence
-FACT = {"type": "object", "required": ["value", "evidence_id"], "properties": {**_WHAT,
-                                                                              "derived": {"type": "boolean",
-                                                                                          "enum": [False]}}}
-#: a figure computed from the evidence: its operation and operands are part of the claim, never optional
-DERIVED = {"type": "object", "required": ["value", "evidence_id", "derived", "op", "operands"], "properties": {
-    **_WHAT, "derived": {"type": "boolean", "enum": [True]},
-    "evidence_id": {"anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}, "minItems": 1}]},
-    "op": {"type": "string", "enum": sorted(OPS)},
-    "operands": {"type": "array", "items": {"type": "number"}, "minItems": 1}}}
+#: the shapes of a claim (`declared.json`, data the code reads): a figure that IS in the evidence, and one computed
+#: from it — its operation (the package's own, never a second list) and operands part of the claim, never optional
+FACT = declared()["fact"]
+DERIVED = {**declared()["derived"],
+           "properties": {**declared()["derived"]["properties"], "op": {"type": "string", "enum": sorted(OPS)}}}
 #: the manager's orders, as the model sees them
 ORDERS = {
     "reply": {"type": "object", "required": ["text"], "properties": {
@@ -48,8 +42,7 @@ ORDERS = {
 
 #: what the client measured that the run's `model_done` carries: which model and provider ANSWERED (after a relay,
 #: the stand-in — `relayed_from` names the one that failed), so latency can be read by provider
-DONE_KEYS = ("model", "provider", "relayed_from", "relayed_to", "relay_reason", "prompt_tokens_est",
-             "finish_reason", "usage", "resent")
+DONE_KEYS = tuple(declared()["done_keys"])
 
 
 def _measured(args: dict) -> dict:

@@ -9,8 +9,8 @@ A figure written in words is not a figure here.
 """
 from __future__ import annotations
 
-GROUP = (" ", " ", " ", "'", "’")      # characters that only group thousands
-MARKS = (".", ",")
+GROUP = "\u0020\u00a0\u202f'\u2019"   # characters that only group thousands: a space, two no-break spaces, two quotes
+MARKS = ".,"
 MINUS = ("-", "−")
 
 

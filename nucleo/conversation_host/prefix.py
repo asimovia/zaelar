@@ -6,12 +6,14 @@ language and catalogue, so the provider caches it; every line is one of `LINES`,
 """
 from __future__ import annotations
 
+from nucleo.conversation_host.declared import declared
+
 from conversation.ports import ToolSpec
 
 MAX_TOKENS = 600
 
 #: the only lines a prefix carries, in this order
-LINES = ("YOU", "PERSON", "LANGUAGE", "INPUT", "READS", "ACTS", "ORDERS", "CLAIMS", "COMPLETE", "LENGTH")
+LINES = tuple(declared()["prefix_lines"])                     # declared data (`declared.json`), in their order
 
 
 def build(catalog: list[ToolSpec], *, native: str, name: str, agent: str = "", person: str = "",

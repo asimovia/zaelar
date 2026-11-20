@@ -23,7 +23,7 @@ from voice.engine.pipeline import ear_feed
 logger = logging.getLogger("zaelar.voice.ear_tap")
 
 #: the provider's punctuation of a sentence end
-TERMINAL_MARKS = (".", "?", "!", "…", "。", "？", "！")
+TERMINAL_MARKS = tuple(".?!…。？！")                        # the characters that end a sentence, in any script
 VAD_QUIET_MS = 200
 #: the stand-in's turns are numbered apart from the provider's own (`turn_index`), never mistaken for one of them
 STAND_IN_TURNS = 1_000_000

@@ -1,0 +1,31 @@
+{
+ "_comment": "Per logical table of the conversation manager's rows (`memory/conversation_store.py`), the states that END a row \u2014 what the hourly prune may drop once old. null: never pruned by state; []: no state ends it. Names of states, no word of a language.",
+ "final": {
+  "inbox": [
+   "accounted"
+  ],
+  "voice_open": [
+   "done"
+  ],
+  "says": [
+   "ended"
+  ],
+  "items": [
+   "answered",
+   "handed_off",
+   "silent",
+   "recovered",
+   "failed",
+   "withdrawn",
+   "provider_accepted",
+   "rejected"
+  ],
+  "interventions": null,
+  "evidence": null,
+  "flags": [],
+  "effect_ops": [],
+  "records": [
+   "done"
+  ]
+ }
+}

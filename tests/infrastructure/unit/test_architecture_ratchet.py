@@ -699,6 +699,8 @@ _TOTAL_MAX += 49     # same cause
 _PACKAGE_CEILINGS["conversation"] += 7     # 2026-11-20 V2-941 v3.1 (the voice gate on 3ac67f2cc): a stop never gives a cut line back; the ambient tail's window is a threshold
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 12    # same: only what he said right before the name, in the same breath, comes back
 _TOTAL_MAX += 19     # same cause, with the packs' `stop_keyterms`
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 6     # 2026-11-20 V2-941: the host's twelve word tables paid as declared data — the reader of `declared.json`
+_TOTAL_MAX += 6      # same cause
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

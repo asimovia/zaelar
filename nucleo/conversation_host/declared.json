@@ -1,0 +1,175 @@
+{
+ "_comment": "The conversation manager host's declared data (V2-941): the shape of the model's orders and claims, what a model call's measurements carry, the reads a switched session offers, the counters of its proof, and the lines of its prefix. Names and schemas, no word of a language — data the code reads, never a table in it.",
+ "fact": {
+  "type": "object",
+  "required": [
+   "value",
+   "evidence_id"
+  ],
+  "properties": {
+   "entity": {
+    "type": "string"
+   },
+   "period": {
+    "type": "string"
+   },
+   "metric": {
+    "type": "string"
+   },
+   "direction": {
+    "type": "string"
+   },
+   "value": {
+    "type": "number"
+   },
+   "evidence_id": {
+    "type": "string"
+   },
+   "derived": {
+    "type": "boolean",
+    "enum": [
+     false
+    ]
+   }
+  }
+ },
+ "derived": {
+  "type": "object",
+  "required": [
+   "value",
+   "evidence_id",
+   "derived",
+   "op",
+   "operands"
+  ],
+  "properties": {
+   "entity": {
+    "type": "string"
+   },
+   "period": {
+    "type": "string"
+   },
+   "metric": {
+    "type": "string"
+   },
+   "direction": {
+    "type": "string"
+   },
+   "value": {
+    "type": "number"
+   },
+   "evidence_id": {
+    "anyOf": [
+     {
+      "type": "string"
+     },
+     {
+      "type": "array",
+      "items": {
+       "type": "string"
+      },
+      "minItems": 1
+     }
+    ]
+   },
+   "derived": {
+    "type": "boolean",
+    "enum": [
+     true
+    ]
+   },
+   "operands": {
+    "type": "array",
+    "items": {
+     "type": "number"
+    },
+    "minItems": 1
+   }
+  }
+ },
+ "done_keys": [
+  "model",
+  "provider",
+  "relayed_from",
+  "relayed_to",
+  "relay_reason",
+  "prompt_tokens_est",
+  "finish_reason",
+  "usage",
+  "resent"
+ ],
+ "reads": {
+  "web_search": {
+   "args": [
+    "query"
+   ],
+   "core": true,
+   "reads": true,
+   "about": "the world now: news, prices, weather, sports, places, facts"
+  },
+  "read_widget": {
+   "args": [
+    "widget",
+    "question"
+   ],
+   "core": false,
+   "reads": true,
+   "about": "one of his widgets (agenda, contacts, notes…): what it holds now"
+  },
+  "recall": {
+   "args": [
+    "query"
+   ],
+   "core": false,
+   "reads": true,
+   "about": "his memory: what he told you before"
+  },
+  "about_self": {
+   "args": [
+    "topic"
+   ],
+   "core": false,
+   "reads": true,
+   "about": "yourself: what you are, what you can do, how something of yours works"
+  },
+  "find_tool": {
+   "args": [
+    "query"
+   ],
+   "core": true,
+   "reads": true,
+   "about": "this list of reads"
+  }
+ },
+ "proof": {
+  "counters": [
+   "manager_runs",
+   "livekit_turns",
+   "legacy_prompts",
+   "commit_user_turn",
+   "effects_outside_read",
+   "held_dispatch_attempts",
+   "legacy_turn_attempts",
+   "wake_phrases"
+  ],
+  "must_be_zero": [
+   "livekit_turns",
+   "legacy_prompts",
+   "commit_user_turn",
+   "effects_outside_read",
+   "legacy_turn_attempts"
+  ]
+ },
+ "prefix_lines": [
+  "YOU",
+  "PERSON",
+  "LANGUAGE",
+  "INPUT",
+  "READS",
+  "ACTS",
+  "ORDERS",
+  "CLAIMS",
+  "COMPLETE",
+  "LENGTH"
+ ]
+}
