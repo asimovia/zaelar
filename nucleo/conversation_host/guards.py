@@ -64,30 +64,6 @@ def _echo(text: str, rose: float) -> bool:
     return False
 
 
-def orders_stop(text: str) -> bool:
-    """Does his turn order a stop? The engine's own detector (`attention.is_shut_up`): the package reads no words."""
-    return split_stop(text)[0]
-
-
-#: where a sentence ends, as the provider and the keyboard write it
-SENTENCE_END = ".!?…"
-
-
-def split_stop(text: str) -> tuple[bool, str]:
-    """His turn, sentence by sentence: is one of them a stop (the engine's whole-sentence detector), and what is the
-    rest? «Cállate. ¿Qué tiempo hace?» is a stop AND a question: the stop a control, the question his words."""
-    from voice import attention
-    parts, cur = [], ""
-    for ch in str(text or ""):
-        cur += ch
-        if ch in SENTENCE_END:
-            parts.append(cur)
-            cur = ""
-    parts.append(cur)
-    stops = [p for p in parts if p.strip() and attention.is_shut_up(p)]
-    return bool(stops), "".join(p for p in parts if p not in stops).strip()
-
-
 def judge(text: str, now: float | None = None, rose: float | None = None) -> str | None:
     """Why this turn of his is thrown away, or None when it goes to the conversation. `rose`: when his voice rose (his
     first word), the echo's timing."""
@@ -113,18 +89,11 @@ def judge(text: str, now: float | None = None, rose: float | None = None) -> str
 
 def for_ear(endpoint: str, text: str):
     """The guards as the ear asks them, at every close with words (`Ear.guard`): his turn's rise is the one the voice
-    process reported for that device (`ear_in.rose_of`). A turn that holds a stop AND more is judged by the rest, and
-    the entry is that rest — the stop was already his control (`ear_in`)."""
-    from conversation.ear.arbiter import REPLACE
+    process reported for that device (`ear_in.rose_of`). A stop in his words is not read here: the model chooses one."""
     from nucleo.conversation_host import ear_in
     from voice import attention
     rose = ear_in.rose_of(endpoint)
-    stopped, rest = split_stop(text)
-    if stopped and not rest:
-        return "stop"
-    why = judge(rest if stopped else text, rose=rose / 1000 if rose else None)
-    if why is None and stopped:
-        return (REPLACE, rest)
+    why = judge(text, rose=rose / 1000 if rose else None)
     if why is None and attention.has_wakeword(text):     # «para la música» set aside, then «Johnny»: his order whole —
         at = rose / 1000 if rose else time.time()         # only what he said right before, in the same breath
         tail = attention.reclaim_ambient_tail("", now=at, within_s=_cfg["reclaim_tail_ms"] / 1000,

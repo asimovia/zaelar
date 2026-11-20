@@ -4,10 +4,10 @@ They arrive inside the body link's batches (`voice/engine/pipeline/body_link.py`
 process (`boot`, `seq`) and in order. A batch carried again because its answer came late applies nothing twice: each
 `seq` is applied once, per boot. Each fact becomes the signal the package's ear reads (`ear_feed.py` made it, on one
 wall clock) and is handed to the conversation in order (`entry.voice`). A declared hole (`gap`) is a `LinkGap` on
-each device it covered: what the ear was hearing there ends incomplete, and is asked for again. At the end of one of
-his turns a stop is a control and a `Discard` before the end; the other guards the ear asks at every close
-(`guards.for_ear`), with the turn's first word as the echo's timing (`rose_of`). His voice and our playback feed the
-body's attention (`_attend`), where those guards judge.
+each device it covered: what the ear was hearing there ends incomplete, and is asked for again. The guards the ear
+asks at every close (`guards.for_ear`) take the turn's first word as the echo's timing (`rose_of`); a stop in his words
+is never read here — the model chooses one (plan v3.2 §3). His voice and our playback feed the body's attention
+(`_attend`), where those guards judge.
 """
 from __future__ import annotations
 
@@ -86,7 +86,7 @@ def receive(ev: dict, hand=None) -> int:
     out = gap + signals(ev)
     _attend(ev)
     if ev.get("t") == "eot" and ev.get("kind") == "end":
-        out = _stopped(ev) + out
+        _ended(ev)
     for sig in out:
         hand(sig)
     return len(out)
@@ -130,30 +130,18 @@ def _attend(ev: dict) -> None:
         attention.note_bot_speech(bool(ev.get("speaking")), at)
 
 
-def _stopped(ev: dict) -> list:
-    """At the end of one of his turns: is it his stop? Then a control, and the turn a `Discard` (`stop`) handed BEFORE
-    the end — never words for the model. The other guards are the ear's to ask, at every close (`guards.for_ear`)."""
-    from nucleo.conversation_host import guards
+def _ended(ev: dict) -> None:
+    """One of his turns ended: its words are kept a few seconds (`heard_lately`), the way a device's own ear asks
+    whether the paid ear already brought them."""
     stream = str(ev.get("stream") or "")
     with _lock:
         text = _heard.pop(stream, "")
-        if text.strip():                               # what the paid ear brought, for the device's own ear to compare
+        if text.strip():
             _recent.append((time.time(), text))
             del _recent[:-RECENT_KEPT]
-    stopped, rest = guards.split_stop(text) if text.strip() else (False, "")
-    if not stopped:
-        return []
-    from nucleo.conversation_host import controls      # his spoken stop is a CONTROL, never words for the model
-    from voice import attention
-    controls.control("stop", stream, "ear")
-    if rest:                                           # «Cállate. ¿Qué tiempo hace?»: the rest is his entry — the
-        return []                                      # ear's guards give it as the entry's words (`for_ear`)
-    attention.close_window("voice-order")             # a bare «cállate» closes the conversation's window as well
-    return [S.Discard(stream, text, "stop", int(ev.get("t_ms") or 0))]
 
 
-def heard_lately(within_s: float, now: float | None = None) -> list[str]:
-    """His words the paid ear brought within `within_s` — the turns it ended and the ones in course."""
+def heard_lately(within_s, now=None) -> list[str]:
     now = time.time() if now is None else now
     with _lock:
         return [t for at, t in _recent if now - at <= within_s] + [t for t in _heard.values() if t.strip()]

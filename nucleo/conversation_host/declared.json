@@ -173,5 +173,11 @@
   "CLAIMS",
   "COMPLETE",
   "LENGTH"
- ]
+ ],
+ "stops": {
+  "stop_voice": "his last words ask you to be quiet: your voice stops now and nothing more is said; your first order, before any read",
+  "stop_media": "his last words ask to stop what is playing (music, a video): it stops, nothing else does; your first order, before any read",
+  "stop_run": "his last words ask you to stop what you were doing: your voice stops and this answer is dropped; your first order, before any read",
+  "stop_all": "his last words ask to stop everything: your voice, what is playing and his errands in course; your first order, before any read"
+ }
 }

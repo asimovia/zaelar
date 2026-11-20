@@ -48,6 +48,9 @@ class LangSpec:
     #: Said once when he left half a thought and its rest never came (the conversation manager, V2-941): never a
     #: silence after a fragment cut mid-idea.
     listening: str = ""
+    #: Said, minimal, when his TYPED line was a stop the model chose and nothing more (the conversation manager, plan
+    #: v3.2 §3): a typed order is never met with nothing; a spoken one is met with silence.
+    stopped: str = ""
     #: The forms of his order to stop listening (the attention grammar's), as key terms for the speech provider: a
     #: short «cállate» the provider misses is a «mmm», and his stop never arrives (the conversation manager, V2-941).
     stop_keyterms: tuple = ()

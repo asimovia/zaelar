@@ -1,6 +1,6 @@
-"""His controls at the conversation's doors (V2-941, v3.1 B10): a stop — typed, spoken or a button — is an envelope
-of its own, handed ahead of whatever he said with it; the package reads no words (the detector that heard «stop»
-lives in the engine, `guards.orders_stop`). And his phrase a device's own ear caught (the browser's wake word): VOICE,
+"""His controls at the conversation's doors (V2-941, v3.1 B10): a stop from a BUTTON is an envelope of its own; a
+stop he says or types is no control here — his words reach the model, which chooses a stop order (plan v3.2 §3), and
+no word of his is read on the manager's path. And his phrase a device's own ear caught (the browser's wake word): VOICE,
 an entry of its own, never typed and never the old turn. And the switch turned off: the conversation this process
 opened retires, with no restart.
 """
@@ -17,8 +17,7 @@ STOP_BY = (("chat", "chat:", "text"), ("ear", "ear:", "voice"), ("button", "butt
 
 
 def control(op: str = "stop", dev: str = "", by: str = "chat") -> None:
-    """His control (today a stop): an envelope of its own, ahead of whatever he said with it. The package reads no
-    words: the detector that heard «stop» lives outside it (`attention.is_shut_up`)."""
+    """His control (today a stop, from a button): an envelope of its own. No word of his is read to make one."""
     t = int(time.time() * 1000)
     entry._hand(lambda conv: conv.give(make(conv, op, dev or "holder", by, t)))
 
@@ -69,18 +68,3 @@ def retire_if_off() -> bool:
     sessions.close_all()
     entry.reset()
     return True
-
-
-def typed_line(conv, sig, end):
-    """A typed line read sentence by sentence: a stop in it is his control, given first, and never a line for the
-    model; what follows it is his line (None when nothing does — its door is told `stop`)."""
-    from conversation.ear import signals as S
-    from nucleo.conversation_host import guards
-    stopped, rest = guards.split_stop(sig.text)
-    if not stopped:
-        return sig
-    conv.give(make(conv, "stop", sig.endpoint, "chat", sig.t_ms))
-    if not rest:
-        end("stop")
-        return None
-    return S.TypedSubmit(sig.endpoint, sig.client_id, rest, sig.t_ms)

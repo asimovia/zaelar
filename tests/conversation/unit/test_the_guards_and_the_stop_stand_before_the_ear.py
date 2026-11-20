@@ -3,8 +3,8 @@
   · at the end of one of his turns the guards judge its words: a closed microphone, our own line heard back within the
     echo window, a turn the attention mode says was not said to us — each is a `Discard` handed to the ear BEFORE the
     end, with its text and reason, so it never closes as his words;
-  · his stop — typed or spoken, heard by the engine's own detector outside the package — is a `user.control` handed
-    ahead of the line it came with, from the producer of the door it came by;
+  · his stop, typed or spoken, is his words: nothing on the manager's path reads it (the model chooses a stop order,
+    plan v3.2 §3, node 13.120); a button's stop is a `user.control` from the producer of its door;
   · his phrase the browser's own ear caught enters as VOICE, an entry of its own (`LocalPhrase`), and is answered;
   · a batch on the body link keeps a share of its room for the other events, however long the ear's lane is;
   · switched off, the conversation this process opened is retired when its voice session closes — no restart.
@@ -77,14 +77,16 @@ def test_the_ear_asks_the_guards_at_every_close(ear, store):
     assert [o.text for o in h.mouth.orders] == ["w9"]
 
 
-def test_his_spoken_stop_is_a_control_ahead_of_his_words(ear, monkeypatch):
+def test_his_spoken_stop_is_his_words_never_read_on_the_managers_path(ear, monkeypatch):
+    """Plan v3.2 §3: no word of his is read to stop — «stop» spoken reaches the conversation as his words, and the
+    model chooses a stop order (13.120). No control, no discard is made of it here."""
     calls = []
     monkeypatch.setattr(controls, "control", lambda op="stop", dev="", by="chat": calls.append((op, dev, by)))
     got = []
     for f in _turn(words=("w_stop",)):
-        ear_in.receive(f, lambda s: got.append(s) or calls.append(type(s).__name__))
-    assert calls == ["WordSpan", ("stop", "holder", "ear"), "Discard", "EotHint"]   # a control, never his words
-    assert [s.reason for s in got if type(s).__name__ == "Discard"] == ["stop"]
+        ear_in.receive(f, got.append)
+    assert calls == [] and [type(s).__name__ for s in got] == ["WordSpan", "EotHint"]
+    assert guards.for_ear("holder", "w_stop") is None
 
 
 class _Conv:
@@ -107,11 +109,8 @@ def handed(monkeypatch):
     return conv
 
 
-def test_his_typed_stop_is_a_control_and_never_a_line(ear, handed):
+def test_his_typed_stop_is_his_line_whole(ear, handed):
     entry.typed("w_stop w1", "text:s1", checked=True)
-    assert handed.log == [("give", "user.control", "chat:text:s1", "text", "stop")]
-    handed.log.clear()
-    entry.typed("w1", "text:s1", checked=True)
     assert handed.log == [("hear", "TypedSubmit")]
 
 
@@ -169,24 +168,6 @@ def test_switched_off_the_conversation_is_retired_without_a_restart(monkeypatch)
     assert controls.retire_if_off() is False and closed == []                     # still on: kept
     monkeypatch.setattr(switch, "decide", lambda session=None: switch.Decision(False, "default"))
     assert controls.retire_if_off() is True and closed == [1] and entry._opener["rt"] is None
-
-
-def test_after_a_stop_his_next_question_is_answered_and_the_stop_is_not_in_the_prompt(ear, store, monkeypatch):
-    """The voice pass, case 14: «cállate» stayed in the conversation as his words and the model went on obeying it — an
-    18-word question closed silent. A stop is his control: the next entry is answered on its own."""
-    from conversation.ports import Done
-    from conversation.testing.scripted_model import reply
-    from tests.conversation.unit.convkit import Harness
-    h = Harness(store, grace=False)
-    h.model.default = lambda ids: [reply("w9"), Done()]
-    monkeypatch.setattr(entry, "_hand", lambda fn: fn(h.conv))
-    entry.typed("w_stop", "d2", checked=True)
-    h.settle(2000)
-    entry.typed("w1 w2 w3", "d2", checked=True)
-    h.settle(4000)
-    assert [o.text for o in h.mouth.orders] == ["w9"]
-    seen = " ".join([h.model.calls[-1].prompt.input] + [t.text for t in h.model.calls[-1].prompt.conversation])
-    assert "w_stop" not in seen and "w1 w2 w3" in seen
 
 
 #: a long line of ours, its start and its end (seconds)
@@ -281,15 +262,6 @@ def test_his_follow_up_after_our_reply_is_heard_with_the_real_attention(real_att
     assert guards.for_ear("holder", "w3 w4") is None                               # his: never `not_addressed`
 
 
-def test_a_spoken_stop_closes_the_window(real_attention, monkeypatch):
-    monkeypatch.setattr(controls, "control", lambda *a, **k: None)
-    monkeypatch.setattr(real_attention, "is_shut_up", lambda text: "w_stop" in text)
-    assert guards.judge("Wzael w1 w2") is None and real_attention.window_warm()
-    for f in _turn(words=("w_stop",)):
-        ear_in.receive(f, lambda s: None)
-    assert not real_attention.window_warm()
-
-
 def test_the_agents_name_and_how_it_is_heard_bias_the_provider(monkeypatch):
     """The voice pass: Flux wrote «Johnny» as «Jenny» and the wake word never woke. The name and every spelling it is
     heard as go to the provider as key terms (Flux and nova-3), first run included: a name biases no language."""
@@ -382,38 +354,6 @@ def test_his_follow_up_after_a_slow_reply_is_heard(real_attention, monkeypatch, 
         ear_in.receive({"t": "playback", "stream": "holder", "speaking": speaking, "t_ms": int(at * 1000),
                         "boot": "b", "seq": n}, lambda s: None)
     assert guards.judge("w3 w4", now=now + reply_s + 1) is None                  # his follow-up, a second after
-
-
-def test_a_typed_stop_with_a_question_stops_and_keeps_the_question(ear, handed):
-    """«Cállate. ¿Qué tiempo hace?»: the stop is his control, the question his line — never both dropped."""
-    entry.typed("w_stop. w1 w2?", "text:s1", checked=True)
-    assert handed.log == [("give", "user.control", "chat:text:s1", "text", "stop"), ("hear", "TypedSubmit")]
-
-
-def test_a_spoken_stop_with_a_question_stops_and_the_entry_is_the_question(ear, store, monkeypatch):
-    from conversation.ports import Done
-    from conversation.testing.scripted_model import reply
-    from tests.conversation.unit.convkit import Harness
-    calls = []
-    monkeypatch.setattr(controls, "control", lambda op="stop", dev="", by="chat": calls.append((op, by)))
-    got = []
-    for f in _turn(words=("w_stop.", "w1", "w2?")):
-        ear_in.receive(f, got.append)
-    assert calls == [("stop", "ear")] and "Discard" not in [type(s).__name__ for s in got]
-    h = Harness(store, grace=False)
-    h.conv.ear.guard = guards.for_ear
-    h.model.default = lambda ids: [reply("w9"), Done()]
-    h.utter([(["w_stop.", "w1", "w2?"], 0)])
-    prompt = h.model.calls[0].prompt.input
-    assert "w1 w2?" in prompt and "w_stop" not in prompt and [o.text for o in h.mouth.orders] == ["w9"]
-
-
-def test_the_real_detector_reads_each_sentence():
-    assert guards.split_stop("Cállate. ¿Qué tiempo hace hoy?") == (True, "¿Qué tiempo hace hoy?")
-    assert guards.split_stop("Vale, cállate ya. Oye, ¿qué hora es?") == (True, "Oye, ¿qué hora es?")
-    assert guards.split_stop("Vale, cállate ya.") == (True, "")
-    for his in ("para un momento", "no te calles, sigue", "para mañana a las cinco", "vale, ¿qué hora es?"):
-        assert guards.split_stop(his) == (False, his)                          # never a stop (U43)
 
 
 def test_a_question_back_on_our_statement_is_his_never_an_echo(ear):

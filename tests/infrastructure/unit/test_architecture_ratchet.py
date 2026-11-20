@@ -737,6 +737,8 @@ _TOTAL_MAX += 151    # same cause, measured
 _PACKAGE_CEILINGS["conversation"] += 103               # 2026-11-20 V2-941 (plan v3.2 §3, commit 1; +15 the split that keeps `run.py` under 800: `manager/stop.py`): a stop is a system action the model chooses — four orders and their scopes (`commands.Stop`), the first-order rule, the `stopped` close and its fixed line, the host's `Stops` port, a failed barge-in's line on the screen only
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 3   # same day: `turns.NOT_OK` reads the package's own close labels — no word table (it had become the 504th)
 _TOTAL_MAX += 105    # same cause, measured
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 5     # 2026-11-20 V2-941 (plan v3.2 §3, commit 2): the host's hands for a stop the model chose (`stops.py`, +62) and the four stops offered, less every reader of a stop in his words (`split_stop`, `orders_stop`, `ear_in._stopped`, the typed split, the stop branch of `for_ear`)
+_TOTAL_MAX += 5      # same cause, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

@@ -190,10 +190,7 @@ def typed(text: str, dev: str = "", *, wait: bool = False, checked: bool = False
     def deliver(conv) -> None:
         stop = None if checked else _guards(text, dev)
         if stop is None:
-            from nucleo.conversation_host import controls
-            line = controls.typed_line(conv, sig, _end)    # a stop in it is his control, never his line
-            if line is not None:
-                conv.hear(line)
+            conv.hear(sig)                                 # his words whole: a stop in them is the model's to choose
             return
         _end(stop.get("reason") or "note")
 

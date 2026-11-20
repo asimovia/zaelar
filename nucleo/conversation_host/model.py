@@ -37,6 +37,7 @@ ORDERS = {
         "complete": {"type": "boolean"}}},
     "no_reply": {"type": "object", "required": ["reason"], "properties": {
         "reason": {"type": "string"}, "complete": {"type": "boolean"}}},
+    **{name: {"type": "object", "properties": {}} for name in declared()["stops"]},   # each stop takes no argument at all
 }
 
 
@@ -64,7 +65,8 @@ def _fn(name: str, schema: dict, about: str = "") -> dict:
 
 
 def tools_for(catalog: list[ToolSpec]) -> list[dict]:
-    return [_fn(t.name, t.schema, t.about) for t in catalog] + [_fn(n, s) for n, s in ORDERS.items()]
+    stops = declared()["stops"]                     # a stop says what it stops: the model chooses it from his words
+    return [_fn(t.name, t.schema, t.about) for t in catalog] + [_fn(n, s, stops.get(n, "")) for n, s in ORDERS.items()]
 
 
 def _result(res: ToolResult) -> str:
