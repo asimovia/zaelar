@@ -28,7 +28,7 @@ from conversation.ledger.book import BookTx
 from conversation import guard
 from conversation.manager import policy, run
 from conversation.mouth import Device, SayEnded, SayStarted, Speaker
-from conversation.ports import Clock, Memory, Model, Mouth, Owed, Store, Tasks, Telemetry, Tools
+from conversation.ports import Clock, Memory, Model, Mouth, Owed, Prefs, Store, Tasks, Telemetry, Tools
 from conversation.telemetry import Emitter
 from conversation.types import Channel, ControlOp, Coverage, EnvelopeKind, Ids, ItemKind, MgrState, Op
 
@@ -56,8 +56,10 @@ class Running:
 class Conversation:
     def __init__(self, *, account: str, owner: str, model: Model, tools: Tools, store: Store, memory: Memory | None,
                  clock: Clock, mouth: Mouth, telemetry: Telemetry, config: Config | None = None, prefix: str = "",
-                 ids: Ids | None = None, owed: Owed | None = None, tasks: Tasks | None = None) -> None:
+                 ids: Ids | None = None, owed: Owed | None = None, tasks: Tasks | None = None,
+                 prefs: Prefs | None = None) -> None:
         self.account, self.cfg, self.prefix = account, config or Config(), prefix
+        self.prefs: Prefs = prefs or (lambda _key, default: default)
         self.model, self.tools, self.memory, self.clock, self.owed, self.tasks = model, tools, memory, clock, owed, tasks
         self.lease = store.acquire(account, owner)
         self.em = Emitter(telemetry, clock, account, epoch=lambda: self.lease.epoch)

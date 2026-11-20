@@ -136,6 +136,17 @@ async def debug_loop():
     return JSONResponse({**_loop_lag.status(), "db_lock": _memory.lock_status()})
 
 
+@router.get("/api/debug/conversation/{session}")
+async def debug_conversation(session: str):
+    """The proof of a session switched to the conversation manager (V2-941): who opened its turns, and the exit gate
+    over it. Reads only — and reads nothing while no session is switched on: the manager's host is not loaded."""
+    import sys
+    proof = sys.modules.get("nucleo.conversation_host.proof")
+    if proof is None:
+        return JSONResponse({"session": session, "on": False})
+    return JSONResponse(proof.report(session))
+
+
 @router.get("/api/status")
 async def status():
     """SYSTEM STATUS for the ⓘ panel: is Hermes up, is voice live, are the external APIs (LLM/STT/TTS) healthy or

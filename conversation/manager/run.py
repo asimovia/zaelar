@@ -325,7 +325,8 @@ async def _publish(conv: "Conversation", r: "Running", batch: Batch, text: str, 
     if not _seal_batch(conv, r, batch):
         conv.inbox.requeue(list(r.batch_ids))   # fenced: the batch waits; the request stays open
         return
-    reply = choose(batch.envelopes, conv.devices.get(r.ctx.endpoint or "", Device(r.ctx.endpoint)))
+    reply = choose(batch.envelopes, conv.devices.get(r.ctx.endpoint or "", Device(r.ctx.endpoint)),
+                   text_gets_voice=bool(conv.prefs("reply_voice_to_text", True)))     # his rule, as it stands now
     if reply.voice_unavailable:
         conv.speaker.voice_unavailable(r.run_id, r.ctx.endpoint, r.trace)
     conv.state = MgrState.SPEAKING

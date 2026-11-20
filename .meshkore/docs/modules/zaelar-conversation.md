@@ -2,8 +2,24 @@
 
 One package that decides, for one account, when the person finished speaking, what reaches the model, which run is
 current, what may act in the world, what our voice says and what the person actually heard — with every step written
-to a store before it counts and every step said as an event. Phase **F0**: built and tested **isolated**; nothing in the
-engine calls it yet. F1 wires it behind adapters (`zaelar-conversation-adapter.md` is the speech half of that contract).
+to a store before it counts and every step said as an event. Built and tested **isolated** in F0; F1 wires it behind
+adapters (`zaelar-conversation-adapter.md` is the speech half of that contract) and a switch that is off by default.
+
+## The switch and the host
+
+`nucleo/conversation_host/` is the engine side. Its switch decides once, when a session opens, whether that session
+goes by the manager: the session (`conv=1` / `conv=0`), then the account (`conversation_manager` in
+`config/settings.json`, false by default), then `ZAELAR_CONVERSATION=1` for development. It fails closed — switched on,
+a session takes the manager only with every outside write held (`ZAELAR_HOLD_OUTBOUND=all`), its language chosen and
+the manager's configuration passing; otherwise it takes the old path and says why. Off, nothing of the engine imports
+the host: every import of it is inside a function. One `Conversation` runs per account, in its own thread, while a
+switched session holds it.
+
+What is not mechanism comes from data: the publication graces are genome thresholds (genesis
+`conversation.thresholds`, each inside its declared bounds, refused out of them or out of their order), and whether a
+typed line with the voice live is answered by voice too is his rule (`reply_voice_to_text`, a factory row he can
+override), read at each reply through the `Prefs` port. `GET /api/debug/conversation/<session>` reads the proof of a
+switched session: the runs the manager started, and what would mean another owner of the turn, which must stay at 0.
 
 ## Why a package of its own
 

@@ -15,7 +15,7 @@ ACCT = "acct-test"
 
 class Harness:
     def __init__(self, store, *, script: dict | None = None, config: Config | None = None, prefix: str = "RULES",
-                 tasks=None, grace: bool = True) -> None:
+                 tasks=None, grace: bool = True, prefs=None) -> None:
         """The product's configuration, graces on. `grace=False` opts out, explicitly: the publication graces of a
         closed thought are zero and the reply goes out as soon as it is ready — for a test whose subject is not when a
         reply may go out."""
@@ -28,7 +28,7 @@ class Harness:
         self.store, self.owed = store, FakeOwed()
         self.conv = build(account=ACCT, owner="test", model=self.model, tools=self.tools, store=store,
                           memory=NoMemory(), clock=self.clock, mouth=self.mouth, telemetry=self.tel,
-                          config=config, prefix=prefix, owed=self.owed, tasks=tasks)
+                          config=config, prefix=prefix, owed=self.owed, tasks=tasks, prefs=prefs)
         self.mouth.ack = self.conv.ack
         self.conv.device("d1", voice_live=True, speaker_open=True)
         self._seq = 0

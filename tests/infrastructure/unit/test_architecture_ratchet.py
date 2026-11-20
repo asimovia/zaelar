@@ -565,6 +565,10 @@ _PACKAGE_CEILINGS["conversation"] += 63    # 2026-11-20 V2-941 v3.1 A10 (review 
 _TOTAL_MAX += 63     # same cause
 _PACKAGE_CEILINGS["memory"] += 206    # 2026-11-20 V2-941 v3.1 B1: the conversation manager's rows in zaelar.db (conv_rows + conv_meta, schema v12) behind memory.api.conv, and memory.db.exclusive — the package's own sqlite store is deleted
 _TOTAL_MAX += 281    # same cause, with the host (nucleo/conversation_host: its store, thread and clock) and its bench
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 243    # 2026-11-20 V2-941 v3.1 B2: the switch (session > account > env, failing closed), one conversation per account, the config from the genome (bounds and order) and the `Prefs` port, the proof of who opened the turns
+_PACKAGE_CEILINGS["rules"] += 4      # same: the conversation's prefs become factory rows at scope `voice`
+_PACKAGE_CEILINGS["server"] += 11    # same: GET /api/debug/conversation/<session>, read only
+_TOTAL_MAX += 267    # same cause
 
 
 def test_the_total_only_shrinks():

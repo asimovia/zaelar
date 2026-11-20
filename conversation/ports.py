@@ -123,6 +123,12 @@ class Tasks(Protocol):
     def cancel(self, account: str, task_id: str) -> bool: ...
 
 
+class Prefs(Protocol):
+    """The operator's standing preferences, read when a decision needs one — so a change applies to the next one, with
+    no restart. The host reads its rules; without this port every preference is its default."""
+    def __call__(self, key: str, default: Any) -> Any: ...
+
+
 # ── memory (read only) ───────────────────────────────────────────────────────────────────────────────────────────
 
 
