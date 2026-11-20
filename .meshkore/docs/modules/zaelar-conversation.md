@@ -95,10 +95,15 @@ derived. A figure that fails its repair gets the language's honest line; when th
 second wording (`unverified_fact_alt`) — never «say it again» for a clear question. The figures of a reply that carry
 no claim are counted on its `command` event: a measure, never a gate.
 
-A switched session only reads (`tools_read.py`): the world through the search service (with the model's proposal
+A switched session reads (`tools_read.py`): the world through the search service (with the model's proposal
 and no judge — the turn's classifier is never asked), a widget, his memory (no reinforcement), the agent itself, and
-the catalogue. Each tool's class is derived from what it declares, never listed; a door that fails is a result the
-model sees. The state comes from the engine's own readers (STATE, the widgets, the tasks), each bounded, writing
+the catalogue. And it carries out LOCAL acts (`acts.py`, F2 step 1): open, close, minimize, full screen and arrange a
+widget, and the side panel's tabs — declared data (`declared.json`, `acts`) carried to the doors that already do them,
+`nucleo/acts/canvas.apply` with the reservation as provenance (`turn:<effect>`) and the `panel` event; the widget an
+act names is resolved against the catalogue of manifests, so a new widget needs no code. Each tool's class is derived
+from what it declares, never listed; a door that fails is a result the model sees. The state comes from the engine's
+own readers (STATE, the widgets' catalogue and what is on screen with its actions and content, the tasks, the
+connectors, the draft, what was done, the browser, the next days), each bounded within `state_tokens`, writing
 nothing; the notices owed are not in it — the manager says them itself. Each answered batch owes one pair to the engine's conversation record (`kind='conv'`), at
 least once, so «what did I tell you» finds a switched session too. And when his voice was lost — no word, a guard,
 incomplete — and he types within a minute, that text's prompt says so, how long ago and why.
@@ -162,7 +167,7 @@ stdlib only, no regex, no word tables (the person's words are never read by code
 | Inbox | `inbox/` | The person's entries — a voice utterance (whole, or incomplete with what was heard), a text, a control — accepted durably and deduplicated by producer id, ordered by onset across devices and channels, collected into batches; every one ends accounted (told · silent · expired · applied · failed). What the engine owes the person is not an entry: it is a line in its own ledger (`Owed`), said as it is, by voice, when the manager is free. |
 | Ledger | `ledger/` | Two items with ONE transition table: the person's request, and the reservation of an effect. The host's tasks, questions, what it owes and its mandates have their own rows and writers: referred to by id, never copied. |
 | Composer | `composer/` | A pure function from the store to the prompt: a cacheable prefix, the state, the last turns (cut to what was heard), the input. |
-| Gateway | `gateway/` | The only door out. In F1 a read passes and everything else is refused, with its event; whether a tool only reads is the class the host derives from the tool's declared act (`ToolSpec.act`). The reservation stays for F2, exercised by its own tests: it rests on the person's entries, seals and reserves in one transaction, is written ahead before the call, and an unknown outcome is reconciled by looking, never resent. |
+| Gateway | `gateway/` | The only door out, by the class the host derives from the tool's declared act (`ToolSpec.act`): a read passes; a local act is RESERVED — it rests on the person's entries, seals and reserves one row per operation in one transaction, is written ahead before the call, never sent twice, and an unknown outcome is reconciled by looking, never resent; an act that leaves is refused (held) until its owner's door is wired; every act is refused while he speaks. |
 | Mouth | `mouth/` | Two verbs, say and stop. What was heard comes back with its source — the voice process's estimate, a text shown on a screen, or unknown; a line nobody acknowledges ended «unknown». Cutting our voice when the person talks over it is the voice process's local rule. The conversation the model reads is the person's entries and our lines, cut to what was heard. |
 | Manager | `manager/` | Linear: three states (free, running, speaking), the policy table (seven inputs × four columns, eleven operations), one run at a time, checkpoints where a stop, a new sentence or a resumed voice takes effect, and a deadline with its exit on every wait — swept by the clock's turn. Half a thought is not answered: after a voice closes with no sentence mark (the provider says so, as a boolean) the batch waits a moment before it may run and its reply waits a longer grace; after one with a mark the run starts at once and its reply waits a shorter one; if his voice comes back on any device that contributed, within the grace, the reply is never said and both travel together. When the model says, with its order, whether the thought is answerable (`complete`), its reading replaces the two graces: an answerable one goes out after a short grace from the last voice close, one with something missing after a long one — and a silent order read as incomplete closes only then. No field, or one that is not a boolean, leaves the marks' graces; on a text the field changes nothing. A silent close that waited looks for his voice right before closing, as a reply does before sealing. The graces only bound each other in one order — complete ≤ with a mark ≤ with no mark ≤ incomplete ≤ the hold for his voice — and `Config.misordered()` names the pairs out of it, for the host to refuse. A voice that cut our line and brought no word resumes that line once, from the last sentence heard. |
 
@@ -184,7 +189,7 @@ small. A new owner of the account recovers what a dead one left — a dequeued b
 I1 an effect rests on a sealed intervention · I2 every final word belongs to one intervention · I3 a sealed
 intervention — or one whose request is final — never changes · I4 a discard says its text and reason · I5 one writer
 per account, fenced by an epoch · I6 every accepted envelope ends accounted · I7 the model always sees the core tools
-and nothing runs it did not ask for · I8 nothing but a read reaches the tools (F1; F2 adds the person's authority) ·
+and nothing runs it did not ask for · I8 a read, or a local act through its one reservation on the person's entries, is all that reaches the tools ·
 I9 every request closes exactly once, within its liveness — counted from the close of the last entry of his that travels in its batch: waiting for him to finish a thought said in pieces is not stalling.
 
 ## How it is tested
@@ -205,7 +210,8 @@ produces a flow for it to read.
 
 ## Not done yet
 
-The package runs behind the switch, for his text and his voice. In this phase it only READS and STOPS: no act reaches
-the world (opening or acting on a widget, a task, a send), and every act is listed as held. The acts are the next
-slice, wired through the existing single doors (the widget action runner, dispatch, the send owner), never rebuilt.
+The package runs behind the switch, for his text and his voice. It READS, STOPS and carries out the canvas and panel
+acts (F2 step 1). Acting inside a widget, music and video, errands and sends are not wired yet and stay listed as held;
+they come one by one through the existing single doors (the widget action runner, dispatch, the send owner), never
+rebuilt.
 The public architecture diagrams show the package and mark those acts as next.

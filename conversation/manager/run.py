@@ -27,7 +27,7 @@ from conversation.composer import compose, view_from
 from conversation.composer.blocks import entry_facts
 from conversation.gateway import dispatch
 from conversation.gateway.authority import RunCtx
-from conversation.gateway.outbox import Read
+from conversation.gateway.outbox import Claimed, Read
 from conversation.inbox.mailbox import MONOLOGUE, Batch
 from conversation.inbox import ordering
 from conversation.manager import claims as CL
@@ -39,7 +39,7 @@ from conversation.telemetry import root
 from conversation.ports import (RELAY, UNCLAIMED, Command, Done, Failed, PromptParts, StaleEpoch, TextDelta, ToolCall,
                                 ToolResult)
 from conversation.composer.compose import BARGE, CONTENT, INBOX
-from conversation.types import Coverage, EnvelopeKind, Evidence, ItemKind, MgrState
+from conversation.types import Coverage, EffectClass, EnvelopeKind, Evidence, ItemKind, MgrState
 
 if TYPE_CHECKING:
     from conversation.manager.loop import Conversation, Running
@@ -347,7 +347,7 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
                     text += ev.text
                 elif isinstance(ev, ToolCall):
                     called = True
-                    over = _read_budget(conv, r, steps)        # a read past the budget is never made
+                    over = _is_read(conv, ev) and _read_budget(conv, r, steps)   # a read past it is never made
                     steps.append((ev, ToolResult("refused", data={"reason": READS_DONE}) if over
                                    else await _tool(conv, r, ev)))
                     _checkpoint(conv, r)
@@ -425,7 +425,7 @@ async def _memory(conv: "Conversation", r: "Running") -> list:
         return []
     try:
         return await guard.call(conv.em, conv.cfg, "memory",
-                                conv.memory.state_blocks(conv.account, budget_tokens=800), conv.cfg.memory_ms,
+                                conv.memory.state_blocks(conv.account, budget_tokens=conv.cfg.state_tokens), conv.cfg.memory_ms,
                                 {"run": r.run_id})
     except guard.PortTimeout as late:
         r.said.append(("memory", str(late)))  # the state goes without memory this time; port_slow said why
@@ -443,8 +443,27 @@ async def _tool(conv: "Conversation", r: "Running", call: ToolCall) -> ToolResul
         with conv.store.tx(conv.lease) as tx:
             CL.remember(tx, result.evidence, conv.clock.now_ms(), conv.cfg.evidence_ttl_ms)
         return result
+    if isinstance(decision, Claimed):
+        return await _act(conv, r, call, decision, deadline)
     r.acts_refused.append(call.name)
     return ToolResult("refused", data={"reason": decision.reason})
+
+
+async def _act(conv: "Conversation", r: "Running", call: ToolCall, claimed: Claimed, deadline: int) -> ToolResult:
+    """A local act, reserved once: submitted through the one dispatch (written ahead, never resent). The same
+    operation on the same entries is the same row — never sent twice; the model is told where it stands. An act that
+    did not land is one the reply says (`acts_refused`), never a silence."""
+    t_tool = conv.clock.mono_ms()
+    with guard.measured(conv.em, conv.cfg, "tools", {"run": r.run_id}):
+        result = await dispatch.submit(conv.gw, conv.tools, claimed.effect_id, deadline)
+    r.stages["acts_ms"] = r.stages.get("acts_ms", 0) + conv.clock.mono_ms() - t_tool     # never the reads' budget
+    if result is None:
+        state = conv.gw.state_of(claimed.effect_id)
+        result = ToolResult("ok" if state == "provider_accepted" else "refused",
+                            data={"state": state, "repeat": claimed.repeat})
+    if result.status != "ok":
+        r.acts_refused.append(call.name)
+    return result
 
 
 #: a refused figure's repair: the answer again without what it cannot back — the honest line only if that fails too
@@ -468,8 +487,14 @@ PSEUDO = frozenset({ORDERS_ID, CLAIMS_ID, READS_ID})
 READS_DONE = "no more reads in this answer: reply with what you have, and say what is missing"
 
 
-def _reads(steps: list) -> list[str]:
-    return [c.name for c, res in steps if c.call_id not in PSEUDO and res.status != "refused"]
+def _is_read(conv: "Conversation", call: ToolCall) -> bool:
+    """A call the budget of reads counts: anything but a known act (an unknown name is refused either way)."""
+    spec = conv.gw.specs().get(call.name)
+    return spec is None or spec.effect_class is EffectClass.READ
+
+
+def _reads(steps: list, conv: "Conversation") -> list[str]:
+    return [c.name for c, res in steps if c.call_id not in PSEUDO and res.status != "refused" and _is_read(conv, c)]
 
 
 def _read_budget(conv: "Conversation", r: "Running", steps: list) -> bool:
@@ -478,7 +503,7 @@ def _read_budget(conv: "Conversation", r: "Running", steps: list) -> bool:
     ran out (`reads_capped`, `read_time_capped`)."""
     if r.read_capped:
         return True
-    n, spent = len(_reads(steps)), r.stages.get("tools_ms", 0)
+    n, spent = len(_reads(steps, conv)), r.stages.get("tools_ms", 0)
     if n >= conv.cfg.max_reads or spent >= conv.cfg.read_wall_ms:
         r.read_capped = "reads_capped" if n >= conv.cfg.max_reads else "read_time_capped"
         _emit(conv, "command", r, command=r.read_capped, reads=n, tools_ms=spent)
@@ -598,7 +623,7 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
         steps.append((ToolCall("orders", "orders_check", {}),
                       ToolResult("refused", data={"refused_act": list(r.acts_refused), "reason": SAY_THE_ACT})))
         return False
-    reads = _reads(steps)
+    reads = _reads(steps, conv)
     typed = _typed_only(r)
     if (isinstance(cmd, commands.NoReply) and (reads or not _barge_cut(conv, r)) and _said_something(r)
             and not r.asked_after_reads):           # it read for him, or his words reached us addressed — and then

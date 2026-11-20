@@ -22,13 +22,15 @@ from tests.conversation.unit.convkit import Harness
 ENGINE = Path(__file__).resolve().parents[3]
 STAGES = ["conv_ear/opened", "conv_ear/closed", "conv_inbox/accepted", "conv_inbox/dequeued", "conv_run/started",
           "conv_ledger/opened", "conv_ledger/attached", "conv_run/prompt", "conv_run/model_first_token",
-          "conv_effect/read", "conv_effect/refused", "conv_effect/sealed", "conv_run/command", "conv_mouth/say", "conv_mouth/started",
+          "conv_effect/read", "conv_effect/sealed", "conv_effect/claimed", "conv_effect/submitted",
+          "conv_effect/receipt", "conv_effect/refused", "conv_run/command", "conv_mouth/say", "conv_mouth/started",
           "conv_mouth/ended", "conv_close/answered", "conv_inbox/accounted", "conv_run/ended"]
 
 
 def test_one_request_end_to_end_says_every_stage_with_its_fields(store):
     h = Harness(store, grace=False, script={"iv_000001": [
-        [ToolCall("c1", "search", {"q": "w1"}), ToolCall("c2", "agenda_add", {"what": "w2"}), Done()],
+        [ToolCall("c1", "search", {"q": "w1"}), ToolCall("c2", "agenda_add", {"what": "w2"}),
+         ToolCall("c3", "send_message", {"to": "c1", "text": "w3"}), Done()],
         [reply("w9"), Done()]]})
     h.utter([(["w1", "w2"], 0)])
     h.pump()
@@ -43,7 +45,8 @@ def test_one_request_end_to_end_says_every_stage_with_its_fields(store):
     assert by["conv_close/answered"]["refs"]["req"] == "r_iv_000001"
     assert by["conv_run/started"]["refs"]["run"] and by["conv_run/started"]["refs"]["req"] == "r_iv_000001"
     assert by["conv_ear/closed"]["refs"]["iv"] == "iv_000001" and by["conv_ear/closed"]["trace"] == "iv_000001"
-    assert by["conv_effect/refused"]["tool"] == "agenda_add" and by["conv_effect/refused"]["reason"] == "not_a_read"
+    assert by["conv_effect/refused"]["tool"] == "send_message" and by["conv_effect/refused"]["reason"] == "held"
+    assert by["conv_effect/claimed"]["tool"] == "agenda_add" and by["conv_effect/submitted"]["refs"]["effect"]
     assert by["conv_mouth/say"]["refs"]["say"]
 
 
@@ -115,7 +118,8 @@ def test_m10_every_port_is_measured_the_store_and_the_memory_too(store):
 
 def test_m9_every_event_of_a_request_carries_its_trace_and_its_cause(store):
     h = Harness(store, script={"iv_000001": [
-        [ToolCall("c1", "search", {"q": "w1"}), ToolCall("c2", "agenda_add", {"what": "w2"}), Done()],
+        [ToolCall("c1", "search", {"q": "w1"}), ToolCall("c2", "agenda_add", {"what": "w2"}),
+         ToolCall("c3", "send_message", {"to": "c1", "text": "w3"}), Done()],
         [reply("w9"), Done()]]})
     h.utter([(["w1", "w2"], 0)])
     blank = [f"{k}/{lab}" for k, lab, p in h.tel.events if not p["trace"]]

@@ -769,6 +769,9 @@ _PACKAGE_CEILINGS["conversation"] += 4                 # same batch: the ear's d
 _PACKAGE_CEILINGS["nucleo/turn"] += 4                  # same batch: the vault gate callable off a loop (`inspect_now`), one body for both
 _PACKAGE_CEILINGS["voice"] += 1                        # same batch: a closed attention window names no mode (E-5)
 _TOTAL_MAX += 92     # same causes, measured
+_PACKAGE_CEILINGS["conversation"] += 47    # 2026-11-20 INI-078 F2 step 1: the gateway's third branch (a local act reserved once, sent by dispatch, a leaving one held), a run's act told where it stands, the read budget counting reads only; P3's I8 for F2
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 266   # same: the local acts carried to their existing doors (`acts.py`: canvas.apply, the panel event, the widget resolved against the catalogue) as declared data, and the state the old turn read (row 16: catalogue, on screen, connectors, draft, done, browser, days)
+_TOTAL_MAX += 313    # same causes, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

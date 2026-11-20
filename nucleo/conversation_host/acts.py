@@ -1,0 +1,179 @@
+"""The `Tools` port's local ACTS (INI-078 F2 step 1): an act the gateway reserved, carried to the door that already does
+it — never rebuilt here.
+
+Which acts exist, what each is for, its arguments and the door it goes to are declared data (`declared.json`, `acts`),
+as the reads are; its class is DERIVED from its declared `act` (`tools_read.derive`): a local act is a write, and one
+whose act is a leaving type of the event vocabulary would be refused by the gateway as held. Two doors:
+
+  canvas  `nucleo.acts.canvas.apply` — show, close, minimize, full screen, arrange — with the provenance `turn:<effect>`
+          (the arbiter's «turn-owned» branch: the model's order on his sealed entry is the decision, no licence ladder)
+  panel   the `panel` event the side panel obeys, its tab read by `catalogs.canon_panel` (the panel is no widget)
+
+The widget an act names is resolved against the CATALOGUE — every manifest, by id, name or declared alias
+(`widgets.runtime`) — and narrowed to the card open on screen (`widgets.instances`): a widget nobody wrote code for is
+covered as soon as it is installed. What cannot be resolved is a `failed` result naming what there is, never a guess;
+two cards of one widget open is a question. A message never crosses here (`nucleo.send.turn.is_message`): its owner is
+the send door.
+"""
+from __future__ import annotations
+
+import asyncio
+
+from conversation.ports import ToolResult, ToolSpec
+from nucleo.conversation_host import tools_read
+from nucleo.conversation_host.declared import declared
+
+ACTS: dict[str, dict] = dict(declared()["acts"])      # declared data, read once
+
+
+def catalog() -> list[ToolSpec]:
+    return [ToolSpec(name, a["schema"], act=a["act"], effect_class=tools_read.derive(a["act"], False), about=a["about"])
+            for name, a in ACTS.items()]
+
+
+def _open() -> list[str]:
+    from server.voice_api import open_instances
+    return [str(i) for i in open_instances() if str(i)]
+
+
+def _resolve(name: str, open_ids: list[str], *, named_only: bool) -> dict:
+    """The widget a name means: `{"id"}`, `{"system"}` (a surface of the side panel), `{"ask": [ids]}` or `{}`."""
+    from widgets import runtime
+    n = str(name or "").strip()
+    if not n:
+        return {}
+    if runtime.get(n.split("::", 1)[0].lower()) is not None:
+        return {"id": n if "::" in n else n.lower()}
+    if named_only:
+        wid = runtime.identify_named(n, open_ids=open_ids)
+        if wid:
+            return {"id": wid}
+    got = runtime.identify(n, open_ids=open_ids) or {}
+    if got.get("match") and not named_only:
+        return {"id": str(got["match"])}
+    if got.get("system"):
+        return {"system": str(got["system"])}
+    asks = [str(c.get("id") if isinstance(c, dict) else c) for c in got.get("candidates") or []] \
+        if got.get("ambiguous") else []
+    return {"ask": [a for a in asks if a]} if any(asks) else {}
+
+
+def _card(base: str, open_ids: list[str]) -> dict:
+    """The card on screen for a widget: its one open instance, the base when none; two open is a question."""
+    from widgets import instances
+    if "::" in base:
+        return {"id": base}
+    live = instances.instances_of(base, open_ids)
+    return {"id": live[0]} if len(live) == 1 else ({"ask": live} if len(live) > 1 else {"id": base})
+
+
+def _front(open_ids: list[str]) -> str:
+    from nucleo import canvas_focus
+    return canvas_focus.last_turn_card(open_ids) or (open_ids[0] if len(open_ids) == 1 else "")
+
+
+def _catalogue_ids() -> list[str]:
+    from widgets import runtime
+    return sorted(str(w.get("id")) for w in runtime.catalog() if w.get("id"))
+
+
+def _not_found(name: str) -> ToolResult:
+    return ToolResult("failed", {"reason": "no_such_widget", "named": name, "widgets": _catalogue_ids()})
+
+
+def _which(ids: list[str]) -> ToolResult:
+    return ToolResult("failed", {"reason": "which_one", "candidates": ids})
+
+
+def _apply(op: str, wid: str, src: str, **extra) -> ToolResult:
+    from nucleo.acts import canvas
+    if canvas.apply(op, wid, src=src, **extra):
+        return ToolResult("ok", {"op": op, "widget": wid or None})
+    return ToolResult("rejected", {"op": op, "widget": wid or None, "reason": "the canvas door refused it"})
+
+
+def _panel(action: str, tab: str, src: str, connector: str = "") -> ToolResult:
+    from voice.observer import emit
+    emit("panel", action, extra={"tab": tab, "src": src, **({"connector": connector} if connector else {})})
+    return ToolResult("ok", {"panel": tab, "action": action, **({"connector": connector} if connector else {})})
+
+
+def _canvas(op: str, args: dict, src: str) -> ToolResult:
+    if op == "arrange":
+        return _apply("arrange", "", src)
+    open_ids = _open()
+    name = str(args.get("widget") or "").strip()
+    if op == "show":
+        got = _resolve(name, open_ids, named_only=True)
+        if got.get("system"):
+            from nucleo.turn.prompt import catalogs
+            tab = catalogs.wall_tab_for(got["system"], name)
+            return _panel("open", tab, src) if tab else _not_found(name)
+        if got.get("ask"):
+            return _which(got["ask"])
+        if not got.get("id"):
+            return _not_found(name)
+        from widgets import instances
+        return _apply("show", instances.show_id(got["id"], open_ids), src)
+    if op == "fullscreen" and str(args.get("mode") or "") == "off":
+        from nucleo.flash import show_target
+        got = _resolve(name, open_ids, named_only=False) if name else {"id": show_target.at_full_screen()}
+        if got.get("ask"):
+            return _which(got["ask"])
+        return _apply("fullscreen", str(got.get("id") or ""), src, on=False)   # no id: whichever covers the screen
+    got = _resolve(name, open_ids, named_only=False) if name else {"id": _front(open_ids)}
+    if got.get("ask"):
+        return _which(got["ask"])
+    if not got.get("id"):                    # never an empty id: a close with none closes EVERY card
+        return _not_found(name) if name else _which(open_ids)
+    card = _card(got["id"], open_ids)
+    if card.get("ask"):
+        return _which(card["ask"])
+    if op == "close":
+        return _apply("minimize" if str(args.get("mode") or "") == "minimize" else "close", card["id"], src)
+    if card["id"] not in open_ids:
+        _apply("show", card["id"], src)      # full screen over a closed widget opens it first, as the old path did
+    return _apply("fullscreen", card["id"], src, on=True)
+
+
+def _a_message(args: dict, op: str) -> bool:
+    from nucleo.send import turn
+    return turn.is_message(str(args.get("widget") or ""), op, args)
+
+
+def run(name: str, args: dict, effect_id: str | None) -> ToolResult:
+    """One reserved act at its door. `effect_id` is its reservation: the act's provenance on the canvas."""
+    spec = ACTS.get(name)
+    if spec is None:
+        return ToolResult("rejected", {"reason": "unknown_tool", "tool": name})
+    args = args if isinstance(args, dict) else {}
+    if _a_message(args, spec["op"]):
+        return ToolResult("rejected", {"reason": "a message is its owner's", "tool": name})
+    src = f"turn:{effect_id or name}"
+    if spec["door"] == "panel":
+        from nucleo.turn.prompt import catalogs
+        action = "close" if str(args.get("action") or "") == "close" else "open"
+        tab = catalogs.canon_panel(args.get("panel"))
+        cx = catalogs.canon_connector(args.get("connector")) if tab == "conectores" and action == "open" else ""
+        return _panel(action, tab, src, cx)
+    return _canvas(spec["op"], args, src)
+
+
+class HostTools:
+    """The switched session's `Tools`: the reads (`tools_read.ReadTools`) and the local acts, ONE catalogue."""
+
+    def __init__(self, reads: tools_read.ReadTools | None = None) -> None:
+        self._reads = reads or tools_read.ReadTools()
+
+    def catalog(self) -> list[ToolSpec]:
+        return self._reads.catalog() + catalog()
+
+    async def call(self, name: str, args: dict, *, effect_id: str | None, idempotency_key: str | None,
+                   deadline_mono_ms: int) -> ToolResult:
+        if name not in ACTS:
+            return await self._reads.call(name, args, effect_id=effect_id, idempotency_key=idempotency_key,
+                                          deadline_mono_ms=deadline_mono_ms)
+        try:
+            return await asyncio.to_thread(run, name, args, effect_id)
+        except Exception as e:  # noqa: BLE001 — an act whose door raised: we do not know it went, the gateway says so
+            return ToolResult("unknown", {"tool": name, "error": f"{type(e).__name__}: {str(e)[:160]}"})

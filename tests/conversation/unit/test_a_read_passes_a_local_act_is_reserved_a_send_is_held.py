@@ -1,10 +1,13 @@
-"""Nothing but a read passes the gateway, and a control nobody here handles is refused when accepted (node 13.32).
+"""A read passes, a local act is reserved and sent once, a send is held — and a control nobody here handles is refused
+when accepted (node 13.32, INI-078 F2 step 1).
 
-In F1 the gateway does two things: a read passes; anything else — a write here, something that leaves, a tool the
-catalogue does not know — is refused, with its event, and reaches neither the `Tools` port nor the ledger. Whether a
-tool only reads is the class the host derived from its declared act (`ToolSpec.effect_class`): the package holds no
-list of reads, and the act itself is opaque to it. A model that asks for an act gets the refusal as the tool's result
-and answers with it. The model's `on` never reaches the port.
+The gateway has three branches, by the class the host derived from the tool's declared act (`ToolSpec.effect_class`;
+the package holds no list of tools, and the act itself is opaque to it): a read passes; a local act (a write here) is
+RESERVED — every intervention of the person's in the batch sealed and ONE row per operation, in one transaction — and
+reaches the `Tools` port only through `dispatch.submit`, with its effect id; the same operation again is the same row
+and is never sent twice; something that leaves is refused (`held`) and reaches neither the port nor the ledger; and
+while the person speaks every act is refused with that reason. A model whose act did not land answers with it. The
+model's `on` never reaches the port.
 
 The controls by id: a stop is always handled; cancelling a task is handled only when the host gives the `Tasks` port;
 any other (the confirmation and the delegation of F2) has no handler and is accounted `refused` in the transaction that
@@ -15,7 +18,7 @@ from __future__ import annotations
 import asyncio
 
 from conversation.gateway import dispatch
-from conversation.gateway.outbox import Read, Refused
+from conversation.gateway.outbox import Claimed, Read, Refused
 from conversation.inbox.accounting import audit, outcomes
 from conversation.ports import Done, ToolCall, ToolSpec
 from conversation.testing.fakes import FakeTasks
@@ -26,44 +29,50 @@ from tests.conversation.unit.gatekit import ACCT, Kit, RecordingTools
 from tests.conversation.unit.inboxkit import control
 
 
-def test_a_read_passes_and_everything_else_is_refused_with_its_event(store, clock, telemetry):
+def test_a_read_passes_a_local_act_is_reserved_and_a_send_is_held_with_its_event(store, clock, telemetry):
     k = Kit(store, clock, telemetry)
     ctx = k.ctx(k.utterance("iv1"))
     assert k.gw.request(ctx, ToolCall("c", "search", {"q": "w1"})) == Read()
-    assert k.gw.request(ctx, ToolCall("c", "agenda_add", {"what": "w1"})) == Refused("not_a_read")
-    assert k.gw.request(ctx, k.send()) == Refused("not_a_read")
+    assert k.gw.request(ctx, k.send()) == Refused("held")
     assert k.gw.request(ctx, ToolCall("c", "w_unknown", {})) == Refused("unknown_tool")
-    assert k.gw.request(ctx, k.send(), held=True) == Refused("person_speaking")
+    assert k.gw.request(ctx, ToolCall("c", "agenda_add", {"what": "w1"}), held=True) == Refused("person_speaking")
+    assert not k.items("effect")                                   # nothing refused ever reaches the ledger
+    first = k.gw.request(ctx, ToolCall("c", "agenda_add", {"what": "w1"}))
+    again = k.gw.request(ctx, ToolCall("c2", "agenda_add", {"what": "w1"}))
+    assert isinstance(first, Claimed) and not first.repeat
+    assert again == Claimed(first.effect_id, repeat=True)          # the same operation: the same row, never a second
+    assert [r["id"] for r in k.items("effect")] == [first.effect_id]
+    assert store.snapshot(ACCT).get("interventions", "iv1")["phase"] == "sealed"
     refused = [p for _k, lab, p in telemetry.events if lab == "refused"]
-    assert [(p["tool"], p["act"], p["effect_class"]) for p in refused] == [
-        ("agenda_add", "a1.add", "write"), ("send_message", "a2.send", "leaves"), ("w_unknown", None, None),
-        ("send_message", "a2.send", "leaves")]
-    assert not k.items("effect")
-    assert store.snapshot(ACCT).get("interventions", "iv1")["phase"] == "closed"      # nothing sealed
+    assert [(p["tool"], p["act"], p["effect_class"], p["reason"]) for p in refused] == [
+        ("send_message", "a2.send", "leaves", "held"), ("w_unknown", None, None, "unknown_tool"),
+        ("agenda_add", "a1.add", "write", "person_speaking")]
 
 
 def test_the_class_is_the_hosts_derivation_never_a_list_of_the_package(store, clock, telemetry):
     k = Kit(store, clock, telemetry)
     ctx = k.ctx(k.utterance("iv1"))
-    for cls, expected in ((EffectClass.READ, Read()), (EffectClass.WRITE, Refused("not_a_read")),
-                          (EffectClass.LEAVES, Refused("not_a_read"))):
+    for cls, expected in ((EffectClass.READ, Read), (EffectClass.WRITE, Claimed), (EffectClass.LEAVES, Refused)):
         k.gw.specs = lambda cls=cls: {"w_tool": ToolSpec("w_tool", act="a9.x", effect_class=cls)}
-        assert k.gw.request(ctx, ToolCall("c", "w_tool", {})) == expected, cls
+        assert isinstance(k.gw.request(ctx, ToolCall("c", "w_tool", {"n": str(cls)})), expected), cls
 
 
-def test_a_model_that_asks_for_acts_gets_the_refusal_and_only_reads_reach_the_tools(store):
+def test_a_local_act_reaches_the_tools_once_by_its_reservation_and_a_send_never(store):
     h = Harness(store, grace=False)
     h.model.script["iv_000001"] = [
         [ToolCall("c1", "agenda_add", {"what": "w1"}), ToolCall("c2", "send_message", {"to": "c1", "text": "w2"}),
-         ToolCall("c3", "search", {"q": "w3", "on": "iv_000001"}), Done()],
+         ToolCall("c3", "agenda_add", {"what": "w1"}), ToolCall("c4", "search", {"q": "w3", "on": "iv_000001"}),
+         Done()],
         [reply("w9"), Done()]]
     h.utter([(["w1", "w2"], 0)])
-    assert [(n, a, e) for n, a, e in h.tools.calls] == [("search", {"q": "w3"}, None)]   # `on` never reaches it
-    results = [(c.name, r.status, r.data.get("reason")) for c, r in h.model.calls[-1].prompt.steps]
-    assert results == [("agenda_add", "refused", "not_a_read"), ("send_message", "refused", "not_a_read"),
-                       ("search", "ok", None)]
+    [eff] = [r for _k, r in store.snapshot("acct-test").scan("items") if r["kind"] == "effect"]
+    assert [(n, a, e) for n, a, e in h.tools.calls] == [("agenda_add", {"what": "w1"}, eff["id"]),
+                                                         ("search", {"q": "w3"}, None)]   # `on` never reaches it
+    assert eff["state"] == "provider_accepted"
+    results = [(c.name, r.status, r.data.get("reason"), r.data.get("repeat")) for c, r in h.model.calls[-1].prompt.steps]
+    assert results == [("agenda_add", "ok", None, None), ("send_message", "refused", "held", None),
+                       ("agenda_add", "ok", None, True), ("search", "ok", None, None)]
     assert [o.text for o in h.mouth.orders] == ["w9"] and [lab for lab, _ in h.closes()] == ["answered"]
-    assert not [r for _k, r in store.snapshot("acct-test").scan("items") if r["kind"] == "effect"]
 
 
 def test_dispatch_reads_only_a_read(store, clock, telemetry):

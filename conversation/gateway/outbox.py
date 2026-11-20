@@ -1,14 +1,12 @@
 """The gateway: the ONLY door from a run to the world (I8).
 
-In F1 it does two things: a read passes; anything else is `Refused`, with its event. Whether a tool only reads is the
-host's derivation from the tool's declared act (`ToolSpec.effect_class`): the package keeps no list of reads.
-
-What stays, untouched, for F2 is the RESERVATION: `reserve` seals every intervention of the person's in the batch and
-reserves ONE row per logical operation in the same transaction (I1); an effect id is a hash of (mandate, trigger,
-operation), so the same operation again is the same row and a new one is never minted; `dispatch.submit` writes it
-ahead before the call, an unknown outcome is reconciled by looking, never resent; a call or a receipt without a
-reservation cuts every write of the account (`disable_writes`). No product path reaches the reservation before F2:
-its own tests exercise it.
+Three branches, by the class the host derived from the tool's declared act (`ToolSpec.effect_class`; the package keeps
+no list of tools): a READ passes; a local act (WRITE) is RESERVED — `reserve` seals every intervention of the person's
+in the batch and reserves ONE row per logical operation in the same transaction (I1); an effect id is a hash of
+(mandate, trigger, operation), so the same operation again is the same row and a new one is never minted;
+`dispatch.submit` writes it ahead before the call, an unknown outcome is reconciled by looking, never resent; a call or
+a receipt without a reservation cuts every write of the account (`disable_writes`). An act that LEAVES is refused
+(`held`): its owner's door is not this one yet (F2 step 4). While the person speaks, every act is refused.
 
 Contract for the adapters (F2): the `Tools` adapter performs a real external send ONLY through the engine's one exit
 door, `connectors/exit.py` (its kill switch and its inventory included). This package never sends anything.
@@ -43,7 +41,7 @@ class Claimed:
 
 @dataclass(frozen=True)
 class Refused:
-    reason: str      # unknown_tool · not_a_read · person_speaking · unsealed · no_authority · write_disabled …
+    reason: str      # unknown_tool · undeclared · held · person_speaking · unsealed · no_authority · write_disabled …
 
 
 Decision = Read | Claimed | Refused
@@ -98,8 +96,9 @@ class Gateway:
     # ── one tool call ───────────────────────────────────────────────────────────────────────────────────────────
 
     def request(self, ctx: A.RunCtx, call: ToolCall, *, held: bool = False) -> Decision:
-        """One tool call of a run: a read passes; anything else is refused (F1) — while the person speaks, with that
-        reason. The model's `on` is telemetry, never authority."""
+        """One tool call of a run: a read passes; a local act is reserved (`Claimed`, or the reservation's refusal);
+        an act that leaves is refused (`held`) — and every act while the person speaks, with that reason. The model's
+        `on` is telemetry, never authority."""
         spec = self.specs().get(call.name)
         hint = call.args.get("on")
         if spec is None:
@@ -111,16 +110,20 @@ class Gateway:
                        args={k: str(v)[:200] for k, v in call.args.items() if k != "on"})   # what was read, bounded
             self._flush()
             return Read()
+        elif held:
+            reason = "person_speaking"
+        elif spec.effect_class is EffectClass.WRITE:
+            return self.reserve(ctx, call)
         else:
-            reason = "person_speaking" if held else "not_a_read"
+            reason = "held"
         self._note("refused", ctx, tool=call.name, reason=reason, act=getattr(spec, "act", None),
                    effect_class=str(spec.effect_class) if spec else None, model_on=hint)
         self._flush()
         return Refused(reason)
 
     def reserve(self, ctx: A.RunCtx, call: ToolCall) -> Decision:
-        """F2's door: reserve the effect of one tool call on the batch's authority floor — the seals and the row in
-        ONE transaction. No run reaches it in F1."""
+        """Reserve the effect of one tool call on the batch's authority floor — the seals and the row in ONE
+        transaction."""
         spec = self.specs().get(call.name)
         if spec is None or spec.effect_class is EffectClass.READ:
             self._note("refused", ctx, tool=call.name, reason="not_an_effect")
@@ -170,6 +173,10 @@ class Gateway:
         b.tx.put(OPS, f"{trigger}|{op}", {"effect": row["id"]})
         self._note("claimed", ctx, tool=tool, effect=row["id"], mandate=mandate, repeat=not new)
         return Claimed(row["id"], repeat=not new)
+
+    def state_of(self, effect_id: str) -> str | None:
+        """Where a reserved effect stands now (a repeat of its operation is told this, never sent again)."""
+        return self._decide(lambda b: (b.get(effect_id) or {}).get("state"))
 
     def disable_writes(self, reason: str) -> None:
         """Cut every write of the account (a leaving call reached dispatch without a valid reservation,

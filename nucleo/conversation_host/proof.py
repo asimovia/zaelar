@@ -5,7 +5,7 @@
   livekit_turns         requests to the old turn stream                       (its door, in a switched session)
   legacy_prompts        prompts of the old turn with this session's trace     (its door, in a switched session)
   commit_user_turn      calls to the speech session's own turn commit         (the voice adapter)
-  effects_outside_read  anything but a read the manager's gateway let through (its `conv_effect` events)
+  effects_outside_read  anything but a read or a declared local act the gateway let through (its `conv_effect` events)
   held_dispatch_attempts outside writes the hold stopped                      (the exit's own counter, by session)
   legacy_turn_attempts  a line that reached the old turn's reply in a switched session (the net, B5)
   legacy_jev_calls      the old turn's brief (a Jev call) asked while the manager held the voice (`switch.legacy_call`)
@@ -47,7 +47,8 @@ def report(session: str) -> dict:
 
 class Counting:
     """The `Telemetry` port of a switched session: every event goes on to `inner`, and the ones the proof reads are
-    counted — a run the manager started, and any effect its gateway let through that is not a read."""
+    counted — a run the manager started, and any effect its gateway let through that is neither a read nor one of the
+    host's declared local acts (`acts.ACTS`, carried to their doors since F2 step 1)."""
 
     def __init__(self, inner, session: str) -> None:
         self._inner, self._session = inner, session
@@ -55,9 +56,14 @@ class Counting:
     def emit(self, kind: str, label: str, body: dict) -> None:
         if kind == "conv_run" and label == "started":
             note(self._session, "manager_runs")
-        elif kind == "conv_effect" and label in REACHED_OUT:
+        elif kind == "conv_effect" and label in REACHED_OUT and not _local_act(body):
             note(self._session, "effects_outside_read")
         self._inner.emit(kind, label, body)
+
+
+def _local_act(body: dict) -> bool:
+    from nucleo.conversation_host.acts import ACTS
+    return str((body or {}).get("tool") or "") in ACTS
 
 
 def forget(session: str) -> None:

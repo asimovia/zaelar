@@ -1,5 +1,5 @@
 """The conversation of an account, built with the engine's ports (V2-941, B5): its store on `zaelar.db`, the voice's
-model, the read tools, the state readers, the record, his rules, the clock, the observer — inside its own thread
+model, the read tools and the local acts, the state readers, the record, his rules, the clock, the observer — inside its own thread
 (`runtime.py`), one per account (`sessions.py`). The account is this installation's identity
 (`observability.identity.user_id`).
 """
@@ -39,12 +39,12 @@ def make(listeners: tuple = (), said: Callable | None = None) -> Callable:
         from nucleo.conversation_host.stops import HostStops
         from nucleo.conversation_host.store import ZaelarStore
         from nucleo.conversation_host.telemetry import ObserverTelemetry
-        from nucleo.conversation_host.tools_read import ReadTools
+        from nucleo.conversation_host.acts import HostTools
         clock = SystemClock()
         cfg, _problems = config.build()                  # the switch refused a session whose config does not pass
         from nucleo.conversation_host import guards
         guards.configure(cfg)
-        tools = ReadTools()
+        tools = HostTools()
         from nucleo.conversation_host import entry, voice_mouth
         mouth = WallMouth(clock, said, voice=voice_mouth, ack_later=entry.ack)
         conv = build(account=account(), owner=ACCOUNT_OWNER, model=FastModel(), tools=tools,

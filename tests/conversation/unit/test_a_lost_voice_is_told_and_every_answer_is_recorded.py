@@ -155,9 +155,10 @@ def test_the_state_comes_from_the_engines_readers_bounded_and_a_failing_one_left
                                                  ("NOTICES", lambda: "w7")))
     blocks = asyncio.run(memory_read.MemoryRead().state_blocks("a", budget_tokens=300))
     assert [b.title for b in blocks] == ["STATE", "NOTICES"]
-    assert len(blocks[0].text) == 300 * memory_read.CHARS_PER_TOKEN // 3
+    assert len(blocks[0].text) == 300 * memory_read.CHARS_PER_TOKEN // memory_read.BLOCK_SHARE   # never the whole budget
+    assert sum(len(b.text) for b in blocks) <= 300 * memory_read.CHARS_PER_TOKEN
 
 
 def test_the_notices_owed_are_not_in_the_state():
     from nucleo.conversation_host import memory_read
-    assert [t for t, _r in memory_read.READERS] == ["STATE", "WIDGETS", "TASKS"]
+    assert "NOTICES" not in [t for t, _r in memory_read.READERS]

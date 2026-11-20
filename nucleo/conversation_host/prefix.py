@@ -1,6 +1,7 @@
 """The model's stable prefix for the conversation manager (V2-941, the F1 plan §4.7): who is who, the language, how it
-speaks (the language pack's `speech_style`: DNA, never a sentence here), what it may read and what exists but is held, and the fields of its two orders — declared, never a script of how to behave
-(principles: «declare capabilities, never script behaviour»). Byte-identical between turns for the same names,
+speaks (the language pack's `speech_style`: DNA, never a sentence here), what it may read (an act it carries out is a
+tool of its own, never listed as a read), what exists but is held, and the fields of its two orders — declared, never
+a script of how to behave (principles: «declare capabilities, never script behaviour»). Byte-identical between turns for the same names,
 language and catalogue, so the provider caches it; every line is one of `LINES`, and the whole stays under
 `MAX_TOKENS`.
 """
@@ -27,7 +28,9 @@ def build(catalog: list[ToolSpec], *, native: str, name: str, agent: str = "", p
     """`agent`: the assistant's own name; `person`: the person's, when known; `held`: the acts that exist but are held in
     this phase (the event vocabulary's names); `style`: how the agent speaks, the language pack's `speech_style` (DNA,
     never a sentence of this file)."""
-    reads = "; ".join(f"{t.name}: {t.about}" if t.about else t.name for t in sorted(catalog, key=lambda t: t.name))
+    from conversation.types import EffectClass
+    reads = "; ".join(f"{t.name}: {t.about}" if t.about else t.name
+                      for t in sorted(catalog, key=lambda t: t.name) if t.effect_class is EffectClass.READ)
     lines = {
         "YOU": f"the assistant{f', named {agent}' if agent else ''} — the name others call you, never the person's; "
                f"speak in the first person",
@@ -42,7 +45,7 @@ def build(catalog: list[ToolSpec], *, native: str, name: str, agent: str = "", p
         "READS": reads or "none",
         "ACTS": ("held now, refused: never done, promised or said as done — the reply says so: "
                  + ", ".join(held)) if held
-                else "none in this session: nothing but a read passes",
+                else "none held in this session",
         "ORDERS": "reply(text, claims, complete) | no_reply(reason, complete) | stop_voice | stop_media | stop_run | "
                   f"stop_all; {declared()['stop_rule']}; no_reply: an entry not addressed to you, or nothing to say; "
                   "an act held or refused, or information missing: a reply "
@@ -58,11 +61,14 @@ def build(catalog: list[ToolSpec], *, native: str, name: str, agent: str = "", p
     return "\n".join(f"{k}: {lines[k]}" for k in LINES)
 
 
-def held_acts() -> tuple[str, ...]:
-    """Every leaving act of the event vocabulary, by its name (`messaging.send_new`): they exist; in this phase the
-    gateway refuses them. The names, not their descriptions: the line stays under the prefix's ceiling."""
+def held_acts(catalog: list[ToolSpec] = ()) -> tuple[str, ...]:
+    """Every leaving act of the event vocabulary, by its name (`messaging.send_new`), but the ones the catalogue
+    carries as a local act: they exist, and the gateway refuses them. The names, not their descriptions: the line
+    stays under the prefix's ceiling."""
+    from conversation.types import EffectClass
     from nucleo.events import vocabulary
-    return tuple(vocabulary.names(vocabulary.OUT))
+    opened = {t.act for t in catalog if t.effect_class is EffectClass.WRITE}
+    return tuple(n for n in vocabulary.names(vocabulary.OUT) if n not in opened)
 
 
 def current(catalog: list[ToolSpec]) -> str:
@@ -74,5 +80,5 @@ def current(catalog: list[ToolSpec]) -> str:
     person = str((memory.state() or {}).get("operator_name") or "").strip()
     import genome
     budget = (genome.genesis().get("conversation") or {}).get("reply_budget") or {}
-    return build(catalog, native=spec.native, name=spec.name, agent=snapshot.name(), person=person, held=held_acts(),
+    return build(catalog, native=spec.native, name=spec.name, agent=snapshot.name(), person=person, held=held_acts(catalog),
                  budget=budget, style=str(langs.words("speech_style", spec.code) or ""))

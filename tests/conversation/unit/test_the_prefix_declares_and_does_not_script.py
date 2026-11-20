@@ -7,10 +7,11 @@ catalogue (the provider caches it); and it stays under its token ceiling.
 from __future__ import annotations
 
 from conversation.ports import ToolSpec
-from nucleo.conversation_host import prefix
+from conversation.types import EffectClass
+from nucleo.conversation_host import acts, prefix
 from nucleo.llm.fast_client import est_tokens
 
-CATALOG = [ToolSpec("search"), ToolSpec("agenda_read"), ToolSpec("about_self")]
+CATALOG = [ToolSpec(n, effect_class=EffectClass.READ) for n in ("search", "agenda_read", "about_self")]
 
 
 def test_every_line_is_a_declared_one():
@@ -30,14 +31,14 @@ def test_it_is_byte_identical_between_turns():
 
 
 def test_it_stays_under_its_ceiling_with_the_real_catalogue_names_and_held_acts():
-    from nucleo.conversation_host import tools_read
     from i18n import langs
+    real_catalog = acts.HostTools().catalog()
     for code in ("en", "es"):
-        real = prefix.build(tools_read.catalog(), native="English", name="English", agent="Johnny", person="Quinn",
-                            held=prefix.held_acts(), budget={"voice": "two short sentences", "text": "a short paragraph"},
+        real = prefix.build(real_catalog, native="English", name="English", agent="Johnny", person="Quinn",
+                            held=prefix.held_acts(real_catalog), budget={"voice": "two short sentences", "text": "a short paragraph"},
                             style=langs.words("speech_style", code))
         assert est_tokens(len(real)) <= prefix.MAX_TOKENS, code
-    big = [ToolSpec(f"read_{i:02d}", about="w " * 6) for i in range(12)]
+    big = [ToolSpec(f"read_{i:02d}", about="w " * 6, effect_class=EffectClass.READ) for i in range(12)]
     assert est_tokens(len(prefix.build(big, native="English", name="English", held=prefix.held_acts()))) \
         <= prefix.MAX_TOKENS
 
@@ -46,14 +47,16 @@ def test_it_says_who_is_who_what_each_read_is_for_and_what_exists_but_is_held():
     """The smoke's findings (B7b): the agent's name read as the person's vocative, a search refused although offered,
     «tell Rowan…» read as a message FROM Rowan. Declared, never a «don't»: who is who, what each read reaches, and the
     acts that exist and are held in this phase."""
-    from nucleo.conversation_host import tools_read
-    text = prefix.build(tools_read.catalog(), native="English", name="English", agent="Johnny", person="",
-                        held=prefix.held_acts())
+    catalog = acts.HostTools().catalog()
+    text = prefix.build(catalog, native="English", name="English", agent="Johnny", person="",
+                        held=prefix.held_acts(catalog))
     lines = dict(line.split(": ", 1) for line in text.splitlines())
     assert "named Johnny" in lines["YOU"] and "never the person's" in lines["YOU"]
     assert "in the first person" in lines["YOU"]                             # U27-es-011: «Johnny no puede…»
     assert lines["PERSON"] == "name not known yet"
     assert "web_search: the world now" in lines["READS"]
+    assert "show_widget" not in lines["READS"]                                # an act is never listed as a read
+    assert "show_widget" not in lines["ACTS"]                                 # F2 step 1: a local act is no held one
     assert "messaging.send_new" in lines["ACTS"] and "refused" in lines["ACTS"]
     assert "never done, promised or said as done" in lines["ACTS"]          # es-11: «hecho, apuntado» for a held act
     assert "named Quinn" in prefix.build([], native="English", name="English", agent="Johnny", person="Quinn")

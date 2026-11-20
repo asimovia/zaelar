@@ -47,7 +47,12 @@ def test_widgets_and_tasks_are_facts_by_id(monkeypatch):
     from nucleo.turn.prompt import live_state
     monkeypatch.setattr(live_state, "_open_widget_ids", lambda: ["agenda"])
     monkeypatch.setattr(live_state, "_recent_widget_ids", lambda: ["agenda", "weather"])
-    assert memory_read._widgets() == "on screen: agenda\nused lately: weather"
+    from nucleo.flash import show_target
+    from widgets import runtime
+    monkeypatch.setattr(runtime, "catalog", lambda: [{"id": "agenda", "whenToUse": "w_days"}, {"id": "weather"}])
+    monkeypatch.setattr(show_target, "at_full_screen", lambda: "agenda")
+    assert memory_read._widgets() == ("agenda — w_days\nweather\non screen: agenda\nat full screen: agenda\n"
+                                      "used lately: weather")
     monkeypatch.setattr(dispatch, "pending_summaries", lambda: [{"name": "w_job", "phase": "w_step", "done": 2,
                                                                  "total": 5, "pct": 40}])
     store = SimpleNamespace(tasks_where=lambda **kw: [{"id": "t1", "title": "w_goal", "waiting_for": ledger.USER_ANSWER,

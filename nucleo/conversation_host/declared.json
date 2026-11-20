@@ -1,5 +1,5 @@
 {
- "_comment": "The conversation manager host's declared data (V2-941): the shape of the model's orders and claims, what a model call's measurements carry, the reads a switched session offers, the counters of its proof, and the lines of its prefix. Names and schemas, no word of a language — data the code reads, never a table in it.",
+ "_comment": "The conversation manager host's declared data (V2-941): the shape of the model's orders and claims, what a model call's measurements carry, the reads a switched session offers and the local acts it carries to their doors, the counters of its proof, and the lines of its prefix. Names and schemas, no word of a language — data the code reads, never a table in it.",
  "fact": {
   "type": "object",
   "required": [
@@ -139,6 +139,119 @@
    "core": true,
    "reads": true,
    "about": "this list of reads"
+  }
+ },
+ "acts": {
+  "show_widget": {
+   "act": "canvas.show",
+   "door": "canvas",
+   "op": "show",
+   "about": "open one of his widgets on screen (WIDGETS lists them): by its id, or by the name he used",
+   "schema": {
+    "type": "object",
+    "required": [
+     "widget"
+    ],
+    "properties": {
+     "widget": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "close_widget": {
+   "act": "canvas.close",
+   "door": "canvas",
+   "op": "close",
+   "about": "close a widget on screen, or put it away (minimize); no widget: the one in front",
+   "schema": {
+    "type": "object",
+    "required": [],
+    "properties": {
+     "widget": {
+      "type": "string"
+     },
+     "mode": {
+      "type": "string",
+      "enum": [
+       "close",
+       "minimize"
+      ]
+     }
+    }
+   }
+  },
+  "fullscreen_widget": {
+   "act": "canvas.fullscreen",
+   "door": "canvas",
+   "op": "fullscreen",
+   "about": "a widget to full screen (on) or back to its size (off; no widget: the one at full screen)",
+   "schema": {
+    "type": "object",
+    "required": [
+     "mode"
+    ],
+    "properties": {
+     "mode": {
+      "type": "string",
+      "enum": [
+       "on",
+       "off"
+      ]
+     },
+     "widget": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "arrange_canvas": {
+   "act": "canvas.arrange",
+   "door": "canvas",
+   "op": "arrange",
+   "about": "tidy the widgets on screen",
+   "schema": {
+    "type": "object",
+    "required": [],
+    "properties": {}
+   }
+  },
+  "show_panel": {
+   "act": "panel.open",
+   "door": "panel",
+   "op": "open",
+   "about": "open or close his side panel, which is no widget, on a tab: chat (the conversation), procesos (the work you do for him, in course and done), crons (repeating), programadas (once, later), clusters (his network), conectores (connect a service, named in connector), apps (the widgets' catalogue; apps-custom: his own)",
+   "schema": {
+    "type": "object",
+    "required": [
+     "panel"
+    ],
+    "properties": {
+     "panel": {
+      "type": "string",
+      "enum": [
+       "chat",
+       "procesos",
+       "crons",
+       "programadas",
+       "clusters",
+       "conectores",
+       "apps",
+       "apps-custom"
+      ]
+     },
+     "connector": {
+      "type": "string"
+     },
+     "action": {
+      "type": "string",
+      "enum": [
+       "open",
+       "close"
+      ]
+     }
+    }
+   }
   }
  },
  "proof": {

@@ -646,13 +646,17 @@ def check(case: Case) -> list[str]:
     snap = case.store.snapshot(getattr(case, "account", ACCT))
     items = {k: r for k, r in snap.scan("items")}
     phases = {k: r["phase"] for k, r in snap.scan("interventions")}
+    classes = {t.name: t.effect_class for t in case.tools.catalog()}
     for eid, row in items.items():
         if row["kind"] != str(ItemKind.EFFECT):
             continue
         for iv in row["data"].get("ivs", []):                                        # I1
             if phases.get(iv) not in ("sealed", "final"):
                 out.append(f"I1: effect {eid} rests on {iv} in phase {phases.get(iv)}")
-        out.append(f"I8: effect {eid} reserved by a run (nothing but a read passes)")
+        if classes.get(row["data"].get("tool")) is not EffectClass.WRITE:             # I8: only a local act reserves
+            out.append(f"I8: effect {eid} reserved for {row['data'].get('tool')}, which is no local act")
+        if not row["data"].get("ivs"):
+            out.append(f"I8: effect {eid} rests on no entry of the person's")
     owners: dict = {}                                       # I2: a word is identified by its provider turn and place
     for c in ((case.conv,) if case.old is None else ()):
         for iv, word_id in c.ear.spans.final_word_ids():
@@ -685,10 +689,16 @@ def check(case: Case) -> list[str]:
         out.append("I7: a model call without the core tools")
     if len(case.tools.calls) > case.issued_calls:
         out.append("I7: a tool ran that the model did not ask for")
-    classes = {t.name: t.effect_class for t in case.tools.catalog()}
-    for name, _args, effect_id in case.tools.calls:                                    # I8: only reads reach Tools
-        if classes.get(name) is not EffectClass.READ or effect_id is not None:
-            out.append(f"I8: {name} reached the tools and is not a read")
+    sent: dict[str, int] = {}
+    for name, _args, effect_id in case.tools.calls:     # I8: a read, or a local act by its reservation — and once
+        if classes.get(name) is EffectClass.READ and effect_id is None:
+            continue
+        if classes.get(name) is EffectClass.WRITE and effect_id in items:
+            sent[effect_id] = sent.get(effect_id, 0) + 1
+            if sent[effect_id] == 2:
+                out.append(f"I8: {effect_id} reached the tools twice")
+            continue
+        out.append(f"I8: {name} reached the tools outside its class or its reservation")
     closes: dict[str, int] = {}
     closed_at: dict[str, int] = {}
     for k, lab, p in case.tel.events:

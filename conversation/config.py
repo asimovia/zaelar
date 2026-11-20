@@ -111,6 +111,9 @@ class Config:
     #: the model used for the conversation; the adapter passes the live id from the model table.
     model_id: str = ""
     # ── the composer ──
+    #: the host's STATE blocks share at most this many tokens (the widgets' catalogue and what is on screen, the
+    #: connectors, the tasks…): each block is cut by the host, never the prompt's other parts.
+    state_tokens: int = 1600
     #: OPEN holds at most this many items, newest first; the rest are counted.
     open_budget: int = 8
     #: the last turns of the conversation, literal.

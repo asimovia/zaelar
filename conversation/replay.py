@@ -100,12 +100,14 @@ class Replay:
         self.loop = asyncio.new_event_loop()
 
     def _answer(self, ids: list[str]) -> list:
-        """Think, then answer; every third request also reads and asks for a write first, so the replay exercises the
-        gateway (the read passes, the write is refused) and I8 has something to check."""
+        """Think, then answer; every third request also reads, acts here and asks for a send first, so the replay
+        exercises the gateway (the read passes, the local act is reserved and sent once, the send is held) and I8 has
+        something to check."""
         self.asked += 1
         what = ids[0] if ids else "w0"
-        act = ([ToolCall(f"r{self.asked}", "search", {"q": what}), ToolCall(f"a{self.asked}", "agenda_add",
-                                                                            {"what": what})]
+        act = ([ToolCall(f"r{self.asked}", "search", {"q": what}),
+                ToolCall(f"a{self.asked}", "agenda_add", {"what": what}),
+                ToolCall(f"s{self.asked}", "send_message", {"to": "c1", "text": what})]
                if self.asked % 3 == 0 else [])
         self.issued += len(act)
         return [lambda: self.until(self.clock.now_ms() + self.think_ms), *act, reply("ok " + "+".join(ids)), Done()]
