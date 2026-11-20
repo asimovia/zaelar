@@ -432,6 +432,83 @@
      }
     }
    }
+  },
+  "rename_yourself": {
+   "act": "self.rename",
+   "door": "self",
+   "op": "rename",
+   "about": "he gives you a new name: from now on you answer to it",
+   "schema": {
+    "type": "object",
+    "required": [
+     "name"
+    ],
+    "properties": {
+     "name": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "set_attention": {
+   "act": "self.attention",
+   "door": "self",
+   "op": "attention",
+   "about": "how you listen: smart (you judge), wakeword (only when called by name), ptt (only while he holds the button), always",
+   "schema": {
+    "type": "object",
+    "required": [
+     "mode"
+    ],
+    "properties": {
+     "mode": {
+      "type": "string",
+      "enum": [
+       "smart",
+       "wakeword",
+       "ptt",
+       "always"
+      ]
+     }
+    }
+   }
+  },
+  "set_rule": {
+   "act": "self.rule",
+   "door": "self",
+   "op": "rule",
+   "about": "a standing rule or preference he dictates (how you speak, what to do with a widget, a channel or a person): kept for good; say its line",
+   "schema": {
+    "type": "object",
+    "required": [
+     "rule"
+    ],
+    "properties": {
+     "rule": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "agent_controls": {
+   "act": "self.controls",
+   "door": "self",
+   "op": "controls",
+   "about": "your own controls on his screen: mute, unmute, off, voice_male, voice_female, voice_list, voice_settings, language, presence_on, presence_off, presence_settings, camera_on, camera_off, volume_up, volume_down, volume_set (value 0-100), mic_off; say its line",
+   "schema": {
+    "type": "object",
+    "required": [
+     "act"
+    ],
+    "properties": {
+     "act": {
+      "type": "string"
+     },
+     "value": {
+      "type": "string"
+     }
+    }
+   }
   }
  },
  "state_topics": [

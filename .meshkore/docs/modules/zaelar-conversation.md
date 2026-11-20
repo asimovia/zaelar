@@ -116,7 +116,11 @@ handed to the owner with his words, and the owner's line is what he hears. Nothi
 person and a text, by the owner's lane: the switch lets the manager run with every other outside write held
 (`ZAELAR_HOLD_OUTBOUND=all,-owner`; `declared.json` `sends_by`). His words of every answered batch are filed by the
 memory agent (`record.py`, typed or voice as they came; a batch closed silent is never filed), and a note he leaves for
-support is an act of its own (`note_for_support`): his words kept on the timeline, nothing else done. Each tool's class is derived
+support is an act of its own (`note_for_support`): his words kept on the timeline, nothing else done. The agent
+itself is changed by its own doors (`acts_self.py`): its name, how it listens, the rules and the style he dictates
+(shaped once into the one rules table) and its own controls — and the live conversation's prefix is built again, so
+STYLE, whose one source is the language pack's `speech_style` and the turn's shape as genesis and his rows set it,
+reads as it stands. Each tool's class is derived
 from what it declares, never listed; a door that fails is a result the model sees. The state comes from the engine's
 own readers, each bounded within `state_tokens`, writing nothing. Every run carries what is open first (the tasks,
 a message draft), the next days beside NOW, the widget in front (at full screen, in front on a phone, else the newest

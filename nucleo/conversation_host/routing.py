@@ -24,7 +24,7 @@ def said() -> str:
 
 class HostRoute:
     async def take(self, account: str, text: str) -> str | None:
-        from nucleo.conversation_host.acts import _on_engine_loop
+        from nucleo.conversation_host.acts_widget import _on_engine_loop
         from nucleo.send import draft, owner
         from nucleo.switchboard import board, route
         _last["said"] = text
@@ -44,7 +44,7 @@ async def send(args: dict, act: str = "") -> "object":
     """The model's message call — or a widget's message act (`act`, with its payload) — handed to the send owner with
     his words: the owner's line (always a question until his yes) is what the reply says. Nothing leaves here."""
     from conversation.ports import ToolResult
-    from nucleo.conversation_host.acts import _on_engine_loop
+    from nucleo.conversation_host.acts_widget import _on_engine_loop
     from nucleo.send import owner
     hint = {k: v for k, v in args.items() if v not in (None, "", [], {})}
     if act:

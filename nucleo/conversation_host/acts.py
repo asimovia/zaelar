@@ -3,18 +3,19 @@ it — never rebuilt here.
 
 Which acts exist, what each is for, its arguments and the door it goes to are declared data (`declared.json`, `acts`),
 as the reads are; its class is DERIVED from its declared `act` (`tools_read.derive`): a local act is a write, and one
-whose act is a leaving type of the event vocabulary would be refused by the gateway as held. Five doors:
+whose act is a leaving type of the event vocabulary would be refused by the gateway as held. Six doors:
 
   canvas  `nucleo.acts.canvas.apply` — show, close, minimize, full screen, arrange — with the provenance `turn:<effect>`
           (the arbiter's «turn-owned» branch: the model's order on his sealed entry is the decision, no licence ladder)
   panel   the `panel` event the side panel obeys, on one of the tabs its schema declares (the panel is no widget)
-  widget  ONE generic act (D-2): one of a widget's DECLARED actions, checked against its manifest, through the door
+  widget  ONE generic act (D-2, `acts_widget.py`): one of a widget's DECLARED actions, checked against its manifest, by the door
           every tap takes (`data_ops.dispatch_and_report`) on the engine's loop, by the mode the act declares — a
           `confirm` act asks his yes on its row through the one asker; a message act goes to the send owner; music and
           video are widgets like any other,
           their play, pause and load their cards' own actions. An act whose output lives in its card brings the card
   task    his errands: start, resume, reopen, stop, unschedule, sign in (`acts_tasks.py`)
   send    a message: handed to the send owner with his words (`routing.send`), who asks and sends only on his yes
+  self    its name, how it listens, his rules and style, its own controls (`acts_self.py`)
 
 The widget an act names is resolved against the CATALOGUE — every manifest, by id, name or declared alias
 (`widgets.runtime`) — and narrowed to the card open on screen (`widgets.instances`): a widget nobody wrote code for is
@@ -162,7 +163,7 @@ def run(name: str, args: dict, effect_id: str | None) -> ToolResult:
     if _a_message(args, spec["op"]):
         return ToolResult("rejected", {"reason": "a message is its owner's", "tool": name})
     src = f"turn:{effect_id or name}"
-    if spec["door"] in ("widget", "task", "send"):   # their doors: `widget_act`, `acts_tasks`, `routing.send`
+    if spec["door"] in ("widget", "task", "send", "self"):   # their own doors, awaited by `HostTools.call`
         return ToolResult("rejected", {"reason": "not a canvas or panel act", "tool": name})
     if spec["door"] == "panel":
         from nucleo.turn.prompt import catalogs
@@ -173,99 +174,6 @@ def run(name: str, args: dict, effect_id: str | None) -> ToolResult:
         cx = catalogs.canon_connector(args.get("connector")) if args.get("connector") and action == "open" else ""
         return _panel(action, tab, src, cx)
     return _canvas(spec["op"], args, src)
-
-
-# ── the widget door: one of a widget's DECLARED actions (D-2), through the data-op door every tap takes ──────────
-
-def _offered(base: str) -> dict:
-    """The actions a widget offers, by its manifest: the internal ones (the card fires them itself) are never offered."""
-    from widgets import runtime
-    acts = (runtime.get(base) or {}).get("actions")
-    return {n: (a if isinstance(a, dict) else {}) for n, a in (acts or {}).items()
-            if isinstance(acts, dict) and not (isinstance(a, dict) and (a.get("internal") is True
-                                                                        or a.get("row_verb") is True))}
-
-
-def _widget_target(args: dict) -> "tuple[str, str, dict] | ToolResult":
-    """`(card, action, payload)` for a widget action, checked against its manifest — or the result that says why not.
-    A message is its owner's (`send.turn.is_message`) and an act that leaves is held: neither crosses here."""
-    from nucleo.flash import widget_read
-    from widgets import brief, effects, instances
-    named, action = str(args.get("widget") or "").strip(), str(args.get("action") or "").strip()
-    payload = args.get("payload") if isinstance(args.get("payload"), dict) else {}
-    wid = widget_read.resolve(named)
-    if wid is None:
-        return _not_found(named)
-    base = wid.split("::", 1)[0]
-    offered = _offered(base)
-    if action not in offered:
-        return ToolResult("failed", {"reason": "no_such_action", "widget": base, "actions": sorted(offered),
-                                     "fields": brief._payload_keys(offered, every=True)})
-    card = instances.data_target(wid, _open())
-    from nucleo.send import turn
-    if turn.is_message(card, action, payload):
-        return card, action, {**payload, "_message": True}       # a message is its owner's: handed over, below
-    if effects.leaves(base, action):
-        return ToolResult("refused", {"reason": "held", "widget": base, "action": action,
-                                      "why": "it leaves to someone and is not a message: not from here"})
-    return card, action, payload
-
-
-async def _on_engine_loop(coro):
-    """A widget's act runs on the engine's loop, where its cards and their processes live (`dispatch._LOOP`); with
-    none (a test, a bare host), here."""
-    from nucleo import dispatch
-    loop = dispatch._LOOP
-    if loop is None or not loop.is_running():
-        return await coro
-    return await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(coro, loop))
-
-
-def _ask(card: str, action: str, payload: dict) -> ToolResult:
-    """An act its widget asks his yes for: the confirm gate's verdict, and the question waiting on its row through
-    the one asker (`consent_ask.ask_consent`) — answered by the card's buttons, or by his answer to the row."""
-    from nucleo.request import consent_ask
-    from voice.engine.llm.providers import confirm_gate
-    d = confirm_gate.decide(card, action, payload) or {}
-    if d.get("kind") != "ask":
-        return ToolResult("failed", {"reason": d.get("kind") or "not_asked", "said": d.get("sentence", "")})
-    row, _ask_id = consent_ask.ask_consent(card, action, payload, d["question"])
-    if not row:
-        return ToolResult("failed", {"reason": "no_row_to_ask_on"})
-    return ToolResult("ok", {"asked": d["question"], "waits_for": "his yes", "widget": card, "action": action})
-
-
-def _mount(card: str, action: str, src: str) -> None:
-    """An act whose output lives in its card (its manifest declares the mount, or that it produces) brings the card."""
-    from widgets import effects, producers
-    base = card.split("::", 1)[0]
-    if effects.carries(base, action, effects.PRESENT_MOUNT) or producers.starts_production(base, action):
-        _apply("show", card, src, action=action)
-
-
-async def widget_act(args: dict, effect_id: str | None) -> ToolResult:
-    target = await asyncio.to_thread(_widget_target, args if isinstance(args, dict) else {})
-    if isinstance(target, ToolResult):
-        return target
-    card, action, payload = target
-    if payload.pop("_message", False):                       # the send owner asks, and sends only on his yes
-        from nucleo.conversation_host import routing
-        return await routing.send(payload, act=action)
-    from nucleo.flash import frontend                      # the act policy's one public face (its import order)
-    from widgets import actions as wactions
-    mode = await asyncio.to_thread(frontend.action_mode_now, card, action, payload)
-    if mode == wactions.CONFIRM:
-        return await asyncio.to_thread(_ask, card, action, payload)
-    if mode != wactions.FAST:
-        return ToolResult("failed", {"reason": "an_errand", "widget": card, "action": action})
-    from nucleo.flash import data_ops
-    res = await _on_engine_loop(data_ops.dispatch_and_report(card, action, payload))
-    res = res if isinstance(res, dict) else {}
-    ok = res.get("ok") is not False and not res.get("error")
-    if ok:
-        await asyncio.to_thread(_mount, card, action, f"turn:{effect_id or 'widget_action'}")
-    shown = {k: v for k, v in res.items() if isinstance(v, (str, int, float, bool)) and k != "ok"}
-    return ToolResult("ok" if ok else "rejected", {"widget": card, "action": action, **shown})
 
 
 class HostTools:
@@ -284,10 +192,14 @@ class HostTools:
                                           deadline_mono_ms=deadline_mono_ms)
         try:
             if ACTS[name]["door"] == "widget":
+                from nucleo.conversation_host.acts_widget import widget_act
                 return await widget_act(args, effect_id)
             if ACTS[name]["door"] == "send":
                 from nucleo.conversation_host import routing
                 return await routing.send(args if isinstance(args, dict) else {})
+            if ACTS[name]["door"] == "self":
+                from nucleo.conversation_host import acts_self
+                return await asyncio.to_thread(acts_self.run, ACTS[name]["op"], args)
             if ACTS[name]["door"] == "task":
                 from nucleo.conversation_host import acts_tasks
                 return await asyncio.to_thread(acts_tasks.run, ACTS[name]["op"], args)

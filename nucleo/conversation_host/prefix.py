@@ -18,8 +18,10 @@ from conversation.ports import ToolSpec
 #: and the narrower stop rule (E-2: «te paso la tarea dos» chose `stop_voice`); measured 732 in Spanish with both
 #: reply budgets, the held acts having grown to 20 names. 750 → 800 on 2026-11-20 (F2 step 1): the `read_state` read and
 #: `read_widget`'s actions — what each run no longer carries in its state (the connectors, what was done, the browser,
-#: every open widget beside the one in front) is read when named; measured 784 with names of 23 letters
-MAX_TOKENS = 800
+#: every open widget beside the one in front) is read when named; measured 784 with names of 23 letters. 800 → 850 the
+#: same day (F2 step 6): STYLE carries the turn's shape as genesis and his rules set it (`style_line`, ONE source of
+#: the style), measured 810 in Spanish with names of 23 letters
+MAX_TOKENS = 850
 
 #: the only lines a prefix carries, in this order
 LINES = tuple(declared()["prefix_lines"])                     # declared data (`declared.json`), in their order
@@ -86,4 +88,17 @@ def current(catalog: list[ToolSpec]) -> str:
     import genome
     budget = (genome.genesis().get("conversation") or {}).get("reply_budget") or {}
     return build(catalog, native=spec.native, name=spec.name, agent=snapshot.name(), person=person, held=held_acts(catalog),
-                 budget=budget, style=str(langs.words("speech_style", spec.code) or ""))
+                 budget=budget, style=style_line(str(langs.words("speech_style", spec.code) or "")))
+
+
+def style_line(speech_style: str) -> str:
+    """How it speaks, from ONE source: the language pack's `speech_style` (DNA) and the turn's shape as genesis `style`
+    and his rows over it set it now (`style_policy.policy`: what he dictated with `set_rule` changes it at once) —
+    knobs as data, never a sentence of this file."""
+    try:
+        from nucleo import style_policy
+        knobs = {k: v for k, v in style_policy.policy().items() if v is not None}
+    except Exception:  # noqa: BLE001 — the pack's style alone, rather than none
+        knobs = {}
+    shape = ", ".join(f"{k}={str(v).lower()}" for k, v in sorted(knobs.items()))
+    return "; ".join(x for x in (speech_style, f"shape: {shape}" if shape else "") if x)

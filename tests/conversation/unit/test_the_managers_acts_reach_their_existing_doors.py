@@ -138,7 +138,8 @@ def widget_door(doors, monkeypatch):
         doors.setdefault("ran", []).append((wid, action, payload))
         return {"ok": True, "now_playing": "w_song"}
     monkeypatch.setattr(data_ops, "dispatch_and_report", dispatch)
-    return lambda args: asyncio.run(acts.widget_act(args, "x_w"))
+    from nucleo.conversation_host import acts_widget
+    return lambda args: asyncio.run(acts_widget.widget_act(args, "x_w"))
 
 
 def test_a_declared_action_runs_through_the_data_op_door_and_brings_its_card(widget_door, doors):

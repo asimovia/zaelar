@@ -787,6 +787,8 @@ _PACKAGE_CEILINGS["conversation"] += 3     # 2026-11-20 INI-078 F2 step 5: the r
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 32   # same: his words of an answered batch filed by the memory agent (C14b), a note for support as an act of its own
 _PACKAGE_CEILINGS["nucleo/input"] += 9     # same: `support_note.spoken`, the note the manager's model judged his words to be
 _TOTAL_MAX += 44     # same causes, measured
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 124  # 2026-11-20 INI-078 F2 step 6: the agent itself by its own doors (`acts_self.py`: rename, attention, his rules, its controls), the prefix built again when they change, STYLE from one source (`prefix.style_line`); the widget door split to `acts_widget.py` (acts.py was past 300)
+_TOTAL_MAX += 124    # same causes, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

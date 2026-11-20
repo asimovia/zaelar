@@ -79,7 +79,7 @@ def test_the_style_line_is_the_language_packs_own(monkeypatch):
     style = langs.words("speech_style", "es")
     assert style and style != langs.words("speech_style", "en")
     lines = dict(line.split(": ", 1) for line in prefix.current(CATALOG).splitlines())
-    assert lines["STYLE"] == style
+    assert lines["STYLE"].startswith(style) and "; shape: " in lines["STYLE"]   # the DNA, then the turn's shape (step 6)
     assert style[:30] not in inspect.getsource(prefix)
 
 

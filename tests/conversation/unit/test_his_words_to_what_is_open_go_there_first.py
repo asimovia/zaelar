@@ -76,7 +76,7 @@ def test_an_open_draft_reads_his_words_first_and_a_message_goes_to_its_owner(mon
     message call — or a widget's message act — is handed to the owner with HIS words, and its line is what is said."""
     import asyncio
 
-    from nucleo.conversation_host import acts, routing
+    from nucleo.conversation_host import acts_widget, routing
     from nucleo.send import draft, owner, turn
     from nucleo.switchboard import board
     seen = {}
@@ -99,9 +99,9 @@ def test_an_open_draft_reads_his_words_first_and_a_message_goes_to_its_owner(mon
     monkeypatch.setattr(turn, "is_message", lambda w, a, p=None: True)
     from nucleo.flash import widget_read
     monkeypatch.setattr(widget_read, "resolve", lambda named, text="": "w_chat")
-    monkeypatch.setattr(acts, "_offered", lambda base: {"reply": {}})
-    monkeypatch.setattr(acts, "_open", lambda: [])
-    asyncio.run(acts.widget_act({"widget": "w_chat", "action": "reply", "payload": {"text": "w_ok"}}, "x1"))
+    monkeypatch.setattr(acts_widget, "_offered", lambda base: {"reply": {}})
+    monkeypatch.setattr(acts_widget, "_open", lambda: [])
+    asyncio.run(acts_widget.widget_act({"widget": "w_chat", "action": "reply", "payload": {"text": "w_ok"}}, "x1"))
     assert seen["intake"][1] == {"text": "w_ok", "_act": "reply"}               # handed over, never run by the card
 
 
