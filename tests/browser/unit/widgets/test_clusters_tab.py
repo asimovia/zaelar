@@ -20,6 +20,9 @@ CHATWALL = (FRONTEND / "components" / "ChatWall.js").read_text(encoding="utf-8")
 STORE = (FRONTEND / "core" / "store.js").read_text(encoding="utf-8")
 SSE = (FRONTEND / "services" / "sse.js").read_text(encoding="utf-8")
 STYLES = (FRONTEND.parent / "app" / "styles.css").read_text(encoding="utf-8")
+# The column itself is a component of its own (frontend/side/clusters/), wired by its one bridge.
+COLUMN = (FRONTEND.parent / "side" / "clusters" / "clusters.js").read_text(encoding="utf-8")
+BRIDGE = (FRONTEND / "services" / "clusters-bridge.js").read_text(encoding="utf-8")
 
 # V2-728 — four tabs, not five: «Procesos» and «Crons» merged into «Tareas» with four sub-tabs.
 # V2-744 — the tab is «Procesos», id included: «tareas» now means the operator's OWN lists,
@@ -76,7 +79,8 @@ def test_every_tab_has_a_css_rule_that_shows_it(tab):
 
 
 def test_entering_the_tab_refreshes_its_data():
-    assert 'else if (t === "clusters") store.fetchClusters();' in CHATWALL
+    assert 'else if (t === "clusters") clustersCol.show();' in CHATWALL
+    assert "refresh: store.fetchClusters" in BRIDGE and "show: () => b.refresh()" in COLUMN
 
 
 def test_store_exposes_the_cluster_controls():
@@ -90,9 +94,9 @@ def test_store_exposes_the_cluster_controls():
 def test_the_tab_shows_state_peers_and_traffic_but_no_conversation():
     """What the operator requested: names, connections, and a counter. NO message history — clusters
     have their own monitor, and duplicating it here would create a second source of truth."""
-    assert "cl-row" in CHATWALL and "cl-meta" in CHATWALL
-    assert "c.connected" in CHATWALL and "c.online" in CHATWALL and "c.msgs" in CHATWALL
-    assert "pushChat" not in CHATWALL.split("cw-clusters")[-1], "la pestaña no debe volcar conversación"
+    assert "cl-row" in COLUMN and "cl-meta" in COLUMN
+    assert "c.connected" in COLUMN and "c.online" in COLUMN and "c.msgs" in COLUMN
+    assert "pushChat" not in COLUMN + BRIDGE, "the tab must not pour conversation"
 
 
 # ── the CONNECT confirmation lives on the native surface, not in a card ───────────────────────────────────────
@@ -100,7 +104,7 @@ def test_connect_confirm_is_routed_to_the_native_tab():
     from widgets import confirm
     assert confirm.NATIVE_CLUSTERS == "clusters"
     assert 'd.id === "clusters"' in SSE, "SSE does not route the network confirmation to the tab"
-    assert "setClusterConfirm" in SSE and "clusterConfirmResolve" in CHATWALL
+    assert "setClusterConfirm" in SSE and "resolve: store.clusterConfirmResolve" in BRIDGE
 
 
 def test_cluster_events_refresh_the_tab_without_touching_the_chat():

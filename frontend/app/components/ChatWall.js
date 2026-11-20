@@ -20,6 +20,7 @@ import * as session from "../services/session.js?v=3";
 import * as api from "../services/api.js?v=2";
 import * as chatFiles from "../services/chat-files.js?v=1";
 import { makeResizable } from "../lib/resizable.js?v=1";
+import { mountClusters } from "../services/clusters-bridge.js?v=1";
 import { CLOSE_ICON, PAPERCLIP_ICON, MESSAGE_SQUARE_ICON, ACTIVITY_ICON, CLOCK_ICON, SERVER_ICON, LINK_ICON, APPS_ICON, WIDGETS_ICON } from "../lib/icons.js?v=1";
 import { renderMarkdownLite } from "../lib/markdown-lite.js?v=1";
 import { t } from "../core/i18n.js?v=1";
@@ -250,33 +251,7 @@ export function ChatWall() {
   const tasksHost = h("div", { class: "cw-tasks" });
   const procesos = mountProcesos(tasksHost);
 
-  // A row in the CLUSTERS tab (V2-086). Shows only what the operator asked for: name, whether we are
-  // inside, who is there, and how much has been said. cluster_id is shown because it is NOT secret (it travels in the
-  // invitation URL) and is what identifies which cluster this is; the token never leaves the backend.
-  const clusterRow = (c) => h("div", { class: "cl-row" },
-    h("div", { class: "cl-main" },
-      h("div", { class: "cl-name" },
-        h("span", { class: () => "cl-dot" + (c.connected ? " on" : "") }),
-        c.name,
-        c.public ? h("span", { class: "cl-badge" }, () => t("chat.public")) : null,
-      ),
-      h("div", { class: "cl-meta" },
-        (c.connected ? t("chat.connected") : t("chat.disconnected"))
-        + (c.handle ? t("chat.clusterAs", { handle: c.handle }) : "")
-        + (c.online && c.online.length
-            ? (c.online.length > 1
-                ? t("chat.clusterPeers", { n: c.online.length, list: c.online.join(", ") })
-                : t("chat.clusterPeer", { n: c.online.length, list: c.online.join(", ") }))
-            : t("chat.clusterNobody"))
-        + t("chat.clusterMsgs", { n: c.msgs || 0 })),
-      c.cluster_id ? h("div", { class: "cl-id" }, c.cluster_id) : null,
-    ),
-    h("div", { class: "cl-btns" },
-      c.connected
-        ? h("button", { class: "cl-b", title: () => t("chat.disconnectBtn"), onClick: () => store.clusterDisconnect(c.name) }, () => t("chat.disconnectBtn"))
-        : h("button", { class: "cl-b on", title: () => t("chat.connectBtn"), onClick: () => store.clusterConnect(c.name) }, () => t("chat.connectBtn")),
-    ),
-  );
+  let clustersCol = null;   // the «Clusters» column (V2-086), a component of its own: frontend/side/clusters/
 
   // ── CONNECTORS (V2-561/V2-526) and NETWORK (V2-866) — columns of their own (`frontend/side/conectores/`,
   // `frontend/side/red/`), wired by their bridges and re-read while they are the open tab. «Connect» hands off to the
@@ -350,25 +325,7 @@ export function ChatWall() {
     // PROCESOS (V2-728 · renamed V2-744) — one tab, four sub-tabs. The old «Procesos» and «Crons» were the same object seen
     // twice: a commission the brain is carrying out, and a commission with a clock on it.
     tasksHost,
-    // CLUSTERS (V2-086) — the native NETWORK. Connection administration, not conversation: clusters have their
-    // own monitor, so here we only show which network we are connected to, with whom, and how much traffic there has been.
-    h("div", { class: "cw-clusters" },
-      // CONNECT confirmation: deterministic gate. Without an explicit “yes” here no socket is opened, no matter
-      // how convincing the text that requested it is (V2-064 → V2-086: changes where it is shown, not the guarantee).
-      () => (store.clusterConfirm()
-        ? h("div", { class: "cl-confirm" },
-            h("div", { class: "cl-q" }, store.clusterConfirm().question || t("chat.clusterConfirmQ")),
-            h("div", { class: "cl-cbtns" },
-              h("button", { class: "cl-b on", onClick: () => store.clusterConfirmResolve(true) }, () => t("chat.yesConnect")),
-              h("button", { class: "cl-b", onClick: () => store.clusterConfirmResolve(false) }, () => t("chat.no")),
-            ))
-        : null),
-      h("div", { class: "cl-list" },
-        () => (store.clusters().length
-          ? store.clusters().map(clusterRow)
-          : h("div", { class: "cw-empty" }, () => t("chat.clustersEmpty"))),
-      ),
-    ),
+    h("div", { class: "cw-clusters", ref: (el) => (clustersCol = mountClusters(el)) }),   // CLUSTERS (V2-086)
     redHost, connHost,   // NETWORK (off: no tab, no body) and CONECTORES — mounted above
     appsHost,   // APPS (V2-761) — the widget catalogue, its own component (`side/apps/`), drawn only while open
     // INPUT (Chat only — CSS hides it in the other tabs)
@@ -400,7 +357,7 @@ export function ChatWall() {
     const t = store.chatTab();
     if (!store.chatOpen()) return;
     if (t === "procesos") procesos.show();
-    else if (t === "clusters") store.fetchClusters();
+    else if (t === "clusters") clustersCol.show();
   });
   // Leaving «Procesos» (another tab, or the wall closed) hides it: its refetch on a live change stops.
   createEffect(() => { if (!(store.chatOpen() && store.chatTab() === "procesos")) procesos.hide(); });
