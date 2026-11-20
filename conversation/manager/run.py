@@ -133,7 +133,10 @@ async def run_batch(conv: "Conversation", batch: Batch) -> None:
     _emit(conv, "started", r, batch_envs=list(r.batch_ids), reason=batch.reason)
     _emit(conv, "input", r, text=[getattr(e.body, "text", None) for e in batch.envelopes])
     try:
-        await _steps(conv, r, batch)
+        if any(str(getattr(e.body, "text", "") or "").strip() for e in content) or not content:
+            await _steps(conv, r, batch)
+        else:                                   # nothing he said reached us whole: no model, never an empty INPUT
+            await _fail(conv, r, "no_words")
     except _Stalled:
         await _lost(conv, r, "stalled")         # closed by the liveness: the line is said in place, or owed
     except _Stop as stop:
@@ -509,7 +512,7 @@ async def _publish(conv: "Conversation", r: "Running", batch: Batch, text: str, 
         close(conv, req, "answered", "answered", r, steps=steps,
               stages={**r.stages, "publish_ms": conv.clock.mono_ms() - t_say})
     conv.inbox.account(list(r.batch_ids), "told", conv.clock.now_ms())
-    _emit(conv, "ended", r, outcome="answered")
+    _emit(conv, "ended", r, outcome="answered", requests=len(r.requests))   # one close per request, each with its req
     records.owe(conv, r.run_id, batch.envelopes, text)
 
 

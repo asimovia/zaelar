@@ -13,6 +13,7 @@ Installed ONLY in a session of the manager (`child_session.py`, `manual`); in ev
 """
 from __future__ import annotations
 
+import itertools
 import logging
 import time
 from typing import Callable
@@ -28,6 +29,8 @@ VAD_QUIET_MS = 200
 STAND_IN_TURNS = 1_000_000
 #: the device this process hears for: the holder of the session (`nucleo/conversation_host/voice_session.ENDPOINT`)
 ENDPOINT = "holder"
+#: the epochs of this PROCESS, one per stream of any session: a second session's first stream never reuses the first's
+_EPOCHS = itertools.count(1)
 
 
 def _now_ms() -> int:
@@ -63,7 +66,7 @@ class Tap:
         self.clock, self.turns = ear_feed.StreamClock(), ear_feed.Turns()
         if self.epoch:
             self.send({"t": "gap", "streams": [self.endpoint], "t_ms": _now_ms()})
-        self.epoch += 1
+        self.epoch = next(_EPOCHS)
 
     def titular_available(self, available: bool) -> None:
         """The titular provider fell (or came back). Falling, what the ear was hearing ends incomplete — declared, never

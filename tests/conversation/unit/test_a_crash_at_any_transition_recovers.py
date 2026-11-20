@@ -43,9 +43,11 @@ class Process:
     def __init__(self, path, clock, tools) -> None:
         self.store = zaelar_store(path)
         self.tel, self.mouth, self.model = ListTelemetry(), AckingMouth(), _script()
+        from conversation.testing.fakes import FakeOwed
+        self.owed = FakeOwed()
         self.conv = build(account=ACCT, owner="p", model=self.model, tools=tools, store=self.store,
                           memory=NoMemory(), clock=clock, mouth=self.mouth, telemetry=self.tel,
-                          config=Config(liveness_ms=30_000), prefix="P8")
+                          config=Config(liveness_ms=30_000), prefix="P8", owed=self.owed)
         self.mouth.ack = self.conv.ack
         self.conv.device("d1", voice_live=True, speaker_open=True)
 
@@ -103,9 +105,11 @@ def test_a_crash_while_a_sentence_goes_through_recovers_it(tmp_path, point, when
     _drain(second, clock)
     snap = second.store.snapshot(ACCT)
     requests = {r["id"]: r["state"] for _k, r in snap.scan("items") if r["kind"] == "request"}
-    assert requests and set(requests.values()) == {"answered"}, requests       # whole, or incomplete and said
+    assert requests and set(requests.values()) <= {"answered", "recovered"}, requests   # whole and answered, or…
+    assert all(f"conv:failed:{rid}" in second.owed.rows for rid, st in requests.items() if st == "recovered")
+    # …its words died with the process: it is never an empty item for the model, and he is owed «I lost that»
     said = [o.text for o in first.mouth.orders + second.mouth.orders]
-    assert said and all(t.startswith("w-told") for t in said)
+    assert said and all(t.startswith("w-told ") and t != "w-told " or t == "failed:restart" for t in said)
     assert not snap.scan("voice_open", states=("open",)), "a voice was left open after the restart"
     assert all(p["trace"] for _k, _lab, p in first.tel.events + second.tel.events), "an event outside any flow"
     assert audit(snap, clock.now_ms(), second.conv.cfg, drained=True) == []
@@ -115,7 +119,8 @@ def test_a_crash_while_a_sentence_goes_through_recovers_it(tmp_path, point, when
 
 def test_a_voice_cut_by_a_restart_is_ended_incomplete_with_its_event_and_asked_again(tmp_path):
     """R3-B1: the process dies while the person speaks; the new one ends that voice incomplete — reason `restart`, its
-    event — and its run answers (asks again); a text typed behind the dead voice is not left waiting for it."""
+    event — and he is owed «I lost that» (its words died with the process: an entry with no words is never an item for
+    the model, B8e); a text typed behind the dead voice is not left waiting for it."""
     from conversation.ear import signals as S
     path, clock, tools = tmp_path / "c.db", FakeClock(t0_ms=0), RecordingTools()
     first = Process(path, clock, tools)
@@ -128,9 +133,10 @@ def test_a_voice_cut_by_a_restart_is_ended_incomplete_with_its_event_and_asked_a
     assert [(p["reason"], p["refs"]["iv"]) for p in restarted] == [("restart", "iv_000001")]
     _drain(second, clock)
     said = second.mouth.orders
-    assert [o.text for o in said] == ["w-told iv_000001+iv_000002"]        # the cut voice and the text, in one run
+    assert "w-told iv_000002" in [o.text for o in said]                    # the text is answered…
     prompt = second.model.calls[0].prompt.input
-    assert "iv_000001 · voice · " in prompt and " · cut off" in prompt and "w9" in prompt
+    assert "iv_000001" not in prompt and "w9" in prompt                    # …the voice's words died: never an item
+    assert "conv:failed:r_iv_000001" in second.owed.rows                   # …and he is owed «I lost that»
     second.store.close()
 
 

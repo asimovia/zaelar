@@ -716,6 +716,8 @@ def check(case: Case) -> list[str]:
     out += _flows_batches_and_bounds(case, inbox_rows)
     out += _stalled_while_he_spoke(case, inbox_rows)
     out += _never_silent(case)
+    out += [f"empty item: {c.run_id} was prompted with an entry that has no words" for c in case.model.calls
+            if "«»" in c.prompt.input]
     if case.old is None:
         out += _graces(case, inbox_rows)
     for rid, row in items.items():                                                     # I9

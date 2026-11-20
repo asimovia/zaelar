@@ -268,8 +268,14 @@ class Ear:
                      refs=self._refs(v), text="", reason=reason)
 
     def _incomplete(self, v: _Voice, t: int, reason: str, out: list) -> None:
-        v.state, v.closed_ms, v.previous = IvState.INCOMPLETE, t, v.iv
         text = " ".join(w[0] for w in self.spans.words(v.iv))
+        if not text.strip():                       # a voice with no words is never an entry: a discard, with why (I4)
+            v.state, v.closed_ms = IvState.DISCARDED, t
+            out.append(S.VoiceDiscarded(v.endpoint, v.iv, t, "no_words"))
+            self.em.emit("conv_ear", "discarded", owner="ear", cause={"kind": "no_words", "ref": reason},
+                         refs=self._refs(v), text="", reason="no_words")
+            return
+        v.state, v.closed_ms, v.previous = IvState.INCOMPLETE, t, v.iv
         out.append(self._utterance(v, t, Coverage.INCOMPLETE, reason))
         self.em.emit("conv_ear", "incomplete", owner="ear", cause={"kind": "cap" if reason in ("no_final", "too_long")
                                                                    else "stall"},

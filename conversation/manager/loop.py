@@ -101,8 +101,9 @@ class Conversation:
     def recover(self) -> None:
         """What a dead process left behind: its dequeued batch back to the queue, an effect left `submitting` to
         `submission_unknown` (never resent), and a voice it was hearing — open under its epoch — ended incomplete
-        (reason `restart`, with its event): the sentence the person was saying is not lost in silence, its run asks
-        them to say it again, and no voice is left open for a text to wait behind."""
+        (reason `restart`, with its event): no voice is left open for a text to wait behind, and the sentence the
+        person was saying is not lost in silence — its words died with that process, so it is never an item for the
+        model (an entry with no words is not one): he is OWED the language's «I lost that», through the one ledger."""
         now = self.clock.now_ms()
         self.inbox.recover(now)
         dispatch.recover(self.gw)
@@ -119,6 +120,8 @@ class Conversation:
                          producer=f"ear:{endpoint}", producer_id=f"{iv}:{Coverage.INCOMPLETE}", account=self.account,
                          onset_ms=voice.get("onset", now), sealed_ms=now, channel=Channel.VOICE, endpoint=endpoint,
                          refs=E.Refs(intervention_id=iv)))
+        if self.owed is not None:
+            self.owed.owe(self.account, f"conv:failed:r_{iv}", "failed:restart")
 
     # ── in ──────────────────────────────────────────────────────────────────────────────────────────────────────
 

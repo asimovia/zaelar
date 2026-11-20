@@ -41,6 +41,10 @@ launcher writes in its workspace, refused on a real engine; the conversation clo
 and no id names two conversations of one engine; what the cases wrote to memory, and the notices they left, are
 forgotten from the mark the first reset takes (the seed stays). A flow read by an id is its newest rows, in order, from `since` on.
 
+A run answers a BATCH, so one answer closes every request in it: `conv_close` comes once per request, each with its
+`req`, and the run's `ended` says how many it closed (`requests`) — a reader counts requests, never closes per
+intervention. An entry with no words is never an item for the model; a batch with nothing said fails with its line.
+
 A typed line waits for nothing (`collect_ms`, a genome threshold, is 0: his gaps between lines are seconds), and a
 burst is handled by a newer line superseding the run — which costs a model's first answer per piece. Debt, a client
 change: a «typing» signal from the screen (the text's equivalent of his voice's onset) would let a batch wait for the
