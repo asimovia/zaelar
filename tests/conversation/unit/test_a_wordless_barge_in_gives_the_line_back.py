@@ -124,10 +124,12 @@ def test_a_second_no_reply_after_reads_closes_silent_and_is_counted(store):
     assert ended[-1]["outcome"] == "no_reply" and ended[-1]["after_reads"] and len(h.model.calls) == 3
 
 
-def test_a_no_reply_with_no_read_is_left_as_the_model_said(store):
+def test_a_no_reply_to_his_voice_is_asked_once_unless_it_cut_our_line(store):
+    """His voice reached us addressed (the guards let it in): a no_reply is asked once for the reply, as a typed line
+    is (13.111). A barge-in that cut our line may be silence: that one stands (13.111)."""
     from conversation.ports import Command
     h = Harness(store, grace=False)
     h.model.default = lambda ids: [Command("no_reply", {"reason": "w_not_for_us"}), Done()]
-    h.utter([(["w1"], 0)])                     # his VOICE, no read: it may not be for us (a typed line is: 13.103)
+    h.utter([(["w1"], 0)])
     h.settle(2000)
-    assert len(h.model.calls) == 1 and "no_reply_after_reads" not in _commands(h)
+    assert len(h.model.calls) == 2 and "no_reply_voice" in _commands(h)

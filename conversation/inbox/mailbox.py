@@ -269,11 +269,11 @@ class Inbox:
             return "incomplete"
         return "closed" if str(EnvelopeKind.USER_UTTERANCE) in kinds else "collect_window"
 
-    def account(self, env_ids: list[str], outcome: str, now: int) -> None:
+    def account(self, env_ids: list[str], outcome: str, now: int, reason: str | None = None) -> None:
         assert outcome in FINAL, outcome
         with self.store.tx(self.lease()) as tx:
             for i in env_ids:
-                self._final(tx, i, outcome, now)
+                self._final(tx, i, outcome, now, reason)
 
     def requeue(self, env_ids: list[str]) -> None:
         """A superseded run gives its batch back: the entries are queued again for the next batch."""

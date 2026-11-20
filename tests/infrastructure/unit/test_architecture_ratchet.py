@@ -704,6 +704,8 @@ _TOTAL_MAX += 6      # same cause
 _PACKAGE_CEILINGS["voice"] += 40           # 2026-11-20 V2-941 v3.1 (the voice gate on 4d4fc3163): the device declares its echo cancellation (`mic_input.set_aec`), the local cut rule cuts wordless only with it on and compares his words with what was SENT (a word cut short included)
 _PACKAGE_CEILINGS["server"] += 1           # same: the session lock carries the device's echo cancellation
 _TOTAL_MAX += 41     # same cause
+_PACKAGE_CEILINGS["conversation"] += 20    # 2026-11-20 V2-941 v3.1 (the voice pass on 1800c4bcc): a barge-in that cut our reply and ended silent is a fact in the window, never his words; a no_reply to his voice that did not cut us is asked once
+_TOTAL_MAX += 20     # same cause
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

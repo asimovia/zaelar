@@ -16,6 +16,10 @@ from conversation.ports import Block, PromptParts
 
 ITEMS, INBOX, SAYS, IVS = "items", "inbox", "says", "interventions"
 CONTENT = ("user.utterance", "user.text")
+#: an entry of his that cut our reply and was answered with silence: in the window it is that FACT, never his words —
+#: a «para, para» left there as a standing order silenced the questions after it
+BARGE = "barge_in"
+STOPPED_US = "[he stopped our reply]"
 #: a discard that is no lost voice of his: the tail of the voice that just closed, and our own voice heard back
 #: discards that lost nothing of his: no voice at all, our own echo — and a stop, his control, never a sentence
 NOT_LOST = frozenset({"no_voice", "echo"}) | {"stop"}
@@ -47,7 +51,8 @@ def view_from(snapshot, *, prefix: str, now_ms: int, window: int = 12, **kw) -> 
     costs what is in course and the window, never the account's history."""
     items = tuple(r for _k, r in snapshot.scan(ITEMS, OPEN_STATES))
     inbox = [r for _k, r in snapshot.recent(INBOX, 4 * window)]
-    theirs = [(r["accepted"], 0, {"role": "user", "channel": r["env"]["channel"], "text": r["env"]["body"]["text"],
+    theirs = [(r["accepted"], 0, {"role": "user", "channel": r["env"]["channel"],
+                                  "text": STOPPED_US if r.get("reason") == BARGE else r["env"]["body"]["text"],
                                   "heard_chars": None, "ref": r["env"]["body"]["intervention_id"], "at": r["accepted"]})
               for r in inbox if r["kind"] in CONTENT and r["state"] == "accounted"]
     ours = [(r["t_ms"], 1, {"role": "agent", "channel": "+".join(r["channels"]), "text": r["text"],

@@ -36,7 +36,7 @@ from conversation.mouth import Device, choose
 from conversation.telemetry import root
 from conversation.ports import (RELAY, UNCLAIMED, Command, Done, Failed, PromptParts, StaleEpoch, TextDelta, ToolCall,
                                 ToolResult)
-from conversation.composer.compose import CONTENT, INBOX
+from conversation.composer.compose import BARGE, CONTENT, INBOX
 from conversation.types import Coverage, EnvelopeKind, Evidence, ItemKind, MgrState
 
 if TYPE_CHECKING:
@@ -427,6 +427,7 @@ AS_TEXT = "the text is what the person hears: the order is the call itself, neve
 SAY_THE_ACT = "an act held or refused is a reply that says so"
 EMPTY = "a reply is the words he hears: it has none"
 TYPED_TO_YOU = "a line typed to you is addressed to you: reply to it"
+ADDRESSED = "his words reached you as addressed to you: reply to them"
 #: the source of an evidence built from his own entries
 HIS_WORDS = "his_words"
 NO_ORDER = "the answer is an order: reply or no_reply"
@@ -569,11 +570,14 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
         return False
     reads = _reads(steps)
     typed = _typed_only(r)
-    if isinstance(cmd, commands.NoReply) and (reads or typed) and _said_something(r) and not r.asked_after_reads:
-        r.asked_after_reads = True              # it read for him, or he typed to us — then nothing: asked once
-        _emit(conv, "command", r, command="no_reply_after_reads" if reads else "no_reply_typed", tools=reads)
+    if (isinstance(cmd, commands.NoReply) and (reads or not _barge_cut(conv, r)) and _said_something(r)
+            and not r.asked_after_reads):           # it read for him, or his words reached us addressed — and then
+        r.asked_after_reads = True                  # nothing: asked once. A barge-in that cut us may be silence.
+        _emit(conv, "command", r, command="no_reply_after_reads" if reads else "no_reply_typed" if typed
+              else "no_reply_voice", tools=reads)
         steps.append((ToolCall("orders", "orders_check", {}), ToolResult("refused", data=(
-            {"read": reads, "reason": SAY_WHAT_WAS_FOUND} if reads else {"reason": TYPED_TO_YOU}))))
+            {"read": reads, "reason": SAY_WHAT_WAS_FOUND} if reads else {"reason": TYPED_TO_YOU if typed
+                                                                           else ADDRESSED}))))
         return False
     if isinstance(cmd, commands.NoReply) and cmd.complete is False and _park(conv, r, batch, cmd, None, len(steps), now):
         return True                             # «something is missing» and no reply: silent only once he did not go on
@@ -603,7 +607,7 @@ def _park(conv: "Conversation", r: "Running", batch: Batch, cmd, text: str | Non
 def _silent(conv: "Conversation", r: "Running", reason: str, now: int) -> None:
     for req in r.requests:
         close(conv, req, "silent", "silent", r, reason=reason)
-    conv.inbox.account(list(r.batch_ids), "silent", now)
+    conv.inbox.account(list(r.batch_ids), "silent", now, reason=BARGE if _barge_cut(conv, r) else None)
     _emit(conv, "ended", r, outcome="no_reply", reason=reason, after_refused_act=bool(r.acts_refused),
           after_reads=r.asked_after_reads, typed_only=_typed_only(r))
 
@@ -636,6 +640,17 @@ def _count_sources(conv: "Conversation", r: "Running", claims, this_run: frozens
         _emit(conv, "command", r, command="evidence_his_words", claims=words)
     if earlier:
         _emit(conv, "command", r, command="evidence_earlier_run", claims=earlier)
+
+
+def _barge_cut(conv: "Conversation", r: "Running") -> bool:
+    """His voice in this batch began while a line of ours sounded, and that line ended CUT — by his voice, not by our
+    stop: the batch is a barge-in that stopped us."""
+    voice = [e.onset_ms for e in r.ctx.batch.values() if e.is_user and e.kind is EnvelopeKind.USER_UTTERANCE]
+    if not voice:
+        return False
+    cut = [(row["t_ms"], row.get("ended_ms") or row["t_ms"]) for _k, row in conv.store.view(conv.account).recent(
+        "says", 8) if row.get("outcome") == "cut" and not row.get("stopped")]
+    return any(start <= onset <= end for onset in voice for start, end in cut)
 
 
 def _typed_only(r: "Running") -> bool:
