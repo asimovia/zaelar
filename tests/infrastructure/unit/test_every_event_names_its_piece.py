@@ -216,3 +216,19 @@ def test_an_inbound_message_is_from_its_platforms_piece():
     from connectors.messaging import calls
     assert [calls._inbound_piece(p) for p in ("whatsapp", "telegram", "email")] == ["o_wa", "o_tg", "o_mail"]
     assert calls._inbound_piece("nowhere") == pieces.UNMAPPED
+
+
+def test_the_conversation_managers_events_name_the_package_piece_that_emitted(observer, monkeypatch):
+    """Through the host's own telemetry chain (the proof's counter, the observer's port), a manager event is the
+    package module's piece — `c_manager`, `c_ear`… — never `unmapped` at the counter it passed through."""
+    from nucleo.conversation_host import proof
+    from nucleo.conversation_host.telemetry import ObserverTelemetry
+    got: list = []
+    scope = {"real": observer.emit, "got": got}
+    exec(compile("def wrap(*a, **k):\n    got.append(real(*a, **k))", str(ROOT / "voice/observer.py"), "exec"), scope)
+    monkeypatch.setattr(observer, "emit", scope["wrap"])                   # a relay's frame: never the emitter
+    monkeypatch.setattr(proof, "note", lambda *a, **k: None)
+    tel = proof.Counting(ObserverTelemetry(()), "w_acct")
+    _emit_from("conversation/manager/run.py", "tel.emit('conv_run', 'started', {})", tel=tel)
+    _emit_from("conversation/ear/arbiter.py", "tel.emit('conv_ear', 'opened', {})", tel=tel)
+    assert [ev["piece"] for ev in got] == ["c_manager", "c_ear"], [ev.get("piece_src") for ev in got]
