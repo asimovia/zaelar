@@ -613,10 +613,9 @@ def _his_words(conv: "Conversation", r: "Running") -> dict:
         if row.get("kind") in CONTENT and body.get("intervention_id"):
             texts.setdefault(body["intervention_id"], str(body.get("text") or ""))
     out = {}
-    for iv, text in texts.items():
-        numbers, percents = conv.figures(text)
-        if numbers:
-            out[iv] = Evidence(iv, HIS_WORDS, numbers=tuple(numbers), percents=tuple(percents))
+    for iv, text in texts.items():                      # an entry with no figure in digits is evidence too: a derived
+        numbers, percents = conv.figures(text)          # figure may cite what he asked, its operands read elsewhere
+        out[iv] = Evidence(iv, HIS_WORDS, numbers=tuple(numbers), percents=tuple(percents))
     return out
 
 

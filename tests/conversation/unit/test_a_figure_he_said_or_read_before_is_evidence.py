@@ -104,3 +104,32 @@ def test_an_earlier_reads_figure_still_valid_answers_a_follow_up(store):
     h.typed("w2", 20_000)
     h.settle(30_000)
     assert [o.text for o in h.mouth.orders] == ["w9 123.8", "w8 40.1"]   # Japan from the run before, Germany now
+
+
+def test_mix02_a_quantity_he_gave_times_a_rate_read_before(store):
+    """mix-02: «how much are 300 pounds in euros?» after a search gave 1.1936 — a product (no operation multiplied)."""
+    rate = Evidence("ev_r", "search", numbers=(1.1936,))
+    rounds = [[ToolCall("c1", "market_data", {"q": "w1"}), Done()], [reply("w9", [_c(1.1936, "ev_r")]), Done()]]
+    h = _h(store, rounds)
+    h.tools.answers["market_data"] = ToolResult("ok", {}, (rate,))
+    h.typed("w1", 0)
+    h.settle(2000)
+    n = len(h.model.calls)
+    times = _c(358.08, "iv_000005", derived=True, op="product", operands=[300, 1.1936])   # his second entry
+    h.model.default = lambda ids: [reply("w8 358.08", [times]), Done()]
+    h.typed("wa 300 wb", 20_000)
+    h.settle(30_000)
+    assert [o.text for o in h.mouth.orders][-1] == "w8 358.08" and len(h.model.calls) == n + 1
+
+
+def test_a_derived_figure_may_cite_his_entry_with_no_figure_in_digits(store):
+    """«trescientas libras»: his entry holds no digit; the figure cites it, its operands read elsewhere."""
+    rate = Evidence("ev_r", "search", numbers=(300.0, 1.1936))
+    rounds = [[ToolCall("c1", "market_data", {"q": "w1"}), Done()],
+              [reply("w9 358.08", [_c(358.08, "iv_000001", derived=True, op="product", operands=[300, 1.1936])]),
+               Done()]]
+    h = _h(store, rounds)
+    h.tools.answers["market_data"] = ToolResult("ok", {}, (rate,))
+    h.typed("wa wb", 0)                                                     # no digit in what he wrote
+    h.settle(2000)
+    assert [o.text for o in h.mouth.orders] == ["w9 358.08"]

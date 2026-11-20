@@ -83,8 +83,13 @@ def _percent(a: tuple) -> float:
     return 100 * _ratio(a)
 
 
+def _product(a: tuple) -> float:
+    """«300 pounds at 1.1936»: a quantity times a rate."""
+    return math.prod(a) if len(a) >= 2 else math.nan
+
+
 #: the operations a derived figure may declare, each from its operands, named by its function
-OPS = {f.__name__[1:]: f for f in (_count, _sum, _difference, _mean, _ratio, _percent)}
+OPS = {f.__name__[1:]: f for f in (_count, _sum, _difference, _mean, _ratio, _percent, _product)}
 
 
 def _same(a: str, b: str) -> bool:
@@ -167,10 +172,9 @@ def _distinct(operands: tuple, figures: tuple) -> bool:
 def _derived(claim: Claim, ev: Evidence, refused: tuple, pool: tuple = ()) -> str | None:
     """`pool`: the figures of all the evidence still valid — a figure derived from two reads («how many more people
     does Japan have than Germany», one search each, maybe one in an earlier run) rests on both; it cites one."""
-    figures = ev.numbers + ((ev.value,) if ev.value is not None else ())
-    if not figures:
+    figures = pool or ev.numbers + ((ev.value,) if ev.value is not None else ())
+    if not figures:                                       # the evidence it cites, or any still valid: none has figures
         return "no_figures"
-    figures = pool or figures
     if any(_near(claim.value, v) for v in refused):
         return "was_refused"                              # a value refused in this run does not come back derived
     if claim.op not in OPS or not claim.operands:

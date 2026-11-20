@@ -678,6 +678,9 @@ _PACKAGE_CEILINGS["conversation"] += 24    # 2026-11-20 V2-941 v3.1 B7l (the aud
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 13    # same, minors 1, 3, 5: the voice question for an undecided session, the account's «text» over a bare room flag, the notice after the voice ends
 _PACKAGE_CEILINGS["voice"] += 5            # same, minor 7: our own echo at our line's start never sent again as his
 _TOTAL_MAX += 42     # same cause
+_PACKAGE_CEILINGS["conversation"] += 3     # 2026-11-20 V2-941 v3.1 B7l (mix-02): a derived figure may be a product, and cite his entry with no digit
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 1     # same (es-11): ACTS says a held act is never done, promised or said as done
+_TOTAL_MAX += 4      # same cause
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())
