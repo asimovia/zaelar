@@ -114,7 +114,7 @@
    ],
    "core": false,
    "reads": true,
-   "about": "one of his widgets (agenda, contacts, notes…): what it holds now"
+   "about": "one of his widgets, by its id or the name he used: what it holds now"
   },
   "recall": {
    "args": [

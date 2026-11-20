@@ -100,3 +100,18 @@ def test_which_provider_answered_reaches_the_runs_model_done(store):
     done = [p for k, lab, p in h.tel.events if k == "conv_run" and lab == "model_done"]
     assert done and done[0]["usage"]["relayed_from"] == "m_main" and done[0]["usage"]["provider"] == "p2"
     assert {"model", "provider", "relayed_from", "relayed_to"} <= set(DONE_KEYS)
+
+
+def test_read_widget_reads_the_widget_its_name_or_alias_declares(monkeypatch):
+    """A widget is named however he named it, in any language: its manifest's names and aliases resolve it
+    (`widget_read.resolve`), and a name nothing declares is a failed read naming what there is — never a guess."""
+    from nucleo.flash import widget_read
+    from widgets import runtime
+    monkeypatch.setattr(runtime, "get", lambda wid: {"id": wid} if wid == "w_cal" else None)
+    monkeypatch.setattr(runtime, "identify_named", lambda q, **kw: "w_cal" if q == "w_alias" else None)
+    monkeypatch.setattr(runtime, "catalog", lambda: [{"id": "w_cal"}])
+    monkeypatch.setattr(widget_read, "lookup", lambda wid, q: f"{wid} answers {q}")
+    got = _call(tools_read.ReadTools(), "read_widget", {"widget": "w_alias", "question": "w_q"})
+    assert got.status == "ok" and got.data == {"widget": "w_cal", "text": "w_cal answers w_q"}
+    missing = _call(tools_read.ReadTools(), "read_widget", {"widget": "w_nothing", "question": "w_q"})
+    assert missing.status == "failed" and missing.data["widgets"] == ["w_cal"]

@@ -70,8 +70,15 @@ def _search(args: dict, find: Callable) -> ToolResult:
 
 
 def _widget(args: dict) -> ToolResult:
+    """The widget its argument names — the catalogue id, else by the names and aliases each manifest declares
+    (`widget_read.resolve`) — answering the question, else what it holds."""
     from nucleo.flash import widget_read
-    wid, q = str(args.get("widget") or ""), str(args.get("question") or "")
+    named, q = str(args.get("widget") or ""), str(args.get("question") or "")
+    wid = widget_read.resolve(named)
+    if wid is None:
+        from widgets import runtime
+        return ToolResult("failed", {"reason": "no_such_widget", "named": named,
+                                     "widgets": sorted(str(w.get("id")) for w in runtime.catalog() if w.get("id"))})
     text = widget_read.lookup(wid, q) or widget_read.read(wid)
     return ToolResult("ok" if text else "failed", {"widget": wid, "text": text or "nothing readable"},
                       _text_evidence(f"widget:{wid}", text or ""))
