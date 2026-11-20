@@ -1,0 +1,982 @@
+[
+ {
+  "id": "en-i000",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "list_announced",
+  "text": "Add to my to-do list.",
+  "goes_on": "Explain what inflation is in two sentences."
+ },
+ {
+  "id": "en-i001",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "name_alone",
+  "text": "{AGENT~}.",
+  "goes_on": "What's the temperature in Miami right now?"
+ },
+ {
+  "id": "en-i002",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "and_also_empty",
+  "text": "What time does the museum close today? But first.",
+  "goes_on": "Look up flights to Denver for Thanksgiving weekend."
+ },
+ {
+  "id": "en-i003",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "correction_opened",
+  "text": "Find flights to Rome, I mean, no.",
+  "goes_on": "to Milan"
+ },
+ {
+  "id": "en-i004",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "lead_in",
+  "text": "Let's see.",
+  "goes_on": "What's the weather going to be like in Chicago on Saturday?"
+ },
+ {
+  "id": "en-i005",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "subordinate_alone",
+  "text": "As soon as I get home.",
+  "goes_on": "Find me a Thai place near the office for tonight."
+ },
+ {
+  "id": "en-i006",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "name_alone",
+  "text": "{AGENT}.",
+  "goes_on": "Set a twenty minute timer for the pasta."
+ },
+ {
+  "id": "en-i007",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "subordinate_alone",
+  "text": "Before the call with Inworld.",
+  "goes_on": "What's the capital of Canada?"
+ },
+ {
+  "id": "en-i008",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "list_announced",
+  "text": "Two things.",
+  "goes_on": "Book a dentist appointment for Tuesday at five."
+ },
+ {
+  "id": "en-i009",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "and_also_empty",
+  "text": "Book a dentist appointment for Tuesday at five. And also.",
+  "goes_on": "What's the weather going to be like in Chicago on Saturday?"
+ },
+ {
+  "id": "en-i010",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "list_announced",
+  "text": "I need you to do a few things.",
+  "goes_on": "How is oil doing this week?"
+ },
+ {
+  "id": "en-i011",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "correction_opened",
+  "text": "Put the appointment on Tuesday, I mean, no.",
+  "goes_on": "on Wednesday"
+ },
+ {
+  "id": "en-i012",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "lead_in",
+  "text": "Quick question.",
+  "goes_on": "What's the weather going to be like in Chicago on Saturday?"
+ },
+ {
+  "id": "en-i013",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "and_also_empty",
+  "text": "Remind me to call Rowan when I leave work. And another thing.",
+  "goes_on": "Book a dentist appointment for Tuesday at five."
+ },
+ {
+  "id": "en-i014",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "subordinate_alone",
+  "text": "For Rowan's birthday thing.",
+  "goes_on": "Which pharmacy near me is open late tonight?"
+ },
+ {
+  "id": "en-i015",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "lead_in",
+  "text": "Hey, one thing.",
+  "goes_on": "Find me a Thai place near the office for tonight."
+ },
+ {
+  "id": "en-i016",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "correction_opened",
+  "text": "Check the weather in Boston, I mean, no.",
+  "goes_on": "in Providence"
+ },
+ {
+  "id": "en-i017",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "correction_opened",
+  "text": "Move the meeting to ten, I mean, no.",
+  "goes_on": "to eleven"
+ },
+ {
+  "id": "en-i018",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "lead_in",
+  "text": "Okay, another thing.",
+  "goes_on": "Do I have anything this weekend?"
+ },
+ {
+  "id": "en-i019",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "correction_opened",
+  "text": "Set an alarm for seven, I mean, no.",
+  "goes_on": "for six thirty"
+ },
+ {
+  "id": "en-i020",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "lead_in",
+  "text": "I wanted to ask you something.",
+  "goes_on": "What can you do with my email?"
+ },
+ {
+  "id": "en-i021",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "subordinate_alone",
+  "text": "Since I'm flying to Denver on Friday.",
+  "goes_on": "Set a twenty minute timer for the pasta."
+ },
+ {
+  "id": "en-i022",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "subordinate_alone",
+  "text": "When I get out of the meeting.",
+  "goes_on": "Look up flights to Denver for Thanksgiving weekend."
+ },
+ {
+  "id": "en-i023",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "lead_in",
+  "text": "Okay, listen.",
+  "goes_on": "What can you do with my email?"
+ },
+ {
+  "id": "en-i024",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "subordinate_alone",
+  "text": "If it rains tomorrow.",
+  "goes_on": "What's on my calendar for Thursday afternoon?"
+ },
+ {
+  "id": "en-i025",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "lead_in",
+  "text": "So, about tomorrow.",
+  "goes_on": "Find me a Thai place near the office for tonight."
+ },
+ {
+  "id": "en-i026",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "list_announced",
+  "text": "I need three things.",
+  "goes_on": "How is oil doing this week?"
+ },
+ {
+  "id": "en-i027",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "open_function_word",
+  "text": "What's on my calendar for.",
+  "goes_on": "Thursday afternoon?"
+ },
+ {
+  "id": "en-i028",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "open_function_word",
+  "text": "How's the traffic to the.",
+  "goes_on": "airport right now?"
+ },
+ {
+  "id": "en-i029",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "open_function_word",
+  "text": "Set a twenty minute timer for the.",
+  "goes_on": "pasta."
+ },
+ {
+  "id": "en-i030",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "open_function_word",
+  "text": "Delete the plumber appointment on.",
+  "goes_on": "Thursday."
+ },
+ {
+  "id": "en-i031",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "open_function_word",
+  "text": "How did the.",
+  "goes_on": "S&P 500 close today?"
+ },
+ {
+  "id": "en-i032",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "open_function_word",
+  "text": "Explain what inflation is in.",
+  "goes_on": "two sentences."
+ },
+ {
+  "id": "en-i033",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "open_function_word",
+  "text": "What's the temperature in.",
+  "goes_on": "Miami right now?"
+ },
+ {
+  "id": "en-i034",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "open_function_word",
+  "text": "What's the weather going to be like in.",
+  "goes_on": "Chicago on Saturday?"
+ },
+ {
+  "id": "en-i035",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "open_function_word",
+  "text": "What's the capital of.",
+  "goes_on": "Canada?"
+ },
+ {
+  "id": "en-i036",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "open_function_word",
+  "text": "Is it going to rain this afternoon in.",
+  "goes_on": "Seattle?"
+ },
+ {
+  "id": "en-i037",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "open_function_word",
+  "text": "What time is sunrise tomorrow in.",
+  "goes_on": "Phoenix?"
+ },
+ {
+  "id": "en-i038",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "open_function_word",
+  "text": "What time does the.",
+  "goes_on": "museum close today?"
+ },
+ {
+  "id": "en-i039",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "open_function_word",
+  "text": "Do I have anything this.",
+  "goes_on": "weekend?"
+ },
+ {
+  "id": "en-c000",
+  "label": "complete",
+  "shape": "pieces_joined",
+  "text": "Okay, listen. How's the traffic to the airport right now?"
+ },
+ {
+  "id": "en-c001",
+  "label": "complete",
+  "shape": "bare",
+  "text": "How is Apple stock doing compared to last week?"
+ },
+ {
+  "id": "en-c002",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Now, how is oil doing this week?"
+ },
+ {
+  "id": "en-c003",
+  "label": "complete",
+  "shape": "bare",
+  "text": "Which pharmacy near me is open late tonight?"
+ },
+ {
+  "id": "en-c004",
+  "label": "complete",
+  "shape": "two_errands",
+  "text": "Do I have anything this weekend? And also, what's on my calendar for Thursday afternoon?"
+ },
+ {
+  "id": "en-c005",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Well, explain what inflation is in two sentences."
+ },
+ {
+  "id": "en-c006",
+  "label": "complete",
+  "shape": "after_context",
+  "text": "Tomorrow is a busy day. Do I have anything this weekend?"
+ },
+ {
+  "id": "en-c007",
+  "label": "complete",
+  "shape": "after_context",
+  "text": "I'm thinking about the trip. How much is two hundred euros in dollars?"
+ },
+ {
+  "id": "en-c008",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, what's the temperature in Miami right now?"
+ },
+ {
+  "id": "en-c009",
+  "label": "complete",
+  "shape": "two_errands",
+  "text": "Remind me to call Rowan when I leave work. And also, add milk and eggs to the shopping list."
+ },
+ {
+  "id": "en-c010",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, how much is a train ticket from Boston to Washington?"
+ },
+ {
+  "id": "en-c011",
+  "label": "complete",
+  "shape": "after_context",
+  "text": "I just left the office. Which pharmacy near me is open late tonight?"
+ },
+ {
+  "id": "en-c012",
+  "label": "complete",
+  "shape": "bare",
+  "text": "Move Friday's meeting to Monday at ten."
+ },
+ {
+  "id": "en-c013",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT~}, what's the capital of Canada?"
+ },
+ {
+  "id": "en-c014",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Now, add milk and eggs to the shopping list."
+ },
+ {
+  "id": "en-c015",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, what can you do with my email?"
+ },
+ {
+  "id": "en-c016",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "So, do I have anything this weekend?"
+ },
+ {
+  "id": "en-c017",
+  "label": "complete",
+  "shape": "bare",
+  "text": "How is oil doing this week?"
+ },
+ {
+  "id": "en-c018",
+  "label": "complete",
+  "shape": "two_errands",
+  "text": "What's on my calendar for Thursday afternoon? And also, how's the traffic to the airport right now?"
+ },
+ {
+  "id": "en-c019",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, how did the S&P 500 close today?"
+ },
+ {
+  "id": "en-c020",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT~}, set a twenty minute timer for the pasta."
+ },
+ {
+  "id": "en-c021",
+  "label": "complete",
+  "shape": "after_context",
+  "text": "Tomorrow is a busy day. Add milk and eggs to the shopping list."
+ },
+ {
+  "id": "en-c022",
+  "label": "complete",
+  "shape": "bare",
+  "text": "Explain what inflation is in two sentences."
+ },
+ {
+  "id": "en-c023",
+  "label": "complete",
+  "shape": "bare",
+  "text": "How much is a train ticket from Boston to Washington?"
+ },
+ {
+  "id": "en-c024",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, delete the plumber appointment on Thursday."
+ },
+ {
+  "id": "en-c025",
+  "label": "complete",
+  "shape": "pieces_joined",
+  "text": "Quick question. What time is sunrise tomorrow in Phoenix?"
+ },
+ {
+  "id": "en-c026",
+  "label": "complete",
+  "shape": "correction_resolved",
+  "text": "Find flights to Rome, I mean, no, to Milan."
+ },
+ {
+  "id": "en-c027",
+  "label": "complete",
+  "shape": "two_errands",
+  "text": "Find me a Thai place near the office for tonight. And also, what time is sunrise tomorrow in Phoenix?"
+ },
+ {
+  "id": "en-c028",
+  "label": "complete",
+  "shape": "two_errands",
+  "text": "Find me a Thai place near the office for tonight. And also, move Friday's meeting to Monday at ten."
+ },
+ {
+  "id": "en-c029",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT~}, set an alarm for seven tomorrow morning."
+ },
+ {
+  "id": "en-c030",
+  "label": "complete",
+  "shape": "bare",
+  "text": "How did the S&P 500 close today?"
+ },
+ {
+  "id": "en-c031",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Okay, what's the capital of Canada?"
+ },
+ {
+  "id": "en-c032",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "So, how did the S&P 500 close today?"
+ },
+ {
+  "id": "en-c033",
+  "label": "complete",
+  "shape": "bare",
+  "text": "Find me a Thai place near the office for tonight."
+ },
+ {
+  "id": "en-c034",
+  "label": "complete",
+  "shape": "two_errands",
+  "text": "How much is two hundred euros in dollars? And also, set a twenty minute timer for the pasta."
+ },
+ {
+  "id": "en-c035",
+  "label": "complete",
+  "shape": "bare",
+  "text": "How many days until Christmas?"
+ },
+ {
+  "id": "en-c036",
+  "label": "complete",
+  "shape": "bare",
+  "text": "Is it going to rain this afternoon in Seattle?"
+ },
+ {
+  "id": "en-c037",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT~}, how is Apple stock doing compared to last week?"
+ },
+ {
+  "id": "en-c038",
+  "label": "complete",
+  "shape": "after_context",
+  "text": "Tomorrow is a busy day. What time is sunrise tomorrow in Phoenix?"
+ },
+ {
+  "id": "en-c039",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "So, look up flights to Denver for Thanksgiving weekend."
+ },
+ {
+  "id": "en-c040",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Now, what can you do with my email?"
+ },
+ {
+  "id": "en-c041",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT~}, how many days until Christmas?"
+ },
+ {
+  "id": "en-c042",
+  "label": "complete",
+  "shape": "two_errands",
+  "text": "Add milk and eggs to the shopping list. And also, how much is a train ticket from Boston to Washington?"
+ },
+ {
+  "id": "en-c043",
+  "label": "complete",
+  "shape": "after_context",
+  "text": "I just left the office. What can you do with my email?"
+ },
+ {
+  "id": "en-c044",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Right, book a dentist appointment for Tuesday at five."
+ },
+ {
+  "id": "en-c045",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "So, delete the plumber appointment on Thursday."
+ },
+ {
+  "id": "en-c046",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "So, what's the temperature in Miami right now?"
+ },
+ {
+  "id": "en-c047",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, what time is sunrise tomorrow in Phoenix?"
+ },
+ {
+  "id": "en-c048",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, who won the Lakers game last night?"
+ },
+ {
+  "id": "en-c049",
+  "label": "complete",
+  "shape": "bare",
+  "text": "How much is two hundred euros in dollars?"
+ },
+ {
+  "id": "en-c050",
+  "label": "complete",
+  "shape": "pieces_joined",
+  "text": "Let's see. Is it going to rain this afternoon in Seattle?"
+ },
+ {
+  "id": "en-c051",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Now, how much is a train ticket from Boston to Washington?"
+ },
+ {
+  "id": "en-c052",
+  "label": "complete",
+  "shape": "bare",
+  "text": "What's the weather going to be like in Chicago on Saturday?"
+ },
+ {
+  "id": "en-c053",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Now, what time does the museum close today?"
+ },
+ {
+  "id": "en-c054",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT~}, do I have anything this weekend?"
+ },
+ {
+  "id": "en-c055",
+  "label": "complete",
+  "shape": "bare",
+  "text": "What time is sunrise tomorrow in Phoenix?"
+ },
+ {
+  "id": "en-c056",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, what's on my calendar for Thursday afternoon?"
+ },
+ {
+  "id": "en-c057",
+  "label": "complete",
+  "shape": "pieces_joined",
+  "text": "So, about tomorrow. How far is it from Boston to New York?"
+ },
+ {
+  "id": "en-c058",
+  "label": "complete",
+  "shape": "after_context",
+  "text": "This week is a mess. Book a dentist appointment for Tuesday at five."
+ },
+ {
+  "id": "en-c059",
+  "label": "complete",
+  "shape": "bare",
+  "text": "Book a dentist appointment for Tuesday at five."
+ },
+ {
+  "id": "en-c060",
+  "label": "complete",
+  "shape": "bare",
+  "text": "Do I have anything this weekend?"
+ },
+ {
+  "id": "en-c061",
+  "label": "complete",
+  "shape": "bare",
+  "text": "How far is it from Boston to New York?"
+ },
+ {
+  "id": "en-c062",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, how's the traffic to the airport right now?"
+ },
+ {
+  "id": "en-c063",
+  "label": "complete",
+  "shape": "bare",
+  "text": "How's the traffic to the airport right now?"
+ },
+ {
+  "id": "en-c064",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT~}, which pharmacy near me is open late tonight?"
+ },
+ {
+  "id": "en-c065",
+  "label": "complete",
+  "shape": "bare",
+  "text": "Look up flights to Denver for Thanksgiving weekend."
+ },
+ {
+  "id": "en-c066",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Okay, what's on my calendar for Thursday afternoon?"
+ },
+ {
+  "id": "en-c067",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Now, set an alarm for seven tomorrow morning."
+ },
+ {
+  "id": "en-c068",
+  "label": "complete",
+  "shape": "pieces_joined",
+  "text": "Okay, listen. What's the capital of Canada?"
+ },
+ {
+  "id": "en-c069",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Well, which pharmacy near me is open late tonight?"
+ },
+ {
+  "id": "en-c070",
+  "label": "complete",
+  "shape": "correction_resolved",
+  "text": "Check the weather in Boston, I mean, no, in Providence."
+ },
+ {
+  "id": "en-c071",
+  "label": "complete",
+  "shape": "bare",
+  "text": "What's on my calendar for Thursday afternoon?"
+ },
+ {
+  "id": "en-c072",
+  "label": "complete",
+  "shape": "after_context",
+  "text": "I'm thinking about the trip. Move Friday's meeting to Monday at ten."
+ },
+ {
+  "id": "en-c073",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Now, how far is it from Boston to New York?"
+ },
+ {
+  "id": "en-c074",
+  "label": "complete",
+  "shape": "pieces_joined",
+  "text": "Hey, one thing. Which pharmacy near me is open late tonight?"
+ },
+ {
+  "id": "en-c075",
+  "label": "complete",
+  "shape": "correction_resolved",
+  "text": "Move the meeting to ten, I mean, no, to eleven."
+ },
+ {
+  "id": "en-c076",
+  "label": "complete",
+  "shape": "bare",
+  "text": "What can you do with my email?"
+ },
+ {
+  "id": "en-c077",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, how far is it from Boston to New York?"
+ },
+ {
+  "id": "en-c078",
+  "label": "complete",
+  "shape": "pieces_joined",
+  "text": "Okay, listen. Explain what inflation is in two sentences."
+ },
+ {
+  "id": "en-c079",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Now, move Friday's meeting to Monday at ten."
+ },
+ {
+  "id": "en-c080",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, what time does the museum close today?"
+ },
+ {
+  "id": "en-c081",
+  "label": "complete",
+  "shape": "bare",
+  "text": "What time does the museum close today?"
+ },
+ {
+  "id": "en-c082",
+  "label": "complete",
+  "shape": "two_errands",
+  "text": "Add milk and eggs to the shopping list. And also, how did the S&P 500 close today?"
+ },
+ {
+  "id": "en-c083",
+  "label": "complete",
+  "shape": "after_context",
+  "text": "I just left the office. Remind me to call Rowan when I leave work."
+ },
+ {
+  "id": "en-c084",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT~}, look up flights to Denver for Thanksgiving weekend."
+ },
+ {
+  "id": "en-c085",
+  "label": "complete",
+  "shape": "bare",
+  "text": "Set a twenty minute timer for the pasta."
+ },
+ {
+  "id": "en-c086",
+  "label": "complete",
+  "shape": "bare",
+  "text": "Give me an easy recipe for chili."
+ },
+ {
+  "id": "en-c087",
+  "label": "complete",
+  "shape": "after_context",
+  "text": "This week is a mess. Look up flights to Denver for Thanksgiving weekend."
+ },
+ {
+  "id": "en-c088",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Now, how many days until Christmas?"
+ },
+ {
+  "id": "en-c089",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, how is oil doing this week?"
+ },
+ {
+  "id": "en-c090",
+  "label": "complete",
+  "shape": "bare",
+  "text": "Add milk and eggs to the shopping list."
+ },
+ {
+  "id": "en-c091",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Well, find me a Thai place near the office for tonight."
+ },
+ {
+  "id": "en-c092",
+  "label": "complete",
+  "shape": "two_errands",
+  "text": "Who won the Lakers game last night? And also, find me a Thai place near the office for tonight."
+ },
+ {
+  "id": "en-c093",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Right, is it going to rain this afternoon in Seattle?"
+ },
+ {
+  "id": "en-c094",
+  "label": "complete",
+  "shape": "bare",
+  "text": "What's the temperature in Miami right now?"
+ },
+ {
+  "id": "en-c095",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT~}, give me an easy recipe for chili."
+ },
+ {
+  "id": "en-c096",
+  "label": "complete",
+  "shape": "bare",
+  "text": "Remind me to call Rowan when I leave work."
+ },
+ {
+  "id": "en-c097",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Now, set a twenty minute timer for the pasta."
+ },
+ {
+  "id": "en-c098",
+  "label": "complete",
+  "shape": "two_errands",
+  "text": "What's the temperature in Miami right now? And also, give me an easy recipe for chili."
+ },
+ {
+  "id": "en-c099",
+  "label": "complete",
+  "shape": "after_context",
+  "text": "I just left the office. How did the S&P 500 close today?"
+ },
+ {
+  "id": "en-c100",
+  "label": "complete",
+  "shape": "correction_resolved",
+  "text": "Put the appointment on Tuesday, I mean, no, on Wednesday."
+ },
+ {
+  "id": "en-c101",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Okay, what's the weather going to be like in Chicago on Saturday?"
+ },
+ {
+  "id": "en-c102",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Well, how is Apple stock doing compared to last week?"
+ },
+ {
+  "id": "en-c103",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, is it going to rain this afternoon in Seattle?"
+ },
+ {
+  "id": "en-c104",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, what's the weather going to be like in Chicago on Saturday?"
+ },
+ {
+  "id": "en-c105",
+  "label": "complete",
+  "shape": "correction_resolved",
+  "text": "Set an alarm for seven, I mean, no, for six thirty."
+ },
+ {
+  "id": "en-c106",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, move Friday's meeting to Monday at ten."
+ },
+ {
+  "id": "en-c107",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Now, who won the Lakers game last night?"
+ },
+ {
+  "id": "en-c108",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Okay, how much is two hundred euros in dollars?"
+ },
+ {
+  "id": "en-c109",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, add milk and eggs to the shopping list."
+ }
+]

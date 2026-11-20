@@ -189,20 +189,64 @@ def present(span: list[str], prompt: list[str]) -> bool:
     return _lcs(span, prompt) >= need
 
 
+SPAN_TOL_MS = 150     # a heard word belongs to a span when its middle is inside the span's window ± this
+SAME_WORD_MS = 60     # a word of a run's prompt IS a heard word when their middles are this close (the ear's words
+                      # are the provider's words: by time, never by text)
+
+
+def _mid(w) -> float:
+    return (int(w[1]) + int(w[2])) / 2
+
+
+def heard_in_span(labels: dict, span: dict, heard: list) -> list:
+    """The provider's words for one span: inside its time window, and attributed to it (`match_word`) — so a voice
+    over it (the TV, another person) is not his."""
+    return [w for w in heard if span["start_ms"] - SPAN_TOL_MS <= _mid(w) <= span["end_ms"] + SPAN_TOL_MS
+            and match_word(labels, int(w[1]), int(w[2]), w[0]).get("seg") == span["i"]]
+
+
+def _covered(w, run_words: list) -> bool:
+    return any(abs(_mid(w) - _mid(r)) <= SAME_WORD_MS for r in run_words)
+
+
+def r2_by_time(span_heard: list[list], runs: list[dict]):
+    """§5.3 (decided 2026-11-20): every word the provider transcribed inside his spans reaches the prompt of the run
+    that answers him, matched by TIME. A span with nothing transcribed is out of R2 (the provider's baseline); a
+    thought with nothing transcribed at all is out (None). The answering run: among the runs holding a word of his
+    last transcribed span, the one holding most of his words (the later on a tie)."""
+    spans = [ws for ws in span_heard if ws]
+    if not spans:
+        return None, None
+    words = [w for ws in spans for w in ws]
+    cands = [(sum(_covered(w, r.get("words") or []) for w in words), i, r) for i, r in enumerate(runs)
+             if any(_covered(w, r.get("words") or []) for w in spans[-1])]
+    if not cands:
+        return False, None
+    _, _, run = max(cands, key=lambda c: (c[0], c[1]))
+    return all(_covered(w, run.get("words") or []) for w in words), run
+
+
 def prompt_score(labels: dict, runs: list[dict], says_ms: list[int], ear_closes: list[dict],
-                 says: list[dict] | None = None) -> dict:
+                 says: list[dict] | None = None, heard: list | None = None, eots: list | None = None) -> dict:
     """Per thought, on the prompts the manager actually built (`conv_run/input`):
 
     answering run  among the runs the thought's last span arrives in, the one holding most of its spans (the last on a
                    tie); none = its end never reached a prompt
-    R2             every span of the thought arrives in that prompt — by the TOLERANT alignment (accents off, words
-                   ≥ 80 % alike: what the STT misheard is not a cut); `r2_strict`, the exact one, is kept beside it
+    R2             with `heard` (the provider's words) and runs carrying their words: BY TIME — every word the
+                   provider transcribed inside his spans is in the answering run's prompt (`r2_by_time`); a thought
+                   with nothing transcribed is out of R2 (`r2` None). How well the provider transcribed each span is
+                   its baseline (`heard_fz`, `heard_strict`, `heard_empty`), never a cut. Without them: every span
+                   arrives by the tolerant text alignment. `r2_fz` (tolerant text) and `r2_strict` (exact text) are
+                   kept beside it, for information
     R3             no line of ours starts between the thought's first onset and the end of its last span
     false cut      R2 or R3 broken; `cut_why` says which: `r2` (the thought never reached one prompt whole), `half` (a
                    line of the run that held part of THIS thought), `previous_late` (the answer to an earlier thought,
                    published while the person had already started this one)
     false merge    the answering prompt also carries a span of another thought of the person (a stranger is exposure)
     wait           the close of the ear intervention holding the last span − the instant the person finished
+    wait (ear)     with `eots` (the provider's EndOfTurn arrivals, each with its words): that close − the EndOfTurn
+                   that carries his last transcribed word — the ear's OWN time over what the provider already took;
+                   profile A's wait (decided 2026-11-20). None when no EndOfTurn carries it
     say after end  our first line after the thought's last span ended − that end: what the person waits to hear
     exposure       stranger spans arriving in any prompt / stranger spans
     """
@@ -225,8 +269,20 @@ def prompt_score(labels: dict, runs: list[dict], says_ms: list[int], ear_closes:
                 return None, False
             _, _, run, pw = max(cands, key=lambda c: (c[0], c[1]))
             return run, all(arrives(w, pw, fuzzy) for w in sw)
-        answering, r2 = pick(True)
+        answering, r2_fz = pick(True)
         answering_strict, r2_strict = pick(False)
+        r2 = r2_fz
+        base = None
+        if heard is not None and all("words" in r for r in runs):
+            span_heard = [heard_in_span(labels, sg, heard) for sg in spans]
+            r2, run_t = r2_by_time(span_heard, runs)
+            answering = run_t or (answering if r2 is None else None)
+            hw = [[w[0] for w in ws] for ws in span_heard]
+            base = {"spans": len(spans), "empty": sum(not ws for ws in hw),
+                    "fz": sum(bool(ws) and arrives(words_of(sg["text"]), words_of(" ".join(ws)), True)
+                              for sg, ws in zip(spans, hw)),
+                    "strict": sum(bool(ws) and arrives(words_of(sg["text"]), words_of(" ".join(ws)), False)
+                                  for sg, ws in zip(spans, hw))}
         pw = words_of(" ".join(x for x in answering["text"] if x)) if answering else []
         spoke = sum(1 for ms in says_ms if t["start_ms"] <= ms < last["end_ms"])
         during = [x for x in (says or []) if t["start_ms"] <= x["t_ms"] < last["end_ms"]]
@@ -238,19 +294,29 @@ def prompt_score(labels: dict, runs: list[dict], says_ms: list[int], ear_closes:
         holding = [c for c in ear_closes if any(last["start_ms"] - 150 <= int(w[2]) and int(w[1]) <= last["end_ms"] + 300
                                                 for w in c["words"])]
         close = max((c for c in holding), key=lambda c: max(int(w[2]) for w in c["words"]))["end_ms"] if holding else None
+        wait_ear = None
+        if eots is not None and heard is not None and close is not None:
+            his = [w for sg in spans for w in heard_in_span(labels, sg, heard)]
+            if his:
+                last_word = max(his, key=_mid)
+                eot = min((e for e, ws in eots if _covered(last_word, ws)), default=None)
+                wait_ear = (close - eot) if eot is not None else None
         first_after = min((ms for ms in says_ms if ms >= last["end_ms"]), default=None)
-        cut_why = None if (r2 and not spoke) else ("half" if half else "previous_late" if spoke and during else "r2"
-                                                  if not r2 else "half")
+        r2_broken = r2 is False
+        cut_why = None if (not r2_broken and not spoke) else ("half" if half else "previous_late" if spoke and during
+                                                              else "r2" if r2_broken else "half")
         unclean = any(sg.get("cut_ok") is False for sg in spans)
-        rows.append({"turn": t["turn"], "kind": t["kind"], "spans": len(spans), "r2": r2, "r2_strict": r2_strict,
+        rows.append({"turn": t["turn"], "kind": t["kind"], "spans": len(spans), "r2": r2, "r2_fz": r2_fz,
+                     "r2_strict": r2_strict, "heard": base,
                      "infra": unclean,
                      "spoke_during": spoke,
                      "cut_why": cut_why,
                      "say_after_end_ms": (first_after - last["end_ms"]) if first_after is not None else None,
-                     "cut": (not r2) or spoke > 0, "merged": merged,
+                     "cut": r2_broken or spoke > 0, "merged": merged,
                      "answering_run": answering["run"] if answering else None,
                      "run_start_after_end_ms": (answering["t_ms"] - t["end_ms"]) if answering else None,
                      "wait_ms": (close - t["end_ms"]) if close is not None else None,
+                     "wait_ear_ms": wait_ear,
                      "unclosed": close is None or close > labels["duration_ms"]})
     strangers = [s for s in labels["segments"] if s["role"] in STRANGERS and s["text"]]
     exposed = [s for s in strangers if any(present(words_of(s["text"]), pw) for _, pw in prompts)]

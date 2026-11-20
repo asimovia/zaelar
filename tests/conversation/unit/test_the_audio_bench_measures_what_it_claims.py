@@ -260,3 +260,59 @@ def test_flux_end_marks_tell_a_piece_that_goes_on_from_one_that_ended():
                     "words": [{"word": "is", "start": 2.0, "end": 2.4}, {"word": "it?", "start": 2.4, "end": 3.0}]}}]
     m = S.flux_end_marks(labels, raw)
     assert m == {"goes_on": 1, "goes_on_terminal": 1, "ended": 1, "ended_terminal": 1}
+
+
+def test_r2_by_time_reds_a_split_or_a_dropped_word_greens_a_misheard_whole_and_leaves_an_unheard_thought_out():
+    labels = {"duration_ms": 30_000, "turns": [{"turn": 1, "start_ms": 0, "end_ms": 4000, "kind": "complete"}],
+              "segments": [{**_seg(0, "user", 1, 0, 1500, "recuérdame llamar a Rowan"),
+                            "words": [["recuérdame", 0, 600], ["llamar", 600, 900], ["a", 900, 1000],
+                                      ["Rowan", 1000, 1500]]},
+                           {**_seg(1, "user", 1, 2500, 4000, "cuando salga"),
+                            "words": [["cuando", 2500, 3200], ["salga", 3200, 4000]]}]}
+    heard = [["recuerda", 0, 400], ["me", 400, 600], ["llamara", 600, 1000], ["Rowan.", 1000, 1500],
+             ["Cuando", 2500, 3200], ["salga.", 3200, 4000]]                    # misheard text, right times
+    whole = [{"run": "r1", "t_ms": 4500, "text": ["Recuerda me llamara Rowan. Cuando salga."], "words": heard}]
+    row = S.prompt_score(labels, whole, [], [], heard=heard)["thoughts"][0]
+    assert row["r2"] is True and not row["cut"] and not row["r2_strict"]       # the provider's slip is not a cut
+    assert row["heard"] == {"spans": 2, "empty": 0, "fz": 2, "strict": 1}      # ...it is the provider's baseline
+    split = [{"run": "r1", "t_ms": 1900, "text": ["Recuerda me llamara Rowan."], "words": heard[:4]},
+             {"run": "r2", "t_ms": 4500, "text": ["Cuando salga."], "words": heard[4:]}]
+    row = S.prompt_score(labels, split, [], [], heard=heard)["thoughts"][0]
+    assert row["r2"] is False and row["cut"] and row["cut_why"] == "r2"        # a deliberately split thought: red
+    dropped = [{"run": "r1", "t_ms": 4500, "text": ["Recuerda llamara Rowan. Cuando salga."],
+                "words": [w for w in heard if w[0] != "me"]}]
+    row = S.prompt_score(labels, dropped, [], [], heard=heard)["thoughts"][0]
+    assert row["r2"] is False and row["cut"]                                   # the ear dropped a word he was heard say
+    row = S.prompt_score(labels, whole, [], [], heard=[])["thoughts"][0]
+    assert row["r2"] is None and not row["cut"]                                # nothing transcribed: out of R2
+    assert row["heard"]["empty"] == 2
+
+
+def test_r2_by_time_asks_only_for_his_words_not_the_tv_heard_over_him():
+    labels = {"duration_ms": 30_000, "turns": [{"turn": 1, "start_ms": 0, "end_ms": 1500, "kind": "complete"}],
+              "segments": [{**_seg(0, "user", 1, 0, 1500, "qué tiempo hace hoy"),
+                            "words": [["qué", 0, 300], ["tiempo", 300, 800], ["hace", 800, 1100], ["hoy", 1100, 1500]]},
+                           {**_seg(1, "tv", None, 0, 3000, "lluvia intensa en el norte", "narration"),
+                            "words": [["lluvia", 900, 1300], ["intensa", 1300, 1800]]}]}
+    his = [["qué", 0, 300], ["tiempo", 300, 800], ["hace", 800, 1100], ["hoy", 1100, 1500]]
+    heard = his + [["lluvia", 750, 850]]                                       # the TV, inside his window
+    runs = [{"run": "r1", "t_ms": 2000, "text": ["qué tiempo hace hoy"], "words": his}]
+    row = S.prompt_score(labels, runs, [], [], heard=heard)["thoughts"][0]
+    assert row["r2"] is True and not row["cut"]                                # the ear kept the TV out: right
+
+
+def test_the_wait_is_the_ears_own_time_over_the_providers_end_of_turn_and_profile_a_reads_it():
+    labels = {"duration_ms": 30_000, "turns": [{"turn": 1, "start_ms": 0, "end_ms": 1500, "kind": "complete"}],
+              "segments": [{**_seg(0, "user", 1, 0, 1500, "qué tiempo hace hoy"),
+                            "words": [["qué", 0, 300], ["tiempo", 300, 800], ["hace", 800, 1100], ["hoy", 1100, 1500]]}]}
+    his = [["qué", 0, 300], ["tiempo", 300, 800], ["hace", 800, 1100], ["hoy", 1100, 1500]]
+    runs = [{"run": "r1", "t_ms": 2600, "text": ["qué tiempo hace hoy"], "words": his}]
+    ear = [{"end_ms": 2500, "words": his}]                                     # the ear closed 1000 ms after his end
+    eots = [(2300, his)]                                                       # ...800 of them were the provider's
+    row = S.prompt_score(labels, runs, [], ear, heard=his, eots=eots)["thoughts"][0]
+    assert row["wait_ms"] == 1000 and row["wait_ear_ms"] == 200
+    slow = [{**_thought(wait=1000), "wait_ear_ms": 200}] * 60                  # slow provider, quick ear: A passes
+    d = P.aggregate({"f": _flow("es×clean", slow)})["es×clean"]["by_latency"]["800"]
+    assert d["verdict"] == "PASS" and d["wait_p95"] == 200 and d["wait_true_p95"] == 1000
+    late = [{**_thought(wait=1000), "wait_ear_ms": 900}] * 60                  # the ear's own 900 ms: A fails
+    assert P.aggregate({"f": _flow("es×clean", late)})["es×clean"]["by_latency"]["800"]["verdict"] == "FAIL"

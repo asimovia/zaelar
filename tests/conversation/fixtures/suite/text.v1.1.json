@@ -1,0 +1,1200 @@
+{
+ "version": "text.v1.1",
+ "frozen": "2026-11-20",
+ "about": "The manager's end-to-end text suite (the F1 plan §9): T1–T12 in Spanish and in English, in the corpus's format. Synthetic: the only contacts are Rowan and Inworld, seeded by the sandbox launcher.",
+ "pending": {
+  "T6": "stop-then-go-on: needs the stop control, which enters the funnel with B10"
+ },
+ "conversations": [
+  {
+   "id": "T1-es",
+   "case": "T1",
+   "name": "stock-three-sentences",
+   "class": "T1",
+   "lang": "es",
+   "turns": [
+    {
+     "thought": 1,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "¿A cuánto cerró ayer",
+       "after_ms": 0
+      },
+      {
+       "text": "la acción de NVIDIA?",
+       "after_ms": 400
+      }
+     ],
+     "amends": null,
+     "refers_to": null,
+     "needs_answer": true,
+     "expect_tools": [
+      "search"
+     ],
+     "forbid_tools": [
+      "agenda",
+      "contacts",
+      "messaging",
+      "screen"
+     ],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 2,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "¿Y cuántos días bajó este mes?",
+       "after_ms": 1500
+      }
+     ],
+     "amends": null,
+     "refers_to": 1,
+     "needs_answer": true,
+     "expect_tools": [
+      "search"
+     ],
+     "forbid_tools": [
+      "agenda",
+      "contacts",
+      "messaging",
+      "screen"
+     ],
+     "entity": null,
+     "act_refused": false
+    }
+   ]
+  },
+  {
+   "id": "T1-en",
+   "case": "T1",
+   "name": "stock-three-sentences",
+   "class": "T1",
+   "lang": "en",
+   "turns": [
+    {
+     "thought": 1,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "What did NVIDIA stock",
+       "after_ms": 0
+      },
+      {
+       "text": "close at yesterday?",
+       "after_ms": 400
+      }
+     ],
+     "amends": null,
+     "refers_to": null,
+     "needs_answer": true,
+     "expect_tools": [
+      "search"
+     ],
+     "forbid_tools": [
+      "agenda",
+      "contacts",
+      "messaging",
+      "screen"
+     ],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 2,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "And how many days did it go down this month?",
+       "after_ms": 1500
+      }
+     ],
+     "amends": null,
+     "refers_to": 1,
+     "needs_answer": true,
+     "expect_tools": [
+      "search"
+     ],
+     "forbid_tools": [
+      "agenda",
+      "contacts",
+      "messaging",
+      "screen"
+     ],
+     "entity": null,
+     "act_refused": false
+    }
+   ]
+  },
+  {
+   "id": "T2-es",
+   "case": "T2",
+   "name": "complaint-redirects",
+   "class": "T2",
+   "lang": "es",
+   "turns": [
+    {
+     "thought": 1,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "¿Qué tiempo hace hoy en Sevilla?",
+       "after_ms": 0
+      }
+     ],
+     "amends": null,
+     "refers_to": null,
+     "needs_answer": true,
+     "expect_tools": [
+      "search"
+     ],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 2,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "No te he preguntado eso, te he preguntado por el tiempo en Sevilla.",
+       "after_ms": 1500
+      }
+     ],
+     "amends": null,
+     "refers_to": 1,
+     "needs_answer": true,
+     "expect_tools": [
+      "search"
+     ],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    }
+   ]
+  },
+  {
+   "id": "T2-en",
+   "case": "T2",
+   "name": "complaint-redirects",
+   "class": "T2",
+   "lang": "en",
+   "turns": [
+    {
+     "thought": 1,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "What's the weather in Seattle today?",
+       "after_ms": 0
+      }
+     ],
+     "amends": null,
+     "refers_to": null,
+     "needs_answer": true,
+     "expect_tools": [
+      "search"
+     ],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 2,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "That's not what I asked, I asked about the weather in Seattle.",
+       "after_ms": 1500
+      }
+     ],
+     "amends": null,
+     "refers_to": 1,
+     "needs_answer": true,
+     "expect_tools": [
+      "search"
+     ],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    }
+   ]
+  },
+  {
+   "id": "T3-es",
+   "case": "T3",
+   "name": "follow-up-is-associated",
+   "class": "T3",
+   "lang": "es",
+   "turns": [
+    {
+     "thought": 1,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "¿Qué tengo en la agenda esta semana?",
+       "after_ms": 0
+      }
+     ],
+     "amends": null,
+     "refers_to": null,
+     "needs_answer": true,
+     "expect_tools": [
+      "agenda"
+     ],
+     "forbid_tools": [
+      "search"
+     ],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 2,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "¿Y el martes?",
+       "after_ms": 1500
+      }
+     ],
+     "amends": null,
+     "refers_to": 1,
+     "needs_answer": true,
+     "expect_tools": [
+      "agenda"
+     ],
+     "forbid_tools": [
+      "search"
+     ],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 3,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "¿A qué hora?",
+       "after_ms": 1500
+      }
+     ],
+     "amends": null,
+     "refers_to": 2,
+     "needs_answer": true,
+     "expect_tools": [],
+     "forbid_tools": [
+      "search"
+     ],
+     "entity": null,
+     "act_refused": false
+    }
+   ]
+  },
+  {
+   "id": "T3-en",
+   "case": "T3",
+   "name": "follow-up-is-associated",
+   "class": "T3",
+   "lang": "en",
+   "turns": [
+    {
+     "thought": 1,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "What's on my calendar this week?",
+       "after_ms": 0
+      }
+     ],
+     "amends": null,
+     "refers_to": null,
+     "needs_answer": true,
+     "expect_tools": [
+      "agenda"
+     ],
+     "forbid_tools": [
+      "search"
+     ],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 2,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "And on Tuesday?",
+       "after_ms": 1500
+      }
+     ],
+     "amends": null,
+     "refers_to": 1,
+     "needs_answer": true,
+     "expect_tools": [
+      "agenda"
+     ],
+     "forbid_tools": [
+      "search"
+     ],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 3,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "At what time?",
+       "after_ms": 1500
+      }
+     ],
+     "amends": null,
+     "refers_to": 2,
+     "needs_answer": true,
+     "expect_tools": [],
+     "forbid_tools": [
+      "search"
+     ],
+     "entity": null,
+     "act_refused": false
+    }
+   ]
+  },
+  {
+   "id": "T4-es",
+   "case": "T4",
+   "name": "topic-switch-and-back",
+   "class": "T4",
+   "lang": "es",
+   "turns": [
+    {
+     "thought": 1,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "¿Cuál es la capital de Australia?",
+       "after_ms": 0
+      }
+     ],
+     "amends": null,
+     "refers_to": null,
+     "needs_answer": true,
+     "expect_tools": [],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 2,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "Por cierto, ¿cuántos minutos tiene un partido de baloncesto de la NBA?",
+       "after_ms": 1500
+      }
+     ],
+     "amends": null,
+     "refers_to": null,
+     "needs_answer": true,
+     "expect_tools": [],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 3,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "Volviendo a lo primero, ¿cuántos habitantes tiene?",
+       "after_ms": 1500
+      }
+     ],
+     "amends": null,
+     "refers_to": 1,
+     "needs_answer": true,
+     "expect_tools": [],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    }
+   ]
+  },
+  {
+   "id": "T4-en",
+   "case": "T4",
+   "name": "topic-switch-and-back",
+   "class": "T4",
+   "lang": "en",
+   "turns": [
+    {
+     "thought": 1,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "What's the capital of Australia?",
+       "after_ms": 0
+      }
+     ],
+     "amends": null,
+     "refers_to": null,
+     "needs_answer": true,
+     "expect_tools": [],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 2,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "By the way, how many minutes is an NBA basketball game?",
+       "after_ms": 1500
+      }
+     ],
+     "amends": null,
+     "refers_to": null,
+     "needs_answer": true,
+     "expect_tools": [],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 3,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "Going back to the first thing, how many people live there?",
+       "after_ms": 1500
+      }
+     ],
+     "amends": null,
+     "refers_to": 1,
+     "needs_answer": true,
+     "expect_tools": [],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    }
+   ]
+  },
+  {
+   "id": "T5-es",
+   "case": "T5",
+   "name": "typed-burst",
+   "class": "T5",
+   "lang": "es",
+   "turns": [
+    {
+     "thought": 1,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "busca el horario",
+       "after_ms": 0
+      },
+      {
+       "text": "del museo del Prado",
+       "after_ms": 150
+      }
+     ],
+     "amends": null,
+     "refers_to": null,
+     "needs_answer": true,
+     "expect_tools": [
+      "search"
+     ],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    }
+   ]
+  },
+  {
+   "id": "T5-en",
+   "case": "T5",
+   "name": "typed-burst",
+   "class": "T5",
+   "lang": "en",
+   "turns": [
+    {
+     "thought": 1,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "look up the opening hours",
+       "after_ms": 0
+      },
+      {
+       "text": "of the Met museum",
+       "after_ms": 150
+      }
+     ],
+     "amends": null,
+     "refers_to": null,
+     "needs_answer": true,
+     "expect_tools": [
+      "search"
+     ],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    }
+   ]
+  },
+  {
+   "id": "T7-es",
+   "case": "T7",
+   "name": "action-in-read-only",
+   "class": "T7",
+   "lang": "es",
+   "turns": [
+    {
+     "thought": 1,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "Mándale un mensaje a Rowan diciendo que llego tarde.",
+       "after_ms": 0
+      }
+     ],
+     "amends": null,
+     "refers_to": null,
+     "needs_answer": true,
+     "expect_tools": [],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": true
+    }
+   ]
+  },
+  {
+   "id": "T7-en",
+   "case": "T7",
+   "name": "action-in-read-only",
+   "class": "T7",
+   "lang": "en",
+   "turns": [
+    {
+     "thought": 1,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "Send Rowan a message saying I'm running late.",
+       "after_ms": 0
+      }
+     ],
+     "amends": null,
+     "refers_to": null,
+     "needs_answer": true,
+     "expect_tools": [],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": true
+    }
+   ]
+  },
+  {
+   "id": "T8-es",
+   "case": "T8",
+   "name": "data-question-needs-data",
+   "class": "T8",
+   "lang": "es",
+   "turns": [
+    {
+     "thought": 1,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "¿A cuánto está hoy el euro frente al dólar?",
+       "after_ms": 0
+      }
+     ],
+     "amends": null,
+     "refers_to": null,
+     "needs_answer": true,
+     "expect_tools": [
+      "search"
+     ],
+     "forbid_tools": [
+      "agenda",
+      "contacts",
+      "messaging",
+      "screen"
+     ],
+     "entity": null,
+     "act_refused": false
+    }
+   ]
+  },
+  {
+   "id": "T8-en",
+   "case": "T8",
+   "name": "data-question-needs-data",
+   "class": "T8",
+   "lang": "en",
+   "turns": [
+    {
+     "thought": 1,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "What's the euro to dollar exchange rate today?",
+       "after_ms": 0
+      }
+     ],
+     "amends": null,
+     "refers_to": null,
+     "needs_answer": true,
+     "expect_tools": [
+      "search"
+     ],
+     "forbid_tools": [
+      "agenda",
+      "contacts",
+      "messaging",
+      "screen"
+     ],
+     "entity": null,
+     "act_refused": false
+    }
+   ]
+  },
+  {
+   "id": "T9-es",
+   "case": "T9",
+   "name": "second-sentence-during-run",
+   "class": "T9",
+   "lang": "es",
+   "turns": [
+    {
+     "thought": 1,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "¿Quién ganó el último mundial de fútbol?",
+       "after_ms": 0
+      }
+     ],
+     "amends": null,
+     "refers_to": null,
+     "needs_answer": true,
+     "expect_tools": [
+      "search"
+     ],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 2,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "¿Y el anterior?",
+       "after_ms": 300
+      }
+     ],
+     "amends": null,
+     "refers_to": 1,
+     "needs_answer": true,
+     "expect_tools": [
+      "search"
+     ],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    }
+   ]
+  },
+  {
+   "id": "T9-en",
+   "case": "T9",
+   "name": "second-sentence-during-run",
+   "class": "T9",
+   "lang": "en",
+   "turns": [
+    {
+     "thought": 1,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "Who won the last football World Cup?",
+       "after_ms": 0
+      }
+     ],
+     "amends": null,
+     "refers_to": null,
+     "needs_answer": true,
+     "expect_tools": [
+      "search"
+     ],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 2,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "And the one before?",
+       "after_ms": 300
+      }
+     ],
+     "amends": null,
+     "refers_to": 1,
+     "needs_answer": true,
+     "expect_tools": [
+      "search"
+     ],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    }
+   ]
+  },
+  {
+   "id": "T10-es",
+   "case": "T10",
+   "name": "about-itself",
+   "class": "T10",
+   "lang": "es",
+   "turns": [
+    {
+     "thought": 1,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "¿Qué puedes hacer?",
+       "after_ms": 0
+      }
+     ],
+     "amends": null,
+     "refers_to": null,
+     "needs_answer": true,
+     "expect_tools": [
+      "about_self"
+     ],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 2,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "¿Y en esta sesión?",
+       "after_ms": 1500
+      }
+     ],
+     "amends": null,
+     "refers_to": 1,
+     "needs_answer": true,
+     "expect_tools": [],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    }
+   ]
+  },
+  {
+   "id": "T10-en",
+   "case": "T10",
+   "name": "about-itself",
+   "class": "T10",
+   "lang": "en",
+   "turns": [
+    {
+     "thought": 1,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "What can you do?",
+       "after_ms": 0
+      }
+     ],
+     "amends": null,
+     "refers_to": null,
+     "needs_answer": true,
+     "expect_tools": [
+      "about_self"
+     ],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 2,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "And in this session?",
+       "after_ms": 1500
+      }
+     ],
+     "amends": null,
+     "refers_to": 1,
+     "needs_answer": true,
+     "expect_tools": [],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    }
+   ]
+  },
+  {
+   "id": "T11-es",
+   "case": "T11",
+   "name": "long-conversation",
+   "class": "T11",
+   "lang": "es",
+   "turns": [
+    {
+     "thought": 1,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "Estoy planeando un viaje a Lisboa.",
+       "after_ms": 0
+      }
+     ],
+     "amends": null,
+     "refers_to": null,
+     "needs_answer": true,
+     "expect_tools": [],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 2,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "¿Cuánto se tarda en tren desde Madrid?",
+       "after_ms": 1500
+      }
+     ],
+     "amends": null,
+     "refers_to": 1,
+     "needs_answer": true,
+     "expect_tools": [],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 3,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "¿Y en avión?",
+       "after_ms": 1500
+      }
+     ],
+     "amends": null,
+     "refers_to": 2,
+     "needs_answer": true,
+     "expect_tools": [],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 4,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "¿Qué barrio me recomiendas para dormir?",
+       "after_ms": 1500
+      }
+     ],
+     "amends": null,
+     "refers_to": 3,
+     "needs_answer": true,
+     "expect_tools": [],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 5,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "¿Y para cenar?",
+       "after_ms": 1500
+      }
+     ],
+     "amends": null,
+     "refers_to": 4,
+     "needs_answer": true,
+     "expect_tools": [],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 6,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "¿Qué tiempo suele hacer en mayo?",
+       "after_ms": 1500
+      }
+     ],
+     "amends": null,
+     "refers_to": 5,
+     "needs_answer": true,
+     "expect_tools": [],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 7,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "¿Hace falta pasaporte?",
+       "after_ms": 1500
+      }
+     ],
+     "amends": null,
+     "refers_to": 6,
+     "needs_answer": true,
+     "expect_tools": [],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 8,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "Resúmeme lo que hemos hablado.",
+       "after_ms": 1500
+      }
+     ],
+     "amends": null,
+     "refers_to": 7,
+     "needs_answer": true,
+     "expect_tools": [],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    }
+   ]
+  },
+  {
+   "id": "T11-en",
+   "case": "T11",
+   "name": "long-conversation",
+   "class": "T11",
+   "lang": "en",
+   "turns": [
+    {
+     "thought": 1,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "I'm planning a trip to Lisbon.",
+       "after_ms": 0
+      }
+     ],
+     "amends": null,
+     "refers_to": null,
+     "needs_answer": true,
+     "expect_tools": [],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 2,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "How long does the train take from Madrid?",
+       "after_ms": 1500
+      }
+     ],
+     "amends": null,
+     "refers_to": 1,
+     "needs_answer": true,
+     "expect_tools": [],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 3,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "And by plane?",
+       "after_ms": 1500
+      }
+     ],
+     "amends": null,
+     "refers_to": 2,
+     "needs_answer": true,
+     "expect_tools": [],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 4,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "Which neighbourhood would you recommend to stay in?",
+       "after_ms": 1500
+      }
+     ],
+     "amends": null,
+     "refers_to": 3,
+     "needs_answer": true,
+     "expect_tools": [],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 5,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "And for dinner?",
+       "after_ms": 1500
+      }
+     ],
+     "amends": null,
+     "refers_to": 4,
+     "needs_answer": true,
+     "expect_tools": [],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 6,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "What's the weather usually like in May?",
+       "after_ms": 1500
+      }
+     ],
+     "amends": null,
+     "refers_to": 5,
+     "needs_answer": true,
+     "expect_tools": [],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 7,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "Do I need a passport?",
+       "after_ms": 1500
+      }
+     ],
+     "amends": null,
+     "refers_to": 6,
+     "needs_answer": true,
+     "expect_tools": [],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    },
+    {
+     "thought": 8,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "Sum up what we've talked about.",
+       "after_ms": 1500
+      }
+     ],
+     "amends": null,
+     "refers_to": 7,
+     "needs_answer": true,
+     "expect_tools": [],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    }
+   ]
+  },
+  {
+   "id": "T12-es",
+   "case": "T12",
+   "name": "nothing-to-say",
+   "class": "T12",
+   "lang": "es",
+   "turns": [
+    {
+     "thought": 1,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "Vale, gracias.",
+       "after_ms": 0
+      }
+     ],
+     "amends": null,
+     "refers_to": null,
+     "needs_answer": false,
+     "expect_tools": [],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    }
+   ]
+  },
+  {
+   "id": "T12-en",
+   "case": "T12",
+   "name": "nothing-to-say",
+   "class": "T12",
+   "lang": "en",
+   "turns": [
+    {
+     "thought": 1,
+     "channel": "text",
+     "pieces": [
+      {
+       "text": "Okay, thanks.",
+       "after_ms": 0
+      }
+     ],
+     "amends": null,
+     "refers_to": null,
+     "needs_answer": false,
+     "expect_tools": [],
+     "forbid_tools": [],
+     "entity": null,
+     "act_refused": false
+    }
+   ]
+  }
+ ],
+ "changes": {
+  "from": "text.v1",
+  "T10 thought 2": "«¿Y en esta sesión?» / «And in this session?» asks what happened in THIS conversation: an answer from the conversation is right, so `about_self` is no longer required (expect_tools []). Found on B7c, where the model answered from the conversation and the gate called it a route failure.",
+  "T3 thought 3": "«¿A qué hora?» / «At what time?» follows an agenda answer already in the conversation: answering from it without re-reading is right, so the agenda read is no longer required for that thought (expect_tools []; search stays forbidden).",
+  "both languages": "the same thought in ES and EN changes alike: a label is about the thought, not the language it was found in"
+ }
+}

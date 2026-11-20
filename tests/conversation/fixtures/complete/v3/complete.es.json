@@ -1,0 +1,982 @@
+[
+ {
+  "id": "es-i000",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "lead_in",
+  "text": "Oye, una cosa.",
+  "goes_on": "¿Va a llover esta tarde en Sevilla?"
+ },
+ {
+  "id": "es-i001",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "subordinate_alone",
+  "text": "Si mañana llueve.",
+  "goes_on": "¿Quién ganó anoche el partido del Betis?"
+ },
+ {
+  "id": "es-i002",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "correction_opened",
+  "text": "Mueve la reunión a las diez, o sea, no.",
+  "goes_on": "a las once"
+ },
+ {
+  "id": "es-i003",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "correction_opened",
+  "text": "Mira el tiempo en Bilbao, o sea, no.",
+  "goes_on": "en San Sebastián"
+ },
+ {
+  "id": "es-i004",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "correction_opened",
+  "text": "Pon una alarma a las siete, o sea, no.",
+  "goes_on": "a las seis y media"
+ },
+ {
+  "id": "es-i005",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "subordinate_alone",
+  "text": "En cuanto llegue a casa.",
+  "goes_on": "Apúntame una cita con el dentista el martes a las cinco."
+ },
+ {
+  "id": "es-i006",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "list_announced",
+  "text": "Te digo dos cosas.",
+  "goes_on": "Pon una alarma mañana a las siete."
+ },
+ {
+  "id": "es-i007",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "list_announced",
+  "text": "Quiero que hagas varias cosas.",
+  "goes_on": "¿Cuál es la capital de Australia?"
+ },
+ {
+  "id": "es-i008",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "subordinate_alone",
+  "text": "Como el viernes voy a Bilbao.",
+  "goes_on": "¿Qué farmacia de guardia hay cerca de casa?"
+ },
+ {
+  "id": "es-i009",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "lead_in",
+  "text": "Mira, lo de mañana.",
+  "goes_on": "¿Qué temperatura hace ahora mismo en Madrid?"
+ },
+ {
+  "id": "es-i010",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "and_also_empty",
+  "text": "Pon una alarma mañana a las siete. Y además.",
+  "goes_on": "¿Cuánto son doscientos dólares en euros?"
+ },
+ {
+  "id": "es-i011",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "and_also_empty",
+  "text": "Pon una alarma mañana a las siete. Y otra cosa.",
+  "goes_on": "¿Qué puedes hacer tú con mi correo?"
+ },
+ {
+  "id": "es-i012",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "lead_in",
+  "text": "A ver, escucha.",
+  "goes_on": "Dime cómo está el tráfico para ir al aeropuerto."
+ },
+ {
+  "id": "es-i013",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "list_announced",
+  "text": "Apunta en la lista de tareas.",
+  "goes_on": "¿Cuál es la capital de Australia?"
+ },
+ {
+  "id": "es-i014",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "lead_in",
+  "text": "Vamos a ver.",
+  "goes_on": "¿A cuánto está hoy la acción de Inditex?"
+ },
+ {
+  "id": "es-i015",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "name_alone",
+  "text": "{AGENT}.",
+  "goes_on": "¿Qué puedes hacer tú con mi correo?"
+ },
+ {
+  "id": "es-i016",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "name_alone",
+  "text": "{AGENT~}.",
+  "goes_on": "¿Qué tengo en la agenda el jueves por la tarde?"
+ },
+ {
+  "id": "es-i017",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "lead_in",
+  "text": "Te quería preguntar algo.",
+  "goes_on": "Búscame un restaurante italiano cerca de la oficina para esta noche."
+ },
+ {
+  "id": "es-i018",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "lead_in",
+  "text": "Vale, otra cosa.",
+  "goes_on": "Explícame qué es la inflación en dos frases."
+ },
+ {
+  "id": "es-i019",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "subordinate_alone",
+  "text": "Antes de que se me olvide.",
+  "goes_on": "¿A cuánto está hoy la acción de Inditex?"
+ },
+ {
+  "id": "es-i020",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "subordinate_alone",
+  "text": "Cuando salga de la reunión.",
+  "goes_on": "¿Cuántos días faltan para Navidad?"
+ },
+ {
+  "id": "es-i021",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "and_also_empty",
+  "text": "¿Cuál es la capital de Australia? Pero antes.",
+  "goes_on": "¿A cuánto está hoy la acción de Inditex?"
+ },
+ {
+  "id": "es-i022",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "subordinate_alone",
+  "text": "Para lo del cumpleaños de Rowan.",
+  "goes_on": "Busca vuelos a Lisboa para el puente de diciembre."
+ },
+ {
+  "id": "es-i023",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "list_announced",
+  "text": "Necesito tres cosas.",
+  "goes_on": "¿A cuánto está hoy la acción de Inditex?"
+ },
+ {
+  "id": "es-i024",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "correction_opened",
+  "text": "Apunta la cita el martes, o sea, no.",
+  "goes_on": "el miércoles"
+ },
+ {
+  "id": "es-i025",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "correction_opened",
+  "text": "Búscame vuelos a Roma, o sea, no.",
+  "goes_on": "a Milán"
+ },
+ {
+  "id": "es-i026",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "lead_in",
+  "text": "Una pregunta rápida.",
+  "goes_on": "Pon una alarma mañana a las siete."
+ },
+ {
+  "id": "es-i027",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "open_function_word",
+  "text": "Pon una alarma mañana a.",
+  "goes_on": "las siete."
+ },
+ {
+  "id": "es-i028",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "open_function_word",
+  "text": "Dime una receta fácil de.",
+  "goes_on": "lentejas."
+ },
+ {
+  "id": "es-i029",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "open_function_word",
+  "text": "¿Cómo ha cerrado hoy el.",
+  "goes_on": "Ibex?"
+ },
+ {
+  "id": "es-i030",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "open_function_word",
+  "text": "¿Qué tengo en la agenda el.",
+  "goes_on": "jueves por la tarde?"
+ },
+ {
+  "id": "es-i031",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "open_function_word",
+  "text": "¿Qué farmacia de guardia hay cerca de.",
+  "goes_on": "casa?"
+ },
+ {
+  "id": "es-i032",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "open_function_word",
+  "text": "¿Cuánto son doscientos dólares en.",
+  "goes_on": "euros?"
+ },
+ {
+  "id": "es-i033",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "open_function_word",
+  "text": "Pon un temporizador de veinte minutos para.",
+  "goes_on": "la pasta."
+ },
+ {
+  "id": "es-i034",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "open_function_word",
+  "text": "Apúntame una cita con el dentista el.",
+  "goes_on": "martes a las cinco."
+ },
+ {
+  "id": "es-i035",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "open_function_word",
+  "text": "¿Qué temperatura hace ahora mismo en.",
+  "goes_on": "Madrid?"
+ },
+ {
+  "id": "es-i036",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "open_function_word",
+  "text": "Dime cómo está el tráfico para ir al.",
+  "goes_on": "aeropuerto."
+ },
+ {
+  "id": "es-i037",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "open_function_word",
+  "text": "¿A cuánto está hoy la acción de.",
+  "goes_on": "Inditex?"
+ },
+ {
+  "id": "es-i038",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "open_function_word",
+  "text": "¿Cuántos días faltan para.",
+  "goes_on": "Navidad?"
+ },
+ {
+  "id": "es-i039",
+  "label": "incomplete",
+  "cut": "marked",
+  "shape": "open_function_word",
+  "text": "Borra la cita del jueves con.",
+  "goes_on": "el fontanero."
+ },
+ {
+  "id": "es-c000",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, pon una alarma mañana a las siete."
+ },
+ {
+  "id": "es-c001",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "A ver, ¿cuántos días faltan para Navidad?"
+ },
+ {
+  "id": "es-c002",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Venga, pon una alarma mañana a las siete."
+ },
+ {
+  "id": "es-c003",
+  "label": "complete",
+  "shape": "bare",
+  "text": "Dime una receta fácil de lentejas."
+ },
+ {
+  "id": "es-c004",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, ¿qué farmacia de guardia hay cerca de casa?"
+ },
+ {
+  "id": "es-c005",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, ¿cómo ha cerrado hoy el Ibex?"
+ },
+ {
+  "id": "es-c006",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Vale, ¿a cuánto está hoy la acción de Inditex?"
+ },
+ {
+  "id": "es-c007",
+  "label": "complete",
+  "shape": "two_errands",
+  "text": "¿A qué hora cierra hoy el Museo del Prado? Y además, ¿a qué hora sale mañana el sol en Barcelona?"
+ },
+ {
+  "id": "es-c008",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Bueno, ¿quién ganó anoche el partido del Betis?"
+ },
+ {
+  "id": "es-c009",
+  "label": "complete",
+  "shape": "two_errands",
+  "text": "Pon una alarma mañana a las siete. Y además, ¿a cuánto está hoy la acción de Inditex?"
+ },
+ {
+  "id": "es-c010",
+  "label": "complete",
+  "shape": "after_context",
+  "text": "Mañana tengo un día complicado. ¿A qué hora cierra hoy el Museo del Prado?"
+ },
+ {
+  "id": "es-c011",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT~}, ¿cómo va el Brent esta semana?"
+ },
+ {
+  "id": "es-c012",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "A ver, ¿qué puedes hacer tú con mi correo?"
+ },
+ {
+  "id": "es-c013",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, ¿cuántos días faltan para Navidad?"
+ },
+ {
+  "id": "es-c014",
+  "label": "complete",
+  "shape": "two_errands",
+  "text": "¿A qué hora cierra hoy el Museo del Prado? Y además, ¿qué temperatura hace ahora mismo en Madrid?"
+ },
+ {
+  "id": "es-c015",
+  "label": "complete",
+  "shape": "bare",
+  "text": "¿Cuántos días faltan para Navidad?"
+ },
+ {
+  "id": "es-c016",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Bueno, ¿cuál es la capital de Australia?"
+ },
+ {
+  "id": "es-c017",
+  "label": "complete",
+  "shape": "bare",
+  "text": "¿A qué hora cierra hoy el Museo del Prado?"
+ },
+ {
+  "id": "es-c018",
+  "label": "complete",
+  "shape": "bare",
+  "text": "¿Qué farmacia de guardia hay cerca de casa?"
+ },
+ {
+  "id": "es-c019",
+  "label": "complete",
+  "shape": "after_context",
+  "text": "Estoy pensando en el viaje. ¿Cuál es la capital de Australia?"
+ },
+ {
+  "id": "es-c020",
+  "label": "complete",
+  "shape": "bare",
+  "text": "Dime cómo está el tráfico para ir al aeropuerto."
+ },
+ {
+  "id": "es-c021",
+  "label": "complete",
+  "shape": "correction_resolved",
+  "text": "Apunta la cita el martes, o sea, no, el miércoles."
+ },
+ {
+  "id": "es-c022",
+  "label": "complete",
+  "shape": "correction_resolved",
+  "text": "Mira el tiempo en Bilbao, o sea, no, en San Sebastián."
+ },
+ {
+  "id": "es-c023",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, ¿cuál es la capital de Australia?"
+ },
+ {
+  "id": "es-c024",
+  "label": "complete",
+  "shape": "pieces_joined",
+  "text": "Mira, lo de mañana. ¿A cuánto está hoy la acción de Inditex?"
+ },
+ {
+  "id": "es-c025",
+  "label": "complete",
+  "shape": "two_errands",
+  "text": "Recuérdame llamar a Rowan cuando salga de trabajar. Y además, ¿cómo ha cerrado hoy el Ibex?"
+ },
+ {
+  "id": "es-c026",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Mira, recuérdame llamar a Rowan cuando salga de trabajar."
+ },
+ {
+  "id": "es-c027",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Bueno, busca vuelos a Lisboa para el puente de diciembre."
+ },
+ {
+  "id": "es-c028",
+  "label": "complete",
+  "shape": "two_errands",
+  "text": "¿A qué hora sale mañana el sol en Barcelona? Y además, dime una receta fácil de lentejas."
+ },
+ {
+  "id": "es-c029",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Vale, dime cómo está el tráfico para ir al aeropuerto."
+ },
+ {
+  "id": "es-c030",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT~}, apunta que hay que comprar leche y huevos."
+ },
+ {
+  "id": "es-c031",
+  "label": "complete",
+  "shape": "after_context",
+  "text": "Que luego se me olvida. Pon una alarma mañana a las siete."
+ },
+ {
+  "id": "es-c032",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Pues, ¿cuánto cuesta un billete de AVE a Málaga?"
+ },
+ {
+  "id": "es-c033",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, ¿quién ganó anoche el partido del Betis?"
+ },
+ {
+  "id": "es-c034",
+  "label": "complete",
+  "shape": "pieces_joined",
+  "text": "Mira, lo de mañana. Borra la cita del jueves con el fontanero."
+ },
+ {
+  "id": "es-c035",
+  "label": "complete",
+  "shape": "after_context",
+  "text": "Que luego se me olvida. ¿Cuántos kilómetros hay de Madrid a Valencia?"
+ },
+ {
+  "id": "es-c036",
+  "label": "complete",
+  "shape": "after_context",
+  "text": "Estoy pensando en el viaje. ¿Qué tengo en la agenda el jueves por la tarde?"
+ },
+ {
+  "id": "es-c037",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, ¿cuánto cuesta un billete de AVE a Málaga?"
+ },
+ {
+  "id": "es-c038",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Mira, pon un temporizador de veinte minutos para la pasta."
+ },
+ {
+  "id": "es-c039",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, ¿qué puedes hacer tú con mi correo?"
+ },
+ {
+  "id": "es-c040",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT~}, pon un temporizador de veinte minutos para la pasta."
+ },
+ {
+  "id": "es-c041",
+  "label": "complete",
+  "shape": "pieces_joined",
+  "text": "Vale, otra cosa. ¿Cómo ha cerrado hoy el Ibex?"
+ },
+ {
+  "id": "es-c042",
+  "label": "complete",
+  "shape": "correction_resolved",
+  "text": "Pon una alarma a las siete, o sea, no, a las seis y media."
+ },
+ {
+  "id": "es-c043",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, ¿a cuánto está hoy la acción de Inditex?"
+ },
+ {
+  "id": "es-c044",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT~}, ¿cuánto son doscientos dólares en euros?"
+ },
+ {
+  "id": "es-c045",
+  "label": "complete",
+  "shape": "two_errands",
+  "text": "Explícame qué es la inflación en dos frases. Y además, mueve la reunión del viernes al lunes a las diez."
+ },
+ {
+  "id": "es-c046",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Vale, borra la cita del jueves con el fontanero."
+ },
+ {
+  "id": "es-c047",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, explícame qué es la inflación en dos frases."
+ },
+ {
+  "id": "es-c048",
+  "label": "complete",
+  "shape": "after_context",
+  "text": "Ya he salido de la oficina. ¿Cómo ha cerrado hoy el Ibex?"
+ },
+ {
+  "id": "es-c049",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Vale, explícame qué es la inflación en dos frases."
+ },
+ {
+  "id": "es-c050",
+  "label": "complete",
+  "shape": "two_errands",
+  "text": "Explícame qué es la inflación en dos frases. Y además, pon una alarma mañana a las siete."
+ },
+ {
+  "id": "es-c051",
+  "label": "complete",
+  "shape": "after_context",
+  "text": "Mañana tengo un día complicado. Pon un temporizador de veinte minutos para la pasta."
+ },
+ {
+  "id": "es-c052",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "A ver, ¿cuántos kilómetros hay de Madrid a Valencia?"
+ },
+ {
+  "id": "es-c053",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT~}, dime una receta fácil de lentejas."
+ },
+ {
+  "id": "es-c054",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, ¿cuántos kilómetros hay de Madrid a Valencia?"
+ },
+ {
+  "id": "es-c055",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, busca vuelos a Lisboa para el puente de diciembre."
+ },
+ {
+  "id": "es-c056",
+  "label": "complete",
+  "shape": "bare",
+  "text": "Borra la cita del jueves con el fontanero."
+ },
+ {
+  "id": "es-c057",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Bueno, ¿qué tiempo va a hacer el sábado en Bilbao?"
+ },
+ {
+  "id": "es-c058",
+  "label": "complete",
+  "shape": "bare",
+  "text": "¿Tengo algo el fin de semana?"
+ },
+ {
+  "id": "es-c059",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Vale, ¿cuánto son doscientos dólares en euros?"
+ },
+ {
+  "id": "es-c060",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Bueno, ¿va a llover esta tarde en Sevilla?"
+ },
+ {
+  "id": "es-c061",
+  "label": "complete",
+  "shape": "correction_resolved",
+  "text": "Mueve la reunión a las diez, o sea, no, a las once."
+ },
+ {
+  "id": "es-c062",
+  "label": "complete",
+  "shape": "pieces_joined",
+  "text": "A ver, escucha. ¿Qué tiempo va a hacer el sábado en Bilbao?"
+ },
+ {
+  "id": "es-c063",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, ¿a qué hora cierra hoy el Museo del Prado?"
+ },
+ {
+  "id": "es-c064",
+  "label": "complete",
+  "shape": "bare",
+  "text": "¿Qué puedes hacer tú con mi correo?"
+ },
+ {
+  "id": "es-c065",
+  "label": "complete",
+  "shape": "bare",
+  "text": "¿Va a llover esta tarde en Sevilla?"
+ },
+ {
+  "id": "es-c066",
+  "label": "complete",
+  "shape": "bare",
+  "text": "Recuérdame llamar a Rowan cuando salga de trabajar."
+ },
+ {
+  "id": "es-c067",
+  "label": "complete",
+  "shape": "pieces_joined",
+  "text": "Te quería preguntar algo. ¿Cuántos kilómetros hay de Madrid a Valencia?"
+ },
+ {
+  "id": "es-c068",
+  "label": "complete",
+  "shape": "bare",
+  "text": "Mueve la reunión del viernes al lunes a las diez."
+ },
+ {
+  "id": "es-c069",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Mira, dime una receta fácil de lentejas."
+ },
+ {
+  "id": "es-c070",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Bueno, ¿cómo va el Brent esta semana?"
+ },
+ {
+  "id": "es-c071",
+  "label": "complete",
+  "shape": "pieces_joined",
+  "text": "Te quería preguntar algo. Mueve la reunión del viernes al lunes a las diez."
+ },
+ {
+  "id": "es-c072",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Bueno, ¿a qué hora cierra hoy el Museo del Prado?"
+ },
+ {
+  "id": "es-c073",
+  "label": "complete",
+  "shape": "bare",
+  "text": "¿Cómo ha cerrado hoy el Ibex?"
+ },
+ {
+  "id": "es-c074",
+  "label": "complete",
+  "shape": "bare",
+  "text": "¿Cuánto son doscientos dólares en euros?"
+ },
+ {
+  "id": "es-c075",
+  "label": "complete",
+  "shape": "bare",
+  "text": "Apunta que hay que comprar leche y huevos."
+ },
+ {
+  "id": "es-c076",
+  "label": "complete",
+  "shape": "after_context",
+  "text": "Mañana tengo un día complicado. Mueve la reunión del viernes al lunes a las diez."
+ },
+ {
+  "id": "es-c077",
+  "label": "complete",
+  "shape": "after_context",
+  "text": "Que luego se me olvida. Borra la cita del jueves con el fontanero."
+ },
+ {
+  "id": "es-c078",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, ¿qué tengo en la agenda el jueves por la tarde?"
+ },
+ {
+  "id": "es-c079",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, dime cómo está el tráfico para ir al aeropuerto."
+ },
+ {
+  "id": "es-c080",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Bueno, apunta que hay que comprar leche y huevos."
+ },
+ {
+  "id": "es-c081",
+  "label": "complete",
+  "shape": "two_errands",
+  "text": "Dime cómo está el tráfico para ir al aeropuerto. Y además, apunta que hay que comprar leche y huevos."
+ },
+ {
+  "id": "es-c082",
+  "label": "complete",
+  "shape": "bare",
+  "text": "Pon un temporizador de veinte minutos para la pasta."
+ },
+ {
+  "id": "es-c083",
+  "label": "complete",
+  "shape": "after_context",
+  "text": "Estoy pensando en el viaje. Busca vuelos a Lisboa para el puente de diciembre."
+ },
+ {
+  "id": "es-c084",
+  "label": "complete",
+  "shape": "correction_resolved",
+  "text": "Búscame vuelos a Roma, o sea, no, a Milán."
+ },
+ {
+  "id": "es-c085",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Mira, ¿a qué hora sale mañana el sol en Barcelona?"
+ },
+ {
+  "id": "es-c086",
+  "label": "complete",
+  "shape": "two_errands",
+  "text": "¿Cuántos días faltan para Navidad? Y además, dime una receta fácil de lentejas."
+ },
+ {
+  "id": "es-c087",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, ¿qué tiempo va a hacer el sábado en Bilbao?"
+ },
+ {
+  "id": "es-c088",
+  "label": "complete",
+  "shape": "bare",
+  "text": "¿A qué hora sale mañana el sol en Barcelona?"
+ },
+ {
+  "id": "es-c089",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, apúntame una cita con el dentista el martes a las cinco."
+ },
+ {
+  "id": "es-c090",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Pues, ¿qué farmacia de guardia hay cerca de casa?"
+ },
+ {
+  "id": "es-c091",
+  "label": "complete",
+  "shape": "after_context",
+  "text": "Ya he salido de la oficina. ¿Va a llover esta tarde en Sevilla?"
+ },
+ {
+  "id": "es-c092",
+  "label": "complete",
+  "shape": "bare",
+  "text": "¿Quién ganó anoche el partido del Betis?"
+ },
+ {
+  "id": "es-c093",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Venga, mueve la reunión del viernes al lunes a las diez."
+ },
+ {
+  "id": "es-c094",
+  "label": "complete",
+  "shape": "pieces_joined",
+  "text": "Mira, lo de mañana. ¿Qué tengo en la agenda el jueves por la tarde?"
+ },
+ {
+  "id": "es-c095",
+  "label": "complete",
+  "shape": "bare",
+  "text": "Apúntame una cita con el dentista el martes a las cinco."
+ },
+ {
+  "id": "es-c096",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "A ver, ¿qué tengo en la agenda el jueves por la tarde?"
+ },
+ {
+  "id": "es-c097",
+  "label": "complete",
+  "shape": "bare",
+  "text": "¿Cuál es la capital de Australia?"
+ },
+ {
+  "id": "es-c098",
+  "label": "complete",
+  "shape": "after_context",
+  "text": "Que luego se me olvida. Búscame un restaurante italiano cerca de la oficina para esta noche."
+ },
+ {
+  "id": "es-c099",
+  "label": "complete",
+  "shape": "after_starter",
+  "text": "Venga, ¿qué temperatura hace ahora mismo en Madrid?"
+ },
+ {
+  "id": "es-c100",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT~}, borra la cita del jueves con el fontanero."
+ },
+ {
+  "id": "es-c101",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, ¿qué temperatura hace ahora mismo en Madrid?"
+ },
+ {
+  "id": "es-c102",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT~}, búscame un restaurante italiano cerca de la oficina para esta noche."
+ },
+ {
+  "id": "es-c103",
+  "label": "complete",
+  "shape": "bare",
+  "text": "¿Cuántos kilómetros hay de Madrid a Valencia?"
+ },
+ {
+  "id": "es-c104",
+  "label": "complete",
+  "shape": "bare",
+  "text": "¿Qué temperatura hace ahora mismo en Madrid?"
+ },
+ {
+  "id": "es-c105",
+  "label": "complete",
+  "shape": "pieces_joined",
+  "text": "Vale, otra cosa. ¿Quién ganó anoche el partido del Betis?"
+ },
+ {
+  "id": "es-c106",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, ¿tengo algo el fin de semana?"
+ },
+ {
+  "id": "es-c107",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT}, mueve la reunión del viernes al lunes a las diez."
+ },
+ {
+  "id": "es-c108",
+  "label": "complete",
+  "shape": "after_name",
+  "text": "{AGENT~}, ¿va a llover esta tarde en Sevilla?"
+ },
+ {
+  "id": "es-c109",
+  "label": "complete",
+  "shape": "bare",
+  "text": "¿Cómo va el Brent esta semana?"
+ }
+]

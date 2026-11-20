@@ -119,7 +119,9 @@ CLAUSE = {
            "I just left the office", "Before I forget"],
 }
 MRK = {"es": ["A ver", "Vale", "Pues", "Mira", "Bueno", "Venga"], "en": ["So", "Okay", "Well", "Right", "Now"]}
-AGENT = {"es": ["Zaelar", "Zaela", "Zaelar"], "en": ["Zaelar", "Zeller", "Zaelar"]}
+#: the agent's name is the ENGINE's, not the set's: `{AGENT}` is its name, `{AGENT~}` a spelling a recogniser writes
+#: for it (template 2: the name misheard in about a third of the cases). `load` fills both from `genome.persona`.
+AGENT = {"es": ["{AGENT}", "{AGENT~}", "{AGENT}"], "en": ["{AGENT}", "{AGENT~}", "{AGENT}"]}
 
 # the incomplete shapes: (template id, prefix the final closes on, what follows in the template)
 LEAD = {
@@ -224,26 +226,63 @@ def build(version: str | None = None) -> Path:
     return out
 
 
-def load(lang: str, version: str = "v2") -> list[dict]:
+def fill(items: list[dict], name: str, heard: tuple[str, ...] | list[str]) -> list[dict]:
+    """`{AGENT}` → the agent's name, `{AGENT~}` → one of the spellings a recogniser writes for it (not the name itself),
+    the same one for the same item every time."""
+    other = [h for h in heard if h.lower() != name.lower()] or [name]
+    out = []
+    for x in items:
+        miss = other[int(hashlib.sha1(x["id"].encode()).hexdigest(), 16) % len(other)]
+        miss = miss[:1].upper() + miss[1:]
+        out.append({**x, **{k: x[k].replace("{AGENT~}", miss).replace("{AGENT}", name)
+                            for k in ("text", "goes_on") if isinstance(x.get(k), str)}})
+    return out
+
+
+def load(lang: str, version: str = "v3", *, name: str | None = None) -> list[dict]:
+    """The frozen items, checked against the manifest; with placeholders (v3 on) filled with the engine's own name —
+    `name` overrides it, as a renamed agent would."""
     root = ROOT / version
     man = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
     data = (root / f"complete.{lang}.json").read_bytes()
     assert hashlib.sha256(data).hexdigest() == man["files"][f"complete.{lang}.json"]["sha256"], "the set changed"
-    return json.loads(data)
+    items = json.loads(data)
+    if not any("{AGENT" in x["text"] for x in items):
+        return items
+    from genome import persona
+    who = name or persona.default_name(lang)
+    return fill(items, who, persona.heard_as(who))
 
 
-def bench(argv: list[str]) -> int:
-    """`complete_bench` on this set instead of the corpus cut: only its item source changes."""
+def majority(values: list) -> bool | None:
+    """One reading of an item from several samples: the value most of them gave; a tie, or no bool, is None."""
+    bools = [v for v in values if isinstance(v, bool)]
+    t, f = bools.count(True), bools.count(False)
+    return True if t > f and t > len(values) / 2 else False if f > t and f > len(values) / 2 else None
+
+
+def bench(argv: list[str], samples: int = 3) -> int:
+    """`complete_bench` on this set, each item read `samples` times and decided by `majority` (a failed provider call
+    stays a failure: it is INFRA, never a vote)."""
     from tests.conversation.benchmarks import complete_bench as CB
     CB.items = lambda lang, n_inc, n_comp, seed=1, version=None: (
         [x for x in load(lang) if x["label"] == "incomplete"][:n_inc]
         + [x for x in load(lang) if x["label"] == "complete"][:n_comp])
+    once = CB.read
+
+    async def read(model, text, lang):
+        got = [await once(model, text, lang) for _ in range(samples)]
+        failed = [g for g in got if isinstance(g, str)]
+        if len(failed) > samples // 2:
+            return failed[0]
+        return majority([g for g in got if not isinstance(g, str)])
+    CB.read = read
     return CB.main(argv)
 
 
 if __name__ == "__main__":
     cmd, rest = (sys.argv[1] if len(sys.argv) > 1 else "build"), sys.argv[2:]
     if cmd == "build":
-        print(build())
+        print(build(rest[0] if rest else None))
     elif cmd == "bench":
         raise SystemExit(bench(rest))

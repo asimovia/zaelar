@@ -1,10 +1,11 @@
 """How well the voice's model reads a thought as finished or not (v3.1 §1.6 quater's gate; node 13.51) — live.
 
-    ./.venv/bin/python -m tests.conversation.benchmarks.complete_bench --set v2 [--lang es en] [--incomplete 10]
-        [--complete 100] [--seed 1] [--out FILE]
+    ./.venv/bin/python -m tests.conversation.benchmarks.complete_bench --set v3 [--lang es en] [--incomplete 10]
+        [--complete 100] [--samples 3] [--seed 1] [--out FILE]
 
-`--set v2` takes the items from the tester's frozen labelled set (`fixtures/complete/v2`, built to the rule written
-before measuring); without it, from the corpus cut below.
+`--set v3` takes the items from the tester's frozen labelled set (`fixtures/complete/v3`, built to the rule written
+before measuring, the agent's name the engine's); without it, from the corpus cut below. Each item is read `--samples`
+times and decided by majority (`complete_set.majority`); a provider failure in most samples stays INFRA.
 
 The items come from the frozen corpus, cut where §1.6 quater needs the reading:
   INCOMPLETE  a thought's pieces up to one that ends with a sentence mark while more pieces follow — the person goes
@@ -119,14 +120,24 @@ def score(results: list[dict]) -> dict:
     return {"by_lang": out, "infra": infra, "pass": bool(out) and not infra and all(v["pass"] for v in out.values())}
 
 
+async def read_n(model, text: str, lang: str, samples: int = 1):
+    """One reading from `samples` reads: the majority of the answers; failures in most samples are a failure."""
+    from tests.conversation.tools import complete_set
+    got = [await read(model, text, lang) for _ in range(max(1, samples))]
+    failed = [g for g in got if isinstance(g, str)]
+    if len(failed) > len(got) // 2:
+        return failed[0]
+    return got[0] if len(got) == 1 else complete_set.majority([g for g in got if not isinstance(g, str)])
+
+
 async def run(model, langs: list[str], n_incomplete: int, n_complete: int, seed: int,
-              labelled: str | None = None) -> list[dict]:
+              labelled: str | None = None, samples: int = 1) -> list[dict]:
     results = []
     for lang in langs:
         source = (from_set(lang, labelled, n_incomplete, n_complete) if labelled
                   else items(lang, n_incomplete, n_complete, seed))
         for it in source:
-            results.append({**it, "lang": lang, "complete": await read(model, it["text"], lang)})
+            results.append({**it, "lang": lang, "complete": await read_n(model, it["text"], lang, samples)})
     return results
 
 
@@ -144,13 +155,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--incomplete", type=int, default=10)
     ap.add_argument("--complete", type=int, default=100)
     ap.add_argument("--seed", type=int, default=1)
+    ap.add_argument("--samples", type=int, default=3, help="reads per item, decided by majority")
     ap.add_argument("--out", type=Path, default=None)
     ap.add_argument("--set", dest="labelled", default=None,
-                    help="a frozen labelled set, `fixtures/complete/<version>` (e.g. v2), instead of the corpus cut")
+                    help="a frozen labelled set, `fixtures/complete/<version>` (e.g. v3), instead of the corpus cut")
     a = ap.parse_args(argv)
     load_credentials()
     from nucleo.conversation_host.model import FastModel
-    results = asyncio.run(run(FastModel(), a.lang, a.incomplete, a.complete, a.seed, a.labelled))
+    results = asyncio.run(run(FastModel(), a.lang, a.incomplete, a.complete, a.seed, a.labelled, a.samples))
     s = score(results)
     out = a.out or Path(__file__).resolve().parents[2] / "runs" / "conversation" / f"complete-{time.strftime('%Y%m%d-%H%M%S')}.json"
     out.parent.mkdir(parents=True, exist_ok=True)

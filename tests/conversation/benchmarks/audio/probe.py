@@ -8,9 +8,10 @@
 
 Flux is recorded ONCE per flow; the recording then runs through the conversation ear and manager (the P2 replay with
 its scripted model) at each model latency of the plan (0.3, 0.8 and 1.5 s). The verdict is §5.3 of the test plan on
-the prompts the manager actually built (`score.prompt_score`): false cut (R2 by the tolerant 70 % alignment of every
-span, the last one deciding — the exact alignment is reported beside it — or R3: a line of ours before the thought's
-last span ended), false merge (two of the person's
+the prompts the manager actually built (`score.prompt_score`): false cut (R2 by TIME, §5.3 — every word the provider
+transcribed in his spans reaches the answering run's prompt, matched by time; the tolerant and exact text alignments
+and the provider's own transcription rate are reported beside it — or R3: a line of ours before the thought's last
+span ended), false merge (two of the person's
 thoughts in one prompt), wait (the true end → the close of the intervention), exposure (stranger spans in a prompt,
 by kind: narration or question). Flux's own turns and the ear's interventions are scored as units too, for
 diagnosis only.
@@ -83,7 +84,9 @@ def _manager(sig: list[dict], config=None, think_ms: int = 800) -> dict:
                             "words": [[w[0], w[1], w[2]] for iv in ivs for w in spans.words(iv)]})
     count = lambda kind, lab: sum(1 for k, l, _ in ev if k == kind and l == lab)   # noqa: E731
     text_of = {p["refs"]["run"]: p.get("text") or [] for k, lab, p in ev if k == "conv_run" and lab == "input"}
-    prompt_runs = [{"run": r[0], "t_ms": r[1], "text": [t for t in text_of.get(r[0], []) if t]} for r in runs]
+    prompt_runs = [{"run": r[0], "t_ms": r[1], "text": [t for t in text_of.get(r[0], []) if t],
+                    "words": [[w[0], w[1], w[2]] for iv in dict.fromkeys(r[2]) if iv for w in spans.words(iv)]}
+                   for r in runs]
     return {"ear": ear_units, "batch": batch_units, "runs_text": prompt_runs,
             "says_ms": [p["t_ms"] for k, lab, p in ev if k == "conv_mouth" and lab == "say"],
             "says": [{"t_ms": p["t_ms"], "run": (p.get("refs") or {}).get("run")} for k, lab, p in ev
@@ -160,6 +163,7 @@ def score_flow(spec: dict, wav: Path, lab: Path, raw: Path, *, config=None, shif
     flux_units = [{"id": f"flux{t['seq']}", "words": t["words"], "end_ms": t["end_ms"]}
                   for t in F.flux_turns(rawm) if t["words"]]
     heard = [w for t in F.flux_turns(rawm) for w in t["words"]]
+    eots = [(t["end_ms"], t["words"]) for t in F.flux_turns(rawm) if t["end_ms"] is not None and t["words"]]
     out = {"stratum": spec.get("stratum", "hand"), "description": labels["description"],
            "truth_turns": len(labels["turns"]), "vad_edges": edges, "flux": SC.score(truth, flux_units), "by_latency": {},
            "alignment": SC.label_alignment(truth, heard), "end_marks": SC.flux_end_marks(truth, rawm)}
@@ -169,7 +173,8 @@ def score_flow(spec: dict, wav: Path, lab: Path, raw: Path, *, config=None, shif
         if think == 800:
             out["ear"], out["batch"] = SC.score(truth, m["ear"]), SC.score(truth, m["batch"])
             out["manager"] = {**m["runs"], "ear_events": m["ear_events"]}
-        out["by_latency"][str(think)] = {**SC.prompt_score(truth, m["runs_text"], m["says_ms"], m["ear"], m["says"]),
+        out["by_latency"][str(think)] = {**SC.prompt_score(truth, m["runs_text"], m["says_ms"], m["ear"], m["says"],
+                                                           heard=heard, eots=eots),
                                          "runs": m["runs"]}
     return out
 
@@ -222,7 +227,9 @@ def aggregate(flows: dict) -> dict:
             c["marks"][k] += (f.get("end_marks") or {}).get(k, 0)
         for lat, r in f["by_latency"].items():
             a = c["lat"].setdefault(lat, {"n": 0, "cuts": 0, "merges": 0, "waits": [], "unclosed": 0, "says": [],
-                                          "why": {"half": 0, "previous_late": 0, "r2": 0}, "cuts_strict": 0})
+                                          "why": {"half": 0, "previous_late": 0, "r2": 0}, "cuts_strict": 0,
+                                          "cuts_fz": 0, "r2_out": 0, "waits_ear": [],
+                                          "heard": {"spans": 0, "empty": 0, "fz": 0, "strict": 0}})
             for row in r["thoughts"]:
                 if row.get("infra"):                 # a cut of the one-utterance mode that was not clean
                     if lat == "800":
@@ -232,11 +239,18 @@ def aggregate(flows: dict) -> dict:
                 a["cuts"] += row["cut"]
                 if row["cut"]:
                     a["why"][row.get("cut_why") or "r2"] += 1
-                a["cuts_strict"] += (not row.get("r2_strict", row.get("r2", not row["cut"]))) or row.get("spoke_during", 0) > 0
+                spoke = row.get("spoke_during", 0) > 0
+                a["cuts_strict"] += (not row.get("r2_strict", row.get("r2", not row["cut"]))) or spoke
+                a["cuts_fz"] += (not row.get("r2_fz", row.get("r2", not row["cut"]))) or spoke
+                a["r2_out"] += row.get("r2", True) is None
+                for k, v in (row.get("heard") or {}).items():
+                    a["heard"][k] += v
                 a["merges"] += row["merged"]
                 a["unclosed"] += row["unclosed"]
                 if row["wait_ms"] is not None and row["kind"] == "complete" and not row["unclosed"]:
                     a["waits"].append(row["wait_ms"])
+                    if row.get("wait_ear_ms") is not None:
+                        a["waits_ear"].append(row["wait_ear_ms"])
                 if row.get("say_after_end_ms") is not None and not row["cut"]:
                     a["says"].append(row["say_after_end_ms"])
             if lat == "800":
@@ -249,9 +263,21 @@ def aggregate(flows: dict) -> dict:
                 c["diag"][det][1] += 1
     out = {}
     for cell, c in acc.items():
-        lat = {k: {**_decide(a["n"], a["cuts"], a["merges"], a["waits"], a["unclosed"]),
+        # profile A's wait is the ear's own time over the provider's EndOfTurn (decided 2026-11-20); the wait from
+        # his true end stays beside it as information (it carries the provider's own delay, which the ear cannot cut)
+        lat = {k: {**_decide(a["n"], a["cuts"], a["merges"], a["waits_ear"] if a["waits_ear"] else a["waits"],
+                             a["unclosed"]),
+                   "wait_basis": "ear_over_eot" if a["waits_ear"] else "true_end",
+                   "wait_true_p50": _pct(a["waits"], 0.5), "wait_true_p95": _pct(a["waits"], 0.95),
                    "say_p50": _pct(a["says"], 0.5), "say_p95": _pct(a["says"], 0.95), "cut_why": a["why"],
-                   "cut_rate_strict": a["cuts_strict"] / a["n"] if a["n"] else None}
+                   "cut_rate_strict": a["cuts_strict"] / a["n"] if a["n"] else None,
+                   "cut_rate_fz": a["cuts_fz"] / a["n"] if a["n"] else None, "r2_out": a["r2_out"],
+                   # the provider's baseline: how well it transcribed his spans (information, never a cut)
+                   "provider": {**a["heard"],
+                                "fz_rate": (a["heard"]["fz"] / (a["heard"]["spans"] - a["heard"]["empty"])
+                                            if a["heard"]["spans"] > a["heard"]["empty"] else None),
+                                "strict_rate": (a["heard"]["strict"] / (a["heard"]["spans"] - a["heard"]["empty"])
+                                                if a["heard"]["spans"] > a["heard"]["empty"] else None)}}
                for k, a in c["lat"].items()}
         verdicts = [d["verdict"] for d in lat.values()] or ["INFRA"]
         worst = next(v for v in ("FAIL", "INFRA", "n<30", "PASS") if v in verdicts)

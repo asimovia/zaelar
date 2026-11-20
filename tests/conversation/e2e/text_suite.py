@@ -3,7 +3,7 @@
     ./.venv/bin/python -m tests.conversation.e2e.text_suite --port <sandbox> --lang es [--repeat 3] [--cases T1 T3]
 
 On a sandbox from `tests.conversation.e2e.sandbox` (switch on, every outside write held, Rowan seeded). Each case of
-the frozen suite (`fixtures/suite/text.v1.json`, T1–T12 in Spanish and English, the corpus's format) is driven by the
+the frozen suite (`fixtures/suite/text.v1.1.json`, T1–T12 in Spanish and English, the corpus's format) is driven by the
 corpus's own schedule (`corpus_drive.drive_conversation`: pieces in bursts without waiting, the next thought after the
 answer), in its own session, `--repeat` times. Judged per thought on the manager's path, from what the text channel
 answers (the request's close, the reads its run made, the reads refused) and the session's proof:
@@ -29,7 +29,7 @@ from pathlib import Path
 
 from tests.conversation.tools.corpus_drive import Engine, drive_conversation, families, lang_of
 
-SUITE = Path(__file__).resolve().parents[1] / "fixtures" / "suite" / "text.v1.json"
+SUITE = Path(__file__).resolve().parents[1] / "fixtures" / "suite" / "text.v1.1.json"
 OUT = Path(__file__).resolve().parents[2] / "runs" / "conversation" / "text_suite"
 #: the cases that exist for their route: there the route is a gate; elsewhere it is a rate (the model's choice)
 ROUTE_GATED = ("T3", "T7", "T10")

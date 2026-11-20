@@ -204,3 +204,21 @@ def test_the_sandbox_boots_with_the_switch_on_every_write_held_the_language_and_
 def test_the_bench_takes_a_frozen_labelled_set_when_named():
     got = cb.from_set("es", "v2", 10, 100)
     assert len(got) == 110 and [x["label"] for x in got].count("incomplete") == 10
+    v3 = cb.from_set("es", "v3", 10, 100)
+    assert len(v3) == 110 and not any("{AGENT" in x["text"] for x in v3)        # the engine's own name filled in
+
+
+def test_an_item_read_several_times_is_one_reading_by_majority(monkeypatch):
+    answers = []
+
+    async def read(model, text, lang):
+        return answers.pop(0)
+    monkeypatch.setattr(cb, "read", read)
+
+    def one(*got):
+        answers[:] = list(got)
+        return asyncio.run(cb.read_n(None, "w1", "es", len(got)))
+    assert one(True, False, True) is True and one(False, None, False) is False
+    assert one(True, False, None) is None                                      # no majority: no reading
+    assert one("failed:w9", "failed:w9", True) == "failed:w9"                  # most samples failed: INFRA
+    assert one(False, "failed:w9", False) is False
