@@ -20,7 +20,7 @@ ENGINE = Path(__file__).resolve().parents[4]
 APP = ENGINE / "frontend" / "app"
 WIZ = APP / "components" / "ConnectorWizard.js"
 CHATWALL = (APP / "components" / "ChatWall.js").read_text(encoding="utf-8")
-CONNLIST = (APP / "components" / "ConnectorsList.js").read_text(encoding="utf-8")   # the shared list (2026-11-16)
+CONNLIST = (APP.parent / "side" / "conectores" / "conectores.js").read_text(encoding="utf-8")   # the shared list (2026-11-16)
 PANEL = (APP / "components" / "ConfigPanel.js").read_text(encoding="utf-8")
 STORE = (APP / "core" / "store.js").read_text(encoding="utf-8")
 
@@ -137,7 +137,7 @@ def test_every_step_has_its_words_in_both_bundles(run, bundle):
 
 
 def test_the_catalog_names_the_connector_and_the_panel_consumes_it_once():
-    assert "openConnectorConfig(c.id)" in CONNLIST and "ConnectorsList({ onManage: openConnectorConfig })" in CHATWALL and "store.setConfigConnector(id || null)" in CHATWALL
+    assert "bridge.manage(c.id)" in CONNLIST and "manage: openConnectorConfig" in CHATWALL and "store.setConfigConnector(id || null)" in CHATWALL
     assert re.search(r"export const \[configConnector, setConfigConnector\]", STORE)
     assert "store.configConnector()" in PANEL and "store.setConfigConnector(null)" in PANEL
     assert "connectorList(view, fams, ui)" in PANEL and "connectorWizard(c, cxStep, connectorForm(c, famTitle, {" in PANEL

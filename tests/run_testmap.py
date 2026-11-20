@@ -3086,6 +3086,15 @@ DOMAINS: list[dict] = [
                                  "the unknown ending folded into done; `show()` not marking it shown; `show()` not fetching",
             "ch": UNIT, "paths": ["tests/browser/unit/side_procesos/test_the_procesos_column_is_its_own_component.py",
                                   "tests/browser/unit/side_procesos/test_the_procesos_column_alone_in_a_browser.py"]},
+        {"id": "4.606", "title": "The side panel's Connectors and Network columns are components of their own (INI-042 #49): "
+                                 "`frontend/side/conectores/` and `frontend/side/red/` import nothing from outside their folder and "
+                                 "nothing imports them but their bridges; their models order the families and read the network in "
+                                 "Node; alone on a blank page, fed real-shaped data through `mount(host, bridge)`, Connectors paints "
+                                 "his family order, hands «Connect» to the credential surface, sends «I want it» once and retries an "
+                                 "empty read only while shown, and Network draws nothing while off, its four blocks once on, one answer "
+                                 "per card and one revoke per ✕. Disarms: the want guard, hide's cancel, the off check",
+            "ch": UNIT, "paths": ["tests/browser/unit/side_columns/test_each_side_column_stands_alone.py",
+                                  "tests/browser/unit/side_columns/test_the_side_columns_alone_in_a_browser.py"]},
         {"id": "4.598", "title": "Nobody wakes the agent to leave it stopped (INI-042 #46): only the ⏻ door (`power.setPower`) "
                                  "calls `runStop`; both shells' boot probe REFLECTS the server's ⏻ (`presence.reflectRunState`) "
                                  "and never sends a stored one — a stale «stopped» follows a running agent, a real stop holds, "

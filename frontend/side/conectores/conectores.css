@@ -1,0 +1,6 @@
+/* side/conectores — what only the Connectors column draws (the shared row look, `.cl-row`, is core/components.css). */
+.cl-row.cn-imposs{opacity:.55}
+.cn-soon{margin-top:14px}
+.cn-soon>summary{cursor:pointer;list-style:none}
+.cn-soon>summary::before{content:'▸ '}
+.cn-soon[open]>summary::before{content:'▾ '}

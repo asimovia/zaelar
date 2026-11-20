@@ -28,15 +28,9 @@ import { AskWall, placeAsks } from "./TaskAsk.js?v=1";
 import { chatRefView } from "./ChatRef.js?v=1";
 import * as a2a from "./A2AView.js?v=1";
 import { onCardFront } from "../widgets/card-front.js?v=1";
-import { ConnectorsList } from "./ConnectorsList.js?v=1";
 import { mountAppsTab } from "../services/apps-bridge.js?v=1";
-
-// V2-561/V2-526 — stable family order, matching connectors/registry.py's descriptors() order; any family
-// not listed (a catalog-only wishlist family) sorted after, alphabetically, so one nobody expects does not
-// jump to the top. V2-686: `video` and `agenda` were MISSING here — they are live families since V2-597 and
-// V2-679, so the YouTube account and Google Calendar were being filed under "a family nobody expects" and
-// rendered below Infraestructura. Nothing errored; they were just in the wrong place, which is how every
-// wiring point in this list fails. A test now walks descriptors() against this array.
+import { mountConectores } from "../services/conectores-bridge.js?v=1";
+import * as red from "../services/red-bridge.js?v=1";
 
 const SEND_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>`;
 // V2-621 — the ONE map from a tab id to its label key: the header's standing name (`.cw-tabname`) and each
@@ -284,18 +278,14 @@ export function ChatWall() {
     ),
   );
 
-  // ── CONNECTORS tab (V2-561, implementing V2-526): every connector by category, built + wishlist ────────
-  // `live` = connectors/registry.py's descriptors() (real state); `wish` = the NOT-live half
-  // (connectors/catalog.py's planned/not-possible manifests). Two independent, cheap fetches merged here by
-  // `family` — never a new widget, never a model call, never more than what a GET already returns.
-  // "Conectar" on a built-but-disconnected row hands off to the CREDENTIAL surface (V2-083's ConfigPanel
-  // "conectores" tab) rather than connecting from here — the same voice/hands boundary V2-520 already pins:
-  // this tab is for browsing and asking, never for holding a form.
+  // ── CONNECTORS (V2-561/V2-526) and NETWORK (V2-866) — columns of their own (`frontend/side/conectores/`,
+  // `frontend/side/red/`), wired by their bridges and re-read while they are the open tab. «Connect» hands off to the
+  // CREDENTIAL surface (ConfigPanel's connectors tab): this list is for browsing and asking, never a form (V2-520).
+  const isTab = (id) => () => store.chatOpen() && store.chatTab() === id;
   const openConnectorConfig = (id) => { store.setConfigInitialTab("conectores"); store.setConfigConnector(id || null); store.setConfigOpen(true); };
-  // The list itself is SHARED (components/ConnectorsList.js, 2026-11-16): the phone's ☰ → Connectors page draws the
-  // same rows from the same reads, so the two shells can never disagree about what is connected.
-  const connList = ConnectorsList({ onManage: openConnectorConfig });
-  const refreshConnectors = connList.refresh;
+  const connHost = h("div", { class: "cw-conn" }), redHost = h("div", { class: "cw-red" });
+  mountConectores(connHost, { visible: isTab("conectores"), manage: openConnectorConfig });
+  red.mountRed(redHost, { visible: isTab("red") });
 
   // ── APPS tab (V2-761): the widget catalogue (`side/apps/` via `apps-bridge.js`); entering it re-reads it.
   const appsHost = h("div", { class: "cw-apps" }), appsTab = mountAppsTab(appsHost);
@@ -327,7 +317,7 @@ export function ChatWall() {
         h("button", { class: () => "cw-tab" + (store.chatTab() === "chat" ? " on" : ""), title: () => t("chat.tabChat"), onClick: () => store.setChatTab("chat") }, raw(MESSAGE_SQUARE_ICON), h("span", { class: "cw-tab-label" }, () => t("chat.tabChat"))),
         h("button", { class: () => "cw-tab" + (store.chatTab() === "procesos" ? " on" : ""), title: () => t("chat.tabTasks"), onClick: () => store.setChatTab("procesos") }, raw(ACTIVITY_ICON), h("span", { class: "cw-tab-label" }, () => t("chat.tabTasks"))),
         h("button", { class: () => "cw-tab" + (store.chatTab() === "clusters" ? " on" : ""), title: () => t("chat.tabClusters"), onClick: () => store.setChatTab("clusters") }, raw(SERVER_ICON), h("span", { class: "cw-tab-label" }, () => t("chat.tabClusters"))),
-        () => (a2a.on() ? h("button", { class: () => "cw-tab" + (store.chatTab() === "red" ? " on" : ""), title: () => t("a2a.network"), onClick: () => store.setChatTab("red") }, raw(SERVER_ICON), h("span", { class: "cw-tab-label" }, () => t("a2a.network"))) : null),
+        () => (red.on() ? h("button", { class: () => "cw-tab" + (store.chatTab() === "red" ? " on" : ""), title: () => t("a2a.network"), onClick: () => store.setChatTab("red") }, raw(SERVER_ICON), h("span", { class: "cw-tab-label" }, () => t("a2a.network"))) : null),
         h("button", { class: () => "cw-tab" + (store.chatTab() === "conectores" ? " on" : ""), title: () => t("chat.tabConnectors"), onClick: () => store.setChatTab("conectores") }, raw(LINK_ICON), h("span", { class: "cw-tab-label" }, () => t("chat.tabConnectors"))),
         h("button", { class: () => "cw-tab" + (store.chatTab() === "apps" ? " on" : ""), title: () => t("chat.tabApps"), onClick: () => store.setChatTab("apps") }, raw(WIDGETS_ICON), h("span", { class: "cw-tab-label" }, () => t("chat.tabApps"))),
       ),
@@ -379,13 +369,7 @@ export function ChatWall() {
           : h("div", { class: "cw-empty" }, () => t("chat.clustersEmpty"))),
       ),
     ),
-    // CONECTORES (V2-561, implementing V2-526) — every connector by category: built (live, from the
-    // registry) grouped with the wishlist (planned/not-possible, from the catalog). No new widget, no new
-    // orb entry — this tab IS the "browse and ask" surface the design doc calls for.
-    h("div", { class: "cw-red" }, h("div", { class: "cl-list" }, () => (a2a.on() ? a2a.networkBody() : null))),   // V2-866 — off: no tab, no body
-    h("div", { class: "cw-conn" },
-      connList.node,
-    ),
+    redHost, connHost,   // NETWORK (off: no tab, no body) and CONECTORES — mounted above
     appsHost,   // APPS (V2-761) — the widget catalogue, its own component (`side/apps/`), drawn only while open
     // INPUT (Chat only — CSS hides it in the other tabs)
     h("div", { class: () => "cw-input" + (dropping() ? " cw-dropping" : ""),
@@ -417,8 +401,6 @@ export function ChatWall() {
     if (!store.chatOpen()) return;
     if (t === "procesos") procesos.show();
     else if (t === "clusters") store.fetchClusters();
-    else if (t === "conectores") refreshConnectors();
-    else if (t === "red") a2a.refresh();
   });
   // Leaving «Procesos» (another tab, or the wall closed) hides it: its refetch on a live change stops.
   createEffect(() => { if (!(store.chatOpen() && store.chatTab() === "procesos")) procesos.hide(); });
@@ -788,6 +770,5 @@ export function ChatWall() {
     if (inputEl && store.chatTab() === "chat") inputEl.focus();
   });
 
-  a2a.refresh();   // V2-866 — is A2A on? (its route 404s while off, and the Network tab stays undrawn)
   return wall;
 }

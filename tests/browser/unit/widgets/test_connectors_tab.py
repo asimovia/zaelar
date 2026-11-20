@@ -19,8 +19,11 @@ from pathlib import Path
 
 FRONTEND = Path(__file__).resolve().parents[4] / "frontend" / "app"
 CHATWALL = (FRONTEND / "components" / "ChatWall.js").read_text(encoding="utf-8")
-# 2026-11-16 — the list itself is shared by both shells (the desktop tab and the phone's ☰ → Connectors page).
-CONNLIST = (FRONTEND / "components" / "ConnectorsList.js").read_text(encoding="utf-8")
+# 2026-11-16 — the list is shared by both shells (the desktop tab and the phone's ☰ → Connectors page); 2026-11-20 it is
+# a component of its own (`frontend/side/conectores/`), wired to the app by ONE bridge.
+CONNLIST = (FRONTEND.parent / "side" / "conectores" / "conectores.js").read_text(encoding="utf-8")
+CONNMODEL = (FRONTEND.parent / "side" / "conectores" / "model.js").read_text(encoding="utf-8")
+BRIDGE = (FRONTEND / "services" / "conectores-bridge.js").read_text(encoding="utf-8")
 STORE = (FRONTEND / "core" / "store.js").read_text(encoding="utf-8")
 CONFIG_PANEL = (FRONTEND / "components" / "ConfigPanel.js").read_text(encoding="utf-8")
 API_JS = (FRONTEND / "services" / "api.js").read_text(encoding="utf-8")
@@ -47,15 +50,15 @@ def test_the_conectores_panel_has_a_css_rule_that_shows_it():
 
 
 def test_entering_the_tab_refreshes_both_live_and_wishlist_data():
-    assert 'else if (t === "conectores") refreshConnectors();' in CHATWALL
-    assert "const refreshConnectors = connList.refresh;" in CHATWALL
-    assert "api.getConnectors()" in CONNLIST and "api.getConnectorCatalog()" in CONNLIST
+    assert 'mountConectores(connHost, { visible: isTab("conectores")' in CHATWALL
+    assert "(v ? col.show() : col.hide())" in BRIDGE and "show: () => load()" in CONNLIST
+    assert "api.getConnectors()" in BRIDGE and "api.getConnectorCatalog()" in BRIDGE
 
 
 def test_families_render_in_a_stable_order_with_unknown_families_after_the_known_ones():
     # «google» leads since 4042dfcb: Gmail, Calendar and Drive connect as ONE row, the first thing he can connect.
     assert ('CONN_FAMILY_ORDER = ["google", "mensajeria", "musica", "fotos", "archivos", "video", "agenda", "contactos", '
-            '"infra"]' in CONNLIST)
+            '"infra"]' in CONNMODEL)
 
 
 # ── backend service functions the tab depends on ────────────────────────────────────────────────────────
@@ -81,22 +84,20 @@ def test_store_exposes_the_config_initial_tab_signal():
 
 # ── "Lo quiero" carries the manifest id, never lets the operator type free text ─────────────────────────
 def test_lo_quiero_uses_the_shared_feedback_service_not_an_inline_fetch():
-    assert "feedbackApi.sendFeedback" in CONNLIST
-    assert 'fetch("/api/feedback"' not in CONNLIST, "must reuse services/feedback-api.js, not a second door"
+    assert "feedbackApi.sendFeedback" in BRIDGE
+    assert 'fetch(' not in BRIDGE + CONNLIST, "must reuse services/feedback-api.js, not a second door"
 
 
 def test_the_wishlist_request_carries_the_manifest_id_deterministically():
     """No existing structured `subject` field exists in the feedback pipeline (it forwards to a separate
     control-plane deployment outside this pass's scope) — the id travels as a fixed, code-written prefix in
     `message` instead of anything the operator typed. `m.id` must appear in the string the code BUILDS."""
-    branch = CONNLIST.split("const requestConnector")[1].split("\n\n")[0]
-    assert "m.id" in branch and "m.label" in branch
-    assert "connRequested().has(m.id)" in branch, "must not re-send once already requested this session"
+    assert "[conector:${m.id}] Lo quiero: ${m.label}" in BRIDGE
+    assert "if (requested.has(m.id)) return;" in CONNLIST, "must not re-send once already requested this session"
 
 
 def test_a_not_possible_entry_offers_no_button():
-    branch = CONNLIST.split("const connWishRow")[1].split("\n\n")[0]
-    assert "impossible ? null" in branch
+    assert "imp ? null : btn(" in CONNLIST
 
 
 def test_feedback_service_shape_is_unchanged_by_this_pass():

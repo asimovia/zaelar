@@ -1,0 +1,6 @@
+/* side/red — what only the Network column draws (V2-866). The row look (`.cl-row`, `.cn-fam`) is core/components.css;
+   a consent card's `.a2a-done` is styles.css, shared with the chat's cards. */
+.a2a-sec{display:flex;flex-direction:column;gap:6px}
+.a2a-rel,.a2a-share,.a2a-ev{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:space-between}
+.a2a-name{font-weight:600}
+.a2a-chip{display:inline-flex;gap:4px;align-items:center;border:1px solid var(--hb-line);border-radius:999px;padding:1px 4px 1px 9px}

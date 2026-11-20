@@ -24,7 +24,7 @@ import pathlib
 import pytest
 
 ENGINE = pathlib.Path(__file__).resolve().parents[4]
-CHATWALL = (ENGINE / "frontend" / "app" / "components" / "ConnectorsList.js").read_text(encoding="utf-8")   # the shared list (2026-11-16)
+CHATWALL = (ENGINE / "frontend" / "side" / "conectores" / "model.js").read_text(encoding="utf-8")   # the Connectors column's order (2026-11-20)
 CONFIGPANEL = (ENGINE / "frontend" / "app" / "components" / "ConfigPanel.js").read_text(encoding="utf-8")
 
 # A `built` manifest with NO live registry row. Each entry needs a reason, and each reason has to be a

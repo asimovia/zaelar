@@ -1788,14 +1788,11 @@ body.dbg-open .orbwrap{left:calc(50% - var(--dbg-w) / 2)}
   .dsx-add{flex-direction:column}
 }
 
-/* V2-866 — A2A: a friend's agent speaks as DATA (dashed, apart from the agent's own lines); consent cards; the Network tab */
+/* V2-866 — A2A: a friend's agent speaks as DATA (dashed, apart from the agent's own lines); consent cards (the Network
+   column's own look is side/red/red.css) */
 .cw-msg.a2a{align-self:flex-start;background:var(--hb-bg-soft);border:1px dashed var(--hb-line-strong);color:var(--hb-ink)}
 .cw-msg.a2a-card{border:1px solid var(--hb-accent)}
 .a2a-note,.a2a-done{font-size:.8em;color:var(--hb-muted);margin-top:4px}
 .cw-red .cl-list{flex:1 1 auto;min-height:0;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:10px}
-.a2a-sec{display:flex;flex-direction:column;gap:6px}
-.a2a-rel,.a2a-share,.a2a-ev{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:space-between}
-.a2a-name{font-weight:600}
-.a2a-chip{display:inline-flex;gap:4px;align-items:center;border:1px solid var(--hb-line);border-radius:999px;padding:1px 4px 1px 9px}
 
 .cf-panel:has(> #cf_presence_host){max-width:none}   /* V2-928: Presence uses the whole width, like Connectors */
