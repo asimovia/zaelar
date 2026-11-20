@@ -6,8 +6,8 @@ obeying the stop it read in CONVERSATION. No text is read to fix it:
 
   · a batch whose voice began while a line of ours sounded and that line ended CUT by his voice is a barge-in; when its
     run ends silent, the window holds that FACT («[he stopped our reply]»), never his words;
-  · a no_reply to his voice that did NOT cut us is asked once for the reply — his words reached us addressed (the guards
-    let them in), as a typed line does; a second stands.
+  · a no_reply to his voice is the model's judgement: it stands, never asked again —
+    another voice, the television or a word to someone else is silence; the `command` event says `not_his`.
 """
 from __future__ import annotations
 
@@ -50,18 +50,20 @@ def test_his_barge_in_ends_silent_and_his_next_questions_are_answered(store):
     assert "w_para" not in window and "[he stopped our reply]" in window      # the fact, never his words
 
 
-def test_a_no_reply_to_his_voice_that_did_not_cut_us_is_asked_once(store):
+def test_a_no_reply_to_his_voice_is_final_and_says_whether_it_was_his(store):
     h = Harness(store, grace=False)
-    rounds = iter([[Command("no_reply", {"reason": "w0"}), Done()], [reply("w9"), Done()]])
+    rounds = iter([[Command("no_reply", {"reason": "w0", "not_his": True}), Done()], [reply("w9"), Done()]])
     h.model.default = lambda ids: next(rounds)
     h.utter([(["w1", "w2"], 0)])
     h.settle(3000)
-    assert "no_reply_voice" in _commands(h) and [o.text for o in h.mouth.orders] == ["w9"]
+    assert len(h.model.calls) == 1 and not h.mouth.orders                     # obeyed: never asked for a reply
+    [cmd] = [p for k, lab, p in h.tel.events if k == "conv_run" and lab == "command"]
+    assert cmd["command"] == "no_reply" and cmd["not_his"] is True
 
 
 def test_his_voice_over_a_line_that_played_whole_is_no_barge_in(store):
     """His voice rose while our line sounded, and the line played to its end (with no echo cancellation his words
-    alone cut, and these did not): no stop — a no_reply to it is asked once."""
+    alone cut, and these did not): no stop — and a no_reply to it stands."""
     h = Harness(store, grace=False)
     sid = _speaking(h)
     start = next(row for _k, row in h.store.view(h.conv.account).recent("says", 2))["t_ms"]
@@ -69,4 +71,4 @@ def test_his_voice_over_a_line_that_played_whole_is_no_barge_in(store):
     h.conv.ack(SayEnded(sid, "played", 20, start + 600, "d1", "agent_estimate"))
     h.utter([(["w1", "w2"], 0)], at=start + 40)
     h.settle(3000)
-    assert "no_reply_voice" in _commands(h)
+    assert "no_reply_voice" not in _commands(h) and not h.mouth.orders[1:]

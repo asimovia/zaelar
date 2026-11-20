@@ -355,6 +355,7 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
                     order = commands.parse(ev)
                     r.reading = getattr(order, "complete", r.reading)     # its last reading of his thought
                     _emit(conv, "command", r, command=ev.name, complete=getattr(order, "complete", None),
+                          not_his=getattr(order, "not_his", None),
                           derived=sum(c.derived for c in getattr(order, "claims", ())),
                           unclaimed=ev.args.get(UNCLAIMED))
                     if isinstance(order, commands.Stop):
@@ -473,7 +474,6 @@ AS_TEXT = "the text is what the person hears: the order is the call itself, neve
 SAY_THE_ACT = "an act held or refused is a reply that says so"
 EMPTY = "a reply is the words he hears: it has none"
 TYPED_TO_YOU = "a line typed to you is addressed to you: reply to it"
-ADDRESSED = "his words reached you as addressed to you: reply to them"
 #: the source of an evidence built from his own entries
 HIS_WORDS = "his_words"
 NO_ORDER = "the answer is an order: reply or no_reply"
@@ -625,14 +625,12 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
         return False
     reads = _reads(steps, conv)
     typed = _typed_only(r)
-    if (isinstance(cmd, commands.NoReply) and (reads or not _barge_cut(conv, r)) and _said_something(r)
-            and not r.asked_after_reads):           # it read for him, or his words reached us addressed — and then
-        r.asked_after_reads = True                  # nothing: asked once. A barge-in that cut us may be silence.
-        _emit(conv, "command", r, command="no_reply_after_reads" if reads else "no_reply_typed" if typed
-              else "no_reply_voice", tools=reads)
+    if (isinstance(cmd, commands.NoReply) and (reads or (typed and not _barge_cut(conv, r))) and _said_something(r)
+            and not r.asked_after_reads):           # it read for him, or he typed to us — and then nothing: asked
+        r.asked_after_reads = True                  # once. A no_reply to his VOICE is the model's judgement: final
+        _emit(conv, "command", r, command="no_reply_after_reads" if reads else "no_reply_typed", tools=reads)
         steps.append((ToolCall("orders", "orders_check", {}), ToolResult("refused", data=(
-            {"read": reads, "reason": SAY_WHAT_WAS_FOUND} if reads else {"reason": TYPED_TO_YOU if typed
-                                                                           else ADDRESSED}))))
+            {"read": reads, "reason": SAY_WHAT_WAS_FOUND} if reads else {"reason": TYPED_TO_YOU}))))
         return False
     if isinstance(cmd, commands.NoReply) and cmd.complete is False and _park(conv, r, batch, cmd, None, len(steps), now):
         return True                             # «something is missing» and no reply: silent only once he did not go on

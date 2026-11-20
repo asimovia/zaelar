@@ -97,12 +97,13 @@ def test_a_stop_after_a_read_it_asked_for_is_refused(store):
 
 
 def test_a_no_reply_the_manager_pushed_back_on_never_spends_the_stop(store):
-    """The review's P-1: the model met «para la música» with a no_reply; the manager asks once for a reply, and the stop
-    it then chooses is carried out — a no_reply is not an order that closes the door to a stop."""
+    """The review's P-1: the model met a typed «para la música» with a no_reply; the manager asks once for a reply, and
+    the stop it then chooses is carried out — a no_reply is not an order that closes the door to a stop. (A no_reply
+    to his voice is final: never pushed back on.)"""
     h = _h(store, [[Command("no_reply", {"reason": "w0"}), Done()], [Command("stop_media", {}), Done()]])
-    h.utter([(["w1"], 0)])
+    h.typed("w1", 0)
     h.settle(3000)
-    assert h.conv.stops.calls == [("media", "d1")] and _ended(h) == [("stopped", "media")]
+    assert h.conv.stops.calls == [("media", "d2")] and _ended(h) == [("stopped", "media")]
 
 
 def test_a_second_stop_in_the_run_is_refused(store):
