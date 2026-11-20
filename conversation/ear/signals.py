@@ -81,6 +81,14 @@ class Discard:
 
 
 @dataclass(frozen=True)
+class LinkGap:
+    """The line from the voice process lost facts of this device (it declares the hole in their place): what the ear
+    was hearing there cannot be whole any more — it ends incomplete (`link_gap`), and the run asks for it again."""
+    endpoint: str
+    t_ms: int
+
+
+@dataclass(frozen=True)
 class Tick:
     t_ms: int
 
@@ -103,4 +111,5 @@ class Onset:
     intervention_id: str
 
 
-Signal = WordSpan | Watermark | VadEdge | EotHint | PlaybackState | ContextHint | TypedSubmit | Discard | Tick
+Signal = (WordSpan | Watermark | VadEdge | EotHint | PlaybackState | ContextHint | TypedSubmit | Discard | LinkGap
+          | Tick)

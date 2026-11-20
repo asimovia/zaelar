@@ -137,6 +137,11 @@ def typed(text: str, dev: str = "", *, wait: bool = False, checked: bool = False
     return {"ok": True, "cid": cid}
 
 
+def voice(sig) -> None:
+    """A fact of the ear (a word, an end of turn, the watermark, an edge of his voice): handed over in order."""
+    _hand(lambda c: c.hear(sig))
+
+
 async def typed_and_wait(text: str, dev: str = "", *, timeout_s: float = 90.0) -> dict:
     """The text channel's shape (`ok`, `reply`, `tool_calls`: the reads its run made, with their arguments; `trace`:
     its flow) plus the reads the gateway refused and a `conv` block with the ids."""

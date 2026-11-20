@@ -165,6 +165,18 @@ class Ear:
     def _on_TypedSubmit(self, sig: S.TypedSubmit, out: list) -> None:
         out.append(submit(self, sig, self._time(sig.t_ms)))
 
+    def _on_LinkGap(self, sig: S.LinkGap, out: list) -> None:
+        """Facts of this device were lost on the line: an intervention open there ends incomplete — never silently
+        whole — and its run asks for it again. With nothing open, the hole is only said."""
+        v = self._v(sig.endpoint)
+        t = self._time(sig.t_ms)
+        if v.state in OPEN_STATES:
+            self._incomplete(v, t, "link_gap", out)
+        else:
+            self.em.emit("conv_ear", "incomplete", owner="ear", cause={"kind": "link"},
+                         refs={"endpoint": sig.endpoint, "channel": "voice"}, trace=f"link:{sig.endpoint}:{t}",
+                         text="", reason="link_gap")
+
     def _on_Discard(self, sig: S.Discard, out: list) -> None:
         v = self._v(sig.endpoint)
         t = self._time(sig.t_ms)

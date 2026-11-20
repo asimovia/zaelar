@@ -38,6 +38,11 @@ model's own `complete` reading (`benchmarks/complete_bench.py`), the frozen corp
 channel's answer carries what each pass judges: the request's close, the reads its run made with their arguments, the
 reads refused, and its trace. They run by request, never in the gate; what they compute is tested deterministically.
 
+What his voice says reaches the manager as facts of the ear (`voice/engine/pipeline/ear_feed.py`: words, the
+provider's end with its confidence, the watermark, the edges of his voice), on a lane of the voice process's line to
+the body that loses nothing: carried until the body answers, and past its ceiling a hole DECLARED, never silent — what
+the ear was hearing then ends incomplete and is asked for again.
+
 What the engine owes him lives in ONE ledger, `notices`. While a session of the manager holds the voice, `notify`
 paints a line and CLAIMS it for that voice (`nucleo/pulse/notice_claim.py`) — no push, no «shown» — so the retry and
 the drain to the next screen, which read `owed`, never touch it. The manager takes each claimed line once and says it

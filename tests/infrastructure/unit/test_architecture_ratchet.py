@@ -600,6 +600,10 @@ _TOTAL_MAX += 129    # same cause
 _PACKAGE_CEILINGS["conversation"] += 37    # 2026-11-20 V2-941 v3.1 B7c (the tester's live passes): an earlier session marked with its age; never silence after text with no order or at the step cap
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 5    # same: INPUT declared as now, STATE's notes in another language; the pack's variants
 _TOTAL_MAX += 42     # same cause
+_PACKAGE_CEILINGS["conversation"] += 21    # 2026-11-20 V2-941 v3.1 B8a: `LinkGap` — a hole the line declared ends what the ear was hearing incomplete
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 73    # same: the ear's facts on the body, each seq applied once, in order (`ear_in.py`)
+_PACKAGE_CEILINGS["voice"] += 143          # same: the provider's messages as the ear's facts on one wall clock (`ear_feed.py`), the ear's lossless lane in the body link with its declared gap
+_TOTAL_MAX += 237    # same cause
 
 
 def test_the_total_only_shrinks():

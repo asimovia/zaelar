@@ -36,6 +36,12 @@ by the pinned plugin, **exposed raw** (Flux sends it, the plugin drops it), or *
 
 ## What the ear needs that the pinned plugin does not give
 
+Built (B8a): `voice/engine/pipeline/ear_feed.py` turns each provider message into the ear's facts on one wall clock
+(item 1 below, without the tap that feeds it, which is B8b); the facts cross to the body on a lossless lane of the
+body link (`send_ear`: numbered, carried until answered, a hole declared as a `gap` past its ceiling); the body applies
+each once (`nucleo/conversation_host/ear_in.py`) and a hole ends what the ear was hearing incomplete (`link_gap`).
+
+
 1. A `TurnInfo` handler of its own (F1, in `voice/`, next to `voice/engine/speech/stt/deepgram.py`), forwarding for
    every message: event, `turn_index`, `end_of_turn_confidence`, `audio_window_end` (also with no words) and the words
    with their times. The plugin's `SpeechEvent`s lose the probability, the turn index and the silent watermark.

@@ -32,6 +32,14 @@ unless something newer already says more (a newer interim, or his final words), 
 waits the sender retries after `CAPTION_GAP_S` instead of the full `RETRY_GAP_S`. An older interim never reaches
 the body after a newer one.
 
+THE EAR'S LANE IS LOSSLESS (V2-941, B8). The facts the conversation manager's ear reads (`ear_feed.py`) cannot be
+dropped the way a batch is: a lost final word is a sentence never whole. They ride the same line in a queue of their
+own (`send_ear`), numbered (`seq`, with this process's `boot`), at the FRONT of every batch, and they leave that queue
+only when the body has answered the batch that carried them — a failed batch carries them again, never marked
+«retried». The queue has a ceiling (`EAR_MAX`, some 30 s of facts): past it the newest facts are not queued but
+DECLARED lost, by one `gap` fact in their place that grows while the hole lasts — so the ear ends what it was hearing
+incomplete (`link_gap`) and the run asks for it again. A hole is never silent and leaves nothing waiting.
+
 Every call carries the token the body handed this process at spawn (`ZAELAR_VOICE_TOKEN`), and the body only
 answers it from loopback. Never raises into the voice: a failed call is a counted miss and an empty answer.
 """
@@ -52,6 +60,7 @@ EVENTS_PATH = "/api/voice/child/events"
 RETRY_GAP_S = 1.0                                 # one connection a second while the body does not answer (E0)
 RETRIED = ("session", "transcript", "item")       # the facts asked once more at the front of the queue
 CAPTION_GAP_S = 0.4                               # the retry gap while only a live caption waits (latest wins)
+EAR_MAX = 1500                                    # the ear's facts held for the body: ~30 s of a stalled body
 
 
 def caption_key(ev: dict):
@@ -95,7 +104,11 @@ class BodyLink:
         self._sessions: dict = {}             # id(loop) → (loop, aiohttp session): one per loop
         self._fail_streak = 0                 # batches failed in a row: >0 paces the sender to one try per gap
         self._last_try = 0.0
-        self.stats = {"sent": 0, "dropped": 0, "batches": 0, "failed_batches": 0, "overtaken": 0, "coalesced": 0}
+        self.stats = {"sent": 0, "dropped": 0, "batches": 0, "failed_batches": 0, "overtaken": 0, "coalesced": 0,
+                      "ear_sent": 0, "ear_lost": 0}
+        import uuid
+        self._ear: deque = deque()             # the ear's facts, in `seq` order, until the body answered their batch
+        self._ear_seq, self._ear_boot = 0, uuid.uuid4().hex[:12]
 
     # ── lifecycle ────────────────────────────────────────────────────────────────────────────────────────────
     def start(self) -> None:
@@ -164,6 +177,31 @@ class BodyLink:
         except Exception as e:  # noqa: BLE001 — the ear never dies of its own report
             logger.debug(f"body_link.send: {e!r}")
 
+    def send_ear(self, fact: dict) -> None:
+        """Queue one fact of the ear, from any thread: numbered, kept until the body answered it, never dropped
+        unsaid. Past `EAR_MAX` the fact is not kept but declared: one `gap` fact grows in its place."""
+        try:
+            with self._lock:
+                self._ear_seq += 1
+                ev = {**fact, "k": "ear", "seq": self._ear_seq, "boot": self._ear_boot}
+                last = self._ear[-1] if self._ear else None
+                if len(self._ear) < EAR_MAX:
+                    self._ear.append(ev)
+                elif last is not None and last.get("t") == "gap" and not last.get("_flying"):
+                    last["covers"][1] = self._ear_seq
+                    last["streams"] = sorted(set(last["streams"]) | {str(fact.get("stream") or "")})
+                    self.stats["ear_lost"] += 1
+                else:
+                    self._ear.append({"k": "ear", "t": "gap", "seq": self._ear_seq, "boot": self._ear_boot,
+                                      "covers": [self._ear_seq, self._ear_seq],
+                                      "streams": [str(fact.get("stream") or "")], "t_ms": int(time.time() * 1000)})
+                    self.stats["ear_lost"] += 1
+            loop = self._loop
+            if loop is not None and not loop.is_closed():
+                loop.call_soon_threadsafe(self._kick)
+        except Exception as e:  # noqa: BLE001 — the ear never dies of its own report
+            logger.debug(f"body_link.send_ear: {e!r}")
+
     def _kick(self) -> None:
         if self._wake is not None:
             self._wake.set()
@@ -200,11 +238,21 @@ class BodyLink:
             while True:
                 await self._pace()                # BEFORE the batch leaves the queue: a paced fact is still on the line
                 with self._lock:
-                    batch = [self._q.popleft() for _ in range(min(self.max_batch, len(self._q)))]
+                    ear = list(self._ear)[: self.max_batch]      # at the front, and still in the queue until answered
+                    for ev in ear:
+                        ev["_flying"] = True
+                    batch = [self._q.popleft() for _ in range(min(self.max_batch - len(ear), len(self._q)))]
                     self._flying = bool(batch)
-                if not batch:
+                if not batch and not ear:
                     break
-                await self._deliver(batch)
+                ok = await self._deliver([{k: v for k, v in ev.items() if k != "_flying"} for ev in ear] + batch)
+                with self._lock:
+                    for ev in ear:
+                        ev.pop("_flying", None)
+                    if ok and ear:                   # answered: they leave the lane; unanswered, they ride again
+                        while self._ear and self._ear[0]["seq"] <= ear[-1]["seq"]:
+                            self._ear.popleft()
+                        self.stats["ear_sent"] += len(ear)
                 self._flying = False              # delivered, or its retried facts are back at the front
 
     async def _pace(self) -> None:
@@ -218,7 +266,7 @@ class BodyLink:
             if wait > 0:
                 await asyncio.sleep(wait)
 
-    async def _deliver(self, batch: list) -> None:
+    async def _deliver(self, batch: list) -> bool:
         self.stats["batches"] += 1
         self._last_try = time.monotonic()
         try:
@@ -230,6 +278,7 @@ class BodyLink:
                     raise RuntimeError(f"HTTP {r.status}")
             self.stats["sent"] += len(batch)
             self._fail_streak = 0
+            return True
         except asyncio.CancelledError:
             raise
         except Exception as e:  # noqa: BLE001 — dropped and counted: the ear never waits on the body
@@ -238,6 +287,8 @@ class BodyLink:
             with self._lock:
                 later = list(self._q)                # queued since this batch left: all newer than it
                 for i, ev in enumerate(batch):
+                    if ev.get("k") == "ear":
+                        continue                     # the ear's lane keeps its own: carried again, never dropped
                     key = caption_key(ev)
                     if key is None:
                         # a session's start/close, his words, the items: asked once more
@@ -253,11 +304,13 @@ class BodyLink:
                 for ev in reversed(back):
                     self._q.appendleft(ev)
             self.stats["coalesced"] += stale
-            self.stats["dropped"] += len(batch) - len(back) - stale
+            ears = sum(ev.get("k") == "ear" for ev in batch)
+            self.stats["dropped"] += len(batch) - ears - len(back) - stale
             self.stats["failed_batches"] += 1
             if self.stats["failed_batches"] in (1, 10, 100) or self.stats["failed_batches"] % 1000 == 0:
-                logger.warning(f"voice→body: {len(batch) - len(back)} of {len(batch)} events dropped ({e!r}); "
+                logger.warning(f"voice→body: {len(batch) - ears - len(back)} of {len(batch)} events dropped ({e!r}); "
                                f"{self.stats['dropped']} dropped so far")
+            return False
 
     # ── request / response ──────────────────────────────────────────────────────────────────────────────────
     async def post(self, path: str, payload: dict, timeout_s: float = 5.0) -> dict:

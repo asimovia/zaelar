@@ -467,6 +467,10 @@ def handle(ev: dict) -> None:
         from voice.engine.pipeline import eager_brief
         eager_brief.on_preflight(str(ev.get("text") or ""))
         return
+    if k == "ear":                              # the ear's lossless lane: only a session of the manager sends it
+        from nucleo.conversation_host import ear_in
+        ear_in.receive(ev)
+        return
     remote = _M["session"]
     if remote is None:
         return                                  # a fact about a session the body never saw start
