@@ -19,6 +19,7 @@ from conversation.types import Channel, Coverage, EnvelopeKind, ItemKind
 
 PREFIX = "OPERATING RULES v1\nTOOLS: search, market_data, discover_tools, send_message"
 T0 = 1_800_000_000_000
+AGO = T0 - 60_000                 # the window: a minute ago, this session
 
 
 def _state(store, lang_turns):
@@ -34,11 +35,11 @@ def _state(store, lang_turns):
         for i, (role, text, heard) in enumerate(lang_turns, start=1):     # the window: his entries and our lines
             if role == "user":
                 env = E.make(EnvelopeKind.USER_UTTERANCE, E.UtteranceBody(f"iv{i}", text), producer="ear:d1",
-                             producer_id=f"iv{i}:full", account="acct", onset_ms=i, sealed_ms=i)
+                             producer_id=f"iv{i}:full", account="acct", onset_ms=AGO + i, sealed_ms=AGO + i)
                 tx.put("inbox", f"e{i}", {"id": f"e{i}", "env": E.to_json(env), "kind": str(env.kind),
-                                          "accepted": i, "state": "accounted", "outcome": "told"})
+                                          "accepted": AGO + i, "state": "accounted", "outcome": "told"})
             else:
-                tx.put("says", f"s{i}", {"say_id": f"s{i}", "text": text, "channels": ["voice"], "t_ms": i,
+                tx.put("says", f"s{i}", {"say_id": f"s{i}", "text": text, "channels": ["voice"], "t_ms": AGO + i,
                                          "heard_chars": heard, "state": "ended"})
     return store.snapshot("acct")
 

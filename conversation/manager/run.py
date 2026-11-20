@@ -261,9 +261,23 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
                                   ToolResult("refused", data={"reason": "the answer is an order: reply or no_reply"})))
                     repaired = True
                     continue
+            if text and await _say_lost(conv, r, batch, steps, "no_order"):
+                return
             await _command(conv, r, batch, commands.NoReply("no_order" if text else "empty"), steps, last_try=True)
             return
-    await _fail(conv, r, "max_steps")
+    if not await _say_lost(conv, r, batch, steps, "max_steps"):   # reads to the cap: he still hears something
+        await _fail(conv, r, "max_steps")
+
+
+async def _say_lost(conv: "Conversation", r: "Running", batch: Batch, steps: list, why: str) -> bool:
+    """Never silence: the language's own «I lost that» line (`mute_lines`), counted as `why`. False with no line."""
+    line = conv.words.line("mute_lines") if conv.words is not None else ""
+    if not line:
+        return False
+    _emit(conv, "command", r, command=why)
+    if not _park(conv, r, batch, commands.Reply(line), line, len(steps), conv.clock.now_ms()):
+        await _publish(conv, r, batch, line, len(steps))
+    return True
 
 
 async def _memory(conv: "Conversation", r: "Running") -> list:

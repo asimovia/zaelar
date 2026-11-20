@@ -29,6 +29,7 @@ class PortTimeout(TimeoutError):
 def _slow(em: Emitter, cfg: Config, port: str, ms: float, refs: dict | None = None, timed_out: bool = False) -> None:
     if ms > getattr(cfg, f"{port}_budget_ms", cfg.port_budget_ms) or timed_out:
         em.emit("conv_run", "port_slow", owner="manager", cause={"kind": "port", "ref": port}, refs=refs or {},
+                trace=None if refs else f"port:{port}",       # outside a run, the port is its own flow
                 port=port, ms=int(ms), timed_out=timed_out)
 
 

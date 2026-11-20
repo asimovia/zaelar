@@ -40,12 +40,19 @@ def load(cases: list[str] | None = None, langs: list[str] | None = None) -> list
     return [c for c in suite["conversations"] if (not cases or c["case"] in cases) and (not langs or c["lang"] in langs)]
 
 
+def is_order_text(reply) -> bool:
+    """A reply that is an order's TEXT (`no_reply(…)`, `reply(…)`) is no answer: the model wrote its order as prose."""
+    t = str(reply or "").strip().lower()
+    return t.startswith(("no_reply(", "reply(", "no_reply ", "<no_reply", "<reply"))
+
+
 def judge(rec: dict) -> dict:
     """The manager's path, per thought; a conversation passes when every gated check of every thought passes."""
     out = []
     for row in rec["thoughts"]:
         t, ans = row["turn"], row["answers"]
-        said = [a for a in ans if str(a.get("reply") or "").strip()]
+        said = [a for a in ans if str(a.get("reply") or "").strip() and not is_order_text(a.get("reply"))]
+        junk = [a for a in ans if is_order_text(a.get("reply"))]
         closes = [((a.get("conv") or {}).get("close")) for a in ans]
         called = set().union(*[families(c) for a in ans for c in a.get("tool_calls") or []]) if ans else set()
         refused = [c for a in ans for c in a.get("refused_calls") or []]
@@ -57,10 +64,11 @@ def judge(rec: dict) -> dict:
                                            for c in closes[-1:]) and "no_close_yet" not in closes,
              "answers_ok": len(said) == 1 if t["needs_answer"] else len(said) <= 1,
              "route": expect <= called and not (called & forbid),
-             "no_effect": not ({"messaging", "screen"} & called) and not rec.get("new_tasks")}
+             "no_effect": not ({"messaging", "screen"} & called) and not rec.get("new_tasks"),
+             "no_order_text": not junk}
         if rec["lang"] in ("es", "en") and said:
             r["language"] = all(lang_of(a["reply"]) in (rec["lang"], "?") for a in said)
-        gated = ("close", "answers_ok", "no_effect", "language") + (("route",) if rec["case"] in ROUTE_GATED else ())
+        gated = ("close", "answers_ok", "no_effect", "language", "no_order_text") + (("route",) if rec["case"] in ROUTE_GATED else ())
         r["pass"] = all(r[k] for k in gated if k in r)
         out.append(r)
     proof = rec.get("proof") or {}

@@ -25,8 +25,10 @@ def build(catalog: list[ToolSpec], *, native: str, name: str, agent: str = "", p
         "PERSON": f"named {person}" if person else "name not known yet",
         "LANGUAGE": f"each reply in the language of the person's entries it answers; when that is not clear, {native} "
                     f"({name})",
-        "INPUT": "the person's entries since the last reply, each with its id, channel and time; an entry cut off says "
-                 "so; CONVERSATION is what was said, ours cut to what was heard; STATE is now and what is open",
+        "INPUT": "the entries to answer now, each on its own whatever CONVERSATION holds, with its id, channel and "
+                 "time; an entry cut off says so; CONVERSATION is what was said before, ours cut to what was heard, an "
+                 "earlier session marked with its age; STATE is now and what is open, its notes possibly in another "
+                 "language than the conversation's",
         "READS": reads or "none",
         "ACTS": ("they exist and are held in this phase, refused if called: " + ", ".join(held)) if held
                 else "none in this session: nothing but a read passes",

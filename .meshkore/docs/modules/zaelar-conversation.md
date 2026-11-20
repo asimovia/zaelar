@@ -53,7 +53,10 @@ exist and are held in this phase (the event vocabulary's names, refused if calle
 one line each, byte-identical between turns, under 600 tokens. Every answer is an order: the provider is told a tool
 call is required, and text with no order is never said. An entry reaches the model with its id, channel and time; a
 figure that still matches nothing after the one repair gets the language's own line, never silence. Each close says
-where its time went (queue, model, tools, grace, publish), and each port is slow by its own budget. Its `model_done` says
+where its time went (queue, model, tools, grace, publish), and each port is slow by its own budget. The turns before
+the last long silence (`session_gap_ms`) reach the model marked as an earlier session, with their age: a question
+asked again another day is answered again, never taken for one already answered. Two rounds of text with no order,
+or a run that reads to its cap, end in the language's own «I lost that» line — never in silence. Its `model_done` says
 which model and provider answered, after a relay too.
 
 A figure of data in a reply is published only against its evidence (D9). Against STRUCTURED evidence the whole

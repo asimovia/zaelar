@@ -597,6 +597,9 @@ _PACKAGE_CEILINGS["memory"] += 11          # same: a sandbox's reset of one acco
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 52    # same: who is who, what each read is for and the acts held in the prefix; the pack's words; the reset
 _PACKAGE_CEILINGS["server"] += 23          # same: the sandbox's reset endpoint, refused on a real engine
 _TOTAL_MAX += 129    # same cause
+_PACKAGE_CEILINGS["conversation"] += 37    # 2026-11-20 V2-941 v3.1 B7c (the tester's live passes): an earlier session marked with its age; never silence after text with no order or at the step cap
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 5    # same: INPUT declared as now, STATE's notes in another language; the pack's variants
+_TOTAL_MAX += 42     # same cause
 
 
 def test_the_total_only_shrinks():

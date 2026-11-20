@@ -128,9 +128,30 @@ class _Reads:
 
 def test_the_bench_reads_the_orders_field_and_a_missing_one_counts_against():
     assert asyncio.run(cb.read(_Reads(lambda i: False), "w", "es")) is False
-    assert asyncio.run(cb.read(_Reads(lambda i: True, first_read=True), "w", "es")) is True
+    assert asyncio.run(cb.read(_Reads(lambda i: True), "w", "es")) is True
     assert asyncio.run(cb.read(_Reads(lambda i: None), "w", "es")) is None
     assert "LANGUAGE: each reply" in cb.prompt("w", "es").prefix and "«w»" in cb.prompt("w", "es").input
+
+
+def test_a_provider_that_never_answers_is_infra_never_a_silent_fail():
+    from conversation.ports import Failed
+
+    class _Down:
+        async def stream(self, prompt, tools, *, run_id, model_id):
+            assert tools == []                                           # no read offered: it measures the field
+            yield Failed("HTTP 401", "provider")
+
+    got = asyncio.run(cb.read(_Down(), "w", "es"))
+    assert got.startswith("failed:")
+    s = cb.score([{"lang": "es", "label": "incomplete", "complete": got}] * 10
+                 + [{"lang": "es", "label": "complete", "complete": got}] * 100)
+    assert s["infra"] and not s["pass"]
+
+
+def test_a_reply_that_is_an_orders_text_is_no_answer():
+    rec = _rec("T12", reply='no_reply(reason="w0")')
+    assert not text_suite.judge(rec)["pass"]
+    assert text_suite.judge(_rec("T12", reply="Vale."))["pass"]
 
 
 def _results(complete_for_incomplete, complete_for_complete) -> list[dict]:

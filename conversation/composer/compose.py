@@ -46,10 +46,10 @@ def view_from(snapshot, *, prefix: str, now_ms: int, window: int = 12, **kw) -> 
     items = tuple(r for _k, r in snapshot.scan(ITEMS, OPEN_STATES))
     inbox = [r for _k, r in snapshot.recent(INBOX, 4 * window)]
     theirs = [(r["accepted"], 0, {"role": "user", "channel": r["env"]["channel"], "text": r["env"]["body"]["text"],
-                                  "heard_chars": None, "ref": r["env"]["body"]["intervention_id"]})
+                                  "heard_chars": None, "ref": r["env"]["body"]["intervention_id"], "at": r["accepted"]})
               for r in inbox if r["kind"] in CONTENT and r["state"] == "accounted"]
     ours = [(r["t_ms"], 1, {"role": "agent", "channel": "+".join(r["channels"]), "text": r["text"],
-                            "heard_chars": r["heard_chars"], "ref": r["say_id"]})
+                            "heard_chars": r["heard_chars"], "ref": r["say_id"], "at": r["t_ms"]})
             for _k, r in snapshot.recent(SAYS, 2 * window)]
     turns = tuple(t for _at, _o, t in sorted(theirs + ours, key=lambda x: (x[0], x[1])))
     lost = [(r["updated_ms"], iv, r.get("reason") or "no_words") for iv, r in snapshot.recent(IVS, 4 * window)
@@ -70,5 +70,6 @@ def compose(view: View, batch: tuple[E.Envelope, ...], cfg: Config) -> PromptPar
         if lost:
             state.append(blocks.lost_block(view.now_ms, lost))
     return PromptParts(prefix=view.prefix, state="\n\n".join(state),
-                       conversation=blocks.cut_to_heard(list(view.turns), cfg.conversation_turns),
+                       conversation=blocks.cut_to_heard(list(view.turns), cfg.conversation_turns, view.now_ms,
+                                                        cfg.session_gap_ms),
                        input=blocks.input_block(batch, view.tz_offset_min))

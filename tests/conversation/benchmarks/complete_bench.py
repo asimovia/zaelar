@@ -8,9 +8,10 @@ The items come from the frozen corpus, cut where §1.6 quater needs the reading:
               on after a mark, the case the provider's mark gets wrong
   COMPLETE    a whole thought that needs an answer
 Each item is asked alone, as the manager asks it: the real prefix (`conversation_host.prefix`), the item as one
-closed voice entry, the read catalogue, on the routing table's voice model through the Model port (`FastModel`); a
-read the model wants first gets an empty result, once. What is read is the order's `complete`: true, false, or no
-field (which counts against).
+closed voice entry, on the routing table's voice model through the Model port (`FastModel`), with no read offered —
+it measures the reading of the thought, not tool behaviour. What is read is the order's `complete`: true, false, or
+no field (which counts against). The keys come from the operator's credential store (a bare process has none); a
+provider that does not answer most items makes the run INFRA (exit 2), never a silent fail of the gate.
 
 The gate, per language (frozen in the design before measuring): at least 6 of 10 incomplete read as `false` and 85 of
 100 complete read as `true`. Short of it, the field is not asked — one line of the prefix — and the fixed graces stay.
@@ -72,22 +73,16 @@ def prompt(text: str, lang: str):
 
 
 async def read(model, text: str, lang: str):
-    """The order's `complete` for one item: True, False, or None (no field, no order)."""
-    from conversation.ports import Command, PromptParts, ToolCall, ToolResult
-    from nucleo.conversation_host import tools_read
-    parts, steps = prompt(text, lang), []
-    for _round in range(2):
-        called = None
-        async for ev in model.stream(PromptParts(parts.prefix, parts.state, parts.conversation, parts.input,
-                                                 tuple(steps)), tools_read.catalog(), run_id="bench", model_id=""):
-            if isinstance(ev, Command) and ev.name in ("reply", "no_reply"):
-                v = ev.args.get("complete")
-                return v if isinstance(v, bool) else None
-            if isinstance(ev, ToolCall) and called is None:
-                called = ev
-        if called is None:
-            return None
-        steps.append((called, ToolResult("ok", {"note": "no data in this bench"})))
+    """The order's `complete` for one item: True, False, None (no field, or no order), or `failed:<why>` when the
+    provider never answered — INFRA, never «the model said nothing». No read is offered: the bench measures the
+    reading of the thought, not what the model does with a tool."""
+    from conversation.ports import Command, Failed
+    async for ev in model.stream(prompt(text, lang), [], run_id="bench", model_id=""):
+        if isinstance(ev, Failed):
+            return f"failed:{ev.reason[:80]}"
+        if isinstance(ev, Command) and ev.name in ("reply", "no_reply"):
+            v = ev.args.get("complete")
+            return v if isinstance(v, bool) else None
     return None
 
 
@@ -103,9 +98,13 @@ def score(results: list[dict]) -> dict:
                           "missing": sum(r["complete"] is None for r in mine),
                           "marked": sum(r.get("cut") == "marked" for r in mine)}
             row[label]["rate"] = round(row[label]["right"] / len(mine), 3) if mine else None
-        row["pass"] = all(row[k]["rate"] is not None and row[k]["rate"] >= GATE[k] for k in GATE)
+        failed = sum(isinstance(r["complete"], str) for r in rs)
+        row["failed"] = failed
+        row["infra"] = failed > len(rs) // 2              # the provider, not the model: never a verdict on the field
+        row["pass"] = not row["infra"] and all(row[k]["rate"] is not None and row[k]["rate"] >= GATE[k] for k in GATE)
         out[lang] = row
-    return {"by_lang": out, "pass": bool(out) and all(v["pass"] for v in out.values())}
+    infra = any(v["infra"] for v in out.values())
+    return {"by_lang": out, "infra": infra, "pass": bool(out) and not infra and all(v["pass"] for v in out.values())}
 
 
 async def run(model, langs: list[str], n_incomplete: int, n_complete: int, seed: int) -> list[dict]:
@@ -116,6 +115,14 @@ async def run(model, langs: list[str], n_incomplete: int, n_complete: int, seed:
     return results
 
 
+def load_credentials() -> bool:
+    """The model keys a bare process does not have: the operator's credential store, from the MAIN checkout (a
+    worktree never holds it) — loaded into this process's environment, never printed. False when there is none."""
+    from dotenv import load_dotenv
+    from tests.platform.sandbox_engine import OPERATOR_STORE
+    return OPERATOR_STORE.is_file() and bool(load_dotenv(OPERATOR_STORE, override=False))
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--lang", nargs="+", default=["es", "en"])
@@ -124,6 +131,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--out", type=Path, default=None)
     a = ap.parse_args(argv)
+    load_credentials()
     from nucleo.conversation_host.model import FastModel
     results = asyncio.run(run(FastModel(), a.lang, a.incomplete, a.complete, a.seed))
     s = score(results)
@@ -132,6 +140,9 @@ def main(argv: list[str] | None = None) -> int:
     out.write_text(json.dumps({"score": s, "results": results}, ensure_ascii=False, indent=1))
     print(json.dumps(s, indent=1))
     print(out)
+    if s["infra"]:
+        print("INFRA: most items got no answer from the provider — keys, quota or network; no verdict on the field")
+        return 2
     return 0 if s["pass"] else 1
 
 

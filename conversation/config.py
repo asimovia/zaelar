@@ -82,6 +82,8 @@ class Config:
     #: manager never waits on one forever.
     say_end_ms: int = 20_000
     #: a run may call the model at most this many times (tool results fed back between calls).
+    #: A searched turn takes 2–3 (a read, maybe another, the order) and the repairs one each; a run that reaches the cap
+    #: still ends in a line he hears (`mute_lines`), never in a silent failure.
     max_steps: int = 6
     #: §1.10 bis: a DERIVED figure (counted or averaged from what a read of this run returned) may be said, citing
     #: that evidence — the door closes with this at False; and a reply with derived figures spends its one repair
@@ -100,6 +102,9 @@ class Config:
     open_budget: int = 8
     #: the last turns of the conversation, literal.
     conversation_turns: int = 12
+    #: a silence longer than this ends a session: the turns before it reach the model marked as an earlier session,
+    #: with their age — history, never what is being answered now.
+    session_gap_ms: int = 30 * 60_000
 
     def misordered(self) -> list[str]:
         """The graces only bound each other in this order (§1.6 quater: the model's reading never waits longer than

@@ -89,6 +89,7 @@ NOT_A_WAIT = {
     "mouth_budget_ms": "the mouth's port: slower is an event, not a wait",
     "evidence_ttl_ms": "how long evidence stays valid for a claim, not a wait",
     "voice_lost_window_ms": "how far back a lost voice is told with a text, not a wait",
+    "session_gap_ms": "the silence that marks the turns before it as an earlier session, not a wait",
 }
 
 

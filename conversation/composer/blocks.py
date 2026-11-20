@@ -66,15 +66,31 @@ def lost_block(now_ms: int, lost: list[tuple[int, str, str]]) -> str:
                                                   for at, iv, why in lost])
 
 
-def cut_to_heard(turns: list[dict], keep: int) -> tuple[Turn, ...]:
+def _age(ms: int) -> str:
+    m = max(0, ms) // 60_000
+    return f"{m} min" if m < 120 else f"{m // 60} h" if m < 48 * 60 else f"{m // 1440} days"
+
+
+def cut_to_heard(turns: list[dict], keep: int, now_ms: int | None = None, gap_ms: int = 0) -> tuple[Turn, ...]:
+    """The last turns, ours cut to what was heard. A turn of an EARLIER session — before the last silence longer than
+    `gap_ms` — says so, with its age: what was asked then is history, never what is being answered now (a question
+    asked again on another day was taken for one already answered)."""
+    turns = turns[-keep:]
+    edge = -1
+    if now_ms is not None and gap_ms > 0:
+        ats = [t.get("at") for t in turns] + [now_ms]
+        edge = max((i for i in range(len(turns)) if ats[i] is not None and ats[i + 1] is not None
+                    and ats[i + 1] - ats[i] > gap_ms), default=-1)
     out = []
-    for t in turns[-keep:]:
+    for i, t in enumerate(turns):
         text = t["text"]
         if t["role"] == "agent":
             heard = t.get("heard_chars")
             text = f"{text} [heard: unknown]" if heard is None else text[:heard]
             if not text:
                 continue
+        if i <= edge and t.get("at") is not None:
+            text = f"[earlier session · {_age(now_ms - t['at'])} ago] {text}"
         out.append(Turn(t["role"], t.get("channel", ""), text, t.get("ref", "")))
     return tuple(out)
 
