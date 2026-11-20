@@ -177,7 +177,7 @@ async def notify(title: str, text: str, *, key: str = "", task_id: str = "", kin
 
     from nucleo import runstate
     claim = speak and notice_claim.held_for_the_manager()     # the manager's voice is the one mouth, ephemeral too:
-    speak, stopped = speak and not claim, runstate.stopped() and not claim   # painted here, said by it, CLAIMED below
+    stopped = claim or runstate.stopped()                      # it writes the line and says it; the row is CLAIMED
     said = painted = False
     if not stopped:
         try:

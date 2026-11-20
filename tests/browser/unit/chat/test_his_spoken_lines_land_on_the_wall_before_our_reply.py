@@ -8,7 +8,11 @@ spoken phrases, takes every event as it reaches the bus — the dicts the SSE st
 the production router (`sse.routeEvent`) into the real store and the real ChatWall in Chromium, then reads the DOM:
 two bubbles of his, in order, the caption gone, then ours.
 
-Disarm: take `wall_lines.listen` off the manager's telemetry → his lines never become bubbles (red).
+Ours (plan v3.2 C2/C4): said, our line is owed until the voice the body replays starts it with the line's trace, and
+its end leaves on the wall what sounded.
+
+Disarms: take `wall_lines.listen` off the manager's telemetry → his lines never become bubbles (red); the line's trace
+not adopted at its start → ours is never painted by its voice (red).
 """
 from __future__ import annotations
 
@@ -57,17 +61,28 @@ def browser_and_port():
         srv.terminate(); srv.wait(timeout=10)
 
 
-def _events(monkeypatch, wired: bool = True) -> list[dict]:
+def _events(monkeypatch, wired: bool = True, voiced: bool = False) -> list[dict]:
     """Two spoken phrases through the real manager, in a voice session of it: what reaches the bus, in order. In a
     thread of its own: Playwright's sync API holds an event loop in this one, and the manager runs its own."""
     import concurrent.futures
     from voice import remote_session  # noqa: F401 — its plugins register on the main thread only
     from voice.engine.pipeline import agent_events  # noqa: F401
     with concurrent.futures.ThreadPoolExecutor(1) as pool:
-        return pool.submit(_run, monkeypatch, wired).result(timeout=60)
+        return pool.submit(_run, monkeypatch, wired, voiced).result(timeout=60)
 
 
-def _run(monkeypatch, wired: bool) -> list[dict]:
+class _Voice:
+    """The voice half as the body sees it: the line starts, the voice process says it speaks, the line is cut."""
+
+    def __init__(self):
+        self.acks = []
+
+    def speak(self, order, ack):
+        self.acks.append((order, ack))
+        return True
+
+
+def _run(monkeypatch, wired: bool, voiced: bool = False) -> list[dict]:
     import bus
     from conversation.ports import Done
     from conversation.store import MemoryStore
@@ -85,7 +100,8 @@ def _run(monkeypatch, wired: bool) -> list[dict]:
     if wired:
         port = h.tel.emit
         h.tel.emit = lambda k, lab, p: (port(k, lab, p), wall_lines.listen(k, lab, p))
-    mouth = WallMouth(h.clock)
+    voice = _Voice() if voiced else None
+    mouth = WallMouth(h.clock, voice=voice, ack_later=h.conv.ack)
     mouth.ack = h.conv.ack
     h.mouth.say = mouth.say
     h.model.default = lambda ids: [reply("Here it is."), Done()]
@@ -94,7 +110,14 @@ def _run(monkeypatch, wired: bool) -> list[dict]:
     rs.handle({"k": "transcript", "final": False, "text": "for"})
     h.utter([(["for", "tomorrow"], 0)], at=h.clock.mono + 50)
     h.settle(9000)
-    return [e for e in got if e.get("kind") in ("transcript", "interim", "ambient")]
+    if voiced:                                # our line sounds, the voice says so, and it is cut after «Here»
+        from conversation.mouth import SayEnded, SayStarted
+        order, ack = voice.acks[0]
+        ack(SayStarted(order.say_id, 0))
+        rs.handle({"k": "state", "state": "speaking"})
+        ack(SayEnded(order.say_id, "cut", 4, 0, order.endpoint))
+        rs.handle({"k": "state", "state": "listening"})
+    return [e for e in got if e.get("kind") in ("transcript", "interim", "ambient", "brain", "bot_speech")]
 
 
 def _page(browser, port):
@@ -149,4 +172,24 @@ def test_unwired_his_lines_never_become_bubbles(browser_and_port, monkeypatch):
     _replay(pg, _events(monkeypatch, wired=False))
     until_sync(lambda: "Z: Here it is." in pg.evaluate(READ), "our reply lands")
     assert not [r for r in pg.evaluate(READ) if r.startswith("H: ")]
+    pg.close()
+
+
+def test_our_said_line_is_painted_when_its_voice_starts_and_kept_to_what_sounded(browser_and_port, monkeypatch):
+    """C2/C4: said, our line is owed until the voice the body replays starts it (with the line's trace), and its end
+    leaves on the wall what sounded — below his two lines."""
+    br, port = browser_and_port
+    events = _events(monkeypatch, voiced=True)
+    kinds = [(e["kind"], e.get("role") or e.get("label")) for e in events if e["kind"] in ("brain", "transcript")]
+    assert kinds[-2:] == [("brain", "assistant"), ("transcript", "assistant")], kinds
+    pg = _page(br, port)
+    owed = next(i for i, e in enumerate(events) if e["kind"] == "brain") + 1
+    _replay(pg, events[:owed])
+    until_sync(lambda: pg.evaluate(READ) == ["H: Show me the agenda", "H: for tomorrow"], "his lines")
+    pg.wait_for_timeout(300)
+    assert pg.evaluate(READ) == ["H: Show me the agenda", "H: for tomorrow"], "owed, not painted before its voice"
+    _replay(pg, events[owed:])
+    until_sync(lambda: pg.evaluate(READ) == ["H: Show me the agenda", "H: for tomorrow", "Z: Here…"],
+               f"his two lines, then ours as it sounded: {pg.evaluate(READ)}")
+    assert not pg._errors, pg._errors
     pg.close()

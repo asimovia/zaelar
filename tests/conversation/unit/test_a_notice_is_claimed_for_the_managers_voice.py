@@ -1,7 +1,8 @@
 """A notice is claimed for the manager's voice, and has one consumer at a time (node 13.47, v3.1 §1.7, B6).
 
-While a session of the manager holds the voice, `notify` paints the line and CLAIMS it — no push, no `shown` — so the
-retry and the drain to the next screen, which read `owed`, never touch it. The manager takes each claimed line once:
+While a session of the manager holds the voice, `notify` CLAIMS the line — no push, no `shown`, and no paint: the
+manager's mouth writes it as it says it, so it is one line (plan v3.2 C5) — so the retry and the drain to the next
+screen, which read `owed`, never touch it. The manager takes each claimed line once:
 said, it is `spoken`; not, it goes back to `owed` and its other ways run. A claim past its deadline goes back by
 itself on the retry pulse. Claim and release compare the state: nothing moves a row that is not where it should be.
 With no voice of the manager — or the manager not loaded at all — a notice runs today's path.
@@ -40,10 +41,10 @@ def _notify(key: str, text: str = "w1") -> dict:
     return asyncio.run(notices.notify("t", text, key=key))
 
 
-def test_with_the_managers_voice_a_notice_is_painted_and_claimed_never_pushed(channels):
+def test_with_the_managers_voice_a_notice_is_claimed_never_painted_nor_pushed(channels):
     owed.set_voice_live(True)
     got = _notify("k1")
-    assert got["state"] == "claimed" and channels["painted"] == [("w1", False)] and channels["pushed"] == []
+    assert got["state"] == "claimed" and channels["painted"] == [] and channels["pushed"] == []
     notices._last_retry[0] = 0
     asyncio.run(notices.retry_owed(now=notices._now() + 1))             # the retry reads `owed`: not this one
     assert notices.drain_to_screen() == 0                                # nor does the drain to the next screen

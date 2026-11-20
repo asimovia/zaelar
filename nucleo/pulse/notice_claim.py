@@ -29,9 +29,10 @@ def held_for_the_manager() -> bool:
 
 
 def claim_for_voice(row: dict) -> dict:
-    """The manager says it, by voice, when it is free and nobody speaks: `notify` has painted the row on the screen,
-    and it is CLAIMED — no push, no `shown` — so the retry and the drain to the next screen, which read `owed`, never
-    touch it. One consumer at a time; a claim past its deadline goes back to `owed` (`release_expired`)."""
+    """The manager says it, by voice, when it is free and nobody speaks, and its mouth writes the line on the wall —
+    `notify` paints nothing, so the line is one. The row is CLAIMED — no push, no `shown` — so the retry and the drain
+    to the next screen, which read `owed`, never touch it. One consumer at a time; a claim past its deadline goes back
+    to `owed` (`release_expired`), and then the retry shows it."""
     N = _n()
     N._set(row["id"], state="claimed", channel="", next_try_at=N._now() + CLAIM_S)
     N._observe(row, "claimed", "voice")

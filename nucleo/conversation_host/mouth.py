@@ -1,13 +1,25 @@
-"""The `Mouth` port of a switched session (V2-941, B5 and B9). Its TEXT half: a line goes to the chat column of every
-screen, as the old turn's reply does (`transcript`, role assistant). A line on the VOICE channel, with a voice session
-of the manager live, is also said (`voice_mouth.speak`), and its acks — what sounded — come from the voice; otherwise
-it is acknowledged at once as SHOWN, whole. `stop` cuts our voice now.
+"""The `Mouth` port of a switched session (V2-941, B5 and B9; plan v3.2 C2/C4). Its rows are the old turn's:
+
+  · a line SHOWN (no voice session of the manager, or the text channel) is the `transcript` row, role assistant, at
+    once and whole, and is acknowledged as shown;
+  · a line SAID (`voice_mouth.speak`) is announced as owed (`brain` reply, its trace), so the wall paints it when its
+    voice starts — the line's trace is adopted at `SayStarted`, so the voice's `bot_speech` carries it — and its
+    `transcript` row is written when it ENDS, with what sounded (cut to `heard_chars`). Its acks come from the voice.
+
+`stop` cuts our voice now.
 """
 from __future__ import annotations
 
 from typing import Callable
 
 from conversation.mouth import SayEnded, SayStarted
+
+
+REPLY = "💬 conversation: reply"        # the wall's owed line (a `brain` reply, role assistant, with its trace)
+
+
+def trace_of(order) -> str:
+    return order.request_id[2:] if order.request_id.startswith("r_") else order.request_id
 
 
 class WallMouth:
@@ -20,17 +32,33 @@ class WallMouth:
 
     async def say(self, order) -> None:
         from voice import observer
-        observer.emit("transcript", "zaelar", text=order.text, role="assistant",
-                      extra={"trace": order.request_id[2:] if order.request_id.startswith("r_") else order.request_id,
-                             "conv_say": order.say_id}, piece="f_mouth")
+        extra = {"trace": trace_of(order), "conv_say": order.say_id}
         if self._said is not None:
             self._said(order.request_id, order.text)
-        if "voice" in order.channels and self.voice is not None and self.voice.speak(order, self.ack_later):
+        if "voice" in order.channels and self.voice is not None and self.voice.speak(order, self._sounded(order)):
+            observer.emit("brain", REPLY, text=order.text, role="assistant", extra=extra, piece="f_mouth")
             return                                      # its acks come from the voice: what sounded, or «unknown»
+        observer.emit("transcript", "zaelar", text=order.text, role="assistant", extra=extra, piece="f_mouth")
         if self.ack is not None:
             now = self._clock.now_ms()
             self.ack(SayStarted(order.say_id, now))
             self.ack(SayEnded(order.say_id, "played", len(order.text), now, order.endpoint, "shown"))
+
+    def _sounded(self, order) -> Callable:
+        """The voice's acks of one line, on their way to the conversation: at its start the line's trace is the voice's
+        (its `bot_speech` paints the owed line); at its end its row is written with what sounded."""
+        def ack(sig) -> None:
+            from voice import observer, trace
+            if isinstance(sig, SayStarted):
+                trace.adopt(trace_of(order))
+            elif isinstance(sig, SayEnded):
+                heard = order.text if sig.heard_chars is None else order.text[:max(0, sig.heard_chars)]
+                if heard.strip():
+                    observer.emit("transcript", "zaelar", text=heard, role="assistant",
+                                  extra={"trace": trace_of(order), "conv_say": order.say_id, "outcome": sig.outcome},
+                                  piece="f_mouth")
+            self.ack_later(sig)
+        return ack
 
     def stop(self, endpoint, *, reason: str) -> None:
         if self.voice is not None:

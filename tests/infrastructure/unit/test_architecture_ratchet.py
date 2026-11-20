@@ -718,6 +718,8 @@ _PACKAGE_CEILINGS["nucleo/conversation_host"] += 19    # 2026-11-20 V2-941 (plan
 _PACKAGE_CEILINGS["nucleo/turn"] += 2                  # same cause: the old turn's brief counts itself in that state
 _PACKAGE_CEILINGS["voice"] += 1                        # same cause: the eager end of turn fires nothing in that state
 _TOTAL_MAX += 9      # same cause, measured
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 28    # 2026-11-20 V2-941 (plan v3.2 C2/C4/C5): our lines with the old turn's rows — owed when said, the line's trace the voice's from its start, the row at its end with what sounded (`WallMouth._sounded`)
+_TOTAL_MAX += 29     # same cause, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())
