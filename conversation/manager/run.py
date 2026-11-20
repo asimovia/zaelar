@@ -84,6 +84,16 @@ def sweep_liveness(conv: "Conversation", now: int) -> None:
                 conv.current.interrupt = "stalled"
 
 
+def _grace(conv: "Conversation", batch: Batch, complete: bool | None = None) -> int | None:
+    """Not before: the grace of the batch's voice entries — the model's own reading when it gave one (§1.6 quater),
+    the fixed graces of the marks otherwise (§1.6 ter). A batch with no voice entry has none."""
+    voice = [(e.sealed_ms, e.body.terminal) for e in batch.envelopes
+             if e.is_user and e.kind is EnvelopeKind.USER_UTTERANCE]
+    c = conv.cfg
+    return ordering.publish_at(voice, c.terminal_grace_ms, c.nonterminal_grace_ms, complete, c.complete_grace_ms,
+                               c.incomplete_grace_ms)
+
+
 def _requests(batch: Batch) -> tuple[str, ...]:
     return tuple(dict.fromkeys(f"r_{e.refs.intervention_id}" for e in batch.envelopes
                                if e.kind in REQUEST_KINDS and e.refs.intervention_id))
@@ -96,11 +106,10 @@ async def run_batch(conv: "Conversation", batch: Batch) -> None:
     reqs = _requests(batch)
     run_id = conv.ids.new("run")
     content = [e for e in users if e.kind in REQUEST_KINDS]
-    voice = [(e.sealed_ms, e.body.terminal) for e in content if e.kind is EnvelopeKind.USER_UTTERANCE]
     r = Running(run_id, tuple(e.id for e in batch.envelopes), reqs,
                 RunCtx(run_id, reqs[0] if reqs else run_id, {e.id: e for e in batch.envelopes}, endpoint),
                 batch_seq=batch.run_seq, entries=tuple((e.sealed_ms, e.endpoint) for e in content),
-                publish_at=ordering.publish_at(voice, conv.cfg.terminal_grace_ms, conv.cfg.nonterminal_grace_ms))
+                publish_at=_grace(conv, batch))
     r.trace = root({"req": reqs[0]} if reqs else {}) or run_id
     conv.em.bind(run_id, r.trace)
     conv.current, conv.state = r, MgrState.RUNNING
@@ -211,8 +220,9 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
                     steps.append((ev, await _tool(conv, r, ev)))
                     _checkpoint(conv, r)
                 elif isinstance(ev, Command):
-                    _emit(conv, "command", r, command=ev.name)
-                    if await _command(conv, r, batch, commands.parse(ev), steps, last_try=repaired):
+                    order = commands.parse(ev)
+                    _emit(conv, "command", r, command=ev.name, complete=getattr(order, "complete", None))
+                    if await _command(conv, r, batch, order, steps, last_try=repaired):
                         return
                     repaired, called = True, True        # one repair round, with the reason as a step
                     break
@@ -274,18 +284,33 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
                 close(conv, req, "silent", "silent", r, reason="claims_unverified")
             _emit(conv, "ended", r, outcome="silent", reason="claims_unverified")
             return True
-        if r.publish_at is not None and now < r.publish_at:     # half a thought is not answered: it waits its grace
-            r.parked = (cmd.text, len(steps), batch)
-            _emit(conv, "held", r, waits_for="grace", until_ms=r.publish_at)
+        if _park(conv, r, batch, cmd, cmd.text, len(steps), now):    # half a thought is not answered: it waits
             return True
         await _publish(conv, r, batch, cmd.text, len(steps))
         return True
     reason = getattr(cmd, "reason", None) or getattr(cmd, "name", "")
+    if isinstance(cmd, commands.NoReply) and cmd.complete is False and _park(conv, r, batch, cmd, None, len(steps), now):
+        return True                             # «something is missing» and no reply: silent only once he did not go on
+    _silent(conv, r, reason, now)
+    return True
+
+
+def _park(conv: "Conversation", r: "Running", batch: Batch, cmd, text: str | None, steps: int, now: int) -> bool:
+    """The order waits for its grace — the model's reading of the thought if it gave one, the marks' otherwise. True:
+    parked (`text` None: a silent close waits)."""
+    r.publish_at = _grace(conv, batch, getattr(cmd, "complete", None))
+    if r.publish_at is None or now >= r.publish_at:
+        return False
+    r.parked = (text, steps, batch, getattr(cmd, "reason", ""))
+    _emit(conv, "held", r, waits_for="grace", until_ms=r.publish_at, complete=getattr(cmd, "complete", None))
+    return True
+
+
+def _silent(conv: "Conversation", r: "Running", reason: str, now: int) -> None:
     for req in r.requests:
         close(conv, req, "silent", "silent", r, reason=reason)
     conv.inbox.account(list(r.batch_ids), "silent", now)
     _emit(conv, "ended", r, outcome="no_reply", reason=reason)
-    return True
 
 
 async def _publish(conv: "Conversation", r: "Running", batch: Batch, text: str, steps: int) -> None:
@@ -333,10 +358,13 @@ async def publish_parked(conv: "Conversation") -> bool:
     r = conv.current
     if r is None or r.parked is None or conv.clock.now_ms() < r.publish_at:
         return r is None or r.parked is None
-    r, (text, steps, batch) = _unpark(conv)
+    r, (text, steps, batch, reason) = _unpark(conv)
     conv.current, conv.state = r, MgrState.RUNNING          # it publishes as the run in course
     try:
-        await _publish(conv, r, batch, text, steps)
+        if text is None:
+            _silent(conv, r, reason, conv.clock.now_ms())   # a silent close that waited its grace
+        else:
+            await _publish(conv, r, batch, text, steps)
     except _Stop as stop:
         r.said.append(("stopped", str(stop)))   # held right before sealing: the hold already said why
     finally:

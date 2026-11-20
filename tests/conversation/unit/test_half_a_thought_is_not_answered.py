@@ -10,6 +10,11 @@ entries the latest grace rules; a text has none. A provider's eager hint decides
 The publication hold looks at EVERY device that contributed an entry (P3 seed 60): he resumes on the device that is
 not the last entry's, and nothing is said; a device that contributed nothing does not hold.
 
+The model may say, with its order, whether the thought is answerable (`complete`, §1.6 quater): an answerable one is
+published not before `complete_grace_ms` from the last voice close, one with something missing not before
+`incomplete_grace_ms` — and a `no_reply` read as incomplete closes silent only then. No field, or one that is not a
+boolean, leaves the marks' graces; on a text the field changes nothing.
+
 A voice never stops anything by itself: what he says while a run is in course is an entry that substitutes it, and the
 model decides. A voice that cut our line and ended with no word resumes that line once, from the last sentence heard —
 unless an entry with words came first, or the line was stopped by us.
@@ -336,3 +341,92 @@ def test_a_noise_that_keeps_rising_resumes_the_line_once_and_never_its_resumptio
         h.conv.ack(SayEnded(h.mouth.orders[-1].say_id, "cut", 0, t + 60, "d1", "agent_estimate"))
         t += 100
     assert [o.text for o in h.mouth.orders].count("w3 w4. w5 w6.") == 1
+
+
+# ── §1.6 quater: the model's own reading sets the grace ─────────────────────────────────────────────────────────
+
+def _reads(h: Harness, **field) -> None:
+    h.model.default = lambda ids: [reply("ok " + "+".join(ids), **field), Done()]
+
+
+@pytest.mark.parametrize("terminal", [True, False])
+def test_read_as_complete_it_goes_out_at_its_short_grace(store, terminal):
+    h = Harness(store, grace=True)
+    _reads(h, complete=True)
+    closed = h.utter([(["w1"], 0)], terminal=terminal)
+    _run_clock(h, closed + 9000)
+    start = h.conv.cfg.nonterminal_start_ms if terminal is False else 0       # the mark still decides the start
+    said = _say_times(h)
+    assert len(said) == 1 and closed + h.conv.cfg.complete_grace_ms <= said[0] <= closed + max(
+        h.conv.cfg.complete_grace_ms, start) + 100, said
+
+
+def test_read_as_incomplete_with_nobody_going_on_it_goes_once_at_its_grace(store):
+    h = Harness(store, grace=True)
+    _reads(h, complete=False)
+    closed = h.utter([(["w1"], 0)], terminal=True)
+    _run_clock(h, closed + 12_000)
+    said = _say_times(h)
+    assert len(said) == 1 and abs(said[0] - (closed + h.conv.cfg.incomplete_grace_ms)) <= 100, said
+
+
+def test_read_as_incomplete_and_back_at_four_seconds_nothing_is_said_and_both_travel(store):
+    h = Harness(store, grace=True)
+    _reads(h, complete=False)
+    closed = h.utter([(["w1"], 0)], terminal=True)
+    _run_clock(h, closed + 4000)
+    assert not h.mouth.orders
+    _reads(h, complete=True)
+    h.utter([(["w2"], 0)], terminal=True, at=closed + 4000)
+    _run_clock(h, h.clock.mono + 4000)
+    assert len(h.mouth.orders) == 1
+    assert "«w1»" in h.model.calls[-1].prompt.input and "«w2»" in h.model.calls[-1].prompt.input
+
+
+@pytest.mark.parametrize("field", [{}, {"complete": "yes"}, {"complete": 1}, {"complete": None}])
+def test_no_field_or_one_that_is_not_a_boolean_leaves_the_marks_graces(store, field):
+    h = Harness(store, grace=True)
+    _reads(h, **field)
+    closed = h.utter([(["w1"], 0)], terminal=True)
+    _run_clock(h, closed + 9000)
+    said = _say_times(h)
+    assert len(said) == 1 and abs(said[0] - (closed + h.conv.cfg.terminal_grace_ms)) <= 100, said
+
+
+@pytest.mark.parametrize("complete", [True, False])
+def test_on_a_text_the_field_changes_nothing(store, complete):
+    h = Harness(store, grace=True)
+    _reads(h, complete=complete)
+    h.typed("w1", 100)
+    _run_clock(h, 600)
+    assert _say_times(h) and _say_times(h)[0] <= 100 + h.conv.cfg.collect_ms + 100
+
+
+def _silent_closes(h: Harness) -> list[int]:
+    return [p["t_ms"] for k, lab, p in h.tel.events if k == "conv_close" and lab == "silent"]
+
+
+def _silent_incomplete(h: Harness) -> None:
+    h.model.default = lambda ids: [Command("no_reply", {"reason": "w0", "complete": False}), Done()]
+
+
+def test_no_reply_read_as_incomplete_closes_silent_at_its_grace(store):
+    h = Harness(store, grace=True)
+    _silent_incomplete(h)
+    closed = h.utter([(["w1"], 0)], terminal=True)
+    _run_clock(h, closed + 2000)
+    assert not _silent_closes(h)                                          # not yet: he may go on
+    _run_clock(h, closed + 9000)
+    assert len(_silent_closes(h)) == 1 and abs(_silent_closes(h)[0] - (closed + h.conv.cfg.incomplete_grace_ms)) <= 100
+
+
+def test_no_reply_read_as_incomplete_and_he_goes_on_closes_nothing_and_both_travel(store):
+    h = Harness(store, grace=True)
+    _silent_incomplete(h)
+    closed = h.utter([(["w1"], 0)], terminal=True)
+    _run_clock(h, closed + 3000)
+    _reads(h, complete=True)
+    h.utter([(["w2"], 0)], terminal=True, at=closed + 3000)
+    _run_clock(h, h.clock.mono + 4000)
+    assert not _silent_closes(h) and len(h.mouth.orders) == 1
+    assert "«w1»" in h.model.calls[-1].prompt.input and "«w2»" in h.model.calls[-1].prompt.input

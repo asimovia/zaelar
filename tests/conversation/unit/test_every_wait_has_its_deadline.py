@@ -65,6 +65,9 @@ WAITS: dict[str, tuple[tuple[str, ...], str]] = {
                                                          "nothing_is_said"),
     "a reply waiting for its grace": (("terminal_grace_ms", "nonterminal_grace_ms"), U + "test_half_a_thought_is_not_"
                                       "answered::test_with_nobody_going_on_the_answer_goes_at_its_grace_once"),
+    "an order waiting for the grace the model read": (("complete_grace_ms", "incomplete_grace_ms"), U + "test_half_a_"
+                                                      "thought_is_not_answered::test_read_as_incomplete_with_nobody_"
+                                                      "going_on_it_goes_once_at_its_grace"),
     "a line cut by a voice that brought no word": (("resume_cut_within_ms",), U + "test_half_a_thought_is_not_answered"
                                                    "::test_a_line_we_stopped_or_a_breath_too_late_is_not_resumed"),
     "an open voice of an earlier epoch": ((), U + "test_a_crash_at_any_transition_recovers::"

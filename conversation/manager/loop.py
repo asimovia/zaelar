@@ -46,8 +46,8 @@ class Running:
     interrupt: str | None = None          # superseded · cancelled · stalled
     actions_held: bool = False
     entries: tuple = ()                   # (close, device) of the person's entries in the batch
-    publish_at: int | None = None         # not before: the latest grace of its voice entries
-    parked: tuple | None = None           # (text, steps, batch): a reply ready, waiting for its grace
+    publish_at: int | None = None         # not before: the grace of its voice entries (the model's reading, or the marks')
+    parked: tuple | None = None           # (text, steps, batch, reason): an order waiting for its grace (text None: silent)
     resumed_iv: str | None = None         # the resumed voice that stopped this run
     trace: str = ""                       # the root of its first request: every event of the run carries it
     said: list = field(default_factory=list)

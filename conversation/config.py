@@ -43,6 +43,11 @@ class Config:
     #: …and one closed with a mark (or unknown) runs at once but is not published before this. With several voice
     #: entries the latest grace rules; a text has none. 0 publishes at once. The host sets all three as thresholds.
     terminal_grace_ms: int = 3000
+    #: §1.6 quater: when the model says, with its order, whether the thought is answerable, its reading replaces the
+    #: two graces above — not before `complete_grace_ms` from the last voice close if it is, not before
+    #: `incomplete_grace_ms` if something seems missing. The mark still decides when the run starts. Thresholds.
+    complete_grace_ms: int = 1000
+    incomplete_grace_ms: int = 6000
     #: a barge-in that ended with no word (no voice, a noise) resumes the line it cut, once, from the last sentence
     #: heard — if it ends within this of the cut and no entry with words came in between.
     resume_cut_within_ms: int = 4000

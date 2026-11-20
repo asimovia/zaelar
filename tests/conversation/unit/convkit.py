@@ -21,7 +21,8 @@ class Harness:
         reply may go out."""
         config = config or Config()
         if not grace:
-            config = dataclasses.replace(config, nonterminal_start_ms=0, nonterminal_grace_ms=0, terminal_grace_ms=0)
+            config = dataclasses.replace(config, nonterminal_start_ms=0, nonterminal_grace_ms=0, terminal_grace_ms=0,
+                                         complete_grace_ms=0, incomplete_grace_ms=0)
         self.clock, self.tel = FakeClock(t0_ms=0), ListTelemetry()   # signal times ARE the wall clock
         self.model, self.tools, self.mouth = ScriptedModel(script or {}), RecordingTools(), AckingMouth()
         self.store, self.owed = store, FakeOwed()

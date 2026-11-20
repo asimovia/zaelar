@@ -35,11 +35,17 @@ def waits_for_voice(entries: list[tuple[int, str | None]], voices: list[tuple[st
     return next((iv for iv, onset, ep in voices if ep in last and onset - last[ep] <= window_ms), None)
 
 
-def publish_at(voice_entries: list[tuple[int, bool | None]], terminal_ms: int, nonterminal_ms: int) -> int | None:
-    """When a batch may publish: the latest grace of its voice entries (close, terminal) — a long one after a close
-    with no sentence mark, a short one otherwise (unknown reads as a mark). None: no voice entry, no grace."""
-    return max((at + (nonterminal_ms if terminal is False else terminal_ms) for at, terminal in voice_entries),
-               default=None)
+def publish_at(voice_entries: list[tuple[int, bool | None]], terminal_ms: int, nonterminal_ms: int,
+               complete: bool | None = None, complete_ms: int = 0, incomplete_ms: int = 0) -> int | None:
+    """When a batch may publish. With the model's own reading (`complete`, §1.6 quater): the close of its last voice
+    entry plus `complete_ms` (an answerable thought) or `incomplete_ms` (something missing). Without it: the latest
+    grace of its voice entries (close, terminal) — a long one after a close with no sentence mark, a short one
+    otherwise (unknown reads as a mark). None: no voice entry, no grace — a text has none, whatever the field."""
+    if not voice_entries:
+        return None
+    if complete is not None:
+        return max(at for at, _t in voice_entries) + (complete_ms if complete else incomplete_ms)
+    return max(at + (nonterminal_ms if terminal is False else terminal_ms) for at, terminal in voice_entries)
 
 
 def hold_behind(text_onset: int, open_voice: dict[str, dict]) -> str | None:

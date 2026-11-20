@@ -19,8 +19,9 @@ def input_ids(prompt: PromptParts) -> list[str]:
     return [line[1:].split(" ", 1)[0].rstrip("]") for line in prompt.input.splitlines() if line.startswith("[")]
 
 
-def reply(text: str, claims: list | None = None) -> Command:
-    return Command("reply", {"text": text, "claims": claims or []})
+def reply(text: str, claims: list | None = None, **extra) -> Command:
+    """`extra`: the optional fields of the order as the model would send them — `complete`, valid or not."""
+    return Command("reply", {"text": text, "claims": claims or [], **extra})
 
 
 @dataclass

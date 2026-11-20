@@ -67,7 +67,8 @@ class AuditedSqliteStore(_Audited, SqliteStore):
 #: the numbers the design writes (v3.1 §1.6 bis, §1.6 ter), frozen here: the properties judge against THESE, never
 #: against the configuration the case runs with — a value raised out of design must turn a property red
 SPEC = {"intervention_max_ms": 30_000, "resume_hold_max_ms": 8000, "resume_window_ms": 20_000,
-        "terminal_grace_ms": 3000, "nonterminal_grace_ms": 5000, "nonterminal_start_ms": 1500, "liveness_ms": 60_000}
+        "terminal_grace_ms": 3000, "nonterminal_grace_ms": 5000, "nonterminal_start_ms": 1500, "liveness_ms": 60_000,
+        "complete_grace_ms": 1000, "incomplete_grace_ms": 6000}
 
 
 class Case:
@@ -148,16 +149,21 @@ class Case:
                      "direction": self.rng.choice(["up", "down"])}
             if self.rng.random() < 0.2:
                 claim.pop("value")                                                 # a number with no value
-            out += [reply("w8nv" if "value" not in claim else "w8", [claim]), Done()]
+            out += [reply("w8nv" if "value" not in claim else "w8", [claim], **self._reading()), Done()]
         elif r < 0.60:
-            out += [Command("no_reply", {"reason": "p3"}), Done()]
+            out += [Command("no_reply", {"reason": "p3", **self._reading()}), Done()]
         elif r < 0.65:
             out += [Failed("p3", "provider")]
         elif r < 0.654:
             out += [self._hang(), reply("w0"), Done()]                       # a provider that hangs
         else:
-            out += [reply(f"w{self.rng.randint(10, 99)}. w{self.rng.randint(10, 99)}?"), Done()]
+            out += [reply(f"w{self.rng.randint(10, 99)}. w{self.rng.randint(10, 99)}?", **self._reading()), Done()]
         return out
+
+    def _reading(self) -> dict:
+        """The model's reading of the thought (§1.6 quater): answerable, something missing, no field, or a value that
+        is not a boolean."""
+        return self.rng.choice([{"complete": True}, {"complete": False}, {}, {"complete": "w"}])
 
     # ── input, at random ───────────────────────────────────────────────────────────────────────────────────────
 
@@ -446,13 +452,26 @@ def _held_voice_spoken_over(case, events, inbox_rows) -> list[str]:
     return out
 
 
+def _due(voice: list[dict], complete) -> int | None:
+    """When a batch's order may go out, from the design's numbers: the model's reading if it was a boolean (§1.6
+    quater), the marks' graces otherwise (§1.6 ter)."""
+    if not voice:
+        return None
+    if isinstance(complete, bool):
+        return max(e["sealed_ms"] for e in voice) + SPEC["complete_grace_ms" if complete else "incomplete_grace_ms"]
+    return max(e["sealed_ms"] + SPEC["nonterminal_grace_ms" if e["body"].get("terminal") is False
+                                     else "terminal_grace_ms"] for e in voice)
+
+
 def _graces(case, inbox_rows) -> list[str]:
-    """§1.6 ter, judged from the design's numbers (the review of A6c): no voice reply before the latest grace of its
-    batch; no run before `nonterminal_start` after a close with no mark; no line of a run after a stop accepted in its
+    """§1.6 ter and quater, judged from the design's numbers (the review of A6c): no voice reply — and no silent close
+    the model read as incomplete — before the grace its batch got; at most one line per run; no run before `nonterminal_start` after a close with no mark; no line of a run after a stop accepted in its
     flow; a reply waiting for its grace and superseded by a new entry of his is never said; no line owed and no
     resumed line while a reply waits for its grace."""
     envs = {r["id"]: r["env"] for r in inbox_rows}
     batch, trace, stopped, parked, out = {}, {}, {}, {}, []
+    reading: dict = {}                                     # run → the model's last reading of the thought
+    lines: dict = {}
     resumed: dict = {}                                     # a line is resumed once, and a resumption never
     for k, lab, p in case.tel.events:
         if k == "conv_mouth" and lab == "say" and p.get("resumes"):
@@ -468,6 +487,12 @@ def _graces(case, inbox_rows) -> list[str]:
                      and t - e["sealed_ms"] < SPEC["nonterminal_start_ms"]]
             if early:
                 out.append(f"grace: {r['run']} started {t - early[0]['sealed_ms']} ms after a close with no mark")
+        elif k == "conv_run" and lab == "command" and p.get("command") in ("reply", "no_reply"):
+            reading[r["run"]] = p.get("complete")
+        elif k == "conv_close" and lab == "silent" and reading.get(r.get("run")) is False and r.get("run") in batch:
+            due = _due([e for e in batch[r["run"]] if e["kind"] == "user.utterance"], False)
+            if due is not None and t < due and p.get("reason") == "p3":          # the model's own no_reply
+                out.append(f"grace: {r['run']} closed silent at {t}, before its grace at {due}")
         elif k == "conv_run" and lab == "held" and p.get("waits_for") == "grace":
             parked[r["run"]] = None
         elif k == "conv_run" and r.get("run") in parked and lab in ("held", "superseded", "cancelled", "ended"):
@@ -481,10 +506,12 @@ def _graces(case, inbox_rows) -> list[str]:
             run = r.get("run")
             if (p.get("notice_key") or p.get("resumes")) and parked:
                 out.append(f"grace: a line owed or resumed at {t} while {sorted(parked)[0]} waits")
-            elif run in batch:
-                voice = [e for e in batch[run] if e["kind"] == "user.utterance"]
-                due = max((e["sealed_ms"] + SPEC["nonterminal_grace_ms" if e["body"].get("terminal") is False
-                                                 else "terminal_grace_ms"] for e in voice), default=None)
+            elif run in batch and not p.get("resumes"):
+                lines[run] = lines.get(run, 0) + 1                  # a resumption is the same line again
+
+                if lines[run] > 1:
+                    out.append(f"grace: {run} said {lines[run]} lines")
+                due = _due([e for e in batch[run] if e["kind"] == "user.utterance"], reading.get(run))
                 if due is not None and t < due:
                     out.append(f"grace: {run} said at {t}, before its grace at {due}")
                 if run in stopped and t >= stopped[run]:
