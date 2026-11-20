@@ -868,6 +868,9 @@ _PACKAGE_CEILINGS["nucleo/turn"] -= 1031
 _TOTAL_MAX += 49     # measured after the move (the shims' lines)
 _PACKAGE_CEILINGS["conversation"] += 107   # 2026-11-21 E7d-1 (R-2): a declared new mechanism — an EVENT of the world enters the inbox with its source's authority (`EventBody`, producer `event:`, its policy row), runs alone by the host's `Events` port and never the model (`manager/events.py`), his words first
 _TOTAL_MAX += 107    # same cause, measured
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 93   # 2026-11-21 E7d-2 (R-2): the door of the world's events into the manager (`events_in.py`: a routed event handed over as an EVENT, its route kept by id, the `Events` port obeying it on the engine's loop, the old way when the conversation cannot open)
+_PACKAGE_CEILINGS["nucleo/events"] += 11   # same: the pump's route obeyed by ONE body (`pump.obey`), the manager's door or the pump itself
+_TOTAL_MAX += 104    # same causes, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

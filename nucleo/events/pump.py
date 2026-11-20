@@ -5,8 +5,10 @@ ended, a worker that asked), turns each into an event (`nucleo/events.event`), a
 obeys: RESUME a row that waits for it (its session relaunched by id with the event as its re-brief) or hand it to
 the claimant that owns it (an errand bound to that conversation, `errands.watch`); STREAM it to the worker of the
 rules that subscribe to it; NOTHING leaves the source's own handling standing (the messaging triage, the delivery).
-A cron's due job is routed through the same door from `pulse/due` (`publish`). Every route is recorded once
-(`flow` event, literal label). Never raises: an event that cannot be routed is left to its source.
+A cron's due job is routed through the same door from `pulse/due` (`publish`). With the conversation manager on, the
+routed event enters it as an EVENT (`conversation_host/events_in`) and its door obeys the route there (`obey`); off, it
+is obeyed here. Every route is recorded once (`flow` event, literal label). Never raises: an event that cannot be routed
+is left to its source.
 """
 from __future__ import annotations
 
@@ -91,6 +93,16 @@ async def publish(ev: dict, *, now: float | None = None) -> dict:
                      origin=ev.get("origin"), key=ev.get("key"), message=once.key_of(ev))
         return {"as": flow_events.NOTHING, "again": True}
     r = await asyncio.to_thread(flow_events.route, ev)
+    from nucleo.conversation_host import events_in
+    if not events_in.give(ev, r, now):       # the conversation manager takes it (R-2), else it is obeyed here
+        obey(ev, r, now)
+    return r
+
+
+def obey(ev: dict, r: dict, now: float) -> None:
+    """Carry out the route the router decided — the one body both the conversation's `Events` door and the pump with
+    no manager call."""
+    from nucleo.events import route as flow_events
     how = r.get("as")
     try:
         if how == flow_events.RESUME and r.get("by") == "row":
@@ -110,4 +122,3 @@ async def publish(ev: dict, *, now: float | None = None) -> dict:
         _events.said("flow", "🧵 an event is routed", str(ev.get("text") or "")[:160], origin=ev.get("origin"),
                      key=ev.get("key"), task_id=r.get("task", ""), rules=[x.get("id") for x in (r.get("rules") or [])],
                      **{"as": r.get("as"), "by": r.get("by", "")})
-    return r
