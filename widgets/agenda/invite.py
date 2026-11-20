@@ -29,6 +29,8 @@ meeting's own guest list and the errand's `mandate.parties` — never from the w
 from __future__ import annotations
 
 import re
+
+from connectors import exit as door
 from widgets.say import say
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$")
@@ -124,10 +126,7 @@ def find_meeting(db: dict, payload: dict) -> "dict | None":
     title = str(payload.get("meeting") or payload.get("title") or "").strip()
     hits = _hits(db, payload)
     if title:
-        if not hits:
-            return None
-        return hits[0] if len(hits) == 1 else \
-            sorted(hits, key=lambda m: (m.get("date") or "", m.get("startTime") or ""))[-1]
+        return sorted(hits, key=lambda m: (m.get("date") or "", m.get("startTime") or ""))[-1] if hits else None
     if hits and str(payload.get("date") or "").strip():
         hits = [m for m in hits if not m.get("allDay")] or hits
         return sorted(hits, key=lambda m: (m.get("date") or "", m.get("startTime") or ""))[0]
@@ -135,9 +134,7 @@ def find_meeting(db: dict, payload: dict) -> "dict | None":
     ahead = [m for m in (db.get("meetings") or [])
              if m.get("date") and not m.get("allDay") and m.get("startTime")
              and (m["date"] > today or (m["date"] == today and str(m.get("endTime") or m["startTime"]) >= now))]
-    if not ahead:
-        return None
-    return sorted(ahead, key=lambda m: (m.get("date") or "", m.get("startTime") or ""))[0]
+    return min(ahead, key=lambda m: (m.get("date") or "", m.get("startTime") or ""), default=None)
 
 
 def consent_scope(action: str, payload: dict, db: dict) -> dict:
@@ -263,8 +260,7 @@ def run(db: dict, payload: dict) -> dict:
 
     note = str(payload.get("message") or payload.get("text") or "").strip()
     via = _via(payload)
-    from connectors import exit as door      # the install's outbound switch: no rung runs while invitations are held
-    if (held := door.check("invite", door.INVITE)):
+    if (held := door.check("invite", door.INVITE)):      # the install's outbound switch: no rung runs while held
         return {"ok": False, "error": held,
                 "message": say("agenda", "say_invite_held", "Invitations are held on this install: nothing was sent.")}
     # RUNG 1 — the meeting has a calendar behind it: the calendar sends the invitation. He may NAME the rung
@@ -358,10 +354,8 @@ def _mail_invitation(m: dict, guests: dict, note: str) -> dict:
     try:
         from connectors.calendar import ics as _ics
         from connectors.email import config as _mailcfg
-        from connectors import exit as door
     except Exception:
         return {"ok": False, "error": "no tengo el conector de correo disponible para mandar la invitación"}
-    me = ""
     try:
         me = str(_mailcfg.address() or "").strip()
     except Exception:
@@ -399,5 +393,4 @@ def _offset_minutes() -> int:
     """The install's own UTC offset, in minutes — the same one the Google body builder derives, asked once
     here so the .ics and the calendar event can never disagree about what hour the meeting is at."""
     import datetime as _dt
-    now = _dt.datetime.now().astimezone()
-    return int((now.utcoffset() or _dt.timedelta(0)).total_seconds() // 60)
+    return int((_dt.datetime.now().astimezone().utcoffset() or _dt.timedelta(0)).total_seconds() // 60)

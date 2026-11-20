@@ -1,18 +1,14 @@
-#
 # gcal.py — the Google Calendar GLUE between `widgets/agenda/data.py` and `connectors/calendar/service.py`
-# (V2-679). Extracted out of data.py to pay the architecture ratchet by EXTRACTION rather than raising the
-# ceiling (data.py sat exactly at the 900-line ceiling before this feature — the same newborn-file rule that
-# already governs `widgets/youtube/account.py`, this module's closest sibling in shape).
-#
-# `data.py` imports this module at the top (safe: nothing here imports `data` at module scope, only lazily
-# inside functions that need `load_db`/`compute_plan`/`WIDGET_ID` — the usual way this codebase avoids a
-# circular import between a widget's data.py and its own delegate module).
+# (V2-679), extracted out of data.py (then at its 900-line ceiling) like `widgets/youtube/account.py`.
+# `data.py` imports it at the top: nothing here imports `data` at module scope, only lazily inside functions.
 #
 from __future__ import annotations
 
 import time as _time
 
 from loguru import logger
+
+from widgets.say import say
 
 # CALENDAR CONNECTORS shown in the agenda's header (V2-540). Deliberately a READ of the real inventory, never
 # a hardcoded «off»: the day a calendar connector is registered under this family it lights up here with
@@ -208,7 +204,6 @@ def rsvp_google(m: dict, answer: str) -> tuple[bool, str]:
         return False, "el conector de Google Calendar no está disponible en este build"
     from connectors import exit as door      # the install's outbound switch: an answer to an invitation leaves too
     if door.check("rsvp", door.INVITE):
-        from widgets.say import say
         return False, say("agenda", "say_rsvp_held", "Answers to invitations are held on this install: "
                                                      "the organizer was not told.")
     try:
