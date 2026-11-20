@@ -401,7 +401,7 @@ import pytest as _pytest7
 
 @_pytest7.fixture(autouse=True)
 def _the_landed_writes_ring_is_empty():
-    from nucleo.flash import served_writes as _sw
+    from nucleo.circuit import served_writes as _sw
     _sw.reset()
     yield
     _sw.reset()
