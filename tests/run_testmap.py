@@ -3086,6 +3086,16 @@ DOMAINS: list[dict] = [
                                  "the unknown ending folded into done; `show()` not marking it shown; `show()` not fetching",
             "ch": UNIT, "paths": ["tests/browser/unit/side_procesos/test_the_procesos_column_is_its_own_component.py",
                                   "tests/browser/unit/side_procesos/test_the_procesos_column_alone_in_a_browser.py"]},
+        {"id": "4.605", "title": "The side panel's Clusters tab (V2-086) is a component of its own: `frontend/side/clusters/` "
+                                 "imports nothing outside its folder and nothing imports it but `services/clusters-bridge.js`; what a "
+                                 "row and the connect gate say runs under Node; on a blank page, fed the backend's real rows through a "
+                                 "hand-made bridge, it paints them, only his click on «yes» resolves the gate (never its appearing, a "
+                                 "refresh, a row's connect or show), show asks for the list and the list keeps its node; through the "
+                                 "real bridge and store, his «yes» is the one thing that posts {ok: true}. Disarms: an outside import, "
+                                 "a second importer, the peer words swapped, the column or the bridge answering the gate, the list "
+                                 "rebuilt per refresh",
+            "ch": UNIT, "paths": ["tests/browser/unit/side_clusters/test_the_clusters_column_is_a_component.py",
+                                  "tests/browser/unit/side_clusters/test_the_clusters_column_in_a_browser.py"]},
         {"id": "4.606", "title": "The side panel's Connectors and Network columns are components of their own (INI-042 #49): "
                                  "`frontend/side/conectores/` and `frontend/side/red/` import nothing from outside their folder and "
                                  "nothing imports them but their bridges; their models order the families and read the network in "

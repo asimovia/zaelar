@@ -342,8 +342,7 @@ body.chatdock-r .statuspanel{right:calc(18px + var(--chatdock-r))}
 .cw-subtab.on{color:var(--hb-ink);background:var(--hb-bg-soft);box-shadow:inset 0 -2px 0 0 var(--hb-accent)}
 .cw-subtab.all{flex:0 0 auto;width:26px;text-align:center;opacity:.55}
 .cw-subtab.all.on{opacity:1}
-/* Clusters tab (V2-086): the NETWORK. Connection status + peers + traffic; no conversation. */
-.cw-clusters .cl-list{flex:1 1 auto;min-height:0;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:7px}
+/* Clusters tab (V2-086): a component of its own, its list styled in frontend/side/clusters/clusters.css. */
 /* The connector/cluster ROW (.cl-*, .cn-*) moved to core/components.css (2026-11-16): the phone draws the same list. */
 .cl-confirm{margin:10px 12px 0;border:1px solid var(--hb-accent);border-radius:11px;padding:10px 11px;
   background:color-mix(in srgb, var(--hb-accent) 7%, transparent)}
