@@ -61,9 +61,15 @@ def speak(order, ack) -> bool:
 
 
 def stop() -> bool:
-    """Our voice stops now: the same door, `cut` and no text. False: no voice half."""
+    """Our voice stops now: the same door, `cut` and no text. With the voice on the old path (text only) it is that
+    voice that stops — his «stop» typed to the manager never leaves it talking. False: no voice at all."""
     cl = _live()
-    if cl is None:
+    if cl is not None:
+        cl.post_soon("/voice/say", {"text": "", "cut": True, "conv": True})
+        return True
+    from voice import remote_session as rs
+    old = rs._M.get("client")
+    if rs._M.get("session") is None or old is None or getattr(old, "_loop", None) is None:
         return False
-    cl.post_soon("/voice/say", {"text": "", "cut": True, "conv": True})
+    old.post_soon("/voice/say", {"text": "", "cut": True})
     return True

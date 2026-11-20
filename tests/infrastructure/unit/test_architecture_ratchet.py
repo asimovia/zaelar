@@ -661,6 +661,10 @@ _PACKAGE_CEILINGS["nucleo/conversation_host"] += 24    # same: an answer cut by 
 _PACKAGE_CEILINGS["voice"] += 48           # same: the main stream behind the adapter (recovery streams never heard), a reconnect inside a stream, the provider gone quiet while his voice is up
 _TOTAL_MAX += 92     # same cause
 
+_PACKAGE_CEILINGS["conversation"] += 23    # 2026-11-20 V2-941 v3.1 B7l (the B7k text re-run): a step with no order asked for it once, a run never ends with his request open (`unended`), a typed no_reply asked once, «I lost that» closes recovered
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 35    # same: the dropped orders named, a disposable engine's knobs to drive the relay live, the manager's stop reaching the old voice
+_PACKAGE_CEILINGS["voice"] += 19           # same (the audit's TJ-1): with the manager for text only, a typed line cuts the old voice first
+_TOTAL_MAX += 77     # same cause
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

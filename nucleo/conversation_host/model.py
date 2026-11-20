@@ -94,6 +94,16 @@ def messages(p: PromptParts) -> list[dict]:
 
 #: a provider cut mid-body with nothing yielded yet is re-sent this many times (the guard's deadline still bounds it)
 RESENDS = 1
+#: a disposable engine only (`sandbox.is_sandbox()`): the titular holds its stream and sends nothing, so the run's
+#: deadline sends the step to the stand-in — the relay driven live
+HANG_TITULAR = "ZAELAR_CONVERSATION_HANG_TITULAR"
+
+
+def _hangs() -> bool:
+    import os
+
+    from nucleo.conversation_host import sandbox
+    return (os.getenv(HANG_TITULAR) or "").strip() == "1" and sandbox.is_sandbox()
 
 
 def max_tokens(channel: str) -> int | None:
@@ -137,6 +147,9 @@ class FastModel:
             said = False
             try:
                 client, spec = self._parts()
+                if model_id != RELAY and _hangs():
+                    import asyncio
+                    await asyncio.sleep(3600)       # cut by the run's own deadline, never by this
                 if model_id == RELAY:               # the run's deadline passed on the titular: its stand-in, or none
                     from nucleo.llm.fast_client import relay_spec_for
                     spec = relay_spec_for(spec, "voice")
@@ -165,7 +178,9 @@ class FastModel:
                 return
         # the stream is over: what it measured is said BEFORE the calls it gathered — an order ends the run, and what
         # came after it would never be read
-        yield Done({k: metrics[k] for k in DONE_KEYS if k in metrics})
+        dropped = [{"name": d.get("name"), "reason": d.get("reason"), "chars": d.get("chars")}
+                   for d in metrics.get("dropped_tool_calls") or () if isinstance(d, dict)]   # never their words
+        yield Done({**{k: metrics[k] for k in DONE_KEYS if k in metrics}, **({"dropped": dropped} if dropped else {})})
         if metrics.get("finish_reason") == "length":   # cut by the ceiling: a half order is never one to carry out
             yield Failed("length: the answer was cut by its token ceiling", "provider")
             return

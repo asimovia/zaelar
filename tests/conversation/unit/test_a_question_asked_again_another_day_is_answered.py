@@ -50,7 +50,7 @@ def test_two_rounds_of_text_with_no_order_end_in_the_lost_line_once(store):
     h.conv.words = _Words()
     h.model.default = lambda ids: [TextDelta("w8"), Done()]
     h.utter([(["w1"], 0)])
-    assert [o.text for o in h.mouth.orders] == ["w_lost"] and [lab for lab, _ in h.closes()] == ["answered"]
+    assert [o.text for o in h.mouth.orders] == ["w_lost"] and [lab for lab, _ in h.closes()] == ["recovered"]
     assert [p.get("command") for k, lab, p in h.tel.events if k == "conv_run" and lab == "command"][-1] == "no_order"
 
 

@@ -63,7 +63,9 @@ def test_text_with_no_order_is_never_said(store, text):
     h = Harness(store, grace=False)
     _rounds(h, [[TextDelta(text), Done()]])
     h.utter([(["w1"], 0)])
-    assert h.mouth.orders == [] and [lab for lab, _ in h.closes()] == ["silent"]
+    assert all(o.text != text for o in h.mouth.orders)                         # its text is never said…
+    assert [(lab, p["reason"]) for lab, p in h.closes()] == [("recovered", "no_order")]   # …and never a silence:
+    assert "conv:failed:r_iv_000001" in h.owed.rows                           # he is owed «I lost that» (13.103)
     assert len(h.model.calls) == 2                                            # one round asked for an order
     assert [p.get("command") for k, lab, p in h.tel.events if k == "conv_run" and lab == "command"] == \
         ["text_without_order", "text_without_order"]

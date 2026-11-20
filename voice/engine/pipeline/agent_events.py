@@ -269,6 +269,8 @@ def receive_typed(txt: str, *, _emit, session, dev: str = "") -> None:
     from nucleo.conversation_host import switch as _conv_switch   # the switch alone: off, the manager is never loaded
     if _conv_switch.typed_on(session):              # a text door: the manager for text, even with the voice old
         from nucleo.conversation_host import entry as _conv_entry
+        if not _conv_switch.on(session):             # the voice is the old path's: his line cuts it first, as there
+            _cut_for_typed(txt, _emit=_emit, session=session)
         try:
             loop = _ag.asyncio.get_running_loop()
         except RuntimeError:                         # a caller with no loop: the old way runs where it is
@@ -336,6 +338,23 @@ def cut_current_speech(session) -> bool:
         return False
     speech.interrupt()
     return True
+
+
+def _cut_for_typed(txt: str, *, _emit, session) -> None:
+    """The old path's barge-in for a typed line the manager takes while the voice stays old (text only): the speech
+    in course stops and a turn still composing is superseded — one brain answers his line, never two at once. In the
+    voice process the same door as a stop: `/voice/say` with `cut` and no text."""
+    from nucleo.input import typed as _order
+    _order.note_typed_cut()
+    try:
+        if getattr(session, "CUTS_IN_VOICE_PROCESS", False):
+            session.client.post_soon("/voice/say", {"text": "", "cut": True})
+        elif not cut_current_speech(session):
+            return
+        _emit("vad", "✂️ typed line — cuts the speech in course", text=txt[:80], role="user",
+              extra={"over_agent": True, "typed": True})
+    except Exception as e:  # noqa: BLE001 — a cut that fails never drops his line
+        _emit("alert", "typed line: the speech in course was not cut", text=f"{e!r}"[:160])
 
 
 def _inject_typed(txt: str, *, _emit, session, cut: bool = True) -> None:

@@ -62,6 +62,9 @@ class Running:
     acts_refused: list = field(default_factory=list)   # acts the gateway refused in this run, by name
     asked_to_say: bool = False            # a no_reply after a refused act was asked once to say it
     asked_after_reads: bool = False       # a no_reply after reads for his words was asked once for a reply
+    asked_for_order: bool = False         # a step with no order (text, or one unreadable) was asked once for it
+    lost: str = ""                        # why the line it says is «I lost that» (`_say_lost`): its close says so
+    requeued: bool = False                # its batch went back to the queue (fenced): its requests stay open
     stages: dict = field(default_factory=dict)    # where its time went, ms: queue, model, tools, grace, publish
 
 

@@ -110,6 +110,12 @@ def _grace(conv: "Conversation", batch: Batch, complete: bool | None = None) -> 
                                c.incomplete_grace_ms)
 
 
+def _open(conv: "Conversation", r: "Running") -> list[str]:
+    """The run's requests still open: none, once a run has ended — answered, silent, failed or handed back."""
+    mine = set(r.requests)
+    return [row["id"] for _k, row in conv.store.view(conv.account).scan("items", ("open",)) if row["id"] in mine]
+
+
 def _requests(batch: Batch) -> tuple[str, ...]:
     return tuple(dict.fromkeys(f"r_{e.refs.intervention_id}" for e in batch.envelopes
                                if e.kind in REQUEST_KINDS and e.refs.intervention_id))
@@ -135,6 +141,9 @@ async def run_batch(conv: "Conversation", batch: Batch) -> None:
     try:
         if any(str(getattr(e.body, "text", "") or "").strip() for e in content) or not content:
             await _steps(conv, r, batch)
+            if r.parked is None and not r.requeued and _open(conv, r):
+                _emit(conv, "command", r, command="unended")    # a run never ends with his request open
+                await _fail(conv, r, "unended")
         else:                                   # nothing he said reached us whole: no model, never an empty INPUT
             await _fail(conv, r, "no_words")
     except _Stalled:
@@ -287,7 +296,7 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
     t0 = conv.clock.mono_ms()
     refs = {"run": r.run_id}
     for n_step in range(conv.cfg.max_steps):
-        called, first, text = False, True, ""
+        called, first, text, dropped = False, True, "", []
         t_step = conv.clock.mono_ms()
         events = conv.model.stream(PromptParts(prompt.prefix, prompt.state, prompt.conversation, prompt.input,
                                                tuple(steps), channel), tools, run_id=r.run_id, model_id=model_id)
@@ -321,6 +330,7 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
                     return
                 elif isinstance(ev, Done):
                     _emit(conv, "model_done", r, usage=ev.usage)
+                    dropped = [d.get("name") for d in (ev.usage or {}).get("dropped", ()) if isinstance(d, dict)]
         except guard.PortTimeout:
             if first and model_id != RELAY:        # the deadline passed with nothing from the model: the same step
                 model_id = RELAY                    # goes once to the stand-in — nothing said, nothing fired
@@ -331,17 +341,16 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
         finally:                                    # a stop, a deadline, a command: the provider's stream is closed now
             await stream.aclose()                   # never left to the garbage collector
         _checkpoint(conv, r)
-        if not called:
-            if text:                                # text with no order is never said: the answer is an ORDER
-                _emit(conv, "command", r, command="text_without_order", chars=len(text))
-                if not repaired:
-                    steps.append((ToolCall("orders", "orders_check", {}),
-                                  ToolResult("refused", data={"reason": "the answer is an order: reply or no_reply"})))
-                    repaired = True
-                    continue
-            if text and await _say_lost(conv, r, batch, steps, "no_order"):
-                return
-            await _command(conv, r, batch, commands.NoReply("no_order" if text else "empty"), steps, last_try=True)
+        if not called:                              # no order came: text instead, or one the client could not read
+            _emit(conv, "command", r, command="text_without_order" if text else "no_order", chars=len(text),
+                  dropped=dropped)
+            if not r.asked_for_order:               # once per run, whatever other repair it had: the order again
+                r.asked_for_order, repaired = True, True
+                steps.append((ToolCall("orders", "orders_check", {}),
+                              ToolResult("refused", data={"reason": UNREAD if dropped else NO_ORDER})))
+                continue
+            if not await _say_lost(conv, r, batch, steps, "no_order"):   # never a no_reply: he is told
+                await _fail(conv, r, "no_order")
             return
     if not await _say_lost(conv, r, batch, steps, "max_steps"):   # reads to the cap: he still hears something
         await _fail(conv, r, "max_steps")
@@ -353,7 +362,7 @@ async def _say_lost(conv: "Conversation", r: "Running", batch: Batch, steps: lis
     if not line:
         return False
     _emit(conv, "command", r, command=why)
-    r.origin = FAILURE
+    r.origin, r.lost = FAILURE, why
     held = commands.Reply(line, complete=r.reading)    # it waits the grace the model's last reading gave the thought
     if not _park(conv, r, batch, held, line, len(steps), conv.clock.now_ms()):
         await _publish(conv, r, batch, line, len(steps))
@@ -393,6 +402,9 @@ RESTATE = "these figures are not in the evidence they cite: reply again without 
 AS_TEXT = "the text is what the person hears: the order is the call itself, never its words"
 SAY_THE_ACT = "an act held or refused is a reply that says so"
 EMPTY = "a reply is the words he hears: it has none"
+TYPED_TO_YOU = "a line typed to you is addressed to you: reply to it"
+NO_ORDER = "the answer is an order: reply or no_reply"
+UNREAD = "your order could not be read (its arguments were not valid JSON): send it again"
 SAY_WHAT_WAS_FOUND = "you read for his words: a reply says what was found, or what is missing to answer"
 
 
@@ -496,11 +508,12 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
                       ToolResult("refused", data={"refused_act": list(r.acts_refused), "reason": SAY_THE_ACT})))
         return False
     reads = [c.name for c, res in steps if c.call_id not in ("orders", "claims") and res.status != "refused"]
-    if isinstance(cmd, commands.NoReply) and reads and _said_something(r) and not r.asked_after_reads:
-        r.asked_after_reads = True              # it read for him, then nothing: what it found, or what is missing
-        _emit(conv, "command", r, command="no_reply_after_reads", tools=reads)
-        steps.append((ToolCall("orders", "orders_check", {}),
-                      ToolResult("refused", data={"read": reads, "reason": SAY_WHAT_WAS_FOUND})))
+    typed = _typed_only(r)
+    if isinstance(cmd, commands.NoReply) and (reads or typed) and _said_something(r) and not r.asked_after_reads:
+        r.asked_after_reads = True              # it read for him, or he typed to us — then nothing: asked once
+        _emit(conv, "command", r, command="no_reply_after_reads" if reads else "no_reply_typed", tools=reads)
+        steps.append((ToolCall("orders", "orders_check", {}), ToolResult("refused", data=(
+            {"read": reads, "reason": SAY_WHAT_WAS_FOUND} if reads else {"reason": TYPED_TO_YOU}))))
         return False
     if isinstance(cmd, commands.NoReply) and cmd.complete is False and _park(conv, r, batch, cmd, None, len(steps), now):
         return True                             # «something is missing» and no reply: silent only once he did not go on
@@ -524,16 +537,21 @@ def _silent(conv: "Conversation", r: "Running", reason: str, now: int) -> None:
     for req in r.requests:
         close(conv, req, "silent", "silent", r, reason=reason)
     conv.inbox.account(list(r.batch_ids), "silent", now)
-    users = [e for e in r.ctx.batch.values() if e.is_user]
     _emit(conv, "ended", r, outcome="no_reply", reason=reason, after_refused_act=bool(r.acts_refused),
-          after_reads=r.asked_after_reads,
-          typed_only=bool(users) and all(e.kind is EnvelopeKind.USER_TEXT for e in users))
+          after_reads=r.asked_after_reads, typed_only=_typed_only(r))
+
+
+def _typed_only(r: "Running") -> bool:
+    """Every entry of his in the batch was typed: a line typed to the agent is addressed to it."""
+    users = [e for e in r.ctx.batch.values() if e.is_user]
+    return bool(users) and all(e.kind is EnvelopeKind.USER_TEXT for e in users)
 
 
 async def _publish(conv: "Conversation", r: "Running", batch: Batch, text: str, steps: int) -> None:
     """Seal, say, close the requests, account the batch."""
     if not _seal_batch(conv, r, batch):
         conv.inbox.requeue(list(r.batch_ids))   # fenced: the batch waits; the request stays open
+        r.requeued = True
         return
     reply = choose(batch.envelopes, conv.devices.get(r.ctx.endpoint or "", Device(r.ctx.endpoint)),
                    text_gets_voice=bool(conv.prefs("reply_voice_to_text", True)))     # his rule, as it stands now
@@ -547,11 +565,13 @@ async def _publish(conv: "Conversation", r: "Running", batch: Batch, text: str, 
                            endpoint=r.ctx.endpoint, trace=r.trace,
                            iv=next(iter(r.ctx.batch.values())).refs.intervention_id if r.ctx.batch else None,
                            origin=r.origin)
+    lost = r.origin == FAILURE                  # «I lost that» said in place: told, and still a failure (as `_fail`)
     for req in r.requests:
-        close(conv, req, "answered", "answered", r, steps=steps,
-              stages={**r.stages, "publish_ms": conv.clock.mono_ms() - t_say})
+        close(conv, req, *(("recovered", "recovered") if lost else ("answered", "answered")), r, steps=steps,
+              stages={**r.stages, "publish_ms": conv.clock.mono_ms() - t_say}, **({"reason": r.lost} if lost else {}))
     conv.inbox.account(list(r.batch_ids), "told", conv.clock.now_ms())
-    _emit(conv, "ended", r, outcome="answered", requests=len(r.requests))   # one close per request, each with its req
+    _emit(conv, "ended", r, outcome="failed" if lost else "answered", requests=len(r.requests),   # one close per
+          **({"reason": r.lost, "said": True} if lost else {}))                                  # request, its req
     records.owe(conv, r.run_id, batch.envelopes, text)
 
 

@@ -50,7 +50,8 @@ def test_a_superseded_run_leaves_the_requests_open_and_the_next_run_answers_both
 def test_every_way_a_request_ends_says_so_once(store):
     h = Harness(store)
     stop = control(ControlOp.STOP, 0, "k1", endpoint="d1")
-    plan = [[reply("w1"), Done()], [Command("no_reply", {"reason": "nothing_to_add"}), Done()],
+    quiet = [Command("no_reply", {"reason": "nothing_to_add"}), Done()]       # a typed line is asked once (13.103)
+    plan = [[reply("w1"), Done()], quiet, quiet,
             [Failed("timeout", "provider")], [lambda: h.conv.give(stop), reply("w4"), Done()]]
     # a run on a recovery entry (no intervention of the person) just tells it; the plan is for his entries
     h.model.default = lambda ids: plan.pop(0) if ids and ids[0].startswith("iv") else [reply("w-told"), Done()]

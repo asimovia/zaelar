@@ -40,7 +40,21 @@ def build(genesis: dict | None = None) -> tuple[Config, list[str]]:
             out[key] = v
     from nucleo.input import typed
     cfg = Config(**out, cross_channel_hold_ms=int(typed.CAP_S * 1000))
+    cfg = dataclasses.replace(cfg, **_sandbox_deadline())
     return cfg, problems + cfg.misordered()
+
+
+#: a disposable engine's knobs to drive a provider timeout live (`sandbox.is_sandbox()`): the model's first-event
+#: deadline, and a titular that holds its stream (`model.HANG_TITULAR`) so the stand-in is what answers
+FIRST_MS_ENV = "ZAELAR_CONVERSATION_MODEL_FIRST_MS"
+
+
+def _sandbox_deadline() -> dict:
+    import os
+
+    from nucleo.conversation_host import sandbox
+    raw = (os.getenv(FIRST_MS_ENV) or "").strip()
+    return {"model_first_ms": int(raw)} if raw.isdigit() and int(raw) > 0 and sandbox.is_sandbox() else {}
 
 
 def prefs(key: str, default: Any) -> Any:
