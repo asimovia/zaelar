@@ -1,5 +1,5 @@
-"""The model's stable prefix for the conversation manager (V2-941, the F1 plan §4.7): who is who, the language, what it
-may read and what exists but is held, and the fields of its two orders — declared, never a script of how to behave
+"""The model's stable prefix for the conversation manager (V2-941, the F1 plan §4.7): who is who, the language, how it
+speaks (the language pack's `speech_style`: DNA, never a sentence here), what it may read and what exists but is held, and the fields of its two orders — declared, never a script of how to behave
 (principles: «declare capabilities, never script behaviour»). Byte-identical between turns for the same names,
 language and catalogue, so the provider caches it; every line is one of `LINES`, and the whole stays under
 `MAX_TOKENS`.
@@ -12,17 +12,21 @@ from conversation.ports import ToolSpec
 
 #: measured with names of 23 letters, never the short ones (the stop review's P-2). 600 → 650 on 2026-11-20: the four
 #: stops are named among the orders (P-1: the model must see them as orders, not a silence), paid in part by their
-#: descriptions in the tool list, cut from ~530 characters to under 300
-MAX_TOKENS = 650
+#: descriptions in the tool list, cut from ~530 characters to under 300. 650 → 750 on 2026-11-20: the STYLE line (the
+#: language pack's `speech_style`, ~60 tokens: the manager read back phone numbers and a message's text like a robot)
+#: and the narrower stop rule (E-2: «te paso la tarea dos» chose `stop_voice`); measured 732 in Spanish with both
+#: reply budgets, the held acts having grown to 20 names
+MAX_TOKENS = 750
 
 #: the only lines a prefix carries, in this order
 LINES = tuple(declared()["prefix_lines"])                     # declared data (`declared.json`), in their order
 
 
 def build(catalog: list[ToolSpec], *, native: str, name: str, agent: str = "", person: str = "",
-          held: tuple[str, ...] = (), budget: dict | None = None) -> str:
+          held: tuple[str, ...] = (), budget: dict | None = None, style: str = "") -> str:
     """`agent`: the assistant's own name; `person`: the person's, when known; `held`: the acts that exist but are held in
-    this phase (the event vocabulary's names)."""
+    this phase (the event vocabulary's names); `style`: how the agent speaks, the language pack's `speech_style` (DNA,
+    never a sentence of this file)."""
     reads = "; ".join(f"{t.name}: {t.about}" if t.about else t.name for t in sorted(catalog, key=lambda t: t.name))
     lines = {
         "YOU": f"the assistant{f', named {agent}' if agent else ''} — the name others call you, never the person's; "
@@ -30,6 +34,7 @@ def build(catalog: list[ToolSpec], *, native: str, name: str, agent: str = "", p
         "PERSON": f"named {person}" if person else "name not known yet",
         "LANGUAGE": f"each reply in the language of the person's entries it answers; when that is not clear, {native} "
                     f"({name})",
+        "STYLE": style or "none declared",
         "INPUT": "the entries to answer now, each on its own whatever CONVERSATION holds, with its id, channel and "
                  "time; an entry cut off says so; CONVERSATION is what was said before, ours cut to what was heard, an "
                  "earlier session marked with its age; STATE is now and what is open, its notes maybe in another "
@@ -39,8 +44,8 @@ def build(catalog: list[ToolSpec], *, native: str, name: str, agent: str = "", p
                  + ", ".join(held)) if held
                 else "none in this session: nothing but a read passes",
         "ORDERS": "reply(text, claims, complete) | no_reply(reason, complete) | stop_voice | stop_media | stop_run | "
-                  "stop_all; a stop first, before any read, when his words ask to stop; no_reply: an entry not "
-                  "addressed to you, or nothing to say; an act held or refused, or information missing: a reply "
+                  f"stop_all; {declared()['stop_rule']}; no_reply: an entry not addressed to you, or nothing to say; "
+                  "an act held or refused, or information missing: a reply "
                   "saying so or asking for it",
         "CLAIMS": "one per figure in the text, with its evidence id (a read or his entry); derived: true for a "
                   "figure computed from evidence, citing every id its operands are in, op and operands, "
@@ -70,4 +75,4 @@ def current(catalog: list[ToolSpec]) -> str:
     import genome
     budget = (genome.genesis().get("conversation") or {}).get("reply_budget") or {}
     return build(catalog, native=spec.native, name=spec.name, agent=snapshot.name(), person=person, held=held_acts(),
-                 budget=budget)
+                 budget=budget, style=str(langs.words("speech_style", spec.code) or ""))

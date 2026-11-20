@@ -166,6 +166,7 @@
   "YOU",
   "PERSON",
   "LANGUAGE",
+  "STYLE",
   "INPUT",
   "READS",
   "ACTS",
@@ -174,10 +175,11 @@
   "COMPLETE",
   "LENGTH"
  ],
+ "stop_rule": "a stop first, before any read, and only when his words ask to stop, silence or cancel something; handing you something, or the word in another sense, is no stop",
  "stops": {
   "stop_voice": "he asks you to be quiet: your voice stops; reply only if he asked something besides stopping",
   "stop_media": "he asks to stop what is playing: it stops, nothing else",
-  "stop_run": "he asks you to stop what you are doing: your voice stops, this answer is dropped",
+  "stop_run": "he asks you to stop or cancel what you are doing: your voice stops, this answer is dropped",
   "stop_all": "he asks to stop everything: your voice, what plays, his errands"
  }
 }

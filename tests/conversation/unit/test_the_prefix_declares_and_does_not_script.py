@@ -31,9 +31,12 @@ def test_it_is_byte_identical_between_turns():
 
 def test_it_stays_under_its_ceiling_with_the_real_catalogue_names_and_held_acts():
     from nucleo.conversation_host import tools_read
-    real = prefix.build(tools_read.catalog(), native="English", name="English", agent="Johnny", person="Quinn",
-                        held=prefix.held_acts())
-    assert est_tokens(len(real)) <= prefix.MAX_TOKENS
+    from i18n import langs
+    for code in ("en", "es"):
+        real = prefix.build(tools_read.catalog(), native="English", name="English", agent="Johnny", person="Quinn",
+                            held=prefix.held_acts(), budget={"voice": "two short sentences", "text": "a short paragraph"},
+                            style=langs.words("speech_style", code))
+        assert est_tokens(len(real)) <= prefix.MAX_TOKENS, code
     big = [ToolSpec(f"read_{i:02d}", about="w " * 6) for i in range(12)]
     assert est_tokens(len(prefix.build(big, native="English", name="English", held=prefix.held_acts()))) \
         <= prefix.MAX_TOKENS
@@ -59,3 +62,30 @@ def test_it_says_who_is_who_what_each_read_is_for_and_what_exists_but_is_held():
 def test_the_current_prefix_reads_the_operators_language(monkeypatch):
     monkeypatch.setenv("ZAELAR_LANGUAGE", "en")
     assert "LANGUAGE: each reply in the language of the person's entries" in prefix.current(CATALOG)
+
+
+def test_the_style_line_is_the_language_packs_own(monkeypatch):
+    """How the agent speaks (short, like a person, never reading back a number or a message's text) is the language
+    pack's `speech_style` — DNA the genome owns and a generated language translates — never a sentence of the host."""
+    import inspect
+
+    from i18n import langs
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "es")
+    style = langs.words("speech_style", "es")
+    assert style and style != langs.words("speech_style", "en")
+    lines = dict(line.split(": ", 1) for line in prefix.current(CATALOG).splitlines())
+    assert lines["STYLE"] == style
+    assert style[:30] not in inspect.getsource(prefix)
+
+
+def test_the_stop_wording_is_declared_data():
+    """E-2: «te paso la tarea dos» chose `stop_voice`. When a stop is chosen is the declared `stop_rule` and each stop's
+    own description, both in `declared.json` — the ORDERS line and the tool list carry them verbatim."""
+    from nucleo.conversation_host import model
+    from nucleo.conversation_host.declared import declared
+    d = declared()
+    orders = next(line for line in prefix.build([], native="English", name="English").splitlines()
+                  if line.startswith("ORDERS:"))
+    assert d["stop_rule"] in orders
+    told = {t["function"]["name"]: t["function"].get("description") for t in model.tools_for([])}
+    assert {n: told[n] for n in d["stops"]} == d["stops"]
