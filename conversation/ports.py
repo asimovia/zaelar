@@ -48,6 +48,7 @@ class PromptParts:
     conversation: tuple[Turn, ...]
     input: str                      # the batch, each entry with its id, channel and state
     steps: tuple = ()               # (ToolCall, result) pairs of this run, fed back to the next model call
+    channel: str = ""               # the batch's: "voice" when it holds his voice, else "text" (the host sizes the reply)
 
 
 @dataclass(frozen=True)

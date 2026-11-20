@@ -11,11 +11,11 @@ from conversation.ports import ToolSpec
 MAX_TOKENS = 600
 
 #: the only lines a prefix carries, in this order
-LINES = ("YOU", "PERSON", "LANGUAGE", "INPUT", "READS", "ACTS", "ORDERS", "CLAIMS", "COMPLETE")
+LINES = ("YOU", "PERSON", "LANGUAGE", "INPUT", "READS", "ACTS", "ORDERS", "CLAIMS", "COMPLETE", "LENGTH")
 
 
 def build(catalog: list[ToolSpec], *, native: str, name: str, agent: str = "", person: str = "",
-          held: tuple[str, ...] = ()) -> str:
+          held: tuple[str, ...] = (), budget: dict | None = None) -> str:
     """`agent`: the assistant's own name; `person`: the person's, when known; `held`: the acts that exist but are held in
     this phase (the event vocabulary's names)."""
     reads = "; ".join(f"{t.name}: {t.about}" if t.about else t.name for t in sorted(catalog, key=lambda t: t.name))
@@ -36,11 +36,13 @@ def build(catalog: list[ToolSpec], *, native: str, name: str, agent: str = "", p
                   "you, or nothing to say; an act held or refused, or information missing: a reply saying so or "
                   "asking for it",
         "CLAIMS": "one per figure of data in the text, with the id of the evidence it is in; derived: true for a "
-                  "figure computed from evidence of this reply, with its op (count, sum, difference, mean, ratio, "
-                  "percent) and operands (figures of that evidence), said with what it rests on",
+                  "figure computed from evidence of this reply, with its op and operands (figures of that evidence), "
+                  "said with what it rests on",
         "COMPLETE": "true: the person has finished this thought, whether or not you can answer it yet; false: they "
                     "seem to be mid-thought",
     }
+    told = "; ".join(f"{ch}: {v}" for ch, v in sorted((budget or {}).items()))
+    lines["LENGTH"] = f"{told}; longer only when asked" if told else "as the answer needs"
     return "\n".join(f"{k}: {lines[k]}" for k in LINES)
 
 
@@ -58,4 +60,7 @@ def current(catalog: list[ToolSpec]) -> str:
     from nucleo.self import snapshot
     spec = langs.current_language()
     person = str((memory.state() or {}).get("operator_name") or "").strip()
-    return build(catalog, native=spec.native, name=spec.name, agent=snapshot.name(), person=person, held=held_acts())
+    import genome
+    budget = (genome.genesis().get("conversation") or {}).get("reply_budget") or {}
+    return build(catalog, native=spec.native, name=spec.name, agent=snapshot.name(), person=person, held=held_acts(),
+                 budget=budget)

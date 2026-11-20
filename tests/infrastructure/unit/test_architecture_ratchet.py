@@ -639,6 +639,9 @@ _PACKAGE_CEILINGS["conversation"] += 25    # 2026-11-20 V2-941 v3.1 B8d (the aud
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 94    # same: the ear's own turn number by boot and epoch, a new boot a gap (TH-1); the old way at every door when the conversation never opens, his voice told once (TH-2); a text's percents (`figures.percents`)
 _PACKAGE_CEILINGS["voice"] += 35           # same: a stream's epoch and the gap of the one before; the mic closed clears and never commits, a commit counted where it happens (TH-3); the slow body said
 _TOTAL_MAX += 154    # same cause
+_PACKAGE_CEILINGS["conversation"] += 2     # 2026-11-20 V2-941 v3.1 B7i (the corpus's latency): the prompt carries its batch's channel; the collect window at 0
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 14    # same: each channel's length as data in the prefix, and its generous `max_tokens`
+_TOTAL_MAX += 16     # same cause
 
 
 def test_the_total_only_shrinks():

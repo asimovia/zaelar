@@ -211,7 +211,7 @@ def test_a_stop_while_the_run_is_held_cancels_it_and_nothing_is_said(store):
 def test_a_stop_inside_the_collect_window_cancels_what_waits(store):
     from conversation.types import ControlOp
     from tests.conversation.unit.inboxkit import control
-    h = Harness(store)
+    h = Harness(store, config=Config(collect_ms=350))                         # the window, when a genome sets one
     h.typed("w1", 100)
     h.conv.give(control(ControlOp.STOP, 150, "k-stop", endpoint="d2"))
     h.at(2000).pump()

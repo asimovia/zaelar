@@ -53,7 +53,7 @@ class Config:
     resume_cut_within_ms: int = 4000
     # ── the inbox ──
     #: typed messages sent within this window travel in one batch (the 0.35 s debounce: batching belongs to the inbox, not the ear).
-    collect_ms: int = 350
+    collect_ms: int = 0              # two texts closer than this are one batch; 0: each its own (B7i, measured)
     #: a text waits at most this long behind an open voice intervention that began earlier (today's 8 s cap).
     cross_channel_hold_ms: int = 8000
     #: a control is handled by id at once; one accepted and still unaccounted after this (its handler never ran or

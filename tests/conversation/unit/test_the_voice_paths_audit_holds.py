@@ -46,7 +46,8 @@ def test_a_data_channel_line_goes_the_old_way_when_the_conversation_never_opens(
     monkeypatch.setattr(agent_events, "_route_typed", lambda txt, **kw: routed.append(txt))
     session = SimpleNamespace(_conversation_switch=switch.Decision(True, "voice"))
     agent_events.receive_typed("w1", _emit=lambda *a, **k: None, session=session)
-    entry._opener["t"].join(5)
+    for th in [th for th in threading.enumerate() if th.name == "conversation-open"]:
+        th.join(5)
     assert routed == ["w1"] and not switch.on(session)                        # answered, and the session fell back
     assert "a typed line went the old way: the conversation could not open" in never_opens
 
@@ -65,7 +66,8 @@ def test_his_voice_makes_the_session_fall_back_and_tells_him_once(never_opens, m
     monkeypatch.setitem(remote_session._M, "session", session)
     for t in (10, 20, 30):
         entry.voice(S.Watermark("holder", t))
-    entry._opener["t"].join(5)
+    for th in [th for th in threading.enumerate() if th.name == "conversation-open"]:
+        th.join(5)                                                             # every attempt, however many started
     assert told == ["w_lost"] and not switch.on(session)
     assert "conversation manager: this session goes the old way" in never_opens
 

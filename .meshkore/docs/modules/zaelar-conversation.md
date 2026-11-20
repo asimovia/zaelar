@@ -41,6 +41,12 @@ launcher writes in its workspace, refused on a real engine; the conversation clo
 and no id names two conversations of one engine; what the cases wrote to memory, and the notices they left, are
 forgotten from the mark the first reset takes (the seed stays). A flow read by an id is its newest rows, in order, from `since` on.
 
+A typed line waits for nothing (`collect_ms`, a genome threshold, is 0: his gaps between lines are seconds), and a
+burst is handled by a newer line superseding the run — which costs a model's first answer per piece. Debt, a client
+change: a «typing» signal from the screen (the text's equivalent of his voice's onset) would let a batch wait for the
+line he is still writing. A reply is sized by its channel: the prefix declares each channel's length as data (genesis
+`conversation.reply_budget`) and the host gives each a generous ceiling (`conversation.max_tokens`).
+
 What his voice says reaches the manager as facts of the ear (`voice/engine/pipeline/ear_feed.py`: words, the
 provider's end with its confidence, the watermark, the edges of his voice), on a lane of the voice process's line to
 the body that loses nothing: carried until the body answers, and past its ceiling a hole DECLARED, never silent — what

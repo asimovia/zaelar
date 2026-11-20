@@ -15,6 +15,8 @@ among them (the manager says those lines itself: in the state too, one would be 
 """
 from __future__ import annotations
 
+from conversation.config import Config
+
 import asyncio
 
 import pytest
@@ -100,7 +102,7 @@ def test_an_answered_batch_owes_one_pair_and_a_silent_one_none(store):
 
 def test_a_port_that_fails_keeps_the_pair_owed_and_the_sweep_hands_it_over(store):
     rec = _Record(fail=1)
-    h = Harness(store, grace=False)
+    h = Harness(store, config=Config(collect_ms=350), grace=False)           # the run at 1000, before any sweep
     h.conv.record = rec
     h.typed("w5", 100)
     h.at(1000).pump()

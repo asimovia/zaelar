@@ -8,6 +8,8 @@ past the hold cap the text runs alone, with its event and its text, and the voic
 """
 from __future__ import annotations
 
+from conversation.config import Config
+
 from conversation.ear import signals as S
 from conversation.inbox.accounting import audit
 from conversation.types import ControlOp, EnvelopeKind
@@ -94,7 +96,7 @@ def test_x8_a_voice_that_ends_incomplete_releases_the_text_and_asks_for_the_end(
 
 
 def test_x9_two_texts_under_350_ms_are_one_batch(store, clock, telemetry):
-    p = Pipe(store, clock, telemetry)
+    p = Pipe(store, clock, telemetry, Config(collect_ms=350))               # the window, when a genome sets one
     p.signal(S.TypedSubmit("d1", "c1", "w1", 0), S.TypedSubmit("d2", "c2", "w2", 349))
     assert p.at(600).batch() is None
     assert kinds(p.at(700).batch()) == [TEXT, TEXT]

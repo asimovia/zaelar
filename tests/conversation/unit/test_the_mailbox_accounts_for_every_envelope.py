@@ -45,7 +45,7 @@ def test_a_repeat_of_the_same_producer_id_is_one_row_and_an_event(store, clock, 
 
 
 def test_two_texts_inside_the_collect_window_are_one_batch(store, clock, telemetry):
-    p = Pipe(store, clock, telemetry)
+    p = Pipe(store, clock, telemetry, Config(collect_ms=350))               # the window, when a genome sets one
     p.signal(S.TypedSubmit("d1", "c1", "w1", 100), S.TypedSubmit("d1", "c2", "w2", 400))
     assert p.at(700).batch() is None                 # 300 ms after the last text: still collecting
     b = p.at(750).batch()

@@ -268,13 +268,14 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
     _emit(conv, "prompt", r, prompt_chars=len(prompt.state) + len(prompt.input), tools=len(tools))
     steps: list = []
     repaired = False
+    channel = "voice" if any(e.kind is EnvelopeKind.USER_UTTERANCE for e in batch.envelopes) else "text"
     t0 = conv.clock.mono_ms()
     refs = {"run": r.run_id}
     for n_step in range(conv.cfg.max_steps):
         called, first, text = False, True, ""
         t_step = conv.clock.mono_ms()
         events = conv.model.stream(PromptParts(prompt.prefix, prompt.state, prompt.conversation, prompt.input,
-                                               tuple(steps)), tools, run_id=r.run_id, model_id=conv.cfg.model_id)
+                                               tuple(steps), channel), tools, run_id=r.run_id, model_id=conv.cfg.model_id)
         stream = guard.stream(conv.em, conv.cfg, events, refs)
         try:
             async for ev in stream:

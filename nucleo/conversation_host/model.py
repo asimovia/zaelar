@@ -95,6 +95,14 @@ def messages(p: PromptParts) -> list[dict]:
 RESENDS = 1
 
 
+def max_tokens(channel: str) -> int | None:
+    """A generous ceiling on what the model writes for this channel (genesis `conversation.max_tokens`): never a
+    cutting one — an order carries its claims too. None: the client's own default."""
+    import genome
+    got = ((genome.genesis().get("conversation") or {}).get("max_tokens") or {}).get(channel)
+    return int(got) if isinstance(got, int) and got > 0 else None
+
+
 class FastModel:
     """`client` is the engine's `FastClient` (or a double with its `stream`); `spec()` the routing table's voice
     model, read per call."""
@@ -127,7 +135,8 @@ class FastModel:
                 # every answer is an ORDER (a read, `reply` or `no_reply`): the provider is told a tool call is required
                 async for chunk in client.stream(messages(prompt), spec=spec, tools=tools_for(tools),
                                                  on_tool_call=lambda name, args: calls.append((name, args)),
-                                                 metrics=metrics, role="voice", tool_choice="required"):
+                                                 metrics=metrics, role="voice", tool_choice="required",
+                                                 max_tokens=max_tokens(prompt.channel)):
                     if chunk:
                         said = True
                         yield TextDelta(chunk)

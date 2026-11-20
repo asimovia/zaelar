@@ -1,6 +1,6 @@
 {
   "_comment": "GENESIS RULES (V2-633) — the engine's shipped BASE conversational rules. This file is the factory default every install starts from; the operator overrides any of it by just SAYING so (set_style_directive -> style_policy.apply_directive persists the override in <workspace>/config/style.json, applied on the very next turn). Nothing here is per-user data: user overrides never live in this file.",
-  "generation": 4,
+  "generation": 5,
   "_generation": "V2-859 — the genome's GENERATION (was `version`). One integer for the whole genome (this file + i18n/genesis/<lang>/); `genome.identity()` names it with a hash of the canonical content, documentation keys stripped. A release that changes a gene bumps it; on boot a new generation absorbs the learned rows it now ships (`genome/absorb.py`).",
   "genome": {
     "_comment": "V2-859 T564 — what may cross from this agent to another: STRUCTURED genes only (alias · route · nothing_serves · threshold), each with the evidence it needs here. Prose is never learned. `thresholds` is the closed list of knobs a learned value may move, with its bounds; a knob not listed here is never a gene.",
@@ -8,7 +8,7 @@
     "thresholds": {"consent.intent_act_at": [0.5, 0.95],
                    "conversation.complete_grace_ms": [0, 8000], "conversation.terminal_grace_ms": [0, 8000],
                    "conversation.nonterminal_start_ms": [0, 8000], "conversation.nonterminal_grace_ms": [0, 8000],
-                   "conversation.incomplete_grace_ms": [0, 8000]}
+                   "conversation.incomplete_grace_ms": [0, 8000], "conversation.collect_ms": [0, 2000]}
   },
   "persona": {
     "_comment": "The agent's default NAME, per language (operator, 2026-11-17: «nuestro agente se va a llamar Johnny desde el primer momento»). `name` is a catalogue: a language code maps to the name an install in that language is born with, and `*` is what every other language falls back to — so a language gets its own name by adding a row here, never by code. What counts is how the name SOUNDS and how the STT writes it, not its spelling: `heard_as` lists, per name, the spellings a speech recogniser produces for it in English and Spanish, and every one of them is a wake word while that is the name. A name the operator gives the agent replaces this one for good (`state.assistant_name`); `genome/persona.py` is the one reader.",
@@ -110,7 +110,10 @@
     "prefs": {"reply_voice_to_text": true},
     "_reply_voice_to_text": "A text he types while his voice is live on that device is answered by voice too (the chat column always gets the text).",
     "thresholds": {"complete_grace_ms": 1000, "terminal_grace_ms": 3000, "nonterminal_start_ms": 1500,
-                   "nonterminal_grace_ms": 5000, "incomplete_grace_ms": 6000},
-    "_thresholds": "Measured on 66 sessions (§1.6 ter: after an end with no sentence mark he goes on 93 % of the time, 86 % within 1.5 s; after one with a mark, 60 %) and on the 624 flows of the A6c bench (§1.6 quater)."
+                   "nonterminal_grace_ms": 5000, "incomplete_grace_ms": 6000, "collect_ms": 0},
+    "_thresholds": "Measured on 66 sessions (§1.6 ter: after an end with no sentence mark he goes on 93 % of the time, 86 % within 1.5 s; after one with a mark, 60 %) and on the 624 flows of the A6c bench (§1.6 quater). `collect_ms` (two typed lines closer than this are one batch) is 0: the corpus measured a fixed ~500 ms paid by every typed close, and his real gaps between lines are p10 3.8 s — a burst is handled by a newer line superseding the run.",
+    "reply_budget": {"voice": "two short sentences", "text": "a short paragraph"},
+    "max_tokens": {"voice": 700, "text": 1400},
+    "_reply_budget": "How long a reply is, per channel: declared to the model as data (the prefix's LENGTH), and a generous ceiling on what it may write (`max_tokens`, never a cutting one: an order carries its claims too). The corpus measured replies growing from p50 135 to 236 characters, and the judge's «padding»."
   }
 }
