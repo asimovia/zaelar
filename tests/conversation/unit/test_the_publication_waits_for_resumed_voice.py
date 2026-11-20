@@ -127,23 +127,20 @@ def test_the_check_runs_again_right_before_sealing(store):
     assert not h.mouth.orders and _held_for_voice(h)
 
 
-def test_a_continuation_longer_than_the_bound_lets_the_old_batch_run_at_it(store):
-    """He goes on and keeps talking past `resume_hold_max_ms`: his words do not reset the bound — nothing is said
-    before it, the old batch runs at it (the cost the design accepts: the first part answered while he speaks), and no
-    request is stalled by the hold."""
+def test_a_continuation_longer_than_the_bound_is_never_spoken_over(store):
+    """He goes on and keeps talking past `resume_hold_max_ms`: his words do not reset the bound — the old batch runs at
+    it — but its reply never starts while his voice is open (R3, plan v3.2 §4, node 13.122): it waits, parked, and no
+    request is stalled by the wait."""
     h = Harness(store)
     once: list = []
     h.model.script["iv_000001"] = [[_go_on(h, ["w3"], close=False, once=once), reply("w9"), Done()],
                                    [reply("w9"), Done()]]
     h.utter([(["w1", "w2"], 0)])
-    closed = next(p["t_ms"] for k, lab, p in h.tel.events if k == "conv_ear" and lab == "closed")
     t0 = h.clock.mono
     for i, t in enumerate(range(t0 + 250, t0 + 12_000, 250)):      # words keep coming for 12 s
         h.hear(S.WordSpan("d1", 77, 2 + i, False, h.words(["w3"] + [f"w{j}" for j in range(4, 5 + i // 4)], t0),
                           (t0, t)), h.beats(t, t + 249))
-    said_at = next((p["t_ms"] for k, lab, p in h.tel.events if k == "conv_mouth" and lab == "say"), None)
-    cfg = h.conv.cfg
-    assert said_at is not None and closed + cfg.resume_hold_max_ms <= said_at <= closed + cfg.resume_hold_max_ms + 500
+    assert not any(k == "conv_mouth" and lab == "say" for k, lab, p in h.tel.events), "said over his open voice"
     assert "conv_close/stalled" not in h.tel.labels()
 
 

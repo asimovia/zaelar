@@ -49,6 +49,9 @@ def final_batches(rep: Replay) -> list[set[str]]:
     iv_of = {r["id"]: r["env"]["refs"].get("intervention_id")
              for _k, r in snap.scan("inbox") + snap.scan("inbox.done")}
     batch = {p["refs"]["run"]: p["batch_envs"] for k, lab, p in rep.tel.events if k == "conv_run" and lab == "started"}
+    for k, lab, p in rep.tel.events:            # a run that answered a reply waiting for his voice carried its words too
+        if k == "conv_run" and lab == "command" and p.get("command") == "absorbed":
+            batch[p["refs"]["run"]] = list(batch.get(p["refs"]["run"], [])) + list(p["batch_envs"])
     gave_back = {p["refs"]["run"] for k, lab, p in rep.tel.events if k == "conv_run" and lab in ("superseded", "fenced")}
     return [{iv_of.get(e) for e in envs} - {None} for run, envs in batch.items() if run not in gave_back]
 

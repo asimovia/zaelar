@@ -29,6 +29,11 @@ class Config:
     #: reset it — the same sense and value as `cross_channel_hold_ms`: nobody waits behind a voice longer. Past it the
     #: batch runs as it is and the open voice stays its own intervention (a TV that never stops cannot hold it forever).
     resume_hold_max_ms: int = 8000
+    #: R3 (plan v3.2 §4): neither bound above lets a line out by voice over his voice — a ready reply waits, parked,
+    #: while an intervention of his is open on its device. It is said anyway past `not_his_ms` when everything closed
+    #: there since was not his, and goes to the wall as text, never the voice, past `monologue_max_ms`.
+    not_his_ms: int = 20_000
+    monologue_max_ms: int = 180_000
     #: a voice born at a close with the voice still up, that falls before this with no word, was the tail of the
     #: voice that closed: discarded at once, not at the cap (the provider's end lands a few ms before the fall).
     min_voice_ms: int = 250

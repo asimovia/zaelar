@@ -55,7 +55,10 @@ WAITS: dict[str, tuple[tuple[str, ...], str]] = {
                                           "test_a_claim_past_its_deadline_goes_back"),
     "a batch held for a resumed voice, words or not": (("resume_hold_max_ms",), U + "test_the_publication_waits_"
                                                        "for_resumed_voice::test_a_continuation_longer_than_the_bound_"
-                                                       "lets_the_old_batch_run_at_it"),
+                                                       "is_never_spoken_over"),
+    "a ready reply waiting for his voice to close": (("not_his_ms", "monologue_max_ms"), U + "test_our_voice_never_"
+                                                     "starts_over_his::test_past_the_monologue_ceiling_it_goes_to_"
+                                                     "the_wall_as_text"),
     "an intervention that never ends": (("intervention_max_ms",), U + "test_the_ear_holds_against_foreign_voice_"
                                         "and_background::test_a_background_with_words_and_no_end_never_holds_a_turn_open"),
     "a voice born at a close that was its tail": (("min_voice_ms",), U + "test_the_ear_holds_against_foreign_voice_"

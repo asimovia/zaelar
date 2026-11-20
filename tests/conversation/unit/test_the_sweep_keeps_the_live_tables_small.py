@@ -88,6 +88,7 @@ def test_what_is_in_course_is_what_the_sweep_reads(store):
     h = Harness(counting)
     for i in range(20):
         h.at(i * 30_000).utter([([f"w{i}"], 0)])
+        h.settle(6000)                                                   # each one answered before the next
     t = h.clock.mono + 10
     ws = h.words(["w1"], t)
     from conversation.ear import signals as S

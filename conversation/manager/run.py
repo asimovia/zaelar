@@ -16,6 +16,7 @@ interventions; one that cannot seal fences the run.
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import hashlib
 from typing import TYPE_CHECKING
 
@@ -30,7 +31,7 @@ from conversation.gateway.outbox import Read
 from conversation.inbox.mailbox import Batch
 from conversation.inbox import ordering
 from conversation.manager import claims as CL
-from conversation.manager import commands
+from conversation.manager import commands, hold
 from conversation.manager import record as records
 from conversation.manager import stop
 from conversation.mouth import Device, choose
@@ -87,12 +88,16 @@ def sweep_liveness(conv: "Conversation", now: int) -> None:
     starts the budget of the batch again. A batch held for a resumed voice waits at most `resume_hold_max_ms`, well
     inside the budget, so no hold has to suspend it."""
     running = set(conv.current.requests) if conv.current else set()
+    w = conv.waiting                            # a reply waiting while his voice is open is no stall (R3)
+    waiting = set(w.requests) if w is not None and hold.open_on(conv, *hold.devices_of(w)) is not None else set()
     rows = [r for _k, r in conv.store.view(conv.account).scan("items", ("open",))      # a read, outside any transaction
             if r["kind"] == str(ItemKind.REQUEST)]
     if not rows:
         return
     carried, last = conv.inbox.in_course()
     for row in rows:
+        if row["id"] in waiting:
+            continue
         start = row["data"].get("sealed_ms", row["created_ms"])
         if row["data"].get("iv") in carried and last is not None:
             start = max(start, last)
@@ -304,6 +309,9 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
                      voice_endpoint=r.ctx.endpoint,
                      memory=tuple(await _memory(conv, r)))
     prompt = compose(view, batch.envelopes, conv.cfg)
+    waiting = hold.note(conv, r)                    # a reply ready before these entries waits for his voice (R3)
+    if waiting:
+        prompt = dataclasses.replace(prompt, input=f"{prompt.input}\n{waiting}")
     tools = conv.tools.catalog()                    # the whole catalog: ordered at most, never cut (I7)
     _emit(conv, "prompt", r, prompt_chars=len(prompt.state) + len(prompt.input), tools=len(tools),
           prefix_hash=hashlib.sha256(prompt.prefix.encode()).hexdigest()[:12], prefix_chars=len(prompt.prefix),
@@ -622,6 +630,8 @@ def _park(conv: "Conversation", r: "Running", batch: Batch, cmd, text: str | Non
 
 
 def _silent(conv: "Conversation", r: "Running", reason: str, now: int) -> None:
+    if conv.waiting is not None and conv.waiting is not r:
+        hold.not_his(conv, r.ctx.endpoint)      # a chunk closed with no reply while a reply waits: not his
     for req in r.requests:
         close(conv, req, "silent", "silent", r, reason=reason)
     cut = _barge_cut(conv, r)
@@ -677,14 +687,22 @@ def _typed_only(r: "Running") -> bool:
     return bool(users) and all(e.kind is EnvelopeKind.USER_TEXT for e in users)
 
 
-async def _publish(conv: "Conversation", r: "Running", batch: Batch, text: str, steps: int) -> None:
-    """Seal, say, close the requests, account the batch."""
+async def _publish(conv: "Conversation", r: "Running", batch: Batch, text: str, steps: int, *,
+                   due: str | None = None) -> None:
+    """Seal, say, close the requests, account the batch. Never by voice over his open voice: the reply waits, parked
+    (`hold.park`); `due` says it waited and why it goes now — `wall`: as text only."""
+    reply = choose(batch.envelopes, conv.devices.get(r.ctx.endpoint or "", Device(r.ctx.endpoint)),
+                   text_gets_voice=bool(conv.prefs("reply_voice_to_text", True)))     # his rule, as it stands now
+    if "voice" in reply.channels and due is None and hold.open_on(conv, *hold.devices_of(r)) is not None:
+        hold.park(conv, r, batch, text, steps)
+        return
+    if due == "wall":
+        reply = dataclasses.replace(reply, channels=frozenset({"text"}))
+    hold.absorb(conv, r)                        # a reply that waited goes out with this one
     if not _seal_batch(conv, r, batch):
         conv.inbox.requeue(list(r.batch_ids))   # fenced: the batch waits; the request stays open
         r.requeued = True
         return
-    reply = choose(batch.envelopes, conv.devices.get(r.ctx.endpoint or "", Device(r.ctx.endpoint)),
-                   text_gets_voice=bool(conv.prefs("reply_voice_to_text", True)))     # his rule, as it stands now
     if reply.voice_unavailable:
         conv.speaker.voice_unavailable(r.run_id, r.ctx.endpoint, r.trace)
     conv.state = MgrState.SPEAKING
@@ -721,70 +739,12 @@ async def _listening(conv: "Conversation", r: "Running", batch: Batch, steps: in
     return True
 
 
-def _unpark(conv: "Conversation") -> tuple:
-    r = conv.current
-    parked, r.parked = r.parked, None
-    conv.current = None
-    if conv.state is MgrState.RUNNING:
-        conv.state = MgrState.IDLE
-    return r, parked
-
-
-def drop_parked(conv: "Conversation") -> None:
-    """A reply waiting for its grace meets an interrupt — his voice again, a new entry, a stop, the liveness: it takes
-    effect as at any checkpoint, and the reply is never said."""
-    r = conv.current
-    if r is None or r.parked is None or r.interrupt is None:
-        return
-    r, _parked = _unpark(conv)
-    try:
-        _checkpoint(conv, r)
-    except _Stalled:                            # here, off any await: the line is owed, never dropped
-        _owe(conv, r, "stalled")
-        conv.inbox.account(list(r.batch_ids), "failed", conv.clock.now_ms())
-        _emit(conv, "ended", r, outcome="failed", reason="stalled", said=False)
-    except _Stop as stop:
-        r.said.append(("stopped", str(stop)))   # the checkpoint already accounted the batch and said why
-
-
-async def publish_parked(conv: "Conversation") -> bool:
-    """At the end of its grace a waiting reply is published. False while it still waits."""
-    r = conv.current
-    if r is None or r.parked is None or conv.clock.now_ms() < r.publish_at:
-        return r is None or r.parked is None
-    r, (text, steps, batch, reason) = _unpark(conv)
-    conv.current, conv.state = r, MgrState.RUNNING          # it publishes as the run in course
-    try:
-        if text is None:                                    # a silent close that waited its grace looks, as a reply
-            waits = _resumed_voice(conv, r)                 # does right before sealing, for his voice open again
-            if waits is not None:
-                _hold(conv, r, *waits)
-                raise _Stop()
-            if not (r.reading is False and await _listening(conv, r, batch, steps)):
-                _silent(conv, r, reason, conv.clock.now_ms())
-        else:
-            await _publish(conv, r, batch, text, steps)
-    except _Stalled:
-        await _lost(conv, r, "stalled")
-    except _Stop as stop:
-        r.said.append(("stopped", str(stop)))   # held right before sealing: the hold already said why
-    finally:
-        conv.current = None
-        if conv.state is MgrState.RUNNING:
-            conv.state = MgrState.IDLE
-    return True
-
-
 def _seal_batch(conv: "Conversation", r: "Running", batch: Batch) -> bool:
     """The first publication seals every intervention of the person's in the batch — all of them, or none and the run
     is fenced."""
     ivs = [env.refs.intervention_id for env in batch.envelopes      # an incomplete one is not sealed: it asks
            if env.kind is EnvelopeKind.USER_TEXT or (env.kind is EnvelopeKind.USER_UTTERANCE
                                                     and env.body.coverage is Coverage.FULL)]
-    waits = _resumed_voice(conv, r)
-    if waits is not None:                          # he spoke again after the last checkpoint: hold, never publish
-        _hold(conv, r, *waits)
-        raise _Stop()
     if not conv.gw.seal_publication(r.ctx, ivs):
         _emit(conv, "fenced", r)
         return False

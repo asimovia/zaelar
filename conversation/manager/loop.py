@@ -28,7 +28,7 @@ from conversation.inbox import Inbox
 from conversation.ledger import Book
 from conversation.ledger.book import BookTx
 from conversation import guard
-from conversation.manager import policy, run
+from conversation.manager import hold, policy, run
 from conversation.manager import record as records
 from conversation.mouth import Device, SayEnded, SayStarted, Speaker
 from conversation.ports import (Clock, Memory, Model, Mouth, Owed, Prefs, Record, StaleEpoch, Stops, Store, Tasks,
@@ -70,6 +70,10 @@ class Running:
     requeued: bool = False                # its batch went back to the queue (fenced): its requests stay open
     stages: dict = field(default_factory=dict)    # where its time went, ms: queue, model, tools, grace, publish
     ordered: bool = False                 # the model gave an order in this run: a stop after it is refused
+    waits_voice: bool = False             # its ready reply waits for his voice to close (R3, `hold.py`)
+    voice_parked_at: int = 0              # when that reply was ready
+    not_his: int = 0                      # what closed on its device since then and was not his
+    before: tuple = ()                    # his words of the runs it absorbed (R3): what its reply answers too
     stopped: str = ""                     # the scope of the stop the model ordered first, if it did
 
 
@@ -87,6 +91,7 @@ class Conversation:
         self.figures = figures
         self.model, self.tools, self.memory, self.clock, self.owed, self.tasks = model, tools, memory, clock, owed, tasks
         self.stops = stops                  # the host's hands for a stop the model ordered (`Stops`); None: voice only
+        self.waiting: Running | None = None  # the run whose ready reply waits for his voice to close (R3)
         self.lease = store.acquire(account, owner)
         self.em = Emitter(telemetry, clock, account, epoch=lambda: self.lease.epoch)
         self.store = guard.TimedStore(store, self.em, self.cfg)
@@ -170,6 +175,7 @@ class Conversation:
             SEAL.note(tx, d.intervention_id, "discarded", d.t_ms, d.reason)
         self.inbox.voice_done(d.intervention_id, self.clock.now_ms())
         self._voice_done(d.endpoint)
+        hold.not_his(self, d.endpoint)                  # a reply waiting for his voice: this was not his
         if d.reason != "stop" and Op.RESUME_LINE in policy.decide(d, self.state):   # a barge-in with no word: our
                                                                                      # line goes on — never his stop
             line = self.speaker.cut_line(d.endpoint, self.clock.now_ms(), self.cfg.resume_cut_within_ms)
@@ -188,7 +194,7 @@ class Conversation:
         self._voice_state(env)
         ops = policy.decide(env, self._column_state(), claimed=bool(self.current and self.current.claimed))
         self._apply(env, ops)
-        run.drop_parked(self)
+        hold.drop_parked(self)
 
     def _column_state(self) -> MgrState:
         """A batch that waits — held for his voice, or in the collect window — is a run that has not started: for the
@@ -237,7 +243,7 @@ class Conversation:
                   and run.resumed(self, self.current, o.intervention_id, o.endpoint, o.t_ms)):
                 self.current.interrupt = "resumed"      # stop it at its next checkpoint; its batch waits for that voice
                 self.current.resumed_iv = o.intervention_id
-        run.drop_parked(self)                           # a reply waiting for its grace is held the same way
+        hold.drop_parked(self)                           # a reply waiting for its grace is held the same way
 
     def _voice_done(self, endpoint: str) -> None:
         if endpoint in self.speaking_on:
@@ -323,12 +329,13 @@ class Conversation:
         runs, self.dirty = 0, False
         while True:
             now = self.clock.now_ms()
-            run.drop_parked(self)
-            published = await run.publish_parked(self)  # a reply whose grace is over goes out before anything is judged
+            hold.drop_parked(self)
+            await hold.publish_waiting(self)            # a reply that waited for his voice to close (R3)
+            published = await hold.publish_parked(self)  # a reply whose grace is over goes out before anything is judged
             if now - self._swept_at >= 100:      # the clock's turn is about time: once per 100 ms is every time
                 self._swept_at = now
                 self.sweep(now)
-            run.drop_parked(self)
+            hold.drop_parked(self)
             if not published:                    # a reply waiting for its grace: nothing else runs meanwhile
                 return runs
             if self.state is not MgrState.IDLE:
@@ -337,7 +344,7 @@ class Conversation:
             if batch is not None or self.inbox.pending():
                 self._resume = None                     # an entry with words came first: it is answered instead
             if batch is None:
-                if self._resume is not None and not self.speaking_on:
+                if self._resume is not None and not self.speaking_on and hold.open_on(self, None) is None:
                     row, self._resume = self._resume, None
                     self.state = MgrState.SPEAKING
                     if await self.speaker.resume(row) is None and self.state is MgrState.SPEAKING:
@@ -354,10 +361,12 @@ class Conversation:
         leave the line in its ledger. With no device that can speak, it goes back to its ledger for its other ways."""
         if self.owed is None or self.speaking_on:
             return
+        device = next((d for d in self.devices.values() if d.voice_live and d.speaker_open and not d.blocked), None)
+        if device is not None and hold.open_on(self, device.endpoint) is not None:
+            return                                      # never over his open voice (R3): the line keeps waiting
         line = self.owed.next(self.account)
         if line is None:
             return
-        device = next((d for d in self.devices.values() if d.voice_live and d.speaker_open and not d.blocked), None)
         if device is None:
             self.owed.release(line.key)
             return

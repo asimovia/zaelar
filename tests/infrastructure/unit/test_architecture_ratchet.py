@@ -739,6 +739,8 @@ _PACKAGE_CEILINGS["nucleo/conversation_host"] += 3   # same day: `turns.NOT_OK` 
 _TOTAL_MAX += 105    # same cause, measured
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 5     # 2026-11-20 V2-941 (plan v3.2 §3, commit 2): the host's hands for a stop the model chose (`stops.py`, +62) and the four stops offered, less every reader of a stop in his words (`split_stop`, `orders_stop`, `ear_in._stopped`, the typed split, the stop branch of `for_ear`)
 _TOTAL_MAX += 5      # same cause, measured
+_PACKAGE_CEILINGS["conversation"] += 180               # 2026-11-20 V2-941 (plan v3.2 §4, R3, commit 3): a declared new mechanism — our voice never starts while his voice is open (`manager/hold.py`: one predicate, a ready reply parked and never redone, the chunk he adds run with it in view, the two exits, the sweep and the owed lines held by it; the grace-parked reply moved beside it to keep `run.py` under 800)
+_TOTAL_MAX += 180    # same cause, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())
