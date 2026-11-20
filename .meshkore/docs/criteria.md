@@ -1531,10 +1531,21 @@ These hold for the package; the engine does not run it yet (V2-941 F1 wires it).
 - **CRIT-CT4 · Nothing leaves without the person's authority or a mandate**: a read passes, a write rests on a batch
   that is all the person's or on a confirmed handle, a delegation or a grant; an effect is reserved, sealed and
   recorded before the provider is called and an unknown outcome is reconciled by looking, never resent; an act held
-  while the person speaks waits for that voice. — since 2026-11-19 · nodes 13.13, 13.14, 13.15, 13.23 ·
+  while the person speaks waits for that voice. — since 2026-11-19 · nodes 13.32, 13.33, 13.23 ·
   `conversation/gateway/`.
 - **CRIT-CT5 · What the person heard is what a device acknowledged**: a line with no acknowledgement is «heard:
   unknown» to the model, never heard. — since 2026-11-19 · nodes 13.16.
+- **CRIT-CT6 · Never silence**: every request of his is answered, told the language's «I lost that» in place, or owed
+  it; a step with no order is asked for it once, a run never ends with his request open, and half a thought whose
+  rest never came gets «go on, I'm listening» once. — since 2026-11-20 · nodes 13.88, 13.103, 13.110.
+- **CRIT-CT7 · A figure rests on evidence still valid**: a read of this conversation or his own words, never a line
+  of ours; a derived figure cites every evidence its operands are in and its result is the operation's, rounded,
+  never read in another scale. — since 2026-11-20 · nodes 13.42, 13.106, 13.108.
+- **CRIT-CT8 · In front of the ear**: the guards judge at every close; our own echo is decided by timing and by its
+  words being ours, and never cuts our line; his stop is a control and never a line for the model; with the voice
+  on the old path, his typed line cuts it first. — since 2026-11-20 · nodes 13.91, 13.104.
+- **CRIT-CT9 · A run reads within its budget**: past `max_reads` or `read_wall_ms` every read is refused with the
+  reason to answer with what it has; the catalogue is never cut. — since 2026-11-20 · nodes 13.107.
 
 ## Contradicciones (contradictions — this table must stay empty)
 

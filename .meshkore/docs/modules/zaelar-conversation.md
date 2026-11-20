@@ -9,7 +9,10 @@ adapters (`zaelar-conversation-adapter.md` is the speech half of that contract) 
 
 `nucleo/conversation_host/` is the engine side. Its switch decides once, when a session opens, whether that session
 goes by the manager: the session (`conv=1` / `conv=0`), then the account (`conversation_manager` in
-`config/settings.json`, false by default), then `ZAELAR_CONVERSATION=1` for development. It fails closed — switched on,
+`config/settings.json`, false by default), then `ZAELAR_CONVERSATION=1` for development. The value `text` takes his
+typed lines only: every voice session stays on the old path (a choice, never alerted as a refusal), and a room's bare
+`conv=1` does not override it — `conv=voice` asks for the voice explicitly. A voice session nobody decided (the
+embedded voice) is asked the voice question. It fails closed — switched on,
 a session takes the manager only with every outside write held (`ZAELAR_HOLD_OUTBOUND=all`), its language chosen and
 the manager's configuration passing; otherwise it takes the old path and says why. Off, nothing of the engine imports
 the host: every import of it is inside a function. One `Conversation` runs per account, in its own thread, while a
@@ -77,15 +80,20 @@ asked again another day is answered again, never taken for one already answered.
 or a run that reads to its cap, end in the language's own «I lost that» line — never in silence. Its `model_done` says
 which model and provider answered, after a relay too.
 
-A figure of data in a reply is published only against its evidence (D9). Against STRUCTURED evidence the whole
-claim matches; against a TEXT evidence — what a search, a widget or his memory returned — its value is among the
-figures of that text, which the host's adapter reads from the tool's output by walking characters, both ways numbers
-are written — a known limit: against a text, the entity, the period and the metric are not compared, so a true
-figure said of the wrong thing passes (only structured evidence gives that); a DERIVED figure cites evidence of the
-same reply, names its operation (count, sum, difference, mean, ratio, percent) and its operands, each a figure of
-that evidence, and its value is what the operation gives — a value the reply already had refused cannot come back as
-derived. The door for derived figures can close, and a repair round for them can be switched on. The figures of a
-reply that carry no claim are counted on its `command` event: a measure, never a gate.
+A figure of data in a reply is published only against its evidence (D9). Evidence is what a read of this conversation
+returned while still valid (one session, `evidence_ttl_ms`, counted `evidence_earlier_run` when it is not this run's)
+and his own entries, read as text (counted `evidence_his_words`) — never a line of ours. Against STRUCTURED evidence the
+whole claim matches; against a TEXT evidence its value is among the figures of that text, which the host's adapter
+reads by walking characters, both ways numbers are written, and a duration in every unit it names («1 h 20 min» is
+also 80 minutes; the unit names are the language packs' `duration_units`). A figure is matched as a person says it:
+itself, rounded to fewer significant digits within 5 %, or in a scale («123.8 million», two significant digits at
+least). A known limit: against a text the entity, the period and the metric are not compared. A DERIVED figure cites
+EVERY evidence its operands are in, names its operation (count, sum, difference, mean, ratio, percent, product) and its
+operands — each a figure of what it cites, used once — and its value is what the operation gives, rounded to two
+significant digits at least and never read in a scale; a value the reply already had refused cannot come back as
+derived. A figure that fails its repair gets the language's honest line; when that line was our last answer, its
+second wording (`unverified_fact_alt`) — never «say it again» for a clear question. The figures of a reply that carry
+no claim are counted on its `command` event: a measure, never a gate.
 
 A switched session only reads (`tools_read.py`): the world through the search service (with the model's proposal
 and no judge — the turn's classifier is never asked), a widget, his memory (no reinforcement), the agent itself, and
@@ -94,6 +102,34 @@ model sees. The state comes from the engine's own readers (STATE, the widgets, t
 nothing; the notices owed are not in it — the manager says them itself. Each answered batch owes one pair to the engine's conversation record (`kind='conv'`), at
 least once, so «what did I tell you» finds a switched session too. And when his voice was lost — no word, a guard,
 incomplete — and he types within a minute, that text's prompt says so, how long ago and why.
+
+## Reading, answering, and never silence
+
+A run reads at most `max_reads` times and for at most `read_wall_ms` in all (genome thresholds); past either budget
+every read it asks for is refused with the reason to answer with what it has, and it is told once — the catalogue
+itself is never cut. A provider deadline with nothing from the model sends the same step once to the stand-in
+(`ports.RELAY`); a disposable engine can hold the titular and shorten the deadline to drive it live. A step with no
+order — text instead, or an order the client could not read — is asked for its order once per run; a second with none
+says «I lost that». A run never ends with a request of his open (`unended`). A `no_reply` to a typed line, or after
+reads, is asked once for the reply. Half a thought whose rest never came within its grace gets the language's
+`listening` line once, never twice in a row. «I lost that» said in place closes `recovered`. NOW is his local time
+with its zone's name and offset (the `Clock` port's `zone`).
+
+## In front of the ear
+
+The host's guards are asked by the ear at every close with words (`Ear.guard`): a closed microphone; our own line
+heard back — his voice rose while one of our last lines sounded or right after it AND his words are, in order, words
+of that line (`voice/echo_text.py`), never after a question of ours ended; and a turn the attention mode says was not
+said to us, judged in the body with the body's attention fed from the ear lane (his voice's edges, our playback, our
+reply re-anchoring the window as it starts). What they throw away is a discard with its reason; what was set aside as
+ambient comes back in front of the entry that called the agent by name. In the voice process our own echo never cuts
+our line: the local cut rule cuts on his words only when they are not ours, and a rise at our line's start never cuts
+wordless. His stop — typed or spoken, the engine's whole-sentence detector — is a control and never a line for the
+model, and never told as a voice we lost. The agent's name and its spellings are key terms of the speech provider.
+
+**Debt:** a figure written in words («trescientas libras») is not a figure; that would be the language packs' number
+words, as the duration units are. A stop said in the same turn as a question drops the question; a stop worded
+outside the detector's whole sentences is not one.
 
 ## Why a package of its own
 
@@ -152,7 +188,8 @@ cause, owner, epoch and refs, and every event is in a flow: a turn's trace is it
 a conv flow with its own stations (`CONV_STATIONS`), and `python -m conversation.replay <signals> --events <file>`
 produces a flow for it to read.
 
-## Not done in F0
+## Not done yet
 
-No adapter: the engine does not run the package. The speech adapter's needs are measured (adapter doc A1–A10) on
-synthetic speech only. Public architecture diagrams are unchanged until something runs live.
+The package runs behind the switch: his text through it is measured live; his voice through it is measured on a
+disposable engine and waits for its live passes. No act reaches the world in this phase — every act exists and is held.
+Public architecture diagrams are unchanged until the voice runs live.
