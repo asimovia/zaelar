@@ -4,7 +4,7 @@ The catalogue is five reads — the world (search), a widget, his memory, the ag
 class is DERIVED: a tool with a type of the event vocabulary is that type's (leaving, or a local write), one with no
 type is a read only when all it declares is reading. The search door gets the model's proposal and no judge, so the
 turn's classifier is never asked; recall leaves no reinforcement; a door that fails is a `failed` result the model
-sees; a call to anything else is refused by the gateway. Which provider answered — after a relay too — reaches the
+sees; a call to anything else is refused by the gateway. Each result carries one text evidence with its figures. Which provider answered — after a relay too — reaches the
 run's `model_done`.
 """
 from __future__ import annotations
@@ -36,15 +36,15 @@ def test_the_search_door_gets_the_proposal_and_no_judge():
 
     def find(q, **kw):
         seen.update(q=q, **kw)
-        r = SearchResult(query=q, route="inline_fact", answer="w1")
+        r = SearchResult(query=q, route="inline_fact", answer="w1 22,5")
         r.sources = [Source(name="p1", url="https://a.example/1")]
         return r
 
     got = _call(tools_read.ReadTools(find=find), "web_search", {"query": "w0"})
     assert seen["judge"] is None and seen["proposal"] == "web_search" and seen["q"] == "w0"
-    assert got.status == "ok" and got.data["answer"] == "w1"
-    assert [e.source for e in got.evidence] == ["https://a.example/1"]
-    assert all(e.value is None for e in got.evidence)                       # unstructured: it binds no claim
+    assert got.status == "ok" and got.data["answer"] == "w1 22,5"
+    [ev] = got.evidence                                                     # one text evidence, with its figures
+    assert ev.source == "search:https://a.example/1" and ev.value is None and 22.5 in ev.numbers
 
 
 def test_recall_leaves_no_reinforcement(monkeypatch):

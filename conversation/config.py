@@ -77,6 +77,14 @@ class Config:
     say_end_ms: int = 20_000
     #: a run may call the model at most this many times (tool results fed back between calls).
     max_steps: int = 6
+    #: §1.10 bis: a DERIVED figure (counted or averaged from what a read of this run returned) may be said, citing
+    #: that evidence — the door closes with this at False; and a reply with derived figures spends its one repair
+    #: round to say what they rest on only with the second at True (off: the judge of the text suite measures it).
+    derived_claims_open: bool = True
+    derived_claims_repair: bool = False
+    #: U44: a text that follows a voice of his that was lost (discarded, or ended incomplete) within this window
+    #: carries the fact in its prompt — how long ago and why.
+    voice_lost_window_ms: int = 60_000
     #: evidence a tool returned stays valid for a numeric claim of a LATER run this long.
     evidence_ttl_ms: int = 10 * 60_000
     #: the model used for the conversation; the adapter passes the live id from the model table.

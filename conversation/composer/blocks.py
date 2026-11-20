@@ -21,7 +21,7 @@ from conversation.types import Coverage, EnvelopeKind, ItemKind
 
 
 class Title(Enum):
-    NOW, OPEN, CONVERSATION, INPUT = "NOW", "OPEN", "CONVERSATION", "INPUT"
+    NOW, OPEN, CONVERSATION, INPUT, VOICE_LOST = "NOW", "OPEN", "CONVERSATION", "INPUT", "VOICE LOST"
 
 
 def now_block(now_ms: int, tz_offset_min: int, screen: str | None, voice_endpoint: str | None, lang: str) -> str:
@@ -58,6 +58,12 @@ def open_block(items: list[dict], budget: int) -> str:
     hidden = len(open_items(items)) - len(rows)
     lines = [_line(r) for r in rows] + ([f"(+{hidden} more open)"] if hidden > 0 else [])
     return "\n".join([Title.OPEN.value, *lines])
+
+
+def lost_block(now_ms: int, lost: list[tuple[int, str, str]]) -> str:
+    """His voice that reached nothing whole before this text: when, which, and why (a fact, never a reading)."""
+    return "\n".join([Title.VOICE_LOST.value] + [f"[{iv} · {max(0, now_ms - at) // 1000} s ago · {why}]"
+                                                  for at, iv, why in lost])
 
 
 def cut_to_heard(turns: list[dict], keep: int) -> tuple[Turn, ...]:

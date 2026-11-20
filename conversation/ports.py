@@ -129,6 +129,12 @@ class Prefs(Protocol):
     def __call__(self, key: str, default: Any) -> Any: ...
 
 
+class Record(Protocol):
+    """The host's record of the conversation («what did I tell you yesterday»): one pair per answered batch, handed
+    over at least once (`ref` names the run, so a repeat can be told apart)."""
+    def pair(self, account: str, said: str, answered: str, *, ref: str) -> None: ...
+
+
 # ── memory (read only) ───────────────────────────────────────────────────────────────────────────────────────────
 
 

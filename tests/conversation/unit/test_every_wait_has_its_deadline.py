@@ -83,6 +83,7 @@ ELSEWHERE = {
 NOT_A_WAIT = {
     "port_budget_ms": "a port slower than this is an event; the call still runs to its own deadline",
     "evidence_ttl_ms": "how long evidence stays valid for a claim, not a wait",
+    "voice_lost_window_ms": "how far back a lost voice is told with a text, not a wait",
 }
 
 

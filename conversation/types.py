@@ -109,14 +109,18 @@ class Evidence:
     metric: str = ""
     direction: str = ""
     value: float | None = None
+    #: a TEXT evidence (a read with no structure): the figures its text carries, read by the host's adapter
+    numbers: tuple[float, ...] = ()
 
     def to_json(self) -> dict:
-        return {k: getattr(self, k) for k in ("id", "source", "entity", "period", "metric", "direction", "value")}
+        return {**{k: getattr(self, k) for k in ("id", "source", "entity", "period", "metric", "direction", "value")},
+                "numbers": list(self.numbers)}
 
     @classmethod
     def from_json(cls, d: dict) -> "Evidence":
         return cls(**{k: d.get(k, "" if k != "value" else None) for k in
-                      ("id", "source", "entity", "period", "metric", "direction", "value")})
+                      ("id", "source", "entity", "period", "metric", "direction", "value")},
+                   numbers=tuple(float(n) for n in d.get("numbers") or ()))
 
 
 class Ids:

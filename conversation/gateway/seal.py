@@ -14,11 +14,11 @@ from __future__ import annotations
 T = "interventions"
 
 
-def note(tx, iv: str, state: str, now: int) -> bool:
-    """Record how the ear ended an intervention, once. True when it was written."""
+def note(tx, iv: str, state: str, now: int, reason: str = "") -> bool:
+    """Record how the ear ended an intervention, once (a discard with its reason). True when it was written."""
     if tx.get(T, iv) is not None:
         return False
-    row = {"phase": state, "updated_ms": now}
+    row = {"phase": state, "updated_ms": now, **({"reason": reason} if reason else {})}
     if state == "closed":
         row["closed_ms"] = now
     tx.put(T, iv, row)

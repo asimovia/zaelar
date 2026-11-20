@@ -10,12 +10,14 @@
 Each class is DERIVED, never listed: a tool's act is a type of the event vocabulary when it has one (leaving → it
 leaves, anything else declared → a local write), and a tool with no type is a read only when all it declares is
 reading (§1.9). Every door runs in a thread; a failure is a `failed` result the model sees, never an exception in the
-loop. Each result carries its evidence: one per source, structured (entity, metric, value) only where the door
-returned structure — a figure from an unstructured read binds no claim.
+loop. Each result carries ONE text evidence (v3.1 §1.10 bis): its id, where it came from, and the figures of its text
+as numbers (`figures.py`), so a claim is checked by value against what the read actually returned.
 """
 from __future__ import annotations
 
 import asyncio
+import json
+import uuid
 from typing import Callable
 
 from conversation.ports import ToolResult, ToolSpec
@@ -51,11 +53,19 @@ def catalog() -> list[ToolSpec]:
             for name, (schema, core, reads) in SPECS.items()]
 
 
+def _text_evidence(source: str, data) -> tuple[Evidence, ...]:
+    """One evidence for what a read returned: a fresh id, its source, and the figures of its text."""
+    from nucleo.conversation_host.figures import figures
+    text = data if isinstance(data, str) else json.dumps(data, ensure_ascii=False, default=str)
+    return (Evidence(f"ev_{uuid.uuid4().hex[:12]}", source, numbers=figures(text)),)
+
+
 def _search(args: dict, find: Callable) -> ToolResult:
     res = find(str(args.get("query") or ""), proposal="web_search", judge=None)
     rows = res.source_rows()
-    ev = tuple(Evidence(f"ev_search_{i}", str(r.get("url") or r.get("source") or "")) for i, r in enumerate(rows))
-    data = {"answer": res.answer, "sources": rows[:8], "route": res.route}
+    data = {"answer": res.answer, "candidates": res.rows()[:8], "sources": rows[:8], "route": res.route}
+    ev = _text_evidence("search:" + ",".join(str(r.get("url") or r.get("name") or "") for r in rows[:4]),
+                        {"answer": res.answer, "candidates": data["candidates"]})
     if res.failure:
         return ToolResult("failed", {**data, "failure": res.failure}, ev)
     return ToolResult("ok", data, ev)
@@ -66,20 +76,20 @@ def _widget(args: dict) -> ToolResult:
     wid, q = str(args.get("widget") or ""), str(args.get("question") or "")
     text = widget_read.lookup(wid, q) or widget_read.read(wid)
     return ToolResult("ok" if text else "failed", {"widget": wid, "text": text or "nothing readable"},
-                      (Evidence(f"ev_widget_{wid}", f"widget:{wid}"),))
+                      _text_evidence(f"widget:{wid}", text or ""))
 
 
 def _recall(args: dict) -> ToolResult:
     from memory import api as memory
     got = memory.query(str(args.get("query") or ""), reinforce_used=False)
     pills = [{"id": m.get("id"), "text": m.get("text")} for m in got.get("memories") or []]
-    return ToolResult("ok", {"memories": pills}, tuple(Evidence(f"ev_mem_{p['id']}", "memory") for p in pills))
+    return ToolResult("ok", {"memories": pills}, _text_evidence("memory", " · ".join(str(p["text"]) for p in pills)))
 
 
 def _about(args: dict) -> ToolResult:
     from nucleo.self import about
     e = about.entry(str(args.get("topic") or ""))
-    return ToolResult("ok", {"entry": e}, (Evidence(f"ev_self_{e.get('id')}", "self"),))
+    return ToolResult("ok", {"entry": e}, _text_evidence(f"self:{e.get('id')}", e))
 
 
 def _find(args: dict) -> ToolResult:

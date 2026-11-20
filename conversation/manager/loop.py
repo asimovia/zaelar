@@ -27,8 +27,9 @@ from conversation.ledger import Book
 from conversation.ledger.book import BookTx
 from conversation import guard
 from conversation.manager import policy, run
+from conversation.manager import record as records
 from conversation.mouth import Device, SayEnded, SayStarted, Speaker
-from conversation.ports import Clock, Memory, Model, Mouth, Owed, Prefs, Store, Tasks, Telemetry, Tools
+from conversation.ports import Clock, Memory, Model, Mouth, Owed, Prefs, Record, Store, Tasks, Telemetry, Tools
 from conversation.telemetry import Emitter
 from conversation.types import Channel, ControlOp, Coverage, EnvelopeKind, Ids, ItemKind, MgrState, Op
 
@@ -57,9 +58,10 @@ class Conversation:
     def __init__(self, *, account: str, owner: str, model: Model, tools: Tools, store: Store, memory: Memory | None,
                  clock: Clock, mouth: Mouth, telemetry: Telemetry, config: Config | None = None, prefix: str = "",
                  ids: Ids | None = None, owed: Owed | None = None, tasks: Tasks | None = None,
-                 prefs: Prefs | None = None) -> None:
+                 prefs: Prefs | None = None, record: Record | None = None) -> None:
         self.account, self.cfg, self.prefix = account, config or Config(), prefix
         self.prefs: Prefs = prefs or (lambda _key, default: default)
+        self.record = record
         self.model, self.tools, self.memory, self.clock, self.owed, self.tasks = model, tools, memory, clock, owed, tasks
         self.lease = store.acquire(account, owner)
         self.em = Emitter(telemetry, clock, account, epoch=lambda: self.lease.epoch)
@@ -96,6 +98,7 @@ class Conversation:
         dispatch.recover(self.gw)
         for iv, voice in self.inbox.open_voices(self.lease.epoch):
             self._restarted(iv, voice, now)
+        records.hand_over(self)                         # a pair owed before the crash goes now
 
     def _restarted(self, iv: str, voice: dict, now: int) -> None:
         endpoint = voice.get("endpoint")
@@ -121,7 +124,7 @@ class Conversation:
     def _discarded(self, d: S.VoiceDiscarded) -> None:
         """An open voice ended with nothing to answer: noted once, nothing waits behind it, it speaks no more."""
         with self.store.tx(self.lease) as tx:
-            SEAL.note(tx, d.intervention_id, "discarded", d.t_ms)
+            SEAL.note(tx, d.intervention_id, "discarded", d.t_ms, d.reason)
         self.inbox.voice_done(d.intervention_id, self.clock.now_ms())
         self._voice_done(d.endpoint)
         if Op.RESUME_LINE in policy.decide(d, self.state):     # a barge-in that brought no word: our line goes on
@@ -255,6 +258,7 @@ class Conversation:
         for say_id in self.speaker.overdue(now):        # a line nobody acknowledged ended «unknown»
             self.ack(SayEnded(say_id, "unknown", None, now, None, "unknown"))
         run.sweep_liveness(self, now)
+        records.hand_over(self)
 
     async def keep_time(self, every_ms: int = 250) -> None:
         """The sweep on its own timer, for the adapter to run beside the loop: a hung run cannot stop it. With

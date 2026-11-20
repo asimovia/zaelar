@@ -172,7 +172,7 @@ class Ear:
         if v.state in OPEN_STATES:
             refs.update(iv=v.iv)
             v.state = IvState.DISCARDED
-            out.append(S.VoiceDiscarded(v.endpoint, v.iv, t))
+            out.append(S.VoiceDiscarded(v.endpoint, v.iv, t, sig.reason))
         self.em.emit("conv_ear", "discarded", owner="ear", cause={"kind": "guard", "ref": sig.reason}, refs=refs,
                      trace=v.iv if refs.get("iv") else f"guard:{sig.endpoint}:{t}", text=sig.text, reason=sig.reason)
 
@@ -251,7 +251,7 @@ class Ear:
     def _discard_empty(self, v: _Voice, t: int, out: list, reason: str = "no_words") -> None:
         """Voice rose and fell and no word came: nothing to answer, and the discard is an event (I4)."""
         v.state = IvState.DISCARDED
-        out.append(S.VoiceDiscarded(v.endpoint, v.iv, t))
+        out.append(S.VoiceDiscarded(v.endpoint, v.iv, t, reason))
         self.em.emit("conv_ear", "discarded", owner="ear", cause={"kind": "cap" if reason == "no_words" else "voice"},
                      refs=self._refs(v), text="", reason=reason)
 

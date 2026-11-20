@@ -24,14 +24,22 @@ switched session: the runs the manager started, and what would mean another owne
 The model is the voice's model from the routing table, called through the engine's fast client (`model.py`); its
 two orders, `reply(text, claims, complete)` and `no_reply(reason, complete)`, are tools of its own beside the
 catalogue. Its prefix (`prefix.py`) only declares: the language it writes in, what it may read, that it may not act,
-and the fields of its orders — one line each, byte-identical between turns, under 600 tokens. A numeric claim binds
-only to structured evidence (one with a value); a figure from an unstructured read carries none. Its `model_done`
-says which model and provider answered, after a relay too.
+and the fields of its orders — one line each, byte-identical between turns, under 600 tokens. Its `model_done` says
+which model and provider answered, after a relay too.
+
+A figure of data in a reply is published only against its evidence (D9). Against STRUCTURED evidence the whole
+claim matches; against a TEXT evidence — what a search, a widget or his memory returned — its value is among the
+figures of that text, which the host's adapter reads from the tool's output by walking characters, both ways numbers
+are written; a DERIVED figure (counted or averaged) cites evidence with figures of the same reply and is said with
+what it rests on. The door for derived figures can close, and a repair round for them can be switched on.
 
 A switched session only reads (`tools_read.py`): the world through the search service (with the model's proposal
 and no judge — the turn's classifier is never asked), a widget, his memory (no reinforcement), the agent itself, and
 the catalogue. Each tool's class is derived from what it declares, never listed; a door that fails is a result the
-model sees.
+model sees. The state comes from the engine's own readers (STATE, the widgets, the tasks, the notices owed), each
+bounded, writing nothing. Each answered batch owes one pair to the engine's conversation record (`kind='conv'`), at
+least once, so «what did I tell you» finds a switched session too. And when his voice was lost — no word, a guard,
+incomplete — and he types within a minute, that text's prompt says so, how long ago and why.
 
 ## Why a package of its own
 

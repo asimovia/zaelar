@@ -13,8 +13,10 @@ from conversation.composer import blocks
 from conversation.config import Config
 from conversation.ports import Block, PromptParts
 
-ITEMS, INBOX, SAYS = "items", "inbox", "says"
+ITEMS, INBOX, SAYS, IVS = "items", "inbox", "says", "interventions"
 CONTENT = ("user.utterance", "user.text")
+#: a discard that is no lost voice of his: the tail of the voice that just closed, and our own voice heard back
+NOT_LOST = ("no_voice", "echo")
 
 
 @dataclass(frozen=True)
@@ -28,6 +30,7 @@ class View:
     screen: str | None = None
     voice_endpoint: str | None = None
     memory: tuple[Block, ...] = field(default_factory=tuple)
+    lost: tuple[tuple[int, str, str], ...] = ()     # (when, intervention, why): his voices that brought nothing whole
 
 
 def view_from(snapshot, *, prefix: str, now_ms: int, **kw) -> View:
@@ -41,7 +44,12 @@ def view_from(snapshot, *, prefix: str, now_ms: int, **kw) -> View:
                             "heard_chars": r["heard_chars"], "ref": r["say_id"]})
             for _k, r in snapshot.scan(SAYS)]
     turns = tuple(t for _at, _o, t in sorted(theirs + ours, key=lambda x: (x[0], x[1])))
-    return View(prefix=prefix, now_ms=now_ms, items=items, turns=turns, **kw)
+    lost = [(r["updated_ms"], iv, r.get("reason") or "no_words") for iv, r in snapshot.scan(IVS)
+            if r.get("phase") == "discarded" and r.get("reason") not in NOT_LOST]
+    lost += [(r["env"]["sealed_ms"], r["env"]["body"]["intervention_id"], r["env"]["body"].get("reason") or "incomplete")
+             for _k, r in snapshot.scan(INBOX)
+             if r["kind"] == "user.utterance" and r["env"]["body"].get("coverage") == "incomplete"]
+    return View(prefix=prefix, now_ms=now_ms, items=items, turns=turns, lost=tuple(sorted(lost)), **kw)
 
 
 def compose(view: View, batch: tuple[E.Envelope, ...], cfg: Config) -> PromptParts:
@@ -49,6 +57,11 @@ def compose(view: View, batch: tuple[E.Envelope, ...], cfg: Config) -> PromptPar
              blocks.open_block(list(view.items), cfg.open_budget)]
     for m in view.memory:
         state.append(f"{m.title}\n{m.text}")
+    if any(e.kind.value == "user.text" for e in batch):              # U44: a text after a voice of his that was lost
+        here = {getattr(e.body, "intervention_id", None) for e in batch}          # an id once in state + input
+        lost = [x for x in view.lost if view.now_ms - x[0] <= cfg.voice_lost_window_ms and x[1] not in here]
+        if lost:
+            state.append(blocks.lost_block(view.now_ms, lost))
     return PromptParts(prefix=view.prefix, state="\n\n".join(state),
                        conversation=blocks.cut_to_heard(list(view.turns), cfg.conversation_turns),
                        input=blocks.input_block(batch))

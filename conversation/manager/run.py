@@ -29,6 +29,7 @@ from conversation.inbox.mailbox import Batch
 from conversation.inbox import ordering
 from conversation.manager import claims as CL
 from conversation.manager import commands
+from conversation.manager import record as records
 from conversation.mouth import Device, choose
 from conversation.telemetry import root
 from conversation.ports import Command, Done, Failed, PromptParts, StaleEpoch, TextDelta, ToolCall, ToolResult
@@ -228,7 +229,8 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
                     _checkpoint(conv, r)
                 elif isinstance(ev, Command):
                     order = commands.parse(ev)
-                    _emit(conv, "command", r, command=ev.name, complete=getattr(order, "complete", None))
+                    _emit(conv, "command", r, command=ev.name, complete=getattr(order, "complete", None),
+                          derived=sum(c.derived for c in getattr(order, "claims", ())))
                     if await _command(conv, r, batch, order, steps, last_try=repaired):
                         return
                     repaired, called = True, True        # one repair round, with the reason as a step
@@ -279,7 +281,13 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
     """Carry out the model's order. False = repair once (a claim did not match); True = the run is over."""
     now = conv.clock.now_ms()
     if isinstance(cmd, commands.Reply):
-        bad = CL.check(list(cmd.claims), CL.valid(conv.store.snapshot(conv.account), now))
+        this_run = frozenset(e.id for _call, res in steps for e in getattr(res, "evidence", ()))
+        bad = CL.check(list(cmd.claims), CL.valid(conv.store.snapshot(conv.account), now), this_run,
+                       conv.cfg.derived_claims_open)
+        if not bad and not last_try and conv.cfg.derived_claims_repair and any(c.derived for c in cmd.claims):
+            steps.append((ToolCall("claims", "claims_check", {}),       # the switch on: its one round says the basis
+                          ToolResult("refused", data={"derived": "say what each derived figure rests on"})))
+            return False
         if bad:
             _emit(conv, "command", r, command="reply_blocked", claims=[why for _c, why in bad])
             if not last_try:
@@ -337,6 +345,7 @@ async def _publish(conv: "Conversation", r: "Running", batch: Batch, text: str, 
         close(conv, req, "answered", "answered", r, steps=steps)
     conv.inbox.account(list(r.batch_ids), "told", conv.clock.now_ms())
     _emit(conv, "ended", r, outcome="answered")
+    records.owe(conv, r.run_id, batch.envelopes, text)
 
 
 def _unpark(conv: "Conversation") -> tuple:

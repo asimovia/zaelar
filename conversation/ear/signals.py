@@ -92,6 +92,7 @@ class VoiceDiscarded:
     endpoint: str
     intervention_id: str
     t_ms: int
+    reason: str = ""          # no_words · no_voice (the tail of the voice that closed) · the guard's own reason
 
 
 @dataclass(frozen=True)

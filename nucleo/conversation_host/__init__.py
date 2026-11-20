@@ -10,6 +10,9 @@
   model.py    the `Model` port over the engine's fast client: the voice's model, its two orders as tools
   prefix.py   the model's stable prefix: declared lines only (language, reads, acts, the orders' fields)
   tools_read.py the `Tools` port of a switched session: reads only, each class derived, each result with its evidence
+  figures.py  the figures a tool's output carries, as numbers: what a text evidence holds
+  memory_read.py the `Memory` port: the state the way the rest of the engine reads it, writing nothing
+  record.py   the `Record` port: each answered pair in the engine's `kind='conv'` record
 
 Nothing of the engine imports this package while the conversation is switched off.
 """

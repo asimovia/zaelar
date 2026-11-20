@@ -27,7 +27,7 @@ from . import db as _db
 FINAL = {"inbox": ("accounted",), "voice_open": ("done",), "says": ("ended",),
          "items": ("answered", "handed_off", "silent", "recovered", "failed", "withdrawn", "provider_accepted",
                    "rejected"),
-         "interventions": None, "evidence": None, "flags": (), "effect_ops": ()}
+         "interventions": None, "evidence": None, "flags": (), "effect_ops": (), "records": ("done",)}
 LEASE = "lease"
 
 

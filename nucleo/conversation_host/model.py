@@ -24,7 +24,8 @@ ORDERS = {
         "text": {"type": "string"},
         "claims": {"type": "array", "items": {"type": "object", "properties": {
             "entity": {"type": "string"}, "period": {"type": "string"}, "metric": {"type": "string"},
-            "direction": {"type": "string"}, "value": {"type": "number"}, "evidence_id": {"type": "string"}}}},
+            "direction": {"type": "string"}, "value": {"type": "number"}, "evidence_id": {"type": "string"},
+            "derived": {"type": "boolean"}}}},
         "complete": {"type": "boolean"}}},
     "no_reply": {"type": "object", "required": ["reason"], "properties": {
         "reason": {"type": "string"}, "complete": {"type": "boolean"}}},
