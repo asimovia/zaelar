@@ -780,6 +780,9 @@ _TOTAL_MAX += 96     # same causes, measured
 _PACKAGE_CEILINGS["conversation"] += 34    # 2026-11-20 INI-078 F2 step 3 (plan §3): the `Route` port — his words to what is open offered to the host's doors before any model, a take said and closed with no model paid
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 137  # same: his errands as declared acts to their one doors (`acts_tasks.py`: the errand gateway, resume among the declared pending rows, reopen, the one cancel door, unschedule, sign in), the switchboard as the `Route` (`routing.py`), the pending rows' ids in TASKS, what an act covers out of the held list
 _TOTAL_MAX += 173    # same causes, measured
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 43   # 2026-11-20 INI-078 F2 step 4: a message to its ONE owner — the model's send act and a widget's message act handed to `send.owner.intake` with his words, an open draft read first in the `Route`; the switch accepts every write held but the lanes it carries (`sends_by`)
+_PACKAGE_CEILINGS["connectors"] += 5     # same: the exit switch's `all,-owner` — every lane held but those named with a minus (a lane added later stays held)
+_TOTAL_MAX += 49     # same causes, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

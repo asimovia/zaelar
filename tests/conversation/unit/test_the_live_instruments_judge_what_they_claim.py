@@ -100,8 +100,8 @@ def test_the_suite_runs_end_to_end_over_the_manager(manager, tmp_path):
     convs = text_suite.load(["T12"], ["es"])
     s = asyncio.run(text_suite.run(_InProcess(), convs, 1, tmp_path))
     assert s["pass"], s
-    manager["events"] = [ToolCall("c1", "send_message", {"to": "Rowan"}), Command("reply", {"text": "No puedo."}),
-                         Done()]
+    manager["events"] = [ToolCall("c1", "set_autorespond", {"on": "Rowan"}), Command("reply", {"text": "No puedo."}),
+                         Done()]                  # an act the catalogue does not carry (a message has its owner now)
     s = asyncio.run(text_suite.run(_InProcess(), text_suite.load(["T7"], ["es"]), 1, tmp_path))
     rec = json.loads((tmp_path / "runs.jsonl").read_text().splitlines()[-1])
     assert s["pass"] and rec["thoughts"][0]["answers"][0]["refused_calls"]          # refused by the gateway

@@ -23,6 +23,8 @@ The switch is one environment variable, read at every use:
     ZAELAR_HOLD_OUTBOUND=            nothing is held
     ZAELAR_HOLD_OUTBOUND=all         every outside write is held (also `1`, `true`, `yes`, `on`)
     ZAELAR_HOLD_OUTBOUND=errand,mandate   only those lanes are held
+    ZAELAR_HOLD_OUTBOUND=all,-owner      every lane is held but the ones named with a minus (a lane added later is
+                                         held too: what is let go is named, never what is kept)
 
 A value that names something that is not a lane holds EVERYTHING: a typo in a safety switch must not read as «off».
 
@@ -98,7 +100,11 @@ def _switch() -> tuple[bool, frozenset]:
     if not raw:
         return False, frozenset()
     tokens = {t.strip() for t in raw.replace(";", ",").split(",") if t.strip()}
-    if not tokens <= LANES:           # `all`, `1`, `on`… are no lane: they hold everything
+    freed = {t[1:].strip() for t in tokens if t.startswith("-")}
+    rest = tokens - {t for t in tokens if t.startswith("-")}
+    if freed and freed <= LANES and rest and not rest & LANES:   # `all,-owner`: every lane but those let go
+        return False, LANES - frozenset(freed)
+    if not tokens <= LANES:           # `all`, `1`, `on`, a typo, a minus over no lane… hold everything
         return True, frozenset()
     return False, frozenset(tokens)
 

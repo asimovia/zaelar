@@ -50,7 +50,7 @@ def test_the_session_says_first_then_the_account_then_the_environment(clean):
     assert switch.decide("0") == switch.Decision(False, "session")
 
 
-@pytest.mark.parametrize("hold", ["", "errand,mandate"])
+@pytest.mark.parametrize("hold", ["", "errand,mandate", "all,-owner,-worker"])
 def test_switched_on_without_every_write_held_it_takes_the_old_path_and_says_why(clean, hold):
     if hold:
         clean.setenv("ZAELAR_HOLD_OUTBOUND", hold)
@@ -102,3 +102,12 @@ def test_the_proof_endpoint_reads_nothing_while_the_host_is_not_loaded(monkeypat
     monkeypatch.delitem(sys.modules, "nucleo.conversation_host.proof", raising=False)
     got = json.loads(asyncio.run(voice_api.debug_conversation("s1")).body)
     assert got == {"session": "s1", "on": False}
+
+
+def test_every_write_held_but_the_lanes_it_carries_is_enough(clean):
+    """It sends by the owner's lane, each message with his yes (`declared.json` `sends_by`): `all,-owner` holds every
+    other outside write — and only that one is let go."""
+    clean.setenv("ZAELAR_HOLD_OUTBOUND", "all,-owner")
+    from nucleo.conversation_host import switch as sw
+    assert sw.refused() in ("", "no language chosen yet") or "configuration" in sw.refused()
+    assert "holds too little" not in sw.refused()

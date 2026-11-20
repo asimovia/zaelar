@@ -5,8 +5,9 @@ metadata; (2) the ACCOUNT — the `conversation_manager` key of `config/settings
 environment — `ZAELAR_CONVERSATION=1`, a development resource. It is read ONCE, when the session opens: a session
 never changes path halfway. Going back is removing the key and reconnecting the voice, with no restart.
 
-It fails CLOSED: switched on, a session only goes by the manager when every outside write of the install is held
-(`ZAELAR_HOLD_OUTBOUND=all`), its language is chosen and the manager's configuration passes (`config.build`). Short
+It fails CLOSED: switched on, a session only goes by the manager when every outside write of the install is held but
+the lanes the manager itself carries, each with his yes (`declared.json` `sends_by`; `ZAELAR_HOLD_OUTBOUND=all` or
+`all,-owner`), its language is chosen and the manager's configuration passes (`config.build`). Short
 of that it takes the old path, and the decision says why — the caller emits it as an alert.
 """
 from __future__ import annotations
@@ -76,8 +77,11 @@ def refused() -> str:
     if entry is not None and entry.broken():
         return "the conversation could not open a moment ago: the old path for now"
     from connectors import exit as _exit
-    if not all(_exit.held(lane) for lane in _exit.LANES):
-        return f"{_exit.ENV} is not `all`: the manager runs only with every outside write held"
+    from nucleo.conversation_host.declared import declared
+    carried = set(declared().get("sends_by") or ())          # the lanes the manager carries, each with his yes
+    if not all(_exit.held(lane) for lane in _exit.LANES - carried):
+        return (f"{_exit.ENV} holds too little: the manager runs only with every outside write held but the lanes it "
+                f"carries ({', '.join(sorted(carried)) or 'none'})")
     if not (os.getenv("ZAELAR_LANGUAGE") or "").strip():
         return "no language chosen yet"
     from nucleo.conversation_host import config

@@ -393,6 +393,30 @@
      }
     }
    }
+  },
+  "send_message": {
+   "act": "send.draft",
+   "door": "send",
+   "op": "intake",
+   "covers": [
+    "messaging.send_new"
+   ],
+   "about": "a message he asks you to send: it goes to the one owner of sends, who finds the person, asks what is missing and reads him the text for his yes — nothing leaves before it; say its line",
+   "schema": {
+    "type": "object",
+    "required": [],
+    "properties": {
+     "to": {
+      "type": "string"
+     },
+     "text": {
+      "type": "string"
+     },
+     "channel": {
+      "type": "string"
+     }
+    }
+   }
   }
  },
  "state_topics": [
@@ -400,6 +424,9 @@
   "done",
   "browser",
   "screen"
+ ],
+ "sends_by": [
+  "owner"
  ],
  "proof": {
   "counters": [

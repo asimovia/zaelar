@@ -72,6 +72,18 @@ def test_a_list_holds_only_the_lanes_it_names(world, monkeypatch):
     assert door.counters() == {"send/errand/held": 1, "send/mandate/held": 1, "send/owner/out": 1}
 
 
+def test_all_but_the_lanes_named_with_a_minus_lets_only_those_go(world, monkeypatch):
+    """«all,-owner»: what is let go is named, never what is kept — a lane added later is held too. A minus over no lane,
+    or beside a lane, is no such switch: everything is held."""
+    monkeypatch.setenv(door.ENV, "all,-owner")
+    assert door.held("owner") == "" and all(door.held(lane) == door.LANE_HELD for lane in door.LANES - {"owner"})
+    assert door.leave(door.SEND, _order(lane="owner", ref="r-9")) is True
+    assert [o["ref"] for o in world(ingest.TOPIC_SEND)] == ["r-9"]
+    for typo in ("all,-ownr", "errand,-owner", "-owner"):
+        monkeypatch.setenv(door.ENV, typo)
+        assert door.held("owner") == door.SWITCH, typo
+
+
 def test_a_switch_that_names_something_that_is_not_a_lane_holds_everything(world, monkeypatch):
     monkeypatch.setenv(door.ENV, "erand")          # a typo is never «off»
     assert door.held("owner") == door.SWITCH
