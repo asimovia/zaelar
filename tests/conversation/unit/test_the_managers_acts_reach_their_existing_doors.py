@@ -42,7 +42,10 @@ def doors(monkeypatch):
 def test_the_acts_are_declared_data_and_each_class_derived():
     cat = acts.catalog()
     assert [t.name for t in cat] == list(acts.ACTS) and cat
-    assert all(t.effect_class is EffectClass.WRITE and t.about for t in cat)
+    assert all(t.about for t in cat)
+    leaving = {t.name for t in cat if t.effect_class is EffectClass.LEAVES}      # a message to other people: held
+    assert leaving == {"cluster_send", "a2a_send"} and all(
+        t.effect_class is EffectClass.WRITE for t in cat if t.name not in leaving)
     assert tools_read.derive("messaging.send_new", False) is EffectClass.LEAVES     # a leaving act: held, never here
     reads = [t.name for t in tools_read.catalog()]
     assert [t.name for t in acts.HostTools().catalog()][:len(reads)] == reads

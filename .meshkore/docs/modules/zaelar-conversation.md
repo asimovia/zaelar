@@ -123,7 +123,9 @@ STYLE, whose one source is the language pack's `speech_style` and the turn's sha
 reads as it stands. A widget's life — built or changed (an errand of kind code, asked at the dispatch door), deleted or
 restored (his yes on its row), a name it opens by — and pictures shown go through theirs (`acts_life.py`). His network
 too (`acts_network.py`): a cluster joined after his yes on the Clusters tab's row, a message to a cluster by the bridge's
-tag door (said as sent only when it left), a collaboration's goal, his friends' agents by name; what the network holds
+tag door (said as sent only when it left), a collaboration's goal, his friends' agents by name — a message into a
+cluster or to a friend's agent is a leaving type (`cluster.send`, `a2a.message`) and stays held at the gateway while
+only the owner's lane is let go; what the network holds
 is the `network` topic of `read_state`. A listings hunt is the one hunt the old turn runs too
 (`search_listing.hunt`): the rows on his results sheet, the deep search started by itself when they are too few, and
 the fact — how many, the rows with their evidence — said by the model. The first-run presentation (once per install,

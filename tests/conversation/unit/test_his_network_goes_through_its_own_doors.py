@@ -75,3 +75,16 @@ def test_a_friends_agent_is_reached_by_name_and_the_network_is_a_topic(monkeypat
     monkeypatch.setattr(acts_network, "_clusters", lambda: [{"name": "w_team", "connected": True, "online": ["w_zalo"]}])
     facts = memory_read.topic("network")
     assert "cluster w_team: connected, online: w_zalo" in facts and "W_Marta" in facts
+
+
+def test_a_message_to_another_agent_leaves_and_is_held_while_only_the_owner_is_let_go():
+    """A cluster message and a message to a friend's agent LEAVE the machine for other people: their acts are leaving
+    types of the one vocabulary, so the gateway refuses them as held (no lane of `exit` would see them: the bridge's tag
+    door is not `connectors/exit`) and the prefix lists them as held; joining, a goal and sharing stay local writes."""
+    from conversation.types import EffectClass
+    from nucleo.conversation_host import acts, prefix
+    cls = {t.name: t.effect_class for t in acts.catalog()}
+    assert cls["cluster_send"] is EffectClass.LEAVES and cls["a2a_send"] is EffectClass.LEAVES
+    assert {cls[n] for n in ("connect_cluster", "set_cluster_objective", "a2a_connect", "a2a_grant")} == {EffectClass.WRITE}
+    held = prefix.held_acts(acts.catalog())
+    assert "cluster.send" in held and "a2a.message" in held

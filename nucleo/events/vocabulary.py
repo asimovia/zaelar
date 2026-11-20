@@ -105,6 +105,11 @@ TYPES: tuple[EventType, ...] = (
     EventType("a2a.append", OUT, "a contact's agent writes to him (a message)", level="standard"),
     EventType("a2a.edit", OUT, "a contact's agent edits an item he shares", level="sensitive"),
     EventType("a2a.copy", OUT, "a contact's agent keeps a copy of an item he shares", level="sensitive"),
+    # ── leaves: a message to another agent (the manager's network acts, INI-078 F2 7c) ──
+    EventType("cluster.send", OUT, "a message is written into a MeshKore cluster he is in, to a peer or to all",
+              grant="message", level="sensitive", effect="external.send", says="send"),
+    EventType("a2a.message", OUT, "a message is written to a contact's agent over the A2A network", grant="message",
+              level="sensitive", effect="external.send", says="send"),
     # ── leaves: an errand ──
     EventType("errand.mesh_serve", OUT, "an errand's request goes to an agent of the network that serves it",
               level="standard"),
