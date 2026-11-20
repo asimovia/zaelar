@@ -417,6 +417,21 @@
      }
     }
    }
+  },
+  "note_for_support": {
+   "act": "support.note",
+   "door": "task",
+   "op": "note",
+   "about": "he leaves a note for the people who build and maintain you, to read later: it is kept as he said it and nothing else is done",
+   "schema": {
+    "type": "object",
+    "required": [],
+    "properties": {
+     "note": {
+      "type": "string"
+     }
+    }
+   }
   }
  },
  "state_topics": [

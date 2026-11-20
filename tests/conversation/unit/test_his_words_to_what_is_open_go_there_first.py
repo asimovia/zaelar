@@ -103,3 +103,13 @@ def test_an_open_draft_reads_his_words_first_and_a_message_goes_to_its_owner(mon
     monkeypatch.setattr(acts, "_open", lambda: [])
     asyncio.run(acts.widget_act({"widget": "w_chat", "action": "reply", "payload": {"text": "w_ok"}}, "x1"))
     assert seen["intake"][1] == {"text": "w_ok", "_act": "reply"}               # handed over, never run by the card
+
+
+def test_a_note_for_support_keeps_his_words_and_does_nothing_else(monkeypatch):
+    from nucleo.conversation_host import acts_tasks, routing
+    from nucleo.input import support_note
+    kept = []
+    monkeypatch.setattr(support_note, "_write", lambda note, label, **kw: kept.append(note))
+    monkeypatch.setitem(routing._last, "said", "w_the_latency_again")
+    assert acts_tasks.run("note", {"note": "w_model_words"}).data == {"kept": True}
+    assert kept == ["w_the_latency_again"]                                   # his words, never the model's rewording

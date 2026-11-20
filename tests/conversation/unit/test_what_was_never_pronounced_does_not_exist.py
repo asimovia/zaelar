@@ -24,7 +24,7 @@ HEARD = "w1 w2 w3 w4 w5"
 def _cut_after_five(store, outcome="cut", heard=len(HEARD) + 1, source="agent_estimate"):
     h = Harness(store, grace=False)
     pairs: list[tuple[str, str]] = []
-    h.conv.record = SimpleNamespace(pair=lambda acct, said, answered, ref: pairs.append((said, answered)))
+    h.conv.record = SimpleNamespace(pair=lambda acct, said, answered, ref, channel="voice": pairs.append((said, answered)))
     h.model.default = lambda ids: [reply(REPLY), Done()]
     ack, h.mouth.ack = h.mouth.ack, None                  # the voice acknowledges by hand: it is cut mid-line
     h.utter([(["q1", "q2"], 0)])

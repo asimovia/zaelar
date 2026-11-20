@@ -783,6 +783,10 @@ _TOTAL_MAX += 173    # same causes, measured
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 43   # 2026-11-20 INI-078 F2 step 4: a message to its ONE owner — the model's send act and a widget's message act handed to `send.owner.intake` with his words, an open draft read first in the `Route`; the switch accepts every write held but the lanes it carries (`sends_by`)
 _PACKAGE_CEILINGS["connectors"] += 5     # same: the exit switch's `all,-owner` — every lane held but those named with a minus (a lane added later stays held)
 _TOTAL_MAX += 49     # same causes, measured
+_PACKAGE_CEILINGS["conversation"] += 3     # 2026-11-20 INI-078 F2 step 5: the record's pair says how his words came (`channel`)
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 32   # same: his words of an answered batch filed by the memory agent (C14b), a note for support as an act of its own
+_PACKAGE_CEILINGS["nucleo/input"] += 9     # same: `support_note.spoken`, the note the manager's model judged his words to be
+_TOTAL_MAX += 44     # same causes, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

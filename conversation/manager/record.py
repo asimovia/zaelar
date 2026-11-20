@@ -23,10 +23,12 @@ def owe(conv: "Conversation", run_id: str, envelopes, say_id: str) -> None:
     """The pair of a batch our line `say_id` answers: it waits for that line to end (`heard`)."""
     if conv.record is None:
         return
-    said = " ".join(e.body.text for e in envelopes if e.is_user and e.kind in CONTENT and e.body.text)
+    his = [e for e in envelopes if e.is_user and e.kind in CONTENT and e.body.text]
+    said = " ".join(e.body.text for e in his)
+    channel = "typed" if his and all(e.kind is EnvelopeKind.USER_TEXT for e in his) else "voice"
     with conv.store.tx(conv.lease) as tx:
         tx.put(TABLE, run_id, {"state": "waiting", "said": said, "say": say_id, "answered": "",
-                               "t_ms": conv.clock.now_ms()})
+                               "t_ms": conv.clock.now_ms(), "channel": channel})
     heard(conv, say_id)
 
 
@@ -58,7 +60,7 @@ def hand_over(conv: "Conversation") -> int:
     went = 0
     for key, row in owed:
         try:
-            conv.record.pair(conv.account, row["said"], row["answered"], ref=key)
+            conv.record.pair(conv.account, row["said"], row["answered"], ref=key, channel=row.get("channel", "voice"))
         except Exception as e:  # noqa: BLE001 — the record lags; the pair stays owed and the sweep tries again
             conv.em.emit("conv_close", "record_failed", owner="manager", cause={"kind": "record"}, refs={"run": key},
                          error=f"{type(e).__name__}: {str(e)[:120]}")

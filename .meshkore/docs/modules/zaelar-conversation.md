@@ -114,7 +114,9 @@ answers with its line and no model is paid; with nothing open it costs nothing. 
 with a draft open his sentence is read against it first; the model's `send_message` — or a widget's message act — is
 handed to the owner with his words, and the owner's line is what he hears. Nothing leaves before his yes over one
 person and a text, by the owner's lane: the switch lets the manager run with every other outside write held
-(`ZAELAR_HOLD_OUTBOUND=all,-owner`; `declared.json` `sends_by`). Each tool's class is derived
+(`ZAELAR_HOLD_OUTBOUND=all,-owner`; `declared.json` `sends_by`). His words of every answered batch are filed by the
+memory agent (`record.py`, typed or voice as they came; a batch closed silent is never filed), and a note he leaves for
+support is an act of its own (`note_for_support`): his words kept on the timeline, nothing else done. Each tool's class is derived
 from what it declares, never listed; a door that fails is a result the model sees. The state comes from the engine's
 own readers, each bounded within `state_tokens`, writing nothing. Every run carries what is open first (the tasks,
 a message draft), the next days beside NOW, the widget in front (at full screen, in front on a phone, else the newest

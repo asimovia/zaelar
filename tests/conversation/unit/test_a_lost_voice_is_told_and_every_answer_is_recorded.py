@@ -79,7 +79,7 @@ class _Record:
     def __init__(self, fail: int = 0) -> None:
         self.pairs, self.fail = [], fail
 
-    def pair(self, account, said, answered, *, ref):
+    def pair(self, account, said, answered, *, ref, channel="voice"):
         if self.fail:
             self.fail -= 1
             raise OSError("w0")
@@ -162,3 +162,25 @@ def test_the_state_comes_from_the_engines_readers_bounded_and_a_failing_one_left
 def test_the_notices_owed_are_not_in_the_state():
     from nucleo.conversation_host import memory_read
     assert "NOTICES" not in [t for t, _r in memory_read.READERS]
+
+
+def test_his_words_of_an_answered_batch_are_filed_with_their_channel(monkeypatch):
+    """What he tells the agent is remembered (C14b): the pair of an answered batch hands his words to the memory's one
+    writer, typed or voice as they came — a silent batch has no pair, so nothing of another voice is ever filed."""
+    import asyncio
+
+    from nucleo import memory_agent
+    from nucleo.conversation_host import record
+    seen = []
+
+    async def ingest(text, *, role="operator", channel="voice"):
+        seen.append((text, role, channel))
+    monkeypatch.setattr(memory_agent, "ingest_utterance", ingest)
+    monkeypatch.setattr(memapi, "write", lambda *a, **k: None)
+
+    async def go():
+        record.MemoryRecord().pair("a", "w_my_daughter_is_w_lia", "w_noted", ref="run_9", channel="typed")
+        record.MemoryRecord().pair("a", "", "w_noted", ref="run_10")
+        await asyncio.sleep(0)
+    asyncio.run(go())
+    assert seen == [("w_my_daughter_is_w_lia", "operator", "typed")]

@@ -10,6 +10,7 @@ Declared in `declared.json` (`acts`, door `task`), each to its one door — neve
   stop       `dispatch.cancel_soon` through the row's one cancel door, by the id TASKS gives
   unschedule `pulse.scheduler.unschedule`, by its reference — said as it ended, found or not
   sign_in    `web_auth.start` / `web_auth.finish`: the real browser opened for HIM to sign in, and his «done»
+  note       `support_note.spoken`: his words kept as a note for the support team, nothing else done
 
 What each returns is the door's own fact: the model says it. His spoken words to a process already open are not an act
 of the model's: they reach that process by the switchboard (`route.py`) before the model is called.
@@ -85,8 +86,16 @@ def _sign_in(args: dict) -> ToolResult:
                       else {"reason": "no_site_recognised", "site": site})
 
 
+def _note(args: dict) -> ToolResult:
+    """His words as a note for the support team (`support_note.spoken`): kept on the timeline, nothing else done."""
+    from nucleo.conversation_host import routing
+    from nucleo.input import support_note
+    kept = support_note.spoken(routing.said() or str(args.get("note") or ""))
+    return ToolResult("ok" if kept else "failed", {"kept": True} if kept else {"reason": "no_note"})
+
+
 DOORS = {"start": _start, "resume": _resume, "reopen": _reopen, "stop": _stop, "unschedule": _unschedule,
-         "sign_in": _sign_in}
+         "sign_in": _sign_in, "note": _note}
 
 
 def run(op: str, args: dict) -> ToolResult:

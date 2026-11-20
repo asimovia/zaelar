@@ -106,7 +106,7 @@ def test_an_idle_conversation_opens_no_transaction(store):
     h = Harness(counting)
 
     class _Record:
-        def pair(self, account, said, answered, *, ref):
+        def pair(self, account, said, answered, *, ref, channel="voice"):
             return None
 
     h.conv.record = _Record()

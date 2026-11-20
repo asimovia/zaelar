@@ -97,6 +97,15 @@ def question(ctx) -> dict | None:
     return {"instructions": INSTRUCTIONS, "criteria": dict(CRITERIA)}
 
 
+def spoken(note: str) -> bool:
+    """A note the conversation manager's model judged his words to be (its own act): recorded as the same `feedback`
+    event, nothing else. True when there was a note to keep."""
+    note = str(note or "").strip()
+    if note:
+        _write(note, "📝 support note (voice)", verdict="manager")
+    return bool(note)
+
+
 async def heard(text: str, say=None) -> bool:
     """At the body's turn gate, on the whole sentence: True = it was a note for support, recorded, and the turn ends.
     Never raises: anything unread is an ordinary turn."""
