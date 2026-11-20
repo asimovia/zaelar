@@ -2399,8 +2399,9 @@
   "bus/log.py",
   "observability/pieces.py",
   "conversation/telemetry.py",
+  "conversation/guard.py",
   "nucleo/conversation_host/telemetry.py",
   "nucleo/conversation_host/proof.py"
  ],
- "_relays": "Modules that CARRY the event stream: an event passes through them and is never from them (observability/pieces.py reads the first frame outside these as the emitter)."
+ "_relays": "Modules that CARRY the event stream: an event passes through them and is never from them (observability/pieces.py reads the first frame outside these as the emitter). `conversation/guard.py` is one: the events a transaction held are said when its timed store closes it, from the frame of whoever opened it."
 }
