@@ -1,14 +1,14 @@
 """The `Memory` port of a switched session (V2-941, the F1 plan §4.7, v3.1 B4): it reads the state the way the rest of
 the engine reads it, and writes nothing.
 
-  state_blocks   STATE (what the memory knows that is not the conversation, as facts with plain labels), the WIDGETS
-                 (the catalogue by id and mission, on screen, at full screen, used lately), what is ON SCREEN (each
-                 open widget's actions, the state it reports and what it holds), the TASKS running or waiting, the
-                 CONNECTORS' state, the message DRAFT open, what was DONE to his data, the BROWSER's errands and the
-                 next DAYS by date — each from the reader the old turn used for it (F2 step 1, row 16), each bounded,
-                 filled in this order within the run's token budget. No copy of the conversation. The notices owed
-                 are NOT here: the manager says them itself, as they are, and a line in the state too would be told
-                 twice
+  state_blocks   what is OPEN first (the TASKS running or waiting, the message DRAFT), the next DAYS by date beside NOW,
+                 the widget in FRONT (at full screen, in front on a phone, the only one open, else the newest opened)
+                 with its actions, their fields and what it holds, STATE (what the memory knows that is not the
+                 conversation, as facts with plain labels) and the WIDGETS' short index (id and mission from each
+                 manifest, which are open, used lately). Everything else is READ when the model names it: another
+                 widget by `read_widget`, the rest by `read_state(topic)` over the topics `declared.json` declares
+                 (`state_topics`). No copy of the conversation. The notices owed are NOT here: the manager says them
+                 itself, as they are, and a line in the state too would be told twice
   screen         what is on screen now
   recall         his memory for a query, with no reinforcement
 
@@ -79,19 +79,45 @@ def _widgets() -> str:
     return "\n".join(out + ([f"used lately: {', '.join(rest)}"] if rest else []))
 
 
-def _on_screen() -> str:
-    """Each open widget's declared actions (`brief._offered_action_names`, the names the old turn offered), the state
-    it reports (`state_render`) and what it holds now (`refs.prompt_digest`, else `refs.items_line`)."""
-    from widgets import brief, refs, runtime, state_render
-    lines = []
+def front_card() -> str:
+    """The card in front of him: the one at full screen, the one in front on a phone, the only one open, else the
+    newest opened (the canvas reports its cards in the order they opened). "" with nothing open."""
+    from nucleo import canvas_focus
+    from nucleo.flash import show_target
+    from server.voice_api import open_instances
+    open_ids = [str(i) for i in open_instances() if str(i)] or _open_ids()
+    return show_target.at_full_screen() or canvas_focus.phone_front() or (open_ids[-1] if open_ids else "")
+
+
+def widget_facts(wid: str) -> dict:
+    """One widget as the model reads it: its declared actions (`brief._offered_action_names`, internal ones never
+    named), their fields (`brief._payload_keys`) and what it holds now (`widget_read.read`: the state it reports, its
+    digest). The same shape for the widget in front and for one `read_widget` reads."""
+    from nucleo.flash import widget_read
+    from widgets import brief, runtime
+    acts = (runtime.get(wid.split("::", 1)[0]) or {}).get("actions")
+    acts = acts if isinstance(acts, dict) else {}
+    return {"actions": brief._offered_action_names(acts) if acts else [],
+            "fields": brief._payload_keys(acts, every=True) if acts else "", "holds": widget_read.read(wid)}
+
+
+def _front() -> str:
+    wid = front_card()
+    if not wid:
+        return ""
+    f = widget_facts(wid)
+    lines = [wid] + ([f"actions: {', '.join(f['actions'])}"] if f["actions"] else [])
+    lines += [f"fields: {f['fields']}"] if f["fields"] else []
+    return "\n".join(lines + ([f"holds: {f['holds']}"] if f["holds"] else []))
+
+
+def _screen() -> str:
+    """Every widget open now, with its actions and what it holds (a topic: read when the model asks for it)."""
+    out = []
     for wid in _open_ids():
-        acts = (runtime.get(wid) or {}).get("actions")
-        if isinstance(acts, dict) and (names := brief._offered_action_names(acts)):
-            lines.append(f"[{wid}] actions: {', '.join(names)}")
-        held = refs.prompt_digest(wid) or refs.items_line(wid)
-        if held:
-            lines.append(f"[{wid}] holds: {held}")
-    return "\n".join(lines + state_render.lines(_open_ids()))
+        f = widget_facts(wid)
+        out.append(f"[{wid}] actions: {', '.join(f['actions']) or 'none'}" + (f"\n{f['holds']}" if f["holds"] else ""))
+    return "\n".join(out)
 
 
 def _connectors() -> str:
@@ -147,8 +173,17 @@ def _tasks() -> str:
     return "\n".join(lines[:12])
 
 
-READERS = (("STATE", _state), ("WIDGETS", _widgets), ("ON SCREEN", _on_screen), ("TASKS", _tasks),
-           ("CONNECTORS", _connectors), ("DRAFT", _draft), ("DONE", _done), ("BROWSER", _browser), ("DAYS", _days))
+#: what every run carries, in this order: what is open first, the dates beside NOW, the widget in front, then the
+#: facts and the index
+READERS = (("DAYS", _days), ("TASKS", _tasks), ("DRAFT", _draft), ("FRONT", _front), ("STATE", _state),
+           ("WIDGETS", _widgets))
+#: the readers of the topics `declared.json` declares (`state_topics`): read only when the model asks
+TOPICS = {"connectors": _connectors, "done": _done, "browser": _browser, "screen": _screen}
+
+
+def topic(name: str) -> str:
+    """One declared topic of his state, read now ("" when it has nothing)."""
+    return (TOPICS[name]() or "").strip()
 #: no block takes more than this share of the budget, so one long reader never leaves the next ones out
 BLOCK_SHARE = 3
 

@@ -16,8 +16,10 @@ from conversation.ports import ToolSpec
 #: descriptions in the tool list, cut from ~530 characters to under 300. 650 → 750 on 2026-11-20: the STYLE line (the
 #: language pack's `speech_style`, ~60 tokens: the manager read back phone numbers and a message's text like a robot)
 #: and the narrower stop rule (E-2: «te paso la tarea dos» chose `stop_voice`); measured 732 in Spanish with both
-#: reply budgets, the held acts having grown to 20 names
-MAX_TOKENS = 750
+#: reply budgets, the held acts having grown to 20 names. 750 → 800 on 2026-11-20 (F2 step 1): the `read_state` read and
+#: `read_widget`'s actions — what each run no longer carries in its state (the connectors, what was done, the browser,
+#: every open widget beside the one in front) is read when named; measured 784 with names of 23 letters
+MAX_TOKENS = 800
 
 #: the only lines a prefix carries, in this order
 LINES = tuple(declared()["prefix_lines"])                     # declared data (`declared.json`), in their order

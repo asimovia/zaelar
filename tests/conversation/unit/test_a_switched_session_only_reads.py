@@ -22,9 +22,9 @@ def _call(tools, name, args):
     return asyncio.run(tools.call(name, args, effect_id=None, idempotency_key=None, deadline_mono_ms=10 ** 12))
 
 
-def test_the_catalogue_is_five_reads_and_every_class_is_derived():
+def test_the_catalogue_is_six_reads_and_every_class_is_derived():
     cat = tools_read.catalog()
-    assert [t.name for t in cat] == ["web_search", "read_widget", "recall", "about_self", "find_tool"]
+    assert [t.name for t in cat] == ["web_search", "read_widget", "read_state", "recall", "about_self", "find_tool"]
     assert all(t.effect_class is EffectClass.READ for t in cat)
     assert {t.name for t in cat if t.core} == {"web_search", "find_tool"}
     assert tools_read.derive("messaging.send_new", True) is EffectClass.LEAVES      # a declared leaving type
@@ -111,7 +111,24 @@ def test_read_widget_reads_the_widget_its_name_or_alias_declares(monkeypatch):
     monkeypatch.setattr(runtime, "identify_named", lambda q, **kw: "w_cal" if q == "w_alias" else None)
     monkeypatch.setattr(runtime, "catalog", lambda: [{"id": "w_cal"}])
     monkeypatch.setattr(widget_read, "lookup", lambda wid, q: f"{wid} answers {q}")
+    monkeypatch.setattr(widget_read, "read", lambda wid: "w_holds")
+    monkeypatch.setattr(runtime, "get", lambda wid: {"id": wid, "actions": {"w_add": {"payload": {"w_when": "x"}}}}
+                        if wid == "w_cal" else None)
     got = _call(tools_read.ReadTools(), "read_widget", {"widget": "w_alias", "question": "w_q"})
-    assert got.status == "ok" and got.data == {"widget": "w_cal", "text": "w_cal answers w_q"}
+    assert got.status == "ok" and got.data["widget"] == "w_cal" and got.data["text"] == "w_cal answers w_q"
+    assert got.data["actions"] == ["w_add"] and got.data["fields"] == "w_add: w_when"   # its actions come with the read
     missing = _call(tools_read.ReadTools(), "read_widget", {"widget": "w_nothing", "question": "w_q"})
     assert missing.status == "failed" and missing.data["widgets"] == ["w_cal"]
+
+
+def test_his_state_by_topic_is_read_when_asked_and_only_the_declared_topics(monkeypatch):
+    """What is not in every run — the connectors, what was done, the browser, every open widget — is a read by a topic
+    `declared.json` declares, each with its reader; a topic nothing declares fails naming the ones there are."""
+    from nucleo.conversation_host import memory_read
+    from nucleo.conversation_host.declared import declared
+    assert sorted(memory_read.TOPICS) == sorted(declared()["state_topics"])     # one reader per declared topic
+    monkeypatch.setitem(memory_read.TOPICS, "connectors", lambda: "w_telegram connected")
+    got = _call(tools_read.ReadTools(), "read_state", {"topic": "connectors"})
+    assert got.status == "ok" and got.data == {"topic": "connectors", "text": "w_telegram connected"}
+    other = _call(tools_read.ReadTools(), "read_state", {"topic": "w_weather"})
+    assert other.status == "failed" and other.data["topics"] == declared()["state_topics"]

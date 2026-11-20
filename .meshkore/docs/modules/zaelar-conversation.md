@@ -97,14 +97,17 @@ no claim are counted on its `command` event: a measure, never a gate.
 
 A switched session reads (`tools_read.py`): the world through the search service (with the model's proposal
 and no judge — the turn's classifier is never asked), a widget, his memory (no reinforcement), the agent itself, and
-the catalogue. And it carries out LOCAL acts (`acts.py`, F2 step 1): open, close, minimize, full screen and arrange a
+the catalogue, his state by topic. And it carries out LOCAL acts (`acts.py`, F2 step 1): open, close, minimize, full screen and arrange a
 widget, and the side panel's tabs — declared data (`declared.json`, `acts`) carried to the doors that already do them,
 `nucleo/acts/canvas.apply` with the reservation as provenance (`turn:<effect>`) and the `panel` event; the widget an
 act names is resolved against the catalogue of manifests, so a new widget needs no code. Each tool's class is derived
 from what it declares, never listed; a door that fails is a result the model sees. The state comes from the engine's
-own readers (STATE, the widgets' catalogue and what is on screen with its actions and content, the tasks, the
-connectors, the draft, what was done, the browser, the next days), each bounded within `state_tokens`, writing
-nothing; the notices owed are not in it — the manager says them itself. Each answered batch owes one pair to the engine's conversation record (`kind='conv'`), at
+own readers, each bounded within `state_tokens`, writing nothing. Every run carries what is open first (the tasks,
+a message draft), the next days beside NOW, the widget in front (at full screen, in front on a phone, else the newest
+opened) with its actions, their fields and what it holds, the facts memory knows of him, and a short index of the
+widgets (id and mission from each manifest). The rest is READ when the model names it: another widget by
+`read_widget` (resolved by its declared names and aliases, with its actions), and the topics `declared.json` declares
+(`state_topics`: the connectors, what was done, the browser, every open widget) by `read_state`; the notices owed are not in it — the manager says them itself. Each answered batch owes one pair to the engine's conversation record (`kind='conv'`), at
 least once, so «what did I tell you» finds a switched session too. And when his voice was lost — no word, a guard,
 incomplete — and he types within a minute, that text's prompt says so, how long ago and why.
 

@@ -4,7 +4,7 @@ Which acts exist, their arguments and their door are declared data, their class 
 local act is a write; one whose act were a leaving type of the event vocabulary would be held by the gateway. The
 widget an act names is resolved against the CATALOGUE, so a widget nobody wrote code for is covered as soon as its
 manifest is installed. The canvas acts cross `nucleo.acts.canvas.apply` with the reservation as their provenance
-(`turn:<effect>`); the side panel is the `panel` event, its tab read by `catalogs.canon_panel`. A close never goes with
+(`turn:<effect>`); the side panel is the `panel` event, on one of the tabs its schema declares. A close never goes with
 an empty id (that closes every card): with nothing to name, it asks which. A message never crosses here.
 """
 from __future__ import annotations
@@ -44,7 +44,8 @@ def test_the_acts_are_declared_data_and_each_class_derived():
     assert [t.name for t in cat] == list(acts.ACTS) and cat
     assert all(t.effect_class is EffectClass.WRITE and t.about for t in cat)
     assert tools_read.derive("messaging.send_new", False) is EffectClass.LEAVES     # a leaving act: held, never here
-    assert [t.name for t in acts.HostTools().catalog()][:5] == [t.name for t in tools_read.catalog()]
+    reads = [t.name for t in tools_read.catalog()]
+    assert [t.name for t in acts.HostTools().catalog()][:len(reads)] == reads
 
 
 def test_a_widget_with_no_code_of_ours_opens_by_its_name_and_closes_by_its_card(doors):
@@ -73,11 +74,13 @@ def test_full_screen_off_leaves_whichever_covers_the_screen(doors, monkeypatch):
         ("fullscreen", "youtube", False), ("fullscreen", "youtube", True)]
 
 
-def test_the_side_panel_is_its_own_event_on_a_canon_tab(doors):
+def test_the_side_panel_is_its_own_event_on_a_declared_tab(doors):
     assert acts.run("show_panel", {"panel": "procesos"}, "x_7").status == "ok"
     assert acts.run("show_panel", {"panel": "conectores", "connector": "telegram"}, "x_8").status == "ok"
     assert [(k, lab, x["tab"], x.get("connector")) for k, lab, x in doors["panel"]] == [
         ("panel", "open", "procesos", None), ("panel", "open", "conectores", "telegram")]
+    other = acts.run("show_panel", {"panel": "w_tab"}, "x_10")                # no tab of words: only the declared ones
+    assert other.data["reason"] == "no_such_tab" and "procesos" in other.data["tabs"] and len(doors["panel"]) == 2
     assert not doors["canvas"]
 
 
@@ -86,3 +89,25 @@ def test_a_message_never_crosses_this_door(doors, monkeypatch):
     monkeypatch.setattr(turn, "is_message", lambda wid, action, payload=None: True)
     got = acts.run("show_widget", {"widget": NEW}, "x_9")
     assert got.status == "rejected" and not doors["canvas"] and not doors["panel"]
+
+
+def test_every_run_carries_what_is_open_the_widget_in_front_and_an_index_and_reads_the_rest(doors, monkeypatch):
+    """What is open comes first (the tasks, a draft), the dates beside NOW, the widget in front with its actions and
+    what it holds, then the facts and the short index; the connectors, what was done, the browser and every other
+    open widget are topics read when named — never in every run."""
+    from nucleo import canvas_focus
+    from nucleo.conversation_host import memory_read
+    from nucleo.flash import show_target, widget_read
+    assert [t for t, _r in memory_read.READERS] == ["DAYS", "TASKS", "DRAFT", "FRONT", "STATE", "WIDGETS"]
+    monkeypatch.setattr(canvas_focus, "phone_front", lambda: None)
+    monkeypatch.setattr(widget_read, "read", lambda wid: f"w_holds of {wid}")
+    monkeypatch.setattr(show_target, "at_full_screen", lambda: "")
+    doors["open"] = ["youtube", f"{NEW}::c1"]
+    assert memory_read.front_card() == f"{NEW}::c1"                        # the newest opened
+    assert memory_read._front().splitlines() == [f"{NEW}::c1", f"holds: w_holds of {NEW}::c1"]
+    monkeypatch.setattr(show_target, "at_full_screen", lambda: "youtube")
+    assert memory_read.front_card() == "youtube"                           # the one at full screen covers the rest
+    doors["open"] = []
+    monkeypatch.setattr(show_target, "at_full_screen", lambda: "")
+    monkeypatch.setattr(memory_read, "_open_ids", lambda: [])
+    assert memory_read._front() == ""

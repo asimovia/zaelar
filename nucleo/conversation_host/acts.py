@@ -7,7 +7,7 @@ whose act is a leaving type of the event vocabulary would be refused by the gate
 
   canvas  `nucleo.acts.canvas.apply` — show, close, minimize, full screen, arrange — with the provenance `turn:<effect>`
           (the arbiter's «turn-owned» branch: the model's order on his sealed entry is the decision, no licence ladder)
-  panel   the `panel` event the side panel obeys, its tab read by `catalogs.canon_panel` (the panel is no widget)
+  panel   the `panel` event the side panel obeys, on one of the tabs its schema declares (the panel is no widget)
 
 The widget an act names is resolved against the CATALOGUE — every manifest, by id, name or declared alias
 (`widgets.runtime`) — and narrowed to the card open on screen (`widgets.instances`): a widget nobody wrote code for is
@@ -136,6 +136,11 @@ def _canvas(op: str, args: dict, src: str) -> ToolResult:
     return _apply("fullscreen", card["id"], src, on=True)
 
 
+def _choices(spec: dict, arg: str) -> list[str]:
+    """The values an act's argument declares (its schema's `enum`)."""
+    return list(((spec.get("schema") or {}).get("properties") or {}).get(arg, {}).get("enum") or [])
+
+
 def _a_message(args: dict, op: str) -> bool:
     from nucleo.send import turn
     return turn.is_message(str(args.get("widget") or ""), op, args)
@@ -153,8 +158,10 @@ def run(name: str, args: dict, effect_id: str | None) -> ToolResult:
     if spec["door"] == "panel":
         from nucleo.turn.prompt import catalogs
         action = "close" if str(args.get("action") or "") == "close" else "open"
-        tab = catalogs.canon_panel(args.get("panel"))
-        cx = catalogs.canon_connector(args.get("connector")) if tab == "conectores" and action == "open" else ""
+        tab, tabs = str(args.get("panel") or "").strip().lower(), _choices(spec, "panel")
+        if tab not in tabs:                      # the declared tabs are the only ones: never a guess at another
+            return ToolResult("failed", {"reason": "no_such_tab", "panel": tab, "tabs": tabs})
+        cx = catalogs.canon_connector(args.get("connector")) if args.get("connector") and action == "open" else ""
         return _panel(action, tab, src, cx)
     return _canvas(spec["op"], args, src)
 

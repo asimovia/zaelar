@@ -1,5 +1,5 @@
 {
- "_comment": "The conversation manager host's declared data (V2-941): the shape of the model's orders and claims, what a model call's measurements carry, the reads a switched session offers and the local acts it carries to their doors, the counters of its proof, and the lines of its prefix. Names and schemas, no word of a language — data the code reads, never a table in it.",
+ "_comment": "The conversation manager host's declared data (V2-941): the shape of the model's orders and claims, what a model call's measurements carry, the reads a switched session offers and the local acts it carries to their doors, the topics of his state a read reaches, the counters of its proof, and the lines of its prefix. Names and schemas, no word of a language — data the code reads, never a table in it.",
  "fact": {
   "type": "object",
   "required": [
@@ -114,7 +114,15 @@
    ],
    "core": false,
    "reads": true,
-   "about": "one of his widgets, by its id or the name he used: what it holds now"
+   "about": "one of his widgets, by id or his name for it: what it holds, its actions and their fields"
+  },
+  "read_state": {
+   "args": [
+    "topic"
+   ],
+   "core": false,
+   "reads": true,
+   "about": "his state by topic: connectors, done (just done to his data), browser, screen (every open widget)"
   },
   "recall": {
    "args": [
@@ -254,6 +262,12 @@
    }
   }
  },
+ "state_topics": [
+  "connectors",
+  "done",
+  "browser",
+  "screen"
+ ],
  "proof": {
   "counters": [
    "manager_runs",

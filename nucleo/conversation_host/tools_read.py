@@ -2,7 +2,9 @@
 
   web_search(query)              `search.find` with the model's proposal and NO judge: the route is the service's
                                  own reading of the proposal, and the turn's classifier is never asked
-  read_widget(widget, question)  the widget's own answer (`widget_read.lookup`), else what it holds (`read`)
+  read_widget(widget, question)  the widget its name or alias declares: its own answer (`widget_read.lookup`), else
+                                 what it holds — with its actions and their fields
+  read_state(topic)              one topic of his state `declared.json` declares (`state_topics`), by its reader
   recall(query)                  his memory through `memory.api.query`, with no reinforcement (a read leaves nothing)
   about_self(topic)              the agent's own catalogue entry and the live facts it names
   find_tool(query)               this catalogue, by name
@@ -79,9 +81,24 @@ def _widget(args: dict) -> ToolResult:
         from widgets import runtime
         return ToolResult("failed", {"reason": "no_such_widget", "named": named,
                                      "widgets": sorted(str(w.get("id")) for w in runtime.catalog() if w.get("id"))})
-    text = widget_read.lookup(wid, q) or widget_read.read(wid)
-    return ToolResult("ok" if text else "failed", {"widget": wid, "text": text or "nothing readable"},
+    from nucleo.conversation_host.memory_read import widget_facts
+    facts = widget_facts(wid)
+    text = widget_read.lookup(wid, q) or facts["holds"]
+    return ToolResult("ok" if text or facts["actions"] else "failed",
+                      {"widget": wid, "text": text or "nothing readable", "actions": facts["actions"],
+                       "fields": facts["fields"]},
                       _text_evidence(f"widget:{wid}", text or ""))
+
+
+def _topic(args: dict) -> ToolResult:
+    """One topic of his state that `declared.json` declares (`state_topics`), read now by its reader."""
+    from nucleo.conversation_host import memory_read
+    name = str(args.get("topic") or "").strip().lower()
+    topics = list(declared()["state_topics"])
+    if name not in topics:
+        return ToolResult("failed", {"reason": "no_such_topic", "topic": name, "topics": topics})
+    text = memory_read.topic(name)
+    return ToolResult("ok", {"topic": name, "text": text or "nothing now"}, _text_evidence(f"state:{name}", text))
 
 
 def _recall(args: dict) -> ToolResult:
@@ -118,7 +135,8 @@ class ReadTools:
                 import search
                 find = search.find
             return lambda a: _search(a, find)
-        return {"read_widget": _widget, "recall": _recall, "about_self": _about, "find_tool": _find}.get(name)
+        return {"read_widget": _widget, "read_state": _topic, "recall": _recall, "about_self": _about,
+                "find_tool": _find}.get(name)
 
     async def call(self, name: str, args: dict, *, effect_id: str | None, idempotency_key: str | None,
                    deadline_mono_ms: int) -> ToolResult:
