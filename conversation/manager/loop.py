@@ -73,7 +73,8 @@ class Running:
                                           # manager pushed back on is no order — the next round may still stop)
     waits_voice: bool = False             # its ready reply waits for his voice to close (R3, `hold.py`)
     voice_parked_at: int = 0              # when that reply was ready
-    not_his: int = 0                      # what closed on its device since then and was not his
+    not_his: int = 0                      # what closed on its device since his last accepted words, and was not his
+    judged_not_his: bool = False          # the model closed this run's entries as not his (a `no_reply` with `not_his`)
     before: tuple = ()                    # his words of the runs it absorbed (R3): what its reply answers too
     stopped: str = ""                     # the scope of the stop the model ordered first, if it did
 
@@ -192,6 +193,10 @@ class Conversation:
         if adm.envelope is None or adm.disposition == "unhandled":   # a duplicate, refused, or no handler here
             return
         env = adm.envelope
+        if env.kind in REQUESTS:
+            hold.his(self)                              # his words accepted: a waiting reply waits for them again
+        elif env.kind is EnvelopeKind.USER_CONTROL and env.body.op is ControlOp.STOP:
+            hold.drop(self, "stop")                     # the button's stop: the reply that waits is never said
         self._voice_state(env)
         ops = policy.decide(env, self._column_state(), claimed=bool(self.current and self.current.claimed))
         self._apply(env, ops)
@@ -265,7 +270,9 @@ class Conversation:
                     self.current.interrupt = "superseded"
             elif op is Op.CANCEL_RUN and self.current is not None:
                 self.current.interrupt = "cancelled"
+                hold.drop(self, "cancelled")            # a reply waiting for his voice goes with the run
             elif op is Op.CANCEL_RUN:                   # the run had not started: what waits for it is dropped
+                hold.drop(self, "cancelled")
                 for row in self.inbox.drop_pending(self.clock.now_ms()):
                     iv = row["env"]["refs"].get("intervention_id")
                     if iv:

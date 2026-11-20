@@ -36,7 +36,7 @@ ORDERS = {
         "claims": {"type": "array", "items": {"anyOf": [FACT, DERIVED]}},
         "complete": {"type": "boolean"}}},
     "no_reply": {"type": "object", "required": ["reason"], "properties": {
-        "reason": {"type": "string"}, "complete": {"type": "boolean"}}},
+        "reason": {"type": "string"}, "complete": {"type": "boolean"}, "not_his": {"type": "boolean"}}},
     **{name: {"type": "object", "properties": {}} for name in declared()["stops"]},   # each stop takes no argument at all
 }
 

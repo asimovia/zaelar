@@ -49,3 +49,15 @@ def test_past_the_monologue_ceiling_the_reply_goes_to_the_wall(store):
     _monologue(h, 9000)
     assert len(_started(h)) == 1, "at the ceiling the batch runs with what there is"
     assert [(o.text, sorted(o.channels)) for o in h.mouth.orders] == [("w99", ["text"])]
+
+
+def test_a_monologue_whose_voice_closed_by_the_reply_goes_by_voice(store, monkeypatch):
+    """R3-C: released at the ceiling, but his voice had closed by the time its reply was ready (the model's own time):
+    the usual rule at publication — by voice, never the wall."""
+    from conversation.manager import hold
+    h = Harness(store, grace=False, config=Config(intervention_max_ms=3000, monologue_max_ms=7000))
+    real, closed = hold.open_on, []
+    monkeypatch.setattr(hold, "open_on", lambda conv, *eps: None if closed else real(conv, *eps))
+    h.model.default = lambda ids: [lambda: closed.append(1), reply("w99"), Done()]   # he stops while it thinks
+    _monologue(h, 9000)
+    assert [(o.text, sorted(o.channels)) for o in h.mouth.orders][:1] == [("w99", ["text", "voice"])]

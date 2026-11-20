@@ -27,6 +27,7 @@ class Reply:
 class NoReply:
     reason: str
     complete: bool | None = None
+    not_his: bool = False      # the model's reading: these entries are not his (another voice), not «nothing to add»
 
 
 class Scope(str, Enum):
@@ -61,7 +62,7 @@ def parse(cmd: Command) -> Reply | NoReply | Stop | Unknown:
         claims = tuple(Claim.from_args(c) for c in cmd.args.get("claims") or ())
         return Reply(str(cmd.args.get("text", "")), claims, _complete(cmd.args))
     if cmd.name == "no_reply":
-        return NoReply(str(cmd.args.get("reason", "")), _complete(cmd.args))
+        return NoReply(str(cmd.args.get("reason", "")), _complete(cmd.args), cmd.args.get("not_his") is True)
     if cmd.name in STOPS:
         return Stop(STOPS[cmd.name])
     return Unknown(cmd.name)

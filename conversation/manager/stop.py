@@ -37,7 +37,10 @@ def take(conv, r, order: commands.Stop, steps: list) -> bool:
 async def stopped(conv, r) -> None:
     """The batch closes `stopped`: nothing is said — but a batch only typed gets the language's fixed minimal line
     (`stopped`), on the text channel, so a typed order is never met with nothing."""
+    from conversation.manager import hold
     from conversation.manager.run import _emit, _line, _typed_only, close
+    if commands.Scope(r.stopped) in commands.SILENCES:
+        hold.drop(conv, r.stopped)              # a reply waiting for his voice is never said after his stop
     now, said = conv.clock.now_ms(), False
     users = [e for e in r.ctx.batch.values() if e.is_user]
     line = _line(conv, STOPPED, r) if users and _typed_only(r) else ""

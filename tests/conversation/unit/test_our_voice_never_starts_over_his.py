@@ -18,6 +18,8 @@ it; the replacement not answering the parked request; the wall exit by voice.
 """
 from __future__ import annotations
 
+import pytest
+
 from conversation.config import Config
 from conversation.ear import signals as S
 from conversation.ports import Command, Done
@@ -140,11 +142,74 @@ def test_a_chunk_that_is_not_his_leaves_the_parked_reply_standing(store):
     assert len(h.model.calls) == calls, "a chunk judged not his never runs again"
 
 
-def test_past_not_his_with_nothing_of_his_it_is_said(store):
+def test_a_chunk_of_his_that_adds_nothing_never_lets_the_reply_out_over_him(store):
+    """The R3 review's R3-A: a chunk of his the model closed «adds nothing» is his — he goes on talking for 25 s, and
+    the reply that waits is never said over him."""
     h = _ready_then_he_speaks(store, cfg=Config(not_his_ms=3000, intervention_max_ms=60_000))
-    h.conv.waiting.not_his = 1                                     # something closed there and was not his
+    h.model.default = lambda ids: [Command("no_reply", {"reason": "w0"}), Done()]
+    h.at(_close(h, ["w3", "w4"], h.t0)).pump()
+    h.settle(500)
+    h.t0 = h.clock.mono + 50
+    _open(h, h.t0)
+    _talks(h, 25_000)
+    assert h.mouth.orders == [], "said over him after a chunk of his that added nothing"
+
+
+def test_past_not_his_with_nothing_of_his_it_is_said(store):
+    """What closed there was judged NOT his (`no_reply` with `not_his`) and the voice goes on (the room, a TV): past
+    `not_his_ms` the reply that waits is said."""
+    h = _ready_then_he_speaks(store, cfg=Config(not_his_ms=3000, intervention_max_ms=60_000))
+    h.model.default = lambda ids: [Command("no_reply", {"reason": "w0", "not_his": True}), Done()]
+    h.at(_close(h, ["w3", "w4"], h.t0)).pump()
+    h.settle(500)
+    h.t0 = h.clock.mono + 50
+    _open(h, h.t0)
     _talks(h, 3500)
     assert _said(h) == [("w9", ["text", "voice"])]
+
+
+def test_a_chunk_of_his_after_one_not_his_starts_the_count_again(store):
+    """R3-A: a chunk judged not his, then one of his that adds nothing: the last close there was his, so the reply
+    that waits stays held while he goes on talking — what was not his before never lets it out over him."""
+    h = _ready_then_he_speaks(store, cfg=Config(not_his_ms=3000, intervention_max_ms=60_000))
+    h.model.default = lambda ids: [Command("no_reply", {"reason": "w0", "not_his": True}), Done()]
+    h.at(_close(h, ["w3", "w4"], h.t0)).pump()
+    h.settle(500)
+    h.model.default = lambda ids: [Command("no_reply", {"reason": "w0"}), Done()]
+    h.t0 = h.clock.mono + 50
+    _open(h, h.t0)
+    _words(h, ["w5"], h.t0, h.t0 + 300, turn=78)
+    h.at(_close(h, ["w5", "w6"], h.t0, turn=78)).pump()
+    h.settle(500)
+    h.t0 = h.clock.mono + 50
+    _open(h, h.t0)
+    _talks(h, 25_000)
+    assert h.mouth.orders == [], "said over him: a close of his did not start the count again"
+
+
+@pytest.mark.parametrize("order, dropped", [("stop_voice", True), ("stop_all", True), ("stop_media", False)])
+def test_a_stop_drops_the_reply_that_waits_but_stopping_what_plays_leaves_it(store, order, dropped):
+    """R3-B: his «para» while a reply waits for his voice: it is never said after — but stopping what plays is no stop
+    of our answer."""
+    h = _ready_then_he_speaks(store)
+    h.model.default = lambda ids: [Command(order, {}), Done()]
+    h.at(_close(h, ["w_para"], h.t0)).pump()
+    h.settle(6000)
+    assert (_said(h) == []) is dropped
+    if dropped:
+        assert "stopped" in [lab for lab, _ in h.closes()] and h.conv.waiting is None
+
+
+def test_the_buttons_stop_drops_the_reply_that_waits(store):
+    from conversation.types import ControlOp
+    from tests.conversation.unit.inboxkit import control
+    h = _ready_then_he_speaks(store)
+    h.conv.give(control(ControlOp.STOP, h.clock.mono, "k1", endpoint="d1"))
+    assert h.conv.waiting is None
+    h.model.default = lambda ids: [reply("w10"), Done()]     # what he says after is answered on its own
+    h.hear(S.VadEdge("d1", "fall", h.clock.mono + 10))
+    h.settle(6000)
+    assert "w9" not in [t for t, _ in _said(h)] and "stopped" in [lab for lab, _ in h.closes()]
 
 
 def test_past_the_monologue_ceiling_it_goes_to_the_wall_as_text(store):

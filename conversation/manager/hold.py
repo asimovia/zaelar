@@ -18,7 +18,7 @@ from __future__ import annotations
 
 #: what the model of a later batch is told about the reply that waits (the prompt's own words)
 NOTE = ("[a reply of yours waits to be said, ready for his {said} before these entries: «{text}» — a reply answers "
-        "all of it and replaces it; no_reply if these entries are not his or add nothing]")
+        "all of it and replaces it; no_reply if they add nothing, with not_his: true if they are not his]")
 
 
 def open_on(conv, *endpoints: str | None) -> str | None:
@@ -67,10 +67,32 @@ def absorb(conv, r) -> None:
 
 
 def not_his(conv, endpoint: str | None) -> None:
-    """Something closed on the waiting reply's device and it was not his."""
+    """Something closed on the waiting reply's device and it was not his: a guard's or the ear's discard, or a chunk
+    the model judged not his (`no_reply` with `not_his`) — never one it found «adds nothing», which is his."""
     w = conv.waiting
     if w is not None and (endpoint is None or w.ctx.endpoint in (None, endpoint)):
         w.not_his += 1
+
+
+def drop(conv, why: str) -> None:
+    """A stop (of our voice, of the run, of everything; the button's cancel): the reply that waits is never said — its
+    requests close `stopped`, its batch is accounted silent."""
+    w = conv.waiting
+    if w is None:
+        return
+    from conversation.manager.run import _emit, close
+    conv.waiting, w.parked = None, None
+    now = conv.clock.now_ms()
+    conv.inbox.account(list(w.batch_ids), "silent", now, reason="stopped")
+    for req in w.requests:
+        close(conv, req, "silent", "stopped", w, reason=why)
+    _emit(conv, "ended", w, outcome="stopped", reason=why, waited=True)
+
+
+def his(conv) -> None:
+    """Something of his was accepted while a reply waits: «everything since was not his» starts again from zero."""
+    if conv.waiting is not None:
+        conv.waiting.not_his = 0
 
 
 def due(conv, now: int) -> str | None:
@@ -89,7 +111,7 @@ def due(conv, now: int) -> str | None:
         return None                             # a chunk of his still to run: it runs first, with this reply in view
     if open_on(conv, *devices_of(w)) is None:
         return "voice"
-    if now - w.voice_parked_at >= conv.cfg.not_his_ms and w.not_his:
+    if now - w.voice_parked_at >= conv.cfg.not_his_ms and w.not_his > 0:   # since his last word, nothing his
         return "not_his"
     return None
 

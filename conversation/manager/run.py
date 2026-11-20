@@ -365,6 +365,7 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
                         continue                         # a stop of our voice or of what plays: the run may go on
                     if isinstance(order, commands.Reply):
                         r.ordered = True                 # a reply is an order: a stop after it stops nothing
+                    r.judged_not_his = getattr(order, "not_his", False)
                     if await _command(conv, r, batch, order, steps, last_try=repaired):
                         return
                     repaired, called = True, True        # one repair round, with the reason as a step
@@ -634,8 +635,8 @@ def _park(conv: "Conversation", r: "Running", batch: Batch, cmd, text: str | Non
 
 
 def _silent(conv: "Conversation", r: "Running", reason: str, now: int) -> None:
-    if conv.waiting is not None and conv.waiting is not r:
-        hold.not_his(conv, r.ctx.endpoint)      # a chunk closed with no reply while a reply waits: not his
+    if conv.waiting is not None and conv.waiting is not r and r.judged_not_his:
+        hold.not_his(conv, r.ctx.endpoint)      # a chunk the model judged not his while a reply waits
     for req in r.requests:
         close(conv, req, "silent", "silent", r, reason=reason)
     cut = _barge_cut(conv, r)
@@ -697,7 +698,8 @@ async def _publish(conv: "Conversation", r: "Running", batch: Batch, text: str, 
     (`hold.park`); `due` says it waited and why it goes now — `wall`: as text only."""
     reply = choose(batch.envelopes, conv.devices.get(r.ctx.endpoint or "", Device(r.ctx.endpoint)),
                    text_gets_voice=bool(conv.prefs("reply_voice_to_text", True)))     # his rule, as it stands now
-    due = due or ("wall" if batch.reason == MONOLOGUE else None)   # a monologue past its ceiling: the wall, as text
+    if due is None and batch.reason == MONOLOGUE:    # a monologue past its ceiling: the wall while he still speaks,
+        due = "wall" if hold.open_on(conv, *hold.devices_of(r)) is not None else "voice"   # the voice once he stopped
     if "voice" in reply.channels and due is None and hold.open_on(conv, *hold.devices_of(r)) is not None:
         hold.park(conv, r, batch, text, steps)
         return

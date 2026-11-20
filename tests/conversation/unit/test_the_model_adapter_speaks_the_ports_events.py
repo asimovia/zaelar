@@ -72,7 +72,7 @@ def test_a_failure_says_whose_it_is():
 
 def test_the_orders_declare_their_fields():
     assert set(ORDERS["reply"]["properties"]) == {"text", "claims", "complete"}
-    assert set(ORDERS["no_reply"]["properties"]) == {"reason", "complete"}
+    assert set(ORDERS["no_reply"]["properties"]) == {"reason", "complete", "not_his"}   # not his ≠ nothing to add (R3-A)
     assert all(t["type"] == "function" for t in tools_for([ToolSpec("search", {"type": "object"})]))
 
 
