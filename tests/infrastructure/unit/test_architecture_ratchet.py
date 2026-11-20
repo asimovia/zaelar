@@ -706,6 +706,8 @@ _PACKAGE_CEILINGS["server"] += 1           # same: the session lock carries the 
 _TOTAL_MAX += 41     # same cause
 _PACKAGE_CEILINGS["conversation"] += 20    # 2026-11-20 V2-941 v3.1 (the voice pass on 1800c4bcc): a barge-in that cut our reply and ended silent is a fact in the window, never his words; a no_reply to his voice that did not cut us is asked once
 _TOTAL_MAX += 20     # same cause
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 30    # 2026-11-20 V2-941 v3.1 (the operator's live test): a wake phrase of words the paid ear brought is never answered twice (`controls.local_phrase`, `ear_in.heard_lately`)
+_TOTAL_MAX += 30     # same cause
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

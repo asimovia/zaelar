@@ -33,10 +33,25 @@ def make(conv, op: str, endpoint: str, by: str, t: int):
                   onset_ms=t, sealed_ms=t, channel=Channel(channel), endpoint=endpoint)
 
 
+#: a phrase the device's own ear caught is the paid ear's turn when the paid ear brought its words this recently
+HEARD_WITHIN_S = 10.0
+HEARD_BY_EAR = "heard_by_ear"
+
+
 def local_phrase(text: str, dev: str = "") -> None:
-    """His phrase a device's own ear caught (the browser's wake word): VOICE into the ear, an entry of its own."""
+    """His phrase a device's own ear caught (the browser's wake word): VOICE into the ear, an entry of its own — unless
+    the paid ear already brought those words (its own turn, a few seconds ago or in course): then it is discarded
+    `heard_by_ear` and never enters, so the same words are never answered twice, nor do they cut our reply."""
     from conversation.ear import signals as S
+    from nucleo.conversation_host import ear_in
+    from voice import echo_text
     if not str(text or "").strip():
+        return
+    if any(echo_text.contained(text, heard) for heard in ear_in.heard_lately(HEARD_WITHIN_S)):
+        where = dev or "holder"
+        entry._hand(lambda c: c.em.emit("conv_ear", "discarded", owner="ear", cause={"kind": "device_ear"},
+                                        refs={"endpoint": where, "channel": "voice"}, trace=f"local:{where}",
+                                        text=str(text)[:400], reason=HEARD_BY_EAR))
         return
     sig = S.LocalPhrase(dev or "holder", f"l_{uuid.uuid4().hex[:12]}", str(text).strip()[:4000],
                         int(time.time() * 1000))

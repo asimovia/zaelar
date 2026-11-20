@@ -12,6 +12,7 @@ body's attention (`_attend`), where those guards judge.
 from __future__ import annotations
 
 import threading
+import time
 
 from conversation.ear import signals as S
 
@@ -24,6 +25,8 @@ TURNS_KEPT = 4096
 _heard: dict[str, str] = {}                       # stream → the words of the turn in course, for the guards
 _rose: dict[str, float] = {}                      # stream → when its first word began (wall ms): the echo's timing
 _rose_turn: dict[str, object] = {}                # stream → the turn `_rose` belongs to
+_recent: list[tuple[float, str]] = []              # (when it ended, his words): the paid ear's last turns
+RECENT_KEPT = 4
 
 
 def signals(ev: dict) -> list:
@@ -132,6 +135,9 @@ def _stopped(ev: dict) -> list:
     stream = str(ev.get("stream") or "")
     with _lock:
         text = _heard.pop(stream, "")
+        if text.strip():                               # what the paid ear brought, for the device's own ear to compare
+            _recent.append((time.time(), text))
+            del _recent[:-RECENT_KEPT]
     stopped, rest = guards.split_stop(text) if text.strip() else (False, "")
     if not stopped:
         return []
@@ -142,6 +148,13 @@ def _stopped(ev: dict) -> list:
         return []                                      # ear's guards give it as the entry's words (`for_ear`)
     attention.close_window("voice-order")             # a bare «cállate» closes the conversation's window as well
     return [S.Discard(stream, text, "stop", int(ev.get("t_ms") or 0))]
+
+
+def heard_lately(within_s: float, now: float | None = None) -> list[str]:
+    """His words the paid ear brought within `within_s` — the turns it ended and the ones in course."""
+    now = time.time() if now is None else now
+    with _lock:
+        return [t for at, t in _recent if now - at <= within_s] + [t for t in _heard.values() if t.strip()]
 
 
 def rose_of(stream: str) -> float | None:
@@ -158,3 +171,4 @@ def _reset_for_tests() -> None:
         _heard.clear()
         _rose.clear()
         _rose_turn.clear()
+        _recent.clear()

@@ -527,3 +527,23 @@ def test_the_holders_device_declares_its_echo_cancellation(monkeypatch):
     monkeypatch.setattr(mic_input, "_decl", dict(mic_input._decl))                  # the switch's state, given back
     mic_input.undeclare(reason="w")                                              # another surface: not its word
     assert not mic_input.device_aec()
+
+
+def test_the_wake_phrase_of_words_the_paid_ear_brought_is_never_answered_twice(ear, monkeypatch):
+    """The operator's live test (session c2cb9f47): «¿Cómo estás? ¿Me estás escuchando?» came through the paid ear and
+    was answered; then the browser's own ear delivered the same words as a wake phrase, which CUT the reply and got a
+    second one. The phrase of words the paid ear brought a few seconds ago (or is bringing) never enters."""
+    import time
+    events, heard = [], []
+    conv = SimpleNamespace(em=SimpleNamespace(emit=lambda kind, label, **kw: events.append((kind, label, kw))),
+                           hear=lambda sig: heard.append(sig))
+    monkeypatch.setattr(entry, "_hand", lambda fn: fn(conv))
+    for f in _turn(words=("¿Cómo", "estás?", "¿Me", "estás", "escuchando?")):
+        ear_in.receive(f, lambda s: None)
+    controls.local_phrase("buenas wzael cómo estás me estás escuchando", "")
+    assert heard == [] and [(lab, kw["reason"]) for _k, lab, kw in events] == [("discarded", "heard_by_ear")]
+    controls.local_phrase("wzael w7 w8 w9", "")                                  # words the paid ear never had
+    assert [type(s).__name__ for s in heard] == ["LocalPhrase"]
+    monkeypatch.setattr(time, "time", lambda real=time.time: real() + controls.HEARD_WITHIN_S + 1)
+    controls.local_phrase("buenas wzael cómo estás me estás escuchando", "")    # long after: his again
+    assert len(heard) == 2
