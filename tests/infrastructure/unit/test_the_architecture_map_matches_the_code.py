@@ -61,3 +61,43 @@ def test_ids_are_unique_and_flows_join_pieces_of_the_map():
     assert len(flow_ids) == len(set(flow_ids))
     loose = [f["id"] for f in MAP["flows"] if f["a"] not in ids or f["b"] not in ids]
     assert not loose, f"flows to pieces the map does not have: {loose}"
+
+
+STATUSES = {"retiring"}
+DIRS = {"a>b", "b>a", "both"}
+
+
+def test_status_and_direction_are_ones_the_schema_names():
+    bad = [(x["id"], x["status"]) for x in MAP["zones"] + BOXES if "status" in x and x["status"] not in STATUSES]
+    bad += [(f["id"], f["dir"]) for f in MAP["flows"] if "dir" in f and f["dir"] not in DIRS]
+    assert not bad, f"a status or a direction the schema (`_schema`) does not name: {bad}"
+
+
+def test_a_planned_piece_points_at_nothing_yet_and_is_never_a_flow():
+    planned = MAP.get("planned", [])
+    ids = {b["id"] for b in BOXES}
+    zones = {z["id"] for z in MAP["zones"]}
+    assert all("paths" not in p and p["zone"] in zones and p["id"] not in ids for p in planned), \
+        "a planned piece has paths, an unknown zone, or the id of a built one"
+    assert all(r in ids for p in planned for r in p.get("replaces", [])), "a planned piece replaces an id the map does not have"
+    named = {p["id"] for p in planned}
+    assert not [f["id"] for f in MAP["flows"] if f["a"] in named or f["b"] in named], "a flow joins a planned piece"
+
+
+def test_every_view_draws_only_ids_the_map_has():
+    known = {b["id"] for b in BOXES} | {p["id"] for p in MAP.get("planned", [])} | {z["id"] for z in MAP["zones"]}
+    planned = {p["id"] for p in MAP.get("planned", [])}
+    for name, view in MAP.get("views", {}).items():
+        if name.startswith("_"):
+            continue
+        own = {b["id"] for b in view["outside"]}
+        assert not own & known, f"{name}: an aggregate box reuses a map id"
+        assert all(z in known for z in view["frame"]["zones"]), f"{name}: the frame names an unknown zone"
+        assert all(i in known for i in view["inside"]), f"{name}: an inside id the map does not have"
+        assert all(s in known for b in view["outside"] for s in b["stands_for"]), f"{name}: a box stands for nothing"
+        drawn = set(view["inside"]) | own
+        for e in view["edges"]:
+            assert e["from"] in drawn and e["to"] in drawn, f"{name}: an edge to an id the view does not draw: {e}"
+            assert e["dir"] in DIRS and e.get("status", "built") in STATUSES | {"built", "decided"}, f"{name}: {e}"
+            if {e["from"], e["to"]} & planned:
+                assert e.get("status") == "decided", f"{name}: an edge to a planned piece drawn as built: {e}"

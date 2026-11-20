@@ -864,6 +864,12 @@ tier does in the background. Model routing changes apply on the next voice recon
 > existing, a model id the model table calls but no box shows, or a root package nobody accounts for turns it red.
 > The other representations (the web's Technology pages, the session player, the piece each event comes from) align
 > to THAT file — the prose below is orientation, and where it disagrees the map and the code win.
+>
+> Its optional fields are named in the file's own `_schema`: a piece or zone that is `retiring` (still running, being
+> replaced), a flow's `dir` (`a>b`, `b>a`, `both`), the `planned` pieces (decided, not built: no paths, never a flow) and
+> the `views` — named diagrams over the same ids (a frame, what is inside it, aggregate boxes outside it drawn without
+> detail, and directed edges). `views.flashbrain` is the conversation manager drawn as a flowchart of where traffic
+> enters and leaves it. The same test holds all of it to the map.
 
 - Voice core: `voice/engine/` (LiveKit AgentSession, providers), `voice/tag_protocol.py`, `voice/observer.py`, `server/` (entry: `server/__main__.py`, `python -m server`).
 - Brain: `nucleo/flash/` + `nucleo/turn/` (FlashBrain; `nucleo/turn/pipeline*.py` = the one turn pipeline, `open_flows.py` = what is open and a request said again, `flow_events.py` = the events' router, `reply.py`/`mouth.py` = the in-turn mouth) + `nucleo/circuit/` (spec, ledger, settle, asker) + `nucleo/request/` (a request's birth, its questions, its ending) + `nucleo/events/` (events, the stream worker) + `search/` (shared web search as a service, §5b) + `nucleo/rails.py` + `nucleo/flash/music_flow.py` (RAILS, §5c) + `nucleo/dispatch/`/`nucleo/workers/`/`nucleo/agentes/` (Brain Workers; web search via native `WebSearch`/`WebFetch`) + `nucleo/cli/` (the worker's bridge) + `nucleo/pulse/loop.py`/`nucleo/pulse/scheduler.py`/`nucleo/pulse/cron_api.py`/`nucleo/pulse/sparks.py`/`nucleo/pulse/notices.py` (the out-of-turn mouth); adapters `voice/engine/llm/providers/nucleo.py` (voice) and `voice/typed_turn.py` (text). Memory: `memory/` (SQLite). Bus: `bus/`.

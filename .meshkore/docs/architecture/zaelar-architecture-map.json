@@ -1,7 +1,14 @@
 {
  "_doc": "The canonical map of the agent's architecture, measured on the code. Source: the code. This map is the one representation the others (the web's Technology pages, the operator's session player, the observability events) are aligned to. A test (tests/infrastructure/unit/test_the_architecture_map_matches_the_code.py) fails when a path stops existing, a model id leaves config/models.default.json, or a flow names a piece that is not here.",
+ "_schema": {
+  "_doc": "Optional fields every reader may use; a reader that does not know one ignores it.",
+  "status": "On a zone or a piece: absent = built and live; \"retiring\" = still in the code and still running for some sessions, being replaced (a diagram draws it dashed or apart, never as the current path).",
+  "dir": "On a flow or a view edge: \"a>b\" (a sends to b), \"b>a\", or \"both\" (a call that goes and comes back). Absent on a flow = not stated yet; a flow's `a`/`b` order alone carries no direction.",
+  "planned": "Top-level list: pieces whose mechanism is decided and not built yet. They have no `paths` (nothing to point at); `will_live_in` names where they will be, `replaces` the ids they take over. They never appear in `flows`; a view may draw them with status \"decided\".",
+  "views": "Top-level map of named diagrams over the same ids: a frame (the big block), the ids inside it, aggregate boxes outside it (`stands_for` = the zones or pieces a box summarises, drawn without detail) and directed edges. A view adds no piece: every id it names is a piece, an external, a planned item, a zone or one of its own boxes."
+ },
  "version": 1,
- "measured": "2026-11-18",
+ "measured": "2026-11-21",
  "blocks": [
   {
    "id": "origins",
@@ -44,8 +51,10 @@
   {
    "id": "flash",
    "block": "brain",
-   "name": "FlashBrain — the turn",
-   "package": "nucleo/turn/pipeline.py"
+   "name": "The old turn — retiring",
+   "package": "nucleo/turn/pipeline.py",
+   "status": "retiring",
+   "_doc": "The previous turn pipeline (gate, brief, prompt, one model call, acts, close). It still runs for a session the conversation manager does not take, and is being replaced piece by piece. Three of its boxes stay because other doors use them: the Jev client (`f_jev`), self-knowledge (`f_self`) and the consent/consequence doors (`f_doors`)."
   },
   {
    "id": "memory",
@@ -117,8 +126,9 @@
   {
    "id": "conversation",
    "block": "brain",
-   "name": "Conversation & turn manager (isolated, V2-941)",
-   "package": "conversation/"
+   "name": "Conversation & turn manager",
+   "package": "conversation/ · nucleo/conversation_host/",
+   "_doc": "The turn: the ear closes his turn, the inbox orders his entries across channels, the manager runs one batch at a time with the model, the gateway is the only door to an effect, the mouth says. The package (`conversation/`) imports nothing of the engine; the host (`nucleo/conversation_host/`) puts the engine behind its ports: the guards in front of the ear, the action map's shortcut, the route of what is open, the declared reads and acts and their doors, the state readers, the voice and the chat wall."
   }
  ],
  "pieces": [
@@ -367,7 +377,8 @@
    "emits": [
     "ambient",
     "presence"
-   ]
+   ],
+   "status": "retiring"
   },
   {
    "id": "f_switch",
@@ -380,7 +391,8 @@
     "thread",
     "flow"
    ],
-   "_doc": "Whose his words are, decided ONCE at the turn's gate, before the model: one board of the open processes (running, or a row waiting on him) and one decision per chunk. For process N the chunk is delivered there as he said it and Flash does not run; for none, Flash takes the turn. His stop for an open process ends its row through the one cancel door."
+   "_doc": "Whose his words are, decided ONCE at the turn's gate, before the model: one board of the open processes (running, or a row waiting on him) and one decision per chunk. For process N the chunk is delivered there as he said it and Flash does not run; for none, Flash takes the turn. His stop for an open process ends its row through the one cancel door. Retiring as a decider in front of the model: the conversation manager reaches it only through its route port, until the model answers an open process by id itself.",
+   "status": "retiring"
   },
   {
    "id": "f_admit",
@@ -397,7 +409,8 @@
     "rail",
     "thread"
    ],
-   "_doc": "Every reader of the brief's verdicts reads one act floor (`verdicts.to_act`); at VETO a sure verdict takes the place of the model's call when what enters leaves or deletes, and a send in the model's place is born asking. The words follow the act: calls and tags wait for the verdict (`route_by_verdict`)."
+   "_doc": "Every reader of the brief's verdicts reads one act floor (`verdicts.to_act`); at VETO a sure verdict takes the place of the model's call when what enters leaves or deletes, and a send in the model's place is born asking. The words follow the act: calls and tags wait for the verdict (`route_by_verdict`).",
+   "status": "retiring"
   },
   {
    "id": "f_jev",
@@ -408,7 +421,8 @@
    ],
    "emits": [
     "brain"
-   ]
+   ],
+   "_doc": "Stays: other doors use it, whatever turn runs."
   },
   {
    "id": "f_bdoors",
@@ -418,7 +432,8 @@
     "nucleo/turn/brief_doors.py"
    ],
    "emits": [],
-   "_doc": "A question only one door reads is asked AT that door, after the model (a model call, an errand's portal, a leaving act's exit, a parked directive), on its own thread and merged into the turn's brief; the turn's one tier-1 trip, before the model, asks only what the turn reads (V2-887 step 8)."
+   "_doc": "A question only one door reads is asked AT that door, after the model (a model call, an errand's portal, a leaving act's exit, a parked directive), on its own thread and merged into the turn's brief; the turn's one tier-1 trip, before the model, asks only what the turn reads (V2-887 step 8).",
+   "status": "retiring"
   },
   {
    "id": "f_prompt",
@@ -430,7 +445,8 @@
    "emits": [
     "perf"
    ],
-   "_doc": "The byte-stable system prefix, then the tools (always-offered before state-gated): what the provider caches, identical whatever he says or has open (V2-889 F1)."
+   "_doc": "The byte-stable system prefix, then the tools (always-offered before state-gated): what the provider caches, identical whatever he says or has open (V2-889 F1).",
+   "status": "retiring"
   },
   {
    "id": "f_state",
@@ -441,7 +457,8 @@
     "widgets/state_render.py"
    ],
    "emits": [],
-   "_doc": "What is true THIS turn (screen, clock, errands, record), sent as a second system message just before his line (`builder.split_state`), so the cached prefix never moves (V2-889 F1). The open apps' state lines ride here: ONE line per app as it REPORTS it, never as it was ordered (`widgets/state_render.py`, headed by its legend, a bounded budget; the apps the turn names lead)."
+   "_doc": "What is true THIS turn (screen, clock, errands, record), sent as a second system message just before his line (`builder.split_state`), so the cached prefix never moves (V2-889 F1). The open apps' state lines ride here: ONE line per app as it REPORTS it, never as it was ordered (`widgets/state_render.py`, headed by its legend, a bounded budget; the apps the turn names lead).",
+   "status": "retiring"
   },
   {
    "id": "f_model",
@@ -455,7 +472,9 @@
     "brain",
     "timing",
     "perf"
-   ]
+   ],
+   "status": "retiring",
+   "_doc": "Retiring with the old turn; its client (`nucleo/llm/fast_client.py`) stays: the conversation manager's model port calls it."
   },
   {
    "id": "f_tools",
@@ -468,7 +487,8 @@
    "emits": [
     "arbiter",
     "brain"
-   ]
+   ],
+   "status": "retiring"
   },
   {
    "id": "f_self",
@@ -482,7 +502,7 @@
    "emits": [
     "brain"
    ],
-   "_doc": "What the agent knows about itself: `about_self` answers from ONE catalogue (`catalog.json` + the `self` language pack) and the live snapshot (one reader per truth: settings, connectors, widgets, the camera, the face)."
+   "_doc": "What the agent knows about itself: `about_self` answers from ONE catalogue (`catalog.json` + the `self` language pack) and the live snapshot (one reader per truth: settings, connectors, widgets, the camera, the face). Stays: other doors use it, whatever turn runs."
   },
   {
    "id": "f_doors",
@@ -495,7 +515,8 @@
    "emits": [
     "consequence",
     "consent"
-   ]
+   ],
+   "_doc": "Stays: other doors use it, whatever turn runs."
   },
   {
    "id": "f_close",
@@ -507,7 +528,8 @@
    ],
    "emits": [
     "brain"
-   ]
+   ],
+   "status": "retiring"
   },
   {
    "id": "f_whisper",
@@ -519,7 +541,8 @@
    "emits": [
     "whisper"
    ],
-   "_doc": "Between turns, once a turn is closed (`turn.closed`): a deterministic gate over verdicts the turn already paid for, then a typed slot with no instruction field. In shadow it is only measured — `whisper` events, wired into no prompt (V2-889 F2)."
+   "_doc": "Between turns, once a turn is closed (`turn.closed`): a deterministic gate over verdicts the turn already paid for, then a typed slot with no instruction field. In shadow it is only measured — `whisper` events, wired into no prompt (V2-889 F2).",
+   "status": "retiring"
   },
   {
    "id": "f_mouth",
@@ -534,7 +557,8 @@
     "filler",
     "bot_speech"
    ],
-   "_doc": "The voice runs behind the same relay: titular, then the OpenAI stand-in; `relay_bound.py` bounds a titular that hangs (armed: switches the voice, with a cooldown; shadow: says so)."
+   "_doc": "The voice runs behind the same relay: titular, then the OpenAI stand-in; `relay_bound.py` bounds a titular that hangs (armed: switches the voice, with a cooldown; shadow: says so).",
+   "status": "retiring"
   },
   {
    "id": "m_api",
@@ -645,9 +669,11 @@
    "zone": "events",
    "name": "Event pump",
    "paths": [
-    "nucleo/events/pump.py"
+    "nucleo/events/pump.py",
+    "nucleo/turn/flow_events.py"
    ],
-   "emits": []
+   "emits": [],
+   "_doc": "The one subscriber per source and the one router of an event: a row waiting for it, a claimant (an errand's thread), a rule subscribed to it, or nothing (the source's own handling). The router still lives under the old turn's folder and moves to `nucleo/events/`."
   },
   {
    "id": "e_subs",
@@ -1007,11 +1033,18 @@
    "zone": "conversation",
    "name": "Ear — the turn arbiter",
    "paths": [
-    "conversation/ear"
+    "conversation/ear",
+    "nucleo/conversation_host/entry.py",
+    "nucleo/conversation_host/ear_in.py",
+    "nucleo/conversation_host/guards.py",
+    "nucleo/conversation_host/controls.py",
+    "nucleo/conversation_host/voice_session.py"
    ],
    "emits": [
-    "conv_ear"
-   ]
+    "conv_ear",
+    "secret"
+   ],
+   "_doc": "His voice (the speech-to-text's words and end of turn, through the voice process's lossless lane) and his typed lines and buttons, each through the guards in front of the ear: a closed microphone, our own echo, «only my voice», the attention mode and the vault, which takes a secret out before anything reads it."
   },
   {
    "id": "c_inbox",
@@ -1029,7 +1062,8 @@
    "zone": "conversation",
    "name": "Ledger — what is open",
    "paths": [
-    "conversation/ledger"
+    "conversation/ledger",
+    "nucleo/conversation_host/store.py"
    ],
    "emits": [
     "conv_ledger"
@@ -1040,9 +1074,12 @@
    "zone": "conversation",
    "name": "Composer — the prompt, each thing once",
    "paths": [
-    "conversation/composer"
+    "conversation/composer",
+    "nucleo/conversation_host/memory_read.py",
+    "nucleo/conversation_host/prefix.py"
    ],
-   "emits": []
+   "emits": [],
+   "_doc": "The prompt, each thing once: a byte-stable prefix (who is who, the language, how it speaks, what it may read and do), the state as facts (memory's state, the widgets on screen, the tasks open), the conversation window and the batch."
   },
   {
    "id": "c_gateway",
@@ -1060,11 +1097,19 @@
    "zone": "conversation",
    "name": "Mouth — say, and what was heard",
    "paths": [
-    "conversation/mouth"
+    "conversation/mouth",
+    "nucleo/conversation_host/mouth.py",
+    "nucleo/conversation_host/voice_mouth.py",
+    "nucleo/conversation_host/wall.py",
+    "nucleo/conversation_host/wall_lines.py",
+    "nucleo/conversation_host/owed.py",
+    "nucleo/conversation_host/words.py"
    ],
    "emits": [
-    "conv_mouth"
-   ]
+    "conv_mouth",
+    "wall"
+   ],
+   "_doc": "Says a reply by voice and on the chat wall, never over his open voice, and records what was heard of it; says the lines owed to him (the notices ledger) when it is free."
   },
   {
    "id": "c_manager",
@@ -1072,12 +1117,116 @@
    "name": "Manager — the turn: policy, focus, one run",
    "paths": [
     "conversation/manager",
-    "conversation/__init__.py"
+    "conversation/__init__.py",
+    "nucleo/conversation_host/boot.py",
+    "nucleo/conversation_host/runtime.py",
+    "nucleo/conversation_host/sessions.py",
+    "nucleo/conversation_host/switch.py",
+    "nucleo/conversation_host/config.py",
+    "nucleo/conversation_host/model.py",
+    "nucleo/conversation_host/turns.py",
+    "nucleo/conversation_host/record.py",
+    "nucleo/conversation_host/stops.py",
+    "nucleo/conversation_host/figures.py",
+    "nucleo/conversation_host/clock.py"
    ],
    "emits": [
     "conv_run",
-    "conv_close"
-   ]
+    "conv_close",
+    "trace",
+    "flow"
+   ],
+   "_doc": "One run at a time per account: the policy table by kind of input, the batch to the model with the whole declared catalogue, its orders (reply, no_reply, the four stops), a repair round for a figure its evidence does not back, and every request closed exactly once. Its model is the fast model behind a relay."
+  },
+  {
+   "id": "c_shortcut",
+   "zone": "conversation",
+   "name": "Shortcut — a phrase the action map knows verbatim",
+   "paths": [
+    "nucleo/conversation_host/shortcut.py"
+   ],
+   "emits": [
+    "actionmap"
+   ],
+   "_doc": "Before any model: an exact whole-utterance hit in the action map runs its direct act and the run closes with that origin; no hit, the model."
+  },
+  {
+   "id": "c_route",
+   "zone": "conversation",
+   "name": "Route — what is open takes his words",
+   "paths": [
+    "nucleo/conversation_host/routing.py"
+   ],
+   "emits": [],
+   "_doc": "Before the model, after the shortcut: an open message draft reads his sentence against itself (its one owner), then an open process or a row waiting on him (the switchboard). Taken, its line is said; not taken, the model answers."
+  },
+  {
+   "id": "c_acts",
+   "zone": "conversation",
+   "name": "Reads and acts — the declared catalogue and its doors",
+   "paths": [
+    "nucleo/conversation_host/acts.py",
+    "nucleo/conversation_host/acts_widget.py",
+    "nucleo/conversation_host/acts_tasks.py",
+    "nucleo/conversation_host/acts_self.py",
+    "nucleo/conversation_host/acts_life.py",
+    "nucleo/conversation_host/acts_network.py",
+    "nucleo/conversation_host/tools_read.py",
+    "nucleo/conversation_host/declared.json"
+   ],
+   "emits": [
+    "panel"
+   ],
+   "_doc": "Every tool the model sees is declared data (`declared.json`): its schema, what it is for and the door it goes to. Reads pass the gateway (web search, a widget's content and actions, a state topic, memory, the agent itself); a local act is reserved and carried to the door that already does it (the canvas, a widget's declared action, a task, the agent's own settings, a widget's life); a message goes to its one owner and leaves only through the connectors' exit door."
+  }
+ ],
+ "planned": [
+  {
+   "id": "p_event_entry",
+   "zone": "conversation",
+   "name": "Event entry — what arrives without his voice, as an entry of the manager",
+   "will_live_in": [
+    "conversation/envelopes.py",
+    "nucleo/conversation_host/events_in.py"
+   ],
+   "replaces": [],
+   "_doc": "An event (a message, a due job, a cluster's turn, a worker that ended or asked) enters the manager as an entry of its own kind, with the authority of its source, never his: it is ordered behind his entries, counted and closed once, and has its flow. Code and his rules decide what is done with it (a row it resumes, a claimant, a subscribed rule); the conversation model is not asked. What he must hear is a line owed to him."
+  },
+  {
+   "id": "p_peer_compose",
+   "zone": "peers",
+   "name": "Peer composer — a cluster peer's turn",
+   "will_live_in": [
+    "connectors/meshkore/compose.py"
+   ],
+   "replaces": [
+    "f_prompt"
+   ],
+   "_doc": "A cluster peer's turn composed by the connector itself: the system text as language-pack data, the relationship capsule and the peer's words, the security trailer last; one call through the fast client and its relay; the only act its permissions may grant is an errand bounded by them. Replaces the old turn's cluster profile."
+  },
+  {
+   "id": "p_task_answer",
+   "zone": "conversation",
+   "name": "Answer to an open process, by id",
+   "will_live_in": [
+    "nucleo/conversation_host/declared.json",
+    "nucleo/conversation_host/acts_tasks.py"
+   ],
+   "replaces": [
+    "f_switch"
+   ],
+   "_doc": "The manager's model sees the processes open (OPEN, TASKS) and answers one with a declared act by its id; no decider runs in front of the model."
+  },
+  {
+   "id": "p_memory_acts",
+   "zone": "conversation",
+   "name": "Forget and correct a memory, by id",
+   "will_live_in": [
+    "nucleo/conversation_host/declared.json",
+    "memory/api/forgetting.py"
+   ],
+   "replaces": [],
+   "_doc": "Two declared acts the model calls after a recall gave it the memory's id: forget it (soft, with its undo) or correct it (a new memory through the one writer, superseding the old). Nothing is matched by words."
   }
  ],
  "emitters": {
@@ -2350,40 +2499,570 @@
    "id": "c_ear_inbox",
    "a": "c_ear",
    "b": "c_inbox",
-   "label": "envelopes"
+   "label": "envelopes",
+   "dir": "a>b"
   },
   {
    "id": "c_gateway_ledger",
    "a": "c_gateway",
    "b": "c_ledger",
-   "label": "effects, mandates"
+   "label": "effects, mandates",
+   "dir": "both"
   },
   {
    "id": "c_inbox_manager",
    "a": "c_inbox",
    "b": "c_manager",
-   "label": "batches"
+   "label": "batches",
+   "dir": "a>b"
   },
   {
    "id": "c_manager_composer",
    "a": "c_manager",
    "b": "c_composer",
-   "label": "state + batch"
+   "label": "state + batch",
+   "dir": "a>b"
   },
   {
    "id": "c_manager_gateway",
    "a": "c_manager",
    "b": "c_gateway",
-   "label": "tool calls"
+   "label": "tool calls",
+   "dir": "both"
   },
   {
    "id": "c_manager_mouth",
    "a": "c_manager",
    "b": "c_mouth",
-   "label": "say"
+   "label": "say",
+   "dir": "a>b"
+  },
+  {
+   "id": "c_stt_ear",
+   "a": "x_stt",
+   "b": "c_ear",
+   "label": "words, end of turn",
+   "dir": "a>b"
+  },
+  {
+   "id": "c_chat_ear",
+   "a": "u_chat",
+   "b": "c_ear",
+   "label": "typed lines",
+   "dir": "a>b"
+  },
+  {
+   "id": "c_manager_shortcut",
+   "a": "c_manager",
+   "b": "c_shortcut",
+   "label": "a verbatim phrase",
+   "dir": "both"
+  },
+  {
+   "id": "c_shortcut_alias",
+   "a": "c_shortcut",
+   "b": "g_alias",
+   "label": "the action map",
+   "dir": "both"
+  },
+  {
+   "id": "c_shortcut_canvas",
+   "a": "c_shortcut",
+   "b": "u_canvas",
+   "label": "its direct act",
+   "dir": "a>b"
+  },
+  {
+   "id": "c_manager_route",
+   "a": "c_manager",
+   "b": "c_route",
+   "label": "what is open",
+   "dir": "both"
+  },
+  {
+   "id": "c_route_row",
+   "a": "c_route",
+   "b": "t_row",
+   "label": "his answer to a process",
+   "dir": "a>b"
+  },
+  {
+   "id": "c_composer_memory",
+   "a": "m_api",
+   "b": "c_composer",
+   "label": "state, widgets, tasks",
+   "dir": "a>b"
+  },
+  {
+   "id": "c_manager_model",
+   "a": "c_manager",
+   "b": "x_flash",
+   "label": "prompt · orders, tool calls",
+   "dir": "both"
+  },
+  {
+   "id": "c_gateway_acts",
+   "a": "c_gateway",
+   "b": "c_acts",
+   "label": "a read, a reserved act",
+   "dir": "a>b"
+  },
+  {
+   "id": "c_acts_canvas",
+   "a": "c_acts",
+   "b": "u_canvas",
+   "label": "canvas · widget actions · widget reads",
+   "dir": "both"
+  },
+  {
+   "id": "c_acts_dispatch",
+   "a": "c_acts",
+   "b": "t_dispatch",
+   "label": "start · resume · stop a task",
+   "dir": "a>b"
+  },
+  {
+   "id": "c_acts_search",
+   "a": "c_acts",
+   "b": "s_search",
+   "label": "web search · listings",
+   "dir": "both"
+  },
+  {
+   "id": "c_acts_memory",
+   "a": "c_acts",
+   "b": "m_api",
+   "label": "recall · state topics",
+   "dir": "both"
+  },
+  {
+   "id": "c_acts_self",
+   "a": "c_acts",
+   "b": "f_self",
+   "label": "about itself",
+   "dir": "both"
+  },
+  {
+   "id": "c_acts_mesh",
+   "a": "c_acts",
+   "b": "s_mesh",
+   "label": "clusters · contacts' agents",
+   "dir": "a>b"
+  },
+  {
+   "id": "c_acts_send",
+   "a": "c_acts",
+   "b": "s_conn",
+   "label": "a message, through its one owner",
+   "dir": "a>b"
+  },
+  {
+   "id": "c_notices_manager",
+   "a": "b_notices",
+   "b": "c_manager",
+   "label": "lines owed to him",
+   "dir": "a>b"
+  },
+  {
+   "id": "c_manager_record",
+   "a": "c_manager",
+   "b": "m_heart",
+   "label": "his words filed · the pair",
+   "dir": "a>b"
+  },
+  {
+   "id": "c_mouth_tts",
+   "a": "c_mouth",
+   "b": "x_tts",
+   "label": "TTS",
+   "dir": "a>b"
+  },
+  {
+   "id": "c_mouth_wall",
+   "a": "c_mouth",
+   "b": "u_chat",
+   "label": "the chat wall",
+   "dir": "a>b"
   }
  ],
- "_flows": "Who talks to whom. `a`/`b` carry no direction (a call goes and comes back). `uncaptured` = the flow exists in the code but leaves no event (e.g. the rules read into every prompt).",
+ "_flows": "Who talks to whom. `a`/`b` alone carry no direction; `dir` (see `_schema`) says it where it is stated. `uncaptured` = the flow exists in the code but leaves no event (e.g. the rules read into every prompt).",
+ "views": {
+  "_doc": "Named diagrams drawn from this file by the web and the session player. Ids are the map's; boxes ending in a view are aggregates drawn without detail.",
+  "flashbrain": {
+   "title": "FlashBrain — the conversation and turn manager",
+   "_doc": "A flowchart of where traffic enters the manager and where it leaves. Inside the frame, the manager's pieces; outside, one box per neighbour with no detail. Edges carry `dir`; `status` \"decided\" = designed, not built; \"retiring\" = the old path still running.",
+   "frame": {
+    "id": "fb",
+    "label": "FlashBrain",
+    "zones": [
+     "conversation"
+    ]
+   },
+   "inside": [
+    "c_ear",
+    "c_inbox",
+    "c_shortcut",
+    "c_route",
+    "c_manager",
+    "c_composer",
+    "c_gateway",
+    "c_ledger",
+    "c_acts",
+    "c_mouth",
+    "p_event_entry",
+    "p_task_answer",
+    "p_memory_acts"
+   ],
+   "outside": [
+    {
+     "id": "v_you",
+     "label": "You — voice, chat, buttons",
+     "stands_for": [
+      "you"
+     ],
+     "side": "in"
+    },
+    {
+     "id": "v_voice",
+     "label": "Voice providers — speech in, speech out",
+     "stands_for": [
+      "voice"
+     ],
+     "side": "both"
+    },
+    {
+     "id": "v_models",
+     "label": "Language model",
+     "stands_for": [
+      "models"
+     ],
+     "side": "both"
+    },
+    {
+     "id": "v_memory",
+     "label": "Memory",
+     "stands_for": [
+      "memory",
+      "store"
+     ],
+     "side": "both"
+    },
+    {
+     "id": "v_widgets",
+     "label": "Widgets and the screen",
+     "stands_for": [
+      "u_canvas"
+     ],
+     "side": "out"
+    },
+    {
+     "id": "v_tasks",
+     "label": "Tasks and workers",
+     "stands_for": [
+      "tasks",
+      "worker"
+     ],
+     "side": "out"
+    },
+    {
+     "id": "v_events",
+     "label": "Events and his rules — messages, the pulse, clusters, connectors",
+     "stands_for": [
+      "events",
+      "rules",
+      "pulse",
+      "inbound",
+      "peers"
+     ],
+     "side": "in"
+    },
+    {
+     "id": "v_notices",
+     "label": "Lines owed to him",
+     "stands_for": [
+      "b_notices"
+     ],
+     "side": "in"
+    },
+    {
+     "id": "v_services",
+     "label": "Search, the browser, the network",
+     "stands_for": [
+      "s_search",
+      "s_nav",
+      "s_scrape",
+      "s_mesh"
+     ],
+     "side": "out"
+    },
+    {
+     "id": "v_send",
+     "label": "Messages out — its one owner, the connectors' exit",
+     "stands_for": [
+      "s_conn"
+     ],
+     "side": "out"
+    },
+    {
+     "id": "v_self",
+     "label": "The agent's own catalogue",
+     "stands_for": [
+      "f_self"
+     ],
+     "side": "out"
+    },
+    {
+     "id": "v_rules_dna",
+     "label": "The action map",
+     "stands_for": [
+      "g_alias"
+     ],
+     "side": "both"
+    },
+    {
+     "id": "v_legacy",
+     "label": "The old turn",
+     "stands_for": [
+      "flash"
+     ],
+     "side": "in",
+     "status": "retiring"
+    }
+   ],
+   "edges": [
+    {
+     "from": "v_you",
+     "to": "v_voice",
+     "label": "his voice",
+     "dir": "a>b"
+    },
+    {
+     "from": "v_voice",
+     "to": "c_ear",
+     "label": "words, end of turn",
+     "dir": "a>b"
+    },
+    {
+     "from": "v_you",
+     "to": "c_ear",
+     "label": "typed lines, buttons",
+     "dir": "a>b"
+    },
+    {
+     "from": "c_ear",
+     "to": "c_inbox",
+     "label": "his entries",
+     "dir": "a>b"
+    },
+    {
+     "from": "c_inbox",
+     "to": "c_manager",
+     "label": "one batch at a time",
+     "dir": "a>b"
+    },
+    {
+     "from": "c_manager",
+     "to": "c_shortcut",
+     "label": "a verbatim phrase",
+     "dir": "both"
+    },
+    {
+     "from": "c_shortcut",
+     "to": "v_rules_dna",
+     "label": "lookup",
+     "dir": "both"
+    },
+    {
+     "from": "c_shortcut",
+     "to": "v_widgets",
+     "label": "its direct act",
+     "dir": "a>b"
+    },
+    {
+     "from": "c_manager",
+     "to": "c_route",
+     "label": "what is open",
+     "dir": "both"
+    },
+    {
+     "from": "c_route",
+     "to": "v_tasks",
+     "label": "his answer to a process",
+     "dir": "a>b",
+     "status": "retiring"
+    },
+    {
+     "from": "c_route",
+     "to": "v_send",
+     "label": "the open draft",
+     "dir": "both"
+    },
+    {
+     "from": "c_manager",
+     "to": "c_composer",
+     "label": "state + batch",
+     "dir": "both"
+    },
+    {
+     "from": "v_memory",
+     "to": "c_composer",
+     "label": "state, widgets, tasks",
+     "dir": "a>b"
+    },
+    {
+     "from": "c_manager",
+     "to": "v_models",
+     "label": "prompt · orders, tool calls",
+     "dir": "both"
+    },
+    {
+     "from": "c_manager",
+     "to": "c_gateway",
+     "label": "tool calls",
+     "dir": "both"
+    },
+    {
+     "from": "c_gateway",
+     "to": "c_ledger",
+     "label": "seal · reserve",
+     "dir": "both"
+    },
+    {
+     "from": "c_gateway",
+     "to": "c_acts",
+     "label": "a read, a reserved act",
+     "dir": "a>b"
+    },
+    {
+     "from": "c_acts",
+     "to": "v_widgets",
+     "label": "canvas · widget actions · reads",
+     "dir": "both"
+    },
+    {
+     "from": "c_acts",
+     "to": "v_tasks",
+     "label": "start · resume · stop",
+     "dir": "a>b"
+    },
+    {
+     "from": "c_acts",
+     "to": "v_services",
+     "label": "search · listings · network",
+     "dir": "both"
+    },
+    {
+     "from": "c_acts",
+     "to": "v_memory",
+     "label": "recall · state topics",
+     "dir": "both"
+    },
+    {
+     "from": "c_acts",
+     "to": "v_self",
+     "label": "about itself",
+     "dir": "both"
+    },
+    {
+     "from": "c_acts",
+     "to": "v_send",
+     "label": "a message",
+     "dir": "a>b"
+    },
+    {
+     "from": "v_tasks",
+     "to": "v_notices",
+     "label": "a result, a question",
+     "dir": "a>b"
+    },
+    {
+     "from": "v_events",
+     "to": "v_notices",
+     "label": "what he must hear",
+     "dir": "a>b"
+    },
+    {
+     "from": "v_notices",
+     "to": "c_manager",
+     "label": "said when free",
+     "dir": "a>b"
+    },
+    {
+     "from": "c_manager",
+     "to": "c_mouth",
+     "label": "say",
+     "dir": "a>b"
+    },
+    {
+     "from": "c_mouth",
+     "to": "v_voice",
+     "label": "speech",
+     "dir": "a>b"
+    },
+    {
+     "from": "c_mouth",
+     "to": "v_you",
+     "label": "the chat wall",
+     "dir": "a>b"
+    },
+    {
+     "from": "c_manager",
+     "to": "v_memory",
+     "label": "his words filed",
+     "dir": "a>b"
+    },
+    {
+     "from": "v_events",
+     "to": "p_event_entry",
+     "label": "an event, with its source's authority",
+     "dir": "a>b",
+     "status": "decided"
+    },
+    {
+     "from": "p_event_entry",
+     "to": "c_inbox",
+     "label": "behind his entries",
+     "dir": "a>b",
+     "status": "decided"
+    },
+    {
+     "from": "c_acts",
+     "to": "p_task_answer",
+     "label": "answer a process by id",
+     "dir": "a>b",
+     "status": "decided"
+    },
+    {
+     "from": "p_task_answer",
+     "to": "v_tasks",
+     "label": "",
+     "dir": "a>b",
+     "status": "decided"
+    },
+    {
+     "from": "c_acts",
+     "to": "p_memory_acts",
+     "label": "forget · correct",
+     "dir": "a>b",
+     "status": "decided"
+    },
+    {
+     "from": "p_memory_acts",
+     "to": "v_memory",
+     "label": "",
+     "dir": "a>b",
+     "status": "decided"
+    },
+    {
+     "from": "v_you",
+     "to": "v_legacy",
+     "label": "a session the manager does not take",
+     "dir": "a>b",
+     "status": "retiring"
+    }
+   ]
+  }
+ },
  "not_drawn": {
   "config": "settings and the model table (config/models.default.json): read by every piece, not a station a signal crosses",
   "i18n": "the strings every surface speaks in",
