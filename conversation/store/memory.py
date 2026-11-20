@@ -40,6 +40,11 @@ class _Tables:
         rows = [(k, _thaw(v)) for k, v in sorted(self._table(table).items())]
         return rows if states is None else [(k, r) for k, r in rows if r.get("state") in states]
 
+    def recent(self, table: str, n: int) -> list[tuple[str, dict]]:
+        """The newest `n`, newest first: a table keeps its rows in the order they were last written."""
+        rows = list(self._table(table).items())[-int(n):] if n > 0 else []
+        return [(k, _thaw(v)) for k, v in reversed(rows)]
+
 
 class _Tx(_Tables):
     """Copy-on-write staging: a table is copied (shallowly) the first time this transaction writes it."""
@@ -57,7 +62,9 @@ class _Tx(_Tables):
         return self.staged[table]
 
     def put(self, table: str, key: str, row: dict) -> None:
-        self._write(table)[key] = _freeze(row)
+        t = self._write(table)
+        t.pop(key, None)                                  # the last written goes last: `recent` reads the order
+        t[key] = _freeze(row)
 
     def cas(self, table: str, key: str, field_name: str, expect: Any, new: dict) -> bool:
         row = self.get(table, key)
@@ -127,6 +134,9 @@ class MemoryStore:
     def snapshot(self, account: str) -> _Tables:
         with self._lock:
             return _Tables({t: dict(rows) for t, rows in self._accounts.get(account, {}).items()})
+
+    def view(self, account: str) -> _Tables:
+        return self.snapshot(account)                     # in memory a read costs nothing: the double is the copy
 
     def close(self) -> None:
         pass

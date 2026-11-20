@@ -91,6 +91,10 @@ class TimedStore:
         finally:
             _slow(self._em, self._cfg, "store", (time.monotonic() - t0) * 1000)
 
+    def view(self, account: str):
+        """What a run reads: no read happens here — each of the view's reads is one bounded query."""
+        return self._s.view(account)
+
     def close(self) -> None:
         self._s.close()
 

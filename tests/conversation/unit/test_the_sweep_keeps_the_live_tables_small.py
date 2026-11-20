@@ -1,4 +1,5 @@
-"""The sweep's cost follows what is in course, not the account's history (node 13.28).
+"""The sweep's cost follows what is in course, not the account's history (node 13.28) — and an idle conversation opens
+no transaction at all.
 
 The clock's turn runs every 100 ms; what it reads is what is in course — a held text, a dequeued control, a line not
 ended, an open request, an open voice — by `scan(table, states)`, never a whole table. Nothing is moved or archived
@@ -39,6 +40,27 @@ class _Counting:
 
             yield _Tx()
 
+    def view(self, account):
+        """A run's and an idle sweep's reads go through the view, outside any transaction: counted the same way."""
+        v, outer = self._s.view(account), self
+
+        class _View:
+            def __getattr__(self, name):
+                return getattr(v, name)
+
+            def scan(self, table, states=None):
+                got = v.scan(table, states)
+                outer.rows += len(got)
+                outer.whole += states is None
+                return got
+
+            def recent(self, table, n):
+                got = v.recent(table, n)
+                outer.rows += len(got)
+                return got
+
+        return _View()
+
 
 def _sweep_reads(h: Harness, counting: _Counting) -> tuple[int, int]:
     counting.rows = counting.whole = 0
@@ -74,3 +96,30 @@ def test_what_is_in_course_is_what_the_sweep_reads(store):
     rows, whole = _sweep_reads(h, counting)
     assert whole == 0 and 1 <= rows <= 5, rows      # the held text (read by the hold and by the liveness, which counts
                                                     # from his last entry in course), its request, the open voice
+
+
+def test_an_idle_conversation_opens_no_transaction(store):
+    """Its timer sweeps and pumps every 250 ms: with nothing in course each look is a read, and no write transaction —
+    which would take the shared write lock every other writer of `zaelar.db` waits on — is ever opened."""
+    counting = _Counting(store)
+    h = Harness(counting)
+
+    class _Record:
+        def pair(self, account, said, answered, *, ref):
+            return None
+
+    h.conv.record = _Record()
+    h.typed("w1", 100)
+    h.at(10_000).pump()
+    opened = []
+    real = counting._s.tx
+
+    def tx(lease):
+        opened.append(1)
+        return real(lease)
+
+    counting._s.tx = tx
+    for i in range(40):
+        h.conv.sweep(11_000 + i * 250)
+        h.at(11_000 + i * 250).pump()
+    assert not opened, f"{len(opened)} transactions while idle"

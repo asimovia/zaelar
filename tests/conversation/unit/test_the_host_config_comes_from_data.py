@@ -3,7 +3,8 @@
 The graces are genome thresholds: genesis `conversation.thresholds`, each inside the bounds `genome.thresholds`
 declares for it; a value out of its bounds, a knob nobody declared or a set out of the graces' order is refused. The
 hold behind an open voice is the typed lane's own cap. Whether a text he types with his voice live is answered by
-voice too is HIS rule (`reply_voice_to_text`, a default row from genesis): a row of his changes the next reply.
+voice too is HIS rule (`reply_voice_to_text`, a default row from genesis): a row of his changes the next reply. The
+row and the knob exist only for an account with the manager switched on: off, the old path sees nothing new.
 """
 from __future__ import annotations
 
@@ -55,7 +56,8 @@ def test_a_set_out_of_order_is_refused():
     assert problems == ["terminal_grace_ms > nonterminal_grace_ms"]
 
 
-def test_his_rule_changes_the_reply_channel_with_no_restart(store):
+def test_his_rule_changes_the_reply_channel_with_no_restart(store, monkeypatch):
+    _account_switch(monkeypatch, True)
     h = Harness(store, grace=False, prefs=host_config.prefs)
     h.conv.device("d2", voice_live=True, speaker_open=True)
     h.typed("w1", 100)
@@ -73,6 +75,19 @@ def test_his_rule_changes_the_reply_channel_with_no_restart(store):
     assert "voice" in h.mouth.orders[-1].channels
 
 
-def test_the_conversation_pref_is_no_style_knob():
-    from rules import defaults
-    assert "reply_voice_to_text" not in defaults.style_keys()
+def _account_switch(monkeypatch, on: bool) -> None:
+    from config import settings
+    from nucleo.conversation_host import switch
+    monkeypatch.delenv(switch.ENV, raising=False)
+    monkeypatch.setattr(settings, "_read", lambda: {switch.SETTING: on})
+
+
+def test_switched_off_the_old_path_sees_no_new_rule_and_no_new_knob(monkeypatch):
+    from rules import defaults, vocabulary
+    _account_switch(monkeypatch, False)
+    assert not [r for r in rules.all_rows() if r["key"] == "reply_voice_to_text"]       # the rules panel
+    assert "reply_voice_to_text" not in vocabulary.knobs()                               # the rule shaper's offer
+    _account_switch(monkeypatch, True)
+    assert [r["value"] for r in rules.all_rows() if r["key"] == "reply_voice_to_text"] == [True]
+    assert "reply_voice_to_text" in vocabulary.knobs()
+    assert "reply_voice_to_text" not in defaults.style_keys()                            # never a style knob

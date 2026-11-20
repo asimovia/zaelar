@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from conversation import envelopes as E
 from conversation.composer import blocks
 from conversation.config import Config
+from conversation.ledger.items import TRANSITIONS
 from conversation.ports import Block, PromptParts
 
 ITEMS, INBOX, SAYS, IVS = "items", "inbox", "says", "interventions"
@@ -33,22 +34,28 @@ class View:
     lost: tuple[tuple[int, str, str], ...] = ()     # (when, intervention, why): his voices that brought nothing whole
 
 
-def view_from(snapshot, *, prefix: str, now_ms: int, **kw) -> View:
+#: the item states still in course: an OPEN item is one of these, read by state — never the ledger's history
+OPEN_STATES = tuple(sorted({s for by_kind in TRANSITIONS.values() for s in by_kind}))
+
+
+def view_from(snapshot, *, prefix: str, now_ms: int, window: int = 12, **kw) -> View:
     """The conversation window comes from the person's entries and our lines — the inbox and the says — in the order
-    they happened; no table of turns keeps a second copy (the durable pair goes to the host's record)."""
-    items = tuple(r for _k, r in snapshot.scan(ITEMS))
+    they happened; no table of turns keeps a second copy (the durable pair goes to the host's record). Every read is
+    BOUNDED: the open items by state, and the newest rows of the inbox, the says and the interventions — so a run
+    costs what is in course and the window, never the account's history."""
+    items = tuple(r for _k, r in snapshot.scan(ITEMS, OPEN_STATES))
+    inbox = [r for _k, r in snapshot.recent(INBOX, 4 * window)]
     theirs = [(r["accepted"], 0, {"role": "user", "channel": r["env"]["channel"], "text": r["env"]["body"]["text"],
                                   "heard_chars": None, "ref": r["env"]["body"]["intervention_id"]})
-              for _k, r in snapshot.scan(INBOX) if r["kind"] in CONTENT and r["state"] == "accounted"]
+              for r in inbox if r["kind"] in CONTENT and r["state"] == "accounted"]
     ours = [(r["t_ms"], 1, {"role": "agent", "channel": "+".join(r["channels"]), "text": r["text"],
                             "heard_chars": r["heard_chars"], "ref": r["say_id"]})
-            for _k, r in snapshot.scan(SAYS)]
+            for _k, r in snapshot.recent(SAYS, 2 * window)]
     turns = tuple(t for _at, _o, t in sorted(theirs + ours, key=lambda x: (x[0], x[1])))
-    lost = [(r["updated_ms"], iv, r.get("reason") or "no_words") for iv, r in snapshot.scan(IVS)
+    lost = [(r["updated_ms"], iv, r.get("reason") or "no_words") for iv, r in snapshot.recent(IVS, 4 * window)
             if r.get("phase") == "discarded" and r.get("reason") not in NOT_LOST]
     lost += [(r["env"]["sealed_ms"], r["env"]["body"]["intervention_id"], r["env"]["body"].get("reason") or "incomplete")
-             for _k, r in snapshot.scan(INBOX)
-             if r["kind"] == "user.utterance" and r["env"]["body"].get("coverage") == "incomplete"]
+             for r in inbox if r["kind"] == "user.utterance" and r["env"]["body"].get("coverage") == "incomplete"]
     return View(prefix=prefix, now_ms=now_ms, items=items, turns=turns, lost=tuple(sorted(lost)), **kw)
 
 

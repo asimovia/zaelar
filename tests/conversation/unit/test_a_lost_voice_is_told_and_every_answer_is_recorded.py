@@ -10,7 +10,8 @@ The record: each answered batch owes one pair (what he said, what we answered) t
 once — a port that fails keeps it owed, the sweep hands it over, a new process hands over what the dead one owed. A
 silent close records nothing. The host's adapter writes the engine's `kind='conv'` row, so «what did I tell you»
 finds a switched session's conversation. The state comes from the engine's own readers — STATE, the widgets, the
-tasks, the notices owed — each bounded within the run's budget; a reader that fails leaves its block out.
+tasks — each bounded within the run's budget; a reader that fails leaves its block out; the notices owed are not
+among them (the manager says those lines itself: in the state too, one would be told twice).
 """
 from __future__ import annotations
 
@@ -153,3 +154,8 @@ def test_the_state_comes_from_the_engines_readers_bounded_and_a_failing_one_left
     blocks = asyncio.run(memory_read.MemoryRead().state_blocks("a", budget_tokens=300))
     assert [b.title for b in blocks] == ["STATE", "NOTICES"]
     assert len(blocks[0].text) == 300 * memory_read.CHARS_PER_TOKEN // 3
+
+
+def test_the_notices_owed_are_not_in_the_state():
+    from nucleo.conversation_host import memory_read
+    assert [t for t, _r in memory_read.READERS] == ["STATE", "WIDGETS", "TASKS"]

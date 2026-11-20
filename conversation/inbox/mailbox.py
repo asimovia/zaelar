@@ -29,6 +29,8 @@ from conversation.telemetry import Emitter
 from conversation.types import ControlOp, Coverage, EnvelopeKind, Ids
 
 T = "inbox"
+#: the newest entries a question about «just now» reads — never the account's history
+RECENT = 64
 VOICE = "voice_open"
 
 
@@ -164,6 +166,8 @@ class Inbox:
     def sweep(self, now: int) -> list[str]:
         """Expire holds past their cap (the text runs alone, I4 event with its text); close a control nobody handled."""
         moved = []
+        if not any(self._due(row, now) for _k, row in self.store.view(self.acct).scan(T, ("held", "dequeued"))):
+            return moved                          # idle: a read, and no transaction is opened
         with self.store.tx(self.lease()) as tx:
             for key, row in tx.scan(T, states=("held", "dequeued")):     # what is in course, never the history
                 if row["state"] == "held" and now >= row["hold_until"]:
@@ -177,12 +181,20 @@ class Inbox:
                     moved.append(key)
         return moved
 
+    def _due(self, row: dict, now: int) -> bool:
+        return ((row["state"] == "held" and now >= row["hold_until"])
+                or (row["state"] == "dequeued" and row["kind"] == str(EnvelopeKind.USER_CONTROL)
+                    and now - row["accepted"] >= self.cfg.control_bound_ms))
+
     # ── out ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
     def next_batch(self, now: int) -> Batch | None:
         """The next batch to run, or None: every queued entry, in the order they began — after the collect window of
         the LAST text accepted (two texts in < collect_ms are one batch), and not while the person is still speaking
         on the device of its last entry (`waits_for_voice`)."""
+        if not any(r["kind"] != str(EnvelopeKind.USER_CONTROL)
+                   for _k, r in self.store.view(self.acct).scan(T, ("queued",))):
+            return None                           # nothing queued: a read, and no transaction is opened
         with self.store.tx(self.lease()) as tx:
             rows = [r for _k, r in tx.scan(T, states=("queued",))]
             texts = [r for r in rows if r["kind"] == str(EnvelopeKind.USER_TEXT)]
@@ -215,23 +227,21 @@ class Inbox:
 
     def words_since(self, t_ms: int) -> bool:
         """Did the person send an entry with words (an utterance or a text) accepted after `t_ms`?"""
-        with self.store.tx(self.lease()) as tx:
-            return any(r["kind"] != str(EnvelopeKind.USER_CONTROL) and r["accepted"] > t_ms
-                       and r["env"]["body"].get("text") for _k, r in tx.scan(T))
+        return any(r["kind"] != str(EnvelopeKind.USER_CONTROL) and r["accepted"] > t_ms
+                   and r["env"]["body"].get("text") for _k, r in self.store.view(self.acct).recent(T, RECENT))
 
     def in_course(self) -> tuple[frozenset, int | None]:
         """The person's entries not yet accounted — queued, held or in a run: they travel in one batch. Returns their
         interventions and the close of the latest one."""
-        with self.store.tx(self.lease()) as tx:
-            rows = [r["env"] for _k, r in tx.scan(T, states=("queued", "held", "dequeued"))
-                    if r["kind"] != str(EnvelopeKind.USER_CONTROL)]
+        rows = [r["env"] for _k, r in self.store.view(self.acct).scan(T, ("queued", "held", "dequeued"))
+                if r["kind"] != str(EnvelopeKind.USER_CONTROL)]
         return (frozenset(e["refs"]["intervention_id"] for e in rows),
                 max((e["sealed_ms"] for e in rows), default=None))
 
     def pending(self) -> bool:
         """Is there a batch of the person's waiting — queued or held, not yet in a run?"""
-        with self.store.tx(self.lease()) as tx:
-            return any(r["kind"] != str(EnvelopeKind.USER_CONTROL) for _k, r in tx.scan(T, states=("queued", "held")))
+        return any(r["kind"] != str(EnvelopeKind.USER_CONTROL)
+                   for _k, r in self.store.view(self.acct).scan(T, ("queued", "held")))
 
     def drop_pending(self, now: int) -> list[dict]:
         """A stop while a batch waits (held for a voice, or in the collect window): what waits is accounted `silent`

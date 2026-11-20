@@ -76,9 +76,14 @@ class ToolCall:
 
 @dataclass(frozen=True)
 class Command:
-    """A structured order of the model: reply, no_reply, task.start/continue/answer/cancel."""
+    """A structured order of the model: reply, no_reply, task.start/continue/answer/cancel. The host's adapter may
+    attach `unclaimed_figures` (how many figures of the text carry no claim, counted over OUR output): a measure the
+    `command` event carries, never read for a decision."""
     name: str
     args: dict
+
+
+UNCLAIMED = "unclaimed_figures"
 
 
 @dataclass(frozen=True)
@@ -235,6 +240,7 @@ class Tx(Protocol):
 class Snapshot(Protocol):
     def get(self, table: str, key: str) -> dict | None: ...
     def scan(self, table: str, states: tuple[str, ...] | None = None) -> list[tuple[str, dict]]: ...
+    def recent(self, table: str, n: int) -> list[tuple[str, dict]]: ...   # the newest n, newest first
 
 
 class Store(Protocol):
@@ -242,5 +248,8 @@ class Store(Protocol):
     def current(self, account: str) -> Lease | None: ...
     def tx(self, lease: Lease) -> AbstractContextManager[Tx]: ...      # raises StaleEpoch; checked again at commit
     def check(self, lease: Lease) -> None: ...                         # raises StaleEpoch; the last controllable point
-    def snapshot(self, account: str) -> Snapshot: ...                  # a coherent read for the composer
+    def snapshot(self, account: str) -> Snapshot: ...                  # every row: audits, recovery, tests
+    #: what a run reads — by state and by the newest rows, each read bounded: its cost follows what is in course and
+    #: the window of the conversation, never the account's history
+    def view(self, account: str) -> Snapshot: ...
     def close(self) -> None: ...

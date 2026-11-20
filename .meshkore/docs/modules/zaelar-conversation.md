@@ -18,7 +18,8 @@ switched session holds it.
 What is not mechanism comes from data: the publication graces are genome thresholds (genesis
 `conversation.thresholds`, each inside its declared bounds, refused out of them or out of their order), and whether a
 typed line with the voice live is answered by voice too is his rule (`reply_voice_to_text`, a factory row he can
-override), read at each reply through the `Prefs` port. `GET /api/debug/conversation/<session>` reads the proof of a
+override), read at each reply through the `Prefs` port. That row and its knob exist only for an account with the
+manager switched on: off, the rules panel and the rule shaper see nothing new. `GET /api/debug/conversation/<session>` reads the proof of a
 switched session: the runs the manager started, and what would mean another owner of the turn, which must stay at 0.
 
 The model is the voice's model from the routing table, called through the engine's fast client (`model.py`); its
@@ -30,14 +31,18 @@ which model and provider answered, after a relay too.
 A figure of data in a reply is published only against its evidence (D9). Against STRUCTURED evidence the whole
 claim matches; against a TEXT evidence — what a search, a widget or his memory returned — its value is among the
 figures of that text, which the host's adapter reads from the tool's output by walking characters, both ways numbers
-are written; a DERIVED figure (counted or averaged) cites evidence with figures of the same reply and is said with
-what it rests on. The door for derived figures can close, and a repair round for them can be switched on.
+are written — a known limit: against a text, the entity, the period and the metric are not compared, so a true
+figure said of the wrong thing passes (only structured evidence gives that); a DERIVED figure cites evidence of the
+same reply, names its operation (count, sum, difference, mean, ratio, percent) and its operands, each a figure of
+that evidence, and its value is what the operation gives — a value the reply already had refused cannot come back as
+derived. The door for derived figures can close, and a repair round for them can be switched on. The figures of a
+reply that carry no claim are counted on its `command` event: a measure, never a gate.
 
 A switched session only reads (`tools_read.py`): the world through the search service (with the model's proposal
 and no judge — the turn's classifier is never asked), a widget, his memory (no reinforcement), the agent itself, and
 the catalogue. Each tool's class is derived from what it declares, never listed; a door that fails is a result the
-model sees. The state comes from the engine's own readers (STATE, the widgets, the tasks, the notices owed), each
-bounded, writing nothing. Each answered batch owes one pair to the engine's conversation record (`kind='conv'`), at
+model sees. The state comes from the engine's own readers (STATE, the widgets, the tasks), each bounded, writing
+nothing; the notices owed are not in it — the manager says them itself. Each answered batch owes one pair to the engine's conversation record (`kind='conv'`), at
 least once, so «what did I tell you» finds a switched session too. And when his voice was lost — no word, a guard,
 incomplete — and he types within a minute, that text's prompt says so, how long ago and why.
 
@@ -63,6 +68,12 @@ stdlib only, no regex, no word tables (the person's words are never read by code
 
 Ports (`ports.py`) are the seams to the outside: `Clock`, `Telemetry`, `Model`, `Tools`, `Memory`, `Mouth`, `Owed`, `Tasks`,
 `Store`. A control by id with no handler here (without `Tasks`, cancelling a task too) is refused when it is accepted.
+A run reads a WINDOW, never the account's history: the open items by state, the newest entries, lines and
+interventions, the newest evidence — each one indexed query on `zaelar.db` (measured flat: p95 0.2 ms with 6000
+exchanges, 0.6 ms with 60 000). An idle conversation opens no write transaction: its timer looks by reading, and
+writes only when something changes. Every write of `conv_meta` (the lease) goes through the exclusive transaction.
+From SQL a row's fields are read with `json_extract(row, '$.field')`.
+
 Two stores keep the same contract: the package's in memory (its tests) and the host's on `zaelar.db` (`nucleo/conversation_host/store.py`, rows `conv_rows` + `conv_meta` of schema v12, through `memory.api.conv`). The host runs the conversation in a thread of its own, with its own event loop: entries are handed over to it, its timer and an hourly prune run there, and it is the only writer of those rows. A transaction is exclusive on the shared connection: inside it no other store can be reached. The prune drops what is final and old, never a row in course. A transaction inside another
 is refused at once; a reader that sweeps reads by state (what is in course), so nothing is archived to keep a table
 small. A new owner of the account recovers what a dead one left — a dequeued batch back to the queue, an effect left

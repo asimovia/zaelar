@@ -52,6 +52,7 @@ class Running:
     resumed_iv: str | None = None         # the resumed voice that stopped this run
     trace: str = ""                       # the root of its first request: every event of the run carries it
     said: list = field(default_factory=list)
+    refused: list = field(default_factory=list)   # values of claims this run refused: they cannot return as derived
 
 
 class Conversation:

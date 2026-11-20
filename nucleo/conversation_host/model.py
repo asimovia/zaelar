@@ -16,7 +16,7 @@ import itertools
 import json
 from typing import Any, AsyncIterator
 
-from conversation.ports import Command, Done, Failed, PromptParts, TextDelta, ToolCall, ToolResult, ToolSpec
+from conversation.ports import UNCLAIMED, Command, Done, Failed, PromptParts, TextDelta, ToolCall, ToolResult, ToolSpec
 
 #: the manager's orders, as the model sees them
 ORDERS = {
@@ -25,7 +25,9 @@ ORDERS = {
         "claims": {"type": "array", "items": {"type": "object", "properties": {
             "entity": {"type": "string"}, "period": {"type": "string"}, "metric": {"type": "string"},
             "direction": {"type": "string"}, "value": {"type": "number"}, "evidence_id": {"type": "string"},
-            "derived": {"type": "boolean"}}}},
+            "derived": {"type": "boolean"}, "op": {"type": "string", "enum": ["count", "sum", "difference", "mean",
+                                                                               "ratio", "percent"]},
+            "operands": {"type": "array", "items": {"type": "number"}}}}},
         "complete": {"type": "boolean"}}},
     "no_reply": {"type": "object", "required": ["reason"], "properties": {
         "reason": {"type": "string"}, "complete": {"type": "boolean"}}},
@@ -36,6 +38,17 @@ ORDERS = {
 #: the stand-in — `relayed_from` names the one that failed), so latency can be read by provider
 DONE_KEYS = ("model", "provider", "relayed_from", "relayed_to", "relay_reason", "prompt_tokens_est",
              "finish_reason", "usage")
+
+
+def _measured(args: dict) -> dict:
+    """A reply's figures that carry no claim, counted over OUR output (`figures.py`): a measure, never a gate in F1."""
+    if not isinstance(args.get("text"), str):
+        return args
+    from nucleo.conversation_host.figures import figures
+    values = [c.get("value") for c in args.get("claims") or () if isinstance(c, dict)]
+    claimed = [float(v) for v in values if isinstance(v, (int, float)) and not isinstance(v, bool)]
+    loose = [f for f in figures(args["text"]) if not any(abs(f - v) <= 0.005 * max(1.0, abs(v)) for v in claimed)]
+    return {**args, UNCLAIMED: len(loose)}
 
 
 def _fn(name: str, schema: dict) -> dict:
@@ -106,6 +119,6 @@ class FastModel:
         yield Done({k: metrics[k] for k in DONE_KEYS if k in metrics})
         for name, args in calls:
             if name in ORDERS:
-                yield Command(name, args if isinstance(args, dict) else {})
+                yield Command(name, _measured(args if isinstance(args, dict) else {}))
             else:
                 yield ToolCall(f"{run_id}:c{next(self._ids)}", name, args if isinstance(args, dict) else {})

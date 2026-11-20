@@ -29,8 +29,7 @@ def hand_over(conv: "Conversation") -> int:
     """Hand every owed pair to the port; a port that fails keeps it owed for the next sweep. Returns how many went."""
     if conv.record is None:
         return 0
-    with conv.store.tx(conv.lease) as tx:
-        owed = tx.scan(TABLE, states=("owed",))
+    owed = conv.store.view(conv.account).scan(TABLE, ("owed",))         # a read: idle opens no transaction
     went = 0
     for key, row in owed:
         try:

@@ -57,6 +57,10 @@ class _Snapshot:
         return [(k, json.loads(json.dumps(v))) for k, v in sorted(self._t.get(table, {}).items())
                 if states is None or v.get("state") in states]
 
+    def recent(self, table, n):
+        rows = list(self._t.get(table, {}).items())[-int(n):] if n > 0 else []      # read in the order written
+        return [(k, json.loads(json.dumps(v))) for k, v in reversed(rows)]
+
 
 class ZaelarStore:
     """`db`: a `memory.db.Database` (tests pass their own); None is the engine's shared one."""
@@ -86,6 +90,10 @@ class ZaelarStore:
 
     def snapshot(self, account: str) -> _Snapshot:
         return _Snapshot(cs.read_all(account, db=self._db))
+
+    def view(self, account: str) -> cs.Reader:
+        """What a run reads: each read one indexed query — the rows in course by state, the window by time."""
+        return cs.Reader(account, db=self._db)
 
     def close(self) -> None:
         if self._db is not None:

@@ -1,8 +1,9 @@
 """The `Memory` port of a switched session (V2-941, the F1 plan §4.7, v3.1 B4): it reads the state the way the rest of
 the engine reads it, and writes nothing.
 
-  state_blocks   STATE (the memory's composed state: mission, situation, what is salient), the widgets brief, the
-                 tasks pending or waiting, and the notices owed — each bounded, all within the run's token budget
+  state_blocks   STATE (the memory's composed state: mission, situation, what is salient), the widgets brief and the
+                 tasks pending or waiting — each bounded, all within the run's token budget. The notices owed are NOT
+                 here: the manager says them itself, as they are, and a line in the state too would be told twice
   screen         what is on screen now
   recall         his memory for a query, with no reinforcement
 
@@ -36,12 +37,7 @@ def _tasks() -> str:
     return "\n".join(live_tasks.pending_task_lines() + live_tasks.waiting_lines())
 
 
-def _notices() -> str:
-    from nucleo.pulse import notices
-    return "\n".join(f"· {r.get('title') or ''}: {r.get('body') or ''}".strip() for r in notices.recent(10, "owed"))
-
-
-READERS = (("STATE", _state), ("WIDGETS", _widgets), ("TASKS", _tasks), ("NOTICES", _notices))
+READERS = (("STATE", _state), ("WIDGETS", _widgets), ("TASKS", _tasks))
 
 
 def _blocks(budget_tokens: int) -> list[Block]:

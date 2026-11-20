@@ -56,7 +56,7 @@ def test_text_orders_and_calls_become_the_ports_events():
     assert got[:2] == [TextDelta("w5 "), TextDelta("w6")]
     assert isinstance(got[2], Done) and got[2].usage["model"] == "m0"      # the end, before the calls it gathered
     assert isinstance(got[3], ToolCall) and got[3].name == "search" and got[3].call_id.startswith("run_1:")
-    assert got[4] == Command("reply", {"text": "w8", "claims": [], "complete": False})
+    assert got[4] == Command("reply", {"text": "w8", "claims": [], "complete": False, "unclaimed_figures": 1})
     names = [t["function"]["name"] for t in client.seen["tools"]]
     assert names == ["search", *ORDERS] and client.seen["role"] == "voice" and client.seen["spec"] == "spec0"
 

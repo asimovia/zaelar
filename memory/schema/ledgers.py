@@ -257,4 +257,8 @@ CONV = [
     "uniq TEXT, updated_ms INTEGER NOT NULL DEFAULT 0, row TEXT NOT NULL, PRIMARY KEY (account, tbl, key))",
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_conv_rows_uniq ON conv_rows(account, tbl, uniq) WHERE uniq IS NOT NULL",
     "CREATE INDEX IF NOT EXISTS idx_conv_rows_state ON conv_rows(account, tbl, state)",
+    # a run reads the newest rows of a table (the conversation window), never the whole history
+    "CREATE INDEX IF NOT EXISTS idx_conv_rows_recent ON conv_rows(account, tbl, updated_ms)",
+    # the hourly prune: what is final and old, by table — an index that starts by the table, not a scan
+    "CREATE INDEX IF NOT EXISTS idx_conv_rows_prune ON conv_rows(tbl, state, updated_ms)",
 ]

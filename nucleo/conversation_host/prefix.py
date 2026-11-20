@@ -23,7 +23,8 @@ def build(catalog: list[ToolSpec], *, native: str, name: str) -> str:
         "ACTS": "none in this session: nothing but a read passes",
         "ORDERS": "reply(text, claims, complete) | no_reply(reason, complete)",
         "CLAIMS": "one per figure of data in the text, with the id of the evidence it is in; derived: true for a "
-                  "figure counted or computed from evidence of this reply, which the text says with what it rests on",
+                  "figure computed from evidence of this reply, with its op (count, sum, difference, mean, ratio, "
+                  "percent) and operands (figures of that evidence), said with what it rests on",
         "COMPLETE": "true: what was said so far is a thought that can be answered; false: something seems missing",
     }
     return "\n".join(f"{k}: {lines[k]}" for k in LINES)

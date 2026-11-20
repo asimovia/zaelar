@@ -2,10 +2,13 @@
 
 A claim against a TEXT evidence passes when its value is among the figures of that text — the host's adapter reads
 them from the tool's output, both ways numbers are written; a claim against STRUCTURED evidence keeps the whole
-match. A DERIVED figure cites evidence with figures of THIS reply and passes with no repair round; with the repair
-switch on it spends the one round; with the door closed it is refused, as it is with no read in the reply, with
-evidence that holds no figure, or with an id of another reply. A figure that does not match and a derived one in the
-same reply cost one repair round, not two.
+match. A DERIVED figure cites evidence of THIS reply, names its operation and its operands — each a figure of that evidence —
+and its value is what the operation gives; it passes with no repair round; with the repair switch on it spends the
+one round; with the door closed it is refused, as it is with no read in the reply, with evidence that holds no
+figure, with an id of another reply, with an operand the evidence does not hold, with no operation, or with a value
+the operation does not give. A value refused in the reply cannot come back as derived. A figure that does not match
+and a derived one in the same reply cost one repair round, not two. The figures of the reply that carry no claim are
+counted (a measure, never a gate).
 """
 from __future__ import annotations
 
@@ -21,6 +24,9 @@ from tests.conversation.unit.convkit import Harness
 
 TEXT = Evidence("ev_t1", "search", numbers=figures("cerró a 1.105,34 $ el viernes; 13 de 30 días al alza"))
 EMPTY = Evidence("ev_t0", "search", numbers=figures("cerró al alza"))
+
+
+PCT = {"derived": True, "op": "percent", "operands": [13, 30]}       # «13 of 30 days up: 43.3 %»
 
 
 def _claim(value, ev_id, **kw):
@@ -76,12 +82,12 @@ def test_structured_evidence_refuses_the_right_number_about_the_wrong_thing(stor
 
 
 def test_a_derived_figure_citing_this_reply_passes_with_no_repair(store):
-    said, closes, calls = _run(store, [[_claim(43.3, "ev_t1", derived=True)]])
+    said, closes, calls = _run(store, [[_claim(43.3, "ev_t1", **PCT)]])
     assert said == ["w9"] and calls == 2
 
 
 def test_with_the_repair_switch_on_a_derived_figure_spends_the_one_round(store):
-    c = [_claim(43.3, "ev_t1", derived=True)]
+    c = [_claim(43.3, "ev_t1", **PCT)]
     said, closes, calls = _run(store, [c, c], config=Config(derived_claims_repair=True))
     assert said == ["w9"] and calls == 3
 
@@ -90,7 +96,7 @@ def test_with_the_repair_switch_on_a_derived_figure_spends_the_one_round(store):
 def test_a_derived_figure_is_refused_outside_its_bounds(store, case):
     cfg = Config(derived_claims_open=False) if case == "closed" else None
     ev_id = {"no_figures": "ev_t0", "another_reply": "ev_old"}.get(case, "ev_t1")
-    claim = [_claim(43.3, ev_id, derived=True)]
+    claim = [_claim(43.3, ev_id, **PCT)]
     h_ev = (EMPTY,) if case == "no_figures" else (TEXT,)
     old = (Evidence("ev_old", "search", numbers=(43.3,)),) if case == "another_reply" else ()
     said, closes, _n = _run(store, [claim, claim], evidence_=h_ev, config=cfg, read=case != "no_read", earlier=old)
@@ -98,16 +104,43 @@ def test_a_derived_figure_is_refused_outside_its_bounds(store, case):
 
 
 def test_a_mismatch_and_a_derived_figure_cost_one_round(store):
-    first = [_claim(999.0, "ev_t1"), _claim(43.3, "ev_t1", derived=True)]
-    fixed = [_claim(1105.34, "ev_t1"), _claim(43.3, "ev_t1", derived=True)]
+    first = [_claim(999.0, "ev_t1"), _claim(43.3, "ev_t1", **PCT)]
+    fixed = [_claim(1105.34, "ev_t1"), _claim(43.3, "ev_t1", **PCT)]
     said, _c, calls = _run(store, [first, fixed], config=Config(derived_claims_repair=True))
     assert said == ["w9"] and calls == 3
 
 
 def test_derived_figures_are_counted_apart(store):
     h = Harness(store, script={"iv_000001": [[ToolCall("c1", "market_data", {}), Done()],
-                                             [reply("w9", [_claim(43.3, "ev_t1", derived=True)]), Done()]]},
+                                             [reply("w9", [_claim(43.3, "ev_t1", **PCT)]), Done()]]},
                 grace=False)
     h.tools.answers["market_data"] = ToolResult("ok", {}, (TEXT,))
     h.utter([(["w1"], 0)])
     assert [p.get("derived") for k, lab, p in h.tel.events if k == "conv_run" and lab == "command"] == [1]
+
+
+@pytest.mark.parametrize("bad", [{"op": "percent", "operands": [26, 60]},        # right value, operands not there
+                                 {"operands": [13, 30]},                           # no operation
+                                 {"op": "mean", "operands": [13, 30]}])            # a value the operation does not give
+def test_a_derived_figure_must_come_from_its_operands(store, bad):
+    c = [_claim(43.3, "ev_t1", derived=True, **bad)]
+    said, closes, _n = _run(store, [c, c])
+    assert said == [] and closes == ["silent"]
+
+
+def test_a_value_refused_cannot_come_back_as_derived(store):
+    """The auditor's probe: an invented 17 is refused by value, and the repair re-sends it as derived."""
+    first = [_claim(43.0, "ev_t1")]                                     # 43 is in no text: refused by value
+    laundered = [_claim(43.0, "ev_t1", derived=True, op="sum", operands=[13, 30])]   # …and 13 + 30 is 43
+    said, closes, calls = _run(store, [first, laundered])
+    assert said == [] and closes == ["silent"] and calls == 3
+
+
+def test_the_figures_with_no_claim_are_counted(store):
+    from nucleo.conversation_host.model import _measured
+    args = _measured({"text": "w: 17 of 30, and 1.105,34", "claims": [_claim(1105.34, "ev_t1")]})
+    assert args["unclaimed_figures"] == 2
+    h = Harness(store, grace=False)
+    h.model.default = lambda ids: [reply("w9", [], unclaimed_figures=2), Done()]
+    h.utter([(["w1"], 0)])
+    assert [p.get("unclaimed") for k, lab, p in h.tel.events if k == "conv_run" and lab == "command"] == [2]

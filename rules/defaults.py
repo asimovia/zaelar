@@ -1,8 +1,9 @@
 """rules/defaults.py — the factory rules, built from declared data at read time and never stored (V2-806).
 
 Genesis (`nucleo/genesis.json`) is the one source: a `consent` gate per class in `consent.classes`, the global
-`ask_at` level and `intent_act_at`, a `voice` preference per knob of `style` and of `conversation.prefs`, and a `global`
-preference per knob of `tasks`. A user row at the same scope and key runs after its default and wins; a default
+`ask_at` level and `intent_act_at`, a `voice` preference per knob of `style`, and a `global` preference per knob of
+`tasks` — and, only for an account with the conversation manager switched on, a `voice` preference per knob of
+`conversation.prefs` (`conversation_rows`). A user row at the same scope and key runs after its default and wins; a default
 cannot be deleted, only overridden.
 """
 from __future__ import annotations
@@ -41,9 +42,6 @@ def _build(genesis: dict, at: float) -> list[dict]:
     for k, v in (genesis.get("style") or {}).items():
         if not str(k).startswith("_"):
             out.append(_row(_scope.VOICE, "pref", str(k), v, "genesis", at))
-    for k, v in ((genesis.get("conversation") or {}).get("prefs") or {}).items():   # V2-941: how the manager answers
-        if not str(k).startswith("_"):
-            out.append(_row(_scope.VOICE, "pref", str(k), v, "genesis:conversation", at))   # not a style knob
     for k, v in (genesis.get("tasks") or {}).items():      # V2-851: how long a task waits for his answer, and the like
         if not str(k).startswith("_"):
             out.append(_row(_scope.GLOBAL, "pref", str(k), v, "genesis", at))
@@ -70,7 +68,27 @@ def rows() -> list[dict]:
             import logging
             logging.getLogger("zaelar.rules").warning(f"rules: genesis unreadable ({e}) — no default rows")
             _cache.update(mtime=mtime, rows=[])
-    return [dict(r) for r in _cache["rows"]] + widget_rows()
+    return [dict(r) for r in _cache["rows"]] + widget_rows() + conversation_rows()
+
+
+def conversation_rows() -> list[dict]:
+    """The conversation manager's preferences (genesis `conversation.prefs`, V2-941) exist ONLY for an account with
+    the manager switched on: off, the old path is identical — no row on the rules panel, no knob offered to the rule
+    shaper, so no spoken rule can land in a knob nobody reads. Read live: switching on needs no restart."""
+    try:
+        from nucleo.conversation_host import switch
+        on, _by = switch.asked()
+        if not on:
+            return []
+        import genome
+        prefs = (genome.genesis().get("conversation") or {}).get("prefs") or {}
+    except (ImportError, OSError, ValueError) as e:
+        import logging
+        logging.getLogger("zaelar.rules").warning(f"rules: the conversation's preferences are unreadable ({e!r})")
+        return []
+    at = (_cache["mtime"] or 0) / 1e9
+    return [_row(_scope.VOICE, "pref", str(k), v, "genesis:conversation", at) for k, v in prefs.items()
+            if not str(k).startswith("_")]
 
 
 _wcache: dict = {"at": 0.0, "rows": []}

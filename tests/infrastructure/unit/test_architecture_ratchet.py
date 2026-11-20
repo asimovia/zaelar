@@ -575,6 +575,11 @@ _PACKAGE_CEILINGS["nucleo/conversation_host"] += 126    # 2026-11-20 V2-941 v3.1
 _TOTAL_MAX += 126    # same cause
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 172    # 2026-11-20 V2-941 v3.1 B4b: the figures of a tool's output (§1.10 bis), the Memory port over the engine's readers, the Record port to the `conv` record
 _TOTAL_MAX += 294    # same cause, with the package's text evidence, derived claims, the owed record and the lost voice (U44)
+_PACKAGE_CEILINGS["conversation"] += 82    # 2026-11-20 V2-941 v3.1 B4c (review of B1-B4b): a run reads a window (the store's `view`, `recent`), idle opens no transaction, a derived figure names its operation and operands and a refused value cannot return derived
+_PACKAGE_CEILINGS["memory"] += 35          # same: the indexed scan by state, the window query and its reader, the indexes
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 22    # same: the reply's loose figures counted, the store's view
+_PACKAGE_CEILINGS["rules"] += 18           # same: the conversation's preferences only for an account with the manager switched on
+_TOTAL_MAX += 179    # same cause, with the conversation's preferences only for a switched account (rules)
 
 
 def test_the_total_only_shrinks():

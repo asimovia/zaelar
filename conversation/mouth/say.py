@@ -62,8 +62,7 @@ class Speaker:
 
     def overdue(self, now: int) -> list[str]:
         """Lines with no `SayEnded` past their bound: acks get lost, and nobody waits on one forever."""
-        with self.store.tx(self.lease()) as tx:            # the lines in course, never the history
-            live = tx.scan(SAYS, states=LIVE)
+        live = self.store.view(self.lease().account).scan(SAYS, LIVE)    # a read: the lines in course, no write
         return [k for k, row in live if now - row["t_ms"] >= self.cfg.say_end_ms + 80 * len(row["text"])]
 
     def _refs(self, row: dict) -> dict:

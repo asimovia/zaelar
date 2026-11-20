@@ -32,7 +32,8 @@ from conversation.manager import commands
 from conversation.manager import record as records
 from conversation.mouth import Device, choose
 from conversation.telemetry import root
-from conversation.ports import Command, Done, Failed, PromptParts, StaleEpoch, TextDelta, ToolCall, ToolResult
+from conversation.ports import (UNCLAIMED, Command, Done, Failed, PromptParts, StaleEpoch, TextDelta, ToolCall,
+                                ToolResult)
 from conversation.types import Coverage, EnvelopeKind, ItemKind, MgrState
 
 if TYPE_CHECKING:
@@ -77,8 +78,8 @@ def sweep_liveness(conv: "Conversation", now: int) -> None:
     starts the budget of the batch again. A batch held for a resumed voice waits at most `resume_hold_max_ms`, well
     inside the budget, so no hold has to suspend it."""
     running = set(conv.current.requests) if conv.current else set()
-    with conv.store.tx(conv.lease) as tx:                  # the open requests, never the history
-        rows = [r for _k, r in tx.scan("items", states=("open",)) if r["kind"] == str(ItemKind.REQUEST)]
+    rows = [r for _k, r in conv.store.view(conv.account).scan("items", ("open",))      # a read, outside any transaction
+            if r["kind"] == str(ItemKind.REQUEST)]
     if not rows:
         return
     carried, last = conv.inbox.in_course()
@@ -200,7 +201,8 @@ def _checkpoint(conv: "Conversation", r: "Running") -> None:
 
 
 async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
-    view = view_from(conv.store.snapshot(conv.account), prefix=conv.prefix, now_ms=conv.clock.now_ms(),
+    view = view_from(conv.store.view(conv.account), prefix=conv.prefix, now_ms=conv.clock.now_ms(),
+                     window=conv.cfg.conversation_turns,
                      voice_endpoint=r.ctx.endpoint,
                      memory=tuple(await _memory(conv, r)))
     prompt = compose(view, batch.envelopes, conv.cfg)
@@ -230,7 +232,8 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
                 elif isinstance(ev, Command):
                     order = commands.parse(ev)
                     _emit(conv, "command", r, command=ev.name, complete=getattr(order, "complete", None),
-                          derived=sum(c.derived for c in getattr(order, "claims", ())))
+                          derived=sum(c.derived for c in getattr(order, "claims", ())),
+                          unclaimed=ev.args.get(UNCLAIMED))
                     if await _command(conv, r, batch, order, steps, last_try=repaired):
                         return
                     repaired, called = True, True        # one repair round, with the reason as a step
@@ -282,8 +285,9 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
     now = conv.clock.now_ms()
     if isinstance(cmd, commands.Reply):
         this_run = frozenset(e.id for _call, res in steps for e in getattr(res, "evidence", ()))
-        bad = CL.check(list(cmd.claims), CL.valid(conv.store.snapshot(conv.account), now), this_run,
-                       conv.cfg.derived_claims_open)
+        bad = CL.check(list(cmd.claims), CL.valid(conv.store.view(conv.account), now), this_run,
+                       conv.cfg.derived_claims_open, tuple(r.refused))
+        r.refused += [c.value for c, _why in bad if not c.derived]     # refused here, never laundered as derived
         if not bad and not last_try and conv.cfg.derived_claims_repair and any(c.derived for c in cmd.claims):
             steps.append((ToolCall("claims", "claims_check", {}),       # the switch on: its one round says the basis
                           ToolResult("refused", data={"derived": "say what each derived figure rests on"})))
