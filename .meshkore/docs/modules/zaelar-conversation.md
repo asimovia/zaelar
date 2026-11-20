@@ -119,9 +119,13 @@ with its zone's name and offset (the `Clock` port's `zone`).
 
 The host's guards are asked by the ear at every close with words (`Ear.guard`): a closed microphone; our own line
 heard back — his voice rose while one of our last lines sounded or right after it AND his words are, in order, words
-of that line (`voice/echo_text.py`), never after a question of ours ended; and a turn the attention mode says was not
-said to us, judged in the body with the body's attention fed from the ear lane (his voice's edges, our playback, our
-reply re-anchoring the window as it starts). What they throw away is a discard with its reason; what was set aside as
+of that line (`voice/echo_text.py`), never after a question of ours ended; a turn every segment of which the browser
+judged another voice, with «stick to my voice» on and a voice enrolled (`voice_lock`); and a turn the attention mode
+says was not said to us, judged in the body with the body's attention fed from the ear lane (his voice's edges, our playback, our
+reply re-anchoring the window as it starts). A cold turn let in notes why the conversation began (`attention_opening`), as the old gate does — but only the old
+turn's prompt reads that note today (`why_listening`); the manager's prompt does not. A voice entry the model then closes
+with no reply gives back the window its admission renewed (never a typed one, nor one whose voice cut ours). What they
+throw away is a discard with its reason; what was set aside as
 ambient comes back in front of the entry that called the agent by name — only what he said within `reclaim_tail_ms`
 before it, in the same breath. In the voice process our own echo never cuts our line: the local cut rule cuts on his
 words only when they are not ours (compared with what was SENT to say, a word cut short included). With no word, it

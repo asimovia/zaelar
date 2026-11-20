@@ -7,8 +7,9 @@ manager's own events keep their intervention traces; this listener only adds the
 
   · an entry of his the inbox accepted (spoken or typed) opens a turn: `voice/trace.begin` — one per intervention;
   · an entry attached to a request already open is absorbed into that request's turn (`merge`);
-  · a request's close ends its turn (`flow end`, `ok` unless it failed or stalled) — except the second and later
-    requests one run answered together, which are absorbed into the first's (`merge`), never ended twice.
+  · a request's close ends its turn (`flow end`, `ok` unless it failed: `recovered`, `stalled`) — except the other
+    requests one run answered together, which are absorbed into the oldest one's (`merge`), never ended twice: the
+    run's turn is chosen when the run STARTS, from its batch, so the order of the closes does not matter.
 
 Our rows and the voice's `bot_speech` carry the turn's id (`corr`), so the Master never glues them to the nearest
 flow by time.
@@ -19,12 +20,13 @@ import threading
 
 KEPT = 512
 ENTRIES = frozenset({"user.utterance", "user.text"})
-NOT_OK = frozenset({"failed", "stalled"})
+NOT_OK = frozenset({"recovered", "failed", "stalled"})   # a failed run closes its requests `recovered`
+FAILED_LINE = "conv:failed:"                              # the key of the line that tells him a request failed
 
 _lock = threading.Lock()
 _corr: dict[str, str] = {}            # intervention → its turn's trace id
 _env_iv: dict[str, str] = {}          # envelope → its intervention (an attached entry is named by its envelope)
-_run_first: dict[str, str] = {}       # run → the turn its first close ended
+_run_first: dict[str, str] = {}       # run → its turn (the oldest of its batch's), the one its closes end
 
 
 def _keep(d: dict, k: str, v: str) -> None:
@@ -42,8 +44,10 @@ def corr(iv: str, text: str = "") -> str:
         tid = _corr.get(iv)
     if tid:
         return tid
+    import contextvars
+
     from voice import trace
-    tid = trace.begin(text, origin="turno")
+    tid = contextvars.copy_context().run(trace.begin, text, "turno")   # this thread's own trace stays its own
     with _lock:
         _keep(_corr, iv, tid)
     return tid
@@ -56,7 +60,9 @@ def known(iv: str) -> str:
 
 
 def iv_of(req: str) -> str:
+    """The intervention of a request (`r_<iv>`), or of the line that tells him it failed (`conv:failed:r_<iv>`)."""
     req = str(req or "")
+    req = req[len(FAILED_LINE):] if req.startswith(FAILED_LINE) else req
     return req[2:] if req.startswith("r_") else req
 
 
@@ -72,6 +78,14 @@ def listen(kind: str, label: str, p: dict) -> None:
             iv = _env_iv.get(str(p.get("ref") or ""), "")
         if iv and iv != iv_of(refs.get("req")):
             _merge(known(iv_of(refs.get("req"))), known(iv))
+    elif kind == "conv_run" and label == "started" and refs.get("run"):
+        with _lock:
+            tids = [_corr.get(_env_iv.get(str(e), ""), "") for e in p.get("batch_envs") or ()]
+        tids = [t for t in tids if t]
+        if tids:
+            from voice import trace
+            with _lock:
+                _keep(_run_first, str(refs["run"]), min(tids, key=trace._seq_of))
     elif kind == "conv_close":
         _closed(label, iv_of(refs.get("req")), str(refs.get("run") or ""))
 
@@ -85,10 +99,8 @@ def _closed(label: str, iv: str, run: str) -> None:
         if run and not first:
             _keep(_run_first, run, tid)
     if first and first != tid:
-        _merge(first, tid)                      # one run answered both: the later turn is folded into the first
+        _merge(first, tid)                      # one run answered both: this turn is folded into the run's
         return
-    if first == tid:
-        return                                  # this turn already ended
     from voice import trace
     from voice.observer import emit
     ok = label not in NOT_OK

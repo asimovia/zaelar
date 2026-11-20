@@ -726,6 +726,10 @@ _PACKAGE_CEILINGS["conversation"] += 1                 # same cause: a silent en
 _TOTAL_MAX += 40     # same cause, measured
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 115   # 2026-11-20 V2-941 (plan v3.2 C16): a declared new mechanism — the turn as a unit for the Master and the viewer (`turns.py`: a `trace` «turno» per entry, `flow end` at its request's close, `merge` when absorbed, its id on our rows and on the voice's `bot_speech`)
 _TOTAL_MAX += 115    # same cause, measured
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 35    # 2026-11-20 V2-941 (the review of C2–C17): a line that never started claims nothing, a notice keeps its 🔔 card, a failed run ends its turn not ok, the run's turn chosen when it starts, a turn opened in a context of its own
+_PACKAGE_CEILINGS["nucleo/pulse"] += 8                 # same cause: `notice_claim.paint`, a claimed notice's card when it sounds
+_PACKAGE_CEILINGS["voice"] += 5                        # same cause: `proactive.paint`, the primitive's UI half alone
+_TOTAL_MAX += 52     # same cause, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

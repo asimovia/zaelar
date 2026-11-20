@@ -39,6 +39,18 @@ def claim_for_voice(row: dict) -> dict:
     return {"id": row["id"], "state": "claimed", "channel": "voice", "duplicate": False}
 
 
+def paint(key: str) -> bool:
+    """A claimed line starts sounding (or is shown): its 🔔 card on the screen, as `notify` paints every notice — the
+    primitive's UI half, never its voice. False when the row is gone."""
+    row = _n().by_key(str(key or ""))
+    if row is None:
+        return False
+    from voice import proactive
+    proactive.paint(row.get("title") or "zaelar", row.get("body") or "", key=row["dedupe_key"],
+                    task_id=str((row.get("detail") or {}).get("task_id") or ""))
+    return True
+
+
 def spoken(key: str) -> bool:
     """The manager said a claimed line: `spoken`. Only from `claimed`."""
     N = _n()

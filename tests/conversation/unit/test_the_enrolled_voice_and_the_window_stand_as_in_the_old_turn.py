@@ -87,3 +87,25 @@ def test_the_bodys_conversation_is_opened_with_the_window_listener(monkeypatch):
     monkeypatch.setattr(sessions, "open_", lambda acct, owner, make: make)
     monkeypatch.setattr(boot, "make", lambda listeners, said=None: listeners)
     assert guards.listen in entry.runtime()
+
+
+def test_a_no_reply_after_his_voice_cut_us_keeps_the_window(store, monkeypatch):
+    """The review's C9 minor: through the real manager, his voice rises over our line, our line ends cut, the model
+    says nothing — a barge-in, so the window he kept open by speaking is not given back."""
+    from conversation.ear import signals as S
+    from conversation.mouth import SayEnded
+    from tests.conversation.unit.test_a_wordless_barge_in_gives_the_line_back import _speaking
+    calls = []
+    monkeypatch.setattr(attention, "retract_last_directed", lambda: calls.append(1) or True)
+    h = Harness(store, grace=False)
+    port = h.tel.emit
+    h.tel.emit = lambda k, lab, p: (port(k, lab, p), guards.listen(k, lab, p))
+    sid = _speaking(h)
+    start = next(row for _k, row in h.store.view(h.conv.account).recent("says", 2))["t_ms"]
+    h.model.default = lambda ids: [Command("no_reply", {"reason": "w0"}), Done()]
+    h.hear(S.VadEdge("d1", "rise", start + 50))
+    h.conv.ack(SayEnded(sid, "cut", 4, start + 600, "d1", "agent_estimate"))
+    h.utter([(["w1", "w2"], 0)], at=start + 40)
+    h.settle(3000)
+    ended = [p for k, lab, p in h.tel.events if k == "conv_run" and lab == "ended" and p.get("outcome") == "no_reply"]
+    assert ended and ended[-1]["barge_cut"] is True and calls == []

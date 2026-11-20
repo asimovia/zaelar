@@ -176,6 +176,11 @@ def _paint(kind: str, title: str, text: str, *, key: str, task_id: str) -> None:
         logger.warning(f"proactive notify (UI) failed: {e}")
 
 
+def paint(title: str, text: str, *, key: str = "", task_id: str = "") -> None:
+    """The UI half alone, for a notice another mouth says (the conversation manager's): its card, never its voice."""
+    _paint("notify", title, text, key=key, task_id=task_id)
+
+
 def _to_conversation(spoken: str, notice: str) -> None:
     """A line said out of turn is part of the conversation record (`conv`), marked with the notice it came from
     (V2-878 §3): it reached the window only, so a restart, the day's ledger and recall lost what we had told him."""

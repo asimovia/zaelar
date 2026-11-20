@@ -12,7 +12,8 @@ provider's end, the cap, too long, a stall), over its words, in this order:
     after the segment);
   · `not_addressed` — the attention mode says it was not said to us (`attention.evaluate`, pure; a directed turn keeps
     the conversation's window warm, an ambient one is noted; a cold one let in says why the conversation began,
-    `attention_opening.note`, as the old turn's gate does).
+    `attention_opening.note`, as the old turn's gate does — only the old turn's prompt reads it today, the manager's
+    does not).
 A voice entry the conversation then closes with no reply (the model judged it not for us) gives back the window its
 admission renewed (`listen`), as the old turn's line found not addressed does.
 """

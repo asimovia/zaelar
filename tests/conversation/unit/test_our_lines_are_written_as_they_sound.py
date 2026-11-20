@@ -8,7 +8,8 @@
   · a notice the manager says is written by the mouth alone (the claimed `notify` paints nothing: 13.47).
 
 Disarms seen red: the owed announcement written as the row; the trace not adopted at the start; the row written whole
-whatever sounded.
+whatever sounded; the owed line announced after the voice was asked; a row for a line that never started (a notice's,
+or a reply's claiming it sounded); a notice's card not painted when it sounds.
 """
 from __future__ import annotations
 
@@ -32,17 +33,18 @@ def log(monkeypatch):
     return out
 
 
-def _order(text="w1 w2 w3 w4", channels=frozenset({"voice", "text"})):
+def _order(text="w1 w2 w3 w4", channels=frozenset({"voice", "text"}), notice_key=None):
     return SimpleNamespace(say_id="s_000001", text=text, channels=channels, endpoint="holder",
-                           request_id="r_iv_000001")
+                           request_id=notice_key or "r_iv_000001", notice_key=notice_key)
 
 
 class _Voice:
-    def __init__(self):
-        self.ack = None
+    def __init__(self, log=None):
+        self.ack, self.log, self.seen_at_speak = None, log, None
 
     def speak(self, order, ack):
         self.ack = ack
+        self.seen_at_speak = [k for k, *_ in (self.log or [])]
         return True
 
 
@@ -88,3 +90,42 @@ def test_the_bot_speech_the_body_replays_carries_the_lines_trace(log, monkeypatc
     rs.handle({"k": "state", "state": "speaking"})
     speaking = [x for k, lab, _t, _r, x in log if k == "bot_speech" and lab == "speaking"]
     assert speaking and speaking[0].get("trace") == "iv_000001"
+
+
+def test_the_owed_line_is_announced_before_its_voice_can_start(log):
+    voice = _Voice(log)
+    m, _acks = _mouth(voice)
+    asyncio.run(m.say(_order()))
+    assert voice.seen_at_speak == ["brain"]
+
+
+def test_a_reply_whose_voice_died_before_it_started_never_claims_it_sounded(log):
+    voice = _Voice()
+    m, acks = _mouth(voice)
+    asyncio.run(m.say(_order()))
+    voice.ack(SayEnded("s_000001", "unknown", None, 20, "holder", "unknown"))
+    rows = [(t, x["outcome"], x.get("sounded")) for k, _l, t, _r, x in log if k == "transcript"]
+    assert rows == [("w1 w2 w3 w4", "unknown", False)] and [a.outcome for a in acks] == ["unknown"]
+
+
+@pytest.fixture
+def notice(monkeypatch):
+    from nucleo.pulse import notices
+    monkeypatch.setattr(notices, "by_key", lambda key: {"dedupe_key": key, "title": "w_title", "body": "w5 w6",
+                                                         "detail": {"task_id": "t1"}} if key == "k1" else None)
+
+
+def test_a_notice_keeps_its_card_and_its_row_only_once_it_sounded(log, notice):
+    voice = _Voice()
+    m, _acks = _mouth(voice)
+    asyncio.run(m.say(_order("w5 w6", notice_key="k1")))
+    voice.ack(SayEnded("s_000001", "unknown", None, 20, "holder", "unknown"))
+    assert [k for k, *_ in log] == [], "never started: no card, no row, no owed line — its retry shows it once"
+    voice2 = _Voice()
+    m2, _ = _mouth(voice2)
+    asyncio.run(m2.say(_order("w5 w6", notice_key="k1")))
+    voice2.ack(SayStarted("s_000001", 10))
+    voice2.ack(SayEnded("s_000001", "played", 5, 20, "holder"))
+    got = [(k, lab, t, x.get("key"), x.get("task_id")) for k, lab, t, _r, x in log]
+    assert got[0] == ("notify", "🔔 w_title", "w5 w6", "k1", "t1")
+    assert [(k, t) for k, _l, t, *_ in got[1:]] == [("transcript", "w5 w6")]
