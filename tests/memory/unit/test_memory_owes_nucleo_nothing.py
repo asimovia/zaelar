@@ -117,6 +117,10 @@ def test_the_debt_list_matches_reality_so_it_only_shrinks():
 #: (editing both the code and this snapshot in the same commit); it must never change as a side effect.
 DECLARED_SURFACE = {
     "start", "stop",
+    # 2026-11-20 (V2-941): a bounded wait for the queued writes (a sandbox's reset between two conversations) and the
+    # one database a store of its own keeps its tables in (the conversation manager's `conv_*`) — so neither reaches
+    # into `memory.queue` / `memory.db`; and the reset's two marks over the notices (`high_water`, `forget_after`).
+    "drain", "database", "high_water", "forget_after",
     # 2026-10-26 (V2-808): the bounded, paged reads behind the memory viewer, as one submodule.
     "viewer",
     # 2026-10-01 (V2-778 F4-37): the vault's detector over a free text, for the one scrubber of what leaves.

@@ -712,6 +712,8 @@ _PACKAGE_CEILINGS["nucleo/conversation_host"] += 34    # 2026-11-20 V2-941 (INI-
 _PACKAGE_CEILINGS["conversation"] += 2                 # same cause: the accepted utterance carries his words
 _PACKAGE_CEILINGS["voice"] += 3                        # same cause: the provider's final writes nothing in a session of the manager
 _TOTAL_MAX += 39     # same cause
+_PACKAGE_CEILINGS["memory"] += 16    # 2026-11-20 V2-941 (the F0 gate's boundary red): the facade's `drain` and `database`, so the conversation's store and a sandbox's reset no longer reach into `memory.db` / `memory.queue`
+_TOTAL_MAX += 10     # same cause, less the two callers' own lines
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

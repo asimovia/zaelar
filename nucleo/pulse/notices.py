@@ -175,11 +175,9 @@ async def notify(title: str, text: str, *, key: str = "", task_id: str = "", kin
         _observe(row, "covered", covered_by)
         return {"id": row["id"], "state": "covered", "channel": covered_by, "duplicate": False}
 
-    if speak and notice_claim.held_for_the_manager():     # the manager's voice is the one mouth, ephemeral too
-        return await notice_claim.claim_for_voice(row, title, text, key, voice_kw)
-
     from nucleo import runstate
-    stopped = runstate.stopped()
+    claim = speak and notice_claim.held_for_the_manager()     # the manager's voice is the one mouth, ephemeral too:
+    speak, stopped = speak and not claim, runstate.stopped() and not claim   # painted here, said by it, CLAIMED below
     said = painted = False
     if not stopped:
         try:
@@ -189,6 +187,8 @@ async def notify(title: str, text: str, *, key: str = "", task_id: str = "", kin
             said = bool(await proactive.notify(title or "zaelar", text, key=key, speak=speak, **voice_kw)) and speak
         except Exception as e:  # noqa: BLE001
             logger.warning(f"notices: voice delivery failed: {e!r}")
+    if claim:
+        return notice_claim.claim_for_voice(row)
     if said and someone_looking():
         _set(row["id"], state="spoken", channel="voice", delivered_at=_now())
         _observe(row, "spoken", "voice")

@@ -49,6 +49,9 @@ DOMAINS: list[dict] = [
             "tests/memory/unit/test_the_limit_is_the_last_thing_read.py",
             "tests/memory/unit/test_memory_boundary.py",
             "tests/memory/unit/test_memory_owes_nucleo_nothing.py",
+            # V2-941 (2026-11-20): the facade's `drain` and `database` — a store of the engine's own reaches memory
+            # through them, never `memory.queue` / `memory.db`.
+            "tests/memory/unit/test_the_facade_drains_and_names_its_database.py",
             "tests/memory/unit/test_the_suite_owns_its_own_environment.py",
             "tests/memory/unit/test_widget_slot_migration.py"]},
         {"id": "1.2", "title": "Embeddings y recuperación (retriever+reranker)", "ch": UNIT, "paths": [
@@ -9036,7 +9039,7 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/conversation/unit/test_random_chunkings_break_no_invariant.py"]},
         {"id": "13.27", "title": "An ended request keeps its intervention: later voice is a new intervention with its own request and close (also right after a stop); the sweep ticks the ear, so a voice no signal ends is ended at its cap and the sentence before it answered; the provider's end anchors the cap",
             "ch": UNIT, "paths": ["tests/conversation/unit/test_an_ended_request_keeps_its_intervention.py"]},
-        {"id": "13.28; an idle conversation opens no transaction at all (review minor: its timer reads, and writes only when something changes)", "title": "The sweep's cost follows what is in course: the clock's turn reads by state (a held text, a dequeued control, a line not ended, an open request, an open voice), never a whole table — sixty done exchanges later it reads nothing; nothing is moved or archived to keep a table small, and an old envelope re-delivered is still a duplicate — over both stores",
+        {"id": "13.28", "title": "The sweep's cost follows what is in course (an idle conversation opens no transaction at all: its timer reads, and writes only when something changes): the clock's turn reads by state (a held text, a dequeued control, a line not ended, an open request, an open voice), never a whole table — sixty done exchanges later it reads nothing; nothing is moved or archived to keep a table small, and an old envelope re-delivered is still a duplicate — over both stores",
             "ch": UNIT, "paths": ["tests/conversation/unit/test_the_sweep_keeps_the_live_tables_small.py"]},
         {"id": "13.29", "title": "The publication waits for the person's resumed voice (V3-B1): on the device of the batch's last entry, within resume_window_ms (never shorter than the model's first deadline), an unpublished run stops at its checkpoint — and again right before sealing — and its batch waits while that voice is open; with words both reach the model in one prompt and nothing is said before, a cough lets the batch run as it was, a voice that never ends is ended by the ear; another device, outside the window or a run that acted: no hold; no request stalls while held; s2 replayed at 0.8 and 1.5 s says nothing over a resumed voice; the hold also applies before a run starts, counts a voice that began before the entry closed (review TA-1: the provider ending before the watermark passes the fall), and is bounded by resume_hold_max_ms from that close, never reset by words — no hold can outlast a request; a stop while the run is held, or inside the collect window, cancels what waits (review TA-2)",
             "ch": UNIT, "paths": ["tests/conversation/unit/test_the_publication_waits_for_resumed_voice.py"]},

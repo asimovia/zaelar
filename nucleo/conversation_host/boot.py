@@ -29,7 +29,7 @@ def make(listeners: tuple = (), said: Callable | None = None) -> Callable:
     """The factory the runtime calls INSIDE its thread."""
     def _make():
         from conversation import build
-        from memory import db as _db
+        from memory import api as _memory
         from nucleo.conversation_host import config, prefix, proof, record
         from nucleo.conversation_host.clock import SystemClock
         from nucleo.conversation_host.memory_read import MemoryRead
@@ -47,7 +47,7 @@ def make(listeners: tuple = (), said: Callable | None = None) -> Callable:
         from nucleo.conversation_host import entry, voice_mouth
         mouth = WallMouth(clock, said, voice=voice_mouth, ack_later=entry.ack)
         conv = build(account=account(), owner=ACCOUNT_OWNER, model=FastModel(), tools=tools,
-                     store=ZaelarStore(_db.get_db()), memory=MemoryRead(), clock=clock, mouth=mouth,
+                     store=ZaelarStore(_memory.database()), memory=MemoryRead(), clock=clock, mouth=mouth,
                      telemetry=proof.Counting(ObserverTelemetry(listeners), account()), config=cfg, prefix=prefix.current(tools.catalog()),
                      prefs=config.prefs, record=record.MemoryRecord(), owed=NoticesOwed(),
                      **readers())

@@ -28,16 +28,11 @@ def held_for_the_manager() -> bool:
     return bool(owed is not None and owed.voice_live())
 
 
-async def claim_for_voice(row: dict, title: str, text: str, key: str, voice_kw: dict) -> dict:
+def claim_for_voice(row: dict) -> dict:
+    """The manager says it, by voice, when it is free and nobody speaks: `notify` has painted the row on the screen,
+    and it is CLAIMED — no push, no `shown` — so the retry and the drain to the next screen, which read `owed`, never
+    touch it. One consumer at a time; a claim past its deadline goes back to `owed` (`release_expired`)."""
     N = _n()
-    """The manager says it, by voice, when it is free and nobody speaks: the row is painted on the screen and CLAIMED
-    — no push, no `shown` — so the retry and the drain to the next screen, which read `owed`, never touch it. One
-    consumer at a time; a claim past its deadline goes back to `owed` (`release_expired`)."""
-    try:
-        from voice import proactive
-        await proactive.notify(title or "zaelar", text, key=key, speak=False, **voice_kw)
-    except Exception as e:  # noqa: BLE001 — the screen half failed; the voice still owes it
-        N.logger.warning(f"notices: painting a claimed notice failed: {e!r}")
     N._set(row["id"], state="claimed", channel="", next_try_at=N._now() + CLAIM_S)
     N._observe(row, "claimed", "voice")
     return {"id": row["id"], "state": "claimed", "channel": "voice", "duplicate": False}

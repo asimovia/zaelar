@@ -55,7 +55,7 @@ DEFAULT_BUDGET_TOKENS = 1200
 # EXPLICIT facade contract (modularity audit 2026-07-17): this is the public surface; the rest of the repo must not
 # import internals (memory.db/writer/queue/slots/…) outside tests.
 __all__ = [
-    "start", "stop", "redact_secrets",
+    "start", "stop", "drain", "database", "redact_secrets",
     "write", "write_now", "ingest_message", "correction_targets", "widget_trace_ids", "task_trace_ids", "reinforce", "reinforce_ids_for", "pin", "unpin", "link",
     "forget", "unforget", "clear_conversation", "clear_slot", "clear_slot_prefix", "forget_after", "high_water",
     # V2-854 F3: the address book in memory — its lexical read, and the deep-sleep doors a brain registers through.
@@ -81,6 +81,22 @@ async def start():
 
 async def stop(drain: bool = True):
     await get_queue().stop(drain=drain)
+
+
+async def drain(timeout_s: float) -> bool:
+    """Wait, bounded, until every queued write has landed: True when the queue drained in time."""
+    import asyncio
+    joined = asyncio.ensure_future(get_queue().join())
+    done, _ = await asyncio.wait({joined}, timeout=timeout_s)
+    if not done:
+        joined.cancel()
+    return bool(done)
+
+
+def database():
+    """The engine's one SQLite database: a store with tables of its own keeps them here, beside memory's."""
+    from ..db import get_db
+    return get_db()
 
 
 # ── writes (async · queue) ────────────────────────────────────────────────────────────────────────────

@@ -67,7 +67,7 @@ def test_the_reset_door_closes_then_drains_the_memory_queue_then_resets(monkeypa
         async def join(self):
             order.append("drained")
 
-    monkeypatch.setattr("memory.queue.get_queue", lambda: _Q())
+    monkeypatch.setattr("memory.api.get_queue", lambda: _Q())
     monkeypatch.setattr(sandbox, "close", lambda: order.append("closed"))
     monkeypatch.setattr(sandbox, "reset", lambda: order.append("reset") or {"rows": 3, "memories": 2})
     assert asyncio.run(voice_api.debug_conversation_reset()).status_code == 403   # the environment alone: refused

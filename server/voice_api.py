@@ -160,11 +160,9 @@ async def debug_conversation_reset():
     from nucleo.conversation_host import sandbox
     if not sandbox.is_sandbox():
         return JSONResponse({"ok": False, "reason": "not a sandbox"}, status_code=403)
-    from memory.queue import get_queue
+    from memory import api as _memory
     await asyncio.to_thread(sandbox.close)              # the conversation stopped, THEN its last writes drain
-    try:
-        await asyncio.wait_for(get_queue().join(), timeout=10.0)
-    except asyncio.TimeoutError:
+    if not await _memory.drain(10.0):
         return JSONResponse({"ok": False, "reason": "the memory queue did not drain"}, status_code=503)
     return JSONResponse({"ok": True, **await asyncio.to_thread(sandbox.reset)})
 
