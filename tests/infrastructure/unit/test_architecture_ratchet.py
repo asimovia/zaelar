@@ -584,6 +584,10 @@ _PACKAGE_CEILINGS["nucleo/conversation_host"] += 264    # 2026-11-20 V2-941 v3.1
 _PACKAGE_CEILINGS["nucleo/cli"] += 3       # same: the text channel's divert, behind the switch
 _PACKAGE_CEILINGS["voice"] += 15           # same: the old reply's net and the data channel's divert, behind the switch
 _TOTAL_MAX += 283    # same cause
+_PACKAGE_CEILINGS["nucleo/pulse"] += 83     # 2026-11-20 V2-941 v3.1 B6: a notice CLAIMED for the manager's voice (`notice_claim.py`: claim, spoken, release, expired claims back on the retry pulse)
+_PACKAGE_CEILINGS["memory"] += 22           # same: the notices store's conditional move, the claimed rows and the expired claims
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 63    # same: the Owed port over the notices ledger, wired in the boot
+_TOTAL_MAX += 168    # same cause
 
 
 def test_the_total_only_shrinks():

@@ -41,6 +41,7 @@ _last_retry = [0.0]
 
 from memory.api import notices as _store
 from nucleo.pulse import notice_ask as _ask
+from nucleo.pulse import notice_claim
 
 
 def _now() -> int:
@@ -174,6 +175,9 @@ async def notify(title: str, text: str, *, key: str = "", task_id: str = "", kin
         _observe(row, "covered", covered_by)
         return {"id": row["id"], "state": "covered", "channel": covered_by, "duplicate": False}
 
+    if speak and not ephemeral and notice_claim.held_for_the_manager():
+        return await notice_claim.claim_for_voice(row, title, text, key, voice_kw)
+
     from nucleo import runstate
     stopped = runstate.stopped()
     said = painted = False
@@ -241,6 +245,7 @@ async def retry_owed(now: float | None = None) -> int:
     if now - _last_retry[0] < _RETRY_EVERY_S:
         return 0
     _last_retry[0] = now
+    notice_claim.release_expired(now)      # a claim of the conversation's voice past its deadline is owed again
     try:
         rows = [_row(r) for r in _store.owed_due(int(now))]
     except Exception as e:  # noqa: BLE001

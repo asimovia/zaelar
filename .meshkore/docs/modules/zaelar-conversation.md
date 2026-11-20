@@ -32,6 +32,13 @@ opens wait in order. And a net: a line that still reaches the old turn's reply i
 no turn — it is counted, said as an alert, and handed to the funnel. Until the voice half of the mouth, a reply is
 shown on the chat wall.
 
+What the engine owes him lives in ONE ledger, `notices`. While a session of the manager holds the voice, `notify`
+paints a line and CLAIMS it for that voice (`nucleo/pulse/notice_claim.py`) — no push, no «shown» — so the retry and
+the drain to the next screen, which read `owed`, never touch it. The manager takes each claimed line once and says it
+as it is when it is free and nobody speaks: said, it is `spoken`; not, it goes back to `owed` and its other ways run.
+A claim past its deadline goes back by itself on the retry pulse; every move compares the state. A run that fails
+owes the language's own «I lost that» line through the same ledger.
+
 The model is the voice's model from the routing table, called through the engine's fast client (`model.py`); its
 two orders, `reply(text, claims, complete)` and `no_reply(reason, complete)`, are tools of its own beside the
 catalogue. Its prefix (`prefix.py`) only declares: the language it writes in, what it may read, that it may not act,

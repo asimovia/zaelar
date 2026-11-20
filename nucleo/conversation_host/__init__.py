@@ -17,6 +17,7 @@
   mouth.py    the `Mouth` port, its text half: a line on the chat wall, acknowledged as shown
   boot.py     the account's conversation, built with the engine's ports, in its own thread
   entry.py    the funnel: a typed line of a switched session enters here, with the guards every entry shares
+  owed.py     the `Owed` port: the lines claimed for the manager's voice in the one ledger, `notices`
 
 Nothing of the engine imports this package while the conversation is switched off.
 """

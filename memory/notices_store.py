@@ -49,6 +49,28 @@ def update(nid, **fields) -> None:
                  (*(fields[k] for k in cols), int(nid)))
 
 
+def move(nid, frm: str, to: str, **fields) -> bool:
+    """`frm` → `to`, only if the row is still `frm` (a claim is taken and given back by comparing its state, so two
+    consumers can never both have it). True when it moved."""
+    cols = [k for k in fields if k in _NOTICE_COLS and k != "state"]
+    with _d().cursor() as cur:
+        cur.execute(f"UPDATE notices SET state=?{''.join(f', {k}=?' for k in cols)} WHERE id=? AND state=?",
+                    (to, *(fields[k] for k in cols), int(nid), frm))
+        return cur.rowcount == 1
+
+
+def claimed(limit: int = 20) -> list[dict]:
+    """The rows claimed for the conversation's voice, oldest first."""
+    rows = _d().query("SELECT * FROM notices WHERE state='claimed' ORDER BY created_at, id LIMIT ?", (int(limit),))
+    return [dict(r) for r in rows]
+
+
+def claims_expired(now: int, limit: int = 50) -> list[dict]:
+    rows = _d().query("SELECT * FROM notices WHERE state='claimed' AND next_try_at IS NOT NULL AND next_try_at<=? "
+                      "ORDER BY created_at LIMIT ?", (int(now), int(limit)))
+    return [dict(r) for r in rows]
+
+
 def owed_due(now: int, limit: int = 20) -> list[dict]:
     rows = _d().query("SELECT * FROM notices WHERE state='owed' AND next_try_at IS NOT NULL AND next_try_at<=? "
                       "ORDER BY created_at LIMIT ?", (int(now), int(limit)))
