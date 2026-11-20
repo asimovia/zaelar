@@ -3082,8 +3082,10 @@ DOMAINS: list[dict] = [
                                  "paints an unknown ending as ✓, holds a running row's title still and carries the pulse's facts; alone "
                                  "on a blank page, fed real-shaped rows through the bridge, each sub-tab paints its own row shape, the "
                                  "report button reopens and opens the named card, a delete removes and refetches, `show()` fetches, a "
-                                 "live change refetches only while shown and `unmount()` lets go. Disarms: an import of the store; "
-                                 "the unknown ending folded into done; `show()` not marking it shown; `show()` not fetching",
+                                 "live change refetches only while shown and `unmount()` lets go; a refetch that lands while he types a "
+                                 "task's answer keeps the row and its box — text, focus, caret and send intact. Disarms: an import of "
+                                 "the store; the unknown ending folded into done; `show()` not marking it shown; `show()` not "
+                                 "fetching; the rows rebuilt on every render instead of kept by key",
             "ch": UNIT, "paths": ["tests/browser/unit/side_procesos/test_the_procesos_column_is_its_own_component.py",
                                   "tests/browser/unit/side_procesos/test_the_procesos_column_alone_in_a_browser.py"]},
         {"id": "4.605", "title": "The side panel's Clusters tab (V2-086) is a component of its own: `frontend/side/clusters/` "

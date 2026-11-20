@@ -20,46 +20,67 @@ export function mount(host, b) {
   host.append(bar, list);     // no hand-filled form (V2-883): a timed job is created by ASKING the agent
   let shown = false, timer = null;
 
-  const row = (v, meta, btn) => {
-    const r = el("div", "cw-proc-row " + v.cls), main = el("div", "cw-proc-main");
-    main.append(el("div", "cw-proc-goal", v.title), ...(v.note ? [el("div", "cw-proc-note", v.note)] : []), ...meta);
-    r.append(el("span", "cw-proc-dot", v.glyph), main);
+  // KEYED (a refetch landed while he typed an answer and took it): a row keeps its node while its key lives, is
+  // painted IN PLACE only when what it says changed, and its process entry — where his answer is typed — is never
+  // rebuilt or moved: a node taken out of the page loses its focus, and a new one has no text.
+  const kept = new Map(), empty = el("div", "cw-empty");     // row key → { node, sig, entry, ek }
+  function paint(key, v, meta, btn, ek = "") {
+    const k = kept.get(key) || { node: el("div", "") }, sig = JSON.stringify([v, ek]), r = k.node;
+    kept.set(key, k);
+    if (k.sig === sig) return r;
+    if (k.ek !== ek) { if (k.entry) k.entry.remove(); k.entry = ek ? b.entry(...JSON.parse(ek)) : null; k.ek = ek; }
+    if (!r.firstChild) r.append(el("span", "cw-proc-dot"), el("div", "cw-proc-main"));
+    const [dot, main] = r.children;
+    r.className = "cw-proc-row " + v.cls;
+    dot.textContent = v.glyph;
+    for (const c of [...main.children]) if (c !== k.entry) c.remove();
+    main.prepend(el("div", "cw-proc-goal", v.title), ...(v.note ? [el("div", "cw-proc-note", v.note)] : []), meta);
+    if (k.entry && k.entry.parentNode !== main) main.append(k.entry);
+    [...r.children].slice(2).forEach((c) => c.remove());
     if (btn) r.appendChild(el("div", "cron-btns")).append(btn);
+    k.sig = sig;
     return r;
-  };
+  }
   const button = (cls, title, onclick) => Object.assign(el("button", "cron-b hb-icbtn" + cls), { title, onclick });
-  const live = (task) => {
+  const live = (key, task) => {
     const v = liveView(task, Date.now(), b.t, b.lang()), meta = el("div", "cw-proc-meta");
     v.meta.forEach((m, i) => meta.append(el("span", "cw-proc-tag" + (i ? "" : " state"), m)));
-    const entry = b.entry(task.session || task.id, task.id);    // V2-822 — the process's ONE home
-    return row(v, entry ? [meta, entry] : [meta]);
+    return paint(key, v, meta, null, JSON.stringify([task.session || task.id, task.id]));   // V2-822 — its ONE home
   };
   // Reopening is the SERVER's (it rebuilds the sheet if gone and names the card); the panel stays where he put it.
-  const hist = (e) => {
+  const hist = (key, e) => {
     const v = histView(e, Date.now(), b.t);
     const btn = v.results && button("", b.t("chat.taskResults"), async () => {
       const r = await b.reopen(String(e.id || ""));
       if (r && r.ok && r.instance) b.openCard(r.instance);
     });
     if (btn) btn.textContent = b.t("chat.taskResults");
-    return row(v, [el("div", "cw-proc-meta", v.meta)], btn);
+    return paint(key, v, el("div", "cw-proc-meta", v.meta), btn);
   };
-  const sched = (task) => {
+  const sched = (key, task) => {
     const v = schedView(task, b.t, b.lang());
     const btn = button(" danger", b.t("chat.delete"), async () => { await b.removeScheduled(String(task.id)); b.fetchScope(b.scope()); });
     btn.innerHTML = (b.icons && b.icons.trash) || "✕";
-    return row(v, [el("div", "cw-proc-meta", v.meta)], btn);
+    return paint(key, v, el("div", "cw-proc-meta", v.meta), btn);
   };
 
   // The row SHAPE follows the scope: a live, a finished and a timed commission answer different questions.
   function render() {
-    const scope = b.scope(), rows = (b.rows() || {})[scope] || [];
+    const scope = b.scope(), rows = (b.rows() || {})[scope] || [], used = new Set();
     for (const [st, btn] of subs) { btn.className = "cw-subtab" + (scope === st.id ? " on" : ""); btn.textContent = b.t(st.label); }
     all.className = "cw-subtab all" + (b.showAll() ? " on" : "");
     all.title = b.t("chat.taskShowAll");
     const spec = SUBTABS.find((x) => x.id === scope);
-    list.replaceChildren(...(!rows.length ? [el("div", "cw-empty", b.t(spec ? spec.empty : "chat.procEmpty"))]
-      : rows.map((r) => (scope === "live" ? live(taskToChip(r)) : scope === "done" ? hist(r) : sched(r)))));
+    empty.textContent = b.t(spec ? spec.empty : "chat.procEmpty");
+    const nodes = !rows.length ? [empty] : rows.map((r, i) => {
+      const key = scope + ":" + (r.id ?? "#" + i);
+      used.add(key);
+      return scope === "live" ? live(key, taskToChip(r)) : scope === "done" ? hist(key, r) : sched(key, r);
+    });
+    for (const [key, k] of kept) if (!used.has(key)) { k.node.remove(); kept.delete(key); }
+    // Only what left is taken out, and a row is moved only when its place changed: the others are never touched.
+    for (const c of [...list.children]) if (!nodes.includes(c)) c.remove();
+    nodes.forEach((n, i) => { if (list.children[i] !== n) list.insertBefore(n, list.children[i] || null); });
   }
   const offs = [b.watch(render), b.onLiveChange(() => { if (shown) b.fetchScope(b.scope()); })];
   render();

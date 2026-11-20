@@ -42,6 +42,7 @@ JS_TOTAL_MAX += 7    # 2026-11-19 (4.600, operator): a phone back from the backg
 JS_TOTAL_MAX += 156  # 2026-11-20 INI-042 #49 (4.601): the chat wall as a component of its own (`frontend/chat-wall/`: model, view, entry) — paid back when the old wall leaves the store (the wall plan's commit 3)
 JS_TOTAL_MAX += 31   # 2026-11-20 INI-042 #49 (4.602): the wall's one bridge (`services/wall-bridge.js`) and the typed line's own id through the outbox — paid back with the +156 in the wall plan's commit 3
 JS_TOTAL_MAX += 27   # 2026-11-20 (4.603): the side panel's Apps tab as a component of its own (`frontend/side/apps/` + `services/apps-bridge.js`) — the import-free component draws with plain DOM instead of the shell's `h()`, and carries its bridge and model
+JS_TOTAL_MAX += 21   # 2026-11-20 (4.604): the «Procesos» rows are kept by key and painted in place (`side/procesos/procesos.js`), so a refetch that lands while he types a task's answer no longer replaces the box and loses it
 
 
 def _ours(p: Path) -> bool:

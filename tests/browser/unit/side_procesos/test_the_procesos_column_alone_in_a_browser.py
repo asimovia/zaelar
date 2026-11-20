@@ -12,7 +12,11 @@ with the rows the server sends (`/api/tasks?scope=…` shapes). What is read is 
   · `show()` is entering the tab (the live set and the open sub-tab are fetched); while shown, a change of the live
     set refetches the open sub-tab, and once hidden it no longer does; `unmount()` removes it and its subscriptions.
 
-Disarm: `show()` stops marking the column shown → the live-change refetch never happens, red.
+  · a refetch that lands while he types an answer to a task's question (same rows, or rows that changed and grew)
+    keeps the row's node and its answer box: the text, the focus and the caret are intact, and the send sends it.
+
+Disarms: `show()` stops marking the column shown → the live-change refetch never happens, red; the rows rebuilt on
+every render instead of kept by key → the typed answer is lost, red.
 """
 from __future__ import annotations
 
@@ -66,13 +70,17 @@ MOUNT = """async (server) => {
     reopen: async (id) => { calls.push('reopen:' + id); return { ok: true, instance: 'results::' + id }; },
     openCard: (id) => calls.push('open:' + id),
     removeScheduled: async (id) => { calls.push('remove:' + id); },
+    // The process entry, shaped like the real one where it matters here: the box where he answers its question.
     entry: (key, task) => { const e = document.createElement('div'); e.className = 'pe';
-                            e.dataset.key = key; e.dataset.task = task; return e; },
+                            e.dataset.key = key; e.dataset.task = task;
+                            e.innerHTML = '<input class="tq-input"><button class="tq-send">send</button>';
+                            e.lastChild.onclick = () => calls.push('send:' + task + ':' + e.firstChild.value);
+                            return e; },
     icons: { trash: '<svg class="trash"></svg>' },
     watch: follow(rows, scope, showAll),
     onLiveChange: follow(live),
   };
-  Object.assign(window, { __calls: calls, __live: live, __scope: scope });
+  Object.assign(window, { __calls: calls, __live: live, __scope: scope, __server: server });
   window.__view = mount(document.getElementById('m'), bridge);
 }"""
 
@@ -207,3 +215,29 @@ def test_a_live_change_refetches_only_while_shown_and_unmount_lets_go(page):
     pg.evaluate("() => __view.unmount()")
     assert pg.evaluate("() => document.getElementById('m').children.length") == 0
     assert pg.evaluate("() => __live.subs.size + __scope.subs.size") == 0, "its subscriptions are released"
+
+
+def test_a_refetch_while_he_types_an_answer_keeps_it(page):
+    """A `/api/tasks` refetch landed while he typed «Sí» into a task's question in the panel: the rows were redrawn,
+    the box was replaced, and the send sent nothing. Now the row is kept by key and its entry is never rebuilt."""
+    pg = page
+    pg.evaluate("() => __view.show()")
+    until_sync(lambda: len(_read(pg)["rows"]) == 2, "the live rows")
+    box = '#m .cw-proc-row .pe[data-task="a2"] .tq-input'
+    pg.click(box)
+    pg.keyboard.type("Sí")
+    pg.keyboard.press("ArrowLeft")
+    pg.evaluate(f"() => {{ window.__box = document.querySelector('{box}'); window.__row = __box.closest('.cw-proc-row'); }}")
+    pg.evaluate("() => __live.set(1)")                                     # the same rows, read again
+    pg.evaluate("""() => { __server.live = [...__server.live.map(r => r.id === 'a2' ? { ...r, phase: 'w11' } : r),
+                                            { id: 'a3', title: 'w12', state: 'running', started_at: 1700000000 }];
+                           __live.set(2); }""")                           # …and rows that changed and grew
+    until_sync(lambda: len(_read(pg)["rows"]) == 3, "the third row")
+    kept = pg.evaluate("""() => ({ same: document.querySelector('#BOX') === __box && __box.isConnected,
+                                   row: __row.isConnected, value: __box.value, focused: document.activeElement === __box,
+                                   caret: __box.selectionStart,
+                                   note: __row.querySelector('.cw-proc-note') && __row.querySelector('.cw-proc-note').textContent })"""
+                       .replace("#BOX", box))
+    assert kept == {"same": True, "row": True, "value": "Sí", "focused": True, "caret": 1, "note": "w11"}, kept
+    pg.click('#m .cw-proc-row .pe[data-task="a2"] .tq-send')
+    assert "send:a2:Sí" in _read(pg)["calls"], "the send sends what he typed"
