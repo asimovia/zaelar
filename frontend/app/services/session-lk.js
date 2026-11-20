@@ -46,6 +46,11 @@ import { createMicDevice } from "./mic-device.js?v=1";   // 2026-11-11: a closed
 import { createMicRecover } from "./mic-recover.js?v=1";   // V2-910: the red mic's tap
 
 let room = null, stream = null, videoEl = null, botAudioEl = null;
+// Does the browser cancel our own voice on this mic? Its track's own setting — undefined before a mic exists.
+function micAec() {
+  try { const tr = stream && stream.getAudioTracks()[0]; const v = tr && tr.getSettings().echoCancellation; return typeof v === "boolean" ? v : undefined; }
+  catch (_) { return undefined; }
+}
 let started = false, starting = false;
 
 // SESSION GENERATION. Bumped by every `stop()`, invalidating any `start()` still in flight.
@@ -210,7 +215,7 @@ let _hb = null, _blockedRetry = null;
 function _startHeartbeat() {
   if (_hb) return;
   _hb = setInterval(() => { if (asleep()) return;
-    api.sessionHeartbeat(SID, mic.beat()).then((r) => {   // V2-654: the beat re-asserts the mic switch, free
+    api.sessionHeartbeat(SID, mic.beat(), micAec()).then((r) => {   // V2-654: the beat re-asserts the mic switch, free
       if (r && r.ok === false && started) _lostVoice("heartbeat");   // another tab is alive → yield, not two mics
     });
     _sendTap();   // V2-831 T-18: and the tap's park, so a lost packet or a fresh agent session self-corrects
@@ -255,7 +260,7 @@ export function claimOnNextStart() { _claimNext = true; }
 /** Take the voice HERE now: take the lock if another surface has it, then bring this one up. */
 export async function claimVoice(reason = "hand") {
   if (started) return true;                       // a started surface already holds the lock (it beats for it)
-  const r = await api.sessionSteal(SID, mic.muted());
+  const r = await api.sessionSteal(SID, mic.muted(), micAec());
   if (!r || r.ok === false) return false;
   if (_blockedRetry) { clearTimeout(_blockedRetry); _blockedRetry = null; }
   store.setMicBlocked({ show: false, msg: "" }); store.setRemoteHeld(false);
@@ -642,7 +647,7 @@ export async function start() {
   // tiene, NO abrimos el micro (evita dos micros); avisamos y reintentamos solos hasta que la otra se cierre.
   const claim = _claimNext; _claimNext = false;
   // The lock carries this screen's mic switch (2026-11-18): the engine keeps the STT closed until the holder declares it.
-  const acq = claim ? await api.sessionSteal(SID, mic.muted()) : await api.sessionAcquire(SID, mic.muted());
+  const acq = claim ? await api.sessionSteal(SID, mic.muted(), micAec()) : await api.sessionAcquire(SID, mic.muted(), micAec());
   if (acq && acq.ok === false) {
     starting = false; store.setStarting(false); started = false; store.setStarted(false); store.setConnState("—");
     store.setMicBlocked({ show: true, msg: t("voice.session_open_other_tab") });

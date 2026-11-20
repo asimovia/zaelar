@@ -66,7 +66,7 @@ def speaks_for_the_mic(dev: str) -> bool:
     return not dev or not holder or dev == holder
 
 
-def _declare_mic(prev_sid, sid: str, muted, dev: str, how: str) -> None:
+def _declare_mic(prev_sid, sid: str, muted, dev: str, how: str, aec=None) -> None:
     """2026-11-18 — the lock carries the new holder's microphone switch, so the engine knows it BEFORE any room or
     STT input exists (`voice/mic_input.py`, fail closed until declared). A change of hands undeclares first: the
     switch the engine held belonged to the previous surface."""
@@ -75,11 +75,12 @@ def _declare_mic(prev_sid, sid: str, muted, dev: str, how: str) -> None:
         mic_input.undeclare(reason=how)
     if isinstance(muted, bool):
         mic_input.set_muted(muted, source=how, dev=dev)
+    mic_input.set_aec(aec if isinstance(aec, bool) else None)   # the device's echo cancellation, or unknown
 
 
 @router.post("/api/session/acquire")
 def session_acquire(sid: str = Body(..., embed=True), dev: str = Body("", embed=True),
-                    muted: bool | None = Body(None, embed=True)) -> dict:
+                    muted: bool | None = Body(None, embed=True), aec: bool | None = Body(None, embed=True)) -> dict:
     """Ask to become the ONLY live session. ok=True if the lock was free/expired or already yours; ok=False (held)
     if another tab/browser is live. Atomic (thread lock: sync handlers run in a threadpool). `muted` = the
     caller's microphone switch, declared with the lock (fail closed until a holder declares it)."""
@@ -96,7 +97,7 @@ def session_acquire(sid: str = Body(..., embed=True), dev: str = Body("", embed=
             took = False
     if not took:
         return {"ok": False, "held": True}
-    _declare_mic(prev, sid, muted, dev, "acquire")
+    _declare_mic(prev, sid, muted, dev, "acquire", aec)
     return {"ok": True}
 
 
@@ -127,13 +128,13 @@ def session_heartbeat(payload: dict = Body(...)) -> dict:
     # learns so, and its «unmuted» used to re-open the engine's mic under whoever took it (demo 2026-09-28: the
     # operator's tab, left with mic and speaker on, while the demo driver held the session).
     if owner and isinstance(muted, bool):
-        _declare_mic(retook if retook is not None else sid, sid, muted, dev, "heartbeat")
+        _declare_mic(retook if retook is not None else sid, sid, muted, dev, "heartbeat", (payload or {}).get("aec"))
     return {"ok": True} if owner else {"ok": False, "held": True}
 
 
 @router.post("/api/session/steal")
 def session_steal(sid: str = Body(..., embed=True), dev: str = Body("", embed=True),
-                  muted: bool | None = Body(None, embed=True)) -> dict:
+                  muted: bool | None = Body(None, embed=True), aec: bool | None = Body(None, embed=True)) -> dict:
     """TAKE the live-session lock from whoever holds it. An EXPLICIT operator gesture, never automatic.
 
     Why this exists (V2-124): the lock above is correct and its "ask, be refused, retry" loop is the right default
@@ -157,7 +158,7 @@ def session_steal(sid: str = Body(..., embed=True), dev: str = Body("", embed=Tr
     _screens.holder_beat(dev)
     _screens.touched(dev)
     _holder_changed(prev, sid, dev, "steal")
-    _declare_mic(prev, sid, muted, dev, "steal")
+    _declare_mic(prev, sid, muted, dev, "steal", aec)
     return {"ok": True, "took_from": prev}
 
 

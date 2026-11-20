@@ -35,6 +35,26 @@ UNDECLARED_GRACE_S = 12.0
 _decl = {"declared": False, "since": 0.0, "timer": None}
 
 
+#: the environment the body's settings reach the voice process through (`env_diff`, carried by every `/voice/say`):
+#: whether the holder's device cancels our own voice on its microphone — "1", "0", or absent when it did not say
+AEC_ENV = "ZAELAR_DEVICE_AEC"
+
+
+def set_aec(aec: bool | None) -> None:
+    """The holder's device declared its echo cancellation (its mic track's own setting), or did not (None): the local
+    cut rule may stop our voice on a wordless rise only with it ON — off or unknown, our echo could be that rise."""
+    import os
+    if aec is None:
+        os.environ.pop(AEC_ENV, None)
+    else:
+        os.environ[AEC_ENV] = "1" if aec else "0"
+
+
+def device_aec() -> bool:
+    import os
+    return os.environ.get(AEC_ENV) == "1"
+
+
 def is_muted() -> bool:
     """The one answer. Cheap enough for the hot path of every turn."""
     with _mx:
@@ -79,6 +99,7 @@ def _disarm_grace_locked() -> None:
 def undeclare(*, reason: str = "holder_changed") -> None:
     """The voice changed hands: the switch it carried belonged to the previous surface. Closed until the new one
     speaks (or the grace runs out)."""
+    set_aec(None)                              # the new surface speaks for its own echo cancellation too
     with _mx:
         if not _decl["declared"] and _decl["since"]:
             return

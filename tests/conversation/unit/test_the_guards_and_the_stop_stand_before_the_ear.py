@@ -472,3 +472,58 @@ def test_only_what_he_said_right_before_the_name_comes_back(real_attention, stor
     h.utter([(["Wzael", "w3"], 0)])
     assert ("w1 w2 Wzael" in h.model.calls[0].prompt.input) is reclaimed
 
+
+
+def _over_our_line(heard=(), aec=None, lines=("La bolsa de valores es un mercado donde se compran acciones.",),
+                   monkeypatch=None):
+    from voice import mic_input
+    from voice.engine.pipeline import ear_tap
+    if aec is None:
+        monkeypatch.delenv(mic_input.AEC_ENV, raising=False)
+    else:
+        monkeypatch.setenv(mic_input.AEC_ENV, "1" if aec else "0")
+    tap = ear_tap.Tap("holder", lambda f: None)
+    cuts = []
+    tap.on_barge, tap.min_barge_ms = (lambda: cuts.append(1)), 500
+    for line in lines:
+        tap.said(line)
+    tap.playback(True, now_ms=0)
+    tap.heard = heard
+    for t in range(1000, 2200, 30):
+        tap.edges.frame(True, t)
+    return bool(cuts)
+
+
+def test_our_echo_heard_mid_word_never_cuts(monkeypatch):
+    """The voice gate on 4d4fc3163: the cut fired on «La bolsa e» — an interim cut mid-word, not found in our line."""
+    from voice import echo_text
+    assert echo_text.contained("La bolsa e", "La bolsa de valores es un mercado")
+    assert not _over_our_line(("La", "bolsa", "e"), monkeypatch=monkeypatch)
+    assert _over_our_line(("wq", "wr", "w0"), monkeypatch=monkeypatch)                     # his own words cut
+
+
+def test_our_echo_of_an_earlier_line_never_cuts(monkeypatch):
+    assert not _over_our_line(("w1", "w2", "w3"), lines=("w1 w2 w3 w4.", "w5 w6 w7."), monkeypatch=monkeypatch)
+
+
+@pytest.mark.parametrize("aec, cuts", [(True, True), (False, False), (None, False)])
+def test_a_wordless_rise_cuts_only_when_his_device_cancels_our_echo(monkeypatch, aec, cuts):
+    """A short «Cállate» Flux never wrote: with echo cancellation declared ON a sustained wordless rise stops us (the
+    old path did); off or unknown, our echo could be that rise — only his words cut, or the button."""
+    assert _over_our_line((), aec=aec, monkeypatch=monkeypatch) is cuts
+
+
+def test_the_holders_device_declares_its_echo_cancellation(monkeypatch):
+    from server import livekit_api
+    from voice import mic_input
+    monkeypatch.setattr(mic_input, "set_muted", lambda *a, **k: None)
+    monkeypatch.delenv(mic_input.AEC_ENV, raising=False)
+    livekit_api._declare_mic("s1", "s1", False, "d1", "acquire", True)
+    assert mic_input.device_aec()
+    livekit_api._declare_mic("s1", "s1", False, "d1", "heartbeat", None)        # it stopped saying: unknown
+    assert not mic_input.device_aec() and mic_input.AEC_ENV not in __import__("os").environ
+    livekit_api._declare_mic("s1", "s1", False, "d1", "heartbeat", True)
+    monkeypatch.setattr(mic_input, "apply_input", lambda: None)
+    monkeypatch.setattr(mic_input, "_decl", dict(mic_input._decl))                  # the switch's state, given back
+    mic_input.undeclare(reason="w")                                              # another surface: not its word
+    assert not mic_input.device_aec()

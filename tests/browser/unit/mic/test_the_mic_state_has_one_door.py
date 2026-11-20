@@ -76,7 +76,7 @@ def test_the_heartbeat_carries_the_state_every_beat():
     live tab comes back at its boot default and nobody would ever tell it otherwise)."""
     assert "mic.beat()" in _stripped(FRONTEND / "app/services/session-lk.js")
     api = _stripped(FRONTEND / "app/services/api.js")
-    assert re.search(r"sessionHeartbeat\s*=\s*\(sid,\s*muted\)", api), (
+    assert re.search(r"sessionHeartbeat\s*=\s*\(sid,\s*muted(,\s*aec)?\)", api), (
         "the heartbeat must be able to carry the switch")
 
 

@@ -84,6 +84,6 @@ def test_the_local_ear_never_runs_over_a_closed_mic():
 
 def test_the_lock_carries_the_switch():
     api = _code(APP / "services" / "api.js")
-    assert re.search(r"sessionAcquire = \(sid, muted\)", api) and re.search(r"sessionSteal = \(sid, muted\)", api)
+    assert re.search(r"sessionAcquire = \(sid, muted, aec\)", api) and re.search(r"sessionSteal = \(sid, muted, aec\)", api)
     s = _code(APP / "services" / "session-lk.js")
-    assert "api.sessionSteal(SID, mic.muted())" in s and "api.sessionAcquire(SID, mic.muted())" in s
+    assert "api.sessionSteal(SID, mic.muted(), micAec())" in s and "api.sessionAcquire(SID, mic.muted(), micAec())" in s

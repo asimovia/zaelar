@@ -701,6 +701,9 @@ _PACKAGE_CEILINGS["nucleo/conversation_host"] += 12    # same: only what he said
 _TOTAL_MAX += 19     # same cause, with the packs' `stop_keyterms`
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 6     # 2026-11-20 V2-941: the host's twelve word tables paid as declared data — the reader of `declared.json`
 _TOTAL_MAX += 6      # same cause
+_PACKAGE_CEILINGS["voice"] += 40           # 2026-11-20 V2-941 v3.1 (the voice gate on 4d4fc3163): the device declares its echo cancellation (`mic_input.set_aec`), the local cut rule cuts wordless only with it on and compares his words with what was SENT (a word cut short included)
+_PACKAGE_CEILINGS["server"] += 1           # same: the session lock carries the device's echo cancellation
+_TOTAL_MAX += 41     # same cause
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

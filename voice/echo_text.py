@@ -21,14 +21,17 @@ def tokens(text) -> list[str]:
 
 
 def contained(heard, line) -> bool:
-    """The heard words are, in order, words of `line` (at least `SHARE` of them, and at least `MIN_WORDS`)."""
+    """The heard words are, in order, words of `line` (at least `SHARE` of them, and at least `MIN_WORDS`). The LAST
+    heard word may be cut short — a provider's interim writes «La bolsa e» for «La bolsa es»: it matches a word of the
+    line it begins."""
     h, s = tokens(heard), tokens(line)
     if len(h) < MIN_WORDS or not s:
         return False
     i = found = 0
-    for w in h:
+    for n, w in enumerate(h):
+        last = n == len(h) - 1
         j = i
-        while j < len(s) and s[j] != w:
+        while j < len(s) and s[j] != w and not (last and s[j].startswith(w)):
             j += 1
         if j < len(s):
             found, i = found + 1, j + 1

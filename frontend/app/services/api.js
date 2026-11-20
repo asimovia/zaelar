@@ -59,8 +59,11 @@ export const lkToken = (pending = false) => fetch("/api/token" + (pending ? "?pe
 // acquire/heartbeat devuelven {ok}: ok=false → otra pestaña/navegador está viva. Fail-open ante error de red
 // (si el server no responde no hay sesión con la que chocar → no bloquees al usuario). release por sendBeacon
 // al cerrar la pestaña (best-effort, sobrevive al unload).
-export const sessionAcquire = (sid, muted) => postJSON("/api/session/acquire", { sid, dev: DEVICE, ...(typeof muted === "boolean" ? { muted } : {}) }).then(json).catch(() => ({ ok: true }));
-export const sessionHeartbeat = (sid, muted) => postJSON("/api/session/heartbeat", { sid, muted, dev: DEVICE }).then(json).catch(() => ({ ok: true }));
+// `aec`: whether the browser runs echo cancellation on the mic track (`getSettings().echoCancellation`) — the engine's
+// local cut rule may stop our voice on a wordless rise only when our own voice cannot come back through the mic.
+const _aec = (aec) => (typeof aec === "boolean" ? { aec } : {});
+export const sessionAcquire = (sid, muted, aec) => postJSON("/api/session/acquire", { sid, dev: DEVICE, ...(typeof muted === "boolean" ? { muted } : {}), ..._aec(aec) }).then(json).catch(() => ({ ok: true }));
+export const sessionHeartbeat = (sid, muted, aec) => postJSON("/api/session/heartbeat", { sid, muted, dev: DEVICE, ..._aec(aec) }).then(json).catch(() => ({ ok: true }));
 // V2-654 — the microphone switch, told to the engine. Only `services/mic.js` may call this: the whole point of
 // that module is that ONE write moves icon, storage, audio track and engine together. Best-effort like the rest
 // of the telemetry here, because the heartbeat re-asserts the same value every ~4s and heals a lost request.
@@ -73,7 +76,7 @@ export const micState = (muted, src = "frontend") =>
 // «traerla aquí»); the automatic path stays "ask, be refused, retry" in services/session-lk.js. Fail-CLOSED on a
 // network error, unlike acquire/heartbeat above: those fail open because "the server did not answer" means there is
 // no session to collide with, whereas here it would mean claiming a lock we were never granted.
-export const sessionSteal = (sid, muted) => postJSON("/api/session/steal", { sid, dev: DEVICE, ...(typeof muted === "boolean" ? { muted } : {}) }).then(json).catch(() => ({ ok: false }));
+export const sessionSteal = (sid, muted, aec) => postJSON("/api/session/steal", { sid, dev: DEVICE, ...(typeof muted === "boolean" ? { muted } : {}), ..._aec(aec) }).then(json).catch(() => ({ ok: false }));
 export const sessionRelease = (sid) => {
   try {
     const blob = new Blob([JSON.stringify({ sid, dev: DEVICE })], { type: "application/json" });

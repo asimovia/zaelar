@@ -66,8 +66,21 @@ class Tap:
         self.on_barge: Callable[[], object] | None = None   # cut our voice (the local rule)
         self.min_barge_ms = 500
         self.playing_since: int | None = None
-        self.line = ""                                 # the text of our line now sounding (`/voice/say`)
+        self.lines: list[str] = []                     # what was SENT to say on this device, our last few lines
         self.heard: tuple[str, ...] = ()               # the words of his turn in course, as the provider has them
+
+    def said(self, text: str) -> None:
+        """A line of ours goes out (`/voice/say`): his words are compared with what was SENT, never with an estimate of
+        what has sounded — the estimate lags the audio, and our echo would not be found in it."""
+        self.lines = (self.lines + [str(text or "")])[-3:]
+
+    @property
+    def line(self) -> str:
+        return " ".join(self.lines)
+
+    @line.setter
+    def line(self, text: str) -> None:
+        self.lines = [str(text or "")]
 
     def provider_quiet(self, now: int) -> None:
         """His voice is up and the provider has answered nothing for `PROVIDER_STALL_MS`: what the ear is hearing is
@@ -202,16 +215,19 @@ class VadEdges:
 
 
 def _barge_due(edges: "VadEdges", now: int) -> bool:
-    """His voice rose after our line began and lasted `min_barge_ms`: it cuts on his WORDS, and only when they are not
-    our own line coming back — an echo never cuts it. With no words it never cuts: a rise alone cannot tell our echo
-    (it reaches the microphone after the playout's own delay, and the provider's first words after that) from his
-    «mmm», and a «mmm» over our line lets it go on."""
+    """His voice rose after our line began and lasted `min_barge_ms`: on his WORDS it cuts only when they are not our own
+    lines coming back (what was sent to say) — an echo never cuts. With no words it cuts only when his device declared
+    echo cancellation (`mic_input.device_aec`): then our voice cannot come back through his mic, and a short «cállate»
+    the provider never wrote still stops us, as the old turn did. Off or unknown, a rise alone cannot tell our echo from
+    his voice, and only his words cut — a stop then needs words the provider writes, or the button."""
     tap = edges.tap
     if not (tap.speaking and tap.on_barge is not None and not edges.cut and tap.playing_since is not None
             and edges.rose_at >= tap.playing_since and now - edges.rose_at >= tap.min_barge_ms):
         return False
-    from voice import echo_text
-    return len(echo_text.tokens(tap.heard)) >= echo_text.MIN_WORDS and not echo_text.contained(tap.heard, tap.line)
+    from voice import echo_text, mic_input
+    if len(echo_text.tokens(tap.heard)) >= echo_text.MIN_WORDS:
+        return not any(echo_text.contained(tap.heard, line) for line in tap.lines)
+    return mic_input.device_aec()
 
 
 def titular(stt):

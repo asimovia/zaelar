@@ -122,9 +122,12 @@ heard back — his voice rose while one of our last lines sounded or right after
 of that line (`voice/echo_text.py`), never after a question of ours ended; and a turn the attention mode says was not
 said to us, judged in the body with the body's attention fed from the ear lane (his voice's edges, our playback, our
 reply re-anchoring the window as it starts). What they throw away is a discard with its reason; what was set aside as
-ambient comes back in front of the entry that called the agent by name. In the voice process our own echo never cuts
-our line: the local cut rule cuts on his words only when they are not ours, and a rise at our line's start never cuts
-wordless. His stop — typed or spoken, the engine's whole-sentence detector — is a control and never a line for the
+ambient comes back in front of the entry that called the agent by name — only what he said within `reclaim_tail_ms`
+before it, in the same breath. In the voice process our own echo never cuts our line: the local cut rule cuts on his
+words only when they are not ours (compared with what was SENT to say, a word cut short included). With no word, it
+cuts only when his device declared echo cancellation (the browser's own `echoCancellation`, carried with his
+microphone's switch): off or unknown, a rise alone cannot tell our echo from his voice — **a stop then needs words the
+provider writes, or the button**. His stop — typed or spoken, the engine's whole-sentence detector — is a control and never a line for the
 model, and never told as a voice we lost. The agent's name and its spellings are key terms of the speech provider.
 
 **Debt:** a figure written in words («trescientas libras») is not a figure; that would be the language packs' number
