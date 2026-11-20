@@ -65,7 +65,7 @@ class _InProcess:
     def cancel(self, task_id):
         return None
 
-    def flow(self, trace):
+    def flow(self, trace, since_ms=0):
         return []
 
     def _req(self, method, path, body=None, timeout=30):

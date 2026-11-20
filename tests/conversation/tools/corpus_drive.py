@@ -128,9 +128,12 @@ class Engine:
         except Exception:  # noqa: BLE001 — a task that already ended cannot be cancelled; it is recorded anyway
             pass
 
-    def flow(self, trace: str) -> list[dict]:
+    def flow(self, trace: str, since_ms: int = 0) -> list[dict]:
+        """The engine's flow of `trace`, from `since_ms` on: a case reads its own rows, never an earlier case's under
+        the same id."""
         try:
-            return self._req("GET", "/api/observability/flow/" + urllib.parse.quote(trace, safe=""), timeout=30)["events"]
+            return self._req("GET", "/api/observability/flow/" + urllib.parse.quote(trace, safe="")
+                             + f"?since={int(since_ms)}", timeout=30)["events"]
         except Exception:  # noqa: BLE001
             return []
 
@@ -152,6 +155,7 @@ class Engine:
 
 async def drive_conversation(eng: Engine, conv: dict) -> dict:
     session = f"corpus-{conv['id']}-{int(time.time())}"
+    since_ms = int(time.time() * 1000)
     if hasattr(eng, "reset"):
         eng.reset()                                   # each conversation is a case of its own: nothing behind it
     before = {t.get("id") for t in eng.tasks()}
@@ -190,7 +194,7 @@ async def drive_conversation(eng: Engine, conv: dict) -> dict:
         eng.cancel(t["id"])
     for row in rows:
         for a in row["answers"]:
-            ev = eng.flow(a["trace"]) if a["trace"] else []
+            ev = eng.flow(a["trace"], since_ms) if a["trace"] else []
             labels = [str(e.get("label") or "") for e in ev]
             a["flow"] = {"events": len(ev), "prompts": sum("Nucleo(flash): prompt" in lab for lab in labels),
                          "search_events": sum(e.get("kind") == "search" for e in ev),

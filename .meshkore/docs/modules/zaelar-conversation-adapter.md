@@ -54,6 +54,16 @@ session's decision on the body (`voice_session.started`). In that session (`voic
 - an `llm_node` LiveKit opens anyway is counted (`livekit_turns`), said as an alert, and answered with an empty turn;
 - the owed lines are claimed for the voice while it lives.
 
+Built (B9): the mouth's voice half (`nucleo/conversation_host/voice_mouth.py`) and its one primitive, `/voice/say`.
+- A line on the voice channel is said with the manager's `say_id` and `conv` set.
+- `/voice/say` takes `cut`: the speech in course stops first, and with no text that is a pure stop.
+- Its `done` says how much sounded (`spoken_chars`), from the speech's own chat item, which LiveKit cuts to the
+  synchronized transcript. A line of the manager's keeps that item, which never reaches the old turn's record.
+- The acks reach the conversation in its thread: `SayStarted`, then `SayEnded` — `cut` or `played`, what sounded as
+  `agent_estimate` — or `unknown` on an error.
+- LiveKit interrupts nothing in a manual session, so the voice process cuts our voice itself: his voice that rose after
+  our line began and lasted the interruption threshold cuts it once (E7: a voice already up never does).
+
 At the job's end the warm STT is given back untapped. Not wired yet: the app writing the session's `conv` flag into
 the room's metadata (the account's key and the environment decide meanwhile), and the clients' playback (item 2).
 

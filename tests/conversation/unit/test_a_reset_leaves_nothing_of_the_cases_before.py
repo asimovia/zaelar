@@ -4,7 +4,7 @@ Between two isolated test conversations a disposable engine resets: the conversa
 at its epoch, so the next manager mints its ids in a space of its own — `iv_000001` never names two conversations of
 one engine, and a manager still running from before is refused at its next write. What the cases WROTE to memory goes
 too: the first reset marks where the cases begin (after the seed), every later one forgets what was written since, and
-the conversation buffer whatever its age. A flow read by an id is its NEWEST rows, in order, from `since` on. A real
+the conversation buffer whatever its age. A flow is read from its start; a reader may ask from `since` on, or newest first. A real
 engine refuses the reset (`test_the_smokes_findings_hold`).
 """
 from __future__ import annotations
@@ -86,11 +86,12 @@ def events(tmp_path, monkeypatch):
         buslog._conn.close()
 
 
-def test_a_flow_is_its_newest_rows_in_order_from_since_on(events):
+def test_a_flow_is_read_from_its_start_and_a_reader_may_ask_from_its_case_or_the_newest_first(events):
     from observability import flows
     old = [(1000 + i, {"kind": "conv_run", "label": f"old{i}", "trace": "iv_000001"}) for i in range(3)]
     new = [(9000 + i, {"kind": "conv_run", "label": f"new{i}", "trace": "iv_000001"}) for i in range(3)]
     events(old + new)
-    assert [r["label"] for r in flows.flow("iv_000001", limit=3)] == ["new0", "new1", "new2"]
-    assert [r["label"] for r in flows.flow("iv_000001", since_ms=9001)] == ["new1", "new2"]
+    assert [r["label"] for r in flows.flow("iv_000001", limit=3)] == ["old0", "old1", "old2"]    # a whole flow's start
+    assert [r["label"] for r in flows.flow("iv_000001", since_ms=9001)] == ["new1", "new2"]      # its own case
+    assert [r["label"] for r in flows.flow("iv_000001", limit=2, order="desc")] == ["new2", "new1"]
     assert len(flows.flow("iv_000001")) == 6

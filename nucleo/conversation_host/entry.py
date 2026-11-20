@@ -178,6 +178,11 @@ def typed(text: str, dev: str = "", *, wait: bool = False, checked: bool = False
     return {"ok": True, "cid": cid}
 
 
+def ack(sig) -> None:
+    """An ack of our voice (a line started, ended, what sounded), from the voice's loop: handed over in order."""
+    _hand(lambda c: c.ack(sig))
+
+
 def count(counter: str) -> None:
     """One more on a proof counter of this account, counted on the conversation's side (the account can wait)."""
     from nucleo.conversation_host import proof

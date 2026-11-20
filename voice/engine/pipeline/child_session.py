@@ -31,7 +31,7 @@ from ..core.state import State, StateMachine
 logger = logging.getLogger("zaelar.voice-process")
 
 #: The live session of this process, for the control routes (`child.py`). One at a time.
-LIVE: dict = dict(session=None, ctx=None, loop=None, aliases={}, room="", started=0.0, sessions=0)
+LIVE: dict = dict(session=None, ctx=None, loop=None, aliases={}, room="", started=0.0, sessions=0, conv_says=set())
 
 
 def alias_of(speech_id: str) -> str:
@@ -109,6 +109,8 @@ async def entrypoint(ctx: JobContext) -> None:
                            turn_handling=ear_tap.manual(handling) if tap else handling)
     if tap is not None:
         tap.on_end = session.clear_user_turn     # never committed: his words went to the manager's ear
+        tap.min_barge_ms = int(1000 * float(_interruption.get("min_duration", 0.5) or 0.5))
+        tap.on_barge = lambda: _ae.cut_current_speech(session)   # the local rule: his voice cuts ours
         session.on("agent_state_changed", lambda ev: tap.playback(getattr(ev.new_state, "value", ev.new_state)
                                                                    == "speaking"))
     else:
@@ -220,6 +222,8 @@ def _wire(session, ctx, link, sm, _emit, tts, boot) -> None:
         item = ev.item
         role, text = getattr(item, "role", None), getattr(item, "text_content", None)
         _h = _ae._speech_of_this_task()
+        if str(getattr(_h, "id", "")) in LIVE["conv_says"]:
+            return                               # a line of the manager's: it keeps its own record of what sounded
         link.send({"k": "item", "role": role, "text": text, "speech_id": alias_of(getattr(_h, "id", "")),
                    "surfaced": bool(text) and _ag._reply_wall.already_surfaced(text)})
 
@@ -262,6 +266,7 @@ def _wire(session, ctx, link, sm, _emit, tts, boot) -> None:
         if LIVE["session"] is session:
             LIVE.update(session=None, ctx=None, loop=None)
             LIVE["aliases"].clear()
+            LIVE["conv_says"].clear()
         try:
             from ..speech import live_tts as _lt
             _lt.detach(tts)

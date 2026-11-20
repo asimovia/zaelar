@@ -94,6 +94,7 @@ def _ask_person(persona: dict, history: list[dict], shape: dict) -> dict:
 async def converse(eng: Engine, persona: dict, max_turns: int, seed: int) -> dict:
     rng = random.Random(f"{persona['id']}:{seed}")
     session = f"sim-{persona['id']}-{int(time.time())}"
+    since_ms = int(time.time() * 1000)
     before = {t.get("id") for t in eng.tasks()}
     loop = asyncio.get_running_loop()
     history, turns, missed = [], [], False
@@ -154,7 +155,7 @@ async def converse(eng: Engine, persona: dict, max_turns: int, seed: int) -> dic
         eng.cancel(t["id"])
     for t in turns:
         for a in t.get("answers", []):
-            ev = eng.flow(a["trace"]) if a["trace"] else []
+            ev = eng.flow(a["trace"], since_ms) if a["trace"] else []
             labels = [str(e.get("label") or "") for e in ev]
             a["prompts"] = sum("Nucleo(flash): prompt" in lab for lab in labels)
             a["jev_reads"] = sum(lab.startswith("jev read") for lab in labels)

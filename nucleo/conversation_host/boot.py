@@ -33,7 +33,8 @@ def make(listeners: tuple = (), said: Callable | None = None) -> Callable:
         clock = SystemClock()
         cfg, _problems = config.build()                  # the switch refused a session whose config does not pass
         tools = ReadTools()
-        mouth = WallMouth(clock, said)
+        from nucleo.conversation_host import entry, voice_mouth
+        mouth = WallMouth(clock, said, voice=voice_mouth, ack_later=entry.ack)
         conv = build(account=account(), owner=ACCOUNT_OWNER, model=FastModel(), tools=tools,
                      store=ZaelarStore(_db.get_db()), memory=MemoryRead(), clock=clock, mouth=mouth,
                      telemetry=proof.Counting(ObserverTelemetry(listeners), account()), config=cfg, prefix=prefix.current(tools.catalog()),

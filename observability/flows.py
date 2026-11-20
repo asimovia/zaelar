@@ -142,23 +142,23 @@ def _initiator(row: dict) -> str:
     return initiator_of(row.get("origin"))
 
 
-def flow(corr_id: str, limit: int = 500, since_ms: float = 0) -> list[dict]:
+def flow(corr_id: str, limit: int = 500, since_ms: float = 0, order: str = "asc") -> list[dict]:
     """El flujo COMPLETO en orden cronológico — la secuencia exacta de qué pasó y cuándo, que es lo que permite
     ver dónde se torció (p. ej. que se abrió el widget equivocado, y de qué frase salió).
 
-    Past `limit` rows it is the NEWEST `limit`, still in order: an id can come back (a disposable engine resets its
-    conversation and mints `iv_000001` again), and the oldest rows under it are another conversation's. `since_ms`
-    leaves out every row before that wall time."""
+    A flow is read from its beginning (`order="asc"`, the default: the observatory, the Master and the use cases want
+    whole flows, and a long worker must not lose its start); `order="desc"` gives its newest `limit` rows, newest
+    first. `since_ms` leaves out every row before that wall time — a reader that knows when its case began asks from
+    there."""
     # `topic` va en la proyección a propósito: un flujo NO es solo observabilidad. Otras señales del bus
     # (`turn.completed`, `memory.updated`…) viajan con el mismo correlation id, y son parte legítima de la
     # historia del flujo — pero no traen `kind`/`label`, así que sin el topic salían como filas VACÍAS y
     # misteriosas en el visor. Un renglón que no se sabe qué es hace desconfiar de toda la tabla.
+    direction = "DESC" if order == "desc" else "ASC"     # one of two words, never his text
     return _rows(
-        """
-        SELECT * FROM (
-            SELECT id, ts_ms, topic, cat, kind, label, span, ms, model, tokens_in, tokens_out, ver, payload
-            FROM events WHERE corr_id = ? AND ts_ms >= ? ORDER BY id DESC LIMIT ?
-        ) ORDER BY id ASC
+        f"""
+        SELECT id, ts_ms, topic, cat, kind, label, span, ms, model, tokens_in, tokens_out, ver, payload
+        FROM events WHERE corr_id = ? AND ts_ms >= ? ORDER BY id {direction} LIMIT ?
         """,
         (str(corr_id), float(since_ms or 0), int(limit)),
     )

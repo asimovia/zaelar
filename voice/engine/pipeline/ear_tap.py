@@ -46,6 +46,9 @@ class Tap:
         self.speaking = False                          # our own voice sounds (playback)
         self.edges = VadEdges(self)
         self.on_end: Callable[[], None] | None = None
+        self.on_barge: Callable[[], object] | None = None   # cut our voice (the local rule)
+        self.min_barge_ms = 500
+        self.playing_since: int | None = None
 
     def new_stream(self) -> None:
         self.clock, self.turns = ear_feed.StreamClock(), ear_feed.Turns()
@@ -58,29 +61,51 @@ class Tap:
                                            terminal=terminal_of(msg) if end else None):
             self.send(fact)
 
-    def playback(self, speaking: bool) -> None:
+    def playback(self, speaking: bool, now_ms: int | None = None) -> None:
         if speaking != self.speaking:
-            self.speaking = speaking
-            self.send(ear_feed.playback(self.endpoint, speaking, _now_ms()))
+            now = _now_ms() if now_ms is None else now_ms
+            self.speaking, self.playing_since = speaking, (now if speaking else None)
+            self.send(ear_feed.playback(self.endpoint, speaking, now))
 
 
 class VadEdges:
     """E1: a rise at the first speaking frame after quiet; a fall once `VAD_QUIET_MS` passed with no speaking frame,
-    stamped at the last speaking frame."""
+    stamped at the last speaking frame.
+
+    The LOCAL CUT RULE (v3.1 §1.7, E7) lives here too: LiveKit interrupts nothing in a manual session, so while our
+    voice sounds, his voice that ROSE after our line began and has lasted `min_barge_ms` cuts it — once per rise. A
+    voice that was already up when our line began (a television) never cuts it, and a cough under the threshold does
+    nothing."""
 
     def __init__(self, tap: Tap) -> None:
         self.tap, self.up, self.last_speech = tap, False, 0
+        self.rose_at, self.cut = 0, False
 
     def frame(self, speaking: bool, now_ms: int | None = None) -> None:
         now = _now_ms() if now_ms is None else now_ms
         if speaking:
             if not self.up:
-                self.up = True
+                self.up, self.rose_at, self.cut = True, now, False
                 self.tap.send(ear_feed.vad(self.tap.endpoint, "rise", now, echo_safe=not self.tap.speaking))
             self.last_speech = now
+            self._barge(now)
         elif self.up and now - self.last_speech >= VAD_QUIET_MS:
             self.up = False
             self.tap.send(ear_feed.vad(self.tap.endpoint, "fall", self.last_speech, echo_safe=not self.tap.speaking))
+
+    def _barge(self, now: int) -> None:
+        if _barge_due(self, now):
+            self.cut = True
+            try:
+                self.tap.on_barge()
+            except Exception as e:  # noqa: BLE001 — a cut that fails never stops the ear
+                logger.warning(f"ear tap: our voice was not cut ({e!r})")
+
+
+def _barge_due(edges: "VadEdges", now: int) -> bool:
+    tap = edges.tap
+    return (tap.speaking and tap.on_barge is not None and not edges.cut and tap.playing_since is not None
+            and edges.rose_at >= tap.playing_since and now - edges.rose_at >= tap.min_barge_ms)
 
 
 def install_stt(stt, tap: Tap):

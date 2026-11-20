@@ -629,6 +629,10 @@ _PACKAGE_CEILINGS["nucleo/pulse"] += 4     # same: the retry reads expired claim
 _PACKAGE_CEILINGS["nucleo/cli"] += 1       # same: only the text channel's door diverts (`run_turn(door=)`)
 _PACKAGE_CEILINGS["server"] += 1           # same: the reset closes before the queue drains
 _TOTAL_MAX += 93     # same cause
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 82    # 2026-11-20 V2-941 v3.1 B9: the mouth's voice half — a line said on the voice with its say_id, what sounded read back as its acks, a stop by the same door (`voice_mouth.py`, `entry.ack`)
+_PACKAGE_CEILINGS["voice"] += 64           # same: `/voice/say` with `cut` and `spoken_chars`; the local cut rule in a manual session (`ear_tap.VadEdges._barge`)
+_PACKAGE_CEILINGS["observability"] += 1    # same: a flow read from its start, or newest first (`order`)
+_TOTAL_MAX += 147    # same cause
 
 
 def test_the_total_only_shrinks():

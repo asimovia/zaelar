@@ -13,7 +13,7 @@ is NOT loopback. It does not expose content:
 **PROTECTED** — returns CONTENT (operator utterances, prompts, search results, whatever a
 worker brought back). Anyone who can read this can read the entire conversation, so it goes through `_allowed()`:
   GET  /api/observability/flows             → latest flows with their summary (duration, pieces, tokens, errors)
-  GET  /api/observability/flow/{corr_id}    → one complete flow, in order (the newest `limit` rows; `since` = wall ms)
+  GET  /api/observability/flow/{corr_id}    → one complete flow, from its start (`since` = wall ms, `order=desc`)
   GET  /api/observability/sessions          → latest work sessions
   GET  /api/observability/session/{sid}     → ONE session with its shape (to open and audit it)
   GET  /api/observability/events            → raw events with `since_id` cursor (follow a live session)
@@ -91,10 +91,11 @@ async def list_flows(request: Request, limit: int = 50, session_id: str = "", us
 
 
 @router.get("/api/observability/flow/{corr_id}")
-async def one_flow(request: Request, corr_id: str, limit: int = 500, since: float = 0):
+async def one_flow(request: Request, corr_id: str, limit: int = 500, since: float = 0, order: str = "asc"):
     if not _allowed(request):
         return _DENIED
-    return JSONResponse({"corr_id": corr_id, "events": _flows.flow(corr_id, limit=min(limit, 2000), since_ms=since)})
+    return JSONResponse({"corr_id": corr_id, "events": _flows.flow(corr_id, limit=min(limit, 2000), since_ms=since,
+                                                                    order="desc" if order == "desc" else "asc")})
 
 
 @router.get("/api/observability/sessions")

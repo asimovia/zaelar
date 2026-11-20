@@ -12,7 +12,8 @@ What runs here: the LiveKit `AgentServer` (THREAD executor, inside THIS process)
 `child_session.py`, the link to the body (`body_link.py`), and a few control routes on the worker's own health port
 (`agent.worker_health_port()`, loopback only, the body's token required):
 
-    POST /voice/say         speak a text (NDJSON: {"id"} at once, {"done"} once it has played)
+    POST /voice/say         speak a text (NDJSON: {"id"} at once, {"done", "interrupted", "spoken_chars"} once it has
+                            played); `cut` stops the speech in course first, and with no text that is all it does
     POST /voice/reply       a typed line becomes a turn (the screen that typed it travels with it)
     POST /voice/audio       {"output": bool} mute/unmute synthesis · {"input": bool} open/close the ear
     POST /voice/clear_turn  forget the user turn the body's gate discarded
@@ -101,6 +102,24 @@ async def _json(request) -> dict:
         return {}
 
 
+def spoken_chars(handle, text: str) -> int:
+    """How much of `text` sounded: the speech's own chat item, which LiveKit cuts to the synchronized transcript when the
+    speech was interrupted (and leaves out when nothing played); with no item, all of it — or nothing, if cut."""
+    items = [i for i in (getattr(handle, "chat_items", None) or ()) if getattr(i, "role", "") == "assistant"]
+    if items:
+        return len(getattr(items[-1], "text_content", "") or "")
+    return 0 if getattr(handle, "interrupted", False) else len(text)
+
+
+async def _cut():
+    from .agent_events import cut_current_speech
+    try:
+        return cut_current_speech(LIVE["session"])
+    except Exception as e:  # noqa: BLE001 — a cut that fails is said, and the line that follows still plays
+        logger.warning(f"/voice/say: the speech in course was not cut — {e!r}")
+        return False
+
+
 async def say(request):
     if not _authorised(request):
         return _deny()
@@ -110,8 +129,19 @@ async def say(request):
     text = str(body.get("text") or "").strip()
     resp = web.StreamResponse(headers={"content-type": "application/x-ndjson"})
     await resp.prepare(request)
-    if not text or LIVE.get("session") is None:
+    if LIVE.get("session") is None:
         await resp.write(json.dumps({"id": "", "done": True, "error": "no_session"}).encode() + b"\n")
+        return resp
+    if body.get("cut"):                        # the speech in course stops first; with no text, a pure stop
+        try:
+            stopped = await _on_session_loop(_cut)
+        except LookupError:                      # the session's loop is gone: nothing sounds to cut
+            stopped = False
+        if not text:
+            await resp.write(json.dumps({"id": "", "done": True, "stopped": bool(stopped)}).encode() + b"\n")
+            return resp
+    if not text:
+        await resp.write(json.dumps({"id": "", "done": True, "error": "no_text"}).encode() + b"\n")
         return resp
     if not has_listener(LIVE.get("ctx")):
         # V2-910 — never speak into a room nobody is in: the speech would be «said» (and billed, and counted as
@@ -119,12 +149,15 @@ async def say(request):
         await resp.write(json.dumps({"id": "", "done": True, "error": "no_listener"}).encode() + b"\n")
         return resp
     alias, t0 = str(body.get("alias") or ""), time.perf_counter()
+    conv = bool(body.get("conv"))              # a line of the conversation manager's: what sounded is read back
     got: dict = {}
 
     async def _do():
         session = LIVE["session"]
         handle = session.say(text, allow_interruptions=bool(body.get("allow_interruptions", True)),
-                             add_to_chat_ctx=not bool(body.get("ephemeral")))
+                             add_to_chat_ctx=conv or not bool(body.get("ephemeral")))
+        if conv:
+            LIVE["conv_says"].add(str(getattr(handle, "id", "")))
         if alias:
             LIVE["aliases"][str(getattr(handle, "id", ""))] = alias
         got["id"] = str(getattr(handle, "id", ""))
@@ -138,6 +171,7 @@ async def say(request):
             await handle
         await _on_session_loop(_wait)
         await resp.write(json.dumps({"done": True, "interrupted": bool(getattr(handle, "interrupted", False)),
+                                     "spoken_chars": spoken_chars(handle, text),
                                      "playout_ms": round((time.perf_counter() - t0) * 1000)}).encode() + b"\n")
     except Exception as e:  # noqa: BLE001
         await resp.write(json.dumps({"done": True, "error": repr(e)[:200]}).encode() + b"\n")
