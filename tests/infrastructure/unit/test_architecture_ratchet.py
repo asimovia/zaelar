@@ -866,6 +866,8 @@ _PACKAGE_CEILINGS["widgets"] += 951
 _PACKAGE_CEILINGS["nucleo/flash"] -= 281
 _PACKAGE_CEILINGS["nucleo/turn"] -= 1031
 _TOTAL_MAX += 49     # measured after the move (the shims' lines)
+_PACKAGE_CEILINGS["conversation"] += 107   # 2026-11-21 E7d-1 (R-2): a declared new mechanism — an EVENT of the world enters the inbox with its source's authority (`EventBody`, producer `event:`, its policy row), runs alone by the host's `Events` port and never the model (`manager/events.py`), his words first
+_TOTAL_MAX += 107    # same cause, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

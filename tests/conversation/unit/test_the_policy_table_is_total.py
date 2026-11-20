@@ -21,9 +21,9 @@ from tests.conversation.unit.inboxkit import control
 WAITS = {Op.FOLLOW_UP, Op.HOLD_FOR_VOICE, Op.ACTIONS_WAIT, Op.WAIT_BEHIND_VOICE}
 
 
-def test_three_states_seven_rows_four_columns_eleven_operations():
+def test_three_states_eight_rows_four_columns_eleven_operations():
     assert [m.value for m in MgrState] == ["idle", "running", "speaking"]
-    assert len(Input) == 7 and len(Column) == 4 and len(Op) == 11
+    assert len(Input) == 8 and len(Column) == 4 and len(Op) == 11
     assert {op for row in TABLE.values() for ops in row.values() for op in ops} == set(Op)   # none unused
 
 
@@ -32,7 +32,8 @@ def test_every_pair_has_a_cell_and_only_a_line_owed_or_a_wordless_voice_does_not
         (i.value, c.value) for i in Input for c in Column)
     empty = [(i, c) for i in Input for c in Column if not TABLE[i][c]]
     busy = (Column.RUN_NO_EFFECT, Column.RUN_EFFECT, Column.SPEAKING)
-    assert empty == [(i, c) for i in (Input.OWED, Input.DISCARDED) for c in busy]
+    assert empty == [(i, c) for i in (Input.OWED, Input.DISCARDED, Input.EVENT) for c in busy]
+    assert TABLE[Input.EVENT][Column.IDLE] == (Op.RUN,)          # an event runs only when free: it waits for him
     assert TABLE[Input.DISCARDED][Column.IDLE] == (Op.RESUME_LINE,)
     assert TABLE[Input.OWED][Column.IDLE] == (Op.SAY_OWED,) and IN_ITS_LEDGER == ()
 

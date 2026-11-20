@@ -31,7 +31,7 @@ from conversation.gateway.outbox import Claimed, Read
 from conversation.inbox.mailbox import MONOLOGUE, Batch
 from conversation.inbox import ordering
 from conversation.manager import claims as CL
-from conversation.manager import before_model, commands, hold
+from conversation.manager import before_model, commands, events, hold
 from conversation.manager import record as records
 from conversation.manager import stop
 from conversation.mouth import Device, choose
@@ -96,7 +96,7 @@ def sweep_liveness(conv: "Conversation", now: int) -> None:
         return
     carried, last = conv.inbox.in_course()
     for row in rows:
-        if row["id"] in waiting:
+        if row["id"] in waiting or row["data"].get("event"):    # an event closes with its own run, owing him nothing
             continue
         start = row["data"].get("sealed_ms", row["created_ms"])
         if row["data"].get("iv") in carried and last is not None:
@@ -138,6 +138,8 @@ def _requests(batch: Batch) -> tuple[str, ...]:
 
 async def run_batch(conv: "Conversation", batch: Batch) -> None:
     from conversation.manager.loop import Running
+    if events.is_event_batch(batch):            # an event of the world: its route, by the host's door, never the model
+        return await events.run_event_batch(conv, batch)
     users = [e for e in batch.envelopes if e.is_user]
     endpoint = next((e.endpoint for e in users if e.endpoint), None)
     reqs = _requests(batch)

@@ -1,7 +1,7 @@
 """THE policy table: what the manager DOES with each kind of input in each of its states. Data, not code.
 
-Seven rows — kinds of input, classified by envelope kind and declared fields, never by what was said — and four
-columns: free, a run that has not claimed an effect, a run that has, and speaking. 28 cells (node 13.8). Three operations that are never confused: SILENCE stops our voice, CANCEL_RUN drops the run, and
+Eight rows — kinds of input, classified by envelope kind and declared fields, never by what was said — and four
+columns: free, a run that has not claimed an effect, a run that has, and speaking. 32 cells (node 13.8). Three operations that are never confused: SILENCE stops our voice, CANCEL_RUN drops the run, and
 cancelling a TASK is a tool the model calls or a button by id — no cell of this table cancels a task. A stop is a
 `user.control(stop)` from a button, or a stop order the model chose from his words (`commands.Stop`, `stop.py`); this
 package reads no words for it. Controls never wait.
@@ -10,7 +10,8 @@ The one cell that depends on the input's data: a voice that starts during a run 
 Its actions wait (ACTIONS_WAIT) and, if it is the same device as the batch's last entry and inside the window of it,
 the run stops and its batch waits for that voice (HOLD_FOR_VOICE) — device and time are fields of the signal, not
 words. A line owed waits in its own ledger while the manager is not free: those cells are empty on purpose
-(`IN_ITS_LEDGER`). A voice that cut our line and ended with no word (a breath, a noise) resumes that line once, from
+(`IN_ITS_LEDGER`); so does an EVENT of the world (R-2): free, it runs on its own; otherwise it waits in the inbox, never
+joining nor replacing a batch of his. A voice that cut our line and ended with no word (a breath, a noise) resumes that line once, from
 the last sentence heard (`RESUME_LINE`) — only when free; with a run in course it changes nothing.
 """
 from __future__ import annotations
@@ -30,6 +31,7 @@ class Input(Enum):
     BY_ID = "by_id"
     OWED = "owed"                      # a line the engine owes the person, waiting in its own ledger
     DISCARDED = "discarded"            # a voice that ended with no word
+    EVENT = "event"                    # an event of the world, already routed: it waits for the manager to be free
 
 
 class Column(Enum):
@@ -57,6 +59,7 @@ TABLE: dict[Input, dict[Column, tuple[Op, ...]]] = {
     Input.BY_ID: _row((O.BY_ID,), (O.BY_ID,), (O.BY_ID,), (O.BY_ID,)),
     Input.OWED: _row((O.SAY_OWED,), IN_ITS_LEDGER, IN_ITS_LEDGER, IN_ITS_LEDGER),
     Input.DISCARDED: _row((O.RESUME_LINE,), (), (), ()),
+    Input.EVENT: _row((O.RUN,), IN_ITS_LEDGER, IN_ITS_LEDGER, IN_ITS_LEDGER),   # never joins nor replaces a run of his
 }
 
 
@@ -75,6 +78,8 @@ def classify(item: E.Envelope | Onset | VoiceDiscarded | None) -> Input:
         return Input.ENTRY
     if k is EnvelopeKind.USER_CONTROL:
         return Input.STOP if item.body.op is ControlOp.STOP else Input.BY_ID
+    if k is EnvelopeKind.EVENT:
+        return Input.EVENT
     raise ValueError(f"no policy row for {k}")
 
 

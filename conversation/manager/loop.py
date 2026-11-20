@@ -31,7 +31,7 @@ from conversation import guard
 from conversation.manager import hold, policy, run
 from conversation.manager import record as records
 from conversation.mouth import Device, SayEnded, SayStarted, Speaker
-from conversation.ports import (Clock, Memory, Model, Mouth, Owed, Prefs, Record, Route, Shortcut, StaleEpoch, Stops, Store, Tasks,
+from conversation.ports import (Clock, Events, Memory, Model, Mouth, Owed, Prefs, Record, Route, Shortcut, StaleEpoch, Stops, Store, Tasks,
                                 Telemetry, Tools, Words)
 from conversation.telemetry import Emitter
 from conversation.types import Channel, ControlOp, Coverage, EnvelopeKind, Ids, ItemKind, MgrState, Op
@@ -86,7 +86,7 @@ class Conversation:
                  prefs: Prefs | None = None, record: Record | None = None, words: Words | None = None,
                  figures: Callable[[str], tuple] | None = None, ear_guard: Callable[[str, str], str | None] | None = None,
                  stops: Stops | None = None, foreign_voice: Callable[[str, int], bool] | None = None,
-                 route: Route | None = None, shortcut: Shortcut | None = None) -> None:
+                 route: Route | None = None, shortcut: Shortcut | None = None, events: Events | None = None) -> None:
         self.account, self.cfg, self.prefix = account, config or Config(), prefix
         self.prefs: Prefs = prefs or (lambda _key, default: default)
         self.record, self.words = record, words
@@ -100,6 +100,7 @@ class Conversation:
         self.foreign_voice = foreign_voice
         self.route = route                  # the host's doors for his words to what is open (`Route`); None: none
         self.shortcut = shortcut            # a phrase the host knows verbatim, run before any door (`Shortcut`); None
+        self.events = events                # the host's door for an event of the world (`Events`, R-2); None: refused
         self.lease = store.acquire(account, owner)
         self.em = Emitter(telemetry, clock, account, epoch=lambda: self.lease.epoch)
         self.store = guard.TimedStore(store, self.em, self.cfg)
@@ -228,6 +229,12 @@ class Conversation:
         """Inside the acceptance's transaction, after the dedupe: how the intervention ended (noted once) and the
         person's request, opened with it."""
         k, b = env.kind, env.body
+        if k is EnvelopeKind.EVENT:                 # an event opens its own request: counted and closed exactly once
+            from conversation.manager.events import request_of
+            BookTx(tx, now, pending).open(ItemKind.REQUEST, request_of(env), data={
+                "req": request_of(env), "event": b.event_id, "origin": b.origin, "sealed_ms": env.sealed_ms},
+                cause={"kind": "envelope", "ref": env.id})
+            return
         if k not in REQUESTS:
             return
         whole = k is EnvelopeKind.USER_TEXT or b.coverage is Coverage.FULL

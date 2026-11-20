@@ -19,18 +19,22 @@ class Channel(_Str):
     VOICE = "voice"
     TEXT = "text"
     BUTTON = "button"
+    EVENT = "event"         # what arrives from the world without him: a message, a cron, a cluster, a worker (R-2)
 
 
 class Authority(_Str):
-    """Who an envelope speaks for: only the person enters the inbox. What the engine owes the person (a worker's
-    result, a contact's message, a reminder) is a line it says, never an entry (I8)."""
+    """Who an envelope speaks for. The person's entries carry his; an EVENT of the world carries its SOURCE's — never
+    his: it opens no request of his, joins no batch of his and never reaches the conversation's model (R-2). What the
+    engine owes the person (a worker's result, a reminder) is still a line it says, never an entry (I8)."""
     USER = "user"
+    SOURCE = "source"
 
 
 class EnvelopeKind(_Str):
     USER_UTTERANCE = "user.utterance"
     USER_TEXT = "user.text"
     USER_CONTROL = "user.control"
+    EVENT = "event.item"
 
 
 class Coverage(_Str):

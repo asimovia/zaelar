@@ -1,6 +1,7 @@
-"""The envelope: the ONLY thing that enters the inbox (§5.1) — what the PERSON said, typed or did — with a typed body
-per kind: a voice utterance, a text, a control. Everything the engine owes the person (a worker's result, a contact's
-message, a reminder) is not an entry: it is a line owed, read by reference from its own ledger (`ports.Owed`).
+"""The envelope: the ONLY thing that enters the inbox (§5.1) — what the PERSON said, typed or did, or an EVENT of the
+world the host's router already routed (R-2) — with a typed body per kind: a voice utterance, a text, a control, an
+event. An event carries its source's authority, never his. Everything the engine owes the person (a worker's result,
+a reminder) is not an entry: it is a line owed, read by reference from its own ledger (`ports.Owed`).
 
 `from_json` is strict: an unknown kind, an unknown field or a missing one is refused (`EnvelopeError`), and the
 authority and channel of a kind are FIXED here. The authority of an envelope is what its producer is, not what it says.
@@ -64,7 +65,20 @@ class ControlBody:
     scope: dict | None = None   # a delegation's scope: recipients, channel, expires_ms, max
 
 
-Body = UtteranceBody | TextBody | ControlBody
+@dataclass(frozen=True)
+class EventBody:
+    """An event of the world, already ROUTED by the host's router before it enters (R-2): its id, its topic in the
+    event vocabulary (`origin`), who sent it (`source`), its text as untrusted data, its declared fields, and what the
+    router decided (`route`: resume a row, a reply stream, a notice, nothing) — never decided here."""
+    event_id: str
+    origin: str
+    source: str = ""
+    text: str = ""
+    fields: dict | None = None
+    route: dict | None = None
+
+
+Body = UtteranceBody | TextBody | ControlBody | EventBody
 
 #: kind → (body class, the authority it carries, the channels it may come by, the producers that may send it).
 #: Fixed: never read off the wire. The inbox refuses an envelope whose producer is not one of its kind's: a
@@ -75,6 +89,7 @@ KINDS: dict[EnvelopeKind, tuple[type, Authority, frozenset[Channel], tuple[str, 
     EnvelopeKind.USER_CONTROL: (ControlBody, Authority.USER,
                                 frozenset({Channel.VOICE, Channel.TEXT, Channel.BUTTON}),
                                 ("button:", "chat:", "ear:", "guard:")),
+    EnvelopeKind.EVENT: (EventBody, Authority.SOURCE, frozenset({Channel.EVENT}), ("event:",)),
 }
 
 

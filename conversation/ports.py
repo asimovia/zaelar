@@ -136,6 +136,14 @@ class Tasks(Protocol):
     def cancel(self, account: str, task_id: str) -> bool: ...
 
 
+class Events(Protocol):
+    """The host's door for an EVENT that entered the inbox (R-2): it carries out the route the host's router already
+    decided — a row resumed, a reply stream, a notice, nothing — by the doors that already do them, and answers in one
+    word what happened (`resumed` · `streamed` · `noticed` · `nothing` · …). The conversation's model is never called
+    for an event; what he must hear of it is a line owed (`Owed`), said by the manager when it is free."""
+    async def run(self, account: str, env: Any) -> str: ...
+
+
 class Route(Protocol):
     """The host's doors that already decide whose his words are when something of his is OPEN — a process running or
     waiting on his answer (plan F2 §3), in their own order. `take` answers the line to say when one took them (""
@@ -144,7 +152,7 @@ class Route(Protocol):
 
 
 class Shortcut(Protocol):
-    """A phrase of his the host already KNOWS, verbatim (V2-942 A2): one exact whole-utterance hit runs its direct act
+    """A phrase of his the host already KNOWS, verbatim (V2-942): one exact whole-utterance hit runs its direct act
     before any model, in under a millisecond. `take` answers the line to say when it ran ("" for none), or None — no
     exact hit, or the act could not run with certainty — and the batch goes on as if it did not exist."""
     async def take(self, account: str, text: str) -> str | None: ...

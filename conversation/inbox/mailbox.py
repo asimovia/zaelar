@@ -36,6 +36,10 @@ VOICE = "voice_open"
 
 #: a voice entry the ear cut by its length (`arbiter._incomplete`), and the batch released at the monologue's ceiling
 TOO_LONG, MONOLOGUE = "too_long", "monologue"
+EVENT_BATCH = "event"        # a batch that is one event of the world, run on its own (R-2)
+#: the kinds that are HIS words: what a batch of his is made of (a control is handled on its own, an event runs alone)
+WORDS = (str(EnvelopeKind.USER_UTTERANCE), str(EnvelopeKind.USER_TEXT))
+
 
 class Outcome(Enum):
     """How an accepted envelope ended (I6). `applied`: a control handled by id."""
@@ -202,30 +206,42 @@ class Inbox:
     # ── out ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
     def next_batch(self, now: int) -> Batch | None:
-        """The next batch to run, or None: every queued entry, in the order they began — after the collect window of
-        the LAST text accepted (two texts in < collect_ms are one batch), and not while the person is still speaking
-        on the device of its last entry (`waits_for_voice`)."""
-        if not any(r["kind"] != str(EnvelopeKind.USER_CONTROL)
-                   for _k, r in self.store.view(self.acct).scan(T, ("queued",))):
+        """The next batch to run, or None: every queued entry of HIS, in the order they began — after the collect window
+        of the LAST text accepted (two texts in < collect_ms are one batch), and not while the person is still speaking
+        on the device of its last entry (`waits_for_voice`). With nothing of his queued, the oldest EVENT runs on its
+        own — never while a voice of his is open: an event never goes ahead of his voice (R-2)."""
+        queued = [r for _k, r in self.store.view(self.acct).scan(T, ("queued",))]
+        if not any(r["kind"] != str(EnvelopeKind.USER_CONTROL) for r in queued):
             return None                           # nothing queued: a read, and no transaction is opened
         with self.store.tx(self.lease()) as tx:
             rows = [r for _k, r in tx.scan(T, states=("queued",))]
-            texts = [r for r in rows if r["kind"] == str(EnvelopeKind.USER_TEXT)]
+            pick = [r for r in rows if r["kind"] in WORDS]
+            if not pick:
+                return self._event_batch(tx, rows, now)
+            texts = [r for r in pick if r["kind"] == str(EnvelopeKind.USER_TEXT)]
             if texts and now - max(r["accepted"] for r in texts) < self.cfg.collect_ms:
                 return None                       # the collect window of the last text is still open
-            pick = [r for r in rows if r["kind"] != str(EnvelopeKind.USER_CONTROL)]
-            if not pick or self._waits_for_voice(tx, pick, now):
+            if self._waits_for_voice(tx, pick, now):
                 return None
             monologue = self._chained(tx, pick) is not None      # cut by its length, his voice still up, at the cap
-            seq = tx.next_seq("runs")
-            for r in pick:
-                self._move(tx, r["id"], state="dequeued", batch=seq)
-            pick = ordering.order(pick)
-            envs = tuple(E.from_json(r["env"]) for r in pick)
-            reason = MONOLOGUE if monologue else self._reason(pick)
-            for r in pick:
-                self._emit_row("dequeued", r, batch=seq, queue_age_ms=now - r["accepted"])
-            return Batch(seq, envs, reason)
+            return self._dequeue(tx, pick, MONOLOGUE if monologue else self._reason(pick), now)
+
+    def _event_batch(self, tx, rows: list[dict], now: int) -> Batch | None:
+        """The oldest queued event, alone — not while a voice of his is open (he is first, R-2)."""
+        events = sorted((r for r in rows if r["kind"] == str(EnvelopeKind.EVENT)), key=lambda r: r["accepted"])
+        if not events or any(True for _iv, _v in tx.scan(VOICE, states=("open",))):
+            return None
+        return self._dequeue(tx, events[:1], EVENT_BATCH, now)
+
+    def _dequeue(self, tx, pick: list[dict], reason: str, now: int) -> Batch:
+        seq = tx.next_seq("runs")
+        for r in pick:
+            self._move(tx, r["id"], state="dequeued", batch=seq)
+        pick = ordering.order(pick)
+        envs = tuple(E.from_json(r["env"]) for r in pick)
+        for r in pick:
+            self._emit_row("dequeued", r, batch=seq, queue_age_ms=now - r["accepted"])
+        return Batch(seq, envs, reason)
 
     def _waits_for_voice(self, tx, pick: list[dict], now: int) -> bool:
         """Not yet: a voice entry closed with no sentence mark is not eligible before `nonterminal_start_ms` from its
@@ -254,27 +270,26 @@ class Inbox:
 
     def words_since(self, t_ms: int) -> bool:
         """Did the person send an entry with words (an utterance or a text) accepted after `t_ms`?"""
-        return any(r["kind"] != str(EnvelopeKind.USER_CONTROL) and r["accepted"] > t_ms
+        return any(r["kind"] in WORDS and r["accepted"] > t_ms
                    and r["env"]["body"].get("text") for _k, r in self.store.view(self.acct).recent(T, RECENT))
 
     def in_course(self) -> tuple[frozenset, int | None]:
         """The person's entries not yet accounted — queued, held or in a run: they travel in one batch. Returns their
         interventions and the close of the latest one."""
         rows = [r["env"] for _k, r in self.store.view(self.acct).scan(T, ("queued", "held", "dequeued"))
-                if r["kind"] != str(EnvelopeKind.USER_CONTROL)]
+                if r["kind"] in WORDS]
         return (frozenset(e["refs"]["intervention_id"] for e in rows),
                 max((e["sealed_ms"] for e in rows), default=None))
 
     def pending(self) -> bool:
         """Is there a batch of the person's waiting — queued or held, not yet in a run?"""
-        return any(r["kind"] != str(EnvelopeKind.USER_CONTROL)
-                   for _k, r in self.store.view(self.acct).scan(T, ("queued", "held")))
+        return any(r["kind"] in WORDS for _k, r in self.store.view(self.acct).scan(T, ("queued", "held")))
 
     def drop_pending(self, now: int) -> list[dict]:
         """A stop while a batch waits (held for a voice, or in the collect window): what waits is accounted `silent`
         (reason `stopped`), as a stop does to a run in course. Returns the rows."""
         with self.store.tx(self.lease()) as tx:
-            rows = [r for _k, r in tx.scan(T, states=("queued", "held")) if r["kind"] != str(EnvelopeKind.USER_CONTROL)]
+            rows = [r for _k, r in tx.scan(T, states=("queued", "held")) if r["kind"] in WORDS]
             for r in rows:
                 self._final(tx, r["id"], Outcome.SILENT.value, now, reason="stopped")
         return rows

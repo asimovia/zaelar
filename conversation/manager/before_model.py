@@ -1,4 +1,4 @@
-"""His words before any model (plan F2 §3, V2-942 A2): a phrase the host knows VERBATIM (`Shortcut`) runs its act, then
+"""His words before any model (plan F2 §3, V2-942): a phrase the host knows VERBATIM (`Shortcut`) runs its act, then
 something of his that is OPEN takes them by the host's doors (`Route`); the line the door answers is said and the run
 ends with that door as its origin. Split out of `run.py`, which calls it first thing in a run."""
 from __future__ import annotations
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 async def taken(conv: "Conversation", r: "Running", batch: Batch, content: list) -> bool:
-    """Before any model, his words go first to a phrase the host knows VERBATIM (`Shortcut`, its act run, V2-942 A2),
+    """Before any model, his words go first to a phrase the host knows VERBATIM (`Shortcut`, its act run, V2-942),
     then to something of his that is OPEN by the host's doors (plan F2 §3): the line that door answers is said, and the
     run ends with that door as its origin. No hit, nobody took them, or the doors failed or were late: the model
     answers, as always."""

@@ -1,8 +1,8 @@
 """Every envelope kind goes to JSON and back unchanged; what the schema does not know is refused (node 13.2).
 
-Only the person enters the inbox: three kinds — a voice utterance (whole or incomplete), a text, a control. A kind the
-schema does not know (a contact's message, a worker's update, a reminder: lines owed, never entries) is refused, and
-the authority and channel of a kind are fixed by the kind, never read off the wire.
+The person's three kinds — a voice utterance (whole or incomplete), a text, a control — and an EVENT of the world,
+already routed, with its source's authority (R-2). A kind the schema does not know is refused, and the authority and
+channel of a kind are fixed by the kind, never read off the wire.
 """
 from __future__ import annotations
 
@@ -19,6 +19,7 @@ BODIES = {
     EnvelopeKind.USER_TEXT: E.TextBody("i2", "w0003", ("att-1",)),
     EnvelopeKind.USER_CONTROL: E.ControlBody(ControlOp.DELEGATE, gesture=True,
                                              scope={"recipients": ["c1"], "channel": "chat", "max": 3}),
+    EnvelopeKind.EVENT: E.EventBody("ev1", "connector.msg", "w_source", "w0004", {"chat": "c1"}, {"as": "nothing"}),
 }
 
 
