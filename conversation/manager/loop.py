@@ -61,6 +61,7 @@ class Running:
     reading: bool | None = None           # the model's last reading of his thought (`complete`), for any line it parks
     acts_refused: list = field(default_factory=list)   # acts the gateway refused in this run, by name
     asked_to_say: bool = False            # a no_reply after a refused act was asked once to say it
+    asked_after_reads: bool = False       # a no_reply after reads for his words was asked once for a reply
     stages: dict = field(default_factory=dict)    # where its time went, ms: queue, model, tools, grace, publish
 
 

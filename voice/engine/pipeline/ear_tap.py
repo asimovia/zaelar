@@ -139,6 +139,10 @@ class VadEdges:
                 self.tap.on_barge()
             except Exception as e:  # noqa: BLE001 — a cut that fails never stops the ear
                 logger.warning(f"ear tap: our voice was not cut ({e!r})")
+            # His voice rose while ours sounded, so its rise went out as possible echo and the ear did not open it. It
+            # just proved it is his (after our line began, past the threshold): the ear hears it from its real start —
+            # a barge-in with no word then ends discarded, and the line it cut goes on (RESUME_LINE).
+            self.tap.send(ear_feed.vad(self.tap.endpoint, "rise", self.rose_at, echo_safe=True))
 
 
 def _barge_due(edges: "VadEdges", now: int) -> bool:

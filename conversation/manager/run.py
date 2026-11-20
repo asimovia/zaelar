@@ -384,6 +384,12 @@ RESTATE = "these figures are not in the evidence they cite: reply again without 
 #: an order written as the reply's words, and a silence after a refused act: what the repair round says
 AS_TEXT = "the text is what the person hears: the order is the call itself, never its words"
 SAY_THE_ACT = "an act held or refused is a reply that says so"
+SAY_WHAT_WAS_FOUND = "you read for his words: a reply says what was found, or what is missing to answer"
+
+
+def _said_something(r: "Running") -> bool:
+    """His batch holds words of his (an entry, not a noise): what was read, was read for him."""
+    return any(str(getattr(e.body, "text", "") or "").strip() for e in r.ctx.batch.values() if e.is_user)
 #: the orders' names, as the model could write them in its text instead of calling them
 ORDER_NAMES = ("reply", "no_reply")
 ORDER_TEXT = tuple(f"{n}(" for n in ORDER_NAMES) + tuple(f"<{n}" for n in ORDER_NAMES) + ("no_reply ",)
@@ -472,6 +478,13 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
         steps.append((ToolCall("orders", "orders_check", {}),
                       ToolResult("refused", data={"refused_act": list(r.acts_refused), "reason": SAY_THE_ACT})))
         return False
+    reads = [c.name for c, res in steps if c.call_id not in ("orders", "claims") and res.status != "refused"]
+    if isinstance(cmd, commands.NoReply) and reads and _said_something(r) and not r.asked_after_reads:
+        r.asked_after_reads = True              # it read for him, then nothing: what it found, or what is missing
+        _emit(conv, "command", r, command="no_reply_after_reads", tools=reads)
+        steps.append((ToolCall("orders", "orders_check", {}),
+                      ToolResult("refused", data={"read": reads, "reason": SAY_WHAT_WAS_FOUND})))
+        return False
     if isinstance(cmd, commands.NoReply) and cmd.complete is False and _park(conv, r, batch, cmd, None, len(steps), now):
         return True                             # «something is missing» and no reply: silent only once he did not go on
     _silent(conv, r, reason, now)
@@ -496,6 +509,7 @@ def _silent(conv: "Conversation", r: "Running", reason: str, now: int) -> None:
     conv.inbox.account(list(r.batch_ids), "silent", now)
     users = [e for e in r.ctx.batch.values() if e.is_user]
     _emit(conv, "ended", r, outcome="no_reply", reason=reason, after_refused_act=bool(r.acts_refused),
+          after_reads=r.asked_after_reads,
           typed_only=bool(users) and all(e.kind is EnvelopeKind.USER_TEXT for e in users))
 
 

@@ -648,6 +648,9 @@ _TOTAL_MAX += 18     # same cause
 _PACKAGE_CEILINGS["conversation"] += 9     # 2026-11-20 V2-941 v3.1 B7j (the corpus's R15): a fixed line chosen by the language of the words it answers (`run._line`, `Words.line(near=)`)
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 45    # same: STATE, widgets and tasks as facts with plain labels, never the old turn's composed prose; the pack of his words' language
 _TOTAL_MAX += 54     # same cause
+_PACKAGE_CEILINGS["conversation"] += 15    # 2026-11-20 V2-941 v3.1 B8f (the 3b smoke): a no_reply after reading for his words is asked once for a reply, counted
+_PACKAGE_CEILINGS["voice"] += 4            # same: a voice proved his by the local cut rule is sent again as his, so a wordless barge-in gives the line back
+_TOTAL_MAX += 19     # same cause
 
 
 def test_the_total_only_shrinks():
