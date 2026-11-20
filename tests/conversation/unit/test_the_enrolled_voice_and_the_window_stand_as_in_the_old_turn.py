@@ -109,3 +109,49 @@ def test_a_no_reply_after_his_voice_cut_us_keeps_the_window(store, monkeypatch):
     h.settle(3000)
     ended = [p for k, lab, p in h.tel.events if k == "conv_run" and lab == "ended" and p.get("outcome") == "no_reply"]
     assert ended and ended[-1]["barge_cut"] is True and calls == []
+
+
+# ── E6: a voice the enrolled voice's verdicts judged another person's holds nothing ─────────────────────────────────
+
+@pytest.mark.parametrize("case, foreign", [
+    ("another voice on the holder", True),
+    ("one verdict his among them", False),
+    ("no verdict yet", False),
+    ("a verdict from before that voice rose", False),
+    ("another device", False),
+    ("switch off", False),
+    ("no voice enrolled", False),
+    ("onset unknown", False),
+])
+def test_only_another_voice_judged_on_the_holder_since_it_rose_holds_nothing(judged, case, foreign):
+    """E6 (`guards.foreign_voice`, `voice_lock.judged_other`): an open voice holds our line unless the switch is on, a
+    voice is enrolled, the device is the holder whose browser sends the verdicts, and at least one verdict since that
+    voice rose says another voice with none of his. Nothing is read twice wrong: the verdicts stay for the close."""
+    import time
+
+    from nucleo.conversation_host import voice_session
+    now = time.time()
+    onset = int((now - 2) * 1000)
+    voice_lock.set_state(case != "switch off", case != "no voice enrolled")
+    if case == "a verdict from before that voice rose":
+        voice_lock.note_verdict("other", now=now - 5)
+    elif case != "no verdict yet":
+        voice_lock.note_verdict("other", now=now - 1)
+    if case == "one verdict his among them":
+        voice_lock.note_verdict("operator", now=now - 0.5)
+    ep = "d2" if case == "another device" else voice_session.ENDPOINT
+    at = 0 if case == "onset unknown" else onset
+    assert guards.foreign_voice(ep, at) is foreign
+    assert guards.foreign_voice(ep, at) is foreign                       # read, never consumed
+
+
+def test_reading_the_verdicts_for_our_line_leaves_them_to_the_close(judged):
+    """The close of that voice is still judged by its own verdicts: asking whether it holds our line consumed nothing."""
+    import time
+
+    from nucleo.conversation_host import voice_session
+    now = time.time()
+    voice_lock.set_state(True, True)
+    voice_lock.note_verdict("other", now=now - 1)
+    assert guards.foreign_voice(voice_session.ENDPOINT, int((now - 2) * 1000))
+    assert voice_lock.admit_now(onset=now - 2, now=now) == (False, "other_voice")

@@ -13,6 +13,9 @@ are not swept as stalled while it waits. What he says meanwhile is another batch
 Two ways out, neither over his voice: (a) everything closed on that device since the reply was ready was not his — a
 guard's discard, the ear's `no_words`, a chunk the model closed with no reply — and `not_his_ms` passed with no chunk
 of his waiting: it is said; (b) `monologue_max_ms` passed: it goes to the wall as text, never by voice.
+
+A voice the host judged another person's (`foreign_voice`: the enrolled voice's verdicts on that device) holds
+nothing: it is not his voice open. The host answers only where it has verdicts; with none, the voice holds.
 """
 from __future__ import annotations
 
@@ -27,7 +30,9 @@ def open_on(conv, *endpoints: str | None) -> str | None:
     None."""
     anywhere = not endpoints or any(e is None or not getattr(conv.devices.get(e), "voice_live", False)
                                     for e in endpoints)
-    return next((iv for iv, _onset, ep in conv.ear.open_interventions() if anywhere or ep in endpoints), None)
+    foreign = conv.foreign_voice
+    return next((iv for iv, onset, ep in conv.ear.open_interventions()
+                 if (anywhere or ep in endpoints) and not (foreign is not None and foreign(ep, onset))), None)
 
 
 def devices_of(r) -> tuple:

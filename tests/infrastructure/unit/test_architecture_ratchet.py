@@ -750,6 +750,10 @@ _PACKAGE_CEILINGS["nucleo/conversation_host"] += 4     # same cause: the prefix'
 _TOTAL_MAX += 12     # same cause, measured
 _PACKAGE_CEILINGS["conversation"] += 35                # 2026-11-20 V2-941 (the R3 review, R3-A/B/C): `no_reply` says whether a chunk was not his, his words start the count again (`hold.his`), a stop drops the reply that waits (`hold.drop`), a monologue's reply goes by the usual rule at publication
 _TOTAL_MAX += 35     # same cause, measured
+_PACKAGE_CEILINGS["conversation"] += 9                 # 2026-11-20 V2-941 (the R3 review, E6): a voice the host judged another person's holds nothing — one reader, `foreign_voice`, inside the one predicate (`hold.open_on`)
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 9     # same cause: the host's reader (`guards.foreign_voice`), on the holder only
+_PACKAGE_CEILINGS["voice"] += 10                       # same cause: the enrolled voice's verdicts read without consuming them (`voice_lock.judged_other`)
+_TOTAL_MAX += 29     # same cause, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

@@ -187,6 +187,18 @@ def test_a_chunk_of_his_after_one_not_his_starts_the_count_again(store):
     assert h.mouth.orders == [], "said over him: a close of his did not start the count again"
 
 
+@pytest.mark.parametrize("judged", [True, False])
+def test_a_voice_the_host_judged_not_his_holds_nothing(store, judged):
+    """E6: the host's reading of the open voice (`foreign_voice`, the enrolled voice's verdicts) says it is another
+    person's — a TV, someone across the room: the reply that waits is said while that voice goes on. The reader is asked
+    with the device and the voice's onset; with no such judgement the voice holds, as ever."""
+    h = _ready_then_he_speaks(store, cfg=Config(intervention_max_ms=60_000))
+    asked = []
+    h.conv.foreign_voice = lambda ep, onset: asked.append((ep, onset)) or (judged and ep == "d1" and onset == h.t0)
+    _talks(h, 4000)
+    assert (_said(h) == [("w9", ["text", "voice"])]) is judged and ("d1", h.t0) in asked
+
+
 @pytest.mark.parametrize("order, dropped", [("stop_voice", True), ("stop_all", True), ("stop_media", False)])
 def test_a_stop_drops_the_reply_that_waits_but_stopping_what_plays_leaves_it(store, order, dropped):
     """R3-B: his «para» while a reply waits for his voice: it is never said after — but stopping what plays is no stop

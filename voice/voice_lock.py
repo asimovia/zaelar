@@ -90,5 +90,16 @@ def admit_now(onset: float = 0.0, now: float | None = None) -> tuple[bool, str]:
     return keep, why
 
 
+def judged_other(onset: float, now: float | None = None) -> bool:
+    """Is the voice that rose at `onset` another person's? READ ONLY — nothing is consumed: the close of that voice
+    still judges it by its own verdicts (`admit_now`). True only with the switch on, a voice enrolled, at least one
+    verdict since that onset and none of them his; an unknown onset or no verdict yet is False (it may be his)."""
+    now = time.time() if now is None else now
+    if not (_state["on"] and _state["enrolled"]) or not onset or onset > now:
+        return False
+    labels = _labels_since(onset - _SLACK_S)
+    return bool(labels) and "operator" not in labels
+
+
 def state() -> dict:
     return {"on": _state["on"], "enrolled": _state["enrolled"], "pending": len(_state["verdicts"])}

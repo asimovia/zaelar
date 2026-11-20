@@ -11,13 +11,13 @@ ACCOUNT_OWNER = "host"
 
 
 def readers() -> dict:
-    """The conversation's pure readers: the host's fixed lines, the figures of a text — his own words as evidence — and
-    the guards the ear asks at every close."""
+    """The conversation's pure readers: the host's fixed lines, the figures of a text — his own words as evidence —, the
+    guards the ear asks at every close, and whether an open voice is another person's (the enrolled voice's verdicts)."""
     from nucleo.conversation_host import figures
     from nucleo.conversation_host.words import PackWords
     from nucleo.conversation_host import guards
     return {"words": PackWords(), "figures": lambda text: (figures.figures(text), figures.percents(text)),
-            "ear_guard": guards.for_ear}
+            "ear_guard": guards.for_ear, "foreign_voice": guards.foreign_voice}
 
 
 def account() -> str:

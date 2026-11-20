@@ -87,6 +87,15 @@ def judge(text: str, now: float | None = None, rose: float | None = None) -> str
     return None
 
 
+def foreign_voice(endpoint: str, onset_ms: int) -> bool:
+    """The manager asks whether an open voice holds our line (`Conversation.foreign_voice`, E6): it does not when the
+    enrolled voice's verdicts judged it another person's. Only on the device whose browser sends those verdicts — the
+    holder of the voice session; anywhere else, and with no verdict, the voice holds."""
+    from nucleo.conversation_host import voice_session
+    from voice import voice_lock
+    return endpoint == voice_session.ENDPOINT and voice_lock.judged_other(onset_ms / 1000 if onset_ms else 0.0)
+
+
 def for_ear(endpoint: str, text: str):
     """The guards as the ear asks them, at every close with words (`Ear.guard`): his turn's rise is the one the voice
     process reported for that device (`ear_in.rose_of`). A stop in his words is not read here: the model chooses one."""

@@ -85,7 +85,7 @@ class Conversation:
                  ids: Ids | None = None, owed: Owed | None = None, tasks: Tasks | None = None,
                  prefs: Prefs | None = None, record: Record | None = None, words: Words | None = None,
                  figures: Callable[[str], tuple] | None = None, ear_guard: Callable[[str, str], str | None] | None = None,
-                 stops: Stops | None = None) -> None:
+                 stops: Stops | None = None, foreign_voice: Callable[[str, int], bool] | None = None) -> None:
         self.account, self.cfg, self.prefix = account, config or Config(), prefix
         self.prefs: Prefs = prefs or (lambda _key, default: default)
         self.record, self.words = record, words
@@ -94,6 +94,9 @@ class Conversation:
         self.model, self.tools, self.memory, self.clock, self.owed, self.tasks = model, tools, memory, clock, owed, tasks
         self.stops = stops                  # the host's hands for a stop the model ordered (`Stops`); None: voice only
         self.waiting: Running | None = None  # the run whose ready reply waits for his voice to close (R3)
+        #: the host's reading of an open voice, `(device, onset_ms) -> bool`: True when it judged that voice another
+        #: person's — that voice then never holds our line. None: every open voice holds it
+        self.foreign_voice = foreign_voice
         self.lease = store.acquire(account, owner)
         self.em = Emitter(telemetry, clock, account, epoch=lambda: self.lease.epoch)
         self.store = guard.TimedStore(store, self.em, self.cfg)
