@@ -192,8 +192,8 @@ def network_facts() -> str:
             online = ", ".join(c.get("online") or ())
             lines.append(f"cluster {c.get('name')}: {'connected' if c.get('connected') else 'disconnected'}"
                          + (f", online: {online}" if online else ""))
-    except Exception:  # noqa: BLE001 — no cluster hub: nothing to say about clusters
-        pass
+    except Exception as e:  # noqa: BLE001 — no cluster hub: nothing to say about clusters, and the log says why
+        __import__("logging").getLogger("zaelar.conversation_host").debug(f"network: clusters unreadable ({e!r})")
     import a2a
     agent = a2a.runtime()
     if agent is not None:

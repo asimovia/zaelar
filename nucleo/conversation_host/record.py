@@ -36,7 +36,8 @@ def _ingest(said: str, channel: str) -> None:
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:                     # handed over off a loop (a sweep in a thread): the next pair files it
-        return
+        __import__("logging").getLogger("zaelar.conversation_host").debug("record: his words not filed off a loop")
+        return None
     _PENDING.add(task := loop.create_task(memory_agent.ingest_utterance(       # it routes itself to its home loop
         said, role="operator", channel="typed" if channel == "typed" else "voice")))
     task.add_done_callback(_PENDING.discard)
