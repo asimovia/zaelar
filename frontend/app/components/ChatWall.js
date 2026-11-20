@@ -405,6 +405,11 @@ export function ChatWall() {
   // Remember open/closed + which tab, on every change — including the ones the ENGINE makes (a proactive push
   // opens the wall by SSE, `[[close]]` shuts it). Those are as much «where he left it» as a click is.
   createEffect(() => { store.chatOpen(); store.chatTab(); saveOpen(); });
+  // The same (open, tab) reaches the timeline once per CHANGE, so a session replay knows the column at any step; the
+  // mount's restore is a client state transition (`uiState`), the later ones his clicks or the engine's pushes.
+  let _wallSaid = "";
+  createEffect(() => { const o = !!store.chatOpen(), tab = store.chatTab(), k = o + ":" + tab; if (k === _wallSaid) return;
+    const first = !_wallSaid; _wallSaid = k; (first ? api.uiState : api.uiEvent)("wall:state", { state: o ? "open" : "closed", detail: tab }); });
 
   // V2-619/V2-621 (V2-761: six now): below this width the tabs cannot all carry icon+label, so the labels give way to
   // the icons and the header's standing tab NAME takes over (CSS keys off `cw-narrow`). Measured on the wall

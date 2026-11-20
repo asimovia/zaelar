@@ -360,6 +360,7 @@ async def screen_report(payload: dict):
         emit("screen", "report", text=f"v{v} · front {(d.front if d else '') or '-'}",
              extra={"dev": dev, "v": v, "acks": taken, "by": str(p.get("by") or "")[:20],
                     **({"layout": d.layout, "front": d.front, "open": [r["id"] for r in d.open],
+                        "vis": {r["id"]: r["vis"] for r in d.open},   # how each app sits: a replay draws it
                         "panel": d.panel} if d else {})})   # the native surface over the canvas (T9), "" = none
     return JSONResponse({"ok": True, "v": v, "acks": taken})
 

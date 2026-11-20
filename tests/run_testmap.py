@@ -3810,6 +3810,10 @@ DOMAINS: list[dict] = [
         # from the orb it floats unless it is already docked, which is respected. Rendered: wall + rail + store.
         {"id": "4.246", "title": "The left bar opens the chat wall docked to the left; the orb floats it unless it is already docked",
             "ch": UNIT, "paths": ["tests/browser/unit/chat/test_the_bar_opens_the_wall_docked_and_the_orb_floats_it.py"]},
+        # 2026-11-20 — a session replay draws his screen from the timeline: the left column's open/closed and its tab
+        # reach it as one `wall:state` per change (the mount's restore as a client state transition). Rendered.
+        {"id": "4.616", "title": "The chat wall reports every change of its open state and tab to the timeline, once per change",
+            "ch": UNIT, "paths": ["tests/browser/unit/chat/test_the_wall_tells_the_timeline_where_it_is.py"]},
         # 2026-08-18 (V2-116): el muro de chat solo se alimentaba del `transcript` de LiveKit, que no llega hasta
         # que el TTS ha terminado de hablar la respuesta ENTERA — 5,4 s y 12,2 s medidos en una sesión real, y el
         # operador lo vivió como «la he oído por voz y el texto llegó un minuto después». La respuesta se pinta

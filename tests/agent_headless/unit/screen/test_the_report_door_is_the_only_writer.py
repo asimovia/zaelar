@@ -71,6 +71,14 @@ def test_the_reports_event_says_which_native_panel_is_open(door):
     assert events[-1][2]["extra"]["panel"] == ""
 
 
+
+def test_the_reports_event_says_how_each_app_sits(door):
+    """A session replay draws the screen from this event alone: which app is in front, which is visible beside it, which
+    is covered or minimised. The ids alone could not tell a covered app from one in view."""
+    post, events, _sd, _so = door
+    post({"dev": DESK, "mount": "k1", "n": 1, "doc": _doc(("agenda", "behind"), ("musica", "visible"), ("mapa", "front"))})
+    assert events[-1][2]["extra"]["vis"] == {"agenda": "behind", "musica": "visible", "mapa": "front"}
+
 def test_a_refused_report_is_refused_whole(door):
     post, events, sd, so = door
     post({"dev": DESK, "mount": "k1", "n": 5, "doc": _doc(("agenda", "front"))})
