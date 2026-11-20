@@ -474,6 +474,7 @@ def _order_text(text: str) -> bool:
 #: notice, which answers nothing
 REPLY, RESTATED, UNVERIFIED, FAILURE = "reply", "restated", "unverified_fact", "failure"
 UNVERIFIED_ALT = "unverified_fact_alt"
+LISTENING = "listening"                 # half a thought whose rest never came: «go on, I'm listening»
 
 
 def _last_answer(conv: "Conversation") -> str:
@@ -576,6 +577,13 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
         return False
     if isinstance(cmd, commands.NoReply) and cmd.complete is False and _park(conv, r, batch, cmd, None, len(steps), now):
         return True                             # «something is missing» and no reply: silent only once he did not go on
+    if isinstance(cmd, commands.NoReply) and cmd.complete is False and typed:
+        r.publish_at = now + conv.cfg.incomplete_grace_ms   # a typed fragment waits for its rest as a voice does
+        r.parked = (None, len(steps), batch, reason)
+        _emit(conv, "held", r, waits_for="grace", until_ms=r.publish_at, complete=False)
+        return True
+    if isinstance(cmd, commands.NoReply) and cmd.complete is False and await _listening(conv, r, batch, len(steps)):
+        return True                             # its grace already over and no rest came: never nothing
     _silent(conv, r, reason, now)
     return True
 
@@ -621,7 +629,7 @@ def _his_words(conv: "Conversation", r: "Running") -> dict:
 
 def _count_sources(conv: "Conversation", r: "Running", claims, this_run: frozenset, his: dict) -> None:
     """A published reply's claims that rest on his words, or on a read of an earlier run still valid: counted."""
-    cited = [c.evidence_id for c in claims]
+    cited = [i for c in claims for i in (c.cites or (c.evidence_id,))]
     words = sum(1 for e in cited if e in his)
     earlier = sum(1 for e in cited if e not in his and e not in this_run)
     if words:
@@ -664,6 +672,22 @@ async def _publish(conv: "Conversation", r: "Running", batch: Batch, text: str, 
     records.owe(conv, r.run_id, batch.envelopes, text)
 
 
+async def _listening(conv: "Conversation", r: "Running", batch: Batch, steps: int) -> bool:
+    """Half a thought, and the rest never came: never nothing — the language's «go on, I'm listening», once (never
+    twice in a row, by where our last answer came from). False: no line, or it was our last answer."""
+    line = _line(conv, LISTENING, r)
+    if not line or _last_answer(conv) == LISTENING:
+        return False
+    waits = _resumed_voice(conv, r)             # his voice up again on that device: it waits for its silence
+    if waits is not None:
+        _hold(conv, r, *waits)
+        raise _Stop()
+    _emit(conv, "command", r, command=LISTENING)
+    r.origin = LISTENING
+    await _publish(conv, r, batch, line, steps)
+    return True
+
+
 def _unpark(conv: "Conversation") -> tuple:
     r = conv.current
     parked, r.parked = r.parked, None
@@ -703,7 +727,8 @@ async def publish_parked(conv: "Conversation") -> bool:
             if waits is not None:
                 _hold(conv, r, *waits)
                 raise _Stop()
-            _silent(conv, r, reason, conv.clock.now_ms())
+            if not (r.reading is False and await _listening(conv, r, batch, steps)):
+                _silent(conv, r, reason, conv.clock.now_ms())
         else:
             await _publish(conv, r, batch, text, steps)
     except _Stalled:

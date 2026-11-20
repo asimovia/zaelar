@@ -45,6 +45,9 @@ class LangSpec:
     #: so a figure read from a text in this language knows «1 h 20 min» is 80 minutes (the conversation manager's
     #: figures, `nucleo/conversation_host/figures.py`). Data, read for every language: a source is not in his.
     duration_units: tuple = ()
+    #: Said once when he left half a thought and its rest never came (the conversation manager, V2-941): never a
+    #: silence after a fragment cut mid-idea.
+    listening: str = ""
     #: What the AGENDA says when it refuses to write (V2-689). These were hardcoded Spanish inside
     #: `widgets/agenda/data.py`, which is the exact shape V2-676 ruled against — the operator running his
     #: agent in English was answered by our own canned lines in Castilian. A widget's refusal is a text the

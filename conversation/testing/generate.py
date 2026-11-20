@@ -621,6 +621,25 @@ def _never_silent(case) -> list[str]:
     return out
 
 
+def _half_thought_heard(case) -> list[str]:
+    """Half a thought whose rest never came never ends with nothing said: a run the model read as incomplete
+    (`complete: false`) that closes silent on its own order is a violation — unless our last answer was already the
+    «go on, I'm listening» line (never twice in a row)."""
+    reading, listening, last_listening, out = {}, set(), False, []
+    for k, lab, p in case.tel.events:
+        r = p.get("refs") or {}
+        if k == "conv_run" and lab == "command" and p.get("command") in ("reply", "no_reply"):
+            reading[r.get("run")] = p.get("complete")
+        elif k == "conv_run" and lab == "command" and p.get("command") == "listening":
+            listening.add(r.get("run"))
+        elif k == "conv_mouth" and lab == "say" and not str(r.get("run") or "").startswith("owed:"):
+            last_listening = r.get("run") in listening
+        elif (k == "conv_close" and lab == "silent" and p.get("reason") == "p3" and reading.get(r.get("run")) is False
+              and not last_listening):
+            out.append(f"half a thought: {r.get('req')} closed silent on a reading of incomplete, nothing said")
+    return out
+
+
 def check(case: Case) -> list[str]:
     """I1–I9 over what the case left behind. Each violation is one sentence."""
     out = [f"crash: {c}" for c in case.crashes]
@@ -716,6 +735,7 @@ def check(case: Case) -> list[str]:
     out += _flows_batches_and_bounds(case, inbox_rows)
     out += _stalled_while_he_spoke(case, inbox_rows)
     out += _never_silent(case)
+    out += _half_thought_heard(case)
     out += [f"empty item: {c.run_id} was prompted with an entry that has no words" for c in case.model.calls
             if "«»" in c.prompt.input]
     if case.old is None:

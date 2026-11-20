@@ -32,6 +32,8 @@ PROVIDER_STALL_MS = 2000
 #: a rise this close to our line's start is how our own voice comes back with no echo cancellation: a barge-in that
 #: cuts is never sent again as his voice inside it (it would open an intervention of our own echo)
 ECHO_ONSET_MS = 400
+#: a rise over our line with no words heard yet cuts it only after this long: words that are our own line never do
+WORDLESS_BARGE_MS = 700
 #: the device this process hears for: the holder of the session (`nucleo/conversation_host/voice_session.ENDPOINT`)
 ENDPOINT = "holder"
 #: the epochs of this PROCESS, one per stream of any session: a second session's first stream never reuses the first's
@@ -64,6 +66,8 @@ class Tap:
         self.on_barge: Callable[[], object] | None = None   # cut our voice (the local rule)
         self.min_barge_ms = 500
         self.playing_since: int | None = None
+        self.line = ""                                 # the text of our line now sounding (`/voice/say`)
+        self.heard: tuple[str, ...] = ()               # the words of his turn in course, as the provider has them
 
     def provider_quiet(self, now: int) -> None:
         """His voice is up and the provider has answered nothing for `PROVIDER_STALL_MS`: what the ear is hearing is
@@ -88,11 +92,13 @@ class Tap:
                                                   or float(msg.get("audio_window_end") or 0.0) < self.last_end - 0.5)
 
     def new_stream(self) -> None:
-        """A stream begins: its own clock, its own turns and its own epoch. The one before it ended: what the ear was
-        hearing there ends incomplete — a declared gap, never words lost under a turn number used again."""
+        """A stream begins: its own clock, its own turns and its own epoch. The one before it ended: if it was hearing a
+        turn of his not yet ended, that ends incomplete — a declared gap, never words lost under a turn number used
+        again. A stream that ended clean (its last turn closed, or none begun) leaves nothing to declare."""
         self.clock, self.turns = ear_feed.StreamClock(), ear_feed.Turns()
-        if self.epoch:
+        if self.epoch and self.heard:
             self.send({"t": "gap", "streams": [self.endpoint], "t_ms": _now_ms()})
+        self.heard = ()
         self.epoch = next(_EPOCHS)
         self.seen, self.last_turn, self.last_end = 0, 0, 0.0
 
@@ -142,6 +148,7 @@ class Tap:
         self.last_turn = int(msg.get("turn_index") or 0)
         self.last_end = float(msg.get("audio_window_end") or 0.0)
         end = msg.get("event") == ear_feed.END
+        self.heard = () if end else tuple(str(w.get("word") or "") for w in msg.get("words") or ())
         for fact in ear_feed.from_turninfo(msg, stream=self.endpoint, clock=self.clock, turns=self.turns,
                                            terminal=terminal_of(msg) if end else None):
             self.send(fact)
@@ -195,9 +202,20 @@ class VadEdges:
 
 
 def _barge_due(edges: "VadEdges", now: int) -> bool:
+    """His voice rose after our line began and lasted `min_barge_ms`: it cuts — unless the words heard so far are our own
+    line coming back (an echo never cuts it). With no words yet it waits up to `WORDLESS_BARGE_MS`: a «mmm» still cuts —
+    but a rise within `ECHO_ONSET_MS` of our line's start cuts only on words of his, never wordless (a cut there could
+    never be given back: its rise is not sent again as his)."""
     tap = edges.tap
-    return (tap.speaking and tap.on_barge is not None and not edges.cut and tap.playing_since is not None
-            and edges.rose_at >= tap.playing_since and now - edges.rose_at >= tap.min_barge_ms)
+    if not (tap.speaking and tap.on_barge is not None and not edges.cut and tap.playing_since is not None
+            and edges.rose_at >= tap.playing_since and now - edges.rose_at >= tap.min_barge_ms):
+        return False
+    from voice import echo_text
+    if len(echo_text.tokens(tap.heard)) >= echo_text.MIN_WORDS:
+        return not echo_text.contained(tap.heard, tap.line)
+    if edges.rose_at - tap.playing_since < ECHO_ONSET_MS:
+        return False                    # rose with our line and no word of his yet: how our echo rises — never a cut
+    return now - edges.rose_at >= WORDLESS_BARGE_MS
 
 
 def titular(stt):

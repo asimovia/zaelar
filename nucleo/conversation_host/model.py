@@ -32,6 +32,7 @@ FACT = {"type": "object", "required": ["value", "evidence_id"], "properties": {*
 #: a figure computed from the evidence: its operation and operands are part of the claim, never optional
 DERIVED = {"type": "object", "required": ["value", "evidence_id", "derived", "op", "operands"], "properties": {
     **_WHAT, "derived": {"type": "boolean", "enum": [True]},
+    "evidence_id": {"anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}, "minItems": 1}]},
     "op": {"type": "string", "enum": sorted(OPS)},
     "operands": {"type": "array", "items": {"type": "number"}, "minItems": 1}}}
 #: the manager's orders, as the model sees them

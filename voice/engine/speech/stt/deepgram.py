@@ -41,9 +41,14 @@ def _keyterms(model: str, first_run: bool) -> list[str]:
     #   · not while the language is still auto-detecting. Seeding Spanish toponyms into the first sentence would
     #     bias the very classification that picks the operator's language (`i18n.init.detect`).
     #   · non-empty. An unknown language has no list, and sending an empty one is noise on every request.
-    if first_run or not (str(model).startswith("nova-3") or is_flux(model)):
+    #   · his agent's NAME and every spelling it is heard as (`attention.wakewords`), first run included: a name
+    #     biases no language, and a wake word the provider writes another way («Jenny» for «Johnny») never wakes it.
+    if not (str(model).startswith("nova-3") or is_flux(model)):
         return []
-    return list(gazetteer.boost_terms(langs.current_code()) or [])
+    from voice import attention
+    names = [w for w in attention.wakewords() if w]
+    return names + ([] if first_run else [t for t in gazetteer.boost_terms(langs.current_code()) or ()
+                                           if t not in names])
 
 
 @registry.register("deepgram")

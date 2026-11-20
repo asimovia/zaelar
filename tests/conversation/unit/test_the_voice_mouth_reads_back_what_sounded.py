@@ -111,9 +111,9 @@ def _tap(min_ms=500):
 def test_his_voice_rising_after_our_line_began_cuts_it_once():
     tap, cuts = _tap()
     tap.playback(True, now_ms=1000)
-    for t in range(1200, 1900, 30):
+    for t in range(1500, 2400, 30):
         tap.edges.frame(True, t)
-    assert cuts == [1]                                                          # once, after 500 ms of his voice
+    assert cuts == [1]                                                          # once: no words yet, after 700 ms
 
 
 def test_a_voice_already_up_or_a_cough_never_cuts_ours():

@@ -37,7 +37,9 @@ def speak(order, ack) -> bool:
         return False
     payload = {"text": order.text, "alias": order.say_id, "conv": True, "allow_interruptions": True}
     from nucleo.conversation_host import guards
+    from voice import attention
     guards.said(order.text)                    # what the echo guard compares his next words against
+    attention.note_reply(order.text)           # our reply sizes the window it re-anchors when it ends
 
     async def play() -> None:
         payload["env"] = cl.env_diff()         # on the body's loop, the one that keeps what was sent
@@ -58,7 +60,13 @@ def speak(order, ack) -> bool:
             observer.emit("alert", "a line of the manager's voice ended unheard", text=repr(e)[:200])
         ack(SayEnded(order.say_id, "unknown", None, _now(), order.endpoint, "unknown"))
 
-    asyncio.run_coroutine_threadsafe(play(), cl._loop)
+    async def play_and_end() -> None:
+        try:
+            await play()
+        finally:
+            guards.ended()                     # the echo window counts from our line's end
+
+    asyncio.run_coroutine_threadsafe(play_and_end(), cl._loop)
     return True
 
 

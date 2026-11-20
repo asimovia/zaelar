@@ -35,9 +35,11 @@ def _ok(claim, evidence):
 
 
 def test_a_derived_figure_rests_on_two_reads_said_in_millions():
-    diff = _c(40.1, "ev_j", derived=True, op="difference", operands=[123.77, 83.64])
-    assert _ok(diff, (JAPAN, GERMANY))                                  # the en-05 spiral, answered
+    diff = _c(40.1, ["ev_j", "ev_g"], derived=True, op="difference", operands=[123.77, 83.64])
+    assert _ok(diff, (JAPAN, GERMANY))                                  # the en-05 spiral, answered: it cites both
     assert not _ok(diff, (JAPAN,))                                      # Germany's figure read nowhere: refused
+    one = _c(40.1, "ev_j", derived=True, op="difference", operands=[123.77, 83.64])
+    assert not _ok(one, (JAPAN, GERMANY))                               # TK-3: an operand of an evidence NOT cited
 
 
 def test_a_figure_said_in_a_scale_is_that_figure_and_a_bare_digit_is_not():
@@ -97,7 +99,7 @@ def test_an_earlier_reads_figure_still_valid_answers_a_follow_up(store):
     h.typed("w1", 0)
     h.settle(2000)
     n = len(h.model.calls)
-    diff = _c(40.1, "ev_g", derived=True, op="difference", operands=[123.77, 83.64])
+    diff = _c(40.1, ["ev_g", "ev_j"], derived=True, op="difference", operands=[123.77, 83.64])
     later = [[ToolCall("c2", "market_data", {"q": "w2"}), Done()], [reply("w8 40.1", [diff]), Done()]]
     h.model.default = lambda ids: later[min(len(h.model.calls) - n - 1, 1)]
     h.tools.answers["market_data"] = ToolResult("ok", {}, (GERMANY,))
@@ -115,7 +117,7 @@ def test_mix02_a_quantity_he_gave_times_a_rate_read_before(store):
     h.typed("w1", 0)
     h.settle(2000)
     n = len(h.model.calls)
-    times = _c(358.08, "iv_000005", derived=True, op="product", operands=[300, 1.1936])   # his second entry
+    times = _c(358.08, ["iv_000005", "ev_r"], derived=True, op="product", operands=[300, 1.1936])  # his entry + read
     h.model.default = lambda ids: [reply("w8 358.08", [times]), Done()]
     h.typed("wa 300 wb", 20_000)
     h.settle(30_000)
@@ -126,10 +128,21 @@ def test_a_derived_figure_may_cite_his_entry_with_no_figure_in_digits(store):
     """«trescientas libras»: his entry holds no digit; the figure cites it, its operands read elsewhere."""
     rate = Evidence("ev_r", "search", numbers=(300.0, 1.1936))
     rounds = [[ToolCall("c1", "market_data", {"q": "w1"}), Done()],
-              [reply("w9 358.08", [_c(358.08, "iv_000001", derived=True, op="product", operands=[300, 1.1936])]),
+              [reply("w9 358.08", [_c(358.08, ["iv_000001", "ev_r"], derived=True, op="product",
+                                      operands=[300, 1.1936])]),
                Done()]]
     h = _h(store, rounds)
     h.tools.answers["market_data"] = ToolResult("ok", {}, (rate,))
     h.typed("wa wb", 0)                                                     # no digit in what he wrote
     h.settle(2000)
     assert [o.text for o in h.mouth.orders] == ["w9 358.08"]
+
+
+def test_tk3_a_derived_result_is_never_read_in_another_scale():
+    """TK-3: a derived figure's result is matched as said, rounded — never in a scale. From a pool of figures almost
+    any value is some operation's result read in thousands or millions."""
+    diff = {"derived": True, "op": "difference", "operands": [123767642, 83644258]}
+    assert _ok(_c(40123384, ["ev_j", "ev_g"], **diff), (JAPAN, GERMANY))
+    assert _ok(_c(40100000, ["ev_j", "ev_g"], **diff), (JAPAN, GERMANY))          # rounded, the same scale
+    assert not _ok(_c(40.1, ["ev_j", "ev_g"], **diff), (JAPAN, GERMANY))          # «40.1» of a result in units
+

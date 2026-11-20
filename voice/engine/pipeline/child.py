@@ -158,6 +158,8 @@ async def say(request):
                              add_to_chat_ctx=conv or not bool(body.get("ephemeral")))
         if conv:
             LIVE["conv_says"].add(str(getattr(handle, "id", "")))
+            if LIVE.get("tap") is not None:
+                LIVE["tap"].line = text        # what the local cut rule compares his words against (echo)
         if alias:
             LIVE["aliases"][str(getattr(handle, "id", ""))] = alias
         got["id"] = str(getattr(handle, "id", ""))

@@ -36,9 +36,9 @@ def build(catalog: list[ToolSpec], *, native: str, name: str, agent: str = "", p
         "ORDERS": "reply(text, claims, complete) | no_reply(reason, complete); no_reply: an entry not addressed to "
                   "you, or nothing to say; an act held or refused, or information missing: a reply saying so or "
                   "asking for it",
-        "CLAIMS": "one per figure in the text, with the id of the evidence it is in (a read or his "
-                  "entry); derived: true for a figure computed from evidence, with its op and operands, said with "
-                  "what it rests on",
+        "CLAIMS": "one per figure in the text, with its evidence id (a read or his entry); derived: true for a "
+                  "figure computed from evidence, citing every id its operands are in, op and operands, "
+                  "said with its basis",
         "COMPLETE": "true: the person has finished this thought, whether or not you can answer it yet; false: they "
                     "seem to be mid-thought",
     }

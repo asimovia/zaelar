@@ -17,7 +17,8 @@ from conversation.ports import Block, PromptParts
 ITEMS, INBOX, SAYS, IVS = "items", "inbox", "says", "interventions"
 CONTENT = ("user.utterance", "user.text")
 #: a discard that is no lost voice of his: the tail of the voice that just closed, and our own voice heard back
-NOT_LOST = ("no_voice", "echo")
+#: discards that lost nothing of his: no voice at all, our own echo — and a stop, his control, never a sentence
+NOT_LOST = frozenset({"no_voice", "echo"}) | {"stop"}
 
 
 @dataclass(frozen=True)

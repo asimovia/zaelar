@@ -61,9 +61,12 @@ class _Voice:
     last_word_ms: int | None = None
     up: bool = False                        # a rise with no fall since: the voice is still sounding
     terminal: bool | None = None            # how the provider's last end closed its transcript
+    reclaimed: str = ""                     # his words the guards had set aside, given back in front of this entry
     successor: bool = False                 # born at a close with the voice still up (it may be no voice at all)
 
 
+#: the guards' answer that gives his words back: `(RECLAIM, text)` — what they had set aside goes in front of this entry
+RECLAIM = "reclaim"
 #: why a voice ended that means the provider or the line lost it, not that he said nothing
 LOST_REASONS = ("stalled", "link_gap")
 
@@ -74,6 +77,9 @@ class Ear:
         self.spans = Spans()
         self._voices: dict[str, _Voice] = {}
         self._now = 0
+        #: the host's guards (`(endpoint, text) -> reason | None`), asked at EVERY close with words — the provider's end,
+        #: the cap, too long, a stall: what they throw away is a discard with its reason, never his words (I4)
+        self.guard = None
 
     # ── in ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -251,14 +257,26 @@ class Ear:
 
     def _utterance(self, v: _Voice, t: int, coverage: Coverage, reason: str | None = None) -> E.Envelope:
         words = self.spans.words(v.iv)
-        body = E.UtteranceBody(v.iv, " ".join(w[0] for w in words), tuple(E.Span(*w) for w in words),
+        text = " ".join(x for x in (v.reclaimed, " ".join(w[0] for w in words)) if x)
+        v.reclaimed = ""
+        body = E.UtteranceBody(v.iv, text, tuple(E.Span(*w) for w in words),
                                coverage=coverage, amends=v.amends, reason=reason,
                                terminal=v.terminal if coverage is Coverage.FULL else None)
         return E.make(EnvelopeKind.USER_UTTERANCE, body, producer=f"ear:{v.endpoint}",
                       producer_id=f"{v.iv}:{coverage}", account=self.account, onset_ms=v.onset_ms, sealed_ms=t,
                       channel=Channel.VOICE, endpoint=v.endpoint, refs=E.Refs(intervention_id=v.iv))
 
+    def _guarded(self, v: _Voice, t: int, text: str, out: list) -> bool:
+        why = self.guard(v.endpoint, text) if self.guard is not None and text.strip() else None
+        if isinstance(why, tuple) and len(why) == 2 and why[0] == RECLAIM:
+            v.reclaimed, why = str(why[1] or ""), None          # the host gives back what it had set aside
+        if why:
+            self._on_Discard(S.Discard(v.endpoint, text, why, t), out)
+        return bool(why)
+
     def _close(self, v: _Voice, t: int, by: str, out: list) -> None:
+        if self._guarded(v, t, " ".join(w[0] for w in self.spans.words(v.iv)), out):
+            return
         v.state, v.closed_ms, v.previous = IvState.CLOSED, t, v.iv
         words = self.spans.words(v.iv)
         out.append(self._utterance(v, t, Coverage.FULL))
@@ -286,6 +304,8 @@ class Ear:
             out.append(S.VoiceDiscarded(v.endpoint, v.iv, t, "no_words"))
             self.em.emit("conv_ear", "discarded", owner="ear", cause={"kind": "no_words", "ref": reason},
                          refs=self._refs(v), text="", reason="no_words")
+            return
+        if self._guarded(v, t, text, out):
             return
         v.state, v.closed_ms, v.previous = IvState.INCOMPLETE, t, v.iv
         out.append(self._utterance(v, t, Coverage.INCOMPLETE, reason))

@@ -5,8 +5,9 @@ process (`boot`, `seq`) and in order. A batch carried again because its answer c
 `seq` is applied once, per boot. Each fact becomes the signal the package's ear reads (`ear_feed.py` made it, on one
 wall clock) and is handed to the conversation in order (`entry.voice`). A declared hole (`gap`) is a `LinkGap` on
 each device it covered: what the ear was hearing there ends incomplete, and is asked for again. At the end of one of
-his turns the guards in front of the ear judge its words (`guards.py`): what they throw away reaches the ear as a
-`Discard` before the end, and never closes as his words.
+his turns a stop is a control and a `Discard` before the end; the other guards the ear asks at every close
+(`guards.for_ear`), with the turn's first word as the echo's timing (`rose_of`). His voice and our playback feed the
+body's attention (`_attend`), where those guards judge.
 """
 from __future__ import annotations
 
@@ -21,6 +22,8 @@ _boot_of: dict[str, str] = {}                     # stream → the voice process
 _next = {"turn": 0}
 TURNS_KEPT = 4096
 _heard: dict[str, str] = {}                       # stream → the words of the turn in course, for the guards
+_rose: dict[str, float] = {}                      # stream → when its first word began (wall ms): the echo's timing
+_rose_turn: dict[str, object] = {}                # stream → the turn `_rose` belongs to
 
 
 def signals(ev: dict) -> list:
@@ -67,10 +70,18 @@ def receive(ev: dict, hand=None) -> int:
     if ev.get("t") == "words":
         ev = {**ev, "turn": _turn_of(ev)}
         with _lock:
-            _heard[str(ev.get("stream") or "")] = " ".join(str(w[0]) for w in ev.get("words") or ())
+            stream = str(ev.get("stream") or "")
+            _heard[stream] = " ".join(str(w[0]) for w in ev.get("words") or ())
+            starts = [float(w[1]) for w in ev.get("words") or () if len(w) > 1]
+            if _rose_turn.get(stream) != ev["turn"]:          # a new turn of his: its own first word
+                _rose.pop(stream, None)
+                _rose_turn[stream] = ev["turn"]
+            if starts:
+                _rose[stream] = min(starts + ([_rose[stream]] if stream in _rose else []))
     out = gap + signals(ev)
+    _attend(ev)
     if ev.get("t") == "eot" and ev.get("kind") == "end":
-        out = _guarded(ev) + out
+        out = _stopped(ev) + out
     for sig in out:
         hand(sig)
     return len(out)
@@ -100,20 +111,40 @@ def _new_boot(ev: dict) -> list:
     return [S.LinkGap(stream, int(ev.get("t_ms") or ev.get("through") or 0))] if before and before != boot else []
 
 
-def _guarded(ev: dict) -> list:
-    """The guards in front of the ear, at the end of one of his turns: a `Discard` handed BEFORE the end, so what they
-    threw away never closes as his words."""
+def _attend(ev: dict) -> None:
+    """The attention guard is judged HERE, in the body, so the body's attention hears what the voice process hears: his
+    voice rising and falling, our own voice sounding. Its window then measures his silence from his last word and
+    from the end of our reply — never from one turn's end to the next across the model and our whole line."""
+    from voice import attention
+    t, at = ev.get("t"), float(ev.get("t_ms") or 0) / 1000 or None
+    if t == "vad" and ev.get("edge") == "rise":
+        attention.note_speech_onset(at)
+    elif t == "vad" and ev.get("edge") == "fall":
+        attention.note_speech_end(at)
+    elif t == "playback":
+        attention.note_bot_speech(bool(ev.get("speaking")), at)
+
+
+def _stopped(ev: dict) -> list:
+    """At the end of one of his turns: is it his stop? Then a control, and the turn a `Discard` (`stop`) handed BEFORE
+    the end — never words for the model. The other guards are the ear's to ask, at every close (`guards.for_ear`)."""
     from nucleo.conversation_host import guards
     stream = str(ev.get("stream") or "")
     with _lock:
         text = _heard.pop(stream, "")
-    why = guards.judge(text) if text.strip() else None
-    if why:
-        return [S.Discard(stream, text, why, int(ev.get("t_ms") or 0))]
-    if text.strip() and guards.orders_stop(text):     # his spoken stop: the control first, then his words
-        from nucleo.conversation_host import controls
+    if text.strip() and guards.orders_stop(text):     # his spoken stop is a CONTROL, never words for the model:
+        from nucleo.conversation_host import controls  # the control, and the turn is discarded as `stop`
+        from voice import attention
         controls.control("stop", stream, "ear")
+        attention.close_window("voice-order")         # «cállate» closes the conversation's window as well
+        return [S.Discard(stream, text, "stop", int(ev.get("t_ms") or 0))]
     return []
+
+
+def rose_of(stream: str) -> float | None:
+    """When the turn of his in course on `stream` began (its first word, wall ms): the echo guard's timing."""
+    with _lock:
+        return _rose.get(str(stream or ""))
 
 
 def _reset_for_tests() -> None:
@@ -122,3 +153,5 @@ def _reset_for_tests() -> None:
         _turns.clear()
         _boot_of.clear()
         _heard.clear()
+        _rose.clear()
+        _rose_turn.clear()

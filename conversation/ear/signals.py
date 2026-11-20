@@ -86,7 +86,7 @@ class Discard:
     """A safety guard outside the ear threw speech away (echo, the voice lock, a blocked mic, not addressed to us)."""
     endpoint: str
     text: str
-    reason: str        # "echo" | "voice_lock" | "mic_blocked" | "not_addressed"
+    reason: str        # "echo" | "voice_lock" | "mic_blocked" | "not_addressed" | "stop" (a control, never words)
     t_ms: int
 
 

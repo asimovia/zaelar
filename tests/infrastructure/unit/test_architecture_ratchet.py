@@ -685,6 +685,10 @@ _PACKAGE_CEILINGS["conversation"] += 25    # 2026-11-20 V2-941 v3.1 B10: the gua
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 135   # same: the guards (mic, echo, attention) as discards before the end, his stop as a control from its door, the switch turned off retires the conversation (`guards.py`, `controls.py`)
 _PACKAGE_CEILINGS["voice"] += 5            # same: a body-link batch keeps room for the other events; the wake phrase as his phrase
 _TOTAL_MAX += 165    # same cause
+_PACKAGE_CEILINGS["conversation"] += 72    # 2026-11-20 V2-941 v3.1 B10b (the voice pass and the B7l–B10 audit): the ear asks the host's guards at every close and gives set-aside words back; a derived figure cites every evidence its operands are in, never read in a scale; half a thought is answered «I'm listening»; a stop is never a lost voice
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 89    # same: a stop is a control and never a line; echo by timing and containment over our last lines; the body's attention fed from the ear lane; the ambient tail reclaimed
+_PACKAGE_CEILINGS["voice"] += 61           # same: an echo never cuts our line (`voice/echo_text.py`), a clean stream declares no gap, the agent's name is a key term of the provider
+_TOTAL_MAX += 222    # same cause, with the packs' `listening`
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

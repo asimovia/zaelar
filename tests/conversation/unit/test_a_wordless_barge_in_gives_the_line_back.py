@@ -71,7 +71,7 @@ def test_the_rise_is_sent_again_as_his_at_its_real_start():
     tap = ear_tap.Tap("holder", facts.append)
     tap.on_barge, tap.min_barge_ms = (lambda: None), 500
     tap.playback(True, now_ms=0)
-    for t in range(500, 1100, 30):
+    for t in range(500, 1300, 30):                                          # wordless: cut at 700 ms
         tap.edges.frame(True, t)
     rises = [(f["t_ms"], f["echo_safe"]) for f in facts if f["t"] == "vad" and f["edge"] == "rise"]
     assert rises == [(500, False), (500, True)]                              # possible echo, then proved his

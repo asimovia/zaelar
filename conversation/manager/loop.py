@@ -76,7 +76,8 @@ class Conversation:
                  clock: Clock, mouth: Mouth, telemetry: Telemetry, config: Config | None = None, prefix: str = "",
                  ids: Ids | None = None, owed: Owed | None = None, tasks: Tasks | None = None,
                  prefs: Prefs | None = None, record: Record | None = None, words: Words | None = None,
-                 figures: Callable[[str], tuple] | None = None) -> None:
+                 figures: Callable[[str], tuple] | None = None, ear_guard: Callable[[str, str], str | None] | None = None
+                 ) -> None:
         self.account, self.cfg, self.prefix = account, config or Config(), prefix
         self.prefs: Prefs = prefs or (lambda _key, default: default)
         self.record, self.words = record, words
@@ -90,6 +91,7 @@ class Conversation:
         self.ids = ids or Ids("" if self.lease.epoch == 1 else f"{self.lease.epoch}x")
         lease = lambda: self.lease  # noqa: E731
         self.ear = Ear(account, self.cfg, self.em, self.ids)
+        self.ear.guard = ear_guard
         # the controls this manager has a handler for; any other is refused when accepted
         handles = frozenset({ControlOp.STOP} | ({ControlOp.CANCEL_TASK} if tasks is not None else set()))
         self.inbox = Inbox(self.store, lease, account, self.cfg, self.em, self.ids, handles=handles)

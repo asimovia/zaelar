@@ -29,11 +29,11 @@ def ear(monkeypatch):
     monkeypatch.setattr(attention, "note_ambient", lambda text, now=None: None)
     monkeypatch.setattr(attention, "note_directed", lambda now=None: None)
     monkeypatch.setattr(attention, "is_shut_up", lambda text: "w_stop" in text)
-    guards._last.update(text="", at=0.0)
+    guards._lines.clear()
     ear_in._reset_for_tests()
     yield state
     ear_in._reset_for_tests()
-    guards._last.update(text="", at=0.0)
+    guards._lines.clear()
 
 
 def test_each_guard_names_why(ear):
@@ -42,7 +42,8 @@ def test_each_guard_names_why(ear):
     assert guards.judge("w1 w2") == "mic_blocked"
     ear["mic"] = False
     guards.said("w5 w6 w7 w8", at=1000.0)
-    assert guards.judge("w5 w6 w7 w8", now=1005.0) == "echo"
+    assert guards.judge("w5 w6 w7 w8", now=1005.0) == "echo"                  # while our line sounds
+    guards.ended(at=1010.0)
     assert guards.judge("w5 w6 w7 w8", now=1100.0) is None                    # past the echo window: his
     ear["directed"] = False
     assert guards.judge("w1 w2", now=1100.0) == "not_addressed"
@@ -55,18 +56,24 @@ def _turn(stream="holder", words=("w1", "w2"), seq0=1):
              "seq": seq0 + 1}]
 
 
-def test_a_guarded_turn_reaches_the_ear_as_a_discard_before_its_end(ear):
+def test_the_ear_asks_the_guards_at_every_close(ear, store):
+    """At the provider's end AND at the cap (no final word, too long, a stall): what the guards throw away is a discard
+    with its text and reason (I4), never an entry (the audit of B7l–B10, minor 1)."""
+    from conversation.ports import Done
+    from conversation.testing.scripted_model import reply
+    from tests.conversation.unit.convkit import Harness
+    h = Harness(store, grace=False)
+    h.conv.ear.guard = guards.for_ear
+    h.model.default = lambda ids: [reply("w9"), Done()]
     ear["mic"] = True
-    got = []
-    for f in _turn():
-        ear_in.receive(f, got.append)
-    kinds = [type(s).__name__ for s in got]
-    assert kinds == ["WordSpan", "Discard", "EotHint"] and got[1].reason == "mic_blocked" and got[1].text == "w1 w2"
+    h.utter([(["w1", "w2"], 0)])                                            # closed by the provider's end
+    h.hear(S.VadEdge("d1", "rise", 5000), S.WordSpan("d1", 9, 1, False, (("w3", 5000, 5200, 0.9),), (5000, 5200)))
+    h.settle(h.conv.cfg.close_cap_ms + h.conv.cfg.intervention_max_ms)     # no final word: closed by the cap
+    found = [(p["reason"], p["text"]) for k, lab, p in h.tel.events if k == "conv_ear" and lab == "discarded"]
+    assert ("mic_blocked", "w1 w2") in found and ("mic_blocked", "w3") in found and h.mouth.orders == []
     ear["mic"] = False
-    got.clear()
-    for f in _turn(seq0=3):
-        ear_in.receive(f, got.append)
-    assert "Discard" not in [type(s).__name__ for s in got]
+    h.utter([(["w5", "w6"], h.clock.mono + 1000)])
+    assert [o.text for o in h.mouth.orders] == ["w9"]
 
 
 def test_his_spoken_stop_is_a_control_ahead_of_his_words(ear, monkeypatch):
@@ -75,7 +82,8 @@ def test_his_spoken_stop_is_a_control_ahead_of_his_words(ear, monkeypatch):
     got = []
     for f in _turn(words=("w_stop",)):
         ear_in.receive(f, lambda s: got.append(s) or calls.append(type(s).__name__))
-    assert calls == ["WordSpan", ("stop", "holder", "ear"), "EotHint"]
+    assert calls == ["WordSpan", ("stop", "holder", "ear"), "Discard", "EotHint"]   # a control, never his words
+    assert [s.reason for s in got if type(s).__name__ == "Discard"] == ["stop"]
 
 
 class _Conv:
@@ -98,9 +106,9 @@ def handed(monkeypatch):
     return conv
 
 
-def test_his_typed_stop_is_given_before_the_line(ear, handed):
+def test_his_typed_stop_is_a_control_and_never_a_line(ear, handed):
     entry.typed("w_stop w1", "text:s1", checked=True)
-    assert handed.log == [("give", "user.control", "chat:text:s1", "text", "stop"), ("hear", "TypedSubmit")]
+    assert handed.log == [("give", "user.control", "chat:text:s1", "text", "stop")]
     handed.log.clear()
     entry.typed("w1", "text:s1", checked=True)
     assert handed.log == [("hear", "TypedSubmit")]
@@ -161,3 +169,178 @@ def test_switched_off_the_conversation_is_retired_without_a_restart(monkeypatch)
     monkeypatch.setattr(switch, "decide", lambda session=None: switch.Decision(False, "default"))
     assert controls.retire_if_off() is True and closed == [1] and entry._opener["rt"] is None
 
+
+def test_after_a_stop_his_next_question_is_answered_and_the_stop_is_not_in_the_prompt(ear, store, monkeypatch):
+    """The voice pass, case 14: «cállate» stayed in the conversation as his words and the model went on obeying it — an
+    18-word question closed silent. A stop is his control: the next entry is answered on its own."""
+    from conversation.ports import Done
+    from conversation.testing.scripted_model import reply
+    from tests.conversation.unit.convkit import Harness
+    h = Harness(store, grace=False)
+    h.model.default = lambda ids: [reply("w9"), Done()]
+    monkeypatch.setattr(entry, "_hand", lambda fn: fn(h.conv))
+    entry.typed("w_stop", "d2", checked=True)
+    h.settle(2000)
+    entry.typed("w1 w2 w3", "d2", checked=True)
+    h.settle(4000)
+    assert [o.text for o in h.mouth.orders] == ["w9"]
+    seen = " ".join([h.model.calls[-1].prompt.input] + [t.text for t in h.model.calls[-1].prompt.conversation])
+    assert "w_stop" not in seen and "w1 w2 w3" in seen
+
+
+#: a long line of ours, its start and its end (seconds)
+LINE, START, END = ("w1 w2 w3 w4 w5 w6 w7 w8 w9 wa wb wc wd we wf wg wh wi wj wk wl wm wn wo wp wq wr ws wt wu wv wx "
+                    "wy wz"), 1000.0, 1020.0
+
+
+def test_a_few_of_our_words_heard_back_while_our_line_sounds_are_an_echo(ear):
+    """The voice pass: our TTS fed at −10/−20 dB, six words of a 654-char line heard back — a prefix is not similar to
+    the whole line, so the old guard let them in as his words. Timing and containment decide it."""
+    guards.said(LINE, at=START)
+    assert guards.judge("w1 w2 w3 w4 w5 w6", now=START + 3, rose=START + 0.2) == "echo"
+    assert guards.judge("w9 wa wb wc", now=START + 8, rose=START + 6) == "echo"           # a stretch in the middle
+    assert guards.judge("wq w1 wz w0", now=START + 8, rose=START + 6) is None              # his own words, over it
+    guards.ended(at=END)
+    assert guards.judge("wx wy wz", now=END + 1.5, rose=END + 1) == "echo"                 # its tail, just after
+    assert guards.judge("wx wy wz", now=END + 9, rose=END + 8) is None                     # later: his, repeated
+
+
+def test_his_answer_that_repeats_our_question_is_never_an_echo(ear):
+    guards.said("w1 w2 w3 w4?", at=START)
+    guards.ended(at=START + 2)
+    assert guards.judge("w3 w4", now=START + 3, rose=START + 2.5) is None                 # «¿A Rowan?» «A Rowan.»
+
+
+def test_the_echo_window_keeps_our_last_lines(ear):
+    for n, at in ((1, 100.0), (2, 110.0), (3, 120.0)):
+        guards.said(f"wl{n} wm{n} wn{n}", at=at)
+        guards.ended(at=at + 5)
+    assert guards.judge("wl2 wm2", now=118.0, rose=113.0) == "echo"                      # not only the last one
+
+
+def test_the_turns_first_word_times_the_echo(ear):
+    guards.said("w1 w2 w3", at=0.0)                                                       # rose at 100 ms: during it
+    for f in _turn(words=("w1", "w2", "w3")):
+        ear_in.receive(f, lambda s: None)
+    assert ear_in.rose_of("holder") == 100 and guards.for_ear("holder", "w1 w2 w3") == "echo"
+
+
+def test_an_echo_never_cuts_our_line_and_his_own_words_do():
+    from voice.engine.pipeline import ear_tap
+    for heard, cut_expected in ((("w5", "w6", "w7"), False), (("wq", "wr", "w0"), True), ((), True)):
+        tap = ear_tap.Tap("holder", lambda f: None)
+        cuts = []
+        tap.on_barge, tap.min_barge_ms, tap.line = (lambda: cuts.append(1)), 500, "w1 w2 w3 w4 w5 w6 w7 w8"
+        tap.playback(True, now_ms=0)
+        tap.heard = heard
+        for t in range(1000, 1000 + ear_tap.WORDLESS_BARGE_MS + 300, 30):
+            tap.edges.frame(True, t)
+        assert bool(cuts) is cut_expected, heard
+
+
+
+@pytest.fixture
+def real_attention(monkeypatch):
+    """The REAL attention module, in smart mode, its state restored after."""
+    import copy
+    from voice import attention, mic_input
+    monkeypatch.setenv("ZAELAR_ATTENTION", "smart")
+    monkeypatch.delenv("ZAELAR_ATTENTION_WINDOW", raising=False)
+    monkeypatch.setattr(mic_input, "blocks_turn", lambda text: False)
+    saved = copy.deepcopy(attention._state)
+    attention._wipe_window()
+    attention.set_assistant_name("Wzael")
+    guards._lines.clear()
+    ear_in._reset_for_tests()
+    yield attention
+    attention._state.clear()
+    attention._state.update(saved)
+    ear_in._reset_for_tests()
+    guards._lines.clear()
+
+
+def test_his_follow_up_after_our_reply_is_heard_with_the_real_attention(real_attention):
+    """TK-1: in the body the attention window ran from one turn's end to the next — model latency and our whole reply
+    inside it — so «¿y mañana?» 1 s after a 3 s reply was `not_addressed`. The body now hears what the voice process
+    hears (his rises and falls, our playback), so the window measures his silence from the end of our reply."""
+    import time
+    base = time.time() - 7.0
+    assert guards.judge("Wzael w1 w2", now=base + 1.0) is None                    # addressed by name: the window opens
+    facts = [{"t": "playback", "stream": "holder", "speaking": True, "t_ms": int((base + 2.0) * 1000)},
+             {"t": "playback", "stream": "holder", "speaking": False, "t_ms": int((base + 5.0) * 1000)},
+             {"t": "vad", "stream": "holder", "edge": "rise", "t_ms": int((base + 6.0) * 1000), "echo_safe": True},
+             {"t": "words", "stream": "holder", "turn": 0, "rev": 1, "final": True, "window": [0, 1],
+              "words": [["w3", int((base + 6.0) * 1000), int((base + 6.3) * 1000), 0.9],
+                        ["w4", int((base + 6.3) * 1000), int((base + 6.5) * 1000), 0.9]]},
+             {"t": "vad", "stream": "holder", "edge": "fall", "t_ms": int((base + 6.5) * 1000), "echo_safe": True},
+             {"t": "eot", "stream": "holder", "kind": "end", "prob": .9, "t_ms": int((base + 6.8) * 1000),
+              "terminal": True}]
+    for n, f in enumerate(facts, start=1):
+        ear_in.receive({**f, "boot": "b", "seq": n}, lambda s: None)
+    assert guards.for_ear("holder", "w3 w4") is None                               # his: never `not_addressed`
+
+
+def test_a_spoken_stop_closes_the_window(real_attention, monkeypatch):
+    monkeypatch.setattr(controls, "control", lambda *a, **k: None)
+    monkeypatch.setattr(real_attention, "is_shut_up", lambda text: "w_stop" in text)
+    assert guards.judge("Wzael w1 w2") is None and real_attention.window_warm()
+    for f in _turn(words=("w_stop",)):
+        ear_in.receive(f, lambda s: None)
+    assert not real_attention.window_warm()
+
+
+def test_the_agents_name_and_how_it_is_heard_bias_the_provider(monkeypatch):
+    """The voice pass: Flux wrote «Johnny» as «Jenny» and the wake word never woke. The name and every spelling it is
+    heard as go to the provider as key terms (Flux and nova-3), first run included: a name biases no language."""
+    from voice import attention
+    from voice.engine.speech.stt import deepgram
+    monkeypatch.setattr(attention, "wakewords", lambda: ("wzael", "wzail"))
+    assert deepgram._keyterms("flux-general-multi", True) == ["wzael", "wzail"]
+    assert deepgram._keyterms("flux-general-en", False)[:2] == ["wzael", "wzail"]
+    assert deepgram._keyterms("nova-2", False) == []                         # a model that refuses key terms
+
+
+def test_a_rise_with_our_lines_start_cuts_only_on_his_own_words():
+    """Minor 2: a cut by a rise within `ECHO_ONSET_MS` of our line's start could never be given back (that rise is not
+    sent again as his). Wordless there, it never cuts; with words of his that are not ours, it does."""
+    from voice.engine.pipeline import ear_tap
+    for heard, cut_expected in (((), False), (("wq", "wr", "w0"), True), (("w1", "w2", "w3"), False)):
+        tap = ear_tap.Tap("holder", lambda f: None)
+        cuts = []
+        tap.on_barge, tap.min_barge_ms, tap.line = (lambda: cuts.append(1)), 500, "w1 w2 w3 w4"
+        tap.playback(True, now_ms=0)
+        tap.heard = heard
+        for t in range(100, 100 + ear_tap.WORDLESS_BARGE_MS + 600, 30):
+            tap.edges.frame(True, t)
+        assert bool(cuts) is cut_expected, heard
+
+
+
+def test_what_was_set_aside_comes_back_with_the_wake_word(real_attention, store):
+    """Minor 4: «para la música» judged not addressed, then «Johnny» — the order goes to the model whole, in front of
+    the entry that called him; consumed once."""
+    import time
+    from conversation.ports import Done
+    from conversation.testing.scripted_model import reply
+    from tests.conversation.unit.convkit import Harness
+    real_attention._state["last_directed"] = 0.0
+    assert guards.judge("w1 w2", now=time.time()) == "not_addressed"            # set aside, kept in the tail
+    h = Harness(store, grace=False)
+    h.conv.ear.guard = guards.for_ear
+    h.model.default = lambda ids: [reply("w9"), Done()]
+    h.utter([(["Wzael"], 0)])
+    assert "w1 w2 Wzael" in h.model.calls[0].prompt.input and real_attention._state["ambient_tail"] == []
+
+
+def test_a_spoken_stop_is_never_told_to_the_model_as_a_voice_it_lost(store):
+    from conversation.ports import Done
+    from conversation.testing.scripted_model import reply
+    from tests.conversation.unit.convkit import Harness
+    h = Harness(store, grace=False)
+    h.model.default = lambda ids: [reply("w9"), Done()]
+    h.hear(S.VadEdge("d1", "rise", 10), S.WordSpan("d1", 1, 1, False, (("w_stop", 10, 200, 1.0),), (10, 200)))
+    h.hear(S.Discard("d1", "w_stop", "stop", 300))
+    h.typed("w1 w2", 1000)
+    h.settle(3000)
+    state = h.model.calls[-1].prompt.state
+    assert "VOICE LOST" not in state and "iv_000001" not in state
