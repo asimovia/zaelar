@@ -16,7 +16,9 @@ from dataclasses import dataclass
 
 ENV = "ZAELAR_CONVERSATION"
 SETTING = "conversation_manager"
-ON, OFF = frozenset({"1", "true", "yes", "on"}), frozenset({"0", "false", "no", "off"})
+ON, OFF = frozenset({"1", "true", "yes", "on", "voice"}), frozenset({"0", "false", "no", "off"})
+#: a session's flag that asks the manager for its VOICE even with the account on text only (`conv=voice`)
+VOICE = "voice"
 #: the manager for his TEXT only — the typed doors go by it, the voice stays on the old path
 TEXT = "text"
 TEXT_ONLY = "text only"           # why a voice session is off when the manager is asked for text only: a choice
@@ -51,12 +53,20 @@ def asked(session: str | bool | None = None, voice: bool = False) -> tuple[bool,
     value, by = _source(session)
     if str(value or "").strip().lower() == TEXT:
         return not voice, by
+    if voice and by == "session" and str(value).strip().lower() != VOICE and _account_text():
+        return False, "account"             # the account's «text» wins for the voice over a room's bare `conv=1`
     return bool(_flag(value)), by
 
 
+def _account_text() -> bool:
+    from config import settings
+    return str(settings.get(SETTING) or "").strip().lower() == TEXT
+
+
 def text_only(session=None) -> bool:
-    value, _by = _source(session)
-    return str(value or "").strip().lower() == TEXT
+    value, by = _source(session)
+    return str(value or "").strip().lower() == TEXT or (by == "session" and _account_text()
+                                                         and str(value).strip().lower() != VOICE)
 
 
 def refused() -> str:
@@ -112,11 +122,12 @@ def on(session=None) -> bool:
     the session's own `conv` flag, if it carries one, says first); with no session, the account's decision. A
     session asked for the manager and refused says why, once, as an alert."""
     got = getattr(session, "_conversation_switch", None) if session is not None else None
-    if got is None:
-        got = decide(getattr(session, "conv_flag", None) if session is not None else None)
+    if got is None:                         # a session is a VOICE session: «text» only is off for it (embedded mode)
+        got = decide(getattr(session, "conv_flag", None) if session is not None else None, voice=session is not None)
         if session is not None and hasattr(session, "__dict__"):   # one with no attributes is decided at every line
             session._conversation_switch = got
-        if got.why and (session is None or getattr(session, "_conversation_switch", None) is got):
+        if got.why and got.why != TEXT_ONLY and (session is None
+                                                 or getattr(session, "_conversation_switch", None) is got):
             from voice import observer
             observer.emit("alert", "conversation manager refused", text=got.why, extra={"by": got.by})
     return got.on

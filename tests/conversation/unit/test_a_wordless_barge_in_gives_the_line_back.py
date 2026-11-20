@@ -54,10 +54,10 @@ def test_a_mmm_over_our_line_cuts_it_and_the_line_goes_on(store):
     ear_in._reset_for_tests()
     h = Harness(store)
     sid = _speaking(h)
-    hum = [(t, True) for t in range(700, 1500, 30)] + [(t, False) for t in range(1500, 1800, 30)]
+    hum = [(t, True) for t in range(1100, 1900, 30)] + [(t, False) for t in range(1900, 2200, 30)]
     cut = _through_the_tap(h, hum, cut_heard=9, sid=sid)
     assert cut == [1]
-    h.hear(S.Tick(1800 + h.conv.cfg.close_cap_ms))
+    h.hear(S.Tick(2200 + h.conv.cfg.close_cap_ms))
     h.at(4000).pump()
     assert [o.text for o in h.mouth.orders][-1] == "w3 w4. w5 w6." and "voice" in h.mouth.orders[-1].channels
     discarded = [p["reason"] for k, lab, p in h.tel.events if k == "conv_ear" and lab == "discarded"]
@@ -71,10 +71,23 @@ def test_the_rise_is_sent_again_as_his_at_its_real_start():
     tap = ear_tap.Tap("holder", facts.append)
     tap.on_barge, tap.min_barge_ms = (lambda: None), 500
     tap.playback(True, now_ms=0)
-    for t in range(100, 700, 30):
+    for t in range(500, 1100, 30):
         tap.edges.frame(True, t)
     rises = [(f["t_ms"], f["echo_safe"]) for f in facts if f["t"] == "vad" and f["edge"] == "rise"]
-    assert rises == [(100, False), (100, True)]                              # possible echo, then proved his
+    assert rises == [(500, False), (500, True)]                              # possible echo, then proved his
+
+
+def test_a_rise_at_our_lines_start_is_our_echo_never_sent_again_as_his():
+    """With no echo cancellation our own voice rises with our line: it may cut it (the local rule), but it never opens
+    an intervention of our own echo (the audit of B7j–B8g, minor 7)."""
+    facts = []
+    tap = ear_tap.Tap("holder", facts.append)
+    tap.on_barge, tap.min_barge_ms = (lambda: None), 500
+    tap.playback(True, now_ms=0)
+    for t in range(ear_tap.ECHO_ONSET_MS - 300, ear_tap.ECHO_ONSET_MS + 600, 30):
+        tap.edges.frame(True, t)
+    rises = [(f["t_ms"], f["echo_safe"]) for f in facts if f["t"] == "vad" and f["edge"] == "rise"]
+    assert rises == [(ear_tap.ECHO_ONSET_MS - 300, False)]
 
 
 def _commands(h):

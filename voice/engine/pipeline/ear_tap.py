@@ -29,6 +29,9 @@ VAD_QUIET_MS = 200
 STAND_IN_TURNS = 1_000_000
 #: his voice up and no message of the provider for this long: it stalled, and what it was hearing is lost
 PROVIDER_STALL_MS = 2000
+#: a rise this close to our line's start is how our own voice comes back with no echo cancellation: a barge-in that
+#: cuts is never sent again as his voice inside it (it would open an intervention of our own echo)
+ECHO_ONSET_MS = 400
 #: the device this process hears for: the holder of the session (`nucleo/conversation_host/voice_session.ENDPOINT`)
 ENDPOINT = "holder"
 #: the epochs of this PROCESS, one per stream of any session: a second session's first stream never reuses the first's
@@ -185,8 +188,10 @@ class VadEdges:
                 logger.warning(f"ear tap: our voice was not cut ({e!r})")
             # His voice rose while ours sounded, so its rise went out as possible echo and the ear did not open it. It
             # just proved it is his (after our line began, past the threshold): the ear hears it from its real start —
-            # a barge-in with no word then ends discarded, and the line it cut goes on (RESUME_LINE).
-            self.tap.send(ear_feed.vad(self.tap.endpoint, "rise", self.rose_at, echo_safe=True))
+            # a barge-in with no word then ends discarded, and the line it cut goes on (RESUME_LINE). A rise right at
+            # our line's start is how our own echo rises with no echo cancellation: never sent again as his.
+            if self.rose_at - self.tap.playing_since >= ECHO_ONSET_MS:
+                self.tap.send(ear_feed.vad(self.tap.endpoint, "rise", self.rose_at, echo_safe=True))
 
 
 def _barge_due(edges: "VadEdges", now: int) -> bool:

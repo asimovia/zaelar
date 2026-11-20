@@ -202,7 +202,7 @@ class Ear:
         v.agent_spoke = False
         v.iv, v.state, v.onset_ms, v.successor = self.ids.new("iv"), IvState.OPEN, t, successor
         v.eot_end_ms = v.eot_prob = v.fall_ms = v.last_word_ms = v.terminal = None   # nothing of the previous one
-        out.append(S.Onset(v.endpoint, t, v.iv))
+        out.append(S.Onset(v.endpoint, t, v.iv, successor))
         self.em.emit("conv_ear", "onset", owner="ear", cause={"kind": "voice"}, refs=self._refs(v), t_onset_ms=t)
         self.em.emit("conv_ear", "opened", owner="ear", cause={"kind": "voice"}, refs=self._refs(v),
                      amends=v.amends)

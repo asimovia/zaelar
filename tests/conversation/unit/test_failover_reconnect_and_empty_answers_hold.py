@@ -129,11 +129,21 @@ def test_his_voice_lost_ends_the_manual_session_and_new_ones_take_the_old_path(m
     monkeypatch.setattr(importlib.import_module("voice.observer"), "emit", lambda *a, **k: None)
     monkeypatch.setitem(rs._M, "session", SimpleNamespace(_conversation_switch=switch.Decision(True, "voice")))
     monkeypatch.setitem(rs._M, "client", SimpleNamespace(post_soon=lambda path, body: posts.append(path)))
+    owed = importlib.import_module("nucleo.conversation_host.owed")
+    held = importlib.import_module("nucleo.pulse.notice_claim")
+    seen = []
+
+    async def notify_seen(*a, **k):                                        # what the notice finds when it is made
+        seen.append(held.held_for_the_manager())
+    monkeypatch.setattr(notices, "notify", notify_seen)
+    owed.set_voice_live(True)                                              # the manager's voice, still up
     entry.reset()
     try:
         entry.voice_lost()
+        assert seen == [False], "the notice was made while the ending voice still claimed it"
         assert posts == ["/voice/close"] and entry.broken()
         assert "could not open" in switch.refused()                           # the session that reconnects: old path
     finally:
         entry._opener["broken_until"] = 0
+        owed.set_voice_live(False)
         entry.reset()

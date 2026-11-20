@@ -245,6 +245,8 @@ def voice_lost() -> None:
     client = remote_session._M.get("client")
     if client is not None:                       # its voice process is in manual mode: the session ends, and the one
         client.post_soon("/voice/close", {"reason": "conversation_unavailable"})   # that reconnects is the old path's
+    from nucleo.conversation_host import owed
+    owed.set_voice_live(False)                   # before the notice: never claimed for a voice of ours that is ending
     line = PackWords().line("mute_lines")
     if line:
         from nucleo.pulse import notices

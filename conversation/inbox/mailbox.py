@@ -130,11 +130,19 @@ class Inbox:
                 return "held"
         return "queued"
 
-    def voice_open(self, iv: str, onset_ms: int, endpoint: str | None) -> None:
+    def voice_open(self, iv: str, onset_ms: int, endpoint: str | None, successor: bool = False) -> None:
         """A voice intervention opened (the ear's onset): texts begun after it wait behind it."""
         with self.store.tx(self.lease()) as tx:
-            known = tx.get(VOICE, iv) or {"onset": onset_ms, "endpoint": endpoint, "epoch": self.lease().epoch}
+            known = tx.get(VOICE, iv) or {"onset": onset_ms, "endpoint": endpoint, "epoch": self.lease().epoch,
+                                          "successor": successor}
             tx.put(VOICE, iv, {**known, "state": "open"})
+
+    def voice_heard(self, iv: str) -> None:
+        """The open voice brought its first word: a process that dies now leaves a sentence of his, not a silence."""
+        with self.store.tx(self.lease()) as tx:
+            row = tx.get(VOICE, iv)
+            if row is not None:
+                tx.put(VOICE, iv, {**row, "heard": True})
 
     def open_voices(self, before_epoch: int) -> list[tuple[str, dict]]:
         """The voices a dead process left open: opened under an earlier epoch and never ended."""

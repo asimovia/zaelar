@@ -101,6 +101,7 @@ class Conversation:
         self.state = MgrState.IDLE
         self.current: Running | None = None
         self.speaking_on: set[str] = set()
+        self._heard: set[str] = set()           # open voices whose first word is written down (`voice_heard`)
         self.dirty = False                  # something was accepted since the last pump (a driver may pump only then)
         self._resume: dict | None = None    # a cut line to resume, unless an entry with words comes first
         self._swept_at = -1 << 62
@@ -123,6 +124,11 @@ class Conversation:
 
     def _restarted(self, iv: str, voice: dict, now: int) -> None:
         endpoint = voice.get("endpoint")
+        if voice.get("successor") and not voice.get("heard"):   # born at a close and never a word: no voice was lost
+            self.em.emit("conv_ear", "discarded", owner="ear", cause={"kind": "restart"},
+                         refs={"iv": iv, "endpoint": endpoint, "channel": "voice"}, text="", reason="restart_no_words")
+            self.inbox.voice_done(iv, now)
+            return
         self.em.emit("conv_ear", "incomplete", owner="ear", cause={"kind": "restart"},
                      refs={"iv": iv, "endpoint": endpoint, "channel": "voice"}, text="", reason="restart")
         self.give(E.make(EnvelopeKind.USER_UTTERANCE,
@@ -143,6 +149,15 @@ class Conversation:
                 self._discarded(out)
             else:
                 self.give(out)
+        if isinstance(sig, S.WordSpan) and sig.words:  # after the ear placed them: in the voice they belong to
+            self._first_word(sig.stream)
+
+    def _first_word(self, endpoint: str) -> None:
+        """The first word of an open voice is written down once: a restart tells a lost sentence from no voice."""
+        for iv, _onset, ep in self.ear.open_interventions():
+            if ep == endpoint and iv not in self._heard:
+                self._heard.add(iv)
+                self.inbox.voice_heard(iv)
 
     def _discarded(self, d: S.VoiceDiscarded) -> None:
         """An open voice ended with nothing to answer: noted once, nothing waits behind it, it speaks no more."""
@@ -209,7 +224,7 @@ class Conversation:
         self.speaking_on.add(o.endpoint)
         for op in policy.decide(o, self.state, claimed=bool(self.current and self.current.claimed)):
             if op is Op.WAIT_BEHIND_VOICE:
-                self.inbox.voice_open(o.intervention_id, o.t_ms, o.endpoint)
+                self.inbox.voice_open(o.intervention_id, o.t_ms, o.endpoint, o.successor)
             elif op is Op.ACTIONS_WAIT and self.current is not None:
                 self.current.actions_held = True        # an act asked for while they speak is refused with that reason
             elif (op is Op.HOLD_FOR_VOICE and self.current is not None

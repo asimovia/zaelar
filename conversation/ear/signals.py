@@ -109,6 +109,7 @@ class Onset:
     endpoint: str
     t_ms: int
     intervention_id: str
+    successor: bool = False     # born at a close with his voice still up: it may be no voice at all
 
 
 Signal = (WordSpan | Watermark | VadEdge | EotHint | PlaybackState | ContextHint | TypedSubmit | Discard | LinkGap

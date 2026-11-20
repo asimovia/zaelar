@@ -674,6 +674,10 @@ _TOTAL_MAX += 95     # same cause
 _PACKAGE_CEILINGS["conversation"] += 34    # 2026-11-20 V2-941 v3.1 B7l («¿Y en avión?», the tester's observability gap): a derived result said rounded, the honest line's second wording, who answered on model_done and the close, what the model saw on `input` and `prompt`
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 64    # same: a duration read in every unit, its unit names from the language packs (`figures.durations`)
 _TOTAL_MAX += 98     # same cause, with the packs' two new fields (`unverified_fact_alt`, `duration_units`)
+_PACKAGE_CEILINGS["conversation"] += 24    # 2026-11-20 V2-941 v3.1 B7l (the audit of B7j–B8g, minor 4): a voice's first word written down, a successor that never spoke not owed on restart
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 13    # same, minors 1, 3, 5: the voice question for an undecided session, the account's «text» over a bare room flag, the notice after the voice ends
+_PACKAGE_CEILINGS["voice"] += 5            # same, minor 7: our own echo at our line's start never sent again as his
+_TOTAL_MAX += 42     # same cause
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())
