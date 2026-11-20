@@ -3,6 +3,31 @@
 This is the first document to read before testing a change. It applies equally to Codex, Claude Code, local
 developers, CI and the Test Observatory web UI.
 
+## What counts as evidence that a change works
+
+Synthetic end-to-end conversations are **not** evidence that a change works, and they cannot pass a phase gate:
+
+- a sandbox engine driven through its text door;
+- simulated users (a model playing the person);
+- synthetic speech sent through a custom client;
+- text replays of recorded voice sessions;
+- generated corpora.
+
+They may still be run to explore a behaviour or to find a bug. A green result from them proves only that this path
+agreed with itself.
+
+Evidence is one of three things:
+
+1. **A unit test with a disarm seen red.** It proves the code does what it says: the wiring is broken on purpose and
+   the test has to fall. It proves nothing about a model or a real voice.
+2. **A component test that renders the real app in a real browser** (Playwright under `tests/browser/`). The real
+   page is served, given the events of the contract (preferably the events the real code puts on the bus), and its
+   painted DOM is read. It proves what the app shows, not how the events were produced.
+3. **Human acceptance.** Everything else: what a model chooses, how the ear closes a real voice, timings. It is
+   recorded as accepted or not accepted; it is never assumed.
+
+What has no automatic test is said so, and goes on the acceptance list.
+
 ## The wide sweep: allowed, and hang-aware
 
 From 2026-09-15 to 2026-09-20 a whole-tree pytest run was **forbidden** here, because it hung the

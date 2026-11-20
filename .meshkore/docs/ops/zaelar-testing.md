@@ -19,6 +19,12 @@
 3. **Use cases** — a sandbox engine, a DRIVE model playing the person, a JUDGE (Claude Code on the licence) reading
    the OBSERVABLE behaviour through `GET /events`, in Spanish and in English. By request, after a meaningful change.
 
+**Evidence.** Layers 2 and 3 measure and explore. Synthetic end-to-end conversations are not evidence that a
+change works and cannot pass a phase gate: a sandbox text door, simulated users, synthetic speech through a custom
+client, text replays of voice sessions and generated corpora. Evidence is a unit test with a disarm seen red, a
+component test that renders the real app in a real browser and reads its DOM, or human acceptance. The rule and its
+reasons are in `tests/README.md` («What counts as evidence that a change works»).
+
 Retired that day, and why: the decision bank (`tests/brain`: it measured a brain that no longer exists and sat red in
 the gate), the causal journey (`tests/journey`: a use case with a script instead of a judge) and the LiveKit voice
 tester (`tests/voice/e2e/agent`, with its cron, overnight and battery loops: the use-case harness is its heir).
