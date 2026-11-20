@@ -430,3 +430,62 @@ def test_no_reply_read_as_incomplete_and_he_goes_on_closes_nothing_and_both_trav
     _run_clock(h, h.clock.mono + 4000)
     assert not _silent_closes(h) and len(h.mouth.orders) == 1
     assert "«w1»" in h.model.calls[-1].prompt.input and "«w2»" in h.model.calls[-1].prompt.input
+
+
+# ── the review of A9: a long thought, the silent close's look, the order of the graces ──────────────────────────────
+
+def test_a_long_thought_in_pieces_is_answered_once_and_never_stalls(store):
+    """Ten pieces with no mark, 4 s apart, read as incomplete: 40 s in all, past the liveness. The budget of a request
+    counts from the close of the last piece of his that travels with it, so waiting for him is never stalling."""
+    h = Harness(store, grace=True)
+    _reads(h, complete=False)
+    t = 10
+    for i in range(10):
+        t = h.utter([([f"w{i}a", f"w{i}b"], 0)], terminal=False, at=t) + 4000
+        _run_clock(h, t)
+    _run_clock(h, h.clock.mono + 12_000)
+    labels = [lab for k, lab, p in h.tel.events if k == "conv_close"]
+    assert labels == ["answered"] * 10 and len(h.mouth.orders) == 1
+    assert all(f"«w{i}a w{i}b»" in h.model.calls[-1].prompt.input for i in range(10))
+
+
+def test_when_he_stops_the_budget_runs_from_his_last_piece(store):
+    """A budget shorter than the grace, to see it fire: it runs from his last piece, never from the first one's close."""
+    h = Harness(store, config=Config(liveness_ms=5000), grace=True)
+    _reads(h, complete=False)                                          # the reply waits 6 s: the budget comes first
+    t = 10
+    for i in range(3):
+        t = h.utter([([f"w{i}"], 0)], terminal=False, at=t) + 3000
+        _run_clock(h, t)
+    last = t - 3000
+    _run_clock(h, last + 9000)
+    stalled = [p["t_ms"] for k, lab, p in h.tel.events if k == "conv_close" and lab == "stalled"]
+    assert stalled and min(stalled) >= last + 5000 - 100 and not h.mouth.orders, (stalled, last)
+
+
+@pytest.mark.parametrize("order", ["no_reply", "reply"])
+def test_a_silent_close_waiting_for_its_grace_looks_for_his_voice_as_a_reply_does(store, order):
+    """His voice opened in the ear with no onset reaching the manager, still open at the end of the grace: a silent
+    close holds for it exactly as a reply holds right before sealing."""
+    h = Harness(store, grace=True)
+    cmd = (Command("no_reply", {"reason": "w0", "complete": False}) if order == "no_reply"
+           else reply("w5", complete=False))
+    h.model.default = lambda ids: [cmd, Done()]
+    closed = h.utter([(["w1"], 0)], terminal=True)
+    _run_clock(h, closed + 3000)
+    t0 = h.clock.mono + 10
+    h.conv.ear.feed(S.VadEdge("d1", "rise", t0))                      # straight into the ear: no onset
+    for i in range(1, 8):
+        t = t0 + 500 * i
+        h.conv.ear.feed(S.WordSpan("d1", 50, i, False, h.words(["w2"] * i, t0), (t0, t)))
+        _run_clock(h, t)
+    assert not [lab for k, lab, p in h.tel.events if k == "conv_close"] and not h.mouth.orders
+    assert any(k == "conv_run" and lab == "held" and p.get("waits_for") not in (None, "grace")
+               for k, lab, p in h.tel.events)
+
+
+def test_the_graces_bound_each_other_in_one_order():
+    assert Config().misordered() == []
+    assert Config(complete_grace_ms=4000).misordered() == ["complete_grace_ms > terminal_grace_ms"]
+    assert Config(incomplete_grace_ms=9000).misordered() == ["incomplete_grace_ms > resume_hold_max_ms"]
+    assert Config(terminal_grace_ms=5500).misordered() == ["terminal_grace_ms > nonterminal_grace_ms"]

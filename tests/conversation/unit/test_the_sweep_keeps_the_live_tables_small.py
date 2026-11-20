@@ -72,4 +72,5 @@ def test_what_is_in_course_is_what_the_sweep_reads(store):
     h.hear(S.VadEdge("d1", "rise", t), S.WordSpan("d1", 99, 1, False, ws, (t, ws[-1][2])), h.beats(t, t + 300))
     h.typed("w9", t + 100)                                               # held behind the open voice
     rows, whole = _sweep_reads(h, counting)
-    assert whole == 0 and 1 <= rows <= 4, rows                          # the held text, the open voice: not history
+    assert whole == 0 and 1 <= rows <= 5, rows      # the held text (read by the hold and by the liveness, which counts
+                                                    # from his last entry in course), its request, the open voice

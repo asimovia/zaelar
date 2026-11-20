@@ -219,6 +219,15 @@ class Inbox:
             return any(r["kind"] != str(EnvelopeKind.USER_CONTROL) and r["accepted"] > t_ms
                        and r["env"]["body"].get("text") for _k, r in tx.scan(T))
 
+    def in_course(self) -> tuple[frozenset, int | None]:
+        """The person's entries not yet accounted — queued, held or in a run: they travel in one batch. Returns their
+        interventions and the close of the latest one."""
+        with self.store.tx(self.lease()) as tx:
+            rows = [r["env"] for _k, r in tx.scan(T, states=("queued", "held", "dequeued"))
+                    if r["kind"] != str(EnvelopeKind.USER_CONTROL)]
+        return (frozenset(e["refs"]["intervention_id"] for e in rows),
+                max((e["sealed_ms"] for e in rows), default=None))
+
     def pending(self) -> bool:
         """Is there a batch of the person's waiting — queued or held, not yet in a run?"""
         with self.store.tx(self.lease()) as tx:

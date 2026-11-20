@@ -560,6 +560,8 @@ _PACKAGE_CEILINGS["conversation"] += 70    # 2026-11-20 V2-941 v3.1 A6d (review 
 _TOTAL_MAX += 70     # same cause
 _PACKAGE_CEILINGS["conversation"] += 80    # 2026-11-20 V2-941 v3.1 A9 (§1.6 quater): the model's own `complete` on its order sets the grace (reply and no_reply), P3 judges every order against the grace it got
 _TOTAL_MAX += 80     # same cause
+_PACKAGE_CEILINGS["conversation"] += 63    # 2026-11-20 V2-941 v3.1 A10 (review of A9): the liveness runs from his last piece in the batch, the silent close looks for his voice, the graces' order check, P3 at the product's liveness with a long thought in pieces
+_TOTAL_MAX += 63     # same cause
 
 
 def test_the_total_only_shrinks():

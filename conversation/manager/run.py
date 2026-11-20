@@ -70,14 +70,21 @@ def close(conv: "Conversation", req: str, to: str, label: str, run: "Running | N
 
 
 def sweep_liveness(conv: "Conversation", now: int) -> None:
-    """I9: a request still open past the budget, counted from its close, is closed `stalled`, the run in course too:
-    its run is stopped at the next checkpoint. A batch held for a resumed voice waits at most `resume_hold_max_ms`,
-    well inside the budget, so no hold has to suspend it."""
+    """I9: a request still open past the budget is closed `stalled`, the run in course too: its run is stopped at the
+    next checkpoint. The budget counts from when its batch is eligible (v3.1 §1.6): from the close of the LAST entry
+    of his still in course with it — waiting for him to finish a thought said in pieces is not stalling, and each piece
+    starts the budget of the batch again. A batch held for a resumed voice waits at most `resume_hold_max_ms`, well
+    inside the budget, so no hold has to suspend it."""
     running = set(conv.current.requests) if conv.current else set()
     with conv.store.tx(conv.lease) as tx:                  # the open requests, never the history
         rows = [r for _k, r in tx.scan("items", states=("open",)) if r["kind"] == str(ItemKind.REQUEST)]
+    if not rows:
+        return
+    carried, last = conv.inbox.in_course()
     for row in rows:
         start = row["data"].get("sealed_ms", row["created_ms"])
+        if row["data"].get("iv") in carried and last is not None:
+            start = max(start, last)
         if now - start >= conv.cfg.liveness_ms:
             mine = conv.current if row["id"] in running else None
             if close(conv, row["id"], "failed", "stalled", mine, reason="stalled") and mine is not None:
@@ -361,8 +368,12 @@ async def publish_parked(conv: "Conversation") -> bool:
     r, (text, steps, batch, reason) = _unpark(conv)
     conv.current, conv.state = r, MgrState.RUNNING          # it publishes as the run in course
     try:
-        if text is None:
-            _silent(conv, r, reason, conv.clock.now_ms())   # a silent close that waited its grace
+        if text is None:                                    # a silent close that waited its grace looks, as a reply
+            waits = _resumed_voice(conv, r)                 # does right before sealing, for his voice open again
+            if waits is not None:
+                _hold(conv, r, *waits)
+                raise _Stop()
+            _silent(conv, r, reason, conv.clock.now_ms())
         else:
             await _publish(conv, r, batch, text, steps)
     except _Stop as stop:

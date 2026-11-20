@@ -67,7 +67,7 @@ class AuditedSqliteStore(_Audited, SqliteStore):
 #: the numbers the design writes (v3.1 §1.6 bis, §1.6 ter), frozen here: the properties judge against THESE, never
 #: against the configuration the case runs with — a value raised out of design must turn a property red
 SPEC = {"intervention_max_ms": 30_000, "resume_hold_max_ms": 8000, "resume_window_ms": 20_000,
-        "terminal_grace_ms": 3000, "nonterminal_grace_ms": 5000, "nonterminal_start_ms": 1500, "liveness_ms": 60_000,
+        "terminal_grace_ms": 3000, "nonterminal_grace_ms": 5000, "nonterminal_start_ms": 1500, "liveness_ms": 30_000,
         "complete_grace_ms": 1000, "incomplete_grace_ms": 6000}
 
 
@@ -75,7 +75,7 @@ class Case:
     def __init__(self, seed: int, cfg: Config | None = None) -> None:
         self.rng = random.Random(seed)
         self.seed = seed
-        self.cfg = cfg or Config(liveness_ms=60_000, model_first_ms=40, model_gap_ms=40, tool_ms=40,
+        self.cfg = cfg or Config(liveness_ms=SPEC["liveness_ms"], model_first_ms=40, model_gap_ms=40, tool_ms=40,
                                  say_end_ms=8000)
         self.on_sqlite = seed % 10 == 3                       # chosen by the seed, not the rng: seeds stay seeds
         self.store = AuditedSqliteStore(":memory:") if self.on_sqlite else AuditedStore()
@@ -288,6 +288,8 @@ class Case:
             self._two_devices(conv)                  # two voices close at once; he goes on on one of them
         elif a < 0.99:
             self._fan(conv)                          # a noise that keeps rising with no word, cutting our lines
+        elif a < 0.994:
+            self._monologue(conv)                    # a long thought in pieces with no mark, past the liveness
         else:
             self.clock.advance(self.rng.choice([100, 2000, 9000, 40_000]))
             self._feed(conv, S.Tick(self._now()))
@@ -346,6 +348,21 @@ class Case:
             grown = ws + ((f"w{self.rng.randint(1, 60)}", end, end + 160, 1.0),)
             self._feed(conv, S.WordSpan(ep, seq, 2, True, grown, (t, end + 160)), S.Watermark(ep, end + 300),
                        S.EotHint(ep, "flux", "end", .9, end + 320, True))
+
+    def _monologue(self, conv: Conversation) -> None:
+        """A long thought said in pieces with no sentence mark (the profile: p90 7 pieces, pauses up to 5 s): longer in
+        all than the liveness, every piece within the grace of the one before."""
+        ep = "d1"
+        for _ in range(self.rng.randint(7, 12)):
+            t = self._now() + 20
+            self.seq += 1
+            ws = tuple((f"w{self.rng.randint(1, 60)}", t + i * 180, t + i * 180 + 160, 1.0) for i in range(2))
+            end = ws[-1][2]
+            self._feed(conv, S.VadEdge(ep, "rise", t), S.WordSpan(ep, self.seq, 1, True, ws, (t, end)),
+                       S.VadEdge(ep, "fall", end + 10), S.Watermark(ep, end + 60),
+                       S.EotHint(ep, "flux", "end", .8, end + 80, False))
+            gap = self.rng.choice([3000, 4000, 4500])
+            self._feed(conv, *[S.Tick(x) for x in range(end + 300, end + gap, 500)])
 
     def _two_devices(self, conv: Conversation) -> None:
         """Two voices close at the same instant on two devices; he goes on on one of them and keeps talking."""
@@ -521,6 +538,24 @@ def _graces(case, inbox_rows) -> list[str]:
     return out
 
 
+def _stalled_while_he_spoke(case, inbox_rows) -> list[str]:
+    """v3.1 §1.6: a request is never `stalled` while a continuation of his that travels in
+    its batch closed within the budget — waiting for him to finish a thought said in pieces is not stalling."""
+    sealed = {r["id"]: r["env"]["sealed_ms"] for r in inbox_rows}
+    iv_of = {r["id"]: r["env"]["refs"]["intervention_id"] for r in inbox_rows}
+    batches = [p["batch_envs"] for k, lab, p in case.tel.events if k == "conv_run" and lab == "started"]
+    out = []
+    for k, lab, p in case.tel.events:
+        if k != "conv_close" or lab != "stalled":
+            continue
+        t, req = p["t_ms"], p["refs"].get("req")
+        mates = {e for b in batches if any(f"r_{iv_of.get(x)}" == req for x in b) for e in b}
+        late = [e for e in mates if t - SPEC["liveness_ms"] < sealed.get(e, -1) <= t]
+        if late:
+            out.append(f"I9: {req} stalled at {t} with a continuation of his closed at {sealed[late[0]]}")
+    return out
+
+
 def _flows_batches_and_bounds(case, inbox_rows) -> list[str]:
     """The properties of v3.1 over what a case left: every event in a flow, a request a run closed carries it, an entry
     in at most one batch that ended, nothing said over his resumed voice, no turn past its maximum, and — once the
@@ -664,6 +699,7 @@ def check(case: Case) -> list[str]:
                 closed_at.get(req, r["accepted"]) < r["accepted"]:
             out.append(f"I9: {r['id']} was accepted after its request {req} had closed")
     out += _flows_batches_and_bounds(case, inbox_rows)
+    out += _stalled_while_he_spoke(case, inbox_rows)
     if case.old is None:
         out += _graces(case, inbox_rows)
     for rid, row in items.items():                                                     # I9

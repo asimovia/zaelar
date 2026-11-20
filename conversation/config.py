@@ -86,3 +86,12 @@ class Config:
     open_budget: int = 8
     #: the last turns of the conversation, literal.
     conversation_turns: int = 12
+
+    def misordered(self) -> list[str]:
+        """The graces only bound each other in this order (§1.6 quater: the model's reading never waits longer than
+        `incomplete_grace_ms` nor shorter than `complete_grace_ms`, and the hold for his voice outlasts them all):
+        complete ≤ terminal ≤ nonterminal ≤ incomplete ≤ resume_hold_max. The pairs out of order, by name — the host
+        refuses a configuration that has any."""
+        chain = ("complete_grace_ms", "terminal_grace_ms", "nonterminal_grace_ms", "incomplete_grace_ms",
+                 "resume_hold_max_ms")
+        return [f"{a} > {b}" for a, b in zip(chain, chain[1:]) if getattr(self, a) > getattr(self, b)]
