@@ -691,6 +691,8 @@ _PACKAGE_CEILINGS["voice"] += 61           # same: an echo never cuts our line (
 _TOTAL_MAX += 222    # same cause, with the packs' `listening`
 _PACKAGE_CEILINGS["conversation"] += 5     # 2026-11-20 V2-941 v3.1 TK-3 lever: a derived result rounded to two significant digits at least (`DERIVED_MIN_SIG`)
 _TOTAL_MAX += 5      # same cause
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 3     # 2026-11-20 V2-941 v3.1 TK-1b: our answer re-anchors his attention window as it starts
+_TOTAL_MAX += 3      # same cause
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

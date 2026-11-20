@@ -40,6 +40,9 @@ def speak(order, ack) -> bool:
     from voice import attention
     guards.said(order.text)                    # what the echo guard compares his next words against
     attention.note_reply(order.text)           # our reply sizes the window it re-anchors when it ends
+    if not getattr(order, "notice_key", None):  # our ANSWER to a turn of his re-anchors the window as it starts: a
+        attention.note_directed()               # reply that took longer than the window to begin never leaves his
+                                                # next sentence `not_addressed` (the old turn does it at every chunk)
 
     async def play() -> None:
         payload["env"] = cl.env_diff()         # on the body's loop, the one that keeps what was sent

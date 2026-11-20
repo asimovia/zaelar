@@ -344,3 +344,39 @@ def test_a_spoken_stop_is_never_told_to_the_model_as_a_voice_it_lost(store):
     h.settle(3000)
     state = h.model.calls[-1].prompt.state
     assert "VOICE LOST" not in state and "iv_000001" not in state
+
+
+@pytest.mark.parametrize("latency_s, reply_s", [(6, 3), (12, 3), (6, 10), (12, 10)])
+def test_his_follow_up_after_a_slow_reply_is_heard(real_attention, monkeypatch, latency_s, reply_s):
+    """TK-1b: a reply that READ (the read budget is 12 s) began after the 5 s window had closed, so `note_bot_speech`
+    held nothing and his next sentence without the name was `not_addressed`. Our answer re-anchors the window as it
+    starts; its end re-anchors it again."""
+    import asyncio
+    import threading
+    import time
+    from types import SimpleNamespace
+    from nucleo.conversation_host import voice_mouth
+    loop = asyncio.new_event_loop()
+    threading.Thread(target=loop.run_forever, daemon=True).start()
+
+    class _Client:
+        _loop = loop
+
+        def env_diff(self):
+            return {}
+
+        async def say_stream(self, payload):
+            yield {"id": "x"}
+            yield {"done": True, "spoken_chars": 2}
+    monkeypatch.setattr(voice_mouth, "_live", lambda: _Client())
+    now = time.time()
+    assert guards.judge("Wzael w1 w2", now=now - latency_s) is None              # his turn, addressed by name
+    try:
+        assert voice_mouth.speak(SimpleNamespace(text="w9", say_id="s1", endpoint="holder", notice_key=None),
+                                 lambda sig: None)
+    finally:
+        loop.call_soon_threadsafe(loop.stop)
+    for n, (speaking, at) in enumerate(((True, now), (False, now + reply_s)), start=1):
+        ear_in.receive({"t": "playback", "stream": "holder", "speaking": speaking, "t_ms": int(at * 1000),
+                        "boot": "b", "seq": n}, lambda s: None)
+    assert guards.judge("w3 w4", now=now + reply_s + 1) is None                  # his follow-up, a second after
