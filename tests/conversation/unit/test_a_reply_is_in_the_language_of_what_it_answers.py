@@ -23,7 +23,8 @@ from tests.conversation.unit.convkit import Harness
 @pytest.fixture
 def memory_facts(monkeypatch):
     from memory import api as memory
-    monkeypatch.setattr(memory, "state", lambda: {"treatment": "w_tu", "location": "w_city", "operator_name": "Quinn"})
+    monkeypatch.setattr(memory, "state", lambda: {"treatment": "w_tu", "location": "w_city", "operator_name": "Quinn",
+                                                    "mission": "w_mission"})   # the agent's identity: never STATE
     monkeypatch.setattr(memory, "critical_facts", lambda limit=8: ["w_allergy"])
     monkeypatch.setattr(memory, "salient_long", lambda limit=8, max_chars=800: [
         {"text": "le gusta el café solo", "kind": "fact"}, {"text": "w_errand", "kind": "request"}])

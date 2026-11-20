@@ -28,8 +28,8 @@ CHARS_PER_TOKEN = 4
 
 def _state() -> str:
     """What the memory knows that is not the conversation, as FACTS with plain labels: how he likes to be treated,
-    where he is, the critical facts, the mission, the salient things and the errands. Never the old turn's composed
-    block — its headings, its instructions to the model and its copy of the conversation (the manager has its own
+    where he is, the critical facts, the salient things and the errands (the agent's own identity is the prefix's, never
+    a fact of his). Never the old turn's composed block — its headings, its instructions to the model and its copy of the conversation (the manager has its own
     CONVERSATION): its «you are called X» under «who is in front of you» made the model call him by the
     assistant's name, and its words in one language dragged the replies there."""
     from memory import api as memory
@@ -46,7 +46,7 @@ def _state() -> str:
 
 
 #: the memory state's fields this block reads, each with its label
-FIELDS = (("treatment", "treatment"), ("location", "location"), ("mission", "mission"))
+FIELDS = (("treatment", "treatment"), ("location", "location"))
 #: a salient memory's kind → its label: an errand is not a fact about him
 KIND_LABELS = {"request": "he asked", "result": "delivered"}
 
