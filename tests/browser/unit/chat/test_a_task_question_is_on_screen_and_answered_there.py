@@ -140,6 +140,26 @@ def _until_lines(pg, pred, what):
     return until_sync(lambda: (lambda xs: (xs,) if pred(xs) else None)(_lines(pg)), what, timeout_s=10)[0]
 
 
+def _until_posts(pg, eng, n, what):
+    """Wait for the n-th answer POST. The route that records it runs only while Playwright is called, so every poll
+    hands Playwright a moment (`wait_for_timeout`); a bare check of `eng.posts` would wait for a handler nobody runs."""
+    until_sync(lambda: pg.wait_for_timeout(20) or len(eng.posts) >= n, what, timeout_s=10)
+
+
+def _until_reads_settle(pg, eng, quiet_polls=6):
+    """Wait until the panel stops re-reading `/api/tasks`. Entering a tab fires several reads; one still queued at the
+    route is answered during the next Playwright call and redraws the rows, so a `fill` made before it lands in an input
+    that is then replaced, and the click sends nothing."""
+    seen = {"n": -1, "same": 0}
+
+    def quiet():
+        pg.wait_for_timeout(50)
+        seen["same"] = seen["same"] + 1 if eng.task_reads == seen["n"] else 0
+        seen["n"] = eng.task_reads
+        return seen["same"] >= quiet_polls
+    until_sync(quiet, "the task reads to settle", timeout_s=10)
+
+
 def test_the_ask_event_draws_the_question_on_the_wall(open_wall):
     eng = _Engine()
     pg = open_wall(eng)
@@ -169,13 +189,13 @@ def test_answering_posts_the_task_and_its_ask_id(open_wall):
     _until_lines(pg, lambda xs: len(xs) == 2, "two lines")
     pg.fill('.tq-wall .tq[data-task="T1"] .tq-input', "Cuatro")
     pg.click('.tq-wall .tq[data-task="T1"] .tq-send')
-    until_sync(lambda: len(eng.posts) == 1, "the answer POST", timeout_s=10)
+    _until_posts(pg, eng, 1, "the answer POST")
     assert eng.posts[0] == ("T1", {"ask_id": "A1", "text": "Cuatro"})
     xs = _until_lines(pg, lambda xs: any("Cuatro" in x["text"] and not x["opts"] for x in xs if x["task"] == "T1"),
                       "the line saying it was answered")
     assert _ES["chat.askSent"].replace("{text}", "Cuatro") in [x for x in xs if x["task"] == "T1"][0]["text"]
     pg.click('.tq-wall .tq[data-task="T2"] .tq-opt >> text=Martes')
-    until_sync(lambda: len(eng.posts) == 2, "the quick answer POST", timeout_s=10)
+    _until_posts(pg, eng, 2, "the quick answer POST")
     assert eng.posts[1] == ("T2", {"ask_id": "B7", "text": "Martes"}), "a quick answer names its own task and question"
     assert not pg._errors, pg._errors
 
@@ -223,9 +243,10 @@ def test_a_reload_brings_the_open_questions_back_from_the_rows(open_wall):
              asks: [...r.querySelectorAll('.tq')].map(n => n.dataset.ask) }))""")), "three process rows", timeout_s=10)
     got = {r["goal"]: r["asks"] for r in rows}
     assert got == {"Reservar mesa en Casa Lola": ["A1"], "Avisar a Raquel": ["B1"], "Buscar piso": []}
+    _until_reads_settle(pg, eng)
     pg.fill('.cw-proc-row .tq[data-ask="B1"] .tq-input', "Sí")
     pg.click('.cw-proc-row .tq[data-ask="B1"] .tq-send')
-    until_sync(lambda: eng.posts, "the answer from the processes panel", timeout_s=10)
+    _until_posts(pg, eng, 1, "the answer from the processes panel")
     assert eng.posts[0] == ("T2", {"ask_id": "B1", "text": "Sí"})
     assert not pg._errors, pg._errors
 
