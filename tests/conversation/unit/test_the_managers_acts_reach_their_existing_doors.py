@@ -98,7 +98,7 @@ def test_every_run_carries_what_is_open_the_widget_in_front_and_an_index_and_rea
     from nucleo import canvas_focus
     from nucleo.conversation_host import memory_read
     from nucleo.flash import show_target, widget_read
-    assert [t for t, _r in memory_read.READERS] == ["DAYS", "TASKS", "DRAFT", "FRONT", "STATE", "WIDGETS"]
+    assert [t for t, _r in memory_read.READERS] == ["DAYS", "TASKS", "DRAFT", "PRESENT", "FRONT", "STATE", "WIDGETS"]
     monkeypatch.setattr(canvas_focus, "phone_front", lambda: None)
     monkeypatch.setattr(widget_read, "read", lambda wid: f"w_holds of {wid}")
     monkeypatch.setattr(show_target, "at_full_screen", lambda: "")

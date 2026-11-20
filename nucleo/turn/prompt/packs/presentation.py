@@ -14,28 +14,10 @@ flag too.
 """
 from __future__ import annotations
 
-from loguru import logger
-
-FLAG = "intro_presentation_said"
+from nucleo.self.presentation import FLAG, said, text  # noqa: E402,F401 — one home for both turn paths
 
 #: The TRACE of the turn whose block carried the presentation; that turn's close settles it.
 _pending = ""
-
-
-def said() -> bool:
-    try:
-        from config import settings
-        return bool(settings.get(FLAG))
-    except Exception as e:  # noqa: BLE001 — unreadable: never repeat it on a guess
-        logger.debug(f"presentation: {FLAG} unreadable ({e!r})")
-        return True
-
-
-def text(name: str) -> str:
-    """The presentation in the active language with `name` in it ('' when no pack carries one)."""
-    from i18n import langs as _lg
-    tpl = str(_lg.words("introduction.presentation", default="") or "")
-    return tpl.replace("{name}", name) if tpl else ""
 
 
 def line(name: str, first: bool, trace: str) -> str:
@@ -61,15 +43,5 @@ def settle(payload, name: str) -> bool:
     win = (payload or {}).get("window") if isinstance(payload, dict) else None
     last = ((win or [])[-1:] or [{}])[0] or {}
     reply = str(last.get("text") or "") if last.get("role") == "assistant" else ""
-    from nucleo.turn import identity as _identity
-    if not reply or not _identity.sentences_with(name, reply):
-        return False                    # it did not present itself: the presentation rides the next turn
-    try:
-        from config import settings
-        from nucleo.turn.prompt.packs import introduction as _intro
-        settings.update({FLAG: True, _intro.OFFER_FLAG: True})
-        logger.info("context_packs.introduction: the first-run presentation has been said")
-        return True
-    except Exception as e:  # noqa: BLE001
-        logger.warning(f"presentation: could not persist {FLAG}: {e!r}")
-        return False
+    from nucleo.self import presentation as _said_once
+    return _said_once.settle(reply, name)

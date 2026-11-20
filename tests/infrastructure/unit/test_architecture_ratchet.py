@@ -798,6 +798,10 @@ _TOTAL_MAX += 161    # same causes, measured
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 28  # 2026-11-20 INI-078 F2 step 7c (row 13): the listings hunt as a task act (`acts_tasks._listings`): his words to `search_listing.hunt` on the engine's loop, the fact and the rows with their evidence back to the model
 _PACKAGE_CEILINGS["nucleo/acts"] += 13   # same: `search_listing.hunt`, the hunt with no face both channels run (`listings` keeps the old turn's face on top of it)
 _TOTAL_MAX += 46     # same causes, measured
+_PACKAGE_CEILINGS["nucleo/self"] += 63   # 2026-11-20 INI-078 F2 step 7c (row 10): the first-run presentation's one home for both turn paths (`nucleo/self/presentation.py`: said, its words, owed, settled by a reply that names the agent) — MOVED out of `nucleo/turn/prompt/packs/presentation.py`
+_PACKAGE_CEILINGS["nucleo/turn"] -= 28   # same: the old pack reads the presentation from its new home
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 18  # same: the manager carries it as a PRESENT block while owed and settles it at the batch's record
+_TOTAL_MAX += 53     # same causes, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

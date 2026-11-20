@@ -179,10 +179,19 @@ def _tasks() -> str:
     return "\n".join(lines[:14])
 
 
+def _present() -> str:
+    """The first-run presentation while it is owed (V2-929: once per install, language data), framed by its declared
+    fact; nothing once said."""
+    from nucleo.conversation_host.declared import declared
+    from nucleo.self import presentation, snapshot
+    words = presentation.pending(snapshot.name())
+    return f"{declared()['presentation']}: «{words}»" if words else ""
+
+
 #: what every run carries, in this order: what is open first, the dates beside NOW, the widget in front, then the
 #: facts and the index
-READERS = (("DAYS", _days), ("TASKS", _tasks), ("DRAFT", _draft), ("FRONT", _front), ("STATE", _state),
-           ("WIDGETS", _widgets))
+READERS = (("DAYS", _days), ("TASKS", _tasks), ("DRAFT", _draft), ("PRESENT", _present), ("FRONT", _front),
+           ("STATE", _state), ("WIDGETS", _widgets))
 #: the readers of the topics `declared.json` declares (`state_topics`): read only when the model asks
 def _network() -> str:
     from nucleo.conversation_host.acts_network import network_facts

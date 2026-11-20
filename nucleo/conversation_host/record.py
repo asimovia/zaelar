@@ -13,6 +13,15 @@ class MemoryRecord:
         memory.write(f"Operador: {said[:200]} · zaelar: {answered[:200]}", kind="conv", level="short", importance=0.2,
                      ttl_days=2.0, meta={"source": "conv", "u": said[:400], "a": answered[:400], "conv": ref})
         _ingest(said, channel)
+        _presented(answered)
+
+
+def _presented(answered: str) -> None:
+    """A reply while the first-run presentation is owed: said for good when it named the agent (V2-929)."""
+    from nucleo.self import presentation, snapshot
+    name = snapshot.name()
+    if presentation.pending(name):
+        presentation.settle(answered, name)
 
 
 def _ingest(said: str, channel: str) -> None:

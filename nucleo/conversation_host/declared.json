@@ -841,5 +841,6 @@
   "stop_media": "he asks to stop what is playing: it stops, nothing else",
   "stop_run": "he asks you to stop or cancel what you are doing: your voice stops, this answer is dropped",
   "stop_all": "he asks to stop everything: your voice, what plays, his errands"
- }
+ },
+ "presentation": "owed once on this install, never said yet: say it nearly as written, in his language, beside whatever else you answer; when you already know his name, greet him by it instead of asking"
 }

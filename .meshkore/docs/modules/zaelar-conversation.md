@@ -126,7 +126,10 @@ too (`acts_network.py`): a cluster joined after his yes on the Clusters tab's ro
 tag door (said as sent only when it left), a collaboration's goal, his friends' agents by name; what the network holds
 is the `network` topic of `read_state`. A listings hunt is the one hunt the old turn runs too
 (`search_listing.hunt`): the rows on his results sheet, the deep search started by itself when they are too few, and
-the fact — how many, the rows with their evidence — said by the model. Each tool's class is derived
+the fact — how many, the rows with their evidence — said by the model. The first-run presentation (once per install,
+language data, `nucleo/self/presentation.py`) rides every run as a PRESENT block while it is owed, and the batch whose
+reply named the agent settles it; the rest of the old introduction phase (its prose, its judge, the greeting) is not
+carried. Each tool's class is derived
 from what it declares, never listed; a door that fails is a result the model sees. The state comes from the engine's
 own readers, each bounded within `state_tokens`, writing nothing. Every run carries what is open first (the tasks,
 a message draft), the next days beside NOW, the widget in front (at full screen, in front on a phone, else the newest

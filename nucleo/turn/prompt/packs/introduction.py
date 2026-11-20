@@ -33,7 +33,7 @@ from loguru import logger
 FLAG = "intro_done"
 #: A7 (2026-11-12) — the phase's second fact, persisted beside the first: he was told, once, that the agent's name
 #: and voice are his to change. The phase does not close until both are true (his name known, this told).
-OFFER_FLAG = "intro_offer_told"
+from nucleo.self.presentation import OFFER_FLAG  # noqa: E402 — the presentation settles it too
 
 # V2-737 — the public guide, verified live (2026-09-20: both answer 200). The agent may leave it in the
 # chat, where a URL renders as a real link since V2-736 — before that it was text he had to copy by hand,
