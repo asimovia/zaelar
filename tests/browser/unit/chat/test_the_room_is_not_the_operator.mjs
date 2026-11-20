@@ -119,7 +119,7 @@ function harness(mode = "smart", holdMs = 40) {
   const { readFileSync } = await import("node:fs");
   const src = readFileSync(new URL("../../../../frontend/app/services/sse.js", import.meta.url), "utf8");
   assert.ok(src.includes("createAttentionHold("), "sse.js no longer builds the hold");
-  assert.ok(src.includes("holdSpokenTurn(desktop, d.text, isFinal)"),
+  assert.ok(src.includes("holdSpokenTurn(desktop, d.text, isFinal, d.t_ms)"),
     "spoken transcripts must go through the hold, not straight to the wall");
   assert.ok(src.includes("settleHeldTurns(desktop, d.text || \"\", !!d.directed, { reason: d.reason || \"\" })"),
     "the gate's verdict must settle what is held");
@@ -193,7 +193,7 @@ function ringHarness(lit, ceilingMs = 10000) {
   const src = readFileSync(new URL("../../../../frontend/app/services/sse.js", import.meta.url), "utf8");
   assert.ok(/listening:\s*\(\)\s*=>\s*paintsProvisional\(store\.attentionMode\(\),\s*store\.attentionHit\(\)\)/.test(src),
     "the hold must ask the ORB whether it may fail open");
-  assert.ok(/holdSpokenTurn\(desktop, d\.text, isFinal\);[\s\S]{0,400}if \(paintsProvisional\(store\.attentionMode\(\), store\.attentionHit\(\)\)\) captionPartial\(""\);/.test(src),
+  assert.ok(/holdSpokenTurn\(desktop, d\.text, isFinal, d\.t_ms\);[\s\S]{0,400}if \(paintsProvisional\(store\.attentionMode\(\), store\.attentionHit\(\)\)\) captionPartial\(""\);/.test(src),
     "the FINAL segment rewrote the caption with the ring off — the dashed line of his screenshot");
 }
 

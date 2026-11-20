@@ -61,7 +61,7 @@ const _hold = createAttentionHold({
 
 // `desktop` stays in both signatures: the canvas is no longer driven from here (V2-807 T-05), but the callers
 // and their contract tests name it.
-export function holdSpokenTurn(desktop, text, isFinal) { _hold.spoken(text, isFinal); }
+export function holdSpokenTurn(desktop, text, isFinal, at) { _hold.spoken(text, isFinal, at); }   // `at`: the final's own t_ms
 // V2-743 — the interim seam, the same shape as the two above: a thin exported door the `interim` branch of
 // `onmessage` calls, so the test drives the PRODUCTION path instead of a copy of it (node 4.199).
 //
@@ -297,7 +297,7 @@ export function routeEvent(desktop, d) {
         else {
           // The FINAL firms up his line while the verdict is pending. ORDER MATTERS (V2-745): hold FIRST, then read
           // the line back out of it — `spokenSoFar()` already includes this segment.
-          holdSpokenTurn(desktop, d.text, isFinal);
+          holdSpokenTurn(desktop, d.text, isFinal, d.t_ms);
           // V2-763 — the SAME rule as the interim branch above. Ungated here, a final segment rewrote the
           // caption with everything held so far while the ring was off: the dashed «he is being heard» line
           // of his 2026-09-24 screenshot, over a grey orb, for a monologue the gate had ruled ambient.
