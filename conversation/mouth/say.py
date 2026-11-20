@@ -4,7 +4,7 @@
 has two verbs, say and stop. The acks come back as signals: `SayStarted`, and `SayEnded` (played · cut · cleared ·
 unknown) with how much was heard and where that comes from: `agent_estimate` (the voice process's count of what it
 spoke), `shown` (a text line painted on a screen the person is looking at), or `unknown`. Nothing is ever assumed
-heard: a line with no count stays «heard: unknown» in the conversation the model reads. A cut keeps what was heard,
+heard: a line with no count is not in the conversation the model reads (never pronounced). A cut keeps what was heard,
 trimmed back to the last sentence boundary inside it; cutting our voice never touches the record of an action.
 
 Every event of a line carries its trace: the root of the request it answers, or the key of the line owed it says. A

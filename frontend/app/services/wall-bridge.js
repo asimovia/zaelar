@@ -28,9 +28,12 @@ export function createWallBridge({ mount, device, labels = {}, renderers = {}, s
   const writers = new Map();
   const writer = (owner) => writers.get(owner) || writers.set(owner, wall.writer(owner)).get(owner);
   const open = new Map();               // a line of his still open (ear:*) → [its writer, its last news]
+  let saying = null;                    // our line its voice is saying: { id, text, heard } — it grows as it sounds
   function apply(owner, op) {
     const r = writer(String(owner)).apply(op);
     if (r && r.ok && op.op === "append" && !String(owner).startsWith("legacy:")) legacy.seen(op);
+    if (owner === "mouth" && r && r.ok && op.op === "append" && op.state === "live") saying = { id: op.id, text: String(op.text || ""), heard: 0 };
+    if (owner === "mouth" && saying && op.id === saying.id && op.state === "final") saying = null;   // cut or done: frozen there
     if (String(owner).startsWith("ear:")) {
       if (op.op === "delete" || op.state === "final") open.delete(op.id);
       else open.set(op.id, [owner, now()]);
@@ -53,6 +56,11 @@ export function createWallBridge({ mount, device, labels = {}, renderers = {}, s
       return true;
     },
     submit: (text, extra) => wall.submit(text, extra),
+    /** The voice's audio-synced caption of our line (what he has HEARD so far): the line shows that much, word by word. */
+    heardAloud(text) {
+      const n = saying ? spokenChars(saying.text, text) : 0;
+      if (n > saying?.heard) { saying.heard = n; writer("mouth").apply({ op: "update", id: saying.id, heard: n }); }
+    },
     sweep,
     destroy() {
       clearInterval(sweeping);
@@ -74,6 +82,24 @@ export function routeWall(d) {
   if (early.length > EARLY_MAX) early.shift();
   return true;
 }
+
+/** How much of `line` the caption `heard` covers, in characters of `line`: its first words, compared word by word
+ *  (case and punctuation aside); 0 when the caption is not the beginning of this line (a filler, another line). */
+export function spokenChars(line, heard) {
+  const word = (w) => w.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+  const said = String(heard || "").split(/\s+/).map(word).filter(Boolean);
+  const re = /\S+/g;
+  let m, k = 0, end = 0;
+  while (k < said.length && (m = re.exec(String(line || "")))) {
+    if (!word(m[0])) { end = m.index + m[0].length; continue; }
+    if (word(m[0]) !== said[k]) return k ? end : 0;
+    k += 1; end = m.index + m[0].length;
+  }
+  return k ? end : 0;
+}
+
+/** The voice's caption of our line reaches the page's wall (`heardAloud`). */
+export const heardAloud = (text) => current && current.heardAloud(text);
 
 /** His typed line through the page's wall: the id it gets there is the one the engine acknowledges. Null: no wall. */
 export const submitLine = (text, extra) => (current ? current.submit(text, extra) : null);

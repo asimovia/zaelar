@@ -2,15 +2,17 @@
 hears and says, as actions with ids for the wall component (`frontend/chat-wall/`), one `wall` event each.
 
 Every action names its writer — the component sets a line's owner from it and refuses another's hand:
-  · `ear:<device>`      his spoken line, id = its intervention: `append` pending at its first words (shown dimmed:
-                        the guards have not judged it yet), `update` while he speaks (over the stream only, never stored:
+  · `ear:<device>`      his spoken line, id = its intervention: `append` pending at the instant his voice rises (its
+                        onset: a line's place is when it STARTS; empty it shows nothing, with words it is dimmed — the
+                        guards have not judged it yet), `update` while he speaks (over the stream only, never stored:
                         W-1), `update` final with the words the inbox accepted, `delete` when the ear discards it. A
                         successor opened inside one provider turn shows only its own words, never its predecessor's;
   · `keyboard:<device>` his typed line, id = the screen's own `cid` (the component's id for it): the same line on the
                         screen that typed it and on every other; a repeated `cid` is one line;
-  · `mouth`             our line, id = its say id, answering his (`re`): `append` live when its voice starts (or final
-                        when shown), `update` final with what sounded; a line that never started is never said to
-                        have sounded.
+  · `mouth`             our line, id = its say id, answering his (`re`): `append` live when its voice starts with
+                        nothing heard yet (`heard` 0 — the screen shows what has SOUNDED, word by word, from the
+                        voice's audio-synced captions), or final when shown; `update` final with what sounded; a
+                        line that never started is never said to have sounded.
 The package's telemetry carries no words: they come from the ear's own lane (`ear_in.receive` → `heard`), the inbox's
 acceptance and the mouth. A line still open when the session leaves the manager (it falls back to the old path, or the
 conversation is reset) is deleted then (`sweep`): nobody would ever close it.
@@ -93,6 +95,12 @@ def listen(kind: str, label: str, p: dict) -> None:
     if kind == "conv_ear" and label == "opened" and iv and refs.get("channel") == "voice":
         with _lock:                         # what was heard of each turn so far is its predecessor's
             _open[device], _turns[device], _before[device] = iv, {}, dict(_last.get(device, {}))
+            new = iv not in _lines
+            if new:
+                _keep(_lines, iv, f"ear:{device}")
+                _keep(_open_lines, iv, f"ear:{device}")
+        if new:                             # its place on the wall is the instant his voice rose
+            _say(f"ear:{device}", {"op": "append", "id": iv, "role": "you", "state": "pending", "text": ""})
     elif kind == "conv_ear" and label == "typed" and iv:
         cid = str((p.get("cause") or {}).get("ref") or "")
         if client_id_ok(cid):
@@ -152,7 +160,7 @@ def ours(order, event: str, heard_chars: int | None = None) -> None:
             _open_lines.pop(str(order.say_id), None)
     if event in ("shown", "started"):
         _say("mouth", {"op": "append", "id": order.say_id, "role": "agent", "re": re, "text": order.text,
-                       "state": "final" if event == "shown" else "live"})
+                       **({"state": "final"} if event == "shown" else {"state": "live", "heard": 0})})
         return
     op = {"op": "update", "id": order.say_id, "state": "final"}
     if heard_chars is not None:

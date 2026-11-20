@@ -45,6 +45,7 @@ JS_TOTAL_MAX += 27   # 2026-11-20 (4.603): the side panel's Apps tab as a compon
 JS_TOTAL_MAX += 21   # 2026-11-20 (4.604): the «Procesos» rows are kept by key and painted in place (`side/procesos/procesos.js`), so a refetch that lands while he types a task's answer no longer replaces the box and loses it
 JS_TOTAL_MAX += 1    # 2026-11-20 (4.607): a process entry keeps his question's slot by node across its repaints (`ProcessEntry.paintEntry`), so a process that moves while he types never replaces his answer box
 JS_TOTAL_MAX -= 187  # 2026-11-20 INI-042 #49 (4.611): the wall plan's commit 3/5 pays back the +156 and +31 of commits 1-2 — the store and the wall's rebuild gave way to the component, the old path's writer and its storage
+JS_TOTAL_MAX += 26   # 2026-11-20 INI-042 #49 (4.615, the operator): our line grows as it SOUNDS — the voice's audio-synced captions mapped onto it word by word (`wall-bridge.spokenChars`, `heardAloud`)
 
 
 def _ours(p: Path) -> bool:

@@ -18,7 +18,7 @@ export function createView({ list, renderers = {}, labels = {}, format = null, c
     const extra = classes ? classes(line) : "";
     el.className = `cw-line cw-${line.role} cw-${line.state}` + (line.restored ? " cw-restored" : "") + (extra ? " " + extra : "");
     el.dataset.state = line.state;
-    el.hidden = line.state === "pending" && !line.text;
+    el.hidden = line.role !== "box" && !shown(line, "");    // nothing said yet (his voice rising, ours not heard)
     if (line.role === "box") {
       const draw = renderers[line.kind];
       const inner = draw ? draw(line.data, (action) => onAction({ id: line.id, action }), line) : null;

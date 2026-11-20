@@ -302,10 +302,12 @@ class Conversation:
         free = self.state is MgrState.IDLE and self.current is None
         return free or (self.current is not None and self.current.parked is not None)
 
-    def _line_ended(self, _say_id: str) -> None:
-        """A line ended — played, cut, or unknown past its deadline: we are not speaking any more."""
+    def _line_ended(self, say_id: str) -> None:
+        """A line ended — played, cut, or unknown past its deadline: we are not speaking any more, and the pair it
+        answers goes to the record with what sounded of it."""
         if self.state is MgrState.SPEAKING:
             self.state = MgrState.IDLE
+        records.heard(self, say_id)
 
     def device(self, endpoint: str, **state) -> None:
         self.devices[endpoint] = Device(endpoint, **state)

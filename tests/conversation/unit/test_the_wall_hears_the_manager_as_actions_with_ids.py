@@ -1,13 +1,14 @@
 """The chat wall hears a session of the manager as actions with ids (node 13.119, V2-941, INI-042 #49, the wall plan
 §3 — commit 2/5).
 
-  · his spoken line: `append` pending at his first words (shown dimmed until the guards judge it; id = the
-    intervention, writer `ear:<device>`), `update` as he speaks — over the stream only, never stored (W-1) — `update` final with the words the inbox accepted; a line
-    the ear discards before it is final is deleted; one that never had live words is appended final;
+  · his spoken line: `append` pending at the instant his voice rises — empty: its place is where he STARTS (id = the
+    intervention, writer `ear:<device>`) — `update` with his words as he speaks (dimmed until judged), over the stream
+    only, never stored (W-1), `update` final with the words the inbox accepted; a line the ear discards before it is
+    final is deleted; one whose voice never opened here is appended final;
   · his typed line: id = the screen's own `cid` (`keyboard:<device>`), a malformed one replaced by the intervention;
     the `cid` travels from `POST /api/chat` to the manager's entry, which keeps a well-formed one and mints otherwise;
-  · our line: `append` live when its voice starts, answering his (`re`), `update` final with what sounded; shown, it
-    is final at once; one whose voice never started is on the wall whole, never said to have sounded.
+  · our line: `append` live when its voice starts, answering his (`re`), with NOTHING heard yet (`heard` 0: the screen
+    shows only what has sounded), `update` final with what sounded; shown, it is final at once; one whose voice never started is on the wall whole, never said to have sounded.
 
   · a successor opened inside one provider turn shows only its own words; a line still open when the session leaves
     the manager (a fallback, a reset) is deleted then — a final one stays.
@@ -50,20 +51,20 @@ def test_his_spoken_line_is_pending_then_final(ops):
     wall.listen("conv_inbox", "accepted", {"kind": "user.utterance", "text": "w1 w2 w3",
                                            "refs": {"iv": "iv_1", "endpoint": "holder", "channel": "voice"}})
     assert [(w, o["op"], o.get("state"), o.get("text"), live) for w, o, live in ops] == [
-        ("ear:holder", "append", "pending", "w1", False),
+        ("ear:holder", "append", "pending", "", False),           # at his onset: his place is when he STARTS
+        ("ear:holder", "update", None, "w1", True),
         ("ear:holder", "update", None, "w1 w2", True),
         ("ear:holder", "update", None, "w1 w2 w3", True),
         ("ear:holder", "update", "final", "w1 w2 w3", False)]
 
 
-def test_a_discarded_line_goes_and_one_with_no_live_words_is_appended_final(ops):
+def test_a_discarded_line_goes_and_one_whose_voice_never_opened_here_is_appended_final(ops):
     _ear("opened", "iv_1")
     wall.heard("holder", 1, "w1")
     _ear("discarded", "iv_1")
-    _ear("opened", "iv_2")
     wall.listen("conv_inbox", "accepted", {"kind": "user.utterance", "text": "w5",
                                            "refs": {"iv": "iv_2", "endpoint": "holder"}})
-    assert [(o["op"], o["id"], o.get("state")) for _w, o, _l in ops] == [
+    assert [(o["op"], o["id"], o.get("state")) for _w, o, _l in ops if o["op"] != "update"] == [
         ("append", "iv_1", "pending"), ("delete", "iv_1", None), ("append", "iv_2", "final")]
 
 
@@ -111,7 +112,8 @@ def test_our_line_answers_his_and_ends_as_it_sounded(ops):
     v.ack(SayStarted("s_1", 1))
     v.ack(SayEnded("s_1", "cut", 4, 2, "holder"))
     assert [(w, o) for w, o, _l in ops] == [
-        ("mouth", {"op": "append", "id": "s_1", "role": "agent", "re": ["iv_1"], "text": "w1 w2 w3", "state": "live"}),
+        ("mouth", {"op": "append", "id": "s_1", "role": "agent", "re": ["iv_1"], "text": "w1 w2 w3", "state": "live",
+                   "heard": 0}),
         ("mouth", {"op": "update", "id": "s_1", "state": "final", "heard": 4})]
     ops.clear()
     m2 = WallMouth(SimpleNamespace(now_ms=lambda: 5), voice=v, ack_later=lambda s: None)
@@ -132,7 +134,7 @@ def test_a_live_update_is_never_stored(monkeypatch):
     wall.heard("holder", 1, "w1 w2")
     stored = [e for e in observer.debug_events("wall") if e.get("op", {}).get("id") == "iv_1"]
     assert [e["op"]["op"] for e in stored] == ["append"]
-    assert [e["op"]["op"] for e in published if e.get("kind") == "wall"] == ["append", "update"]
+    assert [e["op"]["op"] for e in published if e.get("kind") == "wall"] == ["append", "update", "update"]
     wall._reset_for_tests()
 
 
@@ -166,7 +168,7 @@ def test_a_successor_shows_only_its_own_words(ops):
     wall.heard("holder", 1, "w1 w2 w3")
     wall.heard("holder", 2, "w4")
     assert [(o["op"], o["id"], o.get("text")) for _w, o, _l in ops if o["id"] == "iv_2"] == [
-        ("append", "iv_2", "w3"), ("update", "iv_2", "w3 w4")]
+        ("append", "iv_2", ""), ("update", "iv_2", "w3"), ("update", "iv_2", "w3 w4")]
 
 
 @pytest.mark.parametrize("leaves", ["fallback", "reset"])

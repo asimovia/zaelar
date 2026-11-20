@@ -2,7 +2,8 @@
 
 Two verbs, say and stop. What was heard comes with its source: `agent_estimate` (the voice process's count of what it
 spoke), `shown` (a text line painted on a screen the person is looking at) or `unknown`; a line whose count never came
-is «heard: unknown» in the conversation the model reads, never «heard»; a cut keeps what was heard, trimmed to the last
+is not in the conversation the model reads — what was never known to sound was never pronounced (the operator's
+rule, 2026-11-20) —; a cut keeps what was heard, trimmed to the last
 sentence end; a late ack after the end changes nothing; cutting our voice never touches the record of an action; the
 reply channels follow the table from the batch's channels and the device's state, never its content; a stop is an
 immediate event that carries the trace of the line it cuts. The conversation window is read from the person's entries
@@ -54,16 +55,16 @@ def _row(store, sid):
 
 def _heard(store) -> str:
     p = compose(view_from(store.snapshot(ACCT), prefix="", now_ms=0), (), Config())
-    return p.conversation[-1].text
+    return p.conversation[-1].text if p.conversation else ""
 
 
-def test_no_count_is_unknown_and_the_model_reads_it_so(store, clock, telemetry):
+def test_no_count_is_unknown_and_the_model_never_reads_it(store, clock, telemetry):
     sp, mouth, _ = _speaker(store, clock, telemetry)
     sid = _say(sp)
     sp.ack(SayStarted(sid, 10))
     sp.ack(SayEnded(sid, "played", None, 900, "d1", "unknown"))
     assert _row(store, sid)["heard_chars"] is None and _row(store, sid)["heard_source"] == "unknown"
-    assert _heard(store).endswith("[heard: unknown]")
+    assert _heard(store) == "", "a line whose sound is unknown is not in the conversation"
     assert mouth.orders[0].say_id == sid
 
 

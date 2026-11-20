@@ -3,7 +3,7 @@
 Snapshots in Spanish and English of the same state: every id appears once across the state and the input; OPEN holds
 what is open in the ledger — the person's requests, a reserved effect — newest first under a budget, the rest counted;
 what the host keeps (its tasks, what it owes) comes as its own blocks after OPEN, never copied into the ledger; our
-lines in the conversation are cut to what was heard, and «heard: unknown» is said, never assumed; the prefix is
+lines in the conversation are cut to what was heard, and one whose sound is unknown is not there (never pronounced); the prefix is
 byte-identical between runs; composing twice gives the same prompt. The view is read from a real store snapshot, so
 the test also proves the composer needs nothing else.
 """
@@ -81,7 +81,7 @@ def _compose(store, turns, lang, cfg=Config()):
 def test_the_spanish_snapshot(store):
     p = _compose(store, ES_TURNS, "es")
     assert p.state == EXPECTED_ES
-    assert [t.text for t in p.conversation] == ["w0001 w0002", "Te lo miro ah", "Hecho. [heard: unknown]"]
+    assert [t.text for t in p.conversation] == ["w0001 w0002", "Te lo miro ah"]
     assert p.input == ("INPUT\n[iv7 · voice · 08:00:00] «w0701 w0702»\n[iv8 · text · 08:00:00] «w0801»\n"
                        "[iv9 · voice · 08:00:02 · cut off · amends iv7] «w0601»")      # facts, never «closed»
 
@@ -89,7 +89,7 @@ def test_the_spanish_snapshot(store):
 def test_the_english_snapshot_has_the_same_shape(store):
     p = _compose(store, EN_TURNS, "en")
     assert p.state == EXPECTED_ES.replace("lang: es", "lang: en")
-    assert [t.text for t in p.conversation] == ["w0001 w0002", "Let me ch", "Done. [heard: unknown]"]
+    assert [t.text for t in p.conversation] == ["w0001 w0002", "Let me ch"]
 
 
 def test_every_id_appears_once(store):

@@ -757,6 +757,9 @@ _TOTAL_MAX += 29     # same cause, measured
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 48    # 2026-11-20 V2-941 + INI-042 #49 (the wall plan commits 3-4/5, the review's F3-1/F3-2 and minors): his spoken line pending until accepted, a successor without its predecessor's words, the open lines swept when the session leaves the manager (`wall.sweep`), the old wall's events of a session of the manager marked `conv`
 _PACKAGE_CEILINGS["voice"] += 9                        # same cause: the replayed provider words, a typed line's announcement (with its `cid`) and the manager's notice card, marked
 _TOTAL_MAX += 57     # same cause, measured
+_PACKAGE_CEILINGS["conversation"] += 27                # 2026-11-20 V2-941 (the operator's rule: what was never pronounced does not exist): the record is owed when our line ends, with what sounded (`record.heard`); a line of unknown sound is not in the input
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 8     # same cause: his line appended at his onset, ours started with nothing heard
+_TOTAL_MAX += 35     # same cause, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

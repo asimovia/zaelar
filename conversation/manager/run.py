@@ -716,7 +716,7 @@ async def _publish(conv: "Conversation", r: "Running", batch: Batch, text: str, 
     t_say = conv.clock.mono_ms()
     if "parked_at" in r.stages:
         r.stages["grace_wait_ms"] = max(0, conv.clock.now_ms() - r.stages.pop("parked_at"))
-    await conv.speaker.say(run_id=r.run_id, request_id=r.ctx.request_id, text=text, channels=reply.channels,
+    say_id = await conv.speaker.say(run_id=r.run_id, request_id=r.ctx.request_id, text=text, channels=reply.channels,
                            endpoint=r.ctx.endpoint, trace=r.trace,
                            iv=next(iter(r.ctx.batch.values())).refs.intervention_id if r.ctx.batch else None,
                            origin=r.origin)
@@ -727,7 +727,7 @@ async def _publish(conv: "Conversation", r: "Running", batch: Batch, text: str, 
     conv.inbox.account(list(r.batch_ids), "told", conv.clock.now_ms())
     _emit(conv, "ended", r, outcome="failed" if lost else "answered", requests=len(r.requests),   # one close per
           **({"reason": r.lost, "said": True} if lost else {}))                                  # request, its req
-    records.owe(conv, r.run_id, batch.envelopes, text)
+    records.owe(conv, r.run_id, batch.envelopes, say_id)   # with what SOUNDED of it, when it ends
 
 
 async def _listening(conv: "Conversation", r: "Running", batch: Batch, steps: int) -> bool:

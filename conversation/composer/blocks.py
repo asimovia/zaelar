@@ -88,8 +88,8 @@ def cut_to_heard(turns: list[dict], keep: int, now_ms: int | None = None, gap_ms
     for i, t in enumerate(turns):
         text = t["text"]
         if t["role"] == "agent":
-            heard = t.get("heard_chars")
-            text = f"{text} [heard: unknown]" if heard is None else text[:heard]
+            heard = t.get("heard_chars")       # what SOUNDED: a line whose sound is unknown was never pronounced
+            text = "" if heard is None else text[:heard]
             if not text:
                 continue
         if i <= edge and t.get("at") is not None:
