@@ -13,6 +13,10 @@
   figures.py  the figures a tool's output carries, as numbers: what a text evidence holds
   memory_read.py the `Memory` port: the state the way the rest of the engine reads it, writing nothing
   record.py   the `Record` port: each answered pair in the engine's `kind='conv'` record
+  telemetry.py the `Telemetry` port: every event to the engine's observer (a relay on the architecture map)
+  mouth.py    the `Mouth` port, its text half: a line on the chat wall, acknowledged as shown
+  boot.py     the account's conversation, built with the engine's ports, in its own thread
+  entry.py    the funnel: a typed line of a switched session enters here, with the guards every entry shares
 
 Nothing of the engine imports this package while the conversation is switched off.
 """

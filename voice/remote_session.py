@@ -178,6 +178,16 @@ class RemoteSession:
         """`cut_speech`: the voice process interrupts the speech sounding now, then queues this reply — one request,
         so the cut can never land on the reply it precedes (`agent_events._inject_typed`)."""
         from voice import screens
+        from nucleo.conversation_host import switch as _conv_switch   # off, the manager is never loaded
+        if _conv_switch.on(self):
+            # THE NET: a door nobody diverted reached the old turn. In a session of the manager it opens no LiveKit
+            # turn and the line is not lost: counted, said, and handed to the manager's funnel.
+            from nucleo.conversation_host import boot, entry, proof
+            from voice import observer
+            proof.note(boot.account(), "legacy_turn_attempts")
+            observer.emit("alert", "a line reached the old turn in a session of the manager", text=user_input[:200])
+            entry.typed(user_input, screens.ORIGIN.get() or "")
+            return
         self.client.post_soon("/voice/reply", {"text": user_input, "origin": screens.ORIGIN.get(),
                                                "allow_interruptions": allow_interruptions,
                                                **({"cut": True} if cut_speech else {}),

@@ -22,6 +22,16 @@ override), read at each reply through the `Prefs` port. That row and its knob ex
 manager switched on: off, the rules panel and the rule shaper see nothing new. `GET /api/debug/conversation/<session>` reads the proof of a
 switched session: the runs the manager started, and what would mean another owner of the turn, which must stay at 0.
 
+Every line of a switched session enters by one funnel (`entry.py`). A typed line — the voice holder's data channel,
+`/api/chat` from another screen, the text channel — is handed to the account's conversation in its thread, and not to
+the old typed lane: the inbox is its only order, so there is no second wait behind a voice. The text channel answers
+in its own shape with the request's ids. The guards every entry shares live there once: a `LOG:` line is a note, a
+stopped engine takes nothing — checked off the caller's loop, since reading the engine's state can wait on the shared
+database lock; for the same reason the account's conversation opens on a thread of its own, and lines handed while it
+opens wait in order. And a net: a line that still reaches the old turn's reply in a switched session opens
+no turn — it is counted, said as an alert, and handed to the funnel. Until the voice half of the mouth, a reply is
+shown on the chat wall.
+
 The model is the voice's model from the routing table, called through the engine's fast client (`model.py`); its
 two orders, `reply(text, claims, complete)` and `no_reply(reason, complete)`, are tools of its own beside the
 catalogue. Its prefix (`prefix.py`) only declares: the language it writes in, what it may read, that it may not act,

@@ -7,8 +7,9 @@
   commit_user_turn      calls to the speech session's own turn commit         (the voice adapter)
   effects_outside_read  anything but a read the manager's gateway let through (its `conv_effect` events)
   held_dispatch_attempts outside writes the hold stopped                      (the exit's own counter, by session)
+  legacy_turn_attempts  a line that reached the old turn's reply in a switched session (the net, B5)
 
-The exit gate: `manager_runs > 0` and the four that would mean another owner at 0. `GET
+The exit gate: `manager_runs > 0` and the five that would mean another owner at 0. `GET
 /api/debug/conversation/<session>` answers with `report(session)`; it reads only.
 """
 from __future__ import annotations
@@ -16,10 +17,10 @@ from __future__ import annotations
 import threading
 
 COUNTERS = ("manager_runs", "livekit_turns", "legacy_prompts", "commit_user_turn", "effects_outside_read",
-            "held_dispatch_attempts")
+            "held_dispatch_attempts", "legacy_turn_attempts")
 #: the gateway's labels for an effect that got past it: reserved, or sent (a read is `read`; a refusal, `refused`)
 REACHED_OUT = ("claimed", "submitted")
-MUST_BE_ZERO = ("livekit_turns", "legacy_prompts", "commit_user_turn", "effects_outside_read")
+MUST_BE_ZERO = ("livekit_turns", "legacy_prompts", "commit_user_turn", "effects_outside_read", "legacy_turn_attempts")
 
 _lock = threading.Lock()
 _by_session: dict[str, dict[str, int]] = {}

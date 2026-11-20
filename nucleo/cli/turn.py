@@ -116,6 +116,10 @@ async def run_turn(text: str, *, sid: str = "default", ingest: bool = True, mode
     text = (text or "").strip()
     if not text:
         return {"ok": False, "error": "texto vacío"}
+    from nucleo.conversation_host import switch as _conv_switch   # the switch alone: off, the manager is never loaded
+    if _conv_switch.on():
+        from nucleo.conversation_host import entry as _conv_entry
+        return await _conv_entry.typed_and_wait(text, dev=f"text:{sid}")
     brain = _brain(sid)
     brain._turn_failed = ""
     attention.note_typed(text=text)          # a typed line: directed, complete, never ambient — and no window (V2-852 T01)

@@ -580,6 +580,10 @@ _PACKAGE_CEILINGS["memory"] += 35          # same: the indexed scan by state, th
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 22    # same: the reply's loose figures counted, the store's view
 _PACKAGE_CEILINGS["rules"] += 18           # same: the conversation's preferences only for an account with the manager switched on
 _TOTAL_MAX += 179    # same cause, with the conversation's preferences only for a switched account (rules)
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 264    # 2026-11-20 V2-941 v3.1 B5 (+47 opening off the loop): the funnel (typed lines and their guards, a waiter for the text channel), the boot with the engine's ports, the observer relay, the wall half of the mouth, the switch decided once per session
+_PACKAGE_CEILINGS["nucleo/cli"] += 3       # same: the text channel's divert, behind the switch
+_PACKAGE_CEILINGS["voice"] += 15           # same: the old reply's net and the data channel's divert, behind the switch
+_TOTAL_MAX += 283    # same cause
 
 
 def test_the_total_only_shrinks():

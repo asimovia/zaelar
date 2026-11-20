@@ -68,3 +68,18 @@ def decide(session: str | bool | None = None) -> Decision:
         return Decision(False, by)
     why = refused()
     return Decision(not why, by, why)
+
+
+def on(session=None) -> bool:
+    """The door's question: does this line go by the manager? Decided ONCE per session (kept on the session object;
+    the session's own `conv` flag, if it carries one, says first); with no session, the account's decision. A
+    session asked for the manager and refused says why, once, as an alert."""
+    got = getattr(session, "_conversation_switch", None) if session is not None else None
+    if got is None:
+        got = decide(getattr(session, "conv_flag", None) if session is not None else None)
+        if session is not None and hasattr(session, "__dict__"):   # one with no attributes is decided at every line
+            session._conversation_switch = got
+        if got.why and (session is None or getattr(session, "_conversation_switch", None) is got):
+            from voice import observer
+            observer.emit("alert", "conversation manager refused", text=got.why, extra={"by": got.by})
+    return got.on

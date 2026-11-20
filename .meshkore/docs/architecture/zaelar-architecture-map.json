@@ -2397,7 +2397,9 @@
   "bus/__init__.py",
   "bus/sse.py",
   "bus/log.py",
-  "observability/pieces.py"
+  "observability/pieces.py",
+  "conversation/telemetry.py",
+  "nucleo/conversation_host/telemetry.py"
  ],
  "_relays": "Modules that CARRY the event stream: an event passes through them and is never from them (observability/pieces.py reads the first frame outside these as the emitter)."
 }

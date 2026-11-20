@@ -77,6 +77,9 @@ class ConversationRuntime:
         if self._thread is not None:
             self._thread.join(timeout_s)
 
+    def alive(self) -> bool:
+        return self._thread is not None and self._thread.is_alive()
+
     @property
     def thread_id(self) -> int | None:
         return self._thread.ident if self._thread else None
