@@ -143,6 +143,13 @@ class Route(Protocol):
     async def take(self, account: str, text: str) -> str | None: ...
 
 
+class Shortcut(Protocol):
+    """A phrase of his the host already KNOWS, verbatim (V2-942 A2): one exact whole-utterance hit runs its direct act
+    before any model, in under a millisecond. `take` answers the line to say when it ran ("" for none), or None — no
+    exact hit, or the act could not run with certainty — and the batch goes on as if it did not exist."""
+    async def take(self, account: str, text: str) -> str | None: ...
+
+
 class Stops(Protocol):
     """The host's hands for a stop the MODEL ordered (plan v3.2 §3): what each scope stops beyond our voice — what is
     playing (`media`, `all`), his tasks (`all`, cancelled and resumable), the attention window. Local and immediate;

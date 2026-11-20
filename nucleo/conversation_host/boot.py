@@ -37,6 +37,7 @@ def make(listeners: tuple = (), said: Callable | None = None) -> Callable:
         from nucleo.conversation_host.mouth import WallMouth
         from nucleo.conversation_host.owed import NoticesOwed
         from nucleo.conversation_host.routing import HostRoute
+        from nucleo.conversation_host.shortcut import HostShortcut
         from nucleo.conversation_host.stops import HostStops
         from nucleo.conversation_host.store import ZaelarStore
         from nucleo.conversation_host.telemetry import ObserverTelemetry
@@ -52,7 +53,7 @@ def make(listeners: tuple = (), said: Callable | None = None) -> Callable:
                      store=ZaelarStore(_memory.database()), memory=MemoryRead(), clock=clock, mouth=mouth,
                      telemetry=proof.Counting(ObserverTelemetry(listeners), account()), config=cfg, prefix=prefix.current(tools.catalog()),
                      prefs=config.prefs, record=record.MemoryRecord(), owed=NoticesOwed(), stops=HostStops(),
-                     route=HostRoute(),
+                     route=HostRoute(), shortcut=HostShortcut(),
                      **readers())
         mouth.ack = conv.ack
         conv.recover()

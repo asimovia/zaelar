@@ -184,28 +184,31 @@ async def run_batch(conv: "Conversation", batch: Batch) -> None:
 
 
 async def _routed(conv: "Conversation", r: "Running", batch: Batch, content: list) -> bool:
-    """His words to something of his that is OPEN go there by the host's doors before any model is called (plan F2
-    §3): the line its door answers is said, and the run ends. Nothing open, nobody took them, or the doors failed or
-    were late: the model answers, as always."""
-    if conv.route is None:
-        return False
+    """Before any model, his words go first to a phrase the host knows VERBATIM (`Shortcut`, its act run, V2-942 A2),
+    then to something of his that is OPEN by the host's doors (plan F2 §3): the line that door answers is said, and the
+    run ends with that door as its origin. No hit, nobody took them, or the doors failed or were late: the model
+    answers, as always."""
     text = " ".join(str(getattr(e.body, "text", "") or "").strip() for e in content).strip()
     if not text:
         return False
-    try:
-        line = await guard.call(conv.em, conv.cfg, "tools", conv.route.take(conv.account, text), conv.cfg.tool_ms,
-                                {"run": r.run_id})
-    except Exception as e:  # noqa: BLE001 — a door that fails never silences him: the model takes the words
-        r.said.append(("route", f"{type(e).__name__}"))
-        return False
-    if line is None:
-        return False
-    _emit(conv, "command", r, command="routed", said=bool(line))
-    if line:
-        await _publish(conv, r, batch, str(line), 0)
-    else:
-        _silent(conv, r, "routed", conv.clock.now_ms())
-    return True
+    for origin, door in (("actionmap", conv.shortcut), ("routed", conv.route)):
+        if door is None:
+            continue
+        try:
+            line = await guard.call(conv.em, conv.cfg, "tools", door.take(conv.account, text), conv.cfg.tool_ms,
+                                    {"run": r.run_id})
+        except Exception as e:  # noqa: BLE001 — a door that fails never silences him: the next one, or the model
+            r.said.append((origin, f"{type(e).__name__}"))
+            continue
+        if line is None:
+            continue
+        _emit(conv, "command", r, command=origin, said=bool(line))
+        if line:
+            await _publish(conv, r, batch, str(line), 0)
+        else:
+            _silent(conv, r, origin, conv.clock.now_ms())
+        return True
+    return False
 
 
 async def _fail(conv: "Conversation", r: "Running", reason: str) -> None:

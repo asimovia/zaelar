@@ -802,6 +802,10 @@ _PACKAGE_CEILINGS["nucleo/self"] += 63   # 2026-11-20 INI-078 F2 step 7c (row 10
 _PACKAGE_CEILINGS["nucleo/turn"] -= 28   # same: the old pack reads the presentation from its new home
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 18  # same: the manager carries it as a PRESENT block while owed and settles it at the batch's record
 _TOTAL_MAX += 53     # same causes, measured
+_PACKAGE_CEILINGS["conversation"] += 11  # 2026-11-20 INI-078 F2 step 7b (V2-942 A2): the `Shortcut` port — a phrase the host knows verbatim, offered before the open doors, the run ending with origin `actionmap`
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 104  # same (+1: a silent handler of record.py says what failed): the action map as the manager's shortcut (`shortcut.py`: its exact lookup and act on the engine's loop, the act's receipt or a short ack) and its learning from the manager's runs (one declared canvas act, accepted, nothing read → a candidate)
+_PACKAGE_CEILINGS["nucleo/actionmap"] += 8  # same (V2-942 T8): `watch.candidate`, one door for a candidate from either turn path, with its origin
+_TOTAL_MAX += 123    # same causes, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())
