@@ -7,6 +7,8 @@
   sessions.py one `Conversation` per account, in its runtime, while a switched session holds it
   config.py   the account's `Config` from the genome, refused out of bounds or out of order; the `Prefs` port
   proof.py    who opened the turns of a switched session, and the exit gate over it
+  model.py    the `Model` port over the engine's fast client: the voice's model, its two orders as tools
+  prefix.py   the model's stable prefix: declared lines only (language, reads, acts, the orders' fields)
 
 Nothing of the engine imports this package while the conversation is switched off.
 """

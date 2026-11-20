@@ -21,6 +21,11 @@ typed line with the voice live is answered by voice too is his rule (`reply_voic
 override), read at each reply through the `Prefs` port. `GET /api/debug/conversation/<session>` reads the proof of a
 switched session: the runs the manager started, and what would mean another owner of the turn, which must stay at 0.
 
+The model is the voice's model from the routing table, called through the engine's fast client (`model.py`); its
+two orders, `reply(text, claims, complete)` and `no_reply(reason, complete)`, are tools of its own beside the
+catalogue. Its prefix (`prefix.py`) only declares: the language it writes in, what it may read, that it may not act,
+and the fields of its orders — one line each, byte-identical between turns, under 600 tokens.
+
 ## Why a package of its own
 
 The turn used to be decided in several places at once (the speech plugin's endpointing, the voice pipeline, the turn
