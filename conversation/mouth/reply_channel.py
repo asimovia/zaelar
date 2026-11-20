@@ -4,7 +4,7 @@ the voice is the extra decision.
 
   batch with voice      voice live and speaker open → voice + text; otherwise text, and `voice_unavailable`
   batch of text only    voice live and speaker open ON THAT DEVICE → voice + text when the operator's rule says so
-                        (the default keeps today's behaviour, PA-9); otherwise text
+                        (the default keeps the engine's behaviour); otherwise text
 A line owed (a result, a contact's message, a reminder) is not a batch: it is already on the wall and goes by voice.
 """
 from __future__ import annotations

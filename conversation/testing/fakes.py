@@ -93,7 +93,8 @@ def evidence(eid: str, entity: str, period: str, metric: str, direction: str, va
 
 @dataclass
 class AckingMouth:
-    """Says at once; `ack` (set by the harness) receives the acks, `played` decides how much was heard."""
+    """Says at once; `ack` (set by the harness) receives the acks; `heard_all` decides whether the voice process
+    counted what it spoke (`agent_estimate`) or the count was lost (`unknown`)."""
     ack: Callable | None = None
     playback: Callable | None = None           # (endpoint, t) → the device reports it is playing our line
     heard_all: bool = True
@@ -101,21 +102,15 @@ class AckingMouth:
     calls: list = field(default_factory=list)
 
     async def say(self, order) -> None:
-        from conversation.mouth import PlayoutAck, SayEnded, SayStarted
+        from conversation.mouth import SayEnded, SayStarted
         self.orders.append(order)
         if self.playback is not None and order.endpoint and "voice" in order.channels:
             self.playback(order.endpoint)
         if self.ack is not None:
             self.ack(SayStarted(order.say_id, 0))
-            if self.heard_all and order.endpoint:
-                self.ack(PlayoutAck(order.say_id, order.endpoint, len(order.text), 0))
-            self.ack(SayEnded(order.say_id, "played", None, 0, order.endpoint))
-
-    def duck(self, endpoint: str) -> None:
-        self.calls.append(("duck", endpoint))
-
-    def unduck(self, endpoint: str) -> None:
-        self.calls.append(("unduck", endpoint))
+            heard = self.heard_all and bool(order.endpoint)
+            self.ack(SayEnded(order.say_id, "played", len(order.text) if heard else None, 0, order.endpoint,
+                              "agent_estimate" if heard else "unknown"))
 
     def stop(self, endpoint, *, reason: str) -> None:
         self.calls.append(("stop", endpoint, reason))

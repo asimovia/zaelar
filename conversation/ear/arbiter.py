@@ -1,4 +1,4 @@
-"""The ear: ONE arbiter decides when the person finished an intervention (§6.1, D1). Pure: no clock, no I/O.
+"""The ear: ONE arbiter decides when the person finished an intervention. Pure: no clock, no I/O.
 
 A voice intervention moves open → (tentative ↔ extended) → closed, or → incomplete / discarded. It CLOSES only when
 three things hold at once: the provider's end of turn (`EotHint(end)`), full coverage (every provider turn assigned
@@ -6,7 +6,7 @@ to it has its final, I2) and the watermark past the voice's last fall — so the
 way. Or, past the cap, with full coverage: the cap counts from the voice's fall, or from the provider's end when the
 voice never fell, or — with neither — from the last word heard (from the onset if there was none), so an open voice
 always ends: with words it closes or is incomplete, without any it is discarded. Never by two detectors agreeing with
-each other (A6): an eager hint only makes it TENTATIVE, and a tentative intervention is not delivered to anyone.
+each other: an eager hint only makes it TENTATIVE, and a tentative intervention is not delivered to anyone.
 
 Without coverage at the cap, or with a stream that stopped beating (the watermark not advancing while time passes,
 adapter doc A6), the intervention is INCOMPLETE: not actionable, the run asks for the end. An intervention also has a
@@ -167,7 +167,7 @@ class Ear:
             v.state = IvState.DISCARDED
             out.append(S.VoiceDiscarded(v.endpoint, v.iv, t))
         self.em.emit("conv_ear", "discarded", owner="ear", cause={"kind": "guard", "ref": sig.reason}, refs=refs,
-                     text=sig.text, reason=sig.reason)
+                     trace=v.iv if refs.get("iv") else f"guard:{sig.endpoint}:{t}", text=sig.text, reason=sig.reason)
 
     # ── transitions ─────────────────────────────────────────────────────────────────────────────────────────────
 

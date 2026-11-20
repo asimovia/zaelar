@@ -66,7 +66,7 @@ class ControlBody:
 Body = UtteranceBody | TextBody | ControlBody
 
 #: kind → (body class, the authority it carries, the channels it may come by, the producers that may send it).
-#: Fixed: never read off the wire. The inbox refuses an envelope whose producer is not one of its kind's (M1): a
+#: Fixed: never read off the wire. The inbox refuses an envelope whose producer is not one of its kind's: a
 #: connector cannot hand in «the person's text», whatever kind it writes on the envelope.
 KINDS: dict[EnvelopeKind, tuple[type, Authority, frozenset[Channel], tuple[str, ...]]] = {
     EnvelopeKind.USER_UTTERANCE: (UtteranceBody, Authority.USER, frozenset({Channel.VOICE}), ("ear:",)),
@@ -79,7 +79,7 @@ KINDS: dict[EnvelopeKind, tuple[type, Authority, frozenset[Channel], tuple[str, 
 
 def producer_allowed(env: "Envelope") -> bool:
     """Is the producer one that may send this kind (the authority follows the producer, not the label)? A gesture —
-    and anything on the button channel — is the button producer's alone (review 2, MINOR 2: a `chat:` control on the
+    and anything on the button channel — is the button producer's alone (a `chat:` control on the
     BUTTON channel created a delegation)."""
     if env.kind is EnvelopeKind.USER_CONTROL and (env.channel is Channel.BUTTON or env.body.gesture):
         return env.producer.startswith("button:")
@@ -87,7 +87,7 @@ def producer_allowed(env: "Envelope") -> bool:
 
 
 def _gesture_by_button(kind: EnvelopeKind, body: Body, channel: Channel) -> None:
-    """A gesture is a button on the device (PA-10): a text or a voice control is never one."""
+    """A gesture is a button on the device: a text or a voice control is never one."""
     if kind is EnvelopeKind.USER_CONTROL and body.gesture and channel is not Channel.BUTTON:
         raise EnvelopeError(f"a gesture comes by a button, not by {channel}")
 

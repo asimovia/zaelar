@@ -75,7 +75,7 @@ class Inbox:
         env = replace(env, id=env.id or self.ids.new("e"), accepted_ms=now)
         why = ("not_this_account" if env.account != self.acct else
                "producer_not_of_its_kind" if not E.producer_allowed(env) else None)
-        if why is not None:                  # authority follows the producer, and the account is this one (M1)
+        if why is not None:                  # authority follows the producer, and the account is this one
             self._emit("refused", env, cause={"kind": "producer", "ref": env.producer}, reason=why,
                        text=getattr(env.body, "text", None))
             return Admission(None, "refused")

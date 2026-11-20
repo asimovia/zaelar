@@ -29,7 +29,7 @@ class EarLabels(_Labels):
 
 class InboxLabels(_Labels):
     ACCEPTED, DUPLICATE, HELD, RELEASED, REFUSED = "accepted", "duplicate", "held", "released", "refused"
-    EXPIRED, COALESCED, DEQUEUED, ACCOUNTED = "expired", "coalesced", "dequeued", "accounted"
+    EXPIRED, DEQUEUED, ACCOUNTED = "expired", "dequeued", "accounted"
 
 
 class RunLabels(_Labels):
@@ -49,7 +49,7 @@ class EffectLabels(_Labels):
 
 
 class MouthLabels(_Labels):
-    SAY, STARTED, ACK, DUCKED, UNDUCKED = "say", "started", "ack", "ducked", "unducked"
+    SAY, STARTED = "say", "started"
     CUT, ENDED, VOICE_UNAVAILABLE = "cut", "ended", "voice_unavailable"
 
 
@@ -76,13 +76,20 @@ OWNERS = frozenset(m.value for m in Owner)
 REF_KEYS = frozenset(m.value for m in Ref)
 
 
-def root(refs: dict) -> str:
-    """The trace of an event: the root intervention of its request (`r_<iv>` → `<iv>`), so `/flow/<corr_id>` follows a
-    request from the ear to its close (§8.1)."""
+def root(refs: dict, runs: dict | None = None) -> str:
+    """The trace of an event — every event has one, so a flow follows a request from the ear to its close:
+      · a turn of the person: the root intervention of its request (`r_<iv>` → `<iv>`);
+      · anything of a run (a port, a tool, a line): the trace the run was started with;
+      · a control by id: what it references (a task); any other control: itself (its envelope);
+    a line owed passes its own (its key) explicitly."""
     if refs.get("iv"):
         return str(refs["iv"])
     req = str(refs.get("req") or "")
-    return req[2:] if req.startswith("r_") else ""
+    if req.startswith("r_"):
+        return req[2:]
+    if refs.get("run") and runs and refs["run"] in runs:
+        return runs[refs["run"]]
+    return str(refs.get("task") or refs.get("env") or refs.get("say") or "")
 
 
 class UnknownEvent(ValueError):
@@ -96,6 +103,10 @@ class Emitter:
     clock: Clock
     account: str
     epoch: Callable[[], int] = field(default=lambda: 0)
+    runs: dict = field(default_factory=dict)          # run → the trace it was started with
+
+    def bind(self, run_id: str, trace: str) -> None:
+        self.runs[run_id] = trace
 
     def emit(self, kind: str, label: str, /, *, owner: str, cause: dict | None = None, refs: dict | None = None,
              trace: str | None = None, **payload) -> None:
@@ -110,7 +121,7 @@ class Emitter:
             raise UnknownEvent(f"{kind}/{label} without its cause")      # every event says what provoked it (§8.1)
         body = {"t_ms": self.clock.now_ms(), "mono_ms": self.clock.mono_ms(), "account": self.account,
                 "epoch": self.epoch(), "owner": owner, "cause": cause, "refs": refs,
-                "trace": trace or root(refs), **payload}
+                "trace": trace or root(refs, self.runs), **payload}
         try:
             self.port.emit(kind, label, body)
         except Exception as e:  # noqa: BLE001 — the port must never raise; if it does, the manager goes on and counts

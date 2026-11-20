@@ -4,7 +4,7 @@ Thread rule: no port may block the loop. Ports that do I/O are `async`; an adapt
 wraps itself in `asyncio.to_thread` — in the ADAPTER, never in this package. The manager times every port call and
 emits `conv_run/port_slow` past `Config.port_budget_ms`.
 
-`Store` is the ledger and the durable inbox in one (I1/N3 need ONE transaction for «dequeue + item + effect
+`Store` is the ledger and the durable inbox in one (I1 and the one-row-per-operation reservation need ONE transaction for «dequeue + item + effect
 reservation + spent handle»). It is synchronous on purpose: a local transaction, measured like the rest.
 Workers are not a port: they come in as `worker.update` envelopes and go out as one more tool (`task.start`).
 """
@@ -151,7 +151,6 @@ class SayOrder:
     channels: frozenset[str]          # {"voice", "text"}
     endpoint: str | None
     lang: str = ""
-    presents: str | None = None       # the handle this line presents (a question that needs a yes)
     notice_key: str | None = None     # this line says a line owed (`Owed`): its outcome goes back to that ledger
 
 
@@ -177,13 +176,13 @@ class Owed(Protocol):
 
 
 class Mouth(Protocol):
+    """Two verbs: say a line, stop our voice. Cutting our voice when the person talks over it is the voice process's
+    own local rule, not an order of this package."""
     async def say(self, order: SayOrder) -> None: ...
-    def duck(self, endpoint: str) -> None: ...          # reversible, immediate, cheap
-    def unduck(self, endpoint: str) -> None: ...
     def stop(self, endpoint: str | None, *, reason: str) -> None: ...   # local and immediate
 
 
-# Acks come back to the manager as signals (`mouth/say.py`): SayStarted, PlayoutAck, SayEnded.
+# Acks come back to the manager as signals (`mouth/say.py`): SayStarted, SayEnded (with what was heard and its source).
 
 
 # ── the store: the ledger + the durable inbox, ONE writer per account ────────────────────────────────────────────

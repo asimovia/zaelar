@@ -100,7 +100,7 @@ class EffectClass(_Str):
 
 @dataclass(frozen=True)
 class Evidence:
-    """One fact a tool returned, structured enough for a numeric claim to be matched against it (D9)."""
+    """One fact a tool returned, structured enough for a numeric claim to be matched against it."""
     id: str
     source: str
     entity: str = ""

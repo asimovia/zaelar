@@ -1,16 +1,16 @@
 """One run: compose → model → tools through the gateway → say → close (§6.3, I9).
 
 The batch's requests were opened when their entries were accepted, keyed by the intervention, so a superseded run
-leaves them OPEN and the next run receives them again (N1). Between two model events and between two tools is a
+leaves them OPEN and the next run receives them again. Between two model events and between two tools is a
 CHECKPOINT: an interrupt set by the policy or the sweep (superseded, cancelled, stalled) takes effect there; a tool
 the model asked for and that did not start is skipped. Every tool the model sees is the catalog's — ordered at most,
 never cut (I7). Every port call has its deadline (`conversation.guard`).
 
-EVERY exit of a run accounts for its batch with what happened (B6, M6): answered → `told`; a deliberate silence →
+EVERY exit of a run accounts for its batch with what happened: answered → `told`; a deliberate silence →
 `silent`; superseded → back to the queue; anything else — the provider failed or timed out, a tool raised, the
 steps ran out — → `failed`, its requests closed `recovered`, and the person owed a line that says so (`Owed.owe`:
 the host words it in the person's language; the model that failed never does). A numeric claim that does not match its evidence
-gets ONE repair round with the reason; then the run stays silent (D9). The first publication seals the batch's
+gets ONE repair round with the reason; then the run stays silent. The first publication seals the batch's
 interventions; one that cannot seal fences the run.
 """
 from __future__ import annotations
@@ -29,6 +29,7 @@ from conversation.inbox.mailbox import Batch
 from conversation.manager import claims as CL
 from conversation.manager import commands
 from conversation.mouth import Device, choose
+from conversation.telemetry import root
 from conversation.ports import Command, Done, Failed, PromptParts, StaleEpoch, TextDelta, ToolCall, ToolResult
 from conversation.types import Coverage, EnvelopeKind, ItemKind, MgrState
 
@@ -48,9 +49,10 @@ def _emit(conv: "Conversation", label: str, r: "Running | None", **payload) -> N
     conv.em.emit("conv_run", label, owner="manager", cause={"kind": "batch"}, refs=refs, **payload)
 
 
-def close(conv: "Conversation", req: str, to: str, label: str, **metrics) -> bool:
+def close(conv: "Conversation", req: str, to: str, label: str, run: "Running | None" = None, **metrics) -> bool:
     """Move a request to its end and say so — at most once: the move is a compare-and-set from `open`. Its
-    intervention is final from then on: nothing seals it later."""
+    intervention is final from then on: nothing seals it later. A request closed by a run carries that run, and its
+    close joins that run's flow: every request of a batch, not only the first, is answered there."""
     with conv.book.tx() as b:
         row = b.get(req)
         if row is None or row["state"] != "open":
@@ -60,7 +62,8 @@ def close(conv: "Conversation", req: str, to: str, label: str, **metrics) -> boo
         iv = row["data"].get("iv")
         if iv:
             SEAL.finish(b.tx, iv, b.now)
-    conv.em.emit("conv_close", label, owner="manager", cause={"kind": "request", "ref": req}, refs={"req": req},
+    conv.em.emit("conv_close", label, owner="manager", cause={"kind": "request", "ref": req},
+                 refs={"req": req, "run": run.run_id if run else None}, trace=run.trace if run else None,
                  total_ms=conv.clock.now_ms() - opened, **metrics)
     return True
 
@@ -75,7 +78,8 @@ def sweep_liveness(conv: "Conversation", now: int) -> None:
     for row in rows:
         start = row["data"].get("sealed_ms", row["created_ms"])
         if now - start >= conv.cfg.liveness_ms:
-            if close(conv, row["id"], "failed", "stalled", reason="stalled") and row["id"] in running:
+            mine = conv.current if row["id"] in running else None
+            if close(conv, row["id"], "failed", "stalled", mine, reason="stalled") and mine is not None:
                 conv.current.interrupt = "stalled"
 
 
@@ -95,6 +99,8 @@ async def run_batch(conv: "Conversation", batch: Batch) -> None:
                 RunCtx(run_id, reqs[0] if reqs else run_id, {e.id: e for e in batch.envelopes}, endpoint),
                 batch_seq=batch.run_seq, last_entry_ms=last.sealed_ms if last else 0,
                 last_endpoint=last.endpoint if last else None)
+    r.trace = root({"req": reqs[0]} if reqs else {}) or run_id
+    conv.em.bind(run_id, r.trace)
     conv.current, conv.state = r, MgrState.RUNNING
     _emit(conv, "started", r, batch_envs=list(r.batch_ids), reason=batch.reason)
     _emit(conv, "input", r, text=[getattr(e.body, "text", None) for e in batch.envelopes])
@@ -122,7 +128,7 @@ async def _fail(conv: "Conversation", r: "Running", reason: str) -> None:
     now = conv.clock.now_ms()
     conv.inbox.account(list(r.batch_ids), "failed", now)
     for req in r.requests:
-        if close(conv, req, "recovered", "recovered", reason=reason) and conv.owed is not None:
+        if close(conv, req, "recovered", "recovered", r, reason=reason) and conv.owed is not None:
             conv.owed.owe(conv.account, f"conv:failed:{req}", f"failed:{reason}")
     _emit(conv, "ended", r, outcome="failed", reason=reason)
 
@@ -166,7 +172,7 @@ def _checkpoint(conv: "Conversation", r: "Running") -> None:
     now = conv.clock.now_ms()
     conv.inbox.account(list(r.batch_ids), "silent", now)
     for req in r.requests:
-        close(conv, req, "silent", "silent", reason="stopped")
+        close(conv, req, "silent", "silent", r, reason="stopped")
     _emit(conv, "cancelled", r, reason=r.interrupt)
     raise _Stop()
 
@@ -214,7 +220,7 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
             await _fail(conv, r, "provider:timeout")
             return
         finally:                                    # a stop, a deadline, a command: the provider's stream is closed now
-            await stream.aclose()                   # (review 2, MINOR 10), never left to the garbage collector
+            await stream.aclose()                   # never left to the garbage collector
         _checkpoint(conv, r)
         if not called:
             await _command(conv, r, batch, commands.Reply(text) if text else commands.NoReply("empty"), steps,
@@ -260,7 +266,7 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
                 return False
             conv.inbox.account(list(r.batch_ids), "silent", now)
             for req in r.requests:
-                close(conv, req, "silent", "silent", reason="claims_unverified")
+                close(conv, req, "silent", "silent", r, reason="claims_unverified")
             _emit(conv, "ended", r, outcome="silent", reason="claims_unverified")
             return True
         if not _seal_batch(conv, r, batch):
@@ -268,19 +274,19 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
             return True
         reply = choose(batch.envelopes, conv.devices.get(r.ctx.endpoint or "", Device(r.ctx.endpoint)))
         if reply.voice_unavailable:
-            conv.speaker.voice_unavailable(r.run_id, r.ctx.endpoint)
+            conv.speaker.voice_unavailable(r.run_id, r.ctx.endpoint, r.trace)
         conv.state = MgrState.SPEAKING
         await conv.speaker.say(run_id=r.run_id, request_id=r.ctx.request_id, text=cmd.text, channels=reply.channels,
-                               endpoint=r.ctx.endpoint,
+                               endpoint=r.ctx.endpoint, trace=r.trace,
                                iv=next(iter(r.ctx.batch.values())).refs.intervention_id if r.ctx.batch else None)
         for req in r.requests:
-            close(conv, req, "answered", "answered", steps=len(steps))
+            close(conv, req, "answered", "answered", r, steps=len(steps))
         conv.inbox.account(list(r.batch_ids), "told", conv.clock.now_ms())
         _emit(conv, "ended", r, outcome="answered")
         return True
     reason = getattr(cmd, "reason", None) or getattr(cmd, "name", "")
     for req in r.requests:
-        close(conv, req, "silent", "silent", reason=reason)
+        close(conv, req, "silent", "silent", r, reason=reason)
     conv.inbox.account(list(r.batch_ids), "silent", now)
     _emit(conv, "ended", r, outcome="no_reply", reason=reason)
     return True

@@ -1,9 +1,12 @@
-"""The mouth knows what was heard — per device, and «unknown» when nobody said (node 13.16, B4).
+"""The mouth knows what was heard, and where that comes from — and «unknown» when nobody said (node 13.16).
 
-Acks are per device; a line with no ack is «heard: unknown» in the conversation the model reads, never «heard»; a cut
-keeps what was heard, trimmed to the last sentence end; cutting our voice never touches the record of an action; a
-question counts as presented only once played, or painted on a device's text channel; the reply channels follow the
-§7.1 table from the batch's channels and the device's state, never its content; duck and stop are immediate events.
+Two verbs, say and stop. What was heard comes with its source: `agent_estimate` (the voice process's count of what it
+spoke), `shown` (a text line painted on a screen the person is looking at) or `unknown`; a line whose count never came
+is «heard: unknown» in the conversation the model reads, never «heard»; a cut keeps what was heard, trimmed to the last
+sentence end; a late ack after the end changes nothing; cutting our voice never touches the record of an action; the
+reply channels follow the table from the batch's channels and the device's state, never its content; a stop is an
+immediate event that carries the trace of the line it cuts. The conversation window is read from the person's entries
+and our lines — no table of turns.
 """
 from __future__ import annotations
 
@@ -12,7 +15,7 @@ import asyncio
 from conversation import envelopes as E
 from conversation.composer import compose, view_from
 from conversation.config import Config
-from conversation.mouth import Device, Painted, PlayoutAck, SayEnded, SayStarted, Speaker, choose
+from conversation.mouth import Device, SayEnded, SayStarted, Speaker, choose
 from conversation.mouth.say import cut_to_sentence
 from conversation.telemetry import Emitter
 from conversation.types import Channel, EnvelopeKind, Ids
@@ -28,54 +31,60 @@ class FakeMouth:
     async def say(self, order):
         self.orders.append(order)
 
-    def duck(self, endpoint):
-        self.calls.append(("duck", endpoint))
-
-    def unduck(self, endpoint):
-        self.calls.append(("unduck", endpoint))
-
     def stop(self, endpoint, *, reason):
         self.calls.append(("stop", endpoint, reason))
 
 
-def _speaker(store, clock, telemetry, presented=None):
+def _speaker(store, clock, telemetry):
     lease = store.acquire(ACCT, "test")
     mouth = FakeMouth()
-    sp = Speaker(store, lambda: lease, mouth, Emitter(telemetry, clock, ACCT), clock, Ids(),
-                 on_presented=(lambda h, ep: presented.append((h, ep))) if presented is not None else None)
-    return sp, mouth, lease
+    return Speaker(store, lambda: lease, mouth, Emitter(telemetry, clock, ACCT), clock, Ids()), mouth, lease
 
 
 def _say(sp, **kw):
-    args = dict(run_id="run1", request_id="r1", text=LINE, channels=frozenset({"voice", "text"}), endpoint="d1")
+    args = dict(run_id="run1", request_id="r_iv1", text=LINE, channels=frozenset({"voice", "text"}), endpoint="d1",
+                trace="iv1")
     args.update(kw)
     return asyncio.run(sp.say(**args))
 
 
-def _turn(store):
-    return [t for _k, t in store.snapshot(ACCT).scan("turns")][-1]
+def _row(store, sid):
+    return store.snapshot(ACCT).get("says", sid)
 
 
-def test_no_ack_is_unknown_and_the_model_reads_it_so(store, clock, telemetry):
+def _heard(store) -> str:
+    p = compose(view_from(store.snapshot(ACCT), prefix="", now_ms=0), (), Config())
+    return p.conversation[-1].text
+
+
+def test_no_count_is_unknown_and_the_model_reads_it_so(store, clock, telemetry):
     sp, mouth, _ = _speaker(store, clock, telemetry)
     sid = _say(sp)
     sp.ack(SayStarted(sid, 10))
-    sp.ack(SayEnded(sid, "played", None, 900))
-    assert _turn(store)["heard_chars"] is None
-    p = compose(view_from(store.snapshot(ACCT), prefix="", now_ms=0), (), Config())
-    assert p.conversation[-1].text.endswith("[heard: unknown]")
+    sp.ack(SayEnded(sid, "played", None, 900, "d1", "unknown"))
+    assert _row(store, sid)["heard_chars"] is None and _row(store, sid)["heard_source"] == "unknown"
+    assert _heard(store).endswith("[heard: unknown]")
     assert mouth.orders[0].say_id == sid
 
 
-def test_acks_are_per_device_and_a_cut_keeps_what_was_heard_to_a_sentence_end(store, clock, telemetry):
+def test_what_was_heard_carries_its_source_and_a_cut_keeps_it_to_a_sentence_end(store, clock, telemetry):
     sp, _mouth, _ = _speaker(store, clock, telemetry)
     sid = _say(sp)
-    sp.ack(PlayoutAck(sid, "d2", 70, 50))                                   # another device heard it all
-    sp.ack(PlayoutAck(sid, "d1", 40, 60))                                   # this one, 40 characters
-    sp.ack(SayEnded(sid, "cut", None, 70, endpoint="d1"))
-    kept = LINE[:_turn(store)["heard_chars"]]
-    assert kept == "I found three flights." == cut_to_sentence(LINE, 40)
-    assert "conv_mouth/cut" in telemetry.labels()
+    sp.ack(SayEnded(sid, "cut", 40, 70, "d1", "agent_estimate"))
+    row = _row(store, sid)
+    assert LINE[:row["heard_chars"]] == "I found three flights." == cut_to_sentence(LINE, 40)
+    assert row["heard_source"] == "agent_estimate" and _heard(store) == "I found three flights."
+    ended = [p for k, lab, p in telemetry.events if lab == "cut"][-1]
+    assert ended["source"] == "agent_estimate" and ended["trace"] == "iv1"
+    sp.ack(SayEnded(sid, "played", len(LINE), 90, "d1", "agent_estimate"))   # a late ack after the end
+    assert _row(store, sid)["heard_chars"] == len("I found three flights.")
+
+
+def test_a_text_line_shown_on_a_screen_counts_as_seen(store, clock, telemetry):
+    sp, _mouth, _ = _speaker(store, clock, telemetry)
+    sid = _say(sp, channels=frozenset({"text"}))
+    sp.ack(SayEnded(sid, "played", len(LINE), 10, "d1", "shown"))
+    assert _row(store, sid)["heard_source"] == "shown" and _heard(store) == LINE
 
 
 def test_cutting_our_voice_never_touches_the_record_of_an_action(store, clock, telemetry):
@@ -85,20 +94,6 @@ def test_cutting_our_voice_never_touches_the_record_of_an_action(store, clock, t
     sid = _say(sp, text="Done. I sent it to the shop.")
     sp.ack(SayEnded(sid, "cut", 3, 10))
     assert store.snapshot(ACCT).get("items", "x1")["state"] == "provider_accepted"
-
-
-def test_a_question_is_presented_only_once_played_or_painted(store, clock, telemetry):
-    seen: list = []
-    sp, _mouth, _ = _speaker(store, clock, telemetry, presented=seen)
-    a = _say(sp, presents="h1", channels=frozenset({"voice"}))
-    sp.ack(SayEnded(a, "cut", 10, 5))
-    assert seen == []                                                       # cut before the question: not presented
-    b = _say(sp, presents="h2")
-    sp.ack(Painted(b, "d1", 6))
-    sp.ack(SayEnded(b, "played", None, 9))
-    c = _say(sp, presents="h3", channels=frozenset({"voice"}))
-    sp.ack(SayEnded(c, "played", None, 12))
-    assert seen == [("h2", "d1"), ("h3", "d1")]                             # painted; played — once each
 
 
 def _env(kind, body, channel=None):
@@ -119,15 +114,25 @@ def test_the_reply_channels_follow_the_table_and_never_the_content():
     assert choose((same,), live) == choose((voice,), live)
 
 
-def test_duck_and_stop_are_immediate_events_on_the_control_lane(store, clock, telemetry):
+def test_a_stop_is_immediate_and_carries_the_trace_of_the_line_it_cuts(store, clock, telemetry):
     sp, mouth, _ = _speaker(store, clock, telemetry)
-    sp.duck("d1")
-    sp.unduck("d1")
+    _say(sp)
     clock.advance(40)
-    sp.stop("d1", "stop", asked_ms=0)
-    assert mouth.calls == [("duck", "d1"), ("unduck", "d1"), ("stop", "d1", "stop")]
+    sp.stop("d1", "stop", asked_ms=0, trace="k-stop")
+    assert mouth.calls == [("stop", "d1", "stop")]
     stop = [p for k, lab, p in telemetry.events if lab == "cut"][0]
-    assert stop["stop_to_silence_ms"] == 40
+    assert stop["stop_to_silence_ms"] == 40 and stop["trace"] == "iv1" and stop["refs"]["say"]
+
+
+def test_the_conversation_window_is_the_entries_and_the_lines_in_order(store):
+    from tests.conversation.unit.convkit import Harness
+    h = Harness(store)
+    h.typed("w1", 100)
+    h.at(1000).pump()
+    h.typed("w2", 2000)
+    h.at(3000).pump()
+    window = [(t.role, t.text) for t in h.model.calls[-1].prompt.conversation]
+    assert window[0] == ("user", "w1") and window[1][0] == "agent" and ("user", "w2") not in window   # w2 is INPUT
 
 
 def test_b2_a_line_nobody_acknowledges_ends_unknown_and_what_comes_next_runs(store):

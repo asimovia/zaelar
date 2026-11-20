@@ -1,4 +1,4 @@
-"""The reference `Store` on sqlite3, in a file of its OWN (PA-2): the ledger, the durable inbox and the lease.
+"""The reference `Store` on sqlite3, in a file of its OWN: the ledger, the durable inbox and the lease.
 
 One writer per account is enforced by the lease row: `acquire` bumps the epoch in its own transaction, and every
 `tx(lease)` runs `BEGIN IMMEDIATE` (the database write lock) and compares the epoch INSIDE that transaction before

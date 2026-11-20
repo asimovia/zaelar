@@ -31,9 +31,15 @@ def _state(store, lang_turns):
         for rid, kind, state, owner, data, waiting, upd in rows:
             tx.put("items", rid, {"id": rid, "kind": str(kind), "state": state, "owner": owner, "data": data,
                                   "waiting_on": waiting, "attached": [], "created_ms": upd, "updated_ms": upd})
-        for i, (role, text, heard) in enumerate(lang_turns, start=1):
-            tx.put("turns", f"{i:08d}", {"role": role, "channel": "voice", "text": text, "heard_chars": heard,
-                                        "ref": f"s{i}"})
+        for i, (role, text, heard) in enumerate(lang_turns, start=1):     # the window: his entries and our lines
+            if role == "user":
+                env = E.make(EnvelopeKind.USER_UTTERANCE, E.UtteranceBody(f"iv{i}", text), producer="ear:d1",
+                             producer_id=f"iv{i}:full", account="acct", onset_ms=i, sealed_ms=i)
+                tx.put("inbox", f"e{i}", {"id": f"e{i}", "env": E.to_json(env), "kind": str(env.kind),
+                                          "accepted": i, "state": "accounted", "outcome": "told"})
+            else:
+                tx.put("says", f"s{i}", {"say_id": f"s{i}", "text": text, "channels": ["voice"], "t_ms": i,
+                                         "heard_chars": heard, "state": "ended"})
     return store.snapshot("acct")
 
 

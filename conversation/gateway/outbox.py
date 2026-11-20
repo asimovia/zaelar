@@ -4,7 +4,7 @@ In F1 it does two things: a read passes; anything else is `Refused`, with its ev
 host's derivation from the tool's declared act (`ToolSpec.effect_class`): the package keeps no list of reads.
 
 What stays, untouched, for F2 is the RESERVATION: `reserve` seals every intervention of the person's in the batch and
-reserves ONE row per logical operation in the same transaction (I1, N3); an effect id is a hash of (mandate, trigger,
+reserves ONE row per logical operation in the same transaction (I1); an effect id is a hash of (mandate, trigger,
 operation), so the same operation again is the same row and a new one is never minted; `dispatch.submit` writes it
 ahead before the call, an unknown outcome is reconciled by looking, never resent; a call or a receipt without a
 reservation cuts every write of the account (`disable_writes`). No product path reaches the reservation before F2:
@@ -168,7 +168,7 @@ class Gateway:
         return Claimed(row["id"], repeat=not new)
 
     def disable_writes(self, reason: str) -> None:
-        """Cut every write of the account (plan §15 E5: a leaving call reached dispatch without a valid reservation,
+        """Cut every write of the account (a leaving call reached dispatch without a valid reservation,
         or a receipt arrived for one). Reads go on."""
         def fn(b):
             b.tx.put(FLAGS, "write_disabled", {"on": True, "reason": reason, "t_ms": b.now})

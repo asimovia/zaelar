@@ -22,7 +22,7 @@ from tests.conversation.unit.convkit import Harness
 ENGINE = Path(__file__).resolve().parents[3]
 STAGES = ["conv_ear/opened", "conv_ear/closed", "conv_inbox/accepted", "conv_inbox/dequeued", "conv_run/started",
           "conv_ledger/opened", "conv_ledger/attached", "conv_run/prompt", "conv_run/model_first_token",
-          "conv_effect/read", "conv_effect/refused", "conv_effect/sealed", "conv_run/command", "conv_mouth/say", "conv_mouth/started", "conv_mouth/ack",
+          "conv_effect/read", "conv_effect/refused", "conv_effect/sealed", "conv_run/command", "conv_mouth/say", "conv_mouth/started",
           "conv_mouth/ended", "conv_close/answered", "conv_inbox/accounted", "conv_run/ended"]
 
 
@@ -168,3 +168,32 @@ def test_minor10_a_run_stopped_at_a_checkpoint_closes_the_models_stream(store):
     h.model.stream = stream
     h.utter([(["w1"], 0)])
     assert [lab for lab, _ in h.closes()] == ["silent"] and closed == [True]
+
+
+def test_every_event_of_a_mixed_conversation_is_in_a_flow_and_every_request_joins_the_run_that_answered_it(store):
+    """Round-3 finding made a property: no event outside a flow. A turn's events carry its root intervention; a run's
+    (its ports, its lines) the trace it started with; a line owed its key; a stop the line it cuts; a control by id
+    what it references, or itself. And a request that rode in another's batch closes WITH that run, in its flow."""
+    from conversation.types import ControlOp
+    from tests.conversation.unit.inboxkit import control
+    h = Harness(store)
+    h.live = False
+    h.typed("w1", 100)
+    h.typed("w2", 200)                                       # two requests, one batch
+    h.at(1000).pump()
+    h.owed.add("n1", "w5")
+    h.at(2000).pump()                                        # a line owed, said as it is
+    h.conv.give(control(ControlOp.STOP, 2100, "k1", endpoint="d1"))
+    h.conv.give(control(ControlOp.CONFIRM, 2200, "k2", endpoint="d1", gesture=True, handle="h9"))
+    h.utter([(["w3"], 0)])
+    h.pump()
+    blank = [f"{k}/{lab}" for k, lab, p in h.tel.events if not p["trace"]]
+    assert not blank, blank
+    closes = [p for k, lab, p in h.tel.events if k == "conv_close"]
+    started = {p["refs"]["run"]: p["trace"] for k, lab, p in h.tel.events if k == "conv_run" and lab == "started"}
+    assert len(closes) == 3 and all(p["refs"].get("run") in started and p["trace"] == started[p["refs"]["run"]]
+                                    for p in closes)
+    first_batch = [p for p in closes if p["refs"]["req"] in ("r_iv_000001", "r_iv_000002")]
+    assert {p["trace"] for p in first_batch} == {"iv_000001"}
+    said = [p for k, lab, p in h.tel.events if k == "conv_mouth" and lab == "say" and p.get("notice_key")]
+    assert [p["trace"] for p in said] == ["n1"]

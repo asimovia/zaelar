@@ -1,6 +1,6 @@
 """Typed input: an intervention that is CLOSED the moment it is sent (§6.2). No turn detection and no reopening —
 a second message is another intervention, and the model sees both. The 0.35 s debounce is the inbox's collect
-window (PA-4), not the ear's."""
+window, not the ear's."""
 from __future__ import annotations
 
 from typing import TYPE_CHECKING

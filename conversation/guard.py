@@ -1,4 +1,4 @@
-"""Every port call of the manager goes through here: a DEADLINE and a MEASURE (§4, M10).
+"""Every port call of the manager goes through here: a DEADLINE and a MEASURE.
 
 `call(...)` awaits a port coroutine under `asyncio.wait_for` and emits `conv_run/port_slow` when it took longer
 than `Config.port_budget_ms`; a timeout raises `PortTimeout`, which the run turns into a visible recovery. `stream`

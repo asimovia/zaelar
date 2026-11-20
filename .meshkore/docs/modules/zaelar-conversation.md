@@ -22,7 +22,7 @@ stdlib only, no regex, no word tables (the person's words are never read by code
 | Ledger | `ledger/` | Two items with ONE transition table: the person's request, and the reservation of an effect. The host's tasks, questions, what it owes and its mandates have their own rows and writers: referred to by id, never copied. |
 | Composer | `composer/` | A pure function from the store to the prompt: a cacheable prefix, the state, the last turns (cut to what was heard), the input. |
 | Gateway | `gateway/` | The only door out. In F1 a read passes and everything else is refused, with its event; whether a tool only reads is the class the host derives from the tool's declared act (`ToolSpec.act`). The reservation stays for F2, exercised by its own tests: it rests on the person's entries, seals and reserves in one transaction, is written ahead before the call, and an unknown outcome is reconciled by looking, never resent. |
-| Mouth | `mouth/` | Orders lines on the reply channels; per-device acknowledgements decide what was heard; a line no device acknowledges ended «unknown». |
+| Mouth | `mouth/` | Two verbs, say and stop. What was heard comes back with its source — the voice process's estimate, a text shown on a screen, or unknown; a line nobody acknowledges ended «unknown». Cutting our voice when the person talks over it is the voice process's local rule. The conversation the model reads is the person's entries and our lines, cut to what was heard. |
 | Manager | `manager/` | Linear: three states (free, running, speaking), the policy table (six inputs × four columns, ten operations), one run at a time, checkpoints where a stop, a new sentence or a resumed voice takes effect, and a deadline with its exit on every wait — swept by the clock's turn. |
 
 Ports (`ports.py`) are the seams to the outside: `Clock`, `Telemetry`, `Model`, `Tools`, `Memory`, `Mouth`, `Owed`, `Tasks`,
@@ -52,7 +52,7 @@ at every transition of a sentence and of the reservation, and restarts on the sa
 
 Seven kinds, `conv_ear`, `conv_inbox`, `conv_run`, `conv_ledger`, `conv_effect`, `conv_mouth`, `conv_close`
 (`telemetry.py` is the only source of labels), in the observer's `conversation` family. Every event carries its
-cause, owner, epoch and refs; its trace is the request's root intervention. The test observatory's brain screen paints
+cause, owner, epoch and refs, and every event is in a flow: a turn's trace is its request's root intervention, a run's events carry the trace it started with (a request answered in another's batch closes in that run's flow), a line owed carries its key, a stop the line it cuts, a control by id what it references. The test observatory's brain screen paints
 a conv flow with its own stations (`CONV_STATIONS`), and `python -m conversation.replay <signals> --events <file>`
 produces a flow for it to read.
 

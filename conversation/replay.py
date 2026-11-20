@@ -92,7 +92,7 @@ class Replay:
                                  store=self.store, memory=NoMemory(), clock=self.clock, mouth=self.mouth,
                                  telemetry=self.tel, config=self.config, prefix="REPLAY")
         self.mouth.ack = self.conv.ack
-        # our own voice reaches the ear as the device's playback, as it would live (review 2, MINOR 8)
+        # our own voice reaches the ear as the device's playback, as it would live
         self.mouth.playback = lambda ep: self.conv.hear(S.PlaybackState(ep, True, self.clock.now_ms()))
         for ep in sorted({x.get("endpoint") or x.get("stream") for x in self.signals} - {None}):
             self.conv.device(ep, voice_live=True, speaker_open=True)     # the recorded devices had a live voice

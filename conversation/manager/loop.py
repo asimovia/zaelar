@@ -7,7 +7,7 @@ buttons); `ack(...)` takes the mouth's acknowledgements; `pump()` runs what is r
 is the clock's turn — holds, deferrals, lines nobody acknowledged, voices nobody ends, requests past their
 liveness budget — and runs on its own timer (`keep_time`), never only inside `pump`. The control lane (onset, stop,
 acks) never waits for a run. A new input during a run is applied at the run's next checkpoint: SUPERSEDE replaces the
-RUN (never the request, N1), FOLLOW_UP queues, CANCEL_RUN drops it, SILENCE stops our voice. A person's entry opens
+RUN (never the request), FOLLOW_UP queues, CANCEL_RUN drops it, SILENCE stops our voice. A person's entry opens
 its request in the SAME transaction that accepts it, so liveness counts from the moment it was accepted.
 """
 from __future__ import annotations
@@ -27,7 +27,7 @@ from conversation.ledger import Book
 from conversation.ledger.book import BookTx
 from conversation import guard
 from conversation.manager import policy, run
-from conversation.mouth import Device, Painted, PlayoutAck, SayEnded, SayStarted, Speaker
+from conversation.mouth import Device, SayEnded, SayStarted, Speaker
 from conversation.ports import Clock, Memory, Model, Mouth, Owed, Store, Tasks, Telemetry, Tools
 from conversation.telemetry import Emitter
 from conversation.types import Channel, ControlOp, Coverage, EnvelopeKind, Ids, ItemKind, MgrState, Op
@@ -48,6 +48,7 @@ class Running:
     last_entry_ms: int = 0                # the latest close among the person's entries in the batch
     last_endpoint: str | None = None      # …and the device it came from
     resumed_iv: str | None = None         # the resumed voice that stopped this run
+    trace: str = ""                       # the root of its first request: every event of the run carries it
     said: list = field(default_factory=list)
 
 
@@ -60,7 +61,7 @@ class Conversation:
         self.lease = store.acquire(account, owner)
         self.em = Emitter(telemetry, clock, account, epoch=lambda: self.lease.epoch)
         self.store = guard.TimedStore(store, self.em, self.cfg)
-        # ids unique across processes on one store (B4): the epoch of the lease names this process's id space
+        # ids unique across processes on one store: the epoch of the lease names this process's id space
         self.ids = ids or Ids("" if self.lease.epoch == 1 else f"{self.lease.epoch}x")
         lease = lambda: self.lease  # noqa: E731
         self.ear = Ear(account, self.cfg, self.em, self.ids)
@@ -135,7 +136,7 @@ class Conversation:
 
     def _column_state(self) -> MgrState:
         """A batch that waits — held for his voice, or in the collect window — is a run that has not started: for the
-        table it is running with no effect, so a stop cancels it like a run in course (D3)."""
+        table it is running with no effect, so a stop cancels it like a run in course."""
         if self.state is MgrState.IDLE and self.inbox.pending():
             return MgrState.RUNNING
         return self.state
@@ -182,7 +183,8 @@ class Conversation:
         for op in ops:
             if op is Op.SILENCE:
                 self.speaker.stop(None, "new_input" if env.kind is not EnvelopeKind.USER_CONTROL else "stop",
-                                  self.clock.mono_ms())
+                                  self.clock.mono_ms(),
+                                  trace=self.current.trace if self.current else (env.refs.intervention_id or env.id))
                 if self.state is MgrState.SPEAKING:   # our voice is stopped: we are not speaking, ack or no ack
                     self.state = MgrState.IDLE
             elif op is Op.SUPERSEDE and self.current is not None and not self.current.claimed:
@@ -203,12 +205,12 @@ class Conversation:
 
     def _by_id(self, env: E.Envelope) -> None:
         """A control by id. Only those with a handler reach here (the inbox refused the rest when it accepted them):
-        in F1, cancelling one of the host's tasks. Cancelling a task is never a stop and never a run's cancel (D3)."""
+        in F1, cancelling one of the host's tasks. Cancelling a task is never a stop and never a run's cancel."""
         if env.body.op is ControlOp.CANCEL_TASK and self.tasks is not None:
             guard.sync(self.em, self.cfg, "tasks", lambda: self.tasks.cancel(self.account, env.body.task_id or ""))
             self.inbox.applied(env.id, self.clock.now_ms())
 
-    def ack(self, sig: SayStarted | PlayoutAck | Painted | SayEnded) -> None:
+    def ack(self, sig: SayStarted | SayEnded) -> None:
         self.speaker.ack(sig)
 
     def _line_ended(self, _say_id: str) -> None:
@@ -223,14 +225,14 @@ class Conversation:
 
     def sweep(self, now: int | None = None) -> None:
         now = self.clock.now_ms() if now is None else now
-        self.hear(S.Tick(now))                          # the ear lives on the sweep's time too, not only on signals (N2)
+        self.hear(S.Tick(now))                          # the ear lives on the sweep's time too, not only on signals
         self.inbox.sweep(now)
-        for say_id in self.speaker.overdue(now):        # a line nobody acknowledged ended «unknown» (B2)
-            self.ack(SayEnded(say_id, "unknown", None, now))
+        for say_id in self.speaker.overdue(now):        # a line nobody acknowledged ended «unknown»
+            self.ack(SayEnded(say_id, "unknown", None, now, None, "unknown"))
         run.sweep_liveness(self, now)
 
     async def keep_time(self, every_ms: int = 250) -> None:
-        """The sweep on its own timer, for the adapter to run beside the loop: a hung run cannot stop it (B3). With
+        """The sweep on its own timer, for the adapter to run beside the loop: a hung run cannot stop it. With
         the manager free it also starts a pump — never awaited here, so a run it starts cannot stop the timer — and what
         became ready with nobody speaking (a line owed, a batch whose hold expired) does not wait for the next entry."""
         import asyncio
@@ -275,7 +277,8 @@ class Conversation:
             return
         self.state = MgrState.SPEAKING
         await self.speaker.say(run_id=f"owed:{line.key}", request_id=line.key, text=line.text,
-                               channels=frozenset({"voice"}), endpoint=device.endpoint, notice_key=line.key)
+                               channels=frozenset({"voice"}), endpoint=device.endpoint, notice_key=line.key,
+                               trace=line.task_id or line.key)
 
     def _owed_ended(self, key: str, sounded: bool) -> None:
         """The line owed ended: said, its ledger marks it spoken; it never sounded, it goes back for its other ways."""

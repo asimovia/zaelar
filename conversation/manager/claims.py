@@ -1,4 +1,4 @@
-"""D9: a numeric claim about data is published only if it matches its evidence — whole, not just the number.
+"""A numeric claim about data is published only if it matches its evidence — whole, not just the number.
 
 The model states each numeric claim of its reply as structure: who (entity), when (period), what (metric), which way
 (direction) and how much (value), naming the evidence it rests on. The evidence is what a tool of this run — or of an
@@ -26,7 +26,7 @@ class Claim:
 
     @classmethod
     def from_args(cls, d: dict) -> "Claim":
-        """Never raises: a value that is absent or not a number is NaN — and NaN never matches (M3)."""
+        """Never raises: a value that is absent or not a number is NaN — and NaN never matches."""
         try:
             value = float(d.get("value"))
         except (TypeError, ValueError):

@@ -2,7 +2,7 @@
 
 Six rows — kinds of input, classified by envelope kind and declared fields, never by what was said — and four
 columns: free, a run that has not claimed an effect, a run that has, and speaking. 24 cells, every one filled
-(node 13.8). Three operations that are never confused (D3): SILENCE stops our voice, CANCEL_RUN drops the run, and
+(node 13.8). Three operations that are never confused: SILENCE stops our voice, CANCEL_RUN drops the run, and
 cancelling a TASK is a tool the model calls or a button by id — no cell of this table cancels a task. A stop is a
 `user.control(stop)` from a button or from the safety detector outside the package; this package reads no words for
 it. Controls never wait.

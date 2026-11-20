@@ -13,7 +13,8 @@ from conversation.composer import blocks
 from conversation.config import Config
 from conversation.ports import Block, PromptParts
 
-ITEMS, TURNS = "items", "turns"
+ITEMS, INBOX, SAYS = "items", "inbox", "says"
+CONTENT = ("user.utterance", "user.text")
 
 
 @dataclass(frozen=True)
@@ -30,8 +31,16 @@ class View:
 
 
 def view_from(snapshot, *, prefix: str, now_ms: int, **kw) -> View:
+    """The conversation window comes from the person's entries and our lines — the inbox and the says — in the order
+    they happened; no table of turns keeps a second copy (the durable pair goes to the host's record)."""
     items = tuple(r for _k, r in snapshot.scan(ITEMS))
-    turns = tuple(r for _k, r in snapshot.scan(TURNS))
+    theirs = [(r["accepted"], 0, {"role": "user", "channel": r["env"]["channel"], "text": r["env"]["body"]["text"],
+                                  "heard_chars": None, "ref": r["env"]["body"]["intervention_id"]})
+              for _k, r in snapshot.scan(INBOX) if r["kind"] in CONTENT and r["state"] == "accounted"]
+    ours = [(r["t_ms"], 1, {"role": "agent", "channel": "+".join(r["channels"]), "text": r["text"],
+                            "heard_chars": r["heard_chars"], "ref": r["say_id"]})
+            for _k, r in snapshot.scan(SAYS)]
+    turns = tuple(t for _at, _o, t in sorted(theirs + ours, key=lambda x: (x[0], x[1])))
     return View(prefix=prefix, now_ms=now_ms, items=items, turns=turns, **kw)
 
 

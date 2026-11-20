@@ -57,7 +57,7 @@ class Spans:
         return bool(seqs) and all(self._turns[k].final for k in seqs) and bool(self.words(iv))
 
     def reassign_seq(self, stream: str, seq: int, iv: str, to_iv: str) -> bool:
-        """Move ONE provider turn of `iv` to another intervention (its end came after the first ended, N1)."""
+        """Move ONE provider turn of `iv` to another intervention (its end came after the first ended)."""
         t = self._turns.get((stream, seq))
         if t is None or t.iv != iv:
             return False

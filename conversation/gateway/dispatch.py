@@ -91,7 +91,7 @@ def _settle_unknown(gw: Gateway, effect_id: str, why: str) -> None:
 
 def reconcile(gw: Gateway, effect_id: str, found: str, receipt: dict | None = None) -> None:
     """An unknown submission, settled by LOOKING at the provider (`found`: provider_accepted | rejected). A receipt
-    for an effect we never reserved cuts the writes (plan §15 E5)."""
+    for an effect we never reserved cuts the writes."""
     def fn(b):
         if b.get(effect_id) is None:
             b.tx.put(FLAGS, "write_disabled", {"on": True, "reason": "a receipt without a reservation", "t_ms": b.now})
@@ -104,7 +104,7 @@ def reconcile(gw: Gateway, effect_id: str, found: str, receipt: dict | None = No
 
 def recover(gw: Gateway) -> list[str]:
     """After a restart: `claimed` is provably not sent and stays; `submitting` may or may not have gone —
-    `submission_unknown`, never resent (plan §15 E4)."""
+    `submission_unknown`, never resent."""
     def fn(b):
         out = []
         for row in b.items(ItemKind.EFFECT, ("submitting",)):

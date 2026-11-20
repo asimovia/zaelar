@@ -8,7 +8,7 @@ process acquires the account, the old one keeps being fed). The model is scripte
 claims, silences, failures — and injects new input between its own events, so checkpoints are exercised. At the end
 time runs out (every hold, deferral and liveness budget expires) and `check(...)` returns the violations, as text.
 
-Deterministic: one seed, one case. No wall clock, no I/O, standard library only (PA-6: no Hypothesis).
+Deterministic: one seed, one case. No wall clock, no I/O, standard library only (no Hypothesis).
 """
 from __future__ import annotations
 
@@ -72,7 +72,7 @@ class Case:
         self.clock, self.tel = FakeClock(), ListTelemetry()
         self.tools = RecordingTools()
         if self.rng.random() < 0.1:
-            self.tools.raises["market_data"] = ValueError("p3: the adapter broke")    # B6
+            self.tools.raises["market_data"] = ValueError("p3: the adapter broke")    # a tool that raises
         self.tools.answers["market_data"] = ToolResult("ok", evidence=(evidence("ev1", "ACME", "q3", "up_days",
                                                                                  "up", 18),))
         self.model = ScriptedModel(default=self._behave)
@@ -92,7 +92,7 @@ class Case:
         c = Conversation(account=ACCT, owner=owner, model=self.model, tools=self.tools, store=self.store,
                          memory=NoMemory(), clock=self.clock, mouth=self.mouth, telemetry=self.tel, config=self.cfg,
                          prefix="P3", ids=None, owed=self.owed)
-        self.mouth.ack = self._lossy_ack(c)                                 # B2: acks get lost
+        self.mouth.ack = self._lossy_ack(c)                                 # acks get lost
         for ep in ("d1", "d2"):
             c.device(ep, voice_live=self.rng.random() < 0.8, speaker_open=self.rng.random() < 0.8)
         return c
@@ -122,7 +122,7 @@ class Case:
         if not self.draining and self.rng.random() < 0.25:
             out.append(lambda: self._safe(self._random_action))           # new input between two model events
         elif not self.draining and self.rng.random() < 0.08:
-            out.append(lambda: self._safe(self._reopen_mid_run))           # B1/B5: he goes on while it runs
+            out.append(lambda: self._safe(self._reopen_mid_run))           # he goes on while it runs
         if r < 0.15:
             self.issued_calls += 1
             out += [ToolCall("c", "market_data", {"q": "w1"}), Done()]
@@ -131,21 +131,21 @@ class Case:
             out += [ToolCall("c", "agenda_add", {"what": f"w{self.rng.randint(1, 3)}"}), Done()]
         elif r < 0.42:
             call = ToolCall("c", "send_message", {"to": "c1", "via": "chat", "text": "w5"})
-            twice = self.rng.random() < 0.3                                     # M2: the same call again
+            twice = self.rng.random() < 0.3                                     # the same call again
             self.issued_calls += 2 if twice else 1
             out += [call, call, Done()] if twice else [call, Done()]
         elif r < 0.52:
             claim = {"entity": "ACME", "period": "q3", "metric": "up_days", "value": 18, "evidence_id": "ev1",
                      "direction": self.rng.choice(["up", "down"])}
             if self.rng.random() < 0.2:
-                claim.pop("value")                                                 # M3: a number with no value
+                claim.pop("value")                                                 # a number with no value
             out += [reply("w8nv" if "value" not in claim else "w8", [claim]), Done()]
         elif r < 0.60:
             out += [Command("no_reply", {"reason": "p3"}), Done()]
         elif r < 0.65:
             out += [Failed("p3", "provider")]
         elif r < 0.654:
-            out += [self._hang(), reply("w0"), Done()]                       # B3: a provider that hangs
+            out += [self._hang(), reply("w0"), Done()]                       # a provider that hangs
         else:
             out += [reply(f"w{self.rng.randint(10, 99)}. w{self.rng.randint(10, 99)}?"), Done()]
         return out
@@ -244,11 +244,11 @@ class Case:
         elif a < 0.91:
             self._race_seal(conv)
         elif a < 0.94:
-            self._redeliver(conv)                                                # B5: an adapter re-delivers
+            self._redeliver(conv)                                                # an adapter re-delivers
         elif a < 0.955:
-            self._go_on_unfinished(conv)                                         # B1: a reopen left open
+            self._go_on_unfinished(conv)                                         # he goes on, unfinished
         elif a < 0.965:
-            self._forge(conv)                                                    # M1: a forged producer / account
+            self._forge(conv)                                                    # a forged producer / account
         else:
             self.clock.advance(self.rng.choice([100, 2000, 9000, 40_000]))
             self._feed(conv, S.Tick(self._now()))
@@ -316,7 +316,7 @@ class Case:
         for _ in range(4):
             self.clock.advance(max(self.cfg.liveness_ms,
                                    self.cfg.cross_channel_hold_ms) + 1)
-            # no device signal any more — not even a tick for the ear: only the manager's own clock (N2)
+            # no device signal any more — not even a tick for the ear: only the manager's own clock
             self.loop.run_until_complete(self.conv.pump())
             self.owed.expire(self.clock.now_ms())          # the ledger's pulse: a claim past its deadline goes back
 
@@ -376,7 +376,7 @@ def check(case: Case) -> list[str]:
         if k == "conv_close":
             closes[p["refs"]["req"]] = closes.get(p["refs"]["req"], 0) + 1
             closed_at.setdefault(p["refs"]["req"], p["t_ms"])
-    for r in inbox_rows:                                                               # I8/M1
+    for r in inbox_rows:                                                               # I8: the producer is of its kind
         if not r["env"]["producer"].startswith(E.KINDS[EnvelopeKind(r["kind"])][3]) or \
                 r["env"]["account"] != getattr(case, "account", ACCT):
             out.append(f"I8: {r['id']} accepted from {r['env']['producer']} for {r['env']['account']}")
@@ -384,9 +384,9 @@ def check(case: Case) -> list[str]:
         if r["kind"] == "user.control" and r["env"]["body"]["op"] != "stop" and r["state"] == "accounted" and \
                 (r["outcome"], r.get("accounted_ms")) != ("refused", r["accepted"]):
             out.append(f"I6: control {r['id']} with no handler ended {r['outcome']}, not refused when accepted")
-    if any(o.text == "w8nv" for o in case.mouth.orders):                              # D9/M3
-        out.append("D9: a reply published with a numeric claim that has no value")
-    batch_of, fenced = {}, set()                            # a FENCED batch never runs again unchanged (B1)
+    if any(o.text == "w8nv" for o in case.mouth.orders):                              # a claim with no value
+        out.append("claims: a reply published with a numeric claim that has no value")
+    batch_of, fenced = {}, set()                            # a FENCED batch never runs again unchanged
     for k, lab, p in case.tel.events:
         if k == "conv_run" and lab == "started":
             b = tuple(p["batch_envs"])
@@ -412,7 +412,19 @@ def check(case: Case) -> list[str]:
             out.append(f"I9: {r['id']} was accepted and is no request")
         elif r["kind"] in ("user.utterance", "user.text") and r["state"] != "duplicate" and \
                 closed_at.get(req, r["accepted"]) < r["accepted"]:
-            out.append(f"I9: {r['id']} was accepted after its request {req} had closed (N1)")
+            out.append(f"I9: {r['id']} was accepted after its request {req} had closed")
+    blank = [f"{k}/{lab}" for k, lab, p in case.tel.events if not p.get("trace")]      # every event in a flow
+    if blank:
+        out.append(f"trace: {len(blank)} events outside any flow, first {blank[0]}")
+    run_trace = {p["refs"]["run"]: p["trace"] for k, lab, p in case.tel.events if k == "conv_run" and lab == "started"}
+    for k, lab, p in case.tel.events:                       # a request a run closed joins that run's flow
+        if k != "conv_close":
+            continue
+        run = p["refs"].get("run")
+        if lab == "answered" and not run:
+            out.append(f"trace: {p['refs'].get('req')} answered by no run")
+        elif run and run_trace.get(run) != p["trace"]:
+            out.append(f"trace: {p['refs'].get('req')} closed by {run} outside its flow")
     for rid, row in items.items():                                                     # I9
         if row["kind"] == str(ItemKind.REQUEST):
             if row["state"] == "open":
