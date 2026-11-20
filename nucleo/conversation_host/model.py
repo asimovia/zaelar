@@ -8,7 +8,9 @@ order → `Command`, any other → `ToolCall`. A failure is the provider's when 
 is one of Python's programming errors (`provider_failure.is_engine_fault`, criterion R1): `Failed(whose=…)`.
 
 The client's own retry and relay act only BEFORE anything was emitted (a blip, or a stand-in for the same request),
-so nothing said is said twice; once it gives up, the run says the failure and the proof counts it.
+so nothing said is said twice; once it gives up, the run says the failure and the proof counts it. A cut MID-BODY the
+client does not re-send (its voice path may have spoken); here nothing leaves before the stream ends but text, so a
+transport cut with no text yielded is re-sent whole, `RESENDS` times, and `Done` says it (`resent`).
 """
 from __future__ import annotations
 
@@ -37,7 +39,7 @@ ORDERS = {
 #: what the client measured that the run's `model_done` carries: which model and provider ANSWERED (after a relay,
 #: the stand-in — `relayed_from` names the one that failed), so latency can be read by provider
 DONE_KEYS = ("model", "provider", "relayed_from", "relayed_to", "relay_reason", "prompt_tokens_est",
-             "finish_reason", "usage")
+             "finish_reason", "usage", "resent")
 
 
 def _measured(args: dict) -> dict:
@@ -81,6 +83,10 @@ def messages(p: PromptParts) -> list[dict]:
     return out
 
 
+#: a provider cut mid-body with nothing yielded yet is re-sent this many times (the guard's deadline still bounds it)
+RESENDS = 1
+
+
 class FastModel:
     """`client` is the engine's `FastClient` (or a double with its `stream`); `spec()` the routing table's voice
     model, read per call."""
@@ -104,19 +110,31 @@ class FastModel:
                      model_id: str) -> AsyncIterator[Any]:
         calls: list[tuple[str, dict]] = []
         metrics: dict = {}
-        try:
-            client, spec = self._parts()
-            # every answer is an ORDER (a read, `reply` or `no_reply`): the provider is told a tool call is required
-            async for chunk in client.stream(messages(prompt), spec=spec, tools=tools_for(tools),
-                                             on_tool_call=lambda name, args: calls.append((name, args)),
-                                             metrics=metrics, role="voice", tool_choice="required"):
-                if chunk:
-                    yield TextDelta(chunk)
-        except Exception as e:  # noqa: BLE001 — every failure becomes an event the run handles, whose it is said
-            from nucleo.llm import provider_failure
-            yield Failed(f"{type(e).__name__}: {str(e)[:160]}", "ours" if provider_failure.is_engine_fault(e)
-                         else "provider")
-            return
+        for attempt in range(1 + RESENDS):
+            calls.clear()
+            metrics.clear()
+            said = False
+            try:
+                client, spec = self._parts()
+                # every answer is an ORDER (a read, `reply` or `no_reply`): the provider is told a tool call is required
+                async for chunk in client.stream(messages(prompt), spec=spec, tools=tools_for(tools),
+                                                 on_tool_call=lambda name, args: calls.append((name, args)),
+                                                 metrics=metrics, role="voice", tool_choice="required"):
+                    if chunk:
+                        said = True
+                        yield TextDelta(chunk)
+                if attempt:
+                    metrics["resent"] = attempt
+                break
+            except Exception as e:  # noqa: BLE001 — every failure becomes an event the run handles, whose it is said
+                from nucleo.llm import fast_client, provider_failure
+                if not said and attempt < RESENDS and fast_client._is_transient(e):
+                    # nothing left this port yet — the gathered calls are yielded only once the stream is over — so
+                    # the provider's cut mid-body is re-sent whole, as the client already does before the first chunk
+                    continue
+                yield Failed(f"{type(e).__name__}: {str(e)[:160]}", "ours" if provider_failure.is_engine_fault(e)
+                             else "provider")
+                return
         # the stream is over: what it measured is said BEFORE the calls it gathered — an order ends the run, and what
         # came after it would never be read
         yield Done({k: metrics[k] for k in DONE_KEYS if k in metrics})

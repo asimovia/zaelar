@@ -163,13 +163,20 @@ def tx(account: str, owner: str, epoch: int, now_ms: int, db=None) -> Iterator[T
 
 
 def wipe(account: str, db=None) -> int:
-    """Every row and the lease of ONE account — a disposable engine's reset between two isolated test conversations
-    (`/api/debug/conversation/reset`, refused outside a sandbox). Returns how many rows went."""
+    """Every row of ONE account — a disposable engine's reset between two isolated test conversations
+    (`/api/debug/conversation/reset`, refused outside a sandbox). Returns how many rows went.
+
+    The lease is NOT forgotten: it is fenced (no owner) at its epoch, so the next manager takes the next epoch and mints
+    its ids in a space of its own — an id never names two conversations of one engine, and a manager still running
+    from before the reset is refused at its next write."""
     d = db or _db.get_db()
-    with d.cursor() as cur:
-        cur.execute("DELETE FROM conv_rows WHERE account=?", (account,))
-        n = cur.rowcount
-        cur.execute("DELETE FROM conv_meta WHERE account=?", (account,))
+    with _db.exclusive(d) as conn:
+        prev = _lease(conn, account)
+        n = conn.execute("DELETE FROM conv_rows WHERE account=?", (account,)).rowcount
+        conn.execute("DELETE FROM conv_meta WHERE account=? AND key != ?", (account, LEASE))
+        if prev is not None:
+            conn.execute("UPDATE conv_meta SET value=? WHERE account=? AND key=?",
+                         (json.dumps({"owner": "", "epoch": prev[1]}), account, LEASE))
     return n
 
 

@@ -157,3 +157,22 @@ def clear_slot(slot: str) -> int:
     db.execute(f"UPDATE memories SET valid=0, updated=? WHERE id IN ({ph})", (_clock_now(), *ids))
     _emit("memory.updated", {"op": "clear_slot", "slot": key, "n": len(ids)})
     return len(ids)
+
+
+def high_water() -> int:
+    """The newest memory's id (0 with none): a mark that `forget_after` reads back."""
+    r = _db.get_db().query("SELECT COALESCE(MAX(id), 0) AS n FROM memories")
+    return int(r[0]["n"]) if r else 0
+
+
+def forget_after(mark: int) -> int:
+    """Invalidates every memory written after `mark` (`high_water`), soft (`valid=0`, forget doctrine). For a
+    disposable engine's reset between isolated cases only — what the earlier cases left must not answer the next one."""
+    db = _db.get_db()
+    ids = [r["id"] for r in db.query("SELECT id FROM memories WHERE valid=1 AND id > ?", (int(mark),))]
+    if not ids:
+        return 0
+    ph = ",".join("?" * len(ids))
+    db.execute(f"UPDATE memories SET valid=0, updated=? WHERE id IN ({ph})", (_clock_now(), *ids))
+    _emit("memory.updated", {"op": "forget_after", "n": len(ids)})
+    return len(ids)

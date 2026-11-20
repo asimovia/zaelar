@@ -83,3 +83,44 @@ def test_through_the_manager_the_models_order_is_the_runs(store):
     closed = h.utter([(["w1"], 0)], terminal=True)
     h.at(closed + h.conv.cfg.complete_grace_ms + 50).pump()
     assert [o.text for o in h.mouth.orders] == ["w8"]                  # at the short grace its reading earned
+
+
+class _CutOnce(_Client):
+    """The provider cuts the body mid-stream on the first request (`httpx.ReadError` carries no message)."""
+
+    def __init__(self, before=(), **kw) -> None:
+        super().__init__(**kw)
+        self.before, self.requests = list(before), 0
+
+    async def stream(self, msgs, *, spec, tools, on_tool_call, metrics, role, **kw):
+        self.requests += 1
+        if self.requests == 1:
+            on_tool_call("reply", {"text": "w0", "claims": []})       # half a call gathered before the cut
+            for c in self.before:
+                yield c
+            import httpx
+            raise httpx.ReadError("")
+        async for c in super().stream(msgs, spec=spec, tools=tools, on_tool_call=on_tool_call, metrics=metrics,
+                                      role=role, **kw):
+            yield c
+
+
+def test_a_cut_before_anything_was_yielded_is_resent_whole():
+    client = _CutOnce(calls=[("reply", {"text": "w9", "claims": [], "complete": True})])
+    got = _run(FastModel(client, spec="spec0"), P)
+    assert client.requests == 2
+    assert isinstance(got[0], Done) and got[0].usage["resent"] == 1
+    assert [g.args["text"] for g in got if isinstance(g, Command)] == ["w9"]   # the first try's half call is gone
+
+
+def test_a_cut_after_text_was_yielded_is_a_failure_never_a_second_text():
+    client = _CutOnce(before=["w5"], calls=[("reply", {"text": "w9", "claims": []})])
+    got = _run(FastModel(client, spec="spec0"), P)
+    assert client.requests == 1 and got[0] == TextDelta("w5")
+    assert isinstance(got[-1], Failed) and got[-1].whose == "provider"
+
+
+def test_an_error_that_is_not_a_transport_cut_is_not_resent():
+    client = _Client(raise_=ValueError("w1"))
+    got = _run(FastModel(client, spec="spec0"), P)
+    assert len(got) == 1 and isinstance(got[0], Failed)

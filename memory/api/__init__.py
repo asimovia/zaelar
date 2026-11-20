@@ -38,7 +38,7 @@ from .episodes import (  # noqa: F401
     adopt_episode, consolidate, episode_inbox, list_episodes, load_episode, migrate_inbox, redact_secrets,
     register_episode, write_episode)
 from .events import _emit
-from .forgetting import clear_conversation, clear_slot, clear_slot_prefix, forget, unforget  # noqa: F401
+from .forgetting import clear_conversation, clear_slot, clear_slot_prefix, forget, forget_after, high_water, unforget  # noqa: F401,E501
 from .reads import (  # noqa: F401
     MAP_CAP, background_slot_off_topic, by_concepts, by_slot_prefix, lexical_ids, map, recent_by_source)
 from .sleep import concept_names, fold_concepts, register_sleep_phase, same_person_records  # noqa: F401 — V2-854 F3, V2-858 T549
@@ -57,7 +57,7 @@ DEFAULT_BUDGET_TOKENS = 1200
 __all__ = [
     "start", "stop", "redact_secrets",
     "write", "write_now", "ingest_message", "correction_targets", "widget_trace_ids", "task_trace_ids", "reinforce", "reinforce_ids_for", "pin", "unpin", "link",
-    "forget", "unforget", "clear_conversation", "clear_slot", "clear_slot_prefix",
+    "forget", "unforget", "clear_conversation", "clear_slot", "clear_slot_prefix", "forget_after", "high_water",
     # V2-854 F3: the address book in memory — its lexical read, and the deep-sleep doors a brain registers through.
     "lexical_ids", "register_sleep_phase", "same_person_records", "fold_concepts", "concept_names",
     "state", "set_state", "compose_state",

@@ -604,6 +604,10 @@ _PACKAGE_CEILINGS["conversation"] += 21    # 2026-11-20 V2-941 v3.1 B8a: `LinkGa
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 73    # same: the ear's facts on the body, each seq applied once, in order (`ear_in.py`)
 _PACKAGE_CEILINGS["voice"] += 143          # same: the provider's messages as the ear's facts on one wall clock (`ear_feed.py`), the ear's lossless lane in the body link with its declared gap
 _TOTAL_MAX += 237    # same cause
+_PACKAGE_CEILINGS["memory"] += 26          # 2026-11-20 V2-941 v3.1 B7d (the tester's live passes): a sandbox's reset forgets what the cases wrote (`forgetting.high_water`/`forget_after`) and fences the lease so no id names two conversations
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 63    # same: the reset in one place (`sandbox.py`); a provider's cut mid-body with nothing yielded re-sent whole; the orders and `complete` declared
+_PACKAGE_CEILINGS["observability"] += 6    # same: a flow read by an id is its newest rows from `since` on
+_TOTAL_MAX += 89     # same cause
 
 
 def test_the_total_only_shrinks():

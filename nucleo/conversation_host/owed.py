@@ -50,7 +50,8 @@ class NoticesOwed:
             _handed.discard(key)
 
     def owe(self, account: str, key: str, reason: str) -> None:
-        """A run of the manager failed: the line that says so, in his language, through the one ledger."""
+        """A run of the manager failed: the line that says so, in his language, through the one ledger, under the key
+        the manager gave it (`conv:failed:<request>`): the claim and its `spoken` read the same key."""
         import asyncio
 
         from i18n import langs
@@ -58,6 +59,6 @@ class NoticesOwed:
         lines = getattr(langs.current_language(), "mute_lines", ()) or ()     # the pack's «I did not answer you»
         text = lines[0] if lines else "Sorry, I lost that. Could you say it again?"
         try:
-            asyncio.get_running_loop().create_task(notices.notify("zaelar", text, key=f"conv:failed:{key}"))
+            asyncio.get_running_loop().create_task(notices.notify("zaelar", text, key=key))
         except RuntimeError:
-            asyncio.run(notices.notify("zaelar", text, key=f"conv:failed:{key}"))
+            asyncio.run(notices.notify("zaelar", text, key=key))

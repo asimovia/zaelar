@@ -153,25 +153,19 @@ async def debug_conversation(session: str):
 
 @router.post("/api/debug/conversation/reset")
 async def debug_conversation_reset():
-    """A disposable engine's reset between two isolated test conversations: the conversation stopped, its rows and
-    proof gone, so the next one starts with nothing behind it. Refused unless this engine is a sandbox
-    (`ZAELAR_CONVERSATION_SANDBOX=1`, set by `tests/conversation/e2e/sandbox.py`): on a real account the conversation
-    goes on across sessions, as it should."""
+    """A disposable engine's reset between two isolated test conversations (`conversation_host.sandbox`). Refused
+    unless this engine is a sandbox: on a real account the conversation goes on across sessions, as it should. The
+    memory's queue is drained first, so a write of the case before cannot land after its reset."""
     import asyncio
-    import os
-    if (os.getenv("ZAELAR_CONVERSATION_SANDBOX") or "").strip() != "1":
+    from nucleo.conversation_host import sandbox
+    if not sandbox.is_sandbox():
         return JSONResponse({"ok": False, "reason": "not a sandbox"}, status_code=403)
-
-    def _reset() -> int:
-        from memory.api import conv
-        from nucleo.conversation_host import boot, entry, proof, sessions
-        sessions.close_all()
-        entry.reset()
-        acct = boot.account()
-        proof.forget(acct)
-        return conv.wipe(acct)
-
-    return JSONResponse({"ok": True, "rows": await asyncio.to_thread(_reset)})
+    from memory.queue import get_queue
+    try:
+        await asyncio.wait_for(get_queue().join(), timeout=10.0)
+    except asyncio.TimeoutError:
+        return JSONResponse({"ok": False, "reason": "the memory queue did not drain"}, status_code=503)
+    return JSONResponse({"ok": True, **await asyncio.to_thread(sandbox.reset)})
 
 
 @router.get("/api/status")

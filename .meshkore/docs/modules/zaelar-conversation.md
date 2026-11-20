@@ -36,7 +36,10 @@ The live passes run on a disposable engine with the switch on (`tests/conversati
 T1–T12 in both languages (`e2e/text_suite.py`, its cases frozen in `fixtures/suite/text.v1.json`), the bench of the
 model's own `complete` reading (`benchmarks/complete_bench.py`), the frozen corpus and the simulated person. The text
 channel's answer carries what each pass judges: the request's close, the reads its run made with their arguments, the
-reads refused, and its trace. They run by request, never in the gate; what they compute is tested deterministically.
+reads refused, and its trace. They run by request, never in the gate; what they compute is tested deterministically. Between two cases the sandbox resets (`conversation_host/sandbox.py`, refused on a
+real engine): the conversation's rows go and its lease is fenced at its epoch, so the next manager mints ids of its own
+and no id names two conversations of one engine; what the cases wrote to memory is forgotten from the mark the first
+reset takes (the seed stays). A flow read by an id is its newest rows, in order, from `since` on.
 
 What his voice says reaches the manager as facts of the ear (`voice/engine/pipeline/ear_feed.py`: words, the
 provider's end with its confidence, the watermark, the edges of his voice), on a lane of the voice process's line to

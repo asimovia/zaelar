@@ -92,3 +92,14 @@ def test_with_the_manager_not_loaded_it_is_todays_path(channels, monkeypatch):
     owed.set_voice_live(True)
     monkeypatch.delitem(sys.modules, "nucleo.conversation_host.owed")
     assert _notify("k7")["state"] == "pushed"
+
+
+def test_a_failed_runs_line_is_owed_under_the_key_the_manager_gave_it(channels):
+    """The manager owes `conv:failed:<request>` and settles that same key once said: the port stores it as given,
+    never under a second prefix the claim would never find."""
+    owed.set_voice_live(True)
+    owed.NoticesOwed().owe("acct", "conv:failed:r_iv_000007", "failed:provider:ReadError")
+    assert store.by_key("conv:failed:r_iv_000007")["state"] == "claimed"
+    assert store.by_key("conv:failed:conv:failed:r_iv_000007") is None
+    line = owed.NoticesOwed().next("acct")
+    assert line is not None and line.key == "conv:failed:r_iv_000007"

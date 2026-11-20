@@ -32,11 +32,14 @@ def build(catalog: list[ToolSpec], *, native: str, name: str, agent: str = "", p
         "READS": reads or "none",
         "ACTS": ("they exist and are held in this phase, refused if called: " + ", ".join(held)) if held
                 else "none in this session: nothing but a read passes",
-        "ORDERS": "reply(text, claims, complete) | no_reply(reason, complete)",
+        "ORDERS": "reply(text, claims, complete) | no_reply(reason, complete); no_reply: an entry not addressed to "
+                  "you, or nothing to say; an act held or refused, or information missing: a reply saying so or "
+                  "asking for it",
         "CLAIMS": "one per figure of data in the text, with the id of the evidence it is in; derived: true for a "
                   "figure computed from evidence of this reply, with its op (count, sum, difference, mean, ratio, "
                   "percent) and operands (figures of that evidence), said with what it rests on",
-        "COMPLETE": "true: what was said so far is a thought that can be answered; false: something seems missing",
+        "COMPLETE": "true: the person has finished this thought, whether or not you can answer it yet; false: they "
+                    "seem to be mid-thought",
     }
     return "\n".join(f"{k}: {lines[k]}" for k in LINES)
 

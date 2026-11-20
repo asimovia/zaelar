@@ -142,19 +142,25 @@ def _initiator(row: dict) -> str:
     return initiator_of(row.get("origin"))
 
 
-def flow(corr_id: str, limit: int = 500) -> list[dict]:
+def flow(corr_id: str, limit: int = 500, since_ms: float = 0) -> list[dict]:
     """El flujo COMPLETO en orden cronológico — la secuencia exacta de qué pasó y cuándo, que es lo que permite
-    ver dónde se torció (p. ej. que se abrió el widget equivocado, y de qué frase salió)."""
+    ver dónde se torció (p. ej. que se abrió el widget equivocado, y de qué frase salió).
+
+    Past `limit` rows it is the NEWEST `limit`, still in order: an id can come back (a disposable engine resets its
+    conversation and mints `iv_000001` again), and the oldest rows under it are another conversation's. `since_ms`
+    leaves out every row before that wall time."""
     # `topic` va en la proyección a propósito: un flujo NO es solo observabilidad. Otras señales del bus
     # (`turn.completed`, `memory.updated`…) viajan con el mismo correlation id, y son parte legítima de la
     # historia del flujo — pero no traen `kind`/`label`, así que sin el topic salían como filas VACÍAS y
     # misteriosas en el visor. Un renglón que no se sabe qué es hace desconfiar de toda la tabla.
     return _rows(
         """
-        SELECT id, ts_ms, topic, cat, kind, label, span, ms, model, tokens_in, tokens_out, ver, payload
-        FROM events WHERE corr_id = ? ORDER BY id ASC LIMIT ?
+        SELECT * FROM (
+            SELECT id, ts_ms, topic, cat, kind, label, span, ms, model, tokens_in, tokens_out, ver, payload
+            FROM events WHERE corr_id = ? AND ts_ms >= ? ORDER BY id DESC LIMIT ?
+        ) ORDER BY id ASC
         """,
-        (str(corr_id), int(limit)),
+        (str(corr_id), float(since_ms or 0), int(limit)),
     )
 
 
