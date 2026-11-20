@@ -18,7 +18,7 @@ ENDPOINT = "holder"
 def ask(flag) -> dict:
     """The switch's decision for a session about to start (`flag`: the session's own `conv`, if it carries one)."""
     from nucleo.conversation_host import switch
-    d = switch.decide(flag)
+    d = switch.decide(flag, voice=True)
     return {"on": d.on, "by": d.by, "why": d.why}
 
 
@@ -27,7 +27,7 @@ def started(session, ev: dict) -> bool:
     from nucleo.conversation_host import switch
     d = switch.Decision(bool(ev.get("conv")), str(ev.get("conv_by") or "voice"), str(ev.get("conv_why") or ""))
     session._conversation_switch = d
-    if d.why:
+    if d.why and d.why != switch.TEXT_ONLY:            # text only is his choice, not a refusal
         from voice import observer
         observer.emit("alert", "conversation manager refused", text=d.why, extra={"by": d.by})
     if d.on:

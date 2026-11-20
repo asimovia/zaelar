@@ -267,7 +267,7 @@ def receive_typed(txt: str, *, _emit, session, dev: str = "") -> None:
     # STT's final transcript, so a typed order and a spoken one leave the same trace on screen.
     _emit("transcript", "text-injected chat", text=txt, role="user", extra=_dev, piece="u_chat")   # typed, not heard
     from nucleo.conversation_host import switch as _conv_switch   # the switch alone: off, the manager is never loaded
-    if _conv_switch.on(session):
+    if _conv_switch.typed_on(session):              # a text door: the manager for text, even with the voice old
         from nucleo.conversation_host import entry as _conv_entry
         try:
             loop = _ag.asyncio.get_running_loop()

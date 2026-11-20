@@ -651,6 +651,8 @@ _TOTAL_MAX += 54     # same cause
 _PACKAGE_CEILINGS["conversation"] += 15    # 2026-11-20 V2-941 v3.1 B8f (the 3b smoke): a no_reply after reading for his words is asked once for a reply, counted
 _PACKAGE_CEILINGS["voice"] += 4            # same: a voice proved his by the local cut rule is sent again as his, so a wordless barge-in gives the line back
 _TOTAL_MAX += 19     # same cause
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 25    # 2026-11-20 V2-941: the manager for his TEXT only — the typed doors by it, the voice on the old path (`switch.TEXT`, `typed_on`)
+_TOTAL_MAX += 25     # same cause
 
 
 def test_the_total_only_shrinks():

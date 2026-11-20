@@ -17,6 +17,9 @@ from dataclasses import dataclass
 ENV = "ZAELAR_CONVERSATION"
 SETTING = "conversation_manager"
 ON, OFF = frozenset({"1", "true", "yes", "on"}), frozenset({"0", "false", "no", "off"})
+#: the manager for his TEXT only — the typed doors go by it, the voice stays on the old path
+TEXT = "text"
+TEXT_ONLY = "text only"           # why a voice session is off when the manager is asked for text only: a choice
 
 
 @dataclass(frozen=True)
@@ -33,19 +36,27 @@ def _flag(v) -> bool | None:
     return True if s in ON else False if s in OFF else None
 
 
-def asked(session: str | bool | None = None) -> tuple[bool, str]:
-    """Is the manager asked for, and by whom — before the checks that may refuse it."""
-    got = _flag(session)
-    if got is not None:
-        return got, "session"
+def _source(session) -> tuple[object, str]:
+    """The first that says something: the session's own flag, the account's key, the environment."""
     from config import settings
-    got = _flag(settings.get(SETTING))
-    if got is not None:
-        return got, "account"
-    got = _flag(os.getenv(ENV))
-    if got is not None:
-        return got, "env"
-    return False, "default"
+    for value, by in ((session, "session"), (settings.get(SETTING), "account"), (os.getenv(ENV), "env")):
+        if _flag(value) is not None or str(value or "").strip().lower() == TEXT:
+            return value, by
+    return None, "default"
+
+
+def asked(session: str | bool | None = None, voice: bool = False) -> tuple[bool, str]:
+    """Is the manager asked for, and by whom — before the checks that may refuse it. `TEXT` asks it for the typed doors
+    only: for the voice it is not asked."""
+    value, by = _source(session)
+    if str(value or "").strip().lower() == TEXT:
+        return not voice, by
+    return bool(_flag(value)), by
+
+
+def text_only(session=None) -> bool:
+    value, _by = _source(session)
+    return str(value or "").strip().lower() == TEXT
 
 
 def refused() -> str:
@@ -62,10 +73,11 @@ def refused() -> str:
     return ""
 
 
-def decide(session: str | bool | None = None) -> Decision:
-    on, by = asked(session)
+def decide(session: str | bool | None = None, voice: bool = False) -> Decision:
+    """`voice`: the decision for a voice session (`/api/voice/child/conv`) — off when the manager is asked for text only."""
+    on, by = asked(session, voice)
     if not on:
-        return Decision(False, by)
+        return Decision(False, by, TEXT_ONLY if voice and text_only(session) else "")
     why = refused()
     return Decision(not why, by, why)
 
@@ -76,6 +88,19 @@ def fall_back(session, why: str) -> None:
     if session is not None and hasattr(session, "__dict__"):
         session._conversation_switch = Decision(False, "fallback", why)
     observer.emit("alert", "conversation manager: this session goes the old way", text=why)
+
+
+def typed_on(session=None) -> bool:
+    """A TEXT door's question (a typed line): the session's own decision when it is the manager's, else the account's
+    for text — with the manager asked for text only, a voice session on the old path still sends his typed lines to it."""
+    if on(session):
+        return True
+    got = getattr(session, "_conversation_typed", None) if session is not None else None
+    if got is None:
+        got = decide(None)
+        if session is not None and hasattr(session, "__dict__"):
+            session._conversation_typed = got
+    return got.on
 
 
 def on(session=None) -> bool:
