@@ -130,3 +130,22 @@ def test_a_live_update_is_never_stored(monkeypatch):
     assert [e["op"]["op"] for e in stored] == ["append"]
     assert [e["op"]["op"] for e in published if e.get("kind") == "wall"] == ["append", "update"]
     wall._reset_for_tests()
+
+
+def test_our_line_answers_every_line_of_its_batch_by_its_id_on_the_wall(ops):
+    """The review's W2-1: a typed line's id on the wall is its `cid`, so our answer names it so — and every line of the
+    batch it answers, a voice one too — or the wall counts a missing cause and cannot keep the order."""
+    from nucleo.conversation_host.mouth import WallMouth
+    wall.listen("conv_ear", "typed", {"cause": {"kind": "client", "ref": "c_abc"},
+                                      "refs": {"iv": "iv_9", "endpoint": "desktop:d1", "channel": "text"}})
+    wall.listen("conv_inbox", "accepted", {"kind": "user.text", "text": "w1",
+                                           "refs": {"iv": "iv_9", "env": "e_9", "endpoint": "desktop:d1"}})
+    wall.listen("conv_inbox", "accepted", {"kind": "user.utterance", "text": "w2",
+                                           "refs": {"iv": "iv_10", "env": "e_10", "endpoint": "holder"}})
+    wall.listen("conv_run", "started", {"batch_envs": ["e_9", "e_10"], "refs": {"run": "run_1"}})
+    m = WallMouth(SimpleNamespace(now_ms=lambda: 5), ack_later=lambda s: None)
+    order = SimpleNamespace(say_id="s_1", run_id="run_1", text="w9", channels=frozenset({"text"}), endpoint="d1",
+                            request_id="r_iv_9", notice_key=None)
+    asyncio.run(m.say(order))
+    ours = [o for w, o, _l in ops if w == "mouth"]
+    assert ours[0]["re"] == ["c_abc", "iv_10"]

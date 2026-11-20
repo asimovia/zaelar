@@ -26,6 +26,9 @@ _open: dict[str, str] = {}                  # device → the intervention its ea
 _turns: dict[str, dict] = {}                # device → {provider turn: its words}, since that intervention opened
 _lines: dict[str, str] = {}                 # a line on the wall → its writer (what this adapter appended)
 _cid_of: dict[str, str] = {}                # a typed intervention → the screen's id for its line
+_line_of: dict[str, str] = {}               # his intervention → its line's id on the wall (the `cid` of a typed one)
+_env_iv: dict[str, str] = {}                # an envelope → its intervention
+_run_ivs: dict[str, list] = {}              # a run → the interventions of his it answers (its batch, and absorbed)
 
 
 def client_id_ok(cid) -> bool:
@@ -84,13 +87,20 @@ def listen(kind: str, label: str, p: dict) -> None:
         if writer:
             _say(writer, {"op": "delete", "id": iv})
     elif kind == "conv_inbox" and label == "accepted" and iv and str(p.get("text") or "").strip():
+        with _lock:
+            _keep(_env_iv, str(refs.get("env") or ""), iv)
         _accepted(p.get("kind"), iv, device, str(p["text"]))
+    elif kind == "conv_run" and (label == "started" or p.get("command") == "absorbed") and refs.get("run"):
+        with _lock:                             # the lines our line answers: every intervention of its batch
+            ivs = [_env_iv[e] for e in p.get("batch_envs") or () if e in _env_iv]
+            _keep(_run_ivs, str(refs["run"]), list(dict.fromkeys(_run_ivs.get(str(refs["run"]), []) + ivs)))
 
 
 def _accepted(kind, iv: str, device: str, text: str) -> None:
     if kind == "user.text":
         with _lock:
             cid = _cid_of.pop(iv, "") or iv
+            _keep(_line_of, iv, cid)
         _say(f"keyboard:{device}", {"op": "append", "id": cid, "role": "you", "state": "final", "text": text})
         return
     if kind != "user.utterance":
@@ -111,9 +121,10 @@ def _accepted(kind, iv: str, device: str, text: str) -> None:
 def ours(order, event: str, heard_chars: int | None = None) -> None:
     """Our line (`WallMouth`): `shown` (final at once), `started` (live), `ended` (final, with what sounded)."""
     from nucleo.conversation_host import turns
-    rid = str(order.request_id or "")
-    iv = turns.iv_of(rid)
-    re = [iv] if iv.startswith("iv_") else []
+    iv = turns.iv_of(str(order.request_id or ""))
+    with _lock:                                 # every line of his it answers, by its id on the wall (W2-1)
+        ivs = _run_ivs.get(str(getattr(order, "run_id", "") or ""), []) or ([iv] if iv.startswith("iv_") else [])
+        re = [_line_of.get(i, i) for i in ivs]
     if event in ("shown", "started"):
         _say("mouth", {"op": "append", "id": order.say_id, "role": "agent", "re": re, "text": order.text,
                        "state": "final" if event == "shown" else "live"})
@@ -130,3 +141,6 @@ def _reset_for_tests() -> None:
         _turns.clear()
         _lines.clear()
         _cid_of.clear()
+        _line_of.clear()
+        _env_iv.clear()
+        _run_ivs.clear()

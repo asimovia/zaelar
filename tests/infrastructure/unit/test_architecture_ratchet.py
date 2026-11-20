@@ -743,6 +743,8 @@ _PACKAGE_CEILINGS["conversation"] += 180               # 2026-11-20 V2-941 (plan
 _TOTAL_MAX += 180    # same cause, measured
 _PACKAGE_CEILINGS["conversation"] += 18                # 2026-11-20 V2-941 (plan v3.2 §4, R3, commit 4): a piece cut by its length with his voice still up waits for the next one (`mailbox._chained`), and at the monologue's ceiling the batch runs and its reply goes to the wall
 _TOTAL_MAX += 18     # same cause, measured
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 14    # 2026-11-20 V2-941 (the wall review's W2-1): our line names every line of his it answers, by its id on the wall (a typed one's `cid`)
+_TOTAL_MAX += 14     # same cause, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())
