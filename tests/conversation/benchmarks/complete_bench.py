@@ -1,7 +1,10 @@
 """How well the voice's model reads a thought as finished or not (v3.1 §1.6 quater's gate; node 13.51) — live.
 
-    ./.venv/bin/python -m tests.conversation.benchmarks.complete_bench [--lang es en] [--incomplete 10]
+    ./.venv/bin/python -m tests.conversation.benchmarks.complete_bench --set v2 [--lang es en] [--incomplete 10]
         [--complete 100] [--seed 1] [--out FILE]
+
+`--set v2` takes the items from the tester's frozen labelled set (`fixtures/complete/v2`, built to the rule written
+before measuring); without it, from the corpus cut below.
 
 The items come from the frozen corpus, cut where §1.6 quater needs the reading:
   INCOMPLETE  a thought's pieces up to one that ends with a sentence mark while more pieces follow — the person goes
@@ -56,6 +59,15 @@ def items(lang: str, n_incomplete: int, n_complete: int, seed: int = 1, version:
     return picked + rng.sample(comp, min(n_complete, len(comp)))
 
 
+def from_set(lang: str, version: str, n_incomplete: int, n_complete: int) -> list[dict]:
+    """The items of a frozen labelled set (`fixtures/complete/<version>`, `tools/complete_set.py`: its loader refuses
+    a changed byte), in its own order."""
+    from tests.conversation.tools import complete_set
+    got = complete_set.load(lang, version)
+    return ([x for x in got if x["label"] == "incomplete"][:n_incomplete]
+            + [x for x in got if x["label"] == "complete"][:n_complete])
+
+
 def prompt(text: str, lang: str):
     """The prompt the manager would build for this one closed voice entry."""
     from conversation import envelopes as E
@@ -107,10 +119,13 @@ def score(results: list[dict]) -> dict:
     return {"by_lang": out, "infra": infra, "pass": bool(out) and not infra and all(v["pass"] for v in out.values())}
 
 
-async def run(model, langs: list[str], n_incomplete: int, n_complete: int, seed: int) -> list[dict]:
+async def run(model, langs: list[str], n_incomplete: int, n_complete: int, seed: int,
+              labelled: str | None = None) -> list[dict]:
     results = []
     for lang in langs:
-        for it in items(lang, n_incomplete, n_complete, seed):
+        source = (from_set(lang, labelled, n_incomplete, n_complete) if labelled
+                  else items(lang, n_incomplete, n_complete, seed))
+        for it in source:
             results.append({**it, "lang": lang, "complete": await read(model, it["text"], lang)})
     return results
 
@@ -130,10 +145,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--complete", type=int, default=100)
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--out", type=Path, default=None)
+    ap.add_argument("--set", dest="labelled", default=None,
+                    help="a frozen labelled set, `fixtures/complete/<version>` (e.g. v2), instead of the corpus cut")
     a = ap.parse_args(argv)
     load_credentials()
     from nucleo.conversation_host.model import FastModel
-    results = asyncio.run(run(FastModel(), a.lang, a.incomplete, a.complete, a.seed))
+    results = asyncio.run(run(FastModel(), a.lang, a.incomplete, a.complete, a.seed, a.labelled))
     s = score(results)
     out = a.out or Path(__file__).resolve().parents[2] / "runs" / "conversation" / f"complete-{time.strftime('%Y%m%d-%H%M%S')}.json"
     out.parent.mkdir(parents=True, exist_ok=True)

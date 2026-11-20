@@ -1,0 +1,54 @@
+{
+ "version": "v2",
+ "generator": "tests/conversation/tools/complete_set.py",
+ "seed": 7,
+ "source": "the analyst's templates (‖ = a speech-to-text final), filled by hand; no model wrote them",
+ "label_rule": "INCOMPLETE  the text up to a `‖` where the person goes on, and the text itself says so: a lead-in that announces\n              something («Oye, una cosa.»), the name alone, a clause left open on a function word, a subordinate clause\n              with no main one («Si mañana llueve.»), a list announced and not given, a correction opened and not\n              given («…, o sea, no.»), an «y además» with nothing after it. Every one ends with a sentence mark, as the\n              provider marks 80 % of the pieces after which the person goes on (report 06) — the case the gate is for.\n  COMPLETE    a whole thought that needs an answer, in the templates' shapes: bare, after a starter, after the name,\n              after a context clause, a correction resolved, two errands, the thought in pieces joined.\n\nExcluded on purpose, because the text alone cannot say: an order missing an argument (a message with no text — the\nperson may stop there and be asked), a statement with no request, a whole question the person then elaborates.",
+ "files": {
+  "complete.es.json": {
+   "sha256": "8b91e387d80f63a8020a21838fb19f63316c385e0d8227d2e39cf231006256f1",
+   "incomplete": 40,
+   "complete": 110,
+   "shapes": [
+    "after_context",
+    "after_name",
+    "after_starter",
+    "and_also_empty",
+    "bare",
+    "correction_opened",
+    "correction_resolved",
+    "lead_in",
+    "list_announced",
+    "name_alone",
+    "open_function_word",
+    "pieces_joined",
+    "subordinate_alone",
+    "two_errands"
+   ]
+  },
+  "complete.en.json": {
+   "sha256": "781142a73c37e32dbec26384720b3dcc8217878ccb59d4efc7f37ba4e1fd5378",
+   "incomplete": 40,
+   "complete": 110,
+   "shapes": [
+    "after_context",
+    "after_name",
+    "after_starter",
+    "and_also_empty",
+    "bare",
+    "correction_opened",
+    "correction_resolved",
+    "lead_in",
+    "list_announced",
+    "name_alone",
+    "open_function_word",
+    "pieces_joined",
+    "subordinate_alone",
+    "two_errands"
+   ]
+  }
+ },
+ "debatable": {
+  "correction_opened": "«…, o sea, no.» / «…, I mean, no.» is labelled incomplete (the correction is pending) but also reads as «never mind»; on deepseek-flash the model read it complete 10/10 (v1, 2026-11-20). Reported apart; the gate is read with and without it."
+ }
+}

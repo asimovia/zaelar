@@ -30,7 +30,7 @@ from conversation.ports import Done
 from conversation.replay import KEEP_TIME_MS, Replay
 from conversation.testing.generate import SPEC, check
 from conversation.testing.scripted_model import reply
-from tests.conversation.unit.audio3a_score import score
+from tests.conversation.benchmarks.audio.score import score
 from tests.conversation.unit.convkit import Harness
 
 FIX = Path(__file__).resolve().parents[1] / "fixtures" / "audio3a"

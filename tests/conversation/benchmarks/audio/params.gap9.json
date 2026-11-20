@@ -1,0 +1,100 @@
+{
+ "_doc": "The default file with 9 s between thoughts instead of 4 (2026-11-20). With the publication grace of v3.1 §1.6 ter an answer lands 3–5 s after the close plus the model: a stream whose next thought starts 4 s after the last is a person who did not wait for the answer, and the open-loop stream cannot wait for it. 9 s is past the non-terminal grace plus a slow model, so what is measured is the ear, not the open loop. Every flow carries the tag.",
+ "pause_grid_ms": [
+  300,
+  700,
+  900,
+  1500,
+  2500,
+  4000,
+  6000,
+  10000
+ ],
+ "tv_below_db": [
+  20,
+  10,
+  5
+ ],
+ "thoughts_per_flow": 4,
+ "gap_between_thoughts_ms": 9000,
+ "noise_db": -56,
+ "flows_pause_cell": 13,
+ "flows_other_cell": 13,
+ "interruption": {
+  "stranger_gap_ms": [
+   -300,
+   -150,
+   100
+  ],
+  "stranger_gain_db": -2,
+  "resume_ms": [
+   250,
+   400,
+   600
+  ]
+ },
+ "second": {
+  "inside_gap_ms": [
+   200,
+   400,
+   -200
+  ],
+  "inside_gain_db": [
+   -3,
+   -6,
+   -9
+  ],
+  "resume_ms": [
+   250,
+   500,
+   900
+  ],
+  "after_gap_ms": [
+   300,
+   700
+  ],
+  "after_gain_db": [
+   -3,
+   -6
+  ]
+ },
+ "cough": {
+  "gap_ms": 250,
+  "resume_ms": 300,
+  "alone_gap_ms": [
+   300,
+   600
+  ]
+ },
+ "inner_pause_grid_ms": [
+  300,
+  700,
+  900,
+  1500,
+  2500
+ ],
+ "human_pause": {
+  "median_ms": 1700,
+  "p90_ms": 5000,
+  "max_ms": 20000,
+  "_measured": "Checked against the human profile's es voice pause_between_fragments_ms (n=1643): p50 1744, p90 4993, p99 18251 ms. This log-normal through p50 1700 / p90 5000 matches p50 and p90 within 3 %; its p99 is ~12 s (shorter tail). EN (n=38, low_n) is not used: the profile says to prefer es."
+ },
+ "long": {
+  "chunks_min": 4,
+  "chunks_max": 7
+ },
+ "echo": {
+  "below_db": [
+   10,
+   20
+  ],
+  "after_ms": [
+   800,
+   1200,
+   1500
+  ]
+ },
+ "_cells": "each pause length is a cell; 300 ms is reported but, per the profile, lives inside a final",
+ "id_tag": "g9",
+ "id_tag_all": true
+}

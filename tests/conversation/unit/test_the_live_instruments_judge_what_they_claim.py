@@ -199,3 +199,8 @@ def test_the_sandbox_boots_with_the_switch_on_every_write_held_the_language_and_
                            "ZAELAR_CONVERSATION_SANDBOX": "1"}
     assert json.loads((Path(tmp_path) / "config" / "v2.json").read_text()) == {"privacy": {"obfuscate": False}}
     assert seen["port"] == 43999 and seen["lang"] == "es" and seeded == ["Rowan"]
+
+
+def test_the_bench_takes_a_frozen_labelled_set_when_named():
+    got = cb.from_set("es", "v2", 10, 100)
+    assert len(got) == 110 and [x["label"] for x in got].count("incomplete") == 10

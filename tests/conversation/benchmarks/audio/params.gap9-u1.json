@@ -1,0 +1,101 @@
+{
+ "_doc": "The 9 s file with the pause cells in ONE-UTTERANCE mode (plan §5.2, approved 2026-11-20): each thought of a pause cell is synthesised whole and the pause inserted at its word boundary, at the quietest 10 ms within 40 ms of it, with a 15 ms fade each side and the stream's room noise in the gap. Only voices with word times speak there. Flows carry the tag; the piece-by-piece recordings stay as the comparison. 16 flows per pause cell: a thought with a cut that is not clean (energy around it over half the speech's) is left out, so a cell keeps n ≥ 52.",
+ "pause_grid_ms": [
+  300,
+  700,
+  900,
+  1500,
+  2500,
+  4000,
+  6000,
+  10000
+ ],
+ "tv_below_db": [
+  20,
+  10,
+  5
+ ],
+ "thoughts_per_flow": 4,
+ "gap_between_thoughts_ms": 9000,
+ "noise_db": -56,
+ "flows_pause_cell": 16,
+ "flows_other_cell": 13,
+ "interruption": {
+  "stranger_gap_ms": [
+   -300,
+   -150,
+   100
+  ],
+  "stranger_gain_db": -2,
+  "resume_ms": [
+   250,
+   400,
+   600
+  ]
+ },
+ "second": {
+  "inside_gap_ms": [
+   200,
+   400,
+   -200
+  ],
+  "inside_gain_db": [
+   -3,
+   -6,
+   -9
+  ],
+  "resume_ms": [
+   250,
+   500,
+   900
+  ],
+  "after_gap_ms": [
+   300,
+   700
+  ],
+  "after_gain_db": [
+   -3,
+   -6
+  ]
+ },
+ "cough": {
+  "gap_ms": 250,
+  "resume_ms": 300,
+  "alone_gap_ms": [
+   300,
+   600
+  ]
+ },
+ "inner_pause_grid_ms": [
+  300,
+  700,
+  900,
+  1500,
+  2500
+ ],
+ "human_pause": {
+  "median_ms": 1700,
+  "p90_ms": 5000,
+  "max_ms": 20000,
+  "_measured": "Checked against the human profile's es voice pause_between_fragments_ms (n=1643): p50 1744, p90 4993, p99 18251 ms. This log-normal through p50 1700 / p90 5000 matches p50 and p90 within 3 %; its p99 is ~12 s (shorter tail). EN (n=38, low_n) is not used: the profile says to prefer es."
+ },
+ "long": {
+  "chunks_min": 4,
+  "chunks_max": 7
+ },
+ "echo": {
+  "below_db": [
+   10,
+   20
+  ],
+  "after_ms": [
+   800,
+   1200,
+   1500
+  ]
+ },
+ "_cells": "each pause length is a cell; 300 ms is reported but, per the profile, lives inside a final",
+ "id_tag": "g9u1",
+ "id_tag_all": true,
+ "pause_mode": "one_utterance"
+}
