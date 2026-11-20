@@ -72,7 +72,7 @@ def test_memory_composes_no_rules():
 
 def test_the_voice_turn_and_the_worker_read_the_table(monkeypatch):
     import pathlib
-    from nucleo.flash import memory_cache
+    from memory import state_cache as memory_cache
     from nucleo.turn.prompt import builder
     from rules import prompt as rules_prompt
     root = pathlib.Path(__file__).resolve().parents[4]

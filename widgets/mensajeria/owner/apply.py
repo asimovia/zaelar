@@ -260,7 +260,7 @@ def _owned_elsewhere(platform: str, item: dict) -> str:
     router's own owner reading (`flow_events.owned`), with no model call. "" when nobody else owns it."""
     try:
         from nucleo import events
-        from nucleo.turn import flow_events
+        from nucleo.events import route as flow_events
         who = flow_events.owned(events.of_message({**dict(item or {}), "platform": platform}))
         if who:
             logger.info(f"mensajeria autoresponder: {platform}:{item.get('chatId')} is owned by {who} — no automatic reply")

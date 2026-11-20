@@ -126,14 +126,14 @@ def _renamed(monkeypatch, tmp_path):
 
 @pytest.mark.parametrize("txt", ["Johnny.", "johnny", "Oye Johnny", "Johnny, por favor", "zaelar"])
 def test_a_bare_call_by_name_is_a_summons(_renamed, txt):
-    from nucleo.flash.presence import is_summons
+    from nucleo.self.presence import is_summons
     assert is_summons(txt), txt
 
 
 @pytest.mark.parametrize("txt", ["Johnny, ponme el vídeo del Apolo 11", "Johnny ¿sigues ahí?",
                                  "johnny cierra todo", "", "   "])
 def test_anything_after_the_name_is_a_real_turn(_renamed, txt):
-    from nucleo.flash.presence import is_summons
+    from nucleo.self.presence import is_summons
     assert not is_summons(txt), txt
 
 
@@ -142,7 +142,7 @@ def test_the_name_is_read_where_a_rename_actually_lands(_renamed):
     `config.settings.get("assistant_name")`, a key NOBODY writes — a rename lands in memory state and is
     pushed into `voice.attention`. So the vocative strip that recognises «Johnny, ¿sigues ahí?» was dead for
     a renamed assistant, and the summons check would have been born dead the same way."""
-    from nucleo.flash import presence as _p
+    from nucleo.self import presence as _p
     assert "johnny" in _p.assistant_names(), "the wake words are the authority on what his name is"
     assert _p.is_presence_check("Johnny, ¿sigues ahí?"), "the vocative must come off a knock too"
     # Anchored on the IMPORT, not the words: both files explain this defect in prose, and a scan that the

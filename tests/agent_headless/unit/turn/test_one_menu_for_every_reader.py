@@ -123,7 +123,7 @@ def test_the_whole_prompt_says_a_live_errand_once_and_the_state_block_does_not_m
     in the middle of the shared prompt: the errand was said twice, and its changing phase broke the prompt cache for
     everything after it every turn (measured on cheapest-monitor: the cache hit stuck at ~6.4k of ~15k tokens)."""
     from memory import api as memapi, db as memdb
-    from nucleo.flash import memory_cache
+    from memory import state_cache as memory_cache
     from nucleo.turn.prompt import builder
     monkeypatch.setenv("ZAELAR_DB", str(tmp_path / "zaelar.db"))
     memdb.reset_db()

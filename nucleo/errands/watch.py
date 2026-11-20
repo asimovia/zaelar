@@ -245,7 +245,7 @@ def on_claimed(got: dict, ev: dict, now: float) -> None:
 def _route_inbound_here() -> None:
     from nucleo import events
     from nucleo.events import pump
-    from nucleo.turn import flow_events
+    from nucleo.events import route as flow_events
     for topic in (events.CONNECTOR_MSG, events.MAIL_IN):
         flow_events.claimant(topic, "errand", claim)
     pump.obeys("errand", on_claimed)

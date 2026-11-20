@@ -81,7 +81,7 @@ def test_a_rename_that_reaches_state_by_any_writer_is_announced_to_the_screen(mo
     from types import SimpleNamespace
     import memory.api as mem_api
     import voice.observer as observer
-    from nucleo.flash import memory_cache
+    from memory import state_cache as memory_cache
 
     state = {"assistant_name": "Johnny"}
     monkeypatch.setattr(mem_api, "compose_state", lambda **_: ("", "", {}))

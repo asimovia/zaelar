@@ -18,7 +18,7 @@ from memory import embeddings as mememb
 from nucleo import events
 from nucleo.circuit import ledger
 from nucleo.events import pump, stream
-from nucleo.turn import flow_events
+from nucleo.events import route as flow_events
 
 ADDR = "billing@acme.example"
 RULE_TEXT = f"When an email from {ADDR} arrives, add a task to my agenda to pay the invoice."

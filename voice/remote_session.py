@@ -324,7 +324,7 @@ def _started(ev: dict) -> None:
     if SETTINGS.llm_provider == "nucleo":
         async def _prime():
             try:
-                from nucleo.flash import memory_cache
+                from memory import state_cache as memory_cache
                 await memory_cache.prime()
             except Exception as e:  # noqa: BLE001
                 logger.warning(f"nucleo memory-cache prime skipped (voice continues): {e}")

@@ -16,7 +16,7 @@ import pytest
 
 from conversation.ear.arbiter import DISCARD, REPLACE
 from nucleo.conversation_host import entry, guards
-from nucleo.turn import vault_gate
+from memory.vault import gate as vault_gate
 
 
 @pytest.fixture

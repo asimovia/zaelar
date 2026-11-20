@@ -140,7 +140,7 @@ def evaluate(payload: dict) -> dict:
     threads = _known()
     judge_previous(payload, threads)
     _landed(payload.get("brief"))
-    from nucleo.turn import thread_event
+    from nucleo.request import thread_event
     verdicts = _gate.verdicts_of(payload.get("brief"))
     g = _gate.score(verdicts, threads, thread_event.of_trace(tid), str(payload.get("text") or ""))
     key = stale_key(tid, g.thread)

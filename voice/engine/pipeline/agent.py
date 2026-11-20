@@ -151,7 +151,7 @@ async def entrypoint(ctx: JobContext) -> None:
     # voice startup. `set_briefing()` is retained as a compatibility no-op (see nucleo.py).
     if SETTINGS.llm_provider == "nucleo":
         try:
-            from nucleo.flash import memory_cache
+            from memory import state_cache as memory_cache
             await memory_cache.prime()
         except Exception as e:  # noqa: BLE001
             logger.warning("nucleo memory-cache prime skipped (voice continues): %s", e)

@@ -233,7 +233,7 @@ def _not_mine(payload: dict, rec) -> dict:
         return {"ok": False, "error": "not_mine needs `words`: his words that are not about this task"}
     tid = str(getattr(rec, "task_id", "") or "")
     from nucleo.acts.errand import escalate_to_slowbrain
-    from nucleo.turn import thread_event as _thread
+    from nucleo.request import thread_event as _thread
     _thread.evicted(words, tid)              # on the timeline: his words left that errand
     new = escalate_to_slowbrain(words, context={"not_mine_of": tid, "src": "voice"})
     return {"ok": True, "result": {"errand": new}}

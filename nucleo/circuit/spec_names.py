@@ -7,7 +7,7 @@ from __future__ import annotations
 def _assistant_names() -> set[str]:
     """Every name the assistant answers to, normalized (the attention gate's own list)."""
     try:
-        from nucleo.flash import presence as _presence
+        from nucleo.self import presence as _presence
         return {n for n in _presence.assistant_names() if n}
     except Exception:  # noqa: BLE001
         return set()
@@ -24,7 +24,7 @@ def _without_the_assistants_name(done_when: dict) -> dict | None:
     if not names:
         return done_when
     from nucleo.circuit import verify as _verify
-    from nucleo.flash import presence as _presence
+    from nucleo.self import presence as _presence
 
     def _is_name(v) -> bool:
         return isinstance(v, str) and _presence._norm(v) in names

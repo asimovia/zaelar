@@ -44,7 +44,7 @@ def is_create(action: str) -> bool:
 
 def remember(wid: str, action: str, text: str, res, *, now: float | None = None) -> None:
     """After a create LANDED: keep what could take it back out, and the sentence it came from."""
-    from nucleo.flash import served_writes as _served
+    from nucleo.circuit import served_writes as _served
     _served.note(wid, action, text, res, now=now)    # any landed WRITE: its sentence is not a worker's errand
     from nucleo.circuit import spec as _spec
     _spec.landed(wid, action, res)                    # a row it already held meets the write's end state (T-19 R10)
@@ -74,7 +74,7 @@ def forget(wid: str) -> None:
 
 def reset() -> None:
     _last.clear()
-    from nucleo.flash import served_writes as _served
+    from nucleo.circuit import served_writes as _served
     _served.reset()
 
 

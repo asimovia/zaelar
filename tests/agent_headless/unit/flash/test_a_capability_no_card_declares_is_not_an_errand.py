@@ -118,7 +118,7 @@ def test_an_undeclared_flag_keeps_todays_path():
 
 @pytest.fixture
 def named(monkeypatch):
-    from nucleo.flash import presence
+    from nucleo.self import presence
     monkeypatch.setattr(presence, "assistant_names", lambda: ("marlowe",))
 
 

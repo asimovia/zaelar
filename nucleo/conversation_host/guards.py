@@ -109,7 +109,7 @@ def vault(text: str):
     enters (`kept` None) and only `shown` (redacted) may be kept of it; a secret inside a line goes on redacted.
     Anything else, as it is."""
     from nucleo import consequence
-    from nucleo.turn import vault_gate
+    from memory.vault import gate as vault_gate
     from voice import observer
     v = vault_gate.inspect_now(text, store=consequence.passes("vault.write"))
     if v.kind == "config":

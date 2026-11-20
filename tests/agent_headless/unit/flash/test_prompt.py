@@ -4,7 +4,8 @@ import pytest
 from memory import api as memapi
 from memory import db as memdb
 from memory import embeddings as mememb
-from nucleo.flash import memory_cache, recall_heuristics as _rh
+from nucleo.flash import recall_heuristics as _rh
+from memory import state_cache as memory_cache
 from nucleo.turn.prompt import builder as prompt, live_record
 
 

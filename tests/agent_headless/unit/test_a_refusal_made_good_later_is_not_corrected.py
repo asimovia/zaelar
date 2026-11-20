@@ -18,7 +18,7 @@ import pytest
 from memory import db as memdb
 from nucleo import circuit
 from nucleo.circuit import spec
-from nucleo.flash import served_writes
+from nucleo.circuit import served_writes
 from nucleo.request import model as rq
 
 GONE = {"widget": "agenda", "collection": "meetings", "where": {"title~": "Nope"}}

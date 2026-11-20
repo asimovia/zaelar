@@ -126,5 +126,5 @@ def test_the_voice_turn_actually_wires_the_lane():
     prov = _vts.read(os.path.join(eng, "voice/engine/llm/providers/nucleo.py"))
     assert "_fast_lane.presence(" in prov, "the voice provider no longer calls the presence lane"
     lane = open(os.path.join(eng, "voice/engine/llm/providers/fast_lane.py")).read()
-    assert "from nucleo.flash.presence import is_presence_check" in lane, \
-        "the lane must read ONE detector (nucleo/flash/presence.py)"
+    assert "from nucleo.self.presence import is_presence_check" in lane, \
+        "the lane must read ONE detector (nucleo/self/presence.py)"

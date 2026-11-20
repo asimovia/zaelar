@@ -221,7 +221,7 @@ def _code(path: Path) -> str:
 
 def test_the_prompt_carries_the_packs_after_the_operators_own_directive(monkeypatch):
     """A directive is HIS instruction and a pack is OURS, so his is read last of the two — on the built prompt."""
-    from nucleo.flash import memory_cache
+    from memory import state_cache as memory_cache
     from nucleo.turn.prompt import builder
     monkeypatch.setattr(memory_cache, "get", lambda: ("", ""))
     monkeypatch.setattr(builder._packs, "compose", lambda turn_text="", asked=None: "\n\nPACK-MARK")

@@ -208,7 +208,7 @@ async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_ad
     if reveal_req["v"] is not None and escalate_req["v"] is None:
         _lblq = reveal_req["v"]
         emit("brain", "🔐 reveal_secret", text=_lblq, role="system")
-        from nucleo.turn import vault_gate as _vgate
+        from memory.vault import gate as _vgate
         _rv = await _vgate.reveal(_lblq)
         for _k, _lb, _ex in _rv.events:
             emit(_k, _lb, role="system", extra=_ex)

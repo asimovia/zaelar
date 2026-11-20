@@ -16,7 +16,9 @@ from pathlib import Path
 
 import pytest
 
-from nucleo.flash import presence, smalltalk
+from nucleo.flash import smalltalk
+
+from nucleo.self import presence
 from voice.engine.core import langs
 
 ENGINE = Path(__file__).resolve().parents[4]

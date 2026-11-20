@@ -131,7 +131,7 @@ def about_a_live_errand(request: str, live: list[tuple[str, str]]) -> str:
         return ""
     t0 = time.monotonic()
     answer, outcome = _judge(request, live)
-    from nucleo.turn import thread_event
+    from nucleo.request import thread_event
     thread_event.judged(request, live, answer, ms=(time.monotonic() - t0) * 1000.0, outcome=outcome)   # V2-878 §6
     return answer
 

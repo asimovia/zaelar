@@ -1,7 +1,7 @@
 """nucleo/events — what arrives without a turn, as a `Request` with its origin (V2-851 F4, §7).
 
 One topic per source. An event is the same thing as a request he speaks — something that may need doing — whose
-origin is the source instead of his voice, so it is routed by its own door: `nucleo.turn.flow_events.route`.
+origin is the source instead of his voice, so it is routed by its own door: `nucleo.events.route.route`.
 The router answers one of three: a task WAITING for it (its row says `waiting_for = event:<topic>[:<key>]`, or a
 claimant such as an errand bound to that conversation) is resumed; a rule SUBSCRIBED to it (`rules.subscriptions`)
 hands it to the stream worker (`nucleo/events/stream.py`); else nothing (the source's own handling stands).

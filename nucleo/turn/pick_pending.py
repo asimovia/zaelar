@@ -96,7 +96,7 @@ def noted(which: str, words: str, brief=None) -> dict | None:
         _TURN[_trace()] = note
         while len(_TURN) > 32:
             _TURN.pop(next(iter(_TURN)))
-        from nucleo.turn import thread_event
+        from nucleo.request import thread_event
         thread_event.pick_pending(note, shadow=True)
         return note
     except Exception as e:  # noqa: BLE001 — a shadow never breaks a relay
@@ -120,7 +120,7 @@ def at_first_rows(sheet: str, errand: dict | None) -> dict | None:
         if not pick.get("heard"):
             return None
         _REPORTED.add(uid)
-        from nucleo.turn import thread_event
+        from nucleo.request import thread_event
         return thread_event.would_relay(uid, str(sheet or ""), pick)
     except Exception as e:  # noqa: BLE001
         logger.debug(f"pick_pending: first rows not read — {type(e).__name__}: {e}")
@@ -156,7 +156,7 @@ def arbiter(brief, text: str, *, card_owns: bool) -> dict | None:
         errand = bool(pick) and _rows(named.get("sheet") or "") == 0
         would = "ask" if card and errand else "card" if card else "errand" if errand else "none"
         did = "card" if card_owns else "errand"
-        from nucleo.turn import thread_event
+        from nucleo.request import thread_event
         return thread_event.arbitrated(would, did, flow=str((named or {}).get("id") or ""), heard=text)
     except Exception as e:  # noqa: BLE001
         logger.debug(f"pick_pending: arbiter unreadable — {type(e).__name__}: {e}")

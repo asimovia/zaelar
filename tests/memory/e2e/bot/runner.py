@@ -179,7 +179,7 @@ def _brain_view(q: str) -> tuple[str, bool]:
     bloque cacheado (ESTADO + perfil durable salient + CORTO entero, `memory_cache._compose`) + recall semántico
     SOLO si el gate `needs_recall` dispara (`compose_recall`). Es exactamente lo que el cerebro tiene en el prompt
     — sin LLM en la lectura. Devuelve (texto_normalizado, recall_disparado)."""
-    from nucleo.flash import memory_cache as _mc
+    from memory import state_cache as _mc
     from nucleo.flash import recall_heuristics as _rh
     from nucleo.turn.prompt import recall as _p
     try:
@@ -575,7 +575,7 @@ async def _do_ui_state(memory, get_queue, step: dict) -> tuple[bool, str]:
     debe (`state()` lo refleja; el patch superficial no pisa el resto) y que el bloque que **VE el FlashBrain**
     (`memory_cache._compose`, lo que va en el prompt) **CONTIENE** los widgets abiertos/tareas (→ desambiguación) y
     NO contiene lo retirado. Es la prueba de que el ESTADO da servicio a los casos de uso que fallaban."""
-    from nucleo.flash import memory_cache as _mc
+    from memory import state_cache as _mc
     memory.set_state(step.get("set") or {})
     await get_queue().join()
     st = memory.state()

@@ -148,7 +148,7 @@ def build_flash_system(directive: str = "", recall_query: str = "", recall_block
     `timings` (T113) — latency per phase, and the size of each block in chars (`sz_*`) and tokens (`tok_<block>`)."""
     import time as _t
     _t0 = _t.perf_counter()
-    from nucleo.flash import memory_cache
+    from memory import state_cache as memory_cache
     from rules import prompt as _rules_prompt          # V2-806: his in-scope rules, per turn
     _ts = _t.perf_counter()
     memory_block, _op_name = memory_cache.get()

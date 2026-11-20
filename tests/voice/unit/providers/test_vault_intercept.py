@@ -56,7 +56,7 @@ def test_spoken_secret_without_vault_asks_to_create_one(monkeypatch):
     class _D:
         # `span` is part of the real `Detected`: `memory.secrets.redact()` sorts by it and slices the text with
         # it. The fake lacked it and got away with it while only the VOICE path ran here — that path returned
-        # before redacting. Since F1 both channels share `nucleo/turn/vault_gate.py`, and the probe DOES need
+        # before redacting. Since F1 both channels share `memory/vault/gate.py`, and the probe DOES need
         # the redacted text even when the secret is the whole turn (it is what its conversation window keeps),
         # so redaction now happens on this path too. A fake that models less than the real object passes until
         # the code reaches the part it did not model.
@@ -78,7 +78,7 @@ def test_spoken_secret_with_vault_is_stored_and_confirmed(monkeypatch):
     class _D:
         # `span` is part of the real `Detected`: `memory.secrets.redact()` sorts by it and slices the text with
         # it. The fake lacked it and got away with it while only the VOICE path ran here — that path returned
-        # before redacting. Since F1 both channels share `nucleo/turn/vault_gate.py`, and the probe DOES need
+        # before redacting. Since F1 both channels share `memory/vault/gate.py`, and the probe DOES need
         # the redacted text even when the secret is the whole turn (it is what its conversation window keeps),
         # so redaction now happens on this path too. A fake that models less than the real object passes until
         # the code reaches the part it did not model.

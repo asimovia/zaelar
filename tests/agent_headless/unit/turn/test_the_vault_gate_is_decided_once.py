@@ -13,7 +13,7 @@ channel still carrying its private copy.
 import asyncio
 import inspect
 
-from nucleo.turn import vault_gate
+from memory.vault import gate as vault_gate
 
 
 class _Detected:

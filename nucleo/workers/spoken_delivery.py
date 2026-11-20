@@ -43,7 +43,7 @@ def _messages(goal: str, summary: str, ok: bool, verdict: str = "") -> list[dict
     # errand opens with the ASSISTANT's name, and the composer took it for the person's.
     names = ""
     try:
-        from nucleo.flash import presence as _presence
+        from nucleo.self import presence as _presence
         own = [n for n in _presence.assistant_names() if n]
         if own:
             names = (f"\nYOUR own name is {own[0].title()}: when the errand opens with it, he was calling you — never "

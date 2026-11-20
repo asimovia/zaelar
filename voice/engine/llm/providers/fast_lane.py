@@ -129,7 +129,7 @@ async def handled(brain, text: str, emit, *, first_turn: bool, t_entry: float, w
 # `engine: "presence"` so no one audits a model turn that never happened.
 # The DETECTOR lives in `nucleo/flash/presence.py` — neutral ground both channels import (this lane
 # downward, the probe by injection), so the two can never drift apart on what counts as a knock.
-from nucleo.flash.presence import is_presence_check, is_summons  # noqa: F401 — re-exported for the lane's tests
+from nucleo.self.presence import is_presence_check, is_summons  # noqa: F401 — re-exported for the lane's tests
 
 
 # ── SMALL TALK fast lane (V2-674) ────────────────────────────────────────────────────────────────────────
@@ -307,7 +307,7 @@ def _presence_names() -> tuple[str, ...]:
     """The assistant's own names, so «Johnny, hola» strips down to «hola». Best-effort: the phrasebook must
     not hard-depend on the attention gate (V2-665's lesson about where the authority lives)."""
     try:
-        from nucleo.flash.presence import assistant_names
+        from nucleo.self.presence import assistant_names
         return tuple(assistant_names())
     except Exception:  # noqa: BLE001
         return ()

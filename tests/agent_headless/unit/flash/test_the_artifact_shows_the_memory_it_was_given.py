@@ -35,7 +35,7 @@ _ESTADO = ("── QUIÉN ERES ──\nEres zaelar.\n\n── QUIÉN TIENES DELA
 
 def _prompt(recent: str = "", estado: str = _ESTADO) -> str:
     import unittest.mock as _mock
-    from nucleo.flash import memory_cache
+    from memory import state_cache as memory_cache
     with _mock.patch.object(memory_cache, "get", lambda: (estado, "Marc")):
         s, _ = fp.build_flash_system(recall_block=RECALL, recent_block=recent)
     return s

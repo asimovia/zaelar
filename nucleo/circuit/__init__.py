@@ -251,7 +251,7 @@ def _made_good_later(e: dict) -> bool:
     """A later write of the SAME card action landed after this one was born — the retry that made it good (refactor2710-99:
     «I couldn't set that Wednesday reminder» said after the reminder was set by the next attempt). Said on the timeline."""
     try:
-        from nucleo.flash import served_writes
+        from nucleo.circuit import served_writes
         if not (e.get("widget") and e.get("action")
                 and served_writes.landed_since(e["widget"], e["action"], float(e.get("born") or 0))):
             return False

@@ -66,7 +66,7 @@ def test_canvas_state_endpoint_normalizes_and_writes(fresh_db):
 def test_compose_block_carries_activity_and_never_the_screen(fresh_db):
     """The memory block is served from a cache, so it no longer carries the screen (refactor2710-08): a cached screen
     said «empty» over open cards in 48 of 552 measured turns. Activity still travels there."""
-    from nucleo.flash import memory_cache
+    from memory import state_cache as memory_cache
     memory_cache.reset()
     memapi.set_state({"open_widgets": ["mensajeria"], "activity": ["Modificando el widget «agenda»…"]})
     block, _op = memory_cache._compose()

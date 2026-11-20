@@ -29,7 +29,7 @@ SLACK = 30
 
 @pytest.fixture
 def idle_turn(monkeypatch):
-    from nucleo.flash import memory_cache
+    from memory import state_cache as memory_cache
     monkeypatch.setattr(memory_cache, "get", lambda: ("", ""))
     from nucleo.turn.prompt import builder
     timings: dict = {}

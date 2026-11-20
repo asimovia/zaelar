@@ -153,7 +153,7 @@ def test_the_kickoff_opens_the_phase_block_with_the_offer(phase, code):
 
 
 def test_the_built_first_prompt_carries_the_offer_as_a_system_section(phase, monkeypatch):
-    from nucleo.flash import memory_cache
+    from memory import state_cache as memory_cache
     from nucleo.turn.prompt import builder
     monkeypatch.setattr(memory_cache, "get", lambda: ("", ""))
     system = builder.build_flash_system(turn_text=langs.spec("en").kickoff_prompt)[0]
@@ -168,7 +168,7 @@ def test_the_close_says_what_we_asked_when_our_reply_ended_on_a_question(monkeyp
     """Measured 2026-11-12 on a sandbox, first dialogue after a reset: «pepe» after «¿Cómo te llamas?» was answered
     «No te he entendido» in 2 of 3 Spanish runs — the state closed on «attend to the REQUEST that follows» and a bare
     word is no request. The close now states the question we asked; nothing of his line is read."""
-    from nucleo.flash import memory_cache
+    from memory import state_cache as memory_cache
     from nucleo.memory_agent import answer_frame
     from nucleo.turn.prompt import builder
     monkeypatch.setattr(memory_cache, "get", lambda: ("", ""))
@@ -181,7 +181,7 @@ def test_the_close_says_what_we_asked_when_our_reply_ended_on_a_question(monkeyp
 
 
 def test_the_close_is_the_request_line_when_we_asked_nothing(monkeypatch):
-    from nucleo.flash import memory_cache
+    from memory import state_cache as memory_cache
     from nucleo.memory_agent import answer_frame
     from nucleo.turn.prompt import builder
     monkeypatch.setattr(memory_cache, "get", lambda: ("", ""))

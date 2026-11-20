@@ -6,7 +6,7 @@ a mail from X arrives, put a task in my agenda» now has that shape as DATA: a r
     {"topic": "mail.in", "match": {"sender": "billing@acme.example"}, "do": "<his words>", "may": ["agenda"],
      "if": "<an optional pre-condition in his words>", "from_note": "<the note it was read from>"}
 
-The router (`nucleo.turn.flow_events`) matches it IN CODE on the event's declared fields — the same name, compared
+The router (`nucleo.events.route`) matches it IN CODE on the event's declared fields — the same name, compared
 exactly — never on words. A pre-condition («only if it is not advertising») is not code either: it is a declared
 verdict asked of the event when the rule matches (`precondition`), recorded in the flow by the classifier's own event.
 

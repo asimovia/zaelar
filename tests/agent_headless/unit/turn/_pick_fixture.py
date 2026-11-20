@@ -8,7 +8,8 @@ import pytest
 from memory import db as memdb
 from nucleo import dispatch
 from nucleo.circuit import ledger
-from nucleo.turn import pick_pending, thread_event
+from nucleo.turn import pick_pending
+from nucleo.request import thread_event
 from nucleo.workers.session_record import SessionRecord
 from voice import observer, trace
 

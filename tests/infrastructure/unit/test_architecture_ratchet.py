@@ -832,6 +832,17 @@ _TOTAL_MAX += 7      # same: the shim, measured
 _PACKAGE_CEILINGS["conversation"] += 14   # 2026-11-21: his words before any model split out of `conversation/manager/run.py` (`before_model.py`, its header and imports): run.py was over 800 lines
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 1   # same day: the host's DOORS and TOPICS keyed by their functions' names, its own silences declared data (`own_silences`) — five word tables paid
 _TOTAL_MAX += 15     # same causes, measured
+# 2026-11-21 INI-078 F2 step 8, T2 (events, memory, state MOVED to their owners, one-commit shims at the old names):
+# turn.flow_events → events/route, turn.thread_event → request/, flash.served_writes → circuit/, flash.presence → self/,
+# flash.memory_cache → memory/state_cache, turn.vault_gate → memory/vault/gate. Moved lines, not new ones.
+_PACKAGE_CEILINGS["memory"] += 418
+_PACKAGE_CEILINGS["nucleo/circuit"] += 42
+_PACKAGE_CEILINGS["nucleo/events"] += 83
+_PACKAGE_CEILINGS["nucleo/request"] += 114
+_PACKAGE_CEILINGS["nucleo/self"] += 80
+_PACKAGE_CEILINGS["nucleo/flash"] -= 323
+_PACKAGE_CEILINGS["nucleo/turn"] -= 372
+_TOTAL_MAX += 42     # measured after the move (the shims' lines)
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

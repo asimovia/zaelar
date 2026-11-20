@@ -18,7 +18,7 @@ from memory import embeddings as mememb
 from nucleo import events
 from nucleo.circuit import ledger
 from nucleo.events import pump, stream, stream_reply
-from nucleo.turn import flow_events
+from nucleo.events import route as flow_events
 
 QUINN = "34600111222@s.whatsapp.net"
 CASES = {

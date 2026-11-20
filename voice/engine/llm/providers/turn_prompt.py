@@ -74,7 +74,7 @@ async def compose_the_prompt(*, brain, emit, operator_text, self, text) -> dict:
     # lleva → cero tokens extra en charla normal; solo se carga bajo demanda.
     recent_block = ""
     timings["recent_fired"] = _rh.needs_recent(text)
-    from nucleo.turn import thread_event as _thread_event      # V2-878 §6: which shortcut fired, in which language
+    from nucleo.request import thread_event as _thread_event      # V2-878 §6: which shortcut fired, in which language
     _needs_recall = bool(timings["recall_fired"]) and _rh.needs_recall(operator_text)   # µs: a regex, read again
     _thread_event.recall_fired(operator_text, recall=_needs_recall,
                                recent=bool(timings["recent_fired"] or (timings["recall_fired"] and not _needs_recall)))
@@ -104,7 +104,7 @@ async def compose_the_prompt(*, brain, emit, operator_text, self, text) -> dict:
     # capa (state/short/slow), la petición y el resultado (nº de apps/chars) + su tiempo. Alimenta la
     # columna ◷ de logs; las tarjetas del mapa las sigue iluminando el pulso `memory.query`/`memory.updated`.
     try:
-        from nucleo.flash import memory_cache as _mc
+        from memory import state_cache as _mc
         ms = _mc.stats()
         emit("memory", "estado", role="system",
              text=(f"perfil del operador → {ms.get('state_fields', 0)} campos" if ms.get("has_state")

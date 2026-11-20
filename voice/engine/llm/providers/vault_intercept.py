@@ -21,7 +21,7 @@ from voice import speech
 
 
 async def try_vault_intercept(text: str, first_turn: bool, send, emit) -> tuple[bool, str]:
-    from nucleo.turn import vault_gate
+    from memory.vault import gate as vault_gate
 
     # The kickoff greeting is not the operator talking, so neither intercept applies to it — that is a fact
     # about the TURN, which is why the gate takes it as `enabled` rather than asking which channel is calling.

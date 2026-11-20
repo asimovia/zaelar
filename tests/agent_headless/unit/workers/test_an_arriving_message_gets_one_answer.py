@@ -10,7 +10,7 @@ from __future__ import annotations
 import pytest
 
 from nucleo import events
-from nucleo.turn import flow_events
+from nucleo.events import route as flow_events
 
 
 @pytest.fixture

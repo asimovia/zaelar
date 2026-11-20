@@ -338,7 +338,7 @@ PER_FILE: dict[str, int] = {
     'nucleo/turn/prompt/live_sheet.py': 6,
     'nucleo/turn/prompt/live_tasks.py': 1,
     'nucleo/flash/meeting_time.py': 2,
-    'nucleo/flash/memory_cache.py': 5,
+    'memory/state_cache.py': 5,
     'nucleo/flash/music_flow.py': 2,
     'nucleo/flash/op_receipt.py': 5,
     'i18n/spoken_lang.py': 1,
@@ -346,7 +346,7 @@ PER_FILE: dict[str, int] = {
     'nucleo/flash/post_stream_lanes.py': 3,
     'nucleo/flash/post_stream_settle.py': 4,
     'nucleo/flash/post_stream_acts.py': 2,
-    'nucleo/flash/presence.py': 3,
+    'nucleo/self/presence.py': 3,
     'nucleo/llm/prewarm.py': 1,
     'nucleo/flash/procs.py': 3,
     'nucleo/turn/prompt/live_state.py': 10,   # refactor2710-08: nucleo/flash/prompt.py (16) split

@@ -1,4 +1,4 @@
-"""Tests for nucleo/flash/memory_cache.py (V2-011 · T114) — the memory block is cached OUTSIDE the turn.
+"""Tests for memory/state_cache.py (V2-011 · T114) — the memory block is cached OUTSIDE the turn.
 
 Invariants: (a) `get()` composes the STATE block from `memory.state()` and caches it; (b) it NEVER triggers the
 retriever (`memory.query`) — that is on-demand and outside the loop (T115/T116); (c) it is invalidated by `memory.updated`.
@@ -9,7 +9,7 @@ import pytest
 
 from memory import api as memapi
 from memory import db as memdb
-from nucleo.flash import memory_cache
+from memory import state_cache as memory_cache
 
 
 @pytest.fixture

@@ -673,7 +673,7 @@ DOMAINS: list[dict] = [
         # líneas para voz, `run_turn` 1.051 para texto— cosidas por 21 marcas de espejo. La primera que se
         # retira es la puerta de la bóveda, y ya había derivado: la copia del probe contestaba con la acotación
         # «(secreto cifrado)» donde la voz decía una frase localizada, y V2-141 hubo que arreglarlo dos veces.
-        # La DECISIÓN vive en `nucleo/turn/vault_gate.py`; la ENTREGA sigue siendo de cada canal (voz habla y
+        # La DECISIÓN vive en `memory/vault/gate.py`; la ENTREGA sigue siendo de cada canal (voz habla y
         # emite, probe devuelve un dict) porque esa diferencia es real. El guarda de cableado es el corazón: sin
         # él la puerta puede estar perfecta mientras un canal decide por su cuenta en silencio. 21 → 18 espejos.
         {"id": "2.27", "title": "Una puerta de bóveda, dos bocas: la decisión se toma UNA vez y ningún canal "
