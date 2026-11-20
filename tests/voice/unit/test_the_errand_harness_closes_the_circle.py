@@ -130,10 +130,10 @@ def test_the_turn_records_its_shown_cards_and_reads_no_claim_from_its_reply():
 
 def test_the_prompt_and_the_heartbeat_read_the_ledger(monkeypatch):
     # V2-661: the harness lines joined their two neighbours in `live_blocks`; read on the built live state.
-    from nucleo.turn.prompt import live_record
+    from nucleo import done_lines as live_record
     from nucleo.turn.prompt import live_state
     monkeypatch.setattr(live_record, "harness_lines", lambda: ["HARNESS-MARK"])
     assert "HARNESS-MARK" in live_state.live_state()
-    assert "harness.prompt_lines()" in _src("nucleo/turn/prompt/live_record.py")
+    assert "harness.prompt_lines()" in _src("nucleo/done_lines.py")
     loop = _src("nucleo/pulse/loop.py") + _src("nucleo/pulse/flows.py")
     assert "await self._supervise_harness(now)" in loop and "harness.sweep(now)" in loop

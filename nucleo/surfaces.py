@@ -251,3 +251,48 @@ _NO_CARD = frozenset({VOICE, SILENT})
 def delivers_no_card(surface: str) -> bool:
     """Does an errand of this surface deliver into NO card (told, or silent)? Then no card of its opens."""
     return (surface or "") in _NO_CARD
+
+
+# ── what is on his screen now (INI-078 F2 step 8, T4: moved from the old turn's `prompt/live_state.py`) ──────────────
+def open_widget_ids() -> set[str]:
+    """IDs of widgets OPEN now, from STATE (µs read, one SELECT—does not touch the retriever, honoring V2-011).
+    The resource layer uses them to include items/coaching ONLY for what is in front of the operator."""
+    try:
+        from memory import api as memory
+        return {str(w).strip().lower() for w in (memory.state().get("open_widgets") or []) if str(w).strip()}
+    except Exception:
+        return set()
+
+
+def screen_line() -> str:
+    """The screen, read ONCE per turn from the canvas's report (`state.open_widgets`); empty says so (2026-09-19)."""
+    ids = [str(w).strip() for w in (__import__("memory.api", fromlist=["x"]).state().get("open_widgets") or [])]
+    if (front := __import__("nucleo.canvas_focus", fromlist=["x"]).phone_front()) is not None:   # V2-903: ONE app
+        behind = [i for i in ids if i and i != front][:12]
+        home = __import__("i18n.runtime", fromlist=["x"]).text("screen.phone_home", "home")   # a2b: a named screen
+        return ("En pantalla (teléfono): " + (f"«{front}» delante" if front else home)
+                + (f"; detrás: {', '.join(behind)}" if behind else "") + ".")
+    return "En pantalla: " + (", ".join([i for i in ids if i][:12]) or "nada (pantalla VACÍA)") + "." + panel_line()
+
+
+def panel_line() -> str:
+    """A native panel open on top (Settings, Connectors): the screen's own report says which (`screen_doc.panel`). It
+    covers everything under it and no card's state shows it — measured 2026-11-18: the connectors panel stayed open
+    over three turns and the turn's facts said «empty screen»."""
+    try:
+        doc = __import__("widgets.screen_doc", fromlist=["x"]).read()
+        panel = str(getattr(doc, "panel", "") or "") if doc is not None else ""
+    except Exception as e:  # noqa: BLE001 — unread: nothing is said about a panel
+        __import__("loguru").logger.debug(f"surfaces: the open panel unread ({e!r})")
+        return ""
+    return f" Encima de todo, tapándolo, está abierto el panel «{panel}»." if panel else ""
+
+
+def recent_widget_ids() -> list[str]:
+    """IDs of RECENTLY USED widgets (MRU `state.recent_widgets`, V2-078), in recency order. Second narrowing
+    layer for selecting/resolving the target widget (open > recent > catalog). µs read, no retriever."""
+    try:
+        from memory import api as memory
+        return [str(w).strip().lower() for w in (memory.state().get("recent_widgets") or []) if str(w).strip()]
+    except Exception:
+        return []

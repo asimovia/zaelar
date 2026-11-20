@@ -72,7 +72,7 @@ def test_two_screens_each_says_which_thread_is_open(msg, a, b):
     assert _say(a, 1, thread_open=OPEN) == 200 and _say(b, 1, thread_open="") == 200
     assert state_render.clause("mensajeria", dev=a).endswith(f': thread_open="{OPEN}"')
     assert state_render.clause("mensajeria", dev=b).endswith(": at rest")
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
     assert f'thread_open="{OPEN}"' in widget_read.read("mensajeria")
     data.apply_action("open", {"platform": "whatsapp", "chatId": "irene"})
     for d in (a, b):

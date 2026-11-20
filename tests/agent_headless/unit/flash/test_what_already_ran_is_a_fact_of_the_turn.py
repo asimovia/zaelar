@@ -170,7 +170,7 @@ def test_a_done_act_on_a_card_that_is_not_open_says_it_is_not_on_screen(monkeypa
     """Demo pass 59, S1: «results:present hace 140s» + «cuéntalo como hecho» over a sheet he had put away, and
     «so how did the monitors go, show me» got «Done.» with the card still in the dock."""
     from memory import api as _memapi
-    from nucleo.turn.prompt import live_record
+    from nucleo import done_lines as live_record
     done_ops.note("results", "present", {})
     monkeypatch.setattr(_memapi, "state", lambda: {"open_widgets": ["agenda"]})
     line = " ".join(live_record.done_ops_lines())

@@ -13,7 +13,8 @@ automatic resume — while somebody is going to pick it up, it is not orphaned).
 import pytest
 
 from nucleo import dispatch as D
-from nucleo.turn.prompt import live_browser, live_sheet
+from widgets.navegador import live_sheet
+from widgets.navegador import live_lines as live_browser
 from widgets.navegador import tasks as T
 from widgets.results import data as SHEET
 

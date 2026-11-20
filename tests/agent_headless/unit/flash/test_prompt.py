@@ -6,9 +6,10 @@ from memory import db as memdb
 from memory import embeddings as mememb
 from nucleo.flash import recall_heuristics as _rh
 from memory import state_cache as memory_cache
-from nucleo.turn.prompt import builder as prompt, live_record
+from nucleo.turn.prompt import builder as prompt
 
 
+from nucleo import done_lines as live_record
 @pytest.fixture(autouse=True)
 def _hash_backend(monkeypatch):
     monkeypatch.setenv("ZAELAR_EMBED_BACKEND", "hash")

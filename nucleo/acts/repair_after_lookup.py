@@ -27,7 +27,7 @@ async def call_after_read(operator_text: str, read_widget: str, widget_id: str, 
         tool = _cp.widget_data_tool()
         if not declared or not tool:
             return None
-        from nucleo.flash import widget_read as _wr
+        from widgets import read as _wr
         block = str(_wr.read(rid) or "").strip()[:1500] or "(vacía)"
         digest = str(_wr.read(wid) or "").strip()[:800]
         card = (_cp._CARD.format(wid=wid, digest=digest) if digest else "") + _cp.days()
@@ -179,7 +179,7 @@ def _order_with_a_fact(operator_text: str, answer: str, brief):
     manifest = _rt.get(wid) or {}
     if not (manifest.get("actions") or {}) or not _cp.widget_data_tool():
         return None
-    from nucleo.flash import widget_read as _wr
+    from widgets import read as _wr
     digest = str(_wr.read(wid) or "").strip()[:800]
     card = (_cp._CARD.format(wid=wid, digest=digest) if digest else "") + _cp.days()
     said = " ".join(str(answer).split())[:600].replace("{", "(").replace("}", ")")

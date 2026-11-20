@@ -8,7 +8,7 @@ now falls back to the errand's sheet, the same source the prompt shows.
 """
 from __future__ import annotations
 
-from nucleo.turn.prompt import live_browser
+from widgets.navegador import live_lines as live_browser
 
 
 def test_an_errand_sheet_without_a_browser_task_is_read(monkeypatch):

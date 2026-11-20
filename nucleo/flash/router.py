@@ -212,8 +212,8 @@ def _canon_panel_action(v) -> str:
 
 
 # The panel and connector canons live in `nucleo/turn/prompt/catalogs.py`; re-imported under their private names.
-from nucleo.turn.prompt.catalogs import canon_panel as _canon_panel
-from nucleo.turn.prompt.catalogs import canon_connector as _canon_connector  # noqa: E402,F401
+from nucleo.self.catalogs import canon_panel as _canon_panel
+from nucleo.self.catalogs import canon_connector as _canon_connector  # noqa: E402,F401
 
 
 # Tools whose WHOLE decision is «these string arguments, stripped» — six branches of one shape, folded when the

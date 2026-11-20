@@ -75,7 +75,7 @@ def test_an_act_that_stays_on_the_machine_is_not_bound():
 
 def _after_read(said: str, call: dict, *, brief=None, read="contactos", card="mensajeria"):
     import nucleo.llm.fast_client as fc
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
 
     class _Model:
         async def complete(self, messages, *, on_tool_call=None, **kw):

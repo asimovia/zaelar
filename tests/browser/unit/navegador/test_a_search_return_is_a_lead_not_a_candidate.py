@@ -22,7 +22,7 @@ so it does not affect the widget contract.
 """
 import pytest
 
-from nucleo.turn.prompt import live_sheet
+from widgets.navegador import live_sheet
 from nucleo.workers import findings as F
 from widgets.navegador import tasks as T
 from widgets.results import data as SHEET

@@ -37,7 +37,7 @@ def named_wall_tab(text: str) -> str:
         res = _rt.identify(text) or {}
         if res.get("match") or res.get("ambiguous"):
             return ""
-        from nucleo.turn.prompt.catalogs import wall_tab_for
+        from nucleo.self.catalogs import wall_tab_for
         tab = wall_tab_for(res.get("system"), text)
         # «No me abras el chat» carries the verb and names the tab; the clause arithmetic both promise gates
         # already share says the verb is negated.

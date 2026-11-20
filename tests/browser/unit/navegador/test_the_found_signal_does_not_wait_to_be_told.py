@@ -20,7 +20,9 @@ moment this is most needed is precisely when the worker is no longer there (V2-2
 """
 import pytest
 
-from nucleo.turn.prompt import live_browser, live_sheet
+from widgets.navegador import live_sheet
+
+from widgets.navegador import live_lines as live_browser
 from widgets.navegador import tasks as T
 from widgets.results import data as SHEET
 

@@ -25,7 +25,7 @@ where a list of texts would be doomed because tomorrow it would be another store
 """
 import pytest
 
-from nucleo.turn.prompt import live_sheet
+from widgets.navegador import live_sheet
 
 HOJA = "results::19e54a-1"
 CLAIM = "Preparando entrega: 10 propuestas en la hoja de resultados"

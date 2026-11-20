@@ -7,7 +7,7 @@ import, called nothing and then said «no veo la fuente de Google». Every open 
 """
 from __future__ import annotations
 
-from nucleo.turn.prompt import catalogs
+from nucleo.self import catalogs
 
 
 def _live(monkeypatch, rows):

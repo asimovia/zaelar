@@ -100,7 +100,8 @@ def test_every_run_carries_what_is_open_the_widget_in_front_and_an_index_and_rea
     open widget are topics read when named — never in every run."""
     from nucleo import canvas_focus
     from nucleo.conversation_host import memory_read
-    from nucleo.flash import show_target, widget_read
+    from nucleo.flash import show_target
+    from widgets import read as widget_read
     assert [t for t, _r in memory_read.READERS] == ["DAYS", "TASKS", "DRAFT", "PRESENT", "FRONT", "STATE", "WIDGETS"]
     monkeypatch.setattr(canvas_focus, "phone_front", lambda: None)
     monkeypatch.setattr(widget_read, "read", lambda wid: f"w_holds of {wid}")
@@ -121,7 +122,9 @@ def widget_door(doors, monkeypatch):
     """A widget with no code of ours declaring three actions; the data-op door and the one asker recorded."""
     import asyncio
 
-    from nucleo.flash import data_ops, frontend, widget_read
+    from nucleo.flash import data_ops, frontend
+
+    from widgets import read as widget_read
     from nucleo.request import consent_ask
     from widgets import confirm_gate
     from widgets import effects, producers, runtime

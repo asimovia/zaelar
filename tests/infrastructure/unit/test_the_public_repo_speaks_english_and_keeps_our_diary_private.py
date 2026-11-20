@@ -138,9 +138,9 @@ PER_FILE: dict[str, int] = {
     'nucleo/flash/escalate.py': 16,
     'nucleo/llm/fast_client.py': 55,
     'nucleo/flash/hard_turn.py': 1,
-    'nucleo/turn/prompt/live_browser.py': 27,   # refactor2710-08b: live_blocks (84) + nav (104) + task_block (43), moved
-    'nucleo/turn/prompt/live_browser_nav.py': 104,
-    'nucleo/turn/prompt/live_sheet.py': 57,
+    'widgets/navegador/live_lines.py': 27,   # refactor2710-08b: live_blocks (84) + nav (104) + task_block (43), moved
+    'widgets/navegador/live_nav.py': 104,
+    'widgets/navegador/live_sheet.py': 57,
     'nucleo/turn/prompt/live_tasks.py': 43,
     'nucleo/llm/model_spec.py': 7,
     'nucleo/flash/post_stream.py': 2,

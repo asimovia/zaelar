@@ -5,7 +5,7 @@ Measured in `docs-report-lands-as-document__es` (2026-10-10): «hazme un informe
 T528 source, `dispatch.pending_summaries`) and glued «ya hay candidatos en la hoja de resultados: «RENAULT 4…»» to
 two replies about a report.
 """
-from nucleo.turn.prompt import live_browser
+from widgets.navegador import live_lines as live_browser
 
 
 def _pending(monkeypatch, surface):

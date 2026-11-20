@@ -81,7 +81,7 @@ def test_y_el_bloque_SIGUE_llegando_al_prompt():
     moved it. It is checked by RENDERING, not by reading the `import`.
     """
     import pytest
-    from nucleo.turn.prompt import live_browser
+    from widgets.navegador import live_lines as live_browser
     from nucleo.turn.prompt import live_state
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(live_browser, "navegador_lines", lambda: ["NAVEGADOR-MARK"])

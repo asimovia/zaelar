@@ -58,7 +58,7 @@ def clean_ledger():
 # ── 1 · the reader that stays sees what already ran ────────────────────────────────────────────────────
 
 def test_the_fast_brains_prompt_carries_what_already_ran():
-    from nucleo.turn.prompt import live_record
+    from nucleo import done_lines as live_record
     assert "agenda:clear_range" not in "\n".join(live_record.done_ops_lines())
     done_ops.note("agenda", "clear_range", {"from": "2026-09-17", "to": "2026-09-17"},
                   n=11, destructive=True)

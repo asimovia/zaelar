@@ -97,7 +97,7 @@ def test_an_open_draft_reads_his_words_first_and_a_message_goes_to_its_owner(mon
     assert got.data == {"say": "w_read_back?"} and seen["intake"] == ("w_tell_her_yes", {"to": "w_ana", "text": "w_late"},
                                                                       "call")
     monkeypatch.setattr(turn, "is_message", lambda w, a, p=None: True)
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
     monkeypatch.setattr(widget_read, "resolve", lambda named, text="": "w_chat")
     monkeypatch.setattr(acts_widget, "_offered", lambda base: {"reply": {}})
     monkeypatch.setattr(acts_widget, "_open", lambda: [])

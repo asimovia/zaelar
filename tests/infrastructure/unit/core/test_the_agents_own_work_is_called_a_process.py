@@ -89,7 +89,7 @@ def test_a_stored_action_map_row_that_still_says_tareas_keeps_working():
     he recorded them. A rename that breaks his saved phrases is a rename that costs him something."""
     import sys
     sys.path.insert(0, str(ENGINE))
-    from nucleo.turn.prompt.catalogs import canon_panel
+    from nucleo.self.catalogs import canon_panel
     assert canon_panel("tareas") == "procesos"
     assert canon_panel("procesos") == "procesos"
     assert canon_panel("jobs") == "procesos"

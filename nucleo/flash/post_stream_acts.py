@@ -230,7 +230,7 @@ async def speak_the_ops_answer(*, _brief, _op_text, _turn_op_tasks, data_done, r
         emit("brain", "🔎 la app ya trae la respuesta — la búsqueda web sobra", role="system",
              text=f"{_op_answer[0]} ← {search_req['v'][:100]}", extra={"cat": "flash"})
         search_req["v"] = None
-    from nucleo.flash import widget_read as _wread_oa
+    from widgets import read as _wread_oa
     emit("brain", "📖 la data-op DEVOLVIÓ datos y el turno debe palabras — contesto con ellos",
          text=f"{_op_answer[0]} ← {_op_text[:100]}", role="system", extra={"cat": "flash", "widget": _op_answer[0]})
     _sys = _wread_oa.op_answer_system(_prompt_mod._lang_lock(), _op_text, _op_answer[0], _op_answer[1],

@@ -1,6 +1,6 @@
 """What the brain READS of a card, served as it reads it — two read-only routes over one concern.
 
-  · `GET /widgets/{wid}/reading` — `nucleo.flash.widget_read.read`: the card's digest, its coach context and its items,
+  · `GET /widgets/{wid}/reading` — `widgets.read.read`: the card's digest, its coach context and its items,
     the exact text the turn's model reasons over. Anyone checking what the agent could see asks here instead of
     re-reading the card's state with a reader of its own (S1 audit H8: a test harness taught itself five card fields
     and drifted from the engine with every one).
@@ -22,7 +22,7 @@ router = APIRouter()
 async def widget_reading(wid: str):
     """The brain's reading of this card; empty when the card publishes nothing."""
     try:
-        from nucleo.flash import widget_read
+        from widgets import read as widget_read
         return JSONResponse({"reading": await asyncio.to_thread(widget_read.read, wid)})
     except Exception as e:  # noqa: BLE001 — a reading nobody could make is empty, never a guess
         return JSONResponse({"reading": "", "error": type(e).__name__})

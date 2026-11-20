@@ -421,7 +421,8 @@ def test_a_commission_naming_a_CLOSED_card_of_ours_is_read_before_the_worker(mon
     import asyncio
     from nucleo import danger
     from nucleo.acts import repair_of_a_view
-    from nucleo.flash import build_decision, card_commission, widget_read
+    from nucleo.flash import build_decision, card_commission
+    from widgets import read as widget_read
     monkeypatch.setattr(build_decision, "named_card", lambda brief: "agenda")
     monkeypatch.setattr(widget_read, "can_answer", lambda wid: wid == "agenda")
     monkeypatch.setattr(danger, "is_dangerous", lambda text: "delete everything" in text)
@@ -464,7 +465,8 @@ def test_a_read_the_verdict_says_to_SHOW_brings_the_card(monkeypatch):
     src = _provider_src()
     i = src.index('if read_req["v"] is not None and escalate_req["v"] is None')
     assert "_cardc.present_if_show(read_req" in src[i:i + 1200]
-    from nucleo.flash import card_commission, widget_read
+    from nucleo.flash import card_commission
+    from widgets import read as widget_read
     from nucleo.turn import brief as turn_brief
     monkeypatch.setattr(widget_read, "resolve", lambda arg, text="": "agenda" if "agenda" in (arg + text) else None)
     verb = ["show"]

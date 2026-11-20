@@ -11,7 +11,7 @@ from __future__ import annotations
 import pytest
 
 from nucleo.flash import asked_fact_hold as H
-from nucleo.turn.prompt import live_browser
+from widgets.navegador import live_lines as live_browser
 
 COMMISSION = "Find me an original pressing of 'The Dark Side of the Moon' in good condition for under $70."
 ASKED = "prices look fine, but are any of them actually original pressings? and what condition are they in"

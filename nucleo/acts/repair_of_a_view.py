@@ -30,7 +30,7 @@ async def call_for_repeated_view(operator_text: str, widget_id: str, repeated: s
             return None
         digest = ""
         try:
-            from nucleo.flash import widget_read as _wr
+            from widgets import read as _wr
             digest = str(_wr.read(wid) or "").strip()[:1500]
         except Exception:  # noqa: BLE001
             digest = ""
@@ -63,7 +63,7 @@ def _other_open_cards(wid: str, *, limit: int = 2, chars: int = 900) -> str:
     the screen, in another card."""
     try:
         from memory import api as _memapi
-        from nucleo.flash import widget_read as _wr
+        from widgets import read as _wr
         ids = [str(x).split("::")[0].lower() for x in ((_memapi.state() or {}).get("open_widgets") or [])]
         out = []
         for other in dict.fromkeys(i for i in ids if i and i != wid):
@@ -120,7 +120,7 @@ async def call_or_read_for_commission(operator_text: str, commission: str, widge
         manifest = _rt.get(wid) or {}
         # The read option only for a card that can ANSWER (`widget_read.can_answer`): a messaging card gets the
         # call («message Rowan on Telegram» → send_to) and never a read it cannot serve.
-        from nucleo.flash import widget_read as _wr0
+        from widgets import read as _wr0
         tools = [t for t in (_cp.tool_named("widget_data"),
                              _cp.tool_named("read_widget") if (may_read and _wr0.can_answer(wid)) else None) if t]
         from nucleo.flash import compose_rung as _compose
@@ -130,7 +130,7 @@ async def call_or_read_for_commission(operator_text: str, commission: str, widge
             return None
         digest = ""
         try:
-            from nucleo.flash import widget_read as _wr
+            from widgets import read as _wr
             digest = str(_wr.read(wid) or "").strip()[:1500]
         except Exception:  # noqa: BLE001
             digest = ""

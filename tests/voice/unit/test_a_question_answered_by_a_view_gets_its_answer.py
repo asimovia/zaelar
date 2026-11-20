@@ -18,7 +18,8 @@ def _brief(kind):
 
 
 def test_a_question_whose_turn_only_looked_reads_the_card(monkeypatch):
-    from nucleo.flash import card_commission as cc, widget_read
+    from nucleo.flash import card_commission as cc
+    from widgets import read as widget_read
     monkeypatch.setattr(widget_read, "can_answer", lambda w: True)
     ops = [{"widget_id": "agenda", "action": "show_day", "payload": {"date": "2026-09-29"}}]
     assert cc.question_left_to_a_lens(_brief("question"), ops=ops, acted={}) == "agenda"
@@ -26,7 +27,8 @@ def test_a_question_whose_turn_only_looked_reads_the_card(monkeypatch):
 
 
 def test_an_order_or_a_write_is_not_this(monkeypatch):
-    from nucleo.flash import card_commission as cc, widget_read
+    from nucleo.flash import card_commission as cc
+    from widgets import read as widget_read
     monkeypatch.setattr(widget_read, "can_answer", lambda w: True)
     view = [{"widget_id": "agenda", "action": "show_day"}]
     write = [{"widget_id": "agenda", "action": "add_meeting"}]
@@ -38,7 +40,8 @@ def test_an_order_that_owes_words_is_answered_too(monkeypatch):
     """R3 «find me five days in her vacation where i'm free and tell me the dates» and M1 «how's apple stock doing
     today, show me the chart» read as ORDERS and got a view and silence. The brief's `wants_words` question (live:
     14/15 over the demo's phrases) says when an order owes an answer."""
-    from nucleo.flash import card_commission as cc, widget_read
+    from nucleo.flash import card_commission as cc
+    from widgets import read as widget_read
     from nucleo.turn import brief as tb
     monkeypatch.setattr(widget_read, "can_answer", lambda w: True)
     b = _brief("order")
@@ -71,7 +74,7 @@ def test_the_answer_knows_the_card_it_came_from_is_on_screen(monkeypatch):
     screen and the answer composed from the op's data said «I can't pull up a chart for you here». The second
     pass saw the numbers and not the card: an open card is part of what it answers with."""
     from pathlib import Path
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
     on = widget_read.compose_system("L", "show me the chart", "markets", "q", "AAPL 341", answered=True, on_screen=True)
     off = widget_read.compose_system("L", "show me the chart", "markets", "q", "AAPL 341", answered=True)
     assert __import__("i18n.langs", fromlist=["x"]).words("widget_read")["on_screen"].split("{name}")[1][:20] in on and __import__("i18n.langs", fromlist=["x"]).words("widget_read")["on_screen"].split("{name}")[1][:20] not in off
@@ -86,7 +89,8 @@ def _ops_answer_door(monkeypatch, result, wid, action, kind="question"):
     """Run the turn's ONE op-answer door (`post_stream_acts.speak_the_ops_answer`) over one op that returned `result`;
     returns what it handed the second pass (system prompt, label, on_screen) — [] when it said nothing."""
     import asyncio
-    from nucleo.flash import post_stream_acts as psa, widget_read
+    from nucleo.flash import post_stream_acts as psa
+    from widgets import read as widget_read
     seen: list[dict] = []
     real = widget_read.op_answer_system
 

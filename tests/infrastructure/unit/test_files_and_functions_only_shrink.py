@@ -52,9 +52,9 @@ FUNCTIONS = {
     'nucleo/errands/wake.py::wake': 154,  # +1 2026-11-19 INI-042 #44 P-1: a watch errand leaves before the model turn
     'nucleo/input/stt.py::Accumulator._offer': 129,   # 2026-10-22: `offer` → wrapper + `_offer`
     'nucleo/llm/fast_client.py::FastClient._stream_inner': 267,
-    'nucleo/turn/prompt/live_browser.py::navegador_lines': 147,   # refactor2710-08b: moved
-    'nucleo/turn/prompt/live_browser_nav.py::read_the_browser_tasks': 133,
-    'nucleo/turn/prompt/live_browser_nav.py::say_the_browser_state': 147,
+    'widgets/navegador/live_lines.py::navegador_lines': 147,   # refactor2710-08b: moved
+    'widgets/navegador/live_nav.py::read_the_browser_tasks': 133,
+    'widgets/navegador/live_nav.py::say_the_browser_state': 147,
     'nucleo/flash/post_stream.py::run': 155,
     'nucleo/flash/post_stream_lanes.py::run_the_light_lanes': 435,
     'nucleo/flash/post_stream_settle.py::settle_what_is_pending': 211,

@@ -25,7 +25,7 @@ def _offered(base: str) -> dict:
 def _widget_target(args: dict) -> "tuple[str, str, dict] | ToolResult":
     """`(card, action, payload)` for a widget action, checked against its manifest — or the result that says why not.
     A message is its owner's (`send.turn.is_message`) and an act that leaves is held: neither crosses here."""
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
     from widgets import brief, effects, instances
     named, action = str(args.get("widget") or "").strip(), str(args.get("action") or "").strip()
     payload = args.get("payload") if isinstance(args.get("payload"), dict) else {}

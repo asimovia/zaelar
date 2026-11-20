@@ -11,7 +11,7 @@ A file that is about one thing can say what it is about. Inside `live_blocks` th
 from __future__ import annotations
 
 
-def _sheet_of_tab(nav_task_id: str) -> str:
+def sheet_of_tab(nav_task_id: str) -> str:
     """La hoja de este encargo, resuelta como la resuelve QUIEN ESCRIBE (V2-352).
 
     Hay dos caminos y el escritor (`navegador.act_api._sheet_for`, que alimenta `_hand_over`) usa los dos:
@@ -56,7 +56,7 @@ def _sheet_of_tab(nav_task_id: str) -> str:
 def boxes_of_tab(nav_task_id: str) -> list[str]:
     """TODAS las cajas que este encargo puede tener, en orden: el sello primero, el registro después.
 
-    `_sheet_of_tab` devuelve la PRIMERA que resuelva, y esa es la identidad correcta para escribir. Para LEER
+    `sheet_of_tab` devuelve la PRIMERA que resuelva, y esa es la identidad correcta para escribir. Para LEER
     no basta, y el 2026-08-28 se midió por qué: en `compare-flights-madrid-lisboa` el bloque vivo miró
     `f1743e-2` siete veces —vacía— mientras las filas estaban en `f1743e-1`, y el prompt le dijo al modelo que
     no tenía nada durante cuatro turnos.
@@ -72,7 +72,7 @@ def boxes_of_tab(nav_task_id: str) -> list[str]:
     nadie: solo se mira la segunda cuando la primera no tiene lo que se busca.
     """
     fuera: list[str] = []
-    for candidato in (_sheet_of_tab(nav_task_id), _registro_de_tab(nav_task_id)):
+    for candidato in (sheet_of_tab(nav_task_id), _registro_de_tab(nav_task_id)):
         c = str(candidato or "").strip()
         if c and c not in fuera:
             fuera.append(c)

@@ -16,10 +16,12 @@ import time
 
 import pytest
 
-from nucleo.flash import router, widget_read
+from nucleo.flash import router
 
 
 # ── the door exists, is never trimmed, and routes ─────────────────────────────────────────────────────────
+
+from widgets import read as widget_read
 def test_read_widget_is_in_the_catalog_and_in_the_untrimmed_memory_family():
     names = {t["function"]["name"] for t in router.TOOLS}
     assert "read_widget" in names
@@ -174,9 +176,9 @@ def test_both_channels_end_in_the_SAME_module():
     voice = _code("voice/engine/llm/providers/nucleo.py")
     lanes = _code("nucleo/flash/post_stream_lanes.py")
     for where, code in (("voice", voice + lanes),):
-        assert re.search(r"widget_read as _wread", code), f"{where} must reach the module by import"
+        assert re.search(r"read as _wread", code), f"{where} must reach the module by import"
     # and NEITHER channel re-implements the read: only `widget_read` may call `refs.prompt_digest` for this.
-    own = Path("nucleo/flash/widget_read.py").read_text(encoding="utf-8")
+    own = Path("widgets/read.py").read_text(encoding="utf-8")
     assert "prompt_digest" in own
     assert "prompt_digest" not in voice and "prompt_digest" not in lanes
 

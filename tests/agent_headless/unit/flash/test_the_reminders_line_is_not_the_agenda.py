@@ -2,7 +2,7 @@
 
 «what's on my plate tomorrow» was answered from this line — two of the four meetings: six notices, unsorted, is not
 a calendar. It is sorted soonest first and says, in so many words, that a day is read on the agenda."""
-from nucleo.turn.prompt import live_record
+from nucleo import done_lines as live_record
 
 
 def test_the_line_is_marked_partial_and_sorted(monkeypatch):

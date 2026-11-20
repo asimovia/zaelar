@@ -86,7 +86,7 @@ def test_two_screens_each_its_tab_and_record_and_an_order_waits_for_each_ack(she
     assert _say(b, 1, tab="sources", selected="") == 200
     assert state_render.clause("results", dev=a).endswith(f': selected="{ROWS[0]["title"]}"')
     assert state_render.clause("results", dev=b).endswith(": tab=sources")
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
     both = widget_read.read(INST)
     assert f'selected="{ROWS[0]["title"]}"' in both and "tab=sources" in both, "a worker read only one screen"
     assert r.apply_action("detail", {"sheet": SHEET, "title": ROWS[1]["title"]})["ok"]

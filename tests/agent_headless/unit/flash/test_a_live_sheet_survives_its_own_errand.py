@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from widgets.results import data as sheet_mod
 from nucleo.acts import search_listing
-from nucleo.turn.prompt import live_browser
+from widgets.navegador import live_lines as live_browser
 
 _SHEET = "results--t-live-1"
 

@@ -66,7 +66,7 @@ def test_two_screens_each_says_whose_card_is_open(ct, a, b):
     assert _say(a, 1, selected=LUCIA) == 200 and _say(b, 1, selected="") == 200
     assert state_render.clause("contactos", dev=a).endswith(f': selected="{LUCIA}"')
     assert state_render.clause("contactos", dev=b).endswith(": at rest"), "no card open must read as rest"
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
     assert f'selected="{LUCIA}"' in widget_read.read("contactos")
     assert d.apply_action("show_contact", {"contactId": _id(d, TOMAS)}).get("ok") is True
     for dev in (a, b):

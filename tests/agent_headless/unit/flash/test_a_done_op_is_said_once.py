@@ -14,7 +14,7 @@ import time
 import pytest
 
 from nucleo import done_ops as D
-from nucleo.turn.prompt import live_record
+from nucleo import done_lines as live_record
 
 
 @pytest.fixture(autouse=True)

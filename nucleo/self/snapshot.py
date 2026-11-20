@@ -71,7 +71,7 @@ def language() -> str:
 
 
 def widgets() -> list[str]:
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
     from widgets import runtime
     return [widget_read.title(str(w.get("id"))) for w in runtime.catalog() if w.get("id")]
 

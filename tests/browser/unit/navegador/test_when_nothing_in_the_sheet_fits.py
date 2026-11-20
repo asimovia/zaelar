@@ -20,7 +20,7 @@ decided by a coin toss). This test fixes the fact that both halves travel togeth
 """
 import pytest
 
-from nucleo.turn.prompt import live_browser
+from widgets.navegador import live_lines as live_browser
 from widgets.navegador import tasks as T
 from widgets.results import data as SHEET
 

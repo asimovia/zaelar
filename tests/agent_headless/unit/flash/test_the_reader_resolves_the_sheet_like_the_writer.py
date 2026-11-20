@@ -38,8 +38,10 @@ when the worker is replaced or dies (V2-281). The registry is BACKUP, exactly as
 """
 import pytest
 
-from nucleo.turn.prompt import live_browser, live_sheet
+from widgets.navegador import live_sheet
 
+
+from widgets.navegador import live_lines as live_browser
 FILAS = [{"title": "MERCEDES-BENZ Clase A 200 d", "price": "39.900 €"},
          {"title": "CHRYSLER Sebring 200C 2.0CRD Limited", "price": "2.500 €"},
          {"title": "VOLKSWAGEN Golf Variant 2.0TDI Life 85kW", "price": "11.900 €"}]

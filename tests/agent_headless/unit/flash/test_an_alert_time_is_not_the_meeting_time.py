@@ -2,7 +2,7 @@
 9, the Meshcore architecture session at 1» — every meeting two hours early. The agenda said 9, 11 and 15; the
 prompt's proactivity line listed the meetings' own ALERTS («ZAELAR weekly review (2026-09-29 07:00)»), which ring
 two hours before, with nothing saying so. The datum now says what its time is."""
-from nucleo.turn.prompt import live_record
+from nucleo import done_lines as live_record
 
 
 def test_a_scheduled_alert_says_its_time_is_when_it_rings(monkeypatch):

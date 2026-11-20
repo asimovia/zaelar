@@ -105,7 +105,7 @@ def test_which_provider_answered_reaches_the_runs_model_done(store):
 def test_read_widget_reads_the_widget_its_name_or_alias_declares(monkeypatch):
     """A widget is named however he named it, in any language: its manifest's names and aliases resolve it
     (`widget_read.resolve`), and a name nothing declares is a failed read naming what there is — never a guess."""
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
     from widgets import runtime
     monkeypatch.setattr(runtime, "get", lambda wid: {"id": wid} if wid == "w_cal" else None)
     monkeypatch.setattr(runtime, "identify_named", lambda q, **kw: "w_cal" if q == "w_alias" else None)

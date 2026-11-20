@@ -138,7 +138,7 @@ def _canvas(op: str, args: dict, src: str) -> ToolResult:
     if op == "show":
         got = _resolve(name, open_ids, named_only=True)
         if got.get("system"):
-            from nucleo.turn.prompt import catalogs
+            from nucleo.self import catalogs
             tab = catalogs.wall_tab_for(got["system"], name)
             return _panel("open", tab, src) if tab else _not_found(name)
         if got.get("ask"):
@@ -190,7 +190,7 @@ def run(name: str, args: dict, effect_id: str | None) -> ToolResult:
     if spec["door"] in ("widget", "task", "send", "self", "life", "network"):   # their own doors, awaited by `HostTools.call`
         return ToolResult("rejected", {"reason": "not a canvas or panel act", "tool": name})
     if spec["door"] == "panel":
-        from nucleo.turn.prompt import catalogs
+        from nucleo.self import catalogs
         action = "close" if str(args.get("action") or "") == "close" else "open"
         tab, tabs = str(args.get("panel") or "").strip().lower(), _choices(spec, "panel")
         if tab not in tabs:                      # the declared tabs are the only ones: never a guess at another

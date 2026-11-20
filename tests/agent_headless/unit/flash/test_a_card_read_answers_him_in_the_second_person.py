@@ -23,7 +23,7 @@ HIS = {"en": "find me five days in her vacation where i'm free", "es": "búscame
 @pytest.mark.parametrize("code", ["en", "es"])
 def test_the_read_composer_answers_his_words_in_his_language(monkeypatch, code):
     from i18n import langs
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
     monkeypatch.setattr(langs, "current_code", lambda: code)
     W = langs.words("widget_read", code=code)
     sys2 = widget_read.compose_system("", HIS[code], "agenda", QUERY, "(no entries)", answered=True)

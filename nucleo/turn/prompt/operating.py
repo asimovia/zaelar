@@ -6,11 +6,11 @@ every turn. It stays until the battery says it can go; every other block of the 
 from __future__ import annotations
 
 from nucleo.flash import canvas_claim as _canvas_claim
-from nucleo.turn.prompt.live_record import _cron_line
+from nucleo.done_lines import _cron_line
 
 
 def _connector_briefs(open_ids: set[str], turn_text: str = "") -> str:
-    from nucleo.turn.prompt import catalogs
+    from nucleo.self import catalogs
     return catalogs.connector_facts(open_ids, turn_text)
 
 

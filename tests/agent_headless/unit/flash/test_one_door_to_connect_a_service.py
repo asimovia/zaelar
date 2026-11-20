@@ -9,7 +9,7 @@ turn), by a known phrase (the action map) and by hand (`ctx.openConnector`).
 
 Three things are pinned here, each disarm-proved:
   1. the connector argument — an id, a product name, a word in ES or EN — lands on the
-     catalog id the section knows (`nucleo/turn/prompt/catalogs.py`), '' for garbage;
+     catalog id the section knows (`nucleo/self/catalogs.py`), '' for garbage;
   2. no widget keeps a connect door (a ratchet over `widgets/*/manifest.json` and `actions.py`/`data.py`);
   3. a browser «login» to Spotify / WhatsApp / Telegram / email is redirected to the section and NEVER opens a browser.
 """
@@ -21,7 +21,7 @@ from pathlib import Path
 
 import pytest
 
-from nucleo.turn.prompt import catalogs as CC
+from nucleo.self import catalogs as CC
 from nucleo.flash import router
 from nucleo.flash import tool_executor_calls as TEC
 from nucleo.flash import web_auth

@@ -8,7 +8,7 @@ with none the pass is told it looked at a slice. A lens that is the whole answer
 
 import pytest
 
-from nucleo.flash import widget_read
+from widgets import read as widget_read
 
 RECORD = "Del ARCHIVO permanente… · 2026-09-27 11:58 · email · Inworld AI <inworld> · Your receipt from Inworld AI #2281"
 PENDING = {"platform": "email", "count": 1, "chats": [{"n": 2, "name": "AliExpress", "platform": "email"}]}

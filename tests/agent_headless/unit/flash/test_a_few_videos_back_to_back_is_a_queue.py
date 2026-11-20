@@ -51,7 +51,7 @@ def test_a_failed_queue_is_said_as_a_failure(rail, monkeypatch):
 def test_the_queue_read_carries_the_queue_rows_beside_the_notice(monkeypatch, tmp_path):
     from widgets import store
     from widgets.youtube import data as yt
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
     monkeypatch.setattr(store, "DATA_DIR", str(tmp_path))
     db = yt._load()
     db["list"] = [{"videoId": "OOOOOOOOOO1", "title": "Opus - Live Is Life"},

@@ -332,10 +332,10 @@ PER_FILE: dict[str, int] = {
     'nucleo/flash/hard_turn.py': 4,
     'nucleo/flash/harness_turn.py': 2,
     'nucleo/flash/image_turn.py': 2,
-    'nucleo/turn/prompt/live_browser.py': 1,   # refactor2710-08b: live_blocks (14) + task_block (3) split, one fewer
+    'widgets/navegador/live_lines.py': 1,   # refactor2710-08b: live_blocks (14) + task_block (3) split, one fewer
     'nucleo/turn/prompt/live_history.py': 2,
-    'nucleo/turn/prompt/live_record.py': 6,
-    'nucleo/turn/prompt/live_sheet.py': 6,
+    'nucleo/done_lines.py': 6,
+    'widgets/navegador/live_sheet.py': 6,
     'nucleo/turn/prompt/live_tasks.py': 1,
     'nucleo/flash/meeting_time.py': 2,
     'memory/state_cache.py': 5,
@@ -349,7 +349,7 @@ PER_FILE: dict[str, int] = {
     'nucleo/self/presence.py': 3,
     'nucleo/llm/prewarm.py': 1,
     'nucleo/flash/procs.py': 3,
-    'nucleo/turn/prompt/live_state.py': 10,   # refactor2710-08: nucleo/flash/prompt.py (16) split
+    'nucleo/turn/prompt/live_state.py': 8,   # refactor2710-08: nucleo/flash/prompt.py (16) split
     'nucleo/turn/prompt/operating.py': 2,
     'nucleo/turn/prompt/recall.py': 4,
     'nucleo/turn/prompt/builder.py': 1,
@@ -380,9 +380,9 @@ PER_FILE: dict[str, int] = {
     'nucleo/flash/video_turn.py': 2,
     'nucleo/acts/wall_tab.py': 1,
     'nucleo/flash/web_auth.py': 2,
-    'nucleo/flash/widget_read.py': 10,
+    'widgets/read.py': 10,
     'nucleo/circuit/compose.py': 1,
-    'nucleo/turn/prompt/catalogs.py': 5,   # refactor2710-08: connector_briefs (5) + connector_canon (1), one fewer
+    'nucleo/self/catalogs.py': 5,   # refactor2710-08: connector_briefs (5) + connector_canon (1), one fewer
     'nucleo/cli/git.py': 1,
     'nucleo/circuit/harness.py': 2,
     'nucleo/his_words.py': 1,
@@ -423,7 +423,7 @@ PER_FILE: dict[str, int] = {
     'nucleo/sheets.py': 8,
     'nucleo/pulse/sparks.py': 2,
     'nucleo/circuit/spec.py': 13,   # + the worker's own end state, folded in from goal.py
-    'nucleo/surfaces.py': 1,
+    'nucleo/surfaces.py': 2,   # +1 T4: the screen's readers moved here from live_state (10 → 8)
     'nucleo/circuit/ledger.py': 7,
     'nucleo/torrent_router.py': 2,
     'nucleo/truth.py': 2,

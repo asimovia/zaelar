@@ -26,7 +26,7 @@ import pytest
 
 from nucleo.actionmap import executor
 from nucleo.flash import router_catalog
-from nucleo.turn.prompt.catalogs import canon_panel
+from nucleo.self.catalogs import canon_panel
 from widgets import runtime
 
 ENGINE = Path(__file__).resolve().parents[3]
@@ -60,7 +60,7 @@ def test_a_named_widget_is_never_stolen_by_the_catalogue(phrase, widget):
     ("abre mis widgets personalizados", "apps-custom"), ("Enséñame el catálogo de aplicaciones.", "apps"),
 ])
 def test_asking_for_HIS_widgets_opens_the_custom_sub_tab(phrase, tab):
-    from nucleo.turn.prompt.catalogs import apps_tab
+    from nucleo.self.catalogs import apps_tab
     assert apps_tab(phrase) == tab
 
 
@@ -93,7 +93,7 @@ def test_the_video_cards_own_catalogue_is_not_this_one():
     ("chat", "abre el chat", "chat"), ("config", "abre los ajustes", ""), (None, "hola", ""),
 ])
 def test_only_a_tab_of_the_wall_becomes_a_panel_event(sid, phrase, tab):
-    from nucleo.turn.prompt.catalogs import wall_tab_for
+    from nucleo.self.catalogs import wall_tab_for
     assert wall_tab_for(sid, phrase) == tab
 
 

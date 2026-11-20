@@ -119,7 +119,7 @@ def test_the_pass_reports_its_own_time_and_size(monkeypatch):
 
 def test_disarmed_the_full_turn_prompt_goes_red(monkeypatch):
     """Disarm: the pass composes over the turn's whole system prompt again → the ceiling catches it."""
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
     real = widget_read.op_answer_system
     turn_prompt = json.dumps({"tools": ["catalogue"] * 4000})        # ≈ the 19 k-token first-pass prompt of C2
     monkeypatch.setattr(widget_read, "op_answer_system", lambda *a, **k: turn_prompt + "\n" + real(*a, **k))

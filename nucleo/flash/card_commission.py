@@ -466,7 +466,7 @@ def present_if_show(read_req: dict, *, brief, operator_text: str, is_open: Calla
     """A read whose turn the verdict reads as «canvas: show», over a CLOSED card, brings the card through the
     one door. A question with no show in it («when is the dentist?») stays a read. True when presented."""
     try:
-        from nucleo.flash import widget_read as _wread
+        from widgets import read as _wread
         from nucleo.turn import brief as _tb
         wid = _wread.resolve(str((read_req.get("v") or {}).get("widget_id") or ""), operator_text)
         if not wid or is_open(wid):
@@ -518,7 +518,7 @@ def question_left_to_a_lens(brief, *, ops: list, acted: dict, operator_text: str
             wid = named_or_catalogue(brief, operator_text)
         if not wid:
             return ""
-        from nucleo.flash import widget_read as _wr
+        from widgets import read as _wr
         return wid if _wr.can_answer(wid.split("::")[0]) or _wr.read(wid) else ""
     except Exception:  # noqa: BLE001
         return ""

@@ -231,7 +231,7 @@ async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_ad
         spoken_text = "".join(spoken).strip()
     if read_req["v"] is not None and escalate_req["v"] is None and search_req["v"] is None \
             and reveal_req["v"] is None:
-        from nucleo.flash import widget_read as _wread
+        from widgets import read as _wread
         # V2-773 — «Show me that time in my calendar»: a read answers in words, and the card he asked to SEE
         # stayed closed. When the verdict says the canvas should SHOW, the card comes up (`card_commission`).
         from nucleo.flash import card_commission as _cardc

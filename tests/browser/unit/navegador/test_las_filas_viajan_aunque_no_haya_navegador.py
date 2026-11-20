@@ -18,7 +18,8 @@ to the ERRAND (V2-259), and the prompt only knew how to read it through the brow
 import pytest
 
 from nucleo import dispatch as D
-from nucleo.turn.prompt import live_sheet, live_tasks
+from nucleo.turn.prompt import live_tasks
+from widgets.navegador import live_sheet
 from nucleo.workers.session import SessionRecord
 from widgets.navegador import tasks as T
 from widgets.results import data as SHEET
@@ -117,7 +118,8 @@ what measures all rounds with a browser."""
 # round: the stated absence (V2-360), the phone as actionable data (V2-240), and the search hint that is NOT a
 # candidate (V2-376).
 def test_las_DOS_lecturas_formatean_la_fila_IGUAL():
-    from nucleo.turn.prompt import live_sheet, live_tasks
+    from nucleo.turn.prompt import live_tasks
+    from widgets.navegador import live_sheet
     from nucleo.flash.errand_sheet import fila
     import inspect
     assert "fila(i)" in inspect.getsource(live_sheet._sheet_top_rows), (

@@ -217,7 +217,7 @@ def test_the_state_lines_live_in_the_turns_state_and_the_shelf_does_not_move(pro
 
 
 def test_the_worker_and_the_turn_read_the_same_state(probe):
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
     _snap(**FULL)
     assert f"app state (reported): {state_render.clause('probe')}" in widget_read.read("probe")
 

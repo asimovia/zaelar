@@ -74,7 +74,7 @@ def _search(args: dict, find: Callable) -> ToolResult:
 def _widget(args: dict) -> ToolResult:
     """The widget its argument names — the catalogue id, else by the names and aliases each manifest declares
     (`widget_read.resolve`) — answering the question, else what it holds."""
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
     named, q = str(args.get("widget") or ""), str(args.get("question") or "")
     wid = widget_read.resolve(named)
     if wid is None:

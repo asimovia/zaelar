@@ -26,7 +26,7 @@ def test_the_harness_does_not_count_a_docked_card_as_open(docked):
 
 
 def test_the_live_state_does_not_call_a_docked_card_open(docked):
-    from nucleo.turn.prompt import live_record
+    from nucleo import done_lines as live_record
     assert live_record._is_open("results") is False
     assert live_record._is_open("agenda") is True
 

@@ -18,7 +18,7 @@ import pytest
 
 from nucleo import dispatch
 from nucleo.dispatch import confirm as dc
-from nucleo.turn.prompt import live_browser
+from widgets.navegador import live_lines as live_browser
 from nucleo.turn import errands_of_a_turn as E
 from nucleo.turn import named_errand
 

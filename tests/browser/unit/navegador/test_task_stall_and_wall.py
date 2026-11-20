@@ -343,7 +343,7 @@ def test_the_two_halves_share_ONE_threshold():
     the same environment variable."""
     from widgets.navegador import act_api
 
-    from nucleo.turn.prompt import live_sheet
+    from widgets.navegador import live_sheet
     assert act_api._STALL_HINT_S == live_sheet._STALLED_S
 
 

@@ -20,7 +20,7 @@ def _line(key: str, **kw) -> str:
 
 
 def _named(args: dict) -> str | None:
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
     return widget_read.resolve(str(args.get("widget") or ""))
 
 

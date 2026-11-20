@@ -127,8 +127,8 @@ def test_the_reader_finds_this_door_by_CONTRACT_and_names_no_widget():
     import ast
     import pathlib
 
-    from nucleo.flash import widget_read
-    text = pathlib.Path("nucleo/flash/widget_read.py").read_text(encoding="utf-8")
+    from widgets import read as widget_read
+    text = pathlib.Path("widgets/read.py").read_text(encoding="utf-8")
     assert "read_query" in text, "el lector ya no busca la costura"
     # Prose may name widgets (the docstrings cite which ones publish a digest); CODE may not. Read the string
     # and name literals out of the AST rather than grepping, so a comment can keep explaining itself.
@@ -154,7 +154,7 @@ def test_the_reader_finds_this_door_by_CONTRACT_and_names_no_widget():
 
 
 def test_a_widget_without_the_seam_costs_nothing():
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
     assert widget_read.lookup("clock", "what time is it") == ""
     assert widget_read.lookup("no-such-widget", "anything") == ""
 
@@ -169,7 +169,7 @@ def test_a_widget_without_the_seam_costs_nothing():
 def test_the_question_reaches_the_model_through_prepare():
     import asyncio
 
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
 
     seen = []
     sysp = asyncio.run(widget_read.prepare(
@@ -187,7 +187,7 @@ def test_a_question_nobody_can_answer_is_handed_over_AS_A_SUMMARY():
     but is told what it is — so an absence becomes «no lo he podido ver», never «no está guardado»."""
     import asyncio
 
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
 
     seen = []
     sysp = asyncio.run(widget_read.prepare(

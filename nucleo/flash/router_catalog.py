@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from nucleo.flash import tools_media as _tools_media   # V2-457: las definiciones de medios
 from nucleo.acts.search import TOOL_DEF as _LISTING_TOOL   # V2-556: its contract lives with its door
-from nucleo.flash.widget_read import TOOL_DEF as _READ_WIDGET_TOOL   # V2-668: a question about a widget reads it
+from widgets.read import TOOL_DEF as _READ_WIDGET_TOOL   # V2-668: a question about a widget reads it
 from nucleo.self.about import TOOL_DEF as _ABOUT_SELF_TOOL   # V2-932: a question about the agent reads its own catalogue
 
 # ── function catalog (OpenAI-compatible) offered to the fast model ─────────────────────────────────────

@@ -84,7 +84,7 @@ def _as_the_player_reports(card: str, db: dict) -> None:
 def _seen(card: str, db: dict) -> str:
     """Put `db` in the card's store and let its screen report it, then read it the way the round does: the engine's
     reading → the tester's line."""
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
     from tests.use_cases.e2e.agent.run import _what_it_shows
     from widgets import state, store
     store.save(card, db)
@@ -146,7 +146,7 @@ def test_the_reading_is_served_as_the_brain_reads_it():
     """The round asks the engine over HTTP; the route answers `widget_read.read`, the brain's own text, nothing else."""
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
     from widgets import server_api, state, store
     db = {"videoId": "x", "title": "Dune", "channel": "Warner", "paused": True, "volume": 40}
     store.save("youtube", db)

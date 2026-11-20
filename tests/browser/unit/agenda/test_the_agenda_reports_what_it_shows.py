@@ -77,7 +77,7 @@ def test_two_screens_two_views_each_its_own_clause_and_a_worker_reads_both(agend
     assert state_render.clause("agenda", dev=b).endswith(": view=day, date_shown=\"2026-11-12\"")
     got = {s["dev"]: s["fields"] for s in state_render.read("agenda")["surfaces"]}
     assert got == {a: {"view": "week", "date_shown": "2026-11-09"}, b: {"view": "day", "date_shown": "2026-11-12"}}
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
     both = widget_read.read("agenda")
     assert "view=week" in both and "view=day" in both, "a worker read only one screen"
     assert _say(b, 2, view="list", date_shown="") == 200

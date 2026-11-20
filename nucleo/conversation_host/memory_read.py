@@ -56,17 +56,17 @@ MISSION_CHARS = 70
 
 
 def _open_ids() -> list[str]:
-    from nucleo.turn.prompt import live_state
-    return list(live_state._open_widget_ids() or ())
+    from nucleo import surfaces
+    return list(surfaces.open_widget_ids() or ())
 
 
 def _widgets() -> str:
     """Every widget of the catalogue by id and mission — what `show_widget` can open, a widget nobody wrote code for
     included —, which are on screen, which one is at full screen, and which were used lately."""
     from nucleo.flash import show_target
-    from nucleo.turn.prompt import live_state
+    from nucleo import surfaces
     from widgets import brief, runtime
-    open_ids, recent = _open_ids(), list(live_state._recent_widget_ids() or ())
+    open_ids, recent = _open_ids(), list(surfaces.recent_widget_ids() or ())
     out = []
     for w in runtime.catalog():
         if w.get("id"):
@@ -93,7 +93,7 @@ def widget_facts(wid: str) -> dict:
     """One widget as the model reads it: its declared actions (`brief._offered_action_names`, internal ones never
     named), their fields (`brief._payload_keys`) and what it holds now (`widget_read.read`: the state it reports, its
     digest). The same shape for the widget in front and for one `read_widget` reads."""
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
     from widgets import brief, runtime
     acts = (runtime.get(wid.split("::", 1)[0]) or {}).get("actions")
     acts = acts if isinstance(acts, dict) else {}
@@ -121,7 +121,7 @@ def _screen() -> str:
 
 
 def _connectors() -> str:
-    from nucleo.turn.prompt import catalogs
+    from nucleo.self import catalogs
     return catalogs.connector_facts(set(_open_ids()))
 
 
@@ -131,12 +131,12 @@ def _draft() -> str:
 
 
 def _done() -> str:
-    from nucleo.turn.prompt import live_record
+    from nucleo import done_lines as live_record
     return "\n".join(live_record.done_ops_lines())
 
 
 def _browser() -> str:
-    from nucleo.turn.prompt import live_browser
+    from widgets.navegador import live_lines as live_browser
     return "\n".join(live_browser.navegador_lines())
 
 
@@ -229,8 +229,8 @@ class MemoryRead:
         return await asyncio.to_thread(_blocks, budget_tokens)
 
     async def screen(self, account: str, endpoint: str | None) -> Block:
-        from nucleo.turn.prompt import live_state
-        return Block("SCREEN", await asyncio.to_thread(live_state.screen_line))
+        from nucleo import surfaces
+        return Block("SCREEN", await asyncio.to_thread(surfaces.screen_line))
 
     async def recall(self, account: str, query: str, *, k: int) -> list[Block]:
         from memory import api as memory

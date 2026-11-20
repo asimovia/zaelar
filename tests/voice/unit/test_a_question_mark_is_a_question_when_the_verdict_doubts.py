@@ -21,7 +21,7 @@ def _unsure(monkeypatch):
             return default, {"choice": "tell", "confidence": 0.20, "used": False}
         return default, None
     monkeypatch.setattr(tb, "read", _read)
-    from nucleo.flash import widget_read as wr
+    from widgets import read as wr
     monkeypatch.setattr(wr, "can_answer", lambda wid: True)
 
 

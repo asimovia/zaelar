@@ -3,7 +3,7 @@ nothing booked in the stretch, and the answer was «I can't give you five free d
 calendar is Anna's vacation… I have nothing to check your availability against». The read's doctrine («use ONLY
 what is here; what is not here is not stored») was read as a ban on INFERRING. With the line that separates
 inventing a datum from reasoning with the data, the live composer answered 3/3 with five free dates."""
-from nucleo.flash import widget_read as wr
+from widgets import read as wr
 
 
 def test_the_read_may_reason_and_may_not_invent():

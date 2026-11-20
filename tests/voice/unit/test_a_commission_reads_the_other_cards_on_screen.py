@@ -14,7 +14,7 @@ _AGENDA = "· 2026-09-30 16:30 «Catch up with Rowan»–17:15"
 @pytest.fixture
 def seen(monkeypatch):
     from memory import api as memapi
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
     monkeypatch.setattr(memapi, "state", lambda: {"open_widgets": ["results::x-1", "agenda", "mensajeria"]})
     monkeypatch.setattr(widget_read, "read", lambda wid: {"agenda": _AGENDA, "mensajeria": "BANDEJA: 3"}.get(wid, ""))
     monkeypatch.setattr(widget_read, "can_answer", lambda wid: wid in ("agenda", "mensajeria"))

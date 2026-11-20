@@ -25,7 +25,7 @@ it cannot see (V2-330).
 """
 import pytest
 
-from nucleo.turn.prompt import live_sheet
+from widgets.navegador import live_sheet
 from widgets.navegador import tasks as T
 from widgets.results import data as SHEET
 

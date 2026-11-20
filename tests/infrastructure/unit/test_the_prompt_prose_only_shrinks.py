@@ -46,9 +46,9 @@ _PROSE_FLOOR = 40
 #: The two modules that compose what the fast turn reads. `router_catalog` is measured apart, because it
 #: already has its own ceiling in `test_router` and is counted here only so the TOTAL is honest.
 _PROSE_FILES = ("nucleo/turn/prompt/builder.py", "nucleo/turn/prompt/operating.py", "nucleo/turn/prompt/live_state.py",
-                "nucleo/turn/prompt/recall.py", "nucleo/turn/prompt/live_sheet.py",
-                "nucleo/turn/prompt/live_browser.py", "nucleo/turn/prompt/live_browser_nav.py",
-                "nucleo/turn/prompt/live_record.py")   # refactor2710-08: prompt.py and live_blocks split, same sum
+                "nucleo/turn/prompt/recall.py", "widgets/navegador/live_sheet.py",
+                "widgets/navegador/live_lines.py", "widgets/navegador/live_nav.py",
+                "nucleo/done_lines.py")   # refactor2710-08: prompt.py and live_blocks split, same sum
 
 #: Measured 2026-09-16. EDIT DOWNWARD ONLY — and the edit is the celebration.
 _MAX_PROSE = 25_111          # +51 2026-11-18 V2-935: two FACTS of the turn, each read from state and absent when it does not hold — an errand the gate holds («NO HA EMPEZADO», instead of «stuck») and a native panel open over the screen; +194 2026-11-18 V2-935: the conversation's base norm, said once and first (a person: brief, never his words back nor «you are right», «done» only when something was done) — his explicit order after three replies in a row opened by agreeing with him and repeating him; the half-sentence about apologies and «never a stock sentence» left for it. A rule about behaviour, declared as one: no mechanism reads an opener without a word table; refactor2710-08: −63, the screen line and one contradiction out (was 24_929); prompt.py 16_417 + live_blocks.py 3_395 + live_blocks_nav.py 5_117 — DOCSTRINGS OUT

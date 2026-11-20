@@ -19,7 +19,7 @@ MARKED.
 import pytest
 
 from nucleo import dispatch as D
-from nucleo.turn.prompt import live_browser
+from widgets.navegador import live_lines as live_browser
 from nucleo.workers.session import SessionRecord
 from widgets.navegador import tasks as T
 from widgets.results import data as SHEET

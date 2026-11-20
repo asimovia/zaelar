@@ -121,7 +121,7 @@ def test_the_disarm_a_lens_that_never_yields_schedules_no_pass(repairs, monkeypa
 def test_a_read_for_an_order_on_another_card_carries_the_order_out(model, monkeypatch):
     """full20 C5: «send rowan a telegram with the new time» read the agenda for the time, and the read's words-only
     pass said «I can't send a Telegram — I don't have any messaging tool»."""
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
     monkeypatch.setattr(widget_read, "read", lambda wid, *a, **k: "Catch up with Rowan · 16:30" if wid == "agenda" else "")
     m = model([("widget_data", {"widget_id": "mensajeria", "action": "send_to",
                                 "payload": {"contact": "Rowan", "text": "Moved to 16:30"}})])

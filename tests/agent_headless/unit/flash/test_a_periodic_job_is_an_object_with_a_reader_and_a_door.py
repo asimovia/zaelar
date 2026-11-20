@@ -113,7 +113,7 @@ def test_cancel_by_an_id_that_is_gone_is_false(jobs):
 
 # ── the turn: the reader in its prompt, the tag, the mouth ─────────────────────────────────────────────────────
 def test_the_live_record_lists_the_jobs_by_reference(jobs):
-    from nucleo.turn.prompt import live_record
+    from nucleo import done_lines as live_record
     line = live_record._cron_line()
     assert f"id {jobs['parcel']} «Seguimiento del paquete" in line, line
     assert PARCEL not in line, "the whole 100-character name is not a reference"
@@ -122,7 +122,7 @@ def test_the_live_record_lists_the_jobs_by_reference(jobs):
 
 def test_the_live_record_says_none_when_nothing_is_scheduled(jobs):
     """«None» is a fact too: with no line, an order over a job that does not exist was promised («Vale, la quito»)."""
-    from nucleo.turn.prompt import live_record
+    from nucleo import done_lines as live_record
     for j in list(_listed()):
         scheduler.cancel(j)
     assert "Ya programado: nada." in live_record._cron_line()

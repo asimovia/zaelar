@@ -856,6 +856,16 @@ _PACKAGE_CEILINGS["widgets"] += 84
 _PACKAGE_CEILINGS["nucleo/flash"] -= 302
 _PACKAGE_CEILINGS["nucleo/turn"] -= 107
 _TOTAL_MAX += 22     # measured after the move (the shims' lines and the reply text's new header)
+# 2026-11-21 INI-078 F2 step 8, T4 (the widget readers and what was prompt MOVED to their owners): flash.widget_read →
+# widgets/read.py, prompt.catalogs → nucleo/self/catalogs.py, prompt.live_browser / live_browser_nav / live_sheet →
+# widgets/navegador/live_lines, live_nav, live_sheet, prompt.live_record → nucleo/done_lines.py, and live_state's three
+# readers of the screen → nucleo/surfaces.py. Moved lines.
+_PACKAGE_CEILINGS["nucleo (top)"] += 221
+_PACKAGE_CEILINGS["nucleo/self"] += 189
+_PACKAGE_CEILINGS["widgets"] += 951
+_PACKAGE_CEILINGS["nucleo/flash"] -= 281
+_PACKAGE_CEILINGS["nucleo/turn"] -= 1031
+_TOTAL_MAX += 49     # measured after the move (the shims' lines)
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

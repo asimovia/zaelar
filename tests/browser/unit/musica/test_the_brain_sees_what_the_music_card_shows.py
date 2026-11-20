@@ -63,7 +63,7 @@ def card(monkeypatch, tmp_path):
 
 
 def test_a_card_showing_a_song_with_no_lists_is_not_empty(card, monkeypatch):
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
     from widgets import refs
     from tests.browser.unit.musica.page_player import page_player
     assert "VACÍO" not in refs.items_line("musica"), "no saved lists is not «nothing on the widget»"
@@ -109,7 +109,7 @@ def test_with_spotify_playing_the_page_says_nothing_beside_it(card, monkeypatch)
     """V2-884 audit P1: Spotify sounding on his device and the state block said `musica@computer: !playing` — or
     `musica: state unreported` — beside «NOW … · Spotify · playing». The page player's report is the card's state only
     while the page plays (`surface_acts`); a provider's device is the provider's line."""
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
     from tests.browser.unit.musica.page_player import page_player
     from widgets import store
     store.save("musica", {"yt": {"videoId": "VID00000001", "title": "Dai Dai", "paused": True, "volume": 50},
@@ -127,7 +127,7 @@ def test_with_spotify_playing_the_page_says_nothing_beside_it(card, monkeypatch)
 
 def test_disarm_a_page_line_beside_spotify_contradicts_it(card, monkeypatch):
     """Disarm: `surface_acts` always True → the page's «!playing» rides beside Spotify's «playing»."""
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
     from tests.browser.unit.musica.page_player import page_player
     from widgets import store
     monkeypatch.setattr(md, "surface_acts", lambda db: True)

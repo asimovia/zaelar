@@ -47,7 +47,7 @@ async def compose(wid: str, act: str, *, request: str, question: str, answer: st
             return None
         digest = ""
         try:
-            from nucleo.flash import widget_read as _wr
+            from widgets import read as _wr
             digest = str(_wr.read(card) or "").strip()[:1500]
         except Exception as e:  # noqa: BLE001
             note(e)

@@ -61,7 +61,7 @@ def _run_cr(*a, **k):
 def test_a_commission_that_names_a_card_is_read_or_called_before_it_costs_a_worker(client, monkeypatch):
     """V2-773 final pass (C1): «Find me a free 45-minute slot tomorrow afternoon» went to a Brain Worker while
     the agenda — named by the catalogue verdict — held the whole answer. One pass with the card in front."""
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
     monkeypatch.setattr(widget_read, "read", lambda wid: "citas próximas (3): …")
     _Client.answer = [("read_widget", {"widget_id": "agenda", "question": "What is free on 2026-09-27 between 12:00 and 18:00?"})]
     got = _run_cr("Find me a free 45-minute slot tomorrow afternoon to talk with Rowan.", "Find a free slot…", "agenda")
@@ -86,7 +86,7 @@ def test_a_card_that_cannot_answer_still_takes_the_call(client, monkeypatch):
     """Coordination block (K1): «Message Rowan on Telegram» went to a Brain Worker — the messaging card cannot
     answer questions, so the pass was never offered to it. Any named card may take the CALL; only one that
     can answer is offered the read."""
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
     monkeypatch.setattr(widget_read, "read", lambda wid: "")
     monkeypatch.setattr(widget_read, "can_answer", lambda wid: wid == "agenda")
     _Client.answer = [("widget_data", {"widget_id": "mensajeria", "action": "send_to",

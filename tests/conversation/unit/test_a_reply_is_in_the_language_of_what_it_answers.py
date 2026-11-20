@@ -45,9 +45,9 @@ def test_widgets_and_tasks_are_facts_by_id(monkeypatch):
     from nucleo import dispatch
     from nucleo.circuit import ledger
     from nucleo.conversation_host import memory_read
-    from nucleo.turn.prompt import live_state
-    monkeypatch.setattr(live_state, "_open_widget_ids", lambda: ["agenda"])
-    monkeypatch.setattr(live_state, "_recent_widget_ids", lambda: ["agenda", "weather"])
+    from nucleo import surfaces
+    monkeypatch.setattr(surfaces, "open_widget_ids", lambda: ["agenda"])
+    monkeypatch.setattr(surfaces, "recent_widget_ids", lambda: ["agenda", "weather"])
     from nucleo.flash import show_target
     from widgets import runtime
     monkeypatch.setattr(runtime, "catalog", lambda: [{"id": "agenda", "whenToUse": "w_days"}, {"id": "weather"}])

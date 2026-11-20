@@ -6,8 +6,9 @@ rows, said the dentist and nothing else: the second day lived in the previous ex
 
 Disarm: drop `before=` from `op_answer_system` (or make `prior_line.exchange` return "") and this goes red.
 """
-from nucleo.flash import prior_line, widget_read
+from nucleo.flash import prior_line
 
+from widgets import read as widget_read
 WINDOW = [{"role": "user", "content": "Put two things down: dentist on November 12, and dinner with Laura two days later"},
           {"role": "assistant", "content": "Done."},
           {"role": "user", "content": "so what do I have on those days?"}]

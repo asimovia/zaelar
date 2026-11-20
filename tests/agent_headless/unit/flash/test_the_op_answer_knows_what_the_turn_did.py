@@ -13,7 +13,7 @@ from __future__ import annotations
 import pytest
 
 from i18n import langs
-from nucleo.flash import widget_read as w
+from widgets import read as w
 
 SAID = {"en": "yes please, delete it and add a clean one with just the 9:30 start. then read it back to me",
         "es": "sí, bórrala y crea una limpia solo con el inicio a las 9:30. Luego léemela"}

@@ -27,7 +27,7 @@ def _dos_cajas(monkeypatch):
     """Un relevo real: el sello da la caja NUEVA (vacía) y el registro la HEREDADA (con las filas)."""
     from nucleo.flash import errand_sheet as ES
     import widgets.results.data as _rd
-    monkeypatch.setattr(ES, "_sheet_of_tab", lambda *_a, **_k: "results::f1743e-2")
+    monkeypatch.setattr(ES, "sheet_of_tab", lambda *_a, **_k: "results::f1743e-2")
     monkeypatch.setattr(ES, "_registro_de_tab", lambda *_a, **_k: "results::f1743e-1")
     contenido = {"results::f1743e-2": {"items": []},
                  "results::f1743e-1": {"items": [{"title": "Iberia directo 21:50", "price": "148 €"}]}}
@@ -35,14 +35,14 @@ def _dos_cajas(monkeypatch):
 
 
 def test_el_caso_MEDIDO_deja_de_ser_ciego(_dos_cajas):
-    from nucleo.turn.prompt import live_sheet
+    from widgets.navegador import live_sheet
     assert live_sheet._sheet_has_rows("f1743e-2") is True, "las filas están en la heredada y el prompt decía que no"
 
 
 def test_y_las_FILAS_salen_de_la_misma_caja_que_la_señal(_dos_cajas):
     """Si la señal dice que hay algo y las líneas salen de otra caja, el prompt afirma que tiene resultados y
     no puede nombrarlos — peor que las dos cosas por separado."""
-    from nucleo.turn.prompt import live_sheet
+    from widgets.navegador import live_sheet
     filas = live_sheet._sheet_top_rows("f1743e-2")
     assert filas and "Iberia directo 21:50" in filas[0]
 
@@ -53,4 +53,4 @@ def test_el_LECTOR_y_solo_el_lector():
     fuera = subprocess.run(["grep", "-rn", "boxes_of_tab", "--include=*.py", "nucleo/", "widgets/"],
                            capture_output=True, text=True).stdout
     ficheros = {l.split(":")[0] for l in fuera.splitlines() if l.strip()}
-    assert ficheros <= {"nucleo/flash/errand_sheet.py", "nucleo/turn/prompt/live_sheet.py", "nucleo/turn/prompt/live_browser.py"}, ficheros
+    assert ficheros <= {"nucleo/flash/errand_sheet.py", "widgets/navegador/live_sheet.py", "widgets/navegador/live_lines.py"}, ficheros

@@ -60,7 +60,7 @@ def test_una_hoja_de_DOCE_filas_viaja_entera_hasta_su_techo_de_tamano(monkeypatc
     accessories) and `find-best-hotel-city__us` round 6 with TWELVE hotels, two below the operator's cap,
     showing the faces. The turn concluded about the total of a set it had not seen in full.
     """
-    from nucleo.turn.prompt import live_sheet
+    from widgets.navegador import live_sheet
 
     filas = [{"title": f"Hotel {i:02d}", "price": f"${100 + i}"} for i in range(12)]
     monkeypatch.setattr(live_sheet, "boxes_of_tab", lambda t: ["results"], raising=False)
@@ -80,7 +80,7 @@ def test_y_el_techo_de_TAMANO_manda_sobre_el_conteo(monkeypatch):
     not put anything it pleases into the prompt. A test pretending that it cuts at twelve would make a false claim
     about the code it is supposed to protect.
     """
-    from nucleo.turn.prompt import live_sheet
+    from widgets.navegador import live_sheet
 
     filas = [{"title": "H" * 70, "price": f"${i}"} for i in range(30)]
     monkeypatch.setattr(live_sheet, "boxes_of_tab", lambda t: ["results"], raising=False)

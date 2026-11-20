@@ -13,7 +13,7 @@ no signal yet, and that already has its own wording in the healthy branch (plus 
 """
 import pytest
 
-from nucleo.turn.prompt import live_browser
+from widgets.navegador import live_lines as live_browser
 from widgets.navegador import tasks as T
 
 

@@ -312,7 +312,7 @@ def test_the_turn_is_told_which_closed_sheets_it_can_bring_back(monkeypatch):
     """The resolver names a closed sheet, but the model has to KNOW it exists to ask for it (demo S1: «no
     monitor widget in your setup»). Three at most, most recent first, the open ones left out."""
     from memory import api as memapi
-    from nucleo.turn.prompt import live_record
+    from nucleo import done_lines as live_record
     monkeypatch.setattr(instances, "recent_faces", lambda limit=5: [{"id": "results::m1", "label": "Three monitors"},
                                                                     {"id": "results::o1", "label": "Open one"},
                                                                     {"id": "results::t9", "label": "Trips"}])
@@ -330,7 +330,7 @@ def test_an_open_sheet_is_never_on_the_shelf_of_closed_ones(monkeypatch):
     """Demo pass 135: the state keeps BASE ids (`results`), the shelf lists INSTANCES — the monitor sheet on screen
     was offered as a closed sheet. The canvas's own instance list is read too."""
     from memory import api as memapi
-    from nucleo.turn.prompt import live_record
+    from nucleo import done_lines as live_record
     from server import voice_api
     from widgets import instances
     monkeypatch.setattr(instances, "recent_faces", lambda limit=5: [{"id": "results::o1", "label": "Monitors"},

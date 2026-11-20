@@ -17,7 +17,9 @@ V2-278's boundary (never claim «en pantalla» / «en la hoja») stays exactly w
 """
 import pytest
 
-from nucleo.turn.prompt import live_browser, live_sheet
+from widgets.navegador import live_sheet
+
+from widgets.navegador import live_lines as live_browser
 from widgets.navegador import tasks as T
 from widgets.results import data as SHEET
 
@@ -163,7 +165,7 @@ def test_la_frontera_de_V278_sigue_la_cara_no_afirma_la_pantalla():
 # data, the same rule as `by_amount`: a result is a name and a way to act on it, never a price (V2-240).
 
 def _rows(monkeypatch, items):
-    from nucleo.turn.prompt import live_sheet
+    from widgets.navegador import live_sheet
     from widgets.navegador import tasks as _t
     from widgets.results import data as _sd
     monkeypatch.setattr(_t, "get", lambda tid: {"sheet": "results::c4202d-1"})

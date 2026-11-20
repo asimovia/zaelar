@@ -9,7 +9,7 @@ from nucleo.conversation_host import acts_life
 
 def test_delete_and_restore_ask_on_their_row_and_build_is_a_code_errand(monkeypatch):
     from nucleo.acts import errand
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
     from nucleo.request import consent_ask
     from widgets import lifecycle
     asked, born = [], {}
@@ -26,7 +26,7 @@ def test_delete_and_restore_ask_on_their_row_and_build_is_a_code_errand(monkeypa
 
 
 def test_a_name_a_widget_opens_by_goes_through_its_aliases(monkeypatch):
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
     from widgets import aliases
     monkeypatch.setattr(widget_read, "resolve", lambda named, text="": "w_notes")
     monkeypatch.setattr(aliases, "add", lambda w, a: {"ok": True, "added": a})

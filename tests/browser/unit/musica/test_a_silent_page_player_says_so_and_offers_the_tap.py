@@ -64,7 +64,7 @@ def test_the_page_player_is_what_the_card_shows_even_with_spotify_connected(stor
 
 
 def test_the_brain_reads_where_it_sounds_and_that_it_is_silent(store_tmp, monkeypatch):
-    from nucleo.flash import widget_read
+    from widgets import read as widget_read
     d = md.prompt_digest()
     assert "Dai Dai" in d and "page player" in d and "phone" in d
     assert "volume 70%" not in d and "playing" not in d, "the ORDER is never painted as what the page player does"
