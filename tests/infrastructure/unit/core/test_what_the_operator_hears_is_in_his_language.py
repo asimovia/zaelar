@@ -235,7 +235,7 @@ def test_the_first_turn_is_spoken_in_his_language():
     Spanish one primes a Spanish reply on turn one. It was a literal in the provider; now it is i18n data read
     through `nucleo/turn/kickoff`, and the gate recognises it by that catalog, not by an English marker."""
     from i18n import langs as L
-    from nucleo.turn import kickoff
+    from i18n import kickoff
     assert L.LANGUAGES["en"].kickoff_prompt != L.LANGUAGES["es"].kickoff_prompt
     assert kickoff.text(L.LANGUAGES["es"]) == L.LANGUAGES["es"].kickoff_prompt
     src = _vts.read(ENGINE / "voice/engine/llm/providers/nucleo.py")

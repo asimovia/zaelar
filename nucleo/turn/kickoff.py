@@ -13,18 +13,5 @@ introduction phase (`nucleo/turn/prompt/packs/introduction.py`) carries that, as
 from __future__ import annotations
 
 
-def text(lang=None) -> str:
-    """The kickoff note in the session's language (or `lang`'s): the user-role line that opens a session."""
-    try:
-        if lang is None:
-            from i18n import langs as _langs
-            lang = _langs.current_language()
-        return str(getattr(lang, "kickoff_prompt", "") or "")
-    except Exception as e:  # noqa: BLE001 — a session with no readable language still opens
-        from loguru import logger
-        logger.debug(f"kickoff: no language to read the note from ({e!r})")
-        return ""
-
-
 # The catalog is the language packs' (`i18n/kickoff`): the memory reads the same door without importing the brain.
-from i18n.kickoff import catalog, is_kickoff, reset_cache as _reset_for_tests  # noqa: E402,F401
+from i18n.kickoff import catalog, is_kickoff, reset_cache as _reset_for_tests, text  # noqa: E402,F401 — all the language's (T3)

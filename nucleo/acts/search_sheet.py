@@ -137,7 +137,7 @@ def _hand_on(delivered: bool, asked: str, sid: str, n: int, errand_id: int = 0, 
 def _handed_to_the_chain(errand_id: int, sid: str) -> bool:
     """A turn discarded unanswered acts on nothing (V2-844 F2): its pass writes no row, shows no box and hands nothing
     on; the turn that superseded it carries the joined request through its own route. Its born errand goes."""
-    from nucleo.turn import turn_marks
+    from nucleo import turn_marks
     from voice import trace as _trace
     if not turn_marks.was_discarded(_trace.current()):
         return False

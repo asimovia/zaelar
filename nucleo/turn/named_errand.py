@@ -246,7 +246,7 @@ def starting(existing: list[dict]) -> list[dict]:
     except Exception as e:  # noqa: BLE001 — a reader never breaks a turn
         logger.debug(f"errand_pool: escalations unreadable — {type(e).__name__}: {e}")
     # V2-784 F1 — a fast pass in flight is a flow from the moment it starts, with the sheet it will write.
-    from nucleo.turn import launches as _launches
+    from nucleo.errands import launches as _launches
     for r in _launches.live():
         if not _already(r["request"], existing + out):
             out.append(_entry(f"pass:{r['id']}", r["request"], sheet=r["sheet"], starting=True, launching=True))

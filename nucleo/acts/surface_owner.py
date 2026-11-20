@@ -143,7 +143,7 @@ def _against_discard(actor: str, what: str, wid: str, emit=None) -> None:
     t = actor.split(":", 1)[1] if actor.startswith("turn:") else ""
     if not t:
         return
-    from nucleo.turn import turn_marks
+    from nucleo import turn_marks
     if turn_marks.was_discarded(t):
         _emit("discarded_launch", violation=True, text=f"{what} {wid}", emit=emit, trace=t, what=what, id=wid)
     else:
@@ -233,14 +233,14 @@ def turn_discarded(trace: str = "") -> None:
     t = str(trace or _trace())
     if not t:
         return
-    from nucleo.turn import turn_marks
+    from nucleo import turn_marks
     turn_marks.discarded(t)          # the behaviour reads it there (V2-844 F2); this module only measures
     for _at, what, wid in _LAUNCHED.pop(t, []):
         _emit("discarded_launch", violation=True, text=f"{what} {wid}", trace=t, what=what, id=wid, order="before")
 
 
 def joined(trace: str) -> str:
-    from nucleo.turn import turn_marks
+    from nucleo import turn_marks
     return turn_marks.cut_of(trace)[0]
 
 

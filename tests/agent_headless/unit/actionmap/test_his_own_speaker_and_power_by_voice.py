@@ -211,7 +211,7 @@ def test_the_first_run_greeting_offers_a_new_name_and_a_voice_with_the_name_slot
     is moot once he renamed us (3.206): with the name slot set, no name or voice offer is made."""
     from i18n import langs
     from voice import attention
-    from nucleo.turn import kickoff
+    from i18n import kickoff
     from nucleo.turn.prompt.packs import introduction
     from voice.engine.pipeline.first_air import greeting_prompt
     store = {"stt_language": "es", "intro_presentation_said": True}   # V2-929: after the presentation, the bare offer

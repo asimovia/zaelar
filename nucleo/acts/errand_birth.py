@@ -23,7 +23,7 @@ def whole_request(text: str, *, part: bool = False) -> str:
         return text
     try:
         from nucleo import matching
-        from nucleo.turn import turn_marks
+        from nucleo import turn_marks
         from voice import trace as _trace
         joined, tail = turn_marks.cut_of(_trace.current())
         flat = lambda s: " ".join(matching.norm_text(s).split())   # noqa: E731

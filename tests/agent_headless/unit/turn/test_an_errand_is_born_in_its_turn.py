@@ -18,7 +18,8 @@ import pytest
 from memory import db as memdb, tasks_store as ts
 from nucleo.acts import errand, search_sheet
 from nucleo.circuit import ledger
-from nucleo.turn import brief_turn, turn_marks
+from nucleo import turn_marks
+from nucleo.turn import brief_turn
 from voice import trace
 
 CAR_EN = ("let's focus on the car. I wanna... One of those big runners, a Toyota 4Runner. Two or three good offers. "

@@ -19,7 +19,7 @@ import asyncio
 
 import pytest
 
-from nucleo.flash import titular_watch as tw
+from nucleo.llm import titular_watch as tw
 
 
 @pytest.fixture(autouse=True)

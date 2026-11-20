@@ -42,3 +42,61 @@ def stall_offered(task_id) -> int:
     """How many turns have already carried the offer to stop THIS task."""
     return int(_STALL_OFFERED.get(str(task_id)) or 0)
 
+
+# ── a turn's admission and discard, by trace (V2-844 F2; merged from `nucleo/turn/turn_marks.py`, INI-078 F2 step 8 T3)
+#
+# Two marks, written where they are known and read where a door decides:
+#
+#   · CUT — the turn arrived with a cut, unanswered sentence in front of it (`accumulator.whole_turn` joined them for
+#     the verdict). Its joined request and the tail he said are kept: an errand this turn names by the tail alone («Okay.»,
+#     «Sorry.») is about the joined request (`errand.whole_request`).
+#   · DISCARDED — the turn was dropped unanswered (`NucleoLLMStream._note_death`). It acts on nothing any more: its
+#     launches belong to the turn that superseded it, which carries the joined request.
+#
+# Bounded RAM, short-lived on purpose: a turn's side effects land within seconds of it.
+#
+# CUT is written today only by the old turn's admission (`pipeline_admit`): with the conversation manager nothing writes
+# it, so `cut_of` reads nothing until the manager writes it or its reader goes.
+import time  # noqa: E402
+
+#: How long a turn's marks are read. The measured late write came 2.7 s after the discard; a minute covers a slow pass.
+TTL_S = 120.0
+_MAX = 256
+_CUT: dict[str, tuple] = {}        # trace -> (when, joined request, his tail)
+_DISCARDED: dict[str, float] = {}  # trace -> when
+
+
+def _bound(d: dict) -> None:
+    while len(d) > _MAX:
+        d.pop(next(iter(d)))
+
+
+def cut(trace: str, joined: str, tail: str) -> None:
+    """The turn `trace` was admitted as `tail` with a cut sentence joined in front of it (`joined`)."""
+    if trace and str(joined or "").strip():
+        _CUT[trace] = (time.time(), str(joined).strip(), str(tail or "").strip())
+        _bound(_CUT)
+
+
+def cut_of(trace: str) -> tuple[str, str]:
+    """(joined request, his tail) of a cut turn, or ("", "") for a turn that was not cut (or too old to say)."""
+    v = _CUT.get(str(trace or ""))
+    if not v or time.time() - v[0] > TTL_S:
+        return "", ""
+    return v[1], v[2]
+
+
+def discarded(trace: str) -> None:
+    if trace:
+        _DISCARDED[trace] = time.time()
+        _bound(_DISCARDED)
+
+
+def was_discarded(trace: str) -> bool:
+    at = _DISCARDED.get(str(trace or ""))
+    return bool(at) and time.time() - at <= TTL_S
+
+
+def reset() -> None:
+    _CUT.clear()
+    _DISCARDED.clear()

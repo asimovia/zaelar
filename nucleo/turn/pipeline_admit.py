@@ -17,7 +17,7 @@ async def admit_the_turn(*, motor, attention, brain, emit, first_turn, text) -> 
     if _judged != (text or "").strip():
         emit("brain", "🧩 el turno cortado sin respuesta entra en el veredicto", text=_judged[:160], role="system",
              extra={"cat": "flash", "tail": (text or "")[:80]})
-        from nucleo.turn import turn_marks
+        from nucleo import turn_marks
         from voice import trace as _trace
         turn_marks.cut(_trace.current(), _judged, text)   # V2-844: an errand named by the tail is about the whole
     from voice import trace as _trace_nt

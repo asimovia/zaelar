@@ -35,7 +35,7 @@ def held(task_id: str, why: str, *, readable: bool = True) -> str:
         if rec is None or not items or data.get("chosen"):
             return ""
         from nucleo import on_his_behalf
-        from nucleo.flash import row_ask
+        from widgets.results import row_ask
         said = on_his_behalf.errand_words(rec)
         if str(task_id) in _HELD and _HELD[str(task_id)] != (said[-1] if said else ""):
             return ""                      # he spoke after the hold: whatever he said, the click is his to answer

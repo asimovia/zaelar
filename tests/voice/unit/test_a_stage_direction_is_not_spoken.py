@@ -6,7 +6,7 @@ the code that reads it. And a reply in a script without Latin letters is still p
 punctuation» check used to read only A-Z and dropped a whole Chinese reply."""
 import pytest
 
-from nucleo.flash.dialog import sanitize_reply
+from voice.reply_text import sanitize_reply
 from voice import speech
 
 

@@ -58,7 +58,7 @@ def a_discarded_turn(req: str, ctx: dict) -> bool:
     was decided at the gate (`nucleo/switchboard`): the portal routes nothing a second time. Never raises."""
     try:
         from voice import trace as _trace
-        from nucleo.turn import turn_marks
+        from nucleo import turn_marks
         t = _trace.current()
         if not t or ctx.get("kind") == "dev" or any(ctx.get(k) for k in ("task_uid", "born_uid", "confirmed", "replaces",
                                                                          "not_mine_of")):

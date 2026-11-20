@@ -180,7 +180,7 @@ def guardians(app, first_lifespan_entry: bool) -> None:
     # the panel red for 600 s and only a successful VOICE turn could repaint it. Measured 2026-09-22 — the panel
     # read «no responde» for six minutes while DeepSeek answered in 1.2 s. Idle and network-free while healthy.
     try:
-        from nucleo.flash import titular_watch
+        from nucleo.llm import titular_watch
         if first_lifespan_entry:
             app.state.titular_watch_task = asyncio.create_task(titular_watch.run())
     except Exception as e:

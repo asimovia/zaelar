@@ -14,7 +14,7 @@ import pytest
 
 from nucleo.acts import search_listing
 from nucleo.dispatch import fold as flow_of
-from nucleo.turn import launches
+from nucleo.errands import launches
 
 FRAGMENT = "Okay. Can you find me, like, three twenty seven inch four k monitors?"
 WHOLE = ("Okay. Can you find me, like, three twenty seven inch four k monitors? Under four hundred bucks. "

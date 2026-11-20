@@ -94,7 +94,7 @@ def greeting_prompt(lang) -> str:
     keep it as his words. What the greeting SAYS (who the agent is, that its name and voice can change, his name) is
     the introduction phase's block, a system section — not a second instruction composed here. V2-027: the verbose
     capabilities brief is not re-injected either; the per-turn system prompt already carries the state."""
-    from nucleo.turn import kickoff as _kickoff
+    from i18n import kickoff as _kickoff
     return _kickoff.text(lang)
 
 

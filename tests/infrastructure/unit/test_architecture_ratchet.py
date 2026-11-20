@@ -843,6 +843,19 @@ _PACKAGE_CEILINGS["nucleo/self"] += 80
 _PACKAGE_CEILINGS["nucleo/flash"] -= 323
 _PACKAGE_CEILINGS["nucleo/turn"] -= 372
 _TOTAL_MAX += 42     # measured after the move (the shims' lines)
+# 2026-11-21 INI-078 F2 step 8, T3 (the conversation's pieces MOVED to their owners): flash.titular_watch → llm/,
+# flash.row_ask → widgets/results/, turn.launches → errands/, turn.turn_marks merged into nucleo/turn_marks.py,
+# kickoff's note into i18n/kickoff.py, and `sanitize_reply` out of flash.dialog to `voice/reply_text.py` (what the
+# cluster's composer reads). Moved lines; nucleo/acts +2 is two imports split by the move.
+_PACKAGE_CEILINGS["nucleo (top)"] += 58
+_PACKAGE_CEILINGS["nucleo/acts"] += 2
+_PACKAGE_CEILINGS["nucleo/errands"] += 50
+_PACKAGE_CEILINGS["nucleo/llm"] += 176
+_PACKAGE_CEILINGS["voice"] += 60
+_PACKAGE_CEILINGS["widgets"] += 84
+_PACKAGE_CEILINGS["nucleo/flash"] -= 302
+_PACKAGE_CEILINGS["nucleo/turn"] -= 107
+_TOTAL_MAX += 22     # measured after the move (the shims' lines and the reply text's new header)
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

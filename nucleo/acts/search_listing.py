@@ -114,7 +114,9 @@ async def hunt(asked_text: str, args: dict) -> dict:
     to the results sheet, shown by the pass; who says what was found is the caller's."""
     import asyncio
 
-    from nucleo.turn import launches as _launches, open_flows as _flow
+    from nucleo.turn import open_flows as _flow
+
+    from nucleo.errands import launches as _launches
     from nucleo.acts.errand import whole_request
     operator_text = whole_request(str(asked_text or ""))   # V2-844 F1a: never the cut turn's tail
     # V2-784 — the open flow this hunt belongs to: a live worker takes it as a refinement, a pass in flight or just

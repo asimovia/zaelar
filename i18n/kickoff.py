@@ -36,3 +36,16 @@ def reset_cache() -> None:
     """Forget the cached catalog (a language pack changed; tests)."""
     global _CATALOG
     _CATALOG = None
+
+
+def text(lang=None) -> str:
+    """The kickoff note in the session's language (or `lang`'s): the user-role line that opens a session."""
+    try:
+        if lang is None:
+            from i18n import langs as _langs
+            lang = _langs.current_language()
+        return str(getattr(lang, "kickoff_prompt", "") or "")
+    except Exception as e:  # noqa: BLE001 — a session with no readable language still opens
+        from loguru import logger
+        logger.debug(f"kickoff: no language to read the note from ({e!r})")
+        return ""

@@ -19,14 +19,9 @@ from __future__ import annotations
 
 import re
 
-from voice import speech as _speech
-import unicodedata
 
-
-def _norm(s: str) -> str:
-    n = unicodedata.normalize("NFKD", s or "")
-    n = "".join(c for c in n if not unicodedata.combining(c)).lower()
-    return re.sub(r"[^0-9a-z ]+", " ", n).strip()
+from voice.reply_text import (collapse_repeated_phrase as _collapse_repeated_phrase,  # noqa: F401,E402 — moved (T3)
+                              norm as _norm, sanitize_reply)
 
 
 def _words(s: str) -> list[str]:
@@ -255,56 +250,6 @@ def prune_window(window: list[dict]) -> list[dict]:
 
 
 # ── 3) ANTI-DEGENERACIÓN DEL OUTPUT ──────────────────────────────────────────────────────────────────────
-def _collapse_repeated_phrase(text: str, max_block: int = 10) -> str:
-    """Colapsa un BLOQUE de palabras repetido contiguo ("Déjame comprobar Déjame comprobar" → "Déjame comprobar";
-    "hola hola hola" → "hola"). Recorre de bloque grande a pequeño; itera hasta punto fijo."""
-    for _ in range(4):
-        toks = text.split()
-        n = len(toks)
-        out: list[str] = []
-        i = 0
-        changed = False
-        while i < n:
-            hit = False
-            for L in range(min(max_block, (n - i) // 2), 0, -1):
-                a = [w.lower() for w in toks[i:i + L]]
-                b = [w.lower() for w in toks[i + L:i + 2 * L]]
-                if a == b:
-                    out.extend(toks[i:i + L])
-                    i += 2 * L
-                    hit = True
-                    changed = True
-                    break
-            if not hit:
-                out.append(toks[i])
-                i += 1
-        text = " ".join(out)
-        if not changed:
-            break
-    return text
-
-
-def sanitize_reply(text: str) -> str:
-    """Anti-degeneración DETERMINISTA de la respuesta hablada del FlashBrain: colapsa palabras/frases duplicadas y
-    empalmes de plantilla que produce el modelo pequeño bajo repetición. Idempotente; conserva texto normal."""
-    if not text or not text.strip():
-        return text
-    t = text.strip()
-    # frases duplicadas inmediatas ("Hola. Hola." → "Hola.")
-    parts = re.split(r"(?<=[.!?…])\s+", t)
-    dedup: list[str] = []
-    for p in parts:
-        if dedup and _norm(p) and _norm(p) == _norm(dedup[-1]):
-            continue
-        dedup.append(p)
-    t = " ".join(dedup)
-    # bloques de palabras repetidos contiguos (sin puntuación de por medio)
-    t = _collapse_repeated_phrase(t)
-    t = _speech.drop_stage_directions(t)
-    return re.sub(r"\s+", " ", t).strip()
-
-
-
 # Extraído de `probe.py` en la pasada del trinquete (2026-09-02): escribe en la VENTANA, que es de este
 # módulo. `cap` se pasa porque el tope es del canal, no del diálogo.
 def remember_what_was_said(sess, text: str, cap: int) -> None:

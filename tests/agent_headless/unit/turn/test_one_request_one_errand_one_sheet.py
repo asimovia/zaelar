@@ -18,7 +18,7 @@ import pytest
 from nucleo import sheets
 from nucleo.acts import search_listing
 from nucleo.dispatch import confirm
-from nucleo.turn import launches
+from nucleo.errands import launches
 
 REQ = {"query": "SUV"}
 

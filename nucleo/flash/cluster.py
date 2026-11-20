@@ -50,7 +50,7 @@ def _gated_tools_and_handler(tool_names, escalate_ctx):
 
 
 async def _complete(text: str, spec: ModelSpec, max_tokens: int, tools=None, on_tool_call=None) -> str:
-    from . import dialog
+    from voice import reply_text
     messages = [
         {"role": "system", "content": build_cluster_system()},
         {"role": "user", "content": text},
@@ -60,7 +60,7 @@ async def _complete(text: str, spec: ModelSpec, max_tokens: int, tools=None, on_
     # ellos = perfil untrusted pure, a peer no does actuar a zaelar (identico a before).
     out = await FastClient().complete(messages, spec=spec, max_tokens=max_tokens,
                                       tools=tools, on_tool_call=on_tool_call)
-    return dialog.sanitize_reply(out).strip()
+    return reply_text.sanitize_reply(out).strip()
 
 
 async def respond(text: str, *, spec: ModelSpec, tool_names=None, escalate_ctx=None,
