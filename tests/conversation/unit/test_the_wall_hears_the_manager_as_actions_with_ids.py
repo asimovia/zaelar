@@ -114,7 +114,7 @@ def test_our_line_answers_his_and_ends_as_it_sounded(ops):
     assert [(w, o) for w, o, _l in ops] == [
         ("mouth", {"op": "append", "id": "s_1", "role": "agent", "re": ["iv_1"], "text": "w1 w2 w3", "state": "live",
                    "heard": 0}),
-        ("mouth", {"op": "update", "id": "s_1", "state": "final", "heard": 4})]
+        ("mouth", {"op": "update", "id": "s_1", "state": "final", "heard": 2})]   # «w1»: the words that sounded whole
     ops.clear()
     m2 = WallMouth(SimpleNamespace(now_ms=lambda: 5), voice=v, ack_later=lambda s: None)
     asyncio.run(m2.say(_order()))

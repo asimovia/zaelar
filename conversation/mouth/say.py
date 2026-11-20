@@ -5,7 +5,7 @@ has two verbs, say and stop. The acks come back as signals: `SayStarted`, and `S
 unknown) with how much was heard and where that comes from: `agent_estimate` (the voice process's count of what it
 spoke), `shown` (a text line painted on a screen the person is looking at), or `unknown`. Nothing is ever assumed
 heard: a line with no count is not in the conversation the model reads (never pronounced). A cut keeps what was heard,
-trimmed back to the last sentence boundary inside it; cutting our voice never touches the record of an action.
+trimmed back to the last whole word that sounded (one number for every reader); cutting our voice never touches the record of an action.
 
 Every event of a line carries its trace: the root of the request it answers, or the key of the line owed it says. A
 stop carries the trace of the line it cuts.
@@ -22,7 +22,6 @@ from conversation.telemetry import Emitter
 from conversation.types import Ids
 
 SAYS = "says"
-SENTENCE_ENDS = ".!?…"
 LIVE = ("ordered", "playing")
 
 
@@ -42,13 +41,13 @@ class SayEnded:
     source: str = "agent_estimate"   # where `heard_chars` comes from: agent_estimate · shown · unknown
 
 
-def cut_to_sentence(text: str, heard_chars: int) -> str:
-    """What was heard, back to the last sentence end inside it (or every word heard, if no sentence ended)."""
+def heard_words(text: str, heard_chars: int) -> str:
+    """What was heard: the words that sounded whole — a word the voice was cut inside is not heard. ONE number for
+    every reader: the wall, the record, the next input, the rest a resumption says."""
     heard = text[:max(0, heard_chars)]
-    ends = [i for i, ch in enumerate(heard) if ch in SENTENCE_ENDS]
-    if ends:
-        return heard[:ends[-1] + 1]
-    return heard[:heard.rfind(" ")] if " " in heard and heard_chars < len(text) else heard
+    if heard_chars < len(text) and not text[heard_chars:heard_chars + 1].isspace():
+        heard = heard[:heard.rfind(" ")] if " " in heard else ""
+    return heard.rstrip()
 
 
 class Speaker:
@@ -112,9 +111,7 @@ class Speaker:
         row["state"], row["outcome"], row["ended_ms"] = "ended", sig.outcome, sig.t_ms
         known = sig.heard_chars is not None and "unknown" not in (sig.outcome, sig.source)
         if known:
-            cut = sig.outcome in ("cut", "cleared")
-            row["heard_chars"] = len(cut_to_sentence(row["text"], sig.heard_chars) if cut
-                                     else row["text"][:sig.heard_chars])
+            row["heard_chars"] = len(heard_words(row["text"], sig.heard_chars))
             row["heard_source"] = sig.source
         label = "cut" if sig.outcome in ("cut", "cleared") else "ended"
         return label, {"outcome": sig.outcome, "heard_chars": row["heard_chars"], "source": row["heard_source"]}
@@ -136,7 +133,7 @@ class Speaker:
         return max(rows, key=lambda r: r["ended_ms"], default=None)
 
     async def resume(self, row: dict) -> str | None:
-        """Say the rest of a cut line, from the last sentence heard, by voice (it is already on the wall), once."""
+        """Say the rest of a cut line, from the last word heard, by voice (it is already on the wall), once."""
         with self.store.tx(self.lease()) as tx:
             fresh = tx.get(SAYS, row["say_id"])
             if fresh is None or fresh.get("resumed"):

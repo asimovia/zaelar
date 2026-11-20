@@ -80,11 +80,12 @@ class WallMouth:
                 if notice:
                     _card(order)
             elif isinstance(sig, SayEnded) and (started or not notice):
+                from conversation.mouth.say import heard_words
+                heard = order.text if sig.heard_chars is None else heard_words(order.text, sig.heard_chars)
                 if not started:                         # never started: on the wall whole, never said to have sounded
                     wall.ours(order, "shown")
-                else:
-                    wall.ours(order, "ended", sig.heard_chars)
-                heard = order.text if sig.heard_chars is None else order.text[:max(0, sig.heard_chars)]
+                else:                                   # ONE heard number: the words that sounded, as the record has it
+                    wall.ours(order, "ended", None if sig.heard_chars is None else len(heard))
                 if heard.strip():
                     observer.emit("transcript", "zaelar", text=heard, role="assistant",
                                   extra={"trace": trace_of(order), "conv_say": order.say_id, "conv": True,

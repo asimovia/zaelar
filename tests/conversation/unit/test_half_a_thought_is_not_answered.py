@@ -16,7 +16,7 @@ published not before `complete_grace_ms` from the last voice close, one with som
 boolean, leaves the marks' graces; on a text the field changes nothing.
 
 A voice never stops anything by itself: what he says while a run is in course is an entry that substitutes it, and the
-model decides. A voice that cut our line and ended with no word resumes that line once, from the last sentence heard —
+model decides. A voice that cut our line and ended with no word resumes that line once, from the last word heard —
 unless an entry with words came first, or the line was stopped by us.
 """
 from __future__ import annotations
@@ -187,6 +187,7 @@ def test_a_voice_never_stops_anything_by_itself_the_model_decides(store):
 
 
 LINE = "w1 w2. w3 w4. w5 w6."
+REST = "w4. w5 w6."           # from the last whole word heard: one heard number for every reader
 
 
 def _cut_line(h: Harness, heard: int) -> str:
@@ -205,7 +206,7 @@ def test_a_barge_in_with_no_word_resumes_the_cut_line_once_from_the_last_sentenc
     _cut_line(h, heard=9)                                                  # «w1 w2. w3» heard: back to «w1 w2.»
     h.hear(S.VadEdge("d1", "fall", 800), S.Tick(800 + h.conv.cfg.close_cap_ms))   # a breath: no word, discarded
     h.at(3400).pump()
-    assert [o.text for o in h.mouth.orders][-1] == "w3 w4. w5 w6." and "voice" in h.mouth.orders[-1].channels
+    assert [o.text for o in h.mouth.orders][-1] == REST and "voice" in h.mouth.orders[-1].channels
     h.at(5000).pump()
     assert len(h.mouth.orders) == 2                                        # once
 
@@ -217,7 +218,7 @@ def test_an_entry_with_words_first_and_no_resume(store):
     h.typed("w7", 750, ep="d2")
     h.hear(S.VadEdge("d1", "fall", 800), S.Tick(800 + h.conv.cfg.close_cap_ms))
     h.at(4000).pump()
-    assert "w3 w4. w5 w6." not in [o.text for o in h.mouth.orders]
+    assert REST not in [o.text for o in h.mouth.orders]
 
 
 def test_a_line_we_stopped_or_a_breath_too_late_is_not_resumed(store):
@@ -226,7 +227,7 @@ def test_a_line_we_stopped_or_a_breath_too_late_is_not_resumed(store):
     late = 720 + h.conv.cfg.resume_cut_within_ms                          # the breath ends past the window
     h.hear(S.VadEdge("d1", "fall", late - h.conv.cfg.close_cap_ms + 10), S.Tick(late + 20))
     h.at(late + 500).pump()
-    assert "w3 w4. w5 w6." not in [o.text for o in h.mouth.orders]
+    assert REST not in [o.text for o in h.mouth.orders]
 
 
 def test_a_line_we_stopped_is_never_resumed(store):
@@ -243,7 +244,7 @@ def test_a_line_we_stopped_is_never_resumed(store):
     h.conv.ack(SayEnded(sid, "cut", 9, 720, "d1", "agent_estimate"))
     h.hear(S.VadEdge("d1", "fall", 800), S.Tick(800 + h.conv.cfg.close_cap_ms))
     h.at(4000).pump()
-    assert "w3 w4. w5 w6." not in [o.text for o in h.mouth.orders]
+    assert REST not in [o.text for o in h.mouth.orders]
 
 
 def test_with_two_voice_entries_the_latest_grace_rules(store):
@@ -267,7 +268,7 @@ def test_an_entry_answered_since_the_cut_and_no_resume(store):
     h.utter([(["w7"], 0)], ep="d2", at=900)
     h.hear(S.VadEdge("d1", "fall", 800), S.Tick(800 + h.conv.cfg.close_cap_ms))
     h.at(4000).pump()
-    assert "w3 w4. w5 w6." not in [o.text for o in h.mouth.orders]
+    assert REST not in [o.text for o in h.mouth.orders]
 
 
 def test_an_entry_that_comes_before_the_resume_is_said_cancels_it(store):
@@ -279,7 +280,7 @@ def test_an_entry_that_comes_before_the_resume_is_said_cancels_it(store):
     h.typed("w7", 3400, ep="d2")                                            # …and his text comes first
     h.at(4000).pump()
     h.at(5000).pump()
-    assert "w3 w4. w5 w6." not in [o.text for o in h.mouth.orders]
+    assert REST not in [o.text for o in h.mouth.orders]
 
 
 def _parked(h: Harness) -> bool:
@@ -341,7 +342,7 @@ def test_a_noise_that_keeps_rising_resumes_the_line_once_and_never_its_resumptio
         h.hear(S.VadEdge("d1", "rise", t + 50))
         h.conv.ack(SayEnded(h.mouth.orders[-1].say_id, "cut", 0, t + 60, "d1", "agent_estimate"))
         t += 100
-    assert [o.text for o in h.mouth.orders].count("w3 w4. w5 w6.") == 1
+    assert [o.text for o in h.mouth.orders].count(REST) == 1
 
 
 # ── §1.6 quater: the model's own reading sets the grace ─────────────────────────────────────────────────────────

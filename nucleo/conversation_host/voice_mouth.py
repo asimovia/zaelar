@@ -44,6 +44,8 @@ def speak(order, ack) -> bool:
         attention.note_directed()               # reply that took longer than the window to begin never leaves his
                                                 # next sentence `not_addressed` (the old turn does it at every chunk)
 
+    sounded: list[str] = []                     # what sounded of it, for the echo guard (its tail)
+
     async def play() -> None:
         payload["env"] = cl.env_diff()         # on the body's loop, the one that keeps what was sent
         started = False
@@ -55,8 +57,11 @@ def speak(order, ack) -> bool:
                 if line.get("done"):
                     if line.get("error"):
                         break
+                    n = int(line.get("spoken_chars") or 0)
+                    from conversation.mouth.say import heard_words
+                    sounded.append(heard_words(order.text, n))
                     ack(SayEnded(order.say_id, "cut" if line.get("interrupted") else "played",
-                                 int(line.get("spoken_chars") or 0), _now(), order.endpoint, "agent_estimate"))
+                                 n, _now(), order.endpoint, "agent_estimate"))
                     return
         except Exception as e:  # noqa: BLE001 — a line whose end was never heard is «unknown», said, never «heard»
             from voice import observer
@@ -67,7 +72,7 @@ def speak(order, ack) -> bool:
         try:
             await play()
         finally:
-            guards.ended()                     # the echo window counts from our line's end
+            guards.ended(heard=sounded[0] if sounded else None)   # the echo window counts from our line's end
 
     asyncio.run_coroutine_threadsafe(play_and_end(), cl._loop)
     return True

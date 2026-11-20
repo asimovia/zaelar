@@ -760,6 +760,8 @@ _TOTAL_MAX += 57     # same cause, measured
 _PACKAGE_CEILINGS["conversation"] += 27                # 2026-11-20 V2-941 (the operator's rule: what was never pronounced does not exist): the record is owed when our line ends, with what sounded (`record.heard`); a line of unknown sound is not in the input
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 8     # same cause: his line appended at his onset, ours started with nothing heard
 _TOTAL_MAX += 35     # same cause, measured
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 15    # 2026-11-20 V2-941 (his live session; +5 measured together with 5b46bf059's style line): one heard number on the wall and the transcript (`heard_words`), and the echo guard reads a finished line by the tail of what sounded
+_TOTAL_MAX += 12     # same cause, measured (the package `conversation` shrank by 3)
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

@@ -17,7 +17,7 @@ from conversation import envelopes as E
 from conversation.composer import compose, view_from
 from conversation.config import Config
 from conversation.mouth import Device, SayEnded, SayStarted, Speaker, choose
-from conversation.mouth.say import cut_to_sentence
+from conversation.mouth.say import heard_words
 from conversation.telemetry import Emitter
 from conversation.types import Channel, EnvelopeKind, Ids
 
@@ -73,12 +73,12 @@ def test_what_was_heard_carries_its_source_and_a_cut_keeps_it_to_a_sentence_end(
     sid = _say(sp)
     sp.ack(SayEnded(sid, "cut", 40, 70, "d1", "agent_estimate"))
     row = _row(store, sid)
-    assert LINE[:row["heard_chars"]] == "I found three flights." == cut_to_sentence(LINE, 40)
-    assert row["heard_source"] == "agent_estimate" and _heard(store) == "I found three flights."
+    assert LINE[:row["heard_chars"]] == heard_words(LINE, 40) and LINE.startswith(heard_words(LINE, 40))
+    assert row["heard_source"] == "agent_estimate" and _heard(store) == heard_words(LINE, 40)
     ended = [p for k, lab, p in telemetry.events if lab == "cut"][-1]
     assert ended["source"] == "agent_estimate" and ended["trace"] == "iv1"
     sp.ack(SayEnded(sid, "played", len(LINE), 90, "d1", "agent_estimate"))   # a late ack after the end
-    assert _row(store, sid)["heard_chars"] == len("I found three flights.")
+    assert _row(store, sid)["heard_chars"] == len(heard_words(LINE, 40))
 
 
 def test_a_text_line_shown_on_a_screen_counts_as_seen(store, clock, telemetry):

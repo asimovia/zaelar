@@ -29,7 +29,7 @@ def configure(cfg) -> None:
     _cfg["reclaim_tail_ms"] = int(getattr(cfg, "reclaim_tail_ms", _cfg["reclaim_tail_ms"]))
 
 
-#: our last lines on the voice, newest last: [text, start, end] (end None while it sounds)
+#: our last lines on the voice, newest last: [text, start, end, heard] (end None while it sounds; heard: what sounded)
 _lines: list = []
 KEEP = 3
 #: an echo still arrives this long after our line ended (the room and the provider's lag)
@@ -38,23 +38,27 @@ ECHO_AFTER_S = 2.0
 
 def said(text: str, at: float | None = None) -> None:
     """Our line starts on the voice (`voice_mouth`): what the echo guard compares his words against."""
-    _lines.append([str(text or ""), time.time() if at is None else at, None])
+    _lines.append([str(text or ""), time.time() if at is None else at, None, None])
     del _lines[:-KEEP]
 
 
-def ended(at: float | None = None) -> None:
-    """Our line in course ended (played, cut or lost): the echo window counts from here."""
+def ended(at: float | None = None, heard: str | None = None) -> None:
+    """Our line in course ended (played, cut or lost): the echo window counts from here, against what SOUNDED of it."""
     for line in reversed(_lines):
         if line[2] is None:
             line[2] = time.time() if at is None else at
+            line[3] = heard
             return
 
 
 def _echo(text: str, rose: float) -> bool:
     from voice import echo_text
-    for line, start, end in reversed(_lines):
+    for line, start, end, heard in reversed(_lines):
         if rose < start or (end is not None and rose > end + ECHO_AFTER_S):
             continue
+        if end is not None and rose > end:      # our line had ENDED: only its TAIL can still echo — the middle of a
+            said = str(heard if heard is not None else line).split()   # finished line in his mouth is him quoting us
+            line = " ".join(said[-(len(text.split()) + 2):])
         if end is not None and rose > end and line.rstrip().endswith("?"):
             continue                        # his answer to our question may repeat it: never an echo
         if text.rstrip().endswith("?") and not line.rstrip().endswith("?"):
