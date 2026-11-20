@@ -41,6 +41,8 @@ def make(listeners: tuple = (), said: Callable | None = None) -> Callable:
         from nucleo.conversation_host.tools_read import ReadTools
         clock = SystemClock()
         cfg, _problems = config.build()                  # the switch refused a session whose config does not pass
+        from nucleo.conversation_host import guards
+        guards.configure(cfg)
         tools = ReadTools()
         from nucleo.conversation_host import entry, voice_mouth
         mouth = WallMouth(clock, said, voice=voice_mouth, ack_later=entry.ack)

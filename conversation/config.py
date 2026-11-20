@@ -33,6 +33,9 @@ class Config:
     #: voice that closed: discarded at once, not at the cap (the provider's end lands a few ms before the fall).
     min_voice_ms: int = 250
     lost_voice_ms: int = 1000        # his voice this long, cut by a stall or a hole with no word heard: lost, and told
+    #: what the host's guards set aside as not said to us is given back to a turn that names the agent only when it
+    #: was said this long before it, in the same breath (a threshold): never a whole earlier question of his
+    reclaim_tail_ms: int = 3000
     #: an intervention is at most this long, from its onset, never reset by words: past it what was heard is delivered
     #: incomplete (`too_long`) and, with the voice still up, the next one starts.
     intervention_max_ms: int = 30_000

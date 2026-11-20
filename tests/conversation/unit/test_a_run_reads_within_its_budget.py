@@ -70,3 +70,6 @@ def test_the_budgets_are_the_genomes_thresholds():
     cfg, problems = config.build(genesis)
     assert problems == [] and (cfg.max_reads, cfg.read_wall_ms, cfg.evidence_ttl_ms) == (2, 12_000, 30 * 60_000)
     assert cfg.evidence_ttl_ms == cfg.session_gap_ms                                 # evidence lives one session
+    from nucleo.conversation_host import guards
+    guards.configure(cfg)                                                            # what the boot hands the guards
+    assert cfg.reclaim_tail_ms == 3000 and guards._cfg["reclaim_tail_ms"] == 3000

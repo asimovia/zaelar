@@ -10,6 +10,7 @@
  "unverified_fact": "No he podido comprobarlo ahora mismo, así que prefiero no darte un dato inventado.",
  "unverified_fact_alt": "No tengo una cifra fiable para eso ahora mismo.",
  "listening": "¿Sí? Te escucho.",
+ "stop_keyterms": ["cállate", "cállate ya", "calla", "silencio"],
  "duration_units": [["h", "hr", "hrs", "hora", "horas"], ["min", "mins", "minuto", "minutos"], ["s", "seg", "segundo", "segundos"]],
  "agenda_no_data": "No he llegado a apuntar la cita: no me ha quedado claro el título, el día o la hora.",
  "agenda_no_title": "No la he apuntado porque no sé de qué es la cita. ¿Cómo la llamo?",

@@ -1,4 +1,4 @@
-"""A barge-in with no word gives the cut line back — from the voice process's own edges (node 13.99, V2-941, B8f).
+"""A barge-in with no word never loses our line — from the voice process's own edges (node 13.99, V2-941, B8f).
 
 The voice smoke (3b) on B8e: a «mmm» over our line cut it (the local rule) and the line never came back. His voice
 rose while ours sounded, so its rise went out as possible echo (`echo_safe` false) and the ear never opened it: no
@@ -6,6 +6,10 @@ intervention, no discard, no RESUME_LINE. Now the local rule, once it has proved
 began and lasted the threshold), sends that rise again as his, stamped at its real start. The whole sequence goes
 through the tap's edges, the body's lane and the conversation: the line is cut, the voice ends with no word, and the
 rest of the line is said once, by voice. A barge-in WITH words is answered instead, never resumed.
+
+Since the voice gate on the echo (our TTS fed at −10/−20 dB): a rise alone never cuts our line — it cannot be told
+from our own echo, which reaches the microphone after the playout's delay and the provider's first words after that.
+A «mmm» over our line now lets it go on, uncut; a cut needs his words, not ours, and its rise is still sent as his.
 """
 from __future__ import annotations
 
@@ -50,28 +54,25 @@ def _through_the_tap(h, frames, cut_heard: int, sid: str):
     return cut
 
 
-def test_a_mmm_over_our_line_cuts_it_and_the_line_goes_on(store):
+def test_a_mmm_over_our_line_never_cuts_it_and_the_line_goes_on(store):
     ear_in._reset_for_tests()
     h = Harness(store)
     sid = _speaking(h)
     hum = [(t, True) for t in range(1100, 1900, 30)] + [(t, False) for t in range(1900, 2200, 30)]
     cut = _through_the_tap(h, hum, cut_heard=9, sid=sid)
-    assert cut == [1]
+    assert cut == []                                                        # no word of his: our line goes on
     h.hear(S.Tick(2200 + h.conv.cfg.close_cap_ms))
-    h.at(4000).pump()
-    assert [o.text for o in h.mouth.orders][-1] == "w3 w4. w5 w6." and "voice" in h.mouth.orders[-1].channels
-    discarded = [p["reason"] for k, lab, p in h.tel.events if k == "conv_ear" and lab == "discarded"]
-    assert discarded                                                        # his «mmm», heard and thrown away
     h.at(6000).pump()
-    assert [o.text for o in h.mouth.orders].count("w3 w4. w5 w6.") == 1     # once
+    assert [o.text for o in h.mouth.orders] == [LINE]                      # said once, never cut, never resumed
 
 
 def test_the_rise_is_sent_again_as_his_at_its_real_start():
     facts = []
     tap = ear_tap.Tap("holder", facts.append)
-    tap.on_barge, tap.min_barge_ms = (lambda: None), 500
+    tap.on_barge, tap.min_barge_ms, tap.line = (lambda: None), 500, "w1 w2"
     tap.playback(True, now_ms=0)
-    for t in range(500, 1300, 30):                                          # wordless: cut at 700 ms
+    tap.heard = ("wq", "wr")                                                # his words, not ours
+    for t in range(500, 1300, 30):
         tap.edges.frame(True, t)
     rises = [(f["t_ms"], f["echo_safe"]) for f in facts if f["t"] == "vad" and f["edge"] == "rise"]
     assert rises == [(500, False), (500, True)]                              # possible echo, then proved his

@@ -159,6 +159,9 @@ class Speaker:
             live = [r for _k, r in tx.scan(SAYS, states=LIVE)]
             for r in live:                              # cut by us, not by his voice: never resumed
                 tx.put(SAYS, r["say_id"], {**r, "stopped": True})
+            for _k, r in tx.scan(SAYS, states=("ended",)):   # …and a line his voice had just cut: his stop wins over
+                if r.get("outcome") == "cut" and not r.get("resumed") and not r.get("stopped"):   # giving it back
+                    tx.put(SAYS, r["say_id"], {**r, "stopped": True})
         line = max(live, key=lambda r: r["t_ms"], default=None)
         self.em.emit("conv_mouth", "cut", owner="mouth", cause={"kind": "control", "ref": reason},
                      refs={"endpoint": endpoint, "say": line["say_id"] if line else None,

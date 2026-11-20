@@ -227,7 +227,7 @@ def test_the_turns_first_word_times_the_echo(ear):
 
 def test_an_echo_never_cuts_our_line_and_his_own_words_do():
     from voice.engine.pipeline import ear_tap
-    for heard, cut_expected in ((("w5", "w6", "w7"), False), (("wq", "wr", "w0"), True), ((), True)):
+    for heard, cut_expected in ((("w5", "w6", "w7"), False), (("wq", "wr", "w0"), True), ((), False)):
         tap = ear_tap.Tap("holder", lambda f: None)
         cuts = []
         tap.on_barge, tap.min_barge_ms, tap.line = (lambda: cuts.append(1)), 500, "w1 w2 w3 w4 w5 w6 w7 w8"
@@ -295,7 +295,8 @@ def test_the_agents_name_and_how_it_is_heard_bias_the_provider(monkeypatch):
     from voice import attention
     from voice.engine.speech.stt import deepgram
     monkeypatch.setattr(attention, "wakewords", lambda: ("wzael", "wzail"))
-    assert deepgram._keyterms("flux-general-multi", True) == ["wzael", "wzail"]
+    stops = [t for spec in deepgram.langs.supported() for t in spec.stop_keyterms]
+    assert stops and deepgram._keyterms("flux-general-multi", True) == ["wzael", "wzail"] + stops   # his stop too
     assert deepgram._keyterms("flux-general-en", False)[:2] == ["wzael", "wzail"]
     assert deepgram._keyterms("nova-2", False) == []                         # a model that refuses key terms
 
@@ -419,3 +420,55 @@ def test_a_question_back_on_our_statement_is_his_never_an_echo(ear):
     guards.ended(at=START + 3)
     assert guards.judge("¿w4 w5?", now=START + 4.5, rose=START + 4) is None    # «¿A las cinco?»
     assert guards.judge("w4 w5", now=START + 4.5, rose=START + 4) == "echo"    # our own tail, heard back
+
+
+def _cut_line(store):
+    """Our line on d1, cut by his voice three characters in."""
+    from conversation.mouth import SayEnded
+    from tests.conversation.unit.convkit import Harness
+    from tests.conversation.unit.test_a_wordless_barge_in_gives_the_line_back import LINE, _speaking
+    h = Harness(store)
+    sid = _speaking(h)
+    h.conv.ack(SayEnded(sid, "cut", 3, 700, "d1", "agent_estimate"))
+    return h, LINE
+
+
+@pytest.mark.parametrize("reason, resumed", [("stop", False), ("not_addressed", True)])
+def test_a_stop_discard_never_gives_the_cut_line_back(store, reason, resumed):
+    """The voice gate, case 13: cut → «Cállate.» discarded `stop` → the line said again to the end. A stop wins over
+    the wordless resume; another discard still gives the line back."""
+    h, line = _cut_line(store)
+    h.hear(S.VadEdge("d1", "rise", 800), S.Discard("d1", "w_stop", reason, 1200))
+    h.at(4000).pump()
+    assert (len([o for o in h.mouth.orders if o.text != line]) == 1) is resumed
+
+
+def test_a_stop_control_before_a_wordless_end_never_gives_the_line_back(store):
+    """The other order: his stop arrives as a control, then a voice with no word ends — the line stays cut."""
+    from tests.conversation.unit.inboxkit import control
+    from conversation.types import ControlOp
+    h, line = _cut_line(store)
+    h.conv.give(control(ControlOp.STOP, 900, "k9", endpoint="d1"))
+    h.hear(S.VadEdge("d1", "rise", 1000), S.Discard("d1", "", "no_voice", 1300))
+    h.at(4000).pump()
+    assert [o.text for o in h.mouth.orders] == [line]
+
+
+@pytest.mark.parametrize("set_aside_s, onset_s, reclaimed", [(1.0, None, True), (5.0, None, False), (2.0, 1.0, False)])
+def test_only_what_he_said_right_before_the_name_comes_back(real_attention, store, set_aside_s, onset_s, reclaimed):
+    """The wake-word run: a refused question about the stock market was put in front of «Johnny, ¿qué hora es en
+    Tokio?». Only words set aside within `reclaim_tail_ms` (3 s) before the name, in the same breath, come back."""
+    import time
+    from conversation.ports import Done
+    from conversation.testing.scripted_model import reply
+    from tests.conversation.unit.convkit import Harness
+    now = time.time()
+    real_attention._state["last_directed"] = 0.0
+    assert guards.judge("w1 w2", now=now - set_aside_s) == "not_addressed"
+    real_attention._state["speech_onset"] = now - onset_s if onset_s else 0.0
+    h = Harness(store, grace=False)
+    h.conv.ear.guard = guards.for_ear
+    h.model.default = lambda ids: [reply("w9"), Done()]
+    h.utter([(["Wzael", "w3"], 0)])
+    assert ("w1 w2 Wzael" in h.model.calls[0].prompt.input) is reclaimed
+

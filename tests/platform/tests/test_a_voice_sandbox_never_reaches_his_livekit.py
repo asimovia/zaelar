@@ -28,3 +28,20 @@ def test_the_sandbox_livekit_binds_loopback_on_its_own_ports():
     cfg = vs.livekit_config(41001, 41002, 41003)
     assert "port: 41001" in cfg and "tcp_port: 41002" in cfg and "udp_port: 41003" in cfg
     assert '127.0.0.1' in cfg and "7880" not in cfg and "use_external_ip: false" in cfg
+
+
+
+def test_a_sandbox_port_leaves_room_for_its_worker(monkeypatch):
+    """`free_port()` returned 65xxx and the worker's port (the app's + 1000) overflowed: a sandbox's ports stay below
+    the ceiling, and one already taken is never returned."""
+    import random
+    import socket
+    from tests.platform import sandbox_engine
+    with socket.socket() as busy:
+        busy.bind(("127.0.0.1", 0))
+        taken = busy.getsockname()[1]
+        picks = iter([taken, 41000])
+        monkeypatch.setattr(random, "randrange", lambda a, b: next(picks))
+        assert sandbox_engine.free_port() == 41000 if taken != 41000 else True
+    monkeypatch.undo()
+    assert all(sandbox_engine.free_port() < sandbox_engine.PORT_CEILING for _ in range(50))

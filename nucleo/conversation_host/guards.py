@@ -15,6 +15,14 @@ from __future__ import annotations
 
 import time
 
+#: the manager's thresholds the guards read (`configure`, from the boot): the ambient tail a wake word takes back
+_cfg: dict = {"reclaim_tail_ms": 3000}
+
+
+def configure(cfg) -> None:
+    _cfg["reclaim_tail_ms"] = int(getattr(cfg, "reclaim_tail_ms", _cfg["reclaim_tail_ms"]))
+
+
 #: our last lines on the voice, newest last: [text, start, end] (end None while it sounds)
 _lines: list = []
 KEEP = 3
@@ -105,8 +113,10 @@ def for_ear(endpoint: str, text: str):
     why = judge(rest if stopped else text, rose=rose / 1000 if rose else None)
     if why is None and stopped:
         return (REPLACE, rest)
-    if why is None and attention.has_wakeword(text):     # «para la música» set aside, then «Johnny»: his order whole
-        tail = attention.reclaim_ambient_tail("")
+    if why is None and attention.has_wakeword(text):     # «para la música» set aside, then «Johnny»: his order whole —
+        at = rose / 1000 if rose else time.time()         # only what he said right before, in the same breath
+        tail = attention.reclaim_ambient_tail("", now=at, within_s=_cfg["reclaim_tail_ms"] / 1000,
+                                              since=attention.utterance_onset())
         if tail:
             from conversation.ear.arbiter import RECLAIM
             return (RECLAIM, tail)

@@ -32,7 +32,7 @@ PROVIDER_STALL_MS = 2000
 #: a rise this close to our line's start is how our own voice comes back with no echo cancellation: a barge-in that
 #: cuts is never sent again as his voice inside it (it would open an intervention of our own echo)
 ECHO_ONSET_MS = 400
-#: a rise over our line with no words heard yet cuts it only after this long: words that are our own line never do
+#: how long a test plays a rise over our line: past `min_barge_ms`, never cut without words
 WORDLESS_BARGE_MS = 700
 #: the device this process hears for: the holder of the session (`nucleo/conversation_host/voice_session.ENDPOINT`)
 ENDPOINT = "holder"
@@ -202,20 +202,16 @@ class VadEdges:
 
 
 def _barge_due(edges: "VadEdges", now: int) -> bool:
-    """His voice rose after our line began and lasted `min_barge_ms`: it cuts — unless the words heard so far are our own
-    line coming back (an echo never cuts it). With no words yet it waits up to `WORDLESS_BARGE_MS`: a «mmm» still cuts —
-    but a rise within `ECHO_ONSET_MS` of our line's start cuts only on words of his, never wordless (a cut there could
-    never be given back: its rise is not sent again as his)."""
+    """His voice rose after our line began and lasted `min_barge_ms`: it cuts on his WORDS, and only when they are not
+    our own line coming back — an echo never cuts it. With no words it never cuts: a rise alone cannot tell our echo
+    (it reaches the microphone after the playout's own delay, and the provider's first words after that) from his
+    «mmm», and a «mmm» over our line lets it go on."""
     tap = edges.tap
     if not (tap.speaking and tap.on_barge is not None and not edges.cut and tap.playing_since is not None
             and edges.rose_at >= tap.playing_since and now - edges.rose_at >= tap.min_barge_ms):
         return False
     from voice import echo_text
-    if len(echo_text.tokens(tap.heard)) >= echo_text.MIN_WORDS:
-        return not echo_text.contained(tap.heard, tap.line)
-    if edges.rose_at - tap.playing_since < ECHO_ONSET_MS:
-        return False                    # rose with our line and no word of his yet: how our echo rises — never a cut
-    return now - edges.rose_at >= WORDLESS_BARGE_MS
+    return len(echo_text.tokens(tap.heard)) >= echo_text.MIN_WORDS and not echo_text.contained(tap.heard, tap.line)
 
 
 def titular(stt):

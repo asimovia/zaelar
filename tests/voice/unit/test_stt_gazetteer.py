@@ -84,7 +84,8 @@ def test_a_session_with_no_expected_place_boosts_nothing(monkeypatch, code):
     monkeypatch.setattr(langs, "current_code", lambda: code)
     stt = dg.build()
     from voice import attention
-    towns = set(stt._opts.keyterm or ()) - set(attention.wakewords())        # the agent's own name is a key term
+    stops = {t for spec in langs.supported() for t in spec.stop_keyterms}
+    towns = set(stt._opts.keyterm or ()) - set(attention.wakewords()) - stops   # his name and his stop are key terms
     assert not towns, f"a {code} session biased every word towards a national list of towns"
     assert gz.boost_terms(code) == []
 
@@ -110,7 +111,8 @@ first sentence. Seeding it with Spanish place names biases exactly that decision
     monkeypatch.setattr(langs, "first_run_auto", lambda: True)
     stt = dg.build()
     from voice import attention
-    assert set(stt._opts.keyterm or ()) <= set(attention.wakewords())   # only the agent's name: it biases no language
+    stops = {t for spec in langs.supported() for t in spec.stop_keyterms}
+    assert set(stt._opts.keyterm or ()) <= set(attention.wakewords()) | stops   # his name and stop: no place
 
 
 def test_un_modelo_que_no_es_nova3_NO_manda_terminos(monkeypatch):

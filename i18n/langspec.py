@@ -48,6 +48,9 @@ class LangSpec:
     #: Said once when he left half a thought and its rest never came (the conversation manager, V2-941): never a
     #: silence after a fragment cut mid-idea.
     listening: str = ""
+    #: The forms of his order to stop listening (the attention grammar's), as key terms for the speech provider: a
+    #: short «cállate» the provider misses is a «mmm», and his stop never arrives (the conversation manager, V2-941).
+    stop_keyterms: tuple = ()
     #: What the AGENDA says when it refuses to write (V2-689). These were hardcoded Spanish inside
     #: `widgets/agenda/data.py`, which is the exact shape V2-676 ruled against — the operator running his
     #: agent in English was answered by our own canned lines in Castilian. A widget's refusal is a text the

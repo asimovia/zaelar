@@ -663,11 +663,12 @@ def unanswered_streak(now: float | None = None) -> int:
     return sum(1 for ts in _state["unanswered"] if now - ts <= _UNANSWERED_WITHIN_S)
 
 
-def reclaim_ambient_tail(text: str, now: float | None = None, within_s: float = 10.0) -> str:
+def reclaim_ambient_tail(text: str, now: float | None = None, within_s: float = 10.0, since: float = 0.0) -> str:
     """Glues the ambient speech of the last `within_s` seconds IN FRONT of a wake-word turn, and consumes it
-    (a tail must not feed two turns). «para la música,» + «Johnny» → «para la música, Johnny»."""
+    (a tail must not feed two turns). «para la música,» + «Johnny» → «para la música, Johnny». `since`: nothing set
+    aside before it (his utterance's onset: the same breath, never an earlier question of his)."""
     now = time.time() if now is None else now
-    tail = [x for ts, x in _state["ambient_tail"] if now - ts <= within_s]
+    tail = [x for ts, x in _state["ambient_tail"] if 0 <= now - ts <= within_s and ts >= since]
     _state["ambient_tail"] = []
     return (" ".join(tail) + " " + (text or "")).strip() if tail else (text or "")
 

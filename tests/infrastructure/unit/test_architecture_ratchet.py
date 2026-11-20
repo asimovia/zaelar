@@ -696,6 +696,9 @@ _TOTAL_MAX += 3      # same cause
 _PACKAGE_CEILINGS["conversation"] += 6     # 2026-11-20 V2-941 v3.1: the ear keeps only part of his words when the guards say so (a stop said with a question)
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 43    # same: a stop read per sentence — the stop a control, the rest his line; a question back on our statement is never its echo
 _TOTAL_MAX += 49     # same cause
+_PACKAGE_CEILINGS["conversation"] += 7     # 2026-11-20 V2-941 v3.1 (the voice gate on 3ac67f2cc): a stop never gives a cut line back; the ambient tail's window is a threshold
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 12    # same: only what he said right before the name, in the same breath, comes back
+_TOTAL_MAX += 19     # same cause, with the packs' `stop_keyterms`
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

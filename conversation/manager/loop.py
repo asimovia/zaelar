@@ -167,7 +167,8 @@ class Conversation:
             SEAL.note(tx, d.intervention_id, "discarded", d.t_ms, d.reason)
         self.inbox.voice_done(d.intervention_id, self.clock.now_ms())
         self._voice_done(d.endpoint)
-        if Op.RESUME_LINE in policy.decide(d, self.state):     # a barge-in that brought no word: our line goes on
+        if d.reason != "stop" and Op.RESUME_LINE in policy.decide(d, self.state):   # a barge-in with no word: our
+                                                                                     # line goes on — never his stop
             line = self.speaker.cut_line(d.endpoint, self.clock.now_ms(), self.cfg.resume_cut_within_ms)
             self._resume = line if line and not self.inbox.words_since(line["ended_ms"]) else None
 

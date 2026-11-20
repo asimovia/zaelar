@@ -45,10 +45,13 @@ def _keyterms(model: str, first_run: bool) -> list[str]:
     #     biases no language, and a wake word the provider writes another way («Jenny» for «Johnny») never wakes it.
     if not (str(model).startswith("nova-3") or is_flux(model)):
         return []
+    #   · his order to STOP, as every language pack declares it (`stop_keyterms`): a short «cállate» the provider
+    #     misses is heard as a «mmm», and the stop never arrives.
     from voice import attention
     names = [w for w in attention.wakewords() if w]
-    return names + ([] if first_run else [t for t in gazetteer.boost_terms(langs.current_code()) or ()
-                                           if t not in names])
+    stops = [t for spec in langs.supported() for t in (getattr(spec, "stop_keyterms", ()) or ()) if t not in names]
+    return names + stops + ([] if first_run else [t for t in gazetteer.boost_terms(langs.current_code()) or ()
+                                                  if t not in names + stops])
 
 
 @registry.register("deepgram")

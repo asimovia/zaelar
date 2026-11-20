@@ -83,10 +83,23 @@ ENGINE = Path(__file__).resolve().parents[2]
 _UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
 
 
+#: a sandbox's ports stay below this: the engine serves its voice worker at the app's port + 1000, never past 65535
+PORT_CEILING = 60000
+
+
 def free_port() -> int:
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        return int(sock.getsockname()[1])
+    """A free loopback port below `PORT_CEILING`, picked at random from 20000 up (the system's own pick runs in
+    sequence through 49152–65535 and stays above the ceiling for long stretches)."""
+    import random
+    for _ in range(500):
+        port = random.randrange(20000, PORT_CEILING)
+        with socket.socket() as sock:
+            try:
+                sock.bind(("127.0.0.1", port))
+            except OSError:
+                continue
+        return port
+    raise RuntimeError(f"no free port below {PORT_CEILING}")
 
 
 def _widget_dirs() -> set[str]:
