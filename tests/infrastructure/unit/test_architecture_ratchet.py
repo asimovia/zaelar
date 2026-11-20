@@ -775,6 +775,8 @@ _TOTAL_MAX += 313    # same causes, measured
 _PACKAGE_CEILINGS["server"] += 1    # 2026-11-20 (cee21eae0): the chat column and how each app sits reach the timeline — one line the commit did not declare
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 69   # 2026-11-20 INI-078 F2 step 1, the composition: every run carries what is open, the widget in front and an index; the rest is read by topic (`read_state`, `state_topics`) or by `read_widget` with its actions; a panel tab only among the declared ones
 _TOTAL_MAX += 68     # same causes, measured
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 96   # 2026-11-20 INI-078 F2 step 2: ONE generic widget_action (D-2) — a widget's declared action checked against its manifest, through the data-op door on the engine's loop, by its declared mode (a confirm asks on its row), its card brought when its output lives there; a message or a leaving act held
+_TOTAL_MAX += 96     # same causes, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

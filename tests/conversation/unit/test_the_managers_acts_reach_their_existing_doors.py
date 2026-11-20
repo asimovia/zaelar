@@ -111,3 +111,50 @@ def test_every_run_carries_what_is_open_the_widget_in_front_and_an_index_and_rea
     monkeypatch.setattr(show_target, "at_full_screen", lambda: "")
     monkeypatch.setattr(memory_read, "_open_ids", lambda: [])
     assert memory_read._front() == ""
+
+
+@pytest.fixture
+def widget_door(doors, monkeypatch):
+    """A widget with no code of ours declaring three actions; the data-op door and the one asker recorded."""
+    import asyncio
+
+    from nucleo.flash import data_ops, frontend, widget_read
+    from nucleo.request import consent_ask
+    from voice.engine.llm.providers import confirm_gate
+    from widgets import effects, producers, runtime
+    acts_of = {"w_play": {"payload": {"query": "x"}}, "w_wipe": {"confirm": True}, "w_send": {},
+               "w_tick": {"internal": True}}
+    monkeypatch.setattr(runtime, "get", lambda wid: {"id": NEW, "actions": acts_of} if str(wid) == NEW else None)
+    monkeypatch.setattr(widget_read, "resolve", lambda named, text="": NEW if named in (NEW, "w_title") else None)
+    monkeypatch.setattr(frontend, "action_mode_now", lambda w, a, p=None: "confirm" if a == "w_wipe" else "fast")
+    monkeypatch.setattr(effects, "leaves", lambda w, a: a == "w_send")
+    monkeypatch.setattr(effects, "carries", lambda w, a, e: a == "w_play" and e == effects.PRESENT_MOUNT)
+    monkeypatch.setattr(producers, "starts_production", lambda w, a: False)
+    monkeypatch.setattr(confirm_gate, "decide", lambda w, a, p, order="": {"kind": "ask", "question": "w_sure?"})
+    monkeypatch.setattr(consent_ask, "ask_consent", lambda w, a, p, q, **kw: doors.setdefault("asked", []).append(
+        (w, a, q)) or ("row1", "ask1"))
+
+    async def dispatch(wid, action, payload, **kw):
+        doors.setdefault("ran", []).append((wid, action, payload))
+        return {"ok": True, "now_playing": "w_song"}
+    monkeypatch.setattr(data_ops, "dispatch_and_report", dispatch)
+    return lambda args: asyncio.run(acts.widget_act(args, "x_w"))
+
+
+def test_a_declared_action_runs_through_the_data_op_door_and_brings_its_card(widget_door, doors):
+    got = widget_door({"widget": "w_title", "action": "w_play", "payload": {"query": "w_q"}})
+    assert got.status == "ok" and got.data["now_playing"] == "w_song"
+    assert doors["ran"] == [(NEW, "w_play", {"query": "w_q"})]
+    assert [(op, wid) for op, wid, _s, _k in doors["canvas"]] == [("show", NEW)]   # its output lives in its card
+
+
+def test_an_undeclared_action_fails_naming_the_declared_ones(widget_door, doors):
+    got = widget_door({"widget": NEW, "action": "w_tick"})                 # internal: the card fires it, never the model
+    assert got.status == "failed" and got.data["actions"] == ["w_play", "w_send", "w_wipe"] and "ran" not in doors
+
+
+def test_an_act_that_asks_waits_on_its_row_and_one_that_leaves_is_held(widget_door, doors):
+    asked = widget_door({"widget": NEW, "action": "w_wipe"})
+    assert asked.status == "ok" and asked.data["asked"] == "w_sure?" and doors["asked"] == [(NEW, "w_wipe", "w_sure?")]
+    held = widget_door({"widget": NEW, "action": "w_send"})
+    assert held.status == "refused" and held.data["reason"] == "held" and "ran" not in doors

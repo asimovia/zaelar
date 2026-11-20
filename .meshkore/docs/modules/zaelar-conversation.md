@@ -100,7 +100,12 @@ and no judge — the turn's classifier is never asked), a widget, his memory (no
 the catalogue, his state by topic. And it carries out LOCAL acts (`acts.py`, F2 step 1): open, close, minimize, full screen and arrange a
 widget, and the side panel's tabs — declared data (`declared.json`, `acts`) carried to the doors that already do them,
 `nucleo/acts/canvas.apply` with the reservation as provenance (`turn:<effect>`) and the `panel` event; the widget an
-act names is resolved against the catalogue of manifests, so a new widget needs no code. Each tool's class is derived
+act names is resolved against the catalogue of manifests, so a new widget needs no code. Acting INSIDE a widget is one
+generic act, `widget_action(widget, action, payload)`: the action must be one the manifest declares (the widget in
+front and `read_widget` give them with their fields), it runs through the data-op door every tap takes
+(`data_ops.dispatch_and_report`, on the engine's loop) by the mode it declares — a `confirm` act asks his yes on its
+row through the one asker — and an act whose output lives in its card brings the card. Music and video are widgets
+like any other: playing is their cards' own declared actions. A message, or any act that leaves, is held here. Each tool's class is derived
 from what it declares, never listed; a door that fails is a result the model sees. The state comes from the engine's
 own readers, each bounded within `state_tokens`, writing nothing. Every run carries what is open first (the tasks,
 a message draft), the next days beside NOW, the widget in front (at full screen, in front on a phone, else the newest
@@ -214,7 +219,8 @@ produces a flow for it to read.
 ## Not done yet
 
 The package runs behind the switch, for his text and his voice. It READS, STOPS and carries out the canvas and panel
-acts (F2 step 1). Acting inside a widget, music and video, errands and sends are not wired yet and stay listed as held;
+acts and a widget's declared actions, music and video included (F2 steps 1-2). Errands and sends are not wired yet
+and stay listed as held;
 they come one by one through the existing single doors (the widget action runner, dispatch, the send owner), never
 rebuilt.
 The public architecture diagrams show the package and mark those acts as next.

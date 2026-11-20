@@ -260,6 +260,30 @@
      }
     }
    }
+  },
+  "widget_action": {
+   "act": "widget.action",
+   "door": "widget",
+   "op": "action",
+   "about": "do one of a widget's declared actions — playing included (FRONT or read_widget give them with their fields): the widget by id or his name for it, the action, its payload",
+   "schema": {
+    "type": "object",
+    "required": [
+     "widget",
+     "action"
+    ],
+    "properties": {
+     "widget": {
+      "type": "string"
+     },
+     "action": {
+      "type": "string"
+     },
+     "payload": {
+      "type": "object"
+     }
+    }
+   }
   }
  },
  "state_topics": [
