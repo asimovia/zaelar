@@ -626,7 +626,7 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
     reads = _reads(steps, conv)
     typed = _typed_only(r)
     if (isinstance(cmd, commands.NoReply) and (reads or (typed and not _barge_cut(conv, r))) and _said_something(r)
-            and not r.asked_after_reads):           # it read for him, or he typed to us — and then nothing: asked
+            and not r.asked_after_reads and not r.judged_not_his):   # «not his», read for or not, is its judgement           # it read for him, or he typed to us — and then nothing: asked
         r.asked_after_reads = True                  # once. A no_reply to his VOICE is the model's judgement: final
         _emit(conv, "command", r, command="no_reply_after_reads" if reads else "no_reply_typed", tools=reads)
         steps.append((ToolCall("orders", "orders_check", {}), ToolResult("refused", data=(

@@ -61,6 +61,18 @@ def test_a_no_reply_to_his_voice_is_final_and_says_whether_it_was_his(store):
     assert cmd["command"] == "no_reply" and cmd["not_his"] is True
 
 
+def test_not_his_after_a_read_stands_too(store):
+    """The model read, then judged the words not his: its judgement stands — never pushed to say what it found."""
+    from conversation.ports import ToolCall
+    h = Harness(store, grace=False)
+    rounds = iter([[ToolCall("c1", "search", {"q": "w1"}), Done()],
+                   [Command("no_reply", {"reason": "w0", "not_his": True}), Done()], [reply("w9"), Done()]])
+    h.model.default = lambda ids: next(rounds)
+    h.utter([(["w1", "w2"], 0)])
+    h.settle(3000)
+    assert len(h.model.calls) == 2 and not h.mouth.orders and "no_reply_after_reads" not in _commands(h)
+
+
 def test_his_voice_over_a_line_that_played_whole_is_no_barge_in(store):
     """His voice rose while our line sounded, and the line played to its end (with no echo cancellation his words
     alone cut, and these did not): no stop — and a no_reply to it stands."""
