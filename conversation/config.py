@@ -86,6 +86,10 @@ class Config:
     #: A searched turn takes 2–3 (a read, maybe another, the order) and the repairs one each; a run that reaches the cap
     #: still ends in a line he hears (`mute_lines`), never in a silent failure.
     max_steps: int = 6
+    #: a run reads at most this many times, and for at most this long in all: then the next step is offered no read
+    #: and answers with what it has, saying what is missing — a timely honest answer over a slow spiral. Thresholds.
+    max_reads: int = 2
+    read_wall_ms: int = 12_000
     #: §1.10 bis: a DERIVED figure (counted or averaged from what a read of this run returned) may be said, citing
     #: that evidence — the door closes with this at False; and a reply with derived figures spends its one repair
     #: round to say what they rest on only with the second at True (off: the judge of the text suite measures it).
@@ -95,7 +99,7 @@ class Config:
     #: carries the fact in its prompt — how long ago and why.
     voice_lost_window_ms: int = 60_000
     #: evidence a tool returned stays valid for a numeric claim of a LATER run this long.
-    evidence_ttl_ms: int = 10 * 60_000
+    evidence_ttl_ms: int = 30 * 60_000      # one session (`session_gap_ms`): a read answers the follow-ups after it
     #: the model used for the conversation; the adapter passes the live id from the model table.
     model_id: str = ""
     # ── the composer ──

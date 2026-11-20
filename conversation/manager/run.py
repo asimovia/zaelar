@@ -34,7 +34,8 @@ from conversation.mouth import Device, choose
 from conversation.telemetry import root
 from conversation.ports import (RELAY, UNCLAIMED, Command, Done, Failed, PromptParts, StaleEpoch, TextDelta, ToolCall,
                                 ToolResult)
-from conversation.types import Coverage, EnvelopeKind, ItemKind, MgrState
+from conversation.composer.compose import CONTENT, INBOX
+from conversation.types import Coverage, EnvelopeKind, Evidence, ItemKind, MgrState
 
 if TYPE_CHECKING:
     from conversation.manager.loop import Conversation, Running
@@ -299,9 +300,12 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
     refs = {"run": r.run_id}
     for n_step in range(conv.cfg.max_steps):
         called, first, text, dropped = False, True, "", []
+        if not r.read_capped and _read_budget(conv, r, steps):     # told once why it is offered no read
+            steps.append((ToolCall("reads", "reads_check", {}), ToolResult("refused", data={"reason": READS_DONE})))
         t_step = conv.clock.mono_ms()
         events = conv.model.stream(PromptParts(prompt.prefix, prompt.state, prompt.conversation, prompt.input,
-                                               tuple(steps), channel), tools, run_id=r.run_id, model_id=model_id)
+                                               tuple(steps), channel), tools, run_id=r.run_id,
+                                   model_id=model_id)      # the whole catalog always (I7): past the budget, refused
         stream = guard.stream(conv.em, conv.cfg, events, refs)
         try:
             async for ev in stream:
@@ -315,7 +319,9 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
                     text += ev.text
                 elif isinstance(ev, ToolCall):
                     called = True
-                    steps.append((ev, await _tool(conv, r, ev)))
+                    over = _read_budget(conv, r, steps)        # a read past the budget is never made
+                    steps.append((ev, ToolResult("refused", data={"reason": READS_DONE}) if over
+                                   else await _tool(conv, r, ev)))
                     _checkpoint(conv, r)
                 elif isinstance(ev, Command):
                     order = commands.parse(ev)
@@ -405,9 +411,34 @@ AS_TEXT = "the text is what the person hears: the order is the call itself, neve
 SAY_THE_ACT = "an act held or refused is a reply that says so"
 EMPTY = "a reply is the words he hears: it has none"
 TYPED_TO_YOU = "a line typed to you is addressed to you: reply to it"
+#: the source of an evidence built from his own entries
+HIS_WORDS = "his_words"
 NO_ORDER = "the answer is an order: reply or no_reply"
 UNREAD = "your order could not be read (its arguments were not valid JSON): send it again"
 SAY_WHAT_WAS_FOUND = "you read for his words: a reply says what was found, or what is missing to answer"
+
+
+#: the call ids of the run's own repair steps: never a read
+ORDERS_ID, CLAIMS_ID, READS_ID = "orders", "claims", "reads"
+PSEUDO = frozenset({ORDERS_ID, CLAIMS_ID, READS_ID})
+READS_DONE = "no more reads in this answer: reply with what you have, and say what is missing"
+
+
+def _reads(steps: list) -> list[str]:
+    return [c.name for c, res in steps if c.call_id not in PSEUDO and res.status != "refused"]
+
+
+def _read_budget(conv: "Conversation", r: "Running", steps: list) -> bool:
+    """True once the run has read `max_reads` times or for `read_wall_ms` in all: from then on every read it asks for
+    is refused, with the reason to answer now (the catalog itself is never cut, I7). Counted once, by which budget
+    ran out (`reads_capped`, `read_time_capped`)."""
+    if r.read_capped:
+        return True
+    n, spent = len(_reads(steps)), r.stages.get("tools_ms", 0)
+    if n >= conv.cfg.max_reads or spent >= conv.cfg.read_wall_ms:
+        r.read_capped = "reads_capped" if n >= conv.cfg.max_reads else "read_time_capped"
+        _emit(conv, "command", r, command=r.read_capped, reads=n, tools_ms=spent)
+    return bool(r.read_capped)
 
 
 def _said_something(r: "Running") -> bool:
@@ -457,14 +488,15 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
         return True
     if isinstance(cmd, commands.Reply):
         this_run = frozenset(e.id for _call, res in steps for e in getattr(res, "evidence", ()))
-        bad = CL.check(list(cmd.claims), CL.valid(conv.store.view(conv.account), now), this_run,
-                       conv.cfg.derived_claims_open, tuple(r.refused))
+        his = _his_words(conv, r)                   # his figures are evidence too: never ours
+        evidence = {**CL.valid(conv.store.view(conv.account), now), **his}
+        bad = CL.check(list(cmd.claims), evidence, this_run, conv.cfg.derived_claims_open, tuple(r.refused))
         r.refused += [c.value for c, _why in bad if not c.derived]     # refused here, never laundered as derived
         if not bad and not last_try and conv.cfg.derived_claims_repair and any(c.derived for c in cmd.claims):
             steps.append((ToolCall("claims", "claims_check", {}),       # the switch on: its one round says the basis
                           ToolResult("refused", data={"derived": "say what each derived figure rests on"})))
             return False
-        valid = CL.valid(conv.store.view(conv.account), now) if bad else {}
+        valid = evidence
         if bad:
             _emit(conv, "command", r, command="reply_blocked", claims=[why for _c, why in bad],
                   detail=[CL.detail(c, why, valid.get(c.evidence_id)) for c, why in bad])
@@ -493,6 +525,7 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
                 close(conv, req, "silent", "silent", r, reason="claims_unverified")
             _emit(conv, "ended", r, outcome="silent", reason="claims_unverified")
             return True
+        _count_sources(conv, r, cmd.claims, this_run, his)
         if r.restates:                              # the repair worked: the answer stands without what it could not back
             _emit(conv, "command", r, command="restated", claims=len(cmd.claims), rounds=r.restates)
             r.origin = RESTATED
@@ -509,7 +542,7 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
         steps.append((ToolCall("orders", "orders_check", {}),
                       ToolResult("refused", data={"refused_act": list(r.acts_refused), "reason": SAY_THE_ACT})))
         return False
-    reads = [c.name for c, res in steps if c.call_id not in ("orders", "claims") and res.status != "refused"]
+    reads = _reads(steps)
     typed = _typed_only(r)
     if isinstance(cmd, commands.NoReply) and (reads or typed) and _said_something(r) and not r.asked_after_reads:
         r.asked_after_reads = True              # it read for him, or he typed to us — then nothing: asked once
@@ -541,6 +574,37 @@ def _silent(conv: "Conversation", r: "Running", reason: str, now: int) -> None:
     conv.inbox.account(list(r.batch_ids), "silent", now)
     _emit(conv, "ended", r, outcome="no_reply", reason=reason, after_refused_act=bool(r.acts_refused),
           after_reads=r.asked_after_reads, typed_only=_typed_only(r))
+
+
+def _his_words(conv: "Conversation", r: "Running") -> dict:
+    """His entries — the run's and those of the conversation window — as TEXT evidence, by intervention: the figures
+    he said are his, not invented (the host reads them, `Conversation.figures`). Never our lines: what we said is no
+    evidence for itself."""
+    if conv.figures is None:
+        return {}
+    texts = {e.refs.intervention_id: str(getattr(e.body, "text", "") or "") for e in r.ctx.batch.values()
+             if e.is_user and e.refs.intervention_id}
+    for _k, row in conv.store.view(conv.account).recent(INBOX, 4 * conv.cfg.conversation_turns):
+        body = (row.get("env") or {}).get("body") or {}
+        if row.get("kind") in CONTENT and body.get("intervention_id"):
+            texts.setdefault(body["intervention_id"], str(body.get("text") or ""))
+    out = {}
+    for iv, text in texts.items():
+        numbers, percents = conv.figures(text)
+        if numbers:
+            out[iv] = Evidence(iv, HIS_WORDS, numbers=tuple(numbers), percents=tuple(percents))
+    return out
+
+
+def _count_sources(conv: "Conversation", r: "Running", claims, this_run: frozenset, his: dict) -> None:
+    """A published reply's claims that rest on his words, or on a read of an earlier run still valid: counted."""
+    cited = [c.evidence_id for c in claims]
+    words = sum(1 for e in cited if e in his)
+    earlier = sum(1 for e in cited if e not in his and e not in this_run)
+    if words:
+        _emit(conv, "command", r, command="evidence_his_words", claims=words)
+    if earlier:
+        _emit(conv, "command", r, command="evidence_earlier_run", claims=earlier)
 
 
 def _typed_only(r: "Running") -> bool:

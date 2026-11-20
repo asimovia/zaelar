@@ -668,6 +668,9 @@ _TOTAL_MAX += 77     # same cause
 _PACKAGE_CEILINGS["conversation"] += 11    # 2026-11-20 V2-941 v3.1 B7l (live): NOW is his local time with its zone — the `Clock` port's optional `zone`, written with its name and offset
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 8     # same: the host's clock reads the local zone at an instant
 _TOTAL_MAX += 19     # same cause
+_PACKAGE_CEILINGS["conversation"] += 89    # 2026-11-20 V2-941 v3.1 B7l (the final personas, the operator's D1/D2): a figure rests on his own words, an earlier read still valid, two reads at once, a scale; a run reads within its budget (`max_reads`, `read_wall_ms`)
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 6     # same: the host's reader of figures handed to the conversation (`boot.readers`)
+_TOTAL_MAX += 95     # same cause
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

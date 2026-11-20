@@ -2,10 +2,11 @@
 
 A claim against a TEXT evidence passes when its value is among the figures of that text — the host's adapter reads
 them from the tool's output, both ways numbers are written; a claim against STRUCTURED evidence keeps the whole
-match. A DERIVED figure cites evidence of THIS reply, names its operation and its operands — each a figure of that evidence —
+match. A DERIVED figure cites evidence still valid — of this reply or an earlier one of the conversation (13.106) — names
+its operation and its operands — each a figure of the evidence still valid —
 and its value is what the operation gives; it passes with no repair round; with the repair switch on it spends the
 one round; with the door closed it is refused, as it is with no read in the reply, with evidence that holds no
-figure, with an id of another reply, with an operand the evidence does not hold, with no operation, or with a value
+figure, with an id whose evidence expired, with an operand the evidence does not hold, with no operation, or with a value
 the operation does not give. A value refused in the reply cannot come back as derived. A figure that does not match
 and a derived one in the same reply cost one repair round, not two. The figures of the reply that carry no claim are
 counted (a measure, never a gate).
@@ -33,7 +34,8 @@ def _claim(value, ev_id, **kw):
     return {"entity": "", "period": "", "metric": "", "direction": "", "value": value, "evidence_id": ev_id, **kw}
 
 
-def _run(store, claims_by_round, *, evidence_=(TEXT,), config=None, read=True, earlier=()):
+def _run(store, claims_by_round, *, evidence_=(TEXT,), config=None, read=True, earlier=(), earlier_ttl=10 ** 12,
+         h_out=None):
     """One reply: a read (or none), then the model's reply with `claims`, once per round it is asked. `earlier`:
     evidence still valid from an EARLIER reply."""
     rounds = ([[ToolCall("c1", "market_data", {"q": "w1"}), Done()]] if read else [])
@@ -44,8 +46,10 @@ def _run(store, claims_by_round, *, evidence_=(TEXT,), config=None, read=True, e
     if earlier:
         from conversation.manager import claims as CL
         with h.conv.store.tx(h.conv.lease) as tx:
-            CL.remember(tx, tuple(earlier), 0, 10 ** 12)
+            CL.remember(tx, tuple(earlier), 0, earlier_ttl)
     h.utter([(["w1"], 0)])
+    if h_out is not None:
+        h_out.append(h)
     return [o.text for o in h.mouth.orders], [lab for lab, _ in h.closes()], len(h.model.calls)
 
 
@@ -92,15 +96,25 @@ def test_with_the_repair_switch_on_a_derived_figure_spends_the_one_round(store):
     assert said == ["w9"] and calls == 3
 
 
-@pytest.mark.parametrize("case", ["closed", "no_read", "no_figures", "another_reply"])
+@pytest.mark.parametrize("case", ["closed", "no_read", "no_figures", "another_reply_expired"])
 def test_a_derived_figure_is_refused_outside_its_bounds(store, case):
     cfg = Config(derived_claims_open=False) if case == "closed" else None
-    ev_id = {"no_figures": "ev_t0", "another_reply": "ev_old"}.get(case, "ev_t1")
+    ev_id = {"no_figures": "ev_t0", "another_reply_expired": "ev_old"}.get(case, "ev_t1")
     claim = [_claim(43.3, ev_id, **PCT)]
     h_ev = (EMPTY,) if case == "no_figures" else (TEXT,)
-    old = (Evidence("ev_old", "search", numbers=(43.3,)),) if case == "another_reply" else ()
-    said, closes, _n = _run(store, [claim, claim], evidence_=h_ev, config=cfg, read=case != "no_read", earlier=old)
+    old = (Evidence("ev_old", "search", numbers=(13.0, 30.0)),) if case == "another_reply_expired" else ()
+    said, closes, _n = _run(store, [claim, claim], evidence_=h_ev, config=cfg, read=case != "no_read", earlier=old,
+                            earlier_ttl=1)
     assert said == [] and closes == ["silent"]
+
+
+def test_a_derived_figure_on_an_earlier_reply_still_valid_passes_and_is_counted(store):
+    """D1 (13.106): a read of an earlier run of this conversation, unexpired, is evidence as this run's is."""
+    old = (Evidence("ev_old", "search", numbers=(13.0, 30.0)),)
+    got: list = []
+    said, closes, _n = _run(store, [[_claim(43.3, "ev_old", **PCT)]], read=False, earlier=old, h_out=got)
+    assert said == ["w9"] and closes == ["answered"]
+    assert [p["claims"] for k, lab, p in got[0].tel.events if p.get("command") == "evidence_earlier_run"] == [1]
 
 
 def test_a_mismatch_and_a_derived_figure_cost_one_round(store):

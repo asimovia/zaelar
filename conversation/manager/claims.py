@@ -124,12 +124,23 @@ def _said_as(x: float, f: float, percent: bool = False) -> bool:
     most `ROUNDING` away from it («18» for 18.3, «5 million» for 4,987,210). A percent and its fraction are the same
     quantity only when one side says it is a percent (`percent`). Nothing else."""
     x = abs(x)
-    for g in ((abs(f), abs(f) * 100, abs(f) / 100) if percent else (abs(f),)):
+    scaled = _scaled(abs(f)) if _sig(x) > 1 else ()
+    for g in ((abs(f), abs(f) * 100, abs(f) / 100) if percent else (abs(f),)) + scaled:
         if _near(x, g):
             return True
         if any(_exact(x, r) and abs(r - g) <= ROUNDING * g for r in (_round_sig(g, k) for k in range(1, _sig(g)))):
             return True
     return False
+
+
+#: the scales a figure is said in («123.8 million» for 123,767,642): thousands, millions, thousands of millions
+SCALES = (1e3, 1e6, 1e9)
+
+
+def _scaled(f: float) -> tuple:
+    """`f` as said in each scale it reaches — the same figure in other units, never another figure. Only a claim with
+    two significant digits or more is read in a scale: a bare «5» or «2» would match any figure of its magnitude."""
+    return tuple(f / k for k in SCALES if f >= k)
 
 
 def _is_percent(claim: "Claim") -> bool:
@@ -145,18 +156,21 @@ def _distinct(operands: tuple, figures: tuple) -> bool:
     """Each operand is a figure of the evidence, and each figure is used once — `count` of one figure repeated counts
     nothing (whatever its sign: a change read from «down 4.98»)."""
     free = list(figures)
-    for x in operands:
-        i = next((i for i, f in enumerate(free) if math.isfinite(x) and _near(abs(x), abs(f))), None)
+    for x in operands:                      # as a person says a figure: itself, rounded, or in a scale
+        i = next((i for i, f in enumerate(free) if math.isfinite(x) and _said_as(x, f)), None)
         if i is None:
             return False
         free.pop(i)
     return True
 
 
-def _derived(claim: Claim, ev: Evidence, refused: tuple) -> str | None:
+def _derived(claim: Claim, ev: Evidence, refused: tuple, pool: tuple = ()) -> str | None:
+    """`pool`: the figures of all the evidence still valid — a figure derived from two reads («how many more people
+    does Japan have than Germany», one search each, maybe one in an earlier run) rests on both; it cites one."""
     figures = ev.numbers + ((ev.value,) if ev.value is not None else ())
     if not figures:
         return "no_figures"
+    figures = pool or figures
     if any(_near(claim.value, v) for v in refused):
         return "was_refused"                              # a value refused in this run does not come back derived
     if claim.op not in OPS or not claim.operands:
@@ -168,14 +182,14 @@ def _derived(claim: Claim, ev: Evidence, refused: tuple) -> str | None:
 
 
 def mismatch(claim: Claim, ev: Evidence | None, this_run: frozenset = frozenset(), derived_open: bool = True,
-             refused: tuple = ()) -> str | None:
-    """Why the claim does not match its evidence, or None when it does. `refused`: values this run already refused."""
+             refused: tuple = (), pool: tuple = ()) -> str | None:
+    """Why the claim does not match its evidence, or None when it does. `refused`: values this run already refused;
+    `pool`: the figures of all the evidence still valid, for a derived figure's operands. Evidence of an earlier run
+    still valid counts as this run's (its rows expire); `this_run` only tells them apart for the count."""
     if claim.derived:
         if not derived_open:
             return "derived_closed"
-        if claim.evidence_id not in this_run:
-            return "not_this_run"
-        return "no_evidence" if ev is None else _derived(claim, ev, refused)
+        return "no_evidence" if ev is None else _derived(claim, ev, refused, pool)
     if ev is None:
         return "no_evidence"
     if ev.value is None and ev.numbers:                   # a text: the value is one of its figures
@@ -201,8 +215,10 @@ def detail(claim: Claim, why: str, ev: Evidence | None) -> dict:
 def check(claims: list[Claim], evidence: dict[str, Evidence], this_run: frozenset = frozenset(),
           derived_open: bool = True, refused: tuple = ()) -> list[tuple[Claim, str]]:
     """The claims that do not match, each with why. `this_run`: the evidence ids a read of this run returned."""
+    pool = tuple(f for e in evidence.values() for f in e.numbers + ((e.value,) if e.value is not None else ())) \
+        if any(c.derived for c in claims) else ()
     return [(c, why) for c in claims
-            if (why := mismatch(c, evidence.get(c.evidence_id), this_run, derived_open, refused)) is not None]
+            if (why := mismatch(c, evidence.get(c.evidence_id), this_run, derived_open, refused, pool)) is not None]
 
 
 def remember(tx, items: tuple[Evidence, ...], now: int, ttl_ms: int) -> None:

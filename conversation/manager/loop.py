@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
+from typing import Callable
 
 from conversation import envelopes as E
 from conversation.config import Config
@@ -64,6 +65,7 @@ class Running:
     asked_after_reads: bool = False       # a no_reply after reads for his words was asked once for a reply
     asked_for_order: bool = False         # a step with no order (text, or one unreadable) was asked once for it
     lost: str = ""                        # why the line it says is «I lost that» (`_say_lost`): its close says so
+    read_capped: str = ""                 # the read budget it spent (`reads_capped`, `read_time_capped`): no more reads
     requeued: bool = False                # its batch went back to the queue (fenced): its requests stay open
     stages: dict = field(default_factory=dict)    # where its time went, ms: queue, model, tools, grace, publish
 
@@ -72,10 +74,13 @@ class Conversation:
     def __init__(self, *, account: str, owner: str, model: Model, tools: Tools, store: Store, memory: Memory | None,
                  clock: Clock, mouth: Mouth, telemetry: Telemetry, config: Config | None = None, prefix: str = "",
                  ids: Ids | None = None, owed: Owed | None = None, tasks: Tasks | None = None,
-                 prefs: Prefs | None = None, record: Record | None = None, words: Words | None = None) -> None:
+                 prefs: Prefs | None = None, record: Record | None = None, words: Words | None = None,
+                 figures: Callable[[str], tuple] | None = None) -> None:
         self.account, self.cfg, self.prefix = account, config or Config(), prefix
         self.prefs: Prefs = prefs or (lambda _key, default: default)
         self.record, self.words = record, words
+        #: the host's reader of figures in a text: (numbers, percents) — his own figures as evidence; None: not read
+        self.figures = figures
         self.model, self.tools, self.memory, self.clock, self.owed, self.tasks = model, tools, memory, clock, owed, tasks
         self.lease = store.acquire(account, owner)
         self.em = Emitter(telemetry, clock, account, epoch=lambda: self.lease.epoch)

@@ -91,6 +91,7 @@ NOT_A_WAIT = {
     "voice_lost_window_ms": "how far back a lost voice is told with a text, not a wait",
     "session_gap_ms": "the silence that marks the turns before it as an earlier session, not a wait",
     "lost_voice_ms": "how long a voice cut with no word heard must have lasted to be his, lost and told; not a wait",
+    "read_wall_ms": "the reads' time a run may spend before it must answer: a budget, each read keeps its deadline",
 }
 
 
