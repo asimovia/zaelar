@@ -17,7 +17,7 @@ import pytest
 
 from nucleo import on_his_behalf
 from nucleo.workers import exit_gate
-from voice.engine.llm.providers import confirm_gate
+from widgets import confirm_gate
 from widgets import runtime
 
 SENDS = {

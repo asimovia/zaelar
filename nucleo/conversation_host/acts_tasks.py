@@ -140,8 +140,7 @@ def _listings(args: dict) -> ToolResult:
                       tools_read._text_evidence(f"listings:{res.get('sheet') or ''}", rows) if rows else ())
 
 
-DOORS = {"listings": _listings, "start": _start, "resume": _resume, "reopen": _reopen, "stop": _stop, "unschedule": _unschedule,
-         "sign_in": _sign_in, "note": _note}
+DOORS = {f.__name__.lstrip("_"): f for f in (_listings, _start, _resume, _reopen, _stop, _unschedule, _sign_in, _note)}
 
 
 def run(op: str, args: dict) -> ToolResult:

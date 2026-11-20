@@ -21,6 +21,8 @@ from __future__ import annotations
 
 import time
 
+from nucleo.conversation_host.declared import declared
+
 #: the manager's thresholds the guards read (`configure`, from the boot): the ambient tail a wake word takes back
 _cfg: dict = {"reclaim_tail_ms": 3000}
 
@@ -166,9 +168,9 @@ def for_ear(endpoint: str, text: str):
 
 
 
-#: the silent closes that are the model's judgement on his words (never our own failure: an empty reply, an order
-#: written as text)
-OURS = frozenset({"empty_reply", "order_as_text", "routed", "actionmap"})
+#: the silent closes that are not the model's judgement on his words — our own failure (an empty reply, an order
+#: written as text) or a door that took them (`routed`, `actionmap`): declared data
+OURS = frozenset(declared()["own_silences"])
 
 
 def listen(kind: str, label: str, p: dict) -> None:

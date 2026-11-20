@@ -823,6 +823,15 @@ _PACKAGE_CEILINGS["nucleo/request"] += 115
 _PACKAGE_CEILINGS["nucleo/routes"] += 357
 _PACKAGE_CEILINGS["nucleo/flash"] -= 1024
 _TOTAL_MAX -= 39     # measured after the move (the shims replace the moved bodies)
+# 2026-11-21 INI-078 F2 step 8: the confirm gate of a widget's act MOVED out of the voice providers to the widgets
+# (`widgets/confirm_gate.py`): importing it no longer loads the old voice provider, and the conversation host reaches
+# it without reaching the motor's internals. A one-commit shim stays at the old name.
+_PACKAGE_CEILINGS["widgets"] += 330
+_PACKAGE_CEILINGS["voice/engine/llm"] -= 335
+_TOTAL_MAX += 7      # same: the shim, measured
+_PACKAGE_CEILINGS["conversation"] += 14   # 2026-11-21: his words before any model split out of `conversation/manager/run.py` (`before_model.py`, its header and imports): run.py was over 800 lines
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 1   # same day: the host's DOORS and TOPICS keyed by their functions' names, its own silences declared data (`own_silences`) — five word tables paid
+_TOTAL_MAX += 15     # same causes, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

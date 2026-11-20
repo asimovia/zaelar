@@ -79,7 +79,7 @@ def _controls(args: dict) -> ToolResult:
                              "one_way": self_controls.one_way(act)})
 
 
-DOORS = {"rename": _rename, "attention": _attention, "rule": _rule, "controls": _controls}
+DOORS = {f.__name__.lstrip("_"): f for f in (_rename, _attention, _rule, _controls)}   # each door by its op
 
 
 def run(op: str, args: dict) -> ToolResult:

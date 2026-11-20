@@ -31,7 +31,7 @@ from __future__ import annotations
 import pytest
 
 from nucleo import asked_count
-from voice.engine.llm.providers import confirm_gate as gate
+from widgets import confirm_gate as gate
 
 DAY = "2026-09-17"
 _ORDER = "Can you clean the three?"

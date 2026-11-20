@@ -482,7 +482,7 @@ PER_FILE: dict[str, int] = {
     'voice/engine/core/accel.py': 4,
     'voice/engine/core/logging.py': 2,
     'voice/engine/llm/providers/acc_notices.py': 5,
-    'voice/engine/llm/providers/confirm_gate.py': 5,
+    'widgets/confirm_gate.py': 5,
     'voice/engine/llm/providers/fast_lane.py': 19,
     'voice/engine/llm/providers/flow_lifecycle.py': 2,
     'voice/engine/llm/providers/nucleo.py': 6,

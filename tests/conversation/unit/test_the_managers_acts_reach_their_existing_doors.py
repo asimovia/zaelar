@@ -123,7 +123,7 @@ def widget_door(doors, monkeypatch):
 
     from nucleo.flash import data_ops, frontend, widget_read
     from nucleo.request import consent_ask
-    from voice.engine.llm.providers import confirm_gate
+    from widgets import confirm_gate
     from widgets import effects, producers, runtime
     acts_of = {"w_play": {"payload": {"query": "x"}}, "w_wipe": {"confirm": True}, "w_send": {},
                "w_tick": {"internal": True}}

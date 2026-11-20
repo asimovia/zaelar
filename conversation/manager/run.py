@@ -31,7 +31,7 @@ from conversation.gateway.outbox import Claimed, Read
 from conversation.inbox.mailbox import MONOLOGUE, Batch
 from conversation.inbox import ordering
 from conversation.manager import claims as CL
-from conversation.manager import commands, hold
+from conversation.manager import before_model, commands, hold
 from conversation.manager import record as records
 from conversation.manager import stop
 from conversation.mouth import Device, choose
@@ -156,7 +156,7 @@ async def run_batch(conv: "Conversation", batch: Batch) -> None:
           entries=[{k: v for k, v in f.items() if k != "text"}
                    for f in entry_facts(batch.envelopes, _zone(conv, conv.clock.now_ms())[0])])
     try:
-        if content and await _routed(conv, r, batch, content):
+        if content and await before_model.taken(conv, r, batch, content):
             return                              # his words went to what is open: its door answered, no model
         if any(str(getattr(e.body, "text", "") or "").strip() for e in content) or not content:
             await _steps(conv, r, batch)
@@ -181,34 +181,6 @@ async def run_batch(conv: "Conversation", batch: Batch) -> None:
             conv.current = None
             if conv.state is MgrState.RUNNING:
                 conv.state = MgrState.IDLE
-
-
-async def _routed(conv: "Conversation", r: "Running", batch: Batch, content: list) -> bool:
-    """Before any model, his words go first to a phrase the host knows VERBATIM (`Shortcut`, its act run, V2-942 A2),
-    then to something of his that is OPEN by the host's doors (plan F2 §3): the line that door answers is said, and the
-    run ends with that door as its origin. No hit, nobody took them, or the doors failed or were late: the model
-    answers, as always."""
-    text = " ".join(str(getattr(e.body, "text", "") or "").strip() for e in content).strip()
-    if not text:
-        return False
-    for origin, door in (("actionmap", conv.shortcut), ("routed", conv.route)):
-        if door is None:
-            continue
-        try:
-            line = await guard.call(conv.em, conv.cfg, "tools", door.take(conv.account, text), conv.cfg.tool_ms,
-                                    {"run": r.run_id})
-        except Exception as e:  # noqa: BLE001 — a door that fails never silences him: the next one, or the model
-            r.said.append((origin, f"{type(e).__name__}"))
-            continue
-        if line is None:
-            continue
-        _emit(conv, "command", r, command=origin, said=bool(line))
-        if line:
-            await _publish(conv, r, batch, str(line), 0)
-        else:
-            _silent(conv, r, origin, conv.clock.now_ms())
-        return True
-    return False
 
 
 async def _fail(conv: "Conversation", r: "Running", reason: str) -> None:

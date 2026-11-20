@@ -34,7 +34,7 @@ def box(tmp_path, monkeypatch):
 
 
 def _q(payload):
-    from voice.engine.llm.providers.confirm_gate import _human_confirm_question
+    from widgets.confirm_gate import _human_confirm_question
     return _human_confirm_question("mensajeria", "send_to", payload)
 
 

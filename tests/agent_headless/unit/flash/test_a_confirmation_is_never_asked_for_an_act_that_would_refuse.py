@@ -9,7 +9,7 @@ routes (`tool_executor_widget_calls._leaving_is_a_task`, V2-852 M2) — the work
 """
 from __future__ import annotations
 
-from voice.engine.llm.providers import confirm_gate
+from widgets import confirm_gate
 from widgets import contract
 from widgets.mensajeria import data as mens
 

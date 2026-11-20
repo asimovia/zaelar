@@ -10,7 +10,7 @@ from __future__ import annotations
 
 
 def _ask(payload, lang="en"):
-    from voice.engine.llm.providers import confirm_gate as cg
+    from widgets import confirm_gate as cg
     from i18n import langs
     real = cg._say
     cg._say = lambda: langs.spec(lang)

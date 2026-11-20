@@ -298,7 +298,7 @@ def test_a_language_with_no_spec_of_its_own_is_not_asked_either():
 
 # ── 4c · the DATA gate's own sentences (V2-707 F6, 2026-09-16) ─────────────────────────────────────────
 # V2-682 fixed the two gates in `nucleo/danger.py` and left the third one — the one that asks about a
-# widget's own DATA — composing its prose inside `voice/engine/llm/providers/confirm_gate.py`. Thirty
+# widget's own DATA — composing its prose inside `widgets/confirm_gate.py`. Thirty
 # seconds after «Do not speak Spanish» (session 080b96a7, i=10599) the operator heard, in Castilian:
 #
 #   i=10765  «Voy a borrar 5 citas del 2026-09-17. Es permanente. ¿Las borro?»   ← composed in that module
@@ -310,7 +310,7 @@ def test_a_language_with_no_spec_of_its_own_is_not_asked_either():
 # in for it — and it is where the next sentence of this class gets caught.
 
 def test_the_data_gate_asks_in_his_language():
-    from voice.engine.llm.providers import confirm_gate as cg
+    from widgets import confirm_gate as cg
     from widgets import store
     from widgets.agenda import data as ag
     db = ag.load_db()
@@ -326,7 +326,7 @@ def test_the_data_gate_asks_in_his_language():
 
 
 def test_an_empty_range_and_a_contradicted_scope_answer_in_his_language():
-    from voice.engine.llm.providers import confirm_gate as cg
+    from widgets import confirm_gate as cg
     empty = {"from": "2035-12-24", "to": "2035-12-25"}
     assert "nothing to delete" in _in("en", lambda: cg._human_confirm_question("agenda", "clear_range", empty))
     assert "No hay ninguna cita" in _in("es", lambda: cg._human_confirm_question("agenda", "clear_range", empty))
@@ -340,7 +340,7 @@ def test_an_empty_range_and_a_contradicted_scope_answer_in_his_language():
 def test_a_widgets_own_confirm_q_travels_to_the_operators_language():
     """`clear_all`'s question lives in its MANIFEST — that is where a widget's rails belong — so the gate
     looks the bundle up FIRST, exactly as V2-694 did for widget names."""
-    from voice.engine.llm.providers import confirm_gate as cg
+    from widgets import confirm_gate as cg
     en = _in("en", lambda: cg._human_confirm_question("agenda", "clear_all", {}))
     es = _in("es", lambda: cg._human_confirm_question("agenda", "clear_all", {}))
     assert en != es
@@ -369,7 +369,7 @@ def test_every_confirm_GATED_action_of_every_shipped_widget_has_its_key():
 def test_the_confirm_gate_holds_no_prose_of_its_OWN():
     """The durable half. Every sentence in that module now comes from the table or from a bundle, so a new
     literal there is a decision somebody makes on purpose rather than a leak nobody sees until he hears it."""
-    src = (ENGINE / "voice/engine/llm/providers/confirm_gate.py").read_text(encoding="utf-8")
+    src = (ENGINE / "widgets/confirm_gate.py").read_text(encoding="utf-8")
     import ast
     leaks = []
     for n in ast.walk(ast.parse(src)):

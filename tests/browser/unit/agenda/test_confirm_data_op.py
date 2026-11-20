@@ -188,7 +188,7 @@ def test_la_pregunta_no_recita_las_instrucciones_del_MODELO():
     The manifest’s `desc` is the TOOL description: text written for the MODEL. Reading it to the operator is a
     category error — we were reciting our internal instructions and asking them to say “yes”.
     """
-    from voice.engine.llm.providers.confirm_gate import _human_confirm_question
+    from widgets.confirm_gate import _human_confirm_question
     q = _human_confirm_question("agenda", "clear_all", {})
     assert "Úsala cuando" not in q, f"la pregunta lleva guía de uso del modelo: {q}"
     assert len(q) < 120, f"una pregunta hablada de {len(q)} chars no es una pregunta: {q}"
@@ -281,7 +281,7 @@ def test_the_question_says_HOW_MANY_it_takes_and_WHAT_it_keeps(agenda):
 
     V2-707 F6: the sentence now comes from the language table, so the assertion is made in each language
     instead of against the Castilian that an English operator was being read (i=10765, 2026-09-16)."""
-    from voice.engine.llm.providers.confirm_gate import _human_confirm_question
+    from widgets.confirm_gate import _human_confirm_question
     from widgets.agenda import data as ag
     from widgets import store
     from tests.lang import speaking
@@ -306,7 +306,7 @@ def test_the_question_says_HOW_MANY_it_takes_and_WHAT_it_keeps(agenda):
 
 
 def test_an_EMPTY_range_says_so_instead_of_asking_permission_for_nothing(agenda):
-    from voice.engine.llm.providers.confirm_gate import _human_confirm_question
+    from widgets.confirm_gate import _human_confirm_question
     from tests.lang import speaking
     payload = {"from": "2027-01-01", "to": "2027-01-02"}
     with speaking("es"):

@@ -178,7 +178,7 @@ class LangSpec:
     errand_unaddressed_confirm: str = ""
     # ── V2-707 F6 — THE CONFIRM GATE'S OWN SENTENCES ────────────────────────────────────────────────────
     # V2-682 moved `danger.py`'s two gates here and left the OTHER gate — the one that asks about a widget's
-    # own data — composing its prose inside `voice/engine/llm/providers/confirm_gate.py`. Measured on
+    # own data — composing its prose inside `widgets/confirm_gate.py`. Measured on
     # 2026-09-16 (session 080b96a7): thirty seconds after «Do not speak Spanish», the operator heard «Voy a
     # borrar 5 citas del 2026-09-17. Es permanente. ¿Las borro?» (i=10765) and, before that, «No hay ninguna
     # cita que borrar en ese tramo» (i=10600). Neither is a `notify`/`say` call nor an assignment to a spoken

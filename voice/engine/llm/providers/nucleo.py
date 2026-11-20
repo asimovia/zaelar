@@ -33,7 +33,7 @@ from widgets import confirm as _wconfirm, lifecycle as _wlifecycle
 # The pending-confirmation pair moved to `confirm_gate.py` (2026-09-02 ratchet pass): they needed nothing
 # from this file, so the dependency runs one way. Imported back under their own names — every call site
 # in this module keeps working unchanged, and so does anything that reads them from here.
-from .confirm_gate import _similar_pending, decide as _confirm_decide  # noqa: F401
+from widgets.confirm_gate import similar_pending as _similar_pending, decide as _confirm_decide  # noqa: F401
 
 _WINDOW_MAX = 10
 _TAG_TASKS: set = set()

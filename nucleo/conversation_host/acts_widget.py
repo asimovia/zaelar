@@ -61,7 +61,7 @@ def _ask(card: str, action: str, payload: dict) -> ToolResult:
     """An act its widget asks his yes for: the confirm gate's verdict, and the question waiting on its row through
     the one asker (`consent_ask.ask_consent`) — answered by the card's buttons, or by his answer to the row."""
     from nucleo.request import consent_ask
-    from voice.engine.llm.providers import confirm_gate
+    from widgets import confirm_gate
     d = confirm_gate.decide(card, action, payload) or {}
     if d.get("kind") != "ask":
         return ToolResult("failed", {"reason": d.get("kind") or "not_asked", "said": d.get("sentence", "")})

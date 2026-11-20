@@ -198,7 +198,7 @@ def _network() -> str:
     return network_facts()
 
 
-TOPICS = {"connectors": _connectors, "done": _done, "browser": _browser, "screen": _screen, "network": _network}
+TOPICS = {f.__name__.lstrip("_"): f for f in (_connectors, _done, _browser, _screen, _network)}
 
 
 def topic(name: str) -> str:

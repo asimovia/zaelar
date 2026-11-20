@@ -81,7 +81,7 @@ def _images(args: dict) -> ToolResult:
     return ToolResult("ok" if ok else "failed", {"say": line or "", "query": req["query"]})
 
 
-DOORS = {"build": _build, "delete": _delete, "restore": _restore, "alias": _alias, "images": _images}
+DOORS = {f.__name__.lstrip("_"): f for f in (_build, _delete, _restore, _alias, _images)}   # each door by its op
 
 
 def run(op: str, args: dict) -> ToolResult:
