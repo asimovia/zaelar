@@ -571,6 +571,8 @@ _PACKAGE_CEILINGS["server"] += 11    # same: GET /api/debug/conversation/<sessio
 _TOTAL_MAX += 267    # same cause
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 142    # 2026-11-20 V2-941 v3.1 B3: the Model port over the fast client (the two orders as tools, whose a failure is) and the declarative prefix
 _TOTAL_MAX += 142    # same cause
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 126    # 2026-11-20 V2-941 v3.1 B4a: the read tools of a switched session (search with no judge, widget, memory, self, catalogue), each class derived
+_TOTAL_MAX += 126    # same cause
 
 
 def test_the_total_only_shrinks():

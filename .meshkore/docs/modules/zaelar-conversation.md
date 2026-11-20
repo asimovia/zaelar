@@ -24,7 +24,14 @@ switched session: the runs the manager started, and what would mean another owne
 The model is the voice's model from the routing table, called through the engine's fast client (`model.py`); its
 two orders, `reply(text, claims, complete)` and `no_reply(reason, complete)`, are tools of its own beside the
 catalogue. Its prefix (`prefix.py`) only declares: the language it writes in, what it may read, that it may not act,
-and the fields of its orders — one line each, byte-identical between turns, under 600 tokens.
+and the fields of its orders — one line each, byte-identical between turns, under 600 tokens. A numeric claim binds
+only to structured evidence (one with a value); a figure from an unstructured read carries none. Its `model_done`
+says which model and provider answered, after a relay too.
+
+A switched session only reads (`tools_read.py`): the world through the search service (with the model's proposal
+and no judge — the turn's classifier is never asked), a widget, his memory (no reinforcement), the agent itself, and
+the catalogue. Each tool's class is derived from what it declares, never listed; a door that fails is a result the
+model sees.
 
 ## Why a package of its own
 

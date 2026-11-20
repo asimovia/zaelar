@@ -3,8 +3,8 @@ table (`deepseek-flash`), chosen per invocation, never a global model env.
 
 `PromptParts` → messages: `[system: prefix] + conversation + [system: state] + [user: input] + steps`. The model's
 two orders are tools of its own (`reply`, `no_reply`) offered beside the catalogue, so they arrive as structured
-calls. Text deltas → `TextDelta`; an order → `Command`; any other call → `ToolCall`; the end → `Done` with what the
-client measured. A failure is the provider's when it carries an HTTP status or is a transport error, ours when it
+calls. Text deltas → `TextDelta`; the end → `Done` with what the client measured; then each call it gathered: an
+order → `Command`, any other → `ToolCall`. A failure is the provider's when it carries an HTTP status or is a transport error, ours when it
 is one of Python's programming errors (`provider_failure.is_engine_fault`, criterion R1): `Failed(whose=…)`.
 
 The client's own retry and relay act only BEFORE anything was emitted (a blip, or a stand-in for the same request),
@@ -29,6 +29,12 @@ ORDERS = {
     "no_reply": {"type": "object", "required": ["reason"], "properties": {
         "reason": {"type": "string"}, "complete": {"type": "boolean"}}},
 }
+
+
+#: what the client measured that the run's `model_done` carries: which model and provider ANSWERED (after a relay,
+#: the stand-in — `relayed_from` names the one that failed), so latency can be read by provider
+DONE_KEYS = ("model", "provider", "relayed_from", "relayed_to", "relay_reason", "prompt_tokens_est",
+             "finish_reason", "usage")
 
 
 def _fn(name: str, schema: dict) -> dict:
@@ -94,10 +100,11 @@ class FastModel:
             yield Failed(f"{type(e).__name__}: {str(e)[:160]}", "ours" if provider_failure.is_engine_fault(e)
                          else "provider")
             return
+        # the stream is over: what it measured is said BEFORE the calls it gathered — an order ends the run, and what
+        # came after it would never be read
+        yield Done({k: metrics[k] for k in DONE_KEYS if k in metrics})
         for name, args in calls:
             if name in ORDERS:
                 yield Command(name, args if isinstance(args, dict) else {})
             else:
                 yield ToolCall(f"{run_id}:c{next(self._ids)}", name, args if isinstance(args, dict) else {})
-        yield Done({k: metrics[k] for k in ("model", "provider", "prompt_tokens_est", "finish_reason", "usage")
-                    if k in metrics})

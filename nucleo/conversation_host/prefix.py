@@ -22,7 +22,8 @@ def build(catalog: list[ToolSpec], *, native: str, name: str) -> str:
         "READS": reads,
         "ACTS": "none in this session: nothing but a read passes",
         "ORDERS": "reply(text, claims, complete) | no_reply(reason, complete)",
-        "CLAIMS": "one per figure of data in the text, with the id of the evidence a read returned it in",
+        "CLAIMS": "one per figure of data in the text that a read returned as structured evidence (an evidence with "
+                  "a value), with that evidence's id",
         "COMPLETE": "true: what was said so far is a thought that can be answered; false: something seems missing",
     }
     return "\n".join(f"{k}: {lines[k]}" for k in LINES)
