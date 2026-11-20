@@ -106,39 +106,33 @@ def _verdict(res: dict) -> str:
             else V.UNMET).name
 
 
-async def listings(request: dict, args: dict, *, spec=None, on_delta=None, already_said: str = "") -> Outcome:
-    """The whole `search_listings` turn: fast pass, then the composed spoken face (`say`); `data` is the pass's own
-    result. `on_delta` streams the face as it arrives. A search slower than `FAST_PASS_BUDGET_S` is not waited for:
-    the turn says the errand is taken and `fast_pass` still writes the sheet (demo pass 52: ~40 s left the turn
-    mute). `CancelledError` is re-raised: a cancelled turn must not look like a failed search."""
+async def hunt(asked_text: str, args: dict) -> dict:
+    """The hunt with no face (INI-078 F2 7c): join an open flow or start one, run the fast pass up to
+    `FAST_PASS_BUDGET_S`, and return the fact — `{"kind", "res", "question"?}`. `kind`: `joined` (a live hunt took it as a
+    refinement), `skipped` (the turn's stop covers it), `asked` (it joined an errand parked on his yes: `question`),
+    `late` (the pass outlived the budget and still writes its sheet), `done` (`res` is the pass's verdict). The rows go
+    to the results sheet, shown by the pass; who says what was found is the caller's."""
     import asyncio
 
     from nucleo.turn import launches as _launches, open_flows as _flow
     from nucleo.acts.errand import whole_request
-    operator_text = whole_request(str((request or {}).get("text") or ""))   # V2-844 F1a: never the cut turn's tail
-    taken = "" if (already_said or "").strip() else _taken_line()
+    operator_text = whole_request(str(asked_text or ""))   # V2-844 F1a: never the cut turn's tail
     # V2-784 — the open flow this hunt belongs to: a live worker takes it as a refinement, a pass in flight or just
     # delivered is re-run into ITS sheet. Only a new flow mints a sheet.
     from nucleo import matching
     asked = operator_text if matching.content_words(operator_text) else str(args.get("query") or "")   # «Okay.» names nothing
     joined = await _flow.join(asked)
+    empty = {"delivered": False, "n": 0, "escalated": 0, "ctx": "", "sheet": joined.get("sheet", "")}
     if joined.get("injected"):
-        if taken and on_delta is not None:
-            on_delta(taken)
-        return Outcome(True, V.STARTED.name, taken, {"delivered": False, "n": 0, "escalated": 0, "ctx": "",
-                       "sheet": joined.get("sheet", ""), "pending": True, "joined": joined["flow"]})
+        return {"kind": "joined", "res": {**empty, "pending": True, "joined": joined["flow"]}}
     if joined.get("stopped") or joined.get("card"):
         # V2-844 F2: the turn's stop covers this hunt — nothing is relaunched and nothing is promised.
-        return Outcome(True, V.SKIPPED.name, "", {"delivered": False, "n": 0, "escalated": 0, "ctx": "",
-                       "sheet": joined.get("sheet", ""), "pending": False, "joined": joined["flow"],
-                       "stopped": bool(joined.get("stopped")), "card": bool(joined.get("card"))})
+        return {"kind": "skipped", "res": {**empty, "pending": False, "joined": joined["flow"],
+                                           "stopped": bool(joined.get("stopped")), "card": bool(joined.get("card"))}}
     if joined.get("absorbed"):
         # V2-843 — his words joined an errand PARKED on his yes: nothing is relaunched, the question is asked again.
-        said = str(joined.get("question") or "")
-        if said and on_delta is not None:
-            on_delta(said)
-        return Outcome(True, V.ASKED.name, said, {"delivered": False, "n": 0, "escalated": 0, "ctx": "",
-                       "sheet": joined.get("sheet", ""), "pending": False, "joined": joined["flow"]})
+        return {"kind": "asked", "question": str(joined.get("question") or ""),
+                "res": {**empty, "pending": False, "joined": joined["flow"]}}
     inherit = str(joined.get("sheet") or "")
     errand_id, new_sheet = (0, "") if inherit else _born(asked)
     lid = _launches.opened(operator_text or str(args.get("query") or ""), inherit or new_sheet)
@@ -150,10 +144,8 @@ async def listings(request: dict, args: dict, *, spec=None, on_delta=None, alrea
     done, _pending = await asyncio.wait({task}, timeout=FAST_PASS_BUDGET_S)
     if not done:
         task.add_done_callback(_late_fast_pass)
-        if taken and on_delta is not None:
-            on_delta(taken)
-        return Outcome(True, V.STARTED.name, taken, {"delivered": False, "n": 0, "escalated": 0, "ctx": "",
-                                                     "sheet": "", "pending": True})
+        return {"kind": "late", "res": {"delivered": False, "n": 0, "escalated": 0, "ctx": "", "sheet": "",
+                                        "pending": True}}
     try:
         res = task.result()
     except asyncio.CancelledError:
@@ -161,6 +153,32 @@ async def listings(request: dict, args: dict, *, spec=None, on_delta=None, alrea
     except Exception as e:  # noqa: BLE001 — a search that explodes must not take the turn with it
         logger.warning(f"acts.search_listing: the fast pass failed, the turn goes on ({e!r})")
         res = {"delivered": False, "n": 0, "escalated": 0, "ctx": "", "reason": str(e), "sheet": ""}
+    return {"kind": "done", "res": res}
+
+
+async def listings(request: dict, args: dict, *, spec=None, on_delta=None, already_said: str = "") -> Outcome:
+    """The whole `search_listings` turn: the hunt (`hunt`), then the composed spoken face (`say`); `data` is the pass's
+    own result. `on_delta` streams the face as it arrives. A search slower than `FAST_PASS_BUDGET_S` is not waited for:
+    the turn says the errand is taken and `fast_pass` still writes the sheet (demo pass 52: ~40 s left the turn
+    mute). `CancelledError` is re-raised: a cancelled turn must not look like a failed search."""
+    import asyncio
+
+    from nucleo.acts.errand import whole_request
+    operator_text = whole_request(str((request or {}).get("text") or ""))
+    taken = "" if (already_said or "").strip() else _taken_line()
+    got = await hunt(str((request or {}).get("text") or ""), args)
+    res = got["res"]
+    if got["kind"] in ("joined", "late"):
+        if taken and on_delta is not None:
+            on_delta(taken)
+        return Outcome(True, V.STARTED.name, taken, res)
+    if got["kind"] == "skipped":
+        return Outcome(True, V.SKIPPED.name, "", res)
+    if got["kind"] == "asked":
+        said = got["question"]
+        if said and on_delta is not None:
+            on_delta(said)
+        return Outcome(True, V.ASKED.name, said, res)
     # The turn already SPOKE its promise and nothing landed yet: a second sentence would only repeat it. Rows are news.
     if (already_said or "").strip() and not res.get("delivered"):
         return Outcome(True, _verdict(res), "", res)

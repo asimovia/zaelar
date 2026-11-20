@@ -11,6 +11,8 @@ Declared in `declared.json` (`acts`, door `task`), each to its one door — neve
   unschedule `pulse.scheduler.unschedule`, by its reference — said as it ended, found or not
   sign_in    `web_auth.start` / `web_auth.finish`: the real browser opened for HIM to sign in, and his «done»
   note       `support_note.spoken`: his words kept as a note for the support team, nothing else done
+  listings   `search_listing.hunt`: the fast listings pass on the engine's loop — the rows on his results sheet, too few
+             and the deep search is an errand already started; the fact (how many, the rows, the sheet) is returned
 
 What each returns is the door's own fact: the model says it. His spoken words to a process already open are not an act
 of the model's: they reach that process by the switchboard (`route.py`) before the model is called.
@@ -94,7 +96,33 @@ def _note(args: dict) -> ToolResult:
     return ToolResult("ok" if kept else "failed", {"kept": True} if kept else {"reason": "no_note"})
 
 
-DOORS = {"start": _start, "resume": _resume, "reopen": _reopen, "stop": _stop, "unschedule": _unschedule,
+#: how much of the sheet's rows the fact carries back to the model
+LISTING_ROWS_CHARS = 1600
+
+
+def _listings(args: dict) -> ToolResult:
+    import asyncio
+
+    from nucleo.acts import search_listing
+    from nucleo.conversation_host import routing, tools_read
+    from nucleo.conversation_host.acts_widget import _on_engine_loop
+    if not str(args.get("query") or "").strip():
+        return ToolResult("failed", {"reason": "no_query"})
+    got = asyncio.run(_on_engine_loop(search_listing.hunt(routing.said() or str(args["query"]), args)))
+    res, kind = got.get("res") or {}, got.get("kind")
+    if kind == "asked":
+        return ToolResult("ok", {"joined": "a search of his that waits for his yes", "asked": got.get("question")})
+    if kind == "skipped":
+        return ToolResult("failed", {"reason": "his stop covers this search"})
+    rows = str(res.get("ctx") or "")[:LISTING_ROWS_CHARS]
+    fact = {"found": int(res.get("n") or 0), "on_his_results_sheet": bool(res.get("delivered")),
+            "deep_search_started": bool(res.get("escalated") or res.get("pending")), "rows": rows or None}
+    return ToolResult("ok" if fact["found"] or fact["deep_search_started"] else "failed",
+                      {k: v for k, v in fact.items() if v is not None},
+                      tools_read._text_evidence(f"listings:{res.get('sheet') or ''}", rows) if rows else ())
+
+
+DOORS = {"listings": _listings, "start": _start, "resume": _resume, "reopen": _reopen, "stop": _stop, "unschedule": _unschedule,
          "sign_in": _sign_in, "note": _note}
 
 

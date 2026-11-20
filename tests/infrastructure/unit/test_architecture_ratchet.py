@@ -795,6 +795,9 @@ _PACKAGE_CEILINGS["nucleo/conversation_host"] += 233  # 2026-11-20 INI-078 F2 st
 _PACKAGE_CEILINGS["connectors"] += 2     # same: `meshkore.dispatch_tag` returns the bridge's answer (the text that left)
 _PACKAGE_CEILINGS["nucleo/flash"] -= 74  # same: `tools_a2a.run` delegates to the manager's network door (the bodies moved)
 _TOTAL_MAX += 161    # same causes, measured
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 28  # 2026-11-20 INI-078 F2 step 7c (row 13): the listings hunt as a task act (`acts_tasks._listings`): his words to `search_listing.hunt` on the engine's loop, the fact and the rows with their evidence back to the model
+_PACKAGE_CEILINGS["nucleo/acts"] += 13   # same: `search_listing.hunt`, the hunt with no face both channels run (`listings` keeps the old turn's face on top of it)
+_TOTAL_MAX += 46     # same causes, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

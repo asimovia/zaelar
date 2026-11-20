@@ -763,6 +763,32 @@
      }
     }
    }
+  },
+  "search_listings": {
+   "act": "listings.search",
+   "door": "task",
+   "op": "listings",
+   "about": "listings for sale or rent he wants found (a car, a flat, a laptop, tickets): real rows with price and link land on his results sheet; too few and the deep search starts by itself (never start_task for the same hunt); keep the filters he did not drop",
+   "schema": {
+    "type": "object",
+    "required": [
+     "query"
+    ],
+    "properties": {
+     "query": {
+      "type": "string"
+     },
+     "price_max": {
+      "type": "number"
+     },
+     "price_min": {
+      "type": "number"
+     },
+     "condition": {
+      "type": "string"
+     }
+    }
+   }
   }
  },
  "state_topics": [
