@@ -4,9 +4,12 @@
 at random (eager / resumed / an end of turn mid-sentence / a stream that stops), typed texts on another device, stops
 from a button or the text field, controls by id nobody here handles, lines owed to the person (a worker's result,
 a contact's message, a reminder — held for the voice in their own ledger), jumps of the clock, and a TAKEOVER (another
-process acquires the account, the old one keeps being fed). The model is scripted at random — reads, local writes, sends, replies with and without numeric
-claims, silences, failures — and injects new input between its own events, so checkpoints are exercised. At the end
-time runs out (every hold, deferral and liveness budget expires) and `check(...)` returns the violations, as text.
+process acquires the account, the old one keeps being fed). The voice comes with the orders a real provider sends:
+its end before the watermark passes the fall, and the person going on right then; a voice that does not fall between
+two pieces; a close with the voice still up and its fall an instant later; a background with words and no end. The
+model is scripted at random — reads, writes, sends, replies with and without numeric claims, silences, failures — and
+injects new input between its own events, so checkpoints are exercised. At the end the signals stop and time runs
+out on the manager's own timer (every hold and liveness budget expires) and `check(...)` returns the violations.
 
 Deterministic: one seed, one case. No wall clock, no I/O, standard library only (no Hypothesis).
 """
@@ -20,6 +23,7 @@ from conversation import envelopes as E
 from conversation.config import Config
 from conversation.ear import signals as S
 from conversation.inbox.accounting import audit
+from conversation.inbox.ordering import last_key
 from conversation.manager import Conversation
 from conversation.ports import Command, Done, Failed, StaleEpoch, ToolCall, ToolResult
 from conversation.store.memory import MemoryStore
@@ -193,8 +197,11 @@ class Case:
             gap = self.rng.choice([300, 700, 900, 1500])
             how = self.rng.random()
             if how < 0.25:                                                   # the provider closes at the pause
-                self._feed(conv, S.VadEdge(ep, "fall", t + 10), S.Watermark(ep, t + 280),
-                           S.EotHint(ep, "flux", "end", .7, t + 300))
+                if self.rng.random() < 0.5:                                  # …with the voice falling there
+                    self._feed(conv, S.VadEdge(ep, "fall", t + 10), S.Watermark(ep, t + 280),
+                               S.EotHint(ep, "flux", "end", .7, t + 300))
+                else:                                                        # …or another voice keeps it up
+                    self._feed(conv, S.Watermark(ep, t + 280), S.EotHint(ep, "flux", "end", .7, t + 300))
                 self.seq += 1
                 seq, rev, said = self.seq, 0, []
             elif how < 0.95:
@@ -208,8 +215,20 @@ class Case:
         if self.rng.random() < 0.05:
             self._feed(conv, S.Discard(ep, "w0", "echo", t + 20))
             return
-        self._feed(conv, S.VadEdge(ep, "fall", t + 10), *[S.Watermark(ep, x) for x in range(t + 60, t + 400, 240)],
-                   S.EotHint(ep, "flux", "end", .9, t + 400))
+        end = self.rng.random()
+        if end < 0.2:                       # the end lands before the watermark passes the fall; he may go on at once
+            self._feed(conv, S.VadEdge(ep, "fall", t + 250), S.EotHint(ep, "flux", "end", .9, t + 200))
+            if self.rng.random() < 0.5:
+                self._feed(conv, S.VadEdge(ep, "rise", t + 228))
+                self._go_on_unfinished(conv, ep=ep, rose=True)
+            self._feed(conv, *[S.Watermark(ep, x) for x in range(t + 300, t + 700, 240)])
+        elif end < 0.35:                    # the end with the voice still up, its fall an instant later
+            self._feed(conv, S.Watermark(ep, t + 100), S.EotHint(ep, "flux", "end", .9, t + 200),
+                       S.VadEdge(ep, "fall", t + 200 + self.rng.choice([5, 30, 120, 400])),
+                       *[S.Watermark(ep, x) for x in range(t + 340, t + 900, 240)])
+        else:
+            self._feed(conv, S.VadEdge(ep, "fall", t + 10), *[S.Watermark(ep, x) for x in range(t + 60, t + 400, 240)],
+                       S.EotHint(ep, "flux", "end", .9, t + 400))
 
     def _envelope(self, conv: Conversation, kind: EnvelopeKind, body, *, channel=None, endpoint=None) -> None:
         self.n += 1
@@ -249,6 +268,8 @@ class Case:
             self._go_on_unfinished(conv)                                         # he goes on, unfinished
         elif a < 0.965:
             self._forge(conv)                                                    # a forged producer / account
+        elif a < 0.975:
+            self._background(conv)                                               # a TV that never stops
         else:
             self.clock.advance(self.rng.choice([100, 2000, 9000, 40_000]))
             self._feed(conv, S.Tick(self._now()))
@@ -281,13 +302,24 @@ class Case:
             row = self.rng.choice(rows)
             conv.give(E.from_json({**row["env"], "id": "", "accepted_ms": 0}))
 
-    def _go_on_unfinished(self, conv: Conversation) -> None:
+    def _go_on_unfinished(self, conv: Conversation, ep: str = "d1", rose: bool = False) -> None:
         """The person goes on after a close with a word and no end yet, and the provider keeps beating."""
-        ep, t = "d1", self._now() + 20
+        t = self._now() + 20
         self.seq += 1
         ws = ((f"w{self.rng.randint(1, 60)}", t, t + 160, 1.0),)
-        self._feed(conv, S.VadEdge(ep, "rise", t), S.WordSpan(ep, self.seq, 1, False, ws, (t, t + 160)),
+        self._feed(conv, *([] if rose else [S.VadEdge(ep, "rise", t)]),
+                   S.WordSpan(ep, self.seq, 1, False, ws, (t, t + 160)),
                    *[S.Watermark(ep, x) for x in range(t + 200, t + 2500, 240)])
+
+    def _background(self, conv: Conversation) -> None:
+        """A background that keeps talking: the voice up, words every 400 ms, never an end, never a fall."""
+        ep, t = self.rng.choice(["d1", "d2"]), self._now() + 20
+        self._feed(conv, S.VadEdge(ep, "rise", t))
+        for i in range(self.rng.choice([10, 40, 90])):
+            self.seq += 1
+            x = t + i * 400
+            self._feed(conv, S.WordSpan(ep, self.seq, 1, True, ((f"w{self.rng.randint(1, 60)}", x, x + 300, 1.0),),
+                                        (x, x + 300)), S.Watermark(ep, x + 380))
 
     def _race_seal(self, conv: Conversation) -> None:
         """Another writer of the account (a confirmation, the other process's gateway) seals a closed intervention the
@@ -311,14 +343,88 @@ class Case:
         self._safe(self._drain)
 
     def _drain(self) -> None:
-        """Time runs out: no new input; every hold, deferral and budget expires; whatever is ready runs."""
+        """The signals stop: no new input, not even a tick for the ear — only the manager's own timer, every 5 s (as
+        `keep_time` would); every hold and budget expires and whatever is ready runs."""
         self.draining = True
-        for _ in range(4):
-            self.clock.advance(max(self.cfg.liveness_ms,
-                                   self.cfg.cross_channel_hold_ms) + 1)
-            # no device signal any more — not even a tick for the ear: only the manager's own clock
+        self.drain_from = self._now()
+        span = 2 * max(self.cfg.liveness_ms, self.cfg.cross_channel_hold_ms, self.cfg.intervention_max_ms)
+        for _ in range(span // DRAIN_STEP_MS + 1):
+            self.clock.advance(DRAIN_STEP_MS)
+            self.conv.sweep()
             self.loop.run_until_complete(self.conv.pump())
             self.owed.expire(self.clock.now_ms())          # the ledger's pulse: a claim past its deadline goes back
+
+
+DRAIN_STEP_MS = 5000
+
+
+def _held_voice_spoken_over(case, events, inbox_rows) -> list[str]:
+    """A line of a run said while a voice is open on the device of the batch's last entry, begun within the window of
+    that entry's close — before the hold's bound (past it the batch runs as it is, by design)."""
+    envs = {r["id"]: r["env"] for r in inbox_rows}
+    opened, ended, batch, out = {}, {}, {}, []
+    for k, lab, p in events:
+        r = p["refs"]
+        if k == "conv_ear" and lab == "onset":
+            opened[r["iv"]] = (p["t_onset_ms"], r.get("endpoint"))
+        elif k == "conv_ear" and lab in ("closed", "incomplete", "discarded"):
+            ended.setdefault(r.get("iv"), p["t_ms"])
+        elif k == "conv_run" and lab == "started":
+            batch[r["run"]] = [envs[e] for e in p["batch_envs"] if e in envs and envs[e]["kind"] != "user.control"]
+        if (k == "conv_mouth" and lab == "say" or k == "conv_run" and lab == "started") and batch.get(r.get("run")):
+            t = p["t_ms"]                    # neither a line said, nor a run started, with his voice open there
+            last = max(batch[r["run"]], key=lambda e: last_key(e["sealed_ms"], e["onset_ms"], e["id"]))
+            ep, at = last.get("endpoint"), last["sealed_ms"]
+            if not ep or t - at >= case.cfg.resume_hold_max_ms:
+                continue
+            out += [f"held: {r['run']} {lab} at {t} over {iv} open on {ep}" for iv, (on, oep) in opened.items()
+                    if oep == ep and on - at <= case.cfg.resume_window_ms and on <= t < ended.get(iv, 10 ** 18)
+                    and iv not in {e["refs"]["intervention_id"] for e in batch[r["run"]]}]
+    return out
+
+
+def _flows_batches_and_bounds(case, inbox_rows) -> list[str]:
+    """The properties of v3.1 over what a case left: every event in a flow, a request a run closed carries it, an entry
+    in at most one batch that ended, nothing said over his resumed voice, no turn past its maximum, and — once the
+    signals stop — every request ended within its liveness."""
+    out: list[str] = []
+    blank = [f"{k}/{lab}" for k, lab, p in case.tel.events if not p.get("trace")]      # every event in a flow
+    if blank:
+        out.append(f"trace: {len(blank)} events outside any flow, first {blank[0]}")
+    run_trace = {p["refs"]["run"]: p["trace"] for k, lab, p in case.tel.events if k == "conv_run" and lab == "started"}
+    for k, lab, p in case.tel.events:                       # a request a run closed joins that run's flow
+        if k != "conv_close":
+            continue
+        run = p["refs"].get("run")
+        if lab == "answered" and not run:
+            out.append(f"trace: {p['refs'].get('req')} answered by no run")
+        elif run and run_trace.get(run) != p["trace"]:
+            out.append(f"trace: {p['refs'].get('req')} closed by {run} outside its flow")
+    if case.old is None:                                    # no intervention gathers words past its maximum
+        onsets = {p["refs"]["iv"]: p["t_onset_ms"] for k, lab, p in case.tel.events
+                  if k == "conv_ear" and lab == "onset"}
+        for iv, on in onsets.items():                       # gathered over several provider turns: one turn that
+            words = case.conv.ear.spans.words(iv)           # arrives whole is the provider's, not the ear's doing
+            if len(case.conv.ear.spans.seqs(iv)) > 1 and words[-1][2] - on > case.cfg.intervention_max_ms + 1000:
+                out.append(f"ear: {iv} gathered words for {words[-1][2] - on} ms")
+    accounted_in: dict = {}                                 # I6: an entry is in at most one batch that ended
+    run_envs = {p["refs"]["run"]: p["batch_envs"] for k, lab, p in case.tel.events
+                if k == "conv_run" and lab == "started"}
+    for k, lab, p in case.tel.events:
+        if k == "conv_run" and lab in ("ended", "cancelled"):
+            for env in run_envs.get(p["refs"]["run"], ()):
+                accounted_in.setdefault(env, set()).add(p["refs"]["run"])
+    out += [f"I6: {env} accounted by two runs" for env, runs in accounted_in.items() if len(runs) > 1]
+    if case.old is None:                                    # a takeover's two processes share no ear: not judged
+        out += _held_voice_spoken_over(case, case.tel.events, inbox_rows)
+    drain_from = getattr(case, "drain_from", None)          # I9: once the signals stop, everything ends in time
+    if drain_from is not None:
+        for k, lab, p in case.tel.events:
+            if k == "conv_close" and p["t_ms"] > drain_from:
+                start = max(p["t_ms"] - p["total_ms"], drain_from)
+                if p["t_ms"] - start > case.cfg.liveness_ms + DRAIN_STEP_MS:
+                    out.append(f"I9: {p['refs'].get('req')} ended {p['t_ms'] - start} ms after the signals stopped")
+    return out
 
 
 def check(case: Case) -> list[str]:
@@ -413,18 +519,7 @@ def check(case: Case) -> list[str]:
         elif r["kind"] in ("user.utterance", "user.text") and r["state"] != "duplicate" and \
                 closed_at.get(req, r["accepted"]) < r["accepted"]:
             out.append(f"I9: {r['id']} was accepted after its request {req} had closed")
-    blank = [f"{k}/{lab}" for k, lab, p in case.tel.events if not p.get("trace")]      # every event in a flow
-    if blank:
-        out.append(f"trace: {len(blank)} events outside any flow, first {blank[0]}")
-    run_trace = {p["refs"]["run"]: p["trace"] for k, lab, p in case.tel.events if k == "conv_run" and lab == "started"}
-    for k, lab, p in case.tel.events:                       # a request a run closed joins that run's flow
-        if k != "conv_close":
-            continue
-        run = p["refs"].get("run")
-        if lab == "answered" and not run:
-            out.append(f"trace: {p['refs'].get('req')} answered by no run")
-        elif run and run_trace.get(run) != p["trace"]:
-            out.append(f"trace: {p['refs'].get('req')} closed by {run} outside its flow")
+    out += _flows_batches_and_bounds(case, inbox_rows)
     for rid, row in items.items():                                                     # I9
         if row["kind"] == str(ItemKind.REQUEST):
             if row["state"] == "open":

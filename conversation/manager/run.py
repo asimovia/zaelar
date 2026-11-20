@@ -26,6 +26,7 @@ from conversation.gateway import dispatch
 from conversation.gateway.authority import RunCtx
 from conversation.gateway.outbox import Read
 from conversation.inbox.mailbox import Batch
+from conversation.inbox.ordering import last_key
 from conversation.manager import claims as CL
 from conversation.manager import commands
 from conversation.mouth import Device, choose
@@ -94,7 +95,7 @@ async def run_batch(conv: "Conversation", batch: Batch) -> None:
     endpoint = next((e.endpoint for e in users if e.endpoint), None)
     reqs = _requests(batch)
     run_id = conv.ids.new("run")
-    last = max(users, key=lambda e: e.sealed_ms, default=None)
+    last = max(users, key=lambda e: last_key(e.sealed_ms, e.onset_ms, e.id), default=None)
     r = Running(run_id, tuple(e.id for e in batch.envelopes), reqs,
                 RunCtx(run_id, reqs[0] if reqs else run_id, {e.id: e for e in batch.envelopes}, endpoint),
                 batch_seq=batch.run_seq, last_entry_ms=last.sealed_ms if last else 0,

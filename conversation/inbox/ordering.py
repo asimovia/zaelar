@@ -17,6 +17,12 @@ def order(rows: list[dict]) -> list[dict]:
     return sorted(rows, key=batch_key)
 
 
+def last_key(sealed_ms: int, onset_ms: int, env_id: str) -> tuple:
+    """Which entry of a batch is its LAST — the one whose device a resumed voice is looked for on. One key for the
+    inbox and the run alike: two rules that disagree on a tie would start a run the other one holds, again and again."""
+    return (sealed_ms, onset_ms, env_id)
+
+
 def hold_behind(text_onset: int, open_voice: dict[str, dict]) -> str | None:
     """The open voice intervention a text must wait behind: the EARLIEST one that began before the text."""
     earlier = [(v["onset"], iv) for iv, v in open_voice.items() if v["onset"] < text_onset]

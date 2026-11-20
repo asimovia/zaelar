@@ -204,7 +204,7 @@ class Inbox:
         that began within the window of it — any voice open there, even one that began before that entry closed (the
         person went on while the provider was ending). Bounded: never longer than `resume_hold_max_ms` from that
         entry's close, and words do not reset it."""
-        last = max((r["env"] for r in pick), key=lambda e: e["sealed_ms"])
+        last = max((r["env"] for r in pick), key=lambda e: ordering.last_key(e["sealed_ms"], e["onset_ms"], e["id"]))
         if not last.get("endpoint") or now - last["sealed_ms"] >= self.cfg.resume_hold_max_ms:
             return False
         return any(v.get("endpoint") == last["endpoint"]
