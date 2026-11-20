@@ -1,7 +1,8 @@
-"""The body's face to the voice process (V2-891): three loopback routes, answered only with the spawn's token.
+"""The body's face to the voice process (V2-891): four loopback routes, answered only with the spawn's token.
 
   POST /api/voice/child/events   the session's facts, in order, in batches (`voice/remote_session.handle_batch`)
   POST /api/voice/child/kickoff  the first-turn decision for a session the voice process just started
+  POST /api/voice/child/conv     before a session is built: does it go by the conversation manager?
   POST /api/turn/stream          one voice turn, as NDJSON lines the voice process speaks as they arrive
 
 None of them exists for a browser: a request that is not from this host, or that lacks the token the body handed
@@ -56,6 +57,19 @@ async def child_kickoff(request: Request):
         body = {}
     from server import voice_child_once
     return {"ok": True, **remote_session.kickoff(str(body.get("room") or ""), voice_child_once.once(body.get("events")))}
+
+
+@router.post("/api/voice/child/conv")
+async def child_conv(request: Request):
+    """Before the voice process builds a session: does it go by the conversation manager?"""
+    if not _allowed(request):
+        return _deny()
+    try:
+        body = await request.json()
+    except Exception:  # noqa: BLE001
+        body = {}
+    from nucleo.conversation_host import voice_session
+    return {"ok": True, **await asyncio.to_thread(voice_session.ask, body.get("flag"))}
 
 
 @router.post("/api/turn/stream")

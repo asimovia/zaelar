@@ -37,9 +37,25 @@ by the pinned plugin, **exposed raw** (Flux sends it, the plugin drops it), or *
 ## What the ear needs that the pinned plugin does not give
 
 Built (B8a): `voice/engine/pipeline/ear_feed.py` turns each provider message into the ear's facts on one wall clock
-(item 1 below, without the tap that feeds it, which is B8b); the facts cross to the body on a lossless lane of the
+(item 1 below); the facts cross to the body on a lossless lane of the
 body link (`send_ear`: numbered, carried until answered, a hole declared as a `gap` past its ceiling); the body applies
 each once (`nucleo/conversation_host/ear_in.py`) and a hole ends what the ear was hearing incomplete (`link_gap`).
+
+Built (B8b): items 1 and 3, and the playback of the voice process itself. Before it builds a session the voice process
+asks the body's switch (`/api/voice/child/conv`, the room's own `conv` flag first, `voice_session.ask`). It builds the
+manager's session only on yes AND with the provider's turns, and what it built rides «session started» as the
+session's decision on the body (`voice_session.started`). In that session (`voice/engine/pipeline/ear_tap.py`):
+- every raw provider message reaches `ear_feed` first and the plugin's own handler runs untouched after it; each
+  stream has its own clock;
+- after an end of turn the session's own turn is cleared, never committed;
+- the ear's own edges of his voice come from the VAD's frames with a 200 ms quiet tail (E1), `echo_safe` false while
+  our voice sounds, and our playback comes from the agent's state;
+- turn detection is `manual`, with no early reply and no greeting (the body's kickoff answers none);
+- an `llm_node` LiveKit opens anyway is counted (`livekit_turns`), said as an alert, and answered with an empty turn;
+- the owed lines are claimed for the voice while it lives.
+
+At the job's end the warm STT is given back untapped. Not wired yet: the app writing the session's `conv` flag into
+the room's metadata (the account's key and the environment decide meanwhile), and the clients' playback (item 2).
 
 
 1. A `TurnInfo` handler of its own (F1, in `voice/`, next to `voice/engine/speech/stt/deepgram.py`), forwarding for

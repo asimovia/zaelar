@@ -90,20 +90,33 @@ async def entrypoint(ctx: JobContext) -> None:
         _endpointing = {**_endpointing, "min_delay": SETTINGS.stt_flux_min_delay}
     from . import agent_events as _ae
     _interruption = _ae._int_kwargs()
+    from . import ear_tap
+    conv = await _conv(link, ctx.room, _flux)
+    tap = None
+    if conv["conv"]:                           # a session of the manager: its ear hears, LiveKit opens no turn
+        tap = ear_tap.Tap(ear_tap.ENDPOINT, link.send_ear)
+        stt, vad_session = ear_tap.install_stt(stt, tap), ear_tap.tap_vad(vad_session, tap)
+        ctx.add_shutdown_callback(_untap(stt))
 
     _emit("worker_start", "motor de voz arriba (proceso propio)", role="system",
           extra={"profile": SETTINGS.profile, "stt": SETTINGS.stt_provider, "llm_provider": "remote",
                  "tts": SETTINGS.tts_provider, "turn": SETTINGS.turn_provider, "process": "voice",
                  **{f"endpoint_{k}": v for k, v in _endpointing.items()}})
 
-    session = AgentSession(vad=vad_session, stt=stt, llm=RemoteBrainLLM(), tts=tts, turn_handling={
-        "turn_detection": turn_detection, "endpointing": _endpointing, "interruption": _interruption,
-        "preemptive_generation": {"enabled": SETTINGS.preemptive_generation}})
-    try:
-        from . import preemptive_tap as _ptap
-        _ptap.install(_emit)
-    except Exception as e:  # noqa: BLE001
-        logger.warning("preemptive tap not installed (%s)", e)
+    handling = {"turn_detection": turn_detection, "endpointing": _endpointing, "interruption": _interruption,
+                "preemptive_generation": {"enabled": SETTINGS.preemptive_generation}}
+    session = AgentSession(vad=vad_session, stt=stt, llm=RemoteBrainLLM(), tts=tts,
+                           turn_handling=ear_tap.manual(handling) if tap else handling)
+    if tap is not None:
+        tap.on_end = session.clear_user_turn     # never committed: his words went to the manager's ear
+        session.on("agent_state_changed", lambda ev: tap.playback(getattr(ev.new_state, "value", ev.new_state)
+                                                                   == "speaking"))
+    else:
+        try:
+            from . import preemptive_tap as _ptap
+            _ptap.install(_emit)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("preemptive tap not installed (%s)", e)
 
     air = FirstAir(ready=boot.ready, emit=_emit)
 
@@ -129,7 +142,7 @@ async def entrypoint(ctx: JobContext) -> None:
     await session.start(room=ctx.room, agent=agent, **_ag._session_start_opts())
     logger.info("Session started (voice process).")
     link.send({"k": "session", "what": "started", "room": ctx.room.name, "session_id": session_id,
-               "stt": SETTINGS.stt_provider, "tts": SETTINGS.tts_provider})
+               "stt": SETTINGS.stt_provider, "tts": SETTINGS.tts_provider, **conv})
 
     async def _down(*_a) -> None:
         link.send({"k": "session", "what": "transport_down", "room": ctx.room.name})
@@ -157,6 +170,30 @@ async def entrypoint(ctx: JobContext) -> None:
     greeting = session.generate_reply(user_input=text, allow_interruptions=False)
     air.park(greeting, on_air=air.lift)
     await greeting
+
+
+async def _conv(link, room, flux: bool) -> dict:
+    """Does this session go by the conversation manager? The body's switch decides (`/api/voice/child/conv`, the room's
+    own flag first); the manager's ear hears the streaming provider's turns, so without them the answer is no, and
+    says why. What is returned is what this process builds, and it rides «session started»."""
+    from . import ear_tap
+    got = await link.post("/api/voice/child/conv",
+                          {"room": room.name, "flag": ear_tap.flag_of(getattr(room, "metadata", "") or "")},
+                          timeout_s=5.0) or {}
+    by = str(got.get("by") or "")
+    if not got.get("on"):
+        return {"conv": False, "conv_by": by, "conv_why": str(got.get("why") or "")}
+    if not flux:
+        return {"conv": False, "conv_by": by, "conv_why": "the manager's ear needs the streaming provider's turns"}
+    return {"conv": True, "conv_by": by}
+
+
+def _untap(stt):
+    """The job's end gives the warm STT back untapped: the next session may not be the manager's."""
+    async def _done(*_a) -> None:
+        from . import ear_tap
+        ear_tap.uninstall(stt)
+    return _done
 
 
 def _wire(session, ctx, link, sm, _emit, tts, boot) -> None:

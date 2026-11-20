@@ -611,6 +611,10 @@ _TOTAL_MAX += 89     # same cause
 _PACKAGE_CEILINGS["conversation"] += 20    # 2026-11-20 V2-941 v3.1 B7e: a failed run of typed entries answered in place with the language's line (`run._say_failed`)
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 8    # same: a derived claim's operation and operands required by the order's schema
 _TOTAL_MAX += 28     # same cause
+_PACKAGE_CEILINGS["voice"] += 228          # 2026-11-20 V2-941 v3.1 B8b: the voice session of the manager — every provider message to the ear first, the ear's own edges (E1) and our playback (`ear_tap.py`), the manual session asked of the body first (`child_session._conv`), the old turn's door answering nothing in it
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 65    # same: what the voice process built is the session's decision; the voice live for the owed lines; the holder's device (`voice_session.py`, `entry.device`)
+_PACKAGE_CEILINGS["server"] += 8           # same: the voice process asks before it builds (`/api/voice/child/conv`)
+_TOTAL_MAX += 307    # same cause
 
 
 def test_the_total_only_shrinks():

@@ -310,6 +310,8 @@ def _started(ev: dict) -> None:
     cl = _M["client"]
     cl.bind(asyncio.get_running_loop())
     remote = RemoteSession(cl)
+    from nucleo.conversation_host import voice_session as _conv_voice   # what the voice process built decides
+    _conv_voice.started(remote, ev)
     # Another room may still be closing (the voice moving between screens): its handles stay in `_ROOMS` and its own
     # close clears only what is still its own, exactly as the embedded sessions do.
     _M.update(session=remote, room=room, brain=None)
@@ -411,6 +413,8 @@ def _closed(ev: dict) -> None:
                   _close_account_session=h["closer"], _emit=_obs(), _proactive=proactive, _speak=h["speak"],
                   boot=_NoBoot(), _typed=h["typed"])
     h["session"].fire_close(ev)
+    from nucleo.conversation_host import voice_session as _conv_voice
+    _conv_voice.closed(h["session"])
     _transport_down({"room": room})
     try:
         from voice.engine.speech import live_tts
@@ -522,6 +526,9 @@ def kickoff(room: str, events=None) -> dict:
     facts the question carried («session started») are replayed first."""
     from voice.engine.pipeline import first_air
     handle_batch(events)
+    from nucleo.conversation_host import switch as _conv_switch
+    if _M.get("session") is not None and _conv_switch.on(_M["session"]):
+        return {"greet": "", "env": {}}         # a session of the manager: what is said is the manager's
     text = first_air.decide_kickoff(room, _obs())
     cl = _M["client"]
     return {"greet": text, "env": cl.env_diff() if cl is not None else {}}
@@ -535,6 +542,10 @@ async def turn_lines(payload: dict):
     from voice import screens
     from voice.engine.speech import echo_cut, filler_audio as _fa
     handle_batch(payload.get("events"))         # the facts queued before this turn: replayed first, in order
+    from nucleo.conversation_host import voice_session as _conv_voice
+    if await asyncio.to_thread(_conv_voice.refuse_turn, _M.get("session")):
+        yield {"t": "end"}                      # no turn of LiveKit's in a session of the manager: counted, said
+        return
     cl = _M["client"]
     env = cl.env_diff() if cl is not None else {}
     if env:

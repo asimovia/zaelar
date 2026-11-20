@@ -137,6 +137,11 @@ def typed(text: str, dev: str = "", *, wait: bool = False, checked: bool = False
     return {"ok": True, "cid": cid}
 
 
+def device(endpoint: str, **state) -> None:
+    """A device's state for the conversation (its voice live, its speaker open), handed over in order."""
+    _hand(lambda c: c.device(endpoint, **state))
+
+
 def voice(sig) -> None:
     """A fact of the ear (a word, an end of turn, the watermark, an edge of his voice): handed over in order."""
     _hand(lambda c: c.hear(sig))
