@@ -1,7 +1,8 @@
-"""The model's stable prefix for the conversation manager (V2-941, the F1 plan §4.7): what it may read, the language
-it writes in and the fields of its two orders — declared, never a script of how to behave (principles: «declare
-capabilities, never script behaviour»). Byte-identical between turns for the same language and catalogue, so the
-provider caches it; every line is one of `LINES`, and the whole stays under `MAX_TOKENS`.
+"""The model's stable prefix for the conversation manager (V2-941, the F1 plan §4.7): who is who, the language, what it
+may read and what exists but is held, and the fields of its two orders — declared, never a script of how to behave
+(principles: «declare capabilities, never script behaviour»). Byte-identical between turns for the same names,
+language and catalogue, so the provider caches it; every line is one of `LINES`, and the whole stays under
+`MAX_TOKENS`.
 """
 from __future__ import annotations
 
@@ -10,17 +11,25 @@ from conversation.ports import ToolSpec
 MAX_TOKENS = 600
 
 #: the only lines a prefix carries, in this order
-LINES = ("LANGUAGE", "INPUT", "READS", "ACTS", "ORDERS", "CLAIMS", "COMPLETE")
+LINES = ("YOU", "PERSON", "LANGUAGE", "INPUT", "READS", "ACTS", "ORDERS", "CLAIMS", "COMPLETE")
 
 
-def build(catalog: list[ToolSpec], *, native: str, name: str) -> str:
-    reads = ", ".join(sorted(t.name for t in catalog)) or "none"
+def build(catalog: list[ToolSpec], *, native: str, name: str, agent: str = "", person: str = "",
+          held: tuple[str, ...] = ()) -> str:
+    """`agent`: the assistant's own name; `person`: the person's, when known; `held`: the acts that exist but are held in
+    this phase (the event vocabulary's names)."""
+    reads = "; ".join(f"{t.name}: {t.about}" if t.about else t.name for t in sorted(catalog, key=lambda t: t.name))
     lines = {
-        "LANGUAGE": f"every reply and every text written: {native} ({name}); entries may come in any language",
-        "INPUT": "the person's entries since the last reply, each with its id, channel and state; CONVERSATION is "
-                 "what was said, ours cut to what was heard; STATE is now and what is open",
-        "READS": reads,
-        "ACTS": "none in this session: nothing but a read passes",
+        "YOU": f"the assistant{f', named {agent}' if agent else ''} — the name the person calls you by, never the "
+               f"person's",
+        "PERSON": f"named {person}" if person else "name not known yet",
+        "LANGUAGE": f"each reply in the language of the person's entries it answers; when that is not clear, {native} "
+                    f"({name})",
+        "INPUT": "the person's entries since the last reply, each with its id, channel and time; an entry cut off says "
+                 "so; CONVERSATION is what was said, ours cut to what was heard; STATE is now and what is open",
+        "READS": reads or "none",
+        "ACTS": ("they exist and are held in this phase, refused if called: " + ", ".join(held)) if held
+                else "none in this session: nothing but a read passes",
         "ORDERS": "reply(text, claims, complete) | no_reply(reason, complete)",
         "CLAIMS": "one per figure of data in the text, with the id of the evidence it is in; derived: true for a "
                   "figure computed from evidence of this reply, with its op (count, sum, difference, mean, ratio, "
@@ -30,8 +39,18 @@ def build(catalog: list[ToolSpec], *, native: str, name: str) -> str:
     return "\n".join(f"{k}: {lines[k]}" for k in LINES)
 
 
+def held_acts() -> tuple[str, ...]:
+    """Every leaving act of the event vocabulary, by its name (`messaging.send_new`): they exist; in this phase the
+    gateway refuses them. The names, not their descriptions: the line stays under the prefix's ceiling."""
+    from nucleo.events import vocabulary
+    return tuple(vocabulary.names(vocabulary.OUT))
+
+
 def current(catalog: list[ToolSpec]) -> str:
-    """The prefix in the operator's language as it stands (`i18n.langs`)."""
+    """The prefix in the operator's language as it stands (`i18n.langs`), with the names as the engine knows them."""
     from i18n import langs
+    from memory import api as memory
+    from nucleo.self import snapshot
     spec = langs.current_language()
-    return build(catalog, native=spec.native, name=spec.name)
+    person = str((memory.state() or {}).get("operator_name") or "").strip()
+    return build(catalog, native=spec.native, name=spec.name, agent=snapshot.name(), person=person, held=held_acts())

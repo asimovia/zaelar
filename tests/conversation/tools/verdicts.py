@@ -28,7 +28,9 @@ import re
 from dataclasses import dataclass, field
 
 PASS, FAIL, INFRA = "PASS", "FAIL", "INFRA"
-ACT_LABELS = ("sealed", "claimed", "submitted", "receipt", "unknown", "reconciled")
+#: the gateway's labels for something that left or was reserved to leave; `sealed` is not one — it is the seal of his
+#: interventions when a reply is published, which every answered batch carries
+ACT_LABELS = ("claimed", "submitted", "receipt", "unknown", "reconciled")
 ALLOWED_INBOX = ("user.utterance", "user.text", "user.control")
 
 

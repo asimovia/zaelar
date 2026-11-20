@@ -47,8 +47,13 @@ owes the language's own «I lost that» line through the same ledger.
 
 The model is the voice's model from the routing table, called through the engine's fast client (`model.py`); its
 two orders, `reply(text, claims, complete)` and `no_reply(reason, complete)`, are tools of its own beside the
-catalogue. Its prefix (`prefix.py`) only declares: the language it writes in, what it may read, that it may not act,
-and the fields of its orders — one line each, byte-identical between turns, under 600 tokens. Its `model_done` says
+catalogue. Its prefix (`prefix.py`) only declares: who is who (the assistant by its name, never the person's; the person by his,
+if known), the language of each reply (that of the person's entries it answers), what each read is for, the acts that
+exist and are held in this phase (the event vocabulary's names, refused if called), and the fields of its orders —
+one line each, byte-identical between turns, under 600 tokens. Every answer is an order: the provider is told a tool
+call is required, and text with no order is never said. An entry reaches the model with its id, channel and time; a
+figure that still matches nothing after the one repair gets the language's own line, never silence. Each close says
+where its time went (queue, model, tools, grace, publish), and each port is slow by its own budget. Its `model_done` says
 which model and provider answered, after a relay too.
 
 A figure of data in a reply is published only against its evidence (D9). Against STRUCTURED evidence the whole

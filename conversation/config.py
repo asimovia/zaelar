@@ -63,8 +63,14 @@ class Config:
     #: every accepted request ends (answered, handed off, silent, recovered) within this budget, or is closed
     #: `stalled` by the sweep (I9).
     liveness_ms: int = 30_000
-    #: a port call slower than this is an event (the loop-stall lesson of G1).
+    #: a port call slower than its budget is an event (`conv_run/port_slow`; the loop-stall lesson of G1): each port its
+    #: own — a store transaction is slow at 50 ms, a model's first event at 2 s — and `port_budget_ms` for any other.
     port_budget_ms: int = 500
+    model_budget_ms: int = 2000
+    tools_budget_ms: int = 3000
+    memory_budget_ms: int = 300
+    store_budget_ms: int = 50
+    mouth_budget_ms: int = 500
     #: deadlines of the ports (wall clock): the model's first event and each next one, a tool, the mouth's order,
     #: a memory read. Past them the call is abandoned and the run recovers visibly (I9).
     model_first_ms: int = 20_000

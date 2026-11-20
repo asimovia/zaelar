@@ -4,20 +4,24 @@
 
 Boots an isolated engine (`tests/platform/sandbox_engine.py`: its own port, database, workspace and logs; never the
 operator's) with the manager's switch on, EVERY outside write held and the language chosen — the three conditions the
-switch fails closed on — and seeds what the suites assume: the contacts Rowan and Inworld and three appointments
+switch fails closed on — plus the sandbox's own marks (its events keep their text; a reset between two isolated
+conversations is allowed) — and seeds what the suites assume: the contacts Rowan and Inworld and three appointments
 (`corpus_drive.Engine.seed`). Prints the port and waits; Ctrl-C stops it and removes the workspace. The suites then
 run against it: `tests.conversation.e2e.text_suite`, `tests.conversation.tools.corpus_drive`, `…tools.user_sim`.
 """
 from __future__ import annotations
 
 import argparse
+import json
 import signal
 import tempfile
 import threading
 from pathlib import Path
 
 #: the switch on, every outside write held — without the hold the switch refuses the session (it fails closed)
-ENV = {"ZAELAR_CONVERSATION": "1", "ZAELAR_HOLD_OUTBOUND": "all"}
+ENV = {"ZAELAR_CONVERSATION": "1", "ZAELAR_HOLD_OUTBOUND": "all", "ZAELAR_CONVERSATION_SANDBOX": "1"}
+#: the sandbox's own config: its events keep their text (obfuscation is for a real account's stored events)
+V2 = {"privacy": {"obfuscate": False}}
 
 
 def env_for(lang: str) -> dict:
@@ -30,6 +34,9 @@ def boot(lang: str, *, workspace: Path, port: int | None = None, spawn=None, cli
     from tests.conversation.tools.corpus_drive import Engine
     from tests.platform import sandbox_engine as sb
     spawn = spawn or sb.spawn_engine
+    cfg = Path(workspace) / "config" / "v2.json"
+    cfg.parent.mkdir(parents=True, exist_ok=True)
+    cfg.write_text(json.dumps(V2))
     eng = spawn(workspace=workspace, port=port or sb.free_port(), extra_env=env_for(lang), boot_timeout=120.0)
     seeded = (client or Engine)(port_of(eng)).seed(lang)
     return eng, seeded

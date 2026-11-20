@@ -84,7 +84,7 @@ def test_through_the_manager_a_write_is_refused_by_the_gateway(store):
 
 
 class _Relayed:
-    async def stream(self, msgs, *, spec, tools, on_tool_call, metrics, role):
+    async def stream(self, msgs, *, spec, tools, on_tool_call, metrics, role, **kw):
         metrics.update(model="m_standin", provider="p2", relayed_from="m_main", relayed_to="m_standin")
         on_tool_call("reply", {"text": "w6"})
         if False:

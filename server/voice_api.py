@@ -151,6 +151,29 @@ async def debug_conversation(session: str):
     return JSONResponse(proof.report(session))
 
 
+@router.post("/api/debug/conversation/reset")
+async def debug_conversation_reset():
+    """A disposable engine's reset between two isolated test conversations: the conversation stopped, its rows and
+    proof gone, so the next one starts with nothing behind it. Refused unless this engine is a sandbox
+    (`ZAELAR_CONVERSATION_SANDBOX=1`, set by `tests/conversation/e2e/sandbox.py`): on a real account the conversation
+    goes on across sessions, as it should."""
+    import asyncio
+    import os
+    if (os.getenv("ZAELAR_CONVERSATION_SANDBOX") or "").strip() != "1":
+        return JSONResponse({"ok": False, "reason": "not a sandbox"}, status_code=403)
+
+    def _reset() -> int:
+        from memory.api import conv
+        from nucleo.conversation_host import boot, entry, proof, sessions
+        sessions.close_all()
+        entry.reset()
+        acct = boot.account()
+        proof.forget(acct)
+        return conv.wipe(acct)
+
+    return JSONResponse({"ok": True, "rows": await asyncio.to_thread(_reset)})
+
+
 @router.get("/api/status")
 async def status():
     """SYSTEM STATUS for the ⓘ panel: is Hermes up, is voice live, are the external APIs (LLM/STT/TTS) healthy or

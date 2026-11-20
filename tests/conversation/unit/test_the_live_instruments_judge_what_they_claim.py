@@ -130,7 +130,7 @@ def test_the_bench_reads_the_orders_field_and_a_missing_one_counts_against():
     assert asyncio.run(cb.read(_Reads(lambda i: False), "w", "es")) is False
     assert asyncio.run(cb.read(_Reads(lambda i: True, first_read=True), "w", "es")) is True
     assert asyncio.run(cb.read(_Reads(lambda i: None), "w", "es")) is None
-    assert "LANGUAGE: every reply" in cb.prompt("w", "es").prefix and "«w»" in cb.prompt("w", "es").input
+    assert "LANGUAGE: each reply" in cb.prompt("w", "es").prefix and "«w»" in cb.prompt("w", "es").input
 
 
 def _results(complete_for_incomplete, complete_for_complete) -> list[dict]:
@@ -174,5 +174,7 @@ def test_the_sandbox_boots_with_the_switch_on_every_write_held_the_language_and_
             return ["Rowan"]
 
     eng, seeded = sandbox.boot("es", workspace=Path(tmp_path), port=43999, spawn=spawn, client=_Client)
-    assert seen["env"] == {"ZAELAR_CONVERSATION": "1", "ZAELAR_HOLD_OUTBOUND": "all", "ZAELAR_LANGUAGE": "es"}
+    assert seen["env"] == {"ZAELAR_CONVERSATION": "1", "ZAELAR_HOLD_OUTBOUND": "all", "ZAELAR_LANGUAGE": "es",
+                           "ZAELAR_CONVERSATION_SANDBOX": "1"}
+    assert json.loads((Path(tmp_path) / "config" / "v2.json").read_text()) == {"privacy": {"obfuscate": False}}
     assert seen["port"] == 43999 and seen["lang"] == "es" and seeded == ["Rowan"]

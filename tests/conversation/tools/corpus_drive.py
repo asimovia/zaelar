@@ -111,6 +111,14 @@ class Engine:
         return self._req("POST", "/api/flash/say", {"text": text, "session": session, "execute": True,
                                                     "ingest": False})
 
+    def reset(self) -> None:
+        """A fresh conversation for the next isolated case (a sandbox of the manager; refused elsewhere, and harmless:
+        on the old path each conversation already has its own session)."""
+        try:
+            self._req("POST", "/api/debug/conversation/reset", {}, timeout=30)
+        except Exception:  # noqa: BLE001 — not a sandbox of the manager: nothing to reset
+            pass
+
     def tasks(self) -> list[dict]:
         return self._req("GET", "/api/tasks?scope=all", timeout=30).get("tasks") or []
 
@@ -144,6 +152,8 @@ class Engine:
 
 async def drive_conversation(eng: Engine, conv: dict) -> dict:
     session = f"corpus-{conv['id']}-{int(time.time())}"
+    if hasattr(eng, "reset"):
+        eng.reset()                                   # each conversation is a case of its own: nothing behind it
     before = {t.get("id") for t in eng.tasks()}
     loop = asyncio.get_running_loop()
     rows = []

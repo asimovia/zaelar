@@ -120,6 +120,7 @@ async def run_batch(conv: "Conversation", batch: Batch) -> None:
                 batch_seq=batch.run_seq, entries=tuple((e.sealed_ms, e.endpoint) for e in content),
                 publish_at=_grace(conv, batch))
     r.trace = root({"req": reqs[0]} if reqs else {}) or run_id
+    r.stages["queue_ms"] = max(0, conv.clock.now_ms() - max((e.accepted_ms for e in batch.envelopes), default=0))
     conv.em.bind(run_id, r.trace)
     conv.current, conv.state = r, MgrState.RUNNING
     _emit(conv, "started", r, batch_envs=list(r.batch_ids), reason=batch.reason)
@@ -212,8 +213,9 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
     repaired = False
     t0 = conv.clock.mono_ms()
     refs = {"run": r.run_id}
-    for _ in range(conv.cfg.max_steps):
+    for n_step in range(conv.cfg.max_steps):
         called, first, text = False, True, ""
+        t_step = conv.clock.mono_ms()
         events = conv.model.stream(PromptParts(prompt.prefix, prompt.state, prompt.conversation, prompt.input,
                                                tuple(steps)), tools, run_id=r.run_id, model_id=conv.cfg.model_id)
         stream = guard.stream(conv.em, conv.cfg, events, refs)
@@ -223,6 +225,8 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
                 if first:
                     first = False
                     _emit(conv, "model_first_token", r, ttft_ms=conv.clock.mono_ms() - t0)
+                    stage = "model_first_ms" if n_step == 0 else "model_after_tool_ms"
+                    r.stages[stage] = r.stages.get(stage, 0) + conv.clock.mono_ms() - t_step
                 if isinstance(ev, TextDelta):
                     text += ev.text
                 elif isinstance(ev, ToolCall):
@@ -250,8 +254,14 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
             await stream.aclose()                   # never left to the garbage collector
         _checkpoint(conv, r)
         if not called:
-            await _command(conv, r, batch, commands.Reply(text) if text else commands.NoReply("empty"), steps,
-                           last_try=True)
+            if text:                                # text with no order is never said: the answer is an ORDER
+                _emit(conv, "command", r, command="text_without_order", chars=len(text))
+                if not repaired:
+                    steps.append((ToolCall("orders", "orders_check", {}),
+                                  ToolResult("refused", data={"reason": "the answer is an order: reply or no_reply"})))
+                    repaired = True
+                    continue
+            await _command(conv, r, batch, commands.NoReply("no_order" if text else "empty"), steps, last_try=True)
             return
     await _fail(conv, r, "max_steps")
 
@@ -272,8 +282,10 @@ async def _tool(conv: "Conversation", r: "Running", call: ToolCall) -> ToolResul
     decision = conv.gw.request(r.ctx, call, held=r.actions_held)
     deadline = conv.clock.mono_ms() + conv.cfg.tool_ms
     if isinstance(decision, Read):
+        t_tool = conv.clock.mono_ms()
         with guard.measured(conv.em, conv.cfg, "tools", {"run": r.run_id}):
             result = await dispatch.read(conv.gw, conv.tools, call, deadline)
+        r.stages["tools_ms"] = r.stages.get("tools_ms", 0) + conv.clock.mono_ms() - t_tool
         with conv.store.tx(conv.lease) as tx:
             CL.remember(tx, result.evidence, conv.clock.now_ms(), conv.cfg.evidence_ttl_ms)
         return result
@@ -298,6 +310,12 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
                 steps.append((ToolCall("claims", "claims_check", {}),
                               ToolResult("refused", data={"mismatch": [why for _c, why in bad]})))
                 return False
+            line = conv.words.line("unverified_fact") if conv.words is not None else ""
+            if line:                                # never silence: the language's honest line, with no figure
+                _emit(conv, "command", r, command="figures_withheld", claims=[why for _c, why in bad])
+                if not _park(conv, r, batch, cmd, line, len(steps), now):
+                    await _publish(conv, r, batch, line, len(steps))
+                return True
             conv.inbox.account(list(r.batch_ids), "silent", now)
             for req in r.requests:
                 close(conv, req, "silent", "silent", r, reason="claims_unverified")
@@ -321,6 +339,7 @@ def _park(conv: "Conversation", r: "Running", batch: Batch, cmd, text: str | Non
     if r.publish_at is None or now >= r.publish_at:
         return False
     r.parked = (text, steps, batch, getattr(cmd, "reason", ""))
+    r.stages["parked_at"] = now
     _emit(conv, "held", r, waits_for="grace", until_ms=r.publish_at, complete=getattr(cmd, "complete", None))
     return True
 
@@ -342,11 +361,15 @@ async def _publish(conv: "Conversation", r: "Running", batch: Batch, text: str, 
     if reply.voice_unavailable:
         conv.speaker.voice_unavailable(r.run_id, r.ctx.endpoint, r.trace)
     conv.state = MgrState.SPEAKING
+    t_say = conv.clock.mono_ms()
+    if "parked_at" in r.stages:
+        r.stages["grace_wait_ms"] = max(0, conv.clock.now_ms() - r.stages.pop("parked_at"))
     await conv.speaker.say(run_id=r.run_id, request_id=r.ctx.request_id, text=text, channels=reply.channels,
                            endpoint=r.ctx.endpoint, trace=r.trace,
                            iv=next(iter(r.ctx.batch.values())).refs.intervention_id if r.ctx.batch else None)
     for req in r.requests:
-        close(conv, req, "answered", "answered", r, steps=steps)
+        close(conv, req, "answered", "answered", r, steps=steps,
+              stages={**r.stages, "publish_ms": conv.clock.mono_ms() - t_say})
     conv.inbox.account(list(r.batch_ids), "told", conv.clock.now_ms())
     _emit(conv, "ended", r, outcome="answered")
     records.owe(conv, r.run_id, batch.envelopes, text)

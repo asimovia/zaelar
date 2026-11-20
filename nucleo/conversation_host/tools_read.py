@@ -38,19 +38,21 @@ def _obj(**props) -> dict:
     return {"type": "object", "required": list(props), "properties": {k: {"type": "string"} for k in props}}
 
 
-#: name → (schema, core, reads only)
-SPECS: dict[str, tuple[dict, bool, bool]] = {
-    "web_search": (_obj(query=1), True, True),
-    "read_widget": (_obj(widget=1, question=1), False, True),
-    "recall": (_obj(query=1), False, True),
-    "about_self": (_obj(topic=1), False, True),
-    "find_tool": (_obj(query=1), True, True),
+#: name → (schema, core, reads only, what it is for). The purpose is data the model reads (the prefix's READS line and
+#: the tool's own description): what each read reaches, never how to behave.
+SPECS: dict[str, tuple[dict, bool, bool, str]] = {
+    "web_search": (_obj(query=1), True, True, "the world now: news, prices, weather, sports, places, facts"),
+    "read_widget": (_obj(widget=1, question=1), False, True,
+                    "one of his widgets (agenda, contacts, notes…): what it holds now"),
+    "recall": (_obj(query=1), False, True, "his memory: what he told you before"),
+    "about_self": (_obj(topic=1), False, True, "yourself: what you are, what you can do, how something of yours works"),
+    "find_tool": (_obj(query=1), True, True, "this list of reads"),
 }
 
 
 def catalog() -> list[ToolSpec]:
-    return [ToolSpec(name, schema, act="", effect_class=derive("", reads), core=core)
-            for name, (schema, core, reads) in SPECS.items()]
+    return [ToolSpec(name, schema, act="", effect_class=derive("", reads), core=core, about=about)
+            for name, (schema, core, reads, about) in SPECS.items()]
 
 
 def _text_evidence(source: str, data) -> tuple[Evidence, ...]:

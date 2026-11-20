@@ -162,6 +162,17 @@ def tx(account: str, owner: str, epoch: int, now_ms: int, db=None) -> Iterator[T
         yield Tx(conn, account, now_ms)
 
 
+def wipe(account: str, db=None) -> int:
+    """Every row and the lease of ONE account — a disposable engine's reset between two isolated test conversations
+    (`/api/debug/conversation/reset`, refused outside a sandbox). Returns how many rows went."""
+    d = db or _db.get_db()
+    with d.cursor() as cur:
+        cur.execute("DELETE FROM conv_rows WHERE account=?", (account,))
+        n = cur.rowcount
+        cur.execute("DELETE FROM conv_meta WHERE account=?", (account,))
+    return n
+
+
 def read_all(account: str, db=None) -> dict[str, dict[str, dict]]:
     """Every row of the account, by table — one coherent read for a snapshot (the prune bounds it)."""
     out: dict[str, dict[str, dict]] = {}

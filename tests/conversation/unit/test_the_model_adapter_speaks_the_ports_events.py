@@ -19,7 +19,7 @@ class _Client:
     def __init__(self, chunks=(), calls=(), raise_=None) -> None:
         self.chunks, self.calls, self.raise_, self.seen = list(chunks), list(calls), raise_, {}
 
-    async def stream(self, msgs, *, spec, tools, on_tool_call, metrics, role):
+    async def stream(self, msgs, *, spec, tools, on_tool_call, metrics, role, **kw):
         self.seen = {"messages": msgs, "tools": tools, "role": role, "spec": spec}
         metrics.update(model="m0", finish_reason="stop")
         if self.raise_:

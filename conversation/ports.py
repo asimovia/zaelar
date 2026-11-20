@@ -60,6 +60,7 @@ class ToolSpec:
     act: str = ""
     effect_class: EffectClass | None = None
     core: bool = False              # never filtered out (I7)
+    about: str = ""                 # what it is FOR, in the host's words: the model reads it, the package never does
 
 
 @dataclass(frozen=True)
@@ -132,6 +133,12 @@ class Prefs(Protocol):
     """The operator's standing preferences, read when a decision needs one — so a change applies to the next one, with
     no restart. The host reads its rules; without this port every preference is its default."""
     def __call__(self, key: str, default: Any) -> Any: ...
+
+
+class Words(Protocol):
+    """The host's fixed lines in the person's language, for the few facts the manager says itself, as they are (a
+    figure it could not confirm). An empty line means the host has none: the manager then says nothing."""
+    def line(self, key: str) -> str: ...
 
 
 class Record(Protocol):

@@ -130,7 +130,7 @@ def test_a_voice_cut_by_a_restart_is_ended_incomplete_with_its_event_and_asked_a
     said = second.mouth.orders
     assert [o.text for o in said] == ["w-told iv_000001+iv_000002"]        # the cut voice and the text, in one run
     prompt = second.model.calls[0].prompt.input
-    assert "iv_000001 · voice · incomplete" in prompt and "w9" in prompt
+    assert "iv_000001 · voice · " in prompt and " · cut off" in prompt and "w9" in prompt
     second.store.close()
 
 

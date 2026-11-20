@@ -79,14 +79,18 @@ def cut_to_heard(turns: list[dict], keep: int) -> tuple[Turn, ...]:
     return tuple(out)
 
 
-def input_block(batch: tuple[E.Envelope, ...]) -> str:
+def input_block(batch: tuple[E.Envelope, ...], tz_offset_min: int = 0) -> str:
+    """Each entry with its id, channel and time — facts, never our protocol's words: an entry «closed» read to the
+    model as «already answered». Only an entry the ear could not hear whole says so («cut off»)."""
     lines = [Title.INPUT.value]
+    tz = timezone(timedelta(minutes=tz_offset_min))
     for env in batch:
         b = env.body
         if env.kind in (EnvelopeKind.USER_UTTERANCE, EnvelopeKind.USER_TEXT):
-            ended = "closed" if env.kind is EnvelopeKind.USER_TEXT else ("closed" if b.coverage is Coverage.FULL
-                                                                         else "incomplete")
-            tag = f"{b.intervention_id} · {env.channel} · {ended}"
+            at = datetime.fromtimestamp(env.sealed_ms / 1000, tz=tz).strftime("%H:%M:%S")
+            tag = f"{b.intervention_id} · {env.channel} · {at}"
+            if env.kind is EnvelopeKind.USER_UTTERANCE and b.coverage is not Coverage.FULL:
+                tag += " · cut off"
             if b.amends:
                 tag += f" · amends {b.amends}"
             lines.append(f"[{tag}] «{b.text}»")

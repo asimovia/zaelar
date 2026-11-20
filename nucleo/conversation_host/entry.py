@@ -63,6 +63,14 @@ def runtime():
     return sessions.get(acct) or sessions.open_(acct, "body", boot.make((_listen,), _said))
 
 
+def reset() -> None:
+    """Forget the conversation this process opened (the sandbox's reset): the next line opens a new one."""
+    with _lock:
+        _opener["rt"] = None
+        _queue.clear()
+        _waits.clear()
+
+
 def _hand(fn) -> None:
     """Hand `fn(conversation)` over without waiting. The first time the conversation is opened by a thread of its own,
     and every line handed meanwhile waits in order behind the ones before it."""

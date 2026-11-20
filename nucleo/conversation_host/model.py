@@ -51,13 +51,15 @@ def _measured(args: dict) -> dict:
     return {**args, UNCLAIMED: len(loose)}
 
 
-def _fn(name: str, schema: dict) -> dict:
-    return {"type": "function", "function": {"name": name, "parameters": schema or {"type": "object",
-                                                                                     "properties": {}}}}
+def _fn(name: str, schema: dict, about: str = "") -> dict:
+    fn = {"name": name, "parameters": schema or {"type": "object", "properties": {}}}
+    if about:
+        fn["description"] = about
+    return {"type": "function", "function": fn}
 
 
 def tools_for(catalog: list[ToolSpec]) -> list[dict]:
-    return [_fn(t.name, t.schema) for t in catalog] + [_fn(n, s) for n, s in ORDERS.items()]
+    return [_fn(t.name, t.schema, t.about) for t in catalog] + [_fn(n, s) for n, s in ORDERS.items()]
 
 
 def _result(res: ToolResult) -> str:
@@ -104,9 +106,10 @@ class FastModel:
         metrics: dict = {}
         try:
             client, spec = self._parts()
+            # every answer is an ORDER (a read, `reply` or `no_reply`): the provider is told a tool call is required
             async for chunk in client.stream(messages(prompt), spec=spec, tools=tools_for(tools),
                                              on_tool_call=lambda name, args: calls.append((name, args)),
-                                             metrics=metrics, role="voice"):
+                                             metrics=metrics, role="voice", tool_choice="required"):
                 if chunk:
                     yield TextDelta(chunk)
         except Exception as e:  # noqa: BLE001 — every failure becomes an event the run handles, whose it is said

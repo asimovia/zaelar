@@ -58,6 +58,11 @@ class Counting:
         self._inner.emit(kind, label, body)
 
 
+def forget(session: str) -> None:
+    with _lock:
+        _by_session.pop(session, None)
+
+
 def _reset_for_tests() -> None:
     with _lock:
         _by_session.clear()

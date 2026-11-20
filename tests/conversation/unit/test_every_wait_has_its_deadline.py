@@ -82,6 +82,11 @@ ELSEWHERE = {
 #: thresholds of `Config` that bound no wait
 NOT_A_WAIT = {
     "port_budget_ms": "a port slower than this is an event; the call still runs to its own deadline",
+    "model_budget_ms": "the model's port: slower is an event, not a wait",
+    "tools_budget_ms": "the tools' port: slower is an event, not a wait",
+    "memory_budget_ms": "the memory's port: slower is an event, not a wait",
+    "store_budget_ms": "a store transaction: slower is an event, not a wait",
+    "mouth_budget_ms": "the mouth's port: slower is an event, not a wait",
     "evidence_ttl_ms": "how long evidence stays valid for a claim, not a wait",
     "voice_lost_window_ms": "how far back a lost voice is told with a text, not a wait",
 }

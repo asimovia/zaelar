@@ -592,6 +592,11 @@ _PACKAGE_CEILINGS["conversation"] += 1    # 2026-11-20 V2-941 v3.1 B7: a read's 
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 9    # same: the text channel's answer carries its reads, the refused ones and its trace
 _PACKAGE_CEILINGS["server"] += 4          # same: the proof endpoint reads `me`, this installation's account
 _TOTAL_MAX += 14     # same cause
+_PACKAGE_CEILINGS["conversation"] += 43    # 2026-11-20 V2-941 v3.1 B7b (the first live smoke): never silence on an unmatched figure (the `Words` port), never a text with no order, facts in the input labels, each close's stages, per-port budgets, a read's purpose
+_PACKAGE_CEILINGS["memory"] += 11          # same: a sandbox's reset of one account's conversation rows
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 52    # same: who is who, what each read is for and the acts held in the prefix; the pack's words; the reset
+_PACKAGE_CEILINGS["server"] += 23          # same: the sandbox's reset endpoint, refused on a real engine
+_TOTAL_MAX += 129    # same cause
 
 
 def test_the_total_only_shrinks():

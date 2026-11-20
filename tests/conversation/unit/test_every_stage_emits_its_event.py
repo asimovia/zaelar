@@ -72,7 +72,7 @@ def test_every_kind_and_label_written_in_the_package_is_in_the_contract_and_on_t
 def test_a_port_call_over_its_budget_is_an_event(store):
     from conversation.config import Config
     h = Harness(store, script={"iv_000001": [[ToolCall("c1", "search", {"q": "w1"}), Done()], [reply("w2"), Done()]]},
-                config=Config(port_budget_ms=5))
+                config=Config(tools_budget_ms=5))                      # each port has its own budget
     h.tools.delay_s = 0.02
     h.utter([(["w1"], 0)])
     slow = [p for k, lab, p in h.tel.events if lab == "port_slow"]
@@ -97,7 +97,8 @@ def test_m10_every_port_is_measured_the_store_and_the_memory_too(store):
         async def recall(self, account, query, *, k):
             return []
 
-    h = Harness(store, script={"iv_000001": [[reply("w2"), Done()]]}, config=Config(port_budget_ms=5))
+    h = Harness(store, script={"iv_000001": [[reply("w2"), Done()]]},
+                config=Config(memory_budget_ms=5, store_budget_ms=5))
     h.conv.memory = SlowMemory()
     real_tx = h.conv.store._s.tx
 

@@ -81,8 +81,8 @@ def test_the_spanish_snapshot(store):
     p = _compose(store, ES_TURNS, "es")
     assert p.state == EXPECTED_ES
     assert [t.text for t in p.conversation] == ["w0001 w0002", "Te lo miro ah", "Hecho. [heard: unknown]"]
-    assert p.input == ("INPUT\n[iv7 · voice · closed] «w0701 w0702»\n[iv8 · text · closed] «w0801»\n"
-                       "[iv9 · voice · incomplete · amends iv7] «w0601»")
+    assert p.input == ("INPUT\n[iv7 · voice · 08:00:00] «w0701 w0702»\n[iv8 · text · 08:00:00] «w0801»\n"
+                       "[iv9 · voice · 08:00:02 · cut off · amends iv7] «w0601»")      # facts, never «closed»
 
 
 def test_the_english_snapshot_has_the_same_shape(store):

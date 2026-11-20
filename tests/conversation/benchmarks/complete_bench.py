@@ -66,8 +66,9 @@ def prompt(text: str, lang: str):
                  producer_id="bench", account="bench", onset_ms=0, sealed_ms=0, channel=Channel.VOICE,
                  refs=E.Refs(intervention_id="iv_bench"))
     native, name = LANGS[lang]
-    return PromptParts(prefix.build(tools_read.catalog(), native=native, name=name), "", (),
-                       blocks.input_block((env,)))
+    from genome import persona
+    return PromptParts(prefix.build(tools_read.catalog(), native=native, name=name, agent=persona.default_name(lang),
+                                    held=prefix.held_acts()), "", (), blocks.input_block((env,)))
 
 
 async def read(model, text: str, lang: str):

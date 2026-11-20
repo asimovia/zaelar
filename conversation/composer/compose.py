@@ -71,4 +71,4 @@ def compose(view: View, batch: tuple[E.Envelope, ...], cfg: Config) -> PromptPar
             state.append(blocks.lost_block(view.now_ms, lost))
     return PromptParts(prefix=view.prefix, state="\n\n".join(state),
                        conversation=blocks.cut_to_heard(list(view.turns), cfg.conversation_turns),
-                       input=blocks.input_block(batch))
+                       input=blocks.input_block(batch, view.tz_offset_min))
