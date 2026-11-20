@@ -114,19 +114,31 @@ def _round_sig(f: float, k: int) -> float:
     return math.floor(abs(f) / q + 0.5) * q
 
 
-def _said_as(x: float, f: float) -> bool:
-    """`x` is figure `f` as a person says it, whatever its sign («down 4.98» stated as -4.98: which way is the
-    claim's `direction`): the figure itself, the figure rounded to fewer significant digits («18» for 18.3, «5
-    million» for 4,987,210), and a percent and its fraction as the same quantity («5 %» for 0.0498). Nothing else."""
+#: a figure said rounded is at most this far from the figure («18» for 18.3, never «1000» for 1499)
+ROUNDING = 0.05
+
+
+def _said_as(x: float, f: float, percent: bool = False) -> bool:
+    """`x` is figure `f` of a TEXT as a person says it, whatever its sign («down 4.98» stated as -4.98: which way is
+    the claim's `direction`): the figure itself, or the figure rounded half-up to fewer significant digits and at
+    most `ROUNDING` away from it («18» for 18.3, «5 million» for 4,987,210). A percent and its fraction are the same
+    quantity only when one side says it is a percent (`percent`). Nothing else."""
     x = abs(x)
-    for g in (abs(f), abs(f) * 100, abs(f) / 100):
-        if _near(x, g) or any(_exact(x, _round_sig(g, k)) for k in range(1, _sig(g))):
+    for g in ((abs(f), abs(f) * 100, abs(f) / 100) if percent else (abs(f),)):
+        if _near(x, g):
+            return True
+        if any(_exact(x, r) and abs(r - g) <= ROUNDING * g for r in (_round_sig(g, k) for k in range(1, _sig(g)))):
             return True
     return False
 
 
-def _value_in(x: float, figures: tuple) -> bool:
-    return math.isfinite(x) and any(_said_as(x, f) for f in figures)
+def _is_percent(claim: "Claim") -> bool:
+    """The claim says its figure is a percent (its metric names it)."""
+    return "%" in claim.metric or "percent" in claim.metric.casefold()
+
+
+def _value_in(x: float, figures: tuple, percents: tuple = (), percent: bool = False) -> bool:
+    return math.isfinite(x) and any(_said_as(x, f, percent or f in percents) for f in figures)
 
 
 def _distinct(operands: tuple, figures: tuple) -> bool:
@@ -167,12 +179,12 @@ def mismatch(claim: Claim, ev: Evidence | None, this_run: frozenset = frozenset(
     if ev is None:
         return "no_evidence"
     if ev.value is None and ev.numbers:                   # a text: the value is one of its figures
-        return None if _value_in(claim.value, ev.numbers) else "value"
+        return None if _value_in(claim.value, ev.numbers, ev.percents, _is_percent(claim)) else "value"
     for field_name in ("entity", "period", "metric", "direction"):
         if not _same(getattr(claim, field_name), getattr(ev, field_name)):
             return field_name
-    if ev.value is None or not _value_in(claim.value, (ev.value,)):
-        return "value"
+    if ev.value is None or not math.isfinite(claim.value) or not _near(claim.value, ev.value):
+        return "value"                                    # a structured value: the value itself, never a rounding
     return None
 
 

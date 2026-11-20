@@ -175,7 +175,7 @@ async def notify(title: str, text: str, *, key: str = "", task_id: str = "", kin
         _observe(row, "covered", covered_by)
         return {"id": row["id"], "state": "covered", "channel": covered_by, "duplicate": False}
 
-    if speak and not ephemeral and notice_claim.held_for_the_manager():
+    if speak and notice_claim.held_for_the_manager():     # the manager's voice is the one mouth, ephemeral too
         return await notice_claim.claim_for_voice(row, title, text, key, voice_kw)
 
     from nucleo import runstate

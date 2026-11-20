@@ -180,6 +180,9 @@ async def _conv(link, room, flux: bool) -> dict:
                           {"room": room.name, "flag": ear_tap.flag_of(getattr(room, "metadata", "") or "")},
                           timeout_s=5.0) or {}
     by = str(got.get("by") or "")
+    if not got:                                # the body did not answer in time: the old path, and said
+        logger.warning("the body did not answer whether this session is the manager's: it takes the old path")
+        return {"conv": False, "conv_by": "", "conv_why": "the body did not answer in time"}
     if not got.get("on"):
         return {"conv": False, "conv_by": by, "conv_why": str(got.get("why") or "")}
     if not flux:
@@ -193,6 +196,13 @@ def _wire_ear(session, tap, interruption: dict) -> None:
     from . import agent_events as _ae
     tap.on_end = session.clear_user_turn     # never committed: his words went to the manager's ear
     LIVE["tap"] = tap
+    session._zaelar_manager_ear = True       # closing the mic clears, never commits (`agent_events.set_ear`)
+    commit = session.commit_user_turn
+
+    def counted(*a, **kw):                   # a commit that still happens anywhere is counted where it happens
+        body_link.get().send({"k": "proof", "counter": "commit_user_turn"})
+        return commit(*a, **kw)
+    session.commit_user_turn = counted
     tap.min_barge_ms = int(1000 * float(interruption.get("min_duration", 0.5) or 0.5))
     tap.on_barge = lambda: _ae.cut_current_speech(session)   # the local rule: his voice cuts ours
     session.on("agent_state_changed", lambda ev: tap.playback(getattr(ev.new_state, "value", ev.new_state)

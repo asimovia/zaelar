@@ -1,0 +1,686 @@
+{
+ "id": "st-en-interruption-00-g9",
+ "lang": "en",
+ "rate": 16000,
+ "duration_ms": 57689,
+ "description": "cell en×interruption, flow 0, stranger narration",
+ "segments": [
+  {
+   "role": "user",
+   "speaker": "en_1",
+   "voice": "inworld:Reed",
+   "text": "What's the exchange rate",
+   "turn": 1,
+   "cut": false,
+   "lang": "en",
+   "continues": false,
+   "stranger": null,
+   "start_ms": 700,
+   "end_ms": 1915,
+   "words": [
+    [
+     "What's",
+     700,
+     908
+    ],
+    [
+     "the",
+     908,
+     1018
+    ],
+    [
+     "exchange",
+     1018,
+     1558
+    ],
+    [
+     "rate",
+     1558,
+     1948
+    ]
+   ],
+   "i": 0
+  },
+  {
+   "role": "other",
+   "speaker": "en_other",
+   "voice": "inworld:Freddie",
+   "text": "The power went out in the hallway again.",
+   "turn": null,
+   "cut": false,
+   "lang": "en",
+   "continues": false,
+   "stranger": "narration",
+   "start_ms": 1765,
+   "end_ms": 3650,
+   "words": [
+    [
+     "The",
+     1803,
+     1863
+    ],
+    [
+     "power",
+     1863,
+     2173
+    ],
+    [
+     "went",
+     2173,
+     2503
+    ],
+    [
+     "out",
+     2503,
+     2733
+    ],
+    [
+     "in",
+     2733,
+     2813
+    ],
+    [
+     "the",
+     2813,
+     2893
+    ],
+    [
+     "hallway",
+     2893,
+     3313
+    ],
+    [
+     "again",
+     3313,
+     3663
+    ]
+   ],
+   "i": 1
+  },
+  {
+   "role": "user",
+   "speaker": "en_1",
+   "voice": "inworld:Reed",
+   "text": "between the euro and the dollar today?",
+   "turn": 1,
+   "cut": false,
+   "lang": "en",
+   "continues": true,
+   "stranger": null,
+   "start_ms": 4051,
+   "end_ms": 5753,
+   "words": [
+    [
+     "between",
+     4051,
+     4334
+    ],
+    [
+     "the",
+     4334,
+     4414
+    ],
+    [
+     "euro",
+     4414,
+     4834
+    ],
+    [
+     "and",
+     4834,
+     4934
+    ],
+    [
+     "the",
+     4934,
+     4994
+    ],
+    [
+     "dollar",
+     4994,
+     5384
+    ],
+    [
+     "today",
+     5384,
+     5784
+    ]
+   ],
+   "i": 2
+  },
+  {
+   "role": "user",
+   "speaker": "en_1",
+   "voice": "inworld:Reed",
+   "text": "Set an alarm for tomorrow",
+   "turn": 2,
+   "cut": false,
+   "lang": "en",
+   "continues": false,
+   "stranger": null,
+   "start_ms": 14753,
+   "end_ms": 16172,
+   "words": [
+    [
+     "Set",
+     14753,
+     14977
+    ],
+    [
+     "an",
+     14977,
+     15077
+    ],
+    [
+     "alarm",
+     15077,
+     15527
+    ],
+    [
+     "for",
+     15527,
+     15677
+    ],
+    [
+     "tomorrow",
+     15677,
+     16207
+    ]
+   ],
+   "i": 3
+  },
+  {
+   "role": "other",
+   "speaker": "en_other",
+   "voice": "inworld:Freddie",
+   "text": "I'm taking the dog out for a minute.",
+   "turn": null,
+   "cut": false,
+   "lang": "en",
+   "continues": false,
+   "stranger": "narration",
+   "start_ms": 16023,
+   "end_ms": 17498,
+   "words": [
+    [
+     "I'm",
+     16023,
+     16128
+    ],
+    [
+     "taking",
+     16128,
+     16468
+    ],
+    [
+     "the",
+     16468,
+     16548
+    ],
+    [
+     "dog",
+     16548,
+     16818
+    ],
+    [
+     "out",
+     16818,
+     16998
+    ],
+    [
+     "for",
+     16998,
+     17158
+    ],
+    [
+     "a",
+     17158,
+     17188
+    ],
+    [
+     "minute",
+     17188,
+     17518
+    ]
+   ],
+   "i": 4
+  },
+  {
+   "role": "user",
+   "speaker": "en_1",
+   "voice": "inworld:Reed",
+   "text": "at a quarter past seven,",
+   "turn": 2,
+   "cut": false,
+   "lang": "en",
+   "continues": true,
+   "stranger": null,
+   "start_ms": 17899,
+   "end_ms": 19119,
+   "words": [
+    [
+     "at",
+     17899,
+     17979
+    ],
+    [
+     "a",
+     17979,
+     18029
+    ],
+    [
+     "quarter",
+     18029,
+     18369
+    ],
+    [
+     "past",
+     18369,
+     18719
+    ],
+    [
+     "seven",
+     18719,
+     19159
+    ]
+   ],
+   "i": 5
+  },
+  {
+   "role": "user",
+   "speaker": "en_1",
+   "voice": "inworld:Reed",
+   "text": "I have a doctor's appointment.",
+   "turn": 2,
+   "cut": false,
+   "lang": "en",
+   "continues": true,
+   "stranger": null,
+   "start_ms": 20619,
+   "end_ms": 21961,
+   "words": [
+    [
+     "I",
+     20619,
+     20700
+    ],
+    [
+     "have",
+     20700,
+     20830
+    ],
+    [
+     "a",
+     20830,
+     20870
+    ],
+    [
+     "doctor's",
+     20870,
+     21370
+    ],
+    [
+     "appointment",
+     21370,
+     22000
+    ]
+   ],
+   "i": 6
+  },
+  {
+   "role": "user",
+   "speaker": "en_1",
+   "voice": "inworld:Reed",
+   "text": "Translate into Spanish",
+   "turn": 3,
+   "cut": false,
+   "lang": "en",
+   "continues": false,
+   "stranger": null,
+   "start_ms": 30962,
+   "end_ms": 32200,
+   "words": [
+    [
+     "Translate",
+     30962,
+     31442
+    ],
+    [
+     "into",
+     31442,
+     31622
+    ],
+    [
+     "Spanish",
+     31622,
+     32232
+    ]
+   ],
+   "i": 7
+  },
+  {
+   "role": "other",
+   "speaker": "en_other",
+   "voice": "inworld:Freddie",
+   "text": "The power went out in the hallway again.",
+   "turn": null,
+   "cut": false,
+   "lang": "en",
+   "continues": false,
+   "stranger": "narration",
+   "start_ms": 32051,
+   "end_ms": 33936,
+   "words": [
+    [
+     "The",
+     32089,
+     32149
+    ],
+    [
+     "power",
+     32149,
+     32459
+    ],
+    [
+     "went",
+     32459,
+     32789
+    ],
+    [
+     "out",
+     32789,
+     33019
+    ],
+    [
+     "in",
+     33019,
+     33099
+    ],
+    [
+     "the",
+     33099,
+     33179
+    ],
+    [
+     "hallway",
+     33179,
+     33599
+    ],
+    [
+     "again",
+     33599,
+     33949
+    ]
+   ],
+   "i": 8
+  },
+  {
+   "role": "user",
+   "speaker": "en_1",
+   "voice": "inworld:Reed",
+   "text": "I can't make it to dinner tomorrow.",
+   "turn": 3,
+   "cut": false,
+   "lang": "en",
+   "continues": true,
+   "stranger": null,
+   "start_ms": 34337,
+   "end_ms": 35812,
+   "words": [
+    [
+     "I",
+     34337,
+     34406
+    ],
+    [
+     "can't",
+     34406,
+     34636
+    ],
+    [
+     "make",
+     34636,
+     34846
+    ],
+    [
+     "it",
+     34846,
+     34906
+    ],
+    [
+     "to",
+     34906,
+     35016
+    ],
+    [
+     "dinner",
+     35016,
+     35336
+    ],
+    [
+     "tomorrow",
+     35336,
+     35896
+    ]
+   ],
+   "i": 9
+  },
+  {
+   "role": "user",
+   "speaker": "en_1",
+   "voice": "inworld:Reed",
+   "text": "Play some calm music",
+   "turn": 4,
+   "cut": false,
+   "lang": "en",
+   "continues": false,
+   "stranger": null,
+   "start_ms": 44812,
+   "end_ms": 46048,
+   "words": [
+    [
+     "Play",
+     44812,
+     44964
+    ],
+    [
+     "some",
+     44964,
+     45164
+    ],
+    [
+     "calm",
+     45164,
+     45534
+    ],
+    [
+     "music",
+     45534,
+     46094
+    ]
+   ],
+   "i": 10
+  },
+  {
+   "role": "other",
+   "speaker": "en_other",
+   "voice": "inworld:Freddie",
+   "text": "The technician came by work today to fix the printer.",
+   "turn": null,
+   "cut": false,
+   "lang": "en",
+   "continues": false,
+   "stranger": "narration",
+   "start_ms": 45748,
+   "end_ms": 48489,
+   "words": [
+    [
+     "The",
+     45748,
+     45810
+    ],
+    [
+     "technician",
+     45810,
+     46380
+    ],
+    [
+     "came",
+     46380,
+     46650
+    ],
+    [
+     "by",
+     46650,
+     46840
+    ],
+    [
+     "work",
+     46840,
+     47100
+    ],
+    [
+     "today",
+     47100,
+     47430
+    ],
+    [
+     "to",
+     47430,
+     47560
+    ],
+    [
+     "fix",
+     47560,
+     47870
+    ],
+    [
+     "the",
+     47870,
+     47940
+    ],
+    [
+     "printer",
+     47940,
+     48490
+    ]
+   ],
+   "i": 11
+  },
+  {
+   "role": "user",
+   "speaker": "en_1",
+   "voice": "inworld:Reed",
+   "text": "to work to,",
+   "turn": 4,
+   "cut": false,
+   "lang": "en",
+   "continues": true,
+   "stranger": null,
+   "start_ms": 49090,
+   "end_ms": 49799,
+   "words": [
+    [
+     "to",
+     49091,
+     49191
+    ],
+    [
+     "work",
+     49191,
+     49481
+    ],
+    [
+     "to",
+     49481,
+     49701
+    ]
+   ],
+   "i": 12
+  },
+  {
+   "role": "user",
+   "speaker": "en_1",
+   "voice": "inworld:Reed",
+   "text": "without lyrics if possible.",
+   "turn": 4,
+   "cut": false,
+   "lang": "en",
+   "continues": true,
+   "stranger": null,
+   "start_ms": 52300,
+   "end_ms": 53688,
+   "words": [
+    [
+     "without",
+     52300,
+     52634
+    ],
+    [
+     "lyrics",
+     52634,
+     53024
+    ],
+    [
+     "if",
+     53024,
+     53134
+    ],
+    [
+     "possible",
+     53134,
+     53744
+    ]
+   ],
+   "i": 13
+  }
+ ],
+ "turns": [
+  {
+   "turn": 1,
+   "start_ms": 700,
+   "end_ms": 5753,
+   "kind": "complete",
+   "segments": [
+    0,
+    2
+   ],
+   "text": "What's the exchange rate between the euro and the dollar today?"
+  },
+  {
+   "turn": 2,
+   "start_ms": 14753,
+   "end_ms": 21961,
+   "kind": "complete",
+   "segments": [
+    3,
+    5,
+    6
+   ],
+   "text": "Set an alarm for tomorrow at a quarter past seven, I have a doctor's appointment."
+  },
+  {
+   "turn": 3,
+   "start_ms": 30962,
+   "end_ms": 35812,
+   "kind": "complete",
+   "segments": [
+    7,
+    9
+   ],
+   "text": "Translate into Spanish I can't make it to dinner tomorrow."
+  },
+  {
+   "turn": 4,
+   "start_ms": 44812,
+   "end_ms": 53688,
+   "kind": "complete",
+   "segments": [
+    10,
+    12,
+    13
+   ],
+   "text": "Play some calm music to work to, without lyrics if possible."
+  }
+ ]
+}

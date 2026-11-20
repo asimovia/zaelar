@@ -635,6 +635,10 @@ _PACKAGE_CEILINGS["observability"] += 1    # same: a flow read from its start, o
 _TOTAL_MAX += 147    # same cause
 _PACKAGE_CEILINGS["voice"] += 75           # 2026-11-20 V2-941 v3.1 B8c (the 3b voice smoke): the ear taps the titular inside the fallback adapter, fails open, declares a gap when the titular falls and hears the stand-in's finals until it is back (`ear_tap.titular`, `Tap.titular_available`, `Tap.final_transcript`)
 _TOTAL_MAX += 75     # same cause
+_PACKAGE_CEILINGS["conversation"] += 25    # 2026-11-20 V2-941 v3.1 B8d (the audit of B7f–B9): a figure said rounded at most 5 % away, a percent only when said, a structured value exact (TH-4, `Evidence.percents`); an owed line whose mouth raises back to its ledger
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 94    # same: the ear's own turn number by boot and epoch, a new boot a gap (TH-1); the old way at every door when the conversation never opens, his voice told once (TH-2); a text's percents (`figures.percents`)
+_PACKAGE_CEILINGS["voice"] += 35           # same: a stream's epoch and the gap of the one before; the mic closed clears and never commits, a commit counted where it happens (TH-3); the slow body said
+_TOTAL_MAX += 154    # same cause
 
 
 def test_the_total_only_shrinks():

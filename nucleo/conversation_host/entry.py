@@ -67,6 +67,7 @@ def reset() -> None:
     """Forget the conversation this process opened (the sandbox's reset): the next line opens a new one."""
     with _lock:
         _opener["rt"] = None
+        _opener["lost_told"] = False
         _queue.clear()
         _waits.clear()
 
@@ -109,9 +110,11 @@ def _give_up() -> None:
     with _lock:
         queued, _queue[:] = list(_queue), []
         _opener["t"] = None
+    done: set = set()
     for fn in queued:
         back = getattr(fn, "fallback", None)
-        if back is not None:
+        if back is not None and back not in done:   # one fallback once, however many lines carried it
+            done.add(back)
             back()
 
 
@@ -122,6 +125,7 @@ def _open_and_drain() -> None:
         return
     with _lock:
         _opener["rt"] = rt
+        _opener["lost_told"] = False
     while True:
         with _lock:
             if not _queue:
@@ -143,9 +147,10 @@ def _guards(text: str, dev: str) -> dict | None:
     return None
 
 
-def typed(text: str, dev: str = "", *, wait: bool = False, checked: bool = False) -> dict:
+def typed(text: str, dev: str = "", *, wait: bool = False, checked: bool = False, old=None) -> dict:
     """Hand a typed line over and return at once. The guards read the engine's state, which can wait on the shared
-    database lock: unless the caller already `checked` them off its loop, they run on the conversation's side."""
+    database lock: unless the caller already `checked` them off its loop, they run on the conversation's side. `old`:
+    how its door answers it the old way if the conversation never opens (a waiting caller gets `NOT_OPENED`)."""
     if not str(text or "").strip():
         return {"ok": False, "reason": "empty"}
     cid = f"c_{uuid.uuid4().hex[:12]}"
@@ -170,7 +175,13 @@ def typed(text: str, dev: str = "", *, wait: bool = False, checked: bool = False
 
     def fallback() -> None:                      # the conversation never opened: his line goes back to its door
         from voice import observer
+        if old is None and not wait:             # nobody can take it the old way: said as it is, never «went»
+            observer.emit("alert", "a typed line was not answered: the conversation could not open",
+                          text=str(text)[:200])
+            return
         observer.emit("alert", "a typed line went the old way: the conversation could not open", text=str(text)[:200])
+        if old is not None:
+            old()
         _end(NOT_OPENED)
 
     deliver.fallback = fallback
@@ -196,7 +207,30 @@ def device(endpoint: str, **state) -> None:
 
 def voice(sig) -> None:
     """A fact of the ear (a word, an end of turn, the watermark, an edge of his voice): handed over in order."""
-    _hand(lambda c: c.hear(sig))
+    def deliver(c) -> None:
+        c.hear(sig)
+    deliver.fallback = voice_lost
+    _hand(deliver)
+
+
+def voice_lost() -> None:
+    """The conversation never opened while he spoke: he is told, once — the language's «I lost that» through the one
+    ledger of what is owed — the voice session goes the old way, and it is said as an alert."""
+    from nucleo.conversation_host import switch
+    from nucleo.conversation_host.words import PackWords
+    from voice import remote_session
+    with _lock:
+        if _opener.get("lost_told"):             # once until a conversation opens again, however often it failed
+            return
+        _opener["lost_told"] = True
+    switch.fall_back(remote_session._M.get("session"), "the conversation could not open while he spoke")
+    line = PackWords().line("mute_lines")
+    if line:
+        from nucleo.pulse import notices
+        try:
+            asyncio.get_running_loop().create_task(notices.notify("zaelar", line, key=f"conv:lost:{int(time.time())}"))
+        except RuntimeError:
+            asyncio.run(notices.notify("zaelar", line, key=f"conv:lost:{int(time.time())}"))
 
 
 async def typed_and_wait(text: str, dev: str = "", *, timeout_s: float = 90.0) -> dict:

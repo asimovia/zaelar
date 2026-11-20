@@ -12,6 +12,7 @@ its request in the SAME transaction that accepts it, so liveness counts from the
 """
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 
 from conversation import envelopes as E
@@ -29,8 +30,8 @@ from conversation import guard
 from conversation.manager import policy, run
 from conversation.manager import record as records
 from conversation.mouth import Device, SayEnded, SayStarted, Speaker
-from conversation.ports import (Clock, Memory, Model, Mouth, Owed, Prefs, Record, Store, Tasks, Telemetry, Tools,
-                                Words)
+from conversation.ports import (Clock, Memory, Model, Mouth, Owed, Prefs, Record, StaleEpoch, Store, Tasks,
+                                Telemetry, Tools, Words)
 from conversation.telemetry import Emitter
 from conversation.types import Channel, ControlOp, Coverage, EnvelopeKind, Ids, ItemKind, MgrState, Op
 
@@ -327,9 +328,18 @@ class Conversation:
             self.owed.release(line.key)
             return
         self.state = MgrState.SPEAKING
-        await self.speaker.say(run_id=f"owed:{line.key}", request_id=line.key, text=line.text,
-                               channels=frozenset({"voice"}), endpoint=device.endpoint, notice_key=line.key,
-                               trace=line.task_id or line.key)
+        try:
+            await self.speaker.say(run_id=f"owed:{line.key}", request_id=line.key, text=line.text,
+                                   channels=frozenset({"voice"}), endpoint=device.endpoint, notice_key=line.key,
+                                   trace=line.task_id or line.key)
+        except (StaleEpoch, asyncio.CancelledError):
+            raise
+        except Exception as e:  # noqa: BLE001 — a mouth that raises never keeps the line: back to its ledger
+            self.state = MgrState.IDLE
+            self.owed.release(line.key)
+            self.em.emit("conv_mouth", "ended", owner="mouth", cause={"kind": "error", "ref": type(e).__name__},
+                         refs={"say": "", "run": f"owed:{line.key}", "req": line.key}, trace=line.task_id or line.key,
+                         outcome="unknown", notice_key=line.key)
 
     def _owed_ended(self, key: str, sounded: bool) -> None:
         """The line owed ended: said, its ledger marks it spoken; it never sounded, it goes back for its other ways."""

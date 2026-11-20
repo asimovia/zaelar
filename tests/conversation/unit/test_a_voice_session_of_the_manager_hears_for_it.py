@@ -151,7 +151,7 @@ class _Link:
     ({"on": True, "by": "env"}, False, {"conv": False, "conv_by": "env",
                                         "conv_why": "the manager's ear needs the streaming provider's turns"}),
     ({"on": False, "by": "default", "why": ""}, True, {"conv": False, "conv_by": "default", "conv_why": ""}),
-    (None, True, {"conv": False, "conv_by": "", "conv_why": ""}),
+    (None, True, {"conv": False, "conv_by": "", "conv_why": "the body did not answer in time"}),   # said, then alerted
 ])
 def test_the_voice_builds_the_managers_session_only_on_the_bodys_yes_and_with_turns(answer, flux, want):
     from voice.engine.pipeline import child_session

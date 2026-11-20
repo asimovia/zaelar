@@ -70,6 +70,14 @@ def decide(session: str | bool | None = None) -> Decision:
     return Decision(not why, by, why)
 
 
+def fall_back(session, why: str) -> None:
+    """This session takes the old path from now on — said as an alert, never silently (the switch fails closed)."""
+    from voice import observer
+    if session is not None and hasattr(session, "__dict__"):
+        session._conversation_switch = Decision(False, "fallback", why)
+    observer.emit("alert", "conversation manager: this session goes the old way", text=why)
+
+
 def on(session=None) -> bool:
     """The door's question: does this line go by the manager? Decided ONCE per session (kept on the session object;
     the session's own `conv` flag, if it carries one, says first); with no session, the account's decision. A

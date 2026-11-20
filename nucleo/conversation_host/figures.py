@@ -68,3 +68,22 @@ def figures(text: str) -> tuple[float, ...]:
             if v not in out:
                 out.append(v)
     return tuple(out)
+
+
+def percents(text: str) -> tuple[float, ...]:
+    """The figures the text wrote as a percent: a `%` right after the figure (a space between them allowed)."""
+    text = str(text or "")
+    out: list[float] = []
+    i, n = 0, len(text)
+    for run, neg in _runs(text):
+        at = text.find(run, i)
+        j = at + len(run)
+        i = j
+        while j < n and text[j] in GROUP:
+            j += 1
+        if j < n and text[j] == "%":
+            for v in sorted(_readings(run)):
+                v = -v if neg else v
+                if v not in out:
+                    out.append(v)
+    return tuple(out)

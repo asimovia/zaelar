@@ -43,7 +43,8 @@ class Tap:
     """One stream of one device: its clock, its turns, and where the facts go."""
 
     def __init__(self, endpoint: str, send: Callable[[dict], None]) -> None:
-        self.endpoint, self.send = endpoint, send
+        self.endpoint, self._out = endpoint, send
+        self.epoch = 0                                 # one per stream: Flux numbers its turns from 0 in each one
         self.clock, self.turns = ear_feed.StreamClock(), ear_feed.Turns()
         self.speaking = False                          # our own voice sounds (playback)
         self.edges = VadEdges(self)
@@ -53,8 +54,16 @@ class Tap:
         self.min_barge_ms = 500
         self.playing_since: int | None = None
 
+    def send(self, fact: dict) -> None:
+        self._out({**fact, "epoch": self.epoch})
+
     def new_stream(self) -> None:
+        """A stream begins: its own clock, its own turns and its own epoch. The one before it ended: what the ear was
+        hearing there ends incomplete — a declared gap, never words lost under a turn number used again."""
         self.clock, self.turns = ear_feed.StreamClock(), ear_feed.Turns()
+        if self.epoch:
+            self.send({"t": "gap", "streams": [self.endpoint], "t_ms": _now_ms()})
+        self.epoch += 1
 
     def titular_available(self, available: bool) -> None:
         """The titular provider fell (or came back). Falling, what the ear was hearing ends incomplete — declared, never

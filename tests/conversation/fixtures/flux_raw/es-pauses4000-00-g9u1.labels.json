@@ -1,0 +1,494 @@
+{
+ "id": "st-es-pauses4000-00-g9u1",
+ "lang": "es",
+ "rate": 16000,
+ "duration_ms": 66710,
+ "description": "cell es×pauses-4000, flow 0",
+ "segments": [
+  {
+   "role": "user",
+   "speaker": "inworld:Alvaro",
+   "voice": "inworld:Alvaro",
+   "text": "Quiero reservar mesa para",
+   "turn": 1,
+   "cut": false,
+   "lang": "es",
+   "continues": false,
+   "stranger": null,
+   "one_utterance": true,
+   "cut_ok": true,
+   "cut_ratio": null,
+   "start_ms": 700,
+   "end_ms": 1914,
+   "words": [
+    [
+     "Quiero",
+     700,
+     919
+    ],
+    [
+     "reservar",
+     919,
+     1409
+    ],
+    [
+     "mesa",
+     1409,
+     1689
+    ],
+    [
+     "para",
+     1689,
+     1879
+    ]
+   ],
+   "i": 0
+  },
+  {
+   "role": "user",
+   "speaker": "inworld:Alvaro",
+   "voice": "inworld:Alvaro",
+   "text": "cuatro el viernes a las nueve",
+   "turn": 1,
+   "cut": false,
+   "lang": "es",
+   "continues": true,
+   "stranger": null,
+   "one_utterance": true,
+   "cut_ok": true,
+   "cut_ratio": 0.069,
+   "start_ms": 5914,
+   "end_ms": 7306,
+   "words": [
+    [
+     "cuatro",
+     5914,
+     6229
+    ],
+    [
+     "el",
+     6229,
+     6309
+    ],
+    [
+     "viernes",
+     6309,
+     6749
+    ],
+    [
+     "a",
+     6749,
+     6789
+    ],
+    [
+     "las",
+     6789,
+     6959
+    ],
+    [
+     "nueve",
+     6959,
+     7306
+    ]
+   ],
+   "i": 1
+  },
+  {
+   "role": "user",
+   "speaker": "inworld:Alvaro",
+   "voice": "inworld:Alvaro",
+   "text": "Busca un restaurante japonés",
+   "turn": 2,
+   "cut": false,
+   "lang": "es",
+   "continues": false,
+   "stranger": null,
+   "one_utterance": true,
+   "cut_ok": true,
+   "cut_ratio": null,
+   "start_ms": 16306,
+   "end_ms": 17774,
+   "words": [
+    [
+     "Busca",
+     16306,
+     16594
+    ],
+    [
+     "un",
+     16594,
+     16694
+    ],
+    [
+     "restaurante",
+     16694,
+     17254
+    ],
+    [
+     "japonés",
+     17254,
+     17754
+    ]
+   ],
+   "i": 2
+  },
+  {
+   "role": "user",
+   "speaker": "inworld:Alvaro",
+   "voice": "inworld:Alvaro",
+   "text": "cerca de casa",
+   "turn": 2,
+   "cut": false,
+   "lang": "es",
+   "continues": true,
+   "stranger": null,
+   "one_utterance": true,
+   "cut_ok": true,
+   "cut_ratio": 0.068,
+   "start_ms": 21774,
+   "end_ms": 22664,
+   "words": [
+    [
+     "cerca",
+     21774,
+     22024
+    ],
+    [
+     "de",
+     22024,
+     22124
+    ],
+    [
+     "casa",
+     22124,
+     22554
+    ]
+   ],
+   "i": 3
+  },
+  {
+   "role": "user",
+   "speaker": "inworld:Alvaro",
+   "voice": "inworld:Alvaro",
+   "text": "que abra los lunes",
+   "turn": 2,
+   "cut": false,
+   "lang": "es",
+   "continues": true,
+   "stranger": null,
+   "one_utterance": true,
+   "cut_ok": true,
+   "cut_ratio": 0.0,
+   "start_ms": 26664,
+   "end_ms": 27654,
+   "words": [
+    [
+     "que",
+     26774,
+     26854
+    ],
+    [
+     "abra",
+     26854,
+     27064
+    ],
+    [
+     "los",
+     27064,
+     27254
+    ],
+    [
+     "lunes",
+     27254,
+     27654
+    ]
+   ],
+   "i": 4
+  },
+  {
+   "role": "user",
+   "speaker": "inworld:Alvaro",
+   "voice": "inworld:Alvaro",
+   "text": "Cuántos kilómetros hay de",
+   "turn": 3,
+   "cut": false,
+   "lang": "es",
+   "continues": false,
+   "stranger": null,
+   "one_utterance": true,
+   "cut_ok": true,
+   "cut_ratio": null,
+   "start_ms": 36654,
+   "end_ms": 37808,
+   "words": [
+    [
+     "Cuántos",
+     36663,
+     36983
+    ],
+    [
+     "kilómetros",
+     36983,
+     37523
+    ],
+    [
+     "hay",
+     37523,
+     37663
+    ],
+    [
+     "de",
+     37663,
+     37773
+    ]
+   ],
+   "i": 5
+  },
+  {
+   "role": "user",
+   "speaker": "inworld:Alvaro",
+   "voice": "inworld:Alvaro",
+   "text": "Sevilla a Granada",
+   "turn": 3,
+   "cut": false,
+   "lang": "es",
+   "continues": true,
+   "stranger": null,
+   "one_utterance": true,
+   "cut_ok": true,
+   "cut_ratio": 0.368,
+   "start_ms": 41808,
+   "end_ms": 42813,
+   "words": [
+    [
+     "Sevilla",
+     41808,
+     42233
+    ],
+    [
+     "a",
+     42233,
+     42313
+    ],
+    [
+     "Granada",
+     42313,
+     42813
+    ]
+   ],
+   "i": 6
+  },
+  {
+   "role": "user",
+   "speaker": "inworld:Alvaro",
+   "voice": "inworld:Alvaro",
+   "text": "Apunta en la lista de",
+   "turn": 4,
+   "cut": false,
+   "lang": "es",
+   "continues": false,
+   "stranger": null,
+   "one_utterance": true,
+   "cut_ok": true,
+   "cut_ratio": null,
+   "start_ms": 51813,
+   "end_ms": 52790,
+   "words": [
+    [
+     "Apunta",
+     51815,
+     52165
+    ],
+    [
+     "en",
+     52165,
+     52245
+    ],
+    [
+     "la",
+     52245,
+     52355
+    ],
+    [
+     "lista",
+     52355,
+     52645
+    ],
+    [
+     "de",
+     52645,
+     52755
+    ]
+   ],
+   "i": 7
+  },
+  {
+   "role": "user",
+   "speaker": "inworld:Alvaro",
+   "voice": "inworld:Alvaro",
+   "text": "tareas llamar al banco y",
+   "turn": 4,
+   "cut": false,
+   "lang": "es",
+   "continues": true,
+   "stranger": null,
+   "one_utterance": true,
+   "cut_ok": true,
+   "cut_ratio": 0.081,
+   "start_ms": 56790,
+   "end_ms": 57965,
+   "words": [
+    [
+     "tareas",
+     56790,
+     57155
+    ],
+    [
+     "llamar",
+     57155,
+     57415
+    ],
+    [
+     "al",
+     57415,
+     57515
+    ],
+    [
+     "banco",
+     57515,
+     57865
+    ],
+    [
+     "y",
+     57865,
+     57955
+    ]
+   ],
+   "i": 8
+  },
+  {
+   "role": "user",
+   "speaker": "inworld:Alvaro",
+   "voice": "inworld:Alvaro",
+   "text": "pagar la luz",
+   "turn": 4,
+   "cut": false,
+   "lang": "es",
+   "continues": true,
+   "stranger": null,
+   "one_utterance": true,
+   "cut_ok": true,
+   "cut_ratio": 0.177,
+   "start_ms": 61965,
+   "end_ms": 62709,
+   "words": [
+    [
+     "pagar",
+     61965,
+     62305
+    ],
+    [
+     "la",
+     62305,
+     62415
+    ],
+    [
+     "luz",
+     62415,
+     62710
+    ]
+   ],
+   "i": 9
+  }
+ ],
+ "turns": [
+  {
+   "turn": 1,
+   "start_ms": 700,
+   "end_ms": 7306,
+   "kind": "complete",
+   "segments": [
+    0,
+    1
+   ],
+   "text": "Quiero reservar mesa para cuatro el viernes a las nueve"
+  },
+  {
+   "turn": 2,
+   "start_ms": 16306,
+   "end_ms": 27654,
+   "kind": "complete",
+   "segments": [
+    2,
+    3,
+    4
+   ],
+   "text": "Busca un restaurante japonés cerca de casa que abra los lunes"
+  },
+  {
+   "turn": 3,
+   "start_ms": 36654,
+   "end_ms": 42813,
+   "kind": "complete",
+   "segments": [
+    5,
+    6
+   ],
+   "text": "Cuántos kilómetros hay de Sevilla a Granada"
+  },
+  {
+   "turn": 4,
+   "start_ms": 51813,
+   "end_ms": 62709,
+   "kind": "complete",
+   "segments": [
+    7,
+    8,
+    9
+   ],
+   "text": "Apunta en la lista de tareas llamar al banco y pagar la luz"
+  }
+ ],
+ "one_utterance": {
+  "cuts": [
+   {
+    "at_ms": 1214,
+    "ratio": 0.069,
+    "ok": true,
+    "moved_words": -1
+   },
+   {
+    "at_ms": 1468,
+    "ratio": 0.068,
+    "ok": true,
+    "moved_words": 0
+   },
+   {
+    "at_ms": 2358,
+    "ratio": 0.0,
+    "ok": true,
+    "moved_words": 0
+   },
+   {
+    "at_ms": 1154,
+    "ratio": 0.368,
+    "ok": true,
+    "moved_words": 1
+   },
+   {
+    "at_ms": 977,
+    "ratio": 0.081,
+    "ok": true,
+    "moved_words": -1
+   },
+   {
+    "at_ms": 2152,
+    "ratio": 0.177,
+    "ok": true,
+    "moved_words": 1
+   }
+  ],
+  "words_laid": true,
+  "clean": true
+ }
+}

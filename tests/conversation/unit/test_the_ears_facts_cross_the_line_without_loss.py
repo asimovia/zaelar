@@ -67,8 +67,8 @@ def test_the_body_applies_each_seq_once():
     seen = []
     ev = {"k": "ear", "boot": "b1", "seq": 1, "t": "mark", "stream": "d1", "through": 40}
     assert ear_in.receive(ev, seen.append) == 1 and ear_in.receive(ev, seen.append) == 0       # carried again
-    assert ear_in.receive({**ev, "boot": "b2"}, seen.append) == 1                              # a new process
-    assert len(seen) == 2
+    assert ear_in.receive({**ev, "boot": "b2"}, seen.append) == 2                              # a new process…
+    assert [type(s).__name__ for s in seen] == ["Watermark", "LinkGap", "Watermark"]          # …declares its gap
 
 
 def _link(fail_first: int, monkeypatch) -> tuple:

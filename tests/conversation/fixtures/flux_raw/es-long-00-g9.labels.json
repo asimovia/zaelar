@@ -1,0 +1,979 @@
+{
+ "id": "st-es-long-00-g9",
+ "lang": "es",
+ "rate": 16000,
+ "duration_ms": 106858,
+ "description": "cell es×long, flow 0",
+ "segments": [
+  {
+   "role": "user",
+   "speaker": "es_1",
+   "voice": "inworld:Alvaro",
+   "text": "Mira, lo que quiero es que",
+   "turn": 1,
+   "cut": false,
+   "lang": "es",
+   "continues": false,
+   "stranger": null,
+   "start_ms": 700,
+   "end_ms": 2277,
+   "words": [
+    [
+     "Mira",
+     700,
+     1193
+    ],
+    [
+     "lo",
+     1343,
+     1443
+    ],
+    [
+     "que",
+     1443,
+     1563
+    ],
+    [
+     "quiero",
+     1563,
+     1803
+    ],
+    [
+     "es",
+     1803,
+     1923
+    ],
+    [
+     "que",
+     1923,
+     2283
+    ]
+   ],
+   "i": 0
+  },
+  {
+   "role": "user",
+   "speaker": "es_1",
+   "voice": "inworld:Alvaro",
+   "text": "me busques un hotel en Lisboa para",
+   "turn": 1,
+   "cut": false,
+   "lang": "es",
+   "continues": true,
+   "stranger": null,
+   "start_ms": 3816,
+   "end_ms": 5630,
+   "words": [
+    [
+     "me",
+     3816,
+     3933
+    ],
+    [
+     "busques",
+     3933,
+     4283
+    ],
+    [
+     "un",
+     4283,
+     4373
+    ],
+    [
+     "hotel",
+     4373,
+     4663
+    ],
+    [
+     "en",
+     4663,
+     4763
+    ],
+    [
+     "Lisboa",
+     4763,
+     5243
+    ],
+    [
+     "para",
+     5243,
+     5683
+    ]
+   ],
+   "i": 1
+  },
+  {
+   "role": "user",
+   "speaker": "es_1",
+   "voice": "inworld:Alvaro",
+   "text": "el puente de diciembre, pero que",
+   "turn": 1,
+   "cut": false,
+   "lang": "es",
+   "continues": true,
+   "stranger": null,
+   "start_ms": 9143,
+   "end_ms": 11258,
+   "words": [
+    [
+     "el",
+     9143,
+     9297
+    ],
+    [
+     "puente",
+     9297,
+     9617
+    ],
+    [
+     "de",
+     9617,
+     9727
+    ],
+    [
+     "diciembre",
+     9727,
+     10337
+    ],
+    [
+     "pero",
+     10547,
+     10797
+    ],
+    [
+     "que",
+     10797,
+     11237
+    ]
+   ],
+   "i": 2
+  },
+  {
+   "role": "user",
+   "speaker": "es_1",
+   "voice": "inworld:Alvaro",
+   "text": "no esté lejos del centro y",
+   "turn": 1,
+   "cut": false,
+   "lang": "es",
+   "continues": true,
+   "stranger": null,
+   "start_ms": 13030,
+   "end_ms": 14400,
+   "words": [
+    [
+     "no",
+     13030,
+     13130
+    ],
+    [
+     "esté",
+     13130,
+     13320
+    ],
+    [
+     "lejos",
+     13320,
+     13600
+    ],
+    [
+     "del",
+     13600,
+     13740
+    ],
+    [
+     "centro",
+     13740,
+     14140
+    ],
+    [
+     "y",
+     14140,
+     14440
+    ]
+   ],
+   "i": 3
+  },
+  {
+   "role": "user",
+   "speaker": "es_1",
+   "voice": "inworld:Alvaro",
+   "text": "que tenga desayuno incluido.",
+   "turn": 1,
+   "cut": false,
+   "lang": "es",
+   "continues": true,
+   "stranger": null,
+   "start_ms": 27433,
+   "end_ms": 28742,
+   "words": [
+    [
+     "que",
+     27466,
+     27526
+    ],
+    [
+     "tenga",
+     27526,
+     27766
+    ],
+    [
+     "desayuno",
+     27766,
+     28226
+    ],
+    [
+     "incluido",
+     28226,
+     28786
+    ]
+   ],
+   "i": 4
+  },
+  {
+   "role": "user",
+   "speaker": "es_1",
+   "voice": "inworld:Alvaro",
+   "text": "A ver, la semana que viene tengo",
+   "turn": 2,
+   "cut": false,
+   "lang": "es",
+   "continues": false,
+   "stranger": null,
+   "start_ms": 37743,
+   "end_ms": 39479,
+   "words": [
+    [
+     "A",
+     37743,
+     37837
+    ],
+    [
+     "ver",
+     37837,
+     38157
+    ],
+    [
+     "la",
+     38187,
+     38387
+    ],
+    [
+     "semana",
+     38387,
+     38687
+    ],
+    [
+     "que",
+     38687,
+     38807
+    ],
+    [
+     "viene",
+     38807,
+     39067
+    ],
+    [
+     "tengo",
+     39067,
+     39497
+    ]
+   ],
+   "i": 5
+  },
+  {
+   "role": "user",
+   "speaker": "es_1",
+   "voice": "inworld:Alvaro",
+   "text": "lo del dentista el martes y",
+   "turn": 2,
+   "cut": false,
+   "lang": "es",
+   "continues": true,
+   "stranger": null,
+   "start_ms": 43231,
+   "end_ms": 44704,
+   "words": [
+    [
+     "lo",
+     43231,
+     43396
+    ],
+    [
+     "del",
+     43396,
+     43577
+    ],
+    [
+     "dentista",
+     43577,
+     43997
+    ],
+    [
+     "el",
+     43997,
+     44097
+    ],
+    [
+     "martes",
+     44097,
+     44527
+    ],
+    [
+     "y",
+     44527,
+     44777
+    ]
+   ],
+   "i": 6
+  },
+  {
+   "role": "user",
+   "speaker": "es_1",
+   "voice": "inworld:Alvaro",
+   "text": "el jueves la reunión de equipo, entonces",
+   "turn": 2,
+   "cut": false,
+   "lang": "es",
+   "continues": true,
+   "stranger": null,
+   "start_ms": 47935,
+   "end_ms": 50233,
+   "words": [
+    [
+     "el",
+     47968,
+     48028
+    ],
+    [
+     "jueves",
+     48028,
+     48438
+    ],
+    [
+     "la",
+     48438,
+     48568
+    ],
+    [
+     "reunión",
+     48568,
+     48948
+    ],
+    [
+     "de",
+     48948,
+     49038
+    ],
+    [
+     "equipo",
+     49038,
+     49488
+    ],
+    [
+     "entonces",
+     49648,
+     50238
+    ]
+   ],
+   "i": 7
+  },
+  {
+   "role": "user",
+   "speaker": "es_1",
+   "voice": "inworld:Alvaro",
+   "text": "¿qué día me queda libre por",
+   "turn": 2,
+   "cut": false,
+   "lang": "es",
+   "continues": true,
+   "stranger": null,
+   "start_ms": 52272,
+   "end_ms": 53452,
+   "words": [
+    [
+     "qué",
+     52272,
+     52362
+    ],
+    [
+     "día",
+     52362,
+     52592
+    ],
+    [
+     "me",
+     52592,
+     52692
+    ],
+    [
+     "queda",
+     52692,
+     52922
+    ],
+    [
+     "libre",
+     52922,
+     53212
+    ],
+    [
+     "por",
+     53212,
+     53512
+    ]
+   ],
+   "i": 8
+  },
+  {
+   "role": "user",
+   "speaker": "es_1",
+   "voice": "inworld:Alvaro",
+   "text": "la tarde para ir al gimnasio?",
+   "turn": 2,
+   "cut": false,
+   "lang": "es",
+   "continues": true,
+   "stranger": null,
+   "start_ms": 54595,
+   "end_ms": 56052,
+   "words": [
+    [
+     "la",
+     54595,
+     54725
+    ],
+    [
+     "tarde",
+     54725,
+     55035
+    ],
+    [
+     "para",
+     55035,
+     55245
+    ],
+    [
+     "ir",
+     55245,
+     55385
+    ],
+    [
+     "al",
+     55385,
+     55455
+    ],
+    [
+     "gimnasio",
+     55455,
+     56035
+    ]
+   ],
+   "i": 9
+  },
+  {
+   "role": "user",
+   "speaker": "es_1",
+   "voice": "inworld:Alvaro",
+   "text": "Necesito saber si",
+   "turn": 3,
+   "cut": false,
+   "lang": "es",
+   "continues": false,
+   "stranger": null,
+   "start_ms": 65053,
+   "end_ms": 66273,
+   "words": [
+    [
+     "Necesito",
+     65093,
+     65533
+    ],
+    [
+     "saber",
+     65533,
+     65863
+    ],
+    [
+     "si",
+     65863,
+     66273
+    ]
+   ],
+   "i": 10
+  },
+  {
+   "role": "user",
+   "speaker": "es_1",
+   "voice": "inworld:Alvaro",
+   "text": "para ir al aeropuerto de Barajas",
+   "turn": 3,
+   "cut": false,
+   "lang": "es",
+   "continues": true,
+   "stranger": null,
+   "start_ms": 67561,
+   "end_ms": 69216,
+   "words": [
+    [
+     "para",
+     67566,
+     67716
+    ],
+    [
+     "ir",
+     67716,
+     67876
+    ],
+    [
+     "al",
+     67876,
+     67976
+    ],
+    [
+     "aeropuerto",
+     67976,
+     68586
+    ],
+    [
+     "de",
+     68586,
+     68686
+    ],
+    [
+     "Barajas",
+     68686,
+     69246
+    ]
+   ],
+   "i": 11
+  },
+  {
+   "role": "user",
+   "speaker": "es_1",
+   "voice": "inworld:Alvaro",
+   "text": "desde Atocha es mejor",
+   "turn": 3,
+   "cut": false,
+   "lang": "es",
+   "continues": true,
+   "stranger": null,
+   "start_ms": 71280,
+   "end_ms": 72448,
+   "words": [
+    [
+     "desde",
+     71280,
+     71538
+    ],
+    [
+     "Atocha",
+     71538,
+     71968
+    ],
+    [
+     "es",
+     71968,
+     72098
+    ],
+    [
+     "mejor",
+     72098,
+     72498
+    ]
+   ],
+   "i": 12
+  },
+  {
+   "role": "user",
+   "speaker": "es_1",
+   "voice": "inworld:Alvaro",
+   "text": "el tren de cercanías o",
+   "turn": 3,
+   "cut": false,
+   "lang": "es",
+   "continues": true,
+   "stranger": null,
+   "start_ms": 73821,
+   "end_ms": 75102,
+   "words": [
+    [
+     "el",
+     73856,
+     73946
+    ],
+    [
+     "tren",
+     73946,
+     74186
+    ],
+    [
+     "de",
+     74186,
+     74276
+    ],
+    [
+     "cercanías",
+     74276,
+     74956
+    ],
+    [
+     "o",
+     74956,
+     75126
+    ]
+   ],
+   "i": 13
+  },
+  {
+   "role": "user",
+   "speaker": "es_1",
+   "voice": "inworld:Alvaro",
+   "text": "el autobús exprés, sobre todo",
+   "turn": 3,
+   "cut": false,
+   "lang": "es",
+   "continues": true,
+   "stranger": null,
+   "start_ms": 77115,
+   "end_ms": 78979,
+   "words": [
+    [
+     "el",
+     77115,
+     77205
+    ],
+    [
+     "autobús",
+     77205,
+     77625
+    ],
+    [
+     "exprés",
+     77625,
+     78195
+    ],
+    [
+     "sobre",
+     78405,
+     78655
+    ],
+    [
+     "todo",
+     78655,
+     78985
+    ]
+   ],
+   "i": 14
+  },
+  {
+   "role": "user",
+   "speaker": "es_1",
+   "voice": "inworld:Alvaro",
+   "text": "a las seis de la mañana.",
+   "turn": 3,
+   "cut": false,
+   "lang": "es",
+   "continues": true,
+   "stranger": null,
+   "start_ms": 80964,
+   "end_ms": 82000,
+   "words": [
+    [
+     "a",
+     80999,
+     81039
+    ],
+    [
+     "las",
+     81039,
+     81199
+    ],
+    [
+     "seis",
+     81199,
+     81389
+    ],
+    [
+     "de",
+     81389,
+     81479
+    ],
+    [
+     "la",
+     81479,
+     81569
+    ],
+    [
+     "mañana",
+     81569,
+     82039
+    ]
+   ],
+   "i": 15
+  },
+  {
+   "role": "user",
+   "speaker": "es_1",
+   "voice": "inworld:Alvaro",
+   "text": "Quiero preparar una cena para",
+   "turn": 4,
+   "cut": false,
+   "lang": "es",
+   "continues": false,
+   "stranger": null,
+   "start_ms": 91001,
+   "end_ms": 92316,
+   "words": [
+    [
+     "Quiero",
+     91014,
+     91184
+    ],
+    [
+     "preparar",
+     91184,
+     91614
+    ],
+    [
+     "una",
+     91614,
+     91774
+    ],
+    [
+     "cena",
+     91774,
+     92024
+    ],
+    [
+     "para",
+     92024,
+     92354
+    ]
+   ],
+   "i": 16
+  },
+  {
+   "role": "user",
+   "speaker": "es_1",
+   "voice": "inworld:Alvaro",
+   "text": "seis personas el sábado, y como",
+   "turn": 4,
+   "cut": false,
+   "lang": "es",
+   "continues": true,
+   "stranger": null,
+   "start_ms": 94194,
+   "end_ms": 96455,
+   "words": [
+    [
+     "seis",
+     94194,
+     94464
+    ],
+    [
+     "personas",
+     94464,
+     95004
+    ],
+    [
+     "el",
+     95004,
+     95094
+    ],
+    [
+     "sábado",
+     95094,
+     95584
+    ],
+    [
+     "y",
+     95894,
+     95944
+    ],
+    [
+     "como",
+     95944,
+     96464
+    ]
+   ],
+   "i": 17
+  },
+  {
+   "role": "user",
+   "speaker": "es_1",
+   "voice": "inworld:Alvaro",
+   "text": "dos son vegetarianos, dime",
+   "turn": 4,
+   "cut": false,
+   "lang": "es",
+   "continues": true,
+   "stranger": null,
+   "start_ms": 96990,
+   "end_ms": 98620,
+   "words": [
+    [
+     "dos",
+     96990,
+     97201
+    ],
+    [
+     "son",
+     97201,
+     97361
+    ],
+    [
+     "vegetarianos",
+     97361,
+     98201
+    ],
+    [
+     "dime",
+     98271,
+     98631
+    ]
+   ],
+   "i": 18
+  },
+  {
+   "role": "user",
+   "speaker": "es_1",
+   "voice": "inworld:Alvaro",
+   "text": "un menú sencillo que",
+   "turn": 4,
+   "cut": false,
+   "lang": "es",
+   "continues": true,
+   "stranger": null,
+   "start_ms": 98813,
+   "end_ms": 99981,
+   "words": [
+    [
+     "un",
+     98813,
+     98915
+    ],
+    [
+     "menú",
+     98915,
+     99145
+    ],
+    [
+     "sencillo",
+     99145,
+     99665
+    ],
+    [
+     "que",
+     99665,
+     99985
+    ]
+   ],
+   "i": 19
+  },
+  {
+   "role": "user",
+   "speaker": "es_1",
+   "voice": "inworld:Alvaro",
+   "text": "se pueda hacer la mañana antes.",
+   "turn": 4,
+   "cut": false,
+   "lang": "es",
+   "continues": true,
+   "stranger": null,
+   "start_ms": 101390,
+   "end_ms": 102858,
+   "words": [
+    [
+     "se",
+     101390,
+     101530
+    ],
+    [
+     "pueda",
+     101530,
+     101740
+    ],
+    [
+     "hacer",
+     101740,
+     102000
+    ],
+    [
+     "la",
+     102000,
+     102100
+    ],
+    [
+     "mañana",
+     102100,
+     102470
+    ],
+    [
+     "antes",
+     102470,
+     102890
+    ]
+   ],
+   "i": 20
+  }
+ ],
+ "turns": [
+  {
+   "turn": 1,
+   "start_ms": 700,
+   "end_ms": 28742,
+   "kind": "complete",
+   "segments": [
+    0,
+    1,
+    2,
+    3,
+    4
+   ],
+   "text": "Mira, lo que quiero es que me busques un hotel en Lisboa para el puente de diciembre, pero que no esté lejos del centro y que tenga desayuno incluido."
+  },
+  {
+   "turn": 2,
+   "start_ms": 37743,
+   "end_ms": 56035,
+   "kind": "complete",
+   "segments": [
+    5,
+    6,
+    7,
+    8,
+    9
+   ],
+   "text": "A ver, la semana que viene tengo lo del dentista el martes y el jueves la reunión de equipo, entonces ¿qué día me queda libre por la tarde para ir al gimnasio?"
+  },
+  {
+   "turn": 3,
+   "start_ms": 65053,
+   "end_ms": 82000,
+   "kind": "complete",
+   "segments": [
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+   ],
+   "text": "Necesito saber si para ir al aeropuerto de Barajas desde Atocha es mejor el tren de cercanías o el autobús exprés, sobre todo a las seis de la mañana."
+  },
+  {
+   "turn": 4,
+   "start_ms": 91001,
+   "end_ms": 102858,
+   "kind": "complete",
+   "segments": [
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "text": "Quiero preparar una cena para seis personas el sábado, y como dos son vegetarianos, dime un menú sencillo que se pueda hacer la mañana antes."
+  }
+ ]
+}

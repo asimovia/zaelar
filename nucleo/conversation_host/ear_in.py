@@ -14,6 +14,10 @@ from conversation.ear import signals as S
 
 _lock = threading.Lock()
 _applied: dict[str, int] = {}                     # boot → the last seq applied
+_turns: dict[tuple, int] = {}                     # (stream, boot, epoch, provider turn) → the ear's own turn number
+_boot_of: dict[str, str] = {}                     # stream → the voice process's boot its facts came from
+_next = {"turn": 0}
+TURNS_KEPT = 4096
 
 
 def signals(ev: dict) -> list:
@@ -56,12 +60,41 @@ def receive(ev: dict, hand=None) -> int:
     if hand is None:
         from nucleo.conversation_host import entry
         hand = entry.voice
-    out = signals(ev)
+    gap = _new_boot(ev)
+    if ev.get("t") == "words":
+        ev = {**ev, "turn": _turn_of(ev)}
+    out = gap + signals(ev)
     for sig in out:
         hand(sig)
     return len(out)
 
 
+def _turn_of(ev: dict) -> int:
+    """The ear's own number for a provider turn: the provider numbers turns from 0 in every stream, so its number is
+    unique only with the stream's epoch and the voice process's boot."""
+    key = (str(ev.get("stream") or ""), str(ev.get("boot") or ""), int(ev.get("epoch") or 0), int(ev.get("turn") or 0))
+    with _lock:
+        if key not in _turns:
+            if len(_turns) >= TURNS_KEPT:
+                _turns.pop(next(iter(_turns)))
+            _next["turn"] += 1
+            _turns[key] = _next["turn"]
+        return _turns[key]
+
+
+def _new_boot(ev: dict) -> list:
+    """A voice process that started again: what the ear was hearing from the one before ends incomplete (a gap)."""
+    stream, boot = str(ev.get("stream") or ""), str(ev.get("boot") or "")
+    if not stream or not boot:
+        return []
+    with _lock:
+        before = _boot_of.get(stream)
+        _boot_of[stream] = boot
+    return [S.LinkGap(stream, int(ev.get("t_ms") or ev.get("through") or 0))] if before and before != boot else []
+
+
 def _reset_for_tests() -> None:
     with _lock:
         _applied.clear()
+        _turns.clear()
+        _boot_of.clear()

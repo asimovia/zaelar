@@ -1,0 +1,76 @@
+{
+ "about": "Raw Deepgram Flux messages recorded once for the 3a audio bench (synthetic TTS voices, invented text, contact placeholders only): the provider's real TurnInfo sequences (StartOfTurn, Update, EagerEndOfTurn, TurnResumed, EndOfTurn) for testing the ear's feed. `arrived_ms` is when the message reached the client from the start of the stream; `sent_through_ms` how much audio had been sent by then. Request ids and wall clock removed. Each recording has its generator labels (what was said, by whom, when).",
+ "provider": "flux-general-multi, eot_threshold 0.7, eot_timeout_ms 1000, eager_eot_threshold 0.5",
+ "files": {
+  "es-long-00-g9": {
+   "about": "long monologue-like thoughts, many turns, several TurnResumed",
+   "messages": 481,
+   "events": {
+    "Connected": 1,
+    "Update": 416,
+    "StartOfTurn": 20,
+    "EagerEndOfTurn": 22,
+    "EndOfTurn": 20,
+    "TurnResumed": 2
+   },
+   "sha256": "62907c94109305a69bcfdba72694e39b660ee0176cfe5be2ff5f00fdab2a87ea",
+   "labels_sha256": "73174e63ba4599c51680eb73df5288723fc51a1004a86d580d77d52e1a747674"
+  },
+  "en-clean-03-g9": {
+   "about": "clean thoughts, a turn built from many Update messages, one TurnResumed",
+   "messages": 185,
+   "events": {
+    "Connected": 1,
+    "Update": 170,
+    "StartOfTurn": 4,
+    "EagerEndOfTurn": 5,
+    "TurnResumed": 1,
+    "EndOfTurn": 4
+   },
+   "sha256": "c853921cd43959c616143cb1bd2a3e54e4cf3202d609da4315586b2074ecb8d8",
+   "labels_sha256": "7c3a2dff3c8e77e12a2e545ac97b3372fe2fd63ab502edb69f76706bb8d0f42e"
+  },
+  "es-pauses4000-00-g9u1": {
+   "about": "one utterance with 4 s pauses inside thoughts (§5.2): EagerEndOfTurn then TurnResumed mid-thought",
+   "messages": 301,
+   "events": {
+    "Connected": 1,
+    "Update": 264,
+    "StartOfTurn": 10,
+    "EagerEndOfTurn": 13,
+    "TurnResumed": 3,
+    "EndOfTurn": 10
+   },
+   "sha256": "82e16746a3be0795ffc25a82ff08d172721cc88dae026e713d4784abc331d04f",
+   "labels_sha256": "1152588bf537c3647c6e881a9d6800b0d6a47a76056cb1a68d3c029ea519a4bd"
+  },
+  "en-interruption-00-g9": {
+   "about": "another voice cutting in: two TurnResumed",
+   "messages": 252,
+   "events": {
+    "Connected": 1,
+    "Update": 229,
+    "StartOfTurn": 6,
+    "EagerEndOfTurn": 8,
+    "TurnResumed": 2,
+    "EndOfTurn": 6
+   },
+   "sha256": "db72b088f491eb74b3c41086ff01ba87411ca337c91adffeeb69e670551ade5d",
+   "labels_sha256": "99c4cb6869f1b9cf37d6ef6c86481ef95f1b3bcb253651d7d92ba1fe97681f06"
+  },
+  "mix-pauses1500-00-g9u1": {
+   "about": "ES/EN mixed thought with 1.5 s pauses, one utterance",
+   "messages": 216,
+   "events": {
+    "Connected": 1,
+    "Update": 185,
+    "StartOfTurn": 8,
+    "EagerEndOfTurn": 11,
+    "EndOfTurn": 8,
+    "TurnResumed": 3
+   },
+   "sha256": "1cac56f9a603eb729734b4d738b7a3af5a50700975db17876b743de9bef828a9",
+   "labels_sha256": "216b68b2a399db105df636a1787d9178df9a76513ca0d3aa5b193c8360dab890"
+  }
+ }
+}

@@ -471,6 +471,10 @@ def handle(ev: dict) -> None:
         from voice.engine.pipeline import eager_brief
         eager_brief.on_preflight(str(ev.get("text") or ""))
         return
+    if k == "proof":                            # a proof counter the voice process counted where it happened
+        from nucleo.conversation_host import entry as _conv_entry
+        _conv_entry.count(str(ev.get("counter") or ""))
+        return
     if k == "ear":                              # the ear's lossless lane: only a session of the manager sends it
         from nucleo.conversation_host import ear_in
         ear_in.receive(ev)

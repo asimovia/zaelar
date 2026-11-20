@@ -57,9 +57,9 @@ def catalog() -> list[ToolSpec]:
 
 def _text_evidence(source: str, data) -> tuple[Evidence, ...]:
     """One evidence for what a read returned: a fresh id, its source, and the figures of its text."""
-    from nucleo.conversation_host.figures import figures
+    from nucleo.conversation_host.figures import figures, percents
     text = data if isinstance(data, str) else json.dumps(data, ensure_ascii=False, default=str)
-    return (Evidence(f"ev_{uuid.uuid4().hex[:12]}", source, numbers=figures(text)),)
+    return (Evidence(f"ev_{uuid.uuid4().hex[:12]}", source, numbers=figures(text), percents=percents(text)),)
 
 
 def _search(args: dict, find: Callable) -> ToolResult:

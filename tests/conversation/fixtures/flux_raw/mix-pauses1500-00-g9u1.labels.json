@@ -1,0 +1,417 @@
+{
+ "id": "st-mix-pauses1500-00-g9u1",
+ "lang": "mix",
+ "rate": 16000,
+ "duration_ms": 47915,
+ "description": "cell mix×pauses-1500, flow 0",
+ "segments": [
+  {
+   "role": "user",
+   "speaker": "elevenlabs_ts:EXAVITQu4vr4xnSDxMaL",
+   "voice": "elevenlabs_ts:EXAVITQu4vr4xnSDxMaL",
+   "text": "Cómo se dice",
+   "turn": 1,
+   "cut": false,
+   "lang": "mix",
+   "continues": false,
+   "stranger": null,
+   "one_utterance": true,
+   "cut_ok": true,
+   "cut_ratio": null,
+   "start_ms": 700,
+   "end_ms": 1336,
+   "words": [
+    [
+     "Cómo",
+     700,
+     886
+    ],
+    [
+     "se",
+     921,
+     1003
+    ],
+    [
+     "dice",
+     1049,
+     1293
+    ]
+   ],
+   "i": 0
+  },
+  {
+   "role": "user",
+   "speaker": "elevenlabs_ts:EXAVITQu4vr4xnSDxMaL",
+   "voice": "elevenlabs_ts:EXAVITQu4vr4xnSDxMaL",
+   "text": "despertador in English",
+   "turn": 1,
+   "cut": false,
+   "lang": "mix",
+   "continues": true,
+   "stranger": null,
+   "one_utterance": true,
+   "cut_ok": false,
+   "cut_ratio": 0.638,
+   "start_ms": 2836,
+   "end_ms": 4181,
+   "words": [
+    [
+     "despertador",
+     2839,
+     3478
+    ],
+    [
+     "in",
+     3547,
+     3617
+    ],
+    [
+     "English",
+     3687,
+     4181
+    ]
+   ],
+   "i": 1
+  },
+  {
+   "role": "user",
+   "speaker": "elevenlabs_ts:EXAVITQu4vr4xnSDxMaL",
+   "voice": "elevenlabs_ts:EXAVITQu4vr4xnSDxMaL",
+   "text": "Cuánto cuesta un billete a Londres",
+   "turn": 2,
+   "cut": false,
+   "lang": "mix",
+   "continues": false,
+   "stranger": null,
+   "one_utterance": true,
+   "cut_ok": true,
+   "cut_ratio": null,
+   "start_ms": 13181,
+   "end_ms": 14810,
+   "words": [
+    [
+     "Cuánto",
+     13181,
+     13427
+    ],
+    [
+     "cuesta",
+     13474,
+     13752
+    ],
+    [
+     "un",
+     13810,
+     13868
+    ],
+    [
+     "billete",
+     13915,
+     14275
+    ],
+    [
+     "a",
+     14321,
+     14344
+    ],
+    [
+     "Londres",
+     14402,
+     14762
+    ]
+   ],
+   "i": 2
+  },
+  {
+   "role": "user",
+   "speaker": "elevenlabs_ts:EXAVITQu4vr4xnSDxMaL",
+   "voice": "elevenlabs_ts:EXAVITQu4vr4xnSDxMaL",
+   "text": "for next Friday",
+   "turn": 2,
+   "cut": false,
+   "lang": "mix",
+   "continues": true,
+   "stranger": null,
+   "one_utterance": true,
+   "cut_ok": true,
+   "cut_ratio": 0.031,
+   "start_ms": 16310,
+   "end_ms": 17260,
+   "words": [
+    [
+     "for",
+     16310,
+     16436
+    ],
+    [
+     "next",
+     16506,
+     16715
+    ],
+    [
+     "Friday",
+     16762,
+     17260
+    ]
+   ],
+   "i": 3
+  },
+  {
+   "role": "user",
+   "speaker": "elevenlabs_ts:EXAVITQu4vr4xnSDxMaL",
+   "voice": "elevenlabs_ts:EXAVITQu4vr4xnSDxMaL",
+   "text": "Ponme una alarma a las siete",
+   "turn": 3,
+   "cut": false,
+   "lang": "mix",
+   "continues": false,
+   "stranger": null,
+   "one_utterance": true,
+   "cut_ok": true,
+   "cut_ratio": null,
+   "start_ms": 26260,
+   "end_ms": 27813,
+   "words": [
+    [
+     "Ponme",
+     26260,
+     26608
+    ],
+    [
+     "una",
+     26643,
+     26771
+    ],
+    [
+     "alarma",
+     26794,
+     27131
+    ],
+    [
+     "a",
+     27154,
+     27177
+    ],
+    [
+     "las",
+     27224,
+     27340
+    ],
+    [
+     "siete",
+     27363,
+     27781
+    ]
+   ],
+   "i": 4
+  },
+  {
+   "role": "user",
+   "speaker": "elevenlabs_ts:EXAVITQu4vr4xnSDxMaL",
+   "voice": "elevenlabs_ts:EXAVITQu4vr4xnSDxMaL",
+   "text": "actually make it seven thirty",
+   "turn": 3,
+   "cut": false,
+   "lang": "mix",
+   "continues": true,
+   "stranger": null,
+   "one_utterance": true,
+   "cut_ok": true,
+   "cut_ratio": 0.061,
+   "start_ms": 29314,
+   "end_ms": 30665,
+   "words": [
+    [
+     "actually",
+     29316,
+     29641
+    ],
+    [
+     "make",
+     29687,
+     29850
+    ],
+    [
+     "it",
+     29873,
+     29931
+    ],
+    [
+     "seven",
+     29966,
+     30186
+    ],
+    [
+     "thirty",
+     30233,
+     30665
+    ]
+   ],
+   "i": 5
+  },
+  {
+   "role": "user",
+   "speaker": "elevenlabs_ts:EXAVITQu4vr4xnSDxMaL",
+   "voice": "elevenlabs_ts:EXAVITQu4vr4xnSDxMaL",
+   "text": "What's the weather in Madrid",
+   "turn": 4,
+   "cut": false,
+   "lang": "mix",
+   "continues": false,
+   "stranger": null,
+   "one_utterance": true,
+   "cut_ok": true,
+   "cut_ratio": null,
+   "start_ms": 39665,
+   "end_ms": 41066,
+   "words": [
+    [
+     "What's",
+     39665,
+     39929
+    ],
+    [
+     "the",
+     39963,
+     40033
+    ],
+    [
+     "weather",
+     40103,
+     40393
+    ],
+    [
+     "in",
+     40439,
+     40486
+    ],
+    [
+     "Madrid",
+     40544,
+     40985
+    ]
+   ],
+   "i": 6
+  },
+  {
+   "role": "user",
+   "speaker": "elevenlabs_ts:EXAVITQu4vr4xnSDxMaL",
+   "voice": "elevenlabs_ts:EXAVITQu4vr4xnSDxMaL",
+   "text": "va a llover el domingo",
+   "turn": 4,
+   "cut": false,
+   "lang": "mix",
+   "continues": true,
+   "stranger": null,
+   "one_utterance": true,
+   "cut_ok": true,
+   "cut_ratio": 0.021,
+   "start_ms": 42566,
+   "end_ms": 43915,
+   "words": [
+    [
+     "va",
+     42578,
+     42832
+    ],
+    [
+     "a",
+     42868,
+     42890
+    ],
+    [
+     "llover",
+     42915,
+     43228
+    ],
+    [
+     "el",
+     43274,
+     43333
+    ],
+    [
+     "domingo",
+     43378,
+     43915
+    ]
+   ],
+   "i": 7
+  }
+ ],
+ "turns": [
+  {
+   "turn": 1,
+   "start_ms": 700,
+   "end_ms": 4181,
+   "kind": "complete",
+   "segments": [
+    0,
+    1
+   ],
+   "text": "Cómo se dice despertador in English"
+  },
+  {
+   "turn": 2,
+   "start_ms": 13181,
+   "end_ms": 17260,
+   "kind": "complete",
+   "segments": [
+    2,
+    3
+   ],
+   "text": "Cuánto cuesta un billete a Londres for next Friday"
+  },
+  {
+   "turn": 3,
+   "start_ms": 26260,
+   "end_ms": 30665,
+   "kind": "complete",
+   "segments": [
+    4,
+    5
+   ],
+   "text": "Ponme una alarma a las siete actually make it seven thirty"
+  },
+  {
+   "turn": 4,
+   "start_ms": 39665,
+   "end_ms": 43915,
+   "kind": "complete",
+   "segments": [
+    6,
+    7
+   ],
+   "text": "What's the weather in Madrid va a llover el domingo"
+  }
+ ],
+ "one_utterance": {
+  "cuts": [
+   {
+    "at_ms": 636,
+    "ratio": 0.638,
+    "ok": false,
+    "moved_words": -1
+   },
+   {
+    "at_ms": 1629,
+    "ratio": 0.031,
+    "ok": true,
+    "moved_words": 0
+   },
+   {
+    "at_ms": 1554,
+    "ratio": 0.061,
+    "ok": true,
+    "moved_words": 0
+   },
+   {
+    "at_ms": 1402,
+    "ratio": 0.021,
+    "ok": true,
+    "moved_words": 0
+   }
+  ],
+  "words_laid": true,
+  "clean": false
+ }
+}

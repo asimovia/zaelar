@@ -111,16 +111,19 @@ class Evidence:
     value: float | None = None
     #: a TEXT evidence (a read with no structure): the figures its text carries, read by the host's adapter
     numbers: tuple[float, ...] = ()
+    #: …and those of them the text wrote as a percent (a `%` beside the figure)
+    percents: tuple[float, ...] = ()
 
     def to_json(self) -> dict:
         return {**{k: getattr(self, k) for k in ("id", "source", "entity", "period", "metric", "direction", "value")},
-                "numbers": list(self.numbers)}
+                "numbers": list(self.numbers), "percents": list(self.percents)}
 
     @classmethod
     def from_json(cls, d: dict) -> "Evidence":
         return cls(**{k: d.get(k, "" if k != "value" else None) for k in
                       ("id", "source", "entity", "period", "metric", "direction", "value")},
-                   numbers=tuple(float(n) for n in d.get("numbers") or ()))
+                   numbers=tuple(float(n) for n in d.get("numbers") or ()),
+                   percents=tuple(float(n) for n in d.get("percents") or ()))
 
 
 class Ids:

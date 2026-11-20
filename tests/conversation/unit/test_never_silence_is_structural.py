@@ -95,12 +95,28 @@ def test_a_derived_figure_counts_distinct_figures_of_its_evidence(claim):
     assert check([ok], {"e": PAGE}, frozenset({"e"})) == []
 
 
-@pytest.mark.parametrize("value, figure, passes", [(18, 18.3, True), (18, 19.6, False), (5e6, 4_987_210, True),
-                                                   (5, 4.98, True), (6, 4.98, False), (5, 0.0498, True),
-                                                   (999, 1105.34, False)])
-def test_a_figure_as_a_person_says_it(value, figure, passes):
+@pytest.mark.parametrize("value, figure, metric, passes", [
+    (18, 18.3, "", True), (18, 19.6, "", False), (5e6, 4_987_210, "", True), (5, 4.98, "", True), (6, 4.98, "", False),
+    (999, 1105.34, "", False), (1000, 1499, "", False),                     # never «about» more than 5 % away
+    (5, 0.0498, "percent", True), (5, 0.0498, "", False), (12, 1234, "", False)])   # ×100 only for a percent
+def test_a_figure_as_a_person_says_it(value, figure, metric, passes):
     ev = Evidence("t", "search", numbers=(figure,))
-    assert (check([Claim.from_args({"value": value, "evidence_id": "t"})], {"t": ev}) == []) is passes
+    claim = Claim.from_args({"value": value, "evidence_id": "t", "metric": metric})
+    assert (check([claim], {"t": ev}) == []) is passes
+
+
+def test_a_text_that_writes_a_percent_lets_its_fraction_match_and_a_structured_value_is_exact():
+    from conversation.testing.fakes import evidence
+    from nucleo.conversation_host.figures import figures, percents
+    text = "18 Nov 2026 · 3 min · 1,234 views · 186.52 · down 4.98 % today"
+    ev = Evidence("t", "search", numbers=figures(text), percents=percents(text))
+    passes = [n for n in range(1, 101) if check([Claim.from_args({"value": n, "evidence_id": "t"})], {"t": ev}) == []]
+    assert passes == [3, 5, 18]                                                # «12» never from 1234 ÷ 100
+    assert check([Claim.from_args({"value": 0.0498, "evidence_id": "t"})], {"t": ev}) == []
+    structured = evidence("s", "w1", "w2", "w3", "down", -4.98)
+    base = {"entity": "w1", "period": "w2", "metric": "w3", "direction": "down", "evidence_id": "s"}
+    assert [check([Claim.from_args({**base, "value": v})], {"s": structured}) == [] for v in (-4.98, 5, 0.05, 498)] \
+        == [True, False, False, False]
 
 
 def _commands(h):

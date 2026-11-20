@@ -35,10 +35,10 @@ def speak(order, ack) -> bool:
     cl = _live()
     if cl is None:
         return False
-    payload = {"text": order.text, "alias": order.say_id, "conv": True, "allow_interruptions": True,
-               "env": cl.env_diff()}
+    payload = {"text": order.text, "alias": order.say_id, "conv": True, "allow_interruptions": True}
 
     async def play() -> None:
+        payload["env"] = cl.env_diff()         # on the body's loop, the one that keeps what was sent
         started = False
         try:
             async for line in cl.say_stream(payload):

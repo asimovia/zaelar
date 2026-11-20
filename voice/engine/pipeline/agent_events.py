@@ -172,6 +172,9 @@ def set_ear(session, enabled: bool, *, _emit=None) -> None:
         return
     say = _emit or (lambda *a, **k: None)
     try:
+        if getattr(session, "_zaelar_manager_ear", False):      # a session of the manager: its ear has his words
+            session.clear_user_turn()                            # LiveKit's own turn is only ever cleared, never
+            return                                               # committed: closing the mic opens no turn
         if enabled:
             last = getattr(session, "_zaelar_close_commit", None)
             if last is None or (last.done() and not last.cancelled() and not last.exception() and not last.result()):
@@ -266,7 +269,16 @@ def receive_typed(txt: str, *, _emit, session, dev: str = "") -> None:
     from nucleo.conversation_host import switch as _conv_switch   # the switch alone: off, the manager is never loaded
     if _conv_switch.on(session):
         from nucleo.conversation_host import entry as _conv_entry
-        _conv_entry.typed(txt, dev)                  # its inbox orders it: no second wait behind a voice here
+        try:
+            loop = _ag.asyncio.get_running_loop()
+        except RuntimeError:                         # a caller with no loop: the old way runs where it is
+            loop = None
+
+        def old() -> None:                           # the conversation never opened: this session goes the old way
+            _conv_switch.fall_back(session, "the conversation could not open")
+            route = lambda: _route_typed(txt, _emit=_emit, session=session)   # noqa: E731
+            loop.call_soon_threadsafe(route) if loop is not None else route()
+        _conv_entry.typed(txt, dev, old=old)         # its inbox orders it: no second wait behind a voice here
         return
     _route_typed(txt, _emit=_emit, session=session)
 

@@ -1,0 +1,315 @@
+{
+ "id": "st-en-clean-03-g9",
+ "lang": "en",
+ "rate": 16000,
+ "duration_ms": 42940,
+ "description": "cell en×clean, flow 3",
+ "segments": [
+  {
+   "role": "user",
+   "speaker": "en_1",
+   "voice": "inworld:Reed",
+   "text": "Play some calm music to work to, without lyrics if possible.",
+   "turn": 1,
+   "cut": false,
+   "lang": "en",
+   "continues": false,
+   "stranger": null,
+   "start_ms": 700,
+   "end_ms": 4189,
+   "words": [
+    [
+     "Play",
+     700,
+     849
+    ],
+    [
+     "some",
+     849,
+     1059
+    ],
+    [
+     "calm",
+     1059,
+     1409
+    ],
+    [
+     "music",
+     1409,
+     1749
+    ],
+    [
+     "to",
+     1749,
+     1879
+    ],
+    [
+     "work",
+     1879,
+     2089
+    ],
+    [
+     "to",
+     2119,
+     2499
+    ],
+    [
+     "without",
+     2699,
+     3089
+    ],
+    [
+     "lyrics",
+     3089,
+     3519
+    ],
+    [
+     "if",
+     3519,
+     3629
+    ],
+    [
+     "possible",
+     3629,
+     4239
+    ]
+   ],
+   "i": 0
+  },
+  {
+   "role": "user",
+   "speaker": "en_1",
+   "voice": "inworld:Reed",
+   "text": "Tell me the most important news from this morning.",
+   "turn": 2,
+   "cut": false,
+   "lang": "en",
+   "continues": false,
+   "stranger": null,
+   "start_ms": 13189,
+   "end_ms": 15353,
+   "words": [
+    [
+     "Tell",
+     13189,
+     13339
+    ],
+    [
+     "me",
+     13339,
+     13449
+    ],
+    [
+     "the",
+     13449,
+     13539
+    ],
+    [
+     "most",
+     13539,
+     13799
+    ],
+    [
+     "important",
+     13799,
+     14399
+    ],
+    [
+     "news",
+     14399,
+     14679
+    ],
+    [
+     "from",
+     14679,
+     14839
+    ],
+    [
+     "this",
+     14839,
+     15039
+    ],
+    [
+     "morning",
+     15039,
+     15379
+    ]
+   ],
+   "i": 1
+  },
+  {
+   "role": "user",
+   "speaker": "en_1",
+   "voice": "inworld:Reed",
+   "text": "Move Tuesday's meeting to Wednesday at the same time.",
+   "turn": 3,
+   "cut": false,
+   "lang": "en",
+   "continues": false,
+   "stranger": null,
+   "start_ms": 24353,
+   "end_ms": 27112,
+   "words": [
+    [
+     "Move",
+     24353,
+     24608
+    ],
+    [
+     "Tuesday's",
+     24608,
+     25168
+    ],
+    [
+     "meeting",
+     25168,
+     25498
+    ],
+    [
+     "to",
+     25498,
+     25628
+    ],
+    [
+     "Wednesday",
+     25628,
+     26208
+    ],
+    [
+     "at",
+     26208,
+     26318
+    ],
+    [
+     "the",
+     26318,
+     26388
+    ],
+    [
+     "same",
+     26388,
+     26678
+    ],
+    [
+     "time",
+     26678,
+     27188
+    ]
+   ],
+   "i": 2
+  },
+  {
+   "role": "user",
+   "speaker": "en_1",
+   "voice": "inworld:Reed",
+   "text": "How long does the train take from New York to Philadelphia?",
+   "turn": 4,
+   "cut": false,
+   "lang": "en",
+   "continues": false,
+   "stranger": null,
+   "start_ms": 36112,
+   "end_ms": 38939,
+   "words": [
+    [
+     "How",
+     36112,
+     36269
+    ],
+    [
+     "long",
+     36269,
+     36439
+    ],
+    [
+     "does",
+     36439,
+     36599
+    ],
+    [
+     "the",
+     36599,
+     36669
+    ],
+    [
+     "train",
+     36669,
+     37049
+    ],
+    [
+     "take",
+     37049,
+     37359
+    ],
+    [
+     "from",
+     37359,
+     37559
+    ],
+    [
+     "New",
+     37559,
+     37679
+    ],
+    [
+     "York",
+     37679,
+     38059
+    ],
+    [
+     "to",
+     38059,
+     38179
+    ],
+    [
+     "Philadelphia",
+     38179,
+     38969
+    ]
+   ],
+   "i": 3
+  }
+ ],
+ "turns": [
+  {
+   "turn": 1,
+   "start_ms": 700,
+   "end_ms": 4189,
+   "kind": "complete",
+   "segments": [
+    0
+   ],
+   "text": "Play some calm music to work to, without lyrics if possible."
+  },
+  {
+   "turn": 2,
+   "start_ms": 13189,
+   "end_ms": 15353,
+   "kind": "complete",
+   "segments": [
+    1
+   ],
+   "text": "Tell me the most important news from this morning."
+  },
+  {
+   "turn": 3,
+   "start_ms": 24353,
+   "end_ms": 27112,
+   "kind": "complete",
+   "segments": [
+    2
+   ],
+   "text": "Move Tuesday's meeting to Wednesday at the same time."
+  },
+  {
+   "turn": 4,
+   "start_ms": 36112,
+   "end_ms": 38939,
+   "kind": "complete",
+   "segments": [
+    3
+   ],
+   "text": "How long does the train take from New York to Philadelphia?"
+  }
+ ]
+}
