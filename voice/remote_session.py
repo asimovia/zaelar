@@ -490,6 +490,9 @@ def handle(ev: dict) -> None:
         _ae._on_user_state(SimpleNamespace(new_state=str(ev.get("state") or "")), _busy=_M["busy"], _emit=_obs(),
                            _onset=_M["onset"], sm=_NoSM())
     elif k == "transcript":
+        switch = getattr(remote, "_conversation_switch", None)
+        if ev.get("final") and switch is not None and switch.on:
+            return      # a session of the manager: his final words are its ear's, written once (`wall_lines`)
         _ae._on_transcript(SimpleNamespace(is_final=bool(ev.get("final")), transcript=str(ev.get("text") or "")),
                            _emit=_obs(), _wake=_M["wake"])
     elif k == "item":

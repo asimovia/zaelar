@@ -708,6 +708,10 @@ _PACKAGE_CEILINGS["conversation"] += 20    # 2026-11-20 V2-941 v3.1 (the voice p
 _TOTAL_MAX += 20     # same cause
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 30    # 2026-11-20 V2-941 v3.1 (the operator's live test): a wake phrase of words the paid ear brought is never answered twice (`controls.local_phrase`, `ear_in.heard_lately`)
 _TOTAL_MAX += 30     # same cause
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 34    # 2026-11-20 V2-941 (INI-042 #48): his spoken line is written once, as the old turn wrote it (`wall_lines`)
+_PACKAGE_CEILINGS["conversation"] += 2                 # same cause: the accepted utterance carries his words
+_PACKAGE_CEILINGS["voice"] += 3                        # same cause: the provider's final writes nothing in a session of the manager
+_TOTAL_MAX += 39     # same cause
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())
