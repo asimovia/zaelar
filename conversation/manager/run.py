@@ -392,6 +392,7 @@ RESTATE = "these figures are not in the evidence they cite: reply again without 
 #: an order written as the reply's words, and a silence after a refused act: what the repair round says
 AS_TEXT = "the text is what the person hears: the order is the call itself, never its words"
 SAY_THE_ACT = "an act held or refused is a reply that says so"
+EMPTY = "a reply is the words he hears: it has none"
 SAY_WHAT_WAS_FOUND = "you read for his words: a reply says what was found, or what is missing to answer"
 
 
@@ -424,6 +425,14 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
     """Carry out the model's order. False = repair (a claim did not match: the answer again without it; once more when
     the honest line was our last line, so it is never said twice in a row); True = the run is over."""
     now = conv.clock.now_ms()
+    if isinstance(cmd, commands.Reply) and not str(cmd.text or "").strip():
+        _emit(conv, "command", r, command="empty_reply")        # an answer he would not hear: never published
+        if not last_try:
+            steps.append((ToolCall("orders", "orders_check", {}), ToolResult("refused", data={"reason": EMPTY})))
+            return False
+        if not await _say_lost(conv, r, batch, steps, "empty_reply"):
+            _silent(conv, r, "empty_reply", now)
+        return True
     if isinstance(cmd, commands.Reply) and _order_text(cmd.text):
         _emit(conv, "command", r, command="order_as_text")    # his line would be our protocol's words: never said
         if not last_try:

@@ -26,6 +26,7 @@ class _Labels(Enum):
 class EarLabels(_Labels):
     OPENED, EXTENDED, TENTATIVE, CLOSED = "opened", "extended", "tentative", "closed"
     INCOMPLETE, DISCARDED, ONSET, TYPED = "incomplete", "discarded", "onset", "typed"
+    GAP = "gap"
 
 
 class InboxLabels(_Labels):

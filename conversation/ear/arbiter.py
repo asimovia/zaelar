@@ -64,6 +64,10 @@ class _Voice:
     successor: bool = False                 # born at a close with the voice still up (it may be no voice at all)
 
 
+#: why a voice ended that means the provider or the line lost it, not that he said nothing
+LOST_REASONS = ("stalled", "link_gap")
+
+
 class Ear:
     def __init__(self, account: str, config: Config, emitter: Emitter, ids: Ids) -> None:
         self.account, self.cfg, self.em, self.ids = account, config, emitter, ids
@@ -172,10 +176,10 @@ class Ear:
         t = self._time(sig.t_ms)
         if v.state in OPEN_STATES:
             self._incomplete(v, t, "link_gap", out)
-        else:
-            self.em.emit("conv_ear", "incomplete", owner="ear", cause={"kind": "link"},
+        else:                                       # nothing open: the hole is only said, never a second end
+            self.em.emit("conv_ear", "gap", owner="ear", cause={"kind": "link"},
                          refs={"endpoint": sig.endpoint, "channel": "voice"}, trace=f"link:{sig.endpoint}:{t}",
-                         text="", reason="link_gap")
+                         reason="link_gap")
 
     def _on_Discard(self, sig: S.Discard, out: list) -> None:
         v = self._v(sig.endpoint)
@@ -236,6 +240,7 @@ class Ear:
         elif v.watermark_ms is not None and t - max(v.watermark_ms, v.onset_ms) >= self.cfg.stall_ms:
             # a stream that stopped beating — measured from this voice's onset at the earliest: a watermark left
             # from before it (the stream idle between interventions) is no stall of this one. No words: nothing to end.
+            # (A provider that stops while his voice is up is told by the voice process itself, as a gap.)
             if self.spans.words(v.iv):
                 self._incomplete(v, t, "stalled", out)
             else:
@@ -268,8 +273,12 @@ class Ear:
                      refs=self._refs(v), text="", reason=reason)
 
     def _incomplete(self, v: _Voice, t: int, reason: str, out: list) -> None:
+        """What the ear was hearing ends incomplete. With no word heard it is a discard (`no_words`) — unless his voice
+        had lasted `lost_voice_ms` and a stall or a hole cut it: then he spoke and we lost it, and the entry goes on
+        with no words, so the run tells him (it runs no model for it: B8e)."""
         text = " ".join(w[0] for w in self.spans.words(v.iv))
-        if not text.strip():                       # a voice with no words is never an entry: a discard, with why (I4)
+        lost = reason in LOST_REASONS and t - v.onset_ms >= self.cfg.lost_voice_ms
+        if not text.strip() and not lost:          # a voice with no words is never an entry: a discard, with why (I4)
             v.state, v.closed_ms = IvState.DISCARDED, t
             out.append(S.VoiceDiscarded(v.endpoint, v.iv, t, "no_words"))
             self.em.emit("conv_ear", "discarded", owner="ear", cause={"kind": "no_words", "ref": reason},

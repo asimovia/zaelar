@@ -656,6 +656,10 @@ _TOTAL_MAX += 25     # same cause
 _PACKAGE_CEILINGS["conversation"] += 14    # 2026-11-20 V2-941 v3.1 B7k (the final text suite): a failed run says its line before its request closes; a provider deadline with nothing from the model goes once to the stand-in (`ports.RELAY`)
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 27    # same: the text door waits for the end of a run the liveness closed (`entry._closed`), the model port asks the routing for the stand-in
 _TOTAL_MAX += 41     # same cause
+_PACKAGE_CEILINGS["conversation"] += 20    # 2026-11-20 V2-941 v3.1 B8g (the audit of B8c–B8e): a voice that lasted and was lost is told; an empty reply never published; a gap with nothing open said once
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 24    # same: an answer cut by its ceiling is a failure, the ceiling leaves room for the order; his voice lost ends the manual session
+_PACKAGE_CEILINGS["voice"] += 48           # same: the main stream behind the adapter (recovery streams never heard), a reconnect inside a stream, the provider gone quiet while his voice is up
+_TOTAL_MAX += 92     # same cause
 
 
 def test_the_total_only_shrinks():

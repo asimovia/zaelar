@@ -66,7 +66,8 @@ def test_the_tap_gives_each_stream_its_epoch_and_declares_the_gap_of_the_one_bef
     tap.edges.frame(True, 0)
     tap.new_stream()
     tap.edges.frame(False, 500)
-    assert [(f["t"], f["epoch"]) for f in facts] == [("vad", 1), ("gap", 1), ("vad", 2)]
+    (k0, e0), (k1, e1), (k2, e2) = [(f["t"], f["epoch"]) for f in facts]
+    assert (k0, k1, k2) == ("vad", "gap", "vad") and e1 == e0 and e2 > e0     # the process's epochs: a new one each
 
 
 def test_the_body_numbers_turns_by_boot_and_epoch_and_a_new_boot_is_a_gap():

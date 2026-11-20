@@ -97,6 +97,15 @@ def _hand(fn) -> None:
 #: the conversation may not open (its lease waits on the shared database lock): tried this many times, waiting longer
 #: each time, an alert each; then every line waiting is handed to its own way back (`fallback`), never left queued
 OPEN_TRIES, OPEN_BACKOFF_S = 3, 0.5
+#: after the conversation failed to open while he spoke, new sessions take the old path for this long
+BROKEN_S = 300.0
+
+
+def broken() -> bool:
+    """The conversation failed to open while he spoke, a moment ago: a new session goes the old way."""
+    return time.time() < float(_opener.get("broken_until") or 0)
+
+
 #: the close a typed line reports when the conversation never opened: its door answers it the old way
 NOT_OPENED = "not_opened"
 
@@ -231,7 +240,11 @@ def voice_lost() -> None:
         if _opener.get("lost_told"):             # once until a conversation opens again, however often it failed
             return
         _opener["lost_told"] = True
+        _opener["broken_until"] = time.time() + BROKEN_S
     switch.fall_back(remote_session._M.get("session"), "the conversation could not open while he spoke")
+    client = remote_session._M.get("client")
+    if client is not None:                       # its voice process is in manual mode: the session ends, and the one
+        client.post_soon("/voice/close", {"reason": "conversation_unavailable"})   # that reconnects is the old path's
     line = PackWords().line("mute_lines")
     if line:
         from nucleo.pulse import notices

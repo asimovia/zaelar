@@ -101,7 +101,11 @@ def max_tokens(channel: str) -> int | None:
     cutting one — an order carries its claims too. None: the client's own default."""
     import genome
     got = ((genome.genesis().get("conversation") or {}).get("max_tokens") or {}).get(channel)
-    return int(got) if isinstance(got, int) and got > 0 else None
+    return max(int(got), ORDER_ROOM) if isinstance(got, int) and got > 0 else None
+
+
+#: the least a call may write: an order carries its text AND its claims — a ceiling below this cuts the order itself
+ORDER_ROOM = 512
 
 
 class FastModel:
@@ -162,6 +166,9 @@ class FastModel:
         # the stream is over: what it measured is said BEFORE the calls it gathered — an order ends the run, and what
         # came after it would never be read
         yield Done({k: metrics[k] for k in DONE_KEYS if k in metrics})
+        if metrics.get("finish_reason") == "length":   # cut by the ceiling: a half order is never one to carry out
+            yield Failed("length: the answer was cut by its token ceiling", "provider")
+            return
         for name, args in calls:
             if name in ORDERS:
                 yield Command(name, _measured(args if isinstance(args, dict) else {}))

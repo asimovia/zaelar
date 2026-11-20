@@ -57,17 +57,64 @@ def test_the_tap_is_on_the_titular_and_never_on_what_wraps_it():
 def test_when_the_titular_falls_the_gap_is_declared_and_the_stand_ins_finals_are_heard():
     async def body(adapter, flux, stand, tap, facts):
         ear_tap.install_stt(adapter, tap)
-        tap.final_transcript("w0")                                               # the titular is up: not these
+        main = flux.stream()                                                     # the session's main stream
+        tap.final_transcript("w0")                                               # the titular is main: not these
         adapter.emit("stt_availability_changed", AvailabilityChangedEvent(stt=flux, available=False))
         tap.final_transcript("w2 w3.", now_ms=5000)
         adapter.emit("stt_availability_changed", AvailabilityChangedEvent(stt=flux, available=True))
-        tap.final_transcript("w4")                                               # back: its own messages again
+        tap.final_transcript("w4")                                               # up again, the stand-in still MAIN
+        await main.aclose()
         return facts
-    facts = _with_adapter(body)
-    assert [f["t"] for f in facts] == ["gap", "words", "eot", "mark"]
-    words, eot = facts[1], facts[2]
-    assert words["final"] and [w[0] for w in words["words"]] == ["w2", "w3."] and words["turn"] > ear_tap.STAND_IN_TURNS
-    assert eot["kind"] == "end" and eot["terminal"] is True and eot["prob"] is None
+    facts = [f for f in _with_adapter(body) if f["t"] != "mark" or True]
+    words = [f for f in facts if f["t"] == "words"]
+    assert [f["t"] for f in facts][:2] == ["gap", "words"] and [[w[0] for w in f["words"]] for f in words] == \
+        [["w2", "w3."], ["w4"]]                                                   # never deaf after the way back
+    eot = next(f for f in facts if f["t"] == "eot")
+    assert words[0]["turn"] > ear_tap.STAND_IN_TURNS and eot["kind"] == "end" and eot["terminal"] is True
+
+
+def test_a_recovery_stream_is_never_heard_and_the_titular_is_main_again_only_when_it_opens():
+    """TI-1: while the titular is down the adapter opens a RECOVERY stream on it, fed the same audio — never heard
+    (each sentence would reach the ear twice, and its opening would cut what the stand-in was hearing). Up again, the
+    next stream of the titular is the main one: the stand-in is read no more."""
+    async def body(adapter, flux, stand, tap, facts):
+        ear_tap.install_stt(adapter, tap)
+        main = flux.stream()
+        adapter.emit("stt_availability_changed", AvailabilityChangedEvent(stt=flux, available=False))
+        recovery = flux.stream()                                                 # what `_try_recovery` opens
+        tap.final_transcript("w1 w2", now_ms=5000)
+        recovery._process_stream_event(MSG)                                      # the same audio: never heard
+        gaps = sum(f["t"] == "gap" for f in facts)
+        adapter.emit("stt_availability_changed", AvailabilityChangedEvent(stt=flux, available=True))
+        await recovery.aclose()
+        again = flux.stream()                                                    # the next main stream, the titular's
+        again._process_stream_event(MSG)
+        tap.final_transcript("w9")                                               # the stand-in: read no more
+        await again.aclose()
+        await main.aclose()
+        return facts, gaps
+    facts, gaps = _with_adapter(body)
+    words = [" ".join(w[0] for w in f["words"]) for f in facts if f["t"] == "words"]
+    assert words == ["w1 w2", "w1"] and gaps == 1                               # once each, and one gap at the fall
+
+
+def test_a_reconnect_inside_one_stream_is_a_new_epoch_with_its_own_clock():
+    """TI-2: the provider's websocket reconnects inside one stream: `Connected` again, its turns and its audio clock
+    from 0. The ear takes what follows as a new stream: a new epoch, a new clock, a gap."""
+    facts = []
+    tap = ear_tap.Tap("holder", facts.append)
+    tap.new_stream()
+    tap.on_message({**MSG, "audio_window_end": 9.0, "turn_index": 3})
+    first = tap.epoch
+    tap.on_message({"type": "Connected"})
+    tap.on_message(MSG)                                                          # turn 0, window from 0
+    assert tap.epoch > first and [f["t"] for f in facts].count("gap") == 1
+    tap2 = ear_tap.Tap("holder", facts.append)
+    tap2.new_stream()
+    tap2.on_message({**MSG, "turn_index": 5, "audio_window_end": 20.0})
+    e = tap2.epoch
+    tap2.on_message({**MSG, "turn_index": 0, "audio_window_end": 0.3})          # backwards with no `Connected`
+    assert tap2.epoch > e
 
 
 def test_it_fails_open_and_gives_the_stt_back():

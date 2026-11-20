@@ -61,6 +61,10 @@ def text_only(session=None) -> bool:
 
 def refused() -> str:
     """Why a session asked for the manager may not take it now: '' when it may."""
+    import sys
+    entry = sys.modules.get("nucleo.conversation_host.entry")
+    if entry is not None and entry.broken():
+        return "the conversation could not open a moment ago: the old path for now"
     from connectors import exit as _exit
     if not all(_exit.held(lane) for lane in _exit.LANES):
         return f"{_exit.ENV} is not `all`: the manager runs only with every outside write held"

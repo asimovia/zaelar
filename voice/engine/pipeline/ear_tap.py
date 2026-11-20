@@ -27,6 +27,8 @@ TERMINAL_MARKS = (".", "?", "!", "…", "。", "？", "！")
 VAD_QUIET_MS = 200
 #: the stand-in's turns are numbered apart from the provider's own (`turn_index`), never mistaken for one of them
 STAND_IN_TURNS = 1_000_000
+#: his voice up and no message of the provider for this long: it stalled, and what it was hearing is lost
+PROVIDER_STALL_MS = 2000
 #: the device this process hears for: the holder of the session (`nucleo/conversation_host/voice_session.ENDPOINT`)
 ENDPOINT = "holder"
 #: the epochs of this PROCESS, one per stream of any session: a second session's first stream never reuses the first's
@@ -53,12 +55,34 @@ class Tap:
         self.edges = VadEdges(self)
         self.on_end: Callable[[], None] | None = None
         self.fallback, self.stand_in_turns = False, 0       # the titular fell: the stand-in's finals are the words
+        self.titular_up = True
+        self.seen, self.last_turn, self.last_end = 0, 0, 0.0
+        self.last_msg_ms, self.stall_said = 0, False
         self.on_barge: Callable[[], object] | None = None   # cut our voice (the local rule)
         self.min_barge_ms = 500
         self.playing_since: int | None = None
 
+    def provider_quiet(self, now: int) -> None:
+        """His voice is up and the provider has answered nothing for `PROVIDER_STALL_MS`: what the ear is hearing is
+        being lost — a gap, once until the provider speaks again (the voice process knows the audio flows; the body
+        cannot tell a stalled provider from an idle stream)."""
+        if self.seen and not self.stall_said and not self.fallback and now - self.last_msg_ms >= PROVIDER_STALL_MS:
+            self.stall_said = True
+            logger.warning("ear tap: his voice is up and the provider has gone quiet: a gap")
+            self.send({"t": "gap", "streams": [self.endpoint], "t_ms": now})
+
     def send(self, fact: dict) -> None:
         self._out({**fact, "epoch": self.epoch})
+
+    def _reconnected(self, msg: dict) -> bool:
+        """A reconnect of the provider's websocket inside one stream: it says `Connected` again, or its turn number or
+        its audio clock goes backwards — what came after is a new stream for the ear (a new epoch, a new clock, a gap)."""
+        if not self.seen:
+            return False
+        if msg.get("type") == "Connected":
+            return True
+        return msg.get("type") == "TurnInfo" and (int(msg.get("turn_index") or 0) < self.last_turn
+                                                  or float(msg.get("audio_window_end") or 0.0) < self.last_end - 0.5)
 
     def new_stream(self) -> None:
         """A stream begins: its own clock, its own turns and its own epoch. The one before it ended: what the ear was
@@ -67,16 +91,27 @@ class Tap:
         if self.epoch:
             self.send({"t": "gap", "streams": [self.endpoint], "t_ms": _now_ms()})
         self.epoch = next(_EPOCHS)
+        self.seen, self.last_turn, self.last_end = 0, 0, 0.0
 
     def titular_available(self, available: bool) -> None:
-        """The titular provider fell (or came back). Falling, what the ear was hearing ends incomplete — declared, never
-        silent — and the stand-in's finals become its words; back, its own messages again."""
-        if self.fallback == (not available):
-            return
-        self.fallback = not available
-        if self.fallback:
-            logger.warning("ear tap: the titular STT fell; the stand-in's finals are the ear's words until it is back")
+        """The titular provider fell, or is up again. Falling, what the ear was hearing ends incomplete — declared,
+        never silent — and the stand-in is the MAIN stream: its finals are the ear's words. Up again, the stand-in STAYS
+        the main stream (the adapter never moves a running one): its finals are still read, until a stream of the
+        titular opens with the titular up — that one is the new main (`titular_opened`)."""
+        self.titular_up = available
+        if not available and not self.fallback:
+            self.fallback = True
+            logger.warning("ear tap: the titular STT fell; the stand-in's finals are the ear's words until it is main")
             self.send({"t": "gap", "streams": [self.endpoint], "t_ms": _now_ms()})
+
+    def titular_opened(self) -> bool:
+        """A stream of the titular opens. With the titular down it is the adapter's RECOVERY stream, fed the same audio:
+        never heard (False). Up, it is the main stream — a new epoch, and the stand-in is read no more."""
+        if not self.titular_up:
+            return False
+        self.fallback = False
+        self.new_stream()
+        return True
 
     def final_transcript(self, text: str, now_ms: int | None = None) -> None:
         """A final of the STAND-IN (no turns of its own): one closed turn — its words, its end, the watermark."""
@@ -93,8 +128,16 @@ class Tap:
         self.send({"t": "mark", "stream": self.endpoint, "through": t, "arrived": now})
 
     def on_message(self, msg: dict) -> None:
-        if not isinstance(msg, dict) or msg.get("type") != "TurnInfo":
+        if not isinstance(msg, dict):
             return
+        if self._reconnected(msg):
+            self.new_stream()                    # the provider reconnected inside this stream: its turns from 0 again
+        if msg.get("type") != "TurnInfo":
+            return
+        self.seen += 1
+        self.last_msg_ms, self.stall_said = _now_ms(), False
+        self.last_turn = int(msg.get("turn_index") or 0)
+        self.last_end = float(msg.get("audio_window_end") or 0.0)
         end = msg.get("event") == ear_feed.END
         for fact in ear_feed.from_turninfo(msg, stream=self.endpoint, clock=self.clock, turns=self.turns,
                                            terminal=terminal_of(msg) if end else None):
@@ -128,6 +171,7 @@ class VadEdges:
                 self.tap.send(ear_feed.vad(self.tap.endpoint, "rise", now, echo_safe=not self.tap.speaking))
             self.last_speech = now
             self._barge(now)
+            self.tap.provider_quiet(now)
         elif self.up and now - self.last_speech >= VAD_QUIET_MS:
             self.up = False
             self.tap.send(ear_feed.vad(self.tap.endpoint, "fall", self.last_speech, echo_safe=not self.tap.speaking))
@@ -185,7 +229,11 @@ def install_stt(stt, tap: Tap):
         if original is None:                     # fail open: the provider's own path, untouched
             logger.warning(f"ear tap: {type(s).__name__} has no message handler; not tapped")
             return s
-        tap.new_stream()
+        if inner is not stt:                     # behind an adapter: a recovery stream is never heard
+            if not tap.titular_opened():
+                return s
+        else:
+            tap.new_stream()
 
         def process(data):
             try:

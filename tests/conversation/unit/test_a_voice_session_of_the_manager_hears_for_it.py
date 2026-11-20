@@ -56,7 +56,7 @@ def test_the_ear_hears_each_message_first_and_the_plugin_still_handles_it():
     stt = ear_tap.install_stt(_STT(), tap)
     s = stt.stream()
     for m in (_msg(ear_feed.START, words=["w1"]), _msg(ear_feed.UPDATE, words=["w1", "w2"], end=1.4),
-              _msg(ear_feed.END, words=["w1", "w2"], end=1.6, transcript="w1 w2.", prob=.8), {"type": "Connected"}):
+              _msg(ear_feed.END, words=["w1", "w2"], end=1.6, transcript="w1 w2.", prob=.8), {"type": "Metadata"}):
         s._process_stream_event(m)
     assert len(s.seen) == 4                                                   # the plugin's own path, untouched
     eot = [f for f in facts if f["t"] == "eot"]

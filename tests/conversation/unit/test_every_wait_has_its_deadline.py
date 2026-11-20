@@ -90,6 +90,7 @@ NOT_A_WAIT = {
     "evidence_ttl_ms": "how long evidence stays valid for a claim, not a wait",
     "voice_lost_window_ms": "how far back a lost voice is told with a text, not a wait",
     "session_gap_ms": "the silence that marks the turns before it as an earlier session, not a wait",
+    "lost_voice_ms": "how long a voice cut with no word heard must have lasted to be his, lost and told; not a wait",
 }
 
 
