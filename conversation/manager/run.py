@@ -194,8 +194,8 @@ async def _fail(conv: "Conversation", r: "Running", reason: str) -> None:
         said = await _say_failed_safely(conv, r, screen_only=screen)
     finally:                                # …and closed whatever the mouth did, a cancel included
         closed = [req for req in r.requests if close(conv, req, "recovered", "recovered", r, reason=reason)]
-    if not said:                            # never silence: unsaid even on the screen, it is owed
-        _owe(conv, r, reason, closed)
+    if not said:                            # never silence: unsaid, it is owed — on the screen only when it cut us
+        _owe(conv, r, reason, closed, voice=not screen)
     _emit(conv, "ended", r, outcome="failed", reason=reason, said=said)
 
 
@@ -205,14 +205,17 @@ async def _lost(conv: "Conversation", r: "Running", reason: str) -> None:
     screen = _barge_cut(conv, r)
     said = await _say_failed_safely(conv, r, screen_only=screen)
     if not said:
-        _owe(conv, r, reason)
+        _owe(conv, r, reason, voice=not screen)
     _emit(conv, "ended", r, outcome="failed", reason=reason, said=said)
 
 
-def _owe(conv: "Conversation", r: "Running", reason: str, requests=None) -> None:
+def _owe(conv: "Conversation", r: "Running", reason: str, requests=None, *, voice: bool = True) -> None:
     if conv.owed is not None:
         for req in (r.requests if requests is None else requests):
-            conv.owed.owe(conv.account, f"conv:failed:{req}", f"failed:{reason}")
+            if voice:
+                conv.owed.owe(conv.account, f"conv:failed:{req}", f"failed:{reason}")
+            else:                               # a batch that cut our voice: its line never goes back to the voice
+                conv.owed.owe(conv.account, f"conv:failed:{req}", f"failed:{reason}", voice=False)
 
 
 async def _say_failed_safely(conv: "Conversation", r: "Running", screen_only: bool = False) -> bool:
@@ -360,7 +363,8 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
                             await stop.stopped(conv, r)  # the run in course is abandoned: nothing more of it
                             return
                         continue                         # a stop of our voice or of what plays: the run may go on
-                    r.ordered = True
+                    if isinstance(order, commands.Reply):
+                        r.ordered = True                 # a reply is an order: a stop after it stops nothing
                     if await _command(conv, r, batch, order, steps, last_try=repaired):
                         return
                     repaired, called = True, True        # one repair round, with the reason as a step

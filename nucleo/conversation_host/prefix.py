@@ -10,7 +10,10 @@ from nucleo.conversation_host.declared import declared
 
 from conversation.ports import ToolSpec
 
-MAX_TOKENS = 600
+#: measured with names of 23 letters, never the short ones (the stop review's P-2). 600 → 650 on 2026-11-20: the four
+#: stops are named among the orders (P-1: the model must see them as orders, not a silence), paid in part by their
+#: descriptions in the tool list, cut from ~530 characters to under 300
+MAX_TOKENS = 650
 
 #: the only lines a prefix carries, in this order
 LINES = tuple(declared()["prefix_lines"])                     # declared data (`declared.json`), in their order
@@ -35,9 +38,10 @@ def build(catalog: list[ToolSpec], *, native: str, name: str, agent: str = "", p
         "ACTS": ("held now, refused: never done, promised or said as done — the reply says so: "
                  + ", ".join(held)) if held
                 else "none in this session: nothing but a read passes",
-        "ORDERS": "reply(text, claims, complete) | no_reply(reason, complete); no_reply: an entry not addressed to "
-                  "you, or nothing to say; an act held or refused, or information missing: a reply saying so or "
-                  "asking for it",
+        "ORDERS": "reply(text, claims, complete) | no_reply(reason, complete) | stop_voice | stop_media | stop_run | "
+                  "stop_all; a stop first, before any read, when his words ask to stop; no_reply: an entry not "
+                  "addressed to you, or nothing to say; an act held or refused, or information missing: a reply "
+                  "saying so or asking for it",
         "CLAIMS": "one per figure in the text, with its evidence id (a read or his entry); derived: true for a "
                   "figure computed from evidence, citing every id its operands are in, op and operands, "
                   "said with its basis",

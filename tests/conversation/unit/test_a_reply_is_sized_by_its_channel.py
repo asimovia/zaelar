@@ -50,9 +50,23 @@ def test_the_prefix_declares_each_channels_length_as_data():
     budget = {"voice": "w1 w2", "text": "w3"}
     line = prefix.build([], native="English", name="English", budget=budget).splitlines()[-1]
     assert line == "LENGTH: text: w3; voice: w1 w2; longer only when asked"
-    real = prefix.build(tools_read.catalog(), native="English", name="English", agent="Johnny", person="Quinn",
-                        held=prefix.held_acts(), budget=genome.genesis()["conversation"]["reply_budget"])
+    long = "Wwwwwwwwwwwwwwwwwwwwwww"                     # a name of 23 letters (the review's P-2): the ceiling measures
+    real = prefix.build(tools_read.catalog(), native="English", name="English", agent=long, person=long,   # the prefix,
+                        held=prefix.held_acts(), budget=genome.genesis()["conversation"]["reply_budget"])  # not a name
     assert est_tokens(len(real)) <= prefix.MAX_TOKENS
+
+
+def test_the_stops_say_what_they_stop_in_few_words():
+    """The four stops ride in the tool list of every run (the review's P-2): their descriptions have a ceiling."""
+    from nucleo.conversation_host.declared import declared
+    stops = declared()["stops"]
+    assert set(stops) == {"stop_voice", "stop_media", "stop_run", "stop_all"}
+    assert sum(len(v) for v in stops.values()) <= STOPS_MAX_CHARS
+    assert "only if he asked something besides stopping" in stops["stop_voice"]          # P-3: «cállate» alone is silence
+
+
+#: the stops' descriptions, all four together (measured 2026-11-20: 290)
+STOPS_MAX_CHARS = 300
 
 
 class _Client:

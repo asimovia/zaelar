@@ -175,9 +175,9 @@
   "LENGTH"
  ],
  "stops": {
-  "stop_voice": "his last words ask you to be quiet: your voice stops now and nothing more is said; your first order, before any read",
-  "stop_media": "his last words ask to stop what is playing (music, a video): it stops, nothing else does; your first order, before any read",
-  "stop_run": "his last words ask you to stop what you were doing: your voice stops and this answer is dropped; your first order, before any read",
-  "stop_all": "his last words ask to stop everything: your voice, what is playing and his errands in course; your first order, before any read"
+  "stop_voice": "he asks you to be quiet: your voice stops; reply only if he asked something besides stopping",
+  "stop_media": "he asks to stop what is playing: it stops, nothing else",
+  "stop_run": "he asks you to stop what you are doing: your voice stops, this answer is dropped",
+  "stop_all": "he asks to stop everything: your voice, what plays, his errands"
  }
 }

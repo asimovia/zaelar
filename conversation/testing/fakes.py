@@ -160,8 +160,11 @@ class FakeOwed:
         if self.rows.get(key, {}).get("state") == "claimed":
             self.rows[key].update(state="owed", out=False)
 
-    def owe(self, account: str, key: str, reason: str) -> None:
+    def owe(self, account: str, key: str, reason: str, *, voice: bool = True) -> None:
         self.add(key, reason)
+        self.rows[key]["voice"] = voice
+        if not voice:                               # the host shows it and never claims it for the voice
+            self.rows[key]["state"] = "shown"
 
     def expire(self, now: int) -> list[str]:
         gone = [k for k, r in self.rows.items() if r["state"] == "claimed" and now >= r["due"]]

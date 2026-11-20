@@ -3,8 +3,8 @@
 Seven rows — kinds of input, classified by envelope kind and declared fields, never by what was said — and four
 columns: free, a run that has not claimed an effect, a run that has, and speaking. 28 cells (node 13.8). Three operations that are never confused: SILENCE stops our voice, CANCEL_RUN drops the run, and
 cancelling a TASK is a tool the model calls or a button by id — no cell of this table cancels a task. A stop is a
-`user.control(stop)` from a button or from the safety detector outside the package; this package reads no words for
-it. Controls never wait.
+`user.control(stop)` from a button, or a stop order the model chose from his words (`commands.Stop`, `stop.py`); this
+package reads no words for it. Controls never wait.
 
 The one cell that depends on the input's data: a voice that starts during a run that has not claimed an effect.
 Its actions wait (ACTIONS_WAIT) and, if it is the same device as the batch's last entry and inside the window of it,

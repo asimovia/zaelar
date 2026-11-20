@@ -745,6 +745,9 @@ _PACKAGE_CEILINGS["conversation"] += 18                # 2026-11-20 V2-941 (plan
 _TOTAL_MAX += 18     # same cause, measured
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 14    # 2026-11-20 V2-941 (the wall review's W2-1): our line names every line of his it answers, by its id on the wall (a typed one's `cid`)
 _TOTAL_MAX += 14     # same cause, measured
+_PACKAGE_CEILINGS["conversation"] += 8                 # 2026-11-20 V2-941 (the stop review, P-1/P-5): a no_reply is no order that spends the stop; a batch that cut our voice owes its line on the screen only
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 4     # same cause: the prefix's ceiling says why it is 650; a line owed on the screen only is never claimed for the voice
+_TOTAL_MAX += 12     # same cause, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

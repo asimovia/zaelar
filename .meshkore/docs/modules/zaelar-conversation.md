@@ -131,12 +131,20 @@ before it, in the same breath. In the voice process our own echo never cuts our 
 words only when they are not ours (compared with what was SENT to say, a word cut short included). With no word, it
 cuts only when his device declared echo cancellation (the browser's own `echoCancellation`, carried with his
 microphone's switch): off or unknown, a rise alone cannot tell our echo from his voice — **a stop then needs words the
-provider writes, or the button**. His stop — typed or spoken, the engine's whole-sentence detector — is a control and never a line for the
-model, and never told as a voice we lost. The agent's name and its spellings are key terms of the speech provider.
+provider writes, or the button**. The agent's name and its spellings are key terms of the speech provider.
+
+**A stop is an order the model chooses** (plan v3.2 §3): no word of his is read for it on this path. Beside reply and
+no_reply the model has `stop_voice`, `stop_media`, `stop_run` and `stop_all`, valid as its first order before any read
+it asked for (a no_reply the manager pushed back on does not spend it). Our voice stops at once and the line it cut is
+never resumed; the host closes the attention window, stops what plays (each card's declared suspension) and, for
+`stop_all` only, cancels his errands in course. A stop and a question are answered; a stop alone is silence (a typed
+one gets the pack's `stopped` line). A batch that cut our voice and then fails says so on the screen only, never by
+voice, owed or not. His voice rising over ours still cuts it at once, by the voice process's own rule; a button's stop
+is still a control.
 
 **Debt:** a figure written in words («trescientas libras») is not a figure; that would be the language packs' number
-words, as the duration units are. A stop said in the same turn as a question drops the question; a stop worded
-outside the detector's whole sentences is not one.
+words, as the duration units are. An errand cancelled by `stop_all` cannot be resumed: he asks again (the manager
+reads only, and `pending_work` offers no cancelled row).
 
 ## Why a package of its own
 

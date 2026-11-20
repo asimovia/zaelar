@@ -69,7 +69,8 @@ class Running:
     read_capped: str = ""                 # the read budget it spent (`reads_capped`, `read_time_capped`): no more reads
     requeued: bool = False                # its batch went back to the queue (fenced): its requests stay open
     stages: dict = field(default_factory=dict)    # where its time went, ms: queue, model, tools, grace, publish
-    ordered: bool = False                 # the model gave an order in this run: a stop after it is refused
+    ordered: bool = False                 # the model replied in this run: a stop after it is refused (a no_reply the
+                                          # manager pushed back on is no order — the next round may still stop)
     waits_voice: bool = False             # its ready reply waits for his voice to close (R3, `hold.py`)
     voice_parked_at: int = 0              # when that reply was ready
     not_his: int = 0                      # what closed on its device since then and was not his

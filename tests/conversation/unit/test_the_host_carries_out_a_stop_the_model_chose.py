@@ -27,9 +27,13 @@ def test_the_model_is_offered_the_four_stops_and_a_call_is_an_order():
     from conversation.ports import Command
     from nucleo.conversation_host import model
     offered = {t["function"]["name"]: t["function"] for t in model.tools_for([])}
+    from nucleo.conversation_host import prefix
+    orders = next(line for line in prefix.build([], native="English", name="English").splitlines()
+                  if line.startswith("ORDERS:"))
+    assert "a stop first, before any read" in orders                   # among the orders (the stop review's P-1)
     for name in ("stop_voice", "stop_media", "stop_run", "stop_all"):
         assert offered[name]["parameters"] == {"type": "object", "properties": {}}
-        assert "first order" in offered[name]["description"]
+        assert offered[name]["description"] and name in orders
 
     class Client:
         async def stream(self, messages, *, on_tool_call, metrics, **kw):
@@ -95,3 +99,24 @@ def test_the_conversation_is_built_with_these_hands_and_no_stop_word_is_read():
     assert "stops=HostStops()" in inspect.getsource(boot.make)
     for gone in ((guards, "split_stop"), (guards, "orders_stop"), (ear_in, "_stopped"), (controls, "typed_line")):
         assert not hasattr(*gone), f"{gone[0].__name__}.{gone[1]} reads his words for a stop"
+
+
+def test_an_errand_cancelled_by_a_stop_never_announces_itself_by_voice(monkeypatch):
+    """The review's P-7: «stop everything» cancels his errand at the screen's door; its ending is said by no voice."""
+    from nucleo import dispatch
+    from nucleo.circuit import asker, ledger
+    from nucleo.pulse import notices
+    from voice import attention, proactive
+    spoken = []
+
+    async def said(*a, **k):
+        spoken.append((a, k))
+        return False
+    monkeypatch.setattr(proactive, "notify", said)
+    monkeypatch.setattr(notices, "notify", said)
+    monkeypatch.setattr(attention, "close_window", lambda src="": None)
+    monkeypatch.setattr(dispatch, "_LOOP", None)
+    monkeypatch.setattr(stops, "_media", lambda: None)
+    uid = asker.open_row("w1 w2", kind="generic")
+    stops.HostStops().stop("all", "holder")
+    assert ledger.store().task_get(uid)["state"] == "cancelled" and spoken == []

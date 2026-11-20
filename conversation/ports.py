@@ -210,8 +210,8 @@ class Owed(Protocol):
     def next(self, account: str) -> OwedLine | None: ...          # a line held for the voice, if any
     def settle(self, key: str) -> None: ...                      # it sounded: spoken
     def release(self, key: str) -> None: ...                     # it did not: back to owed, for its other ways
-    def owe(self, account: str, key: str, reason: str) -> None: ...  # the manager owes a line (a failure): the host
-                                                                     # words it in the person's language
+    def owe(self, account: str, key: str, reason: str, *, voice: bool = True) -> None: ...   # the manager owes a
+    # line (a failure): the host words it in the person's language; `voice` False: on the screen only, never said
 
 
 class Mouth(Protocol):
