@@ -157,11 +157,12 @@ function paintBrowser(box, br){
 
 // ONE paint from ONE record. `open` only decides how much of it is shown. The task's open question (V2-851) is
 // painted whether or not the process is alive: a task waiting on his answer has usually stopped its worker.
+// His question's slot is kept BY NODE and redrawn around, never taken out: a node out of the page loses focus and caret.
 export function paintEntry(node, rec, open){
-  node.textContent = "";
+  const ask = node._askSlot || (node._askSlot = AskSlot(node.dataset.task || node.dataset.key));
+  [...node.childNodes].forEach(c => { if(c !== ask) c.remove(); }); if(!ask.parentNode) node.appendChild(ask);
   node.classList.toggle("open", !!(open && rec && rec.alive));   // the row hides its own activity line: the log says it
-  const ask = AskSlot(node.dataset.task || node.dataset.key);
-  if(!rec || !rec.alive){ node.appendChild(ask); node.appendChild(actsOf(node, null)); return; }
+  if(!rec || !rec.alive){ node.appendChild(actsOf(node, null)); return; }
   const br = rec.browser || {};
   paintPlan(node, rec, open);
   if(open){
@@ -177,7 +178,7 @@ export function paintEntry(node, rec, open){
       node.appendChild(log);
     }
   }
-  node.appendChild(ask);          // his task's question, then what the page waits on him for — that stays the last line
+  [...node.childNodes].slice(1).forEach(c => node.insertBefore(c, ask));   // the plan and detail go above his question
   paintWait(node, br);
   const more = elem("button","hb-btn hb-btn--ghost hb-btn--sm pe-toggle",
                     open ? tt("chat.procLess", null, "Menos") : tt("chat.procMore", null, "Ver detalle"));

@@ -3107,6 +3107,11 @@ DOMAINS: list[dict] = [
                                  "per card and one revoke per ✕. Disarms: the want guard, hide's cancel, the off check",
             "ch": UNIT, "paths": ["tests/browser/unit/side_columns/test_each_side_column_stands_alone.py",
                                   "tests/browser/unit/side_columns/test_the_side_columns_alone_in_a_browser.py"]},
+        {"id": "4.607", "title": "A process that moves while he types the answer to its question keeps his answer box: "
+                                 "`ProcessEntry.paintEntry` keeps the question's slot by node across its repaints (`processRev`, "
+                                 "`_load`) and redraws the plan around it, so the box keeps its text, focus and caret and the send "
+                                 "posts what he typed. Disarm: a new slot built on every repaint",
+            "ch": UNIT, "paths": ["tests/browser/unit/chat/test_a_moving_process_keeps_the_answer_he_types.py"]},
         {"id": "4.598", "title": "Nobody wakes the agent to leave it stopped (INI-042 #46): only the ⏻ door (`power.setPower`) "
                                  "calls `runStop`; both shells' boot probe REFLECTS the server's ⏻ (`presence.reflectRunState`) "
                                  "and never sends a stored one — a stale «stopped» follows a running agent, a real stop holds, "
