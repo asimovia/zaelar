@@ -137,6 +137,17 @@ def test_custom_lists_his_widgets_including_the_fork(wall):
     assert not any(t["customized"] for t in _tiles(wall)), "under Custom the fork is HIS widget, not a pale one"
 
 
+def test_a_scope_set_while_the_tab_is_open_redraws_it(wall):
+    """The catalogue is its own component (`side/apps/`): a scope set from outside while it is shown (the voice's
+    «apps-custom» alias, or his click on the sub-tab) reaches it through its bridge and redraws it."""
+    _open_apps(wall)
+    wall.evaluate("() => window.__store.setAppsScope('custom')")
+    assert {t["id"] for t in _tiles(wall)} == {"youtube", "canvas-shows-day"}
+    wall.click(".cw-apps .cw-subtab:nth-child(1)")
+    assert wall.evaluate("() => window.__store.appsScope()") == "system"
+    assert {t["id"] for t in _tiles(wall)} == {"musica", "agenda", "youtube"}
+
+
 def test_the_tiles_are_small_enough_for_a_dozen_to_fit_on_one_screen(wall):
     """His second pass: «hacer esas cajas más pequeñas… tenemos solo 10 o 12… adaptarlo al tamaño de esa
     imagen». The whole shipped catalogue (14 today) in a 340×560 wall must fit without scrolling, and each box hugs its image."""

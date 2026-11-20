@@ -29,6 +29,7 @@ import { chatRefView } from "./ChatRef.js?v=1";
 import * as a2a from "./A2AView.js?v=1";
 import { onCardFront } from "../widgets/card-front.js?v=1";
 import { ConnectorsList } from "./ConnectorsList.js?v=1";
+import { mountAppsTab } from "../services/apps-bridge.js?v=1";
 
 // V2-561/V2-526 — stable family order, matching connectors/registry.py's descriptors() order; any family
 // not listed (a catalog-only wishlist family) sorted after, alphabetically, so one nobody expects does not
@@ -473,46 +474,9 @@ export function ChatWall() {
   const connList = ConnectorsList({ onManage: openConnectorConfig });
   const refreshConnectors = connList.refresh;
 
-  // ── APPS tab (V2-761): the widget catalogue — Sistema (shipped) · Custom (his own + his forks) ──────────
-  // One GET (`/widgets/registry`, the resolver's own read model) and nothing else: `origin` says who built
-  // it and `forked` says a shipped widget has been replaced by his copy. A FORKED system widget shows twice
-  // ON PURPOSE: under Sistema greyed with a «Custom» mark — so he can see that the native one is no longer
-  // the one running — and under Custom as the one he actually opens. A click opens the card through the
-  // same door every other button uses (`hb:open-card`); this tab holds no second way of opening a widget.
-  const [appRows, setAppRows] = createSignal([]);
-  const refreshApps = async () => {
-    const r = await api.getWidgetsRegistry();
-    setAppRows(((r && r.registry) || []).filter(w => w && w.surface === "user"));
-  };
-  const _byName = (a, b) => String(a.name || a.id).localeCompare(String(b.name || b.id));
-  const systemApps = () => appRows().filter(w => w.origin === "builtin" || w.forked).sort(_byName);
-  const customApps = () => appRows().filter(w => w.origin !== "builtin").sort(_byName);
-  const openApp = (id) => { try { document.dispatchEvent(new CustomEvent("hb:open-card", { detail: { id } })); } catch (_) {} };
-  const appTile = (w, scope) => {
-    const customized = scope === "system" && !!w.forked;
-    return h("button", { class: "ap-tile" + (customized ? " ap-customized" : ""), "data-app": w.id,
-                         title: () => customized ? t("chat.appsCustomizedNote") : (w.name || w.id),
-                         onClick: () => openApp(w.id) },
-      h("span", { class: "ap-thumb" }, raw(APPS_ICON),
-        customized ? h("span", { class: "ap-badge" }, () => t("chat.appsCustomBadge")) : null),
-      h("span", { class: "ap-name" }, w.name || w.id),
-      scope === "custom" && w.forked ? h("span", { class: "ap-meta" }, () => t("chat.appsForkOf")) : null,
-    );
-  };
-  const APP_SCOPES = [{ id: "system", label: "chat.appsSystem", empty: "chat.appsSystemEmpty" },
-                      { id: "custom", label: "chat.appsCustom", empty: "chat.appsCustomEmpty" }];
-  const appsBody = () => {
-    const sc = APP_SCOPES.find(x => x.id === store.appsScope()) || APP_SCOPES[0];
-    const rows = sc.id === "custom" ? customApps() : systemApps();
-    return [
-      h("div", { class: "cw-subtabs" },
-        ...APP_SCOPES.map(x => h("button", { class: "cw-subtab" + (x.id === sc.id ? " on" : ""),
-                                             onClick: () => store.setAppsScope(x.id) }, () => t(x.label)))),
-      rows.length
-        ? h("div", { class: "ap-grid" }, ...rows.map(w => appTile(w, sc.id)))
-        : h("div", { class: "cw-empty" }, () => t(sc.empty)),
-    ];
-  };
+  // ── APPS tab (V2-761): the widget catalogue (`side/apps/` via `apps-bridge.js`); entering it re-reads it.
+  const appsHost = h("div", { class: "cw-apps" }), appsTab = mountAppsTab(appsHost);
+  createEffect(() => { if (store.chatTab() !== "apps") appsTab.hide(); else if (store.chatOpen()) appsTab.show(); });
 
   // The dock classes are set IMPERATIVELY by applyDock/applyFloat, and this binding rewrites the whole
   // className whenever the tab or the open flag changes — so it silently wiped `docked`/`dock-left` while the
@@ -599,10 +563,7 @@ export function ChatWall() {
     h("div", { class: "cw-conn" },
       connList.node,
     ),
-    // APPS (V2-761) — the widget catalogue, Sistema · Custom.
-    // Drawn only while it is the open tab: hidden, its Sistema · Custom bar was a second `.cw-subtabs` in the
-    // DOM beside the tasks tab's own, and anything reading «the sub-tabs» read six instead of four.
-    h("div", { class: "cw-apps" }, () => (store.chatTab() === "apps" ? appsBody() : null)),
+    appsHost,   // APPS (V2-761) — the widget catalogue, its own component (`side/apps/`), drawn only while open
     // INPUT (Chat only — CSS hides it in the other tabs)
     h("div", { class: () => "cw-input" + (dropping() ? " cw-dropping" : ""),
                onDragover: onComposerDrag, onDragenter: onComposerDrag, onDragleave: onComposerDrag,
@@ -635,7 +596,6 @@ export function ChatWall() {
     else if (t === "clusters") store.fetchClusters();
     else if (t === "conectores") refreshConnectors();
     else if (t === "red") a2a.refresh();
-    else if (t === "apps") refreshApps();
   });
   // When live processes change (a task finishes) while we are viewing “Processes”, refresh the history so
   // the task that just finished moves from the "running" block to "history".
