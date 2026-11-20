@@ -509,6 +509,108 @@
      }
     }
    }
+  },
+  "build_widget": {
+   "act": "widget.build",
+   "door": "life",
+   "op": "build",
+   "about": "a widget of his to create or change (its code, not its data): it is built apart, after his yes",
+   "schema": {
+    "type": "object",
+    "required": [
+     "request"
+    ],
+    "properties": {
+     "request": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "delete_widget": {
+   "act": "widget.delete",
+   "door": "life",
+   "op": "delete",
+   "about": "delete one of his widgets for good (closing is close_widget): asks his yes",
+   "schema": {
+    "type": "object",
+    "required": [
+     "widget"
+    ],
+    "properties": {
+     "widget": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "restore_widget": {
+   "act": "widget.restore",
+   "door": "life",
+   "op": "restore",
+   "about": "bring a widget of his back to its shipped version, or back from deleted: asks his yes",
+   "schema": {
+    "type": "object",
+    "required": [
+     "widget"
+    ],
+    "properties": {
+     "widget": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "widget_alias": {
+   "act": "widget.alias",
+   "door": "life",
+   "op": "alias",
+   "about": "a name a widget opens by, added or removed (never a person's nickname)",
+   "schema": {
+    "type": "object",
+    "required": [
+     "widget",
+     "alias"
+    ],
+    "properties": {
+     "widget": {
+      "type": "string"
+     },
+     "alias": {
+      "type": "string"
+     },
+     "op": {
+      "type": "string",
+      "enum": [
+       "add",
+       "remove"
+      ]
+     }
+    }
+   }
+  },
+  "show_images": {
+   "act": "images.show",
+   "door": "life",
+   "op": "images",
+   "about": "pictures of something, found and shown on his screen; say its line",
+   "schema": {
+    "type": "object",
+    "required": [
+     "query"
+    ],
+    "properties": {
+     "query": {
+      "type": "string"
+     },
+     "n": {
+      "type": "integer"
+     },
+     "more": {
+      "type": "boolean"
+     }
+    }
+   }
   }
  },
  "state_topics": [

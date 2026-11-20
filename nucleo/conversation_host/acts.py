@@ -3,7 +3,7 @@ it — never rebuilt here.
 
 Which acts exist, what each is for, its arguments and the door it goes to are declared data (`declared.json`, `acts`),
 as the reads are; its class is DERIVED from its declared `act` (`tools_read.derive`): a local act is a write, and one
-whose act is a leaving type of the event vocabulary would be refused by the gateway as held. Six doors:
+whose act is a leaving type of the event vocabulary would be refused by the gateway as held. Seven doors:
 
   canvas  `nucleo.acts.canvas.apply` — show, close, minimize, full screen, arrange — with the provenance `turn:<effect>`
           (the arbiter's «turn-owned» branch: the model's order on his sealed entry is the decision, no licence ladder)
@@ -16,6 +16,7 @@ whose act is a leaving type of the event vocabulary would be refused by the gate
   task    his errands: start, resume, reopen, stop, unschedule, sign in (`acts_tasks.py`)
   send    a message: handed to the send owner with his words (`routing.send`), who asks and sends only on his yes
   self    its name, how it listens, his rules and style, its own controls (`acts_self.py`)
+  life    a widget built, deleted, restored or named, and pictures shown (`acts_life.py`)
 
 The widget an act names is resolved against the CATALOGUE — every manifest, by id, name or declared alias
 (`widgets.runtime`) — and narrowed to the card open on screen (`widgets.instances`): a widget nobody wrote code for is
@@ -163,7 +164,7 @@ def run(name: str, args: dict, effect_id: str | None) -> ToolResult:
     if _a_message(args, spec["op"]):
         return ToolResult("rejected", {"reason": "a message is its owner's", "tool": name})
     src = f"turn:{effect_id or name}"
-    if spec["door"] in ("widget", "task", "send", "self"):   # their own doors, awaited by `HostTools.call`
+    if spec["door"] in ("widget", "task", "send", "self", "life"):   # their own doors, awaited by `HostTools.call`
         return ToolResult("rejected", {"reason": "not a canvas or panel act", "tool": name})
     if spec["door"] == "panel":
         from nucleo.turn.prompt import catalogs
@@ -197,6 +198,9 @@ class HostTools:
             if ACTS[name]["door"] == "send":
                 from nucleo.conversation_host import routing
                 return await routing.send(args if isinstance(args, dict) else {})
+            if ACTS[name]["door"] == "life":
+                from nucleo.conversation_host import acts_life
+                return await asyncio.to_thread(acts_life.run, ACTS[name]["op"], args)
             if ACTS[name]["door"] == "self":
                 from nucleo.conversation_host import acts_self
                 return await asyncio.to_thread(acts_self.run, ACTS[name]["op"], args)

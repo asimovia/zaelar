@@ -120,7 +120,8 @@ support is an act of its own (`note_for_support`): his words kept on the timelin
 itself is changed by its own doors (`acts_self.py`): its name, how it listens, the rules and the style he dictates
 (shaped once into the one rules table) and its own controls — and the live conversation's prefix is built again, so
 STYLE, whose one source is the language pack's `speech_style` and the turn's shape as genesis and his rows set it,
-reads as it stands. Each tool's class is derived
+reads as it stands. A widget's life — built or changed (an errand of kind code, asked at the dispatch door), deleted or
+restored (his yes on its row), a name it opens by — and pictures shown go through theirs (`acts_life.py`). Each tool's class is derived
 from what it declares, never listed; a door that fails is a result the model sees. The state comes from the engine's
 own readers, each bounded within `state_tokens`, writing nothing. Every run carries what is open first (the tasks,
 a message draft), the next days beside NOW, the widget in front (at full screen, in front on a phone, else the newest
@@ -234,8 +235,9 @@ produces a flow for it to read.
 ## Not done yet
 
 The package runs behind the switch, for his text and his voice. It READS, STOPS and carries out the canvas and panel
-acts, a widget's declared actions (music and video included), his errands and his messages (F2 steps 1-4). The other
-acts that leave stay listed as held;
+acts, a widget's declared actions (music and video included), his errands, his messages, the agent itself and a
+widget's life (F2 steps 1-7). Clusters and the network, and the fast listings pass, are not wired: an errand serves
+them meanwhile; the other acts that leave stay listed as held;
 they come one by one through the existing single doors (the widget action runner, dispatch, the send owner), never
 rebuilt.
 The public architecture diagrams show the package and mark those acts as next.
