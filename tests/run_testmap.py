@@ -3068,6 +3068,15 @@ DOMAINS: list[dict] = [
                                  "intact while the second is said; our reply below the lines it answers, cut where its voice ended; a "
                                  "typed line goes out with the component's id and the engine's acknowledgement is the same line",
             "ch": UNIT, "paths": ["tests/browser/unit/chat_wall/test_the_bridge_paints_the_manager.py"]},
+        {"id": "4.603", "title": "The side panel's widget catalogue (Apps tab, System · Custom) is a component of its own: "
+                                 "`frontend/side/apps/` imports nothing outside its folder and nothing imports it but "
+                                 "`services/apps-bridge.js`; its model splits the registry by who built a widget (Node); on a blank "
+                                 "page, fed through a hand-made bridge, it draws nothing while hidden, paints both scopes with the "
+                                 "fork pale under System, sends the sub-tab and the open through the bridge and re-reads on every "
+                                 "show. Disarms: an outside import, a second importer, the fork only under Custom, hide keeping the "
+                                 "body, show not re-reading, no own stylesheet",
+            "ch": UNIT, "paths": ["tests/browser/unit/side_apps/test_the_catalogue_is_a_component_of_its_own.py",
+                                  "tests/browser/unit/side_apps/test_the_catalogue_alone_in_a_browser.py"]},
         {"id": "4.598", "title": "Nobody wakes the agent to leave it stopped (INI-042 #46): only the ⏻ door (`power.setPower`) "
                                  "calls `runStop`; both shells' boot probe REFLECTS the server's ⏻ (`presence.reflectRunState`) "
                                  "and never sends a stored one — a stale «stopped» follows a running agent, a real stop holds, "
