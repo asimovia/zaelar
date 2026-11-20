@@ -10,7 +10,8 @@
 //     either way the WHOLE screen goes dark (`Veil.js`, face "sleep") with a wake button; any gesture wakes it, and
 //     the veil stays, with a loader, until the stream answers (operator, 2026-11-19: an open screen that is neither
 //     listening, speaking nor working is never shown bare — the tab's own sleep had only a line under the orb);
-//   · a stream lost while he is here shows the veil's "connecting" face from its first retry until it answers;
+//   · a stream lost while he is here (it had answered on this page) shows the veil's "connecting" face from its first
+//     retry until it answers;
 //   · a hidden tab never reconnects, and becoming visible again is not a gesture.
 // While asleep the tab sends nothing: pollers and voice retries ask `asleep()` before they reach the server.
 // Every open this module decides carries `wake=1`: it is a person, and a deployment whose edge lets only a person
@@ -142,7 +143,7 @@ function _navNow() {
 // `why` is what put the tab to sleep: "tab" (its own timer, a failed reconnect) or "engine" (`engine.sleep`).
 // `lastInput` keeps a just-loaded tab's stream (its retries, its own sleep timer); `lastGesture` is what a beat needs.
 const _p = { lastInput: Date.now(), lastGesture: openedByPerson(_navNow()) ? Date.now() : 0, asleep: false, why: "", waking: false, open: false, sleepMin: TAB_SLEEP_MIN,
-             attempt: 0, timer: null, h: null, lost: false };
+             attempt: 0, timer: null, h: null, lost: false, answered: false };
 
 export const asleep = () => _p.asleep;
 
@@ -210,7 +211,7 @@ export function presenceEvent(d) {
 
 /** The stream answered: the engine is awake. The veil lifts, and a visible tab says a person is here. */
 export function onStreamOpen() {
-  _p.attempt = 0; _p.open = true;
+  _p.attempt = 0; _p.open = true; _p.answered = true;
   if (_p.why || _p.waking || _p.lost) { _p.why = ""; _p.waking = false; _p.lost = false; _dormant(); }
   _beat();
 }
@@ -226,7 +227,9 @@ export function onStreamError() {
   _p.timer = setTimeout(() => {
     _p.timer = null;
     if (!reconnectDecision(now()).reconnect) return sleep();
-    if (!_p.open && !_p.waking && !_p.lost) { _p.lost = true; _dormant(); }   // a blip under its first backoff shows nothing
+    // a blip under its first backoff shows nothing, and a stream that never answered on this page was not lost: its
+    // first connect is the boot loader's, so the veil has nothing to cover
+    if (_p.answered && !_p.open && !_p.waking && !_p.lost) { _p.lost = true; _dormant(); }
     _p.h && _p.h.open({ wake: true });
   }, d.delayMs);
 }

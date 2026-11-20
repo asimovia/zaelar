@@ -21,6 +21,7 @@ globalThis.setTimeout = (fn, ms) => { timers.push({ fn, ms }); return timers.len
 globalThis.clearTimeout = () => {};
 
 const P = await import("../../../../frontend/app/services/presence.js?v=1");
+const Fresh = await import("../../../../frontend/app/services/presence.js?v=fresh");   // a page whose stream never answered
 
 // ── 1. the pure pieces ───────────────────────────────────────────────────────────────────────────────────────────
 const T = 1_800_000_000_000;
@@ -90,5 +91,14 @@ assert.deepEqual(last(), { face: "connecting", waking: true },
                  "still lost at the first retry: the veil covers the screen with a loader (operator, 2026-11-19)");
 P.onStreamOpen();
 assert.deepEqual(last(), { face: "", waking: false }, "the stream answered: the veil lifts");
+
+// ── 4. a stream that never answered on this page was not lost: its first connect is the boot loader's, no veil ──
+const freshSeen = [];
+Fresh.wirePresence({ open() {}, close() {}, t: (k) => k, beat() {}, dormant: (d) => freshSeen.push(d) });
+timers.length = 0;
+Fresh.onStreamError();
+timers.shift().fn();
+assert.ok(!freshSeen.some((d) => d.face === "connecting"),
+          "a stream that never answered here shows no connecting veil over the page (the boot loader owns it)");
 
 console.log("ok — one black veil when the engine sleeps, lifted when it answers");
