@@ -19,7 +19,7 @@ from tests.conversation.unit.convkit import Harness
 
 
 class _Words:
-    def line(self, key):
+    def line(self, key, near=""):
         return "w_lost" if key == "mute_lines" else ""
 
 

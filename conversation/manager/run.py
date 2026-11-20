@@ -196,12 +196,20 @@ async def _say_failed_safely(conv: "Conversation", r: "Running") -> bool:
         return False
 
 
+def _line(conv: "Conversation", key: str, r: "Running") -> str:
+    """The host's fixed line for `key`, in the language of what it answers (his words in the run's batch)."""
+    if conv.words is None:
+        return ""
+    near = " ".join(str(getattr(e.body, "text", "") or "") for e in r.ctx.batch.values() if e.is_user)
+    return conv.words.line(key, near=near.strip())
+
+
 async def _say_failed(conv: "Conversation", r: "Running") -> bool:
     """The failure line as the answer to a batch of typed entries: sealed and said on the text channel. False when the
     batch holds his voice, there is no line, or the publication is fenced."""
     envs = tuple(r.ctx.batch.values())
     users = [e for e in envs if e.is_user]
-    line = conv.words.line("mute_lines") if conv.words is not None else ""
+    line = _line(conv, "mute_lines", r)
     if not line or not users or any(e.kind is not EnvelopeKind.USER_TEXT for e in users):
         return False
     if not conv.gw.seal_publication(r.ctx, [e.refs.intervention_id for e in users]):
@@ -333,7 +341,7 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
 
 async def _say_lost(conv: "Conversation", r: "Running", batch: Batch, steps: list, why: str) -> bool:
     """Never silence: the language's own «I lost that» line (`mute_lines`), counted as `why`. False with no line."""
-    line = conv.words.line("mute_lines") if conv.words is not None else ""
+    line = _line(conv, "mute_lines", r)
     if not line:
         return False
     _emit(conv, "command", r, command=why)
@@ -423,7 +431,7 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
         if bad:
             _emit(conv, "command", r, command="reply_blocked", claims=[why for _c, why in bad],
                   detail=[CL.detail(c, why, valid.get(c.evidence_id)) for c, why in bad])
-            line = conv.words.line("unverified_fact") if conv.words is not None else ""
+            line = _line(conv, "unverified_fact", r)
             again = bool(line) and _last_answer(conv) == UNVERIFIED  # the honest line twice in a row is never said
             if not last_try or (again and not r.restated_again):
                 r.restated_again = r.restated_again or last_try

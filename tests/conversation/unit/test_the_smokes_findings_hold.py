@@ -30,7 +30,7 @@ class _Words:
     def __init__(self, line):
         self._line = line
 
-    def line(self, key):
+    def line(self, key, near=""):
         return self._line if key == "unverified_fact" else ""
 
 

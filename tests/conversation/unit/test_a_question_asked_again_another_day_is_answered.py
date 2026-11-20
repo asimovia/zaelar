@@ -16,7 +16,7 @@ HOUR = 3_600_000
 
 
 class _Words:
-    def line(self, key):
+    def line(self, key, near=""):
         return {"mute_lines": "w_lost", "unverified_fact": "w_unverified"}.get(key, "")
 
 

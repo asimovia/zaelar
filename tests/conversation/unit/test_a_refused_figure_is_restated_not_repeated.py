@@ -21,7 +21,7 @@ LINE = "w_honest"
 
 
 class _Words:
-    def line(self, key):
+    def line(self, key, near=""):
         return {"unverified_fact": LINE, "mute_lines": "w_lost"}.get(key, "")
 
 

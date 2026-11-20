@@ -28,7 +28,7 @@ from tests.conversation.unit.convkit import Harness
 
 
 class _Words:
-    def line(self, key):
+    def line(self, key, near=""):
         return {"mute_lines": "w_lost", "unverified_fact": "w_honest"}.get(key, "")
 
 

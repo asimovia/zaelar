@@ -138,8 +138,9 @@ class Prefs(Protocol):
 
 class Words(Protocol):
     """The host's fixed lines in the person's language, for the few facts the manager says itself, as they are (a
-    figure it could not confirm). An empty line means the host has none: the manager then says nothing."""
-    def line(self, key: str) -> str: ...
+    figure it could not confirm). `near`: what the line answers (his words in the batch) — the host says it in THAT
+    language when it can tell. An empty line means the host has none: the manager then says nothing."""
+    def line(self, key: str, near: str = "") -> str: ...
 
 
 class Record(Protocol):

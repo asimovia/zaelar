@@ -171,5 +171,5 @@ class FixedWords:
     """The host's fixed lines, as tokens: a test sees which one was said, never a language's words."""
     LINES = (("mute_lines", "w_lost"), ("unverified_fact", "w_unverified"))
 
-    def line(self, key: str) -> str:
+    def line(self, key: str, near: str = "") -> str:
         return next((text for k, text in self.LINES if k == key), "")

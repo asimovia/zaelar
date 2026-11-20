@@ -645,6 +645,9 @@ _TOTAL_MAX += 16     # same cause
 _PACKAGE_CEILINGS["conversation"] += 15    # 2026-11-20 V2-941 v3.1 B8e (the 3b smoke): a voice with no words is a discard, never an entry; a batch with nothing said runs no model; P3 says no prompt carries an empty item
 _PACKAGE_CEILINGS["voice"] += 3            # same: the epochs are the voice process's, one per stream of any session
 _TOTAL_MAX += 18     # same cause
+_PACKAGE_CEILINGS["conversation"] += 9     # 2026-11-20 V2-941 v3.1 B7j (the corpus's R15): a fixed line chosen by the language of the words it answers (`run._line`, `Words.line(near=)`)
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 45    # same: STATE, widgets and tasks as facts with plain labels, never the old turn's composed prose; the pack of his words' language
+_TOTAL_MAX += 54     # same cause
 
 
 def test_the_total_only_shrinks():
