@@ -178,6 +178,12 @@ def typed(text: str, dev: str = "", *, wait: bool = False, checked: bool = False
     return {"ok": True, "cid": cid}
 
 
+def count(counter: str) -> None:
+    """One more on a proof counter of this account, counted on the conversation's side (the account can wait)."""
+    from nucleo.conversation_host import proof
+    _hand(lambda c: proof.note(c.account, counter))
+
+
 def device(endpoint: str, **state) -> None:
     """A device's state for the conversation (its voice live, its speaker open), handed over in order."""
     _hand(lambda c: c.device(endpoint, **state))

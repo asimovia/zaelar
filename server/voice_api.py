@@ -155,12 +155,13 @@ async def debug_conversation(session: str):
 async def debug_conversation_reset():
     """A disposable engine's reset between two isolated test conversations (`conversation_host.sandbox`). Refused
     unless this engine is a sandbox: on a real account the conversation goes on across sessions, as it should. The
-    memory's queue is drained first, so a write of the case before cannot land after its reset."""
+    conversation is closed, then the memory's queue drains, so a write of the case before cannot land after its reset."""
     import asyncio
     from nucleo.conversation_host import sandbox
     if not sandbox.is_sandbox():
         return JSONResponse({"ok": False, "reason": "not a sandbox"}, status_code=403)
     from memory.queue import get_queue
+    await asyncio.to_thread(sandbox.close)              # the conversation stopped, THEN its last writes drain
     try:
         await asyncio.wait_for(get_queue().join(), timeout=10.0)
     except asyncio.TimeoutError:

@@ -120,3 +120,16 @@ def device_ok(did: str, now: int) -> None:
 
 def device_failed(did: str) -> None:
     _d().execute("UPDATE push_devices SET fail_count=fail_count+1 WHERE id=?", (did,))
+
+
+def high_water() -> int:
+    """The newest notice's id (0 with none): a mark `forget_after` reads back."""
+    r = _d().query_one("SELECT COALESCE(MAX(id), 0) FROM notices")
+    return int(r[0]) if r else 0
+
+
+def forget_after(mark: int) -> int:
+    """Every notice written after `mark` — a disposable engine's reset between isolated cases only."""
+    with _d().cursor() as cur:
+        cur.execute("DELETE FROM notices WHERE id > ?", (int(mark),))
+        return cur.rowcount

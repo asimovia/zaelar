@@ -621,6 +621,14 @@ _PACKAGE_CEILINGS["conversation"] += 121   # 2026-11-20 V2-941 v3.1 B7g (the aud
 _PACKAGE_CEILINGS["nucleo/cli"] += 3       # same: a typed line the conversation could not take goes the old way
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 41    # same: the opener tries again with an alert, then hands each waiting line back to its door
 _TOTAL_MAX += 165    # same cause, and the opener's retry and fallback (`entry._open`, `_give_up`)
+_PACKAGE_CEILINGS["conversation"] += 30    # 2026-11-20 V2-941 v3.1 B7h (the audit's minors): P3 with the host's fixed lines and «never silence»; a stalled request with no run owed its line; a parked line waits the grace of the model's last reading
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 32    # same: the sandbox's two marks and its order (close, drain, the rest), its notices forgotten; English when the pack lacks a line; a proof counter counted on the conversation's side
+_PACKAGE_CEILINGS["memory"] += 13          # same: the notices since a mark, forgotten in a sandbox only (`notices_store.high_water`/`forget_after`)
+_PACKAGE_CEILINGS["voice"] += 12           # same: his wake phrase to the manager, counted apart (`agent_events._wake_reply`)
+_PACKAGE_CEILINGS["nucleo/pulse"] += 4     # same: the retry reads expired claims only with the manager's host loaded
+_PACKAGE_CEILINGS["nucleo/cli"] += 1       # same: only the text channel's door diverts (`run_turn(door=)`)
+_PACKAGE_CEILINGS["server"] += 1           # same: the reset closes before the queue drains
+_TOTAL_MAX += 93     # same cause
 
 
 def test_the_total_only_shrinks():

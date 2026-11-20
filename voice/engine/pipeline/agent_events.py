@@ -101,7 +101,7 @@ def _on_data(packet, *, _emit, _json, _wake, session) -> None:
                         return
                     _attn_wake.drop_preroll()   # `text` already carries what the spot sent as `before`
                     _emit("brain", "📥 respaldo de palabra de activación (oído local)", text=text, role="user")
-                    session.generate_reply(user_input=text)
+                    _wake_reply(session, text)
                 if _wake["spot_at"]:
                     _ag.asyncio.create_task(_wake_backstop(_txt, _wake["spot_at"]))
                     _wake["spot_at"] = 0.0
@@ -112,7 +112,7 @@ def _on_data(packet, *, _emit, _json, _wake, session) -> None:
                     _attn_wake.note_preroll(_before)
                 _emit("brain", "📥 palabra de activación (oído local)", text=_txt, role="user",
                       extra={"before": _before[:200], "src": "browser-spotter"})
-                session.generate_reply(user_input=_txt)
+                _wake_reply(session, _txt)
             except Exception as we:  # noqa: BLE001
                 _emit("alert", "zaelar-wake falló", text=str(we)[:160])
                 _ag.logger.warning("zaelar-wake handler: %s", we)
@@ -269,6 +269,18 @@ def receive_typed(txt: str, *, _emit, session, dev: str = "") -> None:
         _conv_entry.typed(txt, dev)                  # its inbox orders it: no second wait behind a voice here
         return
     _route_typed(txt, _emit=_emit, session=session)
+
+
+def _wake_reply(session, text: str) -> None:
+    """His phrase the browser's own ear caught (the wake word's backstop): the old turn answers it — or, in a session
+    of the manager, the manager does, counted apart (`wake_phrases`), never as an attempt at the old turn."""
+    from nucleo.conversation_host import switch as _conv_switch   # the switch alone: off, the manager is never loaded
+    if _conv_switch.on(session):
+        from nucleo.conversation_host import entry as _conv_entry
+        _conv_entry.count("wake_phrases")
+        _conv_entry.typed(text, "")
+        return
+    session.generate_reply(user_input=text)
 
 
 def open_typed_door(*, _emit, _on_session_loop, session):

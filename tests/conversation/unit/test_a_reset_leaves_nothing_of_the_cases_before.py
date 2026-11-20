@@ -40,22 +40,27 @@ def test_the_lease_is_fenced_and_the_next_manager_mints_ids_of_its_own(tmp_path)
 def test_what_the_cases_wrote_is_forgotten_and_the_seed_stays():
     from memory import api as memory
     from memory import db as _db
-    from nucleo.conversation_host import sandbox
-    sandbox._mark["memory"] = None
+    from memory.api import notices
+    from nucleo.conversation_host import owed, sandbox
+    sandbox._mark.update(memory=None, notices=None)
     seed = memory.write_now("w0101 seed", kind="contact")
     sandbox.forget_cases()                                                 # the first reset: the mark, after the seed
     fact = memory.write_now("w0201 a fact a case left", kind="fact")
     pair = memory.write_now("Operador: w0301 · zaelar: w0302", kind="conv", level="short", meta={"source": "conv"})
-    assert sandbox.forget_cases() == 2
+    notices.insert("k_case", "reminder", "w1", "w2", "", 0, "")
+    owed._handed.add("k_case")
+    assert sandbox.forget_cases() == 3
     valid = {r["id"] for r in _db.get_db().query("SELECT id FROM memories WHERE valid=1")}
     assert seed in valid and fact not in valid and pair not in valid
-    sandbox._mark["memory"] = None
+    assert notices.by_key("k_case") is None and not owed._handed            # the notices a case left, gone too
+    sandbox._mark.update(memory=None, notices=None)
 
 
-def test_the_reset_door_drains_the_memory_queue_then_resets(monkeypatch):
+def test_the_reset_door_closes_then_drains_the_memory_queue_then_resets(monkeypatch, tmp_path):
     from nucleo.conversation_host import sandbox
     from server import voice_api
     monkeypatch.setenv("ZAELAR_CONVERSATION_SANDBOX", "1")
+    monkeypatch.setenv("ZAELAR_WORKSPACE", str(tmp_path))
     order = []
 
     class _Q:
@@ -63,9 +68,12 @@ def test_the_reset_door_drains_the_memory_queue_then_resets(monkeypatch):
             order.append("drained")
 
     monkeypatch.setattr("memory.queue.get_queue", lambda: _Q())
+    monkeypatch.setattr(sandbox, "close", lambda: order.append("closed"))
     monkeypatch.setattr(sandbox, "reset", lambda: order.append("reset") or {"rows": 3, "memories": 2})
+    assert asyncio.run(voice_api.debug_conversation_reset()).status_code == 403   # the environment alone: refused
+    (tmp_path / sandbox.MARKER).write_text("w1")                                    # …and the launcher's file
     got = asyncio.run(voice_api.debug_conversation_reset())
-    assert got.status_code == 200 and order == ["drained", "reset"]
+    assert got.status_code == 200 and order == ["closed", "drained", "reset"]
 
 
 @pytest.fixture()

@@ -17,7 +17,7 @@ from __future__ import annotations
 import threading
 
 COUNTERS = ("manager_runs", "livekit_turns", "legacy_prompts", "commit_user_turn", "effects_outside_read",
-            "held_dispatch_attempts", "legacy_turn_attempts")
+            "held_dispatch_attempts", "legacy_turn_attempts", "wake_phrases")
 #: the gateway's labels for an effect that got past it: reserved, or sent (a read is `read`; a refusal, `refused`)
 REACHED_OUT = ("claimed", "submitted")
 MUST_BE_ZERO = ("livekit_turns", "legacy_prompts", "commit_user_turn", "effects_outside_read", "legacy_turn_attempts")

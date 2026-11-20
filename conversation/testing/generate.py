@@ -26,7 +26,7 @@ from conversation.inbox.accounting import audit
 from conversation.manager import Conversation
 from conversation.ports import Command, Done, Failed, StaleEpoch, ToolCall, ToolResult
 from conversation.store.memory import MemoryStore
-from conversation.testing.fakes import (AckingMouth, FakeClock, FakeOwed, ListTelemetry, NoMemory, RecordingTools,
+from conversation.testing.fakes import (AckingMouth, FakeClock, FakeOwed, FixedWords, ListTelemetry, NoMemory, RecordingTools,
                                         evidence)
 from conversation.testing.scripted_model import ScriptedModel, reply
 from conversation.types import Channel, ControlOp, EffectClass, EnvelopeKind, ItemKind
@@ -101,7 +101,7 @@ class Case:
     def _manager(self, owner: str) -> Conversation:
         c = Conversation(account=ACCT, owner=owner, model=self.model, tools=self.tools, store=self.store,
                          memory=NoMemory(), clock=self.clock, mouth=self.mouth, telemetry=self.tel, config=self.cfg,
-                         prefix="P3", ids=None, owed=self.owed)
+                         prefix="P3", ids=None, owed=self.owed, words=FixedWords())
         self.mouth.ack = self._lossy_ack(c)                                 # acks get lost
         for ep in ("d1", "d2"):
             c.device(ep, voice_live=self.rng.random() < 0.8, speaker_open=self.rng.random() < 0.8)
@@ -606,6 +606,21 @@ def _flows_batches_and_bounds(case, inbox_rows) -> list[str]:
     return out
 
 
+def _never_silent(case) -> list[str]:
+    """Never silence: a request that ends `stalled` or `recovered` was answered with the failure line in place (a line
+    its run said) or is owed it — never closed with nothing heard. A `silent` close is the model's order (no_reply) or
+    his stop, never the manager's."""
+    said = {o.run_id for o in case.mouth.orders}
+    owed = set(getattr(getattr(case, "owed", None), "rows", {}) or {})
+    out = []
+    for k, lab, p in case.tel.events:
+        if k == "conv_close" and lab in ("stalled", "recovered"):
+            req, run_id = p["refs"].get("req"), p["refs"].get("run")
+            if run_id not in said and f"conv:failed:{req}" not in owed:
+                out.append(f"silence: {req} closed {lab} with nothing heard and nothing owed")
+    return out
+
+
 def check(case: Case) -> list[str]:
     """I1–I9 over what the case left behind. Each violation is one sentence."""
     out = [f"crash: {c}" for c in case.crashes]
@@ -700,6 +715,7 @@ def check(case: Case) -> list[str]:
             out.append(f"I9: {r['id']} was accepted after its request {req} had closed")
     out += _flows_batches_and_bounds(case, inbox_rows)
     out += _stalled_while_he_spoke(case, inbox_rows)
+    out += _never_silent(case)
     if case.old is None:
         out += _graces(case, inbox_rows)
     for rid, row in items.items():                                                     # I9

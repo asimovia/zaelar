@@ -8,6 +8,7 @@ one writer's module; this one moves only what is claimed.
 """
 from __future__ import annotations
 
+import sys
 import time
 
 
@@ -63,7 +64,10 @@ def release(key: str) -> bool:
 
 
 def release_expired(now: float | None = None) -> int:
-    """Every claim past its deadline goes back to `owed`: no row stays claimed for ever."""
+    """Every claim past its deadline goes back to `owed`: no row stays claimed for ever. Only the manager's host
+    claims, so with it not loaded there is nothing to look for — not even a query on the retry's tick."""
+    if "nucleo.conversation_host.owed" not in sys.modules:
+        return 0
     N, n = _n(), 0
     try:
         rows = N._store.claims_expired(int(time.time() if now is None else now))

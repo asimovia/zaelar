@@ -108,16 +108,17 @@ def _action(decision: dict, events: list[dict], ledger: list[dict], tags: list[d
 
 
 async def run_turn(text: str, *, sid: str = "default", ingest: bool = True, model: str = "",
-                   execute: bool = False, lists: bool = True) -> dict:
+                   execute: bool = False, lists: bool = True, door: bool = False) -> dict:
     """One typed turn through the voice turn. Same signature as the text channel always had; `model` and `lists` are
     accepted for its callers: the model is the routing's (`config/v2.py`), and `lists=False` (a list's own step) keeps
-    the task-list door shut so a step never opens another list."""
+    the task-list door shut so a step never opens another list. `door`: his line at the text channel's HTTP door —
+    only that one goes by the conversation manager when it is switched on."""
     from voice import attention, observer, typed_turn
     text = (text or "").strip()
     if not text:
         return {"ok": False, "error": "texto vacío"}
     from nucleo.conversation_host import switch as _conv_switch   # the switch alone: off, the manager is never loaded
-    if _conv_switch.on():
+    if door and _conv_switch.on():           # HIS line at the text channel's door — never a list's own step
         from nucleo.conversation_host import entry as _conv_entry
         got = await _conv_entry.typed_and_wait(text, dev=f"text:{sid}")
         if (got.get("conv") or {}).get("close") != _conv_entry.NOT_OPENED:

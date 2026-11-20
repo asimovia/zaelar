@@ -37,6 +37,8 @@ def boot(lang: str, *, workspace: Path, port: int | None = None, spawn=None, cli
     cfg = Path(workspace) / "config" / "v2.json"
     cfg.parent.mkdir(parents=True, exist_ok=True)
     cfg.write_text(json.dumps(V2))
+    from nucleo.conversation_host.sandbox import MARKER
+    (Path(workspace) / MARKER).write_text("written by tests/conversation/e2e/sandbox.py\n")   # the reset's 2nd mark
     eng = spawn(workspace=workspace, port=port or sb.free_port(), extra_env=env_for(lang), boot_timeout=120.0)
     seeded = (client or Engine)(port_of(eng)).seed(lang)
     return eng, seeded

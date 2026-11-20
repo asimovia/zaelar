@@ -93,8 +93,11 @@ def sweep_liveness(conv: "Conversation", now: int) -> None:
             start = max(start, last)
         if now - start >= conv.cfg.liveness_ms:
             mine = conv.current if row["id"] in running else None
-            if close(conv, row["id"], "failed", "stalled", mine, reason="stalled") and mine is not None:
-                conv.current.interrupt = "stalled"
+            if close(conv, row["id"], "failed", "stalled", mine, reason="stalled"):
+                if mine is not None:
+                    conv.current.interrupt = "stalled"     # its run says the line, or owes it, when it stops
+                elif conv.owed is not None:                # no run in course: he is owed the line
+                    conv.owed.owe(conv.account, f"conv:failed:{row['id']}", "failed:stalled")
 
 
 def _grace(conv: "Conversation", batch: Batch, complete: bool | None = None) -> int | None:
@@ -289,6 +292,7 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
                     _checkpoint(conv, r)
                 elif isinstance(ev, Command):
                     order = commands.parse(ev)
+                    r.reading = getattr(order, "complete", r.reading)     # its last reading of his thought
                     _emit(conv, "command", r, command=ev.name, complete=getattr(order, "complete", None),
                           derived=sum(c.derived for c in getattr(order, "claims", ())),
                           unclaimed=ev.args.get(UNCLAIMED))
@@ -330,7 +334,8 @@ async def _say_lost(conv: "Conversation", r: "Running", batch: Batch, steps: lis
         return False
     _emit(conv, "command", r, command=why)
     r.origin = FAILURE
-    if not _park(conv, r, batch, commands.Reply(line), line, len(steps), conv.clock.now_ms()):
+    held = commands.Reply(line, complete=r.reading)    # it waits the grace the model's last reading gave the thought
+    if not _park(conv, r, batch, held, line, len(steps), conv.clock.now_ms()):
         await _publish(conv, r, batch, line, len(steps))
     return True
 

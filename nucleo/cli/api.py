@@ -85,7 +85,7 @@ async def say(text: str = Body(..., embed=True), session: str = Body("default", 
         from voice import screens as _screens
         _screens.begin_turn(dev)
         _screens.ORIGIN.set(_screens.clean(dev))
-    res = await run_turn(text, sid=session, ingest=ingest, model=model, execute=execute)
+    res = await run_turn(text, sid=session, ingest=ingest, model=model, execute=execute, door=True)
     # `reply` is a LIST of sentences (a turn may say several). Join them instead of calling `str()`: stringifying
     # the list would render `['I will look for them now.']` on the wall, including brackets and quotes.
     _reply = res.get("reply")

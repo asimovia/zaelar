@@ -142,9 +142,9 @@ def test_end_to_end_the_text_channel_is_answered_by_the_manager(switched):
     from nucleo.conversation_host import boot, model
     switched.setattr(model, "FastModel", _Model)
     proof._reset_for_tests()
-    got = asyncio.run(turn.run_turn("w1", sid="t1"))
+    got = asyncio.run(turn.run_turn("w1", sid="t1", door=True))
     assert got["ok"] and got["reply"] == "w9" and got["conv"]["close"] == "answered", got
-    again = asyncio.run(turn.run_turn("w2", sid="t1"))
+    again = asyncio.run(turn.run_turn("w2", sid="t1", door=True))
     assert again["reply"] == "w9"
     assert proof.report(boot.account())["counters"]["manager_runs"] == 2
     assert sessions.get(boot.account()) is not None                  # one conversation, kept for the account
@@ -184,5 +184,5 @@ def test_opening_the_conversation_never_waits_on_the_callers_loop(switched):
     entry.typed("w2", "d9")
     assert time.monotonic() - t0 < 0.3                                  # handed over, not waited for
     t.join()
-    got = asyncio.run(turn.run_turn("w3", sid="t2"))
+    got = asyncio.run(turn.run_turn("w3", sid="t2", door=True))
     assert got["ok"] and proof.report(boot.account())["counters"]["manager_runs"] >= 1
