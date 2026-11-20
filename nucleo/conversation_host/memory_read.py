@@ -184,7 +184,12 @@ def _tasks() -> str:
 READERS = (("DAYS", _days), ("TASKS", _tasks), ("DRAFT", _draft), ("FRONT", _front), ("STATE", _state),
            ("WIDGETS", _widgets))
 #: the readers of the topics `declared.json` declares (`state_topics`): read only when the model asks
-TOPICS = {"connectors": _connectors, "done": _done, "browser": _browser, "screen": _screen}
+def _network() -> str:
+    from nucleo.conversation_host.acts_network import network_facts
+    return network_facts()
+
+
+TOPICS = {"connectors": _connectors, "done": _done, "browser": _browser, "screen": _screen, "network": _network}
 
 
 def topic(name: str) -> str:

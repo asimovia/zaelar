@@ -121,7 +121,10 @@ itself is changed by its own doors (`acts_self.py`): its name, how it listens, t
 (shaped once into the one rules table) and its own controls — and the live conversation's prefix is built again, so
 STYLE, whose one source is the language pack's `speech_style` and the turn's shape as genesis and his rows set it,
 reads as it stands. A widget's life — built or changed (an errand of kind code, asked at the dispatch door), deleted or
-restored (his yes on its row), a name it opens by — and pictures shown go through theirs (`acts_life.py`). Each tool's class is derived
+restored (his yes on its row), a name it opens by — and pictures shown go through theirs (`acts_life.py`). His network
+too (`acts_network.py`): a cluster joined after his yes on the Clusters tab's row, a message to a cluster by the bridge's
+tag door (said as sent only when it left), a collaboration's goal, his friends' agents by name; what the network holds
+is the `network` topic of `read_state`. Each tool's class is derived
 from what it declares, never listed; a door that fails is a result the model sees. The state comes from the engine's
 own readers, each bounded within `state_tokens`, writing nothing. Every run carries what is open first (the tasks,
 a message draft), the next days beside NOW, the widget in front (at full screen, in front on a phone, else the newest
@@ -236,8 +239,7 @@ produces a flow for it to read.
 
 The package runs behind the switch, for his text and his voice. It READS, STOPS and carries out the canvas and panel
 acts, a widget's declared actions (music and video included), his errands, his messages, the agent itself and a
-widget's life (F2 steps 1-7). Clusters and the network, and the fast listings pass, are not wired: an errand serves
-them meanwhile; the other acts that leave stay listed as held;
+widget's life and his network (F2 steps 1-7c). The fast listings pass is not wired: an errand serves it meanwhile; the other acts that leave stay listed as held;
 they come one by one through the existing single doors (the widget action runner, dispatch, the send owner), never
 rebuilt.
 The public architecture diagrams show the package and mark those acts as next.

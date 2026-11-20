@@ -122,7 +122,7 @@
    ],
    "core": false,
    "reads": true,
-   "about": "his state by topic: connectors, done (just done to his data), browser, screen (every open widget)"
+   "about": "his state by topic: connectors, done (just done to his data), browser, screen (every open widget), network (his clusters and friends' agents)"
   },
   "recall": {
    "args": [
@@ -611,13 +611,166 @@
      }
     }
    }
+  },
+  "connect_cluster": {
+   "act": "cluster.connect",
+   "door": "network",
+   "op": "connect",
+   "about": "join a MeshKore cluster he names, by its exact id (and token when private): asks his yes first; code: true only if HE grants it code",
+   "schema": {
+    "type": "object",
+    "required": [
+     "cluster_id"
+    ],
+    "properties": {
+     "cluster_id": {
+      "type": "string"
+     },
+     "token": {
+      "type": "string"
+     },
+     "name": {
+      "type": "string"
+     },
+     "vis": {
+      "type": "string",
+      "enum": [
+       "public",
+       "private"
+      ]
+     },
+     "handle": {
+      "type": "string"
+     },
+     "code": {
+      "type": "boolean"
+     },
+     "repo": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "cluster_send": {
+   "act": "cluster.send",
+   "door": "network",
+   "op": "send",
+   "about": "write in a cluster he is in (read_state network): to a peer by its exact handle, or to everyone",
+   "schema": {
+    "type": "object",
+    "required": [
+     "text"
+    ],
+    "properties": {
+     "text": {
+      "type": "string"
+     },
+     "to": {
+      "type": "string"
+     },
+     "cluster": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "set_cluster_objective": {
+   "act": "cluster.objective",
+   "door": "network",
+   "op": "objective",
+   "about": "the goal of his collaboration with one peer of a cluster, as he says it; empty clears it",
+   "schema": {
+    "type": "object",
+    "required": [
+     "cluster",
+     "peer",
+     "objective"
+    ],
+    "properties": {
+     "cluster": {
+      "type": "string"
+     },
+     "peer": {
+      "type": "string"
+     },
+     "objective": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "a2a_send": {
+   "act": "a2a.message",
+   "door": "network",
+   "op": "a2a_send",
+   "about": "write to a friend's agent he is connected with (read_state network), by the person's name",
+   "schema": {
+    "type": "object",
+    "required": [
+     "to",
+     "text"
+    ],
+    "properties": {
+     "to": {
+      "type": "string"
+     },
+     "text": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "a2a_connect": {
+   "act": "a2a.connect",
+   "door": "network",
+   "op": "a2a_connect",
+   "about": "ask to connect with a contact's agent, by the person's name: the other side accepts",
+   "schema": {
+    "type": "object",
+    "required": [
+     "to"
+    ],
+    "properties": {
+     "to": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "a2a_grant": {
+   "act": "a2a.grant",
+   "door": "network",
+   "op": "a2a_grant",
+   "about": "share one of his items with a connected friend's agent, or stop (stop: true): calendar (free/busy), agenda.list, activity.history, activity.live",
+   "schema": {
+    "type": "object",
+    "required": [
+     "to",
+     "item"
+    ],
+    "properties": {
+     "to": {
+      "type": "string"
+     },
+     "item": {
+      "type": "string"
+     },
+     "stop": {
+      "type": "boolean"
+     },
+     "hours": {
+      "type": "number"
+     }
+    }
+   }
   }
  },
  "state_topics": [
   "connectors",
   "done",
   "browser",
-  "screen"
+  "screen",
+  "network"
  ],
  "sends_by": [
   "owner"

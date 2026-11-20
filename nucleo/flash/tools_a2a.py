@@ -9,8 +9,6 @@ from __future__ import annotations
 
 from loguru import logger
 
-import unicodedata
-
 NAMES = ("a2a_send", "a2a_connect", "a2a_grant", "a2a_read")
 
 
@@ -47,83 +45,11 @@ def live() -> bool:
         return False
 
 
-def _n(s: str) -> str:
-    return "".join(ch for ch in unicodedata.normalize("NFKD", str(s or "").lower()) if not unicodedata.combining(ch)).strip()
-
-
-def _peer(agent, who: str):
-    """The accepted relationship whose name matches (exact, then a unique prefix)."""
-    rows = [r for r in agent.rels.all() if r.status == "accepted"]
-    w = _n(who)
-    exact = [r for r in rows if _n(r.name) == w]
-    if exact:
-        return exact[0]
-    pre = [r for r in rows if w and _n(r.name).startswith(w)]
-    return pre[0] if len(pre) == 1 else None
-
-
-SEND_CLASS = "messaging.send_new@a2a"
-
-
-def _send_verdict(rel) -> str | None:
-    """T583 · a message to a friend's agent crosses the ONE consent door (`consent.decide_act`), with the contact as
-    the subject so his rule for that person outranks the channel's. His spoken order is the mandate (`his_yes`); his
-    standing «never» refuses and his «ask» holds it unsent. None = it may leave. Unreadable → held (fail closed)."""
-    from nucleo import consent
-    try:
-        cls, _, channel = SEND_CLASS.partition("@")
-        v = consent.decide_act(cls, channel=channel, his_yes=True, subject=str(rel.contact_id or ""))
-    except Exception:                                       # noqa: BLE001
-        return "held"
-    if not consent.asks(v):
-        return None
-    return "refused" if v.get("verdict") == consent.REFUSE else "held"
-
-
 def run(name: str, args: dict, emit) -> dict:
-    """One tool call → `{ok, ...}`; the line he hears is the model's, built from this result."""
-    import a2a
-    agent = a2a.runtime()
-    if agent is None:
-        return {"ok": False, "error": "a2a_off"}
-    who = str(args.get("to") or "")
-    try:
-        if name == "a2a_read":
-            what = str(args.get("what") or "status")
-            r = _peer(agent, who) if who else None
-            if what == "sharing":
-                out = {"ok": True, "sharing": agent.sharing(r.did if r else None)}
-            elif what == "inbox":
-                rows = agent.inbox(r.did) if r else agent.inbox()
-                out = {"ok": True, "inbox": [{"from": m.get("name"), "text": m.get("text"), "ts": m.get("ts"),
-                                              "trust": "contact"} for m in rows[-10:]]}
-            else:
-                out = {"ok": True, "connected": [x.name for x in agent.rels.all() if x.status == "accepted"]}
-        elif name == "a2a_connect":
-            from widgets.contactos import data, model
-            c = next((c for c in data.load_db().get("contacts") or [] if _n(c.get("name")) == _n(who)), None)
-            if c is None:
-                return {"ok": False, "error": "unknown_contact", "to": who}
-            out = {"ok": True, "status": agent.connect_contact(
-                {"cid": str(c["id"]), "name": c.get("name", ""), "emails": model.values(c, "emails"),
-                 "phones": model.values(c, "phones")}, trace="voice")}
-        else:
-            r = _peer(agent, who)
-            if r is None:
-                return {"ok": False, "error": "not_connected", "to": who}
-            if name == "a2a_send":
-                held = _send_verdict(r)
-                out = {"ok": False, "error": held} if held else {"ok": bool(agent.send(r.did, str(args.get("text") or "")))}
-            elif args.get("stop"):
-                out = {"ok": True, "revoked": agent.revoke(r.did, str(args.get("item") or ""))}
-            else:
-                ttl = int(float(args.get("hours") or 0) * 3600)
-                g = agent.grant(r.did, str(args.get("item") or ""), ttl_s=ttl, how="voice")
-                out = {"ok": True, "item": g.item, "verbs": list(g.verbs), "expires_at": g.expires_at}
-    except Exception as e:                                  # noqa: BLE001 — told, never raised into the turn
-        out = {"ok": False, "error": type(e).__name__}
-    emit("brain", f"🤝 {name}", role="system", extra={"cat": "a2a", "ok": out.get("ok"), "error": out.get("error")})
-    return out
+    """One tool call → `{ok, ...}`: the body lives with the conversation manager's network door (INI-078 F2 7c,
+    `conversation_host.acts_network.a2a_run`), which tells the timeline itself; `emit` is kept for this caller."""
+    from nucleo.conversation_host.acts_network import a2a_run
+    return a2a_run(name, args)
 
 
 def line(name: str, out: dict, args: dict, say) -> str:

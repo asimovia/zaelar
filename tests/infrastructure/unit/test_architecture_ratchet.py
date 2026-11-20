@@ -791,6 +791,10 @@ _PACKAGE_CEILINGS["nucleo/conversation_host"] += 124  # 2026-11-20 INI-078 F2 st
 _TOTAL_MAX += 124    # same causes, measured
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 93   # 2026-11-20 INI-078 F2 step 7: a widget's life and pictures by their own doors (`acts_life.py`: a build as a code errand, delete/restore asked on their row, aliases, the images viewer)
 _TOTAL_MAX += 93     # same causes, measured
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 233  # 2026-11-20 INI-078 F2 step 7c (row 28): his network by its own doors (`acts_network.py`: a cluster joined after his yes on its row, a cluster message by the bridge's tag door said as sent or asked, a collaboration's goal, his friends' agents by name — the A2A bodies MOVED here from `nucleo/flash/tools_a2a.py`) and the `network` topic of read_state
+_PACKAGE_CEILINGS["connectors"] += 2     # same: `meshkore.dispatch_tag` returns the bridge's answer (the text that left)
+_PACKAGE_CEILINGS["nucleo/flash"] -= 74  # same: `tools_a2a.run` delegates to the manager's network door (the bodies moved)
+_TOTAL_MAX += 161    # same causes, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

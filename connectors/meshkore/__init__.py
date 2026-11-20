@@ -44,10 +44,12 @@ def init(brain):
 
 @_consequence.door("cluster.send")
 async def dispatch_tag(action: str, extra: dict):
-    """Route a [[cluster.*]] tag emitted by the brain (from any turn — voice OR cluster). No-op if not wired."""
+    """Route a [[cluster.*]] tag emitted by the brain (from any turn — voice OR cluster). No-op if not wired. Returns the
+    bridge's answer: the text that LEFT for a `cluster.send`, else None."""
     b = _bridge
     if b is not None:
-        await b.dispatch(action, extra)
+        return await b.dispatch(action, extra)
+    return None
 
 
 async def shutdown():
