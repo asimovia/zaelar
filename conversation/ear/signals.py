@@ -43,6 +43,9 @@ class EotHint:
     kind: str          # "eager" | "resumed" | "end"
     prob: float | None
     t_ms: int
+    #: on an end: did the provider close its transcript with a sentence end (the language pack declares which marks
+    #: do)? None: the provider does not punctuate — read as a sentence end
+    terminal: bool | None = None
 
 
 @dataclass(frozen=True)

@@ -197,3 +197,22 @@ def test_every_event_of_a_mixed_conversation_is_in_a_flow_and_every_request_join
     assert {p["trace"] for p in first_batch} == {"iv_000001"}
     said = [p for k, lab, p in h.tel.events if k == "conv_mouth" and lab == "say" and p.get("notice_key")]
     assert [p["trace"] for p in said] == ["n1"]
+
+
+def test_a_stop_joins_the_flow_it_stops_and_the_writes_switch_has_its_own(store):
+    from conversation.gateway import dispatch
+    from conversation.types import ControlOp
+    from tests.conversation.unit.inboxkit import control
+    import asyncio
+    h = Harness(store)
+    h.mouth.ack = None                                       # our line stays in course
+    h.typed("w1", 100)
+    h.at(1000).pump()
+    line_trace = [p["trace"] for k, lab, p in h.tel.events if k == "conv_mouth" and lab == "say"][0]
+    h.conv.give(control(ControlOp.STOP, 1100, "k-stop", endpoint="d1"))
+    stop = [p["trace"] for k, lab, p in h.tel.events if k == "conv_inbox" and p["refs"].get("env") and
+            p.get("kind") == "user.control"]
+    assert stop and set(stop) == {line_trace}
+    asyncio.run(dispatch.submit(h.conv.gw, h.tools, "x_never_reserved", 10 ** 9))
+    off = [p["trace"] for k, lab, p in h.tel.events if k == "conv_effect" and lab in ("write_disabled", "refused")]
+    assert off and all(off)

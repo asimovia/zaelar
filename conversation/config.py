@@ -19,9 +19,11 @@ class Config:
     patience_ms: dict = field(default_factory=lambda: {"number": 1200, "date": 1000, "spelled": 1500})
     #: the provider sends a watermark every ~240 ms even in silence (adapter doc A2); four missed beats is a stalled stream (adapter doc A6).
     stall_ms: int = 1000
-    #: the same person speaking again on the same device within this window of the batch's last entry, while its run
-    #: has not published, stops that run and makes its batch wait for that voice (the continuation travels with it).
-    #: Never shorter than the model's first-event deadline: a run can take that long before it publishes. P4 sets it.
+    #: the same person speaking again on a device that contributed to the batch, within this window of the last entry
+    #: there, while its run has not published, stops that run and makes its batch wait for that voice (the
+    #: continuation travels with it). The hold's bound below rules inside it: past `resume_hold_max_ms` from the batch's
+    #: last close no voice holds anything, whatever this window says. Never shorter than the model's first-event
+    #: deadline. P4 sets both.
     resume_window_ms: int = 20_000
     #: a batch waits for such a resumed voice at most this long from the close of its last entry, and words do not
     #: reset it — the same sense and value as `cross_channel_hold_ms`: nobody waits behind a voice longer. Past it the
@@ -33,6 +35,17 @@ class Config:
     #: an intervention is at most this long, from its onset, never reset by words: past it what was heard is delivered
     #: incomplete (`too_long`) and, with the voice still up, the next one starts.
     intervention_max_ms: int = 30_000
+    #: half a thought is not answered (v3.1 §1.6 ter, measured on 66 sessions: after an end WITHOUT a sentence mark he
+    #: goes on 93 % of the time, 86 % within 1.5 s; after one WITH a mark, 60 %): a batch with a voice entry closed with
+    #: no mark is not eligible before this from its close, and is not published before `nonterminal_grace_ms`…
+    nonterminal_start_ms: int = 1500
+    nonterminal_grace_ms: int = 5000
+    #: …and one closed with a mark (or unknown) runs at once but is not published before this. With several voice
+    #: entries the latest grace rules; a text has none. 0 publishes at once. The host sets all three as thresholds.
+    terminal_grace_ms: int = 3000
+    #: a barge-in that ended with no word (no voice, a noise) resumes the line it cut, once, from the last sentence
+    #: heard — if it ends within this of the cut and no entry with words came in between.
+    resume_cut_within_ms: int = 4000
     # ── the inbox ──
     #: typed messages sent within this window travel in one batch (the 0.35 s debounce: batching belongs to the inbox, not the ear).
     collect_ms: int = 350

@@ -104,7 +104,7 @@ class Book:
                 yield BookTx(raw, self.clock.now_ms(), pending)
         except StaleEpoch:
             self.em.emit("conv_ledger", "stale_epoch", owner="ledger", cause={"kind": "lease", "ref": lease.owner},
-                         epoch_held=lease.epoch)
+                         trace=f"epoch:{lease.epoch}", epoch_held=lease.epoch)     # the fenced process's own flow
             raise
         except InvalidTransition:
             self._flush([p for p in pending if p[0] == "refused"])

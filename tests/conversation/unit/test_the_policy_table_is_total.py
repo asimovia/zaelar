@@ -1,8 +1,9 @@
-"""The policy table is total — six rows, four columns, 24 cells — and keeps three operations apart (node 13.8, D3).
+"""The policy table is total — seven rows, four columns, 28 cells — and keeps three operations apart (node 13.8).
 
 Three states (free, running, speaking), whether the run claimed an effect is a column of the table and not a state,
-and ten operations, every one used. Every (input, column) pair has its cell; only a line owed has empty cells, on
-purpose: while the manager is not free it waits in its own ledger. A stop never cancels a task (the stop rows hold
+and eleven operations, every one used. Every (input, column) pair has its cell; only a line owed and a voice that
+ended with no word have empty cells, on purpose: while the manager is not free the line waits in its own ledger, and a
+wordless voice changes nothing (when free, it resumes the line it cut). A stop never cancels a task (the stop rows hold
 SILENCE and CANCEL_RUN only); a control never waits; a closed entry while we speak silences us and runs. And the table
 is what the manager does: a stop during a run silences and cancels the RUN, and the task the person had going is still
 running; a line owed waits behind the run and is said after its line.
@@ -20,17 +21,19 @@ from tests.conversation.unit.inboxkit import control
 WAITS = {Op.FOLLOW_UP, Op.HOLD_FOR_VOICE, Op.ACTIONS_WAIT, Op.WAIT_BEHIND_VOICE}
 
 
-def test_three_states_six_rows_four_columns_ten_operations():
+def test_three_states_seven_rows_four_columns_eleven_operations():
     assert [m.value for m in MgrState] == ["idle", "running", "speaking"]
-    assert len(Input) == 6 and len(Column) == 4 and len(Op) == 10
+    assert len(Input) == 7 and len(Column) == 4 and len(Op) == 11
     assert {op for row in TABLE.values() for ops in row.values() for op in ops} == set(Op)   # none unused
 
 
-def test_every_pair_has_a_cell_and_only_a_line_owed_waits_in_its_ledger():
+def test_every_pair_has_a_cell_and_only_a_line_owed_or_a_wordless_voice_does_nothing_when_busy():
     assert sorted((i.value, c.value) for i in TABLE for c in TABLE[i]) == sorted(
         (i.value, c.value) for i in Input for c in Column)
     empty = [(i, c) for i in Input for c in Column if not TABLE[i][c]]
-    assert empty == [(Input.OWED, c) for c in (Column.RUN_NO_EFFECT, Column.RUN_EFFECT, Column.SPEAKING)]
+    busy = (Column.RUN_NO_EFFECT, Column.RUN_EFFECT, Column.SPEAKING)
+    assert empty == [(i, c) for i in (Input.OWED, Input.DISCARDED) for c in busy]
+    assert TABLE[Input.DISCARDED][Column.IDLE] == (Op.RESUME_LINE,)
     assert TABLE[Input.OWED][Column.IDLE] == (Op.SAY_OWED,) and IN_ITS_LEDGER == ()
 
 

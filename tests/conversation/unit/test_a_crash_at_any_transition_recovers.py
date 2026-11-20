@@ -62,6 +62,8 @@ def _speak(p: Process, clock) -> None:
         clock.mono = max(clock.mono, getattr(sig, "t_ms", None) or getattr(sig, "processed_through_ms", 0))
         p.conv.hear(sig)
     p.pump()
+    clock.advance(p.conv.cfg.terminal_grace_ms + 100)          # the reply waits its grace, then goes out
+    p.pump()
 
 
 def _act(p: Process) -> None:
@@ -78,8 +80,8 @@ def _act(p: Process) -> None:
 
 def _drain(second: Process, clock) -> None:
     second.pump()
-    for _ in range(3):                                         # time runs out: every budget expires, what is ready runs
-        clock.advance(31_000)
+    for _ in range(93):                                        # time runs out on the live timer: every budget expires,
+        clock.advance(1000)                                    # what is ready runs
         second.conv.sweep()
         second.pump()
 
@@ -105,6 +107,7 @@ def test_a_crash_while_a_sentence_goes_through_recovers_it(tmp_path, point, when
     said = [o.text for o in first.mouth.orders + second.mouth.orders]
     assert said and all(t.startswith("w-told") for t in said)
     assert not snap.scan("voice_open", states=("open",)), "a voice was left open after the restart"
+    assert all(p["trace"] for _k, _lab, p in first.tel.events + second.tel.events), "an event outside any flow"
     assert audit(snap, clock.now_ms(), second.conv.cfg, drained=True) == []
     second.store.close()
     first.store.close()

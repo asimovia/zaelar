@@ -108,7 +108,7 @@ class Speaker:
         if isinstance(sig, SayStarted):
             row["state"] = "playing"
             return "started", {}
-        row["state"], row["outcome"] = "ended", sig.outcome
+        row["state"], row["outcome"], row["ended_ms"] = "ended", sig.outcome, sig.t_ms
         known = sig.heard_chars is not None and "unknown" not in (sig.outcome, sig.source)
         if known:
             cut = sig.outcome in ("cut", "cleared")
@@ -117,6 +117,31 @@ class Speaker:
             row["heard_source"] = sig.source
         label = "cut" if sig.outcome in ("cut", "cleared") else "ended"
         return label, {"outcome": sig.outcome, "heard_chars": row["heard_chars"], "source": row["heard_source"]}
+
+    def live_line(self) -> dict | None:
+        """The newest line in course, if any."""
+        with self.store.tx(self.lease()) as tx:
+            return max((r for _k, r in tx.scan(SAYS, states=LIVE)), key=lambda r: r["t_ms"], default=None)
+
+    def cut_line(self, endpoint: str | None, now: int, within_ms: int) -> dict | None:
+        """The line his voice cut on this device within `within_ms`, with something left to say, not resumed yet and not
+        stopped by us — what a barge-in with no word gives back."""
+        with self.store.tx(self.lease()) as tx:
+            rows = [r for _k, r in tx.scan(SAYS, states=("ended",)) if r["outcome"] == "cut" and not r.get("stopped")
+                    and not r.get("resumed") and r.get("endpoint") == endpoint and now - r["ended_ms"] <= within_ms
+                    and (r["heard_chars"] or 0) < len(r["text"])]
+        return max(rows, key=lambda r: r["ended_ms"], default=None)
+
+    async def resume(self, row: dict) -> str | None:
+        """Say the rest of a cut line, from the last sentence heard, by voice (it is already on the wall), once."""
+        with self.store.tx(self.lease()) as tx:
+            fresh = tx.get(SAYS, row["say_id"])
+            if fresh is None or fresh.get("resumed"):
+                return None
+            tx.put(SAYS, row["say_id"], {**fresh, "resumed": True})
+        rest = row["text"][row["heard_chars"] or 0:].strip()
+        return await self.say(run_id=row["run"], request_id=row["req"], text=rest, channels=frozenset({"voice"}),
+                              endpoint=row["endpoint"], trace=row["trace"]) if rest else None
 
     def voice_unavailable(self, run_id: str, endpoint: str | None, trace: str) -> None:
         """The batch had voice and this device cannot speak now: the reply goes as text, and that is said."""
@@ -129,6 +154,8 @@ class Speaker:
         self.mouth.stop(endpoint, reason=reason)
         with self.store.tx(self.lease()) as tx:
             live = [r for _k, r in tx.scan(SAYS, states=LIVE)]
+            for r in live:                              # cut by us, not by his voice: never resumed
+                tx.put(SAYS, r["say_id"], {**r, "stopped": True})
         line = max(live, key=lambda r: r["t_ms"], default=None)
         self.em.emit("conv_mouth", "cut", owner="mouth", cause={"kind": "control", "ref": reason},
                      refs={"endpoint": endpoint, "say": line["say_id"] if line else None,

@@ -26,7 +26,7 @@ from conversation.gateway import dispatch
 from conversation.gateway.authority import RunCtx
 from conversation.gateway.outbox import Read
 from conversation.inbox.mailbox import Batch
-from conversation.inbox.ordering import last_key
+from conversation.inbox import ordering
 from conversation.manager import claims as CL
 from conversation.manager import commands
 from conversation.mouth import Device, choose
@@ -95,11 +95,12 @@ async def run_batch(conv: "Conversation", batch: Batch) -> None:
     endpoint = next((e.endpoint for e in users if e.endpoint), None)
     reqs = _requests(batch)
     run_id = conv.ids.new("run")
-    last = max(users, key=lambda e: last_key(e.sealed_ms, e.onset_ms, e.id), default=None)
+    content = [e for e in users if e.kind in REQUEST_KINDS]
+    voice = [(e.sealed_ms, e.body.terminal) for e in content if e.kind is EnvelopeKind.USER_UTTERANCE]
     r = Running(run_id, tuple(e.id for e in batch.envelopes), reqs,
                 RunCtx(run_id, reqs[0] if reqs else run_id, {e.id: e for e in batch.envelopes}, endpoint),
-                batch_seq=batch.run_seq, last_entry_ms=last.sealed_ms if last else 0,
-                last_endpoint=last.endpoint if last else None)
+                batch_seq=batch.run_seq, entries=tuple((e.sealed_ms, e.endpoint) for e in content),
+                publish_at=ordering.publish_at(voice, conv.cfg.terminal_grace_ms, conv.cfg.nonterminal_grace_ms))
     r.trace = root({"req": reqs[0]} if reqs else {}) or run_id
     conv.em.bind(run_id, r.trace)
     conv.current, conv.state = r, MgrState.RUNNING
@@ -117,9 +118,10 @@ async def run_batch(conv: "Conversation", batch: Batch) -> None:
     except Exception as e:  # noqa: BLE001 — every failure of a run ends visibly; the class is recorded by name
         await _fail(conv, r, f"{type(e).__name__}")
     finally:
-        conv.current = None
-        if conv.state is MgrState.RUNNING:
-            conv.state = MgrState.IDLE
+        if r.parked is None:                    # a reply waiting for its grace keeps the run as the one in course
+            conv.current = None
+            if conv.state is MgrState.RUNNING:
+                conv.state = MgrState.IDLE
 
 
 async def _fail(conv: "Conversation", r: "Running", reason: str) -> None:
@@ -134,29 +136,31 @@ async def _fail(conv: "Conversation", r: "Running", reason: str) -> None:
     _emit(conv, "ended", r, outcome="failed", reason=reason)
 
 
-def resumed(conv: "Conversation", r: "Running", endpoint: str | None, t_ms: int) -> bool:
-    """The person speaks on the device of the batch's last entry — a voice that began within the window of it, or even
-    before it closed (he went on while the provider was ending) — and the run has not published: the publication waits
-    for that voice (it may be the rest of the sentence), at most `resume_hold_max_ms` from that entry's close. «Not
-    published» needs no flag: a run is held only at its checkpoints and at the check right before it seals."""
-    return (not r.claimed and endpoint is not None and endpoint == r.last_endpoint
-            and t_ms - r.last_entry_ms <= conv.cfg.resume_window_ms
-            and conv.clock.now_ms() - r.last_entry_ms < conv.cfg.resume_hold_max_ms)
+def resumed(conv: "Conversation", r: "Running", iv: str, endpoint: str | None, t_ms: int) -> bool:
+    """The person speaks again on a device that contributed to the batch, within the window of its last entry there —
+    or even before it closed (he went on while the provider was ending) — and the run has not published: the
+    publication waits for that voice (it may be the rest of the sentence), at most `resume_hold_max_ms` from the close
+    of the batch's last entry. The same predicate as the inbox's (`ordering.waits_for_voice`). «Not published» needs no
+    flag: a run is held only at its checkpoints, while its reply waits for its grace, and right before it seals."""
+    return not r.claimed and ordering.waits_for_voice(
+        list(r.entries), [(iv, t_ms, endpoint)], conv.clock.now_ms(), conv.cfg.resume_window_ms,
+        conv.cfg.resume_hold_max_ms) is not None
 
 
-def _resumed_voice(conv: "Conversation", r: "Running") -> tuple[str, int] | None:
-    """The check repeated right before sealing: a voice open on the device of the batch's last entry."""
-    found = conv.ear.open_intervention(r.last_endpoint) if r.last_endpoint else None
-    return found if found and resumed(conv, r, r.last_endpoint, found[1]) else None
+def _resumed_voice(conv: "Conversation", r: "Running") -> tuple[str, int, str] | None:
+    """The check repeated right before sealing: a voice open on a device that contributed to the batch."""
+    return next(((iv, onset, ep) for iv, onset, ep in conv.ear.open_interventions()
+                 if resumed(conv, r, iv, ep, onset)), None)
 
 
-def _hold(conv: "Conversation", r: "Running", iv: str | None, onset: int | None = None) -> None:
+def _hold(conv: "Conversation", r: "Running", iv: str | None, onset: int | None = None,
+          endpoint: str | None = None) -> None:
     """The run stops and its batch goes back; the inbox keeps it until that voice ends, or the hold's bound. A voice
     whose onset never reached the manager (it opened after the last checkpoint) is noted open here, so the inbox
     holds by the same rule the run did."""
     conv.inbox.requeue(list(r.batch_ids))
     if iv is not None and onset is not None:
-        conv.inbox.voice_open(iv, onset, r.last_endpoint)
+        conv.inbox.voice_open(iv, onset, endpoint)
     _emit(conv, "held", r, waits_for=iv)
 
 
@@ -270,26 +274,75 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
                 close(conv, req, "silent", "silent", r, reason="claims_unverified")
             _emit(conv, "ended", r, outcome="silent", reason="claims_unverified")
             return True
-        if not _seal_batch(conv, r, batch):
-            conv.inbox.requeue(list(r.batch_ids))   # fenced: the batch waits; the request stays open
+        if r.publish_at is not None and now < r.publish_at:     # half a thought is not answered: it waits its grace
+            r.parked = (cmd.text, len(steps), batch)
+            _emit(conv, "held", r, waits_for="grace", until_ms=r.publish_at)
             return True
-        reply = choose(batch.envelopes, conv.devices.get(r.ctx.endpoint or "", Device(r.ctx.endpoint)))
-        if reply.voice_unavailable:
-            conv.speaker.voice_unavailable(r.run_id, r.ctx.endpoint, r.trace)
-        conv.state = MgrState.SPEAKING
-        await conv.speaker.say(run_id=r.run_id, request_id=r.ctx.request_id, text=cmd.text, channels=reply.channels,
-                               endpoint=r.ctx.endpoint, trace=r.trace,
-                               iv=next(iter(r.ctx.batch.values())).refs.intervention_id if r.ctx.batch else None)
-        for req in r.requests:
-            close(conv, req, "answered", "answered", r, steps=len(steps))
-        conv.inbox.account(list(r.batch_ids), "told", conv.clock.now_ms())
-        _emit(conv, "ended", r, outcome="answered")
+        await _publish(conv, r, batch, cmd.text, len(steps))
         return True
     reason = getattr(cmd, "reason", None) or getattr(cmd, "name", "")
     for req in r.requests:
         close(conv, req, "silent", "silent", r, reason=reason)
     conv.inbox.account(list(r.batch_ids), "silent", now)
     _emit(conv, "ended", r, outcome="no_reply", reason=reason)
+    return True
+
+
+async def _publish(conv: "Conversation", r: "Running", batch: Batch, text: str, steps: int) -> None:
+    """Seal, say, close the requests, account the batch."""
+    if not _seal_batch(conv, r, batch):
+        conv.inbox.requeue(list(r.batch_ids))   # fenced: the batch waits; the request stays open
+        return
+    reply = choose(batch.envelopes, conv.devices.get(r.ctx.endpoint or "", Device(r.ctx.endpoint)))
+    if reply.voice_unavailable:
+        conv.speaker.voice_unavailable(r.run_id, r.ctx.endpoint, r.trace)
+    conv.state = MgrState.SPEAKING
+    await conv.speaker.say(run_id=r.run_id, request_id=r.ctx.request_id, text=text, channels=reply.channels,
+                           endpoint=r.ctx.endpoint, trace=r.trace,
+                           iv=next(iter(r.ctx.batch.values())).refs.intervention_id if r.ctx.batch else None)
+    for req in r.requests:
+        close(conv, req, "answered", "answered", r, steps=steps)
+    conv.inbox.account(list(r.batch_ids), "told", conv.clock.now_ms())
+    _emit(conv, "ended", r, outcome="answered")
+
+
+def _unpark(conv: "Conversation") -> tuple:
+    r = conv.current
+    parked, r.parked = r.parked, None
+    conv.current = None
+    if conv.state is MgrState.RUNNING:
+        conv.state = MgrState.IDLE
+    return r, parked
+
+
+def drop_parked(conv: "Conversation") -> None:
+    """A reply waiting for its grace meets an interrupt — his voice again, a new entry, a stop, the liveness: it takes
+    effect as at any checkpoint, and the reply is never said."""
+    r = conv.current
+    if r is None or r.parked is None or r.interrupt is None:
+        return
+    r, _parked = _unpark(conv)
+    try:
+        _checkpoint(conv, r)
+    except _Stop as stop:
+        r.said.append(("stopped", str(stop)))   # the checkpoint already accounted the batch and said why
+
+
+async def publish_parked(conv: "Conversation") -> bool:
+    """At the end of its grace a waiting reply is published. False while it still waits."""
+    r = conv.current
+    if r is None or r.parked is None or conv.clock.now_ms() < r.publish_at:
+        return r is None or r.parked is None
+    r, (text, steps, batch) = _unpark(conv)
+    conv.current, conv.state = r, MgrState.RUNNING          # it publishes as the run in course
+    try:
+        await _publish(conv, r, batch, text, steps)
+    except _Stop as stop:
+        r.said.append(("stopped", str(stop)))   # held right before sealing: the hold already said why
+    finally:
+        conv.current = None
+        if conv.state is MgrState.RUNNING:
+            conv.state = MgrState.IDLE
     return True
 
 

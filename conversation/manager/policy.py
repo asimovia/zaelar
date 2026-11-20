@@ -1,8 +1,7 @@
 """THE policy table: what the manager DOES with each kind of input in each of its states. Data, not code.
 
-Six rows — kinds of input, classified by envelope kind and declared fields, never by what was said — and four
-columns: free, a run that has not claimed an effect, a run that has, and speaking. 24 cells, every one filled
-(node 13.8). Three operations that are never confused: SILENCE stops our voice, CANCEL_RUN drops the run, and
+Seven rows — kinds of input, classified by envelope kind and declared fields, never by what was said — and four
+columns: free, a run that has not claimed an effect, a run that has, and speaking. 28 cells (node 13.8). Three operations that are never confused: SILENCE stops our voice, CANCEL_RUN drops the run, and
 cancelling a TASK is a tool the model calls or a button by id — no cell of this table cancels a task. A stop is a
 `user.control(stop)` from a button or from the safety detector outside the package; this package reads no words for
 it. Controls never wait.
@@ -11,14 +10,15 @@ The one cell that depends on the input's data: a voice that starts during a run 
 Its actions wait (ACTIONS_WAIT) and, if it is the same device as the batch's last entry and inside the window of it,
 the run stops and its batch waits for that voice (HOLD_FOR_VOICE) — device and time are fields of the signal, not
 words. A line owed waits in its own ledger while the manager is not free: those cells are empty on purpose
-(`IN_ITS_LEDGER`).
+(`IN_ITS_LEDGER`). A voice that cut our line and ended with no word (a breath, a noise) resumes that line once, from
+the last sentence heard (`RESUME_LINE`) — only when free; with a run in course it changes nothing.
 """
 from __future__ import annotations
 
 from enum import Enum
 
 from conversation import envelopes as E
-from conversation.ear.signals import Onset
+from conversation.ear.signals import Onset, VoiceDiscarded
 from conversation.types import ControlOp, Coverage, EnvelopeKind, MgrState, Op
 
 
@@ -29,6 +29,7 @@ class Input(Enum):
     STOP = "stop"
     BY_ID = "by_id"
     OWED = "owed"                      # a line the engine owes the person, waiting in its own ledger
+    DISCARDED = "discarded"            # a voice that ended with no word
 
 
 class Column(Enum):
@@ -55,15 +56,18 @@ TABLE: dict[Input, dict[Column, tuple[Op, ...]]] = {
     Input.STOP: _row((O.SILENCE,), (O.SILENCE, O.CANCEL_RUN), (O.SILENCE, O.CANCEL_RUN), (O.SILENCE,)),
     Input.BY_ID: _row((O.BY_ID,), (O.BY_ID,), (O.BY_ID,), (O.BY_ID,)),
     Input.OWED: _row((O.SAY_OWED,), IN_ITS_LEDGER, IN_ITS_LEDGER, IN_ITS_LEDGER),
+    Input.DISCARDED: _row((O.RESUME_LINE,), (), (), ()),
 }
 
 
-def classify(item: E.Envelope | Onset | None) -> Input:
+def classify(item: E.Envelope | Onset | VoiceDiscarded | None) -> Input:
     """`None` is the line owed: the manager asks its ledger for it, nobody hands it in."""
     if item is None:
         return Input.OWED
     if isinstance(item, Onset):
         return Input.ONSET
+    if isinstance(item, VoiceDiscarded):
+        return Input.DISCARDED
     k = item.kind
     if k is EnvelopeKind.USER_UTTERANCE:
         return Input.ENTRY if item.body.coverage is Coverage.FULL else Input.INCOMPLETE
@@ -82,5 +86,6 @@ def column(state: MgrState, claimed: bool) -> Column:
     return Column.RUN_EFFECT if claimed else Column.RUN_NO_EFFECT
 
 
-def decide(item: E.Envelope | Onset | None, state: MgrState, *, claimed: bool = False) -> tuple[Op, ...]:
+def decide(item: E.Envelope | Onset | VoiceDiscarded | None, state: MgrState, *,
+           claimed: bool = False) -> tuple[Op, ...]:
     return TABLE[classify(item)][column(state, claimed)]

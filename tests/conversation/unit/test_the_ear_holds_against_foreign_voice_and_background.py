@@ -28,7 +28,7 @@ from conversation.config import Config
 from conversation.ear import signals as S
 from conversation.ports import Done
 from conversation.replay import KEEP_TIME_MS, Replay
-from conversation.testing.generate import check
+from conversation.testing.generate import SPEC, check
 from conversation.testing.scripted_model import reply
 from tests.conversation.unit.audio3a_score import score
 from tests.conversation.unit.convkit import Harness
@@ -37,8 +37,30 @@ FIX = Path(__file__).resolve().parents[1] / "fixtures" / "audio3a"
 LABELS = json.loads((FIX / "labels.json").read_text(encoding="utf-8"))["scenarios"]
 
 
-def _replay(sid: str) -> Replay:
+TV_GOES_ON_MS = 40_000
+
+
+def _signals(sid: str) -> list[dict]:
     sig = [json.loads(line) for line in (FIX / f"{sid}.jsonl").read_text(encoding="utf-8").splitlines() if line]
+    if sid != "en-tv-and-cough":
+        return sig
+    # the TV does not stop when the recording does: the provider keeps beating and its turn keeps growing with the
+    # TV's words, the VAD stays up — so «nothing open at the end» has to come from the turn's maximum, not a silence
+    last = next(s for s in reversed(sig) if s["sig"] == "WordSpan")
+    words, rev, t0 = list(last["words"]), last["revision"], sig[-1]["arrived_ms"]
+    for i, t in enumerate(range(t0 + 240, t0 + TV_GOES_ON_MS, 240)):
+        sig.append({"sig": "Watermark", "stream": "d1", "processed_through_ms": t - 200, "t_ms": t, "arrived_ms": t})
+        if i % 4 == 3:
+            rev += 1
+            words.append([f"w{9000 + rev}", t - 400, t - 250, 0.99])
+            sig.append({"sig": "WordSpan", "stream": "d1", "seq": last["seq"], "revision": rev, "final": False,
+                        "window": [last["window"][0], t - 200], "words": [list(w) for w in words], "t_ms": t,
+                        "arrived_ms": t})
+    return sig
+
+
+def _replay(sid: str) -> Replay:
+    sig = _signals(sid)
     rep = Replay(sig)
     rep.queue = sig                                 # in arrival order, as delivered: no synthetic beats
     return rep.run()
@@ -75,29 +97,42 @@ def _measure(rep: Replay, labels: dict) -> dict:
 
 @pytest.mark.parametrize("sid", sorted(LABELS))
 def test_the_recorded_scenarios_meet_their_targets(sid):
+    """Judged against the design's frozen numbers (`SPEC`), never the configuration the replay ran with."""
     rep = _replay(sid)
-    m, labels, cfg = _measure(rep, LABELS[sid]), LABELS[sid], rep.config
+    labels = dict(LABELS[sid])
+    if sid == "en-tv-and-cough":
+        labels["duration_ms"] += TV_GOES_ON_MS
+    m = _measure(rep, labels)
     sc, was = m["score"], labels["measured"]
     assert check(rep.as_case()) == []                                       # I1–I9 on what it left
     assert not rep.conv.ear.open_ids()                                      # nothing open once the audio is over
-    assert m["longest"] <= cfg.intervention_max_ms + KEEP_TIME_MS
-    assert sc["lost_turns"] == 0
-    if sid == "en-crosstalk-in-pause":           # three pieces in one prompt, no cut, nothing said over him
-        assert sc["false_cuts"] == 0 and m["spoke_over"] == 0 and sc["exposure"] == [1, 1]
-    elif sid == "en-tv-and-cough":               # his first question answered within the hold's bound of its close
-        first_close = m["closes"][0]
-        started = next(t for _run, t, ivs in m["runs"] if first_close[1] in ivs)
-        assert started - first_close[0] <= cfg.resume_hold_max_ms + KEEP_TIME_MS
+    assert m["longest"] <= SPEC["intervention_max_ms"] + 500                 # one beat and the provider's lag
+    assert sc["lost_turns"] == 0 and sc["unclosed_turns"] == 0
+    assert len(sc["eot_delay_ms"]) == len(labels["turns"])
+    if sid == "en-crosstalk-in-pause":           # three pieces in one prompt with the stranger's words, no cut, nothing
+        assert sc["false_cuts"] == 0 and m["spoke_over"] == 0               # said over him (the stranger's words are
+        assert sc["exposure"] == [1, 1] and sc["merged_with_stranger"] == 1  # the declared limit)
+    elif sid == "en-tv-and-cough":
+        first = labels["turns"][0]["end_ms"]     # his first question, by the label: within the hold's bound of its close
+        close = min(t for t, iv in m["closes"] if any(a <= first + 700 and b >= labels["segments"][1]["start_ms"]
+                                                      for _w, a, b, *_ in rep.conv.ear.spans.words(iv)))
+        started = next(t for _run, t, ivs in m["runs"] if any(c == close for c, _iv in m["closes"]))
+        assert started - close <= SPEC["resume_hold_max_ms"] + KEEP_TIME_MS
+        # his second question sits in the TV's turn: it reaches the model, with the TV, within the turn's maximum plus
+        # the hold's bound — «30 s plus 8 s at most», the declared cost (§1.6 bis E6)
+        assert sc["eot_delay_ms"][1] <= SPEC["intervention_max_ms"] + SPEC["resume_hold_max_ms"]
         assert m["spoke_over"] == 0
         # the price of the bound (§1.6 bis, «Coste»): what he went on with sits in a background that never ends, so
         # his first question is answered without its last piece — one cut, never more
         assert sc["false_cuts"] <= 1
     elif sid == "es-cut-off-and-correction":     # the fused unit cannot be split; its delay stays bounded
         assert sc["false_cuts"] <= was["false_cuts"]
-        assert all(d <= cfg.intervention_max_ms for d in sc["eot_delay_ms"])
-    else:                                        # the pauses and the switch: no cut, the wait no worse than before
-        assert sc["false_cuts"] == 0 and m["spoke_over"] == 0
-        assert all(d <= w + 50 for d, w in zip(sc["eot_delay_ms"], was["eot_delay_ms"])), sc["eot_delay_ms"]
+        assert all(d <= SPEC["intervention_max_ms"] for d in sc["eot_delay_ms"])
+    else:                                        # the pauses and the switch: no cut, nothing said over him, and no
+        assert sc["false_cuts"] == 0 and m["spoke_over"] == 0      # line before the grace of the close it answers
+        closes = sorted(t for t, _iv in m["closes"])
+        says = [p["t_ms"] for k, lab, p in rep.tel.events if k == "conv_mouth" and lab == "say"]
+        assert all(t - max(c for c in closes if c <= t) >= SPEC["terminal_grace_ms"] for t in says), says
 
 
 # ── scripted ──────────────────────────────────────────────────────────────────────────────────────────────────────

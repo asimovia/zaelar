@@ -69,9 +69,10 @@ class Inbox:
 
     # ── accept ──────────────────────────────────────────────────────────────────────────────────────────────────
 
-    def accept(self, env: E.Envelope, now: int, admit=None) -> Admission:
+    def accept(self, env: E.Envelope, now: int, admit=None, trace: str | None = None) -> Admission:
         """Accept one envelope. `admit(tx, env)` runs INSIDE the same transaction, after the dedupe and before the
-        routing — what must be written with the acceptance (the intervention's phase, the request) or not at all."""
+        routing — what must be written with the acceptance (the intervention's phase, the request) or not at all.
+        `trace`: the flow its events join when it is not its own (a stop joins the flow it stops)."""
         env = replace(env, id=env.id or self.ids.new("e"), accepted_ms=now)
         why = ("not_this_account" if env.account != self.acct else
                "producer_not_of_its_kind" if not E.producer_allowed(env) else None)
@@ -80,12 +81,13 @@ class Inbox:
                        text=getattr(env.body, "text", None))
             return Admission(None, "refused")
         with self.store.tx(self.lease()) as tx:
-            row, new = tx.insert_unique(T, env.id, self._row(env), f"{env.producer}|{env.producer_id}")
+            row, new = tx.insert_unique(T, env.id, {**self._row(env), "trace": trace},
+                                        f"{env.producer}|{env.producer_id}")
             if not new:
                 self._emit("duplicate", env, cause={"kind": "producer", "ref": env.producer},
                            text=getattr(env.body, "text", None))
                 return Admission(None, "duplicate")
-            self._emit("accepted", env)
+            self._emit("accepted", env, trace=trace)
             extra = admit(tx, env) if admit is not None else None
             disposition = self._route(tx, env, now)
         return Admission(env, disposition, extra)
@@ -200,16 +202,22 @@ class Inbox:
             return Batch(seq, envs, reason)
 
     def _waits_for_voice(self, tx, pick: list[dict], now: int) -> bool:
-        """The publication hold, before a run starts too: on the device of the batch's last entry a voice is open
-        that began within the window of it — any voice open there, even one that began before that entry closed (the
-        person went on while the provider was ending). Bounded: never longer than `resume_hold_max_ms` from that
-        entry's close, and words do not reset it."""
-        last = max((r["env"] for r in pick), key=lambda e: ordering.last_key(e["sealed_ms"], e["onset_ms"], e["id"]))
-        if not last.get("endpoint") or now - last["sealed_ms"] >= self.cfg.resume_hold_max_ms:
-            return False
-        return any(v.get("endpoint") == last["endpoint"]
-                   and v["onset"] - last["sealed_ms"] <= self.cfg.resume_window_ms
-                   for _iv, v in tx.scan(VOICE, states=("open",)))
+        """Not yet: a voice entry closed with no sentence mark is not eligible before `nonterminal_start_ms` from its
+        close (he goes on, most of the time), and the publication hold applies before a run starts too
+        (`ordering.waits_for_voice`, the one predicate)."""
+        envs = [r["env"] for r in pick]
+        if any(e["kind"] == str(EnvelopeKind.USER_UTTERANCE) and e["body"].get("terminal") is False
+               and now - e["sealed_ms"] < self.cfg.nonterminal_start_ms for e in envs):
+            return True
+        voices = [(iv, v["onset"], v.get("endpoint")) for iv, v in tx.scan(VOICE, states=("open",))]
+        return ordering.waits_for_voice([(e["sealed_ms"], e.get("endpoint")) for e in envs], voices, now,
+                                        self.cfg.resume_window_ms, self.cfg.resume_hold_max_ms) is not None
+
+    def words_since(self, t_ms: int) -> bool:
+        """Did the person send an entry with words (an utterance or a text) accepted after `t_ms`?"""
+        with self.store.tx(self.lease()) as tx:
+            return any(r["kind"] != str(EnvelopeKind.USER_CONTROL) and r["accepted"] > t_ms
+                       and r["env"]["body"].get("text") for _k, r in tx.scan(T))
 
     def pending(self) -> bool:
         """Is there a batch of the person's waiting — queued or held, not yet in a run?"""
@@ -270,18 +278,18 @@ class Inbox:
         self._emit_row("accounted", row, outcome=outcome, reason=reason)
 
     def _emit(self, label: str, env: E.Envelope, *, cause: dict | None = None, refs_extra: dict | None = None,
-              **payload) -> None:
+              trace: str | None = None, **payload) -> None:
         refs = {"env": env.id, "iv": env.refs.intervention_id, "task": env.refs.task_id,
                 "endpoint": env.endpoint, "channel": str(env.channel), **(refs_extra or {})}
         self.em.emit("conv_inbox", label, owner="inbox", cause=cause or {"kind": "envelope", "ref": env.id},
-                     refs=refs, kind=str(env.kind), **payload)
+                     refs=refs, trace=trace, kind=str(env.kind), **payload)
 
     def _emit_row(self, label: str, row: dict, **payload) -> None:
         refs = row["env"]["refs"]
         self.em.emit("conv_inbox", label, owner="inbox", cause={"kind": "envelope", "ref": row["id"]},
                      refs={"env": row["id"], "iv": refs.get("intervention_id"), "task": refs.get("task_id"),
                            "endpoint": row["env"].get("endpoint"), "channel": row["env"].get("channel")},
-                     kind=row["kind"], **payload)
+                     trace=row.get("trace"), kind=row["kind"], **payload)
 
 
 def apply_control(tx, env_id: str, now: int) -> None:

@@ -44,6 +44,7 @@ class UtteranceBody:
     coverage: Coverage = Coverage.FULL      # INCOMPLETE: it ended without its final words — the run asks for the end
     amends: str | None = None
     reason: str | None = None               # why it is incomplete (a stalled stream, no final at the cap)
+    terminal: bool | None = None            # the provider closed it with a sentence end (None: unknown, read as yes)
 
 
 @dataclass(frozen=True)

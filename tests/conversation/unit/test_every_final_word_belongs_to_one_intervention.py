@@ -2,7 +2,9 @@
 
 Revisions REPLACE a provider turn's words (they rewrite words already given, adapter doc A4); a late partial never
 undoes a final; a turn without its final leaves the intervention uncovered and it ends `incomplete`, not closed; the
-person going on after a close is another intervention, which amends the first and owns only its own words. A word is
+person going on after a close is another intervention, which amends the first and owns only its own words; a turn
+that comes back after its intervention ended gives the next one only the words PAST what was delivered, and the same
+final delivered again changes nothing. A word is
 identified by its provider turn and its place in it, never by its text or time. Checked on fixed cases and on seeded
 random revision streams.
 """
@@ -10,6 +12,8 @@ from __future__ import annotations
 
 import random
 from collections import Counter
+
+import pytest
 
 from conversation.ear import signals as S
 from conversation.ear.spans import Spans
@@ -87,3 +91,52 @@ def test_minor_2_an_older_final_arriving_late_never_replaces_a_newer_final():
     sp.add(D, 1, 5, True, words("w1", "w2", "w3"), "iv1")
     sp.add(D, 1, 3, True, words("w1", "w9"), "iv1")
     assert [w[0] for w in sp.words("iv1")] == ["w1", "w2", "w3"]
+
+
+def _closed_turn(h, toks=("w1", "w2")):
+    from conversation.ear import signals as S
+    t = 10
+    h.hear(S.VadEdge("d1", "rise", t))
+    ws = h.words(list(toks), t)
+    end = ws[-1][2]
+    first = S.WordSpan("d1", 1, 1, True, ws, (ws[0][1], end))
+    return t, end, ws, first
+
+
+@pytest.mark.parametrize("revision", [1, 2])
+def test_the_same_final_delivered_again_is_answered_once(store, revision):
+    """Review TB-1: a re-delivered final of a turn whose intervention ended brings nothing new — no second
+    intervention, no second run, no second answer — at the same revision or the next one."""
+    from conversation.ear import signals as S
+    from tests.conversation.unit.convkit import Harness
+    h = Harness(store)
+    _t, end, ws, first = _closed_turn(h)
+    h.hear(first, S.VadEdge("d1", "fall", end + 10), h.beats(end, end + 300),
+           S.EotHint("d1", "flux", "end", .9, end + 300))
+    h.at(end + 2000)
+    h.hear(S.WordSpan("d1", 1, revision, True, ws, (ws[0][1], end)))
+    for k in range(1, 20):
+        h.hear(S.Tick(end + 2000 + 250 * k))
+    h.pump()
+    assert len(h.model.calls) == 1 and len(h.mouth.orders) == 1
+    assert [lab for k, lab, p in h.tel.events if k == "conv_ear" and lab == "opened"] == ["opened"]
+
+
+def test_a_turn_grown_after_a_cap_close_gives_the_next_intervention_only_its_new_words(store):
+    """Review TB-1: the ear closed the turn at its cap; the provider's turn then grows by a word — the next
+    intervention carries that word alone, never the words already delivered."""
+    from conversation.ear import signals as S
+    from tests.conversation.unit.convkit import Harness
+    h = Harness(store)
+    t, end, ws, first = _closed_turn(h)
+    h.hear(first, S.VadEdge("d1", "fall", end + 10), h.beats(end, end + 2700))          # closed at its cap
+    grown = h.words(["w1", "w2", "w3"], t)
+    h.hear(S.WordSpan("d1", 1, 2, True, grown, (grown[0][1], grown[-1][2])),
+           S.EotHint("d1", "flux", "end", .9, end + 2800))
+    for k in range(1, 20):
+        h.hear(S.Tick(end + 2800 + 250 * k))
+    h.pump()
+    inputs = [c.prompt.input for c in h.model.calls]
+    assert inputs[0].endswith("«w1 w2»") and inputs[-1].endswith("«w3»")
+    assert sum(i.count("w1 w2") for i in inputs) == 1
+    _assigned_once(h.conv.ear)

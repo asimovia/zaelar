@@ -81,6 +81,7 @@ class Op(_Str):
     BY_ID = "by_id"                          # goes to its ledger item by id
     SAY_OWED = "say_owed"                    # say the next line owed, as it is, by voice
     WAIT_BEHIND_VOICE = "wait_behind_voice"  # note the open voice: a text that arrives after it waits behind it
+    RESUME_LINE = "resume_line"              # a barge-in with no word: say the rest of the line it cut, once
 
 
 class ItemKind(_Str):

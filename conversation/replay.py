@@ -55,7 +55,7 @@ def _signal(s: dict):
     if kind == "VadEdge":
         return S.VadEdge(s["endpoint"], s["edge"], s["t_ms"], s.get("echo_safe", True))
     if kind == "EotHint":
-        return S.EotHint(s["stream"], s["source"], s["kind"], s["prob"], s["t_ms"])
+        return S.EotHint(s["stream"], s["source"], s["kind"], s["prob"], s["t_ms"], s.get("terminal"))
     if kind == "Watermark":
         return S.Watermark(s["stream"], s["processed_through_ms"])
     if kind == "TypedSubmit":
@@ -129,7 +129,7 @@ class Replay:
             self._feed(self.queue[self.i])
             self.i += 1
             now = self.clock.now_ms()
-            if self.conv.current is None and (self.conv.dirty or now - self._pumped >= KEEP_TIME_MS):
+            if self.conv.pumpable and (self.conv.dirty or now - self._pumped >= KEEP_TIME_MS):
                 self._pumped = now                # as the live loop: on what was accepted, and on its keep_time
                 self.loop.run_until_complete(self.conv.pump())
         self.clock.mono = max(self.clock.mono, t_ms - self.clock.wall0)

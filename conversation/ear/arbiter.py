@@ -60,6 +60,7 @@ class _Voice:
     closed_ms: int = 0
     last_word_ms: int | None = None
     up: bool = False                        # a rise with no fall since: the voice is still sounding
+    terminal: bool | None = None            # how the provider's last end closed its transcript
     successor: bool = False                 # born at a close with the voice still up (it may be no voice at all)
 
 
@@ -98,15 +99,21 @@ class Ear:
     def _on_WordSpan(self, sig: S.WordSpan, out: list) -> None:
         v = self._v(sig.stream)
         t = self._time(sig.window[1])
-        v.watermark_ms = max(v.watermark_ms or 0, sig.window[1])
+        self._judge(v, t, out)                  # time passed first: an intervention past its bounds ends before it
+        v.watermark_ms = max(v.watermark_ms or 0, sig.window[1])     # could take words that came after them
         owner = self.spans.owner(sig.stream, sig.seq)
         if owner is None and sig.words:
             self._start(v, sig.words[0][1], out)
         elif owner is not None and (owner != v.iv or v.state not in OPEN_STATES) and sig.words:
-            # words of a provider turn whose intervention already ended: new voice, never a revision of the ended one —
-            # they go to the open intervention of this device (a successor born at the close), or start one
+            # a provider turn whose intervention already ended: what it delivered stays there. Only words PAST it are
+            # new voice — they go to the open intervention of this device (a successor born at the close), or start
+            # one; the same final delivered again brings nothing and changes nothing
+            if not self.spans.brings_new(sig.stream, sig.seq, sig.words):
+                self.spans.add(sig.stream, sig.seq, sig.revision, sig.final, sig.words, owner)   # its final, kept there
+                self._judge(v, t, out)
+                return
             self._start(v, t, out)
-            self.spans.reassign_seq(sig.stream, sig.seq, owner, v.iv)
+            self.spans.split(sig.stream, sig.seq, v.iv)
             owner = v.iv
         target = owner or v.iv
         if target is None:
@@ -145,7 +152,7 @@ class Ear:
             v.eot_end_ms = None
             self._state(v, IvState.OPEN, "extended", t, out)
         elif sig.kind == "end":
-            v.eot_end_ms = t
+            v.eot_end_ms, v.terminal = t, sig.terminal
         self._judge(v, t, out)
 
     def _on_PlaybackState(self, sig: S.PlaybackState, out: list) -> None:
@@ -178,7 +185,7 @@ class Ear:
         v.amends = v.previous if (v.previous and not v.agent_spoke) else None
         v.agent_spoke = False
         v.iv, v.state, v.onset_ms, v.successor = self.ids.new("iv"), IvState.OPEN, t, successor
-        v.eot_end_ms = v.eot_prob = v.fall_ms = v.last_word_ms = None   # nothing of the previous one is this one's
+        v.eot_end_ms = v.eot_prob = v.fall_ms = v.last_word_ms = v.terminal = None   # nothing of the previous one
         out.append(S.Onset(v.endpoint, t, v.iv))
         self.em.emit("conv_ear", "onset", owner="ear", cause={"kind": "voice"}, refs=self._refs(v), t_onset_ms=t)
         self.em.emit("conv_ear", "opened", owner="ear", cause={"kind": "voice"}, refs=self._refs(v),
@@ -225,7 +232,8 @@ class Ear:
     def _utterance(self, v: _Voice, t: int, coverage: Coverage, reason: str | None = None) -> E.Envelope:
         words = self.spans.words(v.iv)
         body = E.UtteranceBody(v.iv, " ".join(w[0] for w in words), tuple(E.Span(*w) for w in words),
-                               coverage=coverage, amends=v.amends, reason=reason)
+                               coverage=coverage, amends=v.amends, reason=reason,
+                               terminal=v.terminal if coverage is Coverage.FULL else None)
         return E.make(EnvelopeKind.USER_UTTERANCE, body, producer=f"ear:{v.endpoint}",
                       producer_id=f"{v.iv}:{coverage}", account=self.account, onset_ms=v.onset_ms, sealed_ms=t,
                       channel=Channel.VOICE, endpoint=v.endpoint, refs=E.Refs(intervention_id=v.iv))
@@ -263,6 +271,10 @@ class Ear:
     def open_ids(self) -> set[str]:
         """The interventions this ear is still hearing (open or tentative)."""
         return {v.iv for v in self._voices.values() if v.state in OPEN_STATES and v.iv}
+
+    def open_interventions(self) -> list[tuple[str, int, str]]:
+        """(intervention, onset, device) of every open voice intervention."""
+        return [(v.iv, v.onset_ms, v.endpoint) for v in self._voices.values() if v.state in OPEN_STATES and v.iv]
 
     def open_intervention(self, endpoint: str | None = None) -> tuple[str, int] | None:
         """(intervention, onset) of an open voice intervention — on that endpoint, or on any."""

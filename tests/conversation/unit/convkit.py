@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 
 from conversation import build
 from conversation.config import Config
@@ -14,13 +15,18 @@ ACCT = "acct-test"
 
 class Harness:
     def __init__(self, store, *, script: dict | None = None, config: Config | None = None, prefix: str = "RULES",
-                 tasks=None) -> None:
+                 tasks=None, grace: bool = False) -> None:
+        """`grace=False` (most tests): the publication graces of a closed thought are zero — the reply goes out as
+        soon as it is ready; the tests of the grace itself ask for it."""
+        config = config or Config()
+        if not grace:
+            config = dataclasses.replace(config, nonterminal_start_ms=0, nonterminal_grace_ms=0, terminal_grace_ms=0)
         self.clock, self.tel = FakeClock(t0_ms=0), ListTelemetry()   # signal times ARE the wall clock
         self.model, self.tools, self.mouth = ScriptedModel(script or {}), RecordingTools(), AckingMouth()
         self.store, self.owed = store, FakeOwed()
         self.conv = build(account=ACCT, owner="test", model=self.model, tools=self.tools, store=store,
                           memory=NoMemory(), clock=self.clock, mouth=self.mouth, telemetry=self.tel,
-                          config=config or Config(), prefix=prefix, owed=self.owed, tasks=tasks)
+                          config=config, prefix=prefix, owed=self.owed, tasks=tasks)
         self.mouth.ack = self.conv.ack
         self.conv.device("d1", voice_live=True, speaker_open=True)
         self._seq = 0
@@ -39,7 +45,7 @@ class Harness:
                 if t is not None:
                     self.at(t)
                 self.conv.hear(one)
-                if self.live and self.conv.current is None:
+                if self.live and (self.conv.current is None or self.conv.pumpable):
                     self.pump()
 
     def pump(self) -> int:
@@ -53,12 +59,12 @@ class Harness:
         return [S.Watermark(ep, t) for t in range(t0, t1 + 1, 240)]
 
     def utter(self, parts: list[tuple[list[str], int]], *, ep: str = "d1", mid: str = "eager_resumed",
-              end_pause: int = 300) -> int:
+              end_pause: int = 300, terminal: bool | None = None, at: int | None = None) -> int:
         """Say `parts` (tokens, pause after) as ONE provider turn; returns the time of the end of turn. Between parts
         the provider sends an eager hint and, when the person goes on, a resumed one (or `mid='end'`: an end of turn, then a
         new provider turn — the cut Flux made at a 900 ms pause in the adapter probe)."""
         self._seq += 1
-        seq, rev, t, said = self._seq, 0, self.clock.mono + 10, []
+        seq, rev, t, said = self._seq, 0, (self.clock.mono if at is None else at) + 10, []
         self.hear(S.VadEdge(ep, "rise", t))
         for i, (toks, pause) in enumerate(parts):
             ws = self.words(toks, t)
@@ -82,7 +88,7 @@ class Harness:
             t = end_t + pause
         end_t = said[-1][2]
         self.hear(S.VadEdge(ep, "fall", end_t + 10), self.beats(end_t + 100, end_t + end_pause, ep),
-                  S.EotHint(ep, "flux", "end", .9, end_t + end_pause))
+                  S.EotHint(ep, "flux", "end", .9, end_t + end_pause, terminal))
         return end_t + end_pause
 
     def typed(self, text: str, t: int, ep: str = "d2", cid: str | None = None) -> None:

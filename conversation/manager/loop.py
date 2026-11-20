@@ -45,8 +45,9 @@ class Running:
     claimed: bool = False
     interrupt: str | None = None          # superseded · cancelled · stalled
     actions_held: bool = False
-    last_entry_ms: int = 0                # the latest close among the person's entries in the batch
-    last_endpoint: str | None = None      # …and the device it came from
+    entries: tuple = ()                   # (close, device) of the person's entries in the batch
+    publish_at: int | None = None         # not before: the latest grace of its voice entries
+    parked: tuple | None = None           # (text, steps, batch): a reply ready, waiting for its grace
     resumed_iv: str | None = None         # the resumed voice that stopped this run
     trace: str = ""                       # the root of its first request: every event of the run carries it
     said: list = field(default_factory=list)
@@ -77,6 +78,7 @@ class Conversation:
         self.current: Running | None = None
         self.speaking_on: set[str] = set()
         self.dirty = False                  # something was accepted since the last pump (a driver may pump only then)
+        self._resume: dict | None = None    # a cut line to resume, unless an entry with words comes first
         self._swept_at = -1 << 62
         self.recover()
 
@@ -120,11 +122,15 @@ class Conversation:
             SEAL.note(tx, d.intervention_id, "discarded", d.t_ms)
         self.inbox.voice_done(d.intervention_id, self.clock.now_ms())
         self._voice_done(d.endpoint)
+        if Op.RESUME_LINE in policy.decide(d, self.state):     # a barge-in that brought no word: our line goes on
+            line = self.speaker.cut_line(d.endpoint, self.clock.now_ms(), self.cfg.resume_cut_within_ms)
+            self._resume = line if line and not self.inbox.words_since(line["ended_ms"]) else None
 
     def give(self, env: E.Envelope) -> None:
         now = self.clock.now_ms()
         pending: list = []
-        adm = self.inbox.accept(env, now, admit=lambda tx, e: self._admit(tx, e, now, pending))
+        adm = self.inbox.accept(env, now, admit=lambda tx, e: self._admit(tx, e, now, pending),
+                                trace=self._stops(env))
         self.dirty = True
         self.book.say(pending)
         if adm.envelope is None or adm.disposition == "unhandled":   # a duplicate, refused, or no handler here
@@ -133,6 +139,7 @@ class Conversation:
         self._voice_state(env)
         ops = policy.decide(env, self._column_state(), claimed=bool(self.current and self.current.claimed))
         self._apply(env, ops)
+        run.drop_parked(self)
 
     def _column_state(self) -> MgrState:
         """A batch that waits — held for his voice, or in the collect window — is a run that has not started: for the
@@ -140,6 +147,15 @@ class Conversation:
         if self.state is MgrState.IDLE and self.inbox.pending():
             return MgrState.RUNNING
         return self.state
+
+    def _stops(self, env: E.Envelope) -> str | None:
+        """A stop joins the flow it stops: the run in course, else the line being said; anything else its own."""
+        if env.kind is not EnvelopeKind.USER_CONTROL or env.body.op is not ControlOp.STOP:
+            return None
+        if self.current is not None:
+            return self.current.trace
+        line = self.speaker.live_line()
+        return line["trace"] if line else None
 
     def _admit(self, tx, env: E.Envelope, now: int, pending: list) -> None:
         """Inside the acceptance's transaction, after the dedupe: how the intervention ended (noted once) and the
@@ -169,9 +185,10 @@ class Conversation:
             elif op is Op.ACTIONS_WAIT and self.current is not None:
                 self.current.actions_held = True        # an act asked for while they speak is refused with that reason
             elif (op is Op.HOLD_FOR_VOICE and self.current is not None
-                  and run.resumed(self, self.current, o.endpoint, o.t_ms)):
+                  and run.resumed(self, self.current, o.intervention_id, o.endpoint, o.t_ms)):
                 self.current.interrupt = "resumed"      # stop it at its next checkpoint; its batch waits for that voice
                 self.current.resumed_iv = o.intervention_id
+        run.drop_parked(self)                           # a reply waiting for its grace is held the same way
 
     def _voice_done(self, endpoint: str) -> None:
         if endpoint in self.speaking_on:
@@ -213,6 +230,12 @@ class Conversation:
     def ack(self, sig: SayStarted | SayEnded) -> None:
         self.speaker.ack(sig)
 
+    @property
+    def pumpable(self) -> bool:
+        """Nothing executing: free, or the run in course is only a reply waiting for its grace. A driver pumps then."""
+        free = self.state is MgrState.IDLE and self.current is None
+        return free or (self.current is not None and self.current.parked is not None)
+
     def _line_ended(self, _say_id: str) -> None:
         """A line ended — played, cut, or unknown past its deadline: we are not speaking any more."""
         if self.state is MgrState.SPEAKING:
@@ -240,7 +263,7 @@ class Conversation:
         while True:
             await self.clock.sleep_until(self.clock.mono_ms() + every_ms)
             self.sweep()
-            if self.state is MgrState.IDLE and self.current is None and (pumping is None or pumping.done()):
+            if self.pumpable and (pumping is None or pumping.done()):
                 pumping = asyncio.ensure_future(self.pump())
 
     # ── run what is ready ───────────────────────────────────────────────────────────────────────────────────────
@@ -250,13 +273,26 @@ class Conversation:
         runs, self.dirty = 0, False
         while True:
             now = self.clock.now_ms()
+            run.drop_parked(self)
+            published = await run.publish_parked(self)  # a reply whose grace is over goes out before anything is judged
             if now - self._swept_at >= 100:      # the clock's turn is about time: once per 100 ms is every time
                 self._swept_at = now
                 self.sweep(now)
+            run.drop_parked(self)
+            if not published:                    # a reply waiting for its grace: nothing else runs meanwhile
+                return runs
             if self.state is not MgrState.IDLE:
                 return runs
             batch = self.inbox.next_batch(self.clock.now_ms())
+            if batch is not None or self.inbox.pending():
+                self._resume = None                     # an entry with words came first: it is answered instead
             if batch is None:
+                if self._resume is not None and not self.speaking_on:
+                    row, self._resume = self._resume, None
+                    self.state = MgrState.SPEAKING
+                    if await self.speaker.resume(row) is None and self.state is MgrState.SPEAKING:
+                        self.state = MgrState.IDLE
+                    return runs
                 await self._say_owed()
                 return runs
             await run.run_batch(self, batch)

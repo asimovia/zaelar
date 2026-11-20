@@ -17,10 +17,29 @@ def order(rows: list[dict]) -> list[dict]:
     return sorted(rows, key=batch_key)
 
 
-def last_key(sealed_ms: int, onset_ms: int, env_id: str) -> tuple:
-    """Which entry of a batch is its LAST — the one whose device a resumed voice is looked for on. One key for the
-    inbox and the run alike: two rules that disagree on a tie would start a run the other one holds, again and again."""
-    return (sealed_ms, onset_ms, env_id)
+def waits_for_voice(entries: list[tuple[int, str | None]], voices: list[tuple[str, int, str | None]], now: int,
+                    window_ms: int, bound_ms: int) -> str | None:
+    """The publication hold — ONE predicate for the inbox (before a run starts), an onset during a run, and the check
+    before sealing: the open voice a batch waits for, or None.
+
+    `entries` are the batch's (close, device); `voices` the open ones (intervention, onset, device). A voice holds the
+    batch when it is open on ANY device that contributed an entry, and began within `window_ms` of the close of the
+    last entry that device contributed — even before it (he went on while the provider was ending). Bounded: never
+    once `bound_ms` have passed since the close of the batch's last entry."""
+    if not entries or now - max(at for at, _ep in entries) >= bound_ms:
+        return None
+    last: dict = {}
+    for at, ep in entries:
+        if ep:
+            last[ep] = max(last.get(ep, at), at)
+    return next((iv for iv, onset, ep in voices if ep in last and onset - last[ep] <= window_ms), None)
+
+
+def publish_at(voice_entries: list[tuple[int, bool | None]], terminal_ms: int, nonterminal_ms: int) -> int | None:
+    """When a batch may publish: the latest grace of its voice entries (close, terminal) — a long one after a close
+    with no sentence mark, a short one otherwise (unknown reads as a mark). None: no voice entry, no grace."""
+    return max((at + (nonterminal_ms if terminal is False else terminal_ms) for at, terminal in voice_entries),
+               default=None)
 
 
 def hold_behind(text_onset: int, open_voice: dict[str, dict]) -> str | None:

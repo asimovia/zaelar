@@ -60,6 +60,13 @@ WAITS: dict[str, tuple[tuple[str, ...], str]] = {
                                         "and_background::test_a_background_with_words_and_no_end_never_holds_a_turn_open"),
     "a voice born at a close that was its tail": (("min_voice_ms",), U + "test_the_ear_holds_against_foreign_voice_"
                                                   "and_background::test_the_providers_end_before_the_fall_costs_nothing"),
+    "a batch whose voice closed with no sentence mark": (("nonterminal_start_ms",), U + "test_half_a_thought_is_not_"
+                                                         "answered::test_after_a_close_with_no_mark_he_goes_on_and_"
+                                                         "nothing_is_said"),
+    "a reply waiting for its grace": (("terminal_grace_ms", "nonterminal_grace_ms"), U + "test_half_a_thought_is_not_"
+                                      "answered::test_with_nobody_going_on_the_answer_goes_at_its_grace_once"),
+    "a line cut by a voice that brought no word": (("resume_cut_within_ms",), U + "test_half_a_thought_is_not_answered"
+                                                   "::test_a_line_we_stopped_or_a_breath_too_late_is_not_resumed"),
     "an open voice of an earlier epoch": ((), U + "test_a_crash_at_any_transition_recovers::"
                                           "test_a_voice_cut_by_a_restart_is_ended_incomplete_with_its_event_and_asked_again"),
 }

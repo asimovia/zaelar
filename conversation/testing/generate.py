@@ -23,7 +23,6 @@ from conversation import envelopes as E
 from conversation.config import Config
 from conversation.ear import signals as S
 from conversation.inbox.accounting import audit
-from conversation.inbox.ordering import last_key
 from conversation.manager import Conversation
 from conversation.ports import Command, Done, Failed, StaleEpoch, ToolCall, ToolResult
 from conversation.store.memory import MemoryStore
@@ -63,6 +62,12 @@ class AuditedStore(_Audited, MemoryStore):
 class AuditedSqliteStore(_Audited, SqliteStore):
     """The audited store on sqlite: one case in ten, so its own paths (`json_extract` in `cas` and in a scan by state,
     `BEGIN IMMEDIATE`) are bombarded too."""
+
+
+#: the numbers the design writes (v3.1 §1.6 bis, §1.6 ter), frozen here: the properties judge against THESE, never
+#: against the configuration the case runs with — a value raised out of design must turn a property red
+SPEC = {"intervention_max_ms": 30_000, "resume_hold_max_ms": 8000, "resume_window_ms": 20_000,
+        "terminal_grace_ms": 3000, "nonterminal_grace_ms": 5000, "liveness_ms": 60_000}
 
 
 class Case:
@@ -172,7 +177,7 @@ class Case:
                 if t is not None:
                     self.clock.mono = max(self.clock.mono, t - self.clock.wall0)
                 conv.hear(one)
-                if conv.current is None and (conv.dirty or isinstance(one, S.Tick)):
+                if conv.pumpable and (conv.dirty or isinstance(one, S.Tick)):
                     self.loop.run_until_complete(conv.pump())
 
     def _now(self) -> int:
@@ -216,26 +221,27 @@ class Case:
             self._feed(conv, S.Discard(ep, "w0", "echo", t + 20))
             return
         end = self.rng.random()
+        mark = self.rng.choice([True, True, False, None])   # how the provider closed it: a sentence end, none, unknown
         if end < 0.2:                       # the end lands before the watermark passes the fall; he may go on at once
-            self._feed(conv, S.VadEdge(ep, "fall", t + 250), S.EotHint(ep, "flux", "end", .9, t + 200))
+            self._feed(conv, S.VadEdge(ep, "fall", t + 250), S.EotHint(ep, "flux", "end", .9, t + 200, mark))
             if self.rng.random() < 0.5:
                 self._feed(conv, S.VadEdge(ep, "rise", t + 228))
                 self._go_on_unfinished(conv, ep=ep, rose=True)
             self._feed(conv, *[S.Watermark(ep, x) for x in range(t + 300, t + 700, 240)])
         elif end < 0.35:                    # the end with the voice still up, its fall an instant later
-            self._feed(conv, S.Watermark(ep, t + 100), S.EotHint(ep, "flux", "end", .9, t + 200),
+            self._feed(conv, S.Watermark(ep, t + 100), S.EotHint(ep, "flux", "end", .9, t + 200, mark),
                        S.VadEdge(ep, "fall", t + 200 + self.rng.choice([5, 30, 120, 400])),
                        *[S.Watermark(ep, x) for x in range(t + 340, t + 900, 240)])
         else:
             self._feed(conv, S.VadEdge(ep, "fall", t + 10), *[S.Watermark(ep, x) for x in range(t + 60, t + 400, 240)],
-                       S.EotHint(ep, "flux", "end", .9, t + 400))
+                       S.EotHint(ep, "flux", "end", .9, t + 400, mark))
 
     def _envelope(self, conv: Conversation, kind: EnvelopeKind, body, *, channel=None, endpoint=None) -> None:
         self.n += 1
         conv.give(E.make(kind, body, producer=f"{E.KINDS[kind][3][0]}p3", producer_id=f"{self.n}", account=ACCT,
                          onset_ms=self._now(), sealed_ms=self._now(), channel=channel, endpoint=endpoint,
                          refs=E.Refs(task_id=getattr(body, "task_id", None))))
-        if conv.current is None:
+        if conv.current is None or conv.pumpable:
             self.loop.run_until_complete(conv.pump())
 
     def _random_action(self, conv: Conversation | None = None) -> None:
@@ -258,7 +264,7 @@ class Case:
         elif a < 0.86:                                   # a line owed: a worker's result, a contact, a reminder
             self.n += 1
             self.owed.add(f"n{self.n}", f"w{self.rng.randint(1, 60)}", self._now())
-            if conv.current is None:
+            if conv.current is None or conv.pumpable:
                 self.loop.run_until_complete(conv.pump())
         elif a < 0.91:
             self._race_seal(conv)
@@ -270,6 +276,10 @@ class Case:
             self._forge(conv)                                                    # a forged producer / account
         elif a < 0.975:
             self._background(conv)                                               # a TV that never stops
+        elif a < 0.98:
+            self._late_turn(conv)                    # the same final delivered again, or the turn grown after a cap
+        elif a < 0.985:
+            self._two_devices(conv)                  # two voices close at once; he goes on on one of them
         else:
             self.clock.advance(self.rng.choice([100, 2000, 9000, 40_000]))
             self._feed(conv, S.Tick(self._now()))
@@ -310,6 +320,40 @@ class Case:
         self._feed(conv, *([] if rose else [S.VadEdge(ep, "rise", t)]),
                    S.WordSpan(ep, self.seq, 1, False, ws, (t, t + 160)),
                    *[S.Watermark(ep, x) for x in range(t + 200, t + 2500, 240)])
+
+    def _late_turn(self, conv: Conversation) -> None:
+        """A provider turn whose intervention already ended comes back: the same final again (nothing new), or grown
+        by a word after the ear closed it at its cap."""
+        ep, t = "d1", self._now() + 20
+        self.seq += 1
+        seq = self.seq
+        ws = tuple((f"w{self.rng.randint(1, 60)}", t + i * 180, t + i * 180 + 160, 1.0) for i in range(2))
+        self._feed(conv, S.VadEdge(ep, "rise", t), S.WordSpan(ep, seq, 1, True, ws, (t, ws[-1][2])),
+                   S.VadEdge(ep, "fall", ws[-1][2] + 10),
+                   *[S.Watermark(ep, x) for x in range(ws[-1][2] + 60, ws[-1][2] + 2900, 240)])
+        end = ws[-1][2] + 3000
+        if self.rng.random() < 0.5:
+            self._feed(conv, S.WordSpan(ep, seq, self.rng.choice([1, 2]), True, ws, (t, ws[-1][2])), S.Tick(end))
+        else:
+            grown = ws + ((f"w{self.rng.randint(1, 60)}", end, end + 160, 1.0),)
+            self._feed(conv, S.WordSpan(ep, seq, 2, True, grown, (t, end + 160)), S.Watermark(ep, end + 300),
+                       S.EotHint(ep, "flux", "end", .9, end + 320, True))
+
+    def _two_devices(self, conv: Conversation) -> None:
+        """Two voices close at the same instant on two devices; he goes on on one of them and keeps talking."""
+        t = self._now() + 20
+        for ep in ("d1", "d2"):
+            self.seq += 1
+            ws = ((f"w{self.rng.randint(1, 60)}", t, t + 160, 1.0),)
+            self._feed(conv, S.VadEdge(ep, "rise", t), S.WordSpan(ep, self.seq, 1, True, ws, (t, t + 160)),
+                       S.VadEdge(ep, "fall", t + 170), S.Watermark(ep, t + 200))
+        for ep in ("d1", "d2"):
+            self._feed(conv, S.EotHint(ep, "flux", "end", .9, t + 300, True))
+        ep, x = self.rng.choice(["d1", "d2"]), t + 300 + self.rng.choice([30, 800, 2500])
+        self.seq += 1
+        self._feed(conv, S.VadEdge(ep, "rise", x),
+                   S.WordSpan(ep, self.seq, 1, False, ((f"w{self.rng.randint(1, 60)}", x, x + 160, 1.0),),
+                              (x, x + 160)), *[S.Watermark(ep, y) for y in range(x + 200, x + 4000, 240)])
 
     def _background(self, conv: Conversation) -> None:
         """A background that keeps talking: the voice up, words every 400 ms, never an end, never a fall."""
@@ -359,8 +403,9 @@ DRAIN_STEP_MS = 5000
 
 
 def _held_voice_spoken_over(case, events, inbox_rows) -> list[str]:
-    """A line of a run said while a voice is open on the device of the batch's last entry, begun within the window of
-    that entry's close — before the hold's bound (past it the batch runs as it is, by design)."""
+    """A line of a run said, or a run started, while a voice that holds its batch is open — the rule as the design
+    writes it, not as the code does: a voice open on ANY device that contributed an entry to the batch, begun within
+    the window of the last entry that device contributed, before the bound counted from the batch's last close."""
     envs = {r["id"]: r["env"] for r in inbox_rows}
     opened, ended, batch, out = {}, {}, {}, []
     for k, lab, p in events:
@@ -371,15 +416,17 @@ def _held_voice_spoken_over(case, events, inbox_rows) -> list[str]:
             ended.setdefault(r.get("iv"), p["t_ms"])
         elif k == "conv_run" and lab == "started":
             batch[r["run"]] = [envs[e] for e in p["batch_envs"] if e in envs and envs[e]["kind"] != "user.control"]
-        if (k == "conv_mouth" and lab == "say" or k == "conv_run" and lab == "started") and batch.get(r.get("run")):
-            t = p["t_ms"]                    # neither a line said, nor a run started, with his voice open there
-            last = max(batch[r["run"]], key=lambda e: last_key(e["sealed_ms"], e["onset_ms"], e["id"]))
-            ep, at = last.get("endpoint"), last["sealed_ms"]
-            if not ep or t - at >= case.cfg.resume_hold_max_ms:
-                continue
-            out += [f"held: {r['run']} {lab} at {t} over {iv} open on {ep}" for iv, (on, oep) in opened.items()
-                    if oep == ep and on - at <= case.cfg.resume_window_ms and on <= t < ended.get(iv, 10 ** 18)
-                    and iv not in {e["refs"]["intervention_id"] for e in batch[r["run"]]}]
+        if not ((k == "conv_mouth" and lab == "say" or k == "conv_run" and lab == "started") and batch.get(r.get("run"))):
+            continue
+        t, entries = p["t_ms"], batch[r["run"]]       # neither a line said, nor a run started, with his voice open
+        if t - max(e["sealed_ms"] for e in entries) >= SPEC["resume_hold_max_ms"]:
+            continue
+        own = {e["refs"]["intervention_id"] for e in entries}
+        for iv, (on, ep) in opened.items():
+            last_there = [e["sealed_ms"] for e in entries if e.get("endpoint") == ep]
+            if (iv not in own and last_there and on - max(last_there) <= SPEC["resume_window_ms"]
+                    and on <= t < ended.get(iv, 10 ** 18)):
+                out.append(f"held: {r['run']} {lab} at {t} over {iv} open on {ep}")
     return out
 
 
@@ -405,8 +452,14 @@ def _flows_batches_and_bounds(case, inbox_rows) -> list[str]:
                   if k == "conv_ear" and lab == "onset"}
         for iv, on in onsets.items():                       # gathered over several provider turns: one turn that
             words = case.conv.ear.spans.words(iv)           # arrives whole is the provider's, not the ear's doing
-            if len(case.conv.ear.spans.seqs(iv)) > 1 and words[-1][2] - on > case.cfg.intervention_max_ms + 1000:
+            if len(case.conv.ear.spans.seqs(iv)) > 1 and words[-1][2] - on > SPEC["intervention_max_ms"] + 1000:
                 out.append(f"ear: {iv} gathered words for {words[-1][2] - on} ms")
+    delivered: dict = {}                                    # I2: a word reaches the inbox in one utterance only
+    for r in inbox_rows:
+        if r["kind"] == "user.utterance":
+            for w in r["env"]["body"]["spans"]:
+                delivered.setdefault((r["env"].get("endpoint"), w[0], w[1], w[2]), set()).add(r["id"])
+    out += [f"I2: word {w[1]} delivered in {sorted(ids)}" for w, ids in delivered.items() if len(ids) > 1][:3]
     accounted_in: dict = {}                                 # I6: an entry is in at most one batch that ended
     run_envs = {p["refs"]["run"]: p["batch_envs"] for k, lab, p in case.tel.events
                 if k == "conv_run" and lab == "started"}
@@ -422,7 +475,7 @@ def _flows_batches_and_bounds(case, inbox_rows) -> list[str]:
         for k, lab, p in case.tel.events:
             if k == "conv_close" and p["t_ms"] > drain_from:
                 start = max(p["t_ms"] - p["total_ms"], drain_from)
-                if p["t_ms"] - start > case.cfg.liveness_ms + DRAIN_STEP_MS:
+                if p["t_ms"] - start > SPEC["liveness_ms"] + DRAIN_STEP_MS:
                     out.append(f"I9: {p['refs'].get('req')} ended {p['t_ms'] - start} ms after the signals stopped")
     return out
 

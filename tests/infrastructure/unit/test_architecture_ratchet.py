@@ -554,6 +554,8 @@ _PACKAGE_CEILINGS["conversation"] += 71    # 2026-11-20 V2-941 v3.1 A6b (§1.6 b
 _TOTAL_MAX += 71     # same cause
 _PACKAGE_CEILINGS["conversation"] += 97    # 2026-11-20 V2-941 v3.1 A8: P3's generator delivers voice in a real provider's orders (end before the watermark, no fall between pieces, a background with no end) and judges six new properties
 _TOTAL_MAX += 97     # same cause
+_PACKAGE_CEILINGS["conversation"] += 257   # 2026-11-20 V2-941 v3.1 A6c (§1.6 ter + the review of A6–A8): the sentence-mark grace (a reply that waits for it, the eligibility wait), the hold over every contributing device, a wordless barge-in that resumes our line, a late turn split at what was delivered, P3's frozen design numbers and three actions
+_TOTAL_MAX += 257    # same cause
 
 
 def test_the_total_only_shrinks():

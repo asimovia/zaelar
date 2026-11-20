@@ -74,7 +74,10 @@ class Gateway:
     def _flush(self) -> None:
         said, self._said = self._said, []
         for label, refs, payload in said:
-            self.em.emit("conv_effect", label, owner="gateway", cause={"kind": "effect"}, refs=refs, **payload)
+            # outside a run (a reservation's door, the writes switch) the effect is its own flow; the switch, «writes»
+            trace = None if refs.get("run") or refs.get("req") else (refs.get("effect") or "writes")
+            self.em.emit("conv_effect", label, owner="gateway", cause={"kind": "effect"}, refs=refs, trace=trace,
+                         **payload)
 
     def _decide(self, fn) -> Decision:
         self._said = []
