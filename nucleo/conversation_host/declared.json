@@ -150,14 +150,16 @@
    "effects_outside_read",
    "held_dispatch_attempts",
    "legacy_turn_attempts",
-   "wake_phrases"
+   "wake_phrases",
+   "legacy_jev_calls"
   ],
   "must_be_zero": [
    "livekit_turns",
    "legacy_prompts",
    "commit_user_turn",
    "effects_outside_read",
-   "legacy_turn_attempts"
+   "legacy_turn_attempts",
+   "legacy_jev_calls"
   ]
  },
  "prefix_lines": [

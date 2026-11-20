@@ -131,3 +131,21 @@ def on(session=None) -> bool:
             from voice import observer
             observer.emit("alert", "conversation manager refused", text=got.why, extra={"by": got.by})
     return got.on
+
+
+def holds_the_voice() -> bool:
+    """Does a voice session of the manager hold the voice now? Read off the host only when it is loaded: switched off
+    it never is, and the answer is False with nothing imported."""
+    import sys
+    owed = sys.modules.get("nucleo.conversation_host.owed")
+    return bool(owed is not None and owed.voice_live())
+
+
+def legacy_call(counter: str) -> bool:
+    """A door of the old turn reached while the manager holds the voice: counted on the proof (a must-be-zero, said by
+    `GET /api/debug/conversation/<session>`). True when it was."""
+    if not holds_the_voice():
+        return False
+    from nucleo.conversation_host import boot, proof
+    proof.note(boot.account(), counter)
+    return True

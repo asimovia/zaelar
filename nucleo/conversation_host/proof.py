@@ -8,8 +8,9 @@
   effects_outside_read  anything but a read the manager's gateway let through (its `conv_effect` events)
   held_dispatch_attempts outside writes the hold stopped                      (the exit's own counter, by session)
   legacy_turn_attempts  a line that reached the old turn's reply in a switched session (the net, B5)
+  legacy_jev_calls      the old turn's brief (a Jev call) asked while the manager held the voice (`switch.legacy_call`)
 
-The exit gate: `manager_runs > 0` and the five that would mean another owner at 0. `GET
+The exit gate: `manager_runs > 0` and every one that would mean another owner (`MUST_BE_ZERO`) at 0. `GET
 /api/debug/conversation/<session>` answers with `report(session)`; it reads only.
 """
 from __future__ import annotations

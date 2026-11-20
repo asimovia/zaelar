@@ -209,6 +209,8 @@ def _worker_state() -> tuple[bool, list]:
 def ask_for_turn(operator_text: str, *, running_goals=None, last_reply: str = "", turn_id=None):
     """Fire the brief for a live voice turn, reading the screen and worker state itself. `operator_text` must be the
     ADMITTED sentence. Never raises: no state reads as nothing open."""
+    from nucleo.conversation_host import switch as _switch
+    _switch.legacy_call("legacy_jev_calls")      # the old turn's Jev call while the manager holds the voice: must be 0
     if (pre := _bt.prefired(operator_text)) is not None:
         return _bt.stamp(pre, turn_id=turn_id, open_ids=pre.get("open_ids"))   # joined to THIS turn's trace
     try:

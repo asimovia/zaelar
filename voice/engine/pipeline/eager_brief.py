@@ -23,8 +23,9 @@ def _text_of(ev) -> str:
 
 def on_preflight(text: str) -> None:
     """One eager end of turn: fire the brief on it and leave a mark on the timeline."""
-    if not text:
-        return
+    from nucleo.conversation_host import switch as _switch
+    if not text or _switch.holds_the_voice():
+        return              # a session of the manager hears with its own ear: the old turn's brief is never paid
     try:
         from voice.observer import emit
         emit("vad", "⚡ fin de turno ANTICIPADO — el brief sale ya", text=text[:160], role="system",

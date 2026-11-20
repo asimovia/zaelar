@@ -138,7 +138,7 @@ def _calls(path: str, fn: str) -> set[str]:
 def test_the_two_functions_a_preflight_runs_call_only_the_two_reads():
     """A call added to either function is a new thing an unconfirmed sentence does: it is added here, on purpose."""
     assert _calls("voice/engine/pipeline/eager_brief.py", "on_preflight") == {
-        "emit", "_bt.fire_early", "logger.debug"}
+        "_switch.holds_the_voice", "emit", "_bt.fire_early", "logger.debug"}   # a read: does the manager hold the voice?
     assert _calls("nucleo/turn/brief_turn.py", "fire_early") == {
         "_key", "_attention.prefire", "_PREFIRED.get", "time.time", "brief.ask_for_turn", "_remember_prefired",
         "logger.debug"}

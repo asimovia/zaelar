@@ -714,6 +714,10 @@ _PACKAGE_CEILINGS["voice"] += 3                        # same cause: the provide
 _TOTAL_MAX += 39     # same cause
 _PACKAGE_CEILINGS["memory"] += 16    # 2026-11-20 V2-941 (the F0 gate's boundary red): the facade's `drain` and `database`, so the conversation's store and a sandbox's reset no longer reach into `memory.db` / `memory.queue`
 _TOTAL_MAX += 10     # same cause, less the two callers' own lines
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 19    # 2026-11-20 V2-941 (plan v3.2 C18): the old turn's brief is never paid while the manager holds the voice — `switch.holds_the_voice` read without loading the host, `legacy_call` counted on the proof (`legacy_jev_calls`)
+_PACKAGE_CEILINGS["nucleo/turn"] += 2                  # same cause: the old turn's brief counts itself in that state
+_PACKAGE_CEILINGS["voice"] += 1                        # same cause: the eager end of turn fires nothing in that state
+_TOTAL_MAX += 9      # same cause, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())
