@@ -142,7 +142,7 @@ def test_b2_a_line_nobody_acknowledges_ends_unknown_and_what_comes_next_runs(sto
     from conversation.ports import Done
     from conversation.testing.scripted_model import reply
     from tests.conversation.unit.convkit import Harness
-    h = Harness(store, config=Config(say_end_ms=5000))
+    h = Harness(store, grace=False, config=Config(say_end_ms=5000))
     h.mouth.ack = None                                          # a mouth whose acks never arrive
     h.model.default = lambda ids: [reply("w9"), Done()]
     h.utter([(["w1"], 0)])

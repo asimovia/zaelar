@@ -556,6 +556,8 @@ _PACKAGE_CEILINGS["conversation"] += 97    # 2026-11-20 V2-941 v3.1 A8: P3's gen
 _TOTAL_MAX += 97     # same cause
 _PACKAGE_CEILINGS["conversation"] += 257   # 2026-11-20 V2-941 v3.1 A6c (§1.6 ter + the review of A6–A8): the sentence-mark grace (a reply that waits for it, the eligibility wait), the hold over every contributing device, a wordless barge-in that resumes our line, a late turn split at what was delivered, P3's frozen design numbers and three actions
 _TOTAL_MAX += 257    # same cause
+_PACKAGE_CEILINGS["conversation"] += 70    # 2026-11-20 V2-941 v3.1 A6d (review of A6c): P3 judges §1.6 ter from the design's numbers, a line is resumed once and never its resumption, a noise that keeps rising
+_TOTAL_MAX += 70     # same cause
 
 
 def test_the_total_only_shrinks():

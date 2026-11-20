@@ -24,7 +24,7 @@ def _requests(h: Harness) -> dict[str, str]:
 
 
 def test_voice_a_minute_after_a_silent_request_is_a_new_intervention(store):
-    h = Harness(store)
+    h = Harness(store, grace=False)
     h.model.default = lambda ids: SILENT if ids == ["iv_000001"] else [reply("w9"), Done()]
     h.utter([(["w1", "w2"], 0)])
     assert _requests(h) == {"r_iv_000001": "silent"}
@@ -38,7 +38,7 @@ def test_voice_a_minute_after_a_silent_request_is_a_new_intervention(store):
 
 
 def test_after_a_stop_the_next_sentence_does_not_carry_the_stopped_one(store):
-    h = Harness(store)
+    h = Harness(store, grace=False)
     stop = control(ControlOp.STOP, 0, "k-stop", endpoint="d1")
     h.model.script["iv_000001"] = [[lambda: h.conv.give(stop), reply("w9"), Done()]]
     h.utter([(["w1", "w2"], 0)])

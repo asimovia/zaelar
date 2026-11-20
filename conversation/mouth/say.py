@@ -70,15 +70,17 @@ class Speaker:
         return {"say": row["say_id"], "run": row["run"], "req": row["req"], "endpoint": row.get("endpoint")}
 
     async def say(self, *, run_id: str, request_id: str, text: str, channels: frozenset[str], endpoint: str | None,
-                  trace: str, lang: str = "", iv: str | None = None, notice_key: str | None = None) -> str:
+                  trace: str, lang: str = "", iv: str | None = None, notice_key: str | None = None,
+                  resumes: str | None = None) -> str:
         say_id = self.ids.new("s")
         row = {"say_id": say_id, "run": run_id, "req": request_id, "text": text, "channels": sorted(channels),
                "endpoint": endpoint, "state": "ordered", "heard_chars": None, "heard_source": "unknown",
-               "outcome": None, "t_ms": self.clock.now_ms(), "notice_key": notice_key, "trace": trace, "iv": iv}
+               "outcome": None, "t_ms": self.clock.now_ms(), "notice_key": notice_key, "trace": trace, "iv": iv,
+               "resumes": resumes}
         with self.store.tx(self.lease()) as tx:
             tx.put(SAYS, say_id, row)
         self.em.emit("conv_mouth", "say", owner="mouth", cause={"kind": "run", "ref": run_id}, refs=self._refs(row),
-                     trace=trace, channels=sorted(channels), chars=len(text), notice_key=notice_key)
+                     trace=trace, channels=sorted(channels), chars=len(text), notice_key=notice_key, resumes=resumes)
         try:
             await guard.call(self.em, self.cfg, "mouth", self.mouth.say(SayOrder(say_id, run_id, request_id, text,
                                                                                  frozenset(channels), endpoint, lang,
@@ -124,11 +126,13 @@ class Speaker:
             return max((r for _k, r in tx.scan(SAYS, states=LIVE)), key=lambda r: r["t_ms"], default=None)
 
     def cut_line(self, endpoint: str | None, now: int, within_ms: int) -> dict | None:
-        """The line his voice cut on this device within `within_ms`, with something left to say, not resumed yet and not
-        stopped by us — what a barge-in with no word gives back."""
+        """The line his voice cut on this device within `within_ms`, with something left to say, not resumed yet, not
+        stopped by us, and not itself a resumption — what a barge-in with no word gives back, once per LINE: a noise
+        that keeps rising (a fan, an echo) cannot make the same rest come back again and again."""
         with self.store.tx(self.lease()) as tx:
             rows = [r for _k, r in tx.scan(SAYS, states=("ended",)) if r["outcome"] == "cut" and not r.get("stopped")
-                    and not r.get("resumed") and r.get("endpoint") == endpoint and now - r["ended_ms"] <= within_ms
+                    and not r.get("resumed") and not r.get("resumes") and r.get("endpoint") == endpoint
+                    and now - r["ended_ms"] <= within_ms
                     and (r["heard_chars"] or 0) < len(r["text"])]
         return max(rows, key=lambda r: r["ended_ms"], default=None)
 
@@ -141,7 +145,7 @@ class Speaker:
             tx.put(SAYS, row["say_id"], {**fresh, "resumed": True})
         rest = row["text"][row["heard_chars"] or 0:].strip()
         return await self.say(run_id=row["run"], request_id=row["req"], text=rest, channels=frozenset({"voice"}),
-                              endpoint=row["endpoint"], trace=row["trace"]) if rest else None
+                              endpoint=row["endpoint"], trace=row["trace"], resumes=row["say_id"]) if rest else None
 
     def voice_unavailable(self, run_id: str, endpoint: str | None, trace: str) -> None:
         """The batch had voice and this device cannot speak now: the reply goes as text, and that is said."""

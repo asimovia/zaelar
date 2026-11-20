@@ -127,7 +127,7 @@ def test_a_turn_grown_after_a_cap_close_gives_the_next_intervention_only_its_new
     intervention carries that word alone, never the words already delivered."""
     from conversation.ear import signals as S
     from tests.conversation.unit.convkit import Harness
-    h = Harness(store)
+    h = Harness(store, grace=False)
     t, end, ws, first = _closed_turn(h)
     h.hear(first, S.VadEdge("d1", "fall", end + 10), h.beats(end, end + 2700))          # closed at its cap
     grown = h.words(["w1", "w2", "w3"], t)

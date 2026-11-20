@@ -27,7 +27,7 @@ STAGES = ["conv_ear/opened", "conv_ear/closed", "conv_inbox/accepted", "conv_inb
 
 
 def test_one_request_end_to_end_says_every_stage_with_its_fields(store):
-    h = Harness(store, script={"iv_000001": [
+    h = Harness(store, grace=False, script={"iv_000001": [
         [ToolCall("c1", "search", {"q": "w1"}), ToolCall("c2", "agenda_add", {"what": "w2"}), Done()],
         [reply("w9"), Done()]]})
     h.utter([(["w1", "w2"], 0)])
@@ -139,7 +139,7 @@ def test_minor_11_a_telemetry_port_that_raises_does_not_stop_the_manager(store):
         def emit(self, kind, label, payload):
             raise OSError("the event sink is down")
 
-    h = Harness(store, script={"iv_000001": [[reply("w9"), Done()]]})
+    h = Harness(store, grace=False, script={"iv_000001": [[reply("w9"), Done()]]})
     h.conv.em.port = Broken()
     h.utter([(["w1"], 0)])
     assert [o.text for o in h.mouth.orders] == ["w9"] and h.conv.em.lost > 0
@@ -176,7 +176,7 @@ def test_every_event_of_a_mixed_conversation_is_in_a_flow_and_every_request_join
     what it references, or itself. And a request that rode in another's batch closes WITH that run, in its flow."""
     from conversation.types import ControlOp
     from tests.conversation.unit.inboxkit import control
-    h = Harness(store)
+    h = Harness(store, grace=False)
     h.live = False
     h.typed("w1", 100)
     h.typed("w2", 200)                                       # two requests, one batch

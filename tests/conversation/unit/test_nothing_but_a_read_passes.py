@@ -52,7 +52,7 @@ def test_the_class_is_the_hosts_derivation_never_a_list_of_the_package(store, cl
 
 
 def test_a_model_that_asks_for_acts_gets_the_refusal_and_only_reads_reach_the_tools(store):
-    h = Harness(store)
+    h = Harness(store, grace=False)
     h.model.script["iv_000001"] = [
         [ToolCall("c1", "agenda_add", {"what": "w1"}), ToolCall("c2", "send_message", {"to": "c1", "text": "w2"}),
          ToolCall("c3", "search", {"q": "w3", "on": "iv_000001"}), Done()],

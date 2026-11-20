@@ -24,7 +24,7 @@ CASES = {
 @pytest.mark.parametrize("case", sorted(CASES))
 def test_three_sentences_reach_the_model_whole_in_one_call(store, case):
     parts = CASES[case]
-    h = Harness(store, script={"iv_000001": [
+    h = Harness(store, grace=False, script={"iv_000001": [
         [ToolCall("c1", "market_data", {"q": "fridays"}), Done()],
         [reply("w99 w98"), Done()]]})
     h.utter(parts)

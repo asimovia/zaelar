@@ -62,7 +62,7 @@ def test_a_voice_starting_holds_the_run_only_where_it_has_not_acted_and_never_to
 
 
 def test_a_line_owed_waits_behind_the_run_and_is_said_after_its_line(store):
-    h = Harness(store)
+    h = Harness(store, grace=False)
     h.model.script["iv_000001"] = [[lambda: h.owed.add("n1", "w5"), reply("w9"), Done()]]
     h.utter([(["w1", "w2"], 0)])
     h.pump()
@@ -94,7 +94,7 @@ def test_a_continuation_that_closes_mid_run_substitutes_it_and_the_model_hears_b
     from conversation.ports import Done
     from conversation.testing.scripted_model import reply
 
-    h = Harness(store)
+    h = Harness(store, grace=False)
     went_on: list = []
 
     def go_on():

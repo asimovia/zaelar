@@ -67,7 +67,7 @@ class AuditedSqliteStore(_Audited, SqliteStore):
 #: the numbers the design writes (v3.1 §1.6 bis, §1.6 ter), frozen here: the properties judge against THESE, never
 #: against the configuration the case runs with — a value raised out of design must turn a property red
 SPEC = {"intervention_max_ms": 30_000, "resume_hold_max_ms": 8000, "resume_window_ms": 20_000,
-        "terminal_grace_ms": 3000, "nonterminal_grace_ms": 5000, "liveness_ms": 60_000}
+        "terminal_grace_ms": 3000, "nonterminal_grace_ms": 5000, "nonterminal_start_ms": 1500, "liveness_ms": 60_000}
 
 
 class Case:
@@ -280,6 +280,8 @@ class Case:
             self._late_turn(conv)                    # the same final delivered again, or the turn grown after a cap
         elif a < 0.985:
             self._two_devices(conv)                  # two voices close at once; he goes on on one of them
+        elif a < 0.99:
+            self._fan(conv)                          # a noise that keeps rising with no word, cutting our lines
         else:
             self.clock.advance(self.rng.choice([100, 2000, 9000, 40_000]))
             self._feed(conv, S.Tick(self._now()))
@@ -355,6 +357,20 @@ class Case:
                    S.WordSpan(ep, self.seq, 1, False, ((f"w{self.rng.randint(1, 60)}", x, x + 160, 1.0),),
                               (x, x + 160)), *[S.Watermark(ep, y) for y in range(x + 200, x + 4000, 240)])
 
+    def _fan(self, conv: Conversation) -> None:
+        """A noise that keeps rising with no word (a fan, an echo leak): each rise cuts the line in course, each fall
+        ends a voice that brought nothing."""
+        from conversation.mouth import SayEnded
+        ep = "d1"
+        for _ in range(self.rng.randint(2, 6)):
+            t = self._now() + 20
+            live = conv.speaker.live_line()
+            self._feed(conv, S.VadEdge(ep, "rise", t))
+            if live is not None:
+                conv.ack(SayEnded(live["say_id"], "cut", self.rng.choice([0, 3, len(live["text"]) // 2]), t + 10,
+                                  live.get("endpoint"), "agent_estimate"))
+            self._feed(conv, S.VadEdge(ep, "fall", t + 120), S.Tick(t + 120 + self.cfg.close_cap_ms + 10))
+
     def _background(self, conv: Conversation) -> None:
         """A background that keeps talking: the voice up, words every 400 ms, never an end, never a fall."""
         ep, t = self.rng.choice(["d1", "d2"]), self._now() + 20
@@ -427,6 +443,54 @@ def _held_voice_spoken_over(case, events, inbox_rows) -> list[str]:
             if (iv not in own and last_there and on - max(last_there) <= SPEC["resume_window_ms"]
                     and on <= t < ended.get(iv, 10 ** 18)):
                 out.append(f"held: {r['run']} {lab} at {t} over {iv} open on {ep}")
+    return out
+
+
+def _graces(case, inbox_rows) -> list[str]:
+    """§1.6 ter, judged from the design's numbers (the review of A6c): no voice reply before the latest grace of its
+    batch; no run before `nonterminal_start` after a close with no mark; no line of a run after a stop accepted in its
+    flow; a reply waiting for its grace and superseded by a new entry of his is never said; no line owed and no
+    resumed line while a reply waits for its grace."""
+    envs = {r["id"]: r["env"] for r in inbox_rows}
+    batch, trace, stopped, parked, out = {}, {}, {}, {}, []
+    resumed: dict = {}                                     # a line is resumed once, and a resumption never
+    for k, lab, p in case.tel.events:
+        if k == "conv_mouth" and lab == "say" and p.get("resumes"):
+            resumed[p["resumes"]] = resumed.get(p["resumes"], 0) + 1
+            resumed.setdefault("_said", set()).add(p["refs"]["say"])
+    out += [f"resume: {sid} resumed {n} times" for sid, n in resumed.items() if sid != "_said" and n > 1]
+    out += [f"resume: a resumption {sid} resumed again" for sid in resumed if sid in resumed.get("_said", ())]
+    for k, lab, p in case.tel.events:
+        r, t = p["refs"], p["t_ms"]
+        if k == "conv_run" and lab == "started":
+            batch[r["run"]], trace[r["run"]] = [envs[e] for e in p["batch_envs"] if e in envs], p["trace"]
+            early = [e for e in batch[r["run"]] if e["kind"] == "user.utterance" and e["body"].get("terminal") is False
+                     and t - e["sealed_ms"] < SPEC["nonterminal_start_ms"]]
+            if early:
+                out.append(f"grace: {r['run']} started {t - early[0]['sealed_ms']} ms after a close with no mark")
+        elif k == "conv_run" and lab == "held" and p.get("waits_for") == "grace":
+            parked[r["run"]] = None
+        elif k == "conv_run" and r.get("run") in parked and lab in ("held", "superseded", "cancelled", "ended"):
+            parked.pop(r["run"])
+        elif k == "conv_inbox" and lab == "accepted":
+            if p.get("kind") == "user.control":
+                stopped.update({run: t for run, tr in trace.items() if tr == p["trace"] and run not in stopped})
+            else:
+                parked.update({run: t for run, at in parked.items() if at is None})
+        elif k == "conv_mouth" and lab == "say":
+            run = r.get("run")
+            if (p.get("notice_key") or p.get("resumes")) and parked:
+                out.append(f"grace: a line owed or resumed at {t} while {sorted(parked)[0]} waits")
+            elif run in batch:
+                voice = [e for e in batch[run] if e["kind"] == "user.utterance"]
+                due = max((e["sealed_ms"] + SPEC["nonterminal_grace_ms" if e["body"].get("terminal") is False
+                                                 else "terminal_grace_ms"] for e in voice), default=None)
+                if due is not None and t < due:
+                    out.append(f"grace: {run} said at {t}, before its grace at {due}")
+                if run in stopped and t >= stopped[run]:
+                    out.append(f"stop: {run} said at {t} after a stop at {stopped[run]}")
+                if parked.get(run) is not None:
+                    out.append(f"grace: {run} said after an entry at {parked[run]} during its grace")
     return out
 
 
@@ -573,6 +637,8 @@ def check(case: Case) -> list[str]:
                 closed_at.get(req, r["accepted"]) < r["accepted"]:
             out.append(f"I9: {r['id']} was accepted after its request {req} had closed")
     out += _flows_batches_and_bounds(case, inbox_rows)
+    if case.old is None:
+        out += _graces(case, inbox_rows)
     for rid, row in items.items():                                                     # I9
         if row["kind"] == str(ItemKind.REQUEST):
             if row["state"] == "open":

@@ -127,7 +127,7 @@ def test_he_goes_on_on_the_other_device_that_contributed_and_nothing_is_said(sto
     """P3 seed 60 as a fixed case: two voices close at the same instant on two devices; he goes on on the one that is
     not the batch's «last» entry — the hold looks at every device that contributed, so nothing is said and the next
     batch carries the three entries. Its mirror: a device that contributed nothing does not hold."""
-    h = Harness(store)
+    h = Harness(store, grace=False)
     h.conv.device("d2", voice_live=True, speaker_open=True)
     h.live = False
     h.utter([(["w1"], 0)], ep="d1", at=0)
@@ -146,7 +146,7 @@ def test_he_goes_on_on_the_other_device_that_contributed_and_nothing_is_said(sto
 
 
 def test_a_device_that_contributed_nothing_does_not_hold(store):
-    h = Harness(store)
+    h = Harness(store, grace=False)
     h.conv.device("d3", voice_live=True, speaker_open=True)
     once: list = []
 
@@ -275,3 +275,64 @@ def test_an_entry_that_comes_before_the_resume_is_said_cancels_it(store):
     h.at(4000).pump()
     h.at(5000).pump()
     assert "w3 w4. w5 w6." not in [o.text for o in h.mouth.orders]
+
+
+def _parked(h: Harness) -> bool:
+    return h.conv.current is not None and h.conv.current.parked is not None
+
+
+def test_a_stop_during_the_grace_cancels_the_reply_waiting_for_it(store):
+    from conversation.types import ControlOp
+    from tests.conversation.unit.inboxkit import control
+    h = Harness(store)
+    closed = h.utter([(["w1"], 0)], terminal=True)
+    assert _parked(h)
+    h.conv.give(control(ControlOp.STOP, closed + 1000, "k-stop", endpoint="d1"))
+    _run_clock(h, closed + 8000)
+    assert not h.mouth.orders and [(lab, p["reason"]) for lab, p in h.closes()] == [("silent", "stopped")]
+
+
+def test_a_text_during_the_grace_supersedes_the_reply_waiting_for_it(store):
+    h = Harness(store)
+    closed = h.utter([(["w1"], 0)], terminal=True)
+    assert _parked(h)
+    h.typed("w2", closed + 1000)
+    _run_clock(h, closed + 9000)
+    assert len(h.mouth.orders) == 1                                       # one answer, to both
+    assert "«w1»" in h.model.calls[-1].prompt.input and "«w2»" in h.model.calls[-1].prompt.input
+
+
+def test_the_liveness_ends_a_reply_still_waiting_and_it_is_never_said(store):
+    h = Harness(store, config=Config(terminal_grace_ms=8000, liveness_ms=5000))
+    closed = h.utter([(["w1"], 0)], terminal=True)
+    assert _parked(h)
+    h.at(closed + 5500)
+    h.conv.sweep()                                                         # the liveness sweep, on its own timer
+    _run_clock(h, closed + 9000)
+    assert not h.mouth.orders and [lab for lab, _ in h.closes()] == ["stalled"]
+
+
+def test_a_line_owed_waits_while_a_reply_waits_for_its_grace(store):
+    h = Harness(store)
+    closed = h.utter([(["w1"], 0)], terminal=True)
+    h.owed.add("n1", "w5")
+    _run_clock(h, closed + 2000)
+    assert not h.mouth.orders                                             # neither the reply nor the line owed yet
+    _run_clock(h, closed + 6000)
+    assert [o.text for o in h.mouth.orders] == ["ok iv_000001", "w5"]
+
+
+def test_a_noise_that_keeps_rising_resumes_the_line_once_and_never_its_resumption(store):
+    """Review TC-2: a fan or an echo leak rises again and again with no word: the first wordless rise resumes the cut
+    line; the resumption, cut in its turn, is never resumed — the rest is said once, not once per cycle."""
+    h = Harness(store, grace=False)
+    _cut_line(h, heard=9)
+    t = 800
+    for _ in range(5):
+        h.hear(S.VadEdge("d1", "fall", t), S.Tick(t + h.conv.cfg.close_cap_ms))
+        t += h.conv.cfg.close_cap_ms + 100
+        h.at(t).pump()
+        h.hear(S.VadEdge("d1", "rise", t + 50))
+        h.conv.ack(SayEnded(h.mouth.orders[-1].say_id, "cut", 0, t + 60, "d1", "agent_estimate"))
+        t += 100
+    assert [o.text for o in h.mouth.orders].count("w3 w4. w5 w6.") == 1

@@ -57,7 +57,7 @@ def test_how_it_ended_is_noted_once_and_nothing_moves_a_seal(store, clock, telem
 
 
 def test_a_continuation_before_publication_substitutes_the_run_and_both_seal_together(store):
-    h = Harness(store)
+    h = Harness(store, grace=False)
 
     def goes_on():
         if len(h.model.calls) > 1:
@@ -77,7 +77,7 @@ def test_a_continuation_before_publication_substitutes_the_run_and_both_seal_tog
 
 
 def test_after_the_seal_a_continuation_never_enters_the_sealed_run(store):
-    h = Harness(store)
+    h = Harness(store, grace=False)
     h.model.default = lambda ids: [reply("ok " + "+".join(ids)), Done()]
     h.utter([(["w1", "w2"], 0)])
     assert _phase(store, "iv_000001") == "sealed"

@@ -34,9 +34,10 @@ def test_a_superseded_run_leaves_the_requests_open_and_the_next_run_answers_both
     done: list = []
     h.model.script["iv_000001"] = [[lambda: _continue(h, done), reply("w90"), Done()]]
     h.utter([(["w1", "w2", "w3"], 0)])
-    h.pump()
+    h.settle()
     assert h.tel.labels("conv_run").count("conv_run/started") == 2
-    gave_back = [lab for lab in h.tel.labels("conv_run") if lab in ("conv_run/superseded", "conv_run/held")]
+    gave_back = [lab for k, lab, p in h.tel.events if k == "conv_run" and (lab == "superseded" or
+                                                                           lab == "held" and p.get("waits_for") != "grace")]
     assert len(gave_back) == 1                       # held at his voice's onset, or substituted at its close
     inputs = [c.prompt.input for c in h.model.calls]
     assert "«w1 w2 w3»" in inputs[0] and "«w5 w6»" not in inputs[0]

@@ -107,7 +107,7 @@ def test_every_threshold_of_the_manager_is_a_wait_or_says_why_not():
 
 @pytest.mark.parametrize("slow", [False, True])
 def test_a_model_silent_between_events_fails_the_run(store, slow):
-    h = Harness(store, config=Config(model_gap_ms=150))
+    h = Harness(store, grace=False, config=Config(model_gap_ms=150))
     h.model.script["iv_000001"] = [[TextDelta("w8"), asyncio.sleep(1 if slow else 0.01), reply("w9"), Done()]]
     h.utter([(["w1"], 0)])
     if not slow:
@@ -119,7 +119,7 @@ def test_a_model_silent_between_events_fails_the_run(store, slow):
 
 @pytest.mark.parametrize("slow", [False, True])
 def test_a_slow_read_comes_back_to_the_model_as_failed(store, slow):
-    h = Harness(store, config=Config(tool_ms=150))
+    h = Harness(store, grace=False, config=Config(tool_ms=150))
     h.tools.delay_s = 1.0 if slow else 0.0
     h.model.script["iv_000001"] = [[ToolCall("c1", "search", {"q": "w1"}), Done()], [reply("w9"), Done()]]
     h.utter([(["w1"], 0)])
@@ -130,7 +130,7 @@ def test_a_slow_read_comes_back_to_the_model_as_failed(store, slow):
 
 @pytest.mark.parametrize("over", [False, True])
 def test_a_run_past_its_steps_fails_and_the_person_is_told(store, over):
-    h = Harness(store, config=Config(max_steps=3))
+    h = Harness(store, grace=False, config=Config(max_steps=3))
     tools = 3 if over else 2
     h.model.default = lambda ids: ([ToolCall(f"c{len(h.model.calls)}", "search", {"q": "w1"}), Done()]
                                    if len(h.model.calls) <= tools else [reply("w9"), Done()])
@@ -155,7 +155,7 @@ class _SlowMemory:
 
 @pytest.mark.parametrize("slow", [False, True])
 def test_a_slow_memory_read_leaves_the_state_without_memory(store, slow):
-    h = Harness(store, config=Config(memory_ms=150))
+    h = Harness(store, grace=False, config=Config(memory_ms=150))
     h.conv.memory = _SlowMemory(1 if slow else 0.0)
     h.utter([(["w1"], 0)])
     assert [lab for lab, _ in h.closes()] == ["answered"]                     # the run goes on either way
@@ -176,7 +176,7 @@ class _MuteMouth:
 
 @pytest.mark.parametrize("slow", [False, True])
 def test_an_order_the_mouth_never_answers_ends_the_line_unknown(store, slow):
-    h = Harness(store, config=Config(mouth_ms=150))
+    h = Harness(store, grace=False, config=Config(mouth_ms=150))
     h.conv.speaker.mouth = _MuteMouth(1 if slow else 0.0)
     h.utter([(["w1"], 0)])
     ended = [p["outcome"] for k, lab, p in h.tel.events if k == "conv_mouth" and lab == "ended"]

@@ -24,6 +24,11 @@ from tests.conversation.unit.convkit import Harness
 FIX = Path(__file__).resolve().parents[1] / "fixtures" / "sessions"
 
 
+def _held_for_voice(h: Harness) -> bool:
+    """A run held for his resumed voice — not a reply waiting for its grace."""
+    return any(k == "conv_run" and lab == "held" and p.get("waits_for") != "grace" for k, lab, p in h.tel.events)
+
+
 def _go_on(h: Harness, toks, *, ep="d1", close=True, once: list | None = None):
     def step():
         if once is not None:
@@ -47,7 +52,8 @@ def test_he_goes_on_the_run_waits_and_the_model_hears_the_whole_sentence_once(st
     once: list = []
     h.model.script["iv_000001"] = [[_go_on(h, ["w3", "w4"], once=once), reply("w9"), Done()]]
     h.utter([(["w1", "w2"], 0)])
-    assert len(h.mouth.orders) == 1 and "conv_run/held" in h.tel.labels()
+    h.settle()
+    assert len(h.mouth.orders) == 1 and _held_for_voice(h)
     last = h.model.calls[-1].prompt.input
     assert "«w1 w2»" in last and "«w3 w4»" in last
     assert not any("«w1 w2»" in c.prompt.input for c in h.model.calls[:-1] if c is not h.model.calls[0])
@@ -88,7 +94,8 @@ def test_another_device_or_outside_the_window_holds_nothing(store, why):
 
     h.model.script["iv_000001"] = [[late, reply("w9"), Done()]]
     h.utter([(["w1", "w2"], 0)])
-    assert len(h.mouth.orders) == 1 and "conv_run/held" not in h.tel.labels()
+    h.settle()
+    assert len(h.mouth.orders) == 1 and not _held_for_voice(h)
 
 
 def test_a_run_that_already_acted_is_not_held(store):
@@ -99,12 +106,14 @@ def test_a_run_that_already_acted_is_not_held(store):
                                     ToolCall("c", "search", {"q": "w1"}), Done()],
                                    [_go_on(h, [], once=once), reply("w9"), Done()]]
     h.utter([(["w1", "w2"], 0)])
-    assert "conv_run/held" not in h.tel.labels() and len(h.mouth.orders) == 1
+    h.settle()
+    assert not _held_for_voice(h) and len(h.mouth.orders) == 1
 
 
 def test_the_check_runs_again_right_before_sealing(store):
-    """A voice the manager never got an onset for (it opened after the last checkpoint): sealing looks again."""
-    h = Harness(store)
+    """A voice the manager never got an onset for (it opened after the last checkpoint): sealing looks again — with no
+    grace, so the seal is the next thing the run does."""
+    h = Harness(store, grace=False)
     seen: list = []
 
     def opens_quietly():
@@ -115,7 +124,7 @@ def test_the_check_runs_again_right_before_sealing(store):
 
     h.model.script["iv_000001"] = [[opens_quietly, reply("w9"), Done()]]
     h.utter([(["w1", "w2"], 0)])
-    assert not h.mouth.orders and "conv_run/held" in h.tel.labels()
+    assert not h.mouth.orders and _held_for_voice(h)
 
 
 def test_a_continuation_longer_than_the_bound_lets_the_old_batch_run_at_it(store):
@@ -176,7 +185,7 @@ def test_s2_nothing_is_said_while_a_resumed_voice_is_open(think_ms):
                         and t - last < rep.config.resume_hold_max_ms):
                     W.append((iv, to, t))
     assert not W, f"said while he spoke again: {W}"
-    assert "conv_run/held" in rep.tel.labels("conv_run")
+    assert any(lab == "held" and p.get("waits_for") != "grace" for k, lab, p in rep.tel.events if k == "conv_run")
 
 
 def test_a_stop_while_the_run_is_held_cancels_it_and_nothing_is_said(store):
@@ -188,7 +197,7 @@ def test_a_stop_while_the_run_is_held_cancels_it_and_nothing_is_said(store):
     once: list = []
     h.model.script["iv_000001"] = [[_go_on(h, ["w3"], close=False, once=once), reply("w9"), Done()]]
     h.utter([(["w1", "w2"], 0)])
-    assert "conv_run/held" in h.tel.labels() and not h.mouth.orders
+    assert _held_for_voice(h) and not h.mouth.orders
     h.conv.give(control(ControlOp.STOP, h.clock.mono, "k-stop", endpoint="d1"))
     assert [(lab, p["reason"]) for lab, p in h.closes()] == [("silent", "stopped")]
     t = h.clock.mono

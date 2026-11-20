@@ -169,12 +169,12 @@ def test_b4_a_second_process_on_the_same_store_answers_with_ids_of_its_own(tmp_p
     from tests.conversation.unit.convkit import Harness
     path = tmp_path / "c.db"
     s1 = SqliteStore(path)
-    h1 = Harness(s1)
+    h1 = Harness(s1, grace=False)
     h1.utter([(["w1"], 0)])
     assert [lab for lab, _ in h1.closes()] == ["answered"]
     s1.close()
     s2 = SqliteStore(path)
-    h2 = Harness(s2)                                            # a new lease: epoch 2
+    h2 = Harness(s2, grace=False)                                            # a new lease: epoch 2
     h2.at(10_000).utter([(["w2"], 0)])
     assert [lab for lab, _ in h2.closes()] == ["answered"] and "conv_inbox/duplicate" not in h2.tel.labels()
     ivs = {r["env"]["refs"]["intervention_id"] for _k, r in s2.snapshot("acct-test").scan("inbox")

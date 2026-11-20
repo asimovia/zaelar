@@ -15,9 +15,10 @@ ACCT = "acct-test"
 
 class Harness:
     def __init__(self, store, *, script: dict | None = None, config: Config | None = None, prefix: str = "RULES",
-                 tasks=None, grace: bool = False) -> None:
-        """`grace=False` (most tests): the publication graces of a closed thought are zero — the reply goes out as
-        soon as it is ready; the tests of the grace itself ask for it."""
+                 tasks=None, grace: bool = True) -> None:
+        """The product's configuration, graces on. `grace=False` opts out, explicitly: the publication graces of a
+        closed thought are zero and the reply goes out as soon as it is ready — for a test whose subject is not when a
+        reply may go out."""
         config = config or Config()
         if not grace:
             config = dataclasses.replace(config, nonterminal_start_ms=0, nonterminal_grace_ms=0, terminal_grace_ms=0)
@@ -50,6 +51,13 @@ class Harness:
 
     def pump(self) -> int:
         return asyncio.run(self.conv.pump())
+
+    def settle(self, ms: int = 6000, step: int = 100) -> "Harness":
+        """Time passes on the live timer (a pump every `step`) until every grace has run out."""
+        end = self.clock.mono + ms
+        while self.clock.mono < end:
+            self.at(min(end, self.clock.mono + step)).pump()
+        return self
 
     # speech in the ear's terms: one provider turn per sentence part, eager / resumed / end as Flux sends them
     def words(self, toks, t0, step=200):

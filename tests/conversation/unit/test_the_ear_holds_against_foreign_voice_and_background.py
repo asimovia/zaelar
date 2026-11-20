@@ -156,7 +156,9 @@ def test_the_providers_end_before_the_fall_costs_nothing(store):
     discarded = [p for k, lab, p in h.tel.events if k == "conv_ear" and lab == "discarded"]
     assert [p["reason"] for p in discarded] == ["no_voice"] and discarded[0]["t_ms"] == end + 230
     started = [p["t_ms"] for k, lab, p in h.tel.events if k == "conv_run" and lab == "started"]
-    assert started and started[0] <= end + 200 + 300 and [o.text for o in h.mouth.orders]
+    assert started and started[0] <= end + 200 + 300                     # the run starts at once; its reply, at its grace
+    h.settle()
+    assert [o.text for o in h.mouth.orders]
 
 
 def test_another_voice_in_the_pause_travels_with_his_sentence_and_nothing_is_said_before(store):
@@ -171,6 +173,7 @@ def test_another_voice_in_the_pause_travels_with_his_sentence_and_nothing_is_sai
     ws = h.words(["w3", "w4", "w5"], t)
     h.hear(S.WordSpan("d1", 2, 1, True, ws, (ws[0][1], ws[-1][2])), S.VadEdge("d1", "fall", ws[-1][2] + 10),
            h.beats(ws[-1][2], ws[-1][2] + 300), S.EotHint("d1", "flux", "end", .9, ws[-1][2] + 300))
+    h.settle()
     assert len(h.model.calls) == 1 and len(h.mouth.orders) == 1
     said = h.model.calls[0].prompt.input
     assert "«w1 w2»" in said and "«w3 w4 w5»" in said
