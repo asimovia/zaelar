@@ -192,7 +192,8 @@ def typed(text: str, dev: str = "", *, wait: bool = False, checked: bool = False
     def deliver(conv) -> None:
         stop = None if checked else _guards(text, dev)
         if stop is None:
-            conv.hear(sig)                                 # his words whole: a stop in them is the model's to choose
+            from nucleo.conversation_host.guards import typed as gate     # the vault gate: the same door as voice
+            conv.hear(passed) if (passed := gate(sig)) is not None else _end("vault")   # a stop: the model's to choose
             return
         _end(stop.get("reason") or "note")
 

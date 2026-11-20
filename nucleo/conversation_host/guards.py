@@ -100,6 +100,46 @@ def foreign_voice(endpoint: str, onset_ms: int) -> bool:
     return endpoint == voice_session.ENDPOINT and voice_lock.judged_other(onset_ms / 1000 if onset_ms else 0.0)
 
 
+def vault(text: str):
+    """THE vault gate, at the manager's one door for his words — every close of his voice (`for_ear`) and every typed
+    line (`entry.typed`) — before they reach the store or the model: the old turn's own gate (`nucleo/turn/vault_gate`).
+    Returns `(kept, shown)`: a security rule or a secret that IS the line is consumed — its line is owed to him, nothing
+    enters (`kept` None) and only `shown` (redacted) may be kept of it; a secret inside a line goes on redacted.
+    Anything else, as it is."""
+    from nucleo import consequence
+    from nucleo.turn import vault_gate
+    from voice import observer
+    v = vault_gate.inspect_now(text, store=consequence.passes("vault.write"))
+    if v.kind == "config":
+        observer.emit("secret", "config", role="system", extra={"key": v.config[0], "value": v.config[1]})
+    elif v.kind:
+        observer.emit("secret", "no_vault" if v.kind == "need_vault" else "saved", role="system",
+                      extra={"n": len(v.labels), "labels": v.labels})      # need_vault: the screen offers to create it
+    if not v.consumed:
+        return v.text, v.text
+    if v.line:
+        _owe(v.line)
+    return None, v.text
+
+
+def typed(sig):
+    """A typed line at the same gate (`entry.typed`): the line that enters — redacted if a secret rode in it — or None
+    when the gate consumed it."""
+    import dataclasses
+    kept, _shown = vault(sig.text)
+    return None if kept is None else sig if kept == sig.text else dataclasses.replace(sig, text=kept)
+
+
+def _owe(line: str) -> None:
+    """The line a consumed secret or rule answers with, owed through the one ledger: the manager says it when free."""
+    import asyncio
+    from nucleo import dispatch
+    from nucleo.pulse import notices
+    loop = dispatch._LOOP
+    if loop is not None and loop.is_running():
+        asyncio.run_coroutine_threadsafe(notices.notify("zaelar", line, kind="vault"), loop)
+
+
 def for_ear(endpoint: str, text: str):
     """The guards as the ear asks them, at every close with words (`Ear.guard`): his turn's rise is the one the voice
     process reported for that device (`ear_in.rose_of`). A stop in his words is not read here: the model chooses one."""
@@ -107,6 +147,14 @@ def for_ear(endpoint: str, text: str):
     from voice import attention
     rose = ear_in.rose_of(endpoint)
     why = judge(text, rose=rose / 1000 if rose else None)
+    if why is None:                                       # his words, before they enter: the vault gate
+        kept, shown = vault(text)
+        if kept is None:                                  # consumed: thrown away, and never kept as he said it
+            from conversation.ear.arbiter import DISCARD
+            return (DISCARD, "vault", shown)
+        if kept != text:
+            from conversation.ear.arbiter import REPLACE
+            return (REPLACE, kept)
     if why is None and attention.has_wakeword(text):     # «para la música» set aside, then «Johnny»: his order whole —
         at = rose / 1000 if rose else time.time()         # only what he said right before, in the same breath
         tail = attention.reclaim_ambient_tail("", now=at, within_s=_cfg["reclaim_tail_ms"] / 1000,

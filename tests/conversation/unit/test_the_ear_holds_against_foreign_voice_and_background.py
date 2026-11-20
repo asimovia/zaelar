@@ -255,3 +255,17 @@ def test_a_voice_open_before_the_run_starts_holds_it(store):
            h.beats(ws[-1][2], ws[-1][2] + 300), S.EotHint("d1", "flux", "end", .9, ws[-1][2] + 300))
     h.pump()
     assert len(h.model.calls) == 1 and "«w3»" in h.model.calls[0].prompt.input
+
+
+def test_a_late_turn_is_never_stalled_the_moment_it_opens(store):
+    """His live session: a provider turn whose words began seconds earlier reached the ear late, and the intervention
+    it opened was ended `stalled` in the same millisecond — measured from a watermark and a first word both older than
+    it. A stall is measured from when the intervention was OPENED at the earliest."""
+    from conversation.ear import signals as S
+    from tests.conversation.unit.convkit import Harness
+    h = Harness(store)
+    h.hear(S.Watermark("d1", 300), S.Tick(6000))
+    h.hear(S.WordSpan("d1", 77, 1, False, h.words(["w1"], 300), (300, 500)))
+    h.hear(S.Tick(6001))
+    stalled = [p for k, lab, p in h.tel.events if k == "conv_ear" and p.get("reason") in ("stalled", "no_words")]
+    assert stalled == [], stalled

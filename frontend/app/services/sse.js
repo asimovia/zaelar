@@ -321,7 +321,7 @@ export function routeEvent(desktop, d) {
         try { document.dispatchEvent(new CustomEvent("hb:blocking-fault", { detail: d.fault || {} })); } catch (_) {}
       }
     } else if (d.kind === "ui" && d.label === "orb:attention") {                 // 🤖 mode changed — button OR voice (2026-09-09)
-      store.setAttentionMode(d.state === "wakeword" ? "smart" : (d.state || "always"));
+      if (d.state) store.setAttentionMode(d.state === "wakeword" ? "smart" : d.state);   // a closed window names no mode
       // A mode flip closes the standing window on the ENGINE (attention.on_mode_change, 2026-09-10) — the
       // ring must not keep burning its local timer over a window that no longer exists: he measured 20+
       // seconds of orange after activating the wake-word mode. Clearing on every flip is correct in both

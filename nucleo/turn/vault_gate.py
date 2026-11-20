@@ -55,6 +55,11 @@ def _secret_line(has_vault: bool) -> str:
 
 async def inspect(text: str, *, enabled: bool = True, store: bool = True) -> VaultVerdict:
     """Run both intercepts over `text`. Never raises: every branch degrades to «nothing applied»."""
+    return await asyncio.to_thread(inspect_now, text, enabled=enabled, store=store)
+
+
+def inspect_now(text: str, *, enabled: bool = True, store: bool = True) -> VaultVerdict:
+    """`inspect`, for a caller that is not on a loop (the conversation manager's doors, in its own thread)."""
     if not enabled or not (text or "").strip():
         return VaultVerdict(text=text)
 
@@ -90,8 +95,7 @@ async def inspect(text: str, *, enabled: bool = True, store: bool = True) -> Vau
     if has_vault and store:
         for d in found:
             try:
-                await asyncio.to_thread(vault.store_secret, d.label, d.value,
-                                        slot=d.slot, sensitivity=d.sensitivity)
+                vault.store_secret(d.label, d.value, slot=d.slot, sensitivity=d.sensitivity)
             except Exception as e:  # noqa: BLE001
                 _LOG.warning(f"guardar secreto {d.label!r} falló: {e}")
 

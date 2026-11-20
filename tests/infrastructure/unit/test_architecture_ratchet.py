@@ -762,6 +762,13 @@ _PACKAGE_CEILINGS["nucleo/conversation_host"] += 8     # same cause: his line ap
 _TOTAL_MAX += 35     # same cause, measured
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 15    # 2026-11-20 V2-941 (his live session; +5 measured together with 5b46bf059's style line): one heard number on the wall and the transcript (`heard_words`), and the echo guard reads a finished line by the tail of what sounded
 _TOTAL_MAX += 12     # same cause, measured (the package `conversation` shrank by 3)
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 26    # 2026-11-20 40f983eba (flows: one order is one flow — an accepted ear intervention folds into its turn, a discarded one ends and is counted), measured: its landing raised no ceiling
+_PACKAGE_CEILINGS["observability"] += 5               # same cause (40f983eba): the flows' fold
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 49    # 2026-11-20 V2-941 (security and his live session): the vault gate at the manager's one door for his words (`guards.vault`, voice and typed), owed its line through the ledger
+_PACKAGE_CEILINGS["conversation"] += 4                 # same batch: the ear's discard that keeps only the host's text (`DISCARD`), and a stall measured from when an intervention OPENED
+_PACKAGE_CEILINGS["nucleo/turn"] += 4                  # same batch: the vault gate callable off a loop (`inspect_now`), one body for both
+_PACKAGE_CEILINGS["voice"] += 1                        # same batch: a closed attention window names no mode (E-5)
+_TOTAL_MAX += 92     # same causes, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

@@ -49,6 +49,7 @@ class _Voice:
     iv: str | None = None
     state: IvState | None = None
     onset_ms: int = 0
+    opened_ms: int = 0                  # when it was opened, on the ear's clock (its onset may be the earlier rise)
     eot_end_ms: int | None = None
     eot_prob: float | None = None
     fall_ms: int | None = None
@@ -71,6 +72,8 @@ RECLAIM = "reclaim"
 #: …and the answer that keeps only part of them: `(REPLACE, text)` — the entry's words are that text (a stop said
 #: with a question: the stop is his control, the question his words)
 REPLACE = "replace"
+#: …and a discard whose words must not be kept as they were said: `(DISCARD, reason, text)` — the discard keeps that text
+DISCARD = "discard"
 #: why a voice ended that means the provider or the line lost it, not that he said nothing
 LOST_REASONS = ("stalled", "link_gap")
 
@@ -214,6 +217,7 @@ class Ear:
         v.amends = v.previous if (v.previous and not v.agent_spoke) else None
         v.agent_spoke = False
         v.iv, v.state, v.onset_ms, v.successor = self.ids.new("iv"), IvState.OPEN, t, successor
+        v.opened_ms = max(t, self._now)
         v.eot_end_ms = v.eot_prob = v.fall_ms = v.last_word_ms = v.terminal = None   # nothing of the previous one
         out.append(S.Onset(v.endpoint, t, v.iv, successor))
         self.em.emit("conv_ear", "onset", owner="ear", cause={"kind": "voice"}, refs=self._refs(v), t_onset_ms=t)
@@ -250,9 +254,10 @@ class Ear:
                 self._close(v, t, "cap", out)
             else:
                 self._incomplete(v, t, "no_final", out)
-        elif v.watermark_ms is not None and t - max(v.watermark_ms, v.onset_ms) >= self.cfg.stall_ms:
-            # a stream that stopped beating — measured from this voice's onset at the earliest: a watermark left
-            # from before it (the stream idle between interventions) is no stall of this one. No words: nothing to end.
+        elif v.watermark_ms is not None and t - max(v.watermark_ms, v.onset_ms, v.opened_ms) >= self.cfg.stall_ms:
+            # a stream that stopped beating — measured from when this intervention was OPENED at the earliest: a
+            # watermark left from before it, or the earlier rise a successor is dated from, is no stall of this one
+            # (his live session: a successor marked stalled the very millisecond it opened). No words: nothing to end.
             # (A provider that stops while his voice is up is told by the voice process itself, as a gap.)
             if self.spans.words(v.iv):
                 self._incomplete(v, t, "stalled", out)
@@ -276,6 +281,8 @@ class Ear:
             v.reclaimed, why = str(why[1] or ""), None          # the host gives back what it had set aside
         elif isinstance(why, tuple) and len(why) == 2 and why[0] == REPLACE:
             v.replaced, why = str(why[1] or ""), None           # the host keeps only part of his words
+        elif isinstance(why, tuple) and len(why) == 3 and why[0] == DISCARD:
+            text, why = str(why[2] or ""), str(why[1] or "")    # thrown away, and kept only as the host gives it
         if why:
             self._on_Discard(S.Discard(v.endpoint, text, why, t), out)
         return bool(why)

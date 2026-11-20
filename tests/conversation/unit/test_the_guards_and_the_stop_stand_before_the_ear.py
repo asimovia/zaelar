@@ -187,6 +187,15 @@ def test_a_few_of_our_words_heard_back_while_our_line_sounds_are_an_echo(ear):
     assert guards.judge("wx wy wz", now=END + 9, rose=END + 8) is None                     # later: his, repeated
 
 
+def test_after_our_line_ended_only_its_tail_is_an_echo_and_quoting_its_middle_is_his(ear):
+    """His live session: our line had ENDED, and 1.3 s later he said three words from its MIDDLE — him quoting us,
+    read as our echo, deleted and never answered. After the end, only the tail of what sounded can echo."""
+    guards.said("w1 w2 w3 w4 w5 w6 w7 w8 w9 wa wb wc wd we wf", at=START)
+    guards.ended(at=START + 10, heard="w1 w2 w3 w4 w5 w6 w7 w8 w9 wa wb wc wd we wf")
+    assert guards.judge("w6 w7 w8 wz", now=START + 11.5, rose=START + 11.3) is None       # its middle: his
+    assert guards.judge("wd we wf", now=START + 11.5, rose=START + 11.3) == "echo"        # its tail: our echo
+
+
 def test_his_answer_that_repeats_our_question_is_never_an_echo(ear):
     guards.said("w1 w2 w3 w4?", at=START)
     guards.ended(at=START + 2)

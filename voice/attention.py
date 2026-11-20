@@ -713,12 +713,13 @@ def _wipe_window() -> None:
 def close_window(src: str = "voice-order") -> None:
     """A spoken SHUT-UP order («cállate», «silencio») closes the window immediately — V2-657, measured at
     the 2026-09-10 dinner: «¿Por qué sigues escuchando? Maldita sea, cállate» reached the model as one
-    more conversational turn and nothing anywhere could grant the silence he was ordering. Same client
-    notification as a mode flip, so the ring darkens at once."""
+    more conversational turn and nothing anywhere could grant the silence he was ordering. The clients are told the
+    window CLOSED, so the ring darkens at once — never a mode: a stop is no mode flip, and an event that named the
+    mode made every stop read as «attention: always» on the screens (his live session, 2026-11-20)."""
     _wipe_window()
     try:
         from voice.observer import emit
-        emit("ui", "orb:attention", extra={"state": mode(), "src": src})
+        emit("ui", "orb:attention", extra={"window": "closed", "src": src})
     except Exception:
         pass
 

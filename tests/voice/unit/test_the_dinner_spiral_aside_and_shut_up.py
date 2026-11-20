@@ -76,6 +76,12 @@ def test_close_window_wipes_the_anchor_and_tells_the_clients(monkeypatch):
     assert not attention.window_open(now=t + 1)
     assert any(a[:2] == ("ui", "orb:attention") for a, _ in seen), \
         "the ring must darken at once, like a mode flip"
+    told = [k.get("extra") or {} for a, k in seen if a[:2] == ("ui", "orb:attention")]
+    assert told and all("state" not in x and x.get("window") == "closed" for x in told), \
+        "a closed window names no mode: a stop read as «attention: always» on his screens (E-5)"
+    from pathlib import Path
+    sse = (Path(__file__).resolve().parents[3] / "frontend/app/services/sse.js").read_text(encoding="utf-8")
+    assert "if (d.state) store.setAttentionMode(" in sse, "the client changes its mode only when the event names one"
 
 
 # ── the retract ─────────────────────────────────────────────────────────────────────────────────────────
