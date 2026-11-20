@@ -205,6 +205,7 @@ produces a flow for it to read.
 
 ## Not done yet
 
-The package runs behind the switch: his text through it is measured live; his voice through it is measured on a
-disposable engine and waits for its live passes. No act reaches the world in this phase — every act exists and is held.
-Public architecture diagrams are unchanged until the voice runs live.
+The package runs behind the switch, for his text and his voice. In this phase it only READS and STOPS: no act reaches
+the world (opening or acting on a widget, a task, a send), and every act is listed as held. The acts are the next
+slice, wired through the existing single doors (the widget action runner, dispatch, the send owner), never rebuilt.
+The public architecture diagrams show the package and mark those acts as next.
