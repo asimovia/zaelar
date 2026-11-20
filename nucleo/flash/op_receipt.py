@@ -142,7 +142,7 @@ def spoken_line(wid: str, action: str, res, outcome: str, lang) -> str:
     that knows what it did. `error` never reaches the mouth — it is diagnostic and frequently addressed to the
     MODEL, and V2-652 measured one of those retry instructions being read aloud as zaelar's own words."""
     res = res if isinstance(res, dict) else {}
-    from nucleo.flash import refusal_line as _rl          # `say` in his language, then `message` — never `error`
+    from nucleo.request import refusal_line as _rl          # `say` in his language, then `message` — never `error`
     said = _rl.speakable(wid, res).strip()
     if said:
         return said

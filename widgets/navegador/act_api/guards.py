@@ -24,7 +24,7 @@ def _with_wall(snap: dict, task_id: str = "") -> dict:
         # V2-213 — «try another site» must name WHICH: the site catalog offers alternatives for the task's
         # category, EXCLUDING the host that just blocked us (offering it again reads as «insist»).
         try:
-            from nucleo.flash import site_catalog as _sc
+            from nucleo.routes import site_catalog as _sc
             from widgets.navegador import tasks as _t2
             goal = str((_t2.get(task_id) or {}).get("goal") or "") if task_id else ""
             alts = _sc.alternatives_for(goal, _t.host_of(str(snap.get("url") or "")))

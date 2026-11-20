@@ -29,7 +29,7 @@ def mouth(monkeypatch):
         said.append(text)
         return True
     monkeypatch.setattr(proactive, "notify", notify)
-    from nucleo.flash import refusal_line
+    from nucleo.request import refusal_line
     monkeypatch.setattr(refusal_line, "speakable", lambda wid, res: "")
     return said, notes, sealed, pushed
 

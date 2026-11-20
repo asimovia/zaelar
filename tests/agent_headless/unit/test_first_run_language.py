@@ -101,7 +101,7 @@ def test_and_a_classifier_that_explodes_does_not_take_the_turn_with_it(monkeypat
 def test_the_locale_of_the_site_catalog_follows_the_language():
     """Why any of this matters, asserted rather than asserted-about: the two catalogues are genuinely
     different countries, so getting the language wrong sends a real errand to the wrong site."""
-    from nucleo.flash import site_catalog as sc
+    from nucleo.routes import site_catalog as sc
 
     assert sc.resolve_locale("es") == "es"
     assert sc.resolve_locale("en") == "us"

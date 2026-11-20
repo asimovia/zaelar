@@ -105,7 +105,7 @@ def domain_of(request: str, locale: str | None = None) -> str:
         return ""
     weak = ""
     try:
-        from nucleo.flash import site_catalog as _sc
+        from nucleo.routes import site_catalog as _sc
         cat = _sc.category_of(text, locale)
         if cat and cat in _FROM_CATALOG:
             if cat not in _WEAK_FROM_CATALOG:

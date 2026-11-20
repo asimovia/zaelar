@@ -89,7 +89,7 @@ def escalate_to_slowbrain(request: str, *, context: dict | None = None, task_id:
     # A QUESTION IS NOT THEATRE (V2-655): a turn that ASKED permission aloud has no order yet — it is parked.
     asked = strip_system_notes(str(ctx0.get("asked") or ""))    # our own notes' «¿La hago?» is nobody's offer
     if asked and not (ctx0.get("confirmed") or ctx0.get("offered")):
-        from nucleo.flash import clarifying as _clar
+        from nucleo.acts import clarifying as _clar
         if _clar.asks_permission(asked) and ctx0.get("derived"):
             # The model called nothing and the reply asked him: a request derived from his words waits for his yes.
             _emit_bus("escalate.held", {"request": req, "asked": asked[:200], "ts": time.time()})

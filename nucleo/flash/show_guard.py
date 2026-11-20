@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import re as _re
 
-from .text_norm import _norm_txt
+from nucleo.text_norm import _norm_txt
 
 _SHOW_VERB_RE = _re.compile(r"\b(muestra|muestrame|ensena|ensename|abre|abreme|abrir|mostrar|ensenar|ver|"
                             r"visualiza|saca|pon(?:me)? en pantalla)\b")

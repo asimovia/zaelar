@@ -35,7 +35,7 @@ from loguru import logger
 
 import re
 
-from nucleo.flash.text_norm import _norm_txt
+from nucleo.text_norm import _norm_txt
 
 #: Verbs that only ever mean «take the card off the screen». «apaga / turn off / quita» are NOT here on purpose:
 #: «apaga la música» stops the audio and keeps the card (the close backstop's documented broad-verb rule).

@@ -17,8 +17,8 @@ from pathlib import Path
 
 ENGINE = Path(__file__).resolve().parents[3]
 OLD = ("nucleo.turn", "nucleo.flash")
-#: measured 2026-11-21 at main 860a7b8da (T0); only lowered, in the commit that removes the imports
-CEILING = 330
+#: measured 2026-11-21 at main 860a7b8da (T0: 330); only lowered, in the commit that removes the imports — T1: 313
+CEILING = 313
 _NAMED = re.compile(r"nucleo\.(turn|flash)(\.\w+)*")
 
 

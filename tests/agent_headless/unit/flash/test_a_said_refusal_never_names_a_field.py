@@ -17,7 +17,9 @@ import pathlib
 
 import pytest
 
-from nucleo.flash import data_ops, refusal_line
+from nucleo.flash import data_ops
+
+from nucleo.request import refusal_line
 from nucleo.workers import spoken_delivery
 
 

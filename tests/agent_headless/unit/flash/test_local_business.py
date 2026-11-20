@@ -22,7 +22,7 @@ import pytest
 from memory import db as memdb
 from memory import embeddings as mememb
 from nucleo.turn.prompt import builder as prompt
-from nucleo.flash import site_catalog as sc
+from nucleo.routes import site_catalog as sc
 
 
 @pytest.fixture(autouse=True)

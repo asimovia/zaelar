@@ -19,7 +19,7 @@ from __future__ import annotations
 import pytest
 
 from nucleo.turn.prompt import builder as prompt
-from nucleo.flash import site_catalog as sc
+from nucleo.routes import site_catalog as sc
 
 
 ASK = "Consígueme dos entradas para el musical de El Rey León en Madrid para el sábado."

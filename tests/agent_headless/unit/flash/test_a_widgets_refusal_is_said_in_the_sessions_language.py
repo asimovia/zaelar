@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import pytest
 
-from nucleo.flash import spoken_lang as ol
+from i18n import spoken_lang as ol
 
 
 @pytest.fixture

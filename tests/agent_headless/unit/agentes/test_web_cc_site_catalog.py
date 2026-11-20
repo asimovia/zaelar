@@ -8,7 +8,7 @@ and that the web worker's prompt (`dispatch_prompts._web_prompt`) actually inclu
 """
 from __future__ import annotations
 
-from nucleo.flash import site_catalog
+from nucleo.routes import site_catalog
 
 # V2-158: this set went stale the day `event_tickets` (V2-132) and `local_business` (V2-144) were added to the
 # catalog, and nothing said so — the file has never been listed in `tests/run_testmap.py`, so `tests run all`

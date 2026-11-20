@@ -6,7 +6,7 @@ The door that already held outgoing messages (then `outgoing_lang`, demo pass 10
 """
 import asyncio
 
-from nucleo.flash import spoken_lang as ol
+from i18n import spoken_lang as ol
 
 
 def _run(coro):

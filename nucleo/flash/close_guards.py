@@ -10,7 +10,7 @@ import re as _re
 
 from loguru import logger as _logger
 
-from .text_norm import _norm_txt
+from nucleo.text_norm import _norm_txt
 
 _CLOSE_VERB_RE = _re.compile(r"\b(cierr\w*|cerr\w*|ocult\w*|escond\w*|apag\w*|quit\w*|close|hide|turn\s+off)\b")
 _DELETE_VERB_RE = _re.compile(r"\b(borr|elimin|delete|remove|deshaz)\w*")

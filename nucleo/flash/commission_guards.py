@@ -147,7 +147,7 @@ def too_thin_to_commission(text: str) -> bool:
     if _rg.looks_like_close(raw):
         return False                       # «cierra eso» is an order however short
     try:
-        from nucleo.flash.segmenter import _ALSO_A_VERB as _ALSO_VERB
+        from nucleo.input.segmenter import _ALSO_A_VERB as _ALSO_VERB
         if any(w in _ALSO_VERB for w in n.split()):
             return False                  # «para»/«sigue»/«pon» alone are orders, never fragments
     except Exception:

@@ -27,7 +27,7 @@ from __future__ import annotations
 import datetime as _dt
 import re
 
-from nucleo.flash.text_norm import _norm_txt
+from nucleo.text_norm import _norm_txt
 
 _DAY_FIELDS = ("date", "newDate", "day")
 

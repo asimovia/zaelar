@@ -403,12 +403,12 @@ _NUCLEO_GRANDFATHERED: frozenset[str] = frozenset({
     "nucleo/flash/router.py",
     "nucleo/flash/router_catalog.py",
     "nucleo/flash/router_guards.py",
-    "nucleo/flash/segmenter.py",
     "nucleo/flash/show_target.py",
-    "nucleo/flash/site_catalog.py",
     "nucleo/flash/tool_executor_calls.py",
     "nucleo/flash/tool_executor_widget_calls.py",
     "nucleo/flash/tool_selection.py",
+    "nucleo/input/segmenter.py",    # MOVED from nucleo/flash/segmenter.py (INI-078 F2 step 8, T1)
+    "nucleo/routes/site_catalog.py",   # MOVED from nucleo/flash/site_catalog.py (INI-078 F2 step 8, T1)
     "nucleo/input/stt.py",   # the phrase accumulator, MOVED from nucleo/flash/accumulator.py (refactor2710-01)
     "nucleo/jev/__init__.py",
     "nucleo/memory_agent/gates.py",
@@ -739,10 +739,6 @@ _PACKAGE_CEILINGS["nucleo/conversation_host"] += 3   # same day: `turns.NOT_OK` 
 _TOTAL_MAX += 105    # same cause, measured
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 5     # 2026-11-20 V2-941 (plan v3.2 §3, commit 2): the host's hands for a stop the model chose (`stops.py`, +62) and the four stops offered, less every reader of a stop in his words (`split_stop`, `orders_stop`, `ear_in._stopped`, the typed split, the stop branch of `for_ear`)
 _TOTAL_MAX += 5      # same cause, measured
-_PACKAGE_CEILINGS["nucleo/conversation_host"] += 43  # 2026-11-21 INI-078 F2 F5: start_task's kind, class and surface with their choices read from their owners (`acts._owned_choices`), the errand's context at the model's word with his words (`acts_tasks.errand_context`), a build as a sure order
-_PACKAGE_CEILINGS["nucleo/request"] += 5    # same: `kind.SURE`, the manager's build act read as his sure order (C4)
-_PACKAGE_CEILINGS["nucleo/workers"] += 13   # same: the worker's first step from the errand's own `first_act` (`first_act._declared`, split out of `identified`)
-_TOTAL_MAX += 61     # same causes, measured
 _PACKAGE_CEILINGS["conversation"] += 180               # 2026-11-20 V2-941 (plan v3.2 §4, R3, commit 3): a declared new mechanism — our voice never starts while his voice is open (`manager/hold.py`: one predicate, a ready reply parked and never redone, the chunk he adds run with it in view, the two exits, the sweep and the owed lines held by it; the grace-parked reply moved beside it to keep `run.py` under 800)
 _TOTAL_MAX += 180    # same cause, measured
 _PACKAGE_CEILINGS["conversation"] += 18                # 2026-11-20 V2-941 (plan v3.2 §4, R3, commit 4): a piece cut by its length with his voice still up waits for the next one (`mailbox._chained`), and at the monologue's ceiling the batch runs and its reply goes to the wall
@@ -816,6 +812,17 @@ _PACKAGE_CEILINGS["nucleo/conversation_host"] += 43  # 2026-11-21 INI-078 F2 F5:
 _PACKAGE_CEILINGS["nucleo/request"] += 5    # same: `kind.SURE`, the manager's build act read as his sure order (C4)
 _PACKAGE_CEILINGS["nucleo/workers"] += 13   # same: the worker's first step from the errand's own `first_act` (`first_act._declared`, split out of `identified`)
 _TOTAL_MAX += 61     # same causes, measured
+# 2026-11-21 INI-078 F2 step 8, T1 (the leaves of the old turn MOVED to their owners, each leaving a one-commit shim
+# that IS the new module): text_norm → nucleo/, negation → actionmap/, clarifying → acts/, segmenter → input/,
+# site_catalog → routes/, spoken_lang → i18n/, refusal_line → request/. Moved lines, not new ones.
+_PACKAGE_CEILINGS["nucleo (top)"] += 47
+_PACKAGE_CEILINGS["nucleo/actionmap"] += 35
+_PACKAGE_CEILINGS["nucleo/acts"] += 94
+_PACKAGE_CEILINGS["nucleo/input"] += 337
+_PACKAGE_CEILINGS["nucleo/request"] += 115
+_PACKAGE_CEILINGS["nucleo/routes"] += 357
+_PACKAGE_CEILINGS["nucleo/flash"] -= 1024
+_TOTAL_MAX -= 39     # measured after the move (the shims replace the moved bodies)
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

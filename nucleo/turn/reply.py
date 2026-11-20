@@ -93,7 +93,7 @@ def object_of(res) -> str:
 def of_op(card: str, action: str, res) -> Outcome:
     """The verdict of ONE data-op through the receipt (`op_receipt`): refused → `unmet` with the sentence the card may say;
     plainly landed → `met` with its object; anything else is still `started`."""
-    from nucleo.flash import op_receipt, refusal_line
+    from nucleo.flash import op_receipt; from nucleo.request import refusal_line  # noqa: E702 — the file is at its ceiling
     if op_receipt.failed(res):   # V2-851 F2: a refusal's ONE line is this mouth's — the card's `say`, or the generic
         reason = refusal_line.speakable(card, res).strip()
         if reason and refusal_line.foreign(reason):   # card copy in the other language: the generic line (pass 48/69)

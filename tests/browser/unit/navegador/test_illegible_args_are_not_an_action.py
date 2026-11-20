@@ -101,7 +101,7 @@ def test_unos_argumentos_VACIOS_de_verdad_siguen_valiendo(monkeypatch):
 
 @pytest.mark.parametrize("lector,fuente", [
     ("_parse_judgement", "voice.attention_judge"),   # `attention._parse_directed` reads through it (V2-812 T-03)
-    ("_parse_judge", "nucleo.flash.segmenter"),
+    ("_parse_judge", "nucleo.input.segmenter"),
 ])
 def test_los_OTROS_lectores_del_motor_exigen_el_objeto_entero(lector, fuente):
     """The sweep, nailed down: if either parser relaxes and starts accepting a prefix, its limit becomes dangerous

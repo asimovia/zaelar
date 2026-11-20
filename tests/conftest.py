@@ -290,7 +290,7 @@ def _composers_never_reach_the_network():
     in a wide run, where an earlier test had left a model configured and the delivery was rewritten by a real call.
     Tests that exercise them turn them back on (or fake the client). `ZAELAR_TEST_LLM_LIVE=1` lets them through."""
     import os
-    from nucleo.flash import spoken_lang
+    from i18n import spoken_lang
     from nucleo.turn import his_spec_to_sheet
     from nucleo.workers import spoken_delivery
     his_spec_to_sheet.forget()             # his specs carried to a sheet are per conversation, so per test

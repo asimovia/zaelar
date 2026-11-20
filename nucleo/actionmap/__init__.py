@@ -49,7 +49,7 @@ def match(text: str) -> dict | None:
     if entry is None:
         return None
     try:
-        from nucleo.flash.negation import clause_negated
+        from nucleo.actionmap.negation import clause_negated
         if clause_negated(phrase, 0, len(phrase)):
             return None
     except Exception:

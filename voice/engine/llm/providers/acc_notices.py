@@ -68,7 +68,7 @@ async def _speak_acc_drop(dropped: str) -> None:
     except Exception:
         pass
     try:
-        from nucleo.flash import segmenter
+        from nucleo.input import segmenter
         verdict, extra = await segmenter.judge(dropped)
         if verdict == "ask" and extra:
             text = extra

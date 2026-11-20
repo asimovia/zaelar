@@ -77,7 +77,7 @@ class SemanticTurnDetector:
         text = _last_user_text(chat_ctx)
         ours = _COMPLETE_P
         try:
-            from nucleo.flash import segmenter
+            from nucleo.input import segmenter
             incomplete, why = segmenter.looks_incomplete(text)
             if incomplete:
                 ours = _INCOMPLETE_P

@@ -102,7 +102,7 @@ def test_a_day_or_an_hour_still_ahead_is_the_instant(day, hour, at):
 def test_the_door_asks_in_its_own_words_and_schedules_nothing(_scheduler_never_touches_the_live_journal, monkeypatch):
     r, jobs = _door({"title": "feed the cat", "date": "next month"}, _scheduler_never_touches_the_live_journal)
     assert r.get("ok") is False and r.get("verdict") == "asked" and not jobs, (r, jobs)
-    from nucleo.flash import refusal_line
+    from nucleo.request import refusal_line
     for lang in ("en", "es"):
         monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
         said = refusal_line.speakable("agenda", r)

@@ -503,7 +503,7 @@ def _default_complete(text: str) -> tuple[bool, str]:
             return True, ""
     except Exception:
         pass
-    from nucleo.flash import segmenter
+    from nucleo.input import segmenter
     try:
         incomplete, why = segmenter.looks_incomplete(text)
     except Exception:
@@ -546,7 +546,7 @@ def _why(text: str) -> str:
 
 # ── EL JUEZ, capa 2 (inyectable, ASÍNCRONO) — V2-102 ───────────────────────────────────────────────────────────
 async def _default_judge(text: str) -> tuple[str, str]:
-    from nucleo.flash import segmenter
+    from nucleo.input import segmenter
     return await segmenter.judge(text)
 
 

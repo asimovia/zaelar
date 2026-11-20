@@ -139,7 +139,7 @@ def _category_lead(goal: str, lang_code: str | None) -> str:
     the dispatcher ALREADY matched (it is the same call that routed this task to the browser in the first
     place, the brief's kind) removes that decision. When no category matches, this is empty and the
     catalog behaves exactly as before."""
-    from nucleo.flash import site_catalog
+    from nucleo.routes import site_catalog
     loc = site_catalog.resolve_locale(lang_code)
     category = site_catalog.category_of(goal, loc)
     entry = site_catalog.entry_for(category, loc) if category else None

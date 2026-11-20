@@ -30,7 +30,7 @@ def _emit(label: str, wid: str, action: str, text: str = "", **extra) -> None:
 def _done_line(wid: str, res: dict) -> str:
     """The widget's own line where it has one; else the count it reports; else the plain acknowledgement."""
     from i18n import langs as _langs
-    from nucleo.flash import refusal_line as _rl
+    from nucleo.request import refusal_line as _rl
     said = _rl.speakable(wid, res).strip()
     if said:
         return said
@@ -62,7 +62,7 @@ async def still_running(wid: str, action: str, res: dict, *, seal=None, row: str
             logger.debug(f"op_pending: late failure event not emitted: {e!r}")
         _settle(row, "unmet", str(real.get("message") or real.get("error") or "")[:200])
         _seal(seal, False)
-        from nucleo.flash import refusal_line as _rl
+        from nucleo.request import refusal_line as _rl
         await _say(wid, action, _rl.speakable(wid, real).strip() or _ops._failed_line(), row)
         return real
     line = _done_line(wid, real if isinstance(real, dict) else {})

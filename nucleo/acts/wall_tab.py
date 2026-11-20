@@ -30,7 +30,7 @@ def named_wall_tab(text: str) -> str:
     goes to the action map's seeds (ES+EN, the custom tab included) or to the model's `show_panel`."""
     try:
         from nucleo.flash import router_guards as _rg
-        from nucleo.flash.negation import unnegated_match
+        from nucleo.actionmap.negation import unnegated_match
         if _rg.looks_like_create_widget(text) or _rg.looks_like_close(text):
             return ""
         from widgets import runtime as _rt

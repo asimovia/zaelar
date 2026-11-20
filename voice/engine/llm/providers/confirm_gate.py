@@ -321,7 +321,7 @@ def decide(wid: str, action: str, payload: dict, order: str = "") -> dict:
     except Exception:  # noqa: BLE001
         refused = None
     if refused:
-        from nucleo.flash import refusal_line as _rl
+        from nucleo.request import refusal_line as _rl
         return {"kind": "refused", "refusal": refused, "wid": wid, "action": action,
                 "sentence": _rl.speakable(wid, refused) or str(refused.get("message") or "")}
     mis = scope_mismatch(wid, action, payload or {}, order or "")

@@ -104,7 +104,7 @@ def test_two_channels_and_none_preferred_is_asked_in_his_language(directory, mon
                                            "channels": [{"platform": "email", "handle": "rowan@example.com"},
                                                         {"platform": "telegram", "handle": "@rowanlee"}]})
     from widgets.mensajeria import outbound
-    from nucleo.flash import refusal_line
+    from nucleo.request import refusal_line
     t = outbound.resolve_target({"contact": "Rowan Lee", "text": "hi"})
     assert t["ok"] is False and t["say"] == "widgets.mensajeria.refusal_which_channel", t
     monkeypatch.setenv("ZAELAR_LANGUAGE", "en")

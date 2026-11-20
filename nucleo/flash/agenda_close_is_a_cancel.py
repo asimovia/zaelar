@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import re
 
-from nucleo.flash.text_norm import _content_words, _norm_txt
+from nucleo.text_norm import _content_words, _norm_txt
 
 _ORDER_RE = re.compile(
     r"\b(?:anul|cancel|qu[ií]t(?:a|al[ao]|ar|amel[ao]|el[ao])\b|borr|elimin|suprim|remove|delete|drop|scrap|get\s+rid\s+of|call\s+(?:it\s+|that\s+)?off|"

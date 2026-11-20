@@ -177,7 +177,7 @@ def test_web_prompt_carries_the_trusted_site_catalog(monkeypatch):
     follow-up, operator: the catalog is a system default and must grow by country/language) — pin the
     engine's active language so the test is deterministic regardless of this machine's real setting."""
     from voice.engine.core import langs
-    from nucleo.flash import site_catalog
+    from nucleo.routes import site_catalog
     monkeypatch.setattr(langs, "current_code", lambda: "es")
     from tests import worker_briefs     # V2-851 F3: the catalog is the `sites` family
     wp = worker_briefs.web("resérvame mesa en Casa Lucio esta noche")

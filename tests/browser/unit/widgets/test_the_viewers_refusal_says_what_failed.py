@@ -40,7 +40,7 @@ def test_every_empty_viewer_refusal_names_a_bundle_key(data):
 @pytest.mark.parametrize("code,needle", [("es", "foto"), ("en", "picture")])
 def test_the_operator_hears_that_line_not_the_generic_one(data, monkeypatch, code, needle):
     from i18n import langs
-    from nucleo.flash import refusal_line as RL
+    from nucleo.request import refusal_line as RL
     monkeypatch.setattr(langs, "current_code", lambda: code)
     line = asyncio.run(RL.said("imagenes", data.apply_action("show", {"items": []})))
     assert needle in line.lower() and "no llegó" not in line, line

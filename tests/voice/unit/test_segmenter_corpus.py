@@ -52,7 +52,7 @@ from pathlib import Path
 
 import pytest
 
-from nucleo.flash import segmenter
+from nucleo.input import segmenter
 
 import os
 

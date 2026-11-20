@@ -113,7 +113,7 @@ def _mesh() -> str:
 @_family("sites")
 def _sites() -> str:
     from i18n import langs
-    from nucleo.flash import site_catalog
+    from nucleo.routes import site_catalog
     return site_catalog.directive_block(site_catalog.resolve_locale(langs.current_code()))
 
 

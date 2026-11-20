@@ -19,7 +19,7 @@ import asyncio
 
 import pytest
 
-from nucleo.flash import refusal_line as RL
+from nucleo.request import refusal_line as RL
 
 
 def _lang(monkeypatch, code: str):

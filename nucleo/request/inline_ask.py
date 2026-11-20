@@ -73,7 +73,7 @@ def held(row: str, wid: str, action: str, payload: dict | None, res, *, question
         return ""
     try:
         from nucleo.circuit import asker, ledger
-        from nucleo.flash import refusal_line
+        from nucleo.request import refusal_line
         from nucleo.runtime_ids import next_seq
         from observability import identity
         ask_id = f"{row}-q{next_seq('inline.ask')}"

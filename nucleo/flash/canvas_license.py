@@ -20,7 +20,7 @@ from loguru import logger as _log
 import re as _re
 import time as _time
 
-from .text_norm import _norm_txt
+from nucleo.text_norm import _norm_txt
 from .verb_forms import alternation as _en
 
 # Conjugated REQUEST forms only — a participle after «haber» narrates the past and licenses nothing

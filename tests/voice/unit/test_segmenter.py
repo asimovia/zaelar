@@ -20,7 +20,7 @@ import asyncio
 
 import pytest
 
-from nucleo.flash import segmenter as sg
+from nucleo.input import segmenter as sg
 
 
 # ── WHAT MUST NEVER BE HELD ───────────────────────────────────────────────────────────────────────────────────

@@ -15,7 +15,7 @@ The host that just blocked us is EXCLUDED: offering the site it is stuck on read
 """
 import pytest
 
-from nucleo.flash import site_catalog as sc
+from nucleo.routes import site_catalog as sc
 
 
 def test_the_walled_host_is_never_offered_back():
@@ -113,7 +113,7 @@ def test_a_wall_with_no_alternative_still_prints_the_wall():
 
 
 def test_a_walled_car_errand_is_sent_to_a_measured_alternative():
-    from nucleo.flash import site_catalog as sc
+    from nucleo.routes import site_catalog as sc
     alts = sc.alternatives_for("busca un coche de segunda mano diésel por menos de 12.000", "coches.net", "es")
     names = [n for n, _ in alts]
     assert "AutoScout24" in names and "Wallapop" in names, alts
@@ -121,6 +121,6 @@ def test_a_walled_car_errand_is_sent_to_a_measured_alternative():
 
 
 def test_and_the_trusted_site_is_offered_back_when_the_wall_came_from_elsewhere():
-    from nucleo.flash import site_catalog as sc
+    from nucleo.routes import site_catalog as sc
     alts = sc.alternatives_for("busca un coche de segunda mano diésel", "autoscout24.es", "es")
     assert any("coches.net" in u for _, u in alts), alts

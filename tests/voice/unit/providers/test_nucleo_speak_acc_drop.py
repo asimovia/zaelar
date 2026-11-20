@@ -36,7 +36,7 @@ def _run(dropped: str) -> None:
 
 def test_no_live_speaker_is_a_noop(monkeypatch):
     proactive.clear_speaker(None)   # force "no session" (probe/text channel)
-    from nucleo.flash import segmenter
+    from nucleo.input import segmenter
 
     async def _must_not_be_called(text):
         raise AssertionError("no live speaker — must not even consult the judge")
@@ -51,7 +51,7 @@ def test_never_talks_over_the_operator(monkeypatch, _speaker):
 
 
 def test_judge_says_ASK_speaks_the_clarifying_question_instead_of_the_generic_notice(monkeypatch, _speaker):
-    from nucleo.flash import segmenter
+    from nucleo.input import segmenter
 
     async def _fake_judge(text):
         return "ask", "¿Seguías queriendo que buscara vuelos a Londres?"
@@ -63,7 +63,7 @@ def test_judge_says_ASK_speaks_the_clarifying_question_instead_of_the_generic_no
 def test_judge_says_COMPLETE_says_nothing_the_sentence_is_already_in_the_conversation(monkeypatch, _speaker):
     """A whole sentence that was not part of the next one is KEPT in the window the model reads (`turn_fragment`);
     asking him to repeat what was understood is noise (V2-931, measured in the middle of a dictation)."""
-    from nucleo.flash import segmenter
+    from nucleo.input import segmenter
 
     async def _fake_judge(text):
         return "complete", ""
@@ -75,7 +75,7 @@ def test_judge_says_COMPLETE_says_nothing_the_sentence_is_already_in_the_convers
 
 
 def test_judge_says_INCOMPLETE_keeps_the_plain_generic_notice(monkeypatch, _speaker):
-    from nucleo.flash import segmenter
+    from nucleo.input import segmenter
 
     async def _fake_judge(text):
         return "incomplete", ""
@@ -87,7 +87,7 @@ def test_judge_says_INCOMPLETE_keeps_the_plain_generic_notice(monkeypatch, _spea
 
 
 def test_a_broken_judge_falls_back_to_the_plain_notice_same_as_before_V2_102(monkeypatch, _speaker):
-    from nucleo.flash import segmenter
+    from nucleo.input import segmenter
     from voice.engine.core import langs
 
     async def _boom(text):

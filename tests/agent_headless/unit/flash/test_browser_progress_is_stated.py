@@ -20,7 +20,7 @@ from __future__ import annotations
 import pytest
 
 from nucleo.turn.prompt import live_state as prompt
-from nucleo.flash import site_catalog as sc
+from nucleo.routes import site_catalog as sc
 
 
 def _nav_line(live: str) -> str:

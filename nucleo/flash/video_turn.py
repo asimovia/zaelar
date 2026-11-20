@@ -63,7 +63,7 @@ Entirely fail-soft: the turn has to complete even if the player is broken.
     q = str(query or "").strip()
     try:
         from widgets.server_api import brain_action
-        from nucleo.flash import refusal_line as _rl
+        from nucleo.request import refusal_line as _rl
         if normalize_action(action) == "list":
             # V2-402/V2-632 — a media search goes to the PLAYER's own dashboard: numbered results on the
             # Inicio tab, nothing autoplays, the queue untouched (the operator steers from there by voice).

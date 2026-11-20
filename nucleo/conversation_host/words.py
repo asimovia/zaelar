@@ -23,7 +23,7 @@ class PackWords:
         English: a reply to an English line is never a Spanish one, and a pack without the key never makes the manager
         silent."""
         from i18n import langs
-        from nucleo.flash import spoken_lang
+        from i18n import spoken_lang
         heard = spoken_lang.language_of(near) if near else ""
         packs = ([langs.spec(heard)] if heard else []) + [langs.current_language(), langs.spec(FALLBACK)]
         return next((got for got in (_of(p, key) for p in packs) if got), "")

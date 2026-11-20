@@ -14,7 +14,7 @@ Two independent gaps, both measured on the transcript before touching anything:
 """
 import pytest
 
-from nucleo.flash import site_catalog as sc
+from nucleo.routes import site_catalog as sc
 
 
 @pytest.mark.parametrize("text", [

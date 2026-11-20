@@ -1,0 +1,356 @@
+"""nucleo/routes/site_catalog.py — default "trusted/tested" site per task category for the browser worker.
+
+Why this exists: without it, the web worker picks a destination site from its own model knowledge on every
+single task, improvising a brand-new booking/search flow each time — including learning an arbitrary
+individual business's own web infrastructure from scratch. Two independent live use-case runs (V2-099,
+`tests/use_cases/`) hit the identical failure shape from this: the worker genuinely spawns and navigates, but
+never completes within a normal conversation's patience budget, because it is re-deriving how a never-seen
+site works instead of using a flow it already knows.
+
+Consulted from **`nucleo/dispatch_prompts.py::_web_prompt()`** — the actual live prompt-builder for a web/
+navegador task, called from `nucleo/dispatch.py` and fed uniformly to whichever Brain Worker backend is
+configured (`claude_code`/`codex`/`grok_build` — `nucleo/workers/providers/registry.py::get_backend`), so this catalog
+applies the same way regardless of backend or deployment. `nucleo/agentes/web_cc.py::_web_prompt()` also
+carries it, for consistency, but that module is PARKED (superseded by V2-038's interactive worker sessions;
+see CLAUDE.md's Brain Workers decision) and not on the live path today.
+
+## System genetics vs. operator memory — the priority contract (operator, 2026-08-17)
+
+This file is a SYSTEM-level, INITIAL reference — it ships with the engine, versioned in the repo, and is
+meant to grow over time (more locales, more categories, economic/pricing preferences) edited by developers
+or the system itself, same status as the rest of the "genetic" defaults in `nucleo/` (BRAIN RULES,
+`router_guards._KNOWN_SITES`, etc.). It is deliberately generic — a reasonable default for someone who has
+never told zaelar otherwise.
+
+**The operator's own memory always wins over this file.** If the operator has ever said something like "usa
+siempre Idealista para pisos" or "prefiero PcComponentes a Amazon", that preference is a real, durable memory
+pill (written the normal way, by the standard conversational ingest — nothing here writes to memory) and
+MUST override the catalog entry below for that category. `directive_block()`'s own text tells the worker to
+check memory FIRST via `cli.mem recall` before falling back to this catalog — so the override lives entirely
+in the PROMPT, not in a second data source that could drift out of sync with this one. This file never
+becomes stale by an operator's personal taste; it only goes stale if a whole category's best-known site
+changes for everyone (in which case a dev edits it here, same as any other genetic default).
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class SiteEntry:
+    name: str
+    url: str
+    note: str  # short usage guidance for the worker, in the same language as _web_prompt's own instructions
+    # V2-213 — WHERE TO GO WHEN THIS ONE WALLS US. The catalog had exactly one site per category, so when the
+    # trusted one served an anti-bot page there was, literally, nowhere written down to go next: the worker was
+    # told «prueba otro sitio» and had to invent one. Measured cost — `book-hotel-night-known__es` spent thirteen
+    # minutes on the same host, `restaurant-tonight-madrid` ended on a DuckDuckGo results page after Casa Lucio.
+    # Naming the alternative is the difference between an instruction and a wish, which is the same lesson the
+    # bridges learned today four times over.
+    alts: tuple[tuple[str, str], ...] = ()
+
+
+# locale → category → SiteEntry. Locale matches the same "es"/"us" split already used throughout
+# tests/use_cases/ — not a full country catalog yet (that's exactly the growth the operator described:
+# more locales/countries/languages over time, each its own top-level key here, never a rewrite of this
+# module's shape). Add a new locale by adding a new top-level dict; add a new category by adding a key to
+# EVERY existing locale (kept symmetric on purpose — a category missing from one locale would silently fall
+# back to nothing rather than a sensible default for that market).
+SITE_CATALOG: dict[str, dict[str, SiteEntry]] = {
+    "es": {
+        "restaurant_booking": SiteEntry(
+            "TheFork / ElTenedor", "https://www.thefork.es",
+            "reservar mesa en un restaurante — busca el nombre del restaurante ahí dentro si el operador ha "
+            "nombrado uno concreto; si no, filtra por zona/tipo de cocina/hora. Cerrar la mesa suele exigir "
+            "cuenta o teléfono: trae las opciones con hora y di qué falta para cerrarla. Si TheFork te "
+            "bloquea (403), NO pruebes eltenedor.es: es la MISMA casa y el mismo muro. La salida que funciona "
+            "es Google Maps para elegir candidatos y la web PROPIA del restaurante para reservar — su motor "
+            "embebido (muchos usan restaurante.covermanager.com/<nombre>) sí carga; elige UN candidato con "
+            "motor y ciérralo ahí, no sigas paseando por webs informativas.",
+            # V2-566 — the «ElTenedor (app web)» alt was FAKE diversity: same company, same wall, and it
+            # survives `alternatives_for`'s host filter precisely because the hostname differs. Measured
+            # 2026-09-03 (Soria): thefork.es 403'd twice, paradores.es 403'd, and the pages that DID load and
+            # carry a working booking flow were the restaurants' own CoverManager engines.
+            alts=(("Google Maps", "https://www.google.com/maps"),
+                  ("CoverManager (motor de reserva embebido en la web del restaurante)",
+                   "https://restaurante.covermanager.com"))),
+        "hotel_booking": SiteEntry(
+            "Booking.com", "https://www.booking.com",
+            "buscar/reservar alojamiento — filtra por ciudad, fechas, nº de personas, estrellas y precio. Cerrar "
+            "la reserva exige cuenta y tarjeta: trae las opciones con precio y condiciones y di qué falta.",
+            alts=(("Trivago", "https://www.trivago.es"), ("Google Hotels", "https://www.google.com/travel/hotels"))),
+        "flight_search": SiteEntry(
+            "Skyscanner", "https://www.skyscanner.es",
+            "buscar/comparar vuelos — filtra por origen, destino, fechas y equipaje facturado si se pidió. "
+            "Comprar exige cuenta y tarjeta: trae las opciones con precio y horario y di qué falta.",
+            alts=(("Google Flights", "https://www.google.com/travel/flights"), ("Kayak", "https://www.kayak.es"))),
+        "event_tickets": SiteEntry(
+            "Entradas.com", "https://www.entradas.com",
+            "entradas de teatro/musicales/conciertos — busca el espectáculo por nombre y filtra por fecha y "
+            "sesión; si el espectáculo no aparece, mira la web del propio teatro. Comprarlas exige cuenta y "
+            "tarjeta: trae las opciones con precio y zona, di qué falta para cerrarlo y PARA ahí.",
+            alts=(("Ticketmaster ES", "https://www.ticketmaster.es"), ("El Corte Inglés Entradas", "https://www.elcorteingles.es/entradas"))),
+        "local_business": SiteEntry(
+            "Google Maps", "https://www.google.com/maps",
+            "un negocio LOCAL del operador (peluquería, dentista, taller, farmacia, gimnasio…) — busca por "
+            "«<tipo> en <barrio/ciudad>», quédate con los que tengan reseñas y horario, y trae nombre, "
+            "dirección, teléfono y horario de los mejores. Pedir la cita casi siempre exige llamar o una "
+            "cuenta: trae las opciones y di qué hace falta para cerrarla, no te la inventes."),
+        "car_classifieds": SiteEntry(
+            "coches.net", "https://www.coches.net",
+            "coches de segunda mano — usa la URL de resultados con filtros (combustible, km, precio máx).",
+            # V2-352 — measured escape route: coches.net serves a 403 bot-block to this browser (live probe
+            # 2026-08-27), and with no alts a walled car errand got «prueba otro sitio» without a name. Both
+            # alternatives are MEASURED working in rounds: AutoScout24 delivered 12/12 rows with listing urls
+            # (round 11, V2-347), Wallapop delivers cars with urls since V2-324.
+            alts=(("AutoScout24", "https://www.autoscout24.es"),
+                  ("Wallapop", "https://es.wallapop.com"))),
+        "general_classifieds": SiteEntry(
+            "Wallapop", "https://es.wallapop.com",
+            "motos/bicis/cámaras/guitarras/objetos varios de segunda mano — filtra por categoría y precio."),
+        "generic_marketplace": SiteEntry(
+            "Amazon", "https://www.amazon.es",
+            "productos nuevos genéricos (electrónica, libros, etc.) donde no aplica ningún clasificado — "
+            "ordena por relevancia/valoración, no solo por precio.",
+            alts=(("PcComponentes", "https://www.pccomponentes.com"), ("Google Shopping", "https://www.google.com/search?tbm=shop"))),
+    },
+    "us": {
+        "restaurant_booking": SiteEntry(
+            "OpenTable", "https://www.opentable.com",
+            "book a table at a restaurant — search the named restaurant inside it if the operator named one; "
+            "otherwise filter by area/cuisine/time. Closing the table usually needs an account or a phone "
+            "call: bring the options with times and say what closing it would take.",
+            alts=(("Yelp", "https://www.yelp.com"), ("Google Maps", "https://www.google.com/maps"))),
+        "hotel_booking": SiteEntry(
+            "Booking.com", "https://www.booking.com",
+            "find/book lodging — filter by city, dates, guest count, star rating and price. Closing the booking "
+            "needs an account and a card: bring the options with price and terms and say what is missing.",
+            alts=(("Google Hotels", "https://www.google.com/travel/hotels"), ("Trivago", "https://www.trivago.com"))),
+        "flight_search": SiteEntry(
+            "Google Flights", "https://www.google.com/travel/flights",
+            "search/compare flights — filter by origin, destination, dates and checked baggage if asked. Buying "
+            "needs an account and a card: bring the options with price and times and say what is missing.",
+            alts=(("Kayak", "https://www.kayak.com"), ("Skyscanner", "https://www.skyscanner.net"))),
+        "event_tickets": SiteEntry(
+            "Ticketmaster", "https://www.ticketmaster.com",
+            "theatre/musical/concert tickets — search the show by name and filter by date and session; if the "
+            "show is not listed, try the venue's own site. Buying needs an account and a card: bring back the "
+            "options with price and seating area, say what closing it would take, and STOP there.",
+            alts=(("SeatGeek", "https://seatgeek.com"), ("StubHub", "https://www.stubhub.com"))),
+        "local_business": SiteEntry(
+            "Google Maps", "https://www.google.com/maps",
+            "a LOCAL business of the operator's (hairdresser, dentist, garage, pharmacy, gym…) — search "
+            "«<kind> in <neighbourhood/city>», keep the ones with reviews and opening hours, and bring back "
+            "name, address, phone and hours for the best few. Booking almost always needs a phone call or an "
+            "account: bring the options and say what closing it would take, never invent it."),
+        "car_classifieds": SiteEntry(
+            "Cars.com", "https://www.cars.com",
+            "used cars — use the filtered results URL (fuel type, mileage, max price).",
+            # V2-352 — locale symmetry with the es entry (the catalog's own parity guard demands it). These two
+            # are catalog knowledge like the trusted entry itself, not measured escapes like the es pair.
+            alts=(("AutoTrader", "https://www.autotrader.com"),
+                  ("CarGurus", "https://www.cargurus.com"))),
+        "general_classifieds": SiteEntry(
+            "Facebook Marketplace", "https://www.facebook.com/marketplace",
+            "used motorcycles/bikes/cameras/guitars/misc items — filter by category and price."),
+        "generic_marketplace": SiteEntry(
+            "Amazon", "https://www.amazon.com",
+            "generic new products (electronics, books, etc.) where no classifieds site applies — sort by "
+            "relevance/rating, not just price.",
+            alts=(("Best Buy", "https://www.bestbuy.com"), ("Google Shopping", "https://www.google.com/search?tbm=shop"))),
+    },
+}
+
+_DEFAULT_LOCALE = "es"
+
+
+def resolve_locale(code: str | None) -> str:
+    """Map an engine language code (`voice.engine.core.langs.current_code()`, today only "es"/"en") to a
+    catalog locale. Deliberately narrow — this is a fallback heuristic (language != country), not a real
+    geo-resolution; a future locale (e.g. a country-specific split of "es") should be picked explicitly by
+    whoever wires it in, not inferred harder here."""
+    return "es" if (code or "").strip().lower() == "es" else "us"
+
+
+def directive_block(locale: str | None = None) -> str:
+    """Render the catalog as a short directive block for the worker's own system prompt (`_web_prompt`).
+    `locale` defaults to the engine's own active language (es→"es" catalog, anything else→"us") via
+    `resolve_locale`; pass one explicitly to override (tests, or a future per-request locale).
+
+    Leads with the memory-priority contract (see module docstring) before the catalog itself — the worker
+    must check for an operator override before defaulting to these sites, every time, not just once."""
+    loc = locale if locale in SITE_CATALOG else resolve_locale(locale)
+    catalog = SITE_CATALOG.get(loc, SITE_CATALOG[_DEFAULT_LOCALE])
+    lines = [
+        "SITIOS DE CONFIANZA POR CATEGORÍA. ANTES de usar este catálogo, comprueba si el operador tiene una "
+        "preferencia YA GUARDADA para esta categoría (p.ej. «usa siempre Idealista para pisos», «prefiero "
+        "PcComponentes a Amazon») con "
+        "`python -m nucleo.cli.mem recall \"sitio preferido para <categoría>\"` — SI la hay, esa preferencia "
+        "MANDA sobre el catálogo de abajo, sin excepción. Si NO la hay, usa el catálogo (SIEMPRE primero, "
+        "incluso si el operador ha nombrado un negocio concreto — búscalo DENTRO del sitio de confianza antes "
+        "de ir a su web propia; solo salta directo a la web propia de un negocio si genuinamente no aparece "
+        "listado en el sitio de confianza de su categoría):"
+    ]
+    for entry in catalog.values():
+        lines.append(f"• {entry.name} ({entry.url}) — {entry.note}")
+    return "\n".join(lines)
+
+
+# ── ¿de qué categoría es esta petición? ──────────────────────────────────────────────────────────────────
+# Why this lives HERE and not in dispatch.py: the categories are this module's taxonomy. A detector kept
+# somewhere else would drift the moment a category is added — the whole point of `SITE_CATALOG` being
+# symmetric across locales is that categories are declared once.
+#
+# What it was FOR (V2-119/V2-118, measured 2026-08-18; the kind is the brief's verdict since V2-851 F4): the
+# dispatcher's old kind classifier only ever answered "web"
+# when the operator NAMED a site ("en Wallapop", "en Amazon"), so two use cases that plainly need a browser
+# were dispatched as `generic` — a worker with no browser and no trusted-site directive:
+#   · `restaurant-tonight-madrid`: "resérvame mesa para 2 en Casa Lucio" → generic. No booking was ever
+#     attempted; the run ended with the model inventing a restaurant policy instead.
+#   · `three-tasks-at-once`: "búscame un monitor barato de segunda mano" → generic. It came back with NEW
+#     monitors from a retailer, ignoring "second-hand" — precisely what `general_classifieds` exists to fix.
+#
+# Deliberately NARROW. It is not a verb table standing in for understanding: each entry requires evidence of
+# a real-world TRANSACTION or a SECOND-HAND market, which is exactly the evidence that the browser (and this
+# catalog's trusted site) is what the task needs. `generic_marketplace` is intentionally NOT detected — the
+# bare verb "compra" would sweep in ordinary chat, and the 2026-08-12 incident (`_MODIFY_CODE_RE`'s comment
+# above in dispatch.py) is the standing reminder of what a too-eager route costs: a data-op turned into two
+# browser cards nobody asked for. When in doubt this returns None and the old behaviour stands.
+import re as _re
+import unicodedata as _ud
+
+
+def _norm(text: str) -> str:
+    """Accent-stripped lowercase — the same normalization `router_guards` uses. Without it "resérvame" does
+    not match a `reserv` stem, which is not a corner case in Spanish: it is the imperative, i.e. the single
+    most common form the operator actually speaks."""
+    n = _ud.normalize("NFKD", text or "")
+    return "".join(c for c in n if not _ud.combining(c)).lower()
+
+
+_CAT_PATTERNS: list[tuple[str, "_re.Pattern[str]"]] = [
+    # A table booking: the reservation verb plus what is being reserved. Both halves required — "reserva" on
+    # its own is also how one talks about a hotel, a flight or a doctor's appointment.
+    ("restaurant_booking", _re.compile(
+        r"\b(reserv\w*|book|booking)\b[^.!?]{0,60}\b(mesa|table|restaurante?|restaurant|cenar|comer|almorzar)\b"
+        r"|\b(mesa|table)\b[^.!?]{0,40}\b(para|for)\s+\d+", _re.I)),
+    ("hotel_booking", _re.compile(
+        r"\b(reserv\w*|book|booking)\b[^.!?]{0,60}\b(hotel|habitaci[oó]n|alojamiento|hostal|apartamento|room|"
+        r"lodging|stay)\b", _re.I)),
+    # V2-132: tickets for a SHOW. The word for the object ("entradas"/"tickets") is not enough on its own —
+    # "entradas" is also a starter on a menu and "ticket" is also a receipt — so it is paired with either the
+    # kind of show or a verb of getting hold of one. Measured on `find-theatre-tickets__es`: with no category
+    # here the task classified as `generic`, i.e. a worker with NO browser, so the `widget` signal could not
+    # possibly fire and the whole run was the model narrating a search that had nowhere to happen.
+    ("event_tickets", _re.compile(
+        r"\b(entradas?|tickets?|localidades)\b[^.!?]{0,60}"
+        r"\b(teatro|theatre|theater|musical|concierto|concert|[oó]pera|opera|espect[aá]culo|show|festival|"
+        r"partido|match|cine|cinema)\b"
+        r"|\b(teatro|musical|concierto|concert|[oó]pera|espect[aá]culo|festival)\b[^.!?]{0,60}"
+        r"\b(entradas?|tickets?|localidades|butacas?|asientos?)\b", _re.I)),
+    ("flight_search", _re.compile(
+        r"\b(vuelos?|flights?|billetes?\s+de\s+avi[oó]n|plane\s+tickets?)\b", _re.I)),
+    # V2-144: a LOCAL BUSINESS of the operator's. Measured on `book-barber-slot__es`: «resérvame hora en la
+    # peluquería de siempre» classified as `generic` — a worker with NO browser — so even once the operator gave
+    # the neighbourhood («Valencia, Ruzafa») there was nowhere for the search to happen, and the turn became a
+    # promise with nothing behind it. Same shape had already cost `reorder-prescription` (a pharmacy) and
+    # `renew-gym-membership` (a gym): three cases, one missing category.
+    #
+    # It goes AFTER the specific ones on purpose — `category_of` returns the FIRST match, and «reserva mesa en un
+    # restaurante» must stay `restaurant_booking`. And it requires a BOOKING/CONTACT verb next to the business,
+    # never the noun alone: «¿a qué hora abre la farmacia?» is a quick fact that `web_search` answers in the turn,
+    # and routing it to a browser worker would break the case that measures exactly that.
+    ("local_business", _re.compile(
+        r"\b(?:reserv\w*|resérva\w*|reserva\w*|pide|pedir|p[ií]de\w*|cita|citarme|apunta\w*|llama\w*|"
+        r"contacta\w*|busca\w*|b[uú]sca\w*|encuentra\w*|encu[eé]ntra\w*|localiza\w*|book|find|call)\b"
+        r"[^.!?]{0,60}"
+        r"\b(?:peluquer\w*|barber\w*|dentista\w*|m[eé]dic\w*|farmac\w*|gimnasio\w*|taller\w*|mec[aá]nic\w*|"
+        r"fontaner\w*|electricist\w*|veterinari\w*|cl[ií]nica\w*|fisio\w*|podolog\w*|[oó]ptica\w*|"
+        r"academia\w*|autoescuela\w*|notar[ií]a\w*|gestor[ií]a\w*|"
+        r"hairdresser\w*|barbershop\w*|dentist\w*|pharmac\w*|garage\w*|vet\w*|clinic\w*)\b"
+        r"|\b(?:peluquer\w*|barber\w*|dentista\w*|farmac\w*|taller\w*|veterinari\w*|fisio\w*|"
+        r"hairdresser\w*|dentist\w*|pharmac\w*)\b[^.!?]{0,40}"
+        r"\b(?:cita|hora\s+(?:para|el|la|este|de)|reserv\w*|appointment)\b", _re.I)),
+    # Second-hand: the market, not the verb. "de segunda mano" / "usado" / "used" is the whole signal — a
+    # classifieds site is the only place that answer exists, so a plain web_search cannot serve it.
+    ("car_classifieds", _re.compile(
+        r"\b(coches?|cars?|furgonetas?|motos?|motorbikes?)\b[^.!?]{0,60}"
+        r"\b(segunda\s+mano|de\s+ocasi[oó]n|usados?|usadas?|used|second[\s-]?hand)\b"
+        r"|\b(segunda\s+mano|usados?|used|second[\s-]?hand)\b[^.!?]{0,40}\b(coches?|cars?|motos?)\b", _re.I)),
+    ("general_classifieds", _re.compile(
+        r"\b(segunda\s+mano|de\s+ocasi[oó]n|usado|usada|usados|usadas|used|second[\s-]?hand)\b", _re.I)),
+]
+
+
+# Categories whose request is an ACTION with a definite destination: booking a table, a room, a flight. They were
+# the only ones the dispatcher's old kind classifier promoted to "web" on their own (the kind is the brief's
+# verdict since V2-851 F4), and the boundary matters.
+#
+# Los CLASIFICADOS (segunda mano) quedan FUERA de esa promoción a propósito, aunque este módulo sí los detecte
+# para el titular de categoría del prompt: «segunda mano» también es como empieza una INVESTIGACIÓN de verdad
+# («busca veleros de segunda mano… entra en la ficha de CADA candidato»), y esa ruta tiene su propio embudo con
+# su propio presupuesto (`nucleo/workers/brief.py`, kind "research", 1200 s) al que solo se llega desde `generic`.
+# Mandar esa petición al navegador la sacaría del embudo — el mismo tipo de daño que ya causó una vez enrutar de
+# más (ver el incidente de `_MODIFY_CODE_RE` en dispatch.py). Al worker genérico se le da igualmente este
+# catálogo, así que «de segunda mano» sigue llegando a Wallapop sin tocar el enrutado.
+TRANSACTIONAL_CATEGORIES = frozenset({"restaurant_booking", "hotel_booking", "flight_search",
+                                      "event_tickets", "local_business"})
+
+
+def category_of(request: str, locale: str | None = None) -> str | None:
+    """The catalog category this request belongs to, or None if it is not one of them.
+
+    Order matters: the specific categories are tested before `general_classifieds`, whose "second-hand"
+    signal would otherwise swallow a used-car search that has its own better site."""
+    text = _norm(request).strip()
+    if not text:
+        return None
+    loc = locale if locale in SITE_CATALOG else resolve_locale(locale)
+    catalog = SITE_CATALOG.get(loc, SITE_CATALOG[_DEFAULT_LOCALE])
+    for category, pattern in _CAT_PATTERNS:
+        if category in catalog and pattern.search(text):
+            return category
+    return None
+
+
+def entry_for(category: str, locale: str | None = None) -> SiteEntry | None:
+    """The trusted site for a category in a locale (None if either is unknown)."""
+    loc = locale if locale in SITE_CATALOG else resolve_locale(locale)
+    return SITE_CATALOG.get(loc, SITE_CATALOG[_DEFAULT_LOCALE]).get(category)
+
+
+def alternatives_for(request: str, exclude_host: str = "", locale: str | None = None) -> list[tuple[str, str]]:
+    """Where to go when the trusted site for this errand has just walled us (V2-213).
+
+    Returns (name, url) pairs, EXCLUDING whatever host already blocked us — offering the site the worker is
+    stuck on is worse than offering nothing, because it reads as «insist». The trusted entry itself is included
+    when the wall came from somewhere else, since that is the one it should have been on.
+
+    Empty list is a legitimate answer: not every category has a written alternative, and inventing one would be
+    the same guessing this exists to stop. The caller says «try another site» without naming one, exactly as
+    before — no worse, and honest about what we know.
+    """
+    cat = category_of(request or "", locale)
+    if not cat:
+        return []
+    entry = entry_for(cat, locale)
+    if entry is None:
+        return []
+    host = (exclude_host or "").strip().lower().removeprefix("www.")
+
+    def _host(url: str) -> str:
+        try:
+            from urllib.parse import urlparse
+            return (urlparse(url).netloc or "").lower().removeprefix("www.")
+        except Exception:
+            return ""
+
+    out: list[tuple[str, str]] = []
+    for name, url in ((entry.name, entry.url), *entry.alts):
+        h = _host(url)
+        if host and h and (h == host or h.endswith("." + host) or host.endswith("." + h)):
+            continue
+        if any(u == url for _, u in out):
+            continue
+        out.append((name, url))
+    return out

@@ -12,7 +12,7 @@ from __future__ import annotations
 import pytest
 
 from connectors.spotify import auth
-from nucleo.flash import refusal_line as RL
+from nucleo.request import refusal_line as RL
 from widgets.musica import data as md
 
 

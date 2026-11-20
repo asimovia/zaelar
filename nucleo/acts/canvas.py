@@ -116,7 +116,7 @@ def show_under_close(text: str = "", *, brief=None, wid: str = "", words: bool =
     if not words:
         return False
     from nucleo.flash import close_guards as _cg
-    from nucleo.flash.text_norm import _norm_txt
+    from nucleo.text_norm import _norm_txt
     if not _cg.looks_like_close(text):
         return False
     n = _norm_txt(text)

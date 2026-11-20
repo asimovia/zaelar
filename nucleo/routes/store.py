@@ -208,7 +208,7 @@ def site_for(domain: str, locale: str | None = None) -> tuple[str, str]:
     if not cat:
         return ("", "")
     try:
-        from nucleo.flash import site_catalog as _sc
+        from nucleo.routes import site_catalog as _sc
         entry = _sc.entry_for(cat, locale)
     except Exception:
         return ("", "")

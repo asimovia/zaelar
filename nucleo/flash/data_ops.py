@@ -12,7 +12,7 @@ import json as _json
 import time
 
 from nucleo.flash import op_receipt as _receipt
-from nucleo.flash import refusal_line as _rline
+from nucleo.request import refusal_line as _rline
 from nucleo.turn import verdicts as _verdicts
 from nucleo.circuit import compose as _outcome
 

@@ -24,11 +24,11 @@ import time as _time
 from nucleo.pulse import scheduler as _sched
 # Re-exported so `router.asks_for_missing_detail` keeps working: it lives apart because it is the one guard
 # that must NOT normalize its input (see its own module).
-from nucleo.flash.clarifying import asks_for_missing_detail  # noqa: F401 — re-export
+from nucleo.acts.clarifying import asks_for_missing_detail  # noqa: F401 — re-export
 # The shared text normalisation both halves of the old file need (2026-09-02 split). It lives apart so that
 # neither half has to import the other back — a cycle papered over with a function-local import is exactly
 # the hidden coupling this file's ratchet counts. Re-exported: `delivery.py` imports `_norm_txt` from here.
-from .text_norm import (  # noqa: F401 — re-export
+from nucleo.text_norm import (  # noqa: F401 — re-export
     _CLAUSE_SPLIT_RE, _DATE_ONLY_WORDS, _STOPWORDS, _content_words, _norm_txt, clause_is_only_a_date,
 )
 
@@ -166,7 +166,7 @@ _SHOW_STRICT_RE = _re.compile(r"\b(abr\w*|muestr\w*|ensen\w*|ense[nñ]\w*|saca\w
 # V2-534's open item #1 (2026-09-01): a NEGATED clause is not a promise. The rule and its clause arithmetic
 # live in `nucleo/flash/negation.py` (the architecture ratchet asked for a module, not a taller ceiling) and
 # are re-exported here so both promise gates keep one import path.
-from nucleo.flash.negation import clause_negated, unnegated_match  # noqa: F401 — re-export
+from nucleo.actionmap.negation import clause_negated, unnegated_match  # noqa: F401 — re-export
 
 
 def looks_like_show_strict(text: str) -> bool:
@@ -199,7 +199,7 @@ def looks_like_escalate_task(text: str) -> bool:
     if _MARKETPLACE_RE.search(n) or _REPORT_RE.search(n):
         return True
     try:
-        from nucleo.flash import site_catalog as _sc
+        from nucleo.routes import site_catalog as _sc
         return (_sc.category_of(text) or "") in _sc.TRANSACTIONAL_CATEGORIES
     except Exception:
         return False
