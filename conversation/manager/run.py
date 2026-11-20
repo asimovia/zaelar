@@ -28,7 +28,7 @@ from conversation.composer.blocks import entry_facts
 from conversation.gateway import dispatch
 from conversation.gateway.authority import RunCtx
 from conversation.gateway.outbox import Read
-from conversation.inbox.mailbox import Batch
+from conversation.inbox.mailbox import MONOLOGUE, Batch
 from conversation.inbox import ordering
 from conversation.manager import claims as CL
 from conversation.manager import commands, hold
@@ -693,6 +693,7 @@ async def _publish(conv: "Conversation", r: "Running", batch: Batch, text: str, 
     (`hold.park`); `due` says it waited and why it goes now — `wall`: as text only."""
     reply = choose(batch.envelopes, conv.devices.get(r.ctx.endpoint or "", Device(r.ctx.endpoint)),
                    text_gets_voice=bool(conv.prefs("reply_voice_to_text", True)))     # his rule, as it stands now
+    due = due or ("wall" if batch.reason == MONOLOGUE else None)   # a monologue past its ceiling: the wall, as text
     if "voice" in reply.channels and due is None and hold.open_on(conv, *hold.devices_of(r)) is not None:
         hold.park(conv, r, batch, text, steps)
         return

@@ -107,8 +107,9 @@ def test_the_recorded_scenarios_meet_their_targets(sid):
     assert check(rep.as_case()) == []                                       # I1–I9 on what it left
     assert not rep.conv.ear.open_ids()                                      # nothing open once the audio is over
     assert m["longest"] <= SPEC["intervention_max_ms"] + 500                 # one beat and the provider's lag
-    assert sc["lost_turns"] == 0 and sc["unclosed_turns"] == 0
-    assert len(sc["eot_delay_ms"]) == len(labels["turns"])
+    assert sc["lost_turns"] == 0
+    if sid != "en-tv-and-cough":                 # a background that never pauses: its pieces chain (R3), see below
+        assert sc["unclosed_turns"] == 0 and len(sc["eot_delay_ms"]) == len(labels["turns"])
     if sid == "en-crosstalk-in-pause":           # three pieces in one prompt with the stranger's words, no cut, nothing
         assert sc["false_cuts"] == 0 and m["spoke_over"] == 0               # said over him (the stranger's words are
         assert sc["exposure"] == [1, 1] and sc["merged_with_stranger"] == 1  # the declared limit)
@@ -118,10 +119,10 @@ def test_the_recorded_scenarios_meet_their_targets(sid):
                                                       for _w, a, b, *_ in rep.conv.ear.spans.words(iv)))
         started = next(t for _run, t, ivs in m["runs"] if any(c == close for c, _iv in m["closes"]))
         assert started - close <= SPEC["resume_hold_max_ms"] + KEEP_TIME_MS
-        # his second question sits in the TV's turn: it reaches the model, with the TV, within the turn's maximum plus
-        # the hold's bound — «30 s plus 8 s at most», the declared cost (§1.6 bis E6)
-        assert sc["eot_delay_ms"][1] <= SPEC["intervention_max_ms"] + SPEC["resume_hold_max_ms"]
-        assert m["spoke_over"] == 0
+        # his second question sits in the TV's turn, which never pauses: the ear cuts it by its length and, with the
+        # voice still up, the pieces chain (R3, plan v3.2 §4) — it reaches the model, with the TV, once the background
+        # ends (or at `monologue_max_ms`, to the wall), never lost and never answered over a voice
+        assert m["spoke_over"] == 0 and sc["unclosed_turns"] <= 2
         # the price of the bound (§1.6 bis, «Coste»): what he went on with sits in a background that never ends, so
         # his first question is answered without its last piece — one cut, never more
         assert sc["false_cuts"] <= 1
@@ -217,7 +218,7 @@ def test_he_goes_on_while_the_watermark_catches_up_and_no_half_answer_is_said(st
 def test_a_background_with_words_and_no_end_never_holds_a_turn_open(store):
     """E6: words keep coming, the provider never ends, the voice never falls: at `intervention_max_ms` from its onset
     what was heard goes as incomplete (`too_long`) and the next intervention starts there; none is longer."""
-    cfg = Config(intervention_max_ms=9000)
+    cfg = Config(intervention_max_ms=9000, monologue_max_ms=20_000)
     h = Harness(store, config=cfg)
     h.hear(S.VadEdge("d1", "rise", 10))
     seq = 0
@@ -229,7 +230,9 @@ def test_a_background_with_words_and_no_end_never_holds_a_turn_open(store):
     assert [p["reason"] for p in too_long][:2] == ["too_long", "too_long"]
     opened = {p["refs"]["iv"]: p["t_ms"] for k, lab, p in h.tel.events if k == "conv_ear" and lab == "opened"}
     assert all(p["t_ms"] - opened[p["refs"]["iv"]] <= cfg.intervention_max_ms + 400 for p in too_long)
-    assert h.model.calls                                     # what was heard reached the model, within the bounds
+    assert h.model.calls                       # what was heard reached the model at the monologue's ceiling (R3)
+    started = [p["t_ms"] for k, lab, p in h.tel.events if k == "conv_run" and lab == "started"]
+    assert min(started) - 10 >= cfg.monologue_max_ms                # never a piece of it before: the pieces chain
 
 
 def test_a_turn_outlasts_the_hold_or_a_background_would_hold_every_batch():

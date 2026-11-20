@@ -34,6 +34,9 @@ RECENT = 64
 VOICE = "voice_open"
 
 
+#: a voice entry the ear cut by its length (`arbiter._incomplete`), and the batch released at the monologue's ceiling
+TOO_LONG, MONOLOGUE = "too_long", "monologue"
+
 class Outcome(Enum):
     """How an accepted envelope ended (I6). `applied`: a control handled by id."""
     TOLD, SILENT, EXPIRED, APPLIED = "told", "silent", "expired", "applied"
@@ -213,12 +216,13 @@ class Inbox:
             pick = [r for r in rows if r["kind"] != str(EnvelopeKind.USER_CONTROL)]
             if not pick or self._waits_for_voice(tx, pick, now):
                 return None
+            monologue = self._chained(tx, pick) is not None      # cut by its length, his voice still up, at the cap
             seq = tx.next_seq("runs")
             for r in pick:
                 self._move(tx, r["id"], state="dequeued", batch=seq)
             pick = ordering.order(pick)
             envs = tuple(E.from_json(r["env"]) for r in pick)
-            reason = self._reason(pick)
+            reason = MONOLOGUE if monologue else self._reason(pick)
             for r in pick:
                 self._emit_row("dequeued", r, batch=seq, queue_age_ms=now - r["accepted"])
             return Batch(seq, envs, reason)
@@ -231,9 +235,22 @@ class Inbox:
         if any(e["kind"] == str(EnvelopeKind.USER_UTTERANCE) and e["body"].get("terminal") is False
                and now - e["sealed_ms"] < self.cfg.nonterminal_start_ms for e in envs):
             return True
+        first = self._chained(tx, pick)
+        if first is not None:                   # a piece cut by its length, his voice still up: the next piece joins
+            return now - first < self.cfg.monologue_max_ms    # it — until the monologue's ceiling, then it runs
         voices = [(iv, v["onset"], v.get("endpoint")) for iv, v in tx.scan(VOICE, states=("open",))]
         return ordering.waits_for_voice([(e["sealed_ms"], e.get("endpoint")) for e in envs], voices, now,
                                         self.cfg.resume_window_ms, self.cfg.resume_hold_max_ms) is not None
+
+    def _chained(self, tx, pick: list[dict]) -> int | None:
+        """R3 (plan v3.2 §4): a voice entry cut by its LENGTH (`too_long`) while his voice is still open on its device
+        does not run: it waits for the next piece and they enter together. The onset of the batch's first voice entry
+        (the monologue's start), or None when nothing chains."""
+        envs = [r["env"] for r in pick if r["kind"] == str(EnvelopeKind.USER_UTTERANCE)]
+        cut = {e.get("endpoint") for e in envs if e["body"].get("reason") == TOO_LONG}
+        if not cut or not any(v.get("endpoint") in cut for _iv, v in tx.scan(VOICE, states=("open",))):
+            return None
+        return min(e["onset_ms"] for e in envs)
 
     def words_since(self, t_ms: int) -> bool:
         """Did the person send an entry with words (an utterance or a text) accepted after `t_ms`?"""

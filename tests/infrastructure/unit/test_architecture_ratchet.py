@@ -741,6 +741,8 @@ _PACKAGE_CEILINGS["nucleo/conversation_host"] += 5     # 2026-11-20 V2-941 (plan
 _TOTAL_MAX += 5      # same cause, measured
 _PACKAGE_CEILINGS["conversation"] += 180               # 2026-11-20 V2-941 (plan v3.2 §4, R3, commit 3): a declared new mechanism — our voice never starts while his voice is open (`manager/hold.py`: one predicate, a ready reply parked and never redone, the chunk he adds run with it in view, the two exits, the sweep and the owed lines held by it; the grace-parked reply moved beside it to keep `run.py` under 800)
 _TOTAL_MAX += 180    # same cause, measured
+_PACKAGE_CEILINGS["conversation"] += 18                # 2026-11-20 V2-941 (plan v3.2 §4, R3, commit 4): a piece cut by its length with his voice still up waits for the next one (`mailbox._chained`), and at the monologue's ceiling the batch runs and its reply goes to the wall
+_TOTAL_MAX += 18     # same cause, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())
