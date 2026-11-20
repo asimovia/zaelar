@@ -39,7 +39,7 @@ export function createOutbox({ storage, send, onNoSession, now = () => Date.now(
       while (xs.length) {
         const head = xs[0];
         let r = null;
-        try { r = await send(head.t); } catch (_) { r = { ok: false, reason: "network" }; }
+        try { r = await send(head.t, head.cid); } catch (_) { r = { ok: false, reason: "network" }; }
         if ((r && r.ok) || (r && r.reason === "empty")) {
           xs = load().filter((x) => x.id !== head.id);
           save(xs);
@@ -53,11 +53,13 @@ export function createOutbox({ storage, send, onNoSession, now = () => Date.now(
     } finally { draining = false; }
   }
 
-  function add(text) {
+  // `cid`: the line's own id on his wall (the chat wall's component gives it), sent with every try — the engine reads
+  // a repeated one as the same line, so a retry after a lost answer is never a second line.
+  function add(text, cid) {
     const t = String(text || "").trim();
     if (!t) return false;
     const xs = load();
-    xs.push({ id: now().toString(36) + Math.random().toString(36).slice(2, 7), t, at: now() });
+    xs.push({ id: now().toString(36) + Math.random().toString(36).slice(2, 7), t, at: now(), ...(cid ? { cid } : {}) });
     save(xs);
     drain();
     return true;

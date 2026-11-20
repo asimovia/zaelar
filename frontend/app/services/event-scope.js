@@ -29,7 +29,7 @@ export const ORIGIN_SCOPED = {
 export const ALL_SCREENS = [
   "alert", "ambient", "artifact", "ask", "ask_resolved", "bot_speech", "brain", "cluster", "energy", "error", "filler", "interim", "language",
   "memory", "notify", "pulse", "run", "screens", "secret", "session", "state", "status", "task", "task_state",
-  "transcript", "ui", "vad",
+  "transcript", "ui", "vad", "wall",
 ];
 
 /** The scope of one event: "origin" or "all". */

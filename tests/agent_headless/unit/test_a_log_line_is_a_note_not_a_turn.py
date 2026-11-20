@@ -31,7 +31,7 @@ def test_the_typed_door_records_the_note_and_hands_nothing_to_the_session(monkey
     events, delivered = [], []
     monkeypatch.setattr("voice.observer.emit", lambda *a, **k: events.append((a, k)))
 
-    async def _deliver(text, dev):
+    async def _deliver(text, dev, cid=""):
         delivered.append(text)
         return True
     monkeypatch.setattr(screens_api.screens, "deliver_typed", _deliver)

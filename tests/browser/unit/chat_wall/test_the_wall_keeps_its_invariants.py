@@ -20,8 +20,8 @@ import pytest
 ENGINE = Path(__file__).resolve().parents[4]
 SCRIPT = Path(__file__).with_name("test_the_wall_keeps_its_invariants.mjs")
 WALL = ENGINE / "frontend/chat-wall"
-#: the only files outside the folder that may import the component (the plan's one bridge; none yet)
-BRIDGES: frozenset[str] = frozenset()
+#: the only file outside the folder that may import the component: its one bridge
+BRIDGES: frozenset[str] = frozenset({"frontend/app/services/wall-bridge.js"})
 IMPORT = re.compile(r"""(?:import\s[^'"]*?from\s*|import\s*\(\s*|import\s+)['"]([^'"]+)['"]""")
 
 

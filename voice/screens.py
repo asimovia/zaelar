@@ -550,15 +550,16 @@ def typed_waiting(window_s: float = WAITING_S) -> bool:
     return time.time() - _WAITING["at"] < window_s
 
 
-async def deliver_typed(text: str, dev) -> bool:
-    """Hand a typed line to the live session. False when there is none — the caller then brings one up."""
+async def deliver_typed(text: str, dev, cid: str = "") -> bool:
+    """Hand a typed line to the live session. False when there is none — the caller then brings one up. `cid`: the
+    line's id on the screen that typed it, handed on when there is one."""
     fn = _typed["fn"]
     t = str(text or "").strip()
     if fn is None or not t:
         return False   # not a failure: nobody holds a session, and the caller brings one up
     touched(dev)
     note_waiting()
-    await fn(t, clean(dev))
+    await (fn(t, clean(dev), cid) if cid else fn(t, clean(dev)))
     return True
 
 

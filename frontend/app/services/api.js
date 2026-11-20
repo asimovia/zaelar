@@ -165,8 +165,8 @@ export const postCanvasState = (open) => { try { postJSON("/api/canvas/state", {
 // ---- ONE AGENT, MANY SCREENS (V2-792) ----
 // A typed line from a screen that does NOT hold the voice: that screen has no LiveKit room, so the line goes over
 // HTTP into the one live session. Resolves `{ok}`; `reason:"no_session"` means nobody holds a session at all.
-export const chatText = (text) =>
-  postJSON("/api/chat", { text, dev: DEVICE }).then((r) => r.json()).catch(() => ({ ok: false, reason: "network" }));
+export const chatText = (text, cid) =>
+  postJSON("/api/chat", { text, dev: DEVICE, ...(cid ? { cid } : {}) }).then((r) => r.json()).catch(() => ({ ok: false, reason: "network" }));
 // Visible / hidden, and «the operator touched this screen» — how the server tells the active screen; every beat carries
 // whether this screen's «look at me» camera runs (V2-932: a flag, so a restarted engine learns it on the next beat).
 let _camera = false;

@@ -81,6 +81,8 @@ def receive(ev: dict, hand=None) -> int:
                 _rose_turn[stream] = ev["turn"]
             if starts:
                 _rose[stream] = min(starts + ([_rose[stream]] if stream in _rose else []))
+        from nucleo.conversation_host import wall
+        wall.heard(stream, ev["turn"], _heard.get(stream, ""))     # his line on the wall, live, as he speaks
     out = gap + signals(ev)
     _attend(ev)
     if ev.get("t") == "eot" and ev.get("kind") == "end":

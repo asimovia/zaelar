@@ -40,6 +40,7 @@ JS_TOTAL_MAX += 18   # 2026-11-19 (4.595, operator): the phone home is only the 
 JS_TOTAL_MAX += 6    # 2026-11-19 INI-042 #47 (4.599): «close all» closes Settings and every native surface (`screen-panel.closePanels`, `pages.closePages`)
 JS_TOTAL_MAX += 7    # 2026-11-19 (4.600, operator): a phone back from the background onto a newer frontend reloads instead of showing the bar (`update/watch.js` reloadOnReturn, its switch in UpdateSurface)
 JS_TOTAL_MAX += 156  # 2026-11-20 INI-042 #49 (4.601): the chat wall as a component of its own (`frontend/chat-wall/`: model, view, entry) — paid back when the old wall leaves the store (the wall plan's commit 3)
+JS_TOTAL_MAX += 31   # 2026-11-20 INI-042 #49 (4.602): the wall's one bridge (`services/wall-bridge.js`) and the typed line's own id through the outbox — paid back with the +156 in the wall plan's commit 3
 
 
 def _ours(p: Path) -> bool:

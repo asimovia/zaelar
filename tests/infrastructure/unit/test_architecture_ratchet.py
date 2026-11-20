@@ -730,6 +730,10 @@ _PACKAGE_CEILINGS["nucleo/conversation_host"] += 35    # 2026-11-20 V2-941 (the 
 _PACKAGE_CEILINGS["nucleo/pulse"] += 8                 # same cause: `notice_claim.paint`, a claimed notice's card when it sounds
 _PACKAGE_CEILINGS["voice"] += 5                        # same cause: `proactive.paint`, the primitive's UI half alone
 _TOTAL_MAX += 52     # same cause, measured
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 146   # 2026-11-20 V2-941 INI-042 #49 (the wall plan's commit 2/5): a declared new mechanism — the chat wall's actions with ids from a session of the manager (`wall.py`: his spoken line live then final, his typed line by its screen's `cid`, our line as it sounded)
+_PACKAGE_CEILINGS["server"] += 1                       # same cause: `POST /api/chat` carries the screen's `cid`
+_PACKAGE_CEILINGS["voice"] += 2                        # same cause: the typed door hands the `cid` on; a live wall update is never stored (W-1)
+_TOTAL_MAX += 151    # same cause, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

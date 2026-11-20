@@ -54,6 +54,8 @@ class WallMouth:
             observer.emit("brain", REPLY, text=order.text, role="assistant", extra=extra, piece="f_mouth")
         if voiced and self.voice.speak(order, self._sounded(order)):
             return                                      # its acks come from the voice: what sounded, or «unknown»
+        from nucleo.conversation_host import wall
+        wall.ours(order, "shown")
         if notice:
             _card(order)                                # shown: its card, as every notice
         else:
@@ -69,13 +71,19 @@ class WallMouth:
         notice, started = bool(getattr(order, "notice_key", None)), []
 
         def ack(sig) -> None:
+            from nucleo.conversation_host import wall
             from voice import observer, trace
             if isinstance(sig, SayStarted):
                 started.append(sig.t_ms)
+                wall.ours(order, "started")
                 trace.adopt(trace_of(order))
                 if notice:
                     _card(order)
             elif isinstance(sig, SayEnded) and (started or not notice):
+                if not started:                         # never started: on the wall whole, never said to have sounded
+                    wall.ours(order, "shown")
+                else:
+                    wall.ours(order, "ended", sig.heard_chars)
                 heard = order.text if sig.heard_chars is None else order.text[:max(0, sig.heard_chars)]
                 if heard.strip():
                     observer.emit("transcript", "zaelar", text=heard, role="assistant",

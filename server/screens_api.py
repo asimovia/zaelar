@@ -30,13 +30,16 @@ screens.register_policy(_single)     # the voice layer asks the widgets' own dec
 
 
 @router.post("/api/chat")
-async def chat(text: str = Body(..., embed=True), dev: str = Body("", embed=True)) -> JSONResponse:
+async def chat(text: str = Body(..., embed=True), dev: str = Body("", embed=True),
+               cid: str = Body("", embed=True)) -> JSONResponse:
     """Deliver a typed line to the live session, whichever screen typed it.
 
     The surface holding the voice types through its LiveKit data channel, as before. Every other surface has no
     room — the voice lock gives a room to one surface — so its typed line used to sit in a queue waiting for a
     connection the lock would never grant. `ok:false, reason:"no_session"` means nobody holds a live session: the
-    caller then brings the voice up itself, which is the only way a session exists."""
+    caller then brings the voice up itself, which is the only way a session exists. `cid`: the line's id on the
+    screen that typed it — the conversation manager takes it as the line's own (a repeated one is the same line); it
+    is checked for its shape and never names an owner."""
     from nucleo import runstate
     from nucleo.input import support_note
     if support_note.record(str(text or "")[:4000], screens.clean(dev)):
@@ -46,7 +49,7 @@ async def chat(text: str = Body(..., embed=True), dev: str = Body("", embed=True
     t = str(text or "").strip()[:4000]
     if not t:
         return JSONResponse({"ok": False, "reason": "empty"}, status_code=400)
-    if not await screens.deliver_typed(t, dev):
+    if not await screens.deliver_typed(t, dev, cid=cid):
         screens.note_unheld(t, dev)      # on the timeline once: a line that waits leaves a trace of its wait
         return JSONResponse({"ok": False, "reason": "no_session"})
     return JSONResponse({"ok": True})

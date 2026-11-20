@@ -1151,13 +1151,13 @@ export async function reconnect() {
 // never says whether anything received a line, so typed text no longer rides it at all: the outbox below sends
 // over HTTP and keeps each line until the engine answers that it has it.
 // THE OUTBOX (operator, 2026-11-08) — every typed line is kept until the engine has it; see `outbox.js`.
-const _outbox = createOutbox({ storage: localStorage, send: (t) => api.chatText(t), onNoSession: arrival.noSession(
+const _outbox = createOutbox({ storage: localStorage, send: (t, cid) => api.chatText(t, cid), onNoSession: arrival.noSession(
   () => ({ started, starting, watching: !!_agentWatch, agent: arrival.agentPresent(room) }), () => start(), () => reconnect(), api.clientLog) });
 const _drainOutbox = () => _outbox.drain();
 if (_outbox.size()) _outbox.later(1500);           // a reload with his lines still undelivered
 
-export function sendText(text) {
-  return _outbox.add(text);
+export function sendText(text, cid) {          // `cid`: the line's id on his wall, the engine's for it too
+  return _outbox.add(text, cid);
 }
 
 // V2-749 — the sentence the cheap ear heard, on its own topic. `text` carries the wake word, so the engine's

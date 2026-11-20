@@ -34,7 +34,7 @@ _t0 = {"v": None}
 # someone classifies it here; silence by omission is the worst way to lose a signal. The same applies to `error`/`alert`.
 _CAT = {
     # ── FlashBrain (ON) — the TURN: what was said, decided by the orchestrator, or searched.
-    "brain": "flash", "transcript": "flash", "ambient": "flash", "search": "flash",
+    "brain": "flash", "transcript": "flash", "ambient": "flash", "search": "flash", "wall": "flash",   # wall: INI-042 #49
     "rail": "flash", "trace": "flash", "whisper": "flash",   # whisper: V2-889 F2, the slot between turns (gate·slot·use)
     # `filler` (V2-122 addenda, 2026-08-18): the lead-in wait-filler ("Un segundo…"), explicitly PUSHED to the
     # chat wall (see `voice/engine/speech/filler_audio.py`) — same family as the turn that spoke it, but its own kind so the
@@ -525,8 +525,8 @@ def emit(kind: str, label: str, text: str = "", role: str = "", extra: dict | No
     # EPHEMERAL: live partial transcript (interim). UI-only (subtitles/chat while speaking) — it is NOT persisted
     # or put in the ring (it would flood the log with every word). It only goes to SSE. Previously `DebugBus.partial`
     # (vl2 topic) kept this separately; with the observer unified, it is marked ephemeral here.
-    if kind == "interim":
-        ev = {"kind": "interim", "label": label, "text": text, "role": role}
+    if kind == "interim" or (kind == "wall" and (extra or {}).get("live")):   # W-1: a line still being said
+        ev = {"kind": kind, "label": label, "text": text, "role": role}
         _merge(ev, extra)
         try:
             from bus import sse as _bus_sse

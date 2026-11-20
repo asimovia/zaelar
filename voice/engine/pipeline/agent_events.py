@@ -243,7 +243,7 @@ def open_mic_door(*, session, _emit=None):
     return _set
 
 
-def receive_typed(txt: str, *, _emit, session, dev: str = "") -> None:
+def receive_typed(txt: str, *, _emit, session, dev: str = "", cid: str = "") -> None:
     """A typed line becomes a turn — from this room's data channel (the voice holder) or from another screen through
     `POST /api/chat` (V2-792), which has no room of its own. One body for both, so a line typed on the phone and one
     typed on the desktop leave the same trace. `dev` names the screen; empty = the holder, as before."""
@@ -280,7 +280,7 @@ def receive_typed(txt: str, *, _emit, session, dev: str = "") -> None:
             _conv_switch.fall_back(session, "the conversation could not open")
             route = lambda: _route_typed(txt, _emit=_emit, session=session)   # noqa: E731
             loop.call_soon_threadsafe(route) if loop is not None else route()
-        _conv_entry.typed(txt, dev, old=old)         # its inbox orders it: no second wait behind a voice here
+        _conv_entry.typed(txt, dev, old=old, cid=cid)   # its inbox orders it; `cid`: the line's id on his wall
         return
     _route_typed(txt, _emit=_emit, session=session)
 
@@ -305,11 +305,11 @@ def open_typed_door(*, _emit, _on_session_loop, session):
     opens goes back to the screen that typed. Registered here, cleared by `_on_close` (only if it is still ours)."""
     from voice import screens as _screens
 
-    async def _typed_from_screen(text: str, dev: str) -> None:
+    async def _typed_from_screen(text: str, dev: str, cid: str = "") -> None:
         async def _do():
             _tok = _screens.ORIGIN.set(dev)
             try:
-                receive_typed(text, _emit=_emit, session=session, dev=dev)
+                receive_typed(text, _emit=_emit, session=session, dev=dev, cid=cid)
             finally:
                 _screens.ORIGIN.reset(_tok)
         await _on_session_loop(_do)

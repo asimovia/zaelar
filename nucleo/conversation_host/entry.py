@@ -65,9 +65,9 @@ def runtime():
     """The account's conversation, opened if it is not yet. Opening can wait — its lease is a write on the shared
     database, under the lock other writers hold for seconds at times — so it never runs on a caller's loop: see
     `_hand`."""
-    from nucleo.conversation_host import boot, guards, sessions, turns, wall_lines
+    from nucleo.conversation_host import boot, guards, sessions, turns, wall, wall_lines
     acct = boot.account()
-    listeners = (_listen, turns.listen, wall_lines.listen, guards.listen)
+    listeners = (_listen, turns.listen, wall_lines.listen, guards.listen, wall.listen)
     return sessions.get(acct) or sessions.open_(acct, "body", boot.make(listeners, _said))
 
 
@@ -164,13 +164,16 @@ def _guards(text: str, dev: str) -> dict | None:
     return None
 
 
-def typed(text: str, dev: str = "", *, wait: bool = False, checked: bool = False, old=None) -> dict:
+def typed(text: str, dev: str = "", *, wait: bool = False, checked: bool = False, old=None, cid: str = "") -> dict:
     """Hand a typed line over and return at once. The guards read the engine's state, which can wait on the shared
     database lock: unless the caller already `checked` them off its loop, they run on the conversation's side. `old`:
-    how its door answers it the old way if the conversation never opens (a waiting caller gets `NOT_OPENED`)."""
+    how its door answers it the old way if the conversation never opens (a waiting caller gets `NOT_OPENED`). `cid`: the
+    line's id on the screen that typed it, taken when it has the shape of one (a repeated one is the same line — the
+    inbox's dedupe — and it never names an owner), else one is made."""
     if not str(text or "").strip():
         return {"ok": False, "reason": "empty"}
-    cid = f"c_{uuid.uuid4().hex[:12]}"
+    from nucleo.conversation_host import wall
+    cid = cid if wall.client_id_ok(cid) else f"c_{uuid.uuid4().hex[:12]}"
     if wait:
         with _lock:
             _waits[cid] = {"iv": None, "future": concurrent.futures.Future(), "said": [], "reads": [],

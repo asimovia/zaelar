@@ -29,7 +29,7 @@ def log(monkeypatch):
     turns._reset_for_tests()
     out = []
     monkeypatch.setattr(observer, "emit", lambda kind, label, text="", role="", extra=None, piece=None:
-                        out.append((kind, label, text, role, dict(extra or {}))))
+                        kind != "wall" and out.append((kind, label, text, role, dict(extra or {}))))   # the wall: 13.119
     return out
 
 

@@ -54,4 +54,14 @@ const flush = () => new Promise((r) => setTimeout(r, 0));
   fail = false; await ob.drain();
   assert.deepEqual(sent, ["one", "two"]);
 }
+// 6 · a line keeps its id on his wall (`cid`, INI-042 #49) through a failure and a reload: every try sends the same one
+{
+  const s = store(), tries = [];
+  const down = createOutbox({ storage: s, send: async (t, cid) => { tries.push([t, cid]); return { ok: false, reason: "network" }; }, schedule: () => 1 });
+  down.add("w1", "c_abc");
+  await flush();
+  const reloaded = createOutbox({ storage: s, send: async (t, cid) => { tries.push([t, cid]); return { ok: true }; }, schedule: () => 1 });
+  await reloaded.drain();
+  assert.deepEqual(tries, [["w1", "c_abc"], ["w1", "c_abc"]]);
+}
 console.log("ok");
