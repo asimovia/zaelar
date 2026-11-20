@@ -3054,6 +3054,14 @@ DOMAINS: list[dict] = [
                                  "at once instead of showing the bar; the desktop keeps the bar; the same frontend reloads nothing. "
                                  "Disarm: the return no longer reloads",
             "ch": UNIT, "paths": ["tests/browser/unit/arranque/test_a_phone_back_from_the_background_runs_the_new_screen.py"]},
+        {"id": "4.601", "title": "The chat wall is a component of its own (INI-042 #49, the wall plan §2): `frontend/chat-wall/` "
+                                 "imports nothing from outside its folder and nothing imports it but its bridge (M10); its model "
+                                 "keeps M1–M6 and M9 under thousands of random actions from four writers and refuses a forged owner; "
+                                 "alone on a blank page in a real browser its four actions and three notices work (B10), a foreign "
+                                 "writer changes nothing painted and is counted (B5), and a line keeps its node through 200 actions "
+                                 "while a reader who scrolled up is never moved (B4)",
+            "ch": UNIT, "paths": ["tests/browser/unit/chat_wall/test_the_wall_keeps_its_invariants.py",
+                                  "tests/browser/unit/chat_wall/test_the_wall_alone_in_a_browser.py"]},
         {"id": "4.598", "title": "Nobody wakes the agent to leave it stopped (INI-042 #46): only the ⏻ door (`power.setPower`) "
                                  "calls `runStop`; both shells' boot probe REFLECTS the server's ⏻ (`presence.reflectRunState`) "
                                  "and never sends a stored one — a stale «stopped» follows a running agent, a real stop holds, "

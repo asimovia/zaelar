@@ -1,0 +1,15 @@
+/* chat-wall/chat-wall.css — the component's own look. Colours are custom properties a host may set. */
+.cw-root { display: flex; flex-direction: column; min-height: 0; height: 100%; gap: 8px;
+  --cw-you: #2b6cb0; --cw-you-text: #fff; --cw-agent: rgba(127, 127, 127, 0.14); --cw-agent-text: inherit; }
+.cw-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 8px; }
+.cw-line { max-width: 85%; padding: 6px 10px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere;
+  line-height: 1.35; }
+.cw-line[hidden] { display: none; }
+.cw-you { align-self: flex-end; background: var(--cw-you); color: var(--cw-you-text); }
+.cw-agent { align-self: flex-start; background: var(--cw-agent); color: var(--cw-agent-text); }
+.cw-note { align-self: center; opacity: 0.7; font-size: 0.9em; }
+.cw-box { align-self: stretch; max-width: 100%; padding: 0; }
+.cw-live { border: 1px dashed currentColor; opacity: 0.85; }
+.cw-form { display: flex; gap: 6px; padding: 0 8px 8px; }
+.cw-input { flex: 1 1 auto; resize: none; font: inherit; padding: 6px 8px; border-radius: 8px; }
+.cw-send { flex: 0 0 auto; }
