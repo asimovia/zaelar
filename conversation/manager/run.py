@@ -32,7 +32,7 @@ from conversation.manager import commands
 from conversation.manager import record as records
 from conversation.mouth import Device, choose
 from conversation.telemetry import root
-from conversation.ports import (UNCLAIMED, Command, Done, Failed, PromptParts, StaleEpoch, TextDelta, ToolCall,
+from conversation.ports import (RELAY, UNCLAIMED, Command, Done, Failed, PromptParts, StaleEpoch, TextDelta, ToolCall,
                                 ToolResult)
 from conversation.types import Coverage, EnvelopeKind, ItemKind, MgrState
 
@@ -163,8 +163,11 @@ async def _fail(conv: "Conversation", r: "Running", reason: str) -> None:
     pushed, or shown."""
     now = conv.clock.now_ms()
     conv.inbox.account(list(r.batch_ids), "failed", now)            # accounted first: whatever the mouth does next
-    closed = [req for req in r.requests if close(conv, req, "recovered", "recovered", r, reason=reason)]
-    said = await _say_failed_safely(conv, r)
+    said = False
+    try:                                    # said BEFORE the close: whoever waits on the close finds the line there
+        said = await _say_failed_safely(conv, r)
+    finally:                                # …and closed whatever the mouth did, a cancel included
+        closed = [req for req in r.requests if close(conv, req, "recovered", "recovered", r, reason=reason)]
     if not said:
         _owe(conv, r, reason, closed)
     _emit(conv, "ended", r, outcome="failed", reason=reason, said=said)
@@ -279,6 +282,7 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
     _emit(conv, "prompt", r, prompt_chars=len(prompt.state) + len(prompt.input), tools=len(tools))
     steps: list = []
     repaired = False
+    model_id = conv.cfg.model_id
     channel = "voice" if any(e.kind is EnvelopeKind.USER_UTTERANCE for e in batch.envelopes) else "text"
     t0 = conv.clock.mono_ms()
     refs = {"run": r.run_id}
@@ -286,7 +290,7 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
         called, first, text = False, True, ""
         t_step = conv.clock.mono_ms()
         events = conv.model.stream(PromptParts(prompt.prefix, prompt.state, prompt.conversation, prompt.input,
-                                               tuple(steps), channel), tools, run_id=r.run_id, model_id=conv.cfg.model_id)
+                                               tuple(steps), channel), tools, run_id=r.run_id, model_id=model_id)
         stream = guard.stream(conv.em, conv.cfg, events, refs)
         try:
             async for ev in stream:
@@ -318,6 +322,10 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
                 elif isinstance(ev, Done):
                     _emit(conv, "model_done", r, usage=ev.usage)
         except guard.PortTimeout:
+            if first and model_id != RELAY:        # the deadline passed with nothing from the model: the same step
+                model_id = RELAY                    # goes once to the stand-in — nothing said, nothing fired
+                _emit(conv, "command", r, command="relay", reason="provider:timeout")
+                continue
             await _fail(conv, r, "provider:timeout")
             return
         finally:                                    # a stop, a deadline, a command: the provider's stream is closed now

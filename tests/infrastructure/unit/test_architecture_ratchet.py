@@ -653,6 +653,9 @@ _PACKAGE_CEILINGS["voice"] += 4            # same: a voice proved his by the loc
 _TOTAL_MAX += 19     # same cause
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 25    # 2026-11-20 V2-941: the manager for his TEXT only — the typed doors by it, the voice on the old path (`switch.TEXT`, `typed_on`)
 _TOTAL_MAX += 25     # same cause
+_PACKAGE_CEILINGS["conversation"] += 14    # 2026-11-20 V2-941 v3.1 B7k (the final text suite): a failed run says its line before its request closes; a provider deadline with nothing from the model goes once to the stand-in (`ports.RELAY`)
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 27    # same: the text door waits for the end of a run the liveness closed (`entry._closed`), the model port asks the routing for the stand-in
+_TOTAL_MAX += 41     # same cause
 
 
 def test_the_total_only_shrinks():

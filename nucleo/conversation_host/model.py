@@ -18,7 +18,8 @@ import itertools
 import json
 from typing import Any, AsyncIterator
 
-from conversation.ports import UNCLAIMED, Command, Done, Failed, PromptParts, TextDelta, ToolCall, ToolResult, ToolSpec
+from conversation.ports import (RELAY, UNCLAIMED, Command, Done, Failed, PromptParts, TextDelta, ToolCall, ToolResult,
+                                ToolSpec)
 
 from conversation.manager.claims import OPS       # the package's own operations, never a second list
 
@@ -132,6 +133,12 @@ class FastModel:
             said = False
             try:
                 client, spec = self._parts()
+                if model_id == RELAY:               # the run's deadline passed on the titular: its stand-in, or none
+                    from nucleo.llm.fast_client import relay_spec_for
+                    spec = relay_spec_for(spec, "voice")
+                    if spec is None:
+                        yield Failed("no stand-in", "provider")
+                        return
                 # every answer is an ORDER (a read, `reply` or `no_reply`): the provider is told a tool call is required
                 async for chunk in client.stream(messages(prompt), spec=spec, tools=tools_for(tools),
                                                  on_tool_call=lambda name, args: calls.append((name, args)),

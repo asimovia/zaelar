@@ -102,6 +102,11 @@ class Failed:
 ModelEvent = TextDelta | ToolCall | Command | Done | Failed
 
 
+#: the `model_id` that asks the port for its stand-in: a provider other than the one the account's runs use. A run
+#: asks for it once, when its deadline passed before the model said anything (nothing to undo, nothing fired).
+RELAY = "relay"
+
+
 class Model(Protocol):
     def stream(self, prompt: PromptParts, tools: list[ToolSpec], *, run_id: str,
                model_id: str) -> AsyncIterator[ModelEvent]: ...

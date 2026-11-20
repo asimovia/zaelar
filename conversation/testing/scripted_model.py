@@ -30,6 +30,7 @@ class Call:
     prompt: PromptParts
     tools: list[ToolSpec]
     key: str
+    model_id: str = ""
 
 
 @dataclass
@@ -42,7 +43,7 @@ class ScriptedModel:
         ids = input_ids(prompt)
         key = "+".join(ids)
         steps = self.script.get(key) or self.script.get(ids[0] if ids else "")
-        self.calls.append(Call(run_id, prompt, list(tools), key))
+        self.calls.append(Call(run_id, prompt, list(tools), key, model_id))
         events = steps[min(len(prompt.steps), len(steps) - 1)] if steps else self.default(ids)
         for ev in events:
             if hasattr(ev, "__await__"):

@@ -97,9 +97,9 @@ def test_b3_a_hung_model_times_out_and_the_request_recovers_visibly(store):
         calls: list = []
 
         async def stream(self, prompt, tools, *, run_id, model_id):
-            self.calls.append(prompt)
-            if len(self.calls) == 1:
-                await asyncio.sleep(10)                         # the provider holds the stream and sends nothing
+            self.calls.append(model_id)
+            if len(self.calls) <= 2:                            # the titular and its stand-in hold the stream and
+                await asyncio.sleep(10)                         # send nothing
             yield reply("w-recovery")
             yield Done()
 
@@ -110,7 +110,7 @@ def test_b3_a_hung_model_times_out_and_the_request_recovers_visibly(store):
     assert "conv_run/port_slow" in h.tel.labels()
     said = [(o.text, o.notice_key, tuple(sorted(o.channels))) for o in h.mouth.orders]
     assert said == [("failed:provider:timeout", "conv:failed:r_iv_000001", ("voice",))]   # owed, said as it is
-    assert len(h.conv.model.calls) == 1                             # no model words the failure
+    assert h.conv.model.calls == ["", "relay"]                      # the stand-in once; no model words the failure
     assert h.owed.rows["conv:failed:r_iv_000001"]["state"] == "spoken"
 
 

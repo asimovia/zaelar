@@ -39,12 +39,19 @@ def _listen(kind: str, label: str, p: dict) -> None:
                 if w.get("iv") and req == f"r_{w['iv']}":
                     w["reads"].append({"name": p.get("tool"), "args": p.get("args") or {}, "outcome": label})
     elif kind == "conv_close":
-        req = (p.get("refs") or {}).get("req")
+        refs = p.get("refs") or {}
         with _lock:
-            done = [w for w in _waits.values() if w.get("iv") and req == f"r_{w['iv']}"]
+            done = [w for w in _waits.values() if w.get("iv") and refs.get("req") == f"r_{w['iv']}"]
         for w in done:
             if not w["future"].done():
+                w["run"] = refs.get("run")              # the run that closed it: its line may come after the close
                 w["future"].set_result(label)
+    elif kind == "conv_run" and label == "ended":
+        run = (p.get("refs") or {}).get("run")
+        with _lock:
+            for w in _waits.values():
+                if run and w.get("run") == run and w.get("ended") is not None:
+                    w["ended"].set()
 
 
 def _said(request_id: str, text: str) -> None:
@@ -156,7 +163,8 @@ def typed(text: str, dev: str = "", *, wait: bool = False, checked: bool = False
     cid = f"c_{uuid.uuid4().hex[:12]}"
     if wait:
         with _lock:
-            _waits[cid] = {"iv": None, "future": concurrent.futures.Future(), "said": [], "reads": []}
+            _waits[cid] = {"iv": None, "future": concurrent.futures.Future(), "said": [], "reads": [],
+                           "ended": threading.Event()}
     from conversation.ear import signals as S
     sig = S.TypedSubmit(dev or "holder", cid, str(text).strip()[:4000], int(time.time() * 1000))
 
@@ -233,6 +241,20 @@ def voice_lost() -> None:
             asyncio.run(notices.notify("zaelar", line, key=f"conv:lost:{int(time.time())}"))
 
 
+async def _closed(w: dict, timeout_s: float) -> str:
+    """How the line's request closed, once its answer is in `w["said"]`: a request the liveness closed while its run
+    was still in course hears the line that run says when it stops — so the door waits for the run's end, inside its
+    own deadline. `no_close_yet` past the deadline."""
+    deadline = time.monotonic() + timeout_s
+    try:
+        label = await asyncio.wait_for(asyncio.wrap_future(w["future"]), timeout_s)
+    except asyncio.TimeoutError:
+        return "no_close_yet"
+    if label != "answered" and w.get("run") and not w["said"]:
+        await asyncio.to_thread(w["ended"].wait, max(0.0, deadline - time.monotonic()))
+    return label
+
+
 async def typed_and_wait(text: str, dev: str = "", *, timeout_s: float = 90.0) -> dict:
     """The text channel's shape (`ok`, `reply`, `tool_calls`: the reads its run made, with their arguments; `trace`:
     its flow) plus the reads the gateway refused and a `conv` block with the ids."""
@@ -245,9 +267,7 @@ async def typed_and_wait(text: str, dev: str = "", *, timeout_s: float = 90.0) -
     with _lock:
         w = _waits[got["cid"]]
     try:
-        label = await asyncio.wait_for(asyncio.wrap_future(w["future"]), timeout_s)
-    except asyncio.TimeoutError:
-        label = "no_close_yet"
+        label = await _closed(w, timeout_s)
     finally:
         with _lock:
             _waits.pop(got["cid"], None)
