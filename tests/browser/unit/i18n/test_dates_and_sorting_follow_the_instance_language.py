@@ -12,6 +12,7 @@ ENGINE = Path(__file__).resolve().parents[4]
 
 SCOPED = [
     "frontend/app/components/ChatWall.js",
+    "frontend/side/procesos/model.js",
     "frontend/app/components/ConfigPanel.js",
     "frontend/app/services/wakeword.js",
     "frontend/app/services/session-lk.js",

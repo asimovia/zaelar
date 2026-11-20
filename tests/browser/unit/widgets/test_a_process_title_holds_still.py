@@ -22,11 +22,12 @@ def test_the_row_renders_the_three_layers() -> None:
     """The contract with the card (same spirit as the clusters-tab test): the stable name, the activity under
     it, and the state/elapsed line. If the classes or the fields drift, the .mjs above stays green while the
     operator sees one line again — this is the seam between the store's truth and his eyes."""
-    chatwall = (Path(__file__).resolve().parents[4] / "frontend" / "app" / "components" / "ChatWall.js") \
-        .read_text(encoding="utf-8")
-    assert 'task.title' in chatwall and '"cw-proc-goal" }, title' in chatwall, "the goal line must be the TITLE"
-    assert 'cw-proc-note' in chatwall, "the live activity has its own line"
-    assert 'note !== title' in chatwall, "a note that repeats the title is the same text twice"
-    assert 'chat.procElapsed' in chatwall and 'chat.waitingYou' in chatwall, "state + elapsed on the meta line"
-    styles = (Path(__file__).resolve().parents[4] / "frontend" / "app" / "styles.css").read_text(encoding="utf-8")
+    side = Path(__file__).resolve().parents[4] / "frontend" / "side" / "procesos"
+    model = (side / "model.js").read_text(encoding="utf-8")
+    view = (side / "procesos.js").read_text(encoding="utf-8")
+    assert 'task.title' in model and '"cw-proc-goal", v.title' in view, "the goal line must be the TITLE"
+    assert 'cw-proc-note' in view, "the live activity has its own line"
+    assert 'note !== title' in model, "a note that repeats the title is the same text twice"
+    assert 'chat.procElapsed' in model and 'chat.waitingYou' in model, "state + elapsed on the meta line"
+    styles = (side / "procesos.css").read_text(encoding="utf-8")
     assert ".cw-proc-note" in styles, "the note line has no CSS — it would render unstyled or not at all"

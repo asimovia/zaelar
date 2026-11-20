@@ -1,0 +1,30 @@
+/* side/procesos/procesos.css — the «Procesos» column's own look: the list and its three row shapes (live,
+   finished, timed). The sub-tab bar (`.cw-subtabs`) and the empty line (`.cw-empty`) are the panel's, shared. */
+.cw-tasklist{flex:1 1 auto;min-height:0;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:7px}
+.cw-proc-row.sched .cw-proc-dot{color:var(--hb-muted-2)}
+.cw-proc-row{display:flex;gap:10px;align-items:flex-start;background:var(--hb-bg-soft);
+  border:1px solid var(--hb-line-subtle);border-radius:var(--hb-r-m);padding:var(--sp-3) var(--sp-3) var(--sp-2)}
+/* A RUNNING process carries its state on the card's edge too: accent while it works, the warn tone while it waits. */
+.cw-proc-row.live{border-left:3px solid var(--hb-accent)}
+.cw-proc-row.live.waiting,.cw-proc-row.live.paused{border-left-color:var(--hb-warn-ink,#d9a441)}
+.cw-proc-dot{flex:0 0 auto;font-size:0.8125rem;line-height:1.45;width:16px;text-align:center}
+.cw-proc-row.run .cw-proc-dot,.cw-proc-row.done .cw-proc-dot{color:var(--hb-accent)}
+.cw-proc-row.error .cw-proc-dot{color:var(--hb-risk,#e5484d)}
+.cw-proc-row.waiting .cw-proc-dot,.cw-proc-row.paused .cw-proc-dot{color:var(--hb-warn-ink,#d9a441)}
+.cw-proc-row.cut .cw-proc-dot{color:var(--hb-warn-ink,#d9a441)}   /* cut short by a restart: neither success nor error */
+.cw-proc-row.hist{opacity:.82}
+.cw-proc-main{min-width:0;flex:1 1 auto}
+.cw-proc-goal{font-size:0.875rem;font-weight:650;color:var(--hb-ink);line-height:1.35;word-break:break-word}
+/* V2-608 F7 — the live ACTIVITY, under the stable title. Clamped to two lines: it is a status whisper, and a
+   long progress report must not push the list around every few seconds. */
+.cw-proc-note{font-size:0.78rem;color:var(--hb-muted,#9fb0c4);line-height:1.4;margin-top:4px;word-break:break-word;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+/* Expanded, the entry's log already shows the latest line at the top — the same text twice, a few pixels apart, is noise. */
+.cw-proc-row:has(.pe.open) .cw-proc-note{display:none}
+/* The facts line is PARTS, not one string: state first as a pill, then elapsed · since · the pulse's notes. */
+.cw-proc-meta{display:flex;flex-wrap:wrap;align-items:center;gap:3px var(--sp-2);margin-top:6px;font-size:var(--fs-micro);color:var(--hb-muted-2);line-height:1.4}
+.cw-proc-tag+.cw-proc-tag::before{content:"·";margin-right:var(--sp-2);opacity:.55}
+.cw-proc-tag.state{font-weight:700;padding:1px 7px;border-radius:999px;color:var(--hb-accent);
+  background:color-mix(in srgb,var(--hb-accent) 14%,transparent)}
+.cw-proc-row.waiting .cw-proc-tag.state,.cw-proc-row.paused .cw-proc-tag.state{color:var(--hb-warn-ink,#d9a441);
+  background:var(--hb-warn-bg,color-mix(in srgb,var(--hb-warn-ink,#d9a441) 14%,transparent))}

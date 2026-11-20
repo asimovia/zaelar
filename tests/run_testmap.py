@@ -3077,6 +3077,15 @@ DOMAINS: list[dict] = [
                                  "body, show not re-reading, no own stylesheet",
             "ch": UNIT, "paths": ["tests/browser/unit/side_apps/test_the_catalogue_is_a_component_of_its_own.py",
                                   "tests/browser/unit/side_apps/test_the_catalogue_alone_in_a_browser.py"]},
+        {"id": "4.604", "title": "The side panel's «Procesos» column is a component of its own (`frontend/side/procesos/`): it imports "
+                                 "nothing outside its folder and nothing imports it but `services/procesos-bridge.js`; its model never "
+                                 "paints an unknown ending as ✓, holds a running row's title still and carries the pulse's facts; alone "
+                                 "on a blank page, fed real-shaped rows through the bridge, each sub-tab paints its own row shape, the "
+                                 "report button reopens and opens the named card, a delete removes and refetches, `show()` fetches, a "
+                                 "live change refetches only while shown and `unmount()` lets go. Disarms: an import of the store; "
+                                 "the unknown ending folded into done; `show()` not marking it shown; `show()` not fetching",
+            "ch": UNIT, "paths": ["tests/browser/unit/side_procesos/test_the_procesos_column_is_its_own_component.py",
+                                  "tests/browser/unit/side_procesos/test_the_procesos_column_alone_in_a_browser.py"]},
         {"id": "4.598", "title": "Nobody wakes the agent to leave it stopped (INI-042 #46): only the ⏻ door (`power.setPower`) "
                                  "calls `runStop`; both shells' boot probe REFLECTS the server's ⏻ (`presence.reflectRunState`) "
                                  "and never sends a stored one — a stale «stopped» follows a running agent, a real stop holds, "

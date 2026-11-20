@@ -20,10 +20,10 @@ import * as session from "../services/session.js?v=3";
 import * as api from "../services/api.js?v=2";
 import * as chatFiles from "../services/chat-files.js?v=1";
 import { makeResizable } from "../lib/resizable.js?v=1";
-import { CLOSE_ICON, PAPERCLIP_ICON, TRASH_ICON, MESSAGE_SQUARE_ICON, ACTIVITY_ICON, CLOCK_ICON, SERVER_ICON, LINK_ICON, APPS_ICON, WIDGETS_ICON } from "../lib/icons.js?v=1";
+import { CLOSE_ICON, PAPERCLIP_ICON, MESSAGE_SQUARE_ICON, ACTIVITY_ICON, CLOCK_ICON, SERVER_ICON, LINK_ICON, APPS_ICON, WIDGETS_ICON } from "../lib/icons.js?v=1";
 import { renderMarkdownLite } from "../lib/markdown-lite.js?v=1";
 import { t } from "../core/i18n.js?v=1";
-import { ProcessEntry } from "./ProcessEntry.js?v=1";
+import { mountProcesos } from "../services/procesos-bridge.js?v=1";
 import { AskWall, placeAsks } from "./TaskAsk.js?v=1";
 import { chatRefView } from "./ChatRef.js?v=1";
 import * as a2a from "./A2AView.js?v=1";
@@ -43,15 +43,6 @@ const SEND_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" st
 // tab button's own label read the same entry, so they cannot drift apart.
 const TAB_LABEL = { chat: "chat.tabChat", procesos: "chat.tabTasks",
                     clusters: "chat.tabClusters", red: "a2a.network", conectores: "chat.tabConnectors", apps: "chat.tabApps" };
-// V2-728 — the FOUR sub-tabs of «Procesos», in the order the operator reads them: what is happening now, what
-// is over, what repeats, what is waiting for its moment. Same ONE-map rule as TAB_LABEL above: the button,
-// the empty state and the fetch all key off this, so they cannot drift.
-const SUBTABS = [
-  { id: "live",      label: "chat.subLive",      empty: "chat.subLiveEmpty" },
-  { id: "done",      label: "chat.subDone",      empty: "chat.subDoneEmpty" },
-  { id: "recurring", label: "chat.subRecurring", empty: "chat.subRecurringEmpty" },
-  { id: "scheduled", label: "chat.subScheduled", empty: "chat.subScheduledEmpty" },
-];
 const FLOAT_KEY = "hb_chat_float", DOCK_KEY = "hb_chat_dock", OPEN_KEY = "hb_chat_open";
 
 // WHETHER IT WAS OPEN survives a reload too (V2-550). Its GEOMETRY already did — floating rect under
@@ -261,177 +252,9 @@ export function ChatWall() {
     inputEl.value = ""; inputEl.focus();
   };
 
-  // ── PROCESSES tab: live items (store.tasks, SSE) above + history (store.workerHistory, ledger) below ──────
-  // V2-608 F7 — the row is STRUCTURED, and its first line holds still (operator, 2026-09-07): «el proceso que
-  // hemos iniciado es buscar una tienda que venda este producto — una vez tienes el título que define la tarea,
-  // mostramos solo el título». The name IS the errand's name (V2-530, shared with the flow board and the
-  // worker); what the worker is doing right now lives underneath it, and the state/progress/elapsed on a third
-  // line. Before this, phases and progress reports overwrote the one text the row had, so its title visibly
-  // mutated for minutes and only «settled» when the updates stopped.
-  const [nowS, setNowS] = createSignal(Date.now());
-  setInterval(() => setNowS(Date.now()), 15000);        // elapsed ticks by the quarter minute; the wall is app-lived
-  const dur = (ms) => {
-    const s = Math.max(0, Math.round(ms / 1000));
-    if (s < 60) return s + " s";
-    const m = Math.floor(s / 60);
-    return m < 60 ? m + " min" : Math.floor(m / 60) + " h " + (m % 60) + " min";
-  };
-  const liveRow = (task) => {
-    const icon = task.waiting ? "waiting" : task.reply ? "reply" : task.paused ? "paused" : "run";   // reply: INI-042 #26
-    const gl = task.waiting ? "⏳" : task.reply ? "✉" : task.paused ? "⏸" : "●";
-    const title = (task.title || "").trim() || (task.note || "").trim() || t("chat.working");
-    const note = (task.note || "").trim();
-    const state = task.waiting ? t("chat.waitingYou") : task.reply ? t("chat.sentAwaitingReply") : task.paused ? t("chat.paused") : t("chat.running");
-    const meta = [
-      state,
-      task.stepTag || "",
-      (typeof task.pct === "number" && task.pct >= 0 ? task.pct + "%" : ""),
-      task.startedAt ? t("chat.procElapsed", { t: dur(nowS() - task.startedAt) }) : "",
-      task.startedAt ? t("chat.procSince", {
-        t: new Date(task.startedAt).toLocaleTimeString(store.lang() || "en", { hour: "2-digit", minute: "2-digit" }) }) : "",
-      // V2-776 D5 — the pulse's view, on the row: a worker quiet for a minute or more says so, and one the pulse
-      // restarted says how many times. Both come from the durable row (`silent_s` merged live, `attempts`).
-      (task.silentS >= 60 ? t("chat.procSilent", { t: dur(task.silentS * 1000) }) : ""),
-      (task.attempts > 0 ? t("chat.procRestarted", { n: task.attempts }) : ""),
-    ].filter(Boolean);
-    return h("div", { class: "cw-proc-row live " + icon },
-      h("span", { class: "cw-proc-dot" }, gl),
-      h("div", { class: "cw-proc-main" },
-        h("div", { class: "cw-proc-goal" }, title),
-        // The activity is shown only while it says something the title does not — a note that merely repeats
-        // the name would be the same text twice, a few pixels apart.
-        (note && note !== title) ? h("div", { class: "cw-proc-note" }, note) : null,
-        h("div", { class: "cw-proc-meta" }, ...meta.map((m, i) => h("span", { class: "cw-proc-tag" + (i ? "" : " state") }, m))),
-        // V2-822 — the process's ONE home: its plan and, expanded by him, its page, harvest and narration.
-        ProcessEntry(task.session || task.id, task.id),
-      ),
-    );
-  };
-  const histRow = (e) => {
-    // A record that LIES is worse than having no record. Every terminal state gets its own glyph, and the
-    // unknown one is NOT folded into ✓: before this, anything that was not `error`/`cancelled` fell through
-    // to «done», so a task a restart cut in half was painted as successfully completed.
-    //
-    // V2-728 — the field is `state` (the task vocabulary: done|failed|cancelled) where the ledger said
-    // `status` (the worker's: done|error|cancelled|interrumpido). BOTH are read, because the old shape still
-    // reaches here from the alias route and from a chip built by SSE.
-    const raw = e.state || e.status || "";
-    const st = (raw === "failed" || raw === "error") ? "error"
-             : raw === "cancelled" ? "cancelled"
-             : raw === "interrumpido" ? "cut"
-             : (raw === "done" || e.ok) ? "done" : "cut";
-    const gl = st === "error" ? "✕" : st === "cancelled" ? "⊘" : st === "cut" ? "✂" : "✓";
-    const meta = [
-      e.kind,
-      // V2-776 D5 — WHY it failed, in the closed A5 vocabulary (`tasks.error_class`), so a dead row says
-      // «proveedor sin saldo» or «se colgó» instead of leaving the operator to guess from the outcome text.
-      (st === "error" && e.error_class ? t("chat.errClass." + e.error_class) : ""),
-      (e.attempts > 0 ? t("chat.procRestarted", { n: e.attempts }) : ""),
-      ago(e.finished_at),
-      e.visible === false ? t("chat.taskInternal") : "",
-    ].filter(Boolean).join(" · ");
-    const outcome = (e.outcome || "").trim();
-    return h("div", { class: "cw-proc-row hist " + st },
-      h("span", { class: "cw-proc-dot" }, gl),
-      h("div", { class: "cw-proc-main" },
-        h("div", { class: "cw-proc-goal" }, e.title || e.goal || e.kind || e.id),
-        // HOW it ended, in one line — the thing a finished row was missing. Shown only when it says
-        // something the name does not, by the same rule the live row's note follows.
-        (outcome && outcome !== (e.title || e.goal)) ? h("div", { class: "cw-proc-note" }, outcome) : null,
-        h("div", { class: "cw-proc-meta" }, meta + (e.cron ? t("chat.fromCron", { name: e.cron }) : "")),
-      ),
-      // V2-728 — «le da el botón y ve los datos derivados». Drawn ONLY when the server said this row still
-      // has a report (`has_results`, one `task_artifacts` lookup per finished row): a button that opens
-      // nothing is worse than no button, and before the task owned its result that was every older row,
-      // because the sheet cap of eight had already deleted it.
-      e.has_results ? h("div", { class: "cron-btns" },
-        h("button", { class: "cron-b hb-icbtn", title: () => t("chat.taskResults"),
-                      onClick: () => taskShowResults(e) }, () => t("chat.taskResults")),
-      ) : null,
-    );
-  };
-  // Reopening is the SERVER's job all the way down: it rebuilds the sheet from the task if the sheet is gone
-  // and then emits `widget/show`, so the card appears through the same door as every other card. Nothing here
-  // reaches into the canvas — the chat wall has no desktop reference, and giving it one to open a card would
-  // be a second way of doing something that already has one.
-  //
-  // The wall is deliberately NOT closed: where his panel sits is his arrangement, and moving it because he
-  // clicked a button inside it would be a design change nobody asked for.
-  const taskShowResults = async (task) => {
-    const r = await api.taskReopen(String(task.id || ""));
-    if (!r || !r.ok || !r.instance) return;   // nothing was kept: the row says so rather than opening a blank
-    try { document.dispatchEvent(new CustomEvent("hb:open-card", { detail: { id: r.instance } })); } catch (_) {}
-  };
-  // V2-728 — a PERIODIC task's row. Its second line is its cadence and its next moment, because that is the
-  // only pair of facts that answers «is this still going to happen, and when»; the prompt it fires is below,
-  // dimmed, for the times the name is not enough.
-  const schedRow = (task) => {
-    const sch = task.schedule || {};
-    const when = sch.display || "";
-    const next = sch.next_run ? new Date(sch.next_run * 1000) : null;
-    const meta = [
-      when,
-      next ? t("chat.taskNextRun", { t: next.toLocaleString(store.lang() || "en", { weekday: "short", hour: "2-digit", minute: "2-digit" }) }) : "",
-    ].filter(Boolean).join(" · ");
-    return h("div", { class: "cw-proc-row sched" },
-      h("span", { class: "cw-proc-dot" }, "⏱"),
-      h("div", { class: "cw-proc-main" },
-        h("div", { class: "cw-proc-goal" }, task.title || task.goal || task.id),
-        h("div", { class: "cw-proc-meta" }, meta),
-      ),
-      h("div", { class: "cron-btns" },
-        h("button", { class: "cron-b hb-icbtn danger", title: () => t("chat.delete"),
-                      onClick: () => taskRemove(task) }, raw(TRASH_ICON)),
-      ),
-    );
-  };
-  const taskRemove = async (task) => {
-    await api.cronAction("remove", String(task.id));
-    store.fetchTaskScope(store.taskScope());
-  };
-
-  // One sub-tab's rows. The row SHAPE follows the scope and not the other way round: a live commission, a
-  // finished one and a timed one answer different questions, and painting them the same was how the old
-  // history row ended up showing «✓» for a task a restart had cut in half.
-  const subBody = (scope) => {
-    const rows = (store.taskRows() || {})[scope] || [];
-    if (!rows.length) {
-      const spec = SUBTABS.find(x => x.id === scope);
-      return h("div", { class: "cw-empty" }, () => t(spec ? spec.empty : "chat.procEmpty"));
-    }
-    if (scope === "live") return rows.map(r => liveRow(taskToChip(r)));
-    if (scope === "done") return rows.map(histRow);
-    return rows.map(schedRow);
-  };
-
-  // The live sub-tab renders the SAME row the orb's chips use, so the two surfaces cannot disagree about
-  // what a running task looks like. `startedAt` is the one field whose units differ (the table stores epoch
-  // SECONDS, the chip milliseconds), and it is converted here rather than in four places.
-  const taskToChip = (r) => ({
-    id: r.id, session: r.session || "", title: r.title || r.goal || "", note: r.note || r.phase || "",
-    startedAt: r.started_at ? r.started_at * 1000 : null,
-    pct: typeof r.pct === "number" ? r.pct : -1, stepTag: "",
-    waiting: (r.state === "waiting" && r.waiting_for !== "reply") || r.waiting_on === "user", reply: r.waiting_for === "reply", paused: !!r.paused,
-    internal: r.visible === false,
-    silentS: typeof r.silent_s === "number" ? r.silent_s : 0, attempts: r.attempts || 0,
-  });
-
-  const tasksBody = () => [
-    h("div", { class: "cw-subtabs" },
-      ...SUBTABS.map(st => h("button", {
-        class: () => "cw-subtab" + (store.taskScope() === st.id ? " on" : ""),
-        onClick: () => { store.setTaskScope(st.id); store.fetchTaskScope(st.id); },
-      }, () => t(st.label))),
-      // The ⚙ switch: the engine's own escalations (memory upkeep, relays) are audited but never counted,
-      // and this is the one place they can be seen — which is what a manual test needs and nothing else does.
-      h("button", { class: () => "cw-subtab all" + (store.taskShowAll() ? " on" : ""),
-                    title: () => t("chat.taskShowAll"),
-                    onClick: () => { store.setTaskShowAll(!store.taskShowAll()); store.fetchTaskScope(store.taskScope()); } }, "⚙"),
-    ),
-    h("div", { class: "cw-tasklist" }, () => subBody(store.taskScope())),
-    // No hand-filled form (V2-883): a periodic or scheduled job is created by ASKING the agent, which reads its jobs
-    // back by reference and cancels them through one door; each row here keeps its next run and its delete button.
-  ];
+  // PROCESOS — a component of its own, mounted through its one bridge (`services/procesos-bridge.js`).
+  const tasksHost = h("div", { class: "cw-tasks" });
+  const procesos = mountProcesos(tasksHost);
 
   // A row in the CLUSTERS tab (V2-086). Shows only what the operator asked for: name, whether we are
   // inside, who is there, and how much has been said. cluster_id is shown because it is NOT secret (it travels in the
@@ -536,7 +359,7 @@ export function ChatWall() {
     AskWall(),   // V2-851 — the open question of each waiting task, bound to its task and answerable here
     // PROCESOS (V2-728 · renamed V2-744) — one tab, four sub-tabs. The old «Procesos» and «Crons» were the same object seen
     // twice: a commission the brain is carrying out, and a commission with a clock on it.
-    h("div", { class: "cw-tasks" }, tasksBody),
+    tasksHost,
     // CLUSTERS (V2-086) — the native NETWORK. Connection administration, not conversation: clusters have their
     // own monitor, so here we only show which network we are connected to, with whom, and how much traffic there has been.
     h("div", { class: "cw-clusters" },
@@ -592,19 +415,13 @@ export function ChatWall() {
   createEffect(() => {
     const t = store.chatTab();
     if (!store.chatOpen()) return;
-    if (t === "procesos") { store.fetchTasks(); store.fetchTaskScope(store.taskScope()); }
+    if (t === "procesos") procesos.show();
     else if (t === "clusters") store.fetchClusters();
     else if (t === "conectores") refreshConnectors();
     else if (t === "red") a2a.refresh();
   });
-  // When live processes change (a task finishes) while we are viewing “Processes”, refresh the history so
-  // the task that just finished moves from the "running" block to "history".
-  // When the live set changes (a job finished) while «Procesos» is open, refresh the sub-tab being looked at
-  // — the one that just lost a row and the one that just gained it are two different queries.
-  createEffect(() => {
-    store.tasks();
-    if (store.chatOpen() && store.chatTab() === "procesos") store.fetchTaskScope(store.taskScope());
-  });
+  // Leaving «Procesos» (another tab, or the wall closed) hides it: its refetch on a live change stops.
+  createEffect(() => { if (!(store.chatOpen() && store.chatTab() === "procesos")) procesos.hide(); });
 
   // CHAT and VOICE are INDEPENDENT (V2-088). Opening this panel does NOT affect the speaker, and muting the speaker does not affect
   // this panel. The “chat mode = voice off” behavior from V2-054 is removed: it assumed opening chat meant “I want to

@@ -110,7 +110,7 @@ def open_wall(browser_and_port):
         pg.goto(f"http://127.0.0.1:{port}/", wait_until="domcontentloaded")
         pg.evaluate("""async () => {
             for (const h of ['/frontend/app/core/palette.css', '/frontend/app/core/components.css',
-                             '/frontend/app/core/shared-surfaces.css', '/frontend/app/styles.css']) {
+                             '/frontend/app/core/shared-surfaces.css', '/frontend/app/styles.css', '/frontend/side/procesos/procesos.css']) {
               const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = h; document.head.append(l); }
             const i18n = await import('/frontend/app/core/i18n.js?v=1');
             await i18n.loadBundle('es'); if (i18n.applyLang) await i18n.applyLang('es');
