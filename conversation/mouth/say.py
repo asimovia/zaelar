@@ -70,12 +70,12 @@ class Speaker:
 
     async def say(self, *, run_id: str, request_id: str, text: str, channels: frozenset[str], endpoint: str | None,
                   trace: str, lang: str = "", iv: str | None = None, notice_key: str | None = None,
-                  resumes: str | None = None) -> str:
+                  resumes: str | None = None, origin: str = "reply") -> str:
         say_id = self.ids.new("s")
         row = {"say_id": say_id, "run": run_id, "req": request_id, "text": text, "channels": sorted(channels),
                "endpoint": endpoint, "state": "ordered", "heard_chars": None, "heard_source": "unknown",
                "outcome": None, "t_ms": self.clock.now_ms(), "notice_key": notice_key, "trace": trace, "iv": iv,
-               "resumes": resumes}
+               "resumes": resumes, "origin": "notice" if notice_key else origin}
         with self.store.tx(self.lease()) as tx:
             tx.put(SAYS, say_id, row)
         self.em.emit("conv_mouth", "say", owner="mouth", cause={"kind": "run", "ref": run_id}, refs=self._refs(row),

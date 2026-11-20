@@ -124,7 +124,8 @@ def test_b3_the_sweep_closes_the_request_of_a_run_in_course_and_stops_it(store):
     h.model.script["iv_000001"] = [[stall, reply("w9"), Done()]]
     h.utter([(["w1"], 0)])
     assert [(lab, p["reason"]) for lab, p in h.closes()] == [("stalled", "stalled")]
-    assert not h.mouth.orders and "conv_run/cancelled" in h.tel.labels()
+    assert "w9" not in [o.text for o in h.mouth.orders]                     # the stopped run says nothing of its own
+    assert [o.notice_key for o in h.mouth.orders] == ["conv:failed:r_iv_000001"]   # …and he is owed the line (TF-1)
 
 
 def test_b6_a_tool_that_raises_ends_the_run_visibly_and_accounts_its_batch(store):

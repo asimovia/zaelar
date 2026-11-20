@@ -314,7 +314,8 @@ def test_the_liveness_ends_a_reply_still_waiting_and_it_is_never_said(store):
     h.at(closed + 5500)
     h.conv.sweep()                                                         # the liveness sweep, on its own timer
     _run_clock(h, closed + 9000)
-    assert not h.mouth.orders and [lab for lab, _ in h.closes()] == ["stalled"]
+    assert [lab for lab, _ in h.closes()] == ["stalled"]
+    assert all(o.notice_key for o in h.mouth.orders)                      # never the reply: only the line he is owed
 
 
 def test_a_line_owed_waits_while_a_reply_waits_for_its_grace(store):
@@ -460,7 +461,8 @@ def test_when_he_stops_the_budget_runs_from_his_last_piece(store):
     last = t - 3000
     _run_clock(h, last + 9000)
     stalled = [p["t_ms"] for k, lab, p in h.tel.events if k == "conv_close" and lab == "stalled"]
-    assert stalled and min(stalled) >= last + 5000 - 100 and not h.mouth.orders, (stalled, last)
+    assert stalled and min(stalled) >= last + 5000 - 100, (stalled, last)
+    assert all(o.notice_key for o in h.mouth.orders)                      # never the reply: only the line he is owed
 
 
 @pytest.mark.parametrize("order", ["no_reply", "reply"])

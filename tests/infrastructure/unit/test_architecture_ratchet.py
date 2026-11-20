@@ -617,6 +617,10 @@ _PACKAGE_CEILINGS["server"] += 8           # same: the voice process asks before
 _TOTAL_MAX += 307    # same cause
 _PACKAGE_CEILINGS["conversation"] += 44    # 2026-11-20 V2-941 v3.1 B7f (the personas' runs): a refused figure restated, the honest line never twice in a row, each refusal recorded with the evidence's nearest figures (`claims.detail`), a text's figure whatever its sign, a reply after a refused act flagged
 _TOTAL_MAX += 44     # same cause
+_PACKAGE_CEILINGS["conversation"] += 121   # 2026-11-20 V2-941 v3.1 B7g (the audit of B4c–B7e): never silence made structural — a stalled run owes its line, a mouth that raises owes it; distinct operands; a figure as a person says it; an order as text and a no_reply after a refused act repaired; where a line came from (`says.origin`)
+_PACKAGE_CEILINGS["nucleo/cli"] += 3       # same: a typed line the conversation could not take goes the old way
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 41    # same: the opener tries again with an alert, then hands each waiting line back to its door
+_TOTAL_MAX += 165    # same cause, and the opener's retry and fallback (`entry._open`, `_give_up`)
 
 
 def test_the_total_only_shrinks():

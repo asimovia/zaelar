@@ -56,6 +56,9 @@ class Running:
     refused: list = field(default_factory=list)   # values of claims this run refused: they cannot return as derived
     restates: int = 0                     # repair rounds that asked for the answer again without the refused figures
     restated_again: bool = False          # the extra round taken because the honest line was our last line
+    origin: str = "reply"                 # where the line it publishes comes from (`says.origin`)
+    acts_refused: list = field(default_factory=list)   # acts the gateway refused in this run, by name
+    asked_to_say: bool = False            # a no_reply after a refused act was asked once to say it
     stages: dict = field(default_factory=dict)    # where its time went, ms: queue, model, tools, grace, publish
 
 

@@ -95,10 +95,50 @@ def _near(a: float, b: float) -> bool:
     return abs(a - b) <= 0.005 * max(1.0, abs(b))
 
 
-def _in_text(x: float, figures: tuple) -> bool:
-    """A figure of a TEXT, whatever its sign: a text writes a fall as «down 4.98» and the claim states it as -4.98 —
-    which way it went is the claim's `direction`, not a figure the text has to spell with a minus."""
-    return math.isfinite(x) and any(_near(abs(x), abs(f)) for f in figures)
+def _sig(f: float) -> int:
+    """How many significant digits `f` carries as written."""
+    digits = f"{abs(f):.12g}".split("e")[0].replace(".", "").lstrip("0").rstrip("0")
+    return max(1, len(digits))
+
+
+def _exact(a: float, b: float) -> bool:
+    """The same number, but for the float's own noise: a rounding is said exactly, never «about» a rounding."""
+    return abs(a - b) <= 1e-9 * max(1.0, abs(b))
+
+
+def _round_sig(f: float, k: int) -> float:
+    """`f` rounded half-up to `k` significant digits."""
+    if f == 0:
+        return 0.0
+    q = 10.0 ** (math.floor(math.log10(abs(f))) - k + 1)
+    return math.floor(abs(f) / q + 0.5) * q
+
+
+def _said_as(x: float, f: float) -> bool:
+    """`x` is figure `f` as a person says it, whatever its sign («down 4.98» stated as -4.98: which way is the
+    claim's `direction`): the figure itself, the figure rounded to fewer significant digits («18» for 18.3, «5
+    million» for 4,987,210), and a percent and its fraction as the same quantity («5 %» for 0.0498). Nothing else."""
+    x = abs(x)
+    for g in (abs(f), abs(f) * 100, abs(f) / 100):
+        if _near(x, g) or any(_exact(x, _round_sig(g, k)) for k in range(1, _sig(g))):
+            return True
+    return False
+
+
+def _value_in(x: float, figures: tuple) -> bool:
+    return math.isfinite(x) and any(_said_as(x, f) for f in figures)
+
+
+def _distinct(operands: tuple, figures: tuple) -> bool:
+    """Each operand is a figure of the evidence, and each figure is used once — `count` of one figure repeated counts
+    nothing (whatever its sign: a change read from «down 4.98»)."""
+    free = list(figures)
+    for x in operands:
+        i = next((i for i, f in enumerate(free) if math.isfinite(x) and _near(abs(x), abs(f))), None)
+        if i is None:
+            return False
+        free.pop(i)
+    return True
 
 
 def _derived(claim: Claim, ev: Evidence, refused: tuple) -> str | None:
@@ -109,7 +149,7 @@ def _derived(claim: Claim, ev: Evidence, refused: tuple) -> str | None:
         return "was_refused"                              # a value refused in this run does not come back derived
     if claim.op not in OPS or not claim.operands:
         return "no_operation"
-    if not all(_in_text(x, figures) for x in claim.operands):
+    if not _distinct(claim.operands, figures):
         return "operand"
     got = OPS[claim.op](claim.operands)
     return None if math.isfinite(got) and math.isfinite(claim.value) and _near(claim.value, got) else "derived_value"
@@ -127,11 +167,11 @@ def mismatch(claim: Claim, ev: Evidence | None, this_run: frozenset = frozenset(
     if ev is None:
         return "no_evidence"
     if ev.value is None and ev.numbers:                   # a text: the value is one of its figures
-        return None if _in_text(claim.value, ev.numbers) else "value"
+        return None if _value_in(claim.value, ev.numbers) else "value"
     for field_name in ("entity", "period", "metric", "direction"):
         if not _same(getattr(claim, field_name), getattr(ev, field_name)):
             return field_name
-    if ev.value is None or not math.isfinite(claim.value) or not _near(claim.value, ev.value):
+    if ev.value is None or not _value_in(claim.value, (ev.value,)):
         return "value"
     return None
 

@@ -46,6 +46,10 @@ class _Stop(Exception):
     """End the run here with this outcome (raised at a checkpoint)."""
 
 
+class _Stalled(_Stop):
+    """The liveness closed the run's requests `stalled`: they still owe him a line (never silence)."""
+
+
 def _emit(conv: "Conversation", label: str, r: "Running | None", **payload) -> None:
     refs = {"run": r.run_id, "req": r.requests[0] if r and r.requests else None,
             "endpoint": r.ctx.endpoint if r else None} if r else {}
@@ -127,6 +131,8 @@ async def run_batch(conv: "Conversation", batch: Batch) -> None:
     _emit(conv, "input", r, text=[getattr(e.body, "text", None) for e in batch.envelopes])
     try:
         await _steps(conv, r, batch)
+    except _Stalled:
+        await _lost(conv, r, "stalled")         # closed by the liveness: the line is said in place, or owed
     except _Stop as stop:
         r.said.append(("stopped", str(stop)))   # the checkpoint already accounted the batch and said why
     except StaleEpoch:
@@ -150,12 +156,38 @@ async def _fail(conv: "Conversation", r: "Running", reason: str) -> None:
     line) the person is owed it — a row of the ledger of what is owed (`Owed.owe`), said when the manager is free, or
     pushed, or shown."""
     now = conv.clock.now_ms()
-    said = await _say_failed(conv, r)
-    conv.inbox.account(list(r.batch_ids), "failed", now)
-    for req in r.requests:
-        if close(conv, req, "recovered", "recovered", r, reason=reason) and conv.owed is not None and not said:
-            conv.owed.owe(conv.account, f"conv:failed:{req}", f"failed:{reason}")
+    conv.inbox.account(list(r.batch_ids), "failed", now)            # accounted first: whatever the mouth does next
+    closed = [req for req in r.requests if close(conv, req, "recovered", "recovered", r, reason=reason)]
+    said = await _say_failed_safely(conv, r)
+    if not said:
+        _owe(conv, r, reason, closed)
     _emit(conv, "ended", r, outcome="failed", reason=reason, said=said)
+
+
+async def _lost(conv: "Conversation", r: "Running", reason: str) -> None:
+    """A run whose requests the liveness closed: its batch accounted, and the line said in place or owed."""
+    conv.inbox.account(list(r.batch_ids), "failed", conv.clock.now_ms())
+    said = await _say_failed_safely(conv, r)
+    if not said:
+        _owe(conv, r, reason)
+    _emit(conv, "ended", r, outcome="failed", reason=reason, said=said)
+
+
+def _owe(conv: "Conversation", r: "Running", reason: str, requests=None) -> None:
+    if conv.owed is not None:
+        for req in (r.requests if requests is None else requests):
+            conv.owed.owe(conv.account, f"conv:failed:{req}", f"failed:{reason}")
+
+
+async def _say_failed_safely(conv: "Conversation", r: "Running") -> bool:
+    """`_say_failed`, and a mouth that raises is a line not said: it is owed instead, never an escape from the run."""
+    try:
+        return await _say_failed(conv, r)
+    except (StaleEpoch, asyncio.CancelledError):
+        raise
+    except Exception as e:  # noqa: BLE001 — the mouth's failure is counted; the person is owed the line
+        _emit(conv, "command", r, command="mouth_failed", error=type(e).__name__)
+        return False
 
 
 async def _say_failed(conv: "Conversation", r: "Running") -> bool:
@@ -171,7 +203,7 @@ async def _say_failed(conv: "Conversation", r: "Running") -> bool:
         return False
     reply = choose(envs, conv.devices.get(r.ctx.endpoint or "", Device(r.ctx.endpoint)), text_gets_voice=False)
     await conv.speaker.say(run_id=r.run_id, request_id=r.ctx.request_id, text=line, channels=reply.channels,
-                           endpoint=r.ctx.endpoint, trace=r.trace, iv=users[0].refs.intervention_id)
+                           endpoint=r.ctx.endpoint, trace=r.trace, iv=users[0].refs.intervention_id, origin=FAILURE)
     return True
 
 
@@ -213,6 +245,8 @@ def _checkpoint(conv: "Conversation", r: "Running") -> None:
         conv.inbox.requeue(list(r.batch_ids))
         _emit(conv, "superseded", r, reason=r.interrupt)
         raise _Stop()
+    if r.interrupt == "stalled":
+        raise _Stalled()                           # its requests are closed already; what he is owed is said after
     now = conv.clock.now_ms()
     conv.inbox.account(list(r.batch_ids), "silent", now)
     for req in r.requests:
@@ -295,6 +329,7 @@ async def _say_lost(conv: "Conversation", r: "Running", batch: Batch, steps: lis
     if not line:
         return False
     _emit(conv, "command", r, command=why)
+    r.origin = FAILURE
     if not _park(conv, r, batch, commands.Reply(line), line, len(steps), conv.clock.now_ms()):
         await _publish(conv, r, batch, line, len(steps))
     return True
@@ -323,25 +358,49 @@ async def _tool(conv: "Conversation", r: "Running", call: ToolCall) -> ToolResul
         with conv.store.tx(conv.lease) as tx:
             CL.remember(tx, result.evidence, conv.clock.now_ms(), conv.cfg.evidence_ttl_ms)
         return result
+    r.acts_refused.append(call.name)
     return ToolResult("refused", data={"reason": decision.reason})
 
 
 #: a refused figure's repair: the answer again without what it cannot back — the honest line only if that fails too
 RESTATE = "these figures are not in the evidence they cite: reply again without them (what was found, or a question)"
-#: the steps the manager adds itself (an order asked for, a claim refused): never an act of the model's
-PROTOCOL_STEPS = ("orders", "claims")
+#: an order written as the reply's words, and a silence after a refused act: what the repair round says
+AS_TEXT = "the text is what the person hears: the order is the call itself, never its words"
+SAY_THE_ACT = "an act held or refused is a reply that says so"
+#: the orders' names, as the model could write them in its text instead of calling them
+ORDER_NAMES = ("reply", "no_reply")
+ORDER_TEXT = tuple(f"{n}(" for n in ORDER_NAMES) + tuple(f"<{n}" for n in ORDER_NAMES) + ("no_reply ",)
 
 
-def _last_said(conv: "Conversation") -> str:
-    """The text of our newest line in this conversation ('' with none)."""
-    got = conv.store.view(conv.account).recent("says", 1)
-    return str(got[0][1].get("text") or "") if got else ""
+def _order_text(text: str) -> bool:
+    return str(text or "").strip().casefold().startswith(ORDER_TEXT)
+
+
+#: where a line we said came from (`says.origin`): the model's reply, a reply restated after a refused figure, the
+#: honest line for a figure it could not confirm, the language's failure line — and a notice, which answers nothing
+REPLY, RESTATED, UNVERIFIED, FAILURE = "reply", "restated", "unverified_fact", "failure"
+
+
+def _last_answer(conv: "Conversation") -> str:
+    """Where our last ANSWER to a request came from ('' with none): a notice said since is not an answer."""
+    for _k, row in conv.store.view(conv.account).recent("says", 8):
+        if row.get("origin") != "notice" and not row.get("notice_key"):
+            return str(row.get("origin") or REPLY)
+    return ""
 
 
 async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps: list, *, last_try: bool) -> bool:
     """Carry out the model's order. False = repair (a claim did not match: the answer again without it; once more when
     the honest line was our last line, so it is never said twice in a row); True = the run is over."""
     now = conv.clock.now_ms()
+    if isinstance(cmd, commands.Reply) and _order_text(cmd.text):
+        _emit(conv, "command", r, command="order_as_text")    # his line would be our protocol's words: never said
+        if not last_try:
+            steps.append((ToolCall("orders", "orders_check", {}), ToolResult("refused", data={"reason": AS_TEXT})))
+            return False
+        if not await _say_lost(conv, r, batch, steps, "order_as_text"):
+            _silent(conv, r, "order_as_text", now)
+        return True
     if isinstance(cmd, commands.Reply):
         this_run = frozenset(e.id for _call, res in steps for e in getattr(res, "evidence", ()))
         bad = CL.check(list(cmd.claims), CL.valid(conv.store.view(conv.account), now), this_run,
@@ -356,7 +415,7 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
             _emit(conv, "command", r, command="reply_blocked", claims=[why for _c, why in bad],
                   detail=[CL.detail(c, why, valid.get(c.evidence_id)) for c, why in bad])
             line = conv.words.line("unverified_fact") if conv.words is not None else ""
-            again = bool(line) and _last_said(conv) == line     # the same honest line twice in a row is never said
+            again = bool(line) and _last_answer(conv) == UNVERIFIED  # the honest line twice in a row is never said
             if not last_try or (again and not r.restated_again):
                 r.restated_again = r.restated_again or last_try
                 if last_try:
@@ -365,9 +424,13 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
                               ToolResult("refused", data={"mismatch": [why for _c, why in bad], "restate": RESTATE})))
                 r.restates += 1
                 return False
+            if again:                               # the restate failed twice: a failed run, his failure line
+                _emit(conv, "command", r, command="figures_withheld_again", claims=[why for _c, why in bad])
+                await _fail(conv, r, "figures_unverified_again")
+                return True
             if line:                                # never silence: the language's honest line, with no figure
-                _emit(conv, "command", r, command="figures_withheld_again" if again else "figures_withheld",
-                      claims=[why for _c, why in bad])
+                _emit(conv, "command", r, command="figures_withheld", claims=[why for _c, why in bad])
+                r.origin = UNVERIFIED
                 if not _park(conv, r, batch, cmd, line, len(steps), now):
                     await _publish(conv, r, batch, line, len(steps))
                 return True
@@ -378,14 +441,20 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
             return True
         if r.restates:                              # the repair worked: the answer stands without what it could not back
             _emit(conv, "command", r, command="restated", claims=len(cmd.claims), rounds=r.restates)
-        refused_acts = [c.name for c, res in steps if res.status == "refused" and c.call_id not in PROTOCOL_STEPS]
-        if refused_acts:                            # an act the gateway refused, then a reply: the judge reads this one
-            _emit(conv, "command", r, command="act_refused_then_reply", tools=refused_acts)
+            r.origin = RESTATED
+        if r.acts_refused:                          # an act the gateway refused, then a reply: the judge reads this one
+            _emit(conv, "command", r, command="act_refused_then_reply", tools=list(r.acts_refused))
         if _park(conv, r, batch, cmd, cmd.text, len(steps), now):    # half a thought is not answered: it waits
             return True
         await _publish(conv, r, batch, cmd.text, len(steps))
         return True
     reason = getattr(cmd, "reason", None) or getattr(cmd, "name", "")
+    if isinstance(cmd, commands.NoReply) and r.acts_refused and not r.asked_to_say:
+        r.asked_to_say = True                   # a held or refused act is said, never a silence: asked once
+        _emit(conv, "command", r, command="no_reply_after_refused_act", tools=list(r.acts_refused))
+        steps.append((ToolCall("orders", "orders_check", {}),
+                      ToolResult("refused", data={"refused_act": list(r.acts_refused), "reason": SAY_THE_ACT})))
+        return False
     if isinstance(cmd, commands.NoReply) and cmd.complete is False and _park(conv, r, batch, cmd, None, len(steps), now):
         return True                             # «something is missing» and no reply: silent only once he did not go on
     _silent(conv, r, reason, now)
@@ -408,7 +477,9 @@ def _silent(conv: "Conversation", r: "Running", reason: str, now: int) -> None:
     for req in r.requests:
         close(conv, req, "silent", "silent", r, reason=reason)
     conv.inbox.account(list(r.batch_ids), "silent", now)
-    _emit(conv, "ended", r, outcome="no_reply", reason=reason)
+    users = [e for e in r.ctx.batch.values() if e.is_user]
+    _emit(conv, "ended", r, outcome="no_reply", reason=reason, after_refused_act=bool(r.acts_refused),
+          typed_only=bool(users) and all(e.kind is EnvelopeKind.USER_TEXT for e in users))
 
 
 async def _publish(conv: "Conversation", r: "Running", batch: Batch, text: str, steps: int) -> None:
@@ -426,7 +497,8 @@ async def _publish(conv: "Conversation", r: "Running", batch: Batch, text: str, 
         r.stages["grace_wait_ms"] = max(0, conv.clock.now_ms() - r.stages.pop("parked_at"))
     await conv.speaker.say(run_id=r.run_id, request_id=r.ctx.request_id, text=text, channels=reply.channels,
                            endpoint=r.ctx.endpoint, trace=r.trace,
-                           iv=next(iter(r.ctx.batch.values())).refs.intervention_id if r.ctx.batch else None)
+                           iv=next(iter(r.ctx.batch.values())).refs.intervention_id if r.ctx.batch else None,
+                           origin=r.origin)
     for req in r.requests:
         close(conv, req, "answered", "answered", r, steps=steps,
               stages={**r.stages, "publish_ms": conv.clock.mono_ms() - t_say})
@@ -453,6 +525,10 @@ def drop_parked(conv: "Conversation") -> None:
     r, _parked = _unpark(conv)
     try:
         _checkpoint(conv, r)
+    except _Stalled:                            # here, off any await: the line is owed, never dropped
+        _owe(conv, r, "stalled")
+        conv.inbox.account(list(r.batch_ids), "failed", conv.clock.now_ms())
+        _emit(conv, "ended", r, outcome="failed", reason="stalled", said=False)
     except _Stop as stop:
         r.said.append(("stopped", str(stop)))   # the checkpoint already accounted the batch and said why
 
@@ -473,6 +549,8 @@ async def publish_parked(conv: "Conversation") -> bool:
             _silent(conv, r, reason, conv.clock.now_ms())
         else:
             await _publish(conv, r, batch, text, steps)
+    except _Stalled:
+        await _lost(conv, r, "stalled")
     except _Stop as stop:
         r.said.append(("stopped", str(stop)))   # held right before sealing: the hold already said why
     finally:

@@ -86,8 +86,40 @@ def _hand(fn) -> None:
         _opener["t"].start()
 
 
+#: the conversation may not open (its lease waits on the shared database lock): tried this many times, waiting longer
+#: each time, an alert each; then every line waiting is handed to its own way back (`fallback`), never left queued
+OPEN_TRIES, OPEN_BACKOFF_S = 3, 0.5
+#: the close a typed line reports when the conversation never opened: its door answers it the old way
+NOT_OPENED = "not_opened"
+
+
+def _open():
+    from voice import observer
+    for attempt in range(OPEN_TRIES):
+        try:
+            return runtime()                     # here, off every caller's loop
+        except Exception as e:  # noqa: BLE001 — said as an alert, tried again, and the lines never left waiting
+            observer.emit("alert", "the conversation could not open", text=repr(e)[:200],
+                          extra={"attempt": attempt + 1, "of": OPEN_TRIES})
+            time.sleep(OPEN_BACKOFF_S * 2 ** attempt)
+    return None
+
+
+def _give_up() -> None:
+    with _lock:
+        queued, _queue[:] = list(_queue), []
+        _opener["t"] = None
+    for fn in queued:
+        back = getattr(fn, "fallback", None)
+        if back is not None:
+            back()
+
+
 def _open_and_drain() -> None:
-    rt = runtime()                               # here, off every caller's loop
+    rt = _open()
+    if rt is None:
+        _give_up()
+        return
     with _lock:
         _opener["rt"] = rt
     while True:
@@ -123,16 +155,25 @@ def typed(text: str, dev: str = "", *, wait: bool = False, checked: bool = False
     from conversation.ear import signals as S
     sig = S.TypedSubmit(dev or "holder", cid, str(text).strip()[:4000], int(time.time() * 1000))
 
+    def _end(label: str) -> None:
+        with _lock:
+            w = _waits.get(cid)
+        if w is not None and not w["future"].done():
+            w["future"].set_result(label)
+
     def deliver(conv) -> None:
         stop = None if checked else _guards(text, dev)
         if stop is None:
             conv.hear(sig)
             return
-        with _lock:
-            w = _waits.get(cid)
-        if w is not None and not w["future"].done():
-            w["future"].set_result(stop.get("reason") or "note")
+        _end(stop.get("reason") or "note")
 
+    def fallback() -> None:                      # the conversation never opened: his line goes back to its door
+        from voice import observer
+        observer.emit("alert", "a typed line went the old way: the conversation could not open", text=str(text)[:200])
+        _end(NOT_OPENED)
+
+    deliver.fallback = fallback
     _hand(deliver)
     return {"ok": True, "cid": cid}
 

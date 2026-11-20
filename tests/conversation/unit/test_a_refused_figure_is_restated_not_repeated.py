@@ -22,7 +22,7 @@ LINE = "w_honest"
 
 class _Words:
     def line(self, key):
-        return LINE if key == "unverified_fact" else ""
+        return {"unverified_fact": LINE, "mute_lines": "w_lost"}.get(key, "")
 
 
 def _bad(value=999.0):
@@ -77,14 +77,32 @@ def test_the_honest_line_is_never_said_twice_in_a_row(store):
     assert "restate_forced" in _commands(h)
 
 
-def test_when_the_forced_restate_fails_as_well_it_is_said_and_counted_apart(store):
+def test_when_the_forced_restate_fails_as_well_the_run_fails_with_its_failure_line(store):
     h = _h(store, [READ, [reply("w9 999", _bad()), Done()]])
     h.typed("w1", 0)
     h.settle(2000)
     h.typed("w2", 20_000)
     h.settle(30_000)
-    assert [o.text for o in h.mouth.orders] == [LINE, LINE]
+    assert [o.text for o in h.mouth.orders] == [LINE, "w_lost"]             # never the honest line twice in a row
     assert _commands(h).count("restate_forced") == 1 and "figures_withheld_again" in _commands(h)
+    assert [lab for lab, _ in h.closes()] == ["answered", "recovered"]
+
+
+def test_twice_in_a_row_reads_where_the_last_answer_came_from_never_its_text_nor_a_notice(store):
+    h = _h(store, [READ, [reply("w9 999", _bad()), Done()]])
+    h.typed("w1", 0)
+    h.settle(2000)
+    rows = [row for _k, row in h.store.view(h.conv.account).recent("says", 8)]
+    assert [r["origin"] for r in rows] == ["unverified_fact"]
+    h.owed.add("k1", LINE)                                                     # a notice with the same words since
+    h.settle(4000)
+    assert [(o.text, o.notice_key) for o in h.mouth.orders] == [(LINE, None), (LINE, "k1")]
+    n = len(h.model.calls)
+    rounds = [READ, [reply("w9 999", _bad()), Done()], [reply("w9 999", _bad()), Done()], [reply("w7"), Done()]]
+    h.model.default = lambda ids: rounds[min(len(h.model.calls) - n - 1, len(rounds) - 1)]
+    h.typed("w2", 20_000)
+    h.settle(30_000)
+    assert "restate_forced" in _commands(h)                                    # the notice answered nothing
 
 
 def test_against_a_text_a_figure_matches_whatever_its_sign():
