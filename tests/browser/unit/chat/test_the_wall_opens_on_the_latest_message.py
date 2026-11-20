@@ -1,8 +1,9 @@
 """Opening the chat wall lands on the LATEST message, not on the top of the history. Rendered.
 
-The list is rebuilt (and pinned to its end) whenever the messages change — but a list rebuilt while the wall is
-closed has no height, so the pin did nothing and the wall opened scrolled to the top of a long history. The pin
-now also runs when the list becomes visible: on open, and on coming back to the Chat tab.
+A line appended to the wall follows the end when the list is at the bottom — but a list written while the wall is
+closed has no height, so the follow did nothing and the wall opened scrolled to the top of a long history. The pin
+also runs when the list becomes visible: on open, and on coming back to the Chat tab. The lines are written through
+the page's one old-path writer (`wall-legacy.js?v=1`), as the stream writes them (INI-042 #49).
 """
 from __future__ import annotations
 
@@ -62,6 +63,7 @@ def _page(browser, port):
         await i18n.loadBundle('en'); if (i18n.applyLang) await i18n.applyLang('en');
         const store = await import('/frontend/app/core/store.js?v=2');
         const wall = await import('/frontend/app/components/ChatWall.js?v=5');
+        window.__legacy = (await import('/frontend/app/services/wall-legacy.js?v=1')).legacy;
         document.body.append(wall.ChatWall());
         window.__store = store;
     }""")
@@ -79,8 +81,8 @@ def test_a_history_written_while_closed_opens_on_its_last_line(browser_and_port)
     b, port = browser_and_port
     pg = _page(b, port)
     # The history arrives while the wall is CLOSED — what a reload or a restored session does.
-    pg.evaluate("""() => window.__store.setChatMsgs(Array.from({length: 60}, (_, i) =>
-        ({role: i % 2 ? 'agent' : 'you', text: 'line ' + i + ' ' + 'word '.repeat(12)})))""")
+    pg.evaluate("""() => { for (let i = 0; i < 60; i++) { const text = 'line ' + i + ' ' + 'word '.repeat(12);
+        if (i % 2) window.__legacy.pushAgentChat(text); else window.__legacy.pushChat({role: 'you', text}); } }""")
     pg.evaluate("() => window.__store.openChatFrom('orb')")
     pg.wait_for_selector("#chatwall.open", timeout=5000)
     until_sync(lambda: _at_bottom(pg), "the open wall to show its latest message", timeout_s=5)
@@ -92,8 +94,8 @@ def test_coming_back_to_the_chat_tab_lands_on_the_last_line(browser_and_port):
     b, port = browser_and_port
     pg = _page(b, port)
     pg.evaluate("() => { window.__store.openChatFrom('orb'); window.__store.setChatTab('processes'); }")
-    pg.evaluate("""() => window.__store.setChatMsgs(Array.from({length: 60}, (_, i) =>
-        ({role: 'agent', text: 'line ' + i + ' ' + 'word '.repeat(12)})))""")
+    pg.evaluate("""() => { for (let i = 0; i < 60; i++)
+        window.__legacy.pushAgentChat('line ' + i + ' ' + 'word '.repeat(12)); }""")
     pg.evaluate("() => window.__store.setChatTab('chat')")
     until_sync(lambda: _at_bottom(pg), "the Chat tab to show its latest message", timeout_s=5)
     pg.close()

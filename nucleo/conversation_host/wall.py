@@ -2,16 +2,18 @@
 hears and says, as actions with ids for the wall component (`frontend/chat-wall/`), one `wall` event each.
 
 Every action names its writer — the component sets a line's owner from it and refuses another's hand:
-  · `ear:<device>`      his spoken line, id = its intervention: `append` live at its first words, `update` while he
-                        speaks (live, over the stream only, never stored: W-1), `update` final with the words the inbox
-                        accepted, `delete` when the ear discards it before it was final;
+  · `ear:<device>`      his spoken line, id = its intervention: `append` pending at its first words (shown dimmed:
+                        the guards have not judged it yet), `update` while he speaks (over the stream only, never stored:
+                        W-1), `update` final with the words the inbox accepted, `delete` when the ear discards it. A
+                        successor opened inside one provider turn shows only its own words, never its predecessor's;
   · `keyboard:<device>` his typed line, id = the screen's own `cid` (the component's id for it): the same line on the
                         screen that typed it and on every other; a repeated `cid` is one line;
   · `mouth`             our line, id = its say id, answering his (`re`): `append` live when its voice starts (or final
                         when shown), `update` final with what sounded; a line that never started is never said to
                         have sounded.
 The package's telemetry carries no words: they come from the ear's own lane (`ear_in.receive` → `heard`), the inbox's
-acceptance and the mouth.
+acceptance and the mouth. A line still open when the session leaves the manager (it falls back to the old path, or the
+conversation is reset) is deleted then (`sweep`): nobody would ever close it.
 """
 from __future__ import annotations
 
@@ -29,6 +31,10 @@ _cid_of: dict[str, str] = {}                # a typed intervention → the scree
 _line_of: dict[str, str] = {}               # his intervention → its line's id on the wall (the `cid` of a typed one)
 _env_iv: dict[str, str] = {}                # an envelope → its intervention
 _run_ivs: dict[str, list] = {}              # a run → the interventions of his it answers (its batch, and absorbed)
+_open_lines: dict[str, str] = {}            # a line appended and not final yet → its writer (what `sweep` deletes)
+_last: dict[str, dict] = {}                 # device → {provider turn: its words}, whichever intervention heard them
+_before: dict[str, dict] = {}               # device → what the open intervention's predecessor had of each turn
+TURNS_KEPT = 8
 
 
 def client_id_ok(cid) -> bool:
@@ -49,20 +55,33 @@ def _say(writer: str, op: dict, *, live: bool = False) -> None:
     observer.emit("wall", op["op"], extra={"writer": writer, "op": op, **({"live": True} if live else {})})
 
 
+def _own(text: str, before: str) -> str:
+    """The words of a provider turn that are this intervention's: what its predecessor already had of that turn is
+    cut off the front (the provider's turn runs on across the close of the one before)."""
+    have = str(text or "").split()
+    return " ".join(have[len(str(before or "").split()):])
+
+
 def heard(device: str, turn: int, text: str) -> None:
-    """His words so far in one provider turn on `device` (the ear's lane): the open intervention's line, live."""
-    device = str(device or "")
+    """His words so far in one provider turn on `device` (the ear's lane): the open intervention's line, pending until
+    the inbox accepts it."""
+    device, turn = str(device or ""), int(turn)
     with _lock:
-        _turns.setdefault(device, {})[int(turn)] = str(text or "")
+        last = _last.setdefault(device, {})
+        last[turn] = str(text or "")
+        while len(last) > TURNS_KEPT:
+            last.pop(next(iter(last)))
+        _turns.setdefault(device, {})[turn] = _own(text, _before.get(device, {}).get(turn, ""))
         iv = _open.get(device, "")
         words = " ".join(t for t in _turns[device].values() if t.strip())
         new = bool(iv) and iv not in _lines
         if new and words:
             _keep(_lines, iv, f"ear:{device}")
+            _keep(_open_lines, iv, f"ear:{device}")
     if not iv or not words:
         return
     if new:
-        _say(f"ear:{device}", {"op": "append", "id": iv, "role": "you", "state": "live", "text": words})
+        _say(f"ear:{device}", {"op": "append", "id": iv, "role": "you", "state": "pending", "text": words})
     else:
         _say(f"ear:{device}", {"op": "update", "id": iv, "text": words}, live=True)
 
@@ -72,8 +91,8 @@ def listen(kind: str, label: str, p: dict) -> None:
     refs = p.get("refs") or {}
     iv, device = str(refs.get("iv") or ""), str(refs.get("endpoint") or "")
     if kind == "conv_ear" and label == "opened" and iv and refs.get("channel") == "voice":
-        with _lock:
-            _open[device], _turns[device] = iv, {}
+        with _lock:                         # what was heard of each turn so far is its predecessor's
+            _open[device], _turns[device], _before[device] = iv, {}, dict(_last.get(device, {}))
     elif kind == "conv_ear" and label == "typed" and iv:
         cid = str((p.get("cause") or {}).get("ref") or "")
         if client_id_ok(cid):
@@ -82,6 +101,7 @@ def listen(kind: str, label: str, p: dict) -> None:
     elif kind == "conv_ear" and label == "discarded" and iv:
         with _lock:
             writer = _lines.pop(iv, "")
+            _open_lines.pop(iv, None)
             if _open.get(device) == iv:
                 _open.pop(device, None)
         if writer:
@@ -106,9 +126,10 @@ def _accepted(kind, iv: str, device: str, text: str) -> None:
     if kind != "user.utterance":
         return
     with _lock:
-        live = iv in _lines                              # its line was appended live, at its first words
+        live = iv in _lines                              # its line was appended at its first words
         writer = _lines.get(iv) or f"ear:{device}"
         _keep(_lines, iv, writer)
+        _open_lines.pop(iv, None)
         if _open.get(device) == iv:
             _open.pop(device, None)
             _turns.pop(device, None)
@@ -125,6 +146,10 @@ def ours(order, event: str, heard_chars: int | None = None) -> None:
     with _lock:                                 # every line of his it answers, by its id on the wall (W2-1)
         ivs = _run_ivs.get(str(getattr(order, "run_id", "") or ""), []) or ([iv] if iv.startswith("iv_") else [])
         re = [_line_of.get(i, i) for i in ivs]
+        if event == "started":
+            _keep(_open_lines, str(order.say_id), "mouth")
+        else:
+            _open_lines.pop(str(order.say_id), None)
     if event in ("shown", "started"):
         _say("mouth", {"op": "append", "id": order.say_id, "role": "agent", "re": re, "text": order.text,
                        "state": "final" if event == "shown" else "live"})
@@ -133,6 +158,22 @@ def ours(order, event: str, heard_chars: int | None = None) -> None:
     if heard_chars is not None:
         op["heard"] = max(0, int(heard_chars))
     _say("mouth", op)
+
+
+def sweep(why: str = "") -> int:
+    """The session leaves the manager (it falls back to the old path, or the conversation is reset): every line this
+    adapter left open is deleted — nobody would ever close it. How many."""
+    with _lock:
+        gone = list(_open_lines.items())
+        _open_lines.clear()
+        for iv, _w in gone:
+            _lines.pop(iv, None)
+        _open.clear()
+        _turns.clear()
+        _before.clear()
+    for line, writer in gone:
+        _say(writer, {"op": "delete", "id": line, **({"why": why} if why else {})})
+    return len(gone)
 
 
 def _reset_for_tests() -> None:
@@ -144,3 +185,6 @@ def _reset_for_tests() -> None:
         _line_of.clear()
         _env_iv.clear()
         _run_ivs.clear()
+        _open_lines.clear()
+        _last.clear()
+        _before.clear()

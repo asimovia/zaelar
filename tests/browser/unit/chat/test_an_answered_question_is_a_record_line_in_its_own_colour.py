@@ -2,9 +2,10 @@
 
 «Ricard confirms that the message is sent» is neither his bubble nor the agent's: it wears the question card's surface
 and accent edge (`shared-surfaces.css`, tokens only), so it reads as the end of that card. The engine's `ask_resolved`
-event goes through the production router into the real store and the real ChatWall in Chromium; the row's class and
-its computed colours are read from the DOM, in the dark and in the light theme. The phone's sheet classes a row by
-its role (`zm-msg record`): the same rule is checked on that class with the phone's own stylesheet.
+event goes through the production router into the old path's wall writer (`legacy.pushChat({role: "record"})`, a note
+of kind `record`) and the real ChatWall in Chromium; the line's class (`cw-msg record`) and its computed colours are
+read from the DOM, in the dark and in the light theme. The phone's sheet (the same wall, its own classes) must class
+that line `zm-msg record`: it is mounted for real and read, and the same rule is checked with the phone's stylesheet.
 """
 from __future__ import annotations
 
@@ -24,7 +25,8 @@ LINE = {"es": "Ricard confirma que mandemos el mensaje a Odile", "en": "Quinn co
 
 pytest.importorskip("playwright.sync_api")
 
-LOG = """() => localStorage.getItem('hb_chat_log') || JSON.stringify({ msgs: [] })"""
+LOG = """() => localStorage.getItem('hb_wall_lines') || JSON.stringify({ lines: [] })"""
+LEGACY = "/frontend/app/services/wall-legacy.js?v=1"   # the page's ONE old-path writer (ChatWall imports this URL)
 COLOURS = """(sel) => { const e = document.querySelector(sel); const s = getComputedStyle(e);
     return { cls: [...e.classList], bg: s.backgroundColor, ink: s.color, edge: s.borderLeftColor,
              edgeW: s.borderLeftWidth, text: (e.textContent || '').trim() }; }"""
@@ -73,6 +75,7 @@ def _wall(browser, port):
         window.__sse = await import('/frontend/app/services/sse.js?v=2');
         document.body.append(wall.ChatWall());
         window.__store = store;
+        window.__legacy = (await import('""" + LEGACY + """')).legacy;
         store.openChatFrom('orb'); store.setChatTab('chat');
     }""")
     pg.wait_for_selector("#chatwall.open", timeout=5000)
@@ -84,8 +87,8 @@ def _wall(browser, port):
 def test_the_record_line_is_neither_bubble_in_either_theme(browser_and_port, lang):
     br, port = browser_and_port
     pg = _wall(br, port)
-    pg.evaluate("""() => { window.__store.pushChat({ role: 'you', text: 'send it', at: Date.now() });
-                           window.__store.pushChat({ role: 'agent', text: 'on it', at: Date.now() + 1 }); }""")
+    pg.evaluate("""() => { window.__legacy.pushChat({ role: 'you', text: 'send it', at: Date.now() });
+                           window.__legacy.pushChat({ role: 'agent', text: 'on it', at: Date.now() + 1 }); }""")
     pg.evaluate("(d) => window.__sse.routeEvent(null, d)",
                 {"kind": "ask_resolved", "label": "✅ he confirmed", "text": LINE[lang], "outcome": "yes", "task_id": "t1"})
     pg.wait_for_selector("#chatwall .cw-msg.record", timeout=5000)
@@ -103,16 +106,51 @@ def test_the_record_line_is_neither_bubble_in_either_theme(browser_and_port, lan
         const s = getComputedStyle(d); const r = { bg: s.backgroundColor, edge: s.borderLeftColor }; d.remove(); return r; }""")
     rec = pg.evaluate(COLOURS, "#chatwall .cw-msg.record")
     assert (rec["bg"], rec["edge"]) == (card["bg"], card["edge"]), "it does not wear the question card's surface and edge"
-    until_sync(lambda: any(m.get("role") == "record" and m.get("text") == LINE[lang] for m in json.loads(pg.evaluate(LOG))["msgs"]),
+    until_sync(lambda: any(m.get("role") == "note" and m.get("kind") == "record" and m.get("text") == LINE[lang]
+                           and m.get("state") == "final" for m in json.loads(pg.evaluate(LOG))["lines"]),
                "the record line is kept with the history")
     assert not pg._errors, pg._errors
     pg.close()
 
 
-def test_the_phones_sheet_draws_it_with_the_same_rule(browser_and_port):
+def test_the_phones_sheet_classes_the_record_line_as_a_record(browser_and_port):
+    """The phone's sheet mounts the same wall with its own classes: the answered question's line must wear
+    `zm-msg record` there, never a bubble's or a plain system note's class (the colour rule below keys on it)."""
     br, port = browser_and_port
-    sheet = (ENGINE / "frontend/mobile/app/shell/ChatSheet.js").read_text(encoding="utf-8")
-    assert 'class: "zm-msg " + (m.role || "sys")' in sheet, "the phone no longer classes a row by its role"
+    pg = br.new_page(viewport={"width": 390, "height": 800})
+    errors: list[str] = []
+    pg.on("pageerror", lambda e: errors.append(str(e)))
+    pg.route("**/api/**", lambda r: r.fulfill(status=200, content_type="application/json", body="{}"))
+    pg.route("**/api/i18n/bundle/*", lambda r: r.fulfill(
+        status=200, content_type="application/json", body=json.dumps({"strings": _EN})))
+    pg.goto(f"http://127.0.0.1:{port}/", wait_until="domcontentloaded")
+    pg.evaluate("""async () => {
+        localStorage.clear();
+        const i18n = await import('/frontend/app/core/i18n.js?v=1');
+        await i18n.loadBundle('en'); if (i18n.applyLang) await i18n.applyLang('en');
+        const store = await import('/frontend/app/core/store.js?v=2');
+        const m = await import('/frontend/mobile/app/shell/ChatSheet.js?v=1');
+        document.body.append(m.ChatSheet());
+        store.setChatTab('chat'); store.setChatOpen(true);
+        const { legacy } = await import('""" + LEGACY + """');
+        legacy.pushChat({ role: 'you', text: 'send it' });
+        legacy.pushChat({ role: 'agent', text: 'on it' });
+        legacy.pushChat({ role: 'record', text: '""" + LINE["en"] + """' });
+    }""")
+    rows = until_sync(lambda: (lambda xs: xs if len(xs) == 3 else None)(pg.evaluate(
+        """() => [...document.querySelectorAll('.zm-msgs > *')].filter(n => !n.hidden)
+               .map(n => ({ cls: [...n.classList], text: (n.textContent || '').trim() }))""")),
+        "the three lines on the phone's sheet", timeout_s=10)
+    rec = [r for r in rows if r["text"] == LINE["en"]]
+    assert rec, rows
+    assert "zm-msg" in rec[0]["cls"] and "record" in rec[0]["cls"], f"the phone draws the record line as {rec[0]['cls']}"
+    assert not {"you", "agent", "sys"} & set(rec[0]["cls"]), f"the phone draws the record line as a bubble or a note: {rec[0]['cls']}"
+    assert not errors, errors
+    pg.close()
+
+
+def test_the_phones_stylesheet_gives_the_record_class_its_own_colour(browser_and_port):
+    br, port = browser_and_port
     pg = br.new_page(viewport={"width": 390, "height": 800})
     pg.goto(f"http://127.0.0.1:{port}/", wait_until="domcontentloaded")
     pg.evaluate("""async () => {

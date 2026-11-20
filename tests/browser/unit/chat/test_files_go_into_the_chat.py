@@ -6,8 +6,9 @@ What is measured, each as its own case:
     its name in `X-File-Name`) — the bytes travel to the door, never in the message;
   · several files, several fates: a type the chat refuses and a refusal from the server (disk full) end as
     their own translated row, and the others still go;
-  · the sent bubble carries REFERENCES (id, name, kind, size, thumbnail URL) and shows them; the chat log keeps
-    them, so a restored history shows the attachment again;
+  · the sent bubble carries REFERENCES (id, name, kind, size, thumbnail URL) and shows them: `submitChat(text, atts)`
+    writes his line through the wall (`submitLine`, `{kind: "att", data: {att, bare}}`) and `ChatWall.lineBody` draws
+    them; the wall's store (`hb_wall_lines`) keeps them, so a restored history shows the attachment again;
   · a cancel aborts the upload and removes the row; an upload that never answers ends in a visible outcome on
     its clock — nothing spins forever;
   · paste and drop onto the composer attach, exactly like the clip.
@@ -110,7 +111,7 @@ def _page(browser, port, *, clear=True, limits=LIMITS):
         const store = await import('/frontend/app/core/store.js?v=2');
         const wall = await import('/frontend/app/components/ChatWall.js?v=5');
         document.body.append(wall.ChatWall());
-        window.__store = store;
+        window.__store = store; window.__wall = wall;
         store.openChatFrom('orb'); store.setChatTab('chat');
     }""", clear)
     pg.wait_for_selector("#chatwall.open", timeout=5000)
@@ -122,6 +123,11 @@ def _chips(pg):
     return pg.evaluate("""() => [...document.querySelectorAll('#chatwall .cw-att-chip')].map(c => ({
         phase: c.dataset.phase, name: c.querySelector('.cw-att-name').textContent,
         sub: c.querySelector('.cw-att-sub').textContent }))""")
+
+
+def _kept(pg):
+    """The final lines the wall keeps across a reload (`wall-storage.js`)."""
+    return json.loads(pg.evaluate("() => localStorage.getItem('hb_wall_lines')") or '{"lines": []}')["lines"]
 
 
 def _files(*specs):
@@ -154,10 +160,13 @@ def test_the_clip_attaches_several_files_and_each_keeps_its_own_fate(browser_and
     pg.fill("#chatwall .cw-input textarea", "what does this say?")
     pg.click("#chatwall .cw-send")
     until_sync(lambda: pg.locator("#chatwall .cw-msg.you .cw-msg-att").count() == 1, "the bubble with its files")
-    msg = pg.evaluate("() => window.__store.chatMsgs().at(-1)")
-    assert msg["text"] == "what does this say?"
-    assert [(a["id"], a["name"], a["kind"]) for a in msg["att"]] == [(101, "photo.png", "image"), (102, "notes.txt", "text")]
-    assert not any("buffer" in a or "data" in a for a in msg["att"]), "the message carries references, not bytes"
+    msg = until_sync(lambda: (lambda xs: xs[-1] if xs and xs[-1].get("kind") == "att" else None)(_kept(pg)),
+                     "his line with its files kept by the wall")
+    assert (msg["role"], msg["state"], msg["text"]) == ("you", "final", "what does this say?")
+    att = msg["data"]["att"]
+    assert [(a["id"], a["name"], a["kind"]) for a in att] == [(101, "photo.png", "image"), (102, "notes.txt", "text")]
+    assert msg["data"]["bare"] is False, "a line with words shows them"
+    assert not any("buffer" in a or "data" in a for a in att), "the message carries references, not bytes"
     assert pg.locator("#chatwall .cw-msg.you img.cw-att-img").get_attribute("src") == "/api/files/101/thumb"
     assert pg.locator("#chatwall .cw-msg.you .cw-att-file .cw-att-name").inner_text() == "notes.txt"
     assert _chips(pg) == [], "sending clears the tray, failed rows included"
@@ -169,11 +178,13 @@ def test_a_restored_history_shows_the_attachment_again(browser_and_port):
     b, port = browser_and_port
     ctx = b.new_context(viewport={"width": 1280, "height": 800})
     pg = _page(ctx, port)
-    pg.evaluate("""() => window.__store.pushChat({role: 'you', text: '',
-        att: [{id: 7, name: 'ticket.png', kind: 'image', size: 2048, thumb: '/api/files/7/thumb'},
-              {id: 8, name: 'contract.pdf', kind: 'pdf', size: 900000, thumb: null}]})""")
-    until_sync(lambda: "ticket.png" in (pg.evaluate("() => localStorage.getItem('hb_chat_log')") or ""),
-               "the chat log to persist the attachment")
+    # A message that is only files: sent through the composer's one door, it is his line with the files and no words.
+    pg.evaluate("""() => window.__wall.submitChat('',
+        [{id: 7, name: 'ticket.png', kind: 'image', size: 2048, thumb: '/api/files/7/thumb'},
+         {id: 8, name: 'contract.pdf', kind: 'pdf', size: 900000, thumb: null}])""")
+    until_sync(lambda: any("ticket.png" in json.dumps(l) and l.get("data", {}).get("bare") is True for l in _kept(pg)),
+               "the wall's store to persist the attachment")
+    assert pg.locator("#chatwall .cw-msg.you .cw-msg-body").count() == 0, "a files-only line shows no text body"
     pg.close()
     pg2 = _page(ctx, port, clear=False)
     until_sync(lambda: pg2.locator("#chatwall .cw-msg.you .cw-msg-att").count() == 1, "the restored bubble")

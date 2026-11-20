@@ -1,16 +1,20 @@
 """The chat wall hears a session of the manager as actions with ids (node 13.119, V2-941, INI-042 #49, the wall plan
 §3 — commit 2/5).
 
-  · his spoken line: `append` live at his first words (id = the intervention, writer `ear:<device>`), `update` live as
-    he speaks — over the stream only, never stored (W-1) — `update` final with the words the inbox accepted; a line
+  · his spoken line: `append` pending at his first words (shown dimmed until the guards judge it; id = the
+    intervention, writer `ear:<device>`), `update` as he speaks — over the stream only, never stored (W-1) — `update` final with the words the inbox accepted; a line
     the ear discards before it is final is deleted; one that never had live words is appended final;
   · his typed line: id = the screen's own `cid` (`keyboard:<device>`), a malformed one replaced by the intervention;
     the `cid` travels from `POST /api/chat` to the manager's entry, which keeps a well-formed one and mints otherwise;
   · our line: `append` live when its voice starts, answering his (`re`), `update` final with what sounded; shown, it
     is final at once; one whose voice never started is on the wall whole, never said to have sounded.
 
+  · a successor opened inside one provider turn shows only its own words; a line still open when the session leaves
+    the manager (a fallback, a reset) is deleted then — a final one stays.
+
 Disarms seen red: a live update stored; the final words not written; a typed line by its intervention instead of its
-`cid`; the `cid` dropped on its way to the entry; our line with no `re`.
+`cid`; the `cid` dropped on its way to the entry; our line with no `re`; the predecessor's words not cut off; no
+sweep at a fallback or a reset.
 """
 from __future__ import annotations
 
@@ -38,7 +42,7 @@ def _ear(label, iv, device="holder", **p):
     wall.listen("conv_ear", label, {"refs": {"iv": iv, "endpoint": device, "channel": "voice"}, **p})
 
 
-def test_his_spoken_line_is_live_then_final(ops):
+def test_his_spoken_line_is_pending_then_final(ops):
     _ear("opened", "iv_1")
     wall.heard("holder", 1, "w1")
     wall.heard("holder", 1, "w1 w2")
@@ -46,7 +50,7 @@ def test_his_spoken_line_is_live_then_final(ops):
     wall.listen("conv_inbox", "accepted", {"kind": "user.utterance", "text": "w1 w2 w3",
                                            "refs": {"iv": "iv_1", "endpoint": "holder", "channel": "voice"}})
     assert [(w, o["op"], o.get("state"), o.get("text"), live) for w, o, live in ops] == [
-        ("ear:holder", "append", "live", "w1", False),
+        ("ear:holder", "append", "pending", "w1", False),
         ("ear:holder", "update", None, "w1 w2", True),
         ("ear:holder", "update", None, "w1 w2 w3", True),
         ("ear:holder", "update", "final", "w1 w2 w3", False)]
@@ -60,7 +64,7 @@ def test_a_discarded_line_goes_and_one_with_no_live_words_is_appended_final(ops)
     wall.listen("conv_inbox", "accepted", {"kind": "user.utterance", "text": "w5",
                                            "refs": {"iv": "iv_2", "endpoint": "holder"}})
     assert [(o["op"], o["id"], o.get("state")) for _w, o, _l in ops] == [
-        ("append", "iv_1", "live"), ("delete", "iv_1", None), ("append", "iv_2", "final")]
+        ("append", "iv_1", "pending"), ("delete", "iv_1", None), ("append", "iv_2", "final")]
 
 
 @pytest.mark.parametrize("cid, line", [("c_abc123", "c_abc123"), ("NOT a cid!", "iv_9")])
@@ -149,3 +153,46 @@ def test_our_line_answers_every_line_of_its_batch_by_its_id_on_the_wall(ops):
     asyncio.run(m.say(order))
     ours = [o for w, o, _l in ops if w == "mouth"]
     assert ours[0]["re"] == ["c_abc", "iv_10"]
+
+
+def test_a_successor_shows_only_its_own_words(ops):
+    """The review's minor: his voice was still up when the ear closed one intervention, so the next opens in the middle
+    of the same provider turn — its line never carries the words the one before already had."""
+    _ear("opened", "iv_1")
+    wall.heard("holder", 1, "w1 w2")
+    _ear("opened", "iv_2")
+    wall.listen("conv_inbox", "accepted", {"kind": "user.utterance", "text": "w1 w2",
+                                           "refs": {"iv": "iv_1", "endpoint": "holder"}})
+    wall.heard("holder", 1, "w1 w2 w3")
+    wall.heard("holder", 2, "w4")
+    assert [(o["op"], o["id"], o.get("text")) for _w, o, _l in ops if o["id"] == "iv_2"] == [
+        ("append", "iv_2", "w3"), ("update", "iv_2", "w3 w4")]
+
+
+@pytest.mark.parametrize("leaves", ["fallback", "reset"])
+def test_a_line_left_open_is_swept_when_the_session_leaves_the_manager(ops, leaves):
+    """Nobody closes a line the manager left open once the session goes the old way or the conversation is reset: it is
+    deleted then, with its own writer. A final line stays."""
+    from nucleo.conversation_host import entry, switch
+    from nucleo.conversation_host.mouth import WallMouth
+
+    class Voice:
+        def speak(self, order, ack):
+            self.ack = ack
+            return True
+    _ear("opened", "iv_1")
+    wall.heard("holder", 1, "w1")
+    wall.listen("conv_inbox", "accepted", {"kind": "user.utterance", "text": "w1",
+                                           "refs": {"iv": "iv_1", "endpoint": "holder"}})
+    _ear("opened", "iv_2")
+    wall.heard("holder", 2, "w2")
+    v = Voice()
+    asyncio.run(WallMouth(SimpleNamespace(now_ms=lambda: 5), voice=v, ack_later=lambda s: None).say(_order()))
+    v.ack(SayStarted("s_1", 1))
+    ops.clear()
+    if leaves == "fallback":
+        switch.fall_back(SimpleNamespace(), "w0")
+    else:
+        entry.reset()
+    assert sorted((w, o["op"], o["id"]) for w, o, _l in ops) == [("ear:holder", "delete", "iv_2"),
+                                                                 ("mouth", "delete", "s_1")]

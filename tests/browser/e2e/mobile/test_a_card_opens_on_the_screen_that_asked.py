@@ -77,6 +77,10 @@ READ = """() => {
   };
 }"""
 
+# The lines each screen's chat wall holds — the component's own nodes, one per line id (INI-042 #49: the store has no
+# wall any more). Read from the page, so «the conversation reaches both» is what each screen would draw.
+WALL = """() => [...document.querySelectorAll('.cw-list [data-id], .zm-msgs [data-id]')].map(e => (e.textContent || '').trim())"""
+
 
 def _free_port():
     s = socket.socket(); s.bind(("127.0.0.1", 0)); p = s.getsockname()[1]; s.close(); return p
@@ -161,8 +165,8 @@ def seen(base):
         _wait(lambda: pages["phone"].evaluate(READ)["chips"])
         out["desk_1"] = pages["desk"].evaluate(READ)
         out["phone_1"] = pages["phone"].evaluate(READ)
-        out["phone_wall"] = pages["phone"].evaluate("async () => (await import('/static/app/core/store.js?v=2')).chatMsgs().map(m => m.text)")
-        out["desk_wall"] = pages["desk"].evaluate("async () => (await import('/static/app/core/store.js?v=2')).chatMsgs().map(m => m.text)")
+        out["phone_wall"] = _wait(lambda: pages["phone"].evaluate(WALL)) or pages["phone"].evaluate(WALL)
+        out["desk_wall"] = _wait(lambda: pages["desk"].evaluate(WALL)) or pages["desk"].evaluate(WALL)
 
         # 2 · the phone types — it holds no voice room
         pages["phone"].evaluate("async () => (await import('/static/app/services/session.js?v=3')).sendText('make me a report')")
@@ -173,7 +177,10 @@ def seen(base):
         pages["desk"].evaluate("() => { const h = window.__zaelarDesktop; h.list = () => ['youtube']; window.__closed = []; h.close = (id) => window.__closed.push(id); }")
         _post(base, "/__emit", {"kind": "screens", "label": "moved", "id": "youtube", "to": PHONE, "origin_dev": PHONE})
         out["desk_closed"] = _wait(lambda: pages["desk"].evaluate("() => window.__closed"))
-        out["desk_3"] = pages["desk"].evaluate(READ)
+        # the close is synchronous; the chip is pushed after the one-screen list resolves (`screens.onMoved`): read
+        # it when it is painted, not in the same instant as the close (the old ~1-in-12 flake of this case)
+        out["desk_3"] = _wait(lambda: pages["desk"].evaluate(READ)["chips"] and pages["desk"].evaluate(READ)) \
+            or pages["desk"].evaluate(READ)
 
         # 4 · the video plays on the desktop and the PHONE asks for a video: the server moves it (manifest
         #     `"screens": "single"`) — the desktop closes its player, the phone opens one

@@ -494,7 +494,7 @@ def handle(ev: dict) -> None:
         if ev.get("final") and switch is not None and switch.on:
             return      # a session of the manager: his final words are its ear's, written once (`wall_lines`)
         _ae._on_transcript(SimpleNamespace(is_final=bool(ev.get("final")), transcript=str(ev.get("text") or "")),
-                           _emit=_obs(), _wake=_M["wake"])
+                           _emit=_obs(), _wake=_M["wake"], conv=bool(switch is not None and switch.on))
     elif k == "item":
         _ae._on_item(SimpleNamespace(item=SimpleNamespace(role=ev.get("role"), text_content=ev.get("text"))),
                      _emit=_obs(), speech_id=str(ev.get("speech_id") or ""), surfaced=bool(ev.get("surfaced")))

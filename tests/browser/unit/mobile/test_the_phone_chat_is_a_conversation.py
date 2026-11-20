@@ -2,11 +2,13 @@
 
 Seen on the review account: the voice's wait-fillers («Un segundo…», «Sure…», «Let me search…») landed as bubbles, the
 list did not follow the newest line, and a line typed with the agent stopped got no answer and no word why. The engine
-already marks a filler (`kind:"filler"`, `voice/engine/speech/filler_audio.py`); the stream now keeps that mark on the
-row and the phone draws only replies and his own lines. And every label the phone shell asks `t()` for exists in
+already marks a filler (`kind:"filler"`, `voice/engine/speech/filler_audio.py`); the stream keeps that mark on the
+line and the phone draws only replies and his own lines. And every label the phone shell asks `t()` for exists in
 every pack — «ENERGY» showed in English under the Spanish shell because the ES value WAS the English word.
 
-RENDERED: the real `services/sse.js` router, the real store and the real `ChatSheet`, at 393×852 with touch.
+RENDERED: the real `services/sse.js` router, the old path's real writer (`services/wall-legacy.js`) and the real chat
+wall component that the real `ChatSheet` mounts through the real bridge (INI-042 #49), at 393×852 with touch. What is
+asserted is what the page SHOWS — the bubbles that are rendered — never a list in a store.
 """
 from __future__ import annotations
 
@@ -17,13 +19,20 @@ import pytest
 
 from tests.browser.unit.mobile.phone_page import ENGINE, PACK, open_phone, shot
 
+# The page's ONE old-path writer: the bridge imports `./wall-legacy.js?v=1`, and a module is cached by its resolved
+# URL — any other spelling is a second instance, blind to the wall.
 SETUP = """
   window.__sse = await import('/frontend/app/services/sse.js?v=6');
+  window.__legacy = (await import('/frontend/app/services/wall-legacy.js?v=1')).legacy;
   const { ChatSheet } = await import('/frontend/mobile/app/shell/ChatSheet.js?v=1');
   document.body.append(ChatSheet());
-  window.__store.setChatMsgs([]);
+  window.__legacy.reset();
   window.__store.setChatOpen(true);
 """
+
+# A bubble is a line the page RENDERS: in the list or right after it (the «⏻ off» note), and not display:none.
+BUBBLES = """() => [...document.querySelectorAll('.zm-chat .zm-msgs > *, .zm-chat .zm-off-note')]
+    .filter(e => e.getClientRects().length > 0).map(e => e.textContent.trim())"""
 
 
 @pytest.fixture(scope="module")
@@ -34,46 +43,56 @@ def phone():
 
 
 def _bubbles(pg):
-    return pg.evaluate("() => [...document.querySelectorAll('.zm-chat .zm-msgs .zm-msg')].map(e => e.textContent)")
+    return pg.evaluate(BUBBLES)
 
 
 def test_a_filler_from_the_stream_leaves_no_bubble(phone):
     phone.evaluate("""() => {
-        window.__store.setChatMsgs([]);
-        window.__store.pushChat({ role: 'you', text: '¿qué tiempo hace en Soria?' });
+        window.__legacy.reset();
+        window.__legacy.pushChat({ role: 'you', text: '¿qué tiempo hace en Soria?' });
         window.__sse.routeEvent(null, { kind: 'filler', label: 'relleno', text: 'Un segundo…', role: 'assistant' });
-        window.__store.pushAgentChat('En Soria hay 12 grados y sol.');
+        window.__legacy.pushAgentChat('En Soria hay 12 grados y sol.');
     }""")
     phone.wait_for_timeout(100)
     assert _bubbles(phone) == ["¿qué tiempo hace en Soria?", "En Soria hay 12 grados y sol."]
-    assert any(m.get("kind") == "filler" for m in phone.evaluate("() => window.__store.chatMsgs()")), \
-        "the filler is still in the history (the desktop wall shows it): the phone does not draw it"
+    kept = phone.evaluate("""() => [...document.querySelectorAll('.zm-chat .zm-msgs > [data-id]')]
+        .filter(e => e.textContent.includes('Un segundo')).map(e => e.getClientRects().length)""")
+    assert kept == [0], f"the filler is still a line of the wall (the desktop wall shows it): the phone does not draw it: {kept}"
 
 
 def test_the_list_follows_the_newest_line_and_respects_a_reader(phone):
-    phone.evaluate("""() => { window.__store.setChatMsgs([]);
-        for (let i = 0; i < 40; i++) window.__store.pushAgentChat('Line ' + i + ' ' + 'word '.repeat(30)); }""")
+    phone.evaluate("""() => { window.__legacy.reset();
+        for (let i = 0; i < 40; i++) window.__legacy.pushAgentChat('Line ' + i + ' ' + 'word '.repeat(30)); }""")
     phone.wait_for_timeout(200)
     gap = "() => { const l = document.querySelector('.zm-chat .zm-msgs'); return l.scrollHeight - l.scrollTop - l.clientHeight; }"
     assert phone.evaluate(gap) < 4, "the newest line is in view"
     shot(phone, "pr1-chat-follows")
     phone.evaluate("() => { const l = document.querySelector('.zm-chat .zm-msgs'); l.scrollTop = 0; l.dispatchEvent(new Event('scroll')); }")
-    phone.evaluate("() => window.__store.pushAgentChat('A late line ' + 'word '.repeat(30))")
+    phone.evaluate("() => window.__legacy.pushAgentChat('A late line ' + 'word '.repeat(30))")
     phone.wait_for_timeout(200)
     assert phone.evaluate("() => document.querySelector('.zm-chat .zm-msgs').scrollTop") == 0, \
         "he scrolled up to read: a new line does not yank him down"
     phone.fill(".zm-chat .zm-compose input", "y mañana?")
     phone.press(".zm-chat .zm-compose input", "Enter")
     phone.wait_for_timeout(200)
+    assert _bubbles(phone)[-1] == "y mañana?", "his typed line is on the wall, last"
     assert phone.evaluate(gap) < 4, "his own line brings the list down to it"
 
 
 def test_a_line_sent_with_the_agent_off_says_the_agent_is_off(phone):
-    phone.evaluate("() => { window.__store.setChatMsgs([]); window.__store.setPowerOff(true); }")
+    phone.evaluate("() => { window.__legacy.reset(); window.__store.setPowerOff(true); }")
     phone.fill(".zm-chat .zm-compose input", "hola")
     phone.press(".zm-chat .zm-compose input", "Enter")
     phone.wait_for_timeout(150)
-    assert _bubbles(phone)[-1] == PACK["es"]["mobile.chat_off"]
+    # The note is no longer a row of the list (the list is the wall's, INI-042 #49): it sits right after it, so it is
+    # still the last thing he reads, under his line.
+    assert _bubbles(phone)[-2:] == ["hola", PACK["es"]["mobile.chat_off"]], _bubbles(phone)
+    g = phone.evaluate("""() => { const n = document.querySelector('.zm-chat .zm-off-note').getBoundingClientRect();
+        const l = document.querySelector('.zm-chat .zm-msgs').getBoundingClientRect();
+        const c = document.querySelector('.zm-chat .zm-compose').getBoundingClientRect();
+        return { noteTop: n.top, noteBottom: n.bottom, listBottom: l.bottom, compTop: c.top }; }""")
+    assert g["listBottom"] <= g["noteTop"] + 1 and g["noteBottom"] <= g["compTop"] + 1, \
+        f"the note is in sight, between the conversation and the composer: {g}"
     shot(phone, "pr1-chat-agent-off")
     phone.evaluate("() => window.__store.setPowerOff(false)")
     phone.wait_for_timeout(100)

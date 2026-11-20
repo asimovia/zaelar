@@ -35,6 +35,8 @@ def test_a_typed_line_reaches_every_wall_and_the_typing_tab_paints_it_once() -> 
     assert '(d.label || "").startsWith("text-injected")' in sse, "the wall reads the typed label by prefix"
     j = sse.index("if (typed) {")
     block = sse[j:j + 700]
-    assert 'store.chatMsgs' in block and 'typedEcho(d.text, field(d, "dev"), DEVICE, xs)' in block, (
-        "the typing tab must recognise its own bubble, or every typed line paints twice there (`typed-echo.js`)")
-    assert 'store.pushChat({ role: "you", text: d.text })' in block
+    # F3-2: the announcement carries the screen's own id for the line (`cid`), so the tab that typed it reads it as
+    # ITS line's acknowledgement and every other tab writes the same line (the .mjs drives `ackTyped` itself).
+    assert 'legacy.ackTyped(d.text, field(d, "cid"), field(d, "dev"), DEVICE, cleanDevice)' in block, (
+        "the typed announcement must reach the wall as the keyboard's line by its cid, or it paints twice or never")
+    assert "store.pushChat" not in block and "typedEcho" not in sse, "the old wall's typed path is back"

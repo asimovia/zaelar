@@ -89,27 +89,21 @@ function _prune() {
   for (const [k, n] of _nodes) if (!live.has(n.dataset.ask) || !n.isConnected) _nodes.delete(k);
 }
 
-/** V2-886 D6 — a question whose turn is in the conversation sits UNDER that turn's lines: the chat list places it
- *  (`placeAsks`); only a question with no anchor on screen stays in the wall's block at the foot. */
+/** V2-886 D6 — a question whose turn is in the conversation sits UNDER that turn's lines: the wall appends it as a box
+ *  of its own when it opens (it never moves after); only a question with no anchor on screen stays in the wall's
+ *  block at the foot. `traces`: the turns on the wall. */
 const _anchored = (a, traces) => !!(a.trace && traces.has(a.trace));
-
-/** Splice each anchored open question after the last row of its turn. `lastRow`: trace → index after its last row. */
-export function placeAsks(rows, lastRow) {
-  const traces = new Set(lastRow.keys());
-  asks.openAsks().filter(a => _anchored(a, traces))
-    .map(a => [lastRow.get(a.trace), nodeFor(a, "wall")])
-    .sort((x, y) => y[0] - x[0])
-    .forEach(([i, node]) => rows.splice(i, 0, node));
-  return rows;
-}
+export const anchoredAsks = (traces) => asks.openAsks().filter(a => _anchored(a, traces));
+/** One open question as the wall's box draws it (reconciled by its state: a repaint keeps the field and its focus). */
+export const askBox = (a) => nodeFor(a, "wall");
 
 /** The chat wall's block of open questions with no anchor in the conversation. Mounted once by ChatWall. */
-export function AskWall() {
+export function AskWall(traces = () => new Set()) {
   asks.ensureAsks();
   const box = h("div", { class: "tq-wall", "aria-live": "polite" });
   createEffect(() => {
-    const traces = new Set(store.chatMsgs().map(m => m && m.trace).filter(Boolean));
-    paint(box, asks.openAsks().filter(a => !_anchored(a, traces)), "wall");
+    const on = traces();
+    paint(box, asks.openAsks().filter(a => !_anchored(a, on)), "wall");
     _prune();
   });
   return box;

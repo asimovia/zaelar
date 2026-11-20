@@ -1,5 +1,5 @@
 // ChatSheet.js — the chat on the phone, a full-screen page (Page.js). Mobile counterpart of components/ChatWall.js; the SHELL is new, the CONTENT is
-// not forked: the rows are store.chatMsgs() (the desktop wall's signal) and sending is ChatWall's submitChat(), the ONE
+// not forked: the lines are the desktop's chat wall through the same bridge (INI-042 #49), and sending is ChatWall's submitChat(), the ONE
 // path from a typed sentence to the agent — a local copy would be a second path, and a second path is how one shell
 // starts recording messages the other never sees. TWO TABS since the unified menu (2026-11-16): Chat · Processes, the
 // desktop wall's first two — the agent's own (the ☰ is the person and the setup). Processes are the same entries the
@@ -9,6 +9,10 @@ import { h, raw } from "../../../app/core/dom.js?v=2";
 import { createEffect, createSignal } from "../../../app/core/reactive.js?v=2";
 import * as store from "../../../app/core/store.js?v=2";
 import { submitChat } from "../../../app/components/ChatWall.js?v=5";
+import { createWallBridge } from "../../../app/services/wall-bridge.js?v=1";
+import { createWallStorage, CAP } from "../../../app/services/wall-storage.js?v=1";
+import * as session from "../../../app/services/session.js?v=3";
+import { DEVICE } from "../../../app/services/api.js?v=2";
 import { chatRefView } from "../../../app/components/ChatRef.js?v=1";
 import { renderMarkdownLite } from "../../../app/lib/markdown-lite.js?v=1";
 import { t } from "../../../app/core/i18n.js?v=1";
@@ -53,17 +57,8 @@ export function ChatSheet() {
       // Following the newest line is a STATE of the list, read from his last scroll — measured after a render it
       // is already wrong (the new line made the list taller), which is why the list never followed (V2-877 #10).
       onScroll: () => { stick = listEl.scrollHeight - listEl.scrollTop - listEl.clientHeight < 120; } },
-      // The chat is the conversation, not a log (V2-876 rule 6): a voice filler is a sound, never a bubble.
-      () => store.chatMsgs().filter((m) => m.kind !== "filler").map((m) => {
-        if (m.role === "ref") return chatRefView(m, "zm-msg");   // V2-862: the same box the desktop wall draws
-        const row = h("div", { class: "zm-msg " + (m.role || "sys") });
-        // The agent speaks markdown (lists, bold, code); the person does not. Same renderer as the desktop wall.
-        if (m.role === "agent") row.innerHTML = renderMarkdownLite(m.text || "");
-        else row.textContent = m.text || "";
-        return row;
-      }),
-      () => (offNote() ? h("div", { class: "zm-msg sys zm-off-note" }, t("mobile.chat_off")) : null),
     ),
+    () => (offNote() ? h("div", { class: "zm-msg sys zm-off-note" }, t("mobile.chat_off")) : null),
     h("form", { class: () => "zm-compose" + (onChat() ? "" : " zm-hide"), onSubmit: (e) => { e.preventDefault(); send(); } },
       h("input", {
         ref: (el) => (inputEl = el),
@@ -74,10 +69,23 @@ export function ChatSheet() {
     ),
   );
 
+  // The wall's lines, in the phone's bubbles. The chat is the conversation, not a log (V2-876 rule 6): a voice filler
+  // is a sound, never a bubble. The agent speaks markdown (lists, bold, code); the person does not.
+  createWallBridge({
+    mount: listEl, device: DEVICE, input: false, cap: CAP, storage: createWallStorage(),
+    renderers: { ref: (data) => chatRefView(data, "zm-msg") },   // V2-862: the same box the desktop wall draws
+    classes: (l) => (l.kind === "filler" || (l.data && l.data.kind === "filler") ? "zm-hide"
+      : l.role === "box" ? "" : "zm-msg " + (l.role === "note" ? (l.kind === "record" || l.kind === "peer" ? l.kind : "sys") : l.role)),
+    format: (l, said) => (l.role === "agent" && l.state === "final" && said === l.text
+      ? Object.assign(h("div"), { innerHTML: renderMarkdownLite(said) }) : null),
+    send: (text, id) => session.sendText(text, id),
+  });
+
   // Opening the chat lands on the newest line; a new line follows him down unless he scrolled up to read.
   const down = () => { if (listEl && stick) requestAnimationFrame(() => { listEl.scrollTop = listEl.scrollHeight; }); };
   createEffect(() => { if (store.chatOpen()) { stick = true; down(); } });
-  createEffect(() => { store.chatMsgs(); offNote(); down(); });
+  createEffect(() => { offNote(); down(); });
+  new MutationObserver(down).observe(listEl, { childList: true, subtree: true, characterData: true });
   // The keyboard coming up shortens the screen: the newest line stays in sight above the composer (P-12).
   try { window.visualViewport.addEventListener("resize", down); } catch (_) { /* no visual viewport */ }
 

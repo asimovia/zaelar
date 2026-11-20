@@ -26,7 +26,7 @@ def listen(kind: str, label: str, p: dict) -> None:
     from nucleo.conversation_host import turns
     trace = turns.corr(refs.get("iv"), text) or str(p.get("trace") or "")      # his turn's id (C16)
     from voice import attention, observer
-    observer.emit("transcript", LABEL, text=text, role="user", extra={"trace": trace}, piece="u_voice")
+    observer.emit("transcript", LABEL, text=text, role="user", extra={"trace": trace, "conv": True}, piece="u_voice")
     try:
         window = {"window_s": attention.window_s(), "window_open": attention.window_open()}
     except Exception:  # noqa: BLE001 — the window is a hint for the ring; the verdict goes without it

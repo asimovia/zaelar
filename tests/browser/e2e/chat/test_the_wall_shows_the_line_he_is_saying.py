@@ -18,14 +18,16 @@ shape of it, because every part of the shape is load-bearing:
 
   · it appears WITHOUT a verdict — it is a caption of the open microphone, not something he said;
   · it is marked as provisional (`cw-live`), so it never reads as recorded history;
-  · it is REPLACED by the real bubble when the verdict releases the turn — one line, not two;
+  · it BECOMES the real line when the verdict releases the turn — the same line, made final in place, never a
+    second bubble (the wall plan §5.1: his spoken line holds its place from his first partial, INI-042 #49);
   · it is REMOVED when the verdict discards the turn, which is what keeps V2-647 intact: the room's
     conversation must still leave no trace on his wall, and a caption left behind would be that defect
     coming back through a new door;
   · and it drives NOTHING — the canvas fast-path stays behind the verdict (V2-664).
 
 Sibling of node 4.197, and built the same way and for the same reason: it renders the REAL page and drives
-the seams `sse.js` itself calls, because a double of `deliver` proves the mapping and never the wiring.
+the seams `sse.js` itself calls, because a double of `deliver` proves the mapping and never the wiring. The wall is
+written by the page's one old-path writer (`/static/app/services/wall-legacy.js?v=1`, the URL every importer names).
 """
 from __future__ import annotations
 
@@ -62,7 +64,7 @@ READ = """() => {
                          return !!e.offsetParent && r.width > 0 && r.height > 0; };
   return {
     bubbles: [...document.querySelectorAll('.cw-list .cw-msg')].map(e => ({
-      cls: e.className, text: (e.textContent || '').trim(), painted: painted(e) })),
+      id: e.dataset.id, cls: e.className, text: (e.textContent || '').trim(), painted: painted(e) })),
     live: [...document.querySelectorAll('.cw-list .cw-msg.cw-live')]
             .filter(painted).map(e => (e.textContent || '').trim()),
   };
@@ -117,12 +119,13 @@ def seen(run):
         pg.evaluate("() => document.querySelectorAll('.boot-ovl, .lang-onb, .lang-onb-veil').forEach(e=>e.remove())")
         pg.evaluate("""async () => {
           const s = await import('/static/app/core/store.js?v=2');
-          s.setChatMsgs([]); s.setChatTab('chat'); s.setChatOpen(true);
+          const { legacy } = await import('/static/app/services/wall-legacy.js?v=1');
+          legacy.reset(); s.setChatTab('chat'); s.setChatOpen(true);
           s.setAttentionMode('smart');            // there IS a gate: nothing is released without a verdict
           // …and the orb is LISTENING (he said the name). V2-763: a caption is «you are being heard», and it
           // is only painted while the orb says so — the grey half is pinned on its own below.
           s.pulseAttentionHit(120);
-          s.clearLiveChat();
+          legacy.clearLiveChat();
         }""")
         pg.wait_for_timeout(400)
 
@@ -201,17 +204,18 @@ def seen(run):
         # disarm showed that deleting it left every assertion above green.
         out["through_the_socket"] = pg.evaluate("""async () => {
           const sse = await import('/static/app/services/sse.js?v=2');
-          const s = await import('/static/app/core/store.js?v=2');
+          const { legacy } = await import('/static/app/services/wall-legacy.js?v=1');
           const RealES = window.EventSource;
           let last = null;
           window.EventSource = function () { last = this; this.close = () => {}; };
           sse.closeSSE(); sse.openSSE(window.__zaelarDesktop);
-          s.clearLiveChat();
+          legacy.clearLiveChat();
           last.onmessage({ data: JSON.stringify({ kind: 'interim', label: '…',
                                                   text: 'por el socket de verdad', role: 'user' }) });
-          const painted = s.liveChat();
+          const painted = [...document.querySelectorAll('.cw-list .cw-msg.cw-live')].map(e => (e.textContent || '').trim());
+          legacy.clearLiveChat();
           sse.closeSSE(); window.EventSource = RealES;
-          return painted;
+          return painted.join('|');
         }""")
         b.close()
     return out
@@ -252,12 +256,18 @@ def test_the_FINAL_firms_up_the_caption_while_the_verdict_is_still_pending(seen)
     assert len(seen["held"]["bubbles"]) == 1, seen["held"]["bubbles"]
 
 
-def test_the_verdict_REPLACES_the_caption_with_the_real_line(seen):
-    """One line, not two: the caption is not history and must not survive next to the thing it previewed."""
+def test_the_verdict_makes_the_caption_the_real_line(seen):
+    """One line, not two: the caption must not survive next to the thing it previewed. Since the wall plan §5.1 it is
+    not replaced either: his line holds its place from his first partial and the release makes it final IN PLACE —
+    the same line id from the first partial to the end."""
     assert seen["released"]["live"] == [], seen["released"]
     texts = [b["text"] for b in seen["released"]["bubbles"]]
     assert texts == [FINAL], texts
     assert "cw-live" not in seen["released"]["bubbles"][0]["cls"]
+    first = seen["partials"][0]["bubbles"][0]["id"]
+    assert first and all(st["bubbles"][0]["id"] == first for st in seen["partials"]), seen["partials"]
+    assert seen["held"]["bubbles"][0]["id"] == first, seen["held"]
+    assert seen["released"]["bubbles"][0]["id"] == first, "the release wrote a second line instead of his own"
 
 
 def test_the_ROOM_is_captioned_while_it_is_being_judged(seen):

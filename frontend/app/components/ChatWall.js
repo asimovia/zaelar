@@ -14,7 +14,7 @@
 // A Ctrl+V anywhere on the page (see main.js) ALSO feeds the chat channel — pasted text reaches the agent even
 // while this panel is hidden; it shows up here the next time you open it.
 import { h, raw } from "../core/dom.js?v=2";
-import { createEffect, createMemo, createSignal, untrack } from "../core/reactive.js?v=2";
+import { createEffect, createSignal } from "../core/reactive.js?v=2";
 import * as store from "../core/store.js?v=2";
 import * as session from "../services/session.js?v=3";
 import * as api from "../services/api.js?v=2";
@@ -25,13 +25,16 @@ import { CLOSE_ICON, PAPERCLIP_ICON, MESSAGE_SQUARE_ICON, ACTIVITY_ICON, CLOCK_I
 import { renderMarkdownLite } from "../lib/markdown-lite.js?v=1";
 import { t } from "../core/i18n.js?v=1";
 import { mountProcesos } from "../services/procesos-bridge.js?v=1";
-import { AskWall, placeAsks } from "./TaskAsk.js?v=1";
+import { AskWall, anchoredAsks, askBox } from "./TaskAsk.js?v=2";
 import { chatRefView } from "./ChatRef.js?v=1";
 import * as a2a from "./A2AView.js?v=1";
 import { onCardFront } from "../widgets/card-front.js?v=1";
 import { mountAppsTab } from "../services/apps-bridge.js?v=1";
 import { mountConectores } from "../services/conectores-bridge.js?v=1";
 import * as red from "../services/red-bridge.js?v=1";
+import { createWallBridge, submitLine } from "../services/wall-bridge.js?v=1";
+import { createWallStorage, CAP as WALL_CAP } from "../services/wall-storage.js?v=1";
+import { legacy, MAX_TEXT } from "../services/wall-legacy.js?v=1";
 
 const SEND_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>`;
 // V2-621 — the ONE map from a tab id to its label key: the header's standing name (`.cw-tabname`) and each
@@ -87,13 +90,36 @@ function loadDock() {
 // thumb}); the bytes never ride the message. The server already holds them as the turn's state, so the line the
 // agent receives is his text — or, for a message that is only files, their names.
 export function submitChat(text, atts) {
-  const t = (text || "").trim();
+  const t = (text || "").trim().slice(0, MAX_TEXT);
   const a = (atts || []).filter((x) => x && x.id);
   if (!t && !a.length) return;
-  session.sendText(t || a.map((x) => "📎 " + x.name).join("\n"));
-  store.pushChat(a.length ? { role: "you", text: t, att: a } : { role: "you", text: t });
+  const said = t || a.map((x) => "📎 " + x.name).join("\n");
+  const extra = a.length ? { kind: "att", data: { att: a, bare: !t } } : {};
+  if (submitLine(said, extra) === null) session.sendText(said);   // no wall on this page: the line still goes out
 }
 
+// A line's body and classes on this wall — the look it always had (`cw-msg` and its role, markdown for ours, his
+// attachments, a peer's header, the crawl of the line the voice is saying). The component draws the rest.
+const ROLE_CLASS = { you: "you", agent: "agent", note: "sys" };
+function lineClasses(l) {
+  if (l.role === "box") return "";
+  const role = l.role === "note" ? (l.kind === "record" ? "record" : l.kind === "peer" ? "peer" : "sys") : ROLE_CLASS[l.role] || "you";
+  const speaking = l.role === "agent" && l.state === "live" && l.heard !== undefined && l.heard < l.text.length;
+  return `cw-msg ${role}` + (l.state === "live" && l.role === "you" ? " cw-live" : "") + (speaking ? " cw-speaking" : "");
+}
+function lineBody(l, said) {
+  const box = document.createDocumentFragment();
+  const d = l.data || {};
+  if (l.kind === "peer") {
+    const who = d.dir === "out" ? `🛰 → ${d.peer || "?"}` : d.dir === "in" ? `🛰 ${d.peer || "?"}` : "🛰";
+    box.appendChild(h("div", { class: "cw-msg-from" }, d.cluster && d.dir ? `${who} · ${d.cluster}` : who));
+  }
+  const plain = l.state !== "final" || (l.role === "agent" && said !== l.text);   // half-said: never markdown
+  if (said && !d.bare) box.appendChild(plain ? h("div", { class: "cw-msg-body" }, said)
+                                             : raw(`<div class="cw-msg-body">${renderMarkdownLite(said)}</div>`));
+  if (Array.isArray(d.att) && d.att.length) box.appendChild(h("div", { class: "cw-msg-att" }, ...d.att.map(attView)));
+  return box;
+}
 const KIND_GLYPH = { image: "🖼", pdf: "📄", text: "📝" };
 const ACCEPT = "image/png,image/jpeg,image/gif,image/webp,application/pdf,.pdf,.txt,.md,.markdown,.csv,text/plain,text/csv,text/markdown";
 
@@ -131,6 +157,8 @@ function ago(ts) {
 
 export function ChatWall() {
   let listEl, inputEl, headEl, wallEl, previewEl = null;
+  const [wallTraces, setWallTraces] = createSignal(legacy.traces());   // the turns on the wall (an ask's anchor)
+  legacy.onChange(() => setWallTraces(legacy.traces()));
   let dockSide = null;                         // null | "left" | "right"
   let dockW = DOCK_DEF_W;                      // the docked column's INTENDED width (see setReserve)
   let lastDockSide = (loadDock() || {}).side || "left";   // where the ⧉ toggle docks a floating box (V2-621)
@@ -321,7 +349,7 @@ export function ChatWall() {
             h("button", { class: "cl-b", onClick: () => store.widgetConfirmResolve(false) }, () => t("chat.no")),
           ))
       : null),
-    AskWall(),   // V2-851 — the open question of each waiting task, bound to its task and answerable here
+    AskWall(wallTraces),   // V2-851 — the open question of each waiting task, bound to its task and answerable here
     // PROCESOS (V2-728 · renamed V2-744) — one tab, four sub-tabs. The old «Procesos» and «Crons» were the same object seen
     // twice: a commission the brain is carrying out, and a commission with a clock on it.
     tasksHost,
@@ -368,9 +396,7 @@ export function ChatWall() {
   // CRONS, or CLUSTERS without wanting to silence anyone. Cutting off the voice merely by looking at a list is a decision the
   // system has no reason to make on its own, and it even cost an entire session that thought TTS was broken.
   //
-  // Who mutes: ONLY the 🔊 icon (`session.toggleBotMute`, which notifies the server). One switch, one owner.
-  // Chat is NOT a mode; it is an ADDITIONAL VIEW: the response appears there just as in subtitles and voice,
-  // all three at once — `pushAgentChat` hangs off the assistant transcript, which is independent of the audio.
+  // Who mutes: ONLY the 🔊 icon (`session.toggleBotMute`). Chat is NOT a mode; it is an ADDITIONAL VIEW.
   createEffect(() => {
     store.chatOpen();      // sole dependency: reserved geometry depends on whether it is open
     setReserve();          // closing releases the reserved strip; reopening while docked re-applies it
@@ -580,137 +606,24 @@ export function ChatWall() {
     store.setChatOpenFrom(null);
   });
 
-  // reactive CHAT message list: rebuild on every change, then pin to the latest message.
-  // V2-681 T-1 — where the RESTORED part of the history ends. The wall now survives a refresh, and a
-  // conversation from before that refresh must not read as something just said: this marks the boundary
-  // the way the messaging widget already marks the start of what it has stored. The store FLAGS each restored
-  // row (`restored`), and the divider goes after the last one: a counter of them could not see the cap trim
-  // one once the list sat at 100, and stuck the divider to the end of the wall for good (2026-11-17).
-  const restoredAt = store.restoredChatAt;
-  // Reuses `ago()` — this file's own relative formatter, already translated in both bundles — instead of a
-  // second way of saying when something happened inside one component.
-  const _whenLabel = () => (restoredAt
-    ? t("chat.earlierAt", { when: ago(restoredAt / 1000) })
-    : t("chat.earlier"));
-
-  // Same normalisation the store matches lines with, so the two cannot disagree about whether the bubble
-  // on screen IS the line the voice owes — the whole streaming decision hangs on that one comparison.
-  const _CHAT_MARKERS = /^(?:🔔|💬)\s*/;
-  const _sameLine = (a, b) => String(a || "").replace(_CHAT_MARKERS, "").trim()
-                           === String(b || "").replace(_CHAT_MARKERS, "").trim();
-
-  // THE LIVE CAPTIONS ARE NOT THE HISTORY (2026-11-18). His words while he speaks and the agent's line while it
-  // speaks used to be dependencies of the history rebuild below, so every partial re-rendered up to 100 rows of
-  // markdown and forced a layout: measured p50 6.6 ms, p90 13, worst 84-173 ms per partial on a loaded host — the
-  // caption stuttered exactly when the machine was busy. Now the history is rebuilt only when a row is committed
-  // (or the line being said changes shape), and the two captions are their own nodes whose TEXT alone is written,
-  // at most once per animation frame. The live caption is still never a row of `chatMsgs` and never persisted.
-  const captionBody = h("div", { class: "cw-msg-body" });
-  const captionRow = h("div", { class: "cw-msg you cw-live" }, captionBody);
-  let speakBody = null;                     // the body of the row the voice is saying, owned by the last rebuild
-  let _frame = 0, _captionH = -1;           // a frame already asked for; the captions' height at the last pin
-  // Which line is being said and whether any of it was heard yet — the only parts of `voicedLine` that change the
-  // ROWS. A memo compares by value, so a caption segment that only grows `heard` does not rebuild anything.
-  const sayShape = createMemo(() => {
-    const s = store.voicedLine();
-    return s && s.streaming ? `${s.trace || ""}\u0000${s.full || ""}\u0000${s.heard ? 1 : 0}` : "";
+  // THE CHAT WALL — a component of its own, mounted through its one bridge
+  // (`services/wall-bridge.js`, INI-042 #49): every line is an action with an id, appended where it STARTS and never
+  // rebuilt — his words, ours, a box. This file keeps the composer and hands the wall its look (`lineBody`,
+  // `lineClasses`) and its boxes; the old path writes through `services/wall-legacy.js`, the manager through `wall`.
+  const wallStore = createWallStorage();
+  const bridge = createWallBridge({
+    mount: listEl, device: api.DEVICE, input: false, cap: WALL_CAP, storage: wallStore,
+    labels: { cut: "…", get earlier() { const at = wallStore.at(); return at ? t("chat.earlierAt", { when: ago(at / 1000) }) : t("chat.earlier"); } },
+    renderers: { ref: (data) => chatRefView(data), a2a: (data) => a2a.a2aChatView(data), ask: (data) => askBox(data) },
+    format: lineBody, classes: lineClasses,
+    send: (text, id) => session.sendText(text, id),
   });
+  // An open question whose turn is on the wall is a box of its own under it: appended when it opens, repainted in
+  // place, gone when it closes (`legacy.asks`); one with no turn on the wall stays in the block at the foot.
+  createEffect(() => legacy.asks(anchoredAsks(wallTraces())));
 
-  createEffect(() => {
-    const msgs = store.chatMsgs(); if (!listEl) return;
-    sayShape();                              // a new line being said, or its first heard word: the rows change
-    // V2-747 — the line the voice is saying RIGHT NOW, and how much of it has been heard. Read untracked: how much
-    // was heard is written into `speakBody` by the caption painter below, never by rebuilding the wall.
-    const say = untrack(store.voicedLine);
-    speakBody = null;
-    let restoredLeft = 0;                    // rows up to and including the last restored one
-    msgs.forEach((m, i) => { if (m && m.restored) restoredLeft = i + 1; });
-    const rows = [], lastRow = new Map();   // V2-886 D6: trace → index after that turn's last row (`placeAsks` reads the asks)
-    msgs.forEach((m, i) => {
-      // The divider goes AFTER the last restored line — it says «what is above this was said earlier»,
-      // so with nothing restored (a fresh session, or a reset) it is never drawn at all.
-      if (restoredLeft > 0 && i === restoredLeft) rows.push(h("div", { class: "cw-earlier" }, _whenLabel()));
-      if (m && m.trace) lastRow.set(m.trace, rows.length + 1);   // every branch below pushes exactly one row
-      if (m.role === "ref") { rows.push(chatRefView(m)); return; }
-      if (m.role === "a2a") { rows.push(a2a.a2aChatView(m)); return; }   // V2-866: a consent card or a contact's message   // V2-862: an errand's reference box
-      const cls =m.role === "peer" ? "peer" : m.role === "agent" ? "agent" : m.role === "sys" ? "sys" : m.role === "record" ? "record" : "you";
-      const bubble = h("div", { class: "cw-msg " + cls });
-      if (m.role === "peer" && (m.dir === "in" || m.dir === "out")) {
-        const who = m.dir === "out" ? `🛰 → ${m.peer || "?"}` : `🛰 ${m.peer || "?"}`;
-        bubble.appendChild(h("div", { class: "cw-msg-from" }, m.cluster ? `${who} · ${m.cluster}` : who));
-      } else if (m.role === "peer") {
-        bubble.appendChild(h("div", { class: "cw-msg-from" }, "🛰"));
-      }
-      // V2-747 — WHILE THE VOICE IS SAYING IT, the bubble shows what has actually been said and stops
-      // there. His words: «solo ir mostrando las palabras a medida que las vas diciendo, y si yo te corto,
-      // te paras en ese momento y ya no imprimes más». The stored message keeps the full text; the trim
-      // that makes the HISTORY honest happens on settle, in the store. Plain text, not markdown, for the
-      // same reason the dictation bubble below is: a half-said sentence routinely holds an unclosed `*`.
-      // V2-752 — …AND THE CRAWL IS NOT THE PRIVILEGE OF THE LAST ROW. The `i === msgs.length - 1` this used
-      // to carry is why three replies generated inside 3 s (session fce3eff3, +285.9/+289.2/+291.5) rendered
-      // the first two WHOLE AND AT ONCE while only the third crawled: «en seco pegas un párrafo entero».
-      // The line the voice owes is identified the way every other surface now identifies it — by the turn's
-      // trace — with the text match kept for rows that carry none (a restored history, a proactive push).
-      const speaking = !!(say && say.streaming && m.role === "agent"
-                          && (say.trace && m.trace ? m.trace === say.trace : _sameLine(m.text, say.full)));
-      if (speaking) {
-        // Painted means the voice STARTED it (`bot_speech speaking`), so it belongs on screen even before the
-        // first caption lands — that is what replaced the 1200 ms grace window. With no caption channel at all
-        // the row simply shows whole, which is what this wall did before the crawl existed.
-        if (!say.heard) {
-          bubble.appendChild(raw(`<div class="cw-msg-body">${renderMarkdownLite(m.text)}</div>`));
-          rows.push(bubble);
-          return;
-        }
-        bubble.classList.add("cw-speaking");
-        const said = h("div", { class: "cw-msg-body" }, say.heard);
-        speakBody = said;
-        bubble.appendChild(said);
-        rows.push(bubble);
-        return;
-      }
-      if (m.text) bubble.appendChild(raw(`<div class="cw-msg-body">${renderMarkdownLite(m.text)}</div>`));
-      if (Array.isArray(m.att) && m.att.length) bubble.appendChild(h("div", { class: "cw-msg-att" }, ...m.att.map(attView)));
-      rows.push(bubble);
-    });
-    // …and when the restored block IS the whole wall (he refreshed and has not said anything yet) the
-    // divider closes it at the end. Without this the commonest case of all — reload, look — drew no mark
-    // at all, and the whole history read as current: the exact thing the divider exists to prevent.
-    if (restoredLeft > 0 && restoredLeft === msgs.length) {
-      rows.push(h("div", { class: "cw-earlier" }, _whenLabel()));
-    }
-    listEl.replaceChildren(...placeAsks(rows, lastRow));
-    untrack(_paintCaptions);                 // the live caption goes back under the rows, with its current text
-    pinToLatest();                           // a new row: the only rebuild that scrolls
-  });
-
-  // V2-743 — the caption of the open microphone, after the history and never part of it. Plain text, NOT
-  // markdown: a half-dictated sentence routinely holds an unclosed `*` or `_`, and rendering it would make the
-  // bubble flicker between styles as he keeps talking. Each partial and each caption segment only asks for a
-  // frame; the frame writes the newest text of both, so a burst of partials costs one write, not one per partial.
-  function _paintCaptions() {
-    _frame = 0;
-    if (!listEl) return;
-    const live = store.liveChat();
-    if (live) {
-      if (captionBody.textContent !== live) captionBody.textContent = live;
-      if (listEl.lastChild !== captionRow) listEl.appendChild(captionRow);
-    } else if (captionRow.parentNode) captionRow.remove();
-    const say = store.voicedLine();
-    if (speakBody && say && say.heard && speakBody.textContent !== say.heard) speakBody.textContent = say.heard;
-    // A caption that wraps onto a new line pushes the bottom out of view: follow it, and only then.
-    const hgt = (live ? captionRow.offsetHeight : 0) + (speakBody ? speakBody.offsetHeight : 0);
-    if (hgt !== _captionH) { _captionH = hgt; pinToLatest(); }
-  }
-  createEffect(() => {
-    store.liveChat(); store.voicedLine();
-    if (_frame || !listEl) return;
-    _frame = typeof requestAnimationFrame === "function" ? requestAnimationFrame(_paintCaptions) : (_paintCaptions(), 0);
-  });
-
-  // Opening the wall (or coming back to its Chat tab) lands on the latest message. The rebuild above pins
-  // too, but a list rebuilt while the wall is hidden has no height to scroll, so it opened at the top of the
-  // history: the pin has to happen when the list becomes VISIBLE, after layout.
+  // Opening the wall (or coming back to its Chat tab) lands on the latest message: a list filled while the wall was
+  // hidden has no height to scroll, so the pin happens when the list becomes VISIBLE, after layout.
   function pinToLatest() { if (listEl) listEl.scrollTop = listEl.scrollHeight; }
   createEffect(() => {
     if (!store.chatOpen() || store.chatTab() !== "chat") return;

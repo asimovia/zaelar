@@ -1,75 +1,70 @@
 // ============================================================================
 // test_an_errand_reference_is_one_box_that_updates.mjs — V2-862.
 //
-// An errand that delivers into a card leaves ONE reference box on the chat wall (`store.upsertChatRef`, fed by the
-// SSE `artifact` kind). The first event draws it where the conversation is; retitled / closed / a relay's re-open
-// update it IN PLACE — it never doubles and never moves down the thread. `skipped` draws nothing (it is for the
-// audit). A half-done errand keeps its box. The row carries its title as `text`, since a restored history keeps
-// only rows with a string text.
+// An errand that delivers into a card leaves ONE reference box on the chat wall (`legacy.upsertChatRef`, fed by the
+// SSE `artifact` kind; writer `legacy:ref`, line id `ref_<ref>`). The first event draws it where the conversation is;
+// retitled / closed / a relay's re-open update it IN PLACE (a `replace` of the same box) — it never doubles and never
+// moves down the thread. `skipped` draws nothing (it is for the audit). A half-done errand keeps its box. The box
+// carries its title as `text` and is a FINAL line, since a restored history keeps only final lines with their text.
+//
+// Driven on the REAL old-path writer attached to the REAL wall model (wallkit.mjs), no slice of a file.
 //
 // Run: node tests/browser/unit/chat/test_an_errand_reference_is_one_box_that_updates.mjs
 // ============================================================================
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
+import { wall } from "./wallkit.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here, "../../../..");
-const store = readFileSync(path.join(root, "frontend/app/core/store.js"), "utf8");
-const i = store.indexOf("export const upsertChatRef");
-const j = store.indexOf("\n};\n", i);
-assert.ok(i > 0 && j > i, "upsertChatRef was not found in store.js — was it renamed?");
-// the box is placed through the wall's one insert door (commit stamp, 2026-11-17): sliced from the source, not copied
-const d0 = store.indexOf("let _skewMs"), d1 = store.indexOf("\n};\n", store.indexOf("const _insertByAt"));
-assert.ok(d0 > 0 && d1 > d0, "the wall's insert door was not found in store.js — was it renamed?");
-const shim = `
-let msgs = [];
-const setChatMsgs = (fn) => { msgs = fn(msgs); };
-const _capChat = (xs) => xs;
-${store.slice(d0, d1 + 3)}
-${store.slice(i, j + 3)}
-export const reset = () => { msgs = []; };
-export const rows = () => msgs;
-export const push = (m) => { msgs = [...msgs, m]; };
-`;
-const S = await import("data:text/javascript," + encodeURIComponent(shim));
+const { keepable } = await import(pathToFileURL(path.join(root, "frontend/chat-wall/model.js")).href);
 
 for (const [lang, said, title, named] of [
   ["en", "Find me the exact bulb", "Kitchen hood light", "Your kitchen hood light — the exact fitting"],
   ["es", "Búscame la bombilla exacta", "Luz de la campana", "La luz de tu campana — el casquillo exacto"],
 ]) {
-  S.reset();
-  S.push({ role: "you", text: said });
-  S.upsertChatRef({ kind: "artifact", label: "opened", ref: "t-9", surface: "informe", card: "documento",
-                    title, state: "started" });
-  S.push({ role: "agent", text: "…" });
-  S.upsertChatRef({ kind: "artifact", label: "retitled", ref: "t-9", surface: "informe", card: "documento",
-                    title: named, state: "started" });
-  S.upsertChatRef({ kind: "artifact", label: "opened", ref: "t-9", surface: "informe", title: named,
-                    state: "started" });                                   // a relay re-opens the same row
-  S.upsertChatRef({ kind: "artifact", label: "closed", ref: "t-9", surface: "informe", card: "",
-                    title: named, state: "partial", file: "documents/x.md" });
-  const refs = S.rows().filter((m) => m.role === "ref");
+  const w = await wall();
+  w.legacy.youSaid(said);
+  w.legacy.upsertChatRef({ kind: "artifact", label: "opened", ref: "t-9", surface: "informe", card: "documento",
+                           title, state: "started" });
+  w.legacy.pushAgentChat("…");
+  w.legacy.upsertChatRef({ kind: "artifact", label: "retitled", ref: "t-9", surface: "informe", card: "documento",
+                           title: named, state: "started" });
+  w.legacy.upsertChatRef({ kind: "artifact", label: "opened", ref: "t-9", surface: "informe", title: named,
+                           state: "started" });                            // a relay re-opens the same row
+  w.legacy.upsertChatRef({ kind: "artifact", label: "closed", ref: "t-9", surface: "informe", card: "",
+                           title: named, state: "partial", file: "documents/x.md" });
+  const lines = w.lines();
+  const refs = lines.filter((l) => l.kind === "ref");
   assert.equal(refs.length, 1, `[${lang}] one errand, one box`);
-  assert.equal(S.rows()[1], refs[0], `[${lang}] the box stays where it was born in the thread`);
+  assert.deepEqual(lines.map((l) => l.role), ["you", "box", "agent"], `[${lang}] the thread is his line, the box, ours`);
+  assert.equal(lines[1].id, "ref_t-9", `[${lang}] the box stays where it was born in the thread`);
+  assert.equal(refs[0].owner, "legacy:ref", `[${lang}] the box is the old path's ref writer's`);
   assert.equal(refs[0].text, named, `[${lang}] it wears the composed name`);
-  assert.equal(refs[0].state, "partial", `[${lang}] a half-done errand keeps its box, marked as such`);
-  assert.equal(refs[0].card, "documento", `[${lang}] a later event without a card keeps the known one`);
-  assert.equal(refs[0].file, "documents/x.md");
-  assert.equal(typeof refs[0].text, "string", "a restored history keeps only rows with a string text");
+  assert.equal(refs[0].data.text, named);
+  assert.equal(refs[0].data.state, "partial", `[${lang}] a half-done errand keeps its box, marked as such`);
+  assert.equal(refs[0].data.card, "documento", `[${lang}] a later event without a card keeps the known one`);
+  assert.equal(refs[0].data.file, "documents/x.md");
+  assert.equal(refs[0].data.ref, "t-9", "the box reopens its own row");
+  assert.equal(typeof refs[0].text, "string", "a restored history keeps only lines with a string text");
+  assert.ok(keepable(lines).some((l) => l.id === "ref_t-9"), `[${lang}] the box is kept across a reload (final)`);
+  assert.deepEqual(w.rejected, [], `[${lang}] every update of the box was accepted in place`);
 
-  S.upsertChatRef({ kind: "artifact", label: "skipped", ref: "t-10", surface: "voz", reason: "no_card" });
-  S.upsertChatRef({ kind: "artifact", label: "opened", ref: "", surface: "lista" });
-  assert.equal(S.rows().filter((m) => m.role === "ref").length, 1, `[${lang}] skipped or unnamed events draw nothing`);
+  w.legacy.upsertChatRef({ kind: "artifact", label: "skipped", ref: "t-10", surface: "voz", reason: "no_card" });
+  w.legacy.upsertChatRef({ kind: "artifact", label: "opened", ref: "", surface: "lista" });
+  assert.equal(w.lines().filter((l) => l.kind === "ref").length, 1, `[${lang}] skipped or unnamed events draw nothing`);
+  assert.equal(w.lines().length, 3, `[${lang}] …and nothing else either`);
 }
 
-// Both shells draw the row through the ONE view (components/ChatRef.js), and it reopens through the one door.
-const wall = readFileSync(path.join(root, "frontend/app/components/ChatWall.js"), "utf8");
+// Both shells draw the box through the ONE view (components/ChatRef.js) — the wall's `ref` renderer — and it reopens
+// through the one door.
+const desk = readFileSync(path.join(root, "frontend/app/components/ChatWall.js"), "utf8");
 const phone = readFileSync(path.join(root, "frontend/mobile/app/shell/ChatSheet.js"), "utf8");
 const view = readFileSync(path.join(root, "frontend/app/components/ChatRef.js"), "utf8");
-assert.match(wall, /m\.role === "ref"\) \{ rows\.push\(chatRefView\(m\)\)/, "the desktop wall draws the box");
-assert.match(phone, /m\.role === "ref"\) return chatRefView\(m, "zm-msg"\)/, "the phone draws the same box");
+assert.match(desk, /renderers: \{[^}]*\bref: \(data\) => chatRefView\(data\)/, "the desktop wall draws the box");
+assert.match(phone, /renderers: \{[^}]*\bref: \(data\) => chatRefView\(data, "zm-msg"\)/, "the phone draws the same box");
 assert.match(view, /api\.taskReopen\(m\.ref\)/, "the box reopens through the existing door");
 assert.match(view, /hb:open-card/, "…and the card opens like every other click");
 for (const lang of ["en", "es"]) {

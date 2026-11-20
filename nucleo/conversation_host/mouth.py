@@ -45,7 +45,7 @@ class WallMouth:
 
     async def say(self, order) -> None:
         from voice import observer
-        extra = {"trace": trace_of(order), "conv_say": order.say_id}
+        extra = {"trace": trace_of(order), "conv_say": order.say_id, "conv": True}
         notice = bool(getattr(order, "notice_key", None))
         if self._said is not None:
             self._said(order.request_id, order.text)
@@ -87,7 +87,7 @@ class WallMouth:
                 heard = order.text if sig.heard_chars is None else order.text[:max(0, sig.heard_chars)]
                 if heard.strip():
                     observer.emit("transcript", "zaelar", text=heard, role="assistant",
-                                  extra={"trace": trace_of(order), "conv_say": order.say_id,
+                                  extra={"trace": trace_of(order), "conv_say": order.say_id, "conv": True,
                                          "outcome": sig.outcome if started else "unknown",
                                          **({} if started else {"sounded": False})}, piece="f_mouth")
             self.ack_later(sig)

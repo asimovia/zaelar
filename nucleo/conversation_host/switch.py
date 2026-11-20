@@ -102,6 +102,8 @@ def fall_back(session, why: str) -> None:
     if session is not None and hasattr(session, "__dict__"):
         session._conversation_switch = Decision(False, "fallback", why)
     observer.emit("alert", "conversation manager: this session goes the old way", text=why)
+    from nucleo.conversation_host import wall
+    wall.sweep("fallback")                       # a line the manager left open on the wall would never be closed
 
 
 def typed_on(session=None) -> bool:

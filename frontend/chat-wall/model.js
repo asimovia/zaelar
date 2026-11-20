@@ -28,6 +28,7 @@ export function createModel({ cap = 200, onChange = () => {}, onRejected = () =>
 
   const reject = (op, owner, reason) => {
     counts.rejected += 1;
+    counts[reason] = (counts[reason] || 0) + 1;     // by reason too: `final_grows` is read by its name
     onRejected({ reason, op: op && op.op, id: op && op.id, owner });
     return { ok: false, reason };
   };

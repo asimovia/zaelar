@@ -127,7 +127,12 @@ def test_only_a_yes_or_a_no_to_a_consent_question_leaves_a_line(monkeypatch):
 def test_the_wall_paints_the_record_line_as_a_system_row_and_the_answer_door_is_wrapped():
     root = Path(__file__).resolve().parents[3]
     sse = (root / "frontend" / "app" / "services" / "sse.js").read_text("utf-8")
-    assert 'd.kind === "ask_resolved"' in sse and 'store.pushChat({ role: "record", text: d.text })' in sse
+    # The wall moved out of the store (the wall plan, commit 3/5): the old path writes it through `wall-legacy.js`.
+    assert 'd.kind === "ask_resolved"' in sse and 'legacy.pushChat({ role: "record", text: d.text })' in sse
+    legacy = (root / "frontend" / "app" / "services" / "wall-legacy.js").read_text("utf-8")
+    assert 'NOTE_ROLES = new Set(["sys", "record", "peer"])' in legacy, "a record is no longer a note of its own kind"
+    wall = (root / "frontend" / "app" / "components" / "ChatWall.js").read_text("utf-8")
+    assert '(l.kind === "record" ? "record"' in wall, "the desktop wall no longer classes a record note as `record`"
     css = (root / "frontend" / "app" / "core" / "shared-surfaces.css").read_text("utf-8")
     assert ".cw-msg.record,.zm-msg.record{" in css, "the record line has no colour of its own in one of the two shells"
     from voice import observer

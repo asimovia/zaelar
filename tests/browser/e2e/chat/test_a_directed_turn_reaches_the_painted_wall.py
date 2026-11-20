@@ -7,11 +7,11 @@ event that arrived and a `<div>` that never appeared.
 
 WHY THIS TEST DID NOT EXIST, WHICH IS THE POINT. `attention_hold.js` is covered thoroughly — node 4.x drives
 the real module and proves a directed turn is DELIVERED. But «delivered» there means «the deliver callback
-ran», and the callback is a test double. Nothing measured the rest of the chain: the callback calls
-`store.pushChat`, which writes a signal, which an effect in `ChatWall.js` reads to rebuild `listEl` by hand
-with `replaceChildren`. Four seams, none of them exercised together, each able to fail in silence — which is
-the shape of every defect this file has found since (a test that builds the handle by hand proves the
-MAPPING, never the WIRING).
+ran», and the callback is a test double. Nothing measured the rest of the chain: the callback calls the old
+path's writer (`legacy.youSaid`, `wall-legacy.js` — it was `store.pushChat` before INI-042 #49), which hands an
+action through the bridge to the chat wall component, which appends a node to the list `ChatWall.js` mounted it in.
+Four seams, none of them exercised together, each able to fail in silence — which is the shape of every defect this
+file has found since (a test that builds the handle by hand proves the MAPPING, never the WIRING).
 
 So this renders the REAL page, drives the two seams `sse.js` itself calls when those two events arrive, and
 then reads the DOM. Nothing is stubbed but the network the page fetches its own state from.
@@ -106,7 +106,9 @@ def seen(run):
         # pass on nodes nobody can see (V2-690: a computed style does not prove something is painted).
         pg.evaluate("""async () => {
           const s = await import('/static/app/core/store.js?v=2');
-          s.setChatMsgs([]); s.setChatTab('chat'); s.setChatOpen(true);
+          // the page's ONE old-path writer: the URL every importer names (a different ?v= is a second instance)
+          const { legacy } = await import('/static/app/services/wall-legacy.js?v=1');
+          legacy.reset(); s.setChatTab('chat'); s.setChatOpen(true);
           s.setAttentionMode('smart');            // there IS a gate: every turn waits for its verdict
         }""")
         pg.wait_for_timeout(500)
@@ -134,8 +136,8 @@ def seen(run):
 
         # And what zaelar itself said comes back through its own door.
         pg.evaluate("""async () => {
-          const s = await import('/static/app/core/store.js?v=2');
-          s.pushAgentChat("Sí, ahora te oigo perfectamente, Ricardo.");
+          const { legacy } = await import('/static/app/services/wall-legacy.js?v=1');
+          legacy.pushAgentChat("Sí, ahora te oigo perfectamente, Ricardo.");
         }""")
         pg.wait_for_timeout(400)
         out["agent"] = pg.evaluate(READ)
@@ -153,7 +155,7 @@ def test_the_wall_is_there_and_starts_empty(seen):
 
 
 def test_every_directed_turn_is_PAINTED_in_the_order_he_said_it(seen):
-    """The whole point. Not «pushChat was called» — the bubbles exist, in the DOM, with his words in them."""
+    """The whole point. Not «youSaid was called» — the lines exist, in the DOM, with his words in them."""
     texts = [b["text"] for b in seen["directed"]["bubbles"]]
     assert texts == HIS_TURNS, (
         f"his session had four directed turns and the wall shows {len(texts)}: {texts}")

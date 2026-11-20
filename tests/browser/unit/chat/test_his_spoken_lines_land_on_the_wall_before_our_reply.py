@@ -1,18 +1,20 @@
-"""His spoken lines land on the RENDERED wall, each committed, in order, before our reply (V2-941, INI-042 #48).
+"""His spoken lines land on the RENDERED wall, each committed, in order, before our reply (V2-941, INI-042 #48/#49).
 
 In a session of the conversation manager the wall showed his speech only as the dashed live caption: each new phrase
-replaced the last one there, none became a bubble, and our replies stacked above it. The wall is fed by the rows the
-old turn wrote (`transcript` 🗣 + the directed verdict that releases it); the manager wrote neither. This drives the
-REAL manager (the package with its scripted model, the host's `wall_lines` listener and its `WallMouth`) through two
-spoken phrases, takes every event as it reaches the bus — the dicts the SSE stream sends — and replays them through
-the production router (`sse.routeEvent`) into the real store and the real ChatWall in Chromium, then reads the DOM:
-two bubbles of his, in order, the caption gone, then ours.
+replaced the last one there, none became a bubble, and our replies stacked above it. The manager now writes the wall
+ITSELF, as actions with ids (`nucleo/conversation_host/wall.py`, the wall plan's commit 4/5): his line by his ear's
+writer when the inbox accepts it, ours by the mouth's when its voice starts it; its old-wall events are marked `conv`
+and the old path's writer leaves them (never two writers for one line). This drives the REAL manager (the package with
+its scripted model, the host's `wall_lines` and `wall` listeners — the production pair — and its `WallMouth`) through
+two spoken phrases, takes every event as it reaches the bus — the dicts the SSE stream sends — and replays them through
+the production router (`sse.routeEvent`) into the real chat wall component and the real ChatWall in Chromium, then
+reads the DOM: two lines of his, in order, no caption left, then ours.
 
-Ours (plan v3.2 C2/C4): said, our line is owed until the voice the body replays starts it with the line's trace, and
-its end leaves on the wall what sounded.
+Ours (plan v3.2 C2/C4): said, our line is not on the wall until the voice the body replays starts it, and its end
+leaves on the wall what sounded (M5: a final line of ours only shortens, «…» where it was cut).
 
-Disarms: take `wall_lines.listen` off the manager's telemetry → his lines never become bubbles (red); the line's trace
-not adopted at its start → ours is never painted by its voice (red).
+Disarms: take `wall.listen` off the manager's telemetry → his lines never become bubbles (red, and it is the
+`unwired` test's own scenario); the mouth's `started` not written → ours is never painted by its voice (red).
 """
 from __future__ import annotations
 
@@ -87,7 +89,7 @@ def _run(monkeypatch, wired: bool, voiced: bool = False) -> list[dict]:
     from conversation.ports import Done
     from conversation.store import MemoryStore
     from conversation.testing.scripted_model import reply
-    from nucleo.conversation_host import switch, wall_lines
+    from nucleo.conversation_host import switch, wall, wall_lines
     from nucleo.conversation_host.mouth import WallMouth
     from tests.conversation.unit.convkit import Harness
     from voice import remote_session as rs
@@ -97,9 +99,10 @@ def _run(monkeypatch, wired: bool, voiced: bool = False) -> list[dict]:
                         got.append(dict(ev)) if topic == "observer" else real(topic, ev, *a, **k))
     monkeypatch.setitem(rs._M, "session", SimpleNamespace(_conversation_switch=switch.Decision(True, "voice")))
     h = Harness(MemoryStore())
-    if wired:
+    wall._reset_for_tests()
+    if wired:                                 # the host's listeners, as `conversation_host.entry` hands them over
         port = h.tel.emit
-        h.tel.emit = lambda k, lab, p: (port(k, lab, p), wall_lines.listen(k, lab, p))
+        h.tel.emit = lambda k, lab, p: (port(k, lab, p), wall_lines.listen(k, lab, p), wall.listen(k, lab, p))
     voice = _Voice() if voiced else None
     mouth = WallMouth(h.clock, voice=voice, ack_later=h.conv.ack)
     mouth.ack = h.conv.ack
@@ -117,7 +120,8 @@ def _run(monkeypatch, wired: bool, voiced: bool = False) -> list[dict]:
         rs.handle({"k": "state", "state": "speaking"})
         ack(SayEnded(order.say_id, "cut", 4, 0, order.endpoint))
         rs.handle({"k": "state", "state": "listening"})
-    return [e for e in got if e.get("kind") in ("transcript", "interim", "ambient", "brain", "bot_speech")]
+    wall._reset_for_tests()
+    return [e for e in got if e.get("kind") in ("transcript", "interim", "ambient", "brain", "bot_speech", "wall")]
 
 
 def _page(browser, port):
@@ -160,13 +164,15 @@ def test_two_spoken_phrases_are_two_bubbles_in_order_before_our_reply(browser_an
     until_sync(lambda: pg.evaluate(READ)[:2] == want, f"his two lines committed in order: {pg.evaluate(READ)}")
     rows = pg.evaluate(READ)
     assert rows[2:] and all(r == "Z: Here it is." for r in rows[2:]), rows
-    assert pg.evaluate("() => window.__store.liveChat()") == "", "the live caption is gone once his line is committed"
+    assert pg.evaluate("() => document.querySelectorAll('#chatwall .cw-list .cw-live, #chatwall .cw-list .cw-pending')"
+                       ".length") == 0, "no caption and no line in course is left once his lines are committed"
     assert not pg._errors, pg._errors
     pg.close()
 
 
 def test_unwired_his_lines_never_become_bubbles(browser_and_port, monkeypatch):
-    """The failure the operator saw, reproduced: without the listener his lines stay a caption."""
+    """The failure the operator saw, reproduced: without the host's listeners his lines never reach the wall (the
+    old path's writer leaves the manager's `conv` events, by design: never two writers for one line)."""
     br, port = browser_and_port
     pg = _page(br, port)
     _replay(pg, _events(monkeypatch, wired=False))
@@ -183,7 +189,7 @@ def test_our_said_line_is_painted_when_its_voice_starts_and_kept_to_what_sounded
     kinds = [(e["kind"], e.get("role") or e.get("label")) for e in events if e["kind"] in ("brain", "transcript")]
     assert kinds[-2:] == [("brain", "assistant"), ("transcript", "assistant")], kinds
     pg = _page(br, port)
-    owed = next(i for i, e in enumerate(events) if e["kind"] == "brain") + 1
+    owed = next(i for i, e in enumerate(events) if e["kind"] == "brain") + 1      # up to our line, said, unsounded
     _replay(pg, events[:owed])
     until_sync(lambda: pg.evaluate(READ) == ["H: Show me the agenda", "H: for tomorrow"], "his lines")
     pg.wait_for_timeout(300)

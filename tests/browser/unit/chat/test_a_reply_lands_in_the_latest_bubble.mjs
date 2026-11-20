@@ -10,33 +10,19 @@
 // The rules: a line is placed when ITS voice starts it (its trace, its caption or its spoken record) — append by
 // arrival, one focus; a spoken record joins the row of its own turn wherever it is, and never moves a row.
 //
+// Drives the REAL old-path writer (`services/wall-legacy.js`) on the REAL wall model, through `wallkit.mjs`.
+// The wall plan §5.1 (order by start) is this file's rule made general: a line takes its place where its voice STARTS
+// it, appended, never inserted by time. M5: a final line of ours only shortens, so a late record of an OLDER line
+// that was already settled cut cannot lengthen it — it is refused and counted, and it never adds or moves a row.
+//
 // Run: node tests/browser/unit/chat/test_a_reply_lands_in_the_latest_bubble.mjs
 // ============================================================================
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import path from "node:path";
+import { wall } from "./wallkit.mjs";
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const root = path.join(here, "../../../..");
-const store = readFileSync(path.join(root, "frontend/app/core/store.js"), "utf8");
-const i = store.indexOf("const _CHAT_MARKERS");
-const j = store.indexOf("// Convenience helpers used across services");
-assert.ok(i > 0 && j > i, "the chat-wall slice was not found in store.js — was it renamed?");
-const shim = `
-let msgs = [];
-let _capSeq = 0;
-const setChatMsgs = (fn) => { msgs = fn(msgs); };
-const _capChat = (xs) => xs;
-const createSignal = (v) => { let _v = v; return [() => _v, (n) => { _v = n; }]; };
-${store.slice(i, j)}
-export const reset = () => { msgs = []; _pendingVoiced = null; _owedQueue = []; _voiceSounding = null; _setVoicedLine(null); };
-export const caption = (text, final) => { _capSeq++; noteSpokenAloud(text, final); };
-export const agentRows = () => msgs.filter(m => m.role === "agent").map(m => m.text);
-export const crawl = () => voicedLine();
-`;
-const S = await import("data:text/javascript," + encodeURIComponent(shim));
-
+const rows = (w) => w.lines().filter((l) => l.role === "agent").map((l) => l.text);    // the rows, in wall order
+const said = (w) => w.said().filter((l) => l.role === "agent").map((l) => l.text);     // what each row SHOWS
+const crawl = (w) => w.lines().find((l) => l.role === "agent" && l.state === "live") || null;
 
 const CASES = [
   { lang: "en", A: "Checking… it shouldn't have asked, and it won't again — I'm telling it to go on.",
@@ -49,38 +35,45 @@ const CASES = [
 const TA = "T29·88e9", TB = "T27·e2da";
 
 for (const c of CASES) {
-  S.reset();
-  S.pushAgentChat(c.B, { voiced: true, trace: TB });        // owed, its voice queued behind another line
-  S.pushAgentChat(c.A, { voiced: true, trace: TA });        // the next reply: B was never started, so it is not on screen
-  S.pushAgentChat(c.note);                                  // a proactive notice, written at once
-  S.pushAgentChat(c.ask, { spoken: true });                 // the voice says a notice — its record names no turn
-  S.noteVoiceStarted("");                                   // …the next utterance starts, naming no turn
-  assert.deepEqual(S.agentRows(), [c.note, c.ask],
+  let w = await wall();
+  const L = w.legacy;
+  L.pushAgentChat(c.B, { voiced: true, trace: TB });        // owed, its voice queued behind another line
+  L.pushAgentChat(c.A, { voiced: true, trace: TA });        // the next reply: B was never started, so it is not on screen
+  L.pushAgentChat(c.note);                                  // a proactive notice, written at once
+  L.pushAgentChat(c.ask, { spoken: true });                 // the voice says a notice — its record names no turn
+  L.noteVoiceStarted("");                                   // …the next utterance starts, naming no turn
+  assert.deepEqual(said(w), [c.note, c.ask],
     `[${c.lang}] an utterance that names no turn is not this reply's start: nothing is written above what comes next`);
-  S.pushAgentChat(c.B, { spoken: true, trace: TB });        // it was B the voice was saying
-  S.noteVoiceStarted("");
-  S.caption(c.A.slice(0, 20), false);                       // and now A, by its own caption
-  assert.deepEqual(S.agentRows(), [c.note, c.ask, c.B, c.A], `[${c.lang}] every line lands in the order it was said`);
-  assert.equal(S.crawl().trace, TA, `[${c.lang}] the line being said is the latest bubble — one focus`);
-  S.pushAgentChat(c.A, { spoken: true, trace: TA });
-  assert.deepEqual(S.agentRows(), [c.note, c.ask, c.B, c.A], `[${c.lang}] its record joins its own row`);
+  L.pushAgentChat(c.B, { spoken: true, trace: TB });        // it was B the voice was saying
+  L.noteVoiceStarted("");
+  L.noteSpokenAloud(c.A.slice(0, 20), false);               // and now A, by its own caption
+  assert.deepEqual(rows(w), [c.note, c.ask, c.B, c.A], `[${c.lang}] every line lands in the order it was said`);
+  assert.deepEqual(said(w), [c.note, c.ask, c.B, c.A.slice(0, 20)], `[${c.lang}] …and A crawls from its caption`);
+  assert.equal(crawl(w).data.trace, TA, `[${c.lang}] the line being said is the latest bubble — one focus`);
+  assert.equal(crawl(w).id, w.lines()[w.lines().length - 1].id, `[${c.lang}] …it IS the last row`);
+  L.pushAgentChat(c.A, { spoken: true, trace: TA });
+  assert.deepEqual(said(w), [c.note, c.ask, c.B, c.A], `[${c.lang}] its record joins its own row`);
+  assert.equal(w.rejected.length, 0, `[${c.lang}] ${JSON.stringify(w.rejected)}`);
 
-  // its own start paints it at once (V2-752 kept), and a late record of an OLDER line updates that row in place
-  S.reset();
-  S.pushAgentChat(c.B, { voiced: true, trace: TB });
-  S.noteVoiceStarted(TB);
-  S.caption(c.B.slice(0, 12), false);
-  S.pushAgentChat(c.A, { voiced: true, trace: TA });
-  S.noteVoiceStarted(TA);
-  assert.deepEqual(S.agentRows(), [c.B.slice(0, 12) + "…", c.A]);
-  S.pushAgentChat(c.B, { spoken: true, trace: TB });
-  assert.deepEqual(S.agentRows(), [c.B, c.A], `[${c.lang}] the trace groups a record with its row, it never reorders`);
+  // its own start paints it at once (V2-752 kept), and a late record of an OLDER line goes to that row, in place
+  w = await wall();
+  w.legacy.pushAgentChat(c.B, { voiced: true, trace: TB });
+  w.legacy.noteVoiceStarted(TB);
+  w.legacy.noteSpokenAloud(c.B.slice(0, 12), false);
+  w.legacy.pushAgentChat(c.A, { voiced: true, trace: TA });
+  w.legacy.noteVoiceStarted(TA);
+  assert.deepEqual(said(w), [c.B.slice(0, 12) + "…", c.A]);
+  w.legacy.pushAgentChat(c.B, { spoken: true, trace: TB });
+  assert.deepEqual(rows(w), [c.B, c.A], `[${c.lang}] the trace groups a record with its row, it never reorders`);
+  // M5: B was settled cut when A's voice started; a record that says more cannot lengthen it — refused, counted
+  assert.deepEqual(said(w), [c.B.slice(0, 12) + "…", c.A], `[${c.lang}] M5: a settled line of ours never grows`);
+  assert.deepEqual(w.rejected.map((r) => r.reason), ["final_grows"], `[${c.lang}] …and the refusal is counted`);
 
   // an untraced build keeps painting on the start it has (nothing names a turn on either side)
-  S.reset();
-  S.pushAgentChat(c.A, { voiced: true });
-  S.noteVoiceStarted("");
-  assert.deepEqual(S.agentRows(), [c.A]);
+  w = await wall();
+  w.legacy.pushAgentChat(c.A, { voiced: true });
+  w.legacy.noteVoiceStarted("");
+  assert.deepEqual(said(w), [c.A]);
 }
 
 console.log("ok — a reply lands in the latest bubble");

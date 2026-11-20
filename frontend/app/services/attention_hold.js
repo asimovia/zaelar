@@ -44,7 +44,7 @@ export const HOLD_MS = 9000;
 export const HOLD_CEILING_MS = 180000;
 
 // V2-743 — `settled` fires once per batch that LEAVES the hold, in either direction: delivered, or dropped
-// by a verdict that ruled the room. The live caption on the wall (store.liveChat) is what listens to it, so
+// by a verdict that ruled the room. His line in course on the wall (`wall-legacy.js`) is what listens to it, so
 // the provisional line disappears exactly when its turn stops being provisional — without this module
 // learning anything about the chat, which is the separation it was extracted for.
 // ── V2-745 · ONE UTTERANCE IS ONE BUBBLE, AND THE CAPTION KEEPS WHAT HE ALREADY SAID ────────────────────
@@ -106,7 +106,7 @@ export function createAttentionHold({ mode, deliver, settled = () => {}, holdMs 
     const batch = held; held = [];
     clearTimer(timer); timer = null; waited = 0;
     // The CANVAS still sees every fragment (V2-664 tuned it that way); the WALL sees the paragraph.
-    // `at`: the moment the LAST fragment became final — the bubble is committed when his words are (store.pushChat).
+    // `at`: the moment the LAST fragment became final — his line is final when his words are (`legacy.youSaid`).
     for (const h of batch) deliver(h.text, h.isFinal, judged, false, h.at);
     if (batch.length) deliver(_joinSpoken(batch.map(h => h.text)), true, judged, true, batch[batch.length - 1].at);
     if (batch.length) settled("delivered");

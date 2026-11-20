@@ -38,6 +38,7 @@ import * as wake from "./wakeword.js?v=1";
 import { createEffect, createSignal } from "../core/reactive.js?v=2";   // T-18: ?v=1 was a 2nd instance, blind to the store
 import { t } from "../core/i18n.js?v=1";
 import { createOutbox } from "./outbox.js?v=1";
+import { legacy } from "./wall-legacy.js?v=1";   // the chat wall's old-path writer (its reset, what the voice is heard saying)
 import * as health from "./device-health.js?v=1";
 import { MIC_MODES as _MIC_MODES, defaultMicMode, captureConstraints } from "./mic-profile.js?v=1";
 import * as micDenial from "./mic-denial.js?v=1";
@@ -855,7 +856,7 @@ export async function start() {
       // from «captions arrived and the wall ignored them» — a whole fix was planned around a guess. One line
       // per session, the first segment only, so the next audit reads it instead of guessing.
       if (!_capSeen) { _capSeen = true; api.clientLog("📝 subtítulos sincronizados VIVOS", { text: "TranscriptionReceived" }); }
-      for (const s of (segments || [])) store.pushCaptionSeg(s.id, s.text, s.final);
+      for (const s of (segments || [])) { store.pushCaptionSeg(s.id, s.text, s.final); legacy.noteSpokenAloud(s.text, s.final); }
     });
 
     store.setConnState(t("voice.conn_connecting"));
@@ -1061,12 +1062,11 @@ function _clearCanvasAndLog() {
   // only empties debugbus.js's own ring — `DebugPanel.js`'s RENDERED rows only clear via its own reactive effect
   // on `store.sessionEpoch()` (see that file's "SESIÓN NUEVA" comment), which this call never bumps — so the
   // operator kept seeing the PREVIOUS session's rows after a reset, even though the buffer feeding them was
-  // already empty. (2) the chat wall's history (`store.chatMsgs`) was never cleared by ANY reset path — a
-  // conversation from before the reset just sat there looking current. Both fixed the same way: this is the
+  // already empty. (2) the chat wall was never cleared by ANY reset path — it looked current. Both fixed: this is the
   // client-side, deterministic reset path (see the comment above on why it can't rely on the SSE round-trip),
   // so it owns clearing everything the operator can still SEE, not just the debug ring.
   try { store.newSession(); } catch (_) {}
-  try { store.setChatMsgs([]); } catch (_) {}
+  try { legacy.reset(); } catch (_) {}
   // A reset also puts the FURNITURE back where it was born (operator, 2026-09-07: «cuando se hace un reset,
   // quiero que el orbe vuelva a su posición inicial»). The canvas is cleared right here, deterministically —
   // the orb's dragged position is the same kind of client-side state, so it rides the same path. Announced as

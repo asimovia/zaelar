@@ -754,6 +754,9 @@ _PACKAGE_CEILINGS["conversation"] += 9                 # 2026-11-20 V2-941 (the 
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 9     # same cause: the host's reader (`guards.foreign_voice`), on the holder only
 _PACKAGE_CEILINGS["voice"] += 10                       # same cause: the enrolled voice's verdicts read without consuming them (`voice_lock.judged_other`)
 _TOTAL_MAX += 29     # same cause, measured
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 48    # 2026-11-20 V2-941 + INI-042 #49 (the wall plan commits 3-4/5, the review's F3-1/F3-2 and minors): his spoken line pending until accepted, a successor without its predecessor's words, the open lines swept when the session leaves the manager (`wall.sweep`), the old wall's events of a session of the manager marked `conv`
+_PACKAGE_CEILINGS["voice"] += 9                        # same cause: the replayed provider words, a typed line's announcement (with its `cid`) and the manager's notice card, marked
+_TOTAL_MAX += 57     # same cause, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

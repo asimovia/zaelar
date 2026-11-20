@@ -127,8 +127,11 @@ function harness(mode = "smart", holdMs = 40) {
   // V2-745 adds the second axis: `whole` says which half of the release this call is.
   assert.ok(/deliver:\s*\(text,\s*isFinal,\s*judged,\s*whole,\s*at\)\s*=>/.test(src),
     "sse.js must receive both flags the hold now hands it");
-  assert.ok(/if\s*\(whole\)\s*return void store\.pushChat/.test(src),
+  // The wall plan's commit 3/5: the wall is written by the old path's writer (`wall-legacy.js`), never the store.
+  assert.ok(/if\s*\(whole\)\s*return void legacy\.youSaid\(text,\s*at\)/.test(src),
     "the JOINED paragraph is the only thing that may reach the wall — one sentence, one bubble");
+  assert.ok(/settled:\s*\(\)\s*=>\s*legacy\.clearLiveChat\(\)/.test(src),
+    "a batch that leaves the hold, either way, must close his line in course");
   // V2-807 T-05: the fragments drive nothing on the canvas at all (the client fast path is gone; the engine
   // alone opens cards) — so not even a judged fragment may reach a canvas call.
   assert.ok(!src.includes("handleWidgetVoice"), "a client canvas fast-path over transcripts is back");
@@ -194,4 +197,77 @@ function ringHarness(lit, ceilingMs = 10000) {
     "the FINAL segment rewrote the caption with the ring off — the dashed line of his screenshot");
 }
 
-console.log("ok — the room is not the operator (14 groups)");
+// ── THE WALL ITSELF · the hold wired to the REAL old-path writer on the REAL wall model (`wallkit.mjs`), the way
+// `sse.js` wires it: the caption → `legacy.setLiveChat` (what the hold keeps + the partial, `captionPartial`), the
+// joined paragraph → `legacy.youSaid`, a batch leaving the hold → `legacy.clearLiveChat`. His line in course is ONE
+// line from his first partial to the release (made final in place); the room's is deleted when the gate rules it.
+const { wall: freshWall } = await import("./wallkit.mjs");
+async function walled(mode = "smart") {
+  const w = await freshWall();
+  const hold = createAttentionHold({
+    mode: () => mode, holdMs: 10_000, setTimer: () => 1, clearTimer: () => {},
+    deliver: (text, _f, _j, whole, at) => { if (whole) w.legacy.youSaid(text, at); },
+    settled: () => w.legacy.clearLiveChat(),
+  });
+  const partial = (text) => {
+    const said = hold.spokenSoFar(), now = String(text || "").trim();
+    w.legacy.setLiveChat(said && now ? said + " " + now : (said || now));
+  };
+  return { w, hold, partial };
+}
+for (const [lang, parts, room] of [
+  ["es", ["Pobretito", "Pobretito, mi tío"], "Pobretito, mi tío, con los narcos vigilándole"],
+  ["en", ["Poor", "Poor guy, my uncle"], "Poor guy, my uncle, with the cartel watching him"],
+]) {
+  const { w, hold, partial } = await walled();
+  for (const p of parts) partial(p);
+  assert.equal(w.lines().length, 1, `[${lang}] the room's words are captioned while they are judged: one line`);
+  const id = w.lines()[0].id;
+  hold.spoken(room, true);
+  partial("");                                                      // sse firms the caption up with the final
+  assert.deepEqual(w.said(), [{ role: "you", text: room, state: "live" }], `[${lang}] still ONE line, live`);
+  assert.equal(w.lines()[0].id, id, `[${lang}] the same line, not a second bubble`);
+  hold.verdict(room, false);
+  assert.deepEqual(w.lines(), [], `[${lang}] the gate ruled the room: its line is deleted, nothing left behind`);
+  // …and a turn that WAS for him, through the same doors, ends as ONE final line where its first partial was.
+  partial("Johnny");
+  const mine = w.lines()[0].id;
+  hold.spoken("Johnny, ponme la agenda", true);
+  partial("");
+  hold.verdict("Johnny, ponme la agenda", true);
+  assert.deepEqual(w.said(), [{ role: "you", text: "Johnny, ponme la agenda", state: "final" }],
+    `[${lang}] a directed turn is his line, once, final`);
+  assert.equal(w.lines()[0].id, mine, `[${lang}] made final in place: the caption IS the line`);
+  assert.equal(w.counts().rejected, 0, `[${lang}] nothing refused: ${JSON.stringify(w.rejected)}`);
+}
+{
+  // The orb grey (V2-763): no caption is painted, and a verdict-less turn reaches the wall only with a verdict.
+  const { w, hold } = await walled();
+  hold.spoken("esto se lo estoy contando a otra persona", true);   // sse paints no caption while the ring is off
+  hold.verdict("esto se lo estoy contando a otra persona", false);
+  assert.deepEqual(w.lines(), [], "with no caption and an ambient verdict, nothing ever touched the wall");
+}
+
+// ── V2-773 / F3-2 · a typed line's announcement on the wall: the keyboard's own line by its `cid` ──────────────
+{
+  const { cleanDevice } = await import("./wallkit.mjs");
+  const w = await freshWall();
+  // This screen typed it: the wall already has it, by the keyboard's writer and the wall's own id for it.
+  w.writer("keyboard:desk-1").apply({ op: "append", id: "c_1", role: "you", state: "final", text: "hola" });
+  w.legacy.ackTyped("hola", "c_1", "desk-1", "desk-1", cleanDevice);
+  assert.deepEqual(w.said(), [{ role: "you", text: "hola", state: "final" }],
+    "the typing screen reads the announcement as its own line's acknowledgement — one line, never two");
+  // Another screen typed it: the same line, the same id, here too.
+  w.legacy.ackTyped("y otra cosa", "c_2", "phone-1", "desk-1", cleanDevice);
+  assert.deepEqual(w.lines().map((l) => [l.id, l.owner, l.text]),
+    [["c_1", "keyboard:desk-1", "hola"], ["c_2", "keyboard:phone-1", "y otra cosa"]],
+    "a line typed on another screen reaches this wall as that keyboard's line, by its cid");
+  // An engine before the cid: another screen's line is his; this screen's own is already on the wall.
+  w.legacy.ackTyped("sin id", "", "phone-1", "desk-1", cleanDevice);
+  w.legacy.ackTyped("mío", "", "desk-1", "desk-1", cleanDevice);
+  assert.deepEqual(w.said().map((l) => l.text), ["hola", "y otra cosa", "sin id"],
+    "with no id, a line from this screen is not painted twice; one from another screen is");
+  assert.equal(w.counts().rejected, 0, `nothing refused: ${JSON.stringify(w.rejected)}`);
+}
+
+console.log("ok — the room is not the operator (17 groups)");

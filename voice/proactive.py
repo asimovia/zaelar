@@ -166,19 +166,21 @@ def ephemeral_speaker():
     return _ephemeral_speaker
 
 
-def _paint(kind: str, title: str, text: str, *, key: str, task_id: str) -> None:
+def _paint(kind: str, title: str, text: str, *, key: str, task_id: str, conv: bool = False) -> None:
     """The UI half: the line on the screen, with its identity (`key` / `task_id`) for whoever reads the flow."""
     try:
         from voice.observer import emit
         emit(kind, ("🔔 " + (title or "zaelar"))[:60], text=text, role="assistant",
-             extra={"title": title or "", **({"key": key} if key else {}), **({"task_id": task_id} if task_id else {})})
+             extra={"title": title or "", **({"key": key} if key else {}), **({"task_id": task_id} if task_id else {}),
+                    **({"conv": True} if conv else {})})
     except Exception as e:
         logger.warning(f"proactive notify (UI) failed: {e}")
 
 
 def paint(title: str, text: str, *, key: str = "", task_id: str = "") -> None:
-    """The UI half alone, for a notice another mouth says (the conversation manager's): its card, never its voice."""
-    _paint("notify", title, text, key=key, task_id=task_id)
+    """The UI half alone, for a notice another mouth says (the conversation manager's): its card, never its voice.
+    Marked `conv`: on the chat wall that line is the mouth's own (`wall`), and the old wall's writer leaves it."""
+    _paint("notify", title, text, key=key, task_id=task_id, conv=True)
 
 
 def _to_conversation(spoken: str, notice: str) -> None:

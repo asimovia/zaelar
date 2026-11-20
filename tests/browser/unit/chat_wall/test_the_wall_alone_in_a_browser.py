@@ -143,3 +143,23 @@ def test_a_line_keeps_its_node_and_a_reader_is_never_moved(page):
     pg.evaluate("() => { const l = document.querySelector('.cw-list'); l.scrollTop = l.scrollHeight; }")
     pg.evaluate("() => __w.mouth.apply({ op: 'append', id: 'h', role: 'agent', text: 'newest' })")
     assert pg.evaluate("() => { const l = document.querySelector('.cw-list'); return l.scrollHeight - l.scrollTop - l.clientHeight; }") <= 24
+
+
+def test_a_restored_history_is_not_written_again(page):
+    """What a reload restores is already kept: restoring it writes nothing, so the time it was kept — the divider's
+    «earlier, X ago» — stays the time it was said, never the time of the reload."""
+    pg = page
+    got = pg.evaluate("""async () => {
+      const { createChatWall } = await import('/frontend/chat-wall/chat-wall.js');
+      const saves = [];
+      const m = document.createElement('div'); document.body.appendChild(m);
+      const w = createChatWall({ mount: m, input: false, labels: { earlier: 'earlier' }, storage: {
+        load: () => [{ id: 'o1', owner: 'legacy:you', role: 'you', state: 'final', text: 'w1' }],
+        save: (xs) => saves.push(xs.length) } });
+      await new Promise(r => setTimeout(r, 120));
+      const before = saves.length;
+      w.writer('mouth').apply({ op: 'append', id: 's1', role: 'agent', state: 'final', text: 'w2' });
+      await new Promise(r => setTimeout(r, 120));
+      return { before, after: saves.length, divider: m.querySelectorAll('.cw-earlier').length };
+    }""")
+    assert got == {"before": 0, "after": 1, "divider": 1}, got

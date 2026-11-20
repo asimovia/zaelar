@@ -16,71 +16,65 @@
 // voice is already sounding is written at once, and a spoken record that EXTENDS the owed line is written
 // whole — a spoken record is proof it sounded.
 //
+// Drives the REAL old-path writer (`services/wall-legacy.js`) on the REAL wall model, through `wallkit.mjs`.
+//
 // Run: node tests/browser/unit/chat/test_a_voiced_reply_always_reaches_the_wall.mjs
 // ============================================================================
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import path from "node:path";
+import { wall } from "./wallkit.mjs";
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const root = path.join(here, "../../../..");
-const store = readFileSync(path.join(root, "frontend/app/core/store.js"), "utf8");
-const i = store.indexOf("const _CHAT_MARKERS");
-const j = store.indexOf("// Convenience helpers used across services");
-assert.ok(i > 0 && j > i, "the chat-wall slice was not found in store.js — was it renamed?");
-const shim = `
-let msgs = [];
-let _capSeq = 0;
-const setChatMsgs = (fn) => { msgs = fn(msgs); };
-const _capChat = (xs) => xs;
-const createSignal = (v) => { let _v = v; return [() => _v, (n) => { _v = n; }]; };
-${store.slice(i, j)}
-export const reset = () => { msgs = []; _pendingVoiced = null; _owedQueue = []; noteVoiceIdle(); };
-export const agentRows = () => msgs.filter(m => m.role === "agent").map(m => m.text);
-`;
-const S = await import("data:text/javascript," + encodeURIComponent(shim));
+const said = (w) => w.said().filter((l) => l.role === "agent").map((l) => l.text);
 
 const T = "T6·2a8b";
 const REPLY = "…ya lo tienes redactado en la app de mensajería. Míralo y dime si lo envío.";
 const TAIL = " Eso sí: no le he enviado nada a nadie, no ha salido ningún mensaje.";
 
 // ── 1 · the filler opened the utterance: the reply is written when it is owed ─────────────────────────────
-S.reset();
-S.noteVoiceStarted(T);                                   // «a ver…» — before the reply exists
-S.pushAgentChat(REPLY, { voiced: true, trace: T });
-assert.deepEqual(S.agentRows(), [REPLY], "the voice was already saying this turn: its line is written now");
-S.pushAgentChat(REPLY + TAIL, { spoken: true, trace: T });
-assert.deepEqual(S.agentRows(), [REPLY + TAIL], "…and the spoken record, with its tail, replaces it in place");
+let w = await wall();
+w.legacy.noteVoiceStarted(T);                            // «a ver…» — before the reply exists
+w.legacy.pushAgentChat(REPLY, { voiced: true, trace: T });
+assert.deepEqual(said(w), [REPLY], "the voice was already saying this turn: its line is written now");
+assert.equal(w.lines()[0].state, "live", "…and it is the line being said");
+w.legacy.pushAgentChat(REPLY + TAIL, { spoken: true, trace: T });
+// The line is still LIVE here (no idle, no settle): M5 (only a FINAL line of ours never grows) does not apply, and the
+// record is proof the tail sounded. The same record with no start seen (group 2) writes the tail; this one must too.
+const tailKept = JSON.stringify(said(w)) === JSON.stringify([REPLY + TAIL]);
+const tailSeen = JSON.stringify(w.said());
+assert.equal(w.lines().filter((l) => l.role === "agent").length, 1, "the record joins the line, never a second bubble");
 
 // another turn's sounding voice never paints this line, and an idle voice paints nothing
-S.reset();
-S.noteVoiceStarted("T5·53b6");
-S.pushAgentChat(REPLY, { voiced: true, trace: T });
-assert.deepEqual(S.agentRows(), [], "somebody else's utterance does not write this line");
-S.reset();
-S.noteVoiceStarted(T); S.noteVoiceIdle();
-S.pushAgentChat(REPLY, { voiced: true, trace: T });
-assert.deepEqual(S.agentRows(), [], "a voice that already went idle is not this line's start");
+w = await wall();
+w.legacy.noteVoiceStarted("T5·53b6");
+w.legacy.pushAgentChat(REPLY, { voiced: true, trace: T });
+assert.deepEqual(said(w), [], "somebody else's utterance does not write this line");
+w = await wall();
+w.legacy.noteVoiceStarted(T); w.legacy.noteVoiceIdle();
+w.legacy.pushAgentChat(REPLY, { voiced: true, trace: T });
+assert.deepEqual(said(w), [], "a voice that already went idle is not this line's start");
 
 // ── 2 · no start seen at all: the spoken record that EXTENDS the line writes it ───────────────────────────
-S.reset();
-S.pushAgentChat(REPLY, { voiced: true, trace: T });
-S.pushAgentChat(REPLY + TAIL, { spoken: true, trace: T });
-assert.deepEqual(S.agentRows(), [REPLY + TAIL],
+w = await wall();
+w.legacy.pushAgentChat(REPLY, { voiced: true, trace: T });
+w.legacy.pushAgentChat(REPLY + TAIL, { spoken: true, trace: T });
+assert.deepEqual(said(w), [REPLY + TAIL],
   "a spoken record longer than the owed line is that line plus the verdict's sentence — written, never muted");
 
 // the same in English, untraced build
-S.reset();
-S.pushAgentChat("Drafted it on the messages card.", { voiced: true });
-S.pushAgentChat("Drafted it on the messages card. Nothing has been sent yet.", { spoken: true });
-assert.deepEqual(S.agentRows(), ["Drafted it on the messages card. Nothing has been sent yet."]);
+w = await wall();
+w.legacy.pushAgentChat("Drafted it on the messages card.", { voiced: true });
+w.legacy.pushAgentChat("Drafted it on the messages card. Nothing has been sent yet.", { spoken: true });
+assert.deepEqual(said(w), ["Drafted it on the messages card. Nothing has been sent yet."]);
 
 // ── 3 · the kept rule: a cancelled line is still never written ─────────────────────────────────────────────
-S.reset();
-S.pushAgentChat(REPLY, { voiced: true, trace: T });
-S.dropUnspokenLine(T);
-S.pushAgentChat(REPLY + TAIL, { spoken: true, trace: T });
-assert.deepEqual(S.agentRows(), [], "a turn cut before it sounded stays off the wall (V2-752)");
+w = await wall();
+w.legacy.pushAgentChat(REPLY, { voiced: true, trace: T });
+w.legacy.dropUnspokenLine(T);
+w.legacy.pushAgentChat(REPLY + TAIL, { spoken: true, trace: T });
+assert.deepEqual(said(w), [], "a turn cut before it sounded stays off the wall (V2-752)");
+
+// group 1's tail, checked last so every other group above still reports
+assert.ok(tailKept,
+  "…and the spoken record, with its tail, replaces it in place — the voice said the tail; the wall must show it. " +
+  `Got ${tailSeen}`);
 
 console.log("ok — a voiced reply always reaches the wall");

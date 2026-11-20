@@ -204,6 +204,7 @@ body.chatdock-r .statuspanel{right:calc(18px + var(--chatdock-r))}
 .cw-msg.cw-live{background:transparent;color:var(--hb-ink);border:1px dashed var(--hb-accent);
   border-bottom-right-radius:var(--sp-1);opacity:.85}
 .cw-list > .cw-msg.cw-live{opacity:.85}
+.cw-list > .cw-msg.cw-pending{opacity:.55}   /* his words not judged yet (the wall plan: pending, dimmed) */
 /* V2-747 — the agent line being SPOKEN right now, growing word by word as the voice says it. Operator,
    2026-09-21: «¿podrías poner ese texto un poco más grisáceo, más pálido? O el fondo del mensaje en otro
    color, que destaque, que en este momento es lo que estás leyendo». He offered both and they mean opposite

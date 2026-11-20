@@ -145,7 +145,9 @@ def test_the_orb_is_never_clipped_and_the_mic_button_is_the_one_mic_indicator(ph
 
 def test_the_chat_composer_is_44pt_and_the_newest_line_stays_in_sight_over_the_keyboard(phone):
     phone.evaluate("""async () => { const k = await import('/frontend/mobile/app/shell/keyboard.js?v=2'); k.initKeyboard();
-        window.__store.setChatMsgs([]); for (let i = 0; i < 30; i++) window.__store.pushAgentChat('Respuesta ' + i + ' ' + 'palabra '.repeat(40));
+        // the old path's ONE writer (`?v=1`, the instance the chat wall's bridge attached — INI-042 #49)
+        const { legacy } = await import('/frontend/app/services/wall-legacy.js?v=1');
+        legacy.reset(); for (let i = 0; i < 30; i++) legacy.pushAgentChat('Respuesta ' + i + ' ' + 'palabra '.repeat(40));
         window.__store.setChatOpen(true); }""")
     phone.wait_for_timeout(300)
     sz = phone.evaluate("""() => ['.zm-compose input', '.zm-send'].map(s => {

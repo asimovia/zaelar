@@ -5,63 +5,61 @@
 // 1-8.7 s, every caption that landed in that gap matched no owed line and was ignored, and the line appeared WHOLE
 // when the reply finally arrived. Now the newest caption still sounding is kept, and the line it begins claims it.
 //
-// Disarms (each seen red): no `_claimEarlyCaption()` in `pushAgentChat` → (1); `_earlyCaption` kept on a final
-// caption → (3); no age check → (4).
+// Drives the REAL old-path writer (`services/wall-legacy.js`) on the REAL wall model, through `wallkit.mjs`. A caption
+// segment is `legacy.noteSpokenAloud(text, final)` — what `session-lk.js` calls for every audio-synced segment.
+//
+// Disarms (each seen red): no `claimEarly()` in `pushAgentChat` → (1); `early` kept on a final caption → (3); no age
+// check in `claimEarly` → (4).
 import assert from "node:assert/strict";
+import { wall } from "./wallkit.mjs";
 
-const mem = new Map();
-globalThis.localStorage = {
-  getItem: k => (mem.has(k) ? mem.get(k) : null),
-  setItem: (k, v) => mem.set(k, String(v)),
-  removeItem: k => mem.delete(k),
-};
-globalThis.window = { addEventListener() {}, location: { href: "http://127.0.0.1/" } };
-globalThis.document = { addEventListener() {}, documentElement: { style: { setProperty() {} } } };
-
-const store = await import("../../../../frontend/app/core/store.js");
-const agentLines = () => store.chatMsgs().filter(m => m.role === "agent").map(m => m.text);
-const reset = () => { store.setChatMsgs(() => []); store.settleAgentSpoken(); store.pushCaptionSeg("zz", "", true); };
+const agents = (w) => w.said().filter((l) => l.role === "agent");
+const agentTexts = (w) => w.lines().filter((l) => l.role === "agent").map((l) => l.text);
+const crawl = (w) => agents(w).find((l) => l.state === "live") || null;
 
 // ── 1 · captions first, the reply late: the line is painted with what was already heard, and keeps crawling ──
 for (const [reply, early, more] of [
   ["Te he apuntado la cita del dentista para el martes a las diez.", "Te he apuntado la cita", "Te he apuntado la cita del dentista"],
   ["I've booked the table for four at eight tonight.", "I've booked the", "I've booked the table for four"],
 ]) {
-  reset();
-  store.pushCaptionSeg("s1", early, false);                  // the body is stalled: no line is owed yet
-  assert.deepEqual(agentLines(), [], "a caption alone writes nothing");
-  store.pushAgentChat(reply, { voiced: true, trace: "T-" + early.length });
-  const v = store.voicedLine();
-  assert.ok(v && v.streaming && v.heard === early, `the early caption was lost: ${JSON.stringify(v)}`);
-  assert.deepEqual(agentLines(), [reply], "the line is on the wall, crawling from what was already heard");
-  store.pushCaptionSeg("s1", more, false);
-  assert.equal(store.voicedLine().heard, more, "…and it keeps growing with the captions that follow");
+  const w = await wall();
+  w.legacy.noteSpokenAloud(early, false);                    // the body is stalled: no line is owed yet
+  assert.deepEqual(agents(w), [], "a caption alone writes nothing");
+  w.legacy.pushAgentChat(reply, { voiced: true, trace: "T-" + early.length });
+  assert.deepEqual(crawl(w), { role: "agent", text: early, state: "live" },
+    `the early caption was lost: ${JSON.stringify(w.said())}`);
+  assert.deepEqual(agentTexts(w), [reply], "the line is on the wall, crawling from what was already heard");
+  w.legacy.noteSpokenAloud(more, false);
+  assert.equal(crawl(w).text, more, "…and it keeps growing with the captions that follow");
 }
 
 // ── 2 · a caption that is the beginning of ANOTHER line is not this line's: it stays owed, unwritten ──
-reset();
-store.pushCaptionSeg("s2", "Hace sol en Sevilla", false);
-store.pushAgentChat("Mañana a las nueve tienes la reunión.", { voiced: true, trace: "T2" });
-assert.equal(store.voicedLine(), null, "an unrelated caption is no evidence this line started");
-assert.deepEqual(agentLines(), []);
+{
+  const w = await wall();
+  w.legacy.noteSpokenAloud("Hace sol en Sevilla", false);
+  w.legacy.pushAgentChat("Mañana a las nueve tienes la reunión.", { voiced: true, trace: "T2" });
+  assert.equal(crawl(w), null, "an unrelated caption is no evidence this line started");
+  assert.deepEqual(agents(w), []);
+}
 
 // ── 3 · a FINISHED utterance ahead of the line (a filler, a notice) does not start a later line ──
-reset();
-store.pushCaptionSeg("s3", "Un momento", true);
-store.pushAgentChat("Un momento, lo busco ahora mismo.", { voiced: true, trace: "T3" });
-assert.equal(store.voicedLine(), null, "a final caption is a finished utterance, not this line sounding");
-assert.deepEqual(agentLines(), []);
+{
+  const w = await wall();
+  w.legacy.noteSpokenAloud("Un momento", true);
+  w.legacy.pushAgentChat("Un momento, lo busco ahora mismo.", { voiced: true, trace: "T3" });
+  assert.equal(crawl(w), null, "a final caption is a finished utterance, not this line sounding");
+  assert.deepEqual(agents(w), []);
+}
 
 // ── 4 · a stale caption says nothing about a line owed now ──
-reset();
-const realNow = Date.now;
-try {
-  store.pushCaptionSeg("s4", "Ya está", false);
-  Date.now = () => realNow() + 60000;
-  store.pushAgentChat("Ya está hecho, te lo he dejado en la agenda.", { voiced: true, trace: "T4" });
-  assert.equal(store.voicedLine(), null, "a caption a minute old does not paint today's line");
-} finally {
-  Date.now = realNow;
+{
+  let t = Date.now();
+  const w = await wall({ now: () => t });
+  w.legacy.noteSpokenAloud("Ya está", false);
+  t += 60000;
+  w.legacy.pushAgentChat("Ya está hecho, te lo he dejado en la agenda.", { voiced: true, trace: "T4" });
+  assert.equal(crawl(w), null, "a caption a minute old does not paint today's line");
+  assert.deepEqual(agents(w), []);
 }
 
 console.log("ok — a caption ahead of its line still crawls");

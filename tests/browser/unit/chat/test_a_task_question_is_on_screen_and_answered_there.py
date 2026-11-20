@@ -119,6 +119,8 @@ def open_wall(browser_and_port):
             const m = await import('/frontend/app/components/ChatWall.js?v=5');
             document.body.append(m.ChatWall());
             window.__store = store; window.__route = (d) => sse.routeEvent(null, d);
+            // the page's ONE old-path wall writer: the URL ChatWall imports it by (another `?v=` is a blind copy)
+            window.__legacy = (await import('/frontend/app/services/wall-legacy.js?v=1')).legacy;
             store.setChatTab('chat'); store.setChatOpen(true);
         }""")
         pg.wait_for_selector("#chatwall.open", timeout=5000)
@@ -266,28 +268,51 @@ def test_a_final_task_state_removes_the_line(open_wall):
     assert not pg._errors, pg._errors
 
 
+_ORDER = """() => [...document.querySelectorAll('#chatwall .cw-list > *')].filter(n => !n.hidden).map(n => {
+    const q = n.classList.contains('tq') ? n : n.querySelector(':scope > .tq');
+    return q ? 'tq:' + q.dataset.ask : (n.innerText || '').trim(); })"""
+
+
+def _until_order(pg, pred, what):
+    return until_sync(lambda: (lambda xs: (xs,) if pred(xs) else None)(pg.evaluate(_ORDER)), what, timeout_s=10)[0]
+
+
 def test_a_question_sits_under_the_turn_that_caused_it_and_has_a_close(open_wall):
-    """V2-886 D6/D7 — a question whose row was opened by a turn in the conversation is drawn right after that turn's
-    last line, never pinned at the foot; a question with no anchor stays in the foot block. Each card has its ✕.
-    Disarm: `placeAsks` returning the rows untouched → the anchored card is missing from the list → red."""
+    """V2-886 D6/D7 — a question whose row was opened by a turn in the conversation is drawn in the conversation,
+    under that turn — a box line of its own (`legacy.asks`, kind `ask`) — never pinned at the foot; a question with
+    no anchor stays in the foot block. Each card has its ✕. When it closes, its box leaves the wall.
+
+    The wall plan §5.1 (decided by the operator): a line's place is where it STARTS — the box is APPENDED when the
+    question opens and never moves after. So a question that opens while its turn is the last one sits right under
+    it, and one that opens after a later turn is appended after that turn: nothing is inserted above a line."""
     eng = _Engine()
     pg = open_wall(eng)
-    pg.evaluate("""() => window.__store.setChatMsgs([
-        {role: 'you', text: 'cierra todo', trace: 'tr-1'}, {role: 'agent', text: 'Voy.', trace: 'tr-1'},
-        {role: 'you', text: 'pon música', trace: 'tr-2'}, {role: 'agent', text: 'Suena.', trace: 'tr-2'}])""")
+    pg.evaluate("""() => { window.__legacy.youSaid('cierra todo');
+                           window.__legacy.pushAgentChat('Voy.', {trace: 'tr-1'}); }""")
     pg.evaluate("""() => window.__route({kind: 'ask', task_id: 'T9', ask_id: 'Z1', text: '¿Se lo mando a Zarina?',
                                         title: 'Enviar borrador', trace: 'tr-1'})""")
     pg.evaluate("""() => window.__route({kind: 'ask', task_id: 'T8', ask_id: 'Z2', text: '¿Qué día?',
                                         title: 'Cita', trace: 'tr-none'})""")
-    order = until_sync(lambda: (lambda xs: (xs,) if 'tq:Z1' in xs else None)(pg.evaluate(
-        """() => [...document.querySelectorAll('#chatwall .cw-list > *')].map(n =>
-               n.classList.contains('tq') ? 'tq:' + n.dataset.ask : (n.innerText || '').trim())""")),
-        "the anchored question inside the list", timeout_s=10)[0]
+    _until_order(pg, lambda xs: 'tq:Z1' in xs, "the anchored question inside the list")
+    pg.evaluate("""() => { window.__legacy.youSaid('pon música');
+                           window.__legacy.pushAgentChat('Suena.', {trace: 'tr-2'}); }""")
+    order = _until_order(pg, lambda xs: 'Suena.' in xs, "the next turn on the wall")
     assert order.index('tq:Z1') == order.index('Voy.') + 1, order
     assert order.index('tq:Z1') < order.index('pon música'), "the question was not placed under its own turn"
+    assert order.count('tq:Z1') == 1, order
     foot = [x["ask"] for x in _lines(pg)]
     assert foot == ["Z2"], f"only the question with no anchor stays at the foot: {foot}"
     assert pg.evaluate("() => document.querySelectorAll('#chatwall .tq .tq-close').length") == 2
+    # §5.1: a question of the FIRST turn that opens after the second one is appended where it starts — at the end.
+    pg.evaluate("""() => window.__route({kind: 'ask', task_id: 'T7', ask_id: 'Z3', text: '¿A qué hora?',
+                                        title: 'Recordatorio', trace: 'tr-1'})""")
+    order = _until_order(pg, lambda xs: 'tq:Z3' in xs, "the late question appended")
+    assert order[-1] == 'tq:Z3' and order.index('tq:Z1') == order.index('Voy.') + 1, order
+    # It closes: its box leaves the wall (and the foot), the others stay where they are.
+    pg.evaluate("() => window.__route({kind: 'task_state', task_id: 'T9', state: 'done', writer: 'settle'})")
+    order = _until_order(pg, lambda xs: 'tq:Z1' not in xs, "the closed question's box to leave the wall")
+    assert order == ['cierra todo', 'Voy.', 'pon música', 'Suena.', 'tq:Z3'], order
+    assert [x["ask"] for x in _lines(pg)] == ["Z2"]
     assert not pg._errors, pg._errors
 
 
@@ -298,4 +323,6 @@ def test_a_question_is_drawn_once_its_card_and_not_a_chat_line_too():
     root = Path(__file__).resolve().parents[4] / "frontend" / "app"
     sse, asks = (root / "services" / "sse.js").read_text("utf-8"), (root / "core" / "asks.js").read_text("utf-8")
     assert "export const isOpenQuestion" in asks and "openAsks().some" in asks
-    assert sse.count("if (!asks.isOpenQuestion(d.text)) store.pushAgentChat(") == 2, "the spoken line or the notice is drawn beside its card"
+    # The wall left the store: the spoken record goes through `legacy.pushAgentChat`, the notice through `legacy.notice`.
+    assert sse.count("if (!asks.isOpenQuestion(d.text)) legacy.pushAgentChat(") == 1, "the spoken line is drawn beside its card"
+    assert sse.count("if (!asks.isOpenQuestion(d.text)) legacy.notice(") == 1, "the notice is drawn beside its card"

@@ -13,3 +13,4 @@
 .cw-form { display: flex; gap: 6px; padding: 0 8px 8px; }
 .cw-input { flex: 1 1 auto; resize: none; font: inherit; padding: 6px 8px; border-radius: 8px; }
 .cw-send { flex: 0 0 auto; }
+.cw-pending { opacity: 0.55; }

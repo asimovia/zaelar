@@ -136,3 +136,30 @@ def test_a_typed_line_goes_out_with_its_id_and_its_acknowledgement_is_the_same_l
            "op": {"op": "append", "id": sent[0]["id"], "role": "you", "state": "final", "text": "w7"}}
     pg.evaluate("(d) => __bridge.route(d)", ack)
     assert pg.evaluate(READ) == ["H: w7"] and pg.evaluate("() => __bridge.wall.counts().rejected") == 0
+
+
+def test_a_line_of_his_no_writer_closed_is_swept_and_a_refusal_is_reported(page):
+    """The review's minor: a line of his left open (its closing event lost) is deleted after `STALE_MS` with no news —
+    never a final one; and every refused action reaches the host's report, with the wall's counts by reason (the
+    debug stream, where `final_grows` is read)."""
+    pg = page
+    pg.evaluate("""async () => {
+      document.body.innerHTML = '<div id="m2" style="height:320px;width:420px"></div>';
+      const { createWallBridge, STALE_MS } = await import('/frontend/app/services/wall-bridge.js');
+      window.__now = 1000; window.__reports = [];
+      __bridge.destroy();
+      window.__bridge = createWallBridge({ mount: document.getElementById('m2'), device: 'desktop:d1',
+        now: () => __now, report: (r, c) => __reports.push([r.reason, c]) });
+      const ap = (id, state) => __bridge.route({ kind: 'wall', writer: 'ear:holder',
+                                                 op: { op: 'append', id, role: 'you', state, text: 'w1' } });
+      ap('iv_1', 'pending'); ap('iv_2', 'final');
+      __now += STALE_MS - 1; __bridge.sweep();
+      window.__before = __bridge.wall.lines().map(l => l.id);
+      __now += 2; __bridge.sweep();
+      __bridge.route({ kind: 'wall', writer: 'mouth', op: { op: 'append', id: 's_1', role: 'agent', state: 'final', text: 'w2' } });
+      __bridge.route({ kind: 'wall', writer: 'mouth', op: { op: 'update', id: 's_1', heard: 9 } });
+    }""")
+    assert pg.evaluate("() => __before") == ["iv_1", "iv_2"]
+    assert pg.evaluate("() => __bridge.wall.lines().map(l => l.id)") == ["iv_2", "s_1"]
+    reports = pg.evaluate("() => __reports")
+    assert [r for r, _c in reports] == ["final_grows"] and reports[0][1]["final_grows"] == 1

@@ -45,12 +45,23 @@ uvicorn.run(app, host="127.0.0.1", port=%d, log_level="critical")
 
 LIFT_VEIL = "() => document.querySelectorAll('.boot-ovl, .lang-onb, .lang-onb-veil').forEach(e => e.remove())"
 
-CHAT_KEY = "hb_chat_log"
+# The chat wall is a component of its own (INI-042 #49): its final lines are kept under their own key
+# (`services/wall-storage.js`), and the old wall's key is moved over ONCE and removed.
+CHAT_KEY = "hb_wall_lines"
+OLD_CHAT_KEY = "hb_chat_log"
 
-# The SAME module instance the app is running, not a second copy: a browser's module cache is keyed by the
-# resolved URL, and `/static/app/main.js` imports `../core/store.js?v=2`, which resolves to exactly this.
-# Importing it under any other spelling would hand the test a fresh store with an empty list.
+# The SAME module instances the app is running, not second copies: a browser's module cache is keyed by the
+# resolved URL. The store still owns whether the wall is open; the lines are written by the old path's ONE writer,
+# `services/wall-legacy.js?v=1` (the instance the wall's bridge attached) — any other spelling is a second
+# instance, blind to the wall.
 STORE_URL = "/static/app/core/store.js?v=2"
+LEGACY_URL = "/static/app/services/wall-legacy.js?v=1"
+
+
+def _stored(pg):
+    """The texts the wall kept for the next load, PARSED (JSON escapes a non-ASCII character)."""
+    raw = pg.evaluate("(k) => localStorage.getItem(k)", CHAT_KEY)
+    return None if raw is None else [ln["text"] for ln in json.loads(raw)["lines"]]
 
 
 def _free_port() -> int:
@@ -116,11 +127,13 @@ def _boot(pg, url):
 # ── T-1 · the chat wall survives a refresh ────────────────────────────────────────────────────────────
 
 def _seed_chat(pg, url, msgs, at_ms):
-    """Write the stored log the way the store writes it, then RELOAD so the module boots against it —
-    that reload is the whole behaviour under test."""
+    """Write the stored lines the way the wall's storage writes them, then RELOAD so the module boots against
+    them — that reload is the whole behaviour under test."""
     pg.goto(url, wait_until="domcontentloaded")
+    lines = [{"id": f"seed_{i}", "owner": f"legacy:{m['role']}", "role": m["role"], "state": "final",
+              "text": m["text"], "at": at_ms} for i, m in enumerate(msgs)]
     pg.evaluate("([k, v]) => localStorage.setItem(k, v)",
-                [CHAT_KEY, json.dumps({"v": 1, "at": at_ms, "msgs": msgs})])
+                [CHAT_KEY, json.dumps({"v": 2, "at": at_ms, "lines": lines})])
 
 
 def test_what_was_said_is_still_there_after_a_refresh(_pw, _url):
@@ -135,6 +148,26 @@ def test_what_was_said_is_still_there_after_a_refresh(_pw, _url):
         texts = pg.evaluate("() => [...document.querySelectorAll('.cw-msg-body')].map(n => n.textContent.trim())")
         assert "lo que dije antes" in texts, texts
         assert "lo que contesté antes" in texts, texts
+    finally:
+        ctx.close()
+
+
+def test_the_old_walls_history_comes_over_once_and_is_shown(_pw, _url):
+    """The update itself must not be the refresh that blanks the wall: the rows the old wall kept under its own
+    key are shown after the first load of the new one, moved to the new key, and the old key is gone."""
+    ctx, pg = _page(_pw, _url)
+    try:
+        pg.goto(_url, wait_until="domcontentloaded")
+        pg.evaluate("([k, v]) => { localStorage.removeItem(k); localStorage.setItem(v[0], v[1]); }",
+                    [CHAT_KEY, [OLD_CHAT_KEY, json.dumps({"v": 1, "at": int(time.time() * 1000) - 120000,
+                                                          "msgs": [{"role": "you", "text": "lo que dije antes"},
+                                                                   {"role": "agent", "text": "lo que contesté antes"}]})]])
+        _boot(pg, _url)
+        pg.evaluate("async (u) => (await import(u)).setChatOpen(true)", STORE_URL)
+        texts = pg.evaluate("() => [...document.querySelectorAll('.cw-msg-body')].map(n => n.textContent.trim())")
+        assert texts[-2:] == ["lo que dije antes", "lo que contesté antes"], texts
+        assert pg.evaluate("(k) => localStorage.getItem(k)", OLD_CHAT_KEY) is None
+        assert _stored(pg) == ["lo que dije antes", "lo que contesté antes"]
     finally:
         ctx.close()
 
@@ -168,7 +201,7 @@ def test_the_divider_sits_BETWEEN_the_old_and_the_new(_pw, _url):
         _seed_chat(pg, _url, [{"role": "you", "text": "de antes 1"}, {"role": "agent", "text": "de antes 2"}],
                    int(time.time() * 1000) - 600000)
         _boot(pg, _url)
-        pg.evaluate("async (u) => (await import(u)).pushChat({role: 'you', text: 'dicho despues'})", STORE_URL)
+        pg.evaluate("async (u) => (await import(u)).legacy.pushChat({role: 'you', text: 'dicho despues'})", LEGACY_URL)
         pg.wait_for_timeout(300)
         order = pg.evaluate("""() => [...document.querySelectorAll('.cw-list > *')]
                                    .map(n => n.classList.contains('cw-earlier') ? '|' : n.textContent.trim())""")
@@ -180,32 +213,38 @@ def test_the_divider_sits_BETWEEN_the_old_and_the_new(_pw, _url):
 
 
 def test_what_is_said_NOW_is_stored_for_the_next_load(_pw, _url):
-    """The other half: restoring is worthless if nothing is ever written. Driven through the store's own
-    exported door, which is the single chokepoint every one of the seven writers goes through."""
+    """The other half: restoring is worthless if nothing is ever written. Driven through the old path's
+    writer (`wall-legacy.js`), whose every line reaches the wall through its one door — and then RELOADED, so
+    what is checked is what he sees on the next load, not only a key in storage."""
     ctx, pg = _page(_pw, _url)
     try:
         pg.goto(_url, wait_until="domcontentloaded")
         pg.evaluate("(k) => localStorage.removeItem(k)", CHAT_KEY)
         _boot(pg, _url)
-        pg.evaluate("async (u) => (await import(u)).pushChat({role: 'you', text: 'dicho ahora mismo'})", STORE_URL)
+        pg.evaluate("async (u) => (await import(u)).legacy.pushChat({role: 'you', text: 'dicho ahora mismo'})", LEGACY_URL)
         pg.wait_for_timeout(700)                                     # past the write debounce
-        stored = pg.evaluate("(k) => localStorage.getItem(k)", CHAT_KEY)
-        assert stored, "nothing was written at all"
-        assert [m["text"] for m in json.loads(stored)["msgs"]] == ["dicho ahora mismo"], stored
+        assert _stored(pg) == ["dicho ahora mismo"], "nothing was written at all"
+        _boot(pg, _url)
+        pg.evaluate("async (u) => (await import(u)).setChatOpen(true)", STORE_URL)
+        texts = pg.evaluate("() => [...document.querySelectorAll('.cw-msg-body')].map(n => n.textContent.trim())")
+        assert texts == ["dicho ahora mismo"], texts
     finally:
         ctx.close()
 
 
 def test_clearing_the_wall_clears_what_was_stored(_pw, _url):
     """A reset must not leave the previous conversation waiting to come back on the next load. It goes
-    through the same setter every other writer uses, which is why one door was the whole design."""
+    through the old path's reset (`legacy.reset()`, what the session calls), which clears the wall through
+    its one door — and the wall's storage with it."""
     ctx, pg = _page(_pw, _url)
     try:
         _seed_chat(pg, _url, [{"role": "you", "text": "esto debe desaparecer"}], int(time.time() * 1000))
         _boot(pg, _url)
-        pg.evaluate("async (u) => (await import(u)).setChatMsgs([])", STORE_URL)
+        assert _stored(pg) == ["esto debe desaparecer"]             # it was there to be cleared
+        pg.evaluate("async (u) => (await import(u)).legacy.reset()", LEGACY_URL)
         pg.wait_for_timeout(700)
         assert not pg.evaluate("(k) => localStorage.getItem(k)", CHAT_KEY)
+        assert not pg.evaluate("() => document.querySelectorAll('.cw-list [data-id]').length"), "the wall is blank"
     finally:
         ctx.close()
 
@@ -223,9 +262,9 @@ def test_leaving_a_page_where_he_said_NOTHING_erases_nothing(_pw, _url):
         pg.wait_for_timeout(800)
         # PARSED, never matched against the raw text: JSON escapes a non-ASCII character, so
         # `"sesión" in raw` is false even when the message is right there as `sesi\\u00f3n`.
-        stored = pg.evaluate("(k) => localStorage.getItem(k)", CHAT_KEY)
+        stored = _stored(pg)
         assert stored, "the previous conversation was erased"
-        assert [m["text"] for m in json.loads(stored)["msgs"]] == ["de la sesión anterior"], stored
+        assert stored == ["de la sesión anterior"], stored
     finally:
         ctx.close()
 
@@ -238,10 +277,11 @@ def test_the_stored_history_never_exceeds_the_cap(_pw, _url):
         pg.goto(_url, wait_until="domcontentloaded")
         pg.evaluate("(k) => localStorage.removeItem(k)", CHAT_KEY)
         _boot(pg, _url)
-        pg.evaluate("async (u) => { const s = await import(u); for (let i = 0; i < 130; i++) s.pushChat({role:'you', text:'m'+i}); }", STORE_URL)
+        pg.evaluate("async (u) => { const { legacy } = await import(u); for (let i = 0; i < 130; i++) legacy.pushChat({role:'you', text:'m'+i}); }", LEGACY_URL)
         pg.wait_for_timeout(700)
-        n = pg.evaluate("(k) => JSON.parse(localStorage.getItem(k)).msgs.length", CHAT_KEY)
-        assert n == 100, n
+        stored = _stored(pg)
+        assert len(stored) == 100, len(stored)
+        assert stored[0] == "m30" and stored[-1] == "m129", (stored[0], stored[-1])   # the oldest go, never the newest
     finally:
         ctx.close()
 

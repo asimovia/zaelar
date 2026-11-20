@@ -1,10 +1,13 @@
-"""A live caption never rebuilds the history: his partials and the agent's crawl only write their own text. Rendered.
+"""A live caption never rebuilds the history: his partials and the agent's crawl only write their own line. Rendered.
 
 Measured 2026-11-18: every interim re-rendered up to 100 rows of markdown and forced a layout (p50 6.6 ms, p90 13,
-worst 84-173 ms on a loaded host), so the caption stuttered exactly when the machine was busy. Now the history rows
-are the SAME nodes while he speaks and while the agent's line crawls; only a committed row rebuilds the list.
+worst 84-173 ms on a loaded host), so the caption stuttered exactly when the machine was busy. The wall is now a
+component with ONE node per line id, never rebuilt (INI-042 #49): a partial updates ONE node's text — his line in
+course, the same node from his first partial on — and no other node of the wall is replaced; the agent's crawl the
+same with its own line. Driven through the page's one old-path writer (`wall-legacy.js?v=1`), as `sse.js` and
+`session-lk.js` drive it.
 
-Disarm (seen red): `store.liveChat()` read again inside the history effect → the rows are rebuilt per partial.
+Disarm (seen red): `legacy.setLiveChat` appends a new line per partial instead of updating its own → a second node.
 """
 from __future__ import annotations
 
@@ -64,6 +67,7 @@ def _page(browser, port):
         await i18n.loadBundle('en'); if (i18n.applyLang) await i18n.applyLang('en');
         const store = await import('/frontend/app/core/store.js?v=2');
         const wall = await import('/frontend/app/components/ChatWall.js?v=5');
+        window.__legacy = (await import('/frontend/app/services/wall-legacy.js?v=1')).legacy;
         document.body.append(wall.ChatWall());
         window.__store = store;
     }""")
@@ -77,10 +81,21 @@ def _at_bottom(pg) -> bool:
         return l.scrollHeight > l.clientHeight && l.scrollHeight - l.clientHeight - l.scrollTop < 4; }""")
 
 
-_ROWS = """() => window.__store.setChatMsgs(Array.from({length: 100}, (_, i) =>
-    ({role: i % 2 ? 'agent' : 'you', text: 'line **' + i + '** ' + 'word '.repeat(12), at: Date.now() - (100 - i) * 1000})))"""
+# 90 final lines with markdown, his and ours: under the wall's cap (100), so a new line trims nothing and every node
+# that leaves the DOM below left because something rebuilt it.
+_ROWS = """() => { for (let i = 0; i < 90; i++) {
+    const text = 'line **' + i + '** ' + 'word '.repeat(12);
+    if (i % 2) window.__legacy.pushAgentChat(text); else window.__legacy.pushChat({role: 'you', text}); } }"""
 
 _FRAME = "() => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)))"
+
+_KEEP = "() => { window.__nodes = [...document.querySelectorAll('#chatwall .cw-list > [data-id]')]; }"
+
+# Every node kept before is still in the list, and it is still the node for its id; the rest are new.
+_SAME = """() => { const now = [...document.querySelectorAll('#chatwall .cw-list > [data-id]')];
+    return { kept: window.__nodes.every(e => e.isConnected && now.includes(e)), fresh: now.filter(e => !window.__nodes.includes(e)).length,
+             live: [...document.querySelectorAll('#chatwall .cw-list .cw-live')].map(e => e.textContent),
+             lastLive: document.querySelector('#chatwall .cw-list').lastElementChild.classList.contains('cw-live') }; }"""
 
 
 def test_his_partials_and_the_agents_crawl_leave_the_history_nodes_alone(browser_and_port):
@@ -89,32 +104,44 @@ def test_his_partials_and_the_agents_crawl_leave_the_history_nodes_alone(browser
     pg.evaluate(_ROWS)
     pg.evaluate("() => window.__store.openChatFrom('orb')")
     pg.wait_for_selector("#chatwall.open", timeout=5000)
-    pg.evaluate("() => { window.__first = document.querySelector('#chatwall .cw-list .cw-msg'); }")
+    until_sync(lambda: pg.evaluate("() => document.querySelectorAll('#chatwall .cw-list .cw-msg').length") == 90,
+               "the history on the wall")
+    pg.evaluate(_KEEP)
+    caption = None
     for words in ("quiero", "quiero que me", "quiero que me recuerdes la cita"):
-        pg.evaluate("(t) => window.__store.setLiveChat(t)", words)
+        pg.evaluate("(t) => window.__legacy.setLiveChat(t)", words)
         pg.evaluate(_FRAME)
-        got = pg.evaluate("""() => ({
-            same: document.querySelector('#chatwall .cw-list .cw-msg') === window.__first,
-            live: [...document.querySelectorAll('#chatwall .cw-list .cw-live')].map(e => e.textContent),
-            last: document.querySelector('#chatwall .cw-list').lastElementChild.classList.contains('cw-live') })""")
-        assert got["same"], "a partial rebuilt the history"
-        assert got["live"] == [words] and got["last"], got
-    pg.evaluate("() => window.__store.clearLiveChat()")
+        got = pg.evaluate(_SAME)
+        assert got["kept"], "a partial replaced a node of the history"
+        assert got["fresh"] == 1, f"his line in course is ONE node, from his first partial on: {got}"
+        assert got["live"] == [words] and got["lastLive"], got
+        node = pg.evaluate_handle("() => document.querySelector('#chatwall .cw-list .cw-live')")
+        if caption is None:
+            caption = node
+        else:
+            assert pg.evaluate("([a, b]) => a === b", [caption, node]), "a partial replaced his line's own node"
+    pg.evaluate("() => window.__legacy.clearLiveChat()")
     pg.evaluate(_FRAME)
     assert pg.evaluate("() => document.querySelectorAll('#chatwall .cw-live').length") == 0, "the caption outlived him"
+    assert pg.evaluate(_SAME)["kept"], "clearing his caption touched the history"
 
     reply = "Te he apuntado la cita del dentista para el martes."
-    pg.evaluate("""(r) => { const s = window.__store; s.pushAgentChat(r, {voiced: true, trace: 'TW'});
-                           s.noteVoiceStarted('TW'); s.pushCaptionSeg('w1', 'Te he', false); }""", reply)
+    pg.evaluate("""(r) => { const l = window.__legacy; l.pushAgentChat(r, {voiced: true, trace: 'TW'});
+                           l.noteVoiceStarted('TW'); l.noteSpokenAloud('Te he', false); }""", reply)
     pg.evaluate(_FRAME)
-    pg.evaluate("() => { window.__first = document.querySelector('#chatwall .cw-list .cw-msg'); }")
+    pg.evaluate(_KEEP)
+    speaking = pg.evaluate_handle("() => document.querySelector('#chatwall .cw-list .cw-speaking')")
     for said in ("Te he apuntado", "Te he apuntado la cita del dentista"):
-        pg.evaluate("(t) => window.__store.pushCaptionSeg('w1', t, false)", said)
+        pg.evaluate("(t) => window.__legacy.noteSpokenAloud(t, false)", said)
         pg.evaluate(_FRAME)
-        got = pg.evaluate("""() => ({
-            same: document.querySelector('#chatwall .cw-list .cw-msg') === window.__first,
-            said: [...document.querySelectorAll('#chatwall .cw-speaking .cw-msg-body')].map(e => e.textContent) })""")
-        assert got["same"], "a caption segment rebuilt the history"
+        got = pg.evaluate("""(sp) => ({
+            kept: window.__nodes.every(e => e.isConnected),
+            count: document.querySelectorAll('#chatwall .cw-list > [data-id]').length === window.__nodes.length,
+            same: document.querySelector('#chatwall .cw-list .cw-speaking') === sp,
+            said: [...document.querySelectorAll('#chatwall .cw-speaking .cw-msg-body')].map(e => e.textContent) })""",
+            speaking)
+        assert got["kept"] and got["count"], "a caption segment replaced a node of the wall"
+        assert got["same"], "the crawl replaced its own line's node"
         assert got["said"] == [said], got
     assert not pg._errors, pg._errors
     pg.close()

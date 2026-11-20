@@ -18,24 +18,18 @@
 // arrived as ELEVEN transcript events, each painted as its own bubble, with the caption resetting to the
 // newest fragment each time one closed.
 //
-// This file drives the REAL store and the REAL hold; the numbers in every comment are from that session.
+// This file drives the REAL old-path wall writer (`services/wall-legacy.js`) on the REAL wall model (through
+// `wallkit.mjs`) and the REAL hold; the numbers in every comment are from that session. A caption segment is
+// `legacy.noteSpokenAloud(text, final)` — what `session-lk.js` calls for every audio-synced segment.
 import assert from "node:assert/strict";
+import { wall } from "./wallkit.mjs";
 
-// A DOM stub good enough for `store.js`, which reaches for localStorage and window on import.
-const mem = new Map();
-globalThis.localStorage = {
-  getItem: k => (mem.has(k) ? mem.get(k) : null),
-  setItem: (k, v) => mem.set(k, String(v)),
-  removeItem: k => mem.delete(k),
-};
-globalThis.window = { addEventListener() {}, location: { href: "http://127.0.0.1/" } };
-globalThis.document = { addEventListener() {}, documentElement: { style: { setProperty() {} } } };
-
-const store = await import("../../../../frontend/app/core/store.js");
 const { createAttentionHold } = await import("../../../../frontend/app/services/attention_hold.js");
 
-const agentLines = () => store.chatMsgs().filter(m => m.role === "agent").map(m => m.text);
-const reset = () => store.setChatMsgs(() => []);
+let w = null;
+const agentLines = () => w.said().filter((m) => m.role === "agent").map((m) => m.text);
+const reset = async () => { w = await wall(); };
+const caption = (text, final) => w.legacy.noteSpokenAloud(text, final);
 
 // ══ 1 · ONE PARAGRAPH IS ONE BUBBLE ═════════════════════════════════════════════════════════════════
 // His own sentence, as Deepgram actually delivered it (session 8fc3e1c9, +84.2 s to +92.0 s).
@@ -83,15 +77,15 @@ const reset = () => store.setChatMsgs(() => []);
 // the utterance started, so the cancelled one is never written at all and there is nothing to delete. The
 // measurement above is unchanged and so is the rule it proves; only the moment of writing moved.
 {
-  reset();
-  store.pushAgentChat("Me alegra que lo veas mejor, y tienes razón en lo de las dos frases.",
+  await reset();
+  w.legacy.pushAgentChat("Me alegra que lo veas mejor, y tienes razón en lo de las dos frases.",
                       { voiced: true, trace: "T-cancelled" });
   assert.equal(agentLines().length, 0,
     "not painted at all: `bot_speech` never left idle for this utterance, so it never reached the wall");
 
-  store.pushCaptionSeg("seg-filler", "Sí…", true);                  // +161.9 s: the NEXT turn's filler sounds
-  store.pushAgentChat("Te tomo nota de las dos cosas.", { voiced: true, trace: "T-next" });
-  store.noteVoiceStarted("T-next");
+  caption("Sí…", true);                                          // +161.9 s: the NEXT turn's filler sounds
+  w.legacy.pushAgentChat("Te tomo nota de las dos cosas.", { voiced: true, trace: "T-next" });
+  w.legacy.noteVoiceStarted("T-next");
   assert.deepEqual(agentLines(), ["Te tomo nota de las dos cosas."],
     "THE BUG: «no ha llegado ni a sonar» and it stayed on the wall anyway. A line the voice never opened " +
     "its mouth for must not exist");
@@ -104,11 +98,11 @@ const reset = () => store.setChatMsgs(() => []);
 // V2-752 — and the evidence that the voice WAS speaking is now `bot_speech`, which is a statement rather
 // than the absence of one. Both lines sounded; neither caption channel said a word about either.
 {
-  reset();
-  store.pushAgentChat("Una respuesta sobre la que no llega ni una sola pista.", { voiced: true, trace: "T-a" });
-  store.noteVoiceStarted("T-a");
-  store.pushAgentChat("La siguiente.", { voiced: true, trace: "T-b" });
-  store.noteVoiceStarted("T-b");
+  await reset();
+  w.legacy.pushAgentChat("Una respuesta sobre la que no llega ni una sola pista.", { voiced: true, trace: "T-a" });
+  w.legacy.noteVoiceStarted("T-a");
+  w.legacy.pushAgentChat("La siguiente.", { voiced: true, trace: "T-b" });
+  w.legacy.noteVoiceStarted("T-b");
   assert.deepEqual(agentLines(), ["Una respuesta sobre la que no llega ni una sola pista.", "La siguiente."],
     "with no caption movement at all since it was painted, the line stays: absence of evidence is not " +
     "evidence of absence");
@@ -118,13 +112,13 @@ const reset = () => store.setChatMsgs(() => []);
 // +163.06 s the reply; +169.08 s the spoken record came back as «Te tomo nota de las dos cosas: el texto
 // que parece borrarse» — and was DISCARDED, because the rule said the longer version wins.
 {
-  reset();
+  await reset();
   const full = "Te tomo nota de las dos cosas: el texto que parece borrarse un instante mientras dictas, " +
                "y esos diez segundos de silencio al arrancar.";
   const heard = "Te tomo nota de las dos cosas: el texto que parece borrarse";
-  store.pushAgentChat(full, { voiced: true });
-  store.pushCaptionSeg("seg-b", "Te tomo nota de las dos", false);
-  store.pushCaptionSeg("seg-b", heard, true);                        // final: the barge-in stopped it here
+  w.legacy.pushAgentChat(full, { voiced: true });
+  caption("Te tomo nota de las dos", false);
+  caption(heard, true);                                              // final: the barge-in stopped it here
   assert.deepEqual(agentLines(), [heard + "…"],
     `THE BUG: the wall kept what the agent MEANT to say. Got ${JSON.stringify(agentLines())}`);
 }
@@ -133,20 +127,20 @@ const reset = () => store.setChatMsgs(() => []);
 // The fallback path, for a build whose audio-synced captions never fire: LiveKit closes the conversation
 // item with what it actually voiced, and that is what the wall must end up showing.
 {
-  reset();
-  store.pushAgentChat("...tienes razón, a veces tardo un poco en arrancar. ¿Cómo te llamas?", { voiced: true });
-  store.pushAgentChat("...tienes", { spoken: true });
+  await reset();
+  w.legacy.pushAgentChat("...tienes razón, a veces tardo un poco en arrancar. ¿Cómo te llamas?", { voiced: true });
+  w.legacy.pushAgentChat("...tienes", { spoken: true });
   assert.deepEqual(agentLines(), ["...tienes…"],
     "a transcript that is a strict PREFIX of what is rendered means the speech was cut there");
 }
 
 // ══ 6 · WHAT WAS FULLY SAID IS LEFT EXACTLY ALONE ═══════════════════════════════════════════════════
 {
-  reset();
+  await reset();
   const said = "Hola, soy Zaelar. ¿Cómo te llamas?";
-  store.pushAgentChat(said, { voiced: true });
-  store.pushCaptionSeg("seg-c", said, true);
-  store.pushAgentChat(said, { spoken: true });
+  w.legacy.pushAgentChat(said, { voiced: true });
+  caption(said, true);
+  w.legacy.pushAgentChat(said, { spoken: true });
   assert.deepEqual(agentLines(), [said], "a complete reply keeps its text, with no ellipsis and no trim");
 }
 
@@ -158,13 +152,14 @@ const reset = () => store.setChatMsgs(() => []);
 // than a 1200 ms timer. That is the point of the swap: a build with no captions is served by a statement
 // about the voice instead of by the expiry of a guess about it.
 {
-  const fresh = await import("../../../../frontend/app/core/store.js?no-captions=1");
-  fresh.setChatMsgs(() => []);
+  const fresh = await wall();                                         // a writer that never sees one segment
   for (const line of ["Una respuesta entera.", "Otra.", "Y otra más."]) {
-    fresh.pushAgentChat(line, { voiced: true, trace: line });
-    fresh.noteVoiceStarted(line);
+    fresh.legacy.pushAgentChat(line, { voiced: true, trace: line });
+    fresh.legacy.noteVoiceStarted(line);
   }
-  const lines = fresh.chatMsgs().filter(m => m.role === "agent").map(m => m.text);
+  fresh.legacy.noteVoiceIdle();
+  fresh.flush();                                                       // the last one settles after the idle grace
+  const lines = fresh.said().filter(m => m.role === "agent").map(m => m.text);
   assert.deepEqual(lines, ["Una respuesta entera.", "Otra.", "Y otra más."],
     "with no caption channel ever heard from, NOTHING is trimmed — silence is not proof that nothing " +
     "was said, and erasing the wall on it would be the worse bug");
@@ -172,10 +167,10 @@ const reset = () => store.setChatMsgs(() => []);
 
 // ══ 8 · A TYPED/PROACTIVE LINE IS NOT OWED TO THE VOICE ═════════════════════════════════════════════
 {
-  reset();
-  store.pushCaptionSeg("seg-d", "algo", true);
-  store.pushAgentChat("🔔 Te recuerdo la cita de mañana.");          // no `voiced`: nobody promised to say it
-  store.pushAgentChat("Otra cosa.", { voiced: true });
+  await reset();
+  caption("algo", true);
+  w.legacy.pushAgentChat("🔔 Te recuerdo la cita de mañana.");          // no `voiced`: nobody promised to say it
+  w.legacy.pushAgentChat("Otra cosa.", { voiced: true });
   assert.ok(agentLines().includes("🔔 Te recuerdo la cita de mañana."),
     "a notification or a text-channel reply is not a promise of speech and must never be swept");
 }

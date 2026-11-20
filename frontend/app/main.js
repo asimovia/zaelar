@@ -9,6 +9,7 @@
 import { h, mount, $ } from "./core/dom.js?v=2";
 import { createEffect, untrack } from "./core/reactive.js?v=2";
 import * as session from "./services/session.js?v=3";
+import { legacy } from "./services/wall-legacy.js?v=1";
 import * as mic from "./services/mic.js?v=1";
 import * as screens from "./services/screens.js?v=1";
 import * as push from "./services/push.js?v=1";
@@ -332,8 +333,7 @@ window.zaelar = {
   panel: (tab = "chat") => { store.setChatTab(tab); store.setChatOpen(true); },
 };
 
-// ---- files: paste an image / drop a file → lands in the central memory's EPISODIC layer (V2-003); the brain
-// gets a [SISTEMA] note (voice/brain_notes.py) and can recall it once asked. See memory/server_api.py.
+// ---- files: paste/drop → the central memory's EPISODIC layer (V2-003); the brain gets a note (voice/brain_notes.py).
 async function uploadFile(file, source) {
   try {
     const fd = new FormData();
@@ -342,9 +342,9 @@ async function uploadFile(file, source) {
     const res = await fetch("/api/files/upload", { method: "POST", body: fd });
     const d = await res.json();
     if (!res.ok) throw new Error(d && d.detail || "upload failed");
-    store.pushChat({ role: "sys", text: source === "paste" ? t("main.image_sent", { name: d.name }) : t("main.file_added", { name: d.name }) });
+    legacy.pushChat({ role: "sys", text: source === "paste" ? t("main.image_sent", { name: d.name }) : t("main.file_added", { name: d.name }) });
   } catch (_) {
-    store.pushChat({ role: "sys", text: t("main.upload_failed") });
+    legacy.pushChat({ role: "sys", text: t("main.upload_failed") });
   }
 }
 

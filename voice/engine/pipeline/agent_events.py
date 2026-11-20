@@ -248,6 +248,8 @@ def receive_typed(txt: str, *, _emit, session, dev: str = "", cid: str = "") -> 
     `POST /api/chat` (V2-792), which has no room of its own. One body for both, so a line typed on the phone and one
     typed on the desktop leave the same trace. `dev` names the screen; empty = the holder, as before."""
     _dev = {"dev": dev} if dev else None
+    from nucleo.conversation_host import switch as _conv_switch   # the switch alone: off, the manager is never loaded
+    _manager = _conv_switch.typed_on(session)
     # Written chat/paste is ALWAYS directed to zaelar, and that is the LINE's fact, not the room's: it is
     # stamped as typed (the gate admits it by `typed_line`) and opens NO voice window. V2-852 T01: opening the
     # window here lit the ring, the browser unparked the wake-word tap, and the room's «Finch.»/«No.» became orders.
@@ -265,9 +267,11 @@ def receive_typed(txt: str, *, _emit, session, dev: str = "", cid: str = "") -> 
     # tab (his Chrome while an orchestrator drives the agent, the phone) saw only the replies, and
     # `sse.js` had been waiting for a `text-injected` transcript nobody emitted. Same shape as the
     # STT's final transcript, so a typed order and a spoken one leave the same trace on screen.
-    _emit("transcript", "text-injected chat", text=txt, role="user", extra=_dev, piece="u_chat")   # typed, not heard
-    from nucleo.conversation_host import switch as _conv_switch   # the switch alone: off, the manager is never loaded
-    if _conv_switch.typed_on(session):              # a text door: the manager for text, even with the voice old
+    # `cid`: the screen's own id for the line, so the screen that typed it reads this as ITS line (the wall's
+    # acknowledgement), never a second copy; `conv`: the manager writes this line on the wall itself (`wall`).
+    _emit("transcript", "text-injected chat", text=txt, role="user", piece="u_chat",   # typed, not heard
+          extra={**(_dev or {}), **({"cid": cid} if cid else {}), **({"conv": True} if _manager else {})} or None)
+    if _manager:                                    # a text door: the manager for text, even with the voice old
         from nucleo.conversation_host import entry as _conv_entry
         if not _conv_switch.on(session):             # the voice is the old path's: his line cuts it first, as there
             _cut_for_typed(txt, _emit=_emit, session=session)
@@ -647,14 +651,17 @@ def heard_by_the_paid_ear(text: str, wake: dict, spot_at: float, window_s: float
     return bool(mine) and recent and (mine in theirs or theirs in mine)
 
 
-def _on_transcript(ev, *, _emit, _wake) -> None:
+def _on_transcript(ev, *, _emit, _wake, conv: bool = False) -> None:
+    """`conv`: a session of the manager — its wall line is the manager's own (`wall`): the event is marked, so the old
+    wall's writer leaves it."""
     _relay_bound.ear_heard()
+    mark = {"extra": {"conv": True}} if conv else {}
     if ev.is_final:
         _wake["last_user_final"], _wake["last_user_text"] = _ag.time.time(), str(ev.transcript or "")
         # → observer/SSE: the chat wall + the front-end voice-command fast path.
-        _emit("transcript", "🗣", text=ev.transcript, role="user")
+        _emit("transcript", "🗣", text=ev.transcript, role="user", **mark)
     else:
-        _emit("interim", "…", text=ev.transcript, role="user")   # live, UI-only (dedup/no-disk in observer)
+        _emit("interim", "…", text=ev.transcript, role="user", **mark)   # live, UI-only (dedup/no-disk in observer)
         # INSTANT wake-word spotting (2026-09-09) over the interim stream: the orb lights on HEARING; signal only.
         try:
             from voice import attention as _attn_spot

@@ -78,6 +78,8 @@ def reset() -> None:
         _opener["lost_told"] = False
         _queue.clear()
         _waits.clear()
+    from nucleo.conversation_host import wall
+    wall.sweep("reset")                          # a line it left open on the wall would never be closed
 
 
 def _hand(fn) -> None:

@@ -1,7 +1,7 @@
 """Exposes the voice↔wall transcript contract to pytest/Test Observatory (V2-745).
 
 The measured session, the operator's own words and the reason each assertion exists are in the `.mjs`
-beside this file — it drives the REAL store and the REAL attention hold, so this is a runner, not a copy.
+beside this file — it drives the REAL old-path wall writer (`wall-legacy.js`) and the REAL attention hold, so this is a runner, not a copy.
 """
 
 import shutil

@@ -1,7 +1,7 @@
 """Exposes the «print it as it is spoken» contract to pytest/Test Observatory (V2-747).
 
 The measured session, the operator's own words and the reason each assertion exists are in the `.mjs`
-beside this file — it drives the REAL store, so this is a runner, not a copy.
+beside this file — it drives the REAL old-path wall writer (`wall-legacy.js`), so this is a runner, not a copy.
 """
 
 import shutil
