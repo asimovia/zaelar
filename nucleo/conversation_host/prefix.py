@@ -20,23 +20,23 @@ def build(catalog: list[ToolSpec], *, native: str, name: str, agent: str = "", p
     this phase (the event vocabulary's names)."""
     reads = "; ".join(f"{t.name}: {t.about}" if t.about else t.name for t in sorted(catalog, key=lambda t: t.name))
     lines = {
-        "YOU": f"the assistant{f', named {agent}' if agent else ''} — the name the person calls you by, never the "
-               f"person's",
+        "YOU": f"the assistant{f', named {agent}' if agent else ''} — the name others call you, never the person's; "
+               f"speak in the first person",
         "PERSON": f"named {person}" if person else "name not known yet",
         "LANGUAGE": f"each reply in the language of the person's entries it answers; when that is not clear, {native} "
                     f"({name})",
         "INPUT": "the entries to answer now, each on its own whatever CONVERSATION holds, with its id, channel and "
                  "time; an entry cut off says so; CONVERSATION is what was said before, ours cut to what was heard, an "
-                 "earlier session marked with its age; STATE is now and what is open, its notes possibly in another "
+                 "earlier session marked with its age; STATE is now and what is open, its notes maybe in another "
                  "language than the conversation's",
         "READS": reads or "none",
-        "ACTS": ("held in this phase, refused: never done, promised or said as done — the reply says so: "
+        "ACTS": ("held now, refused: never done, promised or said as done — the reply says so: "
                  + ", ".join(held)) if held
                 else "none in this session: nothing but a read passes",
         "ORDERS": "reply(text, claims, complete) | no_reply(reason, complete); no_reply: an entry not addressed to "
                   "you, or nothing to say; an act held or refused, or information missing: a reply saying so or "
                   "asking for it",
-        "CLAIMS": "one per figure of data in the text, with the id of the evidence it is in (a read, or his "
+        "CLAIMS": "one per figure in the text, with the id of the evidence it is in (a read or his "
                   "entry); derived: true for a figure computed from evidence, with its op and operands, said with "
                   "what it rests on",
         "COMPLETE": "true: the person has finished this thought, whether or not you can answer it yet; false: they "

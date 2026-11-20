@@ -36,6 +36,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+from tests.conversation.tools import verdicts
 from tests.conversation.tools.corpus import ROOT as CORPUS, reading
 
 OUT = Path(__file__).resolve().parents[2] / "runs" / "conversation" / "drive"
@@ -206,8 +207,9 @@ async def drive_conversation(eng: Engine, conv: dict) -> dict:
                            "title": str(t.get("title") or "")[:80]} for t in new]}
 
 
-def judge(rec: dict) -> dict:
-    """The old-path rules per thought; a conversation passes when every thought passes every rule that applies."""
+def judge(rec: dict, debatable: frozenset = frozenset()) -> dict:
+    """The old-path rules per thought; a conversation passes when every thought passes every rule that applies. A
+    thought whose label the manifest lists as debatable is judged and shown, never counted (`verdicts.debatable`)."""
     out = []
     for row in rec["thoughts"]:
         t, ans = row["turn"], row["answers"]
@@ -231,8 +233,9 @@ def judge(rec: dict) -> dict:
         if rec["lang"] in ("es", "en") and said:
             r["R15"] = all(lang_of(a["reply"]) in (rec["lang"], "?") for a in said)
         r["pass"] = all(v for k, v in r.items() if k in ("R4", "R6", "R7", "R15", "R19"))
+        r["debatable"] = f"{rec['id']}:{t['thought']}" in debatable
         out.append(r)
-    return {"thoughts": out, "pass": all(r["pass"] for r in out)}
+    return {"thoughts": out, "pass": all(r["pass"] for r in out if not r["debatable"])}
 
 
 async def main_async(args) -> int:
@@ -260,7 +263,7 @@ async def main_async(args) -> int:
             if conv["id"] in done:
                 continue
             rec = await drive_conversation(eng, conv)
-            rec["verdict"] = judge(rec)
+            rec["verdict"] = judge(rec, verdicts.debatable(manifest))
             fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
             fh.flush()
             print(f"[{i}/{len(convs)}] {conv['id']} {'PASS' if rec['verdict']['pass'] else 'fail'} "

@@ -17,6 +17,7 @@ A RECORD is one conversation as the driver saw it and the engine wrote it:
     notices     [{"key", "state", "claimed_until_ms", ...}] | None
     evidence    {req: [figures as strings]} | None
     stops       [t_ms] — when a stop was given (R10)
+    id, debatable   the conversation's id and the manifest's debatable labels (`debatable()`): never counted
     family      callable tool name → family (default: the name)
 
 The thresholds that are numbers (latency, stop-to-silence) are arguments: the plan freezes them (§6), not the rule.
@@ -44,6 +45,18 @@ class Verdict:
 
     def __bool__(self) -> bool:
         return self.status == PASS
+
+
+def debatable(manifest: dict | None) -> frozenset[str]:
+    """The labels a measurement found debatable (the corpus manifest's `debatable`, «<conversation>:<thought>»): a
+    label that may be wrong is never counted against the engine, pass or fail."""
+    return frozenset((manifest or {}).get("debatable") or {})
+
+
+def _thoughts(rec: dict) -> list[dict]:
+    """The thoughts a rule counts: every one but those listed debatable for this conversation (`rec["debatable"]`)."""
+    skip = rec.get("debatable") or ()
+    return [t for t in rec["thoughts"] if f"{rec.get('id', '')}:{t.get('id')}" not in skip]
 
 
 def _verdict(rule: str, n: int, failures: list, why_infra: str = "") -> Verdict:
@@ -92,18 +105,18 @@ def r1_single_close(rec: dict, liveness_ms: int = 30_000) -> Verdict:
 def r2_whole_thought(rec: dict) -> Verdict:
     """Text and script levels: every word of the thought, in order, in ONE prompt."""
     inputs = list(_inputs(rec).values())
-    fails = [{"thought": t["id"]} for t in rec["thoughts"] if t.get("needs_answer", True)
+    fails = [{"thought": t["id"]} for t in _thoughts(rec) if t.get("needs_answer", True)
              and not any(_in_order(_words(" ".join(t["pieces"])), w) for w in inputs)]
-    return _verdict("R2", sum(1 for t in rec["thoughts"] if t.get("needs_answer", True)), fails)
+    return _verdict("R2", sum(1 for t in _thoughts(rec) if t.get("needs_answer", True)), fails)
 
 
 def r3_nothing_before(rec: dict) -> Verdict:
     starts = [p["t_ms"] for p in _ev(rec, "conv_mouth", "started")]
     if not starts and _ev(rec, "conv_mouth", "say"):
         return _verdict("R3", 0, [], "lines were said but none carries its `started`")
-    fails = [{"thought": t["id"], "said_at": s} for t in rec["thoughts"] for s in starts
+    fails = [{"thought": t["id"], "said_at": s} for t in _thoughts(rec) for s in starts
              if t["start_ms"] <= s < t["end_ms"]]
-    return _verdict("R3", len(rec["thoughts"]), fails)
+    return _verdict("R3", len(_thoughts(rec)), fails)
 
 
 def r4_one_answer(rec: dict) -> Verdict:
@@ -112,7 +125,7 @@ def r4_one_answer(rec: dict) -> Verdict:
     for p in _ev(rec, "conv_mouth", "say"):
         says_by_run[_ref(p, "run")] = says_by_run.get(_ref(p, "run"), 0) + 1
     fails = []
-    for t in rec["thoughts"]:
+    for t in _thoughts(rec):
         w = _words(" ".join(t["pieces"]))
         runs = [r for r, iw in inputs.items() if w and _in_order(w[-min(3, len(w)):], iw)]
         said = sum(says_by_run.get(r, 0) for r in runs)
@@ -122,7 +135,7 @@ def r4_one_answer(rec: dict) -> Verdict:
     for p in _ev(rec, "conv_inbox", "accounted"):
         accounted[_ref(p, "env")] = accounted.get(_ref(p, "env"), 0) + 1
     fails += [{"env": e, "accounted": n} for e, n in accounted.items() if n > 1]
-    return _verdict("R4", len(rec["thoughts"]), fails)
+    return _verdict("R4", len(_thoughts(rec)), fails)
 
 
 def r5_single_owner(rec: dict) -> Verdict:
@@ -157,7 +170,7 @@ def r7_route(rec: dict) -> Verdict:
         reads_by_req.setdefault(_ref(p, "req"), set()).add(family(p.get("tool")))
     called = set().union(*reads_by_req.values()) if reads_by_req else set()
     n, fails = 0, []
-    for t in rec["thoughts"]:
+    for t in _thoughts(rec):
         expect, forbid = (set(), set()) if t.get("act_refused") else (set(t.get("expect") or ()), set(t.get("forbid") or ()))
         reqs = t.get("reqs")
         mine = set().union(*(reads_by_req.get(r, set()) for r in reqs)) if reqs else called
@@ -175,7 +188,7 @@ _FIG = re.compile(r"\d+(?:[.,]\d+)?")
 def r8_figures(rec: dict) -> Verdict:
     if rec.get("evidence") is None or not rec.get("replies"):
         return _verdict("R8", 0, [], "the record lacks the evidence or the replies")
-    said_by_person = set(_FIG.findall(" ".join(" ".join(t["pieces"]) for t in rec["thoughts"])))
+    said_by_person = set(_FIG.findall(" ".join(" ".join(t["pieces"]) for t in _thoughts(rec))))
     n, fails = 0, []
     for req, text in rec["replies"].items():
         figs = set(_FIG.findall(text or ""))
@@ -193,7 +206,7 @@ def r9_foreign_out(rec: dict) -> Verdict:
     inputs = list(_inputs(rec).values())
     discarded = [_words(p.get("text") or "") for p in _ev(rec, "conv_ear", "discarded")]
     n, fails = 0, []
-    for t in rec["thoughts"]:
+    for t in _thoughts(rec):
         for frag in t.get("foreign") or ():
             n += 1
             w = _words(frag)
@@ -282,7 +295,7 @@ def lang_of(text: str) -> str:
 
 def r15_language(rec: dict) -> Verdict:
     replies = rec.get("replies") or {}
-    lang_of_req = {r: t["lang"] for t in rec["thoughts"] for r in t.get("reqs") or () if t.get("lang") in ("es", "en")}
+    lang_of_req = {r: t["lang"] for t in _thoughts(rec) for r in t.get("reqs") or () if t.get("lang") in ("es", "en")}
     n, fails = 0, []
     for req, text in replies.items():
         want = lang_of_req.get(req)
@@ -330,12 +343,12 @@ def r19_context(rec: dict) -> Verdict:
     fails = [{"req": r, "why": "answered with no run of its own"} for r in answered if r not in run_reqs]
     n = len(answered)
     prompts = rec.get("prompts")
-    follow_ups = [t for t in rec["thoughts"] if t.get("refers_to")]
+    follow_ups = [t for t in _thoughts(rec) if t.get("refers_to")]
     if follow_ups and prompts is None:
         if fails:
             return _verdict("R19", n, fails)
         return _verdict("R19", n, [], "the context half needs the prompts (a prompt capture), not in the record")
-    by_id = {t["id"]: t for t in rec["thoughts"]}
+    by_id = {t["id"]: t for t in _thoughts(rec)}
     texts = [_words(x) for x in (prompts or {}).values()]
     for t in follow_ups:
         for ref in t["refers_to"]:

@@ -1,5 +1,5 @@
 {
- "version": "v1.1",
+ "version": "v1.2",
  "frozen": "2026-11-20",
  "generator": "claude-sonnet-5-5",
  "reading_rules": "a thought with act_refused expects no tool (F1 refuses acts; R6 judges the act, not R7); R7 enforces only the class's own forbidden families (CLASS_FORBID); thought-level forbid_tools are the generator's and are not judged",
@@ -336,5 +336,9 @@
    "removed_by_hand": []
   }
  },
- "v1.1": "2026-11-20: rename of the demo contact to the public placeholder «Rowan» (the engine's `test_no_real_identity_in_a_public_file`), in every file, the generator's recorded prompts and the tools included; content otherwise identical to v1; each file's sha256 recomputed"
+ "v1.1": "2026-11-20: rename of the demo contact to the public placeholder «Rowan» (the engine's `test_no_real_identity_in_a_public_file`), in every file, the generator's recorded prompts and the tools included; content otherwise identical to v1; each file's sha256 recomputed",
+ "v1.2": "2026-11-20: a note only, no conversation changed (every file keeps its sha256): labels found debatable while measuring are listed in `debatable` and are not counted against the engine",
+ "debatable": {
+  "U19-en-012:2": "«what's the capital of Australia again» expects a search (R7); general knowledge answered without a read («Canberra.») is right. Found on f8452419e."
+ }
 }

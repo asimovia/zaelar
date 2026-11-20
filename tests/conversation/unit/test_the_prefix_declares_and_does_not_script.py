@@ -48,6 +48,7 @@ def test_it_says_who_is_who_what_each_read_is_for_and_what_exists_but_is_held():
                         held=prefix.held_acts())
     lines = dict(line.split(": ", 1) for line in text.splitlines())
     assert "named Johnny" in lines["YOU"] and "never the person's" in lines["YOU"]
+    assert "in the first person" in lines["YOU"]                             # U27-es-011: «Johnny no puede…»
     assert lines["PERSON"] == "name not known yet"
     assert "web_search: the world now" in lines["READS"]
     assert "messaging.send_new" in lines["ACTS"] and "refused" in lines["ACTS"]

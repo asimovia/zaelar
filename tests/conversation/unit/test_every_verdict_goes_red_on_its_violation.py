@@ -162,3 +162,28 @@ def test_events_read_back_from_the_engine_keep_the_packages_clock_and_envelope_k
     (k, lab, p), = V.from_observer(stored)
     assert (k, lab, p["t_ms"], p["kind"], p["trace"]) == ("conv_inbox", "accepted", 1000, "user.text", "iv_1")
     assert V.r18_contract({"events": [(k, lab, p)]}).status == V.PASS
+
+
+def test_a_label_the_manifest_calls_debatable_is_never_counted():
+    """Corpus v1.2: U19-en-012's second thought expected a search; answered from general knowledge it is right. A
+    debatable label is judged and shown, never counted — by the rules here and by the driver's own judge."""
+    import pathlib
+    from tests.conversation.tools import corpus_drive
+    rec = base()
+    rec["thoughts"][1]["expect"] = {"agenda"}                              # a label the run does not meet
+    rec["id"] = "U99-en-001"
+    assert V.r7_route(rec).status == V.FAIL
+    rec["debatable"] = V.debatable({"debatable": {"U99-en-001:2": "w"}})
+    got = V.r7_route(rec)
+    assert got.status == V.PASS and got.n == 1                                # one thought counted, not two
+    manifest = json.loads(pathlib.Path("tests/conversation/fixtures/corpus/v1/manifest.json").read_text())
+    assert "U19-en-012:2" in V.debatable(manifest) and manifest["version"] == "v1.2"
+    corpus = json.loads(pathlib.Path("tests/conversation/fixtures/corpus/v1/U19.en.json").read_text())
+    turn = next(t for c in corpus if c["id"] == "U19-en-012" for t in c["turns"] if t["thought"] == 2)
+    row = {"turn": turn,
+           "answers": [{"reply": "w9", "tool_calls": [], "action": "", "flow": {"search_events": 0, "prompts": 1,
+                                                                                  "jev_reads": 0}, "wall_ms": 1}]}
+    conv = {"id": "U19-en-012", "class": "U19", "lang": "en", "thoughts": [row], "new_tasks": []}
+    assert not corpus_drive.judge(conv)["pass"]                            # no search for a U19 search thought…
+    judged = corpus_drive.judge(conv, V.debatable(manifest))
+    assert judged["thoughts"][0]["debatable"] and judged["pass"]           # …listed debatable it never fails the run
