@@ -121,7 +121,7 @@ def test_the_engine_answers_the_wake_topic():
     assert "_wake_reply(" in block, "…and the turn still has to be answered"
     events = (ROOT / "voice" / "engine" / "pipeline" / "agent_events.py").read_text(encoding="utf-8")
     door = events.split("def _wake_reply(", 1)[1].split("\ndef ", 1)[0]
-    assert "generate_reply(" in door and "typed(" in door, "answered by the old turn, or by the manager in its session"
+    assert "generate_reply(" in door and "local_phrase(" in door, "answered by the old turn, or by the manager as voice"
     assert '_phase == "spot"' in block, "the two phases mean different things — see the note above them"
     assert "note_directed()" in block, \
         "the spot is PERMISSION: without a window, whatever he says next is transcribed into a discard"

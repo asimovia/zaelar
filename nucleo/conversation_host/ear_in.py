@@ -4,7 +4,9 @@ They arrive inside the body link's batches (`voice/engine/pipeline/body_link.py`
 process (`boot`, `seq`) and in order. A batch carried again because its answer came late applies nothing twice: each
 `seq` is applied once, per boot. Each fact becomes the signal the package's ear reads (`ear_feed.py` made it, on one
 wall clock) and is handed to the conversation in order (`entry.voice`). A declared hole (`gap`) is a `LinkGap` on
-each device it covered: what the ear was hearing there ends incomplete, and is asked for again.
+each device it covered: what the ear was hearing there ends incomplete, and is asked for again. At the end of one of
+his turns the guards in front of the ear judge its words (`guards.py`): what they throw away reaches the ear as a
+`Discard` before the end, and never closes as his words.
 """
 from __future__ import annotations
 
@@ -18,6 +20,7 @@ _turns: dict[tuple, int] = {}                     # (stream, boot, epoch, provid
 _boot_of: dict[str, str] = {}                     # stream → the voice process's boot its facts came from
 _next = {"turn": 0}
 TURNS_KEPT = 4096
+_heard: dict[str, str] = {}                       # stream → the words of the turn in course, for the guards
 
 
 def signals(ev: dict) -> list:
@@ -63,7 +66,11 @@ def receive(ev: dict, hand=None) -> int:
     gap = _new_boot(ev)
     if ev.get("t") == "words":
         ev = {**ev, "turn": _turn_of(ev)}
+        with _lock:
+            _heard[str(ev.get("stream") or "")] = " ".join(str(w[0]) for w in ev.get("words") or ())
     out = gap + signals(ev)
+    if ev.get("t") == "eot" and ev.get("kind") == "end":
+        out = _guarded(ev) + out
     for sig in out:
         hand(sig)
     return len(out)
@@ -93,8 +100,25 @@ def _new_boot(ev: dict) -> list:
     return [S.LinkGap(stream, int(ev.get("t_ms") or ev.get("through") or 0))] if before and before != boot else []
 
 
+def _guarded(ev: dict) -> list:
+    """The guards in front of the ear, at the end of one of his turns: a `Discard` handed BEFORE the end, so what they
+    threw away never closes as his words."""
+    from nucleo.conversation_host import guards
+    stream = str(ev.get("stream") or "")
+    with _lock:
+        text = _heard.pop(stream, "")
+    why = guards.judge(text) if text.strip() else None
+    if why:
+        return [S.Discard(stream, text, why, int(ev.get("t_ms") or 0))]
+    if text.strip() and guards.orders_stop(text):     # his spoken stop: the control first, then his words
+        from nucleo.conversation_host import controls
+        controls.control("stop", stream, "ear")
+    return []
+
+
 def _reset_for_tests() -> None:
     with _lock:
         _applied.clear()
         _turns.clear()
         _boot_of.clear()
+        _heard.clear()

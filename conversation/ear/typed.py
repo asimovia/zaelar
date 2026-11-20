@@ -6,11 +6,22 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from conversation import envelopes as E
-from conversation.ear.signals import TypedSubmit
+from conversation.ear.signals import LocalPhrase, TypedSubmit
 from conversation.types import Channel, EnvelopeKind
 
 if TYPE_CHECKING:
     from conversation.ear.arbiter import Ear
+
+
+def phrase(ear: "Ear", sig: LocalPhrase, t: int) -> E.Envelope:
+    """A device's own ear heard his phrase: one closed VOICE entry of its own (its grace is a voice's, unmarked)."""
+    iv = ear.ids.new("iv")
+    env = E.make(EnvelopeKind.USER_UTTERANCE, E.UtteranceBody(iv, sig.text), producer=f"ear:{sig.endpoint}",
+                 producer_id=f"{iv}:local:{sig.client_id}", account=ear.account, onset_ms=t, sealed_ms=t,
+                 channel=Channel.VOICE, endpoint=sig.endpoint, refs=E.Refs(intervention_id=iv))
+    ear.em.emit("conv_ear", "local_phrase", owner="ear", cause={"kind": "device_ear", "ref": sig.client_id},
+                refs={"iv": iv, "endpoint": sig.endpoint, "channel": "voice"}, closed_by="device_ear")
+    return env
 
 
 def submit(ear: "Ear", sig: TypedSubmit, t: int) -> E.Envelope:

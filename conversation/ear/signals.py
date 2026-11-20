@@ -72,6 +72,16 @@ class TypedSubmit:
 
 
 @dataclass(frozen=True)
+class LocalPhrase:
+    """His phrase a device's own ear caught (the browser's wake word, when the paid ear did not have it): VOICE, whole,
+    one intervention of its own — never typed, never a turn of the transport's."""
+    endpoint: str
+    client_id: str
+    text: str
+    t_ms: int
+
+
+@dataclass(frozen=True)
 class Discard:
     """A safety guard outside the ear threw speech away (echo, the voice lock, a blocked mic, not addressed to us)."""
     endpoint: str
@@ -112,5 +122,5 @@ class Onset:
     successor: bool = False     # born at a close with his voice still up: it may be no voice at all
 
 
-Signal = (WordSpan | Watermark | VadEdge | EotHint | PlaybackState | ContextHint | TypedSubmit | Discard | LinkGap
+Signal = (WordSpan | Watermark | VadEdge | EotHint | PlaybackState | ContextHint | TypedSubmit | LocalPhrase | Discard | LinkGap
           | Tick)

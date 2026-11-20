@@ -681,6 +681,10 @@ _TOTAL_MAX += 42     # same cause
 _PACKAGE_CEILINGS["conversation"] += 3     # 2026-11-20 V2-941 v3.1 B7l (mix-02): a derived figure may be a product, and cite his entry with no digit
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 1     # same (es-11): ACTS says a held act is never done, promised or said as done
 _TOTAL_MAX += 4      # same cause
+_PACKAGE_CEILINGS["conversation"] += 25    # 2026-11-20 V2-941 v3.1 B10: the guards in front of the ear — a device's own phrase as voice (`LocalPhrase`)
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 135   # same: the guards (mic, echo, attention) as discards before the end, his stop as a control from its door, the switch turned off retires the conversation (`guards.py`, `controls.py`)
+_PACKAGE_CEILINGS["voice"] += 5            # same: a body-link batch keeps room for the other events; the wake phrase as his phrase
+_TOTAL_MAX += 165    # same cause
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

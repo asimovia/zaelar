@@ -36,6 +36,8 @@ def speak(order, ack) -> bool:
     if cl is None:
         return False
     payload = {"text": order.text, "alias": order.say_id, "conv": True, "allow_interruptions": True}
+    from nucleo.conversation_host import guards
+    guards.said(order.text)                    # what the echo guard compares his next words against
 
     async def play() -> None:
         payload["env"] = cl.env_diff()         # on the body's loop, the one that keeps what was sent

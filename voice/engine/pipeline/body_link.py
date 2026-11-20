@@ -60,6 +60,9 @@ EVENTS_PATH = "/api/voice/child/events"
 RETRY_GAP_S = 1.0                                 # one connection a second while the body does not answer (E0)
 RETRIED = ("session", "transcript", "item")       # the facts asked once more at the front of the queue
 CAPTION_GAP_S = 0.4                               # the retry gap while only a live caption waits (latest wins)
+#: a batch keeps 1/OTHERS_SHARE of its room for the other events (a session's start, his words): a long ear lane
+#: never holds them back
+OTHERS_SHARE = 4
 EAR_MAX = 1500                                    # the ear's facts held for the body: ~30 s of a stalled body
 
 
@@ -238,7 +241,8 @@ class BodyLink:
             while True:
                 await self._pace()                # BEFORE the batch leaves the queue: a paced fact is still on the line
                 with self._lock:
-                    ear = list(self._ear)[: self.max_batch]      # at the front, and still in the queue until answered
+                    others = min(len(self._q), self.max_batch // OTHERS_SHARE)   # the rest keep their share
+                    ear = list(self._ear)[: self.max_batch - others]   # at the front, in the queue until answered
                     for ev in ear:
                         ev["_flying"] = True
                     batch = [self._q.popleft() for _ in range(min(self.max_batch - len(ear), len(self._q)))]

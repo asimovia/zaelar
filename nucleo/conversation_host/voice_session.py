@@ -39,6 +39,9 @@ def closed(session) -> None:
     d = getattr(session, "_conversation_switch", None)
     if d is not None and d.on:
         _voice(False)
+        import threading
+        from nucleo.conversation_host import controls
+        threading.Thread(target=controls.retire_if_off, name="conversation-retire", daemon=True).start()
 
 
 def _voice(live: bool) -> None:

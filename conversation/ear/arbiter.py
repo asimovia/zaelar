@@ -35,7 +35,7 @@ from conversation import envelopes as E
 from conversation.config import Config
 from conversation.ear import signals as S
 from conversation.ear.spans import Spans
-from conversation.ear.typed import submit
+from conversation.ear.typed import phrase, submit
 from conversation.telemetry import Emitter
 from conversation.types import Channel, Coverage, EnvelopeKind, Ids, IvState
 
@@ -168,6 +168,9 @@ class Ear:
 
     def _on_TypedSubmit(self, sig: S.TypedSubmit, out: list) -> None:
         out.append(submit(self, sig, self._time(sig.t_ms)))
+
+    def _on_LocalPhrase(self, sig: S.LocalPhrase, out: list) -> None:
+        out.append(phrase(self, sig, self._time(sig.t_ms)))
 
     def _on_LinkGap(self, sig: S.LinkGap, out: list) -> None:
         """Facts of this device were lost on the line: an intervention open there ends incomplete — never silently

@@ -186,6 +186,9 @@ def typed(text: str, dev: str = "", *, wait: bool = False, checked: bool = False
     def deliver(conv) -> None:
         stop = None if checked else _guards(text, dev)
         if stop is None:
+            from nucleo.conversation_host import controls, guards
+            if guards.orders_stop(sig.text):           # the stop first, then the line it came with
+                conv.give(controls.make(conv, "stop", sig.endpoint, "chat", sig.t_ms))
             conv.hear(sig)
             return
         _end(stop.get("reason") or "note")

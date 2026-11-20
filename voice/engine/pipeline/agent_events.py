@@ -292,7 +292,8 @@ def _wake_reply(session, text: str) -> None:
     if _conv_switch.on(session):
         from nucleo.conversation_host import entry as _conv_entry
         _conv_entry.count("wake_phrases")
-        _conv_entry.typed(text, "")
+        from nucleo.conversation_host import controls as _conv_controls
+        _conv_controls.local_phrase(text, "")   # voice, an entry of its own: never typed, never the old turn
         return
     session.generate_reply(user_input=text)
 

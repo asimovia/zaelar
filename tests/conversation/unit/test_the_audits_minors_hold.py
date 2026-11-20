@@ -2,8 +2,8 @@
 
   · only HIS line at the text channel's door goes by the manager: a list's own step through `run_turn` keeps the old
     turn, switch on or not;
-  · his phrase the browser's ear caught (the wake word's backstop) goes to the manager in its session, counted apart
-    (`wake_phrases`) — never an attempt at the old turn that would fail the proof;
+  · his phrase the browser's ear caught (the wake word's backstop) goes to the manager in its session as VOICE (a
+    `LocalPhrase`, B10), counted apart (`wake_phrases`) — never an attempt at the old turn that would fail the proof;
   · a fixed line the operator's pack does not carry yet falls back to English, never to silence;
   · the retry pulse looks for the manager's expired claims only once the manager's host is loaded;
   · (the sandbox's reset with its two marks, closing before the queue drains, and the notices it forgets:
@@ -43,15 +43,15 @@ def test_a_lists_own_step_keeps_the_old_turn_with_the_switch_on(monkeypatch):
 
 
 def test_the_wake_phrase_goes_to_the_manager_counted_apart(monkeypatch):
-    from nucleo.conversation_host import entry, proof, switch
+    from nucleo.conversation_host import controls, entry, proof, switch
     from voice.engine.pipeline import agent_events
     seen = []
     monkeypatch.setattr(entry, "count", lambda c: seen.append(("count", c)))
-    monkeypatch.setattr(entry, "typed", lambda text, dev="": seen.append(("typed", text)))
+    monkeypatch.setattr(controls, "local_phrase", lambda text, dev="": seen.append(("local_phrase", text)))
     session = SimpleNamespace(generate_reply=lambda user_input: seen.append(("old", user_input)))
     monkeypatch.setattr(switch, "on", lambda s=None: True)
     agent_events._wake_reply(session, "w1")
-    assert seen == [("count", "wake_phrases"), ("typed", "w1")]
+    assert seen == [("count", "wake_phrases"), ("local_phrase", "w1")]                    # voice, never typed
     assert "wake_phrases" in proof.COUNTERS and "wake_phrases" not in proof.MUST_BE_ZERO
     monkeypatch.setattr(switch, "on", lambda s=None: False)
     agent_events._wake_reply(session, "w2")

@@ -27,6 +27,7 @@ class EarLabels(_Labels):
     OPENED, EXTENDED, TENTATIVE, CLOSED = "opened", "extended", "tentative", "closed"
     INCOMPLETE, DISCARDED, ONSET, TYPED = "incomplete", "discarded", "onset", "typed"
     GAP = "gap"
+    LOCAL_PHRASE = "local_phrase"
 
 
 class InboxLabels(_Labels):
