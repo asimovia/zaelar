@@ -32,6 +32,7 @@ from conversation.inbox import ordering
 from conversation.manager import claims as CL
 from conversation.manager import commands
 from conversation.manager import record as records
+from conversation.manager import stop
 from conversation.mouth import Device, choose
 from conversation.telemetry import root
 from conversation.ports import (RELAY, UNCLAIMED, Command, Done, Failed, PromptParts, StaleEpoch, TextDelta, ToolCall,
@@ -183,12 +184,12 @@ async def _fail(conv: "Conversation", r: "Running", reason: str) -> None:
     pushed, or shown."""
     now = conv.clock.now_ms()
     conv.inbox.account(list(r.batch_ids), "failed", now)            # accounted first: whatever the mouth does next
-    said = False
+    said, screen = False, _barge_cut(conv, r)    # a batch that cut our voice and fails says so on screen only
     try:                                    # said BEFORE the close: whoever waits on the close finds the line there
-        said = await _say_failed_safely(conv, r)
+        said = await _say_failed_safely(conv, r, screen_only=screen)
     finally:                                # …and closed whatever the mouth did, a cancel included
         closed = [req for req in r.requests if close(conv, req, "recovered", "recovered", r, reason=reason)]
-    if not said:
+    if not said:                            # never silence: unsaid even on the screen, it is owed
         _owe(conv, r, reason, closed)
     _emit(conv, "ended", r, outcome="failed", reason=reason, said=said)
 
@@ -196,7 +197,8 @@ async def _fail(conv: "Conversation", r: "Running", reason: str) -> None:
 async def _lost(conv: "Conversation", r: "Running", reason: str) -> None:
     """A run whose requests the liveness closed: its batch accounted, and the line said in place or owed."""
     conv.inbox.account(list(r.batch_ids), "failed", conv.clock.now_ms())
-    said = await _say_failed_safely(conv, r)
+    screen = _barge_cut(conv, r)
+    said = await _say_failed_safely(conv, r, screen_only=screen)
     if not said:
         _owe(conv, r, reason)
     _emit(conv, "ended", r, outcome="failed", reason=reason, said=said)
@@ -208,10 +210,10 @@ def _owe(conv: "Conversation", r: "Running", reason: str, requests=None) -> None
             conv.owed.owe(conv.account, f"conv:failed:{req}", f"failed:{reason}")
 
 
-async def _say_failed_safely(conv: "Conversation", r: "Running") -> bool:
+async def _say_failed_safely(conv: "Conversation", r: "Running", screen_only: bool = False) -> bool:
     """`_say_failed`, and a mouth that raises is a line not said: it is owed instead, never an escape from the run."""
     try:
-        return await _say_failed(conv, r)
+        return await _say_failed(conv, r, screen_only)
     except (StaleEpoch, asyncio.CancelledError):
         raise
     except Exception as e:  # noqa: BLE001 — the mouth's failure is counted; the person is owed the line
@@ -227,19 +229,21 @@ def _line(conv: "Conversation", key: str, r: "Running") -> str:
     return conv.words.line(key, near=near.strip())
 
 
-async def _say_failed(conv: "Conversation", r: "Running") -> bool:
+async def _say_failed(conv: "Conversation", r: "Running", screen_only: bool = False) -> bool:
     """The failure line as the answer to a batch of typed entries: sealed and said on the text channel. False when the
-    batch holds his voice, there is no line, or the publication is fenced."""
+    batch holds his voice, there is no line, or the publication is fenced. `screen_only`: the batch cut our voice (a
+    stop may be what he said): its line goes on the screen, whatever the batch held, and never on the voice."""
     envs = tuple(r.ctx.batch.values())
     users = [e for e in envs if e.is_user]
     line = _line(conv, "mute_lines", r)
-    if not line or not users or any(e.kind is not EnvelopeKind.USER_TEXT for e in users):
+    if not line or not users or (not screen_only and any(e.kind is not EnvelopeKind.USER_TEXT for e in users)):
         return False
     if not conv.gw.seal_publication(r.ctx, [e.refs.intervention_id for e in users]):
         _emit(conv, "fenced", r)
         return False
     reply = choose(envs, conv.devices.get(r.ctx.endpoint or "", Device(r.ctx.endpoint)), text_gets_voice=False)
-    await conv.speaker.say(run_id=r.run_id, request_id=r.ctx.request_id, text=line, channels=reply.channels,
+    channels = frozenset({"text"}) if screen_only else reply.channels
+    await conv.speaker.say(run_id=r.run_id, request_id=r.ctx.request_id, text=line, channels=channels,
                            endpoint=r.ctx.endpoint, trace=r.trace, iv=users[0].refs.intervention_id, origin=FAILURE)
     return True
 
@@ -342,6 +346,13 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
                     _emit(conv, "command", r, command=ev.name, complete=getattr(order, "complete", None),
                           derived=sum(c.derived for c in getattr(order, "claims", ())),
                           unclaimed=ev.args.get(UNCLAIMED))
+                    if isinstance(order, commands.Stop):
+                        called = True
+                        if stop.take(conv, r, order, steps) and order.scope in commands.ABANDONS:
+                            await stop.stopped(conv, r)  # the run in course is abandoned: nothing more of it
+                            return
+                        continue                         # a stop of our voice or of what plays: the run may go on
+                    r.ordered = True
                     if await _command(conv, r, batch, order, steps, last_try=repaired):
                         return
                     repaired, called = True, True        # one repair round, with the reason as a step
@@ -365,6 +376,9 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
         finally:                                    # a stop, a deadline, a command: the provider's stream is closed now
             await stream.aclose()                   # never left to the garbage collector
         _checkpoint(conv, r)
+        if r.stopped and called and not r.ordered:  # a stop, and nothing more: the batch closes stopped, unsaid
+            await stop.stopped(conv, r)
+            return
         if not called:                              # no order came: text instead, or one the client could not read
             _emit(conv, "command", r, command="text_without_order" if text else "no_order", chars=len(text),
                   dropped=dropped)
@@ -462,7 +476,7 @@ def _said_something(r: "Running") -> bool:
     """His batch holds words of his (an entry, not a noise): what was read, was read for him."""
     return any(str(getattr(e.body, "text", "") or "").strip() for e in r.ctx.batch.values() if e.is_user)
 #: the orders' names, as the model could write them in its text instead of calling them
-ORDER_NAMES = ("reply", "no_reply")
+ORDER_NAMES = ("reply", "no_reply", *commands.STOPS)
 ORDER_TEXT = tuple(f"{n}(" for n in ORDER_NAMES) + tuple(f"<{n}" for n in ORDER_NAMES) + ("no_reply ",)
 
 
@@ -562,6 +576,9 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
         await _publish(conv, r, batch, cmd.text, len(steps))
         return True
     reason = getattr(cmd, "reason", None) or getattr(cmd, "name", "")
+    if isinstance(cmd, commands.NoReply) and r.stopped:     # a stop, then «nothing more»: stopped, never asked again
+        await stop.stopped(conv, r)
+        return True
     if isinstance(cmd, commands.NoReply) and r.acts_refused and not r.asked_to_say:
         r.asked_to_say = True                   # a held or refused act is said, never a silence: asked once
         _emit(conv, "command", r, command="no_reply_after_refused_act", tools=list(r.acts_refused))

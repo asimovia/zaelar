@@ -734,6 +734,9 @@ _PACKAGE_CEILINGS["nucleo/conversation_host"] += 146   # 2026-11-20 V2-941 INI-0
 _PACKAGE_CEILINGS["server"] += 1                       # same cause: `POST /api/chat` carries the screen's `cid`
 _PACKAGE_CEILINGS["voice"] += 2                        # same cause: the typed door hands the `cid` on; a live wall update is never stored (W-1)
 _TOTAL_MAX += 151    # same cause, measured
+_PACKAGE_CEILINGS["conversation"] += 103               # 2026-11-20 V2-941 (plan v3.2 §3, commit 1; +15 the split that keeps `run.py` under 800: `manager/stop.py`): a stop is a system action the model chooses — four orders and their scopes (`commands.Stop`), the first-order rule, the `stopped` close and its fixed line, the host's `Stops` port, a failed barge-in's line on the screen only
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 3   # same day: `turns.NOT_OK` reads the package's own close labels — no word table (it had become the 504th)
+_TOTAL_MAX += 105    # same cause, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

@@ -136,6 +136,13 @@ class Tasks(Protocol):
     def cancel(self, account: str, task_id: str) -> bool: ...
 
 
+class Stops(Protocol):
+    """The host's hands for a stop the MODEL ordered (plan v3.2 §3): what each scope stops beyond our voice — what is
+    playing (`media`, `all`), his tasks (`all`, cancelled and resumable), the attention window. Local and immediate;
+    it writes nothing outside and deletes nothing."""
+    def stop(self, scope: str, endpoint: str | None) -> None: ...
+
+
 class Prefs(Protocol):
     """The operator's standing preferences, read when a decision needs one — so a change applies to the next one, with
     no restart. The host reads its rules; without this port every preference is its default."""

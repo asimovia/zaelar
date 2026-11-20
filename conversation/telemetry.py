@@ -60,6 +60,7 @@ class CloseLabels(_Labels):
     ANSWERED, HANDED_OFF, SILENT, RECOVERED = "answered", "handed_off", "silent", "recovered"
     FAILED, STALLED = "failed", "stalled"
     RECORD_FAILED = "record_failed"          # the pair of an answered batch did not reach the host's record yet
+    STOPPED = "stopped"                      # the model ordered a stop and nothing more: nothing said
 
 
 class Owner(Enum):

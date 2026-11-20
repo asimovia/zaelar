@@ -18,9 +18,12 @@ from __future__ import annotations
 
 import threading
 
+from conversation.telemetry import CloseLabels
+
 KEPT = 512
 ENTRIES = frozenset({"user.utterance", "user.text"})
-NOT_OK = frozenset({"recovered", "failed", "stalled"})   # a failed run closes its requests `recovered`
+#: the closes that mean it failed (the package's own labels): a failed run closes its requests `recovered`
+NOT_OK = frozenset({CloseLabels.RECOVERED.value, CloseLabels.FAILED.value, CloseLabels.STALLED.value})
 FAILED_LINE = "conv:failed:"                              # the key of the line that tells him a request failed
 
 _lock = threading.Lock()
