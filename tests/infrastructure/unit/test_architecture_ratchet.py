@@ -633,6 +633,8 @@ _PACKAGE_CEILINGS["nucleo/conversation_host"] += 82    # 2026-11-20 V2-941 v3.1 
 _PACKAGE_CEILINGS["voice"] += 64           # same: `/voice/say` with `cut` and `spoken_chars`; the local cut rule in a manual session (`ear_tap.VadEdges._barge`)
 _PACKAGE_CEILINGS["observability"] += 1    # same: a flow read from its start, or newest first (`order`)
 _TOTAL_MAX += 147    # same cause
+_PACKAGE_CEILINGS["voice"] += 75           # 2026-11-20 V2-941 v3.1 B8c (the 3b voice smoke): the ear taps the titular inside the fallback adapter, fails open, declares a gap when the titular falls and hears the stand-in's finals until it is back (`ear_tap.titular`, `Tap.titular_available`, `Tap.final_transcript`)
+_TOTAL_MAX += 75     # same cause
 
 
 def test_the_total_only_shrinks():

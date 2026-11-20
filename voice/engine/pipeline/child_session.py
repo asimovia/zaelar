@@ -92,9 +92,10 @@ async def entrypoint(ctx: JobContext) -> None:
     _interruption = _ae._int_kwargs()
     from . import ear_tap
     conv = await _conv(link, ctx.room, _flux)
-    tap = None
-    if conv["conv"]:                           # a session of the manager: its ear hears, LiveKit opens no turn
-        tap = ear_tap.Tap(ear_tap.ENDPOINT, link.send_ear)
+    if conv["conv"] and ear_tap.titular(stt) is None:    # fail closed: an ear it cannot tap is the old path's
+        conv = {"conv": False, "conv_by": conv["conv_by"], "conv_why": "the ear cannot tap the provider's messages"}
+    tap = ear_tap.Tap(ear_tap.ENDPOINT, link.send_ear) if conv["conv"] else None
+    if tap is not None:                        # a session of the manager: its ear hears, LiveKit opens no turn
         stt, vad_session = ear_tap.install_stt(stt, tap), ear_tap.tap_vad(vad_session, tap)
         ctx.add_shutdown_callback(_untap(stt))
 
@@ -108,11 +109,7 @@ async def entrypoint(ctx: JobContext) -> None:
     session = AgentSession(vad=vad_session, stt=stt, llm=RemoteBrainLLM(), tts=tts,
                            turn_handling=ear_tap.manual(handling) if tap else handling)
     if tap is not None:
-        tap.on_end = session.clear_user_turn     # never committed: his words went to the manager's ear
-        tap.min_barge_ms = int(1000 * float(_interruption.get("min_duration", 0.5) or 0.5))
-        tap.on_barge = lambda: _ae.cut_current_speech(session)   # the local rule: his voice cuts ours
-        session.on("agent_state_changed", lambda ev: tap.playback(getattr(ev.new_state, "value", ev.new_state)
-                                                                   == "speaking"))
+        _wire_ear(session, tap, _interruption)
     else:
         try:
             from . import preemptive_tap as _ptap
@@ -190,6 +187,18 @@ async def _conv(link, room, flux: bool) -> dict:
     return {"conv": True, "conv_by": by}
 
 
+def _wire_ear(session, tap, interruption: dict) -> None:
+    """The manager's ear on the built session: the turn cleared after each end (never committed), the local cut rule,
+    our playback."""
+    from . import agent_events as _ae
+    tap.on_end = session.clear_user_turn     # never committed: his words went to the manager's ear
+    LIVE["tap"] = tap
+    tap.min_barge_ms = int(1000 * float(interruption.get("min_duration", 0.5) or 0.5))
+    tap.on_barge = lambda: _ae.cut_current_speech(session)   # the local rule: his voice cuts ours
+    session.on("agent_state_changed", lambda ev: tap.playback(getattr(ev.new_state, "value", ev.new_state)
+                                                               == "speaking"))
+
+
 def _untap(stt):
     """The job's end gives the warm STT back untapped: the next session may not be the manager's."""
     async def _done(*_a) -> None:
@@ -216,6 +225,9 @@ def _wire(session, ctx, link, sm, _emit, tts, boot) -> None:
     @session.on("user_input_transcribed")
     def _on_transcript(ev) -> None:
         link.send({"k": "transcript", "final": bool(ev.is_final), "text": ev.transcript})
+        tap = LIVE.get("tap")
+        if tap is not None and ev.is_final:
+            tap.final_transcript(ev.transcript)   # only while the titular is down: the stand-in's finals
 
     @session.on("conversation_item_added")
     def _on_item(ev) -> None:
@@ -267,6 +279,7 @@ def _wire(session, ctx, link, sm, _emit, tts, boot) -> None:
             LIVE.update(session=None, ctx=None, loop=None)
             LIVE["aliases"].clear()
             LIVE["conv_says"].clear()
+            LIVE["tap"] = None
         try:
             from ..speech import live_tts as _lt
             _lt.detach(tts)

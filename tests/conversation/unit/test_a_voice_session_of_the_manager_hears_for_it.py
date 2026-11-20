@@ -38,6 +38,8 @@ class _Stream:
 
 
 class _STT:
+    _zaelar_stream_class = _Stream                    # the stream it opens has a message handler: tappable
+
     def __init__(self):
         self.streams = []
 

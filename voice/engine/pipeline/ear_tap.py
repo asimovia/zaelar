@@ -24,6 +24,8 @@ logger = logging.getLogger("zaelar.voice.ear_tap")
 #: the provider's punctuation of a sentence end
 TERMINAL_MARKS = (".", "?", "!", "…", "。", "？", "！")
 VAD_QUIET_MS = 200
+#: the stand-in's turns are numbered apart from the provider's own (`turn_index`), never mistaken for one of them
+STAND_IN_TURNS = 1_000_000
 #: the device this process hears for: the holder of the session (`nucleo/conversation_host/voice_session.ENDPOINT`)
 ENDPOINT = "holder"
 
@@ -46,12 +48,37 @@ class Tap:
         self.speaking = False                          # our own voice sounds (playback)
         self.edges = VadEdges(self)
         self.on_end: Callable[[], None] | None = None
+        self.fallback, self.stand_in_turns = False, 0       # the titular fell: the stand-in's finals are the words
         self.on_barge: Callable[[], object] | None = None   # cut our voice (the local rule)
         self.min_barge_ms = 500
         self.playing_since: int | None = None
 
     def new_stream(self) -> None:
         self.clock, self.turns = ear_feed.StreamClock(), ear_feed.Turns()
+
+    def titular_available(self, available: bool) -> None:
+        """The titular provider fell (or came back). Falling, what the ear was hearing ends incomplete — declared, never
+        silent — and the stand-in's finals become its words; back, its own messages again."""
+        if self.fallback == (not available):
+            return
+        self.fallback = not available
+        if self.fallback:
+            logger.warning("ear tap: the titular STT fell; the stand-in's finals are the ear's words until it is back")
+            self.send({"t": "gap", "streams": [self.endpoint], "t_ms": _now_ms()})
+
+    def final_transcript(self, text: str, now_ms: int | None = None) -> None:
+        """A final of the STAND-IN (no turns of its own): one closed turn — its words, its end, the watermark."""
+        if not self.fallback or not str(text or "").strip():
+            return
+        now = _now_ms() if now_ms is None else now_ms
+        self.stand_in_turns += 1
+        turn, t = STAND_IN_TURNS + self.stand_in_turns, now
+        words = [[w, t, t, 1.0] for w in str(text).split()]
+        self.send({"t": "words", "stream": self.endpoint, "turn": turn, "rev": 1, "final": True, "words": words,
+                   "window": [t, t], "arrived": now})
+        self.send({"t": "eot", "stream": self.endpoint, "kind": "end", "prob": None, "t_ms": t,
+                   "terminal": str(text).rstrip().endswith(TERMINAL_MARKS), "arrived": now})
+        self.send({"t": "mark", "stream": self.endpoint, "through": t, "arrived": now})
 
     def on_message(self, msg: dict) -> None:
         if not isinstance(msg, dict) or msg.get("type") != "TurnInfo":
@@ -108,16 +135,40 @@ def _barge_due(edges: "VadEdges", now: int) -> bool:
             and edges.rose_at >= tap.playing_since and now - edges.rose_at >= tap.min_barge_ms)
 
 
+def titular(stt):
+    """The provider whose own messages the ear reads: the STT itself, or the first one a fallback adapter wraps (the
+    adapter calls `stream()` on each of them in turn, so a tap on the titular sees every message it sends, whatever
+    wraps it). None when it has no message handler to tap — the session is then not the manager's."""
+    inner = (getattr(stt, "_stt_instances", None) or [stt])[0]
+    stream_class = getattr(inner, "_zaelar_stream_class", None) or _stream_class(inner)
+    return inner if stream_class is not None and hasattr(stream_class, "_process_stream_event") else None
+
+
+def _stream_class(stt):
+    from livekit.plugins.deepgram import stt_v2
+    return stt_v2.SpeechStreamv2 if isinstance(stt, stt_v2.STTv2) else None
+
+
 def install_stt(stt, tap: Tap):
-    """Every stream this STT opens hands its raw messages to `tap` first, then to the plugin as before; after an end of
-    turn the session's own turn is cleared (`tap.on_end`: nothing of LiveKit's accumulates). Each stream has its own
-    clock and turns. The STT may be the process's warm one, shared by the next session: `uninstall` gives it back."""
+    """Every stream the TITULAR opens hands its raw messages to `tap` first, then to the plugin as before; after an end
+    of turn the session's own turn is cleared (`tap.on_end`: nothing of LiveKit's accumulates). Each stream has its own
+    clock and turns. It fails OPEN: a stream with no message handler is left as it is and said, never broken.
+
+    Behind a fallback adapter the stand-in has no turns of its own: when the titular falls, the ear is told (`gap`:
+    what it was hearing ends incomplete) and, until the titular is back, the stand-in's FINAL transcripts are its words
+    and ends (`Tap.final_transcript`). The STT may be the process's warm one: `uninstall` gives it back."""
     uninstall(stt)
-    open_stream = stt.stream
+    inner = titular(stt)
+    if inner is None:
+        return stt
+    open_stream = inner.stream
 
     def stream(*a, **kw):
         s = open_stream(*a, **kw)
-        original = s._process_stream_event
+        original = getattr(s, "_process_stream_event", None)
+        if original is None:                     # fail open: the provider's own path, untouched
+            logger.warning(f"ear tap: {type(s).__name__} has no message handler; not tapped")
+            return s
         tap.new_stream()
 
         def process(data):
@@ -133,16 +184,27 @@ def install_stt(stt, tap: Tap):
         s._process_stream_event = process
         return s
 
-    stt.stream = stream
-    stt._zaelar_ear_stream = open_stream
+    inner.stream = stream
+    inner._zaelar_ear_stream = open_stream
+    if inner is not stt and hasattr(stt, "on"):
+        def changed(ev) -> None:
+            if getattr(ev, "stt", None) is inner:
+                tap.titular_available(bool(getattr(ev, "available", True)))
+        stt.on("stt_availability_changed", changed)
+        stt._zaelar_ear_changed = changed
     return stt
 
 
 def uninstall(stt) -> None:
-    open_stream = getattr(stt, "_zaelar_ear_stream", None)
+    inner = (getattr(stt, "_stt_instances", None) or [stt])[0]
+    open_stream = getattr(inner, "_zaelar_ear_stream", None)
     if open_stream is not None:
-        stt.stream = open_stream
-        del stt._zaelar_ear_stream
+        inner.stream = open_stream
+        del inner._zaelar_ear_stream
+    changed = getattr(stt, "_zaelar_ear_changed", None)
+    if changed is not None:
+        stt.off("stt_availability_changed", changed)
+        del stt._zaelar_ear_changed
 
 
 def manual(turn_handling: dict) -> dict:
