@@ -326,8 +326,21 @@ async def _tool(conv: "Conversation", r: "Running", call: ToolCall) -> ToolResul
     return ToolResult("refused", data={"reason": decision.reason})
 
 
+#: a refused figure's repair: the answer again without what it cannot back — the honest line only if that fails too
+RESTATE = "these figures are not in the evidence they cite: reply again without them (what was found, or a question)"
+#: the steps the manager adds itself (an order asked for, a claim refused): never an act of the model's
+PROTOCOL_STEPS = ("orders", "claims")
+
+
+def _last_said(conv: "Conversation") -> str:
+    """The text of our newest line in this conversation ('' with none)."""
+    got = conv.store.view(conv.account).recent("says", 1)
+    return str(got[0][1].get("text") or "") if got else ""
+
+
 async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps: list, *, last_try: bool) -> bool:
-    """Carry out the model's order. False = repair once (a claim did not match); True = the run is over."""
+    """Carry out the model's order. False = repair (a claim did not match: the answer again without it; once more when
+    the honest line was our last line, so it is never said twice in a row); True = the run is over."""
     now = conv.clock.now_ms()
     if isinstance(cmd, commands.Reply):
         this_run = frozenset(e.id for _call, res in steps for e in getattr(res, "evidence", ()))
@@ -338,15 +351,23 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
             steps.append((ToolCall("claims", "claims_check", {}),       # the switch on: its one round says the basis
                           ToolResult("refused", data={"derived": "say what each derived figure rests on"})))
             return False
+        valid = CL.valid(conv.store.view(conv.account), now) if bad else {}
         if bad:
-            _emit(conv, "command", r, command="reply_blocked", claims=[why for _c, why in bad])
-            if not last_try:
-                steps.append((ToolCall("claims", "claims_check", {}),
-                              ToolResult("refused", data={"mismatch": [why for _c, why in bad]})))
-                return False
+            _emit(conv, "command", r, command="reply_blocked", claims=[why for _c, why in bad],
+                  detail=[CL.detail(c, why, valid.get(c.evidence_id)) for c, why in bad])
             line = conv.words.line("unverified_fact") if conv.words is not None else ""
+            again = bool(line) and _last_said(conv) == line     # the same honest line twice in a row is never said
+            if not last_try or (again and not r.restated_again):
+                r.restated_again = r.restated_again or last_try
+                if last_try:
+                    _emit(conv, "command", r, command="restate_forced")
+                steps.append((ToolCall("claims", "claims_check", {}),
+                              ToolResult("refused", data={"mismatch": [why for _c, why in bad], "restate": RESTATE})))
+                r.restates += 1
+                return False
             if line:                                # never silence: the language's honest line, with no figure
-                _emit(conv, "command", r, command="figures_withheld", claims=[why for _c, why in bad])
+                _emit(conv, "command", r, command="figures_withheld_again" if again else "figures_withheld",
+                      claims=[why for _c, why in bad])
                 if not _park(conv, r, batch, cmd, line, len(steps), now):
                     await _publish(conv, r, batch, line, len(steps))
                 return True
@@ -355,6 +376,11 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
                 close(conv, req, "silent", "silent", r, reason="claims_unverified")
             _emit(conv, "ended", r, outcome="silent", reason="claims_unverified")
             return True
+        if r.restates:                              # the repair worked: the answer stands without what it could not back
+            _emit(conv, "command", r, command="restated", claims=len(cmd.claims), rounds=r.restates)
+        refused_acts = [c.name for c, res in steps if res.status == "refused" and c.call_id not in PROTOCOL_STEPS]
+        if refused_acts:                            # an act the gateway refused, then a reply: the judge reads this one
+            _emit(conv, "command", r, command="act_refused_then_reply", tools=refused_acts)
         if _park(conv, r, batch, cmd, cmd.text, len(steps), now):    # half a thought is not answered: it waits
             return True
         await _publish(conv, r, batch, cmd.text, len(steps))

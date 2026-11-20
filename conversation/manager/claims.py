@@ -95,6 +95,12 @@ def _near(a: float, b: float) -> bool:
     return abs(a - b) <= 0.005 * max(1.0, abs(b))
 
 
+def _in_text(x: float, figures: tuple) -> bool:
+    """A figure of a TEXT, whatever its sign: a text writes a fall as «down 4.98» and the claim states it as -4.98 —
+    which way it went is the claim's `direction`, not a figure the text has to spell with a minus."""
+    return math.isfinite(x) and any(_near(abs(x), abs(f)) for f in figures)
+
+
 def _derived(claim: Claim, ev: Evidence, refused: tuple) -> str | None:
     figures = ev.numbers + ((ev.value,) if ev.value is not None else ())
     if not figures:
@@ -103,7 +109,7 @@ def _derived(claim: Claim, ev: Evidence, refused: tuple) -> str | None:
         return "was_refused"                              # a value refused in this run does not come back derived
     if claim.op not in OPS or not claim.operands:
         return "no_operation"
-    if not all(math.isfinite(x) and any(_near(x, f) for f in figures) for x in claim.operands):
+    if not all(_in_text(x, figures) for x in claim.operands):
         return "operand"
     got = OPS[claim.op](claim.operands)
     return None if math.isfinite(got) and math.isfinite(claim.value) and _near(claim.value, got) else "derived_value"
@@ -121,13 +127,23 @@ def mismatch(claim: Claim, ev: Evidence | None, this_run: frozenset = frozenset(
     if ev is None:
         return "no_evidence"
     if ev.value is None and ev.numbers:                   # a text: the value is one of its figures
-        return None if math.isfinite(claim.value) and any(_near(claim.value, n) for n in ev.numbers) else "value"
+        return None if _in_text(claim.value, ev.numbers) else "value"
     for field_name in ("entity", "period", "metric", "direction"):
         if not _same(getattr(claim, field_name), getattr(ev, field_name)):
             return field_name
     if ev.value is None or not math.isfinite(claim.value) or not _near(claim.value, ev.value):
         return "value"
     return None
+
+
+def detail(claim: Claim, why: str, ev: Evidence | None) -> dict:
+    """What a refused claim said and what its evidence holds nearest to it — so a refusal can be judged afterwards
+    (a figure the checker missed, or one the model made up). Bounded: three figures, six operands."""
+    figures = (ev.numbers + ((ev.value,) if ev.value is not None else ())) if ev is not None else ()
+    near = sorted(figures, key=lambda f: abs(abs(f) - abs(claim.value)) if math.isfinite(claim.value) else 0)[:3]
+    return dict(why=why, value=claim.value if math.isfinite(claim.value) else None, evidence_id=claim.evidence_id,
+                derived=claim.derived, op=claim.op, operands=list(claim.operands[:6]), near=near,
+                figures=len(figures))
 
 
 def check(claims: list[Claim], evidence: dict[str, Evidence], this_run: frozenset = frozenset(),

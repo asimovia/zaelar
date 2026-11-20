@@ -615,6 +615,8 @@ _PACKAGE_CEILINGS["voice"] += 228          # 2026-11-20 V2-941 v3.1 B8b: the voi
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 65    # same: what the voice process built is the session's decision; the voice live for the owed lines; the holder's device (`voice_session.py`, `entry.device`)
 _PACKAGE_CEILINGS["server"] += 8           # same: the voice process asks before it builds (`/api/voice/child/conv`)
 _TOTAL_MAX += 307    # same cause
+_PACKAGE_CEILINGS["conversation"] += 44    # 2026-11-20 V2-941 v3.1 B7f (the personas' runs): a refused figure restated, the honest line never twice in a row, each refusal recorded with the evidence's nearest figures (`claims.detail`), a text's figure whatever its sign, a reply after a refused act flagged
+_TOTAL_MAX += 44     # same cause
 
 
 def test_the_total_only_shrinks():

@@ -54,6 +54,8 @@ class Running:
     trace: str = ""                       # the root of its first request: every event of the run carries it
     said: list = field(default_factory=list)
     refused: list = field(default_factory=list)   # values of claims this run refused: they cannot return as derived
+    restates: int = 0                     # repair rounds that asked for the answer again without the refused figures
+    restated_again: bool = False          # the extra round taken because the honest line was our last line
     stages: dict = field(default_factory=dict)    # where its time went, ms: queue, model, tools, grace, publish
 
 
