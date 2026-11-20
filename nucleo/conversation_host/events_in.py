@@ -22,13 +22,18 @@ _lock = threading.Lock()
 _PLAIN = (str, int, float, bool)
 #: the door's word for what was done, by the route's verdict
 DONE = {"resume": "resumed", "stream": "streamed"}
+#: the route of an event whose work its source hands in with it (a peer's turn on a cluster): the door runs it
+WORK = "work"
+#: the works handed in with their events, by event id: (the work's coroutine factory, the future its source awaits)
+_WORKS: dict[str, tuple] = {}
 
 
 def _on() -> bool:
     try:
         from nucleo.conversation_host import switch
         return switch.on()
-    except Exception:  # noqa: BLE001 — unreadable switch: the pump obeys, as before
+    except Exception as e:  # noqa: BLE001 — unreadable switch: the pump obeys, as before, and the log says why
+        __import__("logging").getLogger("zaelar.conversation_host").debug(f"events_in: switch unread ({e!r})")
         return False
 
 
@@ -73,12 +78,52 @@ def give(ev: dict, r: dict, now: float | None = None) -> bool:
     return True
 
 
+async def run_as_event(origin: str, text: str, work, *, fields: dict | None = None, timeout_s: float = 150.0):
+    """A source that has its own WORK to do for an event (a peer's turn on a cluster, R-2): with the manager on, the
+    event enters the conversation and the work runs there, after his words, by the `Events` door — its result comes
+    back here; off, or when the conversation cannot open, the work runs here as before. `work()` makes the coroutine."""
+    import asyncio
+    import concurrent.futures
+    from nucleo import events
+    ev = events.event(origin, text=text, **(fields or {}))
+    if not _on():
+        return await work()
+    event_id = f"ev_{uuid.uuid4().hex[:12]}"
+    done: concurrent.futures.Future = concurrent.futures.Future()
+    with _lock:
+        _WORKS[event_id] = (work, done)
+    from nucleo.conversation_host import entry
+    env = envelope(ev, {"as": WORK}, event_id, int(time.time() * 1000))
+
+    def deliver(conv) -> None:
+        conv.give(env)
+
+    def fallback() -> None:                  # the conversation never opened: the work runs where it was asked
+        with _lock:
+            _WORKS.pop(event_id, None)
+        done.set_result(_HERE)
+
+    deliver.fallback = fallback
+    entry._hand(deliver)
+    got = await asyncio.wait_for(asyncio.wrap_future(done), timeout=timeout_s)
+    if got is _HERE:
+        return await work()
+    if isinstance(got, BaseException):
+        raise got
+    return got
+
+
+_HERE = object()          # the fallback's answer: run the work where it was asked
+
+
 class HostEvents:
     """The `Events` port: an event's route obeyed by `pump.obey`, on the engine's loop where its doors live."""
 
     async def run(self, account: str, env: Any) -> str:
         from nucleo.conversation_host.acts_widget import _on_engine_loop
         from nucleo.events import pump
+        if (env.body.route or {}).get("as") == WORK:
+            return await _work(str(env.body.event_id))
         with _lock:
             got = _GIVEN.pop(str(env.body.event_id), None)
         if got is None:                      # a route this process never held (a restart): nothing to obey
@@ -89,3 +134,26 @@ class HostEvents:
             pump.obey(ev, r, when)
         await _on_engine_loop(obey())
         return DONE.get(str(r.get("as") or ""), "nothing")
+
+
+async def _work(event_id: str) -> str:
+    """The work an event's source handed in, STARTED here — a peer's turn can take minutes and the manager never waits
+    on it: his words come first. Its result (or its failure) goes back to the source when it ends."""
+    import asyncio
+    with _lock:
+        got = _WORKS.pop(event_id, None)
+    if got is None:                          # a work this process never held (a restart): its source is gone
+        return "nothing"
+    work, done = got
+
+    async def run() -> None:
+        try:
+            done.set_result(await work())
+        except BaseException as e:  # noqa: BLE001 — the failure is the source's to handle: it goes back
+            done.set_result(e)
+    _STARTED.add(task := asyncio.ensure_future(run()))
+    task.add_done_callback(_STARTED.discard)
+    return "started"
+
+
+_STARTED: set = set()                        # the works in course, kept alive until they end

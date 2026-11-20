@@ -871,6 +871,9 @@ _TOTAL_MAX += 107    # same cause, measured
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 93   # 2026-11-21 E7d-2 (R-2): the door of the world's events into the manager (`events_in.py`: a routed event handed over as an EVENT, its route kept by id, the `Events` port obeying it on the engine's loop, the old way when the conversation cannot open)
 _PACKAGE_CEILINGS["nucleo/events"] += 11   # same: the pump's route obeyed by ONE body (`pump.obey`), the manager's door or the pump itself
 _TOTAL_MAX += 104    # same causes, measured
+_PACKAGE_CEILINGS["connectors"] += 82   # 2026-11-21 E7d-3 (R-2): a declared new mechanism — the cluster's own composer (`meshkore/compose.py`: its system as language data, one relayed call, only the errand its permission grants, the reply made sayable), replacing the old FlashBrain's cluster turn
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 68   # same (+1 an unreadable switch is logged): an event whose source hands in its own work runs it through the manager, started there and answered back (`events_in.run_as_event`)
+_TOTAL_MAX += 150    # same causes, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

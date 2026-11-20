@@ -1,4 +1,4 @@
-"""Provider failover WITHIN a cluster turn (`connectors/meshkore/brain.py`, 2026-08-03).
+"""Provider failover WITHIN a cluster turn (`connectors/meshkore/compose.py`, 2026-08-03; its composer since E7d-3).
 
 Before: `make_brain()` fixed the tier ONCE when the server started; with the Z.AI quota exhausted, EVERY turn
 (the heartbeat insisting on responding to a peer) repeated the SAME broken call → 429 in a loop, with no failover and no
@@ -40,13 +40,13 @@ def test_a_provider_failure_relays_and_retries_the_same_turn(monkeypatch):
 
     calls = []
 
-    async def fake_respond(text, *, spec, **kw):
-        calls.append(spec.base_url)
-        if spec.base_url == Z_AI["base_url"]:
+    async def fake_complete(text, tier, tool_names, escalate_ctx):
+        calls.append(tier["base_url"])
+        if tier["base_url"] == Z_AI["base_url"]:
             raise RuntimeError(REAL_429_EXHAUSTED)
         return "hola desde el relevo"
 
-    monkeypatch.setattr("nucleo.flash.cluster.respond", fake_respond)
+    monkeypatch.setattr("connectors.meshkore.compose._complete", fake_complete)
     b = brain.make_brain()
     out = asyncio.run(b("hola"))
 
@@ -60,10 +60,10 @@ def test_a_passing_rate_limit_is_not_relayed(monkeypatch):
     already logs it, and the heartbeat will retry it later; the provider should not be penalized for this)."""
     monkeypatch.setattr(pc, "chain", lambda *a, **k: [Z_AI])
 
-    async def fake_respond(text, *, spec, **kw):
+    async def fake_complete(text, tier, tool_names, escalate_ctx):
         raise RuntimeError("429 Too Many Requests")
 
-    monkeypatch.setattr("nucleo.flash.cluster.respond", fake_respond)
+    monkeypatch.setattr("connectors.meshkore.compose._complete", fake_complete)
     b = brain.make_brain()
     with pytest.raises(RuntimeError):
         asyncio.run(b("hola"))
