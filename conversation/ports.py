@@ -23,6 +23,7 @@ class Clock(Protocol):
     def now_ms(self) -> int: ...                        # wall clock
     def mono_ms(self) -> int: ...                       # monotonic, for deadlines
     async def sleep_until(self, mono_ms: int) -> None: ...
+    # optional: `zone(now_ms) -> (offset_min, name)`, the person's local time at that instant; without it, UTC
 
 
 class Telemetry(Protocol):

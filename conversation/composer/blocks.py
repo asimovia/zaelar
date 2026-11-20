@@ -24,9 +24,12 @@ class Title(Enum):
     NOW, OPEN, CONVERSATION, INPUT, VOICE_LOST = "NOW", "OPEN", "CONVERSATION", "INPUT", "VOICE LOST"
 
 
-def now_block(now_ms: int, tz_offset_min: int, screen: str | None, voice_endpoint: str | None, lang: str) -> str:
+def now_block(now_ms: int, tz_offset_min: int, tz_name: str, screen: str | None, voice_endpoint: str | None,
+              lang: str) -> str:
+    """His local time, with its zone named and its offset: a time with no zone is read as whatever the model guesses."""
     t = datetime.fromtimestamp(now_ms / 1000, tz=timezone(timedelta(minutes=tz_offset_min)))
-    parts = [t.strftime("%a %Y-%m-%d %H:%M")]
+    sign, off = ("+" if tz_offset_min >= 0 else "-"), abs(tz_offset_min)
+    parts = [f"{t.strftime('%a %Y-%m-%d %H:%M')} {tz_name or 'UTC'} (UTC{sign}{off // 60:02d}:{off % 60:02d})"]
     if screen:
         parts.append(f"screen: {screen}")
     if voice_endpoint:

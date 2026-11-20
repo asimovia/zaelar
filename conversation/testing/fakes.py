@@ -11,8 +11,11 @@ from conversation.types import EffectClass, Evidence
 
 
 class FakeClock:
-    def __init__(self, t0_ms: int = 1_800_000_000_000) -> None:
-        self.wall0, self.mono = t0_ms, 0
+    def __init__(self, t0_ms: int = 1_800_000_000_000, zone: tuple[int, str] = (0, "UTC")) -> None:
+        self.wall0, self.mono, self._zone = t0_ms, 0, zone
+
+    def zone(self, now_ms: int) -> tuple[int, str]:
+        return self._zone
 
     def now_ms(self) -> int:
         return self.wall0 + self.mono

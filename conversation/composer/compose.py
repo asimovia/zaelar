@@ -27,6 +27,7 @@ class View:
     items: tuple[dict, ...] = ()
     turns: tuple[dict, ...] = ()
     tz_offset_min: int = 0
+    tz_name: str = ""
     lang: str = ""
     screen: str | None = None
     voice_endpoint: str | None = None
@@ -60,7 +61,8 @@ def view_from(snapshot, *, prefix: str, now_ms: int, window: int = 12, **kw) -> 
 
 
 def compose(view: View, batch: tuple[E.Envelope, ...], cfg: Config) -> PromptParts:
-    state = [blocks.now_block(view.now_ms, view.tz_offset_min, view.screen, view.voice_endpoint, view.lang),
+    state = [blocks.now_block(view.now_ms, view.tz_offset_min, view.tz_name, view.screen, view.voice_endpoint,
+                              view.lang),
              blocks.open_block(list(view.items), cfg.open_budget)]
     for m in view.memory:
         state.append(f"{m.title}\n{m.text}")

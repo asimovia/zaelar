@@ -60,7 +60,7 @@ ES_TURNS = [("user", "w0001 w0002", None), ("agent", "Te lo miro ahora mismo, da
 EN_TURNS = [("user", "w0001 w0002", None), ("agent", "Let me check that for you right now.", 9),
             ("agent", "Done.", None)]
 
-EXPECTED_ES = """NOW Fri 2027-01-15 08:00 · screen: agenda · voice: d1 · lang: es
+EXPECTED_ES = """NOW Fri 2027-01-15 08:00 UTC (UTC+00:00) · screen: agenda · voice: d1 · lang: es
 
 OPEN
 [x0] effect · claimed · w0401

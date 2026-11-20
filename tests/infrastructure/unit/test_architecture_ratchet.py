@@ -665,6 +665,9 @@ _PACKAGE_CEILINGS["conversation"] += 23    # 2026-11-20 V2-941 v3.1 B7l (the B7k
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 35    # same: the dropped orders named, a disposable engine's knobs to drive the relay live, the manager's stop reaching the old voice
 _PACKAGE_CEILINGS["voice"] += 19           # same (the audit's TJ-1): with the manager for text only, a typed line cuts the old voice first
 _TOTAL_MAX += 77     # same cause
+_PACKAGE_CEILINGS["conversation"] += 11    # 2026-11-20 V2-941 v3.1 B7l (live): NOW is his local time with its zone — the `Clock` port's optional `zone`, written with its name and offset
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 8     # same: the host's clock reads the local zone at an instant
+_TOTAL_MAX += 19     # same cause
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

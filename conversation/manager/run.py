@@ -282,8 +282,10 @@ def _checkpoint(conv: "Conversation", r: "Running") -> None:
 
 
 async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
-    view = view_from(conv.store.view(conv.account), prefix=conv.prefix, now_ms=conv.clock.now_ms(),
-                     window=conv.cfg.conversation_turns,
+    now = conv.clock.now_ms()
+    offset, zone = getattr(conv.clock, "zone", lambda _t: (0, "UTC"))(now)   # his local time, never the host's UTC
+    view = view_from(conv.store.view(conv.account), prefix=conv.prefix, now_ms=now, tz_offset_min=offset,
+                     tz_name=zone, window=conv.cfg.conversation_turns,
                      voice_endpoint=r.ctx.endpoint,
                      memory=tuple(await _memory(conv, r)))
     prompt = compose(view, batch.envelopes, conv.cfg)
