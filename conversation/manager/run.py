@@ -16,12 +16,14 @@ interventions; one that cannot seal fences the run.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 from typing import TYPE_CHECKING
 
 from conversation.gateway import seal as SEAL
 from conversation import envelopes as E
 from conversation import guard
 from conversation.composer import compose, view_from
+from conversation.composer.blocks import entry_facts
 from conversation.gateway import dispatch
 from conversation.gateway.authority import RunCtx
 from conversation.gateway.outbox import Read
@@ -70,9 +72,10 @@ def close(conv: "Conversation", req: str, to: str, label: str, run: "Running | N
         iv = row["data"].get("iv")
         if iv:
             SEAL.finish(b.tx, iv, b.now)
+    answered_by = {"model": run.model[0], "provider": run.model[1]} if run and run.model[0] else {}
     conv.em.emit("conv_close", label, owner="manager", cause={"kind": "request", "ref": req},
                  refs={"req": req, "run": run.run_id if run else None}, trace=run.trace if run else None,
-                 total_ms=conv.clock.now_ms() - opened, **metrics)
+                 total_ms=conv.clock.now_ms() - opened, **answered_by, **metrics)
     return True
 
 
@@ -111,6 +114,11 @@ def _grace(conv: "Conversation", batch: Batch, complete: bool | None = None) -> 
                                c.incomplete_grace_ms)
 
 
+def _zone(conv: "Conversation", now: int) -> tuple[int, str]:
+    """His local zone at `now` (the `Clock` port's optional `zone`): UTC when the clock does not say."""
+    return getattr(conv.clock, "zone", lambda _t: (0, "UTC"))(now)
+
+
 def _open(conv: "Conversation", r: "Running") -> list[str]:
     """The run's requests still open: none, once a run has ended — answered, silent, failed or handed back."""
     mine = set(r.requests)
@@ -138,7 +146,9 @@ async def run_batch(conv: "Conversation", batch: Batch) -> None:
     conv.em.bind(run_id, r.trace)
     conv.current, conv.state = r, MgrState.RUNNING
     _emit(conv, "started", r, batch_envs=list(r.batch_ids), reason=batch.reason)
-    _emit(conv, "input", r, text=[getattr(e.body, "text", None) for e in batch.envelopes])
+    _emit(conv, "input", r, text=[getattr(e.body, "text", None) for e in batch.envelopes],
+          entries=[{k: v for k, v in f.items() if k != "text"}
+                   for f in entry_facts(batch.envelopes, _zone(conv, conv.clock.now_ms())[0])])
     try:
         if any(str(getattr(e.body, "text", "") or "").strip() for e in content) or not content:
             await _steps(conv, r, batch)
@@ -284,14 +294,17 @@ def _checkpoint(conv: "Conversation", r: "Running") -> None:
 
 async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
     now = conv.clock.now_ms()
-    offset, zone = getattr(conv.clock, "zone", lambda _t: (0, "UTC"))(now)   # his local time, never the host's UTC
+    offset, zone = _zone(conv, now)                 # his local time, never the host's UTC
     view = view_from(conv.store.view(conv.account), prefix=conv.prefix, now_ms=now, tz_offset_min=offset,
                      tz_name=zone, window=conv.cfg.conversation_turns,
                      voice_endpoint=r.ctx.endpoint,
                      memory=tuple(await _memory(conv, r)))
     prompt = compose(view, batch.envelopes, conv.cfg)
     tools = conv.tools.catalog()                    # the whole catalog: ordered at most, never cut (I7)
-    _emit(conv, "prompt", r, prompt_chars=len(prompt.state) + len(prompt.input), tools=len(tools))
+    _emit(conv, "prompt", r, prompt_chars=len(prompt.state) + len(prompt.input), tools=len(tools),
+          prefix_hash=hashlib.sha256(prompt.prefix.encode()).hexdigest()[:12], prefix_chars=len(prompt.prefix),
+          state=prompt.state, conversation=[{"role": t.role, "text": t.text} for t in prompt.conversation],
+          input=prompt.input)               # what the model saw, but for the prefix it shares with every run
     steps: list = []
     repaired = False
     model_id = conv.cfg.model_id
@@ -337,7 +350,10 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
                     await _fail(conv, r, f"{ev.whose}:{ev.reason}")
                     return
                 elif isinstance(ev, Done):
-                    _emit(conv, "model_done", r, usage=ev.usage)
+                    usage = ev.usage or {}
+                    r.model = (str(usage.get("model") or ""), str(usage.get("provider") or "")) if usage.get(
+                        "model") else r.model           # who answered: the titular, or its stand-in after a relay
+                    _emit(conv, "model_done", r, usage=ev.usage, model=r.model[0], provider=r.model[1])
                     dropped = [d.get("name") for d in (ev.usage or {}).get("dropped", ()) if isinstance(d, dict)]
         except guard.PortTimeout:
             if first and model_id != RELAY:        # the deadline passed with nothing from the model: the same step
@@ -454,8 +470,10 @@ def _order_text(text: str) -> bool:
 
 
 #: where a line we said came from (`says.origin`): the model's reply, a reply restated after a refused figure, the
-#: honest line for a figure it could not confirm, the language's failure line — and a notice, which answers nothing
+#: honest line for a figure it could not confirm (and its second wording), the language's failure line — and a
+#: notice, which answers nothing
 REPLY, RESTATED, UNVERIFIED, FAILURE = "reply", "restated", "unverified_fact", "failure"
+UNVERIFIED_ALT = "unverified_fact_alt"
 
 
 def _last_answer(conv: "Conversation") -> str:
@@ -510,9 +528,15 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
                               ToolResult("refused", data={"mismatch": [why for _c, why in bad], "restate": RESTATE})))
                 r.restates += 1
                 return False
-            if again:                               # the restate failed twice: a failed run, his failure line
+            if again:                               # the restate failed twice: the honest line's second wording —
                 _emit(conv, "command", r, command="figures_withheld_again", claims=[why for _c, why in bad])
-                await _fail(conv, r, "figures_unverified_again")
+                alt = _line(conv, UNVERIFIED_ALT, r)    # never «say it again» for a clear question
+                if not alt:
+                    await _fail(conv, r, "figures_unverified_again")
+                    return True
+                r.origin = UNVERIFIED_ALT
+                if not _park(conv, r, batch, cmd, alt, len(steps), now):
+                    await _publish(conv, r, batch, alt, len(steps))
                 return True
             if line:                                # never silence: the language's honest line, with no figure
                 _emit(conv, "command", r, command="figures_withheld", claims=[why for _c, why in bad])

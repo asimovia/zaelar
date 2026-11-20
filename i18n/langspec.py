@@ -38,6 +38,13 @@ class LangSpec:
     show_ack_empty: str = ""
     # V2-210: when the turn had to consult a source and could not. Worse response, better information.
     unverified_fact: str = ""
+    #: The second honest wording, said instead of `unverified_fact` when that was our last answer — never «say it
+    #: again» for a clear question whose figures could not be backed (the conversation manager, V2-941).
+    unverified_fact_alt: str = ""
+    #: The names this language gives a duration's units — (hours, minutes, seconds), each a tuple, symbols included —
+    #: so a figure read from a text in this language knows «1 h 20 min» is 80 minutes (the conversation manager's
+    #: figures, `nucleo/conversation_host/figures.py`). Data, read for every language: a source is not in his.
+    duration_units: tuple = ()
     #: What the AGENDA says when it refuses to write (V2-689). These were hardcoded Spanish inside
     #: `widgets/agenda/data.py`, which is the exact shape V2-676 ruled against — the operator running his
     #: agent in English was answered by our own canned lines in Castilian. A widget's refusal is a text the

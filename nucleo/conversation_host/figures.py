@@ -67,7 +67,71 @@ def figures(text: str) -> tuple[float, ...]:
             v = -v if neg else v
             if v not in out:
                 out.append(v)
+    for v in durations(text):                        # a duration is also the same time in its other units
+        if v not in out:
+            out.append(v)
     return tuple(out)
+
+
+#: a duration's units in seconds, in the order of the packs' `duration_units`: hours, minutes, seconds
+SECONDS = (3600.0, 60.0, 1.0)
+#: what may stand between one part of a duration and the next («1 h 20 min», «1 hora y 20 minutos», «1h, 20m»)
+JOIN_MAX = 5
+_units_cache: list = []
+
+
+def _units() -> tuple:
+    """The unit names of every pack, by unit: a source is read whatever its language (`LangSpec.duration_units`)."""
+    if not _units_cache:
+        from i18n import langs
+        names: tuple = (set(), set(), set())
+        for spec in langs.supported():
+            for i, group in enumerate(tuple(getattr(spec, "duration_units", ()) or ())[:3]):
+                names[i].update(str(w).casefold() for w in group)
+        _units_cache.append(tuple(frozenset(n) for n in names))
+    return _units_cache[0]
+
+
+def _word_after(text: str, j: int) -> tuple[str, int]:
+    """The word right after position `j` (spaces and a dot skipped): its letters, and where it ends."""
+    n = len(text)
+    while j < n and (text[j] in GROUP or text[j] == " "):
+        j += 1
+    k = j
+    while k < n and text[k].isalpha():
+        k += 1
+    return text[j:k].casefold(), k
+
+
+def durations(text: str) -> tuple[float, ...]:
+    """Every duration the text writes with its units — «1 h 20 min», «80 minutos», «1,5 horas» — as the same time in
+    hours, minutes and seconds. Characters only: a figure, then a word the packs name as a unit."""
+    text, units = str(text or ""), _units()
+    out: list[float] = []
+    total, last_unit, end = 0.0, -1, -1
+    i = 0
+    for run, _neg in _runs(text):
+        at = text.find(run, i)
+        i = at + len(run)
+        word, k = _word_after(text, i)
+        unit = next((u for u, names in enumerate(units) if word and word in names), None)
+        values = sorted(_readings(run))
+        if unit is None or not values:
+            continue
+        if end >= 0 and unit > last_unit and at - end <= JOIN_MAX:
+            total += values[0] * SECONDS[unit]      # the next part of the same duration
+        else:
+            if end >= 0:
+                out.extend(_as_units(total))
+            total = values[0] * SECONDS[unit]
+        last_unit, end = unit, k
+    if end >= 0:
+        out.extend(_as_units(total))
+    return tuple(dict.fromkeys(out))
+
+
+def _as_units(seconds: float) -> tuple[float, ...]:
+    return tuple(round(seconds / s, 6) for s in SECONDS)
 
 
 def percents(text: str) -> tuple[float, ...]:

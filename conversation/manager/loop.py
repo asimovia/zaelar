@@ -65,6 +65,7 @@ class Running:
     asked_after_reads: bool = False       # a no_reply after reads for his words was asked once for a reply
     asked_for_order: bool = False         # a step with no order (text, or one unreadable) was asked once for it
     lost: str = ""                        # why the line it says is «I lost that» (`_say_lost`): its close says so
+    model: tuple = ("", "")               # (model, provider) of its last answer from the model: a relay is visible
     read_capped: str = ""                 # the read budget it spent (`reads_capped`, `read_time_capped`): no more reads
     requeued: bool = False                # its batch went back to the queue (fenced): its requests stay open
     stages: dict = field(default_factory=dict)    # where its time went, ms: queue, model, tools, grace, publish

@@ -178,7 +178,8 @@ def _derived(claim: Claim, ev: Evidence, refused: tuple, pool: tuple = ()) -> st
     if not _distinct(claim.operands, figures):
         return "operand"
     got = OPS[claim.op](claim.operands)
-    return None if math.isfinite(got) and math.isfinite(claim.value) and _near(claim.value, got) else "derived_value"
+    ok = math.isfinite(got) and math.isfinite(claim.value) and _said_as(claim.value, got)   # its result said as a
+    return None if ok else "derived_value"                                                    # person says it
 
 
 def mismatch(claim: Claim, ev: Evidence | None, this_run: frozenset = frozenset(), derived_open: bool = True,

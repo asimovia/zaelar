@@ -103,15 +103,23 @@ def input_block(batch: tuple[E.Envelope, ...], tz_offset_min: int = 0) -> str:
     model as «already answered». Only an entry the ear could not hear whole says so («cut off»). An entry with no words
     is never an item: there is nothing in it to answer."""
     lines = [Title.INPUT.value]
-    tz = timezone(timedelta(minutes=tz_offset_min))
+    for f in entry_facts(batch, tz_offset_min):
+        tag = " · ".join(x for x in (f["iv"], f["channel"], f["at"], f["tag"]) if x)
+        lines.append(f"[{tag}] «{f['text']}»")
+    return "\n".join(lines)
+
+
+def entry_facts(batch: tuple[E.Envelope, ...], tz_offset_min: int = 0) -> list[dict]:
+    """What INPUT says of each entry of his — id, channel, time, coverage and its tag («cut off», «amends …») — as
+    facts: the same the model reads, so the run's `input` event shows what the model saw."""
+    tz, out = timezone(timedelta(minutes=tz_offset_min)), []
     for env in batch:
         b = env.body
         if env.kind in (EnvelopeKind.USER_UTTERANCE, EnvelopeKind.USER_TEXT) and str(b.text or "").strip():
-            at = datetime.fromtimestamp(env.sealed_ms / 1000, tz=tz).strftime("%H:%M:%S")
-            tag = f"{b.intervention_id} · {env.channel} · {at}"
-            if env.kind is EnvelopeKind.USER_UTTERANCE and b.coverage is not Coverage.FULL:
-                tag += " · cut off"
-            if b.amends:
-                tag += f" · amends {b.amends}"
-            lines.append(f"[{tag}] «{b.text}»")
-    return "\n".join(lines)
+            cut = env.kind is EnvelopeKind.USER_UTTERANCE and b.coverage is not Coverage.FULL
+            tag = " · ".join(x for x in ("cut off" if cut else "", f"amends {b.amends}" if b.amends else "") if x)
+            coverage = getattr(b, "coverage", None)
+            out.append({"iv": b.intervention_id, "channel": f"{env.channel}", "t": env.sealed_ms,
+                        "at": datetime.fromtimestamp(env.sealed_ms / 1000, tz=tz).strftime("%H:%M:%S"),
+                        "coverage": f"{getattr(coverage, 'value', coverage) or ''}", "tag": tag, "text": b.text})
+    return out

@@ -671,6 +671,9 @@ _TOTAL_MAX += 19     # same cause
 _PACKAGE_CEILINGS["conversation"] += 89    # 2026-11-20 V2-941 v3.1 B7l (the final personas, the operator's D1/D2): a figure rests on his own words, an earlier read still valid, two reads at once, a scale; a run reads within its budget (`max_reads`, `read_wall_ms`)
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 6     # same: the host's reader of figures handed to the conversation (`boot.readers`)
 _TOTAL_MAX += 95     # same cause
+_PACKAGE_CEILINGS["conversation"] += 34    # 2026-11-20 V2-941 v3.1 B7l («¿Y en avión?», the tester's observability gap): a derived result said rounded, the honest line's second wording, who answered on model_done and the close, what the model saw on `input` and `prompt`
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 64    # same: a duration read in every unit, its unit names from the language packs (`figures.durations`)
+_TOTAL_MAX += 98     # same cause, with the packs' two new fields (`unverified_fact_alt`, `duration_units`)
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

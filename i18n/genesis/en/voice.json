@@ -8,6 +8,8 @@
  "show_ack": "Here you go.",
  "show_ack_empty": "I've opened it, though there's nothing in it yet.",
  "unverified_fact": "I couldn't check that just now, so I'd rather not give you a made-up figure.",
+ "unverified_fact_alt": "I don't have a reliable figure for that right now.",
+ "duration_units": [["h", "hr", "hrs", "hour", "hours"], ["min", "mins", "minute", "minutes"], ["s", "sec", "secs", "second", "seconds"]],
  "agenda_no_data": "I haven't put the appointment in: I'm not sure about the title, the day or the time.",
  "agenda_no_title": "I haven't put it in because I don't know what it's for. What should I call it?",
  "agenda_series_scope": "That appointment repeats: do I remove just one day (which one) or the whole series?",
