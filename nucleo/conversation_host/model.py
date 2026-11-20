@@ -20,16 +20,24 @@ from typing import Any, AsyncIterator
 
 from conversation.ports import UNCLAIMED, Command, Done, Failed, PromptParts, TextDelta, ToolCall, ToolResult, ToolSpec
 
+from conversation.manager.claims import OPS       # the package's own operations, never a second list
+
+_WHAT = {"entity": {"type": "string"}, "period": {"type": "string"}, "metric": {"type": "string"},
+         "direction": {"type": "string"}, "value": {"type": "number"}, "evidence_id": {"type": "string"}}
+#: a figure that IS in the evidence
+FACT = {"type": "object", "required": ["value", "evidence_id"], "properties": {**_WHAT,
+                                                                              "derived": {"type": "boolean",
+                                                                                          "enum": [False]}}}
+#: a figure computed from the evidence: its operation and operands are part of the claim, never optional
+DERIVED = {"type": "object", "required": ["value", "evidence_id", "derived", "op", "operands"], "properties": {
+    **_WHAT, "derived": {"type": "boolean", "enum": [True]},
+    "op": {"type": "string", "enum": sorted(OPS)},
+    "operands": {"type": "array", "items": {"type": "number"}, "minItems": 1}}}
 #: the manager's orders, as the model sees them
 ORDERS = {
     "reply": {"type": "object", "required": ["text"], "properties": {
         "text": {"type": "string"},
-        "claims": {"type": "array", "items": {"type": "object", "properties": {
-            "entity": {"type": "string"}, "period": {"type": "string"}, "metric": {"type": "string"},
-            "direction": {"type": "string"}, "value": {"type": "number"}, "evidence_id": {"type": "string"},
-            "derived": {"type": "boolean"}, "op": {"type": "string", "enum": ["count", "sum", "difference", "mean",
-                                                                               "ratio", "percent"]},
-            "operands": {"type": "array", "items": {"type": "number"}}}}},
+        "claims": {"type": "array", "items": {"anyOf": [FACT, DERIVED]}},
         "complete": {"type": "boolean"}}},
     "no_reply": {"type": "object", "required": ["reason"], "properties": {
         "reason": {"type": "string"}, "complete": {"type": "boolean"}}},

@@ -144,15 +144,35 @@ async def run_batch(conv: "Conversation", batch: Batch) -> None:
 
 
 async def _fail(conv: "Conversation", r: "Running", reason: str) -> None:
-    """The run failed: its batch is accounted `failed`, its requests close `recovered`, and the person is owed a line
-    that says so — a row of the ledger of what is owed (`Owed.owe`), worded by the host in the person's language, never
-    by the model that just failed. From there it is said when the manager is free, or pushed, or shown."""
+    """The run failed: its batch is accounted `failed` and its requests close `recovered`, with the line that says so,
+    worded by the host in the person's language, never by the model that just failed. A batch of typed entries is
+    answered with that line in place — the mouth's text half, the request's own answer. Otherwise (his voice, or no
+    line) the person is owed it — a row of the ledger of what is owed (`Owed.owe`), said when the manager is free, or
+    pushed, or shown."""
     now = conv.clock.now_ms()
+    said = await _say_failed(conv, r)
     conv.inbox.account(list(r.batch_ids), "failed", now)
     for req in r.requests:
-        if close(conv, req, "recovered", "recovered", r, reason=reason) and conv.owed is not None:
+        if close(conv, req, "recovered", "recovered", r, reason=reason) and conv.owed is not None and not said:
             conv.owed.owe(conv.account, f"conv:failed:{req}", f"failed:{reason}")
-    _emit(conv, "ended", r, outcome="failed", reason=reason)
+    _emit(conv, "ended", r, outcome="failed", reason=reason, said=said)
+
+
+async def _say_failed(conv: "Conversation", r: "Running") -> bool:
+    """The failure line as the answer to a batch of typed entries: sealed and said on the text channel. False when the
+    batch holds his voice, there is no line, or the publication is fenced."""
+    envs = tuple(r.ctx.batch.values())
+    users = [e for e in envs if e.is_user]
+    line = conv.words.line("mute_lines") if conv.words is not None else ""
+    if not line or not users or any(e.kind is not EnvelopeKind.USER_TEXT for e in users):
+        return False
+    if not conv.gw.seal_publication(r.ctx, [e.refs.intervention_id for e in users]):
+        _emit(conv, "fenced", r)
+        return False
+    reply = choose(envs, conv.devices.get(r.ctx.endpoint or "", Device(r.ctx.endpoint)), text_gets_voice=False)
+    await conv.speaker.say(run_id=r.run_id, request_id=r.ctx.request_id, text=line, channels=reply.channels,
+                           endpoint=r.ctx.endpoint, trace=r.trace, iv=users[0].refs.intervention_id)
+    return True
 
 
 def resumed(conv: "Conversation", r: "Running", iv: str, endpoint: str | None, t_ms: int) -> bool:

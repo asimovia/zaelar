@@ -608,6 +608,9 @@ _PACKAGE_CEILINGS["memory"] += 26          # 2026-11-20 V2-941 v3.1 B7d (the tes
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 63    # same: the reset in one place (`sandbox.py`); a provider's cut mid-body with nothing yielded re-sent whole; the orders and `complete` declared
 _PACKAGE_CEILINGS["observability"] += 6    # same: a flow read by an id is its newest rows from `since` on
 _TOTAL_MAX += 89     # same cause
+_PACKAGE_CEILINGS["conversation"] += 20    # 2026-11-20 V2-941 v3.1 B7e: a failed run of typed entries answered in place with the language's line (`run._say_failed`)
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 8    # same: a derived claim's operation and operands required by the order's schema
+_TOTAL_MAX += 28     # same cause
 
 
 def test_the_total_only_shrinks():
