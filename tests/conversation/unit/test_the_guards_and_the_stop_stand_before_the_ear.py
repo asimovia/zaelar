@@ -25,7 +25,8 @@ def ear(monkeypatch):
     from voice import attention, mic_input
     state = {"mic": False, "directed": True}
     monkeypatch.setattr(mic_input, "blocks_turn", lambda text: state["mic"])
-    monkeypatch.setattr(attention, "evaluate", lambda text, now=None: SimpleNamespace(directed=state["directed"]))
+    monkeypatch.setattr(attention, "evaluate",
+                        lambda text, now=None: SimpleNamespace(directed=state["directed"], reason="active_window"))
     monkeypatch.setattr(attention, "note_ambient", lambda text, now=None: None)
     monkeypatch.setattr(attention, "note_directed", lambda now=None: None)
     monkeypatch.setattr(attention, "is_shut_up", lambda text: "w_stop" in text)

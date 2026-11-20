@@ -80,5 +80,15 @@ async def admit(onset: float = 0.0, now: float | None = None, grace_s: float = G
     return keep, why
 
 
+def admit_now(onset: float = 0.0, now: float | None = None) -> tuple[bool, str]:
+    """`admit` with no grace, for a judge that runs AFTER the turn closed (the conversation manager's ear closes past
+    its provider's end of turn, after the browser's segment): never on a loop, never waits."""
+    now = time.time() if now is None else now
+    since = (onset - _SLACK_S) if onset and onset <= now else (now - _FALLBACK_S)
+    keep, why = decide(on=_state["on"], enrolled=_state["enrolled"], labels=_labels_since(since))
+    _state["verdicts"].clear()
+    return keep, why
+
+
 def state() -> dict:
     return {"on": _state["on"], "enrolled": _state["enrolled"], "pending": len(_state["verdicts"])}

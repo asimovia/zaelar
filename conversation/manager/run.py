@@ -607,9 +607,10 @@ def _park(conv: "Conversation", r: "Running", batch: Batch, cmd, text: str | Non
 def _silent(conv: "Conversation", r: "Running", reason: str, now: int) -> None:
     for req in r.requests:
         close(conv, req, "silent", "silent", r, reason=reason)
-    conv.inbox.account(list(r.batch_ids), "silent", now, reason=BARGE if _barge_cut(conv, r) else None)
+    cut = _barge_cut(conv, r)
+    conv.inbox.account(list(r.batch_ids), "silent", now, reason=BARGE if cut else None)
     _emit(conv, "ended", r, outcome="no_reply", reason=reason, after_refused_act=bool(r.acts_refused),
-          after_reads=r.asked_after_reads, typed_only=_typed_only(r))
+          after_reads=r.asked_after_reads, typed_only=_typed_only(r), barge_cut=cut)
 
 
 def _his_words(conv: "Conversation", r: "Running") -> dict:

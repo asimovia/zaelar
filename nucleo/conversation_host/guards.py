@@ -7,9 +7,14 @@ provider's end, the cap, too long, a stall), over its words, in this order:
   · `echo` — his voice rose while one of our last lines sounded (or within `ECHO_AFTER_S` of its end) AND his words are,
     in order, words of that line (`voice.echo_text`) — never the similarity of a whole line, and never after a question
     of ours ended (his answer may repeat it: «¿A Rowan?» «A Rowan.»);
+  · `voice_lock` — «stick to my voice» is on, a voice is enrolled, and every verdict the browser gave on this turn's
+    segments says another voice (`voice.voice_lock`, the old turn's own rule, asked with no grace: the close comes
+    after the segment);
   · `not_addressed` — the attention mode says it was not said to us (`attention.evaluate`, pure; a directed turn keeps
-    the conversation's window warm, an ambient one is noted).
-The voice lock needs no guard here: the voice process hears only the room of the session that holds the voice.
+    the conversation's window warm, an ambient one is noted; a cold one let in says why the conversation began,
+    `attention_opening.note`, as the old turn's gate does).
+A voice entry the conversation then closes with no reply (the model judged it not for us) gives back the window its
+admission renewed (`listen`), as the old turn's line found not addressed does.
 """
 from __future__ import annotations
 
@@ -91,10 +96,16 @@ def judge(text: str, now: float | None = None, rose: float | None = None) -> str
         return "mic_blocked"
     if _echo(text, now if rose is None else rose):
         return "echo"
+    from voice import voice_lock
+    if not voice_lock.admit_now(onset=rose or 0.0, now=now)[0]:
+        return "voice_lock"
     verdict = attention.evaluate(text, now=now)
     if not verdict.directed:
         attention.note_ambient(text, now=now)
         return "not_addressed"
+    if verdict.reason != "active_window":           # a cold turn let in: the conversation starts here, and says why
+        from voice import attention_opening
+        attention_opening.note(verdict.reason, text)
     attention.note_directed(now=now)
     return None
 
@@ -122,3 +133,20 @@ def for_ear(endpoint: str, text: str):
             return (RECLAIM, tail)
     return why
 
+
+
+#: the silent closes that are the model's judgement on his words (never our own failure: an empty reply, an order
+#: written as text)
+OURS = frozenset({"empty_reply", "order_as_text"})
+
+
+def listen(kind: str, label: str, p: dict) -> None:
+    """The conversation's telemetry: a run over his VOICE that ended with no reply, judged by the model and not cut
+    by his barge-in, gives back the window its entry renewed (`attention.retract_last_directed`: only if nothing
+    re-anchored it since)."""
+    if kind != "conv_run" or label != "ended" or p.get("outcome") != "no_reply":
+        return
+    if p.get("typed_only") or p.get("barge_cut") or p.get("reason") in OURS:
+        return
+    from voice import attention
+    attention.retract_last_directed()

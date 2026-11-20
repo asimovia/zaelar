@@ -720,6 +720,10 @@ _PACKAGE_CEILINGS["voice"] += 1                        # same cause: the eager e
 _TOTAL_MAX += 9      # same cause, measured
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 28    # 2026-11-20 V2-941 (plan v3.2 C2/C4/C5): our lines with the old turn's rows — owed when said, the line's trace the voice's from its start, the row at its end with what sounded (`WallMouth._sounded`)
 _TOTAL_MAX += 29     # same cause, measured
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 29    # 2026-11-20 V2-941 (plan v3.2 C8–C10): the enrolled voice is a guard (`voice_lock`), a voice entry closed with no reply gives the window back (`guards.listen`), a cold turn says why the conversation began
+_PACKAGE_CEILINGS["voice"] += 10                       # same cause: `voice_lock.admit_now`, the no-grace admit for a judge after the close
+_PACKAGE_CEILINGS["conversation"] += 1                 # same cause: a silent end says whether his barge-in cut us
+_TOTAL_MAX += 40     # same cause, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())
