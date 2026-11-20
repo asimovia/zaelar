@@ -116,6 +116,11 @@ def flows(limit: int = 50, session_id: str = "", user_id: str = "") -> list[dict
                -- out EMPTY.
                MAX(CASE WHEN kind = 'trace' AND label = 'merge'
                         THEN json_extract(payload, '$.merge_into') END) AS merge_into,
+               -- WHY the ear discarded it, if this flow is a discarded intervention (`nucleo/conversation_host/
+               -- turns.py::_discarded`): its `flow end` carries `discarded`. A reader counts such flows apart and
+               -- never lists them as flows. The Master's mirror of this SQL carries the same column.
+               MAX(CASE WHEN kind = 'flow' AND label = 'end'
+                        THEN json_extract(payload, '$.discarded') END) AS discarded,
                MAX(session_id)                    AS session_id,
                MAX(user_id)                       AS user_id
         FROM events

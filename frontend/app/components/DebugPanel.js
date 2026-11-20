@@ -24,6 +24,7 @@ import * as store from "../core/store.js?v=2";
 import { startDebugBus, onDebug, debugBuffer, clearDebugBuffer } from "../services/debugbus.js?v=2";
 import { LIST_ICON, LINK_ICON, VOLUME_X_ICON, TRASH_ICON, CLOSE_ICON, BUG_ICON } from "../lib/icons.js?v=1";
 import { t } from "../core/i18n.js?v=1";
+import { createFold } from "./debug-fold.js?v=1";
 
 const MAX_ROWS = 800;             // cap the DOM so a long session can't grow it without bound
 
@@ -552,9 +553,51 @@ export function DebugPanel() {
     return row;
   }
 
+  // Which flow an event belongs to (merges folded, the ear's discards counted apart, an intervention still being heard
+  // held): `debug-fold.js`, read from the engine's declared fields.
+  const fold = createFold();
+  let discEl, discSumEl, discListEl;          // «Heard: N discarded», expandable, above the tree
+
   function addTrace(d) {
-    const tid = d.trace;
-    if (!tid || !tracesEl) return;
+    if (!d.trace || !tracesEl) return;
+    const r = fold.route(d, (tid) => traces.has(tid));
+    if (r.act === "fold") return foldTrace(r.from, r.to, r.events);
+    if (r.act === "discard") return discardTrace(r.trace);
+    if (r.act === "show") for (const ev of r.events) paintTrace(r.trace, ev);
+  }
+
+  function foldTrace(from, to, events) {
+    const src = traces.get(from);
+    if (src) {                                         // already shown: its rows move into the flow it joined
+      const dst = traceEntry(to);
+      for (const child of Array.from(src.body.childNodes)) dst.body.appendChild(child);
+      dst.n += src.n; dst.nEl.textContent = t("debug.events", { n: dst.n });
+      src.det.remove(); traces.delete(from);
+    }
+    for (const ev of events) paintTrace(to, ev);
+  }
+
+  function discardTrace(tid) {
+    const e = traces.get(tid);
+    if (e) { e.det.remove(); traces.delete(tid); }
+    paintDiscards();
+  }
+
+  function paintDiscards() {
+    if (!discEl) return;
+    const { n, last } = fold.discards;
+    discEl.hidden = !n || mode !== "traces";
+    discSumEl.textContent = t("debug.ear_discarded", { n });
+    discListEl.replaceChildren(...last.slice().reverse().map((x) => {
+      const row = document.createElement("div"); row.className = "dbg-row dbg-trrow";
+      const ts = document.createElement("span"); ts.className = "dbg-t"; ts.textContent = stamp(x.at);
+      const msg = document.createElement("span"); msg.className = "dbg-msg"; msg.textContent = x.why;
+      row.append(ts, traceChip(x.trace, null), msg);
+      return row;
+    }));
+  }
+
+  function paintTrace(tid, d) {
     const e = traceEntry(tid);
     if (d.kind === "trace" && d.root) {                 // the RAÍZ: the frase/estímulo that inició the cadena
       e.ic.textContent = ORIGIN_ICON[d.origin] || "•";
@@ -592,6 +635,7 @@ export function DebugPanel() {
     if (listEl) listEl.hidden = (m === "traces");
     if (tracesEl) tracesEl.hidden = (m !== "traces");
     if (whoEl) whoEl.hidden = (m !== "traces");
+    paintDiscards();
     if (hdrEl) hdrEl.hidden = (m === "traces");     // the árbol no va en columnas → without cabecera that rotular
     if (btn) { btn.innerHTML = m === "traces" ? LIST_ICON : LINK_ICON; btn.title = m === "traces" ? t("debug.view_log") : t("debug.view_traces"); }
   }
@@ -619,6 +663,7 @@ export function DebugPanel() {
     kindChips.clear();
     kindGroups.clear();
     traces.clear();
+    fold.clear(); paintDiscards();
     lastRow = null; lastSig = ""; count = 0;
     if (countEl) countEl.textContent = t("debug.events", { n: 0 });
   }
@@ -695,6 +740,9 @@ export function DebugPanel() {
         class: "dbg-whob" + (w === who ? " on" : ""), "data-who": w, onClick: () => setWho(w),
       }, () => t("debug.who_" + w))),
     ),
+    h("details", { class: "dbg-disc", ref: (el) => { discEl = el; el.hidden = true; } },
+      h("summary", { ref: (el) => (discSumEl = el) }),
+      h("div", { class: "dbg-trb", ref: (el) => (discListEl = el) })),
     h("div", { class: "dbg-list dbg-traces", ref: (el) => { tracesEl = el; el.hidden = (mode !== "traces"); } }),
   );
 

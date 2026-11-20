@@ -568,6 +568,7 @@
  "debug.col_size_t": "Tokens in→out (+tools, ❄️ = arranque en frío)",
  "debug.col_time": "Hora",
  "debug.col_time_t": "Hora del evento (h:m:s.ms)",
+ "debug.ear_discarded": "Oído: {n} descartados",
  "debug.events": "{n} ev",
  "debug.filter_placeholder": "filtrar (widget, deep, T12…)",
  "debug.filters": "Filtros ({n})",

@@ -1407,7 +1407,9 @@ body.dbg-resizing{cursor:ew-resize;user-select:none}
 .dbg-trace[open]>summary{border-bottom:1px solid var(--hb-line)}
 .dbg-tro{flex:none}
 .dbg-trw{flex:none;font-size:var(--fs-micro)}
-.dbg-trace[hidden],.dbg-who[hidden]{display:none}
+.dbg-trace[hidden],.dbg-who[hidden],.dbg-disc[hidden]{display:none}
+.dbg-disc{padding:4px 8px 0;font-size:var(--fs-micro);color:var(--hb-muted-2)}
+.dbg-disc>summary{cursor:pointer}
 .dbg-who{display:flex;gap:4px;padding:6px 8px 0}
 .dbg-whob{font:inherit;font-size:var(--fs-micro);padding:2px 9px;border:1px solid var(--hb-line);border-radius:999px;background:transparent;color:var(--hb-muted-2);cursor:pointer}
 .dbg-whob.on{color:var(--hb-ink);border-color:var(--hb-ink);font-weight:600}

@@ -13,12 +13,21 @@ manager's own events keep their intervention traces; this listener only adds the
 
 Our rows and the voice's `bot_speech` carry the turn's id (`corr`), so the Master never glues them to the nearest
 flow by time.
+
+The ear's own flows (one per intervention, `iv`) never stand as flows of their own (diagnosis of 2026-11-20: one order
+of his left sixteen of them open next to its turns):
+
+  · an intervention the inbox accepted is FOLDED into its turn: a `trace` «merge» marker `iv → T`, emitted directly
+    (`trace.merge` orders two turns by their sequence number, and an `iv` has none), so every event of the manager
+    stamped with that `iv`, before or after, reads as part of the turn;
+  · an intervention the ear discarded (`no_voice`, `echo`, `no_words`…) ENDS at once: a `flow end` that carries
+    `discarded` (the ear's reason). A reader counts such flows apart and never lists them as flows.
 """
 from __future__ import annotations
 
 import threading
 
-from conversation.telemetry import CloseLabels
+from conversation.telemetry import CloseLabels, EarLabels
 
 KEPT = 512
 ENTRIES = frozenset({"user.utterance", "user.text"})
@@ -75,7 +84,7 @@ def listen(kind: str, label: str, p: dict) -> None:
     if kind == "conv_inbox" and label == "accepted" and p.get("kind") in ENTRIES and refs.get("iv"):
         with _lock:
             _keep(_env_iv, str(refs.get("env") or ""), str(refs["iv"]))
-        corr(refs["iv"], str(p.get("text") or ""))
+        _fold(str(refs["iv"]), corr(refs["iv"], str(p.get("text") or "")))
     elif kind == "conv_ledger" and label == "attached":
         with _lock:
             iv = _env_iv.get(str(p.get("ref") or ""), "")
@@ -91,6 +100,23 @@ def listen(kind: str, label: str, p: dict) -> None:
                 _keep(_run_first, str(refs["run"]), min(tids, key=trace._seq_of))
     elif kind == "conv_close":
         _closed(label, iv_of(refs.get("req")), str(refs.get("run") or ""))
+    elif kind == "conv_ear" and label == EarLabels.DISCARDED.value:
+        _discarded(str(p.get("trace") or ""), str(p.get("reason") or ""))
+
+
+def _fold(iv: str, tid: str) -> None:
+    """The intervention's flow is its turn's: the merge marker, stamped with the `iv` and naming the turn."""
+    if iv and tid and iv != tid:
+        from voice.observer import emit
+        emit("trace", "merge", role="system", extra={"trace": iv, "merge_into": tid})
+
+
+def _discarded(trace_id: str, reason: str) -> None:
+    """A discarded intervention's flow ends now, saying it was a discard (never a turn of his)."""
+    if trace_id:
+        from voice.observer import emit
+        emit("flow", "end", role="system", extra={"trace": trace_id, "ok": True, "reason": "ear_discarded",
+                                                  "discarded": reason or "discarded"})
 
 
 def _closed(label: str, iv: str, run: str) -> None:

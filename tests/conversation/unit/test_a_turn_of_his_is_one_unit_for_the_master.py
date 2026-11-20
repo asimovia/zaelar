@@ -5,7 +5,9 @@
   · a request's close ends its turn (`flow end`, ok unless it failed: a failed run closes `recovered`);
   · two entries one run answered together are one turn: the later is folded into the first (`trace merge`), never
     ended twice; an entry attached to an open request is folded into that request's turn;
-  · the body's conversation is opened with this listener.
+  · the body's conversation is opened with this listener;
+  · the ear's flow of an accepted entry is folded into its turn (`merge` iv → T); a discarded one ends at once
+    (`flow end` carrying `discarded`) and opens no turn.
 
 Disarms seen red: no turn opened at acceptance; no end at the close; the second close of one run ended instead of
 merged; `recovered` counted ok (a real failed run); the run's turn taken from its first close (closes out of order);
@@ -44,6 +46,12 @@ def _wired(store):
     return h
 
 
+def _turn_merges(log, turn_ids):
+    """The merges of one turn into another (the ear's `iv → T` folds left out)."""
+    return [(x["merge_into"], x["trace"]) for k, lab, _t, _r, x in log
+            if k == "trace" and lab == "merge" and x["trace"] in turn_ids]
+
+
 def _roots(log):
     return [(text, x["trace"], role) for k, lab, text, role, x in log if k == "trace" and x.get("root")]
 
@@ -71,16 +79,16 @@ def test_two_entries_one_run_answered_are_one_turn(store, log):
     roots = _roots(log)
     assert len(roots) == 2
     ends = [x for k, lab, _t, _r, x in log if k == "flow" and lab == "end"]
-    merges = [x for k, lab, _t, _r, x in log if k == "trace" and lab == "merge"]
-    assert len(ends) == 1 and [(m["merge_into"], m["trace"]) for m in merges] == [(roots[0][1], roots[1][1])]
+    merges = _turn_merges(log, {tid for _t, tid, _r in roots})
+    assert len(ends) == 1 and merges == [(roots[0][1], roots[1][1])]
 
 
 def test_an_attached_entry_is_folded_into_its_requests_turn(log):
     for iv, env in (("iv_1", "e_1"), ("iv_2", "e_2")):
         turns.listen("conv_inbox", "accepted", {"kind": "user.utterance", "text": iv, "refs": {"iv": iv, "env": env}})
     turns.listen("conv_ledger", "attached", {"ref": "e_2", "refs": {"req": "r_iv_1"}})
-    merges = [x for k, lab, _t, _r, x in log if k == "trace" and lab == "merge"]
-    assert [(m["merge_into"], m["trace"]) for m in merges] == [(turns.known("iv_1"), turns.known("iv_2"))]
+    t1, t2 = turns.known("iv_1"), turns.known("iv_2")
+    assert _turn_merges(log, {t1, t2}) == [(t1, t2)]
 
 
 def test_the_bodys_conversation_is_opened_with_the_turns_listener(monkeypatch):
@@ -117,7 +125,7 @@ def test_the_run_folds_its_turns_whatever_the_order_of_its_closes(log, monkeypat
     turns.listen("conv_close", "answered", {"refs": {"req": "r_iv_1", "run": "run_1"}})
     t1, t2 = turns.known("iv_1"), turns.known("iv_2")
     ends = [x for k, lab, _t, _r, x in log if k == "flow" and lab == "end"]
-    merges = [(x["merge_into"], x["trace"]) for k, lab, _t, _r, x in log if k == "trace" and lab == "merge"]
+    merges = _turn_merges(log, {t1, t2})
     assert len(ends) == 1 and ended_under == [t1] and merges == [(t1, t2)]   # the oldest ends, the newer folds
 
 
@@ -131,3 +139,16 @@ def test_the_failure_line_carries_its_turn_and_a_turn_never_leaks_into_the_threa
     assert trace.current() == before, "opening a turn leaves this thread's own trace as it was"
     assert trace_of(SimpleNamespace(request_id="conv:failed:r_iv_7")) == tid
     assert trace_of(SimpleNamespace(request_id="task:k1")) == "task:k1"            # a notice of no turn: its own
+
+
+def test_an_accepted_entrys_ear_flow_is_folded_into_its_turn(log):
+    turns.listen("conv_inbox", "accepted", {"kind": "user.utterance", "text": "w1", "refs": {"iv": "iv_1", "env": "e_1"}})
+    folds = [(x["trace"], x["merge_into"]) for k, lab, _t, _r, x in log if k == "trace" and lab == "merge"]
+    assert folds == [("iv_1", turns.known("iv_1"))] and turns.known("iv_1")
+
+
+def test_a_discarded_intervention_ends_its_flow_and_opens_no_turn(log):
+    turns.listen("conv_ear", "discarded", {"trace": "iv_2", "reason": "no_voice", "refs": {"iv": "iv_2"}})
+    ends = [x for k, lab, _t, _r, x in log if k == "flow" and lab == "end"]
+    assert [(e["trace"], e["discarded"]) for e in ends] == [("iv_2", "no_voice")]
+    assert not _roots(log) and not turns.known("iv_2")

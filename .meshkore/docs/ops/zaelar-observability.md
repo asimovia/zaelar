@@ -335,6 +335,16 @@ the set of events it should?») is answered by grouping by `trace`.
   beat emitted inside a request's context would join that request and stretch it over every beat after it. They are
   read only as pulse cycles. What the pulse FIRES (a cron, a spark, a cluster heartbeat turn) opens its own trace,
   flagged `system`. A reader that attributes trace-less events to the nearest flow by time must skip these kinds too.
+- **One order, one flow: the ear's interventions are never flows of their own.** The conversation manager stamps its
+  events with the ear's intervention id (`iv`), so each intervention would read as a flow. `nucleo/conversation_host/
+  turns.py` closes that: an intervention the inbox accepted is folded into its turn by a `trace merge` marker
+  (`iv → T`, emitted directly — `trace.merge` orders two turns by sequence and an `iv` has none); one the ear discarded
+  ends at once with a `flow end` that carries `discarded` (the ear's reason). `observability.flows.flows()` projects
+  both (`merge_into`, `discarded`). The **Traces** view folds the first, holds an intervention while it carries only
+  `conv_ear` events, and shows the discards as one expandable counter («Heard: N discarded»)
+  (`frontend/app/components/debug-fold.js`). A reader that attributes trace-less events to the nearest flow does it
+  only for a CLOSED list of kinds (`transcript`, `bot_speech`, `tts`, `state`, `metric`, `vad`): a connector or a
+  cluster event belongs to no request and never titles one.
 
 ## A Brain Worker's steps — WHERE it works and WHAT it uses
 
