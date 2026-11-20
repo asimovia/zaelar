@@ -101,6 +101,8 @@ class Gateway:
         hint = call.args.get("on")
         if spec is None:
             reason = "unknown_tool"
+        elif spec.effect_class is None:
+            reason = "undeclared"
         elif spec.effect_class is EffectClass.READ:
             self._note("read", ctx, tool=call.name, effect_class=str(spec.effect_class), model_on=hint)
             self._flush()

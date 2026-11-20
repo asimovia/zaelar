@@ -23,6 +23,16 @@ class Config:
     #: has not published, stops that run and makes its batch wait for that voice (the continuation travels with it).
     #: Never shorter than the model's first-event deadline: a run can take that long before it publishes. P4 sets it.
     resume_window_ms: int = 20_000
+    #: a batch waits for such a resumed voice at most this long from the close of its last entry, and words do not
+    #: reset it — the same sense and value as `cross_channel_hold_ms`: nobody waits behind a voice longer. Past it the
+    #: batch runs as it is and the open voice stays its own intervention (a TV that never stops cannot hold it forever).
+    resume_hold_max_ms: int = 8000
+    #: a voice born at a close with the voice still up, that falls before this with no word, was the tail of the
+    #: voice that closed: discarded at once, not at the cap (the provider's end lands a few ms before the fall).
+    min_voice_ms: int = 250
+    #: an intervention is at most this long, from its onset, never reset by words: past it what was heard is delivered
+    #: incomplete (`too_long`) and, with the voice still up, the next one starts.
+    intervention_max_ms: int = 30_000
     # ── the inbox ──
     #: typed messages sent within this window travel in one batch (the 0.35 s debounce, moved from the ear: PA-4).
     collect_ms: int = 350

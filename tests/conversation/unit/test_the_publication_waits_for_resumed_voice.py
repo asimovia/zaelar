@@ -5,7 +5,8 @@ He pauses, the model starts, he goes on. If he speaks again on the device of the
 eligible while that voice is open — the same check runs again right before sealing. The voice always ends (the ear's
 cap, on the sweep's ticks): with words, the continuation travels with the batch and the model hears the whole sentence
 in one prompt, nothing said before; a cough (no words) lets the batch run as it was. Another device, outside the
-window, or a run that already published: no hold. While held, the person is speaking: no request is stalled.
+window, or a run that already published: no hold. The hold is bounded (`resume_hold_max_ms` from the close of the
+batch's last entry, never reset by words), inside the request's liveness: no hold stalls a request.
 """
 from __future__ import annotations
 
@@ -117,17 +118,29 @@ def test_the_check_runs_again_right_before_sealing(store):
     assert not h.mouth.orders and "conv_run/held" in h.tel.labels()
 
 
-def test_while_he_keeps_talking_no_request_is_stalled(store):
-    h = Harness(store, config=Config(liveness_ms=5000))
+def test_a_continuation_longer_than_the_bound_lets_the_old_batch_run_at_it(store):
+    """He goes on and keeps talking past `resume_hold_max_ms`: his words do not reset the bound — nothing is said
+    before it, the old batch runs at it (the cost the design accepts: the first part answered while he speaks), and no
+    request is stalled by the hold."""
+    h = Harness(store)
     once: list = []
-    h.model.script["iv_000001"] = [[_go_on(h, ["w3"], close=False, once=once), reply("w9"), Done()]]
+    h.model.script["iv_000001"] = [[_go_on(h, ["w3"], close=False, once=once), reply("w9"), Done()],
+                                   [reply("w9"), Done()]]
     h.utter([(["w1", "w2"], 0)])
+    closed = next(p["t_ms"] for k, lab, p in h.tel.events if k == "conv_ear" and lab == "closed")
     t0 = h.clock.mono
-    for i, t in enumerate(range(t0 + 1000, t0 + 12_000, 1000)):     # words keep coming for 11 s
-        h.hear(S.WordSpan("d1", 77, 2 + i, False, h.words(["w3"] + [f"w{j}" for j in range(4, 5 + i)], t0), (t0, t)),
-               h.beats(t, t + 999))
-    assert "conv_close/stalled" not in h.tel.labels(), h.closes()
-    assert not h.mouth.orders
+    for i, t in enumerate(range(t0 + 250, t0 + 12_000, 250)):      # words keep coming for 12 s
+        h.hear(S.WordSpan("d1", 77, 2 + i, False, h.words(["w3"] + [f"w{j}" for j in range(4, 5 + i // 4)], t0),
+                          (t0, t)), h.beats(t, t + 249))
+    said_at = next((p["t_ms"] for k, lab, p in h.tel.events if k == "conv_mouth" and lab == "say"), None)
+    cfg = h.conv.cfg
+    assert said_at is not None and closed + cfg.resume_hold_max_ms <= said_at <= closed + cfg.resume_hold_max_ms + 500
+    assert "conv_close/stalled" not in h.tel.labels()
+
+
+def test_no_hold_can_outlast_a_request(store):
+    cfg = Config()
+    assert cfg.liveness_ms > cfg.resume_hold_max_ms + cfg.model_first_ms
 
 
 def test_the_window_is_never_shorter_than_the_models_first_deadline():
@@ -138,7 +151,9 @@ def test_the_window_is_never_shorter_than_the_models_first_deadline():
 @pytest.mark.parametrize("think_ms", [800, 1500])
 def test_s2_nothing_is_said_while_a_resumed_voice_is_open(think_ms):
     """The recorded session where the model, thinking 0.8–1.5 s, answered into the person's own pause: no line of ours
-    goes out while a voice that resumed after the batch's last entry is open on that device."""
+    goes out while a voice that resumed after the batch's last entry is open on that device — within the hold's bound
+    from that entry's close (past it the batch runs as it is, by design; these recordings carry the old pipeline's VAD,
+    whose falls come late or never, so their voices stay open long)."""
     rep = Replay(load((FIX / "s2.jsonl").read_text().splitlines()), think_ms=think_ms).run()
     W = []
     opened, ended, closes, starts = {}, {}, [], []
@@ -157,7 +172,38 @@ def test_s2_nothing_is_said_while_a_resumed_voice_is_open(think_ms):
             run_start = max((s for s, run in starts if run == r["run"]), default=t)
             last = max((c for c, _ep in closes if c <= run_start), default=0)
             for iv, (to, ep) in opened.items():
-                if ep == r.get("endpoint") and last <= to <= t and ended.get(iv, 10 ** 18) > t:
+                if (ep == r.get("endpoint") and last <= to <= t and ended.get(iv, 10 ** 18) > t
+                        and t - last < rep.config.resume_hold_max_ms):
                     W.append((iv, to, t))
     assert not W, f"said while he spoke again: {W}"
     assert "conv_run/held" in rep.tel.labels("conv_run")
+
+
+def test_a_stop_while_the_run_is_held_cancels_it_and_nothing_is_said(store):
+    """Review TA-2: the run gave its batch back to his resumed voice; he presses stop. A batch that waits is a run that
+    has not started: the stop cancels it — its requests close silent, and when his voice ends nothing is said for it."""
+    from conversation.types import ControlOp
+    from tests.conversation.unit.inboxkit import control
+    h = Harness(store)
+    once: list = []
+    h.model.script["iv_000001"] = [[_go_on(h, ["w3"], close=False, once=once), reply("w9"), Done()]]
+    h.utter([(["w1", "w2"], 0)])
+    assert "conv_run/held" in h.tel.labels() and not h.mouth.orders
+    h.conv.give(control(ControlOp.STOP, h.clock.mono, "k-stop", endpoint="d1"))
+    assert [(lab, p["reason"]) for lab, p in h.closes()] == [("silent", "stopped")]
+    t = h.clock.mono
+    h.hear(S.WordSpan("d1", 77, 2, True, h.words(["w3", "w4"], t), (t, t + 400)),
+           S.VadEdge("d1", "fall", t + 410), h.beats(t + 400, t + 800), S.EotHint("d1", "flux", "end", .9, t + 800))
+    h.pump()
+    prompts = [c.prompt.input for c in h.model.calls[1:]]
+    assert all("«w1 w2»" not in p for p in prompts)            # the stopped sentence never runs again
+
+
+def test_a_stop_inside_the_collect_window_cancels_what_waits(store):
+    from conversation.types import ControlOp
+    from tests.conversation.unit.inboxkit import control
+    h = Harness(store)
+    h.typed("w1", 100)
+    h.conv.give(control(ControlOp.STOP, 150, "k-stop", endpoint="d2"))
+    h.at(2000).pump()
+    assert not h.model.calls and [(lab, p["reason"]) for lab, p in h.closes()] == [("silent", "stopped")]

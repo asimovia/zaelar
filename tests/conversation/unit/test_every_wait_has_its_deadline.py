@@ -53,6 +53,13 @@ WAITS: dict[str, tuple[tuple[str, ...], str]] = {
                                  "test_a_control_whose_handler_never_ran_is_closed_by_the_sweep_with_its_reason"),
     "a line owed claimed for the voice": ((), U + "test_a_line_owed_is_said_once_by_one_channel::"
                                           "test_a_claim_past_its_deadline_goes_back"),
+    "a batch held for a resumed voice, words or not": (("resume_hold_max_ms",), U + "test_the_publication_waits_"
+                                                       "for_resumed_voice::test_a_continuation_longer_than_the_bound_"
+                                                       "lets_the_old_batch_run_at_it"),
+    "an intervention that never ends": (("intervention_max_ms",), U + "test_the_ear_holds_against_foreign_voice_"
+                                        "and_background::test_a_background_with_words_and_no_end_never_holds_a_turn_open"),
+    "a voice born at a close that was its tail": (("min_voice_ms",), U + "test_the_ear_holds_against_foreign_voice_"
+                                                  "and_background::test_the_providers_end_before_the_fall_costs_nothing"),
     "an open voice of an earlier epoch": ((), U + "test_a_crash_at_any_transition_recovers::"
                                           "test_a_voice_cut_by_a_restart_is_ended_incomplete_with_its_event_and_asked_again"),
 }

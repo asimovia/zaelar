@@ -9,7 +9,17 @@ always ends: with words it closes or is incomplete, without any it is discarded.
 each other (A6): an eager hint only makes it TENTATIVE, and a tentative intervention is not delivered to anyone.
 
 Without coverage at the cap, or with a stream that stopped beating (the watermark not advancing while time passes,
-adapter doc A6), the intervention is INCOMPLETE: not actionable, the run asks for the end.
+adapter doc A6), the intervention is INCOMPLETE: not actionable, the run asks for the end. An intervention also has a
+maximum length (`intervention_max_ms`, from its onset, never reset by words): past it, what was heard is delivered
+incomplete (`too_long`) — a background that never stops talking cannot keep a turn open.
+
+The ear does not tell speakers apart; it guarantees what happens around another voice. If the voice is still UP when
+the provider ends its turn (a rise with no fall since), there is no «caught up»: the intervention closes on the end and
+its coverage, and in the same step the next one is born there — the manager sees a voice open on that device right
+after the close, which is what the publication hold needs. A rise that comes while an end is pending (the watermark
+not yet past the fall) is the same: the person goes on, the next intervention starts at that rise. Words of a later
+provider turn — or late words of a turn whose intervention ended — are the open successor's, never the ended one's. A
+successor that falls before `min_voice_ms` with no word was no voice: discarded at once, not at the cap.
 
 The intervention is the unit: once it ended, nothing reopens it. Voice that follows is ANOTHER intervention, which
 `amends` the previous one when we have not spoken since; the manager decides whether the two travel together.
@@ -49,6 +59,8 @@ class _Voice:
     agent_spoke: bool = False               # we spoke after `previous` ended: what follows is new, not its amendment
     closed_ms: int = 0
     last_word_ms: int | None = None
+    up: bool = False                        # a rise with no fall since: the voice is still sounding
+    successor: bool = False                 # born at a close with the voice still up (it may be no voice at all)
 
 
 class Ear:
@@ -90,10 +102,11 @@ class Ear:
         owner = self.spans.owner(sig.stream, sig.seq)
         if owner is None and sig.words:
             self._start(v, sig.words[0][1], out)
-        elif owner is not None and owner == v.iv and v.state in ENDED_STATES and sig.words:
-            ended = v.iv                          # the end of a provider turn whose intervention already ended:
-            self._start(v, t, out)                # it is new voice, never a revision of the ended one
-            self.spans.reassign_seq(sig.stream, sig.seq, ended, v.iv)
+        elif owner is not None and (owner != v.iv or v.state not in OPEN_STATES) and sig.words:
+            # words of a provider turn whose intervention already ended: new voice, never a revision of the ended one —
+            # they go to the open intervention of this device (a successor born at the close), or start one
+            self._start(v, t, out)
+            self.spans.reassign_seq(sig.stream, sig.seq, owner, v.iv)
             owner = v.iv
         target = owner or v.iv
         if target is None:
@@ -109,11 +122,16 @@ class Ear:
         v = self._v(sig.endpoint)
         t = self._time(sig.t_ms)
         if sig.edge == "fall":
-            v.fall_ms = sig.t_ms
+            v.fall_ms, v.up = sig.t_ms, False
+            if (v.successor and v.state in OPEN_STATES and not self.spans.words(v.iv)
+                    and sig.t_ms - v.onset_ms < self.cfg.min_voice_ms):
+                self._discard_empty(v, t, out, reason="no_voice")     # born at a close, and it was the tail of it
+                return
             self._judge(v, t, out)
         elif sig.echo_safe:
-            v.fall_ms = None
+            v.fall_ms, v.up = None, True
             self._start(v, sig.t_ms, out)
+            self._judge(v, t, out, rise=sig.t_ms)   # an end pending, the voice up again: close; the next one starts AT it
 
     def _on_EotHint(self, sig: S.EotHint, out: list) -> None:
         v = self._v(sig.stream)
@@ -153,13 +171,13 @@ class Ear:
 
     # ── transitions ─────────────────────────────────────────────────────────────────────────────────────────────
 
-    def _start(self, v: _Voice, t: int, out: list) -> None:
+    def _start(self, v: _Voice, t: int, out: list, *, successor: bool = False) -> None:
         """Voice begins: a NEW intervention, unless one is already open on this device."""
         if v.state in OPEN_STATES:
             return
         v.amends = v.previous if (v.previous and not v.agent_spoke) else None
         v.agent_spoke = False
-        v.iv, v.state, v.onset_ms = self.ids.new("iv"), IvState.OPEN, t
+        v.iv, v.state, v.onset_ms, v.successor = self.ids.new("iv"), IvState.OPEN, t, successor
         v.eot_end_ms = v.eot_prob = v.fall_ms = v.last_word_ms = None   # nothing of the previous one is this one's
         out.append(S.Onset(v.endpoint, t, v.iv))
         self.em.emit("conv_ear", "onset", owner="ear", cause={"kind": "voice"}, refs=self._refs(v), t_onset_ms=t)
@@ -171,16 +189,24 @@ class Ear:
         self.em.emit("conv_ear", label, owner="ear", cause={"kind": "provider"}, refs=self._refs(v),
                      eot_prob=v.eot_prob)
 
-    def _judge(self, v: _Voice, t: int, out: list) -> None:
+    def _judge(self, v: _Voice, t: int, out: list, rise: int | None = None) -> None:
         if v.state not in OPEN_STATES:
             return
         covered = self.spans.covered(v.iv)
+        # a rise clears the fall: with the voice still up the end closes on its coverage (no watermark to wait for),
+        # and the next intervention starts here (below)
         caught_up = v.fall_ms is None or (v.watermark_ms or 0) >= v.fall_ms
         cap = self.cfg.close_cap_ms + self.cfg.patience_ms.get(v.expect or "", 0)
         # the cap counts from the fall, else from the provider's end, else from the last word (else the onset)
         anchor = next(x for x in (v.fall_ms, v.eot_end_ms, v.last_word_ms, v.onset_ms) if x is not None)
         if v.eot_end_ms is not None and covered and caught_up:
             self._close(v, t, "eot", out)
+            if v.up:                            # born where the voice rose again, or here if it never fell
+                self._start(v, t if rise is None else rise, out, successor=rise is None)
+        elif t - v.onset_ms >= self.cfg.intervention_max_ms and self.spans.words(v.iv):
+            self._incomplete(v, t, "too_long", out)          # never reset by words: a background cannot hold it open
+            if v.up:
+                self._start(v, t, out, successor=True)
         elif t - anchor >= cap:
             if not self.spans.words(v.iv):
                 self._discard_empty(v, t, out)
@@ -214,18 +240,18 @@ class Ear:
                      watermark_ms=v.watermark_ms, vad_fall_ms=v.fall_ms, eot_prob=v.eot_prob,
                      wait_ms=t - (v.fall_ms or last))
 
-    def _discard_empty(self, v: _Voice, t: int, out: list) -> None:
+    def _discard_empty(self, v: _Voice, t: int, out: list, reason: str = "no_words") -> None:
         """Voice rose and fell and no word came: nothing to answer, and the discard is an event (I4)."""
         v.state = IvState.DISCARDED
         out.append(S.VoiceDiscarded(v.endpoint, v.iv, t))
-        self.em.emit("conv_ear", "discarded", owner="ear", cause={"kind": "cap"}, refs=self._refs(v), text="",
-                     reason="no_words")
+        self.em.emit("conv_ear", "discarded", owner="ear", cause={"kind": "cap" if reason == "no_words" else "voice"},
+                     refs=self._refs(v), text="", reason=reason)
 
     def _incomplete(self, v: _Voice, t: int, reason: str, out: list) -> None:
         v.state, v.closed_ms, v.previous = IvState.INCOMPLETE, t, v.iv
         text = " ".join(w[0] for w in self.spans.words(v.iv))
         out.append(self._utterance(v, t, Coverage.INCOMPLETE, reason))
-        self.em.emit("conv_ear", "incomplete", owner="ear", cause={"kind": "cap" if reason == "no_final"
+        self.em.emit("conv_ear", "incomplete", owner="ear", cause={"kind": "cap" if reason in ("no_final", "too_long")
                                                                    else "stall"},
                      refs=self._refs(v), text=text, reason=reason, watermark_ms=v.watermark_ms)
 

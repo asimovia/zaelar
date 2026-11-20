@@ -66,16 +66,14 @@ def close(conv: "Conversation", req: str, to: str, label: str, **metrics) -> boo
 
 
 def sweep_liveness(conv: "Conversation", now: int) -> None:
-    """I9: a request still open past the budget — counted from when its batch could run (accepted complete, or
-    released by a resumed voice that held it) — is closed `stalled`, the run in course too: its run is stopped at the
-    next checkpoint. While a resumed voice holds the batch, the person is still speaking: no request is stalled."""
-    if conv._held_iv is not None:
-        return
+    """I9: a request still open past the budget, counted from its close, is closed `stalled`, the run in course too:
+    its run is stopped at the next checkpoint. A batch held for a resumed voice waits at most `resume_hold_max_ms`,
+    well inside the budget, so no hold has to suspend it."""
     running = set(conv.current.requests) if conv.current else set()
     with conv.store.tx(conv.lease) as tx:                  # the open requests, never the history
         rows = [r for _k, r in tx.scan("items", states=("open",)) if r["kind"] == str(ItemKind.REQUEST)]
     for row in rows:
-        start = max(row["data"].get("sealed_ms", row["created_ms"]), conv.eligible_since)
+        start = row["data"].get("sealed_ms", row["created_ms"])
         if now - start >= conv.cfg.liveness_ms:
             if close(conv, row["id"], "failed", "stalled", reason="stalled") and row["id"] in running:
                 conv.current.interrupt = "stalled"
@@ -130,23 +128,29 @@ async def _fail(conv: "Conversation", r: "Running", reason: str) -> None:
 
 
 def resumed(conv: "Conversation", r: "Running", endpoint: str | None, t_ms: int) -> bool:
-    """The person speaks again on the device of the batch's last entry, within the window of it, and the run has not
-    published: the publication waits for that voice (it may be the rest of the sentence). «Not published» needs no
-    flag: a run is held only at its checkpoints and at the check right before it seals, all before its line."""
+    """The person speaks on the device of the batch's last entry — a voice that began within the window of it, or even
+    before it closed (he went on while the provider was ending) — and the run has not published: the publication waits
+    for that voice (it may be the rest of the sentence), at most `resume_hold_max_ms` from that entry's close. «Not
+    published» needs no flag: a run is held only at its checkpoints and at the check right before it seals."""
     return (not r.claimed and endpoint is not None and endpoint == r.last_endpoint
-            and 0 <= t_ms - r.last_entry_ms <= conv.cfg.resume_window_ms)
+            and t_ms - r.last_entry_ms <= conv.cfg.resume_window_ms
+            and conv.clock.now_ms() - r.last_entry_ms < conv.cfg.resume_hold_max_ms)
 
 
-def _resumed_voice(conv: "Conversation", r: "Running") -> str | None:
-    """The check repeated right before sealing: a voice opened after the batch's last entry, still open."""
+def _resumed_voice(conv: "Conversation", r: "Running") -> tuple[str, int] | None:
+    """The check repeated right before sealing: a voice open on the device of the batch's last entry."""
     found = conv.ear.open_intervention(r.last_endpoint) if r.last_endpoint else None
-    return found[0] if found and resumed(conv, r, r.last_endpoint, found[1]) else None
+    return found if found and resumed(conv, r, r.last_endpoint, found[1]) else None
 
 
-def _hold(conv: "Conversation", r: "Running", iv: str | None) -> None:
+def _hold(conv: "Conversation", r: "Running", iv: str | None, onset: int | None = None) -> None:
+    """The run stops and its batch goes back; the inbox keeps it until that voice ends, or the hold's bound. A voice
+    whose onset never reached the manager (it opened after the last checkpoint) is noted open here, so the inbox
+    holds by the same rule the run did."""
     conv.inbox.requeue(list(r.batch_ids))
+    if iv is not None and onset is not None:
+        conv.inbox.voice_open(iv, onset, r.last_endpoint)
     _emit(conv, "held", r, waits_for=iv)
-    conv.hold_for(iv)
 
 
 def _checkpoint(conv: "Conversation", r: "Running") -> None:
@@ -290,7 +294,7 @@ def _seal_batch(conv: "Conversation", r: "Running", batch: Batch) -> bool:
                                                     and env.body.coverage is Coverage.FULL)]
     waits = _resumed_voice(conv, r)
     if waits is not None:                          # he spoke again after the last checkpoint: hold, never publish
-        _hold(conv, r, waits)
+        _hold(conv, r, *waits)
         raise _Stop()
     if not conv.gw.seal_publication(r.ctx, ivs):
         _emit(conv, "fenced", r)

@@ -179,14 +179,15 @@ class Inbox:
 
     def next_batch(self, now: int) -> Batch | None:
         """The next batch to run, or None: every queued entry, in the order they began — after the collect window of
-        the LAST text accepted (two texts in < collect_ms are one batch)."""
+        the LAST text accepted (two texts in < collect_ms are one batch), and not while the person is still speaking
+        on the device of its last entry (`waits_for_voice`)."""
         with self.store.tx(self.lease()) as tx:
             rows = [r for _k, r in tx.scan(T, states=("queued",))]
             texts = [r for r in rows if r["kind"] == str(EnvelopeKind.USER_TEXT)]
             if texts and now - max(r["accepted"] for r in texts) < self.cfg.collect_ms:
                 return None                       # the collect window of the last text is still open
             pick = [r for r in rows if r["kind"] != str(EnvelopeKind.USER_CONTROL)]
-            if not pick:
+            if not pick or self._waits_for_voice(tx, pick, now):
                 return None
             seq = tx.next_seq("runs")
             for r in pick:
@@ -197,6 +198,32 @@ class Inbox:
             for r in pick:
                 self._emit_row("dequeued", r, batch=seq, queue_age_ms=now - r["accepted"])
             return Batch(seq, envs, reason)
+
+    def _waits_for_voice(self, tx, pick: list[dict], now: int) -> bool:
+        """The publication hold, before a run starts too: on the device of the batch's last entry a voice is open
+        that began within the window of it — any voice open there, even one that began before that entry closed (the
+        person went on while the provider was ending). Bounded: never longer than `resume_hold_max_ms` from that
+        entry's close, and words do not reset it."""
+        last = max((r["env"] for r in pick), key=lambda e: e["sealed_ms"])
+        if not last.get("endpoint") or now - last["sealed_ms"] >= self.cfg.resume_hold_max_ms:
+            return False
+        return any(v.get("endpoint") == last["endpoint"]
+                   and v["onset"] - last["sealed_ms"] <= self.cfg.resume_window_ms
+                   for _iv, v in tx.scan(VOICE, states=("open",)))
+
+    def pending(self) -> bool:
+        """Is there a batch of the person's waiting — queued or held, not yet in a run?"""
+        with self.store.tx(self.lease()) as tx:
+            return any(r["kind"] != str(EnvelopeKind.USER_CONTROL) for _k, r in tx.scan(T, states=("queued", "held")))
+
+    def drop_pending(self, now: int) -> list[dict]:
+        """A stop while a batch waits (held for a voice, or in the collect window): what waits is accounted `silent`
+        (reason `stopped`), as a stop does to a run in course. Returns the rows."""
+        with self.store.tx(self.lease()) as tx:
+            rows = [r for _k, r in tx.scan(T, states=("queued", "held")) if r["kind"] != str(EnvelopeKind.USER_CONTROL)]
+            for r in rows:
+                self._final(tx, r["id"], Outcome.SILENT.value, now, reason="stopped")
+        return rows
 
     @staticmethod
     def _reason(rows: list[dict]) -> str:

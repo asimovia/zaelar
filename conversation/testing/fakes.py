@@ -43,7 +43,9 @@ def catalog() -> list[ToolSpec]:
     """A catalogue shaped like the engine's: core reads, a write here, a send that leaves, a destructive act, the
     task tools — each with the act it declares and the class a host would derive from it (tokens, not the engine's
     names)."""
-    return [ToolSpec("search", core=True), ToolSpec("market_data", core=True), ToolSpec("discover_tools", core=True),
+    read = EffectClass.READ
+    return [ToolSpec("search", effect_class=read, core=True), ToolSpec("market_data", effect_class=read, core=True),
+            ToolSpec("discover_tools", effect_class=read, core=True),
             ToolSpec("agenda_add", act="a1.add", effect_class=EffectClass.WRITE),
             ToolSpec("send_message", act="a2.send", effect_class=EffectClass.LEAVES),
             ToolSpec("delete_all", act="a3.delete", effect_class=EffectClass.WRITE),

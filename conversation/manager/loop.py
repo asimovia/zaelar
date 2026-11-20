@@ -77,8 +77,6 @@ class Conversation:
         self.speaking_on: set[str] = set()
         self.dirty = False                  # something was accepted since the last pump (a driver may pump only then)
         self._swept_at = -1 << 62
-        self._held_iv: str | None = None     # a run gave its batch back to a resumed voice: nothing runs while it is open
-        self.eligible_since = 0              # when the last held batch became eligible again (liveness counts from it)
         self.recover()
 
     # ── a new owner of the account ──────────────────────────────────────────────────────────────────────────────
@@ -132,8 +130,15 @@ class Conversation:
             return
         env = adm.envelope
         self._voice_state(env)
-        ops = policy.decide(env, self.state, claimed=bool(self.current and self.current.claimed))
+        ops = policy.decide(env, self._column_state(), claimed=bool(self.current and self.current.claimed))
         self._apply(env, ops)
+
+    def _column_state(self) -> MgrState:
+        """A batch that waits — held for his voice, or in the collect window — is a run that has not started: for the
+        table it is running with no effect, so a stop cancels it like a run in course (D3)."""
+        if self.state is MgrState.IDLE and self.inbox.pending():
+            return MgrState.RUNNING
+        return self.state
 
     def _admit(self, tx, env: E.Envelope, now: int, pending: list) -> None:
         """Inside the acceptance's transaction, after the dedupe: how the intervention ended (noted once) and the
@@ -173,12 +178,6 @@ class Conversation:
         if self.current is not None and not self.speaking_on:
             self.current.actions_held = False
 
-    def hold_for(self, iv: str) -> None:
-        """A run gave its batch back to the person's resumed voice: nothing runs while that voice is open. The ear
-        always ends it (its cap, on the sweep's ticks): then the continuation travels with the batch, or — a cough,
-        no words — the batch runs as it was."""
-        self._held_iv = iv
-
     def _apply(self, env: E.Envelope, ops: tuple[Op, ...]) -> None:
         for op in ops:
             if op is Op.SILENCE:
@@ -191,6 +190,11 @@ class Conversation:
                     self.current.interrupt = "superseded"
             elif op is Op.CANCEL_RUN and self.current is not None:
                 self.current.interrupt = "cancelled"
+            elif op is Op.CANCEL_RUN:                   # the run had not started: what waits for it is dropped
+                for row in self.inbox.drop_pending(self.clock.now_ms()):
+                    iv = row["env"]["refs"].get("intervention_id")
+                    if iv:
+                        run.close(self, f"r_{iv}", "silent", "silent", reason="stopped")
             elif op is Op.BY_ID:
                 self._by_id(env)
             # RUN, FOLLOW_UP: the queue keeps it; the next pump with the manager free runs it.
@@ -225,11 +229,17 @@ class Conversation:
             self.ack(SayEnded(say_id, "unknown", None, now))
         run.sweep_liveness(self, now)
 
-    async def keep_time(self, every_ms: int = 1000) -> None:
-        """The sweep on its own timer, for the adapter to run beside the loop: a hung run cannot stop it (B3)."""
+    async def keep_time(self, every_ms: int = 250) -> None:
+        """The sweep on its own timer, for the adapter to run beside the loop: a hung run cannot stop it (B3). With
+        the manager free it also starts a pump — never awaited here, so a run it starts cannot stop the timer — and what
+        became ready with nobody speaking (a line owed, a batch whose hold expired) does not wait for the next entry."""
+        import asyncio
+        pumping = None
         while True:
             await self.clock.sleep_until(self.clock.mono_ms() + every_ms)
             self.sweep()
+            if self.state is MgrState.IDLE and self.current is None and (pumping is None or pumping.done()):
+                pumping = asyncio.ensure_future(self.pump())
 
     # ── run what is ready ───────────────────────────────────────────────────────────────────────────────────────
 
@@ -243,10 +253,6 @@ class Conversation:
                 self.sweep(now)
             if self.state is not MgrState.IDLE:
                 return runs
-            if self._held_iv is not None:
-                if self._held_iv in self.ear.open_ids():
-                    return runs
-                self._held_iv, self.eligible_since = None, now
             batch = self.inbox.next_batch(self.clock.now_ms())
             if batch is None:
                 await self._say_owed()

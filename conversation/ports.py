@@ -55,9 +55,10 @@ class ToolSpec:
     name: str
     schema: dict = field(default_factory=dict)
     #: the event type the tool's act is, in the host's vocabulary — opaque here; the host derives `effect_class` from
-    #: it (a tool with no act is a read only if all it declares is reading)
+    #: it (a tool with no act is a read only if all it declares is reading). Undeclared, the gateway refuses the tool:
+    #: the one door out is never open by default.
     act: str = ""
-    effect_class: EffectClass = EffectClass.READ
+    effect_class: EffectClass | None = None
     core: bool = False              # never filtered out (I7)
 
 

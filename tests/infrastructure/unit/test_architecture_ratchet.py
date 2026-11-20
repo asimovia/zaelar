@@ -550,6 +550,8 @@ _PACKAGE_CEILINGS["voice"] += 3   # same cause: the seven `conv_*` kinds get the
 _TOTAL_MAX += 5075   # same cause
 _PACKAGE_CEILINGS["conversation"] -= 420   # 2026-11-20 V2-941 v3.1 A4+A5: the linear manager and the minimal gateway (focus, holds, handles, delegations and grants gone)
 _TOTAL_MAX -= 420    # same cause
+_PACKAGE_CEILINGS["conversation"] += 71    # 2026-11-20 V2-941 v3.1 A6b (§1.6 bis E2-E6 + review TA-1..TA-5): the ear's successor at a close with the voice up, the bounded hold before a run starts, the turn's maximum, a stop that cancels what waits
+_TOTAL_MAX += 71     # same cause
 
 
 def test_the_total_only_shrinks():

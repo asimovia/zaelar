@@ -1,0 +1,1484 @@
+{
+ "flux_config": {
+  "eager_eot_threshold": 0.5,
+  "eot_threshold": 0.7,
+  "eot_timeout_ms": 1000,
+  "model": "flux-general-multi"
+ },
+ "format": 1,
+ "measured_on": "24bbca901",
+ "scenarios": {
+  "en-crosstalk-in-pause": {
+   "description": "a second person says something unrelated during the user's mid-sentence pause; the user then finishes the same sentence (ONE user turn; the other speaker is not the user)",
+   "duration_ms": 16848,
+   "measured": {
+    "batch_units": 3,
+    "eot_delay_ms": [
+     431,
+     644
+    ],
+    "exposure": [
+     1,
+     1
+    ],
+    "false_cuts": 1,
+    "runs": {
+     "held": 1,
+     "started": 4,
+     "superseded": 0
+    },
+    "spoke_over_user": 1,
+    "unclosed_turns": 0
+   },
+   "provider_turns": [
+    {
+     "end_arrived_ms": 3258,
+     "eot_prob": 0.8726,
+     "seq": 0,
+     "t0_ms": 560,
+     "t1_ms": 2880,
+     "tokens": 9
+    },
+    {
+     "end_arrived_ms": 5421,
+     "eot_prob": 0.7031,
+     "seq": 1,
+     "t0_ms": 3040,
+     "t1_ms": 5040,
+     "tokens": 7
+    },
+    {
+     "end_arrived_ms": 6938,
+     "eot_prob": 0.8818,
+     "seq": 2,
+     "t0_ms": 5200,
+     "t1_ms": 6240,
+     "tokens": 3
+    },
+    {
+     "end_arrived_ms": 13492,
+     "eot_prob": 0.7246,
+     "seq": 3,
+     "t0_ms": 10480,
+     "t1_ms": 12640,
+     "tokens": 10
+    },
+    {
+     "end_arrived_ms": null,
+     "eot_prob": null,
+     "seq": 4,
+     "t0_ms": null,
+     "t1_ms": null,
+     "tokens": 0
+    }
+   ],
+   "segments": [
+    {
+     "cut": false,
+     "end_ms": 3028,
+     "i": 0,
+     "role": "user",
+     "start_ms": 700,
+     "turn": 1,
+     "words": [
+      [
+       "w0001",
+       700,
+       825
+      ],
+      [
+       "w0002",
+       825,
+       935
+      ],
+      [
+       "w0003",
+       935,
+       1235
+      ],
+      [
+       "w0004",
+       1235,
+       1365
+      ],
+      [
+       "w0005",
+       1365,
+       1665
+      ],
+      [
+       "w0006",
+       1665,
+       1815
+      ],
+      [
+       "w0007",
+       1815,
+       2285
+      ],
+      [
+       "w0008",
+       2285,
+       2725
+      ],
+      [
+       "w0009",
+       2725,
+       3065
+      ]
+     ]
+    },
+    {
+     "cut": false,
+     "end_ms": 5097,
+     "i": 1,
+     "role": "other",
+     "start_ms": 3378,
+     "turn": null,
+     "words": [
+      [
+       "w0010",
+       3378,
+       3519
+      ],
+      [
+       "w0011",
+       3519,
+       3889
+      ],
+      [
+       "w0012",
+       3889,
+       4129
+      ],
+      [
+       "w0013",
+       4129,
+       4209
+      ],
+      [
+       "w0014",
+       4209,
+       4519
+      ],
+      [
+       "w0015",
+       4519,
+       4729
+      ],
+      [
+       "w0016",
+       4729,
+       5059
+      ]
+     ]
+    },
+    {
+     "cut": false,
+     "end_ms": 6525,
+     "i": 2,
+     "role": "user",
+     "start_ms": 5348,
+     "turn": 1,
+     "words": [
+      [
+       "w0017",
+       5367,
+       5487
+      ],
+      [
+       "w0018",
+       5487,
+       5987
+      ],
+      [
+       "w0019",
+       5987,
+       6507
+      ]
+     ]
+    },
+    {
+     "cut": false,
+     "end_ms": 12848,
+     "i": 3,
+     "role": "user",
+     "start_ms": 10525,
+     "turn": 2,
+     "words": [
+      [
+       "w0020",
+       10525,
+       10658
+      ],
+      [
+       "w0021",
+       10658,
+       10838
+      ],
+      [
+       "w0022",
+       10838,
+       10918
+      ],
+      [
+       "w0023",
+       10918,
+       11018
+      ],
+      [
+       "w0024",
+       11018,
+       11548
+      ],
+      [
+       "w0025",
+       11548,
+       11698
+      ],
+      [
+       "w0022",
+       11698,
+       11778
+      ],
+      [
+       "w0026",
+       11778,
+       12278
+      ],
+      [
+       "w0027",
+       12278,
+       12418
+      ],
+      [
+       "w0028",
+       12418,
+       12898
+      ]
+     ]
+    }
+   ],
+   "turns": [
+    {
+     "end_ms": 6507,
+     "kind": "complete",
+     "segments": [
+      0,
+      2
+     ],
+     "start_ms": 700,
+     "turn": 1
+    },
+    {
+     "end_ms": 12848,
+     "kind": "complete",
+     "segments": [
+      3
+     ],
+     "start_ms": 10525,
+     "turn": 2
+    }
+   ],
+   "vad": {
+    "edges": "e1",
+    "off": 0.35,
+    "on": 0.5,
+    "quiet_ms": 200
+   }
+  },
+  "en-tv-and-cough": {
+   "description": "the TV talks in the background the whole time; the user coughs inside a pause of a turn",
+   "duration_ms": 14451,
+   "measured": {
+    "batch_units": 1,
+    "eot_delay_ms": [],
+    "exposure": [
+     4,
+     4
+    ],
+    "false_cuts": 0,
+    "runs": {
+     "held": 1,
+     "started": 2,
+     "superseded": 0
+    },
+    "spoke_over_user": 0,
+    "unclosed_turns": 2
+   },
+   "provider_turns": [
+    {
+     "end_arrived_ms": 3236,
+     "eot_prob": 0.7266,
+     "seq": 0,
+     "t0_ms": 0,
+     "t1_ms": 2480,
+     "tokens": 10
+    },
+    {
+     "end_arrived_ms": null,
+     "eot_prob": null,
+     "seq": 1,
+     "t0_ms": 3040,
+     "t1_ms": 14080,
+     "tokens": 41
+    }
+   ],
+   "segments": [
+    {
+     "cut": false,
+     "end_ms": 2887,
+     "i": 0,
+     "role": "tv",
+     "start_ms": 0,
+     "turn": null,
+     "words": [
+      [
+       "w0001",
+       null,
+       null
+      ],
+      [
+       "w0002",
+       null,
+       null
+      ],
+      [
+       "w0003",
+       null,
+       null
+      ],
+      [
+       "w0004",
+       null,
+       null
+      ],
+      [
+       "w0005",
+       null,
+       null
+      ],
+      [
+       "w0006",
+       null,
+       null
+      ],
+      [
+       "w0007",
+       null,
+       null
+      ],
+      [
+       "w0003",
+       null,
+       null
+      ],
+      [
+       "w0008",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "cut": false,
+     "end_ms": 2705,
+     "i": 1,
+     "role": "user",
+     "start_ms": 700,
+     "turn": 1,
+     "words": [
+      [
+       "w0009",
+       700,
+       951
+      ],
+      [
+       "w0010",
+       951,
+       1070
+      ],
+      [
+       "w0011",
+       1070,
+       1221
+      ],
+      [
+       "w0012",
+       1221,
+       1671
+      ],
+      [
+       "w0005",
+       1671,
+       1860
+      ],
+      [
+       "w0006",
+       1860,
+       2210
+      ],
+      [
+       "w0013",
+       2210,
+       2730
+      ]
+     ]
+    },
+    {
+     "cut": false,
+     "end_ms": 3514,
+     "i": 2,
+     "role": "cough",
+     "start_ms": 3005,
+     "turn": null,
+     "words": []
+    },
+    {
+     "cut": false,
+     "end_ms": 7246,
+     "i": 3,
+     "role": "tv",
+     "start_ms": 3237,
+     "turn": null,
+     "words": [
+      [
+       "w0014",
+       null,
+       null
+      ],
+      [
+       "w0015",
+       null,
+       null
+      ],
+      [
+       "w0016",
+       null,
+       null
+      ],
+      [
+       "w0017",
+       null,
+       null
+      ],
+      [
+       "w0018",
+       null,
+       null
+      ],
+      [
+       "w0003",
+       null,
+       null
+      ],
+      [
+       "w0019",
+       null,
+       null
+      ],
+      [
+       "w0020",
+       null,
+       null
+      ],
+      [
+       "w0021",
+       null,
+       null
+      ],
+      [
+       "w0022",
+       null,
+       null
+      ],
+      [
+       "w0023",
+       null,
+       null
+      ],
+      [
+       "w0003",
+       null,
+       null
+      ],
+      [
+       "w0024",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "cut": false,
+     "end_ms": 4478,
+     "i": 4,
+     "role": "user",
+     "start_ms": 3764,
+     "turn": 1,
+     "words": [
+      [
+       "w0025",
+       3764,
+       4063
+      ],
+      [
+       "w0026",
+       4063,
+       4562
+      ]
+     ]
+    },
+    {
+     "cut": false,
+     "end_ms": 10984,
+     "i": 5,
+     "role": "tv",
+     "start_ms": 7596,
+     "turn": null,
+     "words": [
+      [
+       "w0018",
+       null,
+       null
+      ],
+      [
+       "w0027",
+       null,
+       null
+      ],
+      [
+       "w0028",
+       null,
+       null
+      ],
+      [
+       "w0003",
+       null,
+       null
+      ],
+      [
+       "w0029",
+       null,
+       null
+      ],
+      [
+       "w0030",
+       null,
+       null
+      ],
+      [
+       "w0031",
+       null,
+       null
+      ],
+      [
+       "w0032",
+       null,
+       null
+      ],
+      [
+       "w0033",
+       null,
+       null
+      ],
+      [
+       "w0034",
+       null,
+       null
+      ],
+      [
+       "w0018",
+       null,
+       null
+      ],
+      [
+       "w0035",
+       null,
+       null
+      ],
+      [
+       "w0036",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "cut": false,
+     "end_ms": 10450,
+     "i": 6,
+     "role": "user",
+     "start_ms": 8479,
+     "turn": 2,
+     "words": [
+      [
+       "w0037",
+       8479,
+       8927
+      ],
+      [
+       "w0038",
+       9157,
+       9377
+      ],
+      [
+       "w0003",
+       9377,
+       9457
+      ],
+      [
+       "w0039",
+       9457,
+       9817
+      ],
+      [
+       "w0040",
+       9817,
+       10057
+      ],
+      [
+       "w0035",
+       10057,
+       10107
+      ],
+      [
+       "w0041",
+       10107,
+       10487
+      ]
+     ]
+    },
+    {
+     "cut": false,
+     "end_ms": 14222,
+     "i": 7,
+     "role": "tv",
+     "start_ms": 11335,
+     "turn": null,
+     "words": [
+      [
+       "w0001",
+       null,
+       null
+      ],
+      [
+       "w0002",
+       null,
+       null
+      ],
+      [
+       "w0003",
+       null,
+       null
+      ],
+      [
+       "w0004",
+       null,
+       null
+      ],
+      [
+       "w0005",
+       null,
+       null
+      ],
+      [
+       "w0006",
+       null,
+       null
+      ],
+      [
+       "w0007",
+       null,
+       null
+      ],
+      [
+       "w0003",
+       null,
+       null
+      ],
+      [
+       "w0008",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "turns": [
+    {
+     "end_ms": 4478,
+     "kind": "complete",
+     "segments": [
+      1,
+      4
+     ],
+     "start_ms": 700,
+     "turn": 1
+    },
+    {
+     "end_ms": 10450,
+     "kind": "complete",
+     "segments": [
+      6
+     ],
+     "start_ms": 8479,
+     "turn": 2
+    }
+   ],
+   "vad": {
+    "edges": "e1",
+    "off": 0.35,
+    "on": 0.5,
+    "quiet_ms": 200
+   }
+  },
+  "es-cut-off-and-correction": {
+   "description": "a self-correction inside one turn; then the user is cut off mid-sentence by a second person talking over, and restarts with a new turn",
+   "duration_ms": 20920,
+   "measured": {
+    "batch_units": 3,
+    "eot_delay_ms": [
+     759,
+     2819,
+     709
+    ],
+    "exposure": [
+     1,
+     1
+    ],
+    "false_cuts": 0,
+    "runs": {
+     "held": 0,
+     "started": 3,
+     "superseded": 0
+    },
+    "spoke_over_user": 0,
+    "unclosed_turns": 0
+   },
+   "provider_turns": [
+    {
+     "end_arrived_ms": 5067,
+     "eot_prob": 0.769,
+     "seq": 0,
+     "t0_ms": 640,
+     "t1_ms": 4160,
+     "tokens": 13
+    },
+    {
+     "end_arrived_ms": 12627,
+     "eot_prob": 0.7212,
+     "seq": 1,
+     "t0_ms": 7760,
+     "t1_ms": 11760,
+     "tokens": 14
+    },
+    {
+     "end_arrived_ms": 17628,
+     "eot_prob": 0.835,
+     "seq": 2,
+     "t0_ms": 15280,
+     "t1_ms": 16880,
+     "tokens": 5
+    },
+    {
+     "end_arrived_ms": null,
+     "eot_prob": null,
+     "seq": 3,
+     "t0_ms": null,
+     "t1_ms": null,
+     "tokens": 0
+    }
+   ],
+   "segments": [
+    {
+     "cut": false,
+     "end_ms": 2060,
+     "i": 0,
+     "role": "user",
+     "start_ms": 700,
+     "turn": 1,
+     "words": [
+      [
+       "w0001",
+       705,
+       845
+      ],
+      [
+       "w0002",
+       845,
+       1075
+      ],
+      [
+       "w0003",
+       1075,
+       1455
+      ],
+      [
+       "w0004",
+       1455,
+       1495
+      ],
+      [
+       "w0005",
+       1495,
+       1655
+      ],
+      [
+       "w0006",
+       1655,
+       2085
+      ]
+     ]
+    },
+    {
+     "cut": false,
+     "end_ms": 4308,
+     "i": 1,
+     "role": "user",
+     "start_ms": 2510,
+     "turn": 1,
+     "words": [
+      [
+       "w0007",
+       2546,
+       2786
+      ],
+      [
+       "w0008",
+       2786,
+       3326
+      ],
+      [
+       "w0004",
+       3476,
+       3506
+      ],
+      [
+       "w0005",
+       3506,
+       3656
+      ],
+      [
+       "w0009",
+       3656,
+       3876
+      ],
+      [
+       "w0010",
+       3876,
+       3926
+      ],
+      [
+       "w0011",
+       3926,
+       4326
+      ]
+     ]
+    },
+    {
+     "cut": true,
+     "end_ms": 9808,
+     "i": 2,
+     "role": "user",
+     "start_ms": 8308,
+     "turn": 2,
+     "words": [
+      [
+       "w0010",
+       8308,
+       8385
+      ],
+      [
+       "w0012",
+       8385,
+       8745
+      ],
+      [
+       "w0013",
+       8745,
+       8835
+      ],
+      [
+       "w0014",
+       8835,
+       9325
+      ],
+      [
+       "w0004",
+       9325,
+       9405
+      ],
+      [
+       "w0015",
+       9405,
+       9745
+      ],
+      [
+       "w0016",
+       9745,
+       9808
+      ]
+     ]
+    },
+    {
+     "cut": false,
+     "end_ms": 11890,
+     "i": 3,
+     "role": "other",
+     "start_ms": 9558,
+     "turn": null,
+     "words": [
+      [
+       "w0017",
+       9558,
+       9895
+      ],
+      [
+       "w0017",
+       9895,
+       10415
+      ],
+      [
+       "w0018",
+       10485,
+       10695
+      ],
+      [
+       "w0019",
+       10695,
+       10785
+      ],
+      [
+       "w0020",
+       10785,
+       10965
+      ],
+      [
+       "w0021",
+       10965,
+       11355
+      ],
+      [
+       "w0022",
+       11355,
+       11465
+      ],
+      [
+       "w0023",
+       11465,
+       11945
+      ]
+     ]
+    },
+    {
+     "cut": false,
+     "end_ms": 16919,
+     "i": 4,
+     "role": "user",
+     "start_ms": 15391,
+     "turn": 3,
+     "words": [
+      [
+       "w0024",
+       15391,
+       15729
+      ],
+      [
+       "w0025",
+       15949,
+       16039
+      ],
+      [
+       "w0026",
+       16039,
+       16179
+      ],
+      [
+       "w0014",
+       16179,
+       16579
+      ],
+      [
+       "w0027",
+       16579,
+       16939
+      ]
+     ]
+    }
+   ],
+   "turns": [
+    {
+     "end_ms": 4308,
+     "kind": "complete",
+     "segments": [
+      0,
+      1
+     ],
+     "start_ms": 700,
+     "turn": 1
+    },
+    {
+     "end_ms": 9808,
+     "kind": "cut_off",
+     "segments": [
+      2
+     ],
+     "start_ms": 8308,
+     "turn": 2
+    },
+    {
+     "end_ms": 16919,
+     "kind": "complete",
+     "segments": [
+      4
+     ],
+     "start_ms": 15391,
+     "turn": 3
+    }
+   ],
+   "vad": {
+    "edges": "e1",
+    "off": 0.35,
+    "on": 0.5,
+    "quiet_ms": 200
+   }
+  },
+  "es-nvidia-pauses": {
+   "description": "the NVIDIA question in three pieces with 0.9 s and 1.4 s pauses mid-sentence (ONE turn), then a short follow-up turn",
+   "duration_ms": 16668,
+   "measured": {
+    "batch_units": 2,
+    "eot_delay_ms": [
+     467,
+     418
+    ],
+    "exposure": [
+     0,
+     0
+    ],
+    "false_cuts": 0,
+    "runs": {
+     "held": 2,
+     "started": 4,
+     "superseded": 0
+    },
+    "spoke_over_user": 0,
+    "unclosed_turns": 0
+   },
+   "provider_turns": [
+    {
+     "end_arrived_ms": 2846,
+     "eot_prob": 0.7461,
+     "seq": 0,
+     "t0_ms": 640,
+     "t1_ms": 2480,
+     "tokens": 6
+    },
+    {
+     "end_arrived_ms": 6606,
+     "eot_prob": 0.7402,
+     "seq": 1,
+     "t0_ms": 3280,
+     "t1_ms": 6400,
+     "tokens": 6
+    },
+    {
+     "end_arrived_ms": 8366,
+     "eot_prob": 0.7485,
+     "seq": 2,
+     "t0_ms": 6400,
+     "t1_ms": 7840,
+     "tokens": 3
+    },
+    {
+     "end_arrived_ms": 13086,
+     "eot_prob": 0.7432,
+     "seq": 3,
+     "t0_ms": 11840,
+     "t1_ms": 12560,
+     "tokens": 3
+    },
+    {
+     "end_arrived_ms": null,
+     "eot_prob": null,
+     "seq": 4,
+     "t0_ms": null,
+     "t1_ms": null,
+     "tokens": 0
+    }
+   ],
+   "segments": [
+    {
+     "cut": false,
+     "end_ms": 2351,
+     "i": 0,
+     "role": "user",
+     "start_ms": 700,
+     "turn": 1,
+     "words": [
+      [
+       "w0001",
+       733,
+       793
+      ],
+      [
+       "w0002",
+       793,
+       1063
+      ],
+      [
+       "w0003",
+       1063,
+       1343
+      ],
+      [
+       "w0004",
+       1343,
+       1733
+      ],
+      [
+       "w0005",
+       1733,
+       1883
+      ],
+      [
+       "w0006",
+       1883,
+       2413
+      ]
+     ]
+    },
+    {
+     "cut": false,
+     "end_ms": 5562,
+     "i": 1,
+     "role": "user",
+     "start_ms": 3251,
+     "turn": 1,
+     "words": [
+      [
+       "w0007",
+       3252,
+       3442
+      ],
+      [
+       "w0008",
+       3442,
+       3901
+      ],
+      [
+       "w0005",
+       4202,
+       4391
+      ],
+      [
+       "w0009",
+       4391,
+       4741
+      ],
+      [
+       "w0010",
+       4741,
+       5051
+      ],
+      [
+       "w0006",
+       5051,
+       5621
+      ]
+     ]
+    },
+    {
+     "cut": false,
+     "end_ms": 7899,
+     "i": 2,
+     "role": "user",
+     "start_ms": 6963,
+     "turn": 1,
+     "words": [
+      [
+       "w0011",
+       6963,
+       7264
+      ],
+      [
+       "w0012",
+       7264,
+       7574
+      ],
+      [
+       "w0013",
+       7574,
+       7924
+      ]
+     ]
+    },
+    {
+     "cut": false,
+     "end_ms": 12668,
+     "i": 3,
+     "role": "user",
+     "start_ms": 11899,
+     "turn": 2,
+     "words": [
+      [
+       "w0014",
+       11932,
+       11972
+      ],
+      [
+       "w0011",
+       11972,
+       12332
+      ],
+      [
+       "w0015",
+       12332,
+       12762
+      ]
+     ]
+    }
+   ],
+   "turns": [
+    {
+     "end_ms": 7899,
+     "kind": "complete",
+     "segments": [
+      0,
+      1,
+      2
+     ],
+     "start_ms": 700,
+     "turn": 1
+    },
+    {
+     "end_ms": 12668,
+     "kind": "complete",
+     "segments": [
+      3
+     ],
+     "start_ms": 11899,
+     "turn": 2
+    }
+   ],
+   "vad": {
+    "edges": "e1",
+    "off": 0.35,
+    "on": 0.5,
+    "quiet_ms": 200
+   }
+  },
+  "mixed-es-en-switch": {
+   "description": "the user switches from Spanish to English inside one turn after a 0.7 s pause, then a turn in English",
+   "duration_ms": 15880,
+   "measured": {
+    "batch_units": 2,
+    "eot_delay_ms": [
+     1133,
+     827
+    ],
+    "exposure": [
+     0,
+     0
+    ],
+    "false_cuts": 0,
+    "runs": {
+     "held": 1,
+     "started": 3,
+     "superseded": 0
+    },
+    "spoke_over_user": 0,
+    "unclosed_turns": 0
+   },
+   "provider_turns": [
+    {
+     "end_arrived_ms": 3570,
+     "eot_prob": 0.7104,
+     "seq": 0,
+     "t0_ms": 640,
+     "t1_ms": 3040,
+     "tokens": 7
+    },
+    {
+     "end_arrived_ms": 7170,
+     "eot_prob": 0.7231,
+     "seq": 1,
+     "t0_ms": 3360,
+     "t1_ms": 5680,
+     "tokens": 7
+    },
+    {
+     "end_arrived_ms": 12690,
+     "eot_prob": 0.7466,
+     "seq": 2,
+     "t0_ms": 10000,
+     "t1_ms": 11680,
+     "tokens": 5
+    },
+    {
+     "end_arrived_ms": null,
+     "eot_prob": null,
+     "seq": 3,
+     "t0_ms": null,
+     "t1_ms": null,
+     "tokens": 0
+    }
+   ],
+   "segments": [
+    {
+     "cut": false,
+     "end_ms": 3124,
+     "i": 0,
+     "role": "user",
+     "start_ms": 700,
+     "turn": 1,
+     "words": [
+      [
+       "w0001",
+       700,
+       1126
+      ],
+      [
+       "w0002",
+       1126,
+       1186
+      ],
+      [
+       "w0003",
+       1186,
+       1756
+      ],
+      [
+       "w0004",
+       1756,
+       2236
+      ],
+      [
+       "w0005",
+       2236,
+       2436
+      ],
+      [
+       "w0006",
+       2436,
+       2666
+      ],
+      [
+       "w0007",
+       2666,
+       3157
+      ]
+     ]
+    },
+    {
+     "cut": false,
+     "end_ms": 6037,
+     "i": 1,
+     "role": "user",
+     "start_ms": 3824,
+     "turn": 1,
+     "words": [
+      [
+       "w0008",
+       3824,
+       3901
+      ],
+      [
+       "w0009",
+       3901,
+       4261
+      ],
+      [
+       "w0010",
+       4441,
+       4881
+      ],
+      [
+       "w0011",
+       4881,
+       5231
+      ],
+      [
+       "w0012",
+       5231,
+       5331
+      ],
+      [
+       "w0013",
+       5331,
+       5511
+      ],
+      [
+       "w0014",
+       5511,
+       6061
+      ]
+     ]
+    },
+    {
+     "cut": false,
+     "end_ms": 11880,
+     "i": 2,
+     "role": "user",
+     "start_ms": 10037,
+     "turn": 2,
+     "words": [
+      [
+       "w0015",
+       10037,
+       10153
+      ],
+      [
+       "w0016",
+       10153,
+       10363
+      ],
+      [
+       "w0017",
+       10363,
+       10903
+      ],
+      [
+       "w0018",
+       11013,
+       11413
+      ],
+      [
+       "w0019",
+       11413,
+       11863
+      ]
+     ]
+    }
+   ],
+   "turns": [
+    {
+     "end_ms": 6037,
+     "kind": "complete",
+     "segments": [
+      0,
+      1
+     ],
+     "start_ms": 700,
+     "turn": 1
+    },
+    {
+     "end_ms": 11863,
+     "kind": "complete",
+     "segments": [
+      2
+     ],
+     "start_ms": 10037,
+     "turn": 2
+    }
+   ],
+   "vad": {
+    "edges": "e1",
+    "off": 0.35,
+    "on": 0.5,
+    "quiet_ms": 200
+   }
+  }
+ }
+}

@@ -1,0 +1,117 @@
+{"arrived_ms": 768, "edge": "rise", "endpoint": "d1", "sig": "VadEdge", "t_ms": 736}
+{"arrived_ms": 931, "processed_through_ms": 240, "sig": "Watermark", "stream": "d1", "t_ms": 931}
+{"arrived_ms": 1050, "processed_through_ms": 480, "sig": "Watermark", "stream": "d1", "t_ms": 1050}
+{"arrived_ms": 1210, "processed_through_ms": 720, "sig": "Watermark", "stream": "d1", "t_ms": 1210}
+{"arrived_ms": 1370, "final": false, "revision": 1, "seq": 0, "sig": "WordSpan", "stream": "d1", "t_ms": 1370, "window": [0, 960], "words": [["w0020", 720, 960, 0.5459]]}
+{"arrived_ms": 1370, "processed_through_ms": 960, "sig": "Watermark", "stream": "d1", "t_ms": 1370}
+{"arrived_ms": 1570, "final": false, "revision": 2, "seq": 0, "sig": "WordSpan", "stream": "d1", "t_ms": 1570, "window": [0, 1200], "words": [["w0020", 720, 1200, 0.998]]}
+{"arrived_ms": 1570, "processed_through_ms": 1200, "sig": "Watermark", "stream": "d1", "t_ms": 1570}
+{"arrived_ms": 1810, "final": false, "revision": 3, "seq": 0, "sig": "WordSpan", "stream": "d1", "t_ms": 1810, "window": [0, 1440], "words": [["w0001", 720, 1120, 0.9937], ["w0002", 1120, 1440, 1.0]]}
+{"arrived_ms": 1810, "processed_through_ms": 1440, "sig": "Watermark", "stream": "d1", "t_ms": 1810}
+{"arrived_ms": 1970, "final": false, "revision": 4, "seq": 0, "sig": "WordSpan", "stream": "d1", "t_ms": 1970, "window": [0, 1680], "words": [["w0001", 640, 1120, 0.9956], ["w0002", 1120, 1280, 1.0], ["w0021", 1280, 1440, 0.668]]}
+{"arrived_ms": 1970, "processed_through_ms": 1680, "sig": "Watermark", "stream": "d1", "t_ms": 1970}
+{"arrived_ms": 2170, "final": false, "revision": 5, "seq": 0, "sig": "WordSpan", "stream": "d1", "t_ms": 2170, "window": [0, 1920], "words": [["w0001", 640, 1120, 0.9961], ["w0002", 1120, 1200, 1.0], ["w0003", 1200, 1440, 1.0], ["w0022", 1440, 1920, 1.0]]}
+{"arrived_ms": 2170, "processed_through_ms": 1920, "sig": "Watermark", "stream": "d1", "t_ms": 2170}
+{"arrived_ms": 2369, "final": false, "revision": 6, "seq": 0, "sig": "WordSpan", "stream": "d1", "t_ms": 2369, "window": [0, 2160], "words": [["w0001", 640, 1120, 0.9961], ["w0002", 1120, 1200, 1.0], ["w0003", 1200, 1440, 0.9995], ["w0004", 1440, 1920, 1.0]]}
+{"arrived_ms": 2369, "processed_through_ms": 2160, "sig": "Watermark", "stream": "d1", "t_ms": 2369}
+{"arrived_ms": 2609, "final": false, "revision": 7, "seq": 0, "sig": "WordSpan", "stream": "d1", "t_ms": 2609, "window": [0, 2400], "words": [["w0001", 640, 1120, 0.9961], ["w0002", 1120, 1200, 1.0], ["w0003", 1200, 1440, 0.9995], ["w0004", 1440, 1920, 1.0], ["w0005", 2160, 2400, 0.9858]]}
+{"arrived_ms": 2609, "processed_through_ms": 2400, "sig": "Watermark", "stream": "d1", "t_ms": 2609}
+{"arrived_ms": 2850, "final": false, "revision": 8, "seq": 0, "sig": "WordSpan", "stream": "d1", "t_ms": 2850, "window": [0, 2640], "words": [["w0001", 640, 1120, 0.9961], ["w0002", 1120, 1200, 1.0], ["w0003", 1200, 1440, 0.9995], ["w0004", 1440, 1920, 1.0], ["w0005", 2160, 2480, 1.0], ["w0023", 2480, 2640, 0.4785]]}
+{"arrived_ms": 2850, "processed_through_ms": 2640, "sig": "Watermark", "stream": "d1", "t_ms": 2850}
+{"arrived_ms": 3090, "final": false, "revision": 9, "seq": 0, "sig": "WordSpan", "stream": "d1", "t_ms": 3090, "window": [0, 2880], "words": [["w0001", 640, 1120, 0.9961], ["w0002", 1120, 1200, 1.0], ["w0003", 1200, 1440, 0.9995], ["w0004", 1440, 1920, 1.0], ["w0005", 2160, 2480, 1.0], ["w0006", 2480, 2640, 1.0], ["w0007", 2640, 2880, 1.0]]}
+{"arrived_ms": 3090, "processed_through_ms": 2880, "sig": "Watermark", "stream": "d1", "t_ms": 3090}
+{"arrived_ms": 3330, "final": false, "revision": 10, "seq": 0, "sig": "WordSpan", "stream": "d1", "t_ms": 3330, "window": [0, 3120], "words": [["w0001", 640, 1120, 0.9961], ["w0002", 1120, 1200, 1.0], ["w0003", 1200, 1440, 0.9995], ["w0004", 1440, 2000, 1.0], ["w0005", 2160, 2480, 1.0], ["w0006", 2480, 2640, 1.0], ["w0007", 2640, 2960, 1.0]]}
+{"arrived_ms": 3330, "processed_through_ms": 3120, "sig": "Watermark", "stream": "d1", "t_ms": 3330}
+{"arrived_ms": 3360, "edge": "fall", "endpoint": "d1", "sig": "VadEdge", "t_ms": 3136}
+{"arrived_ms": 3490, "final": false, "revision": 11, "seq": 0, "sig": "WordSpan", "stream": "d1", "t_ms": 3490, "window": [0, 3280], "words": [["w0001", 640, 1120, 0.9961], ["w0002", 1120, 1200, 1.0], ["w0003", 1200, 1440, 0.9995], ["w0004", 1440, 2000, 1.0], ["w0005", 2160, 2480, 1.0], ["w0006", 2480, 2640, 1.0], ["w0007", 2640, 3040, 1.0]]}
+{"arrived_ms": 3490, "kind": "eager", "prob": 0.5532, "sig": "EotHint", "source": "flux", "stream": "d1", "t_ms": 3490}
+{"arrived_ms": 3490, "processed_through_ms": 3280, "sig": "Watermark", "stream": "d1", "t_ms": 3490}
+{"arrived_ms": 3570, "final": true, "revision": 12, "seq": 0, "sig": "WordSpan", "stream": "d1", "t_ms": 3570, "window": [0, 3360], "words": [["w0001", 640, 1120, 0.9961], ["w0002", 1120, 1200, 1.0], ["w0003", 1200, 1440, 0.9995], ["w0004", 1440, 2000, 1.0], ["w0005", 2160, 2480, 1.0], ["w0006", 2480, 2640, 1.0], ["w0007", 2640, 3040, 1.0]]}
+{"arrived_ms": 3570, "kind": "end", "prob": 0.7104, "sig": "EotHint", "source": "flux", "stream": "d1", "t_ms": 3570}
+{"arrived_ms": 3570, "processed_through_ms": 3360, "sig": "Watermark", "stream": "d1", "t_ms": 3570}
+{"arrived_ms": 3810, "processed_through_ms": 3600, "sig": "Watermark", "stream": "d1", "t_ms": 3810}
+{"arrived_ms": 3904, "edge": "rise", "endpoint": "d1", "sig": "VadEdge", "t_ms": 3872}
+{"arrived_ms": 4050, "processed_through_ms": 3840, "sig": "Watermark", "stream": "d1", "t_ms": 4050}
+{"arrived_ms": 4290, "processed_through_ms": 4080, "sig": "Watermark", "stream": "d1", "t_ms": 4290}
+{"arrived_ms": 4530, "final": false, "revision": 1, "seq": 1, "sig": "WordSpan", "stream": "d1", "t_ms": 4530, "window": [3360, 4320], "words": [["w0008", 3360, 3680, 1.0], ["w0009", 3680, 4320, 1.0]]}
+{"arrived_ms": 4530, "processed_through_ms": 4320, "sig": "Watermark", "stream": "d1", "t_ms": 4530}
+{"arrived_ms": 4770, "final": false, "revision": 2, "seq": 1, "sig": "WordSpan", "stream": "d1", "t_ms": 4770, "window": [3360, 4560], "words": [["w0008", 3360, 3680, 1.0], ["w0009", 3680, 4240, 1.0]]}
+{"arrived_ms": 4770, "processed_through_ms": 4560, "sig": "Watermark", "stream": "d1", "t_ms": 4770}
+{"arrived_ms": 5010, "final": false, "revision": 3, "seq": 1, "sig": "WordSpan", "stream": "d1", "t_ms": 5010, "window": [3360, 4800], "words": [["w0008", 3360, 3680, 1.0], ["w0009", 3680, 4240, 1.0], ["w0010", 4240, 4800, 0.9995]]}
+{"arrived_ms": 5010, "processed_through_ms": 4800, "sig": "Watermark", "stream": "d1", "t_ms": 5010}
+{"arrived_ms": 5250, "final": false, "revision": 4, "seq": 1, "sig": "WordSpan", "stream": "d1", "t_ms": 5250, "window": [3360, 5040], "words": [["w0008", 3360, 3680, 1.0], ["w0009", 3680, 4160, 1.0], ["w0010", 4160, 4880, 1.0], ["w0024", 4880, 5040, 0.4609]]}
+{"arrived_ms": 5250, "processed_through_ms": 5040, "sig": "Watermark", "stream": "d1", "t_ms": 5250}
+{"arrived_ms": 5492, "final": false, "revision": 5, "seq": 1, "sig": "WordSpan", "stream": "d1", "t_ms": 5492, "window": [3360, 5280], "words": [["w0008", 3360, 3680, 1.0], ["w0009", 3680, 4160, 1.0], ["w0010", 4160, 4800, 1.0], ["w0011", 4800, 5280, 1.0]]}
+{"arrived_ms": 5492, "processed_through_ms": 5280, "sig": "Watermark", "stream": "d1", "t_ms": 5492}
+{"arrived_ms": 5730, "final": false, "revision": 6, "seq": 1, "sig": "WordSpan", "stream": "d1", "t_ms": 5730, "window": [3360, 5520], "words": [["w0008", 3360, 3680, 1.0], ["w0009", 3680, 4160, 1.0], ["w0010", 4160, 4800, 1.0], ["w0011", 4800, 5120, 1.0], ["w0012", 5120, 5360, 1.0], ["w0013", 5360, 5520, 1.0]]}
+{"arrived_ms": 5730, "processed_through_ms": 5520, "sig": "Watermark", "stream": "d1", "t_ms": 5730}
+{"arrived_ms": 5970, "final": false, "revision": 7, "seq": 1, "sig": "WordSpan", "stream": "d1", "t_ms": 5970, "window": [3360, 5760], "words": [["w0008", 3360, 3680, 1.0], ["w0009", 3680, 4080, 1.0], ["w0010", 4080, 4800, 1.0], ["w0011", 4800, 5120, 1.0], ["w0012", 5120, 5360, 1.0], ["w0013", 5360, 5440, 1.0], ["w0014", 5440, 5760, 0.9937]]}
+{"arrived_ms": 5970, "processed_through_ms": 5760, "sig": "Watermark", "stream": "d1", "t_ms": 5970}
+{"arrived_ms": 6210, "final": false, "revision": 8, "seq": 1, "sig": "WordSpan", "stream": "d1", "t_ms": 6210, "window": [3360, 6000], "words": [["w0008", 3360, 3680, 1.0], ["w0009", 3680, 4080, 1.0], ["w0010", 4080, 4800, 1.0], ["w0011", 4800, 5120, 1.0], ["w0012", 5120, 5360, 1.0], ["w0013", 5360, 5440, 1.0], ["w0014", 5440, 5680, 1.0]]}
+{"arrived_ms": 6210, "processed_through_ms": 6000, "sig": "Watermark", "stream": "d1", "t_ms": 6210}
+{"arrived_ms": 6304, "edge": "fall", "endpoint": "d1", "sig": "VadEdge", "t_ms": 6080}
+{"arrived_ms": 6450, "final": false, "revision": 9, "seq": 1, "sig": "WordSpan", "stream": "d1", "t_ms": 6450, "window": [3360, 6240], "words": [["w0008", 3360, 3680, 1.0], ["w0009", 3680, 4080, 1.0], ["w0010", 4080, 4800, 1.0], ["w0011", 4800, 5120, 1.0], ["w0012", 5120, 5360, 1.0], ["w0013", 5360, 5440, 1.0], ["w0014", 5440, 5680, 1.0]]}
+{"arrived_ms": 6450, "processed_through_ms": 6240, "sig": "Watermark", "stream": "d1", "t_ms": 6450}
+{"arrived_ms": 6690, "final": false, "revision": 10, "seq": 1, "sig": "WordSpan", "stream": "d1", "t_ms": 6690, "window": [3360, 6480], "words": [["w0008", 3360, 3680, 1.0], ["w0009", 3680, 4080, 1.0], ["w0010", 4080, 4800, 1.0], ["w0011", 4800, 5120, 1.0], ["w0012", 5120, 5360, 1.0], ["w0013", 5360, 5440, 1.0], ["w0014", 5440, 5680, 1.0]]}
+{"arrived_ms": 6690, "processed_through_ms": 6480, "sig": "Watermark", "stream": "d1", "t_ms": 6690}
+{"arrived_ms": 6850, "final": false, "revision": 11, "seq": 1, "sig": "WordSpan", "stream": "d1", "t_ms": 6850, "window": [3360, 6640], "words": [["w0008", 3360, 3680, 1.0], ["w0009", 3680, 4080, 1.0], ["w0010", 4080, 4800, 1.0], ["w0011", 4800, 5120, 1.0], ["w0012", 5120, 5360, 1.0], ["w0013", 5360, 5440, 1.0], ["w0014", 5440, 5680, 1.0]]}
+{"arrived_ms": 6850, "processed_through_ms": 6640, "sig": "Watermark", "stream": "d1", "t_ms": 6850}
+{"arrived_ms": 6930, "final": false, "revision": 12, "seq": 1, "sig": "WordSpan", "stream": "d1", "t_ms": 6930, "window": [3360, 6720], "words": [["w0008", 3360, 3680, 1.0], ["w0009", 3680, 4080, 1.0], ["w0010", 4080, 4800, 1.0], ["w0011", 4800, 5120, 1.0], ["w0012", 5120, 5360, 1.0], ["w0013", 5360, 5440, 1.0], ["w0014", 5440, 5680, 1.0]]}
+{"arrived_ms": 6930, "kind": "eager", "prob": 0.6343, "sig": "EotHint", "source": "flux", "stream": "d1", "t_ms": 6930}
+{"arrived_ms": 6930, "processed_through_ms": 6720, "sig": "Watermark", "stream": "d1", "t_ms": 6930}
+{"arrived_ms": 7170, "final": true, "revision": 13, "seq": 1, "sig": "WordSpan", "stream": "d1", "t_ms": 7170, "window": [3360, 6960], "words": [["w0008", 3360, 3680, 1.0], ["w0009", 3680, 4080, 1.0], ["w0010", 4080, 4800, 1.0], ["w0011", 4800, 5120, 1.0], ["w0012", 5120, 5360, 1.0], ["w0013", 5360, 5440, 1.0], ["w0014", 5440, 5680, 1.0]]}
+{"arrived_ms": 7170, "kind": "end", "prob": 0.7231, "sig": "EotHint", "source": "flux", "stream": "d1", "t_ms": 7170}
+{"arrived_ms": 7170, "processed_through_ms": 6960, "sig": "Watermark", "stream": "d1", "t_ms": 7170}
+{"arrived_ms": 7410, "processed_through_ms": 7200, "sig": "Watermark", "stream": "d1", "t_ms": 7410}
+{"arrived_ms": 7649, "processed_through_ms": 7440, "sig": "Watermark", "stream": "d1", "t_ms": 7649}
+{"arrived_ms": 7890, "processed_through_ms": 7680, "sig": "Watermark", "stream": "d1", "t_ms": 7890}
+{"arrived_ms": 8130, "processed_through_ms": 7920, "sig": "Watermark", "stream": "d1", "t_ms": 8130}
+{"arrived_ms": 8370, "processed_through_ms": 8160, "sig": "Watermark", "stream": "d1", "t_ms": 8370}
+{"arrived_ms": 8610, "processed_through_ms": 8400, "sig": "Watermark", "stream": "d1", "t_ms": 8610}
+{"arrived_ms": 8850, "processed_through_ms": 8640, "sig": "Watermark", "stream": "d1", "t_ms": 8850}
+{"arrived_ms": 9090, "processed_through_ms": 8880, "sig": "Watermark", "stream": "d1", "t_ms": 9090}
+{"arrived_ms": 9330, "processed_through_ms": 9120, "sig": "Watermark", "stream": "d1", "t_ms": 9330}
+{"arrived_ms": 9570, "processed_through_ms": 9360, "sig": "Watermark", "stream": "d1", "t_ms": 9570}
+{"arrived_ms": 9810, "processed_through_ms": 9600, "sig": "Watermark", "stream": "d1", "t_ms": 9810}
+{"arrived_ms": 10050, "processed_through_ms": 9840, "sig": "Watermark", "stream": "d1", "t_ms": 10050}
+{"arrived_ms": 10144, "edge": "rise", "endpoint": "d1", "sig": "VadEdge", "t_ms": 10112}
+{"arrived_ms": 10290, "processed_through_ms": 10080, "sig": "Watermark", "stream": "d1", "t_ms": 10290}
+{"arrived_ms": 10530, "final": false, "revision": 1, "seq": 2, "sig": "WordSpan", "stream": "d1", "t_ms": 10530, "window": [6960, 10320], "words": [["w0015", 10000, 10320, 0.9995]]}
+{"arrived_ms": 10530, "processed_through_ms": 10320, "sig": "Watermark", "stream": "d1", "t_ms": 10530}
+{"arrived_ms": 10770, "final": false, "revision": 2, "seq": 2, "sig": "WordSpan", "stream": "d1", "t_ms": 10770, "window": [6960, 10560], "words": [["w0015", 10000, 10080, 1.0], ["w0016", 10080, 10320, 1.0], ["w0025", 10320, 10560, 0.4768]]}
+{"arrived_ms": 10770, "processed_through_ms": 10560, "sig": "Watermark", "stream": "d1", "t_ms": 10770}
+{"arrived_ms": 11010, "final": false, "revision": 3, "seq": 2, "sig": "WordSpan", "stream": "d1", "t_ms": 11010, "window": [6960, 10800], "words": [["w0015", 10000, 10080, 0.9995], ["w0016", 10080, 10320, 1.0], ["w0017", 10320, 10400, 1.0]]}
+{"arrived_ms": 11010, "processed_through_ms": 10800, "sig": "Watermark", "stream": "d1", "t_ms": 11010}
+{"arrived_ms": 11250, "final": false, "revision": 4, "seq": 2, "sig": "WordSpan", "stream": "d1", "t_ms": 11250, "window": [6960, 11040], "words": [["w0015", 10000, 10080, 1.0], ["w0016", 10080, 10320, 1.0], ["w0017", 10320, 10720, 1.0]]}
+{"arrived_ms": 11250, "processed_through_ms": 11040, "sig": "Watermark", "stream": "d1", "t_ms": 11250}
+{"arrived_ms": 11490, "final": false, "revision": 5, "seq": 2, "sig": "WordSpan", "stream": "d1", "t_ms": 11490, "window": [6960, 11280], "words": [["w0015", 10000, 10080, 1.0], ["w0016", 10080, 10320, 1.0], ["w0017", 10320, 10720, 1.0], ["w0026", 10720, 11280, 0.9995]]}
+{"arrived_ms": 11490, "processed_through_ms": 11280, "sig": "Watermark", "stream": "d1", "t_ms": 11490}
+{"arrived_ms": 11730, "final": false, "revision": 6, "seq": 2, "sig": "WordSpan", "stream": "d1", "t_ms": 11730, "window": [6960, 11520], "words": [["w0015", 10000, 10080, 1.0], ["w0016", 10080, 10320, 1.0], ["w0017", 10320, 10720, 1.0], ["w0018", 10720, 11520, 1.0]]}
+{"arrived_ms": 11730, "processed_through_ms": 11520, "sig": "Watermark", "stream": "d1", "t_ms": 11730}
+{"arrived_ms": 11970, "final": false, "revision": 7, "seq": 2, "sig": "WordSpan", "stream": "d1", "t_ms": 11970, "window": [6960, 11760], "words": [["w0015", 10000, 10080, 1.0], ["w0016", 10080, 10320, 1.0], ["w0017", 10320, 10720, 1.0], ["w0018", 10720, 11200, 1.0], ["w0019", 11440, 11520, 1.0]]}
+{"arrived_ms": 11970, "processed_through_ms": 11760, "sig": "Watermark", "stream": "d1", "t_ms": 11970}
+{"arrived_ms": 12128, "edge": "fall", "endpoint": "d1", "sig": "VadEdge", "t_ms": 11904}
+{"arrived_ms": 12210, "final": false, "revision": 8, "seq": 2, "sig": "WordSpan", "stream": "d1", "t_ms": 12210, "window": [6960, 12000], "words": [["w0015", 10000, 10080, 1.0], ["w0016", 10080, 10320, 1.0], ["w0017", 10320, 10720, 1.0], ["w0018", 10720, 11200, 1.0], ["w0019", 11440, 11680, 1.0]]}
+{"arrived_ms": 12210, "processed_through_ms": 12000, "sig": "Watermark", "stream": "d1", "t_ms": 12210}
+{"arrived_ms": 12370, "final": false, "revision": 9, "seq": 2, "sig": "WordSpan", "stream": "d1", "t_ms": 12370, "window": [6960, 12160], "words": [["w0015", 10000, 10080, 1.0], ["w0016", 10080, 10320, 1.0], ["w0017", 10320, 10720, 1.0], ["w0018", 10720, 11200, 1.0], ["w0019", 11440, 11680, 1.0]]}
+{"arrived_ms": 12370, "kind": "eager", "prob": 0.5288, "sig": "EotHint", "source": "flux", "stream": "d1", "t_ms": 12370}
+{"arrived_ms": 12370, "processed_through_ms": 12160, "sig": "Watermark", "stream": "d1", "t_ms": 12370}
+{"arrived_ms": 12450, "final": false, "revision": 10, "seq": 2, "sig": "WordSpan", "stream": "d1", "t_ms": 12450, "window": [6960, 12240], "words": [["w0015", 10000, 10080, 1.0], ["w0016", 10080, 10320, 1.0], ["w0017", 10320, 10720, 1.0], ["w0018", 10720, 11200, 1.0], ["w0019", 11440, 11680, 1.0]]}
+{"arrived_ms": 12450, "processed_through_ms": 12240, "sig": "Watermark", "stream": "d1", "t_ms": 12450}
+{"arrived_ms": 12690, "final": true, "revision": 11, "seq": 2, "sig": "WordSpan", "stream": "d1", "t_ms": 12690, "window": [6960, 12480], "words": [["w0015", 10000, 10080, 1.0], ["w0016", 10080, 10320, 1.0], ["w0017", 10320, 10720, 1.0], ["w0018", 10720, 11200, 1.0], ["w0019", 11440, 11680, 1.0]]}
+{"arrived_ms": 12690, "kind": "end", "prob": 0.7466, "sig": "EotHint", "source": "flux", "stream": "d1", "t_ms": 12690}
+{"arrived_ms": 12690, "processed_through_ms": 12480, "sig": "Watermark", "stream": "d1", "t_ms": 12690}
+{"arrived_ms": 12930, "processed_through_ms": 12720, "sig": "Watermark", "stream": "d1", "t_ms": 12930}
+{"arrived_ms": 13171, "processed_through_ms": 12960, "sig": "Watermark", "stream": "d1", "t_ms": 13171}
+{"arrived_ms": 13410, "processed_through_ms": 13200, "sig": "Watermark", "stream": "d1", "t_ms": 13410}
+{"arrived_ms": 13650, "processed_through_ms": 13440, "sig": "Watermark", "stream": "d1", "t_ms": 13650}
+{"arrived_ms": 13890, "processed_through_ms": 13680, "sig": "Watermark", "stream": "d1", "t_ms": 13890}
+{"arrived_ms": 14132, "processed_through_ms": 13920, "sig": "Watermark", "stream": "d1", "t_ms": 14132}
+{"arrived_ms": 14370, "processed_through_ms": 14160, "sig": "Watermark", "stream": "d1", "t_ms": 14370}
+{"arrived_ms": 14610, "processed_through_ms": 14400, "sig": "Watermark", "stream": "d1", "t_ms": 14610}
+{"arrived_ms": 14850, "processed_through_ms": 14640, "sig": "Watermark", "stream": "d1", "t_ms": 14850}
+{"arrived_ms": 15090, "processed_through_ms": 14880, "sig": "Watermark", "stream": "d1", "t_ms": 15090}
+{"arrived_ms": 15330, "processed_through_ms": 15120, "sig": "Watermark", "stream": "d1", "t_ms": 15330}
+{"arrived_ms": 15570, "processed_through_ms": 15360, "sig": "Watermark", "stream": "d1", "t_ms": 15570}
+{"arrived_ms": 15811, "processed_through_ms": 15600, "sig": "Watermark", "stream": "d1", "t_ms": 15811}
+{"arrived_ms": 16050, "processed_through_ms": 15840, "sig": "Watermark", "stream": "d1", "t_ms": 16050}

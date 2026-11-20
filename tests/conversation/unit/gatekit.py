@@ -15,7 +15,7 @@ from conversation.types import Channel, ControlOp, EffectClass, EnvelopeKind, Id
 
 ACCT = "acct-test"
 SPECS = {
-    "search": ToolSpec("search", core=True),
+    "search": ToolSpec("search", effect_class=EffectClass.READ, core=True),
     "agenda_add": ToolSpec("agenda_add", act="a1.add", effect_class=EffectClass.WRITE),
     "send_message": ToolSpec("send_message", act="a2.send", effect_class=EffectClass.LEAVES),
 }

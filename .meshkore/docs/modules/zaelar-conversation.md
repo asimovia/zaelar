@@ -17,7 +17,7 @@ stdlib only, no regex, no word tables (the person's words are never read by code
 
 | Piece | Path | What it owns |
 |---|---|---|
-| Ear | `ear/` | Speech signals → interventions. An intervention CLOSES only on the provider's end of turn + full coverage + the watermark past the voice's fall, or at a cap; an eager hint never closes it. It reopens (a new revision) only within `reopen_window_ms` of the close and never once sealed or once its request is final. A stream that stops beating is `incomplete`, never actionable. |
+| Ear | `ear/` | Speech signals → interventions. An intervention CLOSES only on the provider's end of turn + full coverage + the watermark past the voice's fall, or at a cap; an eager hint never closes it. Once ended it never changes: voice that follows is another intervention that amends it. If the voice is still up when the provider ends (another voice in the pause, a background), it closes on its coverage and the next one is born there; one born that way that falls at once with no word is discarded. A stream that stops beating is `incomplete`, and so is one longer than `intervention_max_ms` (`too_long`). The ear does not tell speakers apart. |
 | Inbox | `inbox/` | The person's entries — a voice utterance (whole, or incomplete with what was heard), a text, a control — accepted durably and deduplicated by producer id, ordered by onset across devices and channels, collected into batches; every one ends accounted (told · silent · expired · applied · failed). What the engine owes the person is not an entry: it is a line in its own ledger (`Owed`), said as it is, by voice, when the manager is free. |
 | Ledger | `ledger/` | Two items with ONE transition table: the person's request, and the reservation of an effect. The host's tasks, questions, what it owes and its mandates have their own rows and writers: referred to by id, never copied. |
 | Composer | `composer/` | A pure function from the store to the prompt: a cacheable prefix, the state, the last turns (cut to what was heard), the input. |
@@ -42,7 +42,7 @@ I9 every request closes exactly once, within its liveness.
 
 ## How it is tested
 
-Domain 13 of `tests/run_testmap.py`: one node per contract (13.1–13.33), each seen red with its mechanism disarmed.
+Domain 13 of `tests/run_testmap.py`: one node per contract (13.1–13.34), each seen red with its mechanism disarmed.
 The three wide checks: **P3** (13.22, 2,000 seeded random conversations in the gate; 13.26, 100,000 on request) judges
 I1–I9 on what each case left, with crashes, hangs, lost acks, forged producers and races thrown in; **P2** (13.20)
 replays recorded sessions as tokens and scores the boundaries whose evidence is firm; **P8** (13.23) kills the process

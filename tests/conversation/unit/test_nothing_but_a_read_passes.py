@@ -92,3 +92,19 @@ def test_with_the_tasks_port_a_button_cancels_its_task_and_a_stop_never_does(sto
     h.conv.give(control(ControlOp.CANCEL_TASK, 0, "k2", endpoint="d1", gesture=True, task="t7"))
     assert tasks.cancelled == ["t7"]
     assert sorted(outcomes(store.snapshot("acct-test")).values()) == ["applied", "applied"]
+
+
+def test_a_tool_with_no_declared_class_never_reaches_the_tools(store):
+    """Review TA-3: the one door out is never open by default — a tool whose class the host did not derive (an act
+    and no class) is refused as undeclared, and neither the gateway nor `dispatch.read` lets it through."""
+    h = Harness(store)
+    h.tools.specs = [*h.tools.specs, ToolSpec("w_send", act="a2.send")]
+    h.model.script["iv_000001"] = [[ToolCall("c1", "w_send", {"to": "c1"}), Done()], [reply("w9"), Done()]]
+    h.utter([(["w1"], 0)])
+    assert not h.tools.calls
+    result = h.model.calls[-1].prompt.steps[-1][1]
+    assert result.status == "refused" and result.data["reason"] == "undeclared"
+    k = Kit(store, h.clock, h.tel, owner="k2")
+    k.gw.specs = lambda: {"w_send": ToolSpec("w_send", act="a2.send")}
+    out = asyncio.run(dispatch.read(k.gw, RecordingTools(), ToolCall("c", "w_send", {}), 10 ** 9))
+    assert out.status == "refused"

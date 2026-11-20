@@ -90,11 +90,26 @@ def test_the_sentence_reaches_the_model_whole_in_one_prompt_both_ways(name, reco
 
 @pytest.mark.parametrize("name", SESSIONS)
 def test_a_closed_intervention_reaches_the_prompt_within_a_second(name):
+    """Within a second of its close — unless a voice was already open on its device when it closed (the voice still
+    up: its successor, v3.1 §1.6 bis E2), and then within the hold's bound. These recordings carry the old pipeline's
+    VAD, whose falls come late or never: what the bound costs them is what E1's short tail removes live."""
     rep, _sig = _replay(name)
-    closed = [p["t_ms"] for k, lab, p in rep.tel.events if k == "conv_ear" and lab == "closed"]
-    prompts = sorted(p["t_ms"] for k, lab, p in rep.tel.events if k == "conv_run" and lab == "prompt")
-    late = [t for t in closed if not any(t <= p <= t + 1000 for p in prompts)]
+    ev = rep.tel.events
+    closed = [(p["t_ms"], p["refs"].get("endpoint")) for k, lab, p in ev if k == "conv_ear" and lab == "closed"]
+    opened = [(p["t_ms"], p["refs"].get("endpoint")) for k, lab, p in ev if k == "conv_ear" and lab == "opened"]
+    prompts = sorted(p["t_ms"] for k, lab, p in ev if k == "conv_run" and lab == "prompt")
+    bound = rep.config.resume_hold_max_ms + 1000
+
+    def reached(t, within):
+        return any(t <= p <= t + within for p in prompts)
+
+    held = {(t, ep) for t, ep in closed if (t, ep) in set(opened)}       # a voice open there as it closed
+    stopped = {p["t_ms"] for k, lab, p in ev if k == "conv_inbox" and lab == "accounted" and p.get("reason") == "stopped"}
+    late = [t for t, ep in closed if (t, ep) not in held and not reached(t, 1000)]
+    unbounded = [t for t, ep in closed if not reached(t, bound)          # a stop pressed while it waited cancels it
+                 and not any(t <= s <= t + bound for s in stopped)]
     assert closed and not late, f"{len(late)} of {len(closed)} closes waited more than 1 s for the model"
+    assert not unbounded, f"{len(unbounded)} closes waited past the hold's bound"
 
 
 @pytest.mark.parametrize("name", SESSIONS)

@@ -165,14 +165,15 @@ def test_a_model_that_stays_down_still_tells_the_person_and_the_line_is_owed_not
         assert not h2.mouth.orders and h2.owed.rows["conv:failed:r_iv_000001"]["state"] == "owed"
 
 
-def test_minor1_keep_time_sweeps_on_its_own_timer(store):
-    """`keep_time` is the sweep beside the loop: with nothing else running, a request past its liveness is closed
-    `stalled` by it alone (and the fake clock's sleep yields, so the timer never starves the loop)."""
+def test_minor1_keep_time_sweeps_on_its_own_timer_and_a_hung_run_cannot_stop_it(store):
+    """`keep_time` is the sweep beside the loop: a run it started that hangs does not stop it — the request past its
+    liveness is closed `stalled` by the timer alone (and the fake clock's sleep yields, so it never starves the loop)."""
     import asyncio as aio
     from tests.conversation.unit.convkit import Harness
-    h = Harness(store)
+    h = Harness(store, config=Config(model_first_ms=10 ** 9))
     h.live = False
-    h.utter([(["w1"], 0)])                                    # accepted, never run: its request is open
+    h.model.script["iv_000001"] = [[aio.sleep(10 ** 6), reply("w9"), Done()]]     # a provider that never answers
+    h.utter([(["w1"], 0)])                                    # accepted, never pumped: keep_time starts its run
 
     async def tick_for_a_while():
         task = aio.ensure_future(h.conv.keep_time(every_ms=1000))
@@ -186,4 +187,25 @@ def test_minor1_keep_time_sweeps_on_its_own_timer(store):
         return h.clock.mono
 
     assert aio.run(tick_for_a_while()) >= 40_000
-    assert [lab for lab, _ in h.closes()] == ["stalled"]
+    assert [lab for lab, _ in h.closes()] == ["stalled"] and h.model.calls
+
+
+def test_keep_time_pumps_what_became_ready_with_nobody_speaking(store):
+    """A line owed that arrives with the manager free is said on the timer, not at the next entry (review TA-4)."""
+    import asyncio as aio
+    from tests.conversation.unit.convkit import Harness
+    h = Harness(store)
+    h.owed.add("n1", "w5")
+
+    async def a_few_ticks():
+        task = aio.ensure_future(h.conv.keep_time(every_ms=250))
+        for _ in range(20):
+            await aio.sleep(0)
+        task.cancel()
+        try:
+            await task
+        except aio.CancelledError:
+            pass
+
+    aio.run(a_few_ticks())
+    assert [o.notice_key for o in h.mouth.orders] == ["n1"]

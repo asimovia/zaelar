@@ -32,6 +32,7 @@ from conversation.types import Channel, ControlOp, EnvelopeKind
 
 ACCOUNT = "replay"
 BEAT_MS = 240
+KEEP_TIME_MS = 250          # the live loop's own timer (`Conversation.keep_time`)
 
 
 def load(lines) -> list[dict]:
@@ -81,7 +82,7 @@ class Replay:
 
     def __post_init__(self) -> None:
         self.queue = with_beats(self.signals)
-        self.i = 0
+        self.i, self._pumped = 0, -1 << 62
         start = _time(self.queue[0]) if self.queue else 0
         self.clock = FakeClock(t0_ms=start)
         self.tel, self.tools, self.mouth = ListTelemetry(), RecordingTools(), AckingMouth()
@@ -127,15 +128,19 @@ class Replay:
         while self.i < len(self.queue) and _time(self.queue[self.i]) <= t_ms:
             self._feed(self.queue[self.i])
             self.i += 1
-            if self.conv.current is None and self.conv.dirty:
+            now = self.clock.now_ms()
+            if self.conv.current is None and (self.conv.dirty or now - self._pumped >= KEEP_TIME_MS):
+                self._pumped = now                # as the live loop: on what was accepted, and on its keep_time
                 self.loop.run_until_complete(self.conv.pump())
         self.clock.mono = max(self.clock.mono, t_ms - self.clock.wall0)
 
     def run(self) -> "Replay":
         while self.i < len(self.queue):
             self.until(_time(self.queue[self.i]))
-        for _ in range(3):                         # the end: time runs out, whatever is ready runs
-            self.clock.advance(max(self.config.liveness_ms, self.config.cross_channel_hold_ms) + 1)
+        cfg = self.config                          # the end: time runs out on the live timer, whatever is ready runs
+        span = max(cfg.liveness_ms, cfg.cross_channel_hold_ms, cfg.intervention_max_ms, cfg.close_cap_ms) + 1
+        for _ in range(3 * (span // 1000 + 1)):
+            self.clock.advance(1000)
             self.conv.hear(S.Tick(self.clock.now_ms()))
             self.loop.run_until_complete(self.conv.pump())
         self.loop.close()
