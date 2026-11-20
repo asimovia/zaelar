@@ -1,0 +1,1010 @@
+[
+ {
+  "id": "U27-en-001",
+  "class": "U27",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "WhatsApp Rowan: \"Running 15 minutes late, start without me.\"",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "WhatsApp message to Rowan",
+    "act_refused": true
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "did you send it?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "status of message to Rowan",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U27-en-002",
+  "class": "U27",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Hey, send an email to Inworld saying, thanks for the quote, we'll go ahead with the second option.",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "email to Inworld",
+    "act_refused": true
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Wait, did that go out?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "status of email to Inworld",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U27-en-003",
+  "class": "U27",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "telegram rowan",
+      "after_ms": 0
+     },
+     {
+      "text": "\"did you see the Arsenal game last night?? unreal\"",
+      "after_ms": 2500
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "Telegram message to Rowan",
+    "act_refused": true
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "so is it sent or not",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "status of Telegram message",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U27-en-004",
+  "class": "U27",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Please message Inworld on WhatsApp.",
+      "after_ms": 0
+     },
+     {
+      "text": "Say: the invoice was paid this morning, please confirm receipt.",
+      "after_ms": 1800
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "WhatsApp message to Inworld",
+    "act_refused": true
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Did you send it?",
+      "after_ms": 7000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "status of WhatsApp message",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "ok I'll do it myself",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U27-en-005",
+  "class": "U27",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Can you email Rowan the following: Hi Rowan, attaching the slides for Monday. Let me know if anything needs changing. Best, R.",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "email to Rowan",
+    "act_refused": true
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "has it been delivered?",
+      "after_ms": 8000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "delivery of email to Rowan",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U27-en-006",
+  "class": "U27",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Text Rowan on Telegram, happy birthday buddy, drinks are on me this weekend.",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "Telegram birthday message to Rowan",
+    "act_refused": true
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Okay so he got it, right?",
+      "after_ms": 3500
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "status of birthday message",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U27-en-007",
+  "class": "U27",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "send inworld a whatsapp",
+      "after_ms": 0
+     },
+     {
+      "text": "\"Flight lands at 6:40pm, can someone pick me up at the airport?\"",
+      "after_ms": 2000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "WhatsApp message to Inworld",
+    "act_refused": true
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "did it go through",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "status of message to Inworld",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "just send it anyway please",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "retry send to Inworld",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U27-en-008",
+  "class": "U27",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "I need you to email Inworld. Subject: contract renewal. Body: we would like to renew for twelve months at the current rate.",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "contract email to Inworld",
+    "act_refused": true
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Has that been sent yet?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "status of contract email",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U27-en-009",
+  "class": "U27",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Tell Rowan on WhatsApp: \"Tesla stock is down again, call me when you can.\"",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "WhatsApp message to Rowan",
+    "act_refused": true
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "did u send",
+      "after_ms": 3000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "status of message to Rowan",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U27-en-010",
+  "class": "U27",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Please send a Telegram to Inworld:",
+      "after_ms": 0
+     },
+     {
+      "text": "\"Meeting moved to Thursday at 10, same room.\"",
+      "after_ms": 1500
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "Telegram message to Inworld",
+    "act_refused": true
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Is it sent? I want to be sure before I leave.",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "status of Telegram message",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U27-en-011",
+  "class": "U27",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Message Rowan on WhatsApp, um, tell him I'm stuck in traffic on the way to Heathrow, and to hold the table.",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "WhatsApp message to Rowan",
+    "act_refused": true
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Did you actually send that?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "status of message to Rowan",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U27-en-012",
+  "class": "U27",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Email Rowan: Hey, can you review the budget draft by Friday? Thanks.",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "email to Rowan",
+    "act_refused": true
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "and did it go out?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "status of email to Rowan",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "thanks, never mind then",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U27-en-013",
+  "class": "U27",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "whatsapp inworld",
+      "after_ms": 0
+     },
+     {
+      "text": "\"Payment of 2,400 euros sent, the reference is 88213.\"",
+      "after_ms": 2200
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "WhatsApp message to Inworld",
+    "act_refused": true
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "sent?",
+      "after_ms": 3000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "status of message to Inworld",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U27-en-014",
+  "class": "U27",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Could you send Rowan a Telegram message that says, the Lakers game is on at nine, are you coming over?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "Telegram message to Rowan",
+    "act_refused": true
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "So, did you send it or not?",
+      "after_ms": 4500
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "status of Telegram message",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U27-en-015",
+  "class": "U27",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Write to Inworld by email, exact text: \"Dear team, please find our signed agreement attached. Kind regards.\"",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "email to Inworld",
+    "act_refused": true
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Did the email get sent?",
+      "after_ms": 7000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "status of email to Inworld",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U27-en-016",
+  "class": "U27",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "WhatsApp Rowan.",
+      "after_ms": 0
+     },
+     {
+      "text": "Say, I booked the train for Saturday, leaving at eight.",
+      "after_ms": 1500
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "WhatsApp message to Rowan",
+    "act_refused": true
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "did you send it",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "status of message to Rowan",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "ok then send it now",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "retry send to Rowan",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U27-en-017",
+  "class": "U27",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Hi, could you please Telegram Inworld the following message: \"Gold is above 4,000 again, shall we revisit the hedge discussion tomorrow?\"",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "Telegram message to Inworld",
+    "act_refused": true
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Has it been sent?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "status of Telegram message",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U27-en-018",
+  "class": "U27",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "email rowan",
+      "after_ms": 0
+     },
+     {
+      "text": "subject: lunch",
+      "after_ms": 1200
+     },
+     {
+      "text": "body: Tuesday at 1 works for me, usual place?",
+      "after_ms": 2000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "email to Rowan",
+    "act_refused": true
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "did it send?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "status of email to Rowan",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U27-en-019",
+  "class": "U27",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Send Inworld a WhatsApp saying, sorry for the late reply, I'll get back to you with the numbers by end of day.",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "WhatsApp message to Inworld",
+    "act_refused": true
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Did you send it?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "status of message to Inworld",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U27-en-020",
+  "class": "U27",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Message Rowan on Telegram please: \"The weather in Chicago looks awful tomorrow, let's move the call to Zoom.\"",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "Telegram message to Rowan",
+    "act_refused": true
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Did you send that to him?",
+      "after_ms": 5500
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "status of Telegram message",
+    "act_refused": false
+   }
+  ]
+ }
+]

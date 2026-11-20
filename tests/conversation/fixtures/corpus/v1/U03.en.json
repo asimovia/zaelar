@@ -1,0 +1,867 @@
+[
+ {
+  "id": "U03-en-001",
+  "class": "U03",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "hey what's the weather",
+      "after_ms": 0
+     },
+     {
+      "text": "in Chicago",
+      "after_ms": 900
+     },
+     {
+      "text": "this weekend? like",
+      "after_ms": 1400
+     },
+     {
+      "text": "do I need a real coat",
+      "after_ms": 1100
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda",
+     "contacts"
+    ],
+    "entity": "Chicago weekend weather",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-en-002",
+  "class": "U03",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "What's Tesla",
+      "after_ms": 0
+     },
+     {
+      "text": "trading at",
+      "after_ms": 1200
+     },
+     {
+      "text": "right now?",
+      "after_ms": 800
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory",
+     "contacts"
+    ],
+    "entity": "Tesla share price",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-en-003",
+  "class": "U03",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "when is my",
+      "after_ms": 0
+     },
+     {
+      "text": "dentist appt",
+      "after_ms": 700
+     },
+     {
+      "text": "next week again?",
+      "after_ms": 1500
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "dentist appointment",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-en-004",
+  "class": "U03",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Send Rowan",
+      "after_ms": 0
+     },
+     {
+      "text": "a message please",
+      "after_ms": 1000
+     },
+     {
+      "text": "saying I'm running",
+      "after_ms": 1300
+     },
+     {
+      "text": "about ten minutes late",
+      "after_ms": 900
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "Rowan",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U03-en-005",
+  "class": "U03",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "did the Lakers",
+      "after_ms": 0
+     },
+     {
+      "text": "win last night",
+      "after_ms": 1100
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Lakers last game",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "and what about",
+      "after_ms": 4500
+     },
+     {
+      "text": "the Celtics?",
+      "after_ms": 1000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Celtics last game",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-en-006",
+  "class": "U03",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "what's on",
+      "after_ms": 0
+     },
+     {
+      "text": "my calendar",
+      "after_ms": 900
+     },
+     {
+      "text": "for Friday",
+      "after_ms": 1200
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Friday calendar",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "sorry",
+      "after_ms": 5000
+     },
+     {
+      "text": "I meant Thursday,",
+      "after_ms": 800
+     },
+     {
+      "text": "not Friday",
+      "after_ms": 1000
+     }
+    ],
+    "amends": 1,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Thursday calendar",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-en-007",
+  "class": "U03",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Can you give me",
+      "after_ms": 0
+     },
+     {
+      "text": "the phone number",
+      "after_ms": 1300
+     },
+     {
+      "text": "for Inworld",
+      "after_ms": 1000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Inworld phone number",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-en-008",
+  "class": "U03",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "what did I tell you",
+      "after_ms": 0
+     },
+     {
+      "text": "about the gift",
+      "after_ms": 1400
+     },
+     {
+      "text": "idea for my sister's",
+      "after_ms": 1100
+     },
+     {
+      "text": "birthday",
+      "after_ms": 700
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search",
+     "contacts"
+    ],
+    "entity": "sister's birthday gift",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-en-009",
+  "class": "U03",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Do you",
+      "after_ms": 0
+     },
+     {
+      "text": "actually remember things",
+      "after_ms": 1500
+     },
+     {
+      "text": "from one conversation",
+      "after_ms": 1000
+     },
+     {
+      "text": "to the next?",
+      "after_ms": 900
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "assistant memory ability",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-en-010",
+  "class": "U03",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "close the",
+      "after_ms": 0
+     },
+     {
+      "text": "browser tab",
+      "after_ms": 900
+     },
+     {
+      "text": "with the flight",
+      "after_ms": 1200
+     },
+     {
+      "text": "results on it",
+      "after_ms": 800
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "flight results tab",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U03-en-011",
+  "class": "U03",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "How much is gold",
+      "after_ms": 0
+     },
+     {
+      "text": "per ounce",
+      "after_ms": 1100
+     },
+     {
+      "text": "today",
+      "after_ms": 1700
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "gold price",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-en-012",
+  "class": "U03",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "euro",
+      "after_ms": 0
+     },
+     {
+      "text": "to dollar",
+      "after_ms": 600
+     },
+     {
+      "text": "rate rn?",
+      "after_ms": 900
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "contacts"
+    ],
+    "entity": "EUR/USD exchange rate",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-en-013",
+  "class": "U03",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "am I free",
+      "after_ms": 0
+     },
+     {
+      "text": "Tuesday afternoon",
+      "after_ms": 1000
+     },
+     {
+      "text": "around 3 o'clock?",
+      "after_ms": 1300
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Tuesday 3pm availability",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-en-014",
+  "class": "U03",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "what was the",
+      "after_ms": 0
+     },
+     {
+      "text": "Arsenal score",
+      "after_ms": 1000
+     },
+     {
+      "text": "in their last match",
+      "after_ms": 1200
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Arsenal last match",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "ok",
+      "after_ms": 6000
+     },
+     {
+      "text": "thanks",
+      "after_ms": 900
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "memory",
+     "messaging",
+     "screen"
+    ],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-en-015",
+  "class": "U03",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Any news",
+      "after_ms": 0
+     },
+     {
+      "text": "on the Federal Reserve's",
+      "after_ms": 1400
+     },
+     {
+      "text": "latest",
+      "after_ms": 900
+     },
+     {
+      "text": "interest rate decision?",
+      "after_ms": 1100
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Federal Reserve rate decision",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-en-016",
+  "class": "U03",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "what's Rowan's",
+      "after_ms": 0
+     },
+     {
+      "text": "email",
+      "after_ms": 800
+     },
+     {
+      "text": "address again",
+      "after_ms": 1100
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Rowan email",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-en-017",
+  "class": "U03",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "move my 2pm",
+      "after_ms": 0
+     },
+     {
+      "text": "meeting",
+      "after_ms": 800
+     },
+     {
+      "text": "to 4 instead",
+      "after_ms": 1300
+     },
+     {
+      "text": "please",
+      "after_ms": 600
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "2pm meeting",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U03-en-018",
+  "class": "U03",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "which restaurant did I say",
+      "after_ms": 0
+     },
+     {
+      "text": "I wanted to try",
+      "after_ms": 1200
+     },
+     {
+      "text": "for the anniversary",
+      "after_ms": 1500
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "contacts"
+    ],
+    "entity": "anniversary restaurant",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Is it open",
+      "after_ms": 5500
+     },
+     {
+      "text": "on Sundays",
+      "after_ms": 1000
+     },
+     {
+      "text": "do you know?",
+      "after_ms": 1200
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory",
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "restaurant Sunday hours",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-en-019",
+  "class": "U03",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "How long",
+      "after_ms": 0
+     },
+     {
+      "text": "does it take",
+      "after_ms": 900
+     },
+     {
+      "text": "to fly from",
+      "after_ms": 1100
+     },
+     {
+      "text": "Madrid to",
+      "after_ms": 800
+     },
+     {
+      "text": "Tokyo?",
+      "after_ms": 1500
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Madrid to Tokyo flight time",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-en-020",
+  "class": "U03",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Do I have",
+      "after_ms": 0
+     },
+     {
+      "text": "any reminders",
+      "after_ms": 1000
+     },
+     {
+      "text": "set for",
+      "after_ms": 1300
+     },
+     {
+      "text": "tomorrow morning?",
+      "after_ms": 1100
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "tomorrow morning reminders",
+    "act_refused": false
+   }
+  ]
+ }
+]

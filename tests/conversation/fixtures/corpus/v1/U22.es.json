@@ -1,0 +1,758 @@
+[
+ {
+  "id": "U22-es-001",
+  "class": "U22",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Oye, ¿cómo suele moverse la acción de Inditex los viernes?",
+      "after_ms": 0
+     },
+     {
+      "text": "y de las últimas treinta sesiones",
+      "after_ms": 1800
+     },
+     {
+      "text": "¿cuántas cerró en positivo los viernes?",
+      "after_ms": 1500
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Inditex",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿Y cuántas cerraron en negativo?",
+      "after_ms": 2500
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Inditex",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U22-es-002",
+  "class": "U22",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "cuánto está el euro frente al dólar ahora mismo",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "euro-dólar",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U22-es-003",
+  "class": "U22",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿Qué tiempo va a hacer mañana en Sevilla?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "tiempo Sevilla",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿Y qué máxima tendrán el domingo?",
+      "after_ms": 3000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "tiempo Sevilla",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U22-es-004",
+  "class": "U22",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿Cómo quedó el último Real Madrid - Barcelona?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Real Madrid-Barcelona",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U22-es-005",
+  "class": "U22",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Dime cómo suele comportarse Telefónica en bolsa los lunes",
+      "after_ms": 0
+     },
+     {
+      "text": "y de las últimas treinta sesiones",
+      "after_ms": 2000
+     },
+     {
+      "text": "cuántas subió",
+      "after_ms": 1700
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Telefónica",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿Y cuántas bajó?",
+      "after_ms": 2200
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Telefónica",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U22-es-006",
+  "class": "U22",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "precio del barril de brent hoy",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Brent",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U22-es-007",
+  "class": "U22",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿Cuántos días faltan para Navidad?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "días hasta Navidad",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U22-es-008",
+  "class": "U22",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿A cuánto cotiza el Ibex 35 ahora?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Ibex 35",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "gracias",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U22-es-009",
+  "class": "U22",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Cuánto es 250 libras en euros",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "libras a euros",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U22-es-010",
+  "class": "U22",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Quiero saber cómo suele moverse Banco Santander los viernes",
+      "after_ms": 0
+     },
+     {
+      "text": "cuántas de las últimas treinta sesiones de viernes",
+      "after_ms": 2100
+     },
+     {
+      "text": "terminó con subida",
+      "after_ms": 1600
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Banco Santander",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿Y cuántas con bajada?",
+      "after_ms": 2000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Banco Santander",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U22-es-011",
+  "class": "U22",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿Cuánto cuesta ahora la onza de oro?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "oro",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U22-es-012",
+  "class": "U22",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿Cuántos habitantes tiene Valencia?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "población Valencia",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U22-es-013",
+  "class": "U22",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "temperatura en Bilbao ahora",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "tiempo Bilbao",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿va a llover esta tarde?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "tiempo Bilbao",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U22-es-014",
+  "class": "U22",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Cuántos goles lleva Lewandowski esta temporada",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Lewandowski goles",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U22-es-015",
+  "class": "U22",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Cuéntame cómo se mueve BBVA los viernes",
+      "after_ms": 0
+     },
+     {
+      "text": "de las últimas treinta sesiones",
+      "after_ms": 1900
+     },
+     {
+      "text": "en cuántas acabó en verde",
+      "after_ms": 1500
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "BBVA",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿Y cuántas en rojo?",
+      "after_ms": 2300
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "BBVA",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U22-es-016",
+  "class": "U22",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿A qué hora amanece mañana en Madrid?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "amanecer Madrid",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U22-es-017",
+  "class": "U22",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "precio del bitcoin",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "bitcoin",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "y en euros?",
+      "after_ms": 3500
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "bitcoin",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U22-es-018",
+  "class": "U22",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿En qué fecha cae el Black Friday este año?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Black Friday",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U22-es-019",
+  "class": "U22",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿Cuánto le sacó el Atlético al Sevilla en la última liga? Dime el resultado y los goleadores, por favor",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Atlético-Sevilla",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U22-es-020",
+  "class": "U22",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "cuántos kilómetros hay de Madrid a Barcelona por carretera",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "distancia Madrid-Barcelona",
+    "act_refused": false
+   }
+  ]
+ }
+]

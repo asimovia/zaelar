@@ -1,0 +1,1398 @@
+[
+ {
+  "id": "U23-en-001",
+  "class": "U23",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "What's the weather going to be like in Chicago today?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Chicago weather",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "and tomorrow?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Chicago weather",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "what about Denver?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Denver weather",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U23-en-002",
+  "class": "U23",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Hey, where is Apple stock trading right now?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Apple shares",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "and Microsoft?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "contacts"
+    ],
+    "entity": "Microsoft shares",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "how much is it down this week",
+      "after_ms": 7000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Microsoft shares",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U23-en-003",
+  "class": "U23",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "What do I have on my calendar for Monday?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Monday agenda",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "and Tuesday?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Tuesday agenda",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "anything in the afternoon?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Tuesday afternoon agenda",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U23-en-004",
+  "class": "U23",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "What was the final score of the Lakers game last night?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Lakers game",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "and the Celtics?",
+      "after_ms": 3500
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Celtics game",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "who scored the most",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "contacts"
+    ],
+    "entity": "Celtics game top scorer",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U23-en-005",
+  "class": "U23",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "How many dollars do I get for one euro today?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "EUR/USD rate",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "and for a pound?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "GBP/USD rate",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "and the yen?",
+      "after_ms": 3000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "JPY/USD rate",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U23-en-006",
+  "class": "U23",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "what's Rowan's phone number",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Rowan",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "and his email?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Rowan",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "what about his address",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Rowan",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U23-en-007",
+  "class": "U23",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Do you remember what I told you about my dentist appointment?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "dentist appointment",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "and the pharmacy?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "pharmacy",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "when did I say that?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "pharmacy",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U23-en-008",
+  "class": "U23",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "price of gold per ounce right now?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "gold price",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "and silver?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "silver price",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "and yesterday?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "silver price yesterday",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U23-en-009",
+  "class": "U23",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "How many people live in Tokyo?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "contacts"
+    ],
+    "entity": "Tokyo population",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "and Osaka?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "contacts"
+    ],
+    "entity": "Osaka population",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "so which one is bigger",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Tokyo vs Osaka",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U23-en-010",
+  "class": "U23",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Who's top of the Premier League table at the moment?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Premier League table",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "and who's second?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Premier League table",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "how many points ahead are they?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Premier League gap",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U23-en-011",
+  "class": "U23",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Can you look at my calendar and tell me when my next meeting with Inworld is?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Inworld meeting",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "and the one after?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Inworld meeting",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "tell them I'm running late",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Inworld",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U23-en-012",
+  "class": "U23",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "What's the weather in Lisbon this weekend?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Lisbon weather",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "and the sea temperature?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Lisbon sea temperature",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "what about Porto?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Porto weather",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U23-en-013",
+  "class": "U23",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "What time does the sun set in Madrid today?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Madrid sunset",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "and tomorrow?",
+      "after_ms": 3500
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Madrid sunset",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "and in Seville",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Seville sunset",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U23-en-014",
+  "class": "U23",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "how much is bitcoin worth right now",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "bitcoin price",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "and ethereum?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "contacts"
+    ],
+    "entity": "ethereum price",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "and a week ago?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "ethereum price a week ago",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U23-en-015",
+  "class": "U23",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "What's the name of the restaurant I mentioned to you last week?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "restaurant mentioned",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "and what did I say about the reservation?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "restaurant reservation",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "and who was coming with me?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "restaurant guests",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U23-en-016",
+  "class": "U23",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Show me a map of Paris",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "screen"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "Paris map",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "and Rome?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "screen"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "Rome map",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "ok close it",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "Rome map",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U23-en-017",
+  "class": "U23",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Brent crude price today?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Brent crude",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "and WTI?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "WTI crude",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "how much did it move today?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "WTI crude move",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U23-en-018",
+  "class": "U23",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Do I have a number saved for Inworld?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Inworld",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "and for Rowan?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Rowan",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "what about his birthday?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Rowan",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U23-en-019",
+  "class": "U23",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "hey, can you set reminders for me?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "assistant reminders ability",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "and read my calendar?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "assistant calendar ability",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "what about sending texts?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "assistant messaging ability",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U23-en-020",
+  "class": "U23",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "How did Tesla shares close yesterday?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Tesla shares",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "and the day before?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Tesla shares",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "and how many stocks on the Nasdaq went down?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "contacts"
+    ],
+    "entity": "Nasdaq decliners",
+    "act_refused": false
+   }
+  ]
+ }
+]

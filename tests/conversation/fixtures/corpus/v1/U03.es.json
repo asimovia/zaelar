@@ -1,0 +1,862 @@
+[
+ {
+  "id": "U03-es-001",
+  "class": "U03",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "oye",
+      "after_ms": 0
+     },
+     {
+      "text": "a cuánto cotizan hoy",
+      "after_ms": 900
+     },
+     {
+      "text": "las acciones de Inditex",
+      "after_ms": 1200
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda",
+     "contacts",
+     "messaging",
+     "screen"
+    ],
+    "entity": "Inditex",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-es-002",
+  "class": "U03",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Qué tiempo va a hacer",
+      "after_ms": 0
+     },
+     {
+      "text": "este sábado",
+      "after_ms": 1100
+     },
+     {
+      "text": "en Valencia",
+      "after_ms": 700
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda",
+     "memory"
+    ],
+    "entity": "tiempo Valencia",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-es-003",
+  "class": "U03",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "puedes mirar si tengo",
+      "after_ms": 0
+     },
+     {
+      "text": "algo en la agenda",
+      "after_ms": 1500
+     },
+     {
+      "text": "el martes por la tarde?",
+      "after_ms": 800
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search",
+     "messaging"
+    ],
+    "entity": "agenda martes tarde",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-es-004",
+  "class": "U03",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Manda un mensaje a Rowan",
+      "after_ms": 0
+     },
+     {
+      "text": "diciéndole que llego tarde",
+      "after_ms": 1300
+     },
+     {
+      "text": "unos 20 minutos más o menos",
+      "after_ms": 1000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda"
+    ],
+    "entity": "Rowan",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U03-es-005",
+  "class": "U03",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "cuál es el teléfono",
+      "after_ms": 0
+     },
+     {
+      "text": "de Inworld",
+      "after_ms": 1800
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search",
+     "messaging"
+    ],
+    "entity": "Inworld",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-es-006",
+  "class": "U03",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Cuánto está el barril",
+      "after_ms": 0
+     },
+     {
+      "text": "de Brent",
+      "after_ms": 1000
+     },
+     {
+      "text": "ahora mismo",
+      "after_ms": 600
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory",
+     "agenda"
+    ],
+    "entity": "Brent",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "y el oro",
+      "after_ms": 2000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "oro",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-es-007",
+  "class": "U03",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Dime una cosa",
+      "after_ms": 0
+     },
+     {
+      "text": "cuándo juega el Atlético de Madrid",
+      "after_ms": 1400
+     },
+     {
+      "text": "el próximo partido de liga",
+      "after_ms": 1100
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda",
+     "contacts"
+    ],
+    "entity": "Atlético de Madrid",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-es-008",
+  "class": "U03",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "te acuerdas de lo que te dije",
+      "after_ms": 0
+     },
+     {
+      "text": "sobre el regalo",
+      "after_ms": 1200
+     },
+     {
+      "text": "para mi madre?",
+      "after_ms": 900
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search",
+     "messaging"
+    ],
+    "entity": "regalo madre",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-es-009",
+  "class": "U03",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "cierra",
+      "after_ms": 0
+     },
+     {
+      "text": "la ventana del navegador",
+      "after_ms": 1100
+     },
+     {
+      "text": "que tengo abierta",
+      "after_ms": 700
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda"
+    ],
+    "entity": "navegador",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U03-es-010",
+  "class": "U03",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "A cuánto está el euro",
+      "after_ms": 0
+     },
+     {
+      "text": "frente al dólar",
+      "after_ms": 1600
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory",
+     "agenda"
+    ],
+    "entity": "EUR/USD",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "perdona",
+      "after_ms": 1500
+     },
+     {
+      "text": "quería decir",
+      "after_ms": 800
+     },
+     {
+      "text": "frente a la libra",
+      "after_ms": 1000
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "EUR/GBP",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-es-011",
+  "class": "U03",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "tengo",
+      "after_ms": 0
+     },
+     {
+      "text": "alguna reunión",
+      "after_ms": 700
+     },
+     {
+      "text": "mañana por la mañana",
+      "after_ms": 1300
+     },
+     {
+      "text": "con Rowan?",
+      "after_ms": 900
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda",
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search",
+     "messaging"
+    ],
+    "entity": "reunión Rowan",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-es-012",
+  "class": "U03",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Quién ganó",
+      "after_ms": 0
+     },
+     {
+      "text": "el último clásico",
+      "after_ms": 1200
+     },
+     {
+      "text": "Barça Madrid",
+      "after_ms": 900
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory",
+     "agenda"
+    ],
+    "entity": "clásico Barça Madrid",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "ok gracias",
+      "after_ms": 2500
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-es-013",
+  "class": "U03",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Recuérdame",
+      "after_ms": 0
+     },
+     {
+      "text": "mañana a las ocho",
+      "after_ms": 1500
+     },
+     {
+      "text": "que llame al dentista",
+      "after_ms": 1200
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "messaging"
+    ],
+    "entity": "recordatorio dentista",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U03-es-014",
+  "class": "U03",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "qué eres",
+      "after_ms": 0
+     },
+     {
+      "text": "exactamente",
+      "after_ms": 900
+     },
+     {
+      "text": "y qué sabes hacer",
+      "after_ms": 1100
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search",
+     "agenda"
+    ],
+    "entity": "asistente",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-es-015",
+  "class": "U03",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "cuánto cuesta un vuelo",
+      "after_ms": 0
+     },
+     {
+      "text": "de Madrid a Lisboa",
+      "after_ms": 1000
+     },
+     {
+      "text": "para el puente de diciembre",
+      "after_ms": 1700
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory",
+     "messaging"
+    ],
+    "entity": "vuelo Madrid Lisboa",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "y",
+      "after_ms": 2200
+     },
+     {
+      "text": "a Oporto",
+      "after_ms": 900
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "vuelo Madrid Oporto",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-es-016",
+  "class": "U03",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Oye mira",
+      "after_ms": 0
+     },
+     {
+      "text": "qué te conté ayer",
+      "after_ms": 1300
+     },
+     {
+      "text": "del restaurante",
+      "after_ms": 800
+     },
+     {
+      "text": "al que quería ir",
+      "after_ms": 1000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search",
+     "messaging"
+    ],
+    "entity": "restaurante",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-es-017",
+  "class": "U03",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "abre",
+      "after_ms": 0
+     },
+     {
+      "text": "el calendario",
+      "after_ms": 900
+     },
+     {
+      "text": "en la pantalla",
+      "after_ms": 1000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "screen"
+    ],
+    "forbid_tools": [
+     "search",
+     "messaging"
+    ],
+    "entity": "calendario",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U03-es-018",
+  "class": "U03",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Qué ha pasado hoy",
+      "after_ms": 0
+     },
+     {
+      "text": "con el Ibex 35",
+      "after_ms": 1100
+     },
+     {
+      "text": "por qué ha caído",
+      "after_ms": 1400
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory",
+     "agenda"
+    ],
+    "entity": "Ibex 35",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-es-019",
+  "class": "U03",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "cambia",
+      "after_ms": 0
+     },
+     {
+      "text": "mi reunión del jueves",
+      "after_ms": 1200
+     },
+     {
+      "text": "al viernes a las 10",
+      "after_ms": 1000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "contacts"
+    ],
+    "entity": "reunión jueves",
+    "act_refused": true
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "pues dime al menos",
+      "after_ms": 2800
+     },
+     {
+      "text": "a qué hora la tengo",
+      "after_ms": 1100
+     },
+     {
+      "text": "ahora",
+      "after_ms": 600
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search",
+     "messaging"
+    ],
+    "entity": "reunión jueves",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U03-es-020",
+  "class": "U03",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Cuál es la capital",
+      "after_ms": 0
+     },
+     {
+      "text": "de Australia",
+      "after_ms": 1000
+     },
+     {
+      "text": "que siempre me lío",
+      "after_ms": 1500
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda",
+     "contacts",
+     "messaging"
+    ],
+    "entity": "capital de Australia",
+    "act_refused": false
+   }
+  ]
+ }
+]

@@ -1,0 +1,991 @@
+[
+ {
+  "id": "U28-es-001",
+  "class": "U28",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Oye, ¿cómo se dice sobremesa en inglés?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "sobremesa en inglés",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿y en alemán?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "sobremesa en alemán",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "vale, gracias",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-es-002",
+  "class": "U28",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Cuál es la diferencia entre porque, por qué, porqué y por que? Siempre me lío",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": "porque/por qué",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "dame un ejemplo de cada uno",
+      "after_ms": 9000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": "ejemplos porque",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-es-003",
+  "class": "U28",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿En cuántos países es el portugués lengua oficial?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "portugués lengua oficial",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿Y cuál de ellos tiene más hablantes?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [],
+    "entity": "portugués hablantes por país",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-es-004",
+  "class": "U28",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "oye",
+      "after_ms": 0
+     },
+     {
+      "text": "cómo se dice \"estoy agotado\" en francés",
+      "after_ms": 2500
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": "estoy agotado en francés",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "y algo más coloquial?",
+      "after_ms": 7000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": "agotado coloquial francés",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Y dime cómo se pronuncia la primera.",
+      "after_ms": 8000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": "pronunciación francés",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-es-005",
+  "class": "U28",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿Qué idioma te dije que quería aprender este año?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "idioma que quiere aprender",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "pues dime cinco palabras básicas para empezar",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": "palabras básicas",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-es-006",
+  "class": "U28",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿Tengo clase de inglés esta semana?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "clase de inglés",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿Y a qué hora es la del jueves?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "clase de inglés jueves",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-es-007",
+  "class": "U28",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Tradúceme al inglés: \"llego tarde a la reunión, empezad sin mí\"",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "traducción al inglés",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Mándaselo a Rowan.",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "enviar traducción a Rowan",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U28-es-008",
+  "class": "U28",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿En cuántos idiomas puedes hablar?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "idiomas del asistente",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿y entiendes catalán?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [],
+    "entity": "catalán",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-es-009",
+  "class": "U28",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿De dónde viene la palabra ojalá?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": "etimología de ojalá",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿en serio? ¿del árabe?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": "origen árabe",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿Y qué otras palabras españolas vienen del árabe?",
+      "after_ms": 7000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": "arabismos",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-es-010",
+  "class": "U28",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿Cuánta gente habla mandarín en el mundo?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [],
+    "entity": "hablantes de mandarín",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿Y inglés?",
+      "after_ms": 3500
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [],
+    "entity": "hablantes de inglés",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "y el español en qué puesto queda",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [],
+    "entity": "español ranking de hablantes",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-es-011",
+  "class": "U28",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿Se dice \"haber\" o \"a ver\" cuando quieres decir que quieres mirar algo?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": "a ver / haber",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "y \"echo de menos\" o \"hecho de menos\"?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": "echar de menos",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-es-012",
+  "class": "U28",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Me voy a Roma en diciembre, ¿cómo se pide la cuenta en un restaurante en italiano?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "pedir la cuenta en italiano",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿y en japonés?",
+      "after_ms": 8000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": "pedir la cuenta en japonés",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "escríbemelo como se lee, tipo fonético",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": "transcripción fonética",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-es-013",
+  "class": "U28",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿Es lo mismo el catalán que el valenciano?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": "catalán y valenciano",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Vale, ¿y cuánta gente lo habla más o menos?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [],
+    "entity": "hablantes de catalán",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-es-014",
+  "class": "U28",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "qué significa saudade",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": "saudade",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿hay algo parecido en español?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": "equivalente en español",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-es-015",
+  "class": "U28",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿Qué app me recomiendas para aprender alemán desde cero?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": "apps para aprender alemán",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "cuánto cuesta ahora mismo Duolingo Super al mes en España",
+      "after_ms": 7000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [],
+    "entity": "precio Duolingo Super",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-es-016",
+  "class": "U28",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿Cómo se dice \"tío\" (como colega) en inglés británico?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": "tío en inglés británico",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿y en Estados Unidos?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": "tío en inglés americano",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Perfecto, gracias.",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-es-017",
+  "class": "U28",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿Cuánta gente habla esperanto hoy en día?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [],
+    "entity": "hablantes de esperanto",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿y quién lo inventó?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": "creador del esperanto",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-es-018",
+  "class": "U28",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿Cuál es la lengua oficial de Suiza?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": "lenguas de Suiza",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿y de Bélgica?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": "lenguas de Bélgica",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿Y Canadá?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": "lenguas de Canadá",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-es-019",
+  "class": "U28",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Escríbeme \"bienvenidos\" en árabe, ruso y chino",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": "bienvenidos en tres idiomas",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿Y cómo se lee el ruso? Porque no entiendo el alfabeto.",
+      "after_ms": 7000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": "lectura del ruso",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-es-020",
+  "class": "U28",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿Cómo se dice biblioteca en inglés?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": "biblioteca en inglés",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "perdona, quería decir librería, la tienda",
+      "after_ms": 5000
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": "librería en inglés",
+    "act_refused": false
+   }
+  ]
+ }
+]

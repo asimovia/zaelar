@@ -1,0 +1,1816 @@
+[
+ {
+  "id": "U20-es-001",
+  "class": "U20",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Cuánto cotiza hoy Inditex en bolsa?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "cotización de Inditex",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "por cierto, tengo algo mañana con Rowan?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "cita con Rowan mañana",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "y lo de Inditex, cuánto ha subido en el último mes?",
+      "after_ms": 8000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "evolución mensual de Inditex",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "vale, y a qué hora es lo de Rowan?",
+      "after_ms": 7000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "hora de la cita con Rowan",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U20-es-002",
+  "class": "U20",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "oye, qué tiempo va a hacer este fin de semana en Sevilla",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "tiempo en Sevilla",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "y dime, qué es lo que te conté sobre mi alergia a los frutos secos",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "alergia a frutos secos",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "y en Sevilla, hará más de veinte grados el domingo?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "temperatura del domingo en Sevilla",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "lo de la alergia, me dijiste algo también de la fecha del médico?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory",
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "cita médica por la alergia",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U20-es-003",
+  "class": "U20",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "cómo quedó el Barça ayer",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "contacts"
+    ],
+    "entity": "resultado del FC Barcelona",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "me das el teléfono de Inworld",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "teléfono de Inworld",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "y quién marcó los goles del Barça?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "contacts"
+    ],
+    "entity": "goleadores del Barça",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "y su email también, el de Inworld",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "email de Inworld",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U20-es-004",
+  "class": "U20",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "a cuánto está el euro frente al dólar",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "cambio euro-dólar",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "qué recordatorios tengo para esta tarde",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "recordatorios de la tarde",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "y el euro, ha subido o bajado respecto a la semana pasada",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "variación semanal del euro",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "borra el recordatorio de la tarde más tardío",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "borrar recordatorio de la tarde",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U20-es-005",
+  "class": "U20",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Qué precio tiene hoy el barril de Brent?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "precio del Brent",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "puedes escribirle un mensaje a Rowan",
+      "after_ms": 5000
+     },
+     {
+      "text": "diciendo que llego tarde",
+      "after_ms": 2500
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "mensaje a Rowan",
+    "act_refused": true
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "el Brent, y el oro cómo está?",
+      "after_ms": 7000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "precio del oro",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "mejor dile a Rowan que llego a las seis",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "mensaje a Rowan hora",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U20-es-006",
+  "class": "U20",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "cuándo juega el Real Madrid su próximo partido de Liga",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "próximo partido del Real Madrid",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "qué eres exactamente, qué cosas puedes hacer por mí",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "capacidades del asistente",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "y ese partido del Madrid, es en casa o fuera?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "about_self"
+    ],
+    "entity": "sede del partido del Madrid",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "y puedes recordar cosas que te digo de un día para otro?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "memoria del asistente",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U20-es-007",
+  "class": "U20",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "hay huelga de Renfe esta semana?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "contacts"
+    ],
+    "entity": "huelga de Renfe",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "cuál es el nombre de la farmacia que te dije que me quedaba cerca de casa",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "farmacia cercana a casa",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "sobre la huelga de Renfe, afecta a Cercanías de Madrid?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Cercanías Madrid en huelga",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "y esa farmacia, te dije el horario?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "horario de la farmacia",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U20-es-008",
+  "class": "U20",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "cuánto vale ahora una acción de Telefónica",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "acción de Telefónica",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "cierra la ventana del correo que tengo abierta",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "screen"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "ventana del correo",
+    "act_refused": true
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "y Telefónica reparte dividendo este año?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "dividendo de Telefónica",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "vale, déjala, no la cierres",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "ventana del correo",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U20-es-009",
+  "class": "U20",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "cuántos habitantes tiene Valencia",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "población de Valencia",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "qué tengo en la agenda el viernes",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "agenda del viernes",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "y Valencia es más grande que Sevilla?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Valencia frente a Sevilla",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "mueve la reunión del viernes al lunes",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "mover reunión del viernes",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U20-es-010",
+  "class": "U20",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "cuándo es el próximo Gran Premio de Fórmula 1",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "próximo Gran Premio de F1",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "cuál es el correo de Rowan",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "correo de Rowan",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "y dónde se corre ese Gran Premio",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "contacts"
+    ],
+    "entity": "circuito del Gran Premio",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "y su teléfono, el de Rowan",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "teléfono de Rowan",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U20-es-011",
+  "class": "U20",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "ey, cuánto está el Bitcoin ahora mismo",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "precio del Bitcoin",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "te acuerdas de qué color de coche quería comprarme?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "color del coche deseado",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "y el Bitcoin hace una semana a cuánto estaba?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Bitcoin hace una semana",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "y el presupuesto del coche, te lo dije?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "presupuesto del coche",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U20-es-012",
+  "class": "U20",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "a ver, qué temperatura hace ahora en Bilbao",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "temperatura en Bilbao",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "tengo alguna cita con Inworld esta semana",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "cita con Inworld",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "y en Bilbao, va a llover mañana?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "lluvia mañana en Bilbao",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "la cita con Inworld, qué día es exactamente",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "día de la cita con Inworld",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U20-es-013",
+  "class": "U20",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "quién ganó el último Balón de Oro",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Balón de Oro",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "puedes acceder a mis mensajes antiguos o solo ves lo de hoy?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "alcance del asistente",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "y ese ganador, con qué equipo juega?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "about_self"
+    ],
+    "entity": "equipo del ganador del Balón de Oro",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "vale, y puedes enviar mensajes por mí o no?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "capacidad de enviar mensajes",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U20-es-014",
+  "class": "U20",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "cuánto cuesta un vuelo de Madrid a Lisboa para diciembre",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "vuelo Madrid-Lisboa",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "qué día era el cumpleaños de mi hermana, te lo dije",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "cumpleaños de la hermana",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "y ese vuelo a Lisboa, hay directo o con escala?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "vuelo directo a Lisboa",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "apúntame un recordatorio ese día del cumple",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "recordatorio del cumpleaños",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U20-es-015",
+  "class": "U20",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Cómo va el Ibex 35 hoy",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Ibex 35",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "cuántos recordatorios tengo pendientes",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "recordatorios pendientes",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "qué valores del Ibex han caído más?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "mayores caídas del Ibex",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "cuál de esos recordatorios vence antes?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "recordatorio más próximo",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U20-es-016",
+  "class": "U20",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "hay tráfico ahora en la M-30 de Madrid",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "tráfico en la M-30",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "cómo se llamaba el restaurante donde dije que cené con mis padres",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "restaurante de la cena",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "y hay obras en la M-30 esta semana?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "obras en la M-30",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "y de ese restaurante, te comenté qué plato pedí?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "plato en el restaurante",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U20-es-017",
+  "class": "U20",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "qué película ha ganado más en taquilla este fin de semana en España",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "taquilla en España",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "pásame el contacto de Inworld completo",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "contacto de Inworld",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "y la segunda más vista, cuál es?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "contacts"
+    ],
+    "entity": "segunda película más vista",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "y tiene dirección guardada Inworld?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "dirección de Inworld",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U20-es-018",
+  "class": "U20",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "cuál es la capital de Australia",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "capital de Australia",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "manda un mensaje a Rowan",
+      "after_ms": 4000
+     },
+     {
+      "text": "que me confirme lo del jueves",
+      "after_ms": 2000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "mensaje a Rowan sobre el jueves",
+    "act_refused": true
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "y cuántos habitantes tiene esa capital",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "población de la capital australiana",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "lo de Rowan, olvídalo, ya lo llamo yo",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "mensaje a Rowan",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U20-es-019",
+  "class": "U20",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "cuándo es el próximo eclipse visible desde España",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "próximo eclipse en España",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "qué tengo apuntado para el 28 de noviembre",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "agenda del 28 de noviembre",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "ese eclipse se verá bien desde Madrid?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "eclipse visto desde Madrid",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "y esa tarde del 28 estoy libre o no?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "tarde del 28 de noviembre",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U20-es-020",
+  "class": "U20",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "cuánto cuesta ahora la gasolina en España de media",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "precio de la gasolina",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "dime qué te conté sobre mi viaje a Roma",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "viaje a Roma",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "y el diésel, está más barato o más caro que la gasolina?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "precio del diésel",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "en lo de Roma, qué tiempo suele hacer en esas fechas?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory",
+     "search"
+    ],
+    "forbid_tools": [
+     "contacts"
+    ],
+    "entity": "clima en Roma en las fechas del viaje",
+    "act_refused": false
+   }
+  ]
+ }
+]

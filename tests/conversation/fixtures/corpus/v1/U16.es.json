@@ -1,0 +1,809 @@
+[
+ {
+  "id": "U16-es-001",
+  "class": "U16",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿Qué tiempo hace hoy en Bilbao?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "tiempo en Bilbao",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "perdona, en San Sebastián",
+      "after_ms": 2500
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "tiempo en San Sebastián",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-es-003",
+  "class": "U16",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "cuánto cotiza Inditex hoy",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "cotización Inditex",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "digo Telefónica, me he liado",
+      "after_ms": 3000
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "cotización Telefónica",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-es-004",
+  "class": "U16",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "dime el teléfono de Inworld",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "search"
+    ],
+    "entity": "teléfono de Inworld",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "perdón, quería el correo de Inworld, no el teléfono",
+      "after_ms": 1800
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "search"
+    ],
+    "entity": "correo de Inworld",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-es-005",
+  "class": "U16",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿cuándo juega el Atlético este fin de semana?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "partido del Atlético",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "quería decir el Sevilla",
+      "after_ms": 2200
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "partido del Sevilla",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-es-006",
+  "class": "U16",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿qué tengo apuntado para mañana?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "agenda de mañana",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "bueno, mejor para pasado mañana",
+      "after_ms": 1500
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "agenda de pasado mañana",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-es-007",
+  "class": "U16",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "precio del barril de Brent ahora",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "precio del Brent",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "mejor el del WTI",
+      "after_ms": 2000
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "precio del WTI",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-es-009",
+  "class": "U16",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿te acuerdas de qué restaurante te dije para la cena?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "restaurante de la cena",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "perdón, el de la comida del sábado, no la cena",
+      "after_ms": 3500
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "restaurante de la comida del sábado",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-es-010",
+  "class": "U16",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿qué idiomas hablas?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "idiomas del asistente",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "no espera, lo que quiero saber es qué puedes hacer sin conexión",
+      "after_ms": 2800
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "capacidades sin conexión",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-es-011",
+  "class": "U16",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "cuántos habitantes tiene Valencia",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "población de Valencia",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "no no, Zaragoza, perdona",
+      "after_ms": 1600
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "población de Zaragoza",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-es-012",
+  "class": "U16",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿qué tiempo hará en Sevilla el sábado?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "tiempo en Sevilla el sábado",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "perdón, el domingo",
+      "after_ms": 2000
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "tiempo en Sevilla el domingo",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿y en Málaga ese mismo día?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "tiempo en Málaga el domingo",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-es-013",
+  "class": "U16",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿tengo algo el lunes 23?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "agenda del lunes 23",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "uy, el martes 24 quería decir",
+      "after_ms": 2400
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "agenda del martes 24",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-es-014",
+  "class": "U16",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "cuándo es el próximo partido del Barça en Champions",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Barça en Champions",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "sorry, en Liga, no en Champions",
+      "after_ms": 1700
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Barça en Liga",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-es-015",
+  "class": "U16",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "a qué hora sale el sol hoy en Madrid",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "amanecer en Madrid",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "no, la puesta de sol",
+      "after_ms": 1900
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "puesta de sol en Madrid",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-es-017",
+  "class": "U16",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿cuánto vale hoy el oro?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "precio del oro",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "la plata, quería decir la plata",
+      "after_ms": 2600
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "precio de la plata",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-es-018",
+  "class": "U16",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿qué te dije que tenía que comprar para la fiesta?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "compras para la fiesta",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "mejor dicho, para el cumple de mi hermana",
+      "after_ms": 3200
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "compras para el cumpleaños",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-es-019",
+  "class": "U16",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "qué tal va hoy la Bolsa de Londres",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Bolsa de Londres",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "eh, no, la de Fráncfort",
+      "after_ms": 1500
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Bolsa de Fráncfort",
+    "act_refused": false
+   }
+  ]
+ }
+]

@@ -1,0 +1,1020 @@
+[
+ {
+  "id": "U19-es-001",
+  "class": "U19",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Oye, ¿a cuánto está cotizando Inditex ahora mismo?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Inditex",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "vale, pues cierra todo lo que hay en pantalla",
+      "after_ms": 2500
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "pantalla",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U19-es-002",
+  "class": "U19",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "qué tiempo hará mañana en Valencia",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "tiempo Valencia",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "quita eso de la pantalla, por favor",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "pantalla",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U19-es-003",
+  "class": "U19",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿Tengo algo apuntado en la agenda para el lunes?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "agenda del lunes",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "borra todo lo que sale en la pantalla",
+      "after_ms": 1800
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "pantalla",
+    "act_refused": true
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "gracias",
+      "after_ms": 3000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U19-es-004",
+  "class": "U19",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿Cuál es el teléfono de Rowan?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Rowan",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "esconde todo eso de la pantalla",
+      "after_ms": 3500
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "pantalla",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U19-es-006",
+  "class": "U19",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿qué puedes hacer tú exactamente?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "asistente",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "limpia la pantalla",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "pantalla",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U19-es-007",
+  "class": "U19",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿Cómo quedó el Real Madrid en su último partido?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Real Madrid",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "ciérralo todo",
+      "after_ms": 3000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "pantalla",
+    "act_refused": true
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿y cuándo juega el siguiente?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Real Madrid",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U19-es-008",
+  "class": "U19",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "precio del oro hoy",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "oro",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "perdón, quería decir la plata",
+      "after_ms": 2500
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "plata",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "ahora cierra todo lo que se ve",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "pantalla",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U19-es-009",
+  "class": "U19",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿Tengo guardado el correo de Inworld?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Inworld",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "oculta las ventanas rápido,",
+      "after_ms": 1500
+     },
+     {
+      "text": "que viene gente y no quiero que lo vean",
+      "after_ms": 1200
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "pantalla",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U19-es-010",
+  "class": "U19",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "cuánto vale",
+      "after_ms": 0
+     },
+     {
+      "text": "un euro en dólares ahora",
+      "after_ms": 1800
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "contacts"
+    ],
+    "entity": "euro dólar",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "cierra todo esto",
+      "after_ms": 3500
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "pantalla",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U19-es-011",
+  "class": "U19",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿Cuándo es el próximo Gran Premio de Fórmula 1?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Fórmula 1",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "quita todo de la pantalla, que ya está",
+      "after_ms": 2200
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "pantalla",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U19-es-012",
+  "class": "U19",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿qué recordatorios tengo para hoy?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "recordatorios",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "cierra todo lo que tengo abierto",
+      "after_ms": 3000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "pantalla",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U19-es-013",
+  "class": "U19",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Hola, buenas. Me gustaría saber qué cotización tiene hoy Telefónica en bolsa.",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "contacts"
+    ],
+    "entity": "Telefónica",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Muchas gracias. Ahora, si eres tan amable, despeja la pantalla de todo lo que haya.",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "pantalla",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U19-es-014",
+  "class": "U19",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "cierra todo lo de la pantalla",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "pantalla",
+    "act_refused": true
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿qué tiempo hace en Sevilla?",
+      "after_ms": 3000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "tiempo Sevilla",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U19-es-015",
+  "class": "U19",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿Qué le dije a Rowan la última vez sobre el viaje?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "Rowan viaje",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "vale",
+      "after_ms": 2000
+     },
+     {
+      "text": "cierra todas las pestañas y borra lo que sale",
+      "after_ms": 2500
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "pantalla",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U19-es-016",
+  "class": "U19",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿Cuánto cuesta el barril de Brent hoy?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "petróleo Brent",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "y el gas natural?",
+      "after_ms": 3000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "gas natural",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "vale, pues esconde todo eso de la pantalla",
+      "after_ms": 2500
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "pantalla",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U19-es-017",
+  "class": "U19",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿eres capaz de recordar lo que hablamos la semana pasada?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "memoria del asistente",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "cierra",
+      "after_ms": 2000
+     },
+     {
+      "text": "todo",
+      "after_ms": 900
+     },
+     {
+      "text": "lo que hay en pantalla porfa",
+      "after_ms": 1200
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "pantalla",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U19-es-018",
+  "class": "U19",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿A qué hora tengo la reunión con Inworld?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "reunión Inworld",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "gracias. Oye, apaga todo eso de la pantalla",
+      "after_ms": 2000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "pantalla",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U19-es-019",
+  "class": "U19",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "cuántos habitantes tiene Zaragoza",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "contacts"
+    ],
+    "entity": "Zaragoza",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "y Bilbao",
+      "after_ms": 2500
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "contacts"
+    ],
+    "entity": "Bilbao",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "ya vale, limpia todo lo que haya en la pantalla",
+      "after_ms": 3500
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "pantalla",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U19-es-020",
+  "class": "U19",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Dime una cosa, ¿cómo ha quedado hoy el IBEX 35?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "IBEX 35",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "mm, vale.",
+      "after_ms": 1500
+     },
+     {
+      "text": "Cierra todo, que ya lo he visto",
+      "after_ms": 1800
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "pantalla",
+    "act_refused": true
+   }
+  ]
+ }
+]

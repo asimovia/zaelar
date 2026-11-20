@@ -1,0 +1,1302 @@
+[
+ {
+  "id": "U24-en-001",
+  "class": "U24",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "What's the weather in Chicago today?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "screen"
+    ],
+    "entity": "Chicago weather",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "ok",
+      "after_ms": 4200
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "memory",
+     "about_self",
+     "messaging",
+     "screen"
+    ],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U24-en-002",
+  "class": "U24",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "how much is gold right now",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "screen"
+    ],
+    "entity": "gold price",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "hmm",
+      "after_ms": 3000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "memory",
+     "about_self",
+     "messaging",
+     "screen"
+    ],
+    "entity": null,
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "got it, thanks",
+      "after_ms": 2500
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "memory",
+     "about_self",
+     "messaging",
+     "screen"
+    ],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U24-en-003",
+  "class": "U24",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "when is my next meeting",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "screen"
+    ],
+    "entity": "next meeting",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "great",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "memory",
+     "about_self",
+     "messaging",
+     "screen"
+    ],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U24-en-004",
+  "class": "U24",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "what's Rowan's phone number",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search",
+     "messaging"
+    ],
+    "entity": "Rowan phone number",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "thanks",
+      "after_ms": 2000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "memory",
+     "about_self",
+     "messaging",
+     "screen"
+    ],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U24-en-005",
+  "class": "U24",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "did the Lakers win last night?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "screen"
+    ],
+    "entity": "Lakers game",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "oh nice",
+      "after_ms": 3500
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "memory",
+     "about_self",
+     "messaging",
+     "screen"
+    ],
+    "entity": null,
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "and the Celtics?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "screen"
+    ],
+    "entity": "Celtics game",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U24-en-006",
+  "class": "U24",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "what can you actually do for me",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search",
+     "messaging"
+    ],
+    "entity": "assistant capabilities",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "ok cool",
+      "after_ms": 2800
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "memory",
+     "about_self",
+     "messaging",
+     "screen"
+    ],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U24-en-007",
+  "class": "U24",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "what did I tell you about my shellfish allergy?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search",
+     "messaging"
+    ],
+    "entity": "shellfish allergy",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "right",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "memory",
+     "about_self",
+     "messaging",
+     "screen"
+    ],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U24-en-008",
+  "class": "U24",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Tesla share price",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "screen"
+    ],
+    "entity": "Tesla stock",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "hmm",
+      "after_ms": 3000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "memory",
+     "about_self",
+     "messaging",
+     "screen"
+    ],
+    "entity": null,
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "ok thanks",
+      "after_ms": 2000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "memory",
+     "about_self",
+     "messaging",
+     "screen"
+    ],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U24-en-009",
+  "class": "U24",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "what's the euro at against the dollar",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "screen"
+    ],
+    "entity": "EUR/USD",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "got it",
+      "after_ms": 2200
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "memory",
+     "about_self",
+     "messaging",
+     "screen"
+    ],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U24-en-010",
+  "class": "U24",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "what's the email",
+      "after_ms": 0
+     },
+     {
+      "text": "for Inworld",
+      "after_ms": 1800
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search",
+     "messaging"
+    ],
+    "entity": "Inworld email",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "perfect",
+      "after_ms": 3500
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "memory",
+     "about_self",
+     "messaging",
+     "screen"
+    ],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U24-en-011",
+  "class": "U24",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "what do I have on my calendar Friday",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "screen"
+    ],
+    "entity": "Friday calendar",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "alright",
+      "after_ms": 3000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "memory",
+     "about_self",
+     "messaging",
+     "screen"
+    ],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U24-en-012",
+  "class": "U24",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "is Thanksgiving next Thursday?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "screen"
+    ],
+    "entity": "Thanksgiving date",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "yep got it",
+      "after_ms": 3200
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "memory",
+     "about_self",
+     "messaging",
+     "screen"
+    ],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U24-en-013",
+  "class": "U24",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "hmm, let me think",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "memory",
+     "about_self",
+     "messaging",
+     "screen"
+    ],
+    "entity": null,
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "okay what's the weather in Denver this weekend",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "screen"
+    ],
+    "entity": "Denver weekend weather",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "great, thanks",
+      "after_ms": 2500
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "memory",
+     "about_self",
+     "messaging",
+     "screen"
+    ],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U24-en-014",
+  "class": "U24",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "brent crude price today",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "screen"
+    ],
+    "entity": "Brent crude",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "interesting",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "memory",
+     "about_self",
+     "messaging",
+     "screen"
+    ],
+    "entity": null,
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "and natural gas?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "screen"
+    ],
+    "entity": "natural gas price",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "thanks",
+      "after_ms": 2500
+     }
+    ],
+    "amends": null,
+    "refers_to": 3,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "memory",
+     "about_self",
+     "messaging",
+     "screen"
+    ],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U24-en-015",
+  "class": "U24",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "what time is it in Tokyo right now",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "screen"
+    ],
+    "entity": "Tokyo time",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "cool",
+      "after_ms": 2000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "memory",
+     "about_self",
+     "messaging",
+     "screen"
+    ],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U24-en-016",
+  "class": "U24",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "remind me what I said about the gift idea for my sister's birthday",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search",
+     "messaging"
+    ],
+    "entity": "sister's birthday gift",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "ah right, thanks",
+      "after_ms": 4500
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "memory",
+     "about_self",
+     "messaging",
+     "screen"
+    ],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U24-en-017",
+  "class": "U24",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "which AI model are you running on",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search",
+     "messaging"
+    ],
+    "entity": "assistant model",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "okay",
+      "after_ms": 2600
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "memory",
+     "about_self",
+     "messaging",
+     "screen"
+    ],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U24-en-018",
+  "class": "U24",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "what was the Real Madrid score on Saturday",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "screen"
+    ],
+    "entity": "Real Madrid match",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "great",
+      "after_ms": 3000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "memory",
+     "about_self",
+     "messaging",
+     "screen"
+    ],
+    "entity": null,
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "thanks",
+      "after_ms": 1500
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "memory",
+     "about_self",
+     "messaging",
+     "screen"
+    ],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U24-en-019",
+  "class": "U24",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "do I have anything tomorrow morning?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "screen"
+    ],
+    "entity": "tomorrow morning schedule",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "ok good",
+      "after_ms": 3800
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "memory",
+     "about_self",
+     "messaging",
+     "screen"
+    ],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U24-en-020",
+  "class": "U24",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "where's Amazon stock at today",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "screen"
+    ],
+    "entity": "Amazon stock",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "hm",
+      "after_ms": 2800
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "memory",
+     "about_self",
+     "messaging",
+     "screen"
+    ],
+    "entity": null,
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "what about Apple",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "screen"
+    ],
+    "entity": "Apple stock",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "got it",
+      "after_ms": 2200
+     }
+    ],
+    "amends": null,
+    "refers_to": 3,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "memory",
+     "about_self",
+     "messaging",
+     "screen"
+    ],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ }
+]

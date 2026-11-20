@@ -1,0 +1,845 @@
+[
+ {
+  "id": "U01-en-001",
+  "class": "U01",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "What's the weather like in Chicago today?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "screen"
+    ],
+    "entity": "Chicago weather",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U01-en-002",
+  "class": "U01",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "hey what's on my calendar tomorrow",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "screen"
+    ],
+    "entity": "calendar tomorrow",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "What does amortization mean?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "agenda",
+     "messaging"
+    ],
+    "entity": "amortization",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U01-en-003",
+  "class": "U01",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "How much is Apple stock trading at right now?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "agenda"
+    ],
+    "entity": "Apple stock price",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "And what's the euro worth in dollars today?",
+      "after_ms": 9000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "EUR/USD rate",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U01-en-004",
+  "class": "U01",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Who won the Lakers game last night?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "screen"
+    ],
+    "entity": "Lakers game result",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U01-en-005",
+  "class": "U01",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "capital of Australia?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "agenda",
+     "messaging",
+     "contacts"
+    ],
+    "entity": "capital of Australia",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "do I have anything scheduled Friday afternoon?",
+      "after_ms": 12000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "Friday afternoon schedule",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "What's the price of gold per ounce at the moment?",
+      "after_ms": 8000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "gold price",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U01-en-006",
+  "class": "U01",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Do you have a phone number for Rowan?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "search"
+    ],
+    "entity": "Rowan phone number",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U01-en-007",
+  "class": "U01",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Will it rain in Seattle this weekend? I'm thinking of a hike.",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "screen"
+    ],
+    "entity": "Seattle weekend weather",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U01-en-008",
+  "class": "U01",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "What's the difference between a Roth IRA and a traditional IRA?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "agenda",
+     "messaging"
+    ],
+    "entity": "Roth vs traditional IRA",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "What time is my first meeting on Monday?",
+      "after_ms": 7000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "Monday first meeting",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U01-en-009",
+  "class": "U01",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "How tall is Mount Kilimanjaro?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "agenda",
+     "messaging",
+     "contacts"
+    ],
+    "entity": "Kilimanjaro height",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U01-en-010",
+  "class": "U01",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "What's the latest news on Tesla?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "screen"
+    ],
+    "entity": "Tesla news",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "what's the price of Brent crude today",
+      "after_ms": 10000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "Brent crude price",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U01-en-011",
+  "class": "U01",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Can you tell me what Inworld's email address is?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "search"
+    ],
+    "entity": "Inworld email",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U01-en-012",
+  "class": "U01",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "What does the word ephemeral mean?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "agenda",
+     "messaging",
+     "contacts"
+    ],
+    "entity": "ephemeral definition",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "How's the weather in Tokyo right now?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "Tokyo weather",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U01-en-013",
+  "class": "U01",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "When is the next Champions League match for Real Madrid?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "agenda"
+    ],
+    "entity": "Real Madrid next match",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Is Thanksgiving this coming Thursday?",
+      "after_ms": 11000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "Thanksgiving date",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "any reminders set for today?",
+      "after_ms": 9000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "today's reminders",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U01-en-014",
+  "class": "U01",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "What's the population of Brazil?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "agenda"
+    ],
+    "entity": "Brazil population",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U01-en-015",
+  "class": "U01",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Hey, how much is a bitcoin worth right now?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "screen"
+    ],
+    "entity": "Bitcoin price",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U01-en-016",
+  "class": "U01",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Do I have a dentist appointment this month?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "search"
+    ],
+    "entity": "dentist appointment",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "What's a good substitute for buttermilk in pancakes?",
+      "after_ms": 8000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "agenda",
+     "messaging"
+    ],
+    "entity": "buttermilk substitute",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U01-en-017",
+  "class": "U01",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "What's the exchange rate between the British pound and the Japanese yen?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "agenda"
+    ],
+    "entity": "GBP/JPY rate",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U01-en-018",
+  "class": "U01",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Who is playing in the NBA tonight?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "agenda"
+    ],
+    "entity": "NBA games tonight",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "How long does it take light from the Sun to reach Earth?",
+      "after_ms": 10000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "agenda",
+     "messaging"
+    ],
+    "entity": "sunlight travel time",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Am I free next Wednesday morning?",
+      "after_ms": 7000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "Wednesday morning availability",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U01-en-019",
+  "class": "U01",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "What time does the sun set in Denver today?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "agenda"
+    ],
+    "entity": "Denver sunset",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U01-en-020",
+  "class": "U01",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "What can you actually help me with?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "search"
+    ],
+    "entity": "assistant capabilities",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "What's the stock price of Microsoft?",
+      "after_ms": 8000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "Microsoft stock price",
+    "act_refused": false
+   }
+  ]
+ }
+]

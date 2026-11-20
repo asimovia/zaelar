@@ -1,0 +1,1096 @@
+[
+ {
+  "id": "U19-en-001",
+  "class": "U19",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "what's Tesla stock at right now",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [],
+    "entity": "Tesla shares",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "ok close everything on the screen",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "screen",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U19-en-002",
+  "class": "U19",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Hey, can you hide everything you've got up on the display?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "screen",
+    "act_refused": true
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "And what's the weather going to be in Chicago tomorrow?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [],
+    "entity": "Chicago weather",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U19-en-003",
+  "class": "U19",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "what time is my first meeting tomorrow",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "tomorrow's first meeting",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "thx",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": null,
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "clear the screen",
+      "after_ms": 3000
+     },
+     {
+      "text": "please",
+      "after_ms": 1200
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "screen",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U19-en-004",
+  "class": "U19",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Who won the Lakers game last night?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [],
+    "entity": "Lakers game",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Nice. Okay, um,",
+      "after_ms": 3500
+     },
+     {
+      "text": "you can close all that now.",
+      "after_ms": 900
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "screen",
+    "act_refused": true
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "What's the next home game for them?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [],
+    "entity": "Lakers schedule",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U19-en-005",
+  "class": "U19",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "do you have Rowan's phone number",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Rowan",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "got it. dismiss everything that's showing",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "screen",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U19-en-006",
+  "class": "U19",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "How much is gold per ounce today?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [],
+    "entity": "gold price",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "And in euros?",
+      "after_ms": 3000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [],
+    "entity": "gold price in euros",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Alright, wipe the screen clean.",
+      "after_ms": 4500
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "screen",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U19-en-007",
+  "class": "U19",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "close all the windows",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "screen",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U19-en-008",
+  "class": "U19",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "what did I tell you about my flight to",
+      "after_ms": 0
+     },
+     {
+      "text": "Lisbon",
+      "after_ms": 1800
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Lisbon flight",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "ok. get rid of everything on screen now",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "screen",
+    "act_refused": true
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "is it sunny in Lisbon this weekend?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [],
+    "entity": "Lisbon weather",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U19-en-009",
+  "class": "U19",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Are you able to remember things between our chats?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "assistant memory",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Cool. Can you hide all of this for me?",
+      "after_ms": 3500
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "screen",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U19-en-010",
+  "class": "U19",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "euro to dollar rate?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [],
+    "entity": "EUR/USD",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "and pounds",
+      "after_ms": 2500
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [],
+    "entity": "GBP/USD",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "cool",
+      "after_ms": 3000
+     },
+     {
+      "text": "close it all",
+      "after_ms": 2000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "screen",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U19-en-011",
+  "class": "U19",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Do I have anything on my calendar Friday afternoon?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Friday afternoon",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Okay, take everything off the screen, would you?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "screen",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U19-en-012",
+  "class": "U19",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "hide everything pls, someone's walking in",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "screen",
+    "act_refused": true
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "anyway, what's the capital of Australia again",
+      "after_ms": 8000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [],
+    "entity": "Australia capital",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U19-en-013",
+  "class": "U19",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "What's the latest on the Fed interest rate decision?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [],
+    "entity": "Federal Reserve rates",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Hm, and how did the S&P 500 react?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [],
+    "entity": "S&P 500",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Thanks. Close everything now.",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "screen",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U19-en-014",
+  "class": "U19",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "is Inworld in my contacts?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Inworld",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "shut everything on the screen",
+      "after_ms": 3000
+     },
+     {
+      "text": "all of it",
+      "after_ms": 1500
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "screen",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U19-en-015",
+  "class": "U19",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "How far is Tokyo from Osaka by bullet train?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [],
+    "entity": "Tokyo-Osaka shinkansen",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Actually I meant Kyoto, not Osaka",
+      "after_ms": 3500
+     }
+    ],
+    "amends": 1,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [],
+    "entity": "Tokyo-Kyoto shinkansen",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "great, you can clear all that off my screen",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "screen",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U19-en-016",
+  "class": "U19",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Please close everything you're showing me.",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "screen",
+    "act_refused": true
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Okay. Who's playing in the Champions League tonight?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [],
+    "entity": "Champions League",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U19-en-017",
+  "class": "U19",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "remind me what my wifi password hint was, I told you last week",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "wifi password hint",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "ok",
+      "after_ms": 3000
+     },
+     {
+      "text": "now hide that and anything else up there",
+      "after_ms": 2500
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "screen",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U19-en-018",
+  "class": "U19",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "What's the price of Brent crude today?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [],
+    "entity": "Brent crude",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Got it, thanks.",
+      "after_ms": 3000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": null,
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Now dismiss all the cards on the screen.",
+      "after_ms": 3000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "screen",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U19-en-019",
+  "class": "U19",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "what reminders do i have today",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "today's reminders",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "what languages can you speak",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "assistant languages",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "neat. close everything, i'm done for now",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "screen",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U19-en-020",
+  "class": "U19",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "When does the Louvre open on Sundays?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [],
+    "entity": "Louvre hours",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Right. Could you,",
+      "after_ms": 4000
+     },
+     {
+      "text": "uh, clear everything off the screen for me?",
+      "after_ms": 1400
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "screen",
+    "act_refused": true
+   }
+  ]
+ }
+]

@@ -1,0 +1,662 @@
+[
+ {
+  "id": "U26-es-001",
+  "class": "U26",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "oye, ¿cómo te llamas?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search",
+     "contacts"
+    ],
+    "entity": "nombre del asistente",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U26-es-002",
+  "class": "U26",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿Qué puedes hacer?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "capacidades del asistente",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U26-es-003",
+  "class": "U26",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿Puedes enviar mensajes desde aquí?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "enviar mensajes",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿y en esta sesión?",
+      "after_ms": 2500
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "enviar mensajes en esta sesión",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U26-es-004",
+  "class": "U26",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Hola, buenas. A ver, quería saber qué eres exactamente, si eres una persona o un programa",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "naturaleza del asistente",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U26-es-005",
+  "class": "U26",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "puedes mirar mi calendario?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "acceso al calendario",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "vale, y ¿puedes borrar eventos?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "borrar eventos",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U26-es-006",
+  "class": "U26",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿Quién te ha creado?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "creador del asistente",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U26-es-007",
+  "class": "U26",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Dime qué cosas sabes hacer",
+      "after_ms": 0
+     },
+     {
+      "text": "y cuáles no",
+      "after_ms": 1800
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "capacidades y límites",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U26-es-009",
+  "class": "U26",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿Puedes mandarle un WhatsApp a Rowan?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "contacts"
+    ],
+    "entity": "enviar WhatsApp a Rowan",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U26-es-010",
+  "class": "U26",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Una pregunta sobre ti: ¿tienes acceso a internet o solo sabes lo que te enseñaron?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "acceso a internet del asistente",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U26-es-011",
+  "class": "U26",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Quién eres",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search",
+     "contacts"
+    ],
+    "entity": "identidad del asistente",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿y qué modelo eres?",
+      "after_ms": 3500
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "modelo del asistente",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U26-es-012",
+  "class": "U26",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿Me puedes cerrar la pestaña que tengo abierta?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "cerrar pestaña",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U26-es-013",
+  "class": "U26",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "hola, soy nuevo con esto. ¿para qué sirves?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "utilidad del asistente",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U26-es-014",
+  "class": "U26",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿Entiendes otros idiomas además del español?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "idiomas del asistente",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U26-es-015",
+  "class": "U26",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿Puedes crear recordatorios?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "crear recordatorios",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "pues ponme uno para mañana a las 8",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "recordatorio mañana 8:00",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U26-es-016",
+  "class": "U26",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Dime, ¿escuchas todo lo que digo todo el rato o solo cuando te hablo?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "privacidad y escucha",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U26-es-017",
+  "class": "U26",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿Qué herramientas tienes disponibles en esta conversación?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [],
+    "entity": "herramientas disponibles",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U26-es-018",
+  "class": "U26",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "¿Eres capaz de llamar por teléfono a Inworld?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "contacts",
+     "messaging"
+    ],
+    "entity": "llamar a Inworld",
+    "act_refused": true
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "vale",
+      "after_ms": 2000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U26-es-019",
+  "class": "U26",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿Tú qué sabes hacer con mis contactos?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "contacts"
+    ],
+    "entity": "capacidades con contactos",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿y puedes añadir uno nuevo?",
+      "after_ms": 2500
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "contacts"
+    ],
+    "entity": "añadir contacto",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U26-es-020",
+  "class": "U26",
+  "lang": "es",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "buenas tardes, ¿me podrías explicar con detalle qué tipo de cosas puedo pedirte y cuáles no? es que quiero saber hasta dónde llegas antes de empezar a usarte",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "alcance del asistente",
+    "act_refused": false
+   }
+  ]
+ }
+]

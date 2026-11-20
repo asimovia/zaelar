@@ -1,0 +1,898 @@
+[
+ {
+  "id": "U16-en-001",
+  "class": "U16",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "What's the weather going to be in Bilbao tomorrow?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda",
+     "contacts"
+    ],
+    "entity": "Bilbao weather",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "sorry, I meant San Sebastian",
+      "after_ms": 2400
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda",
+     "contacts"
+    ],
+    "entity": "San Sebastian weather",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-en-002",
+  "class": "U16",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "What time is my dentist appointment on Thursday",
+      "after_ms": 0
+     },
+     {
+      "text": "no wait, Friday",
+      "after_ms": 1100
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "dentist appointment Friday",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-en-003",
+  "class": "U16",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "how's Apple stock doing today",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Apple shares",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "ugh, Microsoft I meant",
+      "after_ms": 3000
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Microsoft shares",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-en-004",
+  "class": "U16",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Hey, what's Rowan's phone number",
+      "after_ms": 0
+     },
+     {
+      "text": "sorry, I mean his email address",
+      "after_ms": 900
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search",
+     "messaging"
+    ],
+    "entity": "Rowan email",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-en-005",
+  "class": "U16",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "What do I have on my calendar Monday?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Monday schedule",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "oops, Tuesday",
+      "after_ms": 1800
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Tuesday schedule",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-en-006",
+  "class": "U16",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "What was that restaurant I told you I loved in Lisbon",
+      "after_ms": 0
+     },
+     {
+      "text": "no, in Porto, not Lisbon",
+      "after_ms": 1300
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "restaurant in Porto",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-en-007",
+  "class": "U16",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "What's the dollar to euro rate right now?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "about_self"
+    ],
+    "entity": "USD/EUR rate",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "actually pounds, not euros",
+      "after_ms": 2200
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "about_self"
+    ],
+    "entity": "USD/GBP rate",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-en-008",
+  "class": "U16",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "did the Lakers win last night",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Lakers game",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "no sorry, the Celtics game",
+      "after_ms": 2600
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Celtics game",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-en-009",
+  "class": "U16",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "How far is Munich from Vienna",
+      "after_ms": 0
+     },
+     {
+      "text": "sorry, from Salzburg I mean",
+      "after_ms": 1000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory",
+     "contacts"
+    ],
+    "entity": "distance Munich-Salzburg",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-en-010",
+  "class": "U16",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "can you see my text messages?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "assistant text access",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "I mean, can you see my calendar",
+      "after_ms": 2000
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "assistant calendar access",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-en-011",
+  "class": "U16",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Do I have anything at 3 p.m. today?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "3pm today",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "I meant 5 p.m., sorry",
+      "after_ms": 1500
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "5pm today",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-en-012",
+  "class": "U16",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "whats Inworld's address",
+      "after_ms": 0
+     },
+     {
+      "text": "er, their phone number",
+      "after_ms": 1700
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "Inworld phone",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-en-013",
+  "class": "U16",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "What's gold trading at per ounce today?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "gold price",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "silver, sorry, not gold",
+      "after_ms": 2100
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "silver price",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-en-014",
+  "class": "U16",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Who won the Champions League final in 2019",
+      "after_ms": 0
+     },
+     {
+      "text": "um, no, 2021",
+      "after_ms": 900
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Champions League 2021 final",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-en-015",
+  "class": "U16",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "weather in Paris this weekend?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Paris weekend weather",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "and Rome?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Rome weekend weather",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "no wait, Madrid instead of Rome",
+      "after_ms": 2500
+     }
+    ],
+    "amends": 2,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Madrid weekend weather",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-en-016",
+  "class": "U16",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "What reminders do I have for tomorrow",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "tomorrow reminders",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "sorry, I mean the day after tomorrow",
+      "after_ms": 1400
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "reminders day after tomorrow",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-en-017",
+  "class": "U16",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "when is Tesla's earnings call",
+      "after_ms": 0
+     },
+     {
+      "text": "report. earnings report",
+      "after_ms": 1900
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Tesla earnings report",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-en-018",
+  "class": "U16",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "What did Rowan tell me last week about the trip",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search",
+     "messaging"
+    ],
+    "entity": "Rowan trip last week",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "wait, not last week, the week before",
+      "after_ms": 1600
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search",
+     "messaging"
+    ],
+    "entity": "Rowan trip two weeks ago",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-en-019",
+  "class": "U16",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Is the Louvre open on Mondays?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Louvre opening days",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "hm, I meant Tuesdays",
+      "after_ms": 2300
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Louvre Tuesday",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "ok thanks",
+      "after_ms": 3000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "memory",
+     "messaging",
+     "screen"
+    ],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U16-en-020",
+  "class": "U16",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "How much is a flight from Chicago to Denver",
+      "after_ms": 0
+     },
+     {
+      "text": "no, to Dallas, sorry",
+      "after_ms": 1200
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "screen"
+    ],
+    "entity": "flight Chicago-Dallas",
+    "act_refused": false
+   }
+  ]
+ }
+]

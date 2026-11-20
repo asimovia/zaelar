@@ -1,0 +1,33 @@
+{
+ "version": "v1",
+ "frozen": "2026-11-20",
+ "_doc": "Personas for tests/conversation/tools/user_sim.py. Invented people; the only contacts are the fixtures Rowan and Inworld. Goals are what the person wants out of the conversation; the agent under test can only READ in F1, so a goal to send or change something is met when the agent says clearly that it cannot here.",
+ "personas": [
+  {"id": "es-01", "lang": "es", "lang_name": "Spanish (Spain)", "persona": "Marta, 41, accountant, busy, speaks fast and in fragments, mildly impatient", "goals": ["how NVIDIA shares usually behave on Fridays", "out of the last 30 Fridays, how many up and how many down"]},
+  {"id": "es-02", "lang": "es", "lang_name": "Spanish (Spain)", "persona": "Javier, 67, retired teacher, polite, long sentences, thinks out loud", "goals": ["whether it will rain in Valencia on Saturday", "whether he needs an umbrella on Sunday too"]},
+  {"id": "es-03", "lang": "es", "lang_name": "Spanish (Spain)", "persona": "Lucía, 29, nurse on night shifts, tired, terse", "goals": ["what she has on her calendar on Thursday", "the time of the dentist appointment"]},
+  {"id": "es-04", "lang": "es", "lang_name": "Spanish (Spain)", "persona": "Andrés, 35, software developer, precise, corrects himself often", "goals": ["the euro to dollar rate today", "how much 250 pounds are in euros"]},
+  {"id": "es-05", "lang": "es", "lang_name": "Spanish (Spain)", "persona": "Carmen, 52, shop owner, juggles two things at once", "goals": ["send a WhatsApp to Rowan saying she will be ten minutes late", "what time the next match of Real Madrid is"]},
+  {"id": "es-06", "lang": "es", "lang_name": "Spanish (Spain)", "persona": "Pablo, 23, student, informal, uses slang, gets frustrated quickly", "goals": ["the capital of Australia and how many people live there", "how long the train from Madrid to Barcelona takes"]},
+  {"id": "es-07", "lang": "es", "lang_name": "Spanish (Spain)", "persona": "Rosa, 58, nurse, asks one thing, then changes topic, then comes back to it", "goals": ["the price of gold per ounce today", "a recipe idea for lentils", "whether gold is higher than a month ago"]},
+  {"id": "es-08", "lang": "es", "lang_name": "Spanish (Spain)", "persona": "Iván, 44, sales rep in the car, short phrases, interrupted thoughts", "goals": ["the traffic-free route time from Getafe to Alcobendas", "the email address of Inworld in his contacts"]},
+  {"id": "es-09", "lang": "es", "lang_name": "Spanish (Spain)", "persona": "Inés, 31, lawyer, demanding, complains when an answer is vague", "goals": ["the latest news about the European Central Bank rates", "whether that affects variable mortgages in Spain"]},
+  {"id": "es-10", "lang": "es", "lang_name": "Spanish (Spain)", "persona": "Tomás, 75, slow speaker, asks what the assistant can do", "goals": ["what the assistant can do", "whether it can send messages for him"]},
+  {"id": "es-11", "lang": "es", "lang_name": "Spanish (Spain)", "persona": "Nuria, 38, mother of two, multitasking, says thanks and ok a lot", "goals": ["what time the pharmacy near the station closes", "remind her to pick up the kids at five"]},
+  {"id": "es-12", "lang": "es", "lang_name": "Spanish (Spain)", "persona": "Diego, 27, gamer, mixes topics, uses 'para' to start sentences", "goals": ["for Thursday, whether it will rain in Madrid", "for the weekend, the best-rated new video game"]},
+  {"id": "en-01", "lang": "en", "lang_name": "English (US)", "persona": "Megan, 34, product manager, efficient, splits requests into bursts", "goals": ["how NVIDIA stock usually does on Fridays", "out of the last 30 Fridays, how many up and how many down"]},
+  {"id": "en-02", "lang": "en", "lang_name": "English (US)", "persona": "Frank, 70, retired engineer, chatty, wanders off topic", "goals": ["the weather in Boston this weekend", "whether he needs a coat on Sunday morning"]},
+  {"id": "en-03", "lang": "en", "lang_name": "English (US)", "persona": "Aisha, 26, grad student, terse, often says 'wait, no'", "goals": ["what is on her calendar on Thursday afternoon", "when the dentist appointment is"]},
+  {"id": "en-04", "lang": "en", "lang_name": "English (US)", "persona": "Tom, 45, contractor on a job site, noisy, short commands", "goals": ["send Rowan a text that he is running late", "the price of lumber futures today"]},
+  {"id": "en-05", "lang": "en", "lang_name": "English (US)", "persona": "Grace, 52, nurse, polite but firm, complains if ignored", "goals": ["the population of Japan", "how it compares to Germany"]},
+  {"id": "en-06", "lang": "en", "lang_name": "English (US)", "persona": "Kevin, 19, freshman, slangy, impatient", "goals": ["what time the Celtics play this weekend", "who won their last game"]},
+  {"id": "en-07", "lang": "en", "lang_name": "English (US)", "persona": "Laura, 39, consultant, two topics interleaved", "goals": ["the euro to dollar exchange rate", "a flight time from New York to Chicago", "whether the euro went up this week"]},
+  {"id": "en-08", "lang": "en", "lang_name": "English (US)", "persona": "Sam, 60, asks about the assistant itself", "goals": ["what the assistant can do", "whether it can close things on the screen"]},
+  {"id": "en-09", "lang": "en", "lang_name": "English (US)", "persona": "Priya, 33, doctor, precise numbers, gets annoyed by guesses", "goals": ["how many calories in a bowl of lentil soup", "how much protein"]},
+  {"id": "en-10", "lang": "en", "lang_name": "English (US)", "persona": "Mike, 48, says 'ok' and 'thanks' between every request", "goals": ["the news this morning about the Federal Reserve", "whether mortgage rates are going down"]},
+  {"id": "mix-01", "lang": "mix", "lang_name": "Spanish and English mixed in the same sentences, as a bilingual person in Miami", "persona": "Daniela, 30, bilingual, switches language mid-sentence", "goals": ["the weather in Madrid this weekend", "whether she needs un paraguas on Sunday"]},
+  {"id": "mix-02", "lang": "mix", "lang_name": "Spanish and English mixed in the same sentences", "persona": "Carlos, 42, Spanish expat in London, mixes both", "goals": ["the pound to euro rate today", "how much 300 pounds are in euros"]},
+  {"id": "mix-03", "lang": "mix", "lang_name": "Spanish and English mixed in the same sentences", "persona": "Sofía, 25, student, mixes both, asks the assistant to message Rowan", "goals": ["send Rowan a message saying she arrives at nine", "what time the last metro runs on Saturday"]},
+  {"id": "mix-04", "lang": "mix", "lang_name": "Spanish and English mixed in the same sentences", "persona": "Ramón, 50, bilingual business owner, complains when the answer is vague", "goals": ["how Apple and Tesla shares did this week", "which one went up more"]}
+ ]
+}

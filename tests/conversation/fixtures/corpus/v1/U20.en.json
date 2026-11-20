@@ -1,0 +1,1830 @@
+[
+ {
+  "id": "U20-en-001",
+  "class": "U20",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "What's Tesla stock trading at right now?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Tesla share price",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "when is my dentist appointment this week",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "dentist appointment",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "And Tesla's market cap compared to Toyota?",
+      "after_ms": 7000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Tesla market cap",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Push the dentist appointment to next week please",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "dentist appointment",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U20-en-002",
+  "class": "U20",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Hey, what's the weather going to be like in Chicago this weekend?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Chicago weekend weather",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Also, what's Rowan's phone number?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Rowan phone number",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Going back to Chicago, will it rain on Sunday?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "contacts"
+    ],
+    "entity": "Chicago Sunday rain",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "And does Rowan have an email address saved too?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Rowan email",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U20-en-003",
+  "class": "U20",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "did Arsenal win last night",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Arsenal last match",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Remind me, what did I say my wifi password was at the cabin?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "cabin wifi password",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "who scored for Arsenal?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Arsenal scorers",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "I think I told you it was in a note about the cabin, check that",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "cabin wifi password",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U20-en-004",
+  "class": "U20",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "What's the euro to dollar rate today?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "EUR/USD rate",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Do I have anything on my calendar Thursday afternoon?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Thursday afternoon calendar",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "and the euro against the British pound?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "EUR/GBP rate",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "If Thursday afternoon is free, add a haircut at three.",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "Thursday haircut",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U20-en-005",
+  "class": "U20",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "How much is a barrel of Brent crude right now?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Brent crude price",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Oh and what can you actually do? Like can you open my apps?",
+      "after_ms": 3000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "assistant capabilities",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Anyway, is Brent crude up or down this week?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "about_self"
+    ],
+    "entity": "Brent crude weekly trend",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "So can you or can't you close apps for me?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "assistant capabilities",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U20-en-006",
+  "class": "U20",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Population of Lisbon?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Lisbon population",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Send Rowan a message saying I'll be ten minutes late",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "messaging",
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "message to Rowan",
+    "act_refused": true
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "what about Porto, how many people live there",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "Porto population",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Make that message to Rowan say fifteen minutes, not ten",
+      "after_ms": 5000
+     }
+    ],
+    "amends": 2,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "messaging"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "message to Rowan",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U20-en-007",
+  "class": "U20",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Any news about the Federal Reserve rate decision?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Federal Reserve rate decision",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "What reminders do I have for tomorrow morning?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "tomorrow morning reminders",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "so is the Federal Reserve cutting or holding next meeting?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Federal Reserve next meeting",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "delete the 8am reminder",
+      "after_ms": 5000
+     },
+     {
+      "text": "for tomorrow",
+      "after_ms": 1500
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "8am reminder tomorrow",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U20-en-008",
+  "class": "U20",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "What time does the sun set in Sydney today?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "contacts"
+    ],
+    "entity": "Sydney sunset",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Do you have Inworld in my contacts?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Inworld contact",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "And sunrise in Sydney tomorrow?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "contacts"
+    ],
+    "entity": "Sydney sunrise",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "What's the company address listed for Inworld?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Inworld address",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U20-en-009",
+  "class": "U20",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Who won the Lakers game?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Lakers game result",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "what did I tell you about my shoe size",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "user's shoe size",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "How many points did the Lakers lose by?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Lakers margin",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "ok and is that shoe size US or European?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "user's shoe size",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U20-en-010",
+  "class": "U20",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Price of gold per ounce today",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "gold price",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Close the browser window on my screen",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "screen"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "browser window",
+    "act_refused": true
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Is gold higher than a month ago?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "gold price monthly change",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "just the browser window, leave the rest open",
+      "after_ms": 4000
+     }
+    ],
+    "amends": 2,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "screen"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "browser window",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U20-en-011",
+  "class": "U20",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Is Heathrow having delays today?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Heathrow delays",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "When's my flight to Denver? It's in my calendar I think",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Denver flight",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "are there any cancellations at Heathrow specifically?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Heathrow cancellations",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "What time do I need to leave for the Denver flight then",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "Denver flight departure",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U20-en-012",
+  "class": "U20",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Tell me about the latest Apple earnings.",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Apple earnings",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Um, do you remember what restaurant I said I wanted to try in Lisbon?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Lisbon restaurant",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "How did Apple stock react to those earnings?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Apple stock reaction",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Yeah, the Lisbon restaurant, any name come up?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Lisbon restaurant",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U20-en-013",
+  "class": "U20",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Bitcoin price?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Bitcoin price",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Do I have a meeting with Rowan on Monday?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Monday meeting with Rowan",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "has Bitcoin ever been higher than this",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Bitcoin all-time high",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Cancel the Monday meeting with Rowan",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "Monday meeting with Rowan",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U20-en-014",
+  "class": "U20",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "What's the capital of Australia again?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "contacts"
+    ],
+    "entity": "capital of Australia",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Can you tell me how you decide what to remember about me?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "assistant memory behavior",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "How far is Canberra from Sydney?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "about_self"
+    ],
+    "entity": "Canberra to Sydney distance",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "And do you keep what I say after we stop talking?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "assistant memory behavior",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U20-en-015",
+  "class": "U20",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Nvidia stock today, up or down?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Nvidia stock",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "open my calendar on the screen",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "screen"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "calendar app",
+    "act_refused": true
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "what's Nvidia's P/E ratio",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "screen"
+    ],
+    "entity": "Nvidia P/E ratio",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "I meant the calendar, not the clock app",
+      "after_ms": 4000
+     }
+    ],
+    "amends": 2,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "screen"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "calendar app",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U20-en-016",
+  "class": "U20",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Is there a marathon in Berlin this year and when does it run?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Berlin Marathon",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "What did I note down as my mom's birthday gift idea?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "mom's birthday gift idea",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Who holds the course record at the Berlin Marathon?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Berlin Marathon record",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Right, the gift idea, did I say a budget for it?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "mom's birthday gift budget",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U20-en-017",
+  "class": "U20",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "exchange rate dollar to Japanese yen",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "USD/JPY rate",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Message Inworld that the demo is confirmed for Friday",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "messaging",
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "message to Inworld",
+    "act_refused": true
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "is the yen weaker than last year against the dollar?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "yen vs dollar yearly",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "actually hold off on that Inworld message, I'm not sure yet",
+      "after_ms": 4000
+     }
+    ],
+    "amends": 2,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "messaging"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "message to Inworld",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U20-en-018",
+  "class": "U20",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Any big news on Boeing today?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Boeing news",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "What's on my agenda for Saturday?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Saturday agenda",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "How's Boeing's share price been reacting to that?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda"
+    ],
+    "entity": "Boeing share price",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Is there a gap on Saturday for a two hour run?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Saturday free time",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U20-en-019",
+  "class": "U20",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "How cold is it in Oslo right now",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Oslo temperature",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "What's the name of the hotel I said I'd booked in Rome?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Rome hotel",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "will it snow in Oslo this week?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "memory"
+    ],
+    "entity": "Oslo snow forecast",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "and the Rome hotel, which dates did I book it for?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory",
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Rome hotel dates",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U20-en-020",
+  "class": "U20",
+  "lang": "en",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "So, what happened with the Manchester United match on Sunday?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "contacts"
+    ],
+    "entity": "Manchester United match",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Hold on, can you pull up Rowan's contact card on my screen?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts",
+     "screen"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Rowan contact card",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Right, and where is Manchester United in the table now?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "contacts"
+    ],
+    "entity": "Manchester United league position",
+    "act_refused": false
+   },
+   {
+    "thought": 4,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "I just need Rowan's birthday from that card.",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search"
+    ],
+    "entity": "Rowan birthday",
+    "act_refused": false
+   }
+  ]
+ }
+]

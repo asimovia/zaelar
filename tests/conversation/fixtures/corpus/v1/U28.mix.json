@@ -1,0 +1,1138 @@
+[
+ {
+  "id": "U28-mix-001",
+  "class": "U28",
+  "lang": "mix",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Oye, ¿a cuánto está el euro en dólares ahora mismo?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda",
+     "contacts",
+     "messaging"
+    ],
+    "entity": "EUR/USD exchange rate",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "and what about the peso mexicano?",
+      "after_ms": 2500
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda",
+     "contacts",
+     "messaging"
+    ],
+    "entity": "MXN exchange rate",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-mix-002",
+  "class": "U28",
+  "lang": "mix",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "what time is mi reunión con Rowan mañana?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "meeting with Rowan tomorrow",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "vale, y mándale un mensaje diciendo que llego 10 min tarde",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "message to Rowan",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U28-mix-003",
+  "class": "U28",
+  "lang": "mix",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "Cómo quedó el Real Madrid",
+      "after_ms": 0
+     },
+     {
+      "text": "last night? el partido de Champions",
+      "after_ms": 1800
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "contacts",
+     "agenda"
+    ],
+    "entity": "Real Madrid Champions League match",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "quién metió los goles?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "contacts",
+     "agenda"
+    ],
+    "entity": "Real Madrid goal scorers",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "cool, thanks",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "messaging",
+     "memory"
+    ],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-mix-004",
+  "class": "U28",
+  "lang": "mix",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿Qué tiempo va a hacer in Barcelona este fin de semana?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "contacts",
+     "messaging"
+    ],
+    "entity": "Barcelona weekend weather",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Hmm, should I bring un paraguas o no?",
+      "after_ms": 3000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "contacts",
+     "messaging"
+    ],
+    "entity": "umbrella advice Barcelona",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-mix-005",
+  "class": "U28",
+  "lang": "mix",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "cuánto cuesta una acción de Apple hoy",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda",
+     "contacts",
+     "messaging"
+    ],
+    "entity": "Apple stock price",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "and Tesla?",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda",
+     "contacts",
+     "messaging"
+    ],
+    "entity": "Tesla stock price",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "cuál subió más en la semana?",
+      "after_ms": 7000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda",
+     "contacts",
+     "messaging"
+    ],
+    "entity": "Apple vs Tesla weekly performance",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-mix-006",
+  "class": "U28",
+  "lang": "mix",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Dime qué tengo en la agenda para el lunes, por favor",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search",
+     "messaging"
+    ],
+    "entity": "Monday schedule",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "cancel the dentist one, ya no puedo ir",
+      "after_ms": 3500
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "dentist appointment cancellation",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U28-mix-007",
+  "class": "U28",
+  "lang": "mix",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "how do you say \"I'm running late\" en español, like natural, not textbook",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging",
+     "agenda",
+     "contacts"
+    ],
+    "entity": "translation I'm running late",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "y en México dirían lo mismo?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging",
+     "agenda",
+     "contacts"
+    ],
+    "entity": "Mexican Spanish variant",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-mix-008",
+  "class": "U28",
+  "lang": "mix",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "qué precio tiene el oro hoy",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda",
+     "contacts",
+     "messaging"
+    ],
+    "entity": "gold price",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "per ounce, en dólares",
+      "after_ms": 2500
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda",
+     "contacts",
+     "messaging"
+    ],
+    "entity": "gold price per ounce USD",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-mix-009",
+  "class": "U28",
+  "lang": "mix",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Hey, ¿te acuerdas de qué te dije sobre my flight to Lima?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "contacts"
+    ],
+    "entity": "flight to Lima notes",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "ok y cuánto dura ese vuelo normalmente desde Madrid?",
+      "after_ms": 3000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "contacts"
+    ],
+    "entity": "Madrid-Lima flight duration",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-mix-010",
+  "class": "U28",
+  "lang": "mix",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "quién eres tú exactamente, like what can you do?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts"
+    ],
+    "entity": "assistant capabilities",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "puedes mandar emails o solo leer?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "about_self"
+    ],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "assistant send ability",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-mix-011",
+  "class": "U28",
+  "lang": "mix",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "cuál es el número de Inworld",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search",
+     "messaging"
+    ],
+    "entity": "Inworld phone number",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "and his email too, por si acaso",
+      "after_ms": 4500
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "contacts"
+    ],
+    "forbid_tools": [
+     "search",
+     "messaging"
+    ],
+    "entity": "Inworld email",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-mix-012",
+  "class": "U28",
+  "lang": "mix",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "¿Cuál es la capital de Australia? I always say Sídney pero creo que no",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda",
+     "contacts",
+     "messaging"
+    ],
+    "entity": "capital of Australia",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "y cuánta gente vive allí?",
+      "after_ms": 2800
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda",
+     "contacts",
+     "messaging"
+    ],
+    "entity": "Canberra population",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "wow ok, gracias",
+      "after_ms": 3000
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "messaging",
+     "memory"
+    ],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-mix-013",
+  "class": "U28",
+  "lang": "mix",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "recuérdame mañana a las 8 llamar al banco",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "reminder call the bank",
+    "act_refused": true
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "no wait, make it a las 9",
+      "after_ms": 5000
+     }
+    ],
+    "amends": 1,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "reminder time change",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U28-mix-014",
+  "class": "U28",
+  "lang": "mix",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "últimas noticias sobre",
+      "after_ms": 0
+     },
+     {
+      "text": "the Fed y los tipos de interés",
+      "after_ms": 2200
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda",
+     "contacts",
+     "messaging"
+    ],
+    "entity": "Federal Reserve interest rates news",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "y eso cómo afecta a las hipotecas en España?",
+      "after_ms": 6000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda",
+     "contacts",
+     "messaging"
+    ],
+    "entity": "impact on Spanish mortgages",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-mix-015",
+  "class": "U28",
+  "lang": "mix",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Tengo algo today por la tarde? Like after las cuatro",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search",
+     "messaging"
+    ],
+    "entity": "afternoon schedule today",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "y mañana por la mañana?",
+      "after_ms": 2500
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "agenda"
+    ],
+    "forbid_tools": [
+     "search",
+     "messaging"
+    ],
+    "entity": "tomorrow morning schedule",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-mix-016",
+  "class": "U28",
+  "lang": "mix",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "cuándo juega el Barça next?",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "contacts",
+     "messaging"
+    ],
+    "entity": "FC Barcelona next match",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "pon eso en mi calendario",
+      "after_ms": 4000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "add match to calendar",
+    "act_refused": true
+   }
+  ]
+ },
+ {
+  "id": "U28-mix-017",
+  "class": "U28",
+  "lang": "mix",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Abre el mapa please, quiero ver cómo llegar al aeropuerto",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "messaging"
+    ],
+    "entity": "open map to airport",
+    "act_refused": true
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "vale, entonces dime cuánto tarda en coche desde Madrid centro hasta Barajas",
+      "after_ms": 3500
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "contacts"
+    ],
+    "entity": "drive time Madrid to Barajas",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-mix-018",
+  "class": "U28",
+  "lang": "mix",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "what's the difference entre \"ser\" y \"estar\", siempre me confundo",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "agenda",
+     "contacts",
+     "messaging"
+    ],
+    "entity": "ser vs estar",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "dame un ejemplo with emotions, tipo \"estoy aburrido\" vs \"soy aburrido\"",
+      "after_ms": 7000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [],
+    "forbid_tools": [
+     "agenda",
+     "contacts",
+     "messaging"
+    ],
+    "entity": "ser vs estar examples",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "ahh ok makes sense",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": false,
+    "expect_tools": [],
+    "forbid_tools": [
+     "search",
+     "agenda",
+     "contacts",
+     "messaging",
+     "memory"
+    ],
+    "entity": null,
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-mix-019",
+  "class": "U28",
+  "lang": "mix",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "Qué precio tiene el petróleo Brent hoy",
+      "after_ms": 0
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda",
+     "contacts",
+     "messaging"
+    ],
+    "entity": "Brent crude price",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "is that up or down compared to ayer?",
+      "after_ms": 3000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda",
+     "contacts",
+     "messaging"
+    ],
+    "entity": "Brent price change",
+    "act_refused": false
+   },
+   {
+    "thought": 3,
+    "channel": "voice",
+    "pieces": [
+     {
+      "text": "y por qué?",
+      "after_ms": 3000
+     }
+    ],
+    "amends": null,
+    "refers_to": 2,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "agenda",
+     "contacts",
+     "messaging"
+    ],
+    "entity": "reason for Brent move",
+    "act_refused": false
+   }
+  ]
+ },
+ {
+  "id": "U28-mix-020",
+  "class": "U28",
+  "lang": "mix",
+  "turns": [
+   {
+    "thought": 1,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "te dije el otro día el nombre del hotel en Roma?",
+      "after_ms": 0
+     },
+     {
+      "text": "I forgot it",
+      "after_ms": 1500
+     }
+    ],
+    "amends": null,
+    "refers_to": null,
+    "needs_answer": true,
+    "expect_tools": [
+     "memory"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "contacts"
+    ],
+    "entity": "Rome hotel name",
+    "act_refused": false
+   },
+   {
+    "thought": 2,
+    "channel": "text",
+    "pieces": [
+     {
+      "text": "vale. y qué tiempo hace en Roma en diciembre?",
+      "after_ms": 5000
+     }
+    ],
+    "amends": null,
+    "refers_to": 1,
+    "needs_answer": true,
+    "expect_tools": [
+     "search"
+    ],
+    "forbid_tools": [
+     "messaging",
+     "contacts"
+    ],
+    "entity": "Rome December weather",
+    "act_refused": false
+   }
+  ]
+ }
+]
