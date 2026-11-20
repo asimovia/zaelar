@@ -380,3 +380,42 @@ def test_his_follow_up_after_a_slow_reply_is_heard(real_attention, monkeypatch, 
         ear_in.receive({"t": "playback", "stream": "holder", "speaking": speaking, "t_ms": int(at * 1000),
                         "boot": "b", "seq": n}, lambda s: None)
     assert guards.judge("w3 w4", now=now + reply_s + 1) is None                  # his follow-up, a second after
+
+
+def test_a_typed_stop_with_a_question_stops_and_keeps_the_question(ear, handed):
+    """«Cállate. ¿Qué tiempo hace?»: the stop is his control, the question his line — never both dropped."""
+    entry.typed("w_stop. w1 w2?", "text:s1", checked=True)
+    assert handed.log == [("give", "user.control", "chat:text:s1", "text", "stop"), ("hear", "TypedSubmit")]
+
+
+def test_a_spoken_stop_with_a_question_stops_and_the_entry_is_the_question(ear, store, monkeypatch):
+    from conversation.ports import Done
+    from conversation.testing.scripted_model import reply
+    from tests.conversation.unit.convkit import Harness
+    calls = []
+    monkeypatch.setattr(controls, "control", lambda op="stop", dev="", by="chat": calls.append((op, by)))
+    got = []
+    for f in _turn(words=("w_stop.", "w1", "w2?")):
+        ear_in.receive(f, got.append)
+    assert calls == [("stop", "ear")] and "Discard" not in [type(s).__name__ for s in got]
+    h = Harness(store, grace=False)
+    h.conv.ear.guard = guards.for_ear
+    h.model.default = lambda ids: [reply("w9"), Done()]
+    h.utter([(["w_stop.", "w1", "w2?"], 0)])
+    prompt = h.model.calls[0].prompt.input
+    assert "w1 w2?" in prompt and "w_stop" not in prompt and [o.text for o in h.mouth.orders] == ["w9"]
+
+
+def test_the_real_detector_reads_each_sentence():
+    assert guards.split_stop("Cállate. ¿Qué tiempo hace hoy?") == (True, "¿Qué tiempo hace hoy?")
+    assert guards.split_stop("Vale, cállate ya. Oye, ¿qué hora es?") == (True, "Oye, ¿qué hora es?")
+    assert guards.split_stop("Vale, cállate ya.") == (True, "")
+    for his in ("para un momento", "no te calles, sigue", "para mañana a las cinco", "vale, ¿qué hora es?"):
+        assert guards.split_stop(his) == (False, his)                          # never a stop (U43)
+
+
+def test_a_question_back_on_our_statement_is_his_never_an_echo(ear):
+    guards.said("w1 w2 w3 w4 w5.", at=START)
+    guards.ended(at=START + 3)
+    assert guards.judge("¿w4 w5?", now=START + 4.5, rose=START + 4) is None    # «¿A las cinco?»
+    assert guards.judge("w4 w5", now=START + 4.5, rose=START + 4) == "echo"    # our own tail, heard back

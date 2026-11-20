@@ -54,3 +54,18 @@ def retire_if_off() -> bool:
     sessions.close_all()
     entry.reset()
     return True
+
+
+def typed_line(conv, sig, end):
+    """A typed line read sentence by sentence: a stop in it is his control, given first, and never a line for the
+    model; what follows it is his line (None when nothing does — its door is told `stop`)."""
+    from conversation.ear import signals as S
+    from nucleo.conversation_host import guards
+    stopped, rest = guards.split_stop(sig.text)
+    if not stopped:
+        return sig
+    conv.give(make(conv, "stop", sig.endpoint, "chat", sig.t_ms))
+    if not rest:
+        end("stop")
+        return None
+    return S.TypedSubmit(sig.endpoint, sig.client_id, rest, sig.t_ms)

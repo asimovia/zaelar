@@ -132,13 +132,16 @@ def _stopped(ev: dict) -> list:
     stream = str(ev.get("stream") or "")
     with _lock:
         text = _heard.pop(stream, "")
-    if text.strip() and guards.orders_stop(text):     # his spoken stop is a CONTROL, never words for the model:
-        from nucleo.conversation_host import controls  # the control, and the turn is discarded as `stop`
-        from voice import attention
-        controls.control("stop", stream, "ear")
-        attention.close_window("voice-order")         # «cállate» closes the conversation's window as well
-        return [S.Discard(stream, text, "stop", int(ev.get("t_ms") or 0))]
-    return []
+    stopped, rest = guards.split_stop(text) if text.strip() else (False, "")
+    if not stopped:
+        return []
+    from nucleo.conversation_host import controls      # his spoken stop is a CONTROL, never words for the model
+    from voice import attention
+    controls.control("stop", stream, "ear")
+    if rest:                                           # «Cállate. ¿Qué tiempo hace?»: the rest is his entry — the
+        return []                                      # ear's guards give it as the entry's words (`for_ear`)
+    attention.close_window("voice-order")             # a bare «cállate» closes the conversation's window as well
+    return [S.Discard(stream, text, "stop", int(ev.get("t_ms") or 0))]
 
 
 def rose_of(stream: str) -> float | None:

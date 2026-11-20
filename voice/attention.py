@@ -728,7 +728,7 @@ def close_window(src: str = "voice-order") -> None:
 # a turn); a negated form («no te calles») never matches because the negation precedes the verb in the same
 # sentence.
 _SHUT_UP_RE = re.compile(
-    r"^(?:(?:maldita\s+sea|por\s+favor|por\s+dios|venga|ya|basta)[,!\s]+)*"
+    r"^(?:(?:maldita\s+sea|por\s+favor|por\s+dios|venga|ya|basta|vale|ok|okay|bueno|oye|hey)[,!\s]+)*"
     r"(?:c[áa]llate(?:\s+ya)?|calla(?:te)?(?:\s+ya)?|silencio|"
     r"deja\s+de\s+escuchar(?:me)?|shut\s+up|be\s+quiet|stop\s+listening(?:\s+to\s+me)?)"
     r"[\s.!]*$", re.I)

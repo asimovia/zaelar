@@ -62,11 +62,15 @@ class _Voice:
     up: bool = False                        # a rise with no fall since: the voice is still sounding
     terminal: bool | None = None            # how the provider's last end closed its transcript
     reclaimed: str = ""                     # his words the guards had set aside, given back in front of this entry
+    replaced: str = ""                      # …or the part of his words the guards keep (the rest was a control)
     successor: bool = False                 # born at a close with the voice still up (it may be no voice at all)
 
 
 #: the guards' answer that gives his words back: `(RECLAIM, text)` — what they had set aside goes in front of this entry
 RECLAIM = "reclaim"
+#: …and the answer that keeps only part of them: `(REPLACE, text)` — the entry's words are that text (a stop said
+#: with a question: the stop is his control, the question his words)
+REPLACE = "replace"
 #: why a voice ended that means the provider or the line lost it, not that he said nothing
 LOST_REASONS = ("stalled", "link_gap")
 
@@ -257,8 +261,8 @@ class Ear:
 
     def _utterance(self, v: _Voice, t: int, coverage: Coverage, reason: str | None = None) -> E.Envelope:
         words = self.spans.words(v.iv)
-        text = " ".join(x for x in (v.reclaimed, " ".join(w[0] for w in words)) if x)
-        v.reclaimed = ""
+        text = " ".join(x for x in (v.reclaimed, v.replaced or " ".join(w[0] for w in words)) if x)
+        v.reclaimed = v.replaced = ""
         body = E.UtteranceBody(v.iv, text, tuple(E.Span(*w) for w in words),
                                coverage=coverage, amends=v.amends, reason=reason,
                                terminal=v.terminal if coverage is Coverage.FULL else None)
@@ -270,6 +274,8 @@ class Ear:
         why = self.guard(v.endpoint, text) if self.guard is not None and text.strip() else None
         if isinstance(why, tuple) and len(why) == 2 and why[0] == RECLAIM:
             v.reclaimed, why = str(why[1] or ""), None          # the host gives back what it had set aside
+        elif isinstance(why, tuple) and len(why) == 2 and why[0] == REPLACE:
+            v.replaced, why = str(why[1] or ""), None           # the host keeps only part of his words
         if why:
             self._on_Discard(S.Discard(v.endpoint, text, why, t), out)
         return bool(why)

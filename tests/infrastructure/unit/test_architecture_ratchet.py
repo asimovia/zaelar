@@ -693,6 +693,9 @@ _PACKAGE_CEILINGS["conversation"] += 5     # 2026-11-20 V2-941 v3.1 TK-3 lever: 
 _TOTAL_MAX += 5      # same cause
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 3     # 2026-11-20 V2-941 v3.1 TK-1b: our answer re-anchors his attention window as it starts
 _TOTAL_MAX += 3      # same cause
+_PACKAGE_CEILINGS["conversation"] += 6     # 2026-11-20 V2-941 v3.1: the ear keeps only part of his words when the guards say so (a stop said with a question)
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 43    # same: a stop read per sentence — the stop a control, the rest his line; a question back on our statement is never its echo
+_TOTAL_MAX += 49     # same cause
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())
