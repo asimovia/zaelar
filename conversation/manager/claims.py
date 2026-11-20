@@ -126,7 +126,7 @@ def _round_sig(f: float, k: int) -> float:
 ROUNDING = 0.05
 
 
-def _said_as(x: float, f: float, percent: bool = False, scaled: bool = True) -> bool:
+def _said_as(x: float, f: float, percent: bool = False, scaled: bool = True, min_sig: int = 1) -> bool:
     """`x` is figure `f` of a TEXT as a person says it, whatever its sign («down 4.98» stated as -4.98: which way is
     the claim's `direction`): the figure itself, or the figure rounded half-up to fewer significant digits and at
     most `ROUNDING` away from it («18» for 18.3, «5 million» for 4,987,210). A percent and its fraction are the same
@@ -136,11 +136,15 @@ def _said_as(x: float, f: float, percent: bool = False, scaled: bool = True) -> 
     for g in ((abs(f), abs(f) * 100, abs(f) / 100) if percent else (abs(f),)) + units:
         if _near(x, g):
             return True
-        if any(_exact(x, r) and abs(r - g) <= ROUNDING * g for r in (_round_sig(g, k) for k in range(1, _sig(g)))):
+        roundings = (_round_sig(g, k) for k in range(min_sig, _sig(g)))
+        if any(_exact(x, r) and abs(r - g) <= ROUNDING * g for r in roundings):
             return True
     return False
 
 
+#: a derived result is said rounded to at least this many significant digits: one would let almost any integer be some
+#: pair's result («40» for 37.6)
+DERIVED_MIN_SIG = 2
 #: the scales a figure is said in («123.8 million» for 123,767,642): thousands, millions, thousands of millions
 SCALES = (1e3, 1e6, 1e9)
 
@@ -186,8 +190,9 @@ def _derived(claim: Claim, cited: list, refused: tuple) -> str | None:
     if not _distinct(claim.operands, figures):
         return "operand"
     got = OPS[claim.op](claim.operands)
-    ok = math.isfinite(got) and math.isfinite(claim.value) and _said_as(claim.value, got, scaled=False)   # rounded,
-    return None if ok else "derived_value"                                                   # never in another scale
+    ok = math.isfinite(got) and math.isfinite(claim.value) and _said_as(claim.value, got, scaled=False,
+                                                                        min_sig=DERIVED_MIN_SIG)
+    return None if ok else "derived_value"      # rounded to two significant digits at least, never in another scale
 
 
 def mismatch(claim: Claim, ev: Evidence | None, this_run: frozenset = frozenset(), derived_open: bool = True,

@@ -146,3 +146,13 @@ def test_tk3_a_derived_result_is_never_read_in_another_scale():
     assert _ok(_c(40100000, ["ev_j", "ev_g"], **diff), (JAPAN, GERMANY))          # rounded, the same scale
     assert not _ok(_c(40.1, ["ev_j", "ev_g"], **diff), (JAPAN, GERMANY))          # «40.1» of a result in units
 
+
+def test_tk3_a_derived_result_is_rounded_to_two_significant_digits_at_least():
+    """The architect's lever: «40» for a difference of 39.2 — one significant digit, 2 % away — is refused; «39» is
+    said. Under ten it keeps its decimal: «10» for 9.8 is refused."""
+    ev = Evidence("ev_d", "search", numbers=(52.6, 13.4, 12.3, 2.5))
+    diff = {"derived": True, "op": "difference", "operands": [52.6, 13.4]}
+    assert _ok(_c(39.2, "ev_d", **diff), (ev,)) and _ok(_c(39, "ev_d", **diff), (ev,))
+    assert not _ok(_c(40, "ev_d", **diff), (ev,))
+    small = {"derived": True, "op": "difference", "operands": [12.3, 2.5]}
+    assert _ok(_c(9.8, "ev_d", **small), (ev,)) and not _ok(_c(10, "ev_d", **small), (ev,))

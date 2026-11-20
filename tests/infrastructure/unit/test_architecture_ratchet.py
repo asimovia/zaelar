@@ -689,6 +689,8 @@ _PACKAGE_CEILINGS["conversation"] += 72    # 2026-11-20 V2-941 v3.1 B10b (the vo
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 89    # same: a stop is a control and never a line; echo by timing and containment over our last lines; the body's attention fed from the ear lane; the ambient tail reclaimed
 _PACKAGE_CEILINGS["voice"] += 61           # same: an echo never cuts our line (`voice/echo_text.py`), a clean stream declares no gap, the agent's name is a key term of the provider
 _TOTAL_MAX += 222    # same cause, with the packs' `listening`
+_PACKAGE_CEILINGS["conversation"] += 5     # 2026-11-20 V2-941 v3.1 TK-3 lever: a derived result rounded to two significant digits at least (`DERIVED_MIN_SIG`)
+_TOTAL_MAX += 5      # same cause
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())
