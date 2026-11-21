@@ -913,6 +913,8 @@ _PACKAGE_CEILINGS["conversation"] += 9   # 2026-11-21 C1 b (his live session): a
 _TOTAL_MAX += 8      # same cause, measured (the brief cut before it was net -1)
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 24   # 2026-11-21 C4 review: an act's receipt has a TOTAL cap — its answer's fields first, the rest after, `…` counting what was cut, its why whole (`acts_widget.receipt`)
 _TOTAL_MAX += 24     # same cause, measured
+_PACKAGE_CEILINGS["nucleo (top)"] += 4   # 2026-11-21 C3 review: what a fact asks to say whole beats the style line (`wording.WHOLE`) — a style against repeating text sent nearly every confirmation to its one fixed line
+_TOTAL_MAX += 4      # same cause, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

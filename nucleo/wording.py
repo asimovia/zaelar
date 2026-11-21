@@ -154,16 +154,20 @@ def word(fact: str, *, examples: tuple = (), about: str = "", fallback: str = ""
     return fallback
 
 
+#: the style never cuts what a fact asks to say whole (a style against repeating text sent confirmations to a fixed line)
+WHOLE = "What the FACT asks you to say whole or word for word is said whole, whatever HOW YOU SPEAK says."
+
+
 def _styled(system: str) -> str:
     """The wording's system with HOW the agent speaks — the one style line the conversation's prefix reads too
-    (`style_policy.line`), so a worded line and a reply never speak two ways (C3)."""
+    (`style_policy.line`), so a worded line and a reply never speak two ways (C3) — never over what a fact says whole."""
     try:
         from nucleo import style_policy
         style = style_policy.line()
     except Exception as e:  # noqa: BLE001 — unread: the wording's own rules alone
         logger.debug(f"wording: style unread ({e!r})")
         style = ""
-    return f"{system}\nHOW YOU SPEAK: {style}" if style else system
+    return f"{system}\nHOW YOU SPEAK: {style}\n{WHOLE}" if style else system
 
 
 async def said(key: str, about: str = "", **fmt) -> str:

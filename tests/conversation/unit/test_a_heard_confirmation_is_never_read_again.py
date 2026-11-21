@@ -3,7 +3,8 @@
 With the message's confirmation asked and heard, words of his that are neither a yes, a no nor a change are answered
 in ONE short line that asks again — never the whole message read back, the parrot he complained of — and that short
 line is now the confirmation his yes answers. A change to the message is read back whole, as before. Every worded
-line speaks the way the conversation's prefix does: one style line for both (`style_policy.line`).
+line speaks the way the conversation's prefix does: one style line for both (`style_policy.line`), and what a fact
+asks to say whole (the message's text in its confirmation) is said whole whatever that style says (`wording.WHOLE`).
 """
 from __future__ import annotations
 
@@ -55,5 +56,6 @@ def test_a_worded_line_speaks_the_way_the_prefix_does(monkeypatch):
     monkeypatch.setattr(style_policy, "line", lambda speech_style="": "w_short and plain")
     systems = []
     monkeypatch.setattr(wording, "_ask", lambda system, user, seat: systems.append(system) or "w_line")
-    assert wording.word("w_a fact") == "w_line" and systems[0].endswith("HOW YOU SPEAK: w_short and plain")
+    assert wording.word("w_a fact") == "w_line" and "HOW YOU SPEAK: w_short and plain" in systems[0]
+    assert systems[0].endswith(wording.WHOLE), "what the fact asks to say whole beats the style (a confirmation)"
     assert prefix.style_line("w_x") == "w_short and plain"
