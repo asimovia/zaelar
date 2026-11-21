@@ -77,4 +77,6 @@ async def send(args: dict, act: str = "") -> "object":
         hint["_act"] = act
     line = await _on_engine_loop(owner.intake(said() or " ".join(hint.values()), hint, last_line=_last["ours"],
                                               before=list(_last["his"][:-1][-BEFORE:]), by="call"))
-    return ToolResult("ok" if line else "failed", {"say": line} if line else {"reason": "the owner took nothing"})
+    if not line:
+        return ToolResult("failed", {"reason": "the owner took nothing"})
+    return ToolResult("ok", {"say": line, "says": "door"})       # the owner's own line: said as it is, never reworded

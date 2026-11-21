@@ -356,10 +356,7 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
                                    else await _tool(conv, r, ev)))
                     _checkpoint(conv, r)
                     if r.door_line:                      # the act's door answered him: its line, as is, ends the run
-                        _emit(conv, "command", r, command=DOOR)
-                        r.origin = DOOR
-                        await _publish(conv, r, batch, r.door_line, _real(steps))
-                        return
+                        return await before_model.door(conv, r, batch, _real(steps), stream)
                 elif isinstance(ev, Command):
                     order = commands.parse(ev)
                     r.reading = getattr(order, "complete", r.reading)     # its last reading of his thought
@@ -476,8 +473,8 @@ async def _act(conv: "Conversation", r: "Running", call: ToolCall, claimed: Clai
                             data={"state": state, "repeat": claimed.repeat})
     if result.status != "ok":
         r.acts_refused.append(call.name)
-    elif getattr(conv.gw.specs().get(call.name), "says", "") == "door" and isinstance(result.data, dict):
-        r.door_line = str(result.data.get("say") or "").strip()     # its door's own dialogue: never reworded
+    elif isinstance(result.data, dict) and result.data.get("says") == DOOR:   # its door's own dialogue: never reworded
+        r.door_line = str(result.data.get("say") or "").strip()
     return result
 
 

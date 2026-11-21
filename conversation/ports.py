@@ -63,7 +63,6 @@ class ToolSpec:
     effect_class: EffectClass | None = None
     core: bool = False              # never filtered out (I7)
     about: str = ""                 # what it is FOR, in the host's words: the model reads it, the package never does
-    says: str = ""                  # "door": an ok result's `say` IS the answer — a door with its own dialogue, said as is
 
 
 @dataclass(frozen=True)

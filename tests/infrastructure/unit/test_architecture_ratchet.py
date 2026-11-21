@@ -946,6 +946,9 @@ _TOTAL_MAX += 2      # same cause, measured
 _PACKAGE_CEILINGS["nucleo/send"] += 80
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 3
 _TOTAL_MAX += 83     # measured
+_PACKAGE_CEILINGS["conversation"] += 8   # 2026-11-21 C1 b review: the RESULT says a door's line (`says: door`), the line ends the run in `before_model.door` (out of run.py, at its 800 lines) and the calls of the same answer it never ran are named (`door_skipped`)
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 2   # same: the send owner's line marked in `routing.send`
+_TOTAL_MAX += 10     # same cause, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

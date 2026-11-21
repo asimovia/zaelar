@@ -418,7 +418,6 @@
    "act": "send.draft",
    "door": "send",
    "op": "intake",
-   "says": "door",
    "covers": [
     "messaging.send_new"
    ],

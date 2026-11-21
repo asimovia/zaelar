@@ -39,3 +39,15 @@ async def taken(conv: "Conversation", r: "Running", batch: Batch, content: list)
             run._silent(conv, r, origin, conv.clock.now_ms())
         return True
     return False
+
+
+async def door(conv: "Conversation", r: "Running", batch: Batch, steps: int, stream) -> None:
+    """An act's door answered him in its own words (its result `says: door`): that line, as is, ends the run —
+    the model is asked nothing more, and the calls of the same answer it therefore never ran are named."""
+    from conversation.manager import run
+    from conversation.ports import ToolCall
+    run._emit(conv, "command", r, command=run.DOOR)
+    r.origin = run.DOOR
+    await run._publish(conv, r, batch, r.door_line, steps)
+    if skipped := [e.name async for e in stream if isinstance(e, ToolCall)]:
+        run._emit(conv, "command", r, command="door_skipped", tools=skipped)

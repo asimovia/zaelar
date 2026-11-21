@@ -1,13 +1,16 @@
 """A door with its own dialogue answers him in its own words, never the model's (node 13.151, C1 b).
 
 The send owner asks and confirms a message itself: its line came back to the model as data and the model reworded it,
-so the confirmation that sounded never ended in the draft's `confirm_line` and his first «yes» was refused. Now an act
-declares that its ok result's `say` IS the answer (`ToolSpec.says == "door"`, `declared.json`): the run publishes that
-line as is, with origin `door`, and asks the model nothing more.
+so the confirmation that sounded never ended in the draft's `confirm_line` and his first «yes» was refused. Now the
+RESULT says it (`{"say": line, "says": "door"}`): whatever act reached the owner — the message act or a widget's
+message act — the run publishes that line as is, with origin `door`, asks the model nothing more, and names any call
+of the same answer it therefore never ran.
 """
 from __future__ import annotations
 
-from conversation.ports import Done, EffectClass, ToolCall, ToolResult, ToolSpec
+import asyncio
+
+from conversation.ports import Done, ToolCall, ToolResult
 from conversation.testing.scripted_model import reply
 from tests.conversation.unit.convkit import Harness
 
@@ -16,17 +19,18 @@ LINE = "W_Ana: «w_goodnight». w_send it?"
 
 def test_a_doors_line_is_published_as_is_and_the_model_is_not_asked_again(store):
     h = Harness(store, grace=False)
-    h.tools.specs.append(ToolSpec("w_draft", act="a5.draft", effect_class=EffectClass.WRITE, says="door"))
-    h.tools.answers["w_draft"] = ToolResult("ok", data={"say": LINE})
-    h.model.default = lambda ids: ([ToolCall("c1", "w_draft", {"to": "w_ana"}), Done()]
-                                   if len(h.model.calls) == 1 else [reply("w_shall I send it to ana?"), Done()])
+    h.tools.answers["task.start"] = ToolResult("ok", data={"say": LINE, "says": "door"})   # a write act with a door
+    h.model.default = lambda ids: ([ToolCall("c1", "task.start", {"to": "w_ana"}), ToolCall("c2", "agenda_add", {}),
+                                    Done()] if len(h.model.calls) == 1 else [reply("w_shall I send it?"), Done()])
     h.typed("w_tell ana goodnight", 0)
     h.settle(3000)
     assert [o.text for o in h.mouth.orders] == [LINE] and len(h.model.calls) == 1
     assert ("conv_run", "door") in {(k, p.get("command")) for k, _lab, p in h.tel.events if isinstance(p, dict)}
+    skipped = [p for k, _lab, p in h.tel.events if isinstance(p, dict) and p.get("command") == "door_skipped"]
+    assert skipped and skipped[0]["tools"] == ["agenda_add"] and [c[0] for c in h.tools.calls] == ["task.start"]
 
 
-def test_an_act_with_no_door_of_its_own_is_answered_by_the_model(store):
+def test_an_act_whose_result_is_no_door_line_is_answered_by_the_model(store):
     h = Harness(store, grace=False)
     h.tools.answers["agenda_add"] = ToolResult("ok", data={"say": "w_not a door"})
     h.model.default = lambda ids: ([ToolCall("c1", "agenda_add", {"title": "w_x"}), Done()]
@@ -36,12 +40,19 @@ def test_an_act_with_no_door_of_its_own_is_answered_by_the_model(store):
     assert [o.text for o in h.mouth.orders] == ["w9"]
 
 
-def test_the_message_act_is_declared_a_door_and_its_confirmation_is_heard_whole(monkeypatch):
+def test_a_widgets_message_act_reaches_the_owner_and_comes_back_a_door_line(monkeypatch):
     from types import SimpleNamespace
 
-    from nucleo.conversation_host import acts, routing
-    from nucleo.send import draft, heard
-    assert {s.name: s.says for s in acts.catalog()}["send_message"] == "door"
+    from nucleo.conversation_host import acts_widget, routing
+    from nucleo.send import draft, heard, owner
+    monkeypatch.setattr(acts_widget, "_widget_target", lambda args: ("w_chat", "w_send", {"text": "w_hi",
+                                                                                           "_message": True}))
+
+    async def intake(said, hint=None, last_line="", before=None, by="call"):
+        return LINE
+    monkeypatch.setattr(owner, "intake", intake)
+    got = asyncio.run(acts_widget.widget_act({"widget": "w_chat", "action": "w_send"}, "e1"))
+    assert got.status == "ok" and got.data == {"say": LINE, "says": "door"}
     d = SimpleNamespace(confirm_line=LINE, heard=False, heard_at=0, heard_mono=0)
     monkeypatch.setattr(draft, "current", lambda: d)
     monkeypatch.setattr(heard, "_talking", lambda: False)
