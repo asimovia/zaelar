@@ -25,6 +25,8 @@ status: stable
 
 **The MeshKore network** (`docs/architecture/zaelar-meshkore-network.md`): live agents found through the Oracle; a declared skill is CALLED by id (`nucleo/mesh_call.py` — one order, one thread, one key; its jobs followed by the pulse under a `remote_job` row).
 
+**Where data lives** (`context/data.md`): the DNA, the language packs and the memory (`zaelar.db`, everything dynamic — the task queue included) are the only content stores, plus `config/` for settings; one home and one writer per datum.
+
 **Ownership**: `memory/` (SQLite `zaelar.db`: vec + FTS5 + graph + forgetting) is the central memory; `bus/` is the in-process event bus; `server/` (FastAPI) is transport + composition root; `config/v2.py` owns model routing. Layers are independent — widgets never touch the voice core. Beside the brain sits a deterministic autonomic homeostasis layer (`nucleo/pulse/homeostasis.py`, no model) for machine health.
 
 **The A2A network** (`docs/architecture/zaelar-a2a-network.md`, V2-866, planned): a third mesh surface — the agent of a

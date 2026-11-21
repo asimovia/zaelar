@@ -372,6 +372,7 @@ on a clean clone, by design.
 | The **rules** for working here | this file |
 | The **standing criteria** of the engine, one line each, with its test | `.meshkore/docs/criteria.md` |
 | The **invariant context** (vision, product, stack, architecture, constraints, glossary, principles) | `.meshkore/context/` |
+| **Where data lives** — the only stores (DNA, language packs, memory `zaelar.db` with the task queue, and `config/`) | `.meshkore/context/data.md` |
 | How to **test** | `tests/README.md` + `.meshkore/docs/ops/zaelar-testing.md` |
 | Architecture | `.meshkore/docs/architecture/zaelar-architecture.md` |
 | Modularity / coupling contracts | `.meshkore/docs/architecture/zaelar-modularity.md` |
