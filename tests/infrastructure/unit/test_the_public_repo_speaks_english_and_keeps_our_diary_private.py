@@ -99,7 +99,6 @@ PER_FILE: dict[str, int] = {
     'nucleo/agentes/code.py': 15,
     'nucleo/agentes/codex.py': 2,
     'nucleo/agentes/web.py': 14,
-    'nucleo/batch/runner.py': 1,
     'nucleo/cli/usage.py': 2,
     'nucleo/consent.py': 1,
     'nucleo/turn/prompt/packs/introduction.py': 5,

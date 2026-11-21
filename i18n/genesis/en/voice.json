@@ -298,12 +298,6 @@
  "reply_cannot": "Heads up: {reason}",
  "reply_asked": "Quick question: {reason}",
  "reply_skipped": "",
- "list_started": "Got it — that's several things. I'm on them and I'll let you know when I'm done.",
- "list_started_again": "Another list, then — I'm on it and I'll tell you when it's done.",
- "list_done": "I've finished your list: {ok} of {n} done.",
- "list_failed": "I couldn't do: {items}.",
- "list_needs_you": "I need you to clarify: {items}",
- "list_still_running": "{n} are still running; I'll tell you when they finish.",
  "data_acks": [
   "Done.",
   "There you go.",

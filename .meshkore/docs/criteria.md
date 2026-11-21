@@ -709,7 +709,8 @@ below is the first kind, or it names the mechanism that replaced the second.
   task is born from four sources only, never from a loop having a tick. — since 2026-09-27 · nodes 3.82, 3.83,
   3.84, 2.18.
 - **CRIT-E2 · There are no task lists**: several things asked at once are several independent tasks, and no door
-  opens a list; an unfinished list found at boot is archived with its steps. — since 2026-11-21 · nodes 13.159.
+  opens a list; an unfinished list found at boot is archived with its steps. — since 2026-11-21 · nodes 13.159,
+  13.160.
 - **CRIT-E3 · Resources pinned, reasoning open.** A worker's prompt carries formulas, resources and ways of
   solving, never a script; a fix shaped like the scenario is scaffolding (change one word of the request: does it
   stand?); in doubt it is a RESOURCES problem. — since 2026-08-20 · nodes 2.82, 4.32 ·

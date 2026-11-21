@@ -498,18 +498,6 @@ class LangSpec:
     reply_cannot: str = ""
     reply_asked: str = ""
     reply_skipped: str = ""
-    # V2-771 — a message that hands over SEVERAL tasks is a list (`nucleo/batch`). On receipt he hears that it
-    # is a list and that work started — never the list read back to him, and no count: the count needs the
-    # split (~5 s) and the receipt must not wait for it. The report comes ONCE, at
-    # the end: counts, then only what failed, what needs him, and what is still running.
-    list_started: str = ""
-    # three-tasks-at-once (2026-10-10 20:00): a canned line is said ONCE per conversation — the receipt above
-    # answered four distinct questions word for word. A second list gets this one; a third is an ordinary turn.
-    list_started_again: str = ""
-    list_done: str = ""
-    list_failed: str = ""
-    list_needs_you: str = ""
-    list_still_running: str = ""
     # data-op ack variants (V2-038, post-P1/P2 test): two consecutive data-ops with the SAME "Done." triggered
     # the loop detector (LOOP×2) → consecutive functional responses are phrased differently. The provider chooses one
     # that does NOT repeat the previous one. Localized copy (lives in the language catalog, not test data).

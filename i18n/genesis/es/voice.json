@@ -298,12 +298,6 @@
  "reply_cannot": "Ojo: {reason}",
  "reply_asked": "Una pregunta: {reason}",
  "reply_skipped": "",
- "list_started": "Entendido, me pides varias cosas. Me pongo con ellas y te aviso cuando termine.",
- "list_started_again": "Otra lista, entonces: me pongo con ella y te aviso al acabarla.",
- "list_done": "He terminado tu lista: {ok} de {n} hechas.",
- "list_failed": "No he podido con: {items}.",
- "list_needs_you": "Necesito que me aclares: {items}",
- "list_still_running": "Aún siguen {n} en marcha; te aviso al acabar.",
  "data_acks": [
   "Hecho.",
   "Listo.",
