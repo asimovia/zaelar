@@ -90,36 +90,38 @@ def test_a_parked_sibling_of_the_same_run_is_not_its_duplicate(monkeypatch):
     assert confirm.parked_errands("run-1") == [] and confirm.parked_errands("run-2") == [("9", HOTEL)]
 
 
-def test_a_long_message_of_twelve_things_is_cut_out_loud(monkeypatch):
-    """Twelve things in one typed message, past what the manager reads at once: the cut is said — an alert and a line
-    to him with how much was read — and what enters is the first `line_max_chars`, never a silent truncation."""
-    from conversation.config import Config
-    from nucleo.conversation_host import line_cut
-    from nucleo.pulse import notices
-    from voice import observer
-    alerts, told = [], []
-    monkeypatch.setattr(observer, "emit", lambda kind, label, text="", role="", extra=None:
-                        alerts.append(dict(extra or {})) if kind == "alert" else None)
-
-    async def notify(title, text, **kw):
-        told.append(text)
-    monkeypatch.setattr(notices, "notify", notify)
-    things = [f"{i}. Busca y compárame {i} opciones de algo distinto con todos los detalles que encuentres, " * 4
-              for i in range(1, 13)]
-    message = "\n".join(t.strip() for t in things)
-    cap = Config.line_max_chars
-    assert len(message) > cap, "the case must be past the cap, or this test proves nothing"
-    got = line_cut.clipped(message, "keyboard:1")
-    assert got == message[:cap]
-    assert alerts == [{"chars": len(message), "kept": cap, "device": "keyboard:1"}]
-    assert len(told) == 1 and str(cap) in told[0] and str(len(message)) in told[0]
-    assert line_cut.clipped("short", "keyboard:1") == "short" and len(alerts) == 1, "a line within the cap is not touched"
+TWELVE = "\n".join(f"{i}. Busca y compárame {i} opciones de algo distinto, con todos los detalles que encuentres: "
+                   + "precio, plazos, opiniones y dónde comprarlo. " * 6 for i in range(1, 13)).strip()
 
 
-def test_both_doors_of_a_line_enter_through_the_cut():
-    import inspect
+def test_a_long_message_of_twelve_things_enters_whole_by_both_doors(monkeypatch):
+    """Twelve things in one typed message — past the 4000 characters the doors used to keep — reach the
+    conversation WHOLE: a typed line and a device's ear alike. A limit that loses his words is an error (operator)."""
+    from nucleo.conversation_host import controls, ear_in, entry
+    assert len(TWELVE) > 4000, "the case must be past the old cut, or this test proves nothing"
+    heard = []
+    monkeypatch.setattr(entry, "_hand", lambda fn: fn(type("Conv", (), {"hear": lambda self, sig: heard.append(sig)})()))
+    monkeypatch.setattr(ear_in, "heard_lately", lambda s: [])
+    entry.typed(TWELVE, "keyboard:1", checked=True)
+    controls.local_phrase(TWELVE, "browser:1")
+    assert [sig.text for sig in heard] == [TWELVE, TWELVE]
 
-    from nucleo.conversation_host import controls, entry
-    assert "line_cut.clipped(text, dev)" in inspect.getsource(entry.typed)
-    assert "line_cut.clipped(text, dev)" in inspect.getsource(controls.local_phrase)
-    assert "[:4000]" not in inspect.getsource(entry.typed) + inspect.getsource(controls.local_phrase)
+
+def test_the_screens_door_and_the_chat_box_keep_it_whole(monkeypatch):
+    import asyncio
+    from pathlib import Path
+
+    from server import screens_api
+    from voice import screens
+    got = []
+
+    async def deliver_typed(text, dev, cid=""):
+        got.append(text)
+        return True
+    monkeypatch.setattr(screens, "deliver_typed", deliver_typed)
+    monkeypatch.setattr("nucleo.runstate.stopped", lambda: False)
+    asyncio.run(screens_api.chat(text=TWELVE, dev="phone-1", cid=""))
+    assert got == [TWELVE]
+    chat = (Path(__file__).resolve().parents[4] / "frontend/app/components/ChatWall.js").read_text(encoding="utf-8")
+    send = chat[chat.index("export function submitChat"):]
+    assert ".slice(0, MAX_TEXT)" not in send[:send.index("\n}")], "the chat box sends what he typed, whole"

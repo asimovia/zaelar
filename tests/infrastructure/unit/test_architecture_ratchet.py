@@ -982,7 +982,6 @@ _TOTAL_MAX += 13     # 2026-11-21 INI-078 F2: the embedded voice is refused — 
 _PACKAGE_CEILINGS["nucleo/circuit"] += 27   # 2026-11-21 INI-078 Q-7: there are no task lists — a live list a restart finds is archived with its steps, one pill (`ledger.lists_retired`); the list executor and its doors go
 _TOTAL_MAX -= 916    # 2026-11-21 INI-078 Q-7: the list executor (`nucleo/batch`) is deleted, measured
 _PACKAGE_CEILINGS["nucleo/dispatch"] += 6   # 2026-11-21 INI-078 Q-7 (step 1c): several things asked at once are several tasks — the dedup never folds a call into a sibling of the same run, live or parked (`_live_errands(but_run)`)
-_PACKAGE_CEILINGS["conversation"] += 4      # same step: a line past the manager's `line_max_chars` is cut out loud, never silently (`Config.line_max_chars`)
 _TOTAL_MAX += 49     # step 1c measured with step 2 on top: the run carried to the dedup, the line cut said (`line_cut.py`)
 _PACKAGE_CEILINGS["memory"] += 66   # 2026-11-21 INI-078 orchestrator step 2: the queue's columns (v13) and its three store doors — one insert, one atomic archive, the queue in order (`tasks_store.queue_*`)
 _TOTAL_MAX += 184    # same cause, with `nucleo/queue` — the queue's one writer: the signals, their jump table, add and the view

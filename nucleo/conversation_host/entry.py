@@ -166,7 +166,7 @@ def _open_and_drain() -> None:
 def _guards(text: str, dev: str) -> dict | None:
     from nucleo import runstate
     from nucleo.input import support_note
-    if support_note.record(str(text or "")[:4000], dev):
+    if support_note.record(str(text or ""), dev):
         return {"ok": True, "note": True}
     if runstate.stopped():
         return {"ok": False, "reason": "stopped"}
@@ -183,14 +183,14 @@ def typed(text: str, dev: str = "", *, wait: bool = False, checked: bool = False
     inbox's dedupe — and it never names an owner), else one is made."""
     if not str(text or "").strip():
         return {"ok": False, "reason": "empty"}
-    from nucleo.conversation_host import line_cut, wall
+    from nucleo.conversation_host import wall
     cid = cid if wall.client_id_ok(cid) else f"c_{uuid.uuid4().hex[:12]}"
     if wait:
         with _lock:
             _waits[cid] = {"iv": None, "future": concurrent.futures.Future(), "said": [], "reads": [], "acts": [],
                            "ended": threading.Event()}
     from conversation.ear import signals as S
-    sig = S.TypedSubmit(dev or "holder", cid, line_cut.clipped(text, dev), int(time.time() * 1000))
+    sig = S.TypedSubmit(dev or "holder", cid, str(text).strip(), int(time.time() * 1000))   # whole: no limit
 
     def _end(label: str) -> None:
         with _lock:

@@ -34,7 +34,7 @@ import { mountConectores } from "../services/conectores-bridge.js?v=1";
 import * as red from "../services/red-bridge.js?v=1";
 import { createWallBridge, submitLine } from "../services/wall-bridge.js?v=1";
 import { createWallStorage, CAP as WALL_CAP } from "../services/wall-storage.js?v=1";
-import { legacy, MAX_TEXT } from "../services/wall-legacy.js?v=1";
+import { legacy } from "../services/wall-legacy.js?v=1";
 
 const SEND_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>`;
 // V2-621 — the ONE map from a tab id to its label key: the header's standing name (`.cw-tabname`) and each
@@ -90,7 +90,7 @@ function loadDock() {
 // thumb}); the bytes never ride the message. The server already holds them as the turn's state, so the line the
 // agent receives is his text — or, for a message that is only files, their names.
 export function submitChat(text, atts) {
-  const t = (text || "").trim().slice(0, MAX_TEXT);
+  const t = (text || "").trim();                 // whole: a line he typed is never cut on its way out
   const a = (atts || []).filter((x) => x && x.id);
   if (!t && !a.length) return;
   const said = t || a.map((x) => "📎 " + x.name).join("\n");

@@ -42,11 +42,11 @@ async def chat(text: str = Body(..., embed=True), dev: str = Body("", embed=True
     is checked for its shape and never names an owner."""
     from nucleo import runstate
     from nucleo.input import support_note
-    if support_note.record(str(text or "")[:4000], screens.clean(dev)):
+    if support_note.record(str(text or ""), screens.clean(dev)):
         return JSONResponse({"ok": True, "note": True})   # a `LOG:` line is written on the timeline, never a turn
     if runstate.stopped():
         return JSONResponse({"ok": False, "reason": "stopped"}, status_code=409)
-    t = str(text or "").strip()[:4000]
+    t = str(text or "").strip()             # whole: a line he typed is never cut
     if not t:
         return JSONResponse({"ok": False, "reason": "empty"}, status_code=400)
     if not await screens.deliver_typed(t, dev, cid=cid):
