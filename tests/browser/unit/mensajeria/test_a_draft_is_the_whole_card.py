@@ -102,6 +102,16 @@ def test_discard_and_send_also_return_to_the_list_it_came_from():
     assert out["ok"] and out["mailbox"]["draft"] is None and out["mailbox"]["folder"] == "INBOX"
 
 
+def test_the_draft_screens_send_is_the_order_its_ref_names():
+    """C2 A3: the draft screen's Send carries its own `ref` (as the chat's does): the order it queues is that row of
+    the outbox, so whoever follows the ref — the send owner after his gesture — reads ITS receipt."""
+    _with_categories()
+    key = _held()
+    data.apply_action("open_draft", {"key": key})
+    out = data.apply_action("compose", {"key": key, "text": "Edited", "send": True, "ref": "r-mail-1"})
+    assert out["ok"] and [r["ref"] for r in data.load_db().get("outbox") or [] if r.get("ref") == "r-mail-1"]
+
+
 # ── RENDERED ──────────────────────────────────────────────────────────────────────────────────────────────────
 
 pytest.importorskip("playwright.sync_api")

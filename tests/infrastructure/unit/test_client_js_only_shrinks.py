@@ -48,6 +48,7 @@ JS_TOTAL_MAX -= 187  # 2026-11-20 INI-042 #49 (4.611): the wall plan's commit 3/
 JS_TOTAL_MAX += 26   # 2026-11-20 INI-042 #49 (4.615, the operator): our line grows as it SOUNDS — the voice's audio-synced captions mapped onto it word by word (`wall-bridge.spokenChars`, `heardAloud`)
 JS_TOTAL_MAX += 107  # 2026-11-20 40f983eba (flows: one order is one flow — the debug panel's folded flows, `debug-fold.js`), measured: its landing raised no ceiling
 JS_TOTAL_MAX += 5    # 2026-11-20 (4.616): the chat column reports its open state and tab to the timeline (`wall:state`, ChatWall.js) so a session replay can draw it
+JS_TOTAL_MAX += 1    # 2026-11-21 C2 A3 review: the mail draft screen's Send names its order with a ref, as the chat's (`mailclient.js` imports `_newRef`)
 
 
 def _ours(p: Path) -> bool:

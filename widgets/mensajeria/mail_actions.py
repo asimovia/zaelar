@@ -126,7 +126,7 @@ def _a_compose(action, payload) -> dict:
             _mbx.note(db, "not_sent" if payload.get("send") else "not_saved", out.get("error") or "")
             _d.store.save(_d.WIDGET_ID, db)
             return {**out, "ok": False, **_d.view_data()}
-        return _finish(db, out["key"], bool(payload.get("send")))
+        return _finish(db, out["key"], bool(payload.get("send")), str(payload.get("ref") or ""))
     to = str(payload.get("to") or payload.get("contact") or "").strip()
     out = _d._a_draft("draft", {"contact": to, "subject": str(payload.get("subject") or ""),
                                 "text": str(payload.get("text") or ""), "channel": payload.get("channel") or "email"})
@@ -138,7 +138,7 @@ def _a_compose(action, payload) -> dict:
     return _finish(db, out["key"], bool(payload.get("send")))
 
 
-def _finish(db: dict, key: str, send: bool) -> dict:
+def _finish(db: dict, key: str, send: bool, ref: str = "") -> dict:
     """After a save: on screen with «Guardado», or sent and back to the folder — or, when the send fails, still on
     screen with the reason."""
     _mbx.open_draft(db, key)
@@ -148,7 +148,7 @@ def _finish(db: dict, key: str, send: bool) -> dict:
         _d.store.save(_d.WIDGET_ID, db)
         return {"ok": True, "result": {"key": key, "saved": True}, **_d.view_data()}
     _d.store.save(_d.WIDGET_ID, db)
-    sent = _d._a_send_draft("send_draft", {"key": key})
+    sent = _d._a_send_draft("send_draft", {"key": key, **({"ref": ref} if ref else {})})   # its order: the screen's ref
     db = _d.load_db()
     if sent.get("ok"):
         _mbx.back(db)

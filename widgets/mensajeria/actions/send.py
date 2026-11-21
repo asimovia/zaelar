@@ -198,15 +198,15 @@ def _a_send_draft(action, payload) -> dict:
     # Re-resolve against the LIVE item so a stale identity is not blindly replied to; the stored platform/chatId
     # are the fallback, enough to send with no pending item left.
     if stored.get("new"):
-        order = _d._outbound.enqueue(db, stored, text, subject=str(stored.get("subject") or ""),
-                                     attachments=files, not_before=not_before, scheduled=bool(not_before))
+        order = _d._outbound.enqueue(db, stored, text, subject=str(stored.get("subject") or ""), ref=str(payload.get(
+            "ref") or ""), attachments=files, not_before=not_before, scheduled=bool(not_before))
         _d._drafts.forget(db, draft.get("key") or key)
         _d.store.save(_d.WIDGET_ID, db)
         return {"ok": True, "to": stored.get("name") or stored.get("to"), "text": text, "ref": order.get("ref"),
                 "attachments": len(files), **({"scheduled_for": not_before} if not_before else {})}
     target = _d._outbound.resolve_reply_target(db, stored.get("n"), stored.get("messageId")) or stored
     cc = _d._drafts.cc_for(draft)
-    _d._outbound.enqueue_reply(db, target, text, cc=cc, attachments=files, not_before=not_before)
+    _d._outbound.enqueue_reply(db, target, text, cc=cc, attachments=files, not_before=not_before, ref=str(payload.get("ref") or ""))
     _d._drafts.forget(db, draft.get("key") or key)
     _d.store.save(_d.WIDGET_ID, db)
     return {"ok": True, "to": target.get("senderId") or target.get("chatId"), "text": text,

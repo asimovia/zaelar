@@ -71,3 +71,17 @@ def test_through_voice_hand_and_send_the_box_is_the_drafts_and_one_order_leaves(
     took, _line = asyncio.run(owner.take("w_yes"))                      # and a yes after it
     assert world["orders"] == [("card", "w_good night, sleep well!")] and not took
     assert draft.current() is None, "his Send took the draft: no yes can send it a second time"
+
+
+def test_the_mail_screens_send_over_the_open_draft_is_his_go_ahead_once(world):
+    """The same property by the mail draft screen: its Send is `compose` with `send` and its own `ref` on the draft's
+    box — the owner adopts it, so no yes of his can send it again."""
+    _world["w"] = world
+    d = draft.start("w_mail ana the report")
+    d.target, d.text = {"name": "W_Ana", "contact_id": "a1", "platform": "email"}, "w_the report"
+    owner._emit("opened", d)
+    if owners.claim("mensajeria", "compose", door.by(door.HAND, {"key": d.box_key, "text": "w_the report, attached",
+                                                                 "send": True, "ref": "r2"})) is None:
+        world["orders"].append(("card", "w_the report, attached"))
+    took, _line = asyncio.run(owner.take("w_yes send it"))
+    assert world["orders"] == [("card", "w_the report, attached")] and not took and draft.current() is None

@@ -1,6 +1,7 @@
 // js/mailclient.js — THE EMAIL SECTION, A MAIL CLIENT (mailbox.py), second half: the list, an open message, the draft editor.
 // Moved verbatim out of widget.js (refactor2710-12).
 import { S, PLAT, tt } from "./state.js";
+import { _newRef } from "./compose.js";
 import { actionIcon, el, markBusy } from "./dom.js";
 import { fmtWhen, linkify, markupText } from "./media.js";
 import { pendingStrip } from "./settings.js";
@@ -153,7 +154,7 @@ export function draftEditor(d, key, mb, data, ctx, act, rerender){
     note.textContent = send ? tt("sending", null, "Enviando…") : tt("saving", null, "Guardando…");
     if(fresh) S.newMail.pending = Date.now();
     if(!send && !fresh) act("save_draft", {key, ...values()});
-    else act("compose", {...(fresh ? {channel: "email"} : {key}), ...values(), ...(send ? {send: true} : {})});
+    else act("compose", {...(fresh ? {channel: "email"} : {key}), ...values(), ...(send ? {send: true, ref: _newRef()} : {})});   // a Send names its order
   };
   const foot = el("div","dfoot");
   const send = el("button","bt bt-primary", tt("send", null, "Enviar"));
