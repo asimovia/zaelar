@@ -50,12 +50,11 @@ def _clean(monkeypatch):
 
 # ── (a) the topology ────────────────────────────────────────────────────────────────────────────────────────────
 
-def test_the_voice_is_its_own_process_unless_embedded_is_asked(monkeypatch):
+def test_the_voice_is_its_own_process_even_when_embedded_is_asked(monkeypatch):
     assert not child_process.embedded()
     assert child_process.factory() is child_process.make_child
-    monkeypatch.setenv("ZAELAR_VOICE_EMBEDDED", "1")
-    from voice.engine.pipeline.agent import make_server
-    assert child_process.embedded() and child_process.factory() is make_server
+    monkeypatch.setenv("ZAELAR_VOICE_EMBEDDED", "1")                # refused since INI-078 F2 (the old voice node)
+    assert not child_process.embedded() and child_process.factory() is child_process.make_child
 
 
 def test_the_heartbeat_and_the_boot_build_the_voice_through_the_one_factory():

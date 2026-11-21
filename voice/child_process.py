@@ -15,7 +15,9 @@ Priorities (`nucleo/pulse/priority.py`): the voice process asks for nice 0 and t
 allow, the body takes nice 5 once its first voice is up. An unprivileged host cannot raise a priority back, so a
 voice process RESTARTED by an already-niced body runs at the body's nice; the event says so (`nice` in the status).
 
-`ZAELAR_VOICE_EMBEDDED=1` keeps the voice inside the body (the LiveKit job as a thread, as before V2-891).
+`ZAELAR_VOICE_EMBEDDED=1` kept the voice inside the body (the LiveKit job as a thread, as before V2-891); it ran the
+old turn's own voice node, so since INI-078 F2 it is refused: said as an alert, and the voice runs in its own process,
+built as always — manual turns and the conversation manager's ear.
 """
 from __future__ import annotations
 
@@ -36,9 +38,15 @@ HEADER = "x-zaelar-voice-token"
 SPAWN_KEYS = frozenset(("ZAELAR_BODY_URL", "ZAELAR_WORKER_PORT"))
 
 
-def embedded() -> bool:
-    """The voice stays a thread of the body (the pre-V2-891 shape) — the disarm, and the escape hatch."""
+def asked_embedded() -> bool:
+    """Was the voice asked to stay a thread of the body (the pre-V2-891 shape)? It is refused (`factory`)."""
     return (os.getenv("ZAELAR_VOICE_EMBEDDED") or "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def embedded() -> bool:
+    """The voice is never a thread of the body any more (INI-078 F2): the conversation manager hears through the voice
+    process's ear, and the embedded worker only had the old turn's voice node."""
+    return False
 
 
 def token() -> str:
@@ -202,8 +210,13 @@ def make_child() -> VoiceChild:
 
 
 def factory():
-    """What builds the voice worker for this deployment: the embedded `AgentServer`, or the voice's own process."""
-    if embedded():
-        from voice.engine.pipeline.agent import make_server
-        return make_server
+    """What builds the voice worker: the voice's own process, always. Asked to embed it, the body says no — an alert on
+    his screen — and builds the voice process as always: the embedded worker ran the old turn's voice node."""
+    if asked_embedded():
+        logger.warning("ZAELAR_VOICE_EMBEDDED is refused: the voice runs in its own process (INI-078 F2)")
+        try:
+            from voice.observer import emit
+            emit("alert", "the embedded voice is refused: it runs in its own process", text="ZAELAR_VOICE_EMBEDDED")
+        except Exception as e:  # noqa: BLE001 — the refusal stands whether or not it could be shown
+            logger.debug(f"child_process: the refusal was not shown ({e!r})")
     return make_child

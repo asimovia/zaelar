@@ -980,6 +980,7 @@ _PACKAGE_CEILINGS["nucleo/batch"] += 12   # 2026-11-21 INI-078 F2: a step of his
 _TOTAL_MAX += 21     # same cause, with the typed door's report of the acts its run submitted and their receipts (`entry`)
 _PACKAGE_CEILINGS["nucleo/send"] += 2   # 2026-11-21 word tables at their ceiling: the owner paints at any step of an open draft, the same (whom, text) twice paints nothing (`card._shown`) — its step labels were a table
 _TOTAL_MAX += 4      # same, with the receipt's answer fields read from `declared.json` (`receipt_answer`) instead of a table
+_TOTAL_MAX += 13     # 2026-11-21 INI-078 F2: the embedded voice is refused — said on his screen, the voice process built as always (`child_process.factory`, `asked_embedded`)
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

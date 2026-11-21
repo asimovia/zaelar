@@ -1,8 +1,9 @@
 """The door of the world's events into the conversation manager (R-2, E7d-2): an event the router already ROUTED
 (`nucleo/events/pump.publish`) enters the account's conversation as an EVENT envelope — its source's authority, never
 his — and runs there, after his words, by the host's `Events` door, which obeys the route by the one body that obeys it
-(`pump.obey`) on the engine's loop. With the manager off for the account, nothing is given and the pump obeys it as
-before; a conversation that cannot open obeys it the old way too (the line's fallback).
+(`pump.obey`) on the engine's loop. When the manager may not run now, nothing is given and the pump obeys the route
+itself, with no conversation; a conversation that cannot open hands it to `pump.obey` too (the line's fallback). The
+route and `pump.obey` are the events' own body, not the old turn.
 
 What enters is plain data — the event's topic, source, text and declared fields, and the route's verdict; the route's
 full record (a waiting row, the rules, a claimant's own record) stays here, by the event's id, for its door.
@@ -51,8 +52,8 @@ def envelope(ev: dict, r: dict, event_id: str, now_ms: int):
 
 
 def give(ev: dict, r: dict, now: float | None = None) -> bool:
-    """Hand a routed event to the conversation manager. False when the manager is off for the account: the caller
-    obeys it then."""
+    """Hand a routed event to the conversation manager. False when the manager may not run now: the caller obeys the
+    route itself then (`pump.obey`)."""
     if not _on():
         return False
     from nucleo.conversation_host import entry
