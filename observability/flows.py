@@ -121,6 +121,12 @@ def flows(limit: int = 50, session_id: str = "", user_id: str = "") -> list[dict
                -- never lists them as flows. The Master's mirror of this SQL carries the same column.
                MAX(CASE WHEN kind = 'flow' AND label = 'end'
                         THEN json_extract(payload, '$.discarded') END) AS discarded,
+               -- R-1: a turn's flow end carries its REAL steps and the tasks it opened (`turns.py`); an old flow has
+               -- neither (null), and a spawned worker is counted by its id either way.
+               MAX(CASE WHEN kind = 'flow' AND label = 'end' THEN json_extract(payload, '$.steps') END) AS steps,
+               MAX(CASE WHEN kind = 'flow' AND label = 'end' THEN json_extract(payload, '$.tasks') END) AS tasks,
+               COUNT(DISTINCT CASE WHEN topic = 'worker.spawned'
+                                   THEN json_extract(payload, '$.id') END) AS spawned,
                MAX(session_id)                    AS session_id,
                MAX(user_id)                       AS user_id
         FROM events
@@ -169,6 +175,30 @@ def flow(corr_id: str, limit: int = 500, since_ms: float = 0, order: str = "asc"
     )
 
 
+def counts(rows: list[dict]) -> dict:
+    """THE counters of a set of flows, one definition for every reader (R-1): a flow FOLDED into another (`merge_into`)
+    is counted nowhere; a DISCARD (the ear's, or an event with nothing to do) is counted apart, never as a flow; what
+    remains is a TURN (his: `initiator` user) or an EVENT (the system's); a FLOW is one with a real step (its `steps`,
+    or an old flow that says none); TASKS are the workers it spawned, or the tasks its end says it opened."""
+    out = {"turns": 0, "flows": 0, "tasks": 0, "events": 0, "discards": 0}
+    for r in rows or ():
+        if r.get("merge_into"):
+            continue
+        if r.get("discarded"):
+            out["discards"] += 1
+            continue
+        out["turns" if r.get("initiator") == "user" else "events"] += 1
+        steps = r.get("steps")
+        out["flows"] += steps is None or int(steps or 0) > 0
+        out["tasks"] += max(int(r.get("spawned") or 0), int(r.get("tasks") or 0))
+    return out
+
+
+def standing(rows: list[dict]) -> list[dict]:
+    """The flows a reader lists: neither folded into another nor a discard (R-1)."""
+    return [r for r in rows or () if not r.get("merge_into") and not r.get("discarded")]
+
+
 def sessions(limit: int = 30, user_id: str = "") -> list[dict]:
     """Las últimas sesiones de trabajo con su forma: cuándo, cuánto duraron, cuántos flujos y eventos, tokens y
     errores. Es la vista que después permitirá comparar «cómo le fue a esta persona hoy» contra ayer."""
@@ -178,14 +208,13 @@ def sessions(limit: int = 30, user_id: str = "") -> list[dict]:
         where.append("user_id = ?")
         args.append(user_id)
     args.append(int(limit))
-    return _rows(
+    rows = _rows(
         f"""
         SELECT session_id,
                MAX(user_id)                       AS user_id,
                MIN(ts_ms)                         AS started_ms,
                MAX(ts_ms) - MIN(ts_ms)            AS t_ms,
                COUNT(*)                           AS events,
-               COUNT(DISTINCT corr_id)            AS flows,
                SUM(COALESCE(tokens_in, 0))        AS tokens_in,
                SUM(COALESCE(tokens_out, 0))       AS tokens_out,
                SUM(CASE WHEN {ERROR_WHERE} THEN 1 ELSE 0 END) AS errors,
@@ -223,6 +252,13 @@ def sessions(limit: int = 30, user_id: str = "") -> list[dict]:
         """,
         tuple(args),
     )
+    for r in rows:
+        r.update(counts(flows(limit=FLOWS_PER_SESSION, session_id=str(r["session_id"]))))
+    return rows
+
+
+#: how many of a session's flows its counters read
+FLOWS_PER_SESSION = 2000
 
 
 def session(session_id: str) -> dict:
@@ -237,7 +273,6 @@ def session(session_id: str) -> dict:
                MAX(ts_ms)                         AS last_ms,
                MAX(ts_ms) - MIN(ts_ms)            AS t_ms,
                COUNT(*)                           AS events,
-               COUNT(DISTINCT corr_id)            AS flows,
                SUM(COALESCE(tokens_in, 0))        AS tokens_in,
                SUM(COALESCE(tokens_out, 0))       AS tokens_out,
                SUM(CASE WHEN {ERROR_WHERE} THEN 1 ELSE 0 END) AS errors,
@@ -259,6 +294,8 @@ def session(session_id: str) -> dict:
         (str(session_id),),
     )
     row = r[0] if r else {}
+    if row and row.get("events"):
+        row.update(counts(flows(limit=FLOWS_PER_SESSION, session_id=str(session_id))))
     return row if row and row.get("events") else {}
 
 

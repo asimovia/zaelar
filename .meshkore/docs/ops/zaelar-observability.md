@@ -345,6 +345,13 @@ the set of events it should?») is answered by grouping by `trace`.
   (`frontend/app/components/debug-fold.js`). A reader that attributes trace-less events to the nearest flow does it
   only for a CLOSED list of kinds (`transcript`, `bot_speech`, `tts`, `state`, `metric`, `vad`): a connector or a
   cluster event belongs to no request and never titles one.
+- **A flow is a turn with a real step, and the counters fold (R-1).** A turn's `flow end` is the conversation's
+  (`cat: conversation`) with its real `steps` (reads, acts, its answer — never the run's repair steps) and the `tasks`
+  it opened; an event's run (a message, a cron, a cluster) opens its own trace with its origin, and with nothing to do
+  it ends `discarded`. `observability.flows.counts` is the ONE definition of a session's counters — turns, events,
+  flows with a real step, tasks, discards apart, a folded flow nowhere, never one per `corr_id` — read by `session`,
+  `sessions` and `/api/observability/session/{id}`, whose `flows_detail` lists only the flows that stand (`?all=1`:
+  every row). The Master mirrors this projection and its counters.
 
 ## A Brain Worker's steps — WHERE it works and WHAT it uses
 

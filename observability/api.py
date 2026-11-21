@@ -118,7 +118,7 @@ async def list_sessions(request: Request, limit: int = 30, user_id: str = ""):
 
 
 @router.get("/api/observability/session/{session_id}")
-async def one_session(request: Request, session_id: str):
+async def one_session(request: Request, session_id: str, all: int = 0):
     if not _allowed(request):
         return _DENIED
     info = _flows.session(session_id)
@@ -128,7 +128,10 @@ async def one_session(request: Request, session_id: str):
     # `flows` (a number, from the summary) and `flows_detail` (the list) are intentionally DISTINCT fields: putting the
     # list in `flows` overwrote the summary counter, and anyone reading `flows` would sometimes receive a number and
     # sometimes an array depending on the route. One name with two types is a trap for whoever consumes this.
-    info["flows_detail"] = _flows.flows(limit=500, session_id=session_id)
+    # Its counters (`flows.counts`) are the summary's; the list holds the flows that STAND — neither folded into another
+    # nor a discard — unless `all=1` asks for every row (R-1).
+    rows = _flows.flows(limit=500, session_id=session_id)
+    info["flows_detail"] = rows if all else _flows.standing(rows)
     # Every row behind `errors` and `failed_tasks`, with its `corr_id` (V2-852 T16): one predicate counts and lists,
     # so the header's number can always be opened. A fault outside any flow has corr_id null and is still listed.
     info["faults"] = _flows.faults(session_id=session_id, limit=2000)

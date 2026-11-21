@@ -880,6 +880,8 @@ _TOTAL_MAX += 94     # same causes, measured
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 82   # 2026-11-21 E7d-5 (R-1): a flow is a turn with a real step — the turn's flow end with the conversation's family, its real steps and the tasks it opened (declared `task_acts`), the acts run in their turn's trace (`turns.current`, `HostTools.call`), an event's run with a trace of its own and a flow only when it did something
 _PACKAGE_CEILINGS["conversation"] += 5   # same: a close counts the run's real steps, never its repair steps (`run._real`)
 _TOTAL_MAX += 86     # same causes, measured
+_PACKAGE_CEILINGS["observability"] += 40   # 2026-11-21 E7d-6 (R-1): ONE definition of a session's counters (`flows.counts`: turns, flows with a real step, tasks, events, discards apart, folded flows nowhere) read by the session, the session list and the API, and the flows that stand (`flows.standing`)
+_TOTAL_MAX += 40     # same cause, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())
