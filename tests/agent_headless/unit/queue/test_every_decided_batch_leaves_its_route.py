@@ -68,3 +68,34 @@ def test_the_auditor_reads_it_back_by_session(monkeypatch):
     monkeypatch.setattr(flows, "events", lambda session_id="", limit=0, **kw: rows)
     got = audit.decisions("s-1")
     assert [d.get("class") for d in got] == ["C", None] and got[1]["near"] == {"new": "7", "open": "3"}
+
+
+def test_the_record_holds_the_draft_an_act_the_gateway_refused_and_why_a_door_failed(emitted):
+    route.listen("conv_run", "started", {"refs": {"run": "run-1"}, "batch_envs": ["e1"]})
+    route.saw("OPEN", "#3 · send · waiting · w3")
+    route.saw("DRAFT", "#3: a message being written")
+    route.acted("task_say", {"task": "#9"}, "failed", {"reason": "not_open", "open": "#3 …"})
+    route.listen("conv_effect", "refused", {"refs": {"run": "run-1"}, "tool": "start_task", "reason": "held"})
+    route.listen("conv_effect", "refused", {"refs": {"run": "run-other"}, "tool": "w_x", "reason": "held"})
+    route.listen("conv_run", "ended", {"refs": {"run": "run-1"}, "outcome": "answered"})
+    (_kind, _label, e), = emitted
+    assert e["open"] == "#3 · send · waiting · w3\nDRAFT: #3: a message being written"
+    assert [(a["name"], a["status"]) for a in e["acts"]] == [("task_say", "failed:not_open"),
+                                                              ("start_task", "refused:held")]
+    assert e["class"] == "C"
+
+
+def test_the_auditors_reader_gives_each_decision_the_signals_that_followed_it():
+    from nucleo.audit import route as audit
+    act = lambda name, status="ok", **args: {"name": name, "args": args, "status": status}   # noqa: E731
+    rows = [{"ts_ms": 0, "class": "B", "acts": [act("start_task", request="w1")]},
+            {"ts_ms": 10_000, "class": "C", "acts": [act("task_say", task="#4"), act("draft_edit", task="#5")]},
+            {"ts_ms": 30_000, "class": "D", "acts": [act("stop_task", task="#7")]},        # not the #4 undone
+            {"ts_ms": 70_000, "class": "C", "acts": [act("task_unsay", task="#4"), act("draft_edit", task="#5")]},
+            {"ts_ms": 400_000, "class": "C", "acts": [act("task_say", "failed:not_open", task="#9"),
+                                                      act("start_task", "refused:held")]}]
+    got = [d["hints"] for d in audit.hints(rows)]
+    assert got[0] == ["stopped_soon"]
+    assert got[1] == ["undone:task_unsay", "redrafted"]
+    assert got[2] == [] and got[3] == []
+    assert got[4] == ["not_open:task_say", "refused:start_task"]

@@ -6,9 +6,10 @@ with what it saw and what it chose, so an auditor marks it right or wrong on his
 (`python -m nucleo.audit.route --session <id>`):
 
   · `his_text` and `our_last` — what he said, and our last line before it;
-  · `open` — the open-tasks block exactly as the model read it;
+  · `open` — the open-tasks block exactly as the model read it, and the message DRAFT block when one was open;
   · `class` — derived from the acts, through the declared table (`declared.json › route_class`): no task act is A;
-  · `acts` — each act with its arguments and how it ended; `model` and `ms`.
+  · `acts` — each act with its arguments and how it ended (`failed:<reason>` when its door said why; an act the
+    gateway refused before any door, `refused:<reason>`); `model` and `ms`.
 
 Collected from the conversation's own telemetry and the host's ports, in the conversation's thread; never raises.
 """
@@ -30,7 +31,7 @@ _last_said = {"text": "", "at": 0.0}
 
 def _keep(run: str) -> dict:
     with _lock:
-        got = _runs.setdefault(run, {"acts": [], "open": "", "his_text": "", "model": "", "t0": time.monotonic(),
+        got = _runs.setdefault(run, {"acts": [], "open": "", "draft": "", "his_text": "", "model": "", "t0": time.monotonic(),
                                      "our_last": _last_said["text"], "batch": []})
         while len(_runs) > KEPT:
             _runs.pop(next(iter(_runs)))
@@ -43,17 +44,19 @@ def _run_now() -> str:
 
 
 def saw(title: str, text: str) -> None:
-    """A state block the model read in the run in course (the open tasks), as it read it."""
+    """A state block the model read in the run in course (the open tasks, the message draft), as it read it."""
     run = _run_now()
-    if run and title in ("TASKS", "OPEN"):
-        _keep(run)["open"] = str(text or "")
+    if run and title in ("TASKS", "OPEN", "DRAFT"):
+        _keep(run)["draft" if title == "DRAFT" else "open"] = str(text or "")
 
 
-def acted(name: str, args: dict, status: str) -> None:
-    """An act of the run in course, with its arguments and how it ended."""
+def acted(name: str, args: dict, status: str, data=None) -> None:
+    """An act of the run in course, with its arguments and how it ended — and why, when its door said so."""
     run = _run_now()
     if run:
-        _keep(run)["acts"].append({"name": str(name), "args": dict(args or {}), "status": str(status or "")})
+        why = str((data or {}).get("reason") or "") if isinstance(data, dict) and status != "ok" else ""
+        _keep(run)["acts"].append({"name": str(name), "args": dict(args or {}),
+                                   "status": f"{status}:{why}" if why else str(status or "")})
 
 
 def ours(text: str) -> None:
@@ -80,9 +83,16 @@ def class_of(acts: list[dict]) -> str:
 
 
 def listen(kind: str, label: str, p: dict) -> None:
-    """The conversation's telemetry, in its thread: a batch starts, its words come in, its model answers, it ends."""
+    """The conversation's telemetry, in its thread: a batch starts, its words come in, its model answers, an act is
+    refused by the gateway before any door, it ends."""
     try:
         run = str((p.get("refs") or {}).get("run") or "")
+        if kind == "conv_effect" and label == "refused" and run and p.get("tool"):
+            with _lock:
+                rec = _runs.get(run)              # only a batch being recorded: an event's run has none
+            if rec is not None:
+                rec["acts"].append({"name": str(p["tool"]), "args": {}, "status": f"refused:{p.get('reason') or ''}"})
+            return
         if kind != "conv_run" or not run or p.get("origin"):     # an event's run: not his words, nothing decided
             return
         if label == "started":
@@ -105,7 +115,7 @@ def _ended(run: str, p: dict) -> None:
     from nucleo.conversation_host import turns
     from voice import observer, trace
     extra = {"run": run, "batch_ids": rec["batch"], "his_text": rec["his_text"], "our_last": rec["our_last"],
-             "open": rec["open"], "class": class_of(rec["acts"]), "acts": rec["acts"], "model": rec["model"],
+             "open": rec["open"] + (f"\nDRAFT: {rec['draft']}" if rec["draft"] else ""), "class": class_of(rec["acts"]), "acts": rec["acts"], "model": rec["model"],
              "ms": int((time.monotonic() - rec["t0"]) * 1000), "outcome": str(p.get("outcome") or "")}
     tid = turns._run_first.get(run, "")
     with trace.scope(tid) if tid else _nothing():

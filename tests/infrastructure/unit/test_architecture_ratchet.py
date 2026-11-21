@@ -1039,6 +1039,9 @@ _TOTAL_MAX += 101    # same, measured: the old TASKS composition and the task ro
 _PACKAGE_CEILINGS["nucleo/send"] += 66     # 2026-11-21 INI-078 step 6 + S4: a message is a task of the send lane (`row.py`: its row, its draft in `progress`, back after a restart) and the model's acts on it by #number (`by_number.py`); the RAM queue and the pre-model read went
 _PACKAGE_CEILINGS["nucleo/queue"] += 3     # same: the boot brings the open draft back from its row
 _TOTAL_MAX += 282    # same, measured (and OPEN says what it could not read)
+_PACKAGE_CEILINGS["nucleo/audit"] += 46    # 2026-11-21 INI-078 S1 review: the auditor's reader gives each decision the signals that followed it (`hints`: undone, redrafted, stopped soon, a number not open, refused)
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 11  # same: the `route` record holds the DRAFT the model read, an act the gateway refused (`refused:<reason>`) and why a door failed
+_TOTAL_MAX += 57     # same, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

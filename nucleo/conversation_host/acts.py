@@ -225,7 +225,8 @@ class HostTools:
             with trace.scope(tid):
                 got = await self._call(name, args, effect_id=effect_id, idempotency_key=idempotency_key,
                                        deadline_mono_ms=deadline_mono_ms)
-        route.acted(name, args if isinstance(args, dict) else {}, getattr(got, "status", ""))   # S1: what it did
+        route.acted(name, args if isinstance(args, dict) else {}, getattr(got, "status", ""),   # S1: what it did
+                    getattr(got, "data", None))
         return got
 
     async def _call(self, name: str, args: dict, *, effect_id: str | None, idempotency_key: str | None,

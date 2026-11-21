@@ -171,8 +171,8 @@ def _open_next_soon() -> None:
         import asyncio
         from nucleo.send import intake
         asyncio.get_running_loop().create_task(intake.open_the_next())
-    except RuntimeError:
-        return                                   # no loop here: the next draft that ends opens it
+    except RuntimeError as e:                    # no loop here: the next draft that ends opens it
+        _note(e)
 
 
 def restore() -> list[str]:
