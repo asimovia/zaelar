@@ -892,6 +892,9 @@ _TOTAL_MAX += 33     # same causes, measured
 _PACKAGE_CEILINGS["nucleo/send"] += 17   # 2026-11-21 C3 (his live session): a confirmation he already heard is answered short and asked again, never read whole (`owner._still_asked`, its fact `send_still_asked`)
 _PACKAGE_CEILINGS["nucleo (top)"] += 34   # same: ONE style line for the prefix and every worded line (`style_policy.line`, read by `wording._styled`)
 _TOTAL_MAX += 45     # same causes, measured (the prefix's own style line moved out: -6)
+_PACKAGE_CEILINGS["conversation"] += 15   # 2026-11-21 C6 (his live session): an act's claimed event carries its arguments and its receipt the door's status and answer, bounded (`outbox._shown`, `dispatch._shown`)
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 1   # same: the send owner reads his words in the turn's trace (`HostRoute.take`)
+_TOTAL_MAX += 22     # same causes, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

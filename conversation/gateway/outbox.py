@@ -28,6 +28,11 @@ FLAGS = "flags"
 OPS = "effect_ops"          # (trigger, operation) → its effect: a repeat is one read
 
 
+def _shown(args: dict) -> dict:
+    """An act's arguments as its event carries them: each bounded, as a read's are."""
+    return {k: str(v)[:200] for k, v in (args or {}).items() if k != "on"}
+
+
 @dataclass(frozen=True)
 class Read:
     pass
@@ -148,7 +153,7 @@ class Gateway:
         if existing is not None and existing["state"] in ("rejected", "withdrawn"):
             return self._refuse(ctx, tool, f"repeat_of_{existing['state']}", effect=existing["id"])
         if existing is not None:              # the same operation on the same trigger: the SAME row
-            self._note("claimed", ctx, tool=tool, effect=existing["id"], repeat=True)
+            self._note("claimed", ctx, tool=tool, effect=existing["id"], repeat=True, args=_shown(args))
             return Claimed(existing["id"], repeat=True)
         ivs = [e.refs.intervention_id for e in users]
         return self._reserve(b, ctx, trigger.id, trigger.id, op, tool, args, ivs)
@@ -171,7 +176,7 @@ class Gateway:
             "tool": tool, "args": args, "op": op, "mandate": mandate, "trigger": trigger, "run": ctx.run_id,
             "req": ctx.request_id, "endpoint": ctx.endpoint, "ivs": ivs})
         b.tx.put(OPS, f"{trigger}|{op}", {"effect": row["id"]})
-        self._note("claimed", ctx, tool=tool, effect=row["id"], mandate=mandate, repeat=not new)
+        self._note("claimed", ctx, tool=tool, effect=row["id"], mandate=mandate, repeat=not new, args=_shown(args))
         return Claimed(row["id"], repeat=not new)
 
     def state_of(self, effect_id: str) -> str | None:

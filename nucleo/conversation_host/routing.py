@@ -45,6 +45,13 @@ class HostRoute:
     (R-3): the model sees it in TASKS and answers it with `task_answer`."""
 
     async def take(self, account: str, text: str) -> str | None:
+        """In the trace of the turn in course: what the owner emits is the order's flow."""
+        from nucleo.conversation_host import turns
+        from voice import trace
+        with trace.scope(turns.current()):
+            return await self._take(text)
+
+    async def _take(self, text: str) -> str | None:
         from nucleo.conversation_host.acts_widget import _on_engine_loop
         from nucleo.send import draft, owner
         _last["said"] = text

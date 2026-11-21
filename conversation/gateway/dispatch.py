@@ -14,6 +14,15 @@ from conversation.ports import ToolCall, ToolResult, Tools
 from conversation.types import EffectClass, ItemKind
 
 
+def _shown(data) -> str:
+    """What an act's door answered, as its event carries it: bounded, never the whole of it."""
+    import json
+    try:
+        return json.dumps(data, ensure_ascii=False, default=str)[:400]
+    except (TypeError, ValueError):
+        return str(data)[:400]
+
+
 def _settled(status: str) -> str:
     """The provider's answer → the effect's state. Anything not clearly accepted or refused is unknown."""
     if status == "ok":
@@ -76,7 +85,8 @@ async def submit(gw: Gateway, tools: Tools, effect_id: str, deadline_mono_ms: in
     def settle(b):
         b.move(effect_id, to, data={"receipt": result.receipt})
         gw._note("unknown" if to == "submission_unknown" else "receipt", None, effect=effect_id, state=to,
-                 req=row["data"].get("req"), run=row["data"].get("run"))
+                 req=row["data"].get("req"), run=row["data"].get("run"), status=result.status,
+                 result=_shown(result.data))
     gw._decide(settle)
     return result
 
