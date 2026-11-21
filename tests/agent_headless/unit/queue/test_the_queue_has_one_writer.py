@@ -33,9 +33,9 @@ def test_a_jump_the_table_does_not_list_is_refused_and_said(said):
     assert not queue.signal(tid, "wait", by="owner"), "nor wait for him before it ran"
     assert ts.task_get(tid)["state"] == "pending"
     assert queue.signal(tid, "start", by="pulse") and queue.signal(tid, "wait", by="owner", ask="which area?")
-    assert not queue.signal(tid, "progress", by="owner"), "a task waiting for him makes no progress"
+    assert not queue.signal(tid, "start", by="pulse"), "a task waiting for him is not started"
     assert not queue.signal(tid, "start", by="nobody")
-    assert [e["signal"] for e in _refused(said)] == ["done", "wait", "progress", "start"]
+    assert [e["signal"] for e in _refused(said)] == ["done", "wait", "start", "start"]
     assert ts.task_get(tid)["state"] == "waiting" and ts.task_get(tid)["ask"] == "which area?"
 
 
@@ -100,3 +100,50 @@ def test_every_task_has_a_short_number_that_is_never_given_again():
     c = queue.add("processor", "third")
     assert ts.task_get(c)["num"] == nb + 1, "the number of a task that left is never given again"
     assert [r["num"] for r in queue.view()["worker"]["pending"]] == [na]
+
+
+def test_urgent_is_one_rule_and_the_last_put_first_is_first():
+    """Q-5: «it's urgent» puts it FIRST in its lane — at birth, raised later, or back with his answer — and of two
+    urgent ones the last is first: priority 1 and a position under every pending one of its lane."""
+    order = lambda: [r["id"] for r in queue.view()["worker"]["pending"]]   # noqa: E731
+    a = queue.add("worker", "a")
+    u1 = queue.add("worker", "urgent one", urgent=True)
+    u2 = queue.add("worker", "urgent two", urgent=True)
+    assert order() == [u2, u1, a]
+    assert queue.signal(a, "priority", by="him", urgent=True) and order() == [a, u2, u1]
+    assert queue.signal(a, "priority", by="him", urgent=False) and order() == [u2, u1, a]
+
+
+def test_a_task_waiting_for_him_still_beats():
+    tid = queue.add("worker", "book the table")
+    queue.signal(tid, "start", by="pulse")
+    queue.signal(tid, "wait", by="owner", ask="9 or 9:30?")
+    assert queue.signal(tid, "progress", by="owner", phase="parked on his answer")
+    row = ts.task_get(tid)
+    assert row["state"] == "waiting" and row["phase"] == "parked on his answer" and row["ask"] == "9 or 9:30?"
+
+
+def test_a_task_already_in_the_queue_is_not_added_twice(said):
+    assert queue.add("worker", "once", task_id="t-1") == "t-1"
+    assert queue.add("worker", "twice", task_id="t-1") == ""
+    assert [label for label, _ in said].count("queue/add") == 1
+    assert ts.task_get("t-1")["title"] == "once"
+
+
+def test_a_listener_that_signals_never_deadlocks(monkeypatch):
+    """A listener of a `queue/*` event may send a signal of its own: the lock is reentrant, so it queues behind."""
+    from voice import observer
+    tid = queue.add("worker", "listened")
+    queue.signal(tid, "start", by="pulse")
+    seen = []
+
+    def listener(kind, label, text="", role="", extra=None):
+        if kind == "queue" and label == "queue/progress" and not seen:
+            seen.append(label)
+            queue.signal(tid, "progress", by="pulse", phase="the listener's own")
+    monkeypatch.setattr(observer, "emit", listener)
+    t = threading.Thread(target=lambda: queue.signal(tid, "progress", by="owner", phase="first"), daemon=True)
+    t.start()
+    t.join(timeout=5)
+    assert not t.is_alive(), "a listener's signal deadlocked the queue"
+    assert ts.task_get(tid)["phase"] == "the listener's own"

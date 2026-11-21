@@ -31,7 +31,7 @@ JUMPS = {
     PENDING: {"start": RUNNING, "priority": PENDING, "move": PENDING, "cancelled": ARCHIVE},
     RUNNING: {"wait": WAITING, "progress": RUNNING, "back": PENDING,
               "done": ARCHIVE, "failed": ARCHIVE, "cancelled": ARCHIVE},
-    WAITING: {"back": PENDING, "cancelled": ARCHIVE},
+    WAITING: {"back": PENDING, "progress": WAITING, "cancelled": ARCHIVE},   # a parked worker still beats
 }
 #: the columns each signal may carry; the rest of what a caller passes is not the signal's to write
 FIELDS = {
@@ -40,7 +40,8 @@ FIELDS = {
                  "playbook", "sheet", "title"),
 }
 
-_lock = threading.Lock()
+#: reentrant: a listener of a `queue/*` event that sends a signal of its own queues behind, never deadlocks
+_lock = threading.RLock()
 
 
 def _store():
@@ -66,12 +67,15 @@ def _pending(owner: str, but: str = "") -> list[dict]:
     return [r for r in _store().queue_rows(owner) if r.get("state") == PENDING and r.get("id") != but]
 
 
+#: the one rule of «it's urgent» (Q-5): the highest priority, before every pending task of its lane
+URGENT = 1
+
+
 def _head(owner: str, but: str) -> tuple[int, float]:
-    """Priority and position that put a task FIRST in its lane."""
+    """Priority and position that put a task FIRST in its lane — the one rule an urgent task, a raised one and one
+    his answer brings back all follow: `URGENT`, and a position under every pending one, so the last put first is."""
     rows = _pending(owner, but)
-    if not rows:
-        return 0, float(time.time())
-    return int(rows[0].get("priority") or 0), float(rows[0].get("position") or 0) - 1.0
+    return URGENT, (min(float(r.get("position") or 0) for r in rows) - 1.0) if rows else float(time.time())
 
 
 def _moved(row: dict, before: str) -> tuple[int, float] | None:
@@ -111,7 +115,7 @@ def add(owner: str, title: str, *, goal: str = "", kind: str = "", origin: str =
         last = max((float(r.get("position") or 0) for r in rows), default=0.0)
         row = {"id": tid, "title": str(title or goal)[:200], "goal": str(goal or title)[:8000],
                "kind": str(kind or owner), "state": PENDING, "origin": str(origin or "voz"), "trace_id": str(trace or ""),
-               "owner": owner, "priority": 1 if urgent else 0, "position": last + 1.0, "created_at": int(time.time()),
+               "owner": owner, "priority": 0, "position": last + 1.0, "created_at": int(time.time()),
                **{k: v for k, v in fields.items() if k in FIELDS["progress"]}}
         row["num"] = _store().queue_insert(row)
         if not row["num"]:
@@ -150,7 +154,8 @@ def signal(task_id: str, what: str, *, by: str, **fields) -> bool:
             put.update(waiting_for="", waiting_since=None, deadline=None, ask="", ask_id="")
             put["priority"], put["position"] = _head(str(row["owner"]), tid)
         elif what == "priority":
-            put["priority"] = 1 if fields.get("urgent") else 0
+            put["priority"], put["position"] = (_head(str(row["owner"]), tid) if fields.get("urgent")
+                                                else (0, float(row.get("position") or 0)))
         elif what == "move":
             got = _moved(row, str(fields.get("before") or ""))
             if got is None:

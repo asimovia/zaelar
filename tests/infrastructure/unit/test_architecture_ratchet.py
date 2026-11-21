@@ -987,6 +987,7 @@ _PACKAGE_CEILINGS["memory"] += 66   # 2026-11-21 INI-078 orchestrator step 2: th
 _TOTAL_MAX += 184    # same cause, with `nucleo/queue` — the queue's one writer: the signals, their jump table, add and the view
 _PACKAGE_CEILINGS["memory"] += 15   # 2026-11-21 INI-078 segregation: every task of the queue has its short number (#7), one per install and never reused — given with its row in one transaction (`tasks_store.queue_insert`, `sys_kv[tasks.next_num]`)
 _PACKAGE_CEILINGS["nucleo/queue"] += 2   # same cause: the number rides the row and its events
+_PACKAGE_CEILINGS["nucleo/queue"] += 5   # 2026-11-21 review of step 2: urgent is ONE rule (`URGENT`, `_head`) and the lock is reentrant
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())
