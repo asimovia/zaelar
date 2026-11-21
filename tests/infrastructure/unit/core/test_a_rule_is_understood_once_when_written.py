@@ -55,8 +55,8 @@ def test_one_call_writes_a_scoped_gate_and_the_repeat_back(monkeypatch):
     assert [(r["scope"], r["key"], r["value"], r["text"]) for r in res["stored"]] == [
         ("messaging/email/send_new", "consent", "ask", "pregúntame antes de mandar correos")]
     assert _send("email") == "ask" and _send("whatsapp") == "allow", "his rule for email never reaches WhatsApp"
-    from nucleo.flash import style_directive
-    assert style_directive.repeat_back(res) == "Entendido: te pregunto antes de mandar correos."
+    from rules import spoken
+    assert spoken.repeat_back(res) == "Entendido: te pregunto antes de mandar correos."
 
 
 def test_an_exception_and_a_style_knob_ride_one_answer(monkeypatch):
@@ -116,16 +116,16 @@ def test_two_candidates_are_a_question_never_a_guess(monkeypatch):
     _answer(monkeypatch, {"op": "remove", "remove": [], "doubt": [a["id"], b["id"]], "say": "¿Cuál de estas?"})
     res = shape.write("olvida la regla de los correos")
     assert res["removed"] == [] and rules.get(a["id"]) and rules.get(b["id"])
-    from nucleo.flash import style_directive
-    line = style_directive.repeat_back(res)
+    from rules import spoken
+    line = spoken.repeat_back(res)
     assert "pregúntame antes de mandar correos" in line and "firma como R." in line, line
 
 
 def test_what_rules_do_i_have_lists_his_rows(monkeypatch):
     _two_mail_rules()
     _answer(monkeypatch, {"op": "list", "say": "Tienes estas reglas"})
-    from nucleo.flash import style_directive
-    line = style_directive.repeat_back(shape.write("¿qué reglas tengo?"))
+    from rules import spoken
+    line = spoken.repeat_back(shape.write("¿qué reglas tengo?"))
     assert line.startswith("Tienes estas reglas: ") and "firma como R." in line
 
 
@@ -137,11 +137,11 @@ def test_his_name_or_how_to_address_him_is_not_a_rule(monkeypatch):
     assert rules.all_rows(include_defaults=False) == [], "the treatment stays memory's slot, not a second copy"
 
 
-# ── the handler: off the turn, once, and the session layer hands over ────────────────────────────────────
+# ── the conversation's door: written once, the line handed back, nothing said on its own ─────────────────────────────
 
-def test_the_handler_writes_off_the_turn_says_it_once_and_hands_the_session_back(monkeypatch):
+def test_the_door_writes_once_and_hands_back_what_it_understood(monkeypatch):
     import asyncio
-    from nucleo.flash import style_directive
+    from rules import spoken
     from voice import proactive
     said = []
 
@@ -152,21 +152,10 @@ def test_the_handler_writes_off_the_turn_says_it_once_and_hands_the_session_back
     _answer(monkeypatch, {"op": "add", "say": "Entendido: sin muletillas.",
                           "rows": [{"scope": "voice", "kind": "pref", "key": "fillers", "value": "off"}]})
     events = []
-
-    class Brain:
-        _directive = ""
-    brain = Brain()
     emit = lambda *a, **k: events.append((a, k))  # noqa: E731
-    style_directive.handle("sin muletillas", "sin muletillas, por favor", brain, emit)
-    assert brain._directive == "sin muletillas", "obeyed at once, before the rows exist"
-
-    async def _turn_end():      # the post-stream chain settles it: no identity verdict → a rule, written off the turn
-        await style_directive.settle(brain, None, emit)
-        await asyncio.gather(*list(style_directive._TASKS))
-    asyncio.run(_turn_end())
-    # V2-852 M3 — off the turn, the turn that took his sentence already answered it: one mouth, not a second line
-    assert brain._directive == "" and said == []
-    assert any("not spoken" in a[1] for a, k in events)
+    res = asyncio.run(spoken.write("sin muletillas", "sin muletillas, por favor", emit))
+    assert res["line"] == "Entendido: sin muletillas.", "the shaper's restatement is the line the model may say"
+    assert said == [], "the door says nothing on its own: the conversation's model answers"
     assert any("user rule guardada" in a[1] and k["extra"]["scope"] == "voice" for a, k in events)
 
 

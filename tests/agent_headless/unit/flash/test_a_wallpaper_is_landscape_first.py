@@ -23,7 +23,7 @@ def test_the_landscape_picture_leads_a_wallpaper_search(tmp_path, monkeypatch):
         return img.apply_action(act, payload)
     import widgets.server_api as sa
     monkeypatch.setattr(sa, "brain_action", brain_action)
-    from nucleo.flash import image_turn as it
+    from nucleo.acts import images as it
     parte = asyncio.run(it.execute("blue nebula deep space wallpaper", 6))
     assert parte["ok"] and parte["first"] == "wide", parte
     assert [i["title"] for i in store.load("imagenes", {})["items"]] == ["wide", "small", "phone"]
@@ -49,7 +49,7 @@ def test_a_picture_that_can_become_the_backdrop_leads(tmp_path, monkeypatch):
         return img.apply_action(act, payload)
     import widgets.server_api as sa
     monkeypatch.setattr(sa, "brain_action", brain_action)
-    from nucleo.flash import image_turn as it
+    from nucleo.acts import images as it
     parte = asyncio.run(it.execute("deep space nebula wallpaper", 6))
     assert parte["first"] == "open", parte
 
@@ -88,7 +88,7 @@ def test_the_picture_he_named_leads_one_a_little_bigger(tmp_path, monkeypatch):
         return img.apply_action(act, payload)
     import widgets.server_api as sa
     monkeypatch.setattr(sa, "brain_action", brain_action)
-    from nucleo.flash import image_turn as it
+    from nucleo.acts import images as it
     asyncio.run(it.execute("Quiet Lantern in the Dark by Rowan Vale Lagoon Nebula wallpaper", 6))
     got = [i["url"] for i in store.load("imagenes", {})["items"]]
     assert got[:2] == ["https://x/b.jpg", "https://x/a.jpg"] and "https://x/c.jpg" not in got[:2], got

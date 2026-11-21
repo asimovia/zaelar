@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import asyncio
 
-from nucleo.flash import image_turn
+from nucleo.acts import images as image_turn
 
 
 def _items(n=3):

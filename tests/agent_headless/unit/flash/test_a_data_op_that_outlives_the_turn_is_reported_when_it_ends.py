@@ -13,7 +13,7 @@ import asyncio
 
 import pytest
 
-from nucleo.flash import op_pending
+from nucleo.acts import op_pending
 from widgets import server_api
 
 

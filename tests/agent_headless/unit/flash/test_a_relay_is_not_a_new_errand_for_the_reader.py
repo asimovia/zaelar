@@ -25,7 +25,7 @@ import pytest
 @pytest.fixture
 def _dos_cajas(monkeypatch):
     """Un relevo real: el sello da la caja NUEVA (vacía) y el registro la HEREDADA (con las filas)."""
-    from nucleo.flash import errand_sheet as ES
+    from widgets.navegador import errand_sheet as ES
     import widgets.results.data as _rd
     monkeypatch.setattr(ES, "sheet_of_tab", lambda *_a, **_k: "results::f1743e-2")
     monkeypatch.setattr(ES, "_registro_de_tab", lambda *_a, **_k: "results::f1743e-1")
@@ -53,4 +53,4 @@ def test_el_LECTOR_y_solo_el_lector():
     fuera = subprocess.run(["grep", "-rn", "boxes_of_tab", "--include=*.py", "nucleo/", "widgets/"],
                            capture_output=True, text=True).stdout
     ficheros = {l.split(":")[0] for l in fuera.splitlines() if l.strip()}
-    assert ficheros <= {"nucleo/flash/errand_sheet.py", "widgets/navegador/live_sheet.py", "widgets/navegador/live_lines.py"}, ficheros
+    assert ficheros <= {"widgets/navegador/errand_sheet.py", "widgets/navegador/live_sheet.py", "widgets/navegador/live_lines.py"}, ficheros

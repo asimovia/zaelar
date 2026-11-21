@@ -421,7 +421,7 @@ def test_every_route_of_his_words_into_an_errand_crosses_the_one_door():
     root = pathlib.Path(__file__).resolve().parents[4]
     ours = {"nucleo/dispatch/soon.py",            # the door itself
             "nucleo/dispatch/prepare.py",         # the research direction WE composed
-            "nucleo/flash/worker_note_relay.py"}  # his op on the errand's OWN sheet: that card is the errand's
+            "nucleo/acts/worker_note_relay.py"}  # his op on the errand's OWN sheet: that card is the errand's
     callers = {str(p.relative_to(root)) for d in ("nucleo", "voice", "widgets", "connectors", "server")
                for p in (root / d).rglob("*.py") if re.search(r"\binject_soon\(", p.read_text(encoding="utf-8"))
                and "def inject_soon" not in p.read_text(encoding="utf-8")}

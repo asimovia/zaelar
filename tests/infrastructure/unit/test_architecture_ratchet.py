@@ -1012,6 +1012,14 @@ _PACKAGE_CEILINGS["nucleo/workers"] += 13  # same step: the workers' writers as 
 _PACKAGE_CEILINGS["memory"] += 42          # same step: a generic write never touches a task of the queue (`queue_patch` is its door); the pills of the tasks that left, read by words (`task_pills`)
 _PACKAGE_CEILINGS["observability"] += 1    # 2026-11-21: a flow's own `end` marker is not a family it went through
 _TOTAL_MAX += 167    # same steps, measured (the «done» tab of the processes column went)
+# 2026-11-21 INI-078 L1 B3: the same from nucleo/flash — images, op_receipt, op_pending, worker_note_relay and close_words to
+# acts, resume and web_login to request, the dictated rule's door to `rules/spoken`, errand_sheet to the browser widget and
+# a card's name in his language to `widgets/names`; the old copies go with the old turn (B7)
+_PACKAGE_CEILINGS["nucleo/acts"] += 744
+_PACKAGE_CEILINGS["nucleo/request"] += 112
+_PACKAGE_CEILINGS["rules"] += 72
+_PACKAGE_CEILINGS["widgets"] += 245
+_TOTAL_MAX += 1191
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

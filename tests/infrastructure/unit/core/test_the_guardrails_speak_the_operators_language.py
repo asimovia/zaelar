@@ -357,7 +357,7 @@ def test_a_real_close_all_still_fires(said):
 def test_the_negation_guard_hears_english_written_out():
     """V2-631 built the veto with the CONTRACTION alone, so «Do not close» read as an order. Same bare-stem
     asymmetry V2-677 found in the request verbs — here in the guard that exists to prevent damage."""
-    from nucleo.flash.close_guards import looks_like_close
+    from nucleo.acts.close_words import looks_like_close
     for negated in ("Do not close the widgets.", "Don't close the widgets", "Never close the music widget",
                     "please do not close them", "no cierres el widget", "no me quites la música"):
         assert not looks_like_close(negated), negated

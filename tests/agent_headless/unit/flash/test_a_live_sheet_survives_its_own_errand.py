@@ -57,7 +57,7 @@ def test_an_inherited_sheet_is_not_opened_fresh(monkeypatch):
 
 def test_the_delivery_reads_the_errand_he_is_looking_at(monkeypatch):
     from nucleo import canvas_focus, dispatch
-    from nucleo.flash import errand_sheet
+    from widgets.navegador import errand_sheet
     from widgets.navegador import tasks as nav
     monkeypatch.setattr(nav, "active_summaries", lambda: [])
     monkeypatch.setattr(dispatch, "pending_summaries", lambda: [

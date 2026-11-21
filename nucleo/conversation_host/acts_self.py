@@ -4,7 +4,7 @@ and style, and its own controls — each to the door that already does it, never
   rename     `self.identity.apply_rename_now` + `persist_rename`: the wake word tracks the new name at once, and the
              memory may file the name he ordered (`identity.ordered`)
   attention  `self.identity.persist_attention_mode`, among the modes the attention module declares
-  rule       `flash.style_directive.write_rule`: his words shaped ONCE into rows of the one rules table (a style knob,
+  rule       `rules.spoken.write`: his words shaped ONCE into rows of the one rules table (a style knob,
              a rule for a widget, a channel or a person) — nothing held only in the session
   controls   `acts.self_controls.apply`: the screen's own button door (🔊, volume, mic, ⏻, voice, face, camera) by
              its closed vocabulary of acts; a one-way act's line says the button is the way back
@@ -58,12 +58,12 @@ def _rule(args: dict) -> ToolResult:
     import asyncio
 
     from nucleo.conversation_host import routing
-    from nucleo.flash import style_directive
+    from rules import spoken
     from voice.observer import emit
     directive = str(args.get("rule") or "").strip()
     if not directive:
         return ToolResult("failed", {"reason": "no_rule"})
-    res = asyncio.run(style_directive.write_rule(directive, routing.said() or directive, emit, speak=False))
+    res = asyncio.run(spoken.write(directive, routing.said() or directive, emit))
     _refresh()
     if not res:
         return ToolResult("failed", {"reason": "the rule could not be written"})

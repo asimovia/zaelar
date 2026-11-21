@@ -10,7 +10,7 @@ from widgets.navegador import live_lines as live_browser
 
 def _pending(monkeypatch, surface):
     from nucleo import dispatch
-    from nucleo.flash import errand_sheet
+    from widgets.navegador import errand_sheet
     from widgets.navegador import tasks
     monkeypatch.setattr(tasks, "active_summaries", lambda: [])
     monkeypatch.setattr(dispatch, "pending_summaries",

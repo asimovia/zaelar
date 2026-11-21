@@ -120,7 +120,7 @@ what measures all rounds with a browser."""
 def test_las_DOS_lecturas_formatean_la_fila_IGUAL():
     from nucleo.turn.prompt import live_tasks
     from widgets.navegador import live_sheet
-    from nucleo.flash.errand_sheet import fila
+    from widgets.navegador.errand_sheet import fila
     import inspect
     assert "fila(i)" in inspect.getsource(live_sheet._sheet_top_rows), (
         "la cara del navegador volvió a formatear por su cuenta")
@@ -128,7 +128,7 @@ def test_las_DOS_lecturas_formatean_la_fila_IGUAL():
 
 
 def test_el_formateador_conserva_las_TRES_reglas_que_costaron_una_ronda_cada_una():
-    from nucleo.flash.errand_sheet import fila
+    from widgets.navegador.errand_sheet import fila
     assert fila({"title": "Fontanero", "tel": "600123456"}) == "«Fontanero — 600123456»"      # V2-240
     assert "SIN PRECIO" in fila({"title": "Monitor"})                                          # V2-360
     assert "aún no es un candidato" in fila(                                                   # V2-376
@@ -137,5 +137,5 @@ def test_el_formateador_conserva_las_TRES_reglas_que_costaron_una_ronda_cada_una
 
 def test_el_TELEFONO_tambien_se_lee_de_los_facts():
     """It comes from both places depending on who extracts it; reading only one loses half."""
-    from nucleo.flash.errand_sheet import fila
+    from widgets.navegador.errand_sheet import fila
     assert "600111222" in fila({"title": "Cerrajero", "facts": [{"label": "Teléfono", "value": "600111222"}]})

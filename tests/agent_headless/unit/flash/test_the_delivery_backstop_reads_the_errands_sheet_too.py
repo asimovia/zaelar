@@ -14,7 +14,7 @@ from widgets.navegador import live_lines as live_browser
 def test_an_errand_sheet_without_a_browser_task_is_read(monkeypatch):
     from widgets.navegador import tasks as NT
     from nucleo import dispatch as D
-    from nucleo.flash import errand_sheet as ES
+    from widgets.navegador import errand_sheet as ES
     monkeypatch.setattr(NT, "active_summaries", lambda: [])
     monkeypatch.setattr(D, "pending_summaries", lambda: [{"id": "t1", "request": "used DSLR under $400",
                                                           "sheet": "results::ab12"}])

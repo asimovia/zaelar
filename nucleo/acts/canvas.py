@@ -73,18 +73,15 @@ def close_ordered(text: str, *, brief=None, called: bool = False, handle=None) -
       · a close verb orders it, unless the brief reads a NEGATION of it — a sure `canvas=neither` beside a sure
         `request_type` that is neither order nor answer («yo no te he dicho que cerraras el vídeo», CRIT-K8c);
       · a negated or narrated close («no lo cierres», «you closed it») never orders one, whatever a model says;
-      · his answer to OUR «which one should I close?» carries that question's licence («Las dos.»);
       · when the model `called` a close, a sure `canvas=close` read from `handle` (the brief) forgives a grammar miss.
-    `source` is grammar | verdict | answer | jev | none, so the trail says which reader moved."""
-    from nucleo.flash import close_answer as _ca, close_guards as _cg
+    `source` is grammar | verdict | jev | none, so the trail says which reader moved."""
+    from nucleo.acts import close_words as _cg
     from nucleo.acts import show_license as _lic
     his = _lic._his_words(text)
     if _cg.looks_like_close(his) or _cg.whole_canvas_close(his):   # ONE licence, both readers (node 2.925)
         return (False, "verdict") if brief is not None and _denies_close(brief) else (True, "grammar")
     if _cg.is_negated_or_narrated(his):
         return False, "none"
-    if _ca.answers(brief):
-        return True, "answer"
     if called:
         from nucleo.acts import show_target as _st
         verb, info = _st.resolve_canvas_verb(handle)
@@ -116,7 +113,7 @@ def show_under_close(text: str = "", *, brief=None, wid: str = "", words: bool =
         return True
     if not words:
         return False
-    from nucleo.flash import close_guards as _cg
+    from nucleo.acts import close_words as _cg
     from nucleo.text_norm import _norm_txt
     if not _cg.looks_like_close(text):
         return False

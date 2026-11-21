@@ -42,7 +42,7 @@ def test_the_turns_picture_search_holds_the_foreground(monkeypatch):
         seen["fg"] = B._fg["n"]
         return {"items": []}
     monkeypatch.setattr(B, "images", images)
-    from nucleo.flash import image_turn
+    from nucleo.acts import images as image_turn
     asyncio.run(image_turn.execute("red ferrari f40"))
     assert seen["fg"] == 1 and B._fg["n"] == 0
 

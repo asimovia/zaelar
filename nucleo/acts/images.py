@@ -1,0 +1,295 @@
+"""Showing pictures from a turn: the execution, shared by both channels (V2-457).
+
+Third of the family, after `music_turn` (V2-380) and `video_turn` (V2-383), and built the same way for the same
+reason: anything decided per-channel diverges per-channel. What is shared is the MECHANISM — search, load the
+viewer, and report what actually happened — so voice and probe cannot drift into two different behaviours for
+the same request.
+
+WHY A FAST PATH AT ALL. Until today "get a REAL photo to SHOW" was a documented reason to
+ESCALATE (the rule dates from a real 2026-08-03 incident where the brain asked `web_search` for a photo,
+`web_search` can only return text, and the brain ended up DESCRIBING the picture in words for six turns). That
+rule fixed the right bug with the only tool available at the time. It is no longer the only tool.
+
+Measured on 2026-08-28, same request, both routes:
+
+    Brain Worker (what the operator actually got)   355 s   $1.96   10 photos, Autocar India + mad4wheels
+    Google Images through the warm Chromium           3.0 s  ~$0     cdn.ferrari.com originals, 3128x2333 master
+
+The worker's work was genuinely good — it rejected a bot-blocked source, a paywalled one, and a set of URLs it
+suspected were hallucinated. It simply never reached Ferrari's own gallery, because ferrari.com renders by JS
+and its fetch saw an empty page. An image index had already crawled what the worker was paying a language model
+to re-derive one page at a time.
+
+So the DEFAULT flips: pictures are a light turn now. Escalation is not removed — it is where it always belonged,
+which is CURATION. "A photo of Amalfi" is a lookup. "The verified official press photos, and tell me what
+source each one comes from" is research, and so is "no, those don't work for me" after a first set came back. The router
+description draws that line; this module only executes the light half and reports honestly enough that the next
+turn can escalate on the operator's word rather than on a guess.
+"""
+from __future__ import annotations
+
+import re
+
+from loguru import logger
+
+# How many pictures a set holds. Twelve fills the thumbnail strip without turning the viewer into a contact
+# sheet, and it is what one Google results page yields without scrolling — asking for more would cost a second
+# page load to add pictures nobody scrolls to.
+DEFAULT_N = 12
+#: The query of the picture search under way or last made — what «more of those» means while the viewer is still
+#: loading it (demo pass 110, I2: the next order arrived before I1's search had filled the viewer).
+LAST_QUERY = {"q": ""}
+
+
+def request_from(tool_calls: list) -> dict:
+    """What `show_images` asked for, normalised: `{query, n}`."""
+    si = next((t for t in (tool_calls or []) if t.get("name") == "show_images"), None) or {}
+    args = si.get("args") or {}
+    try:
+        n = int(args.get("n") or DEFAULT_N)
+    except Exception:  # noqa: BLE001
+        n = DEFAULT_N
+    return {"query": str(args.get("query") or "").strip(), "n": max(1, min(n, 24)), "more": bool(args.get("more"))}
+
+
+_WALLPAPER_INTENT_RE = re.compile(r"fondo de (?:escritorio|pantalla)|wallpaper|\bde fondo\b", re.I)
+
+
+def _asked_words(text: str) -> set[str]:
+    from widgets import textmatch as _tm
+    return {t for t in _tm.fold(text).split(" ") if len(t) > 2 and t not in _tm._GENERIC}
+
+
+async def _fetchable_first(items: list, budget_s: float = 3.0) -> list:
+    """`items` with the pictures `desktop_props.fetchable` can download first, order otherwise kept. Out of time
+    or out of luck, the order stays as it was."""
+    import asyncio
+    try:
+        from widgets import desktop_props as _dp
+        oks = await asyncio.wait_for(asyncio.gather(*(asyncio.to_thread(_dp.fetchable, str(it.get("url") or ""))
+                                                      for it in items)), timeout=budget_s)
+    except Exception:  # noqa: BLE001
+        return items
+    return [it for it, ok in zip(items, oks) if ok] + [it for it, ok in zip(items, oks) if not ok]
+
+
+async def execute(query: str, n: int = DEFAULT_N, more: bool = False) -> dict:
+    """Search the pictures and load the viewer; return the report of what HAPPENED, so the mouth need not guess.
+
+    Same rail as everything else that puts something on the canvas (`brain_action` -> the widget's own
+    `apply_action`), not a second way of showing pictures. Fail-soft end to end: the turn has to come out even
+    if the browser is down, and when it is down the honest sentence is that we could not look, not that there
+    are no photos.
+    """
+    q = str(query or "").strip()
+    parte: dict = {"executed": "show_images", "query": q[:80], "ok": False, "count": 0}
+    if not q:
+        parte["message"] = "no dijiste de qué"
+        return parte
+    LAST_QUERY["q"] = q
+    # «MORE of those» (demo pass 2026-09-28, I2: «cool, show me a few more of those» re-ran the same search and
+    # REPLACED the viewer with the same twelve): the same query asked deeper, handed to the viewer's own `add`,
+    # whose merge drops what is already there — so only new pictures join.
+    # …and the SAME search asked again over a viewer that already holds it is «more» whatever the model's flag
+    # (live-i2: `show_images` without `more` re-ran it): the viewer's own query is the datum, not his words.
+    shown = 0
+    try:
+        from widgets import store as _st
+        held = _st.load("imagenes") or {}
+        shown = len(held.get("items") or [])
+        more = more or (shown > 0 and " ".join(str(held.get("query") or "").lower().split()) == " ".join(q.lower().split()))
+    except Exception:  # noqa: BLE001
+        shown = 0
+    try:
+        from search import browser as _bs
+        with _bs.foreground():                 # his turn's search: background searches wait behind it (pass 10, I1)
+            res = await _bs.images(q, n + shown if more else n)
+        res = res if isinstance(res, dict) else {}
+        items = [it for it in (res.get("items") or []) if isinstance(it, dict) and it.get("url")]
+        # V2-641 — a WALLPAPER search wants big files, not relevant thumbnails: there are 2900x1440 monitors
+        # behind this. Only when the query itself names the intent (the tool description tells the model to
+        # keep those words in), so an ordinary photo search keeps the index's own relevance order untouched.
+        if _WALLPAPER_INTENT_RE.search(q):
+            big = [it for it in items if int(it.get("w") or 0) >= 1600]
+            if len(big) >= 3:
+                items = big
+            # A desktop is LANDSCAPE: a phone wallpaper (800x1422) stretched across it came first on area alone in
+            # the demo pass of 2026-09-28 (B2) — blurred and cropped. Wider-than-tall first, a desk-sized one before a
+            # thumbnail, then the one whose title carries MORE of what he asked for, then the biggest (demo sandbox
+            # 2026-11-13, B2: a 1920x1200 «Cosmic Nebula» led the «Cosmic Eye in the Sky» he named, 1920x1084).
+            asked = _asked_words(q)
+            items.sort(key=lambda it: (int(it.get("w") or 0) <= int(it.get("h") or 0), int(it.get("w") or 0) < 1600,
+                                       -len(asked & _asked_words(str(it.get("title") or ""))),
+                                       -(int(it.get("w") or 0) * int(it.get("h") or 0))))
+            # …and one that can BECOME the backdrop before one that cannot (full17 B2: the first nebula's site
+            # answers 403 to a download, and «set the first one» left the desk bare). Asked at once, bounded.
+            items = await _fetchable_first(items)
+            parte["large_pref"] = True
+        parte["source"] = str(res.get("source") or "")
+        if res.get("degraded_from"):
+            parte["degraded_from"] = str(res["degraded_from"])
+            if res.get("degraded_because"):
+                parte["degraded_because"] = str(res["degraded_because"])
+        if res.get("blocked"):
+            parte["blocked"] = True
+        if not items:
+            parte["message"] = str(res.get("error") or "")[:160] or "no encontré fotos de eso"
+            # Also the one that came back EMPTY — it is exactly the one we need to be able to diagnose later.
+            _evidence(parte)
+            _row_end("add" if more else "show", False, parte["message"])
+            return parte
+        from widgets.server_api import brain_action
+        if more and shown:
+            loaded = await brain_action("imagenes", "add", {"items": items})
+            loaded = loaded if isinstance(loaded, dict) else {}
+            parte["added"] = int(loaded.get("added") or 0)
+        else:
+            loaded = await brain_action("imagenes", "show",
+                                        {"items": items, "query": q, "source": parte.get("source") or ""})
+            loaded = loaded if isinstance(loaded, dict) else {}
+        parte["ok"] = bool(loaded.get("ok"))
+        parte["count"] = int(loaded.get("n") or 0)
+        # THE CARD OPENS WHERE THE DATA LANDS (V2-463). The voice provider emits its own early `show` for
+        # instant feedback, but this rail is shared with the probe channel - and there NOBODY emitted it, so a
+        # whole measured round filled the viewer while the operator watched a canvas where no card ever
+        # appeared (2026-08-28, `show-real-photo-of-a-new-car__es`: 12 photos in the store, nothing on
+        # screen). Emitting on the shared rail instead of patching the second channel is the lesson this
+        # codebase has now paid for five times. Idempotent on the frontend; only fires when something loaded.
+        # Through THE ONE DOOR (`canvas_visibility.present`, V2-723) and NAMING the action that fills the card:
+        # emitted bare, the arbiter filed this mount as a drag three times in one round
+        # (`show-real-photo-of-a-new-car__us`, 2026-10-11) — the pictures landing in the viewer is the mount the
+        # viewer's own `show` declares (`done_when: items present`), and an already-open viewer is not raised again.
+        if parte["ok"] and parte["count"] and not (more and shown):
+            try:
+                from nucleo.acts import visibility as _cvis
+                _cvis.present("imagenes", reason="producer-mount", action="show", src="flash")
+            except Exception as e:  # noqa: BLE001
+                logger.debug(f"image_turn: mount not emitted — {e}")
+        # WHERE the pictures come from is part of the answer, not decoration: the operator's own review of the
+        # slow route praised it for going to the official site, so a fast route that cannot say whose picture
+        # this is would be trading the thing he valued for speed.
+        parte["sites"] = _sites(items)
+        parte["first"] = str(items[0].get("title") or items[0].get("site") or "")[:120]
+        if not parte["ok"]:
+            parte["message"] = str(loaded.get("error") or "")[:160]
+        _evidence(parte)
+        _row_end("add" if more and shown else "show", bool(parte["ok"] and (parte["count"] or parte.get("added"))),
+                 parte.get("message") or f"{parte['count']} fotos · {parte.get('first') or q}")
+        return parte
+    except Exception as e:  # noqa: BLE001
+        parte["execute_error"] = str(e)[:200]
+        _evidence(parte)
+        return parte
+
+
+def _evidence(parte: dict) -> None:
+    """One observability line per SEARCH, with the query and where the photos came from.
+
+    Exists because the round that produced dictionary pictures could not be diagnosed afterwards: the
+    next `show` overwrote the widget store, so the junk query was simply GONE - the only trace was the
+    spoken sentence naming spanishdict.com. What a search asked and what it got back is evidence of
+    the turn, not state of the widget, and evidence is emitted the moment it exists (V2-463)."""
+    try:
+        from voice.observer import emit as _emit
+        _emit("brain", "🖼️ fotos: búsqueda", role="system", extra={
+            "cat": "flash", "query": str(parte.get("query") or ""), "ok": bool(parte.get("ok")),
+            "count": int(parte.get("count") or 0), "source": str(parte.get("source") or ""),
+            "sites": list(parte.get("sites") or []), "blocked": bool(parte.get("blocked")),
+            "degraded_from": str(parte.get("degraded_from") or ""),
+            "degraded_because": str(parte.get("degraded_because") or "")})
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _sites(items: list) -> list:
+    """The distinct publishers in a set, most-represented first — at most three, for a sentence to say aloud."""
+    counts: dict[str, int] = {}
+    for it in items:
+        s = str((it or {}).get("site") or "").strip()
+        if s:
+            counts[s] = counts.get(s, 0) + 1
+    return [s for s, _ in sorted(counts.items(), key=lambda kv: -kv[1])][:3]
+
+
+def spoken_for(parte: dict, ack: str) -> str:
+    """What gets SAID after trying to show the pictures. `ack` is the language's canned line, for the mute case.
+
+    The set is NAMED — how many, and whose — for the same reason the video player names the video it loaded
+    (V2-057): it lets the operator verify at a glance that these are the pictures asked for, and it is the
+    difference between delivering and claiming to have delivered. And when nothing loaded it says so, because a
+    reassuring sentence over an empty card is the failure this family keeps relearning (V2-176, V2-209, V2-377,
+    V2-380, V2-383).
+    """
+    parte = parte if isinstance(parte, dict) else {}
+    if parte.get("executed") != "show_images":
+        return ack
+    # THE ENGINE'S LANGUAGE, not Spanish (V2-464). Measured live on the US lab agent, first round: every
+    # canned line here came out as «Te he puesto 12 fotos en pantalla…» on an English-only engine — the
+    # tester answered in English, zaelar in Spanish, for the whole conversation. Same resolution as
+    # `music_flow._lang()`: the engine is monolingual per process, so one read decides the set.
+    en = _lang() == "en"
+    if parte.get("ok") and "added" in parte:            # «more of those»: say what JOINED, not the whole set
+        a = int(parte.get("added") or 0)
+        if not a:
+            return ("That search has nothing new beyond what's on screen." if en else
+                    "Esa búsqueda no tiene nada nuevo aparte de lo que ya ves.")
+        return (f"I've added {a} more — {parte.get('count')} on screen now." if en else
+                f"Te he añadido {a} más — ya hay {parte.get('count')} en pantalla.")
+    if parte.get("ok"):
+        n = int(parte.get("count") or 0)
+        sites = [s for s in (parte.get("sites") or []) if s]
+        de = (f" from {', '.join(sites[:2])}" if en else f" de {', '.join(sites[:2])}") if sites else ""
+        if n == 1:
+            return f"It's up on your screen{de}." if en else f"Ya la tienes en pantalla{de}."
+        return (f"I've put {n} photos on screen{de} — tell me if you want a closer look at any of them."
+                if en else
+                f"Te he puesto {n} fotos en pantalla{de} — dime si quieres ver alguna en concreto.")
+    if parte.get("blocked"):
+        return ("I couldn't search for photos right now: the search engine blocked me. I can retry if you want."
+                if en else
+                "No he podido buscar las fotos ahora mismo: el buscador me ha bloqueado. Lo reintento si quieres.")
+    msg = str(parte.get("message") or parte.get("execute_error") or "").strip()
+    if en:
+        return "I couldn't show them: " + (msg or "I found no photos of that.")
+    return "No he podido enseñártelas: " + (msg or "no encontré fotos de eso.")
+
+
+def _lang() -> str:
+    """`en` or `es` — the engine's own language (monolingual per process, `voice/engine/core/langs`)."""
+    try:
+        from voice.engine.core import langs
+        code = (langs.current_code() or "es").lower()
+        return "en" if code.startswith("en") else "es"
+    except Exception:  # noqa: BLE001
+        return "es"
+
+
+def _row_end(action: str, ok: bool, outcome: str) -> None:
+    try:   # the picture search is a request like any data-op (V2-776 M1): its row, and how it ended
+        from nucleo import circuit as _circuit
+        from nucleo.request import model as _rq
+        _circuit.settle(row=_rq.opened("imagenes", action), verdict="met" if ok else "unmet", outcome=outcome)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+async def voice_turn(req: dict, *, silent: bool) -> "tuple[dict, str]":
+    """`(parte, frase)` for the VOICE channel — the entire body of its branch, here and not there.
+
+    It lives in this module for the same reason as `video_turn.voice_dispatch`: the voice provider is a god-file with
+    a ceiling, and the ratchet calls for extracting before adding to it. It also keeps language resolution on this side, so
+    the provider does not gain another lazy import — which is the other half of what the ratchet monitors.
+
+    `silent` = the model said nothing on this turn. Only then do we speak: fitting the report onto an
+    existing response counts it twice, and staying silent after a tool leaves the next turn believing that the
+    request is still unhandled.
+    """
+    parte = await execute(req.get("query") or "", req.get("n") or DEFAULT_N, bool(req.get("more")))
+    if not silent:
+        return parte, ""
+    try:
+        from voice.engine.core import langs
+        ack = langs.current_language().data_ack
+    except Exception:  # noqa: BLE001 — if no language can be resolved, the report is still spoken, which is what matters
+        ack = ""
+    return parte, spoken_for(parte, ack)

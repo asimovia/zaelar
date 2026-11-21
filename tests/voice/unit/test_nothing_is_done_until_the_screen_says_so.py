@@ -31,7 +31,7 @@ import os
 
 import pytest
 
-from nucleo.flash import op_receipt
+from nucleo.acts import op_receipt
 
 from nucleo.acts import data_ops
 from tests import voice_turn_source as _vts   # V2-778 F1: a moved body is read where it lives now
@@ -250,7 +250,7 @@ def test_a_failed_confirmed_order_never_reads_the_models_error_aloud(monkeypatch
     """Demo pass 134 (2026-10-15): «I couldn't get that done. falta `text` en forward: … vuelve a llamar a forward» —
     the model's retry instruction, in Spanish, read to him. A failure says the widget's own sentence or the base line."""
     from types import SimpleNamespace
-    from nucleo.flash import op_receipt as OR
+    from nucleo.acts import op_receipt as OR
     lang = SimpleNamespace(op_failed="I couldn't get that done.", data_ack="Done.")
     res = {"ok": False, "error": "falta `text` en forward: vuelve a llamar a forward con contact, text y from"}
     assert OR.spoken_line("mensajeria", "forward", res, "failed", lang) == "I couldn't get that done."

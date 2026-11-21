@@ -62,7 +62,7 @@ def test_an_unsure_or_other_verdict_leaves_the_question(viewer, choice, conf):
 # ── «more of those» over a full viewer ───────────────────────────────────────────────────────────────────────
 
 def _run(monkeypatch, query: str, more: bool = False) -> list:
-    from nucleo.flash import image_turn
+    from nucleo.acts import images as image_turn
     from search import browser
     from widgets import server_api
     calls: list = []

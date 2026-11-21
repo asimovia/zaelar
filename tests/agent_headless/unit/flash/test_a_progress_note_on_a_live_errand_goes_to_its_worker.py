@@ -13,7 +13,7 @@ import asyncio
 import pytest
 
 from nucleo import dispatch
-from nucleo.flash import worker_note_relay as R
+from nucleo.acts import worker_note_relay as R
 
 from nucleo.acts import data_ops
 HIS = "the King Seiko hi-beat sounds good, same check though — running and real photos. if it looks clean I'm in"

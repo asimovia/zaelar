@@ -11,7 +11,7 @@ import asyncio
 import json as _json
 import time
 
-from nucleo.flash import op_receipt as _receipt
+from nucleo.acts import op_receipt as _receipt
 from nucleo.request import refusal_line as _rline
 from nucleo.turn import verdicts as _verdicts
 from nucleo.circuit import compose as _outcome
@@ -271,7 +271,7 @@ async def dispatch_and_report(wid: str, action_name: str, payload: dict, *, seal
         row, _dup = _ia.claim(wid, action_name, payload or {})
         if _dup:
             return {"ok": True, "already": True, "row": row}    # his answer already ran exactly this act
-    from nucleo.flash import worker_note_relay as _relay
+    from nucleo.acts import worker_note_relay as _relay
     if (_to := _relay.relay(wid, action_name, text)):    # a worker's own note: his words go to it (2026-10-14)
         return {"ok": True, "relayed_to": _to}
     # V2-903 P1-1 — what reaches the card's door is what he approved or dictated, byte for byte: nothing rewrites
@@ -340,7 +340,7 @@ async def dispatch_and_report(wid: str, action_name: str, payload: dict, *, seal
             logger.debug(f"data_ops: the ending of {wid}:{action_name} was not written — {e!r}")
     await _report_ignored(wid, action_name, res, _row)
     if not receipt and isinstance(res, dict) and _receipt.is_pool_timeout(res) and res.get("pending"):
-        from nucleo.flash import op_pending as _op_pending        # node 2.917: still running, reported when it ends
+        from nucleo.acts import op_pending as _op_pending        # node 2.917: still running, reported when it ends
         return await _op_pending.still_running(wid, action_name, res, seal=seal, row=_row)
     if callable(seal):
         try:

@@ -15,7 +15,7 @@ FILES = ["nucleo/acts/canvas.py", "nucleo/acts/canvas_arbiter.py", "nucleo/acts/
          "nucleo/canvas_focus.py", "nucleo/canvas_closes.py", "nucleo/surfaces.py",
          # moved out of the old turn (INI-078 F2 step 8, T7): read where they live now
          "nucleo/acts/bulk_close.py", "nucleo/acts/show_license.py", "nucleo/acts/visibility.py",
-         "nucleo/acts/show_target.py"] + [
+         "nucleo/acts/show_target.py", "nucleo/acts/close_words.py"] + [
     f"nucleo/flash/{m}.py" for m in ("agenda_close_is_a_cancel", "canvas_claim", "card_close", "card_commission",
                                      "card_receipt", "close_answer", "close_guards", "show_guard", "surface_ack")]
 

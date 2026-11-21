@@ -55,7 +55,7 @@ def test_the_task_acts_reach_their_one_doors(monkeypatch):
     from nucleo import dispatch, pending_work
     from nucleo.acts import errand
     from nucleo.conversation_host import acts_tasks
-    from nucleo.flash import resume_turn
+    from nucleo.request import resume as resume_turn
     from nucleo.request import stop_row
     seen = {}
     monkeypatch.setattr(errand, "escalate_to_slowbrain", lambda req, context=None: seen.setdefault("errand", req) and 7)

@@ -72,7 +72,7 @@ def _alias(args: dict) -> ToolResult:
 def _images(args: dict) -> ToolResult:
     import asyncio
 
-    from nucleo.flash import image_turn
+    from nucleo.acts import images as image_turn
     req = image_turn.request_from([{"name": "show_images", "args": args}])
     if not req["query"]:
         return ToolResult("failed", {"reason": "no_query"})

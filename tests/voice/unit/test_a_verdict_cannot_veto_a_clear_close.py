@@ -65,14 +65,6 @@ def test_a_verdict_that_reads_a_complaint_still_vetoes(said):
 
 
 @pytest.mark.parametrize("said", ["Las dos.", "Both."])
-def test_an_answer_to_our_close_question_carries_its_licence(said):
-    instances.note_close_ask(CAR)
-    answer = _brief(canvas="neither", cconf=0.61, kind="answer", kconf=0.9)
-    assert _door.close_ordered(said, brief=answer)[0]
-    assert _door.close_ordered(said, brief=answer, called=True, handle=None) == (True, "answer")
-
-
-@pytest.mark.parametrize("said", ["Las dos.", "Both."])
 def test_without_our_question_the_same_words_license_nothing(said):
     answer = _brief(canvas="neither", cconf=0.61, kind="answer", kconf=0.9)
     assert not _door.close_ordered(said, brief=answer)[0]

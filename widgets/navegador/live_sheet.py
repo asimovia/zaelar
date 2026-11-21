@@ -69,7 +69,7 @@ def worker_phase_is_a_claim(phase: str, sheet: str) -> bool:
         return False
 
 
-from nucleo.flash.errand_sheet import sheet_of_tab as _sheet_of_tab, aviso_sin_filas, boxes_of_tab, fila, rows_of_sheet
+from widgets.navegador.errand_sheet import sheet_of_tab as _sheet_of_tab, aviso_sin_filas, boxes_of_tab, fila, rows_of_sheet
 
 
 def _sheet_has_rows(nav_task_id: str) -> bool:

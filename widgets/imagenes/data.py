@@ -5,7 +5,7 @@ thumbnails underneath, arrows, a title and its source on top, all of it drivable
 serves that and stops there — no crop, no filters, no export.
 
 It holds no opinion about where pictures come from. `show` is handed a set that someone else found (the fast
-search in `nucleo/flash/image_turn.py`, or a Brain Worker that curated something better) and `local` reads the
+search in `nucleo/acts/images.py`, or a Brain Worker that curated something better) and `local` reads the
 files this engine already has on disk. That split is the widget contract: `data.py` is stdlib-only and never
 touches the network, so the thing that searches cannot live in here.
 

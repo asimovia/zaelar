@@ -5,11 +5,11 @@ Declared in `declared.json` (`acts`, door `task`), each to its one door — neve
   start      `acts.errand.escalate_to_slowbrain`, the ONE gateway every errand is born through (its refusals, its
              parking, a stopped agent, the capability gate: all the door's)
   resume     `pending_work.by_ids` (the model chooses among DECLARED pending rows: TASKS lists them) →
-             `resume_turn.resume`, each row from itself
+             `request.resume`, each row from itself
   reopen     `task_recall.voice_turn`: a finished errand and its sheet brought back, or a question which
   stop       `dispatch.cancel_soon` through the row's one cancel door, by the id TASKS gives
   unschedule `pulse.scheduler.unschedule`, by its reference — said as it ended, found or not
-  sign_in    `web_auth.start` / `web_auth.finish`: the real browser opened for HIM to sign in, and his «done»
+  sign_in    `request.web_login.start` / `finish`: the real browser opened for HIM to sign in, and his «done»
   note       `support_note.spoken`: his words kept as a note for the support team, nothing else done
   answer     `switchboard.act.deliver`, the one door his words take to a process: a waiting question's answer (a plain
              yes or no decides the act it held), a running worker's next words — the process the model named by id
@@ -57,13 +57,13 @@ def _start(args: dict) -> ToolResult:
 
 def _resume(args: dict) -> ToolResult:
     from nucleo import pending_work
-    from nucleo.flash import resume_turn
+    from nucleo.request import resume
     ids = args.get("ids") if isinstance(args.get("ids"), list) else [args.get("ids")] if args.get("ids") else []
     rows = pending_work.by_ids(ids)
     if not rows:
         return ToolResult("failed", {"reason": "no_such_pending_task", "pending": [
             {"id": r["id"], "title": r.get("title")} for r in pending_work.rows()]})
-    done = resume_turn.resume(rows, operator_text="")
+    done = resume.resume(rows, operator_text="")
     return ToolResult("ok" if done else "rejected", {"resumed": done})
 
 
@@ -100,12 +100,12 @@ def _unschedule(args: dict) -> ToolResult:
 
 
 def _sign_in(args: dict) -> ToolResult:
-    from nucleo.flash import web_auth
+    from nucleo.request import web_login
     if str(args.get("done") or "").lower() in ("true", "1", "yes"):
-        tid = web_auth.finish()
+        tid = web_login.finish()
         return ToolResult("ok" if tid else "failed", {"resumed": tid} if tid else {"reason": "nothing_waited"})
     site = str(args.get("site") or "").strip()
-    tid = web_auth.start(site)
+    tid = web_login.start(site)
     return ToolResult("ok" if tid else "failed", {"opened_for": site, "task": tid} if tid
                       else {"reason": "no_site_recognised", "site": site})
 

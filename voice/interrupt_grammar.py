@@ -153,7 +153,7 @@ def _closes_the_whole_canvas(n: str, quantified: bool = False) -> bool:
         if not (_ALL_RE.search(c) or _quantifies_the_canvas(c)) or (quantified and not _quantifies_the_canvas(c)):
             continue
         try:
-            from nucleo.flash.close_guards import is_negated_or_narrated
+            from nucleo.acts.close_words import is_negated_or_narrated
             if is_negated_or_narrated(c):
                 continue                   # «do not close the widgets», or narrating one already done
         except Exception:  # noqa: BLE001

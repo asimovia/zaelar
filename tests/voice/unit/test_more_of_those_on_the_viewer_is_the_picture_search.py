@@ -61,6 +61,6 @@ def test_show_searches_only_an_empty_viewer(verdict):
 
 
 def test_the_search_records_what_it_is_looking_for():
-    src = open("nucleo/flash/image_turn.py", encoding="utf-8").read()
+    src = open("nucleo/acts/images.py", encoding="utf-8").read()
     i = src.index("async def execute(")
     assert src.index('LAST_QUERY["q"] = q', i) < src.index("_bs.images(", i), "recorded BEFORE the search runs"

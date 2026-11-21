@@ -211,7 +211,7 @@ async def notify(title: str, text: str, *, speak: bool = True, kind: str = "noti
     Returns True only when the operator was actually SPOKEN to (demo pass 2026-09-28).
 
     `carry` — kept for its callers; since V2-851 F5 no message rides the conversation when it cannot be said (the notes
-    mailbox went): it stays on screen and its notice is owed. `about`: dialog._place"""
+    mailbox went): it stays on screen and its notice is owed. `about`: kept for its callers."""
     lent = _TURN_SPEAKER.get()
     if lent is not None:                  # a typed turn: its own receipt is its reply, not a delivery to anyone
         if speak and (text or "").strip():
@@ -281,11 +281,6 @@ async def notify(title: str, text: str, *, speak: bool = True, kind: str = "noti
             if not await _say_bounded(spoken):        # unconfirmed: logged there, and the queue moves on
                 return False
             said = True
-            try:
-                from nucleo.flash import dialog as _dialog
-                _dialog.note_spoken(spoken, about=about)
-            except Exception:  # noqa: BLE001
-                pass
             _to_conversation(spoken, key or task_id)
         finally:
             _last_spoke[0] = time.monotonic()

@@ -86,7 +86,7 @@ def test_the_send_door_of_the_card_stops_on_her_rule_and_not_on_martas(world):
 
 
 def test_a_write_that_applied_her_rule_is_not_said_to_be_kept_unapplied(world):
-    from nucleo.flash import style_directive as sd
+    from rules import spoken as sd
     from rules import shape
     res = shape.write(ES, chat=_shaped)
     assert sd.kept_not_applied(res) == ""

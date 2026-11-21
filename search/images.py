@@ -27,7 +27,7 @@ removes rather than speeds up:
 
 WHAT THIS MODULE IS NOT. It does not decide *whether* a request is a picture request (that is the router's job,
 by function-calling, never by a keyword table) and it does not curate. A request that genuinely needs judgement
-about which photo is the real one still belongs to a Brain Worker; see `nucleo/flash/image_turn.py` for where
+about which photo is the real one still belongs to a Brain Worker; see `nucleo/acts/images.py` for where
 that boundary is drawn and why the fast path is the default rather than the only path.
 
 The parser is deliberately PURE and lives apart from the browser that feeds it: Google's payload shape is the

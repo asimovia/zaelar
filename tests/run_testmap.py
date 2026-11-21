@@ -1315,7 +1315,8 @@ DOMAINS: list[dict] = [
             "paths": ["tests/agent_headless/unit/flash/test_a_dead_search_layer_says_so.py"]},
         {"id": "2.20", "title": "El traspaso de inicio de sesión OCURRE en el canal de texto (una decisión, dos "
                                 "canales)", "ch": UNIT,
-            "paths": ["tests/agent_headless/unit/flash/test_login_handoff_actually_happens.py"]},
+            "paths": ["tests/agent_headless/unit/flash/test_login_handoff_actually_happens.py",
+                      "tests/conversation/unit/test_a_sign_in_opens_the_real_window_and_his_done_resumes_it.py"]},
         {"id": "2.19", "title": "Lo que el operador dijo sobrevive a un turno que falla (y el fallo se reporta)",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/flash/test_what_was_said_survives_a_failed_turn.py",
@@ -7858,12 +7859,6 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_an_errand_in_a_language_without_spaces_is_still_one_errand.py"]},
         # V2-878 §5 (SHADOW) — disarmed 2026-11-11 (the portal notes nothing / the first rows report nothing / the
         # arbiter never sees the errand) → red, each in its own file.
-        {"id": "2.1679", "title": "A choice about rows that do not exist yet is kept on the errand's app, in SHADOW (V2-878 §5): his words reaching an errand with no rows through the one relay door (the portal's inject, a steer, the model's own `send_to_worker`) from a turn that does not ask to be told write `pick_pending` (his words, when), emits it and reaches the commission's shadow; the relay is unchanged; a question or rows already there note nothing — es, en",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_choice_for_rows_not_there_yet_is_noted_in_shadow.py"]},
-        {"id": "2.1686", "title": "The first rows of an errand holding a deferred choice report what WOULD be relayed to its worker (V2-878 §5, shadow): once per errand, with how long it was held; nothing is injected",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_first_rows_would_relay_the_deferred_choice.py"]},
-        {"id": "2.1687", "title": "The screen↔errand arbiter decides by consequence in SHADOW (V2-878 §5): rows on screen → app, a named errand with no rows and a deferred choice → errand, both → ask; emitted once per turn beside the owner rule's answer, which is unchanged — es, en",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_the_screen_errand_arbiter_decides_in_shadow.py"]},
         {"id": "7.14", "title": "Aislamiento del motor desechable: el timeline del operador nunca es el destino",
             "ch": UNIT, "paths": ["tests/platform/tests/test_sandbox_isolation.py"]},
         {"id": "7.2", "title": "Observer SSE", "ch": HTTP, "paths": [

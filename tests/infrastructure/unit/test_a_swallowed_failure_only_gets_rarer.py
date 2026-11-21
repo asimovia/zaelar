@@ -60,6 +60,11 @@ def _counts() -> dict[str, int]:
 #: fall, and no file may exceed its own count.
 TOTAL = 1699   # refactor2710-06: measured with 04 and main merged
 PER_FILE: dict[str, int] = {
+    # INI-078 L1 B3 (2026-11-21): moved out of nucleo/flash with their counts; the old copies go with the old turn.
+    'nucleo/acts/images.py': 2,
+    'nucleo/acts/op_pending.py': 1,
+    'nucleo/acts/op_receipt.py': 4,
+    'widgets/navegador/errand_sheet.py': 5,
     # V2-872 W2 (2026-11-10): the CPU sampler's two best-effort reads — a sample that failed, a notice not delivered —
     # are logged and never raised: the heartbeat must not die of its own report. Only falls.
     'nucleo/cli/worker_api_schedule.py': 1,

@@ -180,7 +180,7 @@ def any_live_task_rows(n: int = 3) -> tuple[str, list[str]]:
         # …and the errand's OWN sheet, the source the TAREAS DE FONDO block shows (V2-781 T528: no browser task,
         # rows on the sheet for 151 s, `rows: 0` on every waiting reply).
         from nucleo import dispatch as _disp
-        from nucleo.flash import errand_sheet as _es
+        from widgets.navegador import errand_sheet as _es
         from nucleo import surfaces as _sf
         for t in _disp.pending_summaries() or []:
             if _sf.opens_doc(str(t.get("surface") or "")):

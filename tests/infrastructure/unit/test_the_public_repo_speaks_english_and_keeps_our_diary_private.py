@@ -134,6 +134,7 @@ PER_FILE: dict[str, int] = {
     'nucleo/flash/dialog.py': 10,
     'nucleo/acts/direct_action.py': 1,
     'nucleo/flash/errand_sheet.py': 10,
+    'widgets/navegador/errand_sheet.py': 10,
     'nucleo/flash/escalate.py': 16,
     'nucleo/llm/fast_client.py': 55,
     'nucleo/flash/hard_turn.py': 1,

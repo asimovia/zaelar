@@ -216,7 +216,6 @@ def receipt(closed, kept, *, opened=None, lang=None) -> str:
     cards named by their display names, never by id. With an unknown canvas (nothing reported) the bare close took
     whatever was there: all that can be said truthfully is that nothing is left."""
     try:
-        from nucleo.flash import card_receipt as _cr
         if lang is None:
             from i18n import langs as _langs
             lang = _langs.current_language()
@@ -225,12 +224,21 @@ def receipt(closed, kept, *, opened=None, lang=None) -> str:
         left = list(dict.fromkeys(left))
         if not gone:
             return "" if left else str(lang.receipt_left_none or "")
-        line = [lang.receipt_closed.format(cards=_cr._join(lang, gone))]
-        line.append(lang.receipt_left.format(cards=_cr._join(lang, left)) if left else lang.receipt_left_none)
+        line = [lang.receipt_closed.format(cards=_join(lang, gone))]
+        line.append(lang.receipt_left.format(cards=_join(lang, left)) if left else lang.receipt_left_none)
         return " ".join(x for x in line if x)
     except Exception as e:  # noqa: BLE001 — a receipt never breaks the close it describes
         logger.debug(f"bulk_close: receipt unbuilt — {e}")
         return ""
+
+
+def _join(lang, cards) -> str:
+    """The cards by their names in his language, joined as a list is said («Música, YouTube y Calendar»)."""
+    from widgets.names import card_name
+    names_ = [card_name(c, getattr(lang, "code", "")) for c in cards]
+    if len(names_) <= 1:
+        return "".join(names_)
+    return ", ".join(names_[:-1]) + f" {getattr(lang, 'receipt_and', 'y')} " + names_[-1]
 
 
 def take_receipt(*, within_s: float = RECEIPT_S) -> str:

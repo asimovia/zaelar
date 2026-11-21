@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import pytest
 
-from nucleo.flash import errand_sheet as ES
+from widgets.navegador import errand_sheet as ES
 
 
 @pytest.fixture

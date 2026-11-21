@@ -72,15 +72,6 @@ def escalate_to_slowbrain(request: str, *, context: dict | None = None, task_id:
             from nucleo.acts.errand_refusals import refuse_engine
             refuse_engine(req, protected_core.refusal(req))
             return 0
-    # A CAPABILITY NO CARD DECLARES IS NOT AN ERRAND (V2-807 T-16): a worker cannot add a feature to the product.
-    try:
-        from nucleo.flash import capability_gap as _gap
-        if _gap.refuses(req, ctx0):
-            _gap.refuse(req)
-            logger.info(f"escalate: NOT started — asks for a capability no app declares: {req[:80]}")
-            return 0
-    except Exception as e:  # noqa: BLE001 — the gate may never break the portal
-        logger.debug(f"escalate: capability gate skipped: {e!r}")
     # A QUESTION IS NOT THEATRE (V2-655): a turn that ASKED permission aloud has no order yet — it is parked.
     asked = strip_system_notes(str(ctx0.get("asked") or ""))    # our own notes' «¿La hago?» is nobody's offer
     if asked and not (ctx0.get("confirmed") or ctx0.get("offered")):

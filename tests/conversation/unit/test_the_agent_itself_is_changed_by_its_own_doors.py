@@ -37,19 +37,18 @@ def test_a_rename_reaches_the_wake_word_the_memory_and_the_prefix(monkeypatch):
 
 def test_a_rule_he_dictates_is_shaped_from_his_words_and_reaches_the_style(monkeypatch):
     from nucleo.conversation_host import routing
-    from nucleo.flash import style_directive
     from nucleo import style_policy
+    from rules import spoken
     seen = {}
 
-    async def write(directive, text, emit, brain=None, *, speak=True):
-        seen.update(directive=directive, text=text, speak=speak)
+    async def write(directive, text, emit):
+        seen.update(directive=directive, text=text)
         return {"stored": [{"id": 1}], "line": "w_kept"}
-    monkeypatch.setattr(style_directive, "write_rule", write)
+    monkeypatch.setattr(spoken, "write", write)
     monkeypatch.setattr(acts_self, "_refresh", lambda: seen.setdefault("prefix", True))
     monkeypatch.setitem(routing._last, "said", "w_speak_shorter")
     got = acts_self.run("rule", {"rule": "w_short"})
-    assert got.data["say"] == "w_kept" and seen == {"directive": "w_short", "text": "w_speak_shorter", "speak": False,
-                                                    "prefix": True}
+    assert got.data["say"] == "w_kept" and seen == {"directive": "w_short", "text": "w_speak_shorter", "prefix": True}
     monkeypatch.setattr(style_policy, "policy", lambda: {"max_sentences": 1, "fillers": None})
     assert prefix.style_line("w_pack") == "w_pack; shape: max_sentences=1"      # his row, as data, beside the DNA
 
