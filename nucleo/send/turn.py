@@ -28,6 +28,19 @@ def is_message(wid: str, action: str, payload: dict | None = None) -> bool:
         return False
 
 
+def composes(wid: str, action: str) -> bool:
+    """Does this act write or drop a message being written in its card — a LOCAL type the send owner owns? Read off the
+    act's declared event (`effects.event_of`) and the vocabulary's owner: no widget's or action's name here (C2)."""
+    try:
+        from nucleo.events import vocabulary as _voc
+        from widgets import effects
+        t = _voc.of(effects.event_of(wid, action))
+        return t is not None and t.direction == _voc.LOCAL and t.owner == "send"
+    except Exception as e:  # noqa: BLE001 — unreadable: not a composition, the act runs as it would
+        _note(e)
+        return False
+
+
 def owned(wid: str, action: str, payload: dict | None = None) -> bool:
     """Is this an act that LEAVES toward a messaging platform — a message, a group created, a group left — by the event
     type it declares (`messaging.*`)? Every such act is the owner's; any other act that leaves is not."""

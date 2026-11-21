@@ -921,6 +921,13 @@ _TOTAL_MAX += 4      # same cause, measured
 _PACKAGE_CEILINGS["memory"] += 145
 _PACKAGE_CEILINGS["nucleo/acts"] -= 138
 _TOTAL_MAX += 7      # measured (the shim and the facade's lines)
+# 2026-11-21 C2 A1 (the operator's decision P-2: one draft, its owner's): composing a message is declared once — a
+# LOCAL direction and an `owner` in the event vocabulary, two composition types, `effects.event_of/acts_of` where a
+# manifest meets it, `send.turn.composes` reading it by type (no widget's or action's name)
+_PACKAGE_CEILINGS["nucleo/events"] += 12
+_PACKAGE_CEILINGS["nucleo/send"] += 13
+_PACKAGE_CEILINGS["widgets"] += 14
+_TOTAL_MAX += 39     # measured (the manifest's three `event` fields are not counted as code)
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

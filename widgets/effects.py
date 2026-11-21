@@ -166,6 +166,20 @@ def is_bare_control(wid: str, action: str) -> bool:
     return OUTPUT_START in effs or OUTPUT_STOP in effs
 
 
+def event_of(wid: str, action: str) -> str:
+    """The event type this action declares — its `event`, else its `consent_class` — or "": where a manifest and the
+    vocabulary meet (`nucleo/events/vocabulary.py`)."""
+    spec = ((_manifest(wid).get("actions") or {}).get(str(action or "").strip()))
+    return str(spec.get("event") or spec.get("consent_class") or "").strip() if isinstance(spec, dict) else ""
+
+
+def acts_of(wid: str, event: str) -> list[str]:
+    """This widget's actions that declare `event`, the ones not `internal` first, in the manifest's order."""
+    acts = [(a, s) for a, s in ((_manifest(wid).get("actions") or {}).items()) if isinstance(s, dict)
+            and event and event_of(wid, a) == event]
+    return [a for a, s in acts if not s.get("internal")] + [a for a, s in acts if s.get("internal")]
+
+
 def carries(wid: str, action: str, effect: str) -> bool:
     """Does this action carry that effect? The predicate the doors ask, so nobody re-derives the set."""
     return str(effect or "") in of(wid, action)

@@ -33,6 +33,7 @@ from typing import NamedTuple
 IN = "in"          # arrives from the world without a turn; a rule may subscribe to it
 OUT = "out"        # leaves to the world; the one consent rule decides it (`consent.decide_act`)
 TASK = "task"      # the engine's own: a task of his ended or asks; routed, never subscribed by a rule
+LOCAL = "local"    # the state of something of his on screen: never leaves, asks nothing, no rule subscribes to it
 
 # ── the names, so the producers and this table spell them once ───────────────────────────────────────────────
 CONNECTOR_MSG = "connector.msg"
@@ -64,6 +65,7 @@ class EventType(NamedTuple):
     level: str = ""       # OUT: its default sensitivity when the caller measured none (`consent.LEVELS`)
     effect: str = ""      # OUT: what an action of this class carries (`widgets.effects`: external.send, data.write)
     says: str = ""        # OUT: the lines he hears for it (`nucleo/wording.LINES`): "send" — a message — or the act's own
+    owner: str = ""       # the one door that owns the acts of this type ("send": the send owner), declared once here
 
 
 TYPES: tuple[EventType, ...] = (
@@ -77,16 +79,20 @@ TYPES: tuple[EventType, ...] = (
     EventType(WORKER_ASK, TASK, "a task of his asks him something"),
     # ── leaves: a message ──
     EventType("messaging.send_new", OUT, "a message is sent to someone", grant="message", level="sensitive",
-              effect="external.send", says="send"),
+              effect="external.send", says="send", owner="send"),
     EventType("messaging.autorespond", OUT, "a message is answered automatically", grant="message", level="sensitive",
-              effect="external.send", says="send"),
+              effect="external.send", says="send", owner="send"),
     # A group is a place, not words of his: creating one with people he named is undone by leaving it, and nothing he
     # did not say reaches anyone. A group born WITH a first message is a send (the card's `consent_scope` says so).
     EventType("messaging.create_group", OUT, "a group is created in a messaging app with people he named",
-              grant="message", level="standard", effect="external.send"),
+              grant="message", level="standard", effect="external.send", owner="send"),
     # Leaving a group removes him from it and deletes the chat from his list: nothing undoes it, so it asks once.
     EventType("messaging.leave_group", OUT, "he leaves a messaging group and it is removed from his chats",
-              grant="message", level="sensitive", effect="external.send"),
+              grant="message", level="sensitive", effect="external.send", owner="send"),
+    # ── on his screen: a message being written, shown in its card (the send owner's one draft, C2) ──
+    EventType("messaging.draft_write", LOCAL, "a message being written, shown in its card before it leaves",
+              owner="send"),
+    EventType("messaging.draft_discard", LOCAL, "a message being written is dropped from its card", owner="send"),
     # ── leaves: his agenda, as seen by the people in it ──
     EventType("calendar.invite_agreed", OUT, "an invitation to a meeting already agreed with its guests",
               grant="schedule", level="sensitive", effect="external.send"),
@@ -169,6 +175,12 @@ def says(name: str) -> str:
     an undeclared name too: «what you asked for is done» is never wrong, «message sent» can be."""
     t = of(name)
     return (t.says if t and t.says else "act")
+
+
+def owner_of(name: str) -> str:
+    """The one door that owns the acts of this type ("" when none does)."""
+    t = of(name)
+    return t.owner if t else ""
 
 
 def grant_of(name: str) -> str:

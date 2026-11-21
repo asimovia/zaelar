@@ -202,6 +202,7 @@
       }
     },
     "draft": {
+      "event": "messaging.draft_write",
       "desc": "Escribe un mensaje en el CUADRO del widget SIN enviarlo: respuesta (n) o mensaje NUEVO a una persona (contact). Dile «ya está escrito, revísalo y dime si lo mando ya o cuándo».",
       "taken_back_by": "discard_draft",
       "payload": {
@@ -572,6 +573,7 @@
       "worker": false
     },
     "save_draft": {
+      "event": "messaging.draft_write",
       "desc": "Guarda los cambios de un borrador SIN enviarlo (texto; y en un mensaje nuevo, destinatario y asunto). Lo usa el botón «Guardar» del borrador abierto.",
       "instant": "internal: the card's own bookkeeping, never an act he is told is done",
       "internal": true,
@@ -584,6 +586,7 @@
       "safe": true
     },
     "discard_draft": {
+      "event": "messaging.draft_discard",
       "desc": "DESCARTA un borrador: se borra y no se envía nada («tira ese borrador», botón «Descartar»).",
       "row_verb": true,
       "payload": {
