@@ -812,6 +812,47 @@
      }
     }
    }
+  },
+  "forget_memory": {
+   "act": "memory.forget",
+   "door": "memory",
+   "op": "forget",
+   "about": "forget pills of his memory he asks you to forget, by their ids (read them first with recall); undoable",
+   "schema": {
+    "type": "object",
+    "required": [
+     "ids"
+    ],
+    "properties": {
+     "ids": {
+      "type": "array",
+      "items": {
+       "type": "integer"
+      }
+     }
+    }
+   }
+  },
+  "correct_memory": {
+   "act": "memory.correct",
+   "door": "memory",
+   "op": "correct",
+   "about": "correct one pill of his memory he says is wrong, by its id (read it first with recall), with the right text",
+   "schema": {
+    "type": "object",
+    "required": [
+     "id",
+     "text"
+    ],
+    "properties": {
+     "id": {
+      "type": "integer"
+     },
+     "text": {
+      "type": "string"
+     }
+    }
+   }
   }
  },
  "state_topics": [

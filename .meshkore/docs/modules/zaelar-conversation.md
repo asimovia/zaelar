@@ -136,7 +136,9 @@ at and the declared action it starts with, `start_task`'s arguments whose choice
 them — with his words; a widget it orders built is his sure order (C4). Before the open doors, a phrase the action map knows VERBATIM (`Shortcut`, `shortcut.py` over
 `nucleo.actionmap`, V2-942) runs its direct act with no model and the run ends with origin `actionmap`; a run that
 answered with one declared canvas act and read nothing is the map's candidate (`actionmap.watch.candidate`), so the
-map keeps learning from the manager. Each tool's class is derived
+map keeps learning from the manager. A pill of his memory is forgotten (soft, undoable) or corrected (through the
+memory's one writer, the old pill superseded) by its id, which `recall` gives the model — no word of his is matched
+(`acts_memory.py`). Each tool's class is derived
 from what it declares, never listed; a door that fails is a result the model sees. The state comes from the engine's
 own readers, each bounded within `state_tokens`, writing nothing. Every run carries what is open first (the tasks,
 a message draft), the next days beside NOW, the widget in front (at full screen, in front on a phone, else the newest

@@ -874,6 +874,9 @@ _TOTAL_MAX += 104    # same causes, measured
 _PACKAGE_CEILINGS["connectors"] += 82   # 2026-11-21 E7d-3 (R-2): a declared new mechanism — the cluster's own composer (`meshkore/compose.py`: its system as language data, one relayed call, only the errand its permission grants, the reply made sayable), replacing the old FlashBrain's cluster turn
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 68   # same (+1 an unreadable switch is logged): an event whose source hands in its own work runs it through the manager, started there and answered back (`events_in.run_as_event`)
 _TOTAL_MAX += 150    # same causes, measured
+_PACKAGE_CEILINGS["memory"] += 48   # 2026-11-21 E7d-4 (R-4): a declared new mechanism — forgetting by id, soft and undoable, and one valid pill by id (`api/forgetting.forget_ids`, `unforget_ids`, `pill`)
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 46   # same: the two memory acts by their own door (`acts_memory.py`: forget by id, correct through the one writer)
+_TOTAL_MAX += 94     # same causes, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

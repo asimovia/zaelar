@@ -39,6 +39,7 @@ from .episodes import (  # noqa: F401
     register_episode, write_episode)
 from .events import _emit
 from .forgetting import clear_conversation, clear_slot, clear_slot_prefix, forget, forget_after, high_water, unforget  # noqa: F401,E501
+from .forgetting import forget_ids, pill, unforget_ids  # noqa: F401 — by id (E7d-4)
 from .reads import (  # noqa: F401
     MAP_CAP, background_slot_off_topic, by_concepts, by_slot_prefix, lexical_ids, map, recent_by_source)
 from .sleep import concept_names, fold_concepts, register_sleep_phase, same_person_records  # noqa: F401 — V2-854 F3, V2-858 T549

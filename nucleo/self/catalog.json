@@ -30,7 +30,7 @@
      "covers": ["surface:config", "surface:debug", "surface:wizard", "settings:settings", "settings:fast",
                 "settings:code", "settings:memory", "settings:search", "settings:apis", "settings:notices"]},
     {"id": "privacy", "needs": [],
-     "covers": ["surface:memory-map", "surface:vault", "settings:rules", "settings:permissions", "tool:recall",
+     "covers": ["surface:memory-map", "surface:vault", "settings:rules", "settings:permissions", "tool:recall", "tool:forget_memory", "tool:correct_memory",
                 "tool:reveal_secret"]},
     {"id": "connectors", "needs": ["connectors"],
      "covers": ["surface:conectores", "settings:conectores", "connector:email", "connector:gdrive", "connector:google",

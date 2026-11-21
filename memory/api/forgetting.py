@@ -176,3 +176,49 @@ def forget_after(mark: int) -> int:
     db.execute(f"UPDATE memories SET valid=0, updated=? WHERE id IN ({ph})", (_clock_now(), *ids))
     _emit("memory.updated", {"op": "forget_after", "n": len(ids)})
     return len(ids)
+
+
+# ── by id (E7d-4, R-4): the conversation's model names the pills it read with `recall`; nothing matches words ──────
+def forget_ids(ids, *, include_pinned: bool = False) -> list[int]:
+    """Forget these pills (soft: `valid=0`, kept for audit and undoable with `unforget_ids`). A pinned one stays unless
+    `include_pinned`. Returns the ids forgotten."""
+    want = sorted({int(i) for i in (ids or ()) if str(i).strip().lstrip("-").isdigit()})
+    if not want:
+        return []
+    db = _db.get_db()
+    ph = ",".join("?" * len(want))
+    pin_clause = "" if include_pinned else "AND pinned=0"
+    got = [r["id"] for r in db.query(f"SELECT id FROM memories WHERE valid=1 {pin_clause} AND id IN ({ph})",
+                                     tuple(want))]
+    if got:
+        now = _clock_now()
+        db.execute(f"UPDATE memories SET valid=0, updated=?, invalidated_at=? WHERE id IN ({','.join('?' * len(got))})",
+                   (now, now, *got))
+        _emit("memory.updated", {"op": "forget", "ids": got, "hard": False})
+    return got
+
+
+def unforget_ids(ids) -> list[int]:
+    """The exact undo of `forget_ids`: those pills valid again — never one a correction superseded."""
+    want = sorted({int(i) for i in (ids or ()) if str(i).strip().lstrip("-").isdigit()})
+    if not want:
+        return []
+    db = _db.get_db()
+    ph = ",".join("?" * len(want))
+    got = [r["id"] for r in db.query(f"SELECT id FROM memories WHERE valid=0 AND superseded_by IS NULL AND id IN ({ph})",
+                                     tuple(want))]
+    if got:
+        db.execute(f"UPDATE memories SET valid=1, updated=?, invalidated_at=NULL WHERE id IN ({','.join('?' * len(got))})",
+                   (_clock_now(), *got))
+        _emit("memory.updated", {"op": "unforget", "ids": got})
+    return got
+
+
+def pill(mid) -> dict | None:
+    """One VALID pill by id — its text, kind, level, slot, pinned and meta — or None."""
+    if not str(mid).strip().lstrip("-").isdigit():
+        return None
+    row = _db.get_db().query_one("SELECT id, text, kind, level, slot, pinned, meta FROM memories WHERE valid=1 AND id=?",
+                                 (int(mid),))
+    return dict(row) if row is not None else None
+
