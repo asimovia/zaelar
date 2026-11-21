@@ -75,8 +75,7 @@ class _InProcess:
 @pytest.fixture
 def manager(monkeypatch):
     from config import settings
-    from nucleo.conversation_host import model, sessions, switch
-    monkeypatch.setenv(switch.ENV, "1")
+    from nucleo.conversation_host import model, sessions
     monkeypatch.setenv("ZAELAR_HOLD_OUTBOUND", "all")
     monkeypatch.setenv("ZAELAR_LANGUAGE", "es")
     monkeypatch.setattr(settings, "_read", lambda: {})

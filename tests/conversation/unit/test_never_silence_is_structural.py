@@ -191,7 +191,7 @@ def test_a_conversation_that_opens_late_still_takes_the_line(opener, monkeypatch
     assert got == ["w1"] and alerts.count("the conversation could not open") == 2
 
 
-def test_a_conversation_that_never_opens_sends_the_typed_line_back_to_its_door(opener, monkeypatch):
+def test_a_conversation_that_never_opens_says_so_and_answers_the_line_no_other_way(opener, monkeypatch):
     entry, alerts = opener
 
     def runtime():
@@ -203,4 +203,4 @@ def test_a_conversation_that_never_opens_sends_the_typed_line_back_to_its_door(o
     monkeypatch.setattr(entry, "_guards", lambda text, dev: None)
     out = asyncio.run(go())
     assert out["conv"]["close"] == entry.NOT_OPENED and not entry._queue
-    assert "a typed line went the old way: the conversation could not open" in alerts
+    assert "a typed line was not answered: the conversation could not open" in alerts

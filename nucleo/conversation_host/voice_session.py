@@ -27,9 +27,8 @@ def started(session, ev: dict) -> bool:
     from nucleo.conversation_host import switch
     d = switch.Decision(bool(ev.get("conv")), str(ev.get("conv_by") or "voice"), str(ev.get("conv_why") or ""))
     session._conversation_switch = d
-    if d.why and d.why != switch.TEXT_ONLY:            # text only is his choice, not a refusal
-        from voice import observer
-        observer.emit("alert", "conversation manager refused", text=d.why, extra={"by": d.by})
+    if not d.on:                                       # it may not answer now: the reason on his screen, silence
+        switch.silent(session, d.why or "the voice could not open the conversation's ear")
     if d.on:
         _voice(True)
     return d.on
@@ -51,12 +50,9 @@ def _voice(live: bool) -> None:
 
 
 def refuse_turn(session) -> bool:
-    """The old turn's door in a session of the manager: True when it must answer nothing (counted and said)."""
-    d = getattr(session, "_conversation_switch", None)
-    if d is None or not d.on:
-        return False
+    """A LiveKit turn asked of the body: it answers nothing — the manager is the only path (counted and said)."""
     from nucleo.conversation_host import boot, proof
     from voice import observer
     proof.note(boot.account(), "livekit_turns")
-    observer.emit("alert", "livekit opened a turn in a session of the manager")
+    observer.emit("alert", "livekit opened a turn")
     return True

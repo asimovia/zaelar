@@ -83,14 +83,16 @@ def test_a_local_phrase_is_his_line(store, log):
 
 
 @pytest.mark.parametrize("on", [True, False])
-def test_the_providers_final_is_the_row_only_on_the_old_path(monkeypatch, log, on):
+def test_the_providers_final_is_never_the_row(monkeypatch, log, on):
+    """The manager is the only path (INI-078 F2): in any session the provider's final is never a row of his — his
+    words are the manager's ear's, written once."""
     from nucleo.conversation_host import switch
     from voice import remote_session as rs
     monkeypatch.setitem(rs._M, "session", SimpleNamespace(_conversation_switch=switch.Decision(on, "voice")))
     rs.handle({"k": "transcript", "final": False, "text": "w1"})
     rs.handle({"k": "transcript", "final": True, "text": "w1 w2"})
     kinds = [(k, text) for k, _l, text, role, _x in log if role == "user"]
-    assert kinds == ([("interim", "w1")] if on else [("interim", "w1"), ("transcript", "w1 w2")])
+    assert kinds == [("interim", "w1")]
 
 
 def test_the_bodys_conversation_is_opened_with_the_listener(monkeypatch):

@@ -1542,8 +1542,8 @@ These hold for the package; the engine does not run it yet (V2-941 F1 wires it).
   of ours; a derived figure cites every evidence its operands are in and its result is the operation's, rounded,
   never read in another scale. — since 2026-11-20 · nodes 13.42, 13.106, 13.108.
 - **CRIT-CT8 · In front of the ear**: the guards judge at every close; our own echo is decided by timing and by its
-  words being ours, and never cuts our line; his stop is a control and never a line for the model; with the voice
-  on the old path, his typed line cuts it first. — since 2026-11-20 · nodes 13.91, 13.104.
+  words being ours, and never cuts our line; his stop is a control and never a line for the model (the old path's
+  voice cut by a typed line went with the unplug, 2026-11-21). — since 2026-11-20 · nodes 13.91.
 - **CRIT-CT9 · A run reads within its budget**: past `max_reads` or `read_wall_ms` every read is refused with the
   reason to answer with what it has; the catalogue is never cut. — since 2026-11-20 · nodes 13.107.
 

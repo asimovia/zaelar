@@ -87,7 +87,7 @@ def world(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("road", sorted(ROADS))
-def test_a_preflight_reads_his_words_twice_and_changes_nothing(world, road):
+def test_a_preflight_reads_nothing_and_changes_nothing(world, road):
     from nucleo import consequence
     from voice.engine.pipeline import eager_brief
     from widgets.mensajeria.owner.handle import _Handle
@@ -100,7 +100,7 @@ def test_a_preflight_reads_his_words_twice_and_changes_nothing(world, road):
     _Handle()._flush_queues()                    # …and the beat after it finds nothing new to send
     assert all(s.queue.empty() for s in world["subs"]), "no order reached a connector"
     assert not list(would or []), f"a consequence door was asked on an unconfirmed sentence: {would}"
-    assert world["reads"] == [("attention", ROADS[road]), ("brief", ROADS[road])], "the two reads, and only them"
+    assert world["reads"] == [], "the manager hears with its own ear: a preflight reads nothing (INI-078 F2)"
 
 
 def test_the_picture_sees_a_write_in_each_of_its_three_parts(world):
@@ -135,13 +135,9 @@ def _calls(path: str, fn: str) -> set[str]:
     return out
 
 
-def test_the_two_functions_a_preflight_runs_call_only_the_two_reads():
-    """A call added to either function is a new thing an unconfirmed sentence does: it is added here, on purpose."""
-    assert _calls("voice/engine/pipeline/eager_brief.py", "on_preflight") == {
-        "_switch.holds_the_voice", "emit", "_bt.fire_early", "logger.debug"}   # a read: does the manager hold the voice?
-    assert _calls("nucleo/turn/brief_turn.py", "fire_early") == {
-        "_key", "_attention.prefire", "_PREFIRED.get", "time.time", "brief.ask_for_turn", "_remember_prefired",
-        "logger.debug"}
+def test_the_function_a_preflight_runs_calls_nothing():
+    """A call added to it is a new thing an unconfirmed sentence does: it is added here, on purpose."""
+    assert _calls("voice/engine/pipeline/eager_brief.py", "on_preflight") == set()
 
 
 def test_a_preflight_is_read_in_one_place():

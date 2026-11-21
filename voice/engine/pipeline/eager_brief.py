@@ -22,21 +22,9 @@ def _text_of(ev) -> str:
 
 
 def on_preflight(text: str) -> None:
-    """One eager end of turn: fire the brief on it and leave a mark on the timeline."""
-    from nucleo.conversation_host import switch as _switch
-    if not text or _switch.holds_the_voice():
-        return              # a session of the manager hears with its own ear: the old turn's brief is never paid
-    try:
-        from voice.observer import emit
-        emit("vad", "⚡ fin de turno ANTICIPADO — el brief sale ya", text=text[:160], role="system",
-             extra={"cat": "system", "detector": "stt-eager"})
-    except Exception as e:  # noqa: BLE001 — the mark is for the timeline; the brief still fires below
-        logger.debug(f"eager brief: timeline mark not written — {e!r}")
-    try:
-        from nucleo.turn import brief_turn as _bt
-        _bt.fire_early(text)
-    except Exception as e:  # noqa: BLE001 — a classifier may never break the ear
-        logger.debug(f"eager brief: not fired — {e!r}")
+    """One eager end of turn: nothing — the manager hears with its own ear and the old turn's brief is never paid
+    (INI-078 F2, the unplug; this module goes with the old turn)."""
+    return
 
 
 async def stt_node_firing_the_brief(agent, default_impl, audio, model_settings, fire=None):

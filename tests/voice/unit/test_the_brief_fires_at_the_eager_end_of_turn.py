@@ -50,14 +50,15 @@ def _run(events, asked: list):
     return asyncio.run(go())
 
 
-def test_a_preflight_transcript_fires_the_brief_once_and_every_event_passes_through(monkeypatch):
+def test_a_preflight_transcript_fires_nothing_and_every_event_passes_through(monkeypatch):
+    """The manager is the only path (INI-078 F2): it hears with its own ear, and the eager end pays no old brief."""
     asked: list = []
     monkeypatch.setattr("nucleo.turn.brief.ask_for_turn", lambda text, **kw: asked.append(text) or _handle())
     events = [_ev(lk_stt.SpeechEventType.INTERIM_TRANSCRIPT, "que tiempo"),
               _ev(lk_stt.SpeechEventType.PREFLIGHT_TRANSCRIPT, "que tiempo hace en madrid"),
               _ev(lk_stt.SpeechEventType.FINAL_TRANSCRIPT, "¿Qué tiempo hace en Madrid?")]
     out = _run(events, asked)
-    assert asked == ["que tiempo hace en madrid"], "the brief fires on the eager event, once"
+    assert asked == [], "the old turn's brief is never paid"
     assert [id(e) for e in out] == [id(e) for e in events], "the same event objects, in order, none dropped"
 
 

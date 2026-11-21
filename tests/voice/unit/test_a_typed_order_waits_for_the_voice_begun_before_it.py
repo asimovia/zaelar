@@ -69,29 +69,8 @@ def _packet(text: str):
                            data=json.dumps({"t": "zaelar-text", "text": text}).encode("utf-8"))
 
 
-def test_the_handler_queues_the_paste_behind_the_voice_turn():
-    """The wiring: the real data handler holds the paste, the user item releases it."""
-    async def run():
-        s, said = _Session(), []
-        emit = lambda *a, **k: said.append(a[1] if len(a) > 1 else "")   # noqa: E731
-        agent_events._on_user_state(SimpleNamespace(new_state="speaking"), _busy={"bot": False, "user": False},
-                                    _emit=emit, _onset={"voice_ended": 0.0},
-                                    sm=SimpleNamespace(on_user_state=lambda *_: None))
-        agent_events._on_data(_packet("find me the orion nebula wallpaper"), _emit=emit, _json=json, _wake={},
-                              session=s)
-        await asyncio.sleep(0.25)
-        assert s.replies == [], "the paste ran before the sentence he had begun saying"
-        agent_events._on_item(SimpleNamespace(item=SimpleNamespace(role="user", text_content="put that away")),
-                              _emit=emit)
-        await asyncio.sleep(0.25)
-        assert s.replies == ["find me the orion nebula wallpaper"]
-    asyncio.run(run())
-
-
-def test_with_no_voice_open_the_paste_goes_at_once():
-    s = _Session()
-    agent_events._on_data(_packet("hello"), _emit=lambda *a, **k: None, _json=json, _wake={}, session=s)
-    assert s.replies == ["hello"]
+# (the data handler's own queue behind a voice turn went with the unplug: a typed line enters the manager's inbox,
+# which orders it with his voice — INI-078 F2)
 
 
 def test_an_utterance_cut_by_the_ear_closing_stops_holding_text_after_the_grace():

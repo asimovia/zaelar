@@ -113,34 +113,7 @@ def test_a_turn_the_body_itself_failed_still_asks_him_again(lines, monkeypatch):
     assert _node(link, "hola") == ["REPEAT?"] and link.calls == 1
 
 
-def test_the_body_reads_the_prior_line_as_his_words_before_the_turn(monkeypatch):
-    from voice import remote_session
-
-    class _Stream:
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, *a):
-            return False
-
-        def __aiter__(self):
-            return self._gen()
-
-        async def _gen(self):
-            from livekit.agents.llm import ChatChunk, ChoiceDelta
-            yield ChatChunk(id="x", delta=ChoiceDelta(role="assistant", content="Bien."))
-
-    brain = SimpleNamespace(_window=[], chat=lambda *, chat_ctx, **k: _Stream())
-    monkeypatch.setattr(remote_session, "_brain", lambda: brain)
-    monkeypatch.setitem(remote_session._M, "client", None)
-    from voice.engine.speech import filler_audio as fa
-    monkeypatch.setattr(fa, "llm_node_with_filler", lambda _a, model, ctx, tools, ms: model(None, ctx, tools, ms))
-
-    async def _run():
-        return [ln async for ln in remote_session.turn_lines({"text": "y qué tal", "prior": "hola"})]
-    out = asyncio.run(_run())
-    assert "".join(ln["text"] for ln in out if ln["t"] == "c") == "Bien."
-    assert brain._window and brain._window[-1]["role"] == "user" and brain._window[-1]["content"] == "hola"
+# (the body reading a lost turn's prior line into the old turn's window went with the unplug, INI-078 F2)
 
 
 class _FakeHttp:
@@ -335,29 +308,20 @@ def test_facts_a_request_could_not_deliver_return_to_the_front_in_order(monkeypa
 
 
 def test_the_body_replays_the_carried_facts_before_the_turn_and_before_the_kickoff(monkeypatch):
-    """(d) the body's half: `events` on a turn (or on the kickoff question) go through the SAME replay, first."""
+    """(d) the body's half: `events` on a turn (or on the kickoff question) go through the SAME replay, first — and
+    then the body answers nothing of its own: the manager is the only path (INI-078 F2)."""
     from voice import remote_session
-    from voice.engine.pipeline import first_air
     order = []
     monkeypatch.setattr(remote_session, "handle", lambda ev: order.append(ev["k"]))
-
-    def _chat(*, chat_ctx, **k):
-        order.append("turn")
-        raise RuntimeError("stop here")
-    monkeypatch.setattr(remote_session, "_brain", lambda: SimpleNamespace(_window=[], chat=_chat))
     monkeypatch.setitem(remote_session._M, "client", None)
-    from voice.engine.speech import filler_audio as fa
-    monkeypatch.setattr(fa, "llm_node_with_filler", lambda _a, model, ctx, tools, ms: model(None, ctx, tools, ms))
 
     async def _run():
         return [ln async for ln in remote_session.turn_lines({"text": "pon música", "events": [_STOPPED, _FINAL]})]
-    asyncio.run(_run())
-    assert order == ["user_state", "transcript", "turn"], order
+    assert asyncio.run(_run()) == [{"t": "end"}]
+    assert order == ["user_state", "transcript"], order
     order.clear()
-    monkeypatch.setattr(first_air, "decide_kickoff", lambda room, emit: order.append("kickoff") or "greet")
-    assert remote_session.kickoff("r1", [{"k": "session", "what": "started"}])["greet"] == "greet"
-    assert order == ["session", "kickoff"], order
-    assert remote_session.kickoff("r1")["greet"] == "greet", "a question that carries nothing still decides"
+    assert remote_session.kickoff("r1", [{"k": "session", "what": "started"}])["greet"] == ""
+    assert order == ["session"], order
 
 
 def test_no_request_waits_on_a_clock_for_the_order():

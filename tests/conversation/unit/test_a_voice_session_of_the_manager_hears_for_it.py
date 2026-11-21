@@ -185,7 +185,7 @@ def test_what_the_voice_built_is_the_sessions_decision_and_the_close_gives_the_v
     assert not owed.voice_live() and body["devices"][-1] == ("holder", {"voice_live": False, "speaker_open": False})
     off = SimpleNamespace()
     assert voice_session.started(off, {"conv": False, "conv_by": "env", "conv_why": "w1"}) is False
-    assert not switch.on(off) and body["alerts"] == ["conversation manager refused"]
+    assert not switch.on(off) and body["alerts"] == ["the conversation cannot answer now"]   # silence, and why
 
 
 def test_the_old_turns_door_answers_nothing_in_a_session_of_the_manager(body, monkeypatch):
@@ -199,13 +199,13 @@ def test_the_old_turns_door_answers_nothing_in_a_session_of_the_manager(body, mo
         return [line async for line in remote_session.turn_lines({"text": "w1"})]
     assert asyncio.run(go()) == [{"t": "end"}]
     assert proof.report("acct_t")["counters"]["livekit_turns"] == 1
-    assert "livekit opened a turn in a session of the manager" in body["alerts"]
+    assert "livekit opened a turn" in body["alerts"]
     from voice.engine.pipeline import first_air
     monkeypatch.setattr(first_air, "decide_kickoff", lambda room, emit: "w_greet")   # the old door would greet
     assert remote_session.kickoff("r1") == {"greet": "", "env": {}}           # what is said is the manager's
     monkeypatch.setitem(remote_session._M, "session", SimpleNamespace())
-    assert remote_session.kickoff("r1")["greet"] == "w_greet"                 # not the manager's: as before
-    assert voice_session.refuse_turn(SimpleNamespace()) is False              # undecided: not the manager's
+    assert remote_session.kickoff("r1")["greet"] == ""                        # any session: the only path
+    assert voice_session.refuse_turn(SimpleNamespace()) is True               # any session: LiveKit answers nothing
 
 
 def test_a_body_stalled_for_five_seconds_of_speech_loses_nothing(monkeypatch):

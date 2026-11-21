@@ -50,10 +50,10 @@ def test_the_replayed_provider_words_are_marked_in_a_session_of_the_manager(even
         remote_session.handle({"k": "transcript", "final": final, "text": "w1"})
     finally:
         remote_session._M["session"] = monkey
-    if final and manager:
-        assert _marked(events, kind) == []           # the manager's ear writes his final words, once (`wall_lines`)
+    if final:                                        # the manager is the only path (INI-078 F2): any session's
+        assert _marked(events, kind) == []           # final words are its ear's, written once (`wall_lines`)
     else:
-        assert _marked(events, kind) == [manager]
+        assert _marked(events, kind) == [True]
 
 
 def test_our_lines_and_a_notice_card_of_the_manager_are_marked(events):
@@ -92,7 +92,6 @@ def test_a_typed_line_announced_carries_its_cid_and_the_managers_mark(monkeypatc
     it instead of comparing texts — and F3-1: with the text door on the manager, the announcement is marked."""
     from nucleo.conversation_host import entry, switch
     from voice.engine.pipeline import agent_events
-    monkeypatch.setattr(switch, "typed_on", lambda session=None: manager)
     monkeypatch.setattr(switch, "on", lambda session=None: manager)
     monkeypatch.setattr(entry, "typed", lambda *a, **k: None)
     monkeypatch.setattr(agent_events, "_route_typed", lambda *a, **k: None)

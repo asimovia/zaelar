@@ -1,73 +1,21 @@
-"""Does this session go by the conversation manager? (V2-941, v3.1 §1.9 and the F1 plan §5)
+"""The conversation manager is the only path (INI-078 F2, the unplug): every session goes by it.
 
-The first that says something decides: (1) the SESSION — `conv=1` / `conv=0` in the app's URL, carried in the room's
-metadata; (2) the ACCOUNT — the `conversation_manager` key of `config/settings.json`, false by default; (3) the
-environment — `ZAELAR_CONVERSATION=1`, a development resource. It is read ONCE, when the session opens: a session
-never changes path halfway. Going back is removing the key and reconnecting the voice, with no restart.
-
-It fails CLOSED: switched on, a session only goes by the manager when every outside write of the install is held but
-the lanes the manager itself carries, each with his yes (`declared.json` `sends_by`; `ZAELAR_HOLD_OUTBOUND=all` or
-`all,-owner`), its language is chosen and the manager's configuration passes (`config.build`). Short
-of that it takes the old path, and the decision says why — the caller emits it as an alert.
+There is no mode and nothing to fall back to. The manager still runs only when it may: every outside write of the
+install held but the lanes the manager itself carries, each with his yes (`declared.json` `sends_by`;
+`ZAELAR_HOLD_OUTBOUND=all` or `all,-owner`), its language chosen and its configuration passing (`config.build`). Short
+of that the session answers NOTHING — the reason is put on his screen as an alert (`silent`), never an old path.
 """
 from __future__ import annotations
 
 import os
 from dataclasses import dataclass
 
-ENV = "ZAELAR_CONVERSATION"
-SETTING = "conversation_manager"
-ON, OFF = frozenset({"1", "true", "yes", "on", "voice"}), frozenset({"0", "false", "no", "off"})
-#: a session's flag that asks the manager for its VOICE even with the account on text only (`conv=voice`)
-VOICE = "voice"
-#: the manager for his TEXT only — the typed doors go by it, the voice stays on the old path
-TEXT = "text"
-TEXT_ONLY = "text only"           # why a voice session is off when the manager is asked for text only: a choice
-
 
 @dataclass(frozen=True)
 class Decision:
     on: bool
-    by: str                   # session | account | env | default
-    why: str = ""             # switched on but refused: the reason the session takes the old path
-
-
-def _flag(v) -> bool | None:
-    if isinstance(v, bool):
-        return v
-    s = str(v if v is not None else "").strip().lower()
-    return True if s in ON else False if s in OFF else None
-
-
-def _source(session) -> tuple[object, str]:
-    """The first that says something: the session's own flag, the account's key, the environment."""
-    from config import settings
-    for value, by in ((session, "session"), (settings.get(SETTING), "account"), (os.getenv(ENV), "env")):
-        if _flag(value) is not None or str(value or "").strip().lower() == TEXT:
-            return value, by
-    return None, "default"
-
-
-def asked(session: str | bool | None = None, voice: bool = False) -> tuple[bool, str]:
-    """Is the manager asked for, and by whom — before the checks that may refuse it. `TEXT` asks it for the typed doors
-    only: for the voice it is not asked."""
-    value, by = _source(session)
-    if str(value or "").strip().lower() == TEXT:
-        return not voice, by
-    if voice and by == "session" and str(value).strip().lower() != VOICE and _account_text():
-        return False, "account"             # the account's «text» wins for the voice over a room's bare `conv=1`
-    return bool(_flag(value)), by
-
-
-def _account_text() -> bool:
-    from config import settings
-    return str(settings.get(SETTING) or "").strip().lower() == TEXT
-
-
-def text_only(session=None) -> bool:
-    value, by = _source(session)
-    return str(value or "").strip().lower() == TEXT or (by == "session" and _account_text()
-                                                         and str(value).strip().lower() != VOICE)
+    by: str = "manager"
+    why: str = ""             # the manager may not run now: the reason on his screen, and silence
 
 
 def refused() -> str:
@@ -75,7 +23,7 @@ def refused() -> str:
     import sys
     entry = sys.modules.get("nucleo.conversation_host.entry")
     if entry is not None and entry.broken():
-        return "the conversation could not open a moment ago: the old path for now"
+        return "the conversation could not open a moment ago"
     from connectors import exit as _exit
     from nucleo.conversation_host.declared import declared
     carried = set(declared().get("sends_by") or ())          # the lanes the manager carries, each with his yes
@@ -91,51 +39,33 @@ def refused() -> str:
     return ""
 
 
-def decide(session: str | bool | None = None, voice: bool = False) -> Decision:
-    """`voice`: the decision for a voice session (`/api/voice/child/conv`) — off when the manager is asked for text only."""
-    on, by = asked(session, voice)
-    if not on:
-        return Decision(False, by, TEXT_ONLY if voice and text_only(session) else "")
+def decide(session=None, voice: bool = False) -> Decision:
+    """The manager, always; `on` False only while it may not run (`why`). `session`/`voice` are what a caller has."""
     why = refused()
-    return Decision(not why, by, why)
+    return Decision(not why, "manager", why)
 
 
-def fall_back(session, why: str) -> None:
-    """This session takes the old path from now on — said as an alert, never silently (the switch fails closed)."""
+def silent(session, why: str) -> None:
+    """This session may not be answered now: the reason on his screen (an alert), and silence — nothing else answers."""
     from voice import observer
     if session is not None and hasattr(session, "__dict__"):
-        session._conversation_switch = Decision(False, "fallback", why)
-    observer.emit("alert", "conversation manager: this session goes the old way", text=why)
+        session._conversation_switch = Decision(False, "refused", why)
+    observer.emit("alert", "the conversation cannot answer now", text=why)
     from nucleo.conversation_host import wall
-    wall.sweep("fallback")                       # a line the manager left open on the wall would never be closed
-
-
-def typed_on(session=None) -> bool:
-    """A TEXT door's question (a typed line): the session's own decision when it is the manager's, else the account's
-    for text — with the manager asked for text only, a voice session on the old path still sends his typed lines to it."""
-    if on(session):
-        return True
-    got = getattr(session, "_conversation_typed", None) if session is not None else None
-    if got is None:
-        got = decide(None)
-        if session is not None and hasattr(session, "__dict__"):
-            session._conversation_typed = got
-    return got.on
+    wall.sweep("refused")                        # a line the manager left open on the wall would never be closed
 
 
 def on(session=None) -> bool:
-    """The door's question: does this line go by the manager? Decided ONCE per session (kept on the session object;
-    the session's own `conv` flag, if it carries one, says first); with no session, the account's decision. A
-    session asked for the manager and refused says why, once, as an alert."""
+    """The door's question: may the manager take this line now? Decided ONCE per session (kept on the session object);
+    with no session, now. A session the manager may not take says why, once, on his screen."""
     got = getattr(session, "_conversation_switch", None) if session is not None else None
-    if got is None:                         # a session is a VOICE session: «text» only is off for it (embedded mode)
-        got = decide(getattr(session, "conv_flag", None) if session is not None else None, voice=session is not None)
+    if got is None:
+        got = decide()
         if session is not None and hasattr(session, "__dict__"):   # one with no attributes is decided at every line
             session._conversation_switch = got
-        if got.why and got.why != TEXT_ONLY and (session is None
-                                                 or getattr(session, "_conversation_switch", None) is got):
+        if got.why and (session is None or getattr(session, "_conversation_switch", None) is got):
             from voice import observer
-            observer.emit("alert", "conversation manager refused", text=got.why, extra={"by": got.by})
+            observer.emit("alert", "the conversation cannot answer now", text=got.why)
     return got.on
 
 

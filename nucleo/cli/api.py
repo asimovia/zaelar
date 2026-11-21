@@ -90,17 +90,7 @@ async def say(text: str = Body(..., embed=True), session: str = Body("default", 
     # the list would render `['I will look for them now.']` on the wall, including brackets and quotes.
     _reply = res.get("reply")
     _wall("agent", " ".join(str(x) for x in _reply) if isinstance(_reply, list) else str(_reply or ""))
-    if prompt and res.get("ok"):
-        # optional: the composed prompt, to inspect what the model saw. Same safeguard as the turn: a slow recall
-        # here would freeze the server loop over an INSPECTION option.
-        from nucleo.flash.recall_heuristics import needs_recall
-        from nucleo.turn.prompt.builder import build_flash_system
-        from nucleo.turn import recall_budget as _recall
-        _rb, _ = await _recall.compose(text if needs_recall(text) else "")
-        sys_txt, _ = build_flash_system(directive=_brain(session)._directive,
-                                        recall_block=_rb, turn_text=text)
-        res["prompt"] = sys_txt
-    return res
+    return res                               # (`prompt`, the old turn's composed prompt, went with the unplug)
 
 
 @router.post("/api/flash/reset")

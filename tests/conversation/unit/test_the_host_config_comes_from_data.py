@@ -57,7 +57,6 @@ def test_a_set_out_of_order_is_refused():
 
 
 def test_his_rule_changes_the_reply_channel_with_no_restart(store, monkeypatch):
-    _account_switch(monkeypatch, True)
     h = Harness(store, grace=False, prefs=host_config.prefs)
     h.conv.device("d2", voice_live=True, speaker_open=True)
     h.typed("w1", 100)
@@ -75,19 +74,10 @@ def test_his_rule_changes_the_reply_channel_with_no_restart(store, monkeypatch):
     assert "voice" in h.mouth.orders[-1].channels
 
 
-def _account_switch(monkeypatch, on: bool) -> None:
-    from config import settings
-    from nucleo.conversation_host import switch
-    monkeypatch.delenv(switch.ENV, raising=False)
-    monkeypatch.setattr(settings, "_read", lambda: {switch.SETTING: on})
-
-
-def test_switched_off_the_old_path_sees_no_new_rule_and_no_new_knob(monkeypatch):
+def test_the_managers_knobs_are_every_accounts_rules(monkeypatch):
+    """The manager is the only path (INI-078 F2): its preferences are on every account's rules panel and offered to
+    the rule shaper — never a style knob."""
     from rules import defaults, vocabulary
-    _account_switch(monkeypatch, False)
-    assert not [r for r in rules.all_rows() if r["key"] == "reply_voice_to_text"]       # the rules panel
-    assert "reply_voice_to_text" not in vocabulary.knobs()                               # the rule shaper's offer
-    _account_switch(monkeypatch, True)
     assert [r["value"] for r in rules.all_rows() if r["key"] == "reply_voice_to_text"] == [True]
     assert "reply_voice_to_text" in vocabulary.knobs()
     assert "reply_voice_to_text" not in defaults.style_keys()                            # never a style knob

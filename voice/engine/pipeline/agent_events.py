@@ -248,8 +248,8 @@ def receive_typed(txt: str, *, _emit, session, dev: str = "", cid: str = "") -> 
     `POST /api/chat` (V2-792), which has no room of its own. One body for both, so a line typed on the phone and one
     typed on the desktop leave the same trace. `dev` names the screen; empty = the holder, as before."""
     _dev = {"dev": dev} if dev else None
-    from nucleo.conversation_host import switch as _conv_switch   # the switch alone: off, the manager is never loaded
-    _manager = _conv_switch.typed_on(session)
+    from nucleo.conversation_host import switch as _conv_switch   # the manager is the only path (INI-078 F2)
+    _manager = _conv_switch.on(session)
     # Written chat/paste is ALWAYS directed to zaelar, and that is the LINE's fact, not the room's: it is
     # stamped as typed (the gate admits it by `typed_line`) and opens NO voice window. V2-852 T01: opening the
     # window here lit the ring, the browser unparked the wake-word tap, and the room's «Finch.»/«No.» became orders.
@@ -271,35 +271,21 @@ def receive_typed(txt: str, *, _emit, session, dev: str = "", cid: str = "") -> 
     # acknowledgement), never a second copy; `conv`: the manager writes this line on the wall itself (`wall`).
     _emit("transcript", "text-injected chat", text=txt, role="user", piece="u_chat",   # typed, not heard
           extra={**(_dev or {}), **({"cid": cid} if cid else {}), **({"conv": True} if _manager else {})} or None)
-    if _manager:                                    # a text door: the manager for text, even with the voice old
-        from nucleo.conversation_host import entry as _conv_entry
-        if not _conv_switch.on(session):             # the voice is the old path's: his line cuts it first, as there
-            _cut_for_typed(txt, _emit=_emit, session=session)
-        try:
-            loop = _ag.asyncio.get_running_loop()
-        except RuntimeError:                         # a caller with no loop: the old way runs where it is
-            loop = None
-
-        def old() -> None:                           # the conversation never opened: this session goes the old way
-            _conv_switch.fall_back(session, "the conversation could not open")
-            route = lambda: _route_typed(txt, _emit=_emit, session=session)   # noqa: E731
-            loop.call_soon_threadsafe(route) if loop is not None else route()
-        _conv_entry.typed(txt, dev, old=old, cid=cid)   # its inbox orders it; `cid`: the line's id on his wall
+    if not _manager:                                 # it may not answer now: the reason is on his screen, silence
         return
-    _route_typed(txt, _emit=_emit, session=session)
+    from nucleo.conversation_host import entry as _conv_entry
+    _conv_entry.typed(txt, dev, cid=cid)             # its inbox orders it; `cid`: the line's id on his wall
 
 
 def _wake_reply(session, text: str) -> None:
     """His phrase the browser's own ear caught (the wake word's backstop): the old turn answers it — or, in a session
     of the manager, the manager does, counted apart (`wake_phrases`), never as an attempt at the old turn."""
-    from nucleo.conversation_host import switch as _conv_switch   # the switch alone: off, the manager is never loaded
+    from nucleo.conversation_host import switch as _conv_switch   # the manager is the only path (INI-078 F2)
     if _conv_switch.on(session):
         from nucleo.conversation_host import entry as _conv_entry
         _conv_entry.count("wake_phrases")
         from nucleo.conversation_host import controls as _conv_controls
         _conv_controls.local_phrase(text, "")   # voice, an entry of its own: never typed, never the old turn
-        return
-    session.generate_reply(user_input=text)
 
 
 def open_typed_door(*, _emit, _on_session_loop, session):
@@ -439,13 +425,6 @@ def on_state_change(state: "_ag.State", *, _ONSET_MAX_S, _STATE_TRACE_SAFE, _air
         _attn.note_bot_speech(speaking)
     except Exception:
         pass
-    # Nothing sounds now: close flows that finished while the reply was narrated (`drain_pending_flow_closes`).
-    if not speaking:
-        try:
-            from voice.engine.llm.providers.nucleo import drain_pending_flow_closes
-            drain_pending_flow_closes()
-        except Exception:
-            pass
 
 
 def _on_user_state(ev, *, _busy, _emit, _onset, sm) -> None:

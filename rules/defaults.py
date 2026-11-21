@@ -72,14 +72,9 @@ def rows() -> list[dict]:
 
 
 def conversation_rows() -> list[dict]:
-    """The conversation manager's preferences (genesis `conversation.prefs`, V2-941) exist ONLY for an account with
-    the manager switched on: off, the old path is identical — no row on the rules panel, no knob offered to the rule
-    shaper, so no spoken rule can land in a knob nobody reads. Read live: switching on needs no restart."""
+    """The conversation manager's preferences (genesis `conversation.prefs`, V2-941): the manager is the only path
+    (INI-078 F2), so every account has them — rows on the rules panel, knobs offered to the rule shaper."""
     try:
-        from nucleo.conversation_host import switch
-        on, _by = switch.asked()
-        if not on:
-            return []
         import genome
         prefs = (genome.genesis().get("conversation") or {}).get("prefs") or {}
     except (ImportError, OSError, ValueError) as e:

@@ -117,13 +117,13 @@ async def run_turn(text: str, *, sid: str = "default", ingest: bool = True, mode
     text = (text or "").strip()
     if not text:
         return {"ok": False, "error": "texto vacío"}
-    from nucleo.conversation_host import switch as _conv_switch   # the switch alone: off, the manager is never loaded
-    if door and _conv_switch.on():           # HIS line at the text channel's door — never a list's own step
-        from nucleo.conversation_host import entry as _conv_entry
+    if door:                                 # HIS line at the text channel's door — never a list's own step
+        from nucleo.conversation_host import entry as _conv_entry, switch as _conv_switch   # the only path (INI-078 F2)
+        if not _conv_switch.on():            # it may not answer now: the reason, and nothing else answers
+            return {"ok": False, "error": _conv_switch.decide().why or "the conversation cannot answer now"}
         got = await _conv_entry.typed_and_wait(text, dev=f"text:{sid}")
-        if (got.get("conv") or {}).get("close") != _conv_entry.NOT_OPENED:
-            return got
-        # the conversation could not open: this line takes the old path, so he is answered (the switch fails closed)
+        return {"ok": False, "error": "the conversation could not open"} if (got.get("conv") or {}).get(
+            "close") == _conv_entry.NOT_OPENED else got
     brain = _brain(sid)
     brain._turn_failed = ""
     attention.note_typed(text=text)          # a typed line: directed, complete, never ambient — and no window (V2-852 T01)

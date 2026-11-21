@@ -166,10 +166,10 @@ def _guards(text: str, dev: str) -> dict | None:
     return None
 
 
-def typed(text: str, dev: str = "", *, wait: bool = False, checked: bool = False, old=None, cid: str = "") -> dict:
+def typed(text: str, dev: str = "", *, wait: bool = False, checked: bool = False, cid: str = "") -> dict:
     """Hand a typed line over and return at once. The guards read the engine's state, which can wait on the shared
-    database lock: unless the caller already `checked` them off its loop, they run on the conversation's side. `old`:
-    how its door answers it the old way if the conversation never opens (a waiting caller gets `NOT_OPENED`). `cid`: the
+    database lock: unless the caller already `checked` them off its loop, they run on the conversation's side. If the
+    conversation never opens, nothing else answers it: said as an alert (a waiting caller gets `NOT_OPENED`). `cid`: the
     line's id on the screen that typed it, taken when it has the shape of one (a repeated one is the same line — the
     inbox's dedupe — and it never names an owner), else one is made."""
     if not str(text or "").strip():
@@ -197,15 +197,9 @@ def typed(text: str, dev: str = "", *, wait: bool = False, checked: bool = False
             return
         _end(stop.get("reason") or "note")
 
-    def fallback() -> None:                      # the conversation never opened: his line goes back to its door
+    def fallback() -> None:                      # the conversation never opened: said, and never answered another way
         from voice import observer
-        if old is None and not wait:             # nobody can take it the old way: said as it is, never «went»
-            observer.emit("alert", "a typed line was not answered: the conversation could not open",
-                          text=str(text)[:200])
-            return
-        observer.emit("alert", "a typed line went the old way: the conversation could not open", text=str(text)[:200])
-        if old is not None:
-            old()
+        observer.emit("alert", "a typed line was not answered: the conversation could not open", text=str(text)[:200])
         _end(NOT_OPENED)
 
     deliver.fallback = fallback
@@ -239,7 +233,7 @@ def voice(sig) -> None:
 
 def voice_lost() -> None:
     """The conversation never opened while he spoke: he is told, once — the language's «I lost that» through the one
-    ledger of what is owed — the voice session goes the old way, and it is said as an alert."""
+    ledger of what is owed — and the session answers nothing more until it opens: the reason is on his screen."""
     from nucleo.conversation_host import switch
     from nucleo.conversation_host.words import PackWords
     from voice import remote_session
@@ -248,10 +242,7 @@ def voice_lost() -> None:
             return
         _opener["lost_told"] = True
         _opener["broken_until"] = time.time() + BROKEN_S
-    switch.fall_back(remote_session._M.get("session"), "the conversation could not open while he spoke")
-    client = remote_session._M.get("client")
-    if client is not None:                       # its voice process is in manual mode: the session ends, and the one
-        client.post_soon("/voice/close", {"reason": "conversation_unavailable"})   # that reconnects is the old path's
+    switch.silent(remote_session._M.get("session"), "the conversation could not open while he spoke")
     from nucleo.conversation_host import owed
     owed.set_voice_live(False)                   # before the notice: never claimed for a voice of ours that is ending
     line = PackWords().line("mute_lines")

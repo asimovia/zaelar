@@ -178,20 +178,15 @@ class RemoteSession:
         """`cut_speech`: the voice process interrupts the speech sounding now, then queues this reply — one request,
         so the cut can never land on the reply it precedes (`agent_events._inject_typed`)."""
         from voice import screens
-        from nucleo.conversation_host import switch as _conv_switch   # off, the manager is never loaded
+        from nucleo.conversation_host import switch as _conv_switch   # the manager is the only path (INI-078 F2)
         if _conv_switch.on(self):
-            # THE NET: a door nobody diverted reached the old turn. In a session of the manager it opens no LiveKit
-            # turn and the line is not lost: counted, said, and handed to the manager's funnel.
+            # THE NET: a door nobody diverted asked for a LiveKit turn. It opens none and the line is not lost:
+            # counted, said, and handed to the manager's funnel.
             from nucleo.conversation_host import boot, entry, proof
             from voice import observer
             proof.note(boot.account(), "legacy_turn_attempts")
-            observer.emit("alert", "a line reached the old turn in a session of the manager", text=user_input[:200])
+            observer.emit("alert", "a line asked for a LiveKit turn", text=user_input[:200])
             entry.typed(user_input, screens.ORIGIN.get() or "")
-            return
-        self.client.post_soon("/voice/reply", {"text": user_input, "origin": screens.ORIGIN.get(),
-                                               "allow_interruptions": allow_interruptions,
-                                               **({"cut": True} if cut_speech else {}),
-                                               "env": self.client.env_diff()})
 
     def clear_user_turn(self) -> None:
         self.client.post_soon("/voice/clear_turn", {})
@@ -291,14 +286,6 @@ async def _direct(coro_fn) -> None:
     await coro_fn()
 
 
-def _brain():
-    if _M["brain"] is None:
-        from voice.engine.core.config import SETTINGS
-        from voice.engine.llm import build_llm
-        _M["brain"] = build_llm(SETTINGS.llm_provider, SETTINGS.llm_model)
-    return _M["brain"]
-
-
 def _started(ev: dict) -> None:
     from voice import attention, proactive, screens
     from voice.engine.pipeline import agent_events as _ae
@@ -314,9 +301,8 @@ def _started(ev: dict) -> None:
     _conv_voice.started(remote, ev)
     # Another room may still be closing (the voice moving between screens): its handles stay in `_ROOMS` and its own
     # close clears only what is still its own, exactly as the embedded sessions do.
-    _M.update(session=remote, room=room, brain=None)
+    _M.update(session=remote, room=room, brain=None)     # no old voice provider is built: the manager is the only path
     _M["busy"].update(bot=False, user=False)
-    _brain()
     try:
         attention.reset()
     except Exception as _swallowed:  # noqa: BLE001
@@ -490,11 +476,10 @@ def handle(ev: dict) -> None:
         _ae._on_user_state(SimpleNamespace(new_state=str(ev.get("state") or "")), _busy=_M["busy"], _emit=_obs(),
                            _onset=_M["onset"], sm=_NoSM())
     elif k == "transcript":
-        switch = getattr(remote, "_conversation_switch", None)
-        if ev.get("final") and switch is not None and switch.on:
-            return      # a session of the manager: his final words are its ear's, written once (`wall_lines`)
-        _ae._on_transcript(SimpleNamespace(is_final=bool(ev.get("final")), transcript=str(ev.get("text") or "")),
-                           _emit=_obs(), _wake=_M["wake"], conv=bool(switch is not None and switch.on))
+        if ev.get("final"):
+            return      # his final words are the manager's ear's, written once (`wall_lines`)
+        _ae._on_transcript(SimpleNamespace(is_final=False, transcript=str(ev.get("text") or "")),
+                           _emit=_obs(), _wake=_M["wake"], conv=True)
     elif k == "item":
         _ae._on_item(SimpleNamespace(item=SimpleNamespace(role=ev.get("role"), text_content=ev.get("text"))),
                      _emit=_obs(), speech_id=str(ev.get("speech_id") or ""), surfaced=bool(ev.get("surfaced")))
@@ -531,88 +516,17 @@ def handle_batch(events) -> int:
 def kickoff(room: str, events=None) -> dict:
     """The first-turn decision for a session the voice process just started: the instruction to greet, or none. The
     facts the question carried («session started») are replayed first."""
-    from voice.engine.pipeline import first_air
     handle_batch(events)
-    from nucleo.conversation_host import switch as _conv_switch
-    if _M.get("session") is not None and _conv_switch.on(_M["session"]):
-        return {"greet": "", "env": {}}         # a session of the manager: what is said is the manager's
-    text = first_air.decide_kickoff(room, _obs())
-    cl = _M["client"]
-    return {"greet": text, "env": cl.env_diff() if cl is not None else {}}
+    return {"greet": "", "env": {}}             # what is said is the manager's (INI-078 F2: the only path)
 
 
 async def turn_lines(payload: dict):
-    """One voice turn, as NDJSON lines: the voice provider inside the lead-in cover, exactly as embedded."""
-    from livekit.agents.llm import ChatContext
-    from livekit.agents.types import FlushSentinel
-    from livekit.agents.voice.agent_activity import _SpeechHandleContextVar
-    from voice import screens
-    from voice.engine.speech import echo_cut, filler_audio as _fa
+    """A turn LiveKit asks of the body, as NDJSON lines: the facts it carried replayed first, then its end — nothing
+    said. The manager is the only path (INI-078 F2): counted and said (`voice_session.refuse_turn`)."""
     handle_batch(payload.get("events"))         # the facts queued before this turn: replayed first, in order
     from nucleo.conversation_host import voice_session as _conv_voice
-    if await asyncio.to_thread(_conv_voice.refuse_turn, _M.get("session")):
-        yield {"t": "end"}                      # no turn of LiveKit's in a session of the manager: counted, said
-        return
-    cl = _M["client"]
-    env = cl.env_diff() if cl is not None else {}
-    if env:
-        yield {"t": "env", "env": env}
-    text = str(payload.get("text") or "")
-    brain = _brain()
-    if (prior := str(payload.get("prior") or "").strip()) and prior != text:
-        # E0: his line a lost turn never delivered (the body could not be reached): it enters the window as HIS words
-        # before this turn, so the reply answers both — never «say that again» for words he already said.
-        try:
-            from nucleo.flash import dialog as _dialog
-            _dialog.push_user(brain._window, prior)
-        except Exception as e:  # noqa: BLE001 — the turn still runs on what he said now
-            logger.warning(f"voice child: the prior line was not kept — {e!r}")
-    ctx = ChatContext.empty()
-    ctx.add_message(role="user", content=text)
-    origin = str(payload.get("origin") or "")
-    tok_o = screens.ORIGIN.set(origin) if origin else None
-    ref = _SpeechRef(str(payload.get("speech_id") or ""))
-    tok_s = _SpeechHandleContextVar.set(ref)
-
-    async def _model(_agent, chat_ctx, _tools, _ms):
-        async with brain.chat(chat_ctx=chat_ctx) as stream:
-            async for chunk in stream:
-                yield chunk
-
-    held: str | None = None                      # a str chunk is the cover only if a FlushSentinel follows it
-    try:
-        async for chunk in _fa.llm_node_with_filler(None, _model, ctx, [], None):
-            if isinstance(chunk, FlushSentinel):
-                if held is not None:
-                    phrase, held = held.strip(), None
-                    _fa.strip_if_filler(phrase)  # the voice process strips it from ITS transcript; not here
-                    yield {"t": "filler", "text": phrase}
-                continue
-            if held is not None:
-                yield {"t": "c", "text": held}
-                held = None
-            if isinstance(chunk, str):
-                held = chunk
-                continue
-            content = echo_cut.chunk_text(chunk)
-            if content:
-                yield {"t": "c", "text": content}
-        if held is not None:
-            yield {"t": "c", "text": held}
-        yield {"t": "end"}
-    except asyncio.CancelledError:
-        raise
-    except Exception as e:  # noqa: BLE001 — the voice process says «say again»; the cause stays here
-        logger.warning(f"remote turn failed: {e!r}")
-        yield {"t": "err", "msg": repr(e)[:200]}
-    finally:
-        ref.finish()
-        try:
-            _SpeechHandleContextVar.reset(tok_s)
-            if tok_o is not None:
-                screens.ORIGIN.reset(tok_o)
-        except ValueError as _swallowed:                       # a generator closed from another context: the vars die with it
-            logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
+    await asyncio.to_thread(_conv_voice.refuse_turn, _M.get("session"))
+    yield {"t": "end"}
 
 
 def reset_for_tests() -> None:

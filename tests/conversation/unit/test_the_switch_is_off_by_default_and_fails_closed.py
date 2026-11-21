@@ -1,9 +1,9 @@
-"""The switch: off by default, read once, failing closed (node 13.37, v3.1 B2).
+"""The manager is the only path, and it fails closed into silence (node 13.37, INI-078 F2: the unplug).
 
-Who decides, the first that says something: the session (`conv=1` / `conv=0`), the account (`conversation_manager`
-in `config/settings.json`), the environment (`ZAELAR_CONVERSATION`). Switched on, a session goes by the manager only
-with every outside write held, its language chosen and the manager's configuration passing; short of that it takes
-the old path and says why. Off, nothing of the engine imports the host: every import of it is inside a function.
+There is no mode and no old path: every session goes by the manager. It still runs only with every outside write held
+but the lanes it carries, its language chosen and its configuration passing; short of that the session answers
+nothing and the reason goes on his screen (`switch.silent`, an alert). Nothing of the engine imports the host at its
+top: every import of it is inside a function.
 """
 from __future__ import annotations
 
@@ -22,46 +22,30 @@ ENGINE = Path(__file__).resolve().parents[3]
 
 @pytest.fixture
 def clean(monkeypatch):
-    for k in (switch.ENV, "ZAELAR_HOLD_OUTBOUND"):
-        monkeypatch.delenv(k, raising=False)
+    monkeypatch.delenv("ZAELAR_HOLD_OUTBOUND", raising=False)
     monkeypatch.setenv("ZAELAR_LANGUAGE", "en")
-    from config import settings
-    monkeypatch.setattr(settings, "_read", lambda: {})
     return monkeypatch
 
 
-def _account(monkeypatch, value) -> None:
-    from config import settings
-    monkeypatch.setattr(settings, "_read", lambda: {switch.SETTING: value})
-
-
-def test_off_by_default(clean):
-    assert switch.decide() == switch.Decision(False, "default")
-
-
-def test_the_session_says_first_then_the_account_then_the_environment(clean):
+def test_there_is_no_mode_every_session_goes_by_the_manager(clean):
     clean.setenv("ZAELAR_HOLD_OUTBOUND", "all")
-    clean.setenv(switch.ENV, "1")
-    assert switch.decide() == switch.Decision(True, "env")
-    _account(clean, False)
-    assert switch.decide() == switch.Decision(False, "account")
-    assert switch.decide("1") == switch.Decision(True, "session")
-    _account(clean, True)
-    assert switch.decide("0") == switch.Decision(False, "session")
+    for flag in (None, "0", "1", "text", False):
+        got = switch.decide(flag)
+        assert got.by == "manager" and (got.on or "configuration" in got.why)
 
 
 @pytest.mark.parametrize("hold", ["", "errand,mandate", "all,-owner,-worker"])
-def test_switched_on_without_every_write_held_it_takes_the_old_path_and_says_why(clean, hold):
+def test_without_every_write_held_it_answers_nothing_and_says_why(clean, hold):
     if hold:
         clean.setenv("ZAELAR_HOLD_OUTBOUND", hold)
-    got = switch.decide("1")
-    assert not got.on and got.by == "session" and "ZAELAR_HOLD_OUTBOUND" in got.why
+    got = switch.decide()
+    assert not got.on and "ZAELAR_HOLD_OUTBOUND" in got.why
 
 
-def test_switched_on_with_no_language_takes_the_old_path(clean):
+def test_with_no_language_it_answers_nothing(clean):
     clean.setenv("ZAELAR_HOLD_OUTBOUND", "all")
     clean.setenv("ZAELAR_LANGUAGE", "")
-    got = switch.decide("1")
+    got = switch.decide()
     assert not got.on and "language" in got.why
 
 
@@ -71,8 +55,21 @@ def test_a_configuration_out_of_order_is_refused(clean):
     g = json.loads(json.dumps(genome.genesis()))
     g["conversation"]["thresholds"]["complete_grace_ms"] = 4000          # «answerable» waiting longer than a mark
     clean.setattr(genome, "genesis", lambda: g)
-    got = switch.decide("1")
+    got = switch.decide()
     assert not got.on and "complete_grace_ms > terminal_grace_ms" in got.why
+
+
+def test_a_session_it_may_not_take_is_silent_and_says_why_on_his_screen(clean):
+    from types import SimpleNamespace
+
+    from voice import observer
+    alerts = []
+    clean.setattr(observer, "emit", lambda kind, label, **kw: alerts.append((kind, kw.get("text"))))
+    s = SimpleNamespace()
+    switch.silent(s, "w_the reason")
+    assert s._conversation_switch == switch.Decision(False, "refused", "w_the reason") and not switch.on(s)
+    assert ("alert", "w_the reason") in alerts
+    assert not hasattr(switch, "fall_back") and not hasattr(switch, "typed_on"), "nothing to fall back to"
 
 
 def _top_level_imports_of_the_host(path: Path) -> list[int]:

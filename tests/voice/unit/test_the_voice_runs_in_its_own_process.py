@@ -147,30 +147,12 @@ def _collect(agen):
     return asyncio.run(_run())
 
 
-def test_the_turn_stream_carries_the_cover_as_its_own_line_then_the_reply(monkeypatch):
-    from voice.engine.speech import filler_audio as fa
-    fa._reset_for_tests()
-    brain = _FakeBrain(["Cuatro.", " ¿Algo más?"], delay=0.5)
-    remote_session._M["brain"] = brain
-    monkeypatch.setattr(fa, "delay_ms", lambda: 50)
-    monkeypatch.setattr(fa, "_consume_arm", lambda: (SimpleNamespace(), "neutral", "Un segundo…"))
-    monkeypatch.setattr(fa, "_pick_phrase", lambda b, k, p: p)
-    lines = _collect(remote_session.turn_lines({"text": "¿cuánto es dos más dos?", "speech_id": "sp_1"}))
-    kinds = [ln["t"] for ln in lines if ln["t"] != "env"]
-    assert kinds[0] == "filler" and lines[[ln["t"] for ln in lines].index("filler")]["text"] == "Un segundo…"
-    assert "".join(ln["text"] for ln in lines if ln["t"] == "c") == "Cuatro. ¿Algo más?"
-    assert kinds[-1] == "end"
-    assert brain.seen == ["¿cuánto es dos más dos?"]
-    assert not fa._pending_strip, "the body's own strip queue must not grow: the voice process strips its transcript"
-
-
-def test_a_turn_that_fails_in_the_body_says_so_on_the_stream():
-    class _Boom(_FakeBrain):
-        def chat(self, **_k):
-            raise RuntimeError("provider down")
-    remote_session._M["brain"] = _Boom([])
+def test_the_bodys_turn_stream_answers_nothing():
+    """The manager is the only path (INI-078 F2): a turn LiveKit asks of the body is answered with its end, nothing
+    said, and no old provider run."""
+    remote_session._M["brain"] = _FakeBrain(["w_never"])
     lines = _collect(remote_session.turn_lines({"text": "hola"}))
-    assert lines[-1]["t"] == "err" and "provider down" in lines[-1]["msg"]
+    assert [ln["t"] for ln in lines] == ["end"] and remote_session._M["brain"].seen == []
 
 
 class _FakeLink:
@@ -305,14 +287,19 @@ def test_the_typed_door_sends_the_screen_that_typed_it(monkeypatch):
 
     async def _run():
         _start(monkeypatch, client)
-        remote_session.handle_batch([{"k": "session", "what": "started", "room": "zaelar-t"}])
+        remote_session.handle_batch([{"k": "session", "what": "started", "room": "zaelar-t", "conv": True}])
         assert screens.has_session()
         await screens.deliver_typed("¿y tres por tres?", "phone-1")
         await asyncio.sleep(0.05)
         remote_session.handle_batch([{"k": "session", "what": "closed"}])
+    from nucleo.conversation_host import entry
+    monkeypatch.setenv("ZAELAR_HOLD_OUTBOUND", "all")             # the install the manager may run on
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "es")
+    typed = []
+    monkeypatch.setattr(entry, "typed", lambda text, dev="", **kw: typed.append((text, dev)) or {"ok": True})
     asyncio.run(_run())
-    replies = [p for path, p in client.calls if path == "/voice/reply"]
-    assert replies and replies[0]["text"] == "¿y tres por tres?" and replies[0]["origin"] == "phone-1"
+    assert [p for path, p in client.calls if path == "/voice/reply"] == [], "no old reply"
+    assert typed == [("¿y tres por tres?", "phone-1")], "the manager hears the line with the screen that typed it"
     assert not screens.has_session(), "the typed door closes with the session"
 
 

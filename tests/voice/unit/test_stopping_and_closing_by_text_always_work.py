@@ -201,47 +201,8 @@ LINES = ["para", "stop", "cierra todo", "close all", "para el cuento", "stop the
          "tell me another one"]
 
 
-@pytest.mark.parametrize("line", LINES)
-def test_any_typed_line_cuts_the_speech_in_course_then_runs(_not_held, line):
-    """Whatever the line (a stop, a close, an order), whatever the speech's state (generating, paused, sounding)."""
-    log: list = []
-    _type(line, _Session(log))
-    assert log == [("reply", line, True, {})], f"{line!r} queued behind our speech"
-    log = []
-    _type(line, _Remote(log))
-    assert log == [("reply", line, {"cut_speech": True})]       # remote: always, the voice process cuts what is there
-
-
-@pytest.mark.parametrize("speech", [None, _Speech(done=True), _Speech(interruptible=False)])
-def test_nothing_in_course_or_an_uninterruptible_speech_is_not_cut(_not_held, speech):
-    log: list = []
-    session = _Session(log, speech)
-    session.current_speech = speech
-    _type("para", session)
-    assert log and log[-1][1] == "para" and not (speech and speech.interrupted)
-
-
-def test_a_line_held_behind_his_own_spoken_sentence_cuts_nothing(_not_held):
-    """CRIT-V20's order: the line waited for HIS sentence begun before it; it queues behind it, it does not barge in."""
-    from voice.engine.pipeline import agent_events
-    log: list = []
-    asyncio.run(agent_events._typed_after_voice("y pon música", 0.0, _emit=lambda *a, **k: None, session=_Session(log)))
-    assert log == [("reply", "y pon música", False, {})]
-
-
-def test_a_cut_that_fails_never_drops_the_line(_not_held):
-    log: list = []
-    events = _type("para", _Session(log, _Speech(boom=True)))
-    assert log and log[-1][1] == "para" and ("alert", "typed line: the speech in course was not cut") in events
-
-
-def test_disarmed_without_the_cut_the_typed_stop_queues_behind_the_story(_not_held, monkeypatch):
-    """RED proof: the door no longer cuts → «para» waits behind the story, as in failure 8."""
-    from voice.engine.pipeline import agent_events
-    monkeypatch.setattr(agent_events, "cut_current_speech", lambda session: False)
-    log: list = []
-    _type("para", _Session(log))
-    assert log == [("reply", "para", False, {})]
+# (a typed line cutting the old turn's speech, then queued as its turn, went with the unplug: a typed line enters the
+# manager's inbox, and a stop is the model's own act — INI-078 F2)
 
 
 @pytest.mark.parametrize("speech", [_Speech(), _Speech(boom=True)])
@@ -523,16 +484,3 @@ def test_the_admission_door_starts_its_trace_fresh_before_the_brief(monkeypatch)
                                                   brain=SimpleNamespace(_last_reply="", _acc_gen=0),
                                                   first_turn=False, text="cierra todo"))
     assert not seen["stale"]
-
-
-def test_a_typed_line_supersedes_a_reply_still_composing(_not_held):
-    """Two lines typed in a row: the second cuts the first while it composes — its words are owed to the next turn by
-    the SAME net as his voice (`typed.resumed_since` → `resume_cut` → `stt.unanswered_by`)."""
-    from nucleo.input import typed as _order
-    _order.reset()
-    mark = _order.mark()
-    assert not _order.resumed_since(mark)
-    _type("y pon música", _Session([]))
-    assert _order.resumed_since(mark)
-    assert not _order.resumed_since(_order.mark())          # the second line's own reply is not superseded
-    _order.reset()

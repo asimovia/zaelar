@@ -1,9 +1,6 @@
 """The minors of the B7j–B8g audit hold (node 13.109, V2-941, v3.1 B7l).
 
-  · minor 1 — a voice session nobody decided (the embedded voice) is asked the VOICE question: with the account on
-    «text» it is off, so the wake phrase never goes to the manager — and «text only» is a choice, never an alert;
-  · minor 3 — the account's «text» wins for the voice over a room's bare `conv=1`; a room that wants the manager's
-    voice anyway says so explicitly (`conv=voice`);
+  · (minors 1 and 3, the switch's «text only» mode, went with the unplug: the manager is the only path, INI-078 F2);
   · minor 4 — a process that dies with a voice open: a SUCCESSOR born at a close that never brought a word was no
     voice, and is discarded — never «I lost that» for a loss that did not happen; one that brought words is owed;
   · minor 5 (13.100) — his voice lost: the notice is made once the ending voice no longer claims it;
@@ -12,50 +9,10 @@
 """
 from __future__ import annotations
 
-from types import SimpleNamespace
-
 import pytest
 
-from nucleo.conversation_host import switch, voice_session
 from tests.conversation.unit.test_a_crash_at_any_transition_recovers import Process
 from conversation.testing.fakes import FakeClock, RecordingTools
-
-
-@pytest.fixture
-def account(monkeypatch):
-    from config import settings
-    from nucleo.conversation_host import config
-    from voice import observer
-    monkeypatch.setenv("ZAELAR_HOLD_OUTBOUND", "all")
-    monkeypatch.setenv("ZAELAR_LANGUAGE", "en")
-    monkeypatch.delenv(switch.ENV, raising=False)
-    monkeypatch.setattr(config, "build", lambda: (None, []))
-    value = {"v": None, "alerts": []}
-    real = settings.get
-    monkeypatch.setattr(settings, "get", lambda key, default=None: value["v"] if key == switch.SETTING
-                        else real(key, default))
-    monkeypatch.setattr(observer, "emit", lambda kind, label, **kw: value["alerts"].append(label)
-                        if kind == "alert" else None)
-    return value
-
-
-def test_an_undecided_voice_session_asks_the_voice_question(account):
-    account["v"] = "text"
-    embedded = SimpleNamespace()                                           # LiveKit's own session: nobody decided it
-    assert not switch.on(embedded) and switch.typed_on(embedded)          # the wake phrase stays old; text goes new
-    assert account["alerts"] == []                                         # a choice, not a refusal
-    assert switch.on(None)                                                 # the text door with no session: text on
-
-
-@pytest.mark.parametrize("flag, voice", [("1", False), ("voice", True), ("0", False)])
-def test_the_accounts_text_wins_for_the_voice_over_a_bare_room_flag(account, flag, voice):
-    account["v"] = "text"
-    assert voice_session.ask(flag)["on"] is voice
-
-
-def test_a_room_flag_still_decides_when_the_account_is_not_text_only(account):
-    account["v"] = False
-    assert voice_session.ask("1")["on"] and not voice_session.ask("0")["on"]
 
 
 def _died_with_a_voice_open(tmp_path, *, successor, heard):

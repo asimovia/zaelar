@@ -1,8 +1,9 @@
 """A typed line of a switched session enters by the funnel (node 13.44, v3.1 B5).
 
-Off, every door is the old path, untouched. On, the voice holder's data channel and `/api/chat` (`receive_typed`)
-hand the line to the manager's funnel and NOT to the old typed lane — no second wait behind a voice: the inbox
-orders it — and the text channel (`run_turn`) answers in its own shape with the request's ids. The funnel's guards
+The manager is the only path (INI-078 F2): the voice holder's data channel and `/api/chat` (`receive_typed`) hand the
+line to the manager's funnel and NOT to the old typed lane — no second wait behind a voice: the inbox orders it — and
+the text channel (`run_turn`) answers in its own shape with the request's ids. When the manager may not run, nothing
+else answers: the line is not routed anywhere and the reason is on his screen. The funnel's guards
 hold for every entry: a `LOG:` line is a note, a stopped engine takes nothing. The net: a line that still reaches
 the old turn's reply in a switched session opens no turn, is counted and handed to the funnel. End to end, a typed
 line is answered by the manager in its own thread, on the wall, and the proof counts its run.
@@ -25,7 +26,6 @@ class _Session:
 
 @pytest.fixture
 def switched(monkeypatch):
-    monkeypatch.setenv(switch.ENV, "1")
     monkeypatch.setenv("ZAELAR_HOLD_OUTBOUND", "all")
     monkeypatch.setenv("ZAELAR_LANGUAGE", "en")
     from config import settings
@@ -35,10 +35,9 @@ def switched(monkeypatch):
 
 
 @pytest.fixture
-def off(monkeypatch):
-    monkeypatch.delenv(switch.ENV, raising=False)
-    from config import settings
-    monkeypatch.setattr(settings, "_read", lambda: {})
+def refused(monkeypatch):
+    monkeypatch.delenv("ZAELAR_HOLD_OUTBOUND", raising=False)          # too little held: the manager may not run
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "en")
     return monkeypatch
 
 
@@ -49,10 +48,10 @@ def _doors(monkeypatch):
     return seen
 
 
-def test_off_the_data_channel_line_takes_the_old_path(off):
-    seen = _doors(off)
+def test_refused_the_data_channel_line_goes_nowhere_else(refused):
+    seen = _doors(refused)
     agent_events.receive_typed("w1", _emit=lambda *a, **k: None, session=_Session())
-    assert seen == {"old": ["w1"], "new": []}
+    assert seen == {"old": [], "new": []}, "no old path: the reason is on his screen, and silence"
 
 
 def test_on_it_enters_by_the_funnel_and_never_by_the_old_lane(switched):
@@ -67,7 +66,7 @@ def test_the_decision_is_read_once_per_session(switched):
     seen = _doors(switched)
     s = _Session()
     agent_events.receive_typed("w1", _emit=lambda *a, **k: None, session=s)
-    switched.delenv(switch.ENV)                               # the account changes its mind halfway: not this session
+    switched.delenv("ZAELAR_HOLD_OUTBOUND")                  # the install changes halfway: not this session
     agent_events.receive_typed("w2", _emit=lambda *a, **k: None, session=s)
     assert seen["new"] == ["w1", "w2"]
 
@@ -120,11 +119,11 @@ def test_the_net_opens_no_old_turn_and_hands_the_line_over(switched):
     assert proof.report(boot.account())["counters"]["legacy_turn_attempts"] == 1
 
 
-def test_off_the_net_is_the_old_reply(off):
+def test_refused_the_net_opens_no_old_reply_either(refused):
     from voice.remote_session import RemoteSession
     rs = RemoteSession(_Client())
     rs.generate_reply("w1")
-    assert rs.client.posts == ["/voice/reply"]
+    assert rs.client.posts == []
 
 
 class _Model:

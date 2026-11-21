@@ -32,20 +32,13 @@ def fired(monkeypatch):
     owed.set_voice_live(False)
 
 
-def test_the_eager_end_fires_nothing_while_the_manager_holds_the_voice(fired):
-    owed.set_voice_live(True)
-    eager_brief.on_preflight("w1 w2")
-    assert fired == []
+def test_the_eager_end_fires_nothing_ever(fired):
+    """The manager is the only path (INI-078 F2): the old turn's eager brief is never paid, voice or none."""
+    for live in (True, False):
+        owed.set_voice_live(live)
+        eager_brief.on_preflight("w1 w2")
     owed.set_voice_live(False)
-    eager_brief.on_preflight("w1 w2")
-    assert fired == ["w1 w2"], "with no voice session of the manager the old turn's brief fires as always"
-
-
-def test_switched_off_the_host_is_not_read(fired, monkeypatch):
-    monkeypatch.delitem(sys.modules, "nucleo.conversation_host.owed")
-    assert switch.holds_the_voice() is False
-    eager_brief.on_preflight("w3")
-    assert fired == ["w3"] and "nucleo.conversation_host.owed" not in sys.modules
+    assert fired == []
 
 
 def test_an_old_turn_brief_in_that_state_is_counted_and_fails_the_proof(monkeypatch):

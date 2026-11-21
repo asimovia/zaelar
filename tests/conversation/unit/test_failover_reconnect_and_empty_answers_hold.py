@@ -112,7 +112,7 @@ def test_a_provider_gone_quiet_while_his_voice_is_up_is_a_gap_once():
     assert [f["t"] for f in facts].count("gap") == 1
 
 
-def test_his_voice_lost_ends_the_manual_session_and_new_ones_take_the_old_path(monkeypatch):
+def test_his_voice_lost_is_told_once_and_the_session_answers_nothing_more_until_it_opens(monkeypatch):
     import importlib
     from types import SimpleNamespace
     entry = importlib.import_module("nucleo.conversation_host.entry")
@@ -141,8 +141,9 @@ def test_his_voice_lost_ends_the_manual_session_and_new_ones_take_the_old_path(m
     try:
         entry.voice_lost()
         assert seen == [False], "the notice was made while the ending voice still claimed it"
-        assert posts == ["/voice/close"] and entry.broken()
-        assert "could not open" in switch.refused()                           # the session that reconnects: old path
+        assert posts == [] and entry.broken()                              # no old path to reconnect to: the session
+        assert "could not open" in switch.refused()                           # stays, silent, with the reason shown
+        assert not switch.on(rs._M["session"])
     finally:
         entry._opener["broken_until"] = 0
         owed.set_voice_live(False)

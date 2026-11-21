@@ -11,11 +11,11 @@
     shows only what has sounded), `update` final with what sounded; shown, it is final at once; one whose voice never started is on the wall whole, never said to have sounded.
 
   · a successor opened inside one provider turn shows only its own words; a line still open when the session leaves
-    the manager (a fallback, a reset) is deleted then — a final one stays.
+    the manager (it may not answer any more, a reset) is deleted then — a final one stays.
 
 Disarms seen red: a live update stored; the final words not written; a typed line by its intervention instead of its
 `cid`; the `cid` dropped on its way to the entry; our line with no `re`; the predecessor's words not cut off; no
-sweep at a fallback or a reset.
+sweep when it may not answer any more, or at a reset.
 """
 from __future__ import annotations
 
@@ -171,7 +171,7 @@ def test_a_successor_shows_only_its_own_words(ops):
         ("append", "iv_2", ""), ("update", "iv_2", "w3"), ("update", "iv_2", "w3 w4")]
 
 
-@pytest.mark.parametrize("leaves", ["fallback", "reset"])
+@pytest.mark.parametrize("leaves", ["refused", "reset"])
 def test_a_line_left_open_is_swept_when_the_session_leaves_the_manager(ops, leaves):
     """Nobody closes a line the manager left open once the session goes the old way or the conversation is reset: it is
     deleted then, with its own writer. A final line stays."""
@@ -192,8 +192,8 @@ def test_a_line_left_open_is_swept_when_the_session_leaves_the_manager(ops, leav
     asyncio.run(WallMouth(SimpleNamespace(now_ms=lambda: 5), voice=v, ack_later=lambda s: None).say(_order()))
     v.ack(SayStarted("s_1", 1))
     ops.clear()
-    if leaves == "fallback":
-        switch.fall_back(SimpleNamespace(), "w0")
+    if leaves == "refused":
+        switch.silent(SimpleNamespace(), "w0")
     else:
         entry.reset()
     assert sorted((w, o["op"], o["id"]) for w, o, _l in ops) == [("ear:holder", "delete", "iv_2"),

@@ -974,6 +974,8 @@ _TOTAL_MAX += 6      # same cause, measured
 _PACKAGE_CEILINGS["nucleo/send"] += 10
 _PACKAGE_CEILINGS["widgets"] += 21
 _TOTAL_MAX += 32     # measured
+_TOTAL_MAX -= 221    # 2026-11-21 INI-078 F2, the unplug: the manager is the only path — the switch's modes, the fall back,
+# the old turn's door in the voice and text entries and the old voice provider's build at a session's start went, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

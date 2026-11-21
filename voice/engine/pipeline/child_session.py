@@ -92,7 +92,7 @@ async def entrypoint(ctx: JobContext) -> None:
     _interruption = _ae._int_kwargs()
     from . import ear_tap
     conv = await _conv(link, ctx.room, _flux)
-    if conv["conv"] and ear_tap.titular(stt) is None:    # fail closed: an ear it cannot tap is the old path's
+    if conv["conv"] and ear_tap.titular(stt) is None:    # fail closed: an ear it cannot tap hears nothing
         conv = {"conv": False, "conv_by": conv["conv_by"], "conv_why": "the ear cannot tap the provider's messages"}
     tap = ear_tap.Tap(ear_tap.ENDPOINT, link.send_ear) if conv["conv"] else None
     if tap is not None:                        # a session of the manager: its ear hears, LiveKit opens no turn
@@ -106,16 +106,12 @@ async def entrypoint(ctx: JobContext) -> None:
 
     handling = {"turn_detection": turn_detection, "endpointing": _endpointing, "interruption": _interruption,
                 "preemptive_generation": {"enabled": SETTINGS.preemptive_generation}}
+    # The manager is the only path (INI-078 F2): LiveKit opens no turn of its own, ever. With no ear it may tap (the
+    # manager refused, or the provider has no streaming turns) nothing is heard: the body put the reason on his screen.
     session = AgentSession(vad=vad_session, stt=stt, llm=RemoteBrainLLM(), tts=tts,
-                           turn_handling=ear_tap.manual(handling) if tap else handling)
+                           turn_handling=ear_tap.manual(handling))
     if tap is not None:
         _wire_ear(session, tap, _interruption)
-    else:
-        try:
-            from . import preemptive_tap as _ptap
-            _ptap.install(_emit)
-        except Exception as e:  # noqa: BLE001
-            logger.warning("preemptive tap not installed (%s)", e)
 
     air = FirstAir(ready=boot.ready, emit=_emit)
 
@@ -180,8 +176,8 @@ async def _conv(link, room, flux: bool) -> dict:
                           {"room": room.name, "flag": ear_tap.flag_of(getattr(room, "metadata", "") or "")},
                           timeout_s=5.0) or {}
     by = str(got.get("by") or "")
-    if not got:                                # the body did not answer in time: the old path, and said
-        logger.warning("the body did not answer whether this session is the manager's: it takes the old path")
+    if not got:                                # the body did not answer in time: nothing is heard, and said
+        logger.warning("the body did not answer whether the conversation may run: this session hears nothing")
         return {"conv": False, "conv_by": "", "conv_why": "the body did not answer in time"}
     if not got.get("on"):
         return {"conv": False, "conv_by": by, "conv_why": str(got.get("why") or "")}

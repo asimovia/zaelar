@@ -53,9 +53,9 @@ def test_the_wake_phrase_goes_to_the_manager_counted_apart(monkeypatch):
     agent_events._wake_reply(session, "w1")
     assert seen == [("count", "wake_phrases"), ("local_phrase", "w1")]                    # voice, never typed
     assert "wake_phrases" in proof.COUNTERS and "wake_phrases" not in proof.MUST_BE_ZERO
-    monkeypatch.setattr(switch, "on", lambda s=None: False)
+    monkeypatch.setattr(switch, "on", lambda s=None: False)          # it may not answer now: nothing else does
     agent_events._wake_reply(session, "w2")
-    assert seen[-1] == ("old", "w2")
+    assert seen[-1] == ("local_phrase", "w1") and ("old", "w2") not in seen
 
 
 def test_a_line_the_operators_pack_lacks_falls_back_to_english(monkeypatch):
