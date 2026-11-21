@@ -73,10 +73,11 @@ def write(db: dict, target: dict, text: str, reply_all: bool, files: list | None
              # Files the operator attached in the card (uploads, by name): a photo can be the whole message.
              "files": files,
              "at": int(time.time())}
+    had = str((drafts.get(k) or {}).get("text") or "")
     drafts[k] = entry
     trim(drafts)
     db["draft"] = entry
-    return {"ok": True, "text": entry["text"], "key": k, "files": files}
+    return {"ok": True, "text": entry["text"], "key": k, "files": files, **({"replaced": had} if had and had != entry["text"] else {})}
 
 
 def pick(db: dict, k: str | None) -> dict:

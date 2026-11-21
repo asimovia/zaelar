@@ -129,3 +129,27 @@ def test_his_hands_send_is_his_go_ahead_once_and_the_owner_never_sends_it_again(
 def test_his_hands_discard_drops_the_draft(box):
     d = _open()
     assert _hand(card.DISCARD, key="to:c1") is None and d.state == draft.CANCELLED and draft.current() is None
+
+
+def test_a_text_he_had_begun_in_the_box_is_never_written_over_in_silence(box, monkeypatch):
+    """A2: the box of her chat held a text he had begun himself; the owner's paint takes its place and SAYS so — and
+    its own earlier paint, or what his hand typed, is never «his text» again."""
+    from widgets import server_api
+    real = server_api._dispatch
+
+    async def dispatch(wid, act, payload):
+        had = box["box"].get(f"to:{payload.get('contact_id')}", "")
+        res = await real(wid, act, payload)
+        return {**res, **({"replaced": had} if had and had != payload.get("text") else {})}
+    monkeypatch.setattr(server_api, "_dispatch", dispatch)
+    said = []
+
+    async def say(d, key, **fmt):
+        said.append((key, fmt.get("his")))
+    monkeypatch.setattr(receipt, "_say", say)
+    box["box"]["to:c1"] = "w_I was going to say"
+    d = _open()
+    assert box["box"]["to:c1"] == "w_goodnight" and said == [("send_box_had", "w_I was going to say")]
+    d.text = "w_see you tomorrow"
+    owner._emit("taken", d)
+    assert said == [("send_box_had", "w_I was going to say")], "its own paint is not his text"

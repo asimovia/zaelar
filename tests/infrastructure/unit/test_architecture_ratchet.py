@@ -955,6 +955,9 @@ _PACKAGE_CEILINGS["nucleo/send"] += 3   # 2026-11-21 C2 P3 review: a send's card
 _TOTAL_MAX += 3      # same cause, measured
 _PACKAGE_CEILINGS["nucleo/send"] += 2   # 2026-11-21 C2 A4 review: a message to write reaches the owner with its act — a message, never another act — and the message it names (`n`/`messageId`, no person) is read as the one it answers
 _TOTAL_MAX += 2      # same cause, measured
+_PACKAGE_CEILINGS["nucleo/send"] += 9   # 2026-11-21 C2 A2 review: a text he had begun in the box is never written over in silence — the card says what it replaced, the owner says so (`card._painted`, `send_box_had`)
+_PACKAGE_CEILINGS["widgets"] += 1        # same: `drafts.write` answers what it replaced
+_TOTAL_MAX += 10     # same cause, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

@@ -18,6 +18,7 @@ WRITE, DISCARD = "messaging.draft_write", "messaging.draft_discard"
 PAINTS = frozenset({"opened", "taken", "asked"})
 
 _chain: dict = {}        # draft id → its last view task: the next one waits for it
+_painted: dict = {}      # draft id → the text its box last held by the owner's hand or his: anything else was his own
 _tasks: set = set()
 
 
@@ -53,6 +54,11 @@ async def paint_now(d) -> None:
     if key and d.box_key and key != d.box_key:
         await discard_now(d)                     # he changed who it goes to: the old person's box is not his draft
     d.box_key = key or d.box_key
+    if (his := str(res.get("replaced") or "")) and his != _painted.get(d.id):   # his own half-written text: said
+        from nucleo.send import owner, receipt
+        owner._emit("his text in the box written over", d, his=his[:200])
+        await receipt._say(d, "send_box_had", his=his[:160])
+    _painted[d.id] = d.text
 
 
 async def discard_now(d) -> None:
@@ -130,6 +136,7 @@ def claim(wid: str, act: str, payload: dict) -> dict | None:
     event = effects.event_of(wid, act)
     if event == WRITE:
         d.text, d.heard, d.confirm_line = str(payload.get("text") or ""), False, ""   # his words: asked about anew
+        _painted[d.id] = d.text
         draft.touch(d)
         owner._emit("edited by hand", d)
     elif event == DISCARD:
