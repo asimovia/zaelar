@@ -1,11 +1,11 @@
-"""A task of the queue has ONE writer, and when it ends it LEAVES (INI-078 Q-2, Q-4, Q-8; the orchestrator steps 3-4).
+"""A task of the queue has ONE writer, and when it ends it is ARCHIVED (INI-078 Q-2, Q-4, Q-8, #5; steps 3-4).
 
   · every old writer of a task row (the pulse's beat, a question, his answer, a died worker, a title, a playbook) sends
     its change to the queue as a signal of the task's owner; a generic `task_patch`/`task_put` never touches the row;
-  · its ending (`circuit.settle`) archives it: ONE short-lived pill that names it and the artifacts kept — written once,
-    since an archived task takes no more signals — and no row; the result stays in its artifacts;
-  · the line it owes him is said once, keyed by its row alone, in one short sentence the genome's rule shapes;
-  · a reference to it later finds its pill and reopens what its artifacts kept.
+  · its ending (`circuit.settle`) archives it in place: the row stays, in the state it ended in, with its outcome —
+    out of the queue's view, readable by its id, once (an archived task takes no more signals) — and his memory keeps
+    ONE short pill of it, written outside the queue's lock; the result stays in its artifacts;
+  · a reference to it later finds its row by the same search, with how it ended.
 """
 from __future__ import annotations
 
@@ -51,25 +51,26 @@ def test_the_old_writers_send_their_change_as_a_signal(monkeypatch):
     assert [r["id"] for r in queue.view()["worker"]["pending"]] == [tid, other], "…at its head"
 
 
-def test_its_ending_leaves_one_pill_and_no_row(pills):
+def test_its_ending_archives_its_row_in_place_and_leaves_one_pill(pills):
     tid = _running("a table for four on Friday")
     ts.artifact_put(tid, "result", {"items": [{"title": "w_trattoria"}]})
     circuit.settle(row=tid, state="done", outcome="booked at w_trattoria, 21:00")
-    circuit.settle(row=tid, state="done", outcome="again")
-    assert ts.task_get(tid) is None and ts.artifact_get(tid, "result"), "no row; the result it paid for stays"
+    circuit.settle(row=tid, state="failed", outcome="again")
+    row = ts.task_get(tid)
+    assert (row["state"], row["outcome"], row["owner"]) == ("done", "booked at w_trattoria, 21:00", "worker")
+    assert row["finished_at"] and ts.artifact_get(tid, "result"), "archived once; the result it paid for stays"
+    assert not any(r["id"] == tid for lane in queue.view().values() for st in lane.values() for r in st)
     (text, kw), = pills
     assert text == "a table for four on Friday: booked at w_trattoria, 21:00"
-    assert kw["kind"] == "task" and kw["level"] == "short" and kw["meta"]["task_id"] == tid
-    assert kw["meta"]["artifacts"] == ["result"] and kw["meta"]["state"] == "done"
+    assert kw["kind"] == "task" and kw["meta"]["task_id"] == tid and kw["meta"]["artifacts"] == ["result"]
 
 
-def test_a_task_that_left_is_found_by_its_pill(monkeypatch):
-    from memory import api as memory
+def test_a_task_that_ended_is_found_by_the_same_search_with_how_it_ended(pills):
     from nucleo.errands import task_recall
-    monkeypatch.setattr(memory, "task_pills", lambda q, limit=15: [
-        {"id": 9, "text": "a flat in Leeds: three found", "meta": {"task_id": "t-7", "state": "done"}}])
+    tid = _running("a flat in Leeds")
+    circuit.settle(row=tid, state="done", outcome="three found")
     got = task_recall.candidates("the flat in Leeds")
-    assert [(r["id"], r["title"], r["outcome"]) for r in got] == [("t-7", "a flat in Leeds", "three found")]
+    assert [(r["id"], r["state"], r["outcome"]) for r in got] == [(tid, "done", "three found")]
 
 
 def test_a_generic_write_that_meets_a_task_of_the_queue_is_said_with_its_writer(monkeypatch):
@@ -84,7 +85,7 @@ def test_a_generic_write_that_meets_a_task_of_the_queue_is_said_with_its_writer(
 
 
 def test_its_pill_is_written_outside_the_queues_lock(monkeypatch):
-    """The pill may embed (a model): written after the row went and the lock was let go, it never holds the queue."""
+    """The pill may embed (a model): written after the row was archived and the lock let go, it never holds the queue."""
     import threading
 
     from memory import api as memory
@@ -98,4 +99,4 @@ def test_its_pill_is_written_outside_the_queues_lock(monkeypatch):
     monkeypatch.setattr(memory, "write", write)
     tid = _running()
     circuit.settle(row=tid, state="done", outcome="w")
-    assert free == [True] and ts.task_get(tid) is None
+    assert free == [True] and ts.task_get(tid)["state"] == "done"

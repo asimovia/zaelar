@@ -27,7 +27,7 @@ from nucleo.conversation_host.store import ZaelarStore
 
 def test_the_schema_is_twelve_with_the_conversation_rows(tmp_path):
     db = Database(tmp_path / "z.db")
-    assert db.schema_version() == 13 and {"conv_rows", "conv_meta"} <= db.tables()
+    assert db.schema_version() == 14 and {"conv_rows", "conv_meta"} <= db.tables()
     db.close()
 
 
@@ -40,7 +40,7 @@ def test_a_database_of_the_previous_version_gains_the_conversation_rows_and_keep
         cur.execute("INSERT INTO sys_kv(key, value) VALUES ('k0', 'v0')")
     db.close()
     db = Database(tmp_path / "z.db")
-    assert db.schema_version() == 13 and {"conv_rows", "conv_meta"} <= db.tables()
+    assert db.schema_version() == 14 and {"conv_rows", "conv_meta"} <= db.tables()
     with db.cursor() as cur:
         assert cur.execute("SELECT value FROM sys_kv WHERE key='k0'").fetchone()[0] == "v0"
     db.close()

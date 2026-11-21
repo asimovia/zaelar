@@ -2,8 +2,11 @@
 
 A row of the queue is a row of `tasks` with an `owner` (`worker` · `send` · `processor`): only work of several steps
 that one of them runs. What is conversation is never a task, and a row without an owner is not in the queue (a cron's
-mirror, an event flow, an inline row). A task of the queue is `pending`, `running` or `waiting`, nothing else: when it
-ends it LEAVES — its row is archived, and there is no «finished» state.
+mirror, an event flow, an inline row). A task of the queue is `pending`, `running` or `waiting`: when it ends it is
+ARCHIVED — its row stays, in the state it ended in (`done` · `failed` · `cancelled`) with its outcome, out of the
+queue's view and readable by its id, and his memory keeps one short pill of it; the REM prunes both later. How long
+an open task lives is its own field, `lives_until` (from his order, or set by its owner): past it, the pulse archives
+it and says so once (`expired`).
 
 Every change is a SIGNAL (`signal(task_id, what, by=…)`) from the pulse, its owner or him. Each one is applied whole
 under one lock, in the order they take it, so when two touch the same field the last one wins; a jump `JUMPS` does not
@@ -39,7 +42,8 @@ JUMPS = {
 FIELDS = {
     "wait": ("ask", "ask_id", "waiting_for", "deadline"),
     "progress": ("phase", "progress", "heartbeat_at", "reported_at", "error_class", "attempts", "session_id", "cwd",
-                 "playbook", "sheet", "title", "deadline"),
+                 "playbook", "sheet", "title", "deadline", "lives_until"),
+    "start": ("lives_until",),
 }
 #: …and what a task is born with besides its words: where it shows and whose it is (read by the board and the sheets)
 BIRTH = FIELDS["progress"] + ("surface", "visible", "parent_id", "started_at")
@@ -134,19 +138,18 @@ def add(owner: str, title: str, *, goal: str = "", kind: str = "", origin: str =
 
 def signal(task_id: str, what: str, *, by: str, **fields) -> bool:
     """Apply one signal to one task of the queue. True when applied; False (and `queue/refused`) when refused."""
-    tid = str(task_id or "")
     left = None
     try:
         with _lock:
-            applied, left = _apply(tid, what, by, fields)
+            applied, left = _apply(str(task_id or ""), what, by, fields)
     finally:
-        if left is not None:                     # outside the lock, after the row went: the pill never holds the queue
+        if left is not None:                     # outside the lock: the pill never holds the queue
             _remember(*left)
     return applied
 
 
 def _apply(tid: str, what: str, by: str, fields: dict) -> tuple[bool, tuple | None]:
-    """One signal, applied under the lock; returns (applied, what a task that left leaves behind)."""
+    """One signal, applied under the lock; returns (applied, what a task that ended leaves in memory)."""
     row = _store().task_get(tid) if tid else None
     if not row or not row.get("owner"):
         _say("refused", {"id": tid}, by, signal=what, why="not in the queue")
@@ -156,8 +159,8 @@ def _apply(tid: str, what: str, by: str, fields: dict) -> tuple[bool, tuple | No
         _say("refused", row, by, signal=what, why=f"no jump «{what}» from «{row.get('state')}» by «{by}»")
         return False, None
     if to == ARCHIVE:
-        _store().queue_archive(tid)              # its pill after the lock (`signal`); once: an archived task takes
-        #                                          no more signals
+        # archived in the state it ended in, with its outcome: once — an archived task takes no more signals
+        _store().queue_archive(tid, what, str(fields.get("outcome") or what)[:600])
         _say(what, row, by, outcome=str(fields.get("outcome") or "")[:400])
         from nucleo.queue import lanes
         lanes.left(tid)                      # an owner still waiting for its turn is never left waiting
@@ -200,8 +203,9 @@ def wrote(task_id: str, what: str, **fields) -> bool:
 
 
 def _remember(row: dict, what: str, outcome: str) -> None:
-    """What a task that leaves the queue leaves behind: ONE short-lived pill — what it was and how it ended — that names
-    its row and the result kept in its artifacts (`task_artifacts`, which stay). REM forgets it. Never raises."""
+    """What his memory keeps of a task that ended: ONE short-lived pill — what it was and how it ended — naming its
+    row and the result kept in its artifacts, so plain recall («did you find any flats?») reaches it. The row itself
+    stays archived for the queue (reopen, the search). Never raises."""
     tid = str(row.get("id") or "")
     try:
         from memory import api as _memory
@@ -210,8 +214,37 @@ def _remember(row: dict, what: str, outcome: str) -> None:
                       ttl_days=7, meta={"task_id": tid, "owner": str(row.get("owner") or ""), "state": what,
                                         "num": row.get("num"), "trace": str(row.get("trace_id") or ""),
                                         "artifacts": sorted(_store().artifacts_of(tid))})
-    except Exception as e:  # noqa: BLE001 — a task that ended is not kept in the queue over its pill
+    except Exception as e:  # noqa: BLE001 — a task that ended is archived even when its pill is not written
         logger.debug(f"queue: the pill of {tid} not written ({e!r})")
+
+
+def lives_for(words: str, now: float | None = None) -> int | None:
+    """The instant an open task stops living when his order bounds it («within 3 hours», «en dos días»), else None —
+    its owner may set it later from what it learns (`progress`, `lives_until`). The same grammar the errands read."""
+    from nucleo.errands import window_from
+    span = window_from(str(words or ""), 0.0)
+    return int((time.time() if now is None else now) + span) if span > 0 else None
+
+
+def expired(now: float | None = None) -> list[dict]:
+    """Archive every open task whose life ran out (`lives_until` past) — pending or waiting: a running one is alive by
+    its own beat — as `cancelled`, «expired», and return them, so the pulse says each ONE line. Never in silence."""
+    now = time.time() if now is None else now
+    out = []
+    for lane in view().values():
+        for r in lane[PENDING] + lane[WAITING]:
+            if r.get("lives_until") and now >= float(r["lives_until"]) and \
+                    signal(str(r["id"]), "cancelled", by="pulse", outcome="expired: its time ran out"):
+                out.append(r)
+    return out
+
+
+def next_expiry(now: float | None = None) -> float | None:
+    """The next instant an open task stops living, ahead of `now` (the pulse wakes for it), or None."""
+    now = time.time() if now is None else now
+    ahead = [float(r["lives_until"]) for lane in view().values() for r in lane[PENDING] + lane[WAITING]
+             if r.get("lives_until") and float(r["lives_until"]) > now]
+    return min(ahead) if ahead else None
 
 
 def _next() -> None:

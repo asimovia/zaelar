@@ -122,12 +122,12 @@ def pills(monkeypatch):
 
 
 def test_closing_leaves_its_outcome_in_its_one_pill(fresh_db, pills):
-    """A task of the queue ENDS by leaving it (INI-078 Q-2): no row, one pill with what came of it."""
+    """A task of the queue ends ARCHIVED in its row (INI-078 #5), and one pill says what came of it."""
     rec = _rec()
     _started(rec)
     rec.status, rec.ok, rec.result_summary = "done", True, "5 pisos en Gràcia"
     T.closed(rec)
-    assert ts.task_get(rec.uid) is None
+    assert ts.task_get(rec.uid)["state"] == "done"
     assert [(t, m["state"]) for t, m in pills if m.get("task_id") == rec.uid] == [
         ("búscame piso en Gràcia: 5 pisos en Gràcia", "done")]
 
@@ -177,7 +177,7 @@ def test_the_relayed_task_closes_once_at_the_end(fresh_db, pills):
     T.opened(relayed, {"src": "provider_failover", "task_uid": first.uid})
     relayed.status, relayed.ok, relayed.result_summary = "done", True, "reservado"
     T.closed(relayed)
-    assert ts.task_get(first.uid) is None
+    assert ts.task_get(first.uid)["state"] == "done"
     assert [t.split(": ")[-1] for t, m in pills if m.get("task_id") == first.uid] == ["reservado"]
 
 

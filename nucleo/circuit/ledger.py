@@ -205,11 +205,11 @@ def opened(rec, ctx: dict | None = None) -> str:
                   origin=str(ctx.get("origin") or "voz")):
         # HIS commission is a task of the queue: born pending, it waits for its turn (`nucleo/queue/lanes`)
         from nucleo import queue
-        queue.add("worker", str(getattr(rec, "title", "") or ""), goal=str(getattr(rec, "goal", "") or ""),
+        goal = str(getattr(rec, "goal", "") or "")      # it lives as long as his order says, when it says (`lives_for`)
+        queue.add("worker", str(getattr(rec, "title", "") or ""), goal=goal, lives_until=queue.lives_for(goal),
                   kind=str(getattr(rec, "kind", "") or "generic"), origin=str(ctx.get("origin") or "voz"),
                   trace=_trace_of(rec, ctx), task_id=uid, surface=str(getattr(rec, "surface", "") or ""),
-                  sheet=str(getattr(rec, "sheet", "") or ""), visible=True,
-                  parent_id=str(ctx.get("parent_task_uid") or ""))
+                  sheet=str(getattr(rec, "sheet", "") or ""), visible=True, parent_id=str(ctx.get("parent_task_uid") or ""))
     else:                                # an internal one (memory, dev, the engine's own) is not a task of the queue
         _ts.task_put({
             "id": uid,

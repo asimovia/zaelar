@@ -158,8 +158,8 @@ async def _hand_over_the_errand(monkeypatch, phrase: str) -> tuple[list, list]:
     live = await until(lambda: ts.tasks_where(states=ts.LIVE_STATES, visible_only=False) or None,
                        "the dispatcher to write the durable row")
     gate.set()
-    # it ends by LEAVING the queue (INI-078 Q-2): its row goes, its pill and its artifacts stay
-    await until(lambda: ts.task_get(live[0]["id"]) is None or None, "the commission to leave the queue")
+    # it ends ARCHIVED (INI-078 #5): its row stays in its ending state, with its pill and its artifacts
+    await until(lambda: ts.task_get(live[0]["id"])["state"] in ts.DONE_STATES or None, "the commission to be archived")
     stop.set()
     await asyncio.sleep(0.05)
     listener.cancel()
@@ -171,10 +171,6 @@ def test_the_whole_errand_from_the_phrase_to_the_report_he_asks_for_weeks_later(
     written: list[tuple] = []
     from memory import api as memory
     monkeypatch.setattr(memory, "write", lambda text, **kw: written.append((text, kw.get("meta") or {})))
-    # the lexical search over the pills, over what was written here (the real one: test_a_commission_leaves…)
-    monkeypatch.setattr(memory, "task_pills", lambda q, limit=15: [
-        {"id": n, "text": t, "meta": m} for n, (t, m) in enumerate(written)
-        if m.get("task_id") and set(w.lower() for w in q.split()) & set(w.lower().strip(":,.") for w in t.split())])
 
     # ── 1 · he hands it over, and can stop thinking about it ────────────────────────────────────────────
     live, done = asyncio.run(_hand_over_the_errand(monkeypatch, "búscame piso de alquiler en Gràcia"))
@@ -184,7 +180,7 @@ def test_the_whole_errand_from_the_phrase_to_the_report_he_asks_for_weeks_later(
 
     # ── 2-3 · it ends, and the report becomes the TASK's: kept in its artifacts, named by its ONE pill ──────
     task_id = live[0]["id"]
-    assert done == [] and ts.task_get(task_id) is None, "an ended task leaves the queue"
+    assert done == [] and ts.task_get(task_id)["state"] in ts.DONE_STATES, "an ended task is archived in place"
     pills = [m for _t, m in written if m.get("task_id") == task_id]
     assert len(pills) == 1 and pills[0]["state"] == "done" and "result" in pills[0]["artifacts"]
     parts = tasks.artifacts(task_id)

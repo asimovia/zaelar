@@ -193,7 +193,8 @@ class Database:
                     self.conn.execute(stmt)
             # v8->v9 (V2-776 M): the row's verdict; v10->v11 (V2-851): what it waits for and how it resumes
             # v12->v13 (INI-078): the orchestrator's owner, priority and position, then the queue's index
-            for name, stmt in (*_schema.TASKS_V9_COLUMNS, *_schema.TASKS_V11_COLUMNS, *_schema.TASKS_V13_COLUMNS):
+            for name, stmt in (*_schema.TASKS_V9_COLUMNS, *_schema.TASKS_V11_COLUMNS, *_schema.TASKS_V13_COLUMNS,
+                               *_schema.TASKS_V14_COLUMNS):          # v13->v14 (INI-078 #5): how long it lives
                 if tcols and name not in tcols:
                     self.conn.execute(stmt)
             for stmt in _schema.TASKS_V13_INDEXES:

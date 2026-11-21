@@ -10,7 +10,7 @@ connection; `db.py` decides what to create and tracks the version in `PRAGMA use
 from .ledgers import (  # noqa: F401
     ACTION_MAP, ACTION_MAP_INDEXES, ERRAND_THREADS, ERRANDS, ERRANDS_INDEXES, FTS_TASKS, NOTICES, NOTICES_INDEXES,
     PUSH_DEVICES, TASK_ARTIFACTS, TASKS, TASKS_INDEXES, TASKS_STATUS_COLUMNS, TASKS_V9_COLUMNS, TASKS_V11_COLUMNS,
-    TASKS_V13_COLUMNS, TASKS_V13_INDEXES,
+    TASKS_V13_COLUMNS, TASKS_V13_INDEXES, TASKS_V14_COLUMNS,
     PLAYBOOK_ROUTES, PLAYBOOK_ROUTES_INDEXES, CONV,
 )
 from .memories import (  # noqa: F401
@@ -37,7 +37,8 @@ from .memories import (  # noqa: F401
 #   v11 (V2-851) a task row carries what it waits for and how it resumes (`TASKS_V11_COLUMNS`).
 #   v12 (V2-941) the conversation & turn manager's rows, `conv_rows` + `conv_meta` (`CONV`), its own thread's only.
 #   v13 (INI-078) the orchestrator: a task of the queue names its owner, priority and position (`TASKS_V13_COLUMNS`).
-SCHEMA_VERSION = 13
+#   v14 (INI-078 #5) how long an open task lives (`TASKS_V14_COLUMNS`); an ended one is archived in place.
+SCHEMA_VERSION = 14
 
 BASE_DDL = [STATE, MEMORIES, *MEMORIES_INDEXES, EDGES, *EDGES_INDEXES, EPISODIC, JOURNAL, SYS_KV,
             VAULT_META, VAULT_SECRETS, PARAPHRASE_INDEX, *PARAPHRASE_INDEXES,

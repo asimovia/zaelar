@@ -1021,6 +1021,10 @@ _PACKAGE_CEILINGS["widgets"] = 49269
 _PACKAGE_CEILINGS["nucleo/jev"] = 839   # +1 (+2 for `jev.VETO`, the confidence a verdict refuses at, read where `turn.verdicts` read it, −1 for an unused import)
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 3   # the life door hands the act's reservation to the picture viewer's mount (`turn:<effect>`), the arbiter's provenance
 _TOTAL_MAX = 196157
+_PACKAGE_CEILINGS["nucleo/queue"] += 34    # 2026-11-21 INI-078 #5 (a): an open task lives until its own time (`lives_until`, `lives_for`, `expired`, `next_expiry`); an ended one is archived in place
+_PACKAGE_CEILINGS["nucleo/pulse"] += 11    # same: the pulse wakes for a task's end of life and says it once
+_PACKAGE_CEILINGS["nucleo/send"] += 2      # same: a draft's task is the open one (an archived row is no draft)
+_TOTAL_MAX += 9      # same, measured (the pills' reader `task_pills` went: the archived row is found by the search)
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

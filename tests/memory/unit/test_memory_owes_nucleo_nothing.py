@@ -117,8 +117,6 @@ def test_the_debt_list_matches_reality_so_it_only_shrinks():
 #: (editing both the code and this snapshot in the same commit); it must never change as a side effect.
 DECLARED_SURFACE = {
     "start", "stop",
-    # 2026-11-21 (INI-078): a task that ends leaves the queue for a short-lived pill; `task_pills` reads them by words.
-    "task_pills",
     # 2026-11-20 (V2-941): a bounded wait for the queued writes (a sandbox's reset between two conversations) and the
     # one database a store of its own keeps its tables in (the conversation manager's `conv_*`) — so neither reaches
     # into `memory.queue` / `memory.db`; and the reset's two marks over the notices (`high_water`, `forget_after`).

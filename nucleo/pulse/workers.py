@@ -45,6 +45,11 @@ class WorkersPulse:
                 goal = _errand_title.provisional(row.get("title") or row.get("goal") or self._lang().generic_task, 48)
                 await notices.notify("zaelar", self._say("task_wait_expired", goal=goal, days=f"{row['days']:g}"),
                                      key=f"task:{row['id']}:expired", kind="info")
+            from nucleo import queue                 # INI-078 #5: a task whose life ran out (`lives_until`), said once
+            for row in queue.expired(now):
+                goal = _errand_title.provisional(row.get("title") or row.get("goal") or self._lang().generic_task, 48)
+                await notices.notify("zaelar", self._say("task_life_over", goal=goal), key=f"task:{row['id']}:expired",
+                                     kind="info")
         except Exception as e:  # noqa: BLE001 — the pulse never breaks on a sweep; it says it
             _emit("task.expired_waits_failed", {"error": repr(e)[:160]})
 

@@ -68,7 +68,7 @@ def test_a_second_message_waits_for_the_first_and_opens_when_it_leaves(world):
         return found
     world.reads = [_read(who="Odile Brandt", text="see you")]
     assert asyncio.run(drop_then_next())
-    assert ts.task_get(d1.row) is None, "the first left the queue"
+    assert ts.task_get(d1.row)["state"] in ts.DONE_STATES, "the first left the queue"
     d2 = draft.current()
     assert d2 is not None and d2.row == pending["id"] and d2.target["contact_id"] == "c2"
     assert ts.task_get(d2.row)["state"] == queue.WAITING
@@ -98,7 +98,7 @@ def test_the_receipt_archives_the_message(world):
         await asyncio.gather(*list(receipt.tasks))
         return found
     assert asyncio.run(yes_and_receipt()) and len(world.sent) == 1
-    assert ts.task_get(d.row) is None and not any(queue.view()["send"].values())
+    assert ts.task_get(d.row)["state"] in ts.DONE_STATES and not any(queue.view()["send"].values())
 
 
 def test_the_draft_acts_by_number_change_send_or_drop_only_the_open_draft(world):
@@ -108,7 +108,7 @@ def test_the_draft_acts_by_number_change_send_or_drop_only_the_open_draft(world)
     assert ts.task_get(d.row)["progress"]["draft"]["text"] == "I'm very late"
     assert _act("go", n)[0] and not world.sent, "a confirmation he has not heard is never answered"
     assert _act("go", n + 7) == (False, "") and _act("drop", 999) == (False, "")
-    assert _act("drop", n)[0] and draft.current() is None and ts.task_get(d.row) is None and not world.sent
+    assert _act("drop", n)[0] and draft.current() is None and ts.task_get(d.row)["state"] in ts.DONE_STATES and not world.sent
 
 
 def test_nothing_reads_his_words_before_the_model_with_a_draft_open(world, monkeypatch):

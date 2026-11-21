@@ -41,8 +41,8 @@ async def my_turn(task_id: str, held: Callable[[str], None] | None = None) -> No
     a session resumed on a task that never left its lane). Raises `Left` when the task leaves the queue while it waits:
     a waiter is never left waiting for good."""
     row = _q._store().task_get(task_id) or {}
-    if not row.get("owner"):
-        raise Left(task_id)                       # gone (cancelled before its session got here), or not a task
+    if not row.get("owner") or row.get("state") not in (_q.PENDING, _q.RUNNING, _q.WAITING):
+        raise Left(task_id)                       # archived (cancelled before its session got here), or not a task
     if row.get("state") == _q.RUNNING:
         return
     if row.get("state") == _q.WAITING:            # resumed while it waited (his answer, a died worker relaunched):
@@ -67,7 +67,8 @@ async def my_turn(task_id: str, held: Callable[[str], None] | None = None) -> No
 
 
 def is_task(task_id: str) -> bool:
-    """Is this id a task of the queue (a row with an owner)? Internal work is not, and never waits for a turn."""
+    """Is this id a task of the queue (a row with an owner, open or archived)? Internal work is not, and never waits for
+    a turn."""
     return bool(task_id and (_q._store().task_get(task_id) or {}).get("owner"))
 
 

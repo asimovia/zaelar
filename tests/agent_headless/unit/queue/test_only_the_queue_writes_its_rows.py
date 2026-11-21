@@ -21,8 +21,8 @@ OWN = {"queue_insert", "queue_archive", "queue_patch"}
 WRITERS = frozenset({
     "nucleo/circuit/__init__.py", "nucleo/circuit/asker.py", "nucleo/circuit/ledger.py", "nucleo/circuit/waits.py",
     "nucleo/events/stream.py", "nucleo/mesh_jobs.py", "nucleo/request/answered_task.py",
-    "nucleo/request/ask_outside_door.py", "nucleo/request/consent_ask.py", "nucleo/request/inline_ask.py",
-    "nucleo/request/model.py", "nucleo/request/order_unserved.py", "nucleo/workers/prompts/playbook.py",
+    "nucleo/request/consent_ask.py", "nucleo/request/inline_ask.py",
+    "nucleo/request/model.py", "nucleo/workers/prompts/playbook.py",
     "nucleo/workers/relay.py", "nucleo/workers/session_events.py", "nucleo/workers/session_finish.py",
 })
 

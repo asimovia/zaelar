@@ -42,10 +42,10 @@ def test_a_jump_the_table_does_not_list_is_refused_and_said(said):
 def test_a_task_that_left_takes_no_signal(said):
     tid = queue.add("send", "tell Ana I am late")
     assert queue.signal(tid, "cancelled", by="him")
-    assert ts.task_get(tid) is None, "it left the queue: archived, no finished state"
+    assert ts.task_get(tid)["state"] == "cancelled", "it left the queue: archived in the state it ended in"
     assert not queue.signal(tid, "done", by="owner"), "finishing a cancelled task"
     assert not queue.signal("nobody-knows-this-id", "start", by="pulse")
-    assert [e["why"] for e in _refused(said)] == ["not in the queue"] * 2
+    assert [e["why"] for e in _refused(said)] == ["no jump «done» from «cancelled» by «owner»", "not in the queue"]
 
 
 def test_two_signals_on_the_same_field_leave_the_last():
@@ -96,7 +96,7 @@ def test_every_task_has_a_short_number_that_is_never_given_again():
     b = queue.add("send", "second")
     na, nb = ts.task_get(a)["num"], ts.task_get(b)["num"]
     assert nb == na + 1, "one counter for every lane"
-    assert queue.signal(b, "cancelled", by="him") and ts.task_get(b) is None
+    assert queue.signal(b, "cancelled", by="him") and ts.task_get(b)["state"] in ts.DONE_STATES
     c = queue.add("processor", "third")
     assert ts.task_get(c)["num"] == nb + 1, "the number of a task that left is never given again"
     assert [r["num"] for r in queue.view()["worker"]["pending"]] == [na]

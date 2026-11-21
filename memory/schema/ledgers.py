@@ -185,6 +185,10 @@ TASKS_V11_COLUMNS = [(c, f"ALTER TABLE tasks ADD COLUMN {c} {t}") for c, t in (
 #                 its counter is `sys_kv[tasks.next_num]`, since an archived row is deleted and MAX(num) would come back
 TASKS_V13_COLUMNS = [(c, f"ALTER TABLE tasks ADD COLUMN {c} {t}") for c, t in (
     ("owner", "TEXT"), ("priority", "INTEGER NOT NULL DEFAULT 0"), ("position", "REAL"), ("num", "INTEGER"))]
+# v13 → v14 (INI-078 #5): `lives_until` — the instant an OPEN task of the queue stops living (from his order, or set by
+#   its owner); past it the pulse archives it, said once. NULL = it lives until it ends. An ended task is ARCHIVED in
+#   place (its ending state), no longer deleted.
+TASKS_V14_COLUMNS = [("lives_until", "ALTER TABLE tasks ADD COLUMN lives_until INTEGER")]
 #: after the columns exist: the pulse's read «the next pending of this lane» is one index range; a number names one task
 TASKS_V13_INDEXES = ["CREATE INDEX IF NOT EXISTS idx_tasks_queue ON tasks(owner, state, priority DESC, position)",
                      "CREATE UNIQUE INDEX IF NOT EXISTS idx_tasks_num ON tasks(num) WHERE num IS NOT NULL"]

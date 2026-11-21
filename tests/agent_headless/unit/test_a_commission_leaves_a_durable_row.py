@@ -118,9 +118,8 @@ async def _commission(monkeypatch, request: str, *, ok: bool = True, release: bo
         inspect_live()
     if release:
         gate.set()
-        # a task of the queue ENDS by leaving it (INI-078 Q-2); an internal row still ends on its row
-        await until(lambda: (ts.tasks_where(states=ts.DONE_STATES, visible_only=False)
-                             or not ts.task_get(live[0]["id"])) or None,
+        # a task of the queue ends ARCHIVED in its row (INI-078 #5), like an internal one
+        await until(lambda: ts.tasks_where(states=ts.DONE_STATES, visible_only=False) or None,
                     "the commission to be recorded as finished")
     stop.set()
     await asyncio.sleep(0.05)
@@ -148,10 +147,10 @@ def _pills(monkeypatch) -> list:
 
 
 def test_the_same_commission_ends_the_SAME_task(fresh_db, monkeypatch):
-    """One task, opened then ended — and ended by LEAVING the queue (INI-078 Q-2): no row stays, its ONE pill names it."""
+    """One task, opened then ended — ARCHIVED in its own row (INI-078 #5), and its ONE pill names it."""
     pills = _pills(monkeypatch)
     live, done = asyncio.run(_commission(monkeypatch, "búscame piso de alquiler en Gràcia"))
-    assert done == [] and ts.task_get(live[0]["id"]) is None
+    assert [r["id"] for r in done] == [live[0]["id"]] and done[0]["state"] == "done"
     assert [(p["task_id"], p["state"]) for p in pills if p.get("task_id")] == [(live[0]["id"], "done")]
     assert ts.tasks_where(states=ts.LIVE_STATES, visible_only=False) == []
 

@@ -156,30 +156,6 @@ def map(limit: int = 200) -> dict:
     }
 
 
-def task_pills(prompt: str = "", *, limit: int = 15) -> list[dict]:
-    """The valid pills a task left when it left the queue (`kind='task'`, INI-078), newest first — those holding a
-    word of `prompt` when one is given (the lexical channel, no model). Each: `{id, text, meta}`."""
-    import json
-    db = _db.get_db()
-    ids = lexical_ids(prompt, k=max(1, int(limit)) * 4) if (prompt or "").strip() else []
-    if (prompt or "").strip() and not ids:
-        return []
-    where = "valid=1 AND kind='task'" + (f" AND id IN ({','.join('?' for _ in ids)})" if ids else "")
-    rows = db.query(f"SELECT id, text, meta FROM memories WHERE {where} ORDER BY created DESC, id DESC LIMIT ?",
-                    (*ids, max(1, int(limit))))
-    out = []
-    for r in rows:
-        try:
-            meta = json.loads(r["meta"] or "{}") if isinstance(r["meta"], str) else dict(r["meta"] or {})
-        except Exception as e:  # noqa: BLE001 — a pill whose meta cannot be read names no task
-            from loguru import logger
-            logger.debug(f"memory: the meta of pill {r['id']} unread ({e!r})")
-            continue
-        if meta.get("task_id"):
-            out.append({"id": r["id"], "text": str(r["text"] or ""), "meta": meta})
-    return out
-
-
 def lexical_ids(prompt: str, *, k: int = 8, lane: str = "all") -> list[int]:
     """The ids the LEXICAL channel alone finds for `prompt` in `lane` (`own` · `messages` · `contacts` · `all`), best
     first — no embedding, no reranker, and none of `search`'s fallbacks: a row here holds a word of the prompt."""

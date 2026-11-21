@@ -6,6 +6,7 @@ pulse and must fire while nobody is there, each owned elsewhere and only READ he
   · an errand with a third party runs out of time at `expires_at` (`nucleo/errands`): the pulse closes it and tells him;
   · a task row that WAITS carries `deadline` — his unanswered question closes after the declared wait and is said once,
     a died worker is resumed by id after its pause (`nucleo/circuit/waits`);
+  · an open task of the queue stops living at `lives_until` (`nucleo/queue`): the pulse archives it and says so once;
   · an owed notice is pushed again at `next_try_at` (`nucleo/pulse/notices`) — only when a device can take the push:
     with none, a retry only owes it again, and the next screen that opens drains it.
 
@@ -45,7 +46,12 @@ def _owed_notice(now: float) -> float | None:
     return float(t) if t else None
 
 
-READERS = (("errand", _errand), ("waiting", _waiting_row), ("owed", _owed_notice))
+def _task_life(now: float) -> float | None:
+    from nucleo import queue
+    return queue.next_expiry(now)
+
+
+READERS = (("errand", _errand), ("waiting", _waiting_row), ("task", _task_life), ("owed", _owed_notice))
 
 
 def upcoming(now: float) -> dict[str, float]:

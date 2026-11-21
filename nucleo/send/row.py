@@ -34,8 +34,10 @@ def _note(e: Exception) -> None:
 
 
 def _get(tid: str) -> dict:
+    """The draft's task while it is open ({} once archived: it left the queue)."""
     try:
-        return _q()._store().task_get(tid) or {} if tid else {}
+        row = _q()._store().task_get(tid) or {} if tid else {}
+        return row if row.get("state") in (_q().PENDING, _q().RUNNING, _q().WAITING) else {}
     except Exception as e:  # noqa: BLE001
         _note(e)
         return {}

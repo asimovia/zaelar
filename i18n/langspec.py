@@ -568,6 +568,7 @@ class LangSpec:
     # V2-851 — said by the pulse when a task that waited for his answer passes its deadline (the rule
     # `answer_wait_days`) and is closed through `circuit.settle`: never closed in silence. `{goal}`, `{days}`.
     task_wait_expired: str = ("")
+    task_life_over: str = ("")      # INI-078 #5 — an open task whose `lives_until` passed: archived, said once. `{goal}`
     voice_lag_notice: str = ("")   # T-30: the voice fell behind real time; background work was paused
     worker_stuck_stop: str = ("")    # the same silence when the restart was already spent: the watchdog only stops it
     worker_stuck_watch: str = ("")   # the watchdog is off (`ZAELAR_WORKER_STALL_S=0`): nothing will act on it

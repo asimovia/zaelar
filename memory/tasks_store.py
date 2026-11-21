@@ -43,7 +43,9 @@ _COLUMNS = ("id", "title", "goal", "kind", "mode", "state", "visible", "origin",
             # V2-851 F1a — what the task waits for and how it is resumed (see the v10→v11 note in `memory/schema/`)
             "session_id", "cwd", "waiting_for", "waiting_since", "deadline", "ask_id", "ask", "playbook",
             # INI-078 — the orchestrator's queue: who runs it, how urgent, its order (see the v12→v13 note)
-            "owner", "priority", "position", "num")
+            "owner", "priority", "position", "num",
+            # INI-078 #5 — how long an open task lives (see the v13→v14 note)
+            "lives_until")
 
 
 def _row(r) -> dict:
@@ -298,19 +300,16 @@ def queue_insert(row: dict) -> int:
     return num
 
 
-def queue_archive(task_id: str) -> None:
-    """A task of the queue leaves it: its row and its index row go in ONE transaction; its artifacts — the result he
-    paid for — stay, named by the task's id. Never raises."""
+def queue_archive(task_id: str, state: str, outcome: str = "") -> None:
+    """A task of the queue is ARCHIVED: its row stays, in the state it ended in (`done` · `failed` · `cancelled`) with
+    its outcome and when — out of the queue's view, readable by its id and found by a search; its artifacts stay too.
+    The REM prunes it later (`tasks_prune`). Never raises."""
     tid = str(task_id or "").strip()
-    if not tid:
+    if not tid or state not in DONE_STATES:
         return
     try:
-        with _db_mod.exclusive(_db_mod.get_db()) as conn:
-            conn.execute("DELETE FROM tasks WHERE id=?", (tid,))
-            try:
-                conn.execute("DELETE FROM fts_tasks WHERE task_id=?", (tid,))
-            except Exception as e:  # noqa: BLE001 — no FTS5 here: there is no index row to drop
-                logger.debug(f"tasks_store: no index row of {tid} to drop ({e!r})")
+        _db_mod.get_db().execute("UPDATE tasks SET state=?, outcome=?, finished_at=? WHERE id=?",
+                                 (state, str(outcome or "")[:600], int(time.time()), tid))
     except Exception as e:  # noqa: BLE001
         logger.debug(f"tasks_store: queue row {tid} not archived ({e!r})")
 

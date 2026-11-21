@@ -57,7 +57,7 @@ def test_urgent_and_move_and_stop_by_number():
     order = lambda: [r["num"] for r in queue.view()["worker"]["pending"]]   # noqa: E731
     assert order() == [c, a, b]
     assert acts_tasks._move({"task": f"#{b}", "before": f"#{a}"}).status == "ok" and order() == [c, b, a]
-    assert acts_tasks._stop({"task": f"#{b}"}).status == "ok" and ts.task_get(tb) is None and order() == [c, a]
+    assert acts_tasks._stop({"task": f"#{b}"}).status == "ok" and ts.task_get(tb)["state"] in ts.DONE_STATES and order() == [c, a]
 
 
 def test_his_words_reach_the_task_he_numbered(monkeypatch):
