@@ -7,8 +7,8 @@ had said the name. It had no way to know what opened the window, so it made up t
 
 Two writers, both at the moment a window opens from nothing: `attention_turn.judge` on a cold turn the gate
 let in (the verdict's reason: `wakeword`, `unanswered_repeat`, …) and `attention.note_bot_speech` on a delivery
-the agent itself armed (`addressed`, with the words it said). One reader: the wake-word prompt line in
-`nucleo/flash/style_directive.py`. A module of its own because `voice/attention.py` is already past the
+the agent itself armed (`addressed`, with the words it said). Its reader (`why_listening`) has no caller since the old
+turn went: the manager's prompt does not read it. A module of its own because `voice/attention.py` is already past the
 architecture ceiling (T502) — the ratchet's rule is to extract, never to grow it.
 """
 from __future__ import annotations

@@ -150,7 +150,7 @@ _STATUS = ("confirmed", "pending")
 def consent_scope(action: str, payload: dict | None = None) -> dict:
     """Which consent CLASS a call belongs to, when the manifest alone cannot say (V2-718).
 
-    Read by `nucleo/flash/frontend._policy_key` before anything runs. Two calls depend on the CALL, not the verb:
+    Read by `nucleo/acts/act_policy._policy_key` before anything runs. Two calls depend on the CALL, not the verb:
     inviting someone already in the meeting is free, a third party is his to grant; moving an hour nobody else
     committed to is free, one somebody already agreed is his to grant.
     """

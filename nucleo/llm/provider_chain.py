@@ -460,9 +460,9 @@ def note_failure(text: str, tier: dict | None = None, *, role: str = ROLE_CLUSTE
 def note_slow(verdict: dict, *, role: str = ROLE_VOICE, tier: dict | None = None) -> dict | None:
     """A turn was SLOW because of the provider/model. Return the RELAY tier if it is time to relay, or None.
 
-    Come el veredicto de `nucleo/flash/turn_perf.verdict()` tal cual — ahí ya está toda la decisión de si el
-    tiempo se fue antes del primer token, y con qué throughput. Este módulo NO vuelve a medir nada: solo aplica la
-    política de cuántos turnos lentos seguidos justifican cambiar de proveedor.
+    It takes a turn's performance verdict as is — that verdict already holds the whole decision of whether the time
+    went before the first token, and at what throughput. This module measures NOTHING again: it only applies the
+    policy of how many slow turns in a row justify switching provider.
 
     Cuenta como lento el `pre_token` (razonamiento oculto o cola: en ambos casos el operador espera mirando una
     pantalla muda) y el `proveedor` (genera despacio). NO cuentan `frio` (la primera llamada paga handshake y

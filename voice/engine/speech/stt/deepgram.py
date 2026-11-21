@@ -2,8 +2,8 @@
 
   · **Flux** (`flux-*`, default `flux-general-multi`) — Deepgram's conversational model. It does not only transcribe:
     it says when the turn ENDED (its own end-of-turn model, ~260 ms after the last word) and, before confirming it,
-    announces an EAGER end of turn that the pipeline reads as a preflight transcript — the turn brief fires on it and
-    LiveKit's preemptive generation starts the model on it (`voice/engine/pipeline/eager_brief.py`). A turn that
+    announces an EAGER end of turn that the pipeline reads as a preflight transcript — LiveKit's preemptive generation
+    starts the model on it when it is on (`ZAELAR_PREEMPTIVE`). A turn that
     resumes cancels the eager one. With Flux the session's turn detection is `"stt"` (`agent.py`): the end of turn is
     the model's, not a silence we count.
   · **nova-3** (`ZAELAR_STT_MODEL_DG=nova-3`) — the previous ear: words only, the end of turn by silence

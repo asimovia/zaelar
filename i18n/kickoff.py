@@ -2,7 +2,7 @@
 
 The first turn is the engine speaking in his language (`kickoff_prompt`) so the model greets him; it lands in the
 conversation buffer as a user line, and the memory's ledger of the day must not open an episode with it. Which line
-is that note is a fact of the LANGUAGE PACKS, so it lives here: `nucleo/turn/kickoff` and `memory/history` both read
+is that note is a fact of the LANGUAGE PACKS, so it lives here: `voice/engine/pipeline/first_air.py` and `memory/history` both read
 this door, and the memory needs no import of the brain to know it (A7 had put the one catalog in `nucleo/turn`).
 """
 from __future__ import annotations

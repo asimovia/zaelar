@@ -857,90 +857,88 @@ tier does in the background. Model routing changes apply on the next voice recon
 - Self-test: `tests/voice/e2e/mic/mic_selftest.py` (headless: injects speech, checks the server pipeline).
 - Runtime config: `config/settings.py` (GET/POST `/api/settings`) → `config/settings.json` (⚙ panel: STT/TTS/voice/language); `config/v2.py` = model routing (fast + code_agent) + `active_brain()`. Both gitignored where they persist state.
 
-## 8. FlashBrain tool catalog — CANONICAL
+## 8. The model's tool catalog — CANONICAL
 
 **The model's catalogue is the conversation manager's declared reads and acts** (`nucleo/conversation_host/declared.json`,
-`reads` and `acts`), each carried to the engine's existing door by `nucleo/conversation_host/acts*.py`. The model
+`reads` and `acts`): what each is for, its arguments and the door it goes to are declared data, and each act is
+carried to the engine's existing door by `nucleo/conversation_host/acts*.py` (reads by `tools_read.py`). The model
 decides every run **by function-calling** (§5b): it gets the composed state + that catalogue and gives its orders.
-The table below is the catalogue of the retired FlashBrain router, kept as the description of each capability until
-this section is rewritten against `declared.json`; where a name differs, the declared one is the one offered (e.g.
-`start_task` for `escalate_to_slowbrain`, `widget_action` for `widget_data`, `stop_task` for `stop_worker`, `sign_in`
-for `authenticate_web`, `set_rule` for `set_style_directive`).
+This table is measured against `declared.json` in both directions (node of
+`tests/infrastructure/unit/test_the_canonical_tool_catalog_is_canonical.py`): a tool declared without a row, or a row
+left after a tool is gone, is red. The «what it does» column is the declared `about`, cut.
 
-> **Naming note (important):** `escalate_to_slowbrain` is a **legacy name** from when the "SlowBrain" was a
-> separate reasoning brain. Escalating today = `nucleo/dispatch/` **launches a headless worker** (a Claude Code
-> agent, or whatever headless `CodeAgent` is configured) that drives the task with its own intelligence
-> (memory/tools/browser). The function name is kept as a stable model-facing contract; its **description reflects
-> the real mechanism**. Renaming touches several files + the model's learned behavior + tests, so it stays until a
-> deliberate rename task.
-
-| Tool | What it does | Flow route | When offered |
+| Tool | Kind · door | What it does (declared `about`) | Act / reader |
 |---|---|---|---|
-| `escalate_to_slowbrain` | **Launch a Brain Worker** → `dispatch.py` starts a LIVE, interactive worker session (`nucleo/workers/`, agent-agnostic) that drives it async (memory, code, browser, reasoning). Injectable/killable; result returns by voice+UI. **Boundary:** a widget with a CONNECTOR is the SOURCE, not a mirror — the agenda IS the calendar (two-way Google sync), messaging IS the outbox, contacts IS the directory. So creating/cancelling a cita or writing to a person is `widget_data` (or `send_to` +objective, which opens the engine's own errand), NOT escalate. Escalate ONLY for a commitment made on a SITE with no connector (a booking on a web, a subscription, an order, a payment): the action happens there, then the worker reflects it in the widget via `hbwidget`. Writing to a person is NOT an escalation. | → `nucleo/dispatch/` → `WorkerSession` | always |
-| `web_search` | One factual, time-changing datum answered **in the turn** (~1-2s, no card/browser). ONLY gets a datum to say — DOING something on a site (book/appointment, fill/submit a form, transact, buy) or "do it / book it for me" → `escalate` (drive the browser and complete), never advice. | → `nucleo/websearch.py` (§5b) | always |
-| `recall` | Query the operator's DURABLE long-term memory (tastes, family, plans, budgets, things said days/weeks ago) when the turn needs it and it is NOT already in the STATE/recent conversation — e.g. about to plan/organize/book something ("quiero irme de vacaciones", "organízame el finde"). The "the MODEL decides to search" principle applied to memory: the `needs_recall` heuristic stays as optimistic PREFETCH; this tool covers what it misses. Lightweight sibling of `web_search` (`compose_recall` off-loop + the tool's own round with the turn's model — memories return IN the turn, no card/worker). NOT for world data (`web_search`), NOT for what's already visible in STATE/conversation. Never says "memory"/"database" out loud. | → `prompt.compose_recall` → `memory.query()` (off-loop) | always |
-| `reveal_secret` | Retrieve an ENCRYPTED operator secret (password/IBAN/crypto account/wallet key). The model only IDENTIFIES which one (`vault_flow.py`, fuzzy match); the **value is delivered OUT-OF-BAND** — it NEVER enters the model prompt nor the observer/logs. Vault locked → asks for the passphrase/passkey (opens the native modal); no vault → offers to create it; comfort mode (default) says it by voice, hard rule `secrets_voice=False` → screen-only. NOT web_search (world data), NOT recall (that's plaintext durable memory). | → `nucleo/acts/memory.py` → `memory/vault/` → `/api/vault/reveal` (loopback) | always |
-| `play_music` | Play/control MUSIC ("pon música", "ponme a X", "sube la música", "siguiente", "pausa"). The **music rail** (§5c/§5d) resolves fuzzy requests in the turn (off-loop); always plays something (free YouTube-audio fallback if no Spotify). Podcasts (audio) belong here too. NOT web_search, NOT the `youtube` video widget. | → `connectors/music` facade → `MusicProvider` (Spotify \| YouTube-audio) | always |
-| `play_video` | Play a VIDEO in the `youtube` widget (SEE on screen): "pon el vídeo de…", "ponme un vídeo/tráiler/peli de…", "reproduce en youtube…", "quiero ver…". Sibling of `play_music` (SEE vs HEAR) — a **first-class tool** because tool-vs-tool discriminates video from music cleanly where prose alone does not (no verb tables). Provider emits `[[show:youtube]]` + data-op `load(query)`. `action=list` covers the SEARCH half ("búscame vídeos de…", browse-to-choose): several candidates go into the player's LIST via the widget's `search` data-op, nothing autoplays — media searches are channelled to the dedicated widget, never to the results sheet (the sheet is for information); play/list is normalized ONCE in `video_turn` and consumed by both voice and probe. NOT play_music (audio), NOT web_search, NOT escalate. | → provider → `youtube` widget `load`/`search` | always |
-| `show_widget` | SHOW/open/play a widget on the canvas, incl. GAMES: "abre el reloj", "muéstrame X", "juega al snake". A **first-class tool** (sibling of `play_video`) because a text tag `[[show]]` loses to a function-calling tool when the word collides ("jugar"≈play → play_music/video). Provider+probe converge on `[[show:id]]`; id resolved by **NAME/ALIAS with CERTAINTY** via `runtime.identify` (only name/alias open, description never does; the word "widget" scopes to user widgets; a SYSTEM surface named → routes there, not a widget; NO match → **ASK, never fabricate a widget**). NOT play_music/play_video (playing≠showing), NOT widget_data (data). | → provider `_tag_emit("show", id)` / clarify if unknown | when widgets exist |
-| `manage_widget_alias` | ADD/REMOVE a NAME/ALIAS a widget answers to ("añade el alias WhatsApp al widget de mensajería", "quítale el apodo X"). SURGICAL manifest write (`widgets/aliases.py`), NOT regenerate the widget (not escalate) NOR change its data (not widget_data). Collision-guarded (an alias belongs to ONE piece — widget or system surface; rejects otherwise); the canonical name can't be removed. `op`='add' (default) \| 'remove'. Provider writes off-loop + emits SSE `widget/alias`; probe classifies only. | → `widgets/aliases.add/remove` + SSE | when widgets exist |
-| `widget_data` | Run ONE declared action of a widget to change its **data** (add meeting, mark task…). NOT create/modify code, NOT show/close. A widget with a connector IS the source, so cancelling/moving a cita or writing to a contact is done HERE; only a commitment on an external SITE with no connector goes to `escalate`. **A DESTRUCTIVE action needs a selector:** `widgets/contract.py` (enforced in `server_api._dispatch`, the one funnel every caller uses) REFUSES a remove/cancel/delete whose declared selector arrived empty — it never widens to «all», so an empty selector can never wipe a whole calendar. Every save also snapshots the file it replaces (`store.history`/`restore`). | → `widgets` `apply_action` (FAST/CONFIRM gate) | when widgets exist |
-| `reply_message` | Reply/answer a message in the operator's unified inbox (`mensajeria`). Converges on the `reply` data-op (`confirm:true`) → the **CONFIRM gate reads the draft back and asks OK before SENDING** (not undoable). Only for replying to something in the inbox; initiating a message to someone who hasn't written goes through the contacts subsystem. | → provider → `mensajeria` `reply` → `pending_reply` → bus `msg.reply` → connector | when messaging has items |
-| `close_widget` | CLOSE a card on the canvas, or put it aside (`mode=minimize`: «quítala de en medio»). Deletes nothing (that is `delete_widget`) and touches no data (`widget_data`); an empty `widget_id` is the card in front. Same canvas route and guards as the `[[close:id]]` tag. | → canvas close | when widgets exist |
-| `delete_widget` | Delete a widget **for good** (opens a confirm; ≠ close). Deterministic, not escalated. | → `widgets/lifecycle` + confirm | when widgets exist |
-| `show_panel` | Open/CLOSE the operator's NATIVE side panel — fixed UI, never `show_widget`. `panel`: `procesos` (YOUR work in flight; HIS personal tasks are the agenda widget) \| `crons` \| `programadas` \| `chat` \| `clusters`. | → SSE `panel` | always |
-| `fullscreen_widget` | Full screen for a card, as a TOGGLE («minimízalo» comes here too). A CANVAS action, not a data one: play/pause/volume are `widget_data`. | → canvas | when widgets exist |
-| `arrange_canvas` | Tidy the open cards into a grid («ordena los widgets»). No arguments; opens and closes nothing. | → canvas | when widgets exist |
-| `agent_controls` | The agent's OWN controls, ordered by voice: `act` = `mute` (the 🔊 off; mic and session stay on) \| `unmute` \| `volume_up` \| `volume_down` \| `volume_set` (+ `value` 0-100: the agent's own voice on that screen, never a video's or the system's) \| `mic_off` \| `off` (the ⏻) \| the voice, language and face acts. The action map's `controls` entries take the same door (`nucleo/acts/self_controls.py`), which hands the act to the screen that heard him; that screen runs its button. Each act once per turn, several in his order; `mic_off`/`off` are one-way, so their line (naming the button) is always said. A remark about the noise is no order. | → SSE `controls` (origin screen) | always |
-| `read_widget` | ANSWER a question about what a widget HOLDS (the hour of an appointment, somebody's phone, which files are there) **even with the card closed**. Returns in this turn and opens nothing. Choosing or touching something inside is `widget_data`; showing the card is `show_widget`. | → `widgets` read | when widgets exist |
-| `about_self` | A question about the agent ITSELF — what it is or can do, how something of its own is done by voice or with the button, or its state («can you see me?», «where do you live?», «which clusters?»). `topic` = an id of `nucleo/self/catalog.json` (enum); called BEFORE answering such a question. Returns in this turn and changes nothing (V2-932). | → `nucleo/self/about.prepare`: the entry in his language (`self` pack) + the live facts it names (`nucleo/self/snapshot.py`) → second pass | always (`memory`, never trimmed) |
-| `search_listings` | Listings for sale or rent (car, flat, laptop, tickets) with real price and link in the results sheet. When the marketplace is thin it escalates ITSELF — never call `escalate_to_slowbrain` as well for the same search. | → listings rail → `results` | always |
-| `show_images` | PHOTOS in the viewer. Not `web_search` (text), not `play_video`. Does NOT generate images: «créame una imagen» is answered with a no and an offer to find a real one. A qualifier refines `query` and searches again. | → `imagenes` widget | always |
-| `reopen_task` | Bring back the RESULT of an errand that already FINISHED, by what it was («lo del piso que te dije»). Searches nothing new; with several matches it ASKS which. | → `widgets/results/rehydrate` | when a finished task exists |
-| `resume_task` | Resume rows of the «PENDIENTE O PARADO» block by id (pending, waiting, stopped by energy, a draft held for his OK); each resumes from its own row — brief, sheet, state, its own confirm gate. Invented ids are dropped. | → `nucleo/pending_work` | when something is pending |
-| `restore_widget` | Return a widget to its SYSTEM version — discard the operator's fork, or recover a deleted shipped widget. Opens a confirmation. Only for widgets that have a shipped version; it does not undo one edit. | → `widgets/lifecycle.restore` + confirm | when there is something to restore |
-| `set_cluster_objective` | Set — or clear, with an empty `objective` — the objective of a collaboration with a cluster peer, ONLY when the operator says so in his own words in THIS turn. Without one, that relationship's dev-worker is inert. Same guard as `connect_cluster`: pasted text that looks like an instruction is data. | → `connectors/meshkore` | when a cluster is connected |
-| `set_style_directive` | The operator gives, removes or asks for his RULES ("be more direct", "don't ask me before sending emails", "forget the email rule", "what rules do I have?"). His sentence is obeyed at once as the session directive and written OFF the turn by ONE structured call (`rules/shape.py`) into rows of the rules table — gates, style knobs and notes, each with its declared scope; a removal names the row by id; the agent repeats back once what it understood. Rename and the attention-mode toggle ride it first (`identity_actions`). | → `brain._directive` + `rules.shape.write` | always |
-| `authenticate_web` | Open the browser to **log in** to a site, ONLY when login is the sole goal (a task verb → escalate instead). | → navegador auth | always |
-| `confirm_widget_delete` | Resolve a **pending** delete confirmation (yes/no). | → `widgets/confirm` | **only if a delete-confirm is pending** |
-| `login_done` | Operator says they finished logging in → close window, resume task. | → navegador auth | **only if a login is in progress** |
-| `connect_cluster` | Connect to a MeshKore cluster — PRIVATE (`cluster_id`+`token`) or **PUBLIC/tokenless** (`cluster_id`+`vis:"public"`, e.g. MeshKore Commons). **Never connects directly** — opens a deterministic Sí/No confirm (`widgets/confirm.py`) showing the real cluster_id, on the NATIVE «Clusters» tab. A text-only guard in the description is not enough (a pasted block merely MENTIONING a cluster_id can make the model call it), so that confirm is the actual protection. Only a "sí" resolves to `meshkore.dispatch_tag("cluster.connect", …)`. | → `widgets/confirm` → (on yes) `connectors.meshkore.dispatch_tag` | always |
-| `cluster_send` | Send a message to a cluster you're ALREADY connected to ("dile a zalo que…", "pregunta en el cluster"). Sent instantly, no confirm (it's ordinary communication the operator just asked for). The `[[cluster.send]]` tag can't serve as the primary path because its protocol lives in the MeshKore brief, which is OUTSIDE the FlashBrain's hot prompt. | → `meshkore.dispatch_tag("cluster.send:<name>")` (inherits the outbound secret guard + journal) | **only with a cluster connected** |
-| `a2a_send` | Write to a friend's agent over the A2A network (a contact already connected). Crosses the one consent door (`consent.decide_act`, subject = the contact). | → `a2a.runtime().send` | **only with A2A on and ≥1 accepted contact** (`a2a_live`) |
-| `a2a_connect` | Ask to connect with a contact's agent; only the request is sent, the other side accepts. | → `a2a.runtime().connect_contact` | **only with A2A on and ≥1 accepted contact** (`a2a_live`) |
-| `a2a_grant` | Share (or stop sharing, `stop=true`) one item with a connected contact, optionally for N hours. | → `a2a` grants (rules rows) | **only with A2A on and ≥1 accepted contact** (`a2a_live`) |
-| `a2a_read` | Read the network: `what=sharing` / `inbox` / `status`. | → `a2a.runtime()` read surfaces | **only with A2A on and ≥1 accepted contact** (`a2a_live`) |
-| `stop_worker` | **Kill** a live Brain Worker ("para eso"). ≠ close/delete a widget. | → `dispatch.cancel_soon` (killpg) | **only if workers are live** |
-| `cancel_scheduled` | **Cancel** one of his scheduled/periodic jobs by its name (V2-883). ≠ stop a worker. | → `scheduler_refs.unschedule` (resolved by `widgets.refs.match`; `ok` = no longer listed) | **only if a job is scheduled** |
-| `not_understood` | The model's own say that it cannot tell what the operator wants (a garbled or cut transcript), instead of asking him to repeat. The PRIMARY trigger is the brief's `readable` verdict (garbled · noise), which holds the reflex words from the first word; this call is the second reader of the same state. | → ONE `not_understood_lines` line from the language table (it did not understand; put it another way or give one more detail). No model runs again (CRIT-T7) | always (`core`) |
+| `web_search` | read | the world now: news, prices, weather, sports, places, facts | `tools_read.py` |
+| `read_widget` | read | one of his widgets, by id or his name for it: what it holds, its actions and their fields | `tools_read.py` |
+| `read_state` | read | his state by topic: connectors, done (just done to his data), browser, screen (every open widget), network (his clusters and friends' agents) | `tools_read.py` |
+| `recall` | read | his memory: what he told you before | `tools_read.py` |
+| `about_self` | read | yourself: what you are, what you can do, how something of yours works | `tools_read.py` |
+| `find_tool` | read | this list of reads | `tools_read.py` |
+| `show_widget` | act · canvas:show | open one of his widgets on screen (WIDGETS lists them): by its id, or by the name he used | `canvas.show` |
+| `close_widget` | act · canvas:close | close a widget on screen, or put it away (minimize); no widget: the one in front | `canvas.close` |
+| `fullscreen_widget` | act · canvas:fullscreen | a widget to full screen (on) or back to its size (off; no widget: the one at full screen) | `canvas.fullscreen` |
+| `arrange_canvas` | act · canvas:arrange | tidy the widgets on screen | `canvas.arrange` |
+| `show_panel` | act · panel:open | open or close his side panel, which is no widget, on a tab: chat (the conversation), procesos (the work you do for him, in course and done), crons (repeating), programadas (once, later), clusters (his network), conectores … | `panel.open` |
+| `widget_action` | act · widget:action | do one of a widget's declared actions — playing included (FRONT or read_widget give them with their fields): the widget by id or his name for it, the action, its payload | `widget.action` |
+| `start_task` | act · task:start | start a task of his that takes work outside this conversation (several sites, a booking, a comparison, a document): it runs apart and you are told when it ends; one call per thing he asks: several things asked at once are several … | `errand.open` |
+| `resume_task` | act · task:resume | resume a row a widget holds for his word, by its id in OPEN (a held draft): it goes through that widget's own action | `errand.resume` |
+| `reopen_task` | act · task:reopen | bring back a finished task and its result, by what it was about | `errand.reopen` |
+| `stop_task` | act · task:stop | stop a task by its #number in OPEN — only when he asks to stop THAT task (hiding or closing a sheet is not stopping it) — or all of them (all) | `errand.stop` |
+| `cancel_scheduled` | act · task:unschedule | cancel one of his scheduled jobs by what it is | `schedule.cancel` |
+| `sign_in` | act · task:sign_in | open the browser on a site for him to sign in himself; done: true when he says he has | `web.sign_in` |
+| `send_message` | act · send:intake | a NEW message he asks you to send (no draft for it open in OPEN): it goes to the one owner of sends, who finds the person, asks what is missing and reads him the text for his yes — nothing leaves before it; say its line | `send.draft` |
+| `note_for_support` | act · task:note | he leaves a note for the people who build and maintain you, to read later: it is kept as he said it and nothing else is done | `support.note` |
+| `rename_yourself` | act · self:rename | he gives you a new name: from now on you answer to it | `self.rename` |
+| `set_attention` | act · self:attention | how you listen: smart (you judge), wakeword (only when called by name), ptt (only while he holds the button), always | `self.attention` |
+| `set_rule` | act · self:rule | a standing rule or preference he dictates (how you speak, what to do with a widget, a channel or a person): kept for good; say its line | `self.rule` |
+| `agent_controls` | act · self:controls | your own controls on his screen: mute, unmute, off, voice_male, voice_female, voice_list, voice_settings, language, presence_on, presence_off, presence_settings, camera_on, camera_off, volume_up, volume_down, volume_set (value … | `self.controls` |
+| `build_widget` | act · life:build | a widget of his to create, or one of his to change (change: true): its code, not its data; it is built apart | `widget.build` |
+| `delete_widget` | act · life:delete | delete one of his widgets for good (closing is close_widget): asks his yes | `widget.delete` |
+| `restore_widget` | act · life:restore | bring a widget of his back to its shipped version, or back from deleted: asks his yes | `widget.restore` |
+| `widget_alias` | act · life:alias | a name a widget opens by, added or removed (never a person's nickname) | `widget.alias` |
+| `show_images` | act · life:images | pictures of something, found and shown on his screen; say its line | `images.show` |
+| `connect_cluster` | act · network:connect | join a MeshKore cluster he names, by its exact id (and token when private): asks his yes first; code: true only if HE grants it code | `cluster.connect` |
+| `cluster_send` | act · network:send | write in a cluster he is in (read_state network): to a peer by its exact handle, or to everyone | `cluster.send` |
+| `set_cluster_objective` | act · network:objective | the goal of his collaboration with one peer of a cluster, as he says it; empty clears it | `cluster.objective` |
+| `a2a_send` | act · network:a2a_send | write to a friend's agent he is connected with (read_state network), by the person's name | `a2a.message` |
+| `a2a_connect` | act · network:a2a_connect | ask to connect with a contact's agent, by the person's name: the other side accepts | `a2a.connect` |
+| `a2a_grant` | act · network:a2a_grant | share one of his items with a connected friend's agent, or stop (stop: true): calendar (free/busy), agenda.list, activity.history, activity.live | `a2a.grant` |
+| `search_listings` | act · task:listings | listings for sale or rent he wants found (a car, a flat, a laptop, tickets): real rows with price and link land on his results sheet; too few and the deep search starts by itself (never start_task for the same hunt); keep the … | `listings.search` |
+| `forget_memory` | act · memory:forget | forget pills of his memory he asks you to forget, by their ids (read them first with recall); undoable | `memory.forget` |
+| `correct_memory` | act · memory:correct | correct one pill of his memory he says is wrong, by its id (read it first with recall), with the right text | `memory.correct` |
+| `task_say` | act · task:say | his words to an open task, by its #number in OPEN, only when they are about what that task DOES: they answer its question, authorize or refuse it (is: yes or no), give or change a fact of it (is: answer or add). A remark about … | `errand.answer` |
+| `task_priority` | act · task:priority | he says a pending task is urgent (urgent true: it goes first in its line) or no longer is (urgent false), by its #number in OPEN | `errand.priority` |
+| `task_move` | act · task:move | he reorders his pending tasks: the task #number goes before another #number, or first, or last | `errand.move` |
+| `draft_edit` | act · send:edit | his words change the message draft open in OPEN, by its #number: who it goes to (to: the person, a full name exactly as the draft's question listed it when it asked which), what it says (text: the WHOLE message as it must now … | `send.draft` |
+| `draft_send` | act · send:go | his plain yes to the question the message draft #number asked him (ASKED in OPEN), with no change in the same words: its owner sends it only if he heard that confirmation, else reads it to him again; say its line | `send.draft` |
+| `draft_drop` | act · send:drop | he says not to send the message draft #number, to cancel it or forget it; say its line | `send.draft` |
 
 > **Brain Workers:** one worker session per task (`nucleo/workers/`, agent-agnostic backend: Claude Code
 > stream-json today; the `CodeAgent` interface admits Codex and others that resume by id). Three channels: ↓ inject
 > (the switchboard, `nucleo/switchboard` → `dispatch.relay_his_words` → piggyback queue), ↑ report-to-state (phase auto-derived + `hbnote`), ↑ ask/act with response
-> (`hbask`/`hbact` → `/api/worker/act`, policy ALLOW/CONFIRM/DENY, the FlashBrain lends its tools e.g.
+> (`hbask`/`hbact` → `/api/worker/act`, policy ALLOW/CONFIRM/DENY, the engine lends its tools e.g.
 > `web_search`). The task's ROW is the truth (§5h); `dispatch._SESSIONS` only registers the live processes, and
 > the pulse supervises them (stuck/timeout/death → resumed by id once, or said on the row).
 >
 > **Worker→widget bridge (`hbwidget`):** `nucleo/cli/widget.py` lets a worker `read`/`data`/`show`/`close` a
 > canvas widget — the `widget_data` action of `/api/worker/act` applies the data-op via `widgets.brain_action` under
-> the SAME canonical FAST/CONFIRM gate the FlashBrain uses (ESCALATE/undeclared → DENY: a worker never escalates a
+> the SAME canonical FAST/CONFIRM gate the manager's `widget_action` uses (ESCALATE/undeclared → DENY: a worker never escalates a
 > data-op nor invents an action; it reads the widget first), provenance stamped `worker:<id>`. This closes the chained
 > action loop: after acting in reality the worker REFLECTS the change in the widget (e.g. removes the now-cancelled
 > appointment from the agenda) and verifies — `dispatch._METHOD_BLOCK` drives it.
 
-**Canvas tags + `show_widget`.** Hide/move a widget = text tags `[[close]]` / `[[move:…]]` (processed by
-`frontend.py` + `voice.tag_protocol`). SHOW is available BOTH as the tag `[[show:ID]]` AND the first-class tool
-`show_widget` — the tool is the reliable primary path (function-calling beats a text tag when the verb collides
-with play_music/play_video), the tag is the reserve; both converge on `desktop.show(id)`. Changing a widget's DATA
-is never a canvas action — that's `widget_data`. This boundary is enforced in the prompt and the tool descriptions
-because a small model can confuse them.
+**Canvas acts.** `show_widget`, `close_widget`, `fullscreen_widget` and `arrange_canvas` reach the ONE canvas door
+(`nucleo/acts/canvas.apply`), signed with their reservation (`turn:<effect>`); the arbiter judges a show or a close by
+that provenance alone and refuses an unknown one. Changing a widget's DATA is never a canvas act — that is
+`widget_action`.
 
 **Widget NAMES + ALIASES — resolution with CERTAINTY.** Every piece has a canonical NAME + a list of ALIASES and is
 resolved ONLY by them (`runtime.identify`): the `description`/`whenToUse` never opens anything (no "opened because
 the topic looked similar"), the word "widget" scopes to user widgets, the SYSTEM SURFACES (chat/config/debug… in
 `widgets/system_surfaces.py`, mirrored by the front's `system-surfaces.js`) live in the same namespace but are never
 returned as a widget, and with no name/alias match the engine ASKS (it never opens the closest match nor fabricates
-a widget). Widget aliases are EDITABLE by voice/text (`manage_widget_alias` + REST `/widgets/{id}/aliases`); system
+a widget). Widget aliases are EDITABLE by voice/text (`widget_alias` + REST `/widgets/{id}/aliases`); system
 aliases are FIXED. Unified registry `widgets/registry.py` (`GET /widgets/registry`, projected to
 `state.widget_registry` for visibility). Concepts kept apart: WIDGET (catalog, editable aliases) · SYSTEM SURFACE
 (native, fixed aliases) · TOOL (this §8) · ACTION/data-op (≡"skill", `manifest.actions`) · EMBEDDING (memory only).
@@ -950,18 +948,12 @@ Design: `.meshkore/docs/architecture/zaelar-widget-naming-v2082.md`.
 only (a) what the tool does, in one clause, and (b) the **boundaries against OUR other tools** plus the hard
 routing rules — the only things a model cannot infer (a language model already knows what a music player is).
 Example lists, restatements and historical narrative are left out. The Python **comments stay**: they cost no
-tokens and hold the why. Compaction keeps routing quality intact (checked with
-`tests/agent_headless/e2e/prompt_cost/bench_fast_model.py` against the REAL composed prompt) and the saving is
-mostly input cost on every turn.
+tokens and hold the why. The saving is mostly input cost on every run.
 
 > **Do NOT split the catalog into two calls.** An index-only first pass followed by a second call carrying the
 > chosen tool is much slower end to end: prompt size is worth only a fraction of a turn's latency, while each
 > extra round trip costs seconds. Weight and latency are different problems; compaction fixes the first, a second
 > round trip makes the second worse.
-
-**CAPABILITY gates** — `reply_message` (a messaging connector is enabled), `reveal_secret` (a vault exists),
-`play_video` (the `youtube` widget is in the catalog). All **fail-OPEN**: if the probe raises, the tool is offered
-anyway — a monitoring glitch must never silently take a capability away from the operator.
 
 > **Gating invariant (hard).** A gate reads **STATE, never the words of the turn.** "Is there a live
 > worker?", "is the vault created?", "is the messaging connector connected?" are verifiable, language-agnostic
@@ -970,7 +962,7 @@ anyway — a monitoring glitch must never silently take a capability away from t
 > model, by function-calling.** A tool that cannot be switched off by state is OFFERED; it is never guessed at.
 
 > **Change rule:** touching the declared reads or acts (`nucleo/conversation_host/declared.json`: add/remove/rename
-> one, change its description) MUST update **this §8**, and the public FlashBrain diagram (maintained outside this
+> one, change its description) MUST update **this §8** (its test measures it), and the public diagram (maintained outside this
 > repo) when the change is significant. See `zaelar-docs-sync.md §Tools`.
 
 ## 9. Server boot sequence — critical path vs. deferred

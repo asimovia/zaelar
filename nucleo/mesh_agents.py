@@ -19,7 +19,7 @@ static list would be stale the first time a publisher deployed something new, an
 by us forever.
 
 What IS remembered is the ROUTE — «for this kind of errand, this agent answered» — keyed by the intent the
-Oracle itself resolved. That is the same idea as `nucleo/flash/site_catalog.py`'s genetics for websites: the
+Oracle itself resolved. That is the same idea as `nucleo/routes/site_catalog.py`'s genetics for websites: the
 first errand of a kind pays the discovery, the next ones go straight there. It is a cache, so it expires and
 it is never the only way to find an agent.
 

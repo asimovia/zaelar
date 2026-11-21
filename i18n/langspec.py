@@ -307,7 +307,7 @@ class LangSpec:
     send_not_retried: str = ""
     #: V2-854 F4 — he asked for several acts and the turn's doors ran one.
     reply_part_only: str = ""
-    #: A claim nobody ran (`nucleo/turn/unserved`): a model call on a card no door touched; a sure order no door served.
+    #: A claim nobody ran: a model call on a card no door touched; a sure order no door served.
     reply_not_run: str = ""
     reply_nothing_done: str = ""
     #: REPLYING without knowing to what, an OBJECTIVE without a peer, and STOPPING one of several workers.
@@ -382,7 +382,7 @@ class LangSpec:
     #: E0 — the body could not be reached from the voice process: the host is slow, his words were heard.
     brain_slow: str = ""
     # The FIRST TURN's note (A7, 2026-11-12): the user-role line that opens a session, written as a SYSTEM note in
-    # his language — never kept as his words (`nucleo/turn/kickoff.py`). A Spanish one primes a Spanish reply on
+    # his language — never kept as his words (`i18n/kickoff.py`). A Spanish one primes a Spanish reply on
     # turn one; what the greeting says is the introduction phase's block, not this line.
     kickoff_prompt: str = ("")
     #: What the FIRST TURN says when the model behind it failed. The greeting answers nothing the operator
@@ -406,7 +406,7 @@ class LangSpec:
     worker_spinning: str = ("")
     worker_died_twice: str = ""   # V2-851: its process died again after being resumed once
     worker_gave_up_provider: str = ("")
-    # An errand that DIED while the reply promising it was being written — `nucleo/flash/death_line.py`.
+    # An errand that DIED while the reply promising it was being written.
     death_line: str = ""
     death_what_widget: str = ""
     death_what_task: str = ""
@@ -416,7 +416,7 @@ class LangSpec:
     death_why_network: str = ""
     death_why_stalled: str = ""
     death_offer_fix: str = ""
-    # A widget refused a data operation — `nucleo/flash/widget_data_turn.py`.
+    # A widget refused a data operation — `nucleo/request/refusal_line.py`.
     widget_data_failed: str = ""
     widget_refused: str = ""
     widget_partial_failed: str = ""
@@ -449,7 +449,7 @@ class LangSpec:
     # A form that wants HIS data is a question for the DATUM, never a yes/no to click (widgets/navegador/form_facts.py).
     form_needs_facts: str = ""
     form_fact_names: tuple = ()
-    # What a row says about one of his HARD requirements (nucleo/flash/row_check.py): yes / no / not verified.
+    # What a row says about one of his HARD requirements: yes / no / not verified.
     row_check_yes: str = ""
     row_check_no: str = ""
     row_check_unknown: str = ""
@@ -460,10 +460,10 @@ class LangSpec:
     # The one that already had an inline `if english:` ternary (its sibling `not_on_screen_yet` went in V2-851 F5). It
     # was CORRECT for an English operator and wrong for everybody else — a second vocabulary that stops at two
     # languages, which is the whole reason this table exists.
-    # A reply CLAIMED a reminder is set and no scheduled job exists — `nucleo/flash/reminder_promise.py`.
+    # A reply CLAIMED a reminder is set and no scheduled job exists.
     reminder_not_set_yet: str = ""
     reminder_date_passed: str = ""
-    # An asked notice whose hour had already gone today rings soon today instead — `nucleo/flash/notice_readback.py`.
+    # An asked notice whose hour had already gone today rings soon today instead.
     reminder_moved_soon: str = ""
     done_not_on_card: str = ""   # «Hecho.» over an unmet end state
     done_asked: str = ""   # «Hecho.» over an act the app has not confirmed yet (V2-884 A6)
@@ -474,7 +474,7 @@ class LangSpec:
     data_ack_went_ahead: str = ""
     # Demo passes 108-109: after «¿cuál…?» the verdict PICKED one — said as a choice he can correct, not a go-ahead.
     data_ack_went_with: str = ""
-    # A correction of a results sheet ran as a data-op the model did not speak over (`nucleo/flash/correction_ack.py`):
+    # A correction of a results sheet ran as a data-op the model did not speak over:
     # «esos no son de Rosalía» got a bare «Hecho.» twice (find-concert-tickets ES, 2026-10-14). The line says what
     # changed: how many rows left the list, and that what does not fit no longer comes in.
     correction_dropped: str = ""
@@ -488,7 +488,7 @@ class LangSpec:
     work_started: str = ""
     op_failed: str = ""
     op_unknown: str = ""
-    # refactor2710-03 — the mouth speaks the verdict: ONE line per verdict of `nucleo/turn/reply.py`. `{object}` is
+    # refactor2710-03 — the mouth speaks the verdict: ONE line per verdict. `{object}` is
     # what the act named (a title, a queue), `{reason}` the act's own sentence for why not. A promise is a START.
     reply_started: str = ""
     reply_met: str = ""
@@ -633,8 +633,8 @@ class LangSpec:
     # V2-674 — the PHRASEBOOK: the set phrases of a relationship (a greeting, «¿qué tal?», «gracias»,
     # «adiós»), with the replies to answer them with. Same reason as `presence_*` widened to the rest of the
     # connective tissue of a conversation, and DATA rather than a regex because Zaelar is language agnostic
-    # and a regex is not: a new language is a translation of this table, never a code change. Matching lives
-    # in `nucleo/flash/smalltalk.py`; the shape is
+    # and a regex is not: a new language is a translation of this table, never a code change. The shape
+    # is
     #   {"vocatives": (…), "intents": {name: {"cues": (…), "replies": (…), "bounces"?, "after_bounce"?}}}
     smalltalk: dict = field(default_factory=dict)
     # V2-642 — the HONEST closer for a turn that produced no answer after a sounded cover. The operator's
@@ -642,7 +642,7 @@ class LangSpec:
     # may end without an answer, never without an ending.
     #: Said when a document was written in one request and is on screen (`compose_rung`). `{title}`.
     composed_on_screen: str = ("")
-    #: The FIRST backed rows of an errand he asked to be told about, said once (`nucleo/turn/first_rows_notice`).
+    #: The FIRST backed rows of an errand he asked to be told about, said once (`nucleo/errands/first_rows_notice`).
     #: Measured 2026-10-14: boats landed 34 s and kid-friendly activities 18 s after his last turn, and nothing
     #: reached him. The cues are DATA (accent-free, lowercase, matched as substrings): his «tell me» and our «I'll
     #: tell you» — a new language is a translation of these, never a code change.

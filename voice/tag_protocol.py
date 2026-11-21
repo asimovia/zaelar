@@ -17,7 +17,7 @@
 #   [[delete:ID]]                     — remove a widget FOR GOOD (folder + its private store)
 #   [[widget.data:ID]]{"action":..,"payload":{..}}[[/widget.data]] — mutate a widget's OWN stored data (same
 #       contract as that widget's apply_action) — e.g. add/remove an agenda item. HERMES-ONLY: the fast/duo layer
-#       must never emit this directly (enforced in voice/engine/llm/providers/duo.py, not just prompted) — any
+#       must never emit this directly — any
 #       widget data change goes through Hermes via [[deep]] first. See widgets/__init__.py:dispatch_tag.
 #
 # MeshKore cluster channel (connectors/meshkore/) — talk to OTHER agents, never spoken:

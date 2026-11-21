@@ -80,13 +80,16 @@ def test_a_session_that_starts_clears_the_recorded_death():
 
 
 def test_the_close_handler_is_wired_to_session_health():
-    """Wiring guard on the CHANNEL (V2-555: guards follow the channel, not the file): the extraction is
-    only real if agent.py's close handler and start path actually call it."""
-    text = _stripped("voice/engine/pipeline/agent.py")
+    """Wiring guard on the CHANNEL (V2-555: guards follow the channel, not the file): the extraction is only real if
+    the session's close handler and its start path actually call it — in the body's side of the voice process since
+    the embedded session went (INI-078 L1): `agent_events._on_close` and `remote_session`'s start."""
+    text = _stripped("voice/engine/pipeline/agent_events.py")
     i = text.find("def _on_close(")
-    assert i >= 0 and "on_session_dead(err, _emit)" in text[i:text.find("def ", i + 10)]
-    j = text.find("await session.start(room=ctx.room, agent=agent")   # options may follow (recording opts)
-    assert j >= 0 and "on_session_alive()" in text[j:j + 300]
+    assert i >= 0 and "on_session_dead(err, _emit)" in text[i:text.find("\ndef ", i + 10)]
+    remote = _stripped("voice/remote_session.py")
+    j = remote.find("_ae.open_mic_door(session=remote")
+    assert j >= 0 and "on_session_alive()" in remote[j:j + 300]
+    assert "_ae._on_close(" in remote, "the voice process's close reaches the one close handler"
 
 
 def test_api_status_says_the_voice_session_died(monkeypatch):

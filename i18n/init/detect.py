@@ -75,7 +75,7 @@ def extract_code(raw: str | None) -> str | None:
         "Language: es"         -> 'la'  (Latin)       "Sure, es"            -> 'su'  (Sundanese)
 
     It then gets PERSISTED as the operator's deliberate choice, `should_detect()` goes False, and the run never
-    retries. The cost is not cosmetic: the same code resolves `nucleo/flash/site_catalog.py`'s locale, so the
+    retries. The cost is not cosmetic: the same code resolves `nucleo/routes/site_catalog.py`'s locale, so the
     errand goes to the wrong country's sites on turn 1 — the exact failure this module blocks the turn to avoid.
 
     Seen live once in 66 saved rounds (2026-08-21 02:39), and the harness recorded it: the classifier only answers
@@ -146,7 +146,7 @@ def ensure_for_text(text: str) -> str | None:
     race the onboarding question and could commit the wrong one before the operator has answered it.
 
     Why it blocks instead of running in the background: the language is not only how the reply reads, it is
-    what `nucleo/flash/site_catalog.py` resolves its locale from. Measured 2026-08-20 on a fresh engine — the
+    what `nucleo/routes/site_catalog.py` resolves its locale from. Measured 2026-08-20 on a fresh engine — the
     state every sandbox run and every new install starts in — the SAME Spanish errand is handed
     `www.opentable.com`, `www.ticketmaster.com` and `www.amazon.com` under `en`, and `www.thefork.es`,
     `www.entradas.com` and `www.amazon.es` under `es`. A background detect fixes turn 2; the errand that goes

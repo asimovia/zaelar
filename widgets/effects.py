@@ -157,7 +157,7 @@ def _fills_the_card(wid: str, done_when) -> bool:
 def is_bare_control(wid: str, action: str) -> bool:
     """A control of what the card is producing, with nothing to fill in: it starts or stops its output and declares no
     payload (`musica:pause`, `next` — not `play`, which carries what to play). Such an act is DETERMINISTIC: its result
-    alone says whether it happened, so the turn's words wait for it (`nucleo/flash/follow_up_pass.Hold`). Read from
+    alone says whether it happened, so the turn's words wait for it. Read from
     the manifest's own declarations, never from a name."""
     spec = ((_manifest(wid).get("actions") or {}).get(str(action or "").strip()))
     if not isinstance(spec, dict) or spec.get("payload"):

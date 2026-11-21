@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import time
 
-from nucleo.workers.providers import claude as _c
 
 #: One liveness event per this many seconds of streamed deltas: enough for the one clock, never a flood.
 _ALIVE_EVERY_S = 5.0
@@ -195,3 +194,7 @@ def _result_text(content) -> str:
         return _evd.body(" ".join(p for p in parts if p))
     except Exception:
         return " ".join(p for p in parts if p)[:1500]
+
+
+# Last, so importing this part on its own finds its own names defined when `claude` imports it back (a cycle).
+from nucleo.workers.providers import claude as _c  # noqa: E402

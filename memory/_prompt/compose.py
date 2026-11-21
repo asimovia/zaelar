@@ -7,7 +7,7 @@
      `day_block()` into the prompt's live TAIL, not into this cached block; the stats are counted here.
   D. **DE QUÉ ÍBAIS HABLANDO** — the last few lines of the short term (a cut, never a model summary).
 
-A DIRECT read (µs, no LLM, no retriever), cached off the hot path (`nucleo/flash/memory_cache`). The readers it
+A DIRECT read (µs, no LLM, no retriever), cached off the hot path (`memory/state_cache`). The readers it
 calls are looked up on the package (`_p()`), so a patch on `memory._prompt` governs them.
 """
 from __future__ import annotations

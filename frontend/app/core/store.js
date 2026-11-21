@@ -95,7 +95,7 @@ export const [micLevel, setMicLevel]       = createSignal(0);               // t
 // ── attention gate (V2-016 + 2026-09-09): the 🤖 mode + a real-time "I'm listening to YOU" ring ─────────────
 // `attentionMode` mirrors config/settings.json's `attention_mode` (source of truth: /api/settings on load,
 // then the `ui`/`orb:attention` SSE event whichever side changes it — the button OR a voice order, see
-// nucleo/flash/identity_actions.py). `assistantName` is the CURRENT spoken name (renamed via voice), read the
+// nucleo/conversation_host/acts_self.py). `assistantName` is the CURRENT spoken name (renamed via voice), read the
 // same way + `ui`/`orb:name`. `attentionHit` lights the ring the instant the gate judges a turn DIRECTED —
 // the only real-time signal this turn-based system can give (never word-by-word); it clears on the next
 // `ambient` (not-directed) verdict or after its own `window_s`, whichever comes first — see sse.js.
@@ -714,8 +714,8 @@ export function openChatFrom(from, tab) {
 // to it, that order opened the agent's own work instead of his shopping list. The id IS part of the
 // routing, so it moved with the label.
 //
-// The OLD NAMES still arrive, from three directions that cannot be changed at once: the voice router
-// (`nucleo/flash/panel_canon`), the action map, and the localStorage of every operator who left the wall on
+// The OLD NAMES still arrive, from three directions that cannot be changed at once: the turn's panel reader
+// (`nucleo/self/catalogs.py`), the action map, and the localStorage of every operator who left the wall on
 // one of them. So this setter NORMALISES instead of the callers doing it — a rule each caller has to
 // remember is a rule that ends up missing from one of them, which is a lesson already learned elsewhere.
 // `crons` lands on «Procesos ▸ Periódicos», which is where it now lives. `tareas` is kept here, and ONLY

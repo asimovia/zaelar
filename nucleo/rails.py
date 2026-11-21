@@ -4,7 +4,7 @@ An **RAIL** is a habitual behavior that we know how to guide in a specific way �
 data studies, complex searches on sites, messaging, calendar, recursive searches (cron+search). The
 name comes from the operator: they are "rails" along which the action runs. Each rail provides four MODULAR pieces:
 
-  1. a **deterministic chain in CODE** (resolve→validate→act, e.g. `nucleo/flash/music_flow.py`) — the
+  1. a **deterministic chain in CODE** (resolve→validate→act) — the
      FlashBrain remains non-reasoning: it only triggers the tool; the rail guides;
   2. its **tool** in `router.TOOLS` (and nothing else: the "when YES/NO" lives in the description, V2-035);
   3. its **live RUNS** — this module: RAM registry projected into STATE (`state.rails`) → each turn's prompt

@@ -5,8 +5,9 @@ async def dispatch_tag(action: str, extra: dict) -> dict:
     """Route a [[widget.data:ID]]{"action":..,"payload":{..}} tag from the brain to that widget's OWN
     apply_action — the SAME mutation the widget's UI buttons trigger via ctx.action. This is how the brain manages
     a widget's data (e.g. "add this to my agenda") without ever writing code: it just calls the action the
-    widget's data.py already exposes. Routed from the brain's provider (voice/engine/llm/providers/nucleo.py),
-    which enforces the FAST/CONFIRM/ESCALATE gate (V2-025) before dispatching here. Never raises: a bad/unknown
+    widget's data.py already exposes. Routed through the door every tap takes
+    (`nucleo/acts/data_ops.dispatch_and_report`); the manager's widget act (`nucleo/conversation_host/acts_widget.py`)
+    applies the act's declared mode (a `confirm` act asks his yes) before dispatching here. Never raises: a bad/unknown
     action must not take down the brain's turn — the widget's own apply_action rejects it silently.
 
     V2-603 — RETURNS THE RESULT. It used to `await brain_action(...)` and drop the value on the floor, so a
@@ -17,7 +18,7 @@ async def dispatch_tag(action: str, extra: dict) -> dict:
     Four such claims in ninety seconds, one real action, zero connections.
 
     The caller is fire-and-forget (`_spawn`), so this value cannot make the turn wait; what it enables is the
-    line the turn says about it (`nucleo/turn/reply.of_op`). Shape kept deliberately flat —
+    act's receipt (`nucleo/conversation_host/acts_widget.receipt`). Shape kept deliberately flat —
     `{"ok": bool, ...}` — because that is what every `apply_action` already answers.
     """
     wid = (extra.get("id") or "").strip().lower()

@@ -478,22 +478,20 @@ Each is one line in `.meshkore/docs/criteria.md`, with its node; read the sectio
   itself there, never in a second table; a class the code names and the table lacks is nobody's event. His
   exception for ONE person is a `subject:<id>` row of the cascade (C12), read by every door that resolves her. An
   irreversible act of a card waits for his yes on its ROW through the one asker, its two answers declared and
-  picked by the brief (C13) — never a word list before the brief. An errand's class is the brief's verdict, only a
+  picked by the model's `task_say` (C13) — never a word list. An errand's class is the model's `start_task(class)`, only a
   critical one asks at birth, and a send is asked once, at its exit (C14). A task is opened only by the model's call
   (`start_task`), never by his words (C16).
-- **A message has ONE owner, and one switchboard routes his words to the processes (§T, T2b, T3):** «send a message to X»
+- **A message has ONE owner, and what he says about a process reaches it through ONE door (§T, T2b, T3):** «send a message to X»
   is owned end to end by `nucleo/send` — never by the conversation's model, a worker task or a verdict. The manager's
   message act (`conversation_host/routing.send`) and a worker's message the exit door would ask about
   (`send/worker.hand`) are HANDED OVER, and nothing else resolves, asks or sends. The owner keeps ONE draft: who he said, who it resolves to (`send/people`: the conversation
   he has open first, then his contacts ranked — several or a word nobody carries is a question naming them, never a
-  pick), the text, what it last asked. While a draft is open, every sentence he says is read ONCE against it at the
-  turn's gate, before the switchboard (`send/read`): a sentence about the message (who, what it says, a phrase added or
-  taken out, send it, drop it, which people carry that name) is the owner's and answered at once; anything else is NOT
-  — the conversation answers it, and an unreadable read is the conversation's, never a swallow. Nothing leaves before
+  pick), the text, what it last asked. The model acts on the open draft only by its `#n` in OPEN (`draft_edit` ·
+  `draft_send` · `draft_drop`, `send/by_number`): it brings the fields and the owner decides. Nothing leaves before
   his yes over ONE person and a text; it leaves through the card's own act with the chosen row's id, and the final line
   is the connector's RECEIPT (`send/receipt`). A worker under a mandate, and the exit door's refusals, stand as they
-  were. With a process open — running, or waiting on him — every OTHER chunk is routed at the gate by one decision over
-  one board (`nucleo/switchboard`); his order to stop ends its row through the ONE cancel door. A remark commissions
+  were. Nothing routes his words before the model: it reads what is open (the board, `nucleo/switchboard`) and his words
+  about a process go to it only by its `task_say(#n)`; a stop ends its row through the ONE cancel door. A remark commissions
   nothing; a SURE order to build or change a card starts with no question, only doubt asks, once (§C, C4).
 - **Nothing he hears is a fixed sentence (§C, C4w):** the engine decides the FACT and `nucleo/wording.py` has a model
   word it — short, different every time, about what he asked for and never about «tasks», «processes» or «flows»; the

@@ -16,7 +16,7 @@ from nucleo.circuit import compose as _outcome
 
 #: Data-ops per turn. Five pasted links is a request; fifty is a broken model.
 MAX_DATA_OPS = 5
-#: How long the turn's mouth waits for an op's answer (`nucleo/turn/reply.WAIT_S`): a refusal later than this is
+#: How long the turn's mouth waits for an op's answer: a refusal later than this is
 #: said out of turn, never by nobody.
 _MOUTH_WAIT_S = 4.0
 
@@ -37,7 +37,7 @@ def _named(args: dict) -> set[str]:
 
 
 # V2-603 — a FAILED data-op must correct the claim already spoken. V2-851 F2: the turn's own mouth says it
-# (`nucleo/turn/reply.of_op`, from the card's `say` through `refusal_line.speakable`), ONE line, and no model runs
+# (`nucleo/conversation_host/acts_widget.receipt`, from the card's `say` through `refusal_line.speakable`), ONE line, and no model runs
 # again to correct the call. Only a refusal that lands after the mouth stopped waiting is said out of turn, once, on
 # the request's row. The correction note, the 🔔 and the corrected re-call went (`corrected_retry`).
 

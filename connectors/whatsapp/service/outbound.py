@@ -176,7 +176,7 @@ async def _reply_one(r: dict) -> bool:
         return False
     logger.info(f"WhatsApp: respuesta enviada a {chat_id}")
     # V2-847 — no note tells the model this send happened: the echo below settles the request's row, and the
-    # mouth says the verdict (`nucleo/turn/reply.py`). A note that ordered «confirm it» named whatever `to` held
+    # line he hears is the connector's receipt (`nucleo/send/receipt.py`). A note that ordered «confirm it» named whatever `to` held
     # and was spoken as the person he meant — one door for what an act did, never a second one.
     _svc._echo_sent(r, chat_id, text, files, res)
     return True

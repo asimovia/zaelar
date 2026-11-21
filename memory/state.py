@@ -44,7 +44,7 @@ _DEFAULT: dict = {
     "language": None,
     # MISIÓN/identidad de zaelar (sección A del ESTADO compuesto, `memory.compose_state`). VIVE en la memoria:
     # se SIEMBRA al arrancar desde el catálogo de idioma (`langs.LangSpec.mission`, en el idioma del operador) por
-    # `nucleo/flash/memory_cache.prime()`; nunca se hardcodea en un prompt inglés. None = aún sin sembrar (compose
+    # `memory/state_cache.prime()`; nunca se hardcodea en un prompt inglés. None = aún sin sembrar (compose
     # cae al texto de `langs`). Es la parte FIJA del prompt que comparten los dos cerebros.
     "mission": None,
     "treatment": None,        # p.ej. "directo, sin narrar" | "elaborado"

@@ -13,7 +13,7 @@ Both are rows here now, with the shapes this card already had:
     own beat already holds until its time — visible in `sent` with `scheduled_for`, and removable with
     `cancel_send` until it leaves.
 
-`held_row` is the hook the consent rule reads (`nucleo/flash/frontend.held_send_ordered`): a draft he has SEEN —
+`held_row` is the hook the consent rule reads: a draft he has SEEN —
 one that has been in front of him across at least one turn of his — is the row his explicit order to send it
 confirms. Stdlib only, like everything this widget runs server-side.
 """

@@ -80,7 +80,7 @@ _PLACE_BEFORE = re.compile(r"(?:\b(?:en|in|at|near|cerca de|around|por)\s+(?:(?:
 
 
 #: Both ends of a ROUTE are places: «de Madrid a Londres», «from Boston to Denver». His words now reach every errand's
-#: sheet (`nucleo/turn/commission_words.py`), and a flight row says «MAD → LHR», not «Madrid».
+#: sheet, and a flight row says «MAD → LHR», not «Madrid».
 _ROUTE = re.compile(r"\b(?:de|desde|from)\s+[A-ZÁÉÍÓÚÑ][\wáéíóúñü-]*(?:\s+[A-ZÁÉÍÓÚÑ][\wáéíóúñü-]*)*"
                     r"\s+(?:a|al|hasta|to)\s+[A-ZÁÉÍÓÚÑ][\wáéíóúñü-]*(?:\s+[A-ZÁÉÍÓÚÑ][\wáéíóúñü-]*)*")
 

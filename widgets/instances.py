@@ -17,8 +17,8 @@ THREE DECISIONS, each with an obvious opposite:
   · **The question names the REQUESTS, not the ids.** «¿results::t1 o results::t2?» is not a question, it is a
     dump. Each sheet's title is already what the operator requested («Plumbers in central Madrid»), so the
     question writes itself using what they said.
-  · **One decision for the THREE places that close.** `voice/engine/llm/providers/nucleo.py` emits
-    `widget/close` with an id from three different points (the close≠delete guard, the turn backstop, and the
+  · **One decision for the THREE places that close.** The old voice turn
+    (`voice/engine/llm/providers/nucleo.py`) emitted `widget/close` with an id from three different points (the close≠delete guard, the turn backstop, and the
     canvas fallback). Writing the rule three times is exactly how one copy ends up missing — for the fourth
     time this week, and in V2-256 the missing copy caused a submission to fail silently.
 
@@ -398,7 +398,7 @@ def resolve_close(target, open_ids, text: str = "") -> dict:
 # The one piece of state in this module, and the reason is the car session: «¿cuál cierro…?» was answered «Las dos.»,
 # and the close the model then called was refused as context-bleed — two words carry no close verb, so his answer to
 # OUR question had less licence than the question itself. Whoever asks «which one should I close?» asks it here, so
-# this is where it is remembered; `nucleo/flash/close_answer.py` reads it.
+# this is where it is remembered.
 #: How long an unanswered «which one should I close?» stays the question his next words answer.
 CLOSE_ASK_S = 90.0
 _CLOSE_ASK: dict = {}

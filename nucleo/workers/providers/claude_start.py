@@ -14,7 +14,6 @@ import json
 import os
 import shutil
 
-from nucleo.workers.providers import claude as _c
 
 
 def _find_claude() -> str:
@@ -234,3 +233,7 @@ async def _pump(self) -> None:
                                                              or f"claude salió {rc}"), fatal=True))
             await self._q.put(self._ev("done"))
             self._done = True
+
+
+# Last, so importing this part on its own finds its own names defined when its package module imports it back (a cycle).
+from nucleo.workers.providers import claude as _c  # noqa: E402

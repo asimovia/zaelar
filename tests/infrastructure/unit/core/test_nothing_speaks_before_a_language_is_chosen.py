@@ -52,7 +52,7 @@ def test_the_first_run_branch_returns_before_it_can_generate_a_reply(monkeypatch
     said = []
     assert first_air.decide_kickoff("zaelar-first-run", lambda *a, **k: said.append(a)) == ""
     assert said, "a silent first run says why on the timeline"
-    for path in (AGENT, AGENT.parent / "child_session.py"):
+    for path in (AGENT.parent / "child_session.py",):    # the embedded session went (INI-078 L1)
         src = _vts.read(path)
         assert "decide_kickoff(" in src or "/api/voice/child/kickoff" in src, path.name
         branch = src[src.index("if not kickoff_text" if "kickoff_text" in src else "if not text"):]
@@ -402,9 +402,9 @@ def test_a_plugin_that_cannot_be_repointed_degrades_instead_of_raising():
 
 def test_the_pipeline_hands_over_the_tts_it_just_built():
     """The seam is worthless if nobody registers the live TTS, and that call lives in the one place that
-    has it: right where `entrypoint()` acquires it, before the session is constructed."""
-    src = _vts.read(ROOT / "voice" / "engine" / "pipeline" / "agent.py")
-    i_build = src.index('tts = ctx.proc.userdata.get("tts") or build_tts()')
+    has it: right where the voice process's session acquires it, before the session is constructed."""
+    src = _vts.read(ROOT / "voice" / "engine" / "pipeline" / "child_session.py")
+    i_build = src.index('tts = ud.get("tts") or build_tts()')
     i_attach = src.index("live_tts.attach(tts,", i_build)
     i_session = src.index("session = AgentSession(", i_build)
     assert i_build < i_attach < i_session, "attach between building the TTS and building the session"
@@ -563,7 +563,7 @@ def test_a_session_re_points_its_prewarmed_tts_to_todays_voice(monkeypatch):
         assert t.got and t.got[0] == "today-voice"
     finally:
         live_tts.detach(t)
-    agent = _vts.read(ROOT / "voice" / "engine" / "pipeline" / "agent.py")
+    agent = _vts.read(ROOT / "voice" / "engine" / "pipeline" / "child_session.py")
     i_attach = agent.index("_live_tts.attach(tts, SETTINGS.tts_provider)")
     i_apply = agent.index("_live_tts.apply_current()")
     assert i_attach < i_apply < i_attach + 400, "re-point right after attach, in the same place"

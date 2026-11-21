@@ -2,8 +2,8 @@
 
 The browser fingerprints every speech segment against the voice it enrolled first (`frontend/app/lib/speaker-id.js`,
 which measured in SHADOW until now) and, while the switch is on, sends each verdict here over the room's data channel
-(`zaelar-speaker`), plus the switch itself and whether a voice is enrolled at all (`zaelar-voicelock`). The turn's
-attention gate (`voice/engine/llm/providers/attention_turn.py`) asks `admit()` before anything else: a turn whose
+(`zaelar-speaker`), plus the switch itself and whether a voice is enrolled at all (`zaelar-voicelock`). The
+conversation's ear guard (`nucleo/conversation_host/guards.py`) asks `admit_now()` before anything else: a turn whose
 segments were all judged ANOTHER voice (a TV, someone across the room) is dropped there, before any model runs.
 
 SAFE BY CONSTRUCTION. The switch narrows what is heard; it can never make the agent deaf to him by accident:

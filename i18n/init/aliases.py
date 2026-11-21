@@ -12,8 +12,8 @@ INITIALIZATION only (never the hot path), same shape as `i18n.init.ensure`/`gene
 (all surfaces at once — there are only ~10, one call beats ten), off-thread, fail-open to an empty pack (the
 LLM router covers correctness in the meantime; a missing alias pack never blocks or breaks anything).
 
-Deliberately scoped to the SYSTEM SURFACES only — never `voice/attention.py`'s hard-interrupt vocabulary or
-`nucleo/flash/router.py`'s backstop regex. Those are safety/precision-critical deterministic guards, not
+Deliberately scoped to the SYSTEM SURFACES only — never `voice/attention.py`'s hard-interrupt vocabulary.
+Those are safety/precision-critical deterministic guards, not
 "which widget did you mean" convenience matching, and localizing them is a separate, dedicated effort.
 """
 from __future__ import annotations

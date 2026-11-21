@@ -1,5 +1,5 @@
 """The briefs a Brain Worker reads (refactor2710-08 T-04): `build` (generic) and `web` (browser) compose `context`,
-`surfaces`, `drawer` and `research`. The voice turn's prompt (`nucleo/turn/prompt/`) never imports them (node 2.891)."""
+`surfaces`, `drawer` and `research`."""
 from nucleo.workers.prompts.build import _build_prompt  # noqa: F401
 from nucleo.workers.prompts.context import (  # noqa: F401
     _METHOD_BLOCK, _known_route_line, _mesh_first_block, _recent_conversation_block, _sources_line, _today_block)

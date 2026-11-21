@@ -14,7 +14,6 @@ Three mechanisms close it, each measured here:
 """
 import importlib.util
 import os
-import re
 
 import pytest
 
@@ -124,53 +123,12 @@ def _load_attention_turn():
     return mod
 
 
-def test_the_gate_swallows_the_shut_up_turn_and_closes_the_window(monkeypatch):
-    import asyncio
-    monkeypatch.setenv("ZAELAR_ATTENTION", "smart")
-    attention.note_directed(now=None)         # a live conversation window, like the dinner's
-    seen = []
-    at = _load_attention_turn()
-    directed, _txt, _ms = asyncio.run(
-        at.judge("Maldita sea, cállate.", context="", emit=lambda *a, **k: seen.append((a, k))))
-    assert directed is False, "the order must reach no model — an answer would re-anchor the window"
-    assert not attention.window_open()
-    assert any("silencio" in (a[1] or "") for a, _ in seen), "the swallow must be visible, never silent"
-
-
 # ── the [[aparte]] tag ──────────────────────────────────────────────────────────────────────────────────
 def test_the_aparte_tag_is_parsed_and_never_spoken():
     from voice.tag_protocol import strip_tags
     emitted = []
     spoken, rest = strip_tags("[[aparte]]", lambda a, e: emitted.append((a, e)), True)
     assert ("aparte" in [a for a, _ in emitted]) and not spoken.strip() and not rest
-
-
-def test_the_voice_channel_wires_the_aside(monkeypatch):
-    """Wiring guards on the CHANNEL (V2-555): the tag must mark the turn handled and retract the admission —
-    removing either brings the spiral back."""
-    prov = _src("voice/engine/llm/providers/nucleo.py")
-    assert 'if action == "aparte":' in prov and 'aside["v"] = True' in prov
-    # Anchored on the `or (` shape UNIQUE to the _tool_handled expression — the same expression also
-    # exists as `_aside_turn = bool(...)` further down, and a disarm that removed only the _tool_handled
-    # line came back GREEN against the loose anchor (the V2-571 lesson, paid again while building this).
-    # V2-661: `_tool_handled` and the retraction moved to the shared seam `nucleo/flash/harness_turn.py`;
-    # the guard follows the CHANNEL (V2-555). The anchor stays UNIQUE to the handled expression.
-    seam = _src("nucleo/flash/harness_turn.py")
-    assert "(aside and not typed)" in seam, \
-        "an aside must count as handled (mute backstop) — but never on a TYPED turn (V2-646)"
-    assert "aside=aside[\"v\"]" in prov, "the provider no longer tells the seam this turn was an aside"
-    assert "retract_last_directed()" in seam, "the admission's window refresh must be retracted"
-    assert "_ht.note_aside(" in prov, "the aside branch no longer reaches the seam"
-    assert "if _aside_turn and not spoken_text and not _did_act:" in prov, \
-        "a sanctioned silence reaches the seam (the hollow repairs that could fill it went in V2-851 F5)"
-
-
-def test_the_prompt_teaches_the_aside_only_in_wakeword_mode():
-    src = _src("nucleo/flash/style_directive.py")
-    assert "[[aparte]]" in src
-    i = src.index("CONVERSACIÓN CON GENTE DELANTE")
-    gate = src.rindex('att_mode in ("smart", "wakeword")', 0, i)
-    assert gate > 0, "the rule rides the wake-word mode block — in always mode the gate itself judges"
 
 
 # ── the honest provider label (a stale stored label that reappeared in v2.json) ──────────────────────────

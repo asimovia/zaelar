@@ -1,7 +1,7 @@
 """nucleo/jev — Jev (TypeSafe System One) Choice client: the ONLY place that talks to Jev.
 
 The cost is the ROUND TRIP, not the questions (2026-09-20: p50 800 ms; 1 question 800 ms, 10 take 817 ms, 100 take
-1 041 ms): a turn asks every question it needs in ONE call — the turn's brief (`nucleo/turn/brief.py` → `ask_many`),
+1 041 ms): a turn asks every question it needs in ONE call — `ask_many`,
 `select_many` (`nucleo/jev/select.py`) or the bounded decision (`nucleo/jev/decision.py`) — never a loop over the
 single-question door. The timeout is 2 s (F5): the brief is read 2-4 s after it is fired.
 
@@ -426,7 +426,7 @@ def read(handle: dict | None, key: str, fallback, *, min_confidence: float = MIN
     """
     verdict = peek(handle)
     if not verdict or key not in verdict:
-        # a question a DOOR asks into this handle (`nucleo/turn/brief_doors`) may still be flying after the brief landed
+        # a question a DOOR asks into this handle may still be flying after the brief landed
         flying = bool(handle) and (not _is_ready(handle) or key in (handle.get("_pending") or ()))
         why = "in_flight" if flying else ("absent" if handle else "off")
         _emit_read(handle, key, used=False, why=why, confidence=0.0, choice="")

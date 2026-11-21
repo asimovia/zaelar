@@ -47,7 +47,7 @@ def _emit_nav(nav_tid: str, label: str, text: str) -> None:
         pass
 
 
-# Same threshold the FlashBrain turn uses for «sin moverse» (`nucleo/flash/prompt.py`), read from the same env
+# Same threshold the live lines use for «sin moverse» (`widgets/navegador/live_sheet.py`), read from the same env
 # variable so the two halves of one fact can never drift apart.
 _STALL_HINT_S = int(__import__("os").environ.get("ZAELAR_NAV_STALLED_S", "120") or 120)
 

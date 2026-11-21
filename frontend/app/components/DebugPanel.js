@@ -96,8 +96,8 @@ const COLS = [
 ];
 
 // Which layer of the “Colmena” brain resolved this turn: the FlashBrain stamps its fast-model provider
-// ("deepseek"/"ollama"/…), the SlowBrain escalation path stamps "slowbrain". Stamped by the provider itself
-// (voice/engine/llm/providers/nucleo.py) via emit(..., extra={"engine":..., "model":...}) — read straight off
+// ("deepseek"/"ollama"/…), the SlowBrain escalation path stamps "slowbrain". Stamped on the event
+// via emit(..., extra={"engine":..., "model":...}) — read straight off
 // the event, never guessed from the label text.
 // Column 2 (kind badge): for "brain" rows, name the layer instead of the generic "BRAIN" pill.
 // V2-036: ya NO there is "cerebro" aparte — only the FlashBrain ORQUESTADOR + procesos (workers) that lanza. The turnos
@@ -137,7 +137,7 @@ function layerChip(d) {
 // Column 2 (right after the timestamp): how long THIS operation actually took, for every request-shaped event
 // in the system — an LLM/brain turn, a TTS synth, an STT transcription, a widget generation job, a connector
 // dispatch (architect/cluster/messaging triage). Every such call site stamps its own *_ms duration field (see
-// voice/engine/llm/providers/{duo,hermes}.py, voice/engine/speech/{tts,stt}/*.py, widgets/server_api.py,
+// voice/engine/speech/{tts,stt}/*.py, widgets/server_api.py,
 // connectors/{architect,meshkore,messaging}/*.py) — this just picks the right one per row. Preference order:
 // a TOTAL-duration field (brain_ms/fast_ms/deep_ms/tts_ms/stt_ms/gen_ms/architect_ms/cluster_ms/triage_ms) over
 // a partial one (ttft_ms = first-token only), since "how long did this take" beats "how long to start."

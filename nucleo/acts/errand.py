@@ -175,7 +175,7 @@ def reset() -> None:
 # ── which errand his words are for: the brief's `errand_target` (refactor2710-06 T-03) ────────────────────────────
 # Three arms leave the turn with no verdict of their own: a message to a cluster peer, an injection into the running
 # errand and the cluster's objective. The brief answers once; each arm reads it ASYMMETRICALLY
-# (`nucleo.turn.verdicts.against_the_model`): agreeing runs, a sure contrary verdict vetoes, an unsure one asks which,
+# agreeing runs, a sure contrary verdict vetoes, an unsure one asks which,
 # and no verdict (an old brief, no worker running) keeps the arm's own deterministic route — never a new question.
 TARGET_KEY = "errand_target"
 _TARGETS = (

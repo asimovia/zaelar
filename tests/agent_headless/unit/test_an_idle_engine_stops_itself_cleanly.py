@@ -50,13 +50,13 @@ def test_a_notice_far_away_does_not_hold_the_engine():
 def test_an_unreadable_worker_registry_counts_as_busy(monkeypatch):
     import sys
     import types
+    import nucleo.dispatch as dispatch_pkg     # the package first: its own import reads the real registry
     broken = types.ModuleType("nucleo.dispatch.registry")
 
     def _boom():
         raise RuntimeError("unreadable")
     broken.has_active = _boom
     monkeypatch.setitem(sys.modules, "nucleo.dispatch.registry", broken)
-    import nucleo.dispatch as dispatch_pkg
     monkeypatch.setattr(dispatch_pkg, "registry", broken, raising=False)
     _last, workers, _next = idle_stop._readings(time.time())
     assert workers is True

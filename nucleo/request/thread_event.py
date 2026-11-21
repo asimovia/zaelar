@@ -74,7 +74,7 @@ def judged(request: str, menu: list[tuple[str, str]], answer: str, *, ms: float,
     return _send("judged", f"⚖️ thread judge: {outcome}" + (f" → {answer}" if answer else ""), extra["heard"], extra)
 
 
-# ── V2-878 §5, in SHADOW: the deferred choice and the screen↔errand arbiter (`nucleo/turn/pick_pending.py`) ─────────
+# ── V2-878 §5, in SHADOW: the deferred choice and the screen↔errand arbiter ─────────
 
 def pick_pending(note: dict, *, shadow: bool = True) -> dict | None:
     """A request routed into an errand with no rows yet, kept on its card as a choice to make when the rows arrive."""

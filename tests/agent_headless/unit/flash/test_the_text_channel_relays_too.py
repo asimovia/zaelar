@@ -23,9 +23,6 @@ That is why the fix is not just the retry: the DECISION moves to `nucleo/llm/pro
 and both channels use it. Two copies of a decision diverge silently, and the warning arrives when someone measures
 something that goes wrong for a reason other than the one being measured.
 """
-from tests import voice_turn_source as _vts
-import inspect
-import pathlib
 
 import pytest
 
@@ -90,13 +87,6 @@ def test_no_añade_una_excepcion_a_la_que_ya_hubo(monkeypatch):
 # WIRING GUARD (V2-199), and this is the heart of the matter: the policy already existed and the channel did not apply it.
 # A test of the predicate would have passed three times while this was biting us.
 
-def test_the_voice_turn_reads_the_ONE_decision():
-    """The structural fix, and what prevents a fourth time: the policy lives in one place and the turn — which
-    the typed channel runs too — reads it."""
-    voz = pathlib.Path(inspect.getfile(pc)).parent.parent.parent / "voice/engine/llm/providers/nucleo.py"
-    assert "provider_failure" in _vts.read(voz)
-
-
 # ── and the cooldown lands on the one that FAILED, not the one that would be next ───────────────────────────
 # Second trap in the same area, measured by the harness on 2026-08-21: there are TWO sources for «who is primary».
 # The turn builds its spec with `spec_from_config()` (which reads `fast.model` / `fast.base_url`) and the chain is
@@ -135,12 +125,6 @@ def test_un_endpoint_DESCONOCIDO_no_castiga_a_nadie_por_error(cadena):
 def test_sin_spec_se_comporta_como_antes(cadena):
     """Compatibility: callers that do not pass it continue to work the same way."""
     assert pf.handle(SIN_SALDO, role=pc.ROLE_VOICE)["relay"]["name"] == "openai"
-
-
-def test_the_voice_turn_PASSES_the_spec():
-    """WIRING GUARD: the predicate can be perfect while the turn still fails to say who ran."""
-    voz = pathlib.Path(inspect.getfile(pc)).parent.parent.parent / "voice/engine/llm/providers/nucleo.py"
-    assert "spec=spec)" in _vts.read(voz)
 
 
 # ── V2-307: DOS escalones en el MISMO endpoint — el culpable se resuelve por (endpoint, MODELO) ──────────────

@@ -82,7 +82,7 @@ def _task_view(t: dict) -> dict:
         "last_wall": ((t.get("walls") or [{}])[-1] if t.get("walls") else {}),
         # WHICH SHEET this tab belongs to. Stamped at birth (V2-281) and, until now, readable only from inside
         # the process — so from outside, "the tab was never stamped" and "the tab is stamped and something
-        # downstream ignored it" looked IDENTICAL. That matters because `nucleo/flash/live_blocks.py::
+        # downstream ignored it" looked IDENTICAL. That matters because `widgets/navegador/live_sheet.py::
         # _sheet_has_rows` resolves the errand's sheet through this stamp: with no stamp it answers False no
         # matter how full the sheet is, and the turn goes on saying it has nothing while the operator watches
         # the rows land. Same reason `wall`/`walls_hit` were exposed by V2-207 — from outside the process, a

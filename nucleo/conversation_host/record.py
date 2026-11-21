@@ -1,5 +1,5 @@
 """The `Record` port: the conversation's pair in the engine's record (V2-941, v3.1 §1.8) — the same `kind='conv'`
-rows the old turn writes (`nucleo/turn/pipeline_close.py`), so «what did I tell you yesterday», the day's ledger and
+rows the old turn wrote (`nucleo/turn/pipeline_close.py`), so «what did I tell you yesterday», the day's ledger and
 recall see a switched session's conversation like any other. The memory queue writes it; a repeat after a crash
 carries the same `conv` ref. And his words of that batch go to the memory agent to be filed (C14b), as the old turn's
 gate filed them.

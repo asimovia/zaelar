@@ -6,7 +6,7 @@ es lo del dentista?» about the fifty-fifth appointment gets a block that does n
 whose first lines claim to be the agenda says there is no such appointment: a summary answering as if it were the record.
 
 So a QUESTION gets its own door: the rows that MATCH it, wherever they are in the calendar, with the fields the digest
-trims. The seam is `data.read_query(question)`, declared in `nucleo/flash/widget_read.py` and generic — nothing there
+trims. The seam is `data.read_query(question)`, declared in `widgets/read.py` and generic — nothing there
 knows this module exists. Its own file because `data.py` is over the architecture ratchet's ceiling (extract, never grow).
 """
 from __future__ import annotations

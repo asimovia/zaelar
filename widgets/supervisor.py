@@ -190,7 +190,7 @@ def enqueue_from_thread(wid: str, action: str, payload: dict) -> bool:
 
 
 def info(wid: str) -> dict:
-    """Supervised owner state for a backed widget (for the FlashBrain bridge, `nucleo/flash/procs.py`). `running` =
+    """Supervised owner state for a backed widget. `running` =
     has a live supervised task; `disabled` = disabled after MAX_FAILS. `backed=False` if the widget is not backed /
     not under supervision."""
     svc = _services.get(wid)

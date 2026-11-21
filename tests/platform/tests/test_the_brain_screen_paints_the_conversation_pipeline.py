@@ -1,6 +1,6 @@
 """THE BRAIN screen, second picture: a flow that carries `conv_*` events is painted with the conversation package's
-own stations (`CONV_STATIONS`: ear · inbox · compose · model · gateway · ledger · mouth · close), the old path keeps
-its twelve. A replayed session (`python -m conversation.replay <signals> --events`) is a source of its own:
+own stations (`CONV_STATIONS`: ear · inbox · compose · model · gateway · ledger · mouth · close) — the only picture
+since the old turn's twelve went (INI-078 L1). A replayed session (`python -m conversation.replay <signals> --events`) is a source of its own:
 `/api/replay?name=…&trace=…` paints one request of it, with the strip across every request.
 
 What would rot: a conv flow painted with the old stations (every one dark); a station lit by another's kind; a request
@@ -60,7 +60,8 @@ def test_a_conv_flow_is_painted_with_the_conversation_stations_and_an_unclosed_r
     dark = [s["id"] for s in done["stations"] if s["expected"]]
     assert dark == ["mouth"]                                   # answered and the mouth said nothing
     old = od.light_flow([{**_row(1, "trace", "turno", text="hola"), "cat": "flash"}])
-    assert [s["id"] for s in old["stations"]] == list(od.STATION_IDS)
+    assert [s["id"] for s in old["stations"]] == list(od.CONV_STATION_IDS) and not old["order"], \
+        "a flow of the old turn has no picture of its own any more: nothing in it lights a station"
 
 
 def test_a_replay_of_s1_is_painted_whole_on_the_brain_screen(observatory) -> None:  # noqa: F811

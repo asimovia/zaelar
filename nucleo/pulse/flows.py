@@ -45,10 +45,10 @@ class FlowsPulse:
     async def _supervise_stale_flows(self, now: float) -> None:
         """Closes a CONVERSATIONAL flow the operator started and then walked away from (2026-08-16, operator
         request after a diagnosed real incident — the observability viewer kept showing several "en curso" flows from a
-        session the operator had abandoned minutes earlier). `_maybe_close_flow` (the per-turn path in
-        `voice/engine/llm/providers/nucleo.py`) only ever gets ONE chance to close a flow, right when its own
-        turn finishes; if that turn correctly deferred (an accumulator chain, a pending confirmation, a live
-        worker), nothing EVER revisits the decision once those conditions clear on their own. This is that
+        session the operator had abandoned minutes earlier). `_maybe_close_flow` (the per-turn path of the old
+        voice turn, `voice/engine/llm/providers/nucleo.py`) only ever got ONE chance to close a flow, right when its own
+        turn finished; if that turn correctly deferred (an accumulator chain, a pending confirmation, a live
+        worker), nothing EVER revisited the decision once those conditions cleared on their own. This is that
         revisit — on a slow, deliberately-throttled timer, never the 1Hz tick itself (a real SQL query, not
         RAM bookkeeping).
 

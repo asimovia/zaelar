@@ -1025,6 +1025,9 @@ _PACKAGE_CEILINGS["nucleo/queue"] += 34    # 2026-11-21 INI-078 #5 (a): an open 
 _PACKAGE_CEILINGS["nucleo/pulse"] += 11    # same: the pulse wakes for a task's end of life and says it once
 _PACKAGE_CEILINGS["nucleo/send"] += 2      # same: a draft's task is the open one (an archived row is no draft)
 _TOTAL_MAX += 9      # same, measured (the pills' reader `task_pills` went: the archived row is found by the search)
+_PACKAGE_CEILINGS["nucleo/workers"] += 9   # 2026-11-21 INI-078 L1 B9: `claude_map`, `claude_start` and `session_events` import their package module last, so importing the part first no longer hits the half-built cycle
+_TOTAL_MAX += 3     # same, measured (the import moves, net of the B9 comment and test edits)
+
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

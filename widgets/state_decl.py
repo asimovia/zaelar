@@ -141,8 +141,7 @@ def order_value(data, path: str):
 
 def stop_of(spec) -> tuple[str, object] | None:
     """`(act, when)` when a reported field declares what his STOP ends (`"stop": {"act": "pause", "when": true}`): the
-    field at `when` means it runs, `act` (one of the app's declared actions) ends it. Read by the stop lane
-    (`nucleo/flash/hard_turn`) for every app, so an app that declares it is stopped with no code of ours."""
+    field at `when` means it runs, `act` (one of the app's declared actions) ends it."""
     stop = spec.get("stop") if isinstance(spec, dict) else None
     return (str(stop["act"]), stop.get("when")) if isinstance(stop, dict) and stop.get("act") else None
 

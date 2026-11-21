@@ -243,7 +243,7 @@ def effective() -> dict:
                                              "hard ceiling of 5 s")),
     ]
     # Read-only, for the orb's 🤖 tooltip (2026-09-09): the wake-word IS the current spoken name (renamed via
-    # voice, `nucleo/flash/identity_actions.py`), not the literal "zaelar" the tooltip used to hardcode.
+    # voice, `nucleo/conversation_host/acts_self.py`), not the literal "zaelar" the tooltip used to hardcode.
     from genome import persona
     try:
         from memory import api as _mem

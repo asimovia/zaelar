@@ -55,7 +55,7 @@ _PLAT_ALIASES = {
 
 
 # What this inbox tells the BRAIN: the always-on summary and the answer to a question (`inbox_read.py`, V2-704).
-# Re-exported because `refs.prompt_digest` and `nucleo/flash/widget_read` look for them on `data.py`.
+# Re-exported because `refs.prompt_digest` and `widgets/read.py` look for them on `data.py`.
 from .inbox_read import prompt_digest, read_query  # noqa: F401,E402 — re-export
 
 
@@ -254,6 +254,6 @@ def __getattr__(name: str):
 
 
 # ── V2-800 · the consent rule's hooks and the pending-work rows live in consent_hooks.py, re-exported here: ──
-# `nucleo/flash/frontend.py`, `nucleo/pending_work.py` and `widgets/text_home.py` look for them on `data.py`.
+# `nucleo/acts/act_policy.py`, `nucleo/pending_work.py` and `widgets/text_home.py` look for them on `data.py`.
 from .consent_hooks import (  # noqa: E402,F401
     held_row, consent_scope, pending_rows, claim_text, recent_facts, recipients_of, needs_of)

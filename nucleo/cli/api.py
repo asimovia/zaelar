@@ -23,7 +23,7 @@ async def say(text: str = Body(..., embed=True), session: str = Body("default", 
     # FIRST-RUN LANGUAGE, on a channel that has no way to ASK (V2-170). The voice pipeline opens a brand-new
     # install with a blocking "what language should I use?" turn and locks the answer; a text channel gets no
     # such turn, so without this it stays on the product default (English) for as long as it lives. That is not
-    # only how the reply reads: `nucleo/flash/site_catalog.py` resolves its LOCALE from the same code, so a
+    # only how the reply reads: `nucleo/routes/site_catalog.py` resolves its LOCALE from the same code, so a
     # Spanish errand was being handed opentable.com and ticketmaster.com instead of thefork.es and entradas.es.
     #
     # It lives HERE, at the HTTP edge, and not inside `run_turn`: that function is also how the suite drives a

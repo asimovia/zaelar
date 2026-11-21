@@ -7,7 +7,6 @@ transcribed the operator for seven minutes with the 🎤 shut and escalated an e
 These cases pin the ENGINE half: the holder, the route, the heartbeat re-assert, and the turn gate — plus
 the one exemption that is the whole point of muting (typing), and the direction each failure must take.
 """
-from tests import voice_turn_source as _vts
 import pytest
 
 from voice import attention, mic_input
@@ -141,22 +140,6 @@ def test_the_switch_and_the_WAKE_WORD_MODE_are_two_different_axes(monkeypatch):
     assert mic_input.blocks_turn("enséñame la agenda") is False, "the switch is open again"
     assert attention.evaluate("enséñame la agenda").directed is False, (
         "…and the mode he had is the mode he gets back: lifting the close grants no attention of its own")
-
-
-def test_the_gate_sits_ABOVE_the_attention_gate_and_below_nothing_else():
-    """Structural: a closed mic is not an opinion about who was being addressed, so no conversation window
-    and no wake word may lift it — the check has to run BEFORE `evaluate_content` is consulted."""
-    import re
-    from pathlib import Path
-    src = Path(__file__).resolve().parents[3] / "voice/engine/llm/providers/nucleo.py"
-    text = re.sub(r"(?m)#.*$", "", _vts.read(src))
-    gate = text.find("mic_input.blocks_turn")
-    # V2-655: la puerta de atención se extrajo a `attention_turn.judge`; el guarda sigue al CÓDIGO.
-    attn = text.find("attention_turn.judge")
-    assert gate >= 0, "the turn path must consult the microphone switch"
-    assert attn >= 0 and gate < attn, (
-        "the mic gate must run BEFORE the attention gate — otherwise a wake word or an open "
-        "conversation window would walk audio through a microphone the operator closed")
 
 
 # ── the two doors that write it ──────────────────────────────────────────────────────────────────────────

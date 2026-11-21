@@ -180,7 +180,7 @@ def _bulk_close():
 
 
 def describe(action: dict) -> str:
-    """Short probe/report string, mirroring `nucleo/flash/probe.py` action naming."""
+    """Short probe/report string."""
     do = action.get("do")
     if do == "close_all":
         return "canvas:close"

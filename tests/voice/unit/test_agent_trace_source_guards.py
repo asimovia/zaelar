@@ -17,7 +17,7 @@ These tests establish that boundary so it does not inadvertently blur in a futur
 from pathlib import Path
 from tests import voice_turn_source as _vts   # V2-778 F1: a split file is read with its moved pieces
 
-SRC = Path(__file__).resolve().parents[3] / "voice/engine/pipeline/agent.py"
+SRC = Path(__file__).resolve().parents[3] / "voice/engine/pipeline/agent_events.py"   # the handlers left agent.py
 
 
 def _body():
@@ -25,18 +25,16 @@ def _body():
 
 
 def test_state_trace_safe_set_excludes_states_that_can_precede_their_own_trace():
-    body = _body()
-    i = body.index("_STATE_TRACE_SAFE = {")
-    line = body[i:body.index("}", i) + 1]
-    assert '"speaking"' in line and '"listening"' in line and '"interrupted"' in line
-    assert '"thinking"' not in line, "'thinking' can fire before the turn's own trace exists — must stay unsafe"
-    assert '"idle"' not in line, "'idle' can fire before the turn's own trace exists — must stay unsafe"
+    from voice.engine.pipeline import agent_events as ae
+    assert {"speaking", "listening", "interrupted"} <= set(ae.STATE_TRACE_SAFE)
+    assert "thinking" not in ae.STATE_TRACE_SAFE, "'thinking' can fire before the turn's own trace exists — must stay unsafe"
+    assert "idle" not in ae.STATE_TRACE_SAFE, "'idle' can fire before the turn's own trace exists — must stay unsafe"
 
 
 def test_on_state_change_only_reads_active_when_the_state_is_safe():
     body = _body()
-    i = body.index("def on_state_change(state: State) -> None:")
-    block = body[i:body.index("def ", i + 10)]
+    i = body.index("def on_state_change(")
+    block = body[i:body.index("\ndef ", i + 10)]
     assert "if state.value in _STATE_TRACE_SAFE:" in block
     assert "trace.active()" in block
 
@@ -46,8 +44,8 @@ def test_operator_transcript_and_interim_never_read_active():
     trigger exists — forcing active() here would attach the previous conversation's trace. It must continue to be
     resolved at read time (attributeOrphans), not here."""
     body = _body()
-    i = body.index('@session.on("user_input_transcribed")')
-    block = body[i:body.index("@session.on(", i + 10)]
+    i = body.index("def _on_transcript(")
+    block = body[i:body.index("\ndef ", i + 10)]
     assert "trace.active()" not in block
 
 
@@ -68,8 +66,8 @@ def test_the_metrics_handler_actually_IMPORTS():
 
 def test_vad_speaking_onset_and_end_of_speech_never_read_active_but_barge_in_does():
     body = _body()
-    i = body.index('@session.on("user_state_changed")')
-    block = body[i:body.index("@session.on(", i + 10)]
+    i = body.index("def _on_user_state(")
+    block = body[i:body.index("\ndef ", i + 10)]
     barge_in = block[block.index("if was_bot_speaking:"):block.index("🎤 voz detectada")]
     rest = block[block.index("🎤 voz detectada"):]
     assert "trace.active()" in barge_in, "a barge-in interrupts an ALREADY-open trace's speech"
@@ -78,7 +76,7 @@ def test_vad_speaking_onset_and_end_of_speech_never_read_active_but_barge_in_doe
 
 def test_conversation_item_added_reads_active_only_for_the_assistant_branch():
     body = _body()
-    i = body.index('@session.on("conversation_item_added")')
-    block = body[i:body.index("@session.on(", i + 10)]
+    i = body.index("def _on_item(")
+    block = body[i:body.index("\ndef ", i + 10)]
     assert 'role == "assistant"' in block
     assert "trace.active()" in block

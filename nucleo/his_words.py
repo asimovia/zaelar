@@ -6,8 +6,8 @@ to FIND a well-rated plumber who can come today; the model's brief said «Buscar
 the worker added two real plumbers as contacts and tried to WhatsApp them. Whether an act was asked for has
 to be read against what HE said, so this keeps it.
 
-Fed from `nucleo/flash/dialog.push_user`, the one function both channels (voice and the text probe) call to
-record his turn. `[SISTEMA]` notes glued in front of a turn are dropped first: a note that quotes a worker's
+Fed from the turn's request (`nucleo/request/model.begin`) and from the candidate he picks
+(`nucleo/request/answered_task.py`). `[SISTEMA]` notes glued in front of a turn are dropped first: a note that quotes a worker's
 own question («¿escribo a Fontanero X?») must never become his words naming that recipient.
 
 In-process and bounded on purpose. Lost on a restart, which fails toward ASKING: a door that cannot find his

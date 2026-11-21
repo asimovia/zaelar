@@ -6,7 +6,6 @@ from loguru import logger
 import asyncio
 import time
 
-from nucleo.workers import session as _s
 from nucleo.workers import task_record as _record
 
 
@@ -276,3 +275,7 @@ def _relay_search(self) -> None:
              extra={"id": self._rec.task_id, "span": f"worker:{self._rec.task_id}"})
     except Exception:  # noqa: BLE001
         pass
+
+
+# Last, so importing this part on its own finds its own names defined when its package module imports it back (a cycle).
+from nucleo.workers import session as _s  # noqa: E402

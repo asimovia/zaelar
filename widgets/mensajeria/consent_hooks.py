@@ -8,7 +8,7 @@ from . import outbound as _outbound
 from .shape import load_db
 
 
-# ── V2-800 · the consent rule's two hooks (read by `nucleo/flash/frontend.py`, same shape as the agenda's) ─────────
+# ── V2-800 · the consent rule's two hooks (`consent_scope` read by `nucleo/acts/act_policy.py`, same shape as the agenda's) ─────────
 
 def held_row(action: str, payload: dict | None = None) -> dict | None:
     """The draft this send would deliver when he has already SEEN it — the row his explicit order confirms."""

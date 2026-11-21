@@ -1,13 +1,13 @@
-"""nucleo/dispatch/thresholds.py — the RELOJES of a task of background, definidos a vez (V2-354).
+"""nucleo/dispatch/thresholds.py — the CLOCKS of a background task, defined once (V2-354).
 
-Extraido of `dispatch.py` for pagar the trinquete of arquitectura, with the same criterion and the same precedente
-that `dispatch_confirm.py` and `dispatch_prompts.py`: son constantes without a sola dependencia of the record, and the
-leen TRES sites distintos —the supervisor of `nucleo/pulse/loop.py`, the cara live of `nucleo/flash/live_blocks.py` and
-`dispatch.pending_summaries()`—. Se re-exportan from `dispatch` because ese continues siendo the contrato publico and
-there is callers that the importan by there; esto es a mudanza, no a cambio of interfaz.
+Extracted from `dispatch.py` to pay the architecture ratchet, with the same criterion and precedent as
+`dispatch_confirm.py` and `dispatch_prompts.py`: they are constants without a single dependency on the record, and
+several sites read them — the supervisor of `nucleo/pulse/loop.py`, the whisperer's gate (`nucleo/whisper/gate.py`)
+and `dispatch.pending_summaries()`. They are re-exported from `dispatch` because that is still the public contract and
+there are callers that import them from there; this is a move, not an interface change.
 
-**Por what a sola definition and no a by consumidor**: two copias of estos numeros es exactamente how the
-operator acaba oyendo a cosa of the aviso proactivo and another of the agent al that acaba of preguntar.
+**Why one definition and not one per consumer**: two copies of these numbers is exactly how the operator ends up
+hearing one thing from the proactive notice and another from the agent he just asked.
 """
 from __future__ import annotations
 

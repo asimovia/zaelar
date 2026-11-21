@@ -30,7 +30,7 @@ python-dotenv==1.2.2
 python-multipart==0.0.32          # subida de ficheros (UploadFile)
 loguru==0.7.3
 websockets                        # cliente WS async del conector MeshKore (versión la resuelve livekit)
-httpx                             # búsqueda web factual del FlashBrain (nucleo/flash/websearch.py, V2-022); versión la resuelve openai/livekit
+httpx                             # async HTTP client of the connectors and the model clients; its version is resolved by openai/livekit
 pypdf==6.13.3                     # extraer texto de PDF (informe profundo)
 #
 # --- Conectores de mensajería -------------------------------------------------------------------------

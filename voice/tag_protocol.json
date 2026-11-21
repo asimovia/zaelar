@@ -1,5 +1,5 @@
 {
-  "_doc": "The OWNER of every tag the grammar (`voice/tag_protocol.py`) emits, read by `nucleo/flash/tag_effects.leaves`: `canvas`/`engine` never leave the machine; `app` leaves as the card's manifest declares the act (`widget.data` names its card in the tag; `app:<card>` is that card's act of the tag's name); `connector:<id>` carries the `effects` that connector's catalog declares for the tag (`connectors/catalog/<id>.json` -> `tags`); `call` is a model call written as text, which crosses the call's own gate.",
+  "_doc": "The OWNER of every tag the grammar (`voice/tag_protocol.py`) emits: `canvas`/`engine` never leave the machine; `app` leaves as the card's manifest declares the act (`widget.data` names its card in the tag; `app:<card>` is that card's act of the tag's name); `connector:<id>` carries the `effects` that connector's catalog declares for the tag (`connectors/catalog/<id>.json` -> `tags`); `call` is a model call written as text, which crosses the call's own gate.",
   "owners": {
     "show": "canvas",
     "close": "canvas",

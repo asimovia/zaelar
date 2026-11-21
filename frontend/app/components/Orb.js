@@ -72,7 +72,7 @@ export function Orb() {
   // "worked twice and then stopped"). OFF = always (listens+answers to everything, default).
   // store.attentionMode/assistantName mirror config/settings.json — read once here (GET /api/settings), kept
   // live afterwards by the `ui`/`orb:attention` + `orb:name` SSE events (sse.js) whichever side changes them,
-  // button OR voice ("activa el modo nombre" — nucleo/flash/identity_actions.py). Toggling writes LIVE via the
+  // button OR voice ("activa el modo nombre" — nucleo/conversation_host/acts_self.py). Toggling writes LIVE via the
   // same /api/settings seam the ⚙ uses (attention_mode is "live" — voice/attention.py::mode() reads
   // ZAELAR_ATTENTION each turn, no reconnect needed).
   const wakeOn = () => store.attentionMode() === "smart" || store.attentionMode() === "wakeword";

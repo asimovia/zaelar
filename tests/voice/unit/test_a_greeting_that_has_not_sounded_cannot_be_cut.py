@@ -34,7 +34,7 @@ import pytest
 from voice.engine.pipeline.first_air import READY_MAX_S, FirstAir
 from tests import voice_turn_source as _vts   # V2-778 F1: a split file is read with its moved pieces
 
-SRC = Path(__file__).resolve().parents[3] / "voice/engine/pipeline/agent.py"
+SRC = Path(__file__).resolve().parents[3] / "voice/engine/pipeline/child_session.py"   # the voice's own process (V2-891)
 
 
 class _Handle:
@@ -158,7 +158,7 @@ def test_the_bound_is_generous_enough_for_the_cold_handshake_we_measured():
         "bound under that would lift the veil onto the very silence this exists to remove")
 
 
-# ── the wiring: `agent.py` must actually be using it ──────────────────────────────────────────────────
+# ── the wiring: the voice process's session (`child_session.py`) must actually be using it ──────────────────────────────────────────────────
 
 def _body() -> str:
     return _vts.read(SRC)
@@ -166,30 +166,27 @@ def _body() -> str:
 
 def test_the_kickoff_is_created_uninterruptible_and_parked():
     body = _body()
-    assert "generate_reply(user_input=kickoff_text, allow_interruptions=False)" in body, (
+    assert "generate_reply(user_input=text, allow_interruptions=False)" in body, (
         "the greeting must be born uninterruptible, or the barge-in that killed it at +4.07 s kills it again")
-    assert "_air.park(_greeting, on_air=_air.lift)" in body, (
+    assert "air.park(greeting, on_air=air.lift)" in body, (
         "…and parked, or nothing ever hands the interruption back and he cannot cut a greeting he hears")
 
 
 def test_the_speaking_edge_is_what_releases_it():
     body = _body()
-    i = body.index("def on_state_change(state: State) -> None:")
+    i = body.index("def _on_state(state: State) -> None:")
     block = body[i:body.index("\n    sm = StateMachine(", i)]
-    assert "if speaking:" in block and "_air.on_speaking()" in block
+    assert 'state.value == "speaking"' in block and "air.on_speaking()" in block
 
 
 def test_the_barrier_is_no_longer_published_before_the_greeting():
-    """The regression that would restore the whole defect in one line — in the embedded session and in the voice's
-    own process (V2-891), which asks the body for the same decision."""
-    body = _body()
-    assert "boot.ready()" not in body, (
-        "the barrier must go through `_air.lift()`, which is what ties it to the first audio frame")
-    assert body.index("_air.arm_safety_net()") < body.index("decide_kickoff("), (
+    """The regression that would restore the whole defect in one line, in the voice's own process (V2-891), which asks
+    the body for the decision."""
+    child = _body()
+    assert "boot.ready()" not in child, (
+        "the barrier must go through `air.lift()`, which is what ties it to the first audio frame")
+    assert child.index("air.arm_safety_net()") < child.index("/api/voice/child/kickoff"), (
         "the net has to be armed before the greeting is attempted, or a failure strands the splash")
-    child = _vts.read(SRC.parent / "child_session.py")
-    assert "boot.ready()" not in child
-    assert child.index("air.arm_safety_net()") < child.index("/api/voice/child/kickoff")
 
 
 def test_every_path_that_will_not_greet_lifts_the_veil_at_once(monkeypatch):
@@ -225,10 +222,7 @@ def test_every_path_that_will_not_greet_lifts_the_veil_at_once(monkeypatch):
     assert any("kickoff omitido — reconexión a sesión en curso" in x for x in lines)
     monkeypatch.setattr(_mem, "seconds_since_last_conv", lambda: None)
     assert fa.decide_kickoff("zaelar-fresh", lambda *a, **k: None), "a fresh room with nothing waiting greets"
-    body = _body()
-    i = body.index("if not kickoff_text:")
-    assert "_air.lift()" in body[i:body.index("return", i)], "no greeting must lift the veil at once"
-    assert "on_air=_air.lift" in body, "…and the greeting's own, which fires on the first audio frame"
-    child = _vts.read(SRC.parent / "child_session.py")
+    child = _body()
     i = child.index("if not text:")
-    assert "air.lift()" in child[i:child.index("return", i)] and "on_air=air.lift" in child
+    assert "air.lift()" in child[i:child.index("return", i)], "no greeting must lift the veil at once"
+    assert "on_air=air.lift" in child, "…and the greeting's own, which fires on the first audio frame"

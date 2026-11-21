@@ -1,11 +1,9 @@
-/* THE BRAIN — one turn of one round through the turn pipeline, as the judge viewer's companion.
-   A FIXED picture of the pipeline (zaelar-architecture.md §5i: gate → brief → memory → prompt → router → the main
-   stream → reflexes/tools → doors → spec/circuit → task row & Brain Worker → notices → mouth) and, for ONE turn,
-   the stations the signal actually crossed lit in the order it crossed them, each with the state it carried.
-   The dark stations that SHOULD have fired are the point of the screen: red, with the check that expected them.
-   Read from the sandbox's observability DB by the turn's corr_id; the raw flow is a link out, never repainted.
-   A flow that carries `conv_*` events is painted with the conversation package's own stations (CONV_STATIONS, the
-   server chooses the picture); `#/replay/<name>/<trace>` reads a replayed session (`conversation.replay --events`).
+/* THE BRAIN — one turn of one round through the conversation manager, as the judge viewer's companion.
+   A FIXED picture of its stations (CONV_STATIONS: ear → inbox → composer → run · model → effect gateway → ledger →
+   mouth) and, for ONE turn, the stations the signal actually crossed lit in the order it crossed them, each with the
+   state it carried. Read from the sandbox's observability DB by the turn's corr_id; the raw flow is a link out, never
+   repainted. `#/replay/<name>/<trace>` reads a replayed session (`conversation.replay --events`). (The old turn
+   pipeline's picture went with it, INI-078 L1.)
    MIRRORED: a private operator console draws the same screen from its `brainMap.js` (see observatory_data.py §8);
    a change to station() or to its CSS in index.html is made in both places. */
 import { $, esc, clip, api, ms, empty, roundHref, brainHref, flag } from "./lib.js";

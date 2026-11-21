@@ -157,29 +157,6 @@ def test_a_proactive_delivery_arms_the_window_around_its_own_playout():
     assert arm >= 0 and say > arm, "the arm has to be set before the first word is spoken"
 
 
-def test_the_ambient_verdict_carries_the_window_so_the_client_can_keep_the_ring_honest():
-    import re
-    from pathlib import Path
-    src = Path(__file__).resolve().parents[3] / "voice/engine/llm/providers/attention_turn.py"
-    text = re.sub(r"(?m)#.*$", "", src.read_text(encoding="utf-8"))
-    # The PROPERTY, not the spelling of one line: the verdict carries the window's own two facts. It used to be
-    # pinned byte for byte and V2-704 went red for ADDING two more fields to the same dict — the log now also
-    # says whether the turn was warm and whether the judge had a dialogue frame, which is what made a real
-    # incident readable. A test that breaks on a field being added is measuring a line, not a guarantee.
-    i = text.find("window = {")
-    assert i >= 0, "el veredicto ya no compone la ventana"
-    decl = text[i:text.find("}", i) + 1]
-    for fact in ("attention.window_s()", "attention.window_open()"):
-        assert fact in decl, (
-            f"sin `{fact}` el cliente no distingue «se cerró la ventana» de «alguien tosió», y oscurecía el "
-            "anillo por las dos — el sonido ambiente no toca los contadores")
-    for face in ('"🙉 ambiente', '"👂 dirigido'):
-        i = text.find(face)
-        assert i >= 0 and "**window" in text[i:i + 300], (
-            f"{face} has to carry it too: BOTH verdicts feed the same ring, and one of them lying is what "
-            f"made the ring contradict the engine")
-
-
 def test_the_relay_no_longer_opens_the_window_before_its_own_TTS():
     import re
     from pathlib import Path

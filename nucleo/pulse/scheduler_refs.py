@@ -9,8 +9,7 @@ from __future__ import annotations
 
 from nucleo import consequence as _consequence
 
-#: What a TURN does with his scheduled jobs, declared once: the escalate question carries it among the acts done on
-#: the spot (`nucleo/flash/escalation_guard.declared_turn_acts`), so an order over a job is this door, not an errand.
+#: What a TURN does with his scheduled jobs, declared once, so an order over a job is this door, not an errand.
 TURN_ACTS = ("schedule, list or cancel one of his reminders or periodic jobs — the scheduler's own rows, addressed "
              "by the reference the assistant's state lists — is done on the spot, in the turn, never a background "
              "worker.")

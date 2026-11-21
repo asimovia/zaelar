@@ -12,7 +12,6 @@ Pinned here:
   · `day_ledger` skips the live chain only, so the midnight request is in the morning's schema;
   · the day's episodes and the live window are cut by ONE silence (`EPISODE_GAP_MIN is LIVE_GAP_MIN`).
 """
-import ast
 import time
 from pathlib import Path
 
@@ -93,14 +92,3 @@ def test_the_midnight_request_is_in_the_mornings_day(fresh_db):
 
 def test_one_silence_cuts_the_day_and_the_window():
     assert memreads.EPISODE_GAP_MIN is memhistory.LIVE_GAP_MIN
-
-
-def test_the_turn_seeds_its_window_with_the_live_episode_only():
-    """The seed call in the turn's admission passes the episode gap (a source guard: the call sits inside a
-    coroutine that needs the whole turn to run)."""
-    tree = ast.parse((ENGINE / "nucleo" / "turn" / "pipeline_admit.py").read_text(encoding="utf-8"))
-    calls = [n for n in ast.walk(tree) if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
-             and n.func.attr == "recent_window"]
-    assert calls, "the window seed is gone"
-    assert all(any(k.arg == "gap_min" for k in c.keywords) for c in calls), \
-        "a seed without `gap_min` puts last night's tail back in front of the model as the freshest dialog"

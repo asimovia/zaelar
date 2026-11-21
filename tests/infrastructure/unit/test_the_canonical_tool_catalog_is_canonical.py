@@ -19,6 +19,9 @@ So the claim becomes a measurement, in BOTH directions: a tool added to the code
 capability nobody will find, and a row left behind after a tool is retired is worse — it sends the
 next reader looking for something that is gone.
 
+Since INI-078 L1 the catalogue is the conversation manager's declared reads and acts
+(`nucleo/conversation_host/declared.json`); the old router's `TOOLS` went with the old turn.
+
 Run: .venv/bin/pytest tests/infrastructure/unit/test_the_canonical_tool_catalog_is_canonical.py
 """
 from __future__ import annotations
@@ -28,7 +31,7 @@ import re
 
 ENGINE = pathlib.Path(__file__).resolve().parents[3]
 DOC = ENGINE / ".meshkore" / "docs" / "architecture" / "zaelar-architecture.md"
-HEADING = "## 8. FlashBrain tool catalog"
+HEADING = "## 8. The model's tool catalog"
 
 
 def _documented() -> set[str]:
@@ -50,3 +53,19 @@ def test_the_table_was_actually_found():
     """A parser that silently reads nothing makes both assertions above vacuous — the exact shape of
     a guard that goes green the day the thing it guards disappears."""
     assert len(_documented()) >= 20, "§8's table did not parse; the two checks above proved nothing"
+
+
+def _declared() -> set[str]:
+    import json
+    d = json.loads((ENGINE / "nucleo" / "conversation_host" / "declared.json").read_text(encoding="utf-8"))
+    return set(d["reads"]) | set(d["acts"])
+
+
+def test_every_declared_tool_has_a_row():
+    missing = sorted(_declared() - _documented())
+    assert not missing, f"declared in declared.json and absent from §8 — a capability nobody will find: {missing}"
+
+
+def test_no_row_names_a_tool_that_is_gone():
+    stale = sorted(_documented() - _declared())
+    assert not stale, f"§8 rows for tools declared.json no longer has: {stale}"

@@ -1,4 +1,4 @@
-"""Which rows asked him since our last reply — by `ask_id`, never by the words we said (CRIT-K2b R6, V2-893 L4).
+"""Which rows asked him since our last reply — by `ask_id`, never by the words we said (V2-893 L4).
 
 The one asker notes every question it puts to him (`asker.ask`), wherever it is said — the turn's mouth or out of
 turn; the «which task?» doubt notes the rows it names (`among`). His turn reads them when its window is built

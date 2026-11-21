@@ -40,7 +40,7 @@ async def _drain_replies() -> None:
             continue
         logger.info(f"Telegram: respuesta enviada a {chat_id}")
         # V2-847 — no note tells the model this send happened: the echo below settles the request's row, and the
-        # mouth says the verdict (`nucleo/turn/reply.py`). A note that ordered «confirm it» named whatever `to` held
+        # line he hears is the connector's receipt (`nucleo/send/receipt.py`). A note that ordered «confirm it» named whatever `to` held
         # and was spoken as the person he meant — one door for what an act did, never a second one.
         # V2-819 — and the card that sent it hears it LEFT: the echo carries the order's `ref`, under the same id
         # the account's own outgoing event gives it, so the two land on one row. Outside the try: failing to

@@ -23,7 +23,7 @@ _wrong_space_last = 0.0
 # lexical channel (FTS5) lives in the same database and answers in milliseconds, so past `embed_budget_ms` the read
 # goes on with it alone — a worse recall, never a turn that waits. The embedding keeps running in its own small pool
 # (its result warms nothing, and the pool is bounded so abandoned ones cannot pile up). A REMOTE embedder is not
-# bounded here: the turn's own recall budget (`nucleo/turn/recall_budget.py`) already runs the lexical lane beside it.
+# bounded here.
 _LOCAL_BACKENDS = ("ollama", "fastembed")
 _EMBED_POOL = None
 _budget_cache = {"at": 0.0, "s": 0.3}

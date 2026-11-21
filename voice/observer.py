@@ -94,7 +94,7 @@ _CAT = {
     # absence of new events under its corr_id; this marks it for real when the worker that spawned it finishes.
     "flow": "worker",
     # `thread` (V2-878 §6): ONE event per thread decision (route verb, judge menu/answer, timeouts, recall, would-split);
-    "thread": "worker",   # written only by `nucleo/turn/thread_event.py`.
+    "thread": "worker",   # written only by `nucleo/request/thread_event.py`.
     # `errand` (V2-683) = an errand with a THIRD PARTY: born, woken, closed. Family `worker` because to the operator it
     # is work done for him, like a task; its OWN kind because it is not a process — it survives restarts, waits hours
     # between moves, and «when did this wake and what did it decide» has to be countable apart from a worker's steps.

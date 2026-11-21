@@ -22,7 +22,7 @@ THE MECHANISM, and why each piece sits where it does:
     (`no_card` · `child` · `event` · `cluster` · `no_row`). «Did the reference get made, and if not why?» is one
     query of the `artifact` kind, never an inference from silence.
   · REOPENING is not this module's: the box calls the existing door (`POST /api/tasks/reopen` →
-    `nucleo/turn/task_recall.reopen`), which rebuilds the deliverable from what the task kept.
+    `nucleo/errands/task_recall.reopen`), which rebuilds the deliverable from what the task kept.
 
 What is NOT his: an errand started by another errand (`depth`/`parent_task_id` — its parent already has a box), an
 errand born from an arriving event with no turn of his behind it (`origin == "event"`, the stream worker), and work a

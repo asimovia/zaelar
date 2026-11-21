@@ -147,6 +147,6 @@ def test_the_name_is_read_where_a_rename_actually_lands(_renamed):
     assert _p.is_presence_check("Johnny, ¿sigues ahí?"), "the vocative must come off a knock too"
     # Anchored on the IMPORT, not the words: both files explain this defect in prose, and a scan that the
     # explanation itself trips is a scan that will be weakened rather than believed.
-    for rel in (("voice", "engine", "llm", "providers", "fast_lane.py"), ("nucleo", "flash", "presence.py")):
+    for rel in (("nucleo", "self", "presence.py"),):    # (the old turn's fast lane went with it, INI-078 L1)
         src = (ENG.joinpath(*rel)).read_text(encoding="utf-8")
         assert "from config.settings import" not in src, f"{rel[-1]} still reads the name from the settings file"

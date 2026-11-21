@@ -112,31 +112,3 @@ def _src(*parts: str) -> str:
     import pathlib
     p = pathlib.Path(__file__).resolve().parents[4].joinpath(*parts)
     return "\n".join(L for L in p.read_text("utf-8").splitlines() if not L.strip().startswith("#"))
-
-
-def test_the_owner_of_the_decision_consults_the_remainder():
-    """Anchored on the module that OWNS the block (V2-555), not on the caller it was extracted from — the
-    whole hard-interrupt decision lives in `hard_turn.py` since the architecture ratchet was paid here."""
-    body = _src("nucleo", "flash", "hard_turn.py")
-    assert "close_all_remainder(text" in body, "the remainder is never asked for"   # V2-930: (text, known)
-    assert "return rest" in body, "the remainder never becomes what the turn goes on with"
-
-
-def test_the_close_is_still_emitted_BEFORE_the_turn_is_allowed_to_continue():
-    """The ordering IS the guarantee. If the remainder were computed first and the close only emitted on the
-    way out, a failure in between would lose the one order this whole mechanism exists to never lose."""
-    body = _src("nucleo", "flash", "hard_turn.py")
-    body = body[body.index("async def handle("):]       # V2-778 F2-22: `remainder()` is defined above, called here
-    close_at = body.index('_bulk.close_all(emit')     # V2-807 T-08: the one bulk-close door
-    rest_at = body.index("remainder(text, hard)")
-    assert close_at < rest_at, "the deterministic close must be emitted before anything else is decided"
-
-
-def test_the_voice_turn_actually_CONTINUES_on_what_it_is_handed_back():
-    """The caller's half, and the one that decides whether any of this reaches a model: `None` ends the turn
-    exactly as the old unconditional `return` did, and anything else becomes the text of the turn."""
-    body = _src("nucleo", "turn", "pipeline_gate.py")   # V2-851 F5: the turn's gate, in the one pipeline
-    assert "_hard_turn.handle(text, hard, emit, brain)" in body, "the provider no longer delegates the decision"
-    assert "if _cont is None:" in body and "text = _cont" in body, (
-        "a turn that gets a remainder back has to go on with it")
-

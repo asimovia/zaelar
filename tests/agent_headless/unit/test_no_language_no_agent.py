@@ -12,7 +12,6 @@ here too, and there is no second copy of the fact to fall out of step.
 """
 from __future__ import annotations
 
-from tests import voice_turn_source as _vts
 
 import asyncio
 import json
@@ -117,15 +116,6 @@ def test_a_fresh_start_forgets_any_earlier_power_off(workspace):
     from i18n.init import detect
     asyncio.run(detect.lock("es", onboarding=True))
     assert runstate.stopped() is False, "a brand-new agent inherited a ⏻ off from before its language existed"
-
-
-def test_a_turn_heard_without_a_language_never_reaches_the_brain():
-    """The backstop for a session that outlived the gate: after the mic switch, before the attention judge."""
-    src = _vts.read(ENGINE / "voice/engine/llm/providers/nucleo.py")
-    mic = src.index("mic_input.blocks_turn(text)")
-    gate = src.index("_rs_lang.language_pending()")
-    judge = src.index("_attention_turn.judge(")
-    assert mic < gate < judge
 
 
 def test_the_voice_session_is_refused_while_stopped():

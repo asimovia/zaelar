@@ -117,7 +117,7 @@ def unmatched(rows: list[dict], keep: list[dict]) -> list[dict]:
 
 def radius(action: str, payload: dict, db: dict) -> int | None:
     """How many appointments this call would actually delete — the widget's own answer to «how much does
-    this touch», read by `nucleo/flash/frontend._scope` before the consent rule decides (V2-720).
+    this touch», read by `nucleo/acts/act_policy._scope` before the consent rule decides (V2-720).
 
     The rail was already written («the gate is the RADIUS, not the verb», V2-707) and this sweep walked
     straight past it: `clear_range`'s selector is `from`, a DATE, so a filled `from` read as «names one

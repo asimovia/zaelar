@@ -15,7 +15,7 @@ treat an absence in it as authoritative.
 So the summary stays exactly as it is, and a QUESTION gets its own door — through the resolver the SENDING side
 already trusts, so what the brain says about who somebody is and what the message door does with that person
 can never again be two different answers. The seam is `data.read_query(question)`, declared generically in
-`nucleo/flash/widget_read.py`; the agenda and the inbox joined through the same one.
+`widgets/read.py`; the agenda and the inbox joined through the same one.
 """
 from __future__ import annotations
 
@@ -155,7 +155,7 @@ def _full_row(c: dict) -> str:
 
 
 def read_query(question: str) -> str:
-    """The rows this question is ABOUT, in full. "" when it names nobody we hold (`nucleo/flash/widget_read`).
+    """The rows this question is ABOUT, in full. "" when it names nobody we hold (`widgets/read.py`).
 
     Resolution goes through `widgets/directory.resolve`, which is the same door the sending side uses and
     already survives the operator's spelling (`Kryptonite` → `Cryptonite`, V2-698). Asking it here rather than

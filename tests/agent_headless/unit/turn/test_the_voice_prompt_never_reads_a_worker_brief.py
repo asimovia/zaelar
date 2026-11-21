@@ -1,10 +1,11 @@
-"""The voice turn's prompt never loads a worker's brief (refactor2710-08 T-04, node 2.891).
+"""The conversation's prompt never loads a worker's brief (refactor2710-08 T-04, node 2.891).
 
 A worker's rules (its drawer, its method, how it presents a sheet) are not the voice's: when both lived beside each
 other in `nucleo/`, nothing stopped a prompt block from importing the other's prose. The briefs now live in
-`nucleo/workers/prompts/`; importing the voice prompt builder, in a clean interpreter, must not load them.
+`nucleo/workers/prompts/`; importing what composes the conversation manager's prompt (its composer, its prefix and
+its memory reader), in a clean interpreter, must not load them. (The old turn's builder went with it, INI-078 L1.)
 
-Disarm: import `nucleo.workers.prompts` from `nucleo/turn/prompt/builder.py` and this goes red.
+Disarm: import `nucleo.workers.prompts` from `nucleo/conversation_host/prefix.py` and this goes red.
 """
 from __future__ import annotations
 
@@ -16,7 +17,8 @@ ENGINE = pathlib.Path(__file__).resolve().parents[4]
 
 
 def test_importing_the_voice_prompt_loads_no_worker_brief():
-    code = ("import sys; import nucleo.turn.prompt.builder, nucleo.turn.prompt.live_state; "
+    code = ("import sys; import conversation.composer, nucleo.conversation_host.prefix, "
+            "nucleo.conversation_host.memory_read; "
             "print(sorted(m for m in sys.modules if m.startswith('nucleo.workers.prompts')))")
     out = subprocess.run([sys.executable, "-c", code], cwd=ENGINE, capture_output=True, text=True, timeout=60)
     assert out.returncode == 0, out.stderr[-800:]

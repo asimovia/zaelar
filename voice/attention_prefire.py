@@ -2,7 +2,7 @@
 
 Measured on a cloud test Machine: a COLD turn (after the conversation window lapsed) paid the judge — one model call,
 ~1.0-1.25 s — in series after the ear confirmed the turn and before the prompt. `prefire` starts it on the words the ear
-ANNOUNCED (`nucleo/turn/brief_turn.fire_early`), so it runs while the ear confirms the turn. It decides nothing:
+ANNOUNCED, so it runs while the ear confirms the turn. It decides nothing:
 `attention.evaluate_content` still awaits a verdict before anything acts, and takes this one only for the SAME words
 judged with the SAME frame (`prefired`); otherwise it judges as always.
 """

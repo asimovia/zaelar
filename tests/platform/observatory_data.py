@@ -1320,27 +1320,9 @@ def round_view(root: Path, file: str, idx: int = 0) -> dict:
 
 
 # ═══ 8 · THE BRAIN SCREEN — one turn, the stations it crossed ════════════════════════════════════════════════
-# MIRRORED: a private operator console keeps a copy of this section (STATIONS, _station_of, _station_state, _light,
-# and CONV_STATIONS with its _conv_* readers)
-# and of dashboard/brain.js in its `brainMap.js`, with a guard test that compares the STATIONS table. A change to a
-# station, to the events that light it or to the state it shows is made in BOTH places in the same batch.
-#: The turn pipeline as STATIONS, in order (zaelar-architecture.md §5i, §5h). Each station names the families and
-#: kinds of the sandbox's observability stream that light it. The picture is fixed; a turn lights a subset.
-STATIONS: tuple[dict, ...] = (
-    {"id": "gate", "label": "Gate", "module": "nucleo/turn/pipeline_gate", "hint": "attention · hard stop · the fast lane"},
-    {"id": "brief", "label": "Turn brief", "module": "nucleo/turn/brief (Jev)", "hint": "one trip: verdicts with a confidence"},
-    {"id": "memory", "label": "Memory heart", "module": "memory/ · nucleo/memory_agent", "hint": "state · recall · the window"},
-    {"id": "prompt", "label": "Prompt", "module": "nucleo/flash/prompt", "hint": "composed state + request + tools"},
-    {"id": "route", "label": "Router · post-stream", "module": "nucleo/switchboard · nucleo/flash/post_stream*", "hint": "conversation · inline act · a task · the acts' verdicts"},
-    {"id": "model", "label": "Main stream", "module": "nucleo/turn/pipeline_stream", "hint": "the one model call"},
-    {"id": "tools", "label": "Reflexes · tools", "module": "nucleo/flash/tool_executor · search/ · widgets/", "hint": "search · card ops · arbiter"},
-    {"id": "consent", "label": "Doors", "module": "nucleo/consent · consequence doors", "hint": "pass · ask · blocked"},
-    {"id": "circuit", "label": "Spec · circuit", "module": "nucleo/circuit (spec · verdict · settle)", "hint": "the end state and its verdict"},
-    {"id": "worker", "label": "Task row · Brain Worker", "module": "nucleo/workers · nucleo/dispatch", "hint": "row state before → after"},
-    {"id": "notices", "label": "Notices", "module": "nucleo/pulse/notices", "hint": "the out-of-turn mouth"},
-    {"id": "mouth", "label": "Mouth", "module": "nucleo/turn/mouth", "hint": "what the turn said"},
-)
-STATION_IDS = tuple(s["id"] for s in STATIONS)
+# MIRRORED: a private operator console keeps a copy of this section (CONV_STATIONS with its _conv_* readers) and of
+# dashboard/brain.js in its `brainMap.js`. A change to a station, to the events that light it or to the state it shows
+# is made in BOTH places in the same batch. (The old turn pipeline's picture, `STATIONS`, went with it, INI-078 L1.)
 
 
 def _payload(row: dict) -> dict:
@@ -1393,197 +1375,8 @@ def _find_turn(con: sqlite3.Connection, text: str, at: float, emitted: str | Non
     return "", "none"
 
 
-def _station_of(row: dict, p: dict) -> str:
-    cat, kind, label = row.get("cat") or "", row.get("kind") or "", row.get("label") or ""
-    if cat == "flash":
-        if kind in ("ambient", "actionmap"):
-            return "gate"
-        if kind == "search" or kind == "music":
-            return "tools"
-        if kind == "brain":
-            if label.startswith("jev"):
-                return "brief"
-            if "prompt" in label and "Nucleo" in label:
-                return "prompt"
-            if "reply" in label and "Nucleo" in label:
-                return "model"
-            if label.startswith("💬") or label.startswith("🗣"):
-                return "mouth"
-            if "escal" in label or "veredicto completa" in label or "catálogo" in label or "catalog" in label:
-                return "route"
-            if "promesa" in label or "data-op" in label or "segunda pasada" in label:
-                return "tools"
-            return "route"
-        if kind in ("trace", "phase", "rail", "system"):
-            return "gate" if label == "turno" else "route"
-    if cat == "memory":
-        return "memory"
-    if cat == "widget":
-        return "tools"
-    if cat == "spec" or cat == "circuit":
-        return "circuit"
-    if cat == "worker":
-        return "worker"
-    if cat == "system":
-        if kind in ("notify", "notice"):
-            return "notices"
-        if kind == "consequence":
-            return "notices" if str(p.get("door", "")).startswith("speech") else "consent"
-        return ""
-    if cat == "main":
-        return "tools"
-    return ""
-
-
 def _kv(k: str, v: Any) -> dict:
     return {"k": k, "v": v if isinstance(v, (int, float, bool)) or v is None else str(v)[:220]}
-
-
-def _station_state(sid: str, rows: list[tuple[dict, dict]]) -> list[dict]:
-    """The state the signal carried through this station, as key/value lines: the verdicts and their confidence,
-    the route, the tool and its args, the row before/after, the consent decision, what the mouth said."""
-    st: list[dict] = []
-    if sid == "gate":
-        for row, p in rows:
-            if row["kind"] == "ambient":
-                st.append(_kv("directed at the agent", p.get("directed")))
-            elif row["kind"] == "actionmap":
-                st.append(_kv("fast lane", f"{p.get('action')} · {p.get('source') or p.get('src') or ''} · no model" if "direct" in (row["label"] or "") else row["label"]))
-            elif row["label"] == "turno":
-                st.append(_kv("heard", p.get("text")))
-    elif sid == "brief":
-        for row, p in rows:
-            lab = row["label"] or ""
-            if lab.startswith("jev read "):
-                st.append(_kv(lab.removeprefix("jev read "), p.get("text")))
-            elif lab.startswith("jev turn-brief"):
-                st.append(_kv("brief", f"{lab} · {p.get('ms') or row.get('ms') or ''} ms"))
-            elif lab.startswith("jev"):
-                st.append(_kv(lab, p.get("text")))
-    elif sid == "memory":
-        for row, p in rows:
-            if p.get("text") or row["label"]:
-                st.append(_kv(row["label"] or row["kind"], p.get("text") or ""))
-    elif sid == "prompt":
-        for row, p in rows:
-            st.append(_kv("request", p.get("text")))
-    elif sid == "route":
-        for row, p in rows:
-            st.append(_kv(row["label"] or row["kind"], p.get("text") or p.get("action") or ""))
-    elif sid == "model":
-        for row, p in rows:
-            st.append(_kv("model", f"{p.get('model') or row.get('model') or '?'} · {p.get('engine') or ''}"))
-            st.append(_kv("latency", f"ttft {p.get('ttft_ms')} ms · total {p.get('fast_ms') or row.get('ms')} ms"))
-            st.append(_kv("prompt", f"{p.get('prompt_tokens')} tokens · {p.get('n_tools')} tools · window {p.get('window_msgs')} msgs"))
-            st.append(_kv("finish", p.get("finish_reason")))
-            for tc in p.get("raw_tool_calls") or []:
-                st.append(_kv("tool call", f"{tc.get('name')} {str(tc.get('arguments'))[:160]}"))
-            if p.get("escalated"):
-                st.append(_kv("escalated", True))
-            if p.get("dropped_tool_calls"):
-                st.append(_kv("dropped tool calls", p.get("dropped_tool_calls")))
-    elif sid == "tools":
-        for row, p in rows:
-            if row["cat"] == "widget" and row["kind"] == "arbiter":
-                st.append(_kv(f"arbiter · {p.get('op')} {p.get('id')}", f"{'allowed' if p.get('allow') else 'VETOED'} · {p.get('rule')} · by {p.get('src')}"))
-            elif row["cat"] == "widget" and row["kind"] == "widget":
-                st.append(_kv(f"card · {p.get('id') or ''}", f"{row['label']} · by {p.get('src') or ''}" + (f" · {p.get('landed')} rows landed" if p.get("landed") else "") + (f" · {p.get('text')}" if row['label'] == 'action_failed' else "")))
-            elif row["cat"] == "flash" and row["kind"] == "search":
-                st.append(_kv(f"search · {p.get('tool') or ''}", p.get("text")))
-            elif row["cat"] == "main":
-                st.append(_kv("canvas", ", ".join(p.get("instances") or [])))
-            else:
-                st.append(_kv(row["label"] or row["kind"], p.get("text") or ""))
-    elif sid == "consent":
-        for row, p in rows:
-            st.append(_kv(f"door · {p.get('door')}", f"{p.get('verdict')}{' · BLOCKED' if p.get('blocked') else ''}"
-                          + (f" · {p.get('reason')}" if p.get("reason") else "") + (f" · {str(p.get('arg'))[:80]}" if p.get("arg") else "")))
-    elif sid == "circuit":
-        for row, p in rows:
-            if row["cat"] == "spec":
-                st.append(_kv(f"spec {p.get('id') or ''} → task {p.get('task_id') or ''}", f"{row['label']} · {p.get('text')} · {p.get('status') or ''}"))
-            elif row["kind"] == "verdict":
-                st.append(_kv("verdict", f"{p.get('verdict')} · row {p.get('row_state')} · delivered {p.get('delivered')} · {p.get('text') or ''}"))
-            else:
-                st.append(_kv(f"circuit · task {p.get('id') or ''}", f"{p.get('verdict') or row['label']} · {p.get('text') or ''}" + (f" · tries {p.get('tries')}" if p.get("tries") else "")))
-    elif sid == "worker":
-        starts = [p for row, p in rows if row["kind"] == "worker_start"]
-        ends = [p for row, p in rows if row["kind"] == "flow" and row["label"] == "end"]
-        tasks = [(row, p) for row, p in rows if row["kind"] == "task"]
-        for p in starts:
-            st.append(_kv(f"worker {p.get('id')} started", f"{p.get('model')} · {p.get('layer')} · {str(p.get('text'))[:120]}"))
-        if tasks:
-            st.append(_kv("task events", f"{len(tasks)} · last: {tasks[-1][0]['label']} {str(tasks[-1][1].get('text'))[:100]}"))
-        last: dict = {}                  # the LAST move of each task row (`task_progress`): where it stood…
-        checks: dict = {}                # …and the last harness it carried (a delta carries none)
-        for row, p in rows:
-            if row["kind"] == "task_progress":
-                last[p.get("task_id") or ""] = p
-                if p.get("harness"):
-                    checks[p.get("task_id") or ""] = p["harness"]
-        for tid, p in last.items():
-            h = checks.get(tid) or {}
-            st.append(_kv(f"task {tid} · {p.get('writer') or ''}", f"{p.get('text') or p.get('state') or ''}"
-                          + (f" · checks: {h.get('end_state')} ({h.get('status') or ''})" if h.get("end_state") else "")))
-        for p in ends:
-            st.append(_kv("row after", f"{p.get('status') or ('ok' if p.get('ok') else 'failed')}" + (f" · {p.get('reason')}" if p.get("reason") else "")))
-        if not starts and not ends and tasks:
-            st.append(_kv("row", "machinery only (background / navegador), no Brain Worker born"))
-    elif sid == "notices":
-        for row, p in rows:
-            st.append(_kv(row["label"] or p.get("door") or "notice", p.get("text")))
-    elif sid == "mouth":
-        for row, p in rows:
-            if p.get("role") == "assistant" or (row["label"] or "").startswith("🗣"):
-                st.append(_kv("said", p.get("text")))
-    return st[:24]
-
-
-def _light(stations: dict, turn_action: dict | None, reply: dict | None) -> None:
-    """Which DARK stations should have fired — the point of the screen. Decided from what the turn itself asked for
-    (the model's tool calls and escalation, the harness's `turn_actions`), never from prose."""
-    def expect(sid: str, why: str) -> None:
-        s = stations[sid]
-        if not s["lit"]:
-            s["expected"] = True
-            s["why"].append(why)
-
-    if not stations["gate"]["lit"]:
-        expect("gate", "no root trace: the turn never entered the pipeline")
-        return
-    fast_lane = any(k.get("k") == "fast lane" for k in stations["gate"]["state"])
-    if fast_lane:
-        return                                   # a hit on the fast lane ends the turn with no model call
-    if not stations["model"]["lit"]:
-        expect("model", "no main stream: the turn reached the gate and no model answered")
-    if not stations["mouth"]["lit"]:
-        expect("mouth", "a turn owes words — nothing was said")
-    calls = [tc.get("name") for tc in ((reply or {}).get("raw_tool_calls") or [])]
-    if calls:
-        if any(c and (c.startswith("escalate") or c == "escalate_to_slowbrain") for c in calls):
-            expect("route", f"the model called {calls} — the router should have opened the task")
-            expect("worker", "an escalation was called and no Brain Worker was born")
-            expect("circuit", "a task was asked for and no spec/verdict was written")
-        else:
-            expect("tools", f"the model called {calls} and no tool ran")
-    if (reply or {}).get("escalated"):
-        expect("worker", "the reply says `escalated` and no worker event followed")
-    asked = list((turn_action or {}).get("pedido") or [])
-    action = str((turn_action or {}).get("action") or "")
-    if action.startswith("escalate") or "escalate_to_slowbrain" in asked:
-        expect("worker", f"turn_actions: {action or asked} — no Brain Worker in this flow")
-        expect("circuit", "a task row needs its spec and its verdict")
-    if "web_search" in asked or action.endswith(":search"):
-        expect("tools", "turn_actions asked for a search — none fired in this flow")
-    if action.startswith("widget_data"):
-        expect("tools", f"turn_actions: {action} — no card op in this flow")
-        expect("circuit", "an inline act is a row too: no verdict written")
-    if stations["worker"]["lit"] and any(k.get("k") == "row after" for k in stations["worker"]["state"]) \
-            and not stations["notices"]["lit"]:
-        expect("notices", "the worker ended inside this flow and nobody said so out of turn")
-    for warn in stations["tools"]["state"]:
-        if "promesa sin acción" in str(warn.get("k")):
-            expect("tools", "the brain itself flagged a promise with no action")
 
 
 #: The conversation package's pipeline (`conversation/`, V2-941): a SECOND picture, chosen when the flow carries
@@ -1648,23 +1441,18 @@ def _conv_light(stations: dict) -> None:
         expect("mouth", "the request closed as answered and the mouth said nothing")
 
 
-def _station_any(row: dict, p: dict) -> str:
-    return _conv_station_of(row) if str(row.get("kind") or "").startswith("conv_") else _station_of(row, p)
-
 
 def light_flow(rows: list[dict], turn_action: dict | None = None) -> dict:
     """The stations of ONE flow (rows in time order, the observer's columns): the picture is chosen by the flow —
-    `CONV_STATIONS` when it carries `conv_*` events, `STATIONS` otherwise — then lit, stated and judged dark."""
-    conv = is_conv_flow(rows)
-    picture = CONV_STATIONS if conv else STATIONS
+    the conversation manager's `CONV_STATIONS` — then lit and stated."""
+    picture = CONV_STATIONS
     stations = {s["id"]: dict(s, lit=False, expected=False, why=[], state=[], n=0, first_ms=None, events=[])
                 for s in picture}
     grouped: dict[str, list[tuple[dict, dict]]] = {sid: [] for sid in stations}
     t0 = float(rows[0]["ts_ms"]) if rows else 0.0
-    reply = None
     for row in rows:
         p = _payload(row)
-        sid = _conv_station_of(row) if conv else _station_of(row, p)
+        sid = _conv_station_of(row)
         if not sid:
             continue
         grouped[sid].append((row, p))
@@ -1676,14 +1464,9 @@ def light_flow(rows: list[dict], turn_action: dict | None = None) -> dict:
         if len(s["events"]) < 8:
             s["events"].append({"id": row["id"], "rel_ms": int(float(row["ts_ms"]) - t0), "label": (row["label"] or row["kind"] or "")[:80],
                                 "cat": row["cat"], "kind": row["kind"], "span": row.get("span") or ""})
-        if sid == "model" and "reply" in (row["label"] or ""):
-            reply = p
     for sid in stations:
-        stations[sid]["state"] = _conv_station_state(grouped[sid]) if conv else _station_state(sid, grouped[sid])
-    if conv:
-        _conv_light(stations)
-    else:
-        _light(stations, turn_action, reply)
+        stations[sid]["state"] = _conv_station_state(grouped[sid])
+    _conv_light(stations)
     order = sorted((s for s in stations.values() if s["lit"]), key=lambda s: s["first_ms"] or 0)
     return {"stations": list(stations.values()), "order": [s["id"] for s in order], "n_events": len(rows),
             "span_ms": int(float(rows[-1]["ts_ms"]) - t0) if rows else 0}
@@ -1695,7 +1478,7 @@ def turn_flow(root: Path, file: str, idx: int, turn: int) -> dict:
     turn's `corr_id` (the trace that is born with the turn, `voice/trace.py`)."""
     r, report, path = load_round(root, file, idx)
     base = {"schema": 1, "file": file, "idx": idx, "turn": turn, "stations": [dict(s, lit=False, expected=False,
-            why=[], state=[], n=0, first_ms=None, events=[]) for s in STATIONS]}
+            why=[], state=[], n=0, first_ms=None, events=[]) for s in CONV_STATIONS]}
     if not r:
         return {**base, "readable": False, "why": "no such round"}
     run = r.get("run") or {}
@@ -1732,10 +1515,10 @@ def turn_flow(root: Path, file: str, idx: int, turn: int) -> dict:
             lit = set()
             if c:
                 for row in _flow_rows(con, c, limit=800):
-                    sid = _station_any(row, _payload(row))
+                    sid = _conv_station_of(row)
                     if sid:
                         lit.add(sid)
-            strip.append({"turn": i, "corr_id": c, "matched_by": h, "lit": [s for s in dict.fromkeys(STATION_IDS + CONV_STATION_IDS) if s in lit]})
+            strip.append({"turn": i, "corr_id": c, "matched_by": h, "lit": [s for s in CONV_STATION_IDS if s in lit]})
     finally:
         con.close()
     turn_action = next((t for t in ((run.get("mechanism_report") or {}).get("turn_actions") or [])

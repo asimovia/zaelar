@@ -177,14 +177,13 @@ def test_a_person_in_the_live_room_is_never_cut_by_the_cure(rooms):
     assert rooms.recycled == []
 
 
-def test_the_token_door_and_both_sessions_feed_the_count():
+def test_the_token_door_and_the_voice_session_feed_the_count():
     from pathlib import Path
     root = Path(__file__).resolve().parents[3]
     door = (root / "server" / "livekit_api.py").read_text(encoding="utf-8")
     assert door.count("_owed(") >= 3, "both the direct and the mediated token note the room they mint"
     assert "voice_rooms.note_served(room)" in (root / "voice" / "remote_session.py").read_text(encoding="utf-8")
-    assert "_voice_rooms.note_served(ctx.room.name)" in \
-        (root / "voice" / "engine" / "pipeline" / "agent.py").read_text(encoding="utf-8")
+    # (the embedded session that also noted it went with the old turn, INI-078 L1: the voice's own process is the one)
     loop = (root / "nucleo" / "pulse" / "loop.py").read_text(encoding="utf-8")
     assert "self._supervise_voice_rooms(now)" in loop
 

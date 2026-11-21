@@ -258,7 +258,7 @@ async def _rerun(request: str, sheet: str) -> None:
     and an insufficient pass escalates by itself from inside `fast_pass`, carrying this very sheet.
     """
     try:
-        from nucleo.acts import search as _search
+        from nucleo.acts import search_sheet as _search
         res = await asyncio.to_thread(_search.fast_pass, request, operator_text=request, sheet=sheet)
     except Exception as e:  # noqa: BLE001
         logger.warning(f"errand_continuity: la re-pasada rápida falló ({e!r})")

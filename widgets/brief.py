@@ -18,7 +18,7 @@ from . import runtime
 # itself, instantly, NEVER escalating a data mutation to a code agent. It only ESCALATES widget CODE creation or
 # modification (the SlowBrain writes code). Some data actions are marked for confirmation because they are
 # irreversible, so the fast layer still performs them but asks first; the rest are direct. The provider
-# (`voice/engine/llm/providers/nucleo.py`) enforces this in code (see widgets/actions.py for the FAST/CONFIRM/
+# enforces this in code (see widgets/actions.py for the FAST/CONFIRM/
 # ESCALATE semantics): a [[create]]/[[modify]]/[[push]] tag auto-escalates; a declared data-op never does.
 TAG_PROTOCOL = (
     "CANVAS = la única pantalla; zaelar enseña TODO ahí y NUNCA abre el navegador/apps del sistema para mostrar "

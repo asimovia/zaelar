@@ -126,12 +126,12 @@ def _wakewords() -> tuple[str, ...]:
 
 
 def set_assistant_name(name: str | None) -> None:
-    """PROCESS-level cache of zaelar's current spoken name (renamed via voice — the rename guard in
-    `nucleo/flash/router_guards.extract_name_change`, wired from both channels). Extends `_wakewords()` so a
+    """PROCESS-level cache of zaelar's current spoken name (renamed via voice — the rename act in
+    `nucleo/conversation_host/acts_self.py`, through `nucleo/self/identity.apply_rename_now`). Extends `_wakewords()` so a
     rename does not silently break `wakeword`/`smart` mode. Deliberately no DB access HERE — this module never
     touches memory (see the file docstring): the caller reads `state.assistant_name` and pushes it in, the
     same shape `note_directed()`/`set_ptt()` already use for other process-level facts. Called (a) immediately
-    by the rename handler, session-layer, and (b) off-hot-path by `nucleo/flash/memory_cache` on every state
+    by the rename handler, session-layer, and (b) off-hot-path by `memory/state_cache` on every state
     refresh, so a reconnect or another surface renaming it (e.g. the ⚙ panel, if one is ever added) also reaches
     here without a code change."""
     _state["assistant_name"] = (name or "").strip()
@@ -145,7 +145,7 @@ def assistant_name() -> str:
 
 def wakewords() -> tuple[str, ...]:
     """Every word that IS his name right now — the default, the env override, and the RENAME. Public because
-    `nucleo/flash/presence.py` has to know what counts as being called by name (V2-665), and reading the
+    `nucleo/self/presence.py` has to know what counts as being called by name (V2-665), and reading the
     settings file for it is what made that dead: the name lives in MEMORY state (`memory.state()
     ["assistant_name"]`, pushed here by `memory_cache`), never in `config/settings.json`."""
     return _wakewords()

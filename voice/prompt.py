@@ -2,7 +2,7 @@
 # SYSTEM PROMPT — personal-life voice assistant (ENGLISH), with personality and a ready-made capability story.
 #
 # NOT on the FlashBrain path anymore (V2-027): the nucleo brain composes its identity from the MISSION seeded in
-# central memory + `langs` (in the operator's language), via `memory.compose_state()` — see `nucleo/flash/prompt.py`.
+# central memory + `langs` (in the operator's language), via `memory.compose_state()`.
 # This English persona now only serves the baseline/duo brains (`BRAIN=direct|local|duo`) and the harness/judge.
 #
 # This is the assistant counterpart of the interview tool's profile system. There are no profiles, phases or

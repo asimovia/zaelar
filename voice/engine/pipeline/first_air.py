@@ -89,8 +89,8 @@ def silent_first_run() -> bool:
 
 
 def greeting_prompt(lang) -> str:
-    """The FIRST-TURN note, in his language — ONE text for the whole engine (A7, 2026-11-12): `nucleo/turn/kickoff`
-    reads the i18n `kickoff_prompt` here, at the gate that recognises a first turn, and in the window that must not
+    """The FIRST-TURN note, in his language — ONE text for the whole engine (A7, 2026-11-12): the i18n
+    `kickoff_prompt` is read here, at the gate that recognises a first turn, and in the window that must not
     keep it as his words. What the greeting SAYS (who the agent is, that its name and voice can change, his name) is
     the introduction phase's block, a system section — not a second instruction composed here. V2-027: the verbose
     capabilities brief is not re-injected either; the per-turn system prompt already carries the state."""

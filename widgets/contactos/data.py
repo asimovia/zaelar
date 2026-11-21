@@ -14,7 +14,7 @@ from . import channels, model
 from . import groups as _groups
 
 # A QUESTION about somebody is answered from the RECORD (`lookup.py`, V2-704), not from the digest; re-exported
-# because `read_query` is the seam `nucleo/flash/widget_read` looks for on every widget's `data.py`.
+# because `read_query` is the seam `widgets/read.py` looks for on every widget's `data.py`.
 from .lookup import read_query  # noqa: F401,E402 — re-export
 
 WIDGET_ID = "contactos"

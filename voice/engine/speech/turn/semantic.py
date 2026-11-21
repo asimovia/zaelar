@@ -8,7 +8,7 @@ pauses to think, and each pause closed a turn that the next fragment cancelled.
     465s → 626s (161 s):  22 prompts · 18 cancelados · 20 rellenos · CERO respuestas
     …sobre trozos como «del», «del software,», «a», «para que», «Un un superplanning»
 
-Of the session's 89 final transcriptions, the lexical layer in `nucleo/flash/segmenter.py` recognizes **43
+Of the session's 89 final transcriptions, the lexical layer in `nucleo/input/segmenter.py` recognizes **43
 as incomplete (48%)** with ZERO false positives on the operator's short commands («pon música», «para»,
 «cancélalo», «sí, te autorizo»), which are the ones that truly cannot be held back.
 

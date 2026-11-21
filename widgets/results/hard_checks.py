@@ -15,7 +15,7 @@ reply tells the worker how many rows still say «?». A verified value starts wi
 anything else reads as not verified, because a value that does not commit is not a confirmation.
 
 Whether a row MEETS a requirement stays the worker's judgement, made on the listing; this module only makes the
-question impossible to skip and the answer readable by the turn (`nucleo/flash/row_check.py`).
+question impossible to skip and the answer readable by the turn.
 """
 from __future__ import annotations
 

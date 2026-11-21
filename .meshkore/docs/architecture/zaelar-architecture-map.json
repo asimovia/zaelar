@@ -612,7 +612,9 @@
    "paths": [
     "nucleo/circuit/ledger.py",
     "nucleo/request",
-    "nucleo/queue"
+    "nucleo/queue",
+    "nucleo/circuit/asker.py",
+    "nucleo/circuit/ask_trace.py"
    ],
    "emits": [
     "task_state",
@@ -620,7 +622,9 @@
     "errand",
     "step",
     "thread",
-    "queue"
+    "queue",
+    "ask",
+    "ask_resolved"
    ],
    "_doc": "The order's row (`nucleo/request/`): one row per intention. His real tasks are one queue in the same table (`nucleo/queue`), whose one writer applies the signals of the pulse, the owner and him (`queue/<what>`). A send is one Brain Worker task with one confirmation at its exit door (`request/send_errand`); its final line is the connector's receipt (`request/send_receipt.py`), said through the out-of-turn notices."
   },
@@ -1069,9 +1073,12 @@
    "zone": "conversation",
    "name": "Route — what is open takes his words",
    "paths": [
-    "nucleo/conversation_host/routing.py"
+    "nucleo/conversation_host/routing.py",
+    "nucleo/conversation_host/route.py"
    ],
-   "emits": [],
+   "emits": [
+    "route"
+   ],
    "_doc": "Before the model, after the shortcut: an open message draft reads his sentence against itself (its one owner), then an open process or a row waiting on him (the switchboard). Taken, its line is said; not taken, the model answers."
   },
   {

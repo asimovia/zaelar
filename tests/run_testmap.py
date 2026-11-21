@@ -1559,7 +1559,7 @@ DOMAINS: list[dict] = [
                                 "latido que lo re-afirman, y el turno que no existe con el micro cerrado",
             "ch": UNIT, "paths": [
                 "tests/agent_headless/unit/test_the_microphone_switch_governs_the_whole_system.py"]},
-        {"id": "3.2", "title": "Puente voz→nucleo + trazas", "ch": VOICE, "paths": ["tests/voice/unit/test_agent_trace_source_guards.py", "tests/voice/unit/test_trace_cluster_session.py", "tests/voice/unit/providers/test_nucleo_directed_context.py", "tests/voice/unit/test_trace.py"]},
+        {"id": "3.2", "title": "Puente voz→nucleo + trazas", "ch": VOICE, "paths": ["tests/voice/unit/test_agent_trace_source_guards.py", "tests/voice/unit/test_trace_cluster_session.py", "tests/voice/unit/test_trace.py"]},
         {"id": "3.3", "title": "Mic→STT (transporte WebRTC)", "ch": VOICE, "live": True,
             "cmd": "./.venv/bin/python -m tests.voice.e2e.mic.mic_selftest"},
         {"id": "3.4", "title": "Bucle de voz completo", "ch": VOICE, "live": True,
@@ -3712,9 +3712,6 @@ DOMAINS: list[dict] = [
         {"id": "2.173", "title": "A factory reset forgets the rules the operator said",
             "ch": UNIT,
             "paths": ["tests/infrastructure/unit/config/test_a_reset_forgets_the_spoken_rules.py"]},
-        {"id": "2.170", "title": "The show-promise backstop shows the app the verdict names before a contextual guess",
-            "ch": UNIT,
-            "paths": ["tests/voice/unit/test_the_show_backstop_shows_the_card_the_verdict_names.py"]},
         {"id": "2.165", "title": "A app brought back from minimized re-tiles the desk if it lands on another",
             "ch": UNIT,
             "paths": ["tests/browser/unit/widgets/test_a_card_brought_back_retiles_the_desk.py"]},
@@ -3967,8 +3964,6 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_move_reads_the_slot_and_the_one_playing.py"]},
         # 2026-10-11 — `la-cola-de-video-con-palabras-imprecisas` (ES): «el último… no, el penúltimo, ponlo justo después
         # del de skills» — verdict youtube:move 1.00, the model called `remove {item: 4}`, the video was deleted, «Hecho.».
-        {"id": "2.492", "title": "Both channels ask ONE removal veto (`destructive_veto.instead`) before their own retargets and before dispatching",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_both_channels_ask_the_destructive_veto.py"]},
         {"id": "2.493", "title": "«penúltimo» / «penultimate» / «second to last» / «antepenúltimo» are positions from the end in the one ordinal table — position refs, the queue's slot, a move's destination",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_from_the_end_ordinals_name_rows_and_slots.py"]},
         {"id": "2.523", "title": "A video the player refused stays in the list digest marked «in the list, can't play here: owner blocks embedding» (es/en)",
@@ -6203,30 +6198,7 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/a2a/unit/test_wake_admission.py"]},
     ]},
     {"id": "7", "name": "SERVER / OBSERVABILIDAD", "nodes": [
-        {"id": "7.1", "title": "Bus de eventos y log", "ch": UNIT, "paths": [
-            "tests/infrastructure/unit/test_bus.py", "tests/infrastructure/unit/test_bus_log.py",
-            "tests/platform/tests/test_events.py", "tests/platform/tests/test_catalog.py",
-            "tests/platform/tests/test_pytest_plugin.py",
-            # V2-709 — the Observatory's spine (language → family → theme) and the wiring that makes a
-            # use case VISIBLE while it runs: the plan the catalog shows must be the plan run.py ticks.
-            "tests/platform/tests/test_the_spine_is_language_family_theme.py",
-            # V2-709 F6 — varios agentes probando a la vez y la pantalla siguiéndolos: el stream
-            # multiplexado, la guarda de travesía en `?run=`, y que el CLI REUTILICE el visor.
-            "tests/platform/tests/test_the_observatory_watches_every_agent_at_once.py",
-            # 2026-11-05 — the diary is disposable: `tests/runs/` is pruned by age (a week), never the
-            # harness's own state nor the newest run; 45 GB had piled up with nothing ever pruning it.
-            "tests/platform/tests/test_retention.py",
-            # 2026-11-06 — the Observatory rebuilt for JUDGING, not for watching the agent: four screens, one
-            # ratchet each (home · test sets · the judge viewer · the brain), reading the server's JSON and the page.
-            "tests/platform/tests/test_the_home_answers_what_is_running_and_how_it_went.py",
-            "tests/platform/tests/test_the_sets_screen_browses_three_layers.py",
-            "tests/platform/tests/test_the_judge_viewer_reads_a_verdict_with_its_evidence.py",
-            "tests/platform/tests/test_the_brain_screen_lights_the_stations_a_turn_crossed.py",
-            "tests/platform/tests/test_the_brain_screen_paints_the_conversation_pipeline.py",
-            # 2026-11-06 — the home is NUMBERS only (unit · benches · use cases ES|US by theme, from the
-            # accumulated ledger over the catalog's completable segment); the tables moved to tabs and the live
-            # run to `#/live`.
-            "tests/platform/tests/test_the_home_is_numbers_and_the_live_run_is_its_own_screen.py"]},
+        {"id": "7.1", "title": "Bus de eventos y log", "ch": UNIT, "paths": ["tests/infrastructure/unit/test_bus.py", "tests/infrastructure/unit/test_bus_log.py", "tests/platform/tests/test_events.py", "tests/platform/tests/test_catalog.py", "tests/platform/tests/test_pytest_plugin.py", "tests/platform/tests/test_the_spine_is_language_family_theme.py", "tests/platform/tests/test_the_observatory_watches_every_agent_at_once.py", "tests/platform/tests/test_retention.py", "tests/platform/tests/test_the_home_answers_what_is_running_and_how_it_went.py", "tests/platform/tests/test_the_sets_screen_browses_three_layers.py", "tests/platform/tests/test_the_judge_viewer_reads_a_verdict_with_its_evidence.py", "tests/platform/tests/test_the_brain_screen_paints_the_conversation_pipeline.py", "tests/platform/tests/test_the_home_is_numbers_and_the_live_run_is_its_own_screen.py"]},
         # El motor DESECHABLE es uno solo y compartido (`journey` + `use_cases`, unificado el 2026-08-20).
         # `journey` levantaba el suyo y a esa copia le faltaba `ZAELAR_LOG_DIR`, así que sus eventos iban al
         # timeline REAL del operador — medido en vivo: 80 → 243 líneas en una corrida de 4 pasos.
