@@ -118,7 +118,7 @@ def test_one_door_imports_every_linked_source_and_a_link_reads_a_book_never_read
     from widgets.contactos import data
     kicked.clear()
     data.on_start()
-    assert kicked == [()], "an empty directory at the start is filled from every linked source"
+    assert kicked == [("google-contacts", "telegram", "meshkore")], "the start reads every book never read here"
 
 
 def test_the_name_her_conversation_carried_joins_the_account_to_the_row_of_that_name(book, monkeypatch):

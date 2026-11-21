@@ -365,8 +365,8 @@ def on_start() -> dict:
         owed = sources.owe_members(db)       # groups whose members became rows before members were kept back
         store.save(WIDGET_ID, db)            # change-gated: a store already folded and current is not rewritten
     people = [c for c in db.get("contacts") or [] if model.kind(c.get("kind")) in identity.PEOPLE]
-    if not people:                           # an empty directory (a fresh install, the start a reset ends in)
-        sources.import_in_background()       # …is filled from every linked source, agent running or not
+    if (unread := sources.unread(db)):       # a book never read here (a fresh install, a reset, linked while off)
+        sources.import_in_background(unread) # …is read from every linked source, agent running or not
     return {"people": sum(1 for c in people if not c.get("hidden")), "kept_back": sum(1 for c in people if c.get("keptBy")),
             "folded_now": got["merged"], "folded_in_all": len(db.get("merged") or {}),
             "numbers_kept_back_now": kept, "sources_owed_a_read": owed}

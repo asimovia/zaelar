@@ -54,7 +54,7 @@ last** — which each row's `updated` records.
 ## It stays on
 
 Sync is not a one-off import: linking the account IS the ask (2026-11-21). The consent reads it at once
-(`sources.import_linked`, the one door, also called at a start with an empty directory), and from then on the
+(`sources.import_linked`, the one door, also called at a start for every book never read here), and from then on the
 inbound half stays on with no switch: `widgets/background.py` calls `data.tick` on the manifest's cycle. The one
 control on the card is the outbound half — «Sync with Google» (`sync_contacts`) sends what he changed here. The period lives in `gcontacts.PERIOD`,
 not in the manifest — the scheduler wakes the module far more often than it should talk to Google, so a
@@ -159,7 +159,7 @@ A name is never a key. What only he knows he says once: `merge_contacts`.
   already here — and PULLED on every pass of a linked source (the Google pass is pull-only; only his button sends).
 - **A linked source feeds the directory by itself** (2026-11-18, one door since 2026-11-21). Linking the account
   is the ask: `sources.import_linked` reads it when the account is first seen connected with its book never read
-  (`linked_now`, told by the connector's status), at the Google consent, and at a start with an empty directory;
+  (`linked_now`, told by the connector's status), at the Google consent, and at a start for every book never read here (a reset, a source linked while the engine was off);
   then every 15 minutes (`sources._due`). There is no switch for the inbound half. An arriving person that a row
   already proves becomes a CHANNEL of that row — the row now «has WhatsApp» — and only the others become rows.
 - **The names a conversation carried.** Before a pass is folded in, each arriving person gains the names its own

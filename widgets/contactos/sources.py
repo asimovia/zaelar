@@ -30,8 +30,8 @@ pass of a linked source.
 
 Linking a source IS the ask, and there is no switch to undo it. ONE door, `import_linked`, reads every linked source
 (Google Contacts and the import-only ones) and is called from exactly three places: when a source is linked (the
-Google consent, a messaging account seen connected for the first time), at the end of a reset, and at the engine's
-start when the directory is empty. After that the inbound half runs on its own cadence (`tick`, every `EVERY_S`). A
+Google consent, a messaging account seen connected for the first time), and at the engine's start for every source
+whose book was never read here (a fresh install, the start a reset ends in, a source linked while the engine was off). After that the inbound half runs on its own cadence (`tick`, every `EVERY_S`). A
 person it brings that a row already proves (a phone, an address, an account — `identity.find`) becomes a CHANNEL of
 that row; only the others become rows.
 
@@ -237,7 +237,7 @@ def _due(source: str, st: dict, now: float) -> bool:
 def import_linked(only: tuple = ()) -> dict:
     """THE door that fills the directory from every linked source (or the ones `only` names): Google Contacts read,
     never written to, and each import-only source read once. Called when a source is linked, at the end of a reset
-    and at a start with an empty directory — never on a timer. Returns each source's counts; never raises."""
+    and at a start for every book never read here — never on a timer. Returns each source's counts; never raises."""
     from . import gcontacts
     out = {}
     for s in only or ("google-contacts", *KNOWN):
@@ -257,6 +257,12 @@ def import_in_background(only: tuple = ()) -> None:
     """`import_linked` on its own thread: a reset, a start or a consent never waits on a platform's book."""
     import threading
     threading.Thread(target=import_linked, args=(only,), name="contacts-import", daemon=True).start()
+
+
+def unread(db: dict) -> tuple:
+    """The sources whose book was never read into this directory — the start reads the linked ones among them."""
+    st = {**state(db), "google-contacts": db.get("sync") or {}}
+    return tuple(s for s in ("google-contacts", *KNOWN) if not float(st[s].get("last") or 0.0))
 
 
 _SEEN: set = set()

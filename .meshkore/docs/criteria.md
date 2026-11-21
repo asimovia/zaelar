@@ -968,7 +968,7 @@ Flash keeps the conversation; the row is what both brains read.
  changes arrives by itself: pushed when the connector can tell (a `refresh` never adds anybody), read on every
  pass of a linked source. Linking a source IS the ask (2026-11-21): ONE door, `sources.import_linked`, reads every
  linked source — on the link (the Google consent, a messaging account first seen connected with its book never
- read), and at a start with an empty directory (the one a reset ends in), agent running or not; then the inbound
+ read), and at a start for every source whose book was never read here (a reset, a source linked while off), agent running or not; then the inbound
  half runs on its cadence with no switch, and the one control left sends his changes TO Google (`sync_contacts`).
  A person it brings that a row proves is a channel of that row. One address book's two entries on one line are one person only when they start with
  the same given name or one is a one-word stem of the other; a shared surname proves nothing. A said NAME is
