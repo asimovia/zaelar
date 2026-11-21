@@ -21,6 +21,7 @@ import time
 from loguru import logger
 
 from nucleo.send import ask as _ask
+from nucleo.send import card as _card
 from nucleo.send import deliver as _deliver
 from nucleo.send import draft as _draft
 from nucleo.send import people as _people
@@ -46,6 +47,8 @@ def _emit(label: str, d, **extra) -> None:
              extra={"cat": "flash", "event": "send", "step": label, **({"draft": d.snapshot()} if d else {}), **extra})
     except Exception as e:  # noqa: BLE001 — the record never decides the send
         _note(e)
+    if d is not None and label in _card.PAINTS:
+        _card.paint(d)                           # the one draft is the one in its card (C2 A2)
 
 
 # ── the next step, by code ──────────────────────────────────────────────────────────────────────────────────────────
@@ -223,6 +226,8 @@ def _run(d) -> dict:
 
 
 from nucleo.send.go import send as _send  # noqa: E402,F401 — the act on his yes, its report (`go.py`)
+
+_card.install()                                  # a draft that ends is taken off its card
 
 
 # ── the two doors in ───────────────────────────────────────────────────────────────────────────────────────────────

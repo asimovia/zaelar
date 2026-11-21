@@ -17,6 +17,8 @@ IDLE_S = 600.0
 WHO, TEXT, CONFIRM = "who", "text", "confirm"
 #: Where a draft stands (`state`).
 OPEN, SENDING, SENT, FAILED, CANCELLED = "open", "sending", "sent", "failed", "cancelled"
+#: How an open draft ended with no state of its own: nobody touched it (`IDLE_S`), or a new send took its place.
+IDLE, REPLACED = "idle", "replaced"
 
 
 @dataclass
@@ -41,6 +43,8 @@ class Draft:
     other_at: float = 0.0                       # when another line of ours was said after it
     heard_mono: float = 0.0                     # the same instant on the ear's clock (`nucleo/input/typed`)
     by: str = ""                                # who handed it over (the model's call, a verdict, a worker)
+    box_key: str = ""                           # its view in its card: the box the owner painted it in (`send/card`)
+    trace: str = ""                             # the flow of the order that opened it: every step of it is seen there
     unread: bool = False                        # his contacts could not be read when the name was looked up
     lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False, compare=False)
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:8])
@@ -74,13 +78,19 @@ def current() -> Draft | None:
         return None
     if time.time() - d.touched_at > IDLE_S or d.state in (SENT, FAILED, CANCELLED):
         _open["draft"] = None                 # the messages queued behind an idle one keep their own clock
+        if d.state == OPEN:
+            _ended(d, IDLE)                   # an idle draft ends where it is seen, never silently
         return None
     return d if d.state == OPEN else None     # while it SENDS it is not current, and is not let go either
 
 
 def start(said: str) -> Draft:
-    d = Draft(said=" ".join(str(said or "").split()))
+    from voice import trace
+    old = _open["draft"]
+    d = Draft(said=" ".join(str(said or "").split()), trace=trace.current())
     _open["draft"] = d
+    if old is not None and old.state == OPEN:
+        _ended(old, REPLACED)
     return d
 
 
@@ -88,6 +98,26 @@ def close(d: Draft, state: str) -> None:
     d.state = state
     if _open["draft"] is d and state != OPEN:
         _open["draft"] = None
+    if state in (SENT, FAILED, CANCELLED):
+        _ended(d, state)
+
+
+#: Who is told when a draft ends (`on_end`): its view in its card (`send/card.install`).
+_on_end: list = []
+
+
+def on_end(fn) -> None:
+    if fn not in _on_end:
+        _on_end.append(fn)
+
+
+def _ended(d: Draft, state: str) -> None:
+    """The ONE point a draft ends — sent, failed, cancelled, idle or replaced: each listener is told, none can stop it."""
+    for fn in list(_on_end):
+        try:
+            fn(d, state)
+        except Exception as e:  # noqa: BLE001 — a listener that fails never keeps a draft open
+            __import__("loguru").logger.debug(f"send.draft: an end listener failed ({e!r})")
 
 
 def touch(d: Draft) -> None:

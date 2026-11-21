@@ -930,6 +930,8 @@ _PACKAGE_CEILINGS["widgets"] += 14
 _TOTAL_MAX += 39     # measured (the manifest's three `event` fields are not counted as code)
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 6   # 2026-11-21 C2 C: with the owner's draft open, the model's composition is refused at the widget door (`acts_widget.OWNERS`)
 _TOTAL_MAX += 7      # same cause, measured
+_PACKAGE_CEILINGS["nucleo/send"] += 149   # 2026-11-21 C2 A2 (P-2, one draft): the owner's draft is the one in its card — `send/card.py` paints and takes it away through the card's own acts, read by type; a draft's ONE end point with its listeners (`draft._ended`, idle and replaced included)
+_TOTAL_MAX += 149    # same cause, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

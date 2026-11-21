@@ -65,6 +65,7 @@ async def follow(d, *, receipt_s: float = RECEIPT_S, late_s: float = LATE_S, pol
         state, why = send_receipt.receipt(WIDGET, d.ref, None)
         if state == "sent":
             _owner_emit("sent", d)
+            __import__("nucleo.send.card", fromlist=["x"]).discard(d)    # sent: its box is no draft any more
             await _say(d, "send_done")
             return "sent"
         if state == "failed":

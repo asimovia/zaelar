@@ -74,8 +74,9 @@ def _strings(src: str) -> set[str]:
 
 
 def test_the_code_that_reads_a_composition_names_no_widget_and_no_action():
+    from nucleo.send import card
     sources = {"turn.composes": inspect.getsource(turn.composes), "effects.event_of": inspect.getsource(effects.event_of),
-               "effects.acts_of": inspect.getsource(effects.acts_of)}
+               "effects.acts_of": inspect.getsource(effects.acts_of), "send.card": inspect.getsource(card)}
     import textwrap
     hit = {k: sorted(_strings(textwrap.dedent(v)) & _names()) for k, v in sources.items()}
     assert not any(hit.values()), hit
