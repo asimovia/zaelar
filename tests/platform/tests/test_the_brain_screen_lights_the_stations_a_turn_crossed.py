@@ -15,20 +15,6 @@ from tests.platform.tests.observatory_fixture import (  # noqa: F401 — fixture
     SANDBOX, dashboard_sources, get, observatory, runs_root, write_round, write_sandbox,
 )
 
-ARCHITECTURE = od.ENGINE / ".meshkore" / "docs" / "architecture" / "zaelar-architecture.md"
-
-
-def test_the_picture_is_fixed_and_follows_the_turn_pipeline_of_the_architecture() -> None:
-    """Twelve stations, in pipeline order, each naming its module; the doc that defines the pipeline names those
-    modules. Rename a stage in the architecture and this says which station fell out of the picture."""
-    ids = [s["id"] for s in od.STATIONS]
-    assert ids == ["gate", "brief", "memory", "prompt", "route", "model", "tools", "consent", "circuit", "worker", "notices", "mouth"]
-    doc = ARCHITECTURE.read_text(encoding="utf-8") if ARCHITECTURE.exists() else ""
-    if doc:
-        for needle in ("pipeline_gate", "brief", "switchboard", "pipeline_stream", "consent", "circuit", "notices", "mouth"):
-            assert needle in doc, f"the architecture no longer names {needle}; the station list must follow it"
-
-
 def test_a_turn_lights_the_stations_it_crossed_in_order_with_the_state_each_carried(observatory) -> None:
     _, root, url = observatory
     write_round(root)

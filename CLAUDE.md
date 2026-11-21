@@ -433,7 +433,7 @@ start-up is `make run` → `python -m server`. The detail — which pieces form 
 | Module | What it is |
 |---|---|
 | `voice/` | The **LiveKit** engine (`voice/engine/`): STT/TTS, turns, VAD, barge-in. On top, the transport-agnostic brain contract: `attention.py` (which turn is addressed to zaelar), `speech.py`, `observer.py` (SSE). |
-| `nucleo/` | The **«Colmena» brain**. Flash = the conversation, the reflexes, the router, the mouth, the screen: `turn/` (the ONE turn pipeline for voice and text, the events' router `flow_events.route`, the in-turn mouth; whose his words are is decided once at the gate, `switchboard/`) + `flash/` (reflexes and tools). A request that is work is a **task** = one row + one Brain Worker resumable by id that chooses its playbook, checkpoint 1 held by the harness at `workers/exit_gate.py` (`workers/`, `dispatch/`; its bridge `cli/` is the internal API). `circuit/` (end state, the row, `settle` = the only writer of an ending, the one asker), `request/` (a request's birth, questions, ending), `events/` (what arrives without a turn; the stream worker, a bounded reply turn or a session by what his rules grant), `pulse/` (the beat, crons, `notices` = the out-of-turn mouth), `errands/` (an errand with a third party), `memory_agent/` (the memory's single writer; his contacts as structured memory, `contacts.who`), `consent.py` (the one act-or-ask rule), `actionmap/`, `jev/`, `context_packs/`. |
+| `nucleo/` | The **«Colmena» brain**. The conversation is the manager's (`conversation/`, hosted in `conversation_host/`: the ONE path for voice and text since INI-078); what is open takes his words through one board (`switchboard/`), and the acts it reaches live in `acts/`. A request that is work is a **task** = one row + one Brain Worker resumable by id that chooses its playbook, checkpoint 1 held by the harness at `workers/exit_gate.py` (`workers/`, `dispatch/`; its bridge `cli/` is the internal API). `circuit/` (end state, the row, `settle` = the only writer of an ending, the one asker), `request/` (a request's birth, questions, ending), `events/` (what arrives without a turn; the stream worker, a bounded reply turn or a session by what his rules grant), `pulse/` (the beat, crons, `notices` = the out-of-turn mouth), `errands/` (an errand with a third party), `memory_agent/` (the memory's single writer; his contacts as structured memory, `contacts.who`), `consent.py` (the one act-or-ask rule), `actionmap/`, `jev/`, `whisper/` (the whisperer, off). |
 | `search/` | The **search service**: one door (`find()`), one result shape, routing by verdict, providers declared once with a health probe (`python -m search.health`) and the HTTP face `/api/search/*`. `.meshkore/docs/modules/zaelar-search.md`. |
 | `rules/` | **One scoped table** for every standing rule and preference (`global` · `<domain>/<channel>/<act>` · `widget:<id>` · `item:<id>`), read by a cascade over the request's path; a spoken rule is shaped ONCE when written; `consent.decide` reads the gate. `.meshkore/docs/architecture/zaelar-rules.md`. |
 | `memory/` | **Central memory** in a single SQLite (`zaelar.db`): pills with `slot`, retriever (sqlite-vec + FTS5 + reranker), graph, consolidator and REM phase, episodic layer and the secrets vault. |
@@ -453,11 +453,8 @@ Each is one line in `.meshkore/docs/criteria.md`, with its node; read the sectio
 - **Claims and permission (§1-2):** a «yes» is answered with a START, never a completion; a transactional op
   doesn't enter the task list; the agenda goes DIRECT and a delete doesn't ask, with a bin and `restore`.
 - **Which card an order goes to (§3):** a verb table is not a router — grammar PROPOSES, the decision model
-  chooses among what is DECLARED, and a backstop never overrules a verdict already paid for (K1); the verdict
-  COMPLETES the model, never contradicts it, and acts at ONE floor, `consent.intent_act_at` (K2); an order the model
-  served with another tool opens the ORDER's row (T2g); a descriptor is written under the cut and measured against its
-  neighbours (K7); a classifier in front of the model is a PRICE paid only where the decision can't be read
-  afterwards (K9). Read `.meshkore/docs/architecture/zaelar-architecture.md` §«ALERTS» before writing a rule
+  chooses among what is DECLARED, and a backstop never overrules a verdict already paid for (K1); a descriptor is
+  written under the cut and measured against its neighbours (K7); closing a card is a tool, like opening one (K8). Read `.meshkore/docs/architecture/zaelar-architecture.md` §«ALERTS» before writing a rule
   that reads the operator's WORDS. A polite question is an order; a turn that is ONLY a number moves nothing.
 - **Building or rewriting one of the user's cards is asked first (§2-3):** at the single door a worker is started
   through (`dispatch._run_session`, `kind == code`), with the whole confirm gate; the cluster dev-worker is exempt (C4).
@@ -477,15 +474,12 @@ Each is one line in `.meshkore/docs/criteria.md`, with its node; read the sectio
   exception for ONE person is a `subject:<id>` row of the cascade (C12), read by every door that resolves her. An
   irreversible act of a card waits for his yes on its ROW through the one asker, its two answers declared and
   picked by the brief (C13) — never a word list before the brief. An errand's class is the brief's verdict, only a
-  critical one asks at birth, and a send is asked once, at its exit (C14). An errand is opened by the model's call
-  or the brief's sure `escalate`, never by a word backstop over his sentence (C16); a sign-in the model forgot opens
-  only on the brief's sure `login_only` (C17); with no stop verdict only the model's own `stop_worker` stops an
-  errand (C18).
+  critical one asks at birth, and a send is asked once, at its exit (C14). A task is opened only by the model's call
+  (`start_task`), never by his words (C16).
 - **A message has ONE owner, and one switchboard routes his words to the processes (§T, T2b, T3):** «send a message to X»
-  is owned end to end by `nucleo/send` — never by Flash, a worker task or a verdict. The model's message call, a call the
-  verdict's gate held, the reading's sure order, our own question about a message and a worker's message the exit door
-  would ask about are all HANDED OVER (`send/turn.claim`, `send/turn.at_close`, `send/worker.hand`) and nothing else
-  resolves, asks or sends. The owner keeps ONE draft: who he said, who it resolves to (`send/people`: the conversation
+  is owned end to end by `nucleo/send` — never by the conversation's model, a worker task or a verdict. The manager's
+  message act (`conversation_host/routing.send`) and a worker's message the exit door would ask about
+  (`send/worker.hand`) are HANDED OVER, and nothing else resolves, asks or sends. The owner keeps ONE draft: who he said, who it resolves to (`send/people`: the conversation
   he has open first, then his contacts ranked — several or a word nobody carries is a question naming them, never a
   pick), the text, what it last asked. While a draft is open, every sentence he says is read ONCE against it at the
   turn's gate, before the switchboard (`send/read`): a sentence about the message (who, what it says, a phrase added or
@@ -559,8 +553,8 @@ human. The deep playbook (how each battery is launched, formats, evaluation): `.
 - **Nothing the end user configures goes in `.env`.** Every connector/integration activation or credential is
   handled from the UI (`config/connectors.json`/`config/v2.json`, written by the UI; env is only a power-user
   fallback). A new connector ALWAYS ships its guided setup flow in the widget.
-- **Voice brain = NON-reasoning**: a reasoning model doesn't close the turn in time. The FlashBrain
-  (`nucleo/flash/`) uses only fast non-reasoning models, and no model runs after a turn's main stream (an unreadable
+- **Voice brain = NON-reasoning**: a reasoning model doesn't close the turn in time. The conversation
+  manager's model is a fast non-reasoning one, and no model runs after a turn's main stream (an unreadable
   turn is answered with one line that asks him, node 3.175). **Model PER INVOCATION**, never a global model env
   (concurrent sessions). Routing (`fast` + `code_agent`) lives in `config/v2.py` (managed by the UI).
 - **Nothing personal crosses from one agent to another.** A heritable gene is one of the closed shapes in

@@ -77,7 +77,7 @@ zaelar is audited in **four domains**. They are the same four every time — ext
 |---|---|---|---|
 | A | **Voice core + brain (nucleo) + memory + bus + server** | `voice/`, `nucleo/` (FlashBrain + SlowBrain), `memory/`, `bus/`, `server/`, `config/` — pipeline, two speeds, escalation, central memory, nervous system, routers, settings | architecture §0-8, memory (all), product §2/§4/§5 |
 | B | **Frontend + widgets** | `frontend/`, `widgets/` — reactive shell, widget isolation, widget contract, generator, SSE | modules §Frontend, architecture §1-5, product §2/§4/§6, `widgets/AGENTS.md` |
-| C | **Cluster channel security** | `connectors/meshkore/` (channel on the untrusted profile: `brain.py`→`nucleo/flash/cluster.py`, tools off) + hard controls in `security.py`, `bridge.py`, `voice/tag_protocol.py` | security (all) |
+| C | **Cluster channel security** | `connectors/meshkore/` (channel on the untrusted profile: `brain.py`→`compose.py`, tools off but the granted errand) + hard controls in `security.py`, `bridge.py`, `voice/tag_protocol.py` | security (all) |
 | D | **Docs ↔ code ↔ cluster.yaml alignment** | the `.meshkore/docs/`, `cluster.yaml`, the planning state, the `/technology` diagrams (public site), `CLAUDE.md`, `.env.example`, Makefile | modules, product, architecture, ops, the whole standard |
 
 **MeshKore standard rule:** every domain maps to the modules declared in `cluster.yaml`. When a new module is
@@ -99,10 +99,11 @@ and at the end a list of **Findings ordered by severity**.
 2. **Conditional mounting per brain**: `active_brain()` (env-first `BRAIN`, default `nucleo`; `direct`/`local` =
    bare baselines) decides what is mounted; the orchestrator loop + `/api/cron` **only** with `BRAIN=nucleo`. The
    UI must query `/api/brain` before polling. Nothing brain-specific wired unconditionally.
-3. **Two speeds — FlashBrain**: `nucleo/flash/` (provider `voice/engine/llm/providers/nucleo.py`) serves each turn
-   in about a second with a model PER INVOCATION (not a global env) and decides when to escalate. Check that its
-   real tools `escalate_to_slowbrain`/`set_style_directive` are declared in `nucleo/flash/router.py` and that
-   escalation is enforced in code (not only in the prompt) for what the Flash cannot do.
+3. **Two speeds — the conversation manager**: `conversation/`, hosted by `nucleo/conversation_host/` (the ONLY path
+   for voice and text), serves each run with ONE fast model PER INVOCATION (not a global env) and decides when to
+   start a task. Check that its acts (`start_task`, `set_rule`, …) are declared in
+   `nucleo/conversation_host/declared.json` and reach their doors through `conversation_host/acts*.py`, and that what
+   the fast model cannot do is enforced in code (not only in the prompt).
 4. **Two speeds — SlowBrain**: `nucleo/dispatch/` composes the [context+task] prompt → `CodeAgent`
    (`nucleo/agentes/`) async, consumes `escalate.requested` from the bus and delivers through `voice/proactive`
    (voice+UI); `nucleo/memory_agent/` is the ONLY writer of `memory/`. Check that the SlowBrain never blocks
@@ -160,11 +161,11 @@ and at the end a list of **Findings ordered by severity**.
     (`widgets/brief.py` vs `connectors/meshkore/brief.py`), uncommitted widgets.
 
 ### Domain C — Cluster channel security (ADVERSARIAL — try to break every control)
-> The cluster channel receives messages from **untrusted external agents**. The channel runs on the FlashBrain
-> engine in the **UNTRUSTED profile — NO tools + identity-safe** (`connectors/meshkore/brain.py`→
-> `nucleo/flash/cluster.py`): it can reason and talk to peers, never run commands/files/tools. For each claim:
+> The cluster channel receives messages from **untrusted external agents**. The channel runs on the connector's own
+> composer in the **UNTRUSTED profile — NO tools + identity-safe** (`connectors/meshkore/brain.py`→
+> `connectors/meshkore/compose.py`): it can reason and talk to peers, never run commands/files/tools. For each claim:
 > verify it in code AND **build the attack** that tries to get round it.
-1. **Untrusted profile with no tool surface BY DEFAULT**: `nucleo/flash/cluster.py` offers no tools with zero
+1. **Untrusted profile with no tool surface BY DEFAULT**: `connectors/meshkore/compose.py` offers no tools with zero
    permission; check that without a granted permission NO cluster path reaches the `CodeAgent`/dev-worker
    (fail-closed by construction). The permission-gated path — `connectors/meshkore/perms.py`+`store.py`
    (per-cluster profile, deny-all default) — can open `escalate_to_slowbrain` to a bounded dev-worker (temporary

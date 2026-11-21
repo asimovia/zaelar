@@ -38,8 +38,9 @@ these → full workflow:
   writer + memory_agent + the processor prompt AT ONCE — that is the point: one single place).
 - **Retriever / scoring** — `memory/retriever/` (vec/FTS/RRF, weights α/β/γ/δ, graph_expand),
   `memory/embeddings/`.
-- **Read speeds** — `memory.state()`, `memory.recent_short()`, `memory.query()`; and the FlashBrain cache
-  `nucleo/flash/memory_cache.py` + `nucleo/flash/recall_heuristics.py` (`needs_recall`) + `nucleo/turn/prompt/recall.py` (`compose_recall`).
+- **Read speeds** — `memory.state()`, `memory.recent_short()`, `memory.query()`; the STATE cache
+  `memory/state_cache.py`; and the conversation manager's Memory port `nucleo/conversation_host/memory_read.py`
+  (`state_blocks`, `recall`).
 - **Consolidator / forgetting** — `memory/consolidator.py` (promote/dedup/decay/evict) and its trigger from
   `nucleo/pulse/loop.py`.
 - **Observability / viewer** — `memory/viewer.py` + `GET /api/memory/viewer/*` (`server/memory_viewer_api.py`),
@@ -57,8 +58,8 @@ any of the interactions above. Carry on as usual.
 
 | Writer | Where | What to review after a change |
 |---|---|---|
-| **HEART — operator turn** | `nucleo/memory_agent.ingest_utterance` → `mem_processor.process` (LLM) / `classify` (fail-open) → `remember`/`_write_atom` | New pills respect the schema (`slot`/`meta`/`ttl`); fail-open still works without Ollama; wiring in `voice/engine/llm/providers/nucleo.py` (fire-and-forget). |
-| **SHORT conversational buffer** | `voice/engine/llm/providers/nucleo.py` (`memory.write(kind='conv', level='short', ttl_days=…)`) | It stays EPHEMERAL (TTL), NOT durable; it feeds `recent_short`; it does not re-inflate memory with raw writes. |
+| **HEART — operator turn** | `nucleo/memory_agent.ingest_utterance` → `mem_processor.process` (LLM) / `classify` (fail-open) → `remember`/`_write_atom` | New pills respect the schema (`slot`/`meta`/`ttl`); fail-open still works without Ollama; wiring in the conversation manager's record (`nucleo/conversation_host/record.py`, in the background). |
+| **SHORT conversational buffer** | `nucleo/conversation_host/record.py` (the pair of each answered batch, filed by `conversation/manager/record.py`: `memory.write(kind='conv', level='short', ttl_days=…)`) | It stays EPHEMERAL (TTL), NOT durable; it feeds `recent_short`; it does not re-inflate memory with raw writes. |
 | **SlowBrain / agents** | `nucleo/memory_agent.remember({text,kind[,slot,meta]})` (the only sanctioned SlowBrain writer); `nucleo/dispatch/` | It passes `slot` for singular facts; it does not block. |
 | **Brain Workers (EXTERNAL)** | `hbmem remember` (`nucleo/cli/mem.py`) → `POST /api/memory/remember` (`memory/server_api.py`) → `memory_agent.remember_external` | It requires the per-task token (mem_cli headers); it applies the P0a gates + identity-slot veto + `meta.source="worker:<id>"`; it NEVER touches `state`; the worker's Bash stays limited to the CLIs (`dispatch._tools_for` without bare "Bash"). Session result: only if `ok` (`workers/session._deliver`). |
 | **Worker context at START** | `nucleo/dispatch._compose_context` → `memory_agent.compose_context` | The «CONTEXTO DE MEMORIA» block of the worker prompt is NOT empty (guard in `tests/agent_headless/unit/test_dispatch.py`). |
@@ -67,7 +68,7 @@ any of the interactions above. Carry on as usual.
 | **Widgets / lifecycle** | `widgets/lifecycle.py` (`record_created`/deletion tombstone) | Creation/removal traces are written through the facade; golden rule "history is never deleted". |
 | **Connectors / messaging** | `connectors/messaging/store/` (`memory.write(kind='msg', level='short')`) | The dump still goes through the facade; `slot` if the datum is singular. |
 | **Episodic (paste/drop)** | `memory/episodic.py` ← `memory/server_api.py` (`write_episode`) | The searchable summary is still indexed in `memories` (vec/fts). |
-| **Spoken rules** | NOT memory since V2-806: `nucleo/flash/style_directive.py` (both channels) → `rules.shape.write` → rows of the rules table (`rules/`) | That memory composes no rule; that each surface reads `rules.notes.for_surface` / `rules.prompt.voice_block`; that the event carries the scope. Nodes 2.172, 2.204, 2.811. |
+| **Spoken rules** | NOT memory since V2-806: the manager's `set_rule` act (`nucleo/conversation_host/acts_self.py`) → `rules.spoken.write` → rows of the rules table (`rules/`) | That memory composes no rule; that each surface reads `rules.notes.for_surface` / `rules.prompt.voice_block`; that the event carries the scope. Nodes 2.172, 2.204, 2.811. |
 | **Request rows** | `nucleo/request/model.py` (birth) + `nucleo/circuit/ledger.py` (the row seam: worker sessions, waits, the asker's question) → `memory/tasks_store.task_put`/`task_patch`; the end state as the `spec` artifact (`artifact_put`); every ending written by `nucleo/circuit.settle` only | One row per request; a later op never improves a failed row; schema v9 `verdict`; the prompt's `task_block.recent_lines` still reads it. Nodes 2.194, 2.196, 2.198. |
 | **Conversation rows** | `nucleo/conversation_host/` (the conversation's own thread, its ONLY writer) → `memory.api.conv` (`memory/conversation_store.py`) → `conv_rows` + `conv_meta`, schema v12 | A transaction is `memory.db.exclusive` (`BEGIN IMMEDIATE`; `Database.cursor()` refuses inside it); the lease's epoch fences a second process; the hourly prune drops only final rows past the horizon. Nodes 13.19, 13.36. |
 | **Playbook routes** | `memory/routes_store.route_upsert` / `route_hit` / `route_forget` (re-exported by `memory.api`) | That a channel that stopped serving is demoted, not kept as the first answer. |
@@ -76,9 +77,9 @@ any of the interactions above. Carry on as usual.
 
 | Reader | Where | What to review |
 |---|---|---|
-| **STATE (µs, always in the prompt)** | `memory.state()` → `nucleo/flash/memory_cache._compose` (incl. live UI context: `open_widgets`/`activity`) | `_compose` renders the new fields (lists included); invalidation by `memory.updated` intact. |
-| **SHORT (µs, whole working set)** | `memory.recent_short()` → `memory_cache._compose` ("Conversación reciente" block) | It still reads directly (no embeddings) and bounded (limit/max_chars). |
-| **LONG (ms, on demand, off-loop)** | `nucleo/flash/prompt.compose_recall` → `memory.query` → `retriever.search` → **reranker** (`memory/rerank.py`, fail-open); `asyncio.to_thread` + `needs_recall` | It NEVER enters the event loop; scoring stays coherent; the reranker stays fail-open. |
+| **STATE (µs, every run)** | `memory.state()` → `memory/state_cache.py` (incl. live UI context: `open_widgets`/`activity`) and the manager's `memory_read.state_blocks` | The cache renders the new fields (lists included); invalidation by `memory.updated` intact; the manager's state blocks read them. |
+| **SHORT (µs, whole working set)** | `memory.recent_short()` → `memory.compose_state()` (its recent-conversation section) | It still reads directly (no embeddings) and bounded (limit/max_chars). |
+| **LONG (ms, on demand, off-loop)** | the manager's `recall` read (`nucleo/conversation_host/memory_read.recall`) → `memory.query` → `retriever.search` → **reranker** (`memory/rerank.py`, fail-open); `asyncio.to_thread` | It NEVER enters the event loop; scoring stays coherent; the reranker stays fail-open. |
 | **Brain Workers (serial read)** | `hbmem recall` → `POST /api/memory/recall` → `memapi.query()` | It stays read-only and filters `untrusted` (the retriever does it); it never opens the DB. |
 | **SlowBrain (off-hot-path, may use an LLM)** | `nucleo/memory_agent.compose_context` | The only face that may use a recall LLM — verify it stays off-hot-path. |
 | **Viewer / diagnostics** | `memory/viewer.py` → `GET /api/memory/viewer/*` → `MemoryMap.js` + `components/memory/` | No stored row leaves the viewer and every total is a COUNT (node 1.11); a new kind that is not his own fact is kept out of `_OWN_KINDS_SQL`. |

@@ -228,8 +228,8 @@ The format and **the budget** live in `observability/evidence.py`, and its rules
   General rule: **a positional trim assumes the middle is filler**, and in a composed prompt the middle is where
   the state lives.
 
-Voice and the typed channel run the SAME turn pipeline (`nucleo/turn/pipeline.py`): auditing never depends on which
-door the sentence came through.
+Voice and the typed channel go to the SAME conversation manager (`conversation/`, through the one funnel
+`nucleo/conversation_host/entry.py`): auditing never depends on which door the sentence came through.
 
 ### Reading a whole session, live or finished
 
@@ -309,8 +309,7 @@ Every **stimulus** that enters the system is born with a **trace id** (`T12·9f3
 stamped with that id on every event — the quality question («did this sentence land on the right rail and end in
 the set of events it should?») is answered by grouping by `trace`.
 
-- **Origins** (root event `kind="trace"`, `root:true`, `origin`): `turno` (voice + chat, born in
-  the turn's flow lifecycle (`voice/engine/llm/providers/flow_lifecycle.py`) BEFORE the gate — ambient/echo discards are traced too) · `kickoff` · `probe` (the
+- **Origins** (root event `kind="trace"`, `root:true`, `origin`): `turno` (voice + chat) · `kickoff` · `probe` (the
   probe returns the id in its response) · `cron` (scheduler) · `proactivo` (sparks) · `ui` (manual canvas taps) ·
   `cluster` (peer message).
 - **How it travels**: `voice/trace.py` (ContextVar) — free across `create_task`/`to_thread`; explicit seams where the
@@ -431,12 +430,6 @@ kept for the FlashBrain's «PROCESOS DE FONDO» prompt, but does not duplicate t
   - **`task`** with `kind_diag: ask_closed` — `🧹 clarification closed with its conversation`
     (`nucleo/request/clarify_end.py`): `extra = {task_id, ask_id, reason: moved_on|expired, waited_s?}`; moved_on runs
     under the turn that moved on, expired under the trace of the turn that asked (the pulse runs none). One per close.
-  - **`kind_diag: stop_words_released`** — `🗣 held words released — no stop can run this turn`
-    (`nucleo/flash/follow_up_pass.py`): the words held for a stop are said once no stop can run; `⏳ held words wait`
-    while the card's answer has not run. A send is said as STARTED until its exit door reports; a row's refusal after
-    its turn closed is said out of turn.
-  - **`brain`** `⚠️ verdict unreadable — its veto is lifted` (`nucleo/turn/verdicts.py`): a verdict that could not be
-    read is said and marked on the engine row (`key`, `is_error`), once a minute per key — never a silent lifted veto.
   - A viewer that filters by `kind_diag` must learn these values: one it does not know shows up EMPTY, never as an
     error.
   - **`notice`** / **`notify`** — the out-of-turn mouth (`nucleo/pulse/notices.py`): every line said outside a turn,
@@ -489,7 +482,7 @@ kept for the FlashBrain's «PROCESOS DE FONDO» prompt, but does not duplicate t
   `/voice/status` → `link.dropped`; a dropped batch's metrics and observer lines are lost with it (known gap). A memory read
   that left a LOCAL embedding over `embed_budget_ms` says `embedding local fuera de presupuesto` (`reason:
   embed_over_budget`, family `memory`).
-- **`whisper`** (family `flash`, V2-889 F2) — the whisperer between turns (`nucleo/turn/whisper/`), in shadow: per
+- **`whisper`** (family `flash`, V2-889 F2) — the whisperer between turns (`nucleo/whisper/`, off), in shadow: per
   closed turn a **`gate`** event (`score`, `fired`, `reasons`, `vetoed`, `thread_id`, `why_not`: below · vetoed ·
   in_flight · unchanged · no_route, `mode`); when it fired, a **`slot`** event (`outcome`: ok · empty · unparseable ·
   no_answer · error, `latency_ms`, the typed `slot`, what it would render — `rendered`, `rendered_chars` — and the call's
@@ -516,10 +509,6 @@ kept for the FlashBrain's «PROCESOS DE FONDO» prompt, but does not duplicate t
   interrupción (ruido)" with **`extra.resumed`** (did LiveKit resume the speech after the noise?), "🔊 voz solapada"
   (`extra.is_interruption`). Barge-in tunable by env: `ZAELAR_MIN_INTERRUPTION_SEC` (default 0.6),
   `ZAELAR_MIN_INTERRUPTION_WORDS`, `ZAELAR_FALSE_INTERRUPTION_TIMEOUT`, `ZAELAR_RESUME_FALSE_INTERRUPTION`.
-  **"⚡ fin de turno ANTICIPADO — el brief sale ya"** (`extra.detector: "stt-eager"`, V2-863): the Flux ear announced
-  an eager end of turn (a `PREFLIGHT_TRANSCRIPT`) and the turn's brief was fired on those words before the turn was
-  confirmed (`voice/engine/pipeline/eager_brief.py`). A turn that then resumes leaves this line with no `transcript`
-  of the same words behind it — that is what a FALSE eager looks like, and the count to watch.
 - **`perf`** — where the time of a turn went. Beside the per-turn `🧾 turno (…)` summary and `⏱ primer audio N ms
   desde que dejó de hablar` (end of turn → first sound), two lines say what LiveKit's **preemptive generation** did
   with the model run it started on the eager transcript (V2-863, `voice/engine/pipeline/preemptive_tap.py`, a tap on
@@ -616,10 +605,7 @@ one outside it is dropped **silently** — when instrumenting, add the field to 
 and record nothing. And `src` is bounded to `user`/`frontend` — anything else falls back to `user`.
 
 - `brain` — prompts/replies of the «Colmena» brain (FlashBrain), escalations
-  (`escalate_to_slowbrain`). **"✂️ eco de la cobertura recortado"** (`text` = the cover, `extra.cat: "flash"`,
-  V2-864): the model opened its reply with the very words of the cover that had just sounded, and the voice did not
-  say them twice (`EchoCut` in `voice/engine/speech/echo_cut.py`). One per turn at most; its count over the
-  covered turns of a session is how often the model still echoes its lead-in.
+  (`escalate_to_slowbrain`).
 - **`ambient`** — the ATTENTION gate (`voice/attention.py`): a turn that was NOT addressed to zaelar (no wake word
   and outside the conversation window). `label` = "🙉 ambiente — no dirigido a zaelar" with `extra.mode`
   (`smart`/`wakeword`/`ptt`/`always`) and `extra.reason` (`ambient`); or "✋ interrupción dura atendida"
@@ -652,23 +638,13 @@ and record nothing. And `src` is bounded to `user`/`frontend` — anything else 
   **`handback`** (we HAND BACK the turn with ONE short message and stop), **`silent`/`pause`** (we stop answering +
   a single notice to the operator), **`waiting`**/**concise** according to the verdict. Determinism is kept only for
   the generic parts (exact dedup, `capsule.near_repeat` as an input signal to the evaluator, not as a verdict).
-- **`memory`** — central-memory activity. Two origins:
+- **`memory`** — central-memory activity:
   1. **Mutations**: the server bridges the bus signal `memory.updated` (every mutation in `memory/api/::_emit` —
      write/reinforce/pin/link/state/episode/consolidate/query) to the `observer` topic as
      `{kind:"memory", op, ids}` (+ `label=op`). It feeds the viewer's **tinting** and shows up as a row in the ◷
      column.
-  2. **Turn reads**: `voice/engine/llm/providers/nucleo.py` emits, after composing the prompt, one row per LAYER
-     read: `{kind:"memory", label:"estado|corto|día|recall", layer:"state|short|day|slow", text:"request → result",
-     mem_ms}`. So ◷ SHOWS which layer was touched, how long it took and what it returned (number of cards/chars).
-     DebugPanel column 4 = the layer; latency = `mem_ms`. The **`day`** row (V2-865, emitted by
-     `voice/engine/llm/providers/turn_prompt.py`) reads «esquema del día → N episodios · M chars»: how many episodes
-     of the day's ledger (`memory.day_ledger`) the «HOY, EN ESQUEMA» block carries in the LIVE TAIL of this turn's
-     prompt (`memory.day_block`, read by `live_state`; counted by `compose_state` stats `day_count`, `day_chars`).
-     `0 episodios` with an earlier conversation today means the ledger was empty, the turns were still in the live
-     chain, or the budget dropped them — the first place to look when the model says it does not have what was said
-     earlier. A recall's conversation lane is counted on the turn's timings as `recall_conv_turns`; a recall fired by
-     a reference to the conversation (`needs_recent`) shows as `recall_fired`; an order carried out after a recall
-     emits the `brain` row «🔁 recordó para una orden — la llamada, con lo recordado».
+  2. **Run reads**: a run of the conversation manager is told by its own events (`conv_*`, family `conversation`,
+     `zaelar-conversation.md`), not by per-layer `memory` rows.
   Gated by the `memory_observability` flag (default ON, `config/settings.py`; env `ZAELAR_MEM_OBSERVABILITY`). It
   goes out through SSE `GET /events`; the mutation bridge does NOT go through the `/debug` ring (fine-grained, zero
   noise). **The mutation bridge is COALESCED**: one turn fires several `memory.updated` (conversation buffer + pills

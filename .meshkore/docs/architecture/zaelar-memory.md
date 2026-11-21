@@ -276,7 +276,7 @@ reader, `memory.conversation(hours, query)` over the `conv` turns, exposed as `m
 
 **The conversation lane of the turn's recall (V2-865).** The model's `recall` used to read only the durable pills
 (`mid`/`long`); a pill the distiller kept of an episode can be true and still miss the one datum (a name that was
-in zaelar's own reply). `nucleo/turn/prompt/recall.compose_recall` now also carries the matching `conv` turns of
+in zaelar's own reply). The old turn's recall composer also carried the matching `conv` turns of
 the last 48 h (the buffer's own reach), at most 4 turns, each side of a line cut at 200 chars as rendered, under
 «Lo hablado antes, literal y con hora:» — one line per turn `· HH:MM él: «…» · tú: «…»` — and returns a block even
 when no pill matched (`timings["recall_conv_turns"]`). It reads `memory.conversation(query, by="relevance",
@@ -346,7 +346,7 @@ already on demand + `asyncio.to_thread`) — **STATE/SHORT are untouched** (stil
 **Hard FAIL-OPEN**: error/timeout/missing model → the retriever's order is returned intact (it never breaks or
 blocks). The reranker is **not generative** (it reorders already-retrieved candidates, it invents nothing → no
 hallucination risk). It is blended with recency/importance (`rerank_blend` 0.85) so as not to sink a freshly said
-fact. When enabled, the model is **warmed at boot** (`nucleo/flash/prewarm._warm_rerank`) → the first query with
+fact. When enabled, the model is **warmed at boot** (`nucleo/llm/prewarm._warm_rerank`) → the first query with
 recall does not pay the cold load. Observability: `status()` (provider/model/latency).
 
 > **Raising the recall ceiling — the levers.** The reranker fixes most of the ORDERING gap; the real ceiling is
@@ -414,10 +414,6 @@ not tag, guaranteeing graph coverage by category.
 - **META-VERB stopwords** in FTS (`recuerdas`/`acuerdas`/`dime`/`sabes`…): they are meta ("¿te acuerdas de…?"), NOT
   the data sought. Unfiltered, `recuerdas`→`recuer*` would match EVERY "recuérdame…" in the store and bury the real
   answer.
-- **The FlashBrain's recall spends its budget on DURABLE memory** (`prompt.compose_recall`): it asks for a DEEP
-  POOL (`limit=40`) and filters to `mid/long`. Recency (SHORT/conv buffer, ephemeral messages) ALREADY goes whole
-  into the prompt (`memory_cache`); including it in recall would double-count, and recent chatter would BURY the
-  durable task/fact being asked about.
 - **The CONVERSATIONAL BUFFER (`kind='conv'`) is NOT embedded** (`memory/writer/`): the raw turn↔reply pair
   (ephemeral, TTL 2d, `level='short'`) is written EVERY turn; it is read ONLY by recency (`recent_short`, direct
   SQL) and durable recall excludes it → embedding it would be a per-turn cost with no reader, and would put chatter
@@ -691,7 +687,7 @@ collisions; readers use WAL without blocking.
 | `memory.state() → dict` | direct · µs (fixed table) | the composer (always) |
 | `memory.recent_short(limit, max_chars) → list` | direct · µs (direct read, NO embeddings) | the composer: SHORT term **whole** into the prompt |
 | `memory.day_ledger(hours, *, skip_newest, gap_min, max_episodes) → [{start,end,turns,u,a,last_a}]` | direct · µs (direct SQL, NO embeddings) | `day_block` and the composer's stats: the day's episodes (V2-865) |
-| `memory.day_block() → str` | direct · µs | the live tail of the prompt (`nucleo/turn/prompt/live_state`): «HOY, EN ESQUEMA» (V2-865) |
+| `memory.day_block() → str` | direct · µs | «HOY, EN ESQUEMA» (V2-865) |
 | `memory.conversation(hours, query, limit, max_chars, *, skip_newest, by) → [{id,ts,at,who,text}]` | direct · ms (FTS5 with a query) | `mem_cli history`, `/api/memory/recall`, the conversation lane of the turn's recall (V2-865) |
 | `memory.recent_window(limit, max_chars, *, gap_min) → [{role,content}]` | direct · µs (direct read, NO embeddings) | seeds `brain._window` at startup with the LIVE episode only (`gap_min`, V2-865) + the second short-term pass (short-term circuit) |
 | `memory.reinforce(ids)` | async (event) | fired by the retriever when memories are used |
@@ -755,8 +751,8 @@ or touch the database directly.
 
 **READING (direct, no LLM — pick the speed):**
 
-- **STATE** (`memory.state()`) — µs, fixed table. Use it for "who they are / what they are up to". ALWAYS in the
-  prompt (the FlashBrain serves it cached through `nucleo/flash/memory_cache`). It is "opening your eyes".
+- **STATE** (`memory.state()`) — µs, fixed table. Use it for "who they are / what they are up to". Read on every run
+  of the conversation manager (its Memory port, `nucleo/conversation_host/memory_read.py`). It is "opening your eyes".
 - **SHORT** (`memory.recent_short()`) — µs, direct read, NO embeddings. The WHOLE recent working set. For "what were
   we talking about". Over-includes on purpose (cheap).
 - **LONG** (`memory.query(prompt, budget)`) — ms, retriever vec+FTS→RRF. For real recall ("where did Bartolo live",
@@ -812,25 +808,26 @@ survives a crash/restart to remind you that you left it halfway.
 
 ## Access points
 
-- **Writers** (through the queue, async): **FlashBrain** (whatever is worth keeping), **the SlowBrain's memory
+- **Writers** (through the queue, async): **the conversation manager** (the pair of each answered batch, and his
+  words to the memory agent: `nucleo/conversation_host/record.py`), **the SlowBrain's memory
   agent** (results, facts, summaries), **widgets** (messaging dumps what comes in) and **Brain Workers** (as a
   SERIAL piece over HTTP: `hbmem remember` → `POST /api/memory/remember` → `remember_external` with gates + a
   per-task token — they NEVER open the database; see §The write HEART). What is irrelevant is discarded before
   enqueuing.
-- **Readers** (direct, ms): the **retriever** (called by the SlowBrain dispatcher and the FlashBrain to compose the
-  minimal context). **The FlashBrain's read is NOT on the synchronous voice turn** (latency): the STATE block
-  (`memory.state()`) is **cached per session** (`nucleo/flash/memory_cache.py` — TTL + async refresh +
-  invalidation on `memory.updated`), and **recall** (`memory.query` → embeddings) is **on demand** (heuristic
-  `nucleo/flash/prompt.needs_recall`) and **off the event loop** (`asyncio.to_thread`). So a small-talk turn never
-  triggers the retriever or blocks the loop, while real recall is preserved (see the model-benchmark log (kept outside this repo)).
+- **Readers** (direct, ms): the **retriever** (called by the SlowBrain dispatcher and by the conversation manager's
+  `recall` read). **The manager's read never blocks the event loop**: its Memory port
+  (`nucleo/conversation_host/memory_read.py`) runs every read in a thread, and **recall** (`memory.query` →
+  embeddings, no reinforcement) runs only when the model names the `recall` read. So a small-talk run never triggers
+  the retriever, while real recall is preserved.
 - **State maintenance**: the memory agent and the consolidator write the `state` table; the composer reads it on
   every prompt.
 
 ## Reading in the turn — THREE speeds (how requests come in and data goes back)
 
-When a voice/chat turn arrives, the FlashBrain composes its prompt in `nucleo/turn/prompt/builder.py::build_flash_system`.
-The memory enters through **three read paths with three different speeds, aligned with latency** (the voice turn
-NEVER does synchronous memory I/O on the event loop).
+When a voice/chat line reaches the conversation manager, it composes its prompt once per run: the stable prefix
+(`nucleo/conversation_host/prefix.py`) and the blocks of its Memory port (`nucleo/conversation_host/memory_read.py`).
+The memory enters through **three read paths with three different speeds, aligned with latency** (every read runs in
+a thread, NEVER as synchronous memory I/O on the event loop).
 
 > **Each layer has its OWN DATA STRUCTURE and QUERY METHOD** (it is not a single mechanism): **STATE** = key–value
 > slots (a fixed row, a small dict, `memory/state.py`) → whole direct read (µs), ALWAYS, zero search.
@@ -841,69 +838,49 @@ NEVER does synchronous memory I/O on the event loop).
 
 | Layer | Role | How it is READ | Code |
 |---|---|---|---|
-| **STATE** = *the stack* | What is burned in (name, goal/project, location…) **+ the LIVE UI CONTEXT** (open widgets `open_widgets`, tasks/sessions in progress `activity`/`sessions`, and live RAILS `rails` → "Rails in progress"): what the operator has IN FRONT of them. ALWAYS in the prompt. | **Instant, always** — an already composed and **cached** string (`memory_cache.get()`, TTL + off-loop async refresh + invalidation on `memory.updated`; the canvas report triggers the refresh). Zero query. | `nucleo/flash/memory_cache.py` · `memory.state()` |
-| **SHORT TERM** = *working set* | What is recent/ephemeral (turns, today's messages). Small → fits whole. | **Whole and cheap** — ALL recent short term is plugged into the prompt WITHOUT the retriever (direct µs read). Reading it whole is more reliable than *searching* it for a fact just said (such as the operator's name). | `memory.recent_short()` → cached in `memory_cache._compose()` ("Recent conversation" block) |
-| **LONG TERM** = *the archive* | Durable, a lot of information, does not fit. | **Only by QUERY** — retriever vec+FTS→RRF (database, slower), **on demand** (`prompt.needs_recall` as prefetch + the **`recall` tool**) and **off the loop** (`asyncio.to_thread`). | `nucleo/flash/prompt.compose_recall()` → `memory.query()` → `memory/retriever/` |
+| **STATE** = *the stack* | What is burned in (name, goal/project, location…) **+ the LIVE UI CONTEXT** (open widgets `open_widgets`, tasks/sessions in progress `activity`/`sessions`, and live RAILS `rails` → "Rails in progress"): what the operator has IN FRONT of them. ALWAYS in the prompt. | **Every run** — the Memory port's state blocks, read in a thread and bounded by `state_tokens`. Zero query. | `memory_read.state_blocks` · `memory.state()` |
+| **SHORT TERM** = *working set* | What is recent/ephemeral (turns, today's messages). Small → fits whole. | **Direct and cheap** — a direct µs read WITHOUT the retriever. The conversation manager carries the conversation from its own ledger (no copy in its state); the buffer serves «what did I tell you» and the composed STATE. | `memory.recent_short()` |
+| **LONG TERM** = *the archive* | Durable, a lot of information, does not fit. | **Only by QUERY** — retriever vec+FTS→RRF (database, slower), **on demand** (the **`recall` read**, when the model names it) and **off the loop** (`asyncio.to_thread`). | `memory_read.recall` → `memory.query()` → `memory/retriever/` |
 
 > **Invariant:** STATE is read for free (cache), SHORT is read whole and cheaply (it fits), LONG is read by query (it
 > does not fit). The SlowBrain, by contrast, composes context with `nucleo/memory_agent.compose_context()` (the
 > multi-axis v2 dossier, see §The write HEART) — that one can afford search because it runs off the hot path.
 
-**The recall gate has TWO paths** («the model decides when to search», applied to memory):
-- **Heuristic prefetch** (`prompt.needs_recall`, deterministic es/en) — the classic path, optimistic and free. It
-  includes **planning phrasings** ("I want to go on holiday", "organise a trip for me", "find me a hotel", "book me
-  a restaurant"…) so the brain recalls exactly when it is about to plan something for the operator.
-- **The `recall` tool** (`router.TOOLS`, canonical catalogue in `zaelar-architecture.md §8`) — the **MODEL decides to
-  remember**: it covers what the prefetch did not catch. A LIGHT path, sibling of `web_search` in
-  the turn's tool executor: `compose_recall` off-loop (`asyncio.to_thread`) + the tool's own round with the model the
-  turn already pays for (`nucleo/turn/pipeline_state.speak`) → the memories come back IN the turn, without a card or a worker. Only the
-  operator's DURABLE memory (not world data = `web_search`; not what is already visible in STATE/conversation).
+**The recall gate is the model's** («the model decides when to search», applied to memory): the `recall` read
+(declared in `nucleo/conversation_host/declared.json`, canonical catalogue in `zaelar-architecture.md §8`), sibling
+of `web_search` — the memories come back IN the run, without a card or a worker. Only the operator's DURABLE memory
+(not world data = `web_search`; not what is already visible in the state or the conversation).
 
 ### The SHORT-TERM interaction circuit with the operator
 
-The FlashBrain must be **fully situated** on every request (who the operator is, what they have in front of them,
-what you were talking about) WITHOUT inflating the prompt. Three pieces, "the basics always + the heavy stuff on
-demand":
-
-- **A SACRED identity floor** (`nucleo/flash/memory_cache._store`): the cached STATE block is **never overwritten
-  with empty**. `compose_state()` can fail transiently (a database read under contention in sessions with many
-  writes) and return `('','')`; if that overwrote the cache, the FlashBrain would say *"I don't know who you are"*
-  even though the name is in the state. The guard keeps the last good block and marks it `dirty` to retry. A
-  legitimate empty state (fresh install / `reset()`) starts from an already empty cache, so it passes.
-- **A window seeded from memory** (`brain._window` ← `memory.recent_window`): the dialogue window (the last
-  `_WINDOW_MAX`=10 verbatim turns the model sees) lives in RAM, so a new brain instance (restart/reconnection) would
-  start empty and lose "what we were talking about". It is **seeded once** from the persistent conversational buffer
-  (`kind='conv'`, with structured `meta.u`/`meta.a`). Zero extra tokens (the window was already capped). Wired
-  once in the one turn pipeline (`nucleo/turn/pipeline.py`), which voice and text both run → the text channel
-  faithfully reproduces start-up after reconnecting.
-- **An on-demand second SHORT-TERM pass** (`prompt.needs_recent` → `prompt.compose_recent_block`): when the turn
-  **refers to the recent interaction** ("what were we talking about", "what I told you before", "repeat that", "a
-  while ago"; es/en, deterministic) the **EXTENDED** conversational buffer (verbatim, ~20 turns, more than the
-  normal window) is injected as a labelled block — **off the event loop** (`asyncio.to_thread`). Normal chat does
-  NOT carry it (a light prompt); it is only loaded when needed. It is the short-term sibling of `needs_recall`
-  (which is for the DURABLE fact by meaning, via embeddings). Telemetry `recent_fired` in `/debug`.
+The conversation manager is **situated** on every run (who the operator is, what they have in front of them, what
+you were talking about) by its own pieces: the state blocks of its Memory port (what is open first, the next days,
+the widget in front, the facts memory knows of him, the widgets' short index; the rest READ when the model names it)
+and the conversation from its own ledger — the turns before the last long silence marked as an earlier session, with
+their age (`.meshkore/docs/modules/zaelar-conversation.md`). The cached STATE block keeps a **sacred identity floor**
+(`memory/state_cache.py`): it is never overwritten with empty when `compose_state()` fails transiently.
 
 ### The COMPOSED STATE — `memory.compose_state()` (contract)
 
 The brain's prompt is **[dynamically composed STATE] + [the operator's request]** (a compact prompt of a few dozen
 lines). The MEMORY owns the composition of that STATE: `memory.compose_state(*, mission_fallback="") -> (block,
 operator_name, stats)`. It is what the **two brains SHARE**; RESOURCES/tools diverge per brain (their own layer).
-**DIRECT** read (µs, no LLM or retriever) → safe to cache outside the turn (`nucleo/flash/memory_cache` caches it
-with TTL + async refresh + invalidation on `memory.updated`; the voice turn NEVER composes it without the cache).
+**DIRECT** read (µs, no LLM or retriever) → safe to cache outside the turn (`memory/state_cache.py` caches it
+with TTL + async refresh + invalidation on `memory.updated`).
 Ordered structure:
 
 | Section | What it carries | Where from |
 |---|---|---|
-| **A · WHO YOU ARE** | The MISSION/identity (3-4 sentences, in the operator's language). It LIVES IN THE MEMORY — not in an English prompt. | `state.mission`, seeded at start-up by `memory_cache.prime()` from `langs.LangSpec.mission`; `mission_fallback` if not yet seeded (the caller passes it so as not to invert the memory→voice dependency). |
+| **A · WHO YOU ARE** | The MISSION/identity (3-4 sentences, in the operator's language). It LIVES IN THE MEMORY — not in an English prompt. | `state.mission`, seeded at start-up by `memory/state_cache.prime()` from `langs.LangSpec.mission`; `mission_fallback` if not yet seeded (the caller passes it so as not to invert the memory→voice dependency). |
 | **B · WHO IS IN FRONT OF YOU** | VARIABLE situational data: operator (name/address/location + durable STATE fields), OPEN widgets, tasks/sessions IN PROGRESS, **RAILS in progress** (live FlashBrain runs), and the salient durable profile ("what you know about them"). | `memory.state()` + `memory.salient_long()` (terse cap). |
-| **C · TODAY, IN SCHEMA** (V2-865) | The day as a SCHEMA: one line per EPISODE of the last `DAY_HOURS` (16 h, env `ZAELAR_DAY_HOURS`) — when, how many turns, what he OPENED with and the first reply, and how it ended (`· HH:MM–HH:MM (N turnos) él: «…» → tú: «…» · al final: «…»`). **It is NOT rendered in this cached block**: `memory.day_block()` renders it as «HOY, EN ESQUEMA» in the LIVE TAIL of the prompt (`nucleo/turn/prompt/live_state`), fresh every turn — in the state block, tens of thousands of characters before his words, the model answered «I need the name» with the name in front of it; the composer only counts it (stats). The LIVE CHAIN is left out (at most `LIVE_WINDOW_TURNS` = 5, half the dialog window's `_WINDOW_MAX`, and only while they chain to now under 12 min) — the window carries it verbatim; after a night's silence nothing is left out. Budget `_DAY_MAX_CHARS` = 2200 (≈550 tokens a turn; seven ordinary episodes), the OLDEST line dropped first. The header tells the model the datum is here or in `recall` with his words, never «no access». Absent when there is nothing outside the window. | `memory.day_ledger()` — a direct SQL read over `kind='conv'`. A new episode opens after a silence over `EPISODE_GAP_MIN` (12 min), after a first-turn KICKOFF row (`meta.kickoff`, stamped by `pipeline_close`, or `history.is_kickoff(u)` = any language's i18n `kickoff_prompt`), or when the current one reaches `EPISODE_MAX_TURNS` (10). A kickoff never opens or fills one: it is the engine speaking in his voice. No summary model — a cut of his words and the reply. Stats `day_count`, `day_chars`. |
+| **C · TODAY, IN SCHEMA** (V2-865) | The day as a SCHEMA: one line per EPISODE of the last `DAY_HOURS` (16 h, env `ZAELAR_DAY_HOURS`) — when, how many turns, what he OPENED with and the first reply, and how it ended (`· HH:MM–HH:MM (N turnos) él: «…» → tú: «…» · al final: «…»`). **It is NOT rendered in this cached block**: `memory.day_block()` renders it as «HOY, EN ESQUEMA», fresh every turn — in the state block, tens of thousands of characters before his words, the model answered «I need the name» with the name in front of it; the composer only counts it (stats). The LIVE CHAIN is left out (at most `LIVE_WINDOW_TURNS` = 5, half the dialog window's `_WINDOW_MAX`, and only while they chain to now under 12 min) — the window carries it verbatim; after a night's silence nothing is left out. Budget `_DAY_MAX_CHARS` = 2200 (≈550 tokens a turn; seven ordinary episodes), the OLDEST line dropped first. The header tells the model the datum is here or in `recall` with his words, never «no access». Absent when there is nothing outside the window. | `memory.day_ledger()` — a direct SQL read over `kind='conv'`. A new episode opens after a silence over `EPISODE_GAP_MIN` (12 min), after a first-turn KICKOFF row (`meta.kickoff`, or `history.is_kickoff(u)` = any language's i18n `kickoff_prompt`), or when the current one reaches `EPISODE_MAX_TURNS` (10). A kickoff never opens or fills one: it is the engine speaking in his voice. No summary model — a cut of his words and the reply. Stats `day_count`, `day_chars`. |
 | **D · WHAT YOU WERE TALKING ABOUT** | A TIGHT synthesis of the recent conversation — the last lines of short term (aggressive cap), NOT the whole raw dump nor LONG memory. | `memory.recent_short(limit=5, max_chars=550)`. The cut IS the "synthesis" (it is still a direct read; an LLM synthesis, if ever wanted, would go OFF the turn). |
 
 The mission (A) seeded in `state.mission` is visible in the memory map (STATE column) and editable — identity is not
 hard-coded in `voice/prompt.py` (that English persona only serves the `BRAIN=direct|local|duo` baselines and the
-harness). On top of this STATE, the FlashBrain adds its TERSE resources layer (`nucleo/flash/prompt._flash_layer`)
-and the SlowBrain its own; "when to use each tool" lives in the tool description (`router.TOOLS`), not duplicated in
-prose.
+harness). The conversation manager's prompt is its own (`nucleo/conversation_host/prefix.py` + `memory_read.py`)
+and the SlowBrain has its own; "when to use each read or act" lives in its declared description
+(`nucleo/conversation_host/declared.json`), not duplicated in prose.
 
 ### The SHAPE OF THE KEY decides whether a pill is a fact about the PERSON
 
@@ -978,8 +955,8 @@ lives in `nucleo/memory_agent/` + `nucleo/memory_agent/processor/distill.py`:
 - **`ingest_utterance(text)`** — the entry point for "something the operator said". Flow: (1) obvious trivia/command
   → cheap DISCARD without an LLM (anti-noise); (2) the LLM processor distils pills; (3) **fail-open**: if the model
   is unavailable, it falls back to `classify()` (regex heuristic) so the profile is not lost. **Wired on every
-  directed turn** in `voice/engine/llm/providers/nucleo.py` (`asyncio.create_task`, fire-and-forget → zero cost to
-  TTFB).
+  answered batch** by the conversation manager's record (`nucleo/conversation_host/record.py`, in the background on
+  its own loop → zero cost to the reply).
 - **`classify(text)`** — the µs FALLBACK heuristic (es/en regex): PROFILE (name/location/address/hardware/car/
   goal/project) → `state_patch` + a pinned `long` trace with `slot`; WISH/PREF → `long`; TRIVIA/COMMAND → skip;
   everything else → `mid`. It is the fail-open when the LLM does not answer, and **it does not pollute**: the raw
@@ -1131,10 +1108,8 @@ live in a pill in plain text. The memory provides:
 
 Two surfaces to SEE the memory working in real time:
 
-- **The ◷ logs column** (`/debug` · `frontend/app/components/DebugPanel.js`): the turn emits `kind=memory` rows with
-  **module=memory · layer (state/short/long/slow) · request → result (number of cards/chars) · time `mem_ms`**
-  (emitted in `voice/engine/llm/providers/nucleo.py` after `build_flash_system`); writes/queries arrive labelled
-  through the SSE bridge. Detail in `zaelar-observability.md`.
+- **The ◷ logs column** (`/debug` · `frontend/app/components/DebugPanel.js`): writes/queries arrive as `kind=memory` rows
+  labelled through the SSE bridge. Detail in `zaelar-observability.md`.
 - **The memory viewer 🧠 — a monitor, not a browser** (V2-808, V2-814; `frontend/app/components/MemoryMap.js` +
   `components/memory/`, full-screen overlay opened from the orb's bowl): **Overview · Graph**. It shows totals and how
   the memory relates concepts; no stored row (a fact, a turn, a message, a file) ever leaves the server through it,

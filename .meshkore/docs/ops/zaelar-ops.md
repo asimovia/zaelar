@@ -78,12 +78,14 @@ FlashBrain model on Ollama → zero per-turn cost. Zero-install STT fallback: `S
 
 ## 3. Brain («Colmena» = `nucleo/`) + memory + model routing
 
-The brain runs **in-process** inside the server; the `server/` lifespan starts the FlashBrain provider, the
+The brain runs **in-process** inside the server; the `server/` lifespan starts the voice in its own process, the
 orchestrator loop (`nucleo/pulse/loop.py`), its own cron/scheduler (`nucleo/pulse/scheduler.py`, panel at `/api/cron`,
 `nucleo/pulse/cron_api.py`), and the memory queue consumer. Nothing to install or upgrade separately.
 
-**Two speeds.** **FlashBrain** (`nucleo/flash/`) owns the hard-realtime voice turn (~sub-second) and is exposed to
-the voice engine as the provider `voice/engine/llm/providers/nucleo.py`. **SlowBrain** (`nucleo/dispatch/` +
+**Two speeds.** The **conversation & turn manager** (`conversation/`, hosted by `nucleo/conversation_host/`) owns the
+hard-realtime turn (~sub-second) and is the ONLY path for voice and text: the voice process hands his finished words
+to the body (`server/voice_child_api.py` ↔ `voice/remote_session.py`), a typed line enters through `nucleo/cli/turn.py`.
+**SlowBrain** (`nucleo/dispatch/` +
 `nucleo/memory_agent/` + `nucleo/agentes/`) does async memory/tools/reasoning off the voice path, reached via
 `escalate_to_slowbrain`.
 

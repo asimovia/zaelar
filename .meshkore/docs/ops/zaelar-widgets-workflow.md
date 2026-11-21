@@ -30,7 +30,7 @@ If the answer is yes to any of these, run the full workflow:
   `confirm`/`irreversible` — an action's execution mode, `widgets/actions.py`; `background`+`tick(ctx)` —
   off-screen execution on a cycle, `widgets/background.py`; `ref_index` — refs to items, `widgets/refs.py`; `kind`).
 - The tag protocol (`voice/tag_protocol.py`) — a new tag, a syntax change, a change in what is escaped/held back.
-- Brain↔widget dispatch (`voice/engine/llm/providers/nucleo.py`, `nucleo/flash/router.py`, `nucleo/dispatch/`,
+- Brain↔widget dispatch (`nucleo/conversation_host/acts_widget.py`, `acts_life.py`, `declared.json`, `nucleo/dispatch/`,
   `widgets/__init__.py`, `widgets/server_api.py`) — who may create/modify/delete/deliver/mutate data, and under
   which conditions.
 - The storage model (`widgets/store.py`) — on-disk format, location, migration.
@@ -49,10 +49,10 @@ document is needed.
 
 | You touched | Also update |
 |---|---|
-| A new tag or a syntax change (`tag_protocol.py`) | `widgets/brief.py` (`TAG_PROTOCOL`) · `nucleo/turn/prompt/` if the FlashBrain must know it or be blocked from it · `zaelar-modules.md §Widgets` · public diagram (`/technology`, outside this repo, + its `.ts`, only for a change that matters to an outside reader) |
+| A new tag or a syntax change (`tag_protocol.py`) | `widgets/brief.py` (`TAG_PROTOCOL`) · `nucleo/conversation_host/prefix.py` if the conversation manager must know it or be blocked from it · `zaelar-modules.md §Widgets` · public diagram (`/technology`, outside this repo, + its `.ts`, only for a change that matters to an outside reader) |
 | A new `manifest.json` field (e.g. `actions`, `safe`, `kind`) | `widgets/AGENTS.md` (the contract for hand editors) · `widgets/generator.py` → `_CONTRACT`/`_CREATE_PROMPT`/`_MODIFY_PROMPT` (the contract for the code agent) · `widgets/brief.py` if the brain must read it |
 | The storage model (`widgets/store.py`) | a **lazy, automatic** migration, never a manual script nor data loss (same pattern as the `_v` schema migration) · `widgets/AGENTS.md` · the generator's `_CONTRACT` · doc + diagram |
-| Brain↔widget governance (who mutates what) | `voice/engine/llm/providers/nucleo.py` + `nucleo/flash/router.py` (dispatch + the declaration of the tools `escalate_to_slowbrain`/`set_style_directive`) · `nucleo/dispatch/` (SlowBrain) · `nucleo/turn/prompt/` · `widgets/brief.py` · doc + diagram |
+| Brain↔widget governance (who mutates what) | `nucleo/conversation_host/acts*.py` + `declared.json` (dispatch + the declaration of the acts `start_task`/`build_widget`/`set_rule`) · `nucleo/dispatch/` (SlowBrain) · `nucleo/conversation_host/prefix.py` · `widgets/brief.py` · doc + diagram |
 | The refresh mechanism (SSE/poll) | `desktop.js` · `sse.js` · `widgets/AGENTS.md` (the "no polling" rule) · doc + diagram |
 | **Any VISIBLE string of a built-in widget** (label, title, button, empty state, `placeholder`, `title`) | `tt("key", params, "<the literal>")` in the `widget.js` + the row in `i18n/genesis/en/ui.json` **and** `es.json` · bump `MANIFEST_VERSION` if the SET of keys changes · the gate at node 4.11 requires it and fails the build |
 | **The NAME of a widget or a surface** | `widgets.<id>.name` / `surfaces.<id>.name` in both bundles — NOT `manifest.json`, which stays as the fallback and as an alias so voice keeps answering to the factory word · `widgets/registry.py::display_name` is the only reader |
@@ -108,9 +108,10 @@ specifically:
   needs ITS OWN group/box in the SVG, not just a mention in prose. This is for OUTSIDE readers (trimmed on
   purpose, no internal file paths) — do not trigger it for every internal detail, only for topology/flow changes
   a self-hoster or visitor would see.
-- If the tag vocabulary or the contract the brain sees changes: **`widgets/brief.py`** + the FlashBrain prompt
-  (**`nucleo/turn/prompt/`**). The live persona/instructions are not an external file: they are injected on
-  every connection from `memory/` + `nucleo/turn/prompt/`, so there is no personal copy to touch here.
+- If the tag vocabulary or the contract the brain sees changes: **`widgets/brief.py`** + the conversation manager's prompt
+  (**`nucleo/conversation_host/prefix.py`**). The live persona/instructions are not an external file: they are
+  composed on every run from `memory/` + `nucleo/conversation_host/prefix.py`/`memory_read.py`, so there is no
+  personal copy to touch here.
 - If the contract the code agent (Claude Code) sees changes: **`widgets/AGENTS.md`** + **`widgets/generator.py`**
   (`_CONTRACT`/`_CREATE_PROMPT`/`_MODIFY_PROMPT`).
 

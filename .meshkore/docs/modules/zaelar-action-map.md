@@ -49,11 +49,9 @@ the workload that motivated the module.
 
 | Channel | File | Position |
 |---|---|---|
-| voice and text (one pipeline) | the fast lane (`voice/engine/llm/providers/fast_lane.py`), called from `nucleo/turn/pipeline_gate.py` | after the hard-interrupt/gate region, before the fragment accumulator |
+| voice and text (the conversation manager) | the manager's `Shortcut` port (`nucleo/conversation_host/shortcut.py`) | before any model: an exact hit runs its direct act and the run closes with origin `actionmap` |
 
-Both go through the one shared module; neither reimplements it. The voice hook is additionally guarded against
-a **pending fragment chain** (`brain._acc.fragments`): mid-accumulation the utterance is not yet a whole
-utterance, so the map must not claim it.
+Both go through the one shared module; neither reimplements it.
 
 Wiring a mechanism into only one channel is an easy mistake to make, so the testmap node carries an explicit
 guard asserting both call sites exist. The probe also **runs** the action rather than merely reporting it: once
@@ -195,8 +193,6 @@ inference**:
 - every map event carries `engine: "actionmap"` and `origin: "actionmap"`, plus `action`, `entry`, `source`,
   `match_ms` and the phrase; a model turn stamps `origin: "flash"`. **Counting turns by origin is a field, not
   a guess from the label.**
-- `match_ms` is folded into `pre_ms` as `amap_ms`, the existing per-segment latency convention
-  (`nucleo/flash/turn_perf.py`);
 - the local viewer (◷) prints `ActionMap` in the LAYER column, which reads `engine` — that is why the field is
   stamped, not decoration.
 

@@ -46,18 +46,19 @@ that is fixed in System Settings, not in code.
   silent engine (`config/models.default.json` is the source of truth): STT = Deepgram → Voxtral, TTS =
   Inworld → ElevenLabs. Local Whisper (`make install-stt`) and local Kokoro (`make install-tts`) remain the free,
   private options for a self-hoster. The top level of `voice/` is the
-  **brain-agnostic contract** (kept pure): `tag_protocol.py`, `prompt.py`, `proactive.py`, `typed_turn.py`,
-  `observer.py` (SSE), plus the STT/TTS backends and the provider registry (`voice/engine/llm/providers/`).
+  **brain-agnostic contract** (kept pure): `tag_protocol.py`, `prompt.py`, `proactive.py`, `observer.py` (SSE), plus
+  the STT/TTS backends; the voice runs in its own process (`child_process.py`) and hands his finished words to the
+  body (`remote_session.py` ↔ `server/voice_child_api.py`).
 - **Brain = `nucleo/`** (zaelar's OWN, default `BRAIN=nucleo`; `config/v2.py` `active_brain()`). Two speeds:
-  **FlashBrain** (`nucleo/flash/` + `nucleo/turn/`) owns the conversation, the reflexes, the router and the mouth —
-  ONE turn pipeline for voice and text with a **non-reasoning** model chosen per-invocation (the `voice_brain` row of
-  `config/models.default.json`: DeepSeek direct, OpenAI as the failover), reached by the voice engine through its
-  provider adapter `voice/engine/llm/providers/nucleo.py`. Work that does not fit a turn is a **task**: one `tasks`
+  the **conversation & turn manager** (`conversation/`, hosted by `nucleo/conversation_host/`) owns the conversation
+  — the ONLY path for voice and text, ONE **non-reasoning** model per run chosen per-invocation (the `voice_brain` row
+  of `config/models.default.json`: DeepSeek direct, OpenAI as the failover), its acts reaching the engine's existing
+  doors (`conversation_host/acts*.py`); a typed line enters through `nucleo/cli/turn.py` (`POST /api/flash/say`). Work that does not fit a turn is a **task**: one `tasks`
   row and one **Brain Worker** session (`nucleo/dispatch/` + `nucleo/workers/`; Claude Code / Codex / Grok) resumable
-  by id, with a playbook, reaching the agent through one internal API (the bridge) — started by the router or the
-  FlashBrain calling `escalate_to_slowbrain`; the circuit verifies it and is the only closer. The pulse
+  by id, with a playbook, reaching the agent through one internal API (the bridge) — started by the manager's
+  `start_task` act; the circuit verifies it and is the only closer. The pulse
   (`nucleo/pulse/loop.py`, ~1 Hz) + own cron (`nucleo/pulse/scheduler.py`, persisted in `memory.journal`) + panel
-  (`nucleo/pulse/cron_api.py`, the `/api/cron` panel) + `nucleo/pulse/sparks.py` own proactivity. **The FlashBrain model MUST
+  (`nucleo/pulse/cron_api.py`, the `/api/cron` panel) + `nucleo/pulse/sparks.py` own proactivity. **The conversation model MUST
   be non-reasoning** on the voice path (a reasoner adds seconds of thinking latency; see §7 decisions).
 - **Widgets** — isolated visual layer in `widgets/` + browser window-manager `frontend/app/widgets/desktop.js`. One
   folder per widget (manifest + widget.js + data.py), per-widget JSON store, catalog-driven HTTP API.
@@ -106,9 +107,9 @@ loop** (`nucleo/pulse/loop.py` + `nucleo/pulse/scheduler.py`, own cron persisted
 — in-process, no external agent, no launchd service.
 
 ## 4. Architecture & couplings (the contracts)
-- **Voice ↔ Brain**: the nucleo provider (`voice/engine/llm/providers/nucleo.py`) sits in the LLM slot; the
-  FlashBrain answers the voice turn in ~sub-second and, when the turn needs memory/tools/reasoning, calls
-  `escalate_to_slowbrain` → a task (one row + one async Brain Worker; the result is recorded on the row and said once
+- **Voice ↔ Brain**: the voice process hands his finished words to the body (`voice/remote_session.py` ↔
+  `server/voice_child_api.py`) and the conversation manager answers in ~sub-second; when the request needs
+  work outside the conversation it calls `start_task` → a task (one row + one async Brain Worker; the result is recorded on the row and said once
   by the out-of-turn mouth, `nucleo/pulse/notices`). Memory lives in `memory/` (SQLite), shared across voice + chat + the MeshKore channel.
 - **Brain ↔ Widgets bridge** (one-directional, additive, guarded): on connect, `widgets/brief.for_brain()` (the
   catalog + today's agenda + the **silent-tag protocol**) is injected into the brain. The brain decides to surface
@@ -212,9 +213,9 @@ zaelar/
       lib/       draggable.js · speaker-id.js       widgets/ desktop.js (window manager)
     vendor/      vendored LiveKit browser SDK
   server/        SERVER — FastAPI app + routers + entrypoint (__main__.py); runs the LiveKit agent worker EMBEDDED
-  voice/         VOICE ENGINE (server-side): engine/ (LiveKit AgentSession + STT/LLM/TTS providers, incl.
-                 providers/nucleo.py = the turn's adapter), tag_protocol.py, observer.py, prompt.py, proactive.py, typed_turn.py, speech/
-  nucleo/        BRAIN «Colmena» (BRAIN=nucleo): turn/ (the one pipeline, the router, the mouth) · flash/ (reflexes, tools) · dispatch/ + workers/ + cli/ (Brain Workers, the bridge) · circuit/ + request/ (a request's life: end state, row, settle, the asker) · events/ · pulse/ (loop, scheduler, notices) · consent.py · memory_agent/
+  voice/         VOICE ENGINE (server-side): engine/ (LiveKit AgentSession + STT/TTS providers; pipeline/child.py = the
+                 voice's own process), child_process.py + remote_session.py (its link to the body), tag_protocol.py, observer.py, prompt.py, proactive.py, speech/
+  nucleo/        BRAIN «Colmena» (BRAIN=nucleo): conversation_host/ (hosts conversation/, the one path for voice and text) · switchboard/ · acts/ · dispatch/ + workers/ + cli/ (Brain Workers, the bridge) · circuit/ + request/ (a request's life: end state, row, settle, the asker) · events/ · pulse/ (loop, scheduler, notices) · consent.py · memory_agent/
   memory/        CENTRAL MEMORY — SQLite zaelar.db (sqlite-vec + FTS5 + RRF + graph + forgetting); absorbed old files/ as episodic layer
   bus/           EVENT BUS — in-process pub/sub (generalizes voice/observer.py) + durable SQLite log + SSE bridge
   connectors/    external I/O: meshkore/ (cluster WS · FlashBrain untrusted profile · per-peer capsule) · architect/ · whatsapp/ · telegram/ · messaging/ (shared)
