@@ -1032,6 +1032,7 @@ _PACKAGE_CEILINGS["memory"] += 18          # 2026-11-21 review of step 3+4: a ge
 _PACKAGE_CEILINGS["nucleo/queue"] += 14    # same review: a second session for a waiting task leaves; the pill is written outside the lock (`_apply`)
 _TOTAL_MAX += 33     # same review, measured
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 121  # 2026-11-21 INI-078 segregation S1: every decided batch leaves ONE `route` record (`route.py`: what the decider saw and chose, wired to the ports), measured
+_TOTAL_MAX -= 1448   # 2026-11-21 INI-078 L1 B5: the embedded voice session, the filler and the prewarm of the old voice node go; the typed line has one door
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

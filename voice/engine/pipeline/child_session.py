@@ -25,6 +25,7 @@ import time
 from livekit.agents import AgentSession, JobContext
 
 from . import body_link
+from . import reply_wall as _reply_wall
 from ..core.config import SETTINGS
 from ..core.state import State, StateMachine
 
@@ -214,10 +215,9 @@ def _untap(stt):
 
 
 def _wire(session, ctx, link, sm, _emit, tts, boot) -> None:
-    """The session's and the room's events → the body (`body_link.send`), each one the fact the embedded handler of
+    """The session's and the room's events → the body (`body_link.send`), each one the fact the handler of
     the same name reads (`agent_events.*` replays it there). What stays here is the room's own: the reply-wall tee on
     a dead synthesis, the speech-id aliases, the live-TTS handle, the boot channel."""
-    from . import agent as _ag
     from . import agent_events as _ae
     @session.on("agent_state_changed")
     def _on_agent_state(ev) -> None:
@@ -243,7 +243,7 @@ def _wire(session, ctx, link, sm, _emit, tts, boot) -> None:
         if str(getattr(_h, "id", "")) in LIVE["conv_says"]:
             return                               # a line of the manager's: it keeps its own record of what sounded
         link.send({"k": "item", "role": role, "text": text, "speech_id": alias_of(getattr(_h, "id", "")),
-                   "surfaced": bool(text) and _ag._reply_wall.already_surfaced(text)})
+                   "surfaced": bool(text) and _reply_wall.already_surfaced(text)})
 
     @session.on("agent_false_interruption")
     def _on_false(ev) -> None:
@@ -262,8 +262,8 @@ def _wire(session, ctx, link, sm, _emit, tts, boot) -> None:
         _err = getattr(ev, "error", ev)
         _emit("error", "⚠️ " + str(_err)[:200], role="system")
         logger.error("session error: %s", _err)
-        if _ag._reply_wall.is_tts_dead(_err):
-            _ag._reply_wall.surface(_emit)
+        if _reply_wall.is_tts_dead(_err):
+            _reply_wall.surface(_emit)
 
     @ctx.room.on("data_received")
     def _on_data(packet) -> None:

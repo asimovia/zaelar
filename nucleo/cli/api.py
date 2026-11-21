@@ -1,15 +1,14 @@
 """The typed channel's HTTP face: `POST /api/flash/say` and `/api/flash/reset` over `nucleo.cli.turn`.
 
-A line typed through the API runs the VOICE turn itself (`cli/turn.py`); this module only adds what belongs to the
-HTTP edge — the first-run language lock and the chat wall. Mounted by `server/__init__.py` (refactor2710-01: it was
-`nucleo/flash/probe_api.py`, over the text channel's own turn, which is gone).
+A line typed through the API goes to the conversation manager (`cli/turn.py`); this module only adds what belongs to
+the HTTP edge — the first-run language lock and the chat wall. Mounted by `server/__init__.py`.
 """
 from __future__ import annotations
 
 from fastapi import APIRouter, Body
 from loguru import logger
 
-from nucleo.cli.turn import _brain, reset as _reset_session, run_turn
+from nucleo.cli.turn import run_turn
 
 router = APIRouter()
 
@@ -54,9 +53,8 @@ async def say(text: str = Body(..., embed=True), session: str = Body("default", 
               ingest: bool = Body(True, embed=True), prompt: bool = Body(False, embed=True),
               model: str = Body("", embed=True), execute: bool = Body(False, embed=True),
               dev: str = Body("", embed=True)) -> dict:
-    """Inject a text turn into FlashBrain and return its response, action, and timings (test channel).
-    `model` (optional) forces another fast model for A/B testing. `execute` (V2-049) REALLY EXECUTES worker
-    actions (escalation/injection/response/stop) → end-to-end testing of web tasks by text, without voice."""
+    """His line through the conversation manager, and what it answered (the text channel). `prompt`, `model` and
+    `execute` are accepted for older callers: the manager decides with its own model and its own doors."""
     # FIRST-RUN LANGUAGE, on a channel that has no way to ASK (V2-170). The voice pipeline opens a brand-new
     # install with a blocking "what language should I use?" turn and locks the answer; a text channel gets no
     # such turn, so without this it stays on the product default (English) for as long as it lives. That is not
@@ -95,10 +93,10 @@ async def say(text: str = Body(..., embed=True), session: str = Body("default", 
 
 @router.post("/api/flash/reset")
 async def reset(session: str = Body("default", embed=True)) -> dict:
-    """Clear the probe conversation window (does NOT touch memory; use `make reset` for that)."""
+    """A barrier for headless runs: every completed memory write is visible to the next line (does NOT touch memory;
+    use `make reset` for that)."""
     # A reset is an explicit causal barrier in headless tests: all completed memory writes must be visible in the
     # first turn of the new window. It does not run on the physical voice hot path.
     from memory.api import state_cache as memory_cache
     await memory_cache.refresh()
-    _reset_session(session or "default")
     return {"ok": True, "session": session or "default"}

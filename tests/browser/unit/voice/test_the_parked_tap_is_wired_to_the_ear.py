@@ -16,7 +16,7 @@ from tests import voice_turn_source as _vts   # V2-778 F1: a split file is read 
 
 ROOT = Path(__file__).resolve().parents[4]
 SESSION = ROOT / "frontend" / "app" / "services" / "session-lk.js"
-AGENT = ROOT / "voice" / "engine" / "pipeline" / "agent.py"
+AGENT = ROOT / "voice" / "engine" / "pipeline" / "agent_events.py"
 AGENT_EVENTS = ROOT / "voice" / "engine" / "pipeline" / "agent_events.py"
 #: The kickoff decision lives with the first air since the voice runs in its own process (V2-891).
 FIRST_AIR = ROOT / "voice" / "engine" / "pipeline" / "first_air.py"
@@ -112,9 +112,9 @@ def test_the_engine_answers_the_wake_topic():
 def test_the_backstop_does_not_answer_a_turn_the_paid_ear_already_owns():
     # Both can land within a few hundred ms of each other, and answering twice is worse than answering
     # once a second later.
-    s = _src(AGENT)
+    s = _src(AGENT_EVENTS)
     assert "_wake_backstop" in s
-    bs = s.split("async def _wake_backstop", 1)[1].split("\n                    if _wake[", 1)[0]
+    bs = s.split("async def _wake_backstop", 1)[1].split("_wake_reply(session, text)", 1)[0]
     assert "asyncio.sleep(" in bs, "deciding immediately loses the race it exists to arbitrate"
     assert '_wake["last_user_final"] > spot_at' in bs, "the condition is a FACT, not a guess"
     assert "drop_preroll()" in bs, \
@@ -123,11 +123,11 @@ def test_the_backstop_does_not_answer_a_turn_the_paid_ear_already_owns():
 
 def test_the_engine_records_when_the_paid_ear_last_finished_a_turn():
     # The fact the backstop reads. Stop writing it and the backstop answers everything twice.
-    s = _src(AGENT)
-    assert '_wake = {"last_user_final": 0.0, "spot_at": 0.0}' in s
+    s = _src(ROOT / "voice" / "remote_session.py")       # the body keeps the fact for the voice's own process
+    assert "wake=dict(last_user_final=0.0, spot_at=0.0)" in s
     # the transcript handler lives in agent_events.py (V2-778 F1) and keeps the words beside the time (V2-931)
     on = _src(AGENT_EVENTS).split("def _on_transcript", 1)[1].split("\ndef ", 1)[0]
-    assert '_wake["last_user_final"], _wake["last_user_text"] = _ag.time.time(), str(ev.transcript or "")' in on
+    assert '_wake["last_user_final"], _wake["last_user_text"] = time.time(), str(ev.transcript or "")' in on
 
 
 def test_the_greeting_is_not_asked_into_a_parked_microphone():

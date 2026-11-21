@@ -62,19 +62,3 @@ def test_a_page_with_undelivered_lines_says_so_when_it_asks_for_its_room(monkeyp
     assert screens.typed_waiting()
 
 
-def test_the_typed_door_opens_only_on_a_started_session():
-    from voice.engine.pipeline import agent_events
-    agent_events.open_typed_door(_emit=lambda *a, **k: None, _on_session_loop=None, session=None)
-    assert not screens.has_session(), "registered before session.start: a line would reach generate_reply too early"
-    src = Path("voice/engine/pipeline/agent.py").read_text(encoding="utf-8")
-    assert src.index("await session.start(") < src.index("register_typed(_typed_from_screen)")
-
-
-def test_a_waiting_line_is_checked_before_any_greeting(monkeypatch):
-    # V2-891: the decision is `first_air.decide_kickoff`, shared by the embedded session and the voice's own process.
-    from voice.engine.pipeline import first_air
-    monkeypatch.setattr(first_air, "silent_first_run", lambda: False)
-    screens.note_waiting()
-    assert first_air.decide_kickoff("zaelar-test-waiting", lambda *a, **k: None) == "", "greeted over a waiting line"
-    src = Path("voice/engine/pipeline/agent.py").read_text(encoding="utf-8")
-    assert src.index("decide_kickoff(") < src.index("session.generate_reply(user_input=kickoff_text")

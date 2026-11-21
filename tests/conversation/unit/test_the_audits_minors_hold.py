@@ -15,11 +15,6 @@ import asyncio
 import sys
 from types import SimpleNamespace
 
-import pytest
-
-
-class _OldPath(Exception):
-    pass
 
 
 def test_only_his_line_at_the_door_goes_to_the_manager_with_the_switch_on(monkeypatch):
@@ -33,13 +28,9 @@ def test_only_his_line_at_the_door_goes_to_the_manager_with_the_switch_on(monkey
         return {"ok": True, "conv": {"close": "answered"}}
     monkeypatch.setattr(entry, "typed_and_wait", typed_and_wait)
 
-    def old(sid):
-        raise _OldPath(sid)
-    monkeypatch.setattr(turn, "_brain", old)
-    with pytest.raises(_OldPath):
-        asyncio.run(turn.run_turn("w1", sid="s1", execute=True))                  # not at the door: the old turn
-    assert handed == []
-    assert asyncio.run(turn.run_turn("w2", sid="s1", door=True))["ok"] and handed == ["w2"]   # his line: the manager
+    assert asyncio.run(turn.run_turn("w2", sid="s1"))["ok"] and handed == ["w2"]   # his line: the manager, the only path
+    monkeypatch.setattr(switch, "on", lambda session=None: False)
+    assert not asyncio.run(turn.run_turn("w3", sid="s1"))["ok"] and handed == ["w2"], "with the switch off nothing answers"
 
 
 def test_the_wake_phrase_goes_to_the_manager_counted_apart(monkeypatch):

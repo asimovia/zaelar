@@ -22,7 +22,6 @@ import asyncio
 import dataclasses
 import json
 import threading
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -323,8 +322,3 @@ def test_a_write_from_another_thread_lands_on_the_session_loop(env):
 
 # ── the wiring: the entrypoint really installs the door, before the session starts ───────────────────────────
 
-def test_the_entrypoint_installs_the_door_before_the_session_starts():
-    src = (Path(__file__).resolve().parents[3] / "voice" / "engine" / "pipeline" / "agent.py").read_text("utf-8")
-    i, j = src.find("_agent_events.open_mic_door(session=session"), src.find("await session.start(")
-    assert i > 0, "the entrypoint never installs the input door: every closed state would bill again"
-    assert i < j, "installed after session.start, the first frames of a closed-mic reconnect would be billed"

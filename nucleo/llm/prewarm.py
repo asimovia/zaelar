@@ -1,6 +1,6 @@
 """nucleo/llm/prewarm.py — warms the HOT PATH at startup (V2-024).
 
-The operator saw 6–8s on the FIRST turn and about 1s thereafter. The cause: the first FlashBrain call
+The operator saw 6–8s on the FIRST turn and about 1s thereafter. The cause: the first call to the voice model
 (a cloud provider) establishes TLS, performs the handshake, and starts the model cold. We absorb
 that HERE, during server startup—while the frontend renders the brain-mesh loader—with a MINIMAL fire-and-forget
 query, so the model is warm (~1s) when the user can interact. It also warms search Chromium
@@ -16,7 +16,7 @@ from loguru import logger
 
 
 async def run() -> None:
-    """Fire-and-forget from the lifespan: warm FlashBrain, the search browser, reranker, and embeddings in parallel."""
+    """Fire-and-forget from the lifespan: warm the voice model, the search browser, reranker, and embeddings in parallel."""
     await asyncio.gather(_warm_flash(), _warm_browser(), _warm_rerank(), _warm_embed())
 
 
@@ -24,36 +24,34 @@ async def _warm_flash() -> None:
     try:
         from nucleo.llm.fast_client import FastClient, available, spec_from_config
         spec = spec_from_config()
-        # Local (Ollama) ya se mantiene caliente con keep_alive en la 1ª invocación; sin key no hay conexión que montar.
+        # Local (Ollama) is kept warm by keep_alive on its first call; with no key there is no connection to set up.
         if spec.is_local() or not available(spec):
-            _emit_prewarm("flash", 0, spec.model, note="local/sin-key: nada que calentar")
+            _emit_prewarm("flash", 0, spec.model, note="local or no key: nothing to warm")
             return
-        # FASE 1: calentar con la FORMA REAL del turno (system prompt COMPLETO + router.TOOLS), no un "ping" pelado.
-        # Así el 1er turno real no paga el frío del prompt grande + esquemas de tools + el establecimiento TLS (que
-        # con el keepalive largo del cliente sobrevive hasta que el operador habla). Mide TTFT y total.
-        from nucleo.turn.prompt.builder import build_flash_system, split_state
-        from nucleo.flash import router as _router
+        # The REAL shape of a conversation run (the manager's prefix and its whole catalogue with the orders), never a
+        # bare ping: the first run then pays neither the large prompt's cold start nor the TLS set-up.
+        from nucleo.conversation_host import model as _model, prefix as _prefix
+        from nucleo.conversation_host.acts import HostTools
+        catalog = HostTools().catalog()
         try:
-            system, _ = build_flash_system()
-        except Exception:
+            system = _prefix.current(catalog)
+        except Exception:  # noqa: BLE001 — an unreadable prefix still warms the connection and the tools
             system = "warmup"
-        # V2-889: warm the SAME prefix a turn sends — the stable system message, then the tools a turn is offered
-        stable, state = split_state(system)
-        messages = [{"role": "system", "content": m} for m in (stable, state) if m] + [{"role": "user", "content": "hola"}]
-        TOOLS = _router.tools(_router.tool_context())
+        messages = [{"role": "system", "content": system}, {"role": "user", "content": "hola"}]
         metrics: dict = {}
         t0 = time.time()
         ttft = None
-        async for _chunk in FastClient().stream(messages, spec=spec, tools=TOOLS, max_tokens=1, metrics=metrics):
+        async for _chunk in FastClient().stream(messages, spec=spec, tools=_model.tools_for(catalog), max_tokens=1,
+                                                metrics=metrics):
             if ttft is None:
                 ttft = round((time.time() - t0) * 1000)
         total = int((time.time() - t0) * 1000)
-        logger.info(f"prewarm FlashBrain OK ({spec.model}, ttft={ttft}ms total={total}ms, "
-                    f"prompt≈{metrics.get('prompt_tokens_est')}tok/{metrics.get('prompt_chars')}ch) — 1er turno caliente")
+        logger.info(f"prewarm voice model OK ({spec.model}, ttft={ttft}ms total={total}ms, "
+                    f"prompt≈{metrics.get('prompt_tokens_est')}tok/{metrics.get('prompt_chars')}ch)")
         _emit_prewarm("flash", total, spec.model, ttft=ttft, metrics=metrics)
     except Exception as e:  # noqa: BLE001
-        logger.warning(f"prewarm FlashBrain saltado (sin efecto en la voz): {e}")
-        _emit_prewarm("flash", 0, "?", note=f"saltado: {e}")
+        logger.warning(f"prewarm of the voice model skipped (no effect on the voice): {e}")
+        _emit_prewarm("flash", 0, "?", note=f"skipped: {e}")
 
 
 def _emit_prewarm(what: str, ms: int, model: str, *, ttft: int | None = None,

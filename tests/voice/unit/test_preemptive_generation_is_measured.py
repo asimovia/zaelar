@@ -70,15 +70,14 @@ def test_the_installed_sdk_still_says_it_in_these_words():
 def test_the_model_does_not_start_on_an_unfinished_sentence_by_default():
     """V2-931 — a turn ACTS (it commissions work, answers a waiting question, sends). Started on the ear's EAGER end
     of turn it did all of that for a sentence he had not finished: measured 2026-11-17, a draft never spoken opened
-    an errand and asked him about it. The model starts when the ear CONFIRMS the turn; the brief still fires early."""
+    an errand and asked him about it. The model starts when the ear CONFIRMS the turn."""
     import inspect
 
     from voice.engine.core.config import Settings
-    from voice.engine.pipeline import agent, child_session, zaelar_agent
+    from voice.engine.pipeline import child_session
     assert Settings.model_fields["preemptive_generation"].default is False if hasattr(Settings, "model_fields") \
         else Settings().preemptive_generation is False
-    for mod in (agent, child_session):
+    for mod in (child_session,):
         src = inspect.getsource(mod)
         assert '"preemptive_generation": {"enabled": SETTINGS.preemptive_generation}' in src, mod.__name__
         assert '{"enabled": True}' not in src
-    assert "stt_node_firing_the_brief" in inspect.getsource(zaelar_agent), "the brief no longer fires on the eager event"

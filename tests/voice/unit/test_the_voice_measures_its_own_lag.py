@@ -115,13 +115,6 @@ def test_a_shed_holds_new_workers_and_pauses_the_newest(monkeypatch):
     assert envelope.shedding() and envelope.relieve([a, b]) == "paused 2"
 
 
-def test_the_live_session_is_what_gets_measured():
-    """Only the LIVE session's speaker starts the probe — a test or a typed channel registering one does not."""
-    import inspect
-    from voice.engine.pipeline import agent
-    assert "register_speaker(_speak, watch_lag=True)" in inspect.getsource(agent)
-
-
 def test_the_notice_is_said_once_per_episode_and_again_after_recovery(acts, monkeypatch):
     """A lag that persists across cooldowns is said ONCE; it is said again only after it recovered and came back."""
     async def go():

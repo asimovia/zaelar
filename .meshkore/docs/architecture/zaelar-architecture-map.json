@@ -552,7 +552,6 @@
    ],
    "emits": [
     "tts",
-    "filler",
     "bot_speech"
    ],
    "_doc": "The voice runs behind the same relay: titular, then the OpenAI stand-in; `relay_bound.py` bounds a titular that hangs (armed: switches the voice, with a cooldown; shadow: says so).",

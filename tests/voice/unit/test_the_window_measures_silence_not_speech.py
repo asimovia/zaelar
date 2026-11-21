@@ -109,14 +109,6 @@ def _strip_comments(js: str) -> str:
     return re.sub(r"//[^\n]*|/\*.*?\*/", "", js, flags=re.S)
 
 
-def test_the_vad_falling_edge_reaches_the_gate_and_both_edges_are_named_for_the_client():
-    body = _src("voice/engine/pipeline/agent.py")
-    i = body.index('@session.on("user_state_changed")')
-    block = body[i:body.index("@session.on(", i + 10)]
-    assert "note_speech_end()" in block, "the falling edge no longer starts the silence clock"
-    assert '"edge": "on"' in block and '"edge": "off"' in block, "the client cannot tell the edges apart"
-
-
 def test_the_ring_holds_while_his_voice_is_active_and_never_lights_from_off():
     js = _strip_comments(_src("frontend/app/services/sse.js"))
     m = re.search(r'd\.kind === "vad"[^{]*\{(.*?)\n    \}', js, flags=re.S)

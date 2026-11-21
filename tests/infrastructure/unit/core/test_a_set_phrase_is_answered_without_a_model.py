@@ -62,12 +62,6 @@ def test_a_knock_with_an_address_in_the_middle_is_still_a_knock(en, monkeypatch,
     assert not presence.is_presence_check("mate, open the agenda", "", voc)
 
 
-def test_a_question_about_the_conversation_gets_no_thinking_sound():
-    from voice.engine.speech import filler_audio
-    assert filler_audio.filler_kind("You were saying?") == "social"
-    assert filler_audio.filler_kind("what were you saying") == "social"
-
-
 # ── the refusals, which are the expensive direction ─────────────────────────────────────────────────────
 @pytest.mark.parametrize("phrase", [
     "abre la agenda",

@@ -128,8 +128,8 @@ def _calls_before_connect(path: Path) -> list[str]:
     raise AssertionError(f"{path.name}: entrypoint never connects the room")
 
 
-def test_both_entrypoints_warm_the_tts_before_the_room_connects():
-    for rel in ("voice/engine/pipeline/agent.py", "voice/engine/pipeline/child_session.py"):
+def test_the_entrypoint_warms_the_tts_before_the_room_connects():
+    for rel in ("voice/engine/pipeline/child_session.py",):
         before = _calls_before_connect(ENGINE / rel)
         assert any(n.endswith("_warm_tts") for n in before), f"{rel}: the TTS is not warmed before connect"
     from voice.engine.pipeline import agent

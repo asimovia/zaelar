@@ -34,7 +34,7 @@ def test_the_worker_health_server_is_fixed_and_loopback(monkeypatch):
     monkeypatch.setattr(agent, "AgentServer", _Server)
     monkeypatch.delenv("ZAELAR_WORKER_PORT", raising=False)
     monkeypatch.delenv("PORT", raising=False)
-    agent.make_server()
+    agent.make_server(entry=lambda ctx: None)
     assert seen.get("host") == "127.0.0.1", "the worker's health server answered on every interface"
     assert seen.get("port") == 44917, f"not the fixed port: {seen.get('port')!r} (0 means random)"
 

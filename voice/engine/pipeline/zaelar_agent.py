@@ -1,28 +1,14 @@
-"""The three NODE OVERRIDES of zaelar's LiveKit agent, in one place (extracted V2-538, 2026-09-01).
+"""The node overrides of zaelar's LiveKit agent in the voice's own process (V2-538, V2-891).
 
-WHY IT IS ITS OWN MODULE, and it was the architecture ratchet that asked: `agent.py` sat at 890 lines against
-a 900 ceiling, so a legitimate ten-line change tipped it — and the rule in this house is EXTRACT, never a
-taller ceiling. This class is the clean seam: three methods, each one delegating to a speech module, needing
-nothing from the entrypoint's enclosing scope. It is also a coherent subject on its own — *what zaelar does to
-the pipeline's text as it flows through*, which is exactly what someone chasing «why did the voice say that»
-comes looking for.
+  · `llm_node` — the reply comes from the body (`remote_brain.remote_llm_node`): the voice process observes, the body
+    decides.
+  · `tts_node` — what is SPOKEN, and the one place every spoken path converges on (a reply, `say()`, a proactive
+    notice). Figures are made speakable here and nowhere else, so «151.008 €» cannot slip through by taking another
+    road (V2-538); on screen he reads «151.008 €». What the voice is fed is what the wall gets if the synthesis fails
+    (`reply_wall.tee`, V2-773).
 
-The three, and they are NOT interchangeable — each sits where it does for a reason that was measured:
-
-  · `llm_node` — the LEAD-IN FILLER (V2-529). A `say()`-based filler is structurally LATE (the reply is
-    already the scheduler's current speech, so the say is only authorised once the reply finishes playing —
-    measured live: «Vale, empiezo» … «Espera, espera»), and a `tts_node` wrapper cannot work either: this
-    pipeline only calls tts_node from `_start_segment()`, i.e. once the first text chunk exists, so it can
-    never observe that the text is LATE. Emitting the filler from here with a FlushSentinel closes a segment
-    of its own → synthesised and played while the model still thinks, with the reply as segment two.
-  · `transcription_node` — what LiveKit FORWARDS: subtitles and the `chat_ctx` message. The filler is stripped
-    here; its chat-wall visibility is our own marked event, never the reply's bubble.
-  · `tts_node` — what is SPOKEN, and the one place every spoken path converges on (generated reply, `say()`,
-    the filler, a proactive notice). Figures are made speakable here and nowhere else, so «151.008 €» cannot
-    slip through by taking another road (V2-538). Deliberately NOT in `transcription_node`: on screen the
-    operator wants to READ «151.008 €».
-
-Full contracts: `voice/engine/speech/filler_audio.py` and `voice/engine/speech/say_numbers.py`.
+The ear's own events pass untouched (`stt_node` is LiveKit's), and so does what LiveKit forwards as subtitles
+(`transcription_node`).
 """
 from __future__ import annotations
 
@@ -31,38 +17,13 @@ from livekit.agents import Agent
 from ..core import langs
 
 
-class ZaelarAgent(Agent):
-    def stt_node(self, audio, model_settings):
-        # V2-863 — the brief fires on the ear's EAGER end of turn (a Flux preflight), before the turn is confirmed.
-        from . import eager_brief as _eb
-        return _eb.stt_node_firing_the_brief(self, Agent.default.stt_node, audio, model_settings)
-
+class ChildAgent(Agent):
     def llm_node(self, chat_ctx, tools, model_settings):
-        from voice.engine.speech import filler_audio as _fa
-        return _fa.llm_node_with_filler(self, Agent.default.llm_node, chat_ctx, tools, model_settings)
-
-    def transcription_node(self, text, model_settings):
-        from voice.engine.speech import filler_audio as _fa
-        return _fa.transcription_node_without_filler(self, Agent.default.transcription_node,
-                                                     text, model_settings)
+        from . import remote_brain as _rb
+        return _rb.remote_llm_node(self, chat_ctx, tools, model_settings)
 
     def tts_node(self, text, model_settings):
         from voice.engine.speech import say_numbers as _sn
         from . import reply_wall as _rw     # V2-773: what the voice is fed is what the wall gets if it fails
         return _sn.tts_node_speaking_figures(self, Agent.default.tts_node, _rw.tee(text), model_settings,
                                              langs.current_code())
-
-
-class ChildAgent(ZaelarAgent):
-    """The same agent in the voice's OWN process (V2-891): the reply's text comes from the body's turn stream, and the
-    eager end of turn is handed to the body, which fires the brief (`eager_brief.on_preflight` runs there)."""
-
-    def stt_node(self, audio, model_settings):
-        from . import body_link
-        from . import eager_brief as _eb
-        return _eb.stt_node_firing_the_brief(self, Agent.default.stt_node, audio, model_settings,
-                                             fire=lambda text: body_link.get().send({"k": "preflight", "text": text}))
-
-    def llm_node(self, chat_ctx, tools, model_settings):
-        from . import remote_brain as _rb
-        return _rb.remote_llm_node(self, chat_ctx, tools, model_settings)

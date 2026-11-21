@@ -246,7 +246,7 @@ def test_the_voice_worker_registers_through_egress(mediated, monkeypatch):
             return None
 
     monkeypatch.setattr(agent, "AgentServer", Server)
-    agent.make_server()
+    agent.make_server(entry=lambda ctx: None)
     assert seen["ws_url"] == "wss://egress.example/livekit"
     assert seen["api_key"] == TOKEN and seen["api_secret"] == TOKEN, "the worker holds no LiveKit secret"
 

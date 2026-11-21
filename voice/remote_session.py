@@ -10,9 +10,9 @@ What the body asks of the voice — speak (`voice/proactive`), turn a typed line
 close the ear (`voice/mic_input`), forget a discarded turn, re-point the voice (`speech/live_tts`), close the session
 (the account's energy cap) — goes to the voice process's control routes (`voice/engine/pipeline/child.py`).
 
-And the turn: `turn_lines(payload)` runs the voice provider (`NucleoLLM`, one per voice session, its state across
-turns as embedded) inside the lead-in cover (`filler_audio.llm_node_with_filler`) and yields the NDJSON lines the
-voice process reads (`remote_brain.remote_llm_node`).
+And the turn: the conversation manager is the only path (INI-078 F2) — it hears through the voice process's ear
+(`conversation_host/ear_in`) and speaks through its mouth (`voice_mouth`); a turn LiveKit still asks of the body
+(`turn_lines`) is counted and refused, and its NDJSON says only its end (`remote_brain.remote_llm_node`).
 
 The process boundary is a loopback socket with a per-spawn token; nothing here is reachable from outside.
 """
@@ -454,9 +454,7 @@ def handle(ev: dict) -> None:
         homeostasis.note_mark(ev.get("at"))
         return
     if k == "preflight":
-        from voice.engine.pipeline import eager_brief
-        eager_brief.on_preflight(str(ev.get("text") or ""))
-        return
+        return                                  # an older voice process's eager end of turn: nothing reads it now
     if k == "proof":                            # a proof counter the voice process counted where it happened
         from nucleo.conversation_host import entry as _conv_entry
         _conv_entry.count(str(ev.get("counter") or ""))

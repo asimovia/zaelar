@@ -21,8 +21,8 @@ from voice import trace
 
 
 def test_a_follow_up_said_for_turn_a_keeps_a_s_trace_when_it_lands_in_turn_b(monkeypatch):
-    from voice.engine.pipeline import agent as _ag, agent_events
-    monkeypatch.setattr(_ag._reply_wall, "already_surfaced", lambda t: False)
+    from voice.engine.pipeline import agent_events
+    monkeypatch.setattr(agent_events._reply_wall, "already_surfaced", lambda t: False)
     class _Handle:
         id = "SAY_A"
 

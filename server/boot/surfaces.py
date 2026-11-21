@@ -92,15 +92,9 @@ def voice_worker(app) -> None:
     # LiveKit engine (gated by ZAELAR_ENGINE=livekit). V2-891: the voice runs in its OWN process
     # (`python -m voice.engine`, `voice/child_process.py`) — the ear, the VAD and the mouth never share a heap or a
     # GIL with this body, so the body's memory faults never reach them; the turn still runs HERE, behind
-    # `/api/turn/stream`. `ZAELAR_VOICE_EMBEDDED=1` keeps the pre-V2-891 shape: the AgentServer EMBEDDED in this
-    # process (job_executor_type=THREAD). Either way it is `app.state.lk_server`/`lk_task` for the heartbeat.
+    # `/api/turn/stream`. Asked to embed it (`ZAELAR_VOICE_EMBEDDED=1`), the body refuses and says so (INI-078 F2). It
+    # is `app.state.lk_server`/`lk_task` for the heartbeat.
     if os.getenv("ZAELAR_ENGINE", "livekit").lower() == "livekit":
-        # INI-042 #34: the first session's LLM build imported the vendor SDKs ON the loop (4.6 s) — warm them now.
-        try:
-            from server.boot import warm_imports
-            app.state.warm_voice_sdks = warm_imports.start()
-        except Exception as e:  # noqa: BLE001
-            logger.warning(f"voice LLM vendor warm not started: {e}")
         try:
             from voice import child_process
             _lk = child_process.factory()()
@@ -109,14 +103,13 @@ def voice_worker(app) -> None:
             app.state.lk_task = asyncio.create_task(_lk.run(devmode=_devmode))
             from nucleo.pulse import voice_recycle as _vr
             _vr.use_app(app)          # V2-873: the token door asks whether this worker is registered yet
-            logger.info("LiveKit voice worker started " + ("EMBEDDED (job_executor_type=THREAD)"
-                        if child_process.embedded() else "in its OWN process (python -m voice.engine)"))
+            logger.info("LiveKit voice worker started in its OWN process (python -m voice.engine)")
         except Exception as e:
             logger.warning(f"LiveKit voice worker start failed: {e}")
 
 
 def prewarm_and_seams(app, active_brain) -> None:
-    # Hot-path prewarm (V2-024): the FIRST FlashBrain call (a cloud provider) sets up TLS + handshake
+    # Hot-path prewarm (V2-024): the FIRST voice-model call (a cloud provider) sets up TLS + handshake
     # + model startup → 6-8s cold-start on the FIRST real turn. Absorb that HERE, at boot (while the frontend paints
     # the brain-mesh loader), with a minimal fire-and-forget query; also warm the search Chromium (free Google).
     # Binds the server loop for the search sync bridge. Never blocks boot; ONLY with BRAIN=nucleo.

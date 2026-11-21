@@ -1,15 +1,13 @@
 """remote_brain.py — in the voice process the brain is a stream over loopback HTTP (V2-891).
 
-The voice process holds the room, the VAD, the ear and the mouth; the turn — memory, tools, the brief, the lead-in
-cover, the supersede marks — runs in the BODY (`python -m server`), exactly the pipeline it runs embedded. The seam is
-the LiveKit `llm_node`: the session asks it for the reply's text, and here it is read from `POST /api/turn/stream`
-(NDJSON) instead of from an in-process `LLMStream`.
+The voice process holds the room, the VAD, the ear and the mouth; the decisions run in the BODY (`python -m server`).
+The seam is the LiveKit `llm_node`: the session asks it for the reply's text, and here it is read from
+`POST /api/turn/stream` (NDJSON) instead of from an in-process `LLMStream`. With the conversation manager as the only
+path (INI-078 F2) the body answers such a turn with its end only: what the agent says reaches this process through
+the manager's mouth (`/voice/say`).
 
 Line types the body sends (`server/voice_child_api.py` writes them):
   · `{"t": "c", "text": …}`      a chunk of the reply, spoken as LiveKit speaks any chunk;
-  · `{"t": "filler", "text": …}` the lead-in or work cover the body's `filler_audio` decided — it becomes its OWN
-                                 segment here (text + `FlushSentinel`), so it sounds while the model still thinks,
-                                 and it is marked so the transcript node strips it (the same contract as embedded);
   · `{"t": "env", "env": {…}}`   the body's live `ZAELAR_*` settings (the language he just picked, a mode), applied
                                  to this process before the next sentence is synthesised;
   · `{"t": "err", "msg": …}`     the body's turn failed;  · `{"t": "end"}`.
@@ -156,21 +154,13 @@ async def remote_llm_node(agent, chat_ctx, tools, model_settings):
 
 
 async def _pieces(agen):
-    """The body's lines → `(piece, is_text)`: a chunk's text, or the cover as its own segment (text + FlushSentinel)."""
-    from livekit.agents.types import FlushSentinel
-    from voice.engine.speech import filler_audio as _fa
+    """The body's lines → `(piece, is_text)`: a chunk's text."""
     async for line in agen:
         t = line.get("t")
         if t == "c":
             txt = str(line.get("text") or "")
             if txt:
                 yield txt, True
-        elif t == "filler":
-            phrase = str(line.get("text") or "").strip()
-            if phrase:
-                _fa.mark_for_strip(phrase)
-                yield phrase + " ", False
-                yield FlushSentinel(), False       # its own segment: it sounds now, the reply is segment two
         elif t == "env":
             apply_env(line.get("env"))
         elif t == "err":

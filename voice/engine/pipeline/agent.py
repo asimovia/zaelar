@@ -1,47 +1,26 @@
-"""LiveKit Agents worker — assembles the voice pipeline.
+"""LiveKit Agents worker — what the voice's own process (`child.py`, `python -m voice.engine`) builds its session with.
 
-Wires the isolated component families (core + llm + speech) into one
-``AgentSession`` and lets LiveKit own streaming, sessions, sync, interruptions
-and orchestration. On top it adds ONLY observers: the 5-state machine and the
-debug bus (per-session logs + live contract messages to the UI). The engine
-(STT/LLM/TTS/VAD/turn) is untouched.
-
-zaelar: the engine runs EMBEDDED in the zaelar web server process.
-``make_server()`` returns an ``AgentServer`` with ``job_executor_type=THREAD`` so
-the voice job runs in a thread of THIS process and can share state with the brain.
-
-Run standalone (debug worker):
-    python -m voice.engine.pipeline.agent dev
-    python -m voice.engine.pipeline.agent download-files
+`make_server(entry)` returns the ``AgentServer`` the voice process runs around its session (`child_session.entrypoint`),
+with the worker's health port, the room filter and the mediated LiveKit credential; the session reads the endpointing,
+the start options, what must exist before the room connects and the warm TTS from here. The module is also the
+namespace `agent_events` reads its pipeline handlers through (`_ag.<name>`), so a patch here still governs them. The
+embedded session (the voice as a thread of the body, with the old turn's voice node) is gone (INI-078 F2).
 """
 from __future__ import annotations
 
-import asyncio
 import logging
 import os
-import time
 
 from livekit.agents import (
-    Agent,
     AgentServer,
-    AgentSession,
-    JobContext,
     JobExecutorType,
-    JobProcess,
     JobRequest,
-    cli,
 )
 
-from . import reply_wall as _reply_wall
-from ..core import langs
 from ..core.config import SETTINGS
 from ..core.logging import setup_console_logging
-from ..core.state import State, StateMachine
-from ..llm import build_llm
-from ..speech import build_stt, build_tts, build_turn_detection, build_vad
 from ..speech.tts import start_prewarm
 from .first_air import FirstAir, decide_kickoff, greeting_prompt, kickoff_recent, mark_kickoff, silent_first_run  # noqa: F401
-from .instrument import BootChannel, tapped_vad
 from .prewarm import prewarm  # noqa: E402,F401 — V2-778 F1: moved, imported back under its name
 
 logger = logging.getLogger("zaelar.agent")
@@ -111,383 +90,6 @@ def _warm_tts(ctx) -> None:
     start_prewarm(ud.get("tts"))
 
 
-async def entrypoint(ctx: JobContext) -> None:
-    _before_connect()
-    _warm_tts(ctx)
-    await ctx.connect()
-
-    session_id = time.strftime("%Y%m%d-%H%M%S", time.localtime())
-    boot = BootChannel(ctx.room, session_id)   # boot handshake (topic vl2) + optional mic recording; NOT the log
-
-    # SINGLE logging system: voice.observer.emit() (ring + per-session file + timeline + SSE). Every voice
-    # event is logged here and consumed from here by /debug, /events, and the tester. Acquire it early so even
-    # worker_start passes through the observer (previously it was split in two: DebugBus + observer).
-    try:
-        from voice.observer import emit as _emit
-    except Exception:
-        _emit = lambda *a, **k: None
-
-    # Attention gate (V2-015): new session → conversation window closed (do not inherit an old state).
-    try:
-        from voice import attention
-        attention.reset()
-    except Exception:
-        pass
-
-    # Prewarm reuse check (2026-07-08): a warm session reuses the idle executor's userdata (all True); any False means
-    # a cold rebuild → investigate prewarm (num_idle_processes exhausted, prewarm timed out). A permanent probe.
-    _ud = ctx.proc.userdata
-    logger.info("session on %s executor — vad_hit=%s stt_hit=%s tts_hit=%s",
-                "WARM" if _ud.get("stt") else "COLD",
-                _ud.get("vad") is not None, _ud.get("stt") is not None, _ud.get("tts") is not None)
-    vad_plain = ctx.proc.userdata.get("vad") or build_vad()
-    stt = ctx.proc.userdata.get("stt") or build_stt(vad=vad_plain)  # reuse warm STT
-    llm = build_llm(SETTINGS.llm_provider, SETTINGS.llm_model)
-
-    # STARTUP MEMORY: the «Colmena» FlashBrain (nucleo) does NOT use a pre-startup briefing — its startup memory
-    # comes from its own central memory (`memory.state()`). Since V2-011 (latency), that block is CACHED outside
-    # the turn (`nucleo/flash/memory_cache.py`): it is PRECOMPOSED here once so the FIRST turn (name greeting)
-    # already has it without triggering the retriever on the hot path. Best-effort — it never breaks or delays
-    # voice startup. `set_briefing()` is retained as a compatibility no-op (see nucleo.py).
-    if SETTINGS.llm_provider == "nucleo":
-        try:
-            from memory.api import state_cache as memory_cache
-            await memory_cache.prime()
-        except Exception as e:  # noqa: BLE001
-            logger.warning("nucleo memory-cache prime skipped (voice continues): %s", e)
-
-    # STT hardware backend actually resolved (metal/cuda/cpu), for logs + UI.
-    stt_device = None
-    if SETTINGS.stt_provider == "whisper_local":
-        from ..speech.stt import whisper_local
-        stt_device = whisper_local.RESOLVED_DEVICE
-
-    _emit("worker_start", "motor de voz arriba", role="system",
-          extra={"profile": SETTINGS.profile, "stt": SETTINGS.stt_provider, "stt_device": stt_device,
-                 "llm_provider": SETTINGS.llm_provider, "llm_model": SETTINGS.llm_model or "(default)",
-                 "tts": SETTINGS.tts_provider, "turn": SETTINGS.turn_provider,
-                 **{f"endpoint_{k}": v for k, v in _endpointing_opts().items()}})
-    logger.info("Connected to %s (profile=%s, stt=%s%s) — session log %s",
-                ctx.room.name, SETTINGS.profile, SETTINGS.stt_provider,
-                f"/{stt_device}" if stt_device else "", boot.dir)
-
-    tts = ctx.proc.userdata.get("tts") or build_tts()  # reuse warm TTS (Metal Kokoro loaded in prewarm)
-    # V2-733 — hand the live TTS to the one place that can re-point it mid-session. The voice is chosen
-    # once, HERE, when the pipeline is built; without this handle a language locked DURING a session leaves
-    # the operator listening to the previous language's voice until something reconnects, and at first run
-    # that voice speaks the very first sentence he ever hears.
-    try:
-        from ..speech import live_tts as _live_tts
-        _live_tts.attach(tts, SETTINGS.tts_provider)
-        _live_tts.apply_current()   # `tts` was usually prewarmed before the language existed (V2-772)
-    except Exception as e:  # noqa: BLE001 — never let bookkeeping stop a session from coming up
-        logger.warning("live_tts: could not register the live TTS (%s)", e)
-    turn_detection = build_turn_detection() or "vad"   # None (disabled) → VAD-based EOU (no ML InferenceRunner)
-    # V2-863 — with the Flux ear the END OF TURN IS THE MODEL'S (`EndOfTurn`, ~260 ms after the last word), so the
-    # session reads it from the STT («stt» mode) instead of counting silence with the hold below; the lexical veto
-    # (`speech/turn/semantic.py`) is Flux's own job there. nova-3 and the local ears keep today's path untouched.
-    from ..speech.stt import deepgram as _dg_stt
-    _flux = _dg_stt.flux_active()
-    if _flux:
-        turn_detection = "stt"
-    # tap the session VAD ONLY to record the mic (ZAELAR_RECORD_MIC); otherwise use the bare VAD directly.
-    vad_session = tapped_vad(vad_plain, boot) if boot.recording else vad_plain
-
-    _busy = {"bot": False, "user": False}   # feeds the proactive busy-probe (don't talk over a live turn)
-
-    # States whose trace is SAFE to read from active() (2026-08-16, source audit): "speaking"/"listening"/
-    # "interrupted" describe something about a turn that ALREADY has a trace (TTS starts only once there is text
-    # generated by THAT turn; "listening" is its natural tail; "interrupted" is the barge-in that INTERRUPTS that speech).
-    # "thinking"/"idle" can fire BEFORE the turn has a trace (LiveKit emits them from its own orchestration task,
-    # before invoking the LLM) — attaching active() to them would assign the PREVIOUS turn's trace more often than
-    # the correct one, so they are left UNFORCED (the same criterion as the operator transcript; see active()'s
-    # comment in voice/trace.py).
-    _STATE_TRACE_SAFE = {"speaking", "listening", "interrupted"}
-
-    _ONSET_MAX_S = 30.0        # past this the "speaking" edge belongs to a proactive delivery, not to an answer
-    _onset = {"voice_ended": 0.0}
-
-    # V2-745 — the FIRST AUDIO FRAME: it hands interruption back to a greeting that has finally made a
-    # sound, and it is what lifts the boot veil. Both halves, and the session, are in `first_air.py`.
-    _air = FirstAir(ready=boot.ready, emit=_emit)
-
-    def on_state_change(state: State) -> None:
-        # V2-778 F1 — the body lives in `voice/engine/pipeline/agent_events.py`; this closure passes what it closed over.
-        return _agent_events.on_state_change(state, _ONSET_MAX_S=_ONSET_MAX_S, _STATE_TRACE_SAFE=_STATE_TRACE_SAFE, _air=_air, _busy=_busy, _emit=_emit, _onset=_onset)
-
-    sm = StateMachine(on_change=on_state_change)
-
-    # BARGE-IN / INTERRUPTION — TUNABLE via env (fallback to LiveKit defaults; UI-managed config is follow-up).
-    # A short noise/click should NOT cut speech (operator complaint). Controls:
-    #   · ZAELAR_MIN_INTERRUPTION_SEC — minimum voice duration (s) to count as an interruption (LiveKit def 0.5; raised to
-    #     0.6 to filter transients without greatly harming real barge-in latency).
-    #   · ZAELAR_MIN_INTERRUPTION_WORDS — minimum STT word count to confirm interruption (def 0 = off).
-    #   · ZAELAR_FALSE_INTERRUPTION_TIMEOUT — silence (s) after cutting before declaring it FALSE (LiveKit def 2.0).
-    #   · ZAELAR_RESUME_FALSE_INTERRUPTION — resume speech after a false interruption (LiveKit def True; the room's
-    #     audio output supports pause, so it applies). Noise cuts it for ~<timeout> and then RESUMES.
-    # 2026-08-10: these settings were passed as LOOSE arguments to `AgentSession`, which LiveKit 1.6 already
-    # declares deprecated (“use turn_handling=TurnHandlingOptions(...) instead”) and removes in 2.0. Wiring
-    # endpointing —which exists only in the new form— would have left TWO forms coexisting in the same call,
-    # exactly the kind of half-finished seam that costs an afternoon six months from now. All three are migrated together.
-    def _int_kwargs() -> dict:
-        # V2-778 F1 — the body lives in `voice/engine/pipeline/agent_events.py`; this closure passes what it closed over.
-        return _agent_events._int_kwargs()
-
-    _interruption = _int_kwargs()
-    logger.info("barge-in tuning: %s (resume needs room audio pause=True)", _interruption)
-
-    # ENDPOINTING — how much silence closes a turn (2026-08-10). LiveKit closes after **0.5 s** by default, and with
-    # with the ML turn detector disabled (`turn_provider="disabled"`, see core/config.py), EOU is pure VAD. A
-    # dictated sentence with the natural pauses of someone thinking while speaking gets split into several turns, and the agent
-    # answers half-sentences: in the 13:20:50 session, a single ferry request produced 8 final transcriptions,
-    # and one of them —“...from Denia to”— asked for the destination the operator was saying.
-    # The values are NOT invented: they come from `voice/endpointing.py`, written for THIS bug from
-    # real in-car sessions… and ORPHANED since then — the engine moved to LiveKit and nobody wired it,
-    # so its only reference in the repo was its own test. Now it is the source of truth, and
-    # `mode:"dynamic"` (moving average of observed pauses, between min and max) makes native what `hold_secs()`
-    # calculated manually: short pause → quick response; speaker taking their time → more margin.
-    # NOTE the expectation: this fixes ~1 s cuts, not 5 s cuts. A long silence in the middle of a sentence
-    # will STILL close the turn (raising hold to 5 s would kill any short command). The brain's FRAGMENT GUARD
-    # (`nucleo.py::_superseded`) prevents the damage: an superseded fragment neither speaks nor acts.
-    _endpointing = _endpointing_opts()
-    if _flux:
-        # The model already waited for the turn to end; this is the ONLY silence added after its verdict.
-        _endpointing = {**_endpointing, "min_delay": SETTINGS.stt_flux_min_delay}
-    logger.info("endpointing: %s (turn_detection=%s)", _endpointing, turn_detection)
-
-    session = AgentSession(
-        vad=vad_session,
-        stt=stt,
-        llm=llm,
-        tts=tts,
-        turn_handling={
-            "turn_detection": turn_detection,       # None (ML disabled) → EOU by VAD
-            "endpointing": _endpointing,            # how much silence closes the turn (see above)
-            "interruption": _interruption,          # barge-in: the operator's voice cuts TTS
-            "preemptive_generation": {"enabled": SETTINGS.preemptive_generation},   # OFF: a draft of an unfinished sentence acted
-        },
-    )
-
-    # V2-863 — was the early model run USED or thrown away? LiveKit says it in two debug lines; now they are events.
-    try:
-        from . import preemptive_tap as _ptap
-        _ptap.install(_emit)
-    except Exception as e:  # noqa: BLE001
-        logger.warning("preemptive tap not installed (%s)", e)
-
-    @session.on("agent_state_changed")
-    def _on_agent_state(ev) -> None:
-        sm.on_agent_state(ev.new_state)
-
-    @session.on("user_state_changed")
-    def _on_user_state(ev) -> None:
-        # V2-778 F1 — the body lives in `voice/engine/pipeline/agent_events.py`; this closure passes what it closed over.
-        return _agent_events._on_user_state(ev, _busy=_busy, _emit=_emit, _onset=_onset, sm=sm)
-
-    # FIRST-RUN LANGUAGE: the voice NEVER chooses it (V2-765). It used to — the first final transcript of a
-    # brand-new install was classified and LOCKED, «so a spoken answer still works» — and on 2026-09-24 a
-    # sentence the operator said to somebody else, with the picker on screen, chose Spanish, closed the picker
-    # and got answered. The picker is the only door now, and until it is used this session does not exist:
-    # `nucleo/runstate.language_pending()` keeps the agent stopped and the LiveKit token refused.
-
-    # V2-749b — WHEN THE PAID EAR LAST PRODUCED A FINISHED TURN. Read by the wake backstop to tell «he
-    # only said the name and stopped» (nothing arrived, so the browser's own text is all there is) from
-    # «he kept talking» (Deepgram has it, and injecting would answer him twice). `spot_at` is stamped by
-    # the interim spot and cleared by the final that consumes it.
-    _wake = {"last_user_final": 0.0, "spot_at": 0.0}
-
-    @session.on("user_input_transcribed")
-    def _on_transcript(ev) -> None:
-        # V2-778 F1 — the body lives in `voice/engine/pipeline/agent_events.py`; this closure passes what it closed over.
-        return _agent_events._on_transcript(ev, _emit=_emit, _wake=_wake)
-
-    @session.on("conversation_item_added")
-    def _on_item(ev) -> None:
-        # V2-778 F1 — the body lives in `voice/engine/pipeline/agent_events.py`; this closure passes what it closed over.
-        return _agent_events._on_item(ev, _emit=_emit)
-
-    @session.on("agent_false_interruption")
-    def _on_false_interrupt(ev) -> None:
-        # V2-891 — the body lives in `agent_events.on_false_interruption` (the voice's own process replays it too).
-        _agent_events.on_false_interruption(bool(getattr(ev, "resumed", False)), _emit=_emit)
-
-    @session.on("overlapping_speech")
-    def _on_overlap(ev) -> None:
-        # V2-891 — the body lives in `agent_events.on_overlap` (the voice's own process replays it too).
-        _agent_events.on_overlap(bool(getattr(ev, "is_interruption", False)), _emit=_emit)
-
-    @session.on("metrics_collected")
-    def _on_metrics(ev) -> None:
-        # Anti-flood + remote STT/TTS forwarding + Energy reports — extracted whole to metrics_tap (2026-09-10).
-        from .metrics_tap import on_metrics
-        on_metrics(ev, _emit)
-
-    @session.on("error")
-    def _on_error(ev) -> None:
-        _err = getattr(ev, "error", ev)
-        _emit("error", "⚠️ " + str(_err)[:200], role="system")
-        logger.error("session error: %s", _err)
-        # V2-773 — a synthesis LiveKit gave up on never adds the assistant item, so the transcript above never
-        # fires: the reply the model wrote still reaches the wall (measured with Inworld out of credits).
-        if _reply_wall.is_tts_dead(_err):
-            _reply_wall.surface(_emit)
-
-    # PROACTIVE VOICE: let PROCESS-LEVEL callers (the orchestrator loop's scheduled tasks/sparks, SlowBrain
-    # escalation delivery) SPEAK a specific text through this live session's TTS — no brain turn, no re-generation.
-    # Registered while the session is live, cleared on close. If no session is live, delivery still reaches the UI (SSE).
-    from voice import proactive as _proactive
-
-    # THE LOOP MATTERS (2026-08-31, measured live). `session.say()` builds its playout futures on the loop that
-    # runs the LiveKit job — a thread of its own. But every proactive delivery is awaited from the CALLER's loop
-    # (uvicorn: a worker finishing, the messaging connector, the orchestrator's scheduled tasks), and crossing
-    # that boundary makes LiveKit await a future born on the other loop:
-    #
-    #   RuntimeError: Task <…_wait_buffered_audio…> got Future <…> attached to a different loop
-    #
-    # raised INSIDE a task nobody retrieves — so `proactive.notify`'s own try/except never saw it and the only
-    # trace in the log was asyncio's garbage-collector complaint, which names neither the voice nor the delivery.
-    # What the operator saw: zaelar says a word or two and cuts, sometimes for good. Session c480413b: FIVE
-    # proactive deliveries, five of those RuntimeErrors ~2 s later, one-to-one with no exceptions.
-    #
-    # Hopping onto the session's own loop is the whole fix. It is a no-op for a caller already on it (the voice
-    # turn itself), so the hot path pays nothing.
-    #
-    # CALL SHAPE MATTERS (2026-08-31, the SECOND cut, measured live in session f5e833f7): `AgentSession.say` is
-    # NOT a coroutine function — it is a SYNC method that schedules the speech on whatever loop is current and
-    # returns an awaitable SpeechHandle. The first version of this hop took `lambda: session.say(...)`: calling
-    # the lambda ran `say` on the CALLER's loop (the disease this hop exists to cure, alive and well), and
-    # `run_coroutine_threadsafe` then rejected the returned handle — the log said, verbatim,
-    # «proactive notify (voice) failed: A coroutine object is required», the buffered-audio task died cross-loop
-    # three seconds in, and TTSMetrics recorded `dur=3.02s audio=99.34s`: ninety-nine seconds synthesized, three
-    # spoken. `coro_fn` MUST be an `async def` whose BODY makes the call: creating the coroutine object is free
-    # anywhere, but its body — the `say` call included — executes on the session's loop.
-    _session_loop = asyncio.get_running_loop()
-    try:
-        # Make this session's loop introspectable from `/api/debug/stacks` (see `voice/debug_stacks.py`) —
-        # the ONLY way to see where a wedged playout coroutine is parked without root for py-spy.
-        from voice import debug_stacks as _debug_stacks
-        _debug_stacks.register_loop(f"voice-session:{ctx.room.name}", _session_loop)
-    except Exception:
-        pass
-
-    async def _on_session_loop(coro_fn) -> None:
-        try:
-            here = asyncio.get_running_loop()
-        except RuntimeError:
-            here = None
-        if here is _session_loop:
-            await coro_fn()
-            return
-        await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(coro_fn(), _session_loop))
-
-    async def _speak(text: str) -> None:
-        # V2-778 F1 — the body lives in `voice/engine/pipeline/agent_events.py`; this closure passes what it closed over.
-        return await _agent_events._speak(text, _busy=_busy, _emit=_emit, _on_session_loop=_on_session_loop, session=session)
-
-    async def _speak_ephemeral(text: str) -> None:
-        # V2-122: same TTS, but `add_to_chat_ctx=False` — LiveKit never registers a conversation item for this,
-        # so `conversation_item_added` (→ `_on_item` below → the chat wall) never sees it. Exclusively for the
-        # FlashBrain's neutral lead-in filler (V2-093) — see `voice.proactive.ephemeral_speaker()`'s docstring
-        # for the bug this fixes (a filler landing AFTER the real reply in the chat wall, reported live).
-        async def _do_say():
-            await session.say((text or "").strip(), allow_interruptions=True, add_to_chat_ctx=False)
-        await _on_session_loop(_do_say)
-
-    _proactive.register_speaker(_speak, watch_lag=True)   # V2-831 T-30: the live session measures its own lag
-    _proactive.register_ephemeral_speaker(_speak_ephemeral)
-    _proactive.register_busy_probe(lambda: _busy["bot"] or _busy["user"])   # don't talk over a live turn
-    # …and the half that admits no exception, separately: do not speak over the OPERATOR, even with a waiting
-    # filler (2026-08-15). The filler intentionally skips the gap wait, so it needs this dedicated signal.
-    _proactive.register_user_probe(lambda: bool(_busy["user"]))
-    # Same, but ONLY for the bot (2026-08-16): `nucleo.py::_maybe_close_flow` uses it to avoid closing the
-    # observability flow while the response is still being narrated (see the drain in `on_state_change` below).
-    _proactive.register_bot_probe(lambda: bool(_busy["bot"]))
-
-    # ACCOUNT ENERGY CAP (2026-08-09): closer registry, same shape as the proactive speaker above.
-    # Fires ASYNCHRONOUSLY from energy_meter.py's fire-and-forget usage report, well after the
-    # triggering turn's own reply already finished — so this closer must SPEAK the closing line
-    # itself, not just wait for one. No-op everywhere ZAELAR_USER_ID isn't set (self-host) —
-    # cloud_account.is_cloud_account().
-    from nucleo.energy import limits as _account_limits
-    from nucleo.energy import account as _cloud_account
-
-    async def _close_account_session(reason: str) -> None:
-        _emit("session", f"account energy exhausted ({reason}) — closing", role="system")
-        try:
-            async def _do_say():  # same loop hop (the closer fires off this loop); the line follows the REASON (V2-801)
-                if _line := _account_limits.spoken_line(reason):
-                    await session.say(_line, allow_interruptions=True)
-            await _on_session_loop(_do_say)
-        except Exception:
-            pass
-        for _ in range(50):  # ~10s hard cap so a stuck busy-probe can never wedge the close forever
-            if not _busy["bot"]:
-                break
-            await asyncio.sleep(0.2)
-        await asyncio.sleep(0.3)
-        ctx.shutdown(reason=f"account:{reason}")
-
-    if _cloud_account.is_cloud_account():
-        _account_limits.register_closer(_close_account_session)
-    # CHAT TEXT, as a spoken turn: data topic "zaelar-text" (the holder) and `POST /api/chat` (any screen, V2-792).
-    _typed_from_screen = _agent_events.open_typed_door(_emit=_emit, _on_session_loop=_on_session_loop, session=session)
-    _agent_events.open_mic_door(session=session, _emit=_emit)   # V2-831 T-18: before start — no closed state feeds STT
-    import json as _json
-
-    @ctx.room.on("data_received")
-    def _on_data(packet) -> None:
-        # V2-778 F1 — the body lives in `voice/engine/pipeline/agent_events.py`; this closure passes what it closed over.
-        return _agent_events._on_data(packet, _emit=_emit, _json=_json, _wake=_wake, session=session)
-
-    @session.on("close")
-    def _on_close(ev) -> None:
-        # V2-778 F1 — the body lives in `voice/engine/pipeline/agent_events.py`; this closure passes what it closed over.
-        return _agent_events._on_close(ev, _account_limits=_account_limits, _close_account_session=_close_account_session, _emit=_emit, _proactive=_proactive, _speak=_speak, boot=boot, _typed=_typed_from_screen)
-
-    # Reply LANGUAGE = the active interface language (⚙/voice, live). Appended to the persona so
-    # direct/duo reply in it; Hermes also gets it in the kickoff brief below (memory still wins for names).
-    _lang = langs.current_language()
-
-    # The three node overrides — filler, subtitles, spoken figures — live in `zaelar_agent.py`:
-    # one subject (what zaelar does to the pipeline's text as it flows) and nothing from this scope.
-    from .zaelar_agent import ZaelarAgent
-
-    agent = ZaelarAgent(instructions=SETTINGS.system_prompt + " " + _lang.reply_directive)
-    _agent_events.bill_voice_room(ctx, session)   # transport is billed on the time this room is really up
-    await session.start(room=ctx.room, agent=agent, **_session_start_opts())
-    logger.info("Session started.")
-    from voice import screens as _screens_door
-    _screens_door.register_typed(_typed_from_screen)   # the typed door opens on a STARTED session (see open_typed_door)
-    from .session_health import on_session_alive
-    on_session_alive()   # a session that just STARTED supersedes any recorded death
-    from nucleo.pulse import voice_rooms as _voice_rooms
-    _voice_rooms.note_served(ctx.room.name)   # V2-910: the room the token door minted got its agent
-
-    # BOOT SEQUENCE — the ordered backend milestones go over the "vl2" channel and the frontend's «Colmena»
-    # splash lights one cluster per phase. The heavy startup cost (mic permission, room connect, Whisper
-    # warm) is already paid and the memory is precomposed above, so these are quick; the tiny sleeps are a
-    # deliberate ~0.5 s sweep, not a fake wait.
-    boot.boot("memoria")   # central-memory state block precomposed (memory_cache.prime, above)
-    await asyncio.sleep(0.25)
-    boot.boot("reflejo")   # STT/TTS warm + FlashBrain provider live → the reflex is ready to serve
-    await asyncio.sleep(0.25)
-    # …and the BARRIER is no longer here (V2-745): it lifts on the first audio frame, because the phase
-    # above has always ASSERTED a warmth the first model call does not have. Bounded; see `first_air.py`.
-    _air.arm_safety_net()
-
-    # KICKOFF — and it is the LAST thing, after the phases and with the veil still up. Whether to greet, and with
-    # what, is `first_air.decide_kickoff` (the voice's own process asks the body for the same decision, V2-891).
-    kickoff_text = decide_kickoff(ctx.room.name, _emit)
-    if not kickoff_text:
-        _air.lift()              # nothing is going to sound: the picker, a duplicate job or a resumed conversation
-        return
-    # UNINTERRUPTIBLE UNTIL IT SOUNDS (V2-745): the same edge hands interruption back and lifts the splash, so the
-    # veil lasts exactly as long as the cold handshake and lifts onto the agent talking.
-    _greeting = session.generate_reply(user_input=kickoff_text, allow_interruptions=False)
-    _air.park(_greeting, on_air=_air.lift)
-    await _greeting
-
-
 async def request_fnc(req: JobRequest) -> None:
     """Only take our own rooms (several engines/projects can share one LiveKit server; tokens mint
     ``<room_name>-<uuid>``, server/livekit_api.py). A foreign room is PASSED ON, never terminated: a bare
@@ -508,8 +110,8 @@ def worker_health_port() -> int:
     return int((os.getenv("PORT") or "43917").strip()) + 1000
 
 
-def make_server(entry=None) -> AgentServer:
-    """Build the embeddable ``AgentServer`` (zaelar runs this in-process).
+def make_server(entry) -> AgentServer:
+    """Build the voice process's ``AgentServer`` around its session `entry` (`child_session.entrypoint`).
 
     VERIFIED empirically against livekit-agents 1.6.4 (voice-lab-2 .venv):
       * ``AgentServer.__init__`` does NOT take ``entrypoint_fnc``/``prewarm_fnc`` —
@@ -556,14 +158,9 @@ def make_server(entry=None) -> AgentServer:
     # on_request = request_fnc: only service zaelar's own rooms (room isolation when
     # a local LiveKit dev server is shared with other projects, e.g. voice-lab-2).
     from voice.engine.core.config import dispatch_agent_name
-    # `entry`: the voice's OWN process passes its session (`child_session.entrypoint`, V2-891); embedded, this one.
-    server.rtc_session(entry or entrypoint, on_request=request_fnc, agent_name=dispatch_agent_name())
+    # `entry`: the voice's OWN process passes its session (`child_session.entrypoint`, V2-891) — the only voice there is.
+    server.rtc_session(entry, on_request=request_fnc, agent_name=dispatch_agent_name())
     return server
 
 
-from voice.engine.pipeline import agent_events as _agent_events  # noqa: E402 — V2-778 F1, reads this module back
 
-if __name__ == "__main__":
-    # Standalone debug worker via the (deprecated) rich CLI. cli.run_app accepts an
-    # AgentServer directly in 1.6.4, so we reuse the same factory the embedded path uses.
-    cli.run_app(make_server())

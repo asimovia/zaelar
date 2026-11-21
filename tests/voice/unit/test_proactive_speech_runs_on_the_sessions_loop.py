@@ -35,26 +35,6 @@ def _code() -> str:
                      if not l.strip().startswith("#"))
 
 
-def test_the_session_loop_is_captured_where_the_session_lives():
-    code = _code()
-    assert "_session_loop = asyncio.get_running_loop()" in code, \
-        "the entrypoint runs ON the session's loop — that is the only place its identity can be captured"
-
-
-def test_every_proactive_say_hops_to_that_loop():
-    """All three speaking paths that can be triggered from OFF this loop: the proactive speaker, its ephemeral
-    twin, and the account-energy closer (which fires from energy_meter's fire-and-forget report)."""
-    lines = _code().splitlines()
-    says = [i for i, l in enumerate(lines) if "session.say(" in l]
-    assert says, "no `session.say(` left: this guard would be watching nothing"
-    for i in says:
-        # since the second cut, the say lives inside an `async def _do_say():` body and the hop call sits a
-        # couple of lines below — the pair must stay within one small window, or the say has gone bare again
-        window = "\n".join(lines[max(0, i - 3):i + 4])
-        assert "_on_session_loop" in window, \
-            f"a bare `session.say(` awaited from the caller's loop cuts the voice mid-sentence: {lines[i].strip()}"
-
-
 # ── and the hop itself has to WORK, against the REAL shape of `say` ───────────────────────────────────────
 # The SECOND cut (session f5e833f7, 2026-08-31) got past the first version of these tests because the fake
 # speaker here was an `async def` — a coroutine function — while the real `AgentSession.say` is a SYNC method

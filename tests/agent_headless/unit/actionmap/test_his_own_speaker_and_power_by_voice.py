@@ -7,16 +7,10 @@ had a route: the 🔊 and the ⏻ were buttons and nothing else.
 The class: a control of the agent's own body that only a hand could reach. The mechanism: ONE `controls` act
 (`nucleo/acts/self_controls.py`) that two lanes reach — the action map for a known whole-utterance order and the
 model's `agent_controls` call for any other wording — and that the screen which heard him obeys by running its own
-button (`frontend/app/services/sse.js` → `session.toggleBotMute` / `power.setPower`). Pinned here:
-
-  1. the seeded orders, ES and EN, with his chosen name in front, are the action map's — no model;
-  2. the model's call takes the very same door and emits the very same event;
-  3. a REMARK about the speaker («qué ruido hace el altavoz») does nothing — no seed matches it and the model, which
-     made no call, has no order to obey;
-  4. the event is scoped to the screen that heard him (`origin_dev`), and that screen runs the button's function.
-
-Disarm: `test_the_disarmed_door_emits_nothing_and_the_order_falls_to_the_model` turns the door into a no-op and the
-seeded order stops being an act — the red this file exists to show.
+button (`frontend/app/services/sse.js` → `session.toggleBotMute` / `power.setPower`). Pinned here: an unknown act
+is refused by the door and the map; the event is scoped to the screen that heard him (`origin_dev`), and that screen
+runs the button's function; both language packs seed every act. (The lanes that reach the door through a whole turn
+are the conversation manager's, pinned in `tests/conversation/`.)
 """
 from __future__ import annotations
 
@@ -24,80 +18,9 @@ from pathlib import Path
 
 import pytest
 
-from tests.platform import turn_harness as H
 
 ENGINE = Path(__file__).resolve().parents[4]
 _HISTORY = [{"role": "user", "text": "hola"}, {"role": "assistant", "text": "Hola, aquí estoy."}]
-
-
-@pytest.fixture
-def johnny():
-    """His chosen name is a SLOT (the wake word list grows with it), never a word in a table."""
-    from voice import attention
-    before = attention._state.get("assistant_name")
-    attention.set_assistant_name("Johnny")
-    yield
-    attention._state["assistant_name"] = before
-
-
-def _case(cid, lang, phrase, expect, model=None):
-    case = {"id": cid, "lang": lang, "phrase": phrase, "source": "his own controls by voice",
-            "screen": {"open": []}, "expect": expect, "history": _HISTORY}
-    if model is not None:
-        case["model"] = model
-    return case
-
-
-def _controls(out) -> list[str]:
-    return [str(e.get("act") or e.get("label")) for e in out.events if e.get("kind") == "controls"]
-
-
-# ── 1. the seeded orders are the action map's, in both languages, behind his name ─────────────────────────
-@pytest.mark.parametrize("lang,phrase,act", [
-    ("es", "Johnny, silencia el altavoz.", "mute"),
-    ("es", "Johnny, mutea el altavoz", "mute"),
-    ("es", "Johnny, quita el mute", "unmute"),
-    ("es", "Johnny, vuelve a hablar.", "unmute"),
-    ("es", "Johnny, apágate.", "off"),
-    ("en", "Johnny, mute the speaker.", "mute"),
-    ("en", "Johnny, unmute the speaker", "unmute"),
-    ("en", "Johnny, turn yourself off.", "off"),
-    ("en", "Johnny, switch off.", "off"),
-])
-def test_a_seeded_order_is_the_buttons_act_without_the_model(johnny, lang, phrase, act):
-    out = H.run_case(_case(f"ctl-{lang}-{act}", lang, phrase, f"controls:{act}"))
-    assert not out.failures(_case(f"ctl-{lang}-{act}", lang, phrase, f"controls:{act}")), (out.as_dict(), out.events[-6:])
-    assert _controls(out) == [act], f"exactly one `controls:{act}` event, the one its button's door obeys"
-
-
-# ── 2. any other wording: the model's call takes the same door ────────────────────────────────────────────
-@pytest.mark.parametrize("lang,phrase,act", [
-    ("es", "Oye, ¿te puedes callar un rato con el altavoz? que me molesta el ruido", "mute"),
-    ("en", "Could you go quiet on the speaker for a while, it's bugging me", "mute"),
-    ("es", "Bueno Johnny, ya hemos acabado por hoy, apaga todo lo tuyo", "off"),
-    ("en", "Alright, we're done for today, power yourself down", "off"),
-])
-def test_the_models_call_takes_the_same_door(johnny, lang, phrase, act):
-    case = _case(f"ctl-model-{lang}-{act}", lang, phrase, f"controls:{act}",
-                 model={"say": "", "tools": [{"name": "agent_controls", "args": {"act": act}}]})
-    out = H.run_case(case)
-    assert not out.failures(case), (out.as_dict(), out.events[-6:])
-    assert _controls(out) == [act]
-
-
-# ── 3. a remark is no order ───────────────────────────────────────────────────────────────────────────────
-@pytest.mark.parametrize("lang,phrase", [
-    ("es", "Qué ruido hace el altavoz, ¿no?"),
-    ("es", "Johnny, el altavoz suena un poco raro hoy"),
-    ("en", "The speaker sounds a bit loud today"),
-])
-def test_a_remark_about_the_speaker_does_nothing(johnny, lang, phrase):
-    case = _case(f"ctl-remark-{lang}", lang, phrase, "talk",
-                 model={"say": "Sí, puedo bajarlo si quieres." if lang == "es" else "I can mute it if you like.",
-                        "tools": []})
-    out = H.run_case(case)
-    assert not out.failures(case), out.as_dict()
-    assert _controls(out) == [], "a remark switched his speaker or the agent"
 
 
 def test_an_unknown_act_is_refused_by_the_door_and_the_map():
@@ -139,47 +62,7 @@ def test_both_packs_seed_every_act_and_the_version_moved():
 
 
 # ── the disarm ────────────────────────────────────────────────────────────────────────────────────────────
-def test_the_disarmed_door_emits_nothing_and_the_order_falls_to_the_model(johnny, monkeypatch):
-    from nucleo.acts import self_controls
-    monkeypatch.setattr(self_controls, "apply", lambda *a, **k: False)
-    case = _case("ctl-disarmed", "es", "Johnny, apágate.", "controls:off")
-    out = H.run_case(case)
-    assert _controls(out) == []
-    assert out.failures(case), "with the door disarmed the order still read as the ⏻ — the test proves nothing"
-
-
 # ── his VOICE by voice (same door, same table): male · female · the catalog · the settings · the language ─────
-@pytest.mark.parametrize("lang,phrase,act", [
-    ("es", "Johnny, prueba otra voz masculina", "voice_male"),
-    ("es", "Johnny, prueba otra voz femenina", "voice_female"),
-    ("es", "Johnny, qué voces tienes", "voice_list"),
-    ("es", "Johnny, abre los ajustes de voz", "voice_settings"),
-    ("es", "Johnny, cambia el idioma", "language"),
-    ("en", "Johnny, try another male voice", "voice_male"),
-    ("en", "Johnny, try another female voice", "voice_female"),
-    ("en", "Johnny, what voices do you have", "voice_list"),
-    ("en", "Johnny, open the voice settings", "voice_settings"),
-    ("en", "Johnny, change the language", "language"),
-    # V2-928 — its face on the screen, by the same door
-    ("es", "Johnny, oculta tu cara", "presence_off"),
-    ("es", "Johnny, muestra tu cara", "presence_on"),
-    ("es", "Johnny, abre los ajustes de presencia", "presence_settings"),
-    ("en", "Johnny, hide your face", "presence_off"),
-    ("en", "Johnny, show your face", "presence_on"),
-    ("en", "Johnny, change your face", "presence_settings"),
-    # V2-928 T10 — the camera its face follows him with, by the same door
-    ("es", "Johnny, apaga la cámara", "camera_off"),
-    ("es", "Johnny, mírame", "camera_on"),
-    ("en", "Johnny, turn off the camera", "camera_off"),
-    ("en", "Johnny, look at me", "camera_on"),
-])
-def test_his_voice_orders_are_the_action_maps_without_the_model(johnny, lang, phrase, act):
-    case = _case(f"ctl-voice-{lang}-{act}", lang, phrase, f"controls:{act}")
-    out = H.run_case(case)
-    assert not out.failures(case), (out.as_dict(), out.events[-6:])
-    assert _controls(out) == [act]
-
-
 def test_the_screen_picks_a_random_other_voice_of_the_gender_and_saves_it_like_the_dropdown():
     body = (ENGINE / "frontend/app/services/self-controls.js").read_text(encoding="utf-8")
     assert "saveSettings({ assistant_voice:" in body, "the dropdown's own persistence door"
@@ -239,17 +122,3 @@ def test_the_first_run_greeting_offers_a_new_name_and_a_voice_with_the_name_slot
 # Desktop, 2026-11-14: «quiero una voz nativa de España» → `agent_controls voice_settings`, a silent model, and the
 # turn's ack said «Hecho.» over a panel that only waits for HIM to pick. The act says its own sentence.
 # Disarm: `self_controls.said` → "" → the ack is «Hecho.»/«Done.» again.
-@pytest.mark.parametrize("lang,phrase,act", [
-    ("es", "porque hablas como un americano, quiero una voz nativa de España", "voice_settings"),
-    ("en", "you sound American, I want a native British voice", "voice_settings"),
-    ("es", "¿qué voces tienes?", "voice_list"),
-    ("en", "which voices do you have?", "voice_list"),
-])
-def test_a_chooser_opened_is_said_as_one_never_done(johnny, lang, phrase, act):
-    from i18n import langs
-    case = _case(f"ctl-said-{lang}-{act}", lang, phrase, f"controls:{act}",
-                 model={"say": "", "tools": [{"name": "agent_controls", "args": {"act": act}}]})
-    out = H.run_case(case)
-    line = langs.words(f"controls_said.{act}", code=lang)
-    assert line and line in out.reply, (out.reply, line)
-    assert langs.words("data_ack", code=lang) not in out.reply

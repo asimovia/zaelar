@@ -1,24 +1,26 @@
-"""The voice session's EVENT HANDLERS, lifted out of `entrypoint` (V2-778 F1, 2026-10-01).
-
-`voice/engine/pipeline/agent.py::entrypoint` was 729 lines, most of them closures registered on the session and
-the room. Each one lives here now as a plain function: what it closed over is passed as keyword arguments by the
-thin closure that stays registered in `entrypoint`, at CALL time — the same late binding a closure has. Every
-module-level name of `agent` it reads is read through it (`_ag.<name>`), so a patch on `agent` still governs it.
+"""The voice session's EVENT HANDLERS (V2-778 F1, 2026-10-01): plain functions the voice process's session registers
+(`child_session.py`) and the body replays (`voice/remote_session.py`). What a closure would have closed over is
+passed as keyword arguments at CALL time — the same late binding a closure has.
 """
 from __future__ import annotations
 
+import asyncio
+import logging
+import os
 import re as _re
-
-_re_words = _re.compile(r"\w+")
+import time
 
 from loguru import logger
 
-from voice.engine.pipeline import agent as _ag
+from voice.engine.core.state import State
+from voice.engine.pipeline import reply_wall as _reply_wall
 from voice.engine.speech import relay_bound as _relay_bound
 
+_re_words = _re.compile(r"\w+")
+_log = logging.getLogger("zaelar.agent")
 
-#: The states whose trace is safe to read from `trace.active()` (see `agent.py::entrypoint`), named by the state machine.
-STATE_TRACE_SAFE = frozenset(s.value for s in (_ag.State.SPEAKING, _ag.State.LISTENING, _ag.State.INTERRUPTED))
+#: The states whose trace is safe to read from `trace.active()`, named by the state machine.
+STATE_TRACE_SAFE = frozenset(s.value for s in (State.SPEAKING, State.LISTENING, State.INTERRUPTED))
 
 
 def _on_data(packet, *, _emit, _json, _wake, session) -> None:
@@ -39,7 +41,7 @@ def _on_data(packet, *, _emit, _json, _wake, session) -> None:
                 from voice import mic_input
                 mic_input.set_parked(bool(_json.loads(bytes(packet.data).decode("utf-8")).get("parked")))
             except Exception as te:  # noqa: BLE001
-                _ag.logger.warning("zaelar-tap handler: %s", te)
+                _log.warning("zaelar-tap handler: %s", te)
             return
         # «Stick to my voice» (V2-651 F1): the switch and the enrolment (`zaelar-voicelock`), and one verdict per speech
         # segment while it is on (`zaelar-speaker`); the attention gate reads them through `voice/voice_lock.py`.
@@ -52,7 +54,7 @@ def _on_data(packet, *, _emit, _json, _wake, session) -> None:
                 else:
                     voice_lock.note_verdict(str(_d.get("label") or ""))
             except Exception as le:  # noqa: BLE001
-                _ag.logger.warning("%s handler: %s", topic, le)
+                _log.warning("%s handler: %s", topic, le)
             return
         # THE CHEAP EAR SPEAKS (V2-749). In a wake-word mode the paid STT is PARKED until a free, browser-local
         # recogniser hears the assistant's name (`frontend/app/services/wakeword.js`). TWO phases, because Chrome
@@ -86,7 +88,7 @@ def _on_data(packet, *, _emit, _json, _wake, session) -> None:
                     _emit("ambient", "👂 palabra de activación (oído local)",
                           extra={"directed": True, "reason": "wakeword_spot",
                                  "window_s": _attn_wake.window_s(), "before": _before[:200]})
-                    _wake["spot_at"] = _ag.time.time()
+                    _wake["spot_at"] = time.time()
                     return
                 if not _txt:
                     return
@@ -94,7 +96,7 @@ def _on_data(packet, *, _emit, _json, _wake, session) -> None:
                 # this utterance can land either side of this packet, and answering twice is worse
                 # than answering once a second later.
                 async def _wake_backstop(text: str, spot_at: float):
-                    await _ag.asyncio.sleep(1.2)
+                    await asyncio.sleep(1.2)
                     if _wake["last_user_final"] > spot_at or heard_by_the_paid_ear(text, _wake, spot_at, _attn_wake.window_s()):
                         _emit("brain", "🤐 respaldo de palabra descartado — el STT de pago ya tiene el turno",
                               text=text[:120], role="system")
@@ -103,7 +105,7 @@ def _on_data(packet, *, _emit, _json, _wake, session) -> None:
                     _emit("brain", "📥 respaldo de palabra de activación (oído local)", text=text, role="user")
                     _wake_reply(session, text)
                 if _wake["spot_at"]:
-                    _ag.asyncio.create_task(_wake_backstop(_txt, _wake["spot_at"]))
+                    asyncio.create_task(_wake_backstop(_txt, _wake["spot_at"]))
                     _wake["spot_at"] = 0.0
                     return
                 # No spot ever fired for this utterance (the name only surfaced in the final): the
@@ -115,7 +117,7 @@ def _on_data(packet, *, _emit, _json, _wake, session) -> None:
                 _wake_reply(session, _txt)
             except Exception as we:  # noqa: BLE001
                 _emit("alert", "zaelar-wake falló", text=str(we)[:160])
-                _ag.logger.warning("zaelar-wake handler: %s", we)
+                _log.warning("zaelar-wake handler: %s", we)
             return
         # SILENCE = OPERATOR decision (V2-088): the 🔊 icon publishes {audio:false|true}. Output disabled → the
         # pipeline takes its text-only branch → ZERO synthesis (cost and latency), «muted» not «volume down».
@@ -130,7 +132,7 @@ def _on_data(packet, *, _emit, _json, _wake, session) -> None:
                       else "voz OFF (el operador silenció con el icono 🔊 — sin TTS)",
                       role="system")
             except Exception as ve:
-                _ag.logger.warning("zaelar-voice toggle failed: %s", ve)
+                _log.warning("zaelar-voice toggle failed: %s", ve)
             return
         if topic not in (None, "", "zaelar-text"):
             return
@@ -142,7 +144,7 @@ def _on_data(packet, *, _emit, _json, _wake, session) -> None:
             # V2-778 F1 — the body lives in `voice/engine/pipeline/agent_events.py`; this branch passes what it reads.
             return receive_typed(txt, _emit=_emit, session=session)
     except Exception as e:
-        _ag.logger.warning("chat-text data handler: %s", e)
+        _log.warning("chat-text data handler: %s", e)
 
 
 #: LiveKit's push-to-talk commit: how long to wait for the STT's final (a slow ear's final arriving after it would be
@@ -186,11 +188,11 @@ def set_ear(session, enabled: bool, *, _emit=None) -> None:
                                             and not f.exception() and f.result() else
                                             "🎤⃠ nothing heard before the close — dropped", role="system",
                                             text=("" if f.cancelled() or f.exception() else str(f.result() or ""))[:200]))
-        loop = _ag.asyncio.get_running_loop()
+        loop = asyncio.get_running_loop()
         for d in _SILENCE_RECHECK_S:
             loop.call_later(d, _silent_while_closed, session)
     except Exception as e:  # noqa: BLE001 — a session not started yet has no turn to commit or clear
-        _ag.logger.debug("ear %s: %r", "open" if enabled else "close", e)
+        _log.debug("ear %s: %r", "open" if enabled else "close", e)
 
 
 _SILENCE_UNREADABLE = []
@@ -204,10 +206,10 @@ def _silent_while_closed(session) -> None:
     ev = getattr(act, "_user_silence_event", None)
     if act is not None and ev is None and not _SILENCE_UNREADABLE:
         _SILENCE_UNREADABLE.append(1)
-        _ag.logger.warning("ear closed: LiveKit has no `_user_silence_event` — replies may wait until the mic reopens")
+        _log.warning("ear closed: LiveKit has no `_user_silence_event` — replies may wait until the mic reopens")
     if ev is not None and not session.input.audio_enabled and not ev.is_set():
         ev.set()
-        _ag.logger.info("ear closed: a late VAD inference held the replies — his silence re-asserted")
+        _log.info("ear closed: a late VAD inference held the replies — his silence re-asserted")
 
 
 def open_mic_door(*, session, _emit=None):
@@ -216,10 +218,10 @@ def open_mic_door(*, session, _emit=None):
     by the entrypoint ON the session's loop and BEFORE `session.start`; writes from other threads (HTTP routes)
     are hopped onto that loop. Uninstalled on close, only if still ours."""
     from voice import mic_input
-    loop = _ag.asyncio._get_running_loop()   # None outside a loop, without raising
+    loop = asyncio._get_running_loop()   # None outside a loop, without raising
 
     def _set(enabled: bool) -> None:
-        if loop is None or loop.is_closed() or _ag.asyncio._get_running_loop() is loop:
+        if loop is None or loop.is_closed() or asyncio._get_running_loop() is loop:
             set_ear(session, bool(enabled), _emit=_emit)
         else:
             loop.call_soon_threadsafe(lambda: set_ear(session, bool(enabled), _emit=_emit))
@@ -233,7 +235,7 @@ def open_mic_door(*, session, _emit=None):
     session.on("close", lambda _ev=None: _typed_order.note_ear_closed())   # a closed session commits nothing more
 
     def _clear() -> None:    # a turn the gate discarded is forgotten by the speech engine's own buffer too
-        if loop is None or loop.is_closed() or _ag.asyncio._get_running_loop() is loop:
+        if loop is None or loop.is_closed() or asyncio._get_running_loop() is loop:
             session.clear_user_turn()
         else:
             loop.call_soon_threadsafe(session.clear_user_turn)
@@ -313,10 +315,10 @@ def _route_typed(txt: str, *, _emit, session) -> None:
     """Turns run in the order he STARTED them: a sentence he began saying before this text is still a
     turn-to-be, and its end-of-turn would interrupt this one (`typed_order`, 2026-10-22)."""
     from nucleo.input import typed as _order
-    _since = _ag.time.monotonic()
+    _since = time.monotonic()
     if _order.must_wait(_since):
         _emit("brain", "⏸ texto en espera: la voz empezó antes", text=txt, role="system", extra={"cat": "flash"})
-        _ag.asyncio.ensure_future(_typed_after_voice(txt, _since, _emit=_emit, session=session))
+        asyncio.ensure_future(_typed_after_voice(txt, _since, _emit=_emit, session=session))
     else:
         _inject_typed(txt, _emit=_emit, session=session)
 
@@ -373,21 +375,21 @@ def _inject_typed(txt: str, *, _emit, session, cut: bool = True) -> None:
             session.generate_reply(user_input=txt)
     except Exception as ge:
         _emit("alert", "chat/paste generate_reply falló", text=str(ge)[:160])
-        _ag.logger.warning("chat-text generate_reply failed: %s", ge)
+        _log.warning("chat-text generate_reply failed: %s", ge)
 
 
 async def _typed_after_voice(txt: str, since: float, *, _emit, session) -> None:
     """Hold a typed order until the utterance that began before it is a turn, then queue it behind that turn."""
     from nucleo.input import typed as _order
-    while _order.must_wait(since, _ag.time.monotonic()):
-        await _ag.asyncio.sleep(0.1)
+    while _order.must_wait(since, time.monotonic()):
+        await asyncio.sleep(0.1)
     _emit("brain", "▶️ texto en cola tras la voz", text=txt, role="system",
-          extra={"cat": "flash", "held_ms": round((_ag.time.monotonic() - since) * 1000)})
+          extra={"cat": "flash", "held_ms": round((time.monotonic() - since) * 1000)})
     _inject_typed(txt, _emit=_emit, session=session, cut=False)
 
 
-def on_state_change(state: "_ag.State", *, _ONSET_MAX_S, _STATE_TRACE_SAFE, _air, _busy, _emit, _onset) -> None:
-    _ag.logger.info("STATE -> %s", state.value)
+def on_state_change(state: "State", *, _ONSET_MAX_S, _STATE_TRACE_SAFE, _air, _busy, _emit, _onset) -> None:
+    _log.info("STATE -> %s", state.value)
     speaking = (getattr(state, "value", state) == "speaking")
     _busy["bot"] = speaking
     if speaking:
@@ -396,7 +398,7 @@ def on_state_change(state: "_ag.State", *, _ONSET_MAX_S, _STATE_TRACE_SAFE, _air
     # Once per wait, only when plausibly this turn's; `covered` = the filler, not the reply, sounded first.
     if speaking and _onset.get("voice_ended"):
         _ended = _onset["voice_ended"]
-        _gap = _ag.time.monotonic() - _ended
+        _gap = time.monotonic() - _ended
         _onset["voice_ended"] = 0.0
         if _gap <= _ONSET_MAX_S:
             try:
@@ -455,7 +457,7 @@ def _on_user_state(ev, *, _busy, _emit, _onset, sm) -> None:
         _order_on.note_onset()
     elif new == "listening":
         _emit("vad", "… fin de voz", role="user", extra={"edge": "off"})
-        _onset["voice_ended"] = _ag.time.monotonic()   # the near end of the wait the operator is about to live
+        _onset["voice_ended"] = time.monotonic()   # the near end of the wait the operator is about to live
         # V2-661 — his SILENCE starts here; the next rising edge decides whether it continues this utterance.
         try:
             from voice import attention as _attn_end
@@ -469,13 +471,13 @@ def _on_user_state(ev, *, _busy, _emit, _onset, sm) -> None:
 def _int_kwargs() -> dict:
     out: dict = {}
     def _f(name):
-        v = (_ag.os.getenv(name) or "").strip()
+        v = (os.getenv(name) or "").strip()
         try:
             return float(v) if v else None
         except ValueError:
             return None
     def _i(name):
-        v = (_ag.os.getenv(name) or "").strip()
+        v = (os.getenv(name) or "").strip()
         try:
             return int(v) if v else None
         except ValueError:
@@ -489,7 +491,7 @@ def _int_kwargs() -> dict:
     fit = _f("ZAELAR_FALSE_INTERRUPTION_TIMEOUT")
     if fit is not None:
         out["false_interruption_timeout"] = fit
-    resume = (_ag.os.getenv("ZAELAR_RESUME_FALSE_INTERRUPTION") or "").strip().lower()
+    resume = (os.getenv("ZAELAR_RESUME_FALSE_INTERRUPTION") or "").strip().lower()
     if resume:
         out["resume_false_interruption"] = resume in ("1", "true", "yes", "on")
     return out
@@ -504,7 +506,7 @@ async def _speak(text: str, *, _busy, _emit, _on_session_loop, session) -> None:
               extra={"bot_in_flight": bool(_bot0), "user_in_flight": bool(_usr0)})
     except Exception:
         pass
-    _owner, _queued, _t0 = _speech_of_this_task(), [], _ag.time.perf_counter()
+    _owner, _queued, _t0 = _speech_of_this_task(), [], time.perf_counter()
     from voice import trace as _trace       # V2-831 T-23b — whose words: the turn that asked, read HERE (the caller's
     _tid = _trace.current() or _trace.active()   # context), before the hop to the session loop loses it
 
@@ -518,7 +520,7 @@ async def _speak(text: str, *, _busy, _emit, _on_session_loop, session) -> None:
     # The REAL playout time next to TTSMetrics' audio length (2026-08-31): ≪ means the delivery was cut.
     try:
         _emit("tts", "say (entrega proactiva) COMPLETADA", role="assistant",
-              extra={"playout_ms": round((_ag.time.perf_counter() - _t0) * 1000)})
+              extra={"playout_ms": round((time.perf_counter() - _t0) * 1000)})
     except Exception:
         pass
 
@@ -584,7 +586,7 @@ def _on_close(ev, *, _account_limits, _close_account_session, _emit, _proactive,
         if _typed is not None:
             _screens.clear_typed(_typed)
     except Exception as e:  # noqa: BLE001
-        _ag.logger.warning("typed door not cleared: %s", e)
+        _log.warning("typed door not cleared: %s", e)
     try:
         _account_limits.clear_closer(_close_account_session)
     except Exception:
@@ -601,7 +603,7 @@ def _on_item(ev, *, _emit, speech_id: str | None = None, surfaced: bool | None =
         from nucleo.input import typed as _order
         _order.note_committed()   # whatever he was saying is a turn now: a typed order held behind it may go
     # V2-773 — already on the wall (reply_wall.surface): not twice.
-    _surfaced = surfaced if surfaced is not None else (bool(text) and _ag._reply_wall.already_surfaced(text))
+    _surfaced = surfaced if surfaced is not None else (bool(text) and _reply_wall.already_surfaced(text))
     if role == "assistant" and text and not _surfaced:
         # V2-831 T-23 — the trace of the turn that CREATED these words: the item lands when the PLAYOUT ends,
         # often inside the next turn, so `active()` alone named the wrong one (pass 7: M3's NASDAQ line as M4's).
@@ -636,7 +638,7 @@ def _on_transcript(ev, *, _emit, _wake, conv: bool = False) -> None:
     _relay_bound.ear_heard()
     mark = {"extra": {"conv": True}} if conv else {}
     if ev.is_final:
-        _wake["last_user_final"], _wake["last_user_text"] = _ag.time.time(), str(ev.transcript or "")
+        _wake["last_user_final"], _wake["last_user_text"] = time.time(), str(ev.transcript or "")
         # → observer/SSE: the chat wall + the front-end voice-command fast path.
         _emit("transcript", "🗣", text=ev.transcript, role="user", **mark)
     else:

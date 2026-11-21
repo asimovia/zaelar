@@ -30,7 +30,7 @@ def _code(path: Path) -> str:
 CHATWALL = _code(FRONTEND / "components" / "ChatWall.js")
 SESSION_LK = _code(FRONTEND / "services" / "session-lk.js")
 SSE = _code(FRONTEND / "services" / "sse.js")
-AGENT = _vts.read(Path(__file__).resolve().parents[4] / "voice" / "engine" / "pipeline" / "agent.py")
+AGENT = _vts.read(Path(__file__).resolve().parents[4] / "voice" / "engine" / "pipeline" / "agent_events.py")
 
 
 # ── the chat does NOT touch voice ─────────────────────────────────────────────────────────────────────────────

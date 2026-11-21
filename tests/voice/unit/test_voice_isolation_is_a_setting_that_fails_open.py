@@ -131,11 +131,13 @@ class _Stop(Exception):
 
 
 def _run_entrypoint_until_connect(monkeypatch):
-    """Run the real entrypoint up to `ctx.connect()` and return the order in which preload and connect happened."""
+    """Run the voice process's real entrypoint up to `ctx.connect()` and return the order of preload and connect."""
     import asyncio
-    from voice.engine.pipeline import agent
+    from voice.engine.pipeline import agent, body_link, child_session
     order = []
     monkeypatch.setattr(agent, "setup_console_logging", lambda: None)
+    monkeypatch.setattr(agent, "_warm_tts", lambda ctx: None)
+    monkeypatch.setattr(body_link, "get", lambda: None)
     monkeypatch.setattr(vi, "preload", lambda mode, url, **_: order.append("preload") or True)
 
     class Ctx:
@@ -144,7 +146,7 @@ def _run_entrypoint_until_connect(monkeypatch):
             raise _Stop
 
     with pytest.raises(_Stop):
-        asyncio.run(agent.entrypoint(Ctx()))
+        asyncio.run(child_session.entrypoint(Ctx()))
     return order
 
 

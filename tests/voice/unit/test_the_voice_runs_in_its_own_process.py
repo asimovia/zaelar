@@ -174,34 +174,6 @@ class _FakeLink:
         self.sent.append(ev)
 
 
-def test_the_voice_process_speaks_the_cover_as_its_own_segment(monkeypatch):
-    from livekit.agents.types import FlushSentinel
-    from voice.engine.pipeline import body_link, remote_brain
-    from voice.engine.speech import filler_audio as fa
-    fa._reset_for_tests()
-    link = _FakeLink([{"t": "env", "env": {"ZAELAR_LANGUAGE": "es"}}, {"t": "filler", "text": "Un segundo…"},
-                      {"t": "c", "text": "Cuatro."}, {"t": "end"}])
-    monkeypatch.setattr(body_link, "get", lambda: link)
-    monkeypatch.delenv("ZAELAR_LANGUAGE", raising=False)
-    ctx = SimpleNamespace(items=[SimpleNamespace(role="user", text_content="¿cuánto es dos más dos?")])
-
-    async def _run():
-        tok = remote_brain.CHILD_ORIGIN.set("phone")
-        try:
-            return [x async for x in remote_brain.remote_llm_node(None, ctx, [], None)]
-        finally:
-            remote_brain.CHILD_ORIGIN.reset(tok)
-    out = asyncio.run(_run())
-    assert out[0] == "Un segundo… " and isinstance(out[1], FlushSentinel) and out[2] == "Cuatro."
-    assert fa.strip_if_filler("Un segundo…"), "the cover is marked for the transcript node to strip"
-    assert link.payload["events"] == [{"k": "user_state", "state": "listening"}] and not link.returned, \
-        "the turn carries the facts queued before it (node 3.203 holds the order)"
-    assert link.payload["text"] == "¿cuánto es dos más dos?" and link.payload["origin"] == "phone"
-    import os
-    assert os.environ.get("ZAELAR_LANGUAGE") == "es", "the body's live settings reach the voice before it speaks"
-    monkeypatch.delenv("ZAELAR_LANGUAGE", raising=False)
-
-
 def test_a_lost_body_is_said_slow_never_silence(monkeypatch):
     """E0: a body that cannot be reached is tried once more and then said SLOW — his words were heard, the host did
     not run — never «say that again» (node 3.203 holds the retry, the pacing and the kept line)."""
