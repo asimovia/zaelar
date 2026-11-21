@@ -406,8 +406,7 @@
    ],
    "emits": [
     "trace",
-    "rail",
-    "thread"
+    "rail"
    ],
    "_doc": "Every reader of the brief's verdicts reads one act floor (`verdicts.to_act`); at VETO a sure verdict takes the place of the model's call when what enters leaves or deletes, and a send in the model's place is born asking. The words follow the act: calls and tags wait for the verdict (`route_by_verdict`).",
    "status": "retiring"
@@ -442,9 +441,7 @@
    "paths": [
     "nucleo/turn/prompt/builder.py"
    ],
-   "emits": [
-    "perf"
-   ],
+   "emits": [],
    "_doc": "The byte-stable system prefix, then the tools (always-offered before state-gated): what the provider caches, identical whatever he says or has open (V2-889 F1).",
    "status": "retiring"
   },
@@ -710,7 +707,8 @@
     "task_state",
     "task_progress",
     "errand",
-    "step"
+    "step",
+    "thread"
    ],
    "_doc": "The order's row (`nucleo/request/`): one row per intention. A send is one Brain Worker task with one confirmation at its exit door (`request/send_errand`); its final line is the connector's receipt (`request/send_receipt.py`), said through the out-of-turn notices."
   },
@@ -864,7 +862,8 @@
     "nucleo/cli/nav.py"
    ],
    "emits": [
-    "navegador"
+    "navegador",
+    "perf"
    ]
   },
   {
@@ -1231,7 +1230,6 @@
  ],
  "emitters": {
   "_doc": "Which piece an observability event comes from (`piece`), for modules the pieces' `paths` do not name. Read by observability/pieces.py: an exact file here beats a piece's own path; otherwise the deepest folder (here or in a piece's paths) wins. A value is a piece id, or {kind: piece, '*': default} where one module hosts several pieces. A module drawn nowhere stamps piece='unmapped' with its path — never a guess.",
-  "nucleo/turn/thread_event.py": "f_admit",
   "nucleo/turn/whisper": "f_whisper",
   "nucleo/turn/open_flows.py": "f_switch",
   "voice/engine/pipeline/agent.py": {
