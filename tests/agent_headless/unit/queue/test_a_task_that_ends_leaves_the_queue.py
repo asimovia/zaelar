@@ -93,3 +93,32 @@ def test_a_task_that_left_is_found_by_its_pill(monkeypatch):
         {"id": 9, "text": "a flat in Leeds: three found", "meta": {"task_id": "t-7", "state": "done"}}])
     got = task_recall.candidates("the flat in Leeds")
     assert [(r["id"], r["title"], r["outcome"]) for r in got] == [("t-7", "a flat in Leeds", "three found")]
+
+
+def test_a_generic_write_that_meets_a_task_of_the_queue_is_said_with_its_writer(monkeypatch):
+    """The SQL guard never drops a change in silence: the refusal is published, naming the fields and the writer."""
+    import bus
+    said = []
+    monkeypatch.setattr(bus, "emit_sync", lambda topic, payload: said.append((topic, payload)))
+    tid = _running()
+    ts.task_patch(tid, phase="w_forgotten_writer")
+    (topic, p), = [x for x in said if x[0] == "queue.refused"]
+    assert p["task_id"] == tid and p["fields"] == ["phase"] and "test_a_task_that_ends_leaves_the_queue" in p["writer"]
+
+
+def test_its_pill_is_written_outside_the_queues_lock(monkeypatch):
+    """The pill may embed (a model): written after the row went and the lock was let go, it never holds the queue."""
+    import threading
+
+    from memory import api as memory
+    free = []
+
+    def write(text, **kw):
+        t = threading.Thread(target=lambda: free.append(queue._lock.acquire(blocking=False)
+                                                        and (queue._lock.release() or True)))
+        t.start()
+        t.join()
+    monkeypatch.setattr(memory, "write", write)
+    tid = _running()
+    circuit.settle(row=tid, state="done", outcome="w")
+    assert free == [True] and ts.task_get(tid) is None

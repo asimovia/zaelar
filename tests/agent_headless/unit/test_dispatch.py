@@ -213,7 +213,6 @@ def test_and_the_same_request_in_the_us_locale_starts_somewhere_else(monkeypatch
     assert lead and "opentable.com" in lead[0]
 
 
-
 def test_a_goal_with_no_category_gets_no_lead_and_the_catalog_is_unchanged(monkeypatch):
     """The lead is additive: when nothing matches it is empty and the catalog behaves exactly as before."""
     from voice.engine.core import langs
@@ -310,42 +309,6 @@ def test_find_duplicate_by_text_overlap(monkeypatch):
         "Implementar en el widget youtube la capacidad de ampliarse a pantalla completa por voz", "code") is None
 
 
-def test_listener_dedups_second_identical_escalation(fresh_db, fake_backend, monkeypatch):
-    """With a LIVE task, a nearly identical second escalation is INJECTED, NOT relaunched (the two-chip bug). A
-    live session is seeded beforehand to avoid depending on the first task's startup timing."""
-    from nucleo.acts import errand as escalate
-    from nucleo.workers.session import SessionRecord
-    monkeypatch.setattr(dispatch, "_SESSIONS", {}, raising=False)
-    injected: list = []
-
-    async def _fake_inject(which, msg):
-        injected.append((which, msg))
-        return [which]
-    monkeypatch.setattr(dispatch, "inject", _fake_inject)
-
-    async def run():
-        bus.reset(); escalate.reset()
-        # LIVE task already in progress for the YouTube widget
-        dispatch._SESSIONS["live"] = SessionRecord(
-            task_id="live", kind="code", status="running",
-            goal="Implementar en el widget youtube la capacidad de ampliarse a pantalla completa por voz")
-        stop = asyncio.Event()
-        task = asyncio.create_task(dispatch.run_listener(stop))
-        await asyncio.sleep(0.05)
-        # nearly identical re-escalation (as in the bug: it arrived during an ambient turn)
-        escalate.escalate_to_slowbrain(
-            "Implementar en el widget youtube la capacidad de ampliarse a pantalla completa por voz rápido",
-            context={"kind": "code"})
-        await asyncio.sleep(0.2)
-        new_keys = [k for k in dispatch._SESSIONS if k != "live"]
-        stop.set(); await asyncio.sleep(0.05); task.cancel()
-        return new_keys
-
-    new_keys = asyncio.run(run())
-    assert new_keys == []                        # NO second session was created
-    assert injected and injected[0][0] == "live" and "rápido" in injected[0][1]   # injected into the live task
-
-
 # ── V2-113: an escalation that never spawns its own SessionRecord must still close ITS trace explicitly ─────────
 # Real bug: `_flow_should_close`'s `just_escalated` guard blocks the voice provider from closing a flow the
 # instant it publishes `escalate.requested` (bridges the race before `run_listener` gets a scheduler turn). If
@@ -376,44 +339,6 @@ def test_listener_closes_the_flow_explicitly_when_rejected_while_halted(fresh_db
     asyncio.run(run())
     assert closed and closed[0].get("status") == "rejected_halted"
     assert "T1·halted" not in dispatch._SESSIONS   # no SessionRecord was ever created for it
-
-
-def test_listener_closes_the_flow_explicitly_on_dedup_inject(fresh_db, fake_backend, monkeypatch):
-    from nucleo.acts import errand as escalate
-    from nucleo.workers.session import SessionRecord
-
-    monkeypatch.setattr(dispatch, "_SESSIONS", {}, raising=False)
-
-    async def _fake_inject(which, msg):
-        return [which]
-    monkeypatch.setattr(dispatch, "inject", _fake_inject)
-
-    closed: list = []
-
-    def _fake_emit(kind, label, **kw):
-        if kind == "flow" and label == "end":
-            closed.append(kw.get("extra"))
-    monkeypatch.setattr("voice.observer.emit", _fake_emit)
-
-    async def run():
-        bus.reset(); escalate.reset()
-        dispatch._SESSIONS["live"] = SessionRecord(
-            task_id="live", kind="code", status="running",
-            goal="Implementar en el widget youtube la capacidad de ampliarse a pantalla completa por voz")
-        stop = asyncio.Event()
-        task = asyncio.create_task(dispatch.run_listener(stop))
-        await asyncio.sleep(0.05)
-        escalate.escalate_to_slowbrain(
-            "Implementar en el widget youtube la capacidad de ampliarse a pantalla completa por voz rápido",
-            context={"kind": "code", "trace": "T2·dedup"})
-        await asyncio.sleep(0.2)
-        new_keys = [k for k in dispatch._SESSIONS if k != "live"]
-        stop.set(); await asyncio.sleep(0.05); task.cancel()
-        return new_keys
-
-    new_keys = asyncio.run(run())
-    assert new_keys == []
-    assert closed and closed[0].get("status") == "dedup_injected"
 
 
 def test_listener_consumes_escalate_requested(fresh_db, fake_backend):
@@ -577,7 +502,6 @@ _VELEROS_LITERAL = ("Busca veleros de segunda mano a la venta AHORA MISMO con es
                     "esos puntos. Preséntame los candidatos en el widget de resultados.")
 
 
-
 # ── PERDER EL BRIEF NO PUEDE COSTAR LA MITAD DEL TIEMPO (defecto del banco 2026-08-13) ────────────────────────
     # The composer's fail-open behavior is correct —better to start without direction than not start— but carried a
     # HIDDEN cost: promotion to `research` (1200 s) depended on a brief EXISTING, so a composer taking >30 s
@@ -734,53 +658,6 @@ def test_merge_dedup_flow_con_el_MISMO_trace_no_deja_cerrar(monkeypatch):
     dispatch._SESSIONS["w1"] = SessionRecord(task_id="w1", kind="web", status="running", goal="g",
                                              trace_id="T5·aaaa")
     assert dispatch._merge_dedup_flow({"trace": "T5·aaaa"}, "w1") is True
-
-
-def test_listener_funde_el_flujo_en_vez_de_cerrarlo_cuando_la_sesion_viva_tiene_trace(fresh_db, fake_backend,
-                                                                                      monkeypatch):
-    """CABLEADO de V2-123 en `run_listener` (no solo la función pura): con la sesión viva ya trazada, la escalada
-    duplicada se FUNDE en su flujo y NO emite `flow/end`. Ese cierre marcaría como acabada una tarea que sigue
-    trabajando, porque el lector cuenta el cierre para la fila FUNDIDA (`_absorb` suma `ended_events`) — perder de
-    vista trabajo vivo es peor que el flujo suelto que el cierre venía a evitar.
-
-    El hermano de arriba (`..._closes_the_flow_explicitly_on_dedup_inject`) cubre el caso contrario a propósito: su
-    sesión viva NO tiene `trace_id`, así que no hay nada que fundir y el cierre explícito sigue siendo obligatorio.
-    Los dos juntos son la pareja que impide arreglar uno rompiendo el otro."""
-    from nucleo.acts import errand as escalate
-    from nucleo.workers.session import SessionRecord
-    from voice import trace
-
-    monkeypatch.setattr(dispatch, "_SESSIONS", {}, raising=False)
-
-    async def _fake_inject(which, msg):
-        return [which]
-    monkeypatch.setattr(dispatch, "inject", _fake_inject)
-
-    closed: list = []
-    merged: list = []
-
-    def _fake_emit(kind, label, **kw):
-        if kind == "flow" and label == "end":
-            closed.append(kw.get("extra"))
-    monkeypatch.setattr("voice.observer.emit", _fake_emit)
-    monkeypatch.setattr(trace, "merge", lambda a, b: merged.append((a, b)) or a)
-
-    goal = "Implementar en el widget youtube la capacidad de ampliarse a pantalla completa por voz"
-
-    async def run():
-        bus.reset(); escalate.reset()
-        dispatch._SESSIONS["live"] = SessionRecord(task_id="live", kind="code", status="running", goal=goal,
-                                                   trace_id="T5·live")
-        stop = asyncio.Event()
-        task = asyncio.create_task(dispatch.run_listener(stop))
-        await asyncio.sleep(0.05)
-        escalate.escalate_to_slowbrain(goal + " rápido", context={"kind": "code", "trace": "T9·dup"})
-        await asyncio.sleep(0.2)
-        stop.set(); await asyncio.sleep(0.05); task.cancel()
-
-    asyncio.run(run())
-    assert merged == [("T5·live", "T9·dup")], "la escalada duplicada tiene que fundirse en la tarea viva"
-    assert closed == [], "un flujo fundido NO emite su propio cierre: el titular sigue trabajando"
 
 
 def test_el_dedup_no_se_deja_enganar_por_la_puntuacion(monkeypatch):

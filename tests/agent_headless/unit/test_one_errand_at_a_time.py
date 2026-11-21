@@ -1,4 +1,3 @@
-from tests import voice_turn_source as _vts
 """With a LIVE errand, a turn that is not an errand cannot open another one (2026-08-24).
 
 Operator rule: *“runs have to be linear… if there is a process with a title, a task, and a purpose, you can
@@ -114,38 +113,3 @@ def test_es_BARATO_por_construccion(monkeypatch):
     assert j.seen["kw"]["temperature"] == 0.0
     assert j.seen["kw"]["timeout"] <= 15.0
 
-
-def test_esta_CABLEADO_despues_del_dedup_directo():
-    """The wiring guard: the two tests above would pass with the call DELETED from `run_listener`.
-
-    This is the lesson of V2-199—a test that does not traverse the real path only proves that the code
-    compiles—applied in advance rather than after a wasted round. And ORDER matters: containment is free and
-    the model costs a call, so asking the model first would mean paying for what is already known."""
-    import inspect
-    # Inspect CODE lines, not the entire source. The first version of this guard searched for the name and
-    # passed with the call DELETED, because the comment above mentions it: a presence guard certified exactly
-    # the failure it is meant to prevent. The teardown caught it, not the reading.
-    src = "\n".join(l for l in _vts.getsource(dispatch.run_listener).splitlines()
-                    if not l.strip().startswith("#"))
-    # V2-778 F1-11: the listener moved out of dispatch.py and reads the dispatcher's names through `_d.`.
-    src = src.replace("_d.", "")
-    assert "to_thread(about_a_live_errand" in src, (
-        "la decisión no está enchufada al único punto por el que pasan todas las escaladas")
-    # V2-507: the cheap check is now called `dedup_scan(` (it returns a verdict + evidence). The guard follows
-    # the ORDER, which is what it protects, not the name it used to have.
-    assert src.index("dedup_scan(") < src.index("to_thread(about_a_live_errand"), (
-        "el dedup barato va primero; el modelo solo para lo que aquél no puede ver")
-    assert "if _live:" in src, "sin encargos vivos no puede llamarse al modelo"
-
-
-def test_las_DOS_mitades_del_dedup_se_distinguen_en_observabilidad():
-    """Counting them together hides which of the two fails—and the next measurement is precisely that one."""
-    import inspect
-    from nucleo.request import append as _dedup
-    src = _vts.getsource(dispatch.run_listener)
-    assert '"by": _dup_by' in src
-    assert '"model"' in src
-    # V2-507: `"containment"` is now set by whoever MEASURES it (`dedup.scan`), not by the caller that assumed
-    # it — there, a widget hit was recorded as containment even though that path never computes it.
-    assert '"containment"' in _vts.getsource(_dedup.scan)
-    assert '"widget"' in _vts.getsource(_dedup.scan)

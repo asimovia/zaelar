@@ -180,4 +180,4 @@ def test_the_turn_end_reads_the_held_ops_and_closes_the_turn():
 
 def test_an_answered_task_skips_the_dedup_by_identity():
     src = (ROOT / "nucleo/dispatch/listener.py").read_text()
-    assert 'ctx.get("answers")' in src and "if _bound else _d.dedup_scan(" in src
+    assert 'ctx.get("answers")' in src and 'if not (_bound or ctx.get("confirmed")):' in src

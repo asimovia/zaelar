@@ -23,7 +23,7 @@ ROOTS = ("nucleo/dispatch", "nucleo/workers", "nucleo/errands", "nucleo/circuit"
 FROZEN = {
     ("alert", "🕶️ worker CIEGO — sin herramientas de búsqueda"), ("alert", "🧯 worker sin proveedor en contenedor"),
     ("task", "alive"), ("task", "blocked"), ("task", "cancel"), ("task", "considered"),
-    ("task", "dedup"), ("task", "dedup_miss"), ("task", "end"), ("task", "phase"), ("task", "plan"),
+    ("task", "end"), ("task", "phase"), ("task", "plan"),
     ("task", "progress"), ("task", "provider_asleep"), ("task", "resume"), ("task", "⏳ rate limit — waiting it out"),
     ("task", "⚠️ contexto casi lleno"), ("task", "⚠️ el worker chocó con una puerta de permiso"),
     ("task", "🎯 objetivo declarado — así se medirá si está hecho"), ("task", "🏷️ encargo nombrado"),
@@ -31,7 +31,8 @@ FROZEN = {
     ("task", "🔁 búsqueda → la de Zaelar (cuota del proveedor agotada)"), ("task", "🔁 worker reiniciado tras colgarse"),
     ("widget", "close"),
 }
-#: Retired on purpose: `("task", "🔔 entrega dicha en voz — su aviso al cerebro se retira")` — V2-851 F2 made a
+#: Retired on purpose: `("task", "dedup")` / `("task", "dedup_miss")` — INI-078 S2: nothing is folded any more, a new
+#: task like an open one is recorded as `route/near`. And `("task", "🔔 entrega dicha en voz — su aviso al cerebro se retira")` — V2-851 F2 made a
 #: delivery ONE line of the out-of-turn mouth with no brain note beside it, so there is no note left to retire.
 #: Kinds emitted at all (many with a computed label), and the phases the session's chips paint.
 FROZEN_KINDS = {"alert", "errand", "perf", "spec", "task", "widget", "worker_start", "↩️ encargo reabierto",

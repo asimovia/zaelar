@@ -137,27 +137,3 @@ def test_the_errands_own_filled_sheet_is_never_opened_fresh(monkeypatch, tmp_pat
 
 
 # ── S3 · a launch folded into a parked errand (another door's escalation) never leaves its box behind ─────
-
-def _fold(monkeypatch, parked_sheet: str, own: str) -> list:
-    from nucleo.dispatch import listener
-    from voice import observer
-    seen: list = []
-    monkeypatch.setattr(observer, "emit", lambda *a, **kw: seen.append((a, kw)))
-    monkeypatch.setattr(listener, "_close_folded", lambda key, ctx=None: None)
-    monkeypatch.setattr(confirm, "_PENDING_CONFIRM", {})
-    _park("2", CAR_EN[0], parked_sheet)
-    listener._absorb_into("2", CAR_EN[1][0], "3", {"sheet": own})
-    return seen
-
-
-def test_a_parked_errand_with_no_sheet_adopts_the_folded_launchs(monkeypatch):
-    seen = _fold(monkeypatch, "", "ls1")
-    assert confirm._PENDING_CONFIRM["2"]["sheet"] == "ls1", "the folded launch's box belongs to nobody"
-    assert not any(a[:2] == ("widget", "close") for a, _ in seen)
-
-
-def test_a_parked_errand_with_its_own_sheet_closes_the_duplicate(monkeypatch):
-    seen = _fold(monkeypatch, "S2", "ls1")
-    assert confirm._PENDING_CONFIRM["2"]["sheet"] == "S2"
-    assert any(a[:2] == ("widget", "close") and kw["extra"]["id"] == "results::ls1" for a, kw in seen), \
-        "the folded launch's sheet stayed on «Searching in depth…» with nobody behind it"

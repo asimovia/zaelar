@@ -216,13 +216,17 @@ class HostTools:
         carries the order's flow, never a flow of its own (R-1)."""
         from nucleo.conversation_host import turns
         from voice import trace
+        from nucleo.conversation_host import route
         tid = turns.current()
         if not tid:
-            return await self._call(name, args, effect_id=effect_id, idempotency_key=idempotency_key,
-                                    deadline_mono_ms=deadline_mono_ms)
-        with trace.scope(tid):
-            return await self._call(name, args, effect_id=effect_id, idempotency_key=idempotency_key,
-                                    deadline_mono_ms=deadline_mono_ms)
+            got = await self._call(name, args, effect_id=effect_id, idempotency_key=idempotency_key,
+                                   deadline_mono_ms=deadline_mono_ms)
+        else:
+            with trace.scope(tid):
+                got = await self._call(name, args, effect_id=effect_id, idempotency_key=idempotency_key,
+                                       deadline_mono_ms=deadline_mono_ms)
+        route.acted(name, args if isinstance(args, dict) else {}, getattr(got, "status", ""))   # S1: what it did
+        return got
 
     async def _call(self, name: str, args: dict, *, effect_id: str | None, idempotency_key: str | None,
                     deadline_mono_ms: int) -> ToolResult:

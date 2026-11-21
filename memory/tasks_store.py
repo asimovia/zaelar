@@ -138,14 +138,34 @@ def _patch(task_id: str, fields: dict, *, queued: bool) -> None:
     if not tid or not sets:
         return
     try:
-        _db_mod.get_db().execute(f"UPDATE tasks SET {', '.join(sets)} WHERE id=? AND "
-                                 + ("owner IS NOT NULL AND owner<>''" if queued else "(owner IS NULL OR owner='')"),
-                                 (*args, tid))
+        with _db_mod.get_db().cursor() as cur:
+            cur.execute(f"UPDATE tasks SET {', '.join(sets)} WHERE id=? AND "
+                        + ("owner IS NOT NULL AND owner<>''" if queued else "(owner IS NULL OR owner='')"),
+                        (*args, tid))
+            changed = cur.rowcount
     except Exception:  # noqa: BLE001
+        return
+    if not changed and not queued and (task_get(tid) or {}).get("owner"):
+        _refused(tid, sorted(k for k in fields if k in _COLUMNS))
         return
     if "title" in fields or "goal" in fields:
         cur = task_get(tid) or {}
         _reindex(tid, str(cur.get("title") or ""), str(cur.get("goal") or ""))
+
+
+def _refused(task_id: str, fields: list) -> None:
+    """A generic write reached a task of the queue, whose one writer is the queue: refused — and SAID, naming the
+    writer, so a writer that never became a signal is found instead of dropping its change in silence."""
+    import inspect
+    import bus
+    where = next((f"{f.filename.rsplit('/', 1)[-1]}:{f.lineno} {f.function}" for f in inspect.stack()[2:5]
+                  if not f.filename.endswith("tasks_store.py")), "?")
+    logger.warning(f"tasks_store: a generic write to the queue's task {task_id} refused ({fields}) from {where}")
+    try:
+        bus.emit_sync("queue.refused", {"task_id": task_id, "fields": fields, "writer": where,
+                                        "why": "a generic write to a task of the queue"})
+    except Exception as e:  # noqa: BLE001 — the warning above already names it
+        logger.debug(f"tasks_store: the refusal not published ({e!r})")
 
 
 def _reindex(task_id: str, title: str, goal: str) -> None:

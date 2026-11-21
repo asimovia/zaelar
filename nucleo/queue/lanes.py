@@ -49,6 +49,8 @@ async def my_turn(task_id: str, held: Callable[[str], None] | None = None) -> No
         _q.signal(task_id, "back", by="owner")    # back to the head of its lane, to run when its turn comes
     ev = asyncio.Event()
     with _lock:
+        if task_id in _waiters:                   # a second session for a task already waiting: it never runs beside
+            raise Left(task_id)                   # the first, nor takes its place (the first would never wake)
         _waiters[task_id] = (asyncio.get_running_loop(), ev, held)
     try:
         tick()
@@ -59,8 +61,9 @@ async def my_turn(task_id: str, held: Callable[[str], None] | None = None) -> No
             raise Left(task_id)
     finally:
         with _lock:
-            _waiters.pop(task_id, None)
-            _told.pop(task_id, None)
+            if _waiters.get(task_id, (None, None))[1] is ev:
+                _waiters.pop(task_id, None)
+                _told.pop(task_id, None)
 
 
 def is_task(task_id: str) -> bool:

@@ -116,5 +116,5 @@ def test_a_session_resumed_by_his_answer_is_its_row_and_is_compared_with_nothing
     assert (ctx.get("resume") or {}).get("rebrief"), "an answered resume carries its re-brief"
     src = inspect.getsource(listener)
     assert '_bound = bool(ctx.get("answers") or (ctx.get("resume") or {}).get("rebrief"))' in src
-    assert "if not dup and not _bound" in src and '("", {}) if _bound else _d.dedup_scan' in src, \
-        "a bound launch skips both halves of the dedup"
+    assert "_fold_into" not in src and "about_a_live_errand" not in src, \
+        "nothing is folded at all any more (INI-078 S2): its own row coming back is never compared with another"

@@ -223,3 +223,20 @@ def test_his_answer_puts_his_task_first_in_line_never_beside_the_running_one():
     waits.resumed(asked)                                        # his answer
     assert ts.task_get(asked)["state"] == "pending" and ts.task_get(other)["state"] == "running"
     assert queue.view()["worker"]["pending"][0]["id"] == asked
+
+
+def test_a_second_session_for_a_waiting_task_leaves_and_the_first_still_runs():
+    async def go():
+        lanes.gate("worker", lambda: "")
+        busy = queue.add("worker", "running now")
+        queue.signal(busy, "start", by="pulse")
+        b = queue.add("worker", "next in line")
+        first = asyncio.ensure_future(lanes.my_turn(b))
+        await asyncio.sleep(0.02)
+        second = asyncio.ensure_future(lanes.my_turn(b))
+        await asyncio.sleep(0.02)
+        assert isinstance(second.exception(), lanes.Left), "a second session never runs beside the first"
+        queue.signal(busy, "done", by="owner")
+        await asyncio.wait_for(first, 1)
+        return ts.task_get(b)["state"]
+    assert asyncio.run(go()) == "running"

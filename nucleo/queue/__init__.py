@@ -135,47 +135,58 @@ def add(owner: str, title: str, *, goal: str = "", kind: str = "", origin: str =
 def signal(task_id: str, what: str, *, by: str, **fields) -> bool:
     """Apply one signal to one task of the queue. True when applied; False (and `queue/refused`) when refused."""
     tid = str(task_id or "")
-    with _lock:
-        row = _store().task_get(tid) if tid else None
-        if not row or not row.get("owner"):
-            _say("refused", {"id": tid}, by, signal=what, why="not in the queue")
-            return False
-        to = JUMPS.get(str(row.get("state") or ""), {}).get(what)
-        if to is None or by not in SENDERS:
-            _say("refused", row, by, signal=what, why=f"no jump «{what}» from «{row.get('state')}» by «{by}»")
-            return False
-        if to == ARCHIVE:
-            _remember(row, what, str(fields.get("outcome") or ""))   # once: an archived task takes no more signals
-            _store().queue_archive(tid)
-            _say(what, row, by, outcome=str(fields.get("outcome") or "")[:400])
-            from nucleo.queue import lanes
-            lanes.left(tid)                      # an owner still waiting for its turn is never left waiting
-            _next()
-            return True
-        put = {k: v for k, v in fields.items() if k in FIELDS.get(what, ())}
-        now = int(time.time())
-        if what == "start":
-            put["started_at"] = now
-        elif what == "wait":
-            put["waiting_since"] = now
-        elif what == "back":
-            put.update(waiting_for="", waiting_since=None, deadline=None, ask="", ask_id="")
-            put["priority"], put["position"] = _head(str(row["owner"]), tid)
-        elif what == "priority":
-            put["priority"], put["position"] = (_head(str(row["owner"]), tid) if fields.get("urgent")
-                                                else (0, float(row.get("position") or 0)))
-        elif what == "move":
-            got = _moved(row, str(fields.get("before") or ""))
-            if got is None:
-                _say("refused", row, by, signal=what, why=f"«{fields.get('before')}» is not a pending task of its lane")
-                return False
-            put["priority"], put["position"] = got
-        _store().queue_patch(tid, state=PENDING if to == PENDING else (RUNNING if to == RUNNING else WAITING), **put)
-        _say(what, row, by, state=to,          # inside the lock: the events come out in the order signals applied
-             changed={k: str(v)[:160] for k, v in put.items() if k != "progress"})
+    left = None
+    try:
+        with _lock:
+            applied, left = _apply(tid, what, by, fields)
+    finally:
+        if left is not None:                     # outside the lock, after the row went: the pill never holds the queue
+            _remember(*left)
+    return applied
+
+
+def _apply(tid: str, what: str, by: str, fields: dict) -> tuple[bool, tuple | None]:
+    """One signal, applied under the lock; returns (applied, what a task that left leaves behind)."""
+    row = _store().task_get(tid) if tid else None
+    if not row or not row.get("owner"):
+        _say("refused", {"id": tid}, by, signal=what, why="not in the queue")
+        return False, None
+    to = JUMPS.get(str(row.get("state") or ""), {}).get(what)
+    if to is None or by not in SENDERS:
+        _say("refused", row, by, signal=what, why=f"no jump «{what}» from «{row.get('state')}» by «{by}»")
+        return False, None
+    if to == ARCHIVE:
+        _store().queue_archive(tid)              # its pill after the lock (`signal`); once: an archived task takes
+        #                                          no more signals
+        _say(what, row, by, outcome=str(fields.get("outcome") or "")[:400])
+        from nucleo.queue import lanes
+        lanes.left(tid)                      # an owner still waiting for its turn is never left waiting
+        _next()
+        return True, (row, what, str(fields.get("outcome") or ""))
+    put = {k: v for k, v in fields.items() if k in FIELDS.get(what, ())}
+    now = int(time.time())
+    if what == "start":
+        put["started_at"] = now
+    elif what == "wait":
+        put["waiting_since"] = now
+    elif what == "back":
+        put.update(waiting_for="", waiting_since=None, deadline=None, ask="", ask_id="")
+        put["priority"], put["position"] = _head(str(row["owner"]), tid)
+    elif what == "priority":
+        put["priority"], put["position"] = (_head(str(row["owner"]), tid) if fields.get("urgent")
+                                            else (0, float(row.get("position") or 0)))
+    elif what == "move":
+        got = _moved(row, str(fields.get("before") or ""))
+        if got is None:
+            _say("refused", row, by, signal=what, why=f"«{fields.get('before')}» is not a pending task of its lane")
+            return False, None
+        put["priority"], put["position"] = got
+    _store().queue_patch(tid, state=PENDING if to == PENDING else (RUNNING if to == RUNNING else WAITING), **put)
+    _say(what, row, by, state=to,          # inside the lock: the events come out in the order signals applied
+         changed={k: str(v)[:160] for k, v in put.items() if k != "progress"})
     if to == WAITING and what == "wait":
-        _next()                                  # a task that waits for him leaves its place: the next one starts now
-    return True
+        _next()                              # a task that waits for him leaves its place: the next one starts now
+    return True, None
 
 
 def wrote(task_id: str, what: str, **fields) -> bool:

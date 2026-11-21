@@ -229,7 +229,7 @@ async def unlicensed_gate(task: "Task", key: str, req: str, *, wait_s: float = 2
     return True
 
 
-def parked_errands(but_run: str = "") -> list[tuple[str, str]]:
+def parked_errands() -> list[tuple[str, str]]:
     """(task_id, request) of every errand PARKED on a question — the same shape `dispatch._live_errands()` hands
     the dedup, because a parked errand has to be VISIBLE to it (2026-09-29, session 81095d8d).
 
@@ -241,8 +241,7 @@ def parked_errands(but_run: str = "") -> list[tuple[str, str]]:
     four result boxes on his screen, one intention. A task that is waiting on him is not dead, and the dedup
     has to see it as what it is: the errand he is still talking about."""
     _sweep_confirm()
-    return [(k, str(v.get("request") or "")) for k, v in _PENDING_CONFIRM.items()   # a sibling of the same run is
-            if not (but_run and str((v.get("context") or {}).get("run") or "") == but_run)]   # another task (INI-078)
+    return [(k, str(v.get("request") or "")) for k, v in _PENDING_CONFIRM.items()]
 
 
 def absorb_refinement(task_id: str, text: str) -> str:

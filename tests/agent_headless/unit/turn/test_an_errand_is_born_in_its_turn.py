@@ -200,12 +200,13 @@ def test_the_dispatcher_adopts_the_row_the_turn_wrote(db, monkeypatch):
     assert not continuation.continues(rec, {"born_uid": rec.uid}), "a first launch was read as a continuation"
 
 
-def test_a_launch_folded_into_a_live_errand_leaves_no_row(db, monkeypatch):
+def test_a_launch_like_a_live_errand_is_a_task_of_its_own(db, monkeypatch):
+    """INI-078 S2: nothing is folded — the model decided it is new; it is a task of the queue, beside the live one."""
     monkeypatch.setattr("nucleo.consequence.passes", lambda *a, **k: True)
     _turn("T45", "find me a flat to rent in Madrid, two bedrooms")
     _listen(monkeypatch, "find me a flat to rent in Madrid, two bedrooms near Retiro", {"kind": "web"},
             live=("live-1", "find me a flat to rent in Madrid, two bedrooms"))
-    assert not _rows(), "the folded launch's row stayed behind as an errand of its own"
+    assert [r["owner"] for r in _rows()] == ["worker"], "the new launch is its own task, never folded in"
 
 
 def test_a_row_nobody_adopted_is_forgotten_and_an_adopted_one_is_not(db):

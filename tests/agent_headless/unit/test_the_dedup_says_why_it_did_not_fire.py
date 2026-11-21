@@ -189,65 +189,6 @@ def _drive(monkeypatch, *, live: tuple[str, str] | None, request: str):
     return rows
 
 
-def test_a_miss_with_nothing_live_emits_the_row_through_the_real_listener(fresh_db, fake_backend, monkeypatch):
-    rows = _drive(monkeypatch, live=None, request=_ERRAND)
-    assert rows, "the negative decision must leave a row — that muteness is the whole defect"
-    label, extra = rows[0]
-    assert label == "dedup_miss"
-    assert extra["live"] == 0
-    assert "ninguna tarea viva contra la que comparar" in extra["reason"]
-
-
-def test_a_miss_against_a_live_errand_names_it_and_its_number(fresh_db, fake_backend, monkeypatch):
-    rows = _drive(monkeypatch, live=("live-1", _OTHER), request=_ERRAND)
-    assert rows and rows[0][0] == "dedup_miss"
-    extra = rows[0][1]
-    assert extra["live"] == 1 and extra["against"] == "live-1"
-    assert 0.0 <= extra["best"] < extra["bar"]
-    assert extra["model"] == "separate", "the second half ran and said separate — that has to be visible too"
-
-
-def test_a_HIT_does_not_emit_a_miss(fresh_db, fake_backend, monkeypatch):
-    """The other direction. Without this, «emit always» would satisfy every test above."""
-    async def _noop_inject(which, msg):
-        return [which]
-    monkeypatch.setattr(dispatch, "inject", _noop_inject)
-    rows = _drive(monkeypatch, live=("live-1", _ERRAND), request=_ERRAND + " and with a warranty")
-    assert rows and [lbl for lbl, _ in rows] == ["dedup"], f"a hit must emit only `dedup`: {rows}"
-
-
-def test_a_crashed_second_half_is_not_recorded_as_separate(fresh_db, fake_backend, monkeypatch):
-    """The same confusion one layer in: a judge that BLEW UP used to look like one that answered «separate»."""
-    from nucleo.acts import errand as escalate
-
-    rows: list = []
-
-    def _fake_emit(kind, label, **kw):
-        if kind == "task" and label == "dedup_miss":
-            rows.append(kw.get("extra") or {})
-    monkeypatch.setattr("voice.observer.emit", _fake_emit)
-
-    def _boom(*a, **k):
-        raise RuntimeError("judge unreachable")
-    monkeypatch.setattr(dispatch, "about_a_live_errand", _boom)
-
-    async def run():
-        bus.reset(); escalate.reset()
-        dispatch._SESSIONS.clear()
-        _live("live-1", _OTHER)
-        stop = asyncio.Event()
-        task = asyncio.create_task(dispatch.run_listener(stop))
-        await asyncio.sleep(0.05)
-        escalate.escalate_to_slowbrain(_ERRAND, context={"kind": "web"})
-        await asyncio.sleep(0.25)
-        stop.set(); await asyncio.sleep(0.05); task.cancel()
-
-    asyncio.run(run())
-    dispatch._SESSIONS.clear()
-    assert rows and rows[0]["model"] == "error:RuntimeError"
-    # …and the errand still ran: an unreachable judge must never block work.
-
-
 def test_two_errands_that_name_no_widget_do_not_share_the_open_card(monkeypatch):
     """Demo pass 2026-09-28, T1: with the monitor sheet open, «plan a five day trip somewhere warm…» and «find me
     three 27 inch 4k monitors…» both resolved `results` BY CONTEXT, the trip «continued» the monitor search at 1.0

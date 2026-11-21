@@ -1,0 +1,58 @@
+"""What the one decider did with each batch of his words in a session, read back for the auditor (INI-078 S1).
+
+    python -m nucleo.audit.route --session <id> [--json]
+
+One entry per `route` event (`nucleo/conversation_host/route.py`), in order: what he said, our last line before it,
+the open tasks as the model read them, the class (A conversation · B new task · C to an open task · D the queue) and
+the acts with their arguments. The auditor marks each one right or wrong; the signals that follow (an undo, a stop
+right after a start, an act on a number that is not there) are the hints, never the mark. Read-only.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+
+
+def decisions(session_id: str, *, limit: int = 2000) -> list[dict]:
+    """The session's `route` records, oldest first, each `{ts_ms, corr_id, class, his_text, our_last, open, acts,
+    model, ms, outcome}` — plus the `near` records (a new task very like an open one) as `{near: {...}}`."""
+    from observability import flows
+    out = []
+    for e in flows.events(session_id=str(session_id), limit=limit):
+        if e.get("kind") != "route":
+            continue
+        try:
+            p = json.loads(e.get("payload") or "{}") if isinstance(e.get("payload"), str) else dict(e.get("payload") or {})
+        except ValueError:
+            p = {}
+        body = p.get("extra") if isinstance(p.get("extra"), dict) else p
+        row = {"ts_ms": e.get("ts_ms"), "corr_id": e.get("corr_id")}
+        row.update({"near": body} if e.get("label") == "near" else
+                   {k: body.get(k) for k in ("class", "his_text", "our_last", "open", "acts", "model", "ms", "outcome")})
+        out.append(row)
+    return out
+
+
+def _line(d: dict) -> str:
+    if "near" in d:
+        n = d["near"] or {}
+        return f"  ~ near: new {n.get('new')} looks like open {n.get('open')} ({n.get('by')})"
+    acts = "; ".join(f"{a.get('name')}({json.dumps(a.get('args'), ensure_ascii=False)[:120]})→{a.get('status')}"
+                     for a in d.get("acts") or []) or "—"
+    return (f"[{d.get('class')}] «{d.get('his_text')}»\n    after: «{(d.get('our_last') or '')[:160]}»\n"
+            f"    open: {(d.get('open') or '—').replace(chr(10), ' | ')[:400]}\n    acts: {acts}  ({d.get('model')}, "
+            f"{d.get('ms')} ms, {d.get('outcome')})")
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--session", required=True)
+    ap.add_argument("--json", action="store_true")
+    a = ap.parse_args(argv)
+    got = decisions(a.session)
+    print(json.dumps(got, ensure_ascii=False, indent=1) if a.json else "\n".join(_line(d) for d in got) or "(none)")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -42,13 +42,22 @@ def test_the_call_carries_its_run(monkeypatch):
     assert acts_tasks.errand_context({})["run"] == "run-7"
 
 
-def _second_escalation(monkeypatch, run_of_live: str, run_of_new: str) -> tuple[list, list]:
+def _second_escalation(monkeypatch, run_of_live: str, run_of_new: str, new: str = FLIGHT) -> tuple[list, list]:
     from nucleo.acts import errand as escalate
     from nucleo.workers.session import SessionRecord
     monkeypatch.setattr(dispatch, "_SESSIONS", {}, raising=False)
     from tests.agent_headless.unit.test_dispatch import _FakeBackend
     monkeypatch.setattr(dispatch, "get_backend", lambda spec: _FakeBackend())
     injected: list = []
+    added: list = []                            # a task born in the queue (its session may end at once: a fake worker)
+    from voice import observer
+    real_emit = observer.emit
+
+    def emit(kind, label, *a, **kw):
+        if (kind, label) == ("queue", "queue/add"):
+            added.append((kw.get("extra") or {}).get("task_id"))
+        return real_emit(kind, label, *a, **kw)
+    monkeypatch.setattr(observer, "emit", emit)
 
     async def _inject(which, msg):
         injected.append(which)
@@ -63,12 +72,17 @@ def _second_escalation(monkeypatch, run_of_live: str, run_of_new: str) -> tuple[
         stop = asyncio.Event()
         task = asyncio.create_task(dispatch.run_listener(stop))
         await asyncio.sleep(0.05)
-        escalate.escalate_to_slowbrain(FLIGHT, context={"kind": "web", "run": run_of_new})
-        await asyncio.sleep(0.2)
-        born = [k for k in dispatch._SESSIONS if k != "live"]
+        escalate.escalate_to_slowbrain(new, context={"kind": "web", "run": run_of_new})
+        from tests.waiting import until
+        await until(lambda: added or injected or None, "the second escalation to be handled")
+        born = list(added)
         stop.set()
         await asyncio.sleep(0.05)
         task.cancel()
+        for rec in list(dispatch._SESSIONS.values()):        # the session it started never outlives this test
+            if getattr(rec, "task", None) is not None:
+                rec.task.cancel()
+        await asyncio.sleep(0.05)
         return born
     return asyncio.run(run()), injected
 
@@ -78,16 +92,20 @@ def test_two_calls_of_one_run_on_one_subject_are_two_tasks(fresh_db, monkeypatch
     assert injected == [] and len(born) == 1, "a sibling of the same run is its own task, never folded"
 
 
-def test_the_same_order_said_again_in_another_run_still_folds(fresh_db, monkeypatch):
-    born, injected = _second_escalation(monkeypatch, "run-1", "run-2")
-    assert injected == ["live"] and born == []
+def test_a_new_task_like_an_open_one_is_recorded_and_never_folded(fresh_db, monkeypatch):
+    """S2: the model decided it is new, so it is new — even in another run, even alike. Only `route/near` records it."""
+    from voice import observer
+    near = []
+    real = observer.emit
 
-
-def test_a_parked_sibling_of_the_same_run_is_not_its_duplicate(monkeypatch):
-    from nucleo.dispatch import confirm
-    monkeypatch.setattr(confirm, "_PENDING_CONFIRM", {"9": {"request": HOTEL, "ts": 9e12, "context": {"run": "run-1"}}})
-    monkeypatch.setattr(confirm, "_sweep_confirm", lambda: None)
-    assert confirm.parked_errands("run-1") == [] and confirm.parked_errands("run-2") == [("9", HOTEL)]
+    def emit(kind, label, *a, **kw):
+        if (kind, label) == ("route", "near"):
+            near.append(kw.get("extra"))
+        return real(kind, label, *a, **kw)
+    monkeypatch.setattr(observer, "emit", emit)
+    born, injected = _second_escalation(monkeypatch, "run-1", "run-2", new=FLIGHT + " y vuelta el 6")
+    assert injected == [] and len(born) == 1, "nothing is folded into the open task"
+    assert near and near[0]["open"] == "live"
 
 
 TWELVE = "\n".join(f"{i}. Busca y compárame {i} opciones de algo distinto, con todos los detalles que encuentres: "

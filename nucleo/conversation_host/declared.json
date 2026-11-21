@@ -940,6 +940,12 @@
   "routed",
   "actionmap"
  ],
+ "route_class": {
+  "_comment": "INI-078 segregation S1: what the one decider's acts say about his batch — B a new task, C words to a task already open, D a change to the queue; an act in none of them (or no act) is A, the conversation (`route.class_of`)",
+  "B": ["start_task", "build_widget", "search_listings", "send_message"],
+  "C": ["task_answer", "resume_task", "reopen_task"],
+  "D": ["stop_task"]
+ },
  "task_acts": [
   "start_task",
   "build_widget",

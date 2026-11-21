@@ -165,23 +165,3 @@ def _drive(monkeypatch, *, parked: tuple[str, str] | None, request: str, context
     dispatch._SESSIONS.clear()
     return rows, task_event.drain()
 
-
-def test_a_repeat_of_a_parked_errand_opens_no_second_task(fresh_db, monkeypatch):
-    rows, notes = _drive(monkeypatch, parked=("3", HIS_WORDS), request=REPEAT)
-    assert rows and rows[0][0] == "dedup", f"the repeat must be absorbed, not missed: {rows}"
-    assert rows[0][1]["by"] == "parked" and rows[0][1]["id"] == "3"
-    assert dispatch.pending_confirm()["refinements"] == [REPEAT]
-    assert not dispatch._SESSIONS, "no session may have been opened for the repeat"
-
-
-def test_a_different_errand_still_opens(fresh_db, monkeypatch):
-    rows, _ = _drive(monkeypatch, parked=("3", HIS_WORDS), request=OTHER)
-    assert rows and rows[0][0] == "dedup_miss"
-    assert not dispatch.pending_confirm().get("refinements"), "a separate errand must not be folded into the parked one"
-
-
-def test_the_confirmed_relaunch_is_never_compared_against_itself(fresh_db, monkeypatch):
-    """`resolve_confirm` pops the entry and re-escalates with `confirmed`; a stale copy left parked must not
-    swallow the relaunch — the yes has to become a worker."""
-    rows, _ = _drive(monkeypatch, parked=("3", HIS_WORDS), request=HIS_WORDS, context={"confirmed": True})
-    assert rows and rows[0][0] == "dedup_miss"

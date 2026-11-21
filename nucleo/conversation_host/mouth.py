@@ -49,6 +49,7 @@ class WallMouth:
         notice = bool(getattr(order, "notice_key", None))
         if self._said is not None:
             self._said(order.request_id, order.text)
+        __import__("nucleo.conversation_host.route", fromlist=["x"]).ours(order.text)   # S1: the next batch's last line
         voiced = "voice" in order.channels and self.voice is not None
         if voiced and not notice:                       # owed BEFORE its voice can start it
             observer.emit("brain", REPLY, text=order.text, role="assistant", extra=extra, piece="f_mouth")

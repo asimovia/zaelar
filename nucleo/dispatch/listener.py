@@ -58,104 +58,13 @@ async def run_listener(stop: "asyncio.Event | None" = None) -> None:
                 _unborn(ctx)
                 logger.info(f"dispatch: escalada RECHAZADA (agente parado): {request[:80]}")
                 continue
-            # DEDUP in the FUENTE DE VERDAD (§session 2026-07-15): if already there is a session live atendiendo this same
-            # request, NO abrimos a 2º worker (the bug of the two «creando a widget…»). Se INYECTA como
-            # refinamiento (the generador of widgets, build atomico, it ignora with gracia; a worker live it aprovecha).
-            # V2-851 F2e — an ANSWERED question's task names its row by identity (`answers`): never a refinement of
-            # another errand, never a parked one, never a continuation of an ended one.
-            # The same holds for a session RESUMED on its row by his answer (`worker_api_resume`): it is that row coming
-            # back (measured 2026-11-18: an answered send was folded «by widget» into a group errand, and was lost).
-            _bound = bool(ctx.get("answers") or (ctx.get("resume") or {}).get("rebrief"))
-            _run = str(ctx.get("run") or "")     # INI-078: a sibling call of the same run is another task, never folded
-            dup, _ev = ("", {}) if _bound else _d.dedup_scan(
-                request, kind if kind != "generic" else _d._kind_of(ctx.get("errand_kind")), _run)
-            # `by` now comes from the deciding loop instead of being assumed here: a same-widget hit used to
-            # be filed as «containment», which is a number it never computed.
-            _dup_by = _ev.get("by") or ""
-            _model = "skipped"          # the second half only runs with something live to compare against
-            if not dup and not _bound:
-                # SECOND HALF OF THE DEDUP, off-loop: «is this an errand at all?» (`about_a_live_errand`). Only
-                # with something live; in a thread because `chat_sync` is synchronous.
-                _live = _d._live_errands(_run)
-                if _live:
-                    try:
-                        dup = await asyncio.to_thread(_d.about_a_live_errand, request, _live)
-                        _dup_by = "model" if dup else _dup_by
-                        _model = "about" if dup else "separate"
-                    except Exception as e:  # noqa: BLE001
-                        dup = ""
-                        # A model half that CRASHED used to be indistinguishable from one that answered
-                        # «separate» — the same confusion as the mute miss, one layer in. Recorded, not
-                        # changed: the fail-open stays, an unreachable judge must never block an errand.
-                        _model = f"error:{type(e).__name__}"
-            if dup:
-                try:
-                    from voice.observer import emit
-                    # `by` separa the DOS mitades of the dedup, and without el no is can medir by separado:
-                    # `containment` es a reformulacion of the same errand, `model` es a turn that no era a
-                    # errand (a question by how va). Contarlas juntas esconde which of the two falla.
-                    emit("task", "dedup", role="system", text=request[:120],
-                         extra={"id": dup, "dropped_id": key, "by": _dup_by,
-                                "reason": ("no es un encargo nuevo: va sobre una tarea viva"
-                                           if _dup_by == "model" else
-                                           "escalada duplicada de una tarea viva")})
-                except Exception:
-                    pass
-                try:
-                    await _fold_into(dup, request, key, ctx)  # a refinement of the live session (no relaunch)
-                except Exception as e:  # noqa: BLE001
-                    logger.warning(f"dispatch: inject de dedup a {dup} falló: {e}")
-                # Same task, proven by the dedup match → ONE flow (V2-123). Only when the fuse didn't happen does
-                # this trace still need its own explicit close, or `just_escalated` would keep it open forever.
-                if not _d._merge_dedup_flow(ctx, dup):
-                    _d._close_escalated_flow(ctx, ok=True, status="dedup_injected")
-                continue
-            # A PARKED ERRAND IS STILL THE ERRAND HE IS TALKING ABOUT (2026-09-29, session 81095d8d): parked records
-            # are popped, so each repeat opened another task — four errands, one intention. Same yardstick over
-            # `parked_errands()`; a hit is folded in (`absorb_refinement`) and the brain repeats the QUESTION. A
-            # `confirmed` relaunch is never compared: it IS the parked errand coming back.
-            if not (ctx.get("confirmed") or _bound):
-                _parked = _d.parked_errands(_run)
-                pdup = None
-                if _parked:
-                    pdup, _pev = _d._dedup.scan(request, kind if kind != "generic" else _d._kind_of(ctx.get("errand_kind")),
-                                             _parked)
-                    if not pdup:
-                        try:
-                            pdup = await asyncio.to_thread(_d.about_a_live_errand, request, _parked) or None
-                        except Exception:  # noqa: BLE001 — fail-open, like the live half
-                            pdup = None
-                if pdup:
-                    question = _absorb_into(pdup, request, key, ctx)
-                    try:
-                        from voice.observer import emit
-                        emit("task", "dedup", role="system", text=request[:120],
-                             extra={"id": pdup, "dropped_id": key, "by": "parked",
-                                    "reason": "va sobre una tarea APARCADA esperando su respuesta: no se abre otra"})
-                    except Exception:
-                        pass
-                    try:
-                        from nucleo.dispatch import fold as _fold_q
-                        _fold_q.ask_again(question)
-                    except Exception:  # noqa: BLE001
-                        pass
-                    _d._close_escalated_flow(ctx, ok=True, status="dedup_parked")
-                    continue
-            # THE NEGATIVE DECISION, SAID OUT LOUD (V2-507): «dedup did not fire» vs «nothing live» (round
-            # 20260830-114302 could not tell). `live: 0` means nobody was there to match.
-            try:
-                from voice.observer import emit
-                emit("task", "dedup_miss", role="system", text=request[:120],
-                     extra={"id": key, "live": _ev.get("live", 0), "best": _ev.get("best", 0.0),
-                            "against": _ev.get("against", ""), "bar": _ev.get("bar", 0.0), "model": _model,
-                            # V2-570 — a fresh fast-pass delivery is named HERE too: «nothing live» with a
-                            # just-delivered hunt on screen was how two boxes looked like a clean miss.
-                            "listing_recent": [r["id"] for r in _d._ended.recent_listing_deliveries()][:3],
-                            "reason": ("encargo NUEVO: no había ninguna tarea viva contra la que comparar"
-                                       if not _ev.get("live") else
-                                       "encargo NUEVO: no casa con ninguna tarea viva")})
-            except Exception:
-                pass
+            # NOTHING IS FOLDED (INI-078 segregation S2): the model of the conversation decided this is a NEW task, and a
+            # new task it is — the one decider. A word table that folded it into a live or a parked one undid that
+            # decision in silence («a hotel in Rome» into «a flight to Rome»). A new task that looks very much like an
+            # open one is only RECORDED (`route/near`, both rows) for the auditor; he cancels it if it is one too many.
+            _bound = bool(ctx.get("answers") or (ctx.get("resume") or {}).get("rebrief"))   # its own row coming back
+            if not (_bound or ctx.get("confirmed")):
+                _near(request, kind if kind != "generic" else _d._kind_of(ctx.get("errand_kind")), key, ctx)
             # V2-566/V2-570 — A FOLLOW-UP IS NOT A NEW ERRAND, and a follow-up of a DELIVERED listing fast
             # pass does not spawn a parallel worker. Both decisions live in `nucleo/request/append.py`
             # (extracted: dispatch sat one line under its ratchet ceiling): the escalation may come back with
@@ -232,62 +141,6 @@ async def run_listener(stop: "asyncio.Event | None" = None) -> None:
         logger.info("dispatch: listener de escalados detenido")
 
 
-async def _fold_into(dup: str, request: str, key: str, ctx: dict | None = None) -> None:
-    """The escalation became a REFINEMENT of the live errand `dup`: inject it, and close the escalation itself.
-
-    best-plumber-same-day ES (2026-10-14): «…si esto no sale hoy me lanzo a llamar…» was folded into the live
-    plumber errand, but its escalation stayed open in `escalate._tasks`, so for 90 s `errand_pool.starting` listed
-    his complaint as an errand of its own. His goodbye («Quedo a la espera si sale algo») then named THAT errand by
-    «sale», the delivery backstop read «the turn is about another errand», and three plumbers with their phones
-    stayed in the prompt while the reply said «aquí sigo pendiente». A folded escalation is part of the errand it
-    joined, never a second one."""
-    await _d.inject(dup, request)
-    _close_folded(key, ctx)
-    from nucleo.dispatch import fold as _fold
-    _fold.late_fold(dup, ctx or {})          # the duplicate's sheet does not stay behind
-
-
-def _absorb_into(pdup: str, request: str, key: str, ctx: dict | None = None) -> str:
-    """Same as `_fold_into`, for an errand PARKED on a question to him: the escalation joins it and closes.
-
-    …and so does its sheet (V2-843 S3). A listing fast pass opens a box before it hands on; folded here, that box
-    used to stay on «Searching in depth…» with no worker behind it — three of them for one car. A parked errand
-    with no sheet ADOPTS it (his «yes» relaunches there); one that already has its own closes the duplicate."""
-    question = _d.absorb_refinement(pdup, request)
-    _close_folded(key, ctx)
-    own = str((ctx or {}).get("sheet") or "").strip()
-    if own:
-        from nucleo.dispatch import confirm as _dc
-        kept = _dc.adopt_sheet(pdup, own)
-        if kept != own:
-            _close_orphan(own, pdup)
-    return question
-
-
-def _close_orphan(sheet: str, into: str) -> None:
-    """Close a folded escalation's sheet that is not its errand's. Never raises: the fold already happened."""
-    try:
-        from voice.observer import emit
-        from widgets.results import data as _sheet
-        from nucleo.acts import canvas
-        emit("task", "🧵 hoja duplicada cerrada: su encargo ya tenía la suya", role="system",
-             text=f"{sheet} → {into}", extra={"cat": "worker", "flow": into, "orphan_sheet": sheet, "v": "V2-843"})
-        canvas.apply("close", _sheet.instance_id(sheet), src="system:dedup", emit=emit)
-        __import__("nucleo.acts.surface_owner", fromlist=["x"]).orphan(sheet, "closed", emit=emit)   # V2-844 F0
-    except Exception as e:  # noqa: BLE001
-        logger.warning(f"dispatch: the folded sheet {sheet} was not closed — {type(e).__name__}: {e}")
-
-
-def _close_folded(key: str, ctx: dict | None = None) -> None:
-    _unborn(ctx)              # V2-844 F1a: the turn's row joined another errand; it never becomes one of its own
-    try:
-        if str(key).isdigit():
-            from nucleo.acts import errand as _esc
-            _esc.finish(int(key), "")
-    except Exception as e:  # noqa: BLE001 — the fold already happened; a registry that cannot close is logged
-        logger.debug(f"dispatch: folded escalation {key} not closed — {type(e).__name__}: {e}")
-
-
 def _unborn(ctx: dict | None) -> None:
     """The row the turn wrote for an escalation that did not become a worker of its own goes (V2-844 F1a)."""
     try:
@@ -295,3 +148,16 @@ def _unborn(ctx: dict | None) -> None:
         _ledger.unborn(str((ctx or {}).get("born_uid") or ""))
     except Exception as e:  # noqa: BLE001
         logger.debug(f"dispatch: a born row was not withdrawn — {type(e).__name__}: {e}")
+
+
+def _near(request: str, kind: str, key: str, ctx: dict) -> None:
+    """A new task that looks very much like an open one: recorded for the auditor, never folded. Never raises."""
+    try:
+        dup, ev = _d.dedup_scan(request, kind)
+        if not dup:
+            return
+        from voice.observer import emit
+        emit("route", "near", role="system", text=request[:200],
+             extra={"new": key, "open": str(dup), "by": str(ev.get("by") or ""), "trace": str(ctx.get("trace") or "")})
+    except Exception as e:  # noqa: BLE001 — a record for the auditor never decides an errand
+        logger.debug(f"dispatch: near not recorded for {key} ({e!r})")

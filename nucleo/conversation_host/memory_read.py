@@ -221,6 +221,7 @@ def _blocks(budget_tokens: int) -> list[Block]:
         if text and left > 0:
             out.append(Block(title, text[:min(cap, left)]))
             left -= len(out[-1].text)
+            __import__("nucleo.conversation_host.route", fromlist=["x"]).saw(title, out[-1].text)   # S1: as read
     return out
 
 
