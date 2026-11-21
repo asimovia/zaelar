@@ -940,6 +940,12 @@ _PACKAGE_CEILINGS["widgets"] += 31
 _TOTAL_MAX += 68     # measured
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 2   # 2026-11-21 C2 A4: with no draft open, the model's message to write opens the owner's draft instead of the card's box
 _TOTAL_MAX += 2      # same cause, measured
+# 2026-11-21 C2 P3 (the operator's decision P-3: the send seen whole, like a worker's playbook): its steps declared
+# (`send/steps.json`, read by `send/steps.py`), every step the owner emits in its order's trace with a worker-shaped
+# `task` card (`runner: send`), a later turn the owner takes folded into that flow (`routing.HostRoute.take`)
+_PACKAGE_CEILINGS["nucleo/send"] += 80
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 3
+_TOTAL_MAX += 83     # measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

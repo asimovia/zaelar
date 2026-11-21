@@ -108,8 +108,9 @@ def ended(d, state: str) -> None:
 
 
 def install() -> None:
-    from nucleo.send import draft
+    from nucleo.send import draft, steps
     draft.on_end(ended)
+    draft.on_end(steps.ended)
     install_claim()
 
 

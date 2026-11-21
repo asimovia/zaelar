@@ -26,6 +26,7 @@ from nucleo.send import deliver as _deliver
 from nucleo.send import draft as _draft
 from nucleo.send import people as _people
 from nucleo.send import read as _read
+from nucleo.send import steps as _steps
 
 #: The hand-over that only LEANS to a message (an order on the messaging card, no message act read): when the owner's
 #: read says his words are not a message, the turn goes on as any other. Every other hand-over the read refuses is
@@ -41,12 +42,18 @@ def _note(e: Exception) -> None:
 
 
 def _emit(label: str, d, **extra) -> None:
-    try:
-        from voice.observer import emit
-        emit("send", f"📨 send · {label}", text=(d.text if d else "")[:200], role="system",
-             extra={"cat": "flash", "event": "send", "step": label, **({"draft": d.snapshot()} if d else {}), **extra})
-    except Exception as e:  # noqa: BLE001 — the record never decides the send
-        _note(e)
+    """A step of the send, in the flow of the order that opened its draft (P3), with its playbook's progress."""
+    from voice import trace
+    with trace.scope(getattr(d, "trace", "") or trace.current()):
+        try:
+            from voice.observer import emit
+            emit("send", f"📨 send · {label}", text=(d.text if d else "")[:200], role="system",
+                 extra={"cat": "flash", "event": "send", "step": label, **({"draft": d.snapshot()} if d else {}),
+                        **extra})
+        except Exception as e:  # noqa: BLE001 — the record never decides the send
+            _note(e)
+        if d is not None:
+            _steps.report(label, d)
     if d is not None and label in _card.PAINTS:
         _card.paint(d)                           # the one draft is the one in its card (C2 A2)
 
@@ -227,7 +234,7 @@ def _run(d) -> dict:
 
 from nucleo.send.go import send as _send  # noqa: E402,F401 — the act on his yes, its report (`go.py`)
 
-_card.install()                                  # a draft that ends is taken off its card
+_card.install()     # a draft that ends leaves its card and its steps' flow; his hand on its box is the owner's (C2)
 
 
 # ── the two doors in ───────────────────────────────────────────────────────────────────────────────────────────────

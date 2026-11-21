@@ -1,0 +1,10 @@
+{"_doc": "The steps of a send, read over its draft's own fields: a step is done when its field holds; `skipped_when`: not needed when that field holds instead (a send by the card's own Send has a ref and was never confirmed aloud).",
+ "steps": [
+  {"id": "opened",   "what": "his order is heard",                  "done_when": "said"},
+  {"id": "who",      "what": "one person it goes to",               "done_when": "target"},
+  {"id": "text",     "what": "what it says",                        "done_when": "text"},
+  {"id": "reach",    "what": "a way to reach her",                  "done_when": "target.platform"},
+  {"id": "confirm",  "what": "the confirmation, said and heard",     "done_when": "heard", "skipped_when": "ref"},
+  {"id": "go_ahead", "what": "his yes, by voice or the card's Send", "done_when": "ref"},
+  {"id": "receipt",  "what": "the connector's receipt",              "done_when": "state=sent"}
+ ]}

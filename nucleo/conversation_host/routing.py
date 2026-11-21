@@ -56,9 +56,12 @@ class HostRoute:
         from nucleo.send import draft, owner
         _last["said"] = text
         before = _his(text)
-        if draft.current() is not None:
+        if (d := draft.current()) is not None:
             took, line = await _on_engine_loop(owner.take(text, last_line=_last["ours"], before=before))
-            if took:
+            if took:                             # his later turn is seen inside the order that opened the draft (P3)
+                from nucleo.conversation_host import turns
+                from voice import trace
+                turns._merge(getattr(d, "trace", ""), trace.current())
                 return line or ""
         return None
 

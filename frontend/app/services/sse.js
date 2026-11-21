@@ -394,7 +394,7 @@ export function routeEvent(desktop, d) {
       try { store.newSession(); } catch (_) {}
     } else if (d.kind === "artifact") { legacy.upsertChatRef(d);                 // V2-862: an errand's reference box on the wall
     } else if (d.kind === "ask_resolved" || d.kind === "ask" || d.kind === "task_state") { if (d.kind !== "ask_resolved") asks.route(d); else if (d.text) legacy.pushChat({ role: "record", text: d.text });   // V2-851: a task's question opens / its row moves on · V2-931: an answered one leaves ONE record line
-    } else if (d.kind === "task") {                                               // SlowBrain background task lifecycle
+    } else if (d.kind === "task" && d.runner !== "send") {   // SlowBrain background task lifecycle (a send's steps: its flow, no chip)
       // A deep-brain task started/finished — surface it as a liquid chip flanking the orb so the operator SEES
       // zaelar is working (widget build/modify, web task, …) and how many at once. Removed when it ends.
       // V2-608 F7 — the TITLE and the ACTIVITY are different fields now. `phase` and `plan` used to route

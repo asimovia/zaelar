@@ -64,9 +64,14 @@ def test_disarm_a_misspelt_event_or_a_type_without_its_owner_is_named(monkeypatc
     assert not turn.composes("w_card", "w_a"), "a composition without its owner is nobody's"
 
 
+#: the labels of the `task` event a worker's playbook emits — a protocol word, not a card's action that shares it
+TASK_LABELS = {"start", "plan", "progress", "end", "done"}
+
+
 def _names() -> set[str]:
-    """Every widget id and every action name any manifest declares."""
-    return {n for w, m in _manifests().items() for n in [w, *((m.get("actions") or {}).keys())] if len(n) > 3}
+    """Every widget id and every action name any manifest declares (the task event's own labels aside)."""
+    return {n for w, m in _manifests().items() for n in [w, *((m.get("actions") or {}).keys())]
+            if len(n) > 3} - TASK_LABELS
 
 
 def _strings(src: str) -> set[str]:
@@ -77,7 +82,8 @@ def test_the_code_that_reads_a_composition_names_no_widget_and_no_action():
     from nucleo.send import card
     sources = {"turn.composes": inspect.getsource(turn.composes), "effects.event_of": inspect.getsource(effects.event_of),
                "effects.acts_of": inspect.getsource(effects.acts_of), "send.card": inspect.getsource(card),
-               "widgets.owners": inspect.getsource(__import__("widgets.owners", fromlist=["x"]))}
+               "widgets.owners": inspect.getsource(__import__("widgets.owners", fromlist=["x"])),
+               "send.steps": inspect.getsource(__import__("nucleo.send.steps", fromlist=["x"]))}
     import textwrap
     hit = {k: sorted(_strings(textwrap.dedent(v)) & _names()) for k, v in sources.items()}
     assert not any(hit.values()), hit
