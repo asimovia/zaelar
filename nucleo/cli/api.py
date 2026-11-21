@@ -108,7 +108,7 @@ async def reset(session: str = Body("default", embed=True)) -> dict:
     """Clear the probe conversation window (does NOT touch memory; use `make reset` for that)."""
     # A reset is an explicit causal barrier in headless tests: all completed memory writes must be visible in the
     # first turn of the new window. It does not run on the physical voice hot path.
-    from memory import state_cache as memory_cache
+    from memory.api import state_cache as memory_cache
     await memory_cache.refresh()
     _reset_session(session or "default")
     return {"ok": True, "session": session or "default"}

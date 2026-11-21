@@ -104,7 +104,7 @@ async def compose_the_prompt(*, brain, emit, operator_text, self, text) -> dict:
     # capa (state/short/slow), la petición y el resultado (nº de apps/chars) + su tiempo. Alimenta la
     # columna ◷ de logs; las tarjetas del mapa las sigue iluminando el pulso `memory.query`/`memory.updated`.
     try:
-        from memory import state_cache as _mc
+        from memory.api import state_cache as _mc
         ms = _mc.stats()
         emit("memory", "estado", role="system",
              text=(f"perfil del operador → {ms.get('state_fields', 0)} campos" if ms.get("has_state")

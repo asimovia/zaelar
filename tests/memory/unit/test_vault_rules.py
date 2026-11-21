@@ -7,7 +7,7 @@ import pytest
 from memory import db as memdb
 from memory import embeddings as mememb
 from memory import state as mstate
-from nucleo.acts import memory as vault_rules
+from memory.vault import spoken as vault_rules
 
 
 @pytest.fixture(autouse=True)

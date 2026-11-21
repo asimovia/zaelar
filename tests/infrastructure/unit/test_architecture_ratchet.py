@@ -915,6 +915,12 @@ _PACKAGE_CEILINGS["nucleo/conversation_host"] += 24   # 2026-11-21 C4 review: an
 _TOTAL_MAX += 24     # same cause, measured
 _PACKAGE_CEILINGS["nucleo (top)"] += 4   # 2026-11-21 C3 review: what a fact asks to say whole beats the style line (`wording.WHOLE`) — a style against repeating text sent nearly every confirmation to its one fixed line
 _TOTAL_MAX += 4      # same cause, measured
+# 2026-11-21 memory's boundary, after the old turn's batch T2: the vault gate moved into the vault imported a brain
+# (`nucleo.acts.memory`) — the vault's spoken half moves to its owner (`memory/vault/spoken.py`, a one-commit shim at
+# the old name), and the state cache is read through the facade (`memory.api.state_cache`)
+_PACKAGE_CEILINGS["memory"] += 145
+_PACKAGE_CEILINGS["nucleo/acts"] -= 138
+_TOTAL_MAX += 7      # measured (the shim and the facade's lines)
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

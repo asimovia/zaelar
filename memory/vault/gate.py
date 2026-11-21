@@ -65,7 +65,7 @@ def inspect_now(text: str, *, enabled: bool = True, store: bool = True) -> Vault
 
     # 1) SECURITY-CONFIG COMMAND — a hard user rule, applied deterministically and short-circuiting the turn.
     try:
-        from nucleo.acts import memory as _memory
+        from memory.vault import spoken as _memory
         cfg = _memory.rule_of(text)
     except Exception:
         cfg = None
@@ -104,7 +104,7 @@ def inspect_now(text: str, *, enabled: bool = True, store: bool = True) -> Vault
     # recite it to pay something, and swallowing the turn loses the half that matters (and never reaches the
     # confirm-gate that lives further down, which is the one that would have stopped the payment).
     try:
-        from nucleo.acts import memory as _memory
+        from memory.vault import spoken as _memory
         whole = _memory.secret_is_the_whole_turn(text, found)
     except Exception:
         whole = True                                     # fail CLOSED: never let a value continue by accident
@@ -148,7 +148,7 @@ async def reveal(label: str) -> RevealOutcome:
     """Resolves a request for a stored secret. Never raises: any failure results in `status="error"`,
     which both channels already treat as «I can't find it» — a broken reveal cannot bring down the turn."""
     try:
-        from nucleo.acts import memory as _memory
+        from memory.vault import spoken as _memory
         rv = await asyncio.to_thread(_memory.reveal, str(label or ""))
     except Exception as e:  # noqa: BLE001
         _LOG.warning(f"reveal_secret falló (el turno sigue): {e}")

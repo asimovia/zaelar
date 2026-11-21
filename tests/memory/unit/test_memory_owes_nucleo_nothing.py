@@ -138,11 +138,17 @@ DECLARED_SURFACE = {
     # nothing» next to «found five flats» for the same errand (V2-576 cause B, different prefix).
     "task_trace_ids",
     "forget", "unforget",
+    # 2026-11-21 (INI-078 F2 E7d-4): a pill he names forgotten or corrected BY ITS ID — the manager's memory acts
+    # read one pill (`pill`) and forget it, or undo that, by id, never by words.
+    "forget_ids", "unforget_ids", "pill",
     # 2026-08-31 (V2-528, stopping means discarding): the reset invalidates the conversational buffer ("the chat
     # is erased" includes the SEEDING of the window) and the `task.*` slots (the "we are doing X" pills). Soft
     # (`valid=0`), forget doctrine: excluded from all reads, retained for auditing.
     "clear_conversation", "clear_slot_prefix",
     "state", "set_state", "compose_state",
+    # 2026-11-21 (INI-078 F2 T2): the state block cached outside the turn, moved from the old turn to memory: read
+    # through the facade, never as an internal (`memory.state_cache`).
+    "state_cache",
     "kv_get", "kv_set",
     "query", "recent_short", "recent_window", "day_ledger", "day_block", "recent_by_source", "by_concepts",
     "seconds_since_last_conv",

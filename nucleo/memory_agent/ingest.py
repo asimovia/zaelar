@@ -76,7 +76,7 @@ async def _ingest_home(text: str, *, role: str = "operator", channel: str = "voi
         # Ingestion itself already runs off the voice/chat hot path. Publish the completed state into the
         # FlashBrain cache here, so the next utterance sees a correction/move immediately instead of one turn late.
         try:
-            from memory import state_cache as memory_cache
+            from memory.api import state_cache as memory_cache
             await memory_cache.refresh()
         except Exception:
             pass
