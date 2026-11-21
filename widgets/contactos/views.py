@@ -117,7 +117,7 @@ def _a_set_auto(action, payload, q, db, contacts, now) -> dict:
         d = _d.view_data(q)
         d.update({"ok": bool(res.get("ok")), "result": res} if res.get("ok") else res)
         return d
-    db.setdefault("sync", {})["auto"] = on
+    db.setdefault("sync", {}).update({"auto": on, "declined": not on})   # his «off» also stops the daily read
     _d.store.save(_d.WIDGET_ID, db)
     d = _d.view_data(q)
     d.update({"ok": True, "result": {"auto": on}})

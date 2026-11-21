@@ -224,10 +224,15 @@ def tick(ctx) -> None:
     with _d.store.mutating(_d.WIDGET_ID):         # load → Google pass → save is ONE step (see store.mutating)
         db = _d.load_db()
         s = db.get("sync") or {}
-        # Automatic sync on: every `PERIOD`. Off: once a day, and only an account he has imported from (a rename or
-        # a number added in his address book reaches the directory by itself; an import nobody asked for never starts).
+        # The same rule as every linked source (`sources._due`): automatic sync on, every `PERIOD`; otherwise a
+        # linked account he has not switched off is read at once when it was never read, then once a day — his
+        # address book refills a directory that lost it (2026-11-21: after a reset Telegram and WhatsApp came back
+        # by themselves and Google never did, because this tick waited for a `last` the reset had erased).
         last = float(s.get("last") or 0.0)
-        if (_time.time() - last) < (PERIOD if bool(s.get("auto", False)) else DAILY_S) or not (s.get("auto") or last):
+        auto = bool(s.get("auto", False))
+        if s.get("declined") and not auto:
+            return
+        if last and (_time.time() - last) < (PERIOD if auto else DAILY_S):
             return
         res = sync(db, merge=_d._merge_imported, since=last, remove=_d._drop_deleted,
                    pull_only=not bool(s.get("auto", False)))     # the daily look never sends his edits

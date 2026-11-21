@@ -387,11 +387,29 @@ def test_a_dormant_account_is_never_polled(ct, monkeypatch):
 def test_the_switch_being_OFF_stops_the_next_pass(ct, monkeypatch):
     _linked(monkeypatch)
     from widgets import store
-    store.save(ct.WIDGET_ID, {"contacts": [], "next_id": 1, "sync": {"auto": False}})
+    store.save(ct.WIDGET_ID, {"contacts": [], "next_id": 1, "sync": {"auto": False, "declined": True}})
     called = []
     monkeypatch.setattr(gcontacts, "sync", lambda *a, **k: called.append(1))
     gcontacts.tick(_Ctx())
     assert called == [], "there is nothing to cancel: the tick reads the state every pass"
+
+
+def test_a_linked_account_never_read_is_read_at_once_and_only_PULLED(ct, monkeypatch):
+    """The rule every linked source follows (`sources._due`): read at once when never read, then daily, and his
+    off stops it. 2026-11-21: after a reset emptied the directory, Telegram and WhatsApp came back by themselves
+    and Google never did — this tick waited for a `last` the reset had erased."""
+    _linked(monkeypatch)
+    from widgets import store
+    store.save(ct.WIDGET_ID, {"contacts": [], "next_id": 1})
+    calls = []
+    monkeypatch.setattr(gcontacts, "sync", lambda db, **k: calls.append(k) or {"ok": True})
+    gcontacts.tick(_Ctx())
+    assert len(calls) == 1 and calls[0]["pull_only"] is True, calls
+
+
+def test_switching_google_off_is_remembered_as_declined(ct):
+    ct.apply_action("set_auto", {"auto": False})
+    assert ct.load_db()["sync"]["declined"] is True
 
 
 def test_a_pass_that_just_ran_does_not_run_again(ct, monkeypatch):
