@@ -125,7 +125,7 @@ def receipt(card: str, res: dict, ok: bool) -> dict:
     """What the card's door answered, back to the model (C4): what it did (`result`, bounded) and, refused, WHY — the
     card's own sentence when it has one (`refusal_line.speakable`), else its reason as the door gave it. Acting blind,
     the model repeated a refused act to its step cap."""
-    out = {"result": _bounded({k: v for k, v in res.items() if k not in ("ok", "say", "say_args")})}
+    out = _bounded({k: v for k, v in res.items() if k not in ("ok", "say", "say_args")})
     if not ok:
         from nucleo.request import refusal_line
         out["why"] = (refusal_line.speakable(card, res) or str(res.get("error") or res.get("message") or "refused"))[

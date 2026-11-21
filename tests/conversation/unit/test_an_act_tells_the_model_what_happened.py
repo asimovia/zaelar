@@ -19,9 +19,9 @@ def test_the_receipt_carries_the_result_and_why_it_was_refused(monkeypatch):
     from nucleo.request import refusal_line
     monkeypatch.setattr(refusal_line, "speakable", lambda card, res: "w_no such day" if res.get("say") else "")
     ok = acts_widget.receipt("w_agenda", {"ok": True, "id": 7, "rows": list(range(20))}, True)
-    assert ok["result"]["id"] == 7 and len(ok["result"]["rows"]) == acts_widget.RECEIPT_ITEMS + 1 and "why" not in ok
+    assert ok["id"] == 7 and len(ok["rows"]) == acts_widget.RECEIPT_ITEMS + 1 and "why" not in ok
     said = acts_widget.receipt("w_agenda", {"ok": False, "say": "w_key", "error": "w_bad_day"}, False)
-    assert said["why"] == "w_no such day" and said["result"]["error"] == "w_bad_day"
+    assert said["why"] == "w_no such day" and said["error"] == "w_bad_day"
     bare = acts_widget.receipt("w_agenda", {"ok": False, "error": "w_bad_day"}, False)
     assert bare["why"] == "w_bad_day"
 
