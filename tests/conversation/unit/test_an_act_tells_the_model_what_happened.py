@@ -40,6 +40,19 @@ def test_a_large_answer_is_cut_to_the_cap_keeping_what_it_said_and_why(monkeypat
     assert flat[acts_widget.CUT] == 20 - acts_widget.RECEIPT_ITEMS, "a cut level says so too"
 
 
+def test_a_field_that_does_not_fit_is_shrunk_never_dropped():
+    """A view's answer (`view_data`-shaped): its first field keeps its first items, the whole under the cap."""
+    rows = [{"w_from": f"w_person {i}", "w_subject": "w_" + "s" * 200, "w_body": "w_" + "b" * 900} for i in range(40)]
+    view = {"ok": True, "result": {"w_items": rows, "w_total": 40}, "w_folder": "w_inbox",
+            **{f"w_panel{i}": {"w_rows": rows} for i in range(5)}}
+    got = acts_widget.receipt("w_mail", view, True)
+    assert acts_widget._size(got) <= acts_widget.RECEIPT_MAX
+    first = got["result"]
+    shown = first if isinstance(first, str) else str(first)
+    assert "w_person 0" in shown and "w_person 1" in shown, "its first field keeps its first items"
+    assert got.get("w_folder") == "w_inbox" or got.get(acts_widget.CUT), "what does not fit is counted, not hidden"
+
+
 def _cap(store, tool):
     h = Harness(store, grace=False, config=Config(max_steps=3))
     h.conv.words = FixedWords()

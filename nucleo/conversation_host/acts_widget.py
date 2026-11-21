@@ -121,24 +121,42 @@ ANSWER_KEYS = ("result", "message", "error", "key", "to", "text", "ref")
 CUT = "…"
 
 
-def _bounded(v, depth: int = 0):
+def _bounded(v, depth: int = 0, items: int = RECEIPT_ITEMS, chars: int = RECEIPT_CHARS, deep: int = 3):
     if isinstance(v, str):
-        return v[:RECEIPT_CHARS]
+        return v[:chars]
     if isinstance(v, (int, float, bool)) or v is None:
         return v
-    if depth >= 2:
-        return str(v)[:RECEIPT_CHARS]
+    if depth >= deep:
+        return str(v)[:chars]
     if isinstance(v, dict):
-        out = {str(k): _bounded(x, depth + 1) for k, x in list(v.items())[:RECEIPT_ITEMS]}
-        return out | ({CUT: len(v) - RECEIPT_ITEMS} if len(v) > RECEIPT_ITEMS else {})
+        out = {str(k): _bounded(x, depth + 1, items, chars, deep) for k, x in list(v.items())[:items]}
+        return out | ({CUT: len(v) - items} if len(v) > items else {})
     if isinstance(v, (list, tuple)):
-        return [_bounded(x, depth + 1) for x in list(v)[:RECEIPT_ITEMS]] + ([CUT] if len(v) > RECEIPT_ITEMS else [])
-    return str(v)[:RECEIPT_CHARS]
+        return [_bounded(x, depth + 1, items, chars, deep) for x in list(v)[:items]] + ([CUT] if len(v) > items else [])
+    return str(v)[:chars]
+
+
+#: a field that does not fit is shrunk, never dropped: fewer items, shorter texts, a level deeper (a view's rows keep
+#: their own first fields), then its JSON cut to the room left
+SHRUNK_ITEMS, SHRUNK_CHARS, SHRUNK_DEEP = 3, 60, 4
 
 
 def _size(d: dict) -> int:
     import json
     return len(json.dumps(d, ensure_ascii=False, default=str))
+
+
+def _fit(out: dict, k: str, raw):
+    """`raw` bounded to the room `out` leaves: as it is, shrunk, or its JSON cut to the room — None when none is left."""
+    import json
+    for v in (_bounded(raw, 1), _bounded(raw, 1, SHRUNK_ITEMS, SHRUNK_CHARS, SHRUNK_DEEP)):
+        if _size(out | {k: v, CUT: 999}) <= RECEIPT_MAX:
+            return v
+    text = v if isinstance(v, str) else json.dumps(v, ensure_ascii=False, default=str)
+    room = RECEIPT_MAX - _size(out | {k: "", CUT: 999})
+    while room > 40 and _size(out | {k: text[:room - 1] + CUT, CUT: 999}) > RECEIPT_MAX:
+        room -= 20                                     # an escaped character takes more than one
+    return text[:room - 1] + CUT if room > 40 else None
 
 
 def receipt(card: str, res: dict, ok: bool) -> dict:
@@ -150,14 +168,8 @@ def receipt(card: str, res: dict, ok: bool) -> dict:
     out: dict = {}
     order = [k for k in ANSWER_KEYS if k in fields] + [k for k in fields if k not in ANSWER_KEYS]
     for i, k in enumerate(order):
-        v = _bounded(fields[k], 1)
-        if _size(out | {k: v, CUT: 999}) > RECEIPT_MAX:
-            room = RECEIPT_MAX - _size(out | {k: "", CUT: 999})
-            while isinstance(v, str) and room > 40 and _size(out | {k: v[:room - 1] + CUT, CUT: 999}) > RECEIPT_MAX:
-                room -= 20                                 # an escaped character takes more than one
-            if isinstance(v, str) and room > 40:
-                out[k], i = v[:room - 1] + CUT, i + 1
-            out[CUT] = len(order) - i
+        if (v := _fit(out, k, fields[k])) is None:
+            out[CUT] = len(order) - i                  # no room left for this field or any after it
             break
         out[k] = v
     if not ok:
