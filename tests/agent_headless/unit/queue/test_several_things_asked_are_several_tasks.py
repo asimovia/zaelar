@@ -132,3 +132,20 @@ def test_an_event_enters_whole():
     from nucleo.conversation_host import events_in
     env = events_in.envelope({"origin": "email", "text": TWELVE, "fields": {"platform": "email"}}, {}, "ev-1", 1000)
     assert env.body.text == TWELVE
+
+
+def test_an_event_reaches_its_stream_worker_and_a_waiting_task_whole(monkeypatch):
+    """No limit loses an event's content on its way: the stream worker's brief, the bounded reply's dossier and the
+    answer an event brings to a task that waits for it all carry the whole text (a size the provider refuses is said)."""
+    from nucleo.acts import errand
+    from nucleo.cli import worker_api_resume
+    from nucleo.events import pump, route, stream, stream_reply
+    ev = {"origin": "email", "text": TWELVE, "fields": {"sender": "a@b.c", "platform": "email"}}
+    sent, answers = [], []
+    monkeypatch.setattr(errand, "escalate_to_slowbrain", lambda text, context=None: sent.append(text) or 1)
+    stream.launch_session("s-1", "email", ev, [], {"may": []})
+    assert TWELVE in sent[0]
+    assert TWELVE in stream_reply._dossier(ev, [])
+    monkeypatch.setattr(worker_api_resume, "resume_soon", lambda task, answer, src="": answers.append(answer["answer"]))
+    pump.obey(ev, {"as": route.RESUME, "by": "row", "task": "t-9"}, 0.0)
+    assert answers and answers[0].endswith(TWELVE)

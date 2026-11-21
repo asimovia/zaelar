@@ -107,7 +107,7 @@ def obey(ev: dict, r: dict, now: float) -> None:
     try:
         if how == flow_events.RESUME and r.get("by") == "row":
             from nucleo.cli import worker_api_resume as _resume
-            _resume.resume_soon(str(r["task"]), {"answer": f"[{ev['origin']}] {ev.get('text') or ''}"[:600]},
+            _resume.resume_soon(str(r["task"]), {"answer": f"[{ev['origin']}] {ev.get('text') or ''}"},
                                 src="event")
         elif how == flow_events.RESUME:
             fn = _OBEY.get(str(r.get("by") or ""))
