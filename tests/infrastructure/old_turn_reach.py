@@ -25,7 +25,8 @@ OLD = ("nucleo.turn", "nucleo.flash")
 #: the old path that is not under those two folders: walked into, never through
 OLD_ELSEWHERE = ("voice.engine.llm.providers.nucleo", "voice.engine.llm.providers.attention_turn",
                  "voice.engine.llm.providers.flow_lifecycle", "voice.engine.llm.providers.fast_lane",
-                 "voice.engine.pipeline.eager_brief", "nucleo.acts.tools", "nucleo.acts.card_")
+                 "voice.engine.pipeline.eager_brief", "nucleo.acts.tools", "nucleo.acts.card_names",
+                 "nucleo.acts.card_pass", "nucleo.acts.card_repair", "nucleo.acts.card_target", "nucleo.acts.card_verdict")
 #: the live roots (the move map's §7.1): every module under these prefixes
 ROOTS = ("nucleo.conversation_host", "conversation", "nucleo.actionmap", "nucleo.events", "nucleo.pulse",
          "nucleo.errands", "nucleo.dispatch", "nucleo.workers", "nucleo.circuit", "nucleo.send", "widgets",
@@ -70,7 +71,8 @@ def imports(path: Path, mod: str) -> set[str]:
 
 
 def _old(mod: str) -> bool:
-    return mod.startswith(OLD) or mod.startswith(OLD_ELSEWHERE)
+    """A module of the old path: one of the names, or inside one (`nucleo.turn_marks` is not `nucleo.turn`)."""
+    return any(mod == o or mod.startswith(o + ".") for o in OLD + OLD_ELSEWHERE)
 
 
 def _tracked() -> list[str]:
@@ -96,7 +98,7 @@ def reach() -> dict[str, str]:
 
 
 def old_modules() -> list[str]:
-    return sorted(_module(f) for f in _tracked() if _module(f).startswith(OLD))
+    return sorted(_module(f) for f in _tracked() if any(_module(f) == o or _module(f).startswith(o + ".") for o in OLD))
 
 
 if __name__ == "__main__":
@@ -212,7 +214,7 @@ def reaching(roots: tuple, targets: tuple) -> dict:
             continue
         fn, local = got
         for callee in _calls(mod, fn, local, funcs(mod)):
-            if callee[0].startswith(targets):            # a live function that reads the target: named by ITS caller
+            if any(callee[0] == t or callee[0].startswith(t + ".") for t in targets):            # a live function that reads the target: named by ITS caller
                 chain, p = [f"{mod}.{name}"], seen[(mod, name)]
                 while p is not None and len(chain) < 12:
                     chain.append(f"{p[0]}.{p[1]}")

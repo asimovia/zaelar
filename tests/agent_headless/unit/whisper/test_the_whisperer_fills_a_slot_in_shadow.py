@@ -18,6 +18,7 @@ import copy
 import hashlib
 import json
 import os
+import re
 import sqlite3
 import threading
 import time
@@ -25,7 +26,7 @@ from pathlib import Path
 
 import pytest
 
-from nucleo.turn.whisper import gate, render, run, slot
+from nucleo.whisper import gate, render, run, slot
 
 ENGINE = Path(__file__).resolve().parents[4]
 
@@ -275,29 +276,41 @@ def test_the_rendering_is_wired_into_no_prompt():
     assert not offenders, offenders
 
 
-# ── a hosted deployment runs no shadow call by default ───────────────────────────────────────────────────────────────────
+# ── off by default, wherever it runs (V2-942 W1) ─────────────────────────────────────────────────────────────────────
 
-@pytest.mark.parametrize("where, user, expected", [("", "", "shadow"), ("", "u-123", "off"),
-                                                    ("cloud", "", "off"), ("local", "u-123", "shadow")])
-def test_the_default_mode_follows_the_deployment(monkeypatch, where, user, expected):
+@pytest.mark.parametrize("where, user", [("", ""), ("", "u-123"), ("cloud", ""), ("local", "u-123")])
+def test_the_default_mode_is_off_on_every_deployment(monkeypatch, where, user):
     monkeypatch.delenv("ZAELAR_WHISPER", raising=False)
     monkeypatch.setenv("ZAELAR_DEPLOYMENT", where)
     monkeypatch.setenv("ZAELAR_USER_ID", user)
-    assert run.mode() == expected
+    assert run.mode() == "off"
+    assert run.on_turn_closed({"turn_id": "T-1"}) is None, "off starts no thread"
 
 
-def test_the_env_still_overrides_the_deployment(monkeypatch):
+def test_the_env_still_overrides_the_default(monkeypatch):
     monkeypatch.setenv("ZAELAR_USER_ID", "u-123")
     monkeypatch.delenv("ZAELAR_DEPLOYMENT", raising=False)
     monkeypatch.setenv("ZAELAR_WHISPER", "shadow")
     assert run.mode() == "shadow"
 
 
-def test_an_unreadable_row_still_keeps_a_hosted_deployment_off(monkeypatch):
+def test_an_unreadable_row_keeps_it_off(monkeypatch):
     monkeypatch.delenv("ZAELAR_WHISPER", raising=False)
     monkeypatch.delenv("ZAELAR_DEPLOYMENT", raising=False)
-    monkeypatch.setenv("ZAELAR_USER_ID", "u-123")
     monkeypatch.setattr(run, "_row", lambda: {})
-    assert run.mode() == "off"
-    monkeypatch.setenv("ZAELAR_USER_ID", "")
-    assert run.mode() == "shadow"
+    for user in ("u-123", ""):
+        monkeypatch.setenv("ZAELAR_USER_ID", user)
+        assert run.mode() == "off"
+
+
+def test_nothing_subscribes_it():
+    """No module outside the package calls the whisperer: kept with no subscriber until its input is decided."""
+    offenders = []
+    for f in ENGINE.rglob("*.py"):
+        rel = f.relative_to(ENGINE)
+        if rel.parts[0] in ("tests", ".venv") or "whisper" in rel.parts:
+            continue
+        src = f.read_text(encoding="utf-8", errors="ignore")
+        if re.search(r"^\s*(from nucleo\.whisper(\.run)? import|import nucleo\.whisper)|on_turn_closed\(", src, re.M):
+            offenders.append(str(rel))
+    assert not offenders, offenders

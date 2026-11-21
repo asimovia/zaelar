@@ -339,7 +339,7 @@ def _await_the_turns_own_threads() -> bool:
     `local` sentinel — and its event would have landed in the install's database. Bounded by the whisperer's own clock:
     its two rungs and the brief it may wait for. True when they all ended."""
     try:
-        from nucleo.turn.whisper import run as whisper
+        from nucleo.whisper import run as whisper
     except Exception:  # noqa: BLE001 — no whisperer, nothing to wait for
         return True
     return whisper.wait(2 * whisper.DEFAULT_TIMEOUT_S + whisper.BRIEF_WAIT_S)

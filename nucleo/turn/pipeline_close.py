@@ -13,7 +13,6 @@ from nucleo.turn import mouth as _mouth   # V2-851 F5: what the turn's doors owe
 from nucleo.turn import pipeline_errands as _errands
 from nucleo.turn import resume_cut as _resume_cut   # V2-888
 from nucleo.turn import wait_lines as _wait_lines
-from nucleo.turn import whisper as _whisper   # V2-889 F2: `turn.closed`, read between turns
 
 
 def _host_stall_s(t_entry_wall: float) -> dict:
@@ -238,8 +237,7 @@ async def close_the_turn(*, motor, send, _acc_ms, _amap_ms, _brief, _busy_at_sta
     _play_route.closed(brief=_brief, calls=getattr(brain, "_turn_calls", None), ops=data_done.get("ops"),
                        escalate_req=escalate_req, acted_elsewhere=_acted_elsewhere,
                        opened=bool((_blk or {}).get("opened")), said=spoken_text, emit=emit)
-    # V2-889 F2 — the turn is over: `turn.closed`, which the whisperer reads on its own thread (shadow)
-    return _whisper.turn_closed(brief=_brief, text=_op_text or text, reply=spoken_text, started_at=t0)
+    return {}
 
 
 def _with_usage(extra: dict, spec) -> dict:

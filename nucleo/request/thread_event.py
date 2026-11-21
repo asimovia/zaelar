@@ -24,7 +24,7 @@ HEARD_MAX = 80
 
 
 #: The decisions each trace (turn) carried, newest traces last and bounded — read after the turn by the whisperer's
-#: gate (`nucleo/turn/whisper/gate.py`), which only weighs what the turn already decided and never asks again.
+#: gate (`nucleo/whisper/gate.py`), which only weighs what the turn already decided and never asks again.
 _BY_TRACE: dict[str, list[str]] = {}
 _TRACE_MAX = 64
 

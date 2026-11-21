@@ -6,7 +6,7 @@ nothing reads this but the `whisper` event (`rendered`), so its size can be meas
 """
 from __future__ import annotations
 
-from nucleo.turn.whisper.slot import Slot
+from nucleo.whisper.slot import Slot
 
 MAX_LINES = 4
 MAX_CHARS = 600

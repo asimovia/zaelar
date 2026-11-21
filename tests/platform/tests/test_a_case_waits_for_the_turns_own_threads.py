@@ -17,7 +17,7 @@ from tests.platform import turn_harness as H
 
 
 def test_a_thread_the_turn_started_reads_the_cases_world_until_it_ends(monkeypatch):
-    from nucleo.turn.whisper import run as whisper
+    from nucleo.whisper import run as whisper
     seen: dict = {}
     before = os.environ.get("ZAELAR_DB")
     with H.Isolated("es") as iso:
@@ -36,7 +36,7 @@ def test_a_thread_the_turn_started_reads_the_cases_world_until_it_ends(monkeypat
 
 
 def test_the_wait_is_bounded_by_the_whisperers_clock(monkeypatch):
-    from nucleo.turn.whisper import run as whisper
+    from nucleo.whisper import run as whisper
     asked = {}
     monkeypatch.setattr(whisper, "wait", lambda timeout=5.0: asked.setdefault("timeout", timeout) and True)
     assert H._await_the_turns_own_threads() is True

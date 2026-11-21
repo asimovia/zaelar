@@ -532,16 +532,15 @@
   },
   {
    "id": "f_whisper",
-   "zone": "flash",
-   "name": "Whisperer (shadow)",
+   "zone": "conversation",
+   "name": "Whisperer (off)",
    "paths": [
-    "nucleo/turn/whisper"
+    "nucleo/whisper"
    ],
    "emits": [
     "whisper"
    ],
-   "_doc": "Between turns, once a turn is closed (`turn.closed`): a deterministic gate over verdicts the turn already paid for, then a typed slot with no instruction field. In shadow it is only measured — `whisper` events, wired into no prompt (V2-889 F2).",
-   "status": "retiring"
+   "_doc": "Beside the conversation manager, OFF and with no subscriber (V2-942 W1): a deterministic gate over a closed request's verdicts, then a typed slot with no instruction field. When switched on in shadow it is only measured — `whisper` events, wired into no prompt (V2-889 F2)."
   },
   {
    "id": "f_mouth",
@@ -1191,7 +1190,7 @@
  "planned": [],
  "emitters": {
   "_doc": "Which piece an observability event comes from (`piece`), for modules the pieces' `paths` do not name. Read by observability/pieces.py: an exact file here beats a piece's own path; otherwise the deepest folder (here or in a piece's paths) wins. A value is a piece id, or {kind: piece, '*': default} where one module hosts several pieces. A module drawn nowhere stamps piece='unmapped' with its path — never a guess.",
-  "nucleo/turn/whisper": "f_whisper",
+  "nucleo/whisper": "f_whisper",
   "nucleo/turn/open_flows.py": "f_switch",
   "voice/engine/pipeline/agent.py": {
    "vad": "f_ear",
@@ -1749,12 +1748,6 @@
    "a": "w_exit",
    "b": "f_bdoors",
    "label": "a leaving act's channel"
-  },
-  {
-   "id": "turnclosed",
-   "a": "f_close",
-   "b": "f_whisper",
-   "label": "turn.closed"
   },
   {
    "id": "whisperllm",

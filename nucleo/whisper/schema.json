@@ -1,0 +1,42 @@
+{
+  "_": "The whisperer's declared vocabulary (V2-889 F2): closed sets of NAMES it reads and writes — never words of a language. The gate and the slot read them from here, so a name added is a line of data, not a table in code. `verdict_keys` and `bands`: the verdict keys and choices it scores and the confidence bands of doubt (from 0.5) and certainty (from 0.85).",
+  "quiet_kinds": [
+    "greeting",
+    "comment",
+    "answer"
+  ],
+  "open_states": [
+    "running",
+    "starting",
+    "pending",
+    "waiting"
+  ],
+  "waiting_states": [
+    "waiting"
+  ],
+  "fact_sources": [
+    "his_words",
+    "our_reply",
+    "task",
+    "verdict",
+    "world"
+  ],
+  "task_certainty": [
+    "clear",
+    "ambiguous",
+    "contradicted"
+  ],
+  "verdict_keys": {
+    "request": "request_type",
+    "escalate": "escalate_or_inline",
+    "target": "errand_target",
+    "acts": "acts_asked",
+    "readable": "readable",
+    "garbled": "garbled",
+    "several": "several"
+  },
+  "bands": {
+    "licence": 0.5,
+    "veto": 0.85
+  }
+}

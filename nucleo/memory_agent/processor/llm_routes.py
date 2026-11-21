@@ -78,7 +78,7 @@ def _from_the_table(service: str) -> tuple[tuple[str, str, bool], tuple[tuple[st
     return (t["base_url"], t["model"], False), (((f["base_url"], f["model"]),) if f else ())
 
 
-# whisperer (V2-889 F2) — between turns, off the voice loop: a reasoner with its own budget (`nucleo/turn/whisper/`).
+# whisperer (V2-889 F2) — between turns, off the voice loop: a reasoner with its own budget (`nucleo/whisper/`, off).
 try:
     _DEFAULTS["whisperer"], _FAILOVER["whisperer"] = _from_the_table("whisperer")
 except Exception as _e:  # noqa: BLE001 — a missing row leaves the task unrouted; `whisper.run` then never calls

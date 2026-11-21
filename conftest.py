@@ -29,7 +29,7 @@ import tempfile
 
 os.environ.setdefault("ZAELAR_LOG_DIR", tempfile.mkdtemp(prefix="zaelar-test-logs-"))
 os.environ.setdefault("ZAELAR_RESEARCH", "0")
-# ZAELAR_WHISPER=off — the whisperer (nucleo/turn/whisper/, V2-889 F2) makes a REAL reasoning call after a closed
+# ZAELAR_WHISPER=off — the whisperer (nucleo/whisper/, V2-889 F2; off by default since V2-942) makes a REAL reasoning call after a closed
 # turn whose gate fires; in a test that is the same undeclared network call as above. Its tests turn it on.
 os.environ.setdefault("ZAELAR_WHISPER", "off")
 # ZAELAR_EMBED_CHECK=0 — the youtube card asks oEmbed whether a search hit can be embedded (V2-877 #6); no network here.

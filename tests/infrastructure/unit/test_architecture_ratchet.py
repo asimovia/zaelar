@@ -994,6 +994,8 @@ _PACKAGE_CEILINGS["nucleo/circuit"] += 13  # same step: his commission is born a
 _PACKAGE_CEILINGS["nucleo/pulse"] += 11    # same step: the beat starts the queue's next task; rehydration leaves the queue's tasks to it
 _PACKAGE_CEILINGS["memory"] += 9           # same step: a row born before it was a task is adopted by the queue in the same transaction
 _TOTAL_MAX += 197    # same step, measured: the semaphore, `max_parallel` and its settings row went (−), the lanes came (+)
+_PACKAGE_CEILINGS["nucleo/whisper"] = 554   # 2026-11-21 INI-078 L1 / V2-942 W1: the whisperer moves out of the old turn, OFF and with no subscriber
+_PACKAGE_CEILINGS["nucleo/turn"] = 8251     # same move; the old turn only falls from here
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

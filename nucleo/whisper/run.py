@@ -1,7 +1,8 @@
-"""The whisperer between two turns (V2-889 F2), in SHADOW: it computes and emits, and writes nothing else.
+"""The whisperer between two requests (V2-889 F2), in SHADOW when switched on: it computes and emits, and writes nothing
+else. OFF by default and with no subscriber (V2-942 W1): nothing calls `on_turn_closed` today.
 
-Fired off `turn.closed` (the end of `pipeline_close.close_the_turn`), on its own thread — never inside the turn, never
-on the voice loop. Per closed turn, in order:
+When called with a closed request, it runs on its own thread — never inside the request, never on the voice loop. Per
+closed request, in order:
 
   1. `use`   — the previous slot judged against THIS turn as it began: would it have been read? `fresh` · `stale` (its
                thread moved: state or a mention not made by this turn) · `expired` (older than `TTL_S`) · `late` (it
@@ -24,7 +25,7 @@ import time
 
 from loguru import logger
 
-from nucleo.turn.whisper import gate as _gate, render as _render, slot as _slot
+from nucleo.whisper import gate as _gate, render as _render, slot as _slot
 
 KIND = "whisper"
 TASK = "whisperer"
@@ -56,14 +57,14 @@ _S: dict = dict(in_flight=False, last=None, threads=[])     # a state record
 
 def mode() -> str:
     """`ZAELAR_WHISPER`, else the row's `mode` (one string, or `{"local", "cloud"}`) for the deployment the budgets
-    read, else shadow locally and off on a hosted deployment: a shadow call costs a model call and serves nobody yet."""
+    read, else off: the whisperer is kept switched off until the operator decides what it reads and does (V2-942)."""
     env = (os.getenv(ENV) or "").strip().lower()
     if env in MODES:
         return env
     from nucleo.pulse import budgets
     where, m = budgets.deployment(), _row().get("mode")
     m = str((m.get(where) if isinstance(m, dict) else m) or "").strip().lower()
-    return m if m in MODES else (OFF if where == "cloud" else SHADOW)
+    return m if m in MODES else OFF
 
 
 def _row() -> dict:
