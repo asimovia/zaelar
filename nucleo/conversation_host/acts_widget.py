@@ -100,7 +100,36 @@ async def widget_act(args: dict, effect_id: str | None) -> ToolResult:
     ok = res.get("ok") is not False and not res.get("error")
     if ok:
         await asyncio.to_thread(_mount, card, action, f"turn:{effect_id or 'widget_action'}")
-    shown = {k: v for k, v in res.items() if isinstance(v, (str, int, float, bool)) and k != "ok"}
-    return ToolResult("ok" if ok else "rejected", {"widget": card, "action": action, **shown})
+    return ToolResult("ok" if ok else "rejected", {"widget": card, "action": action, **receipt(card, res, ok)})
+
+
+#: how much of a card's answer goes back to the model (a list cut to its first items, a text to its first characters)
+RECEIPT_ITEMS, RECEIPT_CHARS = 8, 400
+
+
+def _bounded(v, depth: int = 0):
+    if isinstance(v, str):
+        return v[:RECEIPT_CHARS]
+    if isinstance(v, (int, float, bool)) or v is None:
+        return v
+    if depth >= 2:
+        return str(v)[:RECEIPT_CHARS]
+    if isinstance(v, dict):
+        return {str(k): _bounded(x, depth + 1) for k, x in list(v.items())[:RECEIPT_ITEMS]}
+    if isinstance(v, (list, tuple)):
+        return [_bounded(x, depth + 1) for x in list(v)[:RECEIPT_ITEMS]] + (["…"] if len(v) > RECEIPT_ITEMS else [])
+    return str(v)[:RECEIPT_CHARS]
+
+
+def receipt(card: str, res: dict, ok: bool) -> dict:
+    """What the card's door answered, back to the model (C4): what it did (`result`, bounded) and, refused, WHY — the
+    card's own sentence when it has one (`refusal_line.speakable`), else its reason as the door gave it. Acting blind,
+    the model repeated a refused act to its step cap."""
+    out = {"result": _bounded({k: v for k, v in res.items() if k not in ("ok", "say", "say_args")})}
+    if not ok:
+        from nucleo.request import refusal_line
+        out["why"] = (refusal_line.speakable(card, res) or str(res.get("error") or res.get("message") or "refused"))[
+            :RECEIPT_CHARS]
+    return out
 
 

@@ -886,6 +886,9 @@ _PACKAGE_CEILINGS["nucleo/conversation_host"] += 12   # 2026-11-21 E7d-7 (R-3): 
 _TOTAL_MAX += 12     # same cause, measured
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 29   # 2026-11-21 C1 (his live session): the send owner hears what of our line sounded (`routing.ours_heard`, from the mouth's end of a line) and reads his answer against our last line and his sentences before (`routing._his`)
 _TOTAL_MAX += 29     # same cause, measured
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 29   # 2026-11-21 C4 (his live session): a widget act's receipt carries the card's answer, bounded, and why it was refused (`acts_widget.receipt`)
+_PACKAGE_CEILINGS["conversation"] += 4   # same: a run at its step cap after an act landed says part was done (`lost_after_acts`), never «I lost that»
+_TOTAL_MAX += 33     # same causes, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

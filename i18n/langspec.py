@@ -543,6 +543,9 @@ class LangSpec:
     #: is a hiccup; it is not, and saying so is the only useful thing left.
     mute_stuck: str = ("")
     mute_lines: tuple = ()
+    #: Said instead of `mute_lines` when the answer was lost AFTER an act of it landed: part was done, so «I lost
+    #: that» would be false (the conversation manager's step cap, C4).
+    lost_after_acts: str = ""
     #: A turn with no words at all («👋», «👍») asks for nothing: answering it with an apology for a lost line
     #: blamed a turn nobody lost (dictate-a-reply-honestly EN, 2026-10-15, after the goodbyes).
     mute_wordless: str = ""

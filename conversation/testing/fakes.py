@@ -175,7 +175,8 @@ class FakeOwed:
 
 class FixedWords:
     """The host's fixed lines, as tokens: a test sees which one was said, never a language's words."""
-    LINES = (("mute_lines", "w_lost"), ("unverified_fact", "w_unverified"), ("listening", "w_listening"))
+    LINES = (("mute_lines", "w_lost"), ("unverified_fact", "w_unverified"), ("listening", "w_listening"),
+             ("lost_after_acts", "w_partly"))
 
     def line(self, key: str, near: str = "") -> str:
         return next((text for k, text in self.LINES if k == key), "")

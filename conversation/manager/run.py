@@ -413,8 +413,11 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
 
 
 async def _say_lost(conv: "Conversation", r: "Running", batch: Batch, steps: list, why: str) -> bool:
-    """Never silence: the language's own «I lost that» line (`mute_lines`), counted as `why`. False with no line."""
-    line = _line(conv, "mute_lines", r)
+    """Never silence: the language's own «I lost that» line (`mute_lines`), counted as `why` — or, when an act of the
+    run DID land, the line that says part was done (`lost_after_acts`): «I lost that» after acting is false. False
+    with no line."""
+    acted = any(res.status == "ok" and not _is_read(conv, call) and call.call_id not in PSEUDO for call, res in steps)
+    line = (_line(conv, "lost_after_acts", r) if acted else "") or _line(conv, "mute_lines", r)
     if not line:
         return False
     _emit(conv, "command", r, command=why)
