@@ -56,3 +56,35 @@ def at_boot(*, schedule: bool = True, delay: float | None = None) -> dict:
         logger.info(f"queue at boot: {len(plan['adopted'])} adopted, {len(plan['back'])} back, "
                     f"{len(plan['relaunched'])} relaunched")
     return plan
+
+
+def _store():
+    from nucleo.circuit import ledger
+    return ledger.store()
+
+
+#: what the archive of a list says: several things asked at once are several tasks now (INI-078, Q-7)
+LISTS_GONE = "las listas ya no existen"
+
+
+def lists_retired() -> int:
+    """Archive every LIVE task list a restart finds, with its steps: one short pill per list, then the rows go.
+
+    There are no lists any more (INI-078, Q-7): several things asked at once are several independent tasks, so a list
+    nothing runs would sit in his column for good. Run at boot; idempotent, since an archived row is gone. Returns how
+    many lists went; the rows go with their artifacts (a list's steps, never a result he paid for). Never raises."""
+    n = 0
+    for row in _store().tasks_of_kind("lista", _store().LIVE_STATES):
+        uid = str(row.get("id") or "")
+        try:
+            from memory import api as _memory
+            _memory.write(f"{str(row.get('title') or row.get('goal') or uid)[:160]}: {LISTS_GONE}", kind="task",
+                          level="short", importance=0.3, ttl_days=7,
+                          meta={"task_id": uid, "owner": "", "state": "cancelled", "trace": row.get("trace_id") or ""})
+        except Exception as e:  # noqa: BLE001 — a pill that could not be written does not keep a dead list alive
+            logger.debug(f"queue: the pill of the retired list {uid} was not written ({e!r})")
+        for step in _store().tasks_children(uid):
+            _store().task_forget(step["id"])
+        _store().task_forget(uid)
+        n += 1
+    return n

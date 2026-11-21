@@ -229,6 +229,7 @@ async def _a_slot(_d, key, rec, answered: bool = False):
     try:
         if lanes.is_task(uid):
             await lanes.my_turn(uid, held=told)
+            rec.queued = True                # a task of the queue: its one «done» line is keyed by its row
         else:
             await _env.wait_for_room(told, key=key, runs=lambda: _runs(rec), answered=answered,
                                      forced=lambda: _h.forced(rec))

@@ -82,8 +82,9 @@ def flows(limit: int = 50, session_id: str = "", user_id: str = "") -> list[dict
                MAX(ts_ms)                         AS last_ms,
                MAX(ts_ms) - MIN(ts_ms)            AS t_ms,
                COUNT(*)                           AS events,
-               COUNT(DISTINCT cat)                AS families_n,
-               GROUP_CONCAT(DISTINCT cat)         AS families,
+               -- the flow's own `end` marker is not a family it went through (the Master counts the same way)
+               COUNT(DISTINCT CASE WHEN NOT (kind = 'flow' AND label = 'end') THEN cat END)        AS families_n,
+               GROUP_CONCAT(DISTINCT CASE WHEN NOT (kind = 'flow' AND label = 'end') THEN cat END) AS families,
                GROUP_CONCAT(DISTINCT span)        AS spans,
                SUM(COALESCE(tokens_in, 0))        AS tokens_in,
                SUM(COALESCE(tokens_out, 0))       AS tokens_out,

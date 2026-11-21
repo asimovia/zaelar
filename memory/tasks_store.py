@@ -93,7 +93,9 @@ def task_put(row: dict, *, if_absent: bool = False) -> None:
                "parent_id=excluded.parent_id, outcome=excluded.outcome, started_at=excluded.started_at, "
                # a later writer that does not know the turn's trace never blanks the one the birth wrote (V2-851)
                "trace_id=COALESCE(NULLIF(excluded.trace_id, ''), tasks.trace_id), "
-               f"due_at=excluded.due_at, finished_at={_KEEP_ENDED.format('finished_at')}"),
+               f"due_at=excluded.due_at, finished_at={_KEEP_ENDED.format('finished_at')} "
+               # a task of the queue has ONE writer, the queue (`nucleo/queue`): no upsert rewrites it
+               "WHERE tasks.owner IS NULL OR tasks.owner=''"),
             (tid, str(row.get("title") or ""), str(row.get("goal") or ""),
              str(row.get("kind") or "generic"), str(row.get("mode") or "now"),
              str(row.get("state") or "pending"), 1 if row.get("visible", True) else 0,
@@ -111,7 +113,17 @@ def task_put(row: dict, *, if_absent: bool = False) -> None:
 
 
 def task_patch(task_id: str, **fields) -> None:
-    """Change a few columns of an existing task. Unknown column names are ignored, never interpolated."""
+    """Change a few columns of an existing task. Unknown column names are ignored, never interpolated. A task of the
+    queue (a row with an `owner`) is never changed here: its one writer is the queue (`queue_patch`, INI-078 Q-4)."""
+    _patch(task_id, fields, queued=False)
+
+
+def queue_patch(task_id: str, **fields) -> None:
+    """Change a few columns of a task of the queue — the queue's own door (`nucleo/queue`), and only its."""
+    _patch(task_id, fields, queued=True)
+
+
+def _patch(task_id: str, fields: dict, *, queued: bool) -> None:
     tid = str(task_id or "").strip()
     sets, args = [], []
     for k, v in fields.items():
@@ -126,7 +138,9 @@ def task_patch(task_id: str, **fields) -> None:
     if not tid or not sets:
         return
     try:
-        _db_mod.get_db().execute(f"UPDATE tasks SET {', '.join(sets)} WHERE id=?", (*args, tid))
+        _db_mod.get_db().execute(f"UPDATE tasks SET {', '.join(sets)} WHERE id=? AND "
+                                 + ("owner IS NOT NULL AND owner<>''" if queued else "(owner IS NULL OR owner='')"),
+                                 (*args, tid))
     except Exception:  # noqa: BLE001
         return
     if "title" in fields or "goal" in fields:

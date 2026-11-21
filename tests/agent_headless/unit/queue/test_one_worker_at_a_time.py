@@ -179,3 +179,47 @@ def test_a_task_of_the_queue_is_not_resumed_twice_at_boot(monkeypatch):
     assert boot.at_boot(schedule=False)["relaunched"] == [tid]
     plan = rehydrate.at_boot(schedule=False)
     assert tid not in [e.get("uid") for e in plan.get("resume", []) + plan.get("buried", [])]
+
+
+def test_a_task_cancelled_before_its_session_waits_ends_that_session_at_once():
+    """Cancelled between its birth and its session reaching its turn: the row is gone, and the waiter leaves at once."""
+    async def go():
+        tid = queue.add("worker", "cancelled too soon")
+        queue.signal(tid, "cancelled", by="him")
+        try:
+            await asyncio.wait_for(lanes.my_turn(tid), 1)
+        except lanes.Left:
+            return "left"
+        return "ran"
+    assert asyncio.run(go()) == "left"
+
+
+def test_a_died_worker_resumed_by_id_runs_when_its_turn_comes():
+    """A worker that died waits for its relaunch; relaunched, its session finds it WAITING and puts it back first."""
+    from nucleo.circuit import waits
+
+    async def go():
+        lanes.gate("worker", lambda: "")
+        busy = queue.add("worker", "running now")
+        queue.signal(busy, "start", by="pulse")
+        died = queue.add("worker", "a worker that died")
+        queue.signal(busy, "wait", by="owner", ask="?")        # the lane frees: `died` would start…
+        queue.signal(died, "start", by="pulse")
+        assert waits.waiting(died, waits.WORKER)               # …and its process dies: it waits for its relaunch
+        assert ts.task_get(died)["state"] == "waiting"
+        w = asyncio.ensure_future(lanes.my_turn(died))        # the relaunched session asks for its turn
+        await asyncio.wait_for(w, 1)
+        return ts.task_get(died)["state"]
+    assert asyncio.run(go()) == "running"
+
+
+def test_his_answer_puts_his_task_first_in_line_never_beside_the_running_one():
+    from nucleo.circuit import waits
+    asked = queue.add("worker", "asked him something")
+    queue.signal(asked, "start", by="pulse")
+    assert waits.waiting(asked, waits.USER_ANSWER, ask="which date?")
+    other = queue.add("worker", "runs meanwhile")
+    queue.signal(other, "start", by="pulse")
+    waits.resumed(asked)                                        # his answer
+    assert ts.task_get(asked)["state"] == "pending" and ts.task_get(other)["state"] == "running"
+    assert queue.view()["worker"]["pending"][0]["id"] == asked

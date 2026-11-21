@@ -51,8 +51,27 @@ def named(rows: list[dict], *texts: str, name=lambda r: r.get("title") or r.get(
 def candidates(query: str, limit: int = MAX_CANDIDATES) -> list[dict]:
     """The finished commissions this phrase could be about, never an INLINE request row (V2-776 M5: ~30 a session,
     and an agenda add is answered by the recent-state block, not by reopening anything)."""
-    rows = _tasks.search(query, limit=limit * 3)
-    return [r for r in rows if str(r.get("kind") or "") != "inline"][:limit]
+    rows = [r for r in _tasks.search(query, limit=limit * 3) if str(r.get("kind") or "") != "inline"]
+    seen = {str(r.get("id") or "") for r in rows}
+    # …and the tasks that already LEFT the queue (INI-078 Q-2): their row is gone, their pill names them and the
+    # result kept in their artifacts, which is what reopening rebuilds from
+    try:
+        from memory import api as _memory
+        for p in _memory.task_pills(query, limit=limit * 3):
+            tid = str(p["meta"].get("task_id") or "")
+            if tid and tid not in seen:
+                seen.add(tid)
+                name, _, how = p["text"].partition(": ")
+                rows.append({"id": tid, "title": name, "goal": name, "outcome": how, "kind": "task",
+                             "state": str(p["meta"].get("state") or "")})
+    except Exception as e:  # noqa: BLE001 — the rows still answer; the pills only add the tasks that left
+        _note_pills(e)
+    return rows[:limit]
+
+
+def _note_pills(e: Exception) -> None:
+    from loguru import logger
+    logger.debug(f"task_recall: the pills of the tasks that left unread ({e!r})")
 
 
 def _label(row: dict) -> str:

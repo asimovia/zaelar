@@ -3,7 +3,7 @@
 // rows and scope, their setters and fetches, reopen/openCard/removeScheduled, entry (V2-822), t, lang, icons, and
 // watch(fn)/onLiveChange(fn) → off. `show()` is entering the tab: the live set and the open sub-tab are fetched;
 // while shown, a change of the live set refetches the open sub-tab (the one that lost a row, or gained it).
-import { SUBTABS, liveView, histView, schedView, taskToChip } from "./model.js";
+import { SUBTABS, liveView, schedView, taskToChip } from "./model.js";
 
 const el = (tag, cls, text) => Object.assign(document.createElement(tag), { className: cls }, text != null ? { textContent: text } : {});
 
@@ -47,16 +47,6 @@ export function mount(host, b) {
     v.meta.forEach((m, i) => meta.append(el("span", "cw-proc-tag" + (i ? "" : " state"), m)));
     return paint(key, v, meta, null, JSON.stringify([task.session || task.id, task.id]));   // V2-822 — its ONE home
   };
-  // Reopening is the SERVER's (it rebuilds the sheet if gone and names the card); the panel stays where he put it.
-  const hist = (key, e) => {
-    const v = histView(e, Date.now(), b.t);
-    const btn = v.results && button("", b.t("chat.taskResults"), async () => {
-      const r = await b.reopen(String(e.id || ""));
-      if (r && r.ok && r.instance) b.openCard(r.instance);
-    });
-    if (btn) btn.textContent = b.t("chat.taskResults");
-    return paint(key, v, el("div", "cw-proc-meta", v.meta), btn);
-  };
   const sched = (key, task) => {
     const v = schedView(task, b.t, b.lang());
     const btn = button(" danger", b.t("chat.delete"), async () => { await b.removeScheduled(String(task.id)); b.fetchScope(b.scope()); });
@@ -64,7 +54,7 @@ export function mount(host, b) {
     return paint(key, v, el("div", "cw-proc-meta", v.meta), btn);
   };
 
-  // The row SHAPE follows the scope: a live, a finished and a timed commission answer different questions.
+  // The row SHAPE follows the scope: a live and a timed commission answer different questions.
   function render() {
     const scope = b.scope(), rows = (b.rows() || {})[scope] || [], used = new Set();
     for (const [st, btn] of subs) { btn.className = "cw-subtab" + (scope === st.id ? " on" : ""); btn.textContent = b.t(st.label); }
@@ -75,7 +65,7 @@ export function mount(host, b) {
     const nodes = !rows.length ? [empty] : rows.map((r, i) => {
       const key = scope + ":" + (r.id ?? "#" + i);
       used.add(key);
-      return scope === "live" ? live(key, taskToChip(r)) : scope === "done" ? hist(key, r) : sched(key, r);
+      return scope === "live" ? live(key, taskToChip(r)) : sched(key, r);
     });
     for (const [key, k] of kept) if (!used.has(key)) { k.node.remove(); kept.delete(key); }
     // Only what left is taken out, and a row is moved only when its place changed: the others are never touched.

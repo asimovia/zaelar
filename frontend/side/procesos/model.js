@@ -1,7 +1,8 @@
 // side/procesos/model.js — what each row of the «Procesos» column SAYS, with no DOM and no imports; the view paints it.
 
-// V2-728 — the FOUR sub-tabs in his reading order: happening now, over, repeating, waiting for its moment.
-export const SUBTABS = Object.freeze(["live", "done", "recurring", "scheduled"].map((id) => {
+// The sub-tabs in his reading order: happening now, repeating, waiting for its moment. A task that ended is not one any
+// more: it leaves the queue for his short-term memory (INI-078 Q-2), so there is no «done» tab.
+export const SUBTABS = Object.freeze(["live", "recurring", "scheduled"].map((id) => {
   const k = "chat.sub" + id[0].toUpperCase() + id.slice(1);
   return { id, label: k, empty: k + "Empty" };
 }));
@@ -46,23 +47,6 @@ export function liveView(task, now, t, lang) {
   ].filter(Boolean);
   return { cls: "live " + ["waiting", "reply", "paused", "run"][k], glyph: ["⏳", "✉", "⏸", "●"][k], title,
            note: note && note !== title ? note : "", meta };
-}
-
-// A record that LIES is worse than none: every ending has its glyph and an UNKNOWN one is «cut», never ✓. Both
-// `state` (the task vocabulary) and `status` (the old ledger's, still sent by the alias route) are read.
-export function histView(e, now, t) {
-  const raw = e.state || e.status || "";
-  const st = (raw === "failed" || raw === "error") ? "error" : raw === "cancelled" ? "cancelled"
-           : raw === "interrumpido" ? "cut" : (raw === "done" || e.ok) ? "done" : "cut";
-  const glyph = st === "error" ? "✕" : st === "cancelled" ? "⊘" : st === "cut" ? "✂" : "✓";
-  const meta = [e.kind, (st === "error" && e.error_class ? t("chat.errClass." + e.error_class) : ""),   // why (A5)
-    (e.attempts > 0 ? t("chat.procRestarted", { n: e.attempts }) : ""), ago(e.finished_at, now, t),
-    e.visible === false ? t("chat.taskInternal") : ""].filter(Boolean).join(" · ")
-    + (e.cron ? t("chat.fromCron", { name: e.cron }) : "");
-  const outcome = (e.outcome || "").trim();
-  // «Ver resultados» only when the server kept a report: a button that opens nothing is worse than none.
-  return { cls: "hist " + st, glyph, title: e.title || e.goal || e.kind || e.id, meta, results: !!e.has_results,
-           note: outcome && outcome !== (e.title || e.goal) ? outcome : "" };
 }
 
 // A periodic or timed row: its cadence and its next moment — «will this still happen, and when».

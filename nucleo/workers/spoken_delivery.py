@@ -55,12 +55,22 @@ def _messages(goal: str, summary: str, ok: bool, verdict: str = "") -> list[dict
          "content": (
              "You are a personal voice assistant telling your person that an errand they gave you has finished. "
              f"{outcome} Its full result is already on their screen.\n"
-             f"Return ONLY what you will say out loud: at most two short spoken sentences. {in_lang}\n"
+             f"Return ONLY what you will say out loud. {_done_rule()} {in_lang}\n"
              "Name the outcome with its one or two most useful facts (the pick and its price, the date, the "
              "place). No markdown, no lists, no headings, no links, no symbols to read out."
              + names + (f"\n{rules}" if rules else ""))},
-        {"role": "user", "content": f"Errand: {(goal or '').strip()[:400]}\n\nWorker's report:\n{summary[:3000]}"},
+        {"role": "user", "content": f"Errand: {(goal or '').strip()}\n\nWorker's report:\n{summary}"},
     ]
+
+
+def _done_rule() -> str:
+    """The line a task that ended owes him, as the genome states it (`genesis.tasks.done_line`, Q-8): ONE short
+    sentence that opens with «done:». His own rules may change it later; this is the factory row."""
+    try:
+        import genome
+        return str(((genome.genesis().get("tasks") or {}).get("done_line")) or "").strip()
+    except Exception:  # noqa: BLE001 — the line is still said, in one short sentence
+        return "One short spoken sentence."
 
 
 def clipped(summary: str) -> str:

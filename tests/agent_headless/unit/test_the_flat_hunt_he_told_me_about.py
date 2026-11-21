@@ -158,19 +158,23 @@ async def _hand_over_the_errand(monkeypatch, phrase: str) -> tuple[list, list]:
     live = await until(lambda: ts.tasks_where(states=ts.LIVE_STATES, visible_only=False) or None,
                        "the dispatcher to write the durable row")
     gate.set()
-    done = await until(lambda: ts.tasks_where(states=ts.DONE_STATES, visible_only=False) or None,
-                       "the commission to be recorded as finished")
+    # it ends by LEAVING the queue (INI-078 Q-2): its row goes, its pill and its artifacts stay
+    await until(lambda: ts.task_get(live[0]["id"]) is None or None, "the commission to leave the queue")
     stop.set()
     await asyncio.sleep(0.05)
     listener.cancel()
-    return live, done
+    return live, []
 
 
 def test_the_whole_errand_from_the_phrase_to_the_report_he_asks_for_weeks_later(
         fresh_db, own_sheets, monkeypatch):
-    written: list[str] = []
+    written: list[tuple] = []
     from memory import api as memory
-    monkeypatch.setattr(memory, "write", lambda text, **kw: written.append(text))
+    monkeypatch.setattr(memory, "write", lambda text, **kw: written.append((text, kw.get("meta") or {})))
+    # the lexical search over the pills, over what was written here (the real one: test_a_commission_leaves…)
+    monkeypatch.setattr(memory, "task_pills", lambda q, limit=15: [
+        {"id": n, "text": t, "meta": m} for n, (t, m) in enumerate(written)
+        if m.get("task_id") and set(w.lower() for w in q.split()) & set(w.lower().strip(":,.") for w in t.split())])
 
     # ── 1 · he hands it over, and can stop thinking about it ────────────────────────────────────────────
     live, done = asyncio.run(_hand_over_the_errand(monkeypatch, "búscame piso de alquiler en Gràcia"))
@@ -178,10 +182,11 @@ def test_the_whole_errand_from_the_phrase_to_the_report_he_asks_for_weeks_later(
     assert live[0]["started_at"], "«En curso» shows the START TIME — he asked for it by name"
     assert live[0]["visible"] is True
 
-    # ── 2-3 · it closes, and the report becomes the TASK's ──────────────────────────────────────────────
-    assert len(done) == 1
-    task_id = done[0]["id"]
-    assert done[0]["state"] == "done" and done[0]["outcome"]
+    # ── 2-3 · it ends, and the report becomes the TASK's: kept in its artifacts, named by its ONE pill ──────
+    task_id = live[0]["id"]
+    assert done == [] and ts.task_get(task_id) is None, "an ended task leaves the queue"
+    pills = [m for _t, m in written if m.get("task_id") == task_id]
+    assert len(pills) == 1 and pills[0]["state"] == "done" and "result" in pills[0]["artifacts"]
     parts = tasks.artifacts(task_id)
     assert len(parts["result"]["items"]) == 5, "the five he keeps"
     assert len(parts["considered"]["rows"]) == 50, (
@@ -190,8 +195,8 @@ def test_the_whole_errand_from_the_phrase_to_the_report_he_asks_for_weeks_later(
     assert parts["considered"]["rows"][0]["why"], "a rejection with no reason cannot be discussed"
     assert parts["criteria"]["hard"], "what it searched WITH travels with what it found"
 
-    # …and plain recall can reach it, without anyone naming the word «tarea».
-    assert any(t.startswith(f"[task:{task_id}]") for t in written), (
+    # …and plain recall can reach it, without anyone naming the word «tarea»: its pill says what it was.
+    assert any(m.get("task_id") == task_id and "piso" in t for t, m in written), (
         f"nothing about this commission reached memory, so «¿encontraste algo de pisos?» —a question that "
         f"never says «tarea»— still retrieves the conversation and not the errand. Written: {written}")
 
@@ -217,19 +222,3 @@ def test_the_whole_errand_from_the_phrase_to_the_report_he_asks_for_weeks_later(
     assert [i["title"] for i in back["items"]] == [i["title"] for i in KEPT]
     assert len(back["rejected"]) == 50, "the discarded pile came back with the report, not just the kept five"
     assert back["criteria"]["hard"]
-
-
-def test_and_the_finished_row_offers_the_button_that_does_it_without_talking(fresh_db, own_sheets, monkeypatch):
-    """The other half of what he asked for: «se va a esa lista, le da el botón y ve los datos derivados».
-
-    A voice tool is not reachable from a click. The row has to SAY it has a report (`has_results`, which is
-    what decides whether the button is drawn — a button that opens nothing is worse than no button)."""
-    asyncio.run(_hand_over_the_errand(monkeypatch, "búscame piso de alquiler en Gràcia"))
-    rows = tasks.board("done")
-    assert len(rows) == 1
-    assert rows[0]["has_results"] is True, "the finished row does not know it has a report, so no button"
-
-    # …and a commission that kept nothing must NOT offer one.
-    ts.task_put({"id": "empty", "title": "qué tiempo hace", "goal": "qué tiempo hace", "state": "done",
-                 "mode": "now", "visible": True, "created_at": 10, "finished_at": 20})
-    assert [r["has_results"] for r in tasks.board("done") if r["id"] == "empty"] == [False]

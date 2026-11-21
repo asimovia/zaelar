@@ -54,7 +54,7 @@ def test_the_voice_says_the_composed_line_not_the_report(world):
     _deliver()
     assert said == ["Your monitors are ready — the Dell S2725QS at $299.99 is the best pick."]
     system = asked[0][0]["content"]
-    assert "Say it in English" in system and "two short spoken sentences" in system
+    assert "Say it in English" in system and "ONE short sentence" in system, "the genome's rule (Q-8) shapes it"
 
 
 def test_when_the_model_does_not_answer_only_the_opening_is_said(world, monkeypatch):

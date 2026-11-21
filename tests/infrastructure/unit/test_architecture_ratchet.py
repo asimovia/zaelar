@@ -1005,6 +1005,13 @@ _PACKAGE_CEILINGS["nucleo/pulse"] = 5468
 _PACKAGE_CEILINGS["nucleo/self"] = 815
 _PACKAGE_CEILINGS["widgets"] = 49116
 _TOTAL_MAX += 154
+_PACKAGE_CEILINGS["nucleo/queue"] += 64    # 2026-11-21 INI-078 steps 3-4: an ended task leaves the queue for ONE pill (`_remember`), the old writers reach it as signals (`wrote`), a waiter finds its task gone or waiting; the list migration moved here from the ledger
+_PACKAGE_CEILINGS["nucleo/circuit"] += 23  # same step: the ledger's and the waits' writers send a task of the queue its signals; `settle` ends one by archiving it
+_PACKAGE_CEILINGS["nucleo/errands"] += 19  # same step: a reference finds a task that left the queue by its pill (`task_recall.candidates`)
+_PACKAGE_CEILINGS["nucleo/workers"] += 13  # same step: the workers' writers as signals; the one done line keyed by its row, shaped by the genome's rule
+_PACKAGE_CEILINGS["memory"] += 42          # same step: a generic write never touches a task of the queue (`queue_patch` is its door); the pills of the tasks that left, read by words (`task_pills`)
+_PACKAGE_CEILINGS["observability"] += 1    # 2026-11-21: a flow's own `end` marker is not a family it went through
+_TOTAL_MAX += 167    # same steps, measured (the «done» tab of the processes column went)
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

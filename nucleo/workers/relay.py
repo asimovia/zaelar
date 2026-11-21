@@ -149,7 +149,9 @@ def restart_stalled(rec) -> None:
         if not restarts_left(uid):
             return
         row = _tasks.get(uid)
-        _tasks.store().task_patch(uid, attempts=int(row.get("attempts") or 0) + 1)
+        from nucleo import queue                  # a task of the queue: a signal of its owner
+        if not queue.wrote(uid, "progress", attempts=int(row.get("attempts") or 0) + 1):
+            _tasks.store().task_patch(uid, attempts=int(row.get("attempts") or 0) + 1)
         from nucleo.acts import errand as _esc
         _esc.escalate_to_slowbrain(rec.goal, context={      # V2-877: his goal, never the worker's brief
             "src": "stall_restart", "kind": rec.kind, "trace": rec.trace_id, BRIEF_KEY: context_handoff(rec),

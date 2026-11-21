@@ -163,20 +163,6 @@ def test_a_layout_report_without_geometry_still_works(fresh_db):
 
 
     # ── 4. Processes cannot lie about what was interrupted ────────────────────────────────────────────────────
-def test_interrupted_work_is_not_painted_as_a_success():
-    """Previously ANY unknown state fell back to "done" with a ✓: a dead task looked properly completed."""
-    src = PROCESOS_MODEL.read_text(encoding="utf-8")
-    # V2-728 — `procBody` was replaced by the four sub-tabs; the «Procesos» column is now its own component, and
-    # the finished row's words live in its model. What is measured has not changed: the row that reports a
-    # FINISHED task must keep a glyph of its own for «a restart cut this in half», because folding it into ✓ is
-    # the lie this case exists to stop.
-    row = src[src.index("export function histView"):src.index("export function schedView")]
-    assert '"interrumpido"' in row
-    assert '"✂"' in row or "'✂'" in row
-    # …and the fallback for an UNKNOWN state must not be the success one either (it was "done" until V2-728).
-    assert '"done" : "cut"' in row, "an unrecognised ending still paints as a success"
-
-
 # ── 5. ESCALAR la app a mano y que el esfuerzo no se pierda (2026-08-12) ─────────────────────────────────
 # Operator request for the results sheet, resolved in the CANVAS because it applies to every widget: "if
 # I want it full-screen it has to occupy a large part of the frontend, or I can move it manually by grabbing

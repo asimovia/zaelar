@@ -41,8 +41,12 @@ async def my_turn(task_id: str, held: Callable[[str], None] | None = None) -> No
     a session resumed on a task that never left its lane). Raises `Left` when the task leaves the queue while it waits:
     a waiter is never left waiting for good."""
     row = _q._store().task_get(task_id) or {}
+    if not row.get("owner"):
+        raise Left(task_id)                       # gone (cancelled before its session got here), or not a task
     if row.get("state") == _q.RUNNING:
         return
+    if row.get("state") == _q.WAITING:            # resumed while it waited (his answer, a died worker relaunched):
+        _q.signal(task_id, "back", by="owner")    # back to the head of its lane, to run when its turn comes
     ev = asyncio.Event()
     with _lock:
         _waiters[task_id] = (asyncio.get_running_loop(), ev, held)

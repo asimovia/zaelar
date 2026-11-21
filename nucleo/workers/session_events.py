@@ -19,7 +19,9 @@ def _row_learns_its_session(rec, cwd: str) -> None:
     try:
         from nucleo.circuit import ledger
         _ts = ledger.store()
-        _ts.task_patch(uid, session_id=sid, cwd=str(cwd or ""))
+        from nucleo import queue                  # a task of the queue: a signal of its owner
+        if not queue.wrote(uid, "progress", session_id=sid, cwd=str(cwd or "")):
+            _ts.task_patch(uid, session_id=sid, cwd=str(cwd or ""))
     except Exception as e:  # noqa: BLE001
         logger.debug(f"worker[{getattr(rec, 'task_id', '')}]: session id not on its row — {e!r}")
 

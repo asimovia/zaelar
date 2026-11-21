@@ -171,7 +171,9 @@ def record(rec, name: str) -> None:
         uid = str(getattr(rec, "uid", "") or "") or ledger.task_uid(getattr(rec, "task_id", ""))
         before = _ts.task_get(uid) if uid else None
         if before:
-            _ts.task_patch(uid, playbook=name)
+            from nucleo import queue              # a task of the queue: a signal of its owner
+            if not queue.wrote(uid, "progress", playbook=name):
+                _ts.task_patch(uid, playbook=name)
             from nucleo.circuit import progress   # where in its playbook the task is, on the timeline
             progress.changed(uid, "playbook", before)
     except Exception as e:  # noqa: BLE001 — a row without its playbook is the row it was

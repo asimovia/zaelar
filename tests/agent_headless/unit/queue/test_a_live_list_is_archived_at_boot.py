@@ -8,7 +8,7 @@ from __future__ import annotations
 
 def test_a_live_list_a_restart_finds_is_archived_with_its_steps(monkeypatch):
     from memory import api as memory, tasks_store as ts
-    from nucleo.circuit import ledger
+    from nucleo.queue import boot as ledger
     pills = []
     monkeypatch.setattr(memory, "write", lambda text, **kw: pills.append((text, kw)))
     ts.task_put({"id": "lista:1", "title": "2 × call the garage", "kind": "lista", "state": "running"})

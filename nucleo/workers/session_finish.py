@@ -64,8 +64,9 @@ def _kept_for_restart(rec) -> bool:
         now = time.time()
         if not uid or not ledger.waiting(uid, ledger.WORKER, now=now, quiet=True):
             return False
-        ledger.store().task_patch(uid, deadline=int(now + ledger.WORKER_RESUME_AFTER_S),
-                                  phase=str(getattr(rec, "phase", "") or "")[:160])
+        kept = {"deadline": int(now + ledger.WORKER_RESUME_AFTER_S), "phase": str(getattr(rec, "phase", "") or "")[:160]}
+        if not __import__("nucleo.queue", fromlist=["x"]).wrote(uid, "progress", **kept):   # a task of the queue: a signal
+            ledger.store().task_patch(uid, deadline=kept["deadline"], phase=kept["phase"])
         rec.waiting_on, rec.parked = ledger.WORKER, True
         ledger.kept_result(rec)
         return True
@@ -208,6 +209,8 @@ async def _deliver(rec: "SessionRecord") -> None:
         # one notice per CLOSE, not per row: a row parked for a quota and then delivered by its next worker has two —
         # keyed by the session's start instant (the boot-local worker number repeats after a restart)
         _close = int(float(getattr(rec, "started", 0) or 0) * 1000) or rec.task_id
-        await _notices.notify("zaelar", _line, kind="done", key=f"notice:{_row}:{_close}", task_id=_row)
+        # …but a task of the queue ends ONCE, whatever relaunched it: its line is keyed by its row alone (INI-078 Q-8)
+        _key = f"notice:{_row}:done" if getattr(rec, "queued", False) else f"notice:{_row}:{_close}"
+        await _notices.notify("zaelar", _line, kind="done", key=_key, task_id=_row)
     except Exception as e:  # noqa: BLE001
         logger.warning(f"worker[{rec.task_id}]: entrega proactiva falló: {e}")

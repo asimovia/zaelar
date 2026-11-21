@@ -139,6 +139,9 @@ def test_a_stall_restart_carries_the_brief_the_same_way(world, monkeypatch):
     monkeypatch.setattr(ledger, "get", lambda uid: {"attempts": 0})
 
     class _Store:
+        def task_get(self, uid):              # not a task of the queue: its row is patched, as before
+            return None
+
         def task_patch(self, *a, **k):
             pass
     monkeypatch.setattr(ledger, "store", lambda: _Store())

@@ -25,9 +25,6 @@ _ROWS = {
     "live": [{"id": "abcdef-1", "title": "Widget de contabilidad", "goal": "g", "state": "running",
               "started_at": _NOW - 400, "phase": "escribiendo widget.js", "silent_s": 190, "attempts": 1,
               "visible": True}],
-    "done": [{"id": "abcdef-2", "title": "Enviar el PDF al banco", "goal": "g", "state": "failed",
-              "kind": "generic", "finished_at": _NOW - 60, "outcome": "No pude crear el widget.",
-              "error_class": "credit", "attempts": 1, "visible": True}],
 }
 
 pytest.importorskip("playwright.sync_api")
@@ -98,10 +95,3 @@ def test_a_live_worker_says_how_long_it_has_been_silent_and_that_it_was_restarte
     assert silent in rows[0], f"the row does not say the worker went quiet: {rows[0]!r}"
     assert restarted in rows[0], f"the row does not say the pulse restarted it: {rows[0]!r}"
     assert not wall._errors, wall._errors
-
-
-def test_a_failed_row_says_why_in_words(wall):
-    rows = _scope(wall, "done")
-    assert len(rows) == 1
-    assert _ES["chat.errClass.credit"] in rows[0], f"the failed row does not name its cause: {rows[0]!r}"
-    assert "chat.errClass" not in rows[0], "a raw i18n key reached the screen"

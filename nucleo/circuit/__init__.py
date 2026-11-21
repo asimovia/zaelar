@@ -149,8 +149,13 @@ def _settle_row(uid: str, state: str, v, outcome: str, now: float, extra: dict) 
         return
     said = (outcome or str(row.get("outcome") or ""))[:400]
     moved = str(row.get("state") or "") != state
-    _ts.task_patch(uid, state=state, outcome=said, **({"finished_at": int(now)} if moved else {}),
-                   **({"verdict": v.name} if v is not None else {}), **extra)
+    if row.get("owner"):                         # a task of the queue ENDS by leaving it: its archive (INI-078 Q-2)
+        from nucleo import queue
+        if not queue.signal(uid, state, by="owner", outcome=said):
+            return
+    else:
+        _ts.task_patch(uid, state=state, outcome=said, **({"finished_at": int(now)} if moved else {}),
+                       **({"verdict": v.name} if v is not None else {}), **extra)
     trace = str(row.get("trace_id") or "")
     from nucleo.circuit import progress as _progress   # the row's last move, beside its ending's own event
     _progress.changed(uid, "settle", row, harness=True)

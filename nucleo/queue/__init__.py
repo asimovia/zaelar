@@ -28,7 +28,9 @@ WAITING = "waiting"
 ARCHIVE = "archive"
 #: state → the signals it accepts → the state they lead to; anything else is refused
 JUMPS = {
-    PENDING: {"start": RUNNING, "priority": PENDING, "move": PENDING, "cancelled": ARCHIVE},
+    PENDING: {"start": RUNNING, "priority": PENDING, "move": PENDING, "progress": PENDING, "cancelled": ARCHIVE,
+              "wait": WAITING,       # its start gate asks him first (the confirmation): it waits, never started
+              "failed": ARCHIVE},    # it could not start (a provider asleep, a gate that refused it)
     RUNNING: {"wait": WAITING, "progress": RUNNING, "back": PENDING,
               "done": ARCHIVE, "failed": ARCHIVE, "cancelled": ARCHIVE},
     WAITING: {"back": PENDING, "progress": WAITING, "cancelled": ARCHIVE},   # a parked worker still beats
@@ -37,7 +39,7 @@ JUMPS = {
 FIELDS = {
     "wait": ("ask", "ask_id", "waiting_for", "deadline"),
     "progress": ("phase", "progress", "heartbeat_at", "reported_at", "error_class", "attempts", "session_id", "cwd",
-                 "playbook", "sheet", "title"),
+                 "playbook", "sheet", "title", "deadline"),
 }
 #: …and what a task is born with besides its words: where it shows and whose it is (read by the board and the sheets)
 BIRTH = FIELDS["progress"] + ("surface", "visible", "parent_id", "started_at")
@@ -125,7 +127,7 @@ def add(owner: str, title: str, *, goal: str = "", kind: str = "", origin: str =
             return ""
         if urgent:
             row["priority"], row["position"] = _head(owner, tid)
-            _store().task_patch(tid, priority=row["priority"], position=row["position"])
+            _store().queue_patch(tid, priority=row["priority"], position=row["position"])
         _say("add", row, "owner")
     return tid
 
@@ -143,6 +145,7 @@ def signal(task_id: str, what: str, *, by: str, **fields) -> bool:
             _say("refused", row, by, signal=what, why=f"no jump «{what}» from «{row.get('state')}» by «{by}»")
             return False
         if to == ARCHIVE:
+            _remember(row, what, str(fields.get("outcome") or ""))   # once: an archived task takes no more signals
             _store().queue_archive(tid)
             _say(what, row, by, outcome=str(fields.get("outcome") or "")[:400])
             from nucleo.queue import lanes
@@ -167,12 +170,37 @@ def signal(task_id: str, what: str, *, by: str, **fields) -> bool:
                 _say("refused", row, by, signal=what, why=f"«{fields.get('before')}» is not a pending task of its lane")
                 return False
             put["priority"], put["position"] = got
-        _store().task_patch(tid, state=PENDING if to == PENDING else (RUNNING if to == RUNNING else WAITING), **put)
+        _store().queue_patch(tid, state=PENDING if to == PENDING else (RUNNING if to == RUNNING else WAITING), **put)
         _say(what, row, by, state=to,          # inside the lock: the events come out in the order signals applied
              changed={k: str(v)[:160] for k, v in put.items() if k != "progress"})
     if to == WAITING and what == "wait":
         _next()                                  # a task that waits for him leaves its place: the next one starts now
     return True
+
+
+def wrote(task_id: str, what: str, **fields) -> bool:
+    """The door the old writers of a task row take: when the row is a task of the queue, the change goes to it as a
+    signal from its owner and True is returned (the caller writes nothing); False for a row that is not one."""
+    row = _store().task_get(str(task_id or "")) if task_id else None
+    if not row or not row.get("owner"):
+        return False
+    signal(str(task_id), what, by="owner", **fields)
+    return True
+
+
+def _remember(row: dict, what: str, outcome: str) -> None:
+    """What a task that leaves the queue leaves behind: ONE short-lived pill — what it was and how it ended — that names
+    its row and the result kept in its artifacts (`task_artifacts`, which stay). REM forgets it. Never raises."""
+    tid = str(row.get("id") or "")
+    try:
+        from memory import api as _memory
+        name = str(row.get("title") or row.get("goal") or tid).strip()[:200]
+        _memory.write(f"{name}: {(outcome or what).strip()[:600]}", kind="task", level="short", importance=0.3,
+                      ttl_days=7, meta={"task_id": tid, "owner": str(row.get("owner") or ""), "state": what,
+                                        "num": row.get("num"), "trace": str(row.get("trace_id") or ""),
+                                        "artifacts": sorted(_store().artifacts_of(tid))})
+    except Exception as e:  # noqa: BLE001 — a task that ended is not kept in the queue over its pill
+        logger.debug(f"queue: the pill of {tid} not written ({e!r})")
 
 
 def _next() -> None:

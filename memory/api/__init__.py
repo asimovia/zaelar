@@ -42,7 +42,7 @@ from .forgetting import clear_conversation, clear_slot, clear_slot_prefix, forge
 from .forgetting import forget_ids, pill, unforget_ids  # noqa: F401 — by id (E7d-4)
 from .. import state_cache  # noqa: E402,F401 — the state block cached outside the turn (moved out of the old turn)
 from .reads import (  # noqa: F401
-    MAP_CAP, background_slot_off_topic, by_concepts, by_slot_prefix, lexical_ids, map, recent_by_source)
+    MAP_CAP, background_slot_off_topic, by_concepts, by_slot_prefix, lexical_ids, map, recent_by_source, task_pills)
 from .sleep import concept_names, fold_concepts, register_sleep_phase, same_person_records  # noqa: F401 — V2-854 F3, V2-858 T549
 from .._prompt import (  # noqa: E402,F401 — the PRESENTATION (what is painted for a model) lives in `_prompt.py`
     compose_state, critical_facts, day_block, day_ledger, recent_short, recent_window, salient_long, seconds_since_last_conv)
@@ -62,6 +62,8 @@ __all__ = [
     "forget", "unforget", "forget_ids", "unforget_ids", "pill", "clear_conversation", "clear_slot", "clear_slot_prefix", "forget_after", "high_water",
     # V2-854 F3: the address book in memory — its lexical read, and the deep-sleep doors a brain registers through.
     "lexical_ids", "register_sleep_phase", "same_person_records", "fold_concepts", "concept_names",
+    # INI-078: the pills a task left when it left the queue, read by words — what reopens a task that ended.
+    "task_pills",
     "state", "set_state", "compose_state", "state_cache",
     "kv_get", "kv_set",
     "query", "recent_short", "recent_window", "day_ledger", "day_block", "recent_by_source", "by_concepts",

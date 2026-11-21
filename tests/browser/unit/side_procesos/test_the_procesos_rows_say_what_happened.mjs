@@ -21,29 +21,9 @@ const M = await import(path.join(root, "frontend/side/procesos/model.js"));
 const t = (k, p) => (p ? `${k}(${Object.values(p).join(",")})` : k);
 const NOW = 1_700_000_600_000;
 
-// ── the four sub-tabs, in his reading order ──
-assert.deepEqual(M.SUBTABS.map((s) => s.id), ["live", "done", "recurring", "scheduled"]);
-
-// ── a finished row never lies ──
-const glyph = (e) => M.histView(e, NOW, t).glyph;
-assert.equal(glyph({ state: "done" }), "✓");
-assert.equal(glyph({ state: "failed" }), "✕");
-assert.equal(glyph({ status: "error" }), "✕", "the old worker vocabulary is still read");
-assert.equal(glyph({ state: "cancelled" }), "⊘");
-assert.equal(glyph({ status: "interrumpido" }), "✂");
-assert.equal(glyph({ state: "something-new" }), "✂", "an unknown ending is NOT painted as a success");
-assert.equal(glyph({ ok: true }), "✓");
-const failed = M.histView({ id: "b2", title: "w1 w2", state: "failed", error_class: "hung", attempts: 2,
-                            kind: "web", finished_at: 1_700_000_000, outcome: "w3", has_results: false }, NOW, t);
-assert.equal(failed.cls, "hist error");
-assert.equal(failed.note, "w3");
-assert.equal(failed.meta, "web · chat.errClass.hung · chat.procRestarted(2) · chat.agoMinutes(10)");
-assert.equal(failed.results, false);
-const done = M.histView({ id: "b1", title: "w1", state: "done", outcome: "w1", has_results: true, cron: "c" }, NOW, t);
-assert.equal(done.note, "", "an outcome that repeats the name is the same text twice");
-assert.equal(done.results, true, "a row the server says still has its report offers to reopen it");
-assert.ok(done.meta.endsWith("chat.fromCron(c)"), done.meta);
-assert.equal(M.histView({ id: "x9" }, NOW, t).title, "x9", "a row with no name is still named");
+// ── the sub-tabs, in his reading order: no «done» — an ended task leaves the queue (INI-078 Q-2) ──
+assert.deepEqual(M.SUBTABS.map((s) => s.id), ["live", "recurring", "scheduled"]);
+assert.equal(M.histView, undefined, "no row shape for a finished task: there is none to paint");
 
 // ── a running row ──
 const chip = M.taskToChip({ id: "a1", session: "s1", title: "w1 w2", phase: "w3", started_at: 1_700_000_000,

@@ -39,10 +39,6 @@ ROWS = {
               "silent_s": 90, "attempts": 1},
              {"id": "a2", "title": "w4", "goal": "w4", "kind": "errand", "state": "waiting", "visible": True,
               "started_at": 1700000000, "phase": "w4", "mode": "now"}],
-    "done": [{"id": "b1", "title": "w5", "kind": "web", "state": "done", "visible": True, "finished_at": 1700000000,
-              "has_results": True, "outcome": "w6", "mode": "now"},
-             {"id": "b2", "title": "w7", "kind": "web", "state": "failed", "visible": True,
-              "finished_at": 1700000000, "outcome": "w8", "has_results": False, "error_class": "hung"}],
     "recurring": [{"id": "c1", "title": "w9", "kind": "web", "state": "pending", "mode": "recurring",
                    "schedule": {"display": "w10", "next_run": 1700600000, "type": "interval"}}],
     "scheduled": [],
@@ -55,7 +51,7 @@ MOUNT = """async (server) => {
   // The smallest signal there is: a value and the callbacks that follow it.
   const sig = (v) => { const subs = new Set(); const get = () => v;
                        get.set = (x) => { v = x; for (const f of [...subs]) f(); }; get.subs = subs; return get; };
-  const rows = sig({ live: [], done: [], recurring: [], scheduled: [] });
+  const rows = sig({ live: [], recurring: [], scheduled: [] });
   const scope = sig('live'), showAll = sig(false), live = sig(0);
   const calls = [];
   const follow = (...sigs) => (fn) => { for (const s of sigs) s.subs.add(fn);
@@ -150,7 +146,7 @@ def test_it_paints_alone_and_entering_the_tab_fetches(page):
     pg = page
     assert pg.evaluate("() => [...document.scripts].length") == 0, "a blank page: nothing of the app loaded"
     first = _read(pg)
-    assert first["subs"] == ["chat.subLive", "chat.subDone", "chat.subRecurring", "chat.subScheduled", "⚙"]
+    assert first["subs"] == ["chat.subLive", "chat.subRecurring", "chat.subScheduled", "⚙"]
     assert first["on"] == ["chat.subLive"] and first["allTitle"] == "chat.taskShowAll"
     assert first["empty"] == "chat.subLiveEmpty" and first["calls"] == []
     pg.evaluate("() => __view.show()")
@@ -169,21 +165,9 @@ def test_it_paints_alone_and_entering_the_tab_fetches(page):
 def test_each_sub_tab_fetches_and_paints_its_own_shape(page):
     pg = page
     pg.evaluate("() => __view.show()")
+    assert pg.evaluate("() => [...document.querySelectorAll('#m .cw-subtab:not(.all)')].length") == 3, \
+        "live, recurring, scheduled: an ended task is not a tab of its own (INI-078 Q-2)"
     pg.click("#m .cw-subtab:nth-child(2)")
-    until_sync(lambda: len(_read(pg)["rows"]) == 2 and "hist" in _read(pg)["rows"][0]["cls"], "the done rows")
-    done = _read(pg)
-    assert "setScope:done" in done["calls"] and "fetch:done" in done["calls"]
-    assert done["on"] == ["chat.subDone"]
-    ok, failed = done["rows"]
-    assert (ok["dot"], ok["note"]) == ("✓", "w6") and (failed["dot"], failed["note"]) == ("✕", "w8")
-    assert "chat.errClass.hung" in failed["meta"]
-    assert ok["btns"] == ["cron-b hb-icbtn|chat.taskResults|chat.taskResults"] and failed["btns"] == [], \
-        "only the row whose report was kept offers to reopen it"
-    pg.click("#m .cw-proc-row.hist .cron-b")
-    until_sync(lambda: "open:results::b1" in _read(pg)["calls"], "the card the server named is opened")
-    assert "reopen:b1" in _read(pg)["calls"]
-
-    pg.click("#m .cw-subtab:nth-child(3)")
     until_sync(lambda: any("sched" in r["cls"] for r in _read(pg)["rows"]), "the recurring rows")
     row = _read(pg)["rows"][0]
     assert row["dot"] == "⏱" and row["goal"] == "w9" and row["meta"].startswith("w10 · chat.taskNextRun(")
@@ -193,7 +177,7 @@ def test_each_sub_tab_fetches_and_paints_its_own_shape(page):
     pg.click("#m .cron-b.danger")
     until_sync(lambda: _read(pg)["calls"][n:] == ["remove:c1", "fetch:recurring"], "removed, then refetched")
 
-    pg.click("#m .cw-subtab:nth-child(4)")
+    pg.click("#m .cw-subtab:nth-child(3)")
     until_sync(lambda: _read(pg)["empty"] == "chat.subScheduledEmpty", "an empty list says so")
 
     pg.click("#m .cw-subtab.all")

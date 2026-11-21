@@ -118,7 +118,9 @@ async def _commission(monkeypatch, request: str, *, ok: bool = True, release: bo
         inspect_live()
     if release:
         gate.set()
-        await until(lambda: ts.tasks_where(states=ts.DONE_STATES, visible_only=False) or None,
+        # a task of the queue ENDS by leaving it (INI-078 Q-2); an internal row still ends on its row
+        await until(lambda: (ts.tasks_where(states=ts.DONE_STATES, visible_only=False)
+                             or not ts.task_get(live[0]["id"])) or None,
                     "the commission to be recorded as finished")
     stop.set()
     await asyncio.sleep(0.05)
@@ -138,19 +140,26 @@ def test_the_row_exists_WHILE_the_worker_is_still_running(fresh_db, monkeypatch)
     assert not row["finished_at"]
 
 
-def test_the_same_commission_closes_the_SAME_row(fresh_db, monkeypatch):
-    """One row, opened then closed — never one row live and a second one in the history."""
+def _pills(monkeypatch) -> list:
+    from memory import api as memory
+    out: list = []
+    monkeypatch.setattr(memory, "write", lambda text, **kw: out.append(kw.get("meta") or {}))
+    return out
+
+
+def test_the_same_commission_ends_the_SAME_task(fresh_db, monkeypatch):
+    """One task, opened then ended — and ended by LEAVING the queue (INI-078 Q-2): no row stays, its ONE pill names it."""
+    pills = _pills(monkeypatch)
     live, done = asyncio.run(_commission(monkeypatch, "búscame piso de alquiler en Gràcia"))
-    assert len(done) == 1
-    assert done[0]["id"] == live[0]["id"]
-    assert done[0]["state"] == "done"
-    assert done[0]["finished_at"] and done[0]["finished_at"] > 0
+    assert done == [] and ts.task_get(live[0]["id"]) is None
+    assert [(p["task_id"], p["state"]) for p in pills if p.get("task_id")] == [(live[0]["id"], "done")]
     assert ts.tasks_where(states=ts.LIVE_STATES, visible_only=False) == []
 
 
 def test_the_outcome_of_a_failed_worker_is_not_a_success(fresh_db, monkeypatch):
-    _, done = asyncio.run(_commission(monkeypatch, "búscame piso en Gràcia", ok=False))
-    assert len(done) == 1 and done[0]["state"] == "failed"
+    pills = _pills(monkeypatch)
+    live, _ = asyncio.run(_commission(monkeypatch, "búscame piso en Gràcia", ok=False))
+    assert [p["state"] for p in pills if p.get("task_id") == live[0]["id"]] == ["failed"]
 
 
 def test_the_durable_id_is_not_the_session_id(fresh_db, monkeypatch):
@@ -161,10 +170,15 @@ def test_the_durable_id_is_not_the_session_id(fresh_db, monkeypatch):
 
 
 def test_a_finished_commission_is_findable_by_what_it_was_ABOUT(fresh_db, monkeypatch):
-    """The end-to-end reason the table exists: «lo del piso que te dije» has to reach it afterwards."""
-    _, done = asyncio.run(_commission(monkeypatch, "búscame piso de alquiler en el barrio de Gràcia"))
-    hits = ts.task_search("lo del piso que te dije")
-    assert [h["id"] for h in hits] == [done[0]["id"]]
+    """The end-to-end reason the table exists: «lo del piso que te dije» has to reach it afterwards — through the pill
+    it left when it left the queue (its row is gone)."""
+    from nucleo.errands import task_recall
+    live, _ = asyncio.run(_commission(monkeypatch, "búscame piso de alquiler en el barrio de Gràcia"))
+
+    async def found():
+        return await until(lambda: task_recall.candidates("lo del piso que te dije") or None,
+                           "the task's pill to be findable", timeout_s=5)
+    assert [h["id"] for h in asyncio.run(found())] == [live[0]["id"]]
 
 
 def test_an_internal_escalation_stays_out_of_the_operators_list(fresh_db, monkeypatch):
@@ -190,12 +204,14 @@ def test_the_NAME_reaches_the_row_when_it_is_composed(fresh_db, monkeypatch):
     monkeypatch.setattr(et, "compose", _compose)
 
     async def _go():
-        live, done = await _commission(monkeypatch, "oye llama y mírame lo del dentista para la semana que viene")
+        live, done = await _commission(monkeypatch, "oye llama y mírame lo del dentista para la semana que viene",
+                                       release=False)        # while it lives: once it ends it leaves the queue
         # The naming is fire-and-forget (V2-530), so give it its turn — bounded by the clock like the rest.
-        return await until(lambda: (lambda r: r if r and r["title"] == "hora con el dentista" else None)(
-                               ts.task_get(live[0]["id"])),
-                           "the composed name to reach the durable row", timeout_s=5)
+        row = await until(lambda: (lambda r: r if r and r["title"] == "hora con el dentista" else None)(
+                              ts.task_get(live[0]["id"])),
+                          "the composed name to reach the durable row", timeout_s=5)
+        return row, ts.task_search("dentista")             # while it lives: it leaves the queue when it ends
 
-    row = asyncio.run(_go())
+    row, hits = asyncio.run(_go())
     assert row["title"] == "hora con el dentista", "the composed name never reached the durable row"
-    assert [h["id"] for h in ts.task_search("dentista")] == [row["id"]]
+    assert [h["id"] for h in hits] == [row["id"]]

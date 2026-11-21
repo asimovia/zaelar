@@ -1,6 +1,6 @@
 """The host keeps the conversation in `zaelar.db`, written by its own thread only (node 13.36, v3.1 B1).
 
-The rows of the `Store` port live in `conv_rows` / `conv_meta` of `zaelar.db` (schema v12), written through ONE
+The rows of the `Store` port live in `conv_rows` / `conv_meta` of `zaelar.db` (schema v12; v13 adds the queue's columns), written through ONE
 door (`memory.api.conv`) by ONE thread: the conversation's own, with its event loop, where entries are handed over
 and its timer and the hourly prune run. A transaction there is exclusive on the shared connection: inside it no other
 store can be reached (`Database.cursor()` refuses — it would commit the transaction half done). The prune drops what
@@ -27,7 +27,7 @@ from nucleo.conversation_host.store import ZaelarStore
 
 def test_the_schema_is_twelve_with_the_conversation_rows(tmp_path):
     db = Database(tmp_path / "z.db")
-    assert db.schema_version() == 12 and {"conv_rows", "conv_meta"} <= db.tables()
+    assert db.schema_version() == 13 and {"conv_rows", "conv_meta"} <= db.tables()
     db.close()
 
 
@@ -40,7 +40,7 @@ def test_a_database_of_the_previous_version_gains_the_conversation_rows_and_keep
         cur.execute("INSERT INTO sys_kv(key, value) VALUES ('k0', 'v0')")
     db.close()
     db = Database(tmp_path / "z.db")
-    assert db.schema_version() == 12 and {"conv_rows", "conv_meta"} <= db.tables()
+    assert db.schema_version() == 13 and {"conv_rows", "conv_meta"} <= db.tables()
     with db.cursor() as cur:
         assert cur.execute("SELECT value FROM sys_kv WHERE key='k0'").fetchone()[0] == "v0"
     db.close()

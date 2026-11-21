@@ -99,8 +99,8 @@ def dispatcher(active_brain, first_lifespan_entry: bool) -> bool:
         except Exception as e:
             logger.warning(f"rehydrate at_boot failed (voice/chat unaffected): {e}")
         try:                     # INI-078 Q-7 — there are no task lists: a live one a restart finds is archived
-            from nucleo.circuit import ledger as nucleo_ledger
-            _gone = nucleo_ledger.lists_retired()
+            from nucleo.queue import boot as nucleo_queue_boot
+            _gone = nucleo_queue_boot.lists_retired()
             if _gone:
                 logger.info(f"task lists archived at boot (lists no longer exist): {_gone}")
         except Exception as e:

@@ -105,28 +105,45 @@ def test_the_late_name_reaches_the_row(fresh_db):
     assert [r["id"] for r in ts.task_search("dentista")] == [rec.uid]
 
 
-def test_closing_stamps_the_outcome_and_the_hour(fresh_db):
+def _started(rec, ctx=None):
+    """His commission, opened and given its turn by the queue's lane (INI-078: it runs only once it is `running`)."""
+    from nucleo import queue
+    uid = T.opened(rec, ctx or {})
+    queue.signal(uid, "start", by="pulse")
+    return uid
+
+
+@pytest.fixture
+def pills(monkeypatch):
+    from memory import api as memory
+    out = []
+    monkeypatch.setattr(memory, "write", lambda text, **kw: out.append((text, kw.get("meta") or {})))
+    return out
+
+
+def test_closing_leaves_its_outcome_in_its_one_pill(fresh_db, pills):
+    """A task of the queue ENDS by leaving it (INI-078 Q-2): no row, one pill with what came of it."""
     rec = _rec()
-    T.opened(rec, {})
+    _started(rec)
     rec.status, rec.ok, rec.result_summary = "done", True, "5 pisos en Gràcia"
     T.closed(rec)
-    row = ts.task_get(rec.uid)
-    assert row["state"] == "done" and row["outcome"] == "5 pisos en Gràcia"
-    assert row["finished_at"] and row["finished_at"] > 0
+    assert ts.task_get(rec.uid) is None
+    assert [(t, m["state"]) for t, m in pills if m.get("task_id") == rec.uid] == [
+        ("búscame piso en Gràcia: 5 pisos en Gràcia", "done")]
 
 
-def test_a_failure_is_not_a_success(fresh_db):
+def test_a_failure_is_not_a_success(fresh_db, pills):
     rec = _rec()
-    T.opened(rec, {})
+    _started(rec)
     rec.status, rec.ok = "error", False
     T.closed(rec)
-    assert ts.task_get(rec.uid)["state"] == "failed"
+    assert [m["state"] for _t, m in pills if m.get("task_id") == rec.uid] == ["failed"]
 
 
 def test_a_relay_does_not_close_the_task(fresh_db):
     """The baton is in the air; the commission is not over and must not leave the live list."""
     rec = _rec()
-    T.opened(rec, {})
+    _started(rec)
     rec.status = "relevada"
     T.closed(rec)
     row = ts.task_get(rec.uid)
@@ -151,18 +168,17 @@ def test_a_relay_continues_the_SAME_task(fresh_db):
     assert row["visible"] is True                              # …and it does not turn internal on the way
 
 
-def test_the_relayed_task_closes_once_at_the_end(fresh_db):
+def test_the_relayed_task_closes_once_at_the_end(fresh_db, pills):
     first = _rec(task_id="1")
-    T.opened(first, {})
+    _started(first)
     first.status = "relevada"
     T.closed(first)
     relayed = _rec(task_id="2")
     T.opened(relayed, {"src": "provider_failover", "task_uid": first.uid})
     relayed.status, relayed.ok, relayed.result_summary = "done", True, "reservado"
     T.closed(relayed)
-    done = ts.tasks_where(states=ts.DONE_STATES)
-    assert [r["id"] for r in done] == [first.uid]
-    assert done[0]["outcome"] == "reservado"
+    assert ts.task_get(first.uid) is None
+    assert [t.split(": ")[-1] for t, m in pills if m.get("task_id") == first.uid] == ["reservado"]
 
 
 def test_a_record_with_no_uid_closes_nothing(fresh_db):

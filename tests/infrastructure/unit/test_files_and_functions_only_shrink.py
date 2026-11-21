@@ -36,7 +36,7 @@ FILES = {
     'nucleo/llm/fast_client.py': 866,
     'nucleo/jev/__init__.py': 590,
     'voice/engine/llm/providers/nucleo.py': 997,
-    'voice/observer.py': 807,   # 2026-11-19 V2-941: the isolated turn manager's kinds get their observer family (27a14c358, plan PA-1); only shrinks
+    'voice/observer.py': 808,   # 2026-11-19 V2-941: the isolated turn manager's kinds get their observer family (27a14c358, plan PA-1); +1 2026-11-21 INI-078: the queue's own kind (`queue`); only shrinks
     'widgets/directory.py': 801,   # 2026-11-18 contacts: one directory fed by every linked source, one row per person (18b837d66, b76bfb801, 98a166e3f); found red on main 2026-11-19, recorded by INI-042 #44; only shrinks   # 2026-11-09: red on main before the V2-867/868/859/575 batch (observability owner); only shrinks from here
 }
 

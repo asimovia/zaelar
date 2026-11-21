@@ -46,6 +46,10 @@ def waiting(task_id: str, waiting_for: str, ask_id: str = "", ask: str = "", *, 
     same = (row.get("state") == "waiting" and row.get("waiting_for") == wf
             and (not ask_id or str(row.get("ask_id") or "") == ask_id))
     since = int(row.get("waiting_since") or 0) if same and row.get("waiting_since") else int(now)
+    if row.get("owner"):                 # a task of the queue (INI-078): it steps aside, and the next of its lane starts
+        if same:
+            return True
+        return _queue_wait(uid, row, wf, since, now, ask_id, ask, quiet)
     _store().task_patch(uid, state="waiting", waiting_for=wf, waiting_since=since,
                    **({"deadline": since + int(answer_wait_s(now))} if wf == USER_ANSWER else {}),
                    **({"ask_id": ask_id} if ask_id else {}), **({"ask": ask[:600]} if ask else {}))
@@ -61,10 +65,28 @@ def resumed(task_id: str) -> None:
     row as the record of what was last asked."""
     uid = str(task_id or "").strip()
     row = _store().task_get(uid) if uid else None
+    if row and row.get("state") == "waiting" and row.get("owner"):   # a task of the queue: back to the HEAD of its
+        from nucleo import queue                                     # lane — it runs again when its turn comes
+        if queue.signal(uid, "back", by="owner"):
+            _progress.changed(uid, "resumed", row)
+            _wake_changed()
+        return
     if row and row.get("state") == "waiting" and row.get("waiting_for"):
         _store().task_patch(uid, state="running", waiting_for="", waiting_since=None, deadline=None)
         _progress.changed(uid, "resumed", row)
         _wake_changed()
+
+
+def _queue_wait(uid: str, row: dict, wf: str, since: int, now: float, ask_id: str, ask: str, quiet: bool) -> bool:
+    from nucleo import queue
+    ok = queue.signal(uid, "wait", by="owner", waiting_for=wf, ask_id=ask_id or str(row.get("ask_id") or ""),
+                      ask=(ask or str(row.get("ask") or ""))[:600],
+                      deadline=since + int(answer_wait_s(now)) if wf == USER_ANSWER else row.get("deadline"))
+    if ok and not quiet:
+        _progress.changed(uid, "waiting", row)
+    if ok:
+        _wake_changed()
+    return ok
 
 
 def _wake_changed() -> None:
@@ -94,9 +116,13 @@ def worker_died(rec, *, now: float | None = None) -> bool:
     if int(row.get("attempts") or 0) >= WORKER_DEATHS_RESUMED or str(row.get("state") or "") in _store().DONE_STATES:
         return False
     now = time.time() if now is None else now
-    _store().task_patch(uid, phase=str(getattr(rec, "phase", "") or row.get("phase") or "")[:160],
-                   attempts=int(row.get("attempts") or 0) + 1)
-    if ok := waiting(uid, WORKER, now=now, quiet=True):
+    beat = {"phase": str(getattr(rec, "phase", "") or row.get("phase") or "")[:160],
+            "attempts": int(row.get("attempts") or 0) + 1}
+    from nucleo import queue
+    if not queue.wrote(uid, "progress", **beat):
+        _store().task_patch(uid, phase=beat["phase"], attempts=beat["attempts"])
+    if (ok := waiting(uid, WORKER, now=now, quiet=True)) and not queue.wrote(
+            uid, "progress", deadline=int(now + WORKER_RESUME_AFTER_S)):
         _store().task_patch(uid, deadline=int(now + WORKER_RESUME_AFTER_S))
     _progress.changed(uid, "worker_died", row)
     return ok

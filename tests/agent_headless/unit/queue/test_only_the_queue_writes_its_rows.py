@@ -16,7 +16,7 @@ QUEUE = "nucleo/queue/"
 STORE = "memory/"
 _SKIP = {".venv", "tests", "node_modules", "__pycache__", ".git", ".meshkore", ".claude", "TMP"}
 GENERIC = {"task_put", "task_patch"}
-OWN = {"queue_insert", "queue_archive"}
+OWN = {"queue_insert", "queue_archive", "queue_patch"}
 #: who still calls the generic writers outside the queue — only drops (2026-11-21, step 2 of the orchestrator)
 WRITERS = frozenset({
     "nucleo/circuit/__init__.py", "nucleo/circuit/asker.py", "nucleo/circuit/ledger.py", "nucleo/circuit/waits.py",

@@ -30,12 +30,12 @@ def _refused(said):
 def test_a_jump_the_table_does_not_list_is_refused_and_said(said):
     tid = queue.add("worker", "find a flat in Leeds")
     assert not queue.signal(tid, "done", by="owner"), "a pending task cannot end done"
-    assert not queue.signal(tid, "wait", by="owner"), "nor wait for him before it ran"
+    assert not queue.signal(tid, "back", by="him"), "nor come back before it left"
     assert ts.task_get(tid)["state"] == "pending"
     assert queue.signal(tid, "start", by="pulse") and queue.signal(tid, "wait", by="owner", ask="which area?")
     assert not queue.signal(tid, "start", by="pulse"), "a task waiting for him is not started"
     assert not queue.signal(tid, "start", by="nobody")
-    assert [e["signal"] for e in _refused(said)] == ["done", "wait", "start", "start"]
+    assert [e["signal"] for e in _refused(said)] == ["done", "back", "start", "start"]
     assert ts.task_get(tid)["state"] == "waiting" and ts.task_get(tid)["ask"] == "which area?"
 
 

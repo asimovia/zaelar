@@ -339,3 +339,20 @@ def test_a_lazily_born_session_marker_never_joins_the_operators_flow(wired):
     kinds = [e["kind"] for e in flows.flow(tid)]
     assert "session" not in kinds, f"a session marker joined the flow: {kinds}"
     assert "brain" in kinds
+
+
+def test_a_flows_end_marker_is_not_a_family_it_went_through(wired):
+    """A turn of the conversation reads as the conversation's: its `flow end` (whose kind falls in another family) is
+    a marker of its close, not a family it passed through — the Master counts it the same way."""
+    from observability import flows, identity
+    from voice import trace
+    from voice.observer import emit
+
+    identity.begin_session("test")
+    tid = trace.begin("w1 w2")
+    emit("brain", "decide")
+    emit("flow", "end", role="system", extra={"ok": True})
+    _settle()
+    f = next(x for x in flows.flows(limit=5) if x["corr_id"] == tid)
+    assert f["ended_events"] == 1, "the end is still counted as an end"
+    assert set((f["families"] or "").split(",")) == {"flash"} and f["families_n"] == 1

@@ -125,7 +125,14 @@ def card_written(uid: str, *, keep_heard: bool = True, **fields) -> None:
         new.pop("part", None)
     if all(old.get(k) == v for k, v in new.items()):
         return
-    _ts.task_patch(uid, progress={**progress, CARD: {**old, **new}})
+    if not _queue().wrote(uid, "progress", progress={**progress, CARD: {**old, **new}}):
+        _ts.task_patch(uid, progress={**progress, CARD: {**old, **new}})
+
+
+def _queue():
+    """The queue (INI-078): a row of it is written by signals, never patched here (`queue.wrote`)."""
+    from nucleo import queue
+    return queue
 
 
 def mentioned(uid: str, *, now: float | None = None) -> None:
@@ -259,6 +266,8 @@ def started(rec) -> None:
     if before is None:
         return
     _tr = str(getattr(rec, "trace_id", "") or "")      # the dispatcher learns the trace by the time it starts
+    if before.get("owner"):              # a task of the queue: its lane started it (`lanes.tick`)
+        return
     _ts.task_patch(uid, state="running", started_at=int(time.time()), **({"trace_id": _tr} if _tr else {}))
     _progress.changed(uid, "started", before)
 
@@ -278,9 +287,14 @@ def status_written(live: dict, *, now: float | None = None) -> None:
                 if live.get(k) not in (None, "", [], -1)}
     if (before.get("progress") or {}).get(CARD):                 # V2-878 §1: the beat never wipes the errand's card
         progress[CARD] = before["progress"][CARD]
-    _ts.task_patch(uid, phase=str(live.get("phase") or "")[:160], progress=progress,
-                   heartbeat_at=int(live.get("heartbeat_at") or 0) or None,
-                   reported_at=int(live.get("reported_at") or 0) or None)
+    beat = {"phase": str(live.get("phase") or "")[:160], "progress": progress,
+            "heartbeat_at": int(live.get("heartbeat_at") or 0) or None,
+            "reported_at": int(live.get("reported_at") or 0) or None}
+    if before.get("owner"):              # a task of the queue: the beat is a signal of its owner
+        _queue().wrote(uid, "progress", **beat)
+    else:
+        _ts.task_patch(uid, phase=beat["phase"], progress=progress, heartbeat_at=beat["heartbeat_at"],
+                       reported_at=beat["reported_at"])
     _progress.changed(uid, "status_written", before)         # a beat that changed nothing but its clocks emits nothing
     if str(live.get("waiting_on") or "") == "user":          # V2-851: a worker parked on his answer WAITS, on the row
         waiting(uid, USER_ANSWER, ask=str(live.get("ask") or ""), now=now)
@@ -332,8 +346,9 @@ def reconciled(live_uids, *, now: float | None = None, grace_s: float = 60.0) ->
     n = 0
     for row in _ts.tasks_where(states=(*_ts.LIVE_STATES, STARTING), modes=("now",), visible_only=False, limit=500):
         uid = str(row.get("id") or "")
-        if row.get("waiting_for") or uid in live:
-            continue                # a task that WAITS is carried by nobody on purpose; its deadline ends it (V2-851)
+        if row.get("waiting_for") or uid in live or row.get("owner"):
+            continue                # a task that WAITS is carried by nobody on purpose; its deadline ends it (V2-851);
+            #                         a task of the queue is the queue's: its lane runs it, its boot takes it back
         mi = _INLINE_UID.match(uid)    # …and one a worker carries is alive, whatever its id says (an answered inline row)
         if mi:
             if mi.group(1) != _boot_id():
@@ -383,7 +398,8 @@ def retitled(rec) -> None:
     if not uid:
         return
     before = _ts.task_get(uid)
-    _ts.task_patch(uid, title=str(getattr(rec, "title", "") or ""))
+    if not _queue().wrote(uid, "progress", title=str(getattr(rec, "title", "") or "")):
+        _ts.task_patch(uid, title=str(getattr(rec, "title", "") or ""))
     _progress.changed(uid, "retitled", before)
 
 
@@ -408,16 +424,19 @@ def closed(rec, *, outcome: str = "") -> None:
         return
     state = state_of(rec)
     if state in _ts.LIVE_STATES:           # a relay or a parked worker is not over: its live state, nothing more
+        if before.get("owner"):            # a task of the queue: its state is its lane's
+            return
         _ts.task_patch(uid, state="waiting" if state == "waiting" else "pending" if state == "pending" else "running")
         _progress.changed(uid, "closed", before)
         return
     said = (outcome or str(getattr(rec, "result_summary", "") or ""))[:400]
+    kept_result(rec)                     # BEFORE the ending: a task of the queue leaves a pill naming its artifacts
     _settle(row=uid, state=state, outcome=said, extra={
         "error_class": str(getattr(rec, "error_class", "") or "") if state == "failed" else "",
         # V2-776 M3 — the circuit's verdict (`circuit.close` set it on the record), never the worker's word
         "verdict": _ending_verdict(rec)})
-    kept_result(rec)
-    remembered(rec, state=state, outcome=said)
+    if not before.get("owner"):          # a task of the queue left its ONE pill when it was archived (`queue`)
+        remembered(rec, state=state, outcome=said)
 
 
 def _ending_verdict(rec) -> str:
@@ -753,33 +772,6 @@ def store():
     """The task table, for the brain-side readers and writers of task rows that are not workers. Handed out from here
     so `memory.tasks_store` keeps one production importer (the memory boundary ratchet counts exactly that)."""
     return _ts
-
-
-#: what the archive of a list says: several things asked at once are several tasks now (INI-078, Q-7)
-LISTS_GONE = "las listas ya no existen"
-
-
-def lists_retired() -> int:
-    """Archive every LIVE task list a restart finds, with its steps: one short pill per list, then the rows go.
-
-    There are no lists any more (INI-078, Q-7): several things asked at once are several independent tasks, so a list
-    nothing runs would sit in his column for good. Run at boot; idempotent, since an archived row is gone. Returns how
-    many lists went; the rows go with their artifacts (a list's steps, never a result he paid for). Never raises."""
-    n = 0
-    for row in _ts.tasks_of_kind("lista", _ts.LIVE_STATES):
-        uid = str(row.get("id") or "")
-        try:
-            from memory import api as _memory
-            _memory.write(f"{str(row.get('title') or row.get('goal') or uid)[:160]}: {LISTS_GONE}", kind="task",
-                          level="short", importance=0.3, ttl_days=7,
-                          meta={"task_id": uid, "owner": "", "state": "cancelled", "trace": row.get("trace_id") or ""})
-        except Exception as e:  # noqa: BLE001 — a pill that could not be written does not keep a dead list alive
-            logger.debug(f"ledger: the pill of the retired list {uid} was not written ({e!r})")
-        for step in _ts.tasks_children(uid):
-            _ts.task_forget(step["id"])
-        _ts.task_forget(uid)
-        n += 1
-    return n
 
 
 def recent(*, since: float, limit: int, exclude_kinds: tuple = ()) -> list[dict]:
