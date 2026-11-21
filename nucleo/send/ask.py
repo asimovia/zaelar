@@ -36,6 +36,9 @@ FACTS = {
     "send_unconfirmed": "The message to {who} was handed over to be sent, but its confirmation has not arrived yet. He "
                         "will be told as soon as it does.",
     "send_not_sent": "He said not to send it. The message is NOT sent and nothing has left.",
+    "send_still_asked": "He already heard the message for {who} and was asked whether to send it. What he just said "
+                        "(«{said}») is neither a yes, a no nor a change to it. Answer what he said in one short "
+                        "sentence and ask, briefly, whether to send it — never read the message again.",
 }
 
 CHANNELS = {"whatsapp": "WhatsApp", "telegram": "Telegram", "email": "email"}

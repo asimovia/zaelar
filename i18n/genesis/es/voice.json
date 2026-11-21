@@ -167,6 +167,7 @@
  "send_done": "Mensaje enviado.",
  "send_failed": "No se ha podido enviar el mensaje: {why}",
  "send_unconfirmed": "Aún no me consta que haya salido. Te aviso en cuanto se confirme.",
+ "send_still_asked": "¿Lo envío, entonces?",
  "send_not_sent": "Vale, no lo mando.",
  "send_preparing": "Preparo el mensaje.",
  "send_ask_who": "¿A quién se lo mando?",

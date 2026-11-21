@@ -889,6 +889,9 @@ _TOTAL_MAX += 29     # same cause, measured
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 29   # 2026-11-21 C4 (his live session): a widget act's receipt carries the card's answer, bounded, and why it was refused (`acts_widget.receipt`)
 _PACKAGE_CEILINGS["conversation"] += 4   # same: a run at its step cap after an act landed says part was done (`lost_after_acts`), never «I lost that»
 _TOTAL_MAX += 33     # same causes, measured
+_PACKAGE_CEILINGS["nucleo/send"] += 17   # 2026-11-21 C3 (his live session): a confirmation he already heard is answered short and asked again, never read whole (`owner._still_asked`, its fact `send_still_asked`)
+_PACKAGE_CEILINGS["nucleo (top)"] += 34   # same: ONE style line for the prefix and every worded line (`style_policy.line`, read by `wording._styled`)
+_TOTAL_MAX += 45     # same causes, measured (the prefix's own style line moved out: -6)
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

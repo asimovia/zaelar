@@ -148,7 +148,7 @@ def _names_the_chosen(d, who: str) -> bool:
     return bool(said) and said <= set(_ask._fold(d.target.get("name")).split())
 
 
-async def _step(d, got: dict, last_line: str = "") -> str:
+async def _step(d, got: dict, last_line: str = "", said: str = "") -> str:
     """Apply one read to the draft and return what he hears."""
     if got.get("drop"):
         _draft.close(d, _draft.CANCELLED)
@@ -195,9 +195,23 @@ async def _step(d, got: dict, last_line: str = "") -> str:
         if ok:
             return await _send(d)
         _emit("go-ahead not taken", d, why=why)       # which guard refused his yes — never in silence
+    if not changed and not (got.get("send") or got.get("bare")) and d.asked == _draft.CONFIRM and d.confirm_line \
+            and (d.heard or _ask._fold(d.confirm_line) in _ask._fold(last_line)):
+        return await _still_asked(d, said)        # heard already: answered short, never the whole message again (C3)
     lead = (f"Say back in a few words that the message now reads «{d.text}»." if got.get("text") is not None
             and d.text else "")
     return await _next(d, lead)
+
+
+async def _still_asked(d, said: str) -> str:
+    """His words to a confirmation he already heard that are neither a yes, a no nor a change: one short line that
+    answers them and asks again — and that line is now the confirmation his yes answers, once it sounds."""
+    who = (d.target or {}).get("name") or d.who or ""
+    line = await _ask.line("send_still_asked", who=who, said=" ".join(str(said or "").split())[:200])
+    if not line:                                  # no wording and no plain line: the whole confirmation, as before
+        return await _next(d)
+    d.confirm_line, d.heard = line, False
+    return line
 
 
 # ── the send ────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -247,7 +261,7 @@ async def take(said: str, *, last_line: str = "", before: list[str] | None = Non
             _emit("a fragment he went on from", d, said=text[:200])   # «yes…» of «yes… but take out the last
             return False, ""                                          # phrase»: the whole sentence is read, not this
         _draft.touch(d)
-        line = await _step(d, got, last_line)
+        line = await _step(d, got, last_line, text)
         _emit("taken", d, said=text[:200], read=got, ms=ms, line=line[:200])     # the draft as his words left it
     if _draft.current() is None:
         from nucleo.send import intake as _intake

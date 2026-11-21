@@ -25,6 +25,8 @@ import json
 import time
 from pathlib import Path
 
+from loguru import logger
+
 
 _FILLER_MODES = ("off", "smart", "on")
 
@@ -173,3 +175,23 @@ def prompt_line() -> str:
 def _reset_for_tests() -> None:
     import rules
     rules._reset_for_tests()
+
+
+def line(speech_style: str = "") -> str:
+    """How the agent speaks, from ONE source: the language pack's `speech_style` (DNA) and the turn's shape as genesis
+    `style` and his rows over it set it now (`policy`) — knobs as data. The conversation's prefix and every worded
+    line (`nucleo/wording`) read this same line."""
+    if not speech_style:
+        try:
+            from i18n import langs
+            speech_style = str(langs.words("speech_style") or "")
+        except Exception as e:  # noqa: BLE001 — no pack: the knobs alone
+            logger.debug(f"style_policy: speech style unread ({e!r})")
+    try:
+        knobs = {k: v for k, v in policy().items() if v is not None}
+    except Exception as e:  # noqa: BLE001 — the pack's style alone, rather than none
+        logger.debug(f"style_policy: knobs unread ({e!r})")
+        knobs = {}
+    shape = ", ".join(f"{k}={str(v).lower()}" for k, v in sorted(knobs.items()))
+    return "; ".join(x for x in (speech_style, f"shape: {shape}" if shape else "") if x)
+

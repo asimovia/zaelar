@@ -167,6 +167,7 @@
  "send_done": "Message sent.",
  "send_failed": "The message could not be sent: {why}",
  "send_unconfirmed": "It isn't confirmed as sent yet. I'll tell you as soon as it is.",
+ "send_still_asked": "Shall I send it, then?",
  "send_not_sent": "OK, I won't send it.",
  "send_preparing": "I'll get the message ready.",
  "send_ask_who": "Who should I send it to?",

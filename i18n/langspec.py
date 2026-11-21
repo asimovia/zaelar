@@ -339,6 +339,7 @@ class LangSpec:
     send_failed: str = ""          # {why}: the connector's own reason
     send_unconfirmed: str = ""
     send_not_sent: str = ""
+    send_still_asked: str = ""       # the confirmation already heard, his words neither yes nor no: ask again, short
     send_preparing: str = ""       # the turn's start line for a send it handed over
     #: V2-938 — the send owner's questions (`nucleo/send/owner.py`): examples and last resort of a worded fact.
     send_ask_who: str = ""

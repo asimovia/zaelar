@@ -145,13 +145,25 @@ def word(fact: str, *, examples: tuple = (), about: str = "", fallback: str = ""
         shown = [str(e) for e in examples if str(e or "").strip()][:3]
         if shown:
             user += "\nEXAMPLES of the tone (do not copy): " + " · ".join(f"«{e}»" for e in shown)
-        line = _clean(_ask((system or SYSTEM).format(language=language), user, seat))
+        line = _clean(_ask(_styled((system or SYSTEM).format(language=language)), user, seat))
         if line:
             return line
         logger.info(f"wording: no line came back for «{fact[:60]}» — the plain one is said")
     except Exception as e:  # noqa: BLE001 — a line that cannot be worded is said plainly, never dropped
         logger.info(f"wording: not worded ({type(e).__name__}: {e}) — the plain one is said")
     return fallback
+
+
+def _styled(system: str) -> str:
+    """The wording's system with HOW the agent speaks — the one style line the conversation's prefix reads too
+    (`style_policy.line`), so a worded line and a reply never speak two ways (C3)."""
+    try:
+        from nucleo import style_policy
+        style = style_policy.line()
+    except Exception as e:  # noqa: BLE001 — unread: the wording's own rules alone
+        logger.debug(f"wording: style unread ({e!r})")
+        style = ""
+    return f"{system}\nHOW YOU SPEAK: {style}" if style else system
 
 
 async def said(key: str, about: str = "", **fmt) -> str:

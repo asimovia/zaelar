@@ -92,13 +92,7 @@ def current(catalog: list[ToolSpec]) -> str:
 
 
 def style_line(speech_style: str) -> str:
-    """How it speaks, from ONE source: the language pack's `speech_style` (DNA) and the turn's shape as genesis `style`
-    and his rows over it set it now (`style_policy.policy`: what he dictated with `set_rule` changes it at once) —
-    knobs as data, never a sentence of this file."""
-    try:
-        from nucleo import style_policy
-        knobs = {k: v for k, v in style_policy.policy().items() if v is not None}
-    except Exception:  # noqa: BLE001 — the pack's style alone, rather than none
-        knobs = {}
-    shape = ", ".join(f"{k}={str(v).lower()}" for k, v in sorted(knobs.items()))
-    return "; ".join(x for x in (speech_style, f"shape: {shape}" if shape else "") if x)
+    """How it speaks, from ONE source (`style_policy.line`): the language pack's `speech_style` and the turn's shape as
+    genesis `style` and his rows set it now — the same line every worded line reads (`nucleo/wording`)."""
+    from nucleo import style_policy
+    return style_policy.line(speech_style)
