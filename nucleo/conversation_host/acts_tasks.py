@@ -25,9 +25,9 @@ from conversation.ports import ToolResult
 
 
 def errand_context(args: dict) -> dict:
-    """What the model's call decides about an errand, in the context its readers already respect (`request/kind.carry`
-    reads the old brief only for a key that is missing): its kind, its consent class, the surface he will look at, the
-    declared action it starts with, and his words. The model's order IS the decision: carried at full confidence."""
+    """What the model's call decides about an errand, in the context its readers already respect (`request/kind`
+    reads `kind_of` and `sure_order` off it): its kind, its consent class, the surface he will look at, the declared
+    action it starts with, and his words. The model's order IS the decision: carried at full confidence."""
     from nucleo.conversation_host import routing, turns
     from nucleo.request import kind as _kind
     said = routing.said()

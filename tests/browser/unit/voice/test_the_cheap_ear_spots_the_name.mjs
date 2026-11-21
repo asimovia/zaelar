@@ -110,14 +110,6 @@ wake.offer("esto es de hace rato", { now: t0 });
 wake.offer("Johnny", { now: t0 + (wake.PREROLL_S + 5) * 1000 });
 assert.equal(spots[0].before, "", `nothing older than ${wake.PREROLL_S}s reaches the turn`);
 
-// ══ 5 · THE WALL STAYS CLEAN WHILE THE AGENT IS PARKED ═══════════════════════════════════════════════
-// «veo que intenta en el chat, va escribiendo el texto y luego lo borra… ese texto jamás debe aparecer
-// ahí». The predicate `sse.js` reads, driven here rather than copied.
-assert.equal(wake.paintsProvisional("always", false), true, "in `always` every turn is directed — it paints");
-assert.equal(wake.paintsProvisional("smart", false), false, "cold in wake-word mode: write nothing");
-assert.equal(wake.paintsProvisional("wakeword", false), false);
-assert.equal(wake.paintsProvisional("smart", true), true, "the ring is lit — his name was heard, so it writes");
-
 // ══ 6 · ⚠️ THE PARK LICENCE IS A RESULT, NOT THE RECOGNISER'S «I AM RUNNING» ═══════════════════════════════════
 wake._reset();
 assert.equal(wake.armed(), false, "nothing installed, nothing running: never park");

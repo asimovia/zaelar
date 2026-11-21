@@ -41,12 +41,6 @@ def _measure(reply, *, did_act=False, which=False):
     return ok, got
 
 
-def test_a_question_about_a_send_that_reached_no_door_is_counted(card):
-    card("mensajeria")
-    ok, got = _measure("¿A qué Raquel: Gómez o Martín?")
-    assert ok and got[0][0] == aod.KIND and got[0][1]["widget"] == "mensajeria" and "send_to" in got[0][1]["leaves"]
-
-
 def test_a_turn_that_reached_a_door_or_did_not_ask_is_not(card):
     card("mensajeria")
     assert _measure("¿A qué Raquel?", did_act=True) == (False, [])

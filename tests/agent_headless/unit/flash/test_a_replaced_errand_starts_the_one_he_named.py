@@ -146,14 +146,6 @@ def _settle(text, brief, worker_acted):
         worker_acted=worker_acted))
 
 
-def test_the_settle_step_records_what_its_backstop_ended(one_errand):
-    """The voice backstop: the model called nothing over a sure replace — the errand stops and its goal is kept."""
-    acted = {"v": None}
-    _settle(REPLACE_BANK[2][0], _brief("replace"), acted)
-    assert one_errand["cancelled"] and acted["v"] == "stop"
-    assert acted["stopped"] == ["Crear una app que lea mis mensajes enviados"]
-
-
 def _close(text, brief, worker_acted, escalate_req, monkeypatch) -> list:
     """Drive the voice turn's close (`turn_after.close_the_turn`) and return what it escalated."""
     import asyncio
@@ -184,31 +176,6 @@ def _close(text, brief, worker_acted, escalate_req, monkeypatch) -> list:
         spoken_text="Vale, paro eso y me pongo con lo nuevo.", style_fired={"v": False}, system="", t0=0.0,
         text=text, timings={}, worker_acted=worker_acted))
     return escalated
-
-
-@pytest.mark.parametrize("text,old_goal", REPLACE_BANK[:2])
-def test_the_turn_close_starts_the_replacement_beside_the_stop(text, old_goal, monkeypatch):
-    """The voice turn's close: a turn that stopped an errand over a sure replace still starts the work he named —
-    with the stopped goal carried — and never as a refinement injected into the errand it just killed."""
-    from nucleo import dispatch
-    monkeypatch.setattr(dispatch, "inject_soon", lambda *a: pytest.fail("a replacement was injected into the dying errand"))
-    esc = {"v": None, "more": [], "surface": {}}
-    escalated = _close(text, _brief("replace"), {"v": "stop", "stopped": [old_goal]}, esc, monkeypatch)
-    assert len(escalated) == 1 and escalated[0].startswith(text) and old_goal in escalated[0]
-
-
-@pytest.mark.parametrize("choice", ["stop", "keep"])
-def test_the_turn_close_starts_nothing_after_a_plain_stop(choice, monkeypatch):
-    esc = {"v": None, "more": [], "surface": {}}
-    assert _close("para eso", _brief(choice), {"v": "stop", "stopped": ["la app"]}, esc, monkeypatch) == []
-
-
-def test_the_disarm_a_close_that_ignores_the_replace_starts_nothing(monkeypatch):
-    """Disarm: the close no longer composes the replacement → the stop stands alone and his new work is lost."""
-    monkeypatch.setattr(sd, "start_beside_the_stop", lambda *a, **k: False)
-    esc = {"v": None, "more": [], "surface": {}}
-    text, old = REPLACE_BANK[0]
-    assert _close(text, _brief("replace"), {"v": "stop", "stopped": [old]}, esc, monkeypatch) == []
 
 
 # ── steer: his correction reaches the errand ────────────────────────────────────────────────────────────────

@@ -154,18 +154,6 @@ export function spotIn(text, names) {
   return null;
 }
 
-// MAY THE WALL PAINT THE PROVISIONAL LINE OF THE TURN BEING HEARD RIGHT NOW? Lives here, dependency-free
-// and beside the rules it belongs with, so `sse.js` reads THIS answer and the test drives the same one
-// (the V2-647 lesson again — `services/listening.js` is the precedent).
-//
-// In `always` every turn is directed: the caption is the whole point and it paints. In a wake-word mode a
-// COLD turn is going to be discarded, and painting it writes his sentence on the wall and then rubs it out
-// in front of him. `hit` is the ring — lit by the engine's own directed verdicts, the instant wake-word spot
-// among them — so the line starts the moment his name is heard and never before.
-export function paintsProvisional(mode, hit) {
-  return String(mode || "always") === "always" || !!hit;
-}
-
 // ── the live ear ────────────────────────────────────────────────────────────
 let _rec = null;          // the browser recogniser, while one exists
 let _armed = false;       // it has returned a result and has not gone deaf since — the ONLY licence to park

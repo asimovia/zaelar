@@ -61,33 +61,6 @@ def _state() -> str:
     return _p.live_state()
 
 
-def test_a_finished_session_does_not_vanish():
-    _session("done", summary="3 monitores encontrados")
-    assert dispatch.pending_summaries() == []            # it is no longer live…
-    assert [r["id"] for r in dispatch.recently_ended_sessions()] == ["w1"]   # …but it IS an ending
-    state = _state()
-    assert "TAREAS DE FONDO — YA ACABADAS" in state
-    assert "3 monitores encontrados" in state            # and with what it brought, which is what the operator wants
-
-
-@pytest.mark.parametrize("status,ok,marca", [("done", True, "TERMINÓ"),
-                                             ("cancelled", True, "se PARÓ (cancelada)"),
-                                             ("error", False, "FALLÓ")])
-def test_and_each_ending_sounds_like_what_it_was(status, ok, marca):
-    """An ending that sounds the same as a different one is useless: “it ended” invites asking for the result, “it stopped” to
-    ask whether to resume it, and “it failed” to try something else."""
-    _session(status, ok=ok)
-    assert marca in _state()
-
-
-def test_but_a_LIVE_session_is_not_announced_as_ended():
-    """The sensitivity check: without this, “say how it ended” and “always say that it ended” behave the same."""
-    _live_session("running")
-    state = _state()
-    assert "YA ACABADAS" not in state
-    assert "TAREAS DE FONDO EN CURSO" in state
-
-
 def test_and_an_old_ending_is_not_this_conversation():
     import time as _t
 

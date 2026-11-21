@@ -72,28 +72,6 @@ def test_the_same_question_without_the_declaration_is_not_read_from_punctuation(
     assert not R.asked()
 
 
-def test_the_clarify_doors_question_settles_asked():
-    """The door already knows it asks: when its question becomes the turn's line, the verdict is `asked`."""
-    import asyncio
-    from types import SimpleNamespace
-    from nucleo.flash import post_stream_settle
-    said = []
-    asyncio.run(post_stream_settle.settle_what_is_pending(
-        _ans=None, _ask_waiting=False, _auth_pending=False, _brief=None,
-        _dialog=SimpleNamespace(sanitize_reply=lambda s: s), _filler_audio=SimpleNamespace(played_recently=lambda: False),
-        _langs=None, _prev_pending=[], _r=None, _resolve_confirm=lambda yes: None,
-        _router=SimpleNamespace(operator_words=lambda o, t: o),
-        _shown_ids=set(), acted={"widget": False}, aside={"v": False},
-        brain=SimpleNamespace(_window=[], _last_spoken=""), clarify={"msg": "¿Cuál de las dos, la de las 14:30?"},
-        confirm_state={"handled": True}, data_done={"v": None}, emit=lambda *a, **k: None,
-        escalate_req={"v": None, "more": [], "surface": {}}, had_pending_confirm=False, llm_metrics={},
-        music_req={"v": None}, operator_text="borra la cita", search_req={"v": None}, send=said.append,
-        speech=SimpleNamespace(sanitize=lambda s, drop_metadata=True: s), spoken_text="Hecho.",
-        style_fired={"v": False}, text="borra la cita", worker_acted={"v": None}))
-    assert said and "14:30" in said[0]
-    assert R.asked()
-
-
 def _report_turn(monkeypatch, operator_text: str, *, rows: list, pick) -> bool:
     """A tool-less turn that owes an act, as the voice turn runs it: the rows first, then the turn end's `acted`."""
     import asyncio

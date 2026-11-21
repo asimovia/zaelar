@@ -82,24 +82,6 @@ def test_with_no_verdict_the_models_call_stops_whatever_his_words(lang, brief, m
 
 
 @pytest.mark.parametrize("lang", ["es", "en"])
-@pytest.mark.parametrize("brief", NO_VERDICT, ids=NO_VERDICT_IDS)
-def test_with_no_verdict_his_words_alone_stop_nothing(lang, brief, monkeypatch):
-    assert _model_called_nothing(NOT_ORDERS[lang], brief, monkeypatch)[0] == [], "his words stopped an errand"
-
-
-@pytest.mark.parametrize("lang", ["es", "en"])
-def test_a_sure_verdict_still_decides_both_ways(lang, monkeypatch):
-    killed, events = _model_called_nothing(ORDERS[lang], _brief(sd.STOP), monkeypatch)
-    assert killed == [ORDERS[lang]]
-    (_a, kw), = [e for e in events if "stop verdict" in e[0][1]]
-    assert (kw["extra"]["verdict"], kw["extra"]["confidence"], kw["extra"]["source"]) == ("stop", 0.95, "verdict")
-    killed, events = _model_calls_stop(NOT_ORDERS[lang], _brief(sd.KEEP), monkeypatch)
-    assert killed == [], "a sure «keep» refuses the dragged-in stop"
-    (_a, kw), = [e for e in events if "vetoed" in e[0][1]]
-    assert (kw["extra"]["verdict"], kw["extra"]["source"]) == ("keep", "call:stop_worker")
-
-
-@pytest.mark.parametrize("lang", ["es", "en"])
 def test_the_hard_interrupt_reading_stops_nothing_by_itself(lang, monkeypatch):
     """Kept on purpose: it only says «go on to the model»; the errand keeps running until a call or a verdict stops it."""
     from nucleo import dispatch

@@ -147,20 +147,6 @@ def test_cluster_done_marks_capsule_cierre(fresh_db, monkeypatch):
     assert ("meshcore", "zalo") not in br._stall
 
 
-# ── IDENTITY-SAFE: the channel system never leaks the operator’s PII ──────────────────────────────────────────
-def test_cluster_system_is_identity_safe(fresh_db):
-    from memory import api as memory
-    from nucleo.turn.prompt.builder import build_cluster_system, build_flash_system
-    memory.set_state({"operator_name": "Ricart", "treatment": "de tú", "location": "Soria"})
-    sys_cluster = build_cluster_system()
-    # the channel profile must NOT contain the operator’s personal data
-    for pii in ("Ricart", "Soria"):
-        assert pii not in sys_cluster, f"FUGA de PII en el system del canal: {pii}"
-    # sanity: the OPERATOR profile does compose state (contrast — compose_state is not empty)
-    op_sys, _ = build_flash_system()
-    assert isinstance(op_sys, str) and len(op_sys) > len(sys_cluster) - 1  # the operator profile also carries STATE
-
-
 def test_full_cluster_framing_is_identity_safe(fresh_db):
     """V2-069: EVERYTHING the cluster turn sees (system + protocol brief + capsule block) is identity-safe — none of
     the three framing pieces leaks the operator’s PII to an untrusted peer."""

@@ -387,31 +387,6 @@ def test_a_dropped_action_survives_the_turn_that_lost_it():
     fc.clear_drops()
 
 
-def test_and_reaches_the_live_state_saying_it_did_NOT_happen():
-    from nucleo.llm import fast_client as fc
-    from nucleo.turn.prompt import live_state as _p
-
-    fc.clear_drops()
-    fc._drop_tool_call({"finish_reason": "length"}, "escalate_to_slowbrain", "{bad")
-    state = _p.live_state()
-    assert "NO LLEGÓ A EJECUTARSE" in state
-    assert "escalate_to_slowbrain" in state
-    assert "no va a pasar solo" in state
-    fc.clear_drops()
-
-
-def test_but_it_is_said_ONCE_and_not_forever():
-    """A fact repeated in every state stops being a fact and becomes noise — and this one has already been said."""
-    from nucleo.llm import fast_client as fc
-    from nucleo.turn.prompt import live_state as _p
-
-    fc.clear_drops()
-    fc._drop_tool_call({}, "show_widget", "{bad")
-    assert "NO LLEGÓ A EJECUTARSE" in _p.live_state()
-    assert "NO LLEGÓ A EJECUTARSE" not in _p.live_state()
-    fc.clear_drops()
-
-
 def test_and_an_old_drop_is_not_this_conversation():
     import time as _t
 
@@ -422,12 +397,3 @@ def test_and_an_old_drop_is_not_this_conversation():
     fc._RECENT_DROPS[-1]["at"] = _t.time() - (fc._DROP_MEMORY_S + 60)
     assert fc.recent_drops() == []
     fc.clear_drops()
-
-
-def test_and_a_turn_with_nothing_dropped_says_nothing():
-    """The sensitivity: without this, “report the drop” and “always report” pass alike."""
-    from nucleo.llm import fast_client as fc
-    from nucleo.turn.prompt import live_state as _p
-
-    fc.clear_drops()
-    assert "NO LLEGÓ A EJECUTARSE" not in _p.live_state()

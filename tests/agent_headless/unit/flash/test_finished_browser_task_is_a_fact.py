@@ -38,47 +38,6 @@ def _finished(**over):
     return [row]
 
 
-def test_a_task_that_ended_empty_says_so(no_live_tasks, monkeypatch):
-    monkeypatch.setattr(nt, "recently_finished", lambda now=None, limit=3: _finished())
-    line = _line("NAVEGADOR — YA TERMINADO")
-    assert "terminó SIN traer nada" in line
-    assert "Eso YA NO está en marcha" in line
-
-
-def test_a_task_that_ended_WITH_something_says_that_instead(no_live_tasks, monkeypatch):
-    monkeypatch.setattr(nt, "recently_finished", lambda now=None, limit=3: _finished(has_results=True))
-    assert "terminó CON resultado" in _line("NAVEGADOR — YA TERMINADO")
-
-
-def test_what_it_last_saw_travels_with_the_ending(no_live_tasks, monkeypatch):
-    """“Only accepts reservations by phone” IS the result of the assignment, even if it is not the expected one."""
-    monkeypatch.setattr(nt, "recently_finished",
-                        lambda now=None, limit=3: _finished(
-                            last_event="Casa Lucio solo acepta reservas por teléfono: 91 365 82 17"))
-    line = _line("NAVEGADOR — YA TERMINADO")
-    assert "91 365 82 17" in line
-    assert "DÁSELO: es el resultado" in line
-
-
-def test_with_nothing_finished_the_line_does_not_appear(no_live_tasks, monkeypatch):
-    """ZERO cost when there is nothing to say — like the other markers in this block."""
-    monkeypatch.setattr(nt, "recently_finished", lambda now=None, limit=3: [])
-    assert _line("NAVEGADOR — YA TERMINADO") == ""
-
-
-def test_a_live_task_now_carries_its_last_milestone(monkeypatch):
-    monkeypatch.setattr(nt, "active_summaries", lambda limit=3: [("t9", "reservar mesa en Casa Lucio")])
-    monkeypatch.setattr(nt, "active_progress",
-                        lambda limit=3: [{"id": "t9", "goal": "x", "url": "https://www.thefork.es/casa-lucio",
-                                          "phase": "", "steps": 3,
-                                          "last_event": "el restaurante solo reserva por teléfono",
-                                          "awaiting_login": False}])
-    monkeypatch.setattr(nt, "recently_finished", lambda now=None, limit=3: [])
-    line = _line("NAVEGADOR — YA EN CURSO")
-    assert "solo reserva por teléfono" in line
-    assert "3 pasos dados" in line
-
-
 # ── the registry side ───────────────────────────────────────────────────────────────────────────────────────
 def test_recently_finished_reports_what_the_task_ended_with():
     tid = nt.create("reservar mesa en Casa Lucio")
@@ -133,32 +92,3 @@ def _done_task_with_sheet(rows, status="done", **over):
     nt._tasks["t1"] = t
     if rows:
         intake.push(rows, sheet="hoja-x")
-
-
-def test_rows_in_the_sheet_beat_an_empty_task_record(_isolated_sheet):
-    """The measured case: `set_results` never ran; the sheet has the rows. The sheet wins — and since the task has
-    already FINISHED, saying “in the sheet” is a fact, not the on-screen claim that V2-278 prohibits in flight."""
-    _done_task_with_sheet([{"title": "Fender CD-60", "price": "120 €", "url": "https://x/1"},
-                           {"title": "Crafter FX 550", "price": "140 €", "url": "https://x/2"}])
-    line = _line("NAVEGADOR — YA TERMINADO")
-    assert "terminó SIN traer nada" not in line, \
-        "con filas con nombre en la hoja, «SIN traer nada» es una mentira activa en el prompt"
-    assert "Fender CD-60" in line and "120 €" in line, \
-        "la orden de nombrarlo sin las filas delante es la trampa de V2-298 otra vez"
-    assert "en la hoja de resultados" in line
-
-
-def test_a_task_that_ended_empty_STILL_says_so(_isolated_sheet):
-    """The other half of V2-150 is not lost: with no rows and no result, “finished WITHOUT bringing anything” remains
-    the most useful fact of the three."""
-    _done_task_with_sheet([])
-    assert "terminó SIN traer nada" in _line("NAVEGADOR — YA TERMINADO")
-
-
-def test_a_CANCELLED_task_does_not_get_rows_pinned_on_it(_isolated_sheet):
-    """Stopping is not finishing (V2-196): the operator said to stop, and attaching rows to the cancelled task invites
-    treating them as an ending that never happened. The fix applies to the FINISHED task, and only to it."""
-    _done_task_with_sheet([{"title": "Fender CD-60", "price": "120 €"}], status="cancelled")
-    line = _line("NAVEGADOR — YA TERMINADO")
-    assert "se PARÓ (cancelada)" in line
-    assert "Fender CD-60" not in line

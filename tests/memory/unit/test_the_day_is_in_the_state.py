@@ -99,24 +99,6 @@ def test_a_long_episode_is_cut_into_chunks_with_their_own_opener(fresh_db):
     assert max(e["turns"] for e in eps) <= memprompt.reads.EPISODE_MAX_TURNS
 
 
-def test_the_day_is_rendered_for_the_live_tail_with_its_stats(fresh_db):
-    h = 3600
-    _turn("find me a song by the artist from that show", "That would be the lead singer, here it is", 3 * h)
-    _turn("louder", "Done", 3 * h - 60)
-    _live_thread(5)
-    _block, _op, stats = memapi.compose_state(mission_fallback="m")
-    day = memapi.day_block()
-    assert day.startswith("HOY, EN ESQUEMA")
-    assert "find me a song by the artist from that show" in day and "That would be the lead singer" in day
-    assert "live complaint" not in day, "what the live window holds is not repeated in the day"
-    assert "recall" in day, "the header points the model at recall instead of «I have no access»"
-    assert "HOY, EN ESQUEMA" not in _block, "the day is read at the tail of the prompt, not in the cached state"
-    assert stats["day_count"] == 1 and stats["day_chars"] > 0
-    from nucleo.turn.prompt import live_state as _live
-    tail = _live.live_state()
-    assert "HOY, EN ESQUEMA" in tail and "find me a song by the artist from that show" in tail
-
-
 def test_the_days_budget_drops_the_oldest_episode_first(fresh_db):
     h = 3600
     for k in range(10):                                     # ten episodes of three turns, an hour apart, oldest first

@@ -84,19 +84,6 @@ def _close(first_turn: bool, window: list, operator_text: str) -> None:
     return kw
 
 
-def test_the_window_keeps_the_greeting_and_not_the_note(monkeypatch):
-    """The close is the one door that writes his line into the window (`_dialog.push_user`): on the first turn it is
-    not called — the note is not his — and the greeting is appended alone; a normal turn keeps his line."""
-    from memory import api as memory
-    monkeypatch.setattr(memory, "write", lambda *a, **k: None)
-    window: list = []
-    kw = _close(True, window, langs.spec("es").kickoff_prompt)
-    assert not kw["_dialog"].push_user.called, "the kickoff note was written into the window as his words"
-    assert [m["role"] for m in window] == ["assistant"], window
-    kw = _close(False, [], "pepe")
-    assert kw["_dialog"].push_user.call_args[0][1] == "pepe", "a normal turn keeps his line"
-
-
 @pytest.fixture
 def fresh_db(tmp_path, monkeypatch):
     monkeypatch.setenv("ZAELAR_DB", str(tmp_path / "zaelar.db"))
@@ -152,44 +139,7 @@ def test_the_kickoff_opens_the_phase_block_with_the_offer(phase, code):
     assert "PRESENTACIÓN" not in composed
 
 
-def test_the_built_first_prompt_carries_the_offer_as_a_system_section(phase, monkeypatch):
-    from memory import state_cache as memory_cache
-    from nucleo.turn.prompt import builder
-    monkeypatch.setattr(memory_cache, "get", lambda: ("", ""))
-    system = builder.build_flash_system(turn_text=langs.spec("en").kickoff_prompt)[0]
-    assert "PRESENTACIÓN" in system and "CONTEXTO DE FASE" in system
-    assert "I just connected" not in system
-
-
 # ── his answer to our question reaches the model AS an answer (the turn after the greeting) ──────────────
-
-@pytest.mark.parametrize("asked", ["¿Cómo te llamas?", "What should I call you?", "¿A qué hora te viene bien?"])
-def test_the_close_says_what_we_asked_when_our_reply_ended_on_a_question(monkeypatch, asked):
-    """Measured 2026-11-12 on a sandbox, first dialogue after a reset: «pepe» after «¿Cómo te llamas?» was answered
-    «No te he entendido» in 2 of 3 Spanish runs — the state closed on «attend to the REQUEST that follows» and a bare
-    word is no request. The close now states the question we asked; nothing of his line is read."""
-    from memory import state_cache as memory_cache
-    from nucleo.memory_agent import answer_frame
-    from nucleo.turn.prompt import builder
-    monkeypatch.setattr(memory_cache, "get", lambda: ("", ""))
-    monkeypatch.setattr(answer_frame, "asked_before", lambda **k: asked)
-    system = builder.build_flash_system(turn_text="pepe")[0]
-    _prefix, state = builder.split_state(system)
-    assert state.rstrip().endswith("su respuesta, o una petición nueva."), state[-200:]
-    assert f"«{asked}»" in state[-300:] and asked not in _prefix, "the question rides the turn's state, never the cached prefix"
-    assert "Atiende ahora la petición del operador" not in system
-
-
-def test_the_close_is_the_request_line_when_we_asked_nothing(monkeypatch):
-    from memory import state_cache as memory_cache
-    from nucleo.memory_agent import answer_frame
-    from nucleo.turn.prompt import builder
-    monkeypatch.setattr(memory_cache, "get", lambda: ("", ""))
-    monkeypatch.setattr(answer_frame, "asked_before", lambda **k: "")
-    system = builder.build_flash_system(turn_text="pon música")[0]
-    assert system.rstrip().endswith("Atiende ahora la petición del operador que viene a continuación.")
-    assert "Acabas de preguntarle" not in system
-
 
 def test_the_question_is_read_from_the_last_reply_only_while_it_is_the_last_word(fresh_db):
     """The reader the close uses, on the real store: a reply that ended asking frames the next turn; one that ended

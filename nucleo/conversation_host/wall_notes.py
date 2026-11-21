@@ -73,8 +73,9 @@ def _open_question(text) -> bool:
             ask = r.get("ask")
             if _flat(ask.get("text") if isinstance(ask, dict) else ask) == t:
                 return True
-    except Exception:  # noqa: BLE001 — unread: the line is drawn, as when no card is open
-        return False
+    except Exception as e:  # noqa: BLE001 — unread: the line is drawn, as when no card is open
+        from loguru import logger
+        logger.debug(f"wall_notes: the open cards' questions were not read ({e!r}); the line is drawn")
     return False
 
 

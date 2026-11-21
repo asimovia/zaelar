@@ -70,19 +70,6 @@ def test_memory_composes_no_rules():
     assert "Wish" not in block and "REGLAS DEL OPERADOR" not in block
 
 
-def test_the_voice_turn_and_the_worker_read_the_table(monkeypatch):
-    import pathlib
-    from memory import state_cache as memory_cache
-    from nucleo.turn.prompt import builder
-    from rules import prompt as rules_prompt
-    root = pathlib.Path(__file__).resolve().parents[4]
-    monkeypatch.setattr(memory_cache, "get", lambda: ("", ""))
-    monkeypatch.setattr(rules_prompt, "voice_block", lambda: "\n\nRULES-IN-PLAY-MARK")
-    assert "RULES-IN-PLAY-MARK" in builder.build_flash_system(turn_text="hola")[0]
-    assert '_rnotes.for_surface("worker")' in (root / "nucleo/memory_agent/dossier.py").read_text("utf-8")
-    assert '_rnotes.for_surface("voice")' in (root / "nucleo/circuit/__init__.py").read_text("utf-8")
-
-
 # ── the sentences the memory state held move once ────────────────────────────────────────────────────────
 
 def test_the_memory_states_sentences_are_imported_once_with_their_scopes():

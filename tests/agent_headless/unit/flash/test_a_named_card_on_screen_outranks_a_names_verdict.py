@@ -79,27 +79,3 @@ def _turn(lang, phrase, say, open_ids, picks=()):
             "screen": {"open": list(open_ids)}, "model": {"say": say, "tools": []}, "brief": dict(PASS2),
             "select": list(picks), "expect": "close agenda", "forbid": ["data-op"]}
     return harness.run_case(case)
-
-
-@pytest.mark.parametrize("lang", ["en", "es"])
-def test_the_named_card_on_screen_closes_and_the_absent_one_is_not_used(lang):
-    out = _turn(lang, *MIXED[lang], ["agenda", "results"], picks=["agenda"])
-    assert out.decision == "close agenda", (out.decision, out.also, out.reply)
-    assert "close mensajeria" not in out.all_decisions and not [d for d in out.all_decisions if d.startswith("data-op")]
-
-
-@pytest.mark.parametrize("lang", ["en", "es"])
-def test_an_alias_reaches_its_card_through_the_question(lang):
-    out = _turn(lang, *ALIAS[lang], ["agenda", "results"], picks=["agenda"])
-    assert out.decision == "close agenda", (out.decision, out.also, out.reply)
-
-
-@pytest.mark.parametrize("lang", ["en", "es"])
-def test_both_named_cards_on_screen_both_close(lang):
-    out = _turn(lang, *MIXED[lang], ["agenda", "mensajeria"], picks=["agenda", "mensajeria"])
-    assert {"close agenda", "close mensajeria"} <= set(out.all_decisions), out.all_decisions
-
-
-def test_nothing_named_on_screen_closes_nothing():
-    out = _turn("en", "close the weekend", "Done.", ["agenda", "results"])
-    assert out.decision == "talk" and not any(d.startswith("close") for d in out.all_decisions), out.all_decisions

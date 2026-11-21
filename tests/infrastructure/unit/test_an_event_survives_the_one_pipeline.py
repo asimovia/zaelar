@@ -19,7 +19,7 @@ from pathlib import Path
 ENGINE = Path(__file__).resolve().parents[3]
 
 FROZEN = {
-    ("brain", "💬 chat (canal de texto)"),                     # nucleo/cli/api.py: the typed channel's chat row
+    # («💬 chat (canal de texto)» went with `cli/api._wall`: the manager's mouth paints both sides of a typed line)
     # («📩 system note → FlashBrain» went with the notes mailbox, V2-851 F5: no note is drained into a turn)
     ("perf", "🧾 turno (prompt+ventana+tools+decisión)"),       # the turn's decision row, typed or spoken
     ("brain", "🔓 close licenciado por Jev (la gramática no veía orden, dos lectores de acuerdo)"),
@@ -54,7 +54,8 @@ def test_no_frozen_event_of_the_typed_turn_vanishes():
 
 def test_disarm_a_dropped_event_is_named():
     pairs, kinds = _emitted()
-    assert _missing(pairs - {("brain", "💬 chat (canal de texto)")}, kinds) == [("brain", "💬 chat (canal de texto)")]
+    turn_row = ("perf", "🧾 turno (prompt+ventana+tools+decisión)")
+    assert _missing(pairs - {turn_row}, kinds) == [turn_row]
     assert _missing(pairs, kinds - {"consequence"}) == ["consequence"]
 
 
@@ -74,17 +75,3 @@ def test_a_door_reached_is_a_consequence_event_with_its_verdict_and_trace():
         [("music", "music", "veto", True), ("memory.ingest", "memory.ingest", "pass", True)]
     assert got[0]["arg"] == "jazz"
     assert all(e.get("trace") == "t-consequence" for e in got)
-
-
-def test_the_typed_turn_leaves_the_decision_row_and_its_doors():
-    """The whole turn, typed: the same 🧾 row the spoken turn leaves, and the doors it reached as events."""
-    from tests.platform import turn_harness as H
-    case = {"id": "obs-typed", "lang": "en", "phrase": "Put some jazz on.", "source": "refactor2710-01 §2b",
-            "screen": {"open": []}, "expect": "music",
-            "model": {"say": "Putting some jazz on.", "tools": [{"name": "play_music", "args": {"query": "jazz"}}]}}
-    out = H.run_case(case)
-    assert not out.error, out.error
-    ev = out.events or []
-    assert any(e.get("module") == "flash" and e.get("func") == "turn" for e in ev), "the typed turn left no 🧾 row"
-    assert any(e.get("kind") == "consequence" and e.get("door") == "music" for e in ev), \
-        [(e.get("kind"), e.get("label")) for e in ev]

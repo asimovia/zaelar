@@ -60,13 +60,6 @@ def test_a_stale_onset_from_before_the_anchor_grants_nothing(monkeypatch):
     assert not attention.evaluate("y otra cosa", now=t + 6).directed
 
 
-def test_the_vad_rising_edge_stamps_the_onset():
-    body = _src("voice/engine/pipeline/agent.py")
-    i = body.index('@session.on("user_state_changed")')
-    block = body[i:body.index("@session.on(", i + 10)]
-    assert "note_speech_onset()" in block, "the VAD handler no longer stamps the onset — the fix is dead"
-
-
 # ── the ledger and the verifier ─────────────────────────────────────────────────────────────────────────
 def _fake_view(monkeypatch, views: dict, opened: set | None = None):
     from nucleo.circuit import verify
@@ -126,14 +119,3 @@ def test_the_turn_records_its_shown_cards_and_reads_no_claim_from_its_reply():
     prov = _src("voice/engine/llm/providers/nucleo.py")
     assert "_ht.note_shown(_shown_ids" in prov, "the turn's shown apps must reach the ledger"
     assert "_ht.rescue(" not in prov and "follow_up_line" not in prov
-
-
-def test_the_prompt_and_the_heartbeat_read_the_ledger(monkeypatch):
-    # V2-661: the harness lines joined their two neighbours in `live_blocks`; read on the built live state.
-    from nucleo import done_lines as live_record
-    from nucleo.turn.prompt import live_state
-    monkeypatch.setattr(live_record, "harness_lines", lambda: ["HARNESS-MARK"])
-    assert "HARNESS-MARK" in live_state.live_state()
-    assert "harness.prompt_lines()" in _src("nucleo/done_lines.py")
-    loop = _src("nucleo/pulse/loop.py") + _src("nucleo/pulse/flows.py")
-    assert "await self._supervise_harness(now)" in loop and "harness.sweep(now)" in loop

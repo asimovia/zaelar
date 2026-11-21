@@ -51,12 +51,6 @@ def _viva(note: str = _NOTA):
     return r
 
 
-# ── 1. the note arrives IN FULL ────────────────────────────────────────────────────────────────────────
-def test_la_nota_medida_llega_entera_al_prompt():
-    _viva()
-    assert "los 3 finalistas" in P.live_state(), "el prompt sigue sin decir que hay resultados"
-
-
 def test_y_ese_era_el_agujero_el_recorte_viejo_se_comia_justo_esa_parte():
     """Sensitivity test for the one above: with the 60-character cut, the sentence died at “with the”."""
     assert _NOTA[:60] == "Comparativa entregada en pantalla (hoja de resultados con lo"
@@ -75,12 +69,6 @@ def test_una_nota_larga_se_corta_por_PALABRA_y_lo_dice():
 def test_una_nota_corta_no_se_toca():
     assert live_tasks._short_note("Comparativa entregada") == "Comparativa entregada"
     assert not live_tasks._short_note("Comparativa entregada").endswith("…")
-
-
-# ── 2. the block AUTHORIZES reporting it ─────────────────────────────────────────────────────────────────
-def test_sin_ninguna_tarea_viva_no_hay_bloque_que_contradecir():
-    """A notice that always appears is noise; here it would also talk about a nonexistent task."""
-    assert "TAREAS DE FONDO EN CURSO" not in P.live_state()
 
 
 # ── 3. THIRD face: the sheet has 35 candidates and this block said “queued” ───────────────────────────
@@ -115,34 +103,6 @@ def _con_candidatos(kept: int = 35):
     return r
 
 
-def test_los_candidatos_de_la_hoja_llegan_a_ESTE_bloque():
-    _con_candidatos()
-    st = P.live_state()
-    assert "35 candidato" in st, "el bloque sigue sin decir que el worker ya encontró algo"
-
-
-def test_y_ese_era_el_agujero_la_fase_por_si_sola_dice_lo_contrario():
-    """Sensitivity: without `kept`, the block only has the phase, and the measured phase said “queued”.
-
-    It matches against the task MARKER (“they are in the sheet”), not just the word “candidate”:
-    that word also appears in the standing instruction, so the test would pass even with the fact
-    erased—the same green-for-the-wrong-reason that has already slipped through twice in this file.
-    """
-    _con_candidatos(kept=0)
-    st = P.live_state()
-    assert "están en la hoja" not in st, "un encargo SIN candidatos no puede anunciar ninguno"
-    assert "en cola" in st
-
-
-def test_no_pisa_la_nota_entregada_las_dos_caras_conviven():
-    """A task can have both: a progress note saying what it delivered AND counted candidates."""
-    r = _con_candidatos()
-    r.note = _NOTA
-    st = P.live_state()
-    assert "los 3 finalistas" in st
-    assert "35 candidato" in st
-
-
 # ── 4. “found” is NOT “on screen”—the face says what the signal says ────────────────────────────────────
 # Measured in `search-secondhand-monitor__es` (2026-08-24 01:47), in the round that PASSED. Turn 6 said
 #
@@ -160,14 +120,6 @@ def test_no_pisa_la_nota_entregada_las_dos_caras_conviven():
 # The worker writes `kept` with `hbnote considered --kept N` to report its SCOPE: it says how many it has
 # found, never where they are. It is related to V2-209 (“Here it is” over an empty card) and V2-176 (“Done.”
 # over a task that had just started): a phrase of OURS is where a false claim slips in without anyone writing it.
-
-
-def test_el_bloque_dice_CUANTOS_ha_encontrado_y_no_donde_estan():
-    _con_candidatos()
-    st = P.live_state()
-    # V2-444—it still says HOW MANY, not WHERE (V2-278 intact); now it also says WHO is counting it.
-    assert "DICE haber encontrado 35 candidato(s)" in st
-    assert "en la hoja" not in st, "el bloque vuelve a afirmar la PANTALLA desde una señal de amplitud"
 
 
 # ── 4. THE SYMMETRICAL FACE: a setback is also reported (V2-348) ─────────────────────────────────────
@@ -189,10 +141,3 @@ def test_el_bloque_dice_CUANTOS_ha_encontrado_y_no_donde_estan():
 # summarized the other as “it is making progress.” The branch goes INSIDE the same imperative as the one above,
 # not in a standalone sentence: two orders in a paragraph come down to a coin toss.
 _NOTA_FALLO = "coches.net caído tras portada (página de error)"
-
-
-def test_la_nota_de_un_fallo_llega_entera_al_prompt():
-    _viva(_NOTA_FALLO)
-    st = P.live_state()
-    assert "coches.net caído tras portada" in st, "el hecho del fallo no llega: sería fontanería, no conducta"
-

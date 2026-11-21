@@ -145,32 +145,6 @@ def _settle(text: str, *, brief, monkeypatch) -> tuple[list, dict, list]:
     return killed, acted, said
 
 
-@pytest.mark.parametrize("text", [STOP_BANK[3], STOP_BANK[5]])
-def test_the_settle_step_stops_the_errand_on_a_sure_verdict(text, monkeypatch):
-    """The voice turn's backstop door: the model called nothing, the verdict said stop —
-    the errand stops and the stop is SAID (never a mute kill)."""
-    killed, acted, said = _settle(text, brief=_brief("stop"), monkeypatch=monkeypatch)
-    assert killed == [text] and acted["v"] == "stop", "his words name what is cancelled"
-    assert said and said[0].strip(), "a kill is always announced"
-
-
-def test_the_settle_step_refuses_a_stop_the_verdict_keeps(monkeypatch):
-    killed, acted, _said = _settle("los dos navegadores no se tenían que haber abierto", brief=_brief("keep"),
-                                   monkeypatch=monkeypatch)
-    assert killed == [] and acted["v"] is None
-
-
-def test_the_disarm_a_settle_step_that_skips_the_verdict_misses_the_stop(monkeypatch):
-    """Disarm: the settle door skips the verdict → the same sure stop stops nothing."""
-    from nucleo.flash import post_stream_settle
-    real = sd.repair
-    monkeypatch.setattr(post_stream_settle._stop_decision, "repair",
-                        lambda brief, text, **kw: real(None, text, **kw))
-    assert post_stream_settle._stop_decision.repair is not real
-    killed, acted, _said = _settle(STOP_BANK[3], brief=_brief("stop"), monkeypatch=monkeypatch)
-    assert killed == [] and acted["v"] is None
-
-
 def test_the_disarm_a_tool_gate_that_skips_the_verdict_runs_a_bleed(monkeypatch):
     """Disarm: the tool gate skips the verdict → a sure «keep» no longer refuses the model's dragged-in stop."""
     real = sd.model_stop

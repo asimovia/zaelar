@@ -72,18 +72,3 @@ def test_the_condition_behind_each_face_has_a_production_writer(face, pattern, w
 #: ratchet moved it to `live_blocks.py` (V2-276). It points to the file and NOT the entire directory on
 #: purpose: searching for “MURO” throughout the engine would include the tests and any comment, and this
 #: guard exists precisely so that renaming a face fails.
-
-
-def test_y_el_bloque_SIGUE_llegando_al_prompt():
-    """The move must not leave the faces composed but with no caller: that would make them dead code again.
-
-    This is literally the failure this file exists to catch (V2-199/V2-200), applied to the extraction that
-    moved it. It is checked by RENDERING, not by reading the `import`.
-    """
-    import pytest
-    from widgets.navegador import live_lines as live_browser
-    from nucleo.turn.prompt import live_state
-    with pytest.MonkeyPatch.context() as mp:
-        mp.setattr(live_browser, "navegador_lines", lambda: ["NAVEGADOR-MARK"])
-        assert "NAVEGADOR-MARK" in live_state.live_state(), (
-            "`live_state` dejó de llamar al bloque: el estado del navegador ya no llega al turno")

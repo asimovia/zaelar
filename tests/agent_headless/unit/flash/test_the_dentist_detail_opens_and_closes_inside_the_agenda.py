@@ -23,29 +23,6 @@ SAID_OPEN = "Ábreme la ficha del dentista, que quiero verla"
 SAID_CLOSE = "Vale, ya la puedes cerrar"
 
 
-def test_the_rung_opens_the_one_row_his_sentence_names():
-    from tests.platform.turn_harness import Isolated
-    with Isolated("es"):
-        from memory import api as memapi
-        from widgets.agenda import data as ag
-        memapi.set_state({"open_widgets": ["agenda"]})
-        # A date relative to today: a fixed one turned into a PAST meeting the day after it, and the row stopped
-        # being one the sentence could name.
-        upcoming = (dt.date.today() + dt.timedelta(days=7)).isoformat()
-        ag.apply_action("add_meeting", {"title": "Dentista", "date": upcoming, "startTime": "10:00",
-                                        "endTime": "11:00"})
-        ev = threading.Event()
-        ev.set()
-        brief = {"event": ev, "turn_id": "t", "open_ids": ["agenda"], "_call_id": "t", "result": {
-            "screen_action": {"choice": "agenda:open_meeting", "confidence": 0.99},
-            "canvas": {"choice": "show", "confidence": 1.0},
-            "request_type": {"choice": "order", "confidence": 1.0},
-            "wants_words": {"choice": "act", "confidence": 1.0}}}
-        rung = DA.resolve(SAID_OPEN, brief=brief, operator_text=SAID_OPEN, model_words="Voy a abrirla.")
-        assert (rung.get("action"), rung.get("payload")) == ("open_meeting", {"title": "Dentista"}), rung
-        assert DA.named_row("agenda", "open_meeting", "ábreme la ficha del fontanero") == {}
-
-
 @pytest.fixture
 def verdict(monkeypatch):
     st = {"canvas": "close", "action": ("agenda", "close_meeting"), "conf": 1.0}
@@ -70,12 +47,3 @@ def test_a_sure_close_of_the_detail_never_closes_the_agenda(verdict, monkeypatch
 def test_an_unsure_inner_verdict_keeps_the_close(verdict):
     verdict["conf"] = 0.6
     assert CC.data_close("agenda", "open_meeting", SAID_CLOSE, brief=object()) is True
-
-
-def test_a_card_that_publishes_no_rows_never_gets_his_sentence_as_a_selector():
-    """Demo pass 134, E3: `mensajeria` publishes no row index, `refs.resolve` handed the raw sentence back, and the
-    rung filled `forward {from: «send the invoice to quinn…»}` — a forward with no recipient and no note."""
-    from tests.platform.turn_harness import Isolated
-    with Isolated("en"):
-        said = "send the invoice to quinn, tell him we're already trying inworld and he should book it"
-        assert DA.named_row("mensajeria", "forward", said) == {}

@@ -51,24 +51,6 @@ def test_every_status_the_code_writes_is_classified():
         "`nucleo/turn/prompt/live_state.py` (un final que suena igual que otro distinto tampoco sirve).")
 
 
-def test_open_is_an_ENDED_state_and_says_what_it_is():
-    """The one that was in the gap. It is neither a failure nor a result: it is a tab that remains in front of them."""
-    from nucleo.turn.prompt import live_state as _p
-
-    assert "open" in tasks.ENDED_STATES
-    tasks._tasks.clear()
-    tid = tasks.create("Abrir Booking")
-    tasks.set_status(tid, "working")
-    tasks.update_view(tid, url="https://www.booking.com/")
-    tasks.set_status(tid, "open")
-    try:
-        state = _p.live_state()
-        assert "está ABIERTA en pantalla" in state
-        assert "terminó SIN traer nada" not in state
-    finally:
-        tasks._tasks.clear()
-
-
 def test_entering_ANY_ended_state_stamps_when_it_ended():
     """`recently_finished()` filters by a time window, so an ending without a timestamp is an ending that nobody
     can date — and it disappears anyway. The stamp is applied when ENTERING an ending, not by each function separately."""

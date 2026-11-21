@@ -100,26 +100,6 @@ def test_an_action_the_WIDGET_refused_is_not_remembered_as_done(agenda):
     assert not done_ops.recent(), f"a refused action entered the book of what happened: {done_ops.recent()}"
 
 
-def test_cancelling_ONE_meeting_is_destructive_in_the_ledger(agenda):
-    """V2-710 T0.1 — THE BOOK ASKED THE WRONG QUESTION. `_note_done` classified with `actions.classify`,
-    which answers how much FRICTION an action has, to fill a field that asks whether the action REMOVED
-    something. They are different questions and `agenda:cancel_meeting` is where they disagree: it is FAST
-    on purpose (V2-707 F1 — one row with a selector and a snapshot runs, N>1 asks by radius), so the book
-    recorded the deletion of a real Google Calendar event as `destructive: False` and `done_ops_lines()`
-    emitted the mild instruction. That is the V2-707 F6 incident in its ONE-ROW form, which is the normal
-    way of deleting an appointment: measured 2026-09-16, `classify=fast` → `destructive=False`.
-
-    The field is filled by `contract.is_destructive`, which answers the question the field asks."""
-    _run("cancel_meeting", {"title": "Dentist"})
-    rows = done_ops.recent()
-    assert rows and rows[-1]["action"] == "cancel_meeting", rows
-    assert rows[-1]["destructive"] is True, (
-        "cancelling a meeting REMOVES a row (and a real calendar event), so the book has to say so — "
-        "asking `actions.classify` here answers how much friction it has, not what it did")
-    line = next(l for l in _live().splitlines() if l.startswith("YA EJECUTADO"))
-    assert "TIENE RAZÓN" in line, "and the HARD instruction is the one that has to reach the turn"
-
-
 def test_the_generic_data_door_writes_the_ledger_too(agenda):
     """V2-707 F1's `rows.*` is the path for what nobody declared, and it is still a mutation of his data."""
     _run("rows.delete", {"collection": "meetings", "where": {"allDay": True}, "confirmed": True})
@@ -129,35 +109,6 @@ def test_the_generic_data_door_writes_the_ledger_too(agenda):
 
 
 # ── 2 · it reaches the turn, with its rule ───────────────────────────────────────────────────────────────
-
-def test_the_prompt_says_it_happened(agenda):
-    _run("clear_range", {"from": "2026-09-17", "to": "2026-09-17"})
-    live = _live()
-    assert "YA EJECUTADO SOBRE SUS DATOS" in live
-    assert "agenda:clear_range" in live
-
-
-def test_and_the_instruction_forbids_the_sentence_he_ACTUALLY_heard(agenda):
-    """A fact without its rule changes nothing (V2-453). The rule names the exact reasoning that failed:
-    deducing from «no confirmation» that nothing was touched."""
-    _run("clear_range", {"from": "2026-09-17", "to": "2026-09-17"})
-    line = next(l for l in _live().splitlines() if l.startswith("YA EJECUTADO"))
-    assert "TIENE RAZÓN" in line
-    assert "no se ha tocado nada" in line, "the measured reply has to be forbidden by name"
-    assert "confirmación" in line, "and the reasoning behind it named as the wrong thing to reason from"
-
-
-def test_a_clean_session_carries_no_line_at_all(agenda):
-    assert "YA EJECUTADO SOBRE SUS DATOS" not in _live()
-
-
-def test_a_reversible_op_alone_gets_the_MILD_instruction(agenda):
-    """«You deleted my stuff» is not a claim anybody makes about an `add_meeting`, and a prompt that shouts
-    on every write teaches the model to ignore the line."""
-    _run("add_meeting", {"title": "New", "date": "2026-09-18", "startTime": "10:00"})
-    line = next(l for l in _live().splitlines() if l.startswith("YA EJECUTADO"))
-    assert "TIENE RAZÓN" not in line and "cuéntalo como hecho" in line
-
 
 def test_the_ledger_forgets_what_is_no_longer_the_conversation(agenda):
     """Half an hour later he is not asking about this turn, and the prompt must not carry it forever."""

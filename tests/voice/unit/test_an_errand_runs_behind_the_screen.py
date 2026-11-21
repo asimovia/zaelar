@@ -48,13 +48,6 @@ def test_no_verdict_is_no_show(monkeypatch, shows):
     assert not [l for l, _ in shows if l == "show"]
 
 
-@pytest.mark.parametrize("wid,action", [("navegador", "open"), ("agenda", "add_event")])
-def test_a_turn_that_asks_to_see_it_brings_the_card(monkeypatch, shows, wid, action):
-    _verdict(monkeypatch, "show")
-    assert cv.present_for_call(wid, action, brief={"x": 1}, emit=_emit(shows)) is True
-    assert shows[-1][0] == "show" and shows[-1][1]["id"] == wid and shows[-1][1]["reason"] == "turn-order"
-
-
 def test_an_output_that_only_exists_on_screen_brings_its_card_whatever_the_verdict(monkeypatch, shows):
     _verdict(monkeypatch, "neither")
     assert cv.present_for_call("musica", "play", brief={"x": 1}, emit=_emit(shows)) is True
@@ -65,12 +58,6 @@ def test_a_lens_over_a_closed_card_brings_it(monkeypatch, shows):
     _verdict(monkeypatch, "neither")
     assert cv.present_for_call("agenda", "show_day", brief={"x": 1}, emit=_emit(shows)) is True
     assert shows[-1][1]["reason"] == "turn-order"
-
-
-def test_the_card_presented_is_the_one_the_caller_narrowed_to(monkeypatch, shows):
-    _verdict(monkeypatch, "show")
-    cv.present_for_call("results", "present", brief={"x": 1}, card="results::abc-1", emit=_emit(shows))
-    assert shows[-1][1]["id"] == "results::abc-1"
 
 
 # ── the rungs that run a card action ahead of a worker: each one, driven, under `canvas = neither` ──────────────

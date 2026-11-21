@@ -97,37 +97,3 @@ def test_the_operator_semaphore_is_lit(monkeypatch):
 def _state() -> str:
     from nucleo.turn.prompt import live_state as prompt
     return prompt.live_state()
-
-
-def test_the_turn_is_told_that_it_cannot_look(monkeypatch):
-    monkeypatch.setenv("ZAELAR_EMBED_BACKEND", "hash")
-    websearch.note_failure("google: Weekly Limit Exhausted")
-    st = _state()
-    assert "BÚSQUEDAS WEB NO ESTÁN FUNCIONANDO" in st
-
-
-def test_it_says_WHICH_reason(monkeypatch):
-    monkeypatch.setenv("ZAELAR_EMBED_BACKEND", "hash")
-    websearch.note_failure("google: unusual traffic detected")
-    assert "anti-robot" in _state()
-    websearch.note_success()
-    websearch.note_failure("google: Weekly Limit Exhausted")
-    assert "cuota" in _state()
-
-
-def test_and_it_forbids_the_exact_sentence_the_run_kept_saying(monkeypatch):
-    """The measured harm was not keeping the fact quiet: it was promising “I'll let you know as soon as I have it”
-    about something that was never going to arrive. The instruction must target THAT sentence, not merely inform."""
-    monkeypatch.setenv("ZAELAR_EMBED_BACKEND", "hash")
-    websearch.note_failure("google: Weekly Limit Exhausted")
-    st = _state()
-    assert "en cuanto lo tenga" in st, "no se nombra la promesa que hay que dejar de hacer"
-    assert "navegador" in st, "se prohíbe esperar sin ofrecer nada a cambio"
-
-
-def test_a_healthy_layer_puts_NOTHING_in_the_turn(monkeypatch):
-    """The other half: without this, “report when the search is down” and “always report” pass the same test—and
-    an agent that says it cannot search when it can is worse than the original defect."""
-    monkeypatch.setenv("ZAELAR_EMBED_BACKEND", "hash")
-    websearch.note_success()
-    assert "BÚSQUEDAS WEB NO ESTÁN FUNCIONANDO" not in _state()

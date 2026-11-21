@@ -83,6 +83,13 @@ def test_an_operator_only_tool_is_still_denied():
     assert _act("use_tool", tool="delete_widget") == DENY
 
 
+def test_an_action_the_widget_declares_his_own_control_is_denied_to_a_worker():
+    """CRIT-K26: a manifest's `"worker": false` (his view, the widget's settings) is DENIED to a Brain Worker; the
+    same widget's other declared acts still pass."""
+    assert _act("widget_data", widget_id="contactos", action="set_alias") == DENY
+    assert _act("widget_data", widget_id="contactos", action="add_contact") == ALLOW
+
+
 # ── 3 · and the radius still is the friction, through the worker's own door ──────────────────────────────
 
 @pytest.fixture

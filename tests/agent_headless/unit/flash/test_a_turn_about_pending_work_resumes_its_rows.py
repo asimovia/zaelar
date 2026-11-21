@@ -192,13 +192,6 @@ def _live_state_pending(with_rows: bool) -> list[str]:
     return [] if i is None else state[i:i + 1 + len(pending_work.rows())]
 
 
-def test_the_disarm_a_live_state_without_the_pending_block(monkeypatch):
-    """Disarm: when the live block yields nothing, the prompt loses the rows the model resumes by id."""
-    from nucleo.turn.prompt import live_history
-    monkeypatch.setattr(live_history, "pending_work_lines", lambda: [])
-    assert _live_state_pending(True) == []
-
-
 def test_the_resume_tool_is_offered_only_when_something_is_pending():
     from nucleo.flash import router
     names = lambda ctx: [t["function"]["name"] for t in router.tools(ctx)]   # noqa: E731

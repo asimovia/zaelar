@@ -148,7 +148,7 @@ def test_the_browser_publishes_on_the_topic_the_engine_listens_on():
     assert 'topic: "zaelar-wake"' in s and '"t": "zaelar-wake"' in s.replace("t: \"zaelar-wake\"", '"t": "zaelar-wake"')
 
 
-@pytest.mark.parametrize("name", ["normalize", "spotIn", "wakeNames", "paintsProvisional", "armed", "takeTail"])
+@pytest.mark.parametrize("name", ["normalize", "spotIn", "wakeNames", "armed", "takeTail"])
 def test_the_rules_stay_exported_for_the_test_to_drive(name):
     # The V2-647 lesson: the moment one of these stops being reachable, its `.mjs` starts testing a copy.
     assert f"export function {name}(" in _src(EAR)

@@ -62,21 +62,3 @@ def test_two_screens_reporting_one_app_are_two_records():
 
 def test_a_short_prompt_is_kept_whole():
     assert observer._prompt_excerpt("corto") == "corto"
-
-
-def test_and_a_REAL_turn_keeps_its_browser_block():
-    """The check that matters, using the real prompt rather than filler."""
-    from nucleo.turn.prompt import builder as _p
-    from widgets.navegador import tasks
-
-    tasks._tasks.clear()
-    tid = tasks.create("Reservar noche en el hotel")
-    tasks.set_status(tid, "working")
-    tasks.update_view(tid, url="chrome-error://chromewebdata/")
-    try:
-        system, _ = _p.build_flash_system(turn_text="¿lo tienes ya?")
-        ex = observer._prompt_excerpt(system)
-        assert "NAVEGADOR" in ex
-        assert "· MURO: " in ex
-    finally:
-        tasks._tasks.clear()

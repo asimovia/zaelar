@@ -10,7 +10,6 @@ if TYPE_CHECKING:
 from loguru import logger
 
 from nucleo.circuit import breadth as _breadth   # module level: imported lazily inside a worker's ending it hung
-from nucleo.workers import session as _s
 
 
 def parked(rec) -> bool:
@@ -214,3 +213,7 @@ async def _deliver(rec: "SessionRecord") -> None:
         await _notices.notify("zaelar", _line, kind="done", key=_key, task_id=_row)
     except Exception as e:  # noqa: BLE001
         logger.warning(f"worker[{rec.task_id}]: entrega proactiva falló: {e}")
+
+
+# Last, so importing this part on its own finds its own names defined when `session` imports it back (a cycle).
+from nucleo.workers import session as _s  # noqa: E402

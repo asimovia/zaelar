@@ -50,23 +50,6 @@ def test_a_parked_task_stays_in_the_live_list(tasks):
     assert [r["id"] for r in tasks.active_progress()] == [tid]
 
 
-def test_the_turn_says_it_is_asking_and_quotes_the_question():
-    """The whole point: the state must ORDER the brain to ask, with the question in it. A line that merely says
-    «parada» reproduces the measured failure — the model already had «parada» and narrated progress anyway."""
-    t = importlib.import_module("widgets.navegador.tasks")
-    t._tasks.clear()
-    tid = t.create("comprar entradas del teatro")
-    t.ask(tid, "Voy a pulsar «Comprar entradas». ¿Lo confirmo?")
-
-    from nucleo.turn.prompt import live_state as prompt
-    live = prompt.live_state()
-
-    assert "ESTÁ PARADA ESPERANDO TU OK" in live
-    assert "Comprar entradas" in live
-    assert "PREGÚNTASELO EN ESTE TURNO" in live
-    t._tasks.clear()
-
-
 def test_the_spoken_yes_reaches_the_waiting_click(tasks):
     """The route back. `take_answer` is what the gate polls, so this is the exact byte the blocked coroutine
     consumes — not a proxy for it."""

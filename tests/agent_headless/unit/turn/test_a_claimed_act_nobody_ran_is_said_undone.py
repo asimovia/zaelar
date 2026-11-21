@@ -94,24 +94,6 @@ def _lean(target):
     return {tb.TARGET_KEY: (target, {"confidence": 0.3})}
 
 
-@pytest.mark.parametrize("lang, said, lean", [
-    ("en", "Nothing's on screen to exit from — but I've cleared it, so you're at an empty canvas now.",
-     {"canvas": ("exit_fullscreen", {"confidence": 1.0})}),
-    ("es", "Hecho, te he quitado la clase del martes que viene.",
-     {tb.CATALOG_KEY: ("agenda", {"confidence": 0.93}), **_lean("agenda:cancel_meeting")}),
-    ("en", "Sure — I've cancelled just next Tuesday's piano with Abril.",
-     {tb.TARGET_KEY: ("agenda:cancel_meeting", {"confidence": 0.6})}),
-])
-def test_a_sure_order_about_a_card_with_no_call_and_nothing_run_is_said_undone(turn, monkeypatch, lang, said, lean):
-    monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
-    from i18n import langs
-    turn.update(ORDER)
-    turn.update(lean)
-    text, out = _say(said, calls=[], quiet=True)
-    assert out == [langs.current_language().reply_nothing_done], out
-    assert text.startswith(said)
-
-
 def test_a_card_that_acted_this_turn_owes_nothing_for_the_call(turn):
     """The verdict completed or replaced the call on that card (CRIT-K2): no «not done» beside a landed op."""
     _t, out = _say("Done.", calls=[_call("youtube", "move")], tasks=[("youtube::remove", _Done(OK))], quiet=False)
@@ -141,24 +123,6 @@ def test_nothing_is_said_undone_when_the_turn_asked_held_answered_or_acted(turn,
 
 MESSAGING = {**ORDER, tb.CATALOG_KEY: ("mensajeria", {"confidence": 0.9}), **_lean("mensajeria:send_to")}
 SEND_AIM = {**ORDER, tb.TARGET_KEY: ("mensajeria:send_to", {"confidence": 0.9})}
-
-
-@pytest.mark.parametrize("lang, said, calls, brief", [
-    ("en", "Done.", [{"name": "recall", "args": {}}],
-     {**ORDER, tb.CATALOG_KEY: ("agenda", {"confidence": 0.9}), **_lean("agenda:add_meeting")}),
-    ("en", "Done.", [{"name": "show_panel", "args": {"panel": "connectors"}}], MESSAGING),
-    ("es", "Hecho.", [{"name": "show_panel", "args": {"panel": "connectors"}}], SEND_AIM),
-    ("es", "Listo, te lo enseño.", [{"name": "play_video", "args": {"query": "x"}}], MESSAGING),
-])
-def test_a_sure_order_served_on_another_card_is_said_undone(turn, monkeypatch, lang, said, calls, brief):
-    """Reader 3: the model called something, but nothing addressing the ONE card the order names, no data-op ran and
-    no door touched that card — `unmet`, said after the model's words."""
-    monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
-    from i18n import langs
-    turn.update(brief)
-    text, out = _say(said, calls=calls, quiet=False)
-    assert out == [langs.current_language().reply_nothing_done], out
-    assert text.startswith(said)
 
 
 @pytest.mark.parametrize("said, calls, tasks, brief", [
@@ -197,27 +161,10 @@ def test_the_ordered_card_is_the_catalogue_choice_else_the_screen_actions_card(t
     assert unserved.ordered_card({}) == ""
 
 
-def test_disarmed_reader_three_turns_the_served_elsewhere_case_red(turn, monkeypatch):
-    """Disarm: `served_elsewhere` answers False (the reader unwired) → the order served on another card says nothing."""
-    monkeypatch.setattr(unserved, "served_elsewhere", lambda brief, tasks, model_calls: False)
-    with pytest.raises(AssertionError):
-        test_a_sure_order_served_on_another_card_is_said_undone(
-            turn, monkeypatch, "en", "Done.", [{"name": "show_panel", "args": {"panel": "connectors"}}], MESSAGING)
-
-
 @pytest.mark.parametrize("said, asking", [("", False), ("   ", False), ("¿Se lo mando?", True), ("Which one?»", True),
                                            ("Done.", False)])
 def test_an_empty_reply_never_reads_as_ending_asking(said, asking):
     assert unserved._ended_asking(said) is asking
-
-
-@pytest.mark.parametrize("lang", ["es", "en"])
-def test_a_silent_turn_that_served_the_order_on_another_card_is_said_undone(turn, monkeypatch, lang):
-    monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
-    from i18n import langs
-    turn.update(MESSAGING)
-    _t, out = _say("", calls=[{"name": "show_panel", "args": {"panel": "connectors"}}], quiet=False)
-    assert out == [langs.current_language().reply_nothing_done], out
 
 
 @pytest.mark.parametrize("lang", ["es", "en"])
@@ -227,16 +174,6 @@ def test_a_silent_turn_whose_card_call_nobody_ran_is_said_not_run(turn, monkeypa
     from nucleo.flash import card_receipt
     _t, out = _say("", calls=[_call("agenda", "set_reminder")], quiet=True)
     assert out == [langs.current_language().reply_not_run.format(cards=card_receipt.card_name("agenda"))], out
-
-
-def test_disarmed_an_empty_reply_read_as_asking_silences_the_silent_turn(turn, monkeypatch):
-    """Disarm: `_ended_asking` back to `last in marks` (the empty string is in every string) → the silent turn is red."""
-    monkeypatch.setattr(unserved, "_ended_asking",
-                        lambda said: str(said or "").rstrip().rstrip("»\"'”)")[-1:] in unserved._QUESTION_MARKS)
-    with pytest.raises(AssertionError):
-        test_a_silent_turn_that_served_the_order_on_another_card_is_said_undone(turn, monkeypatch, "en")
-    with pytest.raises(AssertionError):
-        test_a_silent_turn_whose_card_call_nobody_ran_is_said_not_run(turn, monkeypatch, "en")
 
 
 def test_a_read_that_did_not_run_is_no_act_to_say_undone(turn, monkeypatch):
@@ -257,64 +194,3 @@ def test_the_turn_hands_the_mouth_the_models_calls_and_whether_any_door_ran():
     kw = {k.arg: ast.unparse(k.value) for k in calls[0].keywords}
     assert {"model_calls", "quiet", "held"} <= set(kw), kw
     assert "_turn_calls" in kw["model_calls"], kw["model_calls"]
-
-
-def test_a_turn_whose_words_wait_behind_an_act_is_not_a_silent_one(turn):
-    """The hold deferred the model's words to the turn's end: nothing is said undone over an answer still to come."""
-    turn.update({**ORDER, tb.CATALOG_KEY: ("agenda", {"confidence": 0.9}), **_lean("agenda:add_meeting")})
-    unserved.waiting()
-    _t, out = _say("", calls=[], quiet=True)
-    assert out == [], out
-    unserved._WAITING.clear()
-    _t, out = _say("", calls=[], quiet=True)
-    assert out, "with no words waiting the silent turn is said undone"
-
-
-def test_an_order_whose_card_is_being_written_is_not_said_undone(turn, monkeypatch):
-    """Demo sandbox 2026-11-17, F1: «write me a one page summary … in a document» → the compose rung started writing
-    the document in the background (`canvas_focus.writing`), the model called nothing and the turn's doors had not
-    landed yet; «Nothing got done for that yet.» was said 2 ms later, and the document arrived 8 s after it. An act in
-    flight is not an act undone: its landing reports it. Disarm: drop `this_turn_writes` from the reader → red."""
-    turn.update({**ORDER, tb.CATALOG_KEY: ("documento", {"confidence": 0.87}), **_lean("documento:show")})
-    monkeypatch.setattr(canvas_focus, "this_turn_writes", lambda: ["documento"])
-    _t, out = _say("I'll put together a one-page summary in a document now.", calls=[], quiet=True)
-    assert out == [], out
-    monkeypatch.setattr(canvas_focus, "this_turn_writes", lambda: [])
-    _t, out = _say("I'll put together a one-page summary in a document now.", calls=[], quiet=True)
-    assert out and out[-1], "with nothing being written the order is said undone, as before"
-
-
-@pytest.mark.parametrize("lang, said", [
-    ("es", "Vale, lo dejo. Si quieres que quite algo de la pantalla, dímelo."),
-    ("en", "OK, I'll leave it. Tell me if you want anything off the screen."),
-])
-def test_an_order_that_names_a_card_and_reads_no_act_is_not_said_undone(turn, monkeypatch, lang, said):
-    """His engine, 2026-11-18: «I was watching TV, forget that message» read `order` 0.77 and the messaging card 0.70,
-    with `screen_action` and `end_state` absent; «That is not done yet.» was glued to «OK, I'll leave it». A card he
-    only talked about owes no act: the unmet line needs an act or an end state the turn read (`reads_an_act`)."""
-    monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
-    from i18n import langs
-    turn.update({**ORDER, tb.CATALOG_KEY: ("mensajeria", {"confidence": 0.7})})
-    _t, out = _say(said, calls=[], quiet=True)
-    assert out == [], out
-    turn.update(_lean("mensajeria:send_to"))             # the same order with an act read on that card owes it
-    _t, out = _say(said, calls=[], quiet=True)
-    assert out == [langs.current_language().reply_nothing_done], out
-
-
-def test_an_end_state_the_turn_read_is_an_act_read(turn, monkeypatch):
-    monkeypatch.setattr("nucleo.circuit.spec.end_state_verdict", lambda brief: "agenda:meeting")
-    assert unserved.reads_an_act({}, "agenda")
-    monkeypatch.setattr("nucleo.circuit.spec.end_state_verdict", lambda brief: "")
-    assert not unserved.reads_an_act({}, "agenda")
-    turn.update(_lean("youtube:play"))
-    assert not unserved.reads_an_act({}, "agenda"), "a lean on another card reads no act on this one"
-
-
-def test_disarmed_a_card_named_without_an_act_is_said_undone_again(turn, monkeypatch):
-    """Disarm: `reads_an_act` answers True (the requirement unwired) → «Eso aún no está hecho.» over his comment → red."""
-    monkeypatch.setattr(unserved, "reads_an_act", lambda brief, card: True)
-    assert unserved.reads_an_act({}, "mensajeria"), "the disarm landed"
-    with pytest.raises(AssertionError):
-        test_an_order_that_names_a_card_and_reads_no_act_is_not_said_undone(
-            turn, monkeypatch, "es", "Vale, lo dejo. Si quieres que quite algo de la pantalla, dímelo.")

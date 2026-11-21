@@ -11,7 +11,6 @@ if TYPE_CHECKING:
 import time
 from dataclasses import dataclass, field
 
-from nucleo.workers import session as _s
 from voice import trace as _trace
 
 
@@ -131,3 +130,7 @@ class SessionRecord:
     # runtime handles (NOT serialized):
     session: "WorkerSession | None" = None
     task: "asyncio.Task | None" = None
+
+
+# Last, so importing this part on its own finds its own names defined when `session` imports it back (a cycle).
+from nucleo.workers import session as _s  # noqa: E402

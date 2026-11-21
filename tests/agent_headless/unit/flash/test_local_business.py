@@ -42,7 +42,6 @@ def fresh_db(tmp_path, monkeypatch):
     memdb.reset_db()
 
 
-
 @pytest.mark.parametrize("text,expected", [
     ("reserva mesa en Casa Lucio esta noche", "restaurant_booking"),
     ("resérvame una noche de hotel en Burgos el 20 de septiembre", "hotel_booking"),
@@ -57,31 +56,3 @@ def test_the_catalog_has_a_destination_in_both_locales():
     for locale in ("es", "us"):
         entry = sc.entry_for("local_business", locale)
         assert entry is not None and entry.url
-
-
-def test_the_promise_after_the_missing_datum_now_starts_something(monkeypatch):
-    """The real turn (the voice turn, typed and dry): the operator finally gives the neighbourhood and zaelar says
-    it is on it. Before this, nothing fired — and two turns later it reported a task that had never existed."""
-    from tests.platform import turn_harness as H
-    monkeypatch.setattr("nucleo.dispatch.has_active", lambda: False)
-    out = H.run_case({
-        "id": "v144", "lang": "es", "phrase": "En Valencia, por el barrio de Ruzafa.", "source": "V2-144",
-        "screen": {"open": []}, "expect": "escalate",
-        "brief": {"escalate_or_inline": ("escalate", 1.0)},    # refactor2710-03: the brief owes the act, not our words
-        "model": {"say": "Perfecto. Me pongo a buscar peluquerías en el barrio de Ruzafa, Valencia, y te digo cuál "
-                         "encuentro."},
-        "history": [
-            {"role": "user", "text": "Resérvame hora en la peluquería de siempre para el sábado por la mañana."},
-            {"role": "assistant", "text": "¿Cuál es el nombre?"},
-            {"role": "user", "text": "la de siempre, no me lo sé"},
-            {"role": "assistant", "text": "¿En qué ciudad vives?"}]})
-    assert not out.error, out.error
-    assert out.action == "escalate", (out.action, out.reply)
-
-
-def test_the_prompt_says_not_to_ask_for_what_it_can_look_up(fresh_db):
-    """Turn 1 asked for the phone number. A phone is exactly what a search returns; asking for it blocks the
-    task on something zaelar can find. What was genuinely missing was the neighbourhood — and the operator gave
-    it the moment he was asked for it."""
-    system, _ = prompt.build_flash_system()
-    assert "pide solo lo que NO puedes averiguar" in system

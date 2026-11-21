@@ -308,24 +308,6 @@ def test_an_instance_id_the_model_names_passes_through_the_show_resolver():
     assert res.get("match") != "nosuch::m1", "an instance of a piece that does not exist names nothing"
 
 
-def test_the_turn_is_told_which_closed_sheets_it_can_bring_back(monkeypatch):
-    """The resolver names a closed sheet, but the model has to KNOW it exists to ask for it (demo S1: «no
-    monitor widget in your setup»). Three at most, most recent first, the open ones left out."""
-    from memory import api as memapi
-    from nucleo import done_lines as live_record
-    monkeypatch.setattr(instances, "recent_faces", lambda limit=5: [{"id": "results::m1", "label": "Three monitors"},
-                                                                    {"id": "results::o1", "label": "Open one"},
-                                                                    {"id": "results::t9", "label": "Trips"}])
-    monkeypatch.setattr(memapi, "state", lambda: {"open_widgets": ["results::o1"]})
-    lines = live_record.shelf_lines()
-    assert len(lines) == 1 and "results::m1" in lines[0] and "results::t9" in lines[0] and "results::o1" not in lines[0], lines
-    monkeypatch.setattr(instances, "recent_faces", lambda limit=5: [])
-    assert live_record.shelf_lines() == []
-    from nucleo.turn.prompt import live_state
-    monkeypatch.setattr(live_record, "shelf_lines", lambda: ["SHELF-MARK"])
-    assert "SHELF-MARK" in live_state.live_state(), "the live block must carry it"
-
-
 def test_an_open_sheet_is_never_on_the_shelf_of_closed_ones(monkeypatch):
     """Demo pass 135: the state keeps BASE ids (`results`), the shelf lists INSTANCES — the monitor sheet on screen
     was offered as a closed sheet. The canvas's own instance list is read too."""

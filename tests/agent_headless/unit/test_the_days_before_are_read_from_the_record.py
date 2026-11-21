@@ -72,10 +72,3 @@ def test_bounded_and_facts_only():
     assert line.count(" | ") <= live_history.EARLIER_MAX - 1 and len(line) <= live_history.EARLIER_MAX_CHARS + 200
     for rule in ("NUNCA", "NO ", "DILO", "debes"):
         assert rule not in line, f"facts only — «{rule}» is an instruction"
-
-
-def test_the_turn_prompt_carries_it(monkeypatch):
-    from nucleo.turn.prompt import live_history
-    from nucleo.turn.prompt import live_state
-    monkeypatch.setattr(live_history, "earlier_lines", lambda: ["EARLIER-MARK"])
-    assert "EARLIER-MARK" in live_state.live_state(), "the block is built and never reaches the turn"

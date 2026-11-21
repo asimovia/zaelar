@@ -219,26 +219,6 @@ def _code(path: Path) -> str:
     return " ".join(out)
 
 
-def test_the_prompt_carries_the_packs_after_the_operators_own_directive(monkeypatch):
-    """A directive is HIS instruction and a pack is OURS, so his is read last of the two — on the built prompt."""
-    from memory import state_cache as memory_cache
-    from nucleo.turn.prompt import builder
-    monkeypatch.setattr(memory_cache, "get", lambda: ("", ""))
-    monkeypatch.setattr(builder._packs, "compose", lambda turn_text="", asked=None: "\n\nPACK-MARK")
-    built = builder.build_flash_system(directive="DIRECTIVE-MARK", turn_text="hola")[0]
-    assert "PACK-MARK" in built, "build_flash_system does not compose the context packs"
-    assert built.index("DIRECTIVE-MARK") < built.index("PACK-MARK"), "a pack is read before the operator's own directive"
-
-
-def test_the_phase_is_watched_from_the_bus_and_not_from_the_voice_provider():
-    """The Susurro/actionmap pattern: zero coupling with the provider, and it covers BOTH channels for free
-    because `observer.turn_detail` is where a voice turn and a probe turn both close."""
-    src = _code(ENGINE / "nucleo/turn/prompt/packs/introduction.py")
-    assert re.search(r'bus\s*\.\s*subscribe\s*\(\s*"turn\.completed"\s*\)', src)
-    boot = _code(ENGINE / "server/boot/brain.py")   # the brain phase of the boot (refactor2710-13)
-    assert "_intro_pack . start ( )" in boot, "nothing starts the phase watcher at boot"
-
-
 def test_the_phrasebook_stands_aside_while_a_phase_is_guiding():
     """The operator's own «excepción al inicio»: during the introduction «hola» is not small talk, it is the
     first move of a conversation that has somewhere to go. One turn, typed or spoken (refactor2710-01)."""

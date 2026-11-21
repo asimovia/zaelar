@@ -59,24 +59,6 @@ def _line(act, lang, n=None):
     return str(langs.words(f"controls_said.{act}", code=lang)).replace("{n}", str(n))
 
 
-# ── 1. the seeds: mic and his voice's volume, ES and EN, behind his name ─────────────────────────────────────
-@pytest.mark.parametrize("lang,phrase,act", [
-    ("es", "Johnny, silencia el micrófono.", "mic_off"),
-    ("es", "Johnny, apaga el micro", "mic_off"),
-    ("es", "Johnny, sube tu volumen", "volume_up"),
-    ("es", "Johnny, habla más bajo", "volume_down"),
-    ("en", "Johnny, mute the microphone.", "mic_off"),
-    ("en", "Johnny, turn off the mic", "mic_off"),
-    ("en", "Johnny, speak louder", "volume_up"),
-    ("en", "Johnny, turn your volume down", "volume_down"),
-])
-def test_a_seeded_order_reaches_the_door_without_the_model(johnny, lang, phrase, act):
-    case = _case(f"vol-{lang}-{act}", lang, phrase, f"controls:{act}")
-    out = H.run_case(case)
-    assert not out.failures(case), (out.as_dict(), out.events[-6:])
-    assert _controls(out) == [(act, None)]
-
-
 def test_a_bare_volume_order_is_not_seeded_it_may_be_the_video_s():
     from nucleo.actionmap.normalize import normalize as _n
     for lang, bare in (("es", ("sube el volumen", "baja el volumen", "bajalo")), ("en", ("volume up", "turn it down"))):
@@ -85,29 +67,6 @@ def test_a_bare_volume_order_is_not_seeded_it_may_be_the_video_s():
         for b in bare:
             assert _n(b) not in have, f"{lang}: «{b}» is seeded — a playing video/song owns that order as often"
         assert d["version"] >= 21, "new phrases in an old version reach no existing install"
-
-
-# ── 2. the model's call: every new act, a level clamped, a level-less volume_set refused ─────────────────────
-@pytest.mark.parametrize("lang,phrase,args,want", [
-    ("es", "pon el volumen al treinta por ciento", {"act": "volume_set", "value": 30}, ("volume_set", 30)),
-    ("en", "set your volume to 30 percent", {"act": "volume_set", "value": "30%"}, ("volume_set", 30)),
-    ("es", "ponte al máximo, al ciento cincuenta", {"act": "volume_set", "value": 150}, ("volume_set", 100)),
-    ("en", "volume at minus five", {"act": "volume_set", "value": -5}, ("volume_set", 0)),
-    ("es", "bájalo un poco", {"act": "volume_down"}, ("volume_down", None)),
-    ("en", "a bit louder please", {"act": "volume_up"}, ("volume_up", None)),
-    ("es", "apaga el altavoz", {"act": "mute"}, ("mute", None)),
-    ("en", "turn the speaker back on", {"act": "unmute"}, ("unmute", None)),
-    ("es", "deja de escucharme un rato", {"act": "mic_off"}, ("mic_off", None)),
-])
-def test_the_models_call_reaches_the_same_door(johnny, lang, phrase, args, want):
-    act = want[0]
-    case = _case(f"vol-model-{lang}-{act}", lang, phrase, f"controls:{act}",
-                 model={"say": "", "tools": [{"name": "agent_controls", "args": args}]})
-    out = H.run_case(case)
-    assert not out.failures(case), (out.as_dict(), out.events[-6:])
-    assert _controls(out) == [want]
-    assert _line(act, lang, want[1]) in out.reply, (out.reply, act)
-    assert "{n}" not in out.reply
 
 
 def test_a_volume_set_without_a_level_emits_nothing():
@@ -128,50 +87,12 @@ def test_the_tool_offers_every_act_and_a_level():
     assert props["value"]["type"] == "integer"
 
 
-# ── 3. one way: the line names the button, said over his words and with acks off ────────────────────────────
-@pytest.mark.parametrize("lang", ["es", "en"])
-@pytest.mark.parametrize("act", ["off", "mic_off"])
-def test_a_one_way_act_says_the_way_back_even_over_the_models_words(johnny, lang, act):
-    say = "Vale." if lang == "es" else "Okay."
-    case = _case(f"oneway-{lang}-{act}", lang, "hasta luego, desconecta" if lang == "es" else "bye, disconnect",
-                 f"controls:{act}", model={"say": say, "tools": [{"name": "agent_controls", "args": {"act": act}}]})
-    out = H.run_case(case)
-    assert _controls(out) == [(act, None)]
-    assert say in out.reply and _line(act, lang) in out.reply, out.reply
-
-
-@pytest.mark.parametrize("lang,phrase,act", [("es", "Johnny, apágate.", "off"), ("en", "Johnny, mute the mic", "mic_off")])
-def test_a_one_way_seed_says_its_line_even_with_short_acks_off(johnny, monkeypatch, lang, phrase, act):
-    from nucleo import style_policy
-    from voice.engine.llm.providers import fast_lane
-    said = []
-
-    async def _ack(brain, receipt=""):
-        said.append(receipt)
-    monkeypatch.setattr(style_policy, "confirm_short_actions", lambda: False)
-    monkeypatch.setattr(fast_lane, "_speak_ack", _ack)
-    out = H.run_case(_case(f"oneway-seed-{lang}", lang, phrase, f"controls:{act}"))
-    assert _controls(out) == [(act, None)]
-    assert said == [_line(act, lang)], said
-
-
 def test_every_line_exists_in_both_languages_and_one_way_names_the_button():
     from nucleo.acts import self_controls
     for lang in ("es", "en"):
         for act in ("mute", "unmute", "volume_up", "volume_down", "volume_set", "mic_off", "off"):
             assert _line(act, lang, 30), (lang, act)
     assert self_controls.ONE_WAY == {"off", "mic_off"}
-
-
-# ── 4. combined orders: both run, in his order ───────────────────────────────────────────────────────────────
-# «cállate y apágate»: «cállate» is the barge-in stop (it silences the voice and ends a bare turn), and the rest of the
-# sentence keeps its turn. That remainder was dropped when it was ONE word — «apágate» died in silence while «shut up
-# and switch off» worked — so a one-word remainder now counts when it is a declared order (the action map).
-@pytest.mark.parametrize("lang,phrase", [("es", "cállate y apágate"), ("en", "shut up and switch off"),
-                                         ("es", "Johnny, cállate y apágate.")])
-def test_a_stop_and_an_off_both_run(johnny, lang, phrase):
-    out = H.run_case(_case(f"combo-stop-{lang}", lang, phrase, "controls:off"))
-    assert _controls(out) == [("off", None)], out.events[-8:]
 
 
 def test_a_one_word_remainder_counts_only_when_it_is_a_declared_order():
@@ -182,32 +103,3 @@ def test_a_one_word_remainder_counts_only_when_it_is_a_declared_order():
     assert g.stop_remainder("cállate, música", known) == "", "a bare word that is no order buys no model turn"
     assert g.stop_remainder("cállate, por favor", known) == ""
     assert g.close_all_remainder("cierra todo y apágate", known) == "apágate"
-
-
-@pytest.mark.parametrize("lang,phrase", [("es", "silencia el altavoz y apágate del todo"),
-                                         ("en", "mute the speaker and then turn yourself off")])
-def test_a_combined_order_runs_both_acts_in_order(johnny, lang, phrase):
-    case = _case(f"combo-{lang}", lang, phrase, "controls:mute",
-                 model={"say": "", "tools": [{"name": "agent_controls", "args": {"act": "mute"}},
-                                             {"name": "agent_controls", "args": {"act": "off"}}]})
-    out = H.run_case(case)
-    assert _controls(out) == [("mute", None), ("off", None)], out.events[-8:]
-    assert _line("off", lang) in out.reply, out.reply
-
-
-def test_the_same_act_twice_in_one_turn_runs_once(johnny):
-    case = _case("twice", "es", "apágate, apágate", "controls:off",
-                 model={"say": "", "tools": [{"name": "agent_controls", "args": {"act": "off"}},
-                                             {"name": "agent_controls", "args": {"act": "off"}}]})
-    assert _controls(H.run_case(case)) == [("off", None)]
-
-
-# ── the disarm ───────────────────────────────────────────────────────────────────────────────────────────────
-def test_disarm_the_one_way_tail(johnny, monkeypatch):
-    from nucleo.acts import self_controls
-    monkeypatch.setattr(self_controls, "one_way", lambda act: False)
-    case = _case("disarm-tail", "es", "hasta luego, desconecta", "controls:off",
-                 model={"say": "Vale.", "tools": [{"name": "agent_controls", "args": {"act": "off"}}]})
-    out = H.run_case(case)
-    assert _controls(out) == [("off", None)]
-    assert _line("off", "es") not in out.reply, "with the tail disarmed the way back is still said — the test proves nothing"

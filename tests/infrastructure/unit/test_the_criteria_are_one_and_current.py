@@ -118,3 +118,32 @@ def test_the_reading_test_has_its_criteria():
     names = {b.split("·", 1)[0].strip() for b in _criteria_bullets()}
     missing = {q: c for q, c in READING_TEST.items() if c not in names}
     assert not missing, f"questions whose criterion is gone: {missing}"
+
+
+#: A file path a criterion cites in backticks: a relative path with a folder and an extension, a `::name` allowed after.
+_CITED = re.compile(r"`([A-Za-z_][\w.-]*(?:/[\w.-]+)+\.(?:py|js|mjs|json|md|sh|html|css))(?:::[\w.]+)?`")
+
+
+def _cited_paths_that_do_not_exist() -> list[tuple[str, str]]:
+    import subprocess
+    root = CRITERIA.parents[2]
+    tracked = subprocess.run(["git", "ls-files"], cwd=root, capture_output=True, text=True).stdout.split()
+    out = []
+    for b in _criteria_bullets():
+        cid = b.split(" ", 1)[0]
+        for path in _CITED.findall(b):
+            if any(f == path or f.endswith("/" + path) for f in tracked):
+                continue                 # cited from its root or by its tail under a module (`services/x.js`)
+            if subprocess.run(["git", "check-ignore", "-q", path], cwd=root).returncode == 0:
+                continue                 # a runtime file the UI writes (`config/v2.json`): gitignored on purpose
+            out.append((cid, path))
+    return out
+
+
+def test_no_criterion_cites_a_file_that_does_not_exist():
+    """INI-078 L1: deleting the old turn left criteria citing modules that were gone, so a reader followed a rule to
+    code that no longer ran. A criterion that names a file names one that exists; a moved file is cited where it
+    lives, a deleted mechanism takes its criterion with it or is rewritten against what replaced it."""
+    gone = _cited_paths_that_do_not_exist()
+    assert not gone, f"criteria citing files that do not exist: {gone}"
+

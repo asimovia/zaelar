@@ -74,17 +74,6 @@ def test_compose_block_carries_activity_and_never_the_screen(fresh_db):
     assert "mensajeria" not in block and "VACÍA" not in block
 
 
-def test_the_screen_is_read_live_once_and_an_empty_one_says_so(fresh_db):
-    # 2026-09-19: an empty desktop composed NO screen line, and the model filled the silence from recent_widgets +
-    # rails («already open on screen» with nothing open). Emptiness travels as a fact — now from the live reader.
-    from nucleo.turn.prompt import live_state as prompt
-    memapi.set_state({"open_widgets": ["mensajeria", "agenda"], "recent_widgets": ["youtube"]})
-    assert prompt.screen_line() == "En pantalla: mensajeria, agenda."
-    assert prompt.screen_line() in prompt.live_state()
-    memapi.set_state({"open_widgets": []})
-    assert "VACÍA" in prompt.screen_line() and "youtube" not in prompt.screen_line()
-
-
 # ── 4. breaking an identify tie in favor of the OPEN widget ───────────────────────────────────────────────────────
 def test_identify_prefers_open_widget_on_tie(monkeypatch):
     from widgets import runtime

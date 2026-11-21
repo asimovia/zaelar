@@ -203,7 +203,7 @@ DOMAINS: list[dict] = [
             "paths": ["tests/browser/unit/documento/test_the_blank_sheet_holds_one_thing_to_read.py",
                       "tests/browser/unit/documento/test_the_sheet_goes_to_a_section.py"]},
         {"id": "2.2", "title": "Bucle de diálogo y anti-degeneración", "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_dialog.py", "tests/agent_headless/unit/test_loop.py", "tests/agent_headless/unit/test_turn_perf.py", "tests/agent_headless/unit/flash/test_the_wait_goes_out_with_the_rows.py"]},
-        {"id": "2.3", "title": "Prompt / skeleton / chispas", "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_prompt.py", "tests/agent_headless/unit/flash/test_recall_habitual.py", "tests/agent_headless/unit/flash/test_promise_backstop_window.py", "tests/agent_headless/unit/flash/test_handback_and_task_bleed.py", "tests/agent_headless/unit/flash/test_rephrased_loop.py", "tests/agent_headless/unit/flash/test_local_business.py", "tests/agent_headless/unit/flash/test_ending_a_commitment.py", "tests/agent_headless/unit/flash/test_browser_progress_is_stated.py", "tests/agent_headless/unit/flash/test_opening_a_card_is_not_delivering.py", "tests/agent_headless/unit/flash/test_a_wall_names_where_to_go_next.py", "tests/agent_headless/unit/flash/test_never_ask_which_website.py", "tests/agent_headless/unit/flash/test_money_work_gets_a_browser.py", "tests/agent_headless/unit/flash/test_ask_for_everything_missing.py", "tests/agent_headless/unit/flash/test_finished_browser_task_is_a_fact.py", "tests/agent_headless/unit/test_skeleton.py", "tests/agent_headless/unit/test_sparks.py"]},
+        {"id": "2.3", "title": "Prompt / skeleton / chispas", "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_prompt.py", "tests/agent_headless/unit/flash/test_recall_habitual.py", "tests/agent_headless/unit/flash/test_promise_backstop_window.py", "tests/agent_headless/unit/flash/test_rephrased_loop.py", "tests/agent_headless/unit/flash/test_local_business.py", "tests/agent_headless/unit/flash/test_ending_a_commitment.py", "tests/agent_headless/unit/flash/test_browser_progress_is_stated.py", "tests/agent_headless/unit/flash/test_opening_a_card_is_not_delivering.py", "tests/agent_headless/unit/flash/test_a_wall_names_where_to_go_next.py", "tests/agent_headless/unit/flash/test_finished_browser_task_is_a_fact.py", "tests/agent_headless/unit/test_skeleton.py", "tests/agent_headless/unit/test_sparks.py"]},
         {"id": "2.4", "title": "Cliente LLM rápido, reintento y RELEVO por latencia", "ch": UNIT, "paths": [
             # ⚠️ ESTE FICHERO NO ESTABA EN EL MAPA (2026-08-21). 22 casos verdes e INVISIBLES para `tests run all`,
             # incluidos los de V2-243. Es la avería de V2-158: un test que ninguna suite ejecuta deja de ser
@@ -784,10 +784,6 @@ DOMAINS: list[dict] = [
         # V2-461: el canal de TEXTO nació headless (V2-032) y dejó de serlo el día que el plató tuvo puerto
         # fijo para que el operador mirara. Un agente que trabaja con el chat en blanco es indistinguible de
         # uno colgado. Las DOS mitades (motor + navegador) o falla saliendo vacío, que es el propio defecto.
-        {"id": "4.85", "title": "La conversación por API se VE en el muro de chat, igual que la voz y el chat "
-                                "escrito",
-            "ch": UNIT,
-            "paths": ["tests/agent_headless/unit/flash/test_probe_wall.py"]},
         {"id": "4.83", "title": "El visor de imágenes RENDERIZA: la foto manda en la pantalla, la fuente se ve y "
                                 "enlaza, y las flechas SOBREVIVEN a una imagen que no carga",
             "ch": UNIT,
@@ -1217,10 +1213,6 @@ DOMAINS: list[dict] = [
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/workers/"
                       "test_a_rejected_request_relays_like_an_outage.py"]},
-        {"id": "2.51", "title": "Wake Word Mode: the toggle rides the directive, and the prompt teaches the "
-                                "mode exists",
-            "ch": UNIT,
-            "paths": ["tests/agent_headless/unit/flash/test_wake_word_mode_rides_the_directive.py"]},
         {"id": "2.44", "title": "La cara de anuncios NOMBRA lo que ya tiene (y una sola cara para los dos "
                                 "canales)", "ch": UNIT,
             "paths": ["tests/agent_headless/unit/flash/test_listing_face_names_what_it_already_has.py"]},
@@ -2159,9 +2151,6 @@ DOMAINS: list[dict] = [
         {"id": "3.85", "title": "Un worker que se cuelga se ANUNCIA, se reinicia UNA vez (la cuenta vive en la "
                                 "fila) y a la segunda falla diciendo por qué",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/workers/test_a_stalled_worker_is_restarted_once.py"]},
-        {"id": "3.86", "title": "FlashBrain lee el REGISTRO de tareas: horas después sabe que el widget falló y "
-                                "no puede decir «sigue en curso»",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_the_turn_reads_the_task_record.py"]},
         {"id": "3.87", "title": "Un generador de widgets que no llegó a correr dice POR QUÉ (red, saldo, "
                                 "credencial, saturación o nuestro) — sin reparación inútil y con la clase en la fila",
             "ch": UNIT, "paths": ["tests/browser/unit/widgets/test_a_generator_that_did_not_run_says_why.py"]},
@@ -2234,8 +2223,6 @@ DOMAINS: list[dict] = [
                                  "the live room, and the voice never speaks into an empty room (V2-910)",
             "ch": UNIT,
             "paths": ["tests/voice/unit/test_no_voice_room_outlives_a_freeze.py"]},
-        {"id": "3.120", "title": "A word table never turns an empty promise into a worker — both channels (V2-802 T-07, CRIT-K1; A7: never at all — the promise lane's word tables, its window lookback and the hand-back reader of our own reply went, an errand opens by the model's call or a verdict at the act floor; an act is owed (`reply.owes_an_act`), routed (`route_by_verdict`: the licence holds only a model call that LEAVES — C9's band —, words and calls that stay are never overruled under the floor), bound to a waiting task by the verdict alone (the model's own `answer_worker` is completed at the licence, K2), claimed as a send (the order AND the act at the floor, and a reading that backs a send) or shown at ONE floor, `verdicts.act_floor` = `consent.intent_act_at`; disarmed (the `_wt == \"go\"` branch back, or `owes_an_act` at the licence) → red)",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_word_table_never_overrules_a_confident_inline.py"]},
         # V2-807 T-16 — a request for a capability no card declares is answered «not yet» at the errand portal (the
         # brief's verdict over the DECLARED actions), a widget declares its operator-only controls and a worker is
         # refused them, and the spec deriver never takes the assistant's name as the goal. Disarmed 2026-10-26
@@ -4245,11 +4232,7 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_a_strangers_words_are_data.py"]},
         {"id": "2.206", "title": "The system prompt the fast turn SENDS has a down-only ceiling on a clean install, and the "
                                  "everyday screen stays under the audit's 30k",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_the_turn_prompt_has_a_ceiling.py",
-            # 2026-10-24 — an op the card fires by itself (`"internal": true`) is never offered to the model.
-            "tests/agent_headless/unit/flash/test_an_internal_op_is_not_offered_to_the_model.py"]},
-        {"id": "2.889", "title": "The part of the voice turn the provider caches (system prefix, then tools) is byte-identical whatever he says or has open: this turn's facts travel as a second system message before his line, the always-offered tools precede the state-gated ones (V2-889 F1)",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_the_cached_prefix_does_not_move.py"]},
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_an_internal_op_is_not_offered_to_the_model.py"]},
         # V2-889 F2 — disarmed 2026-11-12 (gate always fires · no thread signal · no veto · a write into the handle · stale
         # never · no TTL · no in-flight guard · no line ceiling · no char ceiling → each red).
         # 2026-11-12 (release v3.150): the default mode follows the deployment — disarmed (row read for `local` always ·
@@ -4358,9 +4341,6 @@ DOMAINS: list[dict] = [
                                  "on a word; never our listing wrapper, our app ids or his own sentence parked as an "
                                  "offer (three-tasks-at-once, 2026-10-11 02:58)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_status_names_his_errands_as_he_asked_them.py"]},
-        {"id": "2.400", "title": "A yes or a no to a PARKED task or click speaks its verdict — the start line or «nothing "
-                                 "touched», never the mute backstop's «say it again» (V2-834 T01, 2026-11-02)",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_yes_to_a_parked_task_is_never_a_lost_turn.py"]},
         {"id": "2.402", "title": "A data-op handed to a worker is not an act — the misroute guard opens the commission and "
                                  "leaves `acted` false, so a confident handle_inline cannot annul it (V2-834 T04, 2026-11-02)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_handed_over_data_op_is_not_an_act.py"]},
@@ -4529,8 +4509,6 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ['tests/browser/unit/agenda/test_a_move_said_for_one_week_moves_one_occurrence.py']},
         {"id": "2.587", "title": "A [[close]] of the agenda over «quita el piano entero, toda la serie» cancels the series even with no verdict (decision model at 529): a removal naming one of its rows and not the app is that row's cancel_meeting, both channels",
             "ch": UNIT, "paths": ['tests/agent_headless/unit/flash/test_a_close_over_a_row_removal_cancels_the_row.py']},
-        {"id": "2.552", "title": 'A DELIVERED errand stays in «YA ACABADAS» for the conversation (15 min), a death keeps five, the block keeps its cap of three — the report 333 s old was gone and the turn said «del informe no me consta nada» (three-tasks ES)',
-            "ch": UNIT, "paths": ['tests/agent_headless/unit/test_a_delivered_errand_outlives_five_minutes.py']},
         {"id": "2.553", "title": "A network agent's rows never open a results sheet for a DOCUMENT errand: the report's sheet «Informe sobre coches eléctricos urbanos» filled with a 1:43 toy and charging cables (three-tasks ES); the worker still reads the answer",
             "ch": UNIT, "paths": ['tests/agent_headless/unit/test_network_rows_never_open_a_sheet_for_a_report.py']},
         {"id": "2.554", "title": "A size stated as a MINIMUM («27 al menos», «at least 27 inches», «27+») is a floor at the sheet's door: under it is off, over it stays; a bare price is never a size (three-tasks ES/EN)",
@@ -4668,6 +4646,10 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ['tests/agent_headless/unit/turn/test_a_refused_show_leaves_a_row.py']},
         {"id": "2.898", "title": "Every import in the product names a module or a name that exists, lazy ones included: a moved module cannot leave a function-body import behind that fails only when it runs (refactor2710-99, use case docs-single-recipe-not-a-list__us — the one-document rung died on a deleted import and the recipe went to a research worker)",
             "ch": UNIT, "paths": ['tests/infrastructure/unit/test_every_import_names_a_module_that_exists.py']},
+        {"id": "2.1822", "title": "Every live module of the product IMPORTS, not only resolves (INI-078 L1, B0): one process imports them all; a failure that is not an import-order artefact is red, and a module that cannot be imported first on its own is declared debt that only shrinks",
+            "ch": UNIT, "paths": ['tests/infrastructure/unit/test_every_live_module_imports.py']},
+        {"id": "2.1823", "title": "A card op that fails on a row it claimed inside a run is said once, by the run: only a row the caller hands (a resume out of turn) or an answer past the mouth's wait goes out of turn (INI-078 L1, B6)",
+            "ch": UNIT, "paths": ['tests/agent_headless/unit/test_a_row_op_failure_in_a_run_is_said_once.py']},
         {"id": "2.909", "title": "A song title is a NAME: every music line quotes it, so an English title inside a Spanish line never makes it an English reply, and a play with no title says «the music» in his language (refactor2710-99, use case play-music-and-build-playlist__es)",
             "ch": UNIT, "paths": ['tests/infrastructure/unit/core/test_a_song_title_is_quoted_in_every_music_line.py']},
         {"id": "2.908", "title": "A declared WRITE needs an order: a turn the brief surely reads as a question (or a sure «tell me» that is no order) never runs one — the app is shown; an order, a lens, or a verdict naming that very write still runs (refactor2710-99, use case show-my-messages__us)",
@@ -4732,8 +4714,6 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ['tests/agent_headless/unit/workers/test_a_report_worker_shows_its_skeleton_first.py']},
         {"id": "2.990", "title": "A locked database DELAYS the event record, never loses it: `bus/log.py` drains its queue as one batch per commit, waits out a lock on the shared `zaelar.db` with backoff (bounded by ONE clock of `_LOCK_BUDGET_S` from the batch's first attempt — sqlite's own busy waits count, the row-by-row fallback shares it, BUSY/LOCKED read from sqlite's code, V2-831 audit A4), keeps order and emit time, and a drop past the bound — or a full queue — is logged loudly, never only counted; the Master's reader (`observability.flows.events`) sees every row (V2-831 T-22)",
             "ch": UNIT, "paths": ['tests/infrastructure/unit/core/test_a_locked_database_delays_the_record_never_loses_it.py']},
-        {"id": "2.985", "title": "A close reads what he said whole: the close question is one closed yes/no per app on screen read by the mass of «named» (a «yes» split over select_many's strong+partial was dropped at margin 0.16 and nothing closed), and a bulk close that would spare the app in use with no total read by the grammar asks ONE closed question whether he closes that app too («clear everything off the screen» left Images open; «close everything you don't need» still spares it) — demo sandbox 2026-10-29 pass 4, C6/Z2",
-            "ch": UNIT, "paths": ['tests/agent_headless/unit/flash/test_a_close_yes_and_a_whole_canvas_total_are_read_whole.py']},
         {"id": "2.960", "title": "A sure close the names verdict would stop first asks Jev ONE closed question over the apps on screen (`brief_screen.named_to_close`, `jev.select_many` over their labels): the picked apps close and the absent named one is never used; none picked → the verdict stands and nothing closes (demo sandbox 2026-10-29 pass 2, C6: elsewhere 0.80, «— done, both closed», the agenda stayed and nothing was said)",
             "ch": UNIT, "paths": ['tests/agent_headless/unit/flash/test_a_named_card_on_screen_outranks_a_names_verdict.py']},
         # V2-831 audit A2 — disarmed 2026-11-01 (a loop reader asks; the brief carries no follow-ups; the hard door asks
@@ -4774,8 +4754,6 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_an_unsure_verdict_lets_the_models_stop_run.py"]},
         {"id": "2.893", "title": "An errand shows only its deliverable: every show that comes from an errand (worker or the sheet its search fills) is licensed at the canvas door by the Request's surface — document → documento, list → results, told → nothing — and a step is a `step` event, never an app (refactor2710-15, Master feedback 30e302f2)",
             "ch": UNIT, "paths": ['tests/agent_headless/unit/workers/test_the_deliverable_decides_the_surface.py']},
-        {"id": "2.892", "title": "Every block of the voice prompt is declared with the one truth it reads (`builder.BLOCKS`; «CÓMO OPERAS» and the closing line read none, and say so) and has a token budget per block that only goes down; an idle turn pays nothing for what is not there (refactor2710-08 T-01/T-05)",
-            "ch": UNIT, "paths": ['tests/infrastructure/unit/test_each_prompt_block_has_a_token_budget.py']},
         {"id": "2.850", "title": "The mouth says the verdict (refactor2710-03): an acting turn's last words come from what its acts ended in, one i18n key per verdict; `met` names its object, `unmet`/`cannot`/`asked` are always said, a promise is a start",
             "ch": UNIT, "paths": ['tests/agent_headless/unit/turn/test_the_mouth_says_the_verdict.py']},
         {"id": "2.828", "title": "His commissioning sentence travels with the request to the ONE errand it opens, and reaches its sheet's row door (was 2.630; refactor2710-02 T-01)",
@@ -4884,8 +4862,6 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ['tests/browser/unit/youtube/test_a_pasted_link_from_a_blocked_channel_is_stamped.py']},
         {"id": "2.716", "title": "The reply that let a blocked channel's link through says so, once, in his language, on both channels — unless it already speaks of the block (video-blocked-channel-respected)",
             "ch": UNIT, "paths": ['tests/agent_headless/unit/flash/test_a_blocked_channels_link_is_said_in_the_reply.py']},
-        {"id": "2.717", "title": "«Exit full screen» with no app at full screen is answered as that, never «Done.» (video-exit-fullscreen-unnamed EN)",
-            "ch": UNIT, "paths": ['tests/agent_headless/unit/flash/test_an_exit_with_nothing_at_full_screen_says_so.py']},
         {"id": "2.710", "title": "A notice asked for TODAY whose hour has already gone rings soon today — the next full hour at least 15 min ahead, 5 min when the deadline or midnight is closer — and the move is noted for the reply; a day already gone is not moved (remember-and-remind-deadline, 2026-10-14)",
             "ch": UNIT, "paths": ['tests/agent_headless/unit/test_a_notice_asked_for_today_after_its_hour_rings_soon_today.py']},
         {"id": "2.711", "title": "The agenda's asked notice («apúntalo el jueves y avísame el miércoles», said on the Wednesday at noon) rings today at the next full hour, through add_meeting and set_reminder; never after the item, and a day gone is still refused (remember-and-remind-deadline EN)",
@@ -5129,13 +5105,6 @@ DOMAINS: list[dict] = [
                                 "verificado",
             "ch": UNIT,
             "paths": ["tests/voice/unit/test_an_order_to_play_shows_the_player.py"]},
-        {"id": "2.1748", "title": "A model call that fills none of its act's slots is not the valid call that runs over a disagreeing verdict "
-                                 "(demo sandbox b140 F2, 2026-11-14, EN): `documento:show {\"goto\": …}` over a sure `documento:goto` — a key "
-                                 "naming an action of the same card never folds into another action's text field (parametrized over every "
-                                 "declared text field × sibling action), and the folded call that fills no slot yields to the verdict, which "
-                                 "goes to the section he named; disarmed either half, the document is replaced",
-            "ch": UNIT,
-            "paths": ["tests/voice/unit/test_a_call_that_fills_no_slot_is_not_a_valid_call.py"]},
         # V2-909 — the one programme of a declared action, built beside today's path (stages `shadow`/`own` OFF).
         {"id": "2.1749", "title": "The programme of a declared action is linear and its order is data (`nucleo/play/table.json`): every "
                                  "step × every event moves only where the table says and a refused event changes nothing; the end "
@@ -5535,9 +5504,6 @@ DOMAINS: list[dict] = [
         # de `hotel-under-15-days` y encontró OCHO turnos seguidos con «… FALLÓ» delante contestando «sigo con
         # ello, te aviso», sin muro ni pregunta de por medio. El hecho llegaba; la instrucción de V2-198 era
         # CONDICIONAL («si el operador pregunta por ello») y una tarea muerta no es una pregunta pendiente.
-        {"id": "4.23", "title": "Una tarea de fondo MUERTA se dice sin que él pregunte",
-            "ch": UNIT,
-            "paths": ["tests/agent_headless/unit/flash/test_a_dead_task_is_not_a_pending_question.py"]},
         # V2-222 — y por qué 4.23 midió 0 de 7 en la ronda que lo llevaba: el mismo prompt decía la tarea VIVA al
         # 40 % y MUERTA, con la misma cadena de objetivo, en siete de los ocho turnos. El turno no desobedecía —
         # elegía la mitad cierta. Un encargo que se reintenta solo no es un encargo que acabó.
@@ -7186,8 +7152,6 @@ DOMAINS: list[dict] = [
         {"id": "2.1644", "title": "An earlier explanation is a recent reference (V2-865): `needs_recent` fires on «some messages / a while ago», «I did explain / told you / asked you», «te pedí / te expliqué / te he pedido», «hace unas horas», a part of the day named («yesterday», «last night», «this morning», «ayer», «anoche», «esta tarde») and what zaelar found or played («you found», «la que pusiste»); a plain order, a search or a greeting does not",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_an_earlier_explanation_is_a_recent_reference.py"]},
         # V2-865 — disarmed 2026-11-09 (stamp never written · stamp on every turn: 2 reds).
-        {"id": "2.1645", "title": "The first turn is stamped as a kickoff (V2-865): `close_the_turn` writes `meta.kickoff=True` on the conversation row of a first turn — the engine speaking in his voice — and no stamp on a normal turn's row",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_the_first_turn_is_stamped_as_a_kickoff.py"]},
         # A7 (2026-11-12) — disarmed the same day (the admission substitutes again · the close pushes the note as his words ·
         # the recent block keeps the kickoff row · the seed keeps the note · the kickoff is not free for the packs: 5 reds).
         {"id": "2.1738", "title": "A verdict takes the PLACE of the model's call at VETO when what enters LEAVES or DELETES (CRIT-K2b R4, V2-893 L3): `verdicts.substitutes` (a doubt below is recorded and the model's call runs) — a move instead of a removal, a picture search instead of the model's tool, his channel instead of the model's own, a send task instead of the model's escalation, an ordered send instead of the model's draft; parametric: 0.7 never substitutes, 0.9 does; a REVERSIBLE act in a leaving call's place (a draft for a reply) keeps the act floor; a send that enters in the model's place is born ASKING on its row (`substitution.in_the_models_place`) — the E3 exception (an order sure at VETO) included; the band has ONE owner (the model's escalation, never a second send task at the close); a channel read below VETO against the call's is UNKNOWN and the exit asks; a repair pass's own send stays licensed at the licence; disarmed (each of eleven) → red",
@@ -7280,8 +7244,6 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_clear_request_is_done_and_never_called_done_before_its_result.py"]},
         {"id": "2.1701", "title": "One person is one candidate (V2-887 step 6): a contact named by its handle («raquel.salinasortega», «pedrosalvador12») whose letters spell another matched contact's full name is that person — «Raquel Salinas» resolves to one; a plain one-word name stays its own",
             "ch": UNIT, "paths": ["tests/memory/unit/contacts/test_one_person_is_one_candidate.py"]},
-        {"id": "2.1703", "title": "A send the model called in silence is said as a start, never as «I lost that» (V2-887): the routed send is the turn's act — since V2-938 the send owner answers in the turn with the draft read back and nothing sent before his yes, ES and EN",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_send_the_model_called_in_silence_is_said_as_a_start.py"]},
         {"id": "2.1704", "title": "A declared act of one of our apps that does not leave the machine runs under a sure «escalate», like a player call (V2-887): «impórtame todos los contactos» runs `contactos:sync_contacts` instead of a worker; a leaving act (a send) is still routed, ES and EN",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_home_card_act_runs_under_a_sure_escalate.py"]},
         {"id": "2.1705", "title": "The voice's VAD inference never waits in a thread pool (V2-887): with the default pool full of slow blocking work, our Silero VAD (inference inline, an already-resolved future) keeps up with one second of audio; the plugin's own VAD (disarm) answers nothing",

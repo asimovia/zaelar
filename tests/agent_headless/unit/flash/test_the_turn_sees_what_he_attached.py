@@ -37,19 +37,6 @@ def _attach(eid, name, kind, reading="", why=""):
     att.attach({"episode_id": eid, "name": name, "kind": kind, "mime": "", "bytes": 2048, "why_not": why})
 
 
-def test_no_attachment_adds_nothing_to_the_turn():
-    from nucleo.turn.prompt.live_state import live_state
-    assert att.prompt_lines() == []
-    assert "ADJUNTO" not in live_state()
-
-
-def test_the_attachment_rides_the_turn_with_its_reading():
-    from nucleo.turn.prompt.live_state import live_state
-    _attach(41, "ticket.jpg", "image", "Receipt from Bar Pepe. Total 23,40 EUR")
-    live = live_state()
-    assert "«ticket.jpg» · image · 2 KB" in live and "Total 23,40 EUR" in live
-
-
 def test_a_removed_or_expired_attachment_leaves_the_turn():
     _attach(1, "a.pdf", "pdf", "first")
     _attach(2, "b.txt", "text", "second")

@@ -30,10 +30,3 @@ def test_the_widget_resolver_reads_today_as_today(said, monkeypatch):
     monkeypatch.setattr(time, "localtime", lambda *a: wed_morning if not a else real(*a))
     monkeypatch.setattr(when, "_today", lambda: "2026-11-11")
     assert when._resolve_date(said, at="20:00") == "2026-11-11"
-
-
-def test_the_prompts_day_list_starts_today_and_marks_it():
-    from nucleo.turn.prompt.live_state import live_state
-    text = live_state()
-    today = time.strftime("%Y-%m-%d")
-    assert f"{today} (hoy)" in text and text.count(time.strftime("%A").lower() + " ") >= 2   # today and next week

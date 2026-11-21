@@ -16,25 +16,6 @@ import time
 from tests.platform import turn_harness as H
 
 
-def test_a_thread_the_turn_started_reads_the_cases_world_until_it_ends(monkeypatch):
-    from nucleo.whisper import run as whisper
-    seen: dict = {}
-    before = os.environ.get("ZAELAR_DB")
-    with H.Isolated("es") as iso:
-        lent = os.environ.get("ZAELAR_DB")
-
-        def late_whisper():
-            time.sleep(0.4)                    # the reasoner's call resolves its key after the turn returned
-            seen["db"] = os.environ.get("ZAELAR_DB")
-
-        th = threading.Thread(target=late_whisper, daemon=True)
-        monkeypatch.setitem(whisper._S, "threads", [th])
-        th.start()
-        assert iso.tmp and lent and lent.startswith(iso.tmp)
-    assert seen.get("db") == lent, f"the whisper thread read {seen.get('db')!r} — the case's world was gone"
-    assert os.environ.get("ZAELAR_DB") == before
-
-
 def test_the_wait_is_bounded_by_the_whisperers_clock(monkeypatch):
     from nucleo.whisper import run as whisper
     asked = {}

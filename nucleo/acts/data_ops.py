@@ -267,6 +267,7 @@ async def dispatch_and_report(wid: str, action_name: str, payload: dict, *, seal
     the waiting row this op resumes (V2-851: an answered question re-runs its act on its own row)."""
     import widgets
     from nucleo.request import inline_ask as _ia
+    handed = row         # a row the CALLER resumes: no turn of his is left to say its failure
     if not row:          # V2-851 — the act a waiting row retained, called again with a candidate: it is HIS answer
         row, _dup = _ia.claim(wid, action_name, payload or {})
         if _dup:
@@ -309,7 +310,10 @@ async def dispatch_and_report(wid: str, action_name: str, payload: dict, *, seal
         res = await _run(wid, action_name, payload)
     except Exception as e:  # noqa: BLE001 — V2-778 F0-4: an op that raised is said, never left behind «Done.»
         return await _say_it_did_not_run(wid, action_name, e, seal=seal, row=_row)
-    _late = time.monotonic() - _t0 > _MOUTH_WAIT_S or bool(row)   # a row's op: no turn of his is left to say it
+    # Late = no turn of his is left to say it: it answered after the mouth stopped waiting, or its caller resumes a
+    # row out of turn. A row this op CLAIMED as his answer is inside the run that called it, which says the refusal
+    # from its receipt — a second line out of turn would say the same failure twice.
+    _late = time.monotonic() - _t0 > _MOUTH_WAIT_S or bool(handed)
     _ia.reached(wid, action_name, res, _row)     # V2-851 — whom it reached: a waiting row's re-run never repeats it
     _outcome.remember(wid, action_name, text, res)
     _refused = bool(_receipt.failed(res)) if isinstance(res, dict) else False

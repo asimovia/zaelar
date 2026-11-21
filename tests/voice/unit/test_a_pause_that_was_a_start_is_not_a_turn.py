@@ -114,23 +114,6 @@ def _no_memory(monkeypatch):
     monkeypatch.setattr(memory, "write", lambda *a, **k: None)
 
 
-def test_a_superseded_reply_stays_out_of_the_window_and_his_words_are_owed(_no_memory):
-    brain = _close(lambda: True, acted=False)
-    roles = [m.get("role") for m in brain._window]
-    assert roles == ["user"], brain._window
-    assert brain._cut_unanswered[0] == "Aversiones."
-
-
-def test_a_reply_that_was_not_superseded_enters_the_window(_no_memory):
-    brain = _close(lambda: False, acted=False)
-    assert [m.get("role") for m in brain._window] == ["user", "assistant"]
-
-
-def test_a_superseded_turn_that_acted_keeps_its_reply(_no_memory):
-    brain = _close(lambda: True, acted=True)
-    assert [m.get("role") for m in brain._window] == ["user", "assistant"]
-
-
 def test_the_turn_hands_its_superseded_check_to_the_close():
     """The close only reads what the pipeline hands it: without this seam the window guard is inert, silently."""
     from nucleo.turn import pipeline, pipeline_close

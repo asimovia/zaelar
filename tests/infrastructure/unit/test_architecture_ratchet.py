@@ -1042,6 +1042,7 @@ _TOTAL_MAX += 282    # same, measured (and OPEN says what it could not read)
 _PACKAGE_CEILINGS["nucleo/audit"] += 46    # 2026-11-21 INI-078 S1 review: the auditor's reader gives each decision the signals that followed it (`hints`: undone, redrafted, stopped soon, a number not open, refused)
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 11  # same: the `route` record holds the DRAFT the model read, an act the gateway refused (`refused:<reason>`) and why a door failed
 _TOTAL_MAX += 57     # same, measured
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 1   # 2026-11-21 INI-078 L1 B6: `wall_notes` says why the open cards were not read instead of a silent `return False`
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

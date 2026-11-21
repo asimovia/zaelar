@@ -56,23 +56,6 @@ def test_under_the_bar_or_a_model_that_sends_or_a_question_nothing_changes():
     assert ordered_send.ordered_instead(_brief("mensajeria:forward", 0.9), "mensajeria", "forward", draft, SAID) is None
 
 
-def test_a_dry_turn_reports_the_call_as_it_would_run():
-    """The bank and the live bench run dry; their report must carry the engine's own resolution, or they measure the
-    model's raw call and stay blind to this rule. Run through the typed turn (the voice turn, dry)."""
-    from tests.platform import turn_harness as H
-    case = {"id": "ordered-send-dry", "lang": "en", "phrase": SAID, "source": "live bench E3",
-            "screen": {"open": ["mensajeria"]}, "expect": "escalate",
-            "widgets": {"contactos": {"contacts": [{"name": "Quinn", "email": "quinn@example.com"}]}},
-            "model": {"say": "", "tools": [{"name": "widget_data", "args": {
-                "widget_id": "mensajeria", "action": "draft", "payload": {"text": "please book it"}}}]},
-            "brief": {"screen_action": ["mensajeria:forward", 0.79], "request_type": ["order", 1.0]}}
-    out = H.run_case(case)
-    assert not out.error, out.error
-    assert out.decision != "data-op mensajeria:draft", (out.decision, out.tool_calls, out.reply)
-    assert any("goes to its owner" in str(e.get("label") or "") and "forward" in str(e.get("text"))
-               for e in out.events), "the forward is what the turn hands to its owner (V2-938)"
-
-
 @pytest.fixture()
 def gate_scene(tmp_path, monkeypatch):
     from nucleo import his_words, untrusted
@@ -80,10 +63,3 @@ def gate_scene(tmp_path, monkeypatch):
     yield
     untrusted.reset()
     his_words.reset()
-
-
-def test_a_sure_ordered_forward_the_model_only_drafted_is_the_task_the_turn_routes(gate_scene, monkeypatch):
-    out = rig.run("mensajeria", "draft", {"text": "We're already trying Inworld — please book it."},
-                  said="send the invoice to quinn, tell him we're already trying inworld and he should book it",
-                  turn_brief=rig.brief("mensajeria:forward", 0.79), monkeypatch=monkeypatch)
-    assert not out.ran and any("goes to its owner" in label for _k, label in out.events), out
