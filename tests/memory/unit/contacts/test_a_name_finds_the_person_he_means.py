@@ -109,6 +109,13 @@ def test_his_alias_names_the_person(book):
     assert _names(d.resolve("La Jefa")) == ["Leire Ostolaza"]
 
 
+def test_a_word_inside_another_name_names_nobody_on_its_own(book):
+    cd, d, a = book
+    _put(cd, {"name": "Pol Vicens Pikeras", "favorite": True}, {"name": "Antonio Rius"})
+    assert _send("Iker").get("one") is None and _send("Toni").get("one") is None
+    assert d.resolve("Iker") == []
+
+
 def test_a_short_form_never_outranks_the_name_itself(book):
     cd, _d, _a = book
     _put(cd, {"name": "Elia Prat"}, {"name": "Cornelia Bas", "favorite": True})

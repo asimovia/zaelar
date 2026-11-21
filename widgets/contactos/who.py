@@ -26,13 +26,12 @@ from __future__ import annotations
 import re
 
 #: What one said word is worth against one word of a name.
-SAME, SOUND, STEM, INSIDE, SLIP = 1.0, 0.9, 0.75, 0.7, 0.6
+SAME, SOUND, STEM, INSIDE, SLIP, PART_OF = 1.0, 0.9, 0.75, 0.7, 0.6, 0.65
 #: What a whole said name is worth when it only sounds like an address or a handle of the row.
 ADDRESS = 0.8
 #: The shortest stem, the shortest word a slip is forgiven in, and the shortest joined name read against a handle.
-STEM_MIN, SLIP_MIN, ADDRESS_MIN = 3, 5, 6
-#: The shortest sound found INSIDE a longer name's sound («toni» in «antonio») — shorter would be any syllable.
-INSIDE_MIN = 4
+#: …and the shortest sound read INSIDE another («toni» in «antonio») — shorter would be any syllable.
+STEM_MIN, SLIP_MIN, ADDRESS_MIN, INSIDE_MIN = 3, 5, 6, 4
 #: The shortest name read under an ending he added («the Odiles», «Odile's»), and the longest such ending.
 ENDING_MIN, ENDING_MAX = 4, 2
 #: The shortest word a slip is forgiven in when the name is only named back to him, never acted on.
@@ -74,7 +73,7 @@ def word(w: str, t: str, slip_min: int = SLIP_MIN) -> float:
     if len(t) >= ENDING_MIN and 0 < len(w) - len(t) <= ENDING_MAX and (w.startswith(t) or sw.startswith(st)):
         return STEM                                   # the name with an ending: a plural, a possessive
     if min(len(sw), len(st)) >= INSIDE_MIN and (sw in st[1:] or st in sw[1:]):
-        return INSIDE                                 # one form inside the other, past its start: «Toni» · «Antonio»
+        return PART_OF          # one form inside the other («Toni» · «Antonio»): only beside words that name the row
     if min(len(sw), len(st)) >= slip_min - 1 and min(len(w), len(t)) >= slip_min and _slip(sw, st):
         return SLIP
     return 0.0
@@ -139,6 +138,8 @@ def score(q: str, c: dict, words: list[str] | None = None) -> dict:
         w = WHOLE if not miss and len(toks) == len(words) else 0.0       # the whole name, nothing left over
         if (len(miss), -s - w) < (len(missing), -best - whole):
             best, missing, whole = s, miss, w
+    if len(words) == 1 and best == PART_OF:          # a form inside another names nobody alone («Iker» · «Piqueras»)
+        return {"score": 0.0, "confidence": "", "missing": list(words), "by": ""}
     if missing:
         joined = d.sound("".join(words))
         if len(joined) >= ADDRESS_MIN and any(h == joined for h in _handles(c)):

@@ -255,8 +255,7 @@ def import_linked(only: tuple = ()) -> dict:
 
 def import_in_background(only: tuple = ()) -> None:
     """`import_linked` on its own thread: a reset, a start or a consent never waits on a platform's book."""
-    import threading
-    threading.Thread(target=import_linked, args=(only,), name="contacts-import", daemon=True).start()
+    __import__("threading").Thread(target=import_linked, args=(only,), name="contacts-import", daemon=True).start()
 
 
 def unread(db: dict) -> tuple:
