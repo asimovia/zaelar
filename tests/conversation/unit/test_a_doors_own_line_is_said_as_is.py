@@ -84,3 +84,22 @@ def test_a_provider_late_after_the_doors_line_never_fails_the_answered_run(store
     assert [lab for lab, _p in h.closes()] == ["answered"], "the batch is answered once, never failed after"
     skipped = [p for k, _lab, p in h.tel.events if isinstance(p, dict) and p.get("command") == "door_skipped"]
     assert skipped and skipped[0]["tools"] == ["unknown"]
+
+
+def test_the_look_after_a_doors_line_is_short_whatever_the_streams_deadline(store, monkeypatch):
+    """The rest of the stream is read for a short look only (`DRAIN_S`), never the stream's own deadline: past it, what
+    it would have asked is «unknown» and his next sentence is not kept waiting."""
+    import time
+
+    from conversation.config import Config
+    from conversation.manager import before_model
+    monkeypatch.setattr(before_model, "DRAIN_S", 0.05)
+    h = Harness(store, grace=False, config=Config(model_gap_ms=5000))   # the stream would wait 5 s for its next event
+    h.conv.model = _HangsAfterTheAct()
+    h.tools.answers["task.start"] = ToolResult("ok", data={"say": LINE, "says": "door"})
+    t0 = time.monotonic()
+    h.typed("w_tell ana goodnight", 0)
+    h.settle(2000)
+    assert time.monotonic() - t0 < 2 and [o.text for o in h.mouth.orders] == [LINE]
+    skipped = [p for k, _lab, p in h.tel.events if isinstance(p, dict) and p.get("command") == "door_skipped"]
+    assert skipped and skipped[0]["tools"] == ["unknown"]

@@ -966,6 +966,8 @@ _TOTAL_MAX += 7      # same cause, measured
 _PACKAGE_CEILINGS["nucleo/send"] += 42
 _PACKAGE_CEILINGS["widgets"] += 16
 _TOTAL_MAX += 58     # measured
+_PACKAGE_CEILINGS["conversation"] += 7   # 2026-11-21 C1 b review: the look at a stream after a door's line is short (`before_model.DRAIN_S`): a provider that hangs never holds his next sentence
+_TOTAL_MAX += 6      # same cause, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

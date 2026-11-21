@@ -3,10 +3,14 @@ something of his that is OPEN takes them by the host's doors (`Route`); the line
 ends with that door as its origin. Split out of `run.py`, which calls it first thing in a run."""
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING
 
 from conversation import guard
 from conversation.inbox.mailbox import Batch
+
+#: how long the rest of a stream is read after a door's line, to name what it skipped: past it, «unknown»
+DRAIN_S = 1.5
 
 if TYPE_CHECKING:
     from conversation.manager.loop import Conversation, Running
@@ -50,10 +54,13 @@ async def door(conv: "Conversation", r: "Running", batch: Batch, steps: int, str
     r.origin = run.DOOR
     await run._publish(conv, r, batch, r.door_line, steps)
     skipped, unread = [], False
-    try:                                       # the run is answered: what the stream does now cannot touch it
+
+    async def drain() -> None:
         async for e in stream:
             if isinstance(e, ToolCall):
                 skipped.append(e.name)
+    try:                                       # the run is answered: what the stream does now cannot touch it, nor hold
+        await asyncio.wait_for(drain(), DRAIN_S)   # his next sentence past a short look
     except Exception:  # noqa: BLE001 — a provider late or failing after its act: what it would have asked is unknown
         unread = True
     if skipped or unread:
