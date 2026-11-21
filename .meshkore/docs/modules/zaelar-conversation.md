@@ -2,38 +2,34 @@
 
 One package that decides, for one account, when the person finished speaking, what reaches the model, which run is
 current, what may act in the world, what our voice says and what the person actually heard — with every step written
-to a store before it counts and every step said as an event. Built and tested **isolated** in F0; F1 wires it behind
-adapters (`zaelar-conversation-adapter.md` is the speech half of that contract) and a switch that is off by default.
+to a store before it counts and every step said as an event. Built and tested **isolated** in F0; F1 wired it behind
+adapters (`zaelar-conversation-adapter.md` is the speech half of that contract); since INI-078 F2 it is the ONLY path.
 
 ## The switch and the host
 
-`nucleo/conversation_host/` is the engine side. Its switch decides once, when a session opens, whether that session
-goes by the manager: the session (`conv=1` / `conv=0`), then the account (`conversation_manager` in
-`config/settings.json`, false by default), then `ZAELAR_CONVERSATION=1` for development. The value `text` takes his
-typed lines only: every voice session stays on the old path (a choice, never alerted as a refusal), and a room's bare
-`conv=1` does not override it — `conv=voice` asks for the voice explicitly. A voice session nobody decided (the
-embedded voice) is asked the voice question. It fails closed — switched on,
-a session takes the manager only with every outside write held (`ZAELAR_HOLD_OUTBOUND=all`), its language chosen and
-the manager's configuration passing; otherwise it takes the old path and says why. Off, nothing of the engine imports
-the host: every import of it is inside a function. One `Conversation` runs per account, in its own thread, while a
-switched session holds it.
+`nucleo/conversation_host/` is the engine side. There is no mode and no old path to fall back to: every session —
+voice, a typed line, the text channel, a step of his list — goes by the manager. It still runs only when it may (it
+fails closed): every outside write held but the lanes it carries, each with his yes (`ZAELAR_HOLD_OUTBOUND=all` or
+`all,-owner`), its language chosen and its configuration passing. Short of that the session answers NOTHING and the
+reason is put on his screen (`switch.silent`, an alert). Nothing of the engine imports the host at its top: every import
+of it is inside a function. One `Conversation` runs per account, in its own thread.
 
 What is not mechanism comes from data: the publication graces are genome thresholds (genesis
 `conversation.thresholds`, each inside its declared bounds, refused out of them or out of their order), and whether a
 typed line with the voice live is answered by voice too is his rule (`reply_voice_to_text`, a factory row he can
-override), read at each reply through the `Prefs` port. That row and its knob exist only for an account with the
-manager switched on: off, the rules panel and the rule shaper see nothing new. `GET /api/debug/conversation/<session>` reads the proof of a
-switched session: the runs the manager started, and what would mean another owner of the turn, which must stay at 0.
+override), read at each reply through the `Prefs` port; that row and its knob are every account's.
+`GET /api/debug/conversation/<session>` reads the proof of a session: the runs the manager started, and what would mean
+another owner of the turn, which must stay at 0.
 
-Every line of a switched session enters by one funnel (`entry.py`). A typed line — the voice holder's data channel,
+Every line enters by one funnel (`entry.py`). A typed line — the voice holder's data channel,
 `/api/chat` from another screen, the text channel — is handed to the account's conversation in its thread, and not to
 the old typed lane: the inbox is its only order, so there is no second wait behind a voice. The text channel answers
 in its own shape with the request's ids. The guards every entry shares live there once: a `LOG:` line is a note, a
 stopped engine takes nothing — checked off the caller's loop, since reading the engine's state can wait on the shared
 database lock; for the same reason the account's conversation opens on a thread of its own, and lines handed while it
-opens wait in order. And a net: a line that still reaches the old turn's reply in a switched session opens
-no turn — it is counted, said as an alert, and handed to the funnel. Until the voice half of the mouth, a reply is
-shown on the chat wall.
+opens wait in order. And a net: a line that still asks for a LiveKit turn opens none — it is counted, said as an alert,
+and handed to the funnel; a turn LiveKit asks of the body is answered with its end, nothing said. A step of his list is
+his request through the same typed door (`batch/runner.by_the_manager`).
 
 The live passes run on a disposable engine with the switch on (`tests/conversation/e2e/sandbox.py`): the text suite
 T1–T12 in both languages (`e2e/text_suite.py`, its cases frozen in `fixtures/suite/text.v1.json`), the bench of the

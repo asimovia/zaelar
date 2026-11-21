@@ -394,7 +394,7 @@ on a clean clone, by design.
 | Changing a model (checklist + traps) | `.meshkore/docs/ops/zaelar-model-change.md` |
 | Cluster conversation monitoring | `.meshkore/docs/ops/zaelar-cluster-conversation-monitoring.md` |
 | Observability / debugging | `.meshkore/docs/ops/zaelar-observability.md` |
-| The conversation & turn manager (`conversation/`, behind a switch off by default; `text` takes his typed lines) | `.meshkore/docs/modules/zaelar-conversation.md` · its speech adapter `zaelar-conversation-adapter.md` |
+| The conversation & turn manager (`conversation/`, the only path since INI-078 F2) | `.meshkore/docs/modules/zaelar-conversation.md` · its speech adapter `zaelar-conversation-adapter.md` |
 
 The public architecture diagrams live on zaelar.com/technology (a curated picture, not a mirror of the code): a
 change of topology, model or provider updates them too; the detailed source stays in `.meshkore/docs/architecture/`.
