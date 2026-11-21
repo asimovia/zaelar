@@ -55,7 +55,8 @@ def _say(what: str, row: dict, by: str, **extra) -> None:
         trace = str(row.get("trace_id") or "")
         observer.emit("queue", f"queue/{what}", role="system",
                       extra={"what": what, "task_id": str(row.get("id") or ""), "by": by,
-                             "owner": str(row.get("owner") or ""), **extra, **({"trace": trace} if trace else {})})
+                             "owner": str(row.get("owner") or ""), "num": row.get("num"), **extra,
+                             **({"trace": trace} if trace else {})})
     except Exception as e:  # noqa: BLE001
         logger.debug(f"queue: queue/{what} not emitted — {type(e).__name__}: {e}")
 
@@ -112,7 +113,8 @@ def add(owner: str, title: str, *, goal: str = "", kind: str = "", origin: str =
                "kind": str(kind or owner), "state": PENDING, "origin": str(origin or "voz"), "trace_id": str(trace or ""),
                "owner": owner, "priority": 1 if urgent else 0, "position": last + 1.0, "created_at": int(time.time()),
                **{k: v for k, v in fields.items() if k in FIELDS["progress"]}}
-        if not _store().queue_insert(row):
+        row["num"] = _store().queue_insert(row)
+        if not row["num"]:
             _say("refused", row, "owner", why="the task is already in the queue")
             return ""
         if urgent:

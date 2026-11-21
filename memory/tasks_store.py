@@ -43,7 +43,7 @@ _COLUMNS = ("id", "title", "goal", "kind", "mode", "state", "visible", "origin",
             # V2-851 F1a — what the task waits for and how it is resumed (see the v10→v11 note in `memory/schema/`)
             "session_id", "cwd", "waiting_for", "waiting_since", "deadline", "ask_id", "ask", "playbook",
             # INI-078 — the orchestrator's queue: who runs it, how urgent, its order (see the v12→v13 note)
-            "owner", "priority", "position")
+            "owner", "priority", "position", "num")
 
 
 def _row(r) -> dict:
@@ -225,21 +225,33 @@ def tasks_prune(max_age_days: float = 30.0, now: float | None = None) -> int:
 
 
 # ── the queue (INI-078): rows with an `owner`, written only by `nucleo/queue` ─────────────────────────────
-def queue_insert(row: dict) -> bool:
-    """Write one NEW task of the queue in one statement (an id already there is left as it is). True when written."""
+#: the counter of task numbers in `sys_kv`: the next `num` an install gives, never one it gave before
+NEXT_NUM = "tasks.next_num"
+
+
+def queue_insert(row: dict) -> int:
+    """Write one NEW task of the queue and give it the install's next number, in ONE transaction (an id already there
+    is left as it is). Returns its `num`; 0 when nothing was written."""
     tid = str(row.get("id") or "").strip()
     if not tid:
-        return False
-    cols = [c for c in _COLUMNS if c in row and c not in ("schedule", "progress", "visible")]
+        return 0
+    cols = [c for c in _COLUMNS if c in row and c not in ("schedule", "progress", "visible", "num")] + ["num"]
     try:
-        _db_mod.get_db().execute(
-            f"INSERT INTO tasks ({', '.join(cols)}) VALUES ({', '.join('?' for _ in cols)}) ON CONFLICT(id) DO NOTHING",
-            tuple(row[c] for c in cols))
+        with _db_mod.exclusive(_db_mod.get_db()) as conn:
+            if conn.execute("SELECT 1 FROM tasks WHERE id=?", (tid,)).fetchone():
+                return 0
+            kept = conn.execute("SELECT value FROM sys_kv WHERE key=?", (NEXT_NUM,)).fetchone()
+            top = conn.execute("SELECT COALESCE(MAX(num), 0) FROM tasks").fetchone()[0]
+            num = max(int(json.loads(kept[0])) if kept else 1, int(top or 0) + 1)
+            conn.execute(f"INSERT INTO tasks ({', '.join(cols)}) VALUES ({', '.join('?' for _ in cols)})",
+                         (*(row[c] for c in cols[:-1]), num))
+            conn.execute("INSERT INTO sys_kv (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET "
+                         "value=excluded.value", (NEXT_NUM, json.dumps(num + 1)))
     except Exception as e:  # noqa: BLE001
         logger.debug(f"tasks_store: queue row {tid} not written ({e!r})")
-        return False
+        return 0
     _reindex(tid, str(row.get("title") or ""), str(row.get("goal") or ""))
-    return True
+    return num
 
 
 def queue_archive(task_id: str) -> None:

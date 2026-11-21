@@ -87,3 +87,16 @@ def test_back_and_urgent_go_first_and_a_move_lands_where_he_said():
     assert not queue.signal(a, "move", by="him", before="not-a-task")
     assert queue.signal(a, "start", by="pulse") and queue.signal(a, "wait", by="owner", ask="?")
     assert queue.signal(a, "back", by="him") and order()[0] == a, "his answer puts it back at the head of its lane"
+
+
+def test_every_task_has_a_short_number_that_is_never_given_again():
+    """`#n` is how the model and his screen name a task alike: one per install, in order, never reused — not even once
+    the task with the highest number left the queue (its row is deleted, so the highest number on disk goes back)."""
+    a = queue.add("worker", "first")
+    b = queue.add("send", "second")
+    na, nb = ts.task_get(a)["num"], ts.task_get(b)["num"]
+    assert nb == na + 1, "one counter for every lane"
+    assert queue.signal(b, "cancelled", by="him") and ts.task_get(b) is None
+    c = queue.add("processor", "third")
+    assert ts.task_get(c)["num"] == nb + 1, "the number of a task that left is never given again"
+    assert [r["num"] for r in queue.view()["worker"]["pending"]] == [na]

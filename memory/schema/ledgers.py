@@ -181,10 +181,13 @@ TASKS_V11_COLUMNS = [(c, f"ALTER TABLE tasks ADD COLUMN {c} {t}") for c, t in (
 #                 flow, an inline row, an internal escalation)
 #   · `priority`  1 = urgent («do it now»): first in its lane
 #   · `position`  the order inside a priority: a new one is the lane's max + 1, a move is the midpoint of its neighbours
+#   · `num`       the task's short number (#7), one per install and NEVER reused — the model and his screen name it alike;
+#                 its counter is `sys_kv[tasks.next_num]`, since an archived row is deleted and MAX(num) would come back
 TASKS_V13_COLUMNS = [(c, f"ALTER TABLE tasks ADD COLUMN {c} {t}") for c, t in (
-    ("owner", "TEXT"), ("priority", "INTEGER NOT NULL DEFAULT 0"), ("position", "REAL"))]
-#: after the columns exist: the pulse's read «the next pending of this lane» is one index range
-TASKS_V13_INDEXES = ["CREATE INDEX IF NOT EXISTS idx_tasks_queue ON tasks(owner, state, priority DESC, position)"]
+    ("owner", "TEXT"), ("priority", "INTEGER NOT NULL DEFAULT 0"), ("position", "REAL"), ("num", "INTEGER"))]
+#: after the columns exist: the pulse's read «the next pending of this lane» is one index range; a number names one task
+TASKS_V13_INDEXES = ["CREATE INDEX IF NOT EXISTS idx_tasks_queue ON tasks(owner, state, priority DESC, position)",
+                     "CREATE UNIQUE INDEX IF NOT EXISTS idx_tasks_num ON tasks(num) WHERE num IS NOT NULL"]
 
 TASKS_INDEXES = [
     # The hot read is the tab: «live, mine, in this mode». Composite for the same reason `idx_mem_lvu` is —
