@@ -958,6 +958,8 @@ _TOTAL_MAX += 2      # same cause, measured
 _PACKAGE_CEILINGS["nucleo/send"] += 9   # 2026-11-21 C2 A2 review: a text he had begun in the box is never written over in silence — the card says what it replaced, the owner says so (`card._painted`, `send_box_had`)
 _PACKAGE_CEILINGS["widgets"] += 1        # same: `drafts.write` answers what it replaced
 _TOTAL_MAX += 10     # same cause, measured
+_PACKAGE_CEILINGS["conversation"] += 7   # 2026-11-21 C1 b review: what the stream does after a door's line is read in its own try — a provider late after the act never fails the answered run (`before_model.door`)
+_TOTAL_MAX += 7      # same cause, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

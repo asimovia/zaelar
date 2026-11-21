@@ -49,5 +49,12 @@ async def door(conv: "Conversation", r: "Running", batch: Batch, steps: int, str
     run._emit(conv, "command", r, command=run.DOOR)
     r.origin = run.DOOR
     await run._publish(conv, r, batch, r.door_line, steps)
-    if skipped := [e.name async for e in stream if isinstance(e, ToolCall)]:
-        run._emit(conv, "command", r, command="door_skipped", tools=skipped)
+    skipped, unread = [], False
+    try:                                       # the run is answered: what the stream does now cannot touch it
+        async for e in stream:
+            if isinstance(e, ToolCall):
+                skipped.append(e.name)
+    except Exception:  # noqa: BLE001 — a provider late or failing after its act: what it would have asked is unknown
+        unread = True
+    if skipped or unread:
+        run._emit(conv, "command", r, command="door_skipped", tools=skipped + (["unknown"] if unread else []))

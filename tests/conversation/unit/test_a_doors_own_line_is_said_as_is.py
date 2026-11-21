@@ -58,3 +58,29 @@ def test_a_widgets_message_act_reaches_the_owner_and_comes_back_a_door_line(monk
     monkeypatch.setattr(heard, "_talking", lambda: False)
     routing.ours_heard(LINE)                       # the door's line, as it sounded: it IS the confirmation
     assert d.heard is True
+
+
+class _HangsAfterTheAct:
+    """A provider that calls the door's act and then holds its stream past the gap's deadline."""
+
+    def __init__(self):
+        self.calls = []
+
+    async def stream(self, prompt, tools, *, run_id, model_id):
+        self.calls.append(model_id)
+        yield ToolCall("c1", "task.start", {"to": "w_ana"})
+        await asyncio.sleep(10)
+        yield ToolCall("c2", "agenda_add", {})
+
+
+def test_a_provider_late_after_the_doors_line_never_fails_the_answered_run(store):
+    from conversation.config import Config
+    h = Harness(store, grace=False, config=Config(model_gap_ms=30))
+    h.conv.model = _HangsAfterTheAct()
+    h.tools.answers["task.start"] = ToolResult("ok", data={"say": LINE, "says": "door"})
+    h.typed("w_tell ana goodnight", 0)
+    h.settle(2000)
+    assert [o.text for o in h.mouth.orders] == [LINE], "one line, the owner's: no «I lost that» after it"
+    assert [lab for lab, _p in h.closes()] == ["answered"], "the batch is answered once, never failed after"
+    skipped = [p for k, _lab, p in h.tel.events if isinstance(p, dict) and p.get("command") == "door_skipped"]
+    assert skipped and skipped[0]["tools"] == ["unknown"]
