@@ -77,6 +77,7 @@ class Running:
     judged_not_his: bool = False          # the model closed this run's entries as not his (a `no_reply` with `not_his`)
     before: tuple = ()                    # his words of the runs it absorbed (R3): what its reply answers too
     stopped: str = ""                     # the scope of the stop the model ordered first, if it did
+    door_line: str = ""                   # the line an act's own door answered (`ToolSpec.says`): said as is, run over
 
 
 class Conversation:

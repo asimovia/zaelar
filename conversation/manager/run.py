@@ -355,6 +355,11 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
                     steps.append((ev, ToolResult("refused", data={"reason": READS_DONE}) if over
                                    else await _tool(conv, r, ev)))
                     _checkpoint(conv, r)
+                    if r.door_line:                      # the act's door answered him: its line, as is, ends the run
+                        _emit(conv, "command", r, command=DOOR)
+                        r.origin = DOOR
+                        await _publish(conv, r, batch, r.door_line, _real(steps))
+                        return
                 elif isinstance(ev, Command):
                     order = commands.parse(ev)
                     r.reading = getattr(order, "complete", r.reading)     # its last reading of his thought
@@ -471,6 +476,8 @@ async def _act(conv: "Conversation", r: "Running", call: ToolCall, claimed: Clai
                             data={"state": state, "repeat": claimed.repeat})
     if result.status != "ok":
         r.acts_refused.append(call.name)
+    elif getattr(conv.gw.specs().get(call.name), "says", "") == "door" and isinstance(result.data, dict):
+        r.door_line = str(result.data.get("say") or "").strip()     # its door's own dialogue: never reworded
     return result
 
 
@@ -537,7 +544,7 @@ def _order_text(text: str) -> bool:
 #: where a line we said came from (`says.origin`): the model's reply, a reply restated after a refused figure, the
 #: honest line for a figure it could not confirm (and its second wording), the language's failure line — and a
 #: notice, which answers nothing
-REPLY, RESTATED, UNVERIFIED, FAILURE = "reply", "restated", "unverified_fact", "failure"
+REPLY, RESTATED, UNVERIFIED, FAILURE, DOOR = "reply", "restated", "unverified_fact", "failure", "door"
 UNVERIFIED_ALT = "unverified_fact_alt"
 LISTENING = "listening"                 # half a thought whose rest never came: «go on, I'm listening»
 

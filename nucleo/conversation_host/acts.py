@@ -60,8 +60,8 @@ def _schema(a: dict) -> dict:
 
 
 def catalog() -> list[ToolSpec]:
-    return [ToolSpec(name, _schema(a), act=a["act"], effect_class=tools_read.derive(a["act"], False), about=a["about"])
-            for name, a in ACTS.items()]
+    return [ToolSpec(name, _schema(a), act=a["act"], effect_class=tools_read.derive(a["act"], False), about=a["about"],
+                     says=a.get("says", "")) for name, a in ACTS.items()]
 
 
 def _open() -> list[str]:

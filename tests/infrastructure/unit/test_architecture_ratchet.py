@@ -909,6 +909,8 @@ _PACKAGE_CEILINGS["voice/engine/llm"] += 1
 _PACKAGE_CEILINGS["nucleo/flash"] -= 3038
 _PACKAGE_CEILINGS["nucleo/turn"] -= 450
 _TOTAL_MAX += 109    # measured after the move (the shims' lines and the split imports)
+_PACKAGE_CEILINGS["conversation"] += 9   # 2026-11-21 C1 b (his live session): a door with its own dialogue is said as is — `ToolSpec.says`, the run's `door_line`, published with origin door and no second model call
+_TOTAL_MAX += 8      # same cause, measured (the brief cut before it was net -1)
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())
