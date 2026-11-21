@@ -94,7 +94,10 @@ def test_every_view_draws_only_ids_the_map_has():
         assert not own & known, f"{name}: an aggregate box reuses a map id"
         assert all(z in known for z in view["frame"]["zones"]), f"{name}: the frame names an unknown zone"
         assert all(i in known for i in view["inside"]), f"{name}: an inside id the map does not have"
-        assert all(s in known for b in view["outside"] for s in b["stands_for"]), f"{name}: a box stands for nothing"
+        assert all(s in known for b in view["outside"] for s in b.get("stands_for", [])), f"{name}: a box stands for an unknown id"
+        assert all(b.get("stands_for") or b.get("paths") for b in view["outside"]), f"{name}: a box stands for nothing"
+        assert all((ROOT / q).exists() for b in view["outside"] for q in b.get("paths", [])), f"{name}: a box names code that is not there"
+        assert all(isinstance(b.get("in_frame", False), bool) for b in view["outside"]), f"{name}: in_frame is a flag"
         drawn = set(view["inside"]) | own
         for e in view["edges"]:
             assert e["from"] in drawn and e["to"] in drawn, f"{name}: an edge to an id the view does not draw: {e}"

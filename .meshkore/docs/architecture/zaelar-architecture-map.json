@@ -5,7 +5,7 @@
   "status": "On a zone or a piece: absent = built and live; \"retiring\" = still in the code and still running for some sessions, being replaced (a diagram draws it dashed or apart, never as the current path).",
   "dir": "On a flow or a view edge: \"a>b\" (a sends to b), \"b>a\", or \"both\" (a call that goes and comes back). Absent on a flow = not stated yet; a flow's `a`/`b` order alone carries no direction.",
   "planned": "Top-level list: pieces whose mechanism is decided and not built yet. They have no `paths` (nothing to point at); `will_live_in` names where they will be, `replaces` the ids they take over. They never appear in `flows`; a view may draw them with status \"decided\".",
-  "views": "Top-level map of named diagrams over the same ids: a frame (the big block), the ids inside it, aggregate boxes outside it (`stands_for` = the zones or pieces a box summarises, drawn without detail) and directed edges. A view adds no piece: every id it names is a piece, an external, a planned item, a zone or one of its own boxes."
+  "views": "Top-level map of named diagrams over the same ids: a frame (the big block), the pieces inside it (`inside`), aggregate boxes (`outside`; `in_frame: true` draws one inside the frame as a summarised part of it) and directed edges. An aggregate box names what it summarises: `stands_for` (zones or pieces of this map) and/or `paths` (code that exists). A view adds no piece: every id it names is a piece, an external, a planned item, a zone or one of its own boxes."
  },
  "version": 1,
  "measured": "2026-11-21",
@@ -330,11 +330,13 @@
    "name": "Peer turn",
    "paths": [
     "connectors/meshkore/bridge/turn.py",
-    "connectors/meshkore/brain.py"
+    "connectors/meshkore/brain.py",
+    "connectors/meshkore/compose.py"
    ],
    "emits": [
     "cluster"
-   ]
+   ],
+   "_doc": "A peer's turn on a cluster, composed by the connector itself: the system text as language data, the relationship capsule and the peer's words with the security trailer last, one call through the model client and its relay. Its only act is the errand its permission grants. With the conversation manager on, the turn enters it as an event and runs after his words."
   },
   {
    "id": "a_mail",
@@ -869,17 +871,19 @@
   {
    "id": "s_conn",
    "zone": "services",
-   "name": "Connectors — outbound",
+   "name": "Messages out — the send owner and the connectors' exit",
    "paths": [
     "connectors/whatsapp",
     "connectors/telegram",
     "connectors/email/mailbox/smtp.py",
-    "connectors/calendar/service.py"
+    "connectors/calendar/service.py",
+    "nucleo/send"
    ],
    "emits": [
     "connector",
     "provider"
-   ]
+   ],
+   "_doc": "A message has one owner (`nucleo/send`): one draft, shown in its widget's box; his words or his hand on the box change it; one confirmation he heard, or his Send by gesture; it leaves through the connectors' one exit and ends on the connector's receipt. Each step is seen in the flow of the order that opened it."
   },
   {
    "id": "s_egress",
@@ -1050,11 +1054,13 @@
    "zone": "conversation",
    "name": "Inbox — one order across channels",
    "paths": [
-    "conversation/inbox"
+    "conversation/inbox",
+    "nucleo/conversation_host/events_in.py"
    ],
    "emits": [
     "conv_inbox"
-   ]
+   ],
+   "_doc": "One order across channels for his entries, and the door of the world's events: an event the router already routed enters as an entry of its own kind, with its source's authority, never his; it runs after his words and its route is obeyed by the one body that obeys it. The conversation model is not asked about an event."
   },
   {
    "id": "c_ledger",
@@ -1171,63 +1177,16 @@
     "nucleo/conversation_host/acts_life.py",
     "nucleo/conversation_host/acts_network.py",
     "nucleo/conversation_host/tools_read.py",
-    "nucleo/conversation_host/declared.json"
+    "nucleo/conversation_host/declared.json",
+    "nucleo/conversation_host/acts_memory.py"
    ],
    "emits": [
     "panel"
    ],
-   "_doc": "Every tool the model sees is declared data (`declared.json`): its schema, what it is for and the door it goes to. Reads pass the gateway (web search, a widget's content and actions, a state topic, memory, the agent itself); a local act is reserved and carried to the door that already does it (the canvas, a widget's declared action, a task, the agent's own settings, a widget's life); a message goes to its one owner and leaves only through the connectors' exit door."
+   "_doc": "Every tool the model sees is declared data (`declared.json`): its schema, what it is for and the door it goes to. Reads pass the gateway (web search, a widget's content and actions, a state topic, memory, the agent itself); a local act is reserved and carried to the door that already does it (the canvas, a widget's declared action, a task, the agent's own settings, a widget's life); a message goes to its one owner and leaves only through the connectors' exit door. A process of his is answered by its id (`task_answer`); a memory is forgotten or corrected by its id after a recall gave it."
   }
  ],
- "planned": [
-  {
-   "id": "p_event_entry",
-   "zone": "conversation",
-   "name": "Event entry — what arrives without his voice, as an entry of the manager",
-   "will_live_in": [
-    "conversation/envelopes.py",
-    "nucleo/conversation_host/events_in.py"
-   ],
-   "replaces": [],
-   "_doc": "An event (a message, a due job, a cluster's turn, a worker that ended or asked) enters the manager as an entry of its own kind, with the authority of its source, never his: it is ordered behind his entries, counted and closed once, and has its flow. Code and his rules decide what is done with it (a row it resumes, a claimant, a subscribed rule); the conversation model is not asked. What he must hear is a line owed to him."
-  },
-  {
-   "id": "p_peer_compose",
-   "zone": "peers",
-   "name": "Peer composer — a cluster peer's turn",
-   "will_live_in": [
-    "connectors/meshkore/compose.py"
-   ],
-   "replaces": [
-    "f_prompt"
-   ],
-   "_doc": "A cluster peer's turn composed by the connector itself: the system text as language-pack data, the relationship capsule and the peer's words, the security trailer last; one call through the fast client and its relay; the only act its permissions may grant is an errand bounded by them. Replaces the old turn's cluster profile."
-  },
-  {
-   "id": "p_task_answer",
-   "zone": "conversation",
-   "name": "Answer to an open process, by id",
-   "will_live_in": [
-    "nucleo/conversation_host/declared.json",
-    "nucleo/conversation_host/acts_tasks.py"
-   ],
-   "replaces": [
-    "f_switch"
-   ],
-   "_doc": "The manager's model sees the processes open (OPEN, TASKS) and answers one with a declared act by its id; no decider runs in front of the model."
-  },
-  {
-   "id": "p_memory_acts",
-   "zone": "conversation",
-   "name": "Forget and correct a memory, by id",
-   "will_live_in": [
-    "nucleo/conversation_host/declared.json",
-    "memory/api/forgetting.py"
-   ],
-   "replaces": [],
-   "_doc": "Two declared acts the model calls after a recall gave it the memory's id: forget it (soft, with its undo) or correct it (a new memory through the one writer, superseding the old). Nothing is matched by words."
-  }
- ],
+ "planned": [],
  "emitters": {
   "_doc": "Which piece an observability event comes from (`piece`), for modules the pieces' `paths` do not name. Read by observability/pieces.py: an exact file here beats a piece's own path; otherwise the deepest folder (here or in a piece's paths) wins. A value is a piece id, or {kind: piece, '*': default} where one module hosts several pieces. A module drawn nowhere stamps piece='unmapped' with its path — never a guess.",
   "nucleo/turn/whisper": "f_whisper",
@@ -2686,6 +2645,329 @@
  "_flows": "Who talks to whom. `a`/`b` alone carry no direction; `dir` (see `_schema`) says it where it is stated. `uncaptured` = the flow exists in the code but leaves no event (e.g. the rules read into every prompt).",
  "views": {
   "_doc": "Named diagrams drawn from this file by the web and the session player. Ids are the map's; boxes ending in a view are aggregates drawn without detail.",
+  "architecture": {
+   "title": "Zaelar — one engine on your machine",
+   "_doc": "The whole engine as one block: what it is made of inside, and the outside it talks to. Each inner box summarises a zone of this map; its own diagram has the detail.",
+   "frame": {
+    "id": "engine",
+    "label": "The engine — a process for the body, one for the voice",
+    "zones": []
+   },
+   "inside": [],
+   "outside": [
+    {
+     "id": "a_conv",
+     "label": "Conversation & turn manager — hears you, decides with the model, acts through declared doors",
+     "stands_for": [
+      "conversation"
+     ],
+     "side": "both",
+     "in_frame": true
+    },
+    {
+     "id": "a_events",
+     "label": "Events and your rules — a message, a due job, a peer's turn: routed by code and your rules",
+     "stands_for": [
+      "events",
+      "rules",
+      "pulse",
+      "inbound",
+      "peers"
+     ],
+     "side": "both",
+     "in_frame": true
+    },
+    {
+     "id": "a_tasks",
+     "label": "Tasks and Brain Workers — one row, one worker; the circuit writes the ending",
+     "stands_for": [
+      "tasks",
+      "worker"
+     ],
+     "side": "both",
+     "in_frame": true
+    },
+    {
+     "id": "a_send",
+     "label": "Messages out — one owner, one draft, one exit",
+     "stands_for": [
+      "s_conn"
+     ],
+     "side": "both",
+     "in_frame": true
+    },
+    {
+     "id": "a_widgets",
+     "label": "Widgets — one folder each: declared actions, its data, its UI",
+     "stands_for": [
+      "u_canvas"
+     ],
+     "side": "both",
+     "paths": [
+      "widgets"
+     ],
+     "in_frame": true
+    },
+    {
+     "id": "a_memory",
+     "label": "Memory — one entry, one writer, hybrid recall",
+     "stands_for": [
+      "memory",
+      "store"
+     ],
+     "side": "both",
+     "in_frame": true
+    },
+    {
+     "id": "a_services",
+     "label": "Search, the browser, the page reader, network agents",
+     "stands_for": [
+      "s_search",
+      "s_nav",
+      "s_scrape",
+      "s_mesh"
+     ],
+     "side": "both",
+     "in_frame": true
+    },
+    {
+     "id": "a_dna",
+     "label": "Agent DNA — factory genes and what it learns",
+     "stands_for": [
+      "genome"
+     ],
+     "side": "both",
+     "in_frame": true
+    },
+    {
+     "id": "v_you",
+     "label": "You — voice, chat, buttons, the face",
+     "stands_for": [
+      "you"
+     ],
+     "side": "both"
+    },
+    {
+     "id": "v_voice",
+     "label": "Voice providers — speech in, speech out",
+     "stands_for": [
+      "voice"
+     ],
+     "side": "both"
+    },
+    {
+     "id": "v_models",
+     "label": "Language models — per call, each with a stand-in",
+     "stands_for": [
+      "models"
+     ],
+     "side": "both"
+    },
+    {
+     "id": "v_world",
+     "label": "The world — messaging apps, mail, Google, web pages",
+     "stands_for": [
+      "x_wa",
+      "x_tg",
+      "x_mail",
+      "x_google",
+      "x_web",
+      "x_sites"
+     ],
+     "side": "both"
+    },
+    {
+     "id": "v_mesh",
+     "label": "MeshKore network — clusters and agents",
+     "stands_for": [
+      "x_mesh"
+     ],
+     "side": "both"
+    },
+    {
+     "id": "v_daemon",
+     "label": "Local daemon — a window on your desktop",
+     "stands_for": [
+      "x_daemon"
+     ],
+     "side": "both"
+    },
+    {
+     "id": "v_legacy",
+     "label": "The old turn — retiring",
+     "stands_for": [
+      "flash"
+     ],
+     "side": "in",
+     "status": "retiring"
+    }
+   ],
+   "edges": [
+    {
+     "from": "v_you",
+     "to": "v_voice",
+     "label": "your voice",
+     "dir": "a>b"
+    },
+    {
+     "from": "v_voice",
+     "to": "a_conv",
+     "label": "words, end of turn",
+     "dir": "a>b"
+    },
+    {
+     "from": "a_conv",
+     "to": "v_voice",
+     "label": "speech",
+     "dir": "a>b"
+    },
+    {
+     "from": "v_you",
+     "to": "a_conv",
+     "label": "typed lines, buttons",
+     "dir": "a>b"
+    },
+    {
+     "from": "a_conv",
+     "to": "v_you",
+     "label": "the chat wall",
+     "dir": "a>b"
+    },
+    {
+     "from": "a_conv",
+     "to": "v_models",
+     "label": "prompt · orders, tool calls",
+     "dir": "both"
+    },
+    {
+     "from": "a_conv",
+     "to": "a_dna",
+     "label": "a known phrase: the action map",
+     "dir": "both"
+    },
+    {
+     "from": "a_conv",
+     "to": "a_widgets",
+     "label": "open, close, read, a declared action",
+     "dir": "both"
+    },
+    {
+     "from": "a_conv",
+     "to": "a_tasks",
+     "label": "start · answer · stop, by id",
+     "dir": "a>b"
+    },
+    {
+     "from": "a_conv",
+     "to": "a_send",
+     "label": "a message, to its one owner",
+     "dir": "a>b"
+    },
+    {
+     "from": "a_conv",
+     "to": "a_memory",
+     "label": "state, recall · your words filed",
+     "dir": "both"
+    },
+    {
+     "from": "a_conv",
+     "to": "a_services",
+     "label": "search, listings",
+     "dir": "both"
+    },
+    {
+     "from": "a_send",
+     "to": "a_widgets",
+     "label": "the open draft, in its box",
+     "dir": "a>b"
+    },
+    {
+     "from": "a_send",
+     "to": "v_world",
+     "label": "one exit · the receipt",
+     "dir": "both"
+    },
+    {
+     "from": "v_world",
+     "to": "a_events",
+     "label": "a message arrives",
+     "dir": "a>b"
+    },
+    {
+     "from": "v_mesh",
+     "to": "a_events",
+     "label": "a peer's turn",
+     "dir": "both"
+    },
+    {
+     "from": "a_events",
+     "to": "a_conv",
+     "label": "an event, with its source's authority",
+     "dir": "a>b"
+    },
+    {
+     "from": "a_events",
+     "to": "a_tasks",
+     "label": "a row resumed · a rule's worker",
+     "dir": "a>b"
+    },
+    {
+     "from": "a_tasks",
+     "to": "a_events",
+     "label": "ended · asked",
+     "dir": "a>b"
+    },
+    {
+     "from": "a_tasks",
+     "to": "v_models",
+     "label": "the worker's models",
+     "dir": "both"
+    },
+    {
+     "from": "a_tasks",
+     "to": "a_services",
+     "label": "web, pages, network",
+     "dir": "both"
+    },
+    {
+     "from": "a_tasks",
+     "to": "a_memory",
+     "label": "through its one entry",
+     "dir": "both"
+    },
+    {
+     "from": "a_services",
+     "to": "v_world",
+     "label": "",
+     "dir": "both"
+    },
+    {
+     "from": "a_services",
+     "to": "v_mesh",
+     "label": "a skill by id",
+     "dir": "both"
+    },
+    {
+     "from": "a_widgets",
+     "to": "a_memory",
+     "label": "durable data",
+     "dir": "a>b"
+    },
+    {
+     "from": "v_daemon",
+     "to": "a_conv",
+     "label": "a window, the same agent",
+     "dir": "both"
+    },
+    {
+     "from": "v_you",
+     "to": "v_legacy",
+     "label": "a session the manager does not take",
+     "dir": "a>b",
+     "status": "retiring"
+    }
+   ]
+  },
   "flashbrain": {
    "title": "FlashBrain — the conversation and turn manager",
    "_doc": "A flowchart of where traffic enters the manager and where it leaves. Inside the frame, the manager's pieces; outside, one box per neighbour with no detail. Edges carry `dir`; `status` \"decided\" = designed, not built; \"retiring\" = the old path still running.",
@@ -2706,10 +2988,7 @@
     "c_gateway",
     "c_ledger",
     "c_acts",
-    "c_mouth",
-    "p_event_entry",
-    "p_task_answer",
-    "p_memory_acts"
+    "c_mouth"
    ],
    "outside": [
     {
@@ -2764,7 +3043,7 @@
     },
     {
      "id": "v_events",
-     "label": "Events and his rules — messages, the pulse, clusters, connectors",
+     "label": "Events and your rules — messages, the pulse, a peer's turn, routed by code",
      "stands_for": [
       "events",
       "rules",
@@ -2795,7 +3074,7 @@
     },
     {
      "id": "v_send",
-     "label": "Messages out — its one owner, the connectors' exit",
+     "label": "Messages out — one owner, one draft shown in its widget, one exit",
      "stands_for": [
       "s_conn"
      ],
@@ -2884,15 +3163,8 @@
     },
     {
      "from": "c_route",
-     "to": "v_tasks",
-     "label": "his answer to a process",
-     "dir": "a>b",
-     "status": "retiring"
-    },
-    {
-     "from": "c_route",
      "to": "v_send",
-     "label": "the open draft",
+     "label": "the open draft takes your words",
      "dir": "both"
     },
     {
@@ -2940,7 +3212,7 @@
     {
      "from": "c_acts",
      "to": "v_tasks",
-     "label": "start · resume · stop",
+     "label": "start · resume · answer · stop, by id",
      "dir": "a>b"
     },
     {
@@ -2952,7 +3224,7 @@
     {
      "from": "c_acts",
      "to": "v_memory",
-     "label": "recall · state topics",
+     "label": "recall · state topics · forget, correct by id",
      "dir": "both"
     },
     {
@@ -2964,7 +3236,7 @@
     {
      "from": "c_acts",
      "to": "v_send",
-     "label": "a message",
+     "label": "a message, to its one owner",
      "dir": "a>b"
     },
     {
@@ -3010,53 +3282,758 @@
      "dir": "a>b"
     },
     {
-     "from": "v_events",
-     "to": "p_event_entry",
-     "label": "an event, with its source's authority",
-     "dir": "a>b",
-     "status": "decided"
-    },
-    {
-     "from": "p_event_entry",
-     "to": "c_inbox",
-     "label": "behind his entries",
-     "dir": "a>b",
-     "status": "decided"
-    },
-    {
-     "from": "c_acts",
-     "to": "p_task_answer",
-     "label": "answer a process by id",
-     "dir": "a>b",
-     "status": "decided"
-    },
-    {
-     "from": "p_task_answer",
-     "to": "v_tasks",
-     "label": "",
-     "dir": "a>b",
-     "status": "decided"
-    },
-    {
-     "from": "c_acts",
-     "to": "p_memory_acts",
-     "label": "forget · correct",
-     "dir": "a>b",
-     "status": "decided"
-    },
-    {
-     "from": "p_memory_acts",
-     "to": "v_memory",
-     "label": "",
-     "dir": "a>b",
-     "status": "decided"
-    },
-    {
      "from": "v_you",
      "to": "v_legacy",
      "label": "a session the manager does not take",
      "dir": "a>b",
      "status": "retiring"
+    },
+    {
+     "from": "v_events",
+     "to": "c_inbox",
+     "label": "an event, with its source's authority: its route obeyed, no model",
+     "dir": "a>b"
+    },
+    {
+     "from": "v_send",
+     "to": "v_widgets",
+     "label": "the open draft, painted in its box",
+     "dir": "a>b"
+    }
+   ]
+  },
+  "apps": {
+   "title": "A widget — one folder, declared once",
+   "_doc": "What a widget is and who reaches it: what it can do is declared in its manifest and read by every caller; one funnel applies its actions; its face reports what it shows.",
+   "frame": {
+    "id": "widget",
+    "label": "A widget — widgets/<id>/",
+    "zones": []
+   },
+   "inside": [],
+   "outside": [
+    {
+     "id": "w_manifest",
+     "label": "manifest.json — its name, aliases, the state it shows, its declared actions and their mode",
+     "stands_for": [],
+     "side": "both",
+     "paths": [
+      "widgets/actions.py",
+      "widgets/effects.py",
+      "widgets/contract.py"
+     ],
+     "in_frame": true
+    },
+    {
+     "id": "w_data",
+     "label": "data.py — its data; every action through one funnel",
+     "stands_for": [],
+     "side": "both",
+     "paths": [
+      "widgets/server_api.py",
+      "widgets/store.py"
+     ],
+     "in_frame": true
+    },
+    {
+     "id": "w_ui",
+     "label": "widget.js — its face on the canvas, redrawn when its data changes",
+     "stands_for": [],
+     "side": "both",
+     "paths": [
+      "frontend/app/widgets"
+     ],
+     "in_frame": true
+    },
+    {
+     "id": "w_state",
+     "label": "The state door — what each open widget reports it shows",
+     "stands_for": [],
+     "side": "both",
+     "paths": [
+      "widgets/state.py",
+      "widgets/state_api.py"
+     ],
+     "in_frame": true
+    },
+    {
+     "id": "w_owners",
+     "label": "Owners of its acts — a message being written is the send owner's",
+     "stands_for": [],
+     "side": "both",
+     "paths": [
+      "widgets/owners.py"
+     ],
+     "in_frame": true
+    },
+    {
+     "id": "w_runtime",
+     "label": "Runtime and catalogue — every widget by id, name or alias",
+     "stands_for": [],
+     "side": "both",
+     "paths": [
+      "widgets/runtime.py",
+      "widgets/registry.py"
+     ],
+     "in_frame": true
+    },
+    {
+     "id": "w_bg",
+     "label": "Background — a declared cycle, off the hot path",
+     "stands_for": [],
+     "side": "both",
+     "paths": [
+      "widgets/background.py",
+      "widgets/supervisor.py"
+     ],
+     "in_frame": true
+    },
+    {
+     "id": "w_gen",
+     "label": "Generator — a new widget or your fork, behind its gate",
+     "stands_for": [],
+     "side": "both",
+     "paths": [
+      "widgets/generator.py"
+     ],
+     "in_frame": true
+    },
+    {
+     "id": "v_manager",
+     "label": "Conversation manager — reads a widget, runs a declared action, opens or closes it",
+     "stands_for": [
+      "conversation"
+     ],
+     "side": "in"
+    },
+    {
+     "id": "v_you",
+     "label": "You — its buttons and its box",
+     "stands_for": [
+      "you"
+     ],
+     "side": "in"
+    },
+    {
+     "id": "v_send",
+     "label": "The send owner — paints the message being written",
+     "stands_for": [
+      "s_conn"
+     ],
+     "side": "both"
+    },
+    {
+     "id": "v_workers",
+     "label": "A Brain Worker — writes a widget's code, after your yes",
+     "stands_for": [
+      "worker"
+     ],
+     "side": "in"
+    },
+    {
+     "id": "v_connectors",
+     "label": "Connectors — what arrives, kept by its widget",
+     "stands_for": [
+      "inbound"
+     ],
+     "side": "in"
+    },
+    {
+     "id": "v_memory",
+     "label": "Memory",
+     "stands_for": [
+      "memory"
+     ],
+     "side": "out"
+    }
+   ],
+   "edges": [
+    {
+     "from": "v_manager",
+     "to": "w_runtime",
+     "label": "which widget: by id, name or alias",
+     "dir": "a>b"
+    },
+    {
+     "from": "v_manager",
+     "to": "w_data",
+     "label": "a declared action",
+     "dir": "a>b"
+    },
+    {
+     "from": "v_manager",
+     "to": "w_state",
+     "label": "read a widget · its state",
+     "dir": "both"
+    },
+    {
+     "from": "v_manager",
+     "to": "w_ui",
+     "label": "show · close · full screen",
+     "dir": "a>b"
+    },
+    {
+     "from": "v_you",
+     "to": "w_data",
+     "label": "its buttons, your typing",
+     "dir": "a>b"
+    },
+    {
+     "from": "w_data",
+     "to": "w_manifest",
+     "label": "its contract: mode, effects",
+     "dir": "both"
+    },
+    {
+     "from": "w_data",
+     "to": "w_owners",
+     "label": "an act whose type has an owner",
+     "dir": "a>b"
+    },
+    {
+     "from": "w_owners",
+     "to": "v_send",
+     "label": "your hand on the open draft",
+     "dir": "a>b"
+    },
+    {
+     "from": "v_send",
+     "to": "w_data",
+     "label": "the draft painted, then taken away",
+     "dir": "a>b"
+    },
+    {
+     "from": "w_data",
+     "to": "w_ui",
+     "label": "data changed: redraw",
+     "dir": "a>b"
+    },
+    {
+     "from": "w_ui",
+     "to": "w_state",
+     "label": "what it shows",
+     "dir": "a>b"
+    },
+    {
+     "from": "w_bg",
+     "to": "w_data",
+     "label": "its cycle",
+     "dir": "a>b"
+    },
+    {
+     "from": "v_connectors",
+     "to": "w_data",
+     "label": "messages, kept",
+     "dir": "a>b"
+    },
+    {
+     "from": "w_data",
+     "to": "v_memory",
+     "label": "durable data",
+     "dir": "a>b"
+    },
+    {
+     "from": "v_workers",
+     "to": "w_gen",
+     "label": "code to write",
+     "dir": "a>b"
+    },
+    {
+     "from": "w_gen",
+     "to": "w_runtime",
+     "label": "a validated folder",
+     "dir": "a>b"
+    },
+    {
+     "from": "w_runtime",
+     "to": "w_manifest",
+     "label": "every manifest",
+     "dir": "a>b"
+    }
+   ]
+  },
+  "brainworkers": {
+   "title": "Tasks — one row, one Brain Worker",
+   "_doc": "Work that takes more than a turn: a row that holds its state, one worker session per task, resumable by id, its hands the engine's own doors, and one writer of its ending.",
+   "frame": {
+    "id": "tasks",
+    "label": "Tasks and Brain Workers",
+    "zones": [
+     "tasks",
+     "worker"
+    ]
+   },
+   "inside": [
+    "t_dispatch",
+    "t_row",
+    "t_circuit",
+    "w_run",
+    "w_backend",
+    "w_play",
+    "w_bridge",
+    "w_tools",
+    "w_exit"
+   ],
+   "outside": [
+    {
+     "id": "v_manager",
+     "label": "Conversation manager — start, resume, answer, stop a task, by id",
+     "stands_for": [
+      "conversation"
+     ],
+     "side": "in"
+    },
+    {
+     "id": "v_events",
+     "label": "Events and your rules — a row resumed, a rule's stream worker",
+     "stands_for": [
+      "events",
+      "rules"
+     ],
+     "side": "in"
+    },
+    {
+     "id": "v_notices",
+     "label": "Lines owed to you — a result, a question",
+     "stands_for": [
+      "b_notices"
+     ],
+     "side": "out"
+    },
+    {
+     "id": "v_models",
+     "label": "The worker's models",
+     "stands_for": [
+      "x_claude",
+      "x_glm",
+      "x_dspro"
+     ],
+     "side": "both"
+    },
+    {
+     "id": "v_services",
+     "label": "Search, pages, the browser, network agents",
+     "stands_for": [
+      "s_search",
+      "s_scrape",
+      "s_nav",
+      "s_mesh"
+     ],
+     "side": "both"
+    },
+    {
+     "id": "v_memory",
+     "label": "Memory — its one entry",
+     "stands_for": [
+      "memory"
+     ],
+     "side": "both"
+    },
+    {
+     "id": "v_send",
+     "label": "Messages out — a worker's message goes to its one owner",
+     "stands_for": [
+      "s_conn"
+     ],
+     "side": "out"
+    }
+   ],
+   "edges": [
+    {
+     "from": "v_manager",
+     "to": "t_dispatch",
+     "label": "start a task",
+     "dir": "a>b"
+    },
+    {
+     "from": "v_manager",
+     "to": "t_row",
+     "label": "answer · stop, by id",
+     "dir": "a>b"
+    },
+    {
+     "from": "v_events",
+     "to": "t_row",
+     "label": "an event resumes its row",
+     "dir": "a>b"
+    },
+    {
+     "from": "v_events",
+     "to": "t_dispatch",
+     "label": "a rule's stream worker",
+     "dir": "a>b"
+    },
+    {
+     "from": "t_dispatch",
+     "to": "w_run",
+     "label": "one session per task, resumable by id",
+     "dir": "a>b"
+    },
+    {
+     "from": "w_run",
+     "to": "w_backend",
+     "label": "a harness, a model per call",
+     "dir": "both"
+    },
+    {
+     "from": "w_backend",
+     "to": "v_models",
+     "label": "",
+     "dir": "both"
+    },
+    {
+     "from": "w_run",
+     "to": "w_play",
+     "label": "chooses its playbook",
+     "dir": "a>b"
+    },
+    {
+     "from": "w_run",
+     "to": "w_bridge",
+     "label": "act · ask · say",
+     "dir": "both"
+    },
+    {
+     "from": "w_bridge",
+     "to": "w_tools",
+     "label": "",
+     "dir": "both"
+    },
+    {
+     "from": "w_tools",
+     "to": "v_services",
+     "label": "",
+     "dir": "both"
+    },
+    {
+     "from": "w_tools",
+     "to": "v_memory",
+     "label": "",
+     "dir": "both"
+    },
+    {
+     "from": "w_bridge",
+     "to": "w_exit",
+     "label": "what leaves",
+     "dir": "a>b"
+    },
+    {
+     "from": "w_exit",
+     "to": "v_send",
+     "label": "a message",
+     "dir": "a>b"
+    },
+    {
+     "from": "w_bridge",
+     "to": "t_row",
+     "label": "the row is the state",
+     "dir": "a>b"
+    },
+    {
+     "from": "w_run",
+     "to": "t_circuit",
+     "label": "a result to verify",
+     "dir": "a>b"
+    },
+    {
+     "from": "t_circuit",
+     "to": "t_row",
+     "label": "the one ending writer",
+     "dir": "a>b"
+    },
+    {
+     "from": "t_row",
+     "to": "v_notices",
+     "label": "a result, a question",
+     "dir": "a>b"
+    }
+   ]
+  },
+  "cluster": {
+   "title": "A cluster — a peer's turn",
+   "_doc": "Another agent writes on a cluster: the connector frames the peer's words as untrusted data, enters the turn into the conversation manager as an event after your words, and composes the reply itself. Tools only by a permission you granted.",
+   "frame": {
+    "id": "cluster",
+    "label": "Clusters — the MeshKore channel",
+    "zones": [
+     "peers"
+    ]
+   },
+   "inside": [
+    "o_peers",
+    "o_peerturn",
+    "a_mail"
+   ],
+   "outside": [
+    {
+     "id": "v_mesh",
+     "label": "MeshKore network — the peer's agent",
+     "stands_for": [
+      "x_mesh"
+     ],
+     "side": "both"
+    },
+    {
+     "id": "v_manager",
+     "label": "Conversation manager — the turn enters as an event, after your words",
+     "stands_for": [
+      "c_inbox"
+     ],
+     "side": "both"
+    },
+    {
+     "id": "v_models",
+     "label": "The model — one call, with its stand-in",
+     "stands_for": [
+      "x_flash",
+      "x_gpt"
+     ],
+     "side": "both"
+    },
+    {
+     "id": "v_tasks",
+     "label": "An errand — only if a permission you granted allows it",
+     "stands_for": [
+      "tasks",
+      "worker"
+     ],
+     "side": "out"
+    },
+    {
+     "id": "v_memory",
+     "label": "Relationship memory — per cluster and peer, kept apart",
+     "stands_for": [],
+     "side": "both",
+     "paths": [
+      "connectors/meshkore/capsule.py",
+      "connectors/meshkore/journal.py"
+     ]
+    },
+    {
+     "id": "v_you",
+     "label": "You — grant a permission, set its objective",
+     "stands_for": [
+      "you"
+     ],
+     "side": "in"
+    }
+   ],
+   "edges": [
+    {
+     "from": "v_mesh",
+     "to": "o_peers",
+     "label": "a peer's message",
+     "dir": "both"
+    },
+    {
+     "from": "o_peers",
+     "to": "o_peerturn",
+     "label": "framed as untrusted data",
+     "dir": "a>b"
+    },
+    {
+     "from": "o_peerturn",
+     "to": "v_memory",
+     "label": "capsule · pact · rhythm",
+     "dir": "both"
+    },
+    {
+     "from": "o_peerturn",
+     "to": "v_manager",
+     "label": "an event, after your words",
+     "dir": "both"
+    },
+    {
+     "from": "o_peerturn",
+     "to": "v_models",
+     "label": "one call",
+     "dir": "both"
+    },
+    {
+     "from": "o_peerturn",
+     "to": "v_tasks",
+     "label": "a bounded errand, if granted",
+     "dir": "a>b"
+    },
+    {
+     "from": "o_peerturn",
+     "to": "o_peers",
+     "label": "the reply, through its outbound guard",
+     "dir": "a>b"
+    },
+    {
+     "from": "v_you",
+     "to": "o_peerturn",
+     "label": "permission · objective",
+     "dir": "a>b"
+    },
+    {
+     "from": "a_mail",
+     "to": "v_mesh",
+     "label": "agent-to-agent mail: a mailbox, not a socket",
+     "dir": "both"
+    }
+   ]
+  },
+  "memory": {
+   "title": "Memory — one entry, one writer",
+   "_doc": "What is remembered and how it comes back: your words filed by the memory's own writer, a state always in the prompt as facts, recall on demand, and a sleep that consolidates.",
+   "frame": {
+    "id": "memory",
+    "label": "Memory — memory/ · one SQLite file",
+    "zones": [
+     "memory"
+    ]
+   },
+   "inside": [
+    "m_heart",
+    "m_api",
+    "m_queue",
+    "m_writer",
+    "m_state",
+    "m_retriever",
+    "m_sleep",
+    "m_episodic"
+   ],
+   "outside": [
+    {
+     "id": "v_manager",
+     "label": "Conversation manager — your words filed, the state as facts, recall when asked, forget or correct by id",
+     "stands_for": [
+      "conversation"
+     ],
+     "side": "both"
+    },
+    {
+     "id": "v_workers",
+     "label": "Brain Workers — through the one entry",
+     "stands_for": [
+      "worker"
+     ],
+     "side": "both"
+    },
+    {
+     "id": "v_widgets",
+     "label": "Widgets — their durable data",
+     "stands_for": [
+      "u_canvas"
+     ],
+     "side": "in"
+    },
+    {
+     "id": "v_store",
+     "label": "The file — memories, vectors, text index, graph, state, the vault",
+     "stands_for": [
+      "store"
+     ],
+     "side": "both"
+    },
+    {
+     "id": "v_models",
+     "label": "Models — the distiller, the embeddings",
+     "stands_for": [
+      "x_flash",
+      "x_embed"
+     ],
+     "side": "both"
+    }
+   ],
+   "edges": [
+    {
+     "from": "v_manager",
+     "to": "m_heart",
+     "label": "your words, filed",
+     "dir": "a>b"
+    },
+    {
+     "from": "m_heart",
+     "to": "v_models",
+     "label": "distil",
+     "dir": "both"
+    },
+    {
+     "from": "m_heart",
+     "to": "m_api",
+     "label": "memories",
+     "dir": "a>b"
+    },
+    {
+     "from": "v_workers",
+     "to": "m_api",
+     "label": "",
+     "dir": "both"
+    },
+    {
+     "from": "v_widgets",
+     "to": "m_api",
+     "label": "durable data",
+     "dir": "a>b"
+    },
+    {
+     "from": "v_manager",
+     "to": "m_api",
+     "label": "forget · correct, by id",
+     "dir": "a>b"
+    },
+    {
+     "from": "m_api",
+     "to": "m_queue",
+     "label": "enqueue",
+     "dir": "a>b"
+    },
+    {
+     "from": "m_queue",
+     "to": "m_writer",
+     "label": "one at a time",
+     "dir": "a>b"
+    },
+    {
+     "from": "m_writer",
+     "to": "v_store",
+     "label": "write · embed · supersede",
+     "dir": "a>b"
+    },
+    {
+     "from": "m_writer",
+     "to": "v_models",
+     "label": "embeddings",
+     "dir": "a>b"
+    },
+    {
+     "from": "m_state",
+     "to": "v_manager",
+     "label": "STATE, always: facts",
+     "dir": "a>b"
+    },
+    {
+     "from": "v_manager",
+     "to": "m_retriever",
+     "label": "recall, when asked",
+     "dir": "both"
+    },
+    {
+     "from": "m_retriever",
+     "to": "v_store",
+     "label": "vector · keyword · graph",
+     "dir": "both"
+    },
+    {
+     "from": "m_retriever",
+     "to": "m_episodic",
+     "label": "a file, on demand",
+     "dir": "a>b"
+    },
+    {
+     "from": "m_sleep",
+     "to": "v_store",
+     "label": "consolidate · decay",
+     "dir": "both"
+    },
+    {
+     "from": "m_state",
+     "to": "v_store",
+     "label": "",
+     "dir": "both"
     }
    ]
   }
