@@ -980,6 +980,8 @@ _TOTAL_MAX += 4      # same, with the receipt's answer fields read from `declare
 _TOTAL_MAX += 13     # 2026-11-21 INI-078 F2: the embedded voice is refused — said on his screen, the voice process built as always (`child_process.factory`, `asked_embedded`)
 _PACKAGE_CEILINGS["nucleo/circuit"] += 27   # 2026-11-21 INI-078 Q-7: there are no task lists — a live list a restart finds is archived with its steps, one pill (`ledger.lists_retired`); the list executor and its doors go
 _TOTAL_MAX -= 916    # 2026-11-21 INI-078 Q-7: the list executor (`nucleo/batch`) is deleted, measured
+_PACKAGE_CEILINGS["nucleo/dispatch"] += 6   # 2026-11-21 INI-078 Q-7 (step 1c): several things asked at once are several tasks — the dedup never folds a call into a sibling of the same run, live or parked (`_live_errands(but_run)`)
+_PACKAGE_CEILINGS["conversation"] += 4      # same step: a line past the manager's `line_max_chars` is cut out loud, never silently (`Config.line_max_chars`)
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

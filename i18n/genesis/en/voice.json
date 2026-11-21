@@ -332,6 +332,7 @@
   "Something went sideways on my end and I didn't answer. Tell me again what you need."
  ],
  "lost_after_acts": "I did part of it, but didn't get to finish. Shall I carry on?",
+ "line_cut": "Your message was long: I only read the first {kept} of its {chars} characters. Send me the rest in another message.",
  "mute_wordless": "I'm here if you need me.",
  "filler_waited": "It's been {min} min and it still hasn't given me anything. Shall I let it run, or stop it and try another way?",
  "worker_ask_named": "Hey, the «{goal}» process is asking: {question}",

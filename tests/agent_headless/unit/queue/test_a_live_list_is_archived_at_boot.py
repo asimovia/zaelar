@@ -14,8 +14,10 @@ def test_a_live_list_a_restart_finds_is_archived_with_its_steps(monkeypatch):
     ts.task_put({"id": "lista:1", "title": "2 × call the garage", "kind": "lista", "state": "running"})
     ts.task_put({"id": "lista:1#01", "title": "call the garage", "kind": "other", "parent_id": "lista:1"})
     ts.task_put({"id": "lista:0", "title": "an old list", "kind": "lista", "state": "done"})
+    ts.artifact_put("lista:1#01", "report", {"said": "garage called"})
     assert ledger.lists_retired() == 1
     assert ts.task_get("lista:1") is None and ts.task_get("lista:1#01") is None
+    assert ts.artifacts_of("lista:1#01") == {}, "no artifact is left behind without its row"
     assert ts.task_get("lista:0") is not None, "an ended list is history, left to its own prune"
     (text, kw), = pills
     assert text.startswith("2 × call the garage") and kw["kind"] == "task" and kw["meta"]["task_id"] == "lista:1"

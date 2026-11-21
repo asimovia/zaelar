@@ -168,6 +168,12 @@ def _step(run: str, tool: str) -> None:
             _run_steps.pop(next(iter(_run_steps)))
 
 
+def run_in_course() -> str:
+    """The id of the run in course ("" when none): what its acts start are siblings of one execution."""
+    with _lock:
+        return str(_in_course["run"] or "")
+
+
 def current() -> str:
     """The turn of the run in course (an event's run: its own trace), "" when none: what its acts start is the order's."""
     with _lock:

@@ -183,14 +183,14 @@ def typed(text: str, dev: str = "", *, wait: bool = False, checked: bool = False
     inbox's dedupe — and it never names an owner), else one is made."""
     if not str(text or "").strip():
         return {"ok": False, "reason": "empty"}
-    from nucleo.conversation_host import wall
+    from nucleo.conversation_host import line_cut, wall
     cid = cid if wall.client_id_ok(cid) else f"c_{uuid.uuid4().hex[:12]}"
     if wait:
         with _lock:
             _waits[cid] = {"iv": None, "future": concurrent.futures.Future(), "said": [], "reads": [], "acts": [],
                            "ended": threading.Event()}
     from conversation.ear import signals as S
-    sig = S.TypedSubmit(dev or "holder", cid, str(text).strip()[:4000], int(time.time() * 1000))
+    sig = S.TypedSubmit(dev or "holder", cid, line_cut.clipped(text, dev), int(time.time() * 1000))
 
     def _end(label: str) -> None:
         with _lock:

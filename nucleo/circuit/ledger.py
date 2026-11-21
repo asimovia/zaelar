@@ -750,7 +750,7 @@ def lists_retired() -> int:
 
     There are no lists any more (INI-078, Q-7): several things asked at once are several independent tasks, so a list
     nothing runs would sit in his column for good. Run at boot; idempotent, since an archived row is gone. Returns how
-    many lists went. Never raises."""
+    many lists went; the rows go with their artifacts (a list's steps, never a result he paid for). Never raises."""
     n = 0
     for row in _ts.tasks_of_kind("lista", _ts.LIVE_STATES):
         uid = str(row.get("id") or "")
@@ -758,8 +758,7 @@ def lists_retired() -> int:
             from memory import api as _memory
             _memory.write(f"{str(row.get('title') or row.get('goal') or uid)[:160]}: {LISTS_GONE}", kind="task",
                           level="short", importance=0.3, ttl_days=7,
-                          meta={"task_id": uid, "owner": "", "state": "cancelled", "trace": row.get("trace_id") or "",
-                                "artifacts": sorted(_ts.artifacts_of(uid))})
+                          meta={"task_id": uid, "owner": "", "state": "cancelled", "trace": row.get("trace_id") or ""})
         except Exception as e:  # noqa: BLE001 — a pill that could not be written does not keep a dead list alive
             logger.debug(f"ledger: the pill of the retired list {uid} was not written ({e!r})")
         for step in _ts.tasks_children(uid):

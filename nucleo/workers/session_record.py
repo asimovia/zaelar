@@ -60,6 +60,7 @@ class SessionRecord:
     parent_task_id: str = ""
     depth: int = 0
     trace_id: str = ""            # V2-044: trace of the phrase that originated the session (chains all its events)
+    run: str = ""                 # INI-078: the conversation run whose call started it — its siblings are never folded
     heard: str = ""               # his commissioning sentence (Request.heard): what the errand's sheet judges rows by
     nav_task: str = ""            # kind=web: associated browser task ID (card) — set by dispatch
     # V2-259 — this errand's SHEET (`results::<sheet>`), sealed ONCE by `dispatch._sheet_open`. Not `task_id`:

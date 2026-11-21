@@ -66,8 +66,9 @@ async def run_listener(stop: "asyncio.Event | None" = None) -> None:
             # The same holds for a session RESUMED on its row by his answer (`worker_api_resume`): it is that row coming
             # back (measured 2026-11-18: an answered send was folded «by widget» into a group errand, and was lost).
             _bound = bool(ctx.get("answers") or (ctx.get("resume") or {}).get("rebrief"))
+            _run = str(ctx.get("run") or "")     # INI-078: a sibling call of the same run is another task, never folded
             dup, _ev = ("", {}) if _bound else _d.dedup_scan(
-                request, kind if kind != "generic" else _d._kind_of(ctx.get("errand_kind")))
+                request, kind if kind != "generic" else _d._kind_of(ctx.get("errand_kind")), _run)
             # `by` now comes from the deciding loop instead of being assumed here: a same-widget hit used to
             # be filed as «containment», which is a number it never computed.
             _dup_by = _ev.get("by") or ""
@@ -75,7 +76,7 @@ async def run_listener(stop: "asyncio.Event | None" = None) -> None:
             if not dup and not _bound:
                 # SECOND HALF OF THE DEDUP, off-loop: «is this an errand at all?» (`about_a_live_errand`). Only
                 # with something live; in a thread because `chat_sync` is synchronous.
-                _live = _d._live_errands()
+                _live = _d._live_errands(_run)
                 if _live:
                     try:
                         dup = await asyncio.to_thread(_d.about_a_live_errand, request, _live)
@@ -114,7 +115,7 @@ async def run_listener(stop: "asyncio.Event | None" = None) -> None:
             # `parked_errands()`; a hit is folded in (`absorb_refinement`) and the brain repeats the QUESTION. A
             # `confirmed` relaunch is never compared: it IS the parked errand coming back.
             if not (ctx.get("confirmed") or _bound):
-                _parked = _d.parked_errands()
+                _parked = _d.parked_errands(_run)
                 pdup = None
                 if _parked:
                     pdup, _pev = _d._dedup.scan(request, kind if kind != "generic" else _d._kind_of(ctx.get("errand_kind")),
@@ -199,7 +200,8 @@ async def run_listener(stop: "asyncio.Event | None" = None) -> None:
                                 # …and HOW SUCCESS IS MEASURED (V2-707 F2): a relay that dropped the condition
                                 # would deliver the half-done work the harness had just caught.
                                 done_when=dict(ctx.get("done_when") or {}),
-                                trace_id=str(ctx.get("trace", "") or ""), heard=str(ctx.get("heard", "") or ""))
+                                trace_id=str(ctx.get("trace", "") or ""), heard=str(ctx.get("heard", "") or ""),
+                                run=str(ctx.get("run", "") or ""))
             # V2-227 — the SURFACE is sealed here, the one point EVERY door into the dispatcher passes (the brain with its
             # `surface`, auto-resume, the confirm gate, the cluster). What the brain declared rules; with nothing
             # declared (or a word outside the vocabulary) it derives from the kind. Sealing later would open the sheet

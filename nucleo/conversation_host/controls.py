@@ -9,7 +9,7 @@ from __future__ import annotations
 import time
 import uuid
 
-from nucleo.conversation_host import entry
+from nucleo.conversation_host import entry, line_cut
 
 
 #: where a stop came from → its producer and channel (the package refuses a control from anyone else)
@@ -52,7 +52,7 @@ def local_phrase(text: str, dev: str = "") -> None:
                                         refs={"endpoint": where, "channel": "voice"}, trace=f"local:{where}",
                                         text=str(text)[:400], reason=HEARD_BY_EAR))
         return
-    sig = S.LocalPhrase(dev or "holder", f"l_{uuid.uuid4().hex[:12]}", str(text).strip()[:4000],
+    sig = S.LocalPhrase(dev or "holder", f"l_{uuid.uuid4().hex[:12]}", line_cut.clipped(text, dev),
                         int(time.time() * 1000))
     entry._hand(lambda c: c.hear(sig))
 

@@ -314,10 +314,10 @@ def _the_errand_registries_start_empty():
     modules are already loaded (importing them here would change what the suite imports)."""
     import sys
     esc, ended = sys.modules.get("nucleo.acts.errand"), sys.modules.get("nucleo.workers.ended")
-    if esc is not None:
-        esc._tasks.clear()
-    if ended is not None:
-        ended._ENDED_SESSIONS.clear()
+    # A module another test's thread is still IMPORTING is in `sys.modules` without its registry yet: nothing to clear
+    for registry in (getattr(esc, "_tasks", None), getattr(ended, "_ENDED_SESSIONS", None)):
+        if registry is not None:
+            registry.clear()
     yield
 
 

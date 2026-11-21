@@ -28,10 +28,12 @@ def errand_context(args: dict) -> dict:
     """What the model's call decides about an errand, in the context its readers already respect (`request/kind.carry`
     reads the old brief only for a key that is missing): its kind, its consent class, the surface he will look at, the
     declared action it starts with, and his words. The model's order IS the decision: carried at full confidence."""
-    from nucleo.conversation_host import routing
+    from nucleo.conversation_host import routing, turns
     from nucleo.request import kind as _kind
     said = routing.said()
     ctx: dict = {"origin": "conversation", **({"heard": said, "said": said} if said else {})}
+    if turns.run_in_course():     # its sibling calls of this run are other tasks, never a duplicate of this one
+        ctx["run"] = turns.run_in_course()
     for arg, key in (("kind", _kind.KEY), ("class", "errand_class")):
         if str(args.get(arg) or "").strip():
             ctx[key] = {"choice": str(args[arg]).strip(), "confidence": 1.0}

@@ -97,6 +97,10 @@ class Config:
     #: a run reads at most this many times, and for at most this long in all: then the next step is offered no read
     #: and answers with what it has, saying what is missing — a timely honest answer over a slow spiral. Thresholds.
     max_reads: int = 2
+    #: a line he types (or a device's ear hands in) enters whole up to this many characters; past it the rest is cut —
+    #: and said, to him and as an alert, never silently (INI-078: twelve things asked in one message reached the
+    #: manager as the first few)
+    line_max_chars: int = 4000
     read_wall_ms: int = 12_000
     #: §1.10 bis: a DERIVED figure (counted or averaged from what a read of this run returned) may be said, citing
     #: that evidence — the door closes with this at False; and a reply with derived figures spends its one repair

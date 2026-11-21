@@ -76,14 +76,17 @@ def find_duplicate(request: str, kind: str) -> str | None:
     return _d.dedup_scan(request, kind)[0]
 
 
-def _live_errands() -> list[tuple[str, str]]:
-    """(tid, goal) of each session VIVA — the only point that traduce the record RAM for the two jueces."""
-    return [(k, r.goal) for k, r in _d._SESSIONS.items() if r.status in _d.LIVE_SESSION_STATES]
+def _live_errands(but_run: str = "") -> list[tuple[str, str]]:
+    """(tid, goal) of each LIVE session — the only point that reads the RAM record for the two judges. `but_run`: the
+    run a new call comes from; the sessions that same run started are its siblings — several things he asked at once
+    are several tasks (INI-078 Q-7), so they are never candidates to fold it into."""
+    return [(k, r.goal) for k, r in _d._SESSIONS.items() if r.status in _d.LIVE_SESSION_STATES
+            and not (but_run and getattr(r, "run", "") == but_run)]
 
 
-def dedup_scan(request: str, kind: str) -> tuple[str | None, dict]:
-    """El veredicto of the dedup Y the evidencia sobre the that it tomo (`nucleo/dedup.scan`)."""
-    return _d._dedup.scan(request, kind, _d._live_errands())
+def dedup_scan(request: str, kind: str, but_run: str = "") -> tuple[str | None, dict]:
+    """The dedup's verdict AND the evidence it read (`nucleo/dedup.scan`), never against a sibling of `but_run`."""
+    return _d._dedup.scan(request, kind, _d._live_errands(but_run))
 
 
 # ATTRIBUTION: which words of an allusion identify a task, and when two are THE SAME thing.

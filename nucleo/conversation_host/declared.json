@@ -289,7 +289,7 @@
    "act": "errand.open",
    "door": "task",
    "op": "start",
-   "about": "start a task of his that takes work outside this conversation (several sites, a booking, a comparison, a document): it runs apart and you are told when it ends; kind: the work it is (web: done ON a site), class: what it does in the world, surface: what he will look at; widget and action: the declared action it starts with, when there is one",
+   "about": "start a task of his that takes work outside this conversation (several sites, a booking, a comparison, a document): it runs apart and you are told when it ends; one call per thing he asks: several things asked at once are several calls; kind: the work it is (web: done ON a site), class: what it does in the world, surface: what he will look at; widget and action: the declared action it starts with, when there is one",
    "schema": {
     "type": "object",
     "required": [

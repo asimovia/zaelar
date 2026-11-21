@@ -532,6 +532,8 @@ class LangSpec:
     #: is a hiccup; it is not, and saying so is the only useful thing left.
     mute_stuck: str = ("")
     mute_lines: tuple = ()
+    #: INI-078 — his line was longer than the manager reads at once: what was read ({kept} of {chars} characters)
+    line_cut: str = ""
     #: Said instead of `mute_lines` when the answer was lost AFTER an act of it landed: part was done, so «I lost
     #: that» would be false (the conversation manager's step cap, C4).
     lost_after_acts: str = ""
