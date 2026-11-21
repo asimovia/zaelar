@@ -27,8 +27,9 @@ SENDERS = ("pulse", "owner", "him")
 PENDING = "pending"
 RUNNING = "running"
 WAITING = "waiting"
-#: the task leaves the queue (`done`/`failed`/`cancelled`): its row is archived
+#: the task leaves the queue (`done`/`failed`/`cancelled`): its row is archived in the state it ended in
 ARCHIVE = "archive"
+ARCHIVED = ("done", "failed", "cancelled")
 #: state → the signals it accepts → the state they lead to; anything else is refused
 JUMPS = {
     PENDING: {"start": RUNNING, "priority": PENDING, "move": PENDING, "progress": PENDING, "cancelled": ARCHIVE,
@@ -37,6 +38,8 @@ JUMPS = {
     RUNNING: {"wait": WAITING, "progress": RUNNING, "back": PENDING,
               "done": ARCHIVE, "failed": ARCHIVE, "cancelled": ARCHIVE},
     WAITING: {"back": PENDING, "progress": WAITING, "cancelled": ARCHIVE},   # a parked worker still beats
+    # his words to a task archived a moment ago bring it back to the head of its lane, the same task (`recent`)
+    **{s: {"reopen": PENDING} for s in ARCHIVED},
 }
 #: the columns each signal may carry; the rest of what a caller passes is not the signal's to write
 FIELDS = {
@@ -172,9 +175,11 @@ def _apply(tid: str, what: str, by: str, fields: dict) -> tuple[bool, tuple | No
         put["started_at"] = now
     elif what == "wait":
         put["waiting_since"] = now
-    elif what == "back":
+    elif what in ("back", "reopen"):
         put.update(waiting_for="", waiting_since=None, deadline=None, ask="", ask_id="")
         put["priority"], put["position"] = _head(str(row["owner"]), tid)
+        if what == "reopen":
+            put.update(outcome="", finished_at=None, lives_until=fields.get("lives_until"))
     elif what == "priority":
         put["priority"], put["position"] = (_head(str(row["owner"]), tid) if fields.get("urgent")
                                             else (0, float(row.get("position") or 0)))
@@ -219,8 +224,7 @@ def _remember(row: dict, what: str, outcome: str) -> None:
 
 
 def lives_for(words: str, now: float | None = None) -> int | None:
-    """The instant an open task stops living when his order bounds it («within 3 hours», «en dos días»), else None —
-    its owner may set it later from what it learns (`progress`, `lives_until`). The same grammar the errands read."""
+    """When an open task stops living if his order bounds it («within 3 hours»), else None (its owner may set it)."""
     from nucleo.errands import window_from
     span = window_from(str(words or ""), 0.0)
     return int((time.time() if now is None else now) + span) if span > 0 else None
@@ -239,9 +243,30 @@ def expired(now: float | None = None) -> list[dict]:
     return out
 
 
+#: how long an archived task is still listed with what is open, so his next words can bring it back: a rule with
+#: readers (genesis `tasks.recent_window_min`, his own `global` row wins), never a constant
+RECENT_KEY, RECENT_MIN = "recent_window_min", 60.0
+
+
+def recent_window_s(now: float | None = None) -> float:
+    try:
+        import rules
+        return max(0.0, float(rules.value([(0, rules.GLOBAL)], RECENT_KEY, RECENT_MIN, now=now))) * 60.0
+    except Exception as e:  # noqa: BLE001 — an unreadable rule: the factory window stands
+        logger.debug(f"queue: {RECENT_KEY} unreadable ({e!r})")
+        return RECENT_MIN * 60.0
+
+
+def recent(now: float | None = None) -> list[dict]:
+    """The tasks archived inside the recent window, newest first: OPEN lists them, and his words reopen one."""
+    cut = (now := now or time.time()) - recent_window_s(now)
+    rows = [r for r in _store().queue_rows() if r.get("state") in ARCHIVED and float(r.get("finished_at") or 0) >= cut]
+    return sorted(rows, key=lambda r: -float(r.get("finished_at") or 0))
+
+
 def next_expiry(now: float | None = None) -> float | None:
     """The next instant an open task stops living, ahead of `now` (the pulse wakes for it), or None."""
-    now = time.time() if now is None else now
+    now = now or time.time()
     ahead = [float(r["lives_until"]) for lane in view().values() for r in lane[PENDING] + lane[WAITING]
              if r.get("lives_until") and float(r["lives_until"]) > now]
     return min(ahead) if ahead else None

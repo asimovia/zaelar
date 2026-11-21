@@ -4,7 +4,9 @@ One view of the ONE queue (`queue.view()`), the same his screen paints: each tas
 its state and what it DOES (its title, never the sentence that commissioned it); a task waiting for him with the
 question it asked him, word for word, how long ago, and its declared answers. At most `MAX_LINES` lines, the rest
 counted. A question open on something that is not a task of the queue (an act waiting for his yes) is listed by its
-key. Last, our own last question to him: a bare «yes» answers THAT before any task.
+key. Then the tasks that ENDED a moment ago (`queue.recent`, INI-078 #5), by their `#n` with how they ended: his words
+to one («not these, others») reopen the same task. Last, our own last question to him: a bare «yes» answers THAT
+before any task.
 
 The model refers to a task by its `#n` (`task_say`, `task_priority`, `task_move`, `stop_task`); a number that is not
 here fails and gives this block back. Its words: the labels below are protocol for the model, not his language.
@@ -50,6 +52,16 @@ def line(row: dict, now: float, place: int = 0) -> str:
     return " · ".join(b for b in bits if b)
 
 
+def ended(row: dict, now: float) -> str:
+    """A task archived a moment ago, as the model reads it: its number, how it ended, when, what it did."""
+    bits = [f"#{row.get('num')}", str(row.get("owner") or ""),
+            f"ended {row.get('state')} ({_age(row.get('finished_at'), now)})",
+            " ".join(str(row.get("title") or row.get("goal") or "").split())[:140]]
+    if (out := " ".join(str(row.get("outcome") or "").split())):
+        bits.append(f"«{out[:160]}»")
+    return " · ".join(b for b in bits if b)
+
+
 def _other_questions(numbered: set) -> list[str]:
     """Questions open on something that is not a task of the queue (an act waiting for his yes), by their key."""
     out = []
@@ -91,6 +103,7 @@ def text(now: float | None = None) -> str:
     lines = lines[:MAX_LINES] + extra[:max(0, MAX_LINES - len(lines))]
     if pending_left:
         lines.append(f"… and {pending_left} more pending")
+    lines += [ended(r, now) for r in queue.recent(now)][:max(0, MAX_LINES - len(lines))]
     if asked := _asked_last(now):
         lines.append(asked)
     return "\n".join(lines)

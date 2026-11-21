@@ -1027,7 +1027,10 @@ _PACKAGE_CEILINGS["nucleo/send"] += 2      # same: a draft's task is the open on
 _TOTAL_MAX += 9      # same, measured (the pills' reader `task_pills` went: the archived row is found by the search)
 _PACKAGE_CEILINGS["nucleo/workers"] += 9   # 2026-11-21 INI-078 L1 B9: `claude_map`, `claude_start` and `session_events` import their package module last, so importing the part first no longer hits the half-built cycle
 _TOTAL_MAX += 3     # same, measured (the import moves, net of the B9 comment and test edits)
-
+_PACKAGE_CEILINGS["nucleo/queue"] += 25    # 2026-11-21 INI-078 #5 (b): a task that ended a moment ago is listed (`recent`, its window a rule) and reopened at the head of its lane (`reopen`)
+_PACKAGE_CEILINGS["nucleo/circuit"] += 28  # same: his words reopen the SAME task by the one continuation door (`reopen.on_words`, `_relaunch` shared with a criteria change); the ledger's continuation reopens an archived task of the queue
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 29  # same: OPEN lists the tasks that ended a moment ago; `task_say` on one reopens it
+_TOTAL_MAX += 82     # same, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

@@ -90,10 +90,11 @@ def _reopen(args: dict) -> ToolResult:
 
 
 def numbered(which) -> dict | None:
-    """The task of the queue a `#n` names (also `n`, or its row id); None when it is not open (S3: never a guess)."""
+    """The task of the queue a `#n` names (also `n`, or its row id) — open, or archived a moment ago (`queue.recent`,
+    INI-078 #5); None when OPEN does not list it (S3: never a guess)."""
     from nucleo import queue
     w = str(which or "").strip().lstrip("#")
-    rows = [r for lane in queue.view().values() for st in lane.values() for r in st]
+    rows = [r for lane in queue.view().values() for st in lane.values() for r in st] + queue.recent()
     return next((r for r in rows if w and (str(r.get("num")) == w or str(r.get("id")) == w)), None)
 
 
@@ -209,6 +210,8 @@ def _say(args: dict) -> ToolResult:
     from nucleo.switchboard import act, board
     which = str(args.get("task") or "").strip()
     row = numbered(which)
+    if row is not None and row.get("state") in __import__("nucleo.queue", fromlist=["x"]).ARCHIVED:
+        return _reopen_it(row, routing.said() or str(args.get("text") or ""))
     if row is not None and row.get("owner") == "send":     # a message draft has its own acts (S4)
         return ToolResult("failed", {"reason": "a_message_draft", "task": f"#{row['num']}",
                                      "use": "draft_send (his yes) · draft_edit (who or text) · draft_drop (his no)"})
@@ -221,6 +224,19 @@ def _say(args: dict) -> ToolResult:
     ok = act.deliver(p, text, kind)
     return ToolResult("ok" if ok else "failed", {"task": f"#{row['num']}" if row else p.get("key"),
                                                  "title": p.get("title"), "delivered": ok})
+
+
+def _reopen_it(row: dict, words: str) -> ToolResult:
+    """His words to a task archived a moment ago bring the SAME task back with what it kept (`circuit.reopen.on_words`):
+    a worker's errand is relaunched on its row. A message that went, or one dropped, is not brought back."""
+    tag = f"#{row['num']}"
+    if row.get("owner") != "worker":
+        return ToolResult("failed", {"reason": "archived", "task": tag, "ended": row.get("state"),
+                                     "outcome": str(row.get("outcome") or "")[:200]})
+    from nucleo.circuit import reopen
+    tid = reopen.on_words(row, words)
+    return ToolResult("ok" if tid else "failed", {"task": tag, "reopened": bool(tid), "title": row.get("title")}
+                      if tid else {"reason": "the errand door did not reopen it", "task": tag})
 
 
 DOORS = {f.__name__.lstrip("_"): f for f in (_say, _priority, _move, _listings, _start, _resume, _reopen, _stop,

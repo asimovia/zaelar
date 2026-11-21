@@ -858,7 +858,7 @@
    "act": "errand.answer",
    "door": "task",
    "op": "say",
-   "about": "his words to an open task, by its #number in OPEN, only when they are about what that task DOES: they answer its question, authorize or refuse it (is: yes or no), give or change a fact of it (is: answer or add). A remark about you, a question about how it is going, a greeting or something new are NOT for it. In doubt, do not use this: answer him yourself",
+   "about": "his words to an open task, by its #number in OPEN — or to one that ENDED a moment ago (OPEN lists it as ended), which brings that same task back with what it kept — only when they are about what that task DOES: they answer its question, authorize or refuse it (is: yes or no), give or change a fact of it (is: answer or add). A remark about you, a question about how it is going, a greeting or something new are NOT for it. In doubt, do not use this: answer him yourself",
    "schema": {
     "type": "object",
     "required": [

@@ -119,20 +119,46 @@ def on_criteria(sheet: str, upd: dict, data: dict | None = None) -> int:
         if time.time() - _PENDING.get(uid, 0.0) < _PENDING_S:
             _event("🧾 reopen: relaunch already on its way — the brief carries this change too", uid, lines)
             return 0
-        from nucleo.acts import errand as _esc
-        tid = _esc.escalate_to_slowbrain(
-            str(row.get("goal") or row.get("title") or "") + _note(lines),
-            context={"src": "criteria_reopen", "kind": str(row.get("kind") or "research"),
-                     "trace": str(row.get("trace_id") or ""), "sheet": str(row.get("sheet") or sheet or ""),
-                     "surface": str(row.get("surface") or ""), "task_uid": uid,
-                     **({"resume": {"brief_task": uid}} if brief is not None else {})})
-        if tid:
-            _PENDING[uid] = time.time()
-        _event("🔁 reopen: a correction reopened the finished errand" if tid else
-               "🧾 reopen: the relaunch was refused", uid, lines, tid=tid)
-        return int(tid or 0)
+        return _relaunch(row, _note(lines), "criteria_reopen", lines, sheet=sheet, brief=brief is not None)
     except Exception as e:  # noqa: BLE001
         logger.warning(f"reopen: criteria change not handed to the circuit: {type(e).__name__}: {e}")
+        return 0
+
+
+def _relaunch(row: dict, note: str, src: str, lines: list[str], *, sheet: str = "", brief: bool = False) -> int:
+    """The SAME task relaunched as a continuation of its row (`task_uid`): its brief reused, `note` its new words; a
+    task of the queue archived a moment ago is reopened by the ledger's continuation door. The new task id, or 0."""
+    uid = str(row["id"])
+    from nucleo.acts import errand as _esc
+    tid = _esc.escalate_to_slowbrain(
+        str(row.get("goal") or row.get("title") or "") + note,
+        context={"src": src, "kind": str(row.get("kind") or "research"), "trace": str(row.get("trace_id") or ""),
+                 "sheet": str(row.get("sheet") or sheet or ""), "surface": str(row.get("surface") or ""),
+                 "task_uid": uid, **({"resume": {"brief_task": uid}} if brief else {})})
+    if tid:
+        _PENDING[uid] = time.time()
+    _event("🔁 reopen: the finished task is reopened" if tid else "🧾 reopen: the relaunch was refused", uid, lines,
+           tid=tid)
+    return int(tid or 0)
+
+
+def on_words(row: dict, words: str) -> int:
+    """His words to a task archived a moment ago (OPEN lists it by #n, INI-078 #5): the SAME task, reopened on its row
+    with what it kept, his words its feedback. The relaunched task id, or 0. Never raises."""
+    try:
+        said = " ".join(str(words or "").split())[:600]
+        from nucleo.workers import brief as _brief
+        brief = _brief.load(str(row["id"]))
+        if brief is not None and said:
+            if said not in (fb := brief.setdefault("feedback", [])):
+                fb.append(said)
+            brief["ts"] = time.time()
+            _brief.save(str(row["id"]), brief)
+        note = ("\n\n[HARNESS] He came back to this task, which had ended, and says: «" + said + "». Do what he asks "
+                "on what it already has — its sheet, its rows, its sources: what is done stays done.")
+        return _relaunch(row, note, "words_reopen", [said], brief=brief is not None)
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"reopen: his words not handed to the finished task: {type(e).__name__}: {e}")
         return 0
 
 

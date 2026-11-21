@@ -107,6 +107,8 @@
     "_comment": "V2-851 — how long a task WAITS for his answer before the pulse closes it (`circuit.settle` → cancelled) and says so in one line («I closed X because you did not answer»), never silently. A global rule with readers (`nucleo/circuit/ledger.answer_wait_s`), not a constant: a row of his own at scope `global`, key `answer_wait_days`, wins over this default (rules/, V2-806).",
     "answer_wait_days": 7,
     "done_line": "When one of his tasks ends, tell him in ONE short sentence that opens with his language's word for done and a colon («Listo:», «Done:») and says what was done; the detail only if he asks.",
+    "recent_window_min": 60,
+    "_recent_window_min": "INI-078 #5 — how long a task that ended is still listed in OPEN beside what is open, so his next words («not these, others») bring the SAME task back (`queue.recent`). A rule with readers: his own `global` row wins.",
     "_done_line": "INI-078 Q-8 — the factory rule of the one line a task that leaves the queue owes him (`workers/spoken_delivery`); his own rules may change it later."
   },
   "conversation": {

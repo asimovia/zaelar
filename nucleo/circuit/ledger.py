@@ -191,8 +191,10 @@ def opened(rec, ctx: dict | None = None) -> str:
         _tr = _trace_of(rec, ctx, before := _ts.task_get(inherited))
         _kind = str(getattr(rec, "kind", "") or "generic")
         _sh, _tr = _sh or str(before.get("sheet") or ""), _tr or str(before.get("trace_id") or "")
-        if before.get("owner"):          # a task of the queue: its state is its lane's, never rewritten here
-            _ts.task_patch(inherited, kind=_kind, sheet=_sh, trace_id=_tr, finished_at=None, outcome="")
+        if before.get("owner"):          # a task of the queue: its state is its lane's — one archived is reopened
+            if before.get("state") in _queue().ARCHIVED:
+                _queue().signal(inherited, "reopen", by="owner")
+            _queue().wrote(inherited, "progress", sheet=_sh)
         else:
             _ts.task_patch(inherited, state="running", kind=_kind, sheet=_sh, trace_id=_tr, finished_at=None,
                            outcome="")
