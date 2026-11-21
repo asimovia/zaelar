@@ -895,6 +895,8 @@ _TOTAL_MAX += 45     # same causes, measured (the prefix's own style line moved 
 _PACKAGE_CEILINGS["conversation"] += 15   # 2026-11-21 C6 (his live session): an act's claimed event carries its arguments and its receipt the door's status and answer, bounded (`outbox._shown`, `dispatch._shown`)
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 1   # same: the send owner reads his words in the turn's trace (`HostRoute.take`)
 _TOTAL_MAX += 22     # same causes, measured
+_PACKAGE_CEILINGS["nucleo/memory_agent"] += 2   # 2026-11-21 C7 (his live session): the distiller discards what he says about the assistant — its own instructions, the one place that decides what a turn leaves in memory
+_TOTAL_MAX += 2      # same cause, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

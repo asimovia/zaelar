@@ -45,6 +45,8 @@ Por CADA píldora decides:
   ÉL te INFORMA de algo que ya existe («mi cita del dentista es el martes a las 5»): eso SÍ es un hecho/evento.
   ★ LO QUE DICE DE VUESTRAS CONVERSACIONES NO es un hecho: «ayer te di mi nombre y teléfono», «ya te lo dije», «ya
   lo tienes» es una afirmación sin prueba → no la guardes, ni como evento ni fechada. Si trae el DATO, guarda el dato.
+  ★ LO QUE DICE DEL ASISTENTE NO es un hecho de él: una queja o un comentario sobre cómo hablas, que te repites, que no
+  le entiendes o cómo te portas → discard. Lo que te pide cambiar para siempre es una regla suya, no una píldora.
   ★ FECHAS RELATIVAS → SIEMPRE ABSOLUTAS. Una píldora se leerá meses después, sola, sin el turno que la originó:
   "hace tres días", "la semana que viene", "ayer", "el jueves" NO significan nada fuera de hoy y con el tiempo se
   vuelven FALSAS. Usa la FECHA Y HORA ACTUAL de arriba para convertirlas a fecha absoluta dentro del texto de la
