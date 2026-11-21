@@ -22,6 +22,10 @@ def _offered(base: str) -> dict:
                                                                         or a.get("row_verb") is True))}
 
 
+#: why the model may not write the card of a message being written: it has one draft, and its owner holds it
+OWNERS = "the message being written is its owner's: what he wants changed is said, and the owner takes it from his words"
+
+
 def _widget_target(args: dict) -> "tuple[str, str, dict] | ToolResult":
     """`(card, action, payload)` for a widget action, checked against its manifest — or the result that says why not.
     A message is its owner's (`send.turn.is_message`) and an act that leaves is held: neither crosses here."""
@@ -38,7 +42,10 @@ def _widget_target(args: dict) -> "tuple[str, str, dict] | ToolResult":
         return ToolResult("failed", {"reason": "no_such_action", "widget": base, "actions": sorted(offered),
                                      "fields": brief._payload_keys(offered, every=True)})
     card = instances.data_target(wid, _open())
-    from nucleo.send import turn
+    from nucleo.send import draft, turn
+    if turn.composes(card, action) and (d := draft.current()) is not None:      # one draft: the owner's (C2, C)
+        return ToolResult("refused", {"reason": "its_owner", "draft": {"who": (d.target or {}).get("name") or d.who,
+                                                                       "text": d.text}, "why": OWNERS})
     if turn.is_message(card, action, payload):
         return card, action, {**payload, "_message": True}       # a message is its owner's: handed over, below
     if effects.leaves(base, action):

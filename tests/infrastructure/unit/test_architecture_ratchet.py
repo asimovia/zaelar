@@ -928,6 +928,8 @@ _PACKAGE_CEILINGS["nucleo/events"] += 12
 _PACKAGE_CEILINGS["nucleo/send"] += 13
 _PACKAGE_CEILINGS["widgets"] += 14
 _TOTAL_MAX += 39     # measured (the manifest's three `event` fields are not counted as code)
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 6   # 2026-11-21 C2 C: with the owner's draft open, the model's composition is refused at the widget door (`acts_widget.OWNERS`)
+_TOTAL_MAX += 7      # same cause, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())
