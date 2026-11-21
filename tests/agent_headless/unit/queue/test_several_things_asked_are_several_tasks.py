@@ -125,3 +125,10 @@ def test_the_screens_door_and_the_chat_box_keep_it_whole(monkeypatch):
     chat = (Path(__file__).resolve().parents[4] / "frontend/app/components/ChatWall.js").read_text(encoding="utf-8")
     send = chat[chat.index("export function submitChat"):]
     assert ".slice(0, MAX_TEXT)" not in send[:send.index("\n}")], "the chat box sends what he typed, whole"
+
+
+def test_an_event_enters_whole():
+    """An inbound message or mail is data the code and his rules decide on: its text enters the conversation whole."""
+    from nucleo.conversation_host import events_in
+    env = events_in.envelope({"origin": "email", "text": TWELVE, "fields": {"platform": "email"}}, {}, "ev-1", 1000)
+    assert env.body.text == TWELVE

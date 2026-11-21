@@ -46,7 +46,7 @@ def envelope(ev: dict, r: dict, event_id: str, now_ms: int):
     fields = {k: v for k, v in {**declared, "key": ev.get("key")}.items() if isinstance(v, _PLAIN) and v != ""}
     route = {k: str(r[k]) for k in ("as", "by", "task") if r.get(k) is not None}
     body = E.EventBody(event_id, str(ev.get("origin") or ""), str(declared.get("platform") or ""),
-                       str(ev.get("text") or "")[:4000], fields, route)
+                       str(ev.get("text") or ""), fields, route)     # whole: code and rules decide on it, never a cut
     return E.make(EnvelopeKind.EVENT, body, producer="event:router", producer_id=event_id, account=boot.account(),
                   onset_ms=now_ms, sealed_ms=now_ms)
 
