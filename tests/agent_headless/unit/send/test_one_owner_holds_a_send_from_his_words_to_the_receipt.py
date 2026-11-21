@@ -594,3 +594,21 @@ def test_an_open_chat_of_one_platform_never_leaves_by_another():
     from widgets.mensajeria.outbound import targets
     got = targets.resolve_target({"contact": "Piers Lane", "chat_id": "120363000000000103", "channel": "whatsapp", "text": "hi"})
     assert got.get("ok") is False
+
+
+def test_a_message_to_write_that_names_the_message_it_answers_is_a_reply_and_asks_no_who(world, monkeypatch):
+    """C2 A4: the model's composition `{n: 2, text}` (no person) reaches the owner with its own act; the owner reads
+    `n` as the message it answers — the draft points at that conversation and never asks «to whom?»."""
+    from nucleo.send import deliver
+    import widgets.mensajeria.data  # noqa: F401 — the card's package in its own import order
+    from widgets import directory, effects
+    from widgets.mensajeria.actions import send as card_send
+    monkeypatch.setattr(deliver, "_db", lambda: {})
+    monkeypatch.setattr(card_send, "reply_target", lambda db, n: {"platform": "whatsapp", "chatId": "c-2",
+                                                                    "senderName": "Piers Lane"} if n == 2 else None)
+    monkeypatch.setattr(directory, "find_by_channel", lambda platform, chat: {"id": "", "name": "Piers Lane"})
+    world.reads = [_read(text="ok, see you")]
+    write = effects.acts_of("mensajeria", "messaging.draft_write")[0]
+    asyncio.run(owner.intake("answer the second one: ok, see you", {"n": 2, "text": "ok, see you", "_act": write}))
+    d = _draft.current()
+    assert d is not None and d.kind == "message" and d.target.get("chat_id") == "c-2" and d.asked != _draft.WHO

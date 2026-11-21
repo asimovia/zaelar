@@ -47,7 +47,7 @@ def _widget_target(args: dict) -> "tuple[str, str, dict] | ToolResult":
         return ToolResult("refused", {"reason": "its_owner", "draft": {"who": (d.target or {}).get("name") or d.who,
                                                                        "text": d.text}, "why": OWNERS})
     if turn.composes(card, action) and str(payload.get("text") or "").strip():  # C2 A4: a message to write opens
-        return card, "", {**payload, "_message": True}       # the owner's draft, which paints it: never the card here
+        return card, action, {**payload, "_message": True, "_widget": base}   # the owner's draft paints it, with its act
     if turn.is_message(card, action, payload):
         return card, action, {**payload, "_message": True}       # a message is its owner's: handed over, below
     if effects.leaves(base, action):

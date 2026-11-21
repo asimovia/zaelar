@@ -51,8 +51,9 @@ def adopt(act: str, hint: dict) -> dict:
     try:
         db = _db()
         from widgets.mensajeria.outbound import targets
-        if act == "reply":
-            n, mid = h.get("n"), h.get("messageId")
+        n, mid = h.get("n"), h.get("messageId")
+        # a reply — or a message to write that names the message it answers and no person (C2 A4): that conversation
+        if act == "reply" or (h.get("_compose") and (n is not None or mid) and not h.get("contact")):
             if n is not None:
                 from widgets.mensajeria.actions.send import reply_target
                 item = reply_target(db, int(n) if str(n).strip().isdigit() else n)

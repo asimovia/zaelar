@@ -70,4 +70,5 @@ def test_with_no_draft_a_message_to_write_goes_to_its_owner_never_into_the_card(
         return ToolResult("ok", {"say": "w_shall I send it to ana?"})
     monkeypatch.setattr(routing, "send", send)
     got = door["run"]({"widget": CARD, "action": "w_write", "payload": {"contact": "w_ana", "text": "w_hi"}})
-    assert got.status == "ok" and handed == [({"contact": "w_ana", "text": "w_hi"}, "")] and door["ran"] == []
+    assert got.status == "ok" and door["ran"] == []
+    assert handed == [({"contact": "w_ana", "text": "w_hi", "_widget": CARD}, "w_write")], "handed over with its act"

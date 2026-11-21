@@ -156,7 +156,8 @@ async def _open(d, said: str, h: dict, act: str, last_line: str, before, by: str
     from nucleo.send import owner
     d.by, d.act = by, act
     from nucleo.send import turn as _turn
-    if not _turn.is_message(widget, act, h):
+    composes = _turn.composes(widget, act)          # a message to write (C2 A4): a message, never another act
+    if not _turn.is_message(widget, act, h) and not composes:
         # an act that is not a message (a group created or left): the call carries what it is; the card says what
         # it would refuse and what it found, and asks its own question (`nucleo/send/act`)
         from nucleo.request import base
@@ -167,7 +168,7 @@ async def _open(d, said: str, h: dict, act: str, last_line: str, before, by: str
             _act.take_names(d, got.get("names") or [], only_more=True)
         owner._emit("opened", d, by=by)
         return await owner._next(d, lead)
-    adopted = await asyncio.to_thread(_deliver.adopt, act, h)
+    adopted = await asyncio.to_thread(_deliver.adopt, act, {**h, "_compose": composes})
     d.extra = dict(adopted.get("extra") or {})
     got = dict(_read.NOTHING) if by in NO_READ else await asyncio.to_thread(_read.read, said, d, last_line, before)
     if by in LEANS and not _orders_one(got, by, act, h) and (chosen := await _an_act_ordered(said, widget, last_line,
