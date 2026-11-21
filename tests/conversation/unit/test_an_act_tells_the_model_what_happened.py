@@ -26,6 +26,20 @@ def test_the_receipt_carries_the_result_and_why_it_was_refused(monkeypatch):
     assert bare["why"] == "w_bad_day"
 
 
+def test_a_large_answer_is_cut_to_the_cap_keeping_what_it_said_and_why(monkeypatch):
+    from nucleo.request import refusal_line
+    why = "w_" + "the card names its reason in full " * 60
+    monkeypatch.setattr(refusal_line, "speakable", lambda card, res: why)
+    rows = [{f"w_f{i}": "w_" + "x" * 300 for i in range(12)} for _ in range(40)]
+    big = {"ok": False, **{f"w_extra{i}": "w_" + "y" * 390 for i in range(30)}, "rows": rows, "message": "w_saved 40"}
+    got = acts_widget.receipt("w_card", big, False)
+    assert got["message"] == "w_saved 40" and got["why"] == why, "its answer and its reason survive the cut"
+    assert acts_widget._size({k: v for k, v in got.items() if k != "why"}) <= acts_widget.RECEIPT_MAX
+    assert got[acts_widget.CUT] > 0, "a cut receipt says how many of its fields were cut"
+    flat = acts_widget._bounded({f"w_k{i}": i for i in range(20)})
+    assert flat[acts_widget.CUT] == 20 - acts_widget.RECEIPT_ITEMS, "a cut level says so too"
+
+
 def _cap(store, tool):
     h = Harness(store, grace=False, config=Config(max_steps=3))
     h.conv.words = FixedWords()

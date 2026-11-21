@@ -105,6 +105,11 @@ async def widget_act(args: dict, effect_id: str | None) -> ToolResult:
 
 #: how much of a card's answer goes back to the model (a list cut to its first items, a text to its first characters)
 RECEIPT_ITEMS, RECEIPT_CHARS = 8, 400
+#: the whole receipt, serialized: each level is bounded, and so is the sum (a card's answer, every step of the run)
+RECEIPT_MAX = 1200
+#: what the model reads first of a card's answer: what it said and did, before the rest of its fields
+ANSWER_KEYS = ("result", "message", "error", "key", "to", "text", "ref")
+CUT = "…"
 
 
 def _bounded(v, depth: int = 0):
@@ -115,21 +120,40 @@ def _bounded(v, depth: int = 0):
     if depth >= 2:
         return str(v)[:RECEIPT_CHARS]
     if isinstance(v, dict):
-        return {str(k): _bounded(x, depth + 1) for k, x in list(v.items())[:RECEIPT_ITEMS]}
+        out = {str(k): _bounded(x, depth + 1) for k, x in list(v.items())[:RECEIPT_ITEMS]}
+        return out | ({CUT: len(v) - RECEIPT_ITEMS} if len(v) > RECEIPT_ITEMS else {})
     if isinstance(v, (list, tuple)):
-        return [_bounded(x, depth + 1) for x in list(v)[:RECEIPT_ITEMS]] + (["…"] if len(v) > RECEIPT_ITEMS else [])
+        return [_bounded(x, depth + 1) for x in list(v)[:RECEIPT_ITEMS]] + ([CUT] if len(v) > RECEIPT_ITEMS else [])
     return str(v)[:RECEIPT_CHARS]
 
 
+def _size(d: dict) -> int:
+    import json
+    return len(json.dumps(d, ensure_ascii=False, default=str))
+
+
 def receipt(card: str, res: dict, ok: bool) -> dict:
-    """What the card's door answered, back to the model (C4): what it did (`result`, bounded) and, refused, WHY — the
-    card's own sentence when it has one (`refusal_line.speakable`), else its reason as the door gave it. Acting blind,
-    the model repeated a refused act to its step cap."""
-    out = _bounded({k: v for k, v in res.items() if k not in ("ok", "say", "say_args")})
+    """What the card's door answered, back to the model (C4): what it did — its answer's fields first (`ANSWER_KEYS`),
+    then the rest, each bounded and the whole under `RECEIPT_MAX`, `…` naming how many fields were cut — and, refused,
+    WHY, whole: the card's own sentence when it has one (`refusal_line.speakable`), else its reason as the door gave it.
+    Acting blind, the model repeated a refused act to its step cap."""
+    fields = {k: v for k, v in res.items() if k not in ("ok", "say", "say_args")}
+    out: dict = {}
+    order = [k for k in ANSWER_KEYS if k in fields] + [k for k in fields if k not in ANSWER_KEYS]
+    for i, k in enumerate(order):
+        v = _bounded(fields[k], 1)
+        if _size(out | {k: v, CUT: 999}) > RECEIPT_MAX:
+            room = RECEIPT_MAX - _size(out | {k: "", CUT: 999})
+            while isinstance(v, str) and room > 40 and _size(out | {k: v[:room - 1] + CUT, CUT: 999}) > RECEIPT_MAX:
+                room -= 20                                 # an escaped character takes more than one
+            if isinstance(v, str) and room > 40:
+                out[k], i = v[:room - 1] + CUT, i + 1
+            out[CUT] = len(order) - i
+            break
+        out[k] = v
     if not ok:
         from nucleo.request import refusal_line
-        out["why"] = (refusal_line.speakable(card, res) or str(res.get("error") or res.get("message") or "refused"))[
-            :RECEIPT_CHARS]
+        out["why"] = refusal_line.speakable(card, res) or str(res.get("error") or res.get("message") or "refused")
     return out
 
 
