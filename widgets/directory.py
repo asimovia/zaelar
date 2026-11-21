@@ -658,6 +658,8 @@ def note_inbound(platform: str, msg: dict) -> bool:
         people = db.get("contacts") or []
         hits = _match_sender(people, p, msg)
         if len(hits) != 1:
+            if not hits:                    # somebody no row holds wrote: an EVENT, his source's book is read now
+                __import__("widgets.contactos.sources", fromlist=["_"]).import_in_background((p,))
             return False
         c = hits[0]
         chat_id = str(msg.get("chatId") or "").strip()

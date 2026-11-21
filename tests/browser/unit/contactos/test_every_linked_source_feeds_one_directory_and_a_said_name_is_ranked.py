@@ -106,19 +106,37 @@ def test_one_door_imports_every_linked_source_and_a_link_reads_a_book_never_read
     assert got["google-contacts"]["added"] == 3 and read == ["whatsapp", "meshkore"], (got, read)
     kicked = []
     monkeypatch.setattr(sources, "import_in_background", lambda only=(): kicked.append(only))
-    monkeypatch.setattr(sources, "_SEEN", set())
+    monkeypatch.setattr(sources, "_ASKED", {})
     sources.linked_now("whatsapp")
     assert kicked == [("whatsapp",)], "a book never read is read when its account is seen connected"
     db = book.load_db()
     sources.state(db)["whatsapp"]["last"] = time.time()
     book.store.save(book.WIDGET_ID, db)
-    sources._SEEN.clear()
     sources.linked_now("whatsapp")
     assert kicked == [("whatsapp",)], "a reconnection of a book already read imports nothing"
     from widgets.contactos import data
     kicked.clear()
     data.on_start()
     assert kicked == [("google-contacts", "telegram", "meshkore")], "the start reads every book never read here"
+
+
+def test_a_connectors_event_goes_through_the_same_door_and_a_burst_is_one_read(book, monkeypatch):
+    """2026-11-21: the sync is by EVENTS — a message from someone no row holds reads that source's book, a pushed
+    change refreshes the people it names — through `import_linked`; the timer is only the safety net."""
+    from widgets import directory
+    from widgets.contactos import sources
+    spawned = []
+    monkeypatch.setattr(sources, "_ASKED", {})
+    monkeypatch.setattr("threading.Thread", lambda target, args, **k: type("T", (), {
+        "start": lambda self: spawned.append(args)})())
+    msg = {"chatId": "34600000011@s.whatsapp.net", "senderId": "34600000011@s.whatsapp.net", "from": "Marek Stone"}
+    assert directory.note_inbound("whatsapp", msg) is False
+    directory.note_inbound("whatsapp", msg)
+    assert spawned == [(("whatsapp",), None)], "a stranger's message reads the book, once for a burst"
+    absorbed = []
+    monkeypatch.setattr(sources, "_absorb", lambda s, got, refresh=False: absorbed.append((s, refresh)) or {"ok": True})
+    sources.import_linked(("whatsapp",), [{"name": "Marek S."}])
+    assert absorbed == [("whatsapp", True)], "a pushed change only refreshes people already here"
 
 
 def test_the_name_her_conversation_carried_joins_the_account_to_the_row_of_that_name(book, monkeypatch):

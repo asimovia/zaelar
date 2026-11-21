@@ -15,25 +15,14 @@ store.
     (`manager.clusters()`). A cluster is a group whose members are AGENTS, and reading it costs nothing,
     so it is refreshed on every pass.
 
-## Continuous import is continuous DISCOVERY
+## A linked source feeds the directory by itself — by EVENTS first (2026-11-18, 2026-11-21)
 
-`tick` runs from the widget cron while the source is on. It never rewrites a field he can edit — that rule
-lives in `imports.merge_contacts` and this module has no way to override it.
-
-## What the platform changes reaches the directory by itself (2026-11-18)
-
-A person renamed on the platform, a number learned behind an account: PUSHED when the connector can tell
-(`contacts_bus.take_pushed`, absorbed as a `refresh` — it only touches people already here), and PULLED on every
-pass of a linked source.
-
-## A linked source feeds the directory by itself (2026-11-18, 2026-11-21)
-
-Linking a source IS the ask, and there is no switch to undo it. ONE door, `import_linked`, reads every linked source
-(Google Contacts and the import-only ones) and is called from exactly three places: when a source is linked (the
-Google consent, a messaging account seen connected for the first time), and at the engine's start for every source
-whose book was never read here (a fresh install, the start a reset ends in, a source linked while the engine was off). After that the inbound half runs on its own cadence (`tick`, every `EVERY_S`). A
-person it brings that a row already proves (a phone, an address, an account — `identity.find`) becomes a CHANNEL of
-that row; only the others become rows.
+Linking a source IS the ask; there is no switch. ONE door, `import_linked`, reads a source's book (Google pulled,
+never written to) on the link (the consent, a messaging account first seen connected), at a start for every book
+never read here (a fresh install, a reset), and on a connector's EVENT: a message from someone no row holds reads
+that book, a change it pushes (`contacts_bus.push`: a rename, a number) refreshes the people already here. A book is
+read at most once per `EVENT_GAP_S`; `tick` (every `EVERY_S`) is only the safety net. It never rewrites a field he
+can edit (`imports.merge_contacts`), and a person a row already proves becomes a CHANNEL of that row.
 
 ## The directory is not bounded by the message window
 
@@ -234,15 +223,18 @@ def _due(source: str, st: dict, now: float) -> bool:
     return source == "meshkore" or connected(source)        # asked last: it reads the connectors' registry
 
 
-def import_linked(only: tuple = ()) -> dict:
+def import_linked(only: tuple = (), rows: list | None = None) -> dict:
     """THE door that fills the directory from every linked source (or the ones `only` names): Google Contacts read,
-    never written to, and each import-only source read once. Called when a source is linked, at the end of a reset
-    and at a start for every book never read here — never on a timer. Returns each source's counts; never raises."""
+    never written to, and each import-only source read once — or, with `rows`, what that source PUSHED (a rename, a
+    number learned: only people already here). Called on a link, at a start for every book never read here, and on
+    a connector's EVENT (rows it pushed, a message from someone no row holds). Returns each source's counts."""
     from . import gcontacts
     out = {}
     for s in only or ("google-contacts", *KNOWN):
         try:
-            if s == "google-contacts":
+            if rows is not None:
+                out[s] = _absorb(s, {"ok": True, "contacts": rows, "groups": []}, refresh=True)
+            elif s == "google-contacts":
                 if gcontacts.linked():
                     out[s] = gcontacts.pull()
             elif s == "meshkore" or connected(s):
@@ -253,9 +245,21 @@ def import_linked(only: tuple = ()) -> dict:
     return out
 
 
-def import_in_background(only: tuple = ()) -> None:
-    """`import_linked` on its own thread: a reset, a start or a consent never waits on a platform's book."""
-    __import__("threading").Thread(target=import_linked, args=(only,), name="contacts-import", daemon=True).start()
+#: A book is read at most this often however many events ask (a burst of messages from a stranger is one read).
+EVENT_GAP_S = 60.0
+_ASKED: dict = {}
+
+
+def import_in_background(only: tuple = (), rows: list | None = None) -> None:
+    """`import_linked` on its own thread: a start, a consent or an event never waits on a platform's book."""
+    if rows is None:
+        now = time.time()
+        only = tuple(s for s in (only or ("google-contacts", *KNOWN))
+                     if s in ("google-contacts", *KNOWN) and now - _ASKED.get(s, 0.0) >= EVENT_GAP_S)
+        if not only:
+            return
+        _ASKED.update(dict.fromkeys(only, now))
+    __import__("threading").Thread(target=import_linked, args=(only, rows), name="contacts-import", daemon=True).start()
 
 
 def unread(db: dict) -> tuple:
@@ -264,17 +268,11 @@ def unread(db: dict) -> tuple:
     return tuple(s for s in ("google-contacts", *KNOWN) if not float(st[s].get("last") or 0.0))
 
 
-_SEEN: set = set()
-
-
 def linked_now(source: str) -> None:
-    """A messaging account was seen connected (its connector says so on every pass): the first time in this process,
-    when its book was never read here, it is read now."""
-    if source in _SEEN or source not in KNOWN:
-        return
-    _SEEN.add(source)
+    """A messaging account seen connected (said on every pass of its connector): a book never read is read now."""
     from . import data as _d
-    if not float(state(_d.load_db())[source].get("last") or 0.0):
+    if source in KNOWN and time.time() - _ASKED.get(source, 0.0) >= EVENT_GAP_S \
+            and not float(state(_d.load_db())[source].get("last") or 0.0):
         import_in_background((source,))
 
 
@@ -319,13 +317,6 @@ def tick(ctx) -> None:
                 logger.info(f"contactos.sources: respuesta tardía de {s} incorporada → {r.get('added', 0)} nuevos")
         except Exception as e:  # noqa: BLE001
             logger.warning(f"contactos.sources: no pude incorporar la respuesta tardía de {s}: {e}")
-    try:                                     # what a platform pushed: a rename, a number learned (refresh only)
-        from connectors.messaging import contacts_bus
-        for s, rows in (contacts_bus.take_pushed() or {}).items():
-            if s in KNOWN and rows:
-                _absorb(s, {"ok": True, "contacts": rows, "groups": []}, refresh=True)
-    except Exception as e:  # noqa: BLE001
-        logger.warning(f"contactos.sources: what the platform pushed was not absorbed: {e}")
     try:
         db = _d.load_db()
         due = [s for s, st in state(db).items() if _due(s, st, time.time())]

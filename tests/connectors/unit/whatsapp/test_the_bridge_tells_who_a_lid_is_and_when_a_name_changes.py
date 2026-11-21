@@ -55,9 +55,14 @@ def bridge(monkeypatch):
     monkeypatch.setattr(client, "get_contacts", fake_get_contacts)
     monkeypatch.setattr(directory, "_changes_at", 0.0)
     monkeypatch.setattr(directory, "_changes_since", None)
-    contacts_bus.take_pushed()
+    PUSHED.clear()
+    from widgets.contactos import sources
+    monkeypatch.setattr(sources, "import_in_background", lambda only=(), rows=None: PUSHED.append((only, rows)))
     yield calls, answers
-    contacts_bus.take_pushed()
+
+
+#: What reached the contacts' one door as an event: `(sources, rows)`.
+PUSHED: list = []
 
 
 def test_changes_are_pushed_spaced_and_the_cursor_advances(bridge, monkeypatch):
@@ -66,8 +71,7 @@ def test_changes_are_pushed_spaced_and_the_cursor_advances(bridge, monkeypatch):
                 {"contacts": [], "now": 2_000.0}]
     asyncio.run(directory._drain_contact_changes())
     assert calls == [0], "the first pass takes the whole book"
-    pushed = contacts_bus.take_pushed()
-    assert [r["name"] for r in pushed["whatsapp"]] == ["Ines Halloran"]
+    assert [(o, [r["name"] for r in rows]) for o, rows in PUSHED] == [(("whatsapp",), ["Ines Halloran"])]
 
     asyncio.run(directory._drain_contact_changes())
     assert calls == [0], "asked again before CHANGES_EVERY_S"
@@ -75,7 +79,7 @@ def test_changes_are_pushed_spaced_and_the_cursor_advances(bridge, monkeypatch):
     monkeypatch.setattr(directory, "_changes_at", 0.0)
     asyncio.run(directory._drain_contact_changes())
     assert calls == [0, 1_000.0], "the next pass starts at the previous answer's `now`"
-    assert contacts_bus.take_pushed() == {}, "nothing changed, nothing pushed"
+    assert len(PUSHED) == 1, "nothing changed, nothing pushed"
     assert directory._changes_since == 2_000.0
 
 
@@ -85,24 +89,16 @@ def test_a_bridge_that_fails_does_not_raise(bridge, monkeypatch):
 
     monkeypatch.setattr(client, "get_contacts", boom)
     asyncio.run(directory._drain_contact_changes())
-    assert contacts_bus.take_pushed() == {}
+    assert PUSHED == []
 
 
-# --- contacts_bus.push / take_pushed ------------------------------------------------------------------------
+# --- contacts_bus.push: an event through the contacts' one door ---------------------------------------------
 
-def test_push_and_take_round_trip_and_the_buffer_is_bounded():
-    contacts_bus.take_pushed()
-    contacts_bus.push("WhatsApp", [{"name": "Odile Varga"}])
-    contacts_bus.push("telegram", [{"name": "Tomas Brandt"}, "not a row"])
-    got = contacts_bus.take_pushed()
-    assert got == {"whatsapp": [{"name": "Odile Varga"}], "telegram": [{"name": "Tomas Brandt"}]}
-    assert contacts_bus.take_pushed() == {}, "a take empties the buffer"
-
-    contacts_bus.push("whatsapp", [{"n": i} for i in range(contacts_bus.PUSH_MAX + 7)])
-    rows = contacts_bus.take_pushed()["whatsapp"]
-    assert len(rows) == contacts_bus.PUSH_MAX and rows[-1] == {"n": contacts_bus.PUSH_MAX + 6}, "newest kept"
-    contacts_bus.push("", None)  # never raises
-    assert contacts_bus.take_pushed() == {}
+def test_a_push_is_an_event_taken_at_once_by_the_contacts_door(bridge):
+    contacts_bus.push("WhatsApp", [{"name": "Odile Varga"}, "not a row"])
+    contacts_bus.push("", [{"name": "x"}])
+    contacts_bus.push("telegram", None)                                        # never raises
+    assert PUSHED == [(("whatsapp",), [{"name": "Odile Varga"}])]
 
 
 # --- bridge.js: the wiring exists, and the file parses ------------------------------------------------------
