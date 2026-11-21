@@ -927,11 +927,11 @@
   "COMPLETE",
   "LENGTH"
  ],
- "stop_rule": "a stop first, before any read, and only when his words ask to stop, silence or cancel something; handing you something, the word in another sense, or a complaint about what you said or how, is no stop: answer it",
+ "stop_rule": "a stop first, before any read, and only when his words ask to stop, silence or cancel something; handing you something, or the word in another sense, is no stop",
  "stops": {
   "stop_voice": "he asks you to be quiet: your voice stops; reply only if he asked something besides stopping",
   "stop_media": "he asks to stop what is playing: it stops, nothing else",
-  "stop_run": "he asks you to stop or cancel the work in course: your voice stops, this answer is dropped",
+  "stop_run": "he asks you to stop or cancel what you are doing: your voice stops, this answer is dropped",
   "stop_all": "he asks to stop everything: your voice, what plays, his errands"
  },
  "presentation": "owed once on this install, never said yet: say it nearly as written, in his language, beside whatever else you answer; when you already know his name, greet him by it instead of asking",
