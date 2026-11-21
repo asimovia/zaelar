@@ -91,16 +91,6 @@ from nucleo.dispatch.devworker import (  # noqa: F401 — re-export
 )
 
 
-_sem: "asyncio.Semaphore | None" = None
-
-
-def _pool():
-    """`max_parallel` workers at most — a CEILING. Below it the envelope admits by measured room, one worker at a time
-    until the previous one runs (V2-867 T593, `workers/envelope.wait_for_room` in `session._a_slot`)."""
-    global _sem
-    if _sem is None:
-        _sem = asyncio.Semaphore(_max_parallel())
-    return _sem
 
 
 # V2-354 — the RELOJES viven in `dispatch_thresholds` (trinquete); is re-exportan: `dispatch` es the contrato.
@@ -260,7 +250,7 @@ from .prepare import (  # noqa: E402,F401
     _COEXIST_RE, _prepare_web, _finalize_web, _compose_context)
 
 from nucleo.dispatch.model import (  # noqa: E402,F401
-    _model_for, _tools_for, _max_parallel)
+    _model_for, _tools_for)
 from nucleo.dispatch.registry import (  # noqa: E402,F401
     sync_state, unclosed_uids, active_sessions, has_active, sheets_have_live_work, pending_summaries, get_record,
     record_by_nav_task, _sheet_sessions, sheet_for_nav_task, errand_goal_for_nav_task, sheet_progress,

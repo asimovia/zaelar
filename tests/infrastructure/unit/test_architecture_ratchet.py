@@ -989,6 +989,11 @@ _PACKAGE_CEILINGS["memory"] += 15   # 2026-11-21 INI-078 segregation: every task
 _PACKAGE_CEILINGS["nucleo/queue"] += 2   # same cause: the number rides the row and its events
 _PACKAGE_CEILINGS["nucleo/queue"] += 5   # 2026-11-21 review of step 2: urgent is ONE rule (`URGENT`, `_head`) and the lock is reentrant
 _PACKAGE_CEILINGS["memory"] += 1    # 2026-11-21 review: the task number's counter says a factory reset starts it again at 1
+_PACKAGE_CEILINGS["nucleo/queue"] += 201   # 2026-11-21 INI-078 step 3+4: the lanes (one task at a time per owner, its turn given by the beat, a waiter woken when its task leaves) and the boot that takes the queue's tasks back
+_PACKAGE_CEILINGS["nucleo/circuit"] += 13  # same step: his commission is born a task of the queue (`ledger.opened` → `queue.add`), its state its lane's
+_PACKAGE_CEILINGS["nucleo/pulse"] += 11    # same step: the beat starts the queue's next task; rehydration leaves the queue's tasks to it
+_PACKAGE_CEILINGS["memory"] += 9           # same step: a row born before it was a task is adopted by the queue in the same transaction
+_TOTAL_MAX += 197    # same step, measured: the semaphore, `max_parallel` and its settings row went (−), the lanes came (+)
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

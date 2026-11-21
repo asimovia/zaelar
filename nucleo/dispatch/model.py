@@ -2,7 +2,6 @@
 Every package name is read through `_d`, so a patch of `dispatch.<name>` reaches the code here."""
 from __future__ import annotations
 
-import os
 
 from nucleo import dispatch as _d
 
@@ -60,18 +59,3 @@ def _tools_for(kind: str, trusted: bool, may_write: bool = False) -> list[str] |
     # `Write` for every other trusted errand: bridge payloads go through a file it writes (2026-08-28). This list
     # REPLACES the default — demo pass 2026-09-28: «No such tool available: Write», results never reached the sheet.
     return ["Read", "Write"]
-
-
-def _max_parallel() -> int:
-    """The pool's ceiling; how many actually run below it is the host's measured room (V2-867 T593)."""
-    try:
-        v = os.getenv("CODE_AGENT_MAX_PARALLEL")
-        if v:
-            return max(1, int(v))
-    except Exception:
-        pass
-    try:
-        from config import v2 as _v2
-        return max(1, int(_v2.get("code_agent").get("max_parallel", 2)))
-    except Exception:
-        return 2          # V2-771 — two at a time, the rest queued (see config/v2.py §code_agent)

@@ -128,6 +128,14 @@ class OrchestratorLoop(workers.WorkersPulse, flows.FlowsPulse, due.DuePulse):
             except asyncio.CancelledError:
                 break
 
+    @staticmethod
+    def _next_of_the_queue() -> None:
+        try:
+            from nucleo.queue import lanes
+            lanes.tick()
+        except Exception as e:  # noqa: BLE001 — a beat that cannot start the next task leaves it for the next beat
+            logger.debug(f"loop: the queue's next task not started ({e!r})")
+
     # ── one pulse ─────────────────────────────────────────────────────────────────────────────────────────
     async def tick(self) -> None:
         """One loop pulse: scheduler overdue items → sparks → consolidate? → `loop.tick` signal."""
@@ -136,6 +144,7 @@ class OrchestratorLoop(workers.WorkersPulse, flows.FlowsPulse, due.DuePulse):
         _t0 = time.monotonic()
         self._note_resume(now, _t0)          # FIRST: every stop decision below reads a resume as a resume
         await self._supervise_workers(now)
+        self._next_of_the_queue()            # INI-078: each lane with nothing running starts its next task
         self._supervise_memory(now)          # V2-831 T-27 — pressure pauses the newest worker, room resumes it
         await self._supervise_confirms(now)
         await self._supervise_harness(now)

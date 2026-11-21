@@ -271,7 +271,7 @@ export function ConfigPanel() {
       if (p.key_env) await saveKey(p.key_env);
     } else if (section === "code_agent") {
       patch = { provider: val("cf_code_provider"), base_url: val("cf_code_base_url") || "", model: val("cf_code_model"), model_memory: val("cf_code_model_memory"),
-        model_web: val("cf_code_model_web"), model_code: val("cf_code_model_code"), max_parallel: Number(val("cf_code_max_parallel")) || 3 };
+        model_web: val("cf_code_model_web"), model_code: val("cf_code_model_code") };
     } else if (section === "memory") {
       patch = { embed_provider: val("cf_mem_embed_provider"), embed_model: val("cf_mem_embed_model"),
         rerank_provider: val("cf_mem_rerank_provider"), rerank_model: val("cf_mem_rerank_model"),

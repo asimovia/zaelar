@@ -216,3 +216,7 @@ def relieve(records) -> str:
                 r.paused_by = ""
                 return f"resumed {r.task_id}"
     return ""
+
+
+# INI-078: the envelope is what may hold the next worker task of the queue (its lane's gate, read at every tick)
+__import__("nucleo.queue.lanes", fromlist=["x"]).gate("worker", lambda: reason())

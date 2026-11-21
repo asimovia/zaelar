@@ -231,21 +231,30 @@ NEXT_NUM = "tasks.next_num"
 
 
 def queue_insert(row: dict) -> int:
-    """Write one NEW task of the queue and give it the install's next number, in ONE transaction (an id already there
-    is left as it is). Returns its `num`; 0 when nothing was written."""
+    """Write one NEW task of the queue and give it the install's next number, in ONE transaction. A row of that id with
+    no owner yet (born before it was a task) is adopted; one already in the queue is left as it is. Returns its `num`;
+    0 when nothing was written."""
     tid = str(row.get("id") or "").strip()
     if not tid:
         return 0
-    cols = [c for c in _COLUMNS if c in row and c not in ("schedule", "progress", "visible", "num")] + ["num"]
+    cols = [c for c in _COLUMNS if c in row and c not in ("schedule", "num")] + ["num"]
+    row = {**row, **({"visible": 1 if row["visible"] else 0} if "visible" in row else {}),
+           **({"progress": json.dumps(row["progress"] or {}, ensure_ascii=False)} if "progress" in row else {})}
     try:
         with _db_mod.exclusive(_db_mod.get_db()) as conn:
-            if conn.execute("SELECT 1 FROM tasks WHERE id=?", (tid,)).fetchone():
-                return 0
+            had = conn.execute("SELECT owner FROM tasks WHERE id=?", (tid,)).fetchone()
+            if had and had[0]:
+                return 0                      # already a task of the queue
             kept = conn.execute("SELECT value FROM sys_kv WHERE key=?", (NEXT_NUM,)).fetchone()
             top = conn.execute("SELECT COALESCE(MAX(num), 0) FROM tasks").fetchone()[0]
             num = max(int(json.loads(kept[0])) if kept else 1, int(top or 0) + 1)
-            conn.execute(f"INSERT INTO tasks ({', '.join(cols)}) VALUES ({', '.join('?' for _ in cols)})",
-                         (*(row[c] for c in cols[:-1]), num))
+            if had:                           # a row born before it was a task (an errand's turn): the queue adopts it
+                sets = [c for c in cols[:-1] if c not in ("id", "created_at")]
+                conn.execute(f"UPDATE tasks SET {', '.join(f'{c}=?' for c in sets)}, num=? WHERE id=?",
+                             (*(row[c] for c in sets), num, tid))
+            else:
+                conn.execute(f"INSERT INTO tasks ({', '.join(cols)}) VALUES ({', '.join('?' for _ in cols)})",
+                             (*(row[c] for c in cols[:-1]), num))
             conn.execute("INSERT INTO sys_kv (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET "
                          "value=excluded.value", (NEXT_NUM, json.dumps(num + 1)))
     except Exception as e:  # noqa: BLE001

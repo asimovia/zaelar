@@ -39,6 +39,7 @@ from __future__ import annotations
 import time
 
 from loguru import logger
+from nucleo.queue.lanes import not_tasks as _not_tasks   # INI-078: the queue takes its own tasks back
 
 # sys_kv (NO el estado raíz): rastro de lo que estaba vivo + contador anti-bucle por objetivo.
 _KEY = "live_sessions"
@@ -214,9 +215,8 @@ def at_boot(*, now: float | None = None, schedule: bool = True, delay: float | N
         return {"found": 0, "resume": [], "buried": [], "waiting": []}
 
     sessions = [s for s in (snap.get("sessions") or []) if isinstance(s, dict)]
-    # V2-877 #2 — a row that waits on its worker (a clean host stop) is resumed by id by the pulse: never buried here
-    from nucleo.workers import ended as _ended
-    sessions = [s for s in sessions if not _ended.resumes_by_id(str(s.get("uid") or ""))]
+    from nucleo.workers import ended as _ended     # V2-877 #2: a row waiting on its worker is resumed by the pulse
+    sessions = [s for s in _not_tasks(sessions) if not _ended.resumes_by_id(str(s.get("uid") or ""))]
     plan = classify(sessions, at=float(snap.get("at") or now), now=now, marks=_marks(now))
     plan["found"] = len(sessions)
 

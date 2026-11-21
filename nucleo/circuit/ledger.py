@@ -187,31 +187,45 @@ def opened(rec, ctx: dict | None = None) -> str:
         # overwritten by the relay's rewritten brief (which carries «[ARNÉS] esto quedó sin cumplir…»).
         _sh = str(getattr(rec, "sheet", "") or "")      # V2-797: a continuation never blanks the row's sheet
         _tr = _trace_of(rec, ctx, before := _ts.task_get(inherited))
-        _ts.task_patch(inherited, state="running", kind=str(getattr(rec, "kind", "") or "generic"),
-                       **({"sheet": _sh} if _sh else {}), **({"trace_id": _tr} if _tr else {}),
-                       finished_at=None, outcome="")
+        _kind = str(getattr(rec, "kind", "") or "generic")
+        _sh, _tr = _sh or str(before.get("sheet") or ""), _tr or str(before.get("trace_id") or "")
+        if before.get("owner"):          # a task of the queue: its state is its lane's, never rewritten here
+            _ts.task_patch(inherited, kind=_kind, sheet=_sh, trace_id=_tr, finished_at=None, outcome="")
+        else:
+            _ts.task_patch(inherited, state="running", kind=_kind, sheet=_sh, trace_id=_tr, finished_at=None,
+                           outcome="")
         _born(rec, ctx)                  # V2-835 T4 — a relaunch takes the commission's end state from this row
         card_written(inherited, **card_of(ctx, verb="correct" if ctx.get("replaces") else "continue", now=now))
         _progress.changed(inherited, "opened", before, snapshot=True, harness=True)
         return uid
     before = _ts.task_get(uid)
-    _ts.task_put({
-        "id": uid,
-        "title": str(getattr(rec, "title", "") or ""),
-        "goal": str(getattr(rec, "goal", "") or ""),
-        "kind": str(getattr(rec, "kind", "") or "generic"),
-        "mode": "now",
-        "state": "running" if state_of(rec) == "running" else "pending",     # opened live; it ends through settle
-        "visible": is_visible(kind=str(getattr(rec, "kind", "") or ""), src=str(ctx.get("src") or ""),
-                              origin=str(ctx.get("origin") or "voz")),
-        "origin": str(ctx.get("origin") or "voz"),
-        "surface": str(getattr(rec, "surface", "") or ""),
-        "sheet": str(getattr(rec, "sheet", "") or ""),
-        "trace_id": _trace_of(rec, ctx),
-        "parent_id": str(ctx.get("parent_task_uid") or ""),
-        "created_at": int(getattr(rec, "started", now) or now),
-        "started_at": now,
-    })
+    if is_visible(kind=str(getattr(rec, "kind", "") or ""), src=str(ctx.get("src") or ""),
+                  origin=str(ctx.get("origin") or "voz")):
+        # HIS commission is a task of the queue: born pending, it waits for its turn (`nucleo/queue/lanes`)
+        from nucleo import queue
+        queue.add("worker", str(getattr(rec, "title", "") or ""), goal=str(getattr(rec, "goal", "") or ""),
+                  kind=str(getattr(rec, "kind", "") or "generic"), origin=str(ctx.get("origin") or "voz"),
+                  trace=_trace_of(rec, ctx), task_id=uid, surface=str(getattr(rec, "surface", "") or ""),
+                  sheet=str(getattr(rec, "sheet", "") or ""), visible=True,
+                  parent_id=str(ctx.get("parent_task_uid") or ""))
+    else:                                # an internal one (memory, dev, the engine's own) is not a task of the queue
+        _ts.task_put({
+            "id": uid,
+            "title": str(getattr(rec, "title", "") or ""),
+            "goal": str(getattr(rec, "goal", "") or ""),
+            "kind": str(getattr(rec, "kind", "") or "generic"),
+            "mode": "now",
+            "state": "running" if state_of(rec) == "running" else "pending",     # opened live; it ends through settle
+            "visible": is_visible(kind=str(getattr(rec, "kind", "") or ""), src=str(ctx.get("src") or ""),
+                                  origin=str(ctx.get("origin") or "voz")),
+            "origin": str(ctx.get("origin") or "voz"),
+            "surface": str(getattr(rec, "surface", "") or ""),
+            "sheet": str(getattr(rec, "sheet", "") or ""),
+            "trace_id": _trace_of(rec, ctx),
+            "parent_id": str(ctx.get("parent_task_uid") or ""),
+            "created_at": int(getattr(rec, "started", now) or now),
+            "started_at": now,
+        })
     card_written(uid, **card_of({**ctx, "heard": ctx.get("heard") or getattr(rec, "heard", "")},
                                 verb="correct" if ctx.get("replaces") else "new", now=now))
     _born(rec, ctx)

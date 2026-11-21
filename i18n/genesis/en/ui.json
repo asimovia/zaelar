@@ -157,7 +157,6 @@
  "config.close": "close",
  "config.code.cli_found": "CLI installed (v{version})",
  "config.code.cli_missing": "CLI NOT installed on this machine — jobs would fail",
- "config.code.max_parallel": "Max in parallel",
  "config.code.model_code": "Model · code jobs",
  "config.code.model_global": "Model",
  "config.code.model_memory": "Model · memory jobs",

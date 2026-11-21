@@ -54,6 +54,9 @@ def test_the_pulse_beat_writes_the_workers_state_into_its_row(fresh_db, monkeypa
         live, _ = await _commission(monkeypatch, "búscame piso de alquiler en Gràcia", release=False)
         uid = live[0]["id"]
         tid = await until(lambda: next(iter(dispatch._SESSIONS), None), "the worker session to register")
+        # its turn comes from the queue's lane (INI-078): the beat writes the state of a worker that RUNS
+        await until(lambda: any(s.get("status") == "running" for s in dispatch.active_sessions()) or None,
+                    "the worker to run")
         dispatch.session_plan(tid, "buscar|comparar|entregar")
         dispatch.session_progress(tid, "comparando precios", done=1)
         dispatch.session_phase(tid, "comparando precios")

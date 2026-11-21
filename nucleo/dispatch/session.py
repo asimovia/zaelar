@@ -217,19 +217,28 @@ from nucleo.dispatch import session_steps as _dss  # noqa: E402 — V2-778 F1, r
 
 @contextlib.asynccontextmanager
 async def _a_slot(_d, key, rec, answered: bool = False):
-    """The worker pool, entered the way the operator should see it: a commission that waits says behind what, and
-    its silence starts when it RUNS, never while it waited for a slot (the loop's stuck clock reads it)."""
-    _say_queued_behind(_d, key)
-    from nucleo.workers import envelope as _env      # V2-831 T-27 + V2-867: admission by measured room, no clock
+    """Where a commission waits until it may RUN, said the way the operator should see it, and its silence counted only
+    from when it runs (the loop's stuck clock reads it). HIS commission is a task of the queue: it waits for its TURN —
+    one worker at a time, in order, his «it's urgent» first (`nucleo/queue/lanes`). An internal one (memory, dev) is
+    not a task: it waits only for measured room (`workers/envelope`), as before."""
+    from nucleo.queue import lanes
+    from nucleo.switchboard import held as _h            # V2-935: the record says NOT started while it waits
+    from nucleo.workers import envelope as _env
+    uid = str(getattr(rec, "uid", "") or "")
+    told = lambda why: (_h.mark(rec, why), _say_held(_d, key, why))   # noqa: E731
     try:
-        from nucleo.switchboard import held as _h       # V2-935: the record says NOT started, and his word starts it
-        await _env.wait_for_room(lambda why: (_h.mark(rec, why), _say_held(_d, key, why)), key=key,
-                                 runs=lambda: _runs(rec), answered=answered, forced=lambda: _h.forced(rec))
-        rec.held = ""                       # admitted: it is no longer waiting for room
-        await _d._pool().acquire()          # `max_parallel` stays the CEILING; the room decides below it
-    except asyncio.CancelledError:          # stopped while it waited: it never ran, so its finally never will
-        _env.released(key)
+        if lanes.is_task(uid):
+            await lanes.my_turn(uid, held=told)
+        else:
+            await _env.wait_for_room(told, key=key, runs=lambda: _runs(rec), answered=answered,
+                                     forced=lambda: _h.forced(rec))
+        rec.held = ""                       # its turn came: it is no longer waiting
+    except (asyncio.CancelledError, lanes.Left) as e:   # stopped, or its task left the queue, while it waited:
+        _env.released(key)                              # it never ran, so its finally never will
         _settle_unrun(_d, rec, key)
+        if isinstance(e, lanes.Left):
+            _d._SESSIONS.pop(key, None)
+            raise asyncio.CancelledError(f"task {e} left the queue before its turn") from e
         raise
     try:
         rec.last_event_at = time.time()
@@ -238,7 +247,6 @@ async def _a_slot(_d, key, rec, answered: bool = False):
         yield
     finally:
         _env.released(key)
-        _d._pool().release()
 
 
 def _runs(rec) -> bool:
@@ -284,14 +292,3 @@ def _settle_unrun(_d, rec, key) -> None:
         _d.logger.debug(f"dispatch: the unrun {key} left its surface as it was: {e}")
     from nucleo import chat_refs as _chat_refs
     _chat_refs.closed(rec, file=str(getattr(rec, "kept_file", "") or ""))   # V2-862 — never raises
-
-
-def _say_queued_behind(_d, key) -> None:
-    """A commission that has to WAIT for a slot says so, and behind what (demo 2026-10-22).
-
-    Two run at a time (`code_agent.max_parallel`); the trip plan sat «queued» for four minutes behind a 14-minute
-    monitor search and the Bitcoin summary, the agent told him it was «stuck», and «restarting» it only cancelled the
-    one in the queue. The phase now names the work it waits behind, so the row, the prompt and the agent all read the
-    same fact. Never raises: a phase that cannot be written leaves the plain «queued»."""
-    if _d._pool().locked():
-        _say_held(_d, key, "queued_behind")

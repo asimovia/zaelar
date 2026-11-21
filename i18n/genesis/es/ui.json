@@ -157,7 +157,6 @@
  "config.close": "cerrar",
  "config.code.cli_found": "CLI instalado (v{version})",
  "config.code.cli_missing": "CLI NO instalado en esta máquina — los procesos fallarían",
- "config.code.max_parallel": "Máx. en paralelo",
  "config.code.model_code": "Modelo · procesos de código",
  "config.code.model_global": "Modelo",
  "config.code.model_memory": "Modelo · procesos de memoria",

@@ -39,6 +39,8 @@ FIELDS = {
     "progress": ("phase", "progress", "heartbeat_at", "reported_at", "error_class", "attempts", "session_id", "cwd",
                  "playbook", "sheet", "title"),
 }
+#: …and what a task is born with besides its words: where it shows and whose it is (read by the board and the sheets)
+BIRTH = FIELDS["progress"] + ("surface", "visible", "parent_id", "started_at")
 
 #: reentrant: a listener of a `queue/*` event that sends a signal of its own queues behind, never deadlocks
 _lock = threading.RLock()
@@ -116,7 +118,7 @@ def add(owner: str, title: str, *, goal: str = "", kind: str = "", origin: str =
         row = {"id": tid, "title": str(title or goal)[:200], "goal": str(goal or title)[:8000],
                "kind": str(kind or owner), "state": PENDING, "origin": str(origin or "voz"), "trace_id": str(trace or ""),
                "owner": owner, "priority": 0, "position": last + 1.0, "created_at": int(time.time()),
-               **{k: v for k, v in fields.items() if k in FIELDS["progress"]}}
+               **{k: v for k, v in fields.items() if k in BIRTH}}
         row["num"] = _store().queue_insert(row)
         if not row["num"]:
             _say("refused", row, "owner", why="the task is already in the queue")
@@ -143,6 +145,9 @@ def signal(task_id: str, what: str, *, by: str, **fields) -> bool:
         if to == ARCHIVE:
             _store().queue_archive(tid)
             _say(what, row, by, outcome=str(fields.get("outcome") or "")[:400])
+            from nucleo.queue import lanes
+            lanes.left(tid)                      # an owner still waiting for its turn is never left waiting
+            _next()
             return True
         put = {k: v for k, v in fields.items() if k in FIELDS.get(what, ())}
         now = int(time.time())
@@ -165,7 +170,18 @@ def signal(task_id: str, what: str, *, by: str, **fields) -> bool:
         _store().task_patch(tid, state=PENDING if to == PENDING else (RUNNING if to == RUNNING else WAITING), **put)
         _say(what, row, by, state=to,          # inside the lock: the events come out in the order signals applied
              changed={k: str(v)[:160] for k, v in put.items() if k != "progress"})
+    if to == WAITING and what == "wait":
+        _next()                                  # a task that waits for him leaves its place: the next one starts now
     return True
+
+
+def _next() -> None:
+    """Its lane's running place is free: the next task starts now, not at the next beat (Q-5)."""
+    try:
+        from nucleo.queue import lanes
+        lanes.tick()
+    except Exception as e:  # noqa: BLE001 — the beat starts it anyway
+        logger.debug(f"queue: the next task not started now ({e!r})")
 
 
 def view() -> dict:

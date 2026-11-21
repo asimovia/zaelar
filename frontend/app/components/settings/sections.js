@@ -80,8 +80,7 @@ export function sec_code(cfg) {
     row(t("config.row.provider"), `<select id="cf_code_provider">${opt(provs.map(p => ({ value: p.id, label: p.label })), a.provider)}</select>` +
       `<input type="hidden" id="cf_code_base_url" value="${esc(a.base_url || "")}"/>`,
       `<span id="cf_code_provnote">${codeHint(cur, c)}</span>`, "cf_code_provider") +
-    `<div id="cf_code_models" class="set-rowslot">${codeModelRows(cur, a)}</div>` +
-    row(t("config.code.max_parallel"), `<input id="cf_code_max_parallel" type="number" min="1" max="8" value="${esc(a.max_parallel)}"/>`, "", "cf_code_max_parallel")),
+    `<div id="cf_code_models" class="set-rowslot">${codeModelRows(cur, a)}</div>`),
   { form: true });
 }
 export { codeHint };

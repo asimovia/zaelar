@@ -85,6 +85,11 @@ def dispatcher(active_brain, first_lifespan_entry: bool) -> bool:
     # was in flight**, which is the normal case for any clean boot. Separate module (`nucleo/pulse/rehydrate.py`), one
     # call, no state of its own: circumstance → function → steps aside.
     if first_lifespan_entry:
+        try:                     # INI-078: the queue takes its tasks back FIRST — rehydration leaves those alone
+            from nucleo.queue import boot as nucleo_queue_boot
+            nucleo_queue_boot.at_boot()
+        except Exception as e:
+            logger.warning(f"queue at boot failed (voice/chat unaffected): {e}")
         try:
             from nucleo.pulse import rehydrate as nucleo_rehydrate
             _reh = nucleo_rehydrate.at_boot()
