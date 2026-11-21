@@ -76,8 +76,6 @@ def _a_show_view(action, payload, q, db, contacts, now) -> dict:
     if _d._truthy(payload.get("unclassified")):
         sel["unclassified"] = True
     pool = [c for c in (db.get("contacts") or []) if c.get("hidden")] if hid else _d.visible(db)
-    _d._push_view(db, sel)
-    _d.store.save(_d.WIDGET_ID, db)
     found = _d._matches(pool, group=sel.get("group", ""), city=sel.get("city", ""),
                      favorites=sel.get("favorites"), query=sel.get("query", ""),
                      kind=sel.get("kind", ""), source=sel.get("source", ""), flag_=sel.get("flag", ""))
@@ -86,6 +84,12 @@ def _a_show_view(action, payload, q, db, contacts, now) -> dict:
         found = [c for c in found if _d._groups.is_member(grp, c, nats)]
     if sel.get("unclassified"):
         found = [c for c in found if _d.model.unclassified(c)]
+    if sel.get("query"):
+        # The card shows the rows THIS answer found (2026-11-21): its own text filter is a substring, and a name said
+        # another way («Tony …» for «Antonio …») was found here and shown as nothing there.
+        sel["ids"] = [str(c.get("id") or "") for c in found]
+    _d._push_view(db, sel)
+    _d.store.save(_d.WIDGET_ID, db)
     d = _d.view_data(q)
     d.update({"ok": True, "result": {"count": len(found), "matches": [_d._public(c) for c in found[:12]],
                                      **({"hidden": True} if hid else {})}})

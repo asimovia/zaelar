@@ -1,17 +1,17 @@
 """V2-849 step 3 · a name is looked for closest first: his circle, then the people he talks to, then the background.
 
-A real directory: 2,706 contacts imported from an address book, fifteen of them match «pablo» and most are years old
-(«Psm Pablo Buso», «Pablo Elastic», «Carmen Mamá de Pablo»). The resolver answered in store order, so a «which
-Pablo?» named four arbitrary rows — and the person he writes to every week was not among them.
+A real directory: 2,706 contacts imported from an address book, fifteen of them match «unai» and most are years old
+(«Psm Unai Buso», «Unai Elastic», «Carmen Mamá de Unai»). The resolver answered in store order, so a «which
+Unai?» named four arbitrary rows — and the person he writes to every week was not among them.
 
 The rules (`widgets/directory.py`):
-  · a level per contact, computed: CIRCLE (his word: favorite, alias, relation), ACTIVE (traffic either way within
-    `contacts.active_days`), BACKGROUND (the rest; also a contact marked closed); hidden and blocked are never
+  · a level per contact, computed: CIRCLE (his word: favorite, alias, relation), RECENT and ACTIVE (traffic either
+    way within the two `contacts.windows_days`, 7 and 40 by default), BACKGROUND (the rest; also a contact marked closed); hidden and blocked are never
     candidates;
   · the match ladder is unchanged (alias → exact → all words → address/number → spelling), and each rung answers
     closest first;
   · ONE person of his circle is the answer; anything else is a question naming at most `CANDIDATES_MAX`, closest
-    first, each with what tells them apart — a single active «Pablo» beside fourteen background ones is still a
+    first, each with what tells them apart — a single active «Unai» beside fourteen background ones is still a
     question (medium certainty is asked, never assumed).
 """
 from __future__ import annotations
@@ -61,7 +61,8 @@ def test_each_contact_has_a_level_computed_from_what_he_did(world):
     assert dr.level({"name": "A", "favorite": True}) == dr.CIRCLE
     assert dr.level({"name": "A", "aliases": ["mi tontita"]}) == dr.CIRCLE
     assert dr.level({"name": "A", "relation": "mother"}) == dr.CIRCLE
-    assert dr.level({"name": "A", "channels": _talked(3)}) == dr.ACTIVE
+    assert dr.level({"name": "A", "channels": _talked(3)}) == dr.RECENT
+    assert dr.level({"name": "A", "channels": _talked(20)}) == dr.ACTIVE
     assert dr.level({"name": "A", "channels": _talked(400)}) == dr.BACKGROUND
     assert dr.level({"name": "A"}) == dr.BACKGROUND
     assert dr.level({"name": "A", "favorite": True, "flags": ["closed"]}) == dr.BACKGROUND
@@ -72,44 +73,45 @@ def test_each_contact_has_a_level_computed_from_what_he_did(world):
 def test_the_window_is_his_setting(world, tmp_path):
     _d, dr = world
     (tmp_path / "config").mkdir()
-    (tmp_path / "config" / "contacts.json").write_text(json.dumps({"active_days": 7}))
-    dr._WINDOW.clear()                                   # the window is read at most every few seconds
+    (tmp_path / "config" / "contacts.json").write_text(json.dumps({"windows_days": [2, 7]}))
+    dr._WINDOW.clear()                                   # the windows are read at most every few seconds
+    assert dr.level({"name": "A", "channels": _talked(5)}) == dr.ACTIVE
     assert dr.level({"name": "A", "channels": _talked(30)}) == dr.BACKGROUND
 
 
 # ── closest first ────────────────────────────────────────────────────────────────────────────────────────────
 
 def test_a_first_name_is_asked_with_the_one_he_talks_to_first(world):
-    """V2-854 (the operator, decision 1): a recent conversation is the FIRST level, so one active Pablo beside three
+    """V2-854 (the operator, decision 1): a recent conversation is the FIRST level, so one active Unai beside three
     he never talks to is the answer when the margin says so (`clear_margin`); two active ones are still a question,
     the most recent first."""
     d, dr = world
-    _put(d, {"name": "Psm Pablo Buso"}, {"name": "Pablo Elastic"}, {"name": "Pablo Hernandez"},
-         {"name": "Pablo Sabater", "channels": _talked(2)})
-    assert _names(dr.resolve("Pablo")) == ["Pablo Sabater"], "the one he talks to leads by the margin"
+    _put(d, {"name": "Psm Unai Buso"}, {"name": "Unai Elastic"}, {"name": "Unai Hernandez"},
+         {"name": "Unai Sabater", "channels": _talked(2)})
+    assert _names(dr.resolve("Unai")) == ["Unai Sabater"], "the one he talks to leads by the margin"
     db = d.load_db()
-    next(c for c in db["contacts"] if c["name"] == "Pablo Elastic")["channels"] = _talked(6)
+    next(c for c in db["contacts"] if c["name"] == "Unai Elastic")["channels"] = _talked(6)
     d.store.save(d.WIDGET_ID, db)
-    hits = dr.resolve("Pablo")
-    assert _names(hits)[:2] == ["Pablo Sabater", "Pablo Elastic"] and len(hits) == 4, "two active Pablos: a question"
+    hits = dr.resolve("Unai")
+    assert _names(hits) == ["Unai Sabater", "Unai Elastic"], "two he wrote to this week: a question among them only"
     from widgets.mensajeria.outbound import targets
-    t = targets.resolve_target({"contact": "Pablo", "text": "¿has probado Zaelar?"})
-    assert t["ok"] is False and t["candidates"][0] == "Pablo Sabater" and len(t["candidates"]) == dr.CANDIDATES_MAX
-    assert "y 1 más" in t["error"] and "WhatsApp, hace 2 días" in t["error"]
+    t = targets.resolve_target({"contact": "Unai", "text": "¿has probado Zaelar?"})
+    assert t["ok"] is False and t["candidates"] == ["Unai Sabater", "Unai Elastic"]
+    assert "WhatsApp, hace 2 días" in t["error"]
 
 
 def test_one_person_of_his_circle_is_the_answer(world):
     d, dr = world
-    _put(d, {"name": "Raquel Lozoya"}, {"name": "Raquel Ares", "channels": _talked(5)},
-         {"name": "Raquel Salinas Ortega", "aliases": ["Raquel", "mi tontita"]})
-    assert _names(dr.resolve("Raquel")) == ["Raquel Salinas Ortega"]
-    assert _names(dr.resolve("mi tontita")) == ["Raquel Salinas Ortega"]
+    _put(d, {"name": "Leire Lozoya"}, {"name": "Leire Ares", "channels": _talked(5)},
+         {"name": "Leire Salinas Ortega", "aliases": ["Leire", "mi tontita"]})
+    assert _names(dr.resolve("Leire")) == ["Leire Salinas Ortega"]
+    assert _names(dr.resolve("mi tontita")) == ["Leire Salinas Ortega"]
 
 
 def test_a_full_name_reaches_the_background(world):
     d, dr = world
-    _put(d, {"name": "Pablo Sabater", "channels": _talked(2)}, {"name": "Pablo Hernandez"})
-    assert _names(dr.resolve("Pablo Hernandez")) == ["Pablo Hernandez"]
+    _put(d, {"name": "Unai Sabater", "channels": _talked(2)}, {"name": "Unai Hernandez"})
+    assert _names(dr.resolve("Unai Hernandez")) == ["Unai Hernandez"]
 
 
 def test_hidden_and_blocked_people_are_never_candidates(world):
@@ -121,7 +123,7 @@ def test_hidden_and_blocked_people_are_never_candidates(world):
 
 def test_the_same_in_english_on_another_channel(world):
     d, dr = world
-    _put(d, {"name": "Rowan Ferrer", "channels": _talked(40, "telegram")},
+    _put(d, {"name": "Rowan Ferrer", "channels": _talked(4, "telegram")},
          {"name": "Rowan Lee", "channels": _talked(1, "telegram")})
     from widgets.mensajeria.outbound import targets
     t = targets.resolve_target({"contact": "Rowan", "text": "running late"})
@@ -133,9 +135,9 @@ def test_the_same_in_english_on_another_channel(world):
 
 
 def test_a_favorite_among_namesakes_is_the_answer_without_an_alias(world):
-    """The circle rule itself, not the alias rung: his ★ on one Raquel makes her the Raquel — among namesakes he has
+    """The circle rule itself, not the alias rung: his ★ on one Leire makes her the Leire — among namesakes he has
     not talked to lately (V2-854: a recent conversation is the first level, above the ★)."""
     d, dr = world
-    _put(d, {"name": "Raquel Lozoya", "channels": _talked(300)}, {"name": "Raquel Ares"},
-         {"name": "Raquel Salinas Ortega", "favorite": True})
-    assert _names(dr.resolve("Raquel")) == ["Raquel Salinas Ortega"]
+    _put(d, {"name": "Leire Lozoya", "channels": _talked(300)}, {"name": "Leire Ares"},
+         {"name": "Leire Salinas Ortega", "favorite": True})
+    assert _names(dr.resolve("Leire")) == ["Leire Salinas Ortega"]

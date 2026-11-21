@@ -1,6 +1,6 @@
 """V2-849 step 4 · his answer to «which one?» is remembered: the word he used becomes that person's, asked once.
 
-His three sentences, from the phone: «send Raquel a message that I'm going home» (several Raquels — ask which ONCE: she
+His three sentences, from the phone: «send Leire a message that I'm going home» (several Leires — ask which ONCE: she
 is his wife, the default forever after), «send mum a message that I've done the transfer» (no contact is named
 «Mamá»; thirteen names carry «Mama» as a label — «Amiga Mama», «Francisco Vecino Mama»), «ask Pablo if he tried
 Zaelar» (several Pablos — ask which).
@@ -55,39 +55,39 @@ def _row(ct, cid: str) -> dict:
     return next(c for c in ct.load_db()["contacts"] if c["id"] == cid)
 
 
-# ── «Raquel»: asked once ───────────────────────────────────────────────────────────────────────────────────────
+# ── «Leire»: asked once ───────────────────────────────────────────────────────────────────────────────────────
 
-def test_his_raquel_is_asked_once_and_never_again(world):
+def test_his_leire_is_asked_once_and_never_again(world):
     ct, ms, _dr = world
-    # V2-854: two of them talked to lately — one would be the answer by the recent-conversation flag, not a question
-    _put(ct, {"name": "Raquel Lozoya", "channels": _wa(1, days_ago=5)}, {"name": "Raquel Ares", "channels": _wa(2, days_ago=3)},
-         {"name": "Raquel Salinas Ortega", "channels": _wa(3)}, {"name": "raquel.salinasortega", "channels": _wa(4)})
-    first = _send(ms, contact="Raquel")
-    assert first["ok"] is False and len(first["candidates"]) == 3, "several Raquels: a question, never a pick"
-    # V2-887 step 6: «raquel.salinasortega» is her own address row, so «Raquel Salinas» is ONE person and sends
-    sent = _send(ms, contact="Raquel Salinas")
-    assert sent["ok"] is True and sent["result"]["to"] == "Raquel Salinas Ortega"
-    assert sent["result"]["learned"] == {"alias": "Raquel", "contact": "Raquel Salinas Ortega"}
-    assert _row(ct, "c2")["aliases"] == ["Raquel"], "the word he FIRST used is the one he will say again"
-    again = _send(ms, contact="Raquel")
-    assert again["ok"] is True and again["result"]["to"] == "Raquel Salinas Ortega" and "learned" not in again["result"]
+    # three of them written to this week — one alone would be the answer by its level, not a question
+    _put(ct, {"name": "Leire Lozoya", "channels": _wa(1, days_ago=5)}, {"name": "Leire Ares", "channels": _wa(2, days_ago=3)},
+         {"name": "Leire Salinas Ortega", "channels": _wa(3, days_ago=1)}, {"name": "leire.salinasortega", "channels": _wa(4)})
+    first = _send(ms, contact="Leire")
+    assert first["ok"] is False and len(first["candidates"]) == 3, "several Leires: a question, never a pick"
+    # V2-887 step 6: «leire.salinasortega» is her own address row, so «Leire Salinas» is ONE person and sends
+    sent = _send(ms, contact="Leire Salinas")
+    assert sent["ok"] is True and sent["result"]["to"] == "Leire Salinas Ortega"
+    assert sent["result"]["learned"] == {"alias": "Leire", "contact": "Leire Salinas Ortega"}
+    assert _row(ct, "c2")["aliases"] == ["Leire"], "the word he FIRST used is the one he will say again"
+    again = _send(ms, contact="Leire")
+    assert again["ok"] is True and again["result"]["to"] == "Leire Salinas Ortega" and "learned" not in again["result"]
 
 
 def test_his_own_word_for_her_is_hers_from_the_card(world):
     ct, ms, _dr = world
-    _put(ct, {"name": "Raquel Salinas Ortega", "channels": _wa(3)})
+    _put(ct, {"name": "Leire Salinas Ortega", "channels": _wa(3)})
     assert ct.apply_action("set_alias", {"contactId": "c0", "alias": "mi tontita"})["ok"] is True
-    assert _send(ms, contact="mi tontita")["result"]["to"] == "Raquel Salinas Ortega"
+    assert _send(ms, contact="mi tontita")["result"]["to"] == "Leire Salinas Ortega"
 
 
 def test_an_alias_is_one_persons_and_can_be_taken_back(world):
     ct, _ms, dr = world
-    _put(ct, {"name": "Raquel Lozoya"}, {"name": "Raquel Salinas Ortega"})
-    ct.apply_action("set_alias", {"contactId": "c0", "alias": "Raquel"})
-    ct.apply_action("set_alias", {"contactId": "c1", "alias": "raquel"})
-    assert _row(ct, "c0")["aliases"] == [] and _row(ct, "c1")["aliases"] == ["raquel"], "the word moved"
-    ct.apply_action("set_alias", {"contactId": "c1", "alias": "Raquel", "remove": True})
-    assert _row(ct, "c1")["aliases"] == [] and len(dr.resolve("Raquel")) == 2, "«no, esa no»: asked again"
+    _put(ct, {"name": "Leire Lozoya"}, {"name": "Leire Salinas Ortega"})
+    ct.apply_action("set_alias", {"contactId": "c0", "alias": "Leire"})
+    ct.apply_action("set_alias", {"contactId": "c1", "alias": "leire"})
+    assert _row(ct, "c0")["aliases"] == [] and _row(ct, "c1")["aliases"] == ["leire"], "the word moved"
+    ct.apply_action("set_alias", {"contactId": "c1", "alias": "Leire", "remove": True})
+    assert _row(ct, "c1")["aliases"] == [] and len(dr.resolve("Leire")) == 2, "«no, esa no»: asked again"
 
 
 # ── «mamá»: a relation, asked, never read off a label ─────────────────────────────────────────────────────────

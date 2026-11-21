@@ -21,7 +21,7 @@ def prompt_digest() -> str:
     # V2-849 — closest first, and the background is COUNTED, never listed: thousands of old rows must not ride the
     # prompt, and «not listed» must not read as «not saved».
     levels = [_dir.level(c) for c in contacts]
-    circle, active = levels.count(_dir.CIRCLE), levels.count(_dir.ACTIVE)
+    circle, active = levels.count(_dir.CIRCLE), levels.count(_dir.RECENT) + levels.count(_dir.ACTIVE)
     background = len(contacts) - circle - active
     lines = [f"Directorio COMPLETO y real: {len(contacts)} entradas, {favs} favoritas (⭐) — {circle} de su "
              f"círculo, {active} con trato reciente y {background} de fondo (guardadas, no listadas aquí: se "

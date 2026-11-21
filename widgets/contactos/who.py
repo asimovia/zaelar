@@ -10,7 +10,7 @@ So a NAME (never a sentence) is scored against every row, word by word, with no 
 
   · a said word against a word of a name: the same word · the same SOUND (`directory.sound`: c/k/q, b/v, ll/y,
     a silent h, accents) · a STEM («Salva» of «Salvador») or the name under an ending («the Odiles») · a word
-    inside a name written joined · one slip of spelling (a letter missing, added, changed or swapped);
+    inside a name written joined, or a short form inside it («Toni» of «Antonio») · one slip of spelling (a letter missing, added, changed or swapped);
   · in ANY order, each said word taking a different word of the name; every name the row is known by is tried
     (the shown one, the ones other sources gave, each chat's), and his own word for the person (`aliases`) is the
     person outright;
@@ -31,6 +31,8 @@ SAME, SOUND, STEM, INSIDE, SLIP = 1.0, 0.9, 0.75, 0.7, 0.6
 ADDRESS = 0.8
 #: The shortest stem, the shortest word a slip is forgiven in, and the shortest joined name read against a handle.
 STEM_MIN, SLIP_MIN, ADDRESS_MIN = 3, 5, 6
+#: The shortest sound found INSIDE a longer name's sound («toni» in «antonio») — shorter would be any syllable.
+INSIDE_MIN = 4
 #: The shortest name read under an ending he added («the Odiles», «Odile's»), and the longest such ending.
 ENDING_MIN, ENDING_MAX = 4, 2
 #: The shortest word a slip is forgiven in when the name is only named back to him, never acted on.
@@ -69,6 +71,8 @@ def word(w: str, t: str, slip_min: int = SLIP_MIN) -> float:
         return STEM
     if len(w) >= STEM_MIN and len(t) - len(w) >= 4 and t.endswith(w):
         return INSIDE
+    if len(sw) >= INSIDE_MIN and len(st) > len(sw) and sw in st:
+        return INSIDE                                 # the short form inside the name: «Toni» of «Antonio»
     if len(t) >= ENDING_MIN and 0 < len(w) - len(t) <= ENDING_MAX and (w.startswith(t) or sw.startswith(st)):
         return STEM                                   # the name with an ending: a plural, a possessive
     if min(len(sw), len(st)) >= slip_min - 1 and min(len(w), len(t)) >= slip_min and _slip(sw, st):
@@ -145,11 +149,12 @@ def score(q: str, c: dict, words: list[str] | None = None) -> dict:
     return {"score": best + whole, "confidence": "sure" if best >= SOUND else "likely", "missing": [], "by": "name"}
 
 
-def find(name: str, people: list[dict] | None = None, limit: int = LIMIT) -> dict:
+def find(name: str, people: list[dict] | None = None, limit: int = LIMIT, *, pick: bool = True) -> dict:
     """The people a said NAME can be: `{people: [{contact, score, confidence, missing, by}…], confidence, unmatched,
     more}` — the best tier only (see the module note), closest first within a worth. `confidence` is `one` (a single
     full match, or one that leads), `several` (full matches to choose among), `partial` (nobody carries every word:
-    `unmatched` are the said words NO row carries) or `none`."""
+    `unmatched` are the said words NO row carries) or `none`. `pick=False` lists every full match («which Odiles do I
+    have?») instead of choosing the one he means."""
     from widgets import directory as d
     from . import groups as _groups
     raw = str(name or "").strip().strip(d._QUOTES)
@@ -160,8 +165,6 @@ def find(name: str, people: list[dict] | None = None, limit: int = LIMIT) -> dic
     people = [c for c in (d._contacts() if people is None else people) if d.level(c)
               and c.get("kind") in (None, "", "person", "company")]
     nats = _groups.declared()
-    import time
-    since = time.time() - d.active_days() * 86400
     rows = []
     for c in people:
         got = score(q, c, words)
@@ -172,10 +175,17 @@ def find(name: str, people: list[dict] | None = None, limit: int = LIMIT) -> dic
     full = [r for r in rows if r["confidence"] != "partial"]
     tier = full or rows
     tier.sort(key=lambda r: (-len(words) + len(r["missing"]), -round(r["score"], 2),
-                             -d._points(0, r["contact"], since, nats), -d._last_seen(r["contact"])))
+                             -d._points(0, r["contact"], nats), -d.last_contact(r["contact"])))
     if not tier:
         return {"people": [], "confidence": "none", "unmatched": words, "more": 0}
     if full:
+        # The closest level any full match is on decides first (`directory.nearest`): one there is the answer, several
+        # there the question — never «which of the 23» when he talks to one of them. Among the SURE matches when there
+        # are any: a short form inside another name («Elia» in «Cornelia») never outranks the name itself.
+        if pick:
+            full = [r for r in full if r["confidence"] == "sure"] or full
+            near = {id(c) for c in d.nearest([r["contact"] for r in full])}
+            full = [r for r in full if id(r["contact"]) in near]
         lead = len(full) == 1 or (full[0]["confidence"] == "sure" and full[0]["score"] - full[1]["score"] >= LEAD)
         return {"people": full[:1] if lead else full[:limit], "confidence": "one" if lead else "several",
                 "unmatched": [], "more": 0 if lead else max(0, len(full) - limit)}

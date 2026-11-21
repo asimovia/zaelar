@@ -41,6 +41,7 @@ export function render(el, data, ctx){
       el._ctDetail=null; el._ctScreen=null; el._ctShown=0; el._ctPick=null; el._ctAsk=null; el._ctNote="";
       el._ctSource=sel.source||"";
       el._ctQuery=sel.query||"";
+      el._ctFound=sel.query && Array.isArray(sel.ids) ? {q:sel.query, ids:sel.ids} : null;   // what the answer found
       const f={};
       if(sel.hidden) f.hidden=true;
       if(sel.favorites) f.fav=true;

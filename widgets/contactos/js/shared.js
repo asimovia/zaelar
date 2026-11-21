@@ -219,7 +219,10 @@ export function rowsOf(data, el){
   const f = el._ctPick ? Object.fromEntries(Object.entries(selOf(el)).filter(([k])=>k!=="groupId")) : selOf(el);
   let out = bySel(basePool(data,el), f, data);
   const q = normJs(el._ctQuery||"");
-  if(q) out = out.filter(c=>haystack(c).includes(q));
+  // The rows the spoken search found, while its words are still in the box; otherwise every typed word, in any order.
+  const found = el._ctFound && normJs(el._ctFound.q)===q ? new Set(el._ctFound.ids) : null;
+  const words = q.split(" ").filter(Boolean);
+  if(q) out = out.filter(c=> found ? found.has(String(c.id)) : words.every(w=>haystack(c).includes(w)));
   out.sort((a,b)=>(a.favorite===b.favorite ? (normJs(a.name)<normJs(b.name)?-1:1) : (a.favorite?-1:1)));
   return out;
 }

@@ -182,7 +182,7 @@ def read_query(question: str) -> str:
             # to «which … do I have» — every carrier is read, the leader first (2026-11-18: eight people shared a
             # first name and the answer was the record of the one he had last talked to).
             from . import who
-            many = who.find(s, limit=50)
+            many = who.find(s, limit=50, pick=False)
             if many["confidence"] == "several":
                 found = found + [r["contact"] for r in many["people"] if r["contact"].get("id") != found[0].get("id")]
         if len(found) > _MAX_HITS and shared is None and (carriers := _a_name_they_share(s, found)):

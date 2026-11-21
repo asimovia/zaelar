@@ -945,15 +945,18 @@ Flash keeps the conversation; the row is what both brains read.
 - **CRIT-M12 · The person he means is ONE ranking, by sound, filtered by the act.** `directory.resolve` gives every
  contact the strongest reason it matches (a word he gave that person · the exact name, number or address · every
  word · a word inside a compound name · the same SOUND, any language in Latin letters — K/C/Q, B/V, a silent H —
- and only when nothing else matched, a near spelling); a name in quotes is matched literally. Closeness ranks it:
- a recent conversation first, then the native scale the card's manifest declares (favorites → family → friends →
- colleagues), then the rest; an UNCLASSIFIED contact (no phone, no address, no channel, derived and never stored)
+ a short form inside a name — «Toni» of «Antonio» — and only when nothing else matched, a near spelling); a name in
+ quotes is matched literally. The CLOSEST LEVEL any match is on decides first (`directory.nearest`, 2026-11-21): his
+ favorite (or alias, relation), else a message either way within 7 days, else within 40 (`contacts.windows_days`),
+ else the rest — when he last exchanged a message is read from the messaging archive, the one log every channel
+ reaches; one person there is the answer, several there the question among them only. Inside a level the native scale
+ the card's manifest declares ranks (favorites → family → friends → colleagues); an UNCLASSIFIED contact (no phone, no address, no channel, derived and never stored)
  is never a send target. The act filters first (a WhatsApp send keeps who is reachable there, a mail who has an
  address). The best is used alone only when it leads the next by `clear_margin` (a rule row of the contacts card);
  else ONE question naming at most `CANDIDATES_MAX`, closest first, and the word he then used is kept on that person
  (`directory.asked`/`answered`). A person named by who they are to him is looked up by the declared relation, never
- by a label in a name; the default channel is his choice, else the busiest, else a question. — since 2026-11-05 ·
- nodes 4.353, 4.354, 4.355, 4.356, 2.1501 · `widgets/directory.py`, `widgets/contactos/`,
+ by a label in a name; the default channel is his choice, else the busiest, else a question. The send door (`contactos/who.find`) and the card's search read a name the same way. — since 2026-11-05 ·
+ nodes 4.353, 4.354, 4.355, 4.356, 4.617, 2.1501 · `widgets/directory.py`, `widgets/contactos/`,
  `widgets/mensajeria/outbound/targets.py`.
 - **CRIT-M12c · One person is ONE row, whatever source each row came from.** A phone (any the row holds, as its
  last nine digits), an address or a platform account PROVES a person; a name never does (`contactos/identity.py`).

@@ -1,13 +1,14 @@
 """V2-854 F2 · the person he means is ONE ranking, not a ladder that stops at its first rung.
 
-Measured on his engine (2026-11-05): «Raquel» against 2,686 contacts — nine carry the WORD «Raquel», and the person he
-means is saved as «Rakel Karó» (WhatsApp, a favorite). The resolver tried a near spelling only when NO word matched,
+Measured on his engine (2026-11-05): «Leire» against 2,686 contacts — nine carry the WORD «Leire», and the person he
+means is saved as «Leyre Karó» (WhatsApp, a favorite). The resolver tried a near spelling only when NO word matched,
 so the nine background namesakes hid her; only an alias found her. The rules (`widgets/directory.resolve`):
 
   · every contact gets the strongest reason it matches — his word (alias) · the exact name or number · every word ·
     a word inside a compound name · the same SOUND (a generic, language-agnostic normaliser: K/C/Q, B/V, a silent H,
-    LL/Y, accents) · a near spelling only as the last resort — and how close he keeps them (a recent conversation,
-    then favorites > family > friends > colleagues > other; the unclassified last);
+    LL/Y, accents) · a near spelling only as the last resort — and how close he keeps them: the closest LEVEL any
+    match is on decides first (favorite · written to within 7 days · within 40 · the rest, 2026-11-21), then
+    favorites > family > friends > colleagues > other inside it; the unclassified last;
   · the ACT filters first: a WhatsApp send keeps who is reachable there, a mail who has an address, any send drops
     the unclassified;
   · a name in quotes is literal;
@@ -34,14 +35,14 @@ def _wa(n: int, days_ago: float) -> list[dict]:
 #: phonetic twin spelling with a WhatsApp chat; one person twice (a phone row and an e-mail-only handle-like row); a
 #: company; a row with nothing to reach it by.
 SPANISH = [
-    *({"name": f"Raquel {last}", "phone": f"+34 600 100 {i:03d}"} for i, last in
+    *({"name": f"Leire {last}", "phone": f"+34 600 100 {i:03d}"} for i, last in
       enumerate(["Lozoya", "Ares", "Diaz", "Mora", "Puig", "Soler", "Vidal", "Roca"])),
-    {"name": "Manu Raquel", "phone": "+34 600 100 900", "channels": _wa(9, 2)},
-    {"name": "Rakel Karó", "favorite": True, "channels": _wa(1, 1)},
-    {"name": "Raquel Salinas Ortega", "phone": "+34 600 200 001"},
-    {"name": "raquel.salinasortega", "email": "raquel.se@example.org"},
-    {"name": "Raquel Caro Interiorismo", "kind": "company", "phone": "+34 930 000 001"},
-    {"name": "Raquel Nadie"},
+    {"name": "Manu Leire", "phone": "+34 600 100 900", "channels": _wa(9, 2)},
+    {"name": "Leyre Karó", "favorite": True, "channels": _wa(1, 1)},
+    {"name": "Leire Salinas Ortega", "phone": "+34 600 200 001"},
+    {"name": "leire.salinasortega", "email": "leire.se@example.org"},
+    {"name": "Leire Caro Interiorismo", "kind": "company", "phone": "+34 930 000 001"},
+    {"name": "Leire Nadie"},
 ]
 ENGLISH = [
     *({"name": f"Catherine {last}", "phone": f"+1 555 010 {i:04d}"} for i, last in
@@ -82,32 +83,37 @@ def _names(rows) -> list[str]:
 def test_his_favorite_spelled_another_way_is_the_one_among_nine_namesakes(world):
     d, dr = world
     _put(d, SPANISH)
-    assert _names(dr.resolve("Raquel")) == ["Rakel Karó"], "a favorite that SOUNDS like it outranks nine word matches"
-    assert _names(dr.resolve("Raquel", tolerant=False)) == ["Rakel Karó"], "the sound is a match, not a near spelling"
-    assert _names(dr.resolve("raquel", platform="whatsapp")) == ["Rakel Karó"]
+    assert _names(dr.resolve("Leire")) == ["Leyre Karó"], "a favorite that SOUNDS like it outranks nine word matches"
+    assert _names(dr.resolve("Leire", tolerant=False)) == ["Leyre Karó"], "the sound is a match, not a near spelling"
+    assert _names(dr.resolve("leire", platform="whatsapp")) == ["Leyre Karó"]
 
 
-def test_a_recent_conversation_is_the_first_level(world):
-    """The operator (decision 1): the people he has talked to lately come first, even above the relation scale — a
-    recent namesake outranks a favorite he has not talked to; a favorite he also talks to stays on top."""
+def test_his_favorite_is_the_first_level_and_who_he_wrote_to_lately_the_next(world):
+    """The operator (2026-11-21): favorites first, then who he wrote to in the last 7 days, then the last 40, then the
+    rest — one person on the closest level any match is on is the answer, never «which of the nine»."""
     d, dr = world
     rows = [dict(r) for r in SPANISH]
     fav = next(r for r in rows if r.get("favorite"))
     fav["channels"] = _wa(1, 200)
     _put(d, rows)
-    assert _names(dr.resolve("Raquel")) == ["Manu Raquel"], "talked to two days ago, above the ★ of 200 days"
+    assert _names(dr.resolve("Leire")) == ["Leyre Karó"], "his ★, even unheard from for 200 days"
     db = d.load_db()
-    next(c for c in db["contacts"] if c.get("favorite"))["channels"] = _wa(1, 0.5)
+    next(c for c in db["contacts"] if c.get("favorite"))["favorite"] = False
     d.store.save(d.WIDGET_ID, db)
-    assert _names(dr.resolve("Raquel")) == ["Rakel Karó"], "a favorite he also talks to stays on top"
+    assert _names(dr.resolve("Leire")) == ["Manu Leire"], "no ★: the one he wrote to two days ago, alone"
 
 
-def test_a_recent_conversation_is_the_first_level_in_english(world):
+def test_his_favorite_is_the_first_level_in_english(world):
     d, dr = world
     rows = [dict(r) for r in ENGLISH]
     rows[-1]["channels"] = [{"platform": "telegram", "chatId": "55", "volume": 2, "last_seen": time.time() - 300 * 86400}]
     rows[3]["channels"] = [{"platform": "telegram", "chatId": "9", "volume": 2, "last_seen": time.time() - 86400}]
     _put(d, rows)
+    assert _names(dr.resolve("Catherine")) == ["Katherine Lowe"]
+    rows[-1]["favorite"] = False
+    db = d.load_db()
+    next(c for c in db["contacts"] if c["name"] == "Katherine Lowe")["favorite"] = False
+    d.store.save(d.WIDGET_ID, db)
     assert _names(dr.resolve("Catherine")) == ["Catherine Stone"]
 
 
@@ -120,26 +126,25 @@ def test_the_same_in_english(world):
 
 def _no_favorite_two_recent():
     rows = [dict(r) for r in SPANISH if not r.get("favorite")]
-    rows[1]["channels"] = _wa(2, 5)                       # «Raquel Ares» talked to lately too: no clear winner
+    rows[1]["channels"] = _wa(2, 5)                       # «Leire Ares» talked to lately too: no clear winner
     return rows
 
 
-def test_without_a_clear_winner_the_closest_come_first(world):
+def test_without_a_clear_winner_only_the_closest_level_is_asked(world):
     d, dr = world
     _put(d, _no_favorite_two_recent())
-    hits = dr.resolve("Raquel")
-    assert len(hits) > dr.CANDIDATES_MAX and hits[0]["name"] == "Manu Raquel", "the one he talks to leads the question"
-    assert hits[-1]["name"] == "Raquel Nadie", "the unclassified last"
+    hits = dr.resolve("Leire")
+    assert _names(hits) == ["Manu Leire", "Leire Ares"], "the two he wrote to this week, the latest first — not nine"
 
 
 def test_a_word_of_a_compound_name_and_a_whole_name(world):
     d, dr = world
     _put(d, SPANISH)
     # V2-887 step 6: the address-named row spells her full name — one person, one candidate
-    assert _names(dr.resolve("Raquel Salinas")) == ["Raquel Salinas Ortega"]
-    assert _names(dr.resolve("Raquel Salinas Ortega")) == ["Raquel Salinas Ortega"], "the whole name wins"
-    assert _names(dr.resolve("Interiorismo")) == ["Raquel Caro Interiorismo"], "a company is found by its words"
-    assert _names(dr.resolve("600 200 001")) == ["Raquel Salinas Ortega"], "a number said"
+    assert _names(dr.resolve("Leire Salinas")) == ["Leire Salinas Ortega"]
+    assert _names(dr.resolve("Leire Salinas Ortega")) == ["Leire Salinas Ortega"], "the whole name wins"
+    assert _names(dr.resolve("Interiorismo")) == ["Leire Caro Interiorismo"], "a company is found by its words"
+    assert _names(dr.resolve("600 200 001")) == ["Leire Salinas Ortega"], "a number said"
 
 
 # ── the act filters first ────────────────────────────────────────────────────────────────────────────────────
@@ -147,11 +152,11 @@ def test_a_word_of_a_compound_name_and_a_whole_name(world):
 def test_the_act_keeps_who_it_can_reach(world):
     d, dr = world
     _put(d, SPANISH)
-    assert _names(dr.resolve("Raquel Salinas", platform="email")) == ["raquel.salinasortega"]
-    assert _names(dr.resolve("Raquel Salinas", platform="whatsapp")) == ["Raquel Salinas Ortega"]
-    assert "Raquel Nadie" in _names(dr.resolve("Raquel Nadie")), "a lookup still finds the unclassified"
-    assert "Raquel Nadie" not in _names(dr.resolve("Raquel", platform="")), "a send never offers them"
-    assert _names(dr.resolve("Rakel Karó", platform="email")) == ["Rakel Karó"], \
+    assert _names(dr.resolve("Leire Salinas", platform="email")) == ["leire.salinasortega"]
+    assert _names(dr.resolve("Leire Salinas", platform="whatsapp")) == ["Leire Salinas Ortega"]
+    assert "Leire Nadie" in _names(dr.resolve("Leire Nadie")), "a lookup still finds the unclassified"
+    assert "Leire Nadie" not in _names(dr.resolve("Leire", platform="")), "a send never offers them"
+    assert _names(dr.resolve("Leyre Karó", platform="email")) == ["Leyre Karó"], \
         "nobody reachable by the act: the match comes back so the door says what is missing"
 
 
@@ -159,8 +164,8 @@ def test_the_send_door_mails_only_who_has_an_address(world):
     d, _dr = world
     _put(d, SPANISH)
     from widgets.mensajeria.outbound import targets
-    t = targets.resolve_target({"contact": "Raquel Salinas", "channel": "email", "text": "hola"})
-    assert t["ok"] is True and t["to"] == "raquel.se@example.org", t
+    t = targets.resolve_target({"contact": "Leire Salinas", "channel": "email", "text": "hola"})
+    assert t["ok"] is True and t["to"] == "leire.se@example.org", t
 
 
 # ── literal, margin, learning ────────────────────────────────────────────────────────────────────────────────
@@ -168,21 +173,23 @@ def test_the_send_door_mails_only_who_has_an_address(world):
 def test_a_name_in_quotes_is_matched_literally(world):
     d, dr = world
     _put(d, SPANISH)
-    for quoted in ('"Raquel"', "«Raquel»", "“Raquel”"):
-        assert "Rakel Karó" not in _names(dr.resolve(quoted)), quoted
-    assert _names(dr.resolve("«Rakel»")) == ["Rakel Karó"]
+    for quoted in ('"Leire"', "«Leire»", "“Leire”"):
+        assert "Leyre Karó" not in _names(dr.resolve(quoted)), quoted
+    assert _names(dr.resolve("«Leyre»")) == ["Leyre Karó"]
 
 
 def test_the_margin_is_his_rule(world):
+    """Inside ONE level, the best is used alone when it leads by the declared margin."""
     d, dr = world
-    _put(d, SPANISH)
+    _put(d, [{"name": "Leire", "channels": _wa(1, 1)}, {"name": "Manu Leire", "channels": _wa(2, 2)}])
     import rules
     assert rules.value(rules.path(widget="contactos"), "clear_margin") == 3, "the manifest's default, as a rule row"
+    assert _names(dr.resolve("Leire")) == ["Leire"], "her whole name leads a word of another's"
     row = rules.add("widget:contactos", "pref", "clear_margin", 99, text="always ask me which one")
     dr._MARGIN.clear()
     try:
-        hits = dr.resolve("Raquel")
-        assert len(hits) > 1 and hits[0]["name"] == "Rakel Karó", "a margin nobody reaches: a question, closest first"
+        hits = dr.resolve("Leire")
+        assert _names(hits) == ["Leire", "Manu Leire"], "a margin nobody reaches: a question, best first"
     finally:
         rules.remove(row["id"])
         dr._MARGIN.clear()
@@ -191,21 +198,21 @@ def test_the_margin_is_his_rule(world):
 def test_his_pick_is_learned_on_that_contact(world):
     d, dr = world
     _put(d, _no_favorite_two_recent())
-    hits = dr.resolve("Raquel")
-    dr.asked("Raquel", hits[: dr.CANDIDATES_MAX])
+    hits = dr.resolve("Leire")
+    dr.asked("Leire", hits[: dr.CANDIDATES_MAX])
     pick = hits[1]
     got = dr.answered(pick)
-    assert got["alias"] == "Raquel"
+    assert got["alias"] == "Leire"
     from widgets.contactos import model
     row = next(c for c in d.load_db()["contacts"] if c["id"] == pick["id"])
-    assert row["aliases"] == ["Raquel"] and model.alias_source(row, "Raquel") == "learned"
-    assert _names(dr.resolve("Raquel")) == [pick["name"]], "never asked twice"
-    assert _names(dr.resolve("Rakel")) == [pick["name"]], "his word, however it is spelled"
+    assert row["aliases"] == ["Leire"] and model.alias_source(row, "Leire") == "learned"
+    assert _names(dr.resolve("Leire")) == [pick["name"]], "never asked twice"
+    assert _names(dr.resolve("Leyre")) == [pick["name"]], "his word, however it is spelled"
 
 
 def test_sound_is_a_generic_normaliser():
     from widgets import directory as dr
-    same = [("Raquel", "Rakel"), ("Jordi", "Jordy"), ("Vanessa", "Banesa"), ("Karó", "Caro"), ("Helena", "Elena"),
+    same = [("Leire", "Leyre"), ("Jordi", "Jordy"), ("Vanessa", "Banesa"), ("Karó", "Caro"), ("Helena", "Elena"),
             ("Lluís", "Yuis"), ("Katherine", "Catherine"), ("Philip", "Filip"), ("Núria", "Nuria")]
     assert all(dr.sound(a) == dr.sound(b) for a, b in same), [(a, b) for a, b in same if dr.sound(a) != dr.sound(b)]
     assert dr.sound("Pablo") != dr.sound("Paula") and dr.sound("Ana") != dr.sound("Eva")

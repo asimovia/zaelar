@@ -79,7 +79,7 @@ def test_imported_he_is_the_pablo_he_talks_to(ct):
     assert imports.merge_contacts(db, rows, source="whatsapp")["added"] == 0, "the same chat is matched, not doubled"
     d.store.save(d.WIDGET_ID, db)
     hits = directory.resolve("Pablo")
-    assert hits[0]["name"] == "Pablo Sabater" and directory.level(hits[0]) == directory.ACTIVE
+    assert hits[0]["name"] == "Pablo Sabater" and directory.level(hits[0]) >= directory.ACTIVE
     from widgets.mensajeria.outbound import targets
     t = targets.resolve_target({"contact": "Pablo Sabater", "text": "¿has probado Zaelar?"})
     assert t["ok"] is True and t["platform"] == "whatsapp" and t["chatId"] == "100000000000747@lid"

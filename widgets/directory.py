@@ -87,11 +87,11 @@ def _contacts() -> list[dict]:
 
 
 # ── how close a person is (V2-849) ─────────────────────────────────────────────────────────────────────────
-#: Levels, closest first. CIRCLE: he gave a word about this person (a favorite, an alias, a relation). ACTIVE: there
-#: was traffic either way, on any channel, within the window. BACKGROUND: everything else — kept, never deleted,
-#: consulted only when nothing closer matches. 0: never a candidate (hidden, blocked). Computed, never stored: a
-#: person moves on their own when the conversation starts or stops.
-CIRCLE, ACTIVE, BACKGROUND = 3, 2, 1
+#: Levels, closest first. CIRCLE: he gave a word about this person (a favorite, an alias, a relation). RECENT and
+#: ACTIVE: there was traffic either way, on any channel, within the first and the second window (`windows_days`).
+#: BACKGROUND: everything else — kept, never deleted, consulted only when nothing closer matches. 0: never a candidate
+#: (hidden, blocked). Computed, never stored: a person moves on their own when the conversation starts or stops.
+CIRCLE, RECENT, ACTIVE, BACKGROUND = 4, 3, 2, 1
 #: How many people one «which one?» names — the send door's question reads this one number.
 CANDIDATES_MAX = 3
 
@@ -99,37 +99,78 @@ CANDIDATES_MAX = 3
 _WINDOW: dict = {}
 
 
-def active_days() -> float:
-    """The activity window, from genesis `contacts.active_days` with the install's `config/contacts.json` on top. Read
-    at most once every few seconds: it rides every name lookup of every turn, over thousands of contacts."""
+def windows_days() -> tuple[float, float]:
+    """The two activity windows (RECENT, ACTIVE), from genesis `contacts.windows_days` with the install's
+    `config/contacts.json` on top. Read at most once every few seconds: it rides every name lookup of every turn."""
     if _WINDOW and time.time() - _WINDOW["at"] < 5.0:
         return _WINDOW["days"]
-    _WINDOW.update({"days": _read_window(), "at": time.time()})
+    _WINDOW.update({"days": _read_windows(), "at": time.time()})
     return _WINDOW["days"]
 
 
-def _read_window() -> float:
+def _read_windows() -> tuple[float, float]:
     import json
-    from pathlib import Path
-    days = 90.0
+    days = [7.0, 40.0]
     try:
         import genome   # V2-859: a refused genesis reads as the last good generation
-        g = genome.genesis()
-        days = float((g.get("contacts") or {}).get("active_days") or days)
+        days = list((genome.genesis().get("contacts") or {}).get("windows_days") or days)
         from nucleo import workspace as _ws
         over = _ws.root() / "config" / "contacts.json"
         if over.exists():
-            days = float((json.loads(over.read_text(encoding="utf-8")) or {}).get("active_days") or days)
-    except Exception as e:  # noqa: BLE001 — unreadable: the default window
-        logger.debug(f"directory: activity window unreadable ({e!r}) — {days:g} days")
-    return days
+            days = list((json.loads(over.read_text(encoding="utf-8")) or {}).get("windows_days") or days)
+        days = sorted(float(d) for d in days[:2])
+    except Exception as e:  # noqa: BLE001 — unreadable: the default windows
+        logger.debug(f"directory: activity windows unreadable ({e!r}) — {days}")
+        days = [7.0, 40.0]
+    return (days[0], days[-1])
 
 
-def _last_seen(c: dict) -> float:
-    return max([float(ch.get("last_seen") or 0) for ch in c.get("channels") or [] if isinstance(ch, dict)] or [0.0])
+#: The archive's last traffic per conversation, read at most every this many seconds (one indexed GROUP BY).
+_TRAFFIC_TTL_S = 30.0
+_TRAFFIC: dict = {}
 
 
-def level(c: dict, *, since: float | None = None) -> int:
+def _traffic() -> dict:
+    """`{key: last ts}` of every conversation in the communications archive — the ONE log every message reaches, in
+    or out, live or backfilled, on any channel. Keys: `(platform, chat id)`, an address lowercased, and a WhatsApp
+    phone conversation by its last nine digits too (a stored number may or may not carry its country prefix)."""
+    if _TRAFFIC and time.time() - _TRAFFIC["at"] < _TRAFFIC_TTL_S:
+        return _TRAFFIC["by"]
+    by: dict = {}
+    try:
+        from connectors.messaging import archive
+        for p, row in ((p, r) for p in PLATFORMS for r in archive.chats(p, limit=100000)):
+            cid, ts = str(row.get("chatId") or "").strip(), float(row.get("ts") or 0)
+            for k in ((p, cid), (p, cid.lower()), ("tel", _digits(_phone_of(p, cid))[-9:]) if _phone_of(p, cid) else None):
+                if k and k[1] and ts > by.get(k, 0.0):
+                    by[k] = ts
+    except Exception as e:  # noqa: BLE001 — no archive: the channels' own stamps are all there is
+        logger.debug(f"directory: archive traffic unread ({e!r})")
+    _TRAFFIC.update({"by": by, "at": time.time()})
+    return by
+
+
+def last_contact(c: dict) -> float:
+    """When he last exchanged a message with this person, either way, on any channel — 0 for never. Read from the
+    archive (`_traffic`) over every conversation the row holds: its channels' chat ids and handles, its addresses,
+    its numbers; the channel's own `last_seen` (what a connector told us live) is the floor."""
+    by = _traffic()
+    keys = []
+    for ch in c.get("channels") or []:
+        if isinstance(ch, dict):
+            p = _norm(ch.get("platform"))
+            keys += [(p, str(ch.get(k) or "").strip()) for k in ("chatId", "handle")]
+            keys += [(p, str(ch.get(k) or "").strip().lower()) for k in ("chatId", "handle", "email")]
+    keys += [("email", e.strip().lower()) for e in _emails(c)]
+    keys += [("tel", _digits(t)[-9:]) for t in _phones(c) if len(_digits(t)) >= _PHONE_MIN_DIGITS]
+    stamped = [float(ch.get("last_seen") or 0) for ch in c.get("channels") or [] if isinstance(ch, dict)]
+    return max([by.get(k, 0.0) for k in keys if k[1]] + stamped + [0.0])
+
+
+_last_seen = last_contact
+
+
+def level(c: dict, *, now: float | None = None) -> int:
     """How close this contact is — one of the levels above, or 0 when it is never a candidate."""
     if not isinstance(c, dict) or c.get("hidden"):
         return 0
@@ -140,26 +181,27 @@ def level(c: dict, *, since: float | None = None) -> int:
         return BACKGROUND
     if c.get("favorite") or c.get("aliases") or c.get("relation"):
         return CIRCLE
-    since = time.time() - active_days() * 86400 if since is None else since
-    return ACTIVE if _last_seen(c) >= since else BACKGROUND
+    recent, active = windows_days()
+    ago = (time.time() if now is None else now) - last_contact(c)
+    return RECENT if ago <= recent * 86400 else ACTIVE if ago <= active * 86400 else BACKGROUND
+
+
+def nearest(people: list[dict]) -> list[dict]:
+    """The people of the CLOSEST level any of them is on, in their order — what a name means when several match: his
+    favorite, else who he wrote to this week, else this month, else the rest. One there is the answer; several there
+    is the question, and only among them (the operator, 2026-11-21: «si hay 23 X y solo una con la que he hablado,
+    es esa»)."""
+    lv = [(level(c), c) for c in people]
+    top = max((n for n, _c in lv), default=0)
+    return [c for n, c in lv if n == top and n]
 
 
 def closest_first(people: list[dict]) -> list[dict]:
     """These people, closest level first and the most recently talked-to first within a level; never-candidates out."""
-    since = time.time() - active_days() * 86400
-    ranked = [(level(c, since=since), _last_seen(c), c) for c in people]
+    ranked = [(level(c), last_contact(c), c) for c in people]
     return [c for lv, _t, c in sorted((r for r in ranked if r[0]), key=lambda r: (-r[0], -r[1]))]
 
 
-def _closest(hits: list[dict]) -> list[dict]:
-    """A match's answer: the ONE person of his circle when exactly one matches there (his word made them his), else
-    every match, closest first — several is a question, and the question names the closest ones."""
-    ordered = closest_first(hits)
-    circle = [c for c in ordered if level(c) == CIRCLE]
-    return circle if len(circle) == 1 else ordered
-
-
-# ── reading ────────────────────────────────────────────────────────────────────────────────────────────
 def channels(contact: dict) -> list[dict]:
     """Every channel this contact has, stored ones first and the derived email last (see the module note)."""
     out = [dict(ch) for ch in (contact.get("channels") or []) if str(ch.get("platform") or "").strip()]
@@ -343,13 +385,10 @@ def closeness(c: dict, nats: list[dict] | None = None) -> int:
     return 1 + rank if rank else (0 if _model.unclassified(c) else 1)
 
 
-def _points(s: int, c: dict, since: float, nats) -> int:
-    """One number to rank by: a step of closeness weighs two of strength, and a recent conversation is a FLAG worth
-    more than the whole declared scale — the operator (2026-11-05): the people he has talked to lately are the first
-    level, even outside the relation scale. A recent namesake outranks a favorite he has not talked to; a favorite
-    he talks to stays on top. Derived from the scale's own size, so a native declared later keeps it so."""
-    recent = 2 * (len(nats or ()) + 2) if _last_seen(c) >= since else 0
-    return 2 * closeness(c, nats) + recent + s
+def _points(s: int, c: dict, nats) -> int:
+    """One number to rank the people of ONE level by (`nearest` already chose the level): a step of the declared
+    native scale (favorites, family, friends, colleagues — `closeness`) weighs two of strength."""
+    return 2 * closeness(c, nats) + s
 
 
 def _reaches(c: dict, platform: str) -> bool:
@@ -382,9 +421,9 @@ def resolve(name: str, *, tolerant: bool = True, platform: str | None = None) ->
 
     Every contact gets the strongest reason it matches (`strength`: his word for the person · the exact name or
     number · every word · a word inside a compound name · the same SOUND, any language · and, only when nothing
-    else matched and `tolerant`, a near spelling) and how close he is (`closeness`: a recent conversation, then the
-    native scale the manifest declares — favorites, family, friends, colleagues — then the rest, and last the
-    unclassified, who have no way to be reached). A word of his (`aliases`) names its person outright: one person
+    else matched and `tolerant`, a near spelling). The CLOSEST level any match is on decides first (`nearest`: his
+    favorite, else who he wrote to this week, else this month, else the rest) and only its people are ranked, by
+    strength and the native scale the manifest declares (`closeness`). A word of his (`aliases`) names its person outright: one person
     per word (`set_alias`). Otherwise the best is the answer ALONE when it leads the next by the declared margin
     (`clear_margin`, a rule with readers); else every match, best first — several is a question, and the
     question names the first `CANDIDATES_MAX`.
@@ -402,7 +441,6 @@ def resolve(name: str, *, tolerant: bool = True, platform: str | None = None) ->
     people = [c for c in _contacts() if level(c)]
     from .contactos import groups as _groups
     nats = _groups.declared()
-    since = time.time() - active_days() * 86400
     words = _tokens(q)
     scored = []
     for c in people:
@@ -430,7 +468,9 @@ def resolve(name: str, *, tolerant: bool = True, platform: str | None = None) ->
     mine = [c for s, c in scored if s == ALIAS]
     if len(mine) == 1:
         return mine
-    ranked = sorted(((_points(s, c, since, nats), _last_seen(c), c) for s, c in scored), key=lambda r: (-r[0], -r[1]))
+    near = {id(c) for c in nearest([c for _s, c in scored])}      # the closest level any match is on, and only it
+    ranked = sorted(((_points(s, c, nats), last_contact(c), c) for s, c in scored if id(c) in near),
+                    key=lambda r: (-r[0], -r[1]))
     ranked = _one_row_per_person(ranked)
     if len(ranked) == 1 or ranked[0][0] - ranked[1][0] >= clear_margin():
         return [ranked[0][2]]

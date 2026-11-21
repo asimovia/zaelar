@@ -363,6 +363,12 @@ def source_matches(contact: dict, source: str) -> bool:
 _kind_of = kind
 
 
+def _names_it(q: str, c: dict) -> bool:
+    """Does the said name `q` (normalised) name this row — every word of it, by word, sound, stem or short form?"""
+    from . import who
+    return who.score(q, c)["confidence"] in ("sure", "likely")
+
+
 def matches(contacts: list, *, group: str = "", city: str = "", favorites=None, query: str = "",
             kind: str = "", source: str = "", flag_: str = "") -> list:
     """The rows a view means. ONE predicate, asked by the card, by `show_view` and by the digest — three
@@ -391,7 +397,11 @@ def matches(contacts: list, *, group: str = "", city: str = "", favorites=None, 
                        + " " + " ".join(values(c, "phones") + values(c, "emails"))
                        + " " + " ".join(c.get("groups") or [])
                        + " " + " ".join(str(ch.get("handle") or "") for ch in c.get("channels") or []))
-            if qw not in hay:
+            # The text he typed or said, as written (a phone, a city, a note) — or a NAME, read the one way every door
+            # reads a name (`who.score`: the words in any order, accents and spelling, a short form, every name the
+            # row is known by). 2026-11-21: «Tony Estupiñá Jerez» found nothing because the phrase was not a
+            # substring of «Antonio Estupiña Jerez», and the model went on searching word by word.
+            if qw not in hay and not _names_it(qw, c):
                 continue
         out.append(c)
     # Favorites first, then by name — the answer to «¿cuál es mi favorito…?» should lead the list.
