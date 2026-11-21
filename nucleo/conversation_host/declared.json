@@ -289,7 +289,7 @@
    "act": "errand.open",
    "door": "task",
    "op": "start",
-   "about": "start a task of his that takes work outside this conversation (several sites, a booking, a comparison, a document): it runs apart and you are told when it ends; one call per thing he asks: several things asked at once are several calls; kind: the work it is (web: done ON a site), class: what it does in the world, surface: what he will look at; widget and action: the declared action it starts with, when there is one",
+   "about": "start a task of his that takes work outside this conversation (several sites, a booking, a comparison, a document): it runs apart and you are told when it ends; one call per thing he asks: several things asked at once are several calls; if something he asks is already in OPEN, it is that task's (task_say), not a new one; kind: the work it is (web: done ON a site), class: what it does in the world, surface: what he will look at; widget and action: the declared action it starts with, when there is one",
    "schema": {
     "type": "object",
     "required": [
@@ -329,7 +329,7 @@
    "act": "errand.resume",
    "door": "task",
    "op": "resume",
-   "about": "resume pending tasks of his by their ids (TASKS lists them)",
+   "about": "resume a row a widget holds for his word, by its id in OPEN (a held draft): it goes through that widget's own action",
    "schema": {
     "type": "object",
     "required": [
@@ -366,7 +366,7 @@
    "act": "errand.stop",
    "door": "task",
    "op": "stop",
-   "about": "stop one task in course by its id (TASKS), or all of them",
+   "about": "stop a task by its #number in OPEN — only when he asks to stop THAT task (hiding or closing a sheet is not stopping it) — or all of them (all)",
    "schema": {
     "type": "object",
     "required": [
@@ -854,11 +854,11 @@
     }
    }
   },
-  "task_answer": {
+  "task_say": {
    "act": "errand.answer",
    "door": "task",
-   "op": "answer",
-   "about": "his words for a task of his in course or waiting on him (TASKS gives its id): what it asked him, a change, more detail; decision yes or no when it waits on his yes",
+   "op": "say",
+   "about": "his words to an open task, by its #number in OPEN, only when they are about what that task DOES: they answer its question, authorize or refuse it (is: yes or no), give or change a fact of it (is: answer or add). A remark about you, a question about how it is going, a greeting or something new are NOT for it. In doubt, do not use this: answer him yourself",
    "schema": {
     "type": "object",
     "required": [
@@ -871,12 +871,55 @@
      "text": {
       "type": "string"
      },
-     "decision": {
+     "is": {
       "type": "string",
       "enum": [
        "yes",
-       "no"
+       "no",
+       "answer",
+       "add"
       ]
+     }
+    }
+   }
+  },
+  "task_priority": {
+   "act": "errand.priority",
+   "door": "task",
+   "op": "priority",
+   "about": "he says a pending task is urgent (urgent true: it goes first in its line) or no longer is (urgent false), by its #number in OPEN",
+   "schema": {
+    "type": "object",
+    "required": [
+     "task"
+    ],
+    "properties": {
+     "task": {
+      "type": "string"
+     },
+     "urgent": {
+      "type": "boolean"
+     }
+    }
+   }
+  },
+  "task_move": {
+   "act": "errand.move",
+   "door": "task",
+   "op": "move",
+   "about": "he reorders his pending tasks: the task #number goes before another #number, or first, or last",
+   "schema": {
+    "type": "object",
+    "required": [
+     "task",
+     "before"
+    ],
+    "properties": {
+     "task": {
+      "type": "string"
+     },
+     "before": {
+      "type": "string"
      }
     }
    }
@@ -943,8 +986,8 @@
  "route_class": {
   "_comment": "INI-078 segregation S1: what the one decider's acts say about his batch — B a new task, C words to a task already open, D a change to the queue; an act in none of them (or no act) is A, the conversation (`route.class_of`)",
   "B": ["start_task", "build_widget", "search_listings", "send_message"],
-  "C": ["task_answer", "resume_task", "reopen_task"],
-  "D": ["stop_task"]
+  "C": ["task_say", "resume_task", "reopen_task"],
+  "D": ["stop_task", "task_priority", "task_move"]
  },
  "task_acts": [
   "start_task",

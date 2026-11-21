@@ -31,7 +31,6 @@ def _isolated(tmp_path, monkeypatch):
     monkeypatch.setattr(wstore, "DATA_DIR", str(tmp_path))
     monkeypatch.setattr(wstore, "_last_hash", {})
     from nucleo import pending_work
-    monkeypatch.setattr(pending_work, "_task_rows", lambda now: [])
     pending_work.forget_cache()
     yield
 

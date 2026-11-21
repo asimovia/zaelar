@@ -67,7 +67,7 @@ def test_the_task_acts_reach_their_one_doors(monkeypatch):
     monkeypatch.setattr(pending_work, "by_ids", lambda ids: [r for r in [{"id": "p1"}] if r["id"] in ids])
     monkeypatch.setattr(resume_turn, "resume", lambda rows, **kw: [r["id"] for r in rows])
     assert acts_tasks.run("start", {"request": "w_find_a_flat"}).data == {"task": 7, "started": "w_find_a_flat"}
-    assert acts_tasks.run("stop", {"task": "t3"}).data == {"stopped": ["t3"]} and seen["ended"] == ["t3"]
+    assert acts_tasks.run("stop", {"task": "all"}).data == {"stopped": ["t3"]} and seen["ended"] == ["t3"]
     assert seen["why"] == "w_stop the flat one"
     assert acts_tasks.run("resume", {"ids": ["p1"]}).data == {"resumed": ["p1"]}
     other = acts_tasks.run("resume", {"ids": ["w_invented"]})                   # only a DECLARED pending row

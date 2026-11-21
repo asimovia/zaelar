@@ -1033,6 +1033,9 @@ _PACKAGE_CEILINGS["nucleo/queue"] += 14    # same review: a second session for a
 _TOTAL_MAX += 33     # same review, measured
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 121  # 2026-11-21 INI-078 segregation S1: every decided batch leaves ONE `route` record (`route.py`: what the decider saw and chose, wired to the ports), measured
 _TOTAL_MAX -= 1448   # 2026-11-21 INI-078 L1 B5: the embedded voice session, the filler and the prewarm of the old voice node go; the typed line has one door
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 146  # 2026-11-21 INI-078 segregation S3: OPEN, his tasks by #number (`open_block.py`), and the acts by number (`task_say`, `task_priority`, `task_move`, `stop_task`); a widget's held row resumes through its own act
+_PACKAGE_CEILINGS["nucleo/queue"] += 7     # same: the queue in its one order, for both views (`ordered`)
+_TOTAL_MAX += 101    # same, measured: the old TASKS composition and the task rows of `pending_work` went
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

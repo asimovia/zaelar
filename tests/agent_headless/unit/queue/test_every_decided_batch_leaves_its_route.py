@@ -45,7 +45,7 @@ def test_a_decided_batch_leaves_one_route_with_everything_it_saw_and_chose(emitt
     assert e["batch_ids"] == ["e1"] and e["outcome"] == "answered" and e["ms"] >= 0
 
 
-@pytest.mark.parametrize("acts,cls", [((), "A"), ((("widget_action", {}),), "A"), ((("task_answer", {}),), "C"),
+@pytest.mark.parametrize("acts,cls", [((), "A"), ((("widget_action", {}),), "A"), ((("task_say", {}),), "C"),
                                       ((("stop_task", {}), ("start_task", {})), "D")])
 def test_the_class_comes_from_the_declared_table(emitted, acts, cls):
     _batch(*acts)

@@ -29,8 +29,8 @@ def test_the_model_answers_the_process_it_names_by_the_one_delivery_door(monkeyp
     monkeypatch.setattr(board, "open_processes", lambda: procs)
     monkeypatch.setattr(act, "deliver", lambda p, text, kind: delivered.append((p["key"], text, kind)) or True)
     monkeypatch.setitem(routing._last, "said", "w_yes book it")
-    assert acts_tasks.run("answer", {"task": "d7", "decision": "yes"}).data["task"] == "u1"
-    assert acts_tasks.run("answer", {"task": "u2", "text": "w_cheaper"}).status == "ok"
+    assert acts_tasks.run("say", {"task": "d7", "is": "yes"}).data["task"] == "u1"
+    assert acts_tasks.run("say", {"task": "u2", "text": "w_cheaper"}).status == "ok"
     assert delivered == [("u1", "w_yes book it", act.YES), ("u2", "w_cheaper", act.OTHER)]
-    other = acts_tasks.run("answer", {"task": "w_invented"})
-    assert other.status == "failed" and [p["id"] for p in other.data["open"]] == ["u1", "u2"] and len(delivered) == 2
+    other = acts_tasks.run("say", {"task": "w_invented"})
+    assert other.status == "failed" and other.data["reason"] == "not_open" and len(delivered) == 2

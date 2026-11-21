@@ -24,7 +24,8 @@ export function ago(ts, now, t) {           // `ts` in epoch seconds, like Pytho
 // The live row is the SAME row the orb's chips use, so the two cannot disagree about a running task. The table
 // stores epoch SECONDS, the chip milliseconds.
 export const taskToChip = (r) => ({
-  id: r.id, session: r.session || "", title: r.title || r.goal || "", note: r.note || r.phase || "",
+  id: r.id, session: r.session || "", title: r.title || r.goal || "", note: r.note || r.phase || "", num: r.num || null,
+  queued: r.state === "pending",
   startedAt: r.started_at ? r.started_at * 1000 : null, pct: typeof r.pct === "number" ? r.pct : -1, stepTag: "",
   waiting: (r.state === "waiting" && r.waiting_for !== "reply") || r.waiting_on === "user", reply: r.waiting_for === "reply",
   paused: !!r.paused, internal: r.visible === false,
@@ -34,18 +35,21 @@ export const taskToChip = (r) => ({
 // V2-608 F7 — the title holds still; what the worker does now goes under it (only when it adds something), and the
 // facts after, the state first as a pill. V2-776 D5: the pulse's view (silent a minute or more, restarted N times).
 export function liveView(task, now, t, lang) {
-  const k = task.waiting ? 0 : task.reply ? 1 : task.paused ? 2 : 3;     // reply: INI-042 #26
-  const title = (task.title || "").trim() || (task.note || "").trim() || t("chat.working");
+  const k = task.waiting ? 0 : task.reply ? 1 : task.paused ? 2 : task.queued ? 4 : 3;     // reply: INI-042 #26
+  // INI-078 S3 — its #number, the one the agent names it by: «stop the 7» is the same task here and there
+  const title = (task.num ? "#" + task.num + " " : "") + ((task.title || "").trim() || (task.note || "").trim()
+    || t("chat.working"));
   const note = (task.note || "").trim(), at = task.startedAt;
   const meta = [
-    t(["chat.waitingYou", "chat.sentAwaitingReply", "chat.paused", "chat.running"][k]), task.stepTag || "",
+    t(["chat.waitingYou", "chat.sentAwaitingReply", "chat.paused", "chat.running", "chat.queuedInLine"][k]),
+    task.stepTag || "",
     (typeof task.pct === "number" && task.pct >= 0 ? task.pct + "%" : ""),
     at ? t("chat.procElapsed", { t: dur(now - at) }) : "",
     at ? t("chat.procSince", { t: new Date(at).toLocaleTimeString(lang || "en", { hour: "2-digit", minute: "2-digit" }) }) : "",
     (task.silentS >= 60 ? t("chat.procSilent", { t: dur(task.silentS * 1000) }) : ""),
     (task.attempts > 0 ? t("chat.procRestarted", { n: task.attempts }) : ""),
   ].filter(Boolean);
-  return { cls: "live " + ["waiting", "reply", "paused", "run"][k], glyph: ["⏳", "✉", "⏸", "●"][k], title,
+  return { cls: "live " + ["waiting", "reply", "paused", "run", "queued"][k], glyph: ["⏳", "✉", "⏸", "●", "◌"][k], title,
            note: note && note !== title ? note : "", meta };
 }
 

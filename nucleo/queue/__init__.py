@@ -223,6 +223,13 @@ def _next() -> None:
         logger.debug(f"queue: the next task not started now ({e!r})")
 
 
+def ordered() -> list[dict]:
+    """The queue in the one order both views read: lane by lane, the task that runs, those waiting for him, then the
+    pending ones in their order."""
+    v = view()
+    return [r for o in OWNERS for st in (RUNNING, WAITING, PENDING) for r in v[o][st]]
+
+
 def view() -> dict:
     """The queue as both views read it: per lane, the task that runs, then the pending ones in order, and the ones
     waiting for him apart."""

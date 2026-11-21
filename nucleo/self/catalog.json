@@ -3,7 +3,7 @@
   "entries": [
     {"id": "overview", "needs": ["name", "widgets", "connectors", "host"],
      "covers": ["tool:about_self", "tool:escalate_to_slowbrain", "tool:start_task", "tool:stop_task", "tool:find_tool", "tool:read_state", "tool:note_for_support", "tool:web_search", "tool:search_listings", "tool:stop_worker",
-                "tool:resume_task", "tool:reopen_task", "tool:cancel_scheduled", "tool:task_answer", "surface:status"]},
+                "tool:resume_task", "tool:reopen_task", "tool:cancel_scheduled", "tool:task_say", "tool:task_priority", "tool:task_move", "surface:status"]},
     {"id": "identity", "needs": ["name"], "covers": ["tool:set_style_directive", "tool:set_rule", "tool:rename_yourself", "tool:set_attention"]},
     {"id": "wake_word", "needs": ["name", "wake_mode"], "covers": []},
     {"id": "face", "needs": ["face", "face_on", "face_recent"],

@@ -12,11 +12,10 @@ you». Now:
 """
 from __future__ import annotations
 
-from types import SimpleNamespace
 
 import pytest
 
-from conversation.ports import Done, Failed
+from conversation.ports import Failed
 from tests.conversation.unit.convkit import Harness
 
 
@@ -42,8 +41,6 @@ def test_state_is_facts_with_plain_labels_never_the_old_prompt(memory_facts):
 
 
 def test_widgets_and_tasks_are_facts_by_id(monkeypatch):
-    from nucleo import dispatch
-    from nucleo.circuit import ledger
     from nucleo.conversation_host import memory_read
     from nucleo import surfaces
     monkeypatch.setattr(surfaces, "open_widget_ids", lambda: ["agenda"])
@@ -54,13 +51,13 @@ def test_widgets_and_tasks_are_facts_by_id(monkeypatch):
     monkeypatch.setattr(show_target, "at_full_screen", lambda: "agenda")
     assert memory_read._widgets() == ("agenda — w_days\nweather\non screen: agenda\nat full screen: agenda\n"
                                       "used lately: weather")
-    monkeypatch.setattr(dispatch, "pending_summaries", lambda: [{"name": "w_job", "phase": "w_step", "done": 2,
-                                                                 "total": 5, "pct": 40}])
-    store = SimpleNamespace(tasks_where=lambda **kw: [{"id": "t1", "title": "w_goal", "waiting_for": ledger.USER_ANSWER,
-                                                       "ask": "w_ask"}])
-    monkeypatch.setattr(ledger, "store", lambda: store)
-    assert memory_read._tasks().splitlines() == ["running: w_job · w_step · step 2/5 · 40%",
-                                                 "waiting for his answer: [t1] w_goal — asked: w_ask"]
+    from nucleo import queue                       # INI-078 S3: OPEN, his tasks by #number with plain labels
+    monkeypatch.setattr("nucleo.conversation_host.route.last_said", lambda: ("", 0.0))
+    job = queue.add("worker", "w_job")
+    queue.signal(job, "start", by="pulse")
+    queue.signal(job, "progress", by="owner", phase="w_step", progress={"done": 2, "total": 5})
+    n = __import__("memory.tasks_store", fromlist=["x"]).task_get(job)["num"]
+    assert memory_read._open().splitlines()[0] == f"#{n} · worker · running · w_job · step 2/5 · w_step"
 
 
 def test_a_fixed_line_is_in_the_language_of_his_words(monkeypatch):

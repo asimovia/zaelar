@@ -24,7 +24,6 @@ def _isolated(tmp_path, monkeypatch):
     cd.apply_action("add_contact", {"name": "Rowan Pike", "phone": "+34600111222"})
     cd.apply_action("set_channel", {"contactId": "c1", "platform": "whatsapp", "handle": "+34600111222"})
     from nucleo import pending_work
-    monkeypatch.setattr(pending_work, "_task_rows", lambda now: [])     # the task board is not this test's
     pending_work.forget_cache()
     yield
     pending_work.forget_cache()

@@ -25,7 +25,7 @@ HIS_TEXT = 600
 
 _lock = threading.Lock()
 _runs: dict[str, dict] = {}
-_last_said = {"text": ""}
+_last_said = {"text": "", "at": 0.0}
 
 
 def _keep(run: str) -> dict:
@@ -59,7 +59,13 @@ def acted(name: str, args: dict, status: str) -> None:
 def ours(text: str) -> None:
     """Our line, as it is said: the next batch's `our_last`."""
     with _lock:
-        _last_said["text"] = str(text or "")[:HIS_TEXT]
+        _last_said["text"], _last_said["at"] = str(text or "")[:HIS_TEXT], time.time()
+
+
+def last_said() -> tuple[str, float]:
+    """Our last line and when it was said (OPEN shows it when it asked him something)."""
+    with _lock:
+        return _last_said["text"], _last_said["at"]
 
 
 def class_of(acts: list[dict]) -> str:

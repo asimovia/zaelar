@@ -1,7 +1,7 @@
 """The `Memory` port of a switched session (V2-941, the F1 plan §4.7, v3.1 B4): it reads the state the way the rest of
 the engine reads it, and writes nothing.
 
-  state_blocks   what is OPEN first (the TASKS running or waiting, the message DRAFT), the next DAYS by date beside NOW,
+  state_blocks   what is OPEN first (his tasks by #number, `open_block`; the message DRAFT), the next DAYS by date beside NOW,
                  the widget in FRONT (at full screen, in front on a phone, the only one open, else the newest opened)
                  with its actions, their fields and what it holds, STATE (what the memory knows that is not the
                  conversation, as facts with plain labels) and the WIDGETS' short index (id and mission from each
@@ -151,32 +151,13 @@ def _days() -> str:
     return "; ".join(time.strftime("%A %Y-%m-%d", time.localtime(now + i * 86400)) for i in range(1, DAYS_AHEAD + 1))
 
 
-def _tasks() -> str:
-    """The background tasks in course, those waiting for his answer and those pending that can be resumed, as facts
-    with the id each act names them by: name, step, progress, note."""
-    from nucleo import dispatch
-    from nucleo.circuit import ledger
-    lines = []
-    for t in dispatch.pending_summaries() or ():
-        bits = [str(t.get("name") or t.get("title") or t.get("id") or "").strip()]
-        bits += ["not started"] if t.get("held") else ([str(t["phase"]).strip()] if t.get("phase") else [])
-        if t.get("total"):
-            bits.append(f"step {min(t.get('done', 0), t['total'])}/{t['total']}")
-        if (t.get("pct") if t.get("pct") is not None else -1) >= 0:
-            bits.append(f"{t['pct']}%")
-        if t.get("note"):
-            bits.append(str(t["note"]).strip()[:160])
-        lines.append("running: " + (f"[{t['id']}] " if t.get("id") else "") + " · ".join(b for b in bits if b))
-    for r in ledger.store().tasks_where(states=("waiting",), visible_only=False, limit=20):
-        if str(r.get("waiting_for") or "") == ledger.USER_ANSWER:
-            goal = str(r.get("title") or r.get("goal") or "").strip().replace("\n", " ")[:90]
-            lines.append(f"waiting for his answer: [{r.get('id')}] {goal} — asked: {str(r.get('ask') or '').strip()[:120]}")
+def _open() -> str:
+    """What is open for him, each task by its #number (INI-078 S3, `open_block`), and the rows a widget holds."""
     from nucleo import pending_work
-    listed = "\n".join(lines)
-    for p in pending_work.rows()[:6]:            # what can be resumed: the ids `resume_task` chooses among
-        if f"[{p['id']}]" not in listed:
-            lines.append(f"pending: [{p['id']}] {str(p.get('title') or '')[:90]} · {p.get('state') or p.get('source')}")
-    return "\n".join(lines[:14])
+    from nucleo.conversation_host import open_block
+    held = [f"[{p['id']}] · {p.get('source') or 'widget'} · held · {str(p.get('title') or '')[:90]}"
+            for p in pending_work.rows()[:6]]        # what `resume_task` resumes, through the widget's own act
+    return "\n".join(x for x in (open_block.text(), *held) if x)
 
 
 def _present() -> str:
@@ -190,7 +171,7 @@ def _present() -> str:
 
 #: what every run carries, in this order: what is open first, the dates beside NOW, the widget in front, then the
 #: facts and the index
-READERS = (("DAYS", _days), ("TASKS", _tasks), ("DRAFT", _draft), ("PRESENT", _present), ("FRONT", _front),
+READERS = (("DAYS", _days), ("OPEN", _open), ("DRAFT", _draft), ("PRESENT", _present), ("FRONT", _front),
            ("STATE", _state), ("WIDGETS", _widgets))
 #: the readers of the topics `declared.json` declares (`state_topics`): read only when the model asks
 def _network() -> str:

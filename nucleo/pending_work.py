@@ -6,18 +6,11 @@ held for his «send it» and a table hunt waiting for his pick, «termina esas t
 commissions annulled as «a fragment», and a backstop rebuilt ONE errand by gluing an old utterance to the new one —
 losing date, time, party size and area — and the worker refused it.
 
-What is pending is not in the words, it is in the STATE, and the state already has rows:
-
-  · the task board (`nucleo/circuit/ledger.py`): errands running, waiting or pending, and errands that ended recently (a
-    delivery that waits for his choice is a finished row with its sheet — the row carries the brief, the name, the
-    sheet and the outcome);
-  · rows a widget holds for his word, declared by the widget itself: `pending_rows() -> [{id, title, state,
-    resume: {action, payload}}]` in its data module (the mail card's held drafts, V2-800). Nothing here knows what a
-    draft is.
-
-Each row says how it RESUMES from itself — an errand from its own brief, sheet and outcome; a widget row through its
-own declared action (and so through its own confirm gate). Which rows his turn means is decided elsewhere, by a
-verdict over these rows (`nucleo/flash/resume_turn.py`); this module only lists them. Never raises.
+What is pending is not in the words, it is in the STATE. His tasks are the queue's (INI-078: OPEN lists them by
+#number); what this module lists is the rows a widget holds for his word, declared by the widget itself:
+`pending_rows() -> [{id, title, state, resume: {action, payload}}]` in its data module (the mail card's held drafts,
+V2-800). Nothing here knows what a draft is. Each row resumes through its own declared action (and so through its own
+confirm gate, `request/resume`); this module only lists them. Never raises.
 """
 from __future__ import annotations
 
@@ -28,54 +21,13 @@ import time
 
 from loguru import logger
 
-#: How far back a finished errand is still «earlier work» he may ask to finish. A bound on what is offered to the
-#: verdict, not a judgement: the verdict still has to pick the row.
-RECENT_S = 12 * 3600
 #: How many rows reach the verdict — a glance at what is pending, newest first.
 MAX_ROWS = 8
-#: An errand the energy lease STOPPED stays resumable longer: it did not fail, it was paused for want of energy.
-ENERGY_RECENT_S = 7 * 86400
-#: The gateway's own error code for an exhausted lease, as it reaches a row's outcome — a protocol token, not words.
-_ENERGY_CODE = "out_of_energy"
 #: The rows are read by the prompt block, the tool gate and the tool itself within one turn: one read serves them.
 _CACHE_S = 3.0
 _cache: dict = {"at": 0.0, "rows": []}
 #: Widgets that may hold rows for his word. Read from the catalogue, so a new widget that declares the hook joins.
 _HOOK = "pending_rows"
-
-
-def _task_rows(now: float) -> list[dict]:
-    from nucleo.circuit import ledger as _tasks
-    ts = _tasks.store()
-    live = ts.tasks_where(states=ts.LIVE_STATES, modes=("now",), visible_only=True, limit=MAX_ROWS,
-                          exclude_kinds=("inline",))
-    ended = ts.tasks_where(states=("done", "failed"), modes=("now",), visible_only=True, limit=MAX_ROWS,
-                           newest_first=True, exclude_kinds=("inline",), since=now - RECENT_S)
-    stopped = [r for r in ts.tasks_where(states=("failed",), modes=("now",), visible_only=True, limit=MAX_ROWS,
-                                         newest_first=True, since=now - ENERGY_RECENT_S) if _energy_stopped(r)]
-    out = []
-    for r in stopped + live + ended:
-        uid = str(r.get("id") or "")
-        if not uid or any(o["id"] == uid for o in out):
-            continue
-        out.append({"id": uid, "source": "task", "title": str(r.get("title") or r.get("goal") or "")[:80],
-                    "state": "stopped_by_energy" if _energy_stopped(r) else str(r.get("state") or ""),
-                    "brief": str(r.get("goal") or ""),
-                    "outcome": str(r.get("outcome") or ""), "sheet": str(r.get("sheet") or ""),
-                    "surface": str(r.get("surface") or ""), "kind": str(r.get("kind") or "generic"),
-                    "at": float(r.get("finished_at") or r.get("started_at") or r.get("created_at") or 0)})
-    return out
-
-
-def _energy_stopped(r: dict) -> bool:
-    """Did the energy lease stop this errand? Its refusal mark or the gateway's code in how it ended."""
-    try:
-        from nucleo.energy import lease as energy_lease
-        text = f"{r.get('outcome') or ''} {r.get('error_class') or ''}"
-        return str(r.get("state") or "") == "failed" and (energy_lease.is_refusal(text) or _ENERGY_CODE in text)
-    except Exception as e:  # noqa: BLE001
-        logger.debug(f"pending_work: energy check skipped ({e})")
-        return False
 
 
 def _may_declare(name: str) -> bool:
@@ -118,12 +70,8 @@ def rows(now: float | None = None) -> list[dict]:
     now = float(now if now is not None else time.time())
     if now - float(_cache["at"]) < _CACHE_S:
         return list(_cache["rows"])
-    found: list[dict] = []
-    try:
-        found += _task_rows(now)
-    except Exception as e:  # noqa: BLE001
-        logger.info(f"pending_work: the task board is unreadable ({e})")
-    found += _widget_rows()
+    # his TASKS are the queue's (INI-078 S3, OPEN by #number): what is pending here is only what a widget holds
+    found: list[dict] = list(_widget_rows())
     out = sorted(found, key=lambda r: -float(r.get("at") or 0))[:MAX_ROWS]
     _cache.update(at=now, rows=list(out))
     return out

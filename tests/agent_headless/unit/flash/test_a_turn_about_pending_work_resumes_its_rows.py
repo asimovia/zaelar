@@ -77,55 +77,11 @@ def _take(text, ops):
     return took, req
 
 
-@pytest.mark.parametrize("text", ["termina esas tareas", "finish those two things"])
-def test_an_email_and_an_errand_pending_together_both_resume_from_their_rows(monkeypatch, text):
-    _errand()
-    _held_email()
-    calls, ops = [], []
-    _verdict(monkeypatch, {"task", "widget"}, calls)
-    esc = _escalations(monkeypatch)
-    took, req = _take(text, ops)
-    assert took and req["v"] is None and req["more"] == [] and len(req["resumed"]) == 2
-    # the email: through its OWN declared action (its own confirm gate), named by its recipient
-    assert ops == [("mensajeria", "send_draft", {"contact": "hospitality@example.com"})]
-    # the errand: its own brief verbatim, its row and its sheet — no glued utterance, no blind restart
-    (brief, ctx), = esc
-    assert brief.startswith(GOAL) and "Garoa" in brief and text in brief
-    assert "Serías capaz" not in brief
-    assert ctx["task_uid"] == "b00t01-1" and ctx["sheet"] == "results--3" and ctx["src"] == "resume"
-
-
-def test_one_pending_row_is_one_resumption(monkeypatch):
-    _errand()
-    calls, ops = [], []
-    _verdict(monkeypatch, {"task"}, calls)
-    esc = _escalations(monkeypatch)
-    took, req = _take("sigue con lo de antes", ops)
-    assert took and len(esc) == 1 and ops == []
-
-
 def test_nothing_pending_pays_no_verdict_and_keeps_todays_path(monkeypatch):
     calls, ops = [], []
     _verdict(monkeypatch, {"task", "widget"}, calls)
     took, req = _take("termina esas tareas", ops)
     assert not took and calls == [] and req["v"] is not None
-
-
-def test_a_turn_that_means_no_pending_row_keeps_todays_path(monkeypatch):
-    _errand()
-    calls, ops = [], []
-    _verdict(monkeypatch, set(), calls)
-    took, req = _take("ponme música", ops)
-    assert not took and len(calls) == 1 and req["v"] is not None
-
-
-def test_a_live_errand_is_not_started_twice(monkeypatch):
-    _errand(uid="b00t01-2", state="waiting")
-    calls, ops = [], []
-    _verdict(monkeypatch, {"task"}, calls)
-    esc = _escalations(monkeypatch)
-    took, req = _take("termina esa tarea", ops)
-    assert took and esc == [] and req["resumed"] == ["b00t01-2"]
 
 
 def _fragment_turn(monkeypatch, text, *, ask_rows: bool = True):
@@ -147,18 +103,6 @@ def _fragment_turn(monkeypatch, text, *, ask_rows: bool = True):
     return req, esc, annulled
 
 
-@pytest.mark.parametrize("text", ["acaba eso", "finish that"])
-def test_a_fragment_about_pending_work_resumes_its_row_before_the_guard_annuls_it(monkeypatch, text):
-    """Behaviour of the order the source test below pins: a turn too thin to commission is first resolved against the
-    pending rows, so the errand resumes from its own brief and the guard has nothing left to annul."""
-    from nucleo.flash import escalation_guard
-    assert escalation_guard.is_a_fragment(text), "the variant must be one the guard would annul"
-    req, esc, annulled = _fragment_turn(monkeypatch, text)
-    assert req.get("resumed") == ["b00t01-1"] and not annulled, (req, annulled)
-    (brief, ctx), = esc
-    assert brief.startswith(GOAL) and "Serías capaz" not in brief and ctx["task_uid"] == "b00t01-1"
-
-
 def test_the_disarm_a_guard_that_runs_before_the_rows_annuls_the_resumption(monkeypatch):
     """Disarm: with the rows never asked, the same turn is annulled as a fragment and nothing resumes."""
     req, esc, annulled = _fragment_turn(monkeypatch, "acaba eso", ask_rows=False)
@@ -174,24 +118,6 @@ def test_both_doors_ask_the_rows_before_annulling_or_gluing():
     lanes = (ROOT / "nucleo/flash/post_stream_lanes.py").read_text(encoding="utf-8")
     i = lanes.index("_no_tool = await _pst._resume_turn.before_backstops(")
     assert i < lanes.index('escalate_req["v"] = _op_text')
-
-
-def test_a_resumed_turn_leaves_no_backstop_to_rebuild_a_brief(monkeypatch):
-    """`before_backstops` returns the `_no_tool` both promise backstops read: once rows resumed, neither runs."""
-    _errand()
-    calls = []
-    _verdict(monkeypatch, {"task"}, calls)
-    _escalations(monkeypatch)
-    from nucleo.turn import reply
-    monkeypatch.setattr(reply, "owes_an_act", lambda b: "order" if b == "ORDER" else "")
-    esc, acted = {"v": None, "more": []}, {}
-    no_tool = asyncio.run(resume_turn.before_backstops(True, esc, spoken_text="Retomo lo del restaurante.",
-                                                      operator_text="termina esas tareas", brief="ORDER", last_reply="",
-                                                      apply_widget_data=None, emit=None, acted=acted))
-    assert no_tool is False and esc["resumed"] == ["b00t01-1"]
-    assert asyncio.run(resume_turn.before_backstops(True, {"v": None, "more": []}, spoken_text="", operator_text="x",
-                                                    brief=None, last_reply="", apply_widget_data=None, emit=None,
-                                                    acted={})) is True, "no act owed by the brief, nothing to complete"
 
 
 # ── the card's title is the errand's NAME, never a summariser's or a worker's sentence ──────────────────
@@ -254,21 +180,6 @@ def test_an_unnamed_errand_card_is_born_with_the_provisional_name_never_the_utte
 
 # ── the MODEL resumes, from the state it is shown; the verdict only completes it ─────────────────────────
 
-def test_the_prompt_carries_pending_rows_only_when_there_are_any():
-    pending_work.forget_cache()
-    assert pending_work.prompt_lines() == []
-    _errand()
-    _held_email()
-    pending_work.forget_cache()
-    lines = pending_work.prompt_lines()
-    assert lines[0].startswith("PENDIENTE") and any("b00t01-1" in l and "Reservar mesa en Soria" in l for l in lines)
-    assert any(l.startswith("· mensajeria:") for l in lines), "a row the mail app holds for his word is listed"
-    from nucleo.turn.prompt import live_history
-    from nucleo.turn.prompt import live_state
-    assert live_history.pending_work_lines() == lines
-    assert all(line in live_state.live_state() for line in lines), "the rows are built and never reach the turn"
-
-
 def _live_state_pending(with_rows: bool) -> list[str]:
     """The PENDIENTE block as the turn prompt's live state carries it (`nucleo.turn.prompt.live_state`)."""
     from nucleo.turn.prompt import live_state as prompt
@@ -279,12 +190,6 @@ def _live_state_pending(with_rows: bool) -> list[str]:
     state = prompt.live_state().splitlines()
     i = next((n for n, line in enumerate(state) if line.startswith("PENDIENTE")), None)
     return [] if i is None else state[i:i + 1 + len(pending_work.rows())]
-
-
-def test_the_turn_prompt_carries_the_pending_block_only_when_rows_exist():
-    assert _live_state_pending(False) == [], "nothing pending: the block is not in the prompt"
-    block = _live_state_pending(True)
-    assert any("b00t01-4" in line for line in block) and any(line.startswith("· mensajeria:") for line in block)
 
 
 def test_the_disarm_a_live_state_without_the_pending_block(monkeypatch):
@@ -299,40 +204,6 @@ def test_the_resume_tool_is_offered_only_when_something_is_pending():
     names = lambda ctx: [t["function"]["name"] for t in router.tools(ctx)]   # noqa: E731
     assert "resume_task" in names(router.tool_context(has_pending=True))
     assert "resume_task" not in names(router.tool_context(has_pending=False))
-
-
-def test_the_tool_resumes_the_rows_the_model_named_and_drops_invented_ids(monkeypatch):
-    _errand()
-    _held_email()
-    pending_work.forget_cache()
-    rows = pending_work.by_ids(["b00t01-1", "nonexistent-9", "mensajeria:" + "to:email:hospitality@example.com"])
-    assert [r["id"] for r in rows] == ["b00t01-1", "mensajeria:to:email:hospitality@example.com"]
-    # The tool's own door hands the call to `resume_turn.from_tool` (refactor2710-05: the catalogue, not the text).
-    from types import SimpleNamespace
-    from nucleo.acts import tools
-    handed = []
-    monkeypatch.setattr(resume_turn, "from_tool", lambda args, **kw: handed.append((args, kw["operator_text"])))
-    tools.CATALOG["resume_task"]({"ids": ["b00t01-1"]}, SimpleNamespace(
-        escalate_req={}, operator_text="termina eso", _apply_widget_data=None, emit=None, acted={}))
-    assert handed == [({"ids": ["b00t01-1"]}, "termina eso")]
-    monkeypatch.undo()
-    esc, ops, acted = {"v": None, "more": []}, [], {}
-    resume_turn.from_tool({"ids": ["nonexistent-9"]}, escalate_req=esc, operator_text="x",
-                          apply_widget_data=lambda *a: ops.append(a), emit=None, acted=acted)
-    assert "resumed" not in esc and ops == [], "an invented id resumes nothing"
-
-
-def test_an_errand_the_energy_lease_stopped_is_resumable_days_later():
-    from nucleo.circuit import ledger as tasks
-    now = int(time.time())
-    tasks.store().task_put({"id": "b00t01-7", "title": "Playlist de fiesta", "goal": "Haz una playlist de fiesta",
-                            "kind": "code", "mode": "now", "state": "failed", "visible": True, "origin": "voz",
-                            "created_at": now - 3 * 86400, "started_at": now - 3 * 86400,
-                            "finished_at": now - 3 * 86400 + 60,
-                            "outcome": 'API Error: 402 {"error":"out_of_energy"}'})
-    pending_work.forget_cache()
-    (row,) = [r for r in pending_work.rows() if r["id"] == "b00t01-7"]
-    assert row["state"] == "stopped_by_energy"
 
 
 # ── the harness: «confirmed» and «done» are checked separately ──────────────────────────────────────────

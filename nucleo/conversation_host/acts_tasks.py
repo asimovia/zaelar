@@ -63,8 +63,17 @@ def _resume(args: dict) -> ToolResult:
     if not rows:
         return ToolResult("failed", {"reason": "no_such_pending_task", "pending": [
             {"id": r["id"], "title": r.get("title")} for r in pending_work.rows()]})
-    done = resume.resume(rows, operator_text="")
+    done = resume.resume(rows, operator_text="", apply_widget_data=_apply_widget_data)   # a widget's row by its act
     return ToolResult("ok" if done else "rejected", {"resumed": done})
+
+
+def _apply_widget_data(widget: str, action: str, payload: dict) -> None:
+    """A widget's pending row resumed through its own declared action, on the engine's loop (its confirm gate)."""
+    import asyncio
+
+    from nucleo.acts import data_ops
+    from nucleo.conversation_host.acts_widget import _on_engine_loop
+    asyncio.run(_on_engine_loop(data_ops.dispatch_and_report(widget, action, payload)))
 
 
 def _reopen(args: dict) -> ToolResult:
@@ -80,15 +89,68 @@ def _reopen(args: dict) -> ToolResult:
     return ToolResult("failed", {"reason": "nothing_like_it", "start_it_again": bool(v.get("escalate"))})
 
 
-def _stop(args: dict) -> ToolResult:
+def numbered(which) -> dict | None:
+    """The task of the queue a `#n` names (also `n`, or its row id); None when it is not open (S3: never a guess)."""
+    from nucleo import queue
+    w = str(which or "").strip().lstrip("#")
+    rows = [r for lane in queue.view().values() for st in lane.values() for r in st]
+    return next((r for r in rows if w and (str(r.get("num")) == w or str(r.get("id")) == w)), None)
+
+
+def _not_open(which) -> ToolResult:
+    """A number that is not open: the act fails and gives OPEN back, so the model corrects itself in the next step."""
+    from nucleo.conversation_host import open_block
+    return ToolResult("failed", {"reason": "not_open", "asked_for": str(which or ""), "open": open_block.text()})
+
+
+def _session_of(uid: str) -> str:
     from nucleo import dispatch
+    return next((k for k, rec in dispatch._SESSIONS.items() if getattr(rec, "uid", "") == uid
+                 and rec.status in dispatch.LIVE_SESSION_STATES), "")
+
+
+def _stop(args: dict) -> ToolResult:
+    from nucleo import dispatch, queue
     from nucleo.conversation_host import routing
     which = str(args.get("task") or "").strip()
     if not which:
         return ToolResult("failed", {"reason": "which_task"})
-    tids = dispatch.cancel_soon(which)
+    row = numbered(which)
+    if row is None and which.lower() not in ("all", "*"):
+        return _not_open(which)
+    if row is not None and not (key := _session_of(str(row["id"]))):   # nothing runs it: it leaves the queue now
+        ok = queue.signal(str(row["id"]), "cancelled", by="him", outcome="stopped by him")
+        return ToolResult("ok" if ok else "failed", {"stopped": [f"#{row['num']}"]} if ok else {"reason": "refused"})
+    tids = dispatch.cancel_soon(key if row is not None else which)
     __import__("nucleo.request.stop_row", fromlist=["x"]).stopped_by_his_turn(tids, words=routing.said())
     return ToolResult("ok" if tids else "failed", {"stopped": tids} if tids else {"reason": "no_such_task"})
+
+
+def _priority(args: dict) -> ToolResult:
+    from nucleo import queue
+    row = numbered(args.get("task"))
+    if row is None:
+        return _not_open(args.get("task"))
+    urgent = str(args.get("urgent", True)).lower() not in ("false", "0", "no")
+    ok = queue.signal(str(row["id"]), "priority", by="him", urgent=urgent)
+    return ToolResult("ok" if ok else "failed", {"task": f"#{row['num']}", "urgent": urgent} if ok
+                      else {"reason": "only a pending task changes its place"})
+
+
+def _move(args: dict) -> ToolResult:
+    from nucleo import queue
+    row = numbered(args.get("task"))
+    if row is None:
+        return _not_open(args.get("task"))
+    before = str(args.get("before") or "").strip()
+    if before not in ("first", "last"):
+        other = numbered(before)
+        if other is None:
+            return _not_open(before)
+        before = str(other["id"])
+    ok = queue.signal(str(row["id"]), "move", by="him", before=before)
+    return ToolResult("ok" if ok else "failed", {"task": f"#{row['num']}", "moved": True} if ok
+                      else {"reason": "only a pending task of the same lane moves"})
 
 
 def _unschedule(args: dict) -> ToolResult:
@@ -144,24 +206,26 @@ def _listings(args: dict) -> ToolResult:
                       tools_read._text_evidence(f"listings:{res.get('sheet') or ''}", rows) if rows else ())
 
 
-def _answer(args: dict) -> ToolResult:
-    """His words to the process the model named by an id TASKS gave (its row, its session or its question), by the one
-    delivery door; with no process of that id it fails naming the open ones (R-3: the model decides, never a router)."""
+def _say(args: dict) -> ToolResult:
+    """His words to what an open task DOES, the task named by its `#n` (or a question's key OPEN lists): its question
+    answered, a yes or a no, a fact added or changed — by the one delivery door (R-3: the model decides, no router)."""
     from nucleo.conversation_host import routing
     from nucleo.switchboard import act, board
     which = str(args.get("task") or "").strip()
-    procs = board.open_processes()
-    p = next((p for p in procs if which and which in (p.get("key"), p.get("dispatch"), p.get("ask_id"))), None)
+    row = numbered(which)
+    keys = {str(row["id"]), _session_of(str(row["id"]))} - {""} if row else {which.lstrip("#")}
+    p = next((p for p in board.open_processes() if keys & {p.get("key"), p.get("dispatch"), p.get("ask_id")}), None)
     if p is None:
-        return ToolResult("failed", {"reason": "no_such_task", "open": [
-            {"id": p.get("key"), "title": p.get("title")} for p in procs]})
-    kind = {"yes": act.YES, "no": act.NO}.get(str(args.get("decision") or "").lower(), act.OTHER)
+        return _not_open(which)
+    kind = {"yes": act.YES, "no": act.NO}.get(str(args.get("is") or "").lower(), act.OTHER)
     text = str(args.get("text") or "").strip() or routing.said()
     ok = act.deliver(p, text, kind)
-    return ToolResult("ok" if ok else "failed", {"task": p.get("key"), "title": p.get("title"), "delivered": ok})
+    return ToolResult("ok" if ok else "failed", {"task": f"#{row['num']}" if row else p.get("key"),
+                                                 "title": p.get("title"), "delivered": ok})
 
 
-DOORS = {f.__name__.lstrip("_"): f for f in (_answer, _listings, _start, _resume, _reopen, _stop, _unschedule, _sign_in, _note)}
+DOORS = {f.__name__.lstrip("_"): f for f in (_say, _priority, _move, _listings, _start, _resume, _reopen, _stop,
+                                             _unschedule, _sign_in, _note)}
 
 
 def run(op: str, args: dict) -> ToolResult:
