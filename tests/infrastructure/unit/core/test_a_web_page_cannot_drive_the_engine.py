@@ -1,7 +1,7 @@
 """A web page the operator has open cannot drive his engine (V2-778 F4-35, 2026-10-02).
 
 Every mutating `/api/*` route of a self-hosted engine trusted whoever reached it, and «whoever» included any site
-open in his browser: a cross-site `POST /api/lists` needs no preflight and minted an order with his authority, and
+open in his browser: a cross-site `POST /api/lists` (a route since retired) needs no preflight and minted an order with his authority, and
 a page rebinding its DNS name to 127.0.0.1 could read the answers. The guard (`server/api_guard.py`) decides on the
 request's facts; these pin the decision and that the real app mounts it.
 """
@@ -13,7 +13,7 @@ from server import api_guard as G
 
 
 def _d(**kw):
-    base = dict(path="/api/lists", method="POST", peer="127.0.0.1", host="127.0.0.1:43917", origin="",
+    base = dict(path="/api/tasks/t1/cancel", method="POST", peer="127.0.0.1", host="127.0.0.1:43917", origin="",
                 fetch_site="", token_given="", token_set="", cloud=False)
     base.update(kw)
     return G.decide(**base)
@@ -56,13 +56,13 @@ def test_in_the_cloud_a_mutation_must_come_from_the_accounts_own_site():
         "reads in the cloud are the session gate's business"
 
 
-def test_the_real_app_refuses_a_rebound_page_on_lists_and_torrents():
+def test_the_real_app_refuses_a_rebound_page_on_tasks_and_torrents():
     """The audit's own cases, against the app as it is assembled — the wiring is the fix."""
     from fastapi.testclient import TestClient
     from server import create_app
     c = TestClient(create_app(), client=("127.0.0.1", 5555))
-    for path in ("/api/lists", "/api/torrent/add"):
+    for path in ("/api/tasks/t1/cancel", "/api/torrent/add"):
         r = c.post(path, json={}, headers={"host": "evil.example", "origin": "https://evil.example"})
         assert r.status_code == 403, (path, r.status_code)
-    r = c.post("/api/lists", json={}, headers={"origin": "https://evil.example", "sec-fetch-site": "cross-site"})
+    r = c.post("/api/tasks/t1/cancel", json={}, headers={"origin": "https://evil.example", "sec-fetch-site": "cross-site"})
     assert r.status_code == 403

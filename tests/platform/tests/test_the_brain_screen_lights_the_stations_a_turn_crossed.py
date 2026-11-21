@@ -42,7 +42,7 @@ def test_a_turn_lights_the_stations_it_crossed_in_order_with_the_state_each_carr
     model = {kv["k"]: kv["v"] for kv in st["model"]["state"]}
     assert model["model"].startswith("deepseek-flash") and model["finish"] == "tool_calls"
     assert "escalate_to_slowbrain" in model["tool call"]
-    assert {kv["k"] for kv in st["consent"]["state"]} == {"door · tasks.intake"}
+    assert {kv["k"] for kv in st["consent"]["state"]} == {"door · memory.ingest"}
     assert any("results::abc-1" in kv["k"] for kv in st["tools"]["state"])
     assert st["mouth"]["state"][0]["v"] == "Voy a ello, te los busco ya."
     assert st["gate"]["first_ms"] == 0 and st["model"]["first_ms"] == 9100

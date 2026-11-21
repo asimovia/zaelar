@@ -22,7 +22,7 @@ class _OldPath(Exception):
     pass
 
 
-def test_a_lists_own_step_keeps_the_old_turn_with_the_switch_on(monkeypatch):
+def test_only_his_line_at_the_door_goes_to_the_manager_with_the_switch_on(monkeypatch):
     from nucleo.cli import turn
     from nucleo.conversation_host import entry, switch
     monkeypatch.setattr(switch, "on", lambda session=None: True)
@@ -37,7 +37,7 @@ def test_a_lists_own_step_keeps_the_old_turn_with_the_switch_on(monkeypatch):
         raise _OldPath(sid)
     monkeypatch.setattr(turn, "_brain", old)
     with pytest.raises(_OldPath):
-        asyncio.run(turn.run_turn("w1", sid="s1", execute=True, lists=False))     # a list's step: the old turn
+        asyncio.run(turn.run_turn("w1", sid="s1", execute=True))                  # not at the door: the old turn
     assert handed == []
     assert asyncio.run(turn.run_turn("w2", sid="s1", door=True))["ok"] and handed == ["w2"]   # his line: the manager
 

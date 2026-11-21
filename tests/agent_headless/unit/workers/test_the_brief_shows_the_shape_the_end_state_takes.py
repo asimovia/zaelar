@@ -37,7 +37,7 @@ def _block(name: str) -> str:
 
 
 @pytest.mark.parametrize("name,card,coll", [
-    ("errand", "results", "items"), ("lista", "results", "items"),
+    ("errand", "results", "items"),
     ("document", "documento", "sections"), ("message", "mensajeria", "sent"),
 ])
 def test_the_playbook_carries_the_grammars_shape_and_what_its_card_declares(lang, name, card, coll):

@@ -107,15 +107,8 @@ def test_which_playbook_reads_facts_never_words():
               "3. buy oat milk, eggs, rice and coffee for the weekend from the usual supermarket\n"
               "4. renew the passport and check which documents the appointment needs\n"
               "5. send Anna the photos from the trip and remind her about the dinner on Saturday\n")
-    assert playbook.which(request=listed) == "lista"
+    assert playbook.which(request=listed) == "errand", "there are no lists: several things asked are several tasks"
     assert playbook.which(request="find me a hotel in Boston") == "errand"
-
-
-@pytest.mark.parametrize("lang", ["es"], indirect=True)
-def test_a_list_gets_one_worker_walking_it_item_by_item(lang):
-    block = playbook.block("lista", playbook.done_when("lista"))
-    assert "UNA A UNA" in block and "UNA sola pregunta" in block
-    assert "UNA A UNA" not in playbook.block("errand", playbook.done_when("errand"))
 
 
 def test_the_row_records_its_playbook(monkeypatch):

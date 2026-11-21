@@ -37,14 +37,7 @@ from loguru import logger
 KIND = "inline"
 
 _TURN: contextvars.ContextVar = contextvars.ContextVar("zaelar_request_turn", default=None)
-#: The list STEP a turn is running for (set by `nucleo/batch/runner.py` around the step's turn): its ops hang from it.
-_PARENT: contextvars.ContextVar = contextvars.ContextVar("zaelar_request_parent", default="")
 _SEQ = itertools.count(1)
-
-
-def under(step_row_id: str):
-    """Mark the list step the next turn runs for. Returns the token for `_PARENT.reset`."""
-    return _PARENT.set(str(step_row_id or ""))
 
 
 def begin(text: str, *, parent: str = "", origin: str = "voz", trace: str = "", brief=None) -> None:
@@ -53,7 +46,7 @@ def begin(text: str, *, parent: str = "", origin: str = "voz", trace: str = "", 
     if t and not trace:
         from voice import trace as _trace      # the turn's own trace: its row is joined to its flow (V2-851)
         trace = _trace.current()
-    _TURN.set({"text": t[:600], "parent": str(parent or _PARENT.get() or ""), "origin": origin or "voz",
+    _TURN.set({"text": t[:600], "parent": str(parent or ""), "origin": origin or "voz",
                "trace": str(trace or ""), "brief": brief} if t else None)
     if t:                                      # his words are his from the moment the turn is born — a door that runs
         from nucleo import his_words           # INSIDE this turn (the map pinning places he named) reads them; the

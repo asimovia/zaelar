@@ -56,7 +56,7 @@ def test_the_families_his_screen_uses_are_operator_routes():
     routes = set(_mutating_routes())
     for m, p in [("POST", "/widgets/{wid}/action"), ("POST", "/widgets/{wid}/confirm"),
                  ("DELETE", "/widgets/{wid}"), ("POST", "/api/messaging/{platform}/connect"),
-                 ("POST", "/api/meshkore/send"), ("POST", "/api/contacts/connect"), ("POST", "/api/lists"),
+                 ("POST", "/api/meshkore/send"), ("POST", "/api/contacts/connect"), ("POST", "/api/tasks/{task_id}/cancel"),
                  ("POST", "/api/settings"), ("POST", "/api/config/credential"), ("POST", "/api/flash/say")]:
         assert (m, p) in routes, f"{m} {p} is not mounted any more — update the family list"
         assert operator_gate.is_operator_route(p, m)

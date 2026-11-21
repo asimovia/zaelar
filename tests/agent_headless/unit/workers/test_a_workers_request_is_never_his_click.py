@@ -21,7 +21,7 @@ FAMILIES = {
     "messaging connect": ("POST", "/api/messaging/whatsapp/connect"),
     "cluster send": ("POST", "/api/meshkore/send"),
     "contacts import": ("POST", "/api/contacts/connect"),
-    "agenda lists": ("POST", "/api/lists"),
+    "task stop": ("POST", "/api/tasks/t1/cancel"),
     "scheduled jobs": ("POST", "/api/cron/remove"),
     "tasks": ("POST", "/api/tasks/reopen"),
     "settings": ("POST", "/api/settings"),

@@ -4,10 +4,10 @@
 
 A self-hosted engine listens on the operator's own machine, and every one of its ~87 mutating routes trusted
 whoever reached it. «Whoever reached it» includes any web page the operator has open: a page on another site
-can `POST http://127.0.0.1:43917/api/lists` with a body the browser sends without asking anyone (a «simple»
+can `POST http://127.0.0.1:43917/api/tasks/<id>/cancel` with a body the browser sends without asking anyone (a «simple»
 request needs no preflight) and mint an order with the operator's authority; a page that rebinds its own DNS
 name to 127.0.0.1 can also READ the answers. Only the MeshKore control plane had a guard
-(`connectors/meshkore/server_api._guard`). The audit's measured cases: `/api/lists`, `/api/torrent/add`.
+(`connectors/meshkore/server_api._guard`). The audit's measured cases: a since-retired list route, `/api/torrent/add`.
 
 ## The rule (the operator's choices, 2026-10-02)
 

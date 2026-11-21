@@ -178,7 +178,7 @@ def write_sandbox(root: Path, name: str = SANDBOX, *, with_db: bool = True) -> P
     c0 = "T1·64a8"
     _ev(con, t, "flash", "trace", "turno", c0, {"text": tr[0]["text"], "role": "user", "root": True, "origin": "turno"})
     _ev(con, t, "flash", "ambient", "👂 dirigido a zaelar", c0, {"directed": True})
-    _ev(con, t + 1, "system", "consequence", "tasks.intake", c0, {"door": "tasks.intake", "verdict": "pass", "blocked": False, "arg": tr[0]["text"]})
+    _ev(con, t + 1, "system", "consequence", "memory.ingest", c0, {"door": "memory.ingest", "verdict": "pass", "blocked": False, "arg": tr[0]["text"]})
     _ev(con, t + 40, "flash", "brain", "⚡ Nucleo(flash): prompt", c0, {"text": tr[0]["text"], "role": "user"})
     _ev(con, t + 300, "memory", "memory", "recall", c0, {"text": "«Búscame tres monitores…» → 1 tarjetas del largo plazo"})
     _ev(con, t + 1400, "flash", "brain", "jev read escalate_or_inline", c0, {"text": "escalate -> USED (0.91)"})

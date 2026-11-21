@@ -1577,7 +1577,7 @@ SCENARIOS: list[UseCaseScenario] = [
         channel="probe",
         script=(
             (_fixture("demo-initialization"),
-             "lists.closed,lists.closed_clean,demo.assistant_is_johnny,demo.profile,demo.interests,demo.family,"
+             "demo.assistant_is_johnny,demo.profile,demo.interests,demo.family,"
              "demo.friends,demo.car,demo.motorbike,demo.pet,demo.events,demo.anna_vacation_span,demo.vet_once"),
             ("Johnny, when does my Tesla insurance renew?", ""),
             ("What do I have on {DEMO_MON}?", ""),
@@ -1611,7 +1611,7 @@ SCENARIOS: list[UseCaseScenario] = [
              "5. Prepárame una comparativa de tres bicis eléctricas plegables nuevas, para ciudad, de menos de "
              "1.500 euros y con entrega en España.\n"
              "6. A partir de ahora, cuando te pida el resumen del día, empieza por lo que tenga que ver con ZAELAR.",
-             "lists.closed,errands.dinner_with_pedro,errands.pedro_allergy,errands.two_workers_at_a_time"),
+             "errands.dinner_with_pedro,errands.pedro_allergy,errands.two_workers_at_a_time"),
             ("¿Cómo ha ido lo que te dejé?", ""),
         ),
     ),
@@ -2039,7 +2039,7 @@ SCENARIOS += [
              "5. Put together a comparison of three new folding e-bikes for the city, under $1,600 and shipping "
              "within the US.\n"
              "6. From now on, when I ask for the summary of the day, start with anything to do with ZAELAR.",
-             "lists.closed,errands.dinner_with_alex,errands.alex_allergy,errands.two_workers_at_a_time"),
+             "errands.dinner_with_alex,errands.alex_allergy,errands.two_workers_at_a_time"),
             ("How did the things I left you go?", ""),
         ),
     ),
@@ -2063,7 +2063,7 @@ SCENARIOS += [
         ),
         script=(
             (_fixture("demo-initialization-es"),
-             "lists.closed,lists.closed_clean,demo.assistant_is_johnny,demo_es.profile,demo_es.interests,"
+             "demo.assistant_is_johnny,demo_es.profile,demo_es.interests,"
              "demo_es.family,demo_es.friends,demo_es.car,demo_es.motorbike,demo.pet,demo_es.events,"
              "demo_es.orion_vacation_span,demo.vet_once"),
             ("Johnny, ¿cuándo se renueva el seguro del Tesla?", ""),

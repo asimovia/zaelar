@@ -981,6 +981,7 @@ _TOTAL_MAX += 21     # same cause, with the typed door's report of the acts its 
 _PACKAGE_CEILINGS["nucleo/send"] += 2   # 2026-11-21 word tables at their ceiling: the owner paints at any step of an open draft, the same (whom, text) twice paints nothing (`card._shown`) — its step labels were a table
 _TOTAL_MAX += 4      # same, with the receipt's answer fields read from `declared.json` (`receipt_answer`) instead of a table
 _TOTAL_MAX += 13     # 2026-11-21 INI-078 F2: the embedded voice is refused — said on his screen, the voice process built as always (`child_process.factory`, `asked_embedded`)
+_PACKAGE_CEILINGS["nucleo/circuit"] += 27   # 2026-11-21 INI-078 Q-7: there are no task lists — a live list a restart finds is archived with its steps, one pill (`ledger.lists_retired`); the list executor and its doors go
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

@@ -108,16 +108,15 @@ def _action(decision: dict, events: list[dict], ledger: list[dict], tags: list[d
 
 
 async def run_turn(text: str, *, sid: str = "default", ingest: bool = True, model: str = "",
-                   execute: bool = False, lists: bool = True, door: bool = False) -> dict:
-    """One typed turn through the voice turn. Same signature as the text channel always had; `model` and `lists` are
-    accepted for its callers: the model is the routing's (`config/v2.py`), and `lists=False` (a list's own step) keeps
-    the task-list door shut so a step never opens another list. `door`: his line at the text channel's HTTP door —
+                   execute: bool = False, door: bool = False) -> dict:
+    """One typed turn through the voice turn. Same signature as the text channel always had; `model` is accepted for
+    its callers: the model is the routing's (`config/v2.py`). `door`: his line at the text channel's HTTP door —
     only that one goes by the conversation manager when it is switched on."""
     from voice import attention, observer, typed_turn
     text = (text or "").strip()
     if not text:
         return {"ok": False, "error": "texto vacío"}
-    if door:                                 # HIS line at the text channel's door — never a list's own step
+    if door:                                 # HIS line at the text channel's door
         from nucleo.conversation_host import entry as _conv_entry, switch as _conv_switch   # the only path (INI-078 F2)
         if not _conv_switch.on():            # it may not answer now: the reason, and nothing else answers
             return {"ok": False, "error": _conv_switch.decide().why or "the conversation cannot answer now"}
@@ -133,7 +132,7 @@ async def run_turn(text: str, *, sid: str = "default", ingest: bool = True, mode
     t0 = time.time()
     if model:
         logger.info(f"cli.turn: model override {model!r} ignored — the voice turn takes its model from the routing")
-    policy = (consequence.recorded(closed=() if lists else ("tasks.intake",)) if execute
+    policy = (consequence.recorded() if execute
               else consequence.dry_turn(ingest=ingest))
     try:
         with policy as ledger:

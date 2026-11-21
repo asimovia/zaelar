@@ -1,16 +1,15 @@
 """The worker's METHOD: the playbook's nine checkpoints, in the session's language (V2-851 §6, F3).
 
 Not code: the method given with the brief. Which playbook a task follows is read from facts the engine already has —
-the errand's surface, its mandate, the request's SHAPE — never from words of the request (a table of verbs is not a
+the errand's surface, its mandate — never from words of the request (a table of verbs is not a
 router, V2-750). The row's `playbook` column records the name, so «how is it going» and the battery read it back.
 
   · `which(...)` — `document` (its surface is a document), `message` (it runs under a mandate that names channels),
-    `lista` (the request is unmistakably a list by shape, `nucleo/batch/detect.unmistakable`), else `errand`;
+    else `errand` (there are no lists: several things asked at once are several tasks);
     `meeting`/`booking` (a conversation that ends on his agenda) only the worker names; the name rides the send
     (`exit_gate`) and the errand born from it inherits it (V2-859 T562: one notion of playbook, no word table);
   · `done_when(name)` — the end state, stated up front;
-  · `block(name, done_when)` — the nine checkpoints; a `lista` adds how a list is walked (one worker, one item at a
-    time — the list's own rows in `nucleo/batch` stay as they are).
+  · `block(name, done_when)` — the nine checkpoints.
 
 Rules are DATA in the brief (`rules_bridge.brief_block`); the door is their only authoritative reader.
 """
@@ -18,7 +17,7 @@ from __future__ import annotations
 
 from nucleo.workers.prompts.catalog import words as _words   # the `worker_brief.*` pack reader, one copy
 
-ERRAND, DOCUMENT, MESSAGE, LISTA = "errand", "document", "message", "lista"
+ERRAND, DOCUMENT, MESSAGE = "errand", "document", "message"
 MEETING, BOOKING = "meeting", "booking"
 WITH_A_PARTY = (MEETING, BOOKING)        # they go on as an errand with the other person (`nucleo/errands`)
 #: The checkpoint loop's bound (§6): a third failure at the same checkpoint → `ask` or end with the reason.
@@ -43,12 +42,6 @@ def which(*, surface: str = "", mandate: dict | None = None, request: str = "", 
         _note("surface", e)
     if (mandate or {}).get("channels"):
         return MESSAGE
-    try:
-        from nucleo.batch import detect
-        if detect.unmistakable(request or ""):
-            return LISTA
-    except Exception as e:  # noqa: BLE001
-        _note("list shape", e)
     return ERRAND
 
 
@@ -57,11 +50,11 @@ def done_when(name: str) -> str:
     return str(_words(f"done_when.{name}") or _words(f"done_when.{ERRAND}") or "")
 
 
-NAMES = (ERRAND, DOCUMENT, MESSAGE, LISTA, MEETING, BOOKING)
+NAMES = (ERRAND, DOCUMENT, MESSAGE, MEETING, BOOKING)
 
 #: The card each playbook's end state is READ on (the deliverable its work fills): the sheet for a hunt or a list, the
 #: document, the outbox. Declared once; the brief tells the worker what that card declares, from its manifest.
-DELIVERABLE = {ERRAND: "results", LISTA: "results", DOCUMENT: "documento", MESSAGE: "mensajeria",
+DELIVERABLE = {ERRAND: "results", DOCUMENT: "documento", MESSAGE: "mensajeria",
                MEETING: "agenda", BOOKING: "agenda"}
 
 
@@ -167,10 +160,6 @@ def block(name: str, end_state: str, *, with_a_party: bool = True, results: bool
     grammar = goal_grammar(name) if owes_sheet else goal_grammar(name, card="")
     if grammar:
         out += "\n" + grammar
-    if name == LISTA:
-        extra = str(_words("lista") or "")
-        if extra:
-            out += "\n" + extra
     return out
 
 

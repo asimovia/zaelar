@@ -40,7 +40,7 @@ def test_the_same_door_from_off_the_machine_still_needs_a_session(path):
     assert _decide(path, peer_loopback=False) == (ingress.DENY, "no_session")
 
 
-@pytest.mark.parametrize("path", ["/api/lists", "/widgets/agenda/action", "/api/memory/map", "/api/flash/say"])
+@pytest.mark.parametrize("path", ["/api/tasks/t1/cancel", "/widgets/agenda/action", "/api/memory/map", "/api/flash/say"])
 def test_a_loopback_caller_gets_no_operator_route(path):
     assert _decide(path, peer_loopback=True) == (ingress.DENY, "no_session")
 
@@ -64,8 +64,8 @@ def test_the_middleware_admits_the_worker_and_refuses_the_rest(monkeypatch):
     def _report():
         return {"ok": True}
 
-    @app.post("/api/lists")
-    def _lists():
+    @app.post("/api/tasks/t1/cancel")
+    def _cancel():
         return {"ok": True}
 
     ingress.install(app)
@@ -74,4 +74,4 @@ def test_the_middleware_admits_the_worker_and_refuses_the_rest(monkeypatch):
 
     assert local.post("/api/agent/report", json={}).status_code == 200
     assert remote.post("/api/agent/report", json={}).status_code == 401
-    assert local.post("/api/lists", json={}).status_code == 401
+    assert local.post("/api/tasks/t1/cancel", json={}).status_code == 401

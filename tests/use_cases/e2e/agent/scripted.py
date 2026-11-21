@@ -156,14 +156,7 @@ def _board() -> dict:
             return None
         rows += [r for r in (got.get("tasks") or got.get("rows") or []) if isinstance(r, dict)] \
             if isinstance(got, dict) else []
-    lists = []
-    for r in rows:
-        if r.get("kind") == "lista":
-            try:
-                lists.append(probe_client._get(f"/api/lists/{r['id']}"))
-            except Exception:  # noqa: BLE001
-                pass
-    return {"rows": rows, "lists": [x for x in lists if isinstance(x, dict) and x.get("ok")]}
+    return {"rows": rows}
 
 
 def _memory() -> dict | None:
@@ -187,17 +180,6 @@ def _has_all(*words):
 
 def _has_any_each(*groups):
     return lambda d: all(any(w in _mem_text(d) for w in g) for g in groups)
-
-
-def _list_closed(d):
-    return bool(d and any(str((x.get("list") or {}).get("state")) in ("done", "failed") for x in d["lists"]))
-
-
-def _list_clean(d):
-    return bool(d and any((x.get("summary") or {}).get("n", 0) >= 2
-                          and not (x.get("summary") or {}).get("failed")
-                          and not (x.get("summary") or {}).get("needs_you")
-                          and str((x.get("list") or {}).get("state")) == "done" for x in d["lists"]))
 
 
 def _at(d, date, start, *words):
@@ -253,8 +235,6 @@ def _workers_two_at_a_time(d):
 
 
 CHECKS.update({
-    "lists.closed": ("tasks", _list_closed),
-    "lists.closed_clean": ("tasks", _list_clean),
     "demo.assistant_is_johnny": ("memory", _has_all("johnny")),
     "demo.profile": ("memory", _has_any_each(("richard",), ("los angeles", "los ángeles"), ("meshcore",),
                                              ("england", "inglaterra"))),
@@ -287,8 +267,8 @@ CHECKS.update({
     "errands.two_workers_at_a_time": ("tasks", _workers_two_at_a_time),
 })
 
-#: How long a check keeps re-reading before it is red. A list takes minutes, not a reply's second.
-WAITS = {"lists.closed": 1800.0, "lists.closed_clean": 60.0}
+#: How long a check keeps re-reading before it is red, where a check needs longer than a reply's second.
+WAITS: dict[str, float] = {}
 
 #: What a person answers to a question back — once per step, only while the check is still red.
 _YES = {"es": "Sí, adelante.", "us": "Yes, go ahead."}

@@ -93,14 +93,13 @@ def dispatcher(active_brain, first_lifespan_entry: bool) -> bool:
                             .format(_reh["found"], len(_reh.get("resume") or []), len(_reh.get("buried") or [])))
         except Exception as e:
             logger.warning(f"rehydrate at_boot failed (voice/chat unaffected): {e}")
-        # V2-771 — a LIST a restart interrupted resumes from its first unfinished step (`nucleo/batch`).
-        try:
-            from nucleo import batch as nucleo_batch
-            _lists = nucleo_batch.resume()
-            if _lists:
-                logger.info(f"Listas reanudadas tras el reinicio: {len(_lists)}")
+        try:                     # INI-078 Q-7 — there are no task lists: a live one a restart finds is archived
+            from nucleo.circuit import ledger as nucleo_ledger
+            _gone = nucleo_ledger.lists_retired()
+            if _gone:
+                logger.info(f"task lists archived at boot (lists no longer exist): {_gone}")
         except Exception as e:
-            logger.warning(f"task-list resume failed (voice/chat unaffected): {e}")
+            logger.warning(f"task-list archive failed (voice/chat unaffected): {e}")
     return slow_on
 
 

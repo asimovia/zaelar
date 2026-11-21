@@ -108,16 +108,10 @@ def test_an_unmet_spec_ends_its_row_when_the_circuit_settles_it(monkeypatch):
     assert ts.task_get(uid)["verdict"] == "unmet"
 
 
-def test_a_list_step_parents_the_rows_of_its_ops():
-    def turn():
-        tok = rq.under("lista:1#02")
-        try:
-            rq.begin("Create a calendar event tomorrow at nine")
-            return rq.opened("agenda", "add_meeting")
-        finally:
-            rq._PARENT.reset(tok)
-    uid = _in_turn(turn)
-    assert ts.task_get(uid)["parent_id"] == "lista:1#02"
+def test_a_turns_parent_parents_the_rows_of_its_ops():
+    uid = _in_turn(lambda: (rq.begin("Create a calendar event tomorrow at nine", parent="t:1"),
+                            rq.opened("agenda", "add_meeting"))[1])
+    assert ts.task_get(uid)["parent_id"] == "t:1"
 
 
 def test_the_board_shows_inline_rows_only_behind_the_switch():

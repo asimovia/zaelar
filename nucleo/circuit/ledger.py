@@ -736,10 +736,37 @@ def scheduled_mirrored(entry: dict) -> None:
 # boundary ratchet (`tests/memory/unit/test_memory_boundary.py`) counts exactly that, and paying it by
 # raising its ceiling would be the move its own docstring tells you not to make.
 def store():
-    """The task table, for the brain-side owners of task rows that are not workers — a LIST and its steps
-    (`nucleo/batch`, V2-771). Handed out from here so `memory.tasks_store` keeps one production importer
-    (the memory boundary ratchet counts exactly that)."""
+    """The task table, for the brain-side readers and writers of task rows that are not workers. Handed out from here
+    so `memory.tasks_store` keeps one production importer (the memory boundary ratchet counts exactly that)."""
     return _ts
+
+
+#: what the archive of a list says: several things asked at once are several tasks now (INI-078, Q-7)
+LISTS_GONE = "las listas ya no existen"
+
+
+def lists_retired() -> int:
+    """Archive every LIVE task list a restart finds, with its steps: one short pill per list, then the rows go.
+
+    There are no lists any more (INI-078, Q-7): several things asked at once are several independent tasks, so a list
+    nothing runs would sit in his column for good. Run at boot; idempotent, since an archived row is gone. Returns how
+    many lists went. Never raises."""
+    n = 0
+    for row in _ts.tasks_of_kind("lista", _ts.LIVE_STATES):
+        uid = str(row.get("id") or "")
+        try:
+            from memory import api as _memory
+            _memory.write(f"{str(row.get('title') or row.get('goal') or uid)[:160]}: {LISTS_GONE}", kind="task",
+                          level="short", importance=0.3, ttl_days=7,
+                          meta={"task_id": uid, "owner": "", "state": "cancelled", "trace": row.get("trace_id") or "",
+                                "artifacts": sorted(_ts.artifacts_of(uid))})
+        except Exception as e:  # noqa: BLE001 — a pill that could not be written does not keep a dead list alive
+            logger.debug(f"ledger: the pill of the retired list {uid} was not written ({e!r})")
+        for step in _ts.tasks_children(uid):
+            _ts.task_forget(step["id"])
+        _ts.task_forget(uid)
+        n += 1
+    return n
 
 
 def recent(*, since: float, limit: int, exclude_kinds: tuple = ()) -> list[dict]:

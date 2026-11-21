@@ -47,7 +47,6 @@ DOORS: dict[str, Door] = {d.name: d for d in (
     Door("messaging.tag", "connectors.messaging:dispatch_tag"),
     Door("speech.out_of_band", "voice.proactive:notify"),
     Door("speech.speaker", "voice.proactive:speaker"),
-    Door("tasks.intake", "nucleo.batch:intake"),
     Door("memory.ingest", "nucleo.memory_agent.ingest:ingest_utterance"),
     Door("vault.write", "voice.engine.llm.providers.vault_intercept:try_vault_intercept"),
 )}
@@ -168,7 +167,7 @@ def dry_turn(*, ingest: bool = True):
 @contextmanager
 def recorded(*, closed=()):
     """A live turn whose consequences are recorded: the text channel with `execute=True`. `closed` names the doors
-    that still stay shut (a list's own step must not open another list: `tasks.intake`)."""
+    that still stay shut."""
     for name in closed:
         if name not in DOORS:
             raise KeyError(f"undeclared consequence door: {name!r}")
