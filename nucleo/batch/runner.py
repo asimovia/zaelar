@@ -4,10 +4,10 @@ Storage is the task table (V2-728): the list is one visible row (`kind="lista"`)
 (`parent_id`, hidden — the board shows the commission, not its plumbing). A restart therefore loses nothing:
 `resume()` picks up every list that still has pending steps.
 
-Each step runs as an ORDINARY TURN of the text channel (`nucleo.cli.turn.run_turn(execute=True)`): the Jev brief, the
-real prompt, the model, the widgets, the workers — the whole machine, one step at a time, so each step sits
-well inside the per-turn limits the unsplit message collided with. All steps share one conversation session,
-so step 9 («Anna vacation») is read with steps 1-8 behind it.
+Each step is HIS request to the conversation manager, through the same door as a line he types (`by_the_manager` →
+`entry.typed_and_wait`, INI-078 F2): the model, the widgets, the workers — the whole machine, one step at a time, so each
+step sits well inside the per-turn limits the unsplit message collided with. The steps are lines of his one
+conversation, so step 9 («Anna vacation») is read with steps 1-8 behind it.
 
 Memory is written by THIS module, awaited, step by step — not fire-and-forget like a live turn. The distiller
 serialises its calls and falls back to a lossy heuristic when more than two are waiting
@@ -182,6 +182,8 @@ def acted(r: dict) -> bool:
     calls = [t for t in (r.get("tool_calls") or []) if isinstance(t, dict)]
     if any(str(t.get("name") or "") not in _READ_ONLY for t in calls):
         return True
+    if any(isinstance(a, dict) and a.get("status") == "ok" for a in r.get("acts") or ()):
+        return True                              # the conversation manager's acts, that landed
     if r.get("tags") or r.get("executed") or r.get("task_ids") or r.get("task_id"):
         return True
     return str(r.get("action") or "chat") not in ("chat", "", *_READ_ONLY)
@@ -217,6 +219,16 @@ async def _store_rule(goal: str) -> dict:
     if not stored:
         return {"ok": False, "error": "rule not stored — nothing to keep"}
     return {"ok": True, "reply": [res.get("say") or f"{len(stored)} rule(s) saved."], "executed": "rule"}
+
+
+async def by_the_manager(text: str, *, sid: str = "", **_kw) -> dict:
+    """A step of his list is HIS request, through the same door as a line he types (INI-078 F2): the conversation
+    manager answers it in the shape the list reads (`entry.typed_and_wait`). It may not run now: the step fails with
+    the reason — there is no other path."""
+    from nucleo.conversation_host import entry, switch
+    if not switch.on():
+        return {"ok": False, "error": switch.decide().why or "the conversation cannot answer now"}
+    return await entry.typed_and_wait(text, dev=f"list:{sid}")
 
 
 async def _turn(turn, text: str, sid: str, step: str = "") -> dict:
@@ -420,7 +432,7 @@ async def run(uid: str, *, turn=None, ingest=None, notify=None, worker_wait_s: f
     """Run every pending step of a list in order, wait for its workers, close it and report. Idempotent over a
     restart: steps already done are skipped."""
     if turn is None:
-        from nucleo.cli.turn import run_turn as turn
+        turn = by_the_manager
     if ingest is None:
         from nucleo.memory_agent import ingest_utterance
 

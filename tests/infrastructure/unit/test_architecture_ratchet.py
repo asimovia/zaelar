@@ -976,6 +976,8 @@ _PACKAGE_CEILINGS["widgets"] += 21
 _TOTAL_MAX += 32     # measured
 _TOTAL_MAX -= 221    # 2026-11-21 INI-078 F2, the unplug: the manager is the only path — the switch's modes, the fall back,
 # the old turn's door in the voice and text entries and the old voice provider's build at a session's start went, measured
+_PACKAGE_CEILINGS["nucleo/batch"] += 12   # 2026-11-21 INI-078 F2: a step of his list is his request to the manager (`runner.by_the_manager`), done only when an act landed
+_TOTAL_MAX += 21     # same cause, with the typed door's report of the acts its run submitted and their receipts (`entry`)
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

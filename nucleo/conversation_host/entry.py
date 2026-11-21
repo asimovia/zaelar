@@ -38,6 +38,15 @@ def _listen(kind: str, label: str, p: dict) -> None:
             for w in _waits.values():
                 if w.get("iv") and req == f"r_{w['iv']}":
                     w["reads"].append({"name": p.get("tool"), "args": p.get("args") or {}, "outcome": label})
+    elif kind == "conv_effect" and label in ("submitted", "receipt"):       # an act of its run, and what it answered
+        req = (p.get("refs") or {}).get("req")
+        with _lock:
+            for w in _waits.values():
+                if w.get("iv") and req == f"r_{w['iv']}":
+                    if label == "submitted":
+                        w["acts"].append({"name": p.get("tool"), "status": ""})
+                    elif (open_ := [a for a in w["acts"] if not a["status"]]):
+                        open_[0]["status"] = str(p.get("status") or "")
     elif kind == "conv_close":
         refs = p.get("refs") or {}
         with _lock:
@@ -178,7 +187,7 @@ def typed(text: str, dev: str = "", *, wait: bool = False, checked: bool = False
     cid = cid if wall.client_id_ok(cid) else f"c_{uuid.uuid4().hex[:12]}"
     if wait:
         with _lock:
-            _waits[cid] = {"iv": None, "future": concurrent.futures.Future(), "said": [], "reads": [],
+            _waits[cid] = {"iv": None, "future": concurrent.futures.Future(), "said": [], "reads": [], "acts": [],
                            "ended": threading.Event()}
     from conversation.ear import signals as S
     sig = S.TypedSubmit(dev or "holder", cid, str(text).strip()[:4000], int(time.time() * 1000))
@@ -270,7 +279,7 @@ async def _closed(w: dict, timeout_s: float) -> str:
 
 async def typed_and_wait(text: str, dev: str = "", *, timeout_s: float = 90.0) -> dict:
     """The text channel's shape (`ok`, `reply`, `tool_calls`: the reads its run made, with their arguments; `trace`:
-    its flow) plus the reads the gateway refused and a `conv` block with the ids."""
+    its flow) plus the reads the gateway refused, the acts it ran with their status (`acts`), and a `conv` block."""
     stop = await asyncio.to_thread(_guards, text, dev)      # off the loop: they can wait on the database lock
     if stop is not None:
         return stop
@@ -286,5 +295,5 @@ async def typed_and_wait(text: str, dev: str = "", *, timeout_s: float = 90.0) -
             _waits.pop(got["cid"], None)
     return {"ok": label == "answered", "reply": " ".join(w["said"]), "channel": "conversation",
             "tool_calls": [r for r in w["reads"] if r["outcome"] == "read"],
-            "refused_calls": [r for r in w["reads"] if r["outcome"] == "refused"],
+            "refused_calls": [r for r in w["reads"] if r["outcome"] == "refused"], "acts": list(w["acts"]),
             "trace": w.get("iv") or "", "conv": {"cid": got["cid"], "iv": w.get("iv"), "close": label}}
