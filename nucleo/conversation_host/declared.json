@@ -853,6 +853,33 @@
      }
     }
    }
+  },
+  "task_answer": {
+   "act": "errand.answer",
+   "door": "task",
+   "op": "answer",
+   "about": "his words for a task of his in course or waiting on him (TASKS gives its id): what it asked him, a change, more detail; decision yes or no when it waits on his yes",
+   "schema": {
+    "type": "object",
+    "required": [
+     "task"
+    ],
+    "properties": {
+     "task": {
+      "type": "string"
+     },
+     "text": {
+      "type": "string"
+     },
+     "decision": {
+      "type": "string",
+      "enum": [
+       "yes",
+       "no"
+      ]
+     }
+    }
+   }
   }
  },
  "state_topics": [

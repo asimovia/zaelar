@@ -11,6 +11,8 @@ Declared in `declared.json` (`acts`, door `task`), each to its one door — neve
   unschedule `pulse.scheduler.unschedule`, by its reference — said as it ended, found or not
   sign_in    `web_auth.start` / `web_auth.finish`: the real browser opened for HIM to sign in, and his «done»
   note       `support_note.spoken`: his words kept as a note for the support team, nothing else done
+  answer     `switchboard.act.deliver`, the one door his words take to a process: a waiting question's answer (a plain
+             yes or no decides the act it held), a running worker's next words — the process the model named by id
   listings   `search_listing.hunt`: the fast listings pass on the engine's loop — the rows on his results sheet, too few
              and the deep search is an errand already started; the fact (how many, the rows, the sheet) is returned
 
@@ -140,7 +142,24 @@ def _listings(args: dict) -> ToolResult:
                       tools_read._text_evidence(f"listings:{res.get('sheet') or ''}", rows) if rows else ())
 
 
-DOORS = {f.__name__.lstrip("_"): f for f in (_listings, _start, _resume, _reopen, _stop, _unschedule, _sign_in, _note)}
+def _answer(args: dict) -> ToolResult:
+    """His words to the process the model named by an id TASKS gave (its row, its session or its question), by the one
+    delivery door; with no process of that id it fails naming the open ones (R-3: the model decides, never a router)."""
+    from nucleo.conversation_host import routing
+    from nucleo.switchboard import act, board
+    which = str(args.get("task") or "").strip()
+    procs = board.open_processes()
+    p = next((p for p in procs if which and which in (p.get("key"), p.get("dispatch"), p.get("ask_id"))), None)
+    if p is None:
+        return ToolResult("failed", {"reason": "no_such_task", "open": [
+            {"id": p.get("key"), "title": p.get("title")} for p in procs]})
+    kind = {"yes": act.YES, "no": act.NO}.get(str(args.get("decision") or "").lower(), act.OTHER)
+    text = str(args.get("text") or "").strip() or routing.said()
+    ok = act.deliver(p, text, kind)
+    return ToolResult("ok" if ok else "failed", {"task": p.get("key"), "title": p.get("title"), "delivered": ok})
+
+
+DOORS = {f.__name__.lstrip("_"): f for f in (_answer, _listings, _start, _resume, _reopen, _stop, _unschedule, _sign_in, _note)}
 
 
 def run(op: str, args: dict) -> ToolResult:

@@ -882,6 +882,8 @@ _PACKAGE_CEILINGS["conversation"] += 5   # same: a close counts the run's real s
 _TOTAL_MAX += 86     # same causes, measured
 _PACKAGE_CEILINGS["observability"] += 40   # 2026-11-21 E7d-6 (R-1): ONE definition of a session's counters (`flows.counts`: turns, flows with a real step, tasks, events, discards apart, folded flows nowhere) read by the session, the session list and the API, and the flows that stand (`flows.standing`)
 _TOTAL_MAX += 40     # same cause, measured
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 12   # 2026-11-21 E7d-7 (R-3): the model answers a process by `task_answer` through the one delivery door, and the host's Route no longer routes a process before the model (the switchboard's call went)
+_TOTAL_MAX += 12     # same cause, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

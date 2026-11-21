@@ -131,7 +131,8 @@ is the `network` topic of `read_state`. A listings hunt is the one hunt the old 
 the fact — how many, the rows with their evidence — said by the model. The first-run presentation (once per install,
 language data, `nucleo/self/presentation.py`) rides every run as a PRESENT block while it is owed, and the batch whose
 reply named the agent settles it; the rest of the old introduction phase (its prose, its judge, the greeting) is not
-carried. An errand the model starts carries what it decided — its kind, its consent class, the surface he will look
+carried. A process of his in course or waiting on him is not routed before the model: it sees it in TASKS and answers it with
+`task_answer`, by the one delivery door (R-3); only an open message draft reads his words first. An errand the model starts carries what it decided — its kind, its consent class, the surface he will look
 at and the declared action it starts with, `start_task`'s arguments whose choices are read from the modules that own
 them — with his words; a widget it orders built is his sure order (C4). Before the open doors, a phrase the action map knows VERBATIM (`Shortcut`, `shortcut.py` over
 `nucleo.actionmap`, V2-942) runs its direct act with no model and the run ends with origin `actionmap`; a run that

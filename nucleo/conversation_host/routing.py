@@ -1,16 +1,11 @@
-"""The `Route` port (INI-078 F2 steps 3-4, plan §3): his words to something of his that is OPEN reach it by the doors
-that already decide it, before the model is called — in their own order:
+"""The `Route` port (INI-078 F2 steps 3-4, plan §3; R-3): his words to an open message DRAFT reach its owner before
+the model is called — the send owner reads the sentence against that one draft (`nucleo.send.owner.take`): who, what
+it says, send it, drop it — taken, its line is said; anything else goes on to the model. A process in course or a row
+waiting on his answer is the MODEL's to answer (`task_answer`, R-3): no router decides it before the model.
 
-  1. an open message draft: the send owner reads the sentence against it (`nucleo.send.owner.take`): who, what it says,
-     send it, drop it — taken, its line is said; anything else is not his and goes on;
-  2. a process in course or a row waiting on his answer: the switchboard (`nucleo.switchboard.route.take`) — «is this
-     for process N, or for none?» — his stop to one of them ending its row through the one cancel door.
-
-With nothing open it answers at once and costs nothing. The doors do not speak by themselves: the line they would say
-is collected and handed back for the manager's mouth. They run on the engine's loop, where the processes live.
-
-The words of the batch in course are kept (`said`): the send act hands them to the owner with the model's call, which
-reads HIS words and takes the call's fields only for what they leave empty.
+The owner does not speak by itself: the line it would say is handed back for the manager's mouth. It runs on the
+engine's loop. The words of the batch in course are kept (`said`): the send act hands them to the owner with the model's
+call, which reads HIS words and takes the call's fields only for what they leave empty.
 """
 from __future__ import annotations
 
@@ -23,21 +18,19 @@ def said() -> str:
 
 
 class HostRoute:
+    """The one door before the model for his words: an open message draft reads them first (its owner reads a sentence
+    against ONE concrete draft, it guesses nothing). A process in course or waiting on him is NOT routed here any more
+    (R-3): the model sees it in TASKS and answers it with `task_answer`."""
+
     async def take(self, account: str, text: str) -> str | None:
         from nucleo.conversation_host.acts_widget import _on_engine_loop
         from nucleo.send import draft, owner
-        from nucleo.switchboard import board, route
         _last["said"] = text
         if draft.current() is not None:
             took, line = await _on_engine_loop(owner.take(text))
             if took:
                 return line or ""
-        if not board.open_processes():          # nothing open: nobody to take his words, no decision paid
-            return None
-        lines: list[str] = []
-        from voice.observer import emit
-        took = await _on_engine_loop(route.take(text, brain=None, emit=emit, say=lines.append))
-        return (lines[-1] if lines else "") if took else None
+        return None
 
 
 async def send(args: dict, act: str = "") -> "object":
