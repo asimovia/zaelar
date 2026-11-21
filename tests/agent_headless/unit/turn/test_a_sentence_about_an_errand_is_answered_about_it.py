@@ -2,9 +2,6 @@
 
 Measured on the probe channel, ES and EN, with a report, a monitor hunt and a game ordered in one breath:
 
-  · ES — four long turns about the three live errands («del coche, ¿qué tal de autonomía real? ¿Y el juego? …») were
-    taken by the LIST lane as new lists: each got «Entendido, me pides varias cosas. Me pongo con ellas y te aviso
-    cuando termine», word for word, twice after he complained, and none of the questions was answered.
   · ES — «del informe quítame los híbridos» got «dame un momento» plus three MONITOR candidates.
   · EN — «but the jump, did you actually make it higher?» got the report's and the monitor's phases three times, in
     the engine's Spanish («Investigando…: entrando en ebay.es»), never a word about the game.
@@ -18,14 +15,13 @@ Every door below reads the same yardstick: which errands does the sentence NAME 
 """
 from __future__ import annotations
 
-import asyncio
 import threading
 import time
 import types
 
 import pytest
 
-from nucleo import batch, dispatch
+from nucleo import dispatch
 from nucleo.dispatch import confirm as dc
 from nucleo.turn import errands_of_a_turn as E
 from nucleo.errands import named as named_errand
@@ -66,47 +62,6 @@ def test_a_sentence_names_every_errand_it_talks_about(errands):
     assert [e["id"] for e in named_errand.named("but the jump, did you actually make it higher?")] == ["9"]
     assert named_errand.named("ok cool, thanks") == []
     assert all(not e["label"] for e in named_errand.known()), "«Investigando…» is a placeholder, not a label"
-
-
-# ── 1. the canned receipt: never twice, never to a conversation about live work ─────────────────────────────
-def test_a_long_message_about_errands_under_way_is_not_a_new_list(errands, monkeypatch):
-    from nucleo.batch import detect
-    assert detect.could_be_a_list(ES_TALK), "the case must reach the lane, or this test proves nothing"
-    monkeypatch.setattr("nucleo.jev.choose_sync", lambda *a, **k: {"choice": "several", "confidence": 0.99})
-    started = []
-
-    async def fake_start(text, **kw):
-        started.append(text)
-    monkeypatch.setattr(batch, "start", fake_start)
-    assert asyncio.run(batch.intake(ES_TALK, origin="chat")) is None and not started
-    numbered = "Apúntame esto:\n1. " + "\n2. ".join(["el informe del coche", "otro monitor", "el juego"]) + "\n3. x"
-    numbered += " " + "y más detalles " * 30
-    assert asyncio.run(batch.intake(numbered, origin="chat")), "an enumerated paste is still a list"
-
-
-def test_with_nothing_under_way_the_same_message_is_still_a_list(monkeypatch):
-    monkeypatch.setattr(dispatch, "pending_summaries", lambda: [])
-    monkeypatch.setattr(dc, "_PENDING_CONFIRM", {})
-    monkeypatch.setattr("nucleo.jev.choose_sync", lambda *a, **k: {"choice": "several", "confidence": 0.99})
-
-    async def fake_start(text, **kw):
-        return "lista:x"
-    monkeypatch.setattr(batch, "start", fake_start)
-
-    async def _go():
-        got = await batch.intake(ES_TALK, origin="chat")
-        await asyncio.sleep(0)
-        return got
-    assert asyncio.run(_go()) == {"ack": batch.ack()}
-
-
-def test_the_receipt_is_a_line_said_once(monkeypatch):
-    from i18n import langs
-    lang = langs.current_language()
-    assert batch.receipt([]) == lang.list_started
-    assert batch.receipt(["Hola.", lang.list_started]) == lang.list_started_again != lang.list_started
-    assert batch.receipt([lang.list_started, lang.list_started_again]) == ""
-    assert batch.assistant_lines([{"role": "user", "content": "x"}, {"role": "assistant", "content": "y"}]) == ["y"]
 
 
 # ── 2. a status question that names an errand ───────────────────────────────────────────────────────────────

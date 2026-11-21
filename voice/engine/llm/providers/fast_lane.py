@@ -227,53 +227,6 @@ async def small_talk(brain, text: str, emit, *, first_turn: bool, window_max: in
         await r
     return True
 
-
-# ── TASK LIST lane (V2-771) ──────────────────────────────────────────────────────────────────────────────
-# A message that hands over several tasks is not a turn: it is a list, and `nucleo.batch` runs it step by step
-# through the ordinary turn. This lane goes FIRST — before the rename lane, which on a one-line paste took the
-# whole message for «your name is Johnny» and dropped the rest — and before the provider's input clamp, which
-# kept the last 1 600 chars of it. Below the shape floor it returns at once, so a normal turn pays nothing.
-# Mirror in `probe.run_turn`.
-async def task_list(brain, text: str, emit, *, first_turn: bool, window_max: int, say=None) -> bool:
-    """Start a list from his message and say the one receipt line. False = not a list → turn untouched. `say` is the
-    turn's own reply (its chunk on the turn's stream): the line on a channel with no speaker (V2-851 F5 — it went to
-    the speaking primitive, a second mouth with no identity)."""
-    if first_turn:
-        return False
-    from nucleo import batch
-    got = await batch.intake(text, origin="voz", said=batch.assistant_lines(brain._window))
-    if not got:
-        return False
-    phrase = got["ack"]
-    from nucleo.flash import dialog as _dialog_tl
-    _dialog_tl.push_user(brain._window, text)
-    brain._window.append({"role": "assistant", "content": phrase})
-    __import__("nucleo.flash.dialog", fromlist=["x"]).live_slice(brain._window, window_max)
-    from voice import proactive
-    speak = proactive.speaker()
-    if speak is None:
-        if say is not None:
-            say(phrase)                           # chat-only: the turn's own reply carries it
-        return True
-    try:
-        brain._last_spoken = phrase
-        brain._last_spoke_at = time.time()
-    except Exception:
-        pass
-    r = speak(phrase)
-    if asyncio.iscoroutine(r):
-        # NOT awaited: this lane runs INSIDE the turn's generation, and `session.say` queues its speech behind
-        # that very generation — awaiting it here deadlocked the voice (measured 2026-09-27: after the demo's
-        # INIT list the agent sat in «thinking» and every later reply was generated and never spoken).
-        _bg = asyncio.ensure_future(r)
-        _ACKS.add(_bg)
-        _bg.add_done_callback(_ACKS.discard)
-    return True
-
-
-_ACKS: set = set()   # the receipts in flight — a reference so the loop does not collect them mid-sentence
-
-
 # ── WALL TAB lane (V2-761) ───────────────────────────────────────────────────────────────────────────────
 # «Ábreme la lista de widgets» names a tab of the wall with certainty; the model called `show_panel` for it 10-13
 # times in 18 and otherwise refused, promised with nothing behind it, or spent a worker listing what the tab

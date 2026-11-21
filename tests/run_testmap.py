@@ -2761,11 +2761,6 @@ DOMAINS: list[dict] = [
             "paths": ["tests/agent_headless/unit/test_the_everyday_agenda_edits.py",
                       "tests/browser/unit/agenda/test_the_card_opens_and_closes_by_voice.py",
                       "tests/use_cases/unit/test_a_scripted_case_is_graded_on_the_store.py"]},
-        {"id": "4.216", "title": "Un mensaje con varias tareas es una LISTA — se detecta (forma + Jev), se parte en "
-                                 "pasos autónomos, se guarda, corre paso a paso por el turno normal, espera a sus "
-                                 "workers (2 a la vez) y da UN parte; la cita de varios días ocupa todos sus días",
-            "ch": UNIT,
-            "paths": ["tests/agent_headless/unit/test_a_message_with_several_tasks_is_a_list.py"]},
         # V2-088: el chat es una VISTA, no un modo. Estos tests impiden que alguien vuelva a cablear el panel
         # con el altavoz — el acoplamiento anterior era indistinguible de un TTS averiado.
         {"id": "4.9", "title": "Chat y voz INDEPENDIENTES (el icono es el único dueño del silencio, V2-088)",
@@ -2831,11 +2826,6 @@ DOMAINS: list[dict] = [
         # pinta el ⏻ en AZUL de control remoto, parpadeando — no el ámbar de «caído».
         {"id": "4.226", "title": "Controlado desde otra sesión: el ⏻ en azul de control remoto, parpadeando",
             "ch": UNIT, "paths": ["tests/browser/unit/orbe/test_a_tab_driven_from_elsewhere_shows_remote_blue.py"]},
-        # V2-776 (2026-09-27): el acuse de una LISTA se habla DESPUÉS de su turno. Esperarlo dentro del turno
-        # interbloqueaba la voz (el `say` va en cola detrás de la generación que lo espera): tras el INIT de la demo
-        # el agente se quedó en «thinking» y ninguna respuesta posterior llegó a sonar ni al muro.
-        {"id": "3.90", "title": "El acuse de una lista no bloquea su propio turno — la voz no se queda en «pensando»",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/voice/test_the_list_receipt_never_blocks_its_own_turn.py"]},
         # V2-776 (2026-09-27): dos encargos SIN hoja propia ya no comparten la `results` base. En la pasada de la demo
         # la búsqueda de Ferraris REEMPLAZÓ a la de monitores y «show me the monitors» no encontró nada.
         {"id": "3.91", "title": "Cada encargo entrega en SU hoja — el segundo no pisa al primero",
@@ -4023,17 +4013,12 @@ DOMAINS: list[dict] = [
         {"id": "2.198", "title": "The verdict closes every row: a worker's from the circuit, a list step's from its ops; an op he "
                                  "ordered that ends unmet is corrected out loud as soon as the verdict exists",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_the_verdict_closes_every_row.py"]},
-        {"id": "2.193", "title": "A list step that asked him something is run once more at the end, in a fresh session, "
-                                 "before the list reports — a later step of his own list may have answered it",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/test_a_list_step_that_asked_is_asked_again_at_the_end.py"]},
         {"id": "2.192", "title": "An instance app is empty only by its own view, never by the bare base card's state",
             "ch": UNIT, "paths": ["tests/voice/unit/test_an_instance_is_empty_only_by_its_own_view.py"]},
         {"id": "2.191", "title": "With both readings unsure, the operator's own question mark makes it a question",
             "ch": UNIT, "paths": ["tests/voice/unit/test_a_question_mark_is_a_question_when_the_verdict_doubts.py"]},
         {"id": "2.190", "title": "A app whose declared action cannot take the call's fields is not asked about",
             "ch": UNIT, "paths": ["tests/voice/unit/test_a_card_that_cannot_take_the_call_is_not_asked_about.py"]},
-        {"id": "2.188", "title": "A courtesy question at the end of a list step's reply does not hold the step",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/test_a_courtesy_question_does_not_hold_a_list_step.py"]},
         {"id": "2.187", "title": "A commission that lands on the picture viewer is the picture tool, never a worker; the "
                                  "viewer's catalogue criterion names the wallpaper",
             "ch": UNIT, "paths": ["tests/voice/unit/test_a_picture_commission_is_the_picture_tool.py"]},
@@ -4248,9 +4233,6 @@ DOMAINS: list[dict] = [
         {"id": "2.178", "title": "hbmesh names its two forms when a worker misuses it",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/workers/test_the_mesh_cli_names_its_forms_when_misused.py"]},
-        {"id": "2.177", "title": "A rule row in a list is stored as a rule, with its flags and scope, and takes no model turn",
-            "ch": UNIT,
-            "paths": ["tests/agent_headless/unit/test_a_rule_row_in_a_list_is_stored_as_a_rule.py"]},
         {"id": "2.175", "title": "The standing criteria are one document: dated, tested, no contradictions, CLAUDE.md only shrinks",
             "ch": UNIT,
             "paths": ["tests/infrastructure/unit/test_the_criteria_are_one_and_current.py"]},
@@ -4567,9 +4549,6 @@ DOMAINS: list[dict] = [
         {"id": "2.370", "title": "One slot, one subject, two wordings is ONE agenda row — «Veterinario de Pixel» and «Pixel — "
                                  "veterinarian» at 16:00-17:00 landed twice with two notices (V2-781)",
             "ch": UNIT, "paths": ["tests/browser/unit/agenda/test_one_slot_one_subject_in_two_languages.py"]},
-        {"id": "2.371", "title": "A list step that names the assistant leaves the name STORED or fails — «Te llamas Johnny…» "
-                                 "stored nothing and the list closed «28 de 28» (V2-781)",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/test_a_list_step_that_names_the_assistant_stores_it.py"]},
         {"id": "2.390", "title": "A transient rate limit (429 · Z.ai 1302) is waited out — bounded, jittered, cancellable — "
                                  "before a widget build or a Brain Worker is declared dead; quota, a rejected key and a "
                                  "bad request are never retried (build-workout-tracker-widget, 2026-10-10)",
@@ -4580,8 +4559,7 @@ DOMAINS: list[dict] = [
         {"id": "2.361", "title": "play_video carries `queue` in both channels, the turn names what plays, and a queue read "
                                  "carries the card's rows — «one video left» over two (V2-781)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_few_videos_back_to_back_is_a_queue.py"]},
-        {"id": "2.350", "title": "A sentence about ONE of his errands is answered about that errand — a long turn about "
-                                 "live errands is not a new list, the canned receipt is said once, a status question "
+        {"id": "2.350", "title": "A sentence about ONE of his errands is answered about that errand — a status question "
                                  "names the errand it asks about, a stop is said as done and its offer never re-asked, "
                                  "another errand's rows are not glued to a refinement, a «no» about the monitor leaves "
                                  "the parked game waiting (three-tasks-at-once, 2026-10-10 20:00)",
@@ -4761,8 +4739,6 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ['tests/browser/unit/agenda/test_a_move_said_for_one_week_moves_one_occurrence.py']},
         {"id": "2.587", "title": "A [[close]] of the agenda over «quita el piano entero, toda la serie» cancels the series even with no verdict (decision model at 529): a removal naming one of its rows and not the app is that row's cancel_meeting, both channels",
             "ch": UNIT, "paths": ['tests/agent_headless/unit/flash/test_a_close_over_a_row_removal_cancels_the_row.py']},
-        {"id": "2.551", "title": 'A sentence about errands that just FINISHED is not a new list: «me sacas un LG de 24… ¿y el Fujitsu? …¿y el informe?» with all three done is an ordinary turn, never «me pongo con ellas» (three-tasks ES 2026-10-11)',
-            "ch": UNIT, "paths": ['tests/agent_headless/unit/test_a_sentence_about_finished_errands_is_not_a_list.py']},
         {"id": "2.552", "title": 'A DELIVERED errand stays in «YA ACABADAS» for the conversation (15 min), a death keeps five, the block keeps its cap of three — the report 333 s old was gone and the turn said «del informe no me consta nada» (three-tasks ES)',
             "ch": UNIT, "paths": ['tests/agent_headless/unit/test_a_delivered_errand_outlives_five_minutes.py']},
         {"id": "2.553", "title": "A network agent's rows never open a results sheet for a DOCUMENT errand: the report's sheet «Informe sobre coches eléctricos urbanos» filled with a 1:43 toy and charging cables (three-tasks ES); the worker still reads the answer",
@@ -9307,8 +9283,6 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/send/test_a_send_is_seen_step_by_step_in_its_order.py"]},
         {"id": "13.156", "title": "One message, one draft, one send — the class as a property (C2): through opened, changed by voice, changed by hand, confirmed and sent by the card's Send, the open draft's box holds the owner's text at every moment, his Send takes the draft so no yes sends it again, and exactly one order leaves; the same by the mail draft screen, whose Send carries its own ref so the owner adopts it and its receipt is that order's row",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/send/test_one_message_one_draft_one_send.py"]},
-        {"id": "13.157", "title": "A step of his list is HIS request to the conversation manager (INI-078 F2, after the unplug): each step enters through the same door as a line he types (`runner.by_the_manager` → `entry.typed_and_wait`, his authority), the typed door reports the acts its run submitted and their receipts, and a step is done only when an act landed; with the manager unable to run, the step fails with the reason and nothing of the old turn is reached; the list files nothing of its own — the manager files his words of each answered step through the memory's one writer, one at a time and in order — and a step's line and our answer never reach the wall (`wall.OFF_WALL`): only the list's report is said, the steps followed in their flow",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/test_a_list_step_is_his_request_to_the_manager.py"]},
         {"id": "13.158", "title": "The embedded voice is refused (INI-078 F2, after the unplug): ZAELAR_VOICE_EMBEDDED kept a LiveKit worker in the body that built the old turn's voice node — asked for it, the body says no on his screen and builds the voice process as always (manual turns, the manager's ear); the embedded worker is never imported",
             "ch": UNIT, "paths": ["tests/voice/unit/test_the_embedded_voice_is_refused.py"]},
         {"id": "13.159", "title": "There are no task lists (INI-078 Q-7, the orchestrator step 1): several things asked at once are several independent tasks; a LIVE list a restart finds is archived at boot with its steps — one short pill per list (`kind=task`, its id in the meta), the rows gone, idempotent; an ended list is left to its own prune (`ledger.lists_retired`)",

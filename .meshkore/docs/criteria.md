@@ -708,8 +708,8 @@ below is the first kind, or it names the mechanism that replaced the second.
 - **CRIT-E1 · The TASK is the unit.** One durable row per errand; the worker reports or the pulse demands it; a
   task is born from four sources only, never from a loop having a tick. — since 2026-09-27 · nodes 3.82, 3.83,
   3.84, 2.18.
-- **CRIT-E2 · A message with several tasks is a LIST**: split, queued, run step by step, reported once; the ack of
-  a list never blocks its own turn. — since 2026-09-26 · nodes 4.216, 3.90.
+- **CRIT-E2 · There are no task lists**: several things asked at once are several independent tasks, and no door
+  opens a list; an unfinished list found at boot is archived with its steps. — since 2026-11-21 · nodes 13.159.
 - **CRIT-E3 · Resources pinned, reasoning open.** A worker's prompt carries formulas, resources and ways of
   solving, never a script; a fix shaped like the scenario is scaffolding (change one word of the request: does it
   stand?); in doubt it is a RESOURCES problem. — since 2026-08-20 · nodes 2.82, 4.32 ·
@@ -735,7 +735,7 @@ below is the first kind, or it names the mechanism that replaced the second.
   `undeclared` (the action declares no end state) and `cannot` (nothing could act). Each value declares once whether
   it delivered, its rank, the row state it leaves and its event; a non-ending (`started`, `asked`, `skipped`) never
   settles a row, and every settle emits with the row's trace. A later op never improves a failed row; a worker's
-  verdict comes from `circuit.close`, a list step's from its ops; the prompt's recent state reads these rows, facts
+  verdict comes from `circuit.close`; the prompt's recent state reads these rows, facts
   only. An inline row carries its spec, and a live one left by a previous boot is judged once from it (`met`) or
   closed as interrupted, silently. — since 2026-10-28 · nodes 2.194, 2.196, 2.198, 2.829, 3.105, 3.106, 3.113 ·
   `nucleo/circuit/verdict.py`, `nucleo/circuit/` (`settle`, `spec.py`, `ledger.py`), `nucleo/request/model.py`.
@@ -1066,8 +1066,8 @@ Flash keeps the conversation; the row is what both brains read.
   session's language as a stable prefix (the shell's rules, the playbook's nine checkpoints with `done_when`, one
   headline per family of the catalogue) followed by what changes per task, under a measured ceiling; a family's full
   set comes on request through the bridge (`python -m nucleo.cli.bridge catalog <family>`). Which playbook
-  (`errand | message | document | lista`) is read from facts the engine has — the surface, the mandate, the request's
-  shape — never from words. His rules reach the worker as data; the door stays their only authoritative reader. A
+  (`errand | message | document`) is read from facts the engine has — the surface and the mandate — never from
+  words. His rules reach the worker as data; the door stays their only authoritative reader. A
   worker's harness never reads the host user's own config. The families are ordered ours → outside → browser: the
   first is our `search` (the search service; what can be PLAYED is the `musica`/`youtube` cards, never the web), and
   the network is asked first only for a capability none of ours covers (V2-860 F3, 2026-11-08). — since 2026-11-05 ·

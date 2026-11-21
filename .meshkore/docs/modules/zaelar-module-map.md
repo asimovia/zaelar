@@ -341,7 +341,6 @@ files from growing back.
 | A commission's durable record | `.meshkore/docs/modules/zaelar-jobs.md` |
 | The playbook routes (what serves this kind of errand) | `.meshkore/docs/modules/zaelar-playbook-routes.md` |
 | The genome (identity, generation, heritable genes, `python -m genome diff`) | `.meshkore/docs/modules/zaelar-genome.md` |
-| A message with several tasks becomes a list | `.meshkore/docs/modules/zaelar-task-lists.md` |
 | The agenda's numbered task lists | `.meshkore/docs/modules/zaelar-agenda-task-lists.md` |
 | The agent's own filesystem (`library/`) | `.meshkore/docs/modules/zaelar-agent-filesystem.md` |
 | Speaker identity | `.meshkore/docs/modules/zaelar-speaker-identity.md` |
