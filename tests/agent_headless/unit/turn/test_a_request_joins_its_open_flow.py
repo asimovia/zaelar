@@ -7,7 +7,6 @@ The dispatcher's dedup later folded the second WORKER into the first and left th
 """
 from __future__ import annotations
 
-import asyncio
 import threading
 
 import pytest
@@ -46,24 +45,7 @@ def hunts(monkeypatch):
     launches.reset()
 
 
-def test_the_sentence_that_finishes_a_cancelled_fragment_reuses_its_sheet(hunts):
-    async def scene():
-        first = asyncio.ensure_future(search_listing.listings({"text": FRAGMENT}, REQ))
-        await asyncio.sleep(0.05)
-        first.cancel()                               # he kept talking: the fragment's turn is cancelled
-        await asyncio.sleep(0.05)
-        await search_listing.listings({"text": WHOLE}, REQ)
-
-    asyncio.run(scene())
-    assert len(hunts) == 2
-    sheet = hunts[0]["new_sheet"]
-    assert sheet, "the first hunt had no sheet of its own from the start"
-    assert hunts[1]["sheet"] == sheet and not hunts[1]["new_sheet"], \
-        "the whole sentence opened a SECOND sheet beside the hunt it finishes"
-
-
 # ── F3/F4 · the dispatcher's late fold is an alarm, and it no longer leaves a sheet behind ──────────────────
-
 
 
 def test_a_late_fold_into_the_same_sheet_closes_nothing(monkeypatch):

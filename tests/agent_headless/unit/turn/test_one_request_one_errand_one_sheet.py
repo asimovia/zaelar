@@ -66,14 +66,6 @@ def _park(tid: str, request: str, sheet: str = "") -> dict:
     return confirm._PENDING_CONFIRM[tid]
 
 
-def test_an_escalation_in_flight_lends_its_errands_sheet(scene, monkeypatch):
-    calls, judge = scene
-    monkeypatch.setattr("nucleo.acts.errand.pending", lambda: [{"id": 9, "request": CAR_EN[0], "secs": 1}])
-    judge["id"] = "esc:9"
-    asyncio.run(search_listing.listings({"text": CAR_EN[1][0]}, REQ))
-    assert calls[0]["sheet"] == sheets.sheet_id_for("9") and not calls[0]["new_sheet"]
-
-
 def test_two_different_requests_are_two_errands_and_two_sheets(scene):
     calls, judge = scene
     _park("2", CAR_EN[0])

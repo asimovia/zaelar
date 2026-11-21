@@ -1,8 +1,8 @@
 """A listings hunt answers the manager by its FACT, with no face of its own (node 13.132, INI-078 F2 step 7c, row 13):
-`search_listing.hunt` is the one hunt both channels run — it joins an open flow or starts one, runs the fast pass and
-returns what happened; the old turn's spoken face is composed on top of it, the manager's model says the fact itself.
+`search_listing.hunt` is the one hunt both channels run — it starts its flow (nothing is joined by likeness, INI-078
+S2/S3), runs the fast pass and returns what happened; the old turn's spoken face is composed on top of it, the manager's model says the fact itself.
 The rows found reach the model with their evidence (the prices are figures it may claim); his words, never the model's
-query, are what the hunt is asked with; a hunt that joined a search parked on his yes returns its question."""
+query, are what the hunt is asked with."""
 from __future__ import annotations
 
 import asyncio
@@ -11,12 +11,7 @@ from nucleo.acts import search_listing
 from nucleo.conversation_host import acts_tasks, routing
 
 
-def _no_flow(monkeypatch, joined=None):
-    from nucleo.errands import open_flows
-
-    async def join(text):
-        return dict(joined or {})
-    monkeypatch.setattr(open_flows, "join", join)
+def _no_flow(monkeypatch):
     monkeypatch.setattr(search_listing, "_born", lambda asked: (7, "w_sheet"))
 
 
@@ -35,10 +30,3 @@ def test_the_hunt_returns_the_pass_and_the_manager_says_its_rows_with_evidence(m
     assert passed["operator_text"] == "w_find me a car under twelve thousand" and passed["new_sheet"] == "w_sheet"
     assert asyncio.run(search_listing.hunt("w_x", {"query": "w_car"}))["kind"] == "done"
 
-
-def test_a_hunt_parked_on_his_yes_returns_its_question_and_starts_nothing(monkeypatch):
-    _no_flow(monkeypatch, {"absorbed": True, "question": "w_shall I go on?", "flow": "f1"})
-    monkeypatch.setattr(search_listing, "fast_pass", lambda *a, **k: (_ for _ in ()).throw(AssertionError("ran")))
-    monkeypatch.setitem(routing._last, "said", "w_the cheaper one")
-    got = acts_tasks.run("listings", {"query": "w_car"})
-    assert got.status == "ok" and got.data["asked"] == "w_shall I go on?"

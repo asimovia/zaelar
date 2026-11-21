@@ -167,3 +167,18 @@ def test_an_event_reaches_its_stream_worker_and_a_waiting_task_whole(monkeypatch
     monkeypatch.setattr(worker_api_resume, "resume_soon", lambda task, answer, src="": answers.append(answer["answer"]))
     pump.obey(ev, {"as": route.RESUME, "by": "row", "task": "t-9"}, 0.0)
     assert answers and answers[0].endswith(TWELVE)
+
+
+def test_a_hunt_like_an_open_one_opens_its_own_sheet(monkeypatch):
+    """S2/S3: no door joins a new hunt to an open flow by its words — the model names an open task by its #number."""
+    import asyncio
+
+    from nucleo.acts import search_listing
+    from nucleo.errands import open_flows
+    monkeypatch.setattr(open_flows, "candidates", lambda: [{"id": "f1", "request": "find me a used car under 12000",
+                                                            "sheet": "s_old"}])
+    born = []
+    monkeypatch.setattr(search_listing, "_born", lambda asked: born.append(asked) or (7, "s_new"))
+    monkeypatch.setattr(search_listing, "fast_pass", lambda q, **kw: {"delivered": True, "n": 1, "sheet": kw["new_sheet"]})
+    got = asyncio.run(search_listing.hunt("find me a used car under 12000", {"query": "used car"}))
+    assert born and got["res"]["sheet"] == "s_new", "a new hunt has its own sheet"

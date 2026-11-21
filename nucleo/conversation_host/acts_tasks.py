@@ -193,11 +193,7 @@ def _listings(args: dict) -> ToolResult:
     if not str(args.get("query") or "").strip():
         return ToolResult("failed", {"reason": "no_query"})
     got = asyncio.run(_on_engine_loop(search_listing.hunt(routing.said() or str(args["query"]), args)))
-    res, kind = got.get("res") or {}, got.get("kind")
-    if kind == "asked":
-        return ToolResult("ok", {"joined": "a search of his that waits for his yes", "asked": got.get("question")})
-    if kind == "skipped":
-        return ToolResult("failed", {"reason": "his stop covers this search"})
+    res = got.get("res") or {}
     rows = str(res.get("ctx") or "")[:LISTING_ROWS_CHARS]
     fact = {"found": int(res.get("n") or 0), "on_his_results_sheet": bool(res.get("delivered")),
             "deep_search_started": bool(res.get("escalated") or res.get("pending")), "rows": rows or None}

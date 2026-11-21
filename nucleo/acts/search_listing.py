@@ -107,40 +107,23 @@ def _verdict(res: dict) -> str:
 
 
 async def hunt(asked_text: str, args: dict) -> dict:
-    """The hunt with no face (INI-078 F2 7c): join an open flow or start one, run the fast pass up to
-    `FAST_PASS_BUDGET_S`, and return the fact — `{"kind", "res", "question"?}`. `kind`: `joined` (a live hunt took it as a
-    refinement), `skipped` (the turn's stop covers it), `asked` (it joined an errand parked on his yes: `question`),
-    `late` (the pass outlived the budget and still writes its sheet), `done` (`res` is the pass's verdict). The rows go
-    to the results sheet, shown by the pass; who says what was found is the caller's."""
+    """The hunt with no face (INI-078 F2 7c): start its flow, run the fast pass up to `FAST_PASS_BUDGET_S`, and return
+    the fact — `{"kind", "res"}`. `kind`: `late` (the pass outlived the budget and still writes its sheet), `done`
+    (`res` is the pass's verdict). Nothing is joined to an open flow by likeness (INI-078 segregation S2/S3): the model
+    names an open task by its #number, so a hunt that reaches here is a new one, with its own sheet. The rows go to the
+    results sheet, shown by the pass; who says what was found is the caller's."""
     import asyncio
-
-    from nucleo.errands import open_flows as _flow
 
     from nucleo.errands import launches as _launches
     from nucleo.acts.errand import whole_request
     operator_text = whole_request(str(asked_text or ""))   # V2-844 F1a: never the cut turn's tail
-    # V2-784 — the open flow this hunt belongs to: a live worker takes it as a refinement, a pass in flight or just
-    # delivered is re-run into ITS sheet. Only a new flow mints a sheet.
     from nucleo import matching
     asked = operator_text if matching.content_words(operator_text) else str(args.get("query") or "")   # «Okay.» names nothing
-    joined = await _flow.join(asked)
-    empty = {"delivered": False, "n": 0, "escalated": 0, "ctx": "", "sheet": joined.get("sheet", "")}
-    if joined.get("injected"):
-        return {"kind": "joined", "res": {**empty, "pending": True, "joined": joined["flow"]}}
-    if joined.get("stopped") or joined.get("card"):
-        # V2-844 F2: the turn's stop covers this hunt — nothing is relaunched and nothing is promised.
-        return {"kind": "skipped", "res": {**empty, "pending": False, "joined": joined["flow"],
-                                           "stopped": bool(joined.get("stopped")), "card": bool(joined.get("card"))}}
-    if joined.get("absorbed"):
-        # V2-843 — his words joined an errand PARKED on his yes: nothing is relaunched, the question is asked again.
-        return {"kind": "asked", "question": str(joined.get("question") or ""),
-                "res": {**empty, "pending": False, "joined": joined["flow"]}}
-    inherit = str(joined.get("sheet") or "")
-    errand_id, new_sheet = (0, "") if inherit else _born(asked)
-    lid = _launches.opened(operator_text or str(args.get("query") or ""), inherit or new_sheet)
+    errand_id, new_sheet = _born(asked)
+    lid = _launches.opened(operator_text or str(args.get("query") or ""), new_sheet)
     task = asyncio.ensure_future(asyncio.to_thread(
         fast_pass, str(args.get("query") or ""), price_max=args.get("price_max"), price_min=args.get("price_min"),
-        condition=str(args.get("condition") or "").strip(), operator_text=operator_text, sheet=inherit,
+        condition=str(args.get("condition") or "").strip(), operator_text=operator_text, sheet="",
         new_sheet=new_sheet, errand_id=errand_id))
     task.add_done_callback(lambda _t: _launches.closed(lid))   # by then its delivery or escalation carries it
     done, _pending = await asyncio.wait({task}, timeout=FAST_PASS_BUDGET_S)

@@ -33,21 +33,3 @@ def lexical(text: str, pool: list[dict]) -> dict | None:
     """The open flow whose request `text` IS (containment both ways), or None."""
     from nucleo.matching import same_errand
     return next((c for c in pool if same_errand(text, str(c.get("request") or ""))), None)
-
-
-async def join(text: str) -> dict:
-    """The listing door: `{flow, sheet}` when this request is an open flow's said again and that flow has a sheet (the
-    pass re-runs into it); `{}` for a new flow. A flow that is parked on his yes, ended or delivered is never joined by
-    likeness: that is a new request, and the dispatcher's own continuity reads it. Never raises."""
-    try:
-        from nucleo import sheets as _sheets
-        from nucleo.acts.errand import whole_request
-        words = whole_request(text)
-        hit = lexical(words, candidates()) if str(words or "").strip() else None
-        if hit is None or hit.get("parked") or hit.get("ended") or hit.get("delivered"):
-            return {}
-        sheet = str(_sheets.sheet_of_flow(hit) or "")
-        return {"flow": str(hit["id"]), "sheet": sheet} if sheet else {}
-    except Exception as e:  # noqa: BLE001
-        logger.debug(f"open_flows: the listing's flow unread, a new one — {type(e).__name__}: {e}")
-        return {}
