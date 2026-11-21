@@ -85,6 +85,13 @@ def test_a_full_name_is_found_however_it_is_said(book, said):
     assert _names(d.resolve(said)) == ["Antonio Garbí Montalvo"]
 
 
+@pytest.mark.parametrize("said", ["Antonio Garbí Montalvo", "antonio garbi"])
+def test_the_long_form_finds_a_row_saved_with_the_short_one(book, said):
+    cd, d, _a = book
+    _put(cd, {"name": "Toni Garbí Montalvo"}, {"name": "Antonio Rius"})
+    assert _send(said)["one"]["name"] == "Toni Garbí Montalvo"
+
+
 def test_the_cards_search_finds_the_name_as_said_and_shows_those_rows(book):
     cd, _d, _a = book
     _put(cd, {"name": "Antonio Garbí Montalvo"}, {"name": "Toni Ferrer"})

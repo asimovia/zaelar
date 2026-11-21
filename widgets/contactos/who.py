@@ -71,10 +71,10 @@ def word(w: str, t: str, slip_min: int = SLIP_MIN) -> float:
         return STEM
     if len(w) >= STEM_MIN and len(t) - len(w) >= 4 and t.endswith(w):
         return INSIDE
-    if len(sw) >= INSIDE_MIN and len(st) > len(sw) and sw in st:
-        return INSIDE                                 # the short form inside the name: «Toni» of «Antonio»
     if len(t) >= ENDING_MIN and 0 < len(w) - len(t) <= ENDING_MAX and (w.startswith(t) or sw.startswith(st)):
         return STEM                                   # the name with an ending: a plural, a possessive
+    if min(len(sw), len(st)) >= INSIDE_MIN and (sw in st[1:] or st in sw[1:]):
+        return INSIDE                                 # one form inside the other, past its start: «Toni» · «Antonio»
     if min(len(sw), len(st)) >= slip_min - 1 and min(len(w), len(t)) >= slip_min and _slip(sw, st):
         return SLIP
     return 0.0
