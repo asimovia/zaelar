@@ -41,3 +41,45 @@ def test_the_send_owner_reads_his_words_in_the_turns_trace(monkeypatch):
         return True, "w_line"
     monkeypatch.setattr(owner, "take", take)
     assert asyncio.run(routing.HostRoute().take("acct", "w_yes")) == "w_line" and seen == ["T_w1"]
+
+
+def test_on_a_real_engine_loop_in_another_thread_the_order_runs_in_its_trace(monkeypatch):
+    """The engine's loop is another thread: what the order runs there carries the trace of the turn that ordered it,
+    from the host's act door (`HostTools.call` puts it in the turn's trace) to the coroutine on that loop."""
+    import threading
+
+    from nucleo import dispatch
+    from nucleo.conversation_host import acts, acts_widget, turns
+    from voice import trace
+    loop = asyncio.new_event_loop()
+    engine = threading.Thread(target=loop.run_forever, daemon=True)
+    engine.start()
+    seen = []
+
+    async def on_the_engine():
+        seen.append((trace.current(), threading.current_thread() is engine))
+        return {"ok": True}
+    try:
+        monkeypatch.setattr(dispatch, "_LOOP", loop)
+        monkeypatch.setattr(turns, "current", lambda: "T_w1")
+        monkeypatch.setattr(acts.HostTools, "_call", lambda *a, **k: acts_widget._on_engine_loop(on_the_engine()))
+        asyncio.run(acts.HostTools().call("widget_action", {}, effect_id="e1", idempotency_key="k1",
+                                          deadline_mono_ms=0))
+    finally:
+        loop.call_soon_threadsafe(loop.stop)
+        engine.join(2)
+    assert seen == [("T_w1", True)]
+
+
+def test_an_events_run_gives_its_acts_its_own_trace(monkeypatch):
+    """An event's run (a message, a cron) has a trace of its own: its acts run in it, never in none."""
+    from nucleo.conversation_host import turns
+    from voice import trace
+    monkeypatch.setattr(trace, "begin", lambda *a, **k: "T_ev1")
+    monkeypatch.setitem(turns._in_course, "run", "")
+    turns.listen("conv_run", "started", {"refs": {"run": "run_ev1"}, "origin": "w_message"})
+    try:
+        assert turns.current() == "T_ev1"
+    finally:
+        turns.listen("conv_run", "ended", {"refs": {"run": "run_ev1"}})
+    assert turns.current() == ""

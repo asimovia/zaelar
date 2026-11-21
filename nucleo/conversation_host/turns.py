@@ -169,19 +169,18 @@ def _step(run: str, tool: str) -> None:
 
 
 def current() -> str:
-    """The turn of the run in course, "" when none: the trace its acts run in, so what they start is the order's."""
+    """The turn of the run in course (an event's run: its own trace), "" when none: what its acts start is the order's."""
     with _lock:
-        return _run_first.get(_in_course["run"], "")
+        return _run_first.get(_in_course["run"], "") or _event_trace.get(_in_course["run"], "")
 
 
 def _event_started(run: str, origin: str) -> None:
     """An event's run opens a trace of its own, with its origin (a message, a cron, a cluster) and no words of his."""
     import contextvars
-
-    from voice import trace
-    tid = contextvars.copy_context().run(trace.begin, origin, origin)
+    tid = contextvars.copy_context().run(__import__("voice.trace", fromlist=["x"]).begin, origin, origin)
     with _lock:
         _keep(_event_trace, run, tid)
+        _in_course["run"] = run
 
 
 def _ended(run: str, p: dict) -> None:
