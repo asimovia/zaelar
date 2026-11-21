@@ -20,17 +20,6 @@ def _a_show_sources(action, payload, q, db, contacts, now) -> dict:
     return d
 
 
-def _a_sync_source(action, payload, q, db, contacts, now) -> dict:
-    # ONE pass of ONE source, on demand («bring my Telegram contacts now»); the permanent half is `sources.tick`.
-    from . import sources
-    res = sources.sync_now(str(payload.get("source") or "").strip().lower())
-    if not res.get("ok"):
-        return {**_d.view_data(q), **res}
-    d = _d.view_data(q)
-    d.update({"ok": True, "result": res})
-    return d
-
-
 def _a_show_contact_members(action, payload, q, db, contacts, now) -> dict:
     c = _d._find(db, payload.get("contactId"))
     if not c or c.get("kind") != "group":
@@ -105,26 +94,6 @@ def _a_show_contact(action, payload, q, db, contacts, now) -> dict:
     kids = [_d._public(x) for x in db.get("contacts", []) if x.get("parentId") == c["id"]]
     d = _d.view_data(q)
     d.update({"ok": True, "result": {"contact": _d._public(c), "linked": kids}})
-    return d
-
-
-def _a_set_auto(action, payload, q, db, contacts, now) -> dict:
-    # V2-701 — «eso debería quedarse conectado de forma permanente». The switch is the state; the
-    # background tick reads it every pass, so turning it off stops the next one with nothing to cancel.
-    on = _d._truthy(payload.get("auto"), default=True)
-    # V2-714 — ONE switch per source, the same for both halves of it. Naming a source routes to that source;
-    # naming none keeps meaning Google, which is what every existing caller means.
-    src = str(payload.get("source") or "").strip().lower()
-    if src:
-        from . import sources as _src
-        res = _src.set_auto(src, on)
-        d = _d.view_data(q)
-        d.update({"ok": bool(res.get("ok")), "result": res} if res.get("ok") else res)
-        return d
-    db.setdefault("sync", {}).update({"auto": on, "declined": not on})   # his «off» also stops the daily read
-    _d.store.save(_d.WIDGET_ID, db)
-    d = _d.view_data(q)
-    d.update({"ok": True, "result": {"auto": on}})
     return d
 
 

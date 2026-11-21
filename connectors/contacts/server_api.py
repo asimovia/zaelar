@@ -4,9 +4,7 @@ Checked free first (`grep -rn '"/api/contacts' server/ connectors/ widgets/`) �
 answers that prefix. Its four routes (status · `POST /api/contacts/connect` · callback · disconnect) are the
 shared account flow, `connectors/oauth_routes.py`, with one fixed provider.
 
-The IMPORT itself is deliberately NOT here. It is the widget's own declared action
-(`widgets/contactos` → `import_google`), because the merge belongs to whoever owns the store, and because
-an action is the thing the voice can reach — an HTTP endpoint is not.
+The IMPORT is the widget's (the merge belongs to whoever owns the store): a consent calls its one door.
 """
 from fastapi import APIRouter
 
@@ -18,7 +16,9 @@ router = APIRouter()
 DOOR = Door(prefix="/api/contacts", family="contactos", oauth=oauth, providers=providers,
             status=lambda: {"ok": True, "providers": oauth.status()},
             label="Google Contacts", provider="google-contacts",
-            done="Go back to the Contacts app and press «Sync contacts».", done_key="oauth.contacts.done",
-            error_key="oauth.err.google", error_default="Google returned an error: {error}", error_status=400)
+            done="Your Google contacts are coming into the Contacts widget.", done_key="oauth.contacts.done",
+            error_key="oauth.err.google", error_default="Google returned an error: {error}", error_status=400,
+            on_connected=lambda _p: __import__("widgets.contactos.sources", fromlist=["_"]).import_in_background(
+                ("google-contacts",)))
 status, connect, callback, disconnect = register(router, DOOR)
 _page = DOOR.page

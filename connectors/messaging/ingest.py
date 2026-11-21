@@ -107,7 +107,9 @@ def publish_msg(platform: str, msg: dict) -> None:
 
 def publish_status(platform: str, status: str, qr=None, detail=None) -> None:
     """Publish a platform's link state + QR + human message (`detail`) (the widget reflects it in its card: loader
-    with detail while connecting, error card with reason if it fails)."""
+    with detail while connecting, error card with reason if it fails). An account seen linked tells the contacts."""
+    if status == "connected":
+        __import__("widgets.contactos.sources", fromlist=["_"]).linked_now(platform)
     try:
         bus.emit_sync(TOPIC_STATUS, {"platform": platform, "status": status, "qr": qr, "detail": detail})
     except Exception:

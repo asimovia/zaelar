@@ -270,21 +270,12 @@ def test_a_file_over_the_cap_is_not_downloaded_by_itself_on_either_platform(tmp_
 
 # ── the directory is not bounded by the window ────────────────────────────────────────────────────────────────
 
-def test_a_message_from_nobodys_row_marks_the_source_owed_a_read(tmp_path, monkeypatch):
+def test_a_message_from_nobodys_row_creates_no_contact(tmp_path, monkeypatch):
+    """The directory is filled from the platform's book on every pass of a linked source, never from who writes."""
     from widgets import directory, store
     monkeypatch.setattr(store, "DATA_DIR", str(tmp_path))
     monkeypatch.setenv("ZAELAR_WORKSPACE", str(tmp_path))
-    from widgets.contactos import data, sources
-    db = data.load_db()
-    sources.state(db)["whatsapp"].update({"last": time.time() - 60, "partial": False})
-    sources.state(db)["telegram"].update({"last": time.time() - 60, "partial": False, "declined": True})
-    store.save(data.WIDGET_ID, db)
+    from widgets.contactos import data
     msg = {"chatId": "34600112233@s.whatsapp.net", "senderId": "34600112233@s.whatsapp.net", "from": "Odile Varga"}
     assert directory.note_inbound("whatsapp", msg) is False, "it never creates a contact itself"
-    db = data.load_db()
-    assert db["contacts"] == [] and db["sources"]["whatsapp"]["partial"] is True
-    monkeypatch.setattr(sources, "connected", lambda s: True)
-    assert sources._due("whatsapp", {**db["sources"]["whatsapp"], "last": time.time() - 1000}, time.time())
-    directory.note_inbound("telegram", {"chatId": "600000020", "senderId": "600000020", "from": "Marek"})
-    assert data.load_db()["sources"]["telegram"]["partial"] is False, "a source he switched off is left alone"
-    directory.note_inbound("whatsapp", {**msg, "isGroup": True})
+    assert data.load_db()["contacts"] == []

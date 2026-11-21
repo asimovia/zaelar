@@ -287,8 +287,7 @@ from .group_actions import (  # noqa: E402,F401
     _a_create_group, _a_rename_group, _a_delete_group, _a_add_to_group, _a_set_agent, _a_message_group)
 from .person_actions import _a_merge_contacts, _a_split_contact  # noqa: E402,F401
 from .views import (  # noqa: E402,F401
-    _a_show_sources, _a_sync_source, _a_show_contact_members, _a_show_view, _a_show_contact, _a_set_auto,
-    _a_sync_contacts)
+    _a_show_sources, _a_show_contact_members, _a_show_view, _a_show_contact, _a_sync_contacts)
 
 
 # `apply_action` is a table lookup; the contract gate reads the table's keys (`widgets/validator._table_actions`).
@@ -311,7 +310,6 @@ ACTIONS = {
     "set_flag": _a_set_flag,
     "restore_contact": _a_restore_contact,
     "hide_contact": _a_hide_contact,
-    "sync_source": _a_sync_source,
     "link_contact": _a_link_contact,
     "create_group": _a_create_group,
     "rename_group": _a_rename_group,
@@ -322,7 +320,6 @@ ACTIONS = {
     "show_contact_members": _a_show_contact_members,
     "show_view": _a_show_view,
     "show_contact": _a_show_contact,
-    "set_auto": _a_set_auto,
     "sync_contacts": _a_sync_contacts,
     "import_google": _a_sync_contacts,
     "a2a_request": _a2a.ACTIONS["a2a_request"],
@@ -368,6 +365,8 @@ def on_start() -> dict:
         owed = sources.owe_members(db)       # groups whose members became rows before members were kept back
         store.save(WIDGET_ID, db)            # change-gated: a store already folded and current is not rewritten
     people = [c for c in db.get("contacts") or [] if model.kind(c.get("kind")) in identity.PEOPLE]
+    if not people:                           # an empty directory (a fresh install, the start a reset ends in)
+        sources.import_in_background()       # …is filled from every linked source, agent running or not
     return {"people": sum(1 for c in people if not c.get("hidden")), "kept_back": sum(1 for c in people if c.get("keptBy")),
             "folded_now": got["merged"], "folded_in_all": len(db.get("merged") or {}),
             "numbers_kept_back_now": kept, "sources_owed_a_read": owed}

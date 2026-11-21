@@ -212,16 +212,15 @@ def test_he_says_two_rows_are_one_person_and_can_take_them_apart_again(book):
 
 # ── once a day, and only a source he has imported from ────────────────────────────────────────────────────────
 
-def test_a_linked_source_is_read_by_itself_and_then_once_a_day(book, monkeypatch):
+def test_a_linked_source_is_read_on_its_cadence(book, monkeypatch):
     from widgets.contactos import sources
     monkeypatch.setattr(sources, "connected", lambda s: True)
     now = time.time()
-    assert sources._due("whatsapp", {"on": False, "last": 0.0}, now), "linking the account is the ask"
-    assert not sources._due("whatsapp", {"on": False, "last": now - 3600}, now)
-    assert sources._due("whatsapp", {"on": False, "last": now - 90000}, now)
-    assert sources._due("whatsapp", {"on": True, "last": now - 1000}, now)
+    assert sources._due("whatsapp", {"last": 0.0}, now), "linking the account is the ask"
+    assert not sources._due("whatsapp", {"last": now - 60}, now)
+    assert sources._due("whatsapp", {"last": now - sources.EVERY_S - 1}, now)
     monkeypatch.setattr(sources, "connected", lambda s: False)
-    assert not sources._due("whatsapp", {"on": False, "last": now - 90000}, now), "a source that is not linked"
+    assert not sources._due("whatsapp", {"last": 0.0}, now), "a source that is not linked"
 
 
 def test_a_rule_he_set_about_the_folded_row_is_a_rule_about_the_person(book):

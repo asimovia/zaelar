@@ -384,32 +384,14 @@ def test_a_dormant_account_is_never_polled(ct, monkeypatch):
     assert called == []
 
 
-def test_the_switch_being_OFF_stops_the_next_pass(ct, monkeypatch):
+def test_a_linked_account_is_read_with_no_switch_and_only_PULLED(ct, monkeypatch):
+    """2026-11-21: linking the account is the ask — no switch for the inbound half; nothing of his is sent by a
+    pass he did not press (the outbound half is his button, `sync_contacts`)."""
     _linked(monkeypatch)
-    from widgets import store
-    store.save(ct.WIDGET_ID, {"contacts": [], "next_id": 1, "sync": {"auto": False, "declined": True}})
-    called = []
-    monkeypatch.setattr(gcontacts, "sync", lambda *a, **k: called.append(1))
-    gcontacts.tick(_Ctx())
-    assert called == [], "there is nothing to cancel: the tick reads the state every pass"
-
-
-def test_a_linked_account_never_read_is_read_at_once_and_only_PULLED(ct, monkeypatch):
-    """The rule every linked source follows (`sources._due`): read at once when never read, then daily, and his
-    off stops it. 2026-11-21: after a reset emptied the directory, Telegram and WhatsApp came back by themselves
-    and Google never did — this tick waited for a `last` the reset had erased."""
-    _linked(monkeypatch)
-    from widgets import store
-    store.save(ct.WIDGET_ID, {"contacts": [], "next_id": 1})
     calls = []
     monkeypatch.setattr(gcontacts, "sync", lambda db, **k: calls.append(k) or {"ok": True})
     gcontacts.tick(_Ctx())
     assert len(calls) == 1 and calls[0]["pull_only"] is True, calls
-
-
-def test_switching_google_off_is_remembered_as_declined(ct):
-    ct.apply_action("set_auto", {"auto": False})
-    assert ct.load_db()["sync"]["declined"] is True
 
 
 def test_a_pass_that_just_ran_does_not_run_again(ct, monkeypatch):
@@ -418,49 +400,27 @@ def test_a_pass_that_just_ran_does_not_run_again(ct, monkeypatch):
     import time
     _linked(monkeypatch)
     from widgets import store
-    store.save(ct.WIDGET_ID, {"contacts": [], "next_id": 1, "sync": {"auto": True, "last": time.time()}})
+    store.save(ct.WIDGET_ID, {"contacts": [], "next_id": 1, "sync": {"last": time.time()}})
     called = []
     monkeypatch.setattr(gcontacts, "sync", lambda *a, **k: called.append(1))
     gcontacts.tick(_Ctx())
     assert called == []
 
 
-def test_a_due_pass_runs_and_SAVES(ct, monkeypatch):
-    _linked(monkeypatch)
-    from widgets import store
-    store.save(ct.WIDGET_ID, {"contacts": [], "next_id": 1, "sync": {"auto": True, "last": 0.0}})
-    monkeypatch.setattr(gcontacts, "sync", lambda db, **k: {"ok": True, "added": 1})
-    ctx = _Ctx()
-    gcontacts.tick(ctx)
-    assert len(ctx.saved) == 1, "a pass nobody saves is a pass the open app never sees"
-
-
 def test_a_FAILED_pass_still_moves_the_clock(ct, monkeypatch):
     """Otherwise a dead token makes every tick retry immediately, from a loop nobody is watching, against
     somebody else's rate limit."""
     _linked(monkeypatch)
-    from widgets import store
-    store.save(ct.WIDGET_ID, {"contacts": [], "next_id": 1, "sync": {"auto": True, "last": 0.0}})
     monkeypatch.setattr(gcontacts, "sync", lambda db, **k: {"ok": False, "error": "Google dice que no"})
-    ctx = _Ctx()
-    gcontacts.tick(ctx)
-    assert ctx.saved[0]["sync"]["last"] > 0
-    assert "Google dice que no" in ctx.saved[0]["sync"]["lastResult"]["error"]
-
-
-def test_the_switch_is_a_STATE_the_store_keeps(ct):
-    assert ct.apply_action("set_auto", {"auto": False})["ok"] is True
-    assert ct.load_db()["sync"]["auto"] is False
-    ct.apply_action("set_auto", {"auto": True})
-    assert ct.load_db()["sync"]["auto"] is True
+    gcontacts.tick(_Ctx())
+    saved = ct.load_db()["sync"]
+    assert saved["last"] > 0 and "Google dice que no" in saved["lastResult"]["error"]
 
 
 def test_the_card_is_told_how_often_it_runs(ct):
     """A label with a hardcoded «cada minuto» is one nobody keeps in step with the scheduler."""
     s = gcontacts.sync_state({})
-    assert s["every"] == int(gcontacts.PERIOD)
-    # 2026-10-04 — off until he asks («no debemos forzar nada en background»); permanent once he says yes.
-    assert s["auto"] is False, "an import nobody asked for must not start on its own"
+    assert s["every"] == int(gcontacts.PERIOD) and "auto" not in s, "no switch: linking it is the ask"
 
 
 def test_the_widget_declares_the_cycle_or_nothing_ever_calls_tick():

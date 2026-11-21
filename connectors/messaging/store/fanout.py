@@ -3,11 +3,8 @@
 
 
 def _to_directory(platform: str, items: list[dict]) -> None:
-    """V2-683 — passive channel learning (V2-052's closed decision 3). Every inbound already carries an
-    identity for its platform, so the contacts the operator really talks to build their own channel list and
-    «escríbele a Iván» stops needing to ask which app. The whole decision — who this is, whether it is
-    unambiguous, what may be written — lives in `widgets/directory.py`; this is only the fan-out, in the
-    same place and with the same stance as `_to_memory`/`_to_archive`: best-effort, never breaks the store."""
+    """V2-683 — passive channel learning: every inbound carries an identity for its platform, so the people he
+    talks to build their own channel list. The decision lives in `widgets/directory.py`; this is the fan-out."""
     if not items:
         return
     try:

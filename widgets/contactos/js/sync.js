@@ -79,30 +79,14 @@ export function renderConnectors(el, host, data, ctx){
   host.appendChild(wrap);
 }
 
-// ── THE IMPORT SWITCH (V2-714) — one control, both halves, and an honest count ──────────────────────────
-// «No vamos a poner dos opciones, quieres sincronizar esto, lo otro. En el momento en que le damos a
-// conectar… un botón de sincronizar que se queda activado y se queda en modo sincronizando en tiempo real.»
-// So: ONE switch. It brings contacts AND groups, and turning it on runs a pass immediately rather than
-// promising one in fifteen minutes.
+// ── WHAT A LINKED SOURCE BROUGHT (2026-11-21) — linking it is the ask: no switch, no import button ─────────
 export function renderImportBox(el, data, ctx, p, redraw){
   const st = (p.sync || {});
-  const on = !!st.on;
   const box = el2("div","ctsync");
   const top = el2("div","ctsynctop");
   top.appendChild(svgEl(ICO_SYNC));
   top.appendChild(el2("b", null, tt("import_title", null, "Contactos y grupos")));
   box.appendChild(top);
-
-  const line = el2("div","ctsyncfoot");
-  const sw = el2("button","ctbtn" + (on ? " primary" : ""),
-                 on ? tt("import_on", null, "Sincronizando") : tt("import_off", null, "Sincronizar"));
-  sw.onclick = async ()=>{
-    sw.disabled = true;
-    sw.textContent = tt("import_working", null, "Trayendo…");
-    redraw(await ctx.action("set_auto", {source: p.id, auto: !on}));
-  };
-  line.appendChild(sw);
-  box.appendChild(line);
 
   // WHAT IT BROUGHT, and — for the one platform that cannot be asked for everything — what that number
   // does NOT mean. A count presented as a total when it is not is a promise the card cannot keep.
@@ -122,22 +106,6 @@ export function renderSyncBox(el, data, ctx, sync, redraw){
   top.appendChild(svgEl(ICO_SYNC));
   top.appendChild(el2("b",null, tt("sync_title", null, "Sincronización")));
   box.appendChild(top);
-
-  // THE CONTROL IS A STATE, NOT AN ERRAND (V2-701). His words: «el tema de la sincronización de contactos
-  // no es algo que deberíamos hacer de forma puntual… eso debería quedarse conectado de forma permanente».
-  // A button is a one-off by its very grammar, so the button stopped being the control and became the
-  // switch that is either on or off — and while it is on, the engine keeps them in step on its own.
-  const on = sync.auto !== false;
-  const row = el2("button","ctswrow" + (on?" on":""));
-  row.appendChild(el2("span","ctsw"));
-  row.appendChild(el2("span","ctswtx", tt("sync_auto", null, "Mantener sincronizado con Google")));
-  const every = Math.max(1, Math.round((sync.every || 60)/60));
-  row.appendChild(el2("span","ctswsub", on
-    ? tt("sync_auto_on", {min: every}, every === 1 ? "comprueba cada minuto"
-                                                   : "comprueba cada " + every + " minutos")
-    : tt("sync_auto_off", null, "apagada")));
-  row.onclick = ()=>{ sync.auto = !on; redraw(null); ctx.action("set_auto", {auto: !on}).then(redraw); };
-  box.appendChild(row);
 
   // ONE state, said in one line — his own simplification: «quizás quieras simplificar esto de Google a
   // nosotros y nosotros a Google, quitando esas opciones y solo dejando la sincronización activa».
@@ -165,12 +133,11 @@ export function renderSyncBox(el, data, ctx, sync, redraw){
   }
 
   const foot = el2("div","ctsyncfoot");
-  // «Sincronizar ahora» is impatience, not the feature: the switch above is what keeps them in step. It is
-  // still a BUTTON, the same `ctbtn` as «Gestionar» above it — one look for every action on this panel.
+  // The one control (2026-11-21): what he changed here goes to Google — what Google holds comes in by itself.
   // V2-887 step 9: a pass under way survives a tab switch and a re-render — the element keeps it until the action
   // answers, and the engine says so too (`sync.running`); pressed once, it cannot be pressed twice.
   const busy = !!el._ctSyncing || !!sync.running;
-  const go = el2("button","ctbtn", busy ? tt("syncing", null, "Sincronizando…") : tt("sync_now", null, "Sincronizar ahora"));
+  const go = el2("button","ctbtn", busy ? tt("syncing", null, "Sincronizando…") : tt("sync_to_google", null, "Sincronizar con Google"));
   go.disabled = busy;
   go.onclick = async()=>{
     el._ctSyncing = true; go.disabled = true; go.textContent = tt("syncing", null, "Sincronizando…");

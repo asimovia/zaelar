@@ -2,7 +2,6 @@
 
   · «sync my contacts» with Google not reachable answered a bare error: now the card still answers with what it holds
     and the reply OFFERS the sources that are connected — importing from one of them is his choice;
-  · `sync_source` naming a source that is not linked offers the linked ones, and imports nothing on his behalf;
   · add / remove / set_channel / update / create_group declare their `done_when`, and each reads the real outcome.
 """
 from __future__ import annotations
@@ -30,16 +29,6 @@ def test_a_sync_without_google_keeps_the_card_and_offers_the_connected_sources(c
     assert "Telegram" in r["message"], "the offer names the connected source"
     assert r["count"] == 1 and "sync" in r, "the card's view travels with the refusal"
     assert [c["name"] for c in cd.load_db()["contacts"]] == ["Rowan Example"], "nothing imported on his behalf"
-
-
-def test_a_named_source_that_is_not_linked_offers_the_linked_ones(cd, monkeypatch):
-    from widgets.contactos import sources
-    asked = []
-    monkeypatch.setattr(sources, "_payload", lambda s: asked.append(s) or {"ok": True, "contacts": []})
-    r = cd.apply_action("sync_source", {"source": "whatsapp"})
-    assert r["ok"] is False and r["error"] == "source_not_connected" and r["offer"] == ["telegram"]
-    assert "WhatsApp" in r["message"] and "Telegram" in r["message"]
-    assert asked == [], "no other source is asked on his behalf"
 
 
 def test_with_nothing_linked_there_is_no_offer(cd, monkeypatch):

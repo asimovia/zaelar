@@ -58,17 +58,15 @@ def _chat(name, jid=JID, phone="", **kw):
 
 # ── a linked source feeds the directory by itself ─────────────────────────────────────────────────────────────
 
-def test_a_linked_source_never_read_is_due_and_his_off_stops_it(book, monkeypatch):
+def test_a_linked_source_is_read_on_its_cadence_with_no_switch(book, monkeypatch):
     from widgets.contactos import sources
     monkeypatch.setattr(sources, "connected", lambda s: s == "whatsapp")
     now = time.time()
-    assert sources._due("whatsapp", {"on": False, "last": 0.0}, now)
-    assert not sources._due("telegram", {"on": False, "last": 0.0}, now), "not linked: never read"
-    assert not sources._due("whatsapp", {"on": False, "last": 0.0, "declined": True}, now), "his off is his"
-    assert not sources._due("whatsapp", {"on": False, "last": 0.0, "tried": now - 60}, now), "a try waits its turn"
-    assert sources._due("whatsapp", {"on": False, "last": now - 1000, "partial": True}, now), "a partial book is asked again soon"
-    assert not sources._due("whatsapp", {"on": False, "last": now - 1000, "partial": False}, now)
-    assert sources._due("whatsapp", {"on": False, "last": now - 90000}, now)
+    assert sources._due("whatsapp", {"last": 0.0}, now)
+    assert not sources._due("telegram", {"last": 0.0}, now), "not linked: never read"
+    assert not sources._due("whatsapp", {"last": 0.0, "tried": now - 60}, now), "a try waits its turn"
+    assert not sources._due("whatsapp", {"last": now - 60}, now)
+    assert sources._due("whatsapp", {"last": now - sources.EVERY_S - 1}, now)
 
 
 def test_the_tick_reads_a_linked_source_nobody_asked_for_and_her_chat_becomes_a_channel(book, monkeypatch):
@@ -90,15 +88,37 @@ def test_the_tick_reads_a_linked_source_nobody_asked_for_and_her_chat_becomes_a_
     her = next(c for c in people if c["name"] == "Odile Varga Lund")
     assert [ch["platform"] for ch in her["channels"]] == ["whatsapp"] and her["email"] == "odile@example.org"
     st = book.load_db()["sources"]["whatsapp"]
-    assert st["last"] > 0 and st["partial"] is True and st["on"] is False
+    assert st["last"] > 0 and st["partial"] is True
     sources.tick(None)
     assert asked == ["whatsapp"], "the next tick does not ask again at once"
 
 
-def test_switching_a_source_off_is_remembered(book, monkeypatch):
-    from widgets.contactos import sources
-    assert sources.set_auto("whatsapp", False)["on"] is False
-    assert book.load_db()["sources"]["whatsapp"]["declined"] is True
+def test_one_door_imports_every_linked_source_and_a_link_reads_a_book_never_read(book, monkeypatch):
+    """2026-11-21: linking a source IS the ask — one door (`import_linked`), called on a link, at a start with an
+    empty directory (the one a reset ends in), never on a timer."""
+    from widgets.contactos import gcontacts, sources
+    monkeypatch.setattr(sources, "connected", lambda s: s == "whatsapp")
+    monkeypatch.setattr(gcontacts, "linked", lambda: True)
+    monkeypatch.setattr(gcontacts, "pull", lambda: {"ok": True, "added": 3})
+    read = []
+    monkeypatch.setattr(sources, "sync_now", lambda s: read.append(s) or {"ok": True, "added": 1})
+    got = sources.import_linked()
+    assert got["google-contacts"]["added"] == 3 and read == ["whatsapp", "meshkore"], (got, read)
+    kicked = []
+    monkeypatch.setattr(sources, "import_in_background", lambda only=(): kicked.append(only))
+    monkeypatch.setattr(sources, "_SEEN", set())
+    sources.linked_now("whatsapp")
+    assert kicked == [("whatsapp",)], "a book never read is read when its account is seen connected"
+    db = book.load_db()
+    sources.state(db)["whatsapp"]["last"] = time.time()
+    book.store.save(book.WIDGET_ID, db)
+    sources._SEEN.clear()
+    sources.linked_now("whatsapp")
+    assert kicked == [("whatsapp",)], "a reconnection of a book already read imports nothing"
+    from widgets.contactos import data
+    kicked.clear()
+    data.on_start()
+    assert kicked == [()], "an empty directory at the start is filled from every linked source"
 
 
 def test_the_name_her_conversation_carried_joins_the_account_to_the_row_of_that_name(book, monkeypatch):

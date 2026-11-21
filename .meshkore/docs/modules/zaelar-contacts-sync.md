@@ -53,12 +53,10 @@ last** — which each row's `updated` records.
 
 ## It stays on
 
-Sync is not a one-off import: once switched on it stays connected, both ways, so the agent and Google
-Contacts mirror each other — including changes made on a phone that syncs to the same Google account.
-
-The control is a **switch**, not a button: a button is a one-off by its grammar, whatever its label says.
-`sync.auto` is the state, `set_auto` writes it (declared, so it is reachable by voice), and
-`widgets/background.py` calls `data.tick` on the manifest's cycle. The period lives in `gcontacts.PERIOD`,
+Sync is not a one-off import: linking the account IS the ask (2026-11-21). The consent reads it at once
+(`sources.import_linked`, the one door, also called at a start with an empty directory), and from then on the
+inbound half stays on with no switch: `widgets/background.py` calls `data.tick` on the manifest's cycle. The one
+control on the card is the outbound half — «Sync with Google» (`sync_contacts`) sends what he changed here. The period lives in `gcontacts.PERIOD`,
 not in the manifest — the scheduler wakes the module far more often than it should talk to Google, so a
 card reopening never triggers a pass and the interval can change in one place. The card reads it from
 `sync_state().every` rather than carrying a number nobody keeps in step.
@@ -158,15 +156,12 @@ A name is never a key. What only he knows he says once: `merge_contacts`.
   are, and only those name a person outright.
 - **Staying in step.** A change on the platform arrives by itself: PUSHED when the connector can tell — the
   WhatsApp bridge reports renames and the phone it learns behind a linked id, and a push only refreshes people
-  already here — and PULLED once a day from every linked source, switch or no switch (the Google look is
-  pull-only while automatic sync is off).
-- **A linked messaging source feeds the directory by itself** (`sources._due`, since 2026-11-18). Linking the
-  account is the ask: WhatsApp, Telegram and the MeshKore clusters are read on the first tick they are seen linked
-  (the engine's start included), again every 15 minutes while the answer is `partial` (a linked device is told its
-  book little by little), then daily. An arriving person that a row already proves becomes a CHANNEL of that row
-  — the row now «has WhatsApp» — and only the others become rows. His «off» for a source
-  (`set_auto(source, False)`) is stored as `declined` and stops the automatic read; a try that brought nothing
-  waits 15 minutes.
+  already here — and PULLED on every pass of a linked source (the Google pass is pull-only; only his button sends).
+- **A linked source feeds the directory by itself** (2026-11-18, one door since 2026-11-21). Linking the account
+  is the ask: `sources.import_linked` reads it when the account is first seen connected with its book never read
+  (`linked_now`, told by the connector's status), at the Google consent, and at a start with an empty directory;
+  then every 15 minutes (`sources._due`). There is no switch for the inbound half. An arriving person that a row
+  already proves becomes a CHANNEL of that row — the row now «has WhatsApp» — and only the others become rows.
 - **The names a conversation carried.** Before a pass is folded in, each arriving person gains the names its own
   conversation has had in the message log (`sources._names_seen`, over `connectors.messaging.archive.chats`), by
   conversation id or by the phone that id is. A name several accounts carry is dropped (the log files his own name

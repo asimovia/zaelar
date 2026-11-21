@@ -23,27 +23,23 @@ lives in `imports.merge_contacts` and this module has no way to override it.
 ## What the platform changes reaches the directory by itself (2026-11-18)
 
 A person renamed on the platform, a number learned behind an account: PUSHED when the connector can tell
-(`contacts_bus.take_pushed`, absorbed as a `refresh` — it only touches people already here), and PULLED once a day
-from every linked source, switch or no switch (`DAILY_S`).
+(`contacts_bus.take_pushed`, absorbed as a `refresh` — it only touches people already here), and PULLED on every
+pass of a linked source.
 
-## A linked source feeds the directory by itself (2026-11-18)
+## A linked source feeds the directory by itself (2026-11-18, 2026-11-21)
 
-Measured on a real directory: 2 705 rows, every one from the address book, with two messaging accounts linked and
-their switches never touched — nobody he writes to was a row, so no row could ever gain a channel and «send her a
-message» found an address only. Linking the account IS the ask: a linked source is read on the first tick after it
-is seen linked (the engine's start included), again soon while its answer is `partial` (a socket that is still
-being told its book), and then daily. A person it brings that a row already proves (a phone, an address, an
-account — `identity.find`) becomes a CHANNEL of that row; only the others become rows. The one way to stop it is
-his: switching a source off (`set_auto(source, False)`) is remembered as `declined`, and a declined source is read
-only when he asks.
+Linking a source IS the ask, and there is no switch to undo it. ONE door, `import_linked`, reads every linked source
+(Google Contacts and the import-only ones) and is called from exactly three places: when a source is linked (the
+Google consent, a messaging account seen connected for the first time), at the end of a reset, and at the engine's
+start when the directory is empty. After that the inbound half runs on its own cadence (`tick`, every `EVERY_S`). A
+person it brings that a row already proves (a phone, an address, an account — `identity.find`) becomes a CHANNEL of
+that row; only the others become rows.
 
 ## The directory is not bounded by the message window
 
 How much of an account's PAST is copied is bounded (`connectors/messaging/history.py`); who is IN the directory
 is not. A pass reads the platform's own book — its address book and every named one-to-one conversation it lists —
-so a person with no message inside the window is still a row. And a message that arrives from an account no row
-holds marks the source as owed a read (`nudge`): she is in the directory within one `EVERY_S`, not at the next
-daily pass.
+so a person with no message inside the window is still a row.
 """
 from __future__ import annotations
 
@@ -59,15 +55,13 @@ KNOWN = ("telegram", "whatsapp", "meshkore")
 #: How long between automatic passes. Generous on purpose: an address book is not a feed, and a pass that
 #: brings nothing new still costs a platform round-trip.
 EVERY_S = 900.0
-#: …and between the passes a linked source gets with its switch OFF, once he has imported from it.
-DAILY_S = 86400.0
 
 
 def state(db: dict) -> dict:
-    """Per-source sync state for the card: `{on, last, added, error}`."""
+    """Per-source sync state for the card: `{last, added, error}`."""
     raw = db.setdefault("sources", {})
     for s in KNOWN:
-        raw.setdefault(s, {"on": False, "last": 0.0, "added": 0, "error": ""})
+        raw.setdefault(s, {"last": 0.0, "added": 0, "error": ""})
     return raw
 
 
@@ -158,14 +152,7 @@ def sync_now(source: str) -> dict:
     if source not in KNOWN:
         return {"ok": False, "error": f"no sé importar contactos de «{source}» — tengo {', '.join(KNOWN)}"}
     if source != "meshkore" and not connected(source):
-        # He NAMED a source that is not linked: nothing is imported from another one on his behalf — the reply
-        # OFFERS the sources that are connected, and he chooses.
-        alts = connected_sources(but=source)
-        tail = (say("contactos", "say_can_import_from", " I can bring them from {sources} right now: tell me if you want.",
-                    sources=", ".join(_LABEL.get(a, a) for a in alts)) if alts else "")
-        return {"ok": False, "error": "source_not_connected", "source": source, "offer": alts,
-                "message": say("contactos", "say_source_not_connected", "{source} isn't connected yet — connect it and ask me again.",
-                                source=_LABEL.get(source, source)) + tail}
+        return {"ok": False, "error": "source_not_connected", "source": source}
     t0 = time.time()
     got = _payload(source)
     logger.info(f"contactos: {source} contestó en {time.time() - t0:.1f}s → ok={got.get('ok')} "
@@ -240,46 +227,50 @@ def _names_seen(source: str, rows: list[dict]) -> int:
         return 0
 
 
-def set_auto(source: str, on: bool) -> dict:
-    """The ONE switch he asked for: «un botón de sincronizar que se queda activado y en modo sincronizando
-    en tiempo real». Turning it on runs a pass immediately — a switch that promises syncing and then waits
-    fifteen minutes to prove it is the kind of silence this engine has paid for before."""
-    from . import data as _d
-    source = (source or "").strip().lower()
-    if source not in KNOWN:
-        return {"ok": False, "error": f"no sé importar contactos de «{source}»"}
-    db = _d.load_db()
-    state(db)[source].update({"on": bool(on), "declined": not on})   # his «off» also stops the automatic feed
-    _d.store.save(_d.WIDGET_ID, db)
-    if not on:
-        return {"ok": True, "source": source, "on": False}
-    return {**sync_now(source), "on": True}
-
-
 def _due(source: str, st: dict, now: float) -> bool:
-    """Is a pass owed? Every `EVERY_S` while its switch is on. Otherwise, for a LINKED source he has not switched
-    off: at once when it was never read, every `EVERY_S` while its last answer was partial, then once a day. A try
-    that brought nothing (the connector was still starting) waits `EVERY_S` before the next."""
-    last = float(st.get("last") or 0.0)
-    if now - max(last, float(st.get("tried") or 0.0)) < EVERY_S:
-        return False
-    if st.get("on"):
-        return True
-    if st.get("declined") or not (not last or bool(st.get("partial")) or now - last >= DAILY_S):
+    """Is a pass owed? Every `EVERY_S` for a linked source (MeshKore's clusters are always in this house)."""
+    if now - max(float(st.get("last") or 0.0), float(st.get("tried") or 0.0)) < EVERY_S:
         return False
     return source == "meshkore" or connected(source)        # asked last: it reads the connectors' registry
 
 
-def nudge(db: dict, source: str) -> bool:
-    """A one-to-one message arrived from an account no row holds: the source's book is owed a new read soon — its
-    next pass brings that person in (a row, or a channel of the row a phone proves). It never creates a contact
-    itself: the directory is filled from the platform's book, not from whoever writes. True when `db` changed
-    (the caller saves); nothing for a source never read, switched off, or already owed."""
-    st = (db.get("sources") or {}).get(str(source or ""))
-    if not isinstance(st, dict) or st.get("declined") or st.get("partial") or not st.get("last"):
-        return False
-    st["partial"] = True
-    return True
+def import_linked(only: tuple = ()) -> dict:
+    """THE door that fills the directory from every linked source (or the ones `only` names): Google Contacts read,
+    never written to, and each import-only source read once. Called when a source is linked, at the end of a reset
+    and at a start with an empty directory — never on a timer. Returns each source's counts; never raises."""
+    from . import gcontacts
+    out = {}
+    for s in only or ("google-contacts", *KNOWN):
+        try:
+            if s == "google-contacts":
+                if gcontacts.linked():
+                    out[s] = gcontacts.pull()
+            elif s == "meshkore" or connected(s):
+                out[s] = sync_now(s)
+        except Exception as e:  # noqa: BLE001 — one source that fails never stops the others
+            out[s] = {"ok": False, "error": f"{type(e).__name__}: {e}"}
+    logger.info(f"contactos: import of the linked sources → { {k: v.get('added', v.get('error')) for k, v in out.items()} }")
+    return out
+
+
+def import_in_background(only: tuple = ()) -> None:
+    """`import_linked` on its own thread: a reset, a start or a consent never waits on a platform's book."""
+    import threading
+    threading.Thread(target=import_linked, args=(only,), name="contacts-import", daemon=True).start()
+
+
+_SEEN: set = set()
+
+
+def linked_now(source: str) -> None:
+    """A messaging account was seen connected (its connector says so on every pass): the first time in this process,
+    when its book was never read here, it is read now."""
+    if source in _SEEN or source not in KNOWN:
+        return
+    _SEEN.add(source)
+    from . import data as _d
+    if not float(state(_d.load_db())[source].get("last") or 0.0):
+        import_in_background((source,))
 
 
 def owe_members(db: dict) -> list[str]:
@@ -293,7 +284,7 @@ def owe_members(db: dict) -> list[str]:
     for s, st in state(db).items():
         has = any(c.get("kind") == "group" and c.get("members") and (c.get("platform") or c.get("source")) == s
                   for c in db.get("contacts") or [])
-        if has and st.get("last") and not st.get("declined"):
+        if has and st.get("last"):
             st["partial"] = True
             out.append(s)
     return out

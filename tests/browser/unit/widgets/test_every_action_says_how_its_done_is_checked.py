@@ -21,7 +21,7 @@ ENGINE = Path(__file__).resolve().parents[4]
 _UNDECLARED: dict[str, set[str]] = {
     "agenda": {"add_reminder", "dedupe_meetings", "restore_meeting", "done", "drop", "snooze", "not_now", "drop_project", "clear_all", "clear_range", "invite", "accept_proposal", "decline_proposal", "rsvp_meeting", "set_default_calendar", "update_task", "delete_task", "restore", "add_list", "rename_list", "clear_list", "delete_list"},
     "archivos": {"copy_file", "torrent_save", "torrent_remove", "torrent_poll"},
-    "contactos": {"restore_contact", "set_favorite", "set_flag", "link_contact", "sync_source", "set_alias", "hide_contact", "set_auto", "add_phone", "add_email", "rename_group", "delete_group", "add_to_group", "set_agent"},
+    "contactos": {"restore_contact", "set_favorite", "set_flag", "link_contact", "set_alias", "hide_contact", "add_phone", "add_email", "rename_group", "delete_group", "add_to_group", "set_agent"},
     "fotos": {"label_batch"},
     "imagenes": {"slideshow_stop", "clear", "wallpaper_clear"},
     "map": {"clear"},

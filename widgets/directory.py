@@ -100,8 +100,7 @@ _WINDOW: dict = {}
 
 
 def windows_days() -> tuple[float, float]:
-    """The two activity windows (RECENT, ACTIVE), from genesis `contacts.windows_days` with the install's
-    `config/contacts.json` on top. Read at most once every few seconds: it rides every name lookup of every turn."""
+    """(RECENT, ACTIVE) days: genesis `contacts.windows_days`, the install's `config/contacts.json` on top; cached."""
     if _WINDOW and time.time() - _WINDOW["at"] < 5.0:
         return _WINDOW["days"]
     _WINDOW.update({"days": _read_windows(), "at": time.time()})
@@ -110,7 +109,7 @@ def windows_days() -> tuple[float, float]:
 
 def _read_windows() -> tuple[float, float]:
     import json
-    days = [7.0, 40.0]
+    days = [7.0, 40.0]                                      # the defaults when nothing is readable
     try:
         import genome   # V2-859: a refused genesis reads as the last good generation
         days = list((genome.genesis().get("contacts") or {}).get("windows_days") or days)
@@ -125,8 +124,7 @@ def _read_windows() -> tuple[float, float]:
     return (days[0], days[-1])
 
 
-#: The archive's last traffic per conversation, read at most every this many seconds (one indexed GROUP BY).
-_TRAFFIC_TTL_S = 30.0
+_TRAFFIC_TTL_S = 30.0       # the archive's last traffic per conversation is read at most this often
 _TRAFFIC: dict = {}
 
 
@@ -167,9 +165,6 @@ def last_contact(c: dict) -> float:
     return max([by.get(k, 0.0) for k in keys if k[1]] + stamped + [0.0])
 
 
-_last_seen = last_contact
-
-
 def level(c: dict, *, now: float | None = None) -> int:
     """How close this contact is — one of the levels above, or 0 when it is never a candidate."""
     if not isinstance(c, dict) or c.get("hidden"):
@@ -187,10 +182,8 @@ def level(c: dict, *, now: float | None = None) -> int:
 
 
 def nearest(people: list[dict]) -> list[dict]:
-    """The people of the CLOSEST level any of them is on, in their order — what a name means when several match: his
-    favorite, else who he wrote to this week, else this month, else the rest. One there is the answer; several there
-    is the question, and only among them (the operator, 2026-11-21: «si hay 23 X y solo una con la que he hablado,
-    es esa»)."""
+    """The people of the CLOSEST level any of them is on, in their order (2026-11-21): what a name several people carry
+    means — one there is the answer, several there the question, among them only."""
     lv = [(level(c), c) for c in people]
     top = max((n for n, _c in lv), default=0)
     return [c for n, c in lv if n == top and n]
@@ -665,10 +658,6 @@ def note_inbound(platform: str, msg: dict) -> bool:
         people = db.get("contacts") or []
         hits = _match_sender(people, p, msg)
         if len(hits) != 1:
-            if not hits:      # somebody no row holds wrote to him: the source's book is read again soon (V2-936)
-                from .contactos import sources as _src
-                if _src.nudge(db, p):
-                    _cd.store.save(_cd.WIDGET_ID, db)
             return False
         c = hits[0]
         chat_id = str(msg.get("chatId") or "").strip()

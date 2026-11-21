@@ -965,10 +965,12 @@ Flash keeps the conversation; the row is what both brains read.
  thrown away: the name not shown stays as a name the person is known by, with its source, and finds her; the folded
  row is kept whole, its id keeps answering, and `split_contact` restores it for good. The shown name is his own,
  else his address book's, else the chat's; a source renames only a row it named and he never did. What a platform
- changes arrives by itself: pushed when the connector can tell (a `refresh` never adds anybody), read once a day
- from every linked source. A LINKED messaging source feeds the directory by itself — at once when never read,
- soon again while its answer is partial, then daily; his «off» stops it — and a person it brings that a row proves
- is a channel of that row. One address book's two entries on one line are one person only when they start with
+ changes arrives by itself: pushed when the connector can tell (a `refresh` never adds anybody), read on every
+ pass of a linked source. Linking a source IS the ask (2026-11-21): ONE door, `sources.import_linked`, reads every
+ linked source — on the link (the Google consent, a messaging account first seen connected with its book never
+ read), and at a start with an empty directory (the one a reset ends in), agent running or not; then the inbound
+ half runs on its cadence with no switch, and the one control left sends his changes TO Google (`sync_contacts`).
+ A person it brings that a row proves is a channel of that row. One address book's two entries on one line are one person only when they start with
  the same given name or one is a one-word stem of the other; a shared surname proves nothing. A said NAME is
  scored word by word (`contactos/who.py`: sound, stem, one slip, any order, an address that sounds like it) with
  no model; a word nobody carries makes the answer `partial` — names to ask among, never a match — for the doors

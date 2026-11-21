@@ -49,7 +49,7 @@ def test_every_capability_EXISTS_in_the_manifest_or_the_model_cannot_choose_it(c
                                  # V2-683 — by WHICH channel this person is written to, and which is his.
                                  "set_channel",
                                  # V2-714 — the import-only sources, the hidden shelf and who is in a group.
-                                 "sync_source", "hide_contact", "show_contact_members",
+                                 "hide_contact", "show_contact_members",
                                  # V2-715 — several phones / e-mails per entry («varios teléfonos
                                  # vinculados a la misma empresa»), and the plug button by voice — since
                                  # 2026-10-04 it opens the card's SOURCES AND SYNC screen (`show_sources`);
@@ -66,10 +66,6 @@ def test_every_capability_EXISTS_in_the_manifest_or_the_model_cannot_choose_it(c
                                  # `import_google` is the retired name of `sync_contacts`, kept as an alias
                                  # so a model that learned it does not start getting «acción desconocida».
                                  "sync_contacts", "import_google",
-                                 # V2-701 — the permanent half. «Mantén los contactos sincronizados» is a
-                                 # state he can set BY VOICE; without it the switch would be reachable
-                                 # only by someone looking at the card.
-                                 "set_auto",
                                  # V2-849 — his own words for a person and who they are to him: what makes
                                  # «Raquel» or «mamá» one person without asking again.
                                  "set_alias", "merge_contacts", "split_contact",

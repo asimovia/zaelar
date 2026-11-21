@@ -1,15 +1,21 @@
-"""A contacts import never starts on its own — it waits for the operator to ask (2026-10-04).
+"""Linking a contacts source IS the ask: there is no switch for what comes in (2026-11-21, superseding 2026-10-04).
 
-The operator: «todo el proceso de importación de contactos, mensajes, mails, etc. debe ser natural, o debe
-pedirse, pero no debemos forzar nada en background por nuestra cuenta… una persona de cero tiene que llegar a lo
-mismo». Measured the same day: after a memory reset the directory was empty, Google's sync switch read as ON by
-default, and the background tick pulled ~2 700 contacts on its own — holding the directory's lock for minutes,
-so the demo's own first contact could not even be written. Telegram and WhatsApp already started OFF; Google now
-does too, and stays on once he turns it on (V2-701's «permanent» holds after the yes).
+The operator: connecting a source (Google, WhatsApp, Telegram…) imports at once and keeps the inbound sync on by
+default; no «Import contacts» button and no box to turn the inbound half on or off. What stays is ONE button that
+sends what he changed here TO Google. (2026-10-04 had made every import wait to be asked: after a reset the
+directory stayed empty while Telegram and WhatsApp refilled it and Google never did.)
 """
 from __future__ import annotations
 
+import json
+from pathlib import Path
 
-def test_a_fresh_directory_reads_the_google_sync_as_off():
+
+def test_the_google_sync_state_has_no_inbound_switch():
     from widgets.contactos import gcontacts
-    assert gcontacts.sync_state({})["auto"] is False
+    assert "auto" not in gcontacts.sync_state({})
+
+
+def test_the_card_declares_no_import_action_and_no_switch():
+    actions = json.loads((Path(__file__).resolve().parents[4] / "widgets/contactos/manifest.json").read_text())["actions"]
+    assert "sync_source" not in actions and "set_auto" not in actions and "sync_contacts" in actions

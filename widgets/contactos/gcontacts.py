@@ -112,7 +112,6 @@ def sync_state(db: dict) -> dict:
         "tier": (o.account("google-contacts").get("tier") if o and connected else "") or "",
         "last": float(s.get("last") or 0.0), "lastManual": float(s.get("lastManual") or 0.0),
         "lastResult": s.get("lastResult") or {},
-        "auto": bool(s.get("auto", False)),   # off until he asks — an import nobody asked for is not ours to start
         "running": running(),
         # Said out loud so the card can promise the interval it actually runs at instead of a number
         # somebody typed into a label and nobody kept in step with the scheduler.
@@ -201,49 +200,42 @@ def _sync(db: dict, *, merge, since: float = 0.0, remove=None, pull_only: bool =
     return out
 
 
-#: How often a linked account is polled while automatic sync is on. Not the widget's tick: the scheduler
-#: wakes this module far more often than it talks to Google, so the period can change here without
-#: touching the manifest, and a card reopening does not trigger a pass.
+#: How often a linked account is read (the inbound half, always on: linking it is the ask). Not the widget's tick:
+#: the scheduler wakes this module far more often than it talks to Google, and the sync token makes a quiet pass one
+#: round-trip.
 PERIOD = 60.0
-DAILY_S = 86400.0
 
 
-def tick(ctx) -> None:
-    """The permanent half (V2-701). The operator: «el tema de la sincronización de contactos no es algo que
-    deberíamos hacer de forma puntual… eso debería quedarse conectado de forma permanente».
+def linked() -> bool:
+    o = _oauth()
+    return bool(svc() and o and o.tokens_present("google-contacts"))
 
-    It is a POLL because the People API has no push for a personal account — there is no webhook to
-    subscribe to, so «permanently connected» is, physically, a cheap question asked on a timer. The sync
-    token is what makes it cheap; without it this would be six pages a minute and would have to be a
-    button, which is exactly the shape he rejected.
-    """
-    sv, o = svc(), _oauth()
-    if sv is None or o is None or not o.tokens_present("google-contacts"):
-        return
+
+def pull() -> dict:
+    """ONE inbound pass, written: Google's rows folded into the directory, nothing of his sent (the outbound half is
+    his button, `sync_contacts`)."""
     from . import data as _d
     with _d.store.mutating(_d.WIDGET_ID):         # load → Google pass → save is ONE step (see store.mutating)
         db = _d.load_db()
-        s = db.get("sync") or {}
-        # The same rule as every linked source (`sources._due`): automatic sync on, every `PERIOD`; otherwise a
-        # linked account he has not switched off is read at once when it was never read, then once a day — his
-        # address book refills a directory that lost it (2026-11-21: after a reset Telegram and WhatsApp came back
-        # by themselves and Google never did, because this tick waited for a `last` the reset had erased).
-        last = float(s.get("last") or 0.0)
-        auto = bool(s.get("auto", False))
-        if s.get("declined") and not auto:
-            return
-        if last and (_time.time() - last) < (PERIOD if auto else DAILY_S):
-            return
-        res = sync(db, merge=_d._merge_imported, since=last, remove=_d._drop_deleted,
-                   pull_only=not bool(s.get("auto", False)))     # the daily look never sends his edits
+        res = sync(db, merge=_d._merge_imported, since=float((db.get("sync") or {}).get("last") or 0.0),
+                   remove=_d._drop_deleted, pull_only=True)
         if not res.get("ok"):
             # A pass that failed still moves `last`, or a dead token would make every tick retry forever and
             # hammer Google from a loop nobody is watching. The error rides in `lastResult` for the card.
             db.setdefault("sync", {})["last"] = _time.time()
             db["sync"]["lastResult"] = {"error": str(res.get("error") or "")[:200]}
-            ctx.save(db)
-            return
-        ctx.save(db)
+        _d.store.save(_d.WIDGET_ID, db)
+    return res
+
+
+def tick(ctx) -> None:
+    """The inbound half on its cadence (V2-701): «eso debería quedarse conectado de forma permanente». A POLL because
+    the People API has no push for a personal account; the first read of a linked account is `sources.import_linked`'s."""
+    if not linked():
+        return
+    from . import data as _d
+    if _time.time() - float((_d.load_db().get("sync") or {}).get("last") or 0.0) >= PERIOD:
+        pull()
 
 
 def _mark_pushed(rows: list[dict]) -> None:
