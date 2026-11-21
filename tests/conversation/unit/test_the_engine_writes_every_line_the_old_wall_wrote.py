@@ -11,11 +11,12 @@
     replaced at every later one with the card and file it already had when the event names none; the replace carries
     the box's role, so a screen that has not got it yet appends it (`wall-bridge.js`); a skipped errand draws none. The writers live in `nucleo/conversation_host/wall_notes.py`.
 
-Disarms seen red: each emitter's call to its writer removed in turn (`proactive._paint`,
-`chat_refs._emit`); the open-card check, the last-line check and the merge of the box's data.
+Disarms seen red: each emitter's call to its writer removed in turn (`proactive._paint`, `notices.drain_to_screen`,
+`ask_trace.resolved`, `chat_refs._emit`); the open-card check, the last-line check and the merge of the box's data.
 """
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 
 import pytest
@@ -68,6 +69,15 @@ def test_a_notice_painted_apart_from_the_mouth_is_its_bell_line(ops, cards):
     assert len(ops) == n
 
 
+def test_an_owed_notice_drained_to_a_screen_is_its_bell_line(ops, cards, monkeypatch):
+    from nucleo.pulse import notices
+    monkeypatch.setattr(notices._store, "owed_all", lambda: [{"id": 7, "title": "w0", "body": "w5", "dedupe_key": "k5"}])
+    monkeypatch.setattr(notices, "_set", lambda *a, **k: None)
+    monkeypatch.setattr(notices._ask, "closed_answered", lambda r: False)
+    assert notices.drain_to_screen("desktop:x") == 1
+    assert [(w, op["id"], op["text"]) for w, op in ops] == [("notice", "notice_k5", "🔔 w5")]
+
+
 def test_the_question_of_an_open_card_is_not_drawn_again(ops, cards):
     cards["r1"] = ("¿Lo **envío** a  w6?", "consent")
     wall_notes.notice("🔔 ¿lo envío a w6?", "k6")
@@ -85,6 +95,22 @@ def test_a_notice_the_last_line_already_says_is_not_said_again(ops, cards):
     wall_notes.notice("w10", "k10")
     wall_notes.notice("w10", "k10")
     assert [op["id"] for w, op in ops if w == "notice"] == ["notice_k10"]
+
+
+def test_an_answered_question_leaves_one_record_line(ops, monkeypatch):
+    from nucleo import wording
+    from nucleo.circuit import ask_trace
+
+    async def word(fact, **kw):
+        return "w11"
+    monkeypatch.setattr(wording, "word_soon", word)
+    monkeypatch.setattr(ask_trace, "_his_name", lambda: "w12")
+    line = asyncio.run(ask_trace.resolved("u1", {"ask_id": "a1", "question": "w13"}, ask_trace.YES))
+    assert line == "w11"
+    (w, op), = ops
+    assert w == "record" and op["id"].startswith("n_")
+    assert _bare({k: v for k, v in op.items() if k != "id"}) == {
+        "op": "append", "role": "note", "kind": "record", "data": {"role": "record", "text": "w11"}, "text": "w11"}
 
 
 def test_an_errand_reference_is_one_box_replaced_in_place(ops):

@@ -1024,6 +1024,8 @@ _TOTAL_MAX -= 481   # 2026-11-21 INI-078 L1 B4: the old brief's readings cut whe
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 85   # 2026-11-21 INI-078, the chat wall of one writer: the engine writes the lines the page's old-path writer drew (`wall_notes.py`: a notice's 🔔 line, the record line, an errand's reference box), the last line it wrote kept for the notice's check (`wall.last_line`)
 _PACKAGE_CEILINGS["nucleo (top)"] += 2                # same cause, measured on the rebased tree: an errand's box written by its writer (`chat_refs._emit`)
 _TOTAL_MAX += 155    # same cause, measured on the rebased tree: the three writers, their calls from two emitters (the client's old-path writer and its branches went, −578 lines of JS)
+_PACKAGE_CEILINGS["nucleo/circuit"] += 2   # same cause: the answered question's record line written by its writer (`ask_trace.resolved`)
+_TOTAL_MAX += 2      # same cause: that record line's call (the drained notice's line rides an import merged in `notices.py`)
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

@@ -40,8 +40,7 @@ _RETRY_EVERY_S = 30.0
 _last_retry = [0.0]
 
 from memory.api import notices as _store
-from nucleo.pulse import notice_ask as _ask
-from nucleo.pulse import notice_claim
+from nucleo.pulse import notice_ask as _ask, notice_claim
 
 
 def _now() -> int:
@@ -293,6 +292,7 @@ def drain_to_screen(dev: str = "") -> int:
                  extra={"title": r.get("title") or "", "notice_id": r["id"], "late": True,
                         "key": r.get("dedupe_key") or "", **({"task_id": _tid} if _tid else {}),
                         **({"origin_dev": dev} if dev else {})})
+            __import__("nucleo.conversation_host.wall_notes", fromlist=["x"]).notice(r.get("body") or "", r.get("dedupe_key") or "")
             _set(r["id"], state="shown", channel="screen", delivered_at=_now())
         except Exception as e:  # noqa: BLE001 — that one stays owed and is tried on the next screen
             logger.warning(f"notices: could not show notice {r.get('id')}: {e!r}")

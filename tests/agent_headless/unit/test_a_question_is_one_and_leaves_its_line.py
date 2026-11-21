@@ -125,13 +125,18 @@ def test_only_a_yes_or_a_no_to_a_consent_question_leaves_a_line(monkeypatch):
 
 
 def test_the_wall_paints_the_record_line_as_a_system_row_and_the_answer_door_is_wrapped():
+    import inspect
     root = Path(__file__).resolve().parents[3]
+    # The engine writes the record line itself (`wall_notes.record`, a note of kind `record` — node 13.165): the
+    # screen's router reads no `ask_resolved` for the wall any more.
+    from nucleo.conversation_host import wall_notes
+    assert "wall_notes.record(line)" in inspect.getsource(ask_trace.resolved)
+    assert '"kind": "record"' in inspect.getsource(wall_notes.record)
     wall = (root / "frontend" / "app" / "components" / "ChatWall.js").read_text("utf-8")
     assert '(l.kind === "record" ? "record"' in wall, "the desktop wall no longer classes a record note as `record`"
     css = (root / "frontend" / "app" / "core" / "shared-surfaces.css").read_text("utf-8")
     assert ".cw-msg.record,.zm-msg.record{" in css, "the record line has no colour of its own in one of the two shells"
     from voice import observer
-    import inspect
     assert '"ask_resolved"' in inspect.getsource(observer)
     from nucleo.cli import worker_api_answer
     assert "ask_trace" in inspect.getsource(worker_api_answer.answer) and "ask_trace.superseded" in inspect.getsource(asker.ask)

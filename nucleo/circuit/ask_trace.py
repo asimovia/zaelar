@@ -96,6 +96,8 @@ async def resolved(uid: str, entry: dict | None, said: str) -> str:
         if line:
             _emit("✅ he confirmed" if said == YES else "✖ he did not confirm", line, task_id=uid,
                   ask_id=str((entry or {}).get("ask_id") or ""), outcome=said, terms=terms_of(entry))
+            from nucleo.conversation_host import wall_notes
+            wall_notes.record(line)                 # its line on the chat wall
         return line
     except Exception as e:  # noqa: BLE001
         logger.debug(f"ask_trace: the record line was not written — {e!r}")
