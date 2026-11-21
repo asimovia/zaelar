@@ -4036,6 +4036,322 @@
      "dir": "both"
     }
    ]
+  },
+  "send": {
+   "title": "A message — from your order to its receipt",
+   "_doc": "A message has one owner (`nucleo/send`): one draft, shown in its widget's box; seven declared steps (`nucleo/send/steps.json`), each seen in the flow of the order that opened it; nothing leaves before his yes, by voice to the confirmation he heard or by his Send on the box; one exit with a lane per road and a hold switch; the connector's own receipt ends it.",
+   "frame": {
+    "id": "send",
+    "label": "The send owner — nucleo/send",
+    "zones": []
+   },
+   "inside": [],
+   "outside": [
+    {
+     "id": "s_open",
+     "label": "1 · His order heard — his words open its one draft",
+     "stands_for": [],
+     "side": "both",
+     "paths": [
+      "nucleo/send/intake.py",
+      "nucleo/send/draft.py"
+     ],
+     "in_frame": true
+    },
+    {
+     "id": "s_who",
+     "label": "2 · One person — the conversation he has open, then his contacts; several is a question naming them",
+     "stands_for": [],
+     "side": "both",
+     "paths": [
+      "nucleo/send/people.py"
+     ],
+     "in_frame": true
+    },
+    {
+     "id": "s_text",
+     "label": "3 · What it says — his words; a change rewrites it whole",
+     "stands_for": [],
+     "side": "both",
+     "paths": [
+      "nucleo/send/read.py"
+     ],
+     "in_frame": true
+    },
+    {
+     "id": "s_reach",
+     "label": "4 · A way to reach them — what would stop it is said first",
+     "stands_for": [],
+     "side": "both",
+     "paths": [
+      "nucleo/send/deliver.py"
+     ],
+     "in_frame": true
+    },
+    {
+     "id": "s_confirm",
+     "label": "5 · The confirmation — reads the text word for word; it counts once it sounded",
+     "stands_for": [],
+     "side": "both",
+     "paths": [
+      "nucleo/send/ask.py",
+      "nucleo/send/heard.py"
+     ],
+     "in_frame": true
+    },
+    {
+     "id": "s_yes",
+     "label": "6 · His yes — by voice to the confirmation said last, or his Send on the box",
+     "stands_for": [],
+     "side": "both",
+     "paths": [
+      "nucleo/send/owner.py"
+     ],
+     "in_frame": true
+    },
+    {
+     "id": "s_receipt",
+     "label": "7 · The receipt — the connector's own answer, said once",
+     "stands_for": [],
+     "side": "both",
+     "paths": [
+      "nucleo/send/receipt.py"
+     ],
+     "in_frame": true
+    },
+    {
+     "id": "s_box",
+     "label": "The draft in its widget — painted, changed by his hand, taken away when it ends",
+     "stands_for": [],
+     "side": "both",
+     "paths": [
+      "nucleo/send/card.py",
+      "widgets/owners.py"
+     ],
+     "in_frame": true
+    },
+    {
+     "id": "s_steps",
+     "label": "Its card in the order's flow — each step, as a worker's playbook",
+     "stands_for": [],
+     "side": "both",
+     "paths": [
+      "nucleo/send/steps.py",
+      "nucleo/send/steps.json"
+     ],
+     "in_frame": true
+    },
+    {
+     "id": "s_exit",
+     "label": "The one exit — a lane per road; a hold switch keeps what would leave",
+     "stands_for": [],
+     "side": "both",
+     "paths": [
+      "connectors/exit.py"
+     ],
+     "in_frame": true
+    },
+    {
+     "id": "v_you",
+     "label": "You — your voice, your typing, your hand on the box",
+     "stands_for": [
+      "you"
+     ],
+     "side": "both"
+    },
+    {
+     "id": "v_manager",
+     "label": "Conversation manager — hands your order over; the open draft takes your next words first",
+     "stands_for": [
+      "conversation"
+     ],
+     "side": "in"
+    },
+    {
+     "id": "v_workers",
+     "label": "A Brain Worker — its message goes to the same owner",
+     "stands_for": [
+      "worker"
+     ],
+     "side": "in"
+    },
+    {
+     "id": "v_contacts",
+     "label": "Your contacts and conversations",
+     "stands_for": [],
+     "side": "both",
+     "paths": [
+      "widgets/directory.py"
+     ]
+    },
+    {
+     "id": "v_widget",
+     "label": "The messaging widget — its box shows the draft; its Send button",
+     "stands_for": [
+      "u_canvas"
+     ],
+     "side": "both"
+    },
+    {
+     "id": "v_world",
+     "label": "Messaging apps and mail",
+     "stands_for": [
+      "x_wa",
+      "x_tg",
+      "x_mail"
+     ],
+     "side": "both"
+    },
+    {
+     "id": "v_flow",
+     "label": "Observability — the flow of your order",
+     "stands_for": [],
+     "side": "out",
+     "paths": [
+      "observability/flows.py"
+     ]
+    }
+   ],
+   "edges": [
+    {
+     "from": "v_you",
+     "to": "v_manager",
+     "label": "you ask",
+     "dir": "a>b"
+    },
+    {
+     "from": "v_manager",
+     "to": "s_open",
+     "label": "your order, handed over",
+     "dir": "a>b"
+    },
+    {
+     "from": "v_workers",
+     "to": "s_open",
+     "label": "a worker's message",
+     "dir": "a>b"
+    },
+    {
+     "from": "s_open",
+     "to": "s_who",
+     "label": "",
+     "dir": "a>b"
+    },
+    {
+     "from": "s_who",
+     "to": "v_contacts",
+     "label": "find the person",
+     "dir": "both"
+    },
+    {
+     "from": "s_who",
+     "to": "s_text",
+     "label": "",
+     "dir": "a>b"
+    },
+    {
+     "from": "s_text",
+     "to": "s_reach",
+     "label": "",
+     "dir": "a>b"
+    },
+    {
+     "from": "s_reach",
+     "to": "s_confirm",
+     "label": "",
+     "dir": "a>b"
+    },
+    {
+     "from": "s_confirm",
+     "to": "v_you",
+     "label": "the text, word for word",
+     "dir": "a>b"
+    },
+    {
+     "from": "v_manager",
+     "to": "s_text",
+     "label": "your next words: a change",
+     "dir": "a>b"
+    },
+    {
+     "from": "v_manager",
+     "to": "s_yes",
+     "label": "your next words: yes or no",
+     "dir": "a>b"
+    },
+    {
+     "from": "s_confirm",
+     "to": "s_yes",
+     "label": "",
+     "dir": "a>b"
+    },
+    {
+     "from": "s_open",
+     "to": "s_box",
+     "label": "painted once it has a person and a text",
+     "dir": "a>b"
+    },
+    {
+     "from": "s_box",
+     "to": "v_widget",
+     "label": "the box",
+     "dir": "both"
+    },
+    {
+     "from": "v_widget",
+     "to": "s_text",
+     "label": "your typing: its new text",
+     "dir": "a>b"
+    },
+    {
+     "from": "v_widget",
+     "to": "s_yes",
+     "label": "your Send: your yes by gesture",
+     "dir": "a>b"
+    },
+    {
+     "from": "s_yes",
+     "to": "s_exit",
+     "label": "the widget's own act, once",
+     "dir": "a>b"
+    },
+    {
+     "from": "s_exit",
+     "to": "v_world",
+     "label": "sent · or held",
+     "dir": "both"
+    },
+    {
+     "from": "v_world",
+     "to": "s_receipt",
+     "label": "the connector's answer",
+     "dir": "a>b"
+    },
+    {
+     "from": "s_receipt",
+     "to": "v_you",
+     "label": "said once",
+     "dir": "a>b"
+    },
+    {
+     "from": "s_receipt",
+     "to": "s_box",
+     "label": "taken away",
+     "dir": "a>b"
+    },
+    {
+     "from": "s_open",
+     "to": "s_steps",
+     "label": "each step",
+     "dir": "a>b"
+    },
+    {
+     "from": "s_steps",
+     "to": "v_flow",
+     "label": "in your order's flow",
+     "dir": "a>b"
+    }
+   ]
   }
  },
  "not_drawn": {
