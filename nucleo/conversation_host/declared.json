@@ -944,5 +944,14 @@
   "start_task",
   "build_widget",
   "search_listings"
+ ],
+ "receipt_answer": [
+  "result",
+  "message",
+  "error",
+  "key",
+  "to",
+  "text",
+  "ref"
  ]
 }

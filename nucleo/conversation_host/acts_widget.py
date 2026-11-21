@@ -116,8 +116,7 @@ async def widget_act(args: dict, effect_id: str | None) -> ToolResult:
 RECEIPT_ITEMS, RECEIPT_CHARS = 8, 400
 #: the whole receipt, serialized: each level is bounded, and so is the sum (a card's answer, every step of the run)
 RECEIPT_MAX = 1200
-#: what the model reads first of a card's answer: what it said and did, before the rest of its fields
-ANSWER_KEYS = ("result", "message", "error", "key", "to", "text", "ref")
+#: what the model reads first of a card's answer — what it said and did — is declared (`declared.json` `receipt_answer`)
 CUT = "…"
 
 
@@ -160,13 +159,15 @@ def _fit(out: dict, k: str, raw):
 
 
 def receipt(card: str, res: dict, ok: bool) -> dict:
-    """What the card's door answered, back to the model (C4): what it did — its answer's fields first (`ANSWER_KEYS`),
+    """What the card's door answered, back to the model (C4): what it did — its answer's fields first (`receipt_answer`),
     then the rest, each bounded and the whole under `RECEIPT_MAX`, `…` naming how many fields were cut — and, refused,
     WHY, whole: the card's own sentence when it has one (`refusal_line.speakable`), else its reason as the door gave it.
     Acting blind, the model repeated a refused act to its step cap."""
     fields = {k: v for k, v in res.items() if k not in ("ok", "say", "say_args")}
     out: dict = {}
-    order = [k for k in ANSWER_KEYS if k in fields] + [k for k in fields if k not in ANSWER_KEYS]
+    first = [str(k) for k in __import__("nucleo.conversation_host.declared", fromlist=["x"]).declared().get(
+        "receipt_answer") or ()]
+    order = [k for k in first if k in fields] + [k for k in fields if k not in first]
     for i, k in enumerate(order):
         if (v := _fit(out, k, fields[k])) is None:
             out[CUT] = len(order) - i                  # no room left for this field or any after it

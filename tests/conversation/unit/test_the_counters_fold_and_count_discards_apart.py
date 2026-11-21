@@ -45,8 +45,9 @@ def test_a_session_counts_turns_flows_tasks_events_and_discards_with_one_definit
         _root("E2", "cron.due", "system"), _end("E2", steps=0, tasks=0, discarded="nothing"),
         _root("O1", "turno", "user")])                                               # an old flow: no steps said
     got = flows.session(SID)
-    assert {k: got[k] for k in ("turns", "flows", "tasks", "events", "discards")} == {
-        "turns": 3, "flows": 3, "tasks": 1, "events": 1, "discards": 2}
+    assert {k: got[k] for k in ("turns", "flows", "tasks", "event_flows", "discards")} == {
+        "turns": 3, "flows": 3, "tasks": 1, "event_flows": 1, "discards": 2}
+    assert got["events"] > 10, "the session's own count of rows is never overwritten by a flow counter"
     row = next(r for r in flows.sessions(limit=5) if r["session_id"] == SID)
     assert row["flows"] == 3 and row["discards"] == 2
     rows = flows.flows(limit=50, session_id=SID)

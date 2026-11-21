@@ -178,16 +178,16 @@ def flow(corr_id: str, limit: int = 500, since_ms: float = 0, order: str = "asc"
 def counts(rows: list[dict]) -> dict:
     """THE counters of a set of flows, one definition for every reader (R-1): a flow FOLDED into another (`merge_into`)
     is counted nowhere; a DISCARD (the ear's, or an event with nothing to do) is counted apart, never as a flow; what
-    remains is a TURN (his: `initiator` user) or an EVENT (the system's); a FLOW is one with a real step (its `steps`,
-    or an old flow that says none); TASKS are the workers it spawned, or the tasks its end says it opened."""
-    out = {"turns": 0, "flows": 0, "tasks": 0, "events": 0, "discards": 0}
+    remains is a TURN (his: `initiator` user) or an EVENT FLOW (`event_flows`, never `events`: a session's own row count,
+    merged beside); a FLOW has a real step (`steps`, or an old flow that says none); TASKS are what it spawned or opened."""
+    out = {"turns": 0, "flows": 0, "tasks": 0, "event_flows": 0, "discards": 0}
     for r in rows or ():
         if r.get("merge_into"):
             continue
         if r.get("discarded"):
             out["discards"] += 1
             continue
-        out["turns" if r.get("initiator") == "user" else "events"] += 1
+        out["turns" if r.get("initiator") == "user" else "event_flows"] += 1
         steps = r.get("steps")
         out["flows"] += steps is None or int(steps or 0) > 0
         out["tasks"] += max(int(r.get("spawned") or 0), int(r.get("tasks") or 0))

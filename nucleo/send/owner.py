@@ -54,7 +54,7 @@ def _emit(label: str, d, **extra) -> None:
             _note(e)
         if d is not None:
             _steps.report(label, d)
-    if d is not None and label in _card.PAINTS:
+    if d is not None and getattr(d, "state", "") == _draft.OPEN:     # any step of an open draft: its box follows it
         _card.paint(d)                           # the one draft is the one in its card (C2 A2)
 
 

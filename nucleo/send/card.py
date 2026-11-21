@@ -14,11 +14,10 @@ import asyncio
 from loguru import logger
 
 WRITE, DISCARD = "messaging.draft_write", "messaging.draft_discard"
-#: the owner's steps after which its draft is painted again (`owner._emit`)
-PAINTS = frozenset({"opened", "taken", "asked"})
 
 _chain: dict = {}        # draft id → its last view task: the next one waits for it
 _painted: dict = {}      # draft id → the text its box last held by the owner's hand or his: anything else was his own
+_shown: dict = {}        # draft id → (whom, text) its box was last painted with: the same again paints nothing
 _tasks: set = set()
 
 
@@ -49,7 +48,10 @@ async def paint_now(d) -> None:
     if getattr(d, "kind", "message") != "message" or not (d.target and d.text) or not (act := _act(d, WRITE)):
         return
     from nucleo.send import deliver
+    if _shown.get(d.id) == (who := (str(sorted(deliver.recipient(d).items())), d.text)) and d.box_key:
+        return                                   # its box already shows this draft, to this person
     res = await _run(d, act, {**deliver.recipient(d), "text": d.text})
+    _shown[d.id] = who
     key = str(res.get("key") or "") if res.get("ok") is not False else ""
     if key and d.box_key and key != d.box_key:
         await discard_now(d)                     # he changed who it goes to: the old person's box is not his draft
