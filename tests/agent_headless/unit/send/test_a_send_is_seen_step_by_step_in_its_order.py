@@ -77,10 +77,30 @@ def test_a_later_turn_the_owner_takes_is_folded_into_the_order(monkeypatch):
     assert merged == [("T_order", "T_yes")]
 
 
-def test_a_draft_that_ends_unsent_ends_its_card(seen):
-    with trace.scope("T_order"):
-        d = draft.start("w_tell ana goodnight")
+def _ends(seen) -> list:
+    return [e for k, label, _t, e in seen if k == "task" and label == "end"]
+
+
+def test_a_draft_that_ends_unsent_ends_its_card_failed_only_when_it_failed(seen):
+    for state, ok in ((draft.CANCELLED, True), (draft.FAILED, False)):
+        with trace.scope("T_order"):
+            d = draft.start("w_tell ana goodnight")
+        owner._emit("opened", d)
+        draft.close(d, state)
+        assert _ends(seen)[-1]["ok"] is ok and _ends(seen)[-1]["outcome"] == state
+    d = draft.start("w_tell eva hi")
     owner._emit("opened", d)
-    draft.close(d, draft.CANCELLED)
-    ends = [e for k, label, _t, e in seen if k == "task" and label == "end"]
-    assert len(ends) == 1 and ends[0]["ok"] is False
+    owner._emit("unconfirmed", d)                                       # no receipt is no failure: ok not said
+    assert "ok" not in _ends(seen)[-1] and _ends(seen)[-1]["outcome"] == "unconfirmed"
+
+
+def test_only_a_failed_send_is_counted_a_failed_task():
+    import json
+    import sqlite3
+
+    from observability import flows
+    db = sqlite3.connect(":memory:")
+    db.execute("CREATE TABLE events (kind TEXT, label TEXT, payload TEXT)")
+    for p in ({"ok": False, "outcome": "failed"}, {"ok": True, "outcome": "cancelled"}, {"outcome": "unconfirmed"}):
+        db.execute("INSERT INTO events VALUES ('task', 'end', ?)", (json.dumps({"runner": "send", **p}),))
+    assert db.execute(f"SELECT count(*) FROM events WHERE {flows.FAILED_TASK_WHERE}").fetchone()[0] == 1

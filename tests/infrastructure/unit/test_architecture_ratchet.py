@@ -951,6 +951,8 @@ _PACKAGE_CEILINGS["nucleo/conversation_host"] += 2   # same: the send owner's li
 _TOTAL_MAX += 10     # same cause, measured
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 12   # 2026-11-21 C4 review: a receipt's field that does not fit is SHRUNK, never dropped — fewer items, shorter texts, a level deeper, then its JSON cut to the room (`acts_widget._fit`)
 _TOTAL_MAX += 12     # same cause, measured
+_PACKAGE_CEILINGS["nucleo/send"] += 3   # 2026-11-21 C2 P3 review: a send's card ends failed only when it FAILED — dropped, idle or replaced end ok with their outcome, «unconfirmed» says no ok
+_TOTAL_MAX += 3      # same cause, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())
