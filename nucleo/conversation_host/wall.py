@@ -12,7 +12,9 @@ Every action names its writer — the component sets a line's owner from it and 
   · `mouth`             our line, id = its say id, answering his (`re`): `append` live when its voice starts with
                         nothing heard yet (`heard` 0 — the screen shows what has SOUNDED, word by word, from the
                         voice's audio-synced captions), or final when shown; `update` final with what sounded; a
-                        line that never started is never said to have sounded.
+                        line that never started is never said to have sounded;
+  · `notice`, `record`, `ref` the engine's other lines — a notice's 🔔 line, an answered question's record line, an
+                        errand's reference box (`wall_notes.py`), written through `_say` too.
 The package's telemetry carries no words: they come from the ear's own lane (`ear_in.receive` → `heard`), the inbox's
 acceptance and the mouth. A line still open when the session leaves the manager (it falls back to the old path, or the
 conversation is reset) is deleted then (`sweep`): nobody would ever close it.
@@ -36,6 +38,7 @@ _run_ivs: dict[str, list] = {}              # a run → the interventions of his
 _open_lines: dict[str, str] = {}            # a line appended and not final yet → its writer (what `sweep` deletes)
 _last: dict[str, dict] = {}                 # device → {provider turn: its words}, whichever intervention heard them
 _before: dict[str, dict] = {}               # device → what the open intervention's predecessor had of each turn
+_last_line: list = [None]                       # the last line appended on the wall from here: (role, text)
 TURNS_KEPT = 8
 
 
@@ -54,6 +57,9 @@ def _keep(d: dict, k: str, v) -> None:
 def _say(writer: str, op: dict, *, live: bool = False) -> None:
     """One action on the stream. `live`: a line still being said — the stream only, never stored (W-1)."""
     from voice import observer
+    if op.get("op") == "append":
+        with _lock:
+            _last_line[0] = (str(op.get("role") or ""), str(op.get("text") or ""))
     observer.emit("wall", op["op"], extra={"writer": writer, "op": op, **({"live": True} if live else {})})
 
 
@@ -168,6 +174,12 @@ def ours(order, event: str, heard_chars: int | None = None) -> None:
     _say("mouth", op)
 
 
+def last_line():
+    """The last line appended on the wall from here, as (role, text), or None."""
+    with _lock:
+        return _last_line[0]
+
+
 def sweep(why: str = "") -> int:
     """The session leaves the manager (it falls back to the old path, or the conversation is reset): every line this
     adapter left open is deleted — nobody would ever close it. How many."""
@@ -179,6 +191,7 @@ def sweep(why: str = "") -> int:
         _open.clear()
         _turns.clear()
         _before.clear()
+        _last_line[0] = None
     for line, writer in gone:
         _say(writer, {"op": "delete", "id": line, **({"why": why} if why else {})})
     return len(gone)
@@ -196,3 +209,4 @@ def _reset_for_tests() -> None:
         _open_lines.clear()
         _last.clear()
         _before.clear()
+        _last_line[0] = None

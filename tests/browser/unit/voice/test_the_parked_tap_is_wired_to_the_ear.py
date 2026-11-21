@@ -15,7 +15,6 @@ import pytest
 from tests import voice_turn_source as _vts   # V2-778 F1: a split file is read with its moved pieces
 
 ROOT = Path(__file__).resolve().parents[4]
-SSE = ROOT / "frontend" / "app" / "services" / "sse.js"
 SESSION = ROOT / "frontend" / "app" / "services" / "session-lk.js"
 AGENT = ROOT / "voice" / "engine" / "pipeline" / "agent.py"
 AGENT_EVENTS = ROOT / "voice" / "engine" / "pipeline" / "agent_events.py"
@@ -27,23 +26,6 @@ EAR = ROOT / "frontend" / "app" / "services" / "wakeword.js"
 def _src(p: Path) -> str:
     assert p.exists(), f"{p} is gone — the seam moved and this test has to move with it"
     return _vts.read(p)     # V2-778 F1: a split file is read with its moved pieces
-
-
-# ── 1 · the wall asks before it paints ─────────────────────────────────────────────────────────────────
-def test_the_provisional_line_goes_through_the_predicate_and_not_around_it():
-    s = _src(SSE)
-    assert "paintsProvisional(store.attentionMode(), store.attentionHit())" in s, \
-        "the interim branch must ASK — a second unguarded call is how the erased text came back"
-    # The old unconditional call is the exact shape of the bug he reported. One guarded call, no other.
-    assert s.count("captionPartial(d.text)") == 1
-    assert "captionPartial(d.text);\n" not in s.replace(
-        "if (paintsProvisional(store.attentionMode(), store.attentionHit())) captionPartial(d.text);\n", "")
-
-
-def test_the_predicate_is_imported_from_the_module_that_owns_the_rules():
-    # Not re-implemented in `sse.js`: two copies of one rule is how the caption and the tap would come to
-    # disagree about whether the agent is listening.
-    assert 'import { paintsProvisional } from "./wakeword.js' in _src(SSE)
 
 
 # ── 2 · ⚠️ the tap never closes over an ear that is not running ────────────────────────────────────────

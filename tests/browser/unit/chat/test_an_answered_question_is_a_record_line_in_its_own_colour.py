@@ -1,9 +1,9 @@
 """V2-931 · An answered confirmation leaves ONE record line, in the system's own colour — RENDERED, both themes.
 
 «Ricard confirms that the message is sent» is neither his bubble nor the agent's: it wears the question card's surface
-and accent edge (`shared-surfaces.css`, tokens only), so it reads as the end of that card. The engine's `ask_resolved`
-event goes through the production router into the old path's wall writer (`legacy.pushChat({role: "record"})`, a note
-of kind `record`) and the real ChatWall in Chromium; the line's class (`cw-msg record`) and its computed colours are
+and accent edge (`shared-surfaces.css`, tokens only), so it reads as the end of that card. The engine writes it
+(`nucleo/conversation_host/wall_notes.record`, writer `record`, a note of kind `record`): its `wall` event, as the engine
+emits it, goes through the production router into the real ChatWall in Chromium; the line's class (`cw-msg record`) and its computed colours are
 read from the DOM, in the dark and in the light theme. The phone's sheet (the same wall, its own classes) must class
 that line `zm-msg record`: it is mounted for real and read, and the same rule is checked with the phone's stylesheet.
 """
@@ -26,7 +26,28 @@ LINE = {"es": "Ricard confirma que mandemos el mensaje a Odile", "en": "Quinn co
 pytest.importorskip("playwright.sync_api")
 
 LOG = """() => localStorage.getItem('hb_wall_lines') || JSON.stringify({ lines: [] })"""
-LEGACY = "/frontend/app/services/wall-legacy.js?v=1"   # the page's ONE old-path writer (ChatWall imports this URL)
+
+
+def _wall_events(*lines):
+    """The `wall` events the engine emits for his line, ours and the record line — on the wire, as `observer` flattens
+    them (`{kind: "wall", writer, op}`)."""
+    from nucleo.conversation_host import wall, wall_notes
+    from voice import observer
+    got, emit = [], observer.emit
+    observer.emit = lambda kind, label, text="", role="", extra=None, piece=None: got.append(
+        {"kind": kind, "label": label, **(extra or {})})
+    try:
+        wall._reset_for_tests()
+        for role, text in lines:
+            if role == "record":
+                wall_notes.record(text)
+            else:
+                wall._say("keyboard:t" if role == "you" else "mouth", {"op": "append", "id": f"l_{len(got)}",
+                                                                      "role": role, "state": "final", "text": text})
+    finally:
+        observer.emit = emit
+        wall._reset_for_tests()
+    return got
 COLOURS = """(sel) => { const e = document.querySelector(sel); const s = getComputedStyle(e);
     return { cls: [...e.classList], bg: s.backgroundColor, ink: s.color, edge: s.borderLeftColor,
              edgeW: s.borderLeftWidth, text: (e.textContent || '').trim() }; }"""
@@ -75,7 +96,6 @@ def _wall(browser, port):
         window.__sse = await import('/frontend/app/services/sse.js?v=2');
         document.body.append(wall.ChatWall());
         window.__store = store;
-        window.__legacy = (await import('""" + LEGACY + """')).legacy;
         store.openChatFrom('orb'); store.setChatTab('chat');
     }""")
     pg.wait_for_selector("#chatwall.open", timeout=5000)
@@ -87,10 +107,8 @@ def _wall(browser, port):
 def test_the_record_line_is_neither_bubble_in_either_theme(browser_and_port, lang):
     br, port = browser_and_port
     pg = _wall(br, port)
-    pg.evaluate("""() => { window.__legacy.pushChat({ role: 'you', text: 'send it', at: Date.now() });
-                           window.__legacy.pushChat({ role: 'agent', text: 'on it', at: Date.now() + 1 }); }""")
-    pg.evaluate("(d) => window.__sse.routeEvent(null, d)",
-                {"kind": "ask_resolved", "label": "✅ he confirmed", "text": LINE[lang], "outcome": "yes", "task_id": "t1"})
+    pg.evaluate("(evs) => evs.forEach(d => window.__sse.routeEvent(null, d))",
+                _wall_events(("you", "send it"), ("agent", "on it"), ("record", LINE[lang])))
     pg.wait_for_selector("#chatwall .cw-msg.record", timeout=5000)
     for theme in ("dark", "light"):
         pg.evaluate("(t) => { if (t === 'light') document.documentElement.dataset.theme = 'light'; "
@@ -132,11 +150,10 @@ def test_the_phones_sheet_classes_the_record_line_as_a_record(browser_and_port):
         const m = await import('/frontend/mobile/app/shell/ChatSheet.js?v=1');
         document.body.append(m.ChatSheet());
         store.setChatTab('chat'); store.setChatOpen(true);
-        const { legacy } = await import('""" + LEGACY + """');
-        legacy.pushChat({ role: 'you', text: 'send it' });
-        legacy.pushChat({ role: 'agent', text: 'on it' });
-        legacy.pushChat({ role: 'record', text: '""" + LINE["en"] + """' });
     }""")
+    pg.evaluate("""async (evs) => { const { routeWall } = await import('/frontend/app/services/wall-bridge.js?v=1');
+                                   evs.forEach(routeWall); }""",
+                _wall_events(("you", "send it"), ("agent", "on it"), ("record", LINE["en"])))
     rows = until_sync(lambda: (lambda xs: xs if len(xs) == 3 else None)(pg.evaluate(
         """() => [...document.querySelectorAll('.zm-msgs > *')].filter(n => !n.hidden)
                .map(n => ({ cls: [...n.classList], text: (n.textContent || '').trim() }))""")),

@@ -23,8 +23,8 @@ ROOT = Path(__file__).resolve().parents[4]
 def events(monkeypatch):
     out: list[tuple[str, str, dict]] = []
     import voice.observer as obs
-    monkeypatch.setattr(obs, "emit", lambda kind, label, text="", role="", extra=None, **_: out.append(
-        (kind, label, dict(extra or {}))))
+    monkeypatch.setattr(obs, "emit", lambda kind, label, text="", role="", extra=None, **_: kind != "wall" and out.append(
+        (kind, label, dict(extra or {}))))    # the box's own `wall` action is the engine's writer's (node 13.165)
     kept: list[tuple[str, str, dict]] = []
     from nucleo.circuit import ledger
     monkeypatch.setattr(ledger, "store", lambda: SimpleNamespace(
@@ -139,4 +139,6 @@ def test_the_event_kind_is_declared_for_the_audit_and_for_every_screen():
     assert _CAT.get("artifact") == "worker"
     scope = (ROOT / "frontend/app/services/event-scope.js").read_text()
     assert '"artifact"' in scope.split("ALL_SCREENS", 1)[1], "the chat is the same conversation on every screen"
-    assert 'd.kind === "artifact"' in (ROOT / "frontend/app/services/sse.js").read_text()
+    # the box itself reaches every screen as the engine's `wall` action (`wall_notes.ref`, node 13.165)
+    import inspect
+    assert "wall_notes.ref(fields, label)" in inspect.getsource(chat_refs._emit)

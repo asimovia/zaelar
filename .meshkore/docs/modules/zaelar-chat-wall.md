@@ -24,21 +24,20 @@ sounded; nothing is found by text, prefix, position or time; only final lines co
 | `ear:<device>` | the conversation manager's ear (`nucleo/conversation_host/wall.py`) | his spoken line, id = its intervention: pending at his first words, final when accepted, deleted when discarded |
 | `keyboard:<device>` | the screen that typed (the component's own composer door, `submit`) and the engine's acknowledgement | his typed line, id = the screen's `cid`, the same line on every screen |
 | `mouth` | the manager's mouth | our line, id = its say id, live while its voice says it, final with what sounded |
-| `legacy:<source>` | the old path (`services/wall-legacy.js`): FlashBrain, notices, errands' boxes, A2A, task questions | its lines, as actions with ids |
+| `notice` | the engine (`nucleo/conversation_host/wall_notes.py`), where a notice paints itself apart from the mouth | a notice's 🔔 line, id `notice_<key>`; not the question of an open card, not what the last line already says |
+| `record` | the engine, when he answers a confirmation question (`nucleo/circuit/ask_trace.py`) | the question's record line, a note of kind `record` |
+| `ref` | the engine, at every event of an errand that delivers into a card (`nucleo/chat_refs.py`) | the errand's box, id `ref_<row>`, replaced in place; the replace carries its role, so a screen that lacks the box appends it |
+| `upload` · `a2a` | this screen's own components (`main.js`, `A2AView.js`), through the bridge's `writeLine` | a file added, an A2A card or a contact's message |
 
-The old path's lines are the old rules, moved unchanged into `wall-legacy.js` and turned into actions: our voiced line
-is owed until the voice starts it, crawls as it is heard, and settles to what was heard (it waits `IDLE_GRACE_MS` for
-its last caption after the voice goes quiet, because a final line never grows); his spoken line in course is one line
-from his first partial to the attention gate's verdict, final in place or gone. Its one hand outside `legacy:` is the
-acknowledgement of a typed line by its `cid` (the keyboard that wrote it).
+The engine is the wall's one writer for every line of the conversation (INI-078): there is no client-side writer that
+reads the stream and decides a line (the old path's `wall-legacy.js` and its attention hold went). The open questions
+are the cards at the wall's foot (`TaskAsk.AskWall`), never lines of it.
 
 ## Never two writers for one line
 
-A session of the manager writes its own lines; the engine marks every event of the old wall it still emits for that
-session (`conv`: his line as the record writes it, the provider's replayed words, a typed line's announcement on a
-manager's text door, our line owed and written, a notice card the manager's mouth paints), and the router leaves them.
-A typed line's announcement always carries its `cid`, so the screen that typed it reads it as its own line with the
-switch off too.
+Each line has one writer, and the router paints only `wall` events: the stream's other events about a line (his
+`transcript` and `interim`, a `notify` card, an `artifact`, an `ask_resolved`) paint nothing on the wall. A typed line
+is the screen's (`keyboard:<device>`, by its `cid`) and the engine's acknowledgement of it is the same line.
 
 A line the manager left open when the session leaves it (a fallback to the old path, a reset) is deleted then; the
 bridge also deletes a line of his that had no news for `STALE_MS`.

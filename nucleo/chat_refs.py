@@ -101,6 +101,8 @@ def _emit(label: str, rec, fields: dict) -> None:
         from voice.observer import emit
         with _trace.scope(str(getattr(rec, "trace_id", "") or "")):
             emit(KIND, label, text=str(fields.get("title") or ""), role="system", extra=fields)
+        from nucleo.conversation_host import wall_notes
+        wall_notes.ref(fields, label)               # the box on the chat wall, by the task's row
     except Exception as e:  # noqa: BLE001
         logger.debug(f"chat_refs: {label} not emitted: {e!r}")
 

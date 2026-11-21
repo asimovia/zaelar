@@ -38,7 +38,7 @@ import * as wake from "./wakeword.js?v=1";
 import { createEffect, createSignal } from "../core/reactive.js?v=2";   // T-18: ?v=1 was a 2nd instance, blind to the store
 import { t } from "../core/i18n.js?v=1";
 import { createOutbox } from "./outbox.js?v=1";
-import { legacy } from "./wall-legacy.js?v=1"; import { heardAloud } from "./wall-bridge.js?v=1";   // the wall hears what sounds
+import { heardAloud, clearWall } from "./wall-bridge.js?v=1";   // the wall hears what sounds
 import * as health from "./device-health.js?v=1";
 import { MIC_MODES as _MIC_MODES, defaultMicMode, captureConstraints } from "./mic-profile.js?v=1";
 import * as micDenial from "./mic-denial.js?v=1";
@@ -856,7 +856,7 @@ export async function start() {
       // from «captions arrived and the wall ignored them» — a whole fix was planned around a guess. One line
       // per session, the first segment only, so the next audit reads it instead of guessing.
       if (!_capSeen) { _capSeen = true; api.clientLog("📝 subtítulos sincronizados VIVOS", { text: "TranscriptionReceived" }); }
-      for (const s of (segments || [])) { store.pushCaptionSeg(s.id, s.text, s.final); legacy.noteSpokenAloud(s.text, s.final); heardAloud(s.text); }
+      for (const s of (segments || [])) { store.pushCaptionSeg(s.id, s.text, s.final); heardAloud(s.text); }
     });
 
     store.setConnState(t("voice.conn_connecting"));
@@ -1066,7 +1066,7 @@ function _clearCanvasAndLog() {
   // client-side, deterministic reset path (see the comment above on why it can't rely on the SSE round-trip),
   // so it owns clearing everything the operator can still SEE, not just the debug ring.
   try { store.newSession(); } catch (_) {}
-  try { legacy.reset(); } catch (_) {}
+  try { clearWall(); } catch (_) {}
   // A reset also puts the FURNITURE back where it was born (operator, 2026-09-07: «cuando se hace un reset,
   // quiero que el orbe vuelva a su posición inicial»). The canvas is cleared right here, deterministically —
   // the orb's dragged position is the same kind of client-side state, so it rides the same path. Announced as

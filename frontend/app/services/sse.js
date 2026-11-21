@@ -5,11 +5,9 @@
 // the wall and never opens, closes or moves a card (V2-807 T-05).
 // ============================================================================
 import * as store from "../core/store.js?v=2";
-import { createAttentionHold } from "./attention_hold.js?v=1";
 import { refreshStatus } from "./status.js?v=2";
 import * as vault from "./vault.js?v=1";
 import { t, applyLang } from "../core/i18n.js?v=1";
-import { paintsProvisional } from "./wakeword.js?v=1";
 import { setWallpaper } from "./theme.js?v=2";
 import { takeoverOnReset, browserTakeoverArgs } from "../core/first-run.js?v=1";
 import { DEVICE, screensBring, screensPresent, screensLeft } from "./api.js?v=2";
@@ -20,7 +18,7 @@ import { wirePresence, presenceEvent, onStreamOpen, onStreamError, syncRunState 
 import { snapshotAll } from "../widgets/state-reporter.js?v=1";
 import { orderAck, reportAll } from "../widgets/screen-order.js?v=1";
 import { a2aEvent } from "../components/A2AView.js?v=1";
-import { legacy, cleanDevice } from "./wall-legacy.js?v=1"; import { routeWall } from "./wall-bridge.js?v=1";
+import { routeWall } from "./wall-bridge.js?v=1";
 
 
 // V2-464 — SHOWCASE mode: ?showcase=1 in the URL. The use-case recorder (recorder.py) uses it to keep the chat
@@ -33,49 +31,6 @@ const VAD_HOLD_S = 180; // V2-661: how long an active voice may hold the ring wi
 const BOT_HOLD_S = 600; // …and while ZAELAR talks (its `idle` edge re-arms a real window; this is the safety net)
 let _voiceActive = false;   // V2-661b: his VAD is ON — his silence has not started, so no timer may be shortened
 
-// ── V2-647: a spoken turn waits for the attention gate's verdict ─────────────────────────────────────────
-// The decision itself lives in `attention_hold.js` (dependency-free, and what the tests drive); here we only
-// wire it to this channel's two seams — the transcript that arrives first, and the gate's ruling that
-// arrives just after. See that module for the measured session this comes from.
-const _hold = createAttentionHold({
-  mode: () => store.attentionMode(),
-  // V2-763 — whether the orb is saying «te escucho» right now: the fail-open may only paint while it is.
-  listening: () => paintsProvisional(store.attentionMode(), store.attentionHit()),
-  now: store.serverNow,   // the engine's clock as of the event being routed: a verdict and a final compare on it
-  // V2-745 — `whole` says WHICH of the two halves of a release this call is. The fragments drive the
-  // CANVAS (V2-664 tuned that path against fragments); the joined paragraph is the one line that reaches
-  // the wall, because «lo conviertes en dos frases separadas cuando es el mismo párrafo» was the STT's
-  // segmentation showing through a surface that should only ever show his sentence.
-  deliver: (text, isFinal, judged, whole, at) => {
-    if (whole) return void legacy.youSaid(text, at);   // the line he was saying becomes final, where it started
-    // V2-807 T-05 — the fragments drive NOTHING on the canvas. They used to feed a client fast path that
-    // opened cards from a verb-stem table plus a catalogue noun on interim text: «pon también la web» opened
-    // a browser, «este mensaje» the messaging card. A card is opened only by the engine's own op (its verdict,
-    // action map or a tool), which arrives as a `widget show` event below.
-  },
-  // V2-743 — the provisional caption lives exactly as long as the hold does: it becomes a real bubble on
-  // delivery and vanishes on a discard. Clearing on BOTH is the point — a line left behind after a dropped
-  // turn would be V2-647 coming back through the caption.
-  settled: () => legacy.clearLiveChat(),
-});
-
-// `desktop` stays in both signatures: the canvas is no longer driven from here (V2-807 T-05), but the callers
-// and their contract tests name it.
-export function holdSpokenTurn(desktop, text, isFinal, at) { _hold.spoken(text, isFinal, at); }   // `at`: the final's own t_ms
-// V2-743 — the interim seam, the same shape as the two above: a thin exported door the `interim` branch of
-// `onmessage` calls, so the test drives the PRODUCTION path instead of a copy of it (node 4.199).
-//
-// V2-745 — …and it shows THE WHOLE TURN SO FAR, not the fragment being typed. The operator: «cuando paso
-// de tres, cuatro o cinco palabras, las antiguas desaparecen y empiezas a escribir las nuevas… parece que
-// se está perdiendo texto». Nothing was lost — Deepgram had closed a segment and opened a new one, and the
-// caption was a mirror of the newest segment alone. The words it dropped are exactly the ones the hold is
-// already keeping for this turn, so the caption reads them from there instead of from nowhere.
-export function captionPartial(text) {
-  const said = _hold.spokenSoFar();
-  const now = String(text || "").trim();
-  legacy.setLiveChat(said && now ? said + " " + now : (said || now));
-}
-export function settleHeldTurns(desktop, verdictText, directed, meta) { _hold.verdict(verdictText, directed, meta); }
 
 let es = null, _opens = 0;
 
@@ -119,10 +74,8 @@ export function openSSE(desktop, { wake = false } = {}) {
 
 // V2-743 — the router is its OWN exported function, and the subscription above is three lines that parse
 // and hand off. It used to be one 325-line arrow inside `openSSE`, reachable only through a live
-// `EventSource`, so every test of this channel had to drive one of the thin seams BELOW it (`holdSpokenTurn`,
-// `settleHeldTurns`) — which proves the mapping and never the wiring. Its own disarm caught that: deleting
-// the whole `interim` branch left node 4.199 green, because the test was calling `captionPartial` directly.
-// Nothing about the routing changed; it only became reachable.
+// `EventSource`, so every test of this channel had to drive a thin seam BELOW it — which proves the mapping and
+// never the wiring. Nothing about the routing changed; it only became reachable.
 // A field the engine put in `extra`. `voice/observer.emit` FLATTENS extra into the event (`ev.update(extra)`),
 // so on the wire it is `d.src`, never `d.extra.src` — reading the nested spelling found nothing, silently:
 // after a factory reset the mic and speaker stayed muted (hb:language-ready never fired, measured 2026-09-25),
@@ -150,11 +103,6 @@ export function routeEvent(desktop, d) {
       const speaking = typeof d.speaking === "boolean" ? d.speaking
                      : /speaking|started/.test(String(d.label));
       store.setBotSpeaking(speaking);
-      // V2-752 — THE ENGINE SAYING «this utterance reached the speaker» IS WHAT PAINTS THE LINE. It carries
-      // the turn's trace and it does not depend on the caption transport, so a build with no audio-synced
-      // transcription still writes the wall, and a cancelled reply writes nothing (session fce3eff3; `wall-legacy.js`).
-      if (speaking) legacy.noteVoiceStarted(d.trace || "", d.t_ms);
-      else legacy.noteVoiceIdle();
       // The ring mirrors the REAL window (2026-09-09, session 0071d30e): the backend holds an open window
       // while zaelar talks and re-anchors it at its last word (attention.note_bot_speech) — but the ring's
       // timer only knew the last directed turn, so it died mid-reply and the operator read «no veo el círculo
@@ -162,12 +110,6 @@ export function routeEvent(desktop, d) {
       // window on idle; a ring already off stays off (the bot's own speech never OPENS one).
       if (store.attentionHit()) store.pulseAttentionHit(speaking ? BOT_HOLD_S : _attnWinS);
       if (d.ttfa_ms != null) store.setLatency(d.ttfa_ms + " ms");
-    } else if (d.kind === "state" && d.state === "interrupted") {
-      // V2-752 — THE TURN WAS CUT. A reply the voice had not begun is dropped here and never reaches the
-      // wall: it was generated, it was not said, so it did not happen. Measured in session fce3eff3 —
-      // 9 of 24 replies ended this way and every one of them was painted and then deleted in front of him.
-      // A line already sounding is NOT touched: `settleAgentSpoken` trims that one to what he heard (V2-745).
-      legacy.dropUnspokenLine(d.trace || "");
     } else if (d.kind === "vad" && d.edge) {
       // V2-661 — the window measures the operator's SILENCE, and his silence has not started while he is
       // talking. Measured 2026-09-11 (session 1cdcb08e): he spoke for 47 s without a pause and the ring went
@@ -262,48 +204,7 @@ export function routeEvent(desktop, d) {
         store.setChatOpen(true);
       }
     } else if (d.kind === "controls") { import("./self-controls.js?v=1").then(m => m.applyControl(d)).catch(() => {});   // his 🔊/⏻ by voice
-    } else if (d.kind === "filler" && d.text) {
-      // Lead-in wait-filler (V2-093/V2-122): a real phrase the agent just said out loud, so it belongs in the
-      // chat wall — but pushed with its own distinct marker, never as `kind:"transcript"`, so it can't be
-      // confused with a real LLM-generated reply. Emitted explicitly and synchronously by lead_in_filler.py the
-      // instant it's decided (always BEFORE any real reply text exists), so it lands in the right order without
-      // depending on LiveKit's own conversation-item timing — the exact mechanism that caused the original bug
-      // (a filler showing up AFTER an already-resolved reply).
-      legacy.pushAgentChat("💬 " + d.text, { kind: "filler" });   // V2-877 #10: the phone draws no bubble for it
-    } else if (d.kind === "wall") { routeWall(d);                                 // the manager's own lines, as actions with ids
-    } else if (field(d, "conv") && (d.kind === "interim" || d.kind === "transcript" || d.kind === "notify" || (d.kind === "brain" && /reply/.test(String(d.label || ""))))) {
-      if (d.kind === "brain") store.pushPulse({ kind: "turn" });   // INI-042 #49: the manager wrote this line itself (`wall`)
-    } else if (d.kind === "interim" && d.text && d.role === "user") {
-      // V2-743 — LIVE partial → his line in course, live (dashed), never persisted, driving nothing; without it his
-      // words reached the wall a median 3.45 s late (session bcd4aba1). V2-749 — and not one word of it while the
-      // agent is parked: the condition is the RING (lit by a directed verdict or the instant wake-word spot), so the
-      // line is written from the moment his name is heard and never before («ese texto jamás debe aparecer ahí»).
-      if (paintsProvisional(store.attentionMode(), store.attentionHit())) captionPartial(d.text);
-    } else if (d.kind === "transcript" && d.text) {
-      if (d.role === "assistant") {
-        // zaelar's spoken RECORD (what LiveKit actually voiced, V2-745), once and late — never a voice command.
-        if (!asks.isOpenQuestion(d.text)) legacy.pushAgentChat(d.text, { spoken: true, trace: d.trace || "" });
-      } else {
-        // Voice: "transcript" = final, "interim" = partial. TYPED chat/paste ("text-injected …") is final.
-        const isFinal = d.label === "transcript" || (d.label || "").startsWith("text-injected");
-        const typed = (d.label || "").startsWith("text-injected");
-        // V2-647 — THE ROOM IS NOT THE OPERATOR: a spoken turn is HELD until the gate's verdict (its own `ambient`
-        // event, just AFTER this) says it was for us; typed text is directed by construction.
-        if (typed) {
-          // V2-773 — the engine announces every typed line (`text-injected chat`), so a tab that did not type it
-          // paints it too; by its `cid` it is the typing screen's own line there — one line, nothing compared by text.
-          legacy.ackTyped(d.text, field(d, "cid"), field(d, "dev"), DEVICE, cleanDevice);
-        }
-        else {
-          // The FINAL firms up his line while the verdict is pending. ORDER MATTERS (V2-745): hold FIRST, then read
-          // the line back out of it — `spokenSoFar()` already includes this segment.
-          holdSpokenTurn(desktop, d.text, isFinal, d.t_ms);
-          // V2-763 — the SAME rule as the interim branch above. Ungated here, a final segment rewrote the
-          // caption with everything held so far while the ring was off: the dashed «he is being heard» line
-          // of his 2026-09-24 screenshot, over a grey orb, for a monologue the gate had ruled ambient.
-          if (paintsProvisional(store.attentionMode(), store.attentionHit())) captionPartial("");
-        }
-      }
+    } else if (d.kind === "wall") { routeWall(d);                                 // the engine's lines, as actions with ids
     } else if (d.kind === "alert") {                                              // engine fault → the ◉ status monitor
       // No top banner (operator, 2026-09-28): «un turno se atascó» painted a red strip across the desk
       // mid-demo. Faults live in ONE place — the floating ◉ icon turns amber/red and its status monitor
@@ -348,7 +249,6 @@ export function routeEvent(desktop, d) {
                         store.pulseAttentionHit(_voiceActive ? VAD_HOLD_S : _attnWinS); }
       else if (d.window_open === false) store.clearAttentionHit();
       else if (d.window_open === true && !store.attentionHit()) store.pulseAttentionHit(d.window_s || _attnWinS);
-      settleHeldTurns(desktop, d.text || "", !!d.directed, { reason: d.reason || "" });   // V2-647: the wall obeys it
     } else if (d.kind === "language" && d.phase === "progress") {
       // V2-731 — a STEP of the first-run preparation finished. Handled before everything else in this branch
       // and carrying no `code` on purpose: it must not re-run applyLang, which would refetch the bundle once
@@ -392,8 +292,7 @@ export function routeEvent(desktop, d) {
       // the observability panel would keep showing rows from the previous session over one just born blank.
       // `clearDebugBuffer()` (already called by reset) empties the RING, not the DOM.
       try { store.newSession(); } catch (_) {}
-    } else if (d.kind === "artifact") { legacy.upsertChatRef(d);                 // V2-862: an errand's reference box on the wall
-    } else if (d.kind === "ask_resolved" || d.kind === "ask" || d.kind === "task_state") { if (d.kind !== "ask_resolved") asks.route(d); else if (d.text) legacy.pushChat({ role: "record", text: d.text });   // V2-851: a task's question opens / its row moves on · V2-931: an answered one leaves ONE record line
+    } else if (d.kind === "ask" || d.kind === "task_state") { asks.route(d);   // V2-851: a task's question opens / its row moves on
     } else if (d.kind === "task" && d.runner !== "send") {   // SlowBrain background task lifecycle (a send's steps: its flow, no chip)
       // A deep-brain task started/finished — surface it as a liquid chip flanking the orb so the operator SEES
       // zaelar is working (widget build/modify, web task, …) and how many at once. Removed when it ends.
@@ -434,22 +333,8 @@ export function routeEvent(desktop, d) {
       store.pushPulse({ kind: "tick", n: d.n });
     } else if (d.kind === "brain" && field(d, "cat") === "a2a" && field(d, "card")) {   // V2-866: a card or a contact's message
       a2aEvent(d);
-    } else if (d.kind === "brain" && d.wall) {
-      // V2-461: the TEXT channel (probe / `POST /api/flash/say`) is also VISIBLE. It is the same conversation,
-      // so it goes to the same place: voice is transcribed to the wall, the chat widget writes to it, and
-      // through the API — which is how the studio rounds are conducted — until now it appeared nowhere.
-      // The operator watched the agent work with a blank chat, indistinguishable from a hung agent.
-      // It is distinguished by `d.wall`, not by the label text: a substring comparison is a contract visible
-      // from neither side.
-      // It deliberately does NOT arrive as `transcript` (see `nucleo/flash/probe_api._wall`): that branch also
-      // feeds the voice-command shortcut, and a probe turn saying «close the agenda» would execute TWICE.
-      if (d.wall === "you") legacy.youSaid(d.text);
-      else legacy.pushAgentChat(d.text);
-    } else if (d.kind === "brain" && /reply/.test(String(d.label || ""))) {       // a FlashBrain turn ended
+    } else if (d.kind === "brain" && /reply/.test(String(d.label || ""))) {       // a turn ended
       store.pushPulse({ kind: "turn" });                                          // → higher QRS peak in the ECG
-      // …and the line is OWED to the wall now (V2-116, V2-752): written when its voice starts it, crawling as he hears
-      // it, settled to what he heard — `wall-legacy.js`. The record that follows is matched by its trace.
-      if (d.text && d.role === "assistant") legacy.pushAgentChat(d.text, { voiced: true, trace: d.trace || "" });
     } else if (d.kind === "status") {                                             // server nudged us to re-read status
       refreshStatus();
     } else if (d.kind === "energy") {                                             // Energy balance → the BATTERY drops LIVE
@@ -493,9 +378,6 @@ export function routeEvent(desktop, d) {
         // that, and here nobody clicked ⏻ — so main.js is told, and does what ⏻ ON does.
         if (!off && field(d, "src") === "language") document.dispatchEvent(new CustomEvent("hb:language-ready"));
       }
-    } else if (d.kind === "notify") {                                             // proactive push (a native cron fired)
-      // NO floating toast: zaelar SPEAKS it when a voice session is live; the wall keeps one line per notice.
-      if (!asks.isOpenQuestion(d.text)) legacy.notice(d.text, field(d, "key"));   // one line per notice; a question's card is its one place
     } else if (d.kind === "cluster") {                                            // MeshKore channel
       // The chat wall is ONLY the operator ↔ zaelar channel (operator rule, 2026-07-25): cluster traffic is NOT
       // dumped here. V2-086: it is not stored anywhere in the frontend either — clusters have their OWN monitor,

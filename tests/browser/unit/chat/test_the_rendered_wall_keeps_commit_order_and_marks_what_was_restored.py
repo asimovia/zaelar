@@ -1,16 +1,16 @@
 """The chat wall, RENDERED, in order — and ONE «earlier» divider after the restored lines.
 
 Operator's complaint (2026-11-17): his bubble landed BELOW the agent's reply to it: the gate's directed verdict arrived
-24–90 ms BEFORE his final transcript, and the client dropped a verdict that found nothing held. This replays that exact
-event order through the production router (`sse.routeEvent`) into the real old-path writer (`wall-legacy.js`), the real
-chat wall component and the real ChatWall in Chromium, and reads the DOM. The order rule is the wall plan's §5.1 (a
-line's place is where it STARTS: his at his first words, ours at its voice's start; nothing is inserted by time) — what
-stays pinned is the complaint: his line above the reply it caused.
+24–90 ms BEFORE his final transcript. The engine is the wall's one writer now: his line is appended (pending) at the
+instant his voice rises and made final with the words the inbox accepted, our reply appended when its voice starts —
+even when his final words land after it. This routes the engine's `wall` events through the production router
+(`sse.routeEvent`) into the real chat wall component and the real ChatWall in Chromium, and reads the DOM. The order rule
+is the wall plan's §5.1 (a line's place is where it STARTS; nothing is inserted by time) — what stays pinned is the
+complaint: his line above the reply it caused, and the reply naming it (`re`).
 
 The same day's screenshot showed the «earlier, N min ago» divider at the very END of a live conversation. The wall now
 restores the final lines kept in `wall-storage.js` (`hb_wall_lines`; the old `hb_chat_log` is migrated ONCE), marks
 each restored line (`cw-restored`) and puts ONE divider after them, where it stays while the cap trims the oldest.
-The .mjs twin (`test_the_wall_is_in_the_order_things_were_committed.mjs`) covers the hold and the old path's writer.
 """
 from __future__ import annotations
 
@@ -78,11 +78,8 @@ def _page(browser, port, seed=None):
         const store = await import('/frontend/app/core/store.js?v=2');
         const wall = await import('/frontend/app/components/ChatWall.js?v=5');
         window.__sse = await import('/frontend/app/services/sse.js?v=2');
-        // the page's ONE old-path writer: the same URL every importer names (a different ?v= is a second instance)
-        window.__legacy = (await import('/frontend/app/services/wall-legacy.js?v=1')).legacy;
         document.body.append(wall.ChatWall());
         window.__store = store;
-        store.setAttentionMode('smart');            // there IS a gate: every spoken turn waits for its verdict
         store.openChatFrom('orb'); store.setChatTab('chat');
     }""", seed)
     pg.wait_for_selector("#chatwall.open", timeout=5000)
@@ -94,37 +91,35 @@ def _route(pg, *events):
     pg.evaluate("(evs) => evs.forEach(d => window.__sse.routeEvent(null, d))", list(events))
 
 
+def _wall(writer, **op):
+    return {"kind": "wall", "label": op["op"], "writer": writer, "op": op}
+
+
 @pytest.mark.parametrize("lang,a,r1,b,r2", [
     ("en", "Show me tomorrow's agenda", "Here it is.", "And when is the first one?", "At nine."),
     ("es", "Ponme la agenda de mañana", "Ahí la tienes.", "¿Y a qué hora es la primera?", "A las nueve."),
 ])
-def test_a_verdict_that_arrives_before_his_words_still_paints_them_first(browser_and_port, lang, a, r1, b, r2):
+def test_his_line_stands_above_the_reply_it_caused(browser_and_port, lang, a, r1, b, r2):
     br, port = browser_and_port
     pg = _page(br, port)
-    t0 = pg.evaluate("() => Date.now()")
-    verdict = {"kind": "ambient", "label": "👂 dirigido a zaelar", "directed": True, "reason": "active_window",
-               "window_s": 12}
-    # the measured order: the verdict 50 ms BEFORE the final transcript
-    _route(pg, {**verdict, "t_ms": t0}, {"kind": "transcript", "label": "transcript", "role": "user", "text": a,
-                                         "t_ms": t0 + 50})
-    until_sync(lambda: pg.evaluate(READ) == ["H: " + a], f"[{lang}] his line painted as soon as it is final")
-    _route(pg, {"kind": "brain", "label": "🧠 reply", "role": "assistant", "text": r1, "trace": "T1", "t_ms": t0 + 1500},
-           {"kind": "bot_speech", "label": "speaking", "speaking": True, "trace": "T1", "t_ms": t0 + 2000},
-           {"kind": "bot_speech", "label": "idle", "speaking": False, "t_ms": t0 + 4000},
-           # the next turn, in the usual order this time
-           {"kind": "transcript", "label": "transcript", "role": "user", "text": b, "t_ms": t0 + 9000},
-           {**verdict, "t_ms": t0 + 9070},
-           {"kind": "brain", "label": "🧠 reply", "role": "assistant", "text": r2, "trace": "T2", "t_ms": t0 + 10500},
-           {"kind": "bot_speech", "label": "speaking", "speaking": True, "trace": "T2", "t_ms": t0 + 11000},
-           {"kind": "bot_speech", "label": "idle", "speaking": False, "t_ms": t0 + 12000})
+    ear = "ear:desktop:t"
+    _route(pg, _wall(ear, op="append", id="iv_1", role="you", state="pending", text=""),
+           _wall(ear, op="update", id="iv_1", text=a))
+    until_sync(lambda: pg.evaluate(READ) == ["H: " + a], f"[{lang}] his line where his voice rose")
+    # the reply's voice starts before his final words land: his line keeps its place, above it
+    _route(pg, _wall("mouth", op="append", id="s_1", role="agent", re=["iv_1"], state="live", heard=0, text=r1),
+           _wall(ear, op="update", id="iv_1", state="final", text=a),
+           _wall("mouth", op="update", id="s_1", state="final", heard=len(r1)),
+           _wall(ear, op="append", id="iv_2", role="you", state="pending", text=""),
+           _wall(ear, op="update", id="iv_2", state="final", text=b),
+           _wall("mouth", op="append", id="s_2", role="agent", re=["iv_2"], state="live", heard=0, text=r2),
+           _wall("mouth", op="update", id="s_2", state="final", heard=len(r2)))
     until_sync(lambda: pg.evaluate(READ) == ["H: " + a, "Z: " + r1, "H: " + b, "Z: " + r2],
-               f"[{lang}] the wall in commit order: {pg.evaluate(READ)}")
-    # the stamp is kept where the history is kept (`wall-storage.js`: final lines only)
-    until_sync(lambda: [m.get("at") for m in json.loads(pg.evaluate(
-        "() => localStorage.getItem('hb_wall_lines') || '{\"lines\":[]}'"))["lines"]]
-        == [t0 + 50, t0 + 2000, t0 + 9000, t0 + 11000], "the persisted lines carry their commit stamps")
-    # our replies name the line of his they answer, which stands above them
+               f"[{lang}] the wall in the order things started: {pg.evaluate(READ)}")
+    # our replies name the line of his they answer, which stands above them — kept as the wall keeps its history
     ids = pg.evaluate("() => [...document.querySelectorAll('#chatwall .cw-list > [data-id]')].map(e => e.dataset.id)")
+    until_sync(lambda: len(json.loads(pg.evaluate(
+        "() => localStorage.getItem('hb_wall_lines') || '{\"lines\":[]}'"))["lines"]) == 4, "the final lines kept")
     kept = json.loads(pg.evaluate("() => localStorage.getItem('hb_wall_lines')"))["lines"]
     assert [k["id"] for k in kept] == ids, (kept, ids)
     assert kept[1]["re"] == [ids[0]] and kept[3]["re"] == [ids[2]], kept
@@ -149,12 +144,12 @@ def test_the_divider_follows_the_restored_rows_at_the_cap(browser_and_port):
     assert pg.evaluate("() => localStorage.getItem('hb_chat_log')") is None, "the old key is migrated once and removed"
     kept = json.loads(pg.evaluate("() => localStorage.getItem('hb_wall_lines')"))["lines"]
     assert len(kept) == 100 and all(k["state"] == "final" for k in kept), "migrated as final lines"
-    pg.evaluate("() => window.__legacy.pushChat({ role: 'you', text: 'new 1' })")
+    _route(pg, _wall("keyboard:desktop:t", op="append", id="c_1", role="you", state="final", text="new 1"))
     until_sync(lambda: pg.evaluate(READ)[-1] == "H: new 1", "the new line")
     rows = pg.evaluate(READ)
     assert rows.index("--") == 99 and rows[98] == "H: old 99", rows[95:]
     assert rows[100:] == ["H: new 1"], "at the cap, the divider sits after the restored rows, not at the end"
-    pg.evaluate("() => window.__legacy.pushChat({ role: 'agent', text: 'new 2' })")
+    _route(pg, _wall("mouth", op="append", id="s_1", role="agent", state="final", text="new 2"))
     until_sync(lambda: pg.evaluate(READ)[-1] == "Z: new 2", "the second new line")
     rows = pg.evaluate(READ)
     assert rows.index("--") == 98 and rows[99:] == ["H: new 1", "Z: new 2"], rows[95:]
@@ -167,9 +162,9 @@ def test_the_divider_follows_the_restored_rows_at_the_cap(browser_and_port):
 def test_a_reload_restores_the_final_lines_once_with_one_divider(browser_and_port):
     """The component's own key: what was final comes back, in order, once; nothing live does."""
     br, port = browser_and_port
-    lines = [{"id": f"l{i}", "owner": "legacy:you" if i % 2 else "legacy:agent", "role": "you" if i % 2 else "agent",
+    lines = [{"id": f"l{i}", "owner": "keyboard:t" if i % 2 else "mouth", "role": "you" if i % 2 else "agent",
               "state": "final", "text": f"kept {i}", "at": 1_700_000_000_000 + i} for i in range(4)]
-    lines.append({"id": "l_live", "owner": "legacy:you", "role": "you", "state": "live", "text": "half said"})
+    lines.append({"id": "l_live", "owner": "ear:t", "role": "you", "state": "live", "text": "half said"})
     pg = _page(br, port, seed={"key": "hb_wall_lines", "body": {"v": 2, "at": 1_700_000_100_000, "lines": lines}})
     until_sync(lambda: len(pg.evaluate(READ)) == 5, "the restored wall")
     assert pg.evaluate(READ) == ["Z: kept 0", "H: kept 1", "Z: kept 2", "H: kept 3", "--"], pg.evaluate(READ)

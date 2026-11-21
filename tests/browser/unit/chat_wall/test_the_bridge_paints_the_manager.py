@@ -163,3 +163,29 @@ def test_a_line_of_his_no_writer_closed_is_swept_and_a_refusal_is_reported(page)
     assert pg.evaluate("() => __bridge.wall.lines().map(l => l.id)") == ["iv_2", "s_1"]
     reports = pg.evaluate("() => __reports")
     assert [r for r, _c in reports] == ["final_grows"] and reports[0][1]["final_grows"] == 1
+
+
+def test_a_replace_that_carries_its_role_appends_on_a_screen_that_lacks_the_line(page):
+    """INI-078 (the wall of one writer): the engine writes an errand's box (`wall_notes.ref`) once for every screen —
+    appended at its first event, replaced at every later one. A screen that opened after the first (or was cleared)
+    has no box to replace: a `replace` that carries its line's role appends it there, with no refusal; on a screen
+    that has it, it replaces in place — one box, never two. Disarm: the bridge's upsert off → the late screen has no
+    box and a `no_line` refusal is reported."""
+    pg = page
+    pg.evaluate("""async () => {
+      document.body.innerHTML = '<div id="m3" style="height:320px;width:420px"></div>';
+      const { createWallBridge } = await import('/frontend/app/services/wall-bridge.js');
+      window.__reports = [];
+      __bridge.destroy();
+      window.__bridge = createWallBridge({ mount: document.getElementById('m3'), device: 'desktop:d1',
+                                           report: (r) => __reports.push(r.reason) });
+      const box = (op, state) => __bridge.route({ kind: 'wall', writer: 'ref', op: { op, id: 'ref_R1', role: 'box',
+          kind: 'ref', text: 'w1', data: { role: 'ref', ref: 'R1', text: 'w1', surface: '', card: '', state, file: '' } } });
+      box('replace', 'done');                  // this screen never saw the box open
+      window.__late = __bridge.wall.lines().map(l => [l.id, l.role, l.kind, l.data.state]);
+      box('replace', 'partial');
+      window.__after = __bridge.wall.lines().map(l => [l.id, l.data.state]);
+    }""")
+    assert pg.evaluate("() => __late") == [["ref_R1", "box", "ref", "done"]]
+    assert pg.evaluate("() => __after") == [["ref_R1", "partial"]]
+    assert pg.evaluate("() => __reports") == []

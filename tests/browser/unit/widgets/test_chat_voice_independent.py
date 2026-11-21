@@ -64,12 +64,14 @@ def test_reconnect_reconciles_against_the_icon_not_the_chat():
 
 # ── the response is ALWAYS visible in the chat, with or without voice ───────────────────────────────────────
 def test_the_reply_reaches_the_chat_independently_of_audio():
-    """`transcript/assistant` → `pushAgentChat`. It depends on the text, not the audio: that is why the chat shows the
-    response both when zaelar is saying it aloud and when it is muted."""
-    # The final-transcript branch (the first `d.kind === "transcript"` now is the guard that leaves a manager's
-    # `conv` events to the manager's own lines); the wall is written through `legacy.pushAgentChat`.
-    branch = SSE.split('d.kind === "transcript" && d.text')[1].split("else if")[0]
-    assert 'd.role === "assistant"' in branch and "legacy.pushAgentChat(" in branch
+    """Our line is the engine's (`wall.ours`, writer `mouth`): appended when shown — final at once, no voice at all —
+    or when its voice starts. It depends on the text, not the audio: that is why the chat shows the response both when
+    zaelar is saying it aloud and when it is muted. The screen paints every `wall` event as it comes."""
+    import inspect
+    from nucleo.conversation_host import wall
+    assert 'd.kind === "wall") { routeWall(d);' in SSE
+    ours = inspect.getsource(wall.ours)
+    assert 'if event in ("shown", "started"):' in ours and '{"state": "final"} if event == "shown"' in ours
 
 
 # ── the server: the signal exists, but its owner is the operator ─────────────────────────────────────────────

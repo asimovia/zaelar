@@ -10,13 +10,11 @@ working silently is indistinguishable from one that is hung.
 """
 from __future__ import annotations
 
-import pathlib
 
 import pytest
 
 from nucleo.cli import api as probe_api
 
-ENGINE = pathlib.Path(__file__).resolve().parents[4]
 
 
 @pytest.fixture(autouse=True)
@@ -93,10 +91,3 @@ def test_enseñar_la_conversacion_JAMAS_tumba_el_turno(monkeypatch):
 
 
 # ── order matters ────────────────────────────────────────────────────────────────────────────────────
-# ── the other half, which lives in the browser ─────────────────────────────────────────────────────────────
-def test_el_frontend_lee_ESE_campo():
-    """Wiring up only one side does not fail noisily: it fails by producing nothing, which is the defect being
-    fixed. The source is checked because the contract spans two files in two languages."""
-    js = (ENGINE / "frontend" / "app" / "services" / "sse.js").read_text(encoding="utf-8")
-    assert 'd.kind === "brain" && d.wall' in js
-    assert 'd.wall === "you"' in js and "pushChat" in js

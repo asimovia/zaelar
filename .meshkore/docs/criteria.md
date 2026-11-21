@@ -61,15 +61,14 @@ below is the first kind, or it names the mechanism that replaced the second.
   note never sets the reply language (none rides a turn since the notes mailbox went, V2-851 F5); a stage direction
   the model writes is not read aloud. — since 2026-09-26 ·
   nodes 2.123, 2.152, 2.160.
-- **CRIT-V7 · The chat wall is the conversation.** A voice line is written when the mouth STARTED it
-  (`bot_speech speaking`), never when generated; its identity is the turn's trace, not its position; a held
-  fragment is glued to the next only if the next continues it. A line whose utterance is already sounding (the wait
-  filler opened it) is written when it is owed, and a spoken record that EXTENDS the owed line (the verdict's
-  sentence after it) is written whole — a voiced reply always reaches the wall (V2-850). Every row is stamped `at`
-  when it is COMMITTED (his words when final, the agent's line when the voice starts it) and the wall is in that
-  order; a verdict that reaches the client before his final still rules it (`attention_hold` LATCH_MS), and the
-  still-listening nudge is never said into a closed mic (2026-11-17). — since 2026-09-22 ·
-  nodes 4.210, 4.357, 4.572 · `nucleo/flash/continuation.py`, `frontend/app/core/store.js`.
+- **CRIT-V7 · The chat wall is the conversation, and the engine is its one writer.** Every line has ONE writer and
+  is an action with an id: his spoken line is the ear's (pending where his voice rose, final with the words the inbox
+  accepted), his typed line the keyboard's (its `cid`), our line the mouth's (live when its voice starts, showing only
+  what sounded), a notice's 🔔 line, an answered question's record line and an errand's box the engine's
+  (`wall_notes`); a line's place is where it STARTS, so his line stands above the reply it caused. The screen paints
+  only `wall` events; the still-listening nudge is never said into a closed mic (2026-11-17). — since 2026-09-22,
+  one writer since 2026-11-21 (INI-078) · nodes 4.572, 4.580, 4.615, 13.165 · `nucleo/conversation_host/wall.py`,
+  `nucleo/conversation_host/wall_notes.py`, `frontend/app/services/wall-bridge.js`.
 - **CRIT-V20 · A pause that was a start is not a turn.** A reply is superseded when his voice resumes after it
   began, for as long as an interruption (`ZAELAR_MIN_INTERRUPTION_SEC`), or a longer version of his sentence arrives;
   a superseded turn runs no tool, and one that did nothing leaves his words in the window, not its reply, and owes
@@ -562,8 +561,9 @@ below is the first kind, or it names the mechanism that replaced the second.
   unknown is the REFERENCE, never the card; the show backstop uses the verdict's card before a contextual guess.
   — since 2026-09-29 · nodes 4.160, 2.170.
 - **CRIT-K5 · A canvas mutation needs the operator's words.** The room is not the operator: ambient speech
-  reaches neither the chat nor the canvas; no system note rides a turn (the notes mailbox went in V2-851 F5), so
-  none can name a card to close or veto a show. — since 2026-09-09 · nodes 4.145.
+  reaches neither the chat nor the canvas (a turn not said to us is the ear's discard, its line deleted); no system
+  note rides a turn (the notes mailbox went in V2-851 F5), so none can name a card to close or veto a show. — since
+  2026-09-09 · nodes 13.91.
 - **CRIT-K5b · Content he NAMES in the turn licenses its own load.** Context-bleed is a PREVIOUS call replayed, so
   its query is absent from his words; a `play_video` whose query terms he said in this turn runs (any language,
   no verb table), minus the player's declared vocabulary and minus what the player already holds (praise naming
@@ -844,7 +844,7 @@ below is the first kind, or it names the mechanism that replaced the second.
   dispatcher's single door by the sealed surface (a card-naming surface draws it; told/silent, a child errand, an
   arriving event or a cluster peer do not), drawn at the START so a half-done errand keeps it, updated in place to its
   ending, and every errand leaves `artifact opened|skipped` on record; a report is kept (library file + the task's
-  copy) and the box reopens THAT deliverable through the one reopen door. — since 2026-11-08 · nodes 2.1635, 4.412,
+  copy) and the box reopens THAT deliverable through the one reopen door. — since 2026-11-08 · nodes 2.1635, 13.165,
   4.413 · `nucleo/chat_refs.py`, `nucleo/docsheet.py`, `nucleo/turn/task_recall.py`.
 - **CRIT-E29 · The daemon's acting routes answer only this computer.** `grant · revoke · pick · start · pair` on `/api/daemon/*` refuse a caller that is not on this computer, whatever token it presents; `status` off this computer never names a folder (V2-575 P1) — since 2026-11-09 · nodes 7.98 · `server/` daemon proxy.
 - **CRIT-E30 · A sign-in window opens on the local daemon only when it declared `browser.auth` (measured) and this engine has no window of its own.** The daemon reports a COUNT of new cookies, never a cookie; with no daemon the reach is byte-identical (V2-575 P2) — since 2026-11-09 · nodes 7.97, 4.414 · `widgets/navegador/owner_login/daemon_link.py`, `daemon/browser/`.

@@ -3020,19 +3020,11 @@ DOMAINS: list[dict] = [
                                  "intact while the second is said; our reply below the lines it answers, cut where its voice ended; a "
                                  "typed line goes out with the component's id and the engine's acknowledgement is the same line",
             "ch": UNIT, "paths": ["tests/browser/unit/chat_wall/test_the_bridge_paints_the_manager.py"]},
-        {"id": "4.611", "title": "The old path writes the chat wall as one writer among others (INI-042 #49, the wall plan "
-                                 "commit 3/5; the review's F3-2, F3-3 and minors): a typed line's announcement is the keyboard's "
-                                 "own line by its `cid` — one line, no refusal, nothing compared by text — and another screen's "
-                                 "line once; his line in course is one line, final in place or gone; a notice is one line per "
-                                 "notice id; the engine's 4000 cut; the reset; the old history moved over once at the old cap; "
-                                 "the old path's hands are `legacy:<source>` but for that one acknowledgement, and the router "
-                                 "leaves every event the manager marks `conv` before the old path could paint it",
-            "ch": UNIT, "paths": ["tests/browser/unit/chat_wall/test_the_old_path_is_one_writer_among_others.py"]},
+        # 4.611 retired 2026-11-21 (the chat wall of one writer, INI-078): the old path's writer (`wall-legacy.js`) is gone
         {"id": "4.612", "title": "A typed line is ONE painted line whichever path answers it (INI-042 #49, the wall plan B9; the "
-                                 "review's F3-2): on the real page, his line typed in the composer keeps its id to the engine; "
-                                 "the switch off, the old path's announcement with that `cid` is the same line; the switch on, the "
-                                 "manager's `keyboard:<device as the engine cleans it>` is this screen's keyboard; in a session of "
-                                 "the manager, the old path's marked events paint nothing the manager already wrote",
+                                 "review's F3-2): on the real page, his line typed in the composer keeps its id to the engine; the "
+                                 "manager's `keyboard:<device as the engine cleans it>` is this screen's keyboard; the stream's "
+                                 "other events of his spoken line paint nothing the ear already wrote (INI-078: one writer)",
             "ch": UNIT, "paths": ["tests/browser/e2e/chat/test_a_typed_line_is_one_line_on_every_path.py"]},
         {"id": "4.615", "title": "The wall shows only what SOUNDED, at the instant it sounds (the operator's rule, 2026-11-20): on the real page our reply shows nothing until its voice is heard and grows word by word with the voice's audio-synced captions; he cuts us at the fifth word — his line appended at the instant his voice rises, right under ours, and ours frozen final with exactly those five words; a late caption never makes it grow again",
             "ch": UNIT, "paths": ["tests/browser/e2e/chat/test_the_wall_shows_only_what_sounded.py"]},
@@ -3241,10 +3233,7 @@ DOMAINS: list[dict] = [
                                  "reconcilian por los dos ids — la barra no cuenta gemelos",
             "ch": UNIT,
             "paths": ["tests/browser/unit/widgets/test_one_task_is_one_chip.py"]},
-        {"id": "4.248", "title": "Dos líneas de un mismo turno son dos burbujas: la ya asentada cede el trace a la que la "
-                                 "voz está diciendo (nada de la misma frase dibujada dos veces)",
-            "ch": UNIT,
-            "paths": ["tests/browser/unit/widgets/test_two_lines_of_one_turn_are_two_bubbles.py"]},
+        # 4.248 retired 2026-11-21 (the chat wall of one writer, INI-078): the old path's voiced-line ladder
         # V2-608, orden del operador 2026-09-07: «cuando se hace un reset, quiero que el orbe vuelva a su
         # posición inicial». El Reset ya limpiaba lienzo/log/chat, pero un orbe arrastrado se quedaba donde
         # el arrastre lo dejó — y `hb_pos_orb` lo devolvía ahí en CADA carga futura. `resetDraggable()`
@@ -3564,18 +3553,15 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/browser/unit/contactos/test_his_answer_to_which_one_is_remembered.py"]},
         {"id": "4.356", "title": "CONTACTS: what the brain reads of the directory comes closest first (V2-849): people_named — his word for a person names her, a full name any level, a first name only the closest level plus a COUNT of the rest; the digest counts every level, lists circle + active and says the background is saved and found by name; ref_index keeps every visible contact nameable, closest first",
             "ch": UNIT, "paths": ["tests/browser/unit/contactos/test_the_directory_reaches_the_prompt_closest_first.py"]},
-        {"id": "4.357", "title": "A voiced reply always reaches the chat wall (V2-850): a line whose utterance is already sounding (the wait filler opened it) is written when it is owed, and a spoken record that EXTENDS the owed line (the verdict's sentence after it) is written whole — never muted; a line cut before it sounded still never is",
-            "ch": UNIT, "paths": ["tests/browser/unit/chat/test_a_voiced_reply_always_reaches_the_wall.py"]},
+        # 4.357 retired 2026-11-21 (the chat wall of one writer, INI-078): the old path's owed voiced line
         {"id": "4.358", "title": "His WhatsApp chats are people (V2-850): the import reads the chat book page by page, a named one-to-one chat becomes a contact with its chat and when they last talked (ACTIVE, closest first), a group, a feed or a number-only name does not; matched on the next pass, never doubled",
             "ch": UNIT, "paths": ["tests/browser/unit/contactos/test_his_whatsapp_chats_are_people.py"]},
-        {"id": "4.359", "title": "A task's question is on the screen, bound to its task, and answered there (V2-851 F1c): the SSE `ask` event draws it on the chat wall as a line of its own (source «ask», named by its task's title; quick buttons only for declared `options`); the field or a quick button POSTs /api/tasks/{task_id}/answer with that question's ask_id; a 409 re-reads the rows; after a reload the open questions come back from /api/tasks, on the wall and under the task's entry in the processes panel; a `task_state` that leaves `waiting` removes the line · V2-886 D6: a question whose row was opened by a turn in the conversation is drawn right after that turn's last line (the row's trace on the `ask` event), only an unanchored one stays at the foot, and every app carries its ✕",
+        {"id": "4.359", "title": "A task's question is on the screen, bound to its task, and answered there (V2-851 F1c): the SSE `ask` event draws it on the chat wall as a line of its own (source «ask», named by its task's title; quick buttons only for declared `options`); the field or a quick button POSTs /api/tasks/{task_id}/answer with that question's ask_id; a 409 re-reads the rows; after a reload the open questions come back from /api/tasks, on the wall and under the task's entry in the processes panel; a `task_state` that leaves `waiting` removes the line · V2-886 D7: every open question is one card at the wall's foot with its ✕ (the conversation's lines move none, INI-078: the engine writes them), and leaves when it closes",
             "ch": UNIT, "paths": ["tests/browser/unit/chat/test_a_task_question_is_on_screen_and_answered_there.py"]},
         {"id": "4.370", "title": "A running process carries his stop on the screen (V2-852 T07, R2): each live row of the processes panel (desktop) and of the phone's menu has a cancel control, alive or parked on his answer; it POSTs /api/tasks/{row}/cancel for THAT row, is spent until the answer, a refusal gives it back, and the row leaves through the task events — ES and EN",
             "ch": UNIT, "paths": ["tests/browser/unit/chat/test_a_running_process_has_a_cancel_control.py"]},
-        {"id": "4.371", "title": "A chat line is never truncated (V2-852 T12, CRIT-V7; 2026-11-06: a reply still being said is never cut by the next one — a voiced line arriving meanwhile waits its turn and is written when ITS voice starts, its caption or its spoken record): a line cut mid-sentence (a barge-in, or the voice going quiet) is marked cut «…» and the crawl ends, never a silently shortened sentence; the spoken record writes its row from what was voiced compared with what was OWED — whole when the voice said it all (an early settle never outlives it), marked cut when it stopped short; a silent caption channel leaves the line whole — ES and EN",
-            "ch": UNIT, "paths": ["tests/browser/unit/chat/test_a_chat_line_is_never_truncated.py"]},
-        {"id": "4.372", "title": "A reply lands in the latest bubble (V2-852 T13, CRIT-V7): a traced line is placed when ITS voice starts it (its trace, its caption or its spoken record) — an utterance that names no turn (a proactive notice, another turn's queued line) never paints it, so lines land in the order they are said and the one being said is the last bubble; a spoken record joins its own row wherever it is and never moves a row; an untraced build still paints on the start it has — ES and EN",
-            "ch": UNIT, "paths": ["tests/browser/unit/chat/test_a_reply_lands_in_the_latest_bubble.py"]},
+        # 4.371 retired 2026-11-21 (the chat wall of one writer, INI-078): the old path's owed voiced line
+        # 4.372 retired 2026-11-21 (the chat wall of one writer, INI-078): the old path's owed voiced line
         {"id": "4.390", "title": "His groups on the app, from the store (V2-854 F5): a relation files the person in the native group that declares it (partner → family), derived and the one owner of that membership; a group of his is mirrored on WhatsApp by the chat group of the same name (derived); a message to a group from the app is HIS order handed to the conversation, never a send from the app — to the mirror, or, with none, created there or one by one as he chose, the unreachable named back, written in the agent's language, only from his click; the voice shows a group by id and the unclassified",
             "ch": UNIT, "paths": ["tests/browser/unit/contactos/test_a_group_on_the_card_reaches_the_send_door.py"]},
         {"id": "4.391", "title": "The contacts app shows who a person is to him (V2-854 F5), RENDERED: the rail's Grupos (the natives always, a 0 included, then his by size, + Nuevo grupo) and Estado (Sin clasificar, Ocultos), a chat group's kind reads «Grupos de chat»; over a group a strip — add members by a selection over the whole directory, send a message that never leaves from the app and, with no WhatsApp mirror, asks once (create it or one by one), the mirror shown linked, rename/delete for his own groups only; on her app the aliases (a learned one dimmer, editable, removable), the relation selector, the native groups as toggles (one held by her relation stays), his groups, the agents (id + cluster) of a person or a company",
@@ -3771,18 +3757,14 @@ DOMAINS: list[dict] = [
         # operador lo vivió como «la he oído por voz y el texto llegó un minuto después». La respuesta se pinta
         # ahora al generarse y el transcript posterior se funde por PREFIJO (que es también lo que hace bien el
         # caso del barge-in, donde el transcript llega truncado).
-        {"id": "4.17", "title": "El muro de chat no espera a la voz (y el transcript posterior no duplica)",
-            "ch": UNIT, "paths": ["tests/browser/unit/chat/test_chat_wall_promptness.py"]},
+        # 4.17 retired 2026-11-21 (the chat wall of one writer, INI-078): the old path's voiced reply
         # V2-647 — LA HABITACIÓN NO ES EL OPERADOR. El micro está siempre abierto y el guarda de atención
         # juzga cada turno; ese veredicto llega en su propio evento, justo DESPUÉS de la transcripción, así
         # que la pared pintaba primero y se enteraba después (medido 2026-09-09 23:18: una conversación
         # entera del operador con otra persona, cada línea juzgada «no dirigido a zaelar» y contestada con
         # silencio, y cada línea en su chat igualmente). El atajo del canvas tenía el mismo agujero, y ese
         # es el peor: «cierra» dicho en la habitación cerraba sus widgets.
-        {"id": "4.145", "title": "La habitación no es el operador: un turno hablado espera el veredicto del "
-                                 "guarda — el ambiente no llega ni al chat ni al canvas, y un veredicto que "
-                                 "no llega NO se traga sus palabras",
-            "ch": UNIT, "paths": ["tests/browser/unit/chat/test_the_room_is_not_the_operator.py"]},
+        # 4.145 retired 2026-11-21 (the chat wall of one writer, INI-078): the client attention hold (`attention_hold.js`); the manager's ear writes his line
         # 2026-09-28 — a red top banner «un turno se atascó» in the middle of the demo. Faults live in the ◉
         # status monitor only; the blocking no-model fault keeps its full screen.
         {"id": "4.227", "title": "Un fallo del motor va al monitor de estado ◉, no a una barra roja arriba",
@@ -3872,10 +3854,7 @@ DOMAINS: list[dict] = [
         # hablado llegaba y se tiraba porque «la versión larga es la útil». Su regla: «el texto que no has
         # dicho no quiero que exista». Y la otra mitad: un párrafo dictado llegó en ONCE segmentos de STT
         # y el muro trataba cada segmento como un turno.
-        {"id": "4.202", "title": "El muro es la TRANSCRIPCIÓN de la voz: un párrafo dictado es UN mensaje, "
-                                 "el subtítulo no pierde lo ya dicho, y lo que no sonó no se queda escrito",
-            "ch": UNIT,
-            "paths": ["tests/browser/unit/chat/test_the_wall_is_a_transcript_of_the_voice.py"]},
+        # 4.202 retired 2026-11-21 (the chat wall of one writer, INI-078): the old path's caption crawl
         # V2-747 — la sesión 16a39050: «modifica la tarea número TRES» sobre tres tareas que estaba
         # leyendo, contestado con «No tengo claro a cuál te refieres». Tres causas: `positional:false`
         # silenciaba la mitad que SÍ numera, el índice no publicaba la clave que declaran las acciones
@@ -3887,13 +3866,8 @@ DOMAINS: list[dict] = [
         # V2-747 — la sesión 981dd54c: «¿ese mismo principio de los subtítulos se puede aplicar al chat,
         # y solo ir mostrando las palabras a medida que las vas diciendo? Y si yo te corto, te paras en
         # ese momento y ya no imprimes más».
-        {"id": "4.205", "title": "El muro escribe la línea MIENTRAS la voz la dice y se para donde ella se "
-                                 "para — con el mensaje que está leyendo marcado, y su red si no hay canal",
-            "ch": UNIT,
-            "paths": ["tests/browser/unit/chat/test_the_wall_says_it_while_it_is_being_said.py"]},
-        {"id": "4.579", "title": "The agent's line crawls even when its captions arrive before the line is owed (a stalled body delays `brain reply`): the newest caption still sounding is kept and the line it begins claims it on arrival; an unrelated, finished or stale caption paints nothing",
-            "ch": UNIT,
-            "paths": ["tests/browser/unit/chat/test_a_caption_ahead_of_its_line_still_crawls.py"]},
+        # 4.205 retired 2026-11-21 (the chat wall of one writer, INI-078): the old path's caption crawl
+        # 4.579 retired 2026-11-21 (the chat wall of one writer, INI-078): the old path's caption crawl
         {"id": "4.580", "title": "A live caption never rebuilds the history (RENDERED): his partials and the agent's crawl write only their own text, once per frame, and the history rows stay the same nodes; the live caption sits last and leaves no row when cleared",
             "ch": UNIT,
             "paths": ["tests/browser/unit/chat/test_a_live_caption_never_rebuilds_the_history.py"]},
@@ -5386,16 +5360,13 @@ DOMAINS: list[dict] = [
                                  "empezada antes aún no es turno espera a que lo sea y entra en cola tras ella (con tope)",
             "ch": UNIT,
             "paths": ["tests/voice/unit/test_a_typed_order_waits_for_the_voice_begun_before_it.py"]},
-        {"id": "4.210", "title": "Una línea que la voz NUNCA dijo no se escribe — y el registro hablado, que "
-                                 "llega hasta 20,8 s tarde, encuentra SU fila por trace en vez de duplicarla",
-            "ch": UNIT,
-            "paths": ["tests/browser/unit/chat/test_a_line_the_voice_never_said_is_never_written.py"]},
+        # 4.210 retired 2026-11-21 (the chat wall of one writer, INI-078): the old path's owed voiced line
         {"id": "4.327", "title": "Mic and speaker LILAC while listening, GREY at full strength (no slash, no "
                                  "meter) while the tap waits for the wake word, crossed out when closed — "
                                  "rendered, against the palette tokens (V2-831 T-18)",
             "ch": UNIT,
             "paths": ["tests/browser/e2e/widgets/test_the_mic_is_grey_while_the_wake_word_waits.py"]},
-        {"id": "4.209", "title": "Los tres cables del grifo aparcado: el muro PREGUNTA antes de pintar, el "
+        {"id": "4.209", "title": "Los cables del grifo aparcado: el "
                                  "aparcado exige un oído armado y nunca escribe el interruptor del micro, y "
                                  "el motor contesta al tema que el navegador publica",
             "ch": UNIT,
@@ -5417,12 +5388,8 @@ DOMAINS: list[dict] = [
                                  "de «nueva lista» no puede irse de la pantalla con 100 listas",
             "ch": UNIT,
             "paths": ["tests/browser/unit/agenda/test_the_tasks_half_is_two_delimited_panes.py"]},
-        {"id": "4.199", "title": "La pared pinta lo que está diciendo MIENTRAS lo dice — y lo que era de la "
-                                 "habitación no deja rastro cuando el veredicto lo descarta",
-            "ch": UNIT, "paths": ["tests/browser/e2e/chat/test_the_wall_shows_the_line_he_is_saying.py"]},
-        {"id": "4.197", "title": "Un turno DIRIGIDO llega a la pared pintada — y el de la habitación no (la cadena "
-                                 "entera del cliente, no el doble de `deliver`)",
-            "ch": UNIT, "paths": ["tests/browser/e2e/chat/test_a_directed_turn_reaches_the_painted_wall.py"]},
+        # 4.199 retired 2026-11-21 (the chat wall of one writer, INI-078): the client attention hold; his line is the ear's (4.580, 4.572)
+        # 4.197 retired 2026-11-21 (the chat wall of one writer, INI-078): the client attention hold; his line is the ear's (4.580, 4.572)
         {"id": "4.150", "title": "The operator's voice (F0, shadow): browser-side fingerprint, multi-profile "
                                  "classification, self-voice suppression and a continuous distance — logged, "
                                  "never gated",
@@ -5843,8 +5810,7 @@ DOMAINS: list[dict] = [
         {"id": "4.532", "title": "A page player whose candidates are all refused stops after `availability.WALK_MAX` refusals per order (music and video cards alike), keeps `player_error`, offers the site as data in the digest and tells him what the ORDER put on, ES/EN; a new order starts a new walk",
             "ch": UNIT, "paths": ["tests/browser/unit/musica/test_a_refused_walk_stops_and_says_so.py"]},
         # V2-862 — disarmed 2026-11-08 (upsert that appends: 1 red · reopen without the kept copy: 1 red · keep without the file: 1 red).
-        {"id": "4.412", "title": "An errand's chat reference is ONE box that updates in place (V2-862): opened/retitled/closed/relay upsert by the task row, never doubling nor moving down the thread, `skipped` draws nothing; the desktop wall and the phone draw the same view and it reopens through the existing door (ES/EN)",
-            "ch": UNIT, "paths": ["tests/browser/unit/chat/test_an_errand_reference_is_one_box_that_updates.py"]},
+        # 4.412 retired 2026-11-21 (the chat wall of one writer, INI-078): the box is the engine's now — node 13.165
         {"id": "4.416", "title": "A worker's result says where it was found (V2-868 D4): a row that states data needs a url or a source the sheet knows, else it is filed in Rejected with a reason the worker reads; structural, no word list", "ch": UNIT, "paths": ["tests/browser/unit/results/test_a_status_is_not_a_result.py"]},
         # V2-575 settings screen — disarmed 2026-11-09 (auto-close restored · `relayConnected` out of `iconState` · the
         # `browser` guard out of `browserLine` · the countdown's tick · the 2 s download poll · the phone row's lines ·
@@ -6398,16 +6364,13 @@ DOMAINS: list[dict] = [
                                   "tests/browser/unit/voice/test_his_controls_move_the_buttons.py"]},
         # 2026-11-17 — the operator's rule: every bubble is stamped when it is COMMITTED (his words when final, the
         # agent's line when the voice starts it) and the wall is in that order. His line had landed under its reply.
-        {"id": "4.572", "title": "The chat wall is in commit order, ES+EN: a directed verdict that arrives before his final "
-                                 "(the eager end of turn, 24-90 ms) still paints it at once, spent on one turn, bounded "
-                                 "by LATCH_MS, never from a wake-word spot; an ambient one drops the line it covers in "
-                                 "either order; every row carries `at` (the committing event's t_ms) and is inserted by "
-                                 "it, so a line released late lands where it was said, and the stamp is persisted; the "
+        {"id": "4.572", "title": "The chat wall is in the order things started, ES+EN (RENDERED): his line, appended where his "
+                                 "voice rose, stands above the reply it caused even when his final words land after the "
+                                 "reply's voice started, and the reply names it (`re`, kept with the history); the "
                                  "«earlier» divider follows the flagged restored rows at the 100 cap; the still-listening "
-                                 "nudge is never said into a closed mic. Disarms: the latch off, append instead of "
-                                 "insert, the restored counter, the ear check",
-            "ch": UNIT, "paths": ["tests/browser/unit/chat/test_the_wall_is_in_the_order_things_were_committed.py",
-                                  "tests/browser/unit/chat/test_the_rendered_wall_keeps_commit_order_and_marks_what_was_restored.py",
+                                 "nudge is never said into a closed mic. Disarms: the router's `wall` branch, the "
+                                 "restored counter, the ear check",
+            "ch": UNIT, "paths": ["tests/browser/unit/chat/test_the_rendered_wall_keeps_commit_order_and_marks_what_was_restored.py",
                                   "tests/voice/unit/providers/test_the_still_listening_nudge_needs_an_open_ear.py"]},
         # 2026-11-17 — the operator: «volumen al 30 %» does nothing on the iPhone. iOS WebKit plays an element at full
         # whatever its `volume` says (and reads the value back), so there the voice leaves through a Web Audio gain.
@@ -6598,8 +6561,7 @@ DOMAINS: list[dict] = [
                                  "reconnect ⏻ on causes re-reports the deck instead of adopting the desktop's layout, so "
                                  "no app the hand opened closes; an orphan app still goes", "ch": UNIT,
             "paths": ["tests/browser/unit/mobile/test_the_power_switch_is_one_door.py"]},
-        {"id": "4.461", "title": "Phone: the chat is a conversation (V2-876 rule 6, V2-877 #3/#10) — a voice filler from "
-                                 "the stream keeps its kind and draws no bubble, the list follows the newest line unless "
+        {"id": "4.461", "title": "Phone: the chat is a conversation (V2-876 rule 6, V2-877 #3) — the list follows the newest line unless "
                                  "he scrolled up, his own line brings it down, a line sent with ⏻ off says the agent is "
                                  "off; every label the shell asks t() for exists in every pack", "ch": UNIT,
             "paths": ["tests/browser/unit/mobile/test_the_phone_chat_is_a_conversation.py"]},
@@ -9180,6 +9142,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/queue/test_one_worker_at_a_time.py"]},
         {"id": "13.164", "title": "A task of the queue has ONE writer and when it ends it LEAVES (INI-078 Q-2, Q-4, Q-8; the orchestrator steps 3-4): a generic `task_patch`/`task_put` never touches a row with an owner; every old writer (the pulse's beat, a question, his answer, a died worker, a title, a playbook) sends its change as a signal of the owner — his answer puts the task back at the head of its lane, never beside the running one; its ending (`circuit.settle`) archives it: ONE short-lived pill naming it and its artifacts, written once, no row, the result kept; its done line is keyed by its row alone and shaped by the genome's rule (`tasks.done_line`); a reference later finds its pill",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/queue/test_a_task_that_ends_leaves_the_queue.py"]},
+        {"id": "13.165", "title": "The chat wall has one writer per line (INI-078, the wall of one writer): the lines the page's old-path writer drew are the engine's — a notice painted apart from the mouth is its 🔔 line by its key (writer `notice`; not the question of an open card, not what the last line already says, never a second line for a `conv` one), an answered confirmation its record line (`record`), an errand its one reference box replaced in place with the card and file it had (`ref`) — each with the role, kind, state, data and id it had. Disarms: each emitter's call, the open-card check, the last-line check, the box's merge",
+            "ch": UNIT, "paths": ["tests/conversation/unit/test_the_engine_writes_every_line_the_old_wall_wrote.py"]},
         {"id": "13.120", "title": "A stop is a system action the MODEL chooses (plan v3.2 §3, commit 1: the package): four orders with no parameters (`stop_voice`, `stop_media`, `stop_run`, `stop_all`), valid only as the model's first order and before any read it asked for (refused and counted after); a valid one is handed to the host in the act and cuts our voice (voice, run, all); `stop_voice`/`stop_media` let a reply follow, with nothing more (or a no_reply) the batch closes `stopped` unsaid; `stop_run`/`stop_all` abandon the run; a typed batch stopped gets the fixed line on the text channel; a batch that cut our voice and fails says its failure line on the screen only",
             "ch": UNIT, "paths": ["tests/conversation/unit/test_a_stop_is_an_action_the_model_chooses.py"]},
         {"id": "13.121", "title": "The host offers the model its four stops and carries out the one it chose (plan v3.2 §3, commit 2: the host): the stops are offered beside reply and no_reply with no parameters and a declared description, and a call to one is an order; voice, run and all close the attention window, media and all stop what plays through each card's declared suspension, all cancels his errands in course at the screen's own door; the pack carries the minimal `stopped` line; the conversation is built with these hands and nothing on the manager's path reads a stop in his words",

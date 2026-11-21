@@ -119,8 +119,9 @@ def open_wall(browser_and_port):
             const m = await import('/frontend/app/components/ChatWall.js?v=5');
             document.body.append(m.ChatWall());
             window.__store = store; window.__route = (d) => sse.routeEvent(null, d);
-            // the page's ONE old-path wall writer: the URL ChatWall imports it by (another `?v=` is a blind copy)
-            window.__legacy = (await import('/frontend/app/services/wall-legacy.js?v=1')).legacy;
+            let n = 0;   // the engine's lines, as its `wall` events bring them
+            window.__line = (role, text) => window.__route({ kind: 'wall', writer: role === 'you' ? 'keyboard:t' : 'mouth',
+                op: { op: 'append', id: 'l' + (++n), role, state: 'final', text } });
             store.setChatTab('chat'); store.setChatOpen(true);
         }""")
         pg.wait_for_selector("#chatwall.open", timeout=5000)
@@ -277,52 +278,24 @@ def _until_order(pg, pred, what):
     return until_sync(lambda: (lambda xs: (xs,) if pred(xs) else None)(pg.evaluate(_ORDER)), what, timeout_s=10)[0]
 
 
-def test_a_question_sits_under_the_turn_that_caused_it_and_has_a_close(open_wall):
-    """V2-886 D6/D7 — a question whose row was opened by a turn in the conversation is drawn in the conversation,
-    under that turn — a box line of its own (`legacy.asks`, kind `ask`) — never pinned at the foot; a question with
-    no anchor stays in the foot block. Each card has its ✕. When it closes, its box leaves the wall.
-
-    The wall plan §5.1 (decided by the operator): a line's place is where it STARTS — the box is APPENDED when the
-    question opens and never moves after. So a question that opens while its turn is the last one sits right under
-    it, and one that opens after a later turn is appended after that turn: nothing is inserted above a line."""
+def test_every_open_question_is_one_card_at_the_foot_with_its_close(open_wall):
+    """V2-886 D7 — every open question is ONE card of its own in the wall's block at the foot, under the conversation,
+    with its ✕; the conversation's lines move nothing (the engine is the wall's one writer and no line of it is a
+    question). When it closes, its card leaves; the others stay where they are."""
     eng = _Engine()
     pg = open_wall(eng)
-    pg.evaluate("""() => { window.__legacy.youSaid('cierra todo');
-                           window.__legacy.pushAgentChat('Voy.', {trace: 'tr-1'}); }""")
+    pg.evaluate("""() => { window.__line('you', 'cierra todo'); window.__line('agent', 'Voy.'); }""")
     pg.evaluate("""() => window.__route({kind: 'ask', task_id: 'T9', ask_id: 'Z1', text: '¿Se lo mando a Zarina?',
                                         title: 'Enviar borrador', trace: 'tr-1'})""")
     pg.evaluate("""() => window.__route({kind: 'ask', task_id: 'T8', ask_id: 'Z2', text: '¿Qué día?',
                                         title: 'Cita', trace: 'tr-none'})""")
-    _until_order(pg, lambda xs: 'tq:Z1' in xs, "the anchored question inside the list")
-    pg.evaluate("""() => { window.__legacy.youSaid('pon música');
-                           window.__legacy.pushAgentChat('Suena.', {trace: 'tr-2'}); }""")
+    _until_lines(pg, lambda xs: [x["ask"] for x in xs] == ["Z1", "Z2"], "both questions at the foot")
+    pg.evaluate("""() => { window.__line('you', 'pon música'); window.__line('agent', 'Suena.'); }""")
     order = _until_order(pg, lambda xs: 'Suena.' in xs, "the next turn on the wall")
-    assert order.index('tq:Z1') == order.index('Voy.') + 1, order
-    assert order.index('tq:Z1') < order.index('pon música'), "the question was not placed under its own turn"
-    assert order.count('tq:Z1') == 1, order
-    foot = [x["ask"] for x in _lines(pg)]
-    assert foot == ["Z2"], f"only the question with no anchor stays at the foot: {foot}"
+    assert order == ['cierra todo', 'Voy.', 'pon música', 'Suena.'], f"a question was drawn inside the conversation: {order}"
+    assert [x["ask"] for x in _lines(pg)] == ["Z1", "Z2"]
     assert pg.evaluate("() => document.querySelectorAll('#chatwall .tq .tq-close').length") == 2
-    # §5.1: a question of the FIRST turn that opens after the second one is appended where it starts — at the end.
-    pg.evaluate("""() => window.__route({kind: 'ask', task_id: 'T7', ask_id: 'Z3', text: '¿A qué hora?',
-                                        title: 'Recordatorio', trace: 'tr-1'})""")
-    order = _until_order(pg, lambda xs: 'tq:Z3' in xs, "the late question appended")
-    assert order[-1] == 'tq:Z3' and order.index('tq:Z1') == order.index('Voy.') + 1, order
-    # It closes: its box leaves the wall (and the foot), the others stay where they are.
     pg.evaluate("() => window.__route({kind: 'task_state', task_id: 'T9', state: 'done', writer: 'settle'})")
-    order = _until_order(pg, lambda xs: 'tq:Z1' not in xs, "the closed question's box to leave the wall")
-    assert order == ['cierra todo', 'Voy.', 'pon música', 'Suena.', 'tq:Z3'], order
-    assert [x["ask"] for x in _lines(pg)] == ["Z2"]
+    _until_lines(pg, lambda xs: [x["ask"] for x in xs] == ["Z2"], "the closed question's card to leave")
+    assert pg.evaluate(_ORDER) == ['cierra todo', 'Voy.', 'pon música', 'Suena.']
     assert not pg._errors, pg._errors
-
-
-def test_a_question_is_drawn_once_its_card_and_not_a_chat_line_too():
-    """V2-931 — the question of an open card, spoken or notified with the same words, is not painted again as an agent
-    line: one question, one place. (Markdown marks and the bell of a notice do not make it a different text.)"""
-    from pathlib import Path
-    root = Path(__file__).resolve().parents[4] / "frontend" / "app"
-    sse, asks = (root / "services" / "sse.js").read_text("utf-8"), (root / "core" / "asks.js").read_text("utf-8")
-    assert "export const isOpenQuestion" in asks and "openAsks().some" in asks
-    # The wall left the store: the spoken record goes through `legacy.pushAgentChat`, the notice through `legacy.notice`.
-    assert sse.count("if (!asks.isOpenQuestion(d.text)) legacy.pushAgentChat(") == 1, "the spoken line is drawn beside its card"
-    assert sse.count("if (!asks.isOpenQuestion(d.text)) legacy.notice(") == 1, "the notice is drawn beside its card"

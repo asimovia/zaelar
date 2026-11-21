@@ -175,6 +175,12 @@ def _paint(kind: str, title: str, text: str, *, key: str, task_id: str, conv: bo
                     **({"conv": True} if conv else {})})
     except Exception as e:
         logger.warning(f"proactive notify (UI) failed: {e}")
+    if kind == "notify" and not conv:     # its line on the chat wall (a `conv` one is the mouth's own line)
+        try:
+            from nucleo.conversation_host import wall_notes
+            wall_notes.notice(text, key)
+        except Exception as e:  # noqa: BLE001 — the card went; only its wall line failed
+            logger.warning(f"proactive notify (wall) failed: {e}")
 
 
 def paint(title: str, text: str, *, key: str = "", task_id: str = "") -> None:

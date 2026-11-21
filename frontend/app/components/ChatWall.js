@@ -25,7 +25,7 @@ import { CLOSE_ICON, PAPERCLIP_ICON, MESSAGE_SQUARE_ICON, ACTIVITY_ICON, CLOCK_I
 import { renderMarkdownLite } from "../lib/markdown-lite.js?v=1";
 import { t } from "../core/i18n.js?v=1";
 import { mountProcesos } from "../services/procesos-bridge.js?v=1";
-import { AskWall, anchoredAsks, askBox } from "./TaskAsk.js?v=2";
+import { AskWall } from "./TaskAsk.js?v=2";
 import { chatRefView } from "./ChatRef.js?v=1";
 import * as a2a from "./A2AView.js?v=1";
 import { onCardFront } from "../widgets/card-front.js?v=1";
@@ -34,7 +34,6 @@ import { mountConectores } from "../services/conectores-bridge.js?v=1";
 import * as red from "../services/red-bridge.js?v=1";
 import { createWallBridge, submitLine } from "../services/wall-bridge.js?v=1";
 import { createWallStorage, CAP as WALL_CAP } from "../services/wall-storage.js?v=1";
-import { legacy } from "../services/wall-legacy.js?v=1";
 
 const SEND_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>`;
 // V2-621 — the ONE map from a tab id to its label key: the header's standing name (`.cw-tabname`) and each
@@ -157,8 +156,6 @@ function ago(ts) {
 
 export function ChatWall() {
   let listEl, inputEl, headEl, wallEl, previewEl = null;
-  const [wallTraces, setWallTraces] = createSignal(legacy.traces());   // the turns on the wall (an ask's anchor)
-  legacy.onChange(() => setWallTraces(legacy.traces()));
   let dockSide = null;                         // null | "left" | "right"
   let dockW = DOCK_DEF_W;                      // the docked column's INTENDED width (see setReserve)
   let lastDockSide = (loadDock() || {}).side || "left";   // where the ⧉ toggle docks a floating box (V2-621)
@@ -349,7 +346,7 @@ export function ChatWall() {
             h("button", { class: "cl-b", onClick: () => store.widgetConfirmResolve(false) }, () => t("chat.no")),
           ))
       : null),
-    AskWall(wallTraces),   // V2-851 — the open question of each waiting task, bound to its task and answerable here
+    AskWall(),   // V2-851 — the open question of each waiting task, bound to its task and answerable here
     // PROCESOS (V2-728 · renamed V2-744) — one tab, four sub-tabs. The old «Procesos» and «Crons» were the same object seen
     // twice: a commission the brain is carrying out, and a commission with a clock on it.
     tasksHost,
@@ -614,18 +611,15 @@ export function ChatWall() {
   // THE CHAT WALL — a component of its own, mounted through its one bridge
   // (`services/wall-bridge.js`, INI-042 #49): every line is an action with an id, appended where it STARTS and never
   // rebuilt — his words, ours, a box. This file keeps the composer and hands the wall its look (`lineBody`,
-  // `lineClasses`) and its boxes; the old path writes through `services/wall-legacy.js`, the manager through `wall`.
+  // `lineClasses`) and its boxes; the engine writes every line it owns (`wall`), this screen its own (`writeLine`).
   const wallStore = createWallStorage();
   const bridge = createWallBridge({
     mount: listEl, device: api.DEVICE, input: false, cap: WALL_CAP, storage: wallStore,
     labels: { cut: "…", get earlier() { const at = wallStore.at(); return at ? t("chat.earlierAt", { when: ago(at / 1000) }) : t("chat.earlier"); } },
-    renderers: { ref: (data) => chatRefView(data), a2a: (data) => a2a.a2aChatView(data), ask: (data) => askBox(data) },
+    renderers: { ref: (data) => chatRefView(data), a2a: (data) => a2a.a2aChatView(data) },
     format: lineBody, classes: lineClasses,
     send: (text, id) => session.sendText(text, id),
   });
-  // An open question whose turn is on the wall is a box of its own under it: appended when it opens, repainted in
-  // place, gone when it closes (`legacy.asks`); one with no turn on the wall stays in the block at the foot.
-  createEffect(() => legacy.asks(anchoredAsks(wallTraces())));
 
   // Opening the wall (or coming back to its Chat tab) lands on the latest message: a list filled while the wall was
   // hidden has no height to scroll, so the pin happens when the list becomes VISIBLE, after layout.

@@ -9,7 +9,7 @@
 import { h, mount, $ } from "./core/dom.js?v=2";
 import { createEffect, untrack } from "./core/reactive.js?v=2";
 import * as session from "./services/session.js?v=3";
-import { legacy } from "./services/wall-legacy.js?v=1";
+import { writeLine, lineId } from "./services/wall-bridge.js?v=1";
 import * as mic from "./services/mic.js?v=1";
 import * as screens from "./services/screens.js?v=1";
 import * as push from "./services/push.js?v=1";
@@ -342,11 +342,10 @@ async function uploadFile(file, source) {
     const res = await fetch("/api/files/upload", { method: "POST", body: fd });
     const d = await res.json();
     if (!res.ok) throw new Error(d && d.detail || "upload failed");
-    legacy.pushChat({ role: "sys", text: source === "paste" ? t("main.image_sent", { name: d.name }) : t("main.file_added", { name: d.name }) });
-  } catch (_) {
-    legacy.pushChat({ role: "sys", text: t("main.upload_failed") });
-  }
+    noteOnWall(source === "paste" ? t("main.image_sent", { name: d.name }) : t("main.file_added", { name: d.name }));
+  } catch (_) { noteOnWall(t("main.upload_failed")); }
 }
+const noteOnWall = (text) => writeLine("upload", { op: "append", id: lineId("n"), role: "note", kind: "sys", data: { role: "sys", text }, text, at: Date.now() });
 
 // ---- Ctrl/Cmd+V anywhere → feed the clipboard text (or a pasted image) to the agent (even if the chat wall is
 // hidden). Pasting while focused in a real input/textarea (the chat box, settings fields) keeps native behaviour,

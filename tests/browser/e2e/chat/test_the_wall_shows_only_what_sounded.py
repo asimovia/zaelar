@@ -77,7 +77,7 @@ def page():
             pg.evaluate("() => document.querySelectorAll('.boot-ovl, .lang-onb, .lang-onb-veil').forEach(e=>e.remove())")
             pg.evaluate("""async () => { const s = await import('/static/app/core/store.js?v=2');
                 s.setChatTab('chat'); s.setChatOpen(true); s.setAttentionMode('always');
-                const { legacy } = await import('/static/app/services/wall-legacy.js?v=1'); legacy.reset(); }""")
+                (await import('/static/app/services/wall-bridge.js?v=1')).clearWall(); }""")
             pg.wait_for_timeout(300)
             yield pg, sent, errors, refused
             b.close()

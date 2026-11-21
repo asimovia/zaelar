@@ -89,21 +89,12 @@ function _prune() {
   for (const [k, n] of _nodes) if (!live.has(n.dataset.ask) || !n.isConnected) _nodes.delete(k);
 }
 
-/** V2-886 D6 — a question whose turn is in the conversation sits UNDER that turn's lines: the wall appends it as a box
- *  of its own when it opens (it never moves after); only a question with no anchor on screen stays in the wall's
- *  block at the foot. `traces`: the turns on the wall. */
-const _anchored = (a, traces) => !!(a.trace && traces.has(a.trace));
-export const anchoredAsks = (traces) => asks.openAsks().filter(a => _anchored(a, traces));
-/** One open question as the wall's box draws it (reconciled by its state: a repaint keeps the field and its focus). */
-export const askBox = (a) => nodeFor(a, "wall");
-
-/** The chat wall's block of open questions with no anchor in the conversation. Mounted once by ChatWall. */
-export function AskWall(traces = () => new Set()) {
+/** The chat wall's block of open questions, at its foot. Mounted once by ChatWall. */
+export function AskWall() {
   asks.ensureAsks();
   const box = h("div", { class: "tq-wall", "aria-live": "polite" });
   createEffect(() => {
-    const on = traces();
-    paint(box, asks.openAsks().filter(a => !_anchored(a, on)), "wall");
+    paint(box, asks.openAsks(), "wall");
     _prune();
   });
   return box;

@@ -4,16 +4,13 @@ B9; the review's F3-2 and its minor on the keyboard's name), in a real browser o
 He types into the composer; the page writes his line with its own id and keeps it for the engine with that id (the
 outbox, `cid` — sent as `POST /api/chat` when a session is up). Then the engine announces it:
 
-  · the switch OFF — the old path's announcement (`transcript` text-injected chat, with `cid` and `dev`): the screen
-    that typed it reads it as ITS line — one line, no refusal — with nothing compared by text;
-  · the switch ON — the manager's own action (`wall`, writer `keyboard:<device>` as the engine cleans the device,
+  · the manager's own action (`wall`, writer `keyboard:<device>` as the engine cleans the device,
     `voice.screens.clean`) is the same line: this screen's keyboard and the engine's name for it are one name;
-  · mixed (B9) — a session of the manager marks the old path's events (`conv`): its spoken line written by the ear
-    (`ear:<device>`) is not painted again by the old path's `transcript`, nor its live words by the `interim`.
+  · his spoken line is the ear's (`ear:<device>`): the stream's `transcript`, `interim` and `notify` of it paint nothing
+    more — the engine is the wall's one writer (INI-078).
 
-What is read is what is PAINTED (rectangles), never only the nodes. Disarms seen red: the announcement acknowledged by
-the old writer (two lines); the keyboard's writer named by the raw device (a refusal and a second line); the router's
-`conv` branch removed (two lines).
+What is read is what is PAINTED (rectangles), never only the nodes. Disarms seen red: the keyboard's writer named by
+the raw device (a refusal and a second line); a router branch that paints a `transcript` (two lines).
 """
 from __future__ import annotations
 
@@ -82,7 +79,7 @@ def page():
             pg.evaluate("() => document.querySelectorAll('.boot-ovl, .lang-onb, .lang-onb-veil').forEach(e=>e.remove())")
             pg.evaluate("""async () => { const s = await import('/static/app/core/store.js?v=2');
                 s.setChatTab('chat'); s.setChatOpen(true); s.setAttentionMode('always');
-                const { legacy } = await import('/static/app/services/wall-legacy.js?v=1'); legacy.reset(); }""")
+                (await import('/static/app/services/wall-bridge.js?v=1')).clearWall(); }""")
             pg.wait_for_timeout(300)
             yield pg, sent, errors, refused
             b.close()
@@ -107,17 +104,6 @@ def _device(pg) -> str:
     return pg.evaluate("async () => (await import('/static/app/services/api.js?v=2')).DEVICE")
 
 
-def test_the_switch_off_announcement_is_the_same_line(page):
-    pg, sent, errors, refused = page
-    out = _type(pg, sent, "w1 typed")
-    assert out["cid"].startswith("c_") and out["dev"] == _device(pg)
-    pg.evaluate(ROUTE, {"kind": "transcript", "label": "text-injected chat", "text": "w1 typed", "role": "user",
-                        "extra": {"dev": out["dev"], "cid": out["cid"]}})
-    pg.wait_for_timeout(300)
-    assert pg.evaluate(READ).count("H: w1 typed") == 1, pg.evaluate(READ)
-    assert not errors and not refused, (errors, refused)
-
-
 def test_the_managers_keyboard_is_this_screens_keyboard(page):
     """The engine names the keyboard by the device it cleaned (`voice.screens.clean`); the page by its own id. One name."""
     from voice import screens
@@ -133,7 +119,7 @@ def test_the_managers_keyboard_is_this_screens_keyboard(page):
 
 
 def test_a_session_of_the_manager_is_painted_once(page):
-    """B9: the manager writes his spoken line (`ear:`); the old path's marked events for it paint nothing more."""
+    """B9: the manager writes his spoken line (`ear:`); the stream's other events of it paint nothing more."""
     pg, _sent, errors, refused = page
     ear = {"op": "append", "id": "iv_77", "role": "you", "state": "pending", "text": "w3 spoken"}
     pg.evaluate(ROUTE, {"kind": "wall", "label": "append", "writer": "ear:holder", "op": ear,

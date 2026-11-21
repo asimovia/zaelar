@@ -69,13 +69,12 @@ export function ChatSheet() {
     ),
   );
 
-  // The wall's lines, in the phone's bubbles. The chat is the conversation, not a log (V2-876 rule 6): a voice filler
-  // is a sound, never a bubble. The agent speaks markdown (lists, bold, code); the person does not.
+  // The wall's lines, in the phone's bubbles. The agent speaks markdown (lists, bold, code); the person does not.
   createWallBridge({
     mount: listEl, device: DEVICE, input: false, cap: CAP, storage: createWallStorage(),
     renderers: { ref: (data) => chatRefView(data, "zm-msg") },   // V2-862: the same box the desktop wall draws
-    classes: (l) => (l.kind === "filler" || (l.data && l.data.kind === "filler") ? "zm-hide"
-      : l.role === "box" ? "" : "zm-msg " + (l.role === "note" ? (l.kind === "record" || l.kind === "peer" ? l.kind : "sys") : l.role)),
+    classes: (l) => (l.role === "box" ? ""
+      : "zm-msg " + (l.role === "note" ? (l.kind === "record" || l.kind === "peer" ? l.kind : "sys") : l.role)),
     format: (l, said) => (l.role === "agent" && l.state === "final" && said === l.text
       ? Object.assign(h("div"), { innerHTML: renderMarkdownLite(said) }) : null),
     send: (text, id) => session.sendText(text, id),

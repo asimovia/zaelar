@@ -13,12 +13,13 @@
 import { h } from "../core/dom.js?v=2";
 import { t } from "../core/i18n.js?v=1";
 import { refresh, cardView } from "../services/red-bridge.js?v=1";
-import { legacy } from "../services/wall-legacy.js?v=1";
+import { writeLine, lineId } from "../services/wall-bridge.js?v=1";
 
-/** An SSE `brain` line of category a2a carrying a card → one box on the chat wall. */
+/** An SSE `brain` line of category a2a carrying a card → one box on the chat wall, by this view's writer. */
 export function a2aEvent(d) {
   const x = d.extra || {};
-  legacy.pushChat({ role: "a2a", key: String(x.i18n || d.label || ""), card: x.card || {}, text: String(d.text || "") });
+  const m = { role: "a2a", key: String(x.i18n || d.label || ""), card: x.card || {}, text: String(d.text || "") };
+  writeLine("a2a", { op: "append", id: lineId("a2a"), role: "box", kind: "a2a", data: m, text: m.text, at: Date.now() });
   refresh();
 }
 
