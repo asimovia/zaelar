@@ -2,7 +2,7 @@
 
 There is no mode and nothing to fall back to. The manager still runs only when it may: every outside write of the
 install held but the lanes the manager itself carries, each with his yes (`declared.json` `sends_by`;
-`ZAELAR_HOLD_OUTBOUND=all` or `all,-owner`), its language chosen and its configuration passing (`config.build`). Short
+`ZAELAR_HOLD_OUTBOUND=all`, `all,-owner` or `all,-owner,-hand`: his Send on a card is his yes by gesture), its language chosen and its configuration passing (`config.build`). Short
 of that the session answers NOTHING — the reason is put on his screen as an alert (`silent`), never an old path.
 """
 from __future__ import annotations

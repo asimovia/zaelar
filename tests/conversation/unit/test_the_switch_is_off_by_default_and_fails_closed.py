@@ -108,3 +108,18 @@ def test_every_write_held_but_the_lanes_it_carries_is_enough(clean):
     from nucleo.conversation_host import switch as sw
     assert sw.refused() in ("", "no language chosen yet") or "configuration" in sw.refused()
     assert "holds too little" not in sw.refused()
+
+
+def _too_little() -> bool:
+    return "holds too little" in switch.refused()
+
+
+def test_his_own_hand_is_a_lane_it_carries_and_no_other_lane_let_go_is(clean):
+    """His Send on a card is his yes by gesture (`send/card.settle`): `all,-owner,-hand` lets the manager run; any other
+    lane let go beside them leaves it silent, saying why."""
+    from connectors import exit as _exit
+    clean.setenv("ZAELAR_HOLD_OUTBOUND", "all,-owner,-hand")
+    assert not _too_little()
+    for lane in sorted(_exit.LANES - {"owner", "hand"}):
+        clean.setenv("ZAELAR_HOLD_OUTBOUND", f"all,-owner,-hand,-{lane}")
+        assert _too_little(), lane

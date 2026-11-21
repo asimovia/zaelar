@@ -996,7 +996,8 @@
   "network"
  ],
  "sends_by": [
-  "owner"
+  "owner",
+  "hand"
  ],
  "proof": {
   "counters": [
