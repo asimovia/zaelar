@@ -161,13 +161,13 @@ export function composeBar(ctx, data, targetPayload, activeChat, rerender, mailI
   syncBtn();
 
   const payload = () => ({...targetPayload, reply_all: replyAll, files: files.map(f=>f.name)});
-  const att = attachControls(ctx, files, ()=>{ syncBtn(); ctx.action("draft", {...payload(), text: box.value}); });
+  const att = attachControls(ctx, files, ()=>{ syncBtn(); ctx.action("draft", {...payload(), key, text: box.value}); });
   box.addEventListener("input", () => {
     _draftLocal[key] = box.value;
     if(_sendNote[key]){ delete _sendNote[key]; const n = wrap.querySelector(".composeerr"); if(n) n.remove(); }
     syncBtn();
     clearTimeout(S.draftTimer);
-    S.draftTimer = setTimeout(() => { ctx.action("draft", {...payload(), text: box.value}); }, 500);
+    S.draftTimer = setTimeout(() => { ctx.action("draft", {...payload(), key, text: box.value}); }, 500);
   });
   // Saving explicitly is the SAME write the autosave does, just now instead of in half a second — so the
   // two can never disagree about what is stored. It says so on screen, because a save nobody can see is
@@ -175,7 +175,7 @@ export function composeBar(ctx, data, targetPayload, activeChat, rerender, mailI
   save.onclick = async () => {
     clearTimeout(S.draftTimer);
     _draftLocal[key] = box.value;
-    await ctx.action("draft", {...payload(), text: box.value});
+    await ctx.action("draft", {...payload(), key, text: box.value});
     save.textContent = tt("saved", null, "Guardado ✓");
     setTimeout(()=>{ try{ save.textContent = tt("save_draft", null, "Guardar borrador"); }catch(_){} }, 1600);
   };

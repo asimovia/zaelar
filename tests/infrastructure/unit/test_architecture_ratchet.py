@@ -932,6 +932,12 @@ _PACKAGE_CEILINGS["nucleo/conversation_host"] += 6   # 2026-11-21 C2 C: with the
 _TOTAL_MAX += 7      # same cause, measured
 _PACKAGE_CEILINGS["nucleo/send"] += 149   # 2026-11-21 C2 A2 (P-2, one draft): the owner's draft is the one in its card — `send/card.py` paints and takes it away through the card's own acts, read by type; a draft's ONE end point with its listeners (`draft._ended`, idle and replaced included)
 _TOTAL_MAX += 149    # same cause, measured
+# 2026-11-21 C2 A3: his hand on the open draft's box is the owner's — a registry of claimants by the owner its event type
+# declares (`widgets/owners.py`, asked by the one funnel), the owner's claimant (`send/card.claim`), the box keyed by its
+# chat when it is known and named exactly when discarded (mensajeria)
+_PACKAGE_CEILINGS["nucleo/send"] += 37
+_PACKAGE_CEILINGS["widgets"] += 31
+_TOTAL_MAX += 68     # measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

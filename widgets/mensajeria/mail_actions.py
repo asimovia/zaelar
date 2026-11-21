@@ -85,8 +85,8 @@ def _a_mail_back(action, payload) -> dict:
 def _draft_key(db: dict, payload: dict) -> str | None:
     drafts = db.get("drafts") or {}
     key = str(payload.get("key") or "")
-    if key in drafts:
-        return key
+    if key:
+        return key if key in drafts else None       # a draft named exactly is that one or none, never the newest
     if payload.get("contact"):
         return _d._held.draft_for(db, str(payload["contact"]))
     newest = _d._held.held(db)

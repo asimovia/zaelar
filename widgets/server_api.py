@@ -356,9 +356,8 @@ async def _dispatch(wid: str, action: str, payload: dict):
     # NOT WRAPPED IN A try/except (V2-710 T0.3). It was, and that `except Exception: pass` was a second
     # fail-open on top of the one inside `guard` itself: the guard could decide «refuse» and this frame
     # could still swallow it and let the action run. `guard` and `fold_aliases` are both written not to
-    # raise, and `guard` now fails CLOSED for destructive actions — a decision this frame must not be able
-    # to override. The `emit` below keeps its own guard, because bookkeeping that fails must not turn a
-    # refusal into an execution either.
+    # raise, and `guard` now fails CLOSED for destructive actions — a decision this frame must not be able to
+    # override. The `emit` below keeps its own guard: bookkeeping that fails must not turn a refusal into an execution.
     from . import contract
     # BEFORE the guard: a synonym must not look like a missing field. `fold_aliases` renames what the
     # model spelled its own way onto the keys the manifest declares, so the contract judges the call the
@@ -368,6 +367,7 @@ async def _dispatch(wid: str, action: str, payload: dict):
     from . import text_home   # V2-807 T-09: a held message's text written on another card lands on its row
     if (home := text_home.route(wid, action, payload)) is not None:
         text_home.record(home); return await _dispatch(home["widget"], home["action"], home["payload"])  # noqa: E702
+    if (owned := __import__("widgets.owners", fromlist=["x"]).claim(wid, action, payload)) is not None: return owned  # noqa: E701 — C2 A3: the owner of its type answers it
     refused = contract.guard(wid, action, payload)
     if refused is not None:
         try:

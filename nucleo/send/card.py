@@ -110,3 +110,40 @@ def ended(d, state: str) -> None:
 def install() -> None:
     from nucleo.send import draft
     draft.on_end(ended)
+    install_claim()
+
+
+# ── C2 A3 · his hand on the box of the open draft is the owner's ───────────────────────────────────────────────────
+def claim(wid: str, act: str, payload: dict) -> dict | None:
+    """His own hand on the box of the open draft (the card's buttons, never the model nor the owner): what he typed
+    is the draft's text, his Send is his go-ahead by gesture, his Discard drops it. The card does the act as always
+    (None); an act on another box, by another lane or with no draft open is not the owner's."""
+    from connectors import exit as door
+    from nucleo.events import vocabulary
+    from nucleo.send import draft, owner, receipt
+    from widgets import effects
+    d = draft.current()
+    key = str(payload.get("key") or payload.get("box_key") or "")
+    if door.stamped(payload.get("_lane")) != door.HAND or d is None or not d.box_key or key != d.box_key:
+        return None
+    event = effects.event_of(wid, act)
+    if event == WRITE:
+        d.text, d.heard, d.confirm_line = str(payload.get("text") or ""), False, ""   # his words: asked about anew
+        draft.touch(d)
+        owner._emit("edited by hand", d)
+    elif event == DISCARD:
+        d.box_key = ""                           # his hand takes the box away itself
+        draft.close(d, draft.CANCELLED)
+        owner._emit("dropped by hand", d)
+    elif (t := vocabulary.of(event)) is not None and t.owner == "send" and t.direction == vocabulary.OUT \
+            and str(payload.get("ref") or ""):
+        d.text, d.ref, d.box_key = str(payload.get("text") or d.text), str(payload["ref"]), ""   # the card sends it
+        draft.close(d, draft.SENDING)
+        owner._emit("go-ahead by gesture", d, ref=d.ref)
+        receipt.follow_soon(d)
+    return None
+
+
+def install_claim() -> None:
+    from widgets import owners
+    owners.register("send", claim)

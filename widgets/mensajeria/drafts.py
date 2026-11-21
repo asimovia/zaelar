@@ -30,9 +30,9 @@ def key(target: dict) -> str:
     moment an earlier item leaves the list (`_renumber`), so keying on it would hand one conversation's
     half-written reply to whatever message inherited that number next.
 
-    A NEW message (V2-800) has no conversation yet, or one with no id: it is keyed by WHO it goes to, on which
-    channel — two new messages to two people with no chat id must never share one draft."""
-    if target.get("new"):
+    A NEW message (V2-800) with no chat id is keyed by WHO it goes to, on which channel — two new messages to two
+    people with no chat id never share one draft; one whose chat IS known is that chat's draft, the box he edits."""
+    if target.get("new") and not (target.get("platform") != "email" and str(target.get("chatId") or "").strip()):
         return f"to:{target.get('platform')}:{str(target.get('to') or target.get('name') or '').strip().lower()}"
     mid = target.get("messageId")
     if mid is not None:

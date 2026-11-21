@@ -91,3 +91,41 @@ def test_a_sent_draft_keeps_its_box_until_its_receipt_is_read(box, monkeypatch):
         await asyncio.gather(*card._tasks)                       # the view's own task, on this loop
         return got
     assert asyncio.run(followed()) == "sent" and box["box"] == {}
+
+
+# ── C2 A3 · his hand on the box of the open draft (pins 5 and 6) ──────────────────────────────────────────────────────
+def _hand(act_event: str, **payload):
+    from widgets import owners
+    act = effects.acts_of("mensajeria", act_event)[0] if act_event.startswith("messaging.draft") else act_event
+    return owners.claim("mensajeria", act, door.by(door.HAND, payload))
+
+
+def test_what_his_hand_types_in_the_box_is_the_drafts_text_asked_about_anew(box):
+    d = _open()
+    d.heard, d.confirm_line = True, "w_send it?"
+    assert _hand(card.WRITE, key="to:c1", text="w_goodnight my dear") is None        # the card saves it as always
+    assert d.text == "w_goodnight my dear" and d.heard is False and d.confirm_line == ""
+    _hand(card.WRITE, key="c:other", text="w_another chat")                         # another box: not the owner's
+    from widgets import owners
+    owners.claim("mensajeria", effects.acts_of("mensajeria", card.WRITE)[0],
+                 door.by(door.OWNER, {"key": "to:c1", "text": "w_the owner's own paint"}))
+    assert d.text == "w_goodnight my dear", "only his hand: the owner's own paint never comes back to it"
+
+
+def test_his_hands_send_is_his_go_ahead_once_and_the_owner_never_sends_it_again(box, monkeypatch):
+    from nucleo.send import ask, deliver
+    sent, asked = [], []
+    monkeypatch.setattr(deliver, "run", lambda d: sent.append(d) or {"ok": True})
+    monkeypatch.setattr(ask, "confirm", lambda *a, **k: asked.append(a))
+    monkeypatch.setattr(receipt, "follow_soon", lambda d: None)
+    d = _open()
+    assert _hand("send_draft", ref="r9", box_key="to:c1", text="w_goodnight!") is None   # the card queues it ONCE
+    assert d.state == draft.SENDING and d.ref == "r9" and d.text == "w_goodnight!" and draft.current() is None
+    import asyncio
+    took, _line = asyncio.run(owner.take("w_yes send it"))
+    assert not took and sent == [] and asked == [], "no confirmation, and nothing the owner sends after it"
+
+
+def test_his_hands_discard_drops_the_draft(box):
+    d = _open()
+    assert _hand(card.DISCARD, key="to:c1") is None and d.state == draft.CANCELLED and draft.current() is None
