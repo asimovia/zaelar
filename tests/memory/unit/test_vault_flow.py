@@ -9,7 +9,6 @@ from memory import db as memdb
 from memory import embeddings as mememb
 from memory import vault
 from memory.vault import spoken as vault_flow
-from nucleo.flash import router
 
 
 @pytest.fixture(autouse=True)
@@ -32,13 +31,6 @@ def fresh_db(tmp_path, monkeypatch):
     yield
     vault.lock()
     memdb.reset_db()
-
-
-# ── the tool is in the router ──────────────────────────────────────────────────────────────────────────────
-def test_reveal_tool_registered():
-    names = {t["function"]["name"] for t in router.tools()}
-    assert "reveal_secret" in names
-    assert router.decide("reveal_secret", {"label": "netflix"}).kind == router.REVEAL
 
 
 # ── outcomes ───────────────────────────────────────────────────────────────────────────────────────────

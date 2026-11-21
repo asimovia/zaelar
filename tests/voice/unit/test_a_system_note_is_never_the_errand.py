@@ -20,37 +20,12 @@ a promise into WORK — the one place where reading the wrong string does not ju
 money and fills the screen.
 """
 from tests import voice_turn_source as _vts
-import pytest
 
-from nucleo.flash import router
 
 NOTE = ("[SISTEMA] La memoria durable llegó tarde para la pregunta «Hola, ¿estás ahí?» del turno anterior. "
         "Esto es lo que tenía: Puede que venga a cuento (de tu memoria):\n"
         "· [tarea web] un fontanero que pueda venir hoy → Me he quedado sin cuota en el proveedor.")
 ASKED = "Necesito concertar una cita en un traumatólogo en Soria."
-
-
-def test_the_operators_words_win_over_the_glued_note():
-    assert router.operator_words(ASKED, NOTE + "\n\n" + ASKED) == ASKED
-
-
-def test_the_plumber_cannot_survive_into_the_goal():
-    """The concrete regression: whatever comes out of this must not carry the old errand's words."""
-    got = router.operator_words(ASKED, NOTE + "\n\n" + ASKED)
-    assert "fontanero" not in got.lower(), \
-        "a memory line about an old errand became a live Brain Worker's goal — nine minutes and two workers"
-    assert "[SISTEMA]" not in got
-
-
-def test_without_an_operator_text_it_behaves_exactly_as_before():
-    """Fail-safe: a caller that never separated the two must not change behaviour. Making this an error would
-    turn a note-only turn into a crash on the voice hot path, which is worse than the bug."""
-    assert router.operator_words("", "lo que sea que llegara") == "lo que sea que llegara"
-    assert router.operator_words(None, "algo") == "algo"
-
-
-def test_whitespace_only_operator_text_is_not_an_answer():
-    assert router.operator_words("   ", "el turno entero") == "el turno entero"
 
 
 # ── the seam itself: the backstops must read the operator, not the turn ───────────────────────────────────
@@ -66,33 +41,6 @@ def _backstop_block() -> str:
     j = src.find("BACKSTOP DETERMINISTA de CIERRE", i)
     assert j > i, "the end of the backstop block moved: this guard would be watching nothing"
     return "\n".join(l for l in src[i:j].splitlines() if not l.strip().startswith("#"))
-
-
-def test_no_backstop_reads_the_note_prefixed_turn_text():
-    """Deliberately crude (this repo's convention for guarding a seam by text): every backstop decision in that
-    block has to go through the operator's own words. A bare `text` there is the bug coming back."""
-    block = _backstop_block()
-    assert "_op_text = _router.operator_words(operator_text, text)" in block, (
-        "`_op_text` has to come from `operator_words(operator_text, …)`. Assigning it `text` keeps every call "
-        "site below looking correct while feeding them the note-prefixed turn again — the bug, renamed")
-    for bad in ("looks_like_create_widget(text)", "looks_like_escalate_task(text)", "looks_like_show_strict(text)",
-                'escalate_req["v"] = _win_goal or text', '{"query": text,', "_identify(text)",
-                "escalate_goal_from_window(brain._window, text)"):
-        assert bad not in block, \
-            f"`{bad}` reads the turn WITH the system notes glued on — that is how the plumber became an errand"
-
-
-def test_the_other_three_work_making_seams_read_the_operator_too():
-    """Same door, more handles: the escalation's own fallback goal and the
-    same-turn create-widget backstop. Checked by their unique text, not by a region — a region wide enough to
-    hold all three also holds lines that legitimately read the turn."""
-    src = _vts.read(NUCLEO)
-    # V2-857 phase 8 (2.1618): the irreversible-order backstop went — no word seam opens an errand there any more.
-    assert "is_dangerous(text)" not in src
-    for good, bad in (('req = escalate_req["v"] or _op_text', 'req = escalate_req["v"] or text'),
-                      ("create_widget_request(_op_text)", "create_widget_request(text)")):
-        assert good in src, f"`{good}` is the seam that manufactures work — it must read the operator's words"
-        assert bad not in src, f"`{bad}` is the bug coming back"
 
 
 # ── the note is a BLOCK, and a question is not a promise (2026-09-01, session 651cd038) ───────────────────
@@ -157,41 +105,3 @@ REALLY_PROMISES = [
     "Ahora mismo te la enseño. Estoy aún con la búsqueda, que va un poco lenta.",
     "Me pongo con ello. ¿Te aviso cuando lo tenga?",
 ]
-
-
-@pytest.mark.parametrize("reply", ASKS_FOR_A_DETAIL)
-def test_a_clarifying_question_is_not_a_broken_promise(reply):
-    from nucleo.flash import router
-    assert router.asks_for_missing_detail(reply)
-
-
-@pytest.mark.parametrize("reply", REALLY_PROMISES)
-def test_a_real_promise_leaves_the_backstop_armed(reply):
-    """The counterweight, and it is the half that keeps V2-049 alive: «dame un momento» is a promise wearing an
-    imperative, and «¿te aviso cuando lo tenga?» is a courtesy question. Neither asks for a datum."""
-    from nucleo.flash import router
-    assert not router.asks_for_missing_detail(reply)
-
-
-def test_the_accent_is_the_signal_and_is_not_normalized_away():
-    """In Spanish the interrogative carries the accent and the conjunction does not. Strip accents and
-    «te aviso cuando lo tenga» becomes a request for information."""
-    from nucleo.flash import router
-    assert router.asks_for_missing_detail("¿Cuándo lo quieres?")
-    assert not router.asks_for_missing_detail("Te lo digo cuando lo tenga.")
-
-
-def test_use_case_the_ghost_errand_of_2026_09_01():
-    """The incident, replayed through the real guards with the strings the engine actually saw.
-
-    The trigger is the third assertion: with the note glued on, `looks_like_web_task` said True — that is what
-    turned a clarifying question into a Brain Worker with a browser."""
-    from nucleo.flash import router
-    glued = NOTE_MULTILINE + "\n\n" + ASKED_FRAGMENT
-    reply = "¿Los precios de qué, Ricardo? Dime de qué quieres verlos y te lo miro."
-
-    op = router.operator_words(ASKED_FRAGMENT, glued)
-    assert op == ASKED_FRAGMENT
-    assert router.looks_like_web_task(glued), "premise: the glued note is what made this look like a web task"
-    assert not router.looks_like_web_task(op), "the operator asked for prices of nothing yet — no errand here"
-    assert router.asks_for_missing_detail(reply), "and the gate closes one step earlier still"

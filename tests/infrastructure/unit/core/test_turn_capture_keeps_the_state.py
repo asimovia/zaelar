@@ -62,3 +62,4 @@ def test_two_screens_reporting_one_app_are_two_records():
 
 def test_a_short_prompt_is_kept_whole():
     assert observer._prompt_excerpt("corto") == "corto"
+

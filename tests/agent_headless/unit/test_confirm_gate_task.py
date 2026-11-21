@@ -238,3 +238,4 @@ def test_the_memory_of_an_expired_one_does_not_last_forever():
     dispatch.confirm_line()
     dispatch._EXPIRED_CONFIRM[tid]["expired_at"] = time.time() - (dispatch._EXPIRED_MEMORY_S + 100)
     assert dispatch.confirm_line() == ""
+

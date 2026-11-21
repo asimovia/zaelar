@@ -21,7 +21,6 @@ import json
 import os
 import threading
 import time
-import urllib.request
 from pathlib import Path
 
 from loguru import logger
@@ -56,6 +55,8 @@ KIND_MAP: dict[str, str] = {
 }
 
 MIN_CONFIDENCE = 0.5  # below this the verdict is a shrug: keep the regex class, log the doubt
+#: A verdict this sure may refuse what the model called (the veto); between the two it is a doubt, and a doubt asks.
+VETO = 0.85
 
 _CALL_SEQ = itertools.count(1)
 

@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import pytest
 
-from widgets import store
 from widgets.documento.blocks import _best_block, lead
 
 EN = "\n\n".join([
@@ -67,33 +66,3 @@ def test_the_passage_is_named_as_a_reader_calls_it():
     assert lead("Step 3") == "Step 3"
     assert lead("A long paragraph with no lead at all that keeps going well past what anyone would call a name").endswith("…")
 
-
-def test_the_goto_receipt_names_where_it_landed_and_the_mouth_says_it(tmp_path, monkeypatch):
-    monkeypatch.setattr(store, "DATA_DIR", str(tmp_path))
-    from i18n import langs
-    from nucleo.turn import reply as R
-    from widgets.documento import data
-    monkeypatch.setattr(langs, "current_code", lambda: "en")
-    data.apply_action("show", {"title": "Bitcoin", "body": EN})
-    res = data.apply_action("goto", {"text": "go to the part about proof of work"})
-    assert res["ok"] and res["title"] == "The proposal", res      # disarm: no `title` → the reply names nothing
-    out = R.of_op("documento", "goto", res)
-    assert out.verdict == "met" and out.object == "«The proposal»"
-    owed = [t for _o, t in R.owed([out], "Want me to scroll to it?")]
-    assert owed and "The proposal" in owed[0], owed
-
-
-@pytest.mark.parametrize("lang,word", [("en", "isn't in the document"), ("es", "no está en el documento")])
-def test_a_goto_that_finds_nothing_says_so_and_claims_no_scroll(tmp_path, monkeypatch, lang, word):
-    monkeypatch.setattr(store, "DATA_DIR", str(tmp_path))
-    from i18n import langs
-    from nucleo.turn import reply as R
-    from widgets.documento import data
-    monkeypatch.setattr(langs, "current_code", lambda: lang)
-    data.apply_action("show", {"title": "Bitcoin", "body": EN})
-    res = data.apply_action("goto", {"text": "the part about quantum computers"})
-    assert res["ok"] is False and res.get("say") == "widgets.documento.goto_not_found", res
-    out = R.of_op("documento", "goto", res)
-    assert out.verdict == "unmet" and word in out.reason, out
-    owed = [t for _o, t in R.owed([out], "Here it is.")]
-    assert owed and word in owed[0], owed

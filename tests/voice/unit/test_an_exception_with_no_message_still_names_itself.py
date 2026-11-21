@@ -16,10 +16,8 @@ fast-brain handler → the guard goes red.
 from __future__ import annotations
 
 import ast
-import asyncio
 import pathlib
 
-import pytest
 
 ENGINE = pathlib.Path(__file__).resolve().parents[3]
 
@@ -27,55 +25,6 @@ ENGINE = pathlib.Path(__file__).resolve().parents[3]
 def _read_error():
     import httpx
     return httpx.ReadError("")
-
-
-def _logged(e) -> list[tuple[str, str, bool]]:
-    from loguru import logger
-    from nucleo.turn import pipeline_failure as tf
-    seen: list[tuple[str, str, bool]] = []
-    sink = logger.add(lambda m: seen.append((m.record["level"].name, m.record["message"],
-                                             m.record["exception"] is not None)), level="DEBUG")
-    try:
-        try:
-            raise e
-        except BaseException as caught:  # noqa: BLE001
-            tf.log_named("nucleo fast brain error (not spoken raw)", caught)
-    finally:
-        logger.remove(sink)
-    return seen
-
-
-@pytest.mark.parametrize("make,name", [
-    (_read_error, "ReadError"),
-    (lambda: TimeoutError(), "TimeoutError"),
-    (lambda: asyncio.CancelledError(), "CancelledError"),
-    (lambda: ValueError("bad value"), "ValueError"),
-])
-def test_the_log_line_names_the_type_even_when_the_message_is_empty(make, name):
-    e = make()
-    seen = _logged(e)
-    warn = [msg for lvl, msg, _ in seen if lvl == "WARNING"]
-    assert warn and name in warn[0], f"the warning does not name {name}: {seen}"
-    if str(e):
-        assert str(e) in warn[0], f"the message was dropped: {warn[0]!r}"
-    assert any(lvl == "DEBUG" and exc for lvl, _, exc in seen), "no traceback at debug"
-
-
-@pytest.mark.parametrize("dry", [False, True], ids=["degraded", "chain-dry"])
-def test_a_failed_fast_brain_turn_with_an_empty_exception_names_it_in_the_alert(monkeypatch, dry):
-    """The alert of the failed turn, on both provider branches: it read «flash layer error» / «provider chain
-    exhausted» when `str(e)` was empty."""
-    monkeypatch.setenv("ZAELAR_LANGUAGE", "en")
-    from nucleo.llm import provider_failure as pf
-    from nucleo.turn import pipeline_failure as tf
-    monkeypatch.setattr(pf, "handle", lambda *a, **k: {"relay": None, "dry": dry})
-    events: list[tuple[tuple, dict]] = []
-    asyncio.run(tf.say_the_turn_failed(
-        emit=lambda *a, **k: events.append((a, k)), err_exc=_read_error(), err_text="", errored=True,
-        llm_metrics={}, send=lambda _l: None, spec=None, stalled=False))
-    alerts = [k.get("text", "") for a, k in events if a and a[0] == "alert"]
-    assert alerts, f"no alert for a failed turn: {events}"
-    assert any("ReadError" in t for t in alerts), f"the alert does not name the exception: {alerts}"
 
 
 # ── THE GUARD: no handler under voice/engine formats its caught exception bare ─────────────────────────────
@@ -132,11 +81,3 @@ def test_the_guard_sees_the_shape_it_forbids(tmp_path):
     p.write_text('try:\n    pass\nexcept Exception as e:\n'
                  '    logger.warning(f"nucleo fast brain error (not spoken raw): {e}")\n', encoding="utf-8")
     assert _bare_uses(p), "the guard does not see `{e}` inside a handler"
-
-
-def test_the_fast_brain_handler_reports_through_the_named_door():
-    """The site that hid the cause goes through the helper — removing the log would not satisfy the guard."""
-    from tests import voice_turn_source as _vts
-    src = _vts.read(ENGINE / "voice/engine/llm/providers/nucleo.py")
-    assert 'log_named("nucleo fast brain error (not spoken raw)", e)' in src, \
-        "the fast-brain error handler no longer names the exception it caught"

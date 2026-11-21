@@ -12,36 +12,7 @@ so the guard's founding case («borra el reloj» dragging the dentist's add_meet
 from __future__ import annotations
 
 
-
-from nucleo.acts import show_license as lic
-
-
-
 # ── 1 · the license, against the session's own sentences ─────────────────────────────────────────────────
-
-def test_the_sessions_eaten_play_orders_now_pass():
-    for t in ("Vale, pues reproduce la lista.", "Vamos, dale al play, a la primera canción."):
-        assert lic.replay_license("musica", "play_playlist", t) is True, t
-
-
-def test_turns_about_something_else_stay_deduped():
-    """The other two turns of the same session that re-emitted play_playlist really WERE drag."""
-    for t in ("Johnny, activa el modo word activate.",
-              "Que ya aquí, como ya hay una ahí. Uf, tienen que quitar aquí."):
-        assert lic.replay_license("musica", "play_playlist", t) is False, t
-
-
-def test_a_widget_that_declares_no_production_never_gets_the_escape():
-    """The guard's founding case: «borra el reloj» dragged the dentist's add_meeting (V2-038). Even a
-    turn full of media verbs must not revive an agenda-class duplicate."""
-    assert lic.replay_license("agenda", "add_meeting", "apunta otra vez lo del dentista") is False
-    assert lic.replay_license("agenda", "add_meeting", "ponme un vídeo de gatos") is False
-
-
-def test_a_non_produce_action_on_a_media_widget_stays_deduped():
-    """add_to_playlist mutates the library, not the speaker: repeating it silently would re-add."""
-    assert lic.replay_license("musica", "add_to_playlist", "reproduce la lista") is False
-
 
 def test_the_declaration_is_read_not_hardcoded():
     """The escape rides `runtime.produce` — the declared list, exactly as producers.py reads it."""

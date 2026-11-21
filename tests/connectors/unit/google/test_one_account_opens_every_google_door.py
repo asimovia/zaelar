@@ -270,16 +270,6 @@ def test_a_connected_calendar_teaches_the_ARGUMENT_that_creates_a_meet(shipped, 
     assert "NO hay ninguna tool aparte" in line
 
 
-def test_the_turn_prompt_consults_it(monkeypatch):
-    """Wiring, by behaviour: a fact nobody injects is a fact the model never had. With Google not usable, the turn's
-    connector facts carry Google's own state line (refactor2710-08: read through `catalogs.connector_facts`)."""
-    from connectors.google import brain
-    from nucleo.turn.prompt import operating as prompt
-    monkeypatch.setattr(brain, "connected_services", lambda: [])
-    monkeypatch.setattr(brain, "brain_state", lambda: "GOOGLE-STATE-LINE")
-    assert "GOOGLE-STATE-LINE" in prompt._connector_briefs(set(), "what do I have tomorrow?")
-
-
 # ── V2-686: the brain is told WHICH DOOR, not just that a door exists ───────────────────────────────────
 # Measured live on 2026-09-14, engine 3.26+e35211f8: «open the google connector» opened MESSAGING and its
 # wizard. V2-685's own sentence had told the model it could offer to connect Google and never told it

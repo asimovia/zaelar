@@ -139,28 +139,6 @@ def test_the_lower_layer_reads_the_question_through_the_seam_the_gate_registers(
     assert "voice.engine" not in src, "the lower layer never reaches into the motor's internals"
 
 
-# ── ONE act, ONE question (V2-931 P5 · CRIT-C9) ──────────────────────────────────────────────────────────────────────
-def test_a_draft_he_was_shown_and_then_ordered_sent_is_not_asked_about_again(world, monkeypatch):
-    """A reply held as a draft was shown to him and he said «send it»: that order IS the yes. The exit door used to ask
-    «shall I send it?» again — the reader that knew his order (`message.confirmed`) had lost its caller. An order the
-    turn did not record keeps the question."""
-    from nucleo.acts import message
-    call = {"widget_id": "mensajeria", "action": "send_to", "payload": dict(SENDS["en"]["payload"])}
-    asked = exit_gate.leave(world.rec("s-c9a", [SENDS["en"]["heard"]]), "widget_data", dict(call))
-    assert asked.verdict == "ask"
-    monkeypatch.setattr(message, "confirmed", lambda wid, act, inner, brief: brief is None and act == "send_to")
-    ex = exit_gate.leave(world.rec("s-c9b", [SENDS["en"]["heard"]]), "widget_data", dict(call))
-    assert ex.verdict == "released" and not ex.question
-
-
-def test_the_turn_records_his_order_where_it_hands_the_send_over():
-    import inspect
-    from nucleo.flash import tool_executor_widget_calls as tx
-    src = inspect.getsource(tx._leaving_is_a_task)
-    assert src.index("note_his_order(wid, action, payload, brief)") < src.index("send_errand.hand_over("), \
-        "the worker's door reads an order nobody recorded"
-
-
 def test_a_send_his_order_released_is_followed_to_its_receipt_like_a_yes(monkeypatch):
     import asyncio
     from nucleo.request import send_receipt

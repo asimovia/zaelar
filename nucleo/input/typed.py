@@ -98,33 +98,9 @@ def mark(now: float | None = None) -> float:
     return _now(now)
 
 
-def min_voice_s() -> float:
-    import os
-    try:
-        return float((os.getenv("ZAELAR_MIN_INTERRUPTION_SEC") or "").strip() or MIN_VOICE_S)
-    except ValueError:
-        return MIN_VOICE_S
-
-
 def note_typed_cut(now: float | None = None) -> None:
     """A typed line cut our speech (CRIT-V22): like his voice resuming, it supersedes a reply still being composed."""
     _state["typed_cut"] = _now(now)
-
-
-def resumed_since(since: float | None, now: float | None = None) -> bool:
-    """V2-888 — he started talking AFTER `since` and has voiced at least `min_voice_s()`: the reply composed from
-    `since` answers a sentence he went on with. Structural, like `_extends`, for an ear that gives every segment
-    as a turn of its own (Flux): «A ver…» [pause] «ponme un videoclip» never grows by prefix. No mark (a typed
-    turn) is never superseded by the microphone."""
-    if not since:
-        return False
-    if _state.get("typed_cut", 0.0) > since:
-        return True                    # a line he typed over this reply's composition: the same net as his voice
-    t, on = _now(now), _state["last_onset"]
-    if on <= since:
-        return False
-    voiced = (t if _state["speaking"] else _state["end"]) - on
-    return voiced >= min_voice_s()
 
 
 def reset() -> None:

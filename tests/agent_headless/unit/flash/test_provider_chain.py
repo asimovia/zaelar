@@ -337,37 +337,6 @@ def test_con_el_ultimo_escalon_seco_NO_queda_a_quien_preguntar(monkeypatch):
     assert pc.pick() is None, "sin este hecho, el turno no puede distinguir un tropiezo de una cadena seca"
 
 
-def test_el_turno_de_VOZ_lo_pregunta_y_cambia_lo_que_dice():
-    """WIRING GUARD (V2-199): the fact may be perfect while the turn keeps saying «could you repeat that?».
-    This is what the operator HEARS, so it is the part that cannot go untested."""
-    import inspect
-    import pathlib
-    src = pathlib.Path(inspect.getfile(pc)).parent.parent.parent / "voice/engine/llm/providers/nucleo.py"
-    txt = _vts.read(src)
-    # V2-252: the shared module resolves «is anyone left?» and this turn READS the verdict.
-    assert '_dry = bool(_v.get("dry"))' in txt
-    # Repointed 2026-08-31 (ratchet extraction): the wiring is unchanged — «¿me lo repites?» stays the
-    # NOT-dry line, and the dry branch swaps it for the chain's own sentence (dry_chain_line).
-    # Demo pass 128 (2026-10-14): the not-dry line is the i18n `say_again`, never a fixed Spanish sentence.
-    # V2-789: the line is chosen by what the turn IS — `say_again` for a reply, `kickoff_fallback` for the kickoff.
-    assert "_line = _fallback_line(first_turn)" in txt
-    assert "if _dry:" in txt and "_pchain2.dry_chain_line" in txt
-    # V2-676 — this used to also assert the Spanish SENTENCE appeared in that file. It does not any more, and
-    # that is the fix, not a regression: a sentence written where it is delivered is exactly how the operator
-    # ended up being told «me he quedado sin proveedor de modelo» in the middle of an English session. The
-    # wiring guard now measures that the branch reaches the TABLE, and that the table answers in his language.
-    assert "dry_alert_extra()" in txt, "the dry turn must also put the fault on his SCREEN"
-    import os
-    _prev = os.environ.get("ZAELAR_LANGUAGE")
-    os.environ["ZAELAR_LANGUAGE"] = "en"
-    try:
-        assert "credit" in pc.dry_chain_line([]).lower()
-    finally:
-        os.environ.pop("ZAELAR_LANGUAGE", None) if _prev is None else os.environ.update(ZAELAR_LANGUAGE=_prev)
-    from nucleo.llm import provider_failure as _pf
-    assert "pc.pick(role) is None" in inspect.getsource(_pf.handle)
-
-
 # ── V2-244: silencing a tier is legitimate; hiding THAT YOU SILENCE IT is not ──────────────────────────────────────────
 # The harness isolated it in two consecutive lines of the 2026-08-21 log, with the real providers:
 #
@@ -443,40 +412,6 @@ def test_si_el_operador_YA_puso_su_lista_no_hay_nada_callado(monkeypatch):
     assert pc.suppressed_relays() == []
 
 
-def test_el_turno_de_voz_NOMBRA_lo_que_esta_callado():
-    """WIRING GUARD: this is what the operator HEARS. Without it, the fact exists but comes out of no mouth.
-
-    Repointed on 2026-08-31 (architecture ratchet): MESSAGE COMPOSITION was extracted to
-    `provider_chain.dry_chain_line` — the guard still covers both halves, each where it now lives:
-    the voice turn CALLS (suppressed_relays + dry_chain_line in nucleo.py), and the phrase NAMES the key that
-    activates it (`fast.providers`, now checked as FUNCTION BEHAVIOR rather than as text in a file).
-
-    RENEGOTIATED on 2026-09-11 (V2-676), deliberately and not sideways. V2-244's rule was that a credentialed
-    rung we are silencing must be NAMED **with the config key that enables it**. The operator heard that
-    sentence — config key and all — spoken aloud in Spanish in the middle of an English session, and ruled:
-    «hay que marcar el estado en rojo y que salga un mensaje en grande, en el idioma del usuario, recarga o
-    cámbialo en la configuración, y ponemos un botón que abra la configuración».
-
-    So the rule SPLITS, and both halves are still guarded here:
-      · the NAME stays in what he hears — a rung we silenced is useless as a secret;
-      · the CONFIG KEY moves to what he SEES (`dry_fault`), next to the button that acts on it. A voice
-        reciting `fast.providers` was never actionable; a screen with it is.
-    What would break the rule is the key existing NOWHERE, so the second assertion below is the teeth."""
-    import inspect
-    import pathlib
-    src = pathlib.Path(inspect.getfile(pc)).parent.parent.parent / "voice/engine/llm/providers/nucleo.py"
-    txt = _vts.read(src)
-    assert "_pchain2.suppressed_relays()" in txt
-    assert "_pchain2.dry_chain_line" in txt
-    line = pc.dry_chain_line(["deepseek-directo"])
-    assert "deepseek-directo" in line, "a rung we silenced must be named in what he hears"
-    # …and the key that turns it on reaches him on the SCREEN, with the rung it applies to.
-    fault = pc.dry_fault()
-    assert fault["config_key"] == "fast.providers"
-    assert fault["code"] == "no_model_credit"
-    assert "fast.providers" not in line, "config keys are not spoken aloud — they are shown, with a button"
-
-
 # ── V2-246: a tier that ALWAYS stalls was never penalized ──────────────────────────────────────────
 # `note_slow` lives on the RESPONSE path, so it only sees turns that finished; and `note_failure` is skipped
 # when the turn stalls, because a stall is usually transient. Between the two, a tier that always stalls
@@ -533,17 +468,3 @@ def test_el_ULTIMO_escalon_atascado_no_se_castiga(monkeypatch):
     pc.note_stall(role=pc.ROLE_VOICE)
     assert pc.note_stall(role=pc.ROLE_VOICE) is None
     assert pc._store._cooldown.get("xai", 0) == 0
-
-
-def test_el_turno_de_voz_LO_LLAMA_cuando_se_atasca():
-    """WIRING GUARD (V2-199): the predicate may be perfect and the turn may still fail to call it — which is
-    exactly what happened, because the stall branch deliberately skipped the ENTIRE provider circuit."""
-    import inspect
-    import pathlib
-    src = pathlib.Path(inspect.getfile(pc)).parent.parent.parent / "voice/engine/llm/providers/nucleo.py"
-    txt = _vts.read(src)
-    # V2-252: the turn passes the FACT (`stalled=`) and the shared module decides `note_stall` vs `note_failure`.
-    # Both halves are checked: without the first the stall does not arrive; without the second it is not penalized.
-    assert "stalled=bool(stalled)" in txt
-    from nucleo.llm import provider_failure as _pf
-    assert "pc.note_stall(role=role, tier=culpable)" in inspect.getsource(_pf.handle)

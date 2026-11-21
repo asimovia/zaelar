@@ -113,24 +113,6 @@ def test_with_no_voice_session_nothing_is_said_or_painted(world):
     assert _beat([RUNS]) is False and world["said"] == []
 
 
-def test_his_own_rule_turns_it_off_and_removing_it_turns_it_on_again(world):
-    """«No need to tell me you are still on it»: a `voice` row of the rules table, shaped from his sentence."""
-    from rules import vocabulary
-    assert vocabulary.knobs().get("still_working_lines") is True, "a knob a spoken rule may set"
-    assert style_policy.still_working_lines() is True
-    style_policy.set_pref("still_working_lines", False, text="no hace falta que me avises de que sigues")
-    assert style_policy.still_working_lines() is False
-    assert _beat([RUNS]) is False and world["said"] == [], "his rule is obeyed"
-    style_policy.retract("still_working_lines")
-    assert _beat([RUNS]) is True and len(world["said"]) == 1
-
-
-def test_disarm_without_reading_his_rule_it_speaks_over_it(world, monkeypatch):
-    style_policy.set_pref("still_working_lines", False)
-    monkeypatch.setattr(still_on_it, "_allowed", lambda: True)
-    assert _beat([RUNS]) is True, "the read of his rule is what silences it"
-
-
 def test_a_line_that_could_not_be_said_is_dropped_never_pushed_nor_owed(world, monkeypatch):
     pushed = []
     monkeypatch.setattr(notices, "push", lambda row: pushed.append(row) or 1)

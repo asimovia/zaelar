@@ -14,7 +14,6 @@ import pathlib
 import re
 
 from nucleo.acts import payload_fill
-from nucleo.request import order_unserved
 
 ENGINE = pathlib.Path(__file__).resolve().parents[3]
 #: Declared optional in words the reader does not read («(opcional: …», «(optional — …»). Only goes down.
@@ -32,12 +31,6 @@ def unread(manifests) -> list[str]:
                 if _UNREAD.search(str(desc)) and not payload_fill.declared_optional(desc):
                     out.append(f"{pathlib.Path(f).parent.name}:{act}.{key}")
     return out
-
-
-def test_a_new_list_needs_only_its_name():
-    assert order_unserved.needed("agenda", "add_list", {"name": "Hardware store"}) == []
-    assert order_unserved.needed("agenda", "add_list") == ["name"]
-    assert payload_fill.fillable_key("agenda", "add_list") == "name", "words can no longer name the list"
 
 
 def test_no_slot_is_added_with_a_mark_the_reader_does_not_read():

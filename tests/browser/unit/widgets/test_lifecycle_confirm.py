@@ -145,9 +145,3 @@ def test_code_delete_never_creates(monkeypatch):
     assert wr.meta.get("deleted") is False         # V2-781 T531: a worker never deletes; that is a confirmed act
     assert created["called"] is False                              # the generator was NEVER called
 
-
-# ── FlashBrain: the deletion tools are offered ───────────────────────────────────────────────────────────
-def test_router_offers_delete_tools():
-    from nucleo.flash.router import TOOLS
-    names = {t["function"]["name"] for t in TOOLS}
-    assert {"delete_widget", "confirm_widget_delete"} <= names

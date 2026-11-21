@@ -47,15 +47,6 @@ def test_ningun_relevo_de_voz_lleva_ZAI():
     assert not [t for t in PC._VOICE_RELAYS() if _zai(t)]
 
 
-def test_el_motor_de_voz_no_ofrece_un_proveedor_ZAI():
-    """A `glm` provider (Z.AI, OpenAI-compatible) was registered and selectable as the voice brain. It was
-    removed: in addition to violating this rule, it was a REASONER offered for voice, which already violated
-    the hard rule."""
-    from voice.engine.llm import providers as _p  # noqa: F401 — the import registers the providers
-    from voice.engine.llm import registry
-    assert "glm" not in set(registry.names())
-
-
 def test_los_ajustes_de_ZAI_no_viven_en_la_config_de_voz():
     """A setting with no provider to read it is an invitation to plug it back in."""
     from voice.engine.core.config import SETTINGS

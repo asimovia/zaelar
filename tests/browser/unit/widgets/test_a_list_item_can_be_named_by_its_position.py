@@ -30,61 +30,10 @@ from __future__ import annotations
 
 import pytest
 
-from nucleo.flash.router_guards import is_pure_show_request
 from widgets import refs
 
 
 # ── FAULT A · an activation order is not a pure show ────────────────────────────────────────────────────────
-
-def test_la_frase_MEDIDA_ya_no_se_lee_como_un_show_puro():
-    assert is_pure_show_request("Muéstrame el primero, arráncalo.") is False
-
-
-@pytest.mark.parametrize("frase", [
-    "Enséñame la lista y reprodúcela",
-    "Ábreme el vídeo y dale al play",
-    "show me the first one and play it",
-    "Muéstrame la playlist y empieza",
-])
-def test_otras_formas_de_ARRANCAR_tampoco(frase):
-    assert is_pure_show_request(frase) is False
-
-
-@pytest.mark.parametrize("frase", [
-    "Muéstrame la agenda",
-    "Ábreme el Telegram",
-    "Enséñame las fotos",
-    "Muéstrame el mensaje de Francisco",
-])
-def test_un_show_de_VERDAD_sigue_siendo_un_show(frase):
-    """The other direction, and it is the half that keeps the guard alive: this predicate exists because «abre
-    la agenda» once executed an invented `add_meeting`. Widening it until nothing is a pure show would «fix»
-    this session by reopening that one."""
-    assert is_pure_show_request(frase) is True
-
-
-def test_un_verbo_de_CAMBIO_sigue_ganando():
-    assert is_pure_show_request("Abre la agenda y apunta una cita") is False
-
-
-def test_el_INICIO_no_es_iniciar():
-    """`inici` is deliberately NOT in the activation list: it also matches the noun «el inicio», and a false
-    positive here disarms the guard for a sentence that really is a pure show."""
-    assert is_pure_show_request("Muéstrame el inicio de la lista") is True
-
-
-def test_REANUDAR_tambien_es_arrancar():
-    """Resuming playback is the same order as starting it — without `reanud` this sentence read as a pure show
-    and the correct `play_item` was discarded, fault A with a different verb."""
-    assert is_pure_show_request("Muéstrame el vídeo y reanúdalo") is False
-
-
-def test_pero_el_RESUMEN_sigue_siendo_un_show():
-    """`resum` is deliberately NOT in the activation list, same reasoning as `inici`: «el resumen» and «la
-    versión resumida» are nouns that ride along with genuine show orders."""
-    assert is_pure_show_request("Muéstrame el resumen") is True
-    assert is_pure_show_request("Enséñame la versión resumida") is True
-
 
 # ── FAULT B · the widget publishes its index and the resolver reads it ──────────────────────────────────────
 

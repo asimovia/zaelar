@@ -161,18 +161,6 @@ def test_the_built_list_plays_first_song_now_and_queues_the_rest(monkeypatch):
     assert [a for a, _u in calls[1:]] == ["queue"] * 7
 
 
-def test_the_card_declares_the_op_and_the_end_state_it_leaves():
-    from nucleo.circuit import spec, verify
-    from widgets import rows, runtime
-    act = (runtime.get("musica") or {}).get("actions", {}).get("add_tracks") or {}
-    from nucleo.turn import brief as turn_brief
-    assert act and len(act["desc"]) <= turn_brief.MAX_DESC_CHARS, "the descriptor is written under the cut"
-    assert "playlists" in rows.declared("musica")
-    dw = spec.render("musica", "add_tracks", {"playlist": "Cumple"})
-    assert spec.target_of(dw) == "musica:playlists"
-    assert verify.check(dw) is False, "nothing built yet: not met"
-
-
 def test_the_end_state_holds_once_the_list_exists(monkeypatch):
     from nucleo.circuit import spec, verify
     _providers(monkeypatch, _Fake("youtube", "yt"))

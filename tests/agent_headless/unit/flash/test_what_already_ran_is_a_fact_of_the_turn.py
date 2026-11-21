@@ -64,11 +64,6 @@ def _run(action, payload):
     return asyncio.run(server_api.brain_action("agenda", action, payload))
 
 
-def _live():
-    from nucleo.turn.prompt import live_state as p
-    return p.live_state()
-
-
 # ── 1 · the funnel writes it ─────────────────────────────────────────────────────────────────────────────
 
 def test_a_sweep_that_RAN_is_in_the_ledger(agenda):
@@ -76,12 +71,6 @@ def test_a_sweep_that_RAN_is_in_the_ledger(agenda):
     rows = done_ops.recent()
     assert [r["action"] for r in rows] == ["clear_range"]
     assert rows[0]["wid"] == "agenda" and rows[0]["destructive"] is True
-
-
-def test_a_reversible_op_is_recorded_too_but_not_as_destructive(agenda):
-    _run("add_meeting", {"title": "New", "date": "2026-09-18", "startTime": "10:00"})
-    assert done_ops.recent() and done_ops.recent()[-1]["destructive"] is False
-    assert not done_ops.destructive_since()
 
 
 def test_an_action_the_CONTRACT_refused_never_reaches_the_ledger(agenda):

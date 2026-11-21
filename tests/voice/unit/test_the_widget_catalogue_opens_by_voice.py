@@ -25,7 +25,6 @@ from pathlib import Path
 import pytest
 
 from nucleo.actionmap import executor
-from nucleo.flash import router_catalog
 from nucleo.self.catalogs import canon_panel
 from widgets import runtime
 
@@ -107,12 +106,6 @@ def test_the_panel_argument_lands_on_the_apps_tab(arg, tab):
     assert canon_panel(arg) == tab
 
 
-def test_the_tool_description_names_the_tab():
-    tool = next(t for t in router_catalog.TOOLS if t["function"]["name"] == "show_panel")
-    assert "'apps'" in tool["function"]["description"]
-    assert "widgets" in tool["function"]["description"]
-
-
 # ── door 1: the action map ─────────────────────────────────────────────────────────────────────────────────
 @pytest.mark.parametrize("lang,phrase", [("es", "abreme la lista de widgets"), ("es", "abre el catalogo de apps"),
                                          ("es", "que widgets tengo disponibles"), ("en", "open the widget catalog"),
@@ -148,61 +141,3 @@ def test_the_packs_were_versioned_so_existing_installs_import_them():
         pack = json.loads((ENGINE / f"i18n/genesis/{lang}/actionmap.json").read_text(encoding="utf-8"))
         assert pack["version"] >= 10, f"{lang}: the pack carries the apps phrases under an old version"
 
-
-# ── the lane: an order that NAMES the tab opens it without the model ──────────────────────────────────────
-# Measured after F1 with a clean window per phrase, three rounds of his six phrases: `show_panel` 10-13 of 18.
-# The rest refused, promised with no tool, or spent a worker listing what the tab shows. The name decides now.
-@pytest.mark.parametrize("phrase,tab", [
-    ("Enséñame el catálogo de aplicaciones.", "apps"), ("Vale, enséñame el catálogo de widgets.", "apps"),
-    ("Vale, ábreme la lista de widgets customizados.", "apps-custom"), ("O los widgets. Ábreme esa lista.", "apps"),
-    ("Ábreme la lista de apps", "apps"), ("Johnny, ábreme las apps", "apps"),
-    ("enséñame mis widgets personalizados", "apps-custom"),
-    ("abre el chat", "chat"),
-])
-def test_an_order_that_names_the_tab_is_decided_by_the_name(phrase, tab):
-    from nucleo.acts.wall_tab import named_wall_tab
-    assert named_wall_tab(phrase) == tab
-
-
-@pytest.mark.parametrize("phrase", [
-    "abre la aplicación de música", "no quiero ver las apps", "te lo pongo en el chat", "ábreme el vídeo", "ábreme whatsapp", "abre el widget de música",
-    "cierra las apps", "hazme un widget de recetas", "crea una app de notas", "no me abras las apps",
-    # V2-903 a6 — a noun is not an order: the cut tail of a close sentence (phone, 14:38) and a question with no open
-    # verb leave the lane; a question goes to the action map's seeds (door 1) or the model.
-    "…o los widgets en pantalla", "…or the widgets on the screen", "¿Qué APPs tengo customizadas?",
-    "dime qué widgets tengo disponibles",
-])
-def test_the_lane_leaves_everything_else_to_the_model(phrase):
-    from nucleo.acts.wall_tab import named_wall_tab
-    assert named_wall_tab(phrase) == "", phrase
-
-
-def test_the_voice_lane_opens_the_tab_and_records_the_exchange():
-    import asyncio
-    from voice.engine.llm.providers import fast_lane
-
-    class _Brain:
-        _window: list = []
-        _acc = None
-
-    events = []
-    brain = _Brain()
-    brain._window = []
-    real = fast_lane._speak_ack
-
-    async def _no_mouth(_b):
-        return None
-    fast_lane._speak_ack = _no_mouth
-    try:
-        took = asyncio.run(fast_lane.wall_tab(brain, "Vale, ábreme la lista de widgets customizados.",
-                                              lambda *a, **k: events.append((a, k)), first_turn=False, window_max=20))
-        missed = asyncio.run(fast_lane.wall_tab(brain, "te lo pongo en el chat",
-                                                lambda *a, **k: events.append((a, k)), first_turn=False, window_max=20))
-    finally:
-        fast_lane._speak_ack = real
-    assert took is True and missed is False
-    panel = [k for a, k in events if a[:2] == ("panel", "open")]
-    assert panel == [{"extra": {"tab": "apps-custom", "src": "flash"}}], events
-    from i18n import langs as _lg
-    # recorded as WORDS (demo pass 109, S4): a «[panel:…]» line in the assistant's mouth is copied into replies
-    assert {k: brain._window[-1][k] for k in ("role", "content")} == {"role": "assistant", "content": _lg.current_language().data_ack}

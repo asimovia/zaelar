@@ -31,39 +31,6 @@ BRIDGE = (FRONTEND / "services" / "clusters-bridge.js").read_text(encoding="utf-
 TABS = ("chat", "procesos", "clusters", "conectores")
 
 
-# ── voice routing: the tab opens like the other three ─────────────────────────────────────────────────────────
-def test_show_panel_knows_the_clusters_tab():
-    from nucleo.flash import router
-    assert router._canon_panel("clusters") == "clusters"
-    for word in ("cluster", "meshkore", "la red", "la malla", "peers", "conexiones"):
-        assert router._canon_panel(word) == "clusters", word
-
-
-def test_show_panel_still_routes_the_other_tabs():
-    """Network routing must not have broken Tasks/Chat."""
-    from nucleo.flash import router
-    assert router._canon_panel("crons") == "crons"
-    # V2-728 — «recordatorios programados» now lands on the SCHEDULED list, not the recurring one. A
-    # reminder fires once; it never belonged with the things that repeat, and until the two lists were
-    # separate there was no way to say so.
-    assert router._canon_panel("recordatorios programados") == "programadas"
-    assert router._canon_panel("chat") == "chat"
-    assert router._canon_panel("workers") == "procesos"
-    # V2-744 — «tareas» still LANDS here, because an action-map row the operator recorded
-    # before today carries that word and meant this panel. What changed is that nothing
-    # steers the model here with it any more: the tool description and the agenda's own
-    # `whenToUse` now tell his tasks and the agent's jobs apart in prose.
-    assert router._canon_panel("tareas") == "procesos"
-
-
-def test_the_tool_description_mentions_the_tab():
-    """If the tab is not in the description, the model does not know it can open it: existing is not enough."""
-    from nucleo.flash import router
-    fn = next(t["function"] for t in router.TOOLS if t["function"]["name"] == "show_panel")
-    assert "clusters" in fn["description"].lower()
-    assert "clusters" in fn["parameters"]["properties"]["panel"]["description"]
-
-
 # ── frontend: the four tabs, their panel, and their CSS ──────────────────────────────────────────────────────
 @pytest.mark.parametrize("tab", TABS)
 def test_chatwall_has_the_four_tabs(tab):
@@ -118,7 +85,6 @@ def test_cluster_events_refresh_the_tab_without_touching_the_chat():
 # ── backend: the data contract consumed by the tab ───────────────────────────────────────────────────────────
 def test_status_rows_carry_everything_the_tab_paints(monkeypatch):
     import connectors.meshkore as _mk
-    from connectors.meshkore import manager as _mgr
 
     class _FakeClient:
         name, cluster_id, handle = "commons", "c_abc", "zaelar"

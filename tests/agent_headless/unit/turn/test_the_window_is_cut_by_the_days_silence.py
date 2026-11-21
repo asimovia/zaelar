@@ -17,52 +17,15 @@ the repeat finder reading a row's text when his words are empty; the hand-back k
 """
 from __future__ import annotations
 
-import asyncio
-import time
 
 import pytest
 
-from nucleo.flash import dialog
 
 GAP = 20 * 60
 
 
 def _msg(role, text, ts):
     return {"role": role, "content": text, "ts": ts}
-
-
-def test_a_window_with_a_silence_starts_after_it():
-    now = time.time()
-    w = [_msg("user", "busca un hotel en Roma", now - GAP - 120), _msg("assistant", "Busco.", now - GAP - 110),
-         _msg("user", "¿y el vuelo?", now - 30), _msg("assistant", "Lo miro.", now - 20)]
-    dialog.live_slice(w, 10)
-    assert [m["content"] for m in w] == ["¿y el vuelo?", "Lo miro."]
-
-
-def test_a_silence_up_to_now_leaves_nothing_live():
-    now = time.time()
-    w = [_msg("user", "hola", now - GAP - 60), _msg("assistant", "Hola.", now - GAP - 50)]
-    dialog.live_slice(w, 10)
-    assert w == []
-
-
-def test_without_a_silence_the_count_still_cuts_and_new_messages_are_stamped():
-    now = time.time()
-    w = [_msg("user", f"u{i}", now - 100 + i) for i in range(12)] + [{"role": "assistant", "content": "a"}]
-    dialog.live_slice(w, 10)
-    assert len(w) == 10 and w[-1]["content"] == "a" and w[-1]["ts"] >= now
-
-
-def test_the_model_reads_role_and_words_only_and_a_cut_reply_ends_open():
-    w = [_msg("user", "cuéntame el plan", 1.0), {"role": "assistant", "content": "Primero vamos a", "cut": True, "ts": 2.0}]
-    assert dialog.prune_window(w) == [{"role": "user", "content": "cuéntame el plan"},
-                                      {"role": "assistant", "content": "Primero vamos a …"}]
-
-
-def test_the_cut_turn_keeps_what_was_said_marked():
-    from pathlib import Path
-    src = (Path(__file__).resolve().parents[4] / "nucleo/turn/pipeline_stream.py").read_text(encoding="utf-8")
-    assert '"cut": True' in src and "live_slice(brain._window" in src
 
 
 @pytest.fixture
@@ -90,4 +53,3 @@ def test_a_line_of_ours_is_never_his_repeat():
     assert history._oldest_repeat([ours, his], history._words(q), None) != 1, "our own line was read as his words"
     old = {"id": 3, "created": 0.5, "text": q, "meta": ""}           # a row from before the structured fields
     assert history._oldest_repeat([old, his], history._words(q), None) == 3
-

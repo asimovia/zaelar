@@ -72,3 +72,4 @@ def test_the_condition_behind_each_face_has_a_production_writer(face, pattern, w
 #: ratchet moved it to `live_blocks.py` (V2-276). It points to the file and NOT the entire directory on
 #: purpose: searching for “MURO” throughout the engine would include the tests and any comment, and this
 #: guard exists precisely so that renaming a face fails.
+

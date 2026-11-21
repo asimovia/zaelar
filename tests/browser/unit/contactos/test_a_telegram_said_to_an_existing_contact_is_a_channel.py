@@ -38,20 +38,3 @@ def test_a_real_phone_still_goes_to_phones(ct):
     cid = _rowan(ct)["id"]
     assert ct.apply_action("add_phone", {"contactId": cid, "phone": "+34600111222"}).get("ok")
     assert "+34600111222" in str(_rowan(ct).get("phones"))
-
-
-def test_a_name_in_the_payload_is_the_reference():
-    from nucleo.acts import frontend
-    assert frontend.payload_ref("contactos", "add_phone", {"name": "Rowan", "channel": "telegram"}) == "Rowan"
-    assert frontend.payload_ref("contactos", "add_phone", {"contact": "Rowan"}) == "Rowan"
-    assert frontend.payload_ref("contactos", "add_phone", {"contactId": "c1", "name": "Rowan"}) == "c1"
-    assert frontend.payload_ref("contactos", "add_contact", {"name": "Rowan"}) == "", \
-        "a creation has no row to point at — its name is the new row, not a reference"
-
-
-def test_a_named_row_on_a_closed_card_is_not_a_loose_pronoun(monkeypatch):
-    from nucleo.acts import frontend
-    from memory import api as memapi
-    monkeypatch.setattr(memapi, "state", lambda: {"open_widgets": []})
-    assert not frontend.absent_widget_misroute("contactos", "add_phone", "",
-                                               payload={"name": "Rowan", "channel": "telegram"})

@@ -311,7 +311,7 @@ def _reconcile(now: float) -> None:
     if now - _last_reconcile < RECONCILE_S:
         return
     _last_reconcile = now
-    from . import DONE, commitment_ahead, live, reopen, threads
+    from . import DONE, reopen, threads
     for row in _watched(now):
         eid = str(row.get("id") or "")
         if not eid or eid in _pending_wakes:
@@ -456,8 +456,3 @@ def _report_expired(now: float) -> None:
                         f"{str(row.get('outcome') or 'nobody answered in time')}. What does he want to do?",
                         task_id=ledger.errand_uid(row.get("id")), ask=True, ok=False)
 
-
-def wake_now(errand_id: str) -> None:
-    """Ask for a wake on the next beat (the operator pushing, a cron firing). Never wakes inline: one
-    errand moving at a time is what keeps two answers from crossing in the same conversation."""
-    _pending_wakes[str(errand_id)] = {"at": 0.0, "inbound": ""}

@@ -14,16 +14,10 @@ silently re-open the contradiction.
 """
 from __future__ import annotations
 
-import json
 import pathlib
 import re
 
 ENGINE = pathlib.Path(__file__).resolve().parents[4]
-
-
-def _tool(name: str) -> dict:
-    from nucleo.flash import router
-    return next(t["function"] for t in router.TOOLS if t["function"]["name"] == name)
 
 
 def _norm(s: str) -> str:
@@ -32,46 +26,7 @@ def _norm(s: str) -> str:
 
 # ── the escalation tool ─────────────────────────────────────────────────────────────────────────────────
 
-def test_writing_to_a_person_is_named_as_NOT_an_escalation():
-    desc = _norm(_tool("escalate_to_slowbrain")["description"])
-    yes, no = desc.split("no:", 1)
-    assert "escribir a un" not in yes, "writing to a person is back in the YES-list (the V2-693 regression)"
-    assert "send_to" in no and "escribir a un contacto" in no
-
-
-def test_the_escalation_tool_no_longer_calls_the_widget_a_mirror():
-    desc = _norm(_tool("escalate_to_slowbrain")["description"])
-    assert "espejo" not in desc and "mirror" not in desc
-    assert "sitio sin conector" in desc, (
-        "what DOES escalate is a commitment made on a site with no connector — that boundary must stay named")
-
-
-def test_a_calendar_appointment_is_the_widgets_business():
-    desc = _norm(_tool("escalate_to_slowbrain")["description"])
-    assert "la agenda es el calendario" in desc
-
-
 # ── widget_data ─────────────────────────────────────────────────────────────────────────────────────────
-
-def test_widget_data_says_the_connected_widget_is_the_source():
-    desc = _norm(_tool("widget_data")["description"])
-    assert "es la fuente" in desc
-    assert "espejo" not in desc and "mirror" not in desc
-    assert "compromiso real" not in desc, "the «real commitment → escalate» clause was the double-executor rule"
-
-
-def test_widget_data_tells_the_model_that_removing_requires_naming():
-    desc = _norm(_tool("widget_data")["description"])
-    assert "vacío no borra nada" in desc
-
-
-def test_the_catalog_still_fits_its_ceiling():
-    """Every change here was paid by REPLACEMENT — the ceiling test in `test_router.py` is the authority; this is
-    the same fact stated next to the doctrine it protects, so a future edit sees both at once."""
-    from nucleo.flash import router
-    from tests.agent_headless.unit.flash.test_router import MAX_CATALOG_CHARS
-    assert len(json.dumps(router.TOOLS, ensure_ascii=False)) <= MAX_CATALOG_CHARS
-
 
 # ── the worker's method ─────────────────────────────────────────────────────────────────────────────────
 
@@ -89,17 +44,3 @@ def test_the_worker_operates_a_connected_widget_with_the_cli_never_its_web():
 
 
 # ── the four surfaces agree, structurally ───────────────────────────────────────────────────────────────
-
-def test_no_prompt_surface_teaches_the_mirror_doctrine_any_more():
-    """The word that named the retired doctrine never appears in what a model READS: the tool catalog and the
-    worker briefs as rendered (refactor2710-08: rendered, not the modules' source)."""
-    import json
-    from nucleo.flash import router_catalog
-    from nucleo.workers import prompts
-    surfaces = {"tools": json.dumps(router_catalog.TOOLS, ensure_ascii=False),
-                "web": prompts._web_prompt("escríbele a Marta que llego tarde", ""),
-                "generic": prompts._build_prompt("escríbele a Marta que llego tarde", "", True)}
-    for name, text in surfaces.items():
-        offenders = [s for s in re.split(r"(?<=[.!?])\s+", text) if re.search(r"\bespejos?\b", s, re.I)
-                     and "solo nombra" not in s and "hecho fuera" not in s.lower()]
-        assert not offenders, f"{name} still teaches the mirror doctrine: {offenders[:3]}"

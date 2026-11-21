@@ -117,50 +117,6 @@ _BLOCKED = {"source": "none", "results": [], "ai": False,
             "failure": {"kind": "captcha", "detail": "google: bloqueado (captcha) · ddg: anti-bot challenge"}}
 
 
-def test_the_composing_prompt_is_TOLD_why_the_search_came_back_empty():
-    """The whole defect in one assertion: the reason existed, and the reader who had to explain it never saw it."""
-    from nucleo.acts import search as st
-    sys2 = st.compose_system("what's the weather in New York?", "weather in New York", _BLOCKED, "")
-    assert "captcha" in sys2.lower() or "ANTI-ROBOT" in sys2
-    assert "PROHIBIDO" in sys2, "the forbidden sentence must be named, not merely discouraged"
-    assert "acceso a internet" in sys2
-
-
-def test_a_search_that_WORKED_carries_no_excuse():
-    """The reason is added only when there is nothing to show. A prompt that always apologises teaches the
-    model to hedge over seven good results."""
-    from nucleo.acts import search as st
-    ok = {"source": "brave", "results": [{"title": "18°C", "snippet": "sunny"}], "ai": False}
-    sys2 = st.compose_system("weather?", "weather NYC", ok, "[1] 18°C — sunny")
-    assert "PROHIBIDO" not in sys2 and "captcha" not in sys2.lower()
-
-
-def test_the_measured_sentence_is_REPLACED_not_merely_logged():
-    from nucleo.acts import search as st
-    fixed = _in("en", lambda: st.denial_repair(_MEASURED, _BLOCKED))
-    assert fixed != _MEASURED
-    assert "internet access" not in fixed.lower()
-    assert "block" in fixed.lower(), "and it must say what actually happened"
-
-
-def test_a_true_answer_is_left_alone():
-    """«I searched and found nothing» is exactly what we want said — repairing it would be the guard lying."""
-    from nucleo.acts import search as st
-    for good in ("It's 18 degrees and sunny in New York right now.",
-                 "I searched, but nothing useful came back. Want me to dig deeper?",
-                 "I don't have the current weather details for New York in front of me right now."):
-        assert st.denial_repair(good, _BLOCKED) == good
-
-
-def test_the_denial_guard_reads_the_answer_alone():
-    """Unlike its neighbours in `answer_guards`, this claim is false whenever it is made — over an empty
-    search or a full one — so it takes no question."""
-    from nucleo.flash import answer_guards as ag
-    assert ag.a_reply_denies_the_world("No tengo acceso a internet.")
-    assert ag.a_reply_denies_the_world("My knowledge cutoff means I can't help with that.")
-    assert not ag.a_reply_denies_the_world("No he podido comprobarlo ahora mismo.")
-
-
 # ── 4 · an update re-translates, and a blocking fault reaches the screen ────────────────────────────────
 def test_the_boot_tops_up_the_language_after_an_update():
     """`i18n.init.prepare()` has claimed since V2-089 that «the boot sequence and the language-switch path»
@@ -222,28 +178,6 @@ def test_the_spend_gate_asks_in_his_language():
     assert "mueve dinero" in es.lower()
 
 
-def test_the_confirmation_ack_comes_from_the_table():
-    """«Vale, no toco nada.» was a literal at the voice mouth."""
-    from i18n import langs as L
-    assert L.LANGUAGES["en"].confirm_cancelled != L.LANGUAGES["es"].confirm_cancelled
-    src = _vts.read(ENGINE / "voice/engine/llm/providers/nucleo.py")
-    assert "confirm_cancelled" in src and "Vale, no toco nada" not in src
-
-
-def test_the_first_turn_is_spoken_in_his_language():
-    """The kickoff is the one injected line that opens a session — a system note in HIS language (A7), so a
-    Spanish one primes a Spanish reply on turn one. It was a literal in the provider; now it is i18n data read
-    through `nucleo/turn/kickoff`, and the gate recognises it by that catalog, not by an English marker."""
-    from i18n import langs as L
-    from i18n import kickoff
-    assert L.LANGUAGES["en"].kickoff_prompt != L.LANGUAGES["es"].kickoff_prompt
-    assert kickoff.text(L.LANGUAGES["es"]) == L.LANGUAGES["es"].kickoff_prompt
-    src = _vts.read(ENGINE / "voice/engine/llm/providers/nucleo.py")
-    assert "I just connected" not in src and "Es el primer turno" not in src
-    gate = (ENGINE / "nucleo/turn/pipeline_gate.py").read_text(encoding="utf-8")
-    assert "_kickoff.is_kickoff(text)" in gate and "I just connected" not in gate.split("first_turn =")[1][:80]
-
-
 def test_a_worker_that_dies_says_so_in_his_language(monkeypatch):
     """Seven of these were heard that evening. They were five Spanish literals in `workers/session.py` and
     one more in `workers/stall.py`."""
@@ -265,27 +199,6 @@ def test_the_stalled_ending_is_formatted_from_the_table():
     from i18n import langs as L
     line = _in("en", lambda: L.current_language().worker_stalled.format(minutes=7))
     assert "7 min" in line and "stopped answering" in line
-
-
-def test_the_introduction_never_asks_a_question_the_language_does_not_have():
-    """«"tú" or "usted", which do you prefer?» — asked THREE times in one English conversation on
-    2026-09-12 (20:08, 20:24, 20:36). English has no T–V distinction, so there is no answer to give; the
-    goal was a Spanish literal in the phase's own goal list."""
-    from nucleo.turn.prompt.packs import introduction as intro
-    known = intro._known
-    intro._known = lambda: {}                          # nothing learned yet: every goal is still open
-    try:
-        es = _in("es", intro.block)
-        en = _in("en", intro.block)
-    finally:
-        intro._known = known
-    from i18n import langs as L
-    q = L.LANGUAGES["es"].treatment_question
-    assert q and q in es, "Spanish keeps the question — the distinction is real there"
-    # The pack's PROSE is Spanish for every language on purpose (it is a model-facing prompt, like the rest
-    # of the system prompt), so the assertion is about the GOAL, not about the block's vocabulary.
-    assert q not in en and "(tú/usted)" not in en
-    assert "su nombre" in en, "the goals that DO exist in every language are untouched"
 
 
 def test_a_language_with_no_spec_of_its_own_is_not_asked_either():

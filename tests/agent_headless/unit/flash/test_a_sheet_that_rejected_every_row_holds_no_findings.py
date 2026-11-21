@@ -55,18 +55,6 @@ def pass_over(monkeypatch, tmp_path):
     mememb.reset()
 
 
-def test_a_pass_whose_every_row_was_rejected_reports_no_findings(pass_over):
-    res, handed = pass_over(_INDEX)
-    held = sheet.holding(SID)
-    assert held["state"] == sheet.HELD_REJECTED and held["kept"] == 0 and held["rejected"] == 8, held
-    assert res["n"] == 0 and not res["delivered"], f"the pass reported the ladder's rows, not the sheet's: {res}"
-    assert res["rejected"] == 8 and not res["ctx"].strip()
-    assert handed == [(False, 0)], "nothing was kept, so the hunt is handed on, not closed as delivered"
-    face = SL.compose_face(res, "find me coffee shops near me")
-    assert "ANUNCIOS ENCONTRADOS" not in face and "PROVISIONALES" not in face, "the face names rows he does not have"
-    assert "8 DESCARTADOS" in face, "the face is not told what the sheet filed away"
-
-
 def test_a_pass_reports_only_the_rows_the_sheet_kept(pass_over):
     res, _ = pass_over(_REAL + _INDEX[:5])
     held = sheet.holding(SID)

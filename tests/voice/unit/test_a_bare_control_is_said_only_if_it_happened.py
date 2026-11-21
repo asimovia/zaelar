@@ -15,7 +15,6 @@ import asyncio
 
 import pytest
 
-from nucleo.flash import follow_up_pass as fup
 from widgets import effects
 
 
@@ -23,18 +22,6 @@ from widgets import effects
                                          ("play", False), ("set_volume", False)])
 def test_a_bare_control_is_read_from_the_manifest(action, bare):
     assert effects.is_bare_control("musica", action) is bare
-
-
-def _hold(monkeypatch, target=("musica", "pause")):
-    monkeypatch.setattr(fup, "_sure_target", lambda brief: target)
-    sent: list = []
-    h = fup.Hold({"event": None}, sent.append)
-    monkeypatch.setattr("nucleo.request.stop_row.in_play", lambda brief: False)
-    monkeypatch.setattr("nucleo.flash.unclear_turn.verdict", lambda brief: "")
-    monkeypatch.setattr(fup, "_ready", lambda brief: True)
-    monkeypatch.setattr("nucleo.turn.route_by_verdict.decided", lambda *a, **k: False)
-    monkeypatch.setattr("nucleo.turn.route_by_verdict.sure_escalate", lambda brief: False)
-    return h, sent
 
 
 def _release(h, result, ran=True):
@@ -48,34 +35,3 @@ def _release(h, result, ran=True):
                         [("musica", "pause")] if ran else [], lambda *a, **k: None, tasks)
     asyncio.run(go())
 
-
-def test_a_refused_pause_leaves_the_refusal_alone(monkeypatch):
-    h, sent = _hold(monkeypatch)
-    h.say("Paused.")
-    assert sent == [], "the words wait for the control"
-    _release(h, {"ok": False, "reason": "elsewhere", "message": "«Camaretas» is using Spotify."})
-    assert sent == [], sent
-
-
-def test_a_pause_that_happened_says_the_words(monkeypatch):
-    h, sent = _hold(monkeypatch)
-    h.say("Paused.")
-    _release(h, {"ok": True, "message": "Paused."})
-    assert sent == ["Paused."]
-
-
-def test_a_control_run_after_the_stream_defers_its_words(monkeypatch):
-    """The play tool's lane runs the control after the stream: the words wait for the turn's end, and are said only
-    if nothing else was (`flush`) — a refusal line said by the lane wins."""
-    h, sent = _hold(monkeypatch)
-    h.say("Paused.")
-    _release(h, None, ran=False)
-    assert sent == [] and h.deferred == "Paused."
-    assert fup.flush(h, ["«Camaretas» is using Spotify."], lambda *a, **k: None) == ""
-    assert sent == []
-
-
-def test_an_unheld_verdict_streams_as_before(monkeypatch):
-    h, sent = _hold(monkeypatch, target=("musica", "play"))
-    h.say("Putting it on.")
-    assert sent == ["Putting it on."]

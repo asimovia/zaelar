@@ -51,10 +51,9 @@
   {
    "id": "flash",
    "block": "brain",
-   "name": "The old turn — retiring",
-   "package": "nucleo/turn/pipeline.py",
-   "status": "retiring",
-   "_doc": "The previous turn pipeline (gate, brief, prompt, one model call, acts, close). It still runs for a session the conversation manager does not take, and is being replaced piece by piece. Three of its boxes stay because other doors use them: the Jev client (`f_jev`), self-knowledge (`f_self`) and the consent/consequence doors (`f_doors`)."
+   "name": "Shared brain pieces",
+   "package": "nucleo/jev/ · nucleo/self/ · nucleo/consent.py",
+   "_doc": "What the conversation manager and the workers share and no single zone owns: the ear's speech pieces, the switchboard, the Jev client (`f_jev`), the turn's state lines, the fast model client, self-knowledge (`f_self`), the consent/consequence doors (`f_doors`) and the mouth. The old turn pipeline that used to live here was deleted (INI-078 L1)."
   },
   {
    "id": "memory",
@@ -235,9 +234,7 @@
     "nucleo/pulse/scheduler.py",
     "nucleo/pulse/due.py"
    ],
-   "emits": [
-    "cron"
-   ]
+   "emits": []
   },
   {
    "id": "b_home",
@@ -358,8 +355,7 @@
    "name": "Ear",
    "paths": [
     "voice/engine/speech/vad/silero.py",
-    "voice/endpointing.py",
-    "nucleo/input/stt.py"
+    "voice/endpointing.py"
    ],
    "emits": [
     "vad",
@@ -370,19 +366,6 @@
    "_doc": "The ear runs behind a relay (`voice/engine/speech/relay.py`): the titular, then an OpenAI stand-in when it fails; a hung titular is watched by `relay_bound.py` (shadow by default — it says what it would do). Each metric is billed to the provider that produced it."
   },
   {
-   "id": "f_gate",
-   "zone": "flash",
-   "name": "Turn gate",
-   "paths": [
-    "nucleo/turn/pipeline_gate.py"
-   ],
-   "emits": [
-    "ambient",
-    "presence"
-   ],
-   "status": "retiring"
-  },
-  {
    "id": "f_switch",
    "zone": "flash",
    "name": "Switchboard",
@@ -390,27 +373,9 @@
     "nucleo/switchboard"
    ],
    "emits": [
-    "thread",
-    "flow"
+    "thread"
    ],
    "_doc": "Whose his words are, decided ONCE at the turn's gate, before the model: one board of the open processes (running, or a row waiting on him) and one decision per chunk. For process N the chunk is delivered there as he said it and Flash does not run; for none, Flash takes the turn. His stop for an open process ends its row through the one cancel door. Retiring as a decider in front of the model: the conversation manager reaches it only through its route port, until the model answers an open process by id itself.",
-   "status": "retiring"
-  },
-  {
-   "id": "f_admit",
-   "zone": "flash",
-   "name": "Admission · brief",
-   "paths": [
-    "nucleo/turn/pipeline_admit.py",
-    "nucleo/turn/brief.py",
-    "nucleo/turn/verdicts.py",
-    "nucleo/turn/route_by_verdict.py"
-   ],
-   "emits": [
-    "trace",
-    "rail"
-   ],
-   "_doc": "Every reader of the brief's verdicts reads one act floor (`verdicts.to_act`); at VETO a sure verdict takes the place of the model's call when what enters leaves or deletes, and a send in the model's place is born asking. The words follow the act: calls and tags wait for the verdict (`route_by_verdict`).",
    "status": "retiring"
   },
   {
@@ -426,33 +391,10 @@
    "_doc": "Stays: other doors use it, whatever turn runs."
   },
   {
-   "id": "f_bdoors",
-   "zone": "flash",
-   "name": "Door trips",
-   "paths": [
-    "nucleo/turn/brief_doors.py"
-   ],
-   "emits": [],
-   "_doc": "A question only one door reads is asked AT that door, after the model (a model call, an errand's portal, a leaving act's exit, a parked directive), on its own thread and merged into the turn's brief; the turn's one tier-1 trip, before the model, asks only what the turn reads (V2-887 step 8).",
-   "status": "retiring"
-  },
-  {
-   "id": "f_prompt",
-   "zone": "flash",
-   "name": "Prompt · cached prefix",
-   "paths": [
-    "nucleo/turn/prompt/builder.py"
-   ],
-   "emits": [],
-   "_doc": "The byte-stable system prefix, then the tools (always-offered before state-gated): what the provider caches, identical whatever he says or has open (V2-889 F1).",
-   "status": "retiring"
-  },
-  {
    "id": "f_state",
    "zone": "flash",
    "name": "Turn state message",
    "paths": [
-    "nucleo/turn/prompt/live_state.py",
     "widgets/state_render.py"
    ],
    "emits": [],
@@ -464,30 +406,13 @@
    "zone": "flash",
    "name": "Model call",
    "paths": [
-    "nucleo/turn/pipeline_stream.py",
     "nucleo/llm/fast_client.py"
    ],
    "emits": [
-    "brain",
-    "timing",
     "perf"
    ],
    "status": "retiring",
    "_doc": "Retiring with the old turn; its client (`nucleo/llm/fast_client.py`) stays: the conversation manager's model port calls it."
-  },
-  {
-   "id": "f_tools",
-   "zone": "flash",
-   "name": "Acts",
-   "paths": [
-    "nucleo/acts/tools.py",
-    "nucleo/flash/tool_executor.py"
-   ],
-   "emits": [
-    "arbiter",
-    "brain"
-   ],
-   "status": "retiring"
   },
   {
    "id": "f_self",
@@ -518,19 +443,6 @@
    "_doc": "Stays: other doors use it, whatever turn runs."
   },
   {
-   "id": "f_close",
-   "zone": "flash",
-   "name": "Close · errands",
-   "paths": [
-    "nucleo/turn/pipeline_close.py",
-    "nucleo/turn/pipeline_errands.py"
-   ],
-   "emits": [
-    "brain"
-   ],
-   "status": "retiring"
-  },
-  {
    "id": "f_whisper",
    "zone": "conversation",
    "name": "Whisperer (off)",
@@ -547,7 +459,6 @@
    "zone": "flash",
    "name": "Mouth",
    "paths": [
-    "nucleo/turn/mouth.py",
     "voice/speech.py"
    ],
    "emits": [
@@ -666,8 +577,7 @@
    "zone": "events",
    "name": "Event pump",
    "paths": [
-    "nucleo/events/pump.py",
-    "nucleo/turn/flow_events.py"
+    "nucleo/events/pump.py"
    ],
    "emits": [],
    "_doc": "The one subscriber per source and the one router of an event: a row waiting for it, a claimant (an errand's thread), a rule subscribed to it, or nothing (the source's own handling). The router still lives under the old turn's folder and moves to `nucleo/events/`."
@@ -803,8 +713,7 @@
    "paths": [
     "rules/shape.py",
     "rules/store.py",
-    "rules/cascade.py",
-    "rules/prompt.py"
+    "rules/cascade.py"
    ],
    "emits": []
   },
@@ -1190,7 +1099,6 @@
  "emitters": {
   "_doc": "Which piece an observability event comes from (`piece`), for modules the pieces' `paths` do not name. Read by observability/pieces.py: an exact file here beats a piece's own path; otherwise the deepest folder (here or in a piece's paths) wins. A value is a piece id, or {kind: piece, '*': default} where one module hosts several pieces. A module drawn nowhere stamps piece='unmapped' with its path — never a guess.",
   "nucleo/whisper": "f_whisper",
-  "nucleo/turn/open_flows.py": "f_switch",
   "voice/engine/pipeline/agent.py": {
    "vad": "f_ear",
    "worker_start": "t_dispatch",
@@ -1219,7 +1127,6 @@
   },
   "voice/engine/pipeline/child.py": "u_voice",
   "voice/engine/pipeline/first_air.py": "u_voice",
-  "voice/engine/pipeline/eager_brief.py": "f_ear",
   "voice/remote_session.py": "u_voice",
   "voice/child_process.py": "b_home",
   "voice/engine/speech/stt": "f_ear",
@@ -1228,61 +1135,19 @@
   "voice/engine/speech/filler_audio.py": "f_mouth",
   "voice/attention.py": {
    "ui": "u_voice",
-   "*": "f_gate"
+   "*": "c_ear"
   },
-  "voice/attention_lines.py": "f_gate",
-  "voice/trace.py": "f_admit",
-  "voice/engine/llm/providers": "f_model",
-  "voice/engine/llm/providers/attention_turn.py": "f_gate",
-  "voice/engine/llm/providers/fast_lane.py": {
-   "presence": "f_gate",
-   "*": "f_model"
-  },
-  "voice/engine/llm/providers/turn_prompt.py": {
-   "timing": "f_model",
-   "memory": "m_retriever",
-   "*": "f_prompt"
-  },
-  "voice/engine/llm/providers/turn_tools.py": "f_tools",
-  "voice/engine/llm/providers/pending_confirm.py": "f_doors",
+  "voice/attention_lines.py": "c_ear",
+  "voice/trace.py": "c_manager",
   "server/voice_api.py": "u_canvas",
   "observability/identity.py": "e_bus",
-  "nucleo/rails.py": "f_admit",
+  "nucleo/rails.py": "c_manager",
   "nucleo/runstate.py": "u_voice",
-  "nucleo/turn/identity.py": {
-   "ui": "u_voice",
-   "*": "f_prompt"
-  },
-  "nucleo/turn/prompt": "f_prompt",
-  "nucleo/turn/prompt/recall.py": {
-   "memory": "m_retriever",
-   "*": "f_prompt"
-  },
-  "nucleo/turn/recall_budget.py": "m_retriever",
   "nucleo/llm": "f_model",
-  "nucleo/flash/turn_perf.py": "f_model",
-  "nucleo/flash/memory_cache.py": {
-   "ui": "u_voice",
-   "*": "m_retriever"
-  },
-  "nucleo/flash/tool_executor_calls.py": "f_tools",
-  "nucleo/flash/tool_executor_widget.py": "f_tools",
-  "nucleo/flash/tool_executor_widget_calls.py": {
-   "cron": "b_cron",
-   "*": "f_tools"
-  },
-  "nucleo/flash/tool_round.py": "f_tools",
-  "nucleo/flash/post_stream_acts.py": "f_close",
-  "nucleo/flash/post_stream_lanes.py": "f_close",
-  "nucleo/flash/post_stream_settle.py": "f_close",
-  "nucleo/acts": "f_tools",
-  "nucleo/acts/search.py": {
-   "search": "s_search",
-   "*": "f_tools"
-  },
+  "nucleo/acts": "c_acts",
   "nucleo/acts/search_sheet.py": {
    "search": "s_search",
-   "*": "f_tools"
+   "*": "c_acts"
   },
   "nucleo/pulse": "b_pulse",
   "widgets/background.py": "b_pulse",
@@ -1587,18 +1452,6 @@
    "label": "/api/turn/stream · /api/voice/child/events"
   },
   {
-   "id": "bodyturn",
-   "a": "u_loop",
-   "b": "f_gate",
-   "label": "the voice turn enters the body"
-  },
-  {
-   "id": "typed",
-   "a": "u_chat",
-   "b": "f_gate",
-   "label": "typed"
-  },
-  {
    "id": "tochat",
    "a": "f_mouth",
    "b": "u_chat",
@@ -1610,61 +1463,15 @@
    "b": "u_face"
   },
   {
-   "id": "widget_in",
-   "a": "u_canvas",
-   "b": "f_gate",
-   "label": "widget order"
-  },
-  {
    "id": "cards",
    "a": "f_doors",
    "b": "u_canvas",
    "label": "cards"
   },
   {
-   "id": "turn",
-   "a": "f_ear",
-   "b": "f_gate",
-   "label": "turn"
-  },
-  {
-   "id": "admit",
-   "a": "f_gate",
-   "b": "f_admit",
-   "label": "admits"
-  },
-  {
-   "id": "switch",
-   "a": "f_gate",
-   "b": "f_switch"
-  },
-  {
    "id": "deliver",
    "a": "f_switch",
    "b": "t_row"
-  },
-  {
-   "id": "noproc",
-   "a": "f_switch",
-   "b": "f_admit"
-  },
-  {
-   "id": "jevask",
-   "a": "f_admit",
-   "b": "f_jev",
-   "label": "question"
-  },
-  {
-   "id": "brief",
-   "a": "f_admit",
-   "b": "f_prompt",
-   "label": "brief"
-  },
-  {
-   "id": "statemsg",
-   "a": "f_state",
-   "b": "f_prompt",
-   "label": "this turn's state, after the cached prefix"
   },
   {
    "id": "appstate",
@@ -1679,74 +1486,15 @@
    "label": "the app confirms the act"
   },
   {
-   "id": "model",
-   "a": "f_prompt",
-   "b": "f_model",
-   "label": "prompt"
-  },
-  {
-   "id": "calls",
-   "a": "f_model",
-   "b": "f_tools",
-   "label": "tool calls"
-  },
-  {
-   "id": "aboutself",
-   "a": "f_tools",
-   "b": "f_self"
-  },
-  {
    "id": "facerecent",
    "a": "u_face",
    "b": "f_self"
-  },
-  {
-   "id": "act",
-   "a": "f_tools",
-   "b": "f_doors",
-   "label": "act"
-  },
-  {
-   "id": "reply",
-   "a": "f_model",
-   "b": "f_close",
-   "label": "reply"
-  },
-  {
-   "id": "speak",
-   "a": "f_close",
-   "b": "f_mouth",
-   "label": "speaks"
-  },
-  {
-   "id": "errand",
-   "a": "f_close",
-   "b": "t_dispatch",
-   "label": "errand"
   },
   {
    "id": "jev",
    "a": "f_jev",
    "b": "x_jev",
    "label": "System One"
-  },
-  {
-   "id": "doortrip",
-   "a": "f_doors",
-   "b": "f_bdoors",
-   "label": "a door reached asks its question"
-  },
-  {
-   "id": "doorjev",
-   "a": "f_bdoors",
-   "b": "x_jev",
-   "label": "the door's own trip, merged into the turn's brief"
-  },
-  {
-   "id": "exittrip",
-   "a": "w_exit",
-   "b": "f_bdoors",
-   "label": "a leaving act's channel"
   },
   {
    "id": "whisperllm",
@@ -1785,21 +1533,9 @@
    "label": "egress"
   },
   {
-   "id": "recall",
-   "a": "f_prompt",
-   "b": "m_api",
-   "label": "state · recall"
-  },
-  {
-   "id": "toolrecall",
-   "a": "f_tools",
-   "b": "m_api",
-   "label": "recall"
-  },
-  {
    "id": "rulesread",
    "a": "r_rules",
-   "b": "f_prompt",
+   "b": "c_composer",
    "label": "rules → prompt",
    "uncaptured": true
   },
@@ -1828,22 +1564,10 @@
    "label": "task"
   },
   {
-   "id": "livetasks",
-   "a": "t_row",
-   "b": "f_prompt",
-   "label": "live tasks"
-  },
-  {
    "id": "msgout",
    "a": "f_doors",
    "b": "s_conn",
    "label": "message"
-  },
-  {
-   "id": "search",
-   "a": "f_tools",
-   "b": "s_search",
-   "label": "search"
   },
   {
    "id": "cronadd",
@@ -1856,12 +1580,6 @@
    "a": "f_doors",
    "b": "o_peers",
    "label": "cluster.send"
-  },
-  {
-   "id": "meshlive",
-   "a": "f_tools",
-   "b": "s_mesh",
-   "label": "live agents"
   },
   {
    "id": "providers",
@@ -2429,12 +2147,6 @@
    "uncaptured": true
   },
   {
-   "id": "routelearn",
-   "a": "f_tools",
-   "b": "g_route",
-   "label": "learned route"
-  },
-  {
    "id": "s_alias",
    "a": "g_alias",
    "b": "st_alias",
@@ -2633,6 +2345,13 @@
    "a": "c_mouth",
    "b": "u_chat",
    "label": "the chat wall",
+   "dir": "a>b"
+  },
+  {
+   "id": "c_acts_doors",
+   "a": "c_acts",
+   "b": "f_doors",
+   "label": "an act asks its consequence door",
    "dir": "a>b"
   }
  ],

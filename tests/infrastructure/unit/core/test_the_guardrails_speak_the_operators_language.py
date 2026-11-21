@@ -11,90 +11,9 @@ side was a list of BARE STEMS, so it missed the forms an operator actually speak
 """
 from __future__ import annotations
 
-from nucleo.acts import canvas as _door
 
-import asyncio
-import json
 
 import pytest
-
-from nucleo.flash import answer_guards as ag
-from nucleo.acts import show_license as cl
-from nucleo.flash import escalation_guard as eg
-from nucleo.flash import router_catalog as rc
-
-
-# ── A · The English half of the media grammar had no inflections ──────────────────────────────────────────
-# Measured: «With playing the Neil Armstrong video.» was read as licensing nothing and the load was eaten as
-# context-bleed. `🛡️ play_video ignorado — el turno no pide ningún vídeo` fired on it at 23:25:59, and the
-# operator had by then asked for that video five times.
-@pytest.mark.parametrize("said", [
-    "With playing the Neil Armstrong video.",          # measured verbatim, vetoed
-    "Go on with playing the Neil Armstrong video.",     # measured verbatim, vetoed
-    "Start playing the video",
-    "Keep playing that clip",
-    "Can you show me a video of the first moonwalk?",   # measured, WORKED (the bare stem happens to match)
-    "Play it for me.",                                  # measured, WORKED
-])
-def test_an_english_media_order_is_heard_in_every_form_the_operator_uses(said):
-    assert cl.video_license(said), f"an English video order licensed nothing: {said!r}"
-
-
-def test_the_spanish_side_is_untouched():
-    """The conjugated Spanish forms V2-664 and V2-635 earned keep working — this batch only ADDED."""
-    for said in ("me vas a poner el vídeo del Apolo 11", "ponme el vídeo", "¿puedes ponerme la canción?",
-                 "reprodúceme el siguiente", "cámbialo, pon otro vídeo de Ronaldinho"):
-        assert cl.video_license(said), said
-    for chatter in ("Muy bien, señora.", "¿Pero por qué lo has cambiado otra vez?", "Johnny eres tonto"):
-        assert not cl.video_license(chatter), chatter
-
-
-# ── B · «get out of full screen» did the OPPOSITE of what it says ─────────────────────────────────────────
-# `_EXIT_FS_RE` listed bare verbs; English leaves a mode with a PARTICLE. With no exit verb matched, the
-# sentence fell through to `_GROW_RE` on its own «full screen» and TOGGLED the card INTO full screen.
-@pytest.mark.parametrize("said,want", [
-    ("get out of full screen", "minimize"),
-    ("take it off full screen", "minimize"),
-    ("come out of fullscreen please", "minimize"),
-    # These two carry NO verb at all, so only the particle branch can catch them — without it they fall
-    # through to _GROW_RE on their own «fullscreen» and TOGGLE the card INTO it.
-    ("out of fullscreen, please", "minimize"),
-    ("off fullscreen", "minimize"),
-    # Found by a disarm of the English fix: the SAME inversion existed in Spanish. «sal» cannot reach
-    # «sácame» across the word boundary, so this put the card INTO full screen.
-    ("sácame de la pantalla completa", "minimize"),
-    ("quita la pantalla completa del vídeo", "minimize"),      # the Spanish that always worked
-    ("minimize it", "minimize"),
-    ("make it smaller please", "minimize"),
-    ("maximize the widget", "fullscreen"),                      # measured verbatim
-    ("Can you maximize the screen of the image?", "fullscreen"),  # measured verbatim
-    ("can you expand the image widget", "fullscreen"),
-    ("make it bigger", "fullscreen"),
-    ("Widget.", ""),                                            # a self-correction licenses nothing
-    ("pausa el vídeo", ""),                                     # V2-635's measured drag, still ignored
-])
-def test_a_screen_size_order_routes_where_it_points(said, want):
-    assert _door.size_ordered(said) == want, said
-
-
-# ── C · A replay is the one mutation that must hear the verb ──────────────────────────────────────────────
-# Measured in 366787ed: «And show me show me the agenda. My agenda.» and «Yeah. Okay.» each re-licensed the
-# youtube load that had just run, so the video reloaded itself over an order aimed at another card and over
-# a backchannel. `show` is a generic verb and the bare affirmative is not an order at all.
-def test_an_order_aimed_at_another_widget_never_replays_this_one():
-    assert not cl.replay_license("youtube", "load", "And show me show me the agenda. My agenda.")
-
-
-def test_a_backchannel_never_replays():
-    assert not cl.replay_license("youtube", "load", "Yeah. Okay.")
-
-
-def test_the_explicit_replay_order_v2_650_exists_for_still_passes(monkeypatch):
-    """«dale al play» is the measured order V2-650 built this escape hatch for. It must survive."""
-    from widgets import producers
-    monkeypatch.setattr(producers, "starts_production", lambda w, a: True)
-    assert cl.replay_license("musica", "play_playlist", "Vale, pues reproduce la lista")
-    assert cl.replay_license("musica", "play_playlist", "Vamos, dale al play")
 
 
 # ── D · A SYSTEM NOTE IS NOT AN ORDER — the kickoff that spawned a worker ─────────────────────────────────
@@ -119,50 +38,6 @@ _MEASURED_TURN = _KICKOFF + (
     "proveedor. Lo tienes en el panel de estado.\n"
     "[SISTEMA] La tarea de fondo «Create a chart/graph showing the evolution of Bitcoin's price over the» "
     "ha MUERTO sin resultado y no se va a reintentar sola.")
-
-
-def test_our_own_system_notes_are_never_his_words():
-    from nucleo.flash import router
-    words = router.operator_words(_KICKOFF, _MEASURED_TURN)
-    for ours in ("añade", "fondo", "panel", "[SISTEMA]"):
-        assert ours not in words, f"a `[SISTEMA]` note's word «{ours}» reached a reader of his words"
-
-
-def test_the_word_guard_that_opened_an_errand_is_gone():
-    """CRIT-C16: an errand is the model's call or the brief's sure `escalate`. The regex pair went (node 2.1728)."""
-    from nucleo.flash import router, router_guards
-    assert not hasattr(eg, "escalation_text")
-    assert not hasattr(router_guards, "looks_like_marketplace_nav") and not hasattr(router, "looks_like_marketplace_nav")
-    assert not hasattr(router_guards, "looks_like_modify_widget") and not hasattr(router, "looks_like_modify_widget")
-
-
-def test_the_turn_reads_no_word_guard_for_an_errand():
-    """V2-252: this decision existed twice. A copy is how the two halves drift apart — and since 2026-11-12 neither
-    half reads his words for an errand at all."""
-    from tests import voice_turn_source     # V2-778 F1: the voice turn is read whole, moved blocks included
-    path = "voice/engine/llm/providers/nucleo.py"
-    src = voice_turn_source.read(path)
-    assert "escalation_guard" in src, f"{path} stopped going through the shared guard (fragments, settle)"
-    for name in ("looks_like_modify_widget", "looks_like_marketplace_nav", "escalation_text"):
-        assert name not in src, f"{path} reads his words through {name} again — that is the kickoff bug"
-
-
-# ── E · The model denied three capabilities it HAS, and had just used ─────────────────────────────────────
-# «dice que no tiene capacidades el widget de vídeo, así como tampoco tienen capacidades los widgets de
-# maximizarse o hacer un resize». The word guard that caught those sentences AFTER the reply and spoke a repair went
-# in V2-851 F5 with the hollow-turn repairs (a line over a reply already said); what stays is the prompt that names
-# the forbidden sentence BEFORE the model writes it.
-def test_the_prompt_AFFIRMS_the_capability_and_names_the_forbidden_sentence():
-    """V2-221: without the sentence in the prompt the model has nothing to check itself against."""
-    from nucleo.flash import canvas_claim
-    block = canvas_claim.SCREEN_BLOCK
-    assert "PROHIBIDO" in block, "the forbidden claim has to be named, not merely contradicted"
-    for verb in ("mostrar", "seleccionar", "maximizar", "redimensionar"):
-        assert verb in block, verb
-    # V2-640's LIMIT travels with it — the two halves are one paragraph on purpose.
-    assert "nunca sigas como si existiera" in block
-    from nucleo.turn.prompt import operating
-    assert block in operating._flash_layer(set()), "the operating layer the model reads carries it"
 
 
 # ── F · Everything the operator HEARS is in his language, including the workers ───────────
@@ -196,36 +71,6 @@ def _with_language(code, fn):
             os.environ["ZAELAR_LANGUAGE"] = old
         if hasattr(L, "lock") and old:
             L.lock(old)
-
-
-# ── G · The canvas verbs are reachable in English, and the catalog stays under its ceiling ────────────────
-def test_arranging_the_canvas_can_be_asked_for_in_english():
-    """«Can you reposition all the boxes in the screen, all the widgets?» reached no tool at all, and the
-    reply narrated a video instead. The description had no English word in it."""
-    desc = next(t["function"]["description"] for t in rc.TOOLS
-                if t["function"]["name"] == "arrange_canvas")
-    for word in ("tidy", "arrange", "reposition"):
-        assert word in desc.lower(), word
-    assert "ORDENA" in desc, "the Spanish it always had must stay"
-
-
-def test_the_shared_catalog_ceiling_is_paid_by_compressing_never_by_raising():
-    """This catalog is paid on EVERY voice turn, so English coverage buys its own room.
-
-    V2-728 — the number is READ from `test_router.MAX_CATALOG_CHARS` instead of being written here too. It
-    was the same ceiling spelled twice, which is the defect this suite keeps finding elsewhere: the canonical
-    one carries the raise procedure and one line per raise saying what it bought, and a hardcoded copy
-    silently disagrees with it the first time somebody follows that procedure. What this case still asserts
-    is its OWN rule and the reason it exists — that English coverage pays for itself by compressing, never by
-    moving the ceiling — and the ceiling it measures against is now the only one there is.
-    """
-    import importlib.util
-    import pathlib
-    _rt = pathlib.Path(__file__).resolve().parents[3] / "agent_headless/unit/flash/test_router.py"
-    _spec = importlib.util.spec_from_file_location("_router_ceiling", _rt)
-    _mod = importlib.util.module_from_spec(_spec)
-    _spec.loader.exec_module(_mod)
-    assert len(json.dumps(rc.TOOLS, ensure_ascii=False)) <= _mod.MAX_CATALOG_CHARS
 
 
 # ── H · A generated widget is told about all THREE sizes and told the chrome is not its job ───────────────
@@ -302,29 +147,6 @@ def test_position_is_resolved_from_the_one_table_that_holds_it():
 # `[SISTEMA]` notes glued to the turn. Since V2-851 F5 no note is glued to a turn (the notes mailbox went), so what
 # stays is that his own orders still license, and an order about another card never replays this one.
 
-def test_his_own_order_still_licenses():
-    assert cl.video_license("play the Beatles")
-    assert _door.close_ordered("cierra el widget de música")[0]
-    assert _door.size_ordered("maximize the widget") == "fullscreen"
-
-
-@pytest.mark.parametrize("said", [
-    "Now show me the music widget.",                            # measured 10:59:00, reloaded the video
-    "I said, show me the music widget, not the video widget.",   # measured 10:59:15, reloaded it AGAIN
-    "Yeah. Okay.",
-])
-def test_an_order_about_another_card_never_replays_this_one(said, monkeypatch):
-    from widgets import producers
-    monkeypatch.setattr(producers, "starts_production", lambda w, a: True)
-    assert not cl.replay_license("youtube", "load", said), said
-
-
-def test_an_explicit_replay_order_still_passes(monkeypatch):
-    from widgets import producers
-    monkeypatch.setattr(producers, "starts_production", lambda w, a: True)
-    assert cl.replay_license("musica", "play_playlist", "dale al play")
-
-
 # ── K · The close-ALL door finally gets a grammar (V2-678) ────────────────────────────────────────────────
 # The most destructive thing the operator can trigger by accident: it bypasses the attention gate, executes
 # immediately, and there is no undo. It was also the ONLY close door with no grammar behind it.
@@ -352,18 +174,6 @@ def test_a_real_close_all_still_fires(said):
     """The counterweight — the guard errs toward not firing, it must not stop firing."""
     import voice.attention as attention
     assert attention.hard_interrupt(said) == "close", said
-
-
-def test_the_negation_guard_hears_english_written_out():
-    """V2-631 built the veto with the CONTRACTION alone, so «Do not close» read as an order. Same bare-stem
-    asymmetry V2-677 found in the request verbs — here in the guard that exists to prevent damage."""
-    from nucleo.acts.close_words import looks_like_close
-    for negated in ("Do not close the widgets.", "Don't close the widgets", "Never close the music widget",
-                    "please do not close them", "no cierres el widget", "no me quites la música"):
-        assert not looks_like_close(negated), negated
-    for real in ("Close also the agenda.", "close everything", "cierra el widget de música",
-                 "hide the agenda"):
-        assert looks_like_close(real), real
 
 
 def test_the_client_lane_carries_the_same_rule():

@@ -21,8 +21,6 @@ import time
 
 import pytest
 
-from nucleo.turn.prompt import recall as prompt_mod
-from nucleo.turn import recall_budget
 from voice import health_state
 
 
@@ -53,42 +51,6 @@ def _clean_light():
     health_state.clear("memory")
     yield
     health_state.clear("memory")
-
-
-def test_a_late_full_recall_hands_the_turn_the_LEXICAL_one(monkeypatch):
-    monkeypatch.setenv("ZAELAR_RECALL_BUDGET_MS", "80")
-    fake, calls = _double(full_s=0.6, full_block="COMPLETO", lex_block="Vive en Barcelona")
-    monkeypatch.setattr(prompt_mod, "compose_recall", fake)
-    rows = _rows(monkeypatch)
-    timings: dict = {}
-    block, ids = asyncio.run(recall_budget.compose("¿dónde vivo?", timings))
-    assert block == "Vive en Barcelona" and ids == [2], "the turn went without durable memory it HAD locally"
-    assert timings.get("recall_lexical") is True and timings.get("recall_timeout") is True
-    assert True in calls and False in calls, "the local half never ran beside the full one"
-    assert any(r[1] == "recall léxico entregado" for r in rows), "a degraded delivery left no trace"
-    assert health_state.get("memory") is None, "a lexical delivery painted the memory box amber"
-
-
-def test_with_both_halves_empty_the_miss_is_still_told(monkeypatch):
-    """The counterweight: when nothing at all arrives, the old warning — row and amber — is still there."""
-    monkeypatch.setenv("ZAELAR_RECALL_BUDGET_MS", "80")
-    fake, _ = _double(full_s=0.6, full_block="COMPLETO", lex_block="")
-    monkeypatch.setattr(prompt_mod, "compose_recall", fake)
-    rows = _rows(monkeypatch)
-    block, _ = asyncio.run(recall_budget.compose("¿dónde vivo?", {}))
-    assert block == ""
-    assert any(r[1] == "recall sin entregar" for r in rows)
-    assert (health_state.get("memory") or {}).get("kind") == "degraded"
-
-
-def test_a_full_recall_on_time_wins_over_the_lexical_one(monkeypatch):
-    monkeypatch.setenv("ZAELAR_RECALL_BUDGET_MS", "800")
-    fake, _ = _double(full_s=0.0, full_block="COMPLETO", lex_block="léxico")
-    monkeypatch.setattr(prompt_mod, "compose_recall", fake)
-    _rows(monkeypatch)
-    timings: dict = {}
-    block, ids = asyncio.run(recall_budget.compose("¿dónde vivo?", timings))
-    assert (block, ids) == ("COMPLETO", [1]) and "recall_lexical" not in timings
 
 
 def test_the_lexical_channel_never_calls_the_embedding_provider(monkeypatch):

@@ -16,15 +16,12 @@ def state(monkeypatch):
 
 
 def test_a_show_goes_through_for_a_minimized_card(state, monkeypatch):
-    from nucleo.acts import canvas_turn as canvas_arbiter          # the turn asked to see it: the licence the armed door reads
-    monkeypatch.setattr(canvas_arbiter, "request_for", lambda extra=None: {
-        "text": "", "turn_credit": True, "last_reply": "", "verdict": {"canvas": ("show", 0.9)}})
     ev = []
-    assert cv.present("results::abc-ls1", reason="turn-order", emit=lambda k, l, extra=None: ev.append(l)) is True
+    assert cv.present("results::abc-ls1", src="turn:e_1", reason="turn-order", emit=lambda k, l, extra=None: ev.append(l)) is True
     assert ev == ["show"]
 
 
 def test_an_open_visible_card_is_still_not_raised_again(state):
     state["minimized_widgets"] = []
     ev = []
-    assert cv.present("results", reason="turn-order", emit=lambda k, l, extra=None: ev.append(l)) is False
+    assert cv.present("results", src="turn:e_1", reason="turn-order", emit=lambda k, l, extra=None: ev.append(l)) is False

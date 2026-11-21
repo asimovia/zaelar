@@ -17,12 +17,7 @@ from __future__ import annotations
 
 import pytest
 
-from nucleo.turn.prompt import live_state as prompt
 from widgets.navegador import tasks as nt
-
-
-def _line(prefix: str) -> str:
-    return next((l for l in prompt.live_state().splitlines() if l.startswith(prefix)), "")
 
 
 @pytest.fixture
@@ -92,3 +87,4 @@ def _done_task_with_sheet(rows, status="done", **over):
     nt._tasks["t1"] = t
     if rows:
         intake.push(rows, sheet="hoja-x")
+

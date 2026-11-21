@@ -7,7 +7,6 @@ channel mirrors the voice tool (`reply_message` → mensajeria `reply`), or it c
 """
 from __future__ import annotations
 
-import asyncio
 
 import pytest
 
@@ -38,25 +37,3 @@ def test_no_number_and_nothing_open_still_refuses(box):
     r = box.apply_action("reply", {"text": "Sí"})
     assert r["ok"] is False and not box.load_db().get("pending_reply")
 
-
-def test_the_voice_tool_no_longer_requires_a_number():
-    from nucleo.flash.router_catalog import TOOLS
-    spec = next(t for t in TOOLS if t["function"]["name"] == "reply_message")
-    assert spec["function"]["parameters"]["required"] == ["text"]
-
-
-def test_the_voice_tool_sends_writing_to_a_person_he_names_to_send_to():
-    """«dile a X que…» is a person he NAMES, not a chat of the inbox: the description points it at messaging
-    `send_to` and no longer offers «dile que…» as a reply (V2-909, a «dile a <name>» read as `reply_message`)."""
-    from nucleo.flash.router_catalog import TOOLS
-    desc = next(t for t in TOOLS if t["function"]["name"] == "reply_message")["function"]["description"]
-    assert "send_to" in desc
-    assert "dile que" not in desc.lower()
-
-
-def test_the_voice_tool_without_a_number_reaches_the_card():
-    from nucleo.flash import tool_executor_calls as tx
-    calls = []
-    tx._t_reply_message(args={"text": "Sí"}, _apply_widget_data=lambda w, a, p: calls.append((w, a, p)),
-                        _say=lambda: None, _tool_fired=set(), clarify={})
-    assert calls == [("mensajeria", "reply", {"text": "Sí"})]

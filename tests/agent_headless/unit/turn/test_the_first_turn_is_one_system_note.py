@@ -13,11 +13,8 @@ prompt's instruction — with the offer — is the introduction phase's block, a
 """
 from __future__ import annotations
 
-import asyncio
-import inspect
 import time
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -25,64 +22,13 @@ from i18n import langs
 from memory import db as memdb
 from memory import writer as memwriter
 from memory._prompt import reads as memreads
-from nucleo.turn import kickoff
-from nucleo.turn import pipeline_close
-from nucleo.turn.prompt import packs as CP
-from nucleo.turn.prompt.packs import introduction
 
 ENGINE = Path(__file__).resolve().parents[4]
 
 
-@pytest.fixture(autouse=True)
-def _catalog():
-    kickoff._reset_for_tests()
-    yield
-    kickoff._reset_for_tests()
-
-
 # ── one text ─────────────────────────────────────────────────────────────────────────────────────────────
 
-def test_the_voice_hands_the_body_the_same_note_the_gate_recognises():
-    from voice.engine.pipeline.first_air import greeting_prompt
-    for code in ("es", "en"):
-        note = greeting_prompt(langs.spec(code))
-        assert note == langs.spec(code).kickoff_prompt, code
-        assert kickoff.is_kickoff(note), "the gate must read the voice's own first line as the first turn"
-    assert langs.spec("es").kickoff_prompt != langs.spec("en").kickoff_prompt, "i18n data, one per language"
-
-
-@pytest.mark.parametrize("line", ["pepe", "hola", "", "I just connected", "Es el primer turno. Salúdame"])
-def test_nothing_he_can_say_is_a_kickoff(line):
-    assert not kickoff.is_kickoff(line), line
-
-
-def test_the_admission_no_longer_substitutes_a_second_text():
-    """The substitution at `pipeline_admit` was the second source: with it gone the line the voice sends IS the
-    line the model reads, and `history.is_kickoff` reads the same catalog."""
-    src = (ENGINE / "nucleo/turn/pipeline_admit.py").read_text(encoding="utf-8")
-    assert "kickoff_prompt" not in src
-    from memory import history
-    assert history.is_kickoff(langs.spec("en").kickoff_prompt) and not history.is_kickoff("pepe")
-
-
 # ── not his words ────────────────────────────────────────────────────────────────────────────────────────
-
-def _close(first_turn: bool, window: list, operator_text: str) -> None:
-    kw = {name: MagicMock() for name in inspect.signature(pipeline_close.close_the_turn).parameters}
-    kw.update(acted={"widget": False}, confirm_state={}, clarify={}, timings={}, llm_metrics={},
-              _tool_fired=set(), first_turn=first_turn, operator_text=operator_text, spoken_text="Hola, soy Zaelar.",
-              text=operator_text)
-    for flag in ("data_done", "worker_acted", "style_fired", "deduped", "aside"):
-        kw[flag] = {"v": False}
-    for req in ("escalate_req", "search_req", "music_req", "images_req", "listing_req", "read_req", "recall_req",
-                "reopen_req", "reveal_req"):
-        kw[req] = {"v": None}
-    for clock in ("t0", "_t_entry", "first_ms", "_acc_ms", "_amap_ms", "_gate_ms"):
-        kw[clock] = time.perf_counter()
-    kw["brain"]._window = window
-    asyncio.run(pipeline_close.close_the_turn(**kw))
-    return kw
-
 
 @pytest.fixture
 def fresh_db(tmp_path, monkeypatch):
@@ -113,31 +59,6 @@ def test_the_recent_block_and_the_seed_skip_the_note(fresh_db):
 
 
 # ── the first prompt carries the offer, as a system block ────────────────────────────────────────────────
-
-@pytest.fixture
-def phase(monkeypatch):
-    store = {"stt_language": "es"}
-    monkeypatch.setattr("config.settings.get", lambda k, d=None: store.get(k, d))
-    monkeypatch.setattr("config.settings.update", lambda patch: store.update(patch))
-    monkeypatch.setattr(introduction, "_known", lambda: {})
-    introduction.install()
-    return store
-
-
-@pytest.mark.parametrize("code", ["es", "en"])
-def test_the_kickoff_opens_the_phase_block_with_the_offer(phase, code):
-    """The first turn of an install carries the PRESENTATION (V2-929), which carries the offer; once it was said, a
-    first turn carries the bare offer (A7)."""
-    note = langs.spec(code).kickoff_prompt
-    composed = CP.compose(note)
-    assert composed, "the kickoff is a system note: the phase rides it whatever its length"
-    assert "PRESENTACIÓN" in composed and "Johnny" in composed, composed
-    assert "PRIMER TURNO" in composed
-    phase["intro_presentation_said"] = True
-    composed = CP.compose(note)
-    assert "masculina o femenina" in composed and "nombre que quiera" in composed, composed
-    assert "PRESENTACIÓN" not in composed
-
 
 # ── his answer to our question reaches the model AS an answer (the turn after the greeting) ──────────────
 

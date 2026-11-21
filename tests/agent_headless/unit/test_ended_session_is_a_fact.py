@@ -56,11 +56,6 @@ def _session(status: str, *, ok: bool = True, summary: str = "", goal: str = "Bu
     dispatch._SESSIONS.pop("w1", None)          # as `_run_session` does
 
 
-def _state() -> str:
-    from nucleo.turn.prompt import live_state as _p
-    return _p.live_state()
-
-
 def test_and_an_old_ending_is_not_this_conversation():
     import time as _t
 
@@ -81,7 +76,6 @@ def test_the_REAL_path_records_the_ending_before_dropping_the_record():
     """The missing test, and the only one that would have caught the bug: `_run_session` THROWS the record away in its
     `finally`, so reading `_SESSIONS` for endings never finds anything. A real escalation discovered it;
     this fixes it without having to run one."""
-    import inspect
 
     src = _vts.getsource(dispatch._run_session)
     # The LAST pop is the one in `finally`, through which every session that reaches execution exits. The other two are

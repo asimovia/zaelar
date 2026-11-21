@@ -11,40 +11,18 @@ import ast
 from pathlib import Path
 
 ENGINE = Path(__file__).resolve().parents[3]
-FILES = ["nucleo/acts/canvas.py", "nucleo/acts/canvas_arbiter.py", "nucleo/acts/canvas_turn.py", "nucleo/acts/close_target.py", "nucleo/acts/named_target.py",
+FILES = ["nucleo/acts/canvas.py", "nucleo/acts/canvas_arbiter.py", "nucleo/acts/canvas_turn.py",
          "nucleo/canvas_focus.py", "nucleo/canvas_closes.py", "nucleo/surfaces.py",
          # moved out of the old turn (INI-078 F2 step 8, T7): read where they live now
-         "nucleo/acts/bulk_close.py", "nucleo/acts/show_license.py", "nucleo/acts/visibility.py",
-         "nucleo/acts/show_target.py", "nucleo/acts/close_words.py"] + [
-    f"nucleo/flash/{m}.py" for m in ("agenda_close_is_a_cancel", "canvas_claim", "card_close", "card_commission",
-                                     "card_receipt", "close_answer", "close_guards", "show_guard", "surface_ack")]
+         "nucleo/acts/bulk_close.py", "nucleo/acts/visibility.py", "nucleo/acts/show_target.py", "nucleo/acts/close_words.py"]
 
 FROZEN = {
+    # INI-078 L1: the old turn's canvas lanes (nucleo/flash) and the word licences went with it; their events left this set.
     # V2-851 F2 retired `card_commission.after_show` (the promise repair over a shown card) with its three events:
     # «a question does not write», «opened the card and promised more», «a web address nobody said».
-('brain', '⚠️ commission call failed — the errand stays as it was'),
-    ('brain', '⛶ fullscreen_widget → canvas'),
-    ('brain', '✍️ se redacta en una sola petición en vez de un worker'),
-    ('brain', '❓ close of a piece with several apps open — asking which'),
-    ('brain', '⤡ fullscreen_widget(off) → salir de pantalla completa'),
-    ('brain', '⤡ salida de pantalla completa COMPLETADA — el modelo lo dijo y no llamó a nada'),
-    ('brain', '⤵️ fullscreen_widget con orden de ENCOGER → canvas minimize'),
-    ('brain', '🎯 acción declarada en vez de un worker (la app del catálogo)'),
-    ('brain', '🎯 el veredicto completa al modelo (sin tool) — arrange'),
-    ('brain', '🎯 la herramienta del turno en vez de un worker (la app del catálogo)'),
-    ('brain', '🎯 la app responde lo que el modelo iba a buscar en la web'),
-    ('brain', '🎯 lectura de la app en vez de un worker'),
-    ('brain', '🔁 la segunda pasada no dio llamada'),
-    ('brain', '🗓️ close of the agenda over a removal of one of its rows — cancelled instead'),
-    ('brain', '🙈 close by backstop — his answer to our «which one should I close?»'),
-    ('brain', '🛡️ fullscreen_widget ignorado — el turno no habla de tamaño de pantalla (context-bleed)'),
-    ('brain', '🧭 app declined: his words name another errand'),
-    ('brain', '🧭 catálogo tardío (la pantalla dijo «none»)'),
     ('brain', '🧷 bulk close: sparing would close nothing — everything closes'),
     ('brain', '🧷 bulk close: the app in use stays'),
-    ('widget', 'arrange'),
     ('widget', 'close'),
-    ('widget', 'gate_shadow'),
     ('widget', 'show'),
     ('widget', '🚫 presentación suprimida'),
 }

@@ -1,12 +1,10 @@
-"""Nothing outside the old turn imports it, and that only ever falls (INI-078 F2 step 8, the move map §7.4).
+"""The old turn is gone and nothing names it (INI-078 F2 step 8, L1).
 
-The old turn (`nucleo/turn/`, `nucleo/flash/`) is being removed: what something live still needs MOVES to the module
-that owns it, a reading of the old brief is CUT, the rest is deleted. This ratchet counts every place outside those two
-folders (and outside `tests/`) that names one of their modules — an import anywhere in a file, the lazy ones inside a
-function included, and a dotted name written as a string for `__import__` — and holds the count at its ceiling. Each
-batch of the move lowers the ceiling in the same commit; it never rises. At zero the two folders must be gone.
-
-Which old pieces something live still reaches, and which nothing does: `tests/infrastructure/old_turn_reach.py`.
+The old turn (`nucleo/turn/`, `nucleo/flash/`) was removed in batches: what something live still needed MOVED to the
+module that owns it, a reading of the old brief was CUT, the rest was deleted. This counts every place outside `tests/`
+that names one of their modules — an import anywhere in a file, the lazy ones inside a function included, and a dotted
+name written as a string for `__import__` — and holds it at its ceiling, now zero: and at zero the two folders must not
+exist, so a copy of the old turn put back is red.
 """
 from __future__ import annotations
 
@@ -17,8 +15,8 @@ from pathlib import Path
 
 ENGINE = Path(__file__).resolve().parents[3]
 OLD = ("nucleo.turn", "nucleo.flash")
-#: measured 2026-11-21 at main 860a7b8da (T0: 330); only lowered, in the commit that removes the imports — T1: 313, T2: 291, T3: 283, T4: 263, E7d-3: 262, T6–T8: 216, the brief cut: 213, the unplug: 208, L1 B2: 182, L1 B3: 167, L1 B4: 151, L1 B5: 146
-CEILING = 146
+#: measured 2026-11-21 at main 860a7b8da (T0: 330); only lowered, in the commit that removes the imports — T1: 313, T2: 291, T3: 283, T4: 263, E7d-3: 262, T6–T8: 216, the brief cut: 213, the unplug: 208, L1 B2: 182, L1 B3: 167, L1 B4: 151, L1 B5: 146, L1 B7 (the old turn deleted): 0
+CEILING = 0
 _NAMED = re.compile(r"nucleo\.(turn|flash)(\.\w+)*")
 
 

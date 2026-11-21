@@ -90,7 +90,7 @@ def test_every_canvas_report_is_still_an_echo_nobody_obeys():
 
 def test_the_arbiter_does_not_read_client_code_as_his_hands():
     from nucleo.acts import canvas_arbiter as arb
-    v = arb.decide("show", "navegador", "client:fast-path", text="pon también la web de punto com")
+    v = arb.decide("show", "navegador", "client:fast-path")
     assert v.rule != "operator-hands"
     assert arb.decide("show", "agenda", "client:restore").rule == "lifecycle"
     assert arb.decide("show", "agenda", "user").rule == "operator-hands"

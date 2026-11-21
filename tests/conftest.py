@@ -283,29 +283,6 @@ def _the_mouth_starts_unhushed():
 
 
 @pytest.fixture(autouse=True)
-def _composers_never_reach_the_network():
-    """The two small model calls a turn can make after the fact — a finished errand's spoken line
-    (`spoken_delivery.line`) — stay off the network inside the
-    suite, for the reason on the Jev fixture above: measured 2026-09-29, `test_context_budget` passed alone and failed
-    in a wide run, where an earlier test had left a model configured and the delivery was rewritten by a real call.
-    Tests that exercise them turn them back on (or fake the client). `ZAELAR_TEST_LLM_LIVE=1` lets them through."""
-    import os
-    from i18n import spoken_lang
-    from nucleo.turn import his_spec_to_sheet
-    from nucleo.workers import spoken_delivery
-    his_spec_to_sheet.forget()             # his specs carried to a sheet are per conversation, so per test
-    from nucleo.dispatch import confirm as dispatch_confirm
-    dispatch_confirm._DECLINED_CONFIRM.clear()   # a «no» one test read must not be a fact in the next one's prompt
-    saved = (spoken_delivery.LIVE, spoken_lang.LIVE)
-    if os.environ.get("ZAELAR_TEST_LLM_LIVE") != "1":
-        spoken_delivery.LIVE, spoken_lang.LIVE = False, False
-    try:
-        yield
-    finally:
-        spoken_delivery.LIVE, spoken_lang.LIVE = saved
-
-
-@pytest.fixture(autouse=True)
 def _the_errand_registries_start_empty():
     """The errands a sentence can NAME include the ones just asked (`flash.escalate._tasks`, for 90 s) and the ones
     just ended (`workers.ended._ENDED_SESSIONS`, up to 15 min for a delivery) — `nucleo/errands/named.py`. Both are

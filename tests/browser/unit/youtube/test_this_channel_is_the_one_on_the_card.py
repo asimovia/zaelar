@@ -7,7 +7,6 @@ referent is what the card shows — the playing video's author, a numbered row, 
 when several are in sight the widget asks which, naming them. An explicit link from a blocked channel is an order
 (V2-604) and plays, and the card says once that it is from a channel he blocked.
 """
-import json
 from pathlib import Path
 
 import pytest
@@ -109,17 +108,3 @@ def test_the_digest_names_the_playing_channel_and_keeps_the_queue(card):
     dig = yt.prompt_digest()
     assert "canal «Cocina Express con Leo»" in dig and "Ferrari F40 a fondo" in dig
 
-
-def test_the_router_reads_block_channel_for_the_orders_words():
-    m = json.loads((ENGINE / "widgets/youtube/manifest.json").read_text(encoding="utf-8"))
-    from nucleo.turn.brief import MAX_DESC_CHARS
-    desc = m["actions"]["block_channel"]["desc"]
-    assert len(desc) <= MAX_DESC_CHARS                       # a descriptor cut short does not route
-    for words in ("sugieras", "block this channel", "SIN canal"):
-        assert words in desc
-
-
-def test_a_style_rule_says_a_card_filter_is_not_one():
-    from nucleo.flash import router_catalog
-    tool = next(t for t in router_catalog.TOOLS if t["function"]["name"] == "set_style_directive")
-    assert "block_channel" in tool["function"]["description"]

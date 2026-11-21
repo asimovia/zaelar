@@ -53,16 +53,6 @@ def _one(er, **kw):
 
 # ── it exists, and it lasts ──────────────────────────────────────────────────────────────────────────────
 
-def test_an_errand_is_a_ROW_so_a_restart_does_not_bury_it(er):
-    """The difference with a worker session, stated as a test: nothing in RAM holds this."""
-    row = _one(er)
-    import importlib
-    import nucleo.errands as mod
-    importlib.reload(mod)                    # the process «restarts» as far as this module is concerned
-    assert mod.get(row["id"])["objective"].startswith("organizar una reunión")
-    assert mod.count_open() == 1
-
-
 def test_the_operator_s_own_bound_is_what_expires_it(er):
     """Measured with a window that is NOT the default, or the assertion would hold just as well for an
     errand that ignored his words entirely — which is what a disarm proved about the first version."""
@@ -89,13 +79,6 @@ def test_nothing_lives_past_the_ceiling(er):
 
 
 # ── it is born only from what he authorised ──────────────────────────────────────────────────────────────
-
-def test_an_errand_about_the_ENGINE_never_comes_to_exist(er):
-    """The same rule `escalate_to_slowbrain` puts at its own gateway (V2-655): no record, no name, nothing
-    to cancel afterwards. This is a second door to the same kind of work and inherits it."""
-    assert er.start("modifica el motor de voz y reinicia el servidor") is None
-    assert er.count_open() == 0
-
 
 def test_an_empty_objective_opens_nothing(er):
     assert er.start("   ") is None
@@ -134,16 +117,6 @@ def test_a_finished_errand_owns_nothing_even_if_its_binding_SURVIVES(er):
 
 # ── it closes itself ─────────────────────────────────────────────────────────────────────────────────────
 
-def test_time_runs_out_and_the_errand_ENDS(er):
-    a = _one(er)
-    assert er.count_open() == 1
-    later = time.time() + er.MAX_S + 10
-    closed = er.sweep(later)
-    assert [c["id"] for c in closed] == [a["id"]]
-    assert er.get(a["id"])["state"] == "abandoned"
-    assert er.count_open() == 0
-
-
 def test_reading_the_live_list_sweeps_first(er):
     """Nobody should be able to read an expired errand as open — including the prompt."""
     _one(er)
@@ -158,24 +131,6 @@ def test_an_errand_records_WHY_it_ended(er):
 
 
 # ── the operator can SEE it ──────────────────────────────────────────────────────────────────────────────
-
-def test_an_open_errand_gets_a_row_in_PROCESOS(er):
-    """An errand talking to people for hours with no visible row is the state that lies (V2-582).
-
-    V2-728 — the row is no longer SYNTHESISED at the HTTP route (`board_rows`, retired): an errand is
-    mirrored into the same `tasks` table a worker commission writes to, so the board has one row shape
-    instead of two stitched together. What the clock derives —«esperando respuesta · quedan 2 h»— still
-    cannot be a stored column, so it stays computed, and `live_phases()` is what is left of that function.
-    """
-    from nucleo.circuit import ledger as _tasks
-    a = _one(er)
-    rows = _tasks.board("live")
-    assert len(rows) == 1
-    row = rows[0]
-    assert row["id"] == _tasks.errand_uid(a["id"]) and row["kind"] == "encargo"
-    assert row["state"] == "waiting" and row["waiting_for"] == _tasks.REPLY and row["visible"] is True   # INI-042 #26
-    assert "esperando respuesta" in row["phase"]
-
 
 def test_a_closed_errand_leaves_the_live_board_and_lands_in_the_finished_one(er):
     """…and it LANDS somewhere. Before this it simply vanished from the board with no record of the ending."""

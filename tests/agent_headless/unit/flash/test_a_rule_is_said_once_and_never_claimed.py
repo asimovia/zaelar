@@ -9,26 +9,8 @@ apply, and the line says so — kept, not applied, and how to say it so it appli
 """
 from __future__ import annotations
 
-import asyncio
 
 import pytest
-
-from nucleo.flash import style_directive as sd
-
-
-def _write(monkeypatch, res: dict, *, open_mouth: bool):
-    import rules.shape as shape
-    from nucleo.turn import mouth
-    from widgets.contactos import digest
-    said = []
-    # his directory: one person, Raquel Salinas (a note's words name her or nobody)
-    monkeypatch.setattr(digest, "people_named", lambda t, *a, **k: [{"name": "Raquel Salinas"}]
-                        if "raquel" in str(t).lower() else [])
-    monkeypatch.setattr(shape, "write", lambda d, t: dict(res))
-    monkeypatch.setattr(mouth, "is_open", lambda *_a: open_mouth)
-    monkeypatch.setattr(mouth, "say", lambda line, **k: said.append(line) or "out")
-    out = asyncio.run(sd.write_rule("d", "t", lambda *a, **k: None))
-    return out, said
 
 
 _NOTE_AT_A_CLASS = {"op": "add", "say": "Entendido: no te pido confirmación para Raquel.",
@@ -42,41 +24,8 @@ _A_GATE = {"op": "add", "say": "Got it: WhatsApp goes out without asking.",
            "stored": [{"id": "r2", "scope": "messaging/whatsapp/send_new", "kind": "gate", "key": "consent", "text": "x"}]}
 
 
-def test_a_permission_no_gate_reads_is_said_as_kept_not_applied(monkeypatch):
-    out, said = _write(monkeypatch, _NOTE_AT_A_CLASS, open_mouth=False)
-    from i18n import langs
-    assert said == [langs.spec().rule_kept_not_applied] and out["line"] == said[0]
-
-
-def test_an_applied_rule_the_turn_already_answered_is_not_said_again(monkeypatch):
-    out, said = _write(monkeypatch, _A_GATE, open_mouth=False)
-    assert said == [] and out["line"]
-
-
-def test_while_the_turn_is_live_its_mouth_says_the_rule(monkeypatch):
-    _, said = _write(monkeypatch, _A_GATE, open_mouth=True)
-    assert said == [_A_GATE["say"]]
-
-
 @pytest.mark.parametrize("pack", ["en", "es"])
 def test_the_line_exists_in_every_pack(pack):
     from i18n import langs
     assert langs.spec(pack).rule_kept_not_applied
 
-
-def test_a_note_at_a_class_that_names_nobody_is_not_said_to_be_about_one_person(monkeypatch):
-    out, said = _write(monkeypatch, _NOTE_NAMING_NOBODY, open_mouth=True)
-    assert said == [_NOTE_NAMING_NOBODY["say"]] and out["line"] == said[0]
-
-
-def test_off_the_turn_a_write_that_applied_nothing_is_said_by_the_writer(monkeypatch):
-    """The turn answered before the write ended; a write that kept only a free note backs no «got it» — the writer,
-    the one who knows, says what it kept (H11). An applied rule is still not said twice (the test above)."""
-    out, said = _write(monkeypatch, _NOTE_NAMING_NOBODY, open_mouth=False)
-    assert said == [_NOTE_NAMING_NOBODY["say"]]
-
-
-def test_disarmed_backed_silences_a_write_that_applied_nothing(monkeypatch):
-    monkeypatch.setattr(sd, "backed", lambda _res: True)
-    _out, said = _write(monkeypatch, _NOTE_NAMING_NOBODY, open_mouth=False)
-    assert said == [], "the disarm did not take"

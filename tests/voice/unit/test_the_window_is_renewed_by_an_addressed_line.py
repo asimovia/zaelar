@@ -260,12 +260,3 @@ def test_the_worker_door_calls_the_gate(monkeypatch):
     asyncio.run(dispatch_session._run_session(task))
     assert asked == [("81", "find flights to Lisbon")], asked
 
-
-def test_the_gate_registers_the_line_before_it_renews_the_window():
-    """Wiring: the line must be registered with the anchor it FOUND, so `open_line` precedes `note_directed` in
-    the gate's caller — the other order would make a negative verdict restore the line's own renewal."""
-    import inspect
-    from voice.engine.llm.providers import attention_turn
-    src = inspect.getsource(attention_turn.judge)
-    reg, renew = src.find("attention.open_line(verdict"), src.find("attention.note_directed()")
-    assert 0 <= reg < renew, "the admitted line is not registered before the window is renewed"

@@ -24,9 +24,6 @@ OPEN = ["documento", "navegador", "mensajeria"]
 def _clean(monkeypatch):
     done_ops.reset()
     bulk_close.reset()
-    from nucleo.acts import canvas_turn as canvas_arbiter          # the turn ordered the close: the licence the canvas door reads
-    monkeypatch.setattr(canvas_arbiter, "request_of", lambda brief=None, text=None, **k: {
-        "text": text or "", "turn_credit": True, "last_reply": "", "verdict": {"canvas": ("close", 0.9)}})
     yield
     done_ops.reset()
     bulk_close.reset()
@@ -52,7 +49,7 @@ def _closed(events) -> list:
 def test_the_draft_he_is_working_on_stays_and_the_others_close(said):
     done_ops.note("documento", "show", {"body": "draft"})
     events, emit = _collect()
-    kept = bulk_close.close_all(emit, src="flash", text=said, open_ids=OPEN)
+    kept = bulk_close.close_all(emit, src="turn:e_1", text=said, open_ids=OPEN)
     assert kept == ["documento"]
     assert sorted(_closed(events)) == ["mensajeria", "navegador"]
 
@@ -60,21 +57,21 @@ def test_the_draft_he_is_working_on_stays_and_the_others_close(said):
 def test_a_card_he_names_is_closed_even_while_in_use():
     done_ops.note("documento", "show", {"body": "draft"})
     events, emit = _collect()
-    assert bulk_close.close_all(emit, src="flash", text="cierra todo, también el documento", open_ids=OPEN) == []
+    assert bulk_close.close_all(emit, src="turn:e_1", text="cierra todo, también el documento", open_ids=OPEN) == []
     assert _closed(events) == ["*ALL*"]
 
 
 def test_with_nothing_in_use_a_plain_close_all_closes_all():
     events, emit = _collect()
-    assert bulk_close.close_all(emit, src="flash", text="cierra todo", open_ids=OPEN) == []
+    assert bulk_close.close_all(emit, src="turn:e_1", text="cierra todo", open_ids=OPEN) == []
     assert _closed(events) == ["*ALL*"]
-    assert events[0][2] == {"src": "flash"}
+    assert events[0][2] == {"src": "turn:e_1"}
 
 
 def test_an_unknown_canvas_keeps_the_old_bare_close():
     done_ops.note("documento", "show", {})
     events, emit = _collect()
-    bulk_close.close_all(emit, src="flash", text="close all", open_ids=[])
+    bulk_close.close_all(emit, src="turn:e_1", text="close all", open_ids=[])
     assert _closed(events) == ["*ALL*"]
 
 
@@ -94,15 +91,6 @@ def test_an_old_data_op_does_not_make_a_card_in_use(monkeypatch):
     assert bulk_close.working_card(OPEN) == ""
 
 
-def test_a_card_the_model_kept_is_spared_by_the_next_fragment(monkeypatch):
-    bulk_close.note_kept("documento")
-    events, emit = _collect()
-    assert bulk_close.close_all(emit, src="flash", text="lo que no necesites", open_ids=OPEN) == ["documento"]
-    later = bulk_close.time.time() + bulk_close.KEPT_S + 1
-    monkeypatch.setattr(bulk_close.time, "time", lambda: later)
-    assert bulk_close.kept_now() == []
-
-
 def _brief(canvas, conf=0.96):
     ev = threading.Event()
     ev.set()
@@ -115,41 +103,9 @@ def test_disarmed_without_the_in_use_reading_the_draft_closes_again(monkeypatch)
     done_ops.note("documento", "show", {})
     monkeypatch.setattr(bulk_close, "working_card", lambda open_ids, **k: "")
     events, emit = _collect()
-    bulk_close.close_all(emit, src="flash", text="Cierra todo lo que no necesites", open_ids=OPEN)
+    bulk_close.close_all(emit, src="turn:e_1", text="Cierra todo lo que no necesites", open_ids=OPEN)
     assert _closed(events) == ["*ALL*"], "the disarm did not land"
     monkeypatch.undo()
     events, emit = _collect()
-    bulk_close.close_all(emit, src="flash", text="Cierra todo lo que no necesites", open_ids=OPEN)
+    bulk_close.close_all(emit, src="turn:e_1", text="Cierra todo lo que no necesites", open_ids=OPEN)
     assert sorted(_closed(events)) == ["mensajeria", "navegador"]   # green again
-
-
-def _show_on_a_close_turn(wid, monkeypatch, open_now):
-    from nucleo.flash import tool_executor_calls as TEC
-
-    from nucleo.acts import visibility as canvas_visibility
-    from nucleo.acts import canvas as _door
-
-    class _Router:
-        pass
-
-    monkeypatch.setattr(_door, "show_under_close", lambda *a, **k: True)
-    monkeypatch.setattr(canvas_visibility, "is_open", lambda w, known=None: open_now)
-    events, emit = _collect()
-    TEC._t_show_widget(args={"widget_id": wid}, _brief=None, _router=_Router, _say=None, _show_guard_target=None,
-                       _show_target_instance=None, _tag_emit=lambda *a, **k: None, _tool_fired=set(), acted={},
-                       brain=None, clarify={}, deduped={"v": False}, emit=emit, escalate_req={"v": None},
-                       text="Cierra todo lo que no necesites")
-    return events
-
-
-def test_the_models_show_of_an_open_card_on_a_close_turn_is_a_keep(monkeypatch):
-    """T17's plan: close the others and `show_widget(documento)` to keep it. Nothing opens; the keep is recorded."""
-    events = _show_on_a_close_turn("documento", monkeypatch, open_now=True)
-    assert not [e for e in events if e[0] == "widget"]
-    assert bulk_close.kept_now() == ["documento"]
-
-
-def test_a_show_of_a_closed_card_on_a_close_turn_is_still_discarded(monkeypatch):
-    events = _show_on_a_close_turn("navegador", monkeypatch, open_now=False)
-    assert not [e for e in events if e[0] == "widget"]
-    assert bulk_close.kept_now() == []

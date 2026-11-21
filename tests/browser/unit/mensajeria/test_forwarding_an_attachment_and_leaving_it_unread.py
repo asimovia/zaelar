@@ -165,23 +165,6 @@ def test_open_it_after_talking_about_one_mail_is_declared_that_mail():
     assert "open it" in m["actions"]["open"]["desc"] and "no la bandeja" in m["actions"]["open"]["desc"]
 
 
-def test_a_message_named_in_the_payload_is_not_a_loose_pronoun(monkeypatch):
-    """Demo pass 2026-09-28 (full16 E2): «open it» right after the Acme invoice was talked about — the model
-    called `open {name: "Acme Cloud"}` with an empty `item`, the card was not on screen, and the guard against a
-    loose pronoun on an absent card escalated it instead of opening the mail. The name in the payload IS the
-    anchor; a truly empty call on an absent card still escalates."""
-    from memory import api as _mem
-    monkeypatch.setattr(_mem, "state", lambda: {"open_widgets": []})
-    from nucleo.acts import frontend as fe
-    assert not fe.absent_widget_misroute("mensajeria", "open", "", payload={"name": "Acme Cloud"})
-    assert fe.absent_widget_misroute("mensajeria", "open", "", payload={})
-    from pathlib import Path
-    root = Path(__file__).resolve().parents[4]
-    assert "named_widget=_identify(text), payload=payload)" in _vts.read(root / "voice/engine/llm/providers/nucleo.py")
-    m = __import__("json").loads((root / "widgets/mensajeria/manifest.json").read_text("utf-8"))["actions"]
-    assert "NO es esto" in m["dismiss"]["desc"], "«leave it unread» belongs to unread, not to dismiss"
-
-
 # ── demo pass 37 (2026-09-29), E3: the refusal reaches the turn ──────────────────────────────────────────────────
 # `forward {n: 1}` pointed at a message with no files; the owner refused it `no_attachment` out of sight and the
 # turn went on as if the invoice had gone to Quinn. The pre-check that runs BEFORE the order is queued says it.

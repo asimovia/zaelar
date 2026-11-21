@@ -101,11 +101,3 @@ def test_the_show_question_and_its_choice_follow_the_same_rule():
     again = instances.resolve_show("results", CAR, "el otro", last_spoken=first["ask"])
     _no_id_in(str(again.get("chose") or ""))
 
-
-def test_the_tool_path_question_has_no_id():
-    from nucleo.acts import close_target as close_which
-    _sheet("4609d2-1", "", [{"title": "a"}])
-    _sheet("187f3c-1", "", [{"title": "b"}])
-    card, question = close_which.resolve("results", "cierra el resto de aplicaciones", open_ids=CAR)
-    assert question
-    _no_id_in(question)

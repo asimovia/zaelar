@@ -5,8 +5,7 @@ from __future__ import annotations
 from nucleo.acts.canvas_arbiter import Verdict
 
 
-def emit_verdict(op: str, wid: str, src: str, action: str, verdict: Verdict, *, shadow: bool,
-                 brief: dict | None = None) -> None:
+def emit_verdict(op: str, wid: str, src: str, action: str, verdict: Verdict, *, shadow: bool) -> None:
     try:
         from voice.observer import emit
         face = ("✅ permitiría" if verdict.allow else "⛔ vetaría") if shadow else \
@@ -16,7 +15,6 @@ def emit_verdict(op: str, wid: str, src: str, action: str, verdict: Verdict, *, 
              role="system",
              extra={"op": op, "id": wid, "action": action, "src": src, "allow": verdict.allow,
                     "rule": verdict.rule, "shadow": shadow, "source": src,
-                    "verdict": {k: {"choice": c, "confidence": round(f, 2)} for k, (c, f) in (brief or {}).items()},
                     **({"ev": verdict.evidence} if verdict.evidence else {})})
     except Exception as e:  # noqa: BLE001 — the record never decides the act
         from loguru import logger

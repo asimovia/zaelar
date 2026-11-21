@@ -48,106 +48,13 @@ def _set(knobs: dict) -> None:
     for k, v in knobs.items():
         sp.set_pref(k, v)
 
-def test_de_fabrica_el_turno_se_comporta_exactamente_como_antes():
-    """Mover una preferencia no puede cambiar lo que hace el sistema el primer día."""
-    assert sp.max_sentences() == 2
-    assert sp.one_action_per_turn() is True
-    linea = sp.shape_line()
-    assert "2 frases" in linea and "UNA ACCIÓN por turno" in linea
-
-
 def test_los_defaults_viven_en_el_GENESIS_que_es_dato_commiteado():
     g = json.loads((ENGINE / "nucleo" / "genesis.json").read_text(encoding="utf-8"))["style"]
     assert g["max_sentences"] == 2 and g["one_action_per_turn"] is True
 
 
-def _operating() -> str:
-    """The operating prose AS THE MODEL READS IT (refactor2710-08: rendered, not the module's source)."""
-    from nucleo.turn.prompt import operating
-    return operating._flash_layer(set())
-
-
-def test_la_frase_ya_NO_esta_en_el_prompt():
-    src = _operating()
-    assert "en 1-2 frases habladas" not in src
-    assert "UNA ACCIÓN por turno" not in src
-
-
-def test_lo_que_SI_es_del_medio_se_queda_en_el_prompt():
-    """El contrapeso, y la línea que separa una preferencia de un mecanismo: la voz no puede leer markdown ni
-    emojis, y quedarse mudo rompe el turno. Eso no es gusto del operador, es cómo funciona el canal."""
-    src = _operating()
-    assert "sin markdown, emojis ni símbolos que leer" in src
-    assert "nunca te quedas mudo" in src
-
-
 # ── 2 · es una política: él la cambia y el turno siguiente la obedece ────────────────────────────────────
-
-def test_subir_el_limite_de_frases_cambia_la_linea():
-    _set({"max_sentences": 5})
-    assert sp.max_sentences() == 5
-    assert "5 frases" in sp.shape_line()
-
-
-def test_quitar_el_limite_RETIRA_media_frase_en_vez_de_contradecirla():
-    """La diferencia de verdad entre una política y una receta: apagada, desaparece. Una frase en el prompt
-    se paga aunque el operador no la quiera, y además contradice a la política que dice lo contrario — que
-    es el defecto V2-222 («el prompt se contradecía y el turno elegía la mitad cierta»)."""
-    _set({"max_sentences": 0})
-    linea = sp.shape_line()
-    assert "frases" not in linea and "UNA ACCIÓN por turno" in linea
-
-
-def test_con_las_dos_apagadas_no_queda_ni_una_palabra():
-    _set({"max_sentences": 0, "one_action_per_turn": False})
-    assert sp.shape_line() == ""
-
-
-def test_una_sola_frase_se_dice_en_SINGULAR():
-    """Detalle pequeño y de los que delatan una plantilla: «en 1 frases» se lee como una máquina."""
-    _set({"max_sentences": 1})
-    linea = sp.shape_line()
-    assert "1 frase hablada " in linea, f"el plural no acompaña al sustantivo: {linea!r}"
-    assert "habladas" not in linea
-
-
-def test_un_valor_roto_cae_al_defecto_en_vez_de_tumbar_el_turno():
-    _set({"max_sentences": "muchas"})
-    assert sp.max_sentences() == 2
-
 
 # ── 3 · llega al turno de verdad ────────────────────────────────────────────────────────────────────────
 
-def test_la_linea_compuesta_viaja_con_las_lineas_del_turno():
-    """Si no se engancha, esto es un módulo que se ejecuta y se tira — la clase que V2-711 fue a buscar."""
-    from nucleo.flash import style_directive as sd
-    lineas = sd.prompt_lines({})
-    assert any("UNA ACCIÓN por turno" in l for l in lineas)
-
-
-def test_apagarla_la_retira_TAMBIEN_del_turno():
-    from nucleo.flash import style_directive as sd
-    _set({"max_sentences": 0, "one_action_per_turn": False})
-    assert not any("UNA ACCIÓN por turno" in l for l in sd.prompt_lines({}))
-
-
 # ── 4 · lo que NO se hizo, afirmado ─────────────────────────────────────────────────────────────────────
-
-def test_el_bloque_ops_NO_se_ha_vaciado_de_golpe():
-    """Las otras frases siguen ahí y eso es deliberado: cada una sale cuando tenga su política, no antes.
-    Un vaciado en una tanda cambiaría treinta comportamientos medidos a la vez y sin forma de atribuir nada."""
-    src = _operating()
-    assert "CÓMO OPERAS" in src
-    assert "disculpas en bucle" in src, "esta aún no tiene política; sigue siendo prosa, y se dice"
-
-
-def test_the_conversations_base_norm_is_said_once_and_first():
-    """V2-935 — his test of 2026-11-18: «stop repeating what I say», while three replies in a row opened «tienes
-    razón…», «es cierto…», «vale, nada de repetir». The norm of the conversation (a person: brief, never his words
-    back, never opening by agreeing with him, «done» only when something was done) is ONE paragraph at the head of
-    the block, not a half-sentence inside the rule for orders, where it only covered orders."""
-    src = _operating()
-    assert src.count("dándole la razón") == 1 and src.count("disculpas en bucle") == 1
-    assert src.index("Hablas como una persona atenta") < src.index("Si tardas, el sistema"), "first, in the stable prefix"
-    assert "«Hecho» solo si en este turno hiciste algo" in src
-    assert "ni 'tienes razón' ni narrar por qué antes falló" not in src, "the old half-sentence left with it"

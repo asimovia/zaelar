@@ -169,24 +169,6 @@ def test_a_refusal_never_marks_a_provider(no_lease):
     assert provider_failure.handle("no energy lease for llm", role=pc.ROLE_VOICE) == {"relay": None, "dry": False}
 
 
-def test_the_voice_turn_says_out_of_energy_not_brain_down():
-    from i18n import langs
-    from nucleo.turn import pipeline_failure as turn_failure
-    said, alerts = [], []
-    account_limits.note_exhausted(energy_lease.CAUSE_DENIED)
-    ok = turn_failure._refused_for_energy(energy_lease.OutOfEnergy("no energy lease for llm"), "",
-                                          lambda *a, **k: alerts.append(a), said.append)
-    assert ok and said == [langs.current_language().energy_exhausted]
-    # V2-801 — with no recorded reason, or a lease that could not be renewed, the voice never says «empty».
-    for reason in (None, energy_lease.CAUSE_UNRENEWED):
-        account_limits._exhausted.update(reason=reason, at=0.0)
-        said.clear()
-        turn_failure._refused_for_energy(energy_lease.OutOfEnergy("no energy lease for llm"), "",
-                                         lambda *a, **k: None, said.append)
-        assert said == [langs.current_language().energy_unconfirmed]
-    assert not turn_failure._refused_for_energy(RuntimeError("HTTP 503"), "HTTP 503", lambda *a, **k: None, said.append)
-
-
 # ── the out-of-energy state ─────────────────────────────────────────────────────────────────────────────────
 
 def test_the_state_is_recorded_once_and_a_lease_or_a_top_up_clears_it(monkeypatch):

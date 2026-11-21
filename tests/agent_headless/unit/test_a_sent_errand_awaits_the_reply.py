@@ -54,14 +54,6 @@ def test_the_reply_wait_keeps_its_clock_and_ends_when_the_work_is_ours(er):
     assert row["state"] == "running" and not row["waiting_for"]
 
 
-def test_a_reply_wait_is_never_read_as_waiting_for_him(er):
-    """The operator's own waits (`user_answer`) drive the nag, the prompt's «ESPERA tu respuesta» and the question
-    cards. A reply wait must reach none of them."""
-    from nucleo.turn.prompt import live_tasks
-    er.start("preguntarle a Ana a qué hora viene")
-    assert live_tasks.waiting_lines() == []
-
-
 def test_a_closed_errand_still_lands_in_done(er):
     from nucleo.circuit import ledger
     e = er.start("preguntarle a Ana a qué hora viene")

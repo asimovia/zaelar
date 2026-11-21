@@ -61,34 +61,6 @@ def test_a_capped_read_reports_the_providers_total_not_its_own_length():
     assert ytc.list_subscriptions(_Client([cut]), "https://api", "tok", max_n=50)["total"] is None
 
 
-def test_the_op_answers_with_named_counts_and_never_a_bare_one(monkeypatch):
-    class _P:
-        id, label, api_base = "youtube", "YouTube", "https://api"
-    monkeypatch.setattr(service, "_prepared", lambda pid: (_P, "tok", None))
-    monkeypatch.setattr(ytc, "channel_recent_uploads", lambda *a, **k: [])
-    import httpx
-    monkeypatch.setattr(httpx, "Client", lambda *a, **k: _Client([_page(50, 312, True)]))
-    r = service.suggestions("youtube")
-    assert r["channels"] == service._MAX_CHANNELS and r["subscriptions"] == 312
-
-    class _Svc:
-        available = staticmethod(lambda: True)
-        status = staticmethod(lambda: {"ok": True, "providers": [{"id": "youtube", "connected": True}]})
-        suggestions = staticmethod(lambda platform: r)
-    monkeypatch.setattr(account, "_svc", lambda: _Svc)
-    monkeypatch.setattr(account.store, "save", lambda *a, **k: None)
-    db = {"channels": [{"name": "SpaceX"}]}
-    said = data_ops.answer_of(account.apply("suggest", {}, db))
-    assert set(said) == {"result"}                                  # nothing unnamed reaches the reply
-    res = said["result"]
-    assert res["channels_followed_in_widget"] == 1 and res["account_subscriptions_total"] == 312
-    assert res["account_channels_read_for_suggestions"] == service._MAX_CHANNELS
-    assert 50 not in [v for v in res.values() if isinstance(v, int)]   # the cap is not a fact about him
-    # A total the provider did not say stays unknown instead of being stood in for by the rows read.
-    r.pop("subscriptions")
-    assert account.apply("suggest", {}, db)["result"]["account_subscriptions_total"] is None
-
-
 def test_the_subscriptions_face_answers_with_the_list_it_renders():
     db = {"channels": [{"name": "SpaceX"}]}
     res = tab_answer.result(db, "subs")

@@ -63,29 +63,6 @@ def test_its_ending_leaves_one_pill_and_no_row(pills):
     assert kw["meta"]["artifacts"] == ["result"] and kw["meta"]["state"] == "done"
 
 
-def test_its_done_line_is_keyed_by_its_row_and_shaped_by_the_genome(monkeypatch):
-    import asyncio
-    import types
-
-    from nucleo.pulse import notices
-    from nucleo.workers import session_finish, spoken_delivery
-    keys = []
-
-    async def notify(title, text, **kw):
-        keys.append(kw["key"])
-    monkeypatch.setattr(notices, "notify", notify)
-
-    async def line(goal, summary, **kw):
-        return "Listo: w_done."
-    monkeypatch.setattr(spoken_delivery, "line", line)
-    for started in (1.0, 2.0):          # relaunched after a restart: another session, the same task
-        rec = types.SimpleNamespace(result_summary="w_report", ok=True, uid="t-1", task_id="3", goal="w",
-                                    started=started, queued=True, verdict="met")
-        asyncio.run(session_finish._deliver(rec))
-    assert keys == ["notice:t-1:done"] * 2, "one key per task: the notice ledger says it once"
-    assert "ONE short sentence" in spoken_delivery._done_rule()
-
-
 def test_a_task_that_left_is_found_by_its_pill(monkeypatch):
     from memory import api as memory
     from nucleo.errands import task_recall

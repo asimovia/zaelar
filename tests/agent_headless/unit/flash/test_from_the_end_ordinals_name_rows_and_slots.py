@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import pytest
 
-from nucleo.flash import move_fill as MF
 from widgets import refs
 from widgets.youtube import move_refs as mv
 
@@ -30,9 +29,3 @@ def test_counting_past_the_start_names_nothing_and_no_number_word_is_negative():
 def test_the_queue_reads_it_as_a_slot(said, slot):
     assert mv.slot(said, 5) == slot
 
-
-def test_a_move_reads_it_as_the_destination():
-    slots, _spans = MF._destinations(MF._fold("ponlo el penúltimo"), 5)
-    assert slots == {4}
-    slots, _spans = MF._destinations(refs.from_the_end(MF._fold("put it second to last")), 5)
-    assert slots == {4}

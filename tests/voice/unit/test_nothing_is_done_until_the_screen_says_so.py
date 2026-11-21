@@ -207,36 +207,6 @@ def _confirm_branch() -> str:
     return ""
 
 
-def test_the_confirm_branch_still_exists_where_this_test_looks():
-    assert _confirm_branch(), "`_resolve_pending_confirm` is no longer called — this test measures nothing"
-
-
-def test_a_YES_is_answered_with_work_started_and_never_with_data_ack():
-    """Defect A. `data_ack` is «Hecho.» and it fired the instant he agreed — before the dispatch had a
-    result, and 7 s before this one had any outcome at all."""
-    src = _vts.read(PROVIDER)     # V2-778 F1: the turn whole, moved blocks included
-    i = src.index("_resolve_and_end_the_turn(_verdict_early")   # p129 C3: the early answer, through its door
-    branch = src[i:i + 900]
-    assert "_say().work_started" in branch, "the yes is still answered with something other than a START"
-    assert "_say().data_ack" not in branch, "«Hecho.» is still being spoken before the work exists"
-
-
-def test_the_confirmed_dispatch_asks_for_a_receipt():
-    """Read from the AST, not from the text around the label. The first version of this test searched the
-    500 characters before «widget-data-confirmed» — and stayed GREEN when the disarm deleted the keyword
-    from the CALL, because the comment three lines above still said `receipt=True`. A prose match is not a
-    wiring match."""
-    src = _vts.read(PROVIDER)     # V2-778 F1: the turn whole, moved blocks included
-    calls = [n for n in ast.walk(ast.parse(src))
-             if isinstance(n, ast.Call)
-             and getattr(n.func, "attr", "") == "dispatch_and_report"
-             and getattr(getattr(n.func, "value", None), "id", "") == "_data_ops"]
-    assert calls, "`_data_ops.dispatch_and_report` is not called from the provider any more"
-    confirmed = [c for c in calls
-                 if any(k.arg == "receipt" and getattr(k.value, "value", None) is True for k in c.keywords)]
-    assert confirmed, "no confirmed dispatch asks for a receipt — the outcome is unwitnessed again"
-
-
 def test_work_started_exists_in_BOTH_languages_and_promises_nothing_done():
     from i18n import langs
     for code in ("es", "en"):

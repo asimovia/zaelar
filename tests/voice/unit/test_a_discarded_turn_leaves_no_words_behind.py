@@ -11,7 +11,6 @@ turn» beside the input door (`open_mic_door`), and the one function every early
 """
 from __future__ import annotations
 
-import ast
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -45,24 +44,6 @@ def test_a_clearer_that_raises_never_stops_the_gate():
         raise RuntimeError("no session")
     mic_input.use_turn_clearer(_boom)
     assert mic_input.discard_pending_turn() is False
-
-
-def test_every_early_exit_of_the_gate_discards_the_pending_turn(monkeypatch):
-    from voice.engine.llm.providers import flow_lifecycle
-    seen = []
-    monkeypatch.setattr(mic_input, "discard_pending_turn", lambda: seen.append(1) or True)
-    brain = SimpleNamespace(_acc=None, _acc_trace_id="t-1")
-    flow_lifecycle._release_acc_trace_if_fresh(brain)
-    assert seen == [1] and brain._acc_trace_id == ""
-    brain = SimpleNamespace(_acc=SimpleNamespace(pending=lambda: True), _acc_trace_id="t-2")
-    flow_lifecycle._release_acc_trace_if_fresh(brain)
-    assert seen == [1, 1] and brain._acc_trace_id == "t-2", "the buffer is cleared even when a chain is pending"
-    # every early exit of the gate goes through that one function (the three measured branches and the rest)
-    src = (ROOT / "nucleo/turn/pipeline_gate.py").read_text(encoding="utf-8")
-    tree = ast.parse(src)
-    calls = [n for n in ast.walk(tree) if isinstance(n, ast.Call)
-             and getattr(n.func, "attr", "") == "_release_acc_trace_if_fresh"]
-    assert len(calls) >= 5, "the gate's early exits release through the one function"
 
 
 def test_the_session_installs_the_clearer_beside_the_input_door():

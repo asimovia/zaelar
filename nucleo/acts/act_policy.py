@@ -6,146 +6,6 @@ from __future__ import annotations
 from nucleo.acts import frontend as _fe
 
 
-def action_mode(widget_id: str, action: str) -> str | None:
-    """Modo de ejecución de una acción de widget: `FAST` (la capa rápida la hace ya), `CONFIRM` (la hace pero
-    pide OK antes, irreversible) o `ESCALATE` (vía de escape explícita al SlowBrain). Devuelve **None** si la
-    acción NO está DECLARADA en el manifest (el modelo se la inventó → el llamante decide, hoy: escalar).
-    Consulta el catálogo cacheado (`widgets/runtime.py`) — sin I/O por llamada. La semántica vive en
-    `widgets/actions.py`; cualquier error cae a None (fail-safe)."""
-    try:
-        from widgets import actions, runtime
-        wid = (widget_id or "").split("::", 1)[0].strip().lower()   # the BASE declares; an instance is one card of it
-        name = (action or "").strip()
-        if not wid or not name:
-            return None
-        declared = (runtime.get(wid) or {}).get("actions") or {}
-        if name not in declared:
-            return None
-        return actions.classify(declared.get(name), name)
-    except Exception as e:  # noqa: BLE001
-        # Testing marathon 2026-07-22: `add_meeting` escalated intermittently live (~1 in 4-5 identical calls);
-        # suspected a transient exception swallowed here as «undeclared action». Now it leaves a trace.
-        try:
-            import logging
-            logging.getLogger("zaelar.widgets").warning(
-                "action_mode(%r, %r) reventó, fail-safe a None (→ posible escalada espuria): %s", widget_id, action, e)
-        except Exception:
-            pass
-        return None
-
-
-def declared_actions(widget_id: str) -> dict:
-    """The widget's DECLARED manifest actions (name -> spec), {} when unknown.
-
-    The same cached catalog `action_mode` reads, so a repair candidate can never be an
-    invented action. Read-only; any error yields {} (fail-safe toward today's path)."""
-    try:
-        from widgets import runtime
-        wid = (widget_id or "").split("::", 1)[0].strip().lower()   # the BASE declares; an instance is one card of it
-        if not wid:
-            return {}
-        return dict((runtime.get(wid) or {}).get("actions") or {})
-    except Exception:  # noqa: BLE001
-        return {}
-
-
-def action_verdict(widget_id: str, action: str, payload: dict | None = None, *, his_yes: bool = False) -> dict:
-    """What the ONE consent rule says about running this data-op RIGHT NOW (V2-712).
-
-    `action_mode` above answers «how much friction does this action carry», which is a property of the
-    action and knows nothing about the call. This answers the question the operator actually asked for —
-    «¿tengo la suficiente información como para ejecutar la tarea con garantías?» — and to do that it needs
-    the CALL: which item, whether the selector arrived filled, which facts the action declares it needs.
-
-    Everything it reads is DECLARED data: the widget's `security` (all shipped widgets: standard), the
-    action's `sensitivity` (or today's `confirm:true`, read as `sensitive`), its `requires` list and its
-    `consent_class`. No verb is matched anywhere in this path.
-
-    Fails toward the OLD behaviour: anything unreadable returns the verdict the manifest flag alone would
-    have produced, so a malformed widget loses the improvement rather than the guard.
-    """
-    from nucleo import consent
-    from widgets import actions as _wa, runtime
-    wid, name = (widget_id or "").strip().lower(), (action or "").strip()
-    man = runtime.get(wid) or {}
-    spec = (man.get("actions") or {}).get(name)
-    spec = spec if isinstance(spec, dict) else {}
-    level = consent.level_of(spec, widget_security=str(man.get("security") or ""), action=name)
-    bounded, radius = _fe._scope(wid, name, spec, payload)
-    return consent.decide(level=level, missing=consent.missing_facts(spec.get("requires")),
-                          radius=radius, bounded=bounded,
-                          policy_key=_fe._policy_key(wid, name, spec, payload), his_yes=his_yes,
-                          scope={"widget": wid, "action": name, "subject": _subject(wid, name, payload)})
-
-
-def _subject(wid: str, name: str, payload: dict | None) -> str:
-    """The contact id of the ONE person this call reaches (V2-857 phase 2): the recipient the call names
-    (`on_his_behalf.who_of`) resolved by the directory's one ranking, only when it means exactly one person. "" for
-    an act that reaches nobody, for several, or for a name the directory does not hold — then no per-person rule
-    is read and the channel's rule stands."""
-    try:
-        from nucleo import on_his_behalf as _ob
-        from widgets import directory
-        who = _ob.who_of(wid, name, payload)
-        if len(who) != 1:
-            return ""
-        p = payload if isinstance(payload, dict) else {}
-        return directory.subject_id(who[0], str(p.get("platform") or p.get("channel") or ""))
-    except Exception as e:  # noqa: BLE001 — unreadable: the channel's rule stands
-        from loguru import logger
-        logger.info(f"act_policy: the subject of {wid}:{name} could not be read ({e!r})")
-        return ""
-
-
-def _policy_key(wid: str, name: str, spec: dict, payload: dict | None) -> str:
-    """Which consent CLASS this call belongs to, letting the widget refine its own manifest (V2-718).
-
-    The manifest names the class an action belongs to IN THE ABSTRACT, and for most actions that is the
-    whole truth. For some it is not, and the operator said exactly where the line falls:
-
-    > «Esto por ejemplo que no nos hace ningún daño no necesita permiso. Añadir a otra persona, cambiar de
-    > hora o hacer otras cosas sí que obviamente necesitan permiso.»
-
-    That distinction cannot be read from the action's name, from its payload keys, or from the words of the
-    request: it is whether THIS call stays inside a commitment already made with the people already in it.
-    Only the widget holds the data to answer — its own guest list, its own roster — so a widget's data
-    module may expose `consent_scope(action, payload, db) -> {"class": ...}` and say so. It REFINES, never
-    invents: a widget that does not offer the hook, or whose hook raises, keeps the manifest's own class,
-    which is the behaviour every action had before this seam existed.
-
-    ⚠️ Which way the manifest leans decides what the hook can do. A class DECLARED there is the floor the
-    hook cannot lower — `_policy_key` falls back to it — so an action that is free by default and asks only
-    in some calls (moving an hour: free when only he holds it) must declare NO class and let the hook add
-    one. Measured 2026-09-17: `move_meeting` declared the «ask» class and every move asked, his dentist
-    included, while its test checked the hook's answer and never the verdict.
-    """
-    declared = str((spec or {}).get("consent_class") or "")
-    try:
-        import importlib
-        mod = importlib.import_module(f"widgets.{wid}.data")
-        hook = getattr(mod, "consent_scope", None)
-        if not callable(hook):
-            return declared
-        out = hook(name, dict(payload or {}))
-        key = str((out or {}).get("class") or "").strip()
-        return key or declared
-    except Exception:  # noqa: BLE001
-        return declared
-
-
-def _declared_radius(wid: str, name: str, payload: dict | None) -> int | None:
-    """What the widget says this call will touch, or None (V2-720). Same shape as `_policy_key`'s hook."""
-    try:
-        import importlib
-        hook = getattr(importlib.import_module(f"widgets.{wid}.data"), "radius", None)
-        if not callable(hook):
-            return None
-        n = hook(name, dict(payload or {}))
-        return int(n) if isinstance(n, int) and not isinstance(n, bool) and n >= 0 else None
-    except Exception:  # noqa: BLE001
-        return None
-
-
 def _scope(wid: str, name: str, spec: dict, payload: dict | None) -> tuple[bool, int | None]:
     """Does this call NAME what it acts on, and how many things will it touch?
 
@@ -285,3 +145,145 @@ def is_safe_action(widget_id: str, action: str) -> bool:
         return _fe.action_mode(widget_id, action) == actions.FAST
     except Exception:
         return False
+
+
+
+
+def action_mode(widget_id: str, action: str) -> str | None:
+    """Modo de ejecución de una acción de widget: `FAST` (la capa rápida la hace ya), `CONFIRM` (la hace pero
+    pide OK antes, irreversible) o `ESCALATE` (vía de escape explícita al SlowBrain). Devuelve **None** si la
+    acción NO está DECLARADA en el manifest (el modelo se la inventó → el llamante decide, hoy: escalar).
+    Consulta el catálogo cacheado (`widgets/runtime.py`) — sin I/O por llamada. La semántica vive en
+    `widgets/actions.py`; cualquier error cae a None (fail-safe)."""
+    try:
+        from widgets import actions, runtime
+        wid = (widget_id or "").split("::", 1)[0].strip().lower()   # the BASE declares; an instance is one card of it
+        name = (action or "").strip()
+        if not wid or not name:
+            return None
+        declared = (runtime.get(wid) or {}).get("actions") or {}
+        if name not in declared:
+            return None
+        return actions.classify(declared.get(name), name)
+    except Exception as e:  # noqa: BLE001
+        # Testing marathon 2026-07-22: `add_meeting` escalated intermittently live (~1 in 4-5 identical calls);
+        # suspected a transient exception swallowed here as «undeclared action». Now it leaves a trace.
+        try:
+            import logging
+            logging.getLogger("zaelar.widgets").warning(
+                "action_mode(%r, %r) reventó, fail-safe a None (→ posible escalada espuria): %s", widget_id, action, e)
+        except Exception:
+            pass
+        return None
+
+
+def declared_actions(widget_id: str) -> dict:
+    """The widget's DECLARED manifest actions (name -> spec), {} when unknown.
+
+    The same cached catalog `action_mode` reads, so a repair candidate can never be an
+    invented action. Read-only; any error yields {} (fail-safe toward today's path)."""
+    try:
+        from widgets import runtime
+        wid = (widget_id or "").split("::", 1)[0].strip().lower()   # the BASE declares; an instance is one card of it
+        if not wid:
+            return {}
+        return dict((runtime.get(wid) or {}).get("actions") or {})
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def action_verdict(widget_id: str, action: str, payload: dict | None = None, *, his_yes: bool = False) -> dict:
+    """What the ONE consent rule says about running this data-op RIGHT NOW (V2-712).
+
+    `action_mode` above answers «how much friction does this action carry», which is a property of the
+    action and knows nothing about the call. This answers the question the operator actually asked for —
+    «¿tengo la suficiente información como para ejecutar la tarea con garantías?» — and to do that it needs
+    the CALL: which item, whether the selector arrived filled, which facts the action declares it needs.
+
+    Everything it reads is DECLARED data: the widget's `security` (all shipped widgets: standard), the
+    action's `sensitivity` (or today's `confirm:true`, read as `sensitive`), its `requires` list and its
+    `consent_class`. No verb is matched anywhere in this path.
+
+    Fails toward the OLD behaviour: anything unreadable returns the verdict the manifest flag alone would
+    have produced, so a malformed widget loses the improvement rather than the guard.
+    """
+    from nucleo import consent
+    from widgets import runtime
+    wid, name = (widget_id or "").strip().lower(), (action or "").strip()
+    man = runtime.get(wid) or {}
+    spec = (man.get("actions") or {}).get(name)
+    spec = spec if isinstance(spec, dict) else {}
+    level = consent.level_of(spec, widget_security=str(man.get("security") or ""), action=name)
+    bounded, radius = _fe._scope(wid, name, spec, payload)
+    return consent.decide(level=level, missing=consent.missing_facts(spec.get("requires")),
+                          radius=radius, bounded=bounded,
+                          policy_key=_fe._policy_key(wid, name, spec, payload), his_yes=his_yes,
+                          scope={"widget": wid, "action": name, "subject": _subject(wid, name, payload)})
+
+
+def _subject(wid: str, name: str, payload: dict | None) -> str:
+    """The contact id of the ONE person this call reaches (V2-857 phase 2): the recipient the call names
+    (`on_his_behalf.who_of`) resolved by the directory's one ranking, only when it means exactly one person. "" for
+    an act that reaches nobody, for several, or for a name the directory does not hold — then no per-person rule
+    is read and the channel's rule stands."""
+    try:
+        from nucleo import on_his_behalf as _ob
+        from widgets import directory
+        who = _ob.who_of(wid, name, payload)
+        if len(who) != 1:
+            return ""
+        p = payload if isinstance(payload, dict) else {}
+        return directory.subject_id(who[0], str(p.get("platform") or p.get("channel") or ""))
+    except Exception as e:  # noqa: BLE001 — unreadable: the channel's rule stands
+        from loguru import logger
+        logger.info(f"act_policy: the subject of {wid}:{name} could not be read ({e!r})")
+        return ""
+
+
+def _policy_key(wid: str, name: str, spec: dict, payload: dict | None) -> str:
+    """Which consent CLASS this call belongs to, letting the widget refine its own manifest (V2-718).
+
+    The manifest names the class an action belongs to IN THE ABSTRACT, and for most actions that is the
+    whole truth. For some it is not, and the operator said exactly where the line falls:
+
+    > «Esto por ejemplo que no nos hace ningún daño no necesita permiso. Añadir a otra persona, cambiar de
+    > hora o hacer otras cosas sí que obviamente necesitan permiso.»
+
+    That distinction cannot be read from the action's name, from its payload keys, or from the words of the
+    request: it is whether THIS call stays inside a commitment already made with the people already in it.
+    Only the widget holds the data to answer — its own guest list, its own roster — so a widget's data
+    module may expose `consent_scope(action, payload, db) -> {"class": ...}` and say so. It REFINES, never
+    invents: a widget that does not offer the hook, or whose hook raises, keeps the manifest's own class,
+    which is the behaviour every action had before this seam existed.
+
+    ⚠️ Which way the manifest leans decides what the hook can do. A class DECLARED there is the floor the
+    hook cannot lower — `_policy_key` falls back to it — so an action that is free by default and asks only
+    in some calls (moving an hour: free when only he holds it) must declare NO class and let the hook add
+    one. Measured 2026-09-17: `move_meeting` declared the «ask» class and every move asked, his dentist
+    included, while its test checked the hook's answer and never the verdict.
+    """
+    declared = str((spec or {}).get("consent_class") or "")
+    try:
+        import importlib
+        mod = importlib.import_module(f"widgets.{wid}.data")
+        hook = getattr(mod, "consent_scope", None)
+        if not callable(hook):
+            return declared
+        out = hook(name, dict(payload or {}))
+        key = str((out or {}).get("class") or "").strip()
+        return key or declared
+    except Exception:  # noqa: BLE001
+        return declared
+
+
+def _declared_radius(wid: str, name: str, payload: dict | None) -> int | None:
+    """What the widget says this call will touch, or None (V2-720). Same shape as `_policy_key`'s hook."""
+    try:
+        import importlib
+        hook = getattr(importlib.import_module(f"widgets.{wid}.data"), "radius", None)
+        if not callable(hook):
+            return None
+        n = hook(name, dict(payload or {}))
+        return int(n) if isinstance(n, int) and not isinstance(n, bool) and n >= 0 else None
+    except Exception:  # noqa: BLE001
+        return None

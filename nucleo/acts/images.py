@@ -73,13 +73,14 @@ async def _fetchable_first(items: list, budget_s: float = 3.0) -> list:
     return [it for it, ok in zip(items, oks) if ok] + [it for it, ok in zip(items, oks) if not ok]
 
 
-async def execute(query: str, n: int = DEFAULT_N, more: bool = False) -> dict:
+async def execute(query: str, n: int = DEFAULT_N, more: bool = False, *, src: str = "") -> dict:
     """Search the pictures and load the viewer; return the report of what HAPPENED, so the mouth need not guess.
 
     Same rail as everything else that puts something on the canvas (`brain_action` -> the widget's own
     `apply_action`), not a second way of showing pictures. Fail-soft end to end: the turn has to come out even
     if the browser is down, and when it is down the honest sentence is that we could not look, not that there
-    are no photos.
+    are no photos. `src` is the provenance the act signs the viewer's mount with (`turn:<effect>`, the manager's
+    reservation); without one it is the turn's own trace.
     """
     q = str(query or "").strip()
     parte: dict = {"executed": "show_images", "query": q[:80], "ok": False, "count": 0}
@@ -162,7 +163,8 @@ async def execute(query: str, n: int = DEFAULT_N, more: bool = False) -> dict:
         if parte["ok"] and parte["count"] and not (more and shown):
             try:
                 from nucleo.acts import visibility as _cvis
-                _cvis.present("imagenes", reason="producer-mount", action="show", src="flash")
+                from voice import trace as _trace
+                _cvis.present("imagenes", reason="producer-mount", action="show", src=src or f"turn:{_trace.current()}")
             except Exception as e:  # noqa: BLE001
                 logger.debug(f"image_turn: mount not emitted — {e}")
         # WHERE the pictures come from is part of the answer, not decoration: the operator's own review of the
@@ -284,7 +286,8 @@ async def voice_turn(req: dict, *, silent: bool) -> "tuple[dict, str]":
     existing response counts it twice, and staying silent after a tool leaves the next turn believing that the
     request is still unhandled.
     """
-    parte = await execute(req.get("query") or "", req.get("n") or DEFAULT_N, bool(req.get("more")))
+    parte = await execute(req.get("query") or "", req.get("n") or DEFAULT_N, bool(req.get("more")),
+                          src=str(req.get("src") or ""))
     if not silent:
         return parte, ""
     try:

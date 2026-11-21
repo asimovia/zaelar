@@ -48,23 +48,6 @@ def test_is_safe_action_compat(monkeypatch):
     assert not frontend.is_safe_action("agenda", "inexistente")
 
 
-def test_canvas_verb_maps_pseudo_dataops():
-    """Long-session diagnostic 2026-07-15: deep in the model, SHOW/CLOSE slips through as a pseudo data-op
-    (`widget_data(clock, action="show")`). `canvas_verb` returns the canonical tag; a real action returns None."""
-    assert frontend.canvas_verb("show") == "show"
-    assert frontend.canvas_verb("Abrir") == "show"
-    assert frontend.canvas_verb("muestra") == "show"
-    assert frontend.canvas_verb("enséña") == "show"          # accent-insensitive
-    assert frontend.canvas_verb("close") == "close"
-    assert frontend.canvas_verb("ocultar") == "close"
-    assert frontend.canvas_verb("done") is None              # real data-op → not a canvas verb
-    assert frontend.canvas_verb("add_meeting") is None
-    assert frontend.canvas_verb("") is None
-    # "quitar"/"borrar" are NOT canvas (they remove DATA or delete the widget — another route): never map to close.
-    assert frontend.canvas_verb("quitar") is None
-    assert frontend.canvas_verb("borrar") is None
-
-
 def test_action_mode_failclosed_on_error(monkeypatch):
     import widgets.runtime as rt
     def boom(wid):
@@ -72,4 +55,3 @@ def test_action_mode_failclosed_on_error(monkeypatch):
     monkeypatch.setattr(rt, "get", boom)
     assert frontend.action_mode("agenda", "done") is None
     assert not frontend.is_safe_action("agenda", "done")
-

@@ -138,21 +138,6 @@ from pathlib import Path
 NUCLEO = Path(__file__).resolve().parents[3] / "voice" / "engine" / "llm" / "providers" / "nucleo.py"
 
 
-def test_stop_worker_todo_also_discards_the_marks():
-    """Source guard on the voice seam (this repo's convention): killing the workers without wiping the marks is
-    the half-measure that made the next greeting resume a dead task. The handler must route «todo» through the
-    same core the Reset button uses."""
-    src = "\n".join(l for l in _vts.read(NUCLEO).splitlines()
-                    if not l.strip().startswith("#"))
-    i = src.find('elif name == "stop_worker":')
-    j = src.find('elif name == "cancel_scheduled":', i)
-    assert 0 < i < j, "the stop_worker handler moved: this guard would be watching nothing"
-    block = src[i:j]
-    assert "abandon_work_soon" in block, \
-        "stop_worker('todo') has to discard the marks too — cancel_soon alone leaves state saying work continues"
-    assert 'if _w == "todo"' in block, "…and only for TODO: killing ONE task must not discard the others' marks"
-
-
 def test_abandon_work_soon_runs_without_a_loop():
     """The voice path schedules it on a loop; tests and sync callers have none — it must run direct, not crash."""
     _plant_the_digestologo_world()

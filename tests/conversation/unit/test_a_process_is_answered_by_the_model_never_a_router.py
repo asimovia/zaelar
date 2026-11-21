@@ -7,18 +7,8 @@ door, a plain yes or no deciding what it held; an id nobody holds fails naming t
 """
 from __future__ import annotations
 
-import asyncio
 
 from nucleo.conversation_host import acts_tasks, routing
-
-
-def test_with_a_process_open_and_no_draft_the_route_takes_nothing(monkeypatch):
-    from nucleo.send import draft
-    from nucleo.switchboard import board, route
-    monkeypatch.setattr(draft, "current", lambda: None)
-    monkeypatch.setattr(board, "open_processes", lambda: [{"key": "u1", "state": "waiting", "ask_id": "a1"}])
-    monkeypatch.setattr(route, "take", lambda *a, **k: (_ for _ in ()).throw(AssertionError("routed before the model")))
-    assert asyncio.run(routing.HostRoute().take("acct", "w_yes do it")) is None
 
 
 def test_the_model_answers_the_process_it_names_by_the_one_delivery_door(monkeypatch):

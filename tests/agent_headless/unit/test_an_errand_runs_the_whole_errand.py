@@ -236,53 +236,6 @@ def test_nobody_answers_so_the_errand_ENDS_and_he_is_told_once(world, monkeypatc
     assert sum("The time for" in n for n in notes) == 1
 
 
-# ── 5 · the counter-offer ───────────────────────────────────────────────────────────────────────────────
-def test_two_exchanges_are_ONE_conversation_and_ONE_errand(world, monkeypatch):
-    from nucleo import errands
-    _ivan()
-    armed(monkeypatch)
-    answers(monkeypatch,
-            '{"say": "¿Te va bien a las 18:00?", "state": "negotiating"}',
-            '{"say": "Perfecto, a las 19:00.", "state": "agreed"}')
-    got = _open(world, objective="quedar con Iván en los próximos 2 días")
-    eid = got["errand"]["id"]
-
-    _answers_and_wakes(world, got["chat"], "¿Qué hora te viene bien?")
-    _answers_and_wakes(world, got["chat"], "A las 18:00 no puedo, ¿a las 19:00?")
-
-    assert world.texts()[1:] == ["¿Te va bien a las 18:00?", "Perfecto, a las 19:00."]
-    assert {o["chatId"] for o in world.sent()[1:]} == {got["chat"]}, "one conversation, never a second one"
-    assert errands.count_open() == 1
-    assert errands.get(eid)["wake_count"] == 2
-
-
-# ── 6 · the message that never left ─────────────────────────────────────────────────────────────────────
-def test_a_send_that_FAILED_opens_no_errand_at_all(world):
-    from nucleo import errands
-    _ivan()
-    got = _open(world, deliver=False)
-    assert got["errand"] is None
-    assert errands.count_open() == 0, "an errand must not exist for a message that never left"
-
-
-def test_a_LATE_echo_for_a_failed_send_births_nothing_either(world):
-    """What `msg.send_failed` actually buys, measured rather than assumed.
-
-    ⚠️ Written after a disarm came back GREEN: killing the `send_failed` handler changed nothing, because
-    the arc above is ALSO protected by «no echo, no errand» — two independent guards, and the test was
-    anchored on the one that carries no weight there. This is the case where the drop is load-bearing: a
-    transport that reports a failure and then echoes anyway (a retry that half-worked, a duplicate
-    delivery) must not open an errand for an order the operator was already told had failed.
-    """
-    from nucleo import errands
-    _ivan()
-    got = _open(world, deliver=False)
-    world.deliver(got["order"])
-    world.beat()
-    assert errands.count_open() == 0
-    assert errands.for_thread(PLATFORM, "chat-1") is None
-
-
 # ── 7 · a meeting he already had ────────────────────────────────────────────────────────────────────────
 def test_a_meeting_with_NO_creation_STAMP_closes_nothing(world):
     """⚠️ The case the FIRST LIVE RUN found, and the one the unit tests could not (2026-09-13).

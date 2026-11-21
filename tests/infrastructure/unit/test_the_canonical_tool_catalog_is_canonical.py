@@ -46,25 +46,6 @@ def _documented() -> set[str]:
     return names
 
 
-def _declared() -> set[str]:
-    from nucleo.flash import router
-    return {t["function"]["name"] for t in router.TOOLS}
-
-
-def test_every_tool_the_engine_offers_has_a_row():
-    missing = sorted(_declared() - _documented())
-    assert not missing, (
-        "these tools exist in `router.TOOLS` and not in §8 of the architecture doc — a capability "
-        f"nobody reading it can know about: {missing}")
-
-
-def test_no_row_survives_a_tool_that_was_retired():
-    stale = sorted(_documented() - _declared())
-    assert not stale, (
-        "§8 still documents tools the engine no longer offers, which sends the next reader looking "
-        f"for something that is gone: {stale}")
-
-
 def test_the_table_was_actually_found():
     """A parser that silently reads nothing makes both assertions above vacuous — the exact shape of
     a guard that goes green the day the thing it guards disappears."""

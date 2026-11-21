@@ -45,8 +45,3 @@ def test_one_brief_call_bills_its_tokens_once(monkeypatch) -> None:
     assert "prompt_tokens" not in again and again["call_prompt_tokens"] == 8657
     assert jev._billed_once("call-2", dict(usage))["prompt_tokens"] == 8657
 
-
-def test_the_turn_record_keeps_what_the_model_called_with_its_arguments() -> None:
-    from nucleo.turn import commission
-    got = commission._args_of({"name": "widget_data", "args": {"id": "mensajeria", "contact": "Raquel Salinas"}})
-    assert got["name"] == "widget_data" and "Raquel Salinas" in got["args"]

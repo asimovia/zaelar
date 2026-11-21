@@ -92,8 +92,3 @@ def test_the_operator_semaphore_is_lit(monkeypatch):
     boot = (Path(__file__).resolve().parents[4] / "server" / "boot" / "surfaces.py").read_text(encoding="utf-8")
     assert "_search_hooks.on_chain_failure" in boot, "the engine must wire the hook, or the light never turns red"
 
-
-# ── and it reaches the TURN, which was what was missing ────────────────────────────────────────────────────────
-def _state() -> str:
-    from nucleo.turn.prompt import live_state as prompt
-    return prompt.live_state()

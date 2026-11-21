@@ -38,7 +38,6 @@ import subprocess
 
 import pytest
 
-from nucleo.acts import show_license as lic
 
 from nucleo.acts import visibility as cv
 from widgets import effects as fx
@@ -99,44 +98,41 @@ def test_a_manifest_may_declare_an_effect_and_a_typo_is_ignored(monkeypatch):
 
 def test_a_presentation_without_a_reason_is_suppressed(shown):
     out, emit = shown
-    assert cv.present("musica", reason="", action="play", known=[], emit=emit) is False
+    assert cv.present("musica", src="turn:e_1", reason="", action="play", known=[], emit=emit) is False
     assert out[0][1] == "🚫 presentación suprimida" and "sin motivo" in out[0][2]["detail"]
     assert not any(label == "show" for _, label, _ in out)
 
 
 def test_a_made_up_reason_does_not_pass_either(shown):
     out, emit = shown
-    assert cv.present("musica", reason="because-i-said-so", action="play", known=[], emit=emit) is False
+    assert cv.present("musica", src="turn:e_1", reason="because-i-said-so", action="play", known=[], emit=emit) is False
     assert out[0][1] == "🚫 presentación suprimida"
 
 
 def test_the_claim_is_checked_against_the_declaration_not_believed(shown):
     """The measured incident, as a claim: `pause` calling itself a mount. The door reads the manifest."""
     out, emit = shown
-    assert cv.present("musica", reason="producer-mount", action="pause", known=[], emit=emit) is False
+    assert cv.present("musica", src="turn:e_1", reason="producer-mount", action="pause", known=[], emit=emit) is False
     assert "no declara" in out[0][2]["detail"]
-    assert cv.present("musica", reason="producer-mount", action="play", known=[], emit=emit) is True
+    assert cv.present("musica", src="turn:e_1", reason="producer-mount", action="play", known=[], emit=emit) is True
     assert out[-1][1] == "show" and out[-1][2]["reason"] == "producer-mount"
 
 
 def test_an_open_card_is_never_raised_again(shown):
     out, emit = shown
-    assert cv.present("musica", reason="turn-order", known=["musica::t1"], emit=emit) is False
+    assert cv.present("musica", src="turn:e_1", reason="turn-order", known=["musica::t1"], emit=emit) is False
     assert "ya está abierta" in out[0][2]["detail"]
 
 
 @pytest.fixture
 def asked_to_see(monkeypatch):
     """The turn whose verdict asked to see the card — the licence the armed canvas door reads (refactor2710-04)."""
-    from nucleo.acts import canvas_turn as canvas_arbiter
-    monkeypatch.setattr(canvas_arbiter, "request_for", lambda extra=None: {
-        "text": "", "turn_credit": True, "last_reply": "", "verdict": {"canvas": ("show", 0.9)}})
 
 
 def test_a_turn_order_opens_a_card_that_declares_no_production(shown, asked_to_see):
     """The door is not «producers only»: most cards are presented because the operator asked."""
     out, emit = shown
-    assert cv.present("agenda", reason="turn-order", known=[], emit=emit) is True
+    assert cv.present("agenda", src="turn:e_1", reason="turn-order", known=[], emit=emit) is True
     assert out[-1][2]["reason"] == "turn-order" and out[-1][2]["id"] == "agenda"
 
 
@@ -202,85 +198,20 @@ def test_the_number_of_anonymous_presentations_only_goes_down():
     sites = _direct_show_sites()
     assert len(sites) <= _ANONYMOUS_SHOWS_MAX, (
         "a new presentation was emitted without a declared reason — it goes through "
-        "`canvas_visibility.present(reason=…)`:\n  " + "\n  ".join(sites))
+        "`canvas_visibility.present(reason=…, src=…)`:\n  " + "\n  ".join(sites))
 
 
 # ── 4 · a «yes» is an answer only where there was a question ─────────────────────────────────────────────
-
-def test_the_turn_that_restarted_the_music_licenses_nothing_now():
-    """Session c553a1e0: «Okay. What if» — the operator starting an unrelated sentence — licensed a
-    `resume`, and the music he had paused by hand came back."""
-    assert lic.video_license("Okay. What if") is False
-    assert lic.video_license("Okay. What if", "Now playing Bruce Springsteen - Hungry Heart.") is False
-
-
-def test_a_yes_to_an_unrelated_question_licenses_nothing():
-    """V2-724, the audit's adjacent correction: «we previously asked something» is necessary and NOT
-    sufficient. Bound only to «a question existed», a «sí» to «¿te apunto la cita del dentista?» still
-    licensed a video load — one proposal's answer spending another proposal's authority."""
-    for offer in ("¿Te apunto la cita del dentista para el jueves?",
-                  "¿Quieres que le escriba a Ivan?",
-                  "Do you want me to delete the rest?"):
-        assert lic.video_license("sí", offer) is False, offer
-        assert lic.offer_of_media(offer) is False, offer
-
-
-def test_the_proposals_class_is_read_from_the_widgets_own_words():
-    """No table of ours: the certainty resolver first, then the vocabulary the PRODUCING widgets publish
-    about themselves. A fork that adds a player brings its own words with it."""
-    for offer in ("What kind of music, Richard? Give me a vibe or an artist.",
-                  "¿Busco de nuevo el vídeo?",
-                  "Shall I put the playlist back on?",
-                  "¿Te pongo otra canción?"):
-        assert lic.offer_of_media(offer) is True, offer
-        assert lic.video_license("sí", offer) is True, offer
-
-
-def test_a_statement_is_not_a_proposal():
-    """Both halves are required: the class AND a question actually pending."""
-    assert lic.offer_of_media("Now playing Bruce Springsteen - Hungry Heart.") is False
-    assert lic.offer_of_media("") is False
-
-
-def test_a_yes_still_answers_our_own_offer():
-    """The escape exists for this and keeps working — that is why it is not simply deleted."""
-    assert lic.video_license("sí", "¿Te busco otra vez el vídeo?") is True
-    assert lic.video_license("sure", "Shall I put the playlist back on?") is True
-    # …and the affirmative table is NOT widened to catch «go ahead»: growing a word list is the habit the
-    # audit names, and he can always say it with a verb. What changed is the FACT it depends on.
-    assert lic.video_license("go ahead", "Shall I put the playlist back on?") is False
-
-
-def test_an_order_with_a_verb_never_needed_the_escape():
-    for said in ("pon algo de rock", "reproduce la lista", "play the moonwalk video"):
-        assert lic.video_license(said) is True, said
-
-
-def test_the_reopen_license_binds_to_a_proposal_about_that_card():
-    """Same correction, the other effect: a «vale» reopens a just-closed card only when the pending
-    proposal was about THAT card. «¿Lo vuelvo a abrir?» names nothing, so it authorizes nothing — the safe
-    direction, since the alternative is a card resurrected over an answer to something else."""
-    lic.note_operator_close("youtube")
-    try:
-        assert _door.reopen_ordered("youtube", "vale") is False
-        assert _door.reopen_ordered("youtube", "vale", last_reply="¿Te apunto la cita?") is False
-        assert _door.reopen_ordered("youtube", "vale", last_reply="¿Lo vuelvo a abrir?") is False
-        assert _door.reopen_ordered("youtube", "vale", last_reply="¿Vuelvo a abrir el vídeo?") is True
-        # …and his own words still reopen it with no proposal at all, exactly as before.
-        assert _door.reopen_ordered("youtube", "abre otra vez el vídeo de YouTube") is True
-    finally:
-        lic._RECENT_CLOSES.clear()
-
 
 def test_the_door_puts_the_CARD_on_screen_not_the_piece(asked_to_see):
     """V2-776 (2026-09-27): «Show me the monitors» resolved to the monitor sheet `results::94b220-ls1` and the door
     emitted bare `results` — the empty base — so every order on «the monitors» after it worked on nothing."""
     from nucleo.acts import visibility as cv
     seen = []
-    ok = cv.present("results::94b220-ls1", reason="turn-order", known=[],
+    ok = cv.present("results::94b220-ls1", src="turn:e_1", reason="turn-order", known=[],
                     emit=lambda kind, label, extra=None: seen.append((label, (extra or {}).get("id"))))
     assert ok and ("show", "results::94b220-ls1") in seen, seen
     seen.clear()
-    assert cv.present("agenda", reason="turn-order", known=[],
+    assert cv.present("agenda", src="turn:e_1", reason="turn-order", known=[],
                       emit=lambda kind, label, extra=None: seen.append((label, (extra or {}).get("id"))))
     assert ("show", "agenda") in seen

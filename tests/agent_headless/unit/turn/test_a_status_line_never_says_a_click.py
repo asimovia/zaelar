@@ -11,8 +11,6 @@ import threading
 
 import pytest
 
-from nucleo import dispatch
-from nucleo.turn import errands_of_a_turn as E
 from nucleo.workers import progress as P
 
 
@@ -45,13 +43,3 @@ def test_a_browser_micro_step_is_mechanical(phase):
 def test_a_milestone_or_an_outcome_is_not(phase):
     assert not P.is_mechanical(phase)
 
-
-@pytest.mark.parametrize("note,expect", [(NOTE, "DiscoverCars a punto de buscar"), ("", "en marcha")])
-def test_the_status_says_the_note_or_under_way_never_the_click(monkeypatch, note, expect):
-    monkeypatch.setattr("i18n.langs.current_code", lambda: "es")
-    monkeypatch.setattr(dispatch, "pending_summaries", lambda: [
-        {"id": "2", "request": ERRAND, "phase": "pulsando en la página", "note": note, "waiting_on": ""}])
-    line = E.status_owed("¿Me lo puedes confirmar?", _brief())
-    assert "pulsando" not in line, line
-    from i18n import langs
-    assert expect in line or (not note and langs.current_language().errand_under_way in line), line

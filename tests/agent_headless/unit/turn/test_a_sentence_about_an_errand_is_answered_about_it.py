@@ -23,7 +23,6 @@ import pytest
 
 from nucleo import dispatch
 from nucleo.dispatch import confirm as dc
-from nucleo.turn import errands_of_a_turn as E
 from nucleo.errands import named as named_errand
 
 REPORT = {"id": "1", "request": "Hazme un informe sobre coches eléctricos para ciudad", "phase": "leyendo material",
@@ -62,20 +61,6 @@ def test_a_sentence_names_every_errand_it_talks_about(errands):
     assert [e["id"] for e in named_errand.named("but the jump, did you actually make it higher?")] == ["9"]
     assert named_errand.named("ok cool, thanks") == []
     assert all(not e["label"] for e in named_errand.known()), "«Investigando…» is a placeholder, not a label"
-
-
-# ── 2. a status question that names an errand ───────────────────────────────────────────────────────────────
-def test_a_status_question_about_the_game_is_answered_about_the_game(errands, monkeypatch):
-    monkeypatch.setattr("i18n.langs.current_code", lambda: "en")
-    line = E.status_owed("but the jump, did you actually make it higher? I keep asking lol",
-                         _brief(wants_words="tell", request_type="question"))
-    assert "Super Mario" in line and "monitor" not in line and "informe" not in line, line
-    assert "entrando en" not in line and "Investigando" not in line, "no engine Spanish in an English line"
-
-
-def test_a_question_about_everything_still_gets_everything(errands):
-    line = E.status_owed("¿Cómo va todo?", _brief(wants_words="tell", request_type="question"))
-    assert "informe" in line and "monitor" in line
 
 
 # ── 5. a «no» about the monitor does not cancel the parked game ─────────────────────────────────────────────

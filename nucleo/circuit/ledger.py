@@ -135,11 +135,6 @@ def _queue():
     return queue
 
 
-def mentioned(uid: str, *, now: float | None = None) -> None:
-    """He named this errand again (a refinement folded into it, an answer to it): its card's `last_mention_ts`."""
-    card_written(uid, last_mention_ts=int(time.time() if now is None else now))
-
-
 def born(task_id, request: str, ctx: dict | None = None) -> str:
     """Write the durable row of an errand born in the turn; its uid (which is also its sheet's id). Never raises."""
     ctx, uid, now = dict(ctx or {}), task_uid(task_id), int(time.time())

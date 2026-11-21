@@ -59,28 +59,6 @@ def is_open(widget_id: str, *, known=None) -> bool:
     return bool(wid) and wid in ids
 
 
-def card_is_open(card_id: str, *, known=None):
-    """Is THIS card — instance included — open right now? True / False, or None when the canvas has not
-    reported since the engine started (unknown is not «closed»).
-
-    `open_widgets` in the memory state is normalized to base ids (`results::c29838-ls1` → `results`), right
-    for «is the browser up», wrong for «is THIS errand's sheet up»: with the monitors sheet closed and another
-    results card open, the base answers yes (demo pass 30, S1). The raw instances are `open_instances()`."""
-    cid = str(card_id or "").strip().lower()
-    if not cid:
-        return None
-    if known is None:
-        try:
-            from server.voice_api import open_instances
-            known = open_instances()
-        except Exception:  # noqa: BLE001
-            known = []
-    ids = {str(w).strip().lower() for w in (known or []) if str(w).strip()}
-    if not ids:
-        return None
-    return cid in ids
-
-
 #: WHY a card is being put on screen. A presentation effect is spent by some authorization, and the emitter
 #: is the only one who knows which — so it says so, in a closed vocabulary, and the door checks what it can
 #: check. This is the audit's «explicit, scoped effects as the contract» at its smallest useful size: not a
@@ -102,8 +80,7 @@ REASONS = {
 }
 
 
-def present(widget_id: str, *, reason: str, action: str = "", src: str = "flash",
-            known=None, emit=None, brief=None, text: str | None = None) -> bool:
+def present(widget_id: str, *, reason: str, src: str, action: str = "", known=None, emit=None) -> bool:
     """THE ONE DOOR a card goes through to appear (V2-723). True when the show was emitted.
 
     Three mechanical refusals, and each one is a measured incident rather than a policy:
@@ -156,112 +133,8 @@ def present(widget_id: str, *, reason: str, action: str = "", src: str = "flash"
             return _suppress("no se pudo leer la declaración del widget")
     if is_open(wid, known=known) and not is_minimized(wid):
         return _suppress("ya está abierta", already_open=True)
-    from nucleo.acts import canvas_turn
     from nucleo.acts import canvas
-    req = canvas_turn.request_of(brief, text)
-    req["card_closed"] = not is_open(wid, known=known)        # a lens brings a card only when it is closed
-    return canvas.apply("show", card, src=src, action=action, reason=why, emit=emit, request=req)
-
-
-def present_for_call(widget_id: str, action: str, *, brief=None, card: str = "", src: str = "flash",
-                     emit=None, known=None) -> bool:
-    """A card ACTION this turn is about to run (a repair pass, the catalogue card instead of a worker): does it
-    bring its card on screen? True when the show was emitted. The ONE rule every such path asks (V2-815).
-
-    Measured on a phone, 2026-10-26: «busca el programa que está en tu web», «retoma la búsqueda», «check hacker
-    news, locate my post» — the brief said `canvas = neither` every time, the arbiter would have vetoed the show,
-    and the browser card took the whole screen three times anyway, because the catalogue rung and the promise
-    repair presented every call as a `turn-order`. A search is work done BEHIND the screen; its findings reach
-    the sheet the errand owns (`task-owned`). The main tool path already worked this way — a write is not
-    presented — and only the repair rungs did not.
-
-    The card comes up when one of these is TRUE, never on habit:
-      · the action's output only exists on screen (`present.mount`: the player, the picture viewer);
-      · the action is a LENS (`data.read`) over a closed card — a view nobody can see is a silent nothing;
-      · the turn's verdict says `canvas = show` — he asked to see it.
-    Otherwise the call runs and the visibility flag stays where he left it; the refusal is emitted."""
-    wid = str(widget_id or "").split("::", 1)[0].strip().lower()
-    target = str(card or widget_id or "").strip()
-    if not wid or not target:
-        return False
-    from loguru import logger
-    try:
-        from widgets import effects as _fx
-        fx = _fx.of(wid, str(action or "").strip())
-        if _fx.PRESENT_MOUNT in fx:
-            return present(target, reason="producer-mount", action=action, src=src, known=known, emit=emit, brief=brief)
-        if _fx.DATA_READ in fx and not is_open(wid, known=known):
-            return present(target, reason="turn-order", action=action, src=src, known=known, emit=emit, brief=brief)
-    except Exception as e:  # noqa: BLE001 — an unreadable declaration is not a reason to cover the screen
-        logger.debug(f"present_for_call: declaration of {wid}:{action} unreadable — {e!r}")
-    try:
-        from nucleo.turn import brief as _tb
-        verb, info = _tb.read(brief, _tb.CANVAS_KEY, "")
-        if info is not None and str(verb or "") == "show":
-            return present(target, reason="turn-order", action=action, src=src, known=known, emit=emit, brief=brief)
-    except Exception as e:  # noqa: BLE001
-        logger.debug(f"present_for_call: canvas verdict unreadable — {e!r}")
-    _say(emit, "🚫 presentación suprimida", {
-        "id": wid, "src": src, "action": action, "reason": "turn-order", "cat": "widget",
-        "detail": "la acción corre detrás de la pantalla: el turno no pidió ver la app"})
-    return False
-
-
-def a_view_is_not_the_deliverable(widget_id: str, action: str, brief=None, declared: str = "") -> bool:
-    """Is this call a VIEW (a lens, `data.read`) standing in for an errand whose deliverable has its OWN box — a
-    document to read, pictures to look at — on a turn that did not ask to see the card? Then it is not the errand.
-
-    V2-820, measured: «¿podrías crear un widget que leyera mis mensajes enviados… y fuera componiendo un archivo que
-    describiera cómo escribo?» — the brief read `errand_surface = informe` (0.93) and `canvas` unsure; the catalogue
-    rung took `mensajeria:mail_folder {folder: sent}` instead of the worker, and because a lens over a closed card
-    is presented (`present_for_call`), his mail card opened. Talking ABOUT a card's content, or an errand that will
-    read it, is not an order to look at it. Read from the verdict and the action's declaration, never from words.
-    A sure `canvas = show` (he asked to see it) or a view of the deliverable's own box is never refused.
-
-    The deliverable is the verdict's surface when it is sure and, when it is not, the one the escalation itself
-    declares (`declared` — the `surface` the model wrote on its own `escalate_to_slowbrain`). Measured on the next
-    live turn (2026-10-27 11:23:54, T61): he answered «solo de correo… céntrate en el correo y en los mensajes
-    enviados»; the model escalated with `surface = informe` and a document `done_when`, the verdict's surface was
-    unsure (informe 0.52 → read 0.42), and with only the verdict to go by the same `mail_folder {sent}` stood in
-    for the errand again — «voy con el correo enviado…», and nothing ran."""
-    wid = str(widget_id or "").split("::", 1)[0].strip().lower()
-    if not wid or (brief is None and not str(declared or "").strip()):
-        return False
-    try:
-        from widgets import effects as _fx
-        if _fx.DATA_READ not in _fx.of(wid, str(action or "").strip()):
-            return False
-        from nucleo import surfaces as _sf
-        from nucleo.turn import brief as _tb
-        verb, info = _tb.read(brief, _tb.CANVAS_KEY, "") if brief is not None else ("", None)
-        if info is not None and str(verb or "") == "show":
-            return False
-        surface, s_info = (_tb.read(brief, _sf.SURFACE_KEY, "", min_confidence=0.7) if brief is not None
-                           else ("", None))
-        # the verdict when it is sure (today's reading, untouched); unsure, the escalation's own declaration
-        surface = _sf.normalize(surface if s_info is not None and surface else declared)
-        return bool(surface) and _sf.not_a_sheet(surface) and _sf.normalize(wid) != surface   # its own box is it
-    except Exception as e:  # noqa: BLE001 — unreadable: today's path
-        from loguru import logger
-        logger.debug(f"canvas_visibility: view check for {wid}:{action} skipped — {e!r}")
-        return False
-
-
-def unless_a_view(got, brief, declared: str = ""):
-    """`got` (a rung's or a pass's call), or None when it is a view that is not the deliverable — said on the timeline:
-    there was nothing to run on the card (V2-820). Never raises."""
-    try:
-        if not got or not a_view_is_not_the_deliverable(got.get("widget_id"), got.get("action"), brief,
-                                                         declared=declared):
-            return got
-        from voice.observer import emit
-        emit("brain", "🔁 la segunda pasada no dio llamada", text=f"{got.get('widget_id')}: a view is not the errand",
-             role="system", extra={"cat": "flash", "widget": got.get("widget_id"), "action": got.get("action"),
-                                   "why": "view_not_deliverable"})
-    except Exception as e:  # noqa: BLE001
-        from loguru import logger
-        logger.debug(f"canvas_visibility: unless_a_view failed — {e!r}")
-    return None
+    return canvas.apply("show", card, src=src, action=action, reason=why, emit=emit)
 
 
 def _say(emit, label: str, extra: dict) -> None:

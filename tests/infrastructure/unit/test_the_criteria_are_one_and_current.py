@@ -98,16 +98,14 @@ def test_the_diary_declares_itself_history():
     assert "Este fichero es HISTORIA" in head and "criteria.md" in head
 
 
-#: The reading test of V2-776 J: ten questions an agent asks before touching the engine, each answered by ONE
-#: criterion. If the criterion vanishes, so does the answer.
+#: The reading test of V2-776 J: the questions an agent asks before touching the engine, each answered by ONE
+#: criterion. If the criterion vanishes, so does the answer. (V1, K2 and M1 answered three more about the old turn's
+#: ack, verdict backstops and rules prompt; they went with it, INI-078.)
 READING_TEST = {
-    "what do I say after a short order?": "V1",
     "when do I ask before acting?": "C1",
     "who decides which app an order goes to?": "K1",
-    "may a backstop overrule a verdict?": "K2",
     "does a delete on the agenda ask?": "C3",
     "what happens to a send the verdict does not back?": "C5",
-    "which prompts carry a spoken rule?": "M1",
     "is a provider error ours or theirs?": "R1",
     "how do I run the whole suite?": "W5",
     "is this sentence a rule or a mechanism?": "W1",

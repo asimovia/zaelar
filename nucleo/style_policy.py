@@ -31,7 +31,6 @@ from loguru import logger
 _FILLER_MODES = ("off", "smart", "on")
 
 
-
 def _overrides_path() -> Path:
     from nucleo import workspace as _ws
     return _ws.root() / "config" / "style.json"
@@ -70,14 +69,6 @@ def policy() -> dict:
     return {k: vals.get(k) for k in _rdef.style_keys()}
 
 
-def set_pref(key: str, value, text: str = "") -> dict:
-    """His row for one style knob at the `voice` scope — effective on the very next turn."""
-    import rules
-    _migrate()
-    rules.add("voice", "pref", str(key), value, text=text)
-    return {key: value}
-
-
 def confirm_short_actions() -> bool:
     """May a VOICE mouth speak a bare ack («Hecho.») after a short order ran with nothing else to say?"""
     return bool(policy().get("confirm_short_actions", False))
@@ -89,36 +80,11 @@ def still_working_lines() -> bool:
     return bool(policy().get("still_working_lines", True))
 
 
-def filler_mode() -> str:
-    m = str(policy().get("fillers", "smart")).lower()
-    return m if m in _FILLER_MODES else "smart"
-
-
 #: The kinds «smart» never covers: an ORDER (V2-633, the operator's literal complaint about «one second» before a
 #: song) and a SOCIAL turn (A7, 2026-11-12: a complaint, a comment or a greeting has no work behind it to cover,
 #: and the social pool's openers read as the start of an excuse when they answer a complaint — measured on his
 #: typed complaint of 2026-11-12, answered by a filler bubble of its own).
 _SMART_SILENT = frozenset({"action", "social"})
-
-
-def filler_allowed(kind: str = "neutral") -> bool:
-    """May the lead-in filler sound on a turn of this `filler_audio.filler_kind`? "smart" (genesis default)
-    keeps it for thinking turns (questions, requests that take real work) and drops it on ACTION and SOCIAL
-    turns (`_SMART_SILENT`)."""
-    m = filler_mode()
-    if m == "off":
-        return False
-    if m == "on":
-        return True
-    return kind not in _SMART_SILENT
-
-
-def retract(key: str) -> dict:
-    """Remove his row for one knob — the genesis default is back. Returns what was released."""
-    import rules
-    _migrate()
-    gone = rules.clear("voice", key)
-    return {key: gone[-1]["value"]} if gone else {}
 
 
 def max_sentences() -> int:
@@ -132,44 +98,6 @@ def max_sentences() -> int:
 def one_action_per_turn() -> bool:
     """Si ejecuta UNA acción por turno o puede encadenar varias (V2-713 R5)."""
     return bool(policy().get("one_action_per_turn", True))
-
-
-def shape_line() -> str:
-    """La FORMA del turno, compuesta desde la política en vez de escrita en el prompt (V2-713 R5).
-
-    Dos frases del bloque `ops` eran preferencias con forma de receta: «Respondes SIEMPRE al instante en 1-2
-    frases» y «UNA ACCIÓN por turno». `principles.md` nombra la clase —carril sobre el JUICIO— y desde V2-633
-    hay dónde ponerlas, con el operador cambiándolas al decirlo en vez de con un despliegue.
-
-    Se compone, no se enumera: si él sube el límite a cinco frases, la línea lo dice; si quita el límite, la
-    mitad de la frase desaparece en vez de contradecir a la política.
-    """
-    partes = []
-    n = max_sentences()
-    if n:
-        # El plural entero, no solo el sustantivo: «en 1 frase habladas» se lee como una plantilla mal
-        # rellenada, y es de las costuras que hacen que el operador deje de creerse lo que lee.
-        _pl = "s" if n != 1 else ""
-        partes.append(f"Respondes al instante en {n} frase{_pl} hablada{_pl} como mucho")
-    if one_action_per_turn():
-        partes.append("UNA ACCIÓN por turno")
-    if not partes:
-        return ""
-    return (" · ".join(partes) + ". «Una» es de ACCIONES, no de RESPUESTAS: si en la misma frase te "
-            "preguntan DOS cosas, las contestas las dos en ese turno.") if one_action_per_turn() \
-        else (" · ".join(partes) + ".")
-
-
-def prompt_line() -> str:
-    """One prompt line so the MODEL's own mouth matches the engine's: under silent-orders it must not say
-    «Hecho.» itself (the backstops are gated, but the model's text is its own)."""
-    if confirm_short_actions():
-        return ""
-    return ("ÓRDENES CORTAS EN SILENCIO: cuando ejecutas una orden directa con una tool (pausa, reproduce, "
-            "volumen, abrir/cerrar un widget, siguiente canción…), NO digas nada — ni «hecho» ni «un "
-            "segundo»: el efecto visible es la respuesta. Habla solo si algo falló, falta un dato, o el "
-            "encargo es largo (di brevemente qué vas a hacer). Esta es una regla base; una regla del "
-            "OPERADOR más específica manda sobre ella.")
 
 
 def _reset_for_tests() -> None:

@@ -250,7 +250,7 @@ class HostTools:
                 return await asyncio.to_thread(acts_memory.run, ACTS[name]["op"], args)
             if ACTS[name]["door"] == "life":
                 from nucleo.conversation_host import acts_life
-                return await asyncio.to_thread(acts_life.run, ACTS[name]["op"], args)
+                return await asyncio.to_thread(acts_life.run, ACTS[name]["op"], args, effect_id)
             if ACTS[name]["door"] == "self":
                 from nucleo.conversation_host import acts_self
                 return await asyncio.to_thread(acts_self.run, ACTS[name]["op"], args)

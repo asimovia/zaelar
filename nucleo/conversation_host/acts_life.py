@@ -69,11 +69,11 @@ def _alias(args: dict) -> ToolResult:
         k: v for k, v in res.items() if k != "ok" and isinstance(v, (str, int, bool))}})
 
 
-def _images(args: dict) -> ToolResult:
+def _images(args: dict, src: str = "") -> ToolResult:
     import asyncio
 
     from nucleo.acts import images as image_turn
-    req = image_turn.request_from([{"name": "show_images", "args": args}])
+    req = image_turn.request_from([{"name": "show_images", "args": args}]) | {"src": src}
     if not req["query"]:
         return ToolResult("failed", {"reason": "no_query"})
     parte, line = asyncio.run(image_turn.voice_turn(req, silent=True))
@@ -84,8 +84,11 @@ def _images(args: dict) -> ToolResult:
 DOORS = {f.__name__.lstrip("_"): f for f in (_build, _delete, _restore, _alias, _images)}   # each door by its op
 
 
-def run(op: str, args: dict) -> ToolResult:
+def run(op: str, args: dict, effect_id: str | None = None) -> ToolResult:
     door = DOORS.get(op)
     if door is None:
         return ToolResult("rejected", {"reason": "unknown_door", "op": op})
-    return door(args if isinstance(args, dict) else {})
+    args = args if isinstance(args, dict) else {}
+    if door is _images:                          # it mounts the viewer: signed with the act's reservation
+        return _images(args, src=f"turn:{effect_id or 'show_images'}")
+    return door(args)

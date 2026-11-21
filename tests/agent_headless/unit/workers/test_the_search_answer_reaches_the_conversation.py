@@ -92,31 +92,6 @@ def test_lo_que_devuelve_la_busqueda_llega_a_la_conversacion(sesion):
     assert "Philips 27E1N1800A" in notas[0] and "159,00 €" in notas[0]
 
 
-def test_va_por_el_camino_que_SI_llega(sesion, monkeypatch):
-    """The lead is shown BESIDE its task in the background-task block — with the task in front of it, which is
-    what lets the turn judge whether the answer is useful, and only there."""
-    from nucleo import dispatch
-    from nucleo.turn.prompt import live_tasks
-    sesion._maybe_hand_web(_web(RESPUESTA))
-    monkeypatch.setattr(dispatch, "pending_summaries", lambda: [
-        {"id": "t1", "request": "el monitor más barato que sirva para trabajar", "secs": 30}])
-    block = " ".join(live_tasks.pending_task_lines())
-    assert "Philips 27E1N1800A" in block and "el monitor más barato" in block
-
-
-def test_el_JUICIO_se_queda_en_el_cerebro(sesion, monkeypatch):
-    """It is not ordered announced: the block labels it as a LEAD — a page is not a candidate — and leaves the
-    judgment to the turn that is actually about this errand."""
-    from nucleo import dispatch
-    from nucleo.turn.prompt import live_tasks
-    sesion._maybe_hand_web(_web(RESPUESTA))
-    monkeypatch.setattr(dispatch, "pending_summaries", lambda: [
-        {"id": "t1", "request": "el monitor más barato", "secs": 30}])
-    block = " ".join(live_tasks.pending_task_lines())
-    assert "NO un candidato" in block
-    assert "NÓMBRALO EN ESTE TURNO" not in block
-
-
 def test_un_FALLO_de_la_tool_no_es_un_hallazgo(sesion):
     """Sensitivity. An `is_error` has its own path (the panel chip, V2-211’s permission gate);
     pushing it as a finding would put a tool error into the conversation as though it were a result."""
@@ -214,7 +189,6 @@ def test_el_dispatcher_lo_olvida_de_verdad():
     """WIRING GUARD: without the call in `_run_session`, the dictionary grows for the entire lifetime of the
     process and a repeated search in ANOTHER task would be silently swallowed. This is the lesson of V2-199 — a test
     that does not traverse the real path only proves that the code compiles."""
-    import inspect
 
     from nucleo import dispatch
     src = _vts.getsource(dispatch._run_session)

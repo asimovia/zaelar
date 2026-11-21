@@ -13,7 +13,6 @@ from __future__ import annotations
 import pytest
 
 from nucleo import done_ops
-from nucleo.flash import card_receipt
 from nucleo.acts import bulk_close
 from widgets import screen_doc
 
@@ -22,9 +21,6 @@ from widgets import screen_doc
 def _clean(monkeypatch):
     done_ops.reset()
     bulk_close.reset()
-    from nucleo.acts import canvas_turn
-    monkeypatch.setattr(canvas_turn, "request_of", lambda brief=None, text=None, **k: {
-        "text": text or "", "turn_credit": True, "last_reply": "", "verdict": {"canvas": ("close", 0.9)}})
     yield
     done_ops.reset()
     bulk_close.reset()
@@ -55,7 +51,7 @@ def test_an_unknown_screen_has_no_panel(monkeypatch):
 
 def test_close_all_over_settings_says_it_closed_settings(monkeypatch, es):
     _doc(monkeypatch, "config")
-    bulk_close.close_all(lambda *a, **k: None, src="flash", text="cierra todo", open_ids=[])
+    bulk_close.close_all(lambda *a, **k: None, src="turn:e_1", text="cierra todo", open_ids=[])
     line = bulk_close.take_receipt()
     assert line.startswith("He cerrado") and "Ajustes" in line and line.endswith(es.receipt_left_none), line
 
@@ -63,15 +59,9 @@ def test_close_all_over_settings_says_it_closed_settings(monkeypatch, es):
 def test_a_spared_card_leaves_settings_on_screen_and_the_receipt_says_so(monkeypatch, es):
     _doc(monkeypatch, "config")
     done_ops.note("documento", "show", {})
-    bulk_close.close_all(lambda *a, **k: None, src="flash", text="cierra lo que no uses", open_ids=["documento", "navegador"])
+    bulk_close.close_all(lambda *a, **k: None, src="turn:e_1", text="cierra lo que no uses", open_ids=["documento", "navegador"])
     line = bulk_close.take_receipt()
     assert "Ajustes" in line.split("He cerrado", 1)[1].split(".", 1)[1], line   # in «still on screen», not «closed»
-
-
-def test_a_card_closed_under_settings_never_says_nothing_is_left(monkeypatch, es):
-    _doc(monkeypatch, "config")
-    lines = card_receipt.lines_for("Vale.", [("musica", card_receipt.CLOSE, "")], open_ids=["musica"], lang=es)
-    assert lines and "Ajustes" in lines[-1] and es.receipt_left_none not in lines, lines
 
 
 def test_disarmed_the_receipt_lies_again(monkeypatch, es):
@@ -80,9 +70,9 @@ def test_disarmed_the_receipt_lies_again(monkeypatch, es):
     real = bulk_close._panel_over
     bulk_close._panel_over = lambda: ""
     try:
-        bulk_close.close_all(lambda *a, **k: None, src="flash", text="cierra todo", open_ids=[])
+        bulk_close.close_all(lambda *a, **k: None, src="turn:e_1", text="cierra todo", open_ids=[])
         assert bulk_close.take_receipt() == es.receipt_left_none, "the disarm did not land"
     finally:
         bulk_close._panel_over = real
-    bulk_close.close_all(lambda *a, **k: None, src="flash", text="cierra todo", open_ids=[])
+    bulk_close.close_all(lambda *a, **k: None, src="turn:e_1", text="cierra todo", open_ids=[])
     assert "Ajustes" in bulk_close.take_receipt()

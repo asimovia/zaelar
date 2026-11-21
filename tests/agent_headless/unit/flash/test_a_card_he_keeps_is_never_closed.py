@@ -13,7 +13,6 @@ from pathlib import Path
 
 import pytest
 
-from nucleo.acts import direct_action as DA
 
 ENGINE = Path(__file__).resolve().parents[4]
 THREE = ["youtube", "musica", "agenda"]
@@ -54,13 +53,6 @@ def spanish(monkeypatch):
     monkeypatch.setenv("ZAELAR_LANGUAGE", "es")
 
 
-def _gesture(brief, text: str) -> list:
-    tags = []
-    DA.complete_canvas(brief, tag_emit=lambda a, x: tags.append((a, x.get("id"))), emit=lambda *a, **k: None,
-                       operator_text=text)
-    return tags
-
-
 @pytest.mark.parametrize("text, kept, close_words_keep", [
     ("ok cool. now get rid of the video too, just keep the calendar up", "the calendar", "the video"),
     ("Quita eso y deja la música. Y ya de paso, ¿qué tengo el jueves?", "la música", "eso"),
@@ -81,33 +73,3 @@ def test_an_order_with_no_keep_clause_keeps_all_its_words(text):
     from widgets import naming
     assert naming.split_kept(text) == (text, "")
 
-
-def test_keep_the_calendar_up_closes_the_video_not_the_calendar(screen):
-    screen["open"] = ["agenda", "youtube"]
-    b = _brief("youtube:close", 1.0, open_ids=["agenda", "youtube"])
-    assert _gesture(b, "ok cool. now get rid of the video too, just keep the calendar up") == [("close", "youtube")]
-
-
-def test_a_verdict_on_the_kept_card_never_closes_it(screen):
-    screen["open"] = ["agenda", "youtube"]
-    b = _brief("agenda:close", 0.6, open_ids=["agenda", "youtube"])
-    assert ("close", "agenda") not in _gesture(b, "get rid of the video too, just keep the calendar up")
-
-
-def test_close_one_and_keep_the_other_closes_only_the_one(screen):
-    b = _brief("youtube:close", 0.6)
-    assert _gesture(b, "close the calendar and keep the video") == [("close", "agenda")]
-
-
-def test_the_other_close_sites_drop_the_kept_card(screen):
-    from widgets import instances
-    from voice.engine.llm.providers import widget_intent
-    from nucleo.acts import show_target
-    text = "close the music, keep the calendar up"
-    assert instances.also_named(text, THREE) == ["musica"]
-    assert instances.kept_named(text, THREE) == ["agenda"]
-    assert widget_intent.with_also_named(["agenda"], text) == ["musica"]
-    tags = []
-    show_target.close_dispatch({"widget_id": "musica"}, lambda a, x: tags.append(x["id"]), lambda *a, **k: None,
-                               text=text)
-    assert tags == ["musica"]

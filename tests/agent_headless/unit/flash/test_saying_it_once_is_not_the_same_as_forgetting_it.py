@@ -38,12 +38,6 @@ def _clean():
 GOAL = "Busca hoteles de 4 estrellas en Sevilla"
 
 
-def _state(monkeypatch, rows):
-    from nucleo.turn.prompt import live_state as P
-    monkeypatch.setattr(d, "recently_ended_sessions", lambda: rows, raising=False)
-    return P.live_state()
-
-
 FAILED = [{"id": "1", "goal": GOAL, "status": "error", "ok": False, "summary": "", "ago_s": 5, "told": 0}]
 
 

@@ -42,44 +42,6 @@ def _owed(tid: str) -> list:
     return [e for e in spec.open_specs() if e.get("trace") == tid and (e.get("done_when") or {}).get("canvas")]
 
 
-@pytest.mark.parametrize("text", ["cierra youtube", "close youtube"])
-def test_a_close_is_owed_to_the_screen(screen, text):
-    tid = trace.begin(text)
-    with trace.scope(tid):
-        assert show_target.close_dispatch({"widget_id": "youtube", "mode": "close"}, lambda *_a, **_k: True,
-                                          lambda *a, **k: None, text=text) == "youtube"
-    owed = _owed(tid)
-    assert owed and owed[0]["done_when"] == {"canvas": "youtube", "expect": "closed"}, owed
-    assert verify.check(owed[0]["done_when"]) is False, "the screen still shows the card: unmet"
-    screen.update(open_widgets=[])
-    assert verify.check(owed[0]["done_when"]) is True
-
-
-@pytest.mark.parametrize("text", ["apártalo un momento", "put it away for now"])
-def test_a_minimise_is_owed_to_the_screen(screen, text):
-    tid = trace.begin(text)
-    with trace.scope(tid):
-        show_target.close_dispatch({"widget_id": "youtube", "mode": "minimize"}, lambda *_a, **_k: True,
-                                   lambda *a, **k: None, text=text)
-    owed = _owed(tid)
-    assert owed and owed[0]["done_when"]["expect"] == "minimized"
-    screen.update(minimized_widgets=["youtube"])
-    assert verify.check(owed[0]["done_when"]) is True
-
-
-@pytest.mark.parametrize("text", ["ponlo en pantalla completa", "make it full screen"])
-def test_full_screen_is_owed_to_the_screen(screen, text):
-    tid = trace.begin(text)
-    with trace.scope(tid):
-        show_target.fullscreen_dispatch({"widget_id": "youtube", "mode": "on"}, text, lambda *_a, **_k: True,
-                                        lambda *a, **k: None, {})
-    owed = _owed(tid)
-    assert owed and owed[0]["done_when"] == {"canvas": "youtube", "expect": "maximized"}
-    assert verify.check(owed[0]["done_when"]) is False
-    screen.update(maximized_widget="youtube")
-    assert verify.check(owed[0]["done_when"]) is True
-
-
 def test_youtubes_own_close_declares_the_player_emptied_never_the_card_closed():
     close = json.loads((_ROOT / "widgets/youtube/manifest.json").read_text(encoding="utf-8"))["actions"]["close"]
     assert close["done_when"] == {"widget": "youtube", "field": "videoId", "expect": "absent"}

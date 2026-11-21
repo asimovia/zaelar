@@ -16,7 +16,6 @@ from pathlib import Path
 
 import pytest
 
-from nucleo.flash import smalltalk
 
 from nucleo.self import presence
 from voice.engine.core import langs
@@ -34,19 +33,6 @@ def en():
     return langs.smalltalk_book("en")
 
 
-# ── the three measured sentences ────────────────────────────────────────────────────────────────────────
-def test_the_operators_own_greeting_never_reaches_a_model(en):
-    """His literal first sentence of that session, two phrases glued by «and» with no punctuation."""
-    assert smalltalk.classify("Hello and good morning. How are you?", en) == "how_are_you"
-
-
-def test_the_answered_intent_is_the_one_that_ASKS(es):
-    """«Hola, ¿qué tal?» is a question with a greeting in front of it. Answering the greeting would leave
-    the question hanging, which is the whole reason the LAST hit wins."""
-    assert smalltalk.classify("Hola, ¿qué tal?", es) == "how_are_you"
-    assert smalltalk.classify("Hola.", es) == "greeting"
-
-
 def test_a_knock_with_an_address_in_the_middle_is_still_a_knock(en, monkeypatch, tmp_path):
     """«Hey, mate. You there?» — the word standing between this sentence and the presence lane was «mate»."""
     from memory import db as memdb
@@ -62,59 +48,6 @@ def test_a_knock_with_an_address_in_the_middle_is_still_a_knock(en, monkeypatch,
     assert not presence.is_presence_check("mate, open the agenda", "", voc)
 
 
-# ── the refusals, which are the expensive direction ─────────────────────────────────────────────────────
-@pytest.mark.parametrize("phrase", [
-    "abre la agenda",
-    "Hola, ¿me abres la agenda?",          # a greeting with cargo is a real turn
-    "¿Qué tal el tiempo en Madrid?",       # «qué tal» inside a real question
-    "gracias por abrir la agenda",
-    "adiós a todos los widgets abiertos",
-    "buenos días, ¿qué tengo hoy?",
-    "hola qué tal el partido",
-    "",
-    "   ",
-])
-def test_a_sentence_with_cargo_is_never_small_talk(es, phrase):
-    assert smalltalk.classify(phrase, es) == ""
-
-
-def test_one_unknown_piece_disqualifies_the_whole_utterance(es):
-    """The rule is decomposition, not containment: every segment must be phatic."""
-    assert smalltalk.classify("Hola. Pon música.", es) == ""
-
-
-def test_an_utterance_longer_than_small_talk_is_refused(es):
-    assert smalltalk.classify("hola " * 12, es) == ""
-
-
-# ── the bounce gate ─────────────────────────────────────────────────────────────────────────────────────
-def test_bien_only_means_im_fine_right_after_we_asked(es):
-    """«bien» on its own is usually an ANSWER to something we asked. It may only be read as small talk while
-    our own previous reply handed the question back — V2-665's defect with the roles reversed."""
-    assert smalltalk.classify("bien", es) == ""
-    assert smalltalk.classify("bien", es, bounce_pending=True) == "im_fine"
-
-
-def test_the_bounce_flag_comes_from_the_reply_we_are_about_to_give(es):
-    assert smalltalk.bounces("how_are_you", es) is True
-    assert smalltalk.bounces("greeting", es) is False
-    assert smalltalk.bounces("thanks", es) is False
-
-
-# ── the pools ───────────────────────────────────────────────────────────────────────────────────────────
-def test_the_same_greeting_twice_does_not_give_the_same_sentence(es):
-    """The operator asked for «una especie de diálogo heurístico, un poco random», not a canned line."""
-    first = smalltalk.reply_for("greeting", es)
-    for _ in range(20):
-        assert smalltalk.reply_for("greeting", es, avoid=first) != first
-
-
-def test_an_empty_pool_answers_NOTHING_rather_than_answering_wrong():
-    book = {"intents": {"greeting": {"cues": ["hola"], "replies": []}}}
-    assert smalltalk.classify("hola", book) == "greeting"
-    assert smalltalk.reply_for("greeting", book) == ""
-
-
 def test_every_how_are_you_reply_hands_the_question_back():
     """The intent is declared `bounces`, and the next turn's «bien» is gated on that. A pool where some
     replies ask back and some do not makes the gate fire after a reply that asked nothing."""
@@ -122,36 +55,6 @@ def test_every_how_are_you_reply_hands_the_question_back():
         book = langs.smalltalk_book(code)
         for reply in book["intents"]["how_are_you"]["replies"]:
             assert "?" in reply, f"{code}: {reply!r} does not hand the question back"
-
-
-def test_a_cue_belongs_to_one_intent_unless_a_gate_separates_them():
-    """Two ungated intents sharing a cue is an ambiguity nothing can resolve — the first one always wins and
-    the other is dead. Sharing IS allowed when exactly one of them is gated (Spanish «todo bien»)."""
-    for code in ("es", "en"):
-        book = langs.smalltalk_book(code)
-        seen: dict[str, list[str]] = {}
-        for name, spec in book["intents"].items():
-            for cue in spec["cues"]:
-                seen.setdefault(smalltalk._norm(cue), []).append(name)
-        for cue, owners in seen.items():
-            if len(owners) > 1:
-                gated = [o for o in owners if book["intents"][o].get("after_bounce")]
-                assert len(owners) - len(gated) <= 1, f"{code}: {cue!r} shared by {owners}"
-
-
-# ── language agnosticism ────────────────────────────────────────────────────────────────────────────────
-def test_a_language_with_no_phrasebook_gets_no_canned_lines():
-    """`spec()` answers with the ACTIVE language for anything it does not know, which would hand a German
-    operator the ENGLISH table — and «hello» would then be answered in English, deterministically."""
-    assert langs.smalltalk_book("de") == {}
-    assert smalltalk.classify("Hallo", {}) == ""
-
-
-def test_normalization_does_not_delete_a_non_latin_script():
-    """An `[a-z]` allowlist — the first thing one writes here — empties a Chinese, Russian or Arabic
-    utterance down to nothing, which would make this module silently unusable in every language but two."""
-    for text in ("你好", "Привет", "مرحبا", "こんにちは"):
-        assert smalltalk._norm(text), f"{text!r} normalized to nothing"
 
 
 def test_a_generated_pack_is_the_book_of_its_language(monkeypatch):
@@ -200,29 +103,3 @@ def _code(path: Path) -> str:
         out.append(tok.string)
         prev_end, prev_type = tok.end, tok.type
     return " ".join(out)
-
-
-def test_the_voice_turn_answers_a_set_phrase():
-    """The voice turn — which the typed channel runs too — calls the phrasebook lane."""
-    voice = _code(ENGINE / "voice/engine/llm/providers/nucleo.py")
-    assert "small_talk" in voice, "the voice provider does not call the phrasebook lane"
-
-
-def test_the_lane_declines_on_the_first_turn_and_while_a_worker_is_asking():
-    lane = _code(ENGINE / "voice/engine/llm/providers/fast_lane.py")
-    m = re.search(r"async def small_talk\b.*?(?=\ndef |\nasync def |\Z)", lane, re.S)
-    assert m, "small_talk not found"
-    body = m.group(0)
-    assert "first_turn or ask_waiting" in body, (
-        "the two gates must both be checked: the kickoff is not a conversation yet, and a «gracias» while a "
-        "worker's question is pending may be the ANSWER to it")
-
-
-def test_the_exchange_lands_in_the_window_and_the_conv_buffer():
-    """V2-605's canned-line lesson: a phrase of ours that skips the history erases its own story, and the
-    next model turn answers a greeting it has no record of receiving."""
-    lane = _code(ENGINE / "voice/engine/llm/providers/fast_lane.py")
-    m = re.search(r"async def small_talk\b.*?(?=\ndef |\nasync def |\Z)", lane, re.S)
-    body = m.group(0)
-    assert "push_user" in body and "_window . append" in body.replace("_window.append", "_window . append")
-    assert "kind = \"conv\"" in body.replace('kind="conv"', 'kind = "conv"')

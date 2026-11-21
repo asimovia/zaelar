@@ -10,7 +10,6 @@ whoever answered first (his voice, delivered to the row by the switchboard, or t
 from __future__ import annotations
 
 import asyncio
-import inspect
 
 import pytest
 
@@ -58,20 +57,6 @@ def _ask(world, lang: str) -> tuple[str, str]:
 
 
 @pytest.mark.parametrize("lang", ["es", "en"])
-def test_the_question_waits_on_the_row_with_its_two_declared_answers_and_nothing_in_memory(world, lang):
-    from nucleo.cli import worker_api
-    from nucleo.turn.prompt import live_tasks
-    from widgets import confirm as wc
-    row, ask_id = _ask(world, lang)
-    (a,) = [a for a in worker_api.open_asks() if a["ask_id"] == ask_id]
-    assert a["task_id"] == row and a["candidates"] == ca.yes_no() and len(a["candidates"]) == 2
-    assert wc.pending() == {}, "the question still waits in this process's memory"
-    assert any(TURNS[lang][1][:20] in ln for ln in live_tasks.waiting_lines()), "the next turn is not told about it"
-    kinds = [(k, e.get("ask_id")) for k, _l, e in world["events"] if k in ("task", "ask")]
-    assert ("task", ask_id) in kinds and ("ask", ask_id) in kinds
-
-
-@pytest.mark.parametrize("lang", ["es", "en"])
 def test_his_yes_runs_the_act_once_on_that_row(world, lang):
     from nucleo.cli import worker_api
     from nucleo.circuit import ledger
@@ -101,9 +86,3 @@ def test_the_cards_button_answers_the_same_question(world):
     again: JSONResponse = asyncio.run(server_api.confirm_widget("agenda", {"ok": True}))
     assert again.status_code == 409 and len(world["dispatched"]) == 1
 
-
-def test_the_turn_asks_on_the_row_first_and_keeps_the_old_gate_only_when_no_row_opens():
-    from nucleo.flash import tool_executor_widget as txw
-    src = inspect.getsource(txw)
-    assert src.index("_ca.ask_consent(") < src.index('_wconfirm.request("data", d["wid"]')
-    assert "if not row:" in src

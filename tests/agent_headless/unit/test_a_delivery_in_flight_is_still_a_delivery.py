@@ -25,8 +25,6 @@ from __future__ import annotations
 import pytest
 
 from nucleo import dispatch
-from nucleo.turn.prompt import live_tasks
-from nucleo.turn.prompt import live_state as P
 
 # V2-878 §2 — the running-errands block is FACTS ONLY now. The tests here that asserted the wording of its imperative
 # paragraph (an order to tell, to deny, not to repeat) went with it; what each face reports stays tested as a fact.
@@ -55,20 +53,6 @@ def test_y_ese_era_el_agujero_el_recorte_viejo_se_comia_justo_esa_parte():
     """Sensitivity test for the one above: with the 60-character cut, the sentence died at “with the”."""
     assert _NOTA[:60] == "Comparativa entregada en pantalla (hoja de resultados con lo"
     assert "finalistas" not in _NOTA[:60]
-
-
-def test_una_nota_larga_se_corta_por_PALABRA_y_lo_dice():
-    largo = "Comparativa entregada en pantalla " + "con muchisimos detalles adicionales " * 6
-    out = live_tasks._short_note(largo)
-    assert out.endswith("…"), "un recorte que acaba limpio se lee como una frase entera"
-    assert not out.rstrip("…").endswith(" ")
-    # It does not split a word in half: the last segment before the ellipsis is a word from the original.
-    assert out.rstrip("…").split()[-1] in largo.split()
-
-
-def test_una_nota_corta_no_se_toca():
-    assert live_tasks._short_note("Comparativa entregada") == "Comparativa entregada"
-    assert not live_tasks._short_note("Comparativa entregada").endswith("…")
 
 
 # ── 3. THIRD face: the sheet has 35 candidates and this block said “queued” ───────────────────────────
@@ -141,3 +125,4 @@ def _con_candidatos(kept: int = 35):
 # summarized the other as “it is making progress.” The branch goes INSIDE the same imperative as the one above,
 # not in a standalone sentence: two orders in a paragraph come down to a coin toss.
 _NOTA_FALLO = "coches.net caído tras portada (página de error)"
+

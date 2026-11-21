@@ -93,25 +93,6 @@ def gesture(op: str, wid: str = "", **facts) -> None:
         del _GESTURES[:-_MAX]
 
 
-def his_last(within_s: float = 120.0, exclude=frozenset()) -> dict:
-    """The newest card act of a turn HE originated (its recorded trace): a named op, a show carrying an act, or any
-    data change his turn caused — never an errand's own write; {} when none. A bare change takes the name of an op of
-    the same turn on that card when one exists; `exclude` = cards (by id or instance) that are not his. The window is
-    the redo question's (V2-831 T-19)."""
-    cut = time.time() - float(within_s)
-    mine = sorted((d for d in (*_DONE, *_TOUCHED, *_GESTURES) if float(d.get("at") or 0) >= cut and _trace.his_turn_at(d.get("trace"))
-                   and not str(d.get("span") or "").startswith(("worker:", "web:"))
-                   and str(d.get("wid")).split("::")[-1] not in exclude), key=lambda d: float(d["at"]))
-    last = mine[-1] if mine else {}
-    return next((d for d in reversed(mine) if d.get("action") and d["trace"] == last.get("trace")
-                 and d["wid"].split("::")[0] == last["wid"].split("::")[0]), last)
-
-
-def destructive_since(within_s: float = WINDOW_S) -> list[dict]:
-    """Only the ones that took something away — the class the operator's question is always about."""
-    return [d for d in recent(within_s, limit=_MAX) if d.get("destructive")]
-
-
 def reset() -> None:
     """Clear the ring. For tests, and for a session boundary that wants a clean slate."""
     _DONE.clear()

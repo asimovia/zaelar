@@ -109,7 +109,6 @@ def test_categories_it_must_NOT_claim():
         assert site_catalog.category_of(text, "es") is None, text
 
 
-
 def test_the_generic_worker_also_gets_the_trusted_site_catalog():
     from tests import worker_briefs
     p = worker_briefs.generic("búscame un monitor barato de segunda mano")
@@ -152,11 +151,3 @@ def test_the_web_prompt_is_unchanged_when_no_category_matches():
 # TWELVE existed only in the second. Measured in `cancel-subscription-before-charge`: «Cancel my Netflix
 # subscription» → `generic`, meaning a worker WITHOUT a browser — and without a browser the task cannot even
 # reach the login wall, so the system is left without the only honest answer it had («I can't access your account»).
-
-def test_a_pure_login_is_still_a_login_not_a_task():
-    # WHETHER he asks to sign in is the brief's `login_only` verdict (V2-857 phase 8, 2.1620); the SITE of that login
-    # still comes from his words, and a login inside a task is never opened as a bare login.
-    from nucleo.flash import web_auth
-    for req, site in (("conéctame a Wallapop", "wallapop.com"), ("inicia sesión en mi Netflix", "netflix.com"),
-                      ("vincula mi LinkedIn", "linkedin.com")):
-        assert web_auth.fallback_site(req) == site, req

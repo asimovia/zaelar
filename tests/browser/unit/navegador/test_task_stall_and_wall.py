@@ -114,11 +114,6 @@ def test_a_task_that_just_started_is_not_stalled():
     assert tasks.active_progress()[0]["stalled_s"] < 5
 
 
-def _live() -> str:
-    from nucleo.turn.prompt import live_state as _p
-    return _p.live_state()
-
-
 # ── the wall is SEEN on screen ─────────────────────────────────────────────────────────────────────────────
 #
 # Operator request (2026-08-19): “since we have a graphical frontend… we could show the browser image

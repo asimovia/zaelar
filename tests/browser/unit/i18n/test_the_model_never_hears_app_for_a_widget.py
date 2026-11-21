@@ -29,23 +29,19 @@ APP = re.compile(r"\b(apps?|Apps?|APPS?|aplicaci[oó]n(es)?)\b")
 
 #: The model-facing Python modules (prompts, tool descriptions, verdict questions, digests, results it reads).
 MODULES = (
-    "nucleo/acts/card_pass.py", "nucleo/acts/repair_of_a_view.py", "nucleo/acts/search.py",
     "nucleo/agentes/code.py", "nucleo/circuit/__init__.py", "nucleo/circuit/compose.py", "nucleo/circuit/spec.py",
     "nucleo/circuit/spec_declares.py", "nucleo/circuit/verdict.py", "nucleo/circuit/verify.py",
-    "nucleo/cli/report.py", "nucleo/cli/worker_api.py", "nucleo/cli/worker_api_exec.py", "nucleo/cli/worker_policy.py",
-    "nucleo/dispatch/confirm.py", "nucleo/flash/build_decision.py", "nucleo/acts/bulk_close.py",
-    "nucleo/flash/capability_gap.py", "nucleo/flash/compose_rung.py", "nucleo/flash/escalation_guard.py",
-    "nucleo/flash/router_catalog.py", "nucleo/acts/show_target.py", "nucleo/flash/unclear_turn.py",
-    "nucleo/flash/widget_read_tool.py", "nucleo/request/kind.py", "nucleo/request/stop.py",
-    "nucleo/turn/brief_screen.py", "nucleo/turn/prompt/operating.py", "nucleo/turn/prompt/packs/introduction_block.py",
-    "nucleo/workers/prompts/context.py", "nucleo/workers/prompts/playbook.py", "nucleo/workers/prompts/research.py",
+    "nucleo/cli/report.py", "nucleo/cli/worker_api.py", "nucleo/cli/worker_api_exec.py",
+    "nucleo/cli/worker_policy.py", "nucleo/dispatch/confirm.py", "nucleo/acts/bulk_close.py",
+    "nucleo/acts/show_target.py", "nucleo/request/kind.py", "nucleo/workers/prompts/context.py",
+    "nucleo/workers/prompts/playbook.py", "nucleo/workers/prompts/research.py",
     "nucleo/workers/prompts/surfaces.py", "nucleo/workers/prompts/web.py", "nucleo/workers/providers/generator.py",
-    "voice/observer.py", "voice/screens.py", "rules/labels.py",
-    "widgets/aliases.py", "widgets/brief.py", "widgets/confirm.py", "widgets/refs.py", "widgets/server_api.py",
-    "widgets/state_render.py", "widgets/contactos/digest.py", "widgets/contactos/group_actions.py",
-    "widgets/contactos/lookup.py", "widgets/mensajeria/held.py", "widgets/mensajeria/inbox_read.py",
-    "widgets/mensajeria/outbound/queue.py", "widgets/musica/browse.py", "widgets/musica/digest.py",
-    "widgets/navegador/data.py", "widgets/navegador/owner_actions.py", "widgets/results/digest.py",
+    "voice/observer.py", "voice/screens.py", "rules/labels.py", "widgets/aliases.py", "widgets/brief.py",
+    "widgets/confirm.py", "widgets/refs.py", "widgets/server_api.py", "widgets/state_render.py",
+    "widgets/contactos/digest.py", "widgets/contactos/group_actions.py", "widgets/contactos/lookup.py",
+    "widgets/mensajeria/held.py", "widgets/mensajeria/inbox_read.py", "widgets/mensajeria/outbound/queue.py",
+    "widgets/musica/browse.py", "widgets/musica/digest.py", "widgets/navegador/data.py",
+    "widgets/navegador/owner_actions.py", "widgets/results/digest.py",
 )
 
 #: A call whose string arguments are a log or trace line (the observability reads them, the model does not).
@@ -76,7 +72,6 @@ ALLOWLIST = {
     ("widgets/mensajeria/manifest.json", "actions.send_to.payload.files"): "files he attached in Zaelar's app",
     ("widgets/mensajeria/manifest.json", "usage"): "«PROPAGA a la app real» = the channel's own app",
     # Python — the operator's words, OS apps, third-party apps and code identifiers.
-    ("nucleo/flash/router_catalog.py", "'apps' (widgets)"): "the `panel` enum value `apps` (a code identifier)",
     ("widgets/brief.py", "navegador/apps del sistema"): "the operating system's own apps",
 }
 

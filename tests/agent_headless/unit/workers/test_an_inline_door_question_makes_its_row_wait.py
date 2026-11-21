@@ -17,9 +17,7 @@ from memory import db as memdb
 from memory import embeddings as mememb
 from memory import tasks_store as ts
 from nucleo.circuit import asker
-from nucleo.cli import worker_api
 from nucleo.request import inline_ask
-from nucleo.turn import verdicts
 
 ASK = {"ok": False, "say": "", "message": "Which Raquel: Raquel Gómez or Raquel Martín?", "slot": "contact",
        "candidates": ["Raquel Gómez", "Raquel Martín"]}

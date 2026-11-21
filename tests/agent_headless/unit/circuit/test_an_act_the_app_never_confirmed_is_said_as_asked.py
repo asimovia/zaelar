@@ -145,17 +145,6 @@ def test_the_ops_own_ending_leaves_a_pending_act_to_the_pulse(world, monkeypatch
     assert world.settled == [], "settled «unverifiable» at the op: the ack the act waits for would never count"
 
 
-def test_a_bare_done_is_not_said_over_an_act_the_app_has_not_confirmed(world, monkeypatch):
-    from nucleo.turn import reply_receipts
-    _screen(monkeypatch, world)
-    _report(1, playing=True, playing_id=V1, muted=False, volume=70)
-    import time
-    e = _act("pause", time.time())                          # read now, as the turn's mouth does
-    assert reply_receipts.end_state_unmet({"youtube"}) is e
-    _report(2, playing=False)
-    assert reply_receipts.end_state_unmet({"youtube"}) is None
-
-
 # ── disarms ──────────────────────────────────────────────────────────────────────────────────────────────────
 
 def test_disarm_without_the_wait_a_pending_act_is_settled_at_its_birth(world, monkeypatch):
@@ -184,85 +173,3 @@ def test_disarm_without_the_told_check_the_same_fact_is_said_twice(world, monkey
 
 
 # ── the mouth (players audit P2-1) ─────────────────────────────────────────────────────────────────────────────
-
-def _met_on_youtube(action):
-    from nucleo.turn import reply
-    return reply.Outcome(verdict.MET.name, "youtube", action, object="«uno»")
-
-
-@pytest.mark.parametrize("action", ["mute", "set_volume", "pause"])
-def test_the_mouth_never_says_done_over_an_act_the_app_has_not_confirmed(world, monkeypatch, action):
-    """«Hecho: «uno».» was said over `mute`/`volume` with the row pending: the mouth read the op's `ok` and the store's
-    title, the row read the report. Both read the report now: unconfirmed → `started`, which says nothing of its own."""
-    import time
-    from nucleo.turn import reply, reply_receipts
-    _screen(monkeypatch, world)
-    _report(1, playing=True, playing_id=V1, muted=False, volume=70)
-    payload = {"level": 30} if action == "set_volume" else {}
-    e = spec.open_for_action("youtube", action, payload)
-    e["born"] = time.time()
-    assert yt.apply_action(action, payload).get("ok")
-    got = reply_receipts.unconfirmed([_met_on_youtube(action)])
-    assert reply._value(got[0].verdict) == verdict.STARTED.name, got
-    assert [t for _o, t in reply.owed(got, "")] == [reply_receipts._lang().reply_started.format(object="«uno»")]
-    assert reply_receipts.bare_ack("Hecho.", {"youtube"}) == reply_receipts._lang().done_asked, "asked, never «done»"
-
-
-def test_once_confirmed_done_is_said_and_a_contrary_one_is_not_on_the_card(world, monkeypatch):
-    import time
-    from nucleo.turn import reply, reply_receipts
-    _screen(monkeypatch, world)
-    _report(1, playing=True, playing_id=V1, muted=False, volume=70)
-    e = spec.open_for_action("youtube", "mute", {})
-    e["born"] = time.time()
-    assert yt.apply_action("mute", {}).get("ok")
-    _report(2, muted=False)                                  # acked, and the player did not obey
-    assert reply_receipts.bare_ack("Hecho.", {"youtube"}) == reply_receipts._lang().done_not_on_card
-    _report(3, muted=True)
-    assert reply._value(reply_receipts.unconfirmed([_met_on_youtube("mute")])[0].verdict) == verdict.MET.name
-    assert reply_receipts.bare_ack("Hecho.", {"youtube"}) == "Hecho."
-
-
-def test_disarm_without_the_wait_the_mouth_says_done(world, monkeypatch):
-    """Disarm: the wait not read → «Done: «uno».» over an act the app has not confirmed."""
-    import time
-    from nucleo.turn import reply, reply_receipts
-    _screen(monkeypatch, world)
-    _report(1, playing=True, playing_id=V1, muted=False, volume=70)
-    e = spec.open_for_action("youtube", "mute", {})
-    e["born"] = time.time()
-    assert yt.apply_action("mute", {}).get("ok")
-    monkeypatch.setattr(reported, "awaiting", lambda dw: "")
-    assert [t for _o, t in reply.owed(reply_receipts.unconfirmed([_met_on_youtube("mute")]), "")] == \
-        [reply_receipts._lang().reply_met.format(object="«uno»")], "the disarm did not land"
-
-
-def test_the_turns_closing_lines_go_through_the_wait(world, monkeypatch):
-    """The wiring: `reply.after_acts` — where every closing line of a turn is gathered — reads the wait."""
-    import asyncio
-    import time
-    from nucleo.turn import reply
-    _screen(monkeypatch, world)
-    _report(1, playing=True, playing_id=V1, muted=False, volume=70)
-    e = spec.open_for_action("youtube", "mute", {})
-    e["born"] = time.time()
-    assert yt.apply_action("mute", {}).get("ok")
-    monkeypatch.setattr(reply, "taken", lambda: [_met_on_youtube("mute")])
-    sent: list = []
-    speech = type("S", (), {"sanitize": staticmethod(lambda t, **k: t)})
-    asyncio.run(reply.after_acts([], "", sent.append, speech))
-    assert sent == [reply._lang().reply_started.format(object="«uno»")], f"said as done: {sent}"
-
-
-@pytest.mark.parametrize("code,said", [("es", "Ahora mismo te lo pongo."), ("en", "Putting it on now.")])
-def test_words_that_already_started_it_get_the_object_alone_never_a_second_start(monkeypatch, code, said):
-    """Desktop, 2026-11-14: «ponme un vídeo de eso» → «Ahora mismo te lo pongo. Me pongo con ello: «…».» — two start
-    lines. With the model's words already out, an act still awaiting its app names its object and nothing more; with
-    no words, the start line stays. Disarm: `owed` calling `line(o)` for every awaiting act → the start line again."""
-    from i18n import langs
-    from nucleo.turn import reply
-    monkeypatch.setattr(langs, "current_code", lambda: code)
-    o = reply.Outcome(verdict.STARTED.name, "youtube", "load", object="«Apollo 11»", reason="awaiting")
-    want = langs.words("reply_started_named", code=code).format(object="«Apollo 11»")
-    assert [t for _o, t in reply.owed([o], said)] == [want] and want
-    assert [t for _o, t in reply.owed([o], "")] == [langs.words("reply_started", code=code).format(object="«Apollo 11»")]

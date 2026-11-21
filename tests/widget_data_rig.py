@@ -13,7 +13,6 @@ The brief is a plain dict, or `brief(...)` builds one the way `turn_brief.read` 
 """
 from __future__ import annotations
 
-from types import SimpleNamespace
 
 
 def brief(screen_action: str = "", confidence: float = 0.95, *, kind: str = "order", open_ids=("mensajeria",)) -> dict:
@@ -25,36 +24,6 @@ def brief(screen_action: str = "", confidence: float = 0.95, *, kind: str = "ord
     if screen_action:
         result["screen_action"] = {"choice": screen_action, "confidence": confidence}
     return {"event": ev, "turn_id": "t-rig", "open_ids": list(open_ids), "result": result}
-
-
-def run(card: str, action: str, payload: dict | None = None, *, said: str = "", turn_brief=None,
-        monkeypatch=None) -> SimpleNamespace:
-    """Drive one data-op through the gate. `monkeypatch` (pytest's) keeps the dispatch stub to this test."""
-    from nucleo.flash import tool_executor_widget as txw, tool_executor_widget_calls as calls
-    from nucleo.acts import frontend
-    out = SimpleNamespace(ran=[], asked=[], events=[])
-
-    def start_op(wid, act, pay, **_kw):
-        out.ran.append((wid, act, dict(pay or {})))
-        return None
-
-    if monkeypatch is not None:
-        monkeypatch.setattr(txw._data_ops, "start_op", start_op)
-    else:
-        txw._data_ops.start_op = start_op
-    state = {"acted": {"widget": False}, "data_done": {"v": False}, "deduped": {"v": False}, "escalate": {"v": None}}
-    brain = SimpleNamespace(_window=[], _last_dataop=None, _last_spoken="", _last_action="")
-
-    def apply(wid, act, pay, ref=""):
-        calls._apply_widget_data(
-            wid, act, pay, ref, _apply_widget_data=apply, _brief=turn_brief, _frontend=frontend,
-            _request_data_confirm=lambda w, a, p: out.asked.append((w, a, dict(p or {}))),
-            _spawn=lambda *a, **k: None, _tag_emit=lambda *a, **k: None, _turn_op_tasks=[],
-            acted=state["acted"], brain=brain, data_done=state["data_done"], deduped=state["deduped"],
-            emit=lambda kind, label, **k: out.events.append((kind, label)), escalate_req=state["escalate"],
-            text=said)
-    apply(card, action, dict(payload or {}))
-    return out
 
 
 def scene(tmp_path, monkeypatch):

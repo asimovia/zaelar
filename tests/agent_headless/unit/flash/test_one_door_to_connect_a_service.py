@@ -22,9 +22,6 @@ from pathlib import Path
 import pytest
 
 from nucleo.self import catalogs as CC
-from nucleo.flash import router
-from nucleo.flash import tool_executor_calls as TEC
-from nucleo.flash import web_auth
 
 ENGINE = Path(__file__).resolve().parents[4]
 WIDGETS = ENGINE / "widgets"
@@ -86,29 +83,6 @@ def test_the_vocabulary_is_the_catalogs_own():
 # ── 1b. the voice turn's `show_panel` arm opens the section on the canon's connector ─────────────────────────
 
 
-def _voice_panel_emit(args, text):
-    """The voice turn's `show_panel` arm, with `emit` captured; returns the `panel` event's extra."""
-    got = []
-    TEC._t_show_panel(args=args, _router=router, _tool_fired=set(), acted={}, operator_text="", text=text,
-                      emit=lambda kind, act, text="", extra=None, **kw: got.append((kind, act, extra or {})))
-    panels = [(a, x) for k, a, x in got if k == "panel"]
-    assert len(panels) == 1, got
-    return panels[0]
-
-
-@pytest.mark.parametrize("text,connector,cid", [
-    ("conecta mi Drive", "Drive", "gdrive"),
-    ("connect my Google Calendar", "Google Calendar", "google"),
-    ("quiero enlazar WhatsApp", "whatsapp", "whatsapp"),
-    ("vincula mi correo", "correo", "email"),
-    ("conéctame Spotify", "spotify", "spotify"),
-    ("link my Google Contacts", "google contacts", "google-contacts"),
-])
-def test_the_voice_turn_opens_the_named_connector(text, connector, cid):
-    act, extra = _voice_panel_emit({"panel": "conectores", "connector": connector}, text)
-    assert (act, extra["tab"], extra.get("connector")) == ("open", "conectores", cid)
-
-
 def test_the_known_phrase_door_describes_and_emits_the_same_event():
     """The action map (a phrase that skips the model) is the third door and names the connector the same way."""
     from nucleo.actionmap import executor as AM
@@ -118,63 +92,6 @@ def test_the_known_phrase_door_describes_and_emits_the_same_event():
     assert AM.execute(action, lambda k, a, text="", extra=None, **kw: got.append((k, a, extra or {})), "conecta mi drive")
     assert got and got[0][0] == "panel" and got[0][1] == "open"
     assert (got[0][2]["tab"], got[0][2]["connector"]) == ("conectores", "gdrive")
-
-
-def test_without_a_connector_the_section_opens_on_its_list():
-    _act, extra = _voice_panel_emit({"panel": "conectores"}, "abre los conectores")
-    assert extra["tab"] == "conectores" and "connector" not in extra
-
-
-def test_closing_the_section_carries_no_connector():
-    _act, extra = _voice_panel_emit({"panel": "conectores", "connector": "gdrive", "action": "close"}, "cierra eso")
-    assert _act == "close" and "connector" not in extra
-
-
-def test_disarmed_a_canon_that_names_nothing_leaves_the_voice_turn_on_the_list(monkeypatch):
-    """RED proof: with the canon returning '' the voice arm degrades to the bare list — the test above is measuring
-    the canon, not a constant. Restored in `finally`, never left disarmed."""
-    args = {"panel": "conectores", "connector": "Drive"}
-    saved = router._canon_connector
-    try:
-        router._canon_connector = lambda v: ""
-        _act, extra = _voice_panel_emit(args, "conecta mi Drive")
-        assert "connector" not in extra, "the voice arm did not read the canon"
-    finally:
-        router._canon_connector = saved
-    assert _voice_panel_emit(args, "conecta mi Drive")[1].get("connector") == "gdrive"   # green again
-
-
-@pytest.mark.parametrize("lang", ["es", "en"])
-def test_a_panel_opened_is_said_as_a_surface_opened_never_as_done(monkeypatch, lang):
-    """His engine, 2026-11-18: «I want to connect my Google contacts» → `show_panel(conectores)` and the engine's own
-    «Done.» — opening the panel is the START of what he asked. The act leaves the line of an opened surface
-    (`surface_ack.show_ack`) for the turn's ack (`post_stream_settle`: `act_line` before `data_ack`); a close leaves none."""
-    monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
-    from i18n import langs
-    lg = langs.current_language()
-    acted: dict = {}
-    TEC._t_show_panel(args={"panel": "conectores", "connector": "google contacts"}, _router=router, _tool_fired=set(),
-                      acted=acted, operator_text="", text="connect my Google contacts", emit=lambda *a, **k: None)
-    assert acted.get("act_line") == lg.show_ack and acted["act_line"] != lg.data_ack, acted
-    closed: dict = {}
-    TEC._t_show_panel(args={"panel": "conectores", "action": "close"}, _router=router, _tool_fired=set(), acted=closed,
-                      operator_text="", text="close it", emit=lambda *a, **k: None)
-    assert "act_line" not in closed, closed
-
-
-def test_the_turns_ack_reads_the_acts_line_before_the_bare_done():
-    """The wiring the test above relies on: the UI act's ack is `act_line`, `data_ack` only in its absence."""
-    import inspect
-    from nucleo.flash import post_stream_settle
-    assert 'acted.get("act_line", _lg_ack.data_ack)' in inspect.getsource(post_stream_settle)
-
-
-def test_disarmed_a_panel_without_its_line_falls_back_to_done(monkeypatch):
-    """Disarm: the panel's line unwired (`_panel_line` → "") → no `act_line`, the ack is «Done.» again → red."""
-    monkeypatch.setattr(TEC, "_panel_line", lambda: "")
-    assert TEC._panel_line() == "", "the disarm landed"
-    with pytest.raises(AssertionError):
-        test_a_panel_opened_is_said_as_a_surface_opened_never_as_done(monkeypatch, "en")
 
 
 # ── 2. no widget keeps a connect door (ratchet) ───────────────────────────────────────────────────────────────
@@ -268,74 +185,3 @@ def test_disarmed_a_handler_regex_sees_what_was_removed():
 
 
 # ── 3. a browser «login» to Spotify / WhatsApp / Telegram / email goes to the section, never the browser ────────
-
-def _auth(site, text):
-    got, browser, esc = [], [], {"v": None}
-    TEC._t_authenticate_web(args={"site": site}, _start_web_auth=lambda s: browser.append(s), escalate_req=esc, text=text,
-                            emit=lambda kind, act, text="", extra=None, **kw: got.append((kind, act, extra or {})))
-    return got, browser, esc
-
-
-@pytest.mark.parametrize("site,text,cid", [
-    ("spotify", "conéctame a mi cuenta de Spotify", "spotify"),
-    ("spotify.com", "log me into Spotify", "spotify"),
-    ("whatsapp", "conéctame WhatsApp", "whatsapp"),
-    ("web.whatsapp.com", "open WhatsApp and log in", "whatsapp"),
-    ("telegram", "vincula mi Telegram", "telegram"),
-    ("gmail.com", "entra en mi Gmail", "email"),
-    ("", "conéctame al correo", "email"),
-])
-def test_a_login_to_a_connected_service_opens_the_section_not_the_browser(site, text, cid):
-    got, browser, esc = _auth(site, text)
-    panels = [(a, x) for k, a, x in got if k == "panel"]
-    assert panels == [("open", {"tab": "conectores", "src": "flash", "connector": cid})], got
-    assert not browser, f"a browser login was started for {cid}: {browser}"
-    assert esc["v"] is None, "the turn escalated to the browser worker instead"
-
-
-def test_a_real_site_login_still_opens_the_browser():
-    """The redirect is for the services the engine connects itself; Netflix is still a browser login."""
-    got, browser, _esc = _auth("netflix.com", "abre la web de Netflix y me dices cuando esté en el login")
-    assert browser == ["netflix.com"]
-    assert not [1 for k, _a, _x in got if k == "panel"]
-
-
-def test_disarmed_without_the_guard_spotify_would_open_a_browser(monkeypatch):
-    """RED proof: with `web_auth.decide` no longer naming the service kind, the same call drives a browser to
-    spotify.com — the redirect, not the tool description, is what keeps the invariant. Restored in `finally`."""
-    saved = web_auth.decide
-    try:
-        web_auth.decide = lambda site, text: (web_auth.KIND_LOGIN, site or "spotify.com")
-        got, browser, _esc = _auth("spotify", "conéctame a mi cuenta de Spotify")
-        assert browser == ["spotify"], "the disarm did not reach the arm — the test measures nothing"
-        assert not [1 for k, _a, _x in got if k == "panel"]
-    finally:
-        web_auth.decide = saved
-    got, browser, _esc = _auth("spotify", "conéctame a mi cuenta de Spotify")
-    assert not browser and [1 for k, _a, _x in got if k == "panel"]                # green again
-
-
-def test_disarmed_a_canon_that_names_nothing_leaves_the_section_on_its_list(monkeypatch):
-    """RED proof for the connector half: with the canon blind, WhatsApp reaches the section but not ITS guide."""
-    saved = CC.canon_connector
-    try:
-        CC.canon_connector = lambda v: ""
-        got, browser, _esc = _auth("whatsapp", "conéctame WhatsApp")
-        panels = [x for k, _a, x in got if k == "panel"]
-        assert panels and "connector" not in panels[0], panels
-        assert not browser                                                          # the redirect itself holds
-    finally:
-        CC.canon_connector = saved
-    got, _b, _e = _auth("whatsapp", "conéctame WhatsApp")
-    assert [x for k, _a, x in got if k == "panel"][0]["connector"] == "whatsapp"
-
-
-def test_the_voice_arm_reads_the_shared_decision():
-    """The voice arm reads `web_auth.decide`, the one table of WHICH services are redirected (V2-176)."""
-    import inspect
-    assert "web_auth" in inspect.getsource(TEC._t_authenticate_web) and ".decide(" in inspect.getsource(TEC._t_authenticate_web)
-    assert "canon_connector" in inspect.getsource(TEC._t_authenticate_web), "the arm no longer names the connector"
-    for site, text, kind in [("spotify", "conéctame a Spotify", web_auth.KIND_MUSIC),
-                             ("telegram", "vincula mi Telegram", web_auth.KIND_MESSAGING),
-                             ("gmail.com", "conéctame a mi Gmail", web_auth.KIND_MESSAGING)]:
-        assert web_auth.decide(site, text)[0] == kind

@@ -99,17 +99,6 @@ def test_a_screen_word_points_at_the_open_screen():
     assert screens.resolve("tablet") == ""
 
 
-def test_the_screen_parameter_exists_only_with_two_screens_open():
-    from nucleo.flash import router_catalog, tool_selection
-    tools = list(router_catalog.TOOLS)
-    show = lambda ts: next(t for t in ts if t["function"]["name"] == "show_widget")["function"]["parameters"]
-    screens.attach(DESK)
-    assert "screen" not in show(tool_selection.with_screens(tools))["properties"]
-    screens.attach(PHONE)
-    assert show(tool_selection.with_screens(tools))["properties"]["screen"]["enum"] == ["computer", "phone", "here"]
-    assert "screen" not in show(tools)["properties"], "the static catalog must stay as it was"
-
-
 def test_a_turn_sent_to_another_screen_opens_there_and_moves_it():
     _two_open(holder=PHONE)
 

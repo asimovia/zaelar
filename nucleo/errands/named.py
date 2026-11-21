@@ -97,33 +97,11 @@ def by_mention(pool: list[dict], k: int | None = None) -> list[dict]:
     return out[:k] if k else out
 
 
-def as_target(ctx) -> dict:
-    """`errand_target`'s «running_errand» choice naming its candidates — the open errands' cards, running, parked,
-    starting or just finished, the one he named last first; {} with none (the choice keeps its own words). The four
-    choices every arm reads stay the same. `ctx`: the brief's context (its `threads`)."""
-    threads = (ctx or {}).get("threads") if isinstance(ctx, dict) else None
-    if not threads:
-        return {}
-    cards = "; ".join(f"{i + 1}) {card_line(e)}" for i, e in enumerate(by_mention(list(threads), 6)))
-    return {"running_errand": "his words are for one of the errands he has open — a correction, a detail, a «yes» it "
-                              f"asked for, a question about it: {cards}"}
-
-
 def _uid_of(eid: str) -> str:
     from nucleo import dispatch as _d
     from nucleo.circuit import ledger
     rec = _d.get_record(eid) if eid else None
     return str(getattr(rec, "uid", "") or "") or (ledger.task_uid(eid) if eid and ":" not in eid else "")
-
-
-def mentioned(flow_id: str) -> None:
-    """He named this errand again — a request routed into it: its card's `last_mention_ts` (V2-878 §1). Never raises."""
-    try:
-        from nucleo.circuit import ledger
-        if (uid := _uid_of(str(flow_id or ""))):
-            ledger.mentioned(uid)
-    except Exception as ex:  # noqa: BLE001
-        logger.debug(f"named_errand: mention of {flow_id} not written — {type(ex).__name__}: {ex}")
 
 
 def _carded(e: dict) -> dict:
@@ -163,44 +141,6 @@ def named(text: str, errands: list[dict] | None = None) -> list[dict]:
         scored.append((sum(len(w) for w in said if any(_d._same_thing(w, h) for h in hay)), e))
     scored.sort(key=lambda se: -se[0])
     return [e for s, e in scored if s]
-
-
-def asks_about_all(text: str) -> bool:
-    """«¿Cómo va todo?» / «how's everything going?» — the attribution's own «all» reading (`dispatch._ALL_RE`)."""
-    from nucleo import dispatch as _d
-    return bool(_d._ALL_RE.search(_d._norm(text)))
-
-
-def strongest(text: str, errands: list[dict] | None = None) -> dict | None:
-    """The errand `text` names MOST — the one the sentence is about when it names several. None when it names none."""
-    hits = named(text, errands)
-    return hits[0] if hits else None
-
-
-def owns_card(errand: dict, card: str) -> bool:
-    """Is `card` (a results or document sheet, base id or instance) this errand's own box?"""
-    from nucleo import surfaces as _s
-    card = str(card or "")
-    family = card.split("::", 1)[0]
-    sheet, surface = str(errand.get("sheet") or ""), str(errand.get("surface") or "")
-    if family == "results":
-        return (sheet == card) if "::" in card else (sheet.startswith("results") or _s.opens_sheet(surface))
-    if family == "documento":
-        return _s.opens_doc(surface) or sheet.startswith("documento")
-    return True
-
-
-def card_is_another_errands(card: str, text: str) -> bool:
-    """Does his sentence belong to an errand that is NOT the one owning this results/document card?
-
-    three-tasks-at-once (ES, 2026-10-11 02:04): «¿Y el informe ese va bien? Lo quiero corto…» was repaired into
-    `results:criteria` because the monitor's sheet was the card on screen; «el informe» is the car REPORT, which had
-    no card open. The words of his original asks decide, not what is visible. False for any other card, and when
-    the sentence names no errand — then the screen is all there is to go by."""
-    if str(card or "").split("::", 1)[0] not in ("results", "documento"):
-        return False
-    top = strongest(text)
-    return bool(top) and not owns_card(top, card)
 
 
 def spoken_name(errand: dict, limit: int = 72) -> str:

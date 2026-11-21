@@ -17,15 +17,10 @@ confirmed, which is a design of its own.
 from __future__ import annotations
 
 import ast
-import time
 from pathlib import Path
 
-import bus
-import pytest
 
-from connectors import exit as door
 from connectors.messaging import group_leave, ingest
-from tests.agent_headless.harness import store_snapshot
 
 ENGINE = Path(__file__).resolve().parents[4]
 _OUT = (ingest.TOPIC_SEND, ingest.TOPIC_REPLY, ingest.TOPIC_GROUP, group_leave.TOPIC_GROUP_LEAVE)
@@ -45,84 +40,6 @@ ROADS = {
 }
 
 
-@pytest.fixture
-def world(tmp_path, monkeypatch):
-    """Isolated stores with something to act on in each: a draft awaiting his yes, a waiting task, a held order."""
-    monkeypatch.setenv("ZAELAR_DB", str(tmp_path / "zaelar.db"))
-    from memory import db
-    db.reset_db()
-    from widgets import store
-    monkeypatch.setattr(store, "DATA_DIR", str(tmp_path / "widgets"))
-    monkeypatch.delenv(door.ENV, raising=False)
-    from widgets.mensajeria import data as md, outbound
-    mdb = md.load_db()
-    outbound.enqueue(mdb, {"platform": "telegram", "to": "987", "chatId": "987"}, "see you at six", lane=door.OWNER,
-                     not_before=time.time() + 3600, scheduled=True)
-    store.save("mensajeria", mdb)
-    from nucleo.circuit import ledger
-    now = int(time.time())
-    ledger.store().task_put({"id": "t-wait", "title": "which one", "goal": "ask him which", "kind": "generic",
-                             "mode": "once", "state": "waiting", "visible": True, "origin": "turn",
-                             "created_at": now, "updated_at": now})
-    from nucleo.send import draft
-    draft.reset()
-    d = draft.start("send Rowan a message")
-    d.who, d.text, d.asked = "Rowan", "On my way", draft.CONFIRM
-    d.target = {"name": "Rowan Pike", "contact_id": "c1", "platform": "telegram"}
-    d.confirm_line, d.heard = "The message for Rowan Pike is ready: «On my way». Shall I send it?", True
-    reads = []
-    from nucleo.turn import brief
-    from voice import attention
-    monkeypatch.setattr(brief, "ask_for_turn", lambda text: reads.append(("brief", text)) or {"text": text})
-    monkeypatch.setattr(attention, "prefire", lambda text: reads.append(("attention", text)))
-    from nucleo.turn import brief_turn
-    brief_turn._PREFIRED.clear()
-    subs = [bus.subscribe(t) for t in _OUT]
-    yield {"reads": reads, "subs": subs}
-    for s in subs:
-        s.close()
-    draft.reset()
-    brief_turn._PREFIRED.clear()
-    db.reset_db()
-
-
-@pytest.mark.parametrize("road", sorted(ROADS))
-def test_a_preflight_reads_nothing_and_changes_nothing(world, road):
-    from nucleo import consequence
-    from voice.engine.pipeline import eager_brief
-    from widgets.mensajeria.owner.handle import _Handle
-    _Handle()._flush_queues()                    # the owner's own beat settles first: its bookkeeping is not the preflight's
-    before = store_snapshot.take()
-    with consequence.dry_turn() as would:
-        eager_brief.on_preflight(ROADS[road])
-    after = store_snapshot.take()
-    assert store_snapshot.diff(before, after) == [] and before == after
-    _Handle()._flush_queues()                    # …and the beat after it finds nothing new to send
-    assert all(s.queue.empty() for s in world["subs"]), "no order reached a connector"
-    assert not list(would or []), f"a consequence door was asked on an unconfirmed sentence: {would}"
-    assert world["reads"] == [], "the manager hears with its own ear: a preflight reads nothing (INI-078 F2)"
-
-
-def test_the_picture_sees_a_write_in_each_of_its_three_parts(world):
-    """The instrument bites: a row, a queued order and an answered draft each change the picture, by name."""
-    from nucleo.circuit import ledger
-    from nucleo.send import draft
-    from widgets import store
-    from widgets.mensajeria import data as md, outbound
-    before = store_snapshot.take()
-    ledger.store().task_patch("t-wait", state="running")
-    assert store_snapshot.diff(before, store_snapshot.take()) == ["database/tasks"]
-    mid = store_snapshot.take()
-    mdb = md.load_db()
-    outbound.enqueue_reply(mdb, {"platform": "telegram", "chatId": "987"}, "hello", lane=door.OWNER)
-    store.save("mensajeria", mdb)
-    assert all(k.startswith("widgets/") for k in store_snapshot.diff(mid, store_snapshot.take()))
-    assert store_snapshot.diff(mid, store_snapshot.take())
-    last = store_snapshot.take()
-    draft._open["draft"].state = draft.SENDING
-    assert store_snapshot.diff(last, store_snapshot.take()) == ["memory/draft"]
-
-
 # ── by construction ────────────────────────────────────────────────────────────────────────────────────────────────
 def _calls(path: str, fn: str) -> set[str]:
     tree = ast.parse((ENGINE / path).read_text(encoding="utf-8"))
@@ -133,23 +50,6 @@ def _calls(path: str, fn: str) -> set[str]:
             f = c.func
             out.add(f"{getattr(f.value, 'id', '?')}.{f.attr}" if isinstance(f, ast.Attribute) else getattr(f, "id", "?"))
     return out
-
-
-def test_the_function_a_preflight_runs_calls_nothing():
-    """A call added to it is a new thing an unconfirmed sentence does: it is added here, on purpose."""
-    assert _calls("voice/engine/pipeline/eager_brief.py", "on_preflight") == set()
-
-
-def test_a_preflight_is_read_in_one_place():
-    hits = []
-    for p in ENGINE.rglob("*.py"):
-        rel = p.relative_to(ENGINE).as_posix()
-        if rel.startswith(("tests/", ".")) or "/." in rel or ".venv" in rel or "node_modules" in rel:
-            continue
-        tree = ast.parse(p.read_text(encoding="utf-8"))
-        if any(isinstance(n, ast.Attribute) and n.attr == "PREFLIGHT_TRANSCRIPT" for n in ast.walk(tree)):
-            hits.append(rel)
-    assert hits == ["voice/engine/pipeline/eager_brief.py"]
 
 
 def test_the_session_does_not_start_a_turn_on_a_preflight_unless_asked_to():

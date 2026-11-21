@@ -15,7 +15,6 @@ import pytest
 
 from nucleo import dispatch
 from nucleo.dispatch import confirm as dc
-from nucleo.turn import errands_of_a_turn as E
 from nucleo.errands import named as named_errand
 
 ASKED = "yeah the LG 27MP500 for $60 works, grab that. car one looked good btw. how's the game?"
@@ -40,12 +39,6 @@ def live(monkeypatch):
 
 def test_the_game_is_named_by_its_given_name(live):
     assert [e["id"] for e in named_errand.named(ASKED)] == ["8"], "«game» is in the name, not in the brief"
-
-
-def test_a_status_about_it_says_its_name(live, monkeypatch):
-    monkeypatch.setattr("i18n.langs.current_code", lambda: "en")
-    line = E.status_owed(ASKED, _brief(wants_words="tell", request_type="question"))
-    assert "Super Mario-style platformer game" in line and "Construct a side" not in line, line
 
 
 def test_a_parked_game_is_named_too(monkeypatch):

@@ -23,7 +23,6 @@ from __future__ import annotations
 import pytest
 
 from nucleo import danger
-from nucleo.flash import router_guards as g
 
 
 # ── the predicate of the right width ────────────────────────────────────────────────────────────────────────
@@ -54,26 +53,6 @@ def test_a_reminder_about_cancelling_is_still_a_note():
     """The same clipping as the rest of the module: «recuérdame dar de baja Netflix» asks for a NOTE, and
     gating it would leave a reminder waiting for an OK nobody was going to act on."""
     assert danger.ends_a_commitment("recuérdame dar de baja Netflix el día 14") is False
-
-
-# ── the promise backstop can now fire for a cancellation ────────────────────────────────────────────────────
-@pytest.mark.parametrize("text", [
-    "Cancela mi suscripción a Netflix antes de que me cobren el día 15.",
-    "anula la suscripción de Spotify",
-    "dame de baja de Movistar",
-])
-def test_a_cancellation_needs_someone_to_go_and_do_it(text):
-    assert g._needs_real_work(text) is True
-
-
-@pytest.mark.parametrize("text", [
-    "borra el widget de música",
-    "cancela la búsqueda",
-    "cierra el widget",
-    "pon música en Spotify",
-])
-def test_and_these_are_still_resolved_in_the_turn(text):
-    assert g._needs_real_work(text) is False
 
 
 # ── the same order with a synonym must not get a different engine ───────────────────────────────────────────

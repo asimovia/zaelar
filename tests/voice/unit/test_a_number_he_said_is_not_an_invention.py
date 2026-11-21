@@ -73,8 +73,6 @@ import threading
 
 import pytest
 
-from nucleo.acts import direct_action as _da
-from nucleo.turn import brief as _tb
 from voice import observer as _obs
 from widgets import store
 from widgets.youtube import data as yt
@@ -139,70 +137,9 @@ def test_removing_ONE_is_untouched(card):
     assert _queue() == ["vid 1", "vid 3", "vid 5", "vid 6"]
 
 
-def test_remove_DECLARES_the_plural_so_a_reader_can_find_it(card):
-    """The repair lives in the widget's own declaration (V2-726 §4-bis) — with `clear_list` the only
-    declared way to touch several rows, the verdict reached for the one that empties everything."""
-    remove = _acts()["remove"]
-    assert "items" in (remove.get("payload") or {}), "the plural has to be DECLARED, not just accepted"
-    assert "varios" in remove["desc"].lower() and "clear_list" in remove["desc"], (
-        "…and it has to name its neighbour, which is the action that empties the whole queue")
-    assert len(remove["desc"]) <= _tb.MAX_DESC_CHARS, "a declaration that does not fit decides nothing"
-
-
 # ── 3 · A NUMBER HE SAID ──────────────────────────────────────────────────────────────────────────
 
-@pytest.mark.parametrize("said,want", [
-    (HIS_THIRD, 3),
-    ("Bueno, ponme el vídeo dos, que los has cambiado.", 2),
-    ("¿Puedes, por favor, reproducir el video número dos?", 2),
-    ("ponme el 6", 6),
-    ("reproduce el primero", 1),
-    # demo pass 2026-09-28, an English session: «five» was no number at all, and a self-correction repeats it
-    ("put on number five… no wait, yeah five", 5),
-    ("play the fifth one", 5),
-    ("play number 4", 4),
-])
-def test_a_number_he_said_fills_an_index_key(said, want):
-    assert _da.number_fill("youtube", "play_result", said) == {"item": want}
-
-
-@pytest.mark.parametrize("said,why", [
-    ("el dos y el tres", "two different numbers is «which one?», not a fill"),
-    ("ponme uno de esos", "«uno» as an article names nothing"),
-    ("pon un vídeo del Apolo 11", "no index at all"),
-])
-def test_what_is_NOT_a_number_he_said(said, why):
-    got = _da.number_fill("youtube", "play_result", said)
-    assert got == {} or list(got.values()) == [1], why
-
-
-def test_a_number_never_fills_a_key_that_is_not_an_INDEX():
-    """V2-741's refusal, intact: `load` takes a query and «ponme el tres» is not one."""
-    assert _da.number_fill("youtube", "load", "ponme el tres") == {}
-    assert _da.number_fill("youtube", "search", "búscame tres vídeos") == {}
-
-
 # ── 4 · THE KEY THE MODEL LEFT EMPTY ──────────────────────────────────────────────────────────────
-
-def test_the_model_leaving_the_face_out_is_repaired_from_his_own_sentence():
-    assert _da.fill_missing("youtube", "show_tab", {}, HIS_CATALOG) == {"tab": "inicio"}
-    assert _da.fill_missing("youtube", "show_tab", {}, "enséñame la cola") == {"tab": "cola"}
-
-
-def test_a_call_that_CARRIES_its_key_is_never_edited():
-    """It repairs an omission; it never overrules a decision (V2-754's rule, unmoved)."""
-    assert _da.fill_missing("youtube", "show_tab", {"tab": "cola"}, "vuelve al catálogo") == {}
-
-
-def test_nothing_is_filled_when_his_words_name_two_faces_or_none():
-    assert _da.fill_missing("youtube", "show_tab", {}, "no sé, lo que quieras") == {}
-    assert _da.fill_missing("youtube", "show_tab", {}, "del reproductor a la cola") == {}
-
-
-def test_an_action_with_no_key_and_one_with_only_optional_keys_are_left_alone():
-    assert _da.fill_missing("youtube", "pause", {}, "para el vídeo") == {}
-    assert _da.fill_missing("youtube", "load", {}, "ponme algo de jazz") == {}
-
 
 def test_the_alias_that_matched_EVERY_sentence_is_gone():
     """`player` was «reproductor, el vídeo». On a video card «el vídeo» is in almost every sentence, so
@@ -218,65 +155,6 @@ def _brief(answers: dict, *, open_ids=("youtube",)):
     ev = threading.Event(); ev.set()
     return {"event": ev, "turn_id": "t-1", "open_ids": list(open_ids),
             "result": {k: {"choice": c, "confidence": f} for k, (c, f) in answers.items()}}
-
-
-@pytest.fixture
-def on_screen(monkeypatch):
-    monkeypatch.setattr(_tb, "owner_still_open", lambda _b, _o: True)
-
-
-def _fire(brief, said):
-    seen = []
-    done = _da.complete(brief, operator_text=said, emit=lambda *a, **k: None,
-                        present=lambda *a, **k: None,
-                        apply_widget_data=lambda w, a, p: seen.append((w, a, p)))
-    return done, seen
-
-
-def test_an_UNSURE_request_type_is_not_an_order(on_screen):
-    """His «Para el vídeo»: pause 0.95 on the screen question, comment 0.45 on the other one. V2-756 let the unsure
-    reading pass; since 2026-11-12 (group A, one floor to act by verdict) a turn the brief cannot read as an ORDER at
-    `consent.intent_act_at` is not completed — the same door let a remark travel as the payload of the act it
-    relaunched. This torn turn relies on the model's own call; the one read as an order still completes."""
-    brief = _brief({_tb.TARGET_KEY: ("youtube:pause", 0.95), _tb.REQUEST_KEY: ("comment", 0.45)})
-    assert _fire(brief, "Para el vídeo") == ("", [])
-    brief = _brief({_tb.TARGET_KEY: ("youtube:pause", 0.95), _tb.REQUEST_KEY: ("order", 0.6)})
-    assert _fire(brief, "Para el vídeo") == ("pause", [("youtube", "pause", {})])
-
-
-@pytest.mark.parametrize("kind", ["comment", "greeting"])
-def test_a_CONFIDENT_remark_still_moves_nothing(on_screen, kind):
-    """The measured guard, kept — for the two kinds that name a turn with no addressee at all.
-
-    V2-757 — `question` LEFT this list twelve hours later, and for the same reason `complaint` was never
-    on it: in Spanish a polite order is shaped like a question. «¿Puedes enseñarme el catálogo?» measured
-    `show_tab` **0.85** and `question` 0.64, so the card never moved and the turn promised it instead —
-    «Bueno, dices que vas a hacer eso, pero no lo haces.» Measured over the same candidates, every
-    genuine question answers `none` (0.78-0.94), so the entry could never SAVE a turn. Node 2.76."""
-    brief = _brief({_tb.TARGET_KEY: ("youtube:next", 0.99), _tb.REQUEST_KEY: (kind, 0.95)})
-    assert _fire(brief, "hoy juega el Barça") == ("", [])
-
-
-def test_a_POLITE_ORDER_shaped_like_a_question_does_move(on_screen):
-    """The case that took `question` off the list (V2-757, session f84f91ef, +95.2 s)."""
-    brief = _brief({_tb.TARGET_KEY: ("youtube:pause", 0.95), _tb.REQUEST_KEY: ("question", 0.64)})
-    assert _fire(brief, "¿Puedes parar el vídeo?")[0] == "pause"
-
-
-@pytest.mark.parametrize("kind", ["order", "answer", "complaint"])
-def test_an_order_an_answer_and_a_COMPLAINT_all_pass(on_screen, kind):
-    """`complaint` is deliberately not refused: a complaint about what was just done is an order to do
-    it properly (V2-750, node 2.70)."""
-    brief = _brief({_tb.TARGET_KEY: ("youtube:pause", 0.95), _tb.REQUEST_KEY: (kind, 0.95)})
-    assert _fire(brief, "para el vídeo")[0] == "pause"
-
-
-def test_the_verdict_can_now_complete_a_turn_with_the_number_he_said(on_screen):
-    """T2 of the session, simulated: the model spends its turn elsewhere, the brief says `play_result`
-    and his sentence carries the 3."""
-    brief = _brief({_tb.TARGET_KEY: ("youtube:play_result", 0.95), _tb.REQUEST_KEY: ("order", 0.98)})
-    done, seen = _fire(brief, HIS_THIRD)
-    assert done == "play_result" and seen == [("youtube", "play_result", {"item": 3})]
 
 
 # ── 6 · THE RECORD HAS TO SAY WHAT THE MODEL HAD IN FRONT OF IT ───────────────────────────────────

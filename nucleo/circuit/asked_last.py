@@ -22,34 +22,10 @@ def note(ask_id: str, among=()) -> None:
         _NOTED.append((str(ask_id or ""), tuple(str(t) for t in among or () if t)))
 
 
-def turn_began(last_reply=None) -> None:
-    """His turn starts. When a reply of ours closed a turn since the last read (`last_reply`, our last line in the
-    window, is a new one), what was asked since becomes what this turn may answer; otherwise it is kept as it was."""
-    with _LOCK:
-        if last_reply is not None and (last_reply is _SEEN["reply"] or (isinstance(last_reply, dict)
-                                                                         and last_reply.get("cut") and not _NOTED)):
-            return                       # no new reply — or a cut one that asked nothing: the identity stands (F5)
-        _SEEN["reply"] = last_reply
-        which = max((i for i, (_a, among) in enumerate(_NOTED) if among), default=-1)   # our last «which?» rules (F2)
-        _FROZEN.update(asks=[a for i, (a, among) in enumerate(_NOTED) if a and not among and i > which],
-                       among=list(_NOTED[which][1]) if which >= 0 else [])
-        _NOTED.clear()
-
-
 def asked(ask: dict, waiting=None) -> bool:
     """This waiting row asked him since our last reply ALONE among the rows still `waiting` (all asked when None)."""
     still = {str(a.get("ask_id") or "") for a in waiting} if waiting is not None else set(_FROZEN["asks"])
     return set(_FROZEN["asks"]) & still == {str(ask.get("ask_id") or "")}
-
-
-def asked_since(ask: dict) -> bool:
-    """This row asked him since our last reply — alone or not (a clarify our last reply put)."""
-    return str(ask.get("ask_id") or "") in _FROZEN["asks"]
-
-
-def named_by_which(ask: dict) -> bool:
-    """A row our «which task?» named — it identifies the ROW, never one of its candidates."""
-    return str(ask.get("task_id") or "") in _FROZEN["among"]
 
 
 def reset() -> None:   # tests

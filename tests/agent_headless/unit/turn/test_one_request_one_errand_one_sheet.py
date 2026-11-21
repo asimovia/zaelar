@@ -66,23 +66,6 @@ def _park(tid: str, request: str, sheet: str = "") -> dict:
     return confirm._PENDING_CONFIRM[tid]
 
 
-def test_two_different_requests_are_two_errands_and_two_sheets(scene):
-    calls, judge = scene
-    _park("2", CAR_EN[0])
-    judge["id"] = ""             # the judge says: not about the car
-    asyncio.run(search_listing.listings({"text": "find me a used acoustic guitar in Barcelona"}, REQ))
-    assert calls[0]["new_sheet"] and not calls[0]["sheet"], "a different request was folded into the car"
-    assert confirm._PENDING_CONFIRM["2"].get("refinements") is None, "the guitar was folded into the car"
-
-
-def test_a_new_flow_names_its_sheet_after_the_errand_it_hands_on_to(scene):
-    calls, _judge = scene
-    asyncio.run(search_listing.listings({"text": "find me a used acoustic guitar in Barcelona"}, REQ))
-    eid = calls[0]["errand_id"]
-    assert eid and calls[0]["new_sheet"] == sheets.sheet_id_for(eid), \
-        "a new hunt's sheet is a counter of its own, not the errand it hands on to"
-
-
 # ── S2 · the reserved id is the errand's; an unreserved escalation is unchanged ──────────────────────────────
 
 @pytest.fixture

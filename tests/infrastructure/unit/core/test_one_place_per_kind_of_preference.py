@@ -33,33 +33,6 @@ def _user_rows(scope: str) -> list[dict]:
 
 # ── the voice knobs ──────────────────────────────────────────────────────────────────────────────────────
 
-def test_a_style_knob_is_a_voice_row_over_its_genesis_default():
-    assert style_policy.confirm_short_actions() is True, "genesis"
-    assert rules.deciding_rule(rules.path(surface="voice"), "confirm_short_actions")["source"] == "default"
-    style_policy.set_pref("confirm_short_actions", False, "no me confirmes las órdenes")
-    assert style_policy.confirm_short_actions() is False
-    assert [r["key"] for r in _user_rows("voice")] == ["confirm_short_actions"]
-    style_policy.retract("confirm_short_actions")
-    assert style_policy.confirm_short_actions() is True and _user_rows("voice") == []
-
-
-def test_the_legacy_style_file_is_imported_once(tmp_path):
-    (tmp_path / "config").mkdir()
-    (tmp_path / "config" / "style.json").write_text(json.dumps({"fillers": "off", "max_sentences": 4,
-                                                                "_set_at": 1_700_000_000}), encoding="utf-8")
-    assert style_policy.filler_mode() == "off" and style_policy.max_sentences() == 4
-    first = sorted(r["id"] for r in _user_rows("voice"))
-    assert first == ["m_style_fillers", "m_style_max_sentences"]
-    from rules import store
-    store._conn().execute("DELETE FROM rules_meta")
-    store._done.clear()
-    style_policy.policy()
-    assert sorted(r["id"] for r in _user_rows("voice")) == first, "a re-run inserts nothing"
-    rules.remove("m_style_fillers")
-    store._done.clear()
-    assert style_policy.filler_mode() == "smart", "a row he deleted does not come back from the old file"
-
-
 # ── a widget's preferences ───────────────────────────────────────────────────────────────────────────────
 
 def test_a_widgets_preferences_are_rows_and_the_card_shows_the_table():

@@ -12,14 +12,11 @@ answers that step NO and cancels nothing. The variants are another domain (a fla
 """
 from __future__ import annotations
 
-import threading
 from types import SimpleNamespace
 
 import pytest
 
-from nucleo.request import stop as sd
 from nucleo.request import stop_row as sr
-from nucleo.turn import brief as _tb
 
 
 @pytest.fixture
@@ -38,15 +35,6 @@ def nav(monkeypatch):
     with tasks._lock:
         for t in made:
             tasks._tasks.pop(t, None)
-
-
-def _brief(choice: str | None, confidence: float = 0.9):
-    ev = threading.Event()
-    ev.set()
-    result = {_tb.REQUEST_KEY: {"choice": "order", "confidence": 0.9}}
-    if choice is not None:
-        result[sd.KEY] = {"choice": choice, "confidence": confidence}
-    return {"event": ev, "turn_id": "t-1", "open_ids": [], "result": result}
 
 
 @pytest.mark.parametrize("goal,row", [("Find a flat to rent in Lisbon under 1200", "Lisbon flat under 1200"),
@@ -70,40 +58,6 @@ def test_a_tab_he_drives_himself_is_its_own_task(nav):
     assert who["uid"] == "" and who["title"] == "compare two phone plans"
 
 
-def test_the_stop_question_offers_the_step_only_while_one_waits(nav):
-    tasks, tab = nav
-    assert sr.DECLINE_STEP not in sd.question("", ["the flat search"])["criteria"]
-    tid = tab("Find a flat to rent in Lisbon", "Lisbon flat")
-    tasks.ask(tid, "I'm about to click «Clear all filters». Shall I go ahead?")
-    q = sd.question("«Lisbon flat» needs your OK to click «Clear all filters». Shall I?", ["Lisbon flat"])
-    assert sr.DECLINE_STEP in q["criteria"] and "Clear all filters" in q["instructions"]
-
-
-@pytest.mark.parametrize("said", ["no, close that step", "no, cierra ese paso"])
-def test_the_stop_of_a_step_declines_the_step_and_cancels_no_row(nav, monkeypatch, said):
-    tasks, tab = nav
-    from nucleo import dispatch
-    killed: list = []
-    monkeypatch.setattr(dispatch, "has_active", lambda: True)
-    monkeypatch.setattr(dispatch, "cancel_soon", lambda w: killed.append(w) or ["7"])
-    tid = tab("Find a flat to rent in Lisbon", "Lisbon flat")
-    tasks.ask(tid, "I'm about to click «Clear all filters». Shall I go ahead?")
-    acted: dict = {}
-    assert sd.repair(_brief(sr.DECLINE_STEP), said, escalating=False, acted=acted) == []
-    assert killed == [], "the stop of a step cancelled the row"
-    assert tasks.take_answer(tid) == "no" and acted.get("declined_step") == tid, "the step was not declined"
-
-
-def test_a_stop_of_the_task_still_stops_the_row(nav, monkeypatch):
-    tasks, tab = nav
-    from nucleo import dispatch
-    monkeypatch.setattr(dispatch, "has_active", lambda: True)
-    monkeypatch.setattr(dispatch, "cancel_soon", lambda w: ["7"])
-    tid = tab("Find a flat to rent in Lisbon", "Lisbon flat")
-    tasks.ask(tid, "I'm about to click «Clear all filters». Shall I go ahead?")
-    assert sd.repair(_brief(sd.STOP), "stop the whole flat search", escalating=False) == ["7"]
-
-
 # ── the stop resolves against ROWS: their uid, their own number, their title — never a worker's number ─────────
 @pytest.fixture
 def rows(monkeypatch):
@@ -113,25 +67,3 @@ def rows(monkeypatch):
     monkeypatch.setattr(dispatch, "resolve_sessions", lambda q: list(recs) if not q else [q] if q in recs else list(recs))
     monkeypatch.setattr(dispatch, "get_record", lambda k: recs.get(k))
     return recs
-
-
-@pytest.mark.parametrize("said,key", [("close task 7", "2"), ("cierra la tarea 9", "5"), ("stop abffbc-9", "5"),
-                                      ("stop the Lisbon flat one", "5"), ("para lo del Mercedes", "2")])
-def test_his_words_resolve_against_the_rows(rows, said, key):
-    assert sr.rows_named(said) == [key]
-
-
-def test_a_worker_number_names_no_row(rows):
-    assert sr.rows_named("close task 2") == [], "the registry's worker number resolved as if he had been shown it"
-
-
-def test_the_backstop_stops_the_row_he_named_and_records_why(rows, monkeypatch):
-    from nucleo import dispatch
-    cancelled: list = []
-    monkeypatch.setattr(dispatch, "has_active", lambda: True)
-    monkeypatch.setattr(dispatch, "cancel_soon", lambda w: cancelled.append(w) or [w])
-    monkeypatch.setattr(__import__("nucleo.request.model", fromlist=["x"]), "heard", lambda: "stop the Lisbon flat one")
-    for r in rows.values():
-        r.result_summary = ""
-    assert sd.repair(_brief(sd.STOP), "stop the Lisbon flat one", escalating=False) == ["5"]
-    assert cancelled == ["5"] and "stop the Lisbon flat one" in rows["5"].result_summary and not rows["2"].result_summary

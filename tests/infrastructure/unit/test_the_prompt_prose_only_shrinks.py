@@ -30,7 +30,6 @@ table the turn CONSULTS, the way V2-633 already moved «al recibir órdenes no r
 from __future__ import annotations
 
 import ast
-import json
 import pathlib
 import sys
 
@@ -45,39 +44,17 @@ _PROSE_FLOOR = 40
 
 #: The two modules that compose what the fast turn reads. `router_catalog` is measured apart, because it
 #: already has its own ceiling in `test_router` and is counted here only so the TOTAL is honest.
-_PROSE_FILES = ("nucleo/turn/prompt/builder.py", "nucleo/turn/prompt/operating.py", "nucleo/turn/prompt/live_state.py",
-                "nucleo/turn/prompt/recall.py", "widgets/navegador/live_sheet.py",
-                "widgets/navegador/live_lines.py", "widgets/navegador/live_nav.py",
-                "nucleo/done_lines.py")   # refactor2710-08: prompt.py and live_blocks split, same sum
+_PROSE_FILES = ("widgets/navegador/live_sheet.py", "widgets/navegador/live_lines.py", "widgets/navegador/live_nav.py",
+                "nucleo/done_lines.py")   # INI-078 L1: the old turn's prompt files went with it; these four the manager still reads
 
 #: Measured 2026-09-16. EDIT DOWNWARD ONLY — and the edit is the celebration.
-_MAX_PROSE = 25_111          # +51 2026-11-18 V2-935: two FACTS of the turn, each read from state and absent when it does not hold — an errand the gate holds («NO HA EMPEZADO», instead of «stuck») and a native panel open over the screen; +194 2026-11-18 V2-935: the conversation's base norm, said once and first (a person: brief, never his words back nor «you are right», «done» only when something was done) — his explicit order after three replies in a row opened by agreeing with him and repeating him; the half-sentence about apologies and «never a stock sentence» left for it. A rule about behaviour, declared as one: no mechanism reads an opener without a word table; refactor2710-08: −63, the screen line and one contradiction out (was 24_929); prompt.py 16_417 + live_blocks.py 3_395 + live_blocks_nav.py 5_117 — DOCSTRINGS OUT
+_MAX_PROSE = 7_014          # INI-078 L1: re-measured over the four files the manager still reads (was 25_111 with the old turn's prompt);         # +51 2026-11-18 V2-935: two FACTS of the turn, each read from state and absent when it does not hold — an errand the gate holds («NO HA EMPEZADO», instead of «stuck») and a native panel open over the screen; +194 2026-11-18 V2-935: the conversation's base norm, said once and first (a person: brief, never his words back nor «you are right», «done» only when something was done) — his explicit order after three replies in a row opened by agreeing with him and repeating him; the half-sentence about apologies and «never a stock sentence» left for it. A rule about behaviour, declared as one: no mechanism reads an opener without a word table; refactor2710-08: −63, the screen line and one contradiction out (was 24_929); prompt.py 16_417 + live_blocks.py 3_395 + live_blocks_nav.py 5_117 — DOCSTRINGS OUT
 #: ⚠️ V2-778 (2026-10-02) — RE-MEASURED, not raised: the count used to include every DOCSTRING of the three modules,
 #: 19_141 of its 44_070 bytes, which the model never reads. A docstring is a comment to the model, and this file's
 #: own last test says a comment costs nothing here — so writing down why a function exists was being charged as
 #: prompt prose (F0 had raised the ceiling 42_376 → 44_070 partly on that). Now only strings the model can read
 #: count, the ceiling is that exact number, and it is STRICTER than before: one new sentence in the prompt fails
 #: this test, where the old ceiling had ~19 k of documentation to hide it in. EDIT DOWNWARD ONLY.
-_MAX_TOTAL = 50_616          # +2_025 2026-11-14 V2-866 F3: the four A2A tool schemas (`nucleo/flash/tools_a2a.SCHEMAS`, appended to `router_catalog.TOOLS`), the same growth `test_router.MAX_CATALOG_CHARS` paid; state-gated (`a2a_live`), so a turn without an accepted A2A contact ships none of it. Before: +78 2026-11-11 (4.487): `agent_controls` also takes his voice (male/female/list/settings) and the locked language; +6 2026-11-08 V2-860 T2.5: `play_video` owns the VIDEO-podcast, `play_music` the podcast (one owner per kind); refactor2710-08 (was 48_721); the prose above 24_929 + the tool catalog 23_594 + the POLICY lines below, 198
-#: V2-778 (2026-10-02) — re-measured with the docstrings out, as `_MAX_PROSE` (was 67_862 counting them).
-
-#: ⚠️ V2-713 R5 — A THIRD SOURCE, WHICH WAS ALWAYS THERE AND NEVER COUNTED. `style_policy` composes lines
-#: that ride into the turn beside the prompt (`style_directive.prompt_lines`), and this ratchet could not see
-#: them: 402 bytes of `prompt_line()` have been shipping on every turn since V2-633 without ever appearing in
-#: a number. Counting them RAISES `_MAX_TOTAL`, and that raise is the debt becoming visible, not prose
-#: growing — the same shape as the mirror ratchet counting the mark nobody used.
-#:
-#: The honest accounting of R5's own change, stated rather than rounded: moving «1-2 frases» and «UNA ACCIÓN
-#: por turno» out of `prompt.py` removed 110 bytes there and added 198 in `shape_line()`, so what the model
-#: reads grew by **88 bytes**. It is not sold as a reduction. What it buys is that two sentences which were
-#: constants fixed by whoever was working that day are now data the operator changes by speaking — and that
-#: `max_sentences: 0` makes half of that line disappear instead of contradicting the policy.
-#:
-#: It is measured as what the policy EMITS, not as the file's literals: `style_policy.py` holds 5_241 bytes
-#: of string constants and almost all of them are docstrings and regexes the model never sees. Counting the
-#: file would have inflated this by 5_000 bytes of documentation, which is the same dishonesty as the LOC
-#: proxy in the other direction.
-_MAX_POLICY = 600
 
 
 def _docstrings(tree) -> set:
@@ -99,20 +76,6 @@ def _prose_bytes(rel: str) -> int:
                and id(n) not in docs)
 
 
-def _catalog_bytes() -> int:
-    from nucleo.flash import router_catalog as rc
-    return len(json.dumps(rc.TOOLS, ensure_ascii=False))
-
-
-def _policy_bytes() -> int:
-    """What `style_policy` composes into the turn under the GENESIS defaults — deterministic by construction
-    (the defaults are committed in `nucleo/genesis.json`; a per-install override is the operator's machine,
-    not the product, exactly as V2-502 requires of a lab)."""
-    from nucleo import style_policy as sp
-    sp._reset_for_tests()
-    return len(sp.shape_line()) + len(sp.prompt_line())
-
-
 def test_the_prose_of_the_turn_prompt_only_shrinks():
     per_file = {rel: _prose_bytes(rel) for rel in _PROSE_FILES}
     total = sum(per_file.values())
@@ -127,67 +90,10 @@ def test_the_prose_of_the_turn_prompt_only_shrinks():
 def test_moving_prose_between_the_two_files_does_not_pay_anything():
     """The defect in the LOC ratchet, pinned: the total is what is measured, so an extraction to
     `live_blocks.py` no longer reads as a saving. Both files are in ONE sum, deliberately."""
-    # eight since refactor2710-08: prompt.py and live_blocks split, all in the same sum
-    assert len(_PROSE_FILES) == 8 and all((ENGINE / r).exists() for r in _PROSE_FILES)
+    # four since INI-078 L1 (eight since refactor2710-08): all in the same sum
+    assert len(_PROSE_FILES) == 4 and all((ENGINE / r).exists() for r in _PROSE_FILES)
     combined = sum(_prose_bytes(r) for r in _PROSE_FILES)
     assert combined == sum({r: _prose_bytes(r) for r in _PROSE_FILES}.values())
-
-
-def test_the_policy_lines_are_counted_too_because_the_model_reads_them():
-    """The source this ratchet was blind to. A sentence that reaches the turn from a policy costs exactly the
-    same per turn as one typed into `prompt.py`; what differs is who can change it."""
-    n = _policy_bytes()
-    assert n <= _MAX_POLICY, (
-        f"las líneas compuestas por `style_policy` suman {n} bytes (techo {_MAX_POLICY}). Una política que "
-        f"crece en prosa es una receta con otro nombre: si hace falta decir más, mira si lo que falta es un "
-        f"MECANISMO.")
-    # ⚠️ Un SUELO, no un `> 0`. El desarme lo enseñó: con `_policy_bytes()` devolviendo 1 este caso seguía
-    # verde, porque solo comprobaba cotas y 1 cabe entre 0 y el techo. Un trinquete que pasa con la medición
-    # falsificada no mide nada — es la misma trampa que «un arnés puede FABRICAR un pass». El suelo solo lo
-    # cumple una lectura real de las dos líneas; si baja de aquí es que la política dejó de llegar al turno.
-    #
-    # V2-778 F0: the floor is now per LINE, because genesis legitimately turns one of them off. Since b97815e4
-    # (2026-09-29) `confirm_short_actions` is ON by default, so `prompt_line()` composes nothing on purpose and
-    # the sum fell to ~200 — a deliberate product change that this floor read as «the policy was emptied». So:
-    # the line genesis keeps ON must arrive, and the line it keeps OFF must still arrive the moment the operator
-    # turns it on. A falsified `_policy_bytes()` still fails the first floor.
-    from nucleo import style_policy as sp
-    sp._reset_for_tests()
-    assert len(sp.shape_line()) >= 150, (
-        f"`shape_line()` only composes {len(sp.shape_line())} bytes: the shape of the turn stopped reaching it.")
-    real = sp.confirm_short_actions
-    sp.confirm_short_actions = lambda: False
-    try:
-        assert len(sp.prompt_line()) >= 300, "silent-orders on must put its line into the turn"
-    finally:
-        sp.confirm_short_actions = real
-        sp._reset_for_tests()
-    assert n >= len(sp.shape_line()), f"the policy measures {n} bytes, less than the line it always emits"
-
-
-def test_a_preference_that_is_turned_OFF_stops_costing_bytes():
-    """La prueba de que es una política y no una frase: apagarla la retira del turno. Una receta en el prompt
-    se paga aunque el operador no la quiera."""
-    from nucleo import style_policy as sp
-    sp._reset_for_tests()
-    completo = len(sp.shape_line())
-    real = sp.policy
-    sp.policy = lambda: {**real(), "max_sentences": 0, "one_action_per_turn": False}
-    try:
-        assert sp.shape_line() == "", "con las dos preferencias apagadas no debe quedar ni una palabra"
-    finally:
-        sp.policy = real
-        sp._reset_for_tests()
-    assert completo > 0
-
-
-def test_the_whole_thing_the_model_reads_is_counted_once():
-    """Prose + the tool catalog + the policy lines: everything that reaches the provider on one turn."""
-    total = sum(_prose_bytes(r) for r in _PROSE_FILES) + _catalog_bytes() + _policy_bytes()
-    assert total <= _MAX_TOTAL, (
-        f"what the fast turn ships grew to {total} bytes (ceiling {_MAX_TOTAL}). The catalog has its own "
-        f"ceiling in `test_router`; this one exists so paying that one by moving text into the prompt, or "
-        f"the other way round, shows up as what it is.")
 
 
 def test_a_comment_costs_NOTHING_here():

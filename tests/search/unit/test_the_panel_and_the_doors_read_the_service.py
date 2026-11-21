@@ -129,32 +129,6 @@ def test_the_disarm_a_boot_without_the_search_seams_primes_nothing(monkeypatch):
     assert scheduled == [] and primed == [], "with the seams cut nothing is primed — the test above goes red"
 
 
-def test_the_fact_door_asks_find_for_an_inline_fact(monkeypatch):
-    """The turn's fact door is the service's `find(route="inline_fact")`, never the chain beside it."""
-    import search
-    from nucleo.acts import search as door
-    from search.result import SearchResult
-    asked = []
-    monkeypatch.setattr(search, "find", lambda q, **kw: asked.append((q, kw)) or SearchResult(
-        query=q, raw={"query": q, "answer": "x", "results": [], "source": "zai"}))
-    out = door.fact({"text": "q?", "brief": None}, {"query": "q"}, emit=lambda *a, **k: None, channel="voice")
-    assert asked and asked[0][0] == "q" and asked[0][1]["route"] == "inline_fact"
-    assert out.fired and out.verdict == "met" and out.data["res"]["answer"] == "x"
-
-
-def test_the_fact_door_returns_the_chain_dict_and_never_raises(monkeypatch):
-    from nucleo.acts import search as door
-    from search import web
-    seen = []
-    monkeypatch.setattr(web, "search", lambda q, k=5, mode="answer": {"query": q, "answer": "x", "results": [], "source": "zai"})
-    res = door.fact({}, {"query": "q"}, emit=lambda *a, **k: seen.append(a), channel="probe").data["res"]
-    assert res["answer"] == "x" and res["source"] == "zai" and any(a[1].startswith("🧭") for a in seen)
-    monkeypatch.setattr(web, "search", lambda q, k=5, mode="answer": (_ for _ in ()).throw(RuntimeError("boom")))
-    out = door.fact({}, {"query": "q"}, emit=lambda *a, **k: None, channel="probe")
-    assert out.data["res"]["results"] == [] and out.data["res"]["failure"]["kind"] in ("error",)
-    assert out.verdict == "unmet"
-
-
 def test_the_brief_carries_the_fields_he_asked_for_as_hard_criteria():
     brief = {"goal": "fontanero", "request": "el fontanero mejor valorado que pueda venir hoy", "hard": ["Madrid"],
              "breadth": {"min_candidates": 25}, "deliverable": {"n_final": 3}}

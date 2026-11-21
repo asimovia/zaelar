@@ -160,8 +160,8 @@ def observer(monkeypatch):
 
 
 def test_emit_stamps_the_piece_of_the_module_that_emitted(observer):
-    ev = _emit_from("nucleo/turn/pipeline_gate.py", "ev = emit('ambient', 'x')", emit=observer.emit)
-    assert ev["piece"] == "f_gate"
+    ev = _emit_from("voice/attention_lines.py", "ev = emit('ambient', 'x')", emit=observer.emit)
+    assert ev["piece"] == "c_ear"
     # one module, several pieces: the map routes by kind
     ev = _emit_from("voice/engine/pipeline/agent_events.py", "ev = emit('tts', 'say')", emit=observer.emit)
     assert ev["piece"] == "f_mouth"
@@ -173,7 +173,7 @@ def test_an_explicit_piece_wins_and_an_unknown_one_says_so(observer):
     ev = _emit_from("voice/engine/pipeline/agent_events.py", "ev = emit('transcript', 't', piece='u_chat')",
                     emit=observer.emit)
     assert ev["piece"] == "u_chat"
-    ev = _emit_from("nucleo/turn/pipeline_gate.py", "ev = emit('ambient', 'x', piece='no_such_box')",
+    ev = _emit_from("voice/attention_lines.py", "ev = emit('ambient', 'x', piece='no_such_box')",
                     emit=observer.emit)
     assert ev["piece"] == pieces.UNMAPPED and "no_such_box" in ev["piece_src"]
 
@@ -196,8 +196,8 @@ def test_the_event_log_stores_the_piece_as_a_column():
     from bus import log
     names = [c[0] for c in log._COLUMNS]
     assert "piece" in names
-    row = log._row({"topic": "observer", "ts_ms": 1.0, "payload": {"kind": "ambient", "piece": "f_gate"}})
-    assert row[3 + names.index("piece")] == "f_gate"
+    row = log._row({"topic": "observer", "ts_ms": 1.0, "payload": {"kind": "ambient", "piece": "c_ear"}})
+    assert row[3 + names.index("piece")] == "c_ear"
     # a topic whose payload carries no piece takes the publisher's, read on the publishing thread
     # a topic whose payload carries no piece: the bus reads the publisher's path at dispatch, the writer maps it
     import bus

@@ -227,20 +227,6 @@ def test_an_unreadable_SWITCH_also_stops_it(env, monkeypatch):
     assert asyncio.run(_wake(row))["ok"] is False
 
 
-def test_being_asked_for_the_operator_BLOCKS_and_closes(env, monkeypatch):
-    """His own instruction: «si él dice que quiere hablar conmigo, tú te bloqueas y dices, vale, le paso nota»."""
-    from nucleo.errands import wake as wake_mod
-    monkeypatch.setattr(wake_mod, "shadow", lambda: False)
-    row = _errand(env)
-    _answer(monkeypatch, '{"say": "Se lo digo a Ricart.", "state": "blocked", '
-                         '"reason": "quiere hablar con él directamente"}')
-    asyncio.run(_wake(row))
-    assert env.get(row["id"])["state"] == "blocked"
-    assert env.for_thread("telegram", "987") is None
-    assert env.count_open() == 0, "blocked is an ENDING: it leaves the board and stops costing a prompt"
-    assert env.threads(row["id"]) == [], "and it RELEASES the conversation, or a later message wakes it again"
-
-
 # ── it does not talk over itself ─────────────────────────────────────────────────────────────────────────
 
 def test_a_BURST_of_messages_is_one_move(env, monkeypatch):
@@ -354,49 +340,6 @@ def watcher(env):
 def _emit(topic, payload):
     import bus
     bus.emit_sync(topic, payload)
-
-
-def test_an_errand_is_born_from_the_message_that_REALLY_went_out(watcher, env):
-    """Not from the order, from its ECHO: a send that failed must leave no errand behind, and the
-    conversation id only exists because the connector resolved it."""
-    from connectors.messaging import ingest
-    asyncio.run(watcher.tick())                        # subscribe
-    _emit(ingest.TOPIC_SEND, {"ref": "r1", "platform": "telegram", "to": "@ivanm",
-                              "objective": "organizar una reunión esta tarde", "contactId": "c1",
-                              "playbook": "meeting"})          # stamped by the exit door (V2-859 T562)
-    asyncio.run(watcher.tick())
-    assert env.count_open() == 0, "the order alone opens nothing"
-    _emit(ingest.TOPIC_MSG_OUT, {"platform": "telegram", "chatId": "987", "ref": "r1"})
-    asyncio.run(watcher.tick())
-    assert env.count_open() == 1
-    row = env.for_thread("telegram", "987")
-    assert row and row["kind"] == "meeting" and row["done_when"]
-
-
-def test_a_send_that_FAILED_leaves_no_errand(watcher, env):
-    from connectors.messaging import ingest
-    asyncio.run(watcher.tick())
-    _emit(ingest.TOPIC_SEND, {"ref": "r2", "platform": "telegram", "objective": "hablar con Iván"})
-    _emit(ingest.TOPIC_SEND_FAILED, {"ref": "r2", "reason": "no existe ese usuario"})
-    asyncio.run(watcher.tick())
-    _emit(ingest.TOPIC_MSG_OUT, {"platform": "telegram", "chatId": "987", "ref": "r2"})
-    asyncio.run(watcher.tick())
-    assert env.count_open() == 0
-
-
-def test_a_plain_message_with_no_objective_opens_no_errand(watcher, env):
-    """«Dile a Iván que llego tarde» is a message, not a gestión — and it must not leave something open.
-
-    Two independent guards hold this and neither can be disarmed alone: the watcher only REMEMBERS orders
-    that carry an objective, and `start()` refuses an empty one anyway (disarmed in the sibling file,
-    `test_an_empty_objective_opens_nothing`). Stated rather than left as a mystery for whoever next reads a
-    green mutation here."""
-    from connectors.messaging import ingest
-    asyncio.run(watcher.tick())
-    _emit(ingest.TOPIC_SEND, {"ref": "r3", "platform": "telegram", "to": "@ivanm"})
-    _emit(ingest.TOPIC_MSG_OUT, {"platform": "telegram", "chatId": "987", "ref": "r3"})
-    asyncio.run(watcher.tick())
-    assert env.count_open() == 0
 
 
 def test_an_answer_on_a_BOUND_conversation_wakes_it_after_the_coalesce(watcher, env, monkeypatch):

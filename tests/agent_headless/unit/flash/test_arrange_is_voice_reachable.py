@@ -16,23 +16,6 @@ from pathlib import Path
 ENGINE = Path(__file__).resolve().parents[4]
 
 
-def test_the_tool_exists_and_needs_no_arguments():
-    from nucleo.flash import router
-    t = next((x for x in router.tools() if x["function"]["name"] == "arrange_canvas"), None)
-    assert t is not None, "arrange_canvas dropped from the catalog — the capability is unnameable again"
-    assert not t["function"]["parameters"].get("required"), "a whole-canvas op takes no arguments"
-
-
-def test_asking_to_arrange_retains_the_tool_through_the_trim():
-    """The V2-586/V2-548 lesson applied at birth: a tool whose family cannot name it gets trimmed exactly
-    on the turns that ask for it."""
-    from nucleo.flash import router, tool_selection as ts
-    full = router.tools()
-    for phrase in ("ordena los widgets de la pantalla", "recoloca los widgets", "arrange the widgets"):
-        kept, report = ts.select(full, turn_text=phrase)
-        assert "arrange_canvas" in {t["function"]["name"] for t in kept}, (phrase, report)
-
-
 def test_the_action_map_knows_arrange_and_emits_on_the_shared_rail():
     from nucleo.actionmap import executor
     assert executor.validate({"do": "arrange"}) == ""

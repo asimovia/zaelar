@@ -304,13 +304,6 @@ def execute(action: dict, emit, phrase: str = "") -> bool:
                 return False
         for cid in ids:
             _canvas(emit, said, "close", cid)
-            try:
-                # V2-650b: a fast-lane close is by definition operator-ordered (a seeded phrase) — record it
-                # so a model-emitted show of the same widget needs his words again.
-                from nucleo.acts import show_license as _lic
-                _lic.note_operator_close(cid)
-            except Exception:
-                pass
         return True
     if do == "move":
         _canvas(emit, said, "move", wid, where=action["where"])

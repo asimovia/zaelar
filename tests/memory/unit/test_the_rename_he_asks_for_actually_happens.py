@@ -31,9 +31,7 @@ the gate — `attention.wakewords()` extends itself the moment the rename lands.
 """
 from __future__ import annotations
 
-import json
 
-import pytest
 
 from memory import slots
 
@@ -59,7 +57,6 @@ def test_the_self_declaration_guard_only_covers_the_slots_it_can_judge():
 def test_the_guard_reads_that_set_and_not_the_wider_one():
     """Where the two sets get confused again. The wider one is still right for the INJECTION guard three
     lines above it — an injection preamble may not overwrite any identity fact, the assistant's included."""
-    import inspect
 
     from nucleo.memory_agent import ingest
     from tests import voice_turn_source as _vts   # V2-778 F1: the moved steps read where they sat
@@ -70,26 +67,6 @@ def test_the_guard_reads_that_set_and_not_the_wider_one():
 
 
 # ── 2 · the capability is declared where the model reads ──────────────────────────────────────────────
-
-def test_the_tool_that_carries_the_rename_says_so():
-    from nucleo.flash import router_catalog as rc
-    spec = next(t["function"] for t in rc.TOOLS if t["function"]["name"] == "set_style_directive")
-    desc = spec["description"].lower()
-    assert "nombre" in desc, (
-        "«no puedo cambiarme el nombre» over a capability it has had since V2-716: the tool that carries "
-        "the rename never mentioned it")
-    assert "puedes" in desc, "…and it has to say it CAN, because what it did was refuse"
-
-
-def test_declaring_it_did_not_cost_the_turn_anything():
-    """The catalog travels in EVERY voice turn, so a new sentence is paid for by a shorter one elsewhere —
-    the ceiling is not raised to fit a fix."""
-    from nucleo.flash import router_catalog as rc
-    size = sum(len(json.dumps(t, ensure_ascii=False)) for t in rc.TOOLS)
-    # 23_600 → 25_526 (2026-11-14): V2-866 F3 (d0142025b) added the four state-gated A2A tools (a2a_send,
-    # a2a_connect, a2a_grant, a2a_read), +2026 chars in one commit (23500 → 25526); they travel only while A2A is live.
-    assert size <= 25_526, f"the catalog grew to {size}: compact a description instead of raising the ceiling"
-
 
 # ── 3 · the words he actually used ────────────────────────────────────────────────────────────────────
 

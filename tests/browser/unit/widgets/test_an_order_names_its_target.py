@@ -48,38 +48,4 @@ def test_identify_named_keeps_a_real_name_with_or_without_context():
     assert runtime.identify_named(_AGENDA, open_ids=["youtube"], recent_ids=["search"]) == "agenda"
 
 
-# ── the voice provider's show guard ───────────────────────────────────────────────────────────────────────
-def test_the_voice_guard_never_opens_the_only_open_card_for_a_sentence_that_names_nothing(_youtube_open):
-    from voice.engine.llm.providers import widget_intent
-    assert widget_intent._show_guard_target(_BITCOIN, [], "") is None
     # …so the model's escalation stands instead of a blind «Aquí lo tienes» over the video player.
-
-
-def test_the_voice_guard_resolves_the_named_widget_even_after_a_web_search(_youtube_open):
-    from voice.engine.llm.providers import widget_intent
-    assert widget_intent._show_guard_target(_AGENDA, _PRIOR, "search") == "agenda"
-
-
-def test_the_voice_guard_keeps_the_search_continuity_for_a_bare_pronoun():
-    """«muéstramelo» right after a WEB SEARCH still means the search surface — that continuity was never the
-    defect; applying it to a sentence that NAMED the agenda was."""
-    from voice.engine.llm.providers import widget_intent
-    if runtime.get("search") is None:
-        pytest.skip("no search surface in this catalog")
-    ctx = [{"role": "user", "content": "¿A cuánto está el bitcoin?"}]
-    assert widget_intent._show_guard_target("Vale, pues muéstramelo.", ctx, "search") == "search"
-
-
-# ── the probe's mirror ────────────────────────────────────────────────────────────────────────────────────
-def test_both_channels_ask_the_named_resolver_first():
-    """A wiring guard on the CHANNELS (V2-555): the name must be consulted before any deictic hunt, in both."""
-    import re
-    from pathlib import Path
-    for rel, fn in (("voice/engine/llm/providers/widget_intent.py", "_identify_named("),):   # the one channel left
-        src = Path(rel).read_text(encoding="utf-8")
-        code = re.sub(r"(?m)^\s*#.*$", "", src)
-        named = code.index(fn)
-        deictic = code.index("deictic = (")
-        assert named < deictic, f"{rel}: the name must win before the deictic hunt runs"
-        assert "return _identify(text)\n" not in code and "return _identify_ctx(runtime, text)\n" not in code, \
-            f"{rel}: the by-context fallback must not be the guard's last word"

@@ -213,16 +213,6 @@ def test_every_act_tells_the_open_card_to_read_the_player_again(account, monkeyp
     assert ("widget", "data", "musica") in pushed, pushed
 
 
-def test_a_held_start_says_what_plays_on_the_other_device(account, monkeypatch):
-    """Live 2026-11-08: the reply said «Amy Macdonald is playing on Camaretas» while Shakira was — the refusal did not
-    say what played there, so the wording guessed. It is read from the player and travels as a fact."""
-    _start_world(account, monkeypatch)
-    r = music.control("play", "dai dai de shakira")
-    assert r.reason == "elsewhere" and r.extra.get("playing_there") == "TQG — KAROL G", r.extra
-    from nucleo.flash import music_outcome
-    assert "«TQG — KAROL G»" in music_outcome.system("", "x", "", r)
-
-
 def test_a_start_held_elsewhere_plays_on_the_page_player_instead(account, monkeypatch):
     """Operator, 2026-11-08: «yo no he pedido Spotify; quiero a esta cantante — si Spotify no está libre, pónmela por
     YouTube». A provider is a preference: the asked music sounds here, the take-over stays an offer."""

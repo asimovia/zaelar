@@ -32,10 +32,7 @@ FILE_MAX, FUNC_MAX, BRANCH_MAX = 800, 120, 100
 # dad7f3bd) and stayed red through 114 commits — a ratchet nobody runs holds nothing. Re-measured at HEAD and
 # frozen there: every entry is today's size, down-only from here. The debt it names is unchanged and still owed.
 FILES = {
-    'nucleo/energy/meter.py': 812,
-    'nucleo/llm/fast_client.py': 866,
-    'nucleo/jev/__init__.py': 590,
-    'voice/engine/llm/providers/nucleo.py': 997,
+    'nucleo/llm/fast_client.py': 814,
     'voice/observer.py': 809,   # 2026-11-19 V2-941: the isolated turn manager's kinds get their observer family (27a14c358, plan PA-1); +2 2026-11-21 INI-078: the queue's own kind (`queue`) and the decider's record (`route`); only shrinks
     'widgets/directory.py': 801,   # 2026-11-18 contacts: one directory fed by every linked source, one row per person (18b837d66, b76bfb801, 98a166e3f); found red on main 2026-11-19, recorded by INI-042 #44; only shrinks   # 2026-11-09: red on main before the V2-867/868/859/575 batch (observability owner); only shrinks from here
 }
@@ -43,55 +40,25 @@ FILES = {
 FUNCTIONS = {
     'widgets/mensajeria/outbound/targets.py::resolve_target': 122,  # 2026-11-18 V2-938 + contacts one row: the chosen row's id and a reply's chat resolve here (d44a9272c, 6acb9baa4, 18b837d66); found red on main 2026-11-19; only shrinks
     'config/settings.py::update': 149,  # +3 2026-11-17 V2-928: the presence settings (face, on/off, camera) are one more validated group
-    'i18n/init/detect.py::lock': 132,
     'memory/writer/__init__.py::insert_memory': 151,
-    'nucleo/actionmap/executor.py::execute': 144,
-    'nucleo/dispatch/listener.py::run_listener': 213,
-    'nucleo/dispatch/session.py::_run_session': 203,
-    'nucleo/dispatch/session_steps.py::build_what_it_runs_with': 132,
+    'nucleo/actionmap/executor.py::execute': 143,
+    'nucleo/dispatch/session.py::_run_session': 189,
     'nucleo/errands/wake.py::wake': 154,  # +1 2026-11-19 INI-042 #44 P-1: a watch errand leaves before the model turn
-    'nucleo/input/stt.py::Accumulator._offer': 129,   # 2026-10-22: `offer` → wrapper + `_offer`
     'nucleo/llm/fast_client.py::FastClient._stream_inner': 267,
     'widgets/navegador/live_lines.py::navegador_lines': 147,   # refactor2710-08b: moved
-    'widgets/navegador/live_nav.py::read_the_browser_tasks': 133,
-    'widgets/navegador/live_nav.py::say_the_browser_state': 147,
-    'nucleo/flash/post_stream.py::run': 155,
-    'nucleo/flash/post_stream_lanes.py::run_the_light_lanes': 435,
-    'nucleo/flash/post_stream_settle.py::settle_what_is_pending': 211,
-    'nucleo/flash/post_stream_acts.py::complete_the_acts': 323,
-    'nucleo/flash/probe.py::run_turn': 481,
-    'nucleo/flash/probe_after.py::execute_what_was_decided': 148,
-    'nucleo/flash/probe_decide.py::name_the_action': 221,
-    'nucleo/flash/probe_mirrors.py::mirror_the_voice_backstops': 264,
-    'nucleo/turn/prompt/operating.py::_flash_parts': 237,   # refactor2710-08: moved from nucleo/flash/prompt.py (was _flash_layer)
-    'nucleo/turn/prompt/live_state.py::live_state': 204,  # +2 2026-11-18 V2-938: the open message's status line (d44a9272c), and the conversation as entry 0 (ddb99c72f)    # refactor2710-08: moved from nucleo/flash/prompt.py
-    'nucleo/turn/prompt/live_tasks.py::pending_task_lines': 198,   # refactor2710-08b: moved
-    'nucleo/flash/tool_executor_calls.py::_on_tool_call': 188,
-    'nucleo/flash/tool_executor_widget.py::build': 156,
-    'nucleo/flash/tool_executor_widget_calls.py::_apply_widget_data': 180,
-    'nucleo/flash/tool_executor_widget_calls.py::_handle_widget_data_tool': 194,
-    'nucleo/flash/tool_executor_widget_calls.py::_tag_emit': 186,
-    'nucleo/pulse/workers.py::WorkersPulse._supervise_workers': 172,
-    'nucleo/memory_agent/ingest_steps.py::file_the_atoms': 141,
-    'nucleo/memory_agent/ingest_steps.py::gate_the_utterance': 164,
+    'nucleo/memory_agent/ingest_steps.py::file_the_atoms': 127,
+    'nucleo/memory_agent/ingest_steps.py::gate_the_utterance': 148,
     'nucleo/cli/worker_api_exec.py::_exec_allow': 175,   # V2-883 merge: the scheduler's acts left for worker_api_schedule.run; V2-851 trim B: the spawn act went
-    'nucleo/workers/providers/claude_map.py::_map': 126,   # V2-851 trim B: re-measured
+    'nucleo/workers/providers/claude_map.py::_map': 125,   # V2-851 trim B: re-measured
     'nucleo/workers/providers/claude_start.py::start': 134,   # +4 V2-931 (2.1801): a task marked for Claude itself takes that rung or does not start (`claude_tier.route`); V2-851 trim B: re-measured
     'server/voice_status.py::brain_and_voice': 140,
     'server/voice_status.py::the_rest_and_the_light': 192,
     # V2-851 F5 (2.1191): `_run_inner` (705) and `turn_after.close_the_turn` (294) MOVED to nucleo/turn and split by
     # stage — the three over the line are the moved bodies, each shorter than what they came from.
-    'nucleo/turn/pipeline.py::run': 196,
-    'nucleo/turn/pipeline_close.py::close_the_turn': 217,   # +2 2026-11-15 V2-909 (2.1754): the route is recorded after the close's errands, with `opened` and `said`; +3 2026-11-15 V2-909 P6: the route of a turn recorded beside what it did (stage off)
-    'nucleo/turn/pipeline_gate.py::open_the_turn': 208,  # +8 2026-11-18 V2-938: the message owner's gate before the switchboard (d44a9272c, 666b8abe0, 9fadf4266) and a turn with no text closing quietly (4c0849dd6);   # +5 V2-931 (2.1800): the switchboard's one call at the gate (`route.at_the_gate`)
-    'voice/engine/pipeline/agent.py::entrypoint': 443,  # +17 V2-863 (2.1638/2.1639): with the Flux ear the session reads the end of turn from the STT and adds only `stt_flux_min_delay`; the preemptive tap is installed; 2026-11-08 apps principles: a waiting typed line skips the greeting; the typed door opens after start
-    'voice/engine/pipeline/agent_events.py::_on_data': 142,
-    'voice/engine/speech/filler_audio.py::llm_node_with_filler': 143,
-    'voice/proactive.py::notify': 128,
+    'voice/engine/pipeline/agent_events.py::_on_data': 122,
     'voice/tag_protocol.py::strip_tags': 212,
     'widgets/agenda/actions.py::_a_add_meeting': 145,  # 2026-11-08 apps principles: the mirror status is offered, the write is logged;  # +3 2026-11-06 (4.392): the row the write lands on is handed to the notice writer (`_row`)
-    'widgets/agenda/tasklists.py::apply': 170,
-    'widgets/brief.py::for_prompt': 152,
+    'widgets/agenda/tasklists.py::apply': 157,
     'widgets/generator.py::_run_agent_once': 128,
     'widgets/imagenes/data.py::apply_action': 141,  # 2026-11-08 apps principles: the set counter a show's end state reads
     'widgets/refs.py::resolve': 122,
@@ -99,12 +66,7 @@ FUNCTIONS = {
 }
 
 BRANCHES = {
-    'nucleo/flash/post_stream_lanes.py::run_the_light_lanes': 154,  # 2026-11-08 apps principles: the take-over offer and the verdict that completes a held start
-    'nucleo/flash/post_stream_acts.py::complete_the_acts': 117,
-    'nucleo/flash/probe.py::run_turn': 124,
-    'nucleo/flash/probe_decide.py::name_the_action': 106,
-    'nucleo/flash/probe_mirrors.py::mirror_the_voice_backstops': 106,
-    'widgets/agenda/tasklists.py::apply': 115,
+    'widgets/agenda/tasklists.py::apply': 104,
     'widgets/youtube/library.py::apply': 101,
 }
 
@@ -182,11 +144,3 @@ def test_no_function_grows_more_branches():
     assert not _grown(branches, BRANCHES), \
         f"a function over {BRANCH_MAX} branches grew or is new: {_grown(branches, BRANCHES)}"
 
-
-def test_the_provider_and_the_probe_are_named():
-    """The two turns are named while they are over a ceiling, and leave the list only by getting under it."""
-    files, funcs, _ = _measure()
-    for f in ("voice/engine/llm/providers/nucleo.py", "nucleo/flash/probe.py"):
-        assert f in FILES or files.get(f, 0) <= FILE_MAX, f
-    for fn in ("voice/engine/llm/providers/nucleo.py::NucleoLLMStream._run_inner", "nucleo/flash/probe.py::run_turn"):
-        assert fn in FUNCTIONS or funcs.get(fn, 0) <= FUNC_MAX, fn

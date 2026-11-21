@@ -229,29 +229,6 @@ def _start(monkeypatch, client):
     monkeypatch.setattr(live_tts, "attach", lambda *a, **k: None)
 
 
-def test_his_voice_edge_reaches_the_probes_and_the_resume_mark(monkeypatch):
-    from nucleo.input import typed
-    from voice import proactive
-    client = _FakeClient()
-
-    async def _run():
-        _start(monkeypatch, client)
-        remote_session.handle_batch([{"k": "session", "what": "started", "room": "zaelar-t"}])
-        mark = typed.mark()
-        remote_session.handle_batch([{"k": "user_state", "state": "speaking"}])
-        speaking = proactive.user_speaking()
-        resumed_on = typed.resumed_since(mark)
-        remote_session.handle_batch([{"k": "user_state", "state": "listening"}])
-        after = proactive.user_speaking()
-        remote_session.handle_batch([{"k": "session", "what": "closed", "cause": "participant_disconnected"}])
-        return speaking, after, resumed_on
-    speaking, after, _ = asyncio.run(_run())
-    assert speaking is True and after is False
-    assert typed._state["onset"] > 0 and typed._state["end"] >= typed._state["onset"], \
-        "his edges reach the typed-order marks the V2-888 supersede reads"
-    assert not remote_session.live()
-
-
 def test_the_typed_door_sends_the_screen_that_typed_it(monkeypatch):
     from voice import screens
     client = _FakeClient()

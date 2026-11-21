@@ -48,7 +48,7 @@ DOORS: dict[str, Door] = {d.name: d for d in (
     Door("speech.out_of_band", "voice.proactive:notify"),
     Door("speech.speaker", "voice.proactive:speaker"),
     Door("memory.ingest", "nucleo.memory_agent.ingest:ingest_utterance"),
-    Door("vault.write", "voice.engine.llm.providers.vault_intercept:try_vault_intercept"),
+    Door("vault.write", "nucleo.conversation_host.guards:vault"),
 )}
 
 #: The door a dry turn still lets through when its caller asked to keep what he says (`ingest=True`, the default of

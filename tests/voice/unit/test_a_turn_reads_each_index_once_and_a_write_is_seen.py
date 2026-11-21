@@ -17,8 +17,6 @@ import os
 
 import pytest
 
-from nucleo.turn import brief, brief_screen
-
 
 # ── the directory's index ────────────────────────────────────────────────────────────────────────────────────────
 @pytest.fixture
@@ -98,55 +96,6 @@ def test_disarm_an_index_that_ignores_the_store_version_serves_the_old_directory
     db["contacts"].append({"id": "c9", "kind": "person", "name": "Tavi Soler", "channels": []})
     store.save(ct.WIDGET_ID, db)
     assert "Tavi Soler" not in _labels(ct), "this is the stale read the store's version in the key prevents"
-
-
-# ── the brief reads the screen once per turn ─────────────────────────────────────────────────────────────────────
-@pytest.fixture
-def card(monkeypatch):
-    """Two rows on a card whose actions each must name one, and an index that counts its reads."""
-    from nucleo.acts import frontend
-    from widgets import refs
-    reads = {"n": 0}
-
-    def _index(base):
-        reads["n"] += 1
-        return [{"field": "contactId", "id": "c1", "label": "Quinn Ferrer"},
-                {"field": "contactId", "id": "c2", "label": "Rowan Vidal"}]
-    acts = {f"act_{i}": {"desc": f"does thing {i} to one person"} for i in range(6)}
-    monkeypatch.setattr(frontend, "declared_actions", lambda base: acts if base == "people" else {})
-    monkeypatch.setattr(refs, "id_field_for_action", lambda base, action: "contactId")
-    monkeypatch.setattr(refs, "selector_is_optional", lambda base, action, field: False)
-    monkeypatch.setattr(refs, "_exposes_ref_index", lambda base: True)
-    monkeypatch.setattr(refs, "_ref_index", _index)
-    monkeypatch.setattr(brief_screen, "_card_label", lambda wid: wid)
-    return reads
-
-
-def test_the_whole_table_of_one_turn_reads_an_open_card_once(card):
-    qs = brief.build("call Quinn", open_ids=["people"])
-    assert brief.TARGET_KEY in qs and brief.ITEM_REF_KEY in qs, "both questions that read the rows were asked"
-    assert brief.CATALOG_KEY not in qs, "and the gates that ask the screen question again still read it the same"
-    assert card["n"] == 1, "the screen question, its two gates and the row question: one read"
-
-
-def test_the_next_turn_reads_again(card):
-    brief.build("call Quinn", open_ids=["people"])
-    brief.build("call Rowan", open_ids=["people"])
-    assert card["n"] == 2, "nothing of one turn's reading is kept for the next"
-
-
-def test_each_asker_of_the_screen_question_gets_its_own(card):
-    with brief_screen.one_read():
-        q = brief_screen.target_question(["people"])
-        q["criteria"].clear()
-        assert len(brief_screen.target_question(["people"])["criteria"]) == 7
-
-
-def test_disarm_outside_one_read_every_question_reads_the_card(card):
-    brief_screen.target_question(["people"])
-    brief_screen.target_question(["people"])
-    brief_screen.item_ref_question(["people"])
-    assert card["n"] == 3, "these are the reads `one_read` folds into one"
 
 
 # ── the catalogue's folders ──────────────────────────────────────────────────────────────────────────────────────

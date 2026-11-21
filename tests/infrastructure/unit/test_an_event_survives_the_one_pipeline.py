@@ -22,7 +22,7 @@ FROZEN = {
     # («💬 chat (canal de texto)» went with `cli/api._wall`: the manager's mouth paints both sides of a typed line)
     # («📩 system note → FlashBrain» went with the notes mailbox, V2-851 F5: no note is drained into a turn)
     ("perf", "🧾 turno (prompt+ventana+tools+decisión)"),       # the turn's decision row, typed or spoken
-    ("brain", "🔓 close licenciado por Jev (la gramática no veía orden, dos lectores de acuerdo)"),
+    # («🔓 close licenciado por Jev …» went with the old turn's close licence, INI-078 L1)
 }
 #: Kinds emitted with a computed label: the kind itself must survive.
 FROZEN_KINDS = {"consequence"}

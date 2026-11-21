@@ -13,13 +13,10 @@ Disarm: `complete` owing nothing, the other row's move dropped from `correction_
 """
 from __future__ import annotations
 
-import asyncio
 import datetime as dt
 
 import pytest
 
-from nucleo.circuit import verdict as V
-from nucleo.turn import brief_doors, verdicts
 from widgets.agenda import data as agenda, edit, gcal, reminders
 
 DAY = (dt.date.today() + dt.timedelta(days=1)).isoformat()
@@ -94,81 +91,4 @@ def test_a_move_already_put_back_is_not_undone_again():
     old undo would have moved it to 12:00 again on the next call."""
     _move(currentTime="12:00", newTime="10:00")
     assert edit.undo_of("move_meeting", FIRST, {"title": T, "date": DAY, "currentTime": "17:00", "newTime": "12:00"}) is None
-
-
-@pytest.fixture
-def turn(monkeypatch):
-    from nucleo import done_ops
-    from nucleo.acts import correction_undo as cu
-    from nucleo.request import stop
-    from voice import trace as _trace
-    cu.reset()
-    st = {"choice": cu.ANOTHER, "conf": 0.93}
-    monkeypatch.setattr(stop, "corrected_card", lambda brief: "agenda")
-    monkeypatch.setattr(done_ops, "his_last", lambda *a, **k: {"wid": "agenda", "action": "move_meeting",
-                                                               "payload": FIRST, "trace": "t-before", "at": 1.0})
-    monkeypatch.setattr(_trace, "current", lambda: "t-now")
-    monkeypatch.setattr(brief_doors, "fire", lambda h, door, **_k: st.setdefault("fired", door) and None)
-
-    async def landed(*_a, **_k):
-        return True
-    monkeypatch.setattr(brief_doors, "landed", landed)
-    def read(h, key, fb, min_confidence=None):     # as jev: a doubt keeps its info, `used: False` (CRIT-K2b R1)
-        if key != cu.KEY:
-            return fb, None
-        used = st["conf"] >= (min_confidence or verdicts.LICENCE)
-        return (st["choice"] if used else fb), {"confidence": st["conf"], "used": used}
-    monkeypatch.setattr(verdicts, "read", read)
-    ran = []
-
-    def door(wid, act, pl):
-        if cu.undo_first(wid, act, pl, {}, apply=door) == cu.ALREADY:
-            return None
-        ran.append(pl)
-        return agenda.apply_action(act, pl)
-    return cu, st, door, ran
-
-
-def test_a_sure_correction_finishes_what_the_model_left(turn):
-    cu, st, door, ran = turn
-    door("agenda", "move_meeting", {"title": T, "date": DAY, "currentTime": "12:00", "newTime": "10:00"})
-    assert st.get("fired") == "correct", "the door question is asked on the correcting turn"
-    assert asyncio.run(cu.complete(())) == []
-    assert _rows() == [f"{DAY} 10:00", f"{DAY} 12:00"], _rows()
-    assert asyncio.run(cu.complete(())) == [], "once per turn"
-
-
-def test_a_correction_not_sure_enough_to_act_says_part_only(turn):
-    cu, st, door, _ran = turn
-    st["conf"] = 0.7
-    door("agenda", "move_meeting", {"title": T, "date": DAY, "currentTime": "12:00", "newTime": "10:00"})
-    out = asyncio.run(cu.complete(()))
-    assert len(out) == 1 and out[0].verdict == V.UNMET.name and out[0].card == "agenda", out
-    assert _rows() == [f"{DAY} 10:00", f"{DAY} 17:00"], "nothing moved without a sure verdict"
-
-
-def test_an_undo_only_or_a_different_change_owes_nothing(turn):
-    cu, st, door, _ran = turn
-    for kind in (cu.UNDO_ONLY, cu.SAME):
-        cu.reset()
-        st["choice"] = kind
-        door("agenda", "move_meeting", {"title": T, "date": DAY, "currentTime": "12:00", "newTime": "10:00"})
-        assert asyncio.run(cu.complete(())) == []
-        assert _rows() == [f"{DAY} 10:00", f"{DAY} 17:00"]
-        _move(currentTime="10:00", newTime="12:00")
-
-
-def test_when_the_model_named_the_other_row_the_door_already_made_it_whole(turn):
-    cu, _st, door, ran = turn
-    door("agenda", "move_meeting", {"title": T, "date": DAY, "currentTime": "17:00", "newTime": "12:00"})
-    assert _rows() == [f"{DAY} 10:00", f"{DAY} 12:00"] and len(ran) == 2, (ran, _rows())
-    assert asyncio.run(cu.complete(())) == []
-    assert _rows() == [f"{DAY} 10:00", f"{DAY} 12:00"]
-
-
-def test_the_question_belongs_to_its_door():
-    from nucleo.acts import correction_undo as cu
-    assert brief_doors.door_of(cu.KEY) == "correct"
-    q = cu.question()
-    assert q is None or set(q["criteria"]) == {cu.ANOTHER, cu.SAME, cu.UNDO_ONLY}
 

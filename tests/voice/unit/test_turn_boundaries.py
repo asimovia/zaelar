@@ -30,70 +30,12 @@ NEXT_SENTENCE = "Muéstrame los resultados."
 
 # ── 1. The fragment signal is STRUCTURAL (no verb tables or language-specific logic) ─────────────────────────────
 
-def test_each_real_fragment_is_a_prefix_of_the_next():
-    from voice.engine.llm.providers.nucleo import _extends
-    for prev, cur in zip(FRAGMENTS, FRAGMENTS[1:]):
-        assert _extends(prev, cur), f"{prev!r} debería detectarse como fragmento de {cur[:40]!r}"
-
-
-def test_a_new_sentence_is_not_a_fragment():
-    """«Muéstrame los resultados» is another sentence, not the continuation: the guard must NOT swallow it."""
-    from voice.engine.llm.providers.nucleo import _extends
-    assert not _extends(FRAGMENTS[-1], NEXT_SENTENCE)
-    assert not _extends(NEXT_SENTENCE, FRAGMENTS[0])
-
-
-def test_identical_text_is_not_an_extension():
-    """Repeating the same sentence is NOT a superseded fragment—for otherwise a turn would discard itself."""
-    from voice.engine.llm.providers.nucleo import _extends
-    assert not _extends("pon música", "pon música")
-    assert not _extends("", "cualquier cosa")     # without a previous sentence there is nothing to supersede
-
-
-def test_extension_ignores_spacing_and_case():
-    """STT reformats spacing/capitalization between partial deliveries; that must not break detection."""
-    from voice.engine.llm.providers.nucleo import _extends
-    assert _extends("Busca un   hotel", "busca un hotel en Ibiza")
-
-
-def test_the_signal_is_language_agnostic():
-    """GENERIC mechanism: the same criterion when dictating in English or writing a program."""
-    from voice.engine.llm.providers.nucleo import _extends
-    assert _extends("write a function that", "write a function that returns the sum")
-    assert _extends("お腹が", "お腹がすいた")
-
-
 # ── 2. A superseded turn neither speaks nor acts ─────────────────────────────────────────────────────────────────
 
 class _FakeBrain:
     def __init__(self, utterance_text):
         self._utterance = {"text": utterance_text, "at": 0.0}
         self._window = []
-
-
-class _FakeStream:
-    """Minimal probe: reuses the stream's REAL methods on a fake brain."""
-
-    def __init__(self, my_text, current_utterance):
-        from voice.engine.llm.providers.nucleo import NucleoLLMStream
-        self._llm = _FakeBrain(current_utterance)
-        self._turn_text = my_text
-        self._superseded = NucleoLLMStream._superseded.__get__(self)
-
-
-def test_an_old_fragment_knows_it_was_superseded():
-    # T3 («…para ir») while the current sentence is already complete → superseded.
-    assert _FakeStream(FRAGMENTS[0], FRAGMENTS[-1])._superseded() is True
-
-
-def test_the_final_complete_turn_is_never_superseded():
-    # T6 contains the full sentence and is the current utterance → it must proceed.
-    assert _FakeStream(FRAGMENTS[-1], FRAGMENTS[-1])._superseded() is False
-
-
-def test_a_turn_is_not_superseded_by_a_different_sentence():
-    """The bug we do NOT want to introduce: discarding a legitimate turn because another sentence arrived."""
-    assert _FakeStream(FRAGMENTS[-1], NEXT_SENTENCE)._superseded() is False
 
 
 # ── 3. Turn boundaries: the values come from the module written for this purpose ─────────────────────────────────
@@ -157,32 +99,6 @@ def test_endpointing_survives_a_garbage_env(monkeypatch):
 
 # ── 5. Opening a BLANK surface is not «here you go» ───────────────────────────────────────────────────────────────
 
-def test_an_empty_presentation_surface_is_detected(tmp_path, monkeypatch):
-    """The session's false acknowledgment: `show_widget → search` on an empty screen + «Aquí lo tienes». Now the
-    event carries `empty`, so it is no longer invisible in the log."""
-    from nucleo.flash.surface_ack import saved_state_is_empty as _surface_is_empty
-    from widgets import store
-
-    monkeypatch.setattr(store, "load", lambda wid, default=None, **kw: {"title": "Resultados", "items": []})
-    assert _surface_is_empty("results") is True
-
-    monkeypatch.setattr(store, "load",
-                        lambda wid, default=None, **kw: {"title": "Resultados", "items": [{"title": "Plan A"}]})
-    assert _surface_is_empty("results") is False
-
-
-def test_emptiness_fails_open_when_it_cannot_be_known(monkeypatch):
-    """We never claim «it is empty» when we cannot know (a widget without state, a read failure)."""
-    from nucleo.flash.surface_ack import saved_state_is_empty as _surface_is_empty
-    from widgets import store
-
-    def _boom(*a, **kw):
-        raise RuntimeError("disco")
-
-    monkeypatch.setattr(store, "load", _boom)
-    assert _surface_is_empty("results") is False
-
-
 # ── 6. The results ↔ search boundary is written where the model reads it ──────────────────────────────────────────
 
 @pytest.mark.parametrize("query", ["muéstrame los resultados", "los resultados", "muéstrame las propuestas"])
@@ -218,41 +134,6 @@ def test_the_two_surfaces_declare_their_frontier():
 # of 60.5 s, all with `partial_chars=0` and `ttft=None`—the model emitted not a single speakable token. The only
 # deadline that existed was httpx's network timeout: 60 s. The operator's hard rule: FlashBrain always operational,
 # even when the Brain Workers are slow.
-
-def test_the_voice_turn_has_a_silence_deadline():
-    from voice.engine.llm.providers.nucleo import _turn_budget_ms
-    ms = _turn_budget_ms()
-    assert 0 < ms <= 15000, "un turno de voz no puede tolerar más que unos segundos de silencio"
-    assert ms < 60000, "60 s era el timeout de red de httpx: justo el agujero que dejó al operador sin respuesta"
-
-
-def test_the_deadline_is_tunable_and_disablable(monkeypatch):
-    from voice.engine.llm.providers.nucleo import _turn_budget_ms
-    monkeypatch.setenv("ZAELAR_TURN_QUIET_MS", "4000")
-    assert _turn_budget_ms() == 4000
-    monkeypatch.setenv("ZAELAR_TURN_QUIET_MS", "0")
-    assert _turn_budget_ms() > 10 ** 8, "0 = sin plazo (escotilla), no plazo cero"
-    monkeypatch.setenv("ZAELAR_TURN_QUIET_MS", "no-numero")
-    assert _turn_budget_ms() == 9000
-
-
-def test_a_turn_whose_answer_is_an_action_is_not_a_stall():
-    """The REAL case (13:49:00 and 13:50:55): `ttft=1.50s`, `spoken_chars=0`, and the turn guillotined at 9 s. The
-    model was emitting a tool-call—the operator had just said «no veo ningún resultado en pantalla»."""
-    from voice.engine.llm.providers.nucleo import stream_advancing
-    now = 1000.0
-    # a chunk arrived 1 s ago with a 9 s deadline → the stream is ALIVE, even if no voice came out
-    assert stream_advancing({"last_chunk_ts": now - 1.0, "chunks": 7}, 9000, now) is True
-
-
-def test_a_provider_that_never_answers_is_still_a_stall():
-    """The counterweight: reducing false positives must not hide the failure that the deadline exists to cut off."""
-    from voice.engine.llm.providers.nucleo import stream_advancing
-    now = 1000.0
-    assert stream_advancing({}, 9000, now) is False                        # ni un chunk: atasco de verdad
-    assert stream_advancing({"last_chunk_ts": 0}, 9000, now) is False      # sin sello = nada ha llegado
-    assert stream_advancing({"last_chunk_ts": now - 30.0}, 9000, now) is False   # avanzó, pero hace rato
-
 
 def test_a_stalled_turn_is_a_warning_not_a_dead_provider():
     """FIXED 2026-08-12 with a live case: the deadline reused the entire error branch, so ONE turn

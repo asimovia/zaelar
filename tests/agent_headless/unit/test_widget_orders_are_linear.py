@@ -14,13 +14,11 @@ Three fixes, three guards here:
 """
 from __future__ import annotations
 
-from nucleo.acts import canvas as _door
 
 
 import json
 from pathlib import Path
 
-import pytest
 
 from nucleo.actionmap import executor
 from nucleo.actionmap.normalize import normalize
@@ -87,27 +85,6 @@ def test_one_phrase_one_opinion():
 
 
 # ── 2 · a close order is never answered with a show ──────────────────────────────────────────────────────
-
-@pytest.mark.parametrize("text", [
-    "Cierra los contactos.",              # the literal turn: the model answered it with show_widget(mensajeria)
-    "cierra el reloj",
-    "quita el temporizador",
-    "podrías cerrar el reloj",
-    "no abras nada, cierra los contactos",   # a NEGATED open licenses nothing
-])
-def test_a_close_order_licenses_no_show(text):
-    assert _door.show_under_close(text)
-
-
-@pytest.mark.parametrize("text", [
-    "cierra los mensajes y enséñame la agenda",   # compound: the open verb licenses the show
-    "cierra la agenda y pon el reloj",
-    "muéstrame mis restaurantes favoritos",       # not a close at all
-    "no cierres nada, enséñame la agenda",        # negated close → not a close order
-])
-def test_but_a_licensed_or_absent_close_keeps_its_show(text):
-    assert not _door.show_under_close(text)
-
 
 # ── 3 · the fast close declines over live work ───────────────────────────────────────────────────────────
 

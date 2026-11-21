@@ -14,8 +14,6 @@ import asyncio
 import pytest
 
 from nucleo.circuit import verify
-from nucleo.turn import reply
-from nucleo.turn.reply import V
 from widgets import contract, runtime, server_api
 from widgets.timer import data as timer
 
@@ -38,19 +36,6 @@ def test_a_timer_set_in_another_vocabulary_is_refused_and_names_its_slot(payload
     assert "seconds" in res["unmet"], "the refusal does not name the slot the app reads"
     assert timer.view_data()["running"] is False, "the refused act still touched the card"
     assert verify.check(_done_when()) is False, "the declared end state reads as met over a timer that never ran"
-
-
-@pytest.mark.parametrize("lang, done", [("es", ("Listo", "Hecho")), ("en", ("There you go", "Done")), ("ja", ())])
-def test_the_turn_says_the_refusal_in_his_language_never_done(monkeypatch, lang, done):
-    monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
-    res = asyncio.run(server_api._dispatch("timer", "set", {"minutes": 10}))
-    out = reply.of_op("timer", "set", res)
-    assert out.verdict == V.UNMET.name, out
-    said = res["message"].strip()
-    assert said and not any(said.lower().startswith(d.lower()) for d in done), said   # a refusal, never a claim
-    if lang in ("es", "en"):
-        from i18n import langs
-        assert res["message"] == langs.spec(lang).widget_slots_unfilled, "the line is not his language's"
 
 
 def test_the_declared_slot_starts_the_timer_and_meets_its_end_state():

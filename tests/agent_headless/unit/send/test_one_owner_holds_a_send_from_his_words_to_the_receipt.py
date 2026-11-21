@@ -491,19 +491,6 @@ def test_two_people_of_one_name_are_told_apart_and_the_one_he_picked_is_the_one(
     assert d.target["contact_id"] == "m2" and "Madrid" in line
 
 
-def test_a_bare_yes_after_another_line_of_ours_is_not_the_messages(world):
-    """Audit 6 P0: a worker's question said out of turn after the confirmation — his «yes» answers THAT."""
-    from nucleo.send import heard
-    world.reads = [_read(who="Odile Marsh", text="I'm late")]
-    asyncio.run(owner.intake("tell Odile Marsh I'm late", {}))
-    _said()
-    line = _draft.current().confirm_line
-    heard.other_line("Shall I book the table for eight?")
-    world.reads = [_read(send=True, bare=True)]
-    _take_after("yes", line)
-    assert not world.sent
-
-
 def test_his_voice_before_the_confirmation_played_out_is_a_cut(world, monkeypatch):
     """Audit 6 P0: his voice began before our speech started (or ended) — the confirmation did not reach him."""
     from nucleo.send import heard
@@ -539,19 +526,6 @@ def test_a_reply_to_someone_else_while_a_message_is_open_waits_and_is_said(world
         "name": "Piers Lane", "contact_id": "", "platform": "whatsapp", "chat_id": "c-9"}})
     line = asyncio.run(owner.intake("answer the second one: ok", {"n": 2, "text": "ok", "_act": "reply"}))
     assert line and _draft.current().target.get("chat_id") == "c-9" and not world.sent
-
-
-def test_a_go_ahead_after_another_line_of_ours_is_read_the_confirmation_again(world):
-    """Audit 7 P0: a worker asked «shall I send the restaurant's mail?» after our confirmation — «yes, send it» is
-    not the message's."""
-    from nucleo.send import heard
-    world.reads = [_read(who="Odile Marsh", text="I'm late")]
-    asyncio.run(owner.intake("tell Odile Marsh I'm late", {}))
-    _said()
-    heard.other_line("The restaurant's mail is ready, shall I send it?")
-    world.reads = [_read(send=True)]
-    taken, line = _take_after("yes, send it", "")
-    assert taken and not world.sent and "I'm late" in line
 
 
 def test_a_sentence_begun_before_the_confirmation_is_not_its_answer(world, monkeypatch):

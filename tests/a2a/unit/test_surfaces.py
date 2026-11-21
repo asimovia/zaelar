@@ -41,28 +41,6 @@ def live(pair):
     a2a.set_runtime(None, None)
 
 
-def test_turn_tools_reach_the_agent_and_are_read_out_by_code(live):
-    from nucleo.flash import tools_a2a as t
-    a, b = live
-    assert t.live()
-    out = t.run("a2a_send", {"to": "marta", "text": "hola"}, lambda *a, **k: None)
-    assert out["ok"] and t.line("a2a_send", out, {"to": "Marta"}, _Say()) == "sent Marta"
-    b.pull()
-    assert b.inbox()[0]["text"] == "hola"
-    t.run("a2a_grant", {"to": "Marta", "item": "calendar"}, lambda *a, **k: None)
-    out = t.run("a2a_read", {"what": "sharing"}, lambda *a, **k: None)
-    assert "calendar" in t.line("a2a_read", out, {}, _Say())
-    out = t.run("a2a_send", {"to": "Pepe", "text": "x"}, lambda *a, **k: None)
-    assert t.line("a2a_send", out, {"to": "Pepe"}, _Say()) == "no Pepe"
-
-
-def test_tools_are_absent_while_off():
-    from nucleo.flash import tools_a2a as t
-    a2a.set_runtime(None, None)
-    assert not t.live()
-    assert t.run("a2a_read", {"what": "status"}, lambda *a, **k: None)["error"] == "a2a_off"
-
-
 def test_a_request_becomes_a_durable_card_answered_by_its_button(pair, tmp_path):
     from server.a2a_cards import Cards
     a, b = pair()
@@ -112,28 +90,3 @@ def test_the_consent_classes_are_declared():
     for verb in a2a.items.VERBS:
         assert v.declared(f"a2a.{verb}")
 
-
-def test_a2a_send_crosses_the_one_consent_door_with_the_contact_as_subject(live, monkeypatch):
-    """T583 · `a2a_send` asks `consent.decide_act("messaging.send_new@a2a", subject=cid)`: «never» refuses, «ask»
-    holds it unsent, a clear verdict sends. Disarm: skip the door → the refused message reaches Marta."""
-    from nucleo import consent
-    from nucleo.flash import tools_a2a as t
-    a, b = live
-    seen = []
-
-    def door(cls, **k):
-        seen.append((cls, k.get("channel"), k.get("subject")))
-        return {"verdict": verdict[0]}
-    monkeypatch.setattr(consent, "decide_act", door)
-    verdict = [consent.REFUSE]
-    out = t.run("a2a_send", {"to": "Marta", "text": "no"}, lambda *a, **k: None)
-    assert out == {"ok": False, "error": "refused"} and seen[-1] == ("messaging.send_new", "a2a", "marta")
-    assert t.line("a2a_send", out, {"to": "Marta"}, _Say()) == "a2a_send_refused"
-    verdict = [consent.ASK_CONSENT]
-    assert t.run("a2a_send", {"to": "Marta", "text": "wait"}, lambda *a, **k: None)["error"] == "held"
-    b.pull()
-    assert b.inbox() == []
-    verdict = [consent.RUN]
-    assert t.run("a2a_send", {"to": "Marta", "text": "ok"}, lambda *a, **k: None)["ok"]
-    b.pull()
-    assert [m["text"] for m in b.inbox()] == ["ok"]

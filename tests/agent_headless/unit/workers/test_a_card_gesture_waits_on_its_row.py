@@ -74,16 +74,6 @@ def test_disarmed_a_gesture_with_no_act_runs_nothing(doors, monkeypatch):
     assert not ran
 
 
-def test_every_gesture_asks_on_a_row_first():
-    from connectors.meshkore import send_gate
-    from nucleo.flash import tool_executor_widget as txw
-    src = inspect.getsource(txw.build)
-    for kind in ('"delete"', '"restore"', '"cluster"'):
-        assert "_ask_kind_on_its_row(" in src and kind in src
-    assert "consent_ask" in inspect.getsource(send_gate.gate)
-    assert set(consent_ask.ACTS) == {"delete", "restore", "cluster"}
-
-
 def test_the_browser_click_reads_his_yes_through_the_one_reader():
     from widgets.navegador.owner import browser_steps
     src = inspect.getsource(browser_steps)

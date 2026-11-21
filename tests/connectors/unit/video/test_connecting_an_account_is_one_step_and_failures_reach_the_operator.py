@@ -145,38 +145,6 @@ def rails(monkeypatch):
     return spoken
 
 
-def test_a_failed_data_op_is_announced_instead_of_vanishing(rails):
-    """THE defect. `dispatch_tag` discarded `brain_action`'s result, so the widget's exact reason existed
-    in-process and reached nobody — and twelve seconds later the agent claimed the opposite."""
-    from nucleo.acts import data_ops
-    from nucleo.turn import reply as R
-
-    res = {"ok": False, "error": "sin app OAuth registrada para YouTube"}
-    o = R.of_op("youtube", "connect_account", res)
-    lines = [t for _o, t in R.owed([o], "Hecho.")]
-    assert o.verdict == "unmet" and len(lines) == 1, "in time, the turn's own mouth says it did not happen"
-    # V2-652 — a bare `error` is diagnostic/model-facing and is NEVER voiced verbatim.
-    assert "OAuth" not in lines[0]
-    assert asyncio.run(data_ops.report_failure("youtube", "connect_account", dict(res), late=True)) is True
-    assert len(rails) == 1 and "OAuth" not in rails[0], "late, it is said once out of turn — still never the error"
-
-
-def test_a_model_facing_error_is_never_spoken_but_a_message_is(rails, monkeypatch):
-    """V2-652, measured live (session 7f77e2cc): the agenda's retry instruction («vuelve a llamar a
-    add_meeting con el título, el día (YYYY-MM-DD)…») was spoken aloud and painted into the chat as
-    zaelar's own words. The two result keys have two audiences: `message` speaks, `error` never does."""
-    from nucleo.turn import reply as R
-    from i18n import langs
-    monkeypatch.setattr(langs, "current_code", lambda: "es")
-    monkeypatch.setenv("ZAELAR_LANGUAGE", "es")
-    o = R.of_op("agenda", "add_meeting",
-                {"ok": False,
-                 "error": "vuelve a llamar a add_meeting con el título, el día (YYYY-MM-DD) y la hora (HH:MM)",
-                 "message": "No he llegado a apuntar la cita: me falta el título, el día o la hora."})
-    lines = [t for _o, t in R.owed([o], "Hecho.")]
-    assert len(lines) == 1 and "me falta el título" in lines[0] and "add_meeting" not in lines[0]
-
-
 def test_a_SUCCESSFUL_data_op_says_nothing(rails):
     """The counterweight that keeps the above from being satisfied by announcing everything."""
     from nucleo.acts import data_ops
@@ -200,32 +168,6 @@ def test_the_same_failure_is_not_announced_twice_in_a_row(rails):
 # no longer reachable through a widget data-op — the seam it drove no longer exists.
 
 
-# ── the mute backstop stops blaming the operator ──────────────────────────────────────────────────────────
-def test_the_mute_backstop_rotates_instead_of_repeating_one_line():
-    """Measured: «Perdona, ¿me lo repites?» four times in ninety seconds, answered with «Pero ¿por qué te lo
-    tengo que repetir?». `holding_line` got this treatment in V2-189; this branch never did."""
-    from nucleo.turn import wait_lines as reminder_guards
-    from voice.engine.core import langs
-
-    lines = langs.current_language().mute_lines
-    assert len(lines) >= 3
-    window, said = [], []
-    for _ in range(3):
-        s = reminder_guards.mute_line(window)
-        said.append(s)
-        window.append({"role": "assistant", "content": s})
-    assert len(set(said)) == 3, f"repeated itself: {said}"
-
-
-def test_after_every_variant_the_engine_admits_it_is_stuck_instead_of_apologising_again():
-    from nucleo.turn import wait_lines as reminder_guards
-    from voice.engine.core import langs
-
-    lang = langs.current_language()
-    window = [{"role": "assistant", "content": c} for c in lang.mute_lines]
-    assert reminder_guards.mute_line(window) == lang.mute_stuck
-
-
 def test_no_mute_line_asks_the_operator_to_repeat_himself_as_if_he_were_unclear():
     """The wording fault, separate from the repetition one: the model returned empty, which is our fault, and
     the old line put it on his speech."""
@@ -238,21 +180,6 @@ def test_no_mute_line_asks_the_operator_to_repeat_himself_as_if_he_were_unclear(
         assert any(m in " ".join(lang.mute_lines).lower()
                    for m in ("se me ha ido", "no te he seguido", "por dentro",
                              "i lost that", "didn't follow", "on my end")), code
-
-
-# ── routing ───────────────────────────────────────────────────────────────────────────────────────────────
-def test_connect_vocabulary_retrieves_the_media_family_not_only_the_cluster_one():
-    """«conecta» was a seed of `cluster` (MeshKore peers) and of nothing else, so the most natural Spanish
-    word for linking an account retrieved peer-to-peer tools. Measured on «Vamos, conecta.»:
-    named=['cluster'], omitted=['media']."""
-    from nucleo.flash import tool_selection
-
-    for phrase in ("Vamos, conecta.", "conéctame la cuenta de YouTube", "connect my youtube account"):
-        fams = {f for f, hints in tool_selection._HINTS.items()
-                if tool_selection._words(phrase) & set(hints)}
-        assert "media" in fams, f"{phrase!r} → {fams}"
-    # and the cluster family keeps its own seed — families are not exclusive
-    assert "conecta" in tool_selection._HINTS["cluster"]
 
 
 def test_the_widgets_routing_line_still_mentions_connecting_after_the_brief_trims_it():
@@ -345,25 +272,3 @@ def test_hiding_the_account_layer_does_NOT_disable_the_player(sandbox):
         # succeeds», it is that NOTHING fails for the ACCOUNT reason.
         assert "todavía no está disponible" not in str(res.get("error") or ""), (act, res)
 
-
-def test_an_ABSENT_capability_is_declared_even_with_the_card_CLOSED(sandbox):
-    """Learned live, minutes after F2 shipped. The block was gated on the youtube card being OPEN — right for
-    connection STATE, wrong for «this does not exist»: with the card closed the model never saw it and
-    answered «Conéctame mi cuenta de YouTube» with «Te abro YouTube para que vincules tu cuenta, ahí te guía
-    paso a paso», offering a door that had just been sealed.
-
-    The OFFER is what opens the card, so the fact has to arrive before it. V2-540 again: a model cannot
-    decline what is not in its prompt."""
-    from nucleo.turn.prompt import operating as prompt
-
-    assert "TODAVÍA NO ESTÁ DISPONIBLE" in (prompt._connector_briefs(set()) or "")
-
-
-def test_the_connected_STATE_block_stays_gated_on_the_open_card(sandbox, monkeypatch):
-    """The counterweight: the always-on branch exists only for the absent capability. Once a client exists,
-    the detailed state goes back to costing tokens only while the operator is looking at the card."""
-    from nucleo.turn.prompt import operating as prompt
-
-    _with_builtin(monkeypatch)
-    assert "VÍDEO (cuentas)" not in (prompt._connector_briefs(set()) or "")
-    assert "VÍDEO (cuentas)" in (prompt._connector_briefs({"youtube"}) or "")

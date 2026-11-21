@@ -17,7 +17,6 @@ measures the operation.
 """
 from __future__ import annotations
 
-from nucleo import circuit
 
 import time
 
@@ -27,33 +26,6 @@ BUDGET_MS = 3.0
 def _median(xs):
     xs = sorted(xs)
     return xs[len(xs) // 2]
-
-
-def test_the_request_rows_writes_fit_the_budget(tmp_path, monkeypatch):
-    monkeypatch.setenv("ZAELAR_DB", str(tmp_path / "zaelar.db"))
-    from memory import db as memdb, tasks_store as ts
-    memdb.reset_db()
-    memdb.get_db()
-    try:
-        from nucleo.circuit import spec as S
-        from nucleo.request import model as rq
-        from nucleo.turn.prompt import live_history
-        now = int(time.time())
-        for i in range(300):
-            ts.task_put({"id": f"abcdef-i{i}", "goal": "x", "kind": "inline", "mode": "now", "state": "done",
-                         "created_at": now - i, "started_at": now - i})
-        turn = []
-        for i in range(120):
-            rq.begin(f"pon el vídeo {i}")
-            t = time.perf_counter()
-            uid = rq.opened("youtube", "load", text="x")
-            S.persist(uid, {"done_when": {"a": 1}, "status": "open"})
-            circuit.settle(row=uid, verdict="met")
-            live_history.recent_lines()
-            turn.append((time.perf_counter() - t) * 1000)
-        assert _median(turn) <= BUDGET_MS, f"a turn's own writes take {_median(turn):.2f} ms (median; budget {BUDGET_MS})"
-    finally:
-        memdb.reset_db()
 
 
 def test_the_people_scan_fits_the_budget(monkeypatch):

@@ -16,35 +16,10 @@ import time
 
 import pytest
 
-from nucleo.flash import router
-
 
 # ── the door exists, is never trimmed, and routes ─────────────────────────────────────────────────────────
 
 from widgets import read as widget_read
-def test_read_widget_is_in_the_catalog_and_in_the_untrimmed_memory_family():
-    names = {t["function"]["name"] for t in router.TOOLS}
-    assert "read_widget" in names
-    assert "read_widget" in router.FAMILIES["memory"]
-    from nucleo.flash import tool_selection
-    assert "memory" in tool_selection.ALWAYS, "a question announces nothing — the reader must always be offered"
-
-
-def test_the_router_decides_a_read():
-    d = router.decide("read_widget", {"widget_id": "agenda", "question": "hora de la cita con Hacienda"})
-    assert d.kind == router.READ_WIDGET
-    assert d.payload == {"widget_id": "agenda", "question": "hora de la cita con Hacienda"}
-    assert router.READ_WIDGET in router._PRIORITY
-
-
-def test_the_other_doors_point_at_this_one():
-    """The model is told where a question about HIS data goes — in the tools it would otherwise reach for."""
-    by = {t["function"]["name"]: t["function"]["description"] for t in router.TOOLS}
-    assert "read_widget" in by["web_search"], "his own data is not a web fact"
-    assert "read_widget" in by["widget_data"], "asking is not acting"
-    assert "read_widget" in by["recall"], "the agenda is not his long-term memory"
-
-
 # ── resolution: names only, never «the card that is open» ────────────────────────────────────────────────
 def test_resolve_keeps_an_instance_of_a_catalog_widget():
     """Demo sandbox 2026-11-05, S1: «so how did the monitors go, show me» read `results::d88d50-1` — the errand's
@@ -155,32 +130,6 @@ def test_an_empty_block_is_declared_empty_never_filled():
 # ── both channels are wired (V2-252: parallel implementations drift unless both are read) ────────────────
 def _code(rel: str) -> str:
     return re.sub(r"(?m)^\s*#.*$", "", _vts.read(rel))
-
-
-def test_the_voice_provider_captures_and_resolves_the_read():
-    code = _code("voice/engine/llm/providers/nucleo.py")
-    assert 'elif name == "read_widget":' in code, "the tool call must be captured"
-    assert "read_req={" in _code("nucleo/turn/pipeline_state.py")
-    assert "_wread.prepare(" in code, "the voice channel resolves+reads through the shared module"
-    # a read is a light route: it yields to a worker, a search or a secret in the same turn…
-    assert 'if read_req["v"] is not None and escalate_req["v"] is None and search_req["v"] is None' in code
-    # …and recall does not ALSO speak when the turn read a widget (or itself, `about_self`, V2-932)
-    assert 'and reveal_req["v"] is None and read_req["v"] is None and not read_req.get("self"):' in code
-
-
-def test_both_channels_end_in_the_SAME_module():
-    """The invariant the two guards above exist for (V2-252): whatever each channel's plumbing looks like, the
-    resolution, the read and the second pass's system prompt come from `widget_read` — not from two copies."""
-    import re
-    from pathlib import Path
-    voice = _code("voice/engine/llm/providers/nucleo.py")
-    lanes = _code("nucleo/flash/post_stream_lanes.py")
-    for where, code in (("voice", voice + lanes),):
-        assert re.search(r"read as _wread", code), f"{where} must reach the module by import"
-    # and NEITHER channel re-implements the read: only `widget_read` may call `refs.prompt_digest` for this.
-    own = Path("widgets/read.py").read_text(encoding="utf-8")
-    assert "prompt_digest" in own
-    assert "prompt_digest" not in voice and "prompt_digest" not in lanes
 
 
 # ── the OTHER light route the extraction moved: recall's voice pass had NO test at all (V2-668c) ──────────

@@ -9,7 +9,6 @@ from __future__ import annotations
 import pytest
 
 from nucleo.acts import errand
-from nucleo.turn import brief as tb
 
 PAY = "paga la factura de la luz de este mes"
 
@@ -36,36 +35,9 @@ def test_his_standing_never_refuses_even_after_a_yes(monkeypatch):
     assert errand.asks_first("moves_money", confirmed=True)
 
 
-def test_the_brief_asks_it_and_the_voice_carries_it():
-    from nucleo.turn import brief_doors   # V2-887 step 8: the portal asks it, into the turn's brief
-    assert brief_doors.door_of(errand.CLASS_KEY) == "portal" and errand.CLASS_KEY in tb.keys()
-    import threading
-    ev = threading.Event()
-    ev.set()
-    brief = {"event": ev, "turn_id": "t-cls", "open_ids": [],
-             "result": {errand.CLASS_KEY: {"choice": "moves_money", "confidence": 0.93}}}
-    assert errand.class_verdict(brief) == {"choice": "moves_money", "confidence": 0.93}
-    assert errand.class_verdict(None) is None
-
-
 @pytest.mark.parametrize("cls", ["moves_money", "account_change"])
 def test_the_dispatch_gate_reads_the_same_rule(cls):
     assert errand.asks_first(errand.class_of({"choice": cls, "confidence": 0.95}, "busca hoteles"), confirmed=False)
-
-
-@pytest.mark.parametrize("request_text", ["abre el que sea mejor oferta", "open the best deal",
-                                          "cancela mi suscripción al gimnasio"])
-@pytest.mark.parametrize("cls", ["moves_money", "account_change"])
-def test_a_critical_class_asks_at_birth_only_on_a_sure_verdict(cls, request_text):
-    """V2-873 (node 2.884): «abre el que sea mejor oferta» read `moves_money` at 0.51 and the errand was parked behind
-    «this moves money» — opening an offer. A critical class read UNSURE starts the errand (money that really leaves is
-    asked at its exit, `payment.authorize`); read SURE (`verdicts.VETO`) it asks before it starts, as before."""
-    from nucleo.turn import verdicts as v
-    unsure = {"choice": cls, "confidence": 0.51}
-    sure = {"choice": cls, "confidence": v.VETO}
-    assert errand.class_of(unsure, request_text) == cls, "the class is still read (the row and the exit carry it)"
-    assert not errand.asks_first(errand.class_of(unsure, request_text), confirmed=False, verdict=unsure)
-    assert errand.asks_first(errand.class_of(sure, request_text), confirmed=False, verdict=sure)
 
 
 def test_the_one_door_that_starts_a_worker_hands_the_verdict_over():

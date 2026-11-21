@@ -17,9 +17,7 @@ it, so it ALWAYS falls out.
 A verifier reading that artifact would say “clean” about a dirty prompt. It is tonight’s rule applied to the record:
 **a ceiling is dangerous only if the reader accepts prefixes**.
 """
-import pytest
 
-from nucleo.turn.prompt import builder as fp
 from voice import observer as ob
 
 MARCA = "PILDORA_DE_FONDO_MARCADOR"
@@ -31,14 +29,6 @@ RECALL = f"Puede que venga a cuento (de tu memoria):\n· {MARCA}"
 # measures the TRUNCATION, not how much memory the runner has: with loose state it passed by itself and failed in the
 # full map (2026-08-29), which is exactly what a test that measures its environment looks like.
 _ESTADO = ("── QUIÉN ERES ──\nEres zaelar.\n\n── QUIÉN TIENES DELANTE ──\nEl operador se llama Marc.")
-
-
-def _prompt(recent: str = "", estado: str = _ESTADO) -> str:
-    import unittest.mock as _mock
-    from memory import state_cache as memory_cache
-    with _mock.patch.object(memory_cache, "get", lambda: (estado, "Marc")):
-        s, _ = fp.build_flash_system(recall_block=RECALL, recent_block=recent)
-    return s
 
 
 # ── the measured case ───────────────────────────────────────────────────────────────────────────────────────────

@@ -118,25 +118,3 @@ def _fast_branch() -> str:
     src = _vts.read(PROVIDER)
     start = src.index("if mode == _wactions.FAST:")
     return src[start:src.index("elif mode == _wactions.CONFIRM:", start)]
-
-
-def test_the_seal_is_written_only_inside_the_result_callback():
-    """THE DISARM TARGET. Moving `brain._last_dataop = …` back above the dispatch is exactly the defect of
-    2026-09-16, and it is one line, so it has to be pinned where it can be seen."""
-    branch = _fast_branch()
-    writes = [ln.strip() for ln in branch.splitlines() if "brain._last_dataop =" in ln]
-    assert len(writes) == 1, f"expected ONE write of the seal in the FAST branch, found {writes}"
-    assert branch.index("def _seal(") < branch.index("brain._last_dataop ="), (
-        "the seal must be written inside the callback that sees the result, never before dispatching")
-    assert "seal=_seal" in branch, "and the callback has to actually reach `dispatch_and_report`"
-
-
-def test_the_guard_says_what_it_threw_away():
-    """The sibling guards in `_handle_widget_data_tool` carry the discarded payload in the event; this one
-    logged only «agenda:cancel_meeting», so the live incident could not be diagnosed from the timeline."""
-    from nucleo.acts import card
-    lic = card._context_bleed({"brief": None, "text": "borra el reloj"}, "agenda", "cancel_meeting", {"id": "m1"},
-                              last_dataop=("agenda", "cancel_meeting", {"id": "m1"}, __import__("time").time()))
-    assert lic is not None and "data-op del turno anterior re-emitida" in lic.label
-    assert lic.extra == {"id": "agenda", "action": "cancel_meeting", "payload": {"id": "m1"}}, (
-        "a guard that discards an action must record WHICH action and with what payload")

@@ -12,8 +12,6 @@
 #
 import pytest
 
-from nucleo import dispatch
-from nucleo.turn.prompt import live_tasks
 from nucleo.workers import findings
 
 
@@ -27,26 +25,6 @@ def _clean():
 
 
 _HEADLINE = "The 6 Best Budget And Cheap Monitors of 2026 - RTINGS.com — a roundup of picks — https://rtings.com/x"
-
-
-def _block(monkeypatch) -> str:
-    monkeypatch.setattr(dispatch, "pending_summaries", lambda: [
-        {"id": "1", "request": "monitor barato", "phase": "buscando", "secs": 40}])
-    return " ".join(live_tasks.pending_task_lines())
-
-
-def test_the_lead_sits_next_to_its_task_labelled_as_a_lead(monkeypatch):
-    findings.hand_web_finding("1", _HEADLINE, "monitor barato")
-    block = _block(monkeypatch)
-    assert "ÚLTIMA PISTA DE LA WEB" in block and "RTINGS.com" in block
-    assert "NO un candidato" in block
-
-
-def test_a_real_answer_can_still_be_given(monkeypatch):
-    """V2-236's direction: clean data was dying inside dead workers. The label leaves the door open to give
-    it when it already names the thing and its price."""
-    findings.hand_web_finding("1", _HEADLINE, "monitor barato")
-    assert "nombre y su precio" in _block(monkeypatch)
 
 
 def test_the_finding_itself_still_travels_verbatim():

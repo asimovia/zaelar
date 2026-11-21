@@ -41,17 +41,3 @@ def test_a_refused_act_says_its_own_reason_not_a_removal():
     d = confirm_gate.decide("mensajeria", "reply", {"text": "Hola Raquel"})
     assert d["sentence"] and "remove" not in d["sentence"].lower() and "quitar" not in d["sentence"].lower()
 
-
-def test_an_act_that_stays_runs_inline():
-    from nucleo.flash import tool_executor_widget_calls as calls
-    esc = {"v": None}
-    assert calls._leaving_is_a_task("agenda", "add_task", "apunta comprar pan", esc, lambda *a, **k: None) is False
-    assert esc["v"] is None
-
-
-def test_disarmed_a_leaving_act_would_run_inline(monkeypatch):
-    from nucleo.flash import tool_executor_widget_calls as calls
-    from widgets import effects
-    monkeypatch.setattr(effects, "leaves", lambda *_a: False)
-    esc = {"v": None}
-    assert calls._leaving_is_a_task("mensajeria", "send_to", "mandale", esc, lambda *a, **k: None) is False

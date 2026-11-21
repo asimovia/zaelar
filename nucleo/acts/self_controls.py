@@ -97,28 +97,3 @@ def said(act, value=None) -> str:
     line = str(langs.words(f"controls_said.{a}", default="") or "") if a else ""
     return line.replace("{n}", str(level(value) if level(value) is not None else "")) if line else ""
 
-
-def from_tool(args: dict, c) -> None:
-    """The model's `agent_controls` call. Each ACT once per turn, not the tool once: «mute and switch off» is two calls,
-    run in that order on the screen. The act's line replaces «Done.»; a one-way act's line is also the turn's TAIL."""
-    act, value = (args or {}).get("act"), (args or {}).get("value")
-    key = f"agent_controls:{canon(act)}"
-    if key in c._tool_fired or not apply(act, c.emit, src="flash", said=c.operator_text or c.text, value=value):
-        return
-    c._tool_fired.update({"agent_controls", key})
-    c.acted["widget"] = True     # a UI act: the turn is never mute about it and never escalates it
-    line = said(act, value)
-    for slot, on in (("act_line", bool(line)), ("act_tail", bool(line) and one_way(act))):
-        if on:
-            c.acted[slot] = " ".join(x for x in (c.acted.get(slot), line) if x)
-
-
-def say_the_way_back(acted: dict, spoken_text: str, send, speech) -> str:
-    """After the turn's words: a one-way act (the mic closed, the agent off) cannot be undone by voice, so its line —
-    naming the button as the way back — is said whatever the model said and whatever the ack policy. Returns the
-    turn's spoken text with it."""
-    tail = acted.get("act_tail") or ""
-    if not tail or tail in (spoken_text or ""):
-        return spoken_text
-    send(speech.sanitize(tail, drop_metadata=False))
-    return " ".join(x for x in (spoken_text, tail) if x)

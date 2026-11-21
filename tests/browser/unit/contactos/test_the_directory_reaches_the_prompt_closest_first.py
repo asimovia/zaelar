@@ -57,13 +57,6 @@ def test_a_full_name_reaches_the_background(ct):
     assert _names(ct.people_named("send Pablo Hernandez the invoice")) == ["Pablo Hernandez"]
 
 
-def test_the_people_block_carries_the_count_not_an_order(ct):
-    from nucleo.turn.prompt import builder
-    block = builder._people_block("pregunta a pablo si ha probado zaelar")
-    assert "Pablo Sabater" in block and "2 más con ese nombre" in block
-    assert "Pablo Elastic" not in block and "pregunta" not in block.split("──")[-1].lower()
-
-
 def test_the_digest_counts_every_level_and_lists_only_the_closest(ct):
     d = ct.prompt_digest()
     assert "5 entradas" in d and "1 de su círculo" in d and "1 con trato reciente" in d and "3 de fondo" in d

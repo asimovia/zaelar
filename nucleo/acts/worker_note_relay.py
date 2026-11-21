@@ -67,15 +67,6 @@ def line(parte: dict) -> str:
     return line_for([n for op in ops or [] for n in (op.get("relayed_to") or [])])
 
 
-def voice_line(acts) -> str:
-    """The voice channel's version, from the cards this turn touched (`canvas_focus.this_turn_acts`)."""
-    for card, kind, action in acts or []:
-        if kind == "control" and (t := owner(card, action)):
-            from nucleo.errands import named as _ne
-            return line_for([_ne.spoken_name({"request": t.get("request")})])
-    return ""
-
-
 def _emit(widget_id: str, action: str, to: str) -> None:
     try:
         from voice.observer import emit

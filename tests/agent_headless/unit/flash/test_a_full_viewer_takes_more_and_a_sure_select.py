@@ -13,12 +13,9 @@ again over a viewer that holds it is «more» — read from the viewer's own `qu
 from __future__ import annotations
 
 import asyncio
-import threading
 
 import pytest
 
-from nucleo.acts import card
-from nucleo.turn import brief as _tb
 
 _ITEMS = [{"title": f"Red Ferrari F40 photo {i}", "url": f"https://img.example.com/f40-{i}.jpg",
            "thumb": f"https://img.example.com/f40-{i}-t.jpg", "site": "img.example.com", "w": 1600, "h": 900}
@@ -33,30 +30,11 @@ def viewer(monkeypatch):
     return held
 
 
-def _brief(choice: str, conf: float):
-    ev = threading.Event()
-    ev.set()
-    return {"event": ev, "turn_id": "t", "open_ids": ["results::t135", "imagenes"],
-            "result": {_tb.TARGET_KEY: {"choice": choice, "confidence": conf}}}
-
-
 # ── «the second one» under a sure select ─────────────────────────────────────────────────────────────────────
 
 def test_the_models_ambiguous_reference_was_the_doubt(viewer):
     from widgets import refs
     assert refs.resolve("imagenes", "select", "", {"item": "Red Ferrari F40"}).needs == "ambiguous"
-
-
-@pytest.mark.parametrize("said", ["open the second one", "abre la segunda"])
-def test_a_sure_select_takes_the_row_his_words_name(viewer, said):
-    res = card.his_row(_brief("imagenes:select", 0.96), "imagenes", "select", {"item": "Red Ferrari F40"}, said)
-    assert res is not None and res.ok and str(res.payload.get("item")) == "2", res
-
-
-@pytest.mark.parametrize("choice,conf", [("imagenes:select", 0.7), ("imagenes:next", 0.96), ("results:select", 0.96)])
-def test_an_unsure_or_other_verdict_leaves_the_question(viewer, choice, conf):
-    assert card.his_row(_brief(choice, conf), "imagenes", "select", {"item": "Red Ferrari F40"},
-                        "open the second one") is None
 
 
 # ── «more of those» over a full viewer ───────────────────────────────────────────────────────────────────────

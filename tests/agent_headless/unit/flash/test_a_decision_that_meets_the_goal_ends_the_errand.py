@@ -10,30 +10,6 @@ decision can only settle a goal the question names. The bench cases (ES+EN plus 
 """
 from __future__ import annotations
 
-import threading
-
-from nucleo.request import stop as sd
-
-
-def _brief(choice: str, conf: float) -> dict:
-    ev = threading.Event()
-    ev.set()
-    return {"event": ev, "turn_id": "t-29", "open_ids": [], "result": {sd.KEY: {"choice": choice, "confidence": conf}}}
-
-
-def test_a_sure_settle_is_his_words_and_anything_else_is_not():
-    assert sd.settled_by(_brief(sd.SETTLED, 0.9), "  me quedo  con el segundo ") == "me quedo con el segundo"
-    assert sd.settled_by(_brief(sd.SETTLED, 0.4), "me gusta el segundo") == ""
-    assert sd.settled_by(_brief(sd.STOP, 0.95), "para la búsqueda") == ""
-    assert sd.ends(sd.SETTLED)
-
-
-def test_the_question_names_the_running_goal():
-    q = sd.question("", ["Find a hotel in Seville under 120 euros"])
-    assert "Find a hotel in Seville" in q["instructions"] and sd.SETTLED in q["criteria"]
-    from nucleo.turn import brief as tb
-    built = tb._stop({"last_reply": "", "running_goals": ["Busca pisos en Gràcia"]})
-    assert "Busca pisos en Gràcia" in built["instructions"], "the brief must hand the errand's goal to the question"
 
 
 def test_a_settled_errand_ends_done_with_his_pick(monkeypatch):
@@ -71,11 +47,3 @@ def test_a_plain_stop_still_cancels(monkeypatch):
     assert ledger.state_of(rec) == "cancelled"
     assert [x.get("ok") for k, lbl, x in events if lbl == "end"] == [False]
 
-
-def test_the_backstop_and_the_model_both_end_through_the_settle_door():
-    import inspect
-    from nucleo.flash import tool_executor_calls as calls
-    from nucleo.request import stop_row   # V2-852 T03: the backstop stops the rows his words name, through `stop_named`
-    assert "stop_named(text, settle_words=words)" in inspect.getsource(sd.repair)
-    assert "settle_soon" in inspect.getsource(stop_row.stop_named)
-    assert "settle_soon" in inspect.getsource(calls._t_stop_worker)

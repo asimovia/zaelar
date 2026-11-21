@@ -1,30 +1,26 @@
 """The canvas door: every card the engine shows or closes on his screen crosses `apply` (refactor2710-04 T-02).
 
-A writer names the act, the card and its provenance (`src`, the arbiter's closed set). A show or close is judged by the
-arbiter first and its verdict emitted armed (`arbiter`, with `verdict` and `source`); a veto never reaches the canvas
+A writer names the act, the card and its provenance (`src`, the arbiter's closed set). A show or close is judged by its
+provenance first and its verdict emitted armed (`arbiter`, with `verdict` and `source`); a veto never reaches the canvas
 and `apply` says so. Other ops cross the same door unjudged, so there is one writer either way.
 """
 from __future__ import annotations
 
-import re as _re
-
-from nucleo.acts import canvas_arbiter as _arb, canvas_turn as _turn
+from nucleo.acts import arbiter_event as _record, canvas_arbiter as _arb, canvas_turn as _turn
 from voice import canvas_src
 
 #: The ops the arbiter licenses; every other op crosses the door as it is.
 JUDGED = ("show", "close")
 
 
-def apply(op: str, wid: str = "", *, src: str, text: str = "", role: str = "", request: dict | None = None,
-          emit=None, **extra) -> bool:
-    """Put `op` on `wid` if the arbiter allows it; True when the canvas was told. `wid=""` closes every card. `request`
-    is the turn's (`canvas_turn.request_of`), else `canvas_turn.request_for`; `emit` the caller's stream (observer)."""
+def apply(op: str, wid: str = "", *, src: str, text: str = "", role: str = "", emit=None, **extra) -> bool:
+    """Put `op` on `wid` if the arbiter allows its provenance; True when the canvas was told. `wid=""` closes every
+    card; `emit` the caller's stream (observer)."""
     op = (op or "").strip().lower()
     fields = ({"id": wid} if wid else {}) | {"src": src} | extra
     if op in JUDGED:
-        req = request if request is not None else _turn.request_for(extra)
-        v = _arb.decide(op, wid, src, action=str(extra.get("action") or ""), **req)
-        _turn._emit_verdict(op, wid, src, str(extra.get("action") or ""), v, shadow=False, brief=req.get("verdict"))
+        v = _arb.decide(op, wid, src, action=str(extra.get("action") or ""))
+        _record.emit_verdict(op, wid, src, str(extra.get("action") or ""), v, shadow=False)
         if not v.allow and v.rule != "arbiter-error" and not canvas_src.is_report(src):
             return False
         if op == "show" and __import__("nucleo.circuit", fromlist=["x"]).a_step_not_a_show(src, wid, emit=emit):
@@ -58,92 +54,3 @@ def _issue(op: str, wid: str, fields: dict) -> int:
     except Exception as e:  # noqa: BLE001 — the ledger is a witness: an order it cannot record still goes out
         logger.warning(f"canvas: order {op} {wid or '*'} not recorded in the screen ledger ({e!r})")
         return 0
-
-
-def resolve(wid_arg: str, text: str, window, last_action, guard_target) -> tuple:
-    """Which card a show means — the model's id, the guard's target or what his words name."""
-    from nucleo.acts import show_target
-    return show_target.resolve_show(wid_arg, text, window, last_action, guard_target)
-
-
-def close_ordered(text: str) -> tuple[bool, str]:
-    """Does this sentence ORDER a close? `(ordered, source)` — the one close licence (refactor2710-04b T-01): his words
-    (never our `[SISTEMA]` notes) read by the close grammar, which never reads a negated or narrated close («no lo
-    cierres», «you closed it») as one. `source` is grammar | none, so the trail says which reader moved."""
-    from nucleo.acts import close_words as _cg
-    from nucleo.acts import show_license as _lic
-    his = _lic._his_words(text)
-    if _cg.looks_like_close(his) or _cg.whole_canvas_close(his):   # ONE licence, both readers (node 2.925)
-        return True, "grammar"
-    return False, "none"
-
-
-# A CLOSE order answered with an OPEN is not obedience (V2-567: one close order, two mutations). Grammar, not intent
-# (V2-095): a close verb with no un-negated open verb in the turn licenses no show; a compound order keeps it.
-_OPEN_VERB_RE = _re.compile(r"\b(abr\w*|muestr\w*|ensen\w*|desplieg\w*|saca\w*|pon\w*|vuelv\w*|open|show|display|bring\s+up)\b")
-_NO_OPEN_RE = _re.compile(r"\bno\s+(?:me\s+|lo\s+|la\s+|los\s+|las\s+)?(?:abr\w*|muestr\w*|ensen\w*|saqu\w*|pong\w*)\b"
-                          r"|\bdon'?t\s+(?:open|show|display)\b")
-
-
-def show_under_close(text: str = "") -> bool:
-    """Is a show the contradiction of this sentence's close order? (refactor2710-04b T-02) A close verb with no
-    un-negated open verb licenses no show; a compound order («close the agenda and open the music») keeps it."""
-    from nucleo.acts import close_words as _cg
-    from nucleo.text_norm import _norm_txt
-    if not _cg.looks_like_close(text):
-        return False
-    n = _norm_txt(text)
-    return not (_OPEN_VERB_RE.search(n) and not _NO_OPEN_RE.search(n))
-
-
-def reopen_ordered(wid: str, text: str = "", *, open_ids=None, recent_ids=None, last_reply: str = "") -> bool:
-    """May a show bring back `wid`? Not a card he JUST closed over chatter (V2-650b; refactor2710-04b T-03): it comes
-    back on a media/show request, a short yes to OUR offer about that very card (V2-724), or his words resolving to it
-    with certainty. A card not closed within the window is untouched."""
-    from nucleo.acts import show_license as _lic
-    w = str(wid or "").strip().lower()
-    ts = _lic._RECENT_CLOSES.get(w)
-    if not ts or (_lic._time.time() - ts) > _lic._REOPEN_WINDOW_S:
-        return True
-    if _lic.video_license(text, last_reply) or (_bare_yes(text) and _offer_about(w, last_reply)):
-        return True
-    try:
-        from widgets import runtime
-        return (runtime.identify(text, open_ids=list(open_ids or []), recent_ids=list(recent_ids or [])) or {}).get("match") == w
-    except Exception as e:  # noqa: BLE001 — staying closed is the cheap wrong; a card back over chatter is the bug
-        return _unread("reopen_ordered: resolver unreadable", e)
-
-
-def _bare_yes(text: str) -> bool:
-    from nucleo.acts import show_license as _lic
-    n = _lic._NEG_MEDIA_RE.sub(" ", _lic._norm_txt(_lic._his_words(text)))
-    return len(n.split()) <= 4 and bool(_lic._AFFIRM_RE.search(n))
-
-
-def _offer_about(w: str, last_reply: str) -> bool:
-    from nucleo.acts import show_license as _lic
-    if not w or not _lic.answered_an_offer(last_reply):
-        return False
-    try:
-        from widgets import runtime
-        return str((runtime.identify(str(last_reply)) or {}).get("match") or "").split("::", 1)[0] == w
-    except Exception as e:  # noqa: BLE001
-        return _unread("reopen_ordered: offer unreadable", e)
-
-
-def size_ordered(text: str) -> str:
-    """Which way the sentence asks a card's SIZE to go: 'fullscreen' (full screen / bigger, the toggle), 'minimize'
-    (smaller, put away, leave full screen) or '' — a size call over a sentence that says nothing about size is drag
-    (V2-635: «pausa el vídeo» → fullscreen). The screen-size grammar (refactor2710-04b T-04)."""
-    from nucleo.acts import show_license as _lic
-    n = _lic._norm_txt(_lic._his_words(text))
-    if _lic._EXIT_FS_RE.search(n) or _lic._SHRINK_RE.search(n):
-        return "minimize"
-    return "fullscreen" if _lic._GROW_RE.search(n) else ""
-
-
-def _unread(where: str, e: Exception) -> bool:
-    """A licence that could not read its input says so and licenses nothing — the cheap wrong at this door."""
-    from loguru import logger
-    logger.debug(f"canvas.{where} — {e}")
-    return False

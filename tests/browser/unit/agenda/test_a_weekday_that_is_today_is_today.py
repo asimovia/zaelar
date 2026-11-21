@@ -30,3 +30,4 @@ def test_the_widget_resolver_reads_today_as_today(said, monkeypatch):
     monkeypatch.setattr(time, "localtime", lambda *a: wed_morning if not a else real(*a))
     monkeypatch.setattr(when, "_today", lambda: "2026-11-11")
     assert when._resolve_date(said, at="20:00") == "2026-11-11"
+

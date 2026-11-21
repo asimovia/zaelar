@@ -20,9 +20,7 @@ our own phrases.
 """
 from __future__ import annotations
 
-from tests import voice_turn_source as _vts
 
-import inspect
 
 from voice.engine.core import langs
 
@@ -35,14 +33,3 @@ def test_the_holding_line_never_asserts_completion():
             assert "hecho" not in low and "done" not in low
             assert "ya está" not in low
 
-
-def test_the_voice_provider_does_NOT_have_this_bug():
-    """Checked before touching anything, so as not to «fix» a channel that was not failing: in the provider the short ack
-    is gated by `data_done`, which is only set by the REAL dispatch of a data-op — resolving a confirmation sets
-    `acted["widget"]` and not that. This is a bug in the TEXT channel, which is where the harness runs."""
-    from voice.engine.llm.providers import nucleo as _provider
-
-    src = _vts.getsource(_provider)
-    i = src.index('if data_done["v"] and not spoken_text')
-    assert "data_acks" in src[i:i + 600]
-    assert "confirm" not in src[i:i + 600].lower()

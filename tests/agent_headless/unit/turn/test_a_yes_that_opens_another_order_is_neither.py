@@ -14,13 +14,8 @@ The classes, each with its mechanism:
 from __future__ import annotations
 
 import threading
-import time
 
-import pytest
 
-from nucleo.dispatch import confirm as dc
-from nucleo.turn import brief as tb
-from nucleo.turn import confirm_gates as gates
 
 ORDER = {"es": "vale cierra los resultados", "en": "ok close the results"}
 BARE = {"es": "Sí", "en": "Yes"}         # the declared yes of each language (`answer_yes`)
@@ -37,46 +32,7 @@ def _v(choice, conf=0.95):
     return {"choice": choice, "confidence": conf, "probs": {choice: conf}, "used": True}
 
 
-@pytest.fixture
-def parked(monkeypatch):
-    relaunched: list = []
-    monkeypatch.setattr("nucleo.acts.errand.escalate_to_slowbrain",
-                        lambda req, context=None: relaunched.append(req) or 1)
-    monkeypatch.setattr(dc, "_PENDING_CONFIRM", {})
-    monkeypatch.setattr(gates, "_named_parked", lambda _w: "")
-    dc._PENDING_CONFIRM["9"] = {
-        "request": "abre el que sea mejor oferta", "kind": "generic", "trusted": True, "context": {},
-        "question": "Esto mueve dinero («abre el que sea mejor oferta») y no hago ningún cargo sin tu OK. ¿Sigo?",
-        "sheet": "", "ts": time.time(), "uid": "row-9", "ask_id": f"row-9-start-{time.monotonic_ns()}"}
-    return relaunched
-
-
-@pytest.mark.parametrize("lang", ["es", "en"])
-@pytest.mark.parametrize("verdict", [{tb.CANVAS_KEY: _v("close")}, {tb.TARGET_KEY: _v("results:close")}],
-                         ids=["canvas-close", "card-action"])
-def test_a_yes_word_that_opens_a_sure_card_order_is_neither(parked, lang, verdict, monkeypatch):
-    monkeypatch.setattr(tb, "owner_still_open", lambda _b, _o: True)
-    ans = gates.resolve_all(ORDER[lang], brief=_brief(verdict))
-    assert not ans, f"«{ORDER[lang]}» was read as {'YES' if ans.yes else 'NO'} to the parked errand"
-    assert "9" in dc._PENDING_CONFIRM and not parked
-
-
-@pytest.mark.parametrize("lang", ["es", "en"])
-def test_a_bare_yes_still_answers(parked, lang, monkeypatch):
-    monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
-    monkeypatch.setattr(tb, "owner_still_open", lambda _b, _o: True)
-    ans = gates.resolve_all(BARE[lang], brief=_brief({tb.CANVAS_KEY: _v("close")}))
-    assert ans and ans.gate == "task" and ans.yes and parked
-
-
 # ── V2-878 §4b: only the declared answer is read without the brief ─────────────────────────────────────────────
-
-
-@pytest.mark.parametrize("lang,word", [("es", "sí"), ("en", "yes")])
-def test_a_one_word_answer_is_still_the_fast_path(parked, lang, word, monkeypatch):
-    monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
-    ans = gates.resolve_all(word, brief=None)
-    assert ans and ans.gate == "task" and ans.yes and parked
 
 
 def test_the_waiting_line_exists_in_both_languages():

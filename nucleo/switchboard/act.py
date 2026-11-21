@@ -14,20 +14,6 @@ YES, NO, OTHER, FRAGMENT, STOP, STOP_ALL = "yes", "no", "other", "fragment", "st
 STOP_S = 2.0
 
 
-def waits_on_his_yes(p: dict) -> bool:
-    """Does this process wait on a yes/no about an act it retained (a send's confirmation, a card's consent)?"""
-    if p["state"] != _board.WAITING:
-        return False
-    if str(p.get("ask_id") or "").startswith(_board.STEP):      # a step parked on his OK asks exactly that
-        return True
-    try:
-        from nucleo.circuit import asker
-        return asker.kind_of(asker.artefact(p["key"])) == asker.KIND_CONSENT
-    except Exception as e:  # noqa: BLE001
-        logger.debug(f"switchboard: the question's kind unread — {e!r}")
-        return False
-
-
 def deliver(p: dict, text: str, kind: str = OTHER) -> bool:
     """Hand `text` to process `p` as he said it: its open question takes it as the answer — a plain yes or no decides
     its retained act at once, as the screen's button does; anything else resumes the task with his words — and a
@@ -54,30 +40,6 @@ def deliver(p: dict, text: str, kind: str = OTHER) -> bool:
 
 #: The row slot of a yes he gave BEFORE the question existed: the send's worker was still getting it ready.
 EARLY_YES = "his_yes"
-
-
-def early_yes(p: dict, kind: str) -> bool:
-    """His go-ahead for a send that is still being prepared (the process RUNS, nothing is asked yet): kept on its row,
-    and the exit door takes it as the answer to the question it would have asked — ONE act, one question, and a yes
-    said first is that yes (measured 2026-11-18: «OK, send it now» while the worker redrafted, then «shall I send
-    it?», then «why do you ask again if I already said yes?»). Any later word of his that is not a yes takes it back.
-    True when this chunk IS that early yes."""
-    try:
-        from nucleo.circuit import ledger
-        store, uid = ledger.store(), str(p.get("key") or "")
-        row = store.task_get(uid) if uid else None
-        if not row or str(row.get("playbook") or "") != "message":
-            return False
-        if kind == YES:
-            if p["state"] != _board.RUNNING:            # a yes to a question that waits is that question's answer
-                return False
-            store.artifact_put(uid, EARLY_YES, {"at": __import__("time").time()})
-            return True
-        store.artifact_put(uid, EARLY_YES, {})          # a change, a doubt, a no: the yes he gave no longer stands,
-                                                        # and his words are read again at the exit door
-    except Exception as e:  # noqa: BLE001 — unrecorded: the exit door asks, as before
-        logger.debug(f"switchboard: his early yes not kept — {e!r}")
-    return False
 
 
 GO_AHEAD = (
@@ -261,26 +223,3 @@ def _line(key: str, about: str = "") -> str:
     fact = wording.FACTS.get(key, "")
     return wording.word(fact, examples=(plain,), about=about, fallback=plain) if fact else plain
 
-
-def line_key(p: dict, kind: str) -> str:
-    """WHICH fact he is told for a chunk a process took: his yes to an act that leaves (it is going), his no (it is
-    not) — in the lines of what the act IS, a message or anything else (`send_receipt.family_of`) — his yes or no to
-    any other act it held, or that his words were taken. Read BEFORE the answer clears what the row held."""
-    key = "answer_taken"
-    if kind in (YES, NO):
-        fam = ""
-        try:
-            from nucleo.circuit import asker
-            from nucleo.request import send_receipt
-            fam = send_receipt.family_of((asker.artefact(p["key"]).get("retained") or {}))
-        except Exception as e:  # noqa: BLE001
-            logger.debug(f"switchboard: the retained act unread — {e!r}")
-        from nucleo import wording
-        key = wording.line(fam, "going" if kind == YES else "no") if fam \
-            else {YES: "work_started", NO: "confirm_cancelled"}[kind]
-    return key
-
-
-def line_of(p: dict, kind: str) -> str:
-    """The ONE line he hears for a chunk a process took, worded for him."""
-    return _line(line_key(p, kind), str(p.get("title") or ""))

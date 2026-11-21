@@ -70,16 +70,6 @@ def test_a_spec_written_after_its_errand_ended_is_never_opened(ledger):
     assert len(ledger) == 1 and _spec.open_specs() == []
 
 
-def test_the_brief_end_verdict_is_none_only_when_sure(monkeypatch):
-    from nucleo.turn import brief as _tb
-    answers = {"sure": ("none", {"used": True}), "unsure": ("", {"used": False, "choice": "none"}),
-               "card": ("agenda:tasks", {"used": True}), "absent": ("", None)}
-    for name, want in (("sure", "none"), ("unsure", ""), ("card", ""), ("absent", "")):
-        monkeypatch.setattr(_tb, "read", lambda h, k, fb, _a=answers[name], **kw: _a)
-        assert _spec.end_state_declared({"x": 1}) == want, name
-    assert _spec.end_state_declared(None) == ""
-
-
 @pytest.mark.parametrize("reading", [False, None])     # an inferred unmet reads unverifiable; an unreadable one too
 def test_every_ending_closes_the_entry_its_errand_opened(ledger, monkeypatch, reading):
     rec = _rec(REMEMBER[0], done_when=AGENDA)
@@ -90,10 +80,3 @@ def test_every_ending_closes_the_entry_its_errand_opened(ledger, monkeypatch, re
     assert e["status"] == "unverifiable" and _spec.open_specs() == []
     assert circuit.tick(now=e["born"] + 60) == []          # nothing left for the pulse to re-read
 
-
-def test_the_turn_hands_its_end_verdict_to_the_errand_it_commissions():
-    """The wiring: without this key in the escalate context, half (a) is a reader nobody writes."""
-    import inspect
-
-    from nucleo.turn import pipeline_close as turn_after
-    assert "_spec_mod.END_KEY: _spec_mod.end_state_declared(_brief)" in inspect.getsource(__import__("nucleo.turn.pipeline_errands", fromlist=["x"]))

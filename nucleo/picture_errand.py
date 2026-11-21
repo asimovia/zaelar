@@ -42,37 +42,6 @@ PICTURES_BLOCK = (
     "acotadas al sitio antes del navegador, no veinte.")
 
 
-def viewer_holds_pictures() -> bool:
-    """Is the photo viewer on screen WITH pictures in it? Never raises."""
-    try:
-        from memory import api as memory
-        if VIEWER not in ((memory.state() or {}).get("open_widgets") or []):
-            return False
-        from widgets.imagenes import data as _img
-        return bool(_img.view_data().get("items"))
-    except Exception as e:  # noqa: BLE001 — a reader never breaks a turn
-        logger.debug(f"picture_errand: viewer unreadable — {type(e).__name__}: {e}")
-        return False
-
-
-def from_screen(brief, reading: str) -> str:
-    """The brief's surface `reading`, or `imagenes` when his words were unsure and the screen is not.
-
-    Only a reading that is empty or a sheet (`lista`/`item`) is overruled: a sure `informe`, `voz` or `silenciosa`
-    is his words naming another deliverable, and the viewer being open does not change what he asked for."""
-    from nucleo import surfaces as _s
-    if reading not in ("", _s.LIST, _s.ITEM):
-        return reading
-    try:
-        from nucleo.turn import verdicts as _v
-        verdict, info = _v.to_act(brief, "corrects_last", "")   # a correction is read at the act floor, everywhere
-    except Exception:  # noqa: BLE001
-        return reading
-    if info is not None and verdict == "corrects_last" and viewer_holds_pictures():
-        return _s.IMAGES
-    return reading
-
-
 def prompt_blocks(surface: str) -> list:
     from nucleo import surfaces as _s
     return [PICTURES_BLOCK] if _s.delivers_pictures(surface) else []

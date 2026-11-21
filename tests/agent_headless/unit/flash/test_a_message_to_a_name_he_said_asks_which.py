@@ -51,37 +51,7 @@ def world(tmp_path, monkeypatch):
 
 # ── a name he never said is ASKED, never rewritten (V2-887) ───────────────────────────────────────────────────
 
-def test_a_name_he_never_said_is_kept_and_asked_never_swapped_for_a_word_of_his(world):
-    """Measured 2026-11-11 (local): «te dije su nombre y su apellido» turned the model's «Raquel Salinas» into
-    «nombre» and three contacts named «Nombre …». The recipient is read, never rewritten: a name his words never
-    named is a question on behalf («¿a Rakel Karó?»), a name they did name passes as it is."""
-    from widgets import actions as wa
-    assert not hasattr(gate, "his_recipient"), "the recipient rewriter is gone"
-    asked = gate.asked_if_leaving(wa.FAST, None, "mensajeria", "send_to",
-                                  payload={"contact": "Rakel Karó", "text": "¿Qué tal va?"}, said=RAQUEL)
-    assert asked == wa.CONFIRM
-    kept = gate.asked_if_leaving(wa.FAST, None, "mensajeria", "send_to",
-                                 payload={"contact": "Raquel Salinas", "text": "x"},
-                                 said="te dije su nombre y su apellido · mándale un mensaje a Raquel Salinas")
-    assert kept == wa.FAST
-
-
 # ── a draft that waits for him is on screen ─────────────────────────────────────────────────────────────────
-
-def test_a_draft_brings_its_card():
-    m = json.loads((WIDGETS / "mensajeria" / "manifest.json").read_text(encoding="utf-8"))
-    assert "present.mount" in (m["actions"]["draft"].get("effects") or [])
-    from nucleo.acts import visibility as cv
-    shown = []
-    import nucleo.acts.visibility as mod
-    orig = mod.present
-    try:
-        mod.present = lambda target, **k: shown.append((target, k.get("reason"))) or True
-        assert cv.present_for_call("mensajeria", "draft") is True
-    finally:
-        mod.present = orig
-    assert shown == [("mensajeria", "producer-mount")]
-
 
 # ── a shared first name is a question, not silence ──────────────────────────────────────────────────────────
 
@@ -94,42 +64,6 @@ def test_which_raquel_answers_which_one(world):
 
 
 # ── our own «which one?» is a question, and his answer is remembered ────────────────────────────────────────
-
-def test_our_which_question_is_kept_and_his_answer_learned(world):
-    from widgets import directory
-    assert gate.asked_which("¿Cuál Raquel: Salinas, Lozoya o Ares?", RAQUEL) is True
-    assert directory._ASKED["spoken"] == "raquel"
-    from widgets.mensajeria import data as ms
-    sent = ms.apply_action("send_to", {"contact": "Raquel Salinas Ortega", "text": "¿qué tal va?"})
-    assert sent["ok"] is True and sent["result"]["learned"]["alias"] == "raquel"
-    assert ms.apply_action("send_to", {"contact": "Raquel", "text": "x"})["result"]["to"] == "Raquel Salinas Ortega", \
-        "asked once: «Raquel» is her from now on"
-
-
-def test_the_same_in_english_and_what_is_not_a_which_question(world):
-    assert gate.asked_which("Which Rowan — Ferrer or Lee?", "text rowan that I'm late") is True
-    assert gate.asked_which("Sent it to Rowan Lee.", "text rowan that I'm late") is False, "one person named: no question"
-    assert gate.asked_which("Which one?", "what's the weather") is False
-
-
-@pytest.mark.parametrize("reply", ["Tienes a Raquel Salinas y a Raquel Ares.", "You have Rowan Ferrer and Rowan Lee."])
-def test_a_which_question_said_as_a_statement_names_the_last_one_before_its_full_stop(world, reply):
-    """Battery C3 es (2026-11-05): «…tienes a Pablo Ruiz y a Pablo Vidal.» was not read as our which-question — the
-    address-aware token kept the full stop («vidal.»), so the last person named never matched a name. A sentence's
-    closing mark is not part of a name."""
-    said = RAQUEL if reply.startswith("Tienes") else "text rowan that I'm late"
-    assert gate.asked_which(reply, said) is True
-
-
-def test_the_voice_turn_end_keeps_our_which_question():
-    """The turn that acted on nothing asks `message.asked_which` over its reply, so his answer is remembered (V2-850);
-    no «not done» rides on it any more (V2-851 F1)."""
-    from pathlib import Path
-    from tests import voice_turn_source as _vts
-    src = _vts.read(Path(__file__).resolve().parents[4] / "nucleo/turn/pipeline_close.py")
-    j = src.index("not (_acted_elsewhere or (acted[\"widget\"] and not _ending.only_held())):")   # V2-938: after the message owner
-    assert "_message.asked_which(spoken_text" in src[j:j + 400]
-
 
 def test_a_who_question_leaves_the_conversation_the_card_stood_on(world):
     from widgets.mensajeria import data as ms

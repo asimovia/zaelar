@@ -35,10 +35,3 @@ def test_more_adds_only_new_pictures(viewer):
     assert parte["ok"] and parte["added"] == 8 and parte["count"] == 20
     assert "added 8 more" in it.spoken_for(parte, "Done.") or "añadido 8 más" in it.spoken_for(parte, "Hecho.")
 
-
-def test_the_tool_offers_it():
-    from nucleo.flash import router
-    f = next(t["function"] for t in router.TOOLS if t["function"]["name"] == "show_images")
-    assert f["parameters"]["properties"]["more"]["type"] == "boolean"
-    from nucleo.acts import images as it
-    assert it.request_from([{"name": "show_images", "args": {"query": "x", "more": True}}])["more"] is True

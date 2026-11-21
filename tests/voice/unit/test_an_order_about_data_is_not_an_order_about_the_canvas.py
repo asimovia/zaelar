@@ -24,34 +24,9 @@ import os
 
 import pytest
 
-from nucleo.acts import show_license as lic
 from voice import attention
 
 ENG = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-
-
-# ── the media grammar knows how Spanish actually asks for a video ────────────────────────────────────────
-@pytest.mark.parametrize("txt", [
-    "Bien, me vas a poner el el vídeo del del Apol once, llegando a la luna.",   # his sentence, STT verbatim
-    "¿Puedes ponerme la canción de Rosalía?",
-    "Voy a ponerte el documental de la luna",
-    "¿me lo vas a mostrar?",
-    "ponme el vídeo",                                                            # the imperative still works
-    "dale al play",
-])
-def test_a_request_for_media_licenses_the_load(txt):
-    assert lic.video_license(txt), txt
-
-
-@pytest.mark.parametrize("txt", [
-    "¿Por qué lo has cambiado otra vez?",     # a complaint about the past licenses nothing (V2-635)
-    "Muy bien, señora.",
-    "Johnny eres tonto",
-    "no me pongas el vídeo",                  # negated
-    "Vale, quita, por favor, los datos de comidas de la agenda",
-])
-def test_chatter_and_complaints_still_license_nothing(txt):
-    assert not lic.video_license(txt), txt
 
 
 # ── a bare quantifier is not the canvas until it says so ─────────────────────────────────────────────────

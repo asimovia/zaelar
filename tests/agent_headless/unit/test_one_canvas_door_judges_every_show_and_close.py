@@ -2,7 +2,7 @@
 
 A vetoed act never reaches the canvas and the door says so — its caller does not record it as done. An allowed act is
 the `widget` event the canvas obeys, with its provenance, and its verdict is on the stream armed (`shadow: false`,
-with `verdict` and `source`). Ops the arbiter does not license (minimize, fullscreen, move) cross the same door as they
+with its `source`). The verdict is the provenance's (INI-078 L1): an unknown one is refused. Ops the arbiter does not license (minimize, fullscreen, move) cross the same door as they
 are. The sheet of an errand the turn reopened belongs to that errand (`recall:<card>`), not to the model's words.
 """
 from __future__ import annotations
@@ -11,9 +11,6 @@ import pytest
 
 from nucleo.acts import canvas_arbiter as arb
 from nucleo.acts import canvas
-
-NOTHING = {"text": "mm, vale", "turn_credit": True, "last_reply": "", "verdict": {}}
-
 
 @pytest.fixture
 def stream(monkeypatch):
@@ -31,52 +28,50 @@ def _sink(out):
 
 def test_a_vetoed_show_never_reaches_the_canvas_and_the_door_says_so(stream):
     widget = []
-    assert canvas.apply("show", "agenda", src="flash", request=NOTHING, emit=_sink(widget)) is False
-    assert widget == [], "a veto must not put the app on screen"
+    assert canvas.apply("show", "agenda", src="flash", emit=_sink(widget)) is False
+    assert widget == [], "a veto must not put the widget on screen"
     v = [e for e in stream if e[0] == "arbiter"][-1]
-    assert v[2]["allow"] is False and v[2]["shadow"] is False and v[2]["source"] == "flash"
+    assert v[2]["allow"] is False and v[2]["shadow"] is False and v[2]["source"] == "flash" and v[2]["rule"] == "unknown-src"
 
 
 def test_an_ordered_close_reaches_the_canvas_with_its_provenance(stream):
     widget = []
-    req = {**NOTHING, "verdict": {"canvas": ("close", 0.9)}}
-    assert canvas.apply("close", "musica", src="flash", request=req, emit=_sink(widget)) is True
-    assert widget == [("widget", "close", {"id": "musica", "src": "flash"})]
+    assert canvas.apply("close", "musica", src="turn:e_7", emit=_sink(widget)) is True
+    assert widget == [("widget", "close", {"id": "musica", "src": "turn:e_7"})]
     v = [e for e in stream if e[0] == "arbiter"][-1]
-    assert v[1] == "✅ permitida · verdict-close" and v[2]["verdict"] == {"canvas": {"choice": "close", "confidence": 0.9}}
+    assert v[1] == "✅ permitida · turn-owned"
 
 
 def test_a_close_of_everything_has_no_id_and_ops_the_tree_does_not_license_pass_as_they_are(stream):
     widget = []
-    assert canvas.apply("close", "", src="flash", request={**NOTHING, "verdict": {"canvas": ("close", 0.9)}},
-                        emit=_sink(widget)) is True
-    assert widget[-1] == ("widget", "close", {"src": "flash"}), "a close with no id is the canvas's close-all"
-    assert canvas.apply("minimize", "agenda", src="flash", request=NOTHING, emit=_sink(widget)) is True
+    assert canvas.apply("close", "", src="turn:e_8", emit=_sink(widget)) is True
+    assert widget[-1] == ("widget", "close", {"src": "turn:e_8"}), "a close with no id is the canvas's close-all"
+    assert canvas.apply("minimize", "agenda", src="flash", emit=_sink(widget)) is True
     assert widget[-1][1] == "minimize"
 
 
 def test_the_sheet_of_a_reopened_errand_is_that_errands(stream):
     widget = []
-    assert canvas.apply("show", "results::g", src="recall:results::g", request=NOTHING, emit=_sink(widget)) is True
+    assert canvas.apply("show", "results::g", src="recall:results::g", emit=_sink(widget)) is True
     assert widget[-1][2]["src"] == "recall:results::g"
 
 
 def test_the_door_does_not_judge_twice(stream):
     """The shadow tap hears the event the door emits; it must not file a second verdict for it."""
-    canvas.apply("close", "musica", src="flash", request={**NOTHING, "verdict": {"canvas": ("close", 0.9)}})
+    canvas.apply("close", "musica", src="turn:e_9")
     assert len([e for e in stream if e[0] == "arbiter"]) == 1
 
 
 def test_disarm_a_door_that_skips_the_arbiter_lets_the_unlicensed_show_through(monkeypatch, stream):
     monkeypatch.setattr(canvas, "JUDGED", ())
     widget = []
-    assert canvas.apply("show", "agenda", src="flash", request=NOTHING, emit=_sink(widget)) is True
+    assert canvas.apply("show", "agenda", src="flash", emit=_sink(widget)) is True
     assert widget, "the disarm did not land"
 
 
 def test_a_report_of_what_the_screen_did_is_recorded_even_when_the_tree_would_veto_it(stream):
     widget = []
-    assert canvas.apply("close", "agenda", src="client:console", request=NOTHING, emit=_sink(widget)) is True
+    assert canvas.apply("close", "agenda", src="client:console", emit=_sink(widget)) is True
     assert widget and [e for e in stream if e[0] == "arbiter"][-1][2]["allow"] is False, "judged, recorded, not held"
 
 
@@ -88,7 +83,6 @@ _NOT_OPS = {"nucleo/acts/visibility.py": "the refusals of a show («presentació
             "widgets/lifecycle.py": "delete / restore of a widget, after its confirm gate",
             "widgets/confirm.py": "the confirm prompt and its cancel",
             "nucleo/acts/data_ops.py": "a corrected data-op's diagnosis",
-            "nucleo/flash/tool_executor_widget_calls.py": "the data-op log `data:<action>`",
             "widgets/rows.py": "a rows op's audit line",
             "widgets/server_api.py": "the generator's audit line"}
 
@@ -135,7 +129,7 @@ def test_disarm_a_bare_write_is_named():
 
 #: refactor2710-04 T-05: the door, the tree and the turn it reads stay one small thing. 700 → 741 (declared, refactor2710-04b) → 752 (refactor2710-99: show_owed):
 #: the close/show/reopen/size licences moved IN from nucleo/flash (−197 there), and 05b added `canvas_verdict` (114).
-CANVAS_DOOR_MAX = 758   # +1 V2-862 (2.1635/4.412/4.413): an errand's reference box on his chat wall — the door tells it which card an errand showed; +4 V2-844 F0 (2.1003): the door reports each show/close to the shadow owner record, the arbiter names the turn's own box `turn-owned`; +1 V2-831 T-02c (3.171): the door records a gesture of his turn
+CANVAS_DOOR_MAX = 200   # INI-078 L1: the word licences and the turn they read went — the door judges provenance only (was 758)
 
 
 def _door_lines(folder) -> int:
@@ -157,6 +151,6 @@ def test_every_provenance_the_writers_use_gets_a_verdict():
     """Each declared provenance a writer stamps must come back as a Verdict from the tree — a branch that forgets its
     verdict broke the action map's fast lane once (refactor2710-04), silently, behind its fail-open."""
     for src in ("actionmap", "interrupt", "system", "system:reset", "worker:7", "wall:t1", "recall:x", "sheet:s",
-                "user", "client", "client:restore", "flash", "backstop"):
-        v = arb.decide("close", "agenda", src, text="", verdict={})
+                "user", "client", "client:restore", "turn:e_1", "flash", "backstop"):
+        v = arb.decide("close", "agenda", src)
         assert isinstance(v, arb.Verdict) and v.rule != "arbiter-error", (src, v)

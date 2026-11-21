@@ -163,29 +163,6 @@ def target_of(done_when) -> str:
     return ""
 
 
-def attestable(open_ids=None) -> dict[str, str]:
-    """`target → what it means`, for the brief question and the escalate schema: every declared template of the
-    cards on screen, plus the targets of the specs open now (a closed card whose end state is still owed — B2:
-    imagenes was closed and the wallpaper was the thing he was talking about)."""
-    out: dict[str, str] = {}
-    seen_w = set()
-    for wid in list(open_ids or []):
-        base = str(wid or "").split("::", 1)[0].strip().lower()
-        if not base or base in seen_w:
-            continue
-        seen_w.add(base)
-        for name, spec in (_manifest(base).get("actions") or {}).items():
-            if isinstance(spec, dict) and isinstance(spec.get(TEMPLATE_KEY), (dict, list)):
-                t = target_of(spec[TEMPLATE_KEY])
-                if t and t not in out:
-                    out[t] = f"{base}:{name} — {str(spec.get('desc') or '')[:120]}"
-    for e in open_specs():
-        t = target_of(e.get("done_when"))
-        if t and t not in out:
-            out[t] = f"the end state still owed by «{str(e.get('text') or '')[:80]}»"
-    return out
-
-
 def catalogue() -> dict[str, str]:
     """Every declared template in the catalogue, `target → widget:action` — what the escalate schema lists."""
     out: dict[str, str] = {}
@@ -211,78 +188,7 @@ END_INSTRUCTIONS = (
     "in view). Answer 'none' when the order leaves none of them true — a question, a remark, a close, a scroll.")
 
 
-def end_state_question(open_ids=None) -> dict | None:
-    """One enumerated question over the attestable end states, or None when there is nothing to enumerate."""
-    targets = attestable(open_ids)
-    if not targets:
-        return None
-    criteria = {t: text[:160] for t, text in list(targets.items())[:40]}
-    criteria["none"] = "the order leaves none of these true"
-    return {"instructions": END_INSTRUCTIONS, "criteria": criteria}
-
-
-def end_state_verdict(brief) -> str:
-    """The target the brief named, sure; "" when none, unsure, absent or 'none'."""
-    if not brief:
-        return ""
-    try:
-        from nucleo.turn import brief as _tb
-        choice, _info = _tb.read(brief, END_KEY, "")
-        raw = str(choice or "").strip()
-        return "" if raw in ("", "none") else raw
-    except Exception:  # noqa: BLE001
-        return ""
-
-
 NO_END_STATE = "none"
-
-
-def end_state_declared(brief) -> str:
-    """`NO_END_STATE` when the brief SURELY answered «none» (`end_state_verdict` folds it into «unsure»), else ""."""
-    from nucleo.turn import brief as _tb
-    choice, info = _tb.read(brief, END_KEY, "") if brief else ("", None)
-    return NO_END_STATE if info and str(choice or "").strip() == NO_END_STATE else ""
-
-
-def card_contradicts(brief, wid: str) -> str:
-    """Why `wid` cannot be the card of this order, or "" when it can (demo 2026-10-22: a late catalogue guess of
-    `agenda` over an end state on the results sheet): a card none of whose actions attests that end state."""
-    want = end_state_verdict(brief)
-    base = str(wid or "").split("::", 1)[0].strip().lower()
-    if not want or not base or want.split(":", 1)[0] == base:
-        return ""
-    for name, spec in (_manifest(base).get("actions") or {}).items():
-        if isinstance(spec, dict) and isinstance(spec.get(TEMPLATE_KEY), (dict, list)) \
-                and target_of(spec[TEMPLATE_KEY]) == want:
-            return ""
-    return f"the phrase's end state is «{want}» and no action of {base} attests it"
-
-
-def _a_sure_action_outranks_the_end_state(brief) -> bool:
-    """Refusing a completion is a veto: a SURE action verdict is not refused by an end state below the veto bar
-    (msg-es-more-chats: `chats_more` 1.00 refused by `mensajeria:empty` 0.72). Never raises."""
-    try:
-        from nucleo.turn import brief as _tb, verdicts
-        _a, act = _tb.read(brief, _tb.TARGET_KEY, "", min_confidence=verdicts.VETO)
-        _e, end = _tb.read(brief, END_KEY, "", min_confidence=verdicts.VETO)
-        return bool((act or {}).get("used")) and not (end or {}).get("used")
-    except Exception as e:  # noqa: BLE001
-        logger.debug(f"spec: verdict confidences unreadable ({e}) — the gate reads as before")
-        return False
-
-
-def gate_completion(brief, wid: str, action: str) -> str:
-    """Why a verdict COMPLETION of `wid:action` must not fire, or "" when it may: the engine's own inference is held
-    to the end state the brief named (B2, pass 60: the wallpaper was not `results:choose`)."""
-    want = end_state_verdict(brief)
-    if not want or _a_sure_action_outranks_the_end_state(brief):
-        return ""
-    tpl = template_of(wid, action)
-    have = target_of(tpl) if tpl is not None else ""
-    if have == want:
-        return ""
-    return (f"the phrase's end state is «{want}» and {str(wid).split('::', 1)[0]}:{action} attests "
-            + (f"«{have}»" if have else "nothing"))
 
 
 # ── the ledger ────────────────────────────────────────────────────────────────────────────────────────────
@@ -458,7 +364,6 @@ def born(rec, ctx: dict | None = None) -> None:
     opens the spec and persists it; without one it asks for it ONCE, off the hot path, and tells the worker.
     Never raises, never waits."""
     try:
-        import asyncio
         dw = dict(getattr(rec, "done_when", None) or {})
         uid = str(getattr(rec, "uid", "") or "")
         if _cont.takes_over(rec, ctx):

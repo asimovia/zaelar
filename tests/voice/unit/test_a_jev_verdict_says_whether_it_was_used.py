@@ -17,12 +17,10 @@ claim the verdicts are good — that is A6b's report, against adjudicated cases.
 """
 from __future__ import annotations
 
-import threading
 
 import pytest
 
 from nucleo import jev
-from nucleo.turn import brief as tb
 
 
 @pytest.fixture
@@ -64,90 +62,6 @@ def _settle(handle, t=2.0):
     if handle and handle.get("event"):
         handle["event"].wait(t)
     return handle
-
-
-# ── the ask: one event, every question's own confidence in it ────────────────────────────────────
-def test_the_brief_event_carries_EVERY_questions_confidence(events, wire):
-    """`max()` cannot say whether a given consumer crossed its own threshold, which is the only
-    thing the number is for. The headline keeps the maximum (the schema has one field); the per
-    question map is what a report reads."""
-    wire.answers[tb.CANVAS_KEY] = ("show", 0.99)
-    wire.answers[tb.ESCALATE_KEY] = ("handle_inline", 0.31)
-    _settle(tb.ask("abre la agenda", open_ids=[]))
-    ask = [e for e in events if e["label"].startswith("jev turn-brief")]
-    assert len(ask) == 1, "one trip must leave one event, or the timeline reads like N trips"
-    per_q = ask[0]["extra"]["per_question"]
-    assert per_q[tb.CANVAS_KEY]["confidence"] == 0.99
-    assert per_q[tb.ESCALATE_KEY]["confidence"] == 0.31, (
-        "the unsure escalate verdict is invisible behind the sure canvas one")
-
-
-def test_the_call_has_an_id_and_the_reads_carry_it(events, wire):
-    """The join. Without it, «these two events belong to the same turn» is a claim about clocks."""
-    h = _settle(tb.ask("abre la agenda", open_ids=[], turn_id="turn-42"))
-    tb.read(h, tb.CANVAS_KEY, "neither")
-    ask = next(e for e in events if e["label"].startswith("jev turn-brief"))
-    read = next(e for e in events if e["label"].startswith("jev read"))
-    assert ask["extra"]["call_id"] and read["extra"]["call_id"] == ask["extra"]["call_id"]
-    assert read["extra"]["turn_id"] == "turn-42"
-
-
-# ── the read: used, or exactly why not ───────────────────────────────────────────────────────────
-def test_a_used_verdict_says_so(events, wire):
-    wire.answers[tb.CANVAS_KEY] = ("close", 0.98)
-    h = _settle(tb.ask("cierra todo", open_ids=[]))
-    choice, _ = tb.read(h, tb.CANVAS_KEY, "neither")
-    read = next(e for e in events if e["label"] == f"jev read {tb.CANVAS_KEY}")
-    assert choice == "close"
-    assert (read["extra"]["used"], read["extra"]["why"]) == (True, "used")
-
-
-def test_an_unsure_verdict_is_recorded_as_UNSURE_not_as_absent(events, wire):
-    """The distinction the audit asked for: «the model was not sure» and «there was no model» are
-    different facts about the same missing outcome, and only one of them is a quality signal."""
-    wire.answers[tb.CANVAS_KEY] = ("close", 0.2)
-    h = _settle(tb.ask("cierra todo", open_ids=[]))
-    tb.read(h, tb.CANVAS_KEY, "neither")
-    read = next(e for e in events if e["label"] == f"jev read {tb.CANVAS_KEY}")
-    assert (read["extra"]["used"], read["extra"]["why"]) == (False, "unsure")
-    assert read["extra"]["confidence"] == 0.2, "the number that lost is the evidence"
-
-
-def test_a_brief_still_in_flight_reads_as_IN_FLIGHT(events):
-    flying = {"event": threading.Event(), "result": None}
-    tb.read(flying, tb.CANVAS_KEY, "neither")
-    read = next(e for e in events if e["label"] == f"jev read {tb.CANVAS_KEY}")
-    assert read["extra"]["why"] == "in_flight"
-
-
-def test_no_brief_at_all_reads_as_OFF(events):
-    """Jev disabled, no key, an open breaker and an assembly that failed all arrive as `None`.
-    Grouped under one word on purpose: from the reader's side they are the same non-event, and the
-    ASK event (or its absence) is what tells them apart."""
-    tb.read(None, tb.CANVAS_KEY, "neither")
-    read = next(e for e in events if e["label"] == f"jev read {tb.CANVAS_KEY}")
-    assert (read["extra"]["used"], read["extra"]["why"]) == (False, "off")
-
-
-def test_reading_the_same_verdict_twice_reports_it_once(events, wire):
-    """Bounded on purpose. A consumer in a loop must not be able to fill the operator's timeline —
-    the event exists to be counted, and a duplicate would inflate exactly the denominator a report
-    divides by."""
-    h = _settle(tb.ask("abre la agenda", open_ids=[]))
-    for _ in range(5):
-        tb.read(h, tb.CANVAS_KEY, "neither")
-    reads = [e for e in events if e["label"] == f"jev read {tb.CANVAS_KEY}"]
-    assert len(reads) == 1, f"one verdict, one read event — got {len(reads)}"
-
-
-def test_two_consumers_of_the_same_brief_each_leave_their_own_record(events, wire):
-    """The dedupe is per QUESTION, not per brief: the escalate gate and the canvas guard read
-    different verdicts out of the same trip and both have to be attributable."""
-    h = _settle(tb.ask("cierra todo", open_ids=[]))
-    tb.read(h, tb.CANVAS_KEY, "neither")
-    tb.read(h, tb.ESCALATE_KEY, "escalate")
-    labels = {e["label"] for e in events if e["label"].startswith("jev read")}
-    assert labels == {f"jev read {tb.CANVAS_KEY}", f"jev read {tb.ESCALATE_KEY}"}
 
 
 # ── selection: an empty answer is not an absent one ──────────────────────────────────────────────

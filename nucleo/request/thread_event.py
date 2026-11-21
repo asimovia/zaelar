@@ -74,20 +74,6 @@ def judged(request: str, menu: list[tuple[str, str]], answer: str, *, ms: float,
     return _send("judged", f"⚖️ thread judge: {outcome}" + (f" → {answer}" if answer else ""), extra["heard"], extra)
 
 
-def recall_fired(text: str, *, recall: bool, recent: bool) -> dict | None:
-    """The recall / recent-conversation shortcuts that fired this turn, and the turn's language. Nothing fired → nothing."""
-    if not (recall or recent):
-        return None
-    try:
-        from i18n import langs as _lg
-        lang = _lg.current_code()
-    except Exception:  # noqa: BLE001
-        lang = ""
-    extra = {"needs_recall": bool(recall), "needs_recent": bool(recent), "lang": lang,
-             "heard": str(text or "")[:HEARD_MAX]}
-    return _send("recall", "🔎 thread: recall fired" + (f" ({lang})" if lang else ""), extra["heard"], extra)
-
-
 # ── V2-878 §5, in SHADOW: the deferred choice and the screen↔errand arbiter (`nucleo/turn/pick_pending.py`) ─────────
 
 def pick_pending(note: dict, *, shadow: bool = True) -> dict | None:
@@ -103,11 +89,4 @@ def would_relay(uid: str, sheet: str, pick: dict) -> dict | None:
     extra = {"uid": str(uid), "sheet": str(sheet), "heard": str(pick.get("heard") or "")[:HEARD_MAX],
              "held_s": max(0, int(__import__("time").time()) - int(pick.get("at") or 0)), "shadow": True}
     return _send("would_relay", "🧵 thread: first rows — would relay his deferred choice", extra["heard"], extra)
-
-
-def arbitrated(would: str, did: str, *, flow: str = "", heard: str = "") -> dict | None:
-    """Whose turn it would be by consequence (card · errand · ask · none) beside the owner rule's `did`."""
-    extra = {"would": would, "did": did, "changes": would not in (did, "none"), "id": str(flow),
-             "heard": str(heard or "")[:HEARD_MAX], "shadow": True}
-    return _send("arbiter", f"🧵 thread: arbiter would {would} (did {did})", extra["heard"], extra)
 

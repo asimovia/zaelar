@@ -206,8 +206,7 @@ def voice_turn(query: str, heard: str = "", brief=None) -> dict:
         v = {"show": None, "ask": names or None, "rebuilt": False, "title": ""}
     # Nothing to show and nothing to ask, under a verdict already paid that this ORDER needs a worker: the model read a
     # correction as «bring back the report». The verdict completes the empty act (CRIT-K2).
-    from nucleo.acts import direct_action as _da
-    v["escalate"] = not v["show"] and not v["ask"] and brief is not None and _da.verdict_escalates(brief)
+    v["escalate"] = False                 # an errand is the model's own act (`start_task`), never a reading of his words
     v["label"] = ("🗂️ encargo recuperado" if v["show"] else "❓ varios encargos parecidos" if v["ask"]
                   else "↪️ nada que reabrir: el veredicto pide un worker" if v["escalate"] else "🗂️ ningún encargo parecido")
     v["text"] = str(v["title"] or query)[:120]

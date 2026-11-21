@@ -10,7 +10,6 @@ Disarm: drop the `camera` assignment in `voice/screens.beat` → the camera test
 from __future__ import annotations
 
 import json
-from types import SimpleNamespace
 
 import pytest
 
@@ -102,15 +101,6 @@ def test_the_face_line_names_the_face_worn_on_an_open_screen(monkeypatch):
     screens.beat("desktop:d4", visible=True)
     lines = snapshot.live_lines()
     assert len(lines) == 1 and "«" in lines[0] and "c-porcelain" not in lines[0], "the face by its name, not its id"
-
-
-def test_the_tool_door_queues_one_question_for_after_the_stream():
-    from nucleo.acts.tools import CATALOG
-    c = SimpleNamespace(read_req={"v": None})
-    CATALOG["about_self"]({"topic": "connectors", "question": "where do I connect my email?"}, c)
-    CATALOG["about_self"]({"topic": "camera"}, c)
-    assert c.read_req["self"] == {"topic": "connectors", "question": "where do I connect my email?"}
-    assert c.read_req["v"] is None, "a question about itself is not a widget read"
 
 
 def test_prepare_composes_off_the_loop_and_leaves_its_trace(monkeypatch):

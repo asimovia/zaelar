@@ -11,7 +11,6 @@ DELIVERY is not. A test that only checked `vault_gate` in isolation would pass j
 channel still carrying its private copy.
 """
 import asyncio
-import inspect
 
 from memory.vault import gate as vault_gate
 
@@ -120,19 +119,6 @@ def test_an_unreadable_carrier_verdict_fails_CLOSED(monkeypatch):
 
 
 # ── and that NO channel keeps its copy ───────────────────────────────────────────────────────────────────────
-
-def test_the_turn_goes_through_the_gate_and_keeps_no_copy():
-    """The class's guard. Without it, the gate can be perfect while the turn continues deciding on its own in
-    silence — exactly the state this extraction found."""
-    from voice.engine.llm.providers import vault_intercept
-
-    src = inspect.getsource(vault_intercept)
-    name = "vault_intercept"
-    assert "vault_gate" in src, f"{name} ya no pasa por la puerta compartida"
-    assert "secret_is_the_whole_turn" not in src, f"{name} recuperó su propia decisión de V2-141"
-    assert "_vr.detect" not in src, f"{name} volvió a detectar la config por su cuenta"
-    assert "vault_flow" not in src, f"{name} volvió a resolver el reveal por su cuenta"
-
 
 # ── REVEALING a secret: same outcome, and a boundary that is NOT stylistic ──────────────────────────────────
 

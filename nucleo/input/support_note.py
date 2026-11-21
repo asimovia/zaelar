@@ -105,29 +105,3 @@ def spoken(note: str) -> bool:
         _write(note, "📝 support note (voice)", verdict="manager")
     return bool(note)
 
-
-async def heard(text: str, say=None) -> bool:
-    """At the body's turn gate, on the whole sentence: True = it was a note for support, recorded, and the turn ends.
-    Never raises: anything unread is an ordinary turn."""
-    if not proposes(text):
-        return False
-    try:
-        from nucleo.turn import brief
-        choice, info = await brief.verdict_before_the_turn(text, KEY, wait_s=WAIT_S)
-    except Exception as e:  # noqa: BLE001 — an unread verdict is an ordinary turn
-        from loguru import logger
-        logger.info(f"support_note: the verdict was not read — {type(e).__name__}: {e}")
-        return False
-    if choice != "note" or not (info and info.get("used")):
-        return False
-    _write(str(text).strip(), "📝 support note (voice)", verdict=KEY)
-    if say is not None:
-        try:
-            from nucleo import wording
-            line = await wording.word_soon(ACK_FACT, fallback="")
-            if line:
-                say(line)
-        except Exception as e:  # noqa: BLE001 — the note is kept; the acknowledgement is optional
-            from loguru import logger
-            logger.info(f"support_note: no acknowledgement — {type(e).__name__}: {e}")
-    return True

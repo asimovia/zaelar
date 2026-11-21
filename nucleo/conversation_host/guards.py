@@ -104,7 +104,7 @@ def foreign_voice(endpoint: str, onset_ms: int) -> bool:
 
 def vault(text: str):
     """THE vault gate, at the manager's one door for his words — every close of his voice (`for_ear`) and every typed
-    line (`entry.typed`) — before they reach the store or the model: the old turn's own gate (`nucleo/turn/vault_gate`).
+    line (`entry.typed`) — before they reach the store or the model: the one vault gate.
     Returns `(kept, shown)`: a security rule or a secret that IS the line is consumed — its line is owed to him, nothing
     enters (`kept` None) and only `shown` (redacted) may be kept of it; a secret inside a line goes on redacted.
     Anything else, as it is."""

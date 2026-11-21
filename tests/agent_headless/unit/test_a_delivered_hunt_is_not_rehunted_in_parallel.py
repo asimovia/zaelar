@@ -15,7 +15,6 @@ Run: .venv/bin/pytest tests/agent_headless/unit/test_a_delivered_hunt_is_not_reh
 """
 from __future__ import annotations
 
-from nucleo.events import task_event  # noqa: E402 — the matters a task was told (V2-851 F4)
 
 import asyncio
 import time
@@ -118,47 +117,6 @@ def test_the_pool_hands_out_copies_never_the_store_rows():
 
 # ── the decision, called directly: what inherits, what redirects, what neither ───────────────────────────
 
-def _decide(request: str, kind: str = "generic"):
-    reruns: list = []
-
-    async def run():
-        # inside a running loop so the gate can create its rerun task; the stub keeps it inert
-        out = errand_continuity.inherit_and_maybe_rerun(request, kind, {}, "t-1")
-        await asyncio.sleep(0.05)      # let a scheduled rerun task run against the stub and finish
-        return out
-
-    import nucleo.acts.search as LT
-    orig = LT.fast_pass
-    LT.fast_pass = lambda *a, **k: reruns.append((a, k)) or {"delivered": False, "n": 0, "ctx": "", "sheet": ""}
-    try:
-        ctx, redirected = asyncio.run(run())
-    finally:
-        LT.fast_pass = orig
-    return ctx, redirected
-
-
-def test_the_same_hunt_inherits_the_box_and_is_redirected():
-    ended.note_listing_delivery(_DELIVERY_GOAL, _SHEET, n=20)
-    ctx, redirected = _decide(_ESCALATION)
-    assert ctx.get("sheet") == _SHEET, "the escalation must continue in the box the operator is looking at"
-    assert redirected is True
-
-
-def test_an_acting_kind_is_never_redirected_but_still_keeps_the_box():
-    """Booking or acting on a site is a different errand even when its words contain the hunt's: the gate
-    steps aside and the worker runs — writing into the SAME sheet, never a second one."""
-    ended.note_listing_delivery(_DELIVERY_GOAL, _SHEET, n=20)
-    ctx, redirected = _decide(_ESCALATION, kind="web")
-    assert redirected is False
-    assert ctx.get("sheet") == _SHEET
-
-
-def test_an_unrelated_errand_neither_inherits_nor_redirects():
-    ended.note_listing_delivery(_DELIVERY_GOAL, _SHEET, n=20)
-    ctx, redirected = _decide(_UNRELATED)
-    assert redirected is False and not ctx.get("sheet")
-
-
 def test_an_escalation_that_declared_its_own_box_is_left_alone():
     """`search_listing.fast_pass`'s own auto-escalation already carries its sheet — re-deciding it here would be a
     second yardstick, and it is also what makes the redirect→insufficient→worker chain loop-free."""
@@ -221,54 +179,6 @@ def _drive(monkeypatch, request: str, *, deliveries: list | None = None, consume
     return events, reruns, spawned
 
 
-def test_the_first_escalation_of_a_delivered_hunt_reruns_fast_instead_of_spawning(monkeypatch):
-    events, reruns, spawned = _drive(
-        monkeypatch, _ESCALATION, deliveries=[{"goal": _DELIVERY_GOAL, "sheet": _SHEET, "n": 20}])
-    assert spawned == {}, "the linear gate must not open a worker session for a just-delivered hunt"
-    assert len(reruns) == 1, "the refined fast re-run is the errand's next step"
-    assert reruns[0]["kw"].get("sheet") == _SHEET, "the re-run writes into the inherited box"
-    labels = [l for l, _ in events]
-    assert "linear_rerun" in labels and "sheet_inherited" in labels
-
-
-def test_the_second_push_spawns_a_worker_that_keeps_the_box(monkeypatch):
-    events, reruns, spawned = _drive(
-        monkeypatch, _ESCALATION,
-        deliveries=[{"goal": _DELIVERY_GOAL, "sheet": _SHEET, "n": 20}], consume=True)
-    assert reruns == [], "the single refinement was already spent: no second redirect"
-    assert list(spawned.values()) == [_SHEET], "a second push goes to the worker, but in the SAME box"
-
-
-def test_a_fresh_unrelated_errand_still_spawns_normally(monkeypatch):
-    """Continuity must never drop an escalation: with a delivery on record, an unrelated errand keeps its
-    own life — a session of its own, no inherited sheet, no redirect."""
-    events, reruns, spawned = _drive(
-        monkeypatch, _UNRELATED, deliveries=[{"goal": _DELIVERY_GOAL, "sheet": _SHEET, "n": 20}])
-    assert len(spawned) == 1 and reruns == []
-    assert list(spawned.values()) == [""], "an unrelated errand must not inherit the delivery's box"
-
-
 # ── the re-run announces its delivery by PUSHED note (the route that arrives 3/3, V2-222) ───────────────
-
-def test_a_delivered_rerun_pushes_a_note_naming_the_rows(monkeypatch):
-    pushed: list = []
-    monkeypatch.setattr("nucleo.events.task_event.told", lambda text, **_k: pushed.append(text))
-    monkeypatch.setattr("nucleo.acts.search.fast_pass",
-                        lambda *a, **k: {"delivered": True, "n": 4,
-                                         "ctx": "· Catamarán Bali 4.6 — 1.500 EUR", "sheet": _SHEET})
-    asyncio.run(errand_continuity._rerun(_ESCALATION, _SHEET))
-    assert len(pushed) == 1
-    assert "Catamarán Bali" in pushed[0]
-
-
-def test_an_insufficient_rerun_pushes_nothing_the_escalation_speaks_for_itself(monkeypatch):
-    pushed: list = []
-    monkeypatch.setattr("nucleo.events.task_event.told", lambda text, **_k: pushed.append(text))
-    monkeypatch.setattr("nucleo.acts.search.fast_pass",
-                        lambda *a, **k: {"delivered": False, "n": 0, "ctx": "", "sheet": _SHEET,
-                                         "escalated": 9})
-    asyncio.run(errand_continuity._rerun(_ESCALATION, _SHEET))
-    assert pushed == []
-
 
 # ── the PROMPT carries the fact with its instruction (V2-453) ────────────────────────────────────────────

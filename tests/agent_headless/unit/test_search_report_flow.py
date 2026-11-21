@@ -9,10 +9,8 @@ Each block captures a regression observed in the real trace (`.meshkore/logs/tim
   · `dialog.push_user` — STT split the request into 6 chunks; each turn overwrote the previous one and the `raise` of
                          CancelledError carried off the operator's sentence → the brain never saw the word "piscina".
 """
-import pytest as _pytest
 
 from nucleo import danger
-from nucleo.flash import dialog
 
 
 # ── filling a widget with data is NOT rewriting its code ─────────────────────────────────────────────────
@@ -73,134 +71,7 @@ def test_a_reminder_about_a_charge_is_a_note_not_an_order():
     assert not danger.is_dangerous("recuérdame que tengo que renovar la cuota del gimnasio")
 
 
-# ── lo que el operador dijo no se pierde porque su turno se pisara ────────────────────────────────────────
-def test_overlapped_turns_keep_what_the_operator_said():
-    """The REAL sequence: 6 STT chunks, 5 cancelled turns. Before the fix only the last reached the model."""
-    window: list[dict] = []
-    for chunk in (
-        "Estamos buscando una piscina Tarragona,",
-        "Estamos buscando una piscina Tarragona, que sea especial.",          # STT re-emits with accumulated text
-        "Pero que sea pública, o de pago, pero que podamos entrar hoy domingo",
-        "sin ser socios, que sea chula, muy grande, con toboganes",
-        "me da igual si está en un hotel, en un camping",
-        "Dime a ver qué encuentras cerca de Tarragona.",
-    ):
-        dialog.push_user(window, chunk)
-
-    said = " ".join(m["content"] for m in window if m["role"] == "user").lower()
-    for must in ("piscina", "toboganes", "camping", "domingo"):
-        assert must in said, f"«{must}» se perdió: el cerebro decidiría sin ese contexto"
-
-
-def test_accumulating_stt_chunks_do_not_duplicate_the_phrase():
-    window: list[dict] = []
-    dialog.push_user(window, "Estamos buscando una piscina")
-    dialog.push_user(window, "Estamos buscando una piscina en Tarragona")
-    dialog.push_user(window, "Estamos buscando una piscina en Tarragona, que sea especial")
-    # one entry, the COMPLETE one — repeating the prefix N times is exactly what degrades the small model (V2-032)
-    assert len(window) == 1
-    assert window[0]["content"] == "Estamos buscando una piscina en Tarragona, que sea especial"
-
-
-def test_shorter_rechunk_does_not_truncate_what_we_already_have():
-    window: list[dict] = []
-    dialog.push_user(window, "busca piscinas en Tarragona con toboganes")
-    dialog.push_user(window, "busca piscinas")                 # late, shorter chunk
-    assert window[0]["content"] == "busca piscinas en Tarragona con toboganes"
-
-
-def test_a_new_sentence_is_a_new_turn():
-    window: list[dict] = []
-    dialog.push_user(window, "busca piscinas cerca de Tarragona")
-    dialog.push_user(window, "y ponme el informe en pantalla")
-    assert len(window) == 2
-
-
-def test_empty_input_is_not_recorded():
-    window: list[dict] = []
-    dialog.push_user(window, "   ")
-    assert window == []
-
-
 # ── researching ≠ driving a browser ────────────────────────────────────────────────────────────────────
-
-# ── A WIDGET AS A DESTINATION IS NOT A WIDGET TO PROGRAM (2026-08-13) ─────────────────────────────────────────
-@_pytest.mark.parametrize("text,is_create", [
-    # DELIVERY DESTINATION → NOT code. The first is the REAL case that wrecked an entire investigation.
-    ("Entrega el resultado montado en el widget results con las 3 secciones claras y los enlaces", False),
-    ("pon los hoteles en el widget de resultados", False),
-    ("muestra el informe en el panel de resultados", False),
-    ("deliver the result into the widget results", False),
-    # …and the SAME case with an INDEFINITE article (2026-08-18). The article list only contained the
-    # definite articles, so these four slipped through to the generator. The first is verbatim from production.
-    ("Monta el resultado en un widget del canvas para que el operador pueda VERLO en pantalla", False),
-    ("presenta los datos en una tarjeta", False),
-    ("vuelca el informe en unos paneles", False),
-    ("render the findings into a widget", False),
-    # NOTE: «añade una columna al widget de agenda» is NOT listed here. It is not a create (and `looks_like_create_widget`
-    # says False), but it IS code: changing a widget's columns modifies its UI, and `_classify_kind` sends it to the
-    # generator via `_MODIFY_CODE_RE`, which is correct. It is checked separately below.
-    # A real CREATE → code
-    ("créame un widget del tiempo de Soria", True),
-    ("hazme un panel con la cotización del bitcoin", True),
-    ("monta un widget nuevo para las mareas", True),
-    ("build me a widget that tracks my steps", True),          # ojo: «a widget» ≠ preposición castellana «a»
-    ("create a new panel for the tides", True),
-    ("créame un panel de mareas y entrégalo en el widget results", True),   # las DOS: gana el create real
-])
-def test_a_widget_named_as_a_destination_is_not_code(text, is_create):
-    """A travel investigation (ferry+hotel+restaurant) ended up in the WIDGET GENERATOR, writing the code
-    for a new `prepara-viaje` widget instead of searching. Sole cause: the escalation ended with «Entrega
-    el resultado MONTADO en el widget results», and `mont\\w*` is a creation verb with `widget` nine characters away.
-
-    In other words, asking for delivery IN THE RESULTS SHEET diverted the task to the generator — and the results
-    sheet is precisely the delivery surface for every investigation: the failure lived on the product's busiest path.
-
-    The distinction is not a list of exceptions: it is GRAMMAR. After a destination preposition («en el
-    widget», «al panel», «into the widget») the widget is the PLACE where the result goes, not the thing being
-    built. Same family as V2-081 (mostrar→construir) and «proyecto» alone (2026-08-12)."""
-    from nucleo.flash import router as _router
-    assert _router.looks_like_create_widget(text) is is_create
-
-
-def test_gather_and_show_never_reaches_the_widget_generator():
-    """THE REAL CASE, verbatim from production (session 82e2ba11, 2026-08-18). The operator asked by voice for «muéstrame una
-    ficha técnica y una foto» of a car; FlashBrain reformulated the escalation, ending it with «Monta el resultado
-    en UN widget del canvas…», and it fell into the GENERATOR again: three minutes writing a
-    `investiga-ferrari-f80` de un solo uso, en vez de buscar y entregar en la hoja de resultados.
-
-    It is the SAME failure as on 2026-08-13 (above), with the article changed: the neutralization list contained
-    `el|la|los|las`, not `un|una|unos|unas`. The grammar does not depend on the article — «en un widget» is still the
-    PLACE where the result goes. And the model itself writes the phrase, so the operator cannot avoid it."""
-    from nucleo.flash import router as _router
-    req = ("Investiga el Ferrari F80 (último modelo de Ferrari lanzado al mercado) y prepara una FICHA TÉCNICA "
-           "completa (motor, potencia, 0-100, velocidad máxima, prestaciones, precio) junto con una FOTO REAL del "
-           "coche. Monta el resultado en un widget del canvas para que el operador pueda VERLO en pantalla: la "
-           "ficha técnica con los datos y al menos una fotografía del Ferrari F80. El operador quiere ver cómo es "
-           "el coche.")
-    assert _router.looks_like_create_widget(req) is False
-
-
-@_pytest.mark.parametrize("text", [
-    "monta esto en un widget nuevo",
-    "pon el informe en una tarjeta nueva",
-])
-def test_an_explicit_new_widget_survives_the_destination_rule(text):
-    """The ONLY real exception to the destination rule, which must be preserved: «en un widget NUEVO» does request a
-    new one. Here the destination preposition and the create coexist in the same sentence, and the create wins — if
-    neutralization swallowed it, expanding the article list would have changed a false positive into a false negative."""
-    from nucleo.flash import router as _router
-    assert _router.looks_like_create_widget(text) is True
-
-
-def test_modifying_a_widgets_ui_is_still_code():
-    """The other side: the DESTINATION fix must not swallow a real modification. Changing a widget's columns touches
-    its UI, that is, code, even if the phrase contains «al widget» — `_MODIFY_CODE_RE` routes it, not the create
-    detector."""
-    from nucleo.flash import router as _router
-    t = "añade una columna al widget de agenda"
-    assert _router.looks_like_create_widget(t) is False       # it is not CREATE
-
 
 # ── the imperative with a CLITIC, and the reminder that is not an order (V2-128, 2026-08-18) ──────────────────────────
 def test_an_imperative_with_a_clitic_still_asks_for_ok():

@@ -2,7 +2,6 @@
 import asyncio
 from types import SimpleNamespace
 
-import pytest
 
 from nucleo.llm import fast_client as fc
 from nucleo.llm.fast_client import FastClient, ModelSpec
@@ -397,3 +396,4 @@ def test_and_an_old_drop_is_not_this_conversation():
     fc._RECENT_DROPS[-1]["at"] = _t.time() - (fc._DROP_MEMORY_S + 60)
     assert fc.recent_drops() == []
     fc.clear_drops()
+

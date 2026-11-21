@@ -76,28 +76,6 @@ def test_exit_fullscreen_reaches_the_full_screen_he_ordered_when_the_canvas_says
 
 # ── demo pass 2026-09-28, U3 — «pause it a sec» paused the VIDEO while the music he had just asked for played ──
 
-def _subject(monkeypatch, phrase, open_ids=("youtube", "musica")):
-    from memory import api as memapi
-    from nucleo.acts import direct_action as da
-    monkeypatch.setattr(memapi, "state", lambda: {"open_widgets": list(open_ids)})
-    return da.subject_card("youtube", "pause", phrase)
-
-
-def test_a_show_over_the_open_card_is_a_touch_and_it_becomes_it(monkeypatch):
-    # «put like a prayer» on the music card that was already up: the door refuses the show as `already_open`
-    cf.note("transcript", "text-injected", role="user")
-    cf.note("widget", "🚫 presentación suprimida", extra={"id": "musica", "src": "flash", "already_open": True})
-    cf.note("transcript", "text-injected", role="user")                # «pause it a sec»
-    assert _subject(monkeypatch, "pause it a sec") == "musica"
-
-
-def test_a_card_he_names_always_wins(monkeypatch):
-    cf.note("transcript", "text-injected", role="user")
-    cf.note("widget", "show", extra={"id": "musica", "src": "flash"})
-    cf.note("transcript", "text-injected", role="user")
-    assert _subject(monkeypatch, "pause the video") == "youtube"
-
-
 def test_a_suppressed_show_for_another_reason_is_no_touch():
     cf.note("transcript", "text-injected", role="user")
     cf.note("widget", "🚫 presentación suprimida", extra={"id": "musica", "src": "flash", "already_open": False})
@@ -120,19 +98,7 @@ def _show_over_the_open_card(monkeypatch, *, strip_marker: bool = False):
         seen.append((label, e.get("already_open")))
         cf.note(kind, label, extra=e)
     cf.note("transcript", "text-injected", role="user")
-    shown = cv.present("musica", reason="turn-order", src="flash", emit=funnel)
+    shown = cv.present("musica", reason="turn-order", src="turn:e_1", emit=funnel)
     cf.note("transcript", "text-injected", role="user")                # «pause it a sec»
     return shown, seen
 
-
-def test_the_door_marks_the_already_open_refusal(monkeypatch):
-    shown, seen = _show_over_the_open_card(monkeypatch)
-    assert shown is False and seen == [("🚫 presentación suprimida", True)], seen
-    assert _subject(monkeypatch, "pause it a sec") == "musica", "the refused show was still his turn aiming at it"
-
-
-def test_the_disarm_a_refusal_without_the_marker_loses_the_touch(monkeypatch):
-    """The same refusal with `already_open` stripped: no touch is left, and «pause it» falls back to the video — U3."""
-    shown, seen = _show_over_the_open_card(monkeypatch, strip_marker=True)
-    assert shown is False and seen == [("🚫 presentación suprimida", None)], "the mutation landed"
-    assert _subject(monkeypatch, "pause it a sec") != "musica"

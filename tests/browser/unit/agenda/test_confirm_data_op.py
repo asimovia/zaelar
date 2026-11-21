@@ -90,67 +90,6 @@ def test_una_confirmacion_sin_accion_guardada_no_ejecuta_a_ciegas(agenda):
     assert agenda.load_db()["meetings"], "sin acción declarada no se toca nada"
 
 
-# ── EARLY resolution, before streaming (V2-090 addendum, 2026-08-15) ────────────────────────────────────────────
-# Real session f4d3c7cc: the operator said “Yes, empty the whole thing.” and that turn was cancelled by barge-in (the
-# operator kept speaking) before reaching the usual deterministic backstop, which runs only AFTER the model’s complete
-# streaming. The confirmation remained pending forever; the agenda did not change, and NO execution or cancellation
-# event was recorded — the response was silently lost, not rejected. `_resolve_pending_confirm` is the function now
-# called EARLY (before any slow work) so that a clear yes/no does not depend on the turn surviving in full. Here its
-# execution logic is tested directly (without an HTTP server), the same logic used by the button endpoint and the late
-# backstop — one function, three callers.
-def test_resolve_pending_confirm_ejecuta_la_data_op(agenda):
-    """The actual execution goes through `_spawn` -> `asyncio.create_task` (fire-and-forget, as in the real voice turn):
-    a LIVE loop and a tick are needed for the created task to run, just as in production (`_run_inner` is a coroutine
-    inside the agent loop, never a plain synchronous call)."""
-    from voice.engine.llm.providers.nucleo import _resolve_pending_confirm
-    from widgets import confirm
-
-    confirm.request("data", "agenda", "¿Vacío la agenda entera?", op={"action": "clear_all", "payload": {}})
-
-    async def _run():
-        assert _resolve_pending_confirm(True) is True
-        await asyncio.sleep(0.05)   # let the fire-and-forget task dispatch the actual mutation
-
-    asyncio.run(_run())
-
-    db = agenda.load_db()
-    assert db["meetings"] == [], "se confirmó y la agenda sigue con citas"
-    assert all(t["status"] in ("dropped", "done") for t in db["tasks"]), "se confirmó y quedan tareas pendientes"
-
-
-def test_resolve_pending_confirm_no_hace_nada_sin_confirmacion_pendiente():
-    from voice.engine.llm.providers.nucleo import _resolve_pending_confirm
-    from widgets import confirm
-
-    confirm.reset()
-    assert _resolve_pending_confirm(True) is False
-
-
-def test_resolve_pending_confirm_adopta_el_trace_de_quien_pregunto(agenda):
-    """The ask and response run in different turns/traces — without this, the master sees TWO flows where the
-    operator sees ONE action (see [[project_flows_board_and_trace_continuity]] from this same initiative)."""
-    from voice import trace
-    from voice.engine.llm.providers.nucleo import _resolve_pending_confirm
-    from widgets import confirm
-
-    trace.adopt("")
-    asking_tid = trace.begin("borra toda la agenda", origin="turno")
-    confirm.request("data", "agenda", "¿Vacío la agenda entera?", op={"action": "clear_all", "payload": {}})
-
-    trace.adopt("")   # the response turn starts with ITS OWN trace, as in production
-
-    async def _run():
-        assert _resolve_pending_confirm(True) is True
-        # The check occurs INSIDE the same coroutine/context: `asyncio.run()` copies the context on entry and does not
-        # propagate it back on exit — as in a real turn, where all of this occurs in a SINGLE chain of coroutines
-        # with no `asyncio.run()` boundary in between.
-        assert trace.current() == asking_tid
-        await asyncio.sleep(0.05)
-
-    asyncio.run(_run())
-    trace.adopt("")
-
-
 # ── Voice-only widget: WITHOUT a visual overlay, voice remains unchanged (2026-08-15, operator request) ─────────
 def test_confirm_ui_false_no_pinta_overlay_pero_la_confirmacion_sigue_pendiente():
     """`agenda/manifest.json` declares `confirm_ui: false` — “the agenda widget is handled by voice only”. The
@@ -313,33 +252,6 @@ def test_an_EMPTY_range_says_so_instead_of_asking_permission_for_nothing(agenda)
         assert "No hay ninguna cita" in _human_confirm_question("agenda", "clear_range", payload)
     with speaking("en"):
         assert "nothing to delete" in _human_confirm_question("agenda", "clear_range", payload)
-
-
-def test_una_confirmacion_abierta_no_puede_quedarse_MUDA_bajo_la_frase_del_modelo():
-    """⚠️ Medido el 2026-09-14 en su sesión, y es la razón por la que creyó que la agenda se había limpiado.
-
-        él      «limpia todo los items de esta semana, menos lo de mañana a las 15h y el taller del lunes»
-        sistema  data:clear_all (mode=confirm) → abre «¿Vacío la agenda entera? Es permanente.»
-        zaelar  «Clearing this week from your calendar — keeping tomorrow at 15:00 and the Monday workshop…»
-        (nada se borró, y la pregunta no se dijo NUNCA)
-
-    La condición exigía `not spoken_text`, razonando «si el modelo ya dijo algo, ya formuló él la pregunta».
-    Aquí dijo una acción TERMINADA que ni se había despachado, y cuyo alcance real era el calendario entero.
-    Es exactamente la lección que el bloque de `clarify` aprendió el 2026-07-22 —una señal determinista no
-    puede perder contra una frase inventada— y que este no había heredado.
-
-    Ratchet de FUENTE porque el bloque vive dentro del turno del proveedor de voz, que no se monta aislado;
-    el mismo patrón que `test_both_channels_wire_the_repair`. Lo que congela es la condición, no el texto."""
-    src = _vts.read(ENGINE / "voice/engine/llm/providers/nucleo.py")
-    i = src.index('if confirm_state.get("opened")')
-    cond = src[i:src.index(":\n", i)]
-    assert "not spoken_text" not in cond, \
-        "la pregunta de una confirmación abierta vuelve a callarse cuando el modelo habla"
-    assert 'spoken_text = confirm_state["opened"]' in src[i:i + 400], \
-        "y SUSTITUYE lo que dijo el modelo: su frase habla de algo que no ha pasado"
-    j = src.index('if clarify["msg"]')
-    assert "not spoken_text" not in src[j:src.index(":\n", j)], \
-        "el hermano de esta guarda perdió la suya"
 
 
 def test_una_cita_que_GOOGLE_no_borra_se_QUEDA_y_se_dice(agenda, monkeypatch):

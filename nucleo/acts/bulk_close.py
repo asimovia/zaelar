@@ -43,13 +43,6 @@ def _base(card: str) -> str:
     return str(card or "").split("::", 1)[0].strip().lower()
 
 
-def note_kept(card: str) -> None:
-    """The turn chose to KEEP `card` while closing others — a bulk close in the next `KEPT_S` spares it."""
-    c = str(card or "").strip().lower()
-    if c:
-        _KEPT[c] = time.time()
-
-
 def kept_now() -> list[str]:
     """The cards a recent turn chose to keep, still within `KEPT_S`."""
     now = time.time()
@@ -126,19 +119,11 @@ def spare_for(opened, text: str = "", *, emit=None, src: str = "", scope: str = 
     return spare
 
 
-def closes_every_card(text: str, open_ids) -> bool | None:
-    """BLOCKING — call it off the voice loop (the brief's thread, `asyncio.to_thread`). Does a bulk close over `open_ids`
-    take the card in use too? None = nothing is in use, so there is nothing to ask."""
-    spare = in_use(open_ids, text) if open_ids else []
-    return _closes_every_card(text, spare) if spare and str(text or "").strip() else None
-
-
 def _every_card(text: str, spare, brief) -> bool:
     """The answer the turn already holds (its brief asked it, or the door awaited it); asked here only off the loop."""
     if isinstance(brief, dict) and brief.get("_every_card") is not None:
         return bool(brief["_every_card"])
-    from nucleo.turn import brief_screen as _bs
-    if _bs._on_the_loop():
+    if __import__("asyncio")._get_running_loop() is not None:     # on an event loop a blocking verdict would stall it
         return bool(logger.debug("bulk_close: scope question absent — not asked on the voice loop"))
     return _closes_every_card(text, spare)
 
@@ -180,22 +165,20 @@ def close_all(emit, *, src: str, text: str = "", said: str = "", extra: dict | N
 
     `text` is his sentence (read to see whether it names a card in use); `said` is the phrase a caller already
     attaches to its canvas events (the action map does), passed through unchanged; `scope="all"` spares nothing. Each
-    close crosses the canvas door with the turn (`brief`, his sentence). Any `scope` is a decision already taken
+    close crosses the canvas door with its provenance. Any `scope` is a decision already taken
     («all», or «some» when the closed question kept the card in use); "" asks it — off the voice loop only."""
-    from nucleo.acts import canvas_turn
     from nucleo.acts import canvas
     base = {k: v for k, v in (extra or {}).items() if k not in ("id", "src")}
-    req = canvas_turn.request_of(brief, text)
     opened = list(open_ids) if open_ids is not None else _open_instances()
     spare = spare_for(opened, text, emit=emit, src=src, scope=scope, brief=brief)
     panel = _panel_over()      # INI-042 #47: the bare close-all shuts the native surface too (Settings over the canvas)
     if not spare:
-        if canvas.apply("close", "", src=src, text=said, emit=emit, request=req, **base):
+        if canvas.apply("close", "", src=src, text=said, emit=emit, **base):
             _note(closed=opened + ([panel] if panel else []), kept=[], opened=opened)
         return []
     for cid in opened:
         if cid not in spare:
-            canvas.apply("close", cid, src=src, text=said, emit=emit, request=req, **base)
+            canvas.apply("close", cid, src=src, text=said, emit=emit, **base)
     emit("brain", "🧷 bulk close: the app in use stays", text=",".join(spare), role="system",
          extra={"cat": "flash", "kept": spare, "src": src})
     _note(closed=[c for c in opened if c not in spare], kept=spare + ([panel] if panel else []), opened=opened)

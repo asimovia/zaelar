@@ -63,7 +63,6 @@ def _es(fn):
             "ZAELAR_LANGUAGE", prev)
 
 
-
 def test_the_gate_lives_where_EVERY_door_into_the_generator_passes():
     """The wiring guard, and the reason the gate is not in the voice provider.
 
@@ -215,13 +214,6 @@ def test_but_the_search_still_does_not_touch_what_is_SOUNDING(yt, monkeypatch):
     assert db["videoId"] == "keep-me" and db["paused"] is False
 
 
-# ── D · LA COLA DE UNA FRASE NO ES UNA ORDEN ───────────────────────────────────────────────────────────
-# +49.1: «Vale, páralo, y ahora búscame vídeos del alunizaje en el año … sesenta y nueve.» The tail came
-# back as a turn of its own and the model called `youtube:set_volume {volume: 69}`. «Yo no he dicho nada
-# de ningún volumen.»
-from nucleo.acts import direct_action
-
-
 def _brief(answers: dict, *, open_ids=("youtube",)):
     """A brief handle in the REAL shape `jev.ask_many` returns — the same double nodes 2.68/2.72/2.75 use."""
     import threading
@@ -231,96 +223,11 @@ def _brief(answers: dict, *, open_ids=("youtube",)):
             "result": {k: {"choice": c, "confidence": f} for k, (c, f) in answers.items()}}
 
 
-@pytest.fixture
-def on_screen(monkeypatch):
-    from nucleo.turn import brief as _tb
-    monkeypatch.setattr(_tb, "owner_still_open", lambda _b, _o: True)
-
-
-@pytest.mark.parametrize("words,expected", [
-    ("sesenta y nueve.", True), ("69", True), ("el tres", True),
-    ("mil novecientos sesenta y nueve", True),
-    ("Vale, páusalo.", False), ("páralo", False), ("ponme el dos", False),
-    ("ciérralo todo", False), ("", False),
-])
-def test_only_a_number_reaches_only_numbers(words, expected):
-    """The narrowing that makes this guard shippable. `too_thin_to_commission` calls «páusalo» and
-    «páralo» fragments too — its `_ALSO_A_VERB` hatch matches «para», and the enclitic is another token
-    — and those are his commonest orders. Measured, not assumed:"""
-    from nucleo.turn import brief as _tb
-    assert direct_action.only_a_number(words) is expected, words
-    if not expected and words:
-        # …with the brief ANSWERING exactly as it did on the measured turn. Without it `_info is None`
-        # makes the guard stand down for every word and the parametrize proves nothing — a disarm that
-        # deleted the narrowing stayed green.
-        b = _brief({_tb.TARGET_KEY: ("none", 0.31), _tb.REQUEST_KEY: ("order", 0.9)})
-        assert direct_action.a_fragment_moves_nothing(words, brief=b) == "", words
-
-
-def test_a_bare_number_with_the_verdict_silent_moves_nothing():
-    """The measured turn: `screen_action = none` at 0.31 — answered, and naming nothing."""
-    from nucleo.turn import brief as _tb
-    b = _brief({_tb.TARGET_KEY: ("none", 0.31), _tb.REQUEST_KEY: ("answer", 1.0)})
-    assert direct_action.a_fragment_moves_nothing("sesenta y nueve.", brief=b)
-
-
-def test_but_a_bare_number_the_verdict_NAMES_still_runs(on_screen):
-    """A text guard may not contradict the screen verdict — V2-741 and V2-748 both paid for that."""
-    from nucleo.turn import brief as _tb
-    b = _brief({_tb.TARGET_KEY: ("youtube:play_result", 0.92), _tb.REQUEST_KEY: ("order", 0.9)})
-    assert direct_action.a_fragment_moves_nothing("el tres", brief=b) == ""
-
-
-def test_and_with_NO_brief_at_all_it_stands_down():
-    """Jev off, slow, failed or disabled: today's path, exactly. Fail-open, as V2-754 promised."""
-    assert direct_action.a_fragment_moves_nothing("sesenta y nueve.", brief=None) == ""
-
-
-def test_the_guard_sits_at_the_ONE_point_both_branches_converge_on():
-    """The tag and the `widget_data` tool both end in `_apply_widget_data`. A rule installed in one of two
-    branches is this repo's own named way of fixing half a defect."""
-    src = _vts.turn_source()
-    body = src[src.index("def _apply_widget_data(wid: str"):]
-    body = body[:body.index("def _log_dataop")]
-    # CODE only: the comment above the call names the function too, and a disarm that deleted the call
-    # and left the comment stayed green.
-    body = "\n".join(l for l in body.splitlines() if not l.strip().startswith("#"))
-    from nucleo.acts import card
-    assert card._a_fragment in card._LADDER[card.GATE], "the card door's GATE ladder holds the fragment rule"
-    assert "at=_card.GATE" in body
-    assert body.index("at=_card.GATE") < body.index("action_mode_now"), (
-        "it has to decide BEFORE the call enters the consent gate")
-
-
 # ── E · UNA PREGUNTA EDUCADA ES UNA ORDEN ──────────────────────────────────────────────────────────────
 # +95.2: «¿Puedes enseñarme el catálogo?» → screen_action = youtube:show_tab 0.85, request_type = question
 # 0.64 → V2-756's refusal list vetoed it, the card never moved, and the turn PROMISED instead: «Voy a
 # quitar el vídeo para que quede el catálogo a la vista». «Bueno, dices que vas a hacer eso, pero no lo
 # haces.»
-
-def test_a_question_is_no_longer_a_veto():
-    """2026-11-12: the refusal list became `an_order` — read at the act floor, a `question` is still an order when the
-    screen action outranks it (0.85 over 0.64 here), and a comment or a greeting never is."""
-    sure = {"confidence": 0.64}
-    import threading
-    ev = threading.Event()
-    ev.set()
-    b = {"event": ev, "turn_id": "t", "open_ids": ["youtube"],
-         "result": {"screen_action": {"choice": "youtube:show_tab", "confidence": 0.85},
-                    "request_type": {"choice": "question", "confidence": 0.64}}}
-    assert direct_action.an_order("question", b, sure)
-    assert direct_action.an_order("order") and direct_action.an_order("answer") and direct_action.an_order("complaint")
-    assert not direct_action.an_order("comment") and not direct_action.an_order("greeting")
-    assert not direct_action.an_order(""), "an unsure reading is not an order"
-
-
-def test_the_measurement_that_removed_it_is_written_down():
-    """Every kind this reader admits costs a real order when it is wrong. The numbers stay beside it."""
-    block = inspect.getsource(direct_action.an_order)
-    for phrase in ("¿Puedes enseñarme el catálogo?", "¿Me pones el siguiente?",
-                   "¿el siguiente es de la NASA?"):
-        assert phrase in block, phrase
-
 
 # ── F · EL ORBE SE APARTA CUANDO ALGO SE PONE A PANTALLA COMPLETA ──────────────────────────────────────
 # «en el frontend se ve el orbe con el pulso, y eso molesta cuando estás viendo un vídeo a pantalla

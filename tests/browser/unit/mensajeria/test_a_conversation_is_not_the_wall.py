@@ -7,21 +7,6 @@ con», «chat with»), and a tie between a system surface and a card is AMBIGUOU
 """
 from __future__ import annotations
 
-import pytest
-
-
-@pytest.mark.parametrize("phrase, wall", [
-    ("Abre el chat de Marta", ""),
-    ("abre el chat con Ana", ""),
-    ("Open my chat with Ana", ""),
-    ("muéstrame la conversación con Luis", ""),
-    ("abre el chat", "chat"),
-    ("ábreme el chat", "chat"),
-    ("abre el muro", "chat"),
-])
-def test_the_wall_lane_opens_the_wall_only_when_the_wall_is_meant(phrase, wall):
-    from nucleo.acts.wall_tab import named_wall_tab
-    assert named_wall_tab(phrase) == wall
 
 
 def test_a_named_conversation_resolves_to_the_messaging_card():

@@ -16,81 +16,18 @@ from __future__ import annotations
 import json
 import pathlib
 
-import pytest
 
-from nucleo.acts import direct_action as DA
-from nucleo.flash import verdict_card as VC
 
 ENGINE = pathlib.Path(__file__).resolve().parents[4]
 
 
-@pytest.fixture
-def verdict(monkeypatch):
-    """The brief's two answers, set per test: the canvas gesture and the inner action with its confidence."""
-    st = {"canvas": "close", "action": ("agenda", "close_meeting"), "conf": 1.0, "named": [], "tags": []}
-    monkeypatch.setattr(DA, "sure_canvas", lambda b: st["canvas"])
-    monkeypatch.setattr(DA, "from_brief", lambda b: st["action"])
-    monkeypatch.setattr(DA, "_action_sure", lambda b, floor=0.8: st["conf"] >= floor)
-    monkeypatch.setattr(DA, "named_cards", lambda text: list(st["named"]))
-    return st
-
-
-def _canvas(st, said):
-    return DA.complete_canvas(object(), tag_emit=lambda a, x: st["tags"].append((a, x)), emit=lambda *a, **k: None,
-                              operator_text=said)
-
-
 # ── 2.440 · a sure inner op wins over the close — in both channels ────────────────────────────────────────────
-
-def test_the_measured_close_of_the_detail_does_not_close_the_agenda(verdict):
-    assert VC.inner_order_wins(object(), "Vale, ya la puedes cerrar") == "sure"
-    assert _canvas(verdict, "Vale, ya la puedes cerrar") == "" and verdict["tags"] == []
-
 
 # ── 2.441 · an inner WRITE is never read as a close ───────────────────────────────────────────────────────────
 
-def test_the_measured_series_removal_does_not_close_the_agenda(verdict):
-    verdict.update(action=("agenda", "cancel_meeting"), conf=0.71)
-    said = "Y quita el piano entero, toda la serie"
-    assert VC.inner_order_wins(object(), said) == "write"
-    assert _canvas(verdict, said) == "" and verdict["tags"] == []
-    assert VC.close_is_owed(object(), said) is False          # the voice promise door does not close it either
-    assert VC.canvas_yields(object()) is False                # …and the bare data rung does not guess its payload
-
-
 # ── 2.442 · the close stands when he named a card, or the inner op is an unsure lens ──────────────────────────
 
-def test_a_card_he_named_keeps_the_close(verdict):
-    verdict.update(action=("agenda", "cancel_meeting"), conf=0.71, named=["agenda"])
-    assert VC.inner_order_wins(object(), "quita la agenda") == ""
-
-
-def test_an_unsure_inner_lens_keeps_the_close(verdict):
-    verdict["conf"] = 0.55                                    # M4: «ok close that» meant the chart
-    assert VC.inner_order_wins(object(), "ok close that") == ""
-    assert VC.close_is_owed(object(), "ok close that") is True
-
-
-def test_no_sure_close_no_question(verdict):
-    verdict.update(canvas="", action=("agenda", "cancel_meeting"))
-    assert VC.inner_order_wins(object(), "quita el piano") == ""
-
-
 # ── an ARRANGE yields to a sure action on a card too (demo sandbox 2026-10-28, S2) ────────────────────────────
-
-@pytest.mark.parametrize("said", ["compare them side by side", "ponlos uno al lado del otro"])
-def test_a_sure_action_on_the_sheet_wins_over_the_arrange_gesture(verdict, said):
-    """canvas=arrange 0.92 AND `results:layout` 1.00: the desktop was tidied, the rows never laid side by side, and
-    «the side-by-side is up now» was said over nothing. The gesture names no card; the action does."""
-    verdict.update(canvas="arrange", action=("results::1e8f0d-ls1", "layout"), conf=1.0)
-    assert VC.inner_order_wins(object(), said) == "sure"
-    assert _canvas(verdict, said) == "" and verdict["tags"] == []
-
-
-def test_an_unsure_action_keeps_the_arrange(verdict):
-    verdict.update(canvas="arrange", action=("results::1e8f0d-ls1", "layout"), conf=0.6)
-    assert VC.inner_order_wins(object(), "tidy up the screen a bit") == ""
-
 
 # ── 2.443 · the claim backing cancels the whole series he named by one word ───────────────────────────────────
 
@@ -101,35 +38,6 @@ def _agenda():
                          {"title": "Clase de piano de Abril", "date": "2026-10-14", "startTime": "17:00",
                           "fromSeries": "2026-10-13"},
                          {"title": "Revisión dental con el doctor Ruiz", "date": "2026-10-15", "startTime": "11:30"}]}
-
-
-def test_the_measured_hecho_over_the_series_cancels_all_of_it():
-    from nucleo.flash import agenda_close_is_a_cancel as ac
-    got = ac.cancel_instead("Y quita el piano entero, toda la serie", "agenda", _agenda())
-    assert got == {"widget_id": "agenda", "action": "cancel_meeting",
-                   "payload": {"title": "Clase de piano de Abril", "whole": True}}
-
-
-def test_the_english_whole_series_too():
-    from nucleo.flash import agenda_close_is_a_cancel as ac
-    db = _agenda()
-    for m in db["meetings"][:2]:
-        m["title"] = "Abril's piano lesson"
-    got = ac.cancel_instead("And get rid of the piano completely, the whole series", "agenda", db)
-    assert got and got["payload"] == {"title": "Abril's piano lesson", "whole": True}
-
-
-def test_a_series_named_without_its_scope_keeps_its_question():
-    from nucleo.flash import agenda_close_is_a_cancel as ac
-    got = ac.cancel_instead("Quita el piano", "agenda", _agenda())
-    assert got and got["payload"] == {"title": "Clase de piano de Abril"}
-
-
-def test_one_word_two_titles_names_nothing():
-    from nucleo.flash import agenda_close_is_a_cancel as ac
-    db = _agenda()
-    db["meetings"].append({"title": "Concierto de piano", "date": "2026-10-30", "startTime": "20:00"})
-    assert ac.cancel_instead("Quita el piano", "agenda", db) is None
 
 
 # ── 2.444 · the rename field reads as the NEW title, the selector as the current one ──────────────────────────

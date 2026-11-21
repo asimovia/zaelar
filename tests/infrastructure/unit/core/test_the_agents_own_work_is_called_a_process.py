@@ -96,26 +96,3 @@ def test_a_stored_action_map_row_that_still_says_tareas_keeps_working():
     store = (ENGINE / "frontend/app/core/store.js").read_text(encoding="utf-8")
     assert 'tareas: ["procesos", "live"]' in store, "the frontend door has to absorb it too"
 
-
-def test_the_tool_the_model_picks_tells_the_two_apart():
-    """The only thing that can keep «ábreme las tareas» out of this panel is the prose the model reads:
-    the canon has no third answer to give."""
-    import sys
-    sys.path.insert(0, str(ENGINE))
-    from nucleo.flash import router
-    fn = next(t["function"] for t in router.TOOLS if t["function"]["name"] == "show_panel")
-    desc = fn["description"].lower()
-    assert "procesos" in desc
-    assert "agenda" in desc, "it has to say where his own tasks live, or the model has nowhere to send them"
-    assert "'tareas'" not in desc, "the panel must not be OFFERED under that name any more"
-
-    # Both halves, separately: `whenToUse` is the line that ROUTES a turn to a widget (`brief._purpose`,
-    # capped at 300 chars), and `usage` is the one that says how to drive it once chosen. Asserting the
-    # pair as one string lets either of them lose the boundary in silence while the other covers for it —
-    # measured here, by disarming exactly that.
-    manifest = json.loads((ENGINE / "widgets/agenda/manifest.json").read_text(encoding="utf-8"))
-    assert "proceso" in manifest["whenToUse"].lower(), manifest["whenToUse"]
-    assert "proceso" in manifest["usage"].lower()
-    from widgets.brief import _PURPOSE_CAP
-    assert len(manifest["whenToUse"]) <= _PURPOSE_CAP, (
-        "the routing line is cut before the model reads the boundary — the V2-547 failure")

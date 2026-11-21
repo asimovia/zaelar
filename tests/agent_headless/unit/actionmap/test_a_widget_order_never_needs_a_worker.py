@@ -27,7 +27,6 @@ import pytest
 
 from nucleo.actionmap.normalize import normalize
 from nucleo.actionmap.store import _pack_entries
-from nucleo.flash import tool_selection as tsel
 
 
 @pytest.fixture
@@ -116,37 +115,6 @@ def _names(out):
     return {(t.get("function") or {}).get("name") for t in out}
 
 
-def test_without_the_carried_layer_the_media_tool_is_trimmed_off_a_media_turn(trimming_on):
-    """The incident, reproduced: the request is two turns back and the turn that reaches the model names
-    nothing, so the only door left is the escalation."""
-    out, rep = tsel.select(list(_tools(*CATALOG)), turn_text="Do you understand?")
-    assert "play_video" not in _names(out)
-    assert "media" in rep["omitted"]
-
-
-def test_the_request_two_turns_back_keeps_the_media_tool(trimming_on):
-    out, rep = tsel.select(
-        list(_tools(*CATALOG)), turn_text="Do you understand?",
-        carried_text="I wanna see a video of Neil Armstrong walking over the moon")
-    assert "play_video" in _names(out) and "play_music" in _names(out)
-    assert "media" in rep["carried"]
-
-
-def test_it_works_the_same_in_spanish(trimming_on):
-    out, _ = tsel.select(list(_tools(*CATALOG)), turn_text="¿Me entiendes?",
-                         carried_text="quiero ver un vídeo de Neil Armstrong en la luna")
-    assert "play_video" in _names(out)
-
-
-def test_the_carried_layer_does_not_keep_a_family_alive_for_ever(trimming_on):
-    """A turn whose neighbourhood says nothing about media still trims it — otherwise the whole point of
-    the selector (−51% of catalog chars) is lost to one mention half a conversation ago."""
-    out, rep = tsel.select(list(_tools(*CATALOG)), turn_text="Do you understand?",
-                           carried_text="what is the weather like in Soria")
-    assert "play_video" not in _names(out)
-    assert rep["carried"] == []
-
-
 # ── 3 · what the carried text is built from ──────────────────────────────────────────────────────────
 WINDOW = [
     {"role": "user", "text": "close all widgets"},
@@ -154,28 +122,6 @@ WINDOW = [
     {"role": "user", "text": "I wanna see a video of Neil Armstrong"},
     {"role": "user", "text": "Do you understand?"},
 ]
-
-
-def test_it_reads_the_operators_turns_only():
-    """Our own reply is not the request: feeding it back would let a sentence about music keep the media
-    family alive over a turn that has moved on."""
-    got = tsel.carried_from_window(WINDOW, exclude="Do you understand?")
-    assert "Neil Armstrong" in got
-    assert "Now playing" not in got
-
-
-def test_the_current_turn_is_not_counted_twice():
-    assert "Do you understand?" not in tsel.carried_from_window(WINDOW, exclude="Do you understand?")
-
-
-def test_it_is_bounded():
-    got = tsel.carried_from_window(WINDOW, exclude="Do you understand?", n=1)
-    assert "Neil Armstrong" in got and "close all widgets" not in got
-
-
-def test_an_unreadable_window_is_not_a_crash():
-    assert tsel.carried_from_window(None) == ""
-    assert tsel.carried_from_window([object(), {"role": "user"}, {"nope": 1}]) == ""
 
 
 # ── 4 · the wiring: a decision nobody calls is a decision that does not exist ────────────────────────
@@ -188,19 +134,3 @@ def _source_without_comments(path: Path) -> str:
         s = line.split("#", 1)[0]
         out.append(s)
     return "\n".join(out)
-
-
-def test_the_voice_channel_goes_through_the_seam_that_carries_the_window():
-    p = Path(__file__).resolve().parents[4] / "voice" / "engine" / "llm" / "providers" / "nucleo.py"
-    src = _source_without_comments(p)
-    assert "_tsel.select_for_turn(" in src and "window=getattr(brain," in src, \
-        "the selector is called with the turn's words only — the incident's exact shape"
-
-
-def test_the_seam_itself_carries_the_window(trimming_on):
-    """And the seam is not a hollow wrapper: it is what feeds the carried layer."""
-    out, rep = tsel.select_for_turn(
-        list(_tools(*CATALOG)), turn_text="Do you understand?",
-        window=[{"role": "user", "text": "I wanna see a video of Neil Armstrong"},
-                {"role": "user", "text": "Do you understand?"}])
-    assert "play_video" in _names(out) and "media" in rep["carried"]

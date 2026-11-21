@@ -33,7 +33,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.lang import LANGS, speaking
+from tests.lang import LANGS
 
 ENGINE = Path(__file__).resolve().parents[4]
 GENESIS = ENGINE / "i18n" / "genesis"
@@ -47,9 +47,7 @@ FILLER_KEYS = ("fillers", "fillers_action", "fillers_social", "fillers_ack", "co
                "vault_rule.voice_on", "vault_rule.voice_off")
 
 #: Files that still hold a spoken line of one language as a constant. MEASURED; edited DOWNWARD only.
-_STILL_HOLDING = {
-    "nucleo/flash/post_stream_settle.py",  # «Hecho.» / «Aquí lo tienes.» in the except branches
-}
+_STILL_HOLDING: set[str] = set()   # the last one went with the old turn (INI-078 L1)
 
 
 def _pack(code: str) -> dict:
@@ -86,30 +84,6 @@ def test_every_wait_line_exists_in_every_pack_and_is_translated(key):
 
 # ── 2 · the pickers ───────────────────────────────────────────────────────────────────────────────────────────
 
-def _pickers():
-    from i18n import langs
-    from nucleo.turn import wait_lines
-    from widgets import instances
-    from widgets.navegador import owner  # noqa: F401 — the package first: owner_actions is imported through it
-    from widgets.navegador import owner_actions
-    return {
-        "filler": lambda: langs.pick_filler(kind="neutral"),
-        "filler_action": lambda: langs.pick_filler(kind="action"),
-        "filler_social": lambda: langs.pick_filler(kind="social"),
-        "filler_ack": lambda: langs.pick_filler(kind="ack"),
-        "cover_search": lambda: langs.pick_cover("search"),
-        "cover_recall": lambda: langs.pick_cover("recall"),
-        "ack": lambda: langs.pick_ack(),
-        "holding": lambda: wait_lines.holding_line([], None),
-        # as `nucleo/turn/pipeline_close.py` calls it: with `lang=None` it falls to its «Sigo con ello.» constant
-        "still_working": lambda: wait_lines.mute_backstop([], langs.current_language(), True, reached_worker=True),
-        "mute": lambda: wait_lines.mute_line([], None),
-        "browser_done": lambda: owner_actions.ending_line("", True),
-        "browser_partial": lambda: owner_actions.ending_line("", False),
-        "which_card": lambda: instances._ask("close", 2, "«A» or «B»"),
-    }
-
-
 def _shaped(said: str, pool: set[str]) -> bool:
     """`said` is one of the pool's templates with its `{…}` slots filled."""
     return any(re.fullmatch(re.sub(r"\\\{\w+\\\}", ".+", re.escape(p)), said) for p in pool if "{" in p)
@@ -117,35 +91,6 @@ def _shaped(said: str, pool: set[str]) -> bool:
 
 PICKERS = ("filler", "filler_action", "filler_social", "filler_ack", "cover_search", "cover_recall", "ack", "holding",
            "still_working", "mute", "browser_done", "browser_partial", "which_card")
-
-
-def test_every_picker_is_measured():
-    assert set(PICKERS) == set(_pickers())
-
-
-@pytest.mark.parametrize("name", PICKERS)
-@pytest.mark.parametrize("code", LANGS)
-def test_a_wait_line_comes_from_the_sessions_pack(name, code, monkeypatch):
-    from nucleo.workers import quota_wait
-    monkeypatch.setattr(quota_wait, "asleep_line", lambda *_a, **_k: "")    # no worker chain asleep here
-    with speaking(code):
-        said = _pickers()[name]().strip()
-    other = "es" if code == "en" else "en"
-    mine, theirs = _strings(_pack(code)), _strings(_pack(other))
-    assert said, f"{name}: nothing to say in «{code}»"
-    assert said in mine or _shaped(said, mine), f"{name} in a «{code}» session said {said!r}, not a line of its pack"
-    assert said not in theirs, f"{name} in a «{code}» session said {said!r}, a line of the «{other}» pack"
-
-
-def test_the_vault_rule_is_confirmed_in_the_sessions_language(monkeypatch):
-    from memory import state
-    from nucleo.acts import memory as acts_memory
-    monkeypatch.setattr(state, "set_security_flag", lambda *_a, **_k: None)
-    for code in LANGS:
-        with speaking(code):
-            on = acts_memory.apply_rule(("secrets_voice", True))
-            off = acts_memory.apply_rule(("secrets_voice", False))
-        assert (on, off) == (_at(_pack(code), "vault_rule.voice_on"), _at(_pack(code), "vault_rule.voice_off"))
 
 
 # ── 3 · the ratchet ───────────────────────────────────────────────────────────────────────────────────────────
@@ -223,17 +168,3 @@ def test_the_retired_ones_stay_retired():
     gone = _STILL_HOLDING - set(_measure())
     assert not gone, f"retired — take them out of _STILL_HOLDING so they cannot come back: {sorted(gone)}"
 
-
-def test_a_wait_line_with_no_session_pack_falls_back_to_the_base_pack(monkeypatch):
-    """`wait_lines` with the session's pack unreadable says the BASE pack's line, never a Spanish constant."""
-    from i18n import langs
-    from nucleo.turn import wait_lines as W
-
-    def _boom(lang=None):
-        raise RuntimeError("no pack")
-    monkeypatch.setattr(W, "_lang", _boom)
-    base = langs.spec(langs.DEFAULT_LANG)
-    assert W.holding_line([], None) == base.still_on_it
-    assert W.mute_line([], None) == base.say_again
-    assert W.holding_line_now([], prev_pending=True) == base.still_on_it
-    assert W.holding_line_now([], prev_pending=False) == base.filler_holding

@@ -67,14 +67,6 @@ def cut_since(t_ms: float) -> bool:
     return False
 
 
-def other_line(text: str) -> None:
-    """A line of ours said AFTER the confirmation that is not the confirmation (a worker's question, a notice): a bare
-    «yes» after it answers THAT, never the message."""
-    d = _draft.current()
-    if d is not None and d.heard and text and not _ask._fold(text).endswith(_ask._fold(d.confirm_line)):
-        d.other_at = now_ms()
-
-
 def began_before(d) -> bool:
     """Did the sentence being read now BEGIN before the confirmation was said? Then it cannot be its answer, whatever it
     says («send it now» said while the draft was being built). A typed line has no onset of its own: never."""
@@ -88,7 +80,6 @@ def began_before(d) -> bool:
     except Exception as e:  # noqa: BLE001 — unreadable: as if it did, the confirmation is read again
         _note(e)
         return True
-
 
 
 def answers(d, got: dict, last_line: str, *, changed: bool, ready: bool) -> tuple[bool, str]:

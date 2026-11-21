@@ -188,10 +188,3 @@ def test_en_el_motor_ingles_las_frases_salen_en_ingles(monkeypatch):
     fallo = image_turn.spoken_for({"executed": "show_images", "ok": False, "message": "x"}, "ack")
     assert fallo.startswith("I couldn't")
 
-
-def test_y_el_reproductor_de_video_igual(monkeypatch):
-    """Its sibling had carried the SAME hole since V2-383 without any US video round exposing it."""
-    monkeypatch.setattr("voice.engine.core.langs.current_code", lambda: "en", raising=False)
-    from nucleo.flash import video_turn
-    dicho = video_turn.spoken_for({"executed": "play_video", "ok": True, "title": "Some Doc"}, "ack")
-    assert dicho == "It's up on your screen: «Some Doc»."

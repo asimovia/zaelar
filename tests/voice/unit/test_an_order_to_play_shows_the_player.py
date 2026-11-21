@@ -71,7 +71,6 @@ import pathlib
 import pytest
 
 from nucleo.circuit import harness, verify
-from nucleo.turn import brief as _tb
 from widgets import store
 from widgets.youtube import data as yt
 
@@ -144,16 +143,6 @@ def test_show_tab_still_carries_the_phrase_that_makes_it_routable():
     assert "catálogo" in show_tab
 
 
-@pytest.mark.parametrize("name", ["pause", "close", "show_tab", "restart", "play_result"])
-def test_the_declarations_this_incident_touched_FIT_the_question(name):
-    """A description is product data and the right place to repair a routing miss — but only the part
-    that ARRIVES can decide anything (V2-753). Third time this class has cost a live session."""
-    desc = _acts()[name]["desc"]
-    assert len(desc) <= _tb.MAX_DESC_CHARS, (
-        f"`{name}` is {len(desc)} chars and the question carries {_tb.MAX_DESC_CHARS}: "
-        f"«{desc[_tb.MAX_DESC_CHARS:]}» never reaches any reader")
-
-
 #: Declared debt, measured 2026-09-23: descriptors longer than `MAX_DESC_CHARS` across every widget.
 #: They reach the screen question BEHEADED and nothing says so. This may only go DOWN — the ratchet
 #: exists because the same defect has now been paid for three times (V2-742, V2-753, V2-755) and a
@@ -163,16 +152,6 @@ BEHEADED_DESCRIPTORS = 45
 #: move_meeting 235, youtube:open_channel 220) now say what the action IS in `desc` (≤ 200) and carry the payload's
 #: rules in `how`, which only the model reads (`widgets/brief.py` joins the two). The model reads the same words;
 #: the screen question stops reading a sentence cut in half. Edit DOWNWARD only.
-
-
-def test_the_beheaded_declarations_are_declared_debt_and_only_shrink():
-    over = [f"{mf.parent.name}:{k} ({len(str((v or {}).get('desc') or ''))})"
-            for mf in sorted((_ENGINE / "widgets").glob("*/manifest.json"))
-            for k, v in (json.loads(mf.read_text(encoding="utf-8")).get("actions") or {}).items()
-            if len(str((v or {}).get("desc") or "")) > _tb.MAX_DESC_CHARS]
-    assert len(over) <= BEHEADED_DESCRIPTORS, (
-        f"{len(over)} declarations are cut before they can decide anything (was {BEHEADED_DESCRIPTORS}): "
-        + ", ".join(sorted(over)[:6]))
 
 
 # ── 2 · AN ORDER TO PLAY BRINGS THE PLAYER'S FACE FORWARD ─────────────────────────────────────────
@@ -250,44 +229,6 @@ def _clean_goals():
     harness.reset()
     yield
     harness.reset()
-
-
-def test_an_unverified_goal_says_NOTHING_in_the_prompt():
-    """The measured defect: three minutes of «la hoja `youtube` sigue VACÍA» over a card holding six
-    results and a playing video, because nothing ever verified it and the prompt did not care."""
-    harness.note_goal(harness.KIND_WIDGET_CONTENT, "youtube", "Vale, muéstrame el widget de vídeo.")
-    assert harness.prompt_lines() == [], (
-        "the module's own rule: a widget whose truth cannot be read yields None and the harness stays "
-        "SILENT — a wrong «you did not deliver» over a delivered card is worse than none")
-
-
-def test_a_goal_a_verifier_found_UNMET_still_speaks(monkeypatch):
-    """V2-660's protection is untouched: an empty sheet is still a fact with its rule in the prompt."""
-    g = harness.note_goal(harness.KIND_WIDGET_CONTENT, "documento", "Tráeme la Declaración.")
-    monkeypatch.setattr(verify, "card_view", lambda _w: {"empty": True})
-    assert asyncio.run(harness.verify(g)) is False
-    lines = harness.prompt_lines()
-    assert len(lines) == 1 and "sigue VACÍA" in lines[0] and "documento" in lines[0]
-
-
-def test_a_goal_that_was_MET_closes_and_stops_speaking(monkeypatch):
-    g = harness.note_goal(harness.KIND_WIDGET_CONTENT, "documento", "Tráeme la Declaración.")
-    monkeypatch.setattr(verify, "card_view", lambda _w: {"empty": False})
-    monkeypatch.setattr(verify, "card_on_screen", lambda _w: True)
-    assert asyncio.run(harness.sweep()) == [g]
-    assert harness.prompt_lines() == [] and g["status"] == "met"
-
-
-def test_an_unreadable_card_is_reported_once_so_the_silence_is_not_invisible(monkeypatch):
-    """A guard that stays quiet is how this one spent a whole session being blamed on the model."""
-    seen: list[str] = []
-    monkeypatch.setattr(verify, "card_view", lambda _w: None)
-    monkeypatch.setattr(harness, "_emit", lambda label, g, extra=None: seen.append(label))
-    g = harness.note_goal(harness.KIND_WIDGET_CONTENT, "musica", "Pon algo.")
-    assert asyncio.run(harness.verify(g)) is None
-    assert asyncio.run(harness.verify(g)) is None
-    assert [s for s in seen if "NO verificable" in s], "the unreadable app leaves a line"
-    assert len([s for s in seen if "NO verificable" in s]) == 1, "…once, not on every heartbeat"
 
 
 def test_the_video_card_now_ANSWERS_whether_it_holds_anything(watching_from_the_catalog):

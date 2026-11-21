@@ -28,50 +28,6 @@ def gate(monkeypatch):
     his_words.reset()
 
 
-def test_a_recipient_he_never_named_is_asked_even_with_no_stranger_in_the_context(gate):
-    from widgets import actions as wa
-    from nucleo.acts import frontend
-    assert frontend.at_least_sensitive("mensajeria", "send_to")
-    assert gate.asked_if_leaving(wa.FAST, None, "mensajeria", "send_to", payload={"contact": "Quinn"},
-                                 said="send the summary to the team") == wa.CONFIRM
-    assert gate.asked_if_leaving(wa.FAST, None, "mensajeria", "send_to", payload={"contact": "Rowan"},
-                                 said="send rowan a telegram with the new time") == wa.FAST
-
-
-def test_a_recipient_he_named_a_moment_ago_is_his(gate):
-    """«book a catch up with Rowan» … «telegram him the new time»: the person is his from the conversation."""
-    from nucleo import his_words
-    his_words.note("find me a free slot tomorrow afternoon to talk with Rowan")
-    assert gate.unnamed_recipients("mensajeria", "send_to", {"contact": "Rowan"}, "telegram him the new time") == []
-    assert gate.unnamed_recipients("mensajeria", "send_to", {"contact": "Quinn"}, "telegram him the new time") == ["Quinn"]
-
-
-def test_an_act_that_does_not_name_anybody_is_not_asked(gate):
-    """A reply goes to whoever wrote: no WHO, nothing to doubt."""
-    assert gate.unnamed_recipients("mensajeria", "reply", {"text": "on my way"}, "tell him I'm on my way") == []
-
-
-def test_the_meeting_invitation_leaves_and_its_guest_must_be_his(gate):
-    from widgets import effects
-    assert effects.carries("agenda", "invite", effects.EXTERNAL_SEND)
-    assert gate.unnamed_recipients("agenda", "invite", {"who": "Paco Pérez"}, "invite him to the meeting") == ["Paco Pérez"]
-    assert gate.unnamed_recipients("agenda", "invite", {"who": "Paco Pérez"}, "invite paco to the meeting") == []
-
-
-def test_the_engine_never_turns_a_draft_into_a_send_to_somebody_he_did_not_name(gate, monkeypatch):
-    from nucleo.acts import message_repair as ordered_send
-    from nucleo.acts import direct_action
-    from nucleo.acts import payload_fill
-    from nucleo.turn import verdicts
-    monkeypatch.setattr(direct_action, "completes", lambda *_a, **_k: "send_to")
-    monkeypatch.setattr(verdicts, "sure_order", lambda *_a: True)
-    monkeypatch.setattr(verdicts, "substitutes", lambda *_a: True)
-    monkeypatch.setattr(payload_fill, "person_fill", lambda *_a: {})
-    pay = {"contact": "Quinn", "text": "the numbers are in"}
-    assert ordered_send.ordered_instead({}, "mensajeria", "draft", pay, "send the numbers to the team") is None
-    assert ordered_send.ordered_instead({}, "mensajeria", "draft", pay, "send the numbers to quinn") == ("send_to", pay)
-
-
 @pytest.fixture
 def directory(tmp_path, monkeypatch):
     from widgets import store

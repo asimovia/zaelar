@@ -16,7 +16,6 @@ Two things the second run of `three-tasks-at-once` measured in the live task reg
 from __future__ import annotations
 
 from nucleo.acts import errand as escalate
-from nucleo.flash import router_guards
 
 _NOTE = "[SISTEMA] Brain worker · Tarea completada: No he podido encontrar monitores de segunda mano ≤150€"
 _OPENING = ("Oye, tengo tres cosas. Hazme un informe sobre coches eléctricos para ciudad, búscame un monitor "
@@ -54,12 +53,6 @@ def test_a_real_request_still_escalates_with_its_note_removed(monkeypatch):
 
 # ── the create-widget guard gap ───────────────────────────────────────────────────────────────────────────
 
-def test_a_request_that_already_covers_the_widget_needs_no_backstop():
-    """The backstop only fills a gap: if the model has ALREADY requested the widget, it is not duplicated."""
-    assert router_guards.looks_like_create_widget("Monta un widget de un juego de plataformas") is True
-    assert router_guards.looks_like_create_widget("Investiga coches eléctricos para ciudad") is False
-
-
 # ── V2-155: the backstop detected the widget and DEDUP swallowed it ──────────────────────────────────────
 #
 # 18:10 round on `three-tasks-at-once`: `max_concurrent=2`, `distinct_kinds=['web']`—the third task
@@ -76,45 +69,6 @@ _GOAL_INFORME = ("Elaborar un informe detallado sobre coches eléctricos para ci
 class _Live:
     def __init__(self, goal):
         self.goal, self.status = goal, "running"
-
-
-def test_the_backstop_appends_only_the_clause_that_asks_for_the_widget():
-    got = router_guards.create_widget_request(_OPENING)
-    assert "Super Mario" in got
-    assert "informe" not in got.lower()
-    assert "monitor" not in got.lower()
-
-
-def test_and_that_is_what_stops_the_report_from_swallowing_it(monkeypatch):
-    """Proof that the trimming is not cosmetic: it is exactly what changes the dedup verdict.
-
-    V2-158—the first version of this test read the REAL widget catalog through `_target_widget`, and a
-    live run that creates a widget (`widgets/juego-plataformas-tipo/` appeared and disappeared during the
-    run) changed the result: green with fixed ordering, red with random ordering. A regression test cannot
-    depend on which widgets are on disk when it runs. The mapping MEASURED in the run is fixed—entire turn →
-    `results`, game clause → no destination—and the only thing this fix changes is checked: the INPUT that
-    `find_duplicate` receives."""
-    from nucleo import dispatch
-    measured = {_OPENING: "results", _GOAL_INFORME: "results"}
-    # Repointed 2026-09-01: V2-507 moved the same-widget rule to `nucleo/request/append.py`, which resolves the
-    # destination through ITS OWN `target_widget` — the mock on `dispatch._target_widget` was left stranded
-    # and this test silently went back to reading the REAL catalog (V2-158's exact trap: it turned red the
-    # day the live runtime data resolved `results` for BOTH texts). The mock aims at the seam the scan calls.
-    from nucleo.request import append as _dedup
-    monkeypatch.setattr(_dedup, "target_widget", lambda t: measured.get(t, ""))
-    monkeypatch.setattr(dispatch, "_SESSIONS", {"informe": _Live(_GOAL_INFORME)})
-    assert dispatch.find_duplicate(_OPENING, "code") == "informe"              # what ran before
-    assert dispatch.find_duplicate(router_guards.create_widget_request(_OPENING), "code") is None
-
-
-def test_a_lone_widget_request_is_untouched():
-    """Without separators there is nothing to trim: the existing behavior does not change."""
-    assert router_guards.create_widget_request("móntame un widget de la bolsa") == "móntame un widget de la bolsa"
-
-
-def test_and_a_turn_that_asks_for_no_widget_yields_nothing():
-    assert router_guards.create_widget_request("búscame un monitor barato de segunda mano") == ""
-    assert router_guards.create_widget_request("") == ""
 
 
 # ── V2-645: a READ of the operator's own messaging is widget work, never a web transaction ─────────────────

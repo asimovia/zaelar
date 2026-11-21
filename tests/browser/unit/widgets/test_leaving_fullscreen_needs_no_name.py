@@ -28,7 +28,6 @@ from pathlib import Path
 import pytest
 
 from memory import api as memory
-from nucleo.flash import router_catalog
 from nucleo.acts import show_target
 from widgets import brief
 
@@ -45,75 +44,7 @@ def canvas(monkeypatch):
 
 # ── the target resolves without a name ────────────────────────────────────────────────────────────────────
 
-def test_with_no_name_the_target_is_the_card_that_is_at_full_screen(canvas):
-    canvas["maximized_widget"] = "youtube"
-    assert show_target.fullscreen_target("", "sal de pantalla completa") == "youtube"
-
-
-def test_a_name_the_operator_gives_still_wins(canvas):
-    canvas["maximized_widget"] = "youtube"
-    assert show_target.fullscreen_target("agenda", "pon la agenda a pantalla completa") == "agenda"
-
-
-@pytest.mark.parametrize("opened", [["youtube", "agenda"], ["youtube"]])
-def test_leaving_full_screen_when_nothing_is_maximized_does_NOT_pick_a_widget(canvas, opened):
-    """The dangerous shape, and the ONE-widget case is the one that matters: that is the operator's real
-    situation, and it is where a «the only thing open must be it» fallback looks most reasonable. It is not.
-    `fullscreen_widget` is a TOGGLE, so resolving a target when nothing is at full screen would put that card
-    INTO full screen — the exact opposite of the order he gave. Resolving to nothing is the honest answer,
-    and the caller asks instead of acting.
-
-    (Caught by a disarm: the first version of this test only opened TWO widgets, so a single-widget fallback
-    slipped straight through it.)"""
-    canvas["open_widgets"] = opened
-    canvas["maximized_widget"] = ""
-    assert show_target.fullscreen_target("", "sal de pantalla completa") == ""
-
-
-def test_a_natural_name_still_resolves_through_identify(canvas):
-    """Narrowing an empty argument must not cost the useful half: when the model DOES name something, the
-    name is resolved with the same open>recent>catalogue precedence as every other widget order."""
-    canvas["maximized_widget"] = ""
-    assert show_target.fullscreen_target("el vídeo", "ponlo a pantalla completa") == "youtube"
-
-
-def test_a_name_that_resolves_to_nothing_asks_instead_of_guessing(canvas):
-    canvas["maximized_widget"] = "youtube"
-    assert show_target.fullscreen_target("el widget de contabilidad fiscal", "") == ""
-
-
-def test_an_instance_card_answers_by_its_base_id(canvas):
-    canvas["maximized_widget"] = "results"
-    canvas["open_widgets"] = ["results"]
-    assert show_target.fullscreen_target("", "quítala") == "results"
-
-
 # ── the tool the model is offered ─────────────────────────────────────────────────────────────────────────
-
-def _fullscreen_tool() -> dict:
-    tools = getattr(router_catalog, "TOOLS", None) or getattr(router_catalog, "CATALOG", None) or []
-    hit = next((t for t in tools if (t.get("function") or {}).get("name") == "fullscreen_widget"), None)
-    assert hit, "fullscreen_widget desapareció del catálogo de tools"
-    return hit["function"]
-
-
-def test_widget_id_is_not_required_so_an_exit_order_has_a_legal_call():
-    """The whole defect in one assertion. With `widget_id` required and no widget named, the only legal
-    moves were to invent an id (forbidden) or to call nothing — and it called nothing."""
-    fn = _fullscreen_tool()
-    assert "widget_id" not in (fn["parameters"].get("required") or []), \
-        "un argumento obligatorio que la frase no puede rellenar es una tool que el modelo NO llamará"
-
-
-def test_the_tool_says_the_exit_needs_no_name_and_is_not_described_only_as_enlarging():
-    """The description said «el widget a AMPLIAR» — one-directional prose on a two-directional toggle,
-    which gives a model reading it a second reason to decline on an exit order."""
-    fn = _fullscreen_tool()
-    blob = (fn["description"] + " " + fn["parameters"]["properties"]["widget_id"]["description"]).lower()
-    assert "pantalla completa" in blob
-    assert "vacío" in blob or "vacio" in blob, "no dice que pueda llamarse SIN nombre"
-    assert "a ampliar" not in blob, "la descripción del argumento vuelve a ser solo de ida"
-
 
 # ── the fact the model was never told ─────────────────────────────────────────────────────────────────────
 

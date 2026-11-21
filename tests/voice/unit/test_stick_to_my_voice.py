@@ -90,57 +90,12 @@ def test_the_enroll_label_carries_no_verdict_and_off_clears():
     assert VL.state()["pending"] == 0, "a voice being re-learned voids what was judged against the old one"
 
 
-# ── the gate: dropped before the judge, not filed as room noise ──────────────────────────────────────────────────
-def _judge(text="pon la tele más alta"):
-    from voice.engine.llm.providers import attention_turn
-    seen = []
-    out = _run(attention_turn.judge(text, context="", emit=lambda *a, **k: seen.append((a, k))))
-    return out, seen
-
-
-def test_the_gate_drops_another_voice_before_the_judge(monkeypatch):
-    from voice import attention
-    called, ambient = [], []
-
-    async def judge_called(*a, **k):
-        called.append(a)
-        return attention.Verdict(True, "always")
-    monkeypatch.setattr(attention, "evaluate_content", judge_called)
-    monkeypatch.setattr(attention, "note_ambient", lambda *a, **k: ambient.append(a))
-    VL.set_state(True, True)
-    VL.note_verdict("other")
-    (directed, _text, _ms), seen = _judge()
-    assert directed is False and not called, "the attention judge must not even run for another voice"
-    assert not ambient, "another voice is not room noise a wake word may reclaim"
-    assert any(k.get("extra", {}).get("reason") == "voice_lock" for _a, k in seen), seen
-    VL.set_state(True, False)          # no enrolment: the same turn passes to the judge
-    VL.note_verdict("other")
-    (directed, _t, _m), _ = _judge()
-    assert directed is True and called
-
-
 def test_the_disarm_a_decision_that_keeps_everything_lets_the_tv_through(monkeypatch):
     monkeypatch.setattr(VL, "decide", lambda **_k: (True, "off"))
     assert VL.decide(on=True, enrolled=True, labels=["other"])[0] is True, "the mutation landed"
     VL.set_state(True, True)
     VL.note_verdict("other", now=1.0)
     assert _run(VL.admit(onset=0.9, now=2.0, grace_s=0))[0] is True   # the TV gets through: the guard is the decision
-
-
-def test_the_disarm_a_gate_that_never_asks_lets_the_tv_through(monkeypatch):
-    from voice import attention
-
-    async def directed(*a, **k):
-        return attention.Verdict(True, "always")
-    monkeypatch.setattr(attention, "evaluate_content", directed)
-
-    async def never(**_k):
-        return True, "off"
-    monkeypatch.setattr(VL, "admit", never)
-    VL.set_state(True, True)
-    VL.note_verdict("other")
-    (d, _t, _m), _ = _judge()
-    assert d is True, "with the gate disarmed another voice reaches the brain — the gate is what stops it"
 
 
 # ── the wire ─────────────────────────────────────────────────────────────────────────────────────────────────────

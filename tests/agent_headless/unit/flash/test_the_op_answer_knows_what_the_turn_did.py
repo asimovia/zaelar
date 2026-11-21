@@ -45,16 +45,3 @@ class _Done:
     def result(self):
         return self._r
 
-
-def test_a_refused_op_is_not_what_the_turn_did(monkeypatch):
-    """S1 audit H10: `data_done["ops"]` is filled when an op is LAUNCHED; one the widget then refused stayed in it, so the
-    pass would narrate as done an act that was refused — the inverse of T17. The line is what LANDED."""
-    from nucleo.flash import post_stream_acts as psa
-    monkeypatch.setenv("ZAELAR_LANGUAGE", "en")
-    ops = [("agenda", "cancel_meeting"), ("agenda", "add_meeting")]
-    tasks = [("agenda", _Done({"ok": True})), ("agenda", _Done({"ok": False, "error": "slot_taken"}))]
-    landed = psa._landed(ops, tasks)
-    assert landed == [("agenda", "cancel_meeting")]
-    got = w.op_answer_system("LOCK", SAID["en"], "agenda", {"meetings": []}, ops, landed=landed)
-    assert "agenda.cancel_meeting" in got and "agenda.add_meeting" not in got, got
-    assert psa._landed(ops, tasks[:1]) is None, "ops and tasks that do not line up: every op, as before"

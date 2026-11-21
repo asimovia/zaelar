@@ -3,20 +3,8 @@
 # submodules) works and that the CONTRACT is fixed: signatures are present, stubs raise NotImplementedError
 # when called (nothing wired to voice yet). Run: .venv/bin/pytest tests/agent_headless/unit/test_skeleton.py
 #
-import importlib
 
 import pytest
-
-
-def test_import_tree():
-    for mod in [
-        "nucleo",
-        "nucleo.flash", "nucleo.flash.router", "nucleo.llm.fast_client",
-        "nucleo.acts.frontend", "nucleo.flash.procs", "nucleo.acts.errand",
-        "nucleo.pulse.loop", "nucleo.dispatch", "nucleo.memory_agent",
-        "nucleo.agentes", "nucleo.agentes.base", "nucleo.agentes.claude_code", "nucleo.agentes.codex",
-    ]:
-        importlib.import_module(mod)
 
 
 def test_fast_client_model_by_invocation():
@@ -24,12 +12,6 @@ def test_fast_client_model_by_invocation():
     spec = ModelSpec(model="deepseek-flash", provider="deepseek")
     assert spec.model and spec.provider == "deepseek"
     assert hasattr(FastClient(), "stream")
-
-
-def test_router_decision_dataclass():
-    from nucleo.flash.router import Decision
-    d = Decision(kind="escalate", payload={"request": "busca pisos"})
-    assert d.kind == "escalate" and d.payload["request"] == "busca pisos"
 
 
 def test_codeagent_interface_is_abstract():

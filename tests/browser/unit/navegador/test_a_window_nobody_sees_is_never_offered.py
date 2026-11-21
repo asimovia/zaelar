@@ -15,8 +15,6 @@ Disarm: `allow_auth` back to a constant True / the old note → red.
 """
 import pytest
 
-from nucleo import browser_window
-from nucleo.flash import router
 from widgets.navegador import tasks
 
 
@@ -27,17 +25,6 @@ def _registry():
     yield
     tasks._tasks.clear()
     tasks._tasks.update(saved)
-
-
-def _offered(monkeypatch, where: str) -> set:
-    monkeypatch.setattr(browser_window, "reach", lambda: where)
-    return {t["function"]["name"] for t in router.tools(router.tool_context())}
-
-
-def test_the_catalogue_offers_the_login_tool_only_where_a_window_can_reach_him(monkeypatch):
-    assert "authenticate_web" not in _offered(monkeypatch, "")
-    assert "authenticate_web" in _offered(monkeypatch, browser_window.HERE)
-    assert "authenticate_web" in _offered(monkeypatch, browser_window.DAEMON)
 
 
 def _note(monkeypatch, *, worker: bool, url="https://www.coches.net/segunda-mano/") -> str:

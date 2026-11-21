@@ -53,9 +53,3 @@ def test_the_tts_door_filters_whatever_reaches_it():
     out = asyncio.run(collect())
     assert "canvas" not in out and out.strip() == "Closed it."
 
-
-def test_the_action_map_records_words_not_a_bracketed_line(monkeypatch):
-    from voice.engine.llm.providers import fast_lane
-    src = open(fast_lane.__file__, encoding="utf-8").read()
-    assert '"a": f"[{_desc}]"' not in src and 'f"[panel:{tab}]"' not in src, \
-        "the window replays the assistant's bookkeeping as speech — the model copies it"

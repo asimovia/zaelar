@@ -20,12 +20,3 @@ def test_the_inferrer_is_shown_the_fields_each_collection_creates_with():
     assert "email" in _spec.create_fields("contactos", "contacts")
     assert "list" in _spec.create_fields("agenda", "tasks")
     assert _spec.create_fields("agenda", "occurrences") == []
-
-
-def test_nothing_reruns_the_model_after_a_turn_that_wrote():
-    """The disarm of V2-851 F5: the post-stream chain scheduled `compose.after_turn` → `spec.infer` → a repair model
-    call after every turn that wrote."""
-    from nucleo.circuit import compose
-    src = open("nucleo/flash/post_stream.py", encoding="utf-8").read()
-    assert "after_turn" not in src
-    assert not any(hasattr(compose, n) for n in ("after_turn", "check", "_missing_calls", "grounded"))

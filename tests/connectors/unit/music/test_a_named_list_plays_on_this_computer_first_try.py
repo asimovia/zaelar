@@ -146,13 +146,6 @@ def test_two_rows_carrying_his_words_are_asked_never_guessed(world):
     assert not out["ok"] and out["error"] == "item_not_found" and len(out["options"]) == 5
 
 
-def test_the_kind_he_names_rides_the_tool_call_to_the_music_lane():
-    from nucleo.flash.tool_executor_calls import _t_play_music
-    req = {"v": None}
-    _t_play_music(args={"query": "Sueñacuentos", "kind": "list"}, music_req=req)
-    assert req["v"] == {"query": "Sueñacuentos", "action": "play", "kind": "list"}
-
-
 def test_an_episode_that_sounds_is_read_with_its_show(monkeypatch):
     """Measured live: the list of episodes sounded on the Mac and the player read nothing — Spotify only describes an
     episode when it is asked for (`additional_types`)."""

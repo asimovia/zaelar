@@ -28,7 +28,6 @@ from tests import voice_turn_source as _vts
 
 import json
 import pathlib
-import re
 import sqlite3
 
 import pytest
@@ -137,7 +136,6 @@ def test_the_adapter_no_longer_reclassifies_the_text_to_decide_whether_to_warn(m
     assert down and down[0].data["kind"] == "broken" and down[0].data["next"] == "", [e.type for e in events]
 
 
-
 def test_un_broken_SIN_RELEVO_produce_causa(monkeypatch, tmp_path):
     """El caso que se perdía entero. Se comprueba sobre la decisión pura: hay kind, luego hay aviso."""
     from nucleo.workers import providers as P
@@ -172,34 +170,3 @@ def test_session_no_vuelve_a_leer_el_texto_del_error(monkeypatch):
 
 
 # ── R3 · la regla del cierre corto la comparten los dos canales, como FUNCIÓN ───────────────────────────
-
-@pytest.mark.parametrize("frase,corto", [
-    ("Vale, ciérralo", True), ("ciérralo", True), ("cierra el youtube", True),
-    ("cierra la sesión de spotify del widget", False), ("no lo cierres", False), ("abre la agenda", False),
-])
-def test_la_orden_corta_de_cerrar_se_reconoce_igual_para_todos(frase, corto):
-    from nucleo.flash import close_guards as g
-    assert g.is_short_close_order(frase) is corto
-
-
-def test_the_voice_turn_calls_the_one_close_door_and_does_not_copy_the_rule():
-    """The short-close rule is EXTRACTED, not mirrored. The typed channel runs this same voice turn
-    (`nucleo.cli.turn.run_turn`), so the voice turn reaching the ONE data-op close door is both channels
-    reaching it."""
-    voz = _vts.read(ENGINE / "voice" / "engine" / "llm" / "providers" / "nucleo.py")
-    # V2-781: the turn reaches it through the ONE data-op close door (`card_close.data_close`), which is the only
-    # caller of the short-close rule on the `widget_data` path.
-    assert "at=_card.CALL" in voz and "_cc.data_close(" in (ENGINE / "nucleo" / "acts" / "card.py").read_text()
-    door = _vts.read(ENGINE / "nucleo" / "flash" / "card_close.py")
-    assert "is_short_close_order(operator_text)" in door
-    assert "len(text.split()) <= 5" not in voz, (
-        "the voice turn reimplements the limit instead of calling it")
-
-
-def test_el_limite_de_palabras_vive_en_UN_solo_sitio():
-    """El número mágico compartido es la clase R3 en miniatura: dos canales que tienen que coincidir y nada
-    que los ate. Ahora lo dice `close_guards._SHORT_ORDER_WORDS` y lo leen los tres usos."""
-    from nucleo.flash import close_guards as g
-    assert g.is_short_order("cierra el youtube") is True
-    assert g.is_short_order("cierra la sesión de spotify del widget") is False
-    assert g.is_short_order("abre la agenda") is True, "solo mide LARGO; el verbo lo pregunta otra función"

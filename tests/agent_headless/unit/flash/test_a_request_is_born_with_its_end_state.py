@@ -111,28 +111,6 @@ def test_the_data_op_door_opens_the_spec_before_the_op_and_attests_it_after(monk
 
 # ── the gate ───────────────────────────────────────────────────────────────────────────────────────────────
 
-def test_a_completion_that_attests_a_different_end_state_is_refused():
-    brief = _brief(end_state=("desktop:wallpaper", 0.92), screen_action=("results:scroll", 0.98))
-    why = spec.gate_completion(brief, "results", "scroll")
-    assert "desktop:wallpaper" in why and "attests nothing" in why
-    assert spec.gate_completion(brief, "imagenes", "wallpaper") == ""
-
-
-def test_without_an_end_state_verdict_the_completion_is_untouched():
-    assert spec.gate_completion(_brief(screen_action=("results:choose", 0.98)), "results", "choose") == ""
-    assert spec.gate_completion(_brief(end_state=("none", 0.9)), "results", "choose") == ""
-    assert spec.gate_completion(_brief(end_state=("desktop:wallpaper", 0.3)), "results", "choose") == "", "an unsure verdict is no verdict"
-
-
-def test_the_brief_enumerates_the_end_states_of_the_screen_and_of_the_specs_still_owed(monkeypatch):
-    assert spec.end_state_question([]) is None
-    q = spec.end_state_question(["results"])
-    assert {"results:view", "results:layout", "none"} <= set(q["criteria"])   # more since 2026-11-08 (choose, tab…)
-    spec.open({"desktop": "wallpaper", "expect": "changed", "baseline": {}}, text="find me the wallpaper cosmic eye", source="voice")
-    q = spec.end_state_question(["results"])
-    assert "desktop:wallpaper" in q["criteria"], "a closed app whose end state is still owed is an option (B2)"
-
-
 def test_a_name_match_reads_the_name_not_the_address_beside_it():
     """Demo pass 118, E3: the model wrote `contact: "Quinn (quinn@example.com)"`, the mail went to Quinn, and the
     spec `sent[name~=Quinn (quinn@example.com)]` never matched the sent row named «Quinn» — so the model was told the

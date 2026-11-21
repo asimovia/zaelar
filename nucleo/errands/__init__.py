@@ -206,14 +206,6 @@ def next_expiry(now: float | None = None) -> float | None:
     return min(ahead) if ahead else None
 
 
-def count_open() -> int:
-    """One indexed read — it runs on the hot path, from the context pack's `active()`."""
-    try:
-        return len(_memory().errands_where(LIVE, limit=50))
-    except Exception:
-        return 0
-
-
 def bind(platform: str, chat_id, errand_id: str, contact_id: str = "") -> bool:
     """Give a conversation to an errand. False when another errand already holds it: a thread answered by
     two objectives is how the same person gets two different replies to one message."""

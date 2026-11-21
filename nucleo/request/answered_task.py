@@ -30,18 +30,6 @@ from nucleo.request import acts_of, base, note
 PLAYBOOK = "message"
 
 
-def deterministic(entry: dict, choice: int | None) -> bool:
-    """Can the kept act re-run with his answer and no model? A yes to its consent, or a pick among the candidates
-    the door itself declared — anything else (a fact to compose, a free answer) needs the worker."""
-    retained = entry.get("retained") or {}
-    if retained.get("kind") == "utterance":
-        return False                                  # our own question kept no act: there is nothing to re-run
-    if str(entry.get("consent") or "") == "ask_consent":
-        return True
-    cands = list(retained.get("candidates") or [])
-    return choice is not None and 0 <= int(choice) < len(cands)
-
-
 def start(uid: str, entry: dict, text: str, choice: int | None = None) -> int:
     """Hand row `uid`, whose leaving act waited on his answer, to a Brain Worker on that same row. The worker's task
     id, or 0 when nothing started (this answer already took its act, or the portal refused it)."""

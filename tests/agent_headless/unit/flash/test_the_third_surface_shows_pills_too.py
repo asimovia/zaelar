@@ -23,7 +23,6 @@ instead of writing a fourth copy.
 import pytest
 
 from memory.api import background_slot_off_topic as regla
-from nucleo.turn.prompt import recall as fp
 
 
 class _Mem(dict):
@@ -50,24 +49,6 @@ def memoria(monkeypatch):
 
 
 # ── the measured case ──────────────────────────────────────────────────────────────────────────────────────────
-
-def test_el_volcado_del_widget_NO_sale_en_un_encargo_de_otro_tema(memoria):
-    bloque, _ids = fp.compose_recall("busca un fontanero que venga hoy")
-    assert "Madrid" in bloque, "el hecho del operador tiene que seguir estando"
-    assert "Soria" not in bloque, "el parte meteorológico de otra ciudad decidía la ciudad del encargo"
-
-
-def test_pero_SI_el_operador_lo_nombra_entra(memoria):
-    """The promise of the 2026-07-14 audit: these pills remain reachable in response to an explicit question.
-    Without this case, «filter the background» could be satisfied by always deleting them and the widget would become useless."""
-    bloque, _ids = fp.compose_recall("¿qué tiempo hace en Soria?")
-    assert "Soria" in bloque
-
-
-def test_un_hecho_del_OPERADOR_nunca_se_filtra(memoria):
-    bloque, _ids = fp.compose_recall("¿dónde vivo?")
-    assert "Madrid" in bloque
-
 
 # ── make it THE SAME rule, not a fourth copy ──────────────────────────────────────────────────────────────────
 

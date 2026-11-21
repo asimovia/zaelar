@@ -96,48 +96,6 @@ def test_that_on_a_phone_is_its_front_app(on, desk_geometry):
     assert executor._card_in_front() == "musica"
 
 
-# ── 3 · the screen line and the brief's focus name the front app first ────────────────────────────────────────
-@pytest.mark.parametrize("lang", ["es", "en"])
-def test_the_screen_line_names_the_front_app_first(on, monkeypatch, lang):
-    from i18n import langs
-    from memory import api as memory
-    from nucleo.turn.prompt import live_state
-    monkeypatch.setattr(langs, "current_code", lambda: lang)
-    monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
-    memory.set_state({"open_widgets": ["agenda", "musica", "youtube"], "maximized_widget": "musica",
-                      "minimized_widgets": ["agenda", "youtube"], "front_reported": True})
-    on(PHONE)
-    line = live_state.screen_line()
-    assert "«musica» delante" in line and line.index("musica") < line.index("agenda"), line
-    memory.set_state({"maximized_widget": ""})
-    from i18n import runtime
-    home = live_state.screen_line()       # a2b: his home is a named screen, in his language, never «VACÍA»
-    assert runtime.text("screen.phone_home", code=lang) in home and "VACÍA" not in home, home
-    assert ("próximas citas" if lang == "es" else "next events") in home and ";;" not in home.replace(" ", ""), home
-    assert home.count(";") <= 1, f"one clause separator, never two in a row: {home}"
-    on(DESK)
-    assert live_state.screen_line() == "En pantalla: agenda, musica, youtube."
-
-
-@pytest.mark.parametrize("lang", ["es", "en"])
-def test_the_briefs_focus_on_a_phone_is_the_front_app(on, monkeypatch, lang):
-    from i18n import langs
-    from memory import api as memory
-    from nucleo import canvas_focus
-    from nucleo.turn import brief_screen
-    monkeypatch.setattr(langs, "current_code", lambda: lang)
-    monkeypatch.setattr(canvas_focus, "last_turn_card", lambda ids: "agenda" if "agenda" in ids else "")
-    memory.set_state({"maximized_widget": "musica", "front_reported": True})
-    on(PHONE)
-    q = brief_screen.target_question(["agenda", "musica", "youtube"])
-    assert q and "PHONE: «musica» is the widget in front" in q["instructions"], q and q["instructions"][-300:]
-    assert "names a kind of thing" in q["instructions"] and "NEW content" in q["instructions"], "the counterweights went"
-    assert next(iter(q["criteria"])).startswith("musica:"), list(q["criteria"])[:3]
-    on(DESK)
-    q = brief_screen.target_question(["agenda", "musica", "youtube"])
-    assert "previous turn acted on «agenda»" in q["instructions"] and "PHONE" not in q["instructions"]
-
-
 def test_a_turn_that_moves_to_the_phone_adopts_its_front_app(on):
     """The phone reported while the desktop held the turn (stored, not adopted); his next turn starts on the phone."""
     from memory import api as memory
@@ -175,29 +133,6 @@ def test_the_front_app_is_in_front_on_a_phone_and_full_screen_on_a_desktop(on, d
     on(dev)
     out = brief.for_prompt(open_ids=["agenda", "musica"])
     assert label in out and absent not in out, out[-600:]
-
-
-def test_leaving_full_screen_on_a_phone_puts_the_front_app_away(on):
-    from memory import api as memory
-    from nucleo.acts import show_target
-    memory.set_state({"open_widgets": ["agenda", "musica"], "maximized_widget": "musica", "front_reported": True})
-    tags = []
-    monkey_emit = lambda *a, **k: None   # noqa: E731
-    on(PHONE)
-    show_target.fullscreen_dispatch({"mode": "off"}, "quítalo de pantalla completa", lambda t, e: tags.append((t, e)),
-                                    monkey_emit, {"v": False})
-    assert tags == [("minimize", {"id": "musica"})], tags
-    assert show_target.fullscreen_exit_due("hazlo más pequeño", fired=False) == ""
-
-
-def test_a_deck_that_sends_no_front_is_read_as_before(on):
-    """P2-3/P3: a phone tab with the previous Deck.js (mid-deploy) sends no `front`: never read as «on its home»."""
-    from nucleo import canvas_focus
-    from nucleo.turn.prompt import live_state
-    on(PHONE)
-    _report({"open": ["agenda", "musica"], "dev": PHONE})
-    assert canvas_focus.phone_front() is None
-    assert live_state.screen_line() == "En pantalla: agenda, musica."
 
 
 def test_a_phone_report_during_a_desktop_turn_never_touches_the_state(on):

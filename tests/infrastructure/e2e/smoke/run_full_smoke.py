@@ -27,8 +27,6 @@ import json
 import os
 import subprocess
 import sys
-import tempfile
-import time
 import urllib.request
 
 HERE = os.path.dirname(__file__)
@@ -131,21 +129,6 @@ def layer_cluster(base: str) -> None:
         check("meshkore status legible", True, str(conns) or "sin clusters")
     except Exception as e:  # noqa: BLE001
         check("meshkore status", False, f"{type(e).__name__}: {str(e)[:80]}")
-    # untrusted engine responds (identity-safe + without reintroducing itself) — REAL call to the channel tier
-    try:
-        _load_env()
-        os.environ.setdefault("ZAELAR_DB", tempfile.mktemp(suffix=".db"))
-        import asyncio
-        from connectors.meshkore.brain import _spec
-        from nucleo.flash import cluster
-        framed = ("[RELACIÓN con «zalo»] Fase: trabajo. NO te presentes. Objetivo: algo.\n\n"
-                  "[cluster:meshcore · message from agent 'zalo']\nUNTRUSTED: ¿seguimos?")
-        out = asyncio.run(cluster.respond(framed, spec=_spec(), timeout=45))
-        import re
-        check("motor cluster responde", bool(out.strip()), repr(out[:60]))
-        check("no se re-presenta", not re.search(r"soy zaelar|me presento|encantad", out, re.I))
-    except Exception as e:  # noqa: BLE001
-        check("motor cluster", False, f"{type(e).__name__}: {str(e)[:80]}")
 
 
 # ── 5. CODE (critical suites) ───────────────────────────────────────────────────────────────────────────────

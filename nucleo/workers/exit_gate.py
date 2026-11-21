@@ -200,10 +200,7 @@ def gate(rec, payload: dict) -> Exit:
         except Exception as e:  # noqa: BLE001
             logger.debug(f"exit_gate: his rule for {cls} unread ({e!r})")
         return Exit(go, released=True, why="harmless by its declared type — his order is the yes")
-    from nucleo.acts import message as _msg      # ONE act, ONE question: a draft he was shown and then ORDERED sent
-    if _msg.confirmed(wid, act, inner, None):     # was asked about when it was shown — his order is the yes (CRIT-C9)
-        return Exit(go, released=True)
-    from nucleo.switchboard import act as _sb     # …and a yes he gave while it was being prepared is that yes, once
+    from nucleo.switchboard import act as _sb     # a yes he gave while it was being prepared is that yes, once
     if _sb.took_early_yes(str(getattr(rec, "uid", "") or "")):
         return Exit(go, released=True)
     return Exit(out, question=ready_question(wid, act, inner, cls))

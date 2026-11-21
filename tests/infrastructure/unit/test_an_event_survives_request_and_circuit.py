@@ -15,8 +15,7 @@ from pathlib import Path
 ENGINE = Path(__file__).resolve().parents[3]
 
 FROZEN_PAIRS = {
-    ("brain", "↪️ his correction → the running errand (steer verdict)"),
-    ("brain", "🔁 replace: the stopped errand's place is taken by the one he named"),
+    # the steer and replace verdicts over a running errand went with the old turn's brief (INI-078 L1)
     ("task", "linear_rerun"), ("task", "sheet_inherited"),
     ("task", "🎯 objetivo declarado — así se medirá si está hecho"),
     ("widget", "🚫 an app that is not the deliverable stays closed"),
@@ -27,8 +26,9 @@ FROZEN_FIRST = {
     "🎯 spec: nace con la petición", "✅ spec: cumplida", "❌ spec: sin cumplir todavía",
     "❌ spec: SIN cumplir tras el plazo — se le dice al modelo", "🫥 spec: no verificable — la app no lo declara",
     "🫥 spec: el encargo no acaba en nada que un widget pueda atestiguar",
-    "🎯 arnés: objetivo abierto", "✅ arnés: objetivo conseguido", "🕰 arnés: objetivo caducado sin verificar",
+    "✅ arnés: objetivo conseguido", "🕰 arnés: objetivo caducado sin verificar",
     "🫥 arnés: objetivo NO verificable — la app no declara si está vacía",
+    # «🎯 arnés: objetivo abierto» went with the old turn, the only one that opened a goal (INI-078 L1);
     # the two claim-harness labels («afirmó entrega…», «afirmó que estaba en pantalla…») went with the claim grammar
     # read over our own reply (V2-851 F5): the turn end no longer reads its reply for a claim
 }

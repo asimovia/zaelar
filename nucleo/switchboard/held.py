@@ -62,7 +62,3 @@ def start_now(p: dict) -> bool:
         logger.warning(f"switchboard: could not start {p.get('key')} on his word — {e!r}")
         return False
 
-
-def line_key(p: dict, key: str) -> str:
-    """The line for words a process took: the truth of a held one — kept, not started — instead of «on it»."""
-    return KEPT if is_held(p) and key == "answer_taken" else key

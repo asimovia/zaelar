@@ -12,22 +12,10 @@ Why not «every ok act on a closed card shows it»: measured on the catalogue, 1
 """
 from __future__ import annotations
 
-import pytest
 
-from nucleo.acts import canvas_arbiter as arb
-from nucleo.acts import show_license as lic
 from nucleo.acts import visibility as cv
 from widgets import effects as fx
 
-#: His words, in three languages, that never name the card: the mount must license the show, not the mention.
-SAID = {"es": "diez minutos, porfa", "en": "ten minutes, please", "ja": "十分お願い"}
-
-
-@pytest.fixture(autouse=True)
-def _fresh_reopen_state():
-    lic._RECENT_CLOSES.clear()
-    yield
-    lic._RECENT_CLOSES.clear()
 
 
 def test_the_countdown_declares_that_it_lives_on_screen():
@@ -35,19 +23,11 @@ def test_the_countdown_declares_that_it_lives_on_screen():
     assert fx.PRESENT_MOUNT not in fx.of("timer", "pause") and fx.PRESENT_MOUNT not in fx.of("timer", "reset")
 
 
-@pytest.mark.parametrize("lang", ["es", "en", "ja"])
-def test_the_arbiter_calls_the_set_a_mount_and_a_pause_a_drag(lang):
-    v = arb.decide("show", "timer", "flash", action="set", text=SAID[lang], turn_credit=True)
-    assert v.allow is True and v.rule in ("producer-mount", "content-mount"), (lang, v.rule)
-    v = arb.decide("show", "timer", "flash", action="pause", text=SAID[lang], turn_credit=True)
-    assert v.allow is False and v.rule == "show-drag", (lang, v.rule)
-
-
 def test_the_one_door_brings_the_card_for_the_set_and_only_once():
     got = []
     emit = lambda k, label, extra: got.append((k, label, extra))   # noqa: E731
-    assert cv.present("timer", reason="producer-mount", action="set", src="flash", known=[], emit=emit) is True
+    assert cv.present("timer", reason="producer-mount", action="set", src="turn:e_1", known=[], emit=emit) is True
     assert got[-1][:2] == ("widget", "show") and got[-1][2]["action"] == "set"
-    assert cv.present("timer", reason="producer-mount", action="set", src="flash", known=["timer"], emit=emit) is False
-    assert cv.present("timer", reason="producer-mount", action="pause", src="flash", known=[], emit=emit) is False, \
+    assert cv.present("timer", reason="producer-mount", action="set", src="turn:e_1", known=["timer"], emit=emit) is False
+    assert cv.present("timer", reason="producer-mount", action="pause", src="turn:e_1", known=[], emit=emit) is False, \
         "a mount claimed over a control the app does not declare as one"

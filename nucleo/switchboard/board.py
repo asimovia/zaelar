@@ -71,15 +71,3 @@ def line(n: int, p: dict) -> str:
         state = f"running{(' — ' + p['phase']) if p.get('phase') else ''}"
     return f"{n}. «{p['title'] or '(untitled)'}» — {state}"
 
-
-def conversation_line(last_reply: str = "") -> str:
-    """Entry 0 of the list the decision reads: the conversation with the assistant itself, with its last line — a
-    candidate like any other, so what answers the ASSISTANT's own question is not handed to whichever process happens
-    to be open (measured 2026-11-18: «tell her I love her», said to «what shall I tell her?», went to a contacts sync
-    that was the only thing on the board)."""
-    said = " ".join(str(last_reply or "").split())[:300]
-    if not said:
-        return "0. The CONVERSATION with the assistant itself — nothing said just now"
-    asked = said.rstrip("»\"'”) ")[-1:] in "?？؟"
-    return (f"0. The CONVERSATION with the assistant itself — it just {'ASKED him' if asked else 'said'}: «{said}»"
-            + (" (his answer to THAT is 0)" if asked else ""))

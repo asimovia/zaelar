@@ -22,11 +22,9 @@ from __future__ import annotations
 
 import json
 import pathlib
-import re
 import socket
 import subprocess
 import sys
-import time
 
 import pytest
 
@@ -269,14 +267,6 @@ def test_the_declaration_carries_the_WORDS_HE_USED():
     desc = ((_manifest()["actions"]["show_tab"]).get("desc") or "").lower()
     for said in ("catálogo", "inicio"):
         assert said in desc, f"the declaration never says «{said}», which is how he asked for it"
-
-
-def test_the_payload_is_an_ENUMERATION_and_the_rung_will_not_stuff_a_sentence_into_it():
-    """V2-741's rung fills one declared key from the operator's words. `tab` is a CHOICE, so a
-    sentence is not one of its values — caught while declaring this action, and guarded there."""
-    from nucleo.acts import direct_action as da
-    assert da.fillable_key("youtube", "show_tab") == ""
-    assert da.fillable_key("youtube", "search") == "query", "the guard went too wide"
 
 
 # ── the server half, which the render tests structurally cannot see ─────────────────────────────

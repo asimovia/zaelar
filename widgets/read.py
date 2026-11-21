@@ -26,7 +26,6 @@ from __future__ import annotations
 import asyncio
 import time
 
-from nucleo.flash.widget_read_tool import TOOL_DEF  # noqa: F401 — the model-facing declaration (V2-668)
 
 _MAX_BLOCK_CHARS = 1800      # the same bound `refs.prompt_digest` keeps — a summary for reasoning, not the record
 

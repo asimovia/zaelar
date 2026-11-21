@@ -15,9 +15,7 @@ import pytest
 
 from nucleo import dispatch
 from nucleo.request import append
-from nucleo.turn import brief as tb
 from nucleo.errands import named as named_errand
-from nucleo.turn.prompt import live_tasks, recall
 
 NOW = int(time.time())
 CARDS = {
@@ -45,59 +43,11 @@ def pool(monkeypatch, lang):
     return cards
 
 
-def test_the_judge_and_errand_target_read_the_cards_of_a_parked_and_an_ended_errand(pool, lang, monkeypatch):
-    sent = {}
-    from nucleo.memory_agent.processor import llm
-    monkeypatch.setattr(llm, "chat_sync", lambda key, system, user, **k: sent.update(user=user) or '{"about": 1}')
-    assert append.about_a_live_errand(SAID[lang], [("p1", "x"), ("e1", "y")]) == "p1"
-    for c in pool:
-        assert c["heard"][:40] in sent["user"], "the judge's menu does not carry his words"
-    assert "waiting for his answer" in sent["user"] and "finished" in sent["user"], "the menu does not say the state"
-    assert "x" not in sent["user"].split("\n")[1].split("·")[0], "the goal rode beside the card"
-
-    qs = tb.build(SAID[lang], has_workers=False, threads=pool)       # no worker running: a parked and an ended one
-    target = qs.get("errand_target")
-    assert target, "errand_target is asked only while a worker runs"
-    desc = target["criteria"]["running_errand"]
-    assert all(c["heard"][:40] in desc for c in pool) and "waiting for his answer" in desc
-    assert set(target["criteria"]) == {"running_errand", "cluster_peer", "cluster_objective", "none"}, \
-        "the choices every arm reads changed"
-    assert "stop_errand" not in qs, "the stop (it ACTS: it kills a worker) is asked with no worker running"
-    assert not tb.build(SAID[lang], has_workers=False, threads=[]).get("errand_target"), "asked with nothing open"
-
-
-def test_the_escalate_question_carries_the_three_he_named_last(pool, lang):
-    many = pool + [{"id": f"o{i}", "request": f"old errand {i}", "heard": f"old errand number {i}", "state": "running",
-                    "last_mention_ts": NOW - 5000 - i} for i in range(3)]
-    instr = tb.build(SAID[lang], has_workers=True, threads=many)["escalate_or_inline"]["instructions"]
-    assert pool[1]["heard"][:30] in instr and pool[0]["heard"][:30] in instr and "old errand number 0" in instr
-    assert "old errand number 1" not in instr, "more than three, or not the ones he named last"
-    assert instr.index(pool[1]["heard"][:30]) < instr.index(pool[0]["heard"][:30]), "not ordered by his last mention"
-
-
 @pytest.fixture
 def live(monkeypatch):
     dispatch._SESSIONS.clear()
     yield
     dispatch._SESSIONS.clear()
-
-
-def test_the_recall_lane_skips_the_turns_the_window_really_holds(monkeypatch):
-    import asyncio
-    from nucleo.turn import recall_budget
-    seeded = [{"role": "user", "content": "a"}, {"role": "assistant", "content": "b"},
-              {"role": "user", "content": "c"}, {"role": "assistant", "content": "d"},
-              {"role": "user", "content": "e"}]
-    assert recall.live_turns(seeded) == 3
-    assert recall.live_turns([{"role": "user", "content": str(i)} for i in range(12)]) == recall.LIVE_WINDOW_TURNS
-    seen = []
-    from memory import api as memory
-    monkeypatch.setattr(memory, "conversation", lambda **k: seen.append(k["skip_newest"]) or [])
-    monkeypatch.setattr(memory, "query", lambda *a, **k: [], raising=False)
-    asyncio.run(recall_budget.compose("the artist I asked about", {"live_turns": recall.live_turns(seeded)}))
-    assert seen and set(seen) == {3}, f"the lane skipped {seen} turns, the window holds 3"
-    src = __import__("inspect").getsource(__import__("voice.engine.llm.providers.turn_prompt", fromlist=["x"]))
-    assert 'timings["live_turns"] = _recall_lane.live_turns(brain._window' in src, "the voice turn does not hand its window down"
 
 
 @pytest.mark.parametrize("said, parts", [

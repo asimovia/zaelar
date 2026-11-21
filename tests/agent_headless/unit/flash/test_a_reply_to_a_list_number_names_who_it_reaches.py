@@ -56,18 +56,6 @@ def test_a_reply_to_a_number_names_the_conversation_it_reaches(world):
     assert m.recipients_of("reply", {"n": 1, "text": "Hola Raquel, estoy de camino."}) == ["CLAUDIA RIVERO"]
 
 
-def test_his_words_naming_somebody_else_make_it_a_doubt(world):
-    assert gate.unnamed_recipients("mensajeria", "reply", {"n": 1, "text": "ok"}, RAQUEL) == ["CLAUDIA RIVERO"]
-    assert gate.needs_asking(None, "mensajeria", "reply", payload={"n": 1, "text": "ok"}, said=RAQUEL) is True
-
-
-def test_his_words_naming_that_person_send_it(world):
-    assert gate.unnamed_recipients("mensajeria", "reply", {"n": 1, "text": "ok"},
-                                   "Contesta a Claudia Rivero que sí") == []
-    assert gate.unnamed_recipients("mensajeria", "reply", {"n": 1, "text": "ok"},
-                                   "reply to claudia rivero saying yes") == [], "the same in English"
-
-
 def test_the_conversation_open_on_screen_needs_no_name(world, monkeypatch):
     m, _c = world
     db = m.load_db()
@@ -78,12 +66,6 @@ def test_the_conversation_open_on_screen_needs_no_name(world, monkeypatch):
     assert m.recipients_of("reply", {"text": "sí"}) == [], "«contéstale que sí» answers the person on screen"
     monkeypatch.setattr(truth, "canvas_state", lambda wid: "closed")
     assert m.recipients_of("reply", {"text": "sí"}) == ["CLAUDIA RIVERO"], "open in the store but not on screen"
-
-
-def test_the_gate_turns_the_unnamed_send_into_a_question(world):
-    from widgets import actions as wa
-    assert gate.asked_if_leaving(wa.FAST, None, "mensajeria", "reply", payload={"n": 1, "text": "ok"},
-                                 said=RAQUEL) == wa.CONFIRM
 
 
 # ── one reading of «he named this recipient» ─────────────────────────────────────────────────────────────────

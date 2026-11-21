@@ -76,13 +76,6 @@ def test_a_question_that_asks_AND_promises_to_report_still_asks():
     assert clar.asks_permission("¿Te lo busco y te aviso cuando lo tenga?") is True
 
 
-def test_the_two_predicates_stay_apart():
-    """`asks_for_missing_detail` es sobre un DATO que falta y su propio docstring deja fuera la cortesía. Son
-    preguntas distintas y mezclarlas rompe el guarda que ya funciona."""
-    assert clar.asks_for_missing_detail("¿A qué ciudad quieres ir?") is True
-    assert clar.asks_permission("¿A qué ciudad quieres ir?") is False
-
-
 # ── el efecto: el encargo NO existe, y el «sí» lo encuentra ──────────────────────────────────────────────
 
 def test_an_errand_offered_with_a_question_is_PARKED_not_launched(monkeypatch):

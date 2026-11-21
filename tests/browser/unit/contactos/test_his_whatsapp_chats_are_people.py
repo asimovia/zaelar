@@ -157,15 +157,3 @@ def test_his_word_for_the_chat_names_the_contact_it_is_linked_to(ct):
     assert gate.is_his("Pablo FF", ["Pablo Sabater"]) is True
     assert gate.is_his("Pablo FF", ["ask Pablo Hernandez"]) is False
 
-
-def test_the_people_block_says_the_chat_name_is_the_same_person(ct):
-    d, _directory = ct
-    from widgets.contactos import imports
-    db = d.load_db()
-    db["contacts"].append({"id": "g9", "kind": "person", "name": "Pablo FF", "phone": "600 51 43 78", "channels": []})
-    imports.merge_contacts(db, [wa.person_of_chat({**_chat("100000000000747@lid", "Pablo Sabater"),
-                                                    "phoneNumber": "34600514378"})], source="whatsapp")
-    d.store.save(d.WIDGET_ID, db)
-    from nucleo.turn.prompt import builder
-    block = builder._people_block("Pablo Sabater, el de WhatsApp")
-    assert "· Pablo FF (también «Pablo Sabater»)" in block

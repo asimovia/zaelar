@@ -71,10 +71,6 @@ async def rerun(uid: str, entry: dict, text: str, choice: int | None = None):
     except Exception as e:  # noqa: BLE001
         note(e)
         leaves = False
-    if retained.get("kind") == inline_ask.UTTERANCE and not leaves:
-        # A5 — our own question about an act of the CARD: his yes or his fact composes the act on this row
-        from nucleo.request import answered_offer
-        return await answered_offer.run(uid, entry, text, choice)
     if leaves:
         # F2e, V2-931 — any answer about an act that LEAVES is its worker task on this row: the worker owns the send
         # and asks his one confirmation; nothing here re-runs a send inline.

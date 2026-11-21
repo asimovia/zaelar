@@ -20,7 +20,6 @@ Disarm: add an act to `self_controls.Act` → `test_every_capability_is_covered`
 """
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 
@@ -45,26 +44,6 @@ def _js_ids(const: str) -> set[str]:
     return set(re.findall(r'id:\s*"([^"]+)"', block.group(1)))
 
 
-def _capabilities() -> set[str]:
-    from nucleo.acts import self_controls
-    from nucleo.flash import router
-    from widgets import system_surfaces
-    ids = {f"act:{a}" for a in self_controls.ACTS}
-    ids |= {f"tool:{t['function']['name']}" for t in router.TOOLS}
-    from nucleo.conversation_host import acts as _host     # the conversation manager's reads and acts (INI-078)
-    ids |= {f"tool:{t.name}" for t in _host.HostTools().catalog()}
-    ids |= {f"surface:{s}" for s in system_surfaces.SYSTEM_SURFACES}
-    ids |= {f"settings:{s}" for s in _js_ids("SECTIONS") | _js_ids("TABS")}
-    for p in sorted((ENGINE / "connectors" / "catalog").glob("*.json")):
-        d = json.loads(p.read_text(encoding="utf-8"))
-        if d.get("state") == "built":
-            ids.add(f"connector:{d.get('id') or p.stem}")
-    for p in sorted((ENGINE / "widgets").glob("*/manifest.json")):
-        if not p.parent.name.startswith("_"):
-            ids.add(f"widget:{json.loads(p.read_text(encoding='utf-8')).get('id') or p.parent.name}")
-    return ids
-
-
 def _covered() -> dict[str, str]:
     from nucleo.self import about
     out: dict[str, str] = {}
@@ -73,18 +52,6 @@ def _covered() -> dict[str, str]:
             assert c not in out, f"«{c}» is covered twice ({out[c]} and {e['id']}): one entry answers for it"
             out[c] = e["id"]
     return out
-
-
-def test_every_capability_is_covered():
-    missing = sorted(_capabilities() - set(_covered()) - NOT_USER_FACING)
-    assert not missing, ("the agent can do these and cannot explain them — add each to an entry's `covers` in "
-                         f"nucleo/self/catalog.json (and its words in i18n/genesis/*/self.json): {missing}")
-
-
-def test_every_covered_id_exists():
-    ghosts = sorted((set(_covered()) | NOT_USER_FACING) - _capabilities())
-    assert not ghosts, f"the catalogue covers ids the engine does not declare (renamed or removed?): {ghosts}"
-    assert not NOT_USER_FACING & set(_covered()), "an id is both covered and declared not user-facing"
 
 
 def test_the_not_user_facing_list_only_shrinks():
@@ -112,13 +79,3 @@ def test_every_needed_fact_has_its_reader():
     for n in about.declared_needs():
         assert callable(getattr(snapshot, n, None)), f"«{n}» is needed by an entry and snapshot.py has no reader"
 
-
-def test_the_tool_offers_exactly_the_catalogue_and_stays_small():
-    from nucleo.flash import router
-    from nucleo.llm.fast_client import est_tokens
-    from nucleo.self import about
-    tool = next(t for t in router.TOOLS if t["function"]["name"] == "about_self")
-    assert tool["function"]["parameters"]["properties"]["topic"]["enum"] == about.topics()
-    assert "about_self" in router.FAMILIES["memory"], "a question announces nothing: the tool is never trimmed"
-    n = est_tokens(len(json.dumps(tool, ensure_ascii=False)))
-    assert n <= TOOL_TOKENS_MAX, f"about_self costs {n} tokens on every turn (cap {TOOL_TOKENS_MAX})"

@@ -175,25 +175,15 @@ def _verify_save(memory, step: dict) -> tuple[bool, str]:
 
 
 def _brain_view(q: str) -> tuple[str, bool]:
-    """Reconstruye LO QUE VERÍA EL FLASHBRAIN para el turno `q` (fidelidad al camino real de lectura, V2-013):
-    bloque cacheado (ESTADO + perfil durable salient + CORTO entero, `memory_cache._compose`) + recall semántico
-    SOLO si el gate `needs_recall` dispara (`compose_recall`). Es exactamente lo que el cerebro tiene en el prompt
-    — sin LLM en la lectura. Devuelve (texto_normalizado, recall_disparado)."""
+    """What the conversation's prefix carries of memory for the turn `q` (the cached block: STATE + durable profile +
+    SHORT, `memory_cache._compose`) — recall is the model's own act now (`recall`), never a word gate. Returns
+    (normalised text, recall fired = False)."""
     from memory import state_cache as _mc
-    from nucleo.flash import recall_heuristics as _rh
-    from nucleo.turn.prompt import recall as _p
     try:
         block, _op = _mc._compose()
     except Exception:
         block = ""
-    fired = _rh.needs_recall(q)
-    recall = ""
-    if fired:
-        try:
-            recall, _ids = _p.compose_recall(q)
-        except Exception:
-            recall = ""
-    return _norm(block + "\n" + recall), fired
+    return _norm(block), False
 
 
 def _count_durable_with(marker: str) -> tuple[int, float]:

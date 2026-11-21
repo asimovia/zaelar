@@ -20,15 +20,6 @@ def _brief(**answers):
             "result": {k: {"choice": c, "confidence": p} for k, (c, p) in answers.items()}}
 
 
-def test_a_sure_show_verdict_owes_the_card_it_names():
-    from nucleo.acts import direct_action  # noqa: F401 — loads canvas_verdict the way the turn does (they import each other)
-    from nucleo.acts import canvas_verdict
-    assert canvas_verdict.show_owed(_brief(canvas=("show", 0.95)), "search")
-    assert not canvas_verdict.show_owed(_brief(canvas=("show", 0.6)), "search"), "an unsure verdict owes nothing"
-    assert not canvas_verdict.show_owed(_brief(canvas=("show", 0.95)), ""), "no app, nothing to show"
-    assert not canvas_verdict.show_owed(_brief(canvas=("close", 0.95)), "search")
-
-
 def test_every_refusal_of_the_door_is_a_row(monkeypatch):
     from voice import observer
     rows = []

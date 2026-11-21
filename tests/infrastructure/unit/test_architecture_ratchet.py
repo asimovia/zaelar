@@ -119,24 +119,6 @@ _CEILINGS: dict[str, tuple[int, int]] = {
 # And three copies of V2-556's own shape collapsed into `listing_turn.py`: the tool DEFINITION (the router only
 # places it now), `request_from` (the router and both channels built the same dict), and `voice_turn` (fast pass
 # → face → stream, which was written twice — the wording had already drifted apart by one paragraph).
-    # 2026-09-03 — V2-567's show-vs-close guard crossed the ceiling by 8; paid by extracting the
-    # accumulator NOTICES (plan + spoken drop + nudge, a mouth-only concern) to providers/acc_notices.py,
-    # 3335→3244. Aliases keep the historical names; `_spawn` stays with the provider.
-    # 2026-09-03, V2-572 — the bare-ack repair block paid by extracting the ACTION-MAP fast lane (a cohesive
-    # concern since V2-539: lookup, execute, bookkeeping — and now the spoken ack) → providers/fast_lane.py,
-    # 3244→3217. Probe paid the same bill by folding its stream-collect shape into flash/second_pass.py.
-    # 2026-09-05/06, V2-601 T-01 — the audit found the ratchet RED at HEAD (nobody ran it; that is T-02's CI).
-    # Paid by four AST-identical extractions: the V2-209 surface-ack pair → flash/surface_ack.py; sheet naming →
-    # results/sheet_names.py (+ stdlib lazies hoisted); the V2-539 probe mirror → flash/probe_actionmap.py; the
-    # whole flow lifecycle (V2-096/113/116/123) → providers/flow_lifecycle.py. Ceilings lowered to the measured
-    # sizes — the celebration edit this table's header describes.
-    # 2026-10-01, V2-778 F1-10 — the tool executor and the post-stream chain left `_run_inner`, moved byte for
-    # byte into two nucleo/flash modules (the lazy imports travelled with them: 139 total, as before). The
-    # provider's ceiling drops to what it measures; the two new rows are MOVED code, not new growth, and both
-    # still have to be split by family under the 900 line that bounds an unlisted file.
-    "voice/engine/llm/providers/nucleo.py": (1770, 64),
-    "nucleo/flash/tool_executor.py": (1272, 35),
-    "nucleo/flash/post_stream.py": (984, 40),
     # 2026-08-24 — raised WITH the audit the rule demands, after sitting red for hours with nobody's name on it.
     # dispatch.py 1759→1851: 41355d9 (a relay inherits its sheet, +31), 7e3c144 (live errand absorbs non-errands),
     # 1a98f80 (the tab says which sheet it belongs to), 6e3d4d4 (the last sweep tells the conversation, +11).
@@ -155,34 +137,12 @@ _CEILINGS: dict[str, tuple[int, int]] = {
     # operations) was a cohesive concern all along → extracted to `nucleo/workers/ended.py`, dispatch
     # 1892→1770. Aliases keep the historical names alive, as `resume.py` did.
     "nucleo/dispatch/__init__.py": (1587, 39),   # 2026-10-01 V2-778 F1-11: run_listener → dispatch_listener.py (1790 → 1587)
-    # owner.py 1580→1706 · lazy 43→44: 3884cb8 (banner sweep per NAVIGATION, look 11,2 s→0,42 s), f25e2a3
-    # (`visit` — read a card in its own tab), a1cb398 (consent per DOMAIN, submit 25 s→3,84 s). Three measured
-    # perf/feature fixes from the same tuning day. owner.py remains F6's split candidate (by resource).
-    # 2026-08-27 — owner 1706→1725: 0bee0d8 V2-358 (the tab listens to main-frame document responses and
-    # hands last_status to every capture — the wall signal no needle can miss, measured on coches.net's two
-    # bodies for the same 403). Inherent to the tab object (self/page); the WALL classification itself was
-    # extracted instead (tasks.py → walls.py, 904→774, staying out of the table).
-    # 2026-09-02: 1374 → 789, and 15 → 7 lazy imports. The ratchet asked for an extraction and got two:
-    # `reminder_guards.py` (the 26 guards for a PROMISED dated notice — a closed set that nothing left
-    # behind uses) and `text_norm.py` (the three text helpers BOTH halves need, which is why neither could
-    # keep them without importing the other back). Everything moved byte for byte and is re-exported, so no
-    # call site changed. The two new files are deliberately NOT listed: a ceiling is earned by a file that
-    # has already grown too big, not handed to every module at birth.
-    # 2026-09-03, same pass (V2-567): router_guards paid by extracting the V2-210 answer-source family to
-    # answer_guards.py (811→762); probe paid by moving alias classification to show_target.py beside its
-    # siblings (1152→1144). Both files sat EXACTLY at their ceilings — the ratchet working as designed.
-    # V2-713 R1 — 742→666 pagado EXTRAYENDO `show_guard.py`: el guarda del «abre/muéstrame» puro (sus
-    # tres clases de verbo, la decisión y su sombra) era un concepto entero dentro de un cajón que
-    # mezclaba dinero, login y cierre. Los lazy bajan de 5 a 3 porque los nuevos se fueron con él.
-    "nucleo/flash/router_guards.py": (465, 3),   # V2-851 F5b: the Google-connector guard went (dead); 2026-10-01 V2-778 F1: commission readers → commission_guards.py
-    "nucleo/flash/show_guard.py": (165, 4),
     # nucleo/flash/probe.py left the table with the text channel's own turn (refactor2710-01): the typed
     # channel runs the voice turn, so there is no second copy left to bound.
     # branch in the worker directive: inject before killing—directive prose, nothing extractable)
     # 26-09-11: V2-675 · −21 — the CRON line moved to `live_blocks.py` (same precedent as the browser and
     # background-task blocks), paying for the context-pack seam. Lowering the number IS the celebration.
     "nucleo/workers/session.py": (696, 16),   # 2026-10-01 V2-778 F1: its notes → workers/session_notes.py
-    "nucleo/flash/router.py": (327, 1),
 }
 
 #: No god file may be BORN either: any engine module NOT in the table stays under this. The largest unlisted
@@ -389,27 +349,11 @@ _NUCLEO_GRANDFATHERED: frozenset[str] = frozenset({
     "nucleo/errands/book.py",
     "nucleo/errands/wake.py",
     "nucleo/errands/watch.py",
-    "nucleo/acts/show_license.py",
-    "nucleo/flash/card_close.py",
-    "nucleo/flash/card_commission.py",
     "nucleo/acts/data_ops.py",
-    "nucleo/flash/dialog.py",
-    "nucleo/acts/direct_action.py",
-    "nucleo/flash/escalation_guard.py",
     "nucleo/llm/fast_client.py",
-    "nucleo/acts/payload_fill.py",
-    "nucleo/flash/post_stream_lanes.py",
     "nucleo/llm/provider_chain.py",
-    "nucleo/flash/router.py",
-    "nucleo/flash/router_catalog.py",
-    "nucleo/flash/router_guards.py",
-    "nucleo/acts/show_target.py",
-    "nucleo/flash/tool_executor_calls.py",
-    "nucleo/flash/tool_executor_widget_calls.py",
-    "nucleo/flash/tool_selection.py",
     "nucleo/input/segmenter.py",    # MOVED from nucleo/flash/segmenter.py (INI-078 F2 step 8, T1)
     "nucleo/routes/site_catalog.py",   # MOVED from nucleo/flash/site_catalog.py (INI-078 F2 step 8, T1)
-    "nucleo/input/stt.py",   # the phrase accumulator, MOVED from nucleo/flash/accumulator.py (refactor2710-01)
     "nucleo/jev/__init__.py",
     "nucleo/memory_agent/gates.py",
     "nucleo/mesh_agents.py",
@@ -1044,6 +988,39 @@ _PACKAGE_CEILINGS["nucleo/conversation_host"] += 11  # same: the `route` record 
 _TOTAL_MAX += 57     # same, measured
 _PACKAGE_CEILINGS["nucleo/circuit"] += 1   # 2026-11-21 INI-078 S3 review: his column keeps his errands with people (their mirror rows) after the queue's tasks
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 1   # 2026-11-21 INI-078 L1 B6: `wall_notes` says why the open cards were not read instead of a silent `return False`
+
+# 2026-11-21 INI-078 L1 B6+B7: the old turn deleted (nucleo/turn, nucleo/flash, the old voice node, the dead acts, the
+# play, the old switchboard route) — every package measured again and held at what landed
+_PACKAGE_CEILINGS["config"] = 2344
+_PACKAGE_CEILINGS["nucleo (top)"] = 8932
+_PACKAGE_CEILINGS["nucleo/actionmap"] = 711
+_PACKAGE_CEILINGS["nucleo/acts"] = 3665
+_PACKAGE_CEILINGS["nucleo/circuit"] = 4438
+_PACKAGE_CEILINGS["nucleo/cli"] = 3306
+_PACKAGE_CEILINGS.pop("nucleo/context_packs", None)
+_PACKAGE_CEILINGS["nucleo/daemon_egress"] = 739
+_PACKAGE_CEILINGS["nucleo/dispatch"] = 2678
+_PACKAGE_CEILINGS["nucleo/energy"] = 2092
+_PACKAGE_CEILINGS["nucleo/errands"] = 3248
+_PACKAGE_CEILINGS.pop("nucleo/flash", None)
+_PACKAGE_CEILINGS["nucleo/input"] = 555
+_PACKAGE_CEILINGS["nucleo/llm"] = 2296
+_PACKAGE_CEILINGS.pop("nucleo/play", None)
+_PACKAGE_CEILINGS["nucleo/request"] = 2605
+_PACKAGE_CEILINGS["nucleo/send"] = 2475
+_PACKAGE_CEILINGS.pop("nucleo/susurro", None)
+_PACKAGE_CEILINGS["nucleo/switchboard"] = 385
+_PACKAGE_CEILINGS.pop("nucleo/turn", None)
+_PACKAGE_CEILINGS["nucleo/workers"] = 10838
+_PACKAGE_CEILINGS.pop("nucleo/workflows", None)
+_PACKAGE_CEILINGS["rules"] = 1559
+_PACKAGE_CEILINGS["server"] = 7241
+_PACKAGE_CEILINGS["voice"] = 13384
+_PACKAGE_CEILINGS.pop("voice/engine/llm", None)
+_PACKAGE_CEILINGS["widgets"] = 49269
+_PACKAGE_CEILINGS["nucleo/jev"] = 839   # +1 (+2 for `jev.VETO`, the confidence a verdict refuses at, read where `turn.verdicts` read it, −1 for an unused import)
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 3   # the life door hands the act's reservation to the picture viewer's mount (`turn:<effect>`), the arbiter's provenance
+_TOTAL_MAX = 196157
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

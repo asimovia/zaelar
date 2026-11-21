@@ -22,9 +22,7 @@ _ENGINE = pathlib.Path(__file__).resolve().parents[3]
 _ROOTS = ("nucleo", "voice", "server", "widgets", "memory")
 
 # The two measured in V2-726 §3.2. Shape: "<module path>::<enclosing function>".
-KNOWN_BLOCKING = {
-    "nucleo/acts/card_repair.py::repair_action",
-}
+KNOWN_BLOCKING: set[str] = set()   # the last one went with the old turn (INI-078 L1)
 
 
 def _blocking_callers() -> set[str]:

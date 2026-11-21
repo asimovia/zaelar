@@ -27,10 +27,8 @@ import pytest
 
 from memory import db as memdb
 from memory import tasks_store as ts
-from nucleo import wording
 from nucleo.events import vocabulary as voc
 from nucleo.request import send_errand, send_receipt
-from nucleo.switchboard import act, board, route
 from nucleo.workers import exit_gate, exit_risk
 
 GROUP = {"platform": "whatsapp", "name": "Shopping list", "members": ["Odile Varga"]}
@@ -64,21 +62,6 @@ def world(tmp_path, monkeypatch):
     memdb.reset_db()
 
 
-# ── the router ──────────────────────────────────────────────────────────────────────────────────────────────────
-def test_a_new_request_is_nobodys_whatever_number_the_judge_gave(monkeypatch):
-    """02:04:39 — one question waited («shall I send her the message?»), he ordered a group, and the judge answered
-    `to: 1` with the reason «new request»: his order went into the old question and no turn ran for it."""
-    from nucleo.memory_agent.processor import llm
-    waits = [{"key": "r1", "title": "Message to Odile", "state": board.WAITING, "ask_id": "a1",
-              "question": "The message for Odile is ready — shall I send it?"}]
-    monkeypatch.setattr(llm, "chat_sync", lambda *a, **k: '{"to": 1, "is": "new", "why": "new request, not an answer"}')
-    n, why, kind = route.ask_the_model("create a WhatsApp group with Odile called Shopping list", waits)
-    assert n == 0 and "new request" in why, "the judge's own word decides: a new request reaches Flash"
-    monkeypatch.setattr(llm, "chat_sync", lambda *a, **k: '{"to": 1, "is": "yes", "why": "go ahead"}')
-    assert route.ask_the_model("yes, send it", waits)[::2] == (1, "yes"), "an answer still reaches its question"
-    assert '"new"' in route.SYSTEM or "new" in route.SYSTEM.split("Reply with JSON")[1]
-
-
 # ── the exit door ───────────────────────────────────────────────────────────────────────────────────────────────
 def test_a_group_with_people_he_named_runs_on_his_order_and_is_never_asked(world):
     """02:05:47, 02:07:13, 02:07:46 — three questions for one group. The type declares it harmless: his order is the
@@ -102,45 +85,6 @@ def test_a_group_born_with_a_first_message_is_a_send_and_asks_its_own_question_o
     assert ex.question != exit_gate.ready_question("mensajeria", "send_to", {"contact": "Odile Varga"}), \
         "never the message's sentence for a group"
     assert exit_risk.family("mensajeria", "create_group", with_text["payload"]) == "act", "and it is told as a group"
-
-
-# ── his go-ahead ────────────────────────────────────────────────────────────────────────────────────────────────
-def test_what_he_answered_on_the_row_is_read_with_the_order_and_the_judge_knows_the_act(world, monkeypatch):
-    """02:07:00 — «create the group, I confirmed it twice, go ahead» answered the worker's own question; 13 s later the
-    door read only the order and asked again."""
-    from nucleo.circuit import ask_trace
-    seen = []
-    monkeypatch.setattr(act, "_go_ahead_model", lambda words, what="": seen.append((words, what)) or '{"confirmed": false}')
-    rec = world.rec("g-3", "a message? I asked you for a group")
-    assert act.read_his_go_ahead(rec, voc.of("messaging.send_new").what) is False and len(seen) == 1
-    assert act.read_his_go_ahead(rec, "x") is False and len(seen) == 1, "nothing new said: not read again"
-    ask_trace.keep_answer({"uid": "g-3", "question": "Shall I create the group now?"}, "create it, I confirmed twice, go ahead")
-    monkeypatch.setattr(act, "_go_ahead_model", lambda words, what="": seen.append((words, what)) or '{"confirmed": true}')
-    assert act.read_his_go_ahead(rec, voc.of("messaging.send_new").what) is True, "his answer is new words: read again"
-    words, what = seen[-1]
-    assert "go ahead" in words and "Shall I create the group now?" in words and what == "a message is sent to someone"
-    assert "{what}" in act.GO_AHEAD, "the judge is told what the act is, never «a message» for everything"
-
-
-# ── the lines ───────────────────────────────────────────────────────────────────────────────────────────────────
-def test_a_group_is_never_told_as_a_message(world, monkeypatch):
-    """02:05:43 «I'm preparing the message», 02:07:26 «the message goes out now», 02:07:34 «the message is sent» — for
-    a group. Each line is the fact of what the act IS, with what he asked for beside it."""
-    from i18n import langs
-    lang = langs.current_language()
-    assert exit_risk.family("mensajeria", "create_group", GROUP) == "act"
-    assert exit_risk.family("mensajeria", "send_draft", {"contact": "Odile Varga"}) == "send"
-    assert [wording.line("act", m) for m in ("preparing", "going", "no", "done", "failed", "late")] == \
-        ["act_preparing", "act_going", "act_not_done", "act_done", "act_failed", "act_unconfirmed"]
-    for key in wording.LINES["act"].values():
-        assert key in wording.FACTS and "message" not in wording.FACTS[key].lower(), key
-        assert str(getattr(lang, key, "")), f"the language has no last-resort line for {key}"
-    assert wording.ready("act") is wording.READY_ACT and wording.ready("send") is wording.READY
-    retained = {"action": "widget_data", "payload": CALL}
-    assert send_receipt.family_of(retained) == "act" and act.line_key({"key": "g-4"}, act.YES) in ("answer_taken", "work_started")
-    from nucleo.circuit import asker
-    monkeypatch.setattr(asker, "artefact", lambda uid: {"retained": retained})
-    assert act.line_key({"key": "g-4"}, act.YES) == "act_going" and act.line_key({"key": "g-4"}, act.NO) == "act_not_done"
 
 
 def test_the_worker_is_told_the_acts_own_steps_and_fields(monkeypatch):
@@ -170,29 +114,6 @@ def test_a_request_whose_act_already_landed_never_asks_about_it_again(world):
     assert exit_gate.leave(rec, "widget_data", other).verdict == "ask", "other words are another act"
     assert exit_gate.leave(world.rec("z-2", "tell Odile good night"), "widget_data", send).verdict == "ask", \
         "another request is asked: only the request that sent it is done with it"
-
-
-# ── his no takes back what the request wrote ────────────────────────────────────────────────────────────────────
-def test_his_no_takes_back_the_draft_the_request_wrote(world, monkeypatch):
-    """Live, 02:45 — «no, don't send it» ended the send and the refused text stayed written in her chat box: one tap
-    from being sent, and a draft «he had already seen» for a later order. His no (and his stop) clears what THIS
-    request wrote there, with the act the card declares for it (`taken_back_by`); a request that wrote nothing clears
-    nothing. (Disarmed on the real card below: writing an empty text is refused and clears nothing.)"""
-    from nucleo.circuit import ledger
-    calls = []
-    fake = SimpleNamespace(apply_action=lambda action, payload: calls.append((action, dict(payload))) or {"ok": True})
-    import importlib
-    real = importlib.import_module
-    monkeypatch.setattr(importlib, "import_module", lambda name, *a: fake if name == "widgets.mensajeria.data" else real(name, *a))
-    rec = world.rec("n-1", "tell Odile good night")
-    draft = {"widget_id": "mensajeria", "action": "draft", "payload": {"contact": "Odile Varga", "text": "good night"}}
-    act.wrote(rec, "widget_data", draft)
-    act.wrote(rec, "widget_data", {"widget_id": "mensajeria", "action": "send_draft", "payload": {"contact": "Odile Varga"}})
-    assert (ledger.store().artifact_get("n-1", act.WRITTEN) or {}).get("call", {}).get("action") == "draft"
-    assert send_errand.withdraw("n-1") is True
-    assert calls == [("discard_draft", {"contact": "Odile Varga"})], "the act the card DECLARES takes it back"
-    assert send_errand.withdraw("n-1") is False and len(calls) == 1, "taken back once"
-    assert send_errand.withdraw(world.rec("n-2", "nothing written").uid) is False
 
 
 def test_the_real_card_takes_its_draft_back(tmp_path, monkeypatch):

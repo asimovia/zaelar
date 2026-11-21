@@ -35,25 +35,6 @@ def _note(e: Exception) -> None:
     logger.debug(f"send_errand: {type(e).__name__}: {e}")
 
 
-# ── the turn hands it over ──────────────────────────────────────────────────────────────────────────────────────
-def hand_over(escalate_req: dict, text: str, wid: str = "", action: str = "", payload: dict | None = None,
-              emit=None) -> None:
-    """The turn's ONE hand-off: his words become the turn's commission and the model's call (when there was one)
-    rides as a hint for the worker — never as a decision. The launch at the turn's close reads it (`context`)."""
-    if escalate_req.get("v") is None:
-        escalate_req["v"] = text
-    escalate_req["leaves"] = True          # no «the turn already acted» guard may annul it
-    if wid and action and not escalate_req.get("send"):
-        escalate_req["send"] = {"widget": str(wid), "action": str(action), "payload": dict(payload or {})}
-    escalate_req.setdefault("send", {}).setdefault("text", " ".join(str(text or "").split()))
-    if emit is not None:
-        try:
-            emit("brain", "📨 a send is one worker task — the turn hands it over", text=f"{wid}:{action}".strip(":"),
-                 role="system", extra={"cat": "flash", "id": wid, "action": action})
-        except Exception as e:  # noqa: BLE001
-            _note(e)
-
-
 def _leaving_call(calls) -> dict:
     """The model's first `widget_data` call this turn whose act leaves the machine, as a hint; {} when none."""
     from widgets import effects
@@ -76,10 +57,6 @@ def kept(escalate_req: dict, worker_acted: dict, *, brief=None, calls=()) -> Non
         hint = {}
         try:
             hint = _leaving_call(calls)
-            if not hint and brief is not None:
-                from nucleo.request import ask_outside_door
-                wid, act = ask_outside_door._sure_leaving_act(brief)
-                hint = {"widget": wid, "action": act, "payload": {}} if wid else {}
         except Exception as e:  # noqa: BLE001
             _note(e)
         if hint:
@@ -115,18 +92,6 @@ def start(said: str, *, wid: str = "", action: str = "", src: str = "send", emit
     except Exception as e:  # noqa: BLE001
         _note(e)
         return 0
-
-
-async def start_line(send) -> str:
-    """The turn's ONE line for an act it handed over (`escalate_req["send"]`), worded for him: «I'll get the message
-    ready» for a message; for any other act that leaves — a group, an invitation — the start of what he asked for,
-    never «the message». "" when no line could be worded."""
-    from nucleo import wording
-    from nucleo.request import send_receipt
-    s = send if isinstance(send, dict) else {}
-    fam = send_receipt.family(str(s.get("widget") or ""), str(s.get("action") or ""),
-                              s.get("payload") if isinstance(s.get("payload"), dict) else {}) if s.get("action") else "send"
-    return await wording.said(wording.line(fam, "preparing"), about=str(s.get("text") or "")[:200])
 
 
 def withdraw(uid: str) -> bool:

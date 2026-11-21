@@ -30,34 +30,3 @@ def test_the_cards_declare_their_steps():
                        ("youtube", {"next", "previous", "volume_up", "volume_down"})):
         acts = json.loads((ROOT / f"widgets/{wid}/manifest.json").read_text(encoding="utf-8"))["actions"]
         assert {n for n, s in acts.items() if s.get("repeatable") is True} == steps, wid
-
-
-def test_next_song_asked_twice_is_two_skips():
-    assert not data_ops.is_context_bleed(_last("musica", "next"), "musica", "next", {}, SAID)
-
-
-def test_another_cards_step_is_a_step_too():
-    for action in ("next", "volume_up"):
-        assert not data_ops.is_context_bleed(_last("youtube", action), "youtube", action, {}, "otra"), action
-
-
-def test_a_write_repeated_unasked_is_still_a_drag():
-    payload = {"title": "Dentista", "date": "2026-10-25", "time": "10:00"}
-    assert data_ops.is_context_bleed(_last("agenda", "add_meeting", payload), "agenda", "add_meeting", payload,
-                                     "borra el reloj")
-
-
-def test_a_step_is_read_from_the_declaration_not_from_its_name(monkeypatch):
-    from widgets import runtime
-    real = runtime.get
-
-    def without_flag(wid):
-        m = real(wid)
-        if wid != "musica" or not m:
-            return m
-        acts = {k: dict(v) for k, v in (m.get("actions") or {}).items()}
-        acts["next"].pop("repeatable", None)
-        return {**m, "actions": acts}
-    monkeypatch.setattr(runtime, "get", without_flag)
-    assert data_ops.is_context_bleed(_last("musica", "next"), "musica", "next", {}, SAID), \
-        "undeclared, the same empty op 15 s later is read as a drag — the flag is what decides"

@@ -29,27 +29,6 @@ def test_escalate_registers_and_emits_bus():
     assert seen[0]["payload"]["context"]["born_uid"].endswith(f"-{tid}")
 
 
-def test_pending_and_summary_line():
-    tid = escalate.escalate_to_slowbrain("arregla el bug del login")
-    assert any(t["id"] == tid for t in escalate.pending())
-    assert "TAREAS DE FONDO" in escalate.summary_line()
-    escalate.finish(tid, "hecho")
-    assert escalate.pending() == []
-    assert escalate.summary_line() == ""
-
-
-def test_finish_emits_done():
-    seen = []
-    sink = lambda rec: seen.append(rec["topic"]) if rec["topic"] == "escalate.done" else None
-    tid = escalate.escalate_to_slowbrain("x")
-    bus.add_sink(sink)
-    try:
-        escalate.finish(tid, "ok")
-    finally:
-        bus.remove_sink(sink)
-    assert seen == ["escalate.done"]
-
-
 def test_registry_bounded():
     for i in range(30):
         escalate.escalate_to_slowbrain(f"tarea {i}")

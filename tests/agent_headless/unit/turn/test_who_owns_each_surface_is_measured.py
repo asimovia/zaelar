@@ -73,16 +73,6 @@ def test_the_arbiter_names_the_turn_apart_from_an_errand(src, rule):
 
 # ── a discarded turn still acting ────────────────────────────────────────────────────────────────────────────
 
-@pytest.mark.parametrize("whole, tail", [CAR_EN, CAR_ES], ids=["car-en", "car-es"])
-def test_a_discarded_turns_write_is_counted_in_either_order(events, whole, tail):
-    trace.adopt("T37")
-    so.on_write("b1-ls2", tail)               # the pass launched before the discard landed
-    so.turn_discarded("T37")
-    assert _of(events, "discarded_launch")[-1]["order"] == "before"
-    so.on_show("results::b1-ls2", "turn:T37")  # …and the show 2.7 s after it
-    assert len(_of(events, "discarded_launch")) == 2
-
-
 def test_a_live_turn_launches_without_a_discard_mark(events):
     trace.adopt("T40")
     so.on_write("b1-9", FLAT_EN[0])
@@ -139,7 +129,6 @@ def test_a_turn_writing_an_errands_sheet_is_a_non_owner_and_his_hands_are_not(ev
 # ── the WIRING: the real doors report, not a helper called by hand ───────────────────────────────────────────
 
 
-
 def test_an_escalation_reports_its_birth(events, monkeypatch):
     from nucleo.acts import errand
     monkeypatch.setattr(errand, "_emit_bus", lambda *a, **k: None)
@@ -147,22 +136,3 @@ def test_an_escalation_reports_its_birth(events, monkeypatch):
     __import__("nucleo.turn_marks", fromlist=["x"]).cut("T39", CAR_ES[0], CAR_ES[1])
     assert errand.escalate_to_slowbrain(CAR_ES[1], context={"trace": "T39", "kind": "web"})
     assert _of(events, "fragment_goal")
-
-
-def test_the_admitted_turn_hands_its_joined_request_on(events, monkeypatch):
-    import asyncio
-    import types
-
-    from nucleo.input import stt as acc
-    from nucleo.turn import brief as tb
-    from voice.engine.llm.providers import nucleo as _p
-    from nucleo.turn import pipeline_admit as turn_admit
-    monkeypatch.setattr(tb, "ask_for_turn", lambda text, **k: {"judged": text})
-    monkeypatch.setattr(_p._show_target, "_running_goals", lambda: [])
-    brain = types.SimpleNamespace(_acc=acc.Accumulator(), _window=[], _seeded=True)
-    attention = types.SimpleNamespace(typed_line=lambda t: False, clamp_input=lambda t, n: (t, False))
-    acc.unanswered_by(brain, CAR_EN[0])
-    trace.adopt("T39")
-    asyncio.run(turn_admit.admit_the_turn(motor=__import__("voice.engine.llm.providers.nucleo", fromlist=["x"]), attention=attention, brain=brain, emit=lambda *a, **k: None,
-                                          first_turn=False, text=CAR_EN[1]))
-    assert so.joined("T39").startswith(CAR_EN[0])

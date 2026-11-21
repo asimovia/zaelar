@@ -14,30 +14,12 @@ import asyncio
 import pathlib
 import time
 
-import pytest
 
 from nucleo import pending_work
-from nucleo.flash import resume_turn
 from tests.outbound_lane import his_hand  # noqa: F401,E402 — these tests run the card's own acts, as his hand
 
 ROOT = pathlib.Path(__file__).resolve().parents[4]
 GOAL = "Reserva mesa para 2 el lunes a las 14:00 en un restaurante del centro de Soria"
-
-
-@pytest.fixture(autouse=True)
-def _sandbox(tmp_path, monkeypatch):
-    from widgets import store as wstore
-    monkeypatch.setattr(wstore, "DATA_DIR", str(tmp_path))
-    monkeypatch.setattr(wstore, "_last_hash", {})
-    resume_turn.reset()
-    pending_work.forget_cache()
-    from nucleo.circuit import ledger as tasks
-    ts = tasks.store()
-    ts.tasks_clear(states=ts.LIVE_STATES + ts.DONE_STATES, modes=("now",))
-    yield
-    ts.tasks_clear(states=ts.LIVE_STATES + ts.DONE_STATES, modes=("now",))
-    resume_turn.reset()
-    pending_work.forget_cache()
 
 
 def _errand(uid="b00t01-1", state="done", goal=GOAL, outcome="La que mejor encaja: Garoa — ¿te la reservo?"):
@@ -68,56 +50,6 @@ def _escalations(monkeypatch):
     got = []
     monkeypatch.setattr(escalate, "escalate_to_slowbrain", lambda req, context=None: got.append((req, context)) or 1)
     return got
-
-
-def _take(text, ops):
-    req = {"v": "Vale. ¿Serías capaz de reservarme, Johnny, un restaurante — " + text, "more": []}
-    took = asyncio.run(resume_turn.take(req, operator_text=text, last_reply="Hecho.",
-                                        apply_widget_data=lambda w, a, p: ops.append((w, a, p))))
-    return took, req
-
-
-def test_nothing_pending_pays_no_verdict_and_keeps_todays_path(monkeypatch):
-    calls, ops = [], []
-    _verdict(monkeypatch, {"task", "widget"}, calls)
-    took, req = _take("termina esas tareas", ops)
-    assert not took and calls == [] and req["v"] is not None
-
-
-def _fragment_turn(monkeypatch, text, *, ask_rows: bool = True):
-    """A short turn about pending work, with the model's commission glued to an old utterance, passed through the two
-    steps in the order the turn runs them: the rows are asked, then the fragment guard reads what is left."""
-    from nucleo.flash import escalation_guard
-    _errand()
-    calls = []
-    _verdict(monkeypatch, {"task"}, calls)
-    esc = _escalations(monkeypatch)
-    if not ask_rows:                                            # the disarm: the rows are never asked
-        async def _skip(*a, **k):
-            return None
-        monkeypatch.setattr(resume_turn, "before_fragment_guard", _skip)
-    req, acted = {"v": "Vale. ¿Serías capaz de reservarme, Johnny, un restaurante — " + text, "more": []}, {}
-    asyncio.run(resume_turn.before_fragment_guard(req, operator_text=text, brief=None, last_reply="Hecho.",
-                                                  apply_widget_data=None, emit=None, acted=acted))
-    annulled = escalation_guard.drop_if_fragment(req, operator_text=text, brief=None, last_reply="Hecho.")
-    return req, esc, annulled
-
-
-def test_the_disarm_a_guard_that_runs_before_the_rows_annuls_the_resumption(monkeypatch):
-    """Disarm: with the rows never asked, the same turn is annulled as a fragment and nothing resumes."""
-    req, esc, annulled = _fragment_turn(monkeypatch, "acaba eso", ask_rows=False)
-    assert annulled and esc == [] and "resumed" not in req and req["v"] is None
-
-
-def test_both_doors_ask_the_rows_before_annulling_or_gluing():
-    """Kept as a SOURCE check: the call ORDER inside the two turn bodies (`complete_the_acts`, `run_the_light_lanes`,
-    each taking ~40 closure arguments) cannot be observed without driving the whole voice turn. What that order
-    buys is the behaviour test above."""
-    words = (ROOT / "nucleo/flash/post_stream_acts.py").read_text(encoding="utf-8")
-    assert words.index("_resume_turn.before_fragment_guard(") < words.index("_pst._eguard.drop_if_fragment(")
-    lanes = (ROOT / "nucleo/flash/post_stream_lanes.py").read_text(encoding="utf-8")
-    i = lanes.index("_no_tool = await _pst._resume_turn.before_backstops(")
-    assert i < lanes.index('escalate_req["v"] = _op_text')
 
 
 # ── the card's title is the errand's NAME, never a summariser's or a worker's sentence ──────────────────
@@ -179,25 +111,6 @@ def test_an_unnamed_errand_card_is_born_with_the_provisional_name_never_the_utte
 
 
 # ── the MODEL resumes, from the state it is shown; the verdict only completes it ─────────────────────────
-
-def _live_state_pending(with_rows: bool) -> list[str]:
-    """The PENDIENTE block as the turn prompt's live state carries it (`nucleo.turn.prompt.live_state`)."""
-    from nucleo.turn.prompt import live_state as prompt
-    if with_rows:
-        _errand(uid="b00t01-4", goal="Find a dentist open on Saturday", outcome="Two fit — want me to book one?")
-        _held_email()
-    pending_work.forget_cache()
-    state = prompt.live_state().splitlines()
-    i = next((n for n, line in enumerate(state) if line.startswith("PENDIENTE")), None)
-    return [] if i is None else state[i:i + 1 + len(pending_work.rows())]
-
-
-def test_the_resume_tool_is_offered_only_when_something_is_pending():
-    from nucleo.flash import router
-    names = lambda ctx: [t["function"]["name"] for t in router.tools(ctx)]   # noqa: E731
-    assert "resume_task" in names(router.tool_context(has_pending=True))
-    assert "resume_task" not in names(router.tool_context(has_pending=False))
-
 
 # ── the harness: «confirmed» and «done» are checked separately ──────────────────────────────────────────
 

@@ -7,22 +7,11 @@ The green runs the day before were luck (the model happened to call `move {item:
 """
 from __future__ import annotations
 
-import json
 import pathlib
 
 from nucleo.acts import payload_fill as _pf
-from nucleo.turn import brief as _tb
 
 _ENGINE = pathlib.Path(__file__).resolve().parents[4]
-
-
-def test_the_move_descriptor_names_the_reorder_and_sort_points_at_it():
-    acts = json.loads((_ENGINE / "widgets/youtube/manifest.json").read_text(encoding="utf-8"))["actions"]
-    cut = acts["move"]["desc"][:_tb.MAX_DESC_CHARS]
-    for words in ("ORDEN", "antes que", "before"):
-        assert words in cut, words
-    assert {"before", "after"} <= set(acts["move"]["payload"])
-    assert "move" in acts["sort_list"]["desc"][:_tb.MAX_DESC_CHARS]
 
 
 def test_only_item_is_required_so_the_empty_turn_reaches_the_reorder_fill():

@@ -60,11 +60,6 @@ def writing(card: str) -> None:
         _state["writing"] += [base] if base and base not in _state["writing"] else []
 
 
-def this_turn_writes() -> list[str]:
-    with _lock:
-        return list(_state["writing"])
-
-
 def note(kind: str, label: str, role: str = "", extra: dict | None = None) -> None:
     """One event from the funnel. Cheap and never raises: this runs on every event the engine emits."""
     try:
@@ -135,61 +130,6 @@ def last_turn_card(open_ids: list[str]) -> str:
         if len(same_base) == 1:
             return same_base[0]
     return ""
-
-
-def last_turn_card_recent(open_ids: list[str], within_s: float = RECENT_S) -> str:
-    """`last_turn_card`, but only while his previous turn is at most `within_s` old — the one reading of an UNNAMED
-    order over several open cards («Stop the music» … «Close the widget.», live 2026-10-28 T74-T75). "" after that."""
-    with _lock:
-        t_prev = _state["t_prev"]
-    if not t_prev or time.monotonic() - t_prev > within_s:
-        return ""
-    return last_turn_card(open_ids)
-
-
-def crossed_by(at: float, about: str) -> bool:
-    """A report said at `at` about card `about` crossed his last exchange: said within `CROSSING_S` of that order,
-    while the card his order acted on is ANOTHER one. Unknown card or no order of his to cross: False."""
-    base = str(about or "").split("::", 1)[0]
-    with _lock:
-        touched, t_prev = list(_state["previous"]), _state["t_prev"]
-    mine = [cid for r, cid in touched if r == 2]
-    if not base or not mine or not t_prev or not (0.0 <= at - t_prev <= CROSSING_S):
-        return False
-    return all(cid.split("::", 1)[0] != base for cid in mine)
-
-
-def this_turn_acts() -> list[tuple[str, str, str]]:
-    """`[(card, kind, action)]` — what the CURRENT turn's own orders did to each card (kind close / show / control),
-    one entry per card, a close over a show over a control. The voice channel's receipt (`flash.card_receipt`)."""
-    with _lock:
-        acts = list(_state["acts"])
-        failed = set(_state["failed"])
-    best: dict[str, tuple[str, str, str]] = {}
-    rank = {"close": 0, "show": 1, "control": 2}
-    for cid, lab in acts:
-        kind, action = (("control", lab[5:]) if lab.startswith("data:") else (lab, lab))
-        if action == "close":
-            kind = "close"
-        base = cid.split("::", 1)[0]
-        if kind == "control" and (base, action) in failed:
-            continue
-        if base not in best or rank[kind] < rank[best[base][1]]:
-            best[base] = (base, kind, action)
-    return list(best.values())
-
-
-def this_turn_cards() -> list[str]:
-    """The cards the CURRENT turn has acted on so far — his orders first — for a later pass of the same turn that
-    cannot see the calls (the web-search answer said «I can't display a chart» over the chart this turn opened)."""
-    with _lock:
-        cur = list(_state["current"])
-    out: list[str] = []
-    for _, cid in sorted(cur, key=lambda t: -t[0]):
-        base = cid.split("::", 1)[0]
-        if base not in out:
-            out.append(base)
-    return out
 
 
 def ordered_fullscreen() -> str:

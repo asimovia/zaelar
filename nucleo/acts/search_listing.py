@@ -5,16 +5,14 @@ deadline. ENOUGH rows land in the results sheet now and the turn answers with th
 what was found and which doors were tried, and a Brain Worker INHERITS it (`ctx["sheet"]`, the relay seam), so he
 watches one box from the first finding to the final report. A new hunt is an ERRAND born here, in the turn, before the
 pass runs (`errand.born`, V2-844 F1a): its durable row carries his whole request and its uid names the sheet, so the box
-and the errand are one id from the first row on. `listings` is the whole turn body both channels call: fast pass, then the spoken face.
+and the errand are one id from the first row on. `hunt` is the conversation host's door (`acts_tasks._listings`): the
+fact of the pass, never a sentence — the model says what was found.
 """
 from __future__ import annotations
 
-import time
 
 from loguru import logger
 
-from nucleo.acts.outcome import Outcome
-from nucleo.circuit import verdict as V
 
 #: How long the turn waits for the fast pass before it speaks and lets it finish alone.
 FAST_PASS_BUDGET_S = 12.0
@@ -52,40 +50,6 @@ TOOL_DEF = {
 }
 
 
-def request_from(args: dict, fallback_text: str) -> dict:
-    """The `search_listings` call as this door's args; an empty query falls back to his own words (V2-135)."""
-    return {"query": str(args.get("query") or "").strip() or str(fallback_text or "").strip(),
-            "price_max": args.get("price_max"), "price_min": args.get("price_min"),
-            "condition": str(args.get("condition") or "").strip()}
-
-
-def runs_alone(listing_req: dict, reveal_req: dict, escalate_req: dict) -> bool:
-    """Does the turn's hunt run as its own fast lane? Beside escalations it never does (two workers on the SAME hunt
-    race), but a DIFFERENT hunt rides with the turn's errands instead of being dropped (sandbox 20261010-145227-es)."""
-    if listing_req.get("v") is None or reveal_req.get("v") is not None:
-        return False
-    if escalate_req.get("v") is None:
-        return True
-    from nucleo.turn import errands_of_a_turn as _eot
-    rides = _eot.listing_rides(listing_req["v"], [escalate_req["v"], *(escalate_req.get("more") or [])])
-    if rides:
-        _full = len(escalate_req.setdefault("more", [])) >= _eot.MAX_ERRANDS - 1
-        (escalate_req.setdefault("dropped", []) if _full else escalate_req["more"]).append(rides)
-        escalate_req.setdefault("surface", {})[rides] = "lista"
-    return False
-
-
-def _taken_line() -> str:
-    """The language table's «I'll let you know as soon as I have it»."""
-    try:
-        from i18n import langs as _langs
-        lang = _langs.current_language()
-        return str(getattr(lang, "filler_errand_taken", "") or getattr(lang, "work_started", "") or "")
-    except Exception as e:  # noqa: BLE001
-        _note(f"no taken line ({e!r})")
-        return ""
-
-
 def _late_fast_pass(task) -> None:
     """The fast pass that outlived its turn: its outcome is on the timeline, never lost in a thread."""
     import asyncio as _aio
@@ -99,11 +63,6 @@ def _late_fast_pass(task) -> None:
         _note("the loop went down before the late pass reported; its sheet write is unaffected")
     except Exception as e:  # noqa: BLE001
         logger.warning(f"acts.search_listing: the late fast pass failed ({e!r})")
-
-
-def _verdict(res: dict) -> str:
-    return (V.MET if res.get("delivered") else V.STARTED if (res.get("escalated") or res.get("pending"))
-            else V.UNMET).name
 
 
 async def hunt(asked_text: str, args: dict) -> dict:
@@ -139,92 +98,6 @@ async def hunt(asked_text: str, args: dict) -> dict:
         logger.warning(f"acts.search_listing: the fast pass failed, the turn goes on ({e!r})")
         res = {"delivered": False, "n": 0, "escalated": 0, "ctx": "", "reason": str(e), "sheet": ""}
     return {"kind": "done", "res": res}
-
-
-async def listings(request: dict, args: dict, *, spec=None, on_delta=None, already_said: str = "") -> Outcome:
-    """The whole `search_listings` turn: the hunt (`hunt`), then the composed spoken face (`say`); `data` is the pass's
-    own result. `on_delta` streams the face as it arrives. A search slower than `FAST_PASS_BUDGET_S` is not waited for:
-    the turn says the errand is taken and `fast_pass` still writes the sheet (demo pass 52: ~40 s left the turn
-    mute). `CancelledError` is re-raised: a cancelled turn must not look like a failed search."""
-    import asyncio
-
-    from nucleo.acts.errand import whole_request
-    operator_text = whole_request(str((request or {}).get("text") or ""))
-    taken = "" if (already_said or "").strip() else _taken_line()
-    got = await hunt(str((request or {}).get("text") or ""), args)
-    res = got["res"]
-    if got["kind"] in ("joined", "late"):
-        if taken and on_delta is not None:
-            on_delta(taken)
-        return Outcome(True, V.STARTED.name, taken, res)
-    if got["kind"] == "skipped":
-        return Outcome(True, V.SKIPPED.name, "", res)
-    if got["kind"] == "asked":
-        said = got["question"]
-        if said and on_delta is not None:
-            on_delta(said)
-        return Outcome(True, V.ASKED.name, said, res)
-    # The turn already SPOKE its promise and nothing landed yet: a second sentence would only repeat it. Rows are news.
-    if (already_said or "").strip() and not res.get("delivered"):
-        return Outcome(True, _verdict(res), "", res)
-    face = compose_face(res, operator_text)
-    if (already_said or "").strip():
-        face += (f"\n\nYA LE HAS DICHO en este turno: «{already_said.strip()[:400]}». No lo repitas: di solo lo "
-                 "que es nuevo (lo que ya está en la hoja).")
-    said = ""
-    try:
-        from nucleo.llm.fast_client import FastClient
-        parts: list[str] = []
-        async for delta in FastClient().stream([{"role": "system", "content": face},
-                                                {"role": "user", "content": operator_text}],
-                                               spec=spec, max_tokens=240):
-            parts.append(delta)
-            if on_delta is not None:
-                on_delta(delta)
-        said = "".join(parts)
-    except asyncio.CancelledError:
-        raise
-    except Exception as e:  # noqa: BLE001 — the delivery is already on the sheet; the turn stays alive
-        logger.warning(f"acts.search_listing: the face did not compose ({e!r})")
-    return Outcome(True, _verdict(res), said, res)
-
-
-def compose_face(res: dict, operator_text: str) -> str:
-    """The system prompt that tells a fast-pass verdict, one definition for both channels. On the escalated branch
-    the rows go INSIDE the order and by NAME: V2-556's run v3 had four cars on the sheet answered with «I'll tell you
-    when I have results», because the count stood as a fact beside an imperative the model obeyed alone."""
-    from nucleo.turn.prompt import builder as _prompt
-    head = _prompt._lang_lock()
-    ctx, ask = str(res.get("ctx") or "").strip(), str(operator_text or "").strip()
-    if res.get("delivered"):
-        return (head
-                + "\nEl operador pidió BUSCAR anuncios/productos y la búsqueda YA se hizo: los anuncios de "
-                "abajo son REALES y ya están en su hoja de resultados, en pantalla. Respóndele en 1-2 frases "
-                "HABLADAS: cuántos hay, el rango de precios y lo más prometedor, y que los tiene en la hoja. "
-                "Natural, sin markdown, sin emojis, sin leer URLs. No inventes NADA que no esté en la lista; "
-                "si un dato que pidió no está (kilómetros, estado), dilo.\n\n"
-                f"PETICIÓN DEL OPERADOR: {ask}\n\nANUNCIOS ENCONTRADOS:\n{ctx}" + _held_line(res))
-    tiene = bool(res.get("n")) and bool(ctx)
-    return (head
-            + "\nEl operador pidió BUSCAR anuncios/productos. La pasada rápida no encontró SUFICIENTE y una "
-            "BÚSQUEDA A FONDO ya está EN MARCHA (no hay que lanzarla ni pedir permiso: ya corre, y sus avances "
-            "van saliendo en su hoja de resultados). Díselo en 1-2 frases HABLADAS: que vas a investigar a "
-            "fondo y que verá los avances en la hoja. Natural, sin markdown, sin emojis, sin URLs. NO prometas "
-            "plazos."
-            + (" Y EN ESA MISMA RESPUESTA, PRIMERO: NÓMBRALE los anuncios de abajo con su precio. Ya están en "
-               "su pantalla — tenerlos y no nombrarlos es negarle una entrega que ya tiene."
-               if tiene else "")
-            + f"\n\nPETICIÓN DEL OPERADOR: {ask}"
-            + (f"\n\nANUNCIOS PROVISIONALES YA EN SU HOJA ({res.get('n')}):\n{ctx}" if tiene else "")
-            + _held_line(res))
-
-
-def _held_line(res: dict) -> str:
-    """What his sheet holds, as a FACT (V2-879 O3): rows its door filed in Rejected are not findings."""
-    rejected = int(res.get("rejected") or 0)
-    return (f"\n\nLO QUE GUARDA SU HOJA: {int(res.get('n') or 0)} en su lista · {rejected} DESCARTADOS (no eran lo que "
-            "pidió; pestaña Descartados). Los descartados NO son resultados: ni los cuentes ni digas que los tiene."
-            if rejected else "")
 
 
 def _born(asked: str) -> tuple[int, str]:

@@ -166,16 +166,6 @@ def pending() -> list[dict]:
             for tid in sorted(_tasks) if not _tasks[tid]["done"]]
 
 
-def summary_line() -> str:
-    """A compact line for FlashBrain's live-status block, or '' if nothing is in flight."""
-    p = pending()
-    if not p:
-        return ""
-    bits = [f'«{t["request"][:60]}» (llevas {t["secs"]}s)' for t in p]
-    return ("TAREAS DE FONDO EN CURSO (el cerebro profundo las está resolviendo; si el operador pregunta, dilo "
-            "con naturalidad, NO reinicies ni digas que ya está): " + "; ".join(bits))
-
-
 def reset() -> None:
     """Clear the registry (tests)."""
     _tasks.clear()
@@ -197,27 +187,6 @@ _TARGETS = (
 _ARM_TARGET = (("cluster_send", "cluster_peer"), ("set_cluster_objective", "cluster_objective"))
 
 
-def target_question(ctx=None) -> dict:
-    """The brief's question: which errand (if any) his words are for — its candidates the open errands' CARDS (V2-878 §2)."""
-    return {"instructions": "Which ongoing errand, if any, are the operator's words addressed to?",
-            "criteria": {**dict(_TARGETS), **__import__("nucleo.errands.named", fromlist=["x"]).as_target(ctx)}}
-
-
-def done_when_from_brief(brief) -> dict | None:
-    """The errand's end state when the model gave none: the brief's END verdict (already paid in the turn) rendered
-    from the template a card on screen declares for it. None when there is no sure verdict or no such template — the
-    spec then infers it once (`circuit.spec.born`)."""
-    from nucleo.circuit import spec as _spec
-    target = _spec.end_state_verdict(brief)
-    for wid in (brief or {}).get("open_ids") or [] if target else []:
-        base = str(wid or "").split("::", 1)[0].strip().lower()
-        for name, act in (_spec._manifest(base).get("actions") or {}).items():
-            tpl = act.get(_spec.TEMPLATE_KEY) if isinstance(act, dict) else None
-            if isinstance(tpl, (dict, list)) and _spec.target_of(tpl) == target:
-                return _spec.render(base, name, {})
-    return None
-
-
 CLASS_KEY = "errand_class"
 _CLASSES = (
     ("none", "the errand only looks, builds, schedules or reports for HIM — nothing leaves on his behalf, nothing is paid (finding or booking a time to talk with someone sends them nothing)"),
@@ -227,43 +196,30 @@ _CLASSES = (
 )
 
 
-def class_question(_ctx=None) -> dict:
-    """The brief's question: what an errand he commissions would do in the world (the consent class it carries)."""
-    return {"instructions": "If the operator commissions an errand, what does it do in the world?",
-            "criteria": dict(_CLASSES)}
-
-
-def class_verdict(brief) -> dict | None:
-    """The brief's `errand_class` as `{choice, confidence}`, carried in the errand's context; None when unread."""
-    from nucleo.turn import verdicts as _v
-    choice, info = _v.read(brief, CLASS_KEY, None, min_confidence=0.0)
-    return {"choice": str(choice), "confidence": float((info or {}).get("confidence") or 0.0)} if choice and info else None
-
-
 def class_of(verdict: dict | None, request: str) -> str:
-    """The errand's consent class: the brief's verdict at the licence, else «none» (V2-857 phase 4). The money
+    """The errand's consent class: the model's `start_task(class)` at the licence, else «none» (V2-857 phase 4). The money
     vocabulary (`danger`) no longer fills it: his WORDS do not decide what an errand does in the world — «mira cuánto
     pago de luz» was parked as a payment — and where money really leaves (a payment click, `payment.authorize`) the
     exit door asks by its own declared class. Said once as a `task` event: the class, and whether a verdict gave it."""
-    from nucleo.turn import verdicts as _v
+    from nucleo import jev
     choice, conf = str((verdict or {}).get("choice") or ""), float((verdict or {}).get("confidence") or 0.0)
-    cls = choice if choice and conf >= _v.LICENCE else "none"
-    _emit("🧭 errand class read from the brief", f"{cls} · {request[:80]}",
-          {"cat": "flash", "errand_class": cls, "from": "verdict" if cls != "none" or (choice and conf >= _v.LICENCE)
+    cls = choice if choice and conf >= jev.MIN_CONFIDENCE else "none"
+    _emit("🧭 errand class read from the call", f"{cls} · {request[:80]}",
+          {"cat": "flash", "errand_class": cls, "from": "verdict" if cls != "none" or (choice and conf >= jev.MIN_CONFIDENCE)
            else ("no verdict" if not choice else "below the licence"), "confidence": conf})
     return cls
 
 
 def asks_first(cls: str, *, confirmed: bool, verdict: dict | None = None) -> bool:
     """Does an errand ask BEFORE it starts? Only a CRITICAL class (V2-857 phase 4: money, his accounts), read SURE
-    (`verdicts.VETO`; V2-873: a 0.51 `moves_money` parked «open the best deal»), through the one act-or-ask rule on its
+    (`jev.VETO`; V2-873: a 0.51 `moves_money` parked «open the best deal»), through the one act-or-ask rule on its
     row unless his yes is here — his «never» still refuses. Every other class is decided at its EXIT, never twice."""
     from nucleo import consent
+    from nucleo import jev
     from nucleo.events import vocabulary as _evoc
-    from nucleo.turn import verdicts as _v
     if cls == "none" or _evoc.level_of(f"errand.{cls}") != "critical":
         return False
-    if verdict is not None and (conf := float(verdict.get("confidence") or 0.0)) < _v.VETO and not confirmed:
+    if verdict is not None and (conf := float(verdict.get("confidence") or 0.0)) < jev.VETO and not confirmed:
         return _emit("🧭 a critical class read unsure — its exit asks", f"{cls} · {conf:.2f}", {"cat": "flash"}) or False
     return consent.asks(consent.decide_act(f"errand.{cls}", channel="errand", his_yes=confirmed, licensed=True))
 
@@ -275,9 +231,3 @@ def _emit(label: str, text: str, extra: dict) -> None:
     except Exception as e:  # noqa: BLE001 — the record never decides the class
         logger.debug(f"errand: class not recorded ({e!r})")
 
-
-def target_allows(brief, tool: str) -> str:
-    """`run` · `veto` · `consent.ASK_WHICH` for `tool`'s call, by the brief's `errand_target`."""
-    from nucleo.turn import verdicts as _v
-    claimed = dict(_ARM_TARGET).get(str(tool or ""), "")
-    return _v.against_the_model(brief, TARGET_KEY, lambda choice: str(choice) == claimed) if claimed else _v.RUN

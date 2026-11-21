@@ -14,12 +14,10 @@ Three rules, each one enforced because of its opposite failure:
 And under the Brain Workers doctrine this is a RESOURCE: it cannot know about hotels, cars, or houses.
 Nothing in this module knows a domain, and nothing can learn one.
 """
-import json
 
 import pytest
 
 from nucleo import surfaces
-from nucleo.flash import router
 
 
 # ── the vocabulary, which is what prevents this from drifting ─────────────────────────────────────────────────
@@ -97,34 +95,3 @@ def test_stamping_without_a_declaration_still_leaves_one():
 def test_the_sheet_opens_only_for_the_two_that_show_things():
     assert [s for s in surfaces.SURFACES if surfaces.opens_sheet(s)] == ["lista", "item"]
 
-
-# ── the wiring: declaring it and not carrying it means it was not declared ─────────────────────────────────
-def _escalate_tool():
-    return next(t for t in router.TOOLS if t["function"]["name"] == "escalate_to_slowbrain")
-
-
-def test_the_tool_ASKS_for_it_and_offers_only_the_five():
-    fn = _escalate_tool()["function"]
-    par = fn["parameters"]["properties"]["surface"]
-    # `imagenes` is read from the brief and the screen (`surfaces.from_brief`), not offered in the tool: the
-    # tool schema rides in every turn's prompt, and the turn prompt has a ceiling.
-    assert par["enum"] == [s for s in surfaces.SURFACES if s != surfaces.IMAGES]
-    assert "surface" in fn["parameters"]["required"], (
-        "optional = the model omits it and everything falls back by kind, which means guessing the screen")
-
-
-def test_the_tool_did_not_GROW_to_fit_it():
-    """It was paid for by SUBSTITUTION: the prose phrase about where findings are shown became this field. The
-    catalog is paid for on EVERY voice turn, and this tool was already at 1979 out of 2000."""
-    assert len(json.dumps(_escalate_tool(), ensure_ascii=False)) <= 2_000
-
-
-def test_the_router_carries_it():
-    d = router.decide("escalate_to_slowbrain", {"request": "busca hoteles", "surface": "lista"})
-    assert d.payload["surface"] == "lista"
-
-
-def test_the_router_does_not_normalize_it_here():
-    """Deliberately: `resolve()` needs the `kind`, which this point does not know. Normalizing twice erases the
-    difference between «said nothing» and «said something strange», which determines whether a warning is needed."""
-    assert router.decide("escalate_to_slowbrain", {"request": "x", "surface": "inventada"}).payload["surface"] == "inventada"

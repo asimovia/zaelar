@@ -19,8 +19,6 @@ What is being established:
     one should I close, “Results” or “Results”?”;
   · and the rule lives ONCE, even though this close is emitted from three different places.
 """
-from tests import voice_turn_source as _vts
-import re
 from pathlib import Path
 
 import pytest
@@ -133,18 +131,6 @@ def test_colliding_titles_get_disambiguated_instead_of_repeated():
 
 # ── 3) the rule lives ONCE ─────────────────────────────────────────────────────────────────────────────────────
 
-def test_the_ambiguity_is_answered_by_ASKING_and_not_by_staying_silent():
-    """Asking ALSO counts as having acted: if the fallback returned False, the login fallback would take the
-    turn as if nobody had done anything — the bug documented by V2-023."""
-    src = VOICE.read_text(encoding="utf-8", errors="replace")
-    i = src.index("def _widget_fallback(")
-    cuerpo = src[i:i + 3000]
-    assert "ask(_t[\"ask\"])" in cuerpo and re.search(r'ask\(_t\["ask"\]\)\s*\n(.|\n){0,400}?return True', cuerpo), (
-        "preguntar tiene que contar como actuar")
-    assert 'ask=lambda m: clarify.__setitem__("msg", m)' in src, (
-        "el fallback no tiene por dónde preguntar: la pregunta se perdería y el cierre no ocurriría — mudo")
-
-
 def test_the_raw_instances_are_readable_because_the_state_normalizes_them_away():
     """`memory.state()['open_widgets']` stores the BASES, which is correct for what it does: the brain's state
     speaks about pieces. But this question is about CARDS, and normalization erases exactly that data there —
@@ -182,19 +168,6 @@ def test_showing_with_NO_instance_open_keeps_the_base_as_always():
 def test_a_named_instance_passes_through_untouched():
     out = instances.resolve_show("results::t7", ["results::t1", "results::t7"])
     assert out["id"] == "results::t7" and not out["ask"]
-
-
-def test_the_show_decision_is_wired_in_the_voice_turn():
-    """The voice turn (which the typed channel runs too) asks for the instance when it shows. It is checked against
-    the source WITHOUT comments: two guards in this suite already passed with the call deleted because the comment
-    named it."""
-    def _code(p):
-        lines = Path(p).read_text(encoding="utf-8", errors="replace").splitlines()
-        return "\n".join(ln for ln in lines if not ln.strip().startswith("#"))
-
-    voz = "\n".join(_code(rel) for rel in _VOICE_SRC)   # el canal son DOS ficheros desde la pasada del trinquete
-    assert voz.count("def _show_target_instance(") == 1
-    assert "_show_target_instance(_rid" in voz, "la voz no consulta la instancia al mostrar"
 
 
 # ── 5) «los dos» ANSWERS the question instead of restarting it (V2-530) ───────────────────────────────────────
@@ -238,20 +211,6 @@ def test_ids_always_travels_so_a_caller_that_loops_it_is_right_in_every_case():
     assert instances.resolve_close("results", [], "")["ids"] == ["results"]
 
 
-def test_a_close_takes_every_card_the_sentence_names():
-    """Demo, «Close the map and the results»: the map closed and the rest became «Which one exactly?». The
-    other open cards the sentence NAMES — by their own id, name or aliases — close with it."""
-    open_ids = ["results::9194df-1", "map", "agenda"]
-    assert instances.also_named("Close the map and the results.", open_ids, exclude=["map"]) == ["results::9194df-1"]
-    assert instances.also_named("Cierra el mapa y los resultados", open_ids, exclude=["map"]) == ["results::9194df-1"]
-    assert instances.also_named("Close the map.", open_ids, exclude=["map"]) == [], "a app not named stays"
-    assert instances.also_named("", open_ids) == []
-    src = _vts.read(Path(__file__).resolve().parents[4] / "voice/engine/llm/providers/nucleo.py")
-    assert src.count("with_also_named(_t.get(\"ids\")") == 2, "both close sites must take the other named cards"
-    from voice.engine.llm.providers import widget_intent
-    assert callable(widget_intent.with_also_named)
-
-
 def test_an_open_sheet_is_named_by_its_own_title(monkeypatch):
     """V2-773 (demo v3, S1): «Show me the monitors» → «I don't have anything like that in your set of cards» —
     the worker's sheet was titled «27-inch 4K monitors under $400» and only aliases named cards."""
@@ -262,26 +221,6 @@ def test_an_open_sheet_is_named_by_its_own_title(monkeypatch):
     assert runtime.identify_named("Show me the monitor sheet", open_ids=["results::x1"]) == "results::x1", "singular too"
     assert runtime.identify_named("Show me the results", open_ids=["results::x1"]) == "results", "an alias still wins, and narrows later"
     assert runtime.identify_named("Show me the map", open_ids=["results::x1"]) != "results::x1", "a word not in the title names nothing"
-
-
-def test_a_closed_sheet_of_a_finished_errand_is_named_by_its_title(monkeypatch):
-    """V2-773 (demo S1, 2026-09-27): the monitor errand had finished and its sheet was CLOSED; «Show me the
-    monitors» read «no monitor widget in your setup» and a second worker searched the same monitors again. A
-    closed sheet is still his card, named by what it shows, just under an open one."""
-    from widgets import runtime
-    monkeypatch.setattr(instances, "card_face", lambda wid: {})
-    monkeypatch.setattr(instances, "recent_faces", lambda limit=5: [{"id": "results::m1", "label": "Three 27\" 4K monitors under $400"},
-                                                                    {"id": "results::t9", "label": "Five clear days with Anna"}])
-    assert runtime.identify_named("Show me the monitors", open_ids=["documento"]) == "results::m1", "THE BUG"
-    assert runtime.identify_named("Show me the monitors", open_ids=[]) == "results::m1", "nothing open at all"
-    assert runtime.identify_named("Show me the results", open_ids=[]) == "results", "an alias still wins"
-    assert runtime.identify_named("Show me the map", open_ids=[]) != "results::m1"
-    # an OPEN sheet with the same words outranks the closed one
-    monkeypatch.setattr(instances, "card_face", lambda wid: {"label": "monitors on sale", "blank": False} if wid == "results::o1" else {})
-    assert runtime.identify_named("Show me the monitors", open_ids=["results::o1"]) == "results::o1"
-    src = _vts.read(Path(__file__).resolve().parents[4] / "voice/engine/llm/providers/nucleo.py")
-    assert '_rid if (_rid and runtime.get(_rid.split("::", 1)[0]) is not None) else ""' in src, (
-        "the show path must keep an INSTANCE id the resolver named")
 
 
 def test_the_results_piece_lists_its_titled_sheets_most_recent_first(tmp_path, monkeypatch):
@@ -298,26 +237,3 @@ def test_the_results_piece_lists_its_titled_sheets_most_recent_first(tmp_path, m
     store.save("results--d-1", {"title": "Five clear days with Anna", "items": [{"title": "z", "url": "https://d"}]})
     assert [r["id"] for r in rd.recent_faces()] == ["results::d-1", "results::a-1"]
     assert instances.recent_faces()[0]["label"] == "Five clear days with Anna"
-
-
-def test_an_instance_id_the_model_names_passes_through_the_show_resolver():
-    from nucleo.acts import show_target
-    res, _o, _r = show_target.resolve_show("results::m1", "Show me the monitors", None, None, lambda *a: "")
-    assert res.get("match") == "results::m1"
-    res, _o, _r = show_target.resolve_show("nosuch::m1", "Show me the monitors", None, None, lambda *a: "")
-    assert res.get("match") != "nosuch::m1", "an instance of a piece that does not exist names nothing"
-
-
-def test_an_open_sheet_is_never_on_the_shelf_of_closed_ones(monkeypatch):
-    """Demo pass 135: the state keeps BASE ids (`results`), the shelf lists INSTANCES — the monitor sheet on screen
-    was offered as a closed sheet. The canvas's own instance list is read too."""
-    from memory import api as memapi
-    from nucleo import done_lines as live_record
-    from server import voice_api
-    from widgets import instances
-    monkeypatch.setattr(instances, "recent_faces", lambda limit=5: [{"id": "results::o1", "label": "Monitors"},
-                                                                    {"id": "results::t9", "label": "Trips"}])
-    monkeypatch.setattr(memapi, "state", lambda: {"open_widgets": ["results", "imagenes"]})
-    monkeypatch.setattr(voice_api, "open_instances", lambda: ["results::o1", "imagenes"])
-    lines = live_record.shelf_lines()
-    assert len(lines) == 1 and "results::t9" in lines[0] and "results::o1" not in lines[0], lines

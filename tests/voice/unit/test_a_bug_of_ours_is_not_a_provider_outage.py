@@ -116,15 +116,6 @@ def test_no_function_reads_a_module_alias_it_later_shadows():
         "those uses raises UnboundLocalError at runtime:\n  " + "\n  ".join(offenders))
 
 
-def test_the_cluster_branch_no_longer_shadows_the_canvas_alias():
-    """The instance, named, so a future edit cannot quietly reintroduce it under the old name."""
-    src = _vts.read(ENGINE / "voice/engine/llm/providers/nucleo.py")
-    assert "canvas_visibility as _cvis" in src, "the alias this test is about is gone — re-aim the test"
-    assert not re.search(r'^\s+_cvis = \(args\.get\("vis"\)', src, re.M), \
-        "`_cvis` is assigned as a local again: `show_images` and the music/messaging guards are dead"
-    assert '_cluster_vis = (args.get("vis")' in src, "the cluster visibility local lost its distinct name"
-
-
 # ── B · WHOSE FAULT IS IT ────────────────────────────────────────────────────────────────────────────────────
 class _WithStatus(Exception):
     def __init__(self, msg, status):
@@ -162,31 +153,6 @@ def test_the_engine_fault_line_names_the_defect():
     from nucleo.llm import provider_failure as pf
     line = pf.engine_fault_line(UnboundLocalError("cannot access local variable '_cvis'"))
     assert "UnboundLocalError" in line and "_cvis" in line, line
-
-
-def test_a_fault_of_ours_never_reaches_the_ladder():
-    """The wiring, in the branch that runs BEFORE anything touches `provider_chain`."""
-    src = _vts.read(ENGINE / "voice/engine/llm/providers/nucleo.py")
-    i = src.index("if errored:")
-    j = src.index("_v = {}", i)
-    head = src[i:j]
-    assert "is_engine_fault(err_exc)" in head, "the turn no longer asks whose fault it is before relaying"
-    # NOTHING that touches the ladder may appear before the fault is attributed, and the branch must EXIT:
-    # falling through is how a bug of ours opened a cooldown on a healthy tier for five days.
-    assert "provider_chain" not in head and "_pfail.handle(" not in head, \
-        "the ladder is consulted before the fault is attributed — a bug of ours would open a cooldown again"
-    assert re.search(r"if _mine:(?:.|\n)*?\n\s+send\(", head), \
-        "the engine-fault branch no longer speaks the ordinary stumble"
-    assert head.rstrip().rstrip().endswith("return") or "\n                return\n" in head, \
-        "the engine-fault branch must EXIT, not fall through into the provider path"
-
-
-def test_the_degraded_alert_carries_the_real_error():
-    """It travelled as the literal «flash layer error», so the timeline could not say why the brain fell."""
-    src = _vts.read(ENGINE / "voice/engine/llm/providers/nucleo.py")
-    m = re.search(r'emit\("alert", "Cerebro rápido caído — turno degradado\.",\s*\n\s*text=([^\n]+)', src)
-    assert m, "the degraded alert is not where this test expects it"
-    assert "err_text" in m.group(1), f"the alert still hides the cause: {m.group(1)}"
 
 
 # ── C · THE SAME REQUEST GOES TO THE OTHER MODEL ─────────────────────────────────────────────────────────────
@@ -284,17 +250,6 @@ def test_the_stream_never_relays_once_it_has_spoken():
     after = src[src.index("calls: dict[int, dict] = {}"):]
     assert "relay_spec_for" not in after, \
         "a relay was wired into the streaming half: a mid-stream retry repeats what the operator already heard"
-
-
-def test_a_relayed_turn_is_not_marked_against_the_titular_twice():
-    """`fast_client` already attributed the failure on the way out. Re-marking from the voice handler would
-    punish the titular for what the stand-in did — the silent mis-attribution V2-307 paid for."""
-    src = _vts.read(ENGINE / "voice/engine/llm/providers/nucleo.py")
-    i = src.index("_v = {}")
-    body = src[i:src.index("# RELAY on a HARD failure", i)]
-    assert 'relayed_to' in body, "the handler no longer asks whether the relay already happened"
-    assert "if not (llm_metrics or {}).get(\"relayed_to\")" in body, \
-        "the handler marks the ladder unconditionally again"
 
 
 # ── D · THE PANEL SAYS WHO IS ANSWERING ──────────────────────────────────────────────────────────────────────

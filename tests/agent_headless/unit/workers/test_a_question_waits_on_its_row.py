@@ -176,10 +176,3 @@ def test_the_dispatcher_resumes_any_kind_by_id_when_answered():
     src = inspect.getsource(session_steps.build_what_it_runs_with)
     assert 'if (kind == "web" and trusted) or _answered' in src and 'resume["cwd"]' in src
 
-
-# ── «how is it going» reads the ROW, not a session ───────────────────────────────────────────────────────────
-def test_the_prompt_says_what_a_task_waits_for_from_its_row(fresh):
-    from nucleo.turn.prompt import live_tasks
-    worker_api._register_ask(_rec(), "Which Raquel?")
-    lines = live_tasks.waiting_lines()
-    assert lines and "Photos to Raquel" in lines[0] and "Which Raquel?" in lines[0] and "ESPERA" in lines[0]

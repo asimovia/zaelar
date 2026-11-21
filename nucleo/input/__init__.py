@@ -29,13 +29,3 @@ class Utterance:
         """Only speech can arrive unfinished; everything else is a whole line."""
         return self.channel != VOICE
 
-
-def of_turn(text: str, *, device: str = "") -> Utterance:
-    """The utterance a LiveKit turn carries. LiveKit hands typed and spoken lines to the same turn, so the channel is
-    read from the typed door's own stamp (`attention.typed_line`, exact per line, read-only)."""
-    try:
-        from voice import attention
-        typed = attention.typed_line(text)
-    except Exception:  # noqa: BLE001 — without the stamp a line is treated as speech, today's behaviour
-        typed = False
-    return Utterance(text=text, channel=TYPED if typed else VOICE, device=device)

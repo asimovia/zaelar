@@ -87,38 +87,8 @@ def test_its_own_delivery_is_named_as_the_opener(monkeypatch):
     assert "la abriste TÚ" in why and "farmacia" in why and "NO oíste tu nombre" in why, why
 
 
-def test_the_wake_word_is_named_as_the_opener():
-    from voice.engine.llm.providers import attention_turn
-    ok, _, _ = asyncio.run(attention_turn.judge("Zaelar, pon música", context="", emit=lambda *a, **k: None))
-    assert ok
-    assert attention_opening.why_listening().startswith("la abrió él diciendo tu nombre"), attention_opening.why_listening()
-
-
-def test_a_turn_inside_the_window_does_not_rewrite_the_opener():
-    import time
-    from voice.engine.llm.providers import attention_turn
-    now = time.time()                       # the judge reads the real clock
-    attention_opening.note("addressed", "¿Sigo?", now=now)
-    attention.note_addressed_speech(now=now)
-    attention.note_bot_speech(True, now=now)
-    attention.note_bot_speech(False, now=now + 1)
-    ok, _, _ = asyncio.run(attention_turn.judge("Yo no estoy hablando contigo", context="",
-                                                emit=lambda *a, **k: None))
-    assert ok, "inside the reply window the turn is directed — that part is V2-655 and stays"
-    assert "la abriste TÚ" in attention_opening.why_listening(), attention_opening.why_listening()
-
-
 def test_nothing_recent_says_nothing():
     assert attention_opening.why_listening() == ""
     attention_opening.note("wakeword", "Johnny", now=1000.0)
     assert attention_opening.why_listening(now=1000.0 + 3600) == "", "a stale opener must not explain today's turn"
 
-
-def test_the_prompt_carries_the_opener_in_wake_word_mode(monkeypatch):
-    from config import settings
-    from nucleo.flash import style_directive
-    monkeypatch.setattr(settings, "get", lambda k, d=None: "smart" if k == "attention_mode" else d)
-    assert not [ln for ln in style_directive.prompt_lines({}) if "POR QUÉ ESTÁS EN CONVERSACIÓN" in ln]
-    attention_opening.note("addressed", "El motor se está atascando.")
-    lines = [ln for ln in style_directive.prompt_lines({}) if "POR QUÉ ESTÁS EN CONVERSACIÓN" in ln]
-    assert lines and "atascando" in lines[0] and "nunca inventes" in lines[0], lines

@@ -260,11 +260,3 @@ def test_las_ordenes_cortas_de_widget_pasan(corpus):
         if segmenter.looks_incomplete(t)[0]:
             held.append(t)
     assert not held, f"short orders being held: {[(t, segmenter.looks_incomplete(t)[1]) for t in held]}"
-
-
-def test_el_techo_de_retencion_entrega_siempre(corpus):
-    """No matter how incomplete the analysis thinks a phrase is, past `MAX_HOLD_S` it ships. Checked over the real
-    corpus and not just one string: this layer can delay a turn, never lose it."""
-    frags = [t for t, lab in corpus.items() if lab == "incomplete"][:200]
-    still_held = [t for t in frags if segmenter.should_hold(t, held_s=segmenter.MAX_HOLD_S + 0.1)[0]]
-    assert not still_held, f"held past the ceiling: {still_held[:5]}"

@@ -78,15 +78,6 @@ def test_a_volume_set_without_a_level_emits_nothing():
     assert self_controls.level("45.4 %") == 45 and self_controls.level(-1) == 0 and self_controls.level(101) == 100
 
 
-def test_the_tool_offers_every_act_and_a_level():
-    from nucleo.flash import router
-    from nucleo.acts import self_controls
-    fn = next(t["function"] for t in router.TOOLS if t["function"]["name"] == "agent_controls")
-    props = fn["parameters"]["properties"]
-    assert set(props["act"]["enum"]) == set(self_controls.ACTS), "an act the door knows and the model cannot call"
-    assert props["value"]["type"] == "integer"
-
-
 def test_every_line_exists_in_both_languages_and_one_way_names_the_button():
     from nucleo.acts import self_controls
     for lang in ("es", "en"):

@@ -102,12 +102,3 @@ def test_a_warm_turn_starts_no_judge():
     asyncio.run(run())
     assert calls == [], "inside the conversation window nobody judges"
 
-
-def test_the_eager_brief_starts_the_judge(monkeypatch):
-    """The wiring: the eager end of turn (`brief_turn.fire_early`) is where the judge starts."""
-    from nucleo.turn import brief, brief_turn
-    seen: list = []
-    monkeypatch.setattr(attention, "prefire", lambda text, now=None: seen.append(text))
-    monkeypatch.setattr(brief, "ask_for_turn", lambda text: None)
-    brief_turn.fire_early("Yes, book it")
-    assert seen == ["Yes, book it"]

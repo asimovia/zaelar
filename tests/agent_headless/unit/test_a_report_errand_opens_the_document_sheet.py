@@ -48,15 +48,6 @@ def test_the_words_a_model_writes_normalize_to_it(word):
     assert surfaces.normalize(word) == surfaces.DOC
 
 
-def test_the_escalation_tool_offers_it():
-    from nucleo.flash import router_catalog
-    esc = next(t["function"] for t in router_catalog.TOOLS
-               if t["function"]["name"] == "escalate_to_slowbrain")
-    prop = esc["parameters"]["properties"]["surface"]
-    assert "informe" in prop["enum"]
-    assert "informe=" in prop["description"], "the gloss is what tells the model WHEN informe beats item"
-
-
 # ── the live narrative, keyed by TASK (the doc sheet has no sheet id) ───────────────────────────────────────
 def test_task_progress_tells_the_live_errands_story_and_only_its_own():
     live = _rec(task_id="t1")

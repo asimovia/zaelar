@@ -14,7 +14,6 @@ import pytest
 
 from nucleo import circuit
 from nucleo.circuit import reported, spec
-from nucleo.turn import reply_receipts
 from voice import screens
 from widgets import state, store
 
@@ -58,41 +57,6 @@ def _act():
     return e
 
 
-def _ack(e):
-    return reply_receipts.bare_ack("Done.", {"mensajeria"}, turn=e["trace"])
-
-
-@pytest.mark.parametrize("before", ["", "Rowan Ilic (telegram)"])
-def test_a_report_from_before_the_act_is_asked_not_a_failure(world, before):
-    _say(1, before)
-    e = _act()
-    assert spec.attest(e) is None and e["awaiting"] == reported.PENDING
-    assert "❌ spec: sin cumplir todavía" not in world
-    assert world.count("⏳ spec: ordered — the app has not confirmed it yet") == 1
-    spec.attest(e)
-    assert world.count("⏳ spec: ordered — the app has not confirmed it yet") == 1, "said once, not at every read"
-    lang = reply_receipts._lang()
-    assert _ack(e) == str(lang.done_asked) != str(lang.done_not_on_card)
-
-
-def test_the_surface_then_reports_the_chat_and_it_is_met(world):
-    _say(1, "")
-    e = _act()
-    assert spec.attest(e) is None
-    _say(2, OPEN)
-    assert spec.attest(e) is True
-    assert _ack(e) == "Done."
-
-
-def test_a_report_made_after_the_act_still_judges_it(world):
-    _say(1, "")
-    e = _act()
-    e["born"] = time.time() - 1.0                           # the surface speaks AFTER the birth, still elsewhere
-    _say(2, "Rowan Ilic (telegram)")
-    assert spec.attest(e) is False
-    assert _ack(e) == str(reply_receipts._lang().done_not_on_card)
-
-
 def test_past_the_grace_a_silent_surface_is_no_longer_unheard(world):
     _say(1, "")
     e = _act()
@@ -101,21 +65,4 @@ def test_past_the_grace_a_silent_surface_is_no_longer_unheard(world):
     assert spec.attest(e, now=later) is False, "the circuit's own ending (unmet at the grace) applies"
 
 
-def test_the_mouth_does_not_turn_an_unheard_card_into_done(world):
-    from nucleo.circuit import verdict
-    from nucleo.turn import reply
-    _say(1, "")
-    e = _act()
-    got = reply_receipts.unconfirmed([reply.Outcome(verdict.MET.name, "mensajeria", "open", object=NAME)], e["trace"])
-    assert reply._value(got[0].verdict) == verdict.STARTED.name
-
-
 # ── disarm ───────────────────────────────────────────────────────────────────────────────────────────────────
-
-def test_disarm_without_unheard_the_old_report_is_a_verdict(world, monkeypatch):
-    """Disarm: `reported.unheard` blind → the defect of 2026-11-18 comes back: «not on the card» over an open chat."""
-    monkeypatch.setattr(reported, "unheard", lambda e, now=None: False)
-    _say(1, "")
-    e = _act()
-    assert spec.attest(e) is False
-    assert _ack(e) == str(reply_receipts._lang().done_not_on_card)

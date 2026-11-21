@@ -21,7 +21,6 @@ import pytest
 
 from memory import db as memdb
 from memory import embeddings as mememb
-from nucleo.turn.prompt import builder as prompt
 from nucleo.routes import site_catalog as sc
 
 

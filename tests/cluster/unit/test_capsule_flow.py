@@ -147,19 +147,6 @@ def test_cluster_done_marks_capsule_cierre(fresh_db, monkeypatch):
     assert ("meshcore", "zalo") not in br._stall
 
 
-def test_full_cluster_framing_is_identity_safe(fresh_db):
-    """V2-069: EVERYTHING the cluster turn sees (system + protocol brief + capsule block) is identity-safe — none of
-    the three framing pieces leaks the operator’s PII to an untrusted peer."""
-    from memory import api as memory
-    from nucleo.turn.prompt.builder import build_cluster_system
-    from connectors.meshkore import brief
-    memory.set_state({"operator_name": "Ricart", "treatment": "de tú", "location": "Soria"})
-    capsule.patch("meshcore", "zalo", greeted=True, objective="algo", phase=capsule.TRABAJO)
-    framed = build_cluster_system() + "\n" + brief.for_brain() + "\n" + capsule.compose("meshcore", "zalo")
-    for pii in ("Ricart", "Soria"):
-        assert pii not in framed, f"FUGA de PII del operador en el framing del turno de cluster: {pii}"
-
-
 # ── TOOLS OFF: structural invariant of the channel engine ──────────────────────────────────────────────────────
 def _bridge_no_silence(monkeypatch):
     """Like `_bridge()` but WITHOUT silencing `_emit` (the caller already captured it) — reuses the rest of the harness."""
@@ -173,30 +160,3 @@ def _bridge_no_silence(monkeypatch):
     br._notify_registry = lambda: None
     return br, seen
 
-
-def test_channel_offers_no_tools_by_default():
-    """V2-076: the cluster turn offers NO tools BY DEFAULT (untrusted profile, zero regression). The catalog appears
-    only if the bridge passes `tool_names` from the cluster’s PERMISSIONS PROFILE. BEHAVIORAL test (not structural):
-    with zero permission, `complete` is called WITHOUT tools; the peer never grants itself anything."""
-    import asyncio
-    from nucleo.flash import cluster
-    seen = {}
-
-    class _FC:
-        async def complete(self, messages, *, spec, max_tokens=220, tools=None, on_tool_call=None):
-            seen["tools"] = tools
-            return "ok"
-
-    orig = cluster.FastClient           # cluster.py used `from .fast_client import FastClient` → patch that name
-    cluster.FastClient = lambda: _FC()
-    try:
-        # without tool_names (default) → NO catalog is offered
-        asyncio.run(cluster.respond("hola", spec=object(), timeout=5))
-        assert seen["tools"] is None, "por defecto el turno de cluster NO ofrece tools"
-        # with tool_names (permissions granted by the operator) → ONLY that catalog subset is offered
-        asyncio.run(cluster.respond("hola", spec=object(), tool_names={"escalate_to_slowbrain"},
-                                    escalate_ctx={"trusted": False, "src": "cluster"}, timeout=5))
-        offered = {t["function"]["name"] for t in (seen["tools"] or [])}
-        assert offered == {"escalate_to_slowbrain"}, f"solo el subconjunto permitido, no más: {offered}"
-    finally:
-        cluster.FastClient = orig

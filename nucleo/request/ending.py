@@ -92,13 +92,6 @@ def defer(row: str, write) -> None:
         write()
 
 
-def only_held() -> bool:
-    """Every data-op this turn ran was a non-leaving act whose ending is held: nothing reached the request's end."""
-    turn = model.current() or {}
-    ops = int(turn.get("ops") or 0)
-    return ops > 0 and int(turn.get("held_ops") or 0) == ops
-
-
 def close_turn(turn: dict | None = None) -> int:
     """The turn is over: write the endings it held, except over a row that now waits. How many were written."""
     turn = turn if turn is not None else model.current()

@@ -19,11 +19,9 @@ worker's call (the brain-worker doctrine).
 """
 from __future__ import annotations
 
-import re
 import time
 import unicodedata
 
-from loguru import logger
 
 TTL_S = 300.0          # an errand nobody could deliver in five minutes is history, not a live goal
 
@@ -55,23 +53,6 @@ def _expire(now: float) -> None:
             from nucleo import circuit as _circuit
             _circuit.settle(g, verdict="unverifiable", now=now)
             _emit("🕰 arnés: objetivo caducado sin verificar", g)
-
-
-def note_goal(kind: str, target: str, text: str, *, trace: str = "", now: float | None = None) -> dict:
-    """A turn implied an end state: remember it. Same open (kind, target) → refreshed, never duplicated."""
-    now = time.time() if now is None else now
-    _expire(now)
-    target = (target or "").strip().lower()
-    for g in open_goals(now):
-        if g.get("kind") == kind and g.get("target") == target:
-            g["text"] = (text or g.get("text") or "")[:300]
-            g["born"] = now
-            return g
-    g = _ledger().open({"widget": target, "field": "empty", "is": "false"}, text=text or "", source=SOURCE,
-                       widget=target, action="show", trace=trace or "", now=now) or {}
-    g.update({"kind": kind, "target": target, "text": (text or "")[:300], "met_at": 0.0, "checks": 0})
-    _emit("🎯 arnés: objetivo abierto", g)
-    return g
 
 
 def open_goals(now: float | None = None) -> list[dict]:
@@ -127,34 +108,6 @@ async def sweep(now: float | None = None) -> list[dict]:
             _emit("✅ arnés: objetivo conseguido", g)
             closed.append(g)
     return closed
-
-
-def prompt_lines(now: float | None = None) -> list[str]:
-    """The open goals as the live state sees them — a FACT with its RULE (V2-453), zero lines when empty.
-
-    V2-755 — and only the goals a VERIFIER actually found unmet. This function used to print every open
-    goal as «la hoja sigue VACÍA», which is the one thing this module's own rule forbids: «a widget whose
-    truth cannot be read yields None (unverifiable) and the harness stays silent about it — a wrong "you
-    did not deliver" over a delivered card is worse than none». `verify` honoured it; the prompt did not,
-    and the prompt is the half the model reads.
-
-    Measured live (session 665e666a, 2026-09-23): `youtube.view_data()` declared no `empty` key, so the
-    goal born at «Vale, muéstrame el widget de vídeo» was UNVERIFIABLE — it could never be met, never
-    closed, and for three minutes every single turn carried «la hoja `youtube` sigue VACÍA. No digas que
-    está hecho ni "aquí lo tienes"» over a card holding six numbered results and a playing video.
-
-    Sync on purpose (the prompt is built synchronously), so it reads the verdict `verify` left behind on
-    the goal rather than taking one of its own: unverified means silent, which is the honest default.
-    """
-    out: list[str] = []
-    for g in open_goals(now):
-        # V2-903: only an EMPTY sheet is «VACÍA» — one that is full but not in front (`off_screen`: a phone's app behind
-        # the front one, a desktop's minimised sheet) is delivered content, and saying otherwise is the false line.
-        if g["kind"] == KIND_WIDGET_CONTENT and g.get("last") is False and g.get("why") == "empty":
-            out.append(f"OBJETIVO ABIERTO (arnés): «{g['text'][:120]}» → la hoja `{g['target']}` sigue VACÍA. "
-                       "No digas que está hecho ni «aquí lo tienes» hasta que el contenido esté cargado: "
-                       "entrégalo con widget_data show/append, o escala con superficie documento.")
-    return out
 
 
 def _emit(label: str, g: dict, extra: dict | None = None) -> None:

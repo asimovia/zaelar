@@ -59,17 +59,6 @@ def test_one_call_writes_a_scoped_gate_and_the_repeat_back(monkeypatch):
     assert spoken.repeat_back(res) == "Entendido: te pregunto antes de mandar correos."
 
 
-def test_an_exception_and_a_style_knob_ride_one_answer(monkeypatch):
-    _answer(monkeypatch, {"op": "add", "say": "ok", "rows": [
-        {"scope": "messaging/*/send_new", "kind": "gate", "key": "consent", "value": "ask",
-         "except": ["messaging/telegram"]},
-        {"scope": "global", "kind": "pref", "key": "fillers", "value": "off"}]})
-    shape.write("pregúntame antes de mandar mensajes salvo por Telegram, y sin muletillas")
-    assert _send("email") == "ask" and _send("telegram") == "allow"
-    from nucleo import style_policy
-    assert style_policy.filler_mode() == "off", "a knob is a voice row whatever scope the answer gave it"
-
-
 def test_an_answer_outside_the_declared_vocabulary_is_corrected_or_dropped(monkeypatch):
     _answer(monkeypatch, {"op": "add", "say": "ok", "rows": [
         {"scope": "messaging/fax/send_new", "kind": "gate", "key": "consent", "value": "never"},   # no such channel
@@ -157,11 +146,3 @@ def test_the_door_writes_once_and_hands_back_what_it_understood(monkeypatch):
     assert res["line"] == "Entendido: sin muletillas.", "the shaper's restatement is the line the model may say"
     assert said == [], "the door says nothing on its own: the conversation's model answers"
     assert any("user rule guardada" in a[1] and k["extra"]["scope"] == "voice" for a, k in events)
-
-
-def test_no_word_table_reads_a_rule_any_more():
-    for rel, gone in (("nucleo/consent.py", "_flags_for"), ("nucleo/style_policy.py", "_flags_for"),
-                      ("nucleo/style_policy.py", "def scope_of"), ("nucleo/flash/router_guards.py", "_RULE_REMOVAL_RE"),
-                      ("rules/notes.py", "difflib"), ("connectors/catalog.py", "consent_keys_named")):
-        assert gone not in (ENGINE / rel).read_text("utf-8"), f"{rel} still holds {gone}"
-    assert not (ENGINE / "nucleo/flash/rule_scope.py").exists()

@@ -68,34 +68,3 @@ def test_disarm_the_scan_sees_a_direct_call():
     assert _calls_the_primitive(tree)
     assert offenders({}) == ["nucleo/pulse/notices.py"], "dropping the door's own entry makes its file an offender"
 
-
-def test_a_door_line_is_the_turns_while_it_is_live_and_keyed_after(monkeypatch):
-    """V2-851 F5: `mouth.say` notes the line on the live turn (said by the turn's close), and out of any turn hands it
-    to the out-of-turn door with its key — never to the primitive."""
-    import asyncio
-    from nucleo.turn import mouth, reply
-    from voice import trace
-    sent: list = []
-    calls: list = []
-
-    async def _notify(title, text, **k):
-        calls.append((text, k.get("key")))
-    from nucleo.pulse import notices
-    monkeypatch.setattr(notices, "notify", _notify)
-    tid = trace.begin("no puedo tocar el motor")
-    try:
-        mouth.open_for()
-        assert mouth.say("Eso no lo puedo cambiar desde aquí.", verdict="cannot", door="errand", key="k1") == "in"
-        speech = type("S", (), {"sanitize": staticmethod(lambda t, **k: t)})
-        said = mouth.close("Vale.", sent.append, speech)
-        assert sent == [" Eso no lo puedo cambiar desde aquí."] and said.endswith("desde aquí.")
-        assert not mouth.is_open()
-
-        async def _late():
-            assert mouth.say("Ya está en tu pantalla.", door="document", key="composed:1") == "out"
-            await asyncio.sleep(0)
-        asyncio.run(_late())
-        assert calls == [("Ya está en tu pantalla.", "composed:1")]
-    finally:
-        trace.adopt("")
-        reply.taken()

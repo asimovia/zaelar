@@ -124,29 +124,6 @@ def test_an_unreadable_time_is_refused_not_sent_now():
 
 # ── his order over a SEEN draft is the yes — one rule, every channel ───────────────────────────────────
 
-def test_an_explicit_send_over_a_seen_draft_is_the_confirmation(monkeypatch):
-    """The live shape: a stranger's mail sat in the context, so the leave gate asked even after he had read the
-    draft and said «send it». The row he SAW names its recipient and its text; his sure order is the yes."""
-    from nucleo import untrusted
-    from nucleo.acts import message as held_send
-    from nucleo.acts import message as leave_gate
-    from nucleo.acts import frontend
-    from widgets import actions as wa
-    monkeypatch.setattr(untrusted, "present", lambda *a, **k: True)
-    _held_email()
-    payload = {"contact": "hospitality@example.com"}
-    sure = _brief("mensajeria:send_draft", 0.91)
-    assert held_send.confirmed("mensajeria", "send_draft", payload, sure)
-    assert not leave_gate.needs_asking(sure, "mensajeria", "send_draft", payload=payload, said="send it")
-    assert leave_gate.needs_asking(_brief("mensajeria:send_draft", 0.5), "mensajeria", "send_draft",
-                                   payload=payload, said="send it"), "an unsure order still asks, once"
-    assert frontend.action_mode_now("mensajeria", "send_draft", payload) in (wa.FAST, wa.CONFIRM)
-    assert held_send.release(wa.CONFIRM, "mensajeria", "send_draft", payload, sure) == wa.FAST, \
-        "his explicit order over the draft he saw is the yes — asked once, not again"
-    assert held_send.release(wa.CONFIRM, "mensajeria", "send_draft", payload,
-                             _brief("mensajeria:send_draft", 0.5)) == wa.CONFIRM
-
-
 def test_his_yes_clears_the_class_rail_and_never_his_own_ask_rule():
     lvl = {"level": "sensitive", "policy_key": "messaging.reply"}
     import rules
@@ -155,29 +132,6 @@ def test_his_yes_clears_the_class_rail_and_never_his_own_ask_rule():
     assert not consent.asks(consent.decide(**lvl, his_yes=True))
     consent.set_class("messaging.reply", "ask")
     assert consent.asks(consent.decide(**lvl, his_yes=True))
-
-
-def test_a_draft_he_has_not_seen_or_an_unsure_order_is_not_a_yes(monkeypatch):
-    from nucleo import his_words
-    from nucleo.acts import message as held_send
-    _held_email()
-    payload = {"contact": "hospitality@example.com"}
-    assert not held_send.confirmed("mensajeria", "send_draft", payload, _brief("mensajeria:send_draft", 0.5))
-    monkeypatch.setattr(his_words, "since", lambda ts: [])        # written in this very turn: never seen
-    assert not held_send.confirmed("mensajeria", "send_draft", payload, _brief("mensajeria:send_draft", 0.95))
-
-
-def test_his_rule_for_one_channel_governs_that_channel_only():
-    """«pregúntame siempre antes de mandar un correo» — the email asks, the WhatsApp to Rowan does not."""
-    from nucleo.acts import message as held_send
-    _held_email()
-    data.apply_action("draft", {"contact": "Rowan Pike", "text": "See you at 4"})
-    consent.set_class("messaging.send_new@email", "ask")
-    email = {"contact": "hospitality@example.com"}
-    wa_msg = {"contact": "Rowan Pike"}
-    assert not held_send.confirmed("mensajeria", "send_draft", email, _brief("mensajeria:send_draft", 0.95))
-    assert held_send.confirmed("mensajeria", "send_draft", wa_msg, _brief("mensajeria:send_draft", 0.95))
-    assert consent.class_policy("messaging.send_new@whatsapp") == "allow", "falls back to the bare class"
 
 
 def test_the_same_inputs_give_every_channel_the_same_decision():
@@ -242,30 +196,6 @@ def _asked(out: dict) -> bool:
 
 def _left():
     return [(o["to"], o.get("subject")) for o in (data.load_db().get("pending_send") or [])]
-
-
-def test_a_draft_edited_after_his_order_is_another_row_and_is_asked(monkeypatch):
-    d = _worker_door(monkeypatch)
-    _quinn_draft()
-    held_send.note_his_order("mensajeria", "send_draft", _QUINN, _brief("mensajeria:send_draft", 0.95))
-    _quinn_draft("Hi Quinn, actually Friday at noon.")
-    assert _asked(d.act(_QUINN)) and d.sent == []
-
-
-def test_an_unsure_order_records_nothing(monkeypatch):
-    _quinn_draft()
-    assert not held_send.note_his_order("mensajeria", "send_draft", _QUINN, _brief("mensajeria:send_draft", 0.40))
-
-
-def test_disarmed_the_order_the_turn_recorded_does_not_reach_the_worker_and_he_is_asked_again(monkeypatch):
-    """Disarm: the worker door reads no recorded order (the state the move to the worker left, V2-852 M2) → his
-    «send it» over the draft he saw is asked a second time."""
-    d = _worker_door(monkeypatch)
-    _quinn_draft()
-    held_send.note_his_order("mensajeria", "send_draft", _QUINN, _brief("mensajeria:send_draft", 0.95))
-    from nucleo.acts import message_held
-    monkeypatch.setattr(message_held, "_HIS_ORDERS", {})
-    assert _asked(d.act(_QUINN)) and d.sent == [], "the disarm did not take"
 
 
 def test_a_pending_confirmation_has_one_surface_the_conversation():

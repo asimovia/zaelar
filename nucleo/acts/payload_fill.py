@@ -9,7 +9,6 @@ number (V2-756).
 from __future__ import annotations
 
 
-
 #: The declared marker for «this payload key may be left out». Both spellings, because the manifests
 #: are product data and carry the operator's language as well as the engine's.
 _OPTIONAL_MARKS = ("(opcional)", "(optional)")
@@ -151,59 +150,6 @@ def number_fill(widget_id: str, action: str, words: str) -> dict:
         return {}
 
 
-def _row_labels(card: str) -> list[tuple[str, str]]:
-    """`(title, price)` of every row the card shows now, in its own order (1-based index = position + 1)."""
-    try:
-        from nucleo import truth as _truth
-        view = _truth.widget_view(card) or {}
-    except Exception:  # noqa: BLE001
-        return []
-    rows = view.get("items") if isinstance(view, dict) else None
-    out = []
-    for r in rows if isinstance(rows, list) else []:
-        if isinstance(r, dict):
-            out.append((str(r.get("title") or r.get("name") or "").strip(), str(r.get("price") or "").strip()))
-    return out
-
-
-def row_named_fill(widget_id: str, action: str, card: str, model_words: str) -> dict:
-    """`{key: n}` when the MODEL's own words name exactly one row of the card, and the action's one fillable key is a
-    1-based INDEX.
-
-    Demo pass 80 (2026-10-03), S3 «open the one that's the best deal»: the model called nothing and SAID «the Samsung
-    ViewFinity S7's ficha is open … at $189.99»; the verdict completed `results:detail`, but the only words it had
-    to fill `index` with were the operator's sentence — rejected, and the screen never moved under a reply saying it
-    had. The model had already read the sheet and named the row: that is a reading, not an invention, the same rule
-    as `number_fill` (a number he SAID). A row counts as named when its PRICE appears in the words, or when at least
-    two of its distinctive title words do; two rows tied is a question, never a pick."""
-    import re as _re
-    try:
-        key = fillable_key(widget_id, action)
-        if not key or not (model_words or "").strip():
-            return {}
-        spec = str(_payload_spec(widget_id, action).get(key) or "").lower()
-        if not (any(m in spec for m in ("1-based", "1-n", "número del resultado", "numero del resultado"))
-                or _re.fullmatch(r"\d+", spec.strip())):
-            return {}
-        said = (model_words or "").lower()
-        said_toks = set(_re.findall(r"[a-z0-9]+", said))
-        scores = []
-        for title, price in _row_labels(card):
-            toks = [t for t in _re.findall(r"[a-z0-9]+", title.lower()) if len(t) > 2 and not t.isdigit()]
-            hits = sum(1 for t in dict.fromkeys(toks) if t in said_toks)
-            digits = _re.sub(r"[^0-9.]", "", price)
-            priced = bool(digits) and digits.rstrip(".") in _re.sub(r"[^0-9. ]", " ", said).split()
-            scores.append((2 if priced else 0) + hits)
-        if not scores:
-            return {}
-        best = max(scores)
-        if best < 2 or scores.count(best) != 1:
-            return {}
-        return {key: scores.index(best) + 1}
-    except Exception:  # noqa: BLE001
-        return {}
-
-
 def person_fill(widget_id: str, action: str, payload: dict, words: str) -> dict:
     """`{"contact": <name>}` when the action declares a `contact`, the call left it empty and his sentence names
     exactly ONE person of the directory; `{}` otherwise — two named, or none, is the model's to ask.
@@ -253,84 +199,6 @@ _AFTER_WORDS = frozenset("after behind below under despues detras tras debajo".s
 _BEFORE_WORDS = frozenset("before ahead above antes delante encima".split())
 #: Cardinals that are also articles («una», «un») are no row reference inside a sentence.
 _NOT_A_ROW_NUMBER = frozenset({"un", "uno", "una"})
-
-
-def _row_mentions(words: str, rows: list[dict], base: str = "", brief=None) -> list[tuple[int, int]]:
-    """`(offset, row_id)` of every row the words NAME, in the order they are named.
-
-    A row is named by a spoken position («the third», «el segundo»), a marked digit («number 3»), or a word of its
-    title that no OTHER row carries («the skills one» over one title with «Skills»). A word every row shares
-    («Maradona» over a queue of Maradona videos) names nothing. A row he named and TOOK BACK («the last… no, the second
-    to last») is not one of them: the turn's brief says which (`brief_screen.item_ref_question`), never a word table."""
-    import re as _re
-    from widgets import refs as _refs
-    norm = _refs.from_the_end(_refs._norm(words or ""))
-    toks = [(m.start(), m.group(0)) for m in _re.finditer(r"[a-z0-9ñ]+", norm)]
-    n = len(rows)
-    nums = _refs.number_words()
-    out = [(off, i + 1) for off, t in toks if (i := _refs.from_end_index(t, n)) is not None]    # «el penúltimo»
-    for off, t in toks:
-        if t in nums and t not in _NOT_A_ROW_NUMBER and 1 <= nums[t] <= n:
-            out.append((off, nums[t]))
-    for m in _re.finditer(r"(?:\b(?:number|numero|n[o]|el|la|the)\s*|#)(\d{1,2})\b", norm):
-        if 1 <= int(m.group(1)) <= n:
-            out.append((m.start(1), int(m.group(1))))
-    title_toks = [set(t for t in _refs._norm(r.get("label")).split() if len(t) > 3 and not t.isdigit()) for r in rows]
-    for i, own in enumerate(title_toks):
-        unique = own.difference(*(o for j, o in enumerate(title_toks) if j != i))
-        hits = [off for off, t in toks if t in unique]
-        if hits:
-            out.append((min(hits), i + 1))
-    first: dict[int, int] = {}
-    for off, rid in sorted(out):
-        first.setdefault(rid, off)
-    from nucleo.turn import brief as _brief
-    gone = _brief.withdrawn_rows(brief if brief is not None else _brief.of_this_turn(), base) if base else set()
-    return sorted((off, rid) for rid, off in first.items() if str(rows[rid - 1]["id"]) not in gone)
-
-
-def reorder_fill(widget_id: str, action: str, words: str, model_words: str = "", brief=None) -> dict:
-    """`{item: n, before|after: m}` when the action declares a row to move beside ANOTHER row and the words name
-    exactly two rows with the side between them; `{}` otherwise.
-
-    The video-queue use case (2026-10-11): «the third one before the second» — the verdict read `youtube:move` at
-    1.00, the model called nothing and said «Done — Most Creative is now ahead of Los Goles», and `resolve` could not
-    fill a move (two keys), so the queue kept its order under a claim. The rows he named are a reading, not an invention
-    (the `number_fill` rule); his words first, then the model's own claim, which names the same two rows."""
-    try:
-        from widgets import refs as _refs
-        spec = _payload_spec(widget_id, action)
-        field = _refs.id_field_for_action(_base_of(widget_id), action) or ""
-        if not field or field not in spec or not ({"before", "after"} & set(spec)):
-            return {}
-        rows = [r for r in _refs._ref_index(_base_of(widget_id)) if r.get("field") == field]
-        if len(rows) < 2:
-            return {}
-        for text in (words, model_words):
-            named = _row_mentions(text, rows, _base_of(widget_id), brief)
-            if len(named) != 2:
-                continue
-            (a_off, a_row), (b_off, b_row) = named
-            between = set(_refs.from_the_end(_refs._norm(text))[a_off:b_off].split())   # the offsets' own text
-            side = "after" if between & _AFTER_WORDS else ("before" if between & _BEFORE_WORDS else "")
-            if side and side in spec:
-                return {field: str(rows[a_row - 1]["id"]), side: str(rows[b_row - 1]["id"])}
-        return {}
-    except Exception:  # noqa: BLE001
-        return {}
-
-
-def choice_or_order_fill(widget_id: str, action: str, words: str, model_words: str = "", brief=None) -> tuple[dict, str]:
-    """`(payload, source)` for an action no single query key fills: a declared CHOICE he named (`enum-alias`), else
-    two rows he put in order (`said-order`); `({}, "")` when neither."""
-    if (filled := enum_fill(widget_id, action, words)):
-        return filled, "enum-alias"
-    if (filled := reorder_fill(widget_id, action, words, model_words, brief)):
-        return filled, "said-order"
-    from nucleo.flash import move_fill as _mf     # «the one playing, first» / a slot answering the card's question
-    if (filled := _mf.move_fill(widget_id, action, words, model_words)):
-        return filled, "said-move"
-    return {}, ""
 
 
 def named_row(widget_id: str, action: str, words: str) -> dict:

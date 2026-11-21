@@ -228,17 +228,6 @@ def orphan(sheet: str, why: str, *, emit=None) -> None:
     _emit("orphan", violation=True, text=f"{sheet} · {why}", emit=emit, sheet=sheet, why=why)
 
 
-def turn_discarded(trace: str = "") -> None:
-    """The turn was discarded unanswered. What it already launched is reported now; what it launches later, then."""
-    t = str(trace or _trace())
-    if not t:
-        return
-    from nucleo import turn_marks
-    turn_marks.discarded(t)          # the behaviour reads it there (V2-844 F2); this module only measures
-    for _at, what, wid in _LAUNCHED.pop(t, []):
-        _emit("discarded_launch", violation=True, text=f"{what} {wid}", trace=t, what=what, id=wid, order="before")
-
-
 def joined(trace: str) -> str:
     from nucleo import turn_marks
     return turn_marks.cut_of(trace)[0]

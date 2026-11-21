@@ -1,4 +1,3 @@
-from tests import voice_turn_source as _vts
 #
 # test_attention.py — attention gate (V2-015 · T134/T135/T136; content V2-??? 2026-08-16).
 #
@@ -385,35 +384,6 @@ def test_session_701fcc1b_the_agent_never_goes_deaf_mid_conversation():
         v = _run(attention.evaluate_content(phrase, now=t0 + dt))
         assert v.directed, f"REAL turn from the session dropped again: «{phrase[:60]}»"
         attention.note_directed(now=t0 + dt)    # the caller's side of the contract when it handles the turn
-
-
-def test_the_close_backstop_is_wired_to_the_fullscreen_veto():
-    """WIRING guard (V2-600): the veto lives once (`mentions_fullscreen`) and the voice turn's generic close
-    backstop must consult it, or the next «cierra la pantalla completa» complaint closes the widget again (the
-    V2-252 drift, measured here on 2026-09-05). The typed channel runs this same turn
-    (`nucleo.cli.turn.run_turn`), so this one backstop covers both. Anchored on the backstop's own conditional
-    (the close test + `looks_like_create_widget` in one statement), never on the whole file; comments are
-    stripped first so a comment naming the helper cannot stand in for the call (the V2-573 trap).
-
-    V2-752 — the voice provider asks `canvas_license.close_license(text, brief=…)`, so the turn's own canvas
-    verdict can refuse a close the grammar proposed — it closed his card three times in session fce3eff3,
-    twice while he was complaining about the first one. The anchor still accepts the bare `looks_like_close`
-    spelling too."""
-    import pathlib
-    import re
-
-    root = pathlib.Path(__file__).resolve().parents[3]
-    files = [root / "voice" / "engine" / "llm" / "providers" / "nucleo.py"]
-    for path in files:
-        src = "\n".join(line.split("#", 1)[0] for line in _vts.read(path).splitlines())
-        spans = [m.start() for m in re.finditer(r"(?:looks_like_close|close_ordered)\(text[,)]", src)
-                 if "looks_like_create_widget" in src[m.start():m.start() + 400]]
-        assert spans, f"the close backstop's conditional was not found in {path.name} — re-anchor this guard"
-        for s in spans:
-            window = src[s:s + 500]
-            assert "mentions_fullscreen" in window, (
-                f"{path.name}: the close backstop lost its fullscreen veto — a turn mentioning «pantalla "
-                f"completa» would close the whole widget again (measured 2026-09-05, session 3050e623)")
 
 
 # ── the window measures REAL silence, and only a directed turn can open it (2026-09-09, session 49e13093) ──
