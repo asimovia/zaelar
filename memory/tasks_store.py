@@ -225,7 +225,8 @@ def tasks_prune(max_age_days: float = 30.0, now: float | None = None) -> int:
 
 
 # ── the queue (INI-078): rows with an `owner`, written only by `nucleo/queue` ─────────────────────────────
-#: the counter of task numbers in `sys_kv`: the next `num` an install gives, never one it gave before
+#: the counter of task numbers in `sys_kv`: the next `num` an install gives, never one it gave before — a factory reset
+#: that clears `sys_kv` (and the tasks with it) starts again at 1
 NEXT_NUM = "tasks.next_num"
 
 

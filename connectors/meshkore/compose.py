@@ -92,4 +92,4 @@ async def turn(text: str, *, tool_names=None, escalate_ctx=None) -> str:
     """The bridge's brain: the peer's turn as an event of the conversation manager when it is on, else here."""
     from nucleo.conversation_host import events_in
     return await events_in.run_as_event(
-        ORIGIN, text[:2000], lambda: respond(text, tool_names=tool_names, escalate_ctx=escalate_ctx))
+        ORIGIN, text, lambda: respond(text, tool_names=tool_names, escalate_ctx=escalate_ctx))

@@ -9,12 +9,12 @@
 export const KEY = "hb_wall_lines";
 export const OLD_KEY = "hb_chat_log";
 export const CAP = 100;
-const MAX_TEXT = 4000, MAX_BYTES = 256000;
+const MAX_BYTES = 256000;               // what one browser keeps: past it the OLDEST lines go, never part of one
 const NOTES = new Set(["sys", "record", "peer"]);
 
 /** One row of the old wall → a final line of the component, owned as the old path owned it. */
 export function fromOldRow(m, i) {
-  const text = String(m.text || "").slice(0, MAX_TEXT), base = { id: `old_${i}`, state: "final", text, at: Number(m.at) || 0 };
+  const text = String(m.text || ""), base = { id: `old_${i}`, state: "final", text, at: Number(m.at) || 0 };
   const data = { ...m, text };
   if (m.role === "you") return { ...base, owner: "legacy:you", role: "you", ...(Array.isArray(m.att) && m.att.length ? { kind: "att", data } : {}) };
   if (m.role === "agent") return { ...base, owner: "legacy:agent", role: "agent", data: { trace: m.trace || "" } };
@@ -40,7 +40,7 @@ export function createWallStorage(ls = (typeof localStorage !== "undefined" ? lo
     try {
       if (!ls) return;
       if (!lines.length) { ls.removeItem(KEY); return; }
-      let xs = lines.slice(-cap).map((l) => (l.text && l.text.length > MAX_TEXT ? { ...l, text: l.text.slice(0, MAX_TEXT) } : l));
+      let xs = lines.slice(-cap);
       let body = JSON.stringify({ v: 2, at: Date.now(), lines: xs });
       while (body.length > MAX_BYTES && xs.length > 1) {       // over the budget: the oldest go, as the cap trims
         xs = xs.slice(Math.ceil(xs.length / 4));

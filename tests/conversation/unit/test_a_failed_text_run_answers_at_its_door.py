@@ -101,6 +101,17 @@ def test_a_typed_run_the_provider_fails_answers_its_door_with_the_line(store, do
     assert w["future"].result() == "recovered" and at_close == [LOST]
 
 
+
+def test_a_huge_paste_the_providers_refuse_ends_in_his_line_never_in_silence(store, door):
+    """No limit cuts his line (operator), so a paste of 100 000 characters reaches the model whole — and when the
+    provider refuses it for its size, and so does the stand-in, the run fails with the line in place: never silence."""
+    w, at_close = door
+    h = _h(store)
+    h.model.default = lambda ids: [Failed("context_length_exceeded: the prompt is too long", "provider")]
+    h.typed("w " * 50_000, 0, cid="c1")
+    h.settle(2000)
+    assert w["future"].result() == "recovered" and at_close == [LOST]
+
 class _Titular:
     """A provider that holds its stream and sends nothing (`hang`), unless asked for the stand-in."""
 

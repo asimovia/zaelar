@@ -1,7 +1,7 @@
 // chat-wall/chat-wall.js — the chat wall as a component of its own (INI-042 #49). It imports nothing from outside
 // this folder (M10): no store, no engine events, no strings, no widget. It mounts on a blank page and works.
 //
-//   createChatWall({ mount, labels, renderers, storage, cap, keyboard, input, maxText, format, classes })
+//   createChatWall({ mount, labels, renderers, storage, cap, keyboard, input, format, classes })
 //     → { writer(owner), lines(), counts(), on(notice, fn), submit(text, extra), clear(), destroy() }
 //   writer(owner) → { apply(op) }        op: { op: "append" | "update" | "replace" | "delete", id, … }
 //
@@ -15,8 +15,8 @@
 // (`renderers`), where final lines are kept across a reload (`storage`: { load() → lines, save(lines) }), how a line's
 // body is drawn and which classes it wears (`format`, `classes`: the host's look; plain text and its own classes
 // otherwise). `input: false`: the host keeps its own composer — `mount` is then the list itself, and the host's
-// composer sends through `submit(text, extra)`, the same door the wall's own box uses. A line is cut at `maxText`
-// before it is written, so the host's acknowledgement of it (cut the same way) is the same line.
+// composer sends through `submit(text, extra)`, the same door the wall's own box uses. A line is written WHOLE: no
+// length cuts what he typed, here or at the engine's doors.
 import { createModel, keepable } from "./model.js";
 import { createView } from "./view.js";
 
@@ -24,7 +24,7 @@ let _seq = 0;
 const newId = (prefix) => `${prefix}_${Date.now().toString(36)}${(++_seq).toString(36)}`;
 
 export function createChatWall({ mount, labels = {}, renderers = {}, storage = null, cap = 200,
-                                 keyboard = "keyboard", input = true, maxText = 4000, format = null,
+                                 keyboard = "keyboard", input = true, format = null,
                                  classes = null } = {}) {
   if (!mount) throw new Error("createChatWall needs a mount element");
   const listeners = { submit: new Set(), action: new Set(), rejected: new Set() };
@@ -72,7 +72,7 @@ export function createChatWall({ mount, labels = {}, renderers = {}, storage = n
   const keys = model.writer(keyboard);
   /** His line, written by the keyboard's writer and told (`submit`): its id is the wall's, for the host to send. */
   function write(text, extra = {}) {
-    const t = String(text || "").trim().slice(0, maxText);
+    const t = String(text || "").trim();
     if (!t && !extra.data) return null;
     const id = newId("c");
     keys.apply({ op: "append", id, role: "you", state: "final", text: t, at: Date.now(),

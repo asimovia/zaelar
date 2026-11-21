@@ -7,7 +7,7 @@
 //   · his line in course is ONE line: live from his first partial, final in place when the gate releases it, gone when
 //     the gate rules the room — and a line of his from another door (a probe's text) never takes it over;
 //   · a notice is one line per notice id: a retry of the same notice paints nothing new;
-//   · a line is cut at the engine's own 4000 characters, so its acknowledgement is the same line;
+//   · a line is painted whole: no length cuts what he typed (10 000 characters stay 10 000);
 //   · the reset clears the wall and the old path's state;
 //   · the old wall's history (`hb_chat_log`) is moved ONCE into the wall's storage, at the old cap, and its key removed.
 //
@@ -17,7 +17,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const { wall, cleanDevice, MAX_TEXT } = await import(pathToFileURL(path.join(here, "../chat/wallkit.mjs")).href);
+const { wall, cleanDevice } = await import(pathToFileURL(path.join(here, "../chat/wallkit.mjs")).href);
 const storage = await import(pathToFileURL(path.join(here, "../../../../frontend/app/services/wall-storage.js")).href);
 
 const ME = "desktop:ab12cd";
@@ -80,10 +80,10 @@ await ok("a notice is one line per notice id", async () => {
   assert.deepEqual(w.said().map((l) => l.text), ["🔔 w1", "w2"]);
 });
 
-await ok("a line is cut where the engine cuts it", async () => {
+await ok("a line is painted whole, however long", async () => {
   const w = await wall();
-  w.legacy.ackTyped("x".repeat(MAX_TEXT + 50), "c_2", "phone:ff00", ME, cleanDevice);
-  assert.equal(w.lines()[0].text.length, MAX_TEXT);
+  w.legacy.ackTyped("x".repeat(10_000), "c_2", "phone:ff00", ME, cleanDevice);
+  assert.equal(w.lines()[0].text.length, 10_000);
 });
 
 await ok("the reset clears the wall and what the old path owed", async () => {

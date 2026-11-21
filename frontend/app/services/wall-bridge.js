@@ -9,7 +9,7 @@
 // Every action the wall refuses is reported (`report`: the host's debug stream), with the wall's counts.
 // Nothing else imports the component (a static test holds it).
 import { createChatWall } from "../../chat-wall/chat-wall.js";
-import { legacy, MAX_TEXT } from "./wall-legacy.js?v=1";   // the page's one instance: every importer names ?v=1
+import { legacy } from "./wall-legacy.js?v=1";   // the page's one instance: every importer names ?v=1
 import { clientLog } from "./api.js?v=2";
 
 /** A refused action, on the session's debug stream (`/debug`), with the wall's counts (`final_grows`, …). */
@@ -23,7 +23,7 @@ const early = [];                       // the manager's actions that arrived be
 export function createWallBridge({ mount, device, labels = {}, renderers = {}, storage = null, send = () => {},
                                    cap = 200, input = true, format = null, classes = null, now = () => Date.now(),
                                    report = refused }) {
-  const wall = createChatWall({ mount, labels, renderers, storage, cap, input, format, classes, maxText: MAX_TEXT,
+  const wall = createChatWall({ mount, labels, renderers, storage, cap, input, format, classes,
                                 keyboard: `keyboard:${device}` });
   const writers = new Map();
   const writer = (owner) => writers.get(owner) || writers.set(owner, wall.writer(owner)).get(owner);

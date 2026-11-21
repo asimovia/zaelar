@@ -34,4 +34,4 @@ export async function wall({ now } = {}) {
 }
 
 export const { shown } = modelMod;
-export const { createLegacyWall, cleanDevice, MAX_TEXT, IDLE_GRACE_MS } = legacyMod;
+export const { createLegacyWall, cleanDevice, IDLE_GRACE_MS } = legacyMod;

@@ -28,7 +28,7 @@ WAITING_PREFIX = "event:"
 
 def event(topic: str, *, key: str = "", text: str = "", **fields) -> dict:
     """An event as a request with its origin. `key` is what a waiting task may name (a job id, a thread)."""
-    return {"origin": str(topic), "key": str(key or ""), "text": str(text or "")[:2000],
+    return {"origin": str(topic), "key": str(key or ""), "text": str(text or ""),   # whole: it is data, never cut
             "fields": {k: v for k, v in fields.items() if v not in (None, "")}, "at": time.time()}
 
 

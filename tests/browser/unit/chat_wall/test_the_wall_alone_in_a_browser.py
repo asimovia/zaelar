@@ -105,6 +105,18 @@ def test_its_four_actions_and_three_notices_work_alone(page):
     assert pg.evaluate("() => __seen.rejected.map(r => r.reason)") == ["not_owner"]
 
 
+
+def test_ten_thousand_characters_typed_in_the_wall_are_sent_and_shown_whole(page):
+    """No length cuts what he typed (operator: no limits that make errors): the box sends it whole and paints it
+    whole. Disarm: a `.slice(0, 4000)` in the wall's write → red."""
+    pg = page
+    big = "".join(f"{i % 10}" for i in range(10_000))
+    pg.fill(".cw-input", big)
+    pg.press(".cw-input", "Enter")
+    until_sync(lambda: pg.evaluate("() => __seen.submit.length") >= 1, "the submit notice")
+    assert len(pg.evaluate("() => __seen.submit.at(-1).text")) == 10_000
+    assert pg.evaluate(READ)[-1] == "H: " + big
+
 def test_a_foreign_writer_changes_nothing(page):
     pg = page
     pg.evaluate("""() => { __w.ear.apply({ op: 'append', id: 'iv_1', role: 'you', state: 'live', text: 'w1' });

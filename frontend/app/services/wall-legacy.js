@@ -12,7 +12,6 @@ const norm = (s) => String(s || "").replace(MARKERS, "").trim();
 const lead = (s) => { const x = String(s || ""); return x.length - x.replace(MARKERS, "").trimStart().length; };
 /** A screen's name as the engine cleans it (`voice/screens.clean`): the keyboard's writer is `keyboard:<this>`. */
 export const cleanDevice = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9:_-]/g, "").slice(0, 40);
-export const MAX_TEXT = 4000;            // the engine's own cut of a typed line (`entry.typed`): one door, one length
 const QUEUED_MAX = 400;                  // actions kept while no wall is attached (a page still mounting)
 const MUTED_MAX = 16;
 const EARLY_CAPTION_MS = 30000;
@@ -67,7 +66,7 @@ export function createLegacyWall({ now = () => Date.now(), setTimer = setTimeout
   // ── his line in course (the old path's caption, then his line) ──────────────────────────────────────────────
   let his = null;
   function setLiveChat(text) {
-    const t = String(text || "").slice(0, MAX_TEXT);
+    const t = String(text || "");
     if (!t) return clearLiveChat();
     if (his && lines.has(his)) return void edit(his, { text: t });
     his = add("legacy:you", { id: id("h"), role: "you", state: "live", text: t, at: now() });
@@ -79,7 +78,7 @@ export function createLegacyWall({ now = () => Date.now(), setTimer = setTimeout
   }
   /** The gate released his words: the line he was saying becomes final with them, where it started. */
   function youSaid(text, at) {
-    const t = String(text || "").slice(0, MAX_TEXT);
+    const t = String(text || "");
     if (his && lines.has(his)) { const h = his; his = null; return void edit(h, { text: t, state: "final", at }); }
     add("legacy:you", { id: id("y"), role: "you", state: "final", text: t, at });
   }
@@ -88,7 +87,7 @@ export function createLegacyWall({ now = () => Date.now(), setTimer = setTimeout
   const NOTE_ROLES = new Set(["sys", "record", "peer"]);
   function pushChat(m) {
     if (!m || !m.role) return;
-    if (m.role === "you") return void add("legacy:you", { id: id("y"), role: "you", state: "final", text: String(m.text || "").slice(0, MAX_TEXT), at: m.at || now() });
+    if (m.role === "you") return void add("legacy:you", { id: id("y"), role: "you", state: "final", text: String(m.text || ""), at: m.at || now() });
     if (m.role === "a2a") return void add("legacy:a2a", { id: id("a2a"), role: "box", kind: "a2a", data: m, text: String(m.text || ""), at: now() });
     if (m.role === "agent") return void pushAgentChat(m.text, m);
     if (NOTE_ROLES.has(m.role)) add("legacy:note", { id: id("n"), role: "note", kind: m.role, data: m, text: String(m.text || ""), at: now() });
@@ -113,7 +112,7 @@ export function createLegacyWall({ now = () => Date.now(), setTimer = setTimeout
    *  screen that typed it, an acknowledgement; on every other, the same line. With no id (an engine before it), a line
    *  from another screen is written as his; this screen's own already is. */
   function ackTyped(text, cid, dev, me, clean = (s) => s) {
-    const t = String(text || "").slice(0, MAX_TEXT);
+    const t = String(text || "");
     if (cid) return void act(`keyboard:${clean(dev || me)}`, { op: "append", id: cid, role: "you", state: "final", text: t, at: now() });
     if (dev && clean(dev) !== clean(me)) add("legacy:you", { id: id("y"), role: "you", state: "final", text: t, at: now() });
   }
