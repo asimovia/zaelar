@@ -49,7 +49,7 @@ def _run(calls):
     async def notify(title, text):
         pass
     uid = runner.create("msg", STEPS, origin="chat")
-    return uid, asyncio.run(runner.run(uid, turn=turn, ingest=ingest, notify=notify, worker_wait_s=0.1))
+    return uid, asyncio.run(runner.run(uid, turn=turn, notify=notify, worker_wait_s=0.1))
 
 
 def _shaper(monkeypatch, plan_for):
@@ -90,6 +90,6 @@ def test_a_rule_row_that_names_a_card_gets_that_scope(monkeypatch):
 
     async def notify(title, text):
         pass
-    asyncio.run(runner.run(uid, turn=turn, ingest=ingest, notify=notify, worker_wait_s=0.1))
+    asyncio.run(runner.run(uid, turn=turn, notify=notify, worker_wait_s=0.1))
     import rules.notes as _rnotes
     assert _rnotes.for_surface("widget:agenda") == ["From now on, in the calendar, meetings are always 30 minutes."]

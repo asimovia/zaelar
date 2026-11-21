@@ -9,9 +9,9 @@ Each step is HIS request to the conversation manager, through the same door as a
 step sits well inside the per-turn limits the unsplit message collided with. The steps are lines of his one
 conversation, so step 9 («Anna vacation») is read with steps 1-8 behind it.
 
-Memory is written by THIS module, awaited, step by step — not fire-and-forget like a live turn. The distiller
-serialises its calls and falls back to a lossy heuristic when more than two are waiting
-(`mem_processor._QUEUE_MAX`); eighteen steps three seconds apart would have landed exactly there.
+Memory has ONE writer: the conversation manager files his words of each answered step through the memory agent, which
+takes them one at a time, in order (`memory_agent.ingest_utterance`, its lock) — so the distiller is never asked for
+eighteen steps at once and never falls back to its lossy heuristic (`mem_processor._QUEUE_MAX`).
 
 A step that hands work to a Brain Worker does not block the list: the worker takes its seat in the pool
 (two at a time since V2-771, FIFO behind that) and the list moves on. The list's report waits for those
@@ -228,14 +228,15 @@ async def by_the_manager(text: str, *, sid: str = "", **_kw) -> dict:
     from nucleo.conversation_host import entry, switch
     if not switch.on():
         return {"ok": False, "error": switch.decide().why or "the conversation cannot answer now"}
-    return await entry.typed_and_wait(text, dev=f"list:{sid}")
+    from nucleo.conversation_host.wall import OFF_WALL
+    return await entry.typed_and_wait(text, dev=f"{OFF_WALL}{sid}")
 
 
 async def _turn(turn, text: str, sid: str, step: str = "") -> dict:
     from nucleo.request import model as _rq
     tok = _rq.under(step)            # V2-776 M3 — the step's ops are rows hanging from the step
     try:
-        return await turn(text, sid=sid, ingest=False, execute=True, lists=False)
+        return await turn(text, sid=sid, execute=True, lists=False)
     except Exception as e:  # noqa: BLE001 — one broken step never takes the list down
         return {"ok": False, "error": f"{type(e).__name__}: {e}"}
     finally:
@@ -265,7 +266,7 @@ def _live_workers() -> dict[str, str]:
 _SETTLE_S = 1.5
 
 
-async def _run_step(uid: str, row: dict, turn, ingest, *, sid: str = "", remember: bool = True) -> None:
+async def _run_step(uid: str, row: dict, turn, *, sid: str = "") -> None:
     ts, step_t0 = _store(), time.time()
     ts.task_patch(row["id"], state="running", started_at=int(step_t0))
     _emit("📋 lista: paso", text=row["goal"], step=row["id"])
@@ -285,22 +286,16 @@ async def _run_step(uid: str, row: dict, turn, ingest, *, sid: str = "", remembe
     started = sorted(after[k] for k in set(after) - set(before))
     if started and isinstance(r, dict) and not (r.get("task_ids") or r.get("task_id")):
         r = {**r, "task_ids": started}
-    # Memory, awaited — see the module note. A step that failed still said something true about him. Written
-    # BEFORE the action check because, for a REMINDER, remembering is the action: «Remember these future
-    # responsibilities even when they are not on the calendar» was stored whole (four renewals) and the step
-    # was still failed «no action taken», and the report told him «I couldn't do: Personal reminders» (his demo
-    # run, 2026-09-26). An agenda or message step still needs its call; memory never stands in for those.
-    wrote = 0
-    try:
-        got = await ingest(row["goal"]) if remember else None
-        wrote = int((got or {}).get("atoms") or 0) if isinstance(got, dict) else 0
-    except Exception as e:  # noqa: BLE001
-        logger.warning(f"lista {uid}: memory ingest failed on {row['id']}: {e!r}")
+    # Memory: the conversation manager files his words of an answered step, through the memory's one writer, one at a
+    # time and in order (`record._ingest` → `memory_agent.ingest_utterance`, its lock) — the list files nothing of its
+    # own. For a REMINDER, remembering is the action: «Remember these future responsibilities even when they are not
+    # on the calendar» was stored whole and the step still failed «no action taken» (his demo run, 2026-09-26). An
+    # agenda or message step still needs its call; memory never stands in for those.
     kind = str(row.get("kind") or "")
     judged = r                                   # the turn the verdict is about (a synthetic failure replaces `r`)
     # …but a TIMED ALERT («remind me Friday at 9 to call the vet») is an alarm, and memory is not an alarm: a step
     # that asked for one and only got remembered would be reported done with nothing set to ring (V2-773 audit).
-    kept = kind == "reminder" and wrote and not _alert_order(row["goal"])
+    kept = kind == "reminder" and outcome_of(r)[0] == "done" and not _alert_order(row["goal"])
     if kind in ACTION_KINDS and outcome_of(r)[0] == "done" and not acted(r) and not kept:
         # ONE retry, in a fresh session: the list's own window now holds the claim («Adding it now»), and a
         # model that reads its own claim answers «already done». Still nothing → failed, and the report says so.
@@ -337,7 +332,7 @@ async def _run_step(uid: str, row: dict, turn, ingest, *, sid: str = "", remembe
         _settle(row=row["id"], state=state, outcome=said, extra=fields)
     else:
         ts.task_patch(row["id"], state="running" if state == "waiting" else "waiting", outcome=said, **fields)
-    _emit(f"📋 lista: paso {state}", text=note, step=row["id"], kind=kind, report=report_of(judged), memory_atoms=wrote)
+    _emit(f"📋 lista: paso {state}", text=note, step=row["id"], kind=kind, report=report_of(judged))
 
 
 def _worker_state(tid: str) -> str:
@@ -387,7 +382,7 @@ async def _wait_workers(uid: str, *, wait_s: float = WORKER_WAIT_S, poll_s: floa
         await asyncio.sleep(poll_s)
 
 
-async def _ask_again(uid: str, turn, ingest) -> None:
+async def _ask_again(uid: str, turn) -> None:
     """A step that asked him something is run ONCE more at the end, in a fresh session, before the list reports.
 
     Manual session 7850de3f (2026-09-30): the INIT's step 1 («Your name is Johnny…») asked «what's your name?», and
@@ -397,8 +392,7 @@ async def _ask_again(uid: str, turn, ingest) -> None:
     for row in steps_of(uid):
         if row.get("state") == "waiting" and str(row.get("outcome") or "").startswith("[needs_you]"):
             _emit("📋 lista: el paso que preguntaba se repite al final", text=row["goal"][:200], step=row["id"])
-            await _run_step(uid, {**row, "state": "pending"}, turn, ingest, sid=f"{uid}:again:{row['id'][-2:]}",
-                            remember=False)
+            await _run_step(uid, {**row, "state": "pending"}, turn, sid=f"{uid}:again:{row['id'][-2:]}")
 
 
 def summary(uid: str) -> dict:
@@ -428,16 +422,11 @@ def report_text(uid: str) -> str:
     return " ".join(parts)
 
 
-async def run(uid: str, *, turn=None, ingest=None, notify=None, worker_wait_s: float = WORKER_WAIT_S) -> dict:
+async def run(uid: str, *, turn=None, notify=None, worker_wait_s: float = WORKER_WAIT_S) -> dict:
     """Run every pending step of a list in order, wait for its workers, close it and report. Idempotent over a
     restart: steps already done are skipped."""
     if turn is None:
         turn = by_the_manager
-    if ingest is None:
-        from nucleo.memory_agent import ingest_utterance
-
-        async def ingest(text):
-            return await ingest_utterance(text, role="operator")
     if notify is None:
         from nucleo.pulse import notices                 # the list's report is a line of ITS row (V2-851 F2)
 
@@ -453,10 +442,10 @@ async def run(uid: str, *, turn=None, ingest=None, notify=None, worker_wait_s: f
             _emit("📋 lista: empieza", text=uid)
             for row in steps_of(uid):
                 if row.get("state") == "pending":
-                    await _run_step(uid, row, turn, ingest)
+                    await _run_step(uid, row, turn)
                     s = summary(uid)
                     ts.task_patch(uid, outcome=f"{len(s['done'])}/{s['n']}")
-            await _ask_again(uid, turn, ingest)
+            await _ask_again(uid, turn)
         await _wait_workers(uid, wait_s=worker_wait_s)
         s = summary(uid)
         text = report_text(uid)

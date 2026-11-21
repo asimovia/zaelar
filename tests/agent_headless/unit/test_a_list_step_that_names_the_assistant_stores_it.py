@@ -56,7 +56,7 @@ def _run(steps, *, name="Bruno", verdict="rename"):
     async def notify(title, text):
         pass
     uid = runner.create("msg", steps, origin="chat")
-    asyncio.run(runner.run(uid, turn=turn, ingest=ingest, notify=notify, worker_wait_s=0.1))
+    asyncio.run(runner.run(uid, turn=turn, notify=notify, worker_wait_s=0.1))
     return runner.summary(uid)
 
 

@@ -46,7 +46,7 @@ def _run(monkeypatch, answer, *, on=True):
         told.append(text)
     monkeypatch.setattr(entry, "typed_and_wait", typed_and_wait)
     uid = runner.create("msg", STEPS, origin="chat")
-    asyncio.run(runner.run(uid, ingest=ingest, notify=notify, worker_wait_s=0.1))
+    asyncio.run(runner.run(uid, notify=notify, worker_wait_s=0.1))
     return uid, seen, told
 
 
@@ -87,3 +87,44 @@ def test_the_typed_door_reports_the_acts_of_its_run_and_what_they_answered():
         assert entry._waits[cid]["acts"] == [{"name": "agenda_add", "status": "ok"}]
     finally:
         entry._waits.pop(cid, None)
+
+
+def test_his_words_are_filed_one_at_a_time_and_in_order(monkeypatch):
+    """The list files nothing of its own: the manager files his words of each answered step through the memory's one
+    writer, which takes them ONE AT A TIME and IN ORDER — the distiller is never asked for a list's steps at once."""
+    from nucleo import memory_agent
+    from nucleo.memory_agent import ingest as _ingest
+    log, inside = [], {"n": 0, "max": 0}
+
+    async def locked(text, *, role="operator"):
+        inside["n"] += 1
+        inside["max"] = max(inside["max"], inside["n"])
+        log.append(text)
+        await asyncio.sleep(0.01)
+        inside["n"] -= 1
+        return {"atoms": 1}
+    monkeypatch.setattr(_ingest, "_ingest_utterance_locked", locked)
+    monkeypatch.setattr(_ingest, "_HOME_LOOP", None)
+
+    async def go():
+        await asyncio.gather(*(memory_agent.ingest_utterance(f"w_step {i}") for i in range(5)))
+    asyncio.run(go())
+    assert log == [f"w_step {i}" for i in range(5)] and inside["max"] == 1
+
+
+def test_a_list_steps_line_and_our_answer_never_reach_the_wall(monkeypatch):
+    """Only the list's report is said: a step's line and the manager's answer to it run and are recorded in their
+    flow, and the wall paints neither — a line he typed himself still lands there."""
+    from types import SimpleNamespace
+
+    from nucleo.conversation_host import wall
+    from voice import observer
+    painted = []
+    monkeypatch.setattr(observer, "emit", lambda kind, label, **kw: painted.append(kw.get("extra", {}).get("writer"))
+                        if kind == "wall" else None)
+    wall._accepted("user.text", "iv_list1", f"{wall.OFF_WALL}u1", "w_put the dentist on friday")
+    wall.ours(SimpleNamespace(endpoint=f"{wall.OFF_WALL}u1", request_id="r_iv_list1", run_id="run1", say_id="s1",
+                              text="w_done"), "shown")
+    assert painted == []
+    wall._accepted("user.text", "iv_his", "desktop:d1", "w_hello")
+    assert painted == ["keyboard:desktop:d1"]

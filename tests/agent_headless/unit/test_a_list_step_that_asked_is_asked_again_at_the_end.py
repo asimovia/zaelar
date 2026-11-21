@@ -48,7 +48,7 @@ def _run(answers):
     async def notify(title, text):
         told.append(text)
     uid = runner.create("msg", STEPS, origin="chat")
-    asyncio.run(runner.run(uid, turn=turn, ingest=ingest, notify=notify, worker_wait_s=0.1))
+    asyncio.run(runner.run(uid, turn=turn, notify=notify, worker_wait_s=0.1))
     return uid, calls, told, ingested
 
 
@@ -59,7 +59,7 @@ def test_the_question_a_later_step_answered_is_not_left_to_him():
     assert [c[0] for c in calls] == ["Your name is Johnny.", "Remember: my name is Richard.", "Your name is Johnny."]
     s = runner.summary(uid)
     assert len(s["done"]) == 2 and not s["needs_you"], s
-    assert ingested.count("Your name is Johnny.") == 1, "the re-run does not store the same words twice"
+    assert ingested == [], "the list files nothing of its own: the conversation manager files his words"
 
 
 def test_a_question_nothing_answered_still_reaches_him_once():

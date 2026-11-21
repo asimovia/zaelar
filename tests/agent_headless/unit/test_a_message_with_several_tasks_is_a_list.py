@@ -125,7 +125,7 @@ def _run(uid, *, workers=None, calls=None, ingested=None, notes=None):
 
     async def notify(title, text):
         notes.append(text)
-    return asyncio.run(runner.run(uid, turn=turn, ingest=ingest, notify=notify, worker_wait_s=0.2))
+    return asyncio.run(runner.run(uid, turn=turn, notify=notify, worker_wait_s=0.2))
 
 
 def test_the_step_outcome_is_read_from_the_turn_itself():

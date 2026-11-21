@@ -21,6 +21,9 @@ from __future__ import annotations
 
 import threading
 
+#: a device whose lines are not his conversation on the wall (a step of his list, `batch/runner`): its line and our answer
+#: to it run and are recorded like any other, followed in their flow — only the list's report is said
+OFF_WALL = "list:"
 CID_MAX = 48
 CID_CHARS = frozenset("abcdefghijklmnopqrstuvwxyz0123456789_-")
 KEPT = 512
@@ -125,6 +128,8 @@ def listen(kind: str, label: str, p: dict) -> None:
 
 
 def _accepted(kind, iv: str, device: str, text: str) -> None:
+    if device.startswith(OFF_WALL):
+        return
     if kind == "user.text":
         with _lock:
             cid = _cid_of.pop(iv, "") or iv
@@ -149,6 +154,8 @@ def _accepted(kind, iv: str, device: str, text: str) -> None:
 
 def ours(order, event: str, heard_chars: int | None = None) -> None:
     """Our line (`WallMouth`): `shown` (final at once), `started` (live), `ended` (final, with what sounded)."""
+    if str(getattr(order, "endpoint", "") or "").startswith(OFF_WALL):
+        return                                  # an answer to a step of his list: in its flow, never on the wall
     from nucleo.conversation_host import turns
     iv = turns.iv_of(str(order.request_id or ""))
     with _lock:                                 # every line of his it answers, by its id on the wall (W2-1)
