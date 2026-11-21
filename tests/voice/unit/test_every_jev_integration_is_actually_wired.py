@@ -82,7 +82,7 @@ def test_the_canvas_verb_reaches_the_transport(wire):
 
 
 def test_the_action_repair_reaches_the_transport(wire):
-    from nucleo.flash import frontend as fe
+    from nucleo.acts import frontend as fe
     fe.repair_action("agenda", "una_accion_inventada", "borra la cita del dentista")
     assert len(wire.calls) == 1, "the action repair never asked Jev anything"
     assert wire.calls[0]["key"] == "widget_action"
@@ -98,7 +98,7 @@ def test_the_live_integrations_are_exactly_these_two(wire):
     transport, and one that starts reaching it without being declared. Either is a §3.1 in the
     making — the first failure mode took a whole implementation to notice.
     """
-    from nucleo.flash import frontend as fe
+    from nucleo.acts import frontend as fe
     from nucleo.turn import brief as tb
     fired = []
     for name, fn in (("canvas", lambda: _settle(tb.ask("abre mis mensajes"))),

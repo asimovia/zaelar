@@ -62,7 +62,7 @@ def _issue(op: str, wid: str, fields: dict) -> int:
 
 def resolve(wid_arg: str, text: str, window, last_action, guard_target) -> tuple:
     """Which card a show means — the model's id, the guard's target or what his words name."""
-    from nucleo.flash import show_target
+    from nucleo.acts import show_target
     return show_target.resolve_show(wid_arg, text, window, last_action, guard_target)
 
 
@@ -76,7 +76,8 @@ def close_ordered(text: str, *, brief=None, called: bool = False, handle=None) -
       · his answer to OUR «which one should I close?» carries that question's licence («Las dos.»);
       · when the model `called` a close, a sure `canvas=close` read from `handle` (the brief) forgives a grammar miss.
     `source` is grammar | verdict | answer | jev | none, so the trail says which reader moved."""
-    from nucleo.flash import canvas_license as _lic, close_answer as _ca, close_guards as _cg
+    from nucleo.flash import close_answer as _ca, close_guards as _cg
+    from nucleo.acts import show_license as _lic
     his = _lic._his_words(text)
     if _cg.looks_like_close(his) or _cg.whole_canvas_close(his):   # ONE licence, both readers (node 2.925)
         return (False, "verdict") if brief is not None and _denies_close(brief) else (True, "grammar")
@@ -85,7 +86,7 @@ def close_ordered(text: str, *, brief=None, called: bool = False, handle=None) -
     if _ca.answers(brief):
         return True, "answer"
     if called:
-        from nucleo.flash import show_target as _st
+        from nucleo.acts import show_target as _st
         verb, info = _st.resolve_canvas_verb(handle)
         if verb == "close" and (info or {}).get("used"):
             return True, "jev"
@@ -135,7 +136,7 @@ def reopen_ordered(wid: str, text: str = "", *, open_ids=None, recent_ids=None, 
     """May a show bring back `wid`? Not a card he JUST closed over chatter (V2-650b; refactor2710-04b T-03): it comes
     back on the paid verdict (`canvas=show` naming it), a media/show request, a short yes to OUR offer about that very
     card (V2-724), or his words resolving to it with certainty. A card not closed within the window is untouched."""
-    from nucleo.flash import canvas_license as _lic
+    from nucleo.acts import show_license as _lic
     w = str(wid or "").strip().lower()
     ts = _lic._RECENT_CLOSES.get(w)
     if not ts or (_lic._time.time() - ts) > _lic._REOPEN_WINDOW_S or _shows_this(brief, w):
@@ -155,13 +156,13 @@ def _shows_this(brief, w: str) -> bool:
 
 
 def _bare_yes(text: str) -> bool:
-    from nucleo.flash import canvas_license as _lic
+    from nucleo.acts import show_license as _lic
     n = _lic._NEG_MEDIA_RE.sub(" ", _lic._norm_txt(_lic._his_words(text)))
     return len(n.split()) <= 4 and bool(_lic._AFFIRM_RE.search(n))
 
 
 def _offer_about(w: str, last_reply: str) -> bool:
-    from nucleo.flash import canvas_license as _lic
+    from nucleo.acts import show_license as _lic
     if not w or not _lic.answered_an_offer(last_reply):
         return False
     try:
@@ -179,7 +180,7 @@ def size_ordered(text: str, *, brief=None) -> str:
     verb = _verdict(brief, "CANVAS_KEY")
     if verb in ("fullscreen", "exit_fullscreen", "minimize"):
         return "fullscreen" if verb == "fullscreen" else "minimize"
-    from nucleo.flash import canvas_license as _lic
+    from nucleo.acts import show_license as _lic
     n = _lic._norm_txt(_lic._his_words(text))
     if _lic._EXIT_FS_RE.search(n) or _lic._SHRINK_RE.search(n):
         return "minimize"

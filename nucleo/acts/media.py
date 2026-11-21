@@ -80,7 +80,7 @@ def plan(tool: str, action: str, query: str = "", *, brief=None, ask_phrase: str
     keep = {"route": "keep", "card": own or "", "action": act, "ask": "", "label": "", "text": "", "extra": {}}
     if not own or not act or act == "play" or str(query or "").strip():
         return keep
-    from nucleo.flash import frontend as _fe
+    from nucleo.acts import frontend as _fe
     has_screen = isinstance(brief, dict) and bool(brief.get("open_ids"))
     named = _named_player(operator_text, brief.get("open_ids") if has_screen else _open_now(), act)
     if named and act in (_fe.declared_actions(named) or {}):
@@ -144,7 +144,7 @@ def open_player_owns(card: str, operator_text: str, *, open_ids=None) -> str:
     if base in open_bases or len(others) != 1:
         return card
     try:
-        from nucleo.flash import direct_action as _da
+        from nucleo.acts import direct_action as _da
         return card if _da.named_cards(operator_text) else others[0]
     except Exception as e:  # noqa: BLE001
         _note(f"named apps unreadable ({e!r})")
@@ -180,7 +180,7 @@ def outcome(card: str) -> dict:
 
 def _on_screen(card: str) -> bool:
     try:
-        from nucleo.flash import canvas_visibility as _cv
+        from nucleo.acts import visibility as _cv
         return _cv.is_open(card)
     except Exception as e:  # noqa: BLE001
         _note(f"canvas unread — {e}")

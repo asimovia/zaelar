@@ -50,7 +50,7 @@ def escalate_question(*, running_goals: list | None = None, has_workers: bool = 
     and «answer the worker» is the shape that must not become a second worker)."""
     from nucleo.flash import escalation_guard as _eg
     if threads:      # V2-878 §2: the three he named last, as their cards — not the first three started
-        from nucleo.turn import named_errand as _ne
+        from nucleo.errands import named as _ne
         goals = [_ne.card_line(e) for e in _ne.by_mention(threads, 3)]
     else:
         goals = [str(g)[:120] for g in (running_goals or []) if str(g or "").strip()][:3]
@@ -76,7 +76,7 @@ def request_question(last_reply: str = "") -> dict:
 # with the mechanism that reads its answer (its owner), so the wording and the reader cannot drift apart.
 
 def _canvas(_ctx):
-    from nucleo.flash import show_target as _st
+    from nucleo.acts import show_target as _st
     return {"instructions": _st.CANVAS_INSTRUCTIONS, "criteria": dict(_st.CANVAS_VERBS)}
 
 
@@ -96,7 +96,7 @@ def _search(_ctx):
 
 
 def _redo(_ctx):
-    from nucleo.flash import redo_decision as _redo_d
+    from nucleo.acts import redo as _redo_d
     return _redo_d.question()
 
 
@@ -135,7 +135,7 @@ QUESTIONS = (
     (WORDS_KEY, None, lambda c: {"instructions": WORDS_INSTRUCTIONS, "criteria": dict(WORDS_CRITERIA)}),
     (("nucleo.surfaces", "SURFACE_KEY"), None, _surface),
     (("search.route", "SEARCH_KEY"), None, _search),
-    (("nucleo.flash.redo_decision", "REDO_KEY"), None, _redo),                 # None when nothing is behind us
+    (("nucleo.acts.redo", "REDO_KEY"), None, _redo),                 # None when nothing is behind us
     (("nucleo.circuit.spec", "END_KEY"), None, _end_state),
     # The stop stays asked only while a worker runs, with its goals (V2-878 §2 bank: asked with the cards it read «that
     # one is fine» as `settled` twice in 15 runs and killed a worker the model had not stopped). It acts; the target reads.
@@ -227,7 +227,7 @@ def ask_for_turn(operator_text: str, *, running_goals=None, last_reply: str = ""
 def _threads() -> list:
     """The open errands' cards (`named_errand.known`, with the just-finished). Unknown reads as none. Never raises."""
     try:
-        from nucleo.turn import named_errand as _ne
+        from nucleo.errands import named as _ne
         return _ne.known(with_finished=True)
     except Exception as e:  # noqa: BLE001 — the cards unread: the brief asks with none
         from loguru import logger

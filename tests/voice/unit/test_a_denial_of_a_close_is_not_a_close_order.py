@@ -105,7 +105,8 @@ def _voice_turn(phrase: str, brief: dict | None):
         out = H.run_case(case)
     finally:
         from nucleo import canvas_closes, canvas_focus, done_ops
-        from nucleo.flash import bulk_close, canvas_license
+        from nucleo.acts import bulk_close
+        from nucleo.acts import show_license as canvas_license
         canvas_focus._reset()
         done_ops.reset()
         bulk_close.reset()

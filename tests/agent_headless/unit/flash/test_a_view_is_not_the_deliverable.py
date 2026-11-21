@@ -21,7 +21,8 @@ import pytest
 
 from nucleo import surfaces
 from nucleo.acts import repair_of_a_view
-from nucleo.flash import canvas_visibility as cv, card_commission
+from nucleo.flash import card_commission
+from nucleo.acts import visibility as cv
 from nucleo.turn import brief as tb
 
 #: (his words, the view a rung chose) — es and en; the deliverable is always a written document.

@@ -14,7 +14,7 @@ import time
 
 import pytest
 
-from nucleo.flash import direct_action as DA
+from nucleo.acts import direct_action as DA
 from nucleo.acts import named_target as NT
 
 BOTH = ["youtube", "musica"]
@@ -37,7 +37,7 @@ def clean_park(monkeypatch):
 
 
 def test_the_ask_parks_the_control_with_the_cards_it_offered():
-    from nucleo.flash import frontend as FE
+    from nucleo.acts import frontend as FE
     cd = FE.card_decision("musica", "volume_down", brief=_brief(), ask_phrase="Which one? {cands}")
     assert cd["ask"], cd
     assert NT.parked()["action"] == "volume_down" and set(NT.parked()["cards"]) == set(BOTH)

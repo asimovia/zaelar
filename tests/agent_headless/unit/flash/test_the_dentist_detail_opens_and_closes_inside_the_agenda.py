@@ -16,7 +16,7 @@ import threading
 import pytest
 
 from nucleo.flash import card_close as CC
-from nucleo.flash import direct_action as DA
+from nucleo.acts import direct_action as DA
 from nucleo.flash import verdict_card as VC
 
 SAID_OPEN = "Ábreme la ficha del dentista, que quiero verla"

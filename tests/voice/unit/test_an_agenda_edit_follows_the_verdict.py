@@ -41,7 +41,7 @@ def brief(monkeypatch):
     def _read(b, k, d="", min_confidence=None):
         return (said[k], {"used": True}) if k in said else (d, None)
     monkeypatch.setattr(tb, "read", _read)
-    from nucleo.flash import direct_action as da
+    from nucleo.acts import direct_action as da
     monkeypatch.setattr(da, "named_cards", lambda text: [])
     return said
 

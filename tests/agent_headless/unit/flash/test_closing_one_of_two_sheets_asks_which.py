@@ -14,7 +14,7 @@ import tempfile
 import pytest
 
 from nucleo.acts import close_target as CW
-from nucleo.flash import show_target as ST
+from nucleo.acts import show_target as ST
 from widgets import store
 
 OPEN = ["results::8862f3-1", "results::8862f3-2"]
@@ -74,7 +74,7 @@ def test_the_tool_path_reads_the_question(monkeypatch):
     """The wiring, through the tool's own door: `close_widget` hands the turn's asking door to the close."""
     from types import SimpleNamespace
     from nucleo.acts import tools
-    from nucleo.flash import show_target
+    from nucleo.acts import show_target
     seen = {}
     monkeypatch.setattr(show_target, "close_dispatch", lambda *a, **kw: seen.update(kw) or False)
     asking = object()

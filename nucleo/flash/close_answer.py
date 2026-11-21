@@ -101,7 +101,7 @@ def backstop(text: str, brief, emit, acted: dict, open_ids=None) -> list[str]:
         return []
     for cid in ids:
         try:
-            from nucleo.flash import canvas_license as _lic
+            from nucleo.acts import show_license as _lic
             _lic.note_operator_close(cid)
         except Exception as e:  # noqa: BLE001
             logger.debug(f"close_answer: close not recorded — {e}")

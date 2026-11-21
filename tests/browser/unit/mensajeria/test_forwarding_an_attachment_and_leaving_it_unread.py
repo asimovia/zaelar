@@ -172,7 +172,7 @@ def test_a_message_named_in_the_payload_is_not_a_loose_pronoun(monkeypatch):
     anchor; a truly empty call on an absent card still escalates."""
     from memory import api as _mem
     monkeypatch.setattr(_mem, "state", lambda: {"open_widgets": []})
-    from nucleo.flash import frontend as fe
+    from nucleo.acts import frontend as fe
     assert not fe.absent_widget_misroute("mensajeria", "open", "", payload={"name": "Acme Cloud"})
     assert fe.absent_widget_misroute("mensajeria", "open", "", payload={})
     from pathlib import Path

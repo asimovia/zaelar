@@ -74,7 +74,7 @@ def test_a_verdict_under_veto_never_takes_the_models_place(reader, monkeypatch, 
 def test_a_repair_pass_send_is_licensed_not_substituted():
     """Audit L3 P2-1: the repair pass's own send is LICENSED by the verdict (R1) — it substitutes nothing, so the
     licence floor stands; a band verdict never drops his order."""
-    from nucleo.flash import repair_grounding
+    from nucleo.acts import repair_grounding
     assert repair_grounding.send_backed_by_verdict(_brief(LOW, screen_action="mensajeria:send_to"), "mensajeria",
                                                    "send_to")
 

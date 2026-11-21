@@ -68,7 +68,7 @@ def test_a_close_with_nothing_to_name_asks_and_never_closes_every_card(doors):
 
 
 def test_full_screen_off_leaves_whichever_covers_the_screen(doors, monkeypatch):
-    from nucleo.flash import show_target
+    from nucleo.acts import show_target
     monkeypatch.setattr(show_target, "at_full_screen", lambda: "youtube")
     assert acts.run("fullscreen_widget", {"mode": "off"}, "x_5").status == "ok"
     doors["open"] = ["youtube"]
@@ -100,7 +100,7 @@ def test_every_run_carries_what_is_open_the_widget_in_front_and_an_index_and_rea
     open widget are topics read when named — never in every run."""
     from nucleo import canvas_focus
     from nucleo.conversation_host import memory_read
-    from nucleo.flash import show_target
+    from nucleo.acts import show_target
     from widgets import read as widget_read
     assert [t for t, _r in memory_read.READERS] == ["DAYS", "TASKS", "DRAFT", "PRESENT", "FRONT", "STATE", "WIDGETS"]
     monkeypatch.setattr(canvas_focus, "phone_front", lambda: None)
@@ -122,8 +122,10 @@ def widget_door(doors, monkeypatch):
     """A widget with no code of ours declaring three actions; the data-op door and the one asker recorded."""
     import asyncio
 
-    from nucleo.flash import data_ops, frontend
+    from nucleo.acts import data_ops
 
+
+    from nucleo.acts import frontend
     from widgets import read as widget_read
     from nucleo.request import consent_ask
     from widgets import confirm_gate

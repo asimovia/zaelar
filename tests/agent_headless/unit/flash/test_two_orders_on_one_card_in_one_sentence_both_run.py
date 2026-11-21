@@ -18,7 +18,7 @@ on and nothing they name is shared. The rule is the one both channels read (voic
 """
 from __future__ import annotations
 
-from nucleo.flash import data_ops as RG
+from nucleo.acts import data_ops as RG
 
 
 def _op(wid, act, **payload):

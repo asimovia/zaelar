@@ -78,7 +78,7 @@ def test_exit_fullscreen_reaches_the_full_screen_he_ordered_when_the_canvas_says
 
 def _subject(monkeypatch, phrase, open_ids=("youtube", "musica")):
     from memory import api as memapi
-    from nucleo.flash import direct_action as da
+    from nucleo.acts import direct_action as da
     monkeypatch.setattr(memapi, "state", lambda: {"open_widgets": list(open_ids)})
     return da.subject_card("youtube", "pause", phrase)
 
@@ -108,7 +108,7 @@ def test_a_suppressed_show_for_another_reason_is_no_touch():
 def _show_over_the_open_card(monkeypatch, *, strip_marker: bool = False):
     """His previous turn asks the ONE show door for the music card, already up; the refusal it emits reaches the
     focus funnel as the engine's event stream would carry it. Then his next turn: «pause it a sec»."""
-    from nucleo.flash import canvas_visibility as cv
+    from nucleo.acts import visibility as cv
     monkeypatch.setattr(cv, "is_open", lambda wid, known=None: True)
     monkeypatch.setattr(cv, "is_minimized", lambda wid: False)
     seen = []

@@ -6,7 +6,8 @@ meeting». The verdict said `agenda:find_free` at 0.91 and the model ran it; `fi
 the slot on the monitors sheet, and the answer loop kept the LAST op's answer — the sheet's view — so he heard
 «there's nothing here with tomorrow's meetings». C3, C4 and C5 fell after it.
 """
-from nucleo.flash import data_ops, direct_action as da
+from nucleo.acts import direct_action as da
+from nucleo.acts import data_ops
 from nucleo.turn import brief as tb
 
 

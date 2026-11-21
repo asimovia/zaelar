@@ -219,7 +219,7 @@ def test_but_the_search_still_does_not_touch_what_is_SOUNDING(yt, monkeypatch):
 # +49.1: «Vale, páralo, y ahora búscame vídeos del alunizaje en el año … sesenta y nueve.» The tail came
 # back as a turn of its own and the model called `youtube:set_volume {volume: 69}`. «Yo no he dicho nada
 # de ningún volumen.»
-from nucleo.flash import direct_action
+from nucleo.acts import direct_action
 
 
 def _brief(answers: dict, *, open_ids=("youtube",)):

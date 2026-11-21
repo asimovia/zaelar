@@ -47,7 +47,7 @@ import threading
 
 import pytest
 
-from nucleo.flash import direct_action as _da
+from nucleo.acts import direct_action as _da
 from nucleo.turn import brief as _tb
 from widgets import enums as _enums
 
@@ -214,7 +214,7 @@ def test_a_correction_below_the_act_floor_relaunches_nothing(monkeypatch):
     """A3·2: `corrects_last` licensed a redo (and an undo — `correction_undo`) at the licence. A correction RELAUNCHES
     a mutation, so it is read at the same act floor as everything else: 0.55 → no redo; 0.6 → redo."""
     from nucleo import consent
-    from nucleo.flash import redo_decision as _redo
+    from nucleo.acts import redo as _redo
     assert _redo.corrects(_brief({_redo.REDO_KEY: ("corrects_last", 0.55)})) is False
     assert _redo.corrects(_brief({_redo.REDO_KEY: ("corrects_last", 0.6)})) is True
     monkeypatch.setattr(consent, "intent_act_at", lambda: 0.5)
@@ -301,7 +301,8 @@ def _voice_turn(phrase: str, open_ids, brief: dict, *, tools=(), say: str = "", 
         out = H.run_case(case)
     finally:
         from nucleo import canvas_closes, canvas_focus, done_ops
-        from nucleo.flash import bulk_close, canvas_license
+        from nucleo.acts import bulk_close
+        from nucleo.acts import show_license as canvas_license
         canvas_focus._reset()
         done_ops.reset()
         bulk_close.reset()
@@ -431,7 +432,7 @@ def test_the_promise_repair_closes_instead_of_writing_when_the_order_is_a_close(
 
 
 def test_the_canvas_verdict_knows_the_size_gestures():
-    from nucleo.flash import show_target as st
+    from nucleo.acts import show_target as st
     assert {"fullscreen", "exit_fullscreen", "minimize", "close", "show", "neither"} <= set(st.CANVAS_VERBS)
 
 

@@ -22,7 +22,7 @@ from nucleo.circuit import ledger
 from nucleo.pulse import rehydrate
 from nucleo.request import model as request_model
 from nucleo.turn import brief as tb
-from nucleo.turn import named_errand
+from nucleo.errands import named as named_errand
 from nucleo.turn import pipeline_errands as PE
 from nucleo.workers.session_record import SessionRecord
 

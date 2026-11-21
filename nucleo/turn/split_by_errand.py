@@ -44,7 +44,7 @@ def _asks(words: str) -> bool:
 def parts(text: str, errands: list[dict]) -> list[dict]:
     """[{errand, words, asks}] — his sentence cut per errand, in his order. A part names exactly one errand; a clause
     that names several is nobody's (and so is what follows it, until a clause names one again)."""
-    from nucleo.turn import named_errand as _ne
+    from nucleo.errands import named as _ne
     out: list[dict] = []
     for sentence in (s.strip() for s in _SENTENCE.split(str(text or "").replace("...", "…"))):
         if not sentence or not _ne.named(sentence, errands):
@@ -133,7 +133,8 @@ def each_line(spoken: str, turn_text: str) -> str:
         return ""
     _LAST["said"] = True
     from i18n import langs as _lg
-    from nucleo.turn import errands_of_a_turn as _eot, named_errand as _ne
+    from nucleo.turn import errands_of_a_turn as _eot
+    from nucleo.errands import named as _ne
     lang = _lg.current_language()
     bare = _is_bare(spoken, lang)
     items, seen = [], set()
@@ -171,7 +172,7 @@ def _sent_names() -> list[str]:
     names: list[str] = []
     try:
         from nucleo import dispatch as _d
-        from nucleo.turn import named_errand as _ne
+        from nucleo.errands import named as _ne
         for which in whiches:
             for tid in _d.resolve_sessions(which or "todo") or []:
                 rec = _d.get_record(tid)

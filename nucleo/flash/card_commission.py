@@ -38,7 +38,7 @@ def _another_errands_card(card: str, operator_text: str) -> bool:
     """The screen verdict named a results/document sheet, but his sentence is about ANOTHER of his errands — the
     one his words name (`named_errand.card_is_another_errands`). Then the card is not what the order is for, and
     no repair may write into it: «del informe…» landed as `results:criteria` on the monitor's sheet."""
-    from nucleo.turn import named_errand as _ne
+    from nucleo.errands import named as _ne
     if not _ne.card_is_another_errands(card, operator_text):
         return False
     try:
@@ -86,7 +86,7 @@ def named_or_catalogue(brief, operator_text: str) -> str:
         if card:
             # a card only the CATALOGUE names is a guess like the late one below: it may not contradict the end state
             # the brief named (837ba9366 read both catalogue twins here, and «agenda» 0.77 skipped that check)
-            from nucleo.flash import direct_action as _da
+            from nucleo.acts import direct_action as _da
             if not _da.from_brief(brief)[0] and not _bd.card_mass(brief):
                 from nucleo.circuit import spec as _spec
                 if _spec.card_contradicts(brief, card):
@@ -219,7 +219,7 @@ def picture_by_verdict(brief, operator_text: str) -> dict | None:
     if brief is None:
         return None
     try:
-        from nucleo.flash import direct_action as _da
+        from nucleo.acts import direct_action as _da
         from nucleo.turn import brief as _tb, verdicts as _v   # it replaces the model's tool: VETO (CRIT-K2b R4)
         _c, info = _tb.read(brief, _tb.TARGET_KEY, "", min_confidence=_v.VETO)
         wid, action = _da.from_brief(brief)
@@ -303,7 +303,7 @@ async def commission_call(commission: str, *, brief, operator_text: str, spec, w
     # Any card the verdict names may take the CALL; the read half is offered only to one that can answer.
     # An order the verdict reads as owing NO words («send rowan a telegram with the new time», wants_words=act)
     # is not answered by a read: offering one made the pass check the directory instead of sending (C5, 2/4).
-    from nucleo.flash import direct_action as _da_cc
+    from nucleo.acts import direct_action as _da_cc
     from nucleo.turn import brief as _tbw
     _w, _wi = _tbw.read(brief, _tbw.WORDS_KEY, "")
     may_read = not (_wi is not None and str(_w or "") == "act")
@@ -314,7 +314,7 @@ async def commission_call(commission: str, *, brief, operator_text: str, spec, w
                                                     else "")
     # V2-820 — a lens on his card is not an errand whose deliverable has its own box (a document, pictures): the worker
     # keeps it, and his card stays where he left it.
-    from nucleo.flash import canvas_visibility as _cvis_v
+    from nucleo.acts import visibility as _cvis_v
     # The deliverable is what the escalation itself declared (`surface`), not only the verdict's sure reading.
     got = (_cvis_v.unless_a_view(got, brief, declared=declared_surface) if got and got.get("kind") == "call"
            else got)
@@ -375,7 +375,7 @@ async def before_worker(escalate_req: dict, read_req: dict, *, brief, operator_t
         if got["kind"] == "call":
             # V2-815: the catalogue card took the errand — it runs behind the screen unless the turn asked to SEE
             # it or the action's output only exists there (`canvas_visibility.present_for_call`).
-            from nucleo.flash import canvas_visibility as _cvis
+            from nucleo.acts import visibility as _cvis
             _cvis.present_for_call(got["widget_id"], got["action"], brief=brief, src="flash", emit=emit)
             commission, escalate_req["v"] = escalate_req["v"], None   # cleared BEFORE: an act declared to need a worker
             apply_widget_data(got["widget_id"], got["action"], got["payload"])   # asks for it again (2026-11-13: cleared
@@ -452,7 +452,7 @@ async def voice_instead_of_a_search(search_req: dict, read_req: dict, *, brief, 
          extra={"cat": "flash", "widget": got["widget_id"]})
     search_req["v"] = None
     if got["kind"] == "call":
-        from nucleo.flash import canvas_visibility as _cvis      # V2-815: one rule for whether the card comes up
+        from nucleo.acts import visibility as _cvis      # V2-815: one rule for whether the card comes up
         _cvis.present_for_call(got["widget_id"], got["action"], brief=brief, src="flash", emit=emit)
         apply_widget_data(got["widget_id"], got["action"], got["payload"])
         acted["widget"] = done["v"] = True
@@ -487,7 +487,7 @@ def question_left_to_a_lens(brief, *, ops: list, acted: dict, operator_text: str
     answers (`speak`), so this needs no reading of the reply's wording — only the verdict («question») and the fact
     that everything the turn did was a lens."""
     try:
-        from nucleo.flash import data_ops as _do
+        from nucleo.acts import data_ops as _do
         from nucleo.turn import brief as _tb
         kind, info = _tb.read(brief, _tb.REQUEST_KEY, "")
         words, winfo = _tb.read(brief, _tb.WORDS_KEY, "")

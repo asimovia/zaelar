@@ -19,7 +19,7 @@ YOUTUBE_SET_VOLUME = {"level": "0-100"}      # the declared payload of `youtube.
 
 
 def test_the_video_cards_declared_volume_payload_is_the_one_this_test_names():
-    from nucleo.flash.frontend import declared_actions
+    from nucleo.acts.frontend import declared_actions
     assert declared_actions("youtube")["set_volume"]["payload"] == YOUTUBE_SET_VOLUME
 
 

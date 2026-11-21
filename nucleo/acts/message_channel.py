@@ -49,7 +49,7 @@ def question(_ctx=None) -> dict:
 
 def _declares_channel(wid: str, action: str) -> bool:
     try:
-        from nucleo.flash import payload_fill
+        from nucleo.acts import payload_fill
         return "channel" in payload_fill._payload_spec(wid, action)
     except Exception as e:  # noqa: BLE001
         _note(e)

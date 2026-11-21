@@ -4,7 +4,7 @@ nothing visible). The canvas report carries which cards are minimized; the one d
 
 import pytest
 
-from nucleo.flash import canvas_visibility as cv
+from nucleo.acts import visibility as cv
 
 
 @pytest.fixture

@@ -5,7 +5,7 @@ so the English «messages» named nothing; and `close_widget` ran once per TURN,
 card was dropped. Now the catalogue name in every bundle counts, and each card closes once."""
 import pytest
 
-from nucleo.flash import show_target as st
+from nucleo.acts import show_target as st
 from widgets import instances
 
 
@@ -50,7 +50,7 @@ def test_minimize_takes_only_the_card_it_names(canvas):
 def test_the_in_card_guard_spares_a_card_called_by_its_name():
     """full18 C6: the verdict read `mensajeria:close` (the chat inside) and the guard for «an order INSIDE the card»
     dropped the close of the Messages card he had named. «close the chat» still reaches the chat."""
-    from nucleo.flash import direct_action as da
+    from nucleo.acts import direct_action as da
     assert da._says_the_name("close the calendar and the messages", "mensajeria")
     assert not da._says_the_name("close the chat", "mensajeria")
     out = _voice_turn("close the calendar and the messages")
@@ -76,7 +76,8 @@ def _voice_turn(phrase: str, lang: str = "en"):
         out = H.run_case(case)
     finally:
         from nucleo import canvas_closes, canvas_focus, done_ops
-        from nucleo.flash import bulk_close, canvas_license
+        from nucleo.acts import bulk_close
+        from nucleo.acts import show_license as canvas_license
         canvas_focus._reset()
         done_ops.reset()
         bulk_close.reset()

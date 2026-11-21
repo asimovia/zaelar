@@ -19,7 +19,9 @@ import time
 
 import pytest
 
-from nucleo.flash import data_ops, redo_decision
+from nucleo.acts import redo as redo_decision
+
+from nucleo.acts import data_ops
 from widgets import late_report
 
 _PAYLOAD = {"channel": "José Luis Cárpatos"}

@@ -130,7 +130,7 @@ def test_an_explicit_send_over_a_seen_draft_is_the_confirmation(monkeypatch):
     from nucleo import untrusted
     from nucleo.acts import message as held_send
     from nucleo.acts import message as leave_gate
-    from nucleo.flash import frontend
+    from nucleo.acts import frontend
     from widgets import actions as wa
     monkeypatch.setattr(untrusted, "present", lambda *a, **k: True)
     _held_email()

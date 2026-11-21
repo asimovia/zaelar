@@ -123,7 +123,8 @@ async def run(got: dict, *, commission: str, operator_text: str, spec, window=No
               text=got.get("title", ""), extra={"cat": "flash", "chars": len(body)})
         return _to_the_worker(commission, operator_text)
     try:
-        from nucleo.flash import canvas_visibility as _cvis, data_ops as _ops
+        from nucleo.acts import data_ops as _ops
+        from nucleo.acts import visibility as _cvis
         wid, action = got["widget_id"], got["action"]
         _cvis.present(wid, reason="turn-order", src="flash", emit=_emit, text=operator_text)
         res = await _ops.dispatch_and_report(wid, action, {"title": got["title"], "body": body}, text=operator_text)

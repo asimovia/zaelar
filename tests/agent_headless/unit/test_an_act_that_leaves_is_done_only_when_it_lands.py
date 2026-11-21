@@ -130,7 +130,7 @@ def test_the_mouth_reads_a_queued_send_as_started_and_a_card_write_as_met():
 
 def _run_door(monkeypatch, wid, action, payload):
     import widgets
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
 
     async def dispatch(tag, body):
         return {"ok": True}
@@ -166,7 +166,7 @@ def test_a_refused_send_is_one_line_of_the_turn_and_no_model_runs_again(monkeypa
     the call (the corrected re-call, its 🔔 and its note went). Disarm: a door that re-runs a model on a refusal, or
     says it out of turn while the turn is still waiting, goes red here."""
     import widgets
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
     from nucleo.llm import fast_client
     from nucleo.pulse import notices
     from nucleo.turn import reply as R
@@ -290,7 +290,7 @@ def test_a_refused_send_closes_its_check_and_is_never_said_unconfirmed(monkeypat
     """V2-850 — measured live: «manda un mensaje a raquel…» → the card asked «which Raquel?» (refused, nothing queued),
     and 25 s later the pulse said «I can't confirm the message to Raquel went out». The refused op's check stayed open."""
     import widgets
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
     from nucleo.workers import spoken_delivery
     from voice import proactive
     _Sent(monkeypatch)

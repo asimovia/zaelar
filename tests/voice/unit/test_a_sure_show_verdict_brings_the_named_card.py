@@ -7,7 +7,7 @@ screen stayed empty while the reply said the sheet was up, three turns running.
 """
 import threading
 
-from nucleo.flash import direct_action as _da
+from nucleo.acts import direct_action as _da
 
 from nucleo.turn import brief as _tb
 

@@ -43,7 +43,7 @@ def _done_line(wid: str, res: dict) -> str:
 async def still_running(wid: str, action: str, res: dict, *, seal=None, row: str = "") -> dict:
     """Wait for the hook that outlived the turn and tell the operator what it did. Returns the real result (or the
     timeout result when it never answered). Best-effort end to end: runs in the op's detached task."""
-    from nucleo.flash import data_ops as _ops
+    from nucleo.acts import data_ops as _ops
     from widgets import server_api as _api
     _emit("⏳ data-op sigue en marcha — el turno no la espera", wid, action, text=str(res.get("error") or ""))
     _note(f"The action «{action}» on «{wid}» is still running (longer than the turn): not done, not refused; "

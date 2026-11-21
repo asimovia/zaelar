@@ -28,7 +28,7 @@ _CLEAR = re.compile(r"\bclear\b")
 
 def removes(widget_id: str, action: str) -> bool:
     """Does this declared action REMOVE something from the card?"""
-    from nucleo.flash import direct_action as _da
+    from nucleo.acts import direct_action as _da
     from widgets import contract as _ct
     spec = _ct._spec(_da._base_of(widget_id), action)
     return _ct.is_destructive(spec, action) or bool(_CLEAR.search(str(action or "").replace("_", " ")))
@@ -37,7 +37,7 @@ def removes(widget_id: str, action: str) -> bool:
 def contradicted(brief, widget_id: str, action: str, said: str = "") -> tuple[str, str]:
     """`(card, verdict action)` when the model's removal contradicts a sure verdict on the same card, else `("", "")`."""
     try:
-        from nucleo.flash import direct_action as _da
+        from nucleo.acts import direct_action as _da
         from widgets import contract as _ct
         if not action or not removes(widget_id, action):
             return "", ""
@@ -62,7 +62,7 @@ def instead(brief, widget_id: str, action: str, said: str = "") -> "tuple[str, s
         return None
     payload: dict = {}
     try:
-        from nucleo.flash import direct_action as _da
+        from nucleo.acts import direct_action as _da
         rung = _da.resolve(said, brief=brief, operator_text=said)
         if rung and rung.get("action") == vact and isinstance(rung.get("payload"), dict):
             payload = dict(rung["payload"])

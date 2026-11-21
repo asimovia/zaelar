@@ -104,5 +104,5 @@ def took_the_close(said: str, extra, run) -> bool:
 def inside_or_cancelled(brief, said: str, extra, run) -> bool:
     """The close guard both channels ask: the verdict puts the order inside the card (V2-770), or — with no
     verdict to read — the card's own rows do (`took_the_close`). True = the [[close]] is not the order."""
-    from nucleo.flash import direct_action as _da
+    from nucleo.acts import direct_action as _da
     return _da.order_is_inside(brief, str((extra or {}).get("id") or "")) or took_the_close(said, extra, run)

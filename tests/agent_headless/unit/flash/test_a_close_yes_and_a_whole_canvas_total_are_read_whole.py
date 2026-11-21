@@ -40,7 +40,7 @@ def test_a_yes_split_over_two_grades_still_closes_the_card(lang):
 
 @pytest.fixture
 def images_in_use(monkeypatch):
-    from nucleo.flash import bulk_close
+    from nucleo.acts import bulk_close
     monkeypatch.setattr(bulk_close, "working_card",
                         lambda open_ids, within_s=300.0: next((o for o in open_ids if o.startswith("imagenes")), ""))
 

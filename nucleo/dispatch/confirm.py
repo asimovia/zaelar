@@ -532,7 +532,7 @@ def owed_question(spoken: str) -> str:
     falls back to a note, and the reply that should carry it said only the car's refinement: the game sat parked
     on «build you a new card?» that he never heard, and «make that one jump higher» went to the car report."""
     _sweep_confirm()
-    from nucleo.turn import named_errand as _ne
+    from nucleo.errands import named as _ne
     for p in sorted(_PENDING_CONFIRM.values(), key=lambda v: v["ts"]):
         if p.get("asked") or not p.get("question"):
             continue

@@ -3,7 +3,7 @@ escalates, whether it endorses the model's call. Moved from `nucleo/flash/direct
 its names are read through `_da`."""
 from __future__ import annotations
 
-from nucleo.flash import direct_action as _da
+from nucleo.acts import direct_action as _da
 
 
 def verdict_card(brief) -> str:

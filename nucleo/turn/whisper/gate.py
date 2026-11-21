@@ -83,7 +83,7 @@ def _stalled_s() -> int:
 def thread_in_play(verdicts: dict, threads: list[dict], decisions: list[str], text: str) -> dict | None:
     """The open errand this turn is about: the one his words name, else — when the brief says his words are for a
     running errand or the route continued, corrected or could not decide — the one he named last. None otherwise."""
-    from nucleo.turn import named_errand as _ne
+    from nucleo.errands import named as _ne
     from nucleo.turn import verdicts as _v
     open_ = [t for t in threads or () if str(t.get("state") or "") in OPEN_STATES]
     if not open_:

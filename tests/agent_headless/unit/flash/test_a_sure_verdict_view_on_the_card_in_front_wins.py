@@ -14,7 +14,8 @@ from nucleo.flash import verdict_card as VC
 
 @pytest.fixture
 def world(monkeypatch):
-    from nucleo.flash import data_ops as _do, direct_action as _da
+    from nucleo.acts import direct_action as _da
+    from nucleo.acts import data_ops as _do
     st = {"verdict": ("imagenes", "select"), "conf": 0.97, "views": {("imagenes", "select"), ("results", "detail")},
           "completed": []}
     monkeypatch.setattr(_da, "from_brief", lambda _b: st["verdict"])

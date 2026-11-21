@@ -38,8 +38,8 @@ import threading
 
 import pytest
 
-from nucleo.flash import canvas_license as _lic
-from nucleo.flash import direct_action as _da
+from nucleo.acts import show_license as _lic
+from nucleo.acts import direct_action as _da
 from nucleo.flash import escalation_guard as _eg
 from nucleo.turn import brief as _tb
 
@@ -93,7 +93,7 @@ def test_TWO_required_keys_is_a_question_to_ASK_and_never_a_call_to_make():
     import types
     fake = {"two": {"payload": {"a": "first thing", "b": "second thing"}}}
     real = _da.__dict__.get("_base_of")
-    import nucleo.flash.frontend as fe
+    import nucleo.acts.frontend as fe
     saved = fe.declared_actions
     fe.declared_actions = lambda wid: fake if wid == "youtube" else saved(wid)
     try:

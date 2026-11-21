@@ -4,7 +4,7 @@
 de {url, thumb, title, …}», and a sentence can never be one. `payload_fill.fillable_key` now declines such a key,
 so the rung is not built from his words (the widget's own `show` is filled by `show_images`).
 """
-from nucleo.flash import payload_fill as PF
+from nucleo.acts import payload_fill as PF
 
 
 def test_a_list_of_records_is_not_fillable_by_words():

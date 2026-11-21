@@ -18,7 +18,7 @@ import pytest
 
 from nucleo.acts import canvas_arbiter as arb
 from nucleo.acts import canvas_turn as turn
-from nucleo.flash import canvas_license as lic
+from nucleo.acts import show_license as lic
 
 ENGINE = Path(__file__).resolve().parents[3]
 

@@ -108,6 +108,6 @@ async def rerun(uid: str, entry: dict, text: str, choice: int | None = None):
     ledger.resumed(uid)
     inline_ask._remember(wid, action, slot, str(payload.get(slot) or "") if slot else "", uid)
     row = ledger.get(uid) or {}
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
     return await data_ops.dispatch_and_report(wid, action, payload, row=uid,
                                               text=str(row.get("goal") or row.get("title") or ""))

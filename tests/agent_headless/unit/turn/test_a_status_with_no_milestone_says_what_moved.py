@@ -28,7 +28,7 @@ def test_a_fresh_errand_keeps_the_plain_line(en):
 
 def test_the_live_record_carries_those_facts(monkeypatch):
     from nucleo import dispatch
-    from nucleo.turn import named_errand
+    from nucleo.errands import named as named_errand
     monkeypatch.setattr(dispatch, "pending_summaries", lambda: [{"id": "t1", "request": "find a monitor", "secs": 200,
                                                                   "done": 1, "total": 4}])
     monkeypatch.setattr(dispatch, "get_record", lambda tid: None)

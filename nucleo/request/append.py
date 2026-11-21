@@ -162,7 +162,7 @@ def _menu(live: list[tuple[str, str]]) -> list[str]:
     """The judge's menu (V2-878 §2): each errand as its CARD — his words, state, last mention — where the pool knows it;
     its goal otherwise. One description per errand, the same every reader gets (`named_errand.card_line`)."""
     try:
-        from nucleo.turn import named_errand as _ne
+        from nucleo.errands import named as _ne
         cards = {str(e.get("id")): e for e in _ne.known(with_finished=True)}
     except Exception:  # noqa: BLE001 — an unreadable pool leaves the goals
         cards = {}

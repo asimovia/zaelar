@@ -93,7 +93,7 @@ def _event_of(spec: "ExitSpec", payload: dict) -> tuple[str, str, list[str], str
         if spec.event:
             return consent.act_key(spec.event, spec.channel), "", [], spec.channel
         from nucleo import on_his_behalf as _ob
-        from nucleo.flash import frontend as _fe
+        from nucleo.acts import frontend as _fe
         from widgets import directory, runtime
         wid, act, inner = _ob._resolve(payload or {})
         man = runtime.get(wid) or {}

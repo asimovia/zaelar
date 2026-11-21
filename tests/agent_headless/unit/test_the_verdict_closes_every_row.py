@@ -80,7 +80,7 @@ def test_a_refusal_is_the_turns_to_say_never_the_circuits_again(monkeypatch):
     a speakable `message` or an internal `error` — is said by the turn's own mouth (`reply.of_op`), so the circuit's
     pulse never says it a second time: `reported` is set for both."""
     import widgets
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
     entry = {"id": "s1", "done_when": {"x": 1}, "status": "open"}
     monkeypatch.setattr(spec, "open_for_action", lambda *a, **k: entry)
     monkeypatch.setattr(spec, "attest", lambda e, **k: False)

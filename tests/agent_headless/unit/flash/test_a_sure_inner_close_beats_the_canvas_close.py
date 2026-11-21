@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from nucleo.flash import direct_action as DA
+from nucleo.acts import direct_action as DA
 
 
 @pytest.fixture
@@ -44,4 +44,4 @@ def test_an_unsure_inner_op_leaves_the_canvas_close_alone(brief):
 
 
 def test_the_voice_turn_asks_the_rule():
-    assert "canvas_yields(brief)" in open("nucleo/flash/direct_action.py", encoding="utf-8").read()
+    assert "canvas_yields(brief)" in open("nucleo/acts/direct_action.py", encoding="utf-8").read()

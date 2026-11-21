@@ -66,7 +66,7 @@ def _several(value) -> bool:
 def _rows_slots(card: str, action: str) -> list[str]:
     """The payload slots the card DECLARES as rows (`"[string, …] — …"`): the only place a call carries several
     entries. A list that is a detail of one entry (who comes, its tags) is declared otherwise and is not one."""
-    from nucleo.flash import payload_fill
+    from nucleo.acts import payload_fill
     return [str(k) for k, d in payload_fill._payload_spec(card, action).items() if str(d or "").lstrip().startswith("[")]
 
 

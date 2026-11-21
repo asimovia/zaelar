@@ -15,7 +15,7 @@ import threading
 
 import pytest
 
-from nucleo.flash import direct_action as card_verdict
+from nucleo.acts import direct_action as card_verdict
 from nucleo.turn import brief as _tb
 
 

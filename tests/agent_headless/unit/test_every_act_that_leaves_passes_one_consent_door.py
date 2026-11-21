@@ -54,12 +54,12 @@ def _forget_cluster_questions() -> None:
 
 
 def _email():
-    from nucleo.flash import frontend
+    from nucleo.acts import frontend
     return frontend.action_verdict("mensajeria", "send_draft", {"contact": "hospitality@example.com"})
 
 
 def _whatsapp():
-    from nucleo.flash import frontend
+    from nucleo.acts import frontend
     return frontend.action_verdict("mensajeria", "send_draft", {"contact": "Rowan Pike"})
 
 
@@ -155,7 +155,7 @@ def test_a_scoped_rule_that_adds_friction_keeps_its_reach(monkeypatch):
 
 
 def test_a_send_he_ordered_reads_his_rule_even_when_its_manifest_runs_it_fast():
-    from nucleo.flash import frontend
+    from nucleo.acts import frontend
     from widgets import actions as wa
     payload = {"contact": "hospitality@example.com", "text": "Hola"}
     assert frontend.action_mode_now("mensajeria", "send_to", payload) == wa.FAST
@@ -315,7 +315,7 @@ def _invite_after_the_door(monkeypatch):
 def test_the_agenda_invitation_is_decided_once_at_the_door_and_published_after(monkeypatch):
     """A FOLLOW-UP, not a second gate: the door decides by the call's class (a third party asks by default, a guest
     already in the meeting does not, his rule moves it), and what runs after its yes never asks consent again."""
-    from nucleo.flash import frontend
+    from nucleo.acts import frontend
     from widgets import actions as wa
     outbox = _invitation_scene(monkeypatch)
     assert frontend._policy_key("agenda", "invite", {"consent_class": "calendar.invite_new_party"},

@@ -218,7 +218,7 @@ def test_a_stop_aimed_at_a_card_never_kills_the_errands(monkeypatch):
     """V2-773 (demo kickoff + video): «Stop it and close the video widget» with the verdict at `youtube:close`
     0.97 and canvas=close 1.0 — the stop-worker backstop read «stop it» as «stop the background work» and
     CANCELLED the two errands launched a minute earlier."""
-    from nucleo.flash import direct_action as _da
+    from nucleo.acts import direct_action as _da
     monkeypatch.setattr(_tb, "owner_still_open", lambda _b, _o: True)
     video = _brief({_tb.TARGET_KEY: ("youtube:close", 0.97), _tb.CANVAS_KEY: ("close", 1.0)}, open_ids=("youtube",))
     assert _da.aims_at_a_card(video)
@@ -235,7 +235,7 @@ def test_the_verdict_alone_can_send_an_unkept_order_to_a_worker():
     """V2-773 (demo kickoff, A1): «find me three 27-inch 4K monitors under 400 dollars» — the verdict said
     escalate, the model answered «On it — I'll show you the options as soon as I have them» and called
     nothing, and no errand was born: the backstop only knew the verb tables."""
-    from nucleo.flash import direct_action as _da
+    from nucleo.acts import direct_action as _da
     assert _da.verdict_escalates(_brief({_tb.ESCALATE_KEY: ("escalate", 1.0), _tb.REQUEST_KEY: ("order", 0.99)}))
     assert not _da.verdict_escalates(_brief({_tb.ESCALATE_KEY: ("handle_inline", 0.9), _tb.REQUEST_KEY: ("order", 0.99)}))
     assert not _da.verdict_escalates(_brief({_tb.ESCALATE_KEY: ("escalate", 1.0), _tb.REQUEST_KEY: ("comment", 0.9)})), (
@@ -259,7 +259,7 @@ def test_a_show_that_names_a_card_we_have_beats_the_worker_and_an_undone_order_o
     escalate verdict fired before the show branch and a second worker searched the monitors again. F1: «Write me
     a one-page summary … in a document» — the catalogue named `documento` (0.86), nothing was called, the
     escalation verdict was unsure (0.15), and «on its way» was on its way nowhere."""
-    from nucleo.flash import direct_action as _da
+    from nucleo.acts import direct_action as _da
     lean = {_tb.TARGET_KEY: ("documento:append", 0.3)}      # V2-938: an act of the card is read, at any confidence
     assert _da.order_over_a_card_left_undone(_brief({_tb.REQUEST_KEY: ("order", 0.61), _tb.CATALOG_KEY: ("documento", 0.86), **lean}))
     assert not _da.order_over_a_card_left_undone(_brief({_tb.REQUEST_KEY: ("order", 0.59), _tb.CATALOG_KEY: ("documento", 0.86), **lean})), \

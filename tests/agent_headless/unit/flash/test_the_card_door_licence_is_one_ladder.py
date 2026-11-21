@@ -20,7 +20,7 @@ def screen(tmp_path, monkeypatch):
     rig.scene(tmp_path, monkeypatch)
     import server.voice_api as _va
     from memory import api as _memapi
-    from nucleo.flash import data_ops as _do
+    from nucleo.acts import data_ops as _do
     from nucleo.turn import brief as _tb
     from nucleo.acts import named_target as _nt
     opened = ["youtube", "agenda", "mensajeria"]
@@ -71,7 +71,7 @@ def test_each_clause_vetoes_its_case_and_only_through_the_ladder(screen, monkeyp
 
 def test_a_close_verdict_closes_the_card_at_the_real_gate(screen, monkeypatch):
     """E5 (demo passes 36/42): «close my mail» ran the card's `close` VIEW over a sure close verdict."""
-    from nucleo.flash import direct_action as da
+    from nucleo.acts import direct_action as da
     monkeypatch.setattr(da, "sure_canvas", lambda brief: "close")
     out = rig.run("mensajeria", "close", {}, said="close my mail", turn_brief=rig.brief(), monkeypatch=monkeypatch)
     assert out.ran == [] and ("brain", "🔁 data-op «close» sobre un cierre seguro — cierra la app") in out.events
@@ -92,7 +92,7 @@ def test_a_fragment_moves_nothing_at_the_real_gate(screen, monkeypatch):
 
 def test_the_same_refused_op_resent_is_dropped_at_the_real_gate(screen, monkeypatch):
     """V2-773: the model re-read the failure note and re-sent the identical refused op; a corrected one runs."""
-    from nucleo.flash import data_ops as _do
+    from nucleo.acts import data_ops as _do
     label = ("brain", "🛡️ reintento idéntico de una op rechazada — ignorado")
     _do.remember_refusal("agenda", "add_meeting", dict(_DENTIST))
     out = rig.run("agenda", "add_meeting", dict(_DENTIST), said="apunta el dentista", monkeypatch=monkeypatch)
@@ -108,7 +108,7 @@ def test_the_same_refused_op_resent_is_dropped_at_the_real_gate(screen, monkeypa
 
 def test_a_send_the_verdict_puts_on_another_card_is_dropped(screen, monkeypatch):
     """Demo pass 45, C2→C5: «ok book it» sent two Telegrams to Rowan he never ordered."""
-    from nucleo.flash import direct_action as da
+    from nucleo.acts import direct_action as da
     monkeypatch.setattr(da, "verdict_elsewhere", lambda brief, wid: wid == "mensajeria")
     lic = card.licence({"brief": rig.brief("agenda:find_free"), "text": "find me a free slot"}, "mensajeria",
                        "send_to", {"to": "Rowan"}, at=card.LEAVES)

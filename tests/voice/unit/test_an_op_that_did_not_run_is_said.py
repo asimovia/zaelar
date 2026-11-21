@@ -17,7 +17,7 @@ import asyncio
 import re
 from pathlib import Path
 
-from nucleo.flash import data_ops
+from nucleo.acts import data_ops
 
 PROVIDER = Path(__file__).resolve().parents[3] / "voice" / "engine" / "llm" / "providers" / "nucleo.py"
 

@@ -7,7 +7,7 @@ orders apart (measured: Jev reads «close the video» 0.99 and «close youtube»
 is CALLED — its catalogue name in any bundle — or only by what it holds."""
 import pytest
 
-from nucleo.flash import direct_action as da
+from nucleo.acts import direct_action as da
 
 @pytest.fixture
 def close_verdict(monkeypatch):
@@ -40,7 +40,8 @@ def test_a_card_that_is_not_open_is_not_closed(close_verdict):
 def _forget_the_turn():
     """What a turn leaves behind in process state (the card in focus, the closes it made), given back."""
     from nucleo import canvas_closes, canvas_focus, done_ops
-    from nucleo.flash import bulk_close, canvas_license
+    from nucleo.acts import bulk_close
+    from nucleo.acts import show_license as canvas_license
     canvas_focus._reset()
     done_ops.reset()
     bulk_close.reset()
@@ -111,7 +112,7 @@ def _tag_close(extra: dict, said: str, monkeypatch):
 def test_tidying_the_screen_is_a_canvas_gesture_the_verdict_can_complete(monkeypatch):
     """full21 C5b: «tidy up the screen a bit» → «screen's sorted» with no call; the canvas verdict could only say
     `neither`, because laying the cards out was not one of its gestures."""
-    from nucleo.flash import show_target as st
+    from nucleo.acts import show_target as st
     from nucleo.turn import brief as tb
     assert "arrange" in st.CANVAS_VERBS
     monkeypatch.setattr(tb, "read", lambda b, k, d="", min_confidence=0.0:

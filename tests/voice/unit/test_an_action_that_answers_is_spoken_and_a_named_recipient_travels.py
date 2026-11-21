@@ -39,7 +39,7 @@ def directory(tmp_path, monkeypatch):
 
 
 def test_the_one_person_he_names_fills_an_empty_recipient(directory):
-    from nucleo.flash import direct_action as da
+    from nucleo.acts import direct_action as da
     words = "send the invoice to quinn, tell him to book it"
     assert da.person_fill("mensajeria", "forward", {"n": 6, "text": "hi"}, words) == {"contact": "Quinn"}
     assert da.person_fill("mensajeria", "forward", {"contact": "Rowan"}, words) == {}, "a recipient is never edited"

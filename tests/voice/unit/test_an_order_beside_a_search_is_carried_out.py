@@ -98,7 +98,8 @@ def test_an_empty_viewer_show_from_the_repair_is_the_picture_search(brief, model
     vale», the repair called `imagenes:show {query}` with NO items, and it went straight to the card, which refused
     it («no llegó ninguna imagen»): no picture was ever searched. The model's own empty show is the picture search
     (`acts.tools.widget_data`); the repair's is now too. Disarm: apply the call in `_carry` unconditionally → red."""
-    from nucleo.flash import build_decision as bd, canvas_visibility as cvis, card_commission as cc
+    from nucleo.flash import build_decision as bd, card_commission as cc
+    from nucleo.acts import visibility as cvis
     monkeypatch.setattr(bd, "named_card", lambda b: "imagenes")
     monkeypatch.setattr(cc, "_filled_by_pictures", lambda wid: wid == "imagenes")
     monkeypatch.setattr(cvis, "present", lambda *a, **k: True)

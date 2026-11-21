@@ -21,7 +21,7 @@ def _brief(**answers):
 
 
 def test_a_sure_show_verdict_owes_the_card_it_names():
-    from nucleo.flash import direct_action  # noqa: F401 — loads canvas_verdict the way the turn does (they import each other)
+    from nucleo.acts import direct_action  # noqa: F401 — loads canvas_verdict the way the turn does (they import each other)
     from nucleo.acts import canvas_verdict
     assert canvas_verdict.show_owed(_brief(canvas=("show", 0.95)), "search")
     assert not canvas_verdict.show_owed(_brief(canvas=("show", 0.6)), "search"), "an unsure verdict owes nothing"
@@ -34,7 +34,7 @@ def test_every_refusal_of_the_door_is_a_row(monkeypatch):
     rows = []
     monkeypatch.setattr(observer, "emit", lambda kind, label, **kw: rows.append((kind, label)))
     from nucleo.acts import canvas
-    from nucleo.flash import canvas_visibility as cvis
+    from nucleo.acts import visibility as cvis
     assert canvas.apply("show", "search", src="flash", text="hola", request={"text": "hola"}) is False
     assert any(k == "arbiter" for k, _ in rows), "an arbiter veto is said"
     rows.clear()

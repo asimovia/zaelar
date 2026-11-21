@@ -84,10 +84,10 @@ def test_a_report_of_what_the_screen_did_is_recorded_even_when_the_tree_would_ve
 
 _OPS = {"show", "close", "minimize", "fullscreen", "move", "arrange"}
 #: Writers whose label is computed and is not a canvas op (with what they emit).
-_NOT_OPS = {"nucleo/flash/canvas_visibility.py": "the refusals of a show («presentación suprimida»)",
+_NOT_OPS = {"nucleo/acts/visibility.py": "the refusals of a show («presentación suprimida»)",
             "widgets/lifecycle.py": "delete / restore of a widget, after its confirm gate",
             "widgets/confirm.py": "the confirm prompt and its cancel",
-            "nucleo/flash/data_ops.py": "a corrected data-op's diagnosis",
+            "nucleo/acts/data_ops.py": "a corrected data-op's diagnosis",
             "nucleo/flash/tool_executor_widget_calls.py": "the data-op log `data:<action>`",
             "widgets/rows.py": "a rows op's audit line",
             "widgets/server_api.py": "the generator's audit line"}

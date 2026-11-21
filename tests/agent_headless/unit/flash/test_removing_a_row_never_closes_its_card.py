@@ -71,8 +71,8 @@ def test_a_card_he_named_still_closes():
 
 def test_a_sure_close_verdict_over_a_row_closes_nothing(monkeypatch):
     """`complete_canvas` with a 0.99 `close` and no card named: a row reference keeps the card on screen."""
-    from nucleo.flash import direct_action as DA
-    from nucleo.flash import show_target as ST
+    from nucleo.acts import direct_action as DA
+    from nucleo.acts import show_target as ST
     monkeypatch.setattr(DA, "sure_canvas", lambda brief: "close")
     monkeypatch.setattr(DA, "from_brief", lambda brief: ("", ""))
     monkeypatch.setattr(DA, "named_cards", lambda text: [])

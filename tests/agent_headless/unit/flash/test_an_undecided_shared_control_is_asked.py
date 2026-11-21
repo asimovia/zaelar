@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from nucleo.flash import direct_action as DA
+from nucleo.acts import direct_action as DA
 
 ENGINE = Path(__file__).resolve().parents[4]
 THREE = ["youtube", "musica", "agenda"]
@@ -63,13 +63,13 @@ def _gesture(brief, text: str) -> list:
 
 
 def test_two_players_need_a_sure_verdict_on_the_widget_data_path(screen):
-    from nucleo.flash import frontend as FE
+    from nucleo.acts import frontend as FE
     assert FE.which_card("musica", "volume_down", brief=_brief("musica:volume_down", 0.78, canvas=""))[0] == "ask"
     assert FE.which_card("musica", "volume_down", brief=_brief("musica:volume_down", 0.92, canvas=""))[0] == "keep"
 
 
 def test_the_screen_stands_in_for_a_brief_without_its_open_set(screen):
-    from nucleo.flash import frontend as FE
+    from nucleo.acts import frontend as FE
     assert FE.which_card("youtube", "pause", brief=None)[0] == "ask"
 
 

@@ -131,7 +131,7 @@ def test_a_connected_account_reports_itself_as_connected(sandbox, monkeypatch):
 @pytest.fixture
 def rails(monkeypatch):
     """Capture the out-of-turn mouth, by patching the real module's attribute."""
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
     from nucleo.pulse import notices
 
     data_ops._RECENT_FAILURES.clear()
@@ -148,7 +148,7 @@ def rails(monkeypatch):
 def test_a_failed_data_op_is_announced_instead_of_vanishing(rails):
     """THE defect. `dispatch_tag` discarded `brain_action`'s result, so the widget's exact reason existed
     in-process and reached nobody — and twelve seconds later the agent claimed the opposite."""
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
     from nucleo.turn import reply as R
 
     res = {"ok": False, "error": "sin app OAuth registrada para YouTube"}
@@ -179,7 +179,7 @@ def test_a_model_facing_error_is_never_spoken_but_a_message_is(rails, monkeypatc
 
 def test_a_SUCCESSFUL_data_op_says_nothing(rails):
     """The counterweight that keeps the above from being satisfied by announcing everything."""
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
 
     assert asyncio.run(data_ops.report_failure("youtube", "suggest", {"ok": True, "n": 12}, late=True)) is False
     assert not rails
@@ -187,7 +187,7 @@ def test_a_SUCCESSFUL_data_op_says_nothing(rails):
 
 def test_the_same_failure_is_not_announced_twice_in_a_row(rails):
     """A card that retries on a timer must not turn one broken connector into a monologue."""
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
 
     res = {"ok": False, "error": "la sesión con YouTube caducó"}
     first = asyncio.run(data_ops.report_failure("youtube", "suggest", dict(res), late=True))

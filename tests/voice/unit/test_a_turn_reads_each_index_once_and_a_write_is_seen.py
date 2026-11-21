@@ -104,7 +104,7 @@ def test_disarm_an_index_that_ignores_the_store_version_serves_the_old_directory
 @pytest.fixture
 def card(monkeypatch):
     """Two rows on a card whose actions each must name one, and an index that counts its reads."""
-    from nucleo.flash import frontend
+    from nucleo.acts import frontend
     from widgets import refs
     reads = {"n": 0}
 

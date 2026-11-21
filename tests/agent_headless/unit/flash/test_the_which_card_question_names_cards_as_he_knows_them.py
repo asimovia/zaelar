@@ -39,7 +39,7 @@ def test_a_label_keeps_its_rail_and_shows_the_name():
 @pytest.mark.parametrize("lang,music", [("es", "Música"), ("en", "Music")])
 def test_the_question_says_the_display_names(monkeypatch, lang, music):
     monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
-    from nucleo.flash import frontend as FE
+    from nucleo.acts import frontend as FE
     cd = FE.card_decision("musica", "volume_down", brief=_brief(), ask_phrase="? {cands}")
     assert cd["ask"], cd
     assert music in cd["ask"] and "YouTube" in cd["ask"], cd["ask"]

@@ -14,7 +14,7 @@ def klass(wid: str, act: str, inner: dict | None) -> str:
     """The act's declared EVENT TYPE with its channel (`messaging.create_group@whatsapp`): the manifest's class, refined
     by the card's own `consent_scope` for this call. "" when the act declares none."""
     try:
-        from nucleo.flash import frontend as _fe
+        from nucleo.acts import frontend as _fe
         from widgets import runtime
         sp = ((runtime.get(wid) or {}).get("actions") or {}).get(act)
         return str(_fe._policy_key(wid, act, sp if isinstance(sp, dict) else {}, dict(inner or {})) or "")

@@ -9,7 +9,7 @@ ENGINE = Path(__file__).resolve().parents[3]
 
 
 def test_a_base_id_is_presented_as_its_one_open_instance(monkeypatch):
-    from nucleo.flash import direct_action as da
+    from nucleo.acts import direct_action as da
     from server import voice_api
     monkeypatch.setattr(voice_api, "open_instances", lambda: ["agenda", "results::18fe36-ls1"])
     assert da.card_to_present("results", "compare them side by side") == "results::18fe36-ls1"
@@ -17,7 +17,7 @@ def test_a_base_id_is_presented_as_its_one_open_instance(monkeypatch):
 
 
 def test_a_base_with_no_instance_stays_the_base(monkeypatch):
-    from nucleo.flash import direct_action as da
+    from nucleo.acts import direct_action as da
     from server import voice_api
     monkeypatch.setattr(voice_api, "open_instances", lambda: ["agenda"])
     assert da.card_to_present("markets", "show me the chart") == "markets"
@@ -37,7 +37,7 @@ def test_both_rungs_present_through_the_narrowing_door(monkeypatch):
     """Run both rungs (refactor2710-05: read by what they do, not by their text): the declared action that takes a
     commission's place (`take_rung`) and the verdict completing the model (`complete`) each bring up the LIVE sheet,
     never a bare `results` beside it — and the data-op itself still names the card the verdict named."""
-    from nucleo.flash import direct_action as da
+    from nucleo.acts import direct_action as da
     from nucleo.flash import verdict_card
     presented, applied, present, apply = _live_sheet(monkeypatch)
     monkeypatch.setattr(da, "resolve", lambda *a, **k: dict(_RUNG))

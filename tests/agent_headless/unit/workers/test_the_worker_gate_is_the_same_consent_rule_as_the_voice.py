@@ -68,7 +68,7 @@ def test_a_third_party_still_asks_through_the_worker_too(agenda):
 
 def test_the_worker_and_the_voice_give_one_verdict_for_one_call(agenda):
     """The whole point: not «allowed», but «the same answer the voice gives»."""
-    from nucleo.flash import frontend
+    from nucleo.acts import frontend
     from widgets import actions as _wa
     voice = frontend.action_mode_now("agenda", "invite", INVITE["payload"])
     assert voice == _wa.FAST

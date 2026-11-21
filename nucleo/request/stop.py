@@ -183,7 +183,9 @@ def card_owns_the_turn(brief, *, acted: dict | None = None, data_done: dict | No
     if bool((acted or {}).get("widget")) or bool((data_done or {}).get("v")) or any((r or {}).get("v") is not None for r in lanes):
         return True
     try:
-        from nucleo.flash import direct_action as _da, redo_decision as _redo, verdict_card as _vc
+        from nucleo.flash import verdict_card as _vc
+        from nucleo.acts import direct_action as _da
+        from nucleo.acts import redo as _redo
         if bool(_da.from_brief(brief)[1]) and _da._action_sure(brief, floor=_vc.SURE):
             return True
         return bool(__import__("nucleo.turn.card_act", fromlist=["x"]).named(brief)) or bool(corrected_card(brief))   # V2-879 O1
@@ -193,7 +195,7 @@ def card_owns_the_turn(brief, *, acted: dict | None = None, data_done: dict | No
 
 def corrected_card(brief) -> str:
     """The card he corrects (`corrects_last` at the licence AND his turns' last act was its): the repair acts there."""
-    from nucleo.flash import redo_decision as _redo
+    from nucleo.acts import redo as _redo
     return str(_last_acts()[0].get("wid") or "") if _redo.corrects(brief) and last_act_owner() == "card" else ""
 
 

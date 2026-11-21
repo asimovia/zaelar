@@ -136,7 +136,8 @@ def data_close(widget_id: str, action: str, operator_text: str, *, brief=None, o
         action («ya la puedes cerrar» → `close_meeting`, V2-770);
       · a player's stop/pause under a close verb naming that card («cierra la música, que ya no la quiero» →
         `musica:pause`, «Hecho en Música», and the card stayed — ES round 2026-10-11): `player_close`'s rule."""
-    from nucleo.flash import close_guards as _cg, direct_action as _da, verdict_card as _vc
+    from nucleo.flash import close_guards as _cg, verdict_card as _vc
+    from nucleo.acts import direct_action as _da
     from nucleo.acts import media as _pc
     if _cg.is_short_close_order(operator_text):   # …nor when a sure close names another view of this card
         return _da.from_brief(brief) != (widget_id, action) and not _vc.a_view_his_close_names(
@@ -238,7 +239,7 @@ def run_gesture(brief, *, tag_emit, emit, operator_text: str = "") -> str:
     he told to stay is never a target, whoever proposed it: «get rid of the video too, just keep the calendar up»
     named only the calendar, so the verdict's `youtube:close` yielded to it and the CALENDAR closed (EN t7)."""
     try:
-        from nucleo.flash import direct_action as _da
+        from nucleo.acts import direct_action as _da
         verb = _da.sure_canvas(brief)   # …unless the verdict's inner order outranks the close (`inner_order_wins`)
         if not verb or __import__("nucleo.flash.verdict_card", fromlist=["x"]).inner_order_wins(brief, operator_text):
             return ""
@@ -251,7 +252,8 @@ def run_gesture(brief, *, tag_emit, emit, operator_text: str = "") -> str:
             emit("brain", "🎯 el veredicto completa al modelo (sin tool) — arrange", role="system",
                  extra={"cat": "flash", "action": "arrange", "said": (operator_text or "")[:120]})
             return verb
-        from nucleo.flash import close_guards as _cg, show_target as _st
+        from nucleo.flash import close_guards as _cg
+        from nucleo.acts import show_target as _st
         words = operator_text   # the name readers are keep-aware (`named_open`, `also_named`); `stay` filters the rest
         stay = kept(operator_text, _da._open_now()) if verb in ("close", "minimize") else set()
         verdict_wid = verdict_unless_named(_da.from_brief(brief)[0], operator_text)   # V2-781: his NAME wins

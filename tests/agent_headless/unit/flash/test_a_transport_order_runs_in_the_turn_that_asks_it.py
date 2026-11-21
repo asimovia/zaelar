@@ -35,7 +35,7 @@ import pytest
 
 from nucleo.acts import card
 from nucleo.circuit import spec as _spec
-from nucleo.flash import direct_action as _da
+from nucleo.acts import direct_action as _da
 from nucleo.turn import brief as _tb, verdicts
 
 

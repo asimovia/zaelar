@@ -136,7 +136,7 @@ def test_a_contrary_report_no_tell_spoke_for_is_corrected(world, monkeypatch):
 
 
 def test_the_ops_own_ending_leaves_a_pending_act_to_the_pulse(world, monkeypatch):
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
     _screen(monkeypatch, world)
     _report(1, playing=True, playing_id=V1, muted=False, volume=70)
     e = _act("pause", 1000.0)
@@ -160,7 +160,7 @@ def test_a_bare_done_is_not_said_over_an_act_the_app_has_not_confirmed(world, mo
 
 def test_disarm_without_the_wait_a_pending_act_is_settled_at_its_birth(world, monkeypatch):
     """Disarm: `reported.awaiting` blind → the op's ending settles the act «unverifiable» before the app could ack."""
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
     _screen(monkeypatch, world)
     _report(1, playing=True, playing_id=V1, muted=False, volume=70)
     monkeypatch.setattr(reported, "awaiting", lambda dw: "")

@@ -6,8 +6,8 @@ itself here» over the chart. A card THIS turn brought counts as on screen."""
 import pytest
 
 from nucleo import canvas_focus as cf
-from nucleo.flash import canvas_visibility as cvis
-from nucleo.flash import direct_action as da
+from nucleo.acts import visibility as cvis
+from nucleo.acts import direct_action as da
 
 
 @pytest.fixture

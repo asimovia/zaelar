@@ -98,7 +98,8 @@ async def run(uid: str, entry: dict, text: str, choice: int | None = None) -> di
     payload = await compose(wid, act, request=request, question=question, answer=answer)
     event(None, "↩ his answer to our offer composes its act", f"{wid}:{act}", {"cat": "flash", "task_id": uid,
           "ask_id": ask_id, "composed": payload is not None, "answer": answer[:120]})
-    from nucleo.flash import data_ops, frontend
+    from nucleo.acts import data_ops
+    from nucleo.acts import frontend
     from widgets import actions as _wa
     mode = frontend.action_mode_now(wid, act, payload) if payload is not None else ""
     if mode not in (_wa.FAST, _wa.CONFIRM):   # not composed, or an act this door does not run (an errand's): no guess

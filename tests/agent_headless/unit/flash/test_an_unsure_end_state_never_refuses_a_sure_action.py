@@ -47,7 +47,7 @@ def test_an_unsure_action_keeps_the_end_state_gate():
 
 def test_the_completion_rung_completes_the_sure_verdict():
     """At the door the model's turn reaches: the rung resolves the sure `chats_more` instead of returning nothing."""
-    from nucleo.flash import direct_action
+    from nucleo.acts import direct_action
     brief = _brief("mensajeria:chats_more", 1.0, "mensajeria:empty", 0.72)
     got = direct_action.resolve("Enséñame más chats de WhatsApp", brief=brief,
                                 operator_text="Enséñame más chats de WhatsApp")

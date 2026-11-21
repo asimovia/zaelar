@@ -202,7 +202,7 @@ def test_the_notice_moves_on_when_its_day_has_passed(_isolated):
 def test_the_whole_sentence_takes_back_what_a_piece_of_it_wrote(monkeypatch):
     """The measured afternoon: «recursiva los jueves» became a junk task; the whole sentence the appointment."""
     import widgets
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
     from nucleo.circuit import compose as write_outcome
     write_outcome.reset()
     monkeypatch.setattr("voice.observer.emit", lambda *a, **k: None)
@@ -235,7 +235,7 @@ def test_two_separate_orders_both_stay(monkeypatch):
 def test_a_write_that_lost_a_field_is_corrected_to_the_model(monkeypatch):
     """Through the dispatcher the turn uses: the widget reports what it ignored, the model is told."""
     import widgets
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
     from nucleo.circuit import compose as write_outcome
     write_outcome.reset()
     emitted = []

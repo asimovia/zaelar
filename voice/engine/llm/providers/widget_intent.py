@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from loguru import logger
 
-from nucleo.flash import canvas_visibility as _cvis   # V2-723: ONE door to present
+from nucleo.acts import visibility as _cvis   # V2-723: ONE door to present
 
 def _action_is_negated(n: str) -> bool:
     """True si la frase NIEGA la acción de widget ("no necesito que abras nada", "no me muestres", "no cierres
@@ -151,8 +151,8 @@ def _widget_fallback(text: str, emit, ask=None, last_spoken: str = "", brief=Non
                 req = canvas_turn.request_of(brief, text)
                 return any([canvas.apply("close", _cid, src="flash", emit=emit, request=req)
                             for _cid in with_also_named(picks, text)])
-            if not __import__("nucleo.flash.direct_action", fromlist=["x"]).named_cards(text):   # the grammar proposes
-                from nucleo.flash import bulk_close as _bulk
+            if not __import__("nucleo.acts.direct_action", fromlist=["x"]).named_cards(text):   # the grammar proposes
+                from nucleo.acts import bulk_close as _bulk
                 _bulk.close_all(emit, src="flash", text=text, brief=brief)
                 return True
             if not (named := with_also_named([], text)):   # only cards ON SCREEN he names, never a guess

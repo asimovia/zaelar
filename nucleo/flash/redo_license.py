@@ -45,7 +45,7 @@ def licensed(last, wid: str, said: str, *, brief=None) -> bool:
         pass
     try:
         if brief is not None:
-            from nucleo.flash import redo_decision as _redo
+            from nucleo.acts import redo as _redo
             if _redo.corrects(brief, str(wid).split("::", 1)[0]):
                 return True
     except Exception as _e:  # noqa: BLE001

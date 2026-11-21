@@ -28,7 +28,8 @@ from pathlib import Path
 import pytest
 
 from memory import api as memory
-from nucleo.flash import router_catalog, show_target
+from nucleo.flash import router_catalog
+from nucleo.acts import show_target
 from widgets import brief
 
 FRONTEND = Path(__file__).resolve().parents[4] / "frontend"

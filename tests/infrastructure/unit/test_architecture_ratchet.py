@@ -389,21 +389,21 @@ _NUCLEO_GRANDFATHERED: frozenset[str] = frozenset({
     "nucleo/errands/book.py",
     "nucleo/errands/wake.py",
     "nucleo/errands/watch.py",
-    "nucleo/flash/canvas_license.py",
+    "nucleo/acts/show_license.py",
     "nucleo/flash/card_close.py",
     "nucleo/flash/card_commission.py",
-    "nucleo/flash/data_ops.py",
+    "nucleo/acts/data_ops.py",
     "nucleo/flash/dialog.py",
-    "nucleo/flash/direct_action.py",
+    "nucleo/acts/direct_action.py",
     "nucleo/flash/escalation_guard.py",
     "nucleo/llm/fast_client.py",
-    "nucleo/flash/payload_fill.py",
+    "nucleo/acts/payload_fill.py",
     "nucleo/flash/post_stream_lanes.py",
     "nucleo/llm/provider_chain.py",
     "nucleo/flash/router.py",
     "nucleo/flash/router_catalog.py",
     "nucleo/flash/router_guards.py",
-    "nucleo/flash/show_target.py",
+    "nucleo/acts/show_target.py",
     "nucleo/flash/tool_executor_calls.py",
     "nucleo/flash/tool_executor_widget_calls.py",
     "nucleo/flash/tool_selection.py",
@@ -897,6 +897,18 @@ _PACKAGE_CEILINGS["nucleo/conversation_host"] += 1   # same: the send owner read
 _TOTAL_MAX += 22     # same causes, measured
 _PACKAGE_CEILINGS["nucleo/memory_agent"] += 2   # 2026-11-21 C7 (his live session): the distiller discards what he says about the assistant — its own instructions, the one place that decides what a turn leaves in memory
 _TOTAL_MAX += 2      # same cause, measured
+# 2026-11-21 INI-078 F2 step 8, T6–T8 (only the moves that LOWER the old-turn import count, 262 → 216; one-commit shims
+# at the old names): turn.named_errand → errands/named, turn.task_recall → errands/, and to nucleo/acts/ flash's
+# canvas_visibility (→ visibility), canvas_license (→ show_license), show_target, bulk_close, frontend, data_ops,
+# payload_fill, redo_decision (→ redo), repair_grounding, direct_action. Moved lines; +5 elsewhere are imports split.
+_PACKAGE_CEILINGS["nucleo/acts"] += 3127
+_PACKAGE_CEILINGS["nucleo/errands"] += 465
+_PACKAGE_CEILINGS["nucleo/request"] += 3
+_PACKAGE_CEILINGS["nucleo/workers"] += 1
+_PACKAGE_CEILINGS["voice/engine/llm"] += 1
+_PACKAGE_CEILINGS["nucleo/flash"] -= 3038
+_PACKAGE_CEILINGS["nucleo/turn"] -= 450
+_TOTAL_MAX += 109    # measured after the move (the shims' lines and the split imports)
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

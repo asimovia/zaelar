@@ -23,7 +23,7 @@ import pytest
 
 from nucleo import jev
 from nucleo.flash import escalation_guard as eg
-from nucleo.flash import frontend as fe
+from nucleo.acts import frontend as fe
 from nucleo.turn import brief as tb
 
 
@@ -97,7 +97,7 @@ def test_the_whole_brief_is_one_call(wire, monkeypatch):
 def test_before_the_model_once_and_each_door_once_more(wire, monkeypatch):
     """V2-887 step 8 restates the rule: the turn asks ONCE before the model; a door it reaches asks its own questions
     once more, into the same handle — one trip per door reached, never per reader and never twice."""
-    from nucleo.flash import redo_decision
+    from nucleo.acts import redo as redo_decision
     from nucleo.turn import brief_doors
     # the correction door asks only about an act we just did: there is one here
     monkeypatch.setattr(redo_decision, "last_op", lambda *a, **k: {"wid": "agenda", "action": "move_meeting", "payload": {}})
@@ -114,7 +114,7 @@ def test_before_the_model_once_and_each_door_once_more(wire, monkeypatch):
 
 def test_the_canvas_verb_travels_in_the_brief_and_reads_the_same(wire):
     """Folding it in may not change what it ANSWERS — both channels share `resolve_canvas_verb`."""
-    from nucleo.flash import show_target as st
+    from nucleo.acts import show_target as st
     wire.answers[tb.CANVAS_KEY] = ("close", 0.98)
     h = _settle(tb.ask("cierra todo", open_ids=[]))
     assert st.resolve_canvas_verb(h)[0] == "close"

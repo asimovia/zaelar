@@ -45,7 +45,7 @@ def on_screen_now(widget_id: str) -> bool:
     answer said «I can't pull up the chart itself here» over it, because the report still said closed."""
     base = str(widget_id or "").split("::", 1)[0].strip().lower()
     try:
-        from nucleo.flash import canvas_visibility as _cvis
+        from nucleo.acts import visibility as _cvis
         if _cvis.is_open(base):
             return True
     except Exception:  # noqa: BLE001
@@ -58,5 +58,5 @@ def on_screen_now(widget_id: str) -> bool:
 
 
 def _base(widget_id: str) -> str:
-    from nucleo.flash import direct_action as _da   # lazy: direct_action re-exports this module's names
+    from nucleo.acts import direct_action as _da   # lazy: direct_action re-exports this module's names
     return _da._base_of(widget_id)

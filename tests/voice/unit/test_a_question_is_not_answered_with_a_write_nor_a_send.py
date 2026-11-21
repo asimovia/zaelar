@@ -18,7 +18,7 @@ SRC = _vts.read(ENGINE / "voice/engine/llm/providers/nucleo.py")
 
 
 def test_a_message_to_a_person_is_an_act_that_leaves():
-    from nucleo.flash import frontend
+    from nucleo.acts import frontend
     from widgets import effects as fx
     for a in ("send_to", "forward", "reply", "send_draft"):
         assert fx.carries("mensajeria", a, fx.EXTERNAL_SEND), a
@@ -28,7 +28,7 @@ def test_a_message_to_a_person_is_an_act_that_leaves():
 
 @pytest.fixture
 def verdict(monkeypatch):
-    from nucleo.flash import direct_action as da
+    from nucleo.acts import direct_action as da
     from nucleo.turn import brief as tb
     state = {"v": ("agenda", "find_free"), "sure": True}
     monkeypatch.setattr(da, "from_brief", lambda brief: state["v"])
@@ -37,7 +37,7 @@ def verdict(monkeypatch):
 
 
 def test_a_send_the_verdict_puts_on_another_card_is_asked(verdict):
-    from nucleo.flash import direct_action as da
+    from nucleo.acts import direct_action as da
     assert da.verdict_elsewhere({"x": 1}, "mensajeria") is True
     verdict["v"] = ("mensajeria", "send_to")
     assert da.verdict_elsewhere({"x": 1}, "mensajeria") is False, "the verdict backs it"

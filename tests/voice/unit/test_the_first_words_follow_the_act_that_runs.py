@@ -125,7 +125,7 @@ def test_words_written_before_the_answer_ops_data_are_dropped_even_with_no_swap(
 @pytest.mark.parametrize("lang", ["en", "es"])
 def test_held_words_are_said_when_the_answer_op_returned_nothing(lang, monkeypatch):
     """The words are a guess only next to data: an answer op that returned NOTHING leaves them standing."""
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
     monkeypatch.setattr(data_ops, "answer_of", lambda res: {})
     _phrase, _narration, _answer, look = CASES[lang]
     reply = _turn(lang, [(look, [_FIND])], ANSWER, monkeypatch)

@@ -50,7 +50,7 @@ def verdict_names_leaving(brief, wid: str) -> bool:
     if not acts:
         return False
     try:
-        from nucleo.flash import direct_action as _da
+        from nucleo.acts import direct_action as _da
         owner, name = _da.from_brief(brief)
         if base(owner) == base(wid) and name in acts:
             return True

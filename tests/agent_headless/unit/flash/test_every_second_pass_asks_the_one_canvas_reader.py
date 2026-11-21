@@ -148,7 +148,7 @@ def test_the_names_question_declares_a_sentence_that_names_a_card_and_something_
 
 @pytest.mark.parametrize("names,closed", [(("on_screen", 0.95), True), (("elsewhere", 0.95), False)])
 def test_the_veto_takes_only_a_close_where_nothing_named_is_on_screen(monkeypatch, names, closed):
-    from nucleo.flash import show_target
+    from nucleo.acts import show_target
     monkeypatch.setattr(tb, "of_this_turn", lambda: _brief(("agenda",), **{tb.NAMES_KEY: names}))
     monkeypatch.setattr(show_target, "close_target", lambda wid: wid)
     tags = []
@@ -163,5 +163,5 @@ def test_the_veto_takes_only_a_close_where_nothing_named_is_on_screen(monkeypatc
 def test_the_cards_he_names_come_in_the_order_he_names_them(phrase, order):
     """The first card closed is the first he named — never the alias that scored higher (es: «los mensajes» > «la
     agenda»), which the act floor (2.73) stopped masking with an unsure `screen_action` toward the agenda."""
-    from nucleo.flash import direct_action
+    from nucleo.acts import direct_action
     assert direct_action.named_cards(phrase) == order

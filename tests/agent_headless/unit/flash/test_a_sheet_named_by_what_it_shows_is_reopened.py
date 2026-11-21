@@ -5,7 +5,7 @@
 """
 from __future__ import annotations
 
-from nucleo.turn import task_recall as TR
+from nucleo.errands import task_recall as TR
 
 
 def test_no_errand_but_a_sheet_that_shares_his_words_is_shown(monkeypatch):

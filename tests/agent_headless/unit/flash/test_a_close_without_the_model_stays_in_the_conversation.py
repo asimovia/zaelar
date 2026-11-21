@@ -13,8 +13,9 @@ import asyncio
 import pytest
 
 from nucleo import done_ops
-from nucleo.flash import bulk_close, dialog, hard_turn
+from nucleo.flash import dialog, hard_turn
 
+from nucleo.acts import bulk_close
 OPEN = ["documento", "navegador", "mensajeria"]
 
 

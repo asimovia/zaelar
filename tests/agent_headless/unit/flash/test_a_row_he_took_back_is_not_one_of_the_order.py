@@ -14,7 +14,7 @@ import threading
 
 import pytest
 
-from nucleo.flash import payload_fill as _pf
+from nucleo.acts import payload_fill as _pf
 from nucleo.turn import brief
 
 from ._imprecise_queue_scene import QUEUE, SAID

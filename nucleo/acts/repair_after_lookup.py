@@ -43,7 +43,7 @@ async def call_after_read(operator_text: str, read_widget: str, widget_id: str, 
             action = str(args.get("action") or "").strip()
             if name == "widget_data" and str(args.get("widget_id") or "").strip().lower() == wid and action in declared:
                 payload = args.get("payload") if isinstance(args.get("payload"), dict) else {}
-                from nucleo.flash import repair_grounding as _rg
+                from nucleo.acts import repair_grounding as _rg
                 if not _rg.send_backed_by_verdict(brief, wid, action):
                     _cp.note(wid, "an act that leaves, with no verdict ordering it on this app — not sent",
                               action=action[:40], read=rid)
@@ -60,7 +60,7 @@ async def call_after_read(operator_text: str, read_widget: str, widget_id: str, 
 
 def _is_view(wid: str, action: str) -> bool:
     try:
-        from nucleo.flash import data_ops as _dops
+        from nucleo.acts import data_ops as _dops
         return bool(_dops.is_view_op(wid, action))
     except Exception:  # noqa: BLE001
         return False
@@ -99,7 +99,7 @@ async def after_a_read(brief, operator_text: str, read_widget: str, reply: str =
     Another card («send rowan a telegram with the new time», full20 C5) → `call_after_read`; the same card the
     verdict names (T518) → the verdict's call, asked once like a repeated view."""
     try:
-        from nucleo.flash import direct_action as _da
+        from nucleo.acts import direct_action as _da
         other = _da.order_card_after_read(brief, operator_text, read_widget)
         if other:
             return await call_after_read(operator_text, read_widget, other, spec, window=window, brief=brief)
@@ -215,7 +215,7 @@ def as_picture_search(got: dict, operator_text: str, images_req: dict | None, *,
     if not pic:
         return False
     images_req["v"] = pic
-    from nucleo.flash import canvas_visibility as _cvis
+    from nucleo.acts import visibility as _cvis
     _cvis.present("imagenes", reason="turn-order", src="flash", emit=emit, text=operator_text, brief=brief)
     emit("brain", "🖼️ fotos → visor imagenes (la llamada de la reparación sin imágenes es la búsqueda)",
          text=pic["query"][:80], role="system")

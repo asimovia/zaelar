@@ -92,7 +92,7 @@ def test_a_field_clause_reads_a_scalar_of_the_view_and_an_error_value_is_unreada
 
 def test_the_data_op_door_opens_the_spec_before_the_op_and_attests_it_after(monkeypatch):
     import widgets
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
     walls = iter([{}, {"url": "https://x/orion.jpg", "title": "Orion"}])
     monkeypatch.setattr(truth, "desktop_wallpaper", lambda: next(walls, {"url": "https://x/orion.jpg", "title": "Orion"}))
 

@@ -58,7 +58,7 @@ def ran_in_the_turn(wid: str, act: str, reading: dict | None, trace: str = "") -
     traces = {t for t in (str((reading or {}).get("turn_id") or ""), str(trace or "")) if t}
     try:
         from nucleo import done_ops
-        from nucleo.flash import payload_fill
+        from nucleo.acts import payload_fill
         base = payload_fill._base_of(wid)
         return any(str(d.get("trace") or "") in traces and d.get("action") == act
                    and payload_fill._base_of(str(d.get("wid") or "")) == base
@@ -93,7 +93,8 @@ def identified(reading: dict | None, context: dict | None = None) -> tuple[str, 
 def _declared(wid: str, act: str) -> tuple[str, str, dict]:
     """`(card, action, its fields)` when the card declares the action; else ("", "", {})."""
     try:
-        from nucleo.flash import frontend as _fe, payload_fill
+        from nucleo.acts import payload_fill
+        from nucleo.acts import frontend as _fe
         if act not in (_fe.declared_actions(payload_fill._base_of(wid)) or {}):
             return "", "", {}
         return wid, act, dict(payload_fill._payload_spec(wid, act))
@@ -139,7 +140,7 @@ def required(wid: str, act: str, fields: dict) -> list[str]:
     """The fields the command shows as placeholders: the ones the action needs. An optional one (its description says
     so, `payload_fill.declared_optional`) or a declared non-text one (a boolean the widget
     door converts) is listed above, never put in the command — a placeholder invites a value his words never gave."""
-    from nucleo.flash import payload_fill
+    from nucleo.acts import payload_fill
     from widgets import field_types
     typed = {k for k, t in field_types.declared(payload_fill._base_of(wid), act).items() if t == field_types.BOOL}
     return [k for k, d in fields.items() if k not in typed and not payload_fill.declared_optional(d)][:_FIELDS_SHOWN]

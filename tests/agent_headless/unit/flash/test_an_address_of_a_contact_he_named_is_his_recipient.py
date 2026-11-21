@@ -13,7 +13,7 @@ import pytest
 
 from nucleo.acts import message as leave_gate
 from nucleo.acts import card_pass
-from nucleo.flash import repair_grounding
+from nucleo.acts import repair_grounding
 
 BOOK = {"quinn@example.com": [{"name": "Quinn", "email": "quinn@example.com"}],
         "rowan@example.com": [{"name": "Rowan Ferrer", "email": "rowan@example.com"}]}

@@ -13,7 +13,8 @@ from __future__ import annotations
 import pytest
 
 from nucleo import done_ops
-from nucleo.flash import bulk_close, card_receipt
+from nucleo.flash import card_receipt
+from nucleo.acts import bulk_close
 from widgets import screen_doc
 
 

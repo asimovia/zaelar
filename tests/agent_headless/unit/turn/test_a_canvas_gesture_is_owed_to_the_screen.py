@@ -19,7 +19,7 @@ from pathlib import Path
 import pytest
 
 from nucleo.circuit import spec, verify
-from nucleo.flash import show_target
+from nucleo.acts import show_target
 from voice import trace
 
 _ROOT = Path(__file__).resolve().parents[4]

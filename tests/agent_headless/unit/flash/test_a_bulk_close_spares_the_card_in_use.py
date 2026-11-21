@@ -15,7 +15,7 @@ import threading
 import pytest
 
 from nucleo import done_ops
-from nucleo.flash import bulk_close
+from nucleo.acts import bulk_close
 
 OPEN = ["documento", "navegador", "mensajeria"]
 
@@ -124,8 +124,9 @@ def test_disarmed_without_the_in_use_reading_the_draft_closes_again(monkeypatch)
 
 
 def _show_on_a_close_turn(wid, monkeypatch, open_now):
-    from nucleo.flash import canvas_visibility, tool_executor_calls as TEC
+    from nucleo.flash import tool_executor_calls as TEC
 
+    from nucleo.acts import visibility as canvas_visibility
     from nucleo.acts import canvas as _door
 
     class _Router:

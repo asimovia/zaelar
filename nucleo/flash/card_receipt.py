@@ -145,7 +145,7 @@ def content_free(reply: str) -> bool:
 def _shared(card: str, action: str, open_ids) -> bool:
     """Does ANOTHER open card declare this same control?"""
     try:
-        from nucleo.flash import frontend as _fe
+        from nucleo.acts import frontend as _fe
         return any(_base(o) != _base(card) and action in (_fe.declared_actions(_base(o)) or {}) for o in open_ids or [])
     except Exception:  # noqa: BLE001
         return False

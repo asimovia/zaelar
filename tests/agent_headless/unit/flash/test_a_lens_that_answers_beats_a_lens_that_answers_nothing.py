@@ -13,7 +13,7 @@ from __future__ import annotations
 import pytest
 
 from nucleo.acts import card
-from nucleo.flash import direct_action as _da
+from nucleo.acts import direct_action as _da
 
 
 @pytest.fixture

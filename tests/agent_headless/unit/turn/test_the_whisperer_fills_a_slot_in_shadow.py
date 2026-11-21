@@ -121,7 +121,7 @@ def _tree(root: str) -> list:
 
 def test_shadow_writes_nothing_anywhere(events, monkeypatch):
     from nucleo.memory_agent.processor import llm
-    from nucleo.turn import named_errand
+    from nucleo.errands import named as named_errand
     calls = []
     monkeypatch.setattr(named_errand, "known", lambda **_k: [dict(LISBON)])
     monkeypatch.setattr(llm, "chat_sync", lambda *a, **k: calls.append((a, k)) or FULL)
@@ -162,7 +162,7 @@ def test_off_starts_nothing(monkeypatch):
 
 def _fired(events, monkeypatch, made_after: float = 0.0):
     from nucleo.memory_agent.processor import llm
-    from nucleo.turn import named_errand
+    from nucleo.errands import named as named_errand
     monkeypatch.setattr(named_errand, "known", lambda **_k: [dict(LISBON)])
     monkeypatch.setattr(llm, "chat_sync", lambda *a, **k: FULL)
     t = time.time()
@@ -212,7 +212,7 @@ def test_a_slot_is_judged_once(events, monkeypatch):
 
 def test_one_in_flight_and_no_refire_while_the_thread_has_not_moved(events, monkeypatch):
     from nucleo.memory_agent.processor import llm
-    from nucleo.turn import named_errand
+    from nucleo.errands import named as named_errand
     monkeypatch.setattr(named_errand, "known", lambda **_k: [dict(LISBON)])
     release, entered = threading.Event(), threading.Event()
 

@@ -39,7 +39,7 @@ def fresh(tmp_path, monkeypatch):
     from voice import observer
     monkeypatch.setattr(observer, "emit", lambda kind, label, text="", role="", extra=None:
                         events.append({"kind": kind, **(extra or {})}))
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
 
     async def _dispatch(wid, action, payload, *, row="", text="", **kw):
         ran.append({"wid": wid, "action": action, "payload": dict(payload), "row": row})
@@ -83,7 +83,7 @@ def test_the_data_op_door_holds_its_row_instead_of_failing_it(tmp_path, monkeypa
     memdb.reset_db()
     memdb.get_db()
     import widgets
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
     from nucleo.request import model as rq
 
     async def _tag(tag, data):

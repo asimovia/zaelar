@@ -8,7 +8,7 @@
 #
 import pytest
 
-from nucleo.flash import data_ops
+from nucleo.acts import data_ops
 from widgets import store
 
 

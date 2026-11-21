@@ -13,7 +13,7 @@ import pytest
 
 from nucleo.acts import repair_after_lookup as ral
 from nucleo.flash import build_decision as bd
-from nucleo.flash import direct_action
+from nucleo.acts import direct_action
 from nucleo.turn import brief as tb
 
 

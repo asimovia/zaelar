@@ -19,7 +19,7 @@ def clean(monkeypatch):
 
 
 def _verdict(monkeypatch, card: str, action: str, sure: bool = True):
-    from nucleo.flash import direct_action as DA
+    from nucleo.acts import direct_action as DA
     monkeypatch.setattr(DA, "from_brief", lambda b: (card, action))
     monkeypatch.setattr(DA, "_action_sure", lambda b, floor=0.8: sure)
 

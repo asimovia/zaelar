@@ -32,7 +32,8 @@ from __future__ import annotations
 import pytest
 
 from nucleo import done_ops
-from nucleo.flash import canvas_license, redo_decision
+from nucleo.acts import redo as redo_decision
+from nucleo.acts import show_license as canvas_license
 from nucleo.turn import brief as turn_brief
 
 

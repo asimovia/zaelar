@@ -77,7 +77,7 @@ def operator_only(payload: dict) -> bool:
     sees or how the card is configured, so it says so in its manifest; nothing is inferred from a name. An
     undeclared flag keeps today's path."""
     try:
-        from nucleo.flash.frontend import declared_actions
+        from nucleo.acts.frontend import declared_actions
         p = payload or {}
         wid = str(p.get("widget_id") or p.get("id") or "")
         act = str(p.get("action") or "").strip()
@@ -152,7 +152,7 @@ def classify_act(action: str, payload: dict) -> str:
         # to one call is exactly what «una sola regla de consentimiento» forbade; the operator, who had said
         # «asegúrate de que termine sin intervención humana», was the one the question went to.
         try:
-            from nucleo.flash.frontend import action_mode_now
+            from nucleo.acts.frontend import action_mode_now
             from widgets import actions as _wa
             _inner = (payload or {}).get("payload")
             m = action_mode_now(str((payload or {}).get("widget_id") or (payload or {}).get("id") or ""),

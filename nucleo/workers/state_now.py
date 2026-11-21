@@ -38,7 +38,7 @@ def channels() -> dict:
 def widgets() -> list[str]:
     """The widgets open on his screen now, as the canvas reports them."""
     try:
-        from nucleo.flash import canvas_visibility
+        from nucleo.acts import visibility as canvas_visibility
         return sorted(canvas_visibility.open_ids())
     except Exception as e:  # noqa: BLE001
         _note("widgets", e)

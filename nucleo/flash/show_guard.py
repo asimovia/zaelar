@@ -114,7 +114,7 @@ def show_request_blocks_data_action(text: str, wid: str, action: str, payload=No
         from widgets import runtime as _rt
         if _rt.get(wid) is None:
             return False                      # not a known widget — this guard has nothing to say about it
-        from nucleo.flash import frontend as _fe
+        from nucleo.acts import frontend as _fe
         from widgets import runtime as _rt2
         if _fe.action_is_view(wid, action):
             return False

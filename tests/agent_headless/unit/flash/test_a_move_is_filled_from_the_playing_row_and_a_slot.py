@@ -10,7 +10,7 @@ from __future__ import annotations
 import pytest
 
 from nucleo.flash import move_fill as _mf
-from nucleo.flash import payload_fill as _pf
+from nucleo.acts import payload_fill as _pf
 
 from ._video_queue_scene import queue  # noqa: F401 — a fixture
 

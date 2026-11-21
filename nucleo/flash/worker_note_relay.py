@@ -40,7 +40,7 @@ def relay(widget_id: str, action: str, operator_text: str) -> list[str]:
         if not t or not words:
             return []
         from nucleo import dispatch as _disp
-        from nucleo.turn import named_errand as _ne
+        from nucleo.errands import named as _ne
         _disp.inject_soon(str(t["id"]), words)
         rec = _disp.get_record(t["id"])
         name = _ne.spoken_name({"label": getattr(rec, "label", ""), "title": getattr(rec, "title", ""),
@@ -71,7 +71,7 @@ def voice_line(acts) -> str:
     """The voice channel's version, from the cards this turn touched (`canvas_focus.this_turn_acts`)."""
     for card, kind, action in acts or []:
         if kind == "control" and (t := owner(card, action)):
-            from nucleo.turn import named_errand as _ne
+            from nucleo.errands import named as _ne
             return line_for([_ne.spoken_name({"request": t.get("request")})])
     return ""
 

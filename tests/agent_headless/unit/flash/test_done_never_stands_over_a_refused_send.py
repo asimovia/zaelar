@@ -12,7 +12,7 @@ import asyncio
 
 
 def _run(results, delay=0.0):
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
 
     async def go():
         async def op(r):
@@ -44,7 +44,7 @@ def test_an_op_still_running_past_the_wait_keeps_todays_path():
 def test_the_turn_says_it_was_not_done_and_is_no_longer_done(monkeypatch):
     """The refusal is said in the mouth's plain line; the `error` is the model's and is never composed into words
     (2026-11-17 — a channel he lacks is said by the card's own `say`, `widgets.mensajeria.refusal_no_channel`)."""
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
     from nucleo.workers import spoken_delivery
     async def _line(goal, summary, ok=True, **_k):
         raise AssertionError("the card's error was handed to a composer")

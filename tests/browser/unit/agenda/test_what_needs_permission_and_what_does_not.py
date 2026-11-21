@@ -18,7 +18,7 @@ other party WROTE TO US. Nothing reads intent.
 import pytest
 
 from nucleo import consent
-from nucleo.flash import frontend
+from nucleo.acts import frontend
 from widgets.agenda import data as ad
 
 

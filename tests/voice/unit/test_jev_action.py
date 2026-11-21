@@ -1,6 +1,6 @@
 """Node 3.61 — Jev picks the widget action among DECLARED manifest actions (T-jev-action).
 
-Contract under test (`nucleo/flash/frontend.py`): when the model names an action the manifest
+Contract under test (`nucleo/acts/frontend.py`): when the model names an action the manifest
 never declared, `resolve_undeclared_action` answers with ONE shared verdict for both channels
 (voice rail + probe mirror): a canvas verb keeps its existing boundary mapping, otherwise Jev
 chooses among the target widget's DECLARED actions (+ `none`) and the call continues through
@@ -13,7 +13,7 @@ from __future__ import annotations
 import pytest
 
 from nucleo import jev
-from nucleo.flash import frontend as _fe
+from nucleo.acts import frontend as _fe
 
 
 @pytest.fixture(autouse=True)

@@ -160,7 +160,7 @@ def test_switched_off_is_its_own_status(wire, monkeypatch):
 def test_a_single_candidate_still_costs_nothing(wire, monkeypatch):
     """Unchanged by A6a, and worth pinning beside it: one candidate is taken without asking. Paying
     800 ms to confirm what nothing contradicts is the call V2-726 exists to stop making."""
-    from nucleo.turn import task_recall as tr
+    from nucleo.errands import task_recall as tr
     monkeypatch.setattr(tr, "candidates", lambda q, limit=5: [{"id": "t1", "title": "x"}])
     out = tr.resolve("lo del piso")
     assert out["ok"] is True and out["how"] == "único"

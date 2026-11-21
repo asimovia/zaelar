@@ -87,14 +87,14 @@ async def widget_act(args: dict, effect_id: str | None) -> ToolResult:
     if payload.pop("_message", False):                       # the send owner asks, and sends only on his yes
         from nucleo.conversation_host import routing
         return await routing.send(payload, act=action)
-    from nucleo.flash import frontend                      # the act policy's one public face (its import order)
+    from nucleo.acts import frontend                      # the act policy's one public face (its import order)
     from widgets import actions as wactions
     mode = await asyncio.to_thread(frontend.action_mode_now, card, action, payload)
     if mode == wactions.CONFIRM:
         return await asyncio.to_thread(_ask, card, action, payload)
     if mode != wactions.FAST:
         return ToolResult("failed", {"reason": "an_errand", "widget": card, "action": action})
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
     res = await _on_engine_loop(data_ops.dispatch_and_report(card, action, payload))
     res = res if isinstance(res, dict) else {}
     ok = res.get("ok") is not False and not res.get("error")

@@ -70,7 +70,7 @@ def test_only_this_turns_verdict_and_only_turn_born_errands_are_judged(portal):
 
 
 def test_the_question_is_asked_over_what_the_cards_declare():
-    from nucleo.flash import frontend as fe
+    from nucleo.acts import frontend as fe
     from nucleo.turn import brief as tb
     q = G.question(["agenda"])
     assert q and set(q["criteria"]) == {G.MISSING, G.DECLARED, G.WORK}
@@ -108,7 +108,7 @@ def test_a_declared_operator_control_is_refused_to_a_worker():
 
 def test_an_undeclared_flag_keeps_todays_path():
     from nucleo.cli import worker_policy as WP
-    from nucleo.flash import frontend as fe
+    from nucleo.acts import frontend as fe
     acts = fe.declared_actions("agenda")
     name = next(a for a, s in acts.items() if isinstance(s, dict) and "worker" not in s)
     assert not WP.operator_only({"widget_id": "agenda", "action": name})

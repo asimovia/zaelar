@@ -17,7 +17,7 @@ from nucleo.request import stop as _stop_decision   # V2-820: a replace stops X 
 from nucleo.request import order_unserved as _order   # the order the brief identified, served with another tool (A2)
 from nucleo.turn import brief as _tb   # the turn's reading travels with the errand it commissions (V2-852)
 from nucleo.turn import commission as _commission   # V2-874: who wins the commission, in shadow
-from nucleo.turn import named_errand as _named   # V2-878 §1: a request routed into an errand is a mention of it
+from nucleo.errands import named as _named   # V2-878 §1: a request routed into an errand is a mention of it
 from nucleo.turn import his_spec_to_sheet as _his_spec   # a spec he stated about one errand reaches its sheet
 from nucleo.turn import reply as _reply   # the turn's one mouth: a door's start line on a silent turn (V2-851 F1)
 from nucleo.turn import errands_of_a_turn as _eot   # the errand the pool could not take is said (three-tasks)
@@ -129,7 +129,7 @@ async def launch_the_errands(*, motor, send, speech, emit, brain, _brief, _op_te
         # A2 (2026-11-12): the turn ACTED, but not the order the brief surely read — the model served it with another
         # tool (a view, a read, another card's act). The order opens ITS row: a send task, a card act completed, or ONE
         # fact question — read off the verdicts and the acts that ran, never off his words.
-        from nucleo.flash import canvas_visibility as _cvis
+        from nucleo.acts import visibility as _cvis
         _opened = _order.open_the_order(_brief, said=_op_text, reply=spoken_text, ops=ops,
                               model_calls=getattr(brain, "_turn_calls", None) or (), escalate_req=escalate_req,
                               worker_acted=worker_acted, emit=emit, present=_cvis.present,

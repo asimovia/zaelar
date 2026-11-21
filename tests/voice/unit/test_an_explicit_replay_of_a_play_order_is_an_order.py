@@ -13,7 +13,7 @@ from __future__ import annotations
 
 
 
-from nucleo.flash import canvas_license as lic
+from nucleo.acts import show_license as lic
 
 
 

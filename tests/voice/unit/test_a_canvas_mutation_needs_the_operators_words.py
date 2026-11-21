@@ -22,7 +22,7 @@ from nucleo.acts import canvas as _door
 import json
 import pathlib
 
-from nucleo.flash import canvas_license as lic
+from nucleo.acts import show_license as lic
 
 ENGINE = pathlib.Path(__file__).resolve().parents[3]
 
@@ -136,7 +136,7 @@ def test_voice_execute_runs_a_licensed_load_exactly_as_before():
 
 
 def test_fullscreen_dispatch_routes_by_direction_and_discards_the_drag(monkeypatch):
-    from nucleo.flash import show_target as st
+    from nucleo.acts import show_target as st
     monkeypatch.setattr(st, "fullscreen_target", lambda rid, text: "youtube")
     for text, want_tags in (
             ("Johnny pausa el vídeo.", []),                                  # drag → nothing

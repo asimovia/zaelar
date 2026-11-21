@@ -51,5 +51,5 @@ def test_a_shape_named_by_a_declared_alias_is_that_shape_for_the_act_and_its_end
 def test_his_words_still_name_one_shape_when_the_call_carries_none():
     """Pass 4 of 2026-11-17: an alias «side by side» on `tile` made «compare them side by side» name TWO shapes, so the
     words no longer filled a call that carried only `mode` (`enum_fill`) — the aliases must not make his phrase ambiguous."""
-    from nucleo.flash import payload_fill
+    from nucleo.acts import payload_fill
     assert payload_fill.enum_fill("results", "layout", "compare them side by side") == {"layout": "compare"}

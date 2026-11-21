@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import threading
 
-from nucleo.flash import direct_action as _da
+from nucleo.acts import direct_action as _da
 from nucleo.flash import tool_executor_calls as calls
 from nucleo.turn import brief as _tb
 

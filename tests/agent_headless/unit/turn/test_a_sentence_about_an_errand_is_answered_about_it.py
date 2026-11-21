@@ -14,7 +14,7 @@ Measured on the probe channel, ES and EN, with a report, a monitor hunt and a ga
 
 (The cases measured the old text channel; the typed channel now runs the voice turn, so the lanes below are its.)
 
-Every door below reads the same yardstick: which errands does the sentence NAME (`nucleo/turn/named_errand.py`).
+Every door below reads the same yardstick: which errands does the sentence NAME (`nucleo/errands/named.py`).
 """
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ import pytest
 from nucleo import batch, dispatch
 from nucleo.dispatch import confirm as dc
 from nucleo.turn import errands_of_a_turn as E
-from nucleo.turn import named_errand
+from nucleo.errands import named as named_errand
 
 REPORT = {"id": "1", "request": "Hazme un informe sobre coches eléctricos para ciudad", "phase": "leyendo material",
           "waiting_on": ""}

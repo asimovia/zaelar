@@ -19,7 +19,7 @@ def _line(hit: dict) -> str:
     from i18n import langs
     from nucleo import style_policy
     from nucleo.acts import self_controls
-    from nucleo.flash import bulk_close
+    from nucleo.acts import bulk_close
     act = hit.get("action") or {}
     control = act if act.get("do") == "controls" else {}
     receipt = bulk_close.take_receipt() or (self_controls.said(control.get("act"), control.get("value")) if control else "")

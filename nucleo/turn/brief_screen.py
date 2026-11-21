@@ -35,7 +35,7 @@ def target_question(open_ids) -> dict | None:
 
 
 def _target_question(ids: list) -> dict | None:
-    from nucleo.flash import frontend as _fe
+    from nucleo.acts import frontend as _fe
     # Which card the conversation is ABOUT: the one his last turn acted on (demo pass 2026-09-28, E2/U3). Stated in the
     # instructions it moved 3/3 (as a card label 0/3), with the named-kind counterweights still 4/4 on their own card.
     try:
@@ -242,7 +242,7 @@ def ride_the_brief(handle, said: str, open_ids) -> None:
         return
     if str((res.get(NAMES_KEY) or {}).get("choice") or "") == NAMES_ELSEWHERE:
         handle["_close_picks"] = _close_picks(said, open_ids)
-    from nucleo.flash import bulk_close as _bulk
+    from nucleo.acts import bulk_close as _bulk
     handle["_every_card"] = _bulk.closes_every_card(said, open_ids)
 
 

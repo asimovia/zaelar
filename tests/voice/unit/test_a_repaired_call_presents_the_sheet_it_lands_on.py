@@ -12,6 +12,6 @@ verdict's own show uses (2b4094d3).
 
 def test_the_base_narrows_to_the_open_sheet(monkeypatch):
     import server.voice_api as va
-    from nucleo.flash import direct_action as DA
+    from nucleo.acts import direct_action as DA
     monkeypatch.setattr(va, "open_instances", lambda: ["results::b54bca-ls1"])
     assert DA.card_to_present("results", "so how did the monitors go, show me") == "results::b54bca-ls1"

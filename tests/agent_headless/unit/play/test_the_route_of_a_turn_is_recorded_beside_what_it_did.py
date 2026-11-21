@@ -38,7 +38,7 @@ def _spec(wid, action):
 @pytest.fixture
 def turn(monkeypatch):
     """Readings all off by default; `turn.set(...)` turns one on. Events land in `turn.seen`."""
-    from nucleo.flash import direct_action
+    from nucleo.acts import direct_action
     from nucleo.turn import acts_asked, reply, route_by_verdict
     from voice import observer
 

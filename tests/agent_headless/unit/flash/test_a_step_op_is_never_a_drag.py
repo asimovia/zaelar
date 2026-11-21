@@ -12,7 +12,7 @@ import json
 import time
 from pathlib import Path
 
-from nucleo.flash import data_ops
+from nucleo.acts import data_ops
 
 ROOT = Path(__file__).resolve().parents[4]
 

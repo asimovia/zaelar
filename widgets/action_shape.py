@@ -14,11 +14,11 @@ def on_refusal(wid: str, action: str, payload, res):
     """A refused data-op carries the action's DECLARED payload (`payload`) and, when the refusal names no field, the
     first declared key the call left out (`field`) — level 2 of the card's action, handed over only on a refusal, so
     the caller's next call can carry the shape (V2-860 T2.7: `set_volume {}` was refused as `bad_level` and nobody
-    could act on it). Read through `act_policy.declared_actions` (re-exported by `nucleo.flash.frontend`), the one reader."""
+    could act on it). Read through `act_policy.declared_actions` (re-exported by `nucleo.acts.frontend`), the one reader."""
     if not (isinstance(res, dict) and (res.get("error") or res.get("ok") is False)):
         return res
     try:
-        from nucleo.flash.frontend import declared_actions     # act_policy's reader, its public re-export
+        from nucleo.acts.frontend import declared_actions     # act_policy's reader, its public re-export
         decl = (declared_actions(wid).get(action) or {}).get("payload")
     except Exception as e:  # noqa: BLE001 — an unreadable declaration leaves the refusal as the card wrote it
         logger.debug(f"brain_action: {wid}:{action} declaration unread — {e!r}")

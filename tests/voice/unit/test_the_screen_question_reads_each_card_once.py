@@ -14,7 +14,7 @@ from nucleo.turn import brief_screen
 @pytest.fixture
 def card(monkeypatch):
     """A card with `n` actions that each must name an existing row (`contactId`), and an index that counts its reads."""
-    from nucleo.flash import frontend
+    from nucleo.acts import frontend
     from widgets import refs
     reads = {"n": 0, "rows": [{"field": "contactId", "id": "c1", "label": "Quinn Ferrer"}]}
 

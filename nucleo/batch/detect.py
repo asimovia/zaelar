@@ -81,7 +81,7 @@ def about_errands_under_way(text: str) -> bool:
     if unmistakable(text):
         return False
     try:
-        from nucleo.turn import named_errand
+        from nucleo.errands import named as named_errand
         return bool(named_errand.named(text, named_errand.known(with_finished=True)))
     except Exception:  # noqa: BLE001 — a doubt keeps today's path
         return False

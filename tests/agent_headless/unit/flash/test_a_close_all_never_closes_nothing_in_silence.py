@@ -16,7 +16,7 @@ import asyncio
 import pytest
 
 from nucleo import done_ops
-from nucleo.flash import bulk_close
+from nucleo.acts import bulk_close
 
 
 @pytest.fixture(autouse=True)

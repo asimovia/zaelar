@@ -30,7 +30,7 @@ def gate(monkeypatch):
 
 def test_a_recipient_he_never_named_is_asked_even_with_no_stranger_in_the_context(gate):
     from widgets import actions as wa
-    from nucleo.flash import frontend
+    from nucleo.acts import frontend
     assert frontend.at_least_sensitive("mensajeria", "send_to")
     assert gate.asked_if_leaving(wa.FAST, None, "mensajeria", "send_to", payload={"contact": "Quinn"},
                                  said="send the summary to the team") == wa.CONFIRM
@@ -60,7 +60,8 @@ def test_the_meeting_invitation_leaves_and_its_guest_must_be_his(gate):
 
 def test_the_engine_never_turns_a_draft_into_a_send_to_somebody_he_did_not_name(gate, monkeypatch):
     from nucleo.acts import message_repair as ordered_send
-    from nucleo.flash import direct_action, payload_fill
+    from nucleo.acts import direct_action
+    from nucleo.acts import payload_fill
     from nucleo.turn import verdicts
     monkeypatch.setattr(direct_action, "completes", lambda *_a, **_k: "send_to")
     monkeypatch.setattr(verdicts, "sure_order", lambda *_a: True)

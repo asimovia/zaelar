@@ -26,7 +26,7 @@ def _named(calls, brief) -> list[tuple[str, str]]:
         args = c.get("args") if isinstance(c, dict) else None
         if isinstance(c, dict) and c.get("name") == "widget_data" and isinstance(args, dict):
             out.append((base(args.get("widget_id")), str(args.get("action") or "")))
-    from nucleo.flash import direct_action
+    from nucleo.acts import direct_action
     target = direct_action.from_brief(brief)
     if target[0]:
         out.append((base(target[0]), str(target[1])))

@@ -110,7 +110,7 @@ def status_owed(operator_text: str, brief) -> str:
     kind, _k = _tb.read(brief, _tb.REQUEST_KEY, "")
     if words != "tell" and kind != "question":
         return ""
-    from nucleo.turn import named_errand as _ne
+    from nucleo.errands import named as _ne
     errands = _ne.known()
     live = [e for e in errands if not e["parked"]]
     # A question that NAMES an errand is about THAT errand (EN round 20:00: «the jump, did you make it higher?»
@@ -127,7 +127,7 @@ def status_owed(operator_text: str, brief) -> str:
 def status_item(e: dict, state: str) -> str:
     """One errand in a status sentence: its name QUOTED, as every line of ours names his errands («…»), so a title in
     another language («The Dark Side of the Moon») reads as the name it is, then where it stands."""
-    from nucleo.turn import named_errand as _ne
+    from nucleo.errands import named as _ne
     return f"«{_ne.spoken_name(e)}» — {state}"
 
 

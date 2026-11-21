@@ -87,7 +87,7 @@ def confirmed(widget_id: str, action: str, payload, brief) -> bool:
         return False
     try:
         from nucleo import consent
-        from nucleo.flash import frontend as _fe
+        from nucleo.acts import frontend as _fe
         return not consent.asks(_fe.action_verdict(widget_id, action, payload, his_yes=True))
     except Exception as e:  # noqa: BLE001
         logger.info(f"acts.message: consent unreadable ({e}) — the act keeps its question")

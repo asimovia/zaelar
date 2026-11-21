@@ -76,7 +76,7 @@ def served(wid: str, act: str, ops=(), model_calls=()) -> bool:
     from nucleo.acts.media import CARD_OF_TOOL
     from widgets import effects
     card, ran = base(wid), _ran(ops)
-    if __import__("nucleo.flash.direct_action", fromlist=["x"]).reaimed(card, act) or any(   # re-aimed, or ran here
+    if __import__("nucleo.acts.direct_action", fromlist=["x"]).reaimed(card, act) or any(   # re-aimed, or ran here
             c == card and (a == act or _same_effect(card, act, a)) for c, a in ran):
         return True
     calls = [c for c in model_calls or () if isinstance(c, dict) and isinstance(c.get("args"), dict)]
@@ -94,7 +94,7 @@ def _beyond_looks(brief, wid: str, act: str, model_calls) -> list:
     call's own door makes, `data_ops.a_view_where_the_verdict_acts`, with `wants_words = act` at the ACT floor). A look
     is no serving call — and it RAN and stands (2.73): no act of the verdict runs beside it. What the order still owes
     is its QUESTION, the facts the act needs, on its row; an act that needs none owes nothing."""
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
     from nucleo.turn import brief as _tb, verdicts
     wants, card = str(verdicts.to_act(brief, _tb.WORDS_KEY, "")[0] or ""), base(wid)
     return [c for c in model_calls or () if not (isinstance(c, dict) and isinstance(a := c.get("args"), dict)
@@ -144,7 +144,7 @@ def _leaving(brief, wid: str, act: str, said: str, reply: str, emit) -> dict:
 def _of_the_card(brief, wid: str, act: str, said: str, reply: str, emit, present, apply_widget_data, looked=False) -> dict:
     """An act of the card: the completion the empty turn uses — not beside a look that ran — else ONE fact question."""
     if not looked and present is not None and apply_widget_data is not None:
-        from nucleo.flash import direct_action
+        from nucleo.acts import direct_action
         done = direct_action.complete(brief, operator_text=said, emit=emit or (lambda *a, **k: None), present=present,
                                       apply_widget_data=apply_widget_data, widget_id=wid, require_order=False,
                                       model_words=reply)
@@ -155,7 +155,7 @@ def _of_the_card(brief, wid: str, act: str, said: str, reply: str, emit, present
 
 def needed(wid: str, act: str, payload: dict | None = None) -> list[str]:
     """The required payload keys of `wid:act` that `payload` leaves empty, in the manifest's order."""
-    from nucleo.flash import payload_fill
+    from nucleo.acts import payload_fill
     spec = payload_fill._payload_spec(wid, act)
     have = {k for k, v in (payload or {}).items() if str(v or "").strip()}
     return [str(k) for k, d in spec.items() if not payload_fill._optional(d) and k not in have]

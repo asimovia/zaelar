@@ -21,7 +21,7 @@ import threading
 import pytest
 
 from nucleo.flash import card_close as CC
-from nucleo.flash import direct_action as DA
+from nucleo.acts import direct_action as DA
 
 THREE = ["youtube", "musica", "agenda"]
 

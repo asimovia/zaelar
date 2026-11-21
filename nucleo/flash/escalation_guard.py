@@ -326,7 +326,8 @@ def _the_order_was_carried_out(brief) -> bool:
     act this turn ran IS the commission (live bench E3, 2026-10-15: `forward` + `escalate_to_slowbrain` with the escalate
     key missing from the brief; the worker was kept and was free to send the same mail again). A sure «escalate» — a
     compound turn that also commissions real work — keeps its worker."""
-    from nucleo.flash import direct_action as _da, undecided as _und
+    from nucleo.flash import undecided as _und
+    from nucleo.acts import direct_action as _da
     from nucleo.turn import brief as _tb
     _c, info = _tb.read(brief, _tb.ESCALATE_KEY, "")
     if info is not None:

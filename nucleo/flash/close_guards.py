@@ -231,7 +231,7 @@ def dataop_close_licensed(text: str, widget_id: str, *, brief=None, emit=None) -
         return True
     if is_negated_or_narrated(text):
         return False
-    from nucleo.flash import direct_action as _da
+    from nucleo.acts import direct_action as _da
     licensed = _da.endorses(brief, widget_id, "close")
     if emit is not None:
         emit("brain",

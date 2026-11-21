@@ -175,7 +175,7 @@ def _widget_has_live_work(wid: str) -> bool:
 
 def _bulk_close():
     """The one bulk-close door (V2-807 T-08): a close that names no card spares the card he is working on."""
-    from nucleo.flash import bulk_close
+    from nucleo.acts import bulk_close
     return bulk_close
 
 
@@ -256,7 +256,7 @@ def execute(action: dict, emit, phrase: str = "") -> bool:
         # promise repair can only make data-ops; the canvas step is a tag. The target is the card the canvas
         # itself reports at full screen (`state.maximized_widget`), never a guess; none → the model answers.
         try:                               # …or the full screen his own order set and nothing undid (V4) — ONE
-            from nucleo.flash import show_target as _st_fs   # reader for every door (`show_target.at_full_screen`)
+            from nucleo.acts import show_target as _st_fs   # reader for every door (`show_target.at_full_screen`)
             maxw = _st_fs.at_full_screen()
         except Exception:  # noqa: BLE001
             maxw = ""
@@ -307,7 +307,7 @@ def execute(action: dict, emit, phrase: str = "") -> bool:
             try:
                 # V2-650b: a fast-lane close is by definition operator-ordered (a seeded phrase) — record it
                 # so a model-emitted show of the same widget needs his words again.
-                from nucleo.flash import canvas_license as _lic
+                from nucleo.acts import show_license as _lic
                 _lic.note_operator_close(cid)
             except Exception:
                 pass
@@ -332,7 +332,7 @@ def execute(action: dict, emit, phrase: str = "") -> bool:
         try:
             import asyncio
 
-            from nucleo.flash.frontend import action_is_view, action_mode
+            from nucleo.acts.frontend import action_is_view, action_mode
             from widgets import server_api as _sapi
             if str(action_mode(wid, action["action"]) or "").lower() != "fast":
                 return False

@@ -41,7 +41,7 @@ def test_a_real_phone_still_goes_to_phones(ct):
 
 
 def test_a_name_in_the_payload_is_the_reference():
-    from nucleo.flash import frontend
+    from nucleo.acts import frontend
     assert frontend.payload_ref("contactos", "add_phone", {"name": "Rowan", "channel": "telegram"}) == "Rowan"
     assert frontend.payload_ref("contactos", "add_phone", {"contact": "Rowan"}) == "Rowan"
     assert frontend.payload_ref("contactos", "add_phone", {"contactId": "c1", "name": "Rowan"}) == "c1"
@@ -50,7 +50,7 @@ def test_a_name_in_the_payload_is_the_reference():
 
 
 def test_a_named_row_on_a_closed_card_is_not_a_loose_pronoun(monkeypatch):
-    from nucleo.flash import frontend
+    from nucleo.acts import frontend
     from memory import api as memapi
     monkeypatch.setattr(memapi, "state", lambda: {"open_widgets": []})
     assert not frontend.absent_widget_misroute("contactos", "add_phone", "",

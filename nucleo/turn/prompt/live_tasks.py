@@ -159,7 +159,7 @@ def pending_task_lines() -> list[str]:
                     # entrega que el operador tiene delante en la pantalla…», and with the sheet CLOSED the
                     # model answered «the shortlist is on your screen» to «show me» — and opened nothing. The
                     # canvas reports what is open; the block now says it instead of leaving it to be assumed.
-                    from nucleo.flash import canvas_visibility as _cv
+                    from nucleo.acts import visibility as _cv
                     _up = _cv.card_is_open(str(t.get("sheet") or ""))
                     if _up is True:
                         bit += " [su hoja ESTÁ abierta ahora]"

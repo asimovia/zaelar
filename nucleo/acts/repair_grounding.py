@@ -1,0 +1,85 @@
+"""nucleo/acts/repair_grounding.py — a call the REPAIR pass writes may only carry what somebody actually said.
+
+A card pass (`nucleo/acts/repair_after_lookup`, `repair_of_a_view`) asks the model, once more and with no operator in
+the loop, for the call the turn owed. That pass
+fills the payload on its own, so its free values are the ones nobody checked. Two measured inventions:
+
+  · V2-781: «avísame cuando esté» became `send_to {"contact": "zaelar"}` — the assistant's own name as recipient.
+  · `build-a-video-playlist-from-links` (2026-10-10): «Dale, ¿y qué está sonando ahora?» became
+    `musica:play_playlist {"playlist": "Favoritos"}`. Nobody had said «Favoritos»; it is the music card's DEFAULT
+    list name (its manifest describes `favorite_current` with it), and the card held no list at all. The turn
+    answered «No encuentro ninguna lista que se llame «Favoritos»» to a man whose list was «la de la tarde».
+
+Both are the same bound: a value that SELECTS something (who receives a message, which named list to act on) must
+be in his words, in the conversation, or on the card the call is about. A value the pass composes (a note's text, a
+new title) is not checked here — it is written, not selected.
+"""
+from __future__ import annotations
+
+import unicodedata
+
+def _fold(text: str) -> str:
+    s = unicodedata.normalize("NFKD", str(text or "").lower())
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    return " ".join(s.replace("«", " ").replace("»", " ").replace("'", " ").replace('"', " ").split())
+
+
+def _heard(operator_text: str, window) -> str:
+    return " ".join([operator_text or ""] + [str((m or {}).get("content") or "") for m in (window or [])
+                                             if isinstance(m, dict) and m.get("role") == "user"])
+
+
+def recipient_was_named(wid: str, action: str, payload: dict, operator_text: str, window) -> bool:
+    """An outbound message a repair invents must go to someone his words or the conversation carry."""
+    try:
+        from widgets import effects as _fx
+        if not _fx.carries(wid, action, _fx.EXTERNAL_SEND):
+            return True
+        who = str(payload.get("contact") or payload.get("to") or "").strip().lower()
+        heard = _heard(operator_text, window)
+        from nucleo.acts import message as _msg             # one reading of «his recipient» (demo pass 141, E3)
+        return not who or who in heard.lower() or _msg.is_his(who, [operator_text, heard])
+    except Exception:  # noqa: BLE001
+        return True
+
+
+def send_backed_by_verdict(brief, wid: str, action: str) -> bool:
+    """An act that LEAVES, composed by a pass whose card came from his WORDS, runs only when the verdict puts the
+    order on that card (`screen_action` target or `catalog_widget`, licence floor: it licenses the pass's own call, it
+    substitutes nothing — CRIT-K2b R1). A named recipient is not an
+    ordered send (node 2.926: a pass mailed Quinn over «save … in my contacts»). Fail-closed: no brief, no send."""
+    try:
+        from widgets import effects as _fx
+        if not _fx.carries(wid, action, _fx.EXTERNAL_SEND):
+            return True
+        if not brief:
+            return False
+        from nucleo.turn import brief as _tb, verdicts as _v
+        base = str(wid or "").split("::", 1)[0].strip().lower()
+        target, t_info = _tb.read(brief, _tb.TARGET_KEY, "", min_confidence=_v.LICENCE)
+        owner = str(target or "").rpartition(":")[0].split("::", 1)[0].strip().lower()
+        if t_info and owner and owner == base:
+            return True
+        card, c_info = _tb.read(brief, _tb.CATALOG_KEY, "", min_confidence=_v.LICENCE)
+        return bool(c_info) and str(card or "").split("::", 1)[0].strip().lower() == base
+    except Exception as e:  # noqa: BLE001 — unreadable: an act that leaves does not
+        from loguru import logger
+        logger.debug(f"repair_grounding: verdict unreadable — {e}")
+        return False
+
+
+def session_lang() -> str:
+    """The session's language by name (demo pass 102: «the operator's language» let a Spanish refusal win)."""
+    try:
+        from i18n import langs as _lg
+        return str(_lg.current_language().name or "the operator's language")
+    except Exception as e:  # noqa: BLE001
+        from loguru import logger
+        logger.warning(f"session language unreadable ({type(e).__name__}) — the prompt says «the operator's language»")
+        return "the operator's language"
+
+
+def in_his_lang(template: str) -> str:
+    """«The OPERATOR's language», NAMED, in every repair pass that writes a payload (pass 141, E3: a commission note
+    came out Spanish in an English session — only the refusal pass named it, since pass 102)."""
+    return template.replace("OPERATOR's language", f"OPERATOR's language ({session_lang()})")

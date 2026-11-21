@@ -16,7 +16,7 @@ import pytest
 from nucleo import dispatch
 from nucleo.request import append
 from nucleo.turn import brief as tb
-from nucleo.turn import named_errand
+from nucleo.errands import named as named_errand
 from nucleo.turn.prompt import live_tasks, recall
 
 NOW = int(time.time())

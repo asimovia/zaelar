@@ -17,7 +17,9 @@ import asyncio
 import pytest
 
 from nucleo import done_ops
-from nucleo.flash import bulk_close, hard_turn, redo_decision
+from nucleo.flash import hard_turn
+from nucleo.acts import redo as redo_decision
+from nucleo.acts import bulk_close
 from voice import trace
 
 OPEN = ["documento", "navegador", "mensajeria"]

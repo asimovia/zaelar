@@ -57,7 +57,7 @@ WAIT_S = 2.0
 def question(_ctx=None) -> dict | None:
     """The door question about his last act (None when there is none to correct)."""
     try:
-        from nucleo.flash import redo_decision
+        from nucleo.acts import redo as redo_decision
         op = redo_decision.last_op()
         if not op:
             return None

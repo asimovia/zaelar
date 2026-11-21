@@ -54,7 +54,7 @@ def test_the_inline_spec_is_persisted_on_its_row(fresh_db, monkeypatch):
     import asyncio
 
     from nucleo.request import model as _rq
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
     import widgets
 
     monkeypatch.setattr(S, "open_for_action", lambda *a, **k: S.open({"widget": "youtube", "all": [

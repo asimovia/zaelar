@@ -179,7 +179,7 @@ def test_the_front_app_is_in_front_on_a_phone_and_full_screen_on_a_desktop(on, d
 
 def test_leaving_full_screen_on_a_phone_puts_the_front_app_away(on):
     from memory import api as memory
-    from nucleo.flash import show_target
+    from nucleo.acts import show_target
     memory.set_state({"open_widgets": ["agenda", "musica"], "maximized_widget": "musica", "front_reported": True})
     tags = []
     monkey_emit = lambda *a, **k: None   # noqa: E731

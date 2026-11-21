@@ -24,7 +24,7 @@ from nucleo.flash import (canvas_license as _canvas_lic, canvas_visibility as _c
                           data_ops as _data_ops, direct_action as _direct_action,
                           escalation_guard as _eguard, prior_line as _prior_line, harness_turn as _ht, image_turn as _image_turn, resume_turn as _resume_turn,
                           show_target as _show_target)
-from nucleo.turn import task_recall as _trecall
+from nucleo.errands import task_recall as _trecall
 from nucleo.self.catalogs import wall_tab_for as _wall_tab_for
 from nucleo.turn import errands_of_a_turn as _eot
 from widgets import confirm as _wconfirm

@@ -57,7 +57,7 @@ def test_a_data_op_that_answers_is_the_answer(monkeypatch):
     search_archive, it found the Inworld invoice, and the turn said «Let me check your inbox»: the voice path
     dispatches detached and only ever read a result that FAILED. A turn that owes words waits for its ops (bounded)
     and answers with what they returned."""
-    from nucleo.flash import data_ops as d
+    from nucleo.acts import data_ops as d
     assert d.answer_of({"ok": True, "queued": True, "id": "mensajeria", "matches": [{"from": "Inworld AI"}]}) == \
         {"matches": [{"from": "Inworld AI"}]}
     assert d.answer_of({"ok": True, "queued": True, "id": "mensajeria"}) == {}
@@ -65,7 +65,7 @@ def test_a_data_op_that_answers_is_the_answer(monkeypatch):
     said = _ops_answer_door(monkeypatch, {"ok": True, "queued": True, "id": "mensajeria",
                                           "matches": [{"from": "Inworld AI"}]}, "mensajeria", "search_archive")
     assert said and "Inworld AI" in said[0]["system"] and said[0]["label"] == "op answer compose"
-    src = (ROOT / "nucleo/flash/data_ops.py").read_text("utf-8")
+    src = (ROOT / "nucleo/acts/data_ops.py").read_text("utf-8")
     assert "return res          # the RESULT" in src
 
 

@@ -16,7 +16,7 @@ import threading
 import pytest
 
 from nucleo import jev
-from nucleo.flash import show_target as st
+from nucleo.acts import show_target as st
 from nucleo.turn import brief as tb
 
 

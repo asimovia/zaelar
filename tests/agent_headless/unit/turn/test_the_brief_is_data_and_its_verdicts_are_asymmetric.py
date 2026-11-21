@@ -97,7 +97,7 @@ def test_a_brief_asked_before_the_turn_is_the_turns_brief(monkeypatch):
 def test_a_close_the_model_called_is_vetoed_only_when_the_brief_is_sure_he_named_no_card(monkeypatch, conf, closed):
     """«Close the weekend.» with the video open (bank `session-3a9a082c-close-the-weekend`): the model called
     `close_widget(youtube)`. `names_a_card = elsewhere` at the veto refuses that close; below it the model's call runs."""
-    from nucleo.flash import show_target
+    from nucleo.acts import show_target
     monkeypatch.setattr(brief, "of_this_turn", lambda: _brief(**{brief.NAMES_KEY: ("elsewhere", conf)}))
     monkeypatch.setattr(show_target, "close_target", lambda wid: wid)
     tags, events = [], []

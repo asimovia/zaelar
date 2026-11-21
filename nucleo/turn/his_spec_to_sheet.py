@@ -51,7 +51,7 @@ def carry(operator_text: str) -> list[str]:
     out: list[str] = []
     try:
         from nucleo import sheets
-        from nucleo.turn import named_errand as _ne
+        from nucleo.errands import named as _ne
         errands = _ne.known(with_finished=True)
         if not any(str(e.get("sheet") or "").startswith("results") for e in errands):
             return []

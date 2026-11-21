@@ -3,7 +3,7 @@ it, the verdict that licenses it.
 Moved from `nucleo/flash/frontend.py` (refactor2710-05 T-05); its names are read through `_fe`."""
 from __future__ import annotations
 
-from nucleo.flash import frontend as _fe
+from nucleo.acts import frontend as _fe
 
 
 def action_mode(widget_id: str, action: str) -> str | None:

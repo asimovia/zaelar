@@ -30,7 +30,8 @@ def brief(screen_action: str = "", confidence: float = 0.95, *, kind: str = "ord
 def run(card: str, action: str, payload: dict | None = None, *, said: str = "", turn_brief=None,
         monkeypatch=None) -> SimpleNamespace:
     """Drive one data-op through the gate. `monkeypatch` (pytest's) keeps the dispatch stub to this test."""
-    from nucleo.flash import frontend, tool_executor_widget as txw, tool_executor_widget_calls as calls
+    from nucleo.flash import tool_executor_widget as txw, tool_executor_widget_calls as calls
+    from nucleo.acts import frontend
     out = SimpleNamespace(ran=[], asked=[], events=[])
 
     def start_op(wid, act, pay, **_kw):

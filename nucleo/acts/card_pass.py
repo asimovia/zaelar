@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import re
 
-from nucleo.flash.repair_grounding import in_his_lang, session_lang  # noqa: F401 — pass 102/141
+from nucleo.acts.repair_grounding import in_his_lang, session_lang  # noqa: F401 — pass 102/141
 
 
 def denies_the_act(spoken: str) -> bool:

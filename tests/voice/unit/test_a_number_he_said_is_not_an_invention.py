@@ -73,7 +73,7 @@ import threading
 
 import pytest
 
-from nucleo.flash import direct_action as _da
+from nucleo.acts import direct_action as _da
 from nucleo.turn import brief as _tb
 from voice import observer as _obs
 from widgets import store

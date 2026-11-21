@@ -57,7 +57,7 @@ def test_the_hosts_shortcut_is_the_maps_exact_lookup_and_act(monkeypatch):
     from i18n import langs
     from nucleo import actionmap, style_policy
     from nucleo.conversation_host import shortcut
-    from nucleo.flash import bulk_close
+    from nucleo.acts import bulk_close
     ran = []
     monkeypatch.setattr(actionmap, "enabled", lambda: True)
     monkeypatch.setattr(actionmap, "match_spoken", lambda t: {"id": 4, "action": {"do": "close", "widget": "w_music"}}

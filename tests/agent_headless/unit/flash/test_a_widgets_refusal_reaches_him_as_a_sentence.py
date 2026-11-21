@@ -58,7 +58,7 @@ def rail(monkeypatch):
     import widgets.server_api as _sa
     monkeypatch.setattr(_sa, "brain_action", _brain_action)
     from widgets import actions as _wa
-    monkeypatch.setattr("nucleo.flash.frontend.action_mode", lambda wid, act: _wa.FAST)
+    monkeypatch.setattr("nucleo.acts.frontend.action_mode", lambda wid, act: _wa.FAST)
     monkeypatch.setattr("nucleo.flash.act_repair.call_for_refusal", _no_fix)
 
 

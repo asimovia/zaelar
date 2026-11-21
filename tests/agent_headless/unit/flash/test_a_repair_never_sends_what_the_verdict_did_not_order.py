@@ -27,7 +27,8 @@ import threading
 import pytest
 
 from nucleo.acts import repair_after_lookup
-from nucleo.flash import direct_action as _da, repair_grounding as _rg
+from nucleo.acts import direct_action as _da
+from nucleo.acts import repair_grounding as _rg
 from nucleo.turn import brief as _tb
 
 EN = "Save Rowan and Quinn in my contacts: Rowan's Telegram is @rowan_demo, and Quinn's email is quinn@example.com."

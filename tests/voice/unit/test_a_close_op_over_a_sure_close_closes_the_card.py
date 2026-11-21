@@ -6,7 +6,7 @@ found the mail still there."""
 
 
 def test_a_close_op_under_a_sure_close_verdict_is_the_card(monkeypatch):
-    from nucleo.flash import direct_action as da
+    from nucleo.acts import direct_action as da
     monkeypatch.setattr(da, "sure_canvas", lambda brief: "close")
     assert da.close_op_is_the_card(object(), "close")
     assert not da.close_op_is_the_card(object(), "unread"), "only an op named close"
@@ -17,7 +17,8 @@ def test_a_close_op_under_a_sure_close_verdict_is_the_card(monkeypatch):
 def test_the_data_op_door_closes_the_card_instead(monkeypatch):
     """The card door's GATE ladder reads it first, and the gate closes the card the licence names."""
     from nucleo.acts import card
-    from nucleo.flash import direct_action as da, show_target as st
+    from nucleo.acts import direct_action as da
+    from nucleo.acts import show_target as st
     monkeypatch.setattr(da, "sure_canvas", lambda brief: "close")
     monkeypatch.setattr(st, "close_target", lambda wid: f"{wid}::1")
     lic = card.licence({"brief": object(), "text": "close my mail"}, "mensajeria", "close", {}, at=card.GATE)
@@ -30,7 +31,8 @@ def _through_the_gate(monkeypatch, said: str, canvas: str):
     it), with the canvas tags it emits recorded: what the screen was told, and which ops started."""
     import threading
     from types import SimpleNamespace
-    from nucleo.flash import frontend, tool_executor_widget as txw, tool_executor_widget_calls as calls
+    from nucleo.flash import tool_executor_widget as txw, tool_executor_widget_calls as calls
+    from nucleo.acts import frontend
     import server.voice_api as va
     monkeypatch.setattr(va, "open_instances", lambda: ["mensajeria"])
     out = SimpleNamespace(ran=[], tags=[])
@@ -68,7 +70,7 @@ def test_without_a_sure_close_the_cards_own_view_op_runs(monkeypatch):
 def test_the_disarm_a_gate_blind_to_the_verdict_runs_the_view_and_leaves_the_card(monkeypatch):
     """E5 restored: with `close_op_is_the_card` off, the same sentence runs the messaging card's `close` VIEW and the
     card stays on screen while the reply says the mail was closed."""
-    from nucleo.flash import direct_action as da
+    from nucleo.acts import direct_action as da
     monkeypatch.setattr(da, "close_op_is_the_card", lambda *a, **k: False)
     assert not da.close_op_is_the_card(object(), "close"), "the mutation landed"
     out = _through_the_gate(monkeypatch, "cierra el correo, ya está", "close")

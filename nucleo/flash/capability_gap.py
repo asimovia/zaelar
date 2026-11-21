@@ -63,7 +63,7 @@ def _declarations(open_ids) -> str:
     lines: list[str] = []
     ids = [str(w).split("::", 1)[0].strip().lower() for w in (open_ids or []) if str(w or "").strip()]
     try:
-        from nucleo.flash import frontend as _fe
+        from nucleo.acts import frontend as _fe
         for wid in list(dict.fromkeys(ids))[:MAX_CARDS]:
             acts = []
             for name, spec in list((_fe.declared_actions(wid) or {}).items())[:MAX_ACTIONS_PER_CARD]:

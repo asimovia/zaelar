@@ -509,7 +509,8 @@ class Isolated:
         from server import canvas_api
         self._set(canvas_api.canvas_state, "_last_inst", [str(w) for w in case["screen"].get("open") or []])
         from nucleo import canvas_closes, canvas_focus, done_ops
-        from nucleo.flash import bulk_close, canvas_license
+        from nucleo.acts import bulk_close
+        from nucleo.acts import show_license as canvas_license
         canvas_focus._reset()
         done_ops.reset()          # the voice turn RUNS a case's ops (dry at the door): the last case's working card
         bulk_close.reset()        # and kept cards are process state, and a bulk close spared them in the next case

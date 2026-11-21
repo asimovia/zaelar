@@ -48,7 +48,7 @@ def test_widgets_and_tasks_are_facts_by_id(monkeypatch):
     from nucleo import surfaces
     monkeypatch.setattr(surfaces, "open_widget_ids", lambda: ["agenda"])
     monkeypatch.setattr(surfaces, "recent_widget_ids", lambda: ["agenda", "weather"])
-    from nucleo.flash import show_target
+    from nucleo.acts import show_target
     from widgets import runtime
     monkeypatch.setattr(runtime, "catalog", lambda: [{"id": "agenda", "whenToUse": "w_days"}, {"id": "weather"}])
     monkeypatch.setattr(show_target, "at_full_screen", lambda: "agenda")

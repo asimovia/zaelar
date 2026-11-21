@@ -20,9 +20,13 @@ import threading
 
 import pytest
 
-from nucleo.flash import card_close as _cc, direct_action as _da, show_target as _st
+from nucleo.flash import card_close as _cc
 
 
+
+
+from nucleo.acts import direct_action as _da
+from nucleo.acts import show_target as _st
 def _brief(**verdicts):
     ev = threading.Event()
     ev.set()

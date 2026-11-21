@@ -8,7 +8,7 @@ the sheet was to be assumed. It now states it from the canvas's raw instances; u
 import pytest
 
 from nucleo import dispatch
-from nucleo.flash import canvas_visibility as CV
+from nucleo.acts import visibility as CV
 from nucleo.turn.prompt import live_tasks
 
 _SHEET = "results::c29838-ls1"

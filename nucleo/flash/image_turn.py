@@ -161,7 +161,7 @@ async def execute(query: str, n: int = DEFAULT_N, more: bool = False) -> dict:
         # viewer's own `show` declares (`done_when: items present`), and an already-open viewer is not raised again.
         if parte["ok"] and parte["count"] and not (more and shown):
             try:
-                from nucleo.flash import canvas_visibility as _cvis
+                from nucleo.acts import visibility as _cvis
                 _cvis.present("imagenes", reason="producer-mount", action="show", src="flash")
             except Exception as e:  # noqa: BLE001
                 logger.debug(f"image_turn: mount not emitted — {e}")

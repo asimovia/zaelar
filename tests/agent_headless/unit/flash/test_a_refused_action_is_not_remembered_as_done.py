@@ -41,7 +41,7 @@ import pathlib
 
 import pytest
 
-from nucleo.flash import data_ops
+from nucleo.acts import data_ops
 
 ENGINE = pathlib.Path(__file__).resolve().parents[4]
 PROVIDER = ENGINE / "voice" / "engine" / "llm" / "providers" / "nucleo.py"

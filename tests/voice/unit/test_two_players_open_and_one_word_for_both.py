@@ -30,7 +30,7 @@ import threading
 
 import pytest
 
-from nucleo.flash import frontend as fe
+from nucleo.acts import frontend as fe
 
 BOTH = ["youtube", "musica"]
 
@@ -162,7 +162,7 @@ def test_the_turn_takes_the_SHARED_decision_and_does_not_copy_it():
     """The turn calls the one function. A copied condition costs a marker and leaves two places to edit — this
     repo's own ratchet vetoes a new mirror: «si dos canales necesitan la misma regla, extrae»."""
     import inspect
-    from nucleo.flash import frontend
+    from nucleo.acts import frontend
     for fn in ("card_decision", "which_card", "absent_widget_misroute"):
         # wherever the function lives (refactor2710-05 moved it to `nucleo/acts/`), it is ONE definition the
         # frontend exposes — read through the object, so a move never empties this guard
@@ -181,7 +181,7 @@ def test_no_third_blocking_caller_was_added_to_serve_the_briefless_channel():
 
     import inspect
     import textwrap
-    from nucleo.flash import frontend
+    from nucleo.acts import frontend
     fn = ast.parse(textwrap.dedent(inspect.getsource(frontend.which_card))).body[0]
     # A CALL, not a mention: the comment above it names `choose_sync` on purpose, to say why there is
     # none. A substring check would have read our own explanation as the defect it explains.
@@ -197,7 +197,7 @@ def test_the_sentence_the_operator_HEARS_is_actually_produced():
     assertions above could not see it — they prove the call, never that its argument fits."""
     from i18n import langs
 
-    from nucleo.flash import frontend as fe
+    from nucleo.acts import frontend as fe
     for code in ("es", "en"):
         phrase = langs.spec(code).ask_which_item
         plan = fe.card_decision("musica", "play",

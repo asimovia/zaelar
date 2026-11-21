@@ -14,7 +14,7 @@ from voice.engine.llm.providers import nucleo as _p
 async def compose_the_prompt(*, brain, emit, operator_text, self, text) -> dict:
     from nucleo.flash import dialog as _dialog
     from nucleo.acts import errand as _escalate_mod
-    from nucleo.flash import frontend as _frontend
+    from nucleo.acts import frontend as _frontend
     from nucleo.llm.fast_client import FastClient, spec_from_config
     from nucleo.turn.prompt.builder import build_flash_system
     from nucleo.flash import router as _router

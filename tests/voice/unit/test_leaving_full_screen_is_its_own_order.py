@@ -48,7 +48,7 @@ def _emits():
 
 
 def _dispatch(args, text, monkeypatch, target="imagenes"):
-    from nucleo.flash import show_target as st
+    from nucleo.acts import show_target as st
     monkeypatch.setattr(st, "fullscreen_target", lambda rid, t: target)
     rows, emit = _emits()
     tags, deduped = [], {"v": False}
@@ -127,13 +127,13 @@ def test_a_turn_that_says_nothing_about_screen_size_is_still_drag(monkeypatch, m
 # ── C · A CLAIM OF HAVING LEFT IS MADE TRUE ──────────────────────────────────────────────────────────────────
 def test_the_measured_turn_is_completed(monkeypatch):
     """«Y sal de pantalla completa.», nothing called, the viewer covering the screen."""
-    from nucleo.flash import show_target as st
+    from nucleo.acts import show_target as st
     _state(monkeypatch, maximized="imagenes")
     assert st.fullscreen_exit_due("Y sal de pantalla completa.", fired=False) == "imagenes"
 
 
 def test_it_is_never_completed_twice(monkeypatch):
-    from nucleo.flash import show_target as st
+    from nucleo.acts import show_target as st
     _state(monkeypatch, maximized="imagenes")
     assert st.fullscreen_exit_due("Y sal de pantalla completa.", fired=True) == "", \
         "the model DID call the tool: completing on top of it would act twice"
@@ -141,7 +141,7 @@ def test_it_is_never_completed_twice(monkeypatch):
 
 def test_nothing_is_completed_when_nothing_covers_the_screen(monkeypatch):
     """The screen fact is what bounds it: with no card full screen there is nothing to bring back."""
-    from nucleo.flash import show_target as st
+    from nucleo.acts import show_target as st
     _state(monkeypatch, maximized="")
     assert st.fullscreen_exit_due("Y sal de pantalla completa.", fired=False) == ""
 
@@ -154,13 +154,13 @@ def test_nothing_is_completed_when_nothing_covers_the_screen(monkeypatch):
 ])
 def test_only_what_the_existing_licence_already_reads_as_leaving(monkeypatch, text):
     """No new words: the completion rides the licence that was already there (`minimize`)."""
-    from nucleo.flash import show_target as st
+    from nucleo.acts import show_target as st
     _state(monkeypatch, maximized="imagenes")
     assert st.fullscreen_exit_due(text, fired=False) == "", text
 
 
 def test_the_completion_leaves_and_says_so(monkeypatch):
-    from nucleo.flash import show_target as st
+    from nucleo.acts import show_target as st
     _state(monkeypatch, maximized="imagenes")
     rows, emit = _emits()
     tags = []

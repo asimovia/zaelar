@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import asyncio
 
-from nucleo.flash import data_ops
+from nucleo.acts import data_ops
 
 
 class _Sp:

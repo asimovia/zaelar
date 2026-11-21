@@ -100,12 +100,12 @@ def target(text: str, open_ids, action: str = "") -> str:
     try:
         targets, excluded = split(text, ids)
         if action:
-            from nucleo.flash import frontend as _fe
+            from nucleo.acts import frontend as _fe
             targets = [c for c in targets if action in (_fe.declared_actions(_base(c)) or {})]
         if len({_base(c) for c in targets}) == 1:
             return targets[0]
         if not targets and excluded and action:
-            from nucleo.flash import frontend as _fe
+            from nucleo.acts import frontend as _fe
             left = [c for c in ids if _base(c) not in excluded and action in (_fe.declared_actions(_base(c)) or {})]
             if len({_base(c) for c in left}) == 1:
                 return left[0]

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import threading
 
-from nucleo.flash import direct_action as card_verdict
+from nucleo.acts import direct_action as card_verdict
 canvas_verdict = card_verdict
 from nucleo.turn import brief as _tb
 

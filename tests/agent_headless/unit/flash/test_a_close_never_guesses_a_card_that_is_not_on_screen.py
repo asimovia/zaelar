@@ -36,7 +36,7 @@ def _brief(open_ids, names) -> dict:
 
 @pytest.mark.parametrize("lang", ["en", "es"])
 def test_named_cards_reads_both_cards_of_the_sentence(lang):
-    from nucleo.flash import direct_action
+    from nucleo.acts import direct_action
     assert set(direct_action.named_cards(MIXED[lang])) == {"agenda", "mensajeria"}
 
 

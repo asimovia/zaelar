@@ -32,7 +32,7 @@ def why(brief, widget_id: str, action: str, *, operator_text: str = "", model_wo
         # read at 1.00 and `mensajeria:forward` at 0.77-0.79 — nothing was sent, 2 runs in 7.
         if model_words and _cl.asks_for_missing_detail(model_words) and not sure_order(brief, widget_id, action):
             return "asked"
-        from nucleo.flash import frontend as _fe
+        from nucleo.acts import frontend as _fe
         if _fe.which_card(widget_id, action, brief=brief)[0] != "ask":
             return ""
         base = str(widget_id or "").split("::", 1)[0].strip().lower()
@@ -61,7 +61,7 @@ def a_question_holds(brief, words: str) -> bool:
     action (`sure_order`, the operator's 70%). The one test both channels' promise repair asks before it runs (live
     bench E3, 2026-10-15: «…what should the message say exactly?» over order 1.00 and `forward` 0.75 — the repair
     never ran and nothing was sent). A question with no verdict, or an unsure one, holds as it always did."""
-    from nucleo.flash import direct_action as _da
+    from nucleo.acts import direct_action as _da
     from nucleo.acts import clarifying as _cl
     if not _cl.asks_for_missing_detail(words or ""):
         return False

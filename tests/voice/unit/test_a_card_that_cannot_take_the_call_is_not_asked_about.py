@@ -4,7 +4,7 @@ Demo pass 66, M3 (2026-09-30): «and the nasdaq, over the whole year» → `mark
 viewer also open (a late worker had just put the wallpaper there). Both declare `show`, the verdict was unsure, and
 the turn asked «Which one exactly? I have imagenes, markets.» — the viewer's `show` takes items/query, never a symbol.
 """
-from nucleo.flash import frontend as fe
+from nucleo.acts import frontend as fe
 
 
 def test_the_viewer_is_not_asked_about_for_a_market_symbol():

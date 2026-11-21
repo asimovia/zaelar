@@ -14,7 +14,7 @@ from nucleo.acts import canvas as _door
 
 
 
-from nucleo.flash import canvas_license as lic
+from nucleo.acts import show_license as lic
 
 
 

@@ -31,7 +31,7 @@ def names_a_place(text: str) -> bool:
 def an_errand_names_a_place() -> bool:
     """Is one of his errands (live, starting or parked) about a named place? Never raises."""
     try:
-        from nucleo.turn import named_errand as _ne
+        from nucleo.errands import named as _ne
         from nucleo.turn.errands_of_a_turn import ask_of
         return any(names_a_place(ask_of(str(e.get("request") or ""))) for e in _ne.known())
     except Exception as e:  # noqa: BLE001 — unreadable errands: the pack asks as before

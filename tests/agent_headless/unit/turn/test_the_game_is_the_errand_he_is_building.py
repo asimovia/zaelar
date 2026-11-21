@@ -16,7 +16,7 @@ import pytest
 from nucleo import dispatch
 from nucleo.dispatch import confirm as dc
 from nucleo.turn import errands_of_a_turn as E
-from nucleo.turn import named_errand
+from nucleo.errands import named as named_errand
 
 ASKED = "yeah the LG 27MP500 for $60 works, grab that. car one looked good btw. how's the game?"
 

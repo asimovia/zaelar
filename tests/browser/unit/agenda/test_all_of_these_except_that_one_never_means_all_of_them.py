@@ -130,7 +130,7 @@ def test_the_widget_counts_what_the_call_would_delete(agenda):
 def test_the_day_sweep_asks_because_it_touches_more_than_one(agenda):
     """The turn he actually spoke: `confirm: true` in the manifest and `fast` in the call, while he was
     saying «and ask me for confirmation»."""
-    from nucleo.flash import frontend
+    from nucleo.acts import frontend
     from widgets import actions as _wa
     assert frontend.action_mode("agenda", "clear_range") == _wa.CONFIRM
     assert frontend.action_mode_now("agenda", "clear_range", PHANTOM) == _wa.CONFIRM
@@ -138,7 +138,7 @@ def test_the_day_sweep_asks_because_it_touches_more_than_one(agenda):
 
 
 def test_the_verdict_carries_the_real_count_so_the_question_can_name_it(agenda):
-    from nucleo.flash import frontend
+    from nucleo.acts import frontend
     v = frontend.action_verdict("agenda", "clear_range", REAL)
     assert v["n"] == 3 and v["verdict"] != "run"
 
@@ -146,7 +146,7 @@ def test_the_verdict_carries_the_real_count_so_the_question_can_name_it(agenda):
 def test_a_sweep_that_would_delete_exactly_one_keeps_its_old_answer(agenda):
     """The rail is «more than one», not «any sweep»: a window holding a single appointment is the same act
     as cancelling that appointment, and this must not grow friction that V2-712 removed."""
-    from nucleo.flash import frontend
+    from nucleo.acts import frontend
     one = {"from": "2026-09-18", "to": "2026-09-18"}
     assert agenda.radius("clear_range", one) == 1
     assert frontend.action_mode_now("agenda", "clear_range", one) == "fast"
@@ -154,7 +154,7 @@ def test_a_sweep_that_would_delete_exactly_one_keeps_its_old_answer(agenda):
 
 def test_a_widget_without_the_hook_decides_exactly_as_before(agenda):
     """The hook REFINES (the `consent_scope` shape): an unreadable or absent count keeps the old verdict."""
-    from nucleo.flash import frontend
+    from nucleo.acts import frontend
     assert frontend._declared_radius("mensajeria", "send_to", {"to": "Ivan"}) is None
     assert frontend._declared_radius("nope", "whatever", {}) is None
 

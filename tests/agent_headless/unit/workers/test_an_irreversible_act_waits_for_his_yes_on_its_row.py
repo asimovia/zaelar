@@ -23,7 +23,7 @@ TURNS = {"es": ("vacía toda la agenda", "¿Vacío toda la agenda?", "sí, vací
 @pytest.fixture
 def world(monkeypatch):
     from nucleo.cli import worker_api_resume
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
     from widgets import confirm as wc
     st = {"dispatched": [], "events": []}
 

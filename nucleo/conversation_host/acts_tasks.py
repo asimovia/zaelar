@@ -67,7 +67,7 @@ def _resume(args: dict) -> ToolResult:
 
 def _reopen(args: dict) -> ToolResult:
     from nucleo.acts import canvas
-    from nucleo.turn import task_recall
+    from nucleo.errands import task_recall
     query = str(args.get("query") or "").strip()
     v = task_recall.voice_turn(query, query)
     if v.get("show"):

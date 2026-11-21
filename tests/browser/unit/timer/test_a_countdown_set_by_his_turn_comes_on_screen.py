@@ -15,8 +15,8 @@ from __future__ import annotations
 import pytest
 
 from nucleo.acts import canvas_arbiter as arb
-from nucleo.flash import canvas_license as lic
-from nucleo.flash import canvas_visibility as cv
+from nucleo.acts import show_license as lic
+from nucleo.acts import visibility as cv
 from widgets import effects as fx
 
 #: His words, in three languages, that never name the card: the mount must license the show, not the mention.

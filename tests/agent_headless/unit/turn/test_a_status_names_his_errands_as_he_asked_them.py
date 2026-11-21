@@ -23,7 +23,7 @@ from nucleo import dispatch
 from nucleo.dispatch import confirm as dc
 from nucleo.acts import errand as esc
 from nucleo.turn import errands_of_a_turn as E
-from nucleo.turn import named_errand
+from nucleo.errands import named as named_errand
 
 GAME = ("Crear un widget nuevo para el canvas: un juego de plataformas tipo Super Mario, jugable, para probar. Debe "
         "tener un personaje que salte")

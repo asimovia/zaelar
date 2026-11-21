@@ -23,7 +23,7 @@ The new criterion is NARROWER than the old one where it matters: it only expands
 different payloads, and only FAST actions reach the code below (an irreversible action is CONFIRM and still
 asks for approval).
 
-The rule lives in `nucleo/flash/data_ops.py`, rather than in `router_guards`, because of the god-file ratchet:
+The rule lives in `nucleo/acts/data_ops.py`, rather than in `router_guards`, because of the god-file ratchet:
 what matters is that there is ONE decision, not which file it is in.
 """
 from __future__ import annotations
@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import pytest
 
-from nucleo.flash import data_ops as RG
+from nucleo.acts import data_ops as RG
 
 
 def _op(wid, act, **payload):
@@ -93,7 +93,7 @@ def rail(monkeypatch):
     import widgets.server_api as _sa
     monkeypatch.setattr(_sa, "brain_action", _brain_action)
     from widgets import actions as _wa
-    monkeypatch.setattr("nucleo.flash.frontend.action_mode", lambda wid, act: _wa.FAST)
+    monkeypatch.setattr("nucleo.acts.frontend.action_mode", lambda wid, act: _wa.FAST)
     return despachadas
 
 

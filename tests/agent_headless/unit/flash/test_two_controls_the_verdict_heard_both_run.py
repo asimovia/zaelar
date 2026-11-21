@@ -17,7 +17,7 @@ import threading
 
 import pytest
 
-from nucleo.flash import data_ops as RG
+from nucleo.acts import data_ops as RG
 from nucleo.turn import brief as tb
 
 
@@ -67,7 +67,7 @@ def rail(monkeypatch):
     import widgets.server_api as _sa
     monkeypatch.setattr(_sa, "brain_action", _brain_action)
     from widgets import actions as _wa
-    monkeypatch.setattr("nucleo.flash.frontend.action_mode", lambda wid, act: _wa.FAST)
+    monkeypatch.setattr("nucleo.acts.frontend.action_mode", lambda wid, act: _wa.FAST)
     from nucleo.flash import verdict_card as _vc
     monkeypatch.setattr(_vc, "retarget", lambda brief, wid, act, pl, order: (wid, act, pl))
     return ran

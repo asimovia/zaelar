@@ -69,7 +69,7 @@ import threading
 import pytest
 
 from nucleo.flash import close_guards as _cg
-from nucleo.flash import direct_action as _da
+from nucleo.acts import direct_action as _da
 from nucleo.turn import brief as _tb
 
 _ENGINE = pathlib.Path(__file__).resolve().parents[3]

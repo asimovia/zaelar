@@ -119,7 +119,7 @@ def reset() -> None:
 
 def _known() -> list[dict]:
     try:
-        from nucleo.turn import named_errand
+        from nucleo.errands import named as named_errand
         return named_errand.known()
     except Exception as e:  # noqa: BLE001 — no errands readable reads as none
         logger.debug(f"whisper: errands unreadable — {e!r}")
@@ -173,7 +173,7 @@ def _why_not(g, key: tuple, now: float) -> str:
 
 
 def _material(payload: dict, verdicts: dict, g, threads: list[dict]) -> tuple[str, set[str]]:
-    from nucleo.turn import named_errand as _ne
+    from nucleo.errands import named as _ne
     open_ = [t for t in threads if str(t.get("state") or "") in _gate.OPEN_STATES]
     tasks = [{"id": str(t.get("id") or ""), "card": _ne.card_line(t)} for t in _ne.by_mention(open_, MAX_TASKS)]
     user = {"his_sentence": str(payload.get("text") or "")[:600], "our_reply": str(payload.get("reply") or "")[:400],

@@ -301,7 +301,7 @@ def test_the_results_piece_lists_its_titled_sheets_most_recent_first(tmp_path, m
 
 
 def test_an_instance_id_the_model_names_passes_through_the_show_resolver():
-    from nucleo.flash import show_target
+    from nucleo.acts import show_target
     res, _o, _r = show_target.resolve_show("results::m1", "Show me the monitors", None, None, lambda *a: "")
     assert res.get("match") == "results::m1"
     res, _o, _r = show_target.resolve_show("nosuch::m1", "Show me the monitors", None, None, lambda *a: "")

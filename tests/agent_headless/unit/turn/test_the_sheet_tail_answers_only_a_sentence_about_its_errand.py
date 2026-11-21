@@ -20,7 +20,7 @@ from nucleo import dispatch
 from nucleo.dispatch import confirm as dc
 from widgets.navegador import live_lines as live_browser
 from nucleo.turn import errands_of_a_turn as E
-from nucleo.turn import named_errand
+from nucleo.errands import named as named_errand
 
 REPORT = {"id": "1", "request": "Elaborar un INFORME escrito (documento completo, no una lista de enlaces) sobre coches "
                                 "eléctricos para uso urbano: qué modelos existen, autonomía real, precio de compra y de uso",

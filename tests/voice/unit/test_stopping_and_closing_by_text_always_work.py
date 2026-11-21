@@ -23,7 +23,8 @@ from types import SimpleNamespace
 import pytest
 
 from nucleo import done_ops
-from nucleo.flash import bulk_close, hard_turn
+from nucleo.flash import hard_turn
+from nucleo.acts import bulk_close
 from nucleo.turn import brief
 from voice import attention, proactive, trace
 

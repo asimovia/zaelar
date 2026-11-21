@@ -24,7 +24,7 @@ import os
 
 import pytest
 
-from nucleo.flash import canvas_license as lic
+from nucleo.acts import show_license as lic
 from voice import attention
 
 ENG = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))

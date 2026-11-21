@@ -33,7 +33,7 @@ def forward_of(widget_id: str, action: str, payload: dict, said: str) -> dict | 
     try:
         if (widget_id or "").split("::")[0] != "mensajeria" or action != "reply" or not isinstance(payload, dict):
             return None
-        from nucleo.flash import direct_action as _da
+        from nucleo.acts import direct_action as _da
         if "contact" not in _da._payload_spec("mensajeria", "forward"):
             return None
         from widgets.contactos import data as _ct
@@ -60,7 +60,8 @@ def ordered_instead(brief, widget_id: str, model_action: str, payload: dict | No
                     said: str) -> tuple[str, dict] | None:
     """`(action, payload)` of the ordered act that leaves, to run in place of the model's call, or None."""
     try:
-        from nucleo.flash import direct_action as _da, frontend as _fe
+        from nucleo.acts import direct_action as _da
+        from nucleo.acts import frontend as _fe
         from nucleo.turn import verdicts as _v
         verdict = _da.completes(brief, widget_id, model_action=model_action)
         if not verdict or not _fe.at_least_sensitive(widget_id, verdict) or _fe.at_least_sensitive(widget_id, model_action):
@@ -68,7 +69,7 @@ def ordered_instead(brief, widget_id: str, model_action: str, payload: dict | No
         if not _v.sure_order(brief, widget_id, verdict) or not (
                 _v.sure(brief, "request_type", _v.VETO) == (_v.SURE, "order") or _v.substitutes(brief, model_action)):
             return None   # in the call's place: VETO, or an order sure at VETO — its send task asks first (K2b, E3)
-        from nucleo.flash import payload_fill as _pf
+        from nucleo.acts import payload_fill as _pf
         keys = set(_pf._payload_spec(widget_id, verdict))
         pay = dict(payload or {})
         out = forward_of(widget_id, model_action, pay, said) or {

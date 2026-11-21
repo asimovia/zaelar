@@ -20,7 +20,7 @@ from __future__ import annotations
 
 
 from nucleo.acts import canvas_arbiter as arb
-from nucleo.flash import canvas_visibility as cv
+from nucleo.acts import visibility as cv
 from widgets import effects as fx
 
 SAID = "I don't see any photo — you just said here they are. Send the actual pic."

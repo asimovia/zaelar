@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[3]
 
 
 def test_a_reply_is_an_act_that_leaves_and_a_draft_is_not():
-    from nucleo.flash import frontend as f
+    from nucleo.acts import frontend as f
     assert f.at_least_sensitive("mensajeria", "reply")
     assert f.at_least_sensitive("mensajeria", "send_draft")
     assert not f.at_least_sensitive("mensajeria", "draft")

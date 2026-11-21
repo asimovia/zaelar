@@ -57,7 +57,8 @@ def _ex(wid, action, payload) -> dict:  # what a dropped op's event carries
 
 def _pure_show(r, wid, action, payload, **_k):
     """A pure show order runs no invented mutation; a `view` runs beside it (V2-545), the verdict licenses (V2-753)."""
-    from nucleo.flash import direct_action as _da, router as _router
+    from nucleo.flash import router as _router
+    from nucleo.acts import direct_action as _da
     from widgets import runtime
     text = str((r or {}).get("text") or "")
     if runtime.get(wid) is None or not _router.is_pure_show_request(text):
@@ -133,7 +134,8 @@ def _a_question(r, wid, action, payload, **_k):
 
 def _close_is_the_card(r, wid, action, payload, **_k):
     """E5 (demo passes 36/42): «close my mail» ran the card's `close` VIEW over a sure close verdict."""
-    from nucleo.flash import direct_action as _da, show_target as _st
+    from nucleo.acts import direct_action as _da
+    from nucleo.acts import show_target as _st
     if _da.close_op_is_the_card((r or {}).get("brief"), action):
         return Licence(CLOSE, "close-is-the-card", "🔁 data-op «close» sobre un cierre seguro — cierra la app",
                        wid, {"cat": "flash", "widget": wid, "action": "close"}, _st.close_target(wid))
@@ -142,7 +144,7 @@ def _close_is_the_card(r, wid, action, payload, **_k):
 
 def _a_fragment(r, wid, action, payload, *, last_reply="", **_k):
     """V2-757 — a sentence's tail is not an order (why: `direct_action.a_fragment_moves_nothing`)."""
-    from nucleo.flash import direct_action as _da
+    from nucleo.acts import direct_action as _da
     said = _his(r)
     why = _da.a_fragment_moves_nothing(said, brief=(r or {}).get("brief"), last_reply=last_reply)
     if why:
@@ -155,7 +157,7 @@ def _a_fragment(r, wid, action, payload, *, last_reply="", **_k):
 
 def _leaves_for_another_card(r, wid, action, payload, **_k):
     """An act that leaves while the verdict puts the turn on ANOTHER card is dropped, not offered (demo pass 45)."""
-    from nucleo.flash import direct_action as _da
+    from nucleo.acts import direct_action as _da
     if not _da.verdict_elsewhere((r or {}).get("brief"), wid):
         return None
     # The note that told the NEXT turn's model «it was not sent» went with the mailbox (V2-851 F5): the drop's event
@@ -167,7 +169,7 @@ def _leaves_for_another_card(r, wid, action, payload, **_k):
 def _context_bleed(r, wid, action, payload, *, last_dataop=None, **_k):
     """An IDENTICAL mutation to the last one (<120 s) his turn never mentions is drag, unless he orders it again or
     redoes it; a VIEW-op never is (`data_ops.is_context_bleed`, V2-038/650/791)."""
-    from nucleo.flash import data_ops as _do
+    from nucleo.acts import data_ops as _do
     if _do.is_context_bleed(last_dataop, wid, action, payload, _his(r), brief=(r or {}).get("brief")):
         return Licence(DROP, "context-bleed", "🛡️ data-op del turno anterior re-emitida — ignorada (context-bleed)",
                        f"{wid}:{action}", _ex(wid, action, payload))
@@ -176,7 +178,7 @@ def _context_bleed(r, wid, action, payload, *, last_dataop=None, **_k):
 
 def _refused_again(r, wid, action, payload, **_k):
     """V2-773 — the SAME refused op with the SAME payload is the model re-reading the failure; a corrected one runs."""
-    from nucleo.flash import data_ops as _do
+    from nucleo.acts import data_ops as _do
     if _do.is_identical_retry_of_refused(wid, action, payload):
         return Licence(DROP, "refused-again", "🛡️ reintento idéntico de una op rechazada — ignorado", f"{wid}:{action}",
                        _ex(wid, action, payload))
@@ -191,7 +193,8 @@ def vetoes(brief, wid: str, model_action: str, verdict_action: str) -> str:
     """The event a SURE verdict vetoes the model's call on the same card with, or "": a question over a WRITE (full19
     C2), a lens over a state change (full52 V5), and a lens that answers over one that answers nothing. Never raises."""
     try:
-        from nucleo.flash import data_ops as _do, direct_action as _da
+        from nucleo.acts import direct_action as _da
+        from nucleo.acts import data_ops as _do
         from widgets import effects as _fx
         if not _da._action_sure(brief, floor=VETO_SURE):
             return ""
@@ -208,7 +211,9 @@ def vetoes(brief, wid: str, model_action: str, verdict_action: str) -> str:
 
 def _a_load_he_did_not_order(r, wid, action, payload, *, last_reply="", query="", **_k):
     """`play_video` runs on his order, read without words (CRIT-K5b); fail-closed: none, dropped and said."""
-    from nucleo.flash import canvas_license as _lic, prior_line as _pl, redo_decision as _redo
+    from nucleo.flash import prior_line as _pl
+    from nucleo.acts import redo as _redo
+    from nucleo.acts import show_license as _lic
     brief, said = (r or {}).get("brief"), _his(r)
     if (_lic.verdict_grants(brief, wid) or (query and _lic.names_what_to_play(query, said))
             or _redo.corrects(brief, wid)

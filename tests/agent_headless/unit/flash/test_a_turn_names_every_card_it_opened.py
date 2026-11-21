@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from nucleo.flash import card_receipt as CR
-from nucleo.flash import direct_action as DA
+from nucleo.acts import direct_action as DA
 
 ENGINE = Path(__file__).resolve().parents[4]
 THREE = ["youtube", "musica", "agenda"]

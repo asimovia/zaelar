@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from nucleo.flash import payload_fill as _pf
+from nucleo.acts import payload_fill as _pf
 
 from ._video_queue_scene import EN_CLAIM, EN_QUEUE, EN_SAID, ES_QUEUE, ES_SAID, queue  # noqa: F401
 

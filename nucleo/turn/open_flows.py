@@ -14,7 +14,7 @@ def candidates() -> list[dict]:
     """Every open flow a request can be: live workers, errands parked on a question, escalations and fast passes in
     flight, one that just ended, and a fast pass that just delivered. Same entry shape as `named_errand.known()`, plus
     `delivered`."""
-    from nucleo.turn import named_errand as _ne
+    from nucleo.errands import named as _ne
     out = list(_ne.known(with_finished=True))
     try:
         from nucleo.turn.errands_of_a_turn import same_errand

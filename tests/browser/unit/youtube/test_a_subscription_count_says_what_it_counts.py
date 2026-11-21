@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from connectors.video import service
 from connectors.video import youtube as ytc
-from nucleo.flash import data_ops
+from nucleo.acts import data_ops
 from widgets.youtube import data as yt  # noqa: F401 — the package loads through `data`
 from widgets.youtube import account, tab_answer
 

@@ -5,7 +5,7 @@ Measured 2026-09-27 (verification after the demo pass): «Compare them visually�
 declared», and the provider ESCALATED it: a Brain Worker for a layout switch. The engine log had been saying
 `widget.data no-declarada (results::…:detail) — escalando` since the morning.
 """
-from nucleo.flash import frontend
+from nucleo.acts import frontend
 
 
 def test_the_mode_of_a_sheet_action_is_the_widgets():

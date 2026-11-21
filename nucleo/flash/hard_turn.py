@@ -76,7 +76,7 @@ async def say_receipt(emit, brain=None) -> str:
     the line it emitted, spoken or not ("" when there was nothing to say) — the turn records it in the window."""
     import time as _time
 
-    from nucleo.flash import bulk_close as _bulk
+    from nucleo.acts import bulk_close as _bulk
     line = _bulk.take_receipt()
     if not line:
         return ""
@@ -215,7 +215,8 @@ async def handle(text: str, hard: str, emit, brain=None) -> str | None:
         # 3 · close every card he is not using, now, before anything else (V2-807 T-08: the card in use stays
         #     unless his words name it — `bulk_close`).
         #     V2-831 T-02: an explicit total («close all») spares nothing — the grammar's own reading (`close_scope`).
-        from nucleo.flash import bulk_close as _bulk, dialog as _dialog
+        from nucleo.flash import dialog as _dialog
+        from nucleo.acts import bulk_close as _bulk
         from voice import interrupt_grammar as _grammar
         scope = _grammar.close_scope(text)
         if not scope:                          # the grammar read no total: the closed question, off the voice loop

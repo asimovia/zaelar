@@ -25,7 +25,7 @@ import pathlib
 
 import pytest
 
-from nucleo.flash import frontend as fe
+from nucleo.acts import frontend as fe
 from widgets import actions as wa
 
 ENGINE = pathlib.Path(__file__).resolve().parents[4]

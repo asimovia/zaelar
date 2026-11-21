@@ -17,7 +17,7 @@ from __future__ import annotations
 import pytest
 
 from nucleo import matching
-from nucleo.turn import task_recall
+from nucleo.errands import task_recall
 
 SAME = [("モニターは27インチ以上で探して", "27インチのモニターはまだ？"),
         ("显示器要二十七寸以上的", "二十七寸的显示器找到了吗"),

@@ -198,7 +198,7 @@ def voice_execute(args: dict, text: str, emit, apply_widget_data, deduped: dict,
     its previous call into a turn that asked for nothing. A discarded drag counts as handled (`deduped`):
     silence over chatter is design (V2-633), not a void for the mute backstop to apologize over."""
     from nucleo.acts import card as _card
-    from nucleo.flash import canvas_visibility as _cvis
+    from nucleo.acts import visibility as _cvis
     q = (args.get("query") or "").strip()
     # The load's licence is the card door's (`card.LOAD`): his order read from the verdict, never a word table.
     if _card.logged(_card.licence({"brief": brief, "text": text}, "youtube", "load", at=_card.LOAD,
@@ -217,7 +217,7 @@ def voice_execute(args: dict, text: str, emit, apply_widget_data, deduped: dict,
     # cuando el modelo elige una tool global no quedaba ni rastro de que los dos lectores discrepaban.
     # Sin esta línea, «¿a quién hay que creer aquí?» no se puede contestar con datos.
     try:
-        from nucleo.flash import direct_action as _da
+        from nucleo.acts import direct_action as _da
         if (_dis := _da.completes(brief, "youtube", model_action=op)):
             emit("brain", "⚖️ el modelo y el veredicto discrepan — corre el modelo", role="system",
                  text=f"youtube: modelo=play_video/{op} · veredicto={_dis}",

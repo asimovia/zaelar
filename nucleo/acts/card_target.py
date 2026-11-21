@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from loguru import logger
 
-from nucleo.flash import frontend as _fe
+from nucleo.acts import frontend as _fe
 
 
 def _takes(card: str, action: str, payload) -> bool:
@@ -139,7 +139,7 @@ def payload_ref(widget_id: str, action: str, payload, *, named_only: bool = Fals
     if _refs.selector_is_optional((widget_id or "").strip().lower(), (action or "").strip(), field):
         return ""
     try:
-        from nucleo.flash import payload_fill as _pf
+        from nucleo.acts import payload_fill as _pf
         declared = set(_pf._payload_spec((widget_id or "").strip().lower(), (action or "").strip()))
     except Exception as e:  # noqa: BLE001 — an unreadable manifest names no row
         __import__("loguru").logger.debug(f"card_target: payload spec unread ({e!r})")

@@ -123,7 +123,7 @@ def named_card(brief) -> str:
     if not brief:
         return ""
     try:
-        from nucleo.flash import direct_action as _da
+        from nucleo.acts import direct_action as _da
         from nucleo.turn import brief as _tb
         owner, _action = _da.from_brief(brief)      # screen_action, re-validated against what is open
         if owner:

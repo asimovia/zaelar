@@ -38,7 +38,9 @@ import subprocess
 
 import pytest
 
-from nucleo.flash import canvas_license as lic, canvas_visibility as cv
+from nucleo.acts import show_license as lic
+
+from nucleo.acts import visibility as cv
 from widgets import effects as fx
 
 ENGINE = pathlib.Path(__file__).resolve().parents[4]
@@ -273,7 +275,7 @@ def test_the_reopen_license_binds_to_a_proposal_about_that_card():
 def test_the_door_puts_the_CARD_on_screen_not_the_piece(asked_to_see):
     """V2-776 (2026-09-27): «Show me the monitors» resolved to the monitor sheet `results::94b220-ls1` and the door
     emitted bare `results` — the empty base — so every order on «the monitors» after it worked on nothing."""
-    from nucleo.flash import canvas_visibility as cv
+    from nucleo.acts import visibility as cv
     seen = []
     ok = cv.present("results::94b220-ls1", reason="turn-order", known=[],
                     emit=lambda kind, label, extra=None: seen.append((label, (extra or {}).get("id"))))

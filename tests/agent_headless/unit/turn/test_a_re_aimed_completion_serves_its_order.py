@@ -10,7 +10,7 @@ Now the completion that re-aims records the order it served (`direct_action.reai
 """
 from __future__ import annotations
 
-from nucleo.flash import direct_action as da
+from nucleo.acts import direct_action as da
 from nucleo.request import order_unserved as O
 from voice import trace
 

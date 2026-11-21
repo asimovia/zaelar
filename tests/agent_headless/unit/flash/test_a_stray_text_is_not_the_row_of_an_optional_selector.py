@@ -15,13 +15,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from nucleo.flash import frontend as card_target
+from nucleo.acts import frontend as card_target
 
 
 @pytest.fixture
 def acts(monkeypatch):
     """A card with one action whose row is required and one whose selector is optional."""
-    from nucleo.flash import payload_fill
+    from nucleo.acts import payload_fill
     from widgets import refs
     monkeypatch.setattr(refs, "id_field_for_action", lambda wid, act: "rowId")
     monkeypatch.setattr(refs, "selector_is_optional", lambda wid, act, key="": act == "show_view")

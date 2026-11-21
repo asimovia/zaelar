@@ -74,7 +74,7 @@ def _rows():
 
 
 def _door_row(fresh):
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
 
     async def _dispatch(wid, action, payload, *, row="", text="", **kw):
         fresh.ran.append({"wid": wid, "action": action, "payload": dict(payload), "row": row})
@@ -132,7 +132,7 @@ def test_a_free_answer_about_a_send_goes_to_the_worker_with_no_guessed_end_state
 
 def _view(fresh):
     import widgets
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
 
     async def _tag(tag, data):
         return {"ok": True}

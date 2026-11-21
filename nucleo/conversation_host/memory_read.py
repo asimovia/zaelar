@@ -63,7 +63,7 @@ def _open_ids() -> list[str]:
 def _widgets() -> str:
     """Every widget of the catalogue by id and mission — what `show_widget` can open, a widget nobody wrote code for
     included —, which are on screen, which one is at full screen, and which were used lately."""
-    from nucleo.flash import show_target
+    from nucleo.acts import show_target
     from nucleo import surfaces
     from widgets import brief, runtime
     open_ids, recent = _open_ids(), list(surfaces.recent_widget_ids() or ())
@@ -83,7 +83,7 @@ def front_card() -> str:
     """The card in front of him: the one at full screen, the one in front on a phone, the only one open, else the
     newest opened (the canvas reports its cards in the order they opened). "" with nothing open."""
     from nucleo import canvas_focus
-    from nucleo.flash import show_target
+    from nucleo.acts import show_target
     from server.voice_api import open_instances
     open_ids = [str(i) for i in open_instances() if str(i)] or _open_ids()
     return show_target.at_full_screen() or canvas_focus.phone_front() or (open_ids[-1] if open_ids else "")

@@ -13,8 +13,9 @@ import asyncio
 import pytest
 
 from nucleo import dispatch
-from nucleo.flash import data_ops, worker_note_relay as R
+from nucleo.flash import worker_note_relay as R
 
+from nucleo.acts import data_ops
 HIS = "the King Seiko hi-beat sounds good, same check though — running and real photos. if it looks clean I'm in"
 CALL = {"name": "widget_data", "args": {"widget_id": "results::cfae00-ls1", "action": "progress",
                                         "payload": {"state": "comprobando el King Seiko 5626-7041"}}}

@@ -80,7 +80,7 @@ def world(tmp_path, monkeypatch):
     async def _dispatch(wid, action, payload, *, row="", text="", **kw):
         sent.append({"widget": wid, "action": action, "payload": dict(payload), "row": row})
         return {"ok": True, "result": {"to": "Raquel Lozoya", "channel": "whatsapp"}}
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
     monkeypatch.setattr(data_ops, "dispatch_and_report", _dispatch)
     from nucleo.acts import errand
     monkeypatch.setattr(errand, "escalate_to_slowbrain", lambda text, context=None, **k: workers.append((text, context)) or 7)
@@ -166,7 +166,7 @@ def test_an_act_of_the_card_served_with_another_tool_asks_one_fact_question_and_
 
 
 def test_an_act_of_the_card_the_completion_can_fill_runs_and_asks_nothing(world, monkeypatch):
-    from nucleo.flash import direct_action
+    from nucleo.acts import direct_action
     ran = []
     monkeypatch.setattr(direct_action, "complete", lambda brief, **kw: ran.append(kw) or "set_alias")
     _say("ponle el alias Raquel a Rakel Karó")

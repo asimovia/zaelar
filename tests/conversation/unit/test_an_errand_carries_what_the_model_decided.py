@@ -30,7 +30,8 @@ def test_start_tasks_choices_are_the_owners_and_the_errand_carries_the_models_re
 
 
 def test_the_workers_first_step_is_the_declared_action_the_model_named(monkeypatch):
-    from nucleo.flash import frontend, payload_fill
+    from nucleo.acts import payload_fill
+    from nucleo.acts import frontend
     from nucleo.workers.prompts import first_act
     monkeypatch.setattr(frontend, "declared_actions", lambda base: {"w_add": {}} if base == "w_agenda" else {})
     monkeypatch.setattr(payload_fill, "_payload_spec", lambda wid, act: {"w_title": "w_what"})

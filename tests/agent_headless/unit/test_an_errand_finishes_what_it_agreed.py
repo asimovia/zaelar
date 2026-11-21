@@ -674,7 +674,7 @@ def test_writing_to_a_person_no_longer_asks_him_for_permission(env):
     `send_to` is only ever reached while executing something he just asked for — a voice turn, or a worker
     his turn spawned. The gate it carried made him give the same permission twice.
     """
-    from nucleo.flash.frontend import action_mode
+    from nucleo.acts.frontend import action_mode
     from widgets import actions as wa
     assert action_mode("mensajeria", "send_to") == wa.FAST
     del env
@@ -683,7 +683,7 @@ def test_writing_to_a_person_no_longer_asks_him_for_permission(env):
 def test_ANSWERING_something_that_arrived_is_still_gated(env):
     """The counterweight, and it is his own rule: «hay una regla de que no se contestan a mensajes». A
     reply is nobody's order — it is the engine deciding to speak for him about something he has not seen."""
-    from nucleo.flash.frontend import action_mode
+    from nucleo.acts.frontend import action_mode
     from widgets import actions as wa
     assert action_mode("mensajeria", "reply") == wa.CONFIRM
     del env

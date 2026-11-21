@@ -19,7 +19,7 @@ import json
 import pytest
 
 from nucleo.flash import answer_guards as ag
-from nucleo.flash import canvas_license as cl
+from nucleo.acts import show_license as cl
 from nucleo.flash import escalation_guard as eg
 from nucleo.flash import router_catalog as rc
 

@@ -1,5 +1,5 @@
-"""Tests for nucleo/flash/frontend.py (V2-004 · T62) — canvas tags + widget governance gate."""
-from nucleo.flash import frontend
+"""Tests for nucleo/acts/frontend.py (V2-004 · T62) — canvas tags + widget governance gate."""
+from nucleo.acts import frontend
 from voice.tag_protocol import strip_tags
 
 

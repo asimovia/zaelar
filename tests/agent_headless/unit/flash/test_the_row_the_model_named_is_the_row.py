@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import pytest
 
-from nucleo.flash import direct_action as DA
-from nucleo.flash import payload_fill as PF
+from nucleo.acts import direct_action as DA
+from nucleo.acts import payload_fill as PF
 
 SHEET = [("Dell 27 Plus USB-C Monitor S2725QC 4K UHD", "$329.99"),
          ("LG UltraFine 27US550-W 27-inch 4K", "$229.99"),

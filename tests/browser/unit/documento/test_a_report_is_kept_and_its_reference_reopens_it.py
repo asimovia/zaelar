@@ -60,7 +60,7 @@ def test_the_reference_reopens_ITS_report_after_another_overwrote_the_sheet(doc,
     doc.apply_action("show", {"title": "Another report", "body": "Something else entirely."})
 
     from nucleo.circuit import ledger
-    from nucleo.turn import task_recall
+    from nucleo.errands import task_recall
     from widgets.results import rehydrate
     store = {("t-17", "document"): kept}
     monkeypatch.setattr(ledger, "artifact", lambda tid, slot: store.get((tid, slot)))
@@ -72,7 +72,7 @@ def test_the_reference_reopens_ITS_report_after_another_overwrote_the_sheet(doc,
 
 def test_a_card_the_task_kept_is_what_a_surface_without_a_copy_reopens(doc, monkeypatch):
     from nucleo.circuit import ledger
-    from nucleo.turn import task_recall
+    from nucleo.errands import task_recall
     from widgets.results import rehydrate
     monkeypatch.setattr(ledger, "artifact", lambda tid, slot: {"instance": "plant_tracker"} if slot == "card" else None)
     monkeypatch.setattr(rehydrate, "sheet_from_task", lambda tid: {"ok": False})

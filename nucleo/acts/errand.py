@@ -156,7 +156,8 @@ def _reasks_a_parked_errand(asked: str, req: str) -> bool:
     newer «offer», and his «Sí, móntalo» was judged against the wrong question.) The yardstick is the one every
     door reads, `named_errand.named`, over the parked errands alone."""
     try:
-        from nucleo.turn import errands_of_a_turn as _eot, named_errand as _ne
+        from nucleo.turn import errands_of_a_turn as _eot
+        from nucleo.errands import named as _ne
         parked = [e for e in _ne.known() if e["parked"]]
         hits = _ne.named(asked, parked) if parked else []
         return any(not _eot.same_errand(req, e["request"]) for e in hits)
@@ -215,7 +216,7 @@ _ARM_TARGET = (("cluster_send", "cluster_peer"), ("set_cluster_objective", "clus
 def target_question(ctx=None) -> dict:
     """The brief's question: which errand (if any) his words are for — its candidates the open errands' CARDS (V2-878 §2)."""
     return {"instructions": "Which ongoing errand, if any, are the operator's words addressed to?",
-            "criteria": {**dict(_TARGETS), **__import__("nucleo.turn.named_errand", fromlist=["x"]).as_target(ctx)}}
+            "criteria": {**dict(_TARGETS), **__import__("nucleo.errands.named", fromlist=["x"]).as_target(ctx)}}
 
 
 def done_when_from_brief(brief) -> dict | None:

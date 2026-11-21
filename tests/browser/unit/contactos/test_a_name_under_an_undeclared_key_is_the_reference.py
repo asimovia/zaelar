@@ -13,8 +13,8 @@ from __future__ import annotations
 
 import pytest
 
-from nucleo.flash import frontend as card_target   # the facade: importing `acts.card_target` first is circular
-from nucleo.flash import payload_fill
+from nucleo.acts import frontend as card_target   # the facade: importing `acts.card_target` first is circular
+from nucleo.acts import payload_fill
 
 
 @pytest.fixture

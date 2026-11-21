@@ -87,7 +87,7 @@ def test_a_dont_touch_with_a_clitic_is_a_keep_clause():
 # ── the sites that ask it ──────────────────────────────────────────────────────────────────────────────────────
 
 def test_which_card_takes_the_named_target_over_a_none_or_wrong_verdict(screen):
-    from nucleo.flash import frontend as FE
+    from nucleo.acts import frontend as FE
     text = "La música, la de fondo. El YouTube déjalo como está."
     assert FE.which_card("youtube", "volume_down", brief=_brief("none", 0.58), operator_text=text) == ("card", "musica")
     assert FE.which_card("youtube", "volume_down", brief=_brief("youtube:volume_down", 0.95), operator_text=text) \
@@ -125,7 +125,8 @@ def _voice_turn(phrase: str, lang: str):
         out = H.run_case(case)
     finally:
         from nucleo import canvas_closes, canvas_focus, done_ops
-        from nucleo.flash import bulk_close, canvas_license
+        from nucleo.acts import bulk_close
+        from nucleo.acts import show_license as canvas_license
         canvas_focus._reset()
         done_ops.reset()
         bulk_close.reset()

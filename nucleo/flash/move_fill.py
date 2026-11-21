@@ -73,7 +73,7 @@ def _playing_row(rows: list[dict]) -> str:
 def move_fill(widget_id: str, action: str, words: str, model_words: str = "") -> dict:
     """`{item: id, to: slot}` for a move his words fill; `{}` otherwise."""
     try:
-        from nucleo.flash import payload_fill as _pf
+        from nucleo.acts import payload_fill as _pf
         from widgets import refs as _refs
         base = _pf._base_of(widget_id)
         spec = _pf._payload_spec(widget_id, action)

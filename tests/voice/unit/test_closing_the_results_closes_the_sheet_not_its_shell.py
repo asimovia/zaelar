@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from nucleo.flash import show_target as ST
+from nucleo.acts import show_target as ST
 
 
 @pytest.fixture

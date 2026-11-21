@@ -65,7 +65,8 @@ def _voice_turn(phrase: str, open_ids, brief: dict, tools: list):
         out = H.run_case(case)
     finally:
         from nucleo import canvas_closes, canvas_focus, done_ops
-        from nucleo.flash import bulk_close, canvas_license
+        from nucleo.acts import bulk_close
+        from nucleo.acts import show_license as canvas_license
         canvas_focus._reset()
         done_ops.reset()
         bulk_close.reset()
@@ -111,7 +112,7 @@ def test_the_voice_schedules_it_for_a_repeated_view_or_a_lens_over_an_act(repair
 
 
 def test_the_disarm_a_lens_that_never_yields_schedules_no_pass(repairs, monkeypatch):
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
     monkeypatch.setattr(data_ops, "a_view_where_the_verdict_acts", lambda *a, **k: False)
     assert not data_ops.a_view_where_the_verdict_acts("mensajeria", "search_archive", "open", "act"), "landed"
     _voice_turn(*_LENS)
@@ -137,7 +138,7 @@ def test_a_read_for_an_order_on_another_card_carries_the_order_out(model, monkey
 
 
 def test_the_order_card_is_the_other_card_his_words_name(monkeypatch):
-    from nucleo.flash import direct_action as da
+    from nucleo.acts import direct_action as da
     from nucleo.turn import brief as tb
     monkeypatch.setattr(tb, "read", lambda b, k, d="", min_confidence=0.0: ("order", {"used": True}) if k == tb.REQUEST_KEY else (d, None))
     assert da.order_card_after_read({"x": 1}, "send rowan a telegram with the new time", "agenda") == "mensajeria"
@@ -170,7 +171,7 @@ def test_an_order_on_a_card_the_turn_never_touched_is_carried_out(repairs):
 def test_the_disarm_no_order_card_after_a_read_carries_nothing_out(repairs, monkeypatch):
     """`order_card_after_read` answering "" (the reader of his words off): neither the read lane nor the op lane
     reaches the second pass — the order on the messages is dropped, as in full20/full23 C5."""
-    from nucleo.flash import direct_action as da
+    from nucleo.acts import direct_action as da
     monkeypatch.setattr(da, "order_card_after_read", lambda *a, **k: "")
     assert da.order_card_after_read({}, _ORDER_ELSEWHERE, "agenda") == "", "landed"
     _voice_turn(_ORDER_ELSEWHERE, ["agenda", "mensajeria"], _ORDER,
@@ -184,7 +185,7 @@ def test_the_disarm_no_order_card_after_a_read_carries_nothing_out(repairs, monk
 def test_an_answering_lens_yields_to_a_verdict_that_changes_the_screen():
     """full26 E2: «open it» → the model searched the archive again («nothing matching»), the verdict read
     `mensajeria:open` at 0.87. Both are lenses; the one that only answers in words yields when the turn wants an act."""
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
     assert data_ops.a_view_where_the_verdict_acts("mensajeria", "search_archive", "open", "act")
     assert not data_ops.a_view_where_the_verdict_acts("mensajeria", "search_archive", "open", "tell")
     assert not data_ops.a_view_where_the_verdict_acts("mensajeria", "show_view", "open", "act"), "two plain lenses: the model's"
@@ -195,7 +196,7 @@ def test_a_lens_that_does_not_answer_yields_to_the_one_that_does_when_he_asks():
     `output.answer` lens), the model called `show_day`, a plain lens that answers nothing, and the slot was never
     found: «book it» then had no time and the whole C block fell. When the turn wants WORDS, the lens that answers is
     what he asked; the mirror of the clause above."""
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
     assert data_ops.a_view_where_the_verdict_acts("agenda", "show_day", "find_free", "tell")
     assert not data_ops.a_view_where_the_verdict_acts("agenda", "find_free", "show_day", "tell"), "the answer stays"
     assert not data_ops.a_view_where_the_verdict_acts("agenda", "show_day", "show_week", "tell"), "two plain lenses"

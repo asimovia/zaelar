@@ -30,7 +30,7 @@ def _handle(said: str, picks: list[str]) -> dict:
 @pytest.fixture
 def screen(monkeypatch):
     from nucleo.acts import canvas_turn
-    from nucleo.flash import bulk_close
+    from nucleo.acts import bulk_close
     from server import voice_api
     monkeypatch.setattr(voice_api, "open_instances", lambda: list(OPEN))
     monkeypatch.setattr(bulk_close, "_open_instances", lambda: list(OPEN))

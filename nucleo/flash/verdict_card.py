@@ -11,7 +11,8 @@ SURE = 0.95
 def _other_view(brief, model_card: str, model_action: str, operator_text: str = "") -> tuple[str, str]:
     """`(card, action)` of a sure verdict VIEW on another open card, when the model's call is a view too — or on the
     SAME card when a sure close names it (`a_view_his_close_names`)."""
-    from nucleo.flash import data_ops as _do, direct_action as _da
+    from nucleo.acts import direct_action as _da
+    from nucleo.acts import data_ops as _do
     vwid, vact = _da.from_brief(brief)               # re-validated against what is still open
     if vwid and _da._base_of(vwid) == _da._base_of(model_card):
         return (vwid, vact) if a_view_his_close_names(brief, model_card, model_action, operator_text) else ("", "")
@@ -30,7 +31,8 @@ def a_view_his_close_names(brief, card: str, model_action: str, operator_text: s
     called `open_meeting`, and the short-close shortcut shut the whole AGENDA. Two lenses, nothing irreversible
     either way, and the close says the model's reading is the one he did not ask for. Never raises."""
     try:
-        from nucleo.flash import data_ops as _do, direct_action as _da
+        from nucleo.acts import direct_action as _da
+        from nucleo.acts import data_ops as _do
         vwid, vact = _da.from_brief(brief)
         if not vwid or not vact or vact == model_action or _da._base_of(vwid) != _da._base_of(card):
             return ""
@@ -52,7 +54,7 @@ def takes_the_view(brief, model_card: str, model_action: str, *, operator_text: 
         vwid, vact = _other_view(brief, model_card, model_action, operator_text)
         if not vwid:
             return ""
-        from nucleo.flash import direct_action as _da
+        from nucleo.acts import direct_action as _da
         done = _da.complete(brief, operator_text=operator_text, emit=emit, present=present,
                             apply_widget_data=apply_widget_data, widget_id=vwid, instead_of=model_action,
                             require_order=False)
@@ -81,7 +83,7 @@ def retarget(brief, widget_id: str, action: str, payload: dict, said: str) -> tu
         if not vwid:
             vwid, vact = _act_over_a_lens(brief, widget_id, action)
         if vwid:
-            from nucleo.flash import direct_action as _da
+            from nucleo.acts import direct_action as _da
             rung = _da.resolve(said, brief=brief, operator_text=said)
             if rung and rung.get("action") == vact and isinstance(rung.get("payload"), dict):
                 return str(rung.get("widget") or vwid), vact, rung["payload"]
@@ -94,7 +96,8 @@ def _act_over_a_lens(brief, model_card: str, model_action: str) -> tuple[str, st
     """The voice rail's `data_ops.a_view_where_the_verdict_acts`, for the text channel (V2-781 pair 5: «cámbiale el
     nombre al dentista» → verdict update_meeting 0.99, model open_meeting, «Hecho»; «quita el piano entero» → verdict
     cancel_meeting 0.81, model show_day, «Hecho»). Same card, the verdict USED — the voice rail's bar (`completes`)."""
-    from nucleo.flash import data_ops as _do, direct_action as _da
+    from nucleo.acts import direct_action as _da
+    from nucleo.acts import data_ops as _do
     from nucleo.turn import brief as _tb
     vwid, vact = _da.from_brief(brief)
     if not vwid or _da._base_of(vwid) != _da._base_of(model_card):    # the voice rail's bar: the verdict was USED
@@ -111,7 +114,7 @@ def inner_op_may_run(brief, operator_text: str = "", *, builds_payload: bool = F
     """THE one reader of «canvas gesture or inner op» for every pass (sandbox 2026-10-29 C6: the promise repair ran close_meeting
     0.50 under close 1.00). Close/arrange yield only to `inner_order_wins`, other gestures to an inner op as sure."""
     try:
-        from nucleo.flash import direct_action as _da
+        from nucleo.acts import direct_action as _da
         brief = brief if brief is not None else __import__("nucleo.turn.brief", fromlist=["x"]).of_this_turn()
         if (gesture := _da.sure_canvas(brief)) not in ("close", "arrange"):
             return not gesture or _da._action_sure(brief, floor=SURE)
@@ -129,7 +132,8 @@ def inner_order_wins(brief, operator_text: str = "") -> str:
     (not a lens, not its own close) is left to the repair that builds its payload. His words naming a card keep the
     close. «arrange» (canvas=arrange 0.92 AND results:layout 1.00, sandbox 2026-10-28 S2) has only the "sure" rung."""
     try:
-        from nucleo.flash import data_ops as _do, direct_action as _da
+        from nucleo.acts import direct_action as _da
+        from nucleo.acts import data_ops as _do
         gesture = _da.sure_canvas(brief)
         if gesture not in ("close", "arrange"):
             return ""
@@ -148,6 +152,6 @@ def inner_order_wins(brief, operator_text: str = "") -> str:
 
 def close_is_owed(brief, operator_text: str = "") -> bool:
     """The voice promise door's «it promised to CLOSE»: a sure close verdict the inner order does not outrank."""
-    from nucleo.flash import direct_action as _da
+    from nucleo.acts import direct_action as _da
     return _da.sure_canvas(brief) == "close" and not inner_order_wins(brief, operator_text) \
         and not __import__("nucleo.turn.brief", fromlist=["x"]).names_elsewhere(brief, against_a_call=True)

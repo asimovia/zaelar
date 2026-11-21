@@ -152,7 +152,7 @@ async def before_backstops(no_tool: bool, escalate_req: dict, *, spoken_text: st
         return False
     if not no_tool or escalate_req.get("v") is not None:
         return no_tool
-    from nucleo.flash import direct_action as _da
+    from nucleo.acts import direct_action as _da
     from nucleo.turn import reply as _reply
     if not (_reply.owes_an_act(brief) or _da.verdict_escalates(brief, answered=False)):
         return no_tool

@@ -175,7 +175,7 @@ def needs_asking(brief, widget_id: str, action: str, *, payload=None, said: str 
         from nucleo import untrusted as _u
         if not (_u.present() if stranger is None else stranger):
             return False
-        from nucleo.flash import direct_action as _da
+        from nucleo.acts import direct_action as _da
     except Exception as e:  # noqa: BLE001 — an unreadable rule asks
         _note(f"send rule unread ({e!r})")
         return True
@@ -190,7 +190,7 @@ def asked_if_leaving(mode, brief, widget_id: str, action: str, *, emit=None, pay
     """`mode`, or CONFIRM when this FAST act leaves and `needs_asking`. Never raises: an unreadable rule asks."""
     from widgets import actions as _wa
     try:
-        from nucleo.flash import frontend as _fe
+        from nucleo.acts import frontend as _fe
         if mode != _wa.FAST or not _fe.at_least_sensitive(widget_id, action):
             return mode
         if not needs_asking(brief, widget_id, action, payload=payload, said=said, stranger=stranger):

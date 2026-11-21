@@ -149,7 +149,7 @@ def _canvas(op: str, args: dict, src: str) -> ToolResult:
         from widgets import instances
         return _apply("show", instances.show_id(got["id"], open_ids), src)
     if op == "fullscreen" and str(args.get("mode") or "") == "off":
-        from nucleo.flash import show_target
+        from nucleo.acts import show_target
         got = _resolve(name, open_ids, named_only=False) if name else {"id": show_target.at_full_screen()}
         if got.get("ask"):
             return _which(got["ask"])

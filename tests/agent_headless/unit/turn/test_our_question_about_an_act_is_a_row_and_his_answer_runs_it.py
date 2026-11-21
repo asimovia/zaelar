@@ -65,7 +65,7 @@ def world(tmp_path, monkeypatch):
     async def _compose(wid, act, *, request, question, answer, spec=None):
         composed.append({"widget": wid, "act": act, "request": request, "question": question, "answer": answer})
         return dict(PAYLOAD)
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
     monkeypatch.setattr(data_ops, "dispatch_and_report", _dispatch)
     monkeypatch.setattr(answered_offer, "compose", _compose)
     from nucleo.acts import errand
@@ -278,7 +278,7 @@ def test_an_act_the_rule_sends_to_an_errand_is_not_run_by_this_door(world, monke
     """The one consent rule answers FAST, CONFIRM or ESCALATE for a call. Only FAST runs here and CONFIRM asks; an
     act it would hand to an errand is not dispatched by the answer's door — the row ends failed, never a guess.
     Disarm: «anything but CONFIRM runs» → the act is dispatched."""
-    from nucleo.flash import frontend
+    from nucleo.acts import frontend
     from widgets import actions as wa
     w = IRREVERSIBLE["es"]
 
@@ -305,7 +305,7 @@ def test_his_no_to_the_consent_question_ends_the_row_and_nothing_runs(world, mon
 
 
 def test_disarmed_the_composed_irreversible_act_runs_on_his_answer_alone(world, monkeypatch):
-    from nucleo.flash import frontend
+    from nucleo.acts import frontend
     monkeypatch.setattr(frontend, "action_mode_now", lambda *a, **k: "fast")
     w = IRREVERSIBLE["es"]
 

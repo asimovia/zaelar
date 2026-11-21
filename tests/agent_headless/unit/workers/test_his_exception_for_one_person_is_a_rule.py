@@ -54,7 +54,7 @@ def world(tmp_path, monkeypatch):
 @pytest.mark.parametrize("sentence", [ES, EN])
 def test_his_exception_lands_on_her_scope_and_only_her_whatsapp_asks(world, sentence):
     from nucleo import consent
-    from nucleo.flash import frontend as fe          # the widget door, as the product reaches it
+    from nucleo.acts import frontend as fe          # the widget door, as the product reaches it
     from nucleo.errands import mandate
     from rules import labels, shape
     res = shape.write(sentence, chat=_shaped)
@@ -78,7 +78,7 @@ def test_his_exception_lands_on_her_scope_and_only_her_whatsapp_asks(world, sent
 
 
 def test_the_send_door_of_the_card_stops_on_her_rule_and_not_on_martas(world):
-    from nucleo.flash import frontend as fe
+    from nucleo.acts import frontend as fe
     from rules import shape
     shape.write(ES, chat=_shaped)
     assert fe._his_rule_holds("mensajeria", "send_to", {"contact": "Raquel", "text": "hola", "platform": "whatsapp"})

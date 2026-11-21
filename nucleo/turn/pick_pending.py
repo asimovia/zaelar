@@ -60,7 +60,7 @@ def _wants(brief) -> str:
 
 
 def _uid(flow_id: str) -> str:
-    from nucleo.turn import named_errand
+    from nucleo.errands import named as named_errand
     return named_errand._uid_of(str(flow_id or ""))
 
 
@@ -148,7 +148,7 @@ def arbiter(brief, text: str, *, card_owns: bool) -> dict | None:
     while len(_ARBITRATED) > 64:
         _ARBITRATED.pop()
     try:
-        from nucleo.turn import named_errand
+        from nucleo.errands import named as named_errand
         card = bool(card_owns) and _rows_on_screen(brief)
         named = named_errand.strongest(str(text or "")) if text else None
         pick = ((__import__("nucleo.circuit.ledger", fromlist=["x"]).card(_uid(named["id"])) or {}).get(KEY)

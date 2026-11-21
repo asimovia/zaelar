@@ -76,7 +76,8 @@ async def handled(brain, text: str, emit, *, first_turn: bool, t_entry: float, w
                 "source": _amap_hit.get("source"), "match_ms": _amap_ms,
                 "engine": "actionmap", "origin": "actionmap",
                 "pre_ms": round((time.time() - t_entry) * 1000, 1), "src": "actionmap"})
-    from nucleo.flash import bulk_close as _bulk0, dialog as _dialog0
+    from nucleo.flash import dialog as _dialog0
+    from nucleo.acts import bulk_close as _bulk0
     from i18n import langs as _lg0
     # The map ACTED; say so in the window, or the next turn reads this order as unanswered and redoes it — «Close the music
     # player» (map, silent) then «Find me a free slot…» → «closing the player now» and the player reopened (demo run,

@@ -72,7 +72,8 @@ def closes_the_named_card(brief, operator_text: str, done_ops, *, floor: float =
         verb, _info = _tb.read(brief, _tb.CANVAS_KEY, "", min_confidence=floor)
         if str(verb or "") != "close":
             return ""
-        from nucleo.flash import direct_action as _da, show_target as _st
+        from nucleo.acts import direct_action as _da
+        from nucleo.acts import show_target as _st
         open_now = _da._open_now()
         for wid, _action in (done_ops or []):
             if _da._says_the_name(operator_text, wid):
@@ -91,5 +92,5 @@ def close_op_is_the_card(brief, action: str) -> bool:
     action: back to the chat list), the canvas verdict read `close` sure, and the card stayed on screen while the
     reply said the mail was closed. `complete` already refuses a data action under a sure canvas gesture; this is
     the same rule for the model's OWN call, read by the door every data-op goes through."""
-    from nucleo.flash import direct_action as _da   # lazy: direct_action re-exports this module
+    from nucleo.acts import direct_action as _da   # lazy: direct_action re-exports this module
     return str(action or "").strip().lower() == "close" and _da.sure_canvas(brief) == "close"

@@ -12,7 +12,7 @@
 # (`read_req["op"]`), and `data_ops.answer_owed` is the one reader of «does this turn owe an op's words».
 from __future__ import annotations
 
-from nucleo.flash import data_ops as _do
+from nucleo.acts import data_ops as _do
 
 
 def test_a_read_that_answered_owes_no_op_words():

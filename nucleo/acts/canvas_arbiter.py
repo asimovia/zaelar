@@ -110,7 +110,7 @@ def _decide(op, wid, src, *, action, payload, text, turn_credit, model_acted,
         return licensed
 
     # ── level 4 · WHAT (closed op classes; the leaves are the proven license modules) ────────────────
-    from nucleo.flash import canvas_license as _lic
+    from nucleo.acts import show_license as _lic
 
     if op == "close":
         from nucleo.acts import canvas as _door

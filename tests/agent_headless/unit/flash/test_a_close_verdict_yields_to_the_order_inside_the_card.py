@@ -18,7 +18,7 @@ import pathlib
 
 import pytest
 
-from nucleo.flash import direct_action as DA
+from nucleo.acts import direct_action as DA
 from nucleo.flash import verdict_card as VC
 
 ENGINE = pathlib.Path(__file__).resolve().parents[4]

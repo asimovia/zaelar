@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from nucleo.flash import direct_action as DA
+from nucleo.acts import direct_action as DA
 
 ENGINE = Path(__file__).resolve().parents[4]
 THREE = ["youtube", "musica", "agenda"]
@@ -102,7 +102,7 @@ def test_close_one_and_keep_the_other_closes_only_the_one(screen):
 def test_the_other_close_sites_drop_the_kept_card(screen):
     from widgets import instances
     from voice.engine.llm.providers import widget_intent
-    from nucleo.flash import show_target
+    from nucleo.acts import show_target
     text = "close the music, keep the calendar up"
     assert instances.also_named(text, THREE) == ["musica"]
     assert instances.kept_named(text, THREE) == ["agenda"]

@@ -31,7 +31,9 @@ import os
 
 import pytest
 
-from nucleo.flash import data_ops, op_receipt
+from nucleo.flash import op_receipt
+
+from nucleo.acts import data_ops
 from tests import voice_turn_source as _vts   # V2-778 F1: a moved body is read where it lives now
 
 PROVIDER = os.path.join(os.path.dirname(__file__), "..", "..", "..",

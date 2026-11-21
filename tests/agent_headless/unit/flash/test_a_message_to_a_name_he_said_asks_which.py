@@ -71,9 +71,9 @@ def test_a_name_he_never_said_is_kept_and_asked_never_swapped_for_a_word_of_his(
 def test_a_draft_brings_its_card():
     m = json.loads((WIDGETS / "mensajeria" / "manifest.json").read_text(encoding="utf-8"))
     assert "present.mount" in (m["actions"]["draft"].get("effects") or [])
-    from nucleo.flash import canvas_visibility as cv
+    from nucleo.acts import visibility as cv
     shown = []
-    import nucleo.flash.canvas_visibility as mod
+    import nucleo.acts.visibility as mod
     orig = mod.present
     try:
         mod.present = lambda target, **k: shown.append((target, k.get("reason"))) or True

@@ -7,9 +7,11 @@ pair. With `close_widget` in the catalogue, deepseek-flash called it for all thr
 """
 import pytest
 
-from nucleo.flash import router_catalog, show_target
+from nucleo.flash import router_catalog
 
 
+
+from nucleo.acts import show_target
 @pytest.fixture(autouse=True)
 def _no_leftover_focus():
     from nucleo import canvas_focus
@@ -60,7 +62,8 @@ def _voice_turn(phrase: str, tools: list):
         out = H.run_case(case)
     finally:
         from nucleo import canvas_closes, done_ops
-        from nucleo.flash import bulk_close, canvas_license
+        from nucleo.acts import bulk_close
+        from nucleo.acts import show_license as canvas_license
         done_ops.reset()
         bulk_close.reset()
         canvas_closes._reset_for_tests()

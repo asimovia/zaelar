@@ -63,7 +63,7 @@ def test_a_failed_op_is_not_undone_by_a_later_good_one():
 
 def test_the_door_settles_the_row_from_the_spec(monkeypatch):
     import widgets
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
 
     async def dispatch(tag, body):
         return {"ok": True}
@@ -81,7 +81,7 @@ def test_the_door_settles_the_row_from_the_spec(monkeypatch):
 
 def test_a_refused_op_ends_its_row_unmet(monkeypatch):
     import widgets
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
 
     async def dispatch(tag, body):
         return {"ok": False, "message": "No hay resultados de búsqueda ahora mismo."}
@@ -143,7 +143,7 @@ def test_an_ok_op_that_left_its_changed_value_as_it_was_is_a_replay_not_a_failur
     same thing: unverifiable, never a correction."""
     import widgets
     from nucleo.circuit import verify
-    from nucleo.flash import data_ops
+    from nucleo.acts import data_ops
 
     async def dispatch(tag, body):
         return {"ok": True}

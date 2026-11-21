@@ -17,7 +17,7 @@ from nucleo.turn import split_by_errand as _sbe   # a send beside a status quest
 def a_search_is_his(query: str, operator_text: str, brief, overlap) -> bool:
     """False for a web search that shares NO word with his turn while the verdict reads the turn, surely, as an
     order on a card (demo pass 89, F2 — see the `web_search` branch). Anything else is his search."""
-    from nucleo.flash import direct_action as _da_ws
+    from nucleo.acts import direct_action as _da_ws
     return not (overlap(query, operator_text) == 0 and _da_ws._action_sure(brief, floor=0.9))
 
 
@@ -130,7 +130,8 @@ def _t_show_widget(*, args, _brief, _router, _say, _show_guard_target, _show_tar
         if _canvas_door.show_under_close(text, brief=_brief, wid=_wid):
             # V2-807 T-08 — a show of an ALREADY open card on a close turn is the model KEEPING it; nothing
             # opens, and the keep is remembered so the same sentence's bulk close spares it.
-            from nucleo.flash import bulk_close as _bulk, canvas_visibility as _cvis_keep
+            from nucleo.acts import bulk_close as _bulk
+            from nucleo.acts import visibility as _cvis_keep
             if _wid and _cvis_keep.is_open(_wid):
                 _bulk.note_kept(_wid)
                 emit("brain", "🧷 show_widget on a close turn over an open card: kept, not opened",

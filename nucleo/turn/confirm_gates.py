@@ -133,7 +133,7 @@ def _task_gate(brief=None):
 def _names_another_errand(words: str, parked: str) -> bool:
     """Does the sentence name any errand besides the parked one `parked`?"""
     try:
-        from nucleo.turn import named_errand as _ne
+        from nucleo.errands import named as _ne
         return any(e["id"] != parked for e in _ne.named(words))
     except Exception as e:  # noqa: BLE001
         from loguru import logger
@@ -146,7 +146,7 @@ def _named_parked(words: str) -> str:
     newest is not necessarily the one he answers: «Sí, móntalo. Y ponle que salte más alto…» is the game's yes,
     whatever was parked after it (three-tasks-at-once ES, 2026-10-11 02:04)."""
     try:
-        from nucleo.turn import named_errand as _ne
+        from nucleo.errands import named as _ne
         parked = [e for e in _ne.known() if e["parked"]]
         top = _ne.strongest(words, parked) if parked else None
         return str(top["id"]) if top else ""

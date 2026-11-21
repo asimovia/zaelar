@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import pytest
 
-from nucleo.flash import canvas_license as lic
+from nucleo.acts import show_license as lic
 
 
 _ON_SCREEN = lic._player_on_screen      # the real predicate, before the fixture stands in for it
@@ -99,7 +99,7 @@ def test_voice_execute_runs_the_named_load():
 # ── 2 · a refused close is not a close ───────────────────────────────────────────────────────────────────
 
 def test_a_close_the_canvas_route_refuses_is_not_claimed():
-    from nucleo.flash import show_target
+    from nucleo.acts import show_target
     events = []
     rid = show_target.close_dispatch({"widget_id": "agenda", "mode": "close"}, lambda a, x: False,
                                      lambda *a, **k: events.append(a))
@@ -108,7 +108,7 @@ def test_a_close_the_canvas_route_refuses_is_not_claimed():
 
 
 def test_a_close_the_route_runs_is_claimed_as_before():
-    from nucleo.flash import show_target
+    from nucleo.acts import show_target
     events = []
     rid = show_target.close_dispatch({"widget_id": "agenda", "mode": "close"}, lambda a, x: None,
                                      lambda *a, **k: events.append(a))

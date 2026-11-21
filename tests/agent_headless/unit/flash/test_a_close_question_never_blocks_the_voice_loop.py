@@ -18,7 +18,7 @@ import time
 import pytest
 
 from nucleo import done_ops, jev
-from nucleo.flash import bulk_close
+from nucleo.acts import bulk_close
 from nucleo.turn import brief as tb, brief_screen
 
 OPEN = ["agenda", "documento", "mensajeria"]

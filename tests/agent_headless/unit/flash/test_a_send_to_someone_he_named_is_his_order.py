@@ -15,7 +15,7 @@ import pytest
 def gate(monkeypatch):
     from nucleo import untrusted
     from nucleo.acts import message as leave_gate
-    from nucleo.flash import direct_action
+    from nucleo.acts import direct_action
     monkeypatch.setattr(untrusted, "present", lambda: True)
     monkeypatch.setattr(direct_action, "from_brief", lambda _b: ("", ""))
     return leave_gate
@@ -44,7 +44,7 @@ def test_no_recipient_or_no_words_still_asks(gate):
 
 def test_the_mode_stays_fast_through_the_public_door(gate, monkeypatch):
     from widgets import actions as wa
-    from nucleo.flash import frontend
+    from nucleo.acts import frontend
     monkeypatch.setattr(frontend, "at_least_sensitive", lambda *_a: True)
     assert gate.asked_if_leaving(wa.FAST, None, "mensajeria", "send_to", payload={"contact": "Rowan"},
                                  said="send rowan a telegram") == wa.FAST

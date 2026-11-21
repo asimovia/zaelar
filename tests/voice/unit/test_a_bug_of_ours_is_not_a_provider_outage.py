@@ -7,7 +7,7 @@ in `server.log` and nowhere he could see it:
     nucleo fast brain error (not spoken raw): cannot access local variable '_cvis'
     where it is not associated with a value
 
-`_cvis` is this repo's module alias for `nucleo.flash.canvas_visibility`. A local of the same name inside
+`_cvis` is this repo's module alias for `nucleo.acts.visibility`. A local of the same name inside
 `_on_tool_call` (the `connect_cluster` branch, there since V2-086) made the name LOCAL for the whole function,
 so every earlier `_cvis.present(...)` — `show_images`, the music guard, the messaging guard — raised
 `UnboundLocalError` before that line ever ran. Live since the alias arrived on 2026-09-18 (`91d60052`): five

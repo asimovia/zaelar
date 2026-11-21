@@ -16,7 +16,7 @@ import threading
 
 import pytest
 
-from nucleo.flash import show_target as ST
+from nucleo.acts import show_target as ST
 
 SAID = "Vale, pero no lo veo, ¿Dónde está? Ábrelo"
 WINDOW = [{"role": "user", "content": "¿Por qué has abierto un nuevo navegador?"}]
