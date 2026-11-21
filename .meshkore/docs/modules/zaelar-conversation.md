@@ -243,6 +243,12 @@ at every transition of a sentence and of the reservation, and restarts on the sa
 
 ## Observability
 
+A turn's `flow end` is the conversation's (`cat: conversation`, never the `flow` kind's default), with the real steps
+its run made — its reads, its acts and its answer, never the run's own repair steps — and the tasks it opened (the
+declared `task_acts`). A run's acts run in its turn's trace, so an errand it starts carries the order's flow. An event's
+run opens a trace of its own with its origin; it is a flow only when it did something, and one with nothing to do is
+counted apart (`discarded`), like an ear's discard (`turns.py`).
+
 Seven kinds, `conv_ear`, `conv_inbox`, `conv_run`, `conv_ledger`, `conv_effect`, `conv_mouth`, `conv_close`
 (`telemetry.py` is the only source of labels), in the observer's `conversation` family. Every event carries its
 cause, owner, epoch and refs, and every event is in a flow: a turn's trace is its request's root intervention, a run's events carry the trace it started with (a request answered in another's batch closes in that run's flow), a line owed carries its key, a stop the line it cuts, a control by id what it references. The test observatory's brain screen paints

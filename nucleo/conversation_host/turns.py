@@ -39,6 +39,11 @@ _lock = threading.Lock()
 _corr: dict[str, str] = {}            # intervention → its turn's trace id
 _env_iv: dict[str, str] = {}          # envelope → its intervention (an attached entry is named by its envelope)
 _run_first: dict[str, str] = {}       # run → its turn (the oldest of its batch's), the one its closes end
+_run_steps: dict[str, list] = {}      # run → [real steps (reads and acts), tasks it opened] (R-1)
+_in_course: dict[str, str] = {"run": ""}   # the run in course: its acts run in its turn's trace (`current`)
+_event_trace: dict[str, str] = {}     # an event's run → the trace it opened with its origin (R-1)
+#: a flow is the CONVERSATION's: its family on the viewer and the Master, never the `flow` kind's default (`worker`)
+CAT = "conversation"
 
 
 def _keep(d: dict, k: str, v: str) -> None:
@@ -90,14 +95,21 @@ def listen(kind: str, label: str, p: dict) -> None:
             iv = _env_iv.get(str(p.get("ref") or ""), "")
         if iv and iv != iv_of(refs.get("req")):
             _merge(known(iv_of(refs.get("req"))), known(iv))
+    elif kind == "conv_run" and label == "started" and refs.get("run") and p.get("origin"):
+        _event_started(str(refs["run"]), str(p["origin"]))
     elif kind == "conv_run" and label == "started" and refs.get("run"):
         with _lock:
+            _in_course["run"] = str(refs["run"])
             tids = [_corr.get(_env_iv.get(str(e), ""), "") for e in p.get("batch_envs") or ()]
         tids = [t for t in tids if t]
         if tids:
             from voice import trace
             with _lock:
                 _keep(_run_first, str(refs["run"]), min(tids, key=trace._seq_of))
+    elif kind == "conv_effect" and label in ("read", "submitted") and refs.get("run"):
+        _step(str(refs["run"]), str(p.get("tool") or ""))
+    elif kind == "conv_run" and label == "ended" and refs.get("run"):
+        _ended(str(refs["run"]), p)
     elif kind == "conv_close":
         _closed(label, iv_of(refs.get("req")), str(refs.get("run") or ""))
     elif kind == "conv_ear" and label == EarLabels.DISCARDED.value:
@@ -116,7 +128,7 @@ def _discarded(trace_id: str, reason: str) -> None:
     if trace_id:
         from voice.observer import emit
         emit("flow", "end", role="system", extra={"trace": trace_id, "ok": True, "reason": "ear_discarded",
-                                                  "discarded": reason or "discarded"})
+                                                  "discarded": reason or "discarded", "cat": CAT})
 
 
 def _closed(label: str, iv: str, run: str) -> None:
@@ -133,9 +145,62 @@ def _closed(label: str, iv: str, run: str) -> None:
     from voice import trace
     from voice.observer import emit
     ok = label not in NOT_OK
+    with _lock:
+        steps, tasks = _run_steps.pop(run, [0, 0]) if run else (0, 0)
+    steps += label == CloseLabels.ANSWERED.value          # it answered him: a real step too (R-1)
     with trace.scope(tid):
         emit("flow", "end", role="system", extra={"ok": ok, "reason": "turn_complete" if ok else label,
-                                                  "closed": label})
+                                                  "closed": label, "cat": CAT, "steps": steps, "tasks": tasks})
+
+
+def _task_acts() -> frozenset:
+    from nucleo.conversation_host.declared import declared
+    return frozenset(declared().get("task_acts") or ())
+
+
+def _step(run: str, tool: str) -> None:
+    """A read or an act the run made: a real step; an act that opens a task, a task (declared `task_acts`)."""
+    with _lock:
+        got = _run_steps.setdefault(run, [0, 0])
+        got[0] += 1
+        got[1] += tool in _task_acts()
+        while len(_run_steps) > KEPT:
+            _run_steps.pop(next(iter(_run_steps)))
+
+
+def current() -> str:
+    """The turn of the run in course, "" when none: the trace its acts run in, so what they start is the order's."""
+    with _lock:
+        return _run_first.get(_in_course["run"], "")
+
+
+def _event_started(run: str, origin: str) -> None:
+    """An event's run opens a trace of its own, with its origin (a message, a cron, a cluster) and no words of his."""
+    import contextvars
+
+    from voice import trace
+    tid = contextvars.copy_context().run(trace.begin, origin, origin)
+    with _lock:
+        _keep(_event_trace, run, tid)
+
+
+def _ended(run: str, p: dict) -> None:
+    """A run ended. An event's: a flow only when it did a real step (answered); one with nothing to do is counted,
+    never a flow (R-1)."""
+    with _lock:
+        if _in_course["run"] == run:
+            _in_course["run"] = ""
+        tid = _event_trace.pop(run, "")
+    if not tid:
+        return
+    from voice import trace
+    from voice.observer import emit
+    did = p.get("outcome") == CloseLabels.ANSWERED.value
+    with trace.scope(tid):
+        emit("flow", "end", role="system", extra={"ok": p.get("outcome") != CloseLabels.FAILED.value, "cat": CAT,
+                                                  "reason": "event_done" if did else "event_counted",
+                                                  "origin": p.get("origin"), "steps": int(did), "tasks": 0,
+                                                  **({} if did else {"discarded": str(p.get("reason") or "nothing")})})
 
 
 def _merge(into: str, tid: str) -> None:
@@ -146,6 +211,9 @@ def _merge(into: str, tid: str) -> None:
 
 def _reset_for_tests() -> None:
     with _lock:
+        _run_steps.clear()
+        _event_trace.clear()
+        _in_course["run"] = ""
         _corr.clear()
         _env_iv.clear()
         _run_first.clear()

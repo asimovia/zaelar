@@ -212,6 +212,20 @@ class HostTools:
 
     async def call(self, name: str, args: dict, *, effect_id: str | None, idempotency_key: str | None,
                    deadline_mono_ms: int) -> ToolResult:
+        """Every act runs in the trace of the turn in course (`turns.current`): what it starts — an errand, a send —
+        carries the order's flow, never a flow of its own (R-1)."""
+        from nucleo.conversation_host import turns
+        from voice import trace
+        tid = turns.current()
+        if not tid:
+            return await self._call(name, args, effect_id=effect_id, idempotency_key=idempotency_key,
+                                    deadline_mono_ms=deadline_mono_ms)
+        with trace.scope(tid):
+            return await self._call(name, args, effect_id=effect_id, idempotency_key=idempotency_key,
+                                    deadline_mono_ms=deadline_mono_ms)
+
+    async def _call(self, name: str, args: dict, *, effect_id: str | None, idempotency_key: str | None,
+                    deadline_mono_ms: int) -> ToolResult:
         if name not in ACTS:
             return await self._reads.call(name, args, effect_id=effect_id, idempotency_key=idempotency_key,
                                           deadline_mono_ms=deadline_mono_ms)

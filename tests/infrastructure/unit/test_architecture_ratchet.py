@@ -877,6 +877,9 @@ _TOTAL_MAX += 150    # same causes, measured
 _PACKAGE_CEILINGS["memory"] += 48   # 2026-11-21 E7d-4 (R-4): a declared new mechanism — forgetting by id, soft and undoable, and one valid pill by id (`api/forgetting.forget_ids`, `unforget_ids`, `pill`)
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 46   # same: the two memory acts by their own door (`acts_memory.py`: forget by id, correct through the one writer)
 _TOTAL_MAX += 94     # same causes, measured
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 82   # 2026-11-21 E7d-5 (R-1): a flow is a turn with a real step — the turn's flow end with the conversation's family, its real steps and the tasks it opened (declared `task_acts`), the acts run in their turn's trace (`turns.current`, `HostTools.call`), an event's run with a trace of its own and a flow only when it did something
+_PACKAGE_CEILINGS["conversation"] += 5   # same: a close counts the run's real steps, never its repair steps (`run._real`)
+_TOTAL_MAX += 86     # same causes, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

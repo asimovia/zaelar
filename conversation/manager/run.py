@@ -420,8 +420,8 @@ async def _say_lost(conv: "Conversation", r: "Running", batch: Batch, steps: lis
     _emit(conv, "command", r, command=why)
     r.origin, r.lost = FAILURE, why
     held = commands.Reply(line, complete=r.reading)    # it waits the grace the model's last reading gave the thought
-    if not _park(conv, r, batch, held, line, len(steps), conv.clock.now_ms()):
-        await _publish(conv, r, batch, line, len(steps))
+    if not _park(conv, r, batch, held, line, _real(steps), conv.clock.now_ms()):
+        await _publish(conv, r, batch, line, _real(steps))
     return True
 
 
@@ -489,6 +489,11 @@ SAY_WHAT_WAS_FOUND = "you read for his words: a reply says what was found, or wh
 ORDERS_ID, CLAIMS_ID, READS_ID = "orders", "claims", "reads"
 PSEUDO = frozenset({ORDERS_ID, CLAIMS_ID, READS_ID})
 READS_DONE = "no more reads in this answer: reply with what you have, and say what is missing"
+
+
+def _real(steps: list) -> int:
+    """The run's REAL steps — the reads and acts it made — never its own repair steps (`PSEUDO`): what a close counts."""
+    return sum(1 for call, _res in steps if getattr(call, "call_id", "") not in PSEUDO)
 
 
 def _is_read(conv: "Conversation", call: ToolCall) -> bool:
@@ -593,14 +598,14 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
                     await _fail(conv, r, "figures_unverified_again")
                     return True
                 r.origin = UNVERIFIED_ALT
-                if not _park(conv, r, batch, cmd, alt, len(steps), now):
-                    await _publish(conv, r, batch, alt, len(steps))
+                if not _park(conv, r, batch, cmd, alt, _real(steps), now):
+                    await _publish(conv, r, batch, alt, _real(steps))
                 return True
             if line:                                # never silence: the language's honest line, with no figure
                 _emit(conv, "command", r, command="figures_withheld", claims=[why for _c, why in bad])
                 r.origin = UNVERIFIED
-                if not _park(conv, r, batch, cmd, line, len(steps), now):
-                    await _publish(conv, r, batch, line, len(steps))
+                if not _park(conv, r, batch, cmd, line, _real(steps), now):
+                    await _publish(conv, r, batch, line, _real(steps))
                 return True
             conv.inbox.account(list(r.batch_ids), "silent", now)
             for req in r.requests:
@@ -613,9 +618,9 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
             r.origin = RESTATED
         if r.acts_refused:                          # an act the gateway refused, then a reply: the judge reads this one
             _emit(conv, "command", r, command="act_refused_then_reply", tools=list(r.acts_refused))
-        if _park(conv, r, batch, cmd, cmd.text, len(steps), now):    # half a thought is not answered: it waits
+        if _park(conv, r, batch, cmd, cmd.text, _real(steps), now):    # half a thought is not answered: it waits
             return True
-        await _publish(conv, r, batch, cmd.text, len(steps))
+        await _publish(conv, r, batch, cmd.text, _real(steps))
         return True
     reason = getattr(cmd, "reason", None) or getattr(cmd, "name", "")
     if isinstance(cmd, commands.NoReply) and r.stopped:     # a stop, then «nothing more»: stopped, never asked again
@@ -636,14 +641,14 @@ async def _command(conv: "Conversation", r: "Running", batch: Batch, cmd, steps:
         steps.append((ToolCall("orders", "orders_check", {}), ToolResult("refused", data=(
             {"read": reads, "reason": SAY_WHAT_WAS_FOUND} if reads else {"reason": TYPED_TO_YOU}))))
         return False
-    if isinstance(cmd, commands.NoReply) and cmd.complete is False and _park(conv, r, batch, cmd, None, len(steps), now):
+    if isinstance(cmd, commands.NoReply) and cmd.complete is False and _park(conv, r, batch, cmd, None, _real(steps), now):
         return True                             # «something is missing» and no reply: silent only once he did not go on
     if isinstance(cmd, commands.NoReply) and cmd.complete is False and typed:
         r.publish_at = now + conv.cfg.incomplete_grace_ms   # a typed fragment waits for its rest as a voice does
-        r.parked = (None, len(steps), batch, reason)
+        r.parked = (None, _real(steps), batch, reason)
         _emit(conv, "held", r, waits_for="grace", until_ms=r.publish_at, complete=False)
         return True
-    if isinstance(cmd, commands.NoReply) and cmd.complete is False and await _listening(conv, r, batch, len(steps)):
+    if isinstance(cmd, commands.NoReply) and cmd.complete is False and await _listening(conv, r, batch, _real(steps)):
         return True                             # its grace already over and no rest came: never nothing
     _silent(conv, r, reason, now)
     return True

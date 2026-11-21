@@ -912,5 +912,10 @@
   "order_as_text",
   "routed",
   "actionmap"
+ ],
+ "task_acts": [
+  "start_task",
+  "build_widget",
+  "search_listings"
  ]
 }
