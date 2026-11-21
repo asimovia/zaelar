@@ -239,7 +239,8 @@ class HostTools:
                 return await widget_act(args, effect_id)
             if ACTS[name]["door"] == "send":
                 from nucleo.conversation_host import routing
-                return await routing.send(args if isinstance(args, dict) else {})
+                a = args if isinstance(args, dict) else {}
+                return await (routing.send(a) if ACTS[name]["op"] == "intake" else routing.draft(ACTS[name]["op"], a))
             if ACTS[name]["door"] == "network":
                 from nucleo.conversation_host import acts_network
                 return await acts_network.run(ACTS[name]["op"], args)

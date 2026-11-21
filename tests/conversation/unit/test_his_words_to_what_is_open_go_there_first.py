@@ -74,9 +74,9 @@ def test_the_task_acts_reach_their_one_doors(monkeypatch):
     assert other.status == "failed" and other.data["pending"] == [{"id": "p1", "title": "w_flat"}]
 
 
-def test_an_open_draft_reads_his_words_first_and_a_message_goes_to_its_owner(monkeypatch):
-    """A message has ONE owner: with a draft open, his sentence is read against it before the switchboard; the model's
-    message call — or a widget's message act — is handed to the owner with HIS words, and its line is what is said."""
+def test_a_message_goes_to_its_one_owner_with_his_words(monkeypatch):
+    """A message has ONE owner: the model's message call — or a widget's message act — is handed to the owner with HIS
+    words, and its line is what is said (his words to an OPEN draft are the model's acts by number, S4)."""
     import asyncio
 
     from nucleo.conversation_host import acts_widget, routing
@@ -84,18 +84,13 @@ def test_an_open_draft_reads_his_words_first_and_a_message_goes_to_its_owner(mon
     from nucleo.switchboard import board
     seen = {}
 
-    async def take(text, **kw):
-        seen["take"] = text
-        return True, "w_to_whom?"
-
     async def intake(said, hint=None, last_line="", before=None, by="call"):
         seen["intake"] = (said, dict(hint or {}), by)
         return "w_read_back?"
-    monkeypatch.setattr(owner, "take", take)
     monkeypatch.setattr(owner, "intake", intake)
     monkeypatch.setattr(board, "open_processes", lambda: [])
     monkeypatch.setattr(draft, "current", lambda: object())
-    assert asyncio.run(routing.HostRoute().take("a", "w_tell_her_yes")) == "w_to_whom?"
+    assert asyncio.run(routing.HostRoute().take("a", "w_tell_her_yes")) is None
     got = asyncio.run(routing.send({"to": "w_ana", "text": "w_late"}))
     assert got.data == {"say": "w_read_back?", "says": "door"} and seen["intake"] == ("w_tell_her_yes", {"to": "w_ana", "text": "w_late"},
                                                                       "call")

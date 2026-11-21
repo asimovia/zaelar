@@ -209,6 +209,9 @@ def _say(args: dict) -> ToolResult:
     from nucleo.switchboard import act, board
     which = str(args.get("task") or "").strip()
     row = numbered(which)
+    if row is not None and row.get("owner") == "send":     # a message draft has its own acts (S4)
+        return ToolResult("failed", {"reason": "a_message_draft", "task": f"#{row['num']}",
+                                     "use": "draft_send (his yes) · draft_edit (who or text) · draft_drop (his no)"})
     keys = {str(row["id"]), _session_of(str(row["id"]))} - {""} if row else {which.lstrip("#")}
     p = next((p for p in board.open_processes() if keys & {p.get("key"), p.get("dispatch"), p.get("ask_id")}), None)
     if p is None:

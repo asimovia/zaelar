@@ -19,6 +19,11 @@ def _note(e: Exception) -> None:
     logger.debug(f"send.receipt: {type(e).__name__}: {e}")
 
 
+def _row():
+    from nucleo.send import row
+    return row
+
+
 def _owner_emit(label: str, d, **extra) -> None:
     from nucleo.send.owner import _emit
     _emit(label, d, **extra)
@@ -65,19 +70,23 @@ async def follow(d, *, receipt_s: float = RECEIPT_S, late_s: float = LATE_S, pol
         state, why = send_receipt.receipt(WIDGET, d.ref, None)
         if state == "sent":
             _owner_emit("sent", d)
+            _row().end(d, "done", "sent")
             __import__("nucleo.send.card", fromlist=["x"]).discard(d)    # sent: its box is no draft any more
             await _say(d, "send_done")
             return "sent"
         if state == "failed":
             _owner_emit("failed", d, why=why)
+            _row().end(d, "failed", why or "failed")
             await _say(d, "send_failed", why=why or "unknown")
             return "failed"
         waited = time.monotonic() - t0
         if waited >= late_s:
             _owner_emit("unconfirmed", d)
+            _row().end(d, "done", "sent — not confirmed")
             return "unconfirmed"
         if waited >= receipt_s and not told_late:
             told_late = True
+            _row().end(d, "done", "sent — not confirmed yet")     # the lane is free; he is still told when it lands
             await _say(d, "send_unconfirmed")
         await asyncio.sleep(poll_s)
 

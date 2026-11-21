@@ -421,7 +421,7 @@
    "covers": [
     "messaging.send_new"
    ],
-   "about": "a message he asks you to send: it goes to the one owner of sends, who finds the person, asks what is missing and reads him the text for his yes — nothing leaves before it; say its line",
+   "about": "a NEW message he asks you to send (no draft for it open in OPEN): it goes to the one owner of sends, who finds the person, asks what is missing and reads him the text for his yes — nothing leaves before it; say its line",
    "schema": {
     "type": "object",
     "required": [],
@@ -923,6 +923,69 @@
      }
     }
    }
+  },
+  "draft_edit": {
+   "act": "send.draft",
+   "door": "send",
+   "op": "edit",
+   "about": "his words change the message draft open in OPEN, by its #number: who it goes to (to: the person, a full name exactly as the draft's question listed it when it asked which), what it says (text: the WHOLE message as it must now read, in his voice, addressed to the person), the channel, or when it goes (at: local YYYY-MM-DDTHH:MM, or now). Its owner reads it back to him; say its line",
+   "schema": {
+    "type": "object",
+    "required": [
+     "task"
+    ],
+    "properties": {
+     "task": {
+      "type": "string"
+     },
+     "to": {
+      "type": "string"
+     },
+     "text": {
+      "type": "string"
+     },
+     "channel": {
+      "type": "string"
+     },
+     "at": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "draft_send": {
+   "act": "send.draft",
+   "door": "send",
+   "op": "go",
+   "about": "his plain yes to the question the message draft #number asked him (ASKED in OPEN), with no change in the same words: its owner sends it only if he heard that confirmation, else reads it to him again; say its line",
+   "schema": {
+    "type": "object",
+    "required": [
+     "task"
+    ],
+    "properties": {
+     "task": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "draft_drop": {
+   "act": "send.draft",
+   "door": "send",
+   "op": "drop",
+   "about": "he says not to send the message draft #number, to cancel it or forget it; say its line",
+   "schema": {
+    "type": "object",
+    "required": [
+     "task"
+    ],
+    "properties": {
+     "task": {
+      "type": "string"
+     }
+    }
+   }
   }
  },
  "state_topics": [
@@ -986,7 +1049,7 @@
  "route_class": {
   "_comment": "INI-078 segregation S1: what the one decider's acts say about his batch — B a new task, C words to a task already open, D a change to the queue; an act in none of them (or no act) is A, the conversation (`route.class_of`)",
   "B": ["start_task", "build_widget", "search_listings", "send_message"],
-  "C": ["task_say", "resume_task", "reopen_task"],
+  "C": ["task_say", "resume_task", "reopen_task", "draft_edit", "draft_send", "draft_drop"],
   "D": ["stop_task", "task_priority", "task_move"]
  },
  "task_acts": [

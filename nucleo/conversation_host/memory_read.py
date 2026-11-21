@@ -126,8 +126,8 @@ def _connectors() -> str:
 
 
 def _draft() -> str:
-    from nucleo.send import owner
-    return owner.status()
+    from nucleo.send import row
+    return row.status()
 
 
 def _done() -> str:

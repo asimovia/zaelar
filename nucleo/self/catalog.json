@@ -35,7 +35,7 @@
     {"id": "connectors", "needs": ["connectors"],
      "covers": ["surface:conectores", "settings:conectores", "connector:email", "connector:gdrive", "connector:google",
                 "connector:google-account", "connector:google-meet", "connector:onedrive", "connector:telegram",
-                "connector:whatsapp", "tool:reply_message", "tool:authenticate_web", "tool:send_message", "tool:sign_in", "tool:login_done"]},
+                "connector:whatsapp", "tool:reply_message", "tool:authenticate_web", "tool:send_message", "tool:draft_edit", "tool:draft_send", "tool:draft_drop", "tool:sign_in", "tool:login_done"]},
     {"id": "clusters", "needs": ["clusters"],
      "covers": ["connector:meshkore", "connector:architect", "tool:connect_cluster", "tool:cluster_send",
                 "tool:set_cluster_objective", "tool:a2a_send", "tool:a2a_connect", "tool:a2a_grant", "tool:a2a_read"]},

@@ -4,6 +4,7 @@
     their creation order) — once: a row already in the queue is left as it is;
   · a task that was RUNNING when the process ended goes back to the head of its lane (`back`, by the pulse) — nothing
     says «interrupted by a restart»: it is the same task, resumed;
+  · the message draft that was open comes back from its row, waiting for his yes (`send/row.restore`);
   · every worker task still pending is relaunched on its own row (its brief reused, its sheet kept), and waits for its
     turn like any other; a task waiting for his answer stays waiting — his answer resumes it.
 """
@@ -37,8 +38,10 @@ def adopted() -> list[str]:
 
 def at_boot(*, schedule: bool = True, delay: float | None = None) -> dict:
     """Adopt, put back, relaunch. Never raises: a boot that could not take the queue back still starts."""
-    plan = {"adopted": [], "back": [], "relaunched": []}
+    plan = {"adopted": [], "back": [], "relaunched": [], "drafts": []}
     try:
+        from nucleo.send import row as _send_row
+        plan["drafts"] = _send_row.restore()      # the message being written comes back waiting for his yes
         plan["adopted"] = adopted()
         for r in _q._store().queue_rows("worker"):
             if r.get("state") == _q.RUNNING and _q.signal(str(r["id"]), "back", by="pulse"):

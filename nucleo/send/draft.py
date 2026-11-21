@@ -1,7 +1,8 @@
 """The ONE state of a send: what he asked to send, to whom, and what was last asked him about it.
 
 There is at most one open draft. A new send replaces it; a draft nobody touches for `IDLE_S` is closed silently, so
-an abandoned one never owns a sentence of his.
+an abandoned one never owns a sentence of his. Each draft is a task of the queue, owner `send` (`send/row`): this is the
+owner's live copy of it, and the messages he asks for meanwhile wait as pending rows of its lane.
 """
 from __future__ import annotations
 
@@ -42,6 +43,7 @@ class Draft:
     heard_at: float = 0.0                       # when it was handed to the mouth (ms on the observer's clock)
     other_at: float = 0.0                       # when another line of ours was said after it
     heard_mono: float = 0.0                     # the same instant on the ear's clock (`nucleo/input/typed`)
+    row: str = ""                               # its task of the queue (`send/row`): its #n, its state, its truth
     by: str = ""                                # who handed it over (the model's call, a verdict, a worker)
     box_key: str = ""                           # its view in its card: the box the owner painted it in (`send/card`)
     box_had: str = ""                           # a text he had begun in that box, which the paint replaced: said once
@@ -68,8 +70,6 @@ class Draft:
 
 
 _open: dict = {"draft": None}
-#: The messages he asked for while another was open, in order: each is opened when the one before it ends.
-_queue: list = []
 
 
 def current() -> Draft | None:
@@ -85,13 +85,19 @@ def current() -> Draft | None:
     return d if d.state == OPEN else None     # while it SENDS it is not current, and is not let go either
 
 
-def start(said: str) -> Draft:
+def start(said: str, row: str = "") -> Draft:
+    """A new draft, on its own task of the queue (or on the queued `row` it opens)."""
+    from nucleo.send import row as _row
     from voice import trace
     old = _open["draft"]
     d = Draft(said=" ".join(str(said or "").split()), trace=trace.current())
     _open["draft"] = d
     if old is not None and old.state == OPEN:
         _ended(old, REPLACED)
+    try:
+        _row.opened(d, row)
+    except Exception as e:  # noqa: BLE001 — a row that could not be written never stops his message
+        __import__("loguru").logger.warning(f"send.draft: its task not written ({e!r})")
     return d
 
 
@@ -114,7 +120,8 @@ def on_end(fn) -> None:
 
 def _ended(d: Draft, state: str) -> None:
     """The ONE point a draft ends — sent, failed, cancelled, idle or replaced: each listener is told, none can stop it."""
-    for fn in list(_on_end):
+    from nucleo.send import row as _row
+    for fn in list(_on_end) + [_row.ended]:
         try:
             fn(d, state)
         except Exception as e:  # noqa: BLE001 — a listener that fails never keeps a draft open
@@ -126,21 +133,23 @@ def touch(d: Draft) -> None:
 
 
 def reset() -> None:
-    """Forget the open draft and the queued ones (tests, a hard reset)."""
-    _open["draft"] = None
-    _queue.clear()
+    """Forget the open draft (tests, a hard reset): its task leaves the queue with it."""
+    d, _open["draft"] = _open["draft"], None
+    if d is not None and getattr(d, "row", ""):
+        try:
+            from nucleo import queue
+            queue.signal(d.row, "cancelled", by="owner", outcome="reset")
+        except Exception as e:  # noqa: BLE001 — a reset never fails on the queue
+            __import__("loguru").logger.debug(f"send.draft: its task not cancelled on reset ({e!r})")
 
 
 def queue(said: str, hint: dict, by: str) -> int:
-    """Keep a message he asked for while another is open; returns how many wait."""
-    _queue.append({"said": said, "hint": dict(hint or {}), "by": by, "at": time.time()})
-    return len(_queue)
+    """Keep a message he asked for while another is open — a pending task of the send lane; returns how many wait."""
+    from nucleo.send import row as _row
+    return _row.queued(said, hint, by)
 
 
 def next_queued() -> dict | None:
-    """The oldest message still waiting; one that waited longer than a draft lives is gone (never opened stale)."""
-    while _queue:
-        q = _queue.pop(0)
-        if time.time() - float(q.get("at") or 0) <= IDLE_S:
-            return q
-    return None
+    """The first message waiting in the lane; one that waited longer than a draft lives is gone (never opened stale)."""
+    from nucleo.send import row as _row
+    return _row.next_queued(IDLE_S)

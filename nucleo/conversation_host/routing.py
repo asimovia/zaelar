@@ -1,11 +1,10 @@
-"""The `Route` port (INI-078 F2 steps 3-4, plan §3; R-3): his words to an open message DRAFT reach its owner before
-the model is called — the send owner reads the sentence against that one draft (`nucleo.send.owner.take`): who, what
-it says, send it, drop it — taken, its line is said; anything else goes on to the model. A process in course or a row
-waiting on his answer is the MODEL's to answer (`task_say` by its #number, R-3): no router decides it before the model.
+"""The `Route` port (INI-078 F2 steps 3-4, R-3, segregation S4): NOTHING decides his words before the model. The
+port only keeps the batch in course (`said`, and his sentences before it); the model is the one decider — an open task
+by its #number (`task_say`), the open message draft by its #number (`draft_edit` · `draft_send` · `draft_drop`).
 
-The owner does not speak by itself: the line it would say is handed back for the manager's mouth. It runs on the
-engine's loop. The words of the batch in course are kept (`said`): the send act hands them to the owner with the model's
-call, which reads HIS words and takes the call's fields only for what they leave empty.
+The send owner does not speak by itself: the line it would say is handed back for the manager's mouth. It runs on the
+engine's loop. The send act hands HIS words to the owner with the model's call, which takes the call's fields only for
+what his words leave empty.
 """
 from __future__ import annotations
 
@@ -40,29 +39,11 @@ def said() -> str:
 
 
 class HostRoute:
-    """The one door before the model for his words: an open message draft reads them first (its owner reads a sentence
-    against ONE concrete draft, it guesses nothing). A process in course or waiting on him is NOT routed here any more
-    (R-3): the model sees it in OPEN and answers it with `task_say`."""
+    """The port before the model: it KEEPS his words of the batch and takes none (S4 — one decider: the model)."""
 
     async def take(self, account: str, text: str) -> str | None:
-        """In the trace of the turn in course: what the owner emits is the order's flow."""
-        from nucleo.conversation_host import turns
-        from voice import trace
-        with trace.scope(turns.current()):
-            return await self._take(text)
-
-    async def _take(self, text: str) -> str | None:
-        from nucleo.conversation_host.acts_widget import _on_engine_loop
-        from nucleo.send import draft, owner
         _last["said"] = text
-        before = _his(text)
-        if (d := draft.current()) is not None:
-            took, line = await _on_engine_loop(owner.take(text, last_line=_last["ours"], before=before))
-            if took:                             # his later turn is seen inside the order that opened the draft (P3)
-                from nucleo.conversation_host import turns
-                from voice import trace
-                turns._merge(getattr(d, "trace", ""), trace.current())
-                return line or ""
+        _his(text)
         return None
 
 
@@ -80,3 +61,20 @@ async def send(args: dict, act: str = "") -> "object":
     if not line:
         return ToolResult("failed", {"reason": "the owner took nothing"})
     return ToolResult("ok", {"say": line, "says": "door"})       # the owner's own line: said as it is, never reworded
+
+
+async def draft(op: str, args: dict) -> "object":
+    """The model's act on the open draft by its #number (`send/by_number`): the owner's line is what the reply says."""
+    from conversation.ports import ToolResult
+    from nucleo.conversation_host import acts_tasks
+    from nucleo.conversation_host.acts_widget import _on_engine_loop
+    from nucleo.send import by_number
+    which = str(args.get("task") or "").strip()
+    found, line = await _on_engine_loop(by_number.act(op, which, args, said(), _last["ours"]))
+    if not found:
+        return acts_tasks._not_open(which)
+    if (d := by_number._draft.current()) is not None:      # his turn is seen in the order that opened it (P3)
+        from nucleo.conversation_host import turns
+        from voice import trace
+        turns._merge(getattr(d, "trace", ""), trace.current())
+    return ToolResult("ok", {"say": line, "says": "door"} if line else {"task": which})

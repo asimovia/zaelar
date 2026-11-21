@@ -16,6 +16,7 @@ from nucleo.send import deliver as _deliver
 from nucleo.send import draft as _draft
 from nucleo.send import people as _people
 from nucleo.send import read as _read
+from nucleo.send import row as _row
 
 #: The hand-overs that carry the model's or the verdict's own reading of a message: an UNREAD read of his words opens
 #: the draft from that reading (and asks), never loses his order.
@@ -92,8 +93,19 @@ async def intake(said: str, hint: dict | None = None, last_line: str = "", befor
     named_act = bool(h.get("_act"))              # the call (or the reading) NAMED an act; a lean names none
     act = str(h.pop("_act", "") or "send_to")
     widget = str(h.pop("_widget", "") or "mensajeria")
+    row = str(h.pop("_row", "") or "")           # a queued message's own task, opened now (`open_the_next`)
     async with _lock():
-        if (open_ := _draft.current()) is not None:
+        if (open_ := _draft.current()) is not None and row:
+            return ""                            # another opened first: this one keeps waiting in the lane
+        if open_ is None and not row and _row.busy():
+            # the lane still holds a message (sent, its receipt not in yet): this one waits its turn behind it
+            n = _draft.queue(said, {**h, "_act": act, "_widget": widget}, "worker" if by == "worker" else "queued")
+            owner._emit("queued behind the message being sent", None, by=by, waiting=n)
+            if by == "worker":
+                return ""
+            from nucleo.send import ask
+            return await ask.line("send_queued", who=str(h.get("contact") or h.get("to") or ""), now=_row.sending_to())
+        if open_ is not None:
             other = str(h.get("contact") or h.get("to") or "").strip()
             elsewhere = {}
             if not other and act in ("reply", "forward", "send_draft", "compose"):
@@ -141,7 +153,7 @@ async def intake(said: str, hint: dict | None = None, last_line: str = "", befor
             taken, line = await owner.take(said, last_line=last_line, before=before, bounded=False)
             owner._emit("kept the open draft", open_, by=by, said=str(said)[:200], taken=taken)
             return line if taken else ""
-        d = _draft.start(said)
+        d = _draft.start(said, row=row)
         try:
             async with d.lock:                   # his next sentence waits for the draft to be built
                 return await _open(d, said, h, act, last_line, before, by, widget)
@@ -207,17 +219,23 @@ async def _open(d, said: str, h: dict, act: str, last_line: str, before, by: str
     return await owner._next(d, lead)
 
 
+_OPENING = {"on": False}
+
+
 async def open_the_next() -> None:
-    """The draft ended: the next message he asked for (or a worker handed over) is opened and asked out of turn."""
-    nxt = _draft.next_queued()
-    if nxt is None:
+    """The lane is free: the next message he asked for (or a worker handed over) is opened on its own task and asked
+    out of turn. One at a time: the check and the pick happen before any await."""
+    if _OPENING["on"] or _row.busy() or (nxt := _draft.next_queued()) is None:
         return
+    _OPENING["on"] = True
     try:
-        from nucleo.send import draft
-        line = await intake(nxt["said"], nxt["hint"], by=nxt["by"])
+        from nucleo.send import draft, owner
+        line = await owner.intake(nxt["said"], {**nxt["hint"], "_row": nxt["row"]}, by=nxt["by"])
         if line:
             from nucleo.send import receipt
             d = draft.current()
             await receipt.say_out(line, f"send:next:{getattr(d, 'id', '')}")
     except Exception as e:  # noqa: BLE001
         _note(e)
+    finally:
+        _OPENING["on"] = False

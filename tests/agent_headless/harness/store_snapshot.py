@@ -62,7 +62,7 @@ def _memory() -> dict:
     d = draft._open["draft"]
     return {"draft": None if d is None else {**d.snapshot(), "confirm_line": d.confirm_line, "heard": d.heard,
                                              "extra": d.extra},
-            "queued": [dict(q) for q in draft._queue],
+            # the messages queued behind it are pending rows of the send lane: the database part holds them
             "confirmations": {k: {x: v[x] for x in sorted(v) if x != "ts"} for k, v in sorted(confirm._PENDING.items())}}
 
 

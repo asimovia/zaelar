@@ -43,16 +43,16 @@ def test_a_confirmation_heard_to_its_end_is_heard_and_one_cut_before_it_is_not(m
     assert d.heard is True and routing._last["ours"].endswith(CONFIRM)
 
 
-def test_his_sentence_reaches_the_owner_with_our_last_line_and_his_before(monkeypatch):
-    from nucleo.send import draft, owner
+def test_the_models_act_on_the_draft_reaches_the_owner_with_his_words_and_our_last_line(monkeypatch):
+    from nucleo.send import by_number, draft
     seen = {}
-    monkeypatch.setattr(draft, "current", lambda: object())
+    monkeypatch.setattr(draft, "current", lambda: None)
 
-    async def take(text, *, last_line="", before=None):
-        seen.update(text=text, last_line=last_line, before=list(before or ()))
+    async def act(op, which, args, said, last_line):
+        seen.update(op=op, which=which, said=said, last_line=last_line)
         return True, "w_sent"
-    monkeypatch.setattr(owner, "take", take)
-    monkeypatch.setitem(routing._last, "his", ["w_tell ana goodnight"])
+    monkeypatch.setattr(by_number, "act", act)
     monkeypatch.setitem(routing._last, "ours", CONFIRM)
-    assert asyncio.run(routing.HostRoute().take("acct", "w_yes")) == "w_sent"
-    assert seen == {"text": "w_yes", "last_line": CONFIRM, "before": ["w_tell ana goodnight"]}
+    assert asyncio.run(routing.HostRoute().take("acct", "w_yes")) is None      # kept, never decided before the model
+    assert asyncio.run(routing.draft("go", {"task": "#4"})).data == {"say": "w_sent", "says": "door"}
+    assert seen == {"op": "go", "which": "#4", "said": "w_yes", "last_line": CONFIRM}

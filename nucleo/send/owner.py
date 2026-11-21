@@ -2,8 +2,9 @@
 
 `intake(said, hint)` — the turn hands over his words (and the model's call as a hint). Returns the line the turn says;
 it NEVER sends: a message leaves only on his yes to the confirmation that read him its text.
-`take(said, …)` — at the turn's gate, before anything else routes his words: True when the sentence was about the open
-send (answered here, at once); False when it is not (the conversation answers it). Never swallows what it cannot read.
+`take(said, …)` — a message call that reaches an open draft (the model's `send_message` while one is open): his
+sentence read against it; False when it is not about it. No sentence of his is read here BEFORE the model (S4): the
+model acts on the draft by its #number (`send/by_number`).
 
 What happens next is decided here and nowhere else, by code over the draft, one sentence at a time (`Draft.lock`):
   · nobody resolved → resolve the name (`people`): one → chosen; several → ask which, naming them; nobody → ask who;
@@ -26,6 +27,7 @@ from nucleo.send import deliver as _deliver
 from nucleo.send import draft as _draft
 from nucleo.send import people as _people
 from nucleo.send import read as _read
+from nucleo.send import row as _row
 from nucleo.send import steps as _steps
 
 #: The hand-over that only LEANS to a message (an order on the messaging card, no message act read): when the owner's
@@ -240,9 +242,11 @@ _card.install()     # a draft that ends leaves its card and its steps' flow; his
 # ── the two doors in ───────────────────────────────────────────────────────────────────────────────────────────────
 async def intake(said: str, hint: dict | None = None, last_line: str = "", before: list[str] | None = None,
                  by: str = "call") -> str:
-    """His order to send — `nucleo/send/intake.py`."""
+    """His order to send — `nucleo/send/intake.py`; the open draft's task then waits for his answer to its line."""
     from nucleo.send import intake as _intake
-    return await _intake.intake(said, hint, last_line, before, by)
+    line = await _intake.intake(said, hint, last_line, before, by)
+    _row.asked(line)
+    return line
 
 
 async def take(said: str, *, last_line: str = "", before: list[str] | None = None,
@@ -273,27 +277,11 @@ async def take(said: str, *, last_line: str = "", before: list[str] | None = Non
             _emit("a fragment he went on from", d, said=text[:200])   # «yes…» of «yes… but take out the last
             return False, ""                                          # phrase»: the whole sentence is read, not this
         _draft.touch(d)
+        _row.resumed(d)                           # his words reached it: its task runs again
         line = await _step(d, got, last_line, text)
         _emit("taken", d, said=text[:200], read=got, ms=ms, line=line[:200])     # the draft as his words left it
+    _row.asked(line, d)
     if _draft.current() is None:
         from nucleo.send import intake as _intake
         asyncio.ensure_future(_intake.open_the_next())    # never awaited here: an intake may be the caller
     return True, line
-
-
-def status() -> str:
-    """One line about the open draft for the conversation's own context ("" when none): what is open and what it
-    waits for — so a question about it is answered from the truth."""
-    d = _draft.current()
-    if d is None:
-        return ""
-    if d.kind == "act":
-        about = ", ".join(d.names_said()) or "what he named"
-        wait = "which ones (or all)" if d.asked == _draft.WHO else "his yes"
-        return (f"He asked for {d.act} ({about}); the assistant can do it through the messaging card. It has asked him "
-                f"and is waiting for {wait}: NOTHING is being done until he answers that question — never say it is "
-                "under way, and never tell him to do it by hand.")
-    to = d.target.get("name") if d.target else (f"not chosen ({d.who})" if d.who else "nobody yet")
-    wait = {"who": "who it is for", "text": "what it should say", "confirm": "his yes to send it"}.get(d.asked, "")
-    return (f"A message is being written for him — to: {to}; text: «{d.text[:160]}»; waiting for {wait}. Not sent. "
-            "Only his own words about it change or send it: you never send it, call its send, or say it is sent.")

@@ -1036,6 +1036,9 @@ _TOTAL_MAX -= 1448   # 2026-11-21 INI-078 L1 B5: the embedded voice session, the
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 146  # 2026-11-21 INI-078 segregation S3: OPEN, his tasks by #number (`open_block.py`), and the acts by number (`task_say`, `task_priority`, `task_move`, `stop_task`); a widget's held row resumes through its own act
 _PACKAGE_CEILINGS["nucleo/queue"] += 7     # same: the queue in its one order, for both views (`ordered`)
 _TOTAL_MAX += 101    # same, measured: the old TASKS composition and the task rows of `pending_work` went
+_PACKAGE_CEILINGS["nucleo/send"] += 66     # 2026-11-21 INI-078 step 6 + S4: a message is a task of the send lane (`row.py`: its row, its draft in `progress`, back after a restart) and the model's acts on it by #number (`by_number.py`); the RAM queue and the pre-model read went
+_PACKAGE_CEILINGS["nucleo/queue"] += 3     # same: the boot brings the open draft back from its row
+_TOTAL_MAX += 282    # same, measured (and OPEN says what it could not read)
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

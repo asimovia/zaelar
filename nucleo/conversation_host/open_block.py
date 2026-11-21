@@ -27,7 +27,8 @@ def _answers(row: dict) -> str:
         from nucleo.circuit import asker
         opts = (asker.artefact(str(row.get("id") or "")) or {}).get("options") or []
         return " / ".join(str(o.get("label") if isinstance(o, dict) else o) for o in opts if o)
-    except Exception:  # noqa: BLE001 — a question with no declared answers is still listed
+    except Exception as e:  # noqa: BLE001 — a question with no declared answers is still listed
+        __import__("loguru").logger.debug(f"open_block: the answers of {row.get('id')} unread ({e!r})")
         return ""
 
 
@@ -58,7 +59,8 @@ def _other_questions(numbered: set) -> list[str]:
             if p.get("question") and str(p.get("key") or "") not in numbered:
                 out.append(f"[{p['key']}] · question · {str(p.get('title') or '')[:120]} · ASKED: «"
                            f"{str(p['question'])[:240]}»")
-    except Exception:  # noqa: BLE001 — the queue's own tasks still list
+    except Exception as e:  # noqa: BLE001 — the queue's own tasks still list
+        __import__("loguru").logger.debug(f"open_block: the other questions unread ({e!r})")
         return out
     return out
 

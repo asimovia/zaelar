@@ -28,21 +28,6 @@ def test_an_acts_events_carry_its_args_and_what_its_door_answered(store):
     assert got["status"] == "ok" and '"title": "w_dentist"' in got["result"]
 
 
-def test_the_send_owner_reads_his_words_in_the_turns_trace(monkeypatch):
-    from nucleo.conversation_host import routing, turns
-    from nucleo.send import draft, owner
-    from voice import trace
-    seen = []
-    monkeypatch.setattr(turns, "current", lambda: "T_w1")
-    monkeypatch.setattr(draft, "current", lambda: object())
-
-    async def take(text, **kw):
-        seen.append(trace.current())
-        return True, "w_line"
-    monkeypatch.setattr(owner, "take", take)
-    assert asyncio.run(routing.HostRoute().take("acct", "w_yes")) == "w_line" and seen == ["T_w1"]
-
-
 def test_on_a_real_engine_loop_in_another_thread_the_order_runs_in_its_trace(monkeypatch):
     """The engine's loop is another thread: what the order runs there carries the trace of the turn that ordered it,
     from the host's act door (`HostTools.call` puts it in the turn's trace) to the coroutine on that loop."""

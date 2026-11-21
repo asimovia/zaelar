@@ -20,6 +20,7 @@ async def send(d) -> str:
     """The act and what follows it run to the end even if his turn is cut meanwhile: a message that left is never
     left unreported (its line is said out of turn when the turn that asked is gone)."""
     d.state = _draft.SENDING
+    __import__("nucleo.send.row", fromlist=["x"]).sending(d)     # its task runs until the receipt
     job = asyncio.ensure_future(_sent(d))
     try:
         return await asyncio.shield(job)
@@ -59,6 +60,7 @@ async def _sent(d) -> str:
     _draft.close(d, _draft.SENT)
     if res.get("later"):
         owner._emit("held for later", d, ref=d.ref, at=res["later"])
+        __import__("nucleo.send.row", fromlist=["x"]).end(d, "done", f"held for {res['later']}")
         return await _ask.line("send_later", who=d.target.get("name"), when=_ask.when(res["later"]))
     owner._emit("queued", d, ref=d.ref)
     _receipt.follow_soon(d)

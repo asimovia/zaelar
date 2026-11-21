@@ -62,18 +62,19 @@ def test_every_step_is_in_the_orders_flow_and_moves_one_send_card(seen, monkeypa
     assert tasks[-1][1]["ok"] is True and tasks[-1][1]["total"] == len(steps.plan(d))
 
 
-def test_a_later_turn_the_owner_takes_is_folded_into_the_order(monkeypatch):
+def test_a_later_turn_that_acts_on_the_draft_is_folded_into_the_order(monkeypatch):
     from nucleo.conversation_host import routing, turns
+    from nucleo.send import by_number
     merged = []
     monkeypatch.setattr(turns, "_merge", lambda into, tid: merged.append((into, tid)))
     d = draft.Draft(said="w_tell ana goodnight", trace="T_order")
     monkeypatch.setattr(draft, "current", lambda: d)
 
-    async def take(text, **kw):
+    async def act(op, which, args, said, last_line):
         return True, "w_sent"
-    monkeypatch.setattr(owner, "take", take)
-    monkeypatch.setattr(turns, "current", lambda: "T_yes")
-    assert asyncio.run(routing.HostRoute().take("acct", "w_yes")) == "w_sent"
+    monkeypatch.setattr(by_number, "act", act)
+    with trace.scope("T_yes"):
+        assert asyncio.run(routing.draft("go", {"task": "#1"})).data == {"say": "w_sent", "says": "door"}
     assert merged == [("T_order", "T_yes")]
 
 

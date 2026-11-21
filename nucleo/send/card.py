@@ -189,6 +189,7 @@ def settle(wid: str, act: str, payload: dict, res) -> None:
         owner._emit("his Send refused", d, why=str(r.get("message") or r.get("error") or "held")[:200])
         return
     d.text, d.ref, d.box_key = str(payload.get("text") or d.text), str(payload["ref"]), ""   # the card sent it
+    __import__("nucleo.send.row", fromlist=["x"]).sending(d)
     draft.close(d, draft.SENDING)
     owner._emit("go-ahead by gesture", d, ref=d.ref)
     receipt.follow_soon(d)
