@@ -1,9 +1,8 @@
-"""The worker's brief hands over the act the turn identified as its first step — to ITS errand, once, under the ceiling.
+"""The worker's brief hands over the act the model named as its first step — to ITS errand, once, under the ceiling.
 
 Measured: a «create a group» errand reached its worker as a paraphrase with no card and no action; the worker ran
-~20 chained searches for more than 15 minutes and never created the group. The turn's `screen_action` verdict had
-named the card's action and the reading travelled on the row. Now the handoff carries, when the verdict is sure and
-the card declares the action, its declared fields and the one command that runs it — only to the errand the act
+~20 chained searches for more than 15 minutes and never created the group. Now the handoff carries, when the model's
+`start_task` named the act (`first_act`) and the card declares it, its declared fields and the one command that runs it — only to the errand the act
 belongs to (the turn's ONE errand: `heard`), never when the turn already ran it, and his sentence once (not when the
 recent conversation carries it). The live brief (`first_act.live`, what the dispatcher sends) stays under
 `PROMPT_CEILING_CHARS` whatever the turn carried: a block that does not fit is dropped, lowest priority first.
@@ -23,13 +22,10 @@ from nucleo.workers.prompts.catalog import PROMPT_CEILING_CHARS
 SAID = {"es": "crea un grupo con Ana y Luis que se llame cena", "en": "make a group called dinner with Ana and Luis"}
 
 
-def _reading(choice: str, confidence: float, turn_id: str = "t1") -> dict:
-    return {"result": {"screen_action": {"choice": choice, "confidence": confidence}}, "open_ids": [],
-            "turn_id": turn_id, "judged": "x"}
-
-
-def _one(said: str) -> dict:
-    return {"said": said, "heard": said}          # the turn's ONE errand
+def _one(said: str, choice: str = "") -> dict:
+    """The turn's ONE errand, with the act the model named (`widget:action`) when there is one."""
+    wid, _sep, act = choice.partition(":")
+    return {"said": said, "heard": said, **({"first_act": {"widget": wid, "action": act}} if act else {})}
 
 
 @pytest.fixture(params=["es", "en"])
@@ -46,7 +42,7 @@ def lang(request, monkeypatch):
 @pytest.mark.parametrize("choice,fields", [("contactos:create_group", ("name",)),            # contactIds is optional
                                            ("contactos:rename_group", ("groupId", "name"))])
 def test_a_sure_identified_act_is_the_first_step_with_its_declared_fields(lang, choice, fields):
-    out = first_act.block("", _one(SAID[lang]), _reading(choice, 0.95))
+    out = first_act.block("", _one(SAID[lang], choice), {})
     assert f"«{SAID[lang]}»" in out, "his words ride verbatim"
     wid, act = choice.split(":")
     cmd = shlex.split(out.split("`python -m nucleo.cli.widget data ")[1].split("`")[0])
@@ -57,10 +53,9 @@ def test_a_sure_identified_act_is_the_first_step_with_its_declared_fields(lang, 
         assert "· contactIds:" in out, "an optional field is listed, never a placeholder"
 
 
-def test_a_doubtful_verdict_or_an_undeclared_action_hands_over_no_act(lang, monkeypatch):
+def test_an_undeclared_action_or_none_hands_over_no_act(lang, monkeypatch):
     monkeypatch.setattr(state_now, "block", lambda own="": "")
-    assert first_act.act_block(_reading("contactos:create_group", 0.2), _one("x")) == ""
-    assert first_act.act_block(_reading("contactos:no_such_action", 0.99), _one("x")) == ""
+    assert first_act.act_block({}, _one("x", "contactos:no_such_action")) == ""
     assert first_act.act_block({}, _one("x")) == ""
     assert first_act.block("", {}, {}) == "", "nothing to hand over is no block at all"
 
@@ -69,15 +64,15 @@ def test_a_doubtful_verdict_or_an_undeclared_action_hands_over_no_act(lang, monk
                                  {"said": "crea el grupo cena y búscame un restaurante", "heard": ""}])
 def test_an_errand_that_is_one_of_several_gets_no_act(lang, ctx):
     """Audit #5: «crea un grupo … y búscame un restaurante» — the restaurant's worker is never told to create it."""
-    assert first_act.act_block(_reading("contactos:create_group", 0.97), ctx) == ""
+    assert first_act.act_block({}, {**ctx, "first_act": {"widget": "contactos", "action": "create_group"}}) == ""
 
 
 def test_an_act_the_turn_already_ran_is_not_handed_over(lang, monkeypatch):
     from nucleo import done_ops
     monkeypatch.setattr(done_ops, "recent", lambda *a, **k: [
         {"wid": "contactos", "action": "create_group", "trace": "turn-9"}])
-    assert first_act.act_block(_reading("contactos:create_group", 0.97, "turn-9"), _one("x")) == ""
-    assert first_act.act_block(_reading("contactos:create_group", 0.97, "turn-10"), _one("x")), "another turn's"
+    assert first_act.act_block({"turn_id": "turn-9"}, _one("x", "contactos:create_group")) == ""
+    assert first_act.act_block({"turn_id": "turn-10"}, _one("x", "contactos:create_group")), "another turn's"
 
 
 def test_his_words_ride_once(lang, monkeypatch):
@@ -92,7 +87,7 @@ def _worst(monkeypatch):
     monkeypatch.setattr(state_now, "tasks", lambda own="": [{"id": str(i), "title": "x" * 40, "state": "running"}
                                                             for i in range(9)])
     monkeypatch.setattr(state_now, "clusters", lambda: [{"name": f"cluster{i}", "connected": True} for i in range(9)])
-    return {"said": "y" * 600, "heard": "y" * 600}, _reading("agenda:update_task", 0.97)
+    return {"said": "y" * 600, "heard": "y" * 600, "first_act": {"widget": "agenda", "action": "update_task"}}, {}
 
 
 @pytest.mark.parametrize("name", ["document", "message"])
@@ -135,8 +130,8 @@ def test_the_dispatch_door_sends_the_handoff(monkeypatch):
     monkeypatch.setattr(dispatch, "sync_state", lambda *a, **k: None)
     task = dispatch.Task(id="d1", request="crea el grupo cena", kind="generic", trusted=True,
                          context={"errand_kind": {"choice": "generic", "confidence": 0.95},
-                                  "errand_class": {"choice": "none", "confidence": 0.95}, **_one("crea el grupo cena"),
-                                  "reading": _reading("contactos:create_group", 0.97)})
+                                  "errand_class": {"choice": "none", "confidence": 0.95},
+                                  **_one("crea el grupo cena", "contactos:create_group")})
     dispatch._SESSIONS["d1"] = SessionRecord(task_id="d1", goal="crea el grupo cena", kind="generic")
     try:
         asyncio.run(dispatch._run_session(task))
@@ -213,4 +208,4 @@ def test_an_act_the_turn_ran_is_seen_behind_many_later_ops(lang, monkeypatch):
     book = [{"wid": "contactos", "action": "create_group", "trace": "turn-9"}] + [
         {"wid": "agenda", "action": "add_task", "trace": "turn-x"} for _ in range(20)]
     monkeypatch.setattr(done_ops, "recent", lambda within_s=0, limit=8: book[-int(limit):])
-    assert first_act.ran_in_the_turn("contactos", "create_group", _reading("contactos:create_group", 0.97, "turn-9"))
+    assert first_act.ran_in_the_turn("contactos", "create_group", {"turn_id": "turn-9"})

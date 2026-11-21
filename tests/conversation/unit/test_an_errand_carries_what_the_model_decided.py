@@ -24,9 +24,6 @@ def test_start_tasks_choices_are_the_owners_and_the_errand_carries_the_models_re
     assert kind.kind_of(born[kind.KEY]) == "web" and born["errand_class"] == {"choice": "moves_money", "confidence": 1.0}
     assert born["surface"] == surfaces.ITEM and born["first_act"] == {"widget": "w_agenda", "action": "w_add"}
     assert born["heard"] == "w_book me a table and pay the deposit"
-    ctx = dict(born)
-    kind.carry(ctx)                                     # the old brief is read only for a key that is missing
-    assert ctx[kind.KEY] == born[kind.KEY] and ctx["errand_class"] == born["errand_class"]
 
 
 def test_the_workers_first_step_is_the_declared_action_the_model_named(monkeypatch):

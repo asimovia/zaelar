@@ -144,10 +144,9 @@ def precondition(row: dict, ev: dict, *, ask=None) -> bool:
     if not cond:
         return True
     from nucleo import jev
-    from nucleo.turn import verdicts as _v
     q = {PRECONDITION: {"instructions": f"Does this arriving item meet the condition «{cond}»?",
                         "criteria": {"yes": "it meets the condition", "no": "it does not"}}}
     state = f"{(ev.get('fields') or {}).get('subject') or ''}\n{ev.get('text') or ''}"[:3000]
     handle = (ask or jev.choose_many_sync)(state, q, question_id=PRECONDITION)
-    choice, _info = _v.read(handle, PRECONDITION, "no")
+    choice, _info = jev.read(handle, PRECONDITION, "no")
     return choice == "yes"

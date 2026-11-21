@@ -72,10 +72,9 @@ def test_no_function_the_manager_reaches_fetches_the_old_brief():
 def test_disarm_a_fetch_of_the_brief_on_the_widget_door_is_named():
     path = ENGINE / "nucleo/request/ending.py"
     text = path.read_text(encoding="utf-8")
-    cut = "            if verdict_names_leaving(model.verdicts(), wid):"
+    cut = "    turn = model.current()\n    how, leaves = \"\", False\n"
     assert cut in text
-    armed = text.replace(cut, "            from nucleo.turn import brief as _tb\n"
-                                "            if verdict_names_leaving(_tb.of_this_turn(), wid):")
+    armed = text.replace(cut, cut + "    from nucleo.turn import brief as _tb\n    _tb.of_this_turn()\n")
     try:
         path.write_text(armed, encoding="utf-8")
         got = _fetches(reach.reaching(ROOTS, BRIEF))

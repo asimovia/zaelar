@@ -65,9 +65,9 @@ def test_an_errand_that_is_not_card_code_passes_the_gate(monkeypatch):
     assert seen["passed"] and not dispatch.pending_confirm()
 
 
-# ── a remark is not an order (V2-931, his rule of 2026-11-17) ────────────────────────────────────────────────────────
-def _run_read(req: str, request_type: str, confidence: float, monkeypatch) -> tuple[dict, list]:
-    """The same door, with the READING the commissioning turn carried (`brief.carried`)."""
+# ── his sure order starts unasked; doubt asks once (his rule of 2026-11-18) ──────────────────────────────────────────
+def _run_read(req: str, monkeypatch, *, sure: bool) -> tuple[dict, list]:
+    """The same door, with or without the fact that the conversation manager's build act carries (`kind.SURE`)."""
     seen, rows = {"passed": False}, []
 
     async def _beyond(task, key, req_):
@@ -76,11 +76,10 @@ def _run_read(req: str, request_type: str, confidence: float, monkeypatch) -> tu
 
     monkeypatch.setattr(_dconf, "unlicensed_gate", _beyond)
     monkeypatch.setattr(dispatch, "_task_row", lambda how, rec, **kw: rows.append((how, kw.get("state"))))
-    reading = {"result": {"request_type": {"choice": request_type, "confidence": confidence}}, "open_ids": [],
-               "turn_id": "T1", "judged": req}
     task = dispatch.Task(id="c5", request=req, kind="generic", trusted=True,
                          context={"errand_kind": {"choice": "change_card", "confidence": SURE},
-                                  "errand_class": {"choice": "none", "confidence": SURE}, "reading": reading})
+                                  "errand_class": {"choice": "none", "confidence": SURE},
+                                  **({"sure_order": True} if sure else {})})
     dispatch._SESSIONS["c5"] = SessionRecord(task_id="c5", goal=req[:200], kind="generic")
     try:
         asyncio.run(dispatch._run_session(task))
@@ -89,40 +88,19 @@ def _run_read(req: str, request_type: str, confidence: float, monkeypatch) -> tu
         dispatch._SESSIONS.pop("c5", None)
 
 
-REMARK = ("Improve the messaging widget: when a message is sent it should show the connector's real delivery state "
-          "instead of leaving it unconfirmed")
-
-
-@pytest.mark.parametrize("request_type", ["comment", "complaint"])
-def test_a_remark_builds_no_card_and_asks_nothing(request_type, monkeypatch):
-    """23:09 — notes dictated for his developers, read `complaint`, were commissioned as «improve the messaging widget»
-    and he was asked «shall I change your widget?». A remark starts no card work and parks no question."""
-    seen, rows = _run_read(REMARK, request_type, 0.77, monkeypatch)
-    assert not seen["passed"] and not dispatch.pending_confirm(), "a remark was asked about, or started a worker"
-    assert rows == [("ended_early", "cancelled")] and "c5" not in dispatch._SESSIONS
-
-
 def test_a_sure_order_to_change_a_card_starts_with_no_question(monkeypatch):
-    """His rule (2026-11-18): certainty that he asked needs no «shall I?». The turn read as an order and the kind of
-    work read at the veto's confidence → the errand goes on to its worker, nothing is parked."""
-    seen, rows = _run_read(COMMISSION, "order", 0.9, monkeypatch)
+    """His rule (2026-11-18): certainty that he asked needs no «shall I?». The model's build act carries it as a fact
+    of the errand → the errand goes on to its worker, nothing is parked."""
+    seen, rows = _run_read(COMMISSION, monkeypatch, sure=True)
     assert seen["passed"] and not dispatch.pending_confirm() and rows == []
 
 
 def test_doubt_asks_once(monkeypatch):
-    """Not a remark, not a sure order (a question, an unsure reading): ONE question, on its row, and no worker."""
-    seen, rows = _run_read(COMMISSION, "question", 0.9, monkeypatch)
+    """Without that fact: ONE question, on its row, and no worker."""
+    seen, rows = _run_read(COMMISSION, monkeypatch, sure=False)
     p = dispatch.pending_confirm()
     assert not seen["passed"] and p and p["task_id"] == "c5" and p["code_change"] == "modify" and rows == []
     from nucleo.request import kind as _kind
-    unsure = {"errand_kind": {"choice": "change_card", "confidence": 0.6},
-              "reading": {"result": {"request_type": {"choice": "order", "confidence": 0.9}}, "open_ids": [],
-                          "turn_id": "T1", "judged": COMMISSION}}
-    assert not _kind.sure_order(unsure), "an order whose KIND is unsure is doubt"
-    assert not _kind.sure_order({"errand_kind": {"choice": "change_card", "confidence": SURE}}), "no reading is doubt"
-
-
-def test_disarm_an_unread_reading_asks_as_before(monkeypatch):
-    """With no sure reading the remark rule decides nothing: the gate asks (the safe side of this door)."""
-    seen, _rows = _run_read(REMARK, "complaint", 0.2, monkeypatch)
-    assert not seen["passed"] and dispatch.pending_confirm()
+    assert not _kind.sure_order({"sure_order": True, "errand_kind": {"choice": "generic", "confidence": SURE}}), \
+        "a sure order that is not card work is not this gate's"
+    assert not _kind.sure_order({"errand_kind": {"choice": "change_card", "confidence": SURE}}), "no fact is doubt"

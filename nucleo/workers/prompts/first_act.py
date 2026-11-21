@@ -1,14 +1,14 @@
-"""The handoff from Flash to its worker: his literal sentence and the act the turn identified, as the worker's FIRST step.
+"""The handoff to a worker: his literal sentence and the act the model named, as the worker's FIRST step.
 
 Measured: an errand whose act the turn had already identified (a card, an action with declared fields) reached its
 worker as a paraphrase with neither — the worker rediscovered the card by chained searches for minutes and never
 ran the act. The turn's reading already travels on the row (`rec.reading`, V2-852) but only the exit door read it.
 
 So the worker's brief carries, once, as DATA: his words verbatim (`task.context["said"]`, the sentence of the turn
-that commissioned it) and — when the turn's `screen_action` verdict is sure and names an action the card declares —
-that action with its declared fields and the one bridge call that runs it. It generalises what a send row already
+that commissioned it) and — when the model's `start_task` named an action the card declares (`first_act`) — that
+action with its declared fields and the one bridge call that runs it. It generalises what a send row already
 had: a send keeps its own block (`send_errand.brief_block`, the send's method); any other declared action gets
-this one. Nothing here decides intent: the verdict was paid for in the turn, the card declares
+this one. Nothing here decides intent: the model named the act, the card declares
 the fields, and the worker composes the values from his words.
 """
 from __future__ import annotations
@@ -69,25 +69,12 @@ def ran_in_the_turn(wid: str, act: str, reading: dict | None, trace: str = "") -
 
 
 def identified(reading: dict | None, context: dict | None = None) -> tuple[str, str, dict]:
-    """`(card, action, {field: description})` the carried reading surely names — or the errand's own `first_act`, the
-    action the conversation manager's model named — the action declared by the card; else ("", "", {}). Sure = the
-    verdicts' licence, the same floor every other reader of the reading uses."""
+    """`(card, action, {field: description})` of the errand's own `first_act` — the action the conversation manager's
+    model named — when the card declares it; else ("", "", {}). `reading` is kept for its callers."""
     named = (context or {}).get("first_act") or {}
     if named.get("widget") and named.get("action"):
         return _declared(str(named["widget"]), str(named["action"]))
-    try:
-        from nucleo.turn import brief as _tb, verdicts
-        handle = _tb.revived(reading)
-        if handle is None:
-            return "", "", {}
-        choice, info = verdicts.read(handle, _tb.TARGET_KEY, None)
-        wid, _sep, act = str(choice or "").partition(":")
-        if not (info and wid and act):
-            return "", "", {}
-        return _declared(wid, act)
-    except Exception as e:  # noqa: BLE001 — an unread reading leaves the brief as it was
-        _note("the reading", e)
-        return "", "", {}
+    return "", "", {}
 
 
 def _declared(wid: str, act: str) -> tuple[str, str, dict]:

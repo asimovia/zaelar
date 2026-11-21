@@ -35,8 +35,9 @@ def declared_optional(desc) -> bool:
 
 
 def _base_of(widget_id: str) -> str:
-    from nucleo.turn import brief as _tb
-    return _tb._base_of(widget_id)
+    """`results::t7` → `results`: the manifest belongs to the base."""
+    from widgets import instances as _inst
+    return _inst.base_of(widget_id) or widget_id
 
 
 def fillable_key(widget_id: str, action: str) -> str:

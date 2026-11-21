@@ -268,7 +268,7 @@ def names_what_to_play(query: str, text: str) -> bool:
     return not named <= loaded
 
 
-def video_license(text: str, last_reply: str = "", *, brief=None, query: str = "") -> bool:
+def video_license(text: str, last_reply: str = "", *, query: str = "") -> bool:
     """True when the turn ASKS for media — the words that may carry a `play_video` (a load that replaces
     whatever is playing). Chatter, praise, insults and complaints about a past change license nothing.
 
@@ -276,28 +276,16 @@ def video_license(text: str, last_reply: str = "", *, brief=None, query: str = "
     playing something (`offer_of_media`); with no reply to read, it licenses nothing, which is the safe
     direction: he can always say it with a verb.
 
-    `brief` is the turn's Jev brief. When it names an action of the player, the grammar table is not the
-    last word — see `verdict_grants` for the sentence that proved it has to be that way.
-
     `query` is the call's own query: what he names in this turn licenses its own load (`names_what_to_play`)."""
     n = _NEG_MEDIA_RE.sub(" ", _norm_txt(_his_words(text)))
     if _MEDIA_REQ_RE.search(n):
         return True
     if len(n.split()) <= 4 and bool(_AFFIRM_RE.search(n)) and offer_of_media(last_reply):
         return True
-    if verdict_grants(brief, "youtube"):
-        return True
     # V2-787 — the call's own content, named in his words, is not bleed (`names_what_to_play`).
     if query and names_what_to_play(query, text):
         return True
-    # V2-752 — A CORRECTION BORROWS THE LICENCE OF WHAT IT CORRECTS. «He dicho, Apollo once.» carries no
-    # media verb and no media noun, and `screen_action` answered `none` at 0.92 — both readers right, both
-    # reading the sentence alone. It is a correction of the search that had just run on the wrong words, and
-    # the model had already emitted the right call; this only stops the guard from eating it. Measured live
-    # in session fce3eff3, where the same correction was swallowed TWICE in a row while the agent said out
-    # loud that it was acting on it. Scoped to the widget the corrected op ran on: see `redo_decision`.
-    from nucleo.acts import redo as _redo
-    return _redo.corrects(brief, "youtube")
+    return False
 
 
 def replay_license(wid: str, action: str, text: str) -> bool:

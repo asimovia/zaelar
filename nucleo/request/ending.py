@@ -6,27 +6,24 @@ ended, so the question could not wait on it (an ended row is never re-opened), a
 `ask_outside_door` never measured it. A request about an act that LEAVES ends on that act's echo, never on a view, a
 draft or a show of the same card.
 
-The rule, at the one door every inline data-op crosses (`nucleo/flash/data_ops.dispatch_and_report`), for an act that
+The rule, at the one door every inline data-op crosses (`nucleo/acts/data_ops.dispatch_and_report`), for an act that
 does NOT leave the machine on a card that DECLARES acts that do (`widgets.effects.leaves`), and that only shows or
 prepares (a lens — no `data.write` — or an act that mounts the card, a draft; never one that answers):
 
-  · the turn's verdict identifies one of that card's leaving acts (`screen_action` names it, or the `end_state`
-    verdict names the echo a leaving act's template attests) → the act writes NO ending: the row's end is the
-    leaving act's echo (`hold` → `VERDICT`);
-  · otherwise, inside a live turn, its ending is written when the turn closes (`close_turn`) — unless the same turn
+  · inside a live turn, its ending is written when the turn closes (`close_turn`) — unless the same turn
     ran one of the card's leaving acts on that row (that act writes the end), or the turn ended
     on our own question about that card's leaving act, which makes the row WAIT instead (`ask_outside_door.held`)
     (`hold` → `TURN`). An op that lands after its turn closed writes its ending at once, unless the row now waits;
     a turn whose end never comes writes what it held after `STALE_S`.
 
 `only_held()` tells the turn's end that every data-op it ran was one of these, so the question about the leaving act
-is measured and made durable as if nothing had acted. Reads declared effects and verdicts only — never his words.
+is measured and made durable as if nothing had acted. Reads declared effects only — never his words.
 """
 from __future__ import annotations
 
 from nucleo.request import base, model, note
 
-VERDICT, TURN = "verdict", "turn"
+TURN = "turn"
 #: A turn whose end never came (a path that did not reach `close_turn`) writes what it held after this long.
 STALE_S = 30.0
 
@@ -42,28 +39,8 @@ def leaving_acts(wid: str) -> list[str]:
         return []
 
 
-def verdict_names_leaving(brief, wid: str) -> bool:
-    """Does the turn's verdict identify one of `wid`'s leaving acts — by the act, or by the end state it attests?"""
-    if not brief:
-        return False
-    acts = leaving_acts(wid)
-    if not acts:
-        return False
-    try:
-        from nucleo.acts import direct_action as _da
-        owner, name = _da.from_brief(brief)
-        if base(owner) == base(wid) and name in acts:
-            return True
-        from nucleo.circuit import spec
-        want = spec.end_state_verdict(brief)
-        return bool(want) and any(spec.target_of(spec.template_of(base(wid), a) or {}) == want for a in acts)
-    except Exception as e:  # noqa: BLE001
-        note(e)
-        return False
-
-
 def hold(wid: str, action: str, row: str) -> str:
-    """How this op's ending is written: "" as always, `VERDICT` never, `TURN` when its turn closes. Counts the op."""
+    """How this op's ending is written: "" as always, `TURN` when its turn closes. Counts the op."""
     turn = model.current()
     how, leaves = "", False
     try:
@@ -75,9 +52,7 @@ def hold(wid: str, action: str, row: str) -> str:
         shows_or_prepares = not (effects.EXTERNAL_SEND in fx or effects.OUTPUT_ANSWER in fx) and (
             effects.PRESENT_MOUNT in fx or (effects.DATA_READ in fx and effects.DATA_WRITE not in fx))
         if row and not leaves and shows_or_prepares and leaving_acts(wid):
-            if verdict_names_leaving(model.verdicts(), wid):
-                how = VERDICT
-            elif turn is not None and not turn.get("closed"):
+            if turn is not None and not turn.get("closed"):
                 how = TURN
     except Exception as e:  # noqa: BLE001 — unreadable: the op writes its ending as always
         note(e)

@@ -68,12 +68,10 @@ async def _run_session(task: "Task") -> None:
     # THE GATE FOR TOUCHING A CARD OF HIS (V2-757): a card of his is not built or rewritten unless he said so, knowing he
     # said it (f84f91ef: a design brief dictated to ANOTHER conversation started a worker rewriting his YouTube card). Here:
     # the ONE door that starts a worker, `kind == "code"` decided by the brief's `errand_kind`. The dev worker (V2-076) is exempt.
-    from nucleo.request import kind as _ek_gate          # a SURE order starts unasked; doubt asks once; a remark: nothing
+    from nucleo.request import kind as _ek_gate          # a SURE order starts unasked; doubt asks once
     _said_yes = _confirmed or bool(task.context.get("offered"))      # his yes to our own offer is his order to do it
     if kind == "code" and not _said_yes and not _d._dev_worker_params(task.context) and not _ek_gate.sure_order(task.context):
         rec = _d._SESSIONS.get(key)
-        if rec and _ek_gate.a_remark(task.context):     # a comment or a complaint builds nothing and asks nothing
-            return _ek_gate.dropped(_d, key, rec, req)
         _d.logger.info(f"dispatch: task {key} STOPPED by the widget confirm-gate: {req[:80]}")
         if rec:
             rec.status = "done"

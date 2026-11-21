@@ -350,7 +350,7 @@ def fullscreen_dispatch(args: dict, text: str, tag_emit, emit, deduped: dict, br
     event (desktop.shrink: exit fullscreen → restore maximize → rail chip); a call licensed by nothing is
     discarded and counts as handled (`deduped`) — same posture as stop_worker's GUARD 2."""
     from nucleo.acts import canvas as _door
-    verdict = _door.size_ordered(text, brief=brief)
+    verdict = _door.size_ordered(text)
     if not verdict:
         emit("brain", "🛡️ fullscreen_widget ignorado — el turno no habla de tamaño de pantalla (context-bleed)",
              text=(text or "")[:120], role="system",

@@ -1380,8 +1380,6 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/voice/unit/test_filler_is_short_classed_and_adaptive.py"]},
         {"id": "3.58", "title": "Jev names the request type before the deadline; the cover matches it or the regex stands",
             "ch": UNIT, "paths": ["tests/voice/unit/test_jev_request_type.py"]},
-        {"id": "3.59", "title": "Jev names the canvas verb (show/close/neither) through one shared resolver; anything unsure is neither",
-            "ch": UNIT, "paths": ["tests/voice/unit/test_jev_show_close.py"]},
         {"id": "3.61", "title": "Jev repairs an invented widget action to a declared one (or abstains); canvas verbs keep their boundary, unsure keeps today's escalate",
             "ch": UNIT, "paths": ["tests/voice/unit/test_jev_action.py"]},
         # V2-874 — disarmed 2026-11-10 (silence at LICENCE / the verdict overruling an inline answer below VETO / a send
@@ -1413,8 +1411,6 @@ DOMAINS: list[dict] = [
         # BLOQUEANTE dentro del `async def` del proveedor (hasta 900 ms de event loop congelado, compartido con
         # STT/TTS/barge-in) pasan a LEER. Nadie espera nunca: `peek`, nunca `wait` — 56 de 87 turnos dirigidos
         # reales mueren por barge-in antes de acabar.
-        {"id": "3.64", "title": "The turn asks Jev ONCE before the model and each door it reaches once more (V2-887 step 8), and the voice path never blocks: brief at t0, readers peek",
-            "ch": UNIT, "paths": ["tests/voice/unit/test_the_turn_asks_jev_once.py"]},
         # V2-726 F4+F5 — la capacidad que pidió el operador («mándale los 100 resultados parseados y los
         # criterios y que diga cuáles encajan»): medido en vivo, 100 candidatos en UNA petición, 1.161 ms,
         # $0,0005, recall 3/3 y CERO falsos positivos con el umbral puesto. La trampa que clava el nodo: la
@@ -1488,10 +1484,6 @@ DOMAINS: list[dict] = [
         {"id": "3.74", "title": "«Hecho.» es un PARTE, y no se dice antes de que el trabajo exista: el sí "
                                  "se contesta con un comienzo, y el desenlace lo atestigua la pantalla",
             "ch": UNIT, "paths": ["tests/voice/unit/test_nothing_is_done_until_the_screen_says_so.py"]},
-        {"id": "3.73", "title": "Una acción DECLARADA antes que un worker de cinco minutos — y los tres "
-                                "guardas que le llevaban la contraria al veredicto que ya pagamos",
-            "ch": UNIT,
-            "paths": ["tests/voice/unit/test_a_declared_action_before_a_five_minute_worker.py"]},
         {"id": "3.72", "title": "Dos reproductores abiertos y una palabra que vale para los dos: el veredicto "
                                 "de pantalla decide DE QUIÉN es la orden, y si no sabe se PREGUNTA",
             "ch": UNIT, "paths": ["tests/voice/unit/test_two_players_open_and_one_word_for_both.py"]},
@@ -1563,19 +1555,12 @@ DOMAINS: list[dict] = [
         # señora.» → a reload of the playing video. Grammar licenses (canvas_license) gate model closes,
         # play_video and fullscreen_widget in BOTH channels; minimize is a first-class canvas order; the
         # action map retries its lookup with the leading vocative stripped.
-        {"id": "3.23", "title": "A canvas mutation needs the operator's words, and a known order survives "
-                                "the wake word",
-            "ch": UNIT, "paths": ["tests/voice/unit/test_a_canvas_mutation_needs_the_operators_words.py"]},
         # V2-653 F0 — el ÁRBITRO del canvas: un solo árbol de decisión (procedencia + licencia) juzga toda
         # mutación de widgets; los incidentes medidos del mes son su suite de conformidad, y la sombra
         # (tap en observer.emit) emite veredictos `arbiter` sin imponer nada todavía.
         {"id": "3.25", "title": "El árbitro del canvas: procedencia + licencia deciden toda mutación — "
                                 "conformidad con los incidentes medidos, y la sombra que solo mide",
-            "ch": UNIT, "paths": [
-                "tests/agent_headless/unit/test_the_canvas_arbiter_judges_every_mutation.py",
-                "tests/agent_headless/unit/test_the_arbiter_licenses_by_the_turns_verdict.py",
-                "tests/agent_headless/unit/test_one_canvas_door_judges_every_show_and_close.py",
-                "tests/agent_headless/unit/test_a_canvas_event_survives_the_fold.py"]},
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/test_the_canvas_arbiter_judges_every_mutation.py", "tests/agent_headless/unit/test_one_canvas_door_judges_every_show_and_close.py", "tests/agent_headless/unit/test_a_canvas_event_survives_the_fold.py"]},
         # V2-721 (2026-09-17, session c553a1e0, with a guest watching): «ha habido como un baile de abrir y
         # cerrar widgets sin mi permiso». The music card re-opened on every `pause`, `volume_up` and `stop`,
         # because the connector's result says `surface: "widget"` — a fact about where the AUDIO is, read by
@@ -1830,18 +1815,6 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ['tests/agent_headless/unit/flash/test_a_card_read_answers_him_in_the_second_person.py']},
         {"id": "3.152", "title": "A line the engine SAYS on behalf of a turn carries that turn's trace: the one door every say goes through (`agent_events._speak`) binds the speech it queues to the trace of the context that asked (`trace.bind_speech`), so a follow-up whose playout ends inside the next turn is still attributed to its own (demo 2026-10-29: a proactive say stamped T1·6857)",
             "ch": UNIT, "paths": ['tests/voice/unit/providers/test_a_said_follow_up_carries_the_trace_of_the_turn_that_asked.py']},
-        {"id": "3.151", "title": "A turn an app owns never steers nor stops the running errand: a correction belongs "
-                                 "to whoever ACTED LAST in HIS turns (by trace origin: never an errand's own background "
-                                 "writes; with corrects_last at the licence), and a "
-                                 "sure app act beside a stop reading leaves the errand alone (the turn unmarked, so "
-                                 "the promise repair runs the card's call); a replace ends it only SURE, aimed at it and over a turn no app served; "
-                                 "every route of his words into an errand crosses ONE door with that rule; an act of "
-                                 "his turn is ANY app mutation it caused (a named op, a show carrying an act, a data "
-                                 "change at the store), and the "
-                                 "promise repair acts on the app he corrects; a real stop, steer or replace still reaches it "
-                                 "(V2-831 T-19)",
-            "ch": UNIT, "paths": [
-                "tests/agent_headless/unit/flash/test_a_card_act_beats_the_running_errand.py"]},
         {"id": "3.26", "title": "El interruptor del micrófono manda en el motor: titular único, la ruta y el "
                                 "latido que lo re-afirman, y el turno que no existe con el micro cerrado",
             "ch": UNIT, "paths": [
@@ -2095,9 +2068,9 @@ DOMAINS: list[dict] = [
         # Audit 2026-11-14, class A (failures 1, 2, 8, 9): typed «cierra todo» vetoed by an earlier line's verdict (the
         # typed lines shared a spoken fragment's trace), typed «para» queued behind a story, «para todo» left a video
         # playing, a close's receipt 35 s late. Typed and spoken, es/en; each mechanism disarmed → red.
-        {"id": "3.232", "title": "Stopping and closing by TEXT always work: a typed line opens its own trace, the hard close "
-                                 "answers no brief verdict (`interrupt`), a typed hard interrupt cuts the speech sounding, "
-                                 "a stop that cut our speech is the voice's, a stop pauses every app reporting `playing`",
+        {"id": "3.232", "title": "Stopping and closing by TEXT always work: the voice process cuts the speech in course and then "
+                                 "queues the typed line in one request, even when the cut fails; every app that declares a "
+                                 "running state declares what a stop ends, validated at load",
             "ch": UNIT, "paths": ["tests/voice/unit/test_stopping_and_closing_by_text_always_work.py"]},
         # Audit 2026-11-14, class C (failures 12, 13, 15): the mic used as push-to-talk lost the sentence at the close,
         # glued the leftover to the next one, and a mid-sentence close left every reply waiting for a silence. es/en.
@@ -2115,10 +2088,6 @@ DOMAINS: list[dict] = [
         # «Las dos.» answering our «¿cuál cierro?» was refused and resumed the music. `neither` vetoes only with a sure
         # non-order reading; an answer to our pending close question licenses the close and no player start. es/en.
         # Disarmed 2026-10-26 → red.
-        {"id": "3.136", "title": "A verdict vetoes a clear close only when it reads a negation, and an answer to our "
-                                 "«which one should I close?» carries that licence and starts no player "
-                                 "(V2-812 T-05)", "ch": UNIT,
-            "paths": ["tests/voice/unit/test_a_verdict_cannot_veto_a_clear_close.py"]},
         # V2-812 T-06 — «¿cuál cierro, «4609d2-1» o «187f3c-1»?» was spoken in the car: untitled sheets fell through to
         # their instance id. A card is named by its content (title, goal, first row), else its kind, two that collide by
         # their place; `instances._no_ids` is the last door before the question. es/en. Disarmed 2026-10-26 → red.
@@ -2317,10 +2286,6 @@ DOMAINS: list[dict] = [
                                  "silencio empieza cuando corre",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/test_a_queued_errand_is_waiting_not_stuck.py"]},
-        {"id": "2.766", "title": "Un encargo parado antes de correr no deja «Working…» (su hoja se asienta, vacía se va) y "
-                                 "una queja sobre un cierre no cierra nada (veredicto canvas=neither)",
-            "ch": UNIT,
-            "paths": ["tests/agent_headless/unit/test_a_stopped_errand_leaves_no_working_sheet.py"]},
         {"id": "2.767", "title": "Un texto que el modelo puede ESCRIBIR se escribe en una sola petición sobre la app que "
                                  "lo aloja, no con un Brain Worker; si falla, va al worker como antes",
             "ch": UNIT,
@@ -2373,10 +2338,6 @@ DOMAINS: list[dict] = [
         # brief's verdict over the DECLARED actions), a widget declares its operator-only controls and a worker is
         # refused them, and the spec deriver never takes the assistant's name as the goal. Disarmed 2026-10-26
         # (portal gate, verdict read, brief question, worker deny, name strip) → each red.
-        {"id": "3.121", "title": "A capability no app declares is a «not yet», never a worker; a worker never runs the "
-                                 "operator's own controls of an app; the assistant's name is never an errand's goal "
-                                 "(V2-807 T-16)",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_capability_no_card_declares_is_not_an_errand.py"]},
     ]},
     {"id": "4", "name": "WIDGETS", "nodes": [
         {"id": "4.1", "title": "Ciclo de vida / acciones / refs / generador / background", "ch": UNIT, "paths": [
@@ -3861,24 +3822,7 @@ DOMAINS: list[dict] = [
         # finder gana resolución difusa de ganador único y la negativa NOMBRA las listas que existen (V2-463).
         {"id": "4.149", "title": "Un widget recién cerrado no se reabre por charla, y un garble de la lista "
                                  "se resuelve o se niega nombrando lo que hay",
-            "ch": UNIT, "paths": [
-                "tests/voice/unit/test_a_just_closed_widget_does_not_reopen_on_chatter.py",
-                # 2026-09-18 (sesión 6d19df41, fix04): la MISMA puerta en el otro sentido — lo que el worker
-                # encarga SÍ se abre, pero en SEGUNDO PLANO: el `documento` de un encargo fantasma tapó su
-                # flujo de email («why are you open the documents right now?»). `sse.js` marca `background`
-                # por `src: worker:*`; desktop salta `_bringFront`, el Deck salta `_goTo`.
-                "tests/browser/unit/widgets/test_worker_show_opens_in_background.py",
-                # 2026-09-19: ese mismo fix rompió TODA apertura (TypeError `w.card` con `w` undefined en la
-                # rama fresh de show() + `background` sin declarar en _renderAliases/createWidget/maximize).
-                # El pin clava las dos prohibiciones en el propio desktop.js.
-                "tests/browser/unit/widgets/test_a_fresh_show_needs_no_stored_card.py",
-                # 2026-09-20 (revisión de la tanda): los DOS de arriba pasaron VERDES mientras el producto
-                # estaba roto — el .mjs monta `sse.js` sobre un host de mentira y el otro es grep del fuente,
-                # así que el único fichero que el fix tocaba era el único que nadie EJECUTABA. Éste monta el
-                # Desktop REAL en chromium y lo usa: abrir, abrir en segundo plano, re-abrir, maximizar,
-                # minimizar y el panel ⚙, con `pageerror` como aserción. Desarmado contra los tres hunks
-                # originales: los tres lo ponen rojo.
-                "tests/browser/unit/widgets/test_the_canvas_opens_cards_for_real.py"]},
+            "ch": UNIT, "paths": ["tests/browser/unit/widgets/test_worker_show_opens_in_background.py", "tests/browser/unit/widgets/test_a_fresh_show_needs_no_stored_card.py", "tests/browser/unit/widgets/test_the_canvas_opens_cards_for_real.py"]},
         # V2-651 F0 (2026-09-10): identify the OPERATOR's voice. The cost lives in the BROWSER (operator
         # directive): the fingerprint of every speech segment is computed client-side and only a tiny label would
         # ever cross to the backend. F0 is SHADOW MEASUREMENT — zero behaviour change: fingerprint + multi-profile
@@ -3984,11 +3928,6 @@ DOMAINS: list[dict] = [
                                 "second Jev trip (V2-851 F5; disarm: the old rename_decision call → red)",
             "ch": UNIT,
             "paths": ["tests/memory/unit/test_a_search_term_does_not_rename_the_assistant.py"]},
-        {"id": "2.79", "title": "Salir de pantalla completa es su PROPIA orden — dirección explícita, "
-                                "idempotente, y un «ya está» sin nada llamado se completa si la pantalla lo "
-                                "confirma",
-            "ch": UNIT,
-            "paths": ["tests/voice/unit/test_leaving_full_screen_is_its_own_order.py"]},
         # V2-761 — «ábreme la lista de widgets / el catálogo de apps / qué widgets tengo» opens the Apps tab by
         # all three doors (action map, `show_panel`, and `show_widget` naming the system surface), while the
         # neighbours keep their words: «la aplicación de música», «vuelve al catálogo», «abre whatsapp».
@@ -4051,8 +3990,6 @@ DOMAINS: list[dict] = [
             "ch": VOICE, "paths": ["tests/voice/unit/test_a_dead_titular_is_heard_and_spoken_by_the_stand_in.py"]},
         {"id": "3.196", "title": "The turn's one Jev trip asks only what the turn reads (V2-887 step 8): 10 questions with nothing open (was 16), the screen questions with cards open, the stop and target with an errand running, the answer binding with a task waiting — the KEY SETS pinned on four contexts; no question a single door reads rides the turn trip",
             "ch": UNIT, "paths": ["tests/voice/unit/test_the_common_path_asks_ten.py"]},
-        {"id": "3.197", "title": "A question only one door reads is asked AT that door, into the turn's brief (V2-887 step 8): a model call fires the acts-asked question, an escalation the portal's class/kind/capability gap, a leaving act's exit his channel, the directive call a rename — once per handle, merged so every reader reads it as before, `in_flight` while flying, never awaited on the voice loop; admission asks none",
-            "ch": UNIT, "paths": ["tests/voice/unit/test_a_door_asks_its_own_question.py"]},
         {"id": "2.727", "title": "A turn the engine had to cut asks again in the session's language, never a fixed Spanish line",
             "ch": UNIT,
             "paths": ["tests/voice/unit/test_a_stalled_turn_says_so_in_the_session_language.py"]},
@@ -4146,8 +4083,6 @@ DOMAINS: list[dict] = [
         {"id": "2.1670", "title": "A relay's brief never reaches him (V2-877 #1): a context handoff or stall restart relaunches with HIS goal as the request and the worker brief in `context.worker_brief`; a retried errand shows his goal and the answer and no piece of the brief, the worker prompt starts with it, and the key has one reader",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/workers/test_a_relay_brief_never_reaches_him.py"]},
         # V2-878 §1 — disarmed 2026-11-11 (no card written / the beat wipes it / the extras lose his sentence) → red.
-        {"id": "2.1671", "title": "An errand's app lives in its ROW (V2-878 §1): his sentence (`heard`), how it was born (`verb`) and when he last named it (`last_mention_ts`) are in `progress.card`; the 15-second status beat keeps it, a restart reads it back, the rehydrate returns it, the pool (`named_errand.known`) exposes heard/state/last mention, and his first words are never overwritten — es, en, ca — one file, one node: the cases planned as 2.1672 live here (2026-11-11)",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_an_errands_card_lives_in_its_row.py"]},
         # V2-878 §2 — disarmed 2026-11-11 (target gate back to has_workers / the menu back to goal[:160] / the title beside his
         # words / a constant skip / the first three goals) → red.
         {"id": "2.1673", "title": "One menu (V2-878 §2): the flow judge's menu and `errand_target`'s candidates are the errands' APPS — his words, state, last mention — of a parked and of a just-finished errand too; `errand_target` and the stop are asked with ANY errand open, not only with a worker running; the escalate question carries the three he named last — es, en — one file, one node: the cases planned as 2.1674/2.1675 live here (2026-11-11)",
@@ -4351,12 +4286,6 @@ DOMAINS: list[dict] = [
         {"id": "2.128", "title": "Every door a turn acts through counts as acting",
             "ch": UNIT,
             "paths": ["tests/voice/unit/test_every_door_a_turn_acts_through_counts_as_acting.py"]},
-        {"id": "2.127", "title": "«Close the calendar and the messages» closes both",
-            "ch": UNIT,
-            "paths": ["tests/voice/unit/test_closing_two_named_cards_closes_both.py"]},
-        {"id": "2.126", "title": "An op inside an app runs and the app he NAMED closes after it",
-            "ch": UNIT,
-            "paths": ["tests/voice/unit/test_closing_a_card_by_its_name_after_an_op_inside_it.py"]},
         {"id": "2.125", "title": "Every pending confirmation can be answered in words, typed or said",
             "ch": UNIT,
             "paths": ["tests/voice/unit/test_any_pending_confirmation_is_answered_in_words.py"]},
@@ -4369,9 +4298,6 @@ DOMAINS: list[dict] = [
         {"id": "2.122", "title": "A slow Jev brief is hedged with a second identical request; the first answer wins",
             "ch": UNIT,
             "paths": ["tests/voice/unit/test_a_slow_jev_brief_is_hedged.py"]},
-        {"id": "2.121", "title": "A repeated view gets the verdict's call in a repair pass",
-            "ch": UNIT,
-            "paths": ["tests/voice/unit/test_a_repeated_view_gets_the_verdicts_call.py"]},
         {"id": "2.120", "title": "A question is not answered with a write nor a send",
             "ch": UNIT,
             "paths": ["tests/voice/unit/test_a_question_is_not_answered_with_a_write_nor_a_send.py"]},
@@ -4471,8 +4397,6 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_two_appointments_of_one_title_on_one_day_are_two_rows.py"]},
         {"id": "2.1726", "title": "A bench case's world outlives the threads its turns started: `Isolated` waits for the whisperer's threads (bounded by its own clock) before giving the keys and the database back — the last turn's whisper once resolved its key after the restore and got a 401",
             "ch": UNIT, "paths": ["tests/platform/tests/test_a_case_waits_for_the_turns_own_threads.py"]},
-        {"id": "2.1728", "title": "Marketplace words with an unsure `handle_inline` open no worker (CRIT-C16, ES/EN): «Búscame en Amazon un monitor de 27 pulgadas» / «Find me a 27 inch monitor on Amazon» with the model calling nothing and the brief unsure or absent ends in words — the marketplace / modify-widget regex pair that made the sentence an errand went (its three regexes off the ratchet, node 7.73); a sure `escalate` still routes the same words to their errand; no word reader of an errand is left in the voice turn",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_marketplace_words_open_no_errand_without_a_sure_verdict.py"]},
         {"id": "2.1729", "title": "An order the model served with another tool opens the ORDER's row (group A2, 2026-11-12, ES/EN): at the close the brief's sure order (`request_type = order` and `screen_action = card:act` at the one act floor, `wants_words` ≠ tell) is read against what the turn's doors RAN (`order_unserved.served`: the act, an act of that card with the same declared effect beyond reading, or the model's own call; the model's valid call is never overruled, node 2.73: an order that only reads is served by what the turn did, and an act that stays on the card by the model's own call that ran there) — a leaving act becomes its send task from his words (run, or ONE slot asked on its row; a worker on its row when his words name nobody of his), an act of the card is completed by the empty turn's completion or asks ONE `ASK_FACT` question on the order's row whose answer fills THAT row — never a worker for an app act; a question, a doubted order, an order answered by words, an escalation or a turn that reached a worker open nothing; the row's question is said through the mouth (out of turn once the turn closed); disarmed (`served` reads anything that ran as served) the order is lost; an order the model served through the card's OWN tool (`play_music`, `play_video` — `acts/media.CARD_OF_TOOL`) is that door's and runs no second act (ES/EN, music and video; disarmed, the completion runs beside the call); when the model's other act already ENDED the turn's row the order's question, or its send task, is born on a row of its own and waits there (`model.past_an_ended_row`; an open turn's row is still the order's; disarmed, the question is asked on the ended row and nothing waits); a LOOK at the order's card (a lens the model called there) is no serving call when the turn surely asks to ACT (`wants_words = act`, the door's own `a_view_where_the_verdict_acts`): the order completes or asks on its row — without that verdict the model's look stands, T4 (contacts ES, tasks EN; disarmed, zero acts and no question); no act of the verdict runs beside a LOOK the model made on that card even when the turn surely asks to act (`wants_words = act` read at the act floor): the look stands and the order owes only its question — the facts it needs, or nothing",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_an_order_served_with_another_tool_opens_its_row.py"]},
         {"id": "2.1730", "title": "Our own question about an act of a card is a ROW, and his answer runs the act on it (group A5, 2026-11-12, ES/EN): a turn that ends asking while the brief names a declared act at the act floor (`ask_outside_door.named_act`, not only a card whose acts leave) makes its row wait with his request retained (`utterance`: the card and the act); his answer binds through `answers_open_question` → `inline_ask.rerun` → `answered_offer.run`: a declared no cancels the row, a yes or a fact composes the act's payload by ONE bounded pass over his request, our question and his answer (the kept fallback) and runs it through the card's door on THAT row; the answering turn's own call of the act is the same answer (`inline_ask.claim`, within the conversation) — one answer, one act; a pass that makes no call leaves the row failed, never a guess; the `readable` hold is read at the VETO floor (3.175); disarmed (no row) his answer has nowhere to go and nothing runs; an answer's resumption absorbs the same act called in the ANSWERING turn (its trace) and never a later turn's — an offer and a send task (ES/EN; disarmed, the later call is counted as done); the composed act crosses the one consent rule for THAT call (`action_mode_now`): an act it asks about waits for his yes on the row with the card's declared question and its two declared answers — his yes runs it there, his no ends the row (`clear_all` ES, `drop_project` EN; disarmed, the irreversible act runs on his answer alone); only an act the consent rule reads FAST runs on his answer — one it hands to an errand is not dispatched by this door",
@@ -4532,10 +4456,6 @@ DOMAINS: list[dict] = [
         {"id": "2.434", "title": "Both channels take the receipt — the probe beside its delivery backstop, the voice in its bare "
                                  "acks from what HIS turn did on the canvas (V2-781)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_both_channels_take_the_receipt.py"]},
-        {"id": "2.470", "title": "A app named only to be LEFT ALONE is never the target of a shared control — «bájale a la música, el "
-                                 "vídeo no lo toques» ran youtube.volume_down three turns (the brand name outscored «la música»); "
-                                 "keep/don't-touch/negation clauses exclude, both channels ask `named_target` first (V2-781)",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_card_named_to_be_left_alone_is_never_the_target.py"]},
         {"id": "2.471", "title": "An answer to our own «which app?» runs the PARKED control on the app it names — «El de la música, "
                                  "el vídeo déjalo» was asked the same question again; one shot, through the rung (V2-781)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_an_answer_to_which_card_runs_the_parked_control.py"]},
@@ -4953,12 +4873,6 @@ DOMAINS: list[dict] = [
         # on the loop) → red each.
         {"id": "3.165", "title": "A close's follow-up question never blocks the voice loop: a sure close's «which apps on screen» and «the app in use too?» ride the brief's own background trip (`jev.ask_many(after=…)` → `brief_screen.ride_the_brief`); the hard interrupt awaits its scope question in a thread; a reader on the loop never asks — with no answer the verdict stands (V2-831 audit A2)",
             "ch": UNIT, "paths": ['tests/agent_headless/unit/flash/test_a_close_question_never_blocks_the_voice_loop.py']},
-        {"id": "2.950", "title": "A close never guesses an app that is not on screen, and the names verdict decides over words: the voice word fallback closes only the open apps his words name (every one) and nothing when `names_a_card` says what he named is not on screen; `named_cards` reads every app called by its catalogue name, not only the one `identify` matched; the owed close of the promise door closes every named open app (demo sandbox 2026-10-29, C6: «cierra la agenda y los mensajes» closed the messages, which were not open)",
-            "ch": UNIT, "paths": ['tests/agent_headless/unit/flash/test_a_close_never_guesses_a_card_that_is_not_on_screen.py']},
-        {"id": "2.940", "title": "Every second pass asks the ONE reader of «canvas gesture or inner op» (`verdict_card.inner_op_may_run`, through `act_repair.canvas_holds_the_turn`) before it asks the model for a card's action — promise repair, refused verdict, repeated view, after a read, after a search, the commission pass — and the data completion asks the same function; an inner order as sure as the gesture still runs. The names question declares a sentence that names an app on screen AND something that is not as `on_screen` (demo sandbox 2026-10-29, C6: «close the calendar and the messages» → agenda:close_meeting 0.50 from the repair, the app stayed); the cards his words name come in the order he names them (declared aliases, never the match score)",
-            "ch": UNIT, "paths": ['tests/agent_headless/unit/flash/test_every_second_pass_asks_the_one_canvas_reader.py']},
-        {"id": "2.977", "title": "The words said first describe the act that RUNS: under a SURE answer verdict (`screen_action` whose action declares `output.answer`) the model's streamed words wait until its calls are known (`follow_up_pass.Hold`, one seam in the stream loop; decided at the FIRST word, so a brief that lands after the stream opened still holds — pass 5) and are dropped when the verdict replaced or a guard refused the call they narrated, OR when an answer op on that app returned data (they were written before the data existed — pass 7, C2: the wrong slot, then the correction) — the op's answer is then the first words, inline, and R5b's correction is never reached for an answer op; kept only when no answer op returned data; view ops and plain app acts are not held (demo sandbox 2026-10-29 pass 4, C2: «I'm putting Rowan down for 4:00 to 4:45» over a find_free, then «I haven't actually booked it yet»); and when NO op of the stream touched the held app (the verdict's completion runs it later), the words wait for the turn's end and are said only if nothing else answered — pass 9 C2: a guess, a send line and a correction were three lines)",
-            "ch": UNIT, "paths": ['tests/voice/unit/test_the_first_words_follow_the_act_that_runs.py']},
         {"id": "2.929", "title": "An op the after-read pass ran ANSWERS in words: `data_ops.answer_owed` is the one reader of whether the turn owes an op's words — a read that answered owes none, a read whose pass ran the order's op (`read_req[\"op\"]`) owes that op's, a worker's turn none (demo sandbox 2026-10-28, R3: find_free computed the five dates and the turn said «let me check»); and an ARRANGE gesture yields to a sure action on an app like a close does (S2 «compare them side by side»: canvas=arrange 0.92 beside results:layout 1.00 tidied the desktop)",
             "ch": UNIT, "paths": ['tests/agent_headless/unit/flash/test_an_op_the_after_read_pass_ran_answers_in_words.py']},
         {"id": "2.928", "title": "The typed channel marks the turn boundary the voice marks with its transcript (`canvas_focus.begin_turn`, called by `cli/turn.run_turn`): through the probe, the bank, the lab and a sandbox «that»/«it» means the app his previous turn acted on — the window rotated only on the voice's transcript before (demo sandbox 2026-10-28, A2 and V4 found no app)",
@@ -5129,8 +5043,6 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ['tests/voice/unit/test_two_ops_of_one_card_are_both_audited.py']},
         {"id": "2.723", "title": "A recipe to show on an existing app is not an app to BUILD — «cream» is not «crea», «in the documento widget» is a destination (docs-single-recipe-not-a-list EN)",
             "ch": UNIT, "paths": ['tests/agent_headless/unit/flash/test_a_recipe_for_a_card_is_not_a_card_to_build.py']},
-        {"id": "2.724", "title": "A «no» to BUILDING an app is not a «no» to the errand: the same errand asked without the build still starts, in both channels (docs-single-recipe-not-a-list EN)",
-            "ch": UNIT, "paths": ['tests/agent_headless/unit/turn/test_a_no_to_building_is_not_a_no_to_the_errand.py']},
         {"id": "2.725", "title": "A bare «Done.» stands only when the apps back it (only end states born in THIS turn, by its trace — never by matching his sentence, V2-831 audit A5): an unmet end state on the app (an empty document sheet) or an errand that just started is said as what it is (docs-single-recipe-not-a-list EN)",
             "ch": UNIT, "paths": ['tests/agent_headless/unit/flash/test_done_is_backed_by_the_cards.py']},
         {"id": "2.415", "title": "A widget's refusal reaches him as a sentence in the session's language — «I couldn't: no "
@@ -5300,10 +5212,6 @@ DOMAINS: list[dict] = [
                                 "tab cannot «close» what the operator is looking at",
             "ch": UNIT,
             "paths": ["tests/browser/unit/widgets/test_the_screen_that_counts_is_the_voice_sessions.py"]},
-        {"id": "2.88", "title": "Closing an app is a TOOL, like opening one — «ok close the calendar» no longer sends "
-                                "every model to the nearest data action",
-            "ch": UNIT,
-            "paths": ["tests/voice/unit/test_closing_a_card_is_a_tool.py"]},
         {"id": "2.87", "title": "The app that sends knows who it sends to — a question to the messaging app about a "
                                 "recipient is answered from the directory it sends through",
             "ch": UNIT,
@@ -5362,14 +5270,6 @@ DOMAINS: list[dict] = [
                                 "verificado",
             "ch": UNIT,
             "paths": ["tests/voice/unit/test_an_order_to_play_shows_the_player.py"]},
-        {"id": "2.73", "title": "El veredicto COMPLETA al modelo, nunca lo desmiente — un turno vacío o "
-                                "una llamada que no resuelve la rellena la acción declarada que el brief "
-                                "nombró, por la misma puerta; y una cara del reproductor se acepta por su alias; "
-                                "a verdict ACTS at ONE floor (`verdicts.to_act` = `consent.intent_act_at`): the screen "
-                                "action, the request type and `corrects_last` — an unsure request type (0.4 / screen "
-                                "0.6) completes nothing, a 0.55 correction relaunches nothing (2026-11-12)",
-            "ch": UNIT,
-            "paths": ["tests/voice/unit/test_the_verdict_completes_the_model.py"]},
         {"id": "2.1748", "title": "A model call that fills none of its act's slots is not the valid call that runs over a disagreeing verdict "
                                  "(demo sandbox b140 F2, 2026-11-14, EN): `documento:show {\"goto\": …}` over a sure `documento:goto` — a key "
                                  "naming an action of the same card never folds into another action's text field (parametrized over every "
@@ -5478,13 +5378,6 @@ DOMAINS: list[dict] = [
                                 "descriptor que lo hace enrutable llega ENTERO a la pregunta",
             "ch": UNIT,
             "paths": ["tests/voice/unit/test_stopping_the_video_is_not_a_close_verb.py"]},
-        {"id": "2.71", "title": "«No te he dicho que lo cerraras» NO es una orden de cerrar — el "
-                                "veredicto del turno manda sobre la tabla de verbos del backstop",
-            "ch": UNIT,
-            "paths": ["tests/voice/unit/test_a_denial_of_a_close_is_not_a_close_order.py"]},
-        {"id": "2.70", "title": "Una queja sobre lo RECIÉN hecho es una orden de rehacerlo bien",
-            "ch": UNIT,
-            "paths": ["tests/voice/unit/test_a_complaint_about_the_last_thing_is_an_order_to_redo_it.py"]},
         {"id": "2.69", "title": "Un fragmento retenido solo se pega al siguiente si el siguiente lo CONTINÚA "
                                 "— y un trozo que el STT devuelve más largo REEMPLAZA, no se duplica",
             "ch": UNIT,
@@ -7592,8 +7485,6 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/workers/test_the_worker_starts_with_the_act_the_turn_identified.py"]},
         {"id": "2.1170", "title": "CRIT-C4 at its door (V2-851 F4): at dispatch._run_session a commission whose brief says it rewrites an app of his parks the question and starts no worker; one that is not app code passes the gate; with the gate disarmed the same commission goes on to a worker",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_the_card_gate_stands_at_the_one_door.py"]},
-        {"id": "2.1171", "title": "The errand kind is the brief's verdict (V2-851 F4, audit P0-4): errand_kind is a declared brief question carried by the portal; web/build_card/change_card/generic map to web/code/generic at the licence, unsure is generic, request/kind.py holds no regex; a document he keeps is a task by the playbooks' declaration in the escalate question, with the document playbook",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/test_the_errand_kind_is_the_briefs_verdict.py"]},
         {"id": "2.1172", "title": "An event goes through the one router (V2-851 F4, §7): flow_of.route(event=…) resumes a row waiting for event:<topic>[:<key>], gives a claimed event to its claimant (the errand bound to the conversation), streams one a rule subscribes to, else nothing; his note is read once into an on_event row matched on declared fields and gone with its note; a pre-condition is a declared verdict; the stream is one recurring row that rests between items, one at a time, held while stopped, resumed by id and recycled after RECYCLE_EVENTS, with the rules' mandate",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_an_event_goes_through_the_one_router.py"]},
         {"id": "2.1173", "title": "A task matter goes to its task (V2-851 F4, the annex's 28 F4 sites): task_event.told makes a question wait on its row with the question, records one task event, says it once out of turn with the task id or a notice key (or only records it); the errands, the dead worker, the refined rerun, the browser task, the widget build and the connectors' order results no longer push notes; the mailbox's push sites only shrink",
@@ -7708,8 +7599,6 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_login_the_model_forgot_is_opened_by_the_verdict.py"]},
         {"id": "2.1628", "title": "A transport order on a card's queue runs in the turn that asks it and in no other (use case build-a-video-playlist-from-links, 2026-11-06, ES+EN): a write that is the card's OWN output control (`effects.OUTPUT_START`/`OUTPUT_STOP`, declared by `runtime.produce`/`suspend`) is never vetoed by a sure «tell me» — «play it and let me know what's playing» with `order` under the veto bar runs its `play_item`, while a write on his real app under the same verdicts (`mensajeria:unread` over «show my messages», `agenda:add_meeting`) stays unwritten and a sure `question` vetoes both; an EMPTY turn the brief reads as a question more surely than it reads the screen action is not completed by the verdict (question 0.80 / next 0.54 skipped nothing; the polite order measured action-first, V2-757, still completes); the video card's queue steps `next` and `play_item` declare the item change (`videoId` changed) so the completion gate lets a skip through under end state `youtube:videoId`; each part disarmed in place and restored in `finally`",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_transport_order_runs_in_the_turn_that_asks_it.py"]},
-        {"id": "2.1618", "title": "An errand the model did not commission is opened by the brief's verdict, never by his words (V2-857 phase 8, ES/EN): «paga la factura de la luz antes del día 5» / «pay the electricity bill before the 5th» with no verdict, an inline one or an unsure one opens nothing (the money vocabulary would have); a sure `escalate_or_inline` holds the model's inline reminder and opens the errand with the class the brief read (`moves_money`), its event naming verdict, confidence and source; disarmed (`sure_escalate` False) the paid verdict commissions nothing",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_an_errand_is_opened_by_the_verdict_never_by_his_words.py"]},
         {"id": "2.1617", "title": "A stream rule that only answers takes the BOUNDED turn (V2-857 phase 7, ES/EN): one stream task, two playbooks chosen by what his rules GRANT — «cuando me escriba Quinn, dile que estoy de viaje» (`may: [message]`) → one model turn with no tools, the engine sends to the same chat through `mandate.deliver`, no session; a `schedule` grant or an answer that `needs_hands` → the worker session; an unreadable answer sends nothing and the row rests failed; disarmed (`fits` False) the answering rule takes the session",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_a_stream_rule_that_only_answers_takes_the_bounded_turn.py"]},
         {"id": "2.1616", "title": "A card's delete or restore, a cluster connect and a held cluster send wait on a ROW (V2-857 phase 3, «sí, tarea con fila»): asked through the one asker, his yes (the brief's pick, the button, his words) runs the same door once, a no ends the row; the browser click reads his yes through the one reader",
@@ -7770,7 +7659,7 @@ DOMAINS: list[dict] = [
         {"id": "2.1800", "title": "Every chunk he says is plugged into its open process by ONE decision, before the model (V2-931): one board of what is open (live worker sessions and every row waiting on his answer, keyed by the row); a waiting question takes the chunk as its answer, a running worker as his next words, and Flash does not run; what is for no process is Flash's turn; a declared answer of the only waiting question and a sentence handed again as it grows are decided by identity; an unreadable or late decision never swallows his words; every decision is a `thread` event with the board it read; the same decision says what the chunk IS for a process waiting on his yes — a plain yes or no decides its retained act at once (one line: «sending» / «not sending»), a cut-off piece is held and joined to what he says next, anything else resumes the process; the judge's `screen` kind (an order on his screen or an app, even about a process's sheet) is Flash's turn",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/switchboard/test_a_chunk_is_plugged_into_its_open_process.py"]},
         {"id": "2.1801", "title": "A message has ONE owner (V2-938), replayed on the operator's own script of 2026-11-18 and on the «a ver» order of 2026-11-17: the model's message call is handed to `nucleo/send` before any ladder (disarmed: the show guard takes it again) and commissions no worker; a name nobody carries is a question naming the people it could be; each dictated, added or removed phrase changes the one draft and he hears it back; «which <name>s do you have?» is answered from his contacts; nothing leaves before his yes over ONE person and a text, and what leaves is what he kept, to the chosen row by id; the final line is the receipt's; a sentence that is not about the message is never taken and an unreadable read is the conversation's; «forget that message» drops it, and a lean to the messaging card opens nothing unless his words order a message; a worker's message the exit door would ask about is handed to the owner, its refusals and a mandate standing as they were",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/send/test_one_owner_holds_a_send_from_his_words_to_the_receipt.py", "tests/agent_headless/unit/send/test_the_a_ver_order_goes_to_its_owner_never_to_a_show.py", "tests/agent_headless/unit/send/test_an_act_toward_a_messaging_platform_has_the_same_owner.py", "tests/browser/unit/mensajeria/test_his_groups_are_found_in_his_directory_too.py"]},
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/send/test_one_owner_holds_a_send_from_his_words_to_the_receipt.py", "tests/agent_headless/unit/send/test_an_act_toward_a_messaging_platform_has_the_same_owner.py", "tests/browser/unit/mensajeria/test_his_groups_are_found_in_his_directory_too.py"]},
         {"id": "2.1803", "title": "A send has one voice (V2-931): the ask is one short sentence naming her as he says it aloud, relayed bare while that process is the only one open (framed only when several are); the turn's one line on a handed-over send is «I'll get the message ready»; the worker's method writes the draft into the card (her conversation opens with the text in its box) and ends with no text; the final line is the connector's receipt (sent · failed with its reason · not confirmed yet, once), never a claim before it",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/switchboard/test_a_send_has_one_voice.py"]},
         {"id": "2.1804", "title": "A remark about a result commissions nothing (V2-931): a turn the brief reads as a comment or a complaint and the verdict as handled inline annuls its escalation (`a-comment-commissions-nothing`) — no code or modify-widget errand opens from «that came out late»; a request keeps its commission",

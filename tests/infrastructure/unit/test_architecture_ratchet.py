@@ -1020,6 +1020,7 @@ _PACKAGE_CEILINGS["nucleo/request"] += 112
 _PACKAGE_CEILINGS["rules"] += 72
 _PACKAGE_CEILINGS["widgets"] += 245
 _TOTAL_MAX += 1191
+_TOTAL_MAX -= 481   # 2026-11-21 INI-078 L1 B4: the old brief's readings cut where the kept code read them; send/gate goes
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

@@ -23,7 +23,7 @@ import json
 
 import pytest
 
-from nucleo.send import draft as _draft, gate, owner, people, read, receipt
+from nucleo.send import draft as _draft, owner, people, read, receipt
 
 PEOPLE = [{"name": n, "contact_id": f"c{i}", "note": ""} for i, n in
           enumerate(("Odile Marsh", "Odile Brandt", "Odile Kowalski", "Odile Varga"), 1)]
@@ -153,7 +153,6 @@ def test_forget_that_message_drops_it_and_nothing_leaves(world):
     world.reads = [_read(drop=True)]
     assert _take("Forget that message")[0]
     assert _draft.current() is None and not world.sent
-    assert asyncio.run(gate.at_the_gate("Yes", None, None)) is False, "with nothing open the gate takes nothing"
 
 
 def test_the_send_goes_to_the_chosen_row_by_id_never_the_name_read_again(monkeypatch):
@@ -328,17 +327,6 @@ def test_several_messages_in_one_sentence_are_asked_one_after_the_other(world):
     assert asyncio.run(drop_then_next())[0]
     nxt = _draft.current()
     assert nxt is not None and nxt.target["name"] == "Odile Brandt" and nxt.text == "Y"
-
-
-def test_the_turn_says_the_confirmation_even_after_its_own_question(world, monkeypatch):
-    """Audit P0: a confirmation he never heard is never the one his yes answers — the owner's line is said."""
-    from nucleo.send import turn
-    world.reads = [_read(who="Odile Marsh", text="I'm late")]
-    said = []
-    esc = {"send_owner": {"said": "tell Odile Marsh I'm late", "hint": {}, "quiet": True, "by": "our question"}}
-    out = asyncio.run(turn.speak(esc, "Anything else?", said.append, type("S", (), {"sanitize": staticmethod(
-        lambda t, drop_metadata=False: t)})))
-    assert said and "I'm late" in said[-1] and "I'm late" in out
 
 
 def test_another_order_while_one_only_waits_for_his_yes_is_taken_and_the_first_said_undone(world):

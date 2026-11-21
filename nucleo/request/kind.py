@@ -6,10 +6,10 @@ born of a worker that went off to do what was not asked — «rellena el widget�
 second-hand boat read as a software project, a known site in a question read as navigation. Every one of those was a
 reading of the REQUEST, which is what the brief's model reads anyway, in any language (V2-851 F4, audit P0-4).
 
-So the kind is one more DECLARED question of the brief (`QUESTION`, asked with the others in the turn's one Jev call),
-carried in the errand's context as `errand_kind` by the portal (`acts.errand.escalate_to_slowbrain`) and read here at
-the licence. Without a sure verdict (a cron relaunch, a list row, a brief in flight) the errand is `generic`: a worker
-without a browser asks for what it needs, a browser nobody asked for is the failure this file was written against.
+So the kind is the model's own argument: the conversation host's `start_task(kind)` carries it in the errand's context
+as `errand_kind` (`acts_tasks.errand_context`), at full confidence, and it is read here. Without one (a cron relaunch,
+a resumed row) the errand is `generic`: a worker without a browser asks for what it needs, a browser nobody asked for
+is the failure this file was written against.
 """
 from __future__ import annotations
 
@@ -28,42 +28,10 @@ _KINDS = (
 )
 
 
-def question(_ctx=None) -> dict:
-    """The brief's question: which kind of worker an errand he commissions needs."""
-    return {"instructions": "If the operator commissions an errand, which kind of work is it?", "criteria": dict(_KINDS)}
-
-
-def verdict(brief) -> dict | None:
-    """The brief's `errand_kind` as `{choice, confidence}`, carried in the errand's context; None when unread."""
-    try:
-        from nucleo.turn import verdicts as _v
-        choice, info = _v.read(brief, KEY, None, min_confidence=0.0)
-        return {"choice": str(choice), "confidence": float((info or {}).get("confidence") or 0.0)} if choice and info else None
-    except Exception:  # noqa: BLE001 — an unreadable brief is no verdict
-        return None
-
-
-def carry(ctx: dict) -> None:
-    """The errand carries what the turn's brief decided about it: its kind and its consent class, read once at the one
-    portal (`acts.errand.escalate_to_slowbrain`), so no door downstream re-reads his words to decide them."""
-    if ctx.get(KEY) and ctx.get("errand_class"):
-        return
-    try:
-        from nucleo.acts import errand as _errand
-        b = __import__("nucleo.request.model", fromlist=["x"]).verdicts()   # the turn's, when it has a brief
-        for key, read in ((KEY, verdict), ("errand_class", _errand.class_verdict)):
-            v = None if ctx.get(key) else read(b)
-            if v:
-                ctx[key] = v
-    except Exception as e:  # noqa: BLE001 — no brief: the dispatcher reads «generic» and the money vocabulary
-        from loguru import logger
-        logger.debug(f"kind: the turn's verdicts unread — {e!r}")
-
-
 def _sure(v: dict | None) -> str:
-    from nucleo.turn import verdicts as _v
+    from nucleo import jev
     choice, conf = str((v or {}).get("choice") or ""), float((v or {}).get("confidence") or 0.0)
-    return choice if choice in dict(_KINDS) and conf >= _v.LICENCE else ""
+    return choice if choice in dict(_KINDS) and conf >= jev.MIN_CONFIDENCE else ""
 
 
 def kind_of(v: dict | None) -> str:
@@ -91,21 +59,10 @@ def code_change_question(request: str, change: str = "") -> str:
 
 
 def sure_order(ctx: dict | None) -> bool:
-    """He ORDERED this card work and the reading is sure of it: the commissioning turn was read as an order
-    (`reply.owes_an_act`) and the kind of work — build a card, change one — at the veto's confidence. Then it starts
-    with no question (his rule, 2026-11-18: certainty that he asked needs no «shall I?»; only doubt asks, once).
-    Anything less — no reading, an unsure kind, a turn that was not an order — is doubt. The conversation manager's
-    build act carries it as a fact of the errand (`SURE`): the model's call is the order."""
-    if (ctx or {}).get(SURE) is True and str(((ctx or {}).get(KEY) or {}).get("choice") or "") in (BUILD, CHANGE):
-        return True
-    try:
-        from nucleo.turn import brief as _tb, reply as _reply, verdicts as _v
-        v = (ctx or {}).get(KEY) or {}
-        handle = _tb.revived((ctx or {}).get("reading"))
-        return (handle is not None and _reply.owes_an_act(handle) == "order" and str(v.get("choice") or "") in (BUILD, CHANGE)
-                and float(v.get("confidence") or 0.0) >= _v.VETO)
-    except Exception:  # noqa: BLE001 — unread: doubt, and doubt asks
-        return False
+    """He ORDERED this card work: the conversation manager's build act carries it as a fact of the errand (`SURE`) —
+    the model's call is the order — with the kind of work (build a card, change one). Then it starts with no question
+    (his rule, 2026-11-18: certainty that he asked needs no «shall I?»). Anything less is doubt, and doubt asks once."""
+    return (ctx or {}).get(SURE) is True and str(((ctx or {}).get(KEY) or {}).get("choice") or "") in (BUILD, CHANGE)
 
 
 async def asked(request: str, ctx: dict | None) -> str:
@@ -116,33 +73,6 @@ async def asked(request: str, ctx: dict | None) -> str:
     what = " ".join(str(request or "").split())[:160]
     return await wording.word_soon(wording.UNSURE_CARD.format(change="build" if change == "create" else "change", what=what),
                                    examples=(plain,), fallback=plain)
-
-
-def a_remark(ctx: dict | None) -> bool:
-    """Did the turn that commissioned this errand read his words as a COMMENT or a COMPLAINT (the reading it carries,
-    `brief.carried`)? «That came out late», «this should behave differently» are remarks about us: no card is built
-    or rewritten from one, and he is not asked whether to (2026-11-17: dictated notes for his developers opened «shall
-    I change your messaging widget?»). Unread → False: the gate asks, as before."""
-    try:
-        from nucleo.turn import brief as _tb
-        choice, info = _tb.read(_tb.revived((ctx or {}).get("reading")), _tb.REQUEST_KEY, "")
-        return bool(info) and str(choice or "") in ("comment", "complaint")
-    except Exception:  # noqa: BLE001
-        return False
-
-
-def dropped(_d, key: str, rec, req: str) -> None:
-    """A card errand born of a remark ends here, unasked and unstarted: its row closes `cancelled` with the reason."""
-    rec.status, rec.result_summary = "cancelled", "a remark, not an order: nothing was built or changed"
-    _d._SESSIONS.pop(key, None)
-    _d._task_row("ended_early", rec, state="cancelled")
-    try:
-        from voice.observer import emit
-        emit("task", "🫥 a remark commissions no card work", text=req[:160], role="system",
-             extra={"id": key, "kind_diag": "remark_not_an_order"})
-    except Exception as e:  # noqa: BLE001
-        _d.logger.debug(f"dispatch: the dropped remark's event was not emitted — {e!r}")
-    _d.sync_state()
 
 
 def default_label(kind: str, request: str = "") -> str:

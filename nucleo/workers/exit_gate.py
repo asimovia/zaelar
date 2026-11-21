@@ -68,13 +68,10 @@ def leave(rec, action: str, payload: dict | None) -> Exit | None:
 
 
 async def cross(rec, action: str, payload: dict | None) -> "Exit | None":
-    """`leave` for its callers (all on the loop): an act that leaves has its doors — `send`, `portal` — asked into the
-    task's reading and awaited OFF the loop, up to Jev's own timeout (CRIT-K2b R1: what is irreversible waits)."""
-    from nucleo import jev, on_his_behalf as _ob
-    from nucleo.turn import brief as _tb, brief_doors
+    """`leave` for its callers (all on the loop): an act that leaves and asks by itself reads his go-ahead off the loop
+    first (V2-931)."""
+    from nucleo import on_his_behalf as _ob
     wid, act, _inner = _ob._resolve(payload or {}) if str(action or "") == "widget_data" else ("", "", None)
-    if wid and act and leaves(wid, act) and (turn := _tb.revived(getattr(rec, "reading", None))) is not None:
-        await asyncio.gather(*(brief_doors.landed(turn, d, jev._timeout_s() + 1.0) for d in ("send", "portal")))
     if wid and act and leaves(wid, act) and asks_by_itself(wid, act, _inner):
         # a go-ahead he gave WITH the order — or in an answer on this row — is read once, off the loop (V2-931)
         from nucleo.events import vocabulary as _evoc

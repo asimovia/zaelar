@@ -162,13 +162,6 @@ def test_a_send_in_the_same_turn_writes_the_end_and_the_held_view_does_not(fresh
     assert ending.close_turn() == 0 and ts.task_get(uid)["state"] == "running", "the send's echo writes the end"
 
 
-def test_a_verdict_naming_the_send_never_lets_a_view_end_the_row(fresh):
-    fresh.monkeypatch.setattr(ending, "verdict_names_leaving", lambda brief, wid: brief == "w_brief")
-    uid = _view(fresh, brief=lambda: "w_brief")           # the turn that began the request hands its verdicts
-    ending.close_turn()
-    assert ts.task_get(uid)["state"] == "running", "the row's end is the send's echo"
-
-
 def test_a_leaving_act_or_a_write_of_its_own_writes_its_ending_as_always(fresh):
     model.begin(SAID, trace="t-1")
     assert ending.hold("mensajeria", "send_to", "r1") == "" and not ending.only_held()

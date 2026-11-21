@@ -328,10 +328,6 @@ async def dispatch_and_report(wid: str, action_name: str, payload: dict, *, seal
                 if _spec_entry is not None:      # it did not run: it WAITS for his answer, nothing to attest
                     from nucleo.circuit import spec as _spec
                     _spec.withdraw(_spec_entry)
-            elif _hold == _ending.VERDICT:       # V2-851 F2e — a view never ends a request about a send
-                if _spec_entry is not None:
-                    from nucleo.circuit import spec as _spec
-                    _spec.withdraw(_spec_entry)
             else:
                 _end = lambda: _write_ending(_row, wid, action_name, res, _spec_entry, _attested, _refused)  # noqa: E731
                 _ending.defer(_row, _end) if _hold else _end()
