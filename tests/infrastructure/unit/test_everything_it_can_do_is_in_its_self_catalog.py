@@ -51,6 +51,8 @@ def _capabilities() -> set[str]:
     from widgets import system_surfaces
     ids = {f"act:{a}" for a in self_controls.ACTS}
     ids |= {f"tool:{t['function']['name']}" for t in router.TOOLS}
+    from nucleo.conversation_host import acts as _host     # the conversation manager's reads and acts (INI-078)
+    ids |= {f"tool:{t.name}" for t in _host.HostTools().catalog()}
     ids |= {f"surface:{s}" for s in system_surfaces.SYSTEM_SURFACES}
     ids |= {f"settings:{s}" for s in _js_ids("SECTIONS") | _js_ids("TABS")}
     for p in sorted((ENGINE / "connectors" / "catalog").glob("*.json")):
