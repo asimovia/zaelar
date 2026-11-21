@@ -604,9 +604,10 @@ def board(scope: str = "live", *, show_all: bool = False) -> list[dict]:
     elif scope in ("recurring", "scheduled"):
         rows = _ts.tasks_where(states=("pending", "running", "waiting"), modes=(scope,),
                                visible_only=not show_all, limit=100)
-    else:                                # his column: the queue's tasks, in OPEN's order and with their #n (S3)
-        rows = (_ts.tasks_where(states=_ts.LIVE_STATES, modes=("now",), visible_only=False, limit=100)
-                if show_all else _queue().ordered())
+    else:                  # his column: the queue's tasks in OPEN's order with their #n (S3), then his errands with people
+        rows = (_ts.tasks_where(states=_ts.LIVE_STATES, modes=("now",), visible_only=False, limit=100) if show_all
+                else _queue().ordered() + [r for r in _ts.tasks_where(states=_ts.LIVE_STATES, modes=("now",))
+                                           if r.get("kind") == "encargo" and not r.get("owner")])
     if not rows:
         return []
     live: dict = {}

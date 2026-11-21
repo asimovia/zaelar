@@ -56,8 +56,11 @@ def _put(uid, state, *, mode="now", goal="", finished=None):
 
 def test_the_killed_tasks_tombstone_does_not_survive_the_reset():
     """The exact live sequence: task runs → reset kills it and wipes → the tombstone lands AFTER the wipe."""
+    from nucleo import queue
     _put("old", "done", goal="una tarea vieja cualquiera")
-    _put("victim", "running", goal="Busca especialistas en aparato digestivo (digestólogos) en Soria")
+    queue.add("worker", "Busca especialistas en aparato digestivo (digestólogos) en Soria",   # his column is the
+              task_id="victim")                                                             # queue (INI-078 S3)
+    queue.signal("victim", "start", by="pulse")
     assert len(tasks.board("done")) == 1 and len(tasks.board("live")) == 1
 
     tasks.board_cleared()                                     # the reset
