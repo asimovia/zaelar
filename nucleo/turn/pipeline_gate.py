@@ -14,6 +14,7 @@ import time
 
 from loguru import logger
 
+from nucleo.turn import brief_turn as _bt
 from nucleo.turn import kickoff as _kickoff
 from nucleo.turn import mouth as _mouth
 
@@ -147,18 +148,16 @@ async def open_the_turn(self, motor) -> dict | None:
             motor._release_acc_trace_if_fresh(brain)   # ver docstring: este turno no llega a offer()
             return None
 
-    # GUARDA DE FRAGMENTOS (2026-08-10). La frase de este turno queda registrada como la utterance EN CURSO. Si
-    # mientras trabajamos llega una versión MÁS LARGA de la misma frase (el operador seguía hablando), este turno
-    # es un fragmento viejo y hay que abandonarlo ANTES de gastar modelo o —sobre todo— de disparar una tool.
-    # Incidente de la sesión 13:20:50: una sola petición de ferry se partió en 8 transcripciones finales y cada
-    # trozo abrió su propio turno; uno de ellos («…de Denia a») llegó a HABLAR, preguntando por el destino que el
-    # operador estaba diciendo en ese momento. Un fragmento no debe poder abrir widgets ni lanzar un worker.
+    # FRAGMENT GUARD (2026-08-10): this turn's sentence is recorded as the utterance IN COURSE. If a LONGER version
+    # of it arrives while we work (he was still talking), this turn is an old fragment and is dropped BEFORE any
+    # model is spent or a tool fires: one ferry request once split into 8 finals, each opened its own turn, and one
+    # of them («…de Denia a») SPOKE, asking for the destination he was saying. A fragment opens no card, no worker.
     if not first_turn:
         brain._utterance = {"text": text, "at": time.time()}
         self._turn_text = text
         try:
             from nucleo.request import model as _rq
-            _rq.begin(text)          # V2-776 M1 — the words the row of this request will carry
+            _rq.begin(text, brief=_bt.of_this_turn)  # V2-776 M1 — the words the row of this request will carry
         except Exception:  # noqa: BLE001
             pass
 

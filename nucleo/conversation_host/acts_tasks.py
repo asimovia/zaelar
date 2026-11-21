@@ -80,12 +80,12 @@ def _reopen(args: dict) -> ToolResult:
 
 def _stop(args: dict) -> ToolResult:
     from nucleo import dispatch
-    from nucleo.request import stop_row
+    from nucleo.conversation_host import routing
     which = str(args.get("task") or "").strip()
     if not which:
         return ToolResult("failed", {"reason": "which_task"})
     tids = dispatch.cancel_soon(which)
-    stop_row.stopped_by_his_turn(tids)
+    __import__("nucleo.request.stop_row", fromlist=["x"]).stopped_by_his_turn(tids, words=routing.said())
     return ToolResult("ok" if tids else "failed", {"stopped": tids} if tids else {"reason": "no_such_task"})
 
 

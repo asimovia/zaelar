@@ -62,7 +62,7 @@ def verdict_names_leaving(brief, wid: str) -> bool:
         return False
 
 
-def hold(wid: str, action: str, row: str, brief=None) -> str:
+def hold(wid: str, action: str, row: str) -> str:
     """How this op's ending is written: "" as always, `VERDICT` never, `TURN` when its turn closes. Counts the op."""
     turn = model.current()
     how, leaves = "", False
@@ -75,10 +75,7 @@ def hold(wid: str, action: str, row: str, brief=None) -> str:
         shows_or_prepares = not (effects.EXTERNAL_SEND in fx or effects.OUTPUT_ANSWER in fx) and (
             effects.PRESENT_MOUNT in fx or (effects.DATA_READ in fx and effects.DATA_WRITE not in fx))
         if row and not leaves and shows_or_prepares and leaving_acts(wid):
-            if brief is None:
-                from nucleo.turn import brief as _tb
-                brief = _tb.of_this_turn()
-            if verdict_names_leaving(brief, wid):
+            if verdict_names_leaving(model.verdicts(), wid):
                 how = VERDICT
             elif turn is not None and not turn.get("closed"):
                 how = TURN

@@ -130,14 +130,14 @@ def test_a_free_answer_about_a_send_goes_to_the_worker_with_no_guessed_end_state
     assert "done_when" not in ctx and "chosen" not in ctx, "nobody chosen: the errand's birth asks its end state once"
 
 
-def _view(fresh):
+def _view(fresh, brief=None):
     import widgets
     from nucleo.acts import data_ops
 
     async def _tag(tag, data):
         return {"ok": True}
     fresh.monkeypatch.setattr(widgets, "dispatch_tag", _tag)
-    model.begin(SAID, trace="t-1")
+    model.begin(SAID, trace="t-1", brief=brief)
     asyncio.run(data_ops.dispatch_and_report("mensajeria", "show_view", {"platform": "telegram"}, text=SAID))
     (row,) = _rows()
     return row["id"]
@@ -163,8 +163,8 @@ def test_a_send_in_the_same_turn_writes_the_end_and_the_held_view_does_not(fresh
 
 
 def test_a_verdict_naming_the_send_never_lets_a_view_end_the_row(fresh):
-    fresh.monkeypatch.setattr(ending, "verdict_names_leaving", lambda brief, wid: True)
-    uid = _view(fresh)
+    fresh.monkeypatch.setattr(ending, "verdict_names_leaving", lambda brief, wid: brief == "w_brief")
+    uid = _view(fresh, brief=lambda: "w_brief")           # the turn that began the request hands its verdicts
     ending.close_turn()
     assert ts.task_get(uid)["state"] == "running", "the row's end is the send's echo"
 

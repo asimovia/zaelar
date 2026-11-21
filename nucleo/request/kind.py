@@ -50,8 +50,7 @@ def carry(ctx: dict) -> None:
         return
     try:
         from nucleo.acts import errand as _errand
-        from nucleo.turn import brief as _tb
-        b = _tb.of_this_turn()
+        b = __import__("nucleo.request.model", fromlist=["x"]).verdicts()   # the turn's, when it has a brief
         for key, read in ((KEY, verdict), ("errand_class", _errand.class_verdict)):
             v = None if ctx.get(key) else read(b)
             if v:

@@ -49,3 +49,4 @@ def test_a_widget_the_model_orders_built_is_a_sure_order(monkeypatch):
     acts_life.run("build", {"request": "w_my_tracker", "change": True})
     assert [kind.code_change(c[kind.KEY]) for c in born] == ["create", "modify"]
     assert all(kind.sure_order(c) for c in born) and not kind.sure_order({kind.KEY: born[0][kind.KEY]})
+    assert all(c["errand_class"]["choice"] == "none" for c in born), "a card built for him sends nothing: no brief read"

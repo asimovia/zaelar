@@ -127,11 +127,10 @@ def test_a_worker_number_names_no_row(rows):
 
 def test_the_backstop_stops_the_row_he_named_and_records_why(rows, monkeypatch):
     from nucleo import dispatch
-    from nucleo.turn import brief as tb
     cancelled: list = []
     monkeypatch.setattr(dispatch, "has_active", lambda: True)
     monkeypatch.setattr(dispatch, "cancel_soon", lambda w: cancelled.append(w) or [w])
-    monkeypatch.setattr(tb, "of_this_turn", lambda: {"judged": "stop the Lisbon flat one"})
+    monkeypatch.setattr(__import__("nucleo.request.model", fromlist=["x"]), "heard", lambda: "stop the Lisbon flat one")
     for r in rows.values():
         r.result_summary = ""
     assert sd.repair(_brief(sd.STOP), "stop the Lisbon flat one", escalating=False) == ["5"]

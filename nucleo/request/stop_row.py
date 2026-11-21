@@ -132,8 +132,8 @@ def say_the_row(hold, worker_acted: dict, brain, spoken, send, emit, spoken_text
 
 
 # ── V2-852 T05 · an ending carries its cause, so «why did it end» is read, never recalled ──────────────────
-def stopped_by_his_turn(tids) -> None:
-    """The stop door records WHO ended these errands: his words of the turn running now (the turn's brief, by trace),
+def stopped_by_his_turn(tids, words: str | None = None) -> None:
+    """The stop door records WHO ended these errands: his words of the turn running now (`words`, else `model.heard`),
     on each record's outcome — the row's `outcome` when it settles, the line `ledger.recent` gives the prompt.
 
     Measured in session c8a307fd: the search row read «CANCELADA · hace 8 min» and nothing else, so asked what
@@ -142,8 +142,8 @@ def stopped_by_his_turn(tids) -> None:
     stop with no turn of his (a reset, a button, a cron) writes nothing here: its own door names its cause."""
     try:
         from nucleo import dispatch
-        from nucleo.turn import brief as _tb
-        words = " ".join(str((_tb.of_this_turn() or {}).get("judged") or "").split())[:200]
+        from nucleo.request import model as _model
+        words = " ".join(str(_model.heard() if words is None else words).split())[:200]
         if not words:
             return
         from i18n import langs

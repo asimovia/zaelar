@@ -34,7 +34,7 @@ def stopped(monkeypatch):
         monkeypatch.setattr(dispatch, "resolve_sessions", lambda q: [rec.task_id])
         monkeypatch.setattr(dispatch, "get_record", lambda t: recs.get(t))
         monkeypatch.setattr(dispatch, "_LOOP", None)
-        monkeypatch.setattr(_tb, "of_this_turn", lambda: {"judged": said})
+        monkeypatch.setattr(__import__("nucleo.request.model", fromlist=["x"]), "heard", lambda: said)
         monkeypatch.setattr(dispatch, "has_active", lambda: True)
         brief = {"event": __import__("threading").Event(), "turn_id": "t", "open_ids": [],
                  "result": {_tb.REQUEST_KEY: {"choice": "order", "confidence": 0.9}, "stop_errand": {"choice": "stop", "confidence": 0.9}}}

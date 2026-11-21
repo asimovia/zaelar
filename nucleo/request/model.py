@@ -47,14 +47,14 @@ def under(step_row_id: str):
     return _PARENT.set(str(step_row_id or ""))
 
 
-def begin(text: str, *, parent: str = "", origin: str = "voz", trace: str = "") -> None:
-    """This turn is about these words. No row yet — only an op opens one."""
+def begin(text: str, *, parent: str = "", origin: str = "voz", trace: str = "", brief=None) -> None:
+    """This turn is about these words. No row yet — only an op opens one. `brief()`: its verdicts, when it has any."""
     t = " ".join(str(text or "").split())
     if t and not trace:
         from voice import trace as _trace      # the turn's own trace: its row is joined to its flow (V2-851)
         trace = _trace.current()
     _TURN.set({"text": t[:600], "parent": str(parent or _PARENT.get() or ""), "origin": origin or "voz",
-               "trace": str(trace or "")} if t else None)
+               "trace": str(trace or ""), "brief": brief} if t else None)
     if t:                                      # his words are his from the moment the turn is born — a door that runs
         from nucleo import his_words           # INSIDE this turn (the map pinning places he named) reads them; the
         his_words.note(t)                      # close only noted them after every tool of the turn had run
@@ -62,6 +62,10 @@ def begin(text: str, *, parent: str = "", origin: str = "voz", trace: str = "") 
 
 def current() -> dict | None:
     return _TURN.get()
+
+
+def verdicts():   # the verdicts of this request's turn, by the reader that turn handed over (None without one)
+    return reader() if (reader := (_TURN.get() or {}).get("brief")) is not None else None
 
 
 def heard() -> str:

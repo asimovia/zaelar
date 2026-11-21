@@ -26,13 +26,13 @@ def _named(args: dict) -> str | None:
 
 def _build(args: dict) -> ToolResult:
     from nucleo.acts import errand
-    request = str(args.get("request") or "").strip()
-    if not request:
-        return ToolResult("failed", {"reason": "no_request"})
     from nucleo.request import kind as _kind
+    if not (request := str(args.get("request") or "").strip()):
+        return ToolResult("failed", {"reason": "no_request"})
     work = _kind.CHANGE if args.get("change") is True or str(args.get("change")).lower() == "true" else _kind.BUILD
     tid = errand.escalate_to_slowbrain(request, context={       # the model's call is his SURE order (C4): no «shall I?»
-        "origin": "conversation", "kind": "code", _kind.KEY: {"choice": work, "confidence": 1.0}, _kind.SURE: True})
+        "origin": "conversation", "kind": "code", _kind.KEY: {"choice": work, "confidence": 1.0}, _kind.SURE: True,
+        "errand_class": {"choice": "none", "confidence": 1.0}})                 # a card built for him: nothing leaves
     return ToolResult("ok" if tid else "rejected", {"task": tid} if tid else {"reason": "not started"})
 
 

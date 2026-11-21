@@ -60,12 +60,15 @@ def test_the_task_acts_reach_their_one_doors(monkeypatch):
     seen = {}
     monkeypatch.setattr(errand, "escalate_to_slowbrain", lambda req, context=None: seen.setdefault("errand", req) and 7)
     monkeypatch.setattr(dispatch, "cancel_soon", lambda which: seen.setdefault("stop", which) and ["t3"])
-    monkeypatch.setattr(stop_row, "stopped_by_his_turn", lambda tids: seen.setdefault("ended", tids))
+    monkeypatch.setattr(stop_row, "stopped_by_his_turn", lambda tids, words=None: seen.update(ended=tids, why=words))
+    from nucleo.conversation_host import routing
+    monkeypatch.setitem(routing._last, "said", "w_stop the flat one")             # his words reach the stop's record
     monkeypatch.setattr(pending_work, "rows", lambda: [{"id": "p1", "title": "w_flat"}])
     monkeypatch.setattr(pending_work, "by_ids", lambda ids: [r for r in [{"id": "p1"}] if r["id"] in ids])
     monkeypatch.setattr(resume_turn, "resume", lambda rows, **kw: [r["id"] for r in rows])
     assert acts_tasks.run("start", {"request": "w_find_a_flat"}).data == {"task": 7, "started": "w_find_a_flat"}
     assert acts_tasks.run("stop", {"task": "t3"}).data == {"stopped": ["t3"]} and seen["ended"] == ["t3"]
+    assert seen["why"] == "w_stop the flat one"
     assert acts_tasks.run("resume", {"ids": ["p1"]}).data == {"resumed": ["p1"]}
     other = acts_tasks.run("resume", {"ids": ["w_invented"]})                   # only a DECLARED pending row
     assert other.status == "failed" and other.data["pending"] == [{"id": "p1", "title": "w_flat"}]
