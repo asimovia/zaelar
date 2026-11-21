@@ -938,6 +938,8 @@ _TOTAL_MAX += 149    # same cause, measured
 _PACKAGE_CEILINGS["nucleo/send"] += 37
 _PACKAGE_CEILINGS["widgets"] += 31
 _TOTAL_MAX += 68     # measured
+_PACKAGE_CEILINGS["nucleo/conversation_host"] += 2   # 2026-11-21 C2 A4: with no draft open, the model's message to write opens the owner's draft instead of the card's box
+_TOTAL_MAX += 2      # same cause, measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

@@ -51,9 +51,23 @@ def test_with_a_draft_open_the_models_composition_is_refused_and_the_card_untouc
     assert got.data["draft"] == {"who": "W_Ana", "text": "w_goodnight"} and "owner" in got.data["why"]
 
 
-def test_with_no_draft_or_an_act_that_composes_nothing_the_door_runs_as_before(door, monkeypatch):
-    _open_draft(monkeypatch, None)
-    assert door["run"]({"widget": CARD, "action": "w_write", "payload": {"text": "w_hi"}}).status == "ok"
+def test_an_act_that_composes_nothing_runs_as_before(door, monkeypatch):
     _open_draft(monkeypatch, SimpleNamespace(target={}, who="w_ana", text="w_goodnight"))
     assert door["run"]({"widget": CARD, "action": "w_look"}).status == "ok"
-    assert [a for _w, a, _p in door["ran"]] == ["w_write", "w_look"]
+    assert [a for _w, a, _p in door["ran"]] == ["w_look"]
+
+
+def test_with_no_draft_a_message_to_write_goes_to_its_owner_never_into_the_card(door, monkeypatch):
+    """C2 A4 (pin 7): the model's composition with no draft open opens the owner's draft — which paints it — and the
+    card's door is never reached from here."""
+    from nucleo.conversation_host import routing
+    from conversation.ports import ToolResult
+    _open_draft(monkeypatch, None)
+    handed = []
+
+    async def send(payload, act=""):
+        handed.append((dict(payload), act))
+        return ToolResult("ok", {"say": "w_shall I send it to ana?"})
+    monkeypatch.setattr(routing, "send", send)
+    got = door["run"]({"widget": CARD, "action": "w_write", "payload": {"contact": "w_ana", "text": "w_hi"}})
+    assert got.status == "ok" and handed == [({"contact": "w_ana", "text": "w_hi"}, "")] and door["ran"] == []
