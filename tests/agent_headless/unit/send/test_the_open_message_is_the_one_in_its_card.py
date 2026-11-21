@@ -94,10 +94,14 @@ def test_a_sent_draft_keeps_its_box_until_its_receipt_is_read(box, monkeypatch):
 
 
 # ── C2 A3 · his hand on the box of the open draft (pins 5 and 6) ──────────────────────────────────────────────────────
-def _hand(act_event: str, **payload):
+def _hand(act_event: str, res=None, **payload):
+    """His hand's act as the funnel runs it: the owner's claim first, the card's act, then the owner reads its result."""
     from widgets import owners
     act = effects.acts_of("mensajeria", act_event)[0] if act_event.startswith("messaging.draft") else act_event
-    return owners.claim("mensajeria", act, door.by(door.HAND, payload))
+    p = door.by(door.HAND, payload)
+    claimed = owners.claim("mensajeria", act, p)
+    owners.settle("mensajeria", act, p, {"ok": True} if res is None else res)
+    return claimed
 
 
 def test_what_his_hand_types_in_the_box_is_the_drafts_text_asked_about_anew(box):
@@ -126,14 +130,35 @@ def test_his_hands_send_is_his_go_ahead_once_and_the_owner_never_sends_it_again(
     assert not took and sent == [] and asked == [], "no confirmation, and nothing the owner sends after it"
 
 
+def test_his_send_the_card_held_leaves_the_draft_open_and_his_yes_sends_it_once(box, monkeypatch):
+    """With his hand's lane held, the card's veto answers «paused» and nothing leaves: the draft stays open, no receipt
+    is followed, and the owner can still send it — once."""
+    import asyncio
+
+    from nucleo.send import deliver
+    sent, followed = [], []
+    monkeypatch.setattr(deliver, "run", lambda d: sent.append(d.text) or {"ok": True, "ref": "o1"})
+    monkeypatch.setattr(receipt, "follow_soon", lambda d: followed.append(d.ref))
+    d = _open()
+    held = {"ok": False, "held": True, "message": "w_sending is paused"}
+    assert _hand("send_draft", res=held, ref="r9", box_key="to:c1", text="w_goodnight!") is None
+    assert d.state == draft.OPEN and draft.current() is d and d.ref == "" and followed == []
+    asyncio.run(owner._send(d))                                          # his yes, once the lane is free again
+    assert sent == ["w_goodnight!"] and followed == ["o1"], "what he typed in the box is what leaves"
+
+
 def test_his_hands_discard_drops_the_draft(box):
     d = _open()
     assert _hand(card.DISCARD, key="to:c1") is None and d.state == draft.CANCELLED and draft.current() is None
 
 
-def test_a_text_he_had_begun_in_the_box_is_never_written_over_in_silence(box, monkeypatch):
-    """A2: the box of her chat held a text he had begun himself; the owner's paint takes its place and SAYS so — and
-    its own earlier paint, or what his hand typed, is never «his text» again."""
+def test_a_text_he_had_begun_in_the_box_is_said_first_in_the_owners_next_question(box, monkeypatch):
+    """A2: the box of her chat held a text he had begun himself; the owner's paint takes its place, and that fact is
+    said FIRST in the owner's next question — the confirmation itself, never a line of its own after it. Its own
+    earlier paint, or what his hand typed, is never «his text» again."""
+    import asyncio
+
+    from nucleo.send import ask
     from widgets import server_api
     real = server_api._dispatch
 
@@ -142,14 +167,19 @@ def test_a_text_he_had_begun_in_the_box_is_never_written_over_in_silence(box, mo
         res = await real(wid, act, payload)
         return {**res, **({"replaced": had} if had and had != payload.get("text") else {})}
     monkeypatch.setattr(server_api, "_dispatch", dispatch)
-    said = []
+    monkeypatch.setattr(card, "paint", lambda d: None)                  # the question paints it, in order
+    leads = []
 
-    async def say(d, key, **fmt):
-        said.append((key, fmt.get("his")))
-    monkeypatch.setattr(receipt, "_say", say)
+    async def confirm(name, platform, text, at=0.0, lead=""):
+        leads.append(lead)
+        return "w_send it?"
+    monkeypatch.setattr(ask, "confirm", confirm)
+    monkeypatch.setattr("nucleo.send.deliver.check", lambda d: {"ok": True, "platform": "whatsapp"})
     box["box"]["to:c1"] = "w_I was going to say"
-    d = _open()
-    assert box["box"]["to:c1"] == "w_goodnight" and said == [("send_box_had", "w_I was going to say")]
+    d = draft.start("w_tell ana goodnight")
+    d.target, d.text = {"name": "W_Ana", "contact_id": "c1", "platform": "whatsapp"}, "w_goodnight"
+    asyncio.run(owner._next(d))
+    assert box["box"]["to:c1"] == "w_goodnight" and "w_I was going to say" in leads[0] and "W_Ana" in leads[0]
     d.text = "w_see you tomorrow"
-    owner._emit("taken", d)
-    assert said == [("send_box_had", "w_I was going to say")], "its own paint is not his text"
+    asyncio.run(owner._next(d))
+    assert "w_I was going to say" not in leads[1], "its own paint is not his text"

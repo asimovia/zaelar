@@ -500,8 +500,8 @@ async def widget_action(wid: str, payload: dict):
     res = await _dispatch(wid, action, data)
     if res is _MISSING:
         return JSONResponse({"error": "no data module"}, status_code=404)
-    from . import late_report as _late
-    _late.deliver(wid, res)              # the card learnt that what the agent just started did not happen
+    __import__("widgets.owners", fromlist=["x"]).settle(wid, action, data, res)   # C2 A3: his act's owner reads its result
+    __import__("widgets.late_report", fromlist=["x"]).deliver(wid, res)   # the card learnt what the agent started did not happen
     return JSONResponse(res)
 
 

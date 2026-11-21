@@ -960,6 +960,12 @@ _PACKAGE_CEILINGS["widgets"] += 1        # same: `drafts.write` answers what it 
 _TOTAL_MAX += 10     # same cause, measured
 _PACKAGE_CEILINGS["conversation"] += 7   # 2026-11-21 C1 b review: what the stream does after a door's line is read in its own try — a provider late after the act never fails the answered run (`before_model.door`)
 _TOTAL_MAX += 7      # same cause, measured
+# 2026-11-21 C2 A3/A2 review: his Send is adopted with the card's RESULT — `owners.settle`, read after the act, so a send
+# the card held leaves the draft open with his text — and a text of his the paint replaced is said first in the owner's
+# next question (`card.lead`), never a line of its own
+_PACKAGE_CEILINGS["nucleo/send"] += 42
+_PACKAGE_CEILINGS["widgets"] += 16
+_TOTAL_MAX += 58     # measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

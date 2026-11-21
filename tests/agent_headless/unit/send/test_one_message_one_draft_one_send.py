@@ -40,8 +40,10 @@ def world(monkeypatch):
 
 def _hand(act: str, payload: dict):
     """His hand on the card: the owner's claim first, then the card's act as it would run."""
-    if owners.claim("mensajeria", act, door.by(door.HAND, payload)) is None and act == "send_draft":
+    p = door.by(door.HAND, payload)
+    if owners.claim("mensajeria", act, p) is None and act == "send_draft":
         _world["w"]["orders"].append(("card", payload["text"]))
+    owners.settle("mensajeria", act, p, {"ok": True})
 
 
 _world: dict = {}
@@ -80,8 +82,9 @@ def test_the_mail_screens_send_over_the_open_draft_is_his_go_ahead_once(world):
     d = draft.start("w_mail ana the report")
     d.target, d.text = {"name": "W_Ana", "contact_id": "a1", "platform": "email"}, "w_the report"
     owner._emit("opened", d)
-    if owners.claim("mensajeria", "compose", door.by(door.HAND, {"key": d.box_key, "text": "w_the report, attached",
-                                                                 "send": True, "ref": "r2"})) is None:
+    p = door.by(door.HAND, {"key": d.box_key, "text": "w_the report, attached", "send": True, "ref": "r2"})
+    if owners.claim("mensajeria", "compose", p) is None:
         world["orders"].append(("card", "w_the report, attached"))
+    owners.settle("mensajeria", "compose", p, {"ok": True})
     took, _line = asyncio.run(owner.take("w_yes send it"))
     assert world["orders"] == [("card", "w_the report, attached")] and not took and draft.current() is None

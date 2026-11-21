@@ -44,6 +44,7 @@ class Draft:
     heard_mono: float = 0.0                     # the same instant on the ear's clock (`nucleo/input/typed`)
     by: str = ""                                # who handed it over (the model's call, a verdict, a worker)
     box_key: str = ""                           # its view in its card: the box the owner painted it in (`send/card`)
+    box_had: str = ""                           # a text he had begun in that box, which the paint replaced: said once
     trace: str = ""                             # the flow of the order that opened it: every step of it is seen there
     unread: bool = False                        # his contacts could not be read when the name was looked up
     lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False, compare=False)

@@ -77,8 +77,8 @@ def _resolve(d, who: str, relation: str = "") -> None:
 async def _next(d, lead: str = "") -> str:
     """Ask what is missing, what stops it, or the confirmation. Returns the line."""
     if d.kind == "act":
-        from nucleo.send import act as _act
-        return await _act.next_step(d, lead)
+        return await __import__("nucleo.send.act", fromlist=["x"]).next_step(d, lead)
+    lead = await _card.lead(d, lead)             # its box painted first; a text of his it replaced is said in this line
     if not d.target:
         d.asked = _draft.WHO
         if d.candidates:

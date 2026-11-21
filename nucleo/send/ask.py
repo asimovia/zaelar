@@ -36,8 +36,8 @@ FACTS = {
     "send_unconfirmed": "The message to {who} was handed over to be sent, but its confirmation has not arrived yet. He "
                         "will be told as soon as it does.",
     "send_not_sent": "He said not to send it. The message is NOT sent and nothing has left.",
-    "send_box_had": "The box of {who}'s conversation held a text he had begun there himself («{his}»). The message he "
-                    "asked for is written in it now: tell him in a few words that it took the place of his text.",
+    "send_box_had": "The box of {who}'s conversation held a text he had begun there himself («{his}»); the message he "
+                    "asked for took its place there.",
     "send_still_asked": "He already heard the message for {who} and was asked whether to send it. What he just said "
                         "(«{said}») is neither a yes, a no nor a change to it. Answer what he said in one short "
                         "sentence and ask, briefly, whether to send it — never read the message again.",

@@ -54,11 +54,29 @@ async def paint_now(d) -> None:
     if key and d.box_key and key != d.box_key:
         await discard_now(d)                     # he changed who it goes to: the old person's box is not his draft
     d.box_key = key or d.box_key
-    if (his := str(res.get("replaced") or "")) and his != _painted.get(d.id):   # his own half-written text: said
-        from nucleo.send import owner, receipt
+    if (his := str(res.get("replaced") or "")) and his != _painted.get(d.id):   # his own half-written text: kept to
+        from nucleo.send import owner                                            # be said first in the next question
+        d.box_had = his[:160]
         owner._emit("his text in the box written over", d, his=his[:200])
-        await receipt._say(d, "send_box_had", his=his[:160])
     _painted[d.id] = d.text
+
+
+async def lead(d, lead: str = "") -> str:
+    """Before the owner's next question: the box painted, and — when that took the place of a text he had begun there
+    himself — that fact said first, inside the question itself (never a line of its own after it)."""
+    prev = _chain.get(d.id)
+    if isinstance(prev, asyncio.Future) and prev.get_loop() is asyncio.get_running_loop() and not prev.done():
+        await asyncio.wait({prev})
+    try:
+        await paint_now(d)
+    except Exception as e:  # noqa: BLE001 — the view never decides the send
+        _note(e)
+    if not (his := d.box_had):
+        return lead
+    d.box_had = ""
+    from nucleo.send import ask
+    fact = ask.FACTS["send_box_had"].format(who=(d.target or {}).get("name") or d.who, his=his)
+    return f"{fact} {lead}".strip()
 
 
 async def discard_now(d) -> None:
@@ -125,13 +143,9 @@ def claim(wid: str, act: str, payload: dict) -> dict | None:
     """His own hand on the box of the open draft (the card's buttons, never the model nor the owner): what he typed
     is the draft's text, his Send is his go-ahead by gesture, his Discard drops it. The card does the act as always
     (None); an act on another box, by another lane or with no draft open is not the owner's."""
-    from connectors import exit as door
-    from nucleo.events import vocabulary
-    from nucleo.send import draft, owner, receipt
+    from nucleo.send import draft, owner
     from widgets import effects
-    d = draft.current()
-    key = str(payload.get("key") or payload.get("box_key") or "")
-    if door.stamped(payload.get("_lane")) != door.HAND or d is None or not d.box_key or key != d.box_key:
+    if (d := _his_on_the_box(payload)) is None:
         return None
     event = effects.event_of(wid, act)
     if event == WRITE:
@@ -143,15 +157,41 @@ def claim(wid: str, act: str, payload: dict) -> dict | None:
         d.box_key = ""                           # his hand takes the box away itself
         draft.close(d, draft.CANCELLED)
         owner._emit("dropped by hand", d)
-    elif (t := vocabulary.of(event)) is not None and t.owner == "send" and t.direction == vocabulary.OUT \
-            and str(payload.get("ref") or ""):
-        d.text, d.ref, d.box_key = str(payload.get("text") or d.text), str(payload["ref"]), ""   # the card sends it
-        draft.close(d, draft.SENDING)
-        owner._emit("go-ahead by gesture", d, ref=d.ref)
-        receipt.follow_soon(d)
     return None
+
+
+def _his_on_the_box(payload: dict):
+    """The open draft when this act is his own hand on its box; None for any other lane, box, or no draft."""
+    from connectors import exit as door
+    from nucleo.send import draft
+    d = draft.current()
+    key = str(payload.get("key") or payload.get("box_key") or "")
+    return d if door.stamped(payload.get("_lane")) == door.HAND and d is not None and d.box_key and key == d.box_key \
+        else None
+
+
+def settle(wid: str, act: str, payload: dict, res) -> None:
+    """His Send on the box, once the card answered it: queued, it is his go-ahead by gesture (the card sends it, once);
+    held or refused, nothing left — the draft stays open, and why is said in its record."""
+    from nucleo.events import vocabulary
+    from nucleo.send import draft, owner, receipt
+    from widgets import effects
+    t = vocabulary.of(effects.event_of(wid, act))
+    if t is None or t.owner != "send" or t.direction != vocabulary.OUT or not str(payload.get("ref") or "") \
+            or (d := _his_on_the_box(payload)) is None:
+        return
+    r = res if isinstance(res, dict) else {}
+    if r.get("ok") is False or r.get("held") or r.get("error"):     # his text stays in the box: it is the draft's
+        if (typed := str(payload.get("text") or "")) and typed != d.text:
+            d.text, d.heard, d.confirm_line, _painted[d.id] = typed, False, "", typed
+        owner._emit("his Send refused", d, why=str(r.get("message") or r.get("error") or "held")[:200])
+        return
+    d.text, d.ref, d.box_key = str(payload.get("text") or d.text), str(payload["ref"]), ""   # the card sent it
+    draft.close(d, draft.SENDING)
+    owner._emit("go-ahead by gesture", d, ref=d.ref)
+    receipt.follow_soon(d)
 
 
 def install_claim() -> None:
     from widgets import owners
-    owners.register("send", claim)
+    owners.register("send", claim, settle)
