@@ -331,7 +331,7 @@
   "Perdona, no te he seguido bien. ¿Qué querías que hiciera?",
   "Se me ha cruzado algo por dentro y no te he contestado. Dime otra vez qué necesitas."
  ],
- "lost_after_acts": "He hecho una parte, pero no he llegado a terminarlo. ¿Sigo?",
+ "lost_after_acts": "He hecho una parte de lo que me pediste, pero me he quedado sin pasos antes de terminarlo: lo demás está sin hacer.",
  "mute_wordless": "Aquí estoy si me necesitas.",
  "filler_waited": "Lleva {min} min y todavía no me ha dado nada. ¿La dejo seguir o la paro y probamos de otra forma?",
  "worker_ask_named": "Oye, el proceso «{goal}» pregunta: {question}",

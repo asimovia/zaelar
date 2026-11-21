@@ -332,7 +332,9 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
     refs = {"run": r.run_id}
     for n_step in range(conv.cfg.max_steps):
         called, first, text, dropped = False, True, "", []
-        if not r.read_capped and _read_budget(conv, r, steps):     # told once why it is offered no read
+        if (last := n_step == conv.cfg.max_steps - 1) and steps:    # steps as reads: told, then every call refused
+            steps.append((ToolCall(STEPS_ID, "steps_check", {}), ToolResult("refused", data={"reason": STEPS_DONE})))
+        elif not r.read_capped and _read_budget(conv, r, steps):     # told once why it is offered no read
             steps.append((ToolCall("reads", "reads_check", {}), ToolResult("refused", data={"reason": READS_DONE})))
         t_step = conv.clock.mono_ms()
         events = conv.model.stream(PromptParts(prompt.prefix, prompt.state, prompt.conversation, prompt.input,
@@ -351,9 +353,9 @@ async def _steps(conv: "Conversation", r: "Running", batch: Batch) -> None:
                     text += ev.text
                 elif isinstance(ev, ToolCall):
                     called = True
-                    over = _is_read(conv, ev) and _read_budget(conv, r, steps)   # a read past it is never made
-                    steps.append((ev, ToolResult("refused", data={"reason": READS_DONE}) if over
-                                   else await _tool(conv, r, ev)))
+                    over = last or (_is_read(conv, ev) and _read_budget(conv, r, steps))   # never made past either
+                    steps.append((ev, ToolResult("refused", data={"reason": STEPS_DONE if last else READS_DONE})
+                                   if over else await _tool(conv, r, ev)))
                     _checkpoint(conv, r)
                     if r.door_line:                      # the act's door answered him: its line, as is, ends the run
                         return await before_model.door(conv, r, batch, _real(steps), stream)
@@ -493,9 +495,10 @@ SAY_WHAT_WAS_FOUND = "you read for his words: a reply says what was found, or wh
 
 
 #: the call ids of the run's own repair steps: never a read
-ORDERS_ID, CLAIMS_ID, READS_ID = "orders", "claims", "reads"
-PSEUDO = frozenset({ORDERS_ID, CLAIMS_ID, READS_ID})
+ORDERS_ID, CLAIMS_ID, READS_ID, STEPS_ID = "orders", "claims", "reads", "steps"
+PSEUDO = frozenset({ORDERS_ID, CLAIMS_ID, READS_ID, STEPS_ID})
 READS_DONE = "no more reads in this answer: reply with what you have, and say what is missing"
+STEPS_DONE = "last step of this answer: no more calls — reply now with what you have, and say what is missing"
 
 
 def _real(steps: list) -> int:

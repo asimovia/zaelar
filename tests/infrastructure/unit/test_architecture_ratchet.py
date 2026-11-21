@@ -1031,6 +1031,10 @@ _PACKAGE_CEILINGS["nucleo/queue"] += 25    # 2026-11-21 INI-078 #5 (b): a task t
 _PACKAGE_CEILINGS["nucleo/circuit"] += 28  # same: his words reopen the SAME task by the one continuation door (`reopen.on_words`, `_relaunch` shared with a criteria change); the ledger's continuation reopens an archived task of the queue
 _PACKAGE_CEILINGS["nucleo/conversation_host"] += 29  # same: OPEN lists the tasks that ended a moment ago; `task_say` on one reopens it
 _TOTAL_MAX += 82     # same, measured
+_PACKAGE_CEILINGS["conversation"] += 3   # 2026-11-21 INI-078: the run's last step refuses every call with the reason to answer now (`STEPS_DONE`), as the reads' budget does
+_PACKAGE_CEILINGS["widgets"] += 4        # 2026-11-21 contacts f7f375eab (a linked Google account read like every other source), landed without its delta; recorded here
+_TOTAL_MAX += 8      # same two, measured
+
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

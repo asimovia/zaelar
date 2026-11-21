@@ -5,12 +5,18 @@ A run reads at most `max_reads` times (genome threshold, 2), and for at most `re
 budget every read it asks for is refused with the reason to answer now — what it found, and what is missing — and the
 run is told so once; the catalog itself is never cut (I7). Counted once, by which budget ran out: `reads_capped`,
 `read_time_capped`. A read already in flight is never cut.
+
+The STEP budget (`max_steps`) behaves the same (INI-078, the operator's test of 2026-11-21 17:17: searches that
+count as acts spent the six steps and the run ended «I did part of it… shall I carry on?»): on the run's last step
+every call is refused with the reason to answer now, and the model replies with what it found — the run never ends
+on `lost_after_acts` while the model still answers. Disarm: drop the last step's refusal in `run._steps`.
 """
 from __future__ import annotations
 
 from conversation.config import Config
 from conversation.manager import run as R
 from conversation.ports import Done, ToolCall
+from conversation.testing.fakes import FixedWords
 from conversation.testing.scripted_model import reply
 from tests.conversation.unit.convkit import Harness
 
@@ -73,3 +79,29 @@ def test_the_budgets_are_the_genomes_thresholds():
     from nucleo.conversation_host import guards
     guards.configure(cfg)                                                            # what the boot hands the guards
     assert cfg.reclaim_tail_ms == 3000 and guards._cfg["reclaim_tail_ms"] == 3000
+
+
+def test_a_run_that_spends_its_steps_ends_with_the_models_answer(store):
+    """Acts (not reads) until the last step: there every call is refused with the reason, and the model answers."""
+    h = Harness(store, grace=False, config=Config(max_steps=3))
+    h.conv.words = FixedWords()
+
+    def step(ids):
+        told = any(c.call_id == R.STEPS_ID for c, _res in h.model.calls[-1].prompt.steps)
+        return [reply("w9"), Done()] if told else [ToolCall(f"c{len(h.model.calls)}", "agenda_add", {"q": f"w{len(h.model.calls)}"}), Done()]
+    h.model.default = step
+    h.typed("w1", 0)
+    h.settle(3000)
+    assert [o.text for o in h.mouth.orders] == ["w9"], "the run ends with the model's answer, never «part was done»"
+    assert len(h.tools.calls) == 2, "the last step makes no call"
+    told = [res.data.get("reason") for c, res in h.model.calls[-1].prompt.steps if c.call_id == R.STEPS_ID]
+    assert told == [R.STEPS_DONE]
+
+
+def test_a_call_on_the_last_step_is_refused_with_the_reason(store):
+    h = Harness(store, grace=False, config=Config(max_steps=2))
+    h.conv.words = FixedWords()
+    h.model.default = lambda ids: [ToolCall(f"c{len(h.model.calls)}", "agenda_add", {"q": f"w{len(h.model.calls)}"}), Done()]
+    h.typed("w1", 0)
+    h.settle(3000)
+    assert len(h.tools.calls) == 1, "the call of the last step is never made"

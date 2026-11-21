@@ -1342,8 +1342,11 @@ These hold for the package; the engine does not run it yet (V2-941 F1 wires it).
 - **CRIT-CT8 · In front of the ear**: the guards judge at every close; our own echo is decided by timing and by its
  words being ours, and never cuts our line; his stop is a control and never a line for the model (the old path's
  voice cut by a typed line went with the unplug, 2026-11-21). — since 2026-11-20 · nodes 13.91.
-- **CRIT-CT9 · A run reads within its budget**: past `max_reads` or `read_wall_ms` every read is refused with the
- reason to answer with what it has; the catalogue is never cut. — since 2026-11-20 · nodes 13.107.
+- **CRIT-CT9 · A run reads and acts within its budget**: past `max_reads` or `read_wall_ms` every read is refused with
+ the reason to answer with what it has; on the run's last step (`max_steps`) every call is refused the same way
+ (`STEPS_DONE`), so a run that spends its steps ends with the model's answer, not the host's «part was done»
+ (`lost_after_acts`, which states the fact and offers no continuation); the catalogue is never cut. — since
+ 2026-11-20, the steps since 2026-11-21 (INI-078) · nodes 13.107.
 
 ## Contradicciones (contradictions — this table must stay empty)
 
