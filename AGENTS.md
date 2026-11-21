@@ -303,6 +303,11 @@ These are the rules. Everything else in this file is a pointer to where the deta
   action aliases, the rules table, memory, the per-operator policy) lives in data the engine reads, never in
   constants; a threshold or a window is a rule with readers, not a tuning. Full text:
   `.meshkore/context/principles.md` §«Any user, any request, any language».
+- **Simplicity is the design rule.** One kind of thing over several, one piece over a module with sub-modules, one
+  door over a patch per case. A new case is absorbed by making an existing piece general (a field, a window, data
+  it reads), never by a new piece beside it. If something fails, adjust that one piece; never add a module, a rail
+  or a parallel path around it. Before proposing a piece, name the existing one that could carry it. A design
+  nobody can explain in three lines is not finished.
 - **Fix the CLASS, never the case.** No fix that only makes one test pass: green is the consequence of a healthy
   system. Name the class; fix it with verdict → declared data → one door; the test carries another variant
   (language, wording, domain). Product regexes and word tables only ever shrink (node 7.73).
