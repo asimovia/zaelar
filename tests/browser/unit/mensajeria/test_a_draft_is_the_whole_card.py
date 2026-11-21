@@ -170,3 +170,16 @@ def test_the_draft_reads_on_the_dark_palette(_page):
     rail._mount(_page, _draft_data())
     assert rail._contrast(_page, ".mdbody", ".hb-win") >= 7
     assert rail._contrast(_page, ".mdk", ".hb-win") >= 4.5
+
+
+def test_a_held_send_of_the_draft_screen_settles_its_order_and_keeps_the_draft(monkeypatch):
+    """The exit holds the send: nothing leaves, the draft stays, and the order its ref names is settled «not sent» at
+    once — whoever follows that ref never waits for a receipt that cannot come."""
+    _with_categories()
+    key = _held()
+    from connectors import exit as door
+    monkeypatch.setenv("ZAELAR_HOLD_OUTBOUND", "all")
+    out = data.apply_action("send_draft", door.by(door.HAND, {"key": key, "ref": "r-held-1"}))
+    assert out.get("error") == "held" and key in (data.load_db().get("drafts") or {})
+    rows = [r for r in data.load_db().get("outbox") or [] if r.get("ref") == "r-held-1"]
+    assert rows and rows[0]["state"] == "failed"

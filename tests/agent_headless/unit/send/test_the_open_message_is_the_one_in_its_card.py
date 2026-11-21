@@ -183,3 +183,45 @@ def test_a_text_he_had_begun_in_the_box_is_said_first_in_the_owners_next_questio
     d.text = "w_see you tomorrow"
     asyncio.run(owner._next(d))
     assert "w_I was going to say" not in leads[1], "its own paint is not his text"
+
+
+@pytest.mark.parametrize("act, extra", [("send_draft", {"box_key": "to:c1"}), ("compose", {"key": "to:c1", "send": True})])
+def test_with_his_hand_held_the_cards_veto_answers_his_send_at_once_and_the_draft_stays(box, monkeypatch, act, extra):
+    """The messaging card runs in its own agent: its read-only veto answers his Send BEFORE it is queued. With his
+    hand's lane held, both Sends — the chat's and the mail draft screen's — are refused there, at once: the owner's
+    draft stays open with what he typed, no receipt is followed, and his yes afterwards sends it once."""
+    import asyncio
+
+    from nucleo.send import deliver
+    from widgets import owners
+    from widgets.mensajeria import card_send
+    monkeypatch.setenv("ZAELAR_HOLD_OUTBOUND", "hand")
+    sent, followed = [], []
+    monkeypatch.setattr(deliver, "run", lambda d: sent.append(d.text) or {"ok": True, "ref": "o1"})
+    monkeypatch.setattr(receipt, "follow_soon", lambda d: followed.append(d.ref))
+    d = _open()
+    p = door.by(door.HAND, {"ref": "r9", "text": "w_goodnight!", **extra})
+    res = card_send.answer_action(act, p)
+    assert res and res.get("error") == "held", "the veto answers his Send now"
+    owners.settle("mensajeria", act, p, res)
+    assert d.state == draft.OPEN and draft.current() is d and d.text == "w_goodnight!" and followed == []
+    monkeypatch.delenv("ZAELAR_HOLD_OUTBOUND")
+    asyncio.run(owner._send(d))
+    assert sent == ["w_goodnight!"] and followed == ["o1"]
+
+
+def test_a_lead_is_said_even_when_the_confirmation_falls_to_its_fixed_line(monkeypatch):
+    """A2: what the owner says first (a text of his it replaced) is never dropped when the worded confirmation does not
+    come back and the language's fixed line is said instead — the lead is worded in front of it."""
+    import asyncio
+
+    from nucleo import wording
+    from nucleo.send import ask
+
+    async def word_soon(fact, fallback="", **kw):
+        return "w_LEAD" if fact == "w_his text was replaced" else fallback   # the confirmation's wording failed
+    monkeypatch.setattr(wording, "word_soon", word_soon)
+    monkeypatch.setattr(ask, "_plain", lambda key, **fmt: "W_Ana: «w_hi». w_send it?")
+    got = asyncio.run(ask.confirm("W_Ana", "whatsapp", "w_hi", lead="w_his text was replaced"))
+    assert got == "w_LEAD W_Ana: «w_hi». w_send it?"
+    assert asyncio.run(ask.confirm("W_Ana", "whatsapp", "w_hi")) == "W_Ana: «w_hi». w_send it?"

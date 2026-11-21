@@ -65,7 +65,17 @@ async def line(key: str, lead: str = "", **fmt) -> str:
     fact = FACTS[key].format(**{k: (str(v).strip() or "not given") for k, v in fmt.items()})
     if lead:
         fact = f"{lead} Then: {fact}"
-    return await wording.word_soon(fact, examples=(plain,) if plain else (), fallback=plain) or plain
+    said = await wording.word_soon(fact, examples=(plain,) if plain else (), fallback=plain) or plain
+    return await _led(said, lead) if said == plain else said
+
+
+async def _led(plain: str, lead: str) -> str:
+    """The language's own line, with what `lead` says first worded in front of it: a fixed line never drops it."""
+    if not lead or not plain:
+        return plain
+    from nucleo import wording
+    first = await wording.word_soon(lead, fallback="")
+    return f"{first} {plain}".strip() if first else plain
 
 
 def _fold(s: str) -> str:
@@ -93,4 +103,5 @@ async def confirm(name: str, platform: str, text: str, at: float = 0.0, lead: st
     said = await line(key, lead, who=name, channel=channel, text=text, when=at_s)
     if carries(said, text, name, at_s):
         return said
-    return _plain(key, who=name, channel=channel, text=text, when=at_s) or f"{name} · {channel} · «{text}» {at_s} ?"
+    return await _led(_plain(key, who=name, channel=channel, text=text, when=at_s)
+                      or f"{name} · {channel} · «{text}» {at_s} ?", lead)

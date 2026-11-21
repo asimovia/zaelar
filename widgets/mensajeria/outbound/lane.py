@@ -63,11 +63,13 @@ def refusal(why: str) -> dict:
             "message": say("held_outbound", "Sending is paused on this account right now, so nothing was sent.")}
 
 
-def early(action: str, payload: dict | None) -> dict | None:
+def early(action: str, payload: dict | None, *, sends: bool = False) -> dict | None:
     """The read-only veto for an act that would queue an order (`data.answer_action`): refused before it is queued,
-    answered to whoever asked. None when it may go on, or when the act does not always leave."""
+    answered to whoever asked. None when it may go on, or when the act does not always leave — unless the caller
+    knows this one sends now (`sends`: the card's own Send)."""
     p = payload or {}
-    if not _fx.always_leaves("mensajeria", action) and not (action == "reply" and str(p.get("text") or "").strip()):
+    if not sends and not _fx.always_leaves("mensajeria", action) and not (
+            action == "reply" and str(p.get("text") or "").strip()):
         return None
     why = door.check(action, door.stamped(p.get(KEY)) or current())
     return refusal(why) if why else None

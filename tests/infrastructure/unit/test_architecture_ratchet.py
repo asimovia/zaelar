@@ -968,6 +968,12 @@ _PACKAGE_CEILINGS["widgets"] += 16
 _TOTAL_MAX += 58     # measured
 _PACKAGE_CEILINGS["conversation"] += 7   # 2026-11-21 C1 b review: the look at a stream after a door's line is short (`before_model.DRAIN_S`): a provider that hangs never holds his next sentence
 _TOTAL_MAX += 6      # same cause, measured
+# 2026-11-21 C2 A3 review: with his hand's lane held, the card's read-only veto answers his Send at once (`card_send`,
+# `lane.early(sends=…)`), a held send of a draft settles the order its ref names (`actions/send._held`), and what the
+# owner says first is worded in front of a fixed confirmation too (`ask._led`)
+_PACKAGE_CEILINGS["nucleo/send"] += 10
+_PACKAGE_CEILINGS["widgets"] += 21
+_TOTAL_MAX += 32     # measured
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

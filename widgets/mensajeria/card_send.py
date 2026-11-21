@@ -99,7 +99,9 @@ def answer_action(action: str, payload: dict | None = None) -> dict | None:
     """The backed route's read-only veto (`data.answer_action`): the card's own Send is checked BEFORE it is
     queued — a send that cannot leave answers the button now, with the reason, and the card keeps his text. Every
     other action is answered by `answers.answer_action`, unchanged."""
-    if (held := _d._outbound.lane.early(action, payload)) is not None:
+    p = payload or {}
+    his_send = bool(str(p.get("ref") or "").strip()) and (is_card_send(p) or (action == "compose" and p.get("send")))
+    if (held := _d._outbound.lane.early(action, payload, sends=his_send)) is not None:
         return held                          # an act that would queue an order the exit holds: answered now
     if action == "send_draft" and is_card_send(payload or {}):
         _target, refusal = check(_d.load_db(), payload or {})
